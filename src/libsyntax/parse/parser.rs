@@ -802,8 +802,11 @@ impl Parser {
                 break;
             }
         }
-        @{span: mk_sp(lo, self.last_span.hi), global: global,
-          idents: ids, rp: None, types: ~[]}
+        @ast::path { span: mk_sp(lo, self.last_span.hi),
+                     global: global,
+                     idents: ids,
+                     rp: None,
+                     types: ~[] }
     }
 
     fn parse_value_path() -> @path {
@@ -849,9 +852,10 @@ impl Parser {
             }
         };
 
-        return @{span: mk_sp(lo, tps.span.hi),
-              rp: rp,
-              types: tps.node,.. *path};
+        @ast::path { span: mk_sp(lo, tps.span.hi),
+                     rp: rp,
+                     types: tps.node,
+                     .. *path }
     }
 
     fn parse_mutability() -> mutability {
@@ -2146,11 +2150,11 @@ impl Parser {
         let name = self.parse_ident();
         self.expect(token::COLON);
         let ty = self.parse_ty(false);
-        return @spanned(lo, self.last_span.hi, {
+        @spanned(lo, self.last_span.hi, ast::struct_field_ {
             kind: named_field(name, is_mutbl, pr),
             id: self.get_id(),
             ty: ty
-        });
+        })
     }
 
     fn parse_stmt(+first_item_attrs: ~[attribute]) -> @stmt {
@@ -2454,7 +2458,7 @@ impl Parser {
     fn parse_ty_param() -> ty_param {
         let ident = self.parse_ident();
         let bounds = self.parse_optional_ty_param_bounds();
-        return {ident: ident, id: self.get_id(), bounds: bounds};
+        ast::ty_param { ident: ident, id: self.get_id(), bounds: bounds }
     }
 
     fn parse_ty_params() -> ~[ty_param] {
@@ -2617,12 +2621,12 @@ impl Parser {
     fn mk_item(+lo: BytePos, +hi: BytePos, +ident: ident,
                +node: item_, vis: visibility,
                +attrs: ~[attribute]) -> @item {
-        return @{ident: ident,
-              attrs: attrs,
-              id: self.get_id(),
-              node: node,
-              vis: vis,
-              span: mk_sp(lo, hi)};
+        @ast::item { ident: ident,
+                     attrs: attrs,
+                     id: self.get_id(),
+                     node: node,
+                     vis: vis,
+                     span: mk_sp(lo, hi) }
     }
 
     fn parse_item_fn(purity: purity) -> item_info {
@@ -2730,18 +2734,27 @@ impl Parser {
                          typarams: ~[ty_param]) -> @path {
         let s = self.last_span;
 
-        @{span: s, global: false, idents: ~[i],
-          rp: None,
-          types: vec::map(typarams, |tp| {
-              @{id: self.get_id(),
-                node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
-                span: s}})
+        @ast::path {
+             span: s,
+             global: false,
+             idents: ~[i],
+             rp: None,
+             types: do typarams.map |tp| {
+                @{
+                    id: self.get_id(),
+                    node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
+                    span: s
+                }
+            }
          }
     }
 
     fn ident_to_path(i: ident) -> @path {
-        @{span: self.last_span, global: false, idents: ~[i],
-          rp: None, types: ~[]}
+        @ast::path { span: self.last_span,
+                     global: false,
+                     idents: ~[i],
+                     rp: None,
+                     types: ~[] }
     }
 
     fn parse_trait_ref() -> @trait_ref {
@@ -2803,7 +2816,7 @@ impl Parser {
                                                  seq_sep_trailing_allowed
                                                     (token::COMMA)) |p| {
                 let lo = p.span.lo;
-                let struct_field_ = {
+                let struct_field_ = ast::struct_field_ {
                     kind: unnamed_field,
                     id: self.get_id(),
                     ty: p.parse_ty(false)
@@ -2823,16 +2836,16 @@ impl Parser {
 
         let actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            spanned { node: { id: self.get_id(),
-                              attrs: d_attrs,
-                              self_id: self.get_id(),
-                              body: d_body},
+            spanned { node: ast::struct_dtor_ { id: self.get_id(),
+                                                attrs: d_attrs,
+                                                self_id: self.get_id(),
+                                                body: d_body},
                        span: d_s}};
         let _ = self.get_id();  // XXX: Workaround for crazy bug.
         let new_id = self.get_id();
         (class_name,
-         item_struct(@{
-             fields: move fields,
+         item_struct(@ast::struct_def {
+             fields: fields,
              dtor: actual_dtor,
              ctor_id: if is_tuple_like { Some(new_id) } else { None }
          }, ty_params),
@@ -2880,7 +2893,9 @@ impl Parser {
             self.parse_method();
             // bogus value
             @spanned(self.span.lo, self.span.hi,
-                     { kind: unnamed_field, id: self.get_id(),
+                     ast::struct_field_ {
+                       kind: unnamed_field,
+                       id: self.get_id(),
                        ty: @{id: self.get_id(),
                              node: ty_nil,
                              span: copy self.span} })
@@ -3110,12 +3125,12 @@ impl Parser {
         let (decl, _) = self.parse_fn_decl(|p| p.parse_arg());
         let mut hi = self.span.hi;
         self.expect(token::SEMI);
-        return @{ident: t.ident,
-                 attrs: attrs,
-                 node: foreign_item_fn(decl, purity, t.tps),
-                 id: self.get_id(),
-                 span: mk_sp(lo, hi),
-                 vis: vis};
+        @ast::foreign_item { ident: t.ident,
+                             attrs: attrs,
+                             node: foreign_item_fn(decl, purity, t.tps),
+                             id: self.get_id(),
+                             span: mk_sp(lo, hi),
+                             vis: vis }
     }
 
     fn parse_item_foreign_const(vis: ast::visibility,
@@ -3127,12 +3142,12 @@ impl Parser {
         let ty = self.parse_ty(false);
         let hi = self.span.hi;
         self.expect(token::SEMI);
-        return @{ident: ident,
-                 attrs: attrs,
-                 node: foreign_item_const(move ty),
-                 id: self.get_id(),
-                 span: mk_sp(lo, hi),
-                 vis: vis};
+        @ast::foreign_item { ident: ident,
+                             attrs: attrs,
+                             node: foreign_item_const(ty),
+                             id: self.get_id(),
+                             span: mk_sp(lo, hi),
+                             vis: vis }
     }
 
     fn parse_fn_purity() -> purity {
@@ -3261,12 +3276,12 @@ impl Parser {
         // extern mod foo;
         let metadata = self.parse_optional_meta();
         self.expect(token::SEMI);
-        return iovi_view_item(@{
+        iovi_view_item(@ast::view_item {
             node: view_item_use(ident, metadata, self.get_id()),
             attrs: attrs,
             vis: visibility,
             span: mk_sp(lo, self.last_span.hi)
-        });
+        })
     }
 
     fn parse_type_decl() -> {lo: BytePos, ident: ident} {
@@ -3320,15 +3335,15 @@ impl Parser {
         self.bump();
         let mut actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            spanned { node: { id: self.get_id(),
-                              attrs: d_attrs,
-                              self_id: self.get_id(),
-                              body: d_body },
+            spanned { node: ast::struct_dtor_ { id: self.get_id(),
+                                                attrs: d_attrs,
+                                                self_id: self.get_id(),
+                                                body: d_body },
                       span: d_s }
         };
 
-        return @{
-            fields: move fields,
+        return @ast::struct_def {
+            fields: fields,
             dtor: actual_dtor,
             ctor_id: None
         };
@@ -3558,7 +3573,7 @@ impl Parser {
         } else if self.eat_keyword(~"use") {
             let view_item = self.parse_use();
             self.expect(token::SEMI);
-            return iovi_view_item(@{
+            return iovi_view_item(@ast::view_item {
                 node: view_item,
                 attrs: attrs,
                 vis: visibility,
@@ -3567,7 +3582,7 @@ impl Parser {
         } else if self.eat_keyword(~"export") {
             let view_paths = self.parse_view_paths();
             self.expect(token::SEMI);
-            return iovi_view_item(@{
+            return iovi_view_item(@ast::view_item {
                 node: view_item_export(view_paths),
                 attrs: attrs,
                 vis: visibility,
@@ -3661,8 +3676,11 @@ impl Parser {
                 let id = self.parse_ident();
                 path.push(id);
             }
-            let path = @{span: mk_sp(lo, self.span.hi), global: false,
-                         idents: path, rp: None, types: ~[]};
+            let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                                    global: false,
+                                    idents: path,
+                                    rp: None,
+                                    types: ~[] };
             return @spanned(lo, self.span.hi,
                          view_path_simple(first_ident, path, namespace,
                                           self.get_id()));
@@ -3686,9 +3704,11 @@ impl Parser {
                         token::LBRACE, token::RBRACE,
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_path_list_ident());
-                    let path = @{span: mk_sp(lo, self.span.hi),
-                                 global: false, idents: path,
-                                 rp: None, types: ~[]};
+                    let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                                            global: false,
+                                            idents: path,
+                                            rp: None,
+                                            types: ~[] };
                     return @spanned(lo, self.span.hi,
                                  view_path_list(path, idents, self.get_id()));
                   }
@@ -3696,9 +3716,11 @@ impl Parser {
                   // foo::bar::*
                   token::BINOP(token::STAR) => {
                     self.bump();
-                    let path = @{span: mk_sp(lo, self.span.hi),
-                                 global: false, idents: path,
-                                 rp: None, types: ~[]};
+                    let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                                            global: false,
+                                            idents: path,
+                                            rp: None,
+                                            types: ~[] };
                     return @spanned(lo, self.span.hi,
                                  view_path_glob(path, self.get_id()));
                   }
@@ -3710,8 +3732,11 @@ impl Parser {
           _ => ()
         }
         let last = path[vec::len(path) - 1u];
-        let path = @{span: mk_sp(lo, self.span.hi), global: false,
-                     idents: path, rp: None, types: ~[]};
+        let path = @ast::path { span: mk_sp(lo, self.span.hi),
+                                global: false,
+                                idents: path,
+                                rp: None,
+                                types: ~[] };
         return @spanned(lo, self.span.hi,
                      view_path_simple(last, path, namespace, self.get_id()));
     }
@@ -3755,8 +3780,10 @@ impl Parser {
             fail;
         };
         self.expect(token::SEMI);
-        @{node: node, attrs: attrs,
-          vis: vis, span: mk_sp(lo, self.last_span.hi)}
+        @ast::view_item { node: node,
+                          attrs: attrs,
+                          vis: vis,
+                          span: mk_sp(lo, self.last_span.hi) }
     }
 
     fn parse_items_and_view_items(+first_item_attrs: ~[attribute],

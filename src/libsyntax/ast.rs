@@ -80,11 +80,13 @@ type fn_ident = Option<ident>;
 
 #[auto_encode]
 #[auto_decode]
-type path = {span: span,
-             global: bool,
-             idents: ~[ident],
-             rp: Option<@region>,
-             types: ~[@Ty]};
+struct path {
+    span: span,
+    global: bool,
+    idents: ~[ident],
+    rp: Option<@region>,
+    types: ~[@Ty],
+}
 
 type crate_num = int;
 
@@ -92,7 +94,10 @@ type node_id = int;
 
 #[auto_encode]
 #[auto_decode]
-type def_id = {crate: crate_num, node: node_id};
+struct def_id {
+    crate: crate_num,
+    node: node_id,
+}
 
 impl def_id : cmp::Eq {
     pure fn eq(&self, other: &def_id) -> bool {
@@ -117,7 +122,11 @@ enum ty_param_bound {
 
 #[auto_encode]
 #[auto_decode]
-type ty_param = {ident: ident, id: node_id, bounds: @~[ty_param_bound]};
+struct ty_param {
+    ident: ident,
+    id: node_id,
+    bounds: @~[ty_param_bound]
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1348,7 +1357,10 @@ type variant = spanned<variant_>;
 
 #[auto_encode]
 #[auto_decode]
-type path_list_ident_ = {name: ident, id: node_id};
+struct path_list_ident_ {
+    name: ident,
+    id: node_id,
+}
 
 type path_list_ident = spanned<path_list_ident_>;
 
@@ -1385,8 +1397,12 @@ enum view_path_ {
 
 #[auto_encode]
 #[auto_decode]
-type view_item = {node: view_item_, attrs: ~[attribute],
-                  vis: visibility, span: span};
+struct view_item {
+    node: view_item_,
+    attrs: ~[attribute],
+    vis: visibility,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1416,7 +1432,11 @@ impl attr_style : cmp::Eq {
 // doc-comments are promoted to attributes that have is_sugared_doc = true
 #[auto_encode]
 #[auto_decode]
-type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
+struct attribute_ {
+    style: attr_style,
+    value: meta_item,
+    is_sugared_doc: bool,
+}
 
 /*
   trait_refs appear in impls.
@@ -1449,11 +1469,11 @@ impl visibility : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type struct_field_ = {
+struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
-    ty: @Ty
-};
+    ty: @Ty,
+}
 
 type struct_field = spanned<struct_field_>;
 
@@ -1493,7 +1513,7 @@ impl struct_field_kind : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type struct_def = {
+struct struct_def {
     fields: ~[@struct_field], /* fields */
     /* (not including ctor or dtor) */
     /* dtor is optional */
@@ -1501,7 +1521,7 @@ type struct_def = {
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<node_id>
-};
+}
 
 /*
   FIXME (#3300): Should allow items to be anonymous. Right now
@@ -1509,9 +1529,14 @@ type struct_def = {
  */
 #[auto_encode]
 #[auto_decode]
-type item = {ident: ident, attrs: ~[attribute],
-             id: node_id, node: item_,
-             vis: visibility, span: span};
+struct item {
+    ident: ident,
+    attrs: ~[attribute],
+    id: node_id,
+    node: item_,
+    vis: visibility,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1559,20 +1584,23 @@ type struct_dtor = spanned<struct_dtor_>;
 
 #[auto_encode]
 #[auto_decode]
-type struct_dtor_ = {id: node_id,
-                    attrs: ~[attribute],
-                    self_id: node_id,
-                    body: blk};
+struct struct_dtor_ {
+    id: node_id,
+    attrs: ~[attribute],
+    self_id: node_id,
+    body: blk,
+}
 
 #[auto_encode]
 #[auto_decode]
-type foreign_item =
-    {ident: ident,
-     attrs: ~[attribute],
-     node: foreign_item_,
-     id: node_id,
-     span: span,
-     vis: visibility};
+struct foreign_item {
+    ident: ident,
+    attrs: ~[attribute],
+    node: foreign_item_,
+    id: node_id,
+    span: span,
+    vis: visibility,
+}
 
 #[auto_encode]
 #[auto_decode]

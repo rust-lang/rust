@@ -114,10 +114,14 @@ fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
 }
 //used in noop_fold_item and noop_fold_crate
 fn fold_attribute_(at: attribute, fld: ast_fold) -> attribute {
-    spanned { node: { style: at.node.style,
-                      value: *fold_meta_item_(@at.node.value, fld),
-                      is_sugared_doc: at.node.is_sugared_doc },
-              span: fld.new_span(at.span) }
+    spanned {
+        node: ast::attribute_ {
+            style: at.node.style,
+            value: *fold_meta_item_(@at.node.value, fld),
+            is_sugared_doc: at.node.is_sugared_doc,
+        },
+        span: fld.new_span(at.span),
+    }
 }
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: ast_fold) -> arg {
@@ -148,13 +152,13 @@ fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
 }
 
 fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {
-    {ident: /* FIXME (#2543) */ copy tp.ident,
-     id: fld.new_id(tp.id),
-     bounds: @vec::map(*tp.bounds, |x| fold_ty_param_bound(*x, fld) )}
+    ast::ty_param { ident: /* FIXME (#2543) */ copy tp.ident,
+                    id: fld.new_id(tp.id),
+                    bounds: @tp.bounds.map(|x| fold_ty_param_bound(*x, fld) )}
 }
 
 fn fold_ty_params(tps: ~[ty_param], fld: ast_fold) -> ~[ty_param] {
-    vec::map(tps, |x| fold_ty_param(*x, fld) )
+    tps.map(|x| fold_ty_param(*x, fld))
 }
 
 fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
@@ -178,43 +182,47 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
     let fold_arg = |x| fold_arg_(x, fld);
     let fold_attribute = |x| fold_attribute_(x, fld);
 
-    return @{ident: fld.fold_ident(ni.ident),
-          attrs: vec::map(ni.attrs, |x| fold_attribute(*x)),
-          node:
-              match ni.node {
+    @ast::foreign_item {
+        ident: fld.fold_ident(ni.ident),
+        attrs: vec::map(ni.attrs, |x| fold_attribute(*x)),
+        node:
+            match ni.node {
                 foreign_item_fn(fdec, purity, typms) => {
-                  foreign_item_fn(
-                      {inputs: vec::map(fdec.inputs, |a| fold_arg(*a)),
-                       output: fld.fold_ty(fdec.output),
-                       cf: fdec.cf},
-                      purity,
-                      fold_ty_params(typms, fld))
+                    foreign_item_fn(
+                        {
+                            inputs: fdec.inputs.map(|a| fold_arg(*a)),
+                            output: fld.fold_ty(fdec.output),
+                            cf: fdec.cf,
+                        },
+                        purity,
+                        fold_ty_params(typms, fld))
                 }
                 foreign_item_const(t) => {
-                  foreign_item_const(fld.fold_ty(t))
+                    foreign_item_const(fld.fold_ty(t))
                 }
-              },
-          id: fld.new_id(ni.id),
-          span: fld.new_span(ni.span),
-          vis: ni.vis};
+            },
+        id: fld.new_id(ni.id),
+        span: fld.new_span(ni.span),
+        vis: ni.vis,
+    }
 }
 
 fn noop_fold_item(&&i: @item, fld: ast_fold) -> Option<@item> {
     let fold_attribute = |x| fold_attribute_(x, fld);
 
-    return Some(@{ident: fld.fold_ident(i.ident),
-               attrs: vec::map(i.attrs, |e| fold_attribute(*e)),
-               id: fld.new_id(i.id),
-               node: fld.fold_item_underscore(i.node),
-               vis: i.vis,
-               span: fld.new_span(i.span)});
+    Some(@ast::item { ident: fld.fold_ident(i.ident),
+                      attrs: i.attrs.map(|e| fold_attribute(*e)),
+                      id: fld.new_id(i.id),
+                      node: fld.fold_item_underscore(i.node),
+                      vis: i.vis,
+                      span: fld.new_span(i.span) })
 }
 
 fn noop_fold_struct_field(&&sf: @struct_field, fld: ast_fold)
                        -> @struct_field {
-    @spanned { node: { kind: copy sf.node.kind,
-                       id: sf.node.id,
-                       ty: fld.fold_ty(sf.node.ty) },
+    @spanned { node: ast::struct_field_ { kind: copy sf.node.kind,
+                                          id: sf.node.id,
+                                          ty: fld.fold_ty(sf.node.ty) },
                span: sf.span }
 }
 
@@ -272,11 +280,12 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
     let dtor = do option::map(&struct_def.dtor) |dtor| {
         let dtor_body = fld.fold_block(dtor.node.body);
         let dtor_id   = fld.new_id(dtor.node.id);
-        spanned { node: { body: dtor_body,
-                          id: dtor_id, .. dtor.node},
+        spanned { node: ast::struct_dtor_ { body: dtor_body,
+                                            id: dtor_id,
+                                            .. dtor.node},
                   span: dtor.span }
     };
-    return @{
+    return @ast::struct_def {
         fields: vec::map(struct_def.fields, |f| fold_struct_field(*f, fld)),
         dtor: dtor,
         ctor_id: option::map(&struct_def.ctor_id, |cid| fld.new_id(*cid))
@@ -288,9 +297,9 @@ fn fold_trait_ref(&&p: @trait_ref, fld: ast_fold) -> @trait_ref {
 }
 
 fn fold_struct_field(&&f: @struct_field, fld: ast_fold) -> @struct_field {
-    @spanned { node: { kind: copy f.node.kind,
-                       id: fld.new_id(f.node.id),
-                       ty: fld.fold_ty(f.node.ty) },
+    @spanned { node: ast::struct_field_ { kind: copy f.node.kind,
+                                          id: fld.new_id(f.node.id),
+                                          ty: fld.fold_ty(f.node.ty) },
                span: fld.new_span(f.span) }
 }
 
@@ -572,11 +581,12 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
             let dtor = do option::map(&struct_def.dtor) |dtor| {
                 let dtor_body = fld.fold_block(dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
-                spanned { node: { body: dtor_body,
-                                  id: dtor_id, .. dtor.node},
+                spanned { node: ast::struct_dtor_ { body: dtor_body,
+                                                    id: dtor_id,
+                                                    .. dtor.node},
                           .. *dtor }
             };
-            kind = struct_variant_kind(@{
+            kind = struct_variant_kind(@ast::struct_def {
                 fields: vec::map(struct_def.fields,
                                  |f| fld.fold_struct_field(*f)),
                 dtor: dtor,
@@ -614,10 +624,11 @@ fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident {
 }
 
 fn noop_fold_path(&&p: path, fld: ast_fold) -> path {
-    return {span: fld.new_span(p.span), global: p.global,
-         idents: vec::map(p.idents, |x| fld.fold_ident(*x)),
-         rp: p.rp,
-         types: vec::map(p.types, |x| fld.fold_ty(*x))};
+    ast::path { span: fld.new_span(p.span),
+                global: p.global,
+                idents: p.idents.map(|x| fld.fold_ident(*x)),
+                rp: p.rp,
+                types: p.types.map(|x| fld.fold_ty(*x)) }
 }
 
 fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {
@@ -672,11 +683,13 @@ impl ast_fold_fns: ast_fold {
     }
     fn fold_view_item(&&x: @view_item) ->
        @view_item {
-        return @{node: (self.fold_view_item)(x.node, self as ast_fold),
-              attrs: vec::map(x.attrs, |a|
+        @ast::view_item {
+            node: (self.fold_view_item)(x.node, self as ast_fold),
+            attrs: vec::map(x.attrs, |a|
                   fold_attribute_(*a, self as ast_fold)),
-              vis: x.vis,
-              span: (self.new_span)(x.span)};
+            vis: x.vis,
+            span: (self.new_span)(x.span),
+        }
     }
     fn fold_foreign_item(&&x: @foreign_item)
         -> @foreign_item {
@@ -686,10 +699,14 @@ impl ast_fold_fns: ast_fold {
         return (self.fold_item)(i, self as ast_fold);
     }
     fn fold_struct_field(&&sf: @struct_field) -> @struct_field {
-        @spanned { node: { kind: copy sf.node.kind,
-                           id: sf.node.id,
-                           ty: (self as ast_fold).fold_ty(sf.node.ty) },
-                   span: (self.new_span)(sf.span) }
+        @spanned {
+            node: ast::struct_field_ {
+                kind: copy sf.node.kind,
+                id: sf.node.id,
+                ty: (self as ast_fold).fold_ty(sf.node.ty),
+            },
+            span: (self.new_span)(sf.span),
+        }
     }
     fn fold_item_underscore(i: item_) ->
        item_ {

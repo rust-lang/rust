@@ -53,20 +53,29 @@ fn mk_unary(cx: ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     mk_expr(cx, sp, ast::expr_unary(op, e))
 }
 fn mk_raw_path(sp: span, idents: ~[ast::ident]) -> @ast::path {
-    let p : @ast::path = @{span: sp, global: false, idents: idents,
-                           rp: None, types: ~[]};
+    let p = @ast::path { span: sp,
+                         global: false,
+                         idents: idents,
+                         rp: None,
+                         types: ~[] };
     return p;
 }
 fn mk_raw_path_(sp: span,
                 idents: ~[ast::ident],
                 +types: ~[@ast::Ty])
              -> @ast::path {
-    @{ span: sp, global: false, idents: idents, rp: None, types: move types }
+    @ast::path { span: sp,
+                 global: false,
+                 idents: idents,
+                 rp: None,
+                 types: move types }
 }
 fn mk_raw_path_global(sp: span, idents: ~[ast::ident]) -> @ast::path {
-    let p : @ast::path = @{span: sp, global: true, idents: idents,
-                           rp: None, types: ~[]};
-    return p;
+    @ast::path { span: sp,
+                 global: true,
+                 idents: idents,
+                 rp: None,
+                 types: ~[] }
 }
 fn mk_path(cx: ext_ctxt, sp: span, idents: ~[ast::ident]) ->
     @ast::expr {
@@ -164,10 +173,10 @@ fn mk_glob_use(cx: ext_ctxt, sp: span,
         node: ast::view_path_glob(mk_raw_path(sp, path), cx.next_id()),
         span: sp,
     };
-    @{node: ast::view_item_import(~[glob]),
-      attrs: ~[],
-      vis: ast::private,
-      span: sp}
+    @ast::view_item { node: ast::view_item_import(~[glob]),
+                      attrs: ~[],
+                      vis: ast::private,
+                      span: sp }
 }
 fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
             ident: ast::ident, ex: @ast::expr) -> @ast::stmt {
@@ -304,6 +313,6 @@ fn mk_ty_param(cx: ext_ctxt,
                ident: ast::ident,
                bounds: @~[ast::ty_param_bound])
             -> ast::ty_param {
-    { ident: ident, id: cx.next_id(), bounds: bounds }
+    ast::ty_param { ident: ident, id: cx.next_id(), bounds: bounds }
 }
 
