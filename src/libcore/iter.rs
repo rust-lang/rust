@@ -80,7 +80,7 @@ pub trait Buildable<A> {
      * # Arguments
      *
      * * size - A hint for an initial size of the sequence
-     * * builder - A function that will construct the sequence. It recieves
+     * * builder - A function that will construct the sequence. It receives
      *             as an argument a function that will push an element
      *             onto the sequence being constructed.
      */
@@ -256,7 +256,7 @@ pub pure fn find<A: Copy,IA:BaseIter<A>>(self: &IA,
  *
  * # Arguments
  *
- * * builder - A function that will construct the sequence. It recieves
+ * * builder - A function that will construct the sequence. It receives
  *             as an argument a function that will push an element
  *             onto the sequence being constructed.
  */
@@ -275,7 +275,7 @@ pub pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(A)))
  *
  * * size - An option, maybe containing initial size of the sequence
  *          to reserve
- * * builder - A function that will construct the sequence. It recieves
+ * * builder - A function that will construct the sequence. It receives
  *             as an argument a function that will push an element
  *             onto the sequence being constructed.
  */
