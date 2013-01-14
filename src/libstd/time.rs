@@ -320,8 +320,8 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         Some((value, pos))
     }
 
-    fn match_digits_in_range(ss: &str, pos: uint, digits: uint, ws: bool, min: i32, max: i32)
-      -> Option<(i32, uint)> {
+    fn match_digits_in_range(ss: &str, pos: uint, digits: uint, ws: bool,
+                             min: i32, max: i32) -> Option<(i32, uint)> {
         match match_digits(ss, pos, digits, ws) {
           Some((val, pos)) if val >= min && val <= max => {
             Some((val, pos))
@@ -403,7 +403,8 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
             None => Err(~"Invalid month")
           },
-          'C' => match match_digits_in_range(s, pos, 2u, false, 0_i32, 99_i32) {
+          'C' => match match_digits_in_range(s, pos, 2u, false, 0_i32,
+                                             99_i32) {
             Some(item) => {
                 let (v, pos) = item;
                   tm.tm_year += (v * 100_i32) - 1900_i32;
@@ -429,11 +430,13 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 .chain(|pos| parse_char(s, pos, '/'))
                 .chain(|pos| parse_type(s, pos, 'y', tm))
           }
-          'd' => match match_digits_in_range(s, pos, 2u, false, 1_i32, 31_i32) {
+          'd' => match match_digits_in_range(s, pos, 2u, false, 1_i32,
+                                             31_i32) {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
             None => Err(~"Invalid day of the month")
           },
-          'e' => match match_digits_in_range(s, pos, 2u, true, 1_i32, 31_i32) {
+          'e' => match match_digits_in_range(s, pos, 2u, true, 1_i32,
+                                             31_i32) {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
             None => Err(~"Invalid day of the month")
           },
