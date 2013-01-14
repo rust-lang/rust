@@ -286,7 +286,7 @@ impl ReprVisitor : TyVisitor {
     fn visit_f32() -> bool { self.write::<f32>() }
     fn visit_f64() -> bool { self.write::<f64>() }
 
-    fn visit_char() -> bool { self.write::<uint>() }
+    fn visit_char() -> bool { self.write::<u32>() }
 
     // Type no longer exists, vestigial function.
     fn visit_str() -> bool { fail; }
