@@ -219,7 +219,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
         // XXX: Would be nice if our generated code didn't violate
         // Rust coding conventions
-        let non_camel_case_attribute = respan(dummy_sp(), {
+        let non_camel_case_attribute = respan(dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
             value: respan(dummy_sp(),
                           ast::meta_list(~"allow", ~[
@@ -306,7 +306,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                 span: ast_util::dummy_sp()
             }
         ]);
-        let vi = @{
+        let vi = @ast::view_item {
             node: vi,
             attrs: ~[],
             vis: ast::private,
