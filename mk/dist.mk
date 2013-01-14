@@ -25,7 +25,7 @@ PKG_FILES := \
     $(addprefix $(S)src/,                      \
       README.txt                               \
       driver                                   \
-      libcargo                                 \
+      librustpkg                               \
       librusti                                 \
       librustc                                 \
       compiletest                              \
