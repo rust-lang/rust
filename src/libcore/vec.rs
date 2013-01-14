@@ -2800,6 +2800,13 @@ mod tests {
     }
 
     #[test]
+    fn test_retain() {
+        let mut v = ~[1, 2, 3, 4, 5];
+        v.retain(is_odd);
+        assert v == ~[1, 3, 5];
+    }
+
+    #[test]
     fn test_foldl() {
         // Test on-stack fold.
         let mut v = ~[1u, 2u, 3u];
