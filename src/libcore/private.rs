@@ -35,6 +35,8 @@ pub mod global;
 pub mod finally;
 #[path = "private/weak_task.rs"]
 pub mod weak_task;
+#[path = "private/exchange_alloc.rs"]
+pub mod exchange_alloc;
 
 extern mod rustrt {
     pub unsafe fn rust_create_little_lock() -> rust_little_lock;
@@ -87,6 +89,17 @@ fn test_run_in_bare_thread() {
         let i = 100;
         do run_in_bare_thread {
             assert i == 100;
+        }
+    }
+}
+
+#[test]
+fn test_run_in_bare_thread_exchange() {
+    unsafe {
+        // Does the exchange heap work without the runtime?
+        let i = ~100;
+        do run_in_bare_thread {
+            assert i == ~100;
         }
     }
 }

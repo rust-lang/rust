@@ -63,6 +63,7 @@ RUNTIME_CXXS_$(1) := \
               rt/rust_log.cpp \
               rt/rust_gc_metadata.cpp \
               rt/rust_util.cpp \
+              rt/rust_exchange_alloc.cpp \
               rt/isaac/randport.cpp \
               rt/miniz.cpp \
               rt/rust_kernel.cpp \
