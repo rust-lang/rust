@@ -25,7 +25,7 @@ would generate two implementations like:
 
     impl<S: Encoder> node_id: Encodable<S> {
         fn encode(s: &S) {
-            do s.emit_struct("Node") {
+            do s.emit_struct("Node", 1) {
                 s.emit_field("id", 0, || s.emit_uint(self))
             }
         }
@@ -33,7 +33,7 @@ would generate two implementations like:
 
     impl<D: Decoder> node_id: Decodable {
         static fn decode(d: &D) -> Node {
-            do d.read_struct("Node") {
+            do d.read_struct("Node", 1) {
                 Node {
                     id: d.read_field(~"x", 0, || decode(d))
                 }
@@ -709,6 +709,7 @@ fn mk_struct_ser_impl(
         ),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
+            cx.lit_uint(span, vec::len(fields)),
             cx.lambda_stmts(span, fields),
         ]
     );
@@ -735,6 +736,7 @@ fn mk_struct_deser_impl(
         ),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
+            cx.lit_uint(span, vec::len(fields)),
             cx.lambda_expr(
                 cx.expr(
                     span,

@@ -379,7 +379,7 @@ pub mod reader {
             f()
         }
 
-        fn read_struct<T>(&self, name: &str, f: fn() -> T) -> T {
+        fn read_struct<T>(&self, name: &str, _len: uint, f: fn() -> T) -> T {
             debug!("read_struct(name=%s)", name);
             f()
         }
@@ -658,7 +658,7 @@ pub mod writer {
         }
 
         fn emit_rec(&self, f: fn()) { f() }
-        fn emit_struct(&self, _name: &str, f: fn()) { f() }
+        fn emit_struct(&self, _name: &str, _len: uint, f: fn()) { f() }
         fn emit_field(&self, name: &str, _idx: uint, f: fn()) {
             self._emit_label(name);
             f()
