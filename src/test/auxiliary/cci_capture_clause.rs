@@ -8,13 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports];
-
-export foo;
-
 use core::oldcomm::*;
 
-fn foo<T: Owned Copy>(x: T) -> Port<T> {
+pub fn foo<T: Owned Copy>(x: T) -> Port<T> {
     let p = Port();
     let c = Chan(&p);
     do task::spawn() |copy c, copy x| {

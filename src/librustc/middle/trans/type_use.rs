@@ -27,9 +27,15 @@
 // much information, but have the disadvantage of being very
 // invasive.)
 
-use metadata::csearch;
-use middle::trans::common::*;
 
+use metadata::csearch;
+use middle::freevars;
+use middle::trans::common::*;
+use middle::trans::inline;
+
+use core::option;
+use core::uint;
+use core::vec;
 use std::list::{List, Cons, Nil};
 use std::list;
 use std::map::HashMap;
@@ -79,16 +85,17 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 
     if fn_id_loc.crate != local_crate {
         let uses = vec::from_mut(copy cx.uses);
-        ccx.type_use_cache.insert(fn_id, uses);
+        ccx.type_use_cache.insert(fn_id, copy uses);
         return uses;
     }
     let map_node = match ccx.tcx.items.find(fn_id_loc.node) {
-        Some(ref x) => (*x),
+        Some(ref x) => (/*bad*/copy *x),
         None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
                                      fn_id_loc))
     };
     match map_node {
-      ast_map::node_item(@{node: item_fn(_, _, _, ref body), _}, _) |
+      ast_map::node_item(@ast::item { node: item_fn(_, _, _, ref body),
+                                      _ }, _) |
       ast_map::node_method(@{body: ref body, _}, _, _) => {
         handle_body(cx, (*body));
       }
@@ -101,7 +108,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_variant(_, _, _) => {
         for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
       }
-      ast_map::node_foreign_item(i@@{node: foreign_item_fn(*), _},
+      ast_map::node_foreign_item(i@@foreign_item { node: foreign_item_fn(*),
+                                                   _ },
                                  abi, _) => {
         if abi == foreign_abi_rust_intrinsic {
             let flags = match cx.ccx.sess.str_of(i.ident) {
@@ -135,6 +143,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                 ~"ctlz8" | ~"ctlz16" | ~"ctlz32" | ~"ctlz64" => 0,
                 ~"cttz8" | ~"cttz16" | ~"cttz32" | ~"cttz64" => 0,
 
+                ~"bswap16" | ~"bswap32" | ~"bswap64" => 0,
+
                 // would be cool to make these an enum instead of strings!
                 _ => fail ~"unknown intrinsic in type_use"
             };
@@ -158,7 +168,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       }
     }
     let uses = vec::from_mut(copy cx.uses);
-    ccx.type_use_cache.insert(fn_id, uses);
+    // XXX: Bad copy, use @vec instead?
+    ccx.type_use_cache.insert(fn_id, copy uses);
     uses
 }
 
@@ -331,7 +342,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
 }
 
 fn handle_body(cx: ctx, body: blk) {
-    let v = visit::mk_vt(@{
+    let v = visit::mk_vt(@visit::Visitor {
         visit_expr: |e, cx, v| {
             visit::visit_expr(e, cx, v);
             mark_for_expr(cx, e);

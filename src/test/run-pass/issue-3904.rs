@@ -9,8 +9,29 @@
 // except according to those terms.
 
 // xfail-test
-trait A {
-  fn a(&self) {
-    || self.b()
-  }
+type ErrPrinter = &fn(&str, &str);
+
+fn example_err(prog: &str, arg: &str) {
+    io::println(fmt!("%s: %s", prog, arg))
+}
+
+fn exit(+print: ErrPrinter, prog: &str, arg: &str) {
+    print(prog, arg);
+}
+
+struct X {
+    mut err: ErrPrinter
+}
+
+impl X {
+    fn boom() {
+        exit(self.err, "prog", "arg");
+    }
+}
+
+fn main(){
+    let val = &X{
+        err: example_err,
+    };
+    val.boom();
 }

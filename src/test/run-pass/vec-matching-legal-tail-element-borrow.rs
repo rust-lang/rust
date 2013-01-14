@@ -3,7 +3,7 @@ fn main() {
     if !x.is_empty() {
         let el = match x {
             [1, ..ref tail] => &tail[0], 
-            _ => core::util::unreachable()
+            _ => ::core::util::unreachable()
         };
         io::println(fmt!("%d", *el));
     }

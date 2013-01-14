@@ -152,7 +152,7 @@ else
 
 doc/rust.g: rust.md $(S)src/etc/extract_grammar.py
 	@$(call E, extract_grammar: $@)
-	$(Q)$(S)src/etc/extract_grammar.py $< >$@
+	$(Q)$(CFG_PYTHON) $(S)src/etc/extract_grammar.py $< >$@
 
 verify-grammar: doc/rust.g
 	@$(call E, LLnextgen: $<)

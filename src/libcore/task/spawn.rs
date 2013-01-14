@@ -73,8 +73,24 @@
 #[doc(hidden)]; // FIXME #3538
 #[warn(deprecated_mode)];
 
+use cast;
+use oldcomm;
+use option;
+use pipes::{Chan, Port};
+use pipes;
+use prelude::*;
+use private;
+use ptr;
+use send_map;
+use task::local_data_priv::{local_get, local_set};
 use task::rt::rust_task;
 use task::rt::rust_closure;
+use task::rt;
+use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
+use task::{Success, TaskOpts, TaskResult, ThreadPerCore, ThreadPerTask};
+use task::{default_task_opts, unkillable};
+use uint;
+use util;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = move *ptr::addr_of(&($x)); move y } )
@@ -576,7 +592,7 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
             }
 
             // Run the box annihilator.
-            // XXX: Crashy.
+            // FIXME #4428: Crashy.
             // unsafe { cleanup::annihilate(); }
         };
 

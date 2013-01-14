@@ -34,10 +34,20 @@
 
 #[forbid(deprecated_mode)];
 
+use arena;
+use list;
 use list::{List, Cons, Nil};
-use cast::reinterpret_cast;
-use sys::TypeDesc;
-use libc::size_t;
+
+use core::at_vec;
+use core::cast::reinterpret_cast;
+use core::cast;
+use core::libc::size_t;
+use core::prelude::*;
+use core::ptr;
+use core::sys::TypeDesc;
+use core::sys;
+use core::uint;
+use core::vec;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
@@ -47,7 +57,9 @@ extern mod rusti {
 
 extern mod rustrt {
     #[rust_stack]
-    fn rust_call_tydesc_glue(root: *u8, tydesc: *TypeDesc, field: size_t);
+    unsafe fn rust_call_tydesc_glue(root: *u8,
+                                    tydesc: *TypeDesc,
+                                    field: size_t);
 }
 // This probably belongs somewhere else. Needs to be kept in sync with
 // changes to glue...

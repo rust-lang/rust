@@ -8,18 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use back::link;
 use back::target_strs;
+use back;
+use driver;
+use driver::session;
 use metadata::filesearch;
+use metadata;
 use middle::lint;
 
+use core::cmp;
+use core::option;
 use syntax::ast::node_id;
 use syntax::ast::{int_ty, uint_ty, float_ty};
 use syntax::codemap::span;
+use syntax::diagnostic;
 use syntax::parse::parse_sess;
 use syntax::{ast, codemap};
-
+use syntax;
 
 enum os { os_win32, os_macos, os_linux, os_freebsd, }
 
@@ -201,8 +209,7 @@ impl Session {
     fn unimpl(msg: ~str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
     }
-    fn span_lint_level(level: lint::level,
-                       sp: span, msg: ~str) {
+    fn span_lint_level(level: lint::level, sp: span, +msg: ~str) {
         match level {
           lint::allow => { },
           lint::warn => self.span_warn(sp, msg),
@@ -212,8 +219,10 @@ impl Session {
         }
     }
     fn span_lint(lint_mode: lint::lint,
-                 expr_id: ast::node_id, item_id: ast::node_id,
-                 span: span, msg: ~str) {
+                 expr_id: ast::node_id,
+                 item_id: ast::node_id,
+                 span: span,
+                 +msg: ~str) {
         let level = lint::get_lint_settings_level(
             self.lint_settings, lint_mode, expr_id, item_id);
         self.span_lint_level(level, span, msg);
@@ -251,9 +260,9 @@ impl Session {
     }
 
     fn str_of(id: ast::ident) -> ~str {
-        *self.parse_sess.interner.get(id)
+        /*bad*/copy *self.parse_sess.interner.get(id)
     }
-    fn ident_of(st: ~str) -> ast::ident {
+    fn ident_of(+st: ~str) -> ast::ident {
         self.parse_sess.interner.intern(@st)
     }
     fn intr() -> @syntax::parse::token::ident_interner {
@@ -325,10 +334,17 @@ fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use driver::session::{bin_crate, building_library, lib_crate};
+    use driver::session::{unknown_crate};
+
+    use syntax::ast;
     use syntax::ast_util;
 
-    fn make_crate_type_attr(t: ~str) -> ast::attribute {
-        ast_util::respan(ast_util::dummy_sp(), {
+    fn make_crate_type_attr(+t: ~str) -> ast::attribute {
+        ast_util::respan(ast_util::dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
             value: ast_util::respan(ast_util::dummy_sp(),
                 ast::meta_name_value(

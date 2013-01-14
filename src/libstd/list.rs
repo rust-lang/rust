@@ -13,8 +13,9 @@
 
 use core::cmp::Eq;
 use core::option;
-use option::*;
-use option::{Some, None};
+use core::option::*;
+use core::prelude::*;
+use core::vec;
 
 #[deriving_eq]
 pub enum List<T> {
@@ -161,6 +162,11 @@ pub pure fn each<T>(l: @List<T>, f: fn(&T) -> bool) {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use list::*;
+    use list;
+
+    use core::option;
 
     #[test]
     fn test_is_empty() {

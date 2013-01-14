@@ -28,6 +28,10 @@ extern mod rusti {
     fn cttz16(x: i16) -> i16;
     fn cttz32(x: i32) -> i32;
     fn cttz64(x: i64) -> i64;
+
+    fn bswap16(x: i16) -> i16;
+    fn bswap32(x: i32) -> i32;
+    fn bswap64(x: i64) -> i64;
 }
 
 fn main() {
@@ -108,5 +112,9 @@ fn main() {
     assert(cttz16(-1i16) == 0i16);
     assert(cttz32(-1i32) == 0i32);
     assert(cttz64(-1i64) == 0i64);
+
+    assert(bswap16(0x0A0Bi16) == 0x0B0Ai16);
+    assert(bswap32(0x0ABBCC0Di32) == 0x0DCCBB0Ai32);
+    assert(bswap64(0x0122334455667708i64) == 0x0877665544332201i64);
 
 }

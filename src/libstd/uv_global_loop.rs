@@ -16,13 +16,18 @@ use ll = uv_ll;
 use iotask = uv_iotask;
 use get_gl = get;
 use uv_iotask::{IoTask, spawn_iotask};
-use private::{chan_from_global_ptr, weaken_task};
+
+use core::either::{Left, Right};
+use core::libc;
 use core::oldcomm::{Port, Chan, select2, listen};
-use task::TaskBuilder;
-use either::{Left, Right};
+use core::private::{chan_from_global_ptr, weaken_task};
+use core::str;
+use core::task::TaskBuilder;
+use core::task;
+use core::vec;
 
 extern mod rustrt {
-    fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
+    unsafe fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
 }
 
 /**
@@ -118,6 +123,18 @@ fn spawn_loop() -> IoTask {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
+    use uv::iotask;
+    use uv::ll;
+    use uv_global_loop::*;
+
+    use core::iter;
+    use core::libc;
+    use core::oldcomm;
+    use core::ptr;
+    use core::task;
+
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
         let exit_ch_ptr = ll::get_data_for_uv_handle(
             timer_ptr as *libc::c_void) as *oldcomm::Chan<bool>;

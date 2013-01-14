@@ -20,6 +20,7 @@ Sendable hash maps.  Very much a work in progress.
 
 use cmp::Eq;
 use hash::Hash;
+use prelude::*;
 use to_bytes::IterBytes;
 
 pub trait SendMap<K:Eq Hash, V: Copy> {
@@ -45,6 +46,17 @@ pub trait SendMap<K:Eq Hash, V: Copy> {
 
 /// Open addressing with linear probing.
 pub mod linear {
+    use cmp::Eq;
+    use cmp;
+    use hash::Hash;
+    use kinds::Copy;
+    use option::{None, Option, Some};
+    use option;
+    use rand;
+    use to_bytes::IterBytes;
+    use uint;
+    use vec;
+
     const INITIAL_CAPACITY: uint = 32u; // 2^5
 
     struct Bucket<K:Eq Hash,V> {
@@ -167,6 +179,7 @@ pub mod linear {
             let mut old_buckets = vec::from_fn(new_capacity, |_i| None);
             self.buckets <-> old_buckets;
 
+            self.size = 0;
             for uint::range(0, old_capacity) |i| {
                 let mut bucket = None;
                 bucket <-> old_buckets[i];
@@ -451,7 +464,10 @@ pub mod linear {
 
 #[test]
 pub mod test {
+    use option::{None, Some};
     use send_map::linear::LinearMap;
+    use send_map::linear;
+    use uint;
 
     #[test]
     pub fn inserts() {
@@ -574,5 +590,23 @@ pub mod test {
         m2.insert(3, 4);
 
         assert m1 == m2;
+    }
+
+    #[test]
+    pub fn test_expand() {
+        let mut m = ~LinearMap();
+
+        assert m.len() == 0;
+        assert m.is_empty();
+
+        let mut i = 0u;
+        let old_resize_at = m.resize_at;
+        while old_resize_at == m.resize_at {
+            m.insert(i, i);
+            i += 1;
+        }
+
+        assert m.len() == i;
+        assert !m.is_empty();
     }
 }

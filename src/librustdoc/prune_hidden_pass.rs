@@ -10,18 +10,25 @@
 
 //! Prunes things with the #[doc(hidden)] attribute
 
+use astsrv;
+use attr_parser;
 use doc::ItemUtils;
+use doc;
 use fold::Fold;
+use fold;
+use pass::Pass;
+
+use core::vec;
 use std::map::HashMap;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"prune_hidden",
         f: run
     }
 }
 
-fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
+pub fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
     let fold = Fold {
         fold_mod: fold_mod,
         .. fold::default_any_fold(srv)
@@ -36,9 +43,9 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     doc::ModDoc_({
-        items: vec::filter(doc.items, |ItemTag| {
+        items: do doc.items.filtered |ItemTag| {
             !is_hidden(fold.ctxt, ItemTag.item())
-        }),
+        },
         .. *doc
     })
 }
@@ -63,9 +70,13 @@ fn should_prune_hidden_items() {
 }
 
 #[cfg(test)]
-mod test {
-    #[legacy_exports];
-    fn mk_doc(source: ~str) -> doc::Doc {
+pub mod test {
+    use astsrv;
+    use doc;
+    use extract;
+    use prune_hidden_pass::run;
+
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

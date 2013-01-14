@@ -37,6 +37,13 @@
  */
 #[forbid(deprecated_mode)];
 
+use core::libc;
+use core::oldcomm;
+use core::option;
+use core::prelude::*;
+use core::ptr;
+use core::task;
+
 /**
  * The type representing a foreign chunk of memory
  *
@@ -146,15 +153,22 @@ pub unsafe fn ptr<T>(t: CVec<T>) -> *mut T {
 
 #[cfg(test)]
 mod tests {
-    use libc::*;
+    use core::prelude::*;
+
+    use c_vec::*;
+
+    use core::libc::*;
+    use core::libc;
 
     fn malloc(n: size_t) -> CVec<u8> {
-        let mem = libc::malloc(n);
+        unsafe {
+            let mem = libc::malloc(n);
 
-        assert mem as int != 0;
+            assert mem as int != 0;
 
-        return unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
-                                     ||free(mem)) };
+            return unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
+                                         || unsafe { free(mem) }) };
+        }
     }
 
     #[test]

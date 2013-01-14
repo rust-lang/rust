@@ -8,9 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use config;
 use doc::ItemUtils;
-use io::ReaderUtil;
+use doc;
+use pass::Pass;
+
+use core::io::ReaderUtil;
+use core::io;
+use core::libc;
+use core::oldcomm;
+use core::os;
+use core::pipes;
+use core::result;
+use core::run;
+use core::str;
+use core::task;
 use std::future;
+use syntax;
 
 pub enum WriteInstr {
     Write(~str),
@@ -135,17 +151,19 @@ fn pandoc_writer(
 
 fn readclose(fd: libc::c_int) -> ~str {
     // Copied from run::program_output
-    let file = os::fdopen(fd);
-    let reader = io::FILE_reader(file, false);
-    let buf = io::with_bytes_writer(|writer| {
-        let mut bytes = [mut 0, ..4096];
-        while !reader.eof() {
-            let nread = reader.read(bytes, bytes.len());
-            writer.write(bytes.view(0, nread));
-        }
-    });
-    os::fclose(file);
-    str::from_bytes(buf)
+    unsafe {
+        let file = os::fdopen(fd);
+        let reader = io::FILE_reader(file, false);
+        let buf = io::with_bytes_writer(|writer| {
+            let mut bytes = [mut 0, ..4096];
+            while !reader.eof() {
+                let nread = reader.read(bytes, bytes.len());
+                writer.write(bytes.view(0, nread));
+            }
+        });
+        os::fclose(file);
+        str::from_bytes(buf)
+    }
 }
 
 fn generic_writer(+process: fn~(+markdown: ~str)) -> Writer {
@@ -254,6 +272,12 @@ fn should_name_mod_file_names_by_path() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use doc;
+    use extract;
+    use path_pass;
+
     fn mk_doc(+name: ~str, +source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, name);

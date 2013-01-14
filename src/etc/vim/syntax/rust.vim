@@ -2,7 +2,7 @@
 " Language:     Rust
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
-" Last Change:  2012 Dec 14
+" Last Change:  2012 Dec 25
 
 if version < 600
   syntax clear
@@ -44,8 +44,8 @@ syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 
 syn keyword   rustTrait       Const Copy Send Owned " inherent traits
 syn keyword   rustTrait       Eq Ord Num Ptr
-syn keyword   rustTrait       Add Sub Mul Div Modulo Neg BitAnd BitOr BitXor
-syn keyword   rustTrait       Shl Shr Index
+syn keyword   rustTrait       Drop Add Sub Mul Div Modulo Neg BitAnd BitOr
+syn keyword   rustTrait       BitXor Shl Shr Index
 
 syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false

@@ -294,7 +294,8 @@ fn load_link(mis: ~[@ast::meta_item]) -> (Option<~str>,
     let mut uuid = None;
     for mis.each |a| {
         match a.node {
-            ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) => {
+            ast::meta_name_value(v, ast::spanned { node: ast::lit_str(s),
+                                                   _ }) => {
                 match v {
                     ~"name" => name = Some(*s),
                     ~"vers" => vers = Some(*s),
@@ -321,7 +322,8 @@ fn load_crate(filename: &Path) -> Option<Crate> {
 
     for c.node.attrs.each |a| {
         match a.node.value.node {
-            ast::meta_name_value(v, {node: ast::lit_str(_), span: _}) => {
+            ast::meta_name_value(v, ast::spanned { node: ast::lit_str(_),
+                                                   _ }) => {
                 match v {
                     ~"desc" => desc = Some(v),
                     ~"sigs" => sigs = Some(v),
@@ -401,7 +403,7 @@ fn load_crate(filename: &Path) -> Option<Crate> {
     let e = @{
         mut deps: ~[]
     };
-    let v = visit::mk_simple_visitor(@{
+    let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_view_item: |a| goto_view_item(sess, e, a),
         visit_item: |a| goto_item(e, a),
         .. *visit::default_simple_visitor()
@@ -805,7 +807,7 @@ fn install_one_crate(c: &Cargo, path: &Path, cf: &Path) {
       Some(bp) => bp
     };
     let newv = os::list_dir_path(&buildpath);
-    let exec_suffix = os::exe_suffix();
+    let exec_suffix = str::from_slice(os::EXE_SUFFIX);
     for newv.each |ct| {
         if (exec_suffix != ~"" && str::ends_with(ct.to_str(),
                                                  exec_suffix)) ||

@@ -26,73 +26,74 @@ pub extern mod c_double_utils {
 
     // Alpabetically sorted by link_name
 
-    pure fn acos(n: c_double) -> c_double;
-    pure fn asin(n: c_double) -> c_double;
-    pure fn atan(n: c_double) -> c_double;
-    pure fn atan2(a: c_double, b: c_double) -> c_double;
-    pure fn cbrt(n: c_double) -> c_double;
-    pure fn ceil(n: c_double) -> c_double;
-    pure fn copysign(x: c_double, y: c_double) -> c_double;
-    pure fn cos(n: c_double) -> c_double;
-    pure fn cosh(n: c_double) -> c_double;
-    pure fn erf(n: c_double) -> c_double;
-    pure fn erfc(n: c_double) -> c_double;
-    pure fn exp(n: c_double) -> c_double;
-    pure fn expm1(n: c_double) -> c_double;
-    pure fn exp2(n: c_double) -> c_double;
-    #[link_name="fabs"] pure fn abs(n: c_double) -> c_double;
+    unsafe fn acos(n: c_double) -> c_double;
+    unsafe fn asin(n: c_double) -> c_double;
+    unsafe fn atan(n: c_double) -> c_double;
+    unsafe fn atan2(a: c_double, b: c_double) -> c_double;
+    unsafe fn cbrt(n: c_double) -> c_double;
+    unsafe fn ceil(n: c_double) -> c_double;
+    unsafe fn copysign(x: c_double, y: c_double) -> c_double;
+    unsafe fn cos(n: c_double) -> c_double;
+    unsafe fn cosh(n: c_double) -> c_double;
+    unsafe fn erf(n: c_double) -> c_double;
+    unsafe fn erfc(n: c_double) -> c_double;
+    unsafe fn exp(n: c_double) -> c_double;
+    unsafe fn expm1(n: c_double) -> c_double;
+    unsafe fn exp2(n: c_double) -> c_double;
+    #[link_name="fabs"] unsafe fn abs(n: c_double) -> c_double;
     // rename: for clarity and consistency with add/sub/mul/div
-    #[link_name="fdim"] pure fn abs_sub(a: c_double, b: c_double) -> c_double;
-    pure fn floor(n: c_double) -> c_double;
+    #[link_name="fdim"]
+    unsafe fn abs_sub(a: c_double, b: c_double) -> c_double;
+    unsafe fn floor(n: c_double) -> c_double;
     // rename: for clarity and consistency with add/sub/mul/div
-    #[link_name="fma"] pure fn mul_add(a: c_double, b: c_double,
+    #[link_name="fma"] unsafe fn mul_add(a: c_double, b: c_double,
                                        c: c_double) -> c_double;
-    #[link_name="fmax"] pure fn fmax(a: c_double, b: c_double) -> c_double;
-    #[link_name="fmin"] pure fn fmin(a: c_double, b: c_double) -> c_double;
-    pure fn nextafter(x: c_double, y: c_double) -> c_double;
-    pure fn frexp(n: c_double, value: &mut c_int) -> c_double;
-    pure fn hypot(x: c_double, y: c_double) -> c_double;
-    pure fn ldexp(x: c_double, n: c_int) -> c_double;
+    #[link_name="fmax"] unsafe fn fmax(a: c_double, b: c_double) -> c_double;
+    #[link_name="fmin"] unsafe fn fmin(a: c_double, b: c_double) -> c_double;
+    unsafe fn nextafter(x: c_double, y: c_double) -> c_double;
+    unsafe fn frexp(n: c_double, value: &mut c_int) -> c_double;
+    unsafe fn hypot(x: c_double, y: c_double) -> c_double;
+    unsafe fn ldexp(x: c_double, n: c_int) -> c_double;
     #[cfg(unix)]
-    #[link_name="lgamma_r"] pure fn lgamma(n: c_double,
+    #[link_name="lgamma_r"] unsafe fn lgamma(n: c_double,
                                            sign: &mut c_int) -> c_double;
     #[cfg(windows)]
-    #[link_name="__lgamma_r"] pure fn lgamma(n: c_double,
+    #[link_name="__lgamma_r"] unsafe fn lgamma(n: c_double,
                                              sign: &mut c_int) -> c_double;
     // renamed: log is a reserved keyword; ln seems more natural, too
-    #[link_name="log"] pure fn ln(n: c_double) -> c_double;
+    #[link_name="log"] unsafe fn ln(n: c_double) -> c_double;
     // renamed: "logb" /often/ is confused for log2 by beginners
-    #[link_name="logb"] pure fn log_radix(n: c_double) -> c_double;
+    #[link_name="logb"] unsafe fn log_radix(n: c_double) -> c_double;
     // renamed: to be consitent with log as ln
-    #[link_name="log1p"] pure fn ln1p(n: c_double) -> c_double;
-    pure fn log10(n: c_double) -> c_double;
-    pure fn log2(n: c_double) -> c_double;
-    #[link_name="ilogb"] pure fn ilog_radix(n: c_double) -> c_int;
-    pure fn modf(n: c_double, iptr: &mut c_double) -> c_double;
-    pure fn pow(n: c_double, e: c_double) -> c_double;
+    #[link_name="log1p"] unsafe fn ln1p(n: c_double) -> c_double;
+    unsafe fn log10(n: c_double) -> c_double;
+    unsafe fn log2(n: c_double) -> c_double;
+    #[link_name="ilogb"] unsafe fn ilog_radix(n: c_double) -> c_int;
+    unsafe fn modf(n: c_double, iptr: &mut c_double) -> c_double;
+    unsafe fn pow(n: c_double, e: c_double) -> c_double;
 // FIXME (#1379): enable when rounding modes become available
-//    pure fn rint(n: c_double) -> c_double;
-    pure fn round(n: c_double) -> c_double;
+//    unsafe fn rint(n: c_double) -> c_double;
+    unsafe fn round(n: c_double) -> c_double;
     // rename: for consistency with logradix
-    #[link_name="scalbn"] pure fn ldexp_radix(n: c_double, i: c_int) ->
+    #[link_name="scalbn"] unsafe fn ldexp_radix(n: c_double, i: c_int) ->
         c_double;
-    pure fn sin(n: c_double) -> c_double;
-    pure fn sinh(n: c_double) -> c_double;
-    pure fn sqrt(n: c_double) -> c_double;
-    pure fn tan(n: c_double) -> c_double;
-    pure fn tanh(n: c_double) -> c_double;
-    pure fn tgamma(n: c_double) -> c_double;
-    pure fn trunc(n: c_double) -> c_double;
+    unsafe fn sin(n: c_double) -> c_double;
+    unsafe fn sinh(n: c_double) -> c_double;
+    unsafe fn sqrt(n: c_double) -> c_double;
+    unsafe fn tan(n: c_double) -> c_double;
+    unsafe fn tanh(n: c_double) -> c_double;
+    unsafe fn tgamma(n: c_double) -> c_double;
+    unsafe fn trunc(n: c_double) -> c_double;
 
     // These are commonly only available for doubles
 
-    pure fn j0(n: c_double) -> c_double;
-    pure fn j1(n: c_double) -> c_double;
-    pure fn jn(i: c_int, n: c_double) -> c_double;
+    unsafe fn j0(n: c_double) -> c_double;
+    unsafe fn j1(n: c_double) -> c_double;
+    unsafe fn jn(i: c_int, n: c_double) -> c_double;
 
-    pure fn y0(n: c_double) -> c_double;
-    pure fn y1(n: c_double) -> c_double;
-    pure fn yn(i: c_int, n: c_double) -> c_double;
+    unsafe fn y0(n: c_double) -> c_double;
+    unsafe fn y1(n: c_double) -> c_double;
+    unsafe fn yn(i: c_int, n: c_double) -> c_double;
 }
 
 #[link_name = "m"]
@@ -101,64 +102,64 @@ pub extern mod c_float_utils {
 
     // Alpabetically sorted by link_name
 
-    #[link_name="acosf"] pure fn acos(n: c_float) -> c_float;
-    #[link_name="asinf"] pure fn asin(n: c_float) -> c_float;
-    #[link_name="atanf"] pure fn atan(n: c_float) -> c_float;
-    #[link_name="atan2f"] pure fn atan2(a: c_float, b: c_float) -> c_float;
-    #[link_name="cbrtf"] pure fn cbrt(n: c_float) -> c_float;
-    #[link_name="ceilf"] pure fn ceil(n: c_float) -> c_float;
-    #[link_name="copysignf"] pure fn copysign(x: c_float,
+    #[link_name="acosf"] unsafe fn acos(n: c_float) -> c_float;
+    #[link_name="asinf"] unsafe fn asin(n: c_float) -> c_float;
+    #[link_name="atanf"] unsafe fn atan(n: c_float) -> c_float;
+    #[link_name="atan2f"] unsafe fn atan2(a: c_float, b: c_float) -> c_float;
+    #[link_name="cbrtf"] unsafe fn cbrt(n: c_float) -> c_float;
+    #[link_name="ceilf"] unsafe fn ceil(n: c_float) -> c_float;
+    #[link_name="copysignf"] unsafe fn copysign(x: c_float,
                                               y: c_float) -> c_float;
-    #[link_name="cosf"] pure fn cos(n: c_float) -> c_float;
-    #[link_name="coshf"] pure fn cosh(n: c_float) -> c_float;
-    #[link_name="erff"] pure fn erf(n: c_float) -> c_float;
-    #[link_name="erfcf"] pure fn erfc(n: c_float) -> c_float;
-    #[link_name="expf"] pure fn exp(n: c_float) -> c_float;
-    #[link_name="expm1f"]pure fn expm1(n: c_float) -> c_float;
-    #[link_name="exp2f"] pure fn exp2(n: c_float) -> c_float;
-    #[link_name="fabsf"] pure fn abs(n: c_float) -> c_float;
-    #[link_name="fdimf"] pure fn abs_sub(a: c_float, b: c_float) -> c_float;
-    #[link_name="floorf"] pure fn floor(n: c_float) -> c_float;
-    #[link_name="frexpf"] pure fn frexp(n: c_float,
+    #[link_name="cosf"] unsafe fn cos(n: c_float) -> c_float;
+    #[link_name="coshf"] unsafe fn cosh(n: c_float) -> c_float;
+    #[link_name="erff"] unsafe fn erf(n: c_float) -> c_float;
+    #[link_name="erfcf"] unsafe fn erfc(n: c_float) -> c_float;
+    #[link_name="expf"] unsafe fn exp(n: c_float) -> c_float;
+    #[link_name="expm1f"]unsafe fn expm1(n: c_float) -> c_float;
+    #[link_name="exp2f"] unsafe fn exp2(n: c_float) -> c_float;
+    #[link_name="fabsf"] unsafe fn abs(n: c_float) -> c_float;
+    #[link_name="fdimf"] unsafe fn abs_sub(a: c_float, b: c_float) -> c_float;
+    #[link_name="floorf"] unsafe fn floor(n: c_float) -> c_float;
+    #[link_name="frexpf"] unsafe fn frexp(n: c_float,
                                         value: &mut c_int) -> c_float;
-    #[link_name="fmaf"] pure fn mul_add(a: c_float,
+    #[link_name="fmaf"] unsafe fn mul_add(a: c_float,
                                         b: c_float, c: c_float) -> c_float;
-    #[link_name="fmaxf"] pure fn fmax(a: c_float, b: c_float) -> c_float;
-    #[link_name="fminf"] pure fn fmin(a: c_float, b: c_float) -> c_float;
-    #[link_name="nextafterf"] pure fn nextafter(x: c_float,
+    #[link_name="fmaxf"] unsafe fn fmax(a: c_float, b: c_float) -> c_float;
+    #[link_name="fminf"] unsafe fn fmin(a: c_float, b: c_float) -> c_float;
+    #[link_name="nextafterf"] unsafe fn nextafter(x: c_float,
                                                 y: c_float) -> c_float;
-    #[link_name="hypotf"] pure fn hypot(x: c_float, y: c_float) -> c_float;
-    #[link_name="ldexpf"] pure fn ldexp(x: c_float, n: c_int) -> c_float;
+    #[link_name="hypotf"] unsafe fn hypot(x: c_float, y: c_float) -> c_float;
+    #[link_name="ldexpf"] unsafe fn ldexp(x: c_float, n: c_int) -> c_float;
 
     #[cfg(unix)]
-    #[link_name="lgammaf_r"] pure fn lgamma(n: c_float,
+    #[link_name="lgammaf_r"] unsafe fn lgamma(n: c_float,
                                             sign: &mut c_int) -> c_float;
 
     #[cfg(windows)]
-    #[link_name="__lgammaf_r"] pure fn lgamma(n: c_float,
+    #[link_name="__lgammaf_r"] unsafe fn lgamma(n: c_float,
                                               sign: &mut c_int) -> c_float;
 
-    #[link_name="logf"] pure fn ln(n: c_float) -> c_float;
-    #[link_name="logbf"] pure fn log_radix(n: c_float) -> c_float;
-    #[link_name="log1pf"] pure fn ln1p(n: c_float) -> c_float;
-    #[link_name="log2f"] pure fn log2(n: c_float) -> c_float;
-    #[link_name="log10f"] pure fn log10(n: c_float) -> c_float;
-    #[link_name="ilogbf"] pure fn ilog_radix(n: c_float) -> c_int;
-    #[link_name="modff"] pure fn modf(n: c_float,
+    #[link_name="logf"] unsafe fn ln(n: c_float) -> c_float;
+    #[link_name="logbf"] unsafe fn log_radix(n: c_float) -> c_float;
+    #[link_name="log1pf"] unsafe fn ln1p(n: c_float) -> c_float;
+    #[link_name="log2f"] unsafe fn log2(n: c_float) -> c_float;
+    #[link_name="log10f"] unsafe fn log10(n: c_float) -> c_float;
+    #[link_name="ilogbf"] unsafe fn ilog_radix(n: c_float) -> c_int;
+    #[link_name="modff"] unsafe fn modf(n: c_float,
                                       iptr: &mut c_float) -> c_float;
-    #[link_name="powf"] pure fn pow(n: c_float, e: c_float) -> c_float;
+    #[link_name="powf"] unsafe fn pow(n: c_float, e: c_float) -> c_float;
 // FIXME (#1379): enable when rounding modes become available
-//    #[link_name="rintf"] pure fn rint(n: c_float) -> c_float;
-    #[link_name="roundf"] pure fn round(n: c_float) -> c_float;
-    #[link_name="scalbnf"] pure fn ldexp_radix(n: c_float, i: c_int)
+//    #[link_name="rintf"] unsafe fn rint(n: c_float) -> c_float;
+    #[link_name="roundf"] unsafe fn round(n: c_float) -> c_float;
+    #[link_name="scalbnf"] unsafe fn ldexp_radix(n: c_float, i: c_int)
         -> c_float;
-    #[link_name="sinf"] pure fn sin(n: c_float) -> c_float;
-    #[link_name="sinhf"] pure fn sinh(n: c_float) -> c_float;
-    #[link_name="sqrtf"] pure fn sqrt(n: c_float) -> c_float;
-    #[link_name="tanf"] pure fn tan(n: c_float) -> c_float;
-    #[link_name="tanhf"] pure fn tanh(n: c_float) -> c_float;
-    #[link_name="tgammaf"] pure fn tgamma(n: c_float) -> c_float;
-    #[link_name="truncf"] pure fn trunc(n: c_float) -> c_float;
+    #[link_name="sinf"] unsafe fn sin(n: c_float) -> c_float;
+    #[link_name="sinhf"] unsafe fn sinh(n: c_float) -> c_float;
+    #[link_name="sqrtf"] unsafe fn sqrt(n: c_float) -> c_float;
+    #[link_name="tanf"] unsafe fn tan(n: c_float) -> c_float;
+    #[link_name="tanhf"] unsafe fn tanh(n: c_float) -> c_float;
+    #[link_name="tgammaf"] unsafe fn tgamma(n: c_float) -> c_float;
+    #[link_name="truncf"] unsafe fn trunc(n: c_float) -> c_float;
 }
 
 // PORT check these by running src/etc/machconsts.c for your architecture

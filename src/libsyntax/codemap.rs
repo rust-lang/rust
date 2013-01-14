@@ -21,7 +21,16 @@ source code snippets, etc.
 
 */
 
-use dvec::DVec;
+use core::prelude::*;
+
+use ast_util;
+
+use core::cmp;
+use core::dvec::DVec;
+use core::str;
+use core::to_bytes;
+use core::uint;
+use core::vec;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 trait Pos {
@@ -308,6 +317,10 @@ pub impl CodeMap {
     }
 
     pub fn span_to_str(&self, sp: span) -> ~str {
+        if self.files.len() == 0 && sp == ast_util::dummy_sp() {
+            return ~"no-location";
+        }
+
         let lo = self.lookup_char_pos_adj(sp.lo);
         let hi = self.lookup_char_pos_adj(sp.hi);
         return fmt!("%s:%u:%u: %u:%u", lo.filename,

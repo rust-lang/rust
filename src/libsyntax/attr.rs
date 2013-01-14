@@ -10,13 +10,23 @@
 
 // Functions dealing with attributes and meta_items
 
-use std::map;
-use std::map::HashMap;
-use either::Either;
-use diagnostic::span_handler;
+use core::prelude::*;
+
+use ast;
 use ast_util::{spanned, dummy_spanned};
-use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+use attr;
 use codemap::BytePos;
+use diagnostic::span_handler;
+use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+
+use core::cmp;
+use core::either::Either;
+use core::either;
+use core::option;
+use core::vec;
+use std::map::HashMap;
+use std::map;
+use std;
 
 // Constructors
 export mk_name_value_item_str;
@@ -81,19 +91,20 @@ fn mk_word_item(name: ~str) -> @ast::meta_item {
 }
 
 fn mk_attr(item: @ast::meta_item) -> ast::attribute {
-    return dummy_spanned({style: ast::attr_inner, value: *item,
-                       is_sugared_doc: false});
+    dummy_spanned(ast::attribute_ { style: ast::attr_inner,
+                                    value: *item,
+                                    is_sugared_doc: false })
 }
 
 fn mk_sugared_doc_attr(text: ~str,
                        +lo: BytePos, +hi: BytePos) -> ast::attribute {
     let lit = spanned(lo, hi, ast::lit_str(@text));
-    let attr = {
+    let attr = ast::attribute_ {
         style: doc_comment_style(text),
         value: spanned(lo, hi, ast::meta_name_value(~"doc", lit)),
         is_sugared_doc: true
     };
-    return spanned(lo, hi, attr);
+    spanned(lo, hi, attr)
 }
 
 /* Conversion */
@@ -170,15 +181,15 @@ fn get_name_value_str_pair(item: @ast::meta_item) -> Option<(~str, ~str)> {
 /* Searching */
 
 /// Search a list of attributes and return only those with a specific name
-fn find_attrs_by_name(attrs: ~[ast::attribute], name: ~str) ->
+fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
    ~[ast::attribute] {
-    let filter = (
-        fn@(a: &ast::attribute) -> Option<ast::attribute> {
-            if get_attr_name(*a) == name {
-                option::Some(*a)
-            } else { option::None }
+    let filter: &fn(a: &ast::attribute) -> Option<ast::attribute> = |a| {
+        if name == get_attr_name(*a) {
+            option::Some(*a)
+        } else {
+            option::None
         }
-    );
+    };
     return vec::filter_map(attrs, filter);
 }
 
@@ -232,7 +243,7 @@ fn contains_name(metas: ~[@ast::meta_item], name: ~str) -> bool {
     return vec::len(matches) > 0u;
 }
 
-fn attrs_contains_name(attrs: ~[ast::attribute], name: ~str) -> bool {
+fn attrs_contains_name(attrs: &[ast::attribute], name: &str) -> bool {
     vec::is_not_empty(find_attrs_by_name(attrs, name))
 }
 

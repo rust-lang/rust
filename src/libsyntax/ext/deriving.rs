@@ -11,16 +11,23 @@
 /// The compiler code necessary to implement the #[deriving_eq] and
 /// #[deriving_iter_bytes] extensions.
 
-use ast::{Ty, and, bind_by_ref, binop, deref, enum_def, enum_variant_kind};
-use ast::{expr, expr_match, ident, item, item_, item_struct, item_enum};
-use ast::{item_impl, m_imm, meta_item, method, named_field, or, pat};
-use ast::{pat_ident, pat_wild, public, pure_fn, re_anon, stmt, struct_def};
-use ast::{struct_variant_kind, sty_by_ref, sty_region, tuple_variant_kind};
-use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_rptr, unnamed_field};
-use ast::{variant};
+use core::prelude::*;
+
+use ast;
+use ast::{TraitTyParamBound, Ty, and, bind_by_ref, binop, deref, enum_def};
+use ast::{enum_variant_kind, expr, expr_match, ident, item, item_};
+use ast::{item_enum, item_impl, item_struct, m_imm, meta_item, method};
+use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
+use ast::{re_anon, spanned, stmt, struct_def, struct_variant_kind};
+use ast::{sty_by_ref, sty_region, tuple_variant_kind, ty_nil, ty_param};
+use ast::{ty_param_bound, ty_path, ty_rptr, unnamed_field, variant};
 use ext::base::ext_ctxt;
+use ext::build;
 use codemap::span;
 use parse::token::special_idents::clownshoes_extensions;
+
+use core::dvec;
+use core::uint;
 
 enum Junction {
     Conjunction,
@@ -104,7 +111,7 @@ fn expand_deriving(cx: ext_ctxt,
 }
 
 fn create_impl_item(cx: ext_ctxt, span: span, +item: item_) -> @item {
-    @{
+    @ast::item {
         ident: clownshoes_extensions,
         attrs: ~[],
         id: cx.next_id(),
@@ -153,7 +160,7 @@ fn create_eq_method(cx: ext_ctxt,
     let body_block = build::mk_simple_block(cx, span, body);
 
     // Create the method.
-    let self_ty = { node: sty_region(m_imm), span: span };
+    let self_ty = spanned { node: sty_region(m_imm), span: span };
     return @{
         ident: method_ident,
         attrs: ~[],
@@ -202,17 +209,19 @@ fn create_derived_impl(cx: ext_ctxt,
     // Create the type parameters.
     let impl_ty_params = dvec::DVec();
     for ty_params.each |ty_param| {
-        let bound = build::mk_ty_path(cx, span, trait_path.map(|x| *x));
-        let bounds = @~[ ty_param_bound(bound) ];
+        let bound = build::mk_ty_path_global(cx,
+                                             span,
+                                             trait_path.map(|x| *x));
+        let bounds = @~[ TraitTyParamBound(bound) ];
         let impl_ty_param = build::mk_ty_param(cx, ty_param.ident, bounds);
         impl_ty_params.push(move impl_ty_param);
     }
     let impl_ty_params = dvec::unwrap(move impl_ty_params);
 
     // Create the reference to the trait.
-    let trait_path = {
+    let trait_path = ast::path {
         span: span,
-        global: false,
+        global: true,
         idents: trait_path.map(|x| *x),
         rp: None,
         types: ~[]
@@ -301,7 +310,7 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     let body_block = build::mk_block_(cx, span, move statements);
 
     // Create the method.
-    let self_ty = { node: sty_region(m_imm), span: span };
+    let self_ty = spanned { node: sty_region(m_imm), span: span };
     let method_ident = cx.ident_of(~"iter_bytes");
     return @{
         ident: method_ident,

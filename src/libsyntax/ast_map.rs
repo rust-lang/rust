@@ -8,13 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map;
-use std::map::HashMap;
+use core::prelude::*;
+
 use ast::*;
-use print::pprust;
+use ast;
 use ast_util::{path_to_ident, stmt_id};
+use ast_util;
+use attr;
+use codemap;
 use diagnostic::span_handler;
 use parse::token::ident_interner;
+use print::pprust;
+use visit;
+
+use core::cmp;
+use core::either;
+use core::str;
+use core::vec;
+use std::map::HashMap;
+use std::map;
+use std;
 
 enum path_elt {
     path_mod(ident),
@@ -67,6 +80,13 @@ fn path_to_str(p: path, itr: @ident_interner) -> ~str {
     path_to_str_with_sep(p, ~"::", itr)
 }
 
+fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
+    match pe {
+        path_mod(s) => *itr.get(s),
+        path_name(s) => *itr.get(s)
+    }
+}
+
 enum ast_node {
     node_item(@item, @path),
     node_foreign_item(@foreign_item, foreign_abi, @path),
@@ -97,7 +117,7 @@ fn extend(cx: ctx, +elt: ident) -> @path {
 }
 
 fn mk_ast_map_visitor() -> vt {
-    return visit::mk_vt(@{
+    return visit::mk_vt(@visit::Visitor {
         visit_item: map_item,
         visit_expr: map_expr,
         visit_stmt: map_stmt,
@@ -163,12 +183,19 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         cx.local_id += 1u;
     }
     match fk {
-      visit::fk_dtor(tps, ref attrs, self_id, parent_id) => {
-          let dt = @{node: {id: id, attrs: (*attrs), self_id: self_id,
-                     body: /* FIXME (#2543) */ copy body}, span: sp};
-          cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
-                                      parent_id,
-                                      @/* FIXME (#2543) */ copy cx.path));
+        visit::fk_dtor(tps, ref attrs, self_id, parent_id) => {
+            let dt = @spanned {
+                node: ast::struct_dtor_ {
+                    id: id,
+                    attrs: (*attrs),
+                    self_id: self_id,
+                    body: /* FIXME (#2543) */ copy body,
+                },
+                span: sp,
+            };
+            cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
+                                        parent_id,
+                                        @/* FIXME (#2543) */ copy cx.path));
       }
       _ => ()
     }

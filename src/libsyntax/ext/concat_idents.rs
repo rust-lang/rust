@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ext::base::*;
+use ext::base;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::mac_result {
@@ -33,9 +36,11 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
 
     let e = @{id: cx.next_id(),
               callee_id: cx.next_id(),
-              node: ast::expr_path(@{span: sp, global: false,
-                                     idents: ~[res],
-                                     rp: None, types: ~[]}),
+              node: ast::expr_path(@ast::path { span: sp,
+                                                global: false,
+                                                idents: ~[res],
+                                                rp: None,
+                                                types: ~[] }),
               span: sp};
     mr_expr(e)
 }

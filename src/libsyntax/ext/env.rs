@@ -14,8 +14,14 @@
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
+
 use ext::base::*;
+use ext::base;
 use ext::build::mk_uniq_str;
+
+use core::option;
+use core::os;
+
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])

@@ -8,16 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use driver::session::Session;
+use middle::resolve;
+use middle::ty;
+use middle::typeck;
+use util::ppaux;
+
+use core::dvec::DVec;
+use core::option;
+use std::map::HashMap;
 use syntax::ast::*;
 use syntax::{visit, ast_util, ast_map};
-use driver::session::Session;
-use std::map::HashMap;
-use dvec::DVec;
 
 fn check_crate(sess: Session, crate: @crate, ast_map: ast_map::map,
                def_map: resolve::DefMap,
                 method_map: typeck::method_map, tcx: ty::ctxt) {
-    visit::visit_crate(*crate, false, visit::mk_vt(@{
+    visit::visit_crate(*crate, false, visit::mk_vt(@visit::Visitor {
         visit_item: |a,b,c| check_item(sess, ast_map, def_map, a, b, c),
         visit_pat: check_pat,
         visit_expr: |a,b,c|
@@ -49,7 +57,8 @@ fn check_item(sess: Session, ast_map: ast_map::map,
 fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
         match e.node {
-          expr_vstore(@{node: expr_lit(@{node: lit_str(_), _}), _},
+          expr_vstore(@{node: expr_lit(@spanned { node: lit_str(_),
+                                                  _}), _},
                       expr_vstore_uniq) => true,
           _ => false
         }
@@ -76,7 +85,7 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
                           ~"disallowed operator in constant expression");
             return;
           }
-          expr_lit(@{node: lit_str(_), _}) => { }
+          expr_lit(@spanned {node: lit_str(_), _}) => { }
           expr_binary(_, _, _) | expr_unary(_, _) => {
             if method_map.contains_key(e.id) {
                 sess.span_err(e.span, ~"user-defined operators are not \
@@ -88,7 +97,7 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
             let ety = ty::expr_ty(tcx, e);
             if !ty::type_is_numeric(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +
-                              util::ppaux::ty_to_str(tcx, ety) +
+                              ppaux::ty_to_str(tcx, ety) +
                               ~"` in a constant expression");
             }
           }
@@ -129,11 +138,12 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
           expr_call(callee, _, false) => {
             match def_map.find(callee.id) {
                 Some(def_struct(*)) => {}    // OK.
+                Some(def_variant(*)) => {}    // OK.
                 _ => {
                     sess.span_err(
                         e.span,
                         ~"function calls in constants are limited to \
-                          structure constructors");
+                          struct and enum constructors");
                 }
             }
           }
@@ -162,7 +172,7 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
         }
     }
     match e.node {
-      expr_lit(@{node: lit_int(v, t), _}) => {
+      expr_lit(@spanned {node: lit_int(v, t), _}) => {
         if t != ty_char {
             if (v as u64) > ast_util::int_ty_max(
                 if t == ty_i { sess.targ_cfg.int_type } else { t }) {
@@ -170,7 +180,7 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
             }
         }
       }
-      expr_lit(@{node: lit_uint(v, t), _}) => {
+      expr_lit(@spanned {node: lit_uint(v, t), _}) => {
         if v > ast_util::uint_ty_max(
             if t == ty_u { sess.targ_cfg.uint_type } else { t }) {
             sess.span_err(e.span, ~"literal out of range for its type");
@@ -202,7 +212,7 @@ fn check_item_recursion(sess: Session, ast_map: ast_map::map,
         idstack: @DVec()
     };
 
-    let visitor = visit::mk_vt(@{
+    let visitor = visit::mk_vt(@visit::Visitor {
         visit_item: visit_item,
         visit_expr: visit_expr,
         .. *visit::default_visitor()

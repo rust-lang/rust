@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use lib::llvm::ValueRef;
 use middle::trans::base::*;
+use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
+
+use core::str;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
@@ -168,23 +173,28 @@ fn trans_log(log_ex: @ast::expr,
     }
 
     let modpath = vec::append(
-        ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))],
-        vec::filter(bcx.fcx.path, |e|
+        ~[path_mod(ccx.sess.ident_of(/*bad*/copy ccx.link_meta.name))],
+        bcx.fcx.path.filtered(|e|
             match *e { path_mod(_) => true, _ => false }
         ));
-    let modname = path_str(ccx.sess, modpath);
+    // XXX: Bad copy.
+    let modname = path_str(ccx.sess, copy modpath);
 
-    let global = if ccx.module_data.contains_key(modname) {
+    // XXX: Bad copy.
+    let global = if ccx.module_data.contains_key(copy modname) {
         ccx.module_data.get(modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
             ccx, modpath, ~"loglevel");
-        let global = str::as_c_str(s, |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
-        });
-        llvm::LLVMSetGlobalConstant(global, False);
-        llvm::LLVMSetInitializer(global, C_null(T_i32()));
-        lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
+        let global;
+        unsafe {
+            global = str::as_c_str(s, |buf| {
+                llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
+            });
+            llvm::LLVMSetGlobalConstant(global, False);
+            llvm::LLVMSetInitializer(global, C_null(T_i32()));
+            lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
+        }
         ccx.module_data.insert(modname, global);
         global
     };
@@ -205,7 +215,7 @@ fn trans_log(log_ex: @ast::expr,
 
             // Call the polymorphic log function
             let val = val_datum.to_ref_llval(bcx);
-            let did = bcx.tcx().lang_items.log_type_fn.get();
+            let did = bcx.tcx().lang_items.log_type_fn();
             let bcx = callee::trans_rtcall_or_lang_call_with_type_params(
                 bcx, did, ~[level, val], ~[val_datum.ty], expr::Ignore);
             bcx
@@ -221,7 +231,11 @@ fn trans_break_cont(bcx: block, opt_label: Option<ident>, to_end: bool)
     let mut target;
     loop {
         match unwind.kind {
-          block_scope({loop_break: Some(brk), loop_label: l, _}) => {
+          block_scope(scope_info {
+            loop_break: Some(brk),
+            loop_label: l,
+            _
+          }) => {
               // If we're looking for a labeled loop, check the label...
               target = if to_end {
                   brk
@@ -303,7 +317,7 @@ fn trans_check_expr(bcx: block, chk_expr: @ast::expr,
         }
     };
     do with_cond(bcx, Not(bcx, val)) |bcx| {
-        trans_fail(bcx, Some(pred_expr.span), expr_str)
+        trans_fail(bcx, Some(pred_expr.span), /*bad*/copy expr_str)
     }
 }
 
@@ -333,7 +347,7 @@ fn trans_fail_expr(bcx: block,
     }
 }
 
-fn trans_fail(bcx: block, sp_opt: Option<span>, fail_str: ~str)
+fn trans_fail(bcx: block, sp_opt: Option<span>, +fail_str: ~str)
     -> block
 {
     let _icx = bcx.insn_ctxt("trans_fail");
@@ -350,7 +364,7 @@ fn trans_fail_value(bcx: block, sp_opt: Option<span>, V_fail_str: ValueRef)
       Some(sp) => {
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        {V_filename: C_cstr(bcx.ccx(), loc.file.name),
+        {V_filename: C_cstr(bcx.ccx(), /*bad*/copy loc.file.name),
          V_line: loc.line as int}
       }
       None => {
@@ -361,7 +375,8 @@ fn trans_fail_value(bcx: block, sp_opt: Option<span>, V_fail_str: ValueRef)
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = callee::trans_rtcall(bcx, ~"fail_", args, expr::Ignore);
+    let bcx = callee::trans_rtcall_or_lang_call(
+        bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
     Unreachable(bcx);
     return bcx;
 }
@@ -373,12 +388,12 @@ fn trans_fail_bounds_check(bcx: block, sp: span,
 
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(sp.lo);
     let line = C_int(ccx, loc.line as int);
-    let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
+    let filename_cstr = C_cstr(bcx.ccx(), /*bad*/copy loc.file.name);
     let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
 
     let args = ~[filename, line, index, len];
-    let bcx = callee::trans_rtcall(bcx, ~"fail_bounds_check", args,
-                                   expr::Ignore);
+    let bcx = callee::trans_rtcall_or_lang_call(
+        bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);
     Unreachable(bcx);
     return bcx;
 }

@@ -8,15 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use codemap::{span, BytePos};
+use core::prelude::*;
+
 use ast::*;
+use ast;
+use ast_util;
+use codemap::{span, BytePos};
+use parse::token;
+use visit;
+
+use core::cmp;
+use core::int;
+use core::option;
+use core::str;
+use core::to_bytes;
+use core::vec;
 
 pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
     respan(mk_sp(lo, hi), move t)
 }
 
 pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
-    {node: move t, span: sp}
+    spanned {node: t, span: sp}
 }
 
 pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
@@ -33,7 +46,7 @@ pure fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
 
 
 
-pure fn path_name_i(idents: ~[ident], intr: @token::ident_interner) -> ~str {
+pure fn path_name_i(idents: &[ident], intr: @token::ident_interner) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     str::connect(idents.map(|i| *intr.get(*i)), ~"::")
 }
@@ -41,7 +54,9 @@ pure fn path_name_i(idents: ~[ident], intr: @token::ident_interner) -> ~str {
 
 pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
 
-pure fn local_def(id: node_id) -> def_id { {crate: local_crate, node: id} }
+pure fn local_def(id: node_id) -> def_id {
+    ast::def_id { crate: local_crate, node: id }
+}
 
 pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
@@ -262,16 +277,16 @@ pure fn is_call_expr(e: @expr) -> bool {
 }
 
 // This makes def_id hashable
-impl def_id : core::to_bytes::IterBytes {
+impl def_id : to_bytes::IterBytes {
     #[inline(always)]
-    pure fn iter_bytes(&self, +lsb0: bool, f: core::to_bytes::Cb) {
-        core::to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
     }
 }
 
 fn block_from_expr(e: @expr) -> blk {
     let blk_ = default_block(~[], option::Some::<@expr>(e), e.id);
-    return {node: blk_, span: e.span};
+    return spanned {node: blk_, span: e.span};
 }
 
 fn default_block(+stmts1: ~[@stmt], expr1: Option<@expr>, id1: node_id) ->
@@ -281,8 +296,11 @@ fn default_block(+stmts1: ~[@stmt], expr1: Option<@expr>, id1: node_id) ->
 }
 
 fn ident_to_path(s: span, +i: ident) -> @path {
-    @{span: s, global: false, idents: ~[i],
-      rp: None, types: ~[]}
+    @ast::path { span: s,
+                 global: false,
+                 idents: ~[i],
+                 rp: None,
+                 types: ~[] }
 }
 
 fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {
@@ -303,11 +321,12 @@ pure fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
 }
 
 fn public_methods(ms: ~[@method]) -> ~[@method] {
-    vec::filter(ms,
-                |m| match m.vis {
-                    public => true,
-                    _   => false
-                })
+    do ms.filtered |m| {
+        match m.vis {
+            public => true,
+            _   => false
+        }
+    }
 }
 
 // extract a ty_method from a trait_method. if the trait_method is
@@ -426,10 +445,8 @@ fn empty(range: id_range) -> bool {
 }
 
 fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
-    visit::mk_simple_visitor(@{
-        visit_mod: fn@(_m: _mod, _sp: span, id: node_id) {
-            vfn(id)
-        },
+    visit::mk_simple_visitor(@visit::SimpleVisitor {
+        visit_mod: |_m, _sp, id| vfn(id),
 
         visit_view_item: fn@(vi: @view_item) {
             match vi.node {

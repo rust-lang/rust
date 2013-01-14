@@ -9,27 +9,51 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use metadata::{creader, cstore, filesearch};
-use session::{Session, Session_, OptLevel, No, Less, Default, Aggressive};
-use syntax::parse;
-use syntax::{ast, codemap};
-use syntax::attr;
-use middle::{trans, freevars, kind, ty, typeck, lint};
-use syntax::print::{pp, pprust};
-use util::ppaux;
-use back::link;
-use result::{Ok, Err};
-use std::getopts;
-use std::getopts::{opt_present};
-use std::getopts::groups;
-use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
-use io::WriterUtil;
-use back::{x86, x86_64};
-use std::map::HashMap;
-use lib::llvm::llvm;
+use core::prelude::*;
 
-enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
-              ppm_expanded_identified }
+use back::link;
+use back::{x86, x86_64};
+use front;
+use lib::llvm::llvm;
+use metadata::{creader, cstore, filesearch};
+use metadata;
+use middle::{trans, freevars, kind, ty, typeck, lint};
+use middle;
+use session::{Session, Session_, OptLevel, No, Less, Default, Aggressive};
+use session;
+use util::ppaux;
+
+use core::cmp;
+use core::int;
+use core::io::WriterUtil;
+use core::io;
+use core::option;
+use core::os;
+use core::result::{Ok, Err};
+use core::str;
+use core::vec;
+use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
+use std::getopts::groups;
+use std::getopts::{opt_present};
+use std::getopts;
+use std::map::HashMap;
+use std;
+use syntax::ast;
+use syntax::ast_map;
+use syntax::attr;
+use syntax::codemap;
+use syntax::diagnostic;
+use syntax::parse;
+use syntax::print::{pp, pprust};
+use syntax;
+
+enum pp_mode {
+    ppm_normal,
+    ppm_expanded,
+    ppm_typed,
+    ppm_identified,
+    ppm_expanded_identified
+}
 
 /**
  * The name used for source code that doesn't originate in a file
@@ -44,7 +68,7 @@ fn source_name(input: input) -> ~str {
     }
 }
 
-fn default_configuration(sess: Session, argv0: ~str, input: input) ->
+fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
    ast::crate_cfg {
     let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
@@ -63,9 +87,9 @@ fn default_configuration(sess: Session, argv0: ~str, input: input) ->
     };
 
     return ~[ // Target bindings.
-         attr::mk_word_item(os::family()),
-         mk(~"target_os", os::sysname()),
-         mk(~"target_family", os::family()),
+         attr::mk_word_item(str::from_slice(os::FAMILY)),
+         mk(~"target_os", str::from_slice(os::SYSNAME)),
+         mk(~"target_family", str::from_slice(os::FAMILY)),
          mk(~"target_arch", arch),
          mk(~"target_word_size", wordsz),
          mk(~"target_libc", libc),
@@ -74,20 +98,21 @@ fn default_configuration(sess: Session, argv0: ~str, input: input) ->
          mk(~"build_input", source_name(input))];
 }
 
-fn append_configuration(cfg: ast::crate_cfg, name: ~str) -> ast::crate_cfg {
-    if attr::contains_name(cfg, name) {
+fn append_configuration(+cfg: ast::crate_cfg, +name: ~str) -> ast::crate_cfg {
+    // XXX: Bad copy.
+    if attr::contains_name(copy cfg, copy name) {
         return cfg;
     } else {
         return vec::append_one(cfg, attr::mk_word_item(name));
     }
 }
 
-fn build_configuration(sess: Session, argv0: ~str, input: input) ->
+fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess, argv0, input);
-    let user_cfg = sess.opts.cfg;
+    let user_cfg = /*bad*/copy sess.opts.cfg;
     // If the user wants a test runner, then add the test cfg
     let user_cfg = append_configuration(
         user_cfg,
@@ -106,7 +131,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // meta_word variant.
     let mut words = ~[];
     for cfgspecs.each |s| {
-        words.push(attr::mk_word_item(*s));
+        words.push(attr::mk_word_item(/*bad*/copy *s));
     }
     return words;
 }
@@ -118,7 +143,7 @@ enum input {
     str_input(~str)
 }
 
-fn parse_input(sess: Session, cfg: ast::crate_cfg, input: input)
+fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
       file_input(ref file) => {
@@ -127,7 +152,7 @@ fn parse_input(sess: Session, cfg: ast::crate_cfg, input: input)
       str_input(ref src) => {
         // FIXME (#2319): Don't really want to box the source string
         parse::parse_crate_from_source_str(
-            anon_src(), @(*src), cfg, sess.parse_sess)
+            anon_src(), @(/*bad*/copy *src), cfg, sess.parse_sess)
       }
     }
 }
@@ -163,7 +188,7 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
     let time_passes = sess.time_passes();
     let mut crate = time(time_passes, ~"parsing",
-                         ||parse_input(sess, cfg, input) );
+                         || parse_input(sess, copy cfg, input) );
     if upto == cu_parse { return {crate: crate, tcx: None}; }
 
     sess.building_library = session::building_library(
@@ -176,7 +201,7 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
         front::test::modify_for_testing(sess, crate));
 
     crate = time(time_passes, ~"expansion", ||
-        syntax::ext::expand::expand_crate(sess.parse_sess, cfg,
+        syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
                                           crate));
 
     if upto == cu_expand { return {crate: crate, tcx: None}; }
@@ -251,8 +276,8 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
         time(time_passes, ~"mode computation", ||
              middle::mode::compute_modes(ty_cx, method_map, crate));
 
-        time(time_passes, ~"alt checking", ||
-             middle::check_alt::check_crate(ty_cx, method_map, crate));
+        time(time_passes, ~"match checking", ||
+             middle::check_match::check_crate(ty_cx, method_map, crate));
 
         let last_use_map =
             time(time_passes, ~"liveness checking", ||
@@ -304,7 +329,7 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     return {crate: crate, tcx: None};
 }
 
-fn compile_input(sess: Session, cfg: ast::crate_cfg, input: input,
+fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
                  outdir: &Option<Path>, output: &Option<Path>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
@@ -314,7 +339,7 @@ fn compile_input(sess: Session, cfg: ast::crate_cfg, input: input,
     compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
-fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: input,
+fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
                       ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {
@@ -370,13 +395,16 @@ fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: input,
 
     let ann = match ppm {
       ppm_typed => {
-        {pre: ann_paren_for_expr,
-         post: |a| ann_typed_post(tcx.get(), a) }
+          pprust::pp_ann {pre: ann_paren_for_expr,
+                          post: |a| ann_typed_post(tcx.get(), a) }
       }
       ppm_identified | ppm_expanded_identified => {
-        {pre: ann_paren_for_expr, post: ann_identified_post}
+          pprust::pp_ann {pre: ann_paren_for_expr,
+                          post: ann_identified_post}
       }
-      ppm_expanded | ppm_normal => pprust::no_ann()
+      ppm_expanded | ppm_normal => {
+          pprust::no_ann()
+      }
     };
     let is_expanded = upto != cu_parse;
     let src = sess.codemap.get_filemap(source_name(input)).src;
@@ -460,7 +488,7 @@ fn host_triple() -> ~str {
         };
 }
 
-fn build_session_options(binary: ~str,
+fn build_session_options(+binary: ~str,
                          matches: &getopts::Matches,
                          demitter: diagnostic::emitter) -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
@@ -505,7 +533,7 @@ fn build_session_options(binary: ~str,
     for debug_flags.each |debug_flag| {
         let mut this_bit = 0u;
         for debug_map.each |pair| {
-            let (name, _, bit) = *pair;
+            let (name, _, bit) = /*bad*/copy *pair;
             if name == *debug_flag { this_bit = bit; break; }
         }
         if this_bit == 0u {
@@ -514,7 +542,9 @@ fn build_session_options(binary: ~str,
         debugging_opts |= this_bit;
     }
     if debugging_opts & session::debug_llvm != 0 {
-        llvm::LLVMSetDebug(1);
+        unsafe {
+            llvm::LLVMSetDebug(1);
+        }
     }
 
     let jit = opt_present(matches, ~"jit");
@@ -566,7 +596,7 @@ fn build_session_options(binary: ~str,
     let target =
         match target_opt {
             None => host_triple(),
-            Some(ref s) => (*s)
+            Some(ref s) => (/*bad*/copy *s)
         };
 
     let addl_lib_search_paths =
@@ -619,7 +649,7 @@ fn build_session_(sopts: @session::options,
     let filesearch = filesearch::mk_filesearch(
         sopts.maybe_sysroot,
         sopts.target_triple,
-        sopts.addl_lib_search_paths);
+        /*bad*/copy sopts.addl_lib_search_paths);
     let lint_settings = lint::mk_lint_settings();
     Session_(@{targ_cfg: target_cfg,
                opts: sopts,
@@ -746,7 +776,7 @@ fn build_output_filenames(input: input,
         // have to make up a name
         // We want to toss everything after the final '.'
         let dirpath = match *odir {
-          Some(ref d) => (*d),
+          Some(ref d) => (/*bad*/copy *d),
           None => match input {
             str_input(_) => os::getcwd(),
             file_input(ref ifile) => (*ifile).dir_path()
@@ -768,9 +798,9 @@ fn build_output_filenames(input: input,
       }
 
       Some(ref out_file) => {
-        out_path = (*out_file);
+        out_path = (/*bad*/copy *out_file);
         obj_path = if stop_after_codegen {
-            (*out_file)
+            (/*bad*/copy *out_file)
         } else {
             (*out_file).with_filetype(obj_suffix)
         };
@@ -805,6 +835,17 @@ fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use driver::driver::{build_configuration, build_session};
+    use driver::driver::{build_session_options, optgroups, str_input};
+
+    use core::vec;
+    use std::getopts::groups::getopts;
+    use std::getopts;
+    use syntax::attr;
+    use syntax::diagnostic;
 
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]

@@ -45,6 +45,12 @@ let unwrapped_msg = match move msg {
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
+use kinds::Copy;
+use option;
+use ptr;
+use str;
+use util;
+use num::Zero;
 
 /// The option type
 #[deriving_eq]
@@ -53,6 +59,7 @@ pub enum Option<T> {
     Some(T),
 }
 
+#[inline(always)]
 pub pure fn get<T: Copy>(opt: Option<T>) -> T {
     /*!
     Gets the value out of an option
@@ -75,6 +82,7 @@ pub pure fn get<T: Copy>(opt: Option<T>) -> T {
     }
 }
 
+#[inline(always)]
 pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     /*!
     Gets an immutable reference to the value inside an option.
@@ -96,21 +104,24 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
+#[inline(always)]
 pub pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
 }
 
+#[inline(always)]
 pub pure fn map_consume<T, U>(opt: Option<T>,
                               f: fn(v: T) -> U) -> Option<U> {
     /*!
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
      */
-    if opt.is_some() { Some(f(option::unwrap(move opt))) } else { None }
+    match opt { None => None, Some(v) => Some(f(v)) }
 }
 
+#[inline(always)]
 pub pure fn chain<T, U>(opt: Option<T>,
                         f: fn(t: T) -> Option<U>) -> Option<U> {
     /*!
@@ -124,6 +135,7 @@ pub pure fn chain<T, U>(opt: Option<T>,
     }
 }
 
+#[inline(always)]
 pub pure fn chain_ref<T, U>(opt: &Option<T>,
                             f: fn(x: &T) -> Option<U>) -> Option<U> {
     /*!
@@ -134,6 +146,7 @@ pub pure fn chain_ref<T, U>(opt: &Option<T>,
     match *opt { Some(ref x) => f(x), None => None }
 }
 
+#[inline(always)]
 pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
     /*!
      * Returns the leftmost some() value, or none if both are none.
@@ -154,24 +167,35 @@ pub pure fn while_some<T>(x: Option<T>, blk: fn(v: T) -> Option<T>) {
     }
 }
 
+#[inline(always)]
 pub pure fn is_none<T>(opt: &Option<T>) -> bool {
     //! Returns true if the option equals `none`
 
     match *opt { None => true, Some(_) => false }
 }
 
+#[inline(always)]
 pub pure fn is_some<T>(opt: &Option<T>) -> bool {
     //! Returns true if the option contains some value
 
     !is_none(opt)
 }
 
-pub pure fn get_default<T: Copy>(opt: Option<T>, def: T) -> T {
+#[inline(always)]
+pub pure fn get_or_zero<T: Copy Zero>(opt: Option<T>) -> T {
+    //! Returns the contained value or zero (for this type)
+
+    match opt { Some(copy x) => x, None => Zero::zero() }
+}
+
+#[inline(always)]
+pub pure fn get_or_default<T: Copy>(opt: Option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
     match opt { Some(copy x) => x, None => def }
 }
 
+#[inline(always)]
 pub pure fn map_default<T, U>(opt: &Option<T>, def: U,
                               f: fn(x: &T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
@@ -179,6 +203,7 @@ pub pure fn map_default<T, U>(opt: &Option<T>, def: U,
     match *opt { None => move def, Some(ref t) => f(t) }
 }
 
+#[inline(always)]
 pub pure fn iter<T>(opt: &Option<T>, f: fn(x: &T)) {
     //! Performs an operation on the contained value by reference
     match *opt { None => (), Some(ref t) => f(t) }
@@ -222,6 +247,7 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
     unwrap(util::replace(opt, None))
 }
 
+#[inline(always)]
 pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     match move opt {
@@ -252,10 +278,40 @@ impl<T> Option<T> {
     #[inline(always)]
     pure fn map<U>(&self, f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
 
+    /// As `map`, but consumes the option and gives `f` ownership to avoid
+    /// copying.
+    #[inline(always)]
+    pure fn map_consume<U>(self, f: fn(v: T) -> U) -> Option<U> {
+        map_consume(self, f)
+    }
+
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
     pure fn map_default<U>(&self, def: U, f: fn(x: &T) -> U) -> U {
         map_default(self, move def, f)
+    }
+
+    /// As `map_default`, but consumes the option and gives `f`
+    /// ownership to avoid copying.
+    #[inline(always)]
+    pure fn map_consume_default<U>(self, def: U, f: fn(v: T) -> U) -> U {
+        match self { None => def, Some(v) => f(v) }
+    }
+
+    /// Apply a function to the contained value or do nothing
+    fn mutate(&mut self, f: fn(T) -> T) {
+        if self.is_some() {
+            *self = Some(f(self.swap_unwrap()));
+        }
+    }
+
+    /// Apply a function to the contained value or set it to a default
+    fn mutate_default(&mut self, def: T, f: fn(T) -> T) {
+        if self.is_some() {
+            *self = Some(f(self.swap_unwrap()));
+        } else {
+            *self = Some(def);
+        }
     }
 
     /// Performs an operation on the contained value by reference
@@ -290,6 +346,17 @@ impl<T> Option<T> {
     pure fn unwrap(self) -> T { unwrap(self) }
 
     /**
+     * The option dance. Moves a value out of an option type and returns it,
+     * replacing the original with `None`.
+     *
+     * # Failure
+     *
+     * Fails if the value equals `None`.
+     */
+    #[inline(always)]
+    fn swap_unwrap(&mut self) -> T { swap_unwrap(self) }
+
+    /**
      * Gets the value out of an option, printing a specified message on
      * failure
      *
@@ -320,13 +387,18 @@ impl<T: Copy> Option<T> {
     pure fn get(self) -> T { get(self) }
 
     #[inline(always)]
-    pure fn get_default(self, def: T) -> T { get_default(self, def) }
+    pure fn get_or_default(self, def: T) -> T { get_or_default(self, def) }
 
     /// Applies a function zero or more times until the result is none.
     #[inline(always)]
     pure fn while_some(self, blk: fn(v: T) -> Option<T>) {
         while_some(self, blk)
     }
+}
+
+impl<T: Copy Zero> Option<T> {
+    #[inline(always)]
+    pure fn get_or_zero(self) -> T { get_or_zero(self) }
 }
 
 #[test]
@@ -401,6 +473,14 @@ fn test_option_while_some() {
         }
     }
     assert i == 11;
+}
+
+#[test]
+fn test_get_or_zero() {
+    let some_stuff = Some(42);
+    assert some_stuff.get_or_zero() == 42;
+    let no_stuff: Option<int> = None;
+    assert no_stuff.get_or_zero() == 0;
 }
 
 // Local Variables:

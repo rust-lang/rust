@@ -10,10 +10,36 @@
 
 //! Generate markdown from a document tree
 
+use core::prelude::*;
+
+use astsrv;
+use attr_pass;
+use config;
+use desc_to_brief_pass;
 use doc::ItemUtils;
+use doc;
+use extract;
+use fold;
+use markdown_index_pass;
+use markdown_pass;
 use markdown_writer::Writer;
 use markdown_writer::WriterUtils;
 use markdown_writer::WriterFactory;
+use markdown_writer;
+use page_pass;
+use pass::Pass;
+use path_pass;
+use sectionalize_pass;
+use sort_pass;
+use trim_pass;
+use unindent_pass;
+
+use core::iter;
+use core::oldcomm;
+use core::str;
+use core::vec;
+use std::par;
+use syntax;
 
 pub fn mk_pass(+writer_factory: WriterFactory) -> Pass {
     let f = fn~(move writer_factory,
@@ -21,7 +47,7 @@ pub fn mk_pass(+writer_factory: WriterFactory) -> Pass {
         run(srv, doc, copy writer_factory)
     };
 
-    {
+    Pass {
         name: ~"markdown",
         f: move f
     }
@@ -88,7 +114,7 @@ type Ctxt = {
     w: Writer
 };
 
-fn write_markdown(
+pub fn write_markdown(
     +doc: doc::Doc,
     +writer_factory: WriterFactory
 ) {
@@ -212,7 +238,7 @@ pub fn header_kind(+doc: doc::ItemTag) -> ~str {
         ~"Enum"
       }
       doc::TraitTag(_) => {
-        ~"Interface"
+        ~"Trait"
       }
       doc::ImplTag(_) => {
         ~"Implementation"
@@ -701,7 +727,7 @@ fn write_method(ctxt: &Ctxt, +doc: doc::MethodDoc) {
 #[test]
 fn should_write_trait_header() {
     let markdown = test::render(~"trait i { fn a(); }");
-    assert str::contains(markdown, ~"## Interface `i`");
+    assert str::contains(markdown, ~"## Trait `i`");
 }
 
 #[test]
@@ -807,6 +833,26 @@ fn should_write_struct_header() {
 #[cfg(test)]
 mod test {
     #[legacy_exports];
+
+    use astsrv;
+    use attr_pass;
+    use config;
+    use desc_to_brief_pass;
+    use doc;
+    use extract;
+    use markdown_index_pass;
+    use markdown_pass::{mk_pass, write_markdown};
+    use markdown_writer;
+    use path_pass;
+    use sectionalize_pass;
+    use trim_pass;
+    use tystr_pass;
+    use unindent_pass;
+
+    use core::oldcomm;
+    use core::path::Path;
+    use core::str;
+
     fn render(+source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);
         let markdown = write_markdown_str_srv(srv, doc);

@@ -20,10 +20,20 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use at_vec;
+use cast;
+use char;
 use cmp::{Eq, Ord};
+use libc;
 use libc::size_t;
 use io::WriterUtil;
+use option::{None, Option, Some};
+use ptr;
+use str;
 use to_str::ToStr;
+use u8;
+use uint;
+use vec;
 
 /*
 Section: Creating a string
@@ -159,7 +169,7 @@ pub fn push_str_no_overallocate(lhs: &mut ~str, rhs: &str) {
             do as_buf(rhs) |rbuf, _rlen| {
                 let dst = ptr::offset(lbuf, llen);
                 let dst = ::cast::transmute_mut_unsafe(dst);
-                ptr::memcpy(dst, rbuf, rlen);
+                ptr::copy_memory(dst, rbuf, rlen);
             }
         }
         raw::set_len(lhs, llen + rlen);
@@ -176,7 +186,7 @@ pub fn push_str(lhs: &mut ~str, rhs: &str) {
             do as_buf(rhs) |rbuf, _rlen| {
                 let dst = ptr::offset(lbuf, llen);
                 let dst = ::cast::transmute_mut_unsafe(dst);
-                ptr::memcpy(dst, rbuf, rlen);
+                ptr::copy_memory(dst, rbuf, rlen);
             }
         }
         raw::set_len(lhs, llen + rlen);
@@ -1936,6 +1946,12 @@ pub pure fn escape_unicode(s: &str) -> ~str {
 
 /// Unsafe operations
 pub mod raw {
+    use cast;
+    use libc;
+    use ptr;
+    use str::raw;
+    use str::{as_buf, is_utf8, len, reserve_at_least};
+    use vec;
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {
@@ -1951,7 +1967,7 @@ pub mod raw {
     pub unsafe fn from_buf_len(buf: *const u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len + 1);
         vec::as_mut_buf(v, |vbuf, _len| {
-            ptr::memcpy(vbuf, buf as *u8, len)
+            ptr::copy_memory(vbuf, buf as *u8, len)
         });
         vec::raw::set_len(&mut v, len);
         v.push(0u8);
@@ -2008,7 +2024,7 @@ pub mod raw {
                 do vec::as_imm_buf(v) |vbuf, _vlen| {
                     let vbuf = ::cast::transmute_mut_unsafe(vbuf);
                     let src = ptr::offset(sbuf, begin);
-                    ptr::memcpy(vbuf, src, end - begin);
+                    ptr::copy_memory(vbuf, src, end - begin);
                 }
                 vec::raw::set_len(&mut v, end - begin);
                 v.push(0u8);
@@ -2115,6 +2131,9 @@ impl ~str: Trimmable {
 
 #[cfg(notest)]
 pub mod traits {
+    use ops::Add;
+    use str::append;
+
     impl ~str : Add<&str,~str> {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/str) -> ~str {
@@ -2293,8 +2312,13 @@ impl &str: StrSlice {
 
 #[cfg(test)]
 mod tests {
-
+    use char;
+    use debug;
     use libc::c_char;
+    use libc;
+    use ptr;
+    use str::*;
+    use vec;
 
     #[test]
     fn test_eq() {
@@ -2650,9 +2674,11 @@ mod tests {
 
     #[test]
     fn test_to_lower() {
-        assert ~"" == map(~"", |c| libc::tolower(c as c_char) as char);
-        assert ~"ymca" == map(~"YMCA",
-                             |c| libc::tolower(c as c_char) as char);
+        unsafe {
+            assert ~"" == map(~"", |c| libc::tolower(c as c_char) as char);
+            assert ~"ymca" == map(~"YMCA",
+                                 |c| libc::tolower(c as c_char) as char);
+        }
     }
 
     #[test]
@@ -3168,9 +3194,11 @@ mod tests {
 
     #[test]
     fn test_map() {
-        assert ~"" == map(~"", |c| libc::toupper(c as c_char) as char);
-        assert ~"YMCA" == map(~"ymca",
-                              |c| libc::toupper(c as c_char) as char);
+        unsafe {
+            assert ~"" == map(~"", |c| libc::toupper(c as c_char) as char);
+            assert ~"YMCA" == map(~"ymca",
+                                  |c| libc::toupper(c as c_char) as char);
+        }
     }
 
     #[test]

@@ -14,8 +14,16 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cast;
 use cmp::{Eq, Ord};
+use gc;
+use io;
+use libc;
 use libc::{c_void, c_char, size_t};
+use ptr;
+use repr;
+use str;
+use vec;
 
 pub type FreeGlue = fn(*TypeDesc, *c_void);
 
@@ -45,7 +53,7 @@ extern mod rusti {
 
 extern mod rustrt {
     #[rust_stack]
-    fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
+    unsafe fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
 }
 
 /// Compares contents of two pointers using the default method.
@@ -77,6 +85,17 @@ pub pure fn get_type_desc<T>() -> *TypeDesc {
 #[inline(always)]
 pub pure fn size_of<T>() -> uint {
     unsafe { rusti::size_of::<T>() }
+}
+
+/**
+ * Returns the size of a type, or 1 if the actual size is zero.
+ *
+ * Useful for building structures containing variable-length arrays.
+ */
+#[inline(always)]
+pub pure fn nonzero_size_of<T>() -> uint {
+    let s = size_of::<T>();
+    if s == 0 { 1 } else { s }
 }
 
 /**
@@ -126,7 +145,7 @@ pub pure fn begin_unwind(msg: ~str, file: ~str, line: uint) -> ! {
     }
 }
 
-// XXX: Temorary until rt::rt_fail_ goes away
+// FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     unsafe {
         gc::cleanup_stack_for_failure();
@@ -137,6 +156,8 @@ pub pure fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
 
 #[cfg(test)]
 pub mod tests {
+    use cast;
+    use sys::{Closure, pref_align_of, size_of, nonzero_size_of};
 
     #[test]
     pub fn size_of_basic() {
@@ -159,6 +180,14 @@ pub mod tests {
     pub fn size_of_64() {
         assert size_of::<uint>() == 8u;
         assert size_of::<*uint>() == 8u;
+    }
+
+    #[test]
+    pub fn nonzero_size_of_basic() {
+        type Z = [i8 * 0];
+        assert size_of::<Z>() == 0u;
+        assert nonzero_size_of::<Z>() == 1u;
+        assert nonzero_size_of::<uint>() == size_of::<uint>();
     }
 
     #[test]

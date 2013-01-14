@@ -8,12 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use middle::freevars::freevar_entry;
+use middle::freevars;
 use middle::lint::{non_implicitly_copyable_typarams, implicit_copies};
+use middle::liveness;
+use middle::pat_util;
 use middle::ty::{CopyValue, MoveValue, ReadValue};
 use middle::ty::{Kind, kind_copyable, kind_noncopyable, kind_const};
+use middle::ty;
+use middle::typeck;
+use middle;
 use util::ppaux::{ty_to_str, tys_to_str};
 
+use core::option;
+use core::str;
+use core::vec;
 use std::map::HashMap;
 use syntax::ast::*;
 use syntax::codemap::span;
@@ -65,13 +76,13 @@ fn kind_to_str(k: Kind) -> ~str {
     if ty::kind_can_be_sent(k) {
         kinds.push(~"owned");
     } else if ty::kind_is_durable(k) {
-        kinds.push(~"durable");
+        kinds.push(~"&static");
     }
 
     str::connect(kinds, ~" ")
 }
 
-type rval_map = std::map::HashMap<node_id, ()>;
+type rval_map = HashMap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
             method_map: typeck::method_map,
@@ -86,7 +97,7 @@ fn check_crate(tcx: ty::ctxt,
                method_map: method_map,
                last_use_map: last_use_map,
                current_item: -1};
-    let visit = visit::mk_vt(@{
+    let visit = visit::mk_vt(@visit::Visitor {
         visit_arm: check_arm,
         visit_expr: check_expr,
         visit_stmt: check_stmt,
@@ -287,7 +298,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
     }
 
-    match e.node {
+    match /*bad*/copy e.node {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
       expr_ret(Some(ex)) => {
@@ -320,7 +331,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           Some(ex) => {
             // All noncopyable fields must be overridden
             let t = ty::expr_ty(cx.tcx, ex);
-            let ty_fields = match ty::get(t).sty {
+            let ty_fields = match /*bad*/copy ty::get(t).sty {
               ty::ty_rec(f) => f,
               ty::ty_struct(did, ref substs) =>
                   ty::struct_fields(cx.tcx, did, &(*substs)),
@@ -398,7 +409,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 
 fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     match stmt.node {
-      stmt_decl(@{node: decl_local(locals), _}, _) => {
+      stmt_decl(@spanned {node: decl_local(ref locals), _}, _) => {
         for locals.each |local| {
             match local.node.init {
               Some(expr) =>
@@ -560,7 +571,7 @@ fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
-                                    pointers; use `durable` bound");
+                                    pointers; use `&static` bound");
           }
           _ => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
@@ -605,7 +616,7 @@ fn check_cast_for_escaping_regions(
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
     let target_substs = match ty::get(target_ty).sty {
-      ty::ty_trait(_, ref substs, _) => {(*substs)}
+      ty::ty_trait(_, ref substs, _) => {(/*bad*/copy *substs)}
       _ => { return; /* not a cast to a trait */ }
     };
 

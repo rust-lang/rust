@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use result::Result;
+use core::prelude::*;
+
+use core::cmp;
+use core::os;
+use core::result;
+use core::run;
+use core::vec;
+use core::result::Result;
 use std::getopts;
 use std::cell::Cell;
 
@@ -51,7 +58,7 @@ pub type Config = {
     pandoc_cmd: Option<~str>
 };
 
-impl Config: Clone {
+pub impl Config: Clone {
     fn clone(&self) -> Config { copy *self }
 }
 
@@ -100,7 +107,7 @@ pub fn default_config(input_crate: &Path) -> Config {
 type ProgramOutput = fn~((&str), (&[~str])) ->
     {status: int, out: ~str, err: ~str};
 
-fn mock_program_output(_prog: &str, _args: &[~str]) -> {
+pub fn mock_program_output(_prog: &str, _args: &[~str]) -> {
     status: int, out: ~str, err: ~str
 } {
     {
@@ -114,7 +121,7 @@ pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
     parse_config_(args, run::program_output)
 }
 
-fn parse_config_(
+pub fn parse_config_(
     args: &[~str],
     +program_output: ProgramOutput
 ) -> Result<Config, ~str> {
@@ -149,7 +156,7 @@ fn config_from_opts(
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
         let output_dir = output_dir.map(|s| Path(*s));
         result::Ok({
-            output_dir: output_dir.get_default(config.output_dir),
+            output_dir: output_dir.get_or_default(config.output_dir),
             .. config
         })
     };
@@ -283,8 +290,11 @@ fn should_error_with_no_pandoc() {
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
-    fn parse_config(args: &[~str]) -> Result<Config, ~str> {
+    use config::{Config, mock_program_output, parse_config_};
+
+    use core::result::Result;
+
+    pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
         parse_config_(args, mock_program_output)
     }
 }
