@@ -1356,7 +1356,10 @@ type variant = spanned<variant_>;
 
 #[auto_encode]
 #[auto_decode]
-type path_list_ident_ = {name: ident, id: node_id};
+struct path_list_ident_ {
+    name: ident,
+    id: node_id,
+}
 
 type path_list_ident = spanned<path_list_ident_>;
 
