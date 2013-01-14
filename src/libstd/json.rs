@@ -157,7 +157,7 @@ pub impl Encoder: serialize::Encoder {
         f();
         self.wr.write_char('}');
     }
-    fn emit_struct(&self, _name: &str, f: fn()) {
+    fn emit_struct(&self, _name: &str, _len: uint, f: fn()) {
         self.wr.write_char('{');
         f();
         self.wr.write_char('}');
@@ -270,7 +270,7 @@ pub impl PrettyEncoder: serialize::Encoder {
         self.indent -= 2;
         self.wr.write_char('}');
     }
-    fn emit_struct(&self, _name: &str, f: fn()) {
+    fn emit_struct(&self, _name: &str, _len: uint, f: fn()) {
         self.emit_rec(f)
     }
     fn emit_field(&self, name: &str, idx: uint, f: fn()) {
@@ -870,7 +870,7 @@ pub impl Decoder: serialize::Decoder {
         move value
     }
 
-    fn read_struct<T>(&self, _name: &str, f: fn() -> T) -> T {
+    fn read_struct<T>(&self, _name: &str, _len: uint, f: fn() -> T) -> T {
         debug!("read_struct()");
         let value = f();
         self.pop();
