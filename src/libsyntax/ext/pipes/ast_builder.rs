@@ -34,19 +34,19 @@ mod syntax {
 }
 
 fn path(ids: ~[ident], span: span) -> @ast::path {
-    @{span: span,
-      global: false,
-      idents: ids,
-      rp: None,
-      types: ~[]}
+    @ast::path { span: span,
+                 global: false,
+                 idents: ids,
+                 rp: None,
+                 types: ~[] }
 }
 
 fn path_global(ids: ~[ident], span: span) -> @ast::path {
-    @{span: span,
-      global: true,
-      idents: ids,
-      rp: None,
-      types: ~[]}
+    @ast::path { span: span,
+                 global: true,
+                 idents: ids,
+                 rp: None,
+                 types: ~[] }
 }
 
 trait append_types {
@@ -56,13 +56,13 @@ trait append_types {
 
 impl @ast::path: append_types {
     fn add_ty(ty: @ast::Ty) -> @ast::path {
-        @{types: vec::append_one(self.types, ty),
-          .. *self}
+        @ast::path { types: vec::append_one(self.types, ty),
+                     .. *self}
     }
 
     fn add_tys(+tys: ~[@ast::Ty]) -> @ast::path {
-        @{types: vec::append(self.types, tys),
-          .. *self}
+        @ast::path { types: vec::append(self.types, tys),
+                     .. *self}
     }
 }
 
@@ -177,7 +177,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_param(id: ast::ident, +bounds: ~[ast::ty_param_bound])
         -> ast::ty_param
     {
-        {ident: id, id: self.next_id(), bounds: @bounds}
+        ast::ty_param { ident: id, id: self.next_id(), bounds: @bounds }
     }
 
     fn arg(name: ident, ty: @ast::Ty) -> ast::arg {
@@ -219,7 +219,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
         // XXX: Would be nice if our generated code didn't violate
         // Rust coding conventions
-        let non_camel_case_attribute = respan(dummy_sp(), {
+        let non_camel_case_attribute = respan(dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
             value: respan(dummy_sp(),
                           ast::meta_list(~"allow", ~[
@@ -229,12 +229,12 @@ impl ext_ctxt: ext_ctxt_ast_builder {
             is_sugared_doc: false
         });
 
-        @{ident: name,
-         attrs: ~[non_camel_case_attribute],
-         id: self.next_id(),
-         node: node,
-         vis: ast::public,
-         span: span}
+        @ast::item { ident: name,
+                     attrs: ~[non_camel_case_attribute],
+                     id: self.next_id(),
+                     node: node,
+                     vis: ast::public,
+                     span: span }
     }
 
     fn item_fn_poly(name: ident,
@@ -306,7 +306,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                 span: ast_util::dummy_sp()
             }
         ]);
-        let vi = @{
+        let vi = @ast::view_item {
             node: vi,
             attrs: ~[],
             vis: ast::private,

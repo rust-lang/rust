@@ -72,8 +72,9 @@ impl Parser: parser_attr {
         let meta_item = self.parse_meta_item();
         self.expect(token::RBRACKET);
         let mut hi = self.span.hi;
-        return spanned(lo, hi, {style: style, value: *meta_item,
-                             is_sugared_doc: false});
+        return spanned(lo, hi, ast::attribute_ { style: style,
+                                                 value: *meta_item,
+                                                 is_sugared_doc: false });
     }
 
     // Parse attributes that appear after the opening of an item, each
@@ -101,8 +102,9 @@ impl Parser: parser_attr {
                     // It's not really an inner attribute
                     let outer_attr =
                         spanned(attr.span.lo, attr.span.hi,
-                            {style: ast::attr_outer, value: attr.node.value,
-                             is_sugared_doc: false});
+                            ast::attribute_ { style: ast::attr_outer,
+                                              value: attr.node.value,
+                                              is_sugared_doc: false });
                     next_outer_attrs += ~[outer_attr];
                     break;
                 }

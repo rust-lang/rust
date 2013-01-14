@@ -54,7 +54,9 @@ pure fn path_name_i(idents: &[ident], intr: @token::ident_interner) -> ~str {
 
 pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
 
-pure fn local_def(id: node_id) -> def_id { {crate: local_crate, node: id} }
+pure fn local_def(id: node_id) -> def_id {
+    ast::def_id { crate: local_crate, node: id }
+}
 
 pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
@@ -294,8 +296,11 @@ fn default_block(+stmts1: ~[@stmt], expr1: Option<@expr>, id1: node_id) ->
 }
 
 fn ident_to_path(s: span, +i: ident) -> @path {
-    @{span: s, global: false, idents: ~[i],
-      rp: None, types: ~[]}
+    @ast::path { span: s,
+                 global: false,
+                 idents: ~[i],
+                 rp: None,
+                 types: ~[] }
 }
 
 fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {

@@ -176,7 +176,7 @@ impl extended_decode_ctxt {
     }
     fn tr_intern_def_id(did: ast::def_id) -> ast::def_id {
         assert did.crate == ast::local_crate;
-        {crate: ast::local_crate, node: self.tr_id(did.node)}
+        ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
     fn tr_span(_span: span) -> span {
         ast_util::dummy_sp() // FIXME (#1972): handle span properly
@@ -288,10 +288,12 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       }
       ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
         let dtor_body = fld.fold_block((*dtor).node.body);
-        ast::ii_dtor(ast::spanned { node: { body: dtor_body,
-                                            .. /*bad*/copy (*dtor).node },
-                                    .. (/*bad*/copy *dtor) },
-                     nm, /*bad*/copy *tps, parent_id)
+        ast::ii_dtor(
+            ast::spanned {
+                node: ast::struct_dtor_ { body: dtor_body,
+                                          .. /*bad*/copy (*dtor).node },
+                .. (/*bad*/copy *dtor) },
+            nm, /*bad*/copy *tps, parent_id)
       }
     }
 }
@@ -327,12 +329,15 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
         let dtor_id = fld.new_id((*dtor).node.id);
         let new_parent = xcx.tr_def_id(parent_id);
         let new_self = fld.new_id((*dtor).node.self_id);
-        ast::ii_dtor(ast::spanned { node: { id: dtor_id,
-                                            attrs: dtor_attrs,
-                                            self_id: new_self,
-                                            body: dtor_body },
-                                    .. (/*bad*/copy *dtor)},
-          nm, new_params, new_parent)
+        ast::ii_dtor(
+            ast::spanned {
+                node: ast::struct_dtor_ { id: dtor_id,
+                                          attrs: dtor_attrs,
+                                          self_id: new_self,
+                                          body: dtor_body },
+                .. (/*bad*/copy *dtor)
+            },
+            nm, new_params, new_parent)
       }
      }
 }
@@ -785,7 +790,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    let lid = {crate: ast::local_crate, node: id};
+    let lid = ast::def_id { crate: ast::local_crate, node: id };
     do option::iter(&tcx.tcache.find(lid)) |tpbt| {
         do ebml_w.tag(c::tag_table_tcache) {
             ebml_w.id(id);
@@ -988,7 +993,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.tcx.freevars.insert(id, fv_info);
             } else if tag == (c::tag_table_tcache as uint) {
                 let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
-                let lid = {crate: ast::local_crate, node: id};
+                let lid = ast::def_id { crate: ast::local_crate, node: id };
                 dcx.tcx.tcache.insert(lid, tpbt);
             } else if tag == (c::tag_table_param_bounds as uint) {
                 let bounds = val_dsr.read_bounds(xcx);

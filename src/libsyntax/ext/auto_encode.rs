@@ -121,8 +121,10 @@ fn expand_auto_encode(
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: item.attrs.filtered(|a| !is_auto_encode(a)),
-          .. *item}
+        @ast::item {
+            attrs: item.attrs.filtered(|a| !is_auto_encode(a)),
+            .. *item
+        }
     }
 
     do vec::flat_map(in_items) |item| {
@@ -139,7 +141,7 @@ fn expand_auto_encode(
 
                     ~[filter_attrs(*item), ser_impl]
                 },
-                ast::item_struct(@{ fields, _}, tps) => {
+                ast::item_struct(@ast::struct_def { fields, _}, tps) => {
                     let ser_impl = mk_struct_ser_impl(
                         cx,
                         item.span,
@@ -185,8 +187,10 @@ fn expand_auto_decode(
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: item.attrs.filtered(|a| !is_auto_decode(a)),
-          .. *item}
+        @ast::item {
+            attrs: item.attrs.filtered(|a| !is_auto_decode(a)),
+            .. *item
+        }
     }
 
     do vec::flat_map(in_items) |item| {
@@ -203,7 +207,7 @@ fn expand_auto_decode(
 
                     ~[filter_attrs(*item), deser_impl]
                 },
-                ast::item_struct(@{ fields, _}, tps) => {
+                ast::item_struct(@ast::struct_def { fields, _}, tps) => {
                     let deser_impl = mk_struct_deser_impl(
                         cx,
                         item.span,
@@ -251,7 +255,7 @@ priv impl ext_ctxt {
             span: span,
         });
 
-        {
+        ast::ty_param {
             ident: ident,
             id: self.next_id(),
             bounds: @vec::append(~[bound], *bounds)
@@ -264,21 +268,45 @@ priv impl ext_ctxt {
     }
 
     fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: None, types: ~[]}
+        @ast::path {
+            span: span,
+            global: false,
+            idents: strs,
+            rp: None,
+            types: ~[]
+        }
     }
 
     fn path_global(span: span, strs: ~[ast::ident]) -> @ast::path {
-        @{span: span, global: true, idents: strs, rp: None, types: ~[]}
+        @ast::path {
+            span: span,
+            global: true,
+            idents: strs,
+            rp: None,
+            types: ~[]
+        }
     }
 
     fn path_tps(span: span, strs: ~[ast::ident],
                 tps: ~[@ast::Ty]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: None, types: tps}
+        @ast::path {
+            span: span,
+            global: false,
+            idents: strs,
+            rp: None,
+            types: tps
+        }
     }
 
     fn path_tps_global(span: span, strs: ~[ast::ident],
                        tps: ~[@ast::Ty]) -> @ast::path {
-        @{span: span, global: true, idents: strs, rp: None, types: tps}
+        @ast::path {
+            span: span,
+            global: true,
+            idents: strs,
+            rp: None,
+            types: tps
+        }
     }
 
     fn ty_path(span: span, strs: ~[ast::ident],
@@ -289,11 +317,9 @@ priv impl ext_ctxt {
     }
 
     fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
-        let path = @{span: span, global: false, idents: ~[nm],
-                     rp: None, types: ~[]};
         @{id: self.next_id(),
           node: ast::pat_ident(ast::bind_by_ref(ast::m_imm),
-                               path,
+                               self.path(span, ~[nm]),
                                None),
           span: span}
     }
@@ -403,7 +429,7 @@ fn mk_impl(
                 span: span,
             });
 
-            {
+            ast::ty_param {
                 ident: tp.ident,
                 id: cx.next_id(),
                 bounds: @vec::append(~[t_bound], *tp.bounds)
@@ -422,7 +448,7 @@ fn mk_impl(
         tps.map(|tp| cx.ty_path(span, ~[tp.ident], ~[]))
     );
 
-    @{
+    @ast::item {
         // This is a new-style impl declaration.
         // XXX: clownshoes
         ident: parse::token::special_idents::clownshoes_extensions,
