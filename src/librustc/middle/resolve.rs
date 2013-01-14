@@ -59,7 +59,7 @@ use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private, visibility_to_privacy};
 use syntax::ast_util::has_legacy_export_attr;
-use syntax::attr::{attr_metas, contains_name};
+use syntax::attr::{attr_metas, contains_name, find_attrs_by_name};
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{pat_to_str, path_to_str};
@@ -3924,13 +3924,19 @@ impl Resolver {
                 // If this is the main function, we must record it in the
                 // session.
 
-                if !self.session.building_library &&
-                    item.ident == special_idents::main {
+                if !self.session.building_library {
 
-                    if is_none(&self.session.main_fn) {
-                        self.session.main_fn = Some((item.id, item.span));
-                    } else {
-                        self.session.span_fatal(item.span, ~"multiple 'main' functions");
+                    let has_main_attr = 
+                        find_attrs_by_name(item.attrs, ~"main").is_not_empty();
+
+                    if item.ident == special_idents::main || has_main_attr {
+
+                        if is_none(&self.session.main_fn) {
+                            self.session.main_fn = Some((item.id, item.span));
+                        } else {
+                            self.session.span_fatal(item.span, ~"multiple 'main' functions");
+                        }
+
                     }
 
                 }
