@@ -391,7 +391,7 @@ fn check_for_main_fn(ccx: @crate_ctxt) {
     let tcx = ccx.tcx;
     if !tcx.sess.building_library {
         match copy tcx.sess.main_fn {
-          Some((id, sp)) => check_main_fn_ty(ccx, id, sp),
+          Some((id, sp, _)) => check_main_fn_ty(ccx, id, sp),
           None => tcx.sess.err(~"main function not found")
         }
     }

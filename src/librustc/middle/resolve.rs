@@ -3925,20 +3925,40 @@ impl Resolver {
                 // session.
 
                 if !self.session.building_library {
-
                     let has_main_attr = 
                         find_attrs_by_name(item.attrs, ~"main").is_not_empty();
+                    let called_main = item.ident == special_idents::main;
 
-                    if item.ident == special_idents::main || has_main_attr {
+                    if has_main_attr || called_main {
+                        match self.session.main_fn {
+                            Some((_, _, ident_main)) => {
 
-                        if is_none(&self.session.main_fn) {
-                            self.session.main_fn = Some((item.id, item.span));
-                        } else {
-                            self.session.span_fatal(item.span, ~"multiple 'main' functions");
+                                if ident_main && !has_main_attr ||
+                                   !ident_main && has_main_attr {
+
+                                    // Already found a fn called `main`
+                                    // or multple functions marked
+                                    // with #[main]
+                                    self.session.span_fatal(item.span,
+                                            ~"multiple 'main' functions");
+
+                                } else if ident_main && has_main_attr {
+
+                                    // Replace 'main' with fn explicitly
+                                    // marked #[main]
+                                    self.session.main_fn =
+                                        Some((item.id, item.span, called_main));
+
+                                }
+
+                            },
+                            None => {
+                                self.session.main_fn =
+                                    Some((item.id, item.span, called_main))
+                            }
                         }
 
                     }
-
                 }
 
                 self.resolve_function(OpaqueFunctionRibKind,

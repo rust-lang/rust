@@ -2152,7 +2152,7 @@ fn register_fn_fuller(ccx: @crate_ctxt,
     ccx.item_symbols.insert(node_id, ps);
 
     let is_main = match ccx.sess.main_fn {
-        Some((id, _)) => node_id == id,
+        Some((id, _, _)) => node_id == id,
         // Shouldn't get to this branch
         // since typeck catches no main
         None => false

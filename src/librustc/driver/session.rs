@@ -155,7 +155,7 @@ type Session_ = {targ_cfg: @config,
                  parse_sess: parse_sess,
                  codemap: @codemap::CodeMap,
                  // For a library crate, this is always none
-                 mut main_fn: Option<(node_id, codemap::span)>,
+                 mut main_fn: Option<(node_id, codemap::span, bool)>,
                  span_diagnostic: diagnostic::span_handler,
                  filesearch: filesearch::FileSearch,
                  mut building_library: bool,
