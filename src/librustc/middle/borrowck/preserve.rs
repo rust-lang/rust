@@ -357,10 +357,30 @@ priv impl &preserve_ctxt {
             if self.bccx.is_subregion_of(self.scope_region, root_region) {
                 debug!("Elected to root");
                 let rk = {id: base.id, derefs: derefs};
+                // This code could potentially lead cause boxes to be frozen
+                // for longer than necessarily at runtime. It prevents an ICE
+                // in trans; the fundamental problem is that it's hard to make
+                // sure trans and borrowck have the same notion of scope. The
+                // real fix is to clean up how trans handles cleanups, but
+                // that's hard. If this becomes an issue, it's an option to just
+                // change this to `let scope_to_use = scope_id;`. Though that
+                // would potentially re-introduce the ICE. See #3511 for more
+                // details.
+                let scope_to_use = if
+                    self.bccx.stmt_map.contains_key(scope_id) {
+                    // Root it in its parent scope, b/c
+                    // trans won't introduce a new scope for the
+                    // stmt
+                    self.root_ub
+                }
+                else {
+                    // Use the more precise scope
+                    scope_id
+                };
                 // We freeze if and only if this is a *mutable* @ box that
                 // we're borrowing into a pointer.
                 self.bccx.root_map.insert(rk, RootInfo {
-                    scope: scope_id,
+                    scope: scope_to_use,
                     freezes: cmt.cat.derefs_through_mutable_box()
                 });
                 return Ok(pc_ok);
