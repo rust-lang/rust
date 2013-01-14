@@ -3923,15 +3923,16 @@ impl Resolver {
             item_fn(ref fn_decl, _, ref ty_params, ref block) => {
                 // If this is the main function, we must record it in the
                 // session.
-                //
-                // For speed, we put the string comparison last in this chain
-                // of conditionals.
 
                 if !self.session.building_library &&
-                    is_none(&self.session.main_fn) &&
                     item.ident == special_idents::main {
 
-                    self.session.main_fn = Some((item.id, item.span));
+                    if is_none(&self.session.main_fn) {
+                        self.session.main_fn = Some((item.id, item.span));
+                    } else {
+                        self.session.span_fatal(item.span, ~"multiple 'main' functions");
+                    }
+
                 }
 
                 self.resolve_function(OpaqueFunctionRibKind,
