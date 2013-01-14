@@ -689,8 +689,10 @@ impl Parser {
     // identifier names.
     fn parse_arg_general(require_name: bool) -> arg {
         let mut m;
+        let mut is_mutbl = false;
         let pat = if require_name || self.is_named_argument() {
             m = self.parse_arg_mode();
+            is_mutbl = self.eat_keyword(~"mut");
             let pat = self.parse_pat(false);
             self.expect(token::COLON);
             pat
@@ -703,7 +705,7 @@ impl Parser {
 
         let t = self.parse_ty(false);
 
-        {mode: m, ty: t, pat: pat, id: self.get_id()}
+        {mode: m, is_mutbl: is_mutbl, ty: t, pat: pat, id: self.get_id()}
     }
 
     fn parse_arg() -> arg_or_capture_item {
@@ -725,7 +727,8 @@ impl Parser {
                   node: ty_infer,
                   span: mk_sp(p.span.lo, p.span.hi)}
             };
-            either::Left({mode: m, ty: t, pat: pat, id: p.get_id()})
+            either::Left({mode: m, is_mutbl: false, ty: t, pat: pat,
+                          id: p.get_id()})
         }
     }
 

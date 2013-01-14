@@ -286,7 +286,7 @@ enum VarKind {
 fn relevant_def(def: def) -> Option<node_id> {
     match def {
       def_binding(nid, _) |
-      def_arg(nid, _) |
+      def_arg(nid, _, _) |
       def_local(nid, _) |
       def_self(nid, _) => Some(nid),
 

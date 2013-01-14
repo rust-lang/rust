@@ -1829,6 +1829,7 @@ fn trans_enum_variant(ccx: @crate_ctxt,
     // Translate variant arguments to function arguments.
     let fn_args = vec::map(args, |varg|
         {mode: ast::expl(ast::by_copy),
+         is_mutbl: false,
          ty: varg.ty,
          pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
                                      ast_util::dummy_sp(),
@@ -1889,6 +1890,7 @@ fn trans_tuple_struct(ccx: @crate_ctxt,
     let fn_args = do fields.map |field| {
         {
             mode: ast::expl(ast::by_copy),
+            is_mutbl: false,
             ty: field.node.ty,
             pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
                                         ast_util::dummy_sp(),

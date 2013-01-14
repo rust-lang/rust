@@ -182,6 +182,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn arg(name: ident, ty: @ast::Ty) -> ast::arg {
         {mode: ast::infer(self.next_id()),
+         is_mutbl: false,
          ty: ty,
          pat: @{id: self.next_id(),
                 node: ast::pat_ident(

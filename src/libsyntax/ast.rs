@@ -131,7 +131,7 @@ enum def {
     def_mod(def_id),
     def_foreign_mod(def_id),
     def_const(def_id),
-    def_arg(node_id, mode),
+    def_arg(node_id, mode, bool /* is_mutbl */),
     def_local(node_id, bool /* is_mutbl */),
     def_variant(def_id /* enum */, def_id /* variant */),
     def_ty(def_id),
@@ -195,9 +195,10 @@ impl def : cmp::Eq {
                     _ => false
                 }
             }
-            def_arg(e0a, e1a) => {
+            def_arg(e0a, e1a, e2a) => {
                 match (*other) {
-                    def_arg(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    def_arg(e0b, e1b, e2b) =>
+                        e0a == e0b && e1a == e1b && e2a == e2b,
                     _ => false
                 }
             }
@@ -1140,7 +1141,7 @@ impl Ty : to_bytes::IterBytes {
 
 #[auto_encode]
 #[auto_decode]
-type arg = {mode: mode, ty: @Ty, pat: @pat, id: node_id};
+type arg = {mode: mode, is_mutbl: bool, ty: @Ty, pat: @pat, id: node_id};
 
 #[auto_encode]
 #[auto_decode]

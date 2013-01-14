@@ -544,6 +544,7 @@ fn mk_ser_method(
 
     let ser_inputs = ~[{
         mode: ast::infer(cx.next_id()),
+        is_mutbl: false,
         ty: ty_s,
         pat: @{id: cx.next_id(),
                node: ast::pat_ident(
@@ -605,6 +606,7 @@ fn mk_deser_method(
 
     let deser_inputs = ~[{
         mode: ast::infer(cx.next_id()),
+        is_mutbl: false,
         ty: ty_d,
         pat: @{id: cx.next_id(),
                node: ast::pat_ident(
@@ -1128,6 +1130,7 @@ fn mk_enum_deser_body(
             {
                 inputs: ~[{
                     mode: ast::infer(cx.next_id()),
+                    is_mutbl: false,
                     ty: @{
                         id: cx.next_id(),
                         node: ast::ty_infer,
