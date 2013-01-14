@@ -81,7 +81,8 @@ impl Parser {
         let lo = self.span.lo;
         let ident = self.parse_ident();
         let hi = self.span.hi;
-        return spanned(lo, hi, {name: ident, id: self.get_id()});
+        spanned(lo, hi, ast::path_list_ident_ { name: ident,
+                                                id: self.get_id() })
     }
 
     fn parse_value_ident() -> ast::ident {
