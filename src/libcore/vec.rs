@@ -2085,7 +2085,8 @@ pub mod raw {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
-    pub unsafe fn copy_memory<T>(dst: &[mut T], src: &[const T], count: uint) {
+    pub unsafe fn copy_memory<T>(dst: &[mut T], src: &[const T],
+                                 count: uint) {
         assert dst.len() >= count;
         assert src.len() >= count;
 
@@ -2102,7 +2103,8 @@ pub mod raw {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
-    pub unsafe fn copy_overlapping_memory<T>(dst: &[mut T], src: &[const T], count: uint) {
+    pub unsafe fn copy_overlapping_memory<T>(dst: &[mut T], src: &[const T],
+                                             count: uint) {
         assert dst.len() >= count;
         assert src.len() >= count;
 
@@ -2178,7 +2180,8 @@ pub mod bytes {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
-    pub fn copy_overlapping_memory(dst: &[mut u8], src: &[const u8], count: uint) {
+    pub fn copy_overlapping_memory(dst: &[mut u8], src: &[const u8],
+                                   count: uint) {
         // Bound checks are done at vec::raw::copy_overlapping_memory.
         unsafe { vec::raw::copy_overlapping_memory(dst, src, count) }
     }
