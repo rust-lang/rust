@@ -173,10 +173,10 @@ fn mk_glob_use(cx: ext_ctxt, sp: span,
         node: ast::view_path_glob(mk_raw_path(sp, path), cx.next_id()),
         span: sp,
     };
-    @{node: ast::view_item_import(~[glob]),
-      attrs: ~[],
-      vis: ast::private,
-      span: sp}
+    @ast::view_item { node: ast::view_item_import(~[glob]),
+                      attrs: ~[],
+                      vis: ast::private,
+                      span: sp }
 }
 fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
             ident: ast::ident, ex: @ast::expr) -> @ast::stmt {

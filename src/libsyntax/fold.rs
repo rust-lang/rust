@@ -114,10 +114,14 @@ fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
 }
 //used in noop_fold_item and noop_fold_crate
 fn fold_attribute_(at: attribute, fld: ast_fold) -> attribute {
-    spanned { node: { style: at.node.style,
-                      value: *fold_meta_item_(@at.node.value, fld),
-                      is_sugared_doc: at.node.is_sugared_doc },
-              span: fld.new_span(at.span) }
+    spanned {
+        node: ast::attribute_ {
+            style: at.node.style,
+            value: *fold_meta_item_(@at.node.value, fld),
+            is_sugared_doc: at.node.is_sugared_doc,
+        },
+        span: fld.new_span(at.span),
+    }
 }
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: ast_fold) -> arg {
@@ -679,11 +683,13 @@ impl ast_fold_fns: ast_fold {
     }
     fn fold_view_item(&&x: @view_item) ->
        @view_item {
-        return @{node: (self.fold_view_item)(x.node, self as ast_fold),
-              attrs: vec::map(x.attrs, |a|
+        @ast::view_item {
+            node: (self.fold_view_item)(x.node, self as ast_fold),
+            attrs: vec::map(x.attrs, |a|
                   fold_attribute_(*a, self as ast_fold)),
-              vis: x.vis,
-              span: (self.new_span)(x.span)};
+            vis: x.vis,
+            span: (self.new_span)(x.span),
+        }
     }
     fn fold_foreign_item(&&x: @foreign_item)
         -> @foreign_item {

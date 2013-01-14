@@ -45,22 +45,21 @@ fn inject_libcore_ref(sess: Session,
     let precursor = @fold::AstFoldFns {
         fold_crate: |crate, span, fld| {
             let n1 = sess.next_node_id();
-            let vi1 = @{node: ast::view_item_use(sess.ident_of(~"core"),
-                                                 ~[],
-                                                 n1),
-                        attrs: ~[
-                            spanned({
-                                style: ast::attr_inner,
-                                value: spanned(ast::meta_name_value(
-                                    ~"vers",
-                                    spanned(ast::lit_str(
-                                        @CORE_VERSION.to_str()))
-                                )),
-                                is_sugared_doc: false
-                            })
-                        ],
-                        vis: ast::private,
-                        span: dummy_sp()};
+            let vi1 = @ast::view_item {
+                node: ast::view_item_use(sess.ident_of(~"core"), ~[], n1),
+                attrs: ~[
+                    spanned(ast::attribute_ {
+                        style: ast::attr_inner,
+                        value: spanned(ast::meta_name_value(
+                            ~"vers",
+                            spanned(ast::lit_str(@CORE_VERSION.to_str()))
+                        )),
+                        is_sugared_doc: false
+                    })
+                ],
+                vis: ast::private,
+                span: dummy_sp()
+            };
 
             let vis = vec::append(~[vi1], crate.module.view_items);
             let mut new_module = {
@@ -88,10 +87,10 @@ fn inject_libcore_ref(sess: Session,
             };
 
             let vp = @spanned(ast::view_path_glob(prelude_path, n2));
-            let vi2 = @{node: ast::view_item_import(~[vp]),
-                        attrs: ~[],
-                        vis: ast::private,
-                        span: dummy_sp()};
+            let vi2 = @ast::view_item { node: ast::view_item_import(~[vp]),
+                                        attrs: ~[],
+                                        vis: ast::private,
+                                        span: dummy_sp() };
 
             let vis = vec::append(~[vi2], module.view_items);
 
