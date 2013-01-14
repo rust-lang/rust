@@ -22,7 +22,6 @@
     KLOG_LVL(this, field, log_err, __VA_ARGS__)
 
 rust_kernel::rust_kernel(rust_env *env) :
-    _region(env, true),
     _log(NULL),
     max_task_id(INIT_TASK_ID-1), // sync_add_and_fetch increments first
     rval(0),
@@ -77,21 +76,21 @@ rust_kernel::fatal(char const *fmt, ...) {
 
 void *
 rust_kernel::malloc(size_t size, const char *tag) {
-    return _region.malloc(size, tag);
+    return exchange_alloc.malloc(size);
 }
 
 void *
 rust_kernel::calloc(size_t size, const char *tag) {
-    return _region.calloc(size, tag);
+    return exchange_alloc.calloc(size);
 }
 
 void *
 rust_kernel::realloc(void *mem, size_t size) {
-    return _region.realloc(mem, size);
+    return exchange_alloc.realloc(mem, size);
 }
 
 void rust_kernel::free(void *mem) {
-    _region.free(mem);
+    exchange_alloc.free(mem);
 }
 
 rust_sched_id
@@ -217,6 +216,7 @@ rust_kernel::run() {
     assert(osmain_driver != NULL);
     osmain_driver->start_main_loop();
     sched_reaper.join();
+    rust_check_exchange_count_on_exit();
     return rval;
 }
 

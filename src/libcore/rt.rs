@@ -18,6 +18,8 @@ use libc::{c_char, c_uchar, c_void, size_t, uintptr_t};
 use managed::raw::BoxRepr;
 use str;
 use sys;
+use private::exchange_alloc;
+use cast::transmute;
 
 use gc::{cleanup_stack_for_failure, gc, Word};
 
@@ -30,13 +32,6 @@ pub const FROZEN_BIT: uint = 0x80000000;
 pub const FROZEN_BIT: uint = 0x8000000000000000;
 
 pub extern mod rustrt {
-    #[rust_stack]
-    unsafe fn rust_upcall_exchange_malloc(td: *c_char, size: uintptr_t)
-                                       -> *c_char;
-
-    #[rust_stack]
-    unsafe fn rust_upcall_exchange_free(ptr: *c_char);
-
     #[rust_stack]
     unsafe fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
 
@@ -70,10 +65,11 @@ pub unsafe fn rt_fail_borrowed() {
     }
 }
 
+// XXX: Make these signatures agree with exchange_alloc's signatures
 #[rt(exchange_malloc)]
 #[lang="exchange_malloc"]
 pub unsafe fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    return rustrt::rust_upcall_exchange_malloc(td, size);
+    transmute(exchange_alloc::malloc(transmute(td), transmute(size)))
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
@@ -82,7 +78,7 @@ pub unsafe fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[rt(exchange_free)]
 #[lang="exchange_free"]
 pub unsafe fn rt_exchange_free(ptr: *c_char) {
-    rustrt::rust_upcall_exchange_free(ptr);
+    exchange_alloc::free(transmute(ptr))
 }
 
 #[rt(malloc)]

@@ -12,6 +12,7 @@
 #define RUST_STACK_H
 
 #include "rust_globals.h"
+#include "rust_exchange_alloc.h"
 #include "memory_region.h"
 
 struct rust_task;
@@ -36,6 +37,12 @@ create_stack(memory_region *region, size_t sz);
 
 void
 destroy_stack(memory_region *region, stk_seg *stk);
+
+stk_seg *
+create_exchange_stack(rust_exchange_alloc *exchange, size_t sz);
+
+void
+destroy_exchange_stack(rust_exchange_alloc *exchange, stk_seg *stk);
 
 // Must be called before each time a stack is reused to tell valgrind
 // that the stack is accessible.
