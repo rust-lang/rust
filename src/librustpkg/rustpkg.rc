@@ -8,22 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// rustpkg - a purely function package manager and build system
+
+#[link(name = "rustpkg",
+       vers = "0.6",
+       uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
+       url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
+
+#[crate_type = "lib"];
+
 #[no_core];
+
 extern mod core(vers = "0.6");
+extern mod std(vers = "0.6");
+extern mod rustc(vers = "0.6");
+extern mod syntax(vers = "0.6");
 
-#[cfg(rustpkg)]
-extern mod this(name = "rustpkg", vers = "0.6");
+use rustc::metadata::{filesearch};
 
-#[cfg(fuzzer)]
-extern mod this(name = "fuzzer", vers = "0.6");
+pub fn main() {
 
-#[cfg(rustdoc)]
-extern mod this(name = "rustdoc", vers = "0.6");
-
-#[cfg(rusti)]
-extern mod this(name = "rusti", vers = "0.6");
-
-#[cfg(rustc)]
-extern mod this(name = "rustc", vers = "0.6");
-
-fn main() { this::main() }
+}
