@@ -1393,8 +1393,12 @@ enum view_path_ {
 
 #[auto_encode]
 #[auto_decode]
-type view_item = {node: view_item_, attrs: ~[attribute],
-                  vis: visibility, span: span};
+struct view_item {
+    node: view_item_,
+    attrs: ~[attribute],
+    vis: visibility,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1424,7 +1428,11 @@ impl attr_style : cmp::Eq {
 // doc-comments are promoted to attributes that have is_sugared_doc = true
 #[auto_encode]
 #[auto_decode]
-type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
+struct attribute_ {
+    style: attr_style,
+    value: meta_item,
+    is_sugared_doc: bool,
+}
 
 /*
   trait_refs appear in impls.

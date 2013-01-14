@@ -3276,12 +3276,12 @@ impl Parser {
         // extern mod foo;
         let metadata = self.parse_optional_meta();
         self.expect(token::SEMI);
-        return iovi_view_item(@{
+        iovi_view_item(@ast::view_item {
             node: view_item_use(ident, metadata, self.get_id()),
             attrs: attrs,
             vis: visibility,
             span: mk_sp(lo, self.last_span.hi)
-        });
+        })
     }
 
     fn parse_type_decl() -> {lo: BytePos, ident: ident} {
@@ -3573,7 +3573,7 @@ impl Parser {
         } else if self.eat_keyword(~"use") {
             let view_item = self.parse_use();
             self.expect(token::SEMI);
-            return iovi_view_item(@{
+            return iovi_view_item(@ast::view_item {
                 node: view_item,
                 attrs: attrs,
                 vis: visibility,
@@ -3582,7 +3582,7 @@ impl Parser {
         } else if self.eat_keyword(~"export") {
             let view_paths = self.parse_view_paths();
             self.expect(token::SEMI);
-            return iovi_view_item(@{
+            return iovi_view_item(@ast::view_item {
                 node: view_item_export(view_paths),
                 attrs: attrs,
                 vis: visibility,
@@ -3780,8 +3780,10 @@ impl Parser {
             fail;
         };
         self.expect(token::SEMI);
-        @{node: node, attrs: attrs,
-          vis: vis, span: mk_sp(lo, self.last_span.hi)}
+        @ast::view_item { node: node,
+                          attrs: attrs,
+                          vis: vis,
+                          span: mk_sp(lo, self.last_span.hi) }
     }
 
     fn parse_items_and_view_items(+first_item_attrs: ~[attribute],

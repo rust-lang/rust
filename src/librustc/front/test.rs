@@ -268,7 +268,7 @@ fn mk_std(cx: test_ctxt) -> @ast::view_item {
     let vi = ast::view_item_use(cx.sess.ident_of(~"std"),
                                 ~[@mi],
                                 cx.sess.next_node_id());
-    let vi = {
+    let vi = ast::view_item {
         node: vi,
         attrs: ~[],
         vis: ast::private,
