@@ -857,6 +857,8 @@ fn Resolver(session: Session, lang_items: LanguageItems,
 
         namespaces: ~[ TypeNS, ValueNS ],
 
+        have_main_attr: false,
+
         def_map: HashMap(),
         export_map2: HashMap(),
         trait_map: @HashMap(),
@@ -916,6 +918,9 @@ struct Resolver {
     // The four namespaces.
     namespaces: ~[Namespace],
 
+    // Whether there is any fn annotated with #[main]
+    mut have_main_attr: bool,
+
     def_map: DefMap,
     export_map2: ExportMap2,
     trait_map: TraitMap,
@@ -933,6 +938,8 @@ impl Resolver {
 
         self.record_exports();
         self.session.abort_if_errors();
+
+        self.find_if_main_attr();
 
         self.resolve_crate();
         self.session.abort_if_errors();
@@ -3720,6 +3727,31 @@ impl Resolver {
         return None;
     }
 
+    // Find if there are any fn's with #[main]
+    fn find_if_main_attr(@self) {
+        visit_crate(*self.crate, (), mk_vt(@Visitor {
+            visit_item: |item, _context, _visitor| {
+
+                match /*bad*/copy item.node {
+
+                    item_fn(*) => {
+
+                        if !self.session.building_library {
+                            if find_attrs_by_name(item.attrs, ~"main")
+                                .is_not_empty() {
+                                self.have_main_attr = true;
+                            }
+                        }
+
+                    },
+                    _ => {}
+                }
+
+            },
+            .. *default_visitor()
+        }));
+    }
+
     fn resolve_crate(@self) {
         debug!("(resolving crate) starting");
 
@@ -3933,8 +3965,9 @@ impl Resolver {
                         match self.session.main_fn {
                             Some((_, _, ident_main)) => {
 
-                                if ident_main && !has_main_attr ||
-                                   !ident_main && has_main_attr {
+                                if (!ident_main && has_main_attr) ||
+                                   (ident_main && !has_main_attr
+                                    && !self.have_main_attr) {
 
                                     // Already found a fn called `main`
                                     // or multple functions marked
@@ -3947,14 +3980,14 @@ impl Resolver {
                                     // Replace 'main' with fn explicitly
                                     // marked #[main]
                                     self.session.main_fn =
-                                        Some((item.id, item.span, called_main));
+                                        Some((item.id, item.span, !has_main_attr));
 
                                 }
 
                             },
                             None => {
                                 self.session.main_fn =
-                                    Some((item.id, item.span, called_main))
+                                    Some((item.id, item.span, !has_main_attr))
                             }
                         }
 
