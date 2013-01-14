@@ -232,7 +232,7 @@ use middle::liveness;
 use middle::mem_categorization::*;
 use middle::region;
 use middle::ty;
-use util::common::indenter;
+use util::common::{indenter, stmt_set};
 use util::ppaux::{expr_repr, note_and_explain_region};
 use util::ppaux::{ty_to_str, region_to_str, explain_region};
 
@@ -272,6 +272,7 @@ fn check_crate(tcx: ty::ctxt,
                                 root_map: root_map(),
                                 mutbl_map: HashMap(),
                                 write_guard_map: HashMap(),
+                                stmt_map: HashMap(),
                                 mut loaned_paths_same: 0,
                                 mut loaned_paths_imm: 0,
                                 mut stable_paths: 0,
@@ -313,6 +314,7 @@ type borrowck_ctxt_ = {tcx: ty::ctxt,
                        root_map: root_map,
                        mutbl_map: mutbl_map,
                        write_guard_map: write_guard_map,
+                       stmt_map: stmt_set,
 
                        // Statistics:
                        mut loaned_paths_same: uint,

@@ -84,6 +84,7 @@ fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
                                   mut ignore_adjustments: LinearMap()});
     let v = visit::mk_vt(@visit::Visitor {visit_expr: req_loans_in_expr,
                                           visit_fn: req_loans_in_fn,
+                                          visit_stmt: add_stmt_to_map,
                                           .. *visit::default_visitor()});
     visit::visit_crate(*crate, glcx, v);
     return glcx.req_maps;
@@ -573,3 +574,16 @@ impl gather_loan_ctxt {
     }
 }
 
+// Setting up info that preserve needs.
+// This is just the most convenient place to do it.
+fn add_stmt_to_map(stmt: @ast::stmt,
+                   &&self: gather_loan_ctxt,
+                   vt: visit::vt<gather_loan_ctxt>) {
+    match stmt.node {
+        ast::stmt_expr(_, id) | ast::stmt_semi(_, id) => {
+            self.bccx.stmt_map.insert(id, ());
+        }
+        _ => ()
+    }
+    visit::visit_stmt(stmt, self, vt);
+}
