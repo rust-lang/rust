@@ -134,7 +134,8 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
  * and destination may overlap.
  */
 #[inline(always)]
-pub unsafe fn copy_overlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
+pub unsafe fn copy_overlapping_memory<T>(dst: *mut T, src: *const T,
+                                         count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memmove(dst as *mut c_void, src as *c_void, n as size_t);
 }
