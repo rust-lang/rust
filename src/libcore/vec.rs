@@ -2095,24 +2095,6 @@ pub mod raw {
             }
         }
     }
-
-    /**
-      * Copies data from one vector to another.
-      *
-      * Copies `count` bytes from `src` to `dst`. The source and destination
-      * may overlap.
-      */
-    pub unsafe fn copy_overlapping_memory<T>(dst: &[mut T], src: &[const T],
-                                             count: uint) {
-        assert dst.len() >= count;
-        assert src.len() >= count;
-
-        do as_mut_buf(dst) |p_dst, _len_dst| {
-            do as_const_buf(src) |p_src, _len_src| {
-                ptr::copy_overlapping_memory(p_dst, p_src, count)
-            }
-        }
-    }
 }
 
 /// Operations on `[u8]`
@@ -2166,23 +2148,11 @@ pub mod bytes {
       * Copies data from one vector to another.
       *
       * Copies `count` bytes from `src` to `dst`. The source and destination
-      * may not overlap.
+      * may overlap.
       */
     pub fn copy_memory(dst: &[mut u8], src: &[const u8], count: uint) {
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }
-    }
-
-    /**
-      * Copies data from one vector to another.
-      *
-      * Copies `count` bytes from `src` to `dst`. The source and destination
-      * may overlap.
-      */
-    pub fn copy_overlapping_memory(dst: &[mut u8], src: &[const u8],
-                                   count: uint) {
-        // Bound checks are done at vec::raw::copy_overlapping_memory.
-        unsafe { vec::raw::copy_overlapping_memory(dst, src, count) }
     }
 }
 
