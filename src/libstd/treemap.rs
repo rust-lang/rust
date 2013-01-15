@@ -36,7 +36,7 @@ use core::prelude::*;
 //   * intersection: &
 //   * difference: -
 //   * symmetric difference: ^
-// These would be convenient since the methods will work like `each`
+// These would be convenient since the methods work like `each`
 
 pub struct TreeMap<K: Ord, V> {
     priv root: Option<~TreeNode<K, V>>,
@@ -163,7 +163,7 @@ pub struct TreeMapIterator<K: Ord, V> {
 impl <K: Ord, V> TreeMapIterator<K, V> {
     /// Advance the iterator to the next node (in order) and return a
     /// tuple with a reference to the key and value. If there are no
-    /// more nodes, return None.
+    /// more nodes, return `None`.
     fn next(&mut self) -> Option<(&self/K, &self/V)> {
         while self.stack.is_not_empty() || self.node.is_some() {
             match *self.node {
