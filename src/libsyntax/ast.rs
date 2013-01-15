@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-use ast;
 use codemap::{span, FileName};
 
 use core::cast;
@@ -323,7 +322,7 @@ type field_pat = {ident: ident, pat: @pat};
 enum binding_mode {
     bind_by_value,
     bind_by_move,
-    bind_by_ref(ast::mutability),
+    bind_by_ref(mutability),
     bind_infer
 }
 
@@ -455,7 +454,7 @@ enum expr_vstore {
     expr_vstore_mut_slice,             // &mut [1,2,3,4]
 }
 
-pure fn is_blockish(p: ast::Proto) -> bool {
+pure fn is_blockish(p: Proto) -> bool {
     match p {
         ProtoBorrowed => true,
         ProtoBare | ProtoUniq | ProtoBox => false
@@ -862,8 +861,8 @@ enum lit_ {
     lit_bool(bool),
 }
 
-impl ast::lit_: cmp::Eq {
-    pure fn eq(&self, other: &ast::lit_) -> bool {
+impl lit_: cmp::Eq {
+    pure fn eq(&self, other: &lit_) -> bool {
         match ((*self), *other) {
             (lit_str(a), lit_str(b)) => a == b,
             (lit_int(val_a, ty_a), lit_int(val_b, ty_b)) => {
@@ -889,7 +888,7 @@ impl ast::lit_: cmp::Eq {
             (lit_bool(_), _) => false
         }
     }
-    pure fn ne(&self, other: &ast::lit_) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: &lit_) -> bool { !(*self).eq(other) }
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -1075,8 +1074,8 @@ enum Onceness {
 impl Onceness : ToStr {
     pure fn to_str() -> ~str {
         match self {
-            ast::Once => ~"once",
-            ast::Many => ~"many"
+            Once => ~"once",
+            Many => ~"many"
         }
     }
 }
