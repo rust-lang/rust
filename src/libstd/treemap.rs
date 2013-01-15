@@ -42,9 +42,8 @@ pub struct TreeMap<K: Ord, V> {
 impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
     pure fn eq(&self, other: &TreeMap<K, V>) -> bool {
         if self.len() != other.len() {
-            return false
-        }
-        unsafe { // purity workaround
+            false
+        } else unsafe { // unsafe used as a purity workaround
             let mut x = self.iter();
             let mut y = other.iter();
             for self.len().times {
