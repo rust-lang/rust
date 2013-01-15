@@ -23,8 +23,6 @@ use core::prelude::*;
 // as a right child. The time complexity is the same, and re-balancing
 // operations are more frequent but also cheaper.
 
-// TODO: lazy iteration, for O(n) Eq and set operations instead of O(n*log(m))
-
 // TODO: implement Ord for TreeSet
 // could be superset/subset-based or in-order lexicographic comparison... but
 // there are methods for is_superset/is_subset so lexicographic is more useful
@@ -138,7 +136,42 @@ impl <K: Ord, V> TreeMap<K, V> {
         if ret { self.length -= 1 }
         ret
     }
+
+    /// Get a lazy iterator over the nodes in the map. Requires that it
+    /// be frozen (immutable).
+    fn iter(&self) -> TreeMapIterator/&self<K, V> {
+        TreeMapIterator{stack: ~[], node: &self.root}
+    }
 }
+
+/// Lazy forward iterator over a map
+pub struct TreeMapIterator<K: Ord, V> {
+    priv stack: ~[&~TreeNode<K, V>],
+    priv node: &Option<~TreeNode<K, V>>
+}
+
+impl <K: Ord, V> TreeMapIterator<K, V> {
+    /// Advance the iterator to the next node (in order) and return a
+    /// tuple with a reference to the key and value. If there are no
+    /// more nodes, return None.
+    fn next(&mut self) -> Option<(&self/K, &self/V)> {
+        while self.stack.is_not_empty() || self.node.is_some() {
+            match *self.node {
+              Some(ref x) => {
+                  self.stack.push(x);
+                  self.node = &x.left;
+              }
+              None => {
+                let res = self.stack.pop();
+                self.node = &res.right;
+                return Some((&res.key, &res.value));
+              }
+            }
+        }
+        None
+    }
+}
+
 
 pub struct TreeSet<T: Ord> {
     priv map: TreeMap<T, ()>
@@ -610,6 +643,41 @@ mod test_treemap {
         assert a != b;
         assert b.insert(5, 19);
         assert a == b;
+    }
+
+    #[test]
+    fn test_lazy_iterator() {
+        let mut m = TreeMap::new();
+        let (x1, y1) = (2, 5);
+        let (x2, y2) = (9, 12);
+        let (x3, y3) = (20, -3);
+        let (x4, y4) = (29, 5);
+        let (x5, y5) = (103, 3);
+
+        assert m.insert(x1, y1);
+        assert m.insert(x2, y2);
+        assert m.insert(x3, y3);
+        assert m.insert(x4, y4);
+        assert m.insert(x5, y5);
+
+        let m = m;
+        let mut iter = m.iter();
+
+        // ICE:
+        //assert iter.next() == Some((&x1, &y1));
+        //assert iter.next().eq(&Some((&x1, &y1)));
+
+        assert iter.next().unwrap() == (&x1, &y1);
+        assert iter.next().unwrap() == (&x2, &y2);
+        assert iter.next().unwrap() == (&x3, &y3);
+        assert iter.next().unwrap() == (&x4, &y4);
+        assert iter.next().unwrap() == (&x5, &y5);
+
+        // ICE:
+        //assert iter.next() == None;
+        //assert iter.next().eq(&None);
+
+        assert iter.next().is_none();
     }
 }
 
