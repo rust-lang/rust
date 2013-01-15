@@ -824,21 +824,21 @@ mod test_set {
         let mut a = TreeSet::new();
         let mut b = TreeSet::new();
 
-        a.insert(11);
-        a.insert(1);
-        a.insert(3);
-        a.insert(77);
-        a.insert(103);
-        a.insert(5);
-        a.insert(-5);
+        assert a.insert(11);
+        assert a.insert(1);
+        assert a.insert(3);
+        assert a.insert(77);
+        assert a.insert(103);
+        assert a.insert(5);
+        assert a.insert(-5);
 
-        b.insert(2);
-        b.insert(11);
-        b.insert(77);
-        b.insert(-9);
-        b.insert(-42);
-        b.insert(5);
-        b.insert(3);
+        assert b.insert(2);
+        assert b.insert(11);
+        assert b.insert(77);
+        assert b.insert(-9);
+        assert b.insert(-42);
+        assert b.insert(5);
+        assert b.insert(3);
 
         let mut i = 0;
         let expected = [3, 5, 11, 77];
@@ -854,14 +854,14 @@ mod test_set {
         let mut a = TreeSet::new();
         let mut b = TreeSet::new();
 
-        a.insert(1);
-        a.insert(3);
-        a.insert(5);
-        a.insert(9);
-        a.insert(11);
+        assert a.insert(1);
+        assert a.insert(3);
+        assert a.insert(5);
+        assert a.insert(9);
+        assert a.insert(11);
 
-        b.insert(3);
-        b.insert(9);
+        assert b.insert(3);
+        assert b.insert(9);
 
         let mut i = 0;
         let expected = [1, 5, 11];
