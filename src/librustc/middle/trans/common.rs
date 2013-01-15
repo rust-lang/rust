@@ -945,7 +945,10 @@ fn T_opaque_vec(targ_cfg: @session::config) -> TypeRef {
 // representation of @T as a tuple (i.e., the ty::t version of what T_box()
 // returns).
 fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
-    let ptr = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm});
+    let ptr = ty::mk_ptr(
+        tcx,
+        ty::mt {ty: ty::mk_nil(tcx), mutbl: ast::m_imm}
+    );
     return ty::mk_tup(tcx, ~[ty::mk_uint(tcx), ty::mk_type(tcx),
                          ptr, ptr,
                          t]);

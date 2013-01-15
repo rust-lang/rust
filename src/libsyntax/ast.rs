@@ -670,7 +670,11 @@ struct arm {
 
 #[auto_encode]
 #[auto_decode]
-type field_ = {mutbl: mutability, ident: ident, expr: @expr};
+struct field_ {
+    mutbl: mutability,
+    ident: ident,
+    expr: @expr,
+}
 
 type field = spanned<field_>;
 
@@ -762,12 +766,12 @@ enum expr_ {
 
 #[auto_encode]
 #[auto_decode]
-type capture_item_ = {
+struct capture_item_ {
     id: int,
     is_move: bool,
     name: ident, // Currently, can only capture a local var.
-    span: span
-};
+    span: span,
+}
 
 type capture_item = @capture_item_;
 
@@ -923,7 +927,10 @@ impl lit_: cmp::Eq {
 // type structure in middle/ty.rs as well.
 #[auto_encode]
 #[auto_decode]
-type mt = {ty: @Ty, mutbl: mutability};
+struct mt {
+    ty: @Ty,
+    mutbl: mutability,
+}
 
 #[auto_encode]
 #[auto_decode]

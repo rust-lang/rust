@@ -145,8 +145,10 @@ fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
 }
 fn mk_field(sp: span, f: &{ident: ast::ident, ex: @ast::expr})
     -> ast::field {
-    ast::spanned { node: {mutbl: ast::m_imm, ident: f.ident, expr: f.ex},
-                   span: sp }
+    ast::spanned {
+        node: ast::field_ { mutbl: ast::m_imm, ident: f.ident, expr: f.ex },
+        span: sp,
+    }
 }
 fn mk_fields(sp: span, fields: ~[{ident: ast::ident, ex: @ast::expr}]) ->
     ~[ast::field] {

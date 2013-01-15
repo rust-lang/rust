@@ -412,10 +412,14 @@ fn wrap<T>(f: fn@(T, ast_fold) -> T)
 
 fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: ast_fold) -> field {
-        spanned { node: { mutbl: field.node.mutbl,
-                          ident: fld.fold_ident(field.node.ident),
-                          expr: fld.fold_expr(field.node.expr)},
-                  span: fld.new_span(field.span) }
+        spanned {
+            node: ast::field_ {
+                mutbl: field.node.mutbl,
+                ident: fld.fold_ident(field.node.ident),
+                expr: fld.fold_expr(field.node.expr),
+            },
+            span: fld.new_span(field.span),
+        }
     }
     let fold_field = |x| fold_field_(x, fld);
 
@@ -472,17 +476,25 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
                      vec::map((*arms), |x| fld.fold_arm(*x)))
           }
           expr_fn(proto, decl, ref body, captures) => {
+            let captures = do captures.map |cap_item| {
+                @ast::capture_item_ {
+                    id: fld.new_id(cap_item.id),
+                    ..**cap_item
+                }
+            };
             expr_fn(proto, fold_fn_decl(decl, fld),
                     fld.fold_block((*body)),
-                    @((*captures).map(|cap_item| {
-                        @({id: fld.new_id(cap_item.id),
-                           ..**cap_item})})))
+                    @captures)
           }
           expr_fn_block(decl, ref body, captures) => {
+            let captures = do captures.map |cap_item| {
+                @ast::capture_item_ {
+                    id: fld.new_id(cap_item.id),
+                    ..**cap_item
+                }
+            };
             expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block((*body)),
-                          @((*captures).map(|cap_item| {
-                              @({id: fld.new_id(cap_item.id),
-                                 ..**cap_item})})))
+                          @captures)
           }
           expr_block(ref blk) => expr_block(fld.fold_block((*blk))),
           expr_copy(e) => expr_copy(fld.fold_expr(e)),
@@ -526,7 +538,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
 fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
     let fold_mac = |x| fold_mac_(x, fld);
     fn fold_mt(mt: mt, fld: ast_fold) -> mt {
-        {ty: fld.fold_ty(mt.ty), mutbl: mt.mutbl}
+        mt { ty: fld.fold_ty(mt.ty), mutbl: mt.mutbl }
     }
     fn fold_field(f: ty_field, fld: ast_fold) -> ty_field {
         spanned { node: { ident: fld.fold_ident(f.node.ident),

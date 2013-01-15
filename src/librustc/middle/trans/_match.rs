@@ -857,7 +857,7 @@ fn extract_vec_elems(bcx: block, pat_id: ast::node_id,
         let tail_begin = tvec::pointer_add(bcx, base, tail_offset);
         let tail_len = Sub(bcx, len, tail_offset);
         let tail_ty = ty::mk_evec(bcx.tcx(),
-            {ty: vt.unit_ty, mutbl: ast::m_imm},
+            ty::mt {ty: vt.unit_ty, mutbl: ast::m_imm},
             ty::vstore_slice(ty::re_static)
         );
         let scratch = scratch_datum(bcx, tail_ty, false);
