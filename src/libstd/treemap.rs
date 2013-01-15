@@ -23,11 +23,13 @@ use core::prelude::*;
 // as a right child. The time complexity is the same, and re-balancing
 // operations are more frequent but also cheaper.
 
-// TODO: implement Ord for TreeSet
+// Future improvements:
+
+// implement Ord for TreeSet
 // could be superset/subset-based or in-order lexicographic comparison... but
 // there are methods for is_superset/is_subset so lexicographic is more useful
 
-// TODO: (possibly) implement the overloads Python does for sets:
+// (possibly) implement the overloads Python does for sets:
 //   * union: |
 //   * intersection: &
 //   * difference: -
