@@ -341,13 +341,19 @@ fn public_methods(ms: ~[@method]) -> ~[@method] {
 // a default, pull out the useful fields to make a ty_method
 fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     match method {
-      required(ref m) => (*m),
-      provided(m) => {
-        {ident: m.ident, attrs: m.attrs,
-         purity: m.purity, decl: m.decl,
-         tps: m.tps, self_ty: m.self_ty,
-         id: m.id, span: m.span}
-      }
+        required(ref m) => (*m),
+        provided(m) => {
+            ty_method {
+                ident: m.ident,
+                attrs: m.attrs,
+                purity: m.purity,
+                decl: m.decl,
+                tps: m.tps,
+                self_ty: m.self_ty,
+                id: m.id,
+                span: m.span,
+            }
+        }
     }
 }
 

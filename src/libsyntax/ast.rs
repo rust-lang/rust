@@ -940,15 +940,25 @@ struct mt {
 
 #[auto_encode]
 #[auto_decode]
-type ty_field_ = {ident: ident, mt: mt};
+struct ty_field_ {
+    ident: ident,
+    mt: mt,
+}
 
 type ty_field = spanned<ty_field_>;
 
 #[auto_encode]
 #[auto_decode]
-type ty_method = {ident: ident, attrs: ~[attribute], purity: purity,
-                  decl: fn_decl, tps: ~[ty_param], self_ty: self_ty,
-                  id: node_id, span: span};
+struct ty_method {
+    ident: ident,
+    attrs: ~[attribute],
+    purity: purity,
+    decl: fn_decl,
+    tps: ~[ty_param],
+    self_ty: self_ty,
+    id: node_id,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]
