@@ -113,7 +113,8 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 
     // Add a special __test module to the crate that will contain code
     // generated for the test harness
-    return {module: add_test_module(cx, /*bad*/copy folded.module),.. folded};
+    ast::crate_ { module: add_test_module(cx, /*bad*/copy folded.module),
+                  .. folded }
 }
 
 

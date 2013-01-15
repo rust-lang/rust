@@ -293,10 +293,11 @@ type crate_cfg = ~[@meta_item];
 
 type crate = spanned<crate_>;
 
-type crate_ =
-    {module: _mod,
-     attrs: ~[attribute],
-     config: crate_cfg};
+struct crate_ {
+    module: _mod,
+    attrs: ~[attribute],
+    config: crate_cfg,
+}
 
 type meta_item = spanned<meta_item_>;
 
