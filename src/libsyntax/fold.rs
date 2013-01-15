@@ -319,11 +319,13 @@ fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
 
 
 fn noop_fold_block(b: blk_, fld: ast_fold) -> blk_ {
-    return {view_items: vec::map(b.view_items, |x| fld.fold_view_item(*x)),
-         stmts: vec::map(b.stmts, |x| fld.fold_stmt(*x)),
-         expr: option::map(&b.expr, |x| fld.fold_expr(*x)),
-         id: fld.new_id(b.id),
-         rules: b.rules};
+    ast::blk_ {
+        view_items: b.view_items.map(|x| fld.fold_view_item(*x)),
+        stmts: b.stmts.map(|x| fld.fold_stmt(*x)),
+        expr: b.expr.map(|x| fld.fold_expr(*x)),
+        id: fld.new_id(b.id),
+        rules: b.rules,
+    }
 }
 
 fn noop_fold_stmt(s: stmt_, fld: ast_fold) -> stmt_ {

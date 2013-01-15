@@ -289,10 +289,18 @@ fn block_from_expr(e: @expr) -> blk {
     return spanned {node: blk_, span: e.span};
 }
 
-fn default_block(+stmts1: ~[@stmt], expr1: Option<@expr>, id1: node_id) ->
-   blk_ {
-    {view_items: ~[], stmts: stmts1,
-     expr: expr1, id: id1, rules: default_blk}
+fn default_block(
+    +stmts1: ~[@stmt],
+    expr1: Option<@expr>,
+    id1: node_id
+) -> blk_ {
+    ast::blk_ {
+        view_items: ~[],
+        stmts: stmts1,
+        expr: expr1,
+        id: id1,
+        rules: default_blk,
+    }
 }
 
 fn ident_to_path(s: span, +i: ident) -> @path {

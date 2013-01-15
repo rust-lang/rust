@@ -193,11 +193,13 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk {
-        let blk = {view_items: ~[],
-                   stmts: stmts,
-                   expr: Some(e),
-                   id: self.next_id(),
-                   rules: ast::default_blk};
+        let blk = ast::blk_ {
+            view_items: ~[],
+            stmts: stmts,
+            expr: Some(e),
+            id: self.next_id(),
+            rules: ast::default_blk,
+        };
 
         spanned { node: blk, span: dummy_sp() }
     }
