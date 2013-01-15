@@ -3855,10 +3855,10 @@ impl Parser {
         let crate_attrs = self.parse_inner_attrs_and_next();
         let first_item_outer_attrs = crate_attrs.next;
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
-        return @spanned(lo, self.span.lo,
-                     {module: m,
-                      attrs: crate_attrs.inner,
-                      config: self.cfg});
+        @spanned(lo, self.span.lo,
+                 ast::crate_ { module: m,
+                               attrs: crate_attrs.inner,
+                               config: self.cfg })
     }
 
     fn parse_str() -> @~str {

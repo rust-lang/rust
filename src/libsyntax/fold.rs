@@ -165,11 +165,11 @@ fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
     let fold_meta_item = |x| fold_meta_item_(x, fld);
     let fold_attribute = |x| fold_attribute_(x, fld);
 
-    return {
+    crate_ {
         module: fld.fold_mod(c.module),
-        attrs: vec::map(c.attrs, |x| fold_attribute(*x)),
-        config: vec::map(c.config, |x| fold_meta_item(*x))
-    };
+        attrs: c.attrs.map(|x| fold_attribute(*x)),
+        config: c.config.map(|x| fold_meta_item(*x)),
+    }
 }
 
 fn noop_fold_view_item(vi: view_item_, _fld: ast_fold) -> view_item_ {
