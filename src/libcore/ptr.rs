@@ -26,12 +26,6 @@ use vec;
 #[abi = "cdecl"]
 extern mod libc_ {
     #[rust_stack]
-    unsafe fn memcpy(dest: *mut c_void,
-                     src: *const c_void,
-                     n: libc::size_t)
-                  -> *c_void;
-
-    #[rust_stack]
     unsafe fn memmove(dest: *mut c_void,
                       src: *const c_void,
                       n: libc::size_t)
@@ -119,23 +113,10 @@ pub pure fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
  * Copies data from one location to another
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
- * and destination may not overlap.
- */
-#[inline(always)]
-pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    let n = count * sys::size_of::<T>();
-    libc_::memcpy(dst as *mut c_void, src as *c_void, n as size_t);
-}
-
-/**
- * Copies data from one location to another
- *
- * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
  */
 #[inline(always)]
-pub unsafe fn copy_overlapping_memory<T>(dst: *mut T, src: *const T,
-                                         count: uint) {
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memmove(dst as *mut c_void, src as *c_void, n as size_t);
 }
@@ -145,7 +126,6 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memset(dst as *mut c_void, c as libc::c_int, n as size_t);
 }
-
 
 /**
   Transform a region pointer - &T - to an unsafe pointer - *T.
