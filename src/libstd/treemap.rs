@@ -47,10 +47,10 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
     pure fn eq(&self, other: &TreeMap<K, V>) -> bool {
         if self.len() != other.len() {
             false
-        } else unsafe { // unsafe used as a purity workaround
+        } else {
             let mut x = self.iter();
             let mut y = other.iter();
-            for self.len().times {
+            for self.len().times unsafe { // unsafe used as a purity workaround
                 // ICE: x.next() != y.next()
 
                 let (x1, x2) = x.next().unwrap();
@@ -149,7 +149,7 @@ impl <K: Ord, V> TreeMap<K, V> {
 
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
-    fn iter(&self) -> TreeMapIterator/&self<K, V> {
+    pure fn iter(&self) -> TreeMapIterator/&self<K, V> {
         TreeMapIterator{stack: ~[], node: &self.root}
     }
 }
@@ -226,6 +226,12 @@ impl <T: Ord> TreeSet<T> {
     /// present in the set.
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 
+    /// Get a lazy iterator over the values in the set.
+    /// Requires that it be frozen (immutable).
+    pure fn iter(&self) -> TreeSetIterator/&self<T> {
+        TreeSetIterator{iter: self.map.iter()}
+    }
+
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     pure fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
@@ -246,25 +252,22 @@ impl <T: Ord> TreeSet<T> {
 
     /// Visit the values (in-order) representing the difference
     pure fn difference(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
-        unsafe { // purity workaround
-            let mut x = self.map.iter();
-            let mut y = other.map.iter();
+        let mut x = self.iter();
+        let mut y = other.iter();
 
+        unsafe { // purity workaround
             let mut a = x.next();
             let mut b = y.next();
 
             while a.is_some() {
                 if b.is_none() {
-                    while a.is_some() {
-                        let (a1, _) = a.unwrap();
-                        if !f(a1) { return }
-                        a = x.next();
+                    return do a.while_some() |a1| {
+                        if f(a1) { x.next() } else { None }
                     }
-                    return
                 }
 
-                let (a1, _) = a.unwrap();
-                let (b1, _) = b.unwrap();
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
 
                 if a1 < b1 {
                     if !f(a1) { return }
@@ -280,25 +283,22 @@ impl <T: Ord> TreeSet<T> {
     /// Visit the values (in-order) representing the symmetric difference
     pure fn symmetric_difference(&self, other: &TreeSet<T>,
                                  f: fn(&T) -> bool) {
-        unsafe { // purity workaround
-            let mut x = self.map.iter();
-            let mut y = other.map.iter();
+        let mut x = self.iter();
+        let mut y = other.iter();
 
+        unsafe { // purity workaround
             let mut a = x.next();
             let mut b = y.next();
 
             while a.is_some() {
                 if b.is_none() {
-                    while a.is_some() {
-                        let (a1, _) = a.unwrap();
-                        if !f(a1) { return }
-                        a = x.next();
+                    return do a.while_some() |a1| {
+                        if f(a1) { x.next() } else { None }
                     }
-                    return
                 }
 
-                let (a1, _) = a.unwrap();
-                let (b1, _) = b.unwrap();
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
 
                 if a1 < b1 {
                     if !f(a1) { return }
@@ -312,10 +312,8 @@ impl <T: Ord> TreeSet<T> {
                     b = y.next();
                 }
             }
-            while b.is_some() {
-                let (b1, _) = b.unwrap();
-                if !f(b1) { return }
-                b = y.next();
+            do b.while_some |b1| {
+                if f(b1) { y.next() } else { None }
             }
         }
     }
@@ -332,25 +330,22 @@ impl <T: Ord> TreeSet<T> {
 
     /// Visit the values (in-order) representing the union
     pure fn union(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
-        unsafe { // purity workaround
-            let mut x = self.map.iter();
-            let mut y = other.map.iter();
+        let mut x = self.iter();
+        let mut y = other.iter();
 
+        unsafe { // purity workaround
             let mut a = x.next();
             let mut b = y.next();
 
             while a.is_some() {
                 if b.is_none() {
-                    while a.is_some() {
-                        let (a1, _) = a.unwrap();
-                        if !f(a1) { return }
-                        a = x.next();
+                    return do a.while_some() |a1| {
+                        if f(a1) { x.next() } else { None }
                     }
-                    return
                 }
 
-                let (a1, _) = a.unwrap();
-                let (b1, _) = b.unwrap();
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
 
                 if b1 < a1 {
                     if !f(b1) { return }
@@ -364,6 +359,20 @@ impl <T: Ord> TreeSet<T> {
                 }
             }
         }
+    }
+}
+
+/// Lazy forward iterator over a set
+pub struct TreeSetIterator<T: Ord> {
+    priv iter: TreeMapIterator<T, ()>
+}
+
+impl <T: Ord> TreeSetIterator<T> {
+    /// Advance the iterator to the next node (in order) and return a
+    /// tuple with a reference to the value. If there are no more nodes,
+    /// return `None`.
+    fn next(&mut self) -> Option<&self/T> {
+        self.iter.next().map_consume(|(x, _)| x)
     }
 }
 
