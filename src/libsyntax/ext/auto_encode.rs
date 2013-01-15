@@ -356,21 +356,29 @@ priv impl ext_ctxt {
     }
 
     fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
-        ast::spanned { node: { view_items: ~[],
-                               stmts: stmts,
-                               expr: None,
-                               id: self.next_id(),
-                               rules: ast::default_blk},
-                       span: span }
+        ast::spanned {
+            node: ast::blk_ {
+                view_items: ~[],
+                stmts: stmts,
+                expr: None,
+                id: self.next_id(),
+                rules: ast::default_blk,
+            },
+            span: span,
+        }
     }
 
     fn expr_blk(expr: @ast::expr) -> ast::blk {
-        ast::spanned { node: { view_items: ~[],
-                               stmts: ~[],
-                               expr: Some(expr),
-                               id: self.next_id(),
-                               rules: ast::default_blk},
-                       span: expr.span }
+        ast::spanned {
+            node: ast::blk_ {
+                view_items: ~[],
+                stmts: ~[],
+                expr: Some(expr),
+                id: self.next_id(),
+                rules: ast::default_blk,
+            },
+            span: expr.span,
+        }
     }
 
     fn expr_path(span: span, strs: ~[ast::ident]) -> @ast::expr {

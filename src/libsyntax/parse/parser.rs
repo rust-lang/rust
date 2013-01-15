@@ -1574,8 +1574,13 @@ impl Parser {
         let lo = self.last_span.lo;
         let (decl, captures) = parse_decl();
         let body = parse_body();
-        let fakeblock = {view_items: ~[], stmts: ~[], expr: Some(body),
-                         id: self.get_id(), rules: default_blk};
+        let fakeblock = ast::blk_ {
+            view_items: ~[],
+            stmts: ~[],
+            expr: Some(body),
+            id: self.get_id(),
+            rules: default_blk,
+        };
         let fakeblock = spanned(body.span.lo, body.span.hi,
                                 fakeblock);
         return self.mk_expr(lo, body.span.hi,
@@ -1753,12 +1758,16 @@ impl Parser {
                 self.eat(token::COMMA);
             }
 
-            let blk = spanned { node: { view_items: ~[],
-                                        stmts: ~[],
-                                        expr: Some(expr),
-                                        id: self.get_id(),
-                                        rules: default_blk},
-                                span: expr.span };
+            let blk = spanned {
+                node: ast::blk_ {
+                    view_items: ~[],
+                    stmts: ~[],
+                    expr: Some(expr),
+                    id: self.get_id(),
+                    rules: default_blk,
+                },
+                span: expr.span,
+            };
 
             arms.push({pats: pats, guard: guard, body: blk});
         }
@@ -2378,9 +2387,14 @@ impl Parser {
         }
         let mut hi = self.span.hi;
         self.bump();
-        let bloc = {view_items: view_items, stmts: stmts, expr: expr,
-                    id: self.get_id(), rules: s};
-        return spanned(lo, hi, bloc);
+        let bloc = ast::blk_ {
+            view_items: view_items,
+            stmts: stmts,
+            expr: expr,
+            id: self.get_id(),
+            rules: s,
+        };
+        spanned(lo, hi, bloc)
     }
 
     fn mk_ty_path(i: ident) -> @Ty {

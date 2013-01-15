@@ -196,39 +196,45 @@ fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
     let decl = ast::spanned {node: ast::decl_local(~[local]), span: sp};
     @ast::spanned { node: ast::stmt_decl(@decl, cx.next_id()), span: sp }
 }
-fn mk_block(cx: ext_ctxt, sp: span,
+fn mk_block(cx: ext_ctxt, span: span,
             view_items: ~[@ast::view_item],
             stmts: ~[@ast::stmt],
             expr: Option<@ast::expr>) -> @ast::expr {
-    let blk = ast::spanned { node: { view_items: view_items,
-                                     stmts: stmts,
-                                     expr: expr,
-                                     id: cx.next_id(),
-                                     rules: ast::default_blk },
-                             span: sp };
-    mk_expr(cx, sp, ast::expr_block(blk))
+    let blk = ast::spanned {
+        node: ast::blk_ {
+             view_items: view_items,
+             stmts: stmts,
+             expr: expr,
+             id: cx.next_id(),
+             rules: ast::default_blk,
+        },
+        span: span,
+    };
+    mk_expr(cx, span, ast::expr_block(blk))
 }
-fn mk_block_(cx: ext_ctxt, sp: span, +stmts: ~[@ast::stmt]) -> ast::blk {
+fn mk_block_(cx: ext_ctxt, span: span, +stmts: ~[@ast::stmt]) -> ast::blk {
     ast::spanned {
-        node: {
+        node: ast::blk_ {
             view_items: ~[],
-            stmts: move stmts,
+            stmts: stmts,
             expr: None,
             id: cx.next_id(),
-            rules: ast::default_blk
+            rules: ast::default_blk,
         },
-        span: sp
+        span: span,
     }
 }
 fn mk_simple_block(cx: ext_ctxt, span: span, expr: @ast::expr) -> ast::blk {
-    let block = {
-        view_items: ~[],
-        stmts: ~[],
-        expr: Some(expr),
-        id: cx.next_id(),
-        rules: ast::default_blk
-    };
-    ast::spanned { node: block, span: span }
+    ast::spanned {
+        node: ast::blk_ {
+            view_items: ~[],
+            stmts: ~[],
+            expr: Some(expr),
+            id: cx.next_id(),
+            rules: ast::default_blk,
+        },
+        span: span,
+    }
 }
 fn mk_copy(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_copy(e))

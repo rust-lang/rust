@@ -313,11 +313,13 @@ type blk = spanned<blk_>;
 
 #[auto_encode]
 #[auto_decode]
-type blk_ = {view_items: ~[@view_item],
-             stmts: ~[@stmt],
-             expr: Option<@expr>,
-             id: node_id,
-             rules: blk_check_mode};
+struct blk_ {
+    view_items: ~[@view_item],
+    stmts: ~[@stmt],
+    expr: Option<@expr>,
+    id: node_id,
+    rules: blk_check_mode,
+}
 
 #[auto_encode]
 #[auto_decode]
