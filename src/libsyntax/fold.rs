@@ -770,7 +770,11 @@ impl ast_fold_fns: ast_fold {
     }
     fn fold_ty(&&x: @Ty) -> @Ty {
         let (n, s) = (self.fold_ty)(x.node, x.span, self as ast_fold);
-        return @{id: (self.new_id)(x.id), node: n, span: (self.new_span)(s)};
+        @Ty {
+            id: (self.new_id)(x.id),
+            node: n,
+            span: (self.new_span)(s),
+        }
     }
     fn fold_mod(x: _mod) -> _mod {
         return (self.fold_mod)(x, self as ast_fold);

@@ -329,19 +329,25 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::Ty {
         mk_path(cx, ~[cx.sess.ident_of(~"test"),
                       cx.sess.ident_of(~"TestDesc")]);
 
-    let test_desc_ty: ast::Ty =
-        {id: cx.sess.next_node_id(),
-         node: ast::ty_path(test_desc_ty_path, cx.sess.next_node_id()),
-         span: dummy_sp()};
+    let test_desc_ty = ast::Ty {
+        id: cx.sess.next_node_id(),
+        node: ast::ty_path(test_desc_ty_path, cx.sess.next_node_id()),
+        span: dummy_sp(),
+    };
 
     let vec_mt = ast::mt {ty: @test_desc_ty, mutbl: ast::m_imm};
 
-    let inner_ty = @{id: cx.sess.next_node_id(),
-                     node: ast::ty_vec(vec_mt),
-                     span: dummy_sp()};
-    return @{id: cx.sess.next_node_id(),
-          node: ast::ty_uniq(ast::mt {ty: inner_ty, mutbl: ast::m_imm}),
-          span: dummy_sp()};
+    let inner_ty = @ast::Ty {
+        id: cx.sess.next_node_id(),
+        node: ast::ty_vec(vec_mt),
+        span: dummy_sp(),
+    };
+
+    @ast::Ty {
+        id: cx.sess.next_node_id(),
+        node: ast::ty_uniq(ast::mt { ty: inner_ty, mutbl: ast::m_imm }),
+        span: dummy_sp(),
+    }
 }
 
 fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
@@ -482,7 +488,11 @@ fn mk_test_wrapper(cx: test_ctxt,
 
     let wrapper_decl: ast::fn_decl = {
         inputs: ~[],
-        output: @{id: cx.sess.next_node_id(), node: ast::ty_nil, span: span},
+        output: @ast::Ty {
+            id: cx.sess.next_node_id(),
+            node: ast::ty_nil,
+            span: span,
+        },
         cf: ast::return_val
     };
 
@@ -505,9 +515,11 @@ fn mk_test_wrapper(cx: test_ctxt,
 }
 
 fn mk_main(cx: test_ctxt) -> @ast::item {
-    let ret_ty = {id: cx.sess.next_node_id(),
-                  node: ast::ty_nil,
-                  span: dummy_sp()};
+    let ret_ty = ast::Ty {
+        id: cx.sess.next_node_id(),
+        node: ast::ty_nil,
+        span: dummy_sp(),
+    };
 
     let decl: ast::fn_decl =
         {inputs: ~[],
