@@ -421,10 +421,16 @@ impl Parser {
                 debug!("parse_trait_methods(): parsing required method");
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
-                required({ident: ident, attrs: attrs,
-                          purity: pur, decl: d, tps: tps,
-                          self_ty: self_ty,
-                          id: p.get_id(), span: mk_sp(lo, hi)})
+                required(ty_method {
+                    ident: ident,
+                    attrs: attrs,
+                    purity: pur,
+                    decl: d,
+                    tps: tps,
+                    self_ty: self_ty,
+                    id: p.get_id(),
+                    span: mk_sp(lo, hi)
+                })
               }
               token::LBRACE => {
                 debug!("parse_trait_methods(): parsing provided method");
@@ -467,9 +473,9 @@ impl Parser {
         spanned(
             lo,
             ty.span.hi,
-            {
+            ast::ty_field_ {
                 ident: id,
-                mt: ast::mt { ty: ty, mutbl: mutbl }
+                mt: ast::mt { ty: ty, mutbl: mutbl },
             }
         )
     }
