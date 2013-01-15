@@ -541,9 +541,13 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
         mt { ty: fld.fold_ty(mt.ty), mutbl: mt.mutbl }
     }
     fn fold_field(f: ty_field, fld: ast_fold) -> ty_field {
-        spanned { node: { ident: fld.fold_ident(f.node.ident),
-                          mt: fold_mt(f.node.mt, fld) },
-                  span: fld.new_span(f.span) }
+        spanned {
+            node: ast::ty_field_ {
+                ident: fld.fold_ident(f.node.ident),
+                mt: fold_mt(f.node.mt, fld),
+            },
+            span: fld.new_span(f.span),
+        }
     }
     match t {
       ty_nil | ty_bot | ty_infer => copy t,

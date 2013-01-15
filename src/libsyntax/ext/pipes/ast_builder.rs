@@ -167,7 +167,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field {
         spanned {
-            node: {
+            node: ast::ty_field_ {
                 ident: name,
                 mt: ast::mt { ty: ty, mutbl: ast::m_imm },
             },
