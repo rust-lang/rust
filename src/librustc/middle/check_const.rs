@@ -57,10 +57,11 @@ fn check_item(sess: Session, ast_map: ast_map::map,
 fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
         match e.node {
-          expr_vstore(@{node: expr_lit(@spanned { node: lit_str(_),
-                                                  _}), _},
-                      expr_vstore_uniq) => true,
-          _ => false
+            expr_vstore(
+                @expr { node: expr_lit(@spanned { node: lit_str(_), _}), _ },
+                expr_vstore_uniq
+            ) => true,
+            _ => false
         }
     }
     match p.node {

@@ -19,10 +19,13 @@ use ext::build;
 use core::dvec;
 use core::option;
 
-fn mk_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) ->
+fn mk_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) -> @ast::expr {
     @ast::expr {
-    return @{id: cx.next_id(), callee_id: cx.next_id(),
-          node: expr, span: sp};
+        id: cx.next_id(),
+        callee_id: cx.next_id(),
+        node: expr,
+        span: sp,
+    }
 }
 
 fn mk_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {

@@ -888,15 +888,21 @@ impl Parser {
     }
 
     fn mk_expr(+lo: BytePos, +hi: BytePos, +node: expr_) -> @expr {
-        return @{id: self.get_id(), callee_id: self.get_id(),
-              node: node, span: mk_sp(lo, hi)};
+        @expr {
+            id: self.get_id(),
+            callee_id: self.get_id(),
+            node: node,
+            span: mk_sp(lo, hi),
+        }
     }
 
     fn mk_mac_expr(+lo: BytePos, +hi: BytePos, m: mac_) -> @expr {
-        return @{id: self.get_id(),
-              callee_id: self.get_id(),
-              node: expr_mac(spanned {node: m, span: mk_sp(lo, hi)}),
-              span: mk_sp(lo, hi)};
+        @expr {
+            id: self.get_id(),
+            callee_id: self.get_id(),
+            node: expr_mac(spanned {node: m, span: mk_sp(lo, hi)}),
+            span: mk_sp(lo, hi),
+        }
     }
 
     fn mk_lit_u32(i: u32) -> @expr {
@@ -904,8 +910,12 @@ impl Parser {
         let lv_lit = @spanned { node: lit_uint(i as u64, ty_u32),
                                 span: span };
 
-        return @{id: self.get_id(), callee_id: self.get_id(),
-              node: expr_lit(lv_lit), span: span};
+        @expr {
+            id: self.get_id(),
+            callee_id: self.get_id(),
+            node: expr_lit(lv_lit),
+            span: span,
+        }
     }
 
     fn parse_bottom_expr() -> @expr {
@@ -1625,23 +1635,21 @@ impl Parser {
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                     ctor(block));
             let args = vec::append(args, ~[last_arg]);
-            @{node: expr_call(f, args, true),
-              .. *e}
+            @expr {node: expr_call(f, args, true), .. *e}
           }
           expr_method_call(f, i, tps, args, false) => {
             let block = self.parse_lambda_block_expr();
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                     ctor(block));
             let args = vec::append(args, ~[last_arg]);
-            @{node: expr_method_call(f, i, tps, args, true),
-              .. *e}
+            @expr {node: expr_method_call(f, i, tps, args, true), .. *e}
           }
           expr_field(f, i, tps) => {
             let block = self.parse_lambda_block_expr();
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                     ctor(block));
-            @{node: expr_method_call(f, i, tps, ~[last_arg], true),
-              .. *e}
+            @expr {node: expr_method_call(f, i, tps, ~[last_arg], true),
+                   .. *e}
           }
           expr_path(*) | expr_call(*) | expr_method_call(*) |
           expr_paren(*) => {
@@ -1916,12 +1924,15 @@ impl Parser {
             hi = sub.span.hi;
             // HACK: parse @"..." as a literal of a vstore @str
             pat = match sub.node {
-              pat_lit(e@@{
+              pat_lit(e@@expr {
                 node: expr_lit(@spanned {node: lit_str(_), span: _}), _
               }) => {
-                let vst = @{id: self.get_id(), callee_id: self.get_id(),
-                            node: expr_vstore(e, expr_vstore_box),
-                            span: mk_sp(lo, hi)};
+                let vst = @expr {
+                    id: self.get_id(),
+                    callee_id: self.get_id(),
+                    node: expr_vstore(e, expr_vstore_box),
+                    span: mk_sp(lo, hi),
+                };
                 pat_lit(vst)
               }
               _ => pat_box(sub)
@@ -1933,12 +1944,15 @@ impl Parser {
             hi = sub.span.hi;
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = match sub.node {
-              pat_lit(e@@{
+              pat_lit(e@@expr {
                 node: expr_lit(@spanned {node: lit_str(_), span: _}), _
               }) => {
-                let vst = @{id: self.get_id(), callee_id: self.get_id(),
-                            node: expr_vstore(e, expr_vstore_uniq),
-                            span: mk_sp(lo, hi)};
+                let vst = @expr {
+                    id: self.get_id(),
+                    callee_id: self.get_id(),
+                    node: expr_vstore(e, expr_vstore_uniq),
+                    span: mk_sp(lo, hi),
+                };
                 pat_lit(vst)
               }
               _ => pat_uniq(sub)
@@ -1952,10 +1966,10 @@ impl Parser {
               hi = sub.span.hi;
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
-                  pat_lit(e@@{
+                  pat_lit(e@@expr {
                       node: expr_lit(@spanned {node: lit_str(_), span: _}), _
                   }) => {
-                      let vst = @{
+                      let vst = @expr {
                           id: self.get_id(),
                           callee_id: self.get_id(),
                           node: expr_vstore(e, expr_vstore_slice),

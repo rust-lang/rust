@@ -38,7 +38,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
               expr_fn_block(_, ref b, _) => {
                 (v.visit_block)((*b), {in_loop: false, can_ret: false}, v);
               }
-              expr_loop_body(@{node: expr_fn_block(_, ref b, _), _}) => {
+              expr_loop_body(@expr {node: expr_fn_block(_, ref b, _), _}) => {
                 let proto = ty::ty_fn_proto(ty::expr_ty(tcx, e));
                 let blk = (proto == ProtoBorrowed);
                 (v.visit_block)((*b), {in_loop: true, can_ret: blk}, v);

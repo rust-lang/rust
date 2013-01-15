@@ -263,8 +263,12 @@ priv impl ext_ctxt {
     }
 
     fn expr(span: span, node: ast::expr_) -> @ast::expr {
-        @{id: self.next_id(), callee_id: self.next_id(),
-          node: node, span: span}
+        @ast::expr {
+            id: self.next_id(),
+            callee_id: self.next_id(),
+            node: node,
+            span: span,
+        }
     }
 
     fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
