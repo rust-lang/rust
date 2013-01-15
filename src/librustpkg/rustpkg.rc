@@ -16,7 +16,6 @@
        url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
 
 #[crate_type = "lib"];
-
 #[no_core];
 
 extern mod core(vers = "0.6");
@@ -24,8 +23,55 @@ extern mod std(vers = "0.6");
 extern mod rustc(vers = "0.6");
 extern mod syntax(vers = "0.6");
 
+use core::*;
+use std::getopts;
+use getopts::{optflag, optopt, opt_present};
 use rustc::metadata::{filesearch};
 
-pub fn main() {
+mod api;
+mod usage;
+mod util;
 
+use util::*;
+
+pub fn main() {
+    let args = os::args();
+    let opts = ~[optflag(~"h"), optflag(~"help")];
+    let matches = &match getopts::getopts(args, opts) {
+        result::Ok(m) => m,
+        result::Err(f) => {
+            fail fmt!("%s", getopts::fail_str(f));
+        }
+    };
+    let help = opt_present(matches, ~"h") || opt_present(matches, ~"help");
+    let mut args = copy matches.free;
+
+    args.shift();
+
+    if (args.len() < 1) {
+        return usage::general();
+    }
+
+    let cmd = copy args[0];
+
+    if !is_cmd(cmd) {
+        return usage::general();
+    } else if help {
+        match cmd {
+            ~"build" => usage::build(),
+            ~"clean" => usage::clean(),
+            ~"install" => usage::install(),
+            ~"prefer" => usage::prefer(),
+            ~"test" => usage::test(),
+            ~"uninstall" => usage::uninstall(),
+            ~"unprefer" => usage::unprefer(),
+            _ => usage::general()
+        }
+    }
+
+    Ctx { cmd: cmd, args: args }
 }
+
+pub use Crate = api::Crate;
+pub use build = api::build;
+pub use util = api::util;
