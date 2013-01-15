@@ -293,10 +293,11 @@ type crate_cfg = ~[@meta_item];
 
 type crate = spanned<crate_>;
 
-type crate_ =
-    {module: _mod,
-     attrs: ~[attribute],
-     config: crate_cfg};
+struct crate_ {
+    module: _mod,
+    attrs: ~[attribute],
+    config: crate_cfg,
+}
 
 type meta_item = spanned<meta_item_>;
 
@@ -312,19 +313,28 @@ type blk = spanned<blk_>;
 
 #[auto_encode]
 #[auto_decode]
-type blk_ = {view_items: ~[@view_item],
-             stmts: ~[@stmt],
-             expr: Option<@expr>,
-             id: node_id,
-             rules: blk_check_mode};
+struct blk_ {
+    view_items: ~[@view_item],
+    stmts: ~[@stmt],
+    expr: Option<@expr>,
+    id: node_id,
+    rules: blk_check_mode,
+}
 
 #[auto_encode]
 #[auto_decode]
-type pat = {id: node_id, node: pat_, span: span};
+struct pat {
+    id: node_id,
+    node: pat_,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]
-type field_pat = {ident: ident, pat: @pat};
+struct field_pat {
+    ident: ident,
+    pat: @pat,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -634,8 +644,13 @@ enum stmt_ {
 // a refinement on pat.
 #[auto_encode]
 #[auto_decode]
-type local_ =  {is_mutbl: bool, ty: @Ty, pat: @pat,
-                init: Option<@expr>, id: node_id};
+struct local_ {
+    is_mutbl: bool,
+    ty: @Ty,
+    pat: @pat,
+    init: Option<@expr>,
+    id: node_id,
+}
 
 type local = spanned<local_>;
 
@@ -647,11 +662,19 @@ enum decl_ { decl_local(~[@local]), decl_item(@item), }
 
 #[auto_encode]
 #[auto_decode]
-type arm = {pats: ~[@pat], guard: Option<@expr>, body: blk};
+struct arm {
+    pats: ~[@pat],
+    guard: Option<@expr>,
+    body: blk,
+}
 
 #[auto_encode]
 #[auto_decode]
-type field_ = {mutbl: mutability, ident: ident, expr: @expr};
+struct field_ {
+    mutbl: mutability,
+    ident: ident,
+    expr: @expr,
+}
 
 type field = spanned<field_>;
 
@@ -743,12 +766,12 @@ enum expr_ {
 
 #[auto_encode]
 #[auto_decode]
-type capture_item_ = {
+struct capture_item_ {
     id: int,
     is_move: bool,
     name: ident, // Currently, can only capture a local var.
-    span: span
-};
+    span: span,
+}
 
 type capture_item = @capture_item_;
 
@@ -904,7 +927,10 @@ impl lit_: cmp::Eq {
 // type structure in middle/ty.rs as well.
 #[auto_encode]
 #[auto_decode]
-type mt = {ty: @Ty, mutbl: mutability};
+struct mt {
+    ty: @Ty,
+    mutbl: mutability,
+}
 
 #[auto_encode]
 #[auto_decode]

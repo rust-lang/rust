@@ -30,8 +30,9 @@ fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
 
 fn expr_is_simple_block(e: @ast::expr) -> bool {
     match e.node {
-      ast::expr_block(ast::spanned {node: {rules: ast::default_blk, _}, _}) =>
-        true,
+        ast::expr_block(
+            ast::spanned { node: ast::blk_ { rules: ast::default_blk, _ }, _ }
+        ) => true,
       _ => false
     }
 }

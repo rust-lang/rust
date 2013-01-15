@@ -133,14 +133,19 @@ fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
     }
 }
 
-fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
-   ast::blk_ {
+fn fold_block(
+    cx: ctxt,
+    b: ast::blk_,
+    fld: fold::ast_fold
+) -> ast::blk_ {
     let filtered_stmts = vec::filter_map(b.stmts, |a| filter_stmt(cx, *a));
-    return {view_items: /*bad*/copy b.view_items,
-         stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
-         expr: option::map(&b.expr, |x| fld.fold_expr(*x)),
-         id: b.id,
-         rules: b.rules};
+    ast::blk_ {
+        view_items: /*bad*/copy b.view_items,
+        stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
+        expr: option::map(&b.expr, |x| fld.fold_expr(*x)),
+        id: b.id,
+        rules: b.rules,
+    }
 }
 
 fn item_in_cfg(cx: ctxt, item: @ast::item) -> bool {

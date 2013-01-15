@@ -499,7 +499,7 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
     let _indenter = indenter();
 
     let tcx = bcx.tcx();
-    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
         match /*bad*/copy p.node {
             ast::pat_enum(_, subpats) => {
@@ -600,7 +600,7 @@ fn enter_rec_or_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
            bcx.val_str(val));
     let _indenter = indenter();
 
-    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match /*bad*/copy p.node {
             ast::pat_rec(fpats, _) | ast::pat_struct(_, fpats, _) => {
@@ -632,7 +632,7 @@ fn enter_tup(bcx: block, dm: DefMap, m: &[@Match/&r],
            bcx.val_str(val));
     let _indenter = indenter();
 
-    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match /*bad*/copy p.node {
             ast::pat_tup(elts) => {
@@ -657,7 +657,7 @@ fn enter_tuple_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
            bcx.val_str(val));
     let _indenter = indenter();
 
-    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match /*bad*/copy p.node {
             ast::pat_enum(_, Some(elts)) => Some(elts),
@@ -680,7 +680,7 @@ fn enter_box(bcx: block, dm: DefMap, m: &[@Match/&r],
            bcx.val_str(val));
     let _indenter = indenter();
 
-    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
             ast::pat_box(sub) => {
@@ -705,7 +705,7 @@ fn enter_uniq(bcx: block, dm: DefMap, m: &[@Match/&r],
            bcx.val_str(val));
     let _indenter = indenter();
 
-    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
             ast::pat_uniq(sub) => {
@@ -730,7 +730,7 @@ fn enter_region(bcx: block, dm: DefMap, m: &[@Match/&r],
            bcx.val_str(val));
     let _indenter = indenter();
 
-    let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
+    let dummy = @ast::pat { id: 0, node: ast::pat_wild, span: dummy_sp() };
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
             ast::pat_region(sub) => {
@@ -857,7 +857,7 @@ fn extract_vec_elems(bcx: block, pat_id: ast::node_id,
         let tail_begin = tvec::pointer_add(bcx, base, tail_offset);
         let tail_len = Sub(bcx, len, tail_offset);
         let tail_ty = ty::mk_evec(bcx.tcx(),
-            {ty: vt.unit_ty, mutbl: ast::m_imm},
+            ty::mt {ty: vt.unit_ty, mutbl: ast::m_imm},
             ty::vstore_slice(ty::re_static)
         );
         let scratch = scratch_datum(bcx, tail_ty, false);

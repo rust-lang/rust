@@ -185,7 +185,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     fn ast_mt_to_mt<AC: ast_conv, RS: region_scope Copy Durable>(
         self: AC, rscope: RS, mt: ast::mt) -> ty::mt {
 
-        return {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl};
+        ty::mt {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl}
     }
 
     // Handle @, ~, and & being able to mean estrs and evecs.
@@ -204,7 +204,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
             ast::ty_vec(mt) => {
                 let mut mt = ast_mt_to_mt(self, rscope, mt);
                 if a_seq_ty.mutbl == ast::m_mutbl {
-                    mt = { ty: mt.ty, mutbl: ast::m_mutbl };
+                    mt = ty::mt { ty: mt.ty, mutbl: ast::m_mutbl };
                 }
                 return ty::mk_evec(tcx, mt, vst);
             }

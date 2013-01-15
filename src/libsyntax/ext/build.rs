@@ -145,8 +145,10 @@ fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
 }
 fn mk_field(sp: span, f: &{ident: ast::ident, ex: @ast::expr})
     -> ast::field {
-    ast::spanned { node: {mutbl: ast::m_imm, ident: f.ident, expr: f.ex},
-                   span: sp }
+    ast::spanned {
+        node: ast::field_ { mutbl: ast::m_imm, ident: f.ident, expr: f.ex },
+        span: sp,
+    }
 }
 fn mk_fields(sp: span, fields: ~[{ident: ast::ident, ex: @ast::expr}]) ->
     ~[ast::field] {
@@ -181,54 +183,67 @@ fn mk_glob_use(cx: ext_ctxt, sp: span,
 fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
             ident: ast::ident, ex: @ast::expr) -> @ast::stmt {
 
-    let pat : @ast::pat = @{id: cx.next_id(),
-                            node: ast::pat_ident(ast::bind_by_value,
-                                                 mk_raw_path(sp, ~[ident]),
-                                                 None),
-                           span: sp};
+    let pat = @ast::pat {
+        id: cx.next_id(),
+        node: ast::pat_ident(
+            ast::bind_by_value,
+            mk_raw_path(sp, ~[ident]),
+            None),
+        span: sp,
+    };
     let ty : @ast::Ty = @{ id: cx.next_id(), node: ast::ty_infer, span: sp };
-    let local : @ast::local = @ast::spanned { node: { is_mutbl: mutbl,
-                                                      ty: ty,
-                                                      pat: pat,
-                                                      init: Some(ex),
-                                                      id: cx.next_id()},
-                                              span: sp};
+    let local = @ast::spanned {
+        node: ast::local_ {
+            is_mutbl: mutbl,
+            ty: ty,
+            pat: pat,
+            init: Some(ex),
+            id: cx.next_id(),
+        },
+        span: sp,
+    };
     let decl = ast::spanned {node: ast::decl_local(~[local]), span: sp};
     @ast::spanned { node: ast::stmt_decl(@decl, cx.next_id()), span: sp }
 }
-fn mk_block(cx: ext_ctxt, sp: span,
+fn mk_block(cx: ext_ctxt, span: span,
             view_items: ~[@ast::view_item],
             stmts: ~[@ast::stmt],
             expr: Option<@ast::expr>) -> @ast::expr {
-    let blk = ast::spanned { node: { view_items: view_items,
-                                     stmts: stmts,
-                                     expr: expr,
-                                     id: cx.next_id(),
-                                     rules: ast::default_blk },
-                             span: sp };
-    mk_expr(cx, sp, ast::expr_block(blk))
+    let blk = ast::spanned {
+        node: ast::blk_ {
+             view_items: view_items,
+             stmts: stmts,
+             expr: expr,
+             id: cx.next_id(),
+             rules: ast::default_blk,
+        },
+        span: span,
+    };
+    mk_expr(cx, span, ast::expr_block(blk))
 }
-fn mk_block_(cx: ext_ctxt, sp: span, +stmts: ~[@ast::stmt]) -> ast::blk {
+fn mk_block_(cx: ext_ctxt, span: span, +stmts: ~[@ast::stmt]) -> ast::blk {
     ast::spanned {
-        node: {
+        node: ast::blk_ {
             view_items: ~[],
-            stmts: move stmts,
+            stmts: stmts,
             expr: None,
             id: cx.next_id(),
-            rules: ast::default_blk
+            rules: ast::default_blk,
         },
-        span: sp
+        span: span,
     }
 }
 fn mk_simple_block(cx: ext_ctxt, span: span, expr: @ast::expr) -> ast::blk {
-    let block = {
-        view_items: ~[],
-        stmts: ~[],
-        expr: Some(expr),
-        id: cx.next_id(),
-        rules: ast::default_blk
-    };
-    ast::spanned { node: block, span: span }
+    ast::spanned {
+        node: ast::blk_ {
+            view_items: ~[],
+            stmts: ~[],
+            expr: Some(expr),
+            id: cx.next_id(),
+            rules: ast::default_blk,
+        },
+        span: span,
+    }
 }
 fn mk_copy(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_copy(e))
@@ -237,7 +252,7 @@ fn mk_managed(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_unary(ast::box(ast::m_imm), e))
 }
 fn mk_pat(cx: ext_ctxt, span: span, +pat: ast::pat_) -> @ast::pat {
-    @{ id: cx.next_id(), node: move pat, span: span }
+    @ast::pat { id: cx.next_id(), node: pat, span: span }
 }
 fn mk_pat_ident(cx: ext_ctxt, span: span, ident: ast::ident) -> @ast::pat {
     let path = mk_raw_path(span, ~[ ident ]);

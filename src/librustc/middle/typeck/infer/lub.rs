@@ -59,17 +59,17 @@ impl Lub: Combine {
 
         match m {
           m_imm | m_const => {
-            self.tys(a.ty, b.ty).chain(|t| Ok({ty: t, mutbl: m}) )
+            self.tys(a.ty, b.ty).chain(|t| Ok(ty::mt {ty: t, mutbl: m}) )
           }
 
           m_mutbl => {
             self.infcx.try(|| {
                 eq_tys(&self, a.ty, b.ty).then(|| {
-                    Ok({ty: a.ty, mutbl: m})
+                    Ok(ty::mt {ty: a.ty, mutbl: m})
                 })
             }).chain_err(|_e| {
                 self.tys(a.ty, b.ty).chain(|t| {
-                    Ok({ty: t, mutbl: m_const})
+                    Ok(ty::mt {ty: t, mutbl: m_const})
                 })
             })
           }

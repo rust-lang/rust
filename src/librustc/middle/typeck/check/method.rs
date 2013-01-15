@@ -731,7 +731,7 @@ impl LookupContext {
                 let entry = self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVec, autoderefs, [m_const, m_imm, m_mutbl],
                     |m,r| ty::mk_evec(tcx,
-                                      {ty:mt.ty, mutbl:m},
+                                      ty::mt {ty:mt.ty, mutbl:m},
                                       vstore_slice(r)));
 
                 if entry.is_some() { return entry; }
@@ -741,14 +741,14 @@ impl LookupContext {
                     AutoBorrowVecRef, autoderefs, [m_const, m_imm, m_mutbl],
                     |m,r| {
                         let slice_ty = ty::mk_evec(tcx,
-                                                   {ty:mt.ty, mutbl:m},
+                                                   ty::mt {ty:mt.ty, mutbl:m},
                                                    vstore_slice(r));
                         // NB: we do not try to autoref to a mutable
                         // pointer. That would be creating a pointer
                         // to a temporary pointer (the borrowed
                         // slice), so any update the callee makes to
                         // it can't be observed.
-                        ty::mk_rptr(tcx, r, {ty:slice_ty, mutbl:m_imm})
+                        ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:m_imm})
                     })
             }
 
@@ -765,7 +765,7 @@ impl LookupContext {
                     AutoBorrowVecRef, autoderefs, [m_imm],
                     |m,r| {
                         let slice_ty = ty::mk_estr(tcx, vstore_slice(r));
-                        ty::mk_rptr(tcx, r, {ty:slice_ty, mutbl:m})
+                        ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:m})
                     })
             }
 
@@ -802,7 +802,7 @@ impl LookupContext {
             ty_trait(*) | ty_fn(*) => {
                 self.search_for_some_kind_of_autorefd_method(
                     AutoPtr, autoderefs, [m_const, m_imm, m_mutbl],
-                    |m,r| ty::mk_rptr(tcx, r, {ty:self_ty, mutbl:m}))
+                    |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:self_ty, mutbl:m}))
             }
 
             ty_err => None,
@@ -1183,12 +1183,12 @@ fn transform_self_type_for_method(tcx: ty::ctxt,
       sty_region(mutability) => {
         mk_rptr(tcx,
                 self_region.expect(~"self region missing for &self param"),
-                { ty: impl_ty, mutbl: mutability })
+                ty::mt { ty: impl_ty, mutbl: mutability })
       }
       sty_box(mutability) => {
         match flag {
             TransformTypeNormally => {
-                mk_box(tcx, { ty: impl_ty, mutbl: mutability })
+                mk_box(tcx, ty::mt { ty: impl_ty, mutbl: mutability })
             }
             TransformTypeForObject => impl_ty
         }
@@ -1196,7 +1196,7 @@ fn transform_self_type_for_method(tcx: ty::ctxt,
       sty_uniq(mutability) => {
         match flag {
             TransformTypeNormally => {
-                mk_uniq(tcx, { ty: impl_ty, mutbl: mutability })
+                mk_uniq(tcx, ty::mt { ty: impl_ty, mutbl: mutability })
             }
             TransformTypeForObject => impl_ty
         }

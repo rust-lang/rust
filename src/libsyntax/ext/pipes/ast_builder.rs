@@ -146,8 +146,10 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn field_imm(name: ident, e: @ast::expr) -> ast::field {
-        spanned { node: { mutbl: ast::m_imm, ident: name, expr: e },
-                  span: dummy_sp()}
+        spanned {
+            node: ast::field_ { mutbl: ast::m_imm, ident: name, expr: e },
+            span: dummy_sp(),
+        }
     }
 
     fn rec(+fields: ~[ast::field]) -> @ast::expr {
@@ -158,8 +160,13 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field {
-        spanned { node: { ident: name, mt: { ty: ty, mutbl: ast::m_imm } },
-                  span: dummy_sp() }
+        spanned {
+            node: {
+                ident: name,
+                mt: ast::mt { ty: ty, mutbl: ast::m_imm },
+            },
+            span: dummy_sp(),
+        }
     }
 
     fn ty_rec(+fields: ~[ast::ty_field]) -> @ast::Ty {
@@ -181,23 +188,29 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn arg(name: ident, ty: @ast::Ty) -> ast::arg {
-        {mode: ast::infer(self.next_id()),
-         ty: ty,
-         pat: @{id: self.next_id(),
+        {
+            mode: ast::infer(self.next_id()),
+            ty: ty,
+            pat: @ast::pat {
+                id: self.next_id(),
                 node: ast::pat_ident(
                     ast::bind_by_value,
                     ast_util::ident_to_path(dummy_sp(), name),
                     None),
-                span: dummy_sp()},
-         id: self.next_id()}
+                span: dummy_sp(),
+            },
+            id: self.next_id(),
+        }
     }
 
     fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk {
-        let blk = {view_items: ~[],
-                   stmts: stmts,
-                   expr: Some(e),
-                   id: self.next_id(),
-                   rules: ast::default_blk};
+        let blk = ast::blk_ {
+            view_items: ~[],
+            stmts: stmts,
+            expr: Some(e),
+            id: self.next_id(),
+            rules: ast::default_blk,
+        };
 
         spanned { node: blk, span: dummy_sp() }
     }
