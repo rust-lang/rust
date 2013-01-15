@@ -266,7 +266,7 @@ impl <T: Ord> TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the union
-    pure fn union(&self, _other: &TreeSet<T>, _f: fn(&T) -> bool) -> TreeSet<T> {
+    pure fn union(&self, _other: &TreeSet<T>, _f: fn(&T) -> bool) {
         fail ~"not yet implemented" // TODO
     }
 }
