@@ -258,7 +258,10 @@ type method = {ident: ast::ident,
                vis: ast::visibility,
                def_id: ast::def_id};
 
-type mt = {ty: t, mutbl: ast::mutability};
+struct mt {
+    ty: t,
+    mutbl: ast::mutability,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1149,34 +1152,37 @@ fn mk_enum(cx: ctxt, did: ast::def_id, +substs: substs) -> t {
 
 fn mk_box(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_box(tm)) }
 
-fn mk_imm_box(cx: ctxt, ty: t) -> t { mk_box(cx, {ty: ty,
-                                                  mutbl: ast::m_imm}) }
+fn mk_imm_box(cx: ctxt, ty: t) -> t {
+    mk_box(cx, mt {ty: ty, mutbl: ast::m_imm})
+}
 
 fn mk_uniq(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_uniq(tm)) }
 
-fn mk_imm_uniq(cx: ctxt, ty: t) -> t { mk_uniq(cx, {ty: ty,
-                                                    mutbl: ast::m_imm}) }
+fn mk_imm_uniq(cx: ctxt, ty: t) -> t {
+    mk_uniq(cx, mt {ty: ty, mutbl: ast::m_imm})
+}
 
 fn mk_ptr(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_ptr(tm)) }
 
 fn mk_rptr(cx: ctxt, r: Region, tm: mt) -> t { mk_t(cx, ty_rptr(r, tm)) }
 
 fn mk_mut_rptr(cx: ctxt, r: Region, ty: t) -> t {
-    mk_rptr(cx, r, {ty: ty, mutbl: ast::m_mutbl})
+    mk_rptr(cx, r, mt {ty: ty, mutbl: ast::m_mutbl})
 }
 fn mk_imm_rptr(cx: ctxt, r: Region, ty: t) -> t {
-    mk_rptr(cx, r, {ty: ty, mutbl: ast::m_imm})
+    mk_rptr(cx, r, mt {ty: ty, mutbl: ast::m_imm})
 }
 
-fn mk_mut_ptr(cx: ctxt, ty: t) -> t { mk_ptr(cx, {ty: ty,
-                                                  mutbl: ast::m_mutbl}) }
+fn mk_mut_ptr(cx: ctxt, ty: t) -> t {
+    mk_ptr(cx, mt {ty: ty, mutbl: ast::m_mutbl})
+}
 
 fn mk_imm_ptr(cx: ctxt, ty: t) -> t {
-    mk_ptr(cx, {ty: ty, mutbl: ast::m_imm})
+    mk_ptr(cx, mt {ty: ty, mutbl: ast::m_imm})
 }
 
 fn mk_nil_ptr(cx: ctxt) -> t {
-    mk_ptr(cx, {ty: mk_nil(cx), mutbl: ast::m_imm})
+    mk_ptr(cx, mt {ty: mk_nil(cx), mutbl: ast::m_imm})
 }
 
 fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
@@ -1187,7 +1193,7 @@ fn mk_unboxed_vec(cx: ctxt, tm: mt) -> t {
     mk_t(cx, ty_unboxed_vec(tm))
 }
 fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
-    mk_t(cx, ty_unboxed_vec({ty: ty, mutbl: ast::m_imm}))
+    mk_t(cx, ty_unboxed_vec(mt {ty: ty, mutbl: ast::m_imm}))
 }
 
 fn mk_rec(cx: ctxt, +fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
@@ -1353,19 +1359,19 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
 
     match /*bad*/copy *sty {
         ty_box(tm) => {
-            ty_box({ty: fldop(tm.ty), mutbl: tm.mutbl})
+            ty_box(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
         ty_uniq(tm) => {
-            ty_uniq({ty: fldop(tm.ty), mutbl: tm.mutbl})
+            ty_uniq(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
         ty_ptr(tm) => {
-            ty_ptr({ty: fldop(tm.ty), mutbl: tm.mutbl})
+            ty_ptr(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
         ty_unboxed_vec(tm) => {
-            ty_unboxed_vec({ty: fldop(tm.ty), mutbl: tm.mutbl})
+            ty_unboxed_vec(mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
         ty_evec(tm, vst) => {
-            ty_evec({ty: fldop(tm.ty), mutbl: tm.mutbl}, vst)
+            ty_evec(mt {ty: fldop(tm.ty), mutbl: tm.mutbl}, vst)
         }
         ty_enum(tid, ref substs) => {
             ty_enum(tid, fold_substs(substs, fldop))
@@ -1376,7 +1382,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
         ty_rec(fields) => {
             let new_fields = do vec::map(fields) |fl| {
                 let new_ty = fldop(fl.mt.ty);
-                let new_mt = {ty: new_ty, mutbl: fl.mt.mutbl};
+                let new_mt = mt {ty: new_ty, mutbl: fl.mt.mutbl};
                 {ident: fl.ident, mt: new_mt}
             };
             ty_rec(new_fields)
@@ -1390,7 +1396,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
             ty_fn(FnTyBase {meta: f.meta, sig: sig})
         }
         ty_rptr(r, tm) => {
-            ty_rptr(r, {ty: fldop(tm.ty), mutbl: tm.mutbl})
+            ty_rptr(r, mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
         }
         ty_struct(did, ref substs) => {
             ty_struct(did, fold_substs(substs, fldop))
@@ -1446,7 +1452,7 @@ fn fold_regions_and_ty(
       ty::ty_rptr(r, mt) => {
         let m_r = fldr(r);
         let m_t = fldt(mt.ty);
-        ty::mk_rptr(cx, m_r, {ty: m_t, mutbl: mt.mutbl})
+        ty::mk_rptr(cx, m_r, mt {ty: m_t, mutbl: mt.mutbl})
       }
       ty_estr(vstore_slice(r)) => {
         let m_r = fldr(r);
@@ -1455,7 +1461,7 @@ fn fold_regions_and_ty(
       ty_evec(mt, vstore_slice(r)) => {
         let m_r = fldr(r);
         let m_t = fldt(mt.ty);
-        ty::mk_evec(cx, {ty: m_t, mutbl: mt.mutbl}, vstore_slice(m_r))
+        ty::mk_evec(cx, mt {ty: m_t, mutbl: mt.mutbl}, vstore_slice(m_r))
       }
       ty_enum(def_id, ref substs) => {
         ty::mk_enum(cx, def_id, fold_substs(substs, fldr, fldt))
@@ -1527,19 +1533,19 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(Region, bool) -> Region) -> t {
         let tb = get(t0);
         if !tbox_has_flag(tb, has_regions) { return t0; }
         match tb.sty {
-          ty_rptr(r, {ty: t1, mutbl: m}) => {
+          ty_rptr(r, mt {ty: t1, mutbl: m}) => {
             let m_r = fldop(r, under_r);
             let m_t1 = do_fold(cx, t1, true, fldop);
-            ty::mk_rptr(cx, m_r, {ty: m_t1, mutbl: m})
+            ty::mk_rptr(cx, m_r, mt {ty: m_t1, mutbl: m})
           }
           ty_estr(vstore_slice(r)) => {
             let m_r = fldop(r, under_r);
             ty::mk_estr(cx, vstore_slice(m_r))
           }
-          ty_evec({ty: t1, mutbl: m}, vstore_slice(r)) => {
+          ty_evec(mt {ty: t1, mutbl: m}, vstore_slice(r)) => {
             let m_r = fldop(r, under_r);
             let m_t1 = do_fold(cx, t1, true, fldop);
-            ty::mk_evec(cx, {ty: m_t1, mutbl: m}, vstore_slice(m_r))
+            ty::mk_evec(cx, mt {ty: m_t1, mutbl: m}, vstore_slice(m_r))
           }
           ty_fn(_) => {
             // do not recurse into functions, which introduce fresh bindings
@@ -2707,7 +2713,7 @@ fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
         let variants = enum_variants(cx, did);
         if vec::len(*variants) == 1u && vec::len(variants[0].args) == 1u {
             let v_t = subst(cx, substs, variants[0].args[0]);
-            Some({ty: v_t, mutbl: ast::m_imm})
+            Some(mt {ty: v_t, mutbl: ast::m_imm})
         } else {
             None
         }
@@ -2717,7 +2723,7 @@ fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
         let fields = struct_fields(cx, did, substs);
         if fields.len() == 1 && fields[0].ident ==
                 syntax::parse::token::special_idents::unnamed_field {
-            Some({ty: fields[0].mt.ty, mutbl: ast::m_imm})
+            Some(mt {ty: fields[0].mt.ty, mutbl: ast::m_imm})
         } else {
             None
         }
@@ -2745,7 +2751,7 @@ fn index(cx: ctxt, t: t) -> Option<mt> {
 fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
     match *sty {
       ty_evec(mt, _) => Some(mt),
-      ty_estr(_) => Some({ty: mk_u8(cx), mutbl: ast::m_imm}),
+      ty_estr(_) => Some(mt {ty: mk_u8(cx), mutbl: ast::m_imm}),
       _ => None
     }
 }
@@ -4111,15 +4117,17 @@ fn struct_item_fields(cx:ctxt,
                      substs: &substs,
                      frob_mutability: fn(struct_mutability) -> mutability)
     -> ~[field] {
-    let mut rslt = ~[];
-    for lookup_struct_fields(cx, did).each |f| {
+    do lookup_struct_fields(cx, did).map |f| {
        // consider all instance vars mut, because the
        // constructor may mutate all vars
-       rslt.push({ident: f.ident, mt:
-               {ty: lookup_field_type(cx, did, f.id, substs),
-                    mutbl: frob_mutability(f.mutability)}});
+       {
+           ident: f.ident,
+            mt: mt {
+                ty: lookup_field_type(cx, did, f.id, substs),
+                mutbl: frob_mutability(f.mutability)
+            }
+        }
     }
-    rslt
 }
 
 fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
@@ -4199,7 +4207,7 @@ fn ty_params_to_tys(tcx: ty::ctxt, tps: ~[ast::ty_param]) -> ~[t] {
 /// Returns an equivalent type with all the typedefs and self regions removed.
 fn normalize_ty(cx: ctxt, t: t) -> t {
     fn normalize_mt(cx: ctxt, mt: mt) -> mt {
-        { ty: normalize_ty(cx, mt.ty), mutbl: mt.mutbl }
+        mt { ty: normalize_ty(cx, mt.ty), mutbl: mt.mutbl }
     }
     fn normalize_vstore(vstore: vstore) -> vstore {
         match vstore {

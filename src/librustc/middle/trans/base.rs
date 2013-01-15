@@ -2184,7 +2184,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef) {
         let unit_ty = ty::mk_estr(ccx.tcx, ty::vstore_uniq);
         let vecarg_ty: ty::arg =
             {mode: ast::expl(ast::by_val),
-             ty: ty::mk_evec(ccx.tcx, {ty: unit_ty, mutbl: ast::m_imm},
+             ty: ty::mk_evec(ccx.tcx, ty::mt {ty: unit_ty, mutbl: ast::m_imm},
                              ty::vstore_uniq)};
         let nt = ty::mk_nil(ccx.tcx);
         let llfty = type_of_fn(ccx, ~[vecarg_ty], nt);

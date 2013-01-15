@@ -353,7 +353,7 @@ fn parse_mt(st: @pstate, conv: conv_did) -> ty::mt {
       '?' => { next(st); m = ast::m_const; }
       _ => { m = ast::m_imm; }
     }
-    return {ty: parse_ty(st, conv), mutbl: m};
+    ty::mt { ty: parse_ty(st, conv), mutbl: m }
 }
 
 fn parse_def(st: @pstate, conv: conv_did) -> ast::def_id {

@@ -224,7 +224,7 @@ fn store_environment(bcx: block,
     // tuple.  This could be a ptr in uniq or a box or on stack,
     // whatever.
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-    let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mutbl:ast::m_imm});
+    let cboxptr_ty = ty::mk_ptr(tcx, ty::mt {ty:cbox_ty, mutbl:ast::m_imm});
 
     let llbox = PointerCast(bcx, llbox, type_of(ccx, cboxptr_ty));
     debug!("tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty));

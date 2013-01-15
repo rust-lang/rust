@@ -455,7 +455,7 @@ impl Parser {
     fn parse_mt() -> mt {
         let mutbl = self.parse_mutability();
         let t = self.parse_ty(false);
-        return {ty: t, mutbl: mutbl};
+        mt { ty: t, mutbl: mutbl }
     }
 
     fn parse_ty_field() -> ty_field {
@@ -464,9 +464,14 @@ impl Parser {
         let id = self.parse_ident();
         self.expect(token::COLON);
         let ty = self.parse_ty(false);
-        return spanned(lo, ty.span.hi, {
-            ident: id, mt: {ty: ty, mutbl: mutbl}
-        });
+        spanned(
+            lo,
+            ty.span.hi,
+            {
+                ident: id,
+                mt: ast::mt { ty: ty, mutbl: mutbl }
+            }
+        )
     }
 
     fn parse_ret_ty() -> (ret_style, @Ty) {
@@ -673,7 +678,12 @@ impl Parser {
         fn parse_capture_item(p:Parser, is_move: bool) -> capture_item {
             let sp = mk_sp(p.span.lo, p.span.hi);
             let ident = p.parse_ident();
-            @{id: p.get_id(), is_move: is_move, name: ident, span: sp}
+            @ast::capture_item_ {
+                id: p.get_id(),
+                is_move: is_move,
+                name: ident,
+                span: sp,
+            }
         }
 
         if self.eat_keyword(~"move") {
@@ -874,7 +884,7 @@ impl Parser {
         let i = self.parse_ident();
         self.expect(sep);
         let e = self.parse_expr();
-        return spanned(lo, e.span.hi, {mutbl: m, ident: i, expr: e});
+        spanned(lo, e.span.hi, ast::field_ { mutbl: m, ident: i, expr: e })
     }
 
     fn mk_expr(+lo: BytePos, +hi: BytePos, +node: expr_) -> @expr {
@@ -1574,8 +1584,13 @@ impl Parser {
         let lo = self.last_span.lo;
         let (decl, captures) = parse_decl();
         let body = parse_body();
-        let fakeblock = {view_items: ~[], stmts: ~[], expr: Some(body),
-                         id: self.get_id(), rules: default_blk};
+        let fakeblock = ast::blk_ {
+            view_items: ~[],
+            stmts: ~[],
+            expr: Some(body),
+            id: self.get_id(),
+            rules: default_blk,
+        };
         let fakeblock = spanned(body.span.lo, body.span.hi,
                                 fakeblock);
         return self.mk_expr(lo, body.span.hi,
@@ -1753,14 +1768,18 @@ impl Parser {
                 self.eat(token::COMMA);
             }
 
-            let blk = spanned { node: { view_items: ~[],
-                                        stmts: ~[],
-                                        expr: Some(expr),
-                                        id: self.get_id(),
-                                        rules: default_blk},
-                                span: expr.span };
+            let blk = spanned {
+                node: ast::blk_ {
+                    view_items: ~[],
+                    stmts: ~[],
+                    expr: Some(expr),
+                    id: self.get_id(),
+                    rules: default_blk,
+                },
+                span: expr.span,
+            };
 
-            arms.push({pats: pats, guard: guard, body: blk});
+            arms.push(ast::arm { pats: pats, guard: guard, body: blk });
         }
         let mut hi = self.span.hi;
         self.bump();
@@ -1824,9 +1843,9 @@ impl Parser {
             let subpat = self.parse_pat(refutable);
             if is_tail {
                 match subpat {
-                    @{ node: pat_wild, _ } => (),
-                    @{ node: pat_ident(_, _, _), _ } => (),
-                    @{ span, _ } => self.span_fatal(
+                    @ast::pat { node: pat_wild, _ } => (),
+                    @ast::pat { node: pat_ident(_, _, _), _ } => (),
+                    @ast::pat { span, _ } => self.span_fatal(
                         span, ~"expected an identifier or `_`"
                     )
                 }
@@ -1872,13 +1891,13 @@ impl Parser {
                 self.bump();
                 subpat = self.parse_pat(refutable);
             } else {
-                subpat = @{
+                subpat = @ast::pat {
                     id: self.get_id(),
                     node: pat_ident(bind_infer, fieldpath, None),
                     span: self.last_span
                 };
             }
-            fields.push({ident: fieldname, pat: subpat});
+            fields.push(ast::field_pat { ident: fieldname, pat: subpat });
         }
         return (fields, etc);
     }
@@ -2083,7 +2102,7 @@ impl Parser {
             hi = self.span.hi;
           }
         }
-        return @{id: self.get_id(), node: pat, span: mk_sp(lo, hi)};
+        @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
     }
 
     fn parse_pat_ident(refutable: bool,
@@ -2122,9 +2141,17 @@ impl Parser {
                        span: mk_sp(lo, lo)};
         if self.eat(token::COLON) { ty = self.parse_ty(false); }
         let init = if allow_init { self.parse_initializer() } else { None };
-        return @spanned(lo, self.last_span.hi,
-                     {is_mutbl: is_mutbl, ty: ty, pat: pat,
-                      init: init, id: self.get_id()});
+        @spanned(
+            lo,
+            self.last_span.hi,
+            ast::local_ {
+                is_mutbl: is_mutbl,
+                ty: ty,
+                pat: pat,
+                init: init,
+                id: self.get_id(),
+            }
+        )
     }
 
     fn parse_let() -> @decl {
@@ -2378,9 +2405,14 @@ impl Parser {
         }
         let mut hi = self.span.hi;
         self.bump();
-        let bloc = {view_items: view_items, stmts: stmts, expr: expr,
-                    id: self.get_id(), rules: s};
-        return spanned(lo, hi, bloc);
+        let bloc = ast::blk_ {
+            view_items: view_items,
+            stmts: stmts,
+            expr: expr,
+            id: self.get_id(),
+            rules: s,
+        };
+        spanned(lo, hi, bloc)
     }
 
     fn mk_ty_path(i: ident) -> @Ty {
@@ -3855,10 +3887,10 @@ impl Parser {
         let crate_attrs = self.parse_inner_attrs_and_next();
         let first_item_outer_attrs = crate_attrs.next;
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
-        return @spanned(lo, self.span.lo,
-                     {module: m,
-                      attrs: crate_attrs.inner,
-                      config: self.cfg});
+        @spanned(lo, self.span.lo,
+                 ast::crate_ { module: m,
+                               attrs: crate_attrs.inner,
+                               config: self.cfg })
     }
 
     fn parse_str() -> @~str {

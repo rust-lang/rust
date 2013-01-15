@@ -37,8 +37,13 @@ fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
     let items = vec::append(~[item], crate.node.module.items);
 
     @ast::spanned {
-        node: { module: { items: items ,.. /*bad*/copy crate.node.module },
-                .. /*bad*/copy crate.node},
+        node: ast::crate_ {
+            module: {
+                items: items,
+                .. /*bad*/copy crate.node.module
+            },
+            .. /*bad*/copy crate.node
+        },
         .. /*bad*/copy *crate
     }
 }

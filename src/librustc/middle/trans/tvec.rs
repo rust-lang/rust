@@ -214,7 +214,7 @@ fn trans_slice_vstore(bcx: block,
 
     // Arrange for the backing array to be cleaned up.
     let fixed_ty = ty::mk_evec(bcx.tcx(),
-                               {ty: vt.unit_ty, mutbl: ast::m_mutbl},
+                               ty::mt {ty: vt.unit_ty, mutbl: ast::m_mutbl},
                                ty::vstore_fixed(count));
     let llfixed_ty = T_ptr(type_of::type_of(bcx.ccx(), fixed_ty));
     let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);

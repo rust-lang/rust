@@ -728,7 +728,7 @@ impl &mem_categorization_ctxt {
         // know what type lies at the other end, so we just call it
         // `()` (the empty tuple).
 
-        let mt = {ty: ty::mk_tup(self.tcx, ~[]), mutbl: m_imm};
+        let mt = ty::mt {ty: ty::mk_tup(self.tcx, ~[]), mutbl: m_imm};
         return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
     }
 

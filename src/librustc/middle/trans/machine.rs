@@ -26,7 +26,7 @@ use syntax::parse::token::special_idents;
 // nominal type that has pointers to itself in it.
 pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
     fn nilptr(tcx: ty::ctxt) -> ty::t {
-        ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm})
+        ty::mk_ptr(tcx, ty::mt {ty: ty::mk_nil(tcx), mutbl: ast::m_imm})
     }
     fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
         match ty::get(typ).sty {
@@ -45,13 +45,12 @@ pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
             let simpl_fields = (if ty::ty_dtor(tcx, did).is_present() {
                 // remember the drop flag
                   ~[{ident: special_idents::dtor,
-                     mt: {ty: ty::mk_u8(tcx),
-                          mutbl: ast::m_mutbl}}] }
+                     mt: ty::mt {ty: ty::mk_u8(tcx), mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +
                 do ty::lookup_struct_fields(tcx, did).map |f| {
                  let t = ty::lookup_field_type(tcx, did, f.id, substs);
                  {ident: f.ident,
-                  mt: {ty: simplify_type(tcx, t), mutbl: ast::m_const}}
+                  mt: ty::mt {ty: simplify_type(tcx, t), mutbl: ast::m_const}}
             };
             ty::mk_rec(tcx, simpl_fields)
           }

@@ -173,14 +173,16 @@ priv impl Assign {
                     // being assigned to a region pointer:
                     (ty::ty_box(_), ty::ty_rptr(r_b, mt_b)) => {
                         let nr_b = ty::mk_box(self.infcx.tcx,
-                                              {ty: mt_b.ty, mutbl: m_const});
+                                              ty::mt {ty: mt_b.ty,
+                                                      mutbl: m_const});
                         self.try_assign(1, ty::AutoPtr,
                                         a, nr_b,
                                         mt_b.mutbl, r_b)
                     }
                     (ty::ty_uniq(_), ty::ty_rptr(r_b, mt_b)) => {
                         let nr_b = ty::mk_uniq(self.infcx.tcx,
-                                               {ty: mt_b.ty, mutbl: m_const});
+                                               ty::mt {ty: mt_b.ty,
+                                                       mutbl: m_const});
                         self.try_assign(1, ty::AutoPtr,
                                         a, nr_b,
                                         mt_b.mutbl, r_b)
@@ -198,7 +200,8 @@ priv impl Assign {
                      ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
                     if is_borrowable(vs_a) => {
                         let nr_b = ty::mk_evec(self.infcx.tcx,
-                                               {ty: mt_b.ty, mutbl: m_const},
+                                               ty::mt {ty: mt_b.ty,
+                                                       mutbl: m_const},
                                                vs_a);
                         self.try_assign(0, ty::AutoBorrowVec,
                                         a, nr_b,

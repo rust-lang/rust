@@ -1936,7 +1936,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
             let t: ty::t = fcx.infcx().next_ty_var();
             for args.each |e| { bot |= check_expr_with(fcx, *e, t); }
-            ty::mk_evec(tcx, {ty: t, mutbl: mutability}, tt)
+            ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
             let count = ty::eval_repeat_count(tcx, count_expr, expr.span);
@@ -1944,7 +1944,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let tt = ast_expr_vstore_to_vstore(fcx, ev, count, vst);
             let t: ty::t = fcx.infcx().next_ty_var();
             bot |= check_expr_with(fcx, element, t);
-            ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
+            ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl}, tt)
           }
           _ =>
             tcx.sess.span_bug(expr.span, ~"vstore modifier on non-sequence")
@@ -1986,10 +1986,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let mut oprnd_t = fcx.expr_ty(oprnd);
         match unop {
           ast::box(mutbl) => {
-            oprnd_t = ty::mk_box(tcx, {ty: oprnd_t, mutbl: mutbl});
+            oprnd_t = ty::mk_box(tcx, ty::mt {ty: oprnd_t, mutbl: mutbl});
           }
           ast::uniq(mutbl) => {
-            oprnd_t = ty::mk_uniq(tcx, {ty: oprnd_t, mutbl: mutbl});
+            oprnd_t = ty::mk_uniq(tcx, ty::mt {ty: oprnd_t, mutbl: mutbl});
           }
           ast::deref => {
             let sty = structure_of(fcx, expr.span, oprnd_t);
@@ -2075,7 +2075,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // it needs to live.
         let region = fcx.infcx().next_region_var(expr.span, expr.id);
 
-        let tm = { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
+        let tm = ty::mt { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = ty::mk_rptr(tcx, region, tm);
         fcx.write_ty(id, oprnd_t);
       }
@@ -2339,7 +2339,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_vec(args, mutbl) => {
         let t: ty::t = fcx.infcx().next_ty_var();
         for args.each |e| { bot |= check_expr_with(fcx, *e, t); }
-        let typ = ty::mk_evec(tcx, {ty: t, mutbl: mutbl},
+        let typ = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
                               ty::vstore_fixed(args.len()));
         fcx.write_ty(id, typ);
       }
@@ -2348,7 +2348,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(count_expr.id, ty::mk_uint(tcx));
         let t: ty::t = fcx.infcx().next_ty_var();
         bot |= check_expr_with(fcx, element, t);
-        let t = ty::mk_evec(tcx, {ty: t, mutbl: mutbl},
+        let t = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
                             ty::vstore_fixed(count));
         fcx.write_ty(id, t);
       }
@@ -2379,7 +2379,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 vec::find(*flds, |tf| tf.ident == f.node.ident)
             ).map(|tf| tf.mt.ty));
             let expr_t = fcx.expr_ty(f.node.expr);
-            let expr_mt = {ty: expr_t, mutbl: f.node.mutbl};
+            let expr_mt = ty::mt {ty: expr_t, mutbl: f.node.mutbl};
             // for the most precise error message,
             // should be f.node.expr.span, not f.span
             respan(f.node.expr.span, {ident: f.node.ident, mt: expr_mt})
@@ -2804,7 +2804,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
             region_param: None,
             ty: ty::mk_ptr(
                 fcx.ccx.tcx,
-                {
+                ty::mt {
                     ty: ty::mk_mach_uint(fcx.ccx.tcx, ast::ty_u8),
                     mutbl: ast::m_imm
                 })
@@ -3078,8 +3078,8 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
           assert ccx.tcx.intrinsic_defs.contains_key(ty_visitor_name);
           let (_, tydesc_ty) = tcx.intrinsic_defs.get(tydesc_name);
           let (_, visitor_trait) = tcx.intrinsic_defs.get(ty_visitor_name);
-          let td_ptr = ty::mk_ptr(ccx.tcx, {ty: tydesc_ty,
-                                            mutbl: ast::m_imm});
+          let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
+                                                   mutbl: ast::m_imm});
           (0u, ~[arg(ast::by_val, td_ptr),
                  arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
       }
