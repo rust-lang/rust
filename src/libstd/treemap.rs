@@ -237,8 +237,24 @@ impl <T: Ord> TreeSet<T> {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     pure fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
-        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n + m)
-        !iter::any(self, |x| other.contains(x))
+        let mut x = self.iter();
+        let mut y = other.iter();
+        unsafe { // purity workaround
+            let mut a = x.next();
+            let mut b = y.next();
+            while a.is_some() && b.is_some() {
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
+                if a1 < b1 {
+                    a = x.next();
+                } else if b1 < a1 {
+                    b = y.next();
+                } else {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     /// Check of the set is a subset of another
