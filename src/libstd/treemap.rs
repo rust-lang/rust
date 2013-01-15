@@ -39,19 +39,26 @@ pub struct TreeMap<K: Ord, V> {
     priv length: uint
 }
 
-// FIXME: this is a naive O(n*log(m)) implementation, could be O(n)
-impl <K: Ord, V: Eq> TreeMap<K, V>: Eq {
+impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
     pure fn eq(&self, other: &TreeMap<K, V>) -> bool {
         if self.len() != other.len() {
             return false
         }
-        for self.each |x, y| {
-            match other.find(x) {
-                Some(z) => if z != y { return false },
-                None => return false
+        unsafe { // purity workaround
+            let mut x = self.iter();
+            let mut y = other.iter();
+            for self.len().times {
+                // ICE: x.next() != y.next()
+
+                let (x1, x2) = x.next().unwrap();
+                let (y1, y2) = y.next().unwrap();
+
+                if x1 != y1 || x2 != y2 {
+                    return false
+                }
             }
+            true
         }
-        true
     }
     pure fn ne(&self, other: &TreeMap<K, V>) -> bool {
         !self.eq(other)
@@ -137,8 +144,8 @@ impl <K: Ord, V> TreeMap<K, V> {
         ret
     }
 
-    /// Get a lazy iterator over the nodes in the map. Requires that it
-    /// be frozen (immutable).
+    /// Get a lazy iterator over the key-value pairs in the map.
+    /// Requires that it be frozen (immutable).
     fn iter(&self) -> TreeMapIterator/&self<K, V> {
         TreeMapIterator{stack: ~[], node: &self.root}
     }
@@ -183,7 +190,7 @@ impl <T: Ord> TreeSet<T>: iter::BaseIter<T> {
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl <T: Ord> TreeSet<T>: Eq {
+impl <T: Eq Ord> TreeSet<T>: Eq {
     pure fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
