@@ -339,9 +339,11 @@ fn noop_fold_stmt(s: stmt_, fld: ast_fold) -> stmt_ {
 }
 
 fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {
-    return {pats: vec::map(a.pats, |x| fld.fold_pat(*x)),
-         guard: option::map(&a.guard, |x| fld.fold_expr(*x)),
-         body: fld.fold_block(a.body)};
+    arm {
+        pats: vec::map(a.pats, |x| fld.fold_pat(*x)),
+        guard: option::map(&a.guard, |x| fld.fold_expr(*x)),
+        body: fld.fold_block(a.body),
+    }
 }
 
 fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
@@ -358,20 +360,22 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
                        |pats| vec::map(*pats, |x| fld.fold_pat(*x))))
           }
           pat_rec(fields, etc) => {
-            let mut fs = ~[];
-            for fields.each |f| {
-                fs.push({ident: /* FIXME (#2543) */ copy f.ident,
-                         pat: fld.fold_pat(f.pat)});
-            }
+            let fs = do fields.map |f| {
+                ast::field_pat {
+                    ident: /* FIXME (#2543) */ copy f.ident,
+                    pat: fld.fold_pat(f.pat),
+                }
+            };
             pat_rec(fs, etc)
           }
           pat_struct(pth, fields, etc) => {
             let pth_ = fld.fold_path(pth);
-            let mut fs = ~[];
-            for fields.each |f| {
-                fs.push({ident: /* FIXME (#2543) */ copy f.ident,
-                         pat: fld.fold_pat(f.pat)});
-            }
+            let fs = do fields.map |f| {
+                ast::field_pat {
+                    ident: /* FIXME (#2543) */ copy f.ident,
+                    pat: fld.fold_pat(f.pat)
+                }
+            };
             pat_struct(pth_, fs, etc)
           }
           pat_tup(elts) => pat_tup(vec::map(elts, |x| fld.fold_pat(*x))),
@@ -634,11 +638,13 @@ fn noop_fold_path(&&p: path, fld: ast_fold) -> path {
 }
 
 fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {
-    return {is_mutbl: l.is_mutbl,
-         ty: fld.fold_ty(l.ty),
-         pat: fld.fold_pat(l.pat),
-         init: l.init.map(|e| fld.fold_expr(*e)),
-         id: fld.new_id(l.id)};
+    local_ {
+        is_mutbl: l.is_mutbl,
+        ty: fld.fold_ty(l.ty),
+        pat: fld.fold_pat(l.pat),
+        init: l.init.map(|e| fld.fold_expr(*e)),
+        id: fld.new_id(l.id),
+    }
 }
 
 /* temporarily eta-expand because of a compiler bug with using `fn<T>` as a
@@ -731,9 +737,11 @@ impl ast_fold_fns: ast_fold {
     }
     fn fold_pat(&&x: @pat) -> @pat {
         let (n, s) =  (self.fold_pat)(x.node, x.span, self as ast_fold);
-        return @{id: (self.new_id)(x.id),
-              node: n,
-              span: (self.new_span)(s)};
+        @pat {
+            id: (self.new_id)(x.id),
+            node: n,
+            span: (self.new_span)(s),
+        }
     }
     fn fold_decl(&&x: @decl) -> @decl {
         let (n, s) = (self.fold_decl)(x.node, x.span, self as ast_fold);

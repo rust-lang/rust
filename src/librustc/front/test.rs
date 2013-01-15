@@ -469,7 +469,7 @@ fn mk_test_wrapper(cx: test_ctxt,
         cf: ast::return_val
     };
 
-    let wrapper_body: ast::blk = nospan({
+    let wrapper_body = nospan(ast::blk_ {
         view_items: ~[],
         stmts: ~[@call_stmt],
         expr: option::None,

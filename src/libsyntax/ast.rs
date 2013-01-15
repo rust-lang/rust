@@ -323,11 +323,18 @@ struct blk_ {
 
 #[auto_encode]
 #[auto_decode]
-type pat = {id: node_id, node: pat_, span: span};
+struct pat {
+    id: node_id,
+    node: pat_,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]
-type field_pat = {ident: ident, pat: @pat};
+struct field_pat {
+    ident: ident,
+    pat: @pat,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -637,8 +644,13 @@ enum stmt_ {
 // a refinement on pat.
 #[auto_encode]
 #[auto_decode]
-type local_ =  {is_mutbl: bool, ty: @Ty, pat: @pat,
-                init: Option<@expr>, id: node_id};
+struct local_ {
+    is_mutbl: bool,
+    ty: @Ty,
+    pat: @pat,
+    init: Option<@expr>,
+    id: node_id,
+}
 
 type local = spanned<local_>;
 
@@ -650,7 +662,11 @@ enum decl_ { decl_local(~[@local]), decl_item(@item), }
 
 #[auto_encode]
 #[auto_decode]
-type arm = {pats: ~[@pat], guard: Option<@expr>, body: blk};
+struct arm {
+    pats: ~[@pat],
+    guard: Option<@expr>,
+    body: blk,
+}
 
 #[auto_encode]
 #[auto_decode]
