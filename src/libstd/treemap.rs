@@ -229,13 +229,13 @@ impl <T: Ord> TreeSet<T> {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     pure fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
-        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n)
+        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n + m)
         !iter::any(self, |x| other.contains(x))
     }
 
     /// Check of the set is a subset of another
     pure fn is_subset(&self, other: &TreeSet<T>) -> bool {
-        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n)
+        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n + m)
         !iter::any(self, |x| !other.contains(x))
     }
 
@@ -278,14 +278,21 @@ impl <T: Ord> TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the symmetric difference
-    pure fn symmetric_difference(&self, _other: &TreeSet<T>,
+    pure fn symmetric_difference(&self, other: &TreeSet<T>,
                                  _f: fn(&T) -> bool) {
+        unsafe { // purity workaround
+            let mut x = self.map.iter();
+            let mut y = other.map.iter();
+
+            let mut a = x.next();
+            let mut b = y.next();
+        }
         fail ~"not yet implemented"
     }
 
     /// Visit the values (in-order) representing the intersection
     pure fn intersection(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
-        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n)
+        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n + m)
         for self.each |x| {
             if other.contains(x) {
                 if !f(x) { break }
@@ -294,7 +301,14 @@ impl <T: Ord> TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the union
-    pure fn union(&self, _other: &TreeSet<T>, _f: fn(&T) -> bool) {
+    pure fn union(&self, other: &TreeSet<T>, _f: fn(&T) -> bool) {
+        unsafe { // purity workaround
+            let mut x = self.map.iter();
+            let mut y = other.map.iter();
+
+            let mut a = x.next();
+            let mut b = y.next();
+        }
         fail ~"not yet implemented"
     }
 }
