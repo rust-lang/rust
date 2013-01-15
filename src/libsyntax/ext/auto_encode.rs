@@ -571,7 +571,7 @@ fn mk_ser_method(
                 id: cx.next_id(),
                 node: ast::re_anon,
             },
-            {
+            ast::mt {
                 ty: cx.ty_path(span, ~[cx.ident_of(~"__S")], ~[]),
                 mutbl: ast::m_imm
             }
@@ -634,7 +634,7 @@ fn mk_deser_method(
                 id: cx.next_id(),
                 node: ast::re_anon,
             },
-            {
+            ast::mt {
                 ty: cx.ty_path(span, ~[cx.ident_of(~"__D")], ~[]),
                 mutbl: ast::m_imm
             }
@@ -908,7 +908,11 @@ fn mk_deser_fields(
         );
 
         ast::spanned {
-            node: { mutbl: field.mutbl, ident: field.ident, expr: expr },
+            node: ast::field_ {
+                mutbl: field.mutbl,
+                ident: field.ident,
+                expr: expr,
+            },
             span: span,
         }
     }

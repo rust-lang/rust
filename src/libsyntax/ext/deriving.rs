@@ -136,7 +136,10 @@ fn create_eq_method(cx: ext_ctxt,
                                                      type_ident,
                                                      ty_params);
     let arg_region = @{ id: cx.next_id(), node: re_anon };
-    let arg_type = ty_rptr(arg_region, { ty: arg_path_type, mutbl: m_imm });
+    let arg_type = ty_rptr(
+        arg_region,
+        ast::mt { ty: arg_path_type, mutbl: m_imm }
+    );
     let arg_type = @{ id: cx.next_id(), node: move arg_type, span: span };
 
     // Create the `other` parameter.

@@ -340,13 +340,13 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::Ty {
          node: ast::ty_path(test_desc_ty_path, cx.sess.next_node_id()),
          span: dummy_sp()};
 
-    let vec_mt: ast::mt = {ty: @test_desc_ty, mutbl: ast::m_imm};
+    let vec_mt = ast::mt {ty: @test_desc_ty, mutbl: ast::m_imm};
 
     let inner_ty = @{id: cx.sess.next_node_id(),
                      node: ast::ty_vec(vec_mt),
                      span: dummy_sp()};
     return @{id: cx.sess.next_node_id(),
-          node: ast::ty_uniq({ty: inner_ty, mutbl: ast::m_imm}),
+          node: ast::ty_uniq(ast::mt {ty: inner_ty, mutbl: ast::m_imm}),
           span: dummy_sp()};
 }
 
@@ -389,9 +389,11 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
                      span: dummy_sp()};
 
 
-    let name_field: ast::field =
-        nospan({mutbl: ast::m_imm, ident: cx.sess.ident_of(~"name"),
-                expr: @name_expr});
+    let name_field = nospan(ast::field_ {
+        mutbl: ast::m_imm,
+        ident: cx.sess.ident_of(~"name"),
+        expr: @name_expr,
+    });
 
     let fn_path = path_node_global(path);
 
@@ -403,9 +405,11 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 
     let fn_wrapper_expr = mk_test_wrapper(cx, fn_expr, span);
 
-    let fn_field: ast::field =
-        nospan({mutbl: ast::m_imm, ident: cx.sess.ident_of(~"testfn"),
-                expr: fn_wrapper_expr});
+    let fn_field = nospan(ast::field_ {
+        mutbl: ast::m_imm,
+        ident: cx.sess.ident_of(~"testfn"),
+        expr: fn_wrapper_expr,
+    });
 
     let ignore_lit: ast::lit = nospan(ast::lit_bool(test.ignore));
 
@@ -415,9 +419,11 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
          node: ast::expr_lit(@ignore_lit),
          span: span};
 
-    let ignore_field: ast::field =
-        nospan({mutbl: ast::m_imm, ident: cx.sess.ident_of(~"ignore"),
-                expr: @ignore_expr});
+    let ignore_field = nospan(ast::field_ {
+        mutbl: ast::m_imm,
+        ident: cx.sess.ident_of(~"ignore"),
+        expr: @ignore_expr,
+    });
 
     let fail_lit: ast::lit = nospan(ast::lit_bool(test.should_fail));
 
@@ -427,10 +433,11 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
          node: ast::expr_lit(@fail_lit),
          span: span};
 
-    let fail_field: ast::field =
-        nospan({mutbl: ast::m_imm,
-                ident: cx.sess.ident_of(~"should_fail"),
-                expr: @fail_expr});
+    let fail_field = nospan(ast::field_ {
+        mutbl: ast::m_imm,
+        ident: cx.sess.ident_of(~"should_fail"),
+        expr: @fail_expr,
+    });
 
     let test_desc_path =
         mk_path(cx, ~[cx.sess.ident_of(~"test"),

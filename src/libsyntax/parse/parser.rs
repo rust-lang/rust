@@ -455,7 +455,7 @@ impl Parser {
     fn parse_mt() -> mt {
         let mutbl = self.parse_mutability();
         let t = self.parse_ty(false);
-        return {ty: t, mutbl: mutbl};
+        mt { ty: t, mutbl: mutbl }
     }
 
     fn parse_ty_field() -> ty_field {
@@ -464,9 +464,14 @@ impl Parser {
         let id = self.parse_ident();
         self.expect(token::COLON);
         let ty = self.parse_ty(false);
-        return spanned(lo, ty.span.hi, {
-            ident: id, mt: {ty: ty, mutbl: mutbl}
-        });
+        spanned(
+            lo,
+            ty.span.hi,
+            {
+                ident: id,
+                mt: ast::mt { ty: ty, mutbl: mutbl }
+            }
+        )
     }
 
     fn parse_ret_ty() -> (ret_style, @Ty) {
@@ -673,7 +678,12 @@ impl Parser {
         fn parse_capture_item(p:Parser, is_move: bool) -> capture_item {
             let sp = mk_sp(p.span.lo, p.span.hi);
             let ident = p.parse_ident();
-            @{id: p.get_id(), is_move: is_move, name: ident, span: sp}
+            @ast::capture_item_ {
+                id: p.get_id(),
+                is_move: is_move,
+                name: ident,
+                span: sp,
+            }
         }
 
         if self.eat_keyword(~"move") {
@@ -874,7 +884,7 @@ impl Parser {
         let i = self.parse_ident();
         self.expect(sep);
         let e = self.parse_expr();
-        return spanned(lo, e.span.hi, {mutbl: m, ident: i, expr: e});
+        spanned(lo, e.span.hi, ast::field_ { mutbl: m, ident: i, expr: e })
     }
 
     fn mk_expr(+lo: BytePos, +hi: BytePos, +node: expr_) -> @expr {

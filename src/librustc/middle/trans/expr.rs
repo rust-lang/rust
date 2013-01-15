@@ -251,7 +251,8 @@ fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
-        let slice_ty = ty::mk_evec(tcx, {ty: unit_ty, mutbl: ast::m_imm},
+        let slice_ty = ty::mk_evec(tcx,
+                                   ty::mt { ty: unit_ty, mutbl: ast::m_imm },
                                    ty::vstore_slice(ty::re_static));
 
         let scratch = scratch_datum(bcx, slice_ty, false);
