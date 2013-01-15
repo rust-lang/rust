@@ -338,10 +338,24 @@ impl <T: Ord> TreeSet<T> {
 
     /// Visit the values (in-order) representing the intersection
     pure fn intersection(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
-        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n + m)
-        for self.each |x| {
-            if other.contains(x) {
-                if !f(x) { break }
+        let mut x = self.iter();
+        let mut y = other.iter();
+
+        unsafe { // purity workaround
+            let mut a = x.next();
+            let mut b = y.next();
+
+            while a.is_some() && b.is_some() {
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
+                if a1 < b1 {
+                    a = x.next();
+                } else {
+                    if !(b1 < a1) {
+                        if !f(a1) { return }
+                    }
+                    b = y.next();
+                }
             }
         }
     }
