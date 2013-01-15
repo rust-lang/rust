@@ -346,6 +346,7 @@ impl <T: Ord> TreeSet<T> {
                         if !f(a1) { return }
                         a = x.next();
                     }
+                    return
                 }
 
                 let (a1, _) = a.unwrap();
@@ -963,6 +964,7 @@ mod test_set {
         assert a.insert(11);
         assert a.insert(16);
         assert a.insert(19);
+        assert a.insert(24);
 
         assert b.insert(-2);
         assert b.insert(1);
@@ -972,7 +974,7 @@ mod test_set {
         assert b.insert(19);
 
         let mut i = 0;
-        let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19];
+        let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
         for a.union(&b) |x| {
             assert *x == expected[i];
             i += 1
