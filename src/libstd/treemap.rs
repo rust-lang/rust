@@ -279,15 +279,45 @@ impl <T: Ord> TreeSet<T> {
 
     /// Visit the values (in-order) representing the symmetric difference
     pure fn symmetric_difference(&self, other: &TreeSet<T>,
-                                 _f: fn(&T) -> bool) {
+                                 f: fn(&T) -> bool) {
         unsafe { // purity workaround
             let mut x = self.map.iter();
             let mut y = other.map.iter();
 
             let mut a = x.next();
             let mut b = y.next();
+
+            while a.is_some() {
+                if b.is_none() {
+                    while a.is_some() {
+                        let (a1, _) = a.unwrap();
+                        if !f(a1) { return }
+                        a = x.next();
+                    }
+                    return
+                }
+
+                let (a1, _) = a.unwrap();
+                let (b1, _) = b.unwrap();
+
+                if a1 < b1 {
+                    if !f(a1) { return }
+                    a = x.next();
+                } else {
+                    if b1 < a1 {
+                        if !f(b1) { return }
+                    } else {
+                        a = x.next();
+                    }
+                    b = y.next();
+                }
+            }
+            while b.is_some() {
+                let (b1, _) = b.unwrap();
+                if !f(b1) { return }
+                b = y.next();
+            }
         }
-        fail ~"not yet implemented"
     }
 
     /// Visit the values (in-order) representing the intersection
@@ -889,6 +919,32 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 5, 11];
         for a.difference(&b) |x| {
+            assert *x == expected[i];
+            i += 1
+        }
+        assert i == expected.len();
+    }
+
+    #[test]
+    fn test_symmetric_difference() {
+        let mut a = TreeSet::new();
+        let mut b = TreeSet::new();
+
+        assert a.insert(1);
+        assert a.insert(3);
+        assert a.insert(5);
+        assert a.insert(9);
+        assert a.insert(11);
+
+        assert b.insert(-2);
+        assert b.insert(3);
+        assert b.insert(9);
+        assert b.insert(14);
+        assert b.insert(22);
+
+        let mut i = 0;
+        let expected = [-2, 1, 5, 11, 14, 22];
+        for a.symmetric_difference(&b) |x| {
             assert *x == expected[i];
             i += 1
         }
