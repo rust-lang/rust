@@ -301,15 +301,38 @@ impl <T: Ord> TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the union
-    pure fn union(&self, other: &TreeSet<T>, _f: fn(&T) -> bool) {
+    pure fn union(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
         unsafe { // purity workaround
             let mut x = self.map.iter();
             let mut y = other.map.iter();
 
             let mut a = x.next();
             let mut b = y.next();
+
+            while a.is_some() {
+                if b.is_none() {
+                    while a.is_some() {
+                        let (a1, _) = a.unwrap();
+                        if !f(a1) { return }
+                        a = x.next();
+                    }
+                }
+
+                let (a1, _) = a.unwrap();
+                let (b1, _) = b.unwrap();
+
+                if b1 < a1 {
+                    if !f(b1) { return }
+                    b = y.next();
+                } else {
+                    if !f(a1) { return }
+                    if !(a1 < b1) {
+                        b = y.next()
+                    }
+                    a = x.next();
+                }
+            }
         }
-        fail ~"not yet implemented"
     }
 }
 
@@ -866,7 +889,35 @@ mod test_set {
         let mut i = 0;
         let expected = [1, 5, 11];
         for a.difference(&b) |x| {
-            io::println(fmt!("%?", x));
+            assert *x == expected[i];
+            i += 1
+        }
+        assert i == expected.len();
+    }
+
+    #[test]
+    fn test_union() {
+        let mut a = TreeSet::new();
+        let mut b = TreeSet::new();
+
+        assert a.insert(1);
+        assert a.insert(3);
+        assert a.insert(5);
+        assert a.insert(9);
+        assert a.insert(11);
+        assert a.insert(16);
+        assert a.insert(19);
+
+        assert b.insert(-2);
+        assert b.insert(1);
+        assert b.insert(5);
+        assert b.insert(9);
+        assert b.insert(13);
+        assert b.insert(19);
+
+        let mut i = 0;
+        let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19];
+        for a.union(&b) |x| {
             assert *x == expected[i];
             i += 1
         }
