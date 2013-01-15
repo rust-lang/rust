@@ -25,6 +25,10 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, tt: ~[ast::token_tree])
         print::pprust::tt_to_str(ast::tt_delim(tt),cx.parse_sess().interner));
 
     //trivial expression
-    return mr_expr(@{id: cx.next_id(), callee_id: cx.next_id(),
-                     node: ast::expr_rec(~[], option::None), span: sp});
+    mr_expr(@ast::expr {
+        id: cx.next_id(),
+        callee_id: cx.next_id(),
+        node: ast::expr_rec(~[], option::None),
+        span: sp,
+    })
 }

@@ -799,10 +799,10 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_stmt: |s: @ast::stmt| {
                 match s.node {
-                    ast::stmt_semi(@{id: id,
-                                     callee_id: _,
-                                     node: ast::expr_path(_),
-                                     span: _}, _) => {
+                    ast::stmt_semi(
+                        @ast::expr { id: id, node: ast::expr_path(_), _ },
+                        _
+                    ) => {
                         cx.sess.span_lint(
                             path_statement, id, it.id,
                             s.span,

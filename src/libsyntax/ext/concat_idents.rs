@@ -34,13 +34,19 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     }
     let res = cx.parse_sess().interner.intern(@res_str);
 
-    let e = @{id: cx.next_id(),
-              callee_id: cx.next_id(),
-              node: ast::expr_path(@ast::path { span: sp,
-                                                global: false,
-                                                idents: ~[res],
-                                                rp: None,
-                                                types: ~[] }),
-              span: sp};
+    let e = @ast::expr {
+        id: cx.next_id(),
+        callee_id: cx.next_id(),
+        node: ast::expr_path(
+            @ast::path {
+                 span: sp,
+                 global: false,
+                 idents: ~[res],
+                 rp: None,
+                 types: ~[],
+            }
+        ),
+        span: sp,
+    };
     mr_expr(e)
 }
