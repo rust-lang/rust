@@ -176,15 +176,19 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn ty_rec(+fields: ~[ast::ty_field]) -> @ast::Ty {
-        @{id: self.next_id(),
-          node: ast::ty_rec(fields),
-          span: dummy_sp()}
+        @ast::Ty {
+            id: self.next_id(),
+            node: ast::ty_rec(fields),
+            span: dummy_sp(),
+        }
     }
 
     fn ty_infer() -> @ast::Ty {
-        @{id: self.next_id(),
-          node: ast::ty_infer,
-          span: dummy_sp()}
+        @ast::Ty {
+            id: self.next_id(),
+            node: ast::ty_infer,
+            span: dummy_sp(),
+        }
     }
 
     fn ty_param(id: ast::ident, +bounds: ~[ast::ty_param_bound])
@@ -340,15 +344,19 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn ty_path_ast_builder(path: @ast::path) -> @ast::Ty {
-        @{id: self.next_id(),
-          node: ast::ty_path(path, self.next_id()),
-          span: path.span}
+        @ast::Ty {
+            id: self.next_id(),
+            node: ast::ty_path(path, self.next_id()),
+            span: path.span,
+        }
     }
 
     fn ty_nil_ast_builder() -> @ast::Ty {
-        @{id: self.next_id(),
-          node: ast::ty_nil,
-          span: dummy_sp()}
+        @ast::Ty {
+            id: self.next_id(),
+            node: ast::ty_nil,
+            span: dummy_sp(),
+        }
     }
 
     fn item_ty_poly(name: ident,

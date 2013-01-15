@@ -478,17 +478,27 @@ impl Parser {
         return if self.eat(token::RARROW) {
             let lo = self.span.lo;
             if self.eat(token::NOT) {
-                (noreturn, @{id: self.get_id(),
-                             node: ty_bot,
-                             span: mk_sp(lo, self.last_span.hi)})
+                (
+                    noreturn,
+                    @Ty {
+                        id: self.get_id(),
+                        node: ty_bot,
+                        span: mk_sp(lo, self.last_span.hi)
+                    }
+                )
             } else {
                 (return_val, self.parse_ty(false))
             }
         } else {
             let pos = self.span.lo;
-            (return_val, @{id: self.get_id(),
-                           node: ty_nil,
-                           span: mk_sp(pos, pos)})
+            (
+                return_val,
+                @Ty {
+                    id: self.get_id(),
+                    node: ty_nil,
+                    span: mk_sp(pos, pos),
+                }
+            )
         }
     }
 
@@ -580,7 +590,7 @@ impl Parser {
         } else { self.fatal(~"expected type"); };
 
         let sp = mk_sp(lo, self.last_span.hi);
-        return @{id: self.get_id(), node: t, span: sp};
+        @Ty {id: self.get_id(), node: t, span: sp}
     }
 
     fn parse_box_or_uniq_pointee(
@@ -731,9 +741,11 @@ impl Parser {
             let t = if p.eat(token::COLON) {
                 p.parse_ty(false)
             } else {
-                @{id: p.get_id(),
-                  node: ty_infer,
-                  span: mk_sp(p.span.lo, p.span.hi)}
+                @Ty {
+                    id: p.get_id(),
+                    node: ty_infer,
+                    span: mk_sp(p.span.lo, p.span.hi),
+                }
             };
             either::Left({mode: m, ty: t, pat: pat, id: p.get_id()})
         }
@@ -1565,7 +1577,7 @@ impl Parser {
                     ({
                         {
                             inputs: ~[],
-                            output: @{
+                            output: @Ty {
                                 id: self.get_id(),
                                 node: ty_infer,
                                 span: self.span
@@ -2150,9 +2162,11 @@ impl Parser {
                    allow_init: bool) -> @local {
         let lo = self.span.lo;
         let pat = self.parse_pat(false);
-        let mut ty = @{id: self.get_id(),
-                       node: ty_infer,
-                       span: mk_sp(lo, lo)};
+        let mut ty = @Ty {
+            id: self.get_id(),
+            node: ty_infer,
+            span: mk_sp(lo, lo),
+        };
         if self.eat(token::COLON) { ty = self.parse_ty(false); }
         let init = if allow_init { self.parse_initializer() } else { None };
         @spanned(
@@ -2430,9 +2444,13 @@ impl Parser {
     }
 
     fn mk_ty_path(i: ident) -> @Ty {
-        @{id: self.get_id(), node: ty_path(
-            ident_to_path(copy self.last_span, i),
-            self.get_id()), span: self.last_span}
+        @Ty {
+            id: self.get_id(),
+            node: ty_path(
+                ident_to_path(copy self.last_span, i),
+                self.get_id()),
+            span: self.last_span,
+        }
     }
 
     fn parse_optional_purity() -> ast::purity {
@@ -2650,7 +2668,7 @@ impl Parser {
         let output = if self.eat(token::RARROW) {
             self.parse_ty(false)
         } else {
-            @{id: self.get_id(), node: ty_infer, span: self.span}
+            @Ty { id: self.get_id(), node: ty_infer, span: self.span }
         };
         return ({inputs: either::lefts(inputs_captures),
                  output: output,
@@ -2733,7 +2751,11 @@ impl Parser {
     //    impl<T> ~[T] : to_str { ... }
     fn parse_item_impl() -> item_info {
         fn wrap_path(p: Parser, pt: @path) -> @Ty {
-            @{id: p.get_id(), node: ty_path(pt, p.get_id()), span: pt.span}
+            @Ty {
+                id: p.get_id(),
+                node: ty_path(pt, p.get_id()),
+                span: pt.span,
+            }
         }
 
         // We do two separate paths here: old-style impls and new-style impls.
@@ -2786,7 +2808,7 @@ impl Parser {
              idents: ~[i],
              rp: None,
              types: do typarams.map |tp| {
-                @{
+                @Ty {
                     id: self.get_id(),
                     node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
                     span: s
@@ -2938,13 +2960,19 @@ impl Parser {
             self.obsolete(copy self.span, ObsoleteClassMethod);
             self.parse_method();
             // bogus value
-            @spanned(self.span.lo, self.span.hi,
-                     ast::struct_field_ {
-                       kind: unnamed_field,
-                       id: self.get_id(),
-                       ty: @{id: self.get_id(),
-                             node: ty_nil,
-                             span: copy self.span} })
+            @spanned(
+                self.span.lo,
+                self.span.hi,
+                ast::struct_field_ {
+                    kind: unnamed_field,
+                    id: self.get_id(),
+                    ty: @ast::Ty {
+                        id: self.get_id(),
+                        node: ty_nil,
+                        span: copy self.span,
+                    }
+                }
+            )
         }
     }
 

@@ -194,7 +194,7 @@ fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
             None),
         span: sp,
     };
-    let ty : @ast::Ty = @{ id: cx.next_id(), node: ast::ty_infer, span: sp };
+    let ty = @ast::Ty { id: cx.next_id(), node: ast::ty_infer, span: sp };
     let local = @ast::spanned {
         node: ast::local_ {
             is_mutbl: mutbl,
@@ -293,7 +293,7 @@ fn mk_ty_path(cx: ext_ctxt,
            -> @ast::Ty {
     let ty = build::mk_raw_path(span, idents);
     let ty = ast::ty_path(ty, cx.next_id());
-    let ty = @{ id: cx.next_id(), node: move ty, span: span };
+    let ty = @ast::Ty { id: cx.next_id(), node: move ty, span: span };
     ty
 }
 fn mk_ty_path_global(cx: ext_ctxt,
@@ -302,7 +302,7 @@ fn mk_ty_path_global(cx: ext_ctxt,
                   -> @ast::Ty {
     let ty = build::mk_raw_path_global(span, idents);
     let ty = ast::ty_path(ty, cx.next_id());
-    let ty = @{ id: cx.next_id(), node: move ty, span: span };
+    let ty = @ast::Ty { id: cx.next_id(), node: move ty, span: span };
     ty
 }
 fn mk_simple_ty_path(cx: ext_ctxt,

@@ -1281,7 +1281,7 @@ impl Resolver {
                 // If there are static methods, then create the module
                 // and add them.
                 match (trait_ref_opt, ty) {
-                    (None, @{ id: _, node: ty_path(path, _), span: _ }) if
+                    (None, @Ty { node: ty_path(path, _), _ }) if
                             has_static_methods && path.idents.len() == 1 => {
                         // Create the module.
                         let name = path_to_ident(path);
