@@ -122,17 +122,21 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn block_expr(b: ast::blk) -> @ast::expr {
-        @{id: self.next_id(),
-          callee_id: self.next_id(),
-          node: ast::expr_block(b),
-          span: dummy_sp()}
+        @expr {
+            id: self.next_id(),
+            callee_id: self.next_id(),
+            node: ast::expr_block(b),
+            span: dummy_sp(),
+        }
     }
 
     fn move_expr(e: @ast::expr) -> @ast::expr {
-        @{id: self.next_id(),
-          callee_id: self.next_id(),
-          node: ast::expr_unary_move(e),
-          span: e.span}
+        @expr {
+            id: self.next_id(),
+            callee_id: self.next_id(),
+            node: ast::expr_unary_move(e),
+            span: e.span,
+        }
     }
 
     fn stmt_expr(e: @ast::expr) -> @ast::stmt {
@@ -153,10 +157,12 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn rec(+fields: ~[ast::field]) -> @ast::expr {
-        @{id: self.next_id(),
-          callee_id: self.next_id(),
-          node: ast::expr_rec(fields, None),
-          span: dummy_sp()}
+        @expr {
+            id: self.next_id(),
+            callee_id: self.next_id(),
+            node: ast::expr_rec(fields, None),
+            span: dummy_sp(),
+        }
     }
 
     fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field {

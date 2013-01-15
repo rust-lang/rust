@@ -696,8 +696,14 @@ impl blk_check_mode : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
-// Extra node ID is only used for index, assign_op, unary, binary, method call
+struct expr {
+    id: node_id,
+    // Extra node ID is only used for index, assign_op, unary, binary, method
+    // call
+    callee_id: node_id,
+    node: expr_,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]

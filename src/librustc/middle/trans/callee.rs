@@ -421,7 +421,7 @@ fn trans_call_inner(
         let ret_in_loop = match /*bad*/copy args {
           ArgExprs(args) => {
             args.len() > 0u && match vec::last(args).node {
-              ast::expr_loop_body(@{
+              ast::expr_loop_body(@ast::expr {
                 node: ast::expr_fn_block(_, ref body, _),
                 _
               }) =>  body_contains_ret((*body)),
@@ -628,7 +628,7 @@ fn trans_arg_expr(bcx: block,
             match arg_expr.node {
                 ast::expr_loop_body(
                     // XXX: Bad copy.
-                    blk@@{
+                    blk@@ast::expr {
                         node: ast::expr_fn_block(copy decl, ref body, cap),
                         _
                     }) =>

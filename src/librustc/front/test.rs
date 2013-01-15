@@ -351,14 +351,19 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
         descs.push(mk_test_desc_rec(cx, *test));
     }
 
-    let inner_expr = @{id: cx.sess.next_node_id(),
-                       callee_id: cx.sess.next_node_id(),
-                       node: ast::expr_vec(descs, ast::m_imm),
-                       span: dummy_sp()};
-    return @{id: cx.sess.next_node_id(),
-          callee_id: cx.sess.next_node_id(),
-          node: ast::expr_vstore(inner_expr, ast::expr_vstore_uniq),
-          span: dummy_sp()};
+    let inner_expr = @ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_vec(descs, ast::m_imm),
+        span: dummy_sp(),
+    };
+
+    @ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_vstore(inner_expr, ast::expr_vstore_uniq),
+        span: dummy_sp(),
+    }
 }
 
 fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
@@ -371,17 +376,20 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let name_lit: ast::lit =
         nospan(ast::lit_str(@ast_util::path_name_i(
             path, cx.sess.parse_sess.interner)));
-    let name_expr_inner: @ast::expr =
-        @{id: cx.sess.next_node_id(),
-          callee_id: cx.sess.next_node_id(),
-          node: ast::expr_lit(@name_lit),
-          span: span};
-    let name_expr = {id: cx.sess.next_node_id(),
-                     callee_id: cx.sess.next_node_id(),
-                     node: ast::expr_vstore(name_expr_inner,
-                                            ast::expr_vstore_uniq),
-                     span: dummy_sp()};
 
+    let name_expr_inner = @ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_lit(@name_lit),
+        span: span,
+    };
+
+    let name_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_vstore(name_expr_inner, ast::expr_vstore_uniq),
+        span: dummy_sp(),
+    };
 
     let name_field = nospan(ast::field_ {
         mutbl: ast::m_imm,
@@ -391,11 +399,12 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 
     let fn_path = path_node_global(path);
 
-    let fn_expr: ast::expr =
-        {id: cx.sess.next_node_id(),
-         callee_id: cx.sess.next_node_id(),
-         node: ast::expr_path(fn_path),
-         span: span};
+    let fn_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_path(fn_path),
+        span: span,
+    };
 
     let fn_wrapper_expr = mk_test_wrapper(cx, fn_expr, span);
 
@@ -407,11 +416,12 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 
     let ignore_lit: ast::lit = nospan(ast::lit_bool(test.ignore));
 
-    let ignore_expr: ast::expr =
-        {id: cx.sess.next_node_id(),
-         callee_id: cx.sess.next_node_id(),
-         node: ast::expr_lit(@ignore_lit),
-         span: span};
+    let ignore_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_lit(@ignore_lit),
+        span: span,
+    };
 
     let ignore_field = nospan(ast::field_ {
         mutbl: ast::m_imm,
@@ -421,11 +431,12 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 
     let fail_lit: ast::lit = nospan(ast::lit_bool(test.should_fail));
 
-    let fail_expr: ast::expr =
-        {id: cx.sess.next_node_id(),
-         callee_id: cx.sess.next_node_id(),
-         node: ast::expr_lit(@fail_lit),
-         span: span};
+    let fail_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_lit(@fail_lit),
+        span: span,
+    };
 
     let fail_field = nospan(ast::field_ {
         mutbl: ast::m_imm,
@@ -437,14 +448,19 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
         mk_path(cx, ~[cx.sess.ident_of(~"test"),
                       cx.sess.ident_of(~"TestDesc")]);
 
-    let desc_rec_: ast::expr_ =
-        ast::expr_struct(
-            test_desc_path,
-            ~[name_field, fn_field, ignore_field, fail_field],
-            option::None);
-    let desc_rec: ast::expr =
-        {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
-         node: desc_rec_, span: span};
+    let desc_rec_ = ast::expr_struct(
+        test_desc_path,
+        ~[name_field, fn_field, ignore_field, fail_field],
+        option::None
+    );
+
+    let desc_rec = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: desc_rec_,
+        span: span,
+    };
+
     return @desc_rec;
 }
 
@@ -454,11 +470,11 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 fn mk_test_wrapper(cx: test_ctxt,
                    +fn_path_expr: ast::expr,
                    span: span) -> @ast::expr {
-    let call_expr: ast::expr = {
+    let call_expr = ast::expr {
         id: cx.sess.next_node_id(),
         callee_id: cx.sess.next_node_id(),
         node: ast::expr_call(@fn_path_expr, ~[], false),
-        span: span
+        span: span,
     };
 
     let call_stmt: ast::stmt = nospan(
@@ -478,11 +494,10 @@ fn mk_test_wrapper(cx: test_ctxt,
         rules: ast::default_blk
     });
 
-    let wrapper_expr: ast::expr = {
+    let wrapper_expr = ast::expr  {
         id: cx.sess.next_node_id(),
         callee_id: cx.sess.next_node_id(),
-        node: ast::expr_fn(ast::ProtoBare, wrapper_decl,
-                           wrapper_body, @~[]),
+        node: ast::expr_fn(ast::ProtoBare, wrapper_decl, wrapper_body, @~[]),
         span: span
     };
 
@@ -525,51 +540,59 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
         cx.sess.ident_of(~"args")
     ]);
 
-    let args_path_expr_: ast::expr_ = ast::expr_path(args_path);
+    let args_path_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_path(args_path),
+        span: dummy_sp(),
+    };
 
-    let args_path_expr: ast::expr =
-        {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
-         node: args_path_expr_, span: dummy_sp()};
-
-    let args_call_expr_ = ast::expr_call(@args_path_expr, ~[], false);
-
-    let args_call_expr: ast::expr =
-        {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
-         node: args_call_expr_, span: dummy_sp()};
+    let args_call_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_call(@args_path_expr, ~[], false),
+        span: dummy_sp(),
+    };
 
     // Call __test::test to generate the vector of test_descs
     let test_path = path_node(~[cx.sess.ident_of(~"tests")]);
 
-    let test_path_expr_: ast::expr_ = ast::expr_path(test_path);
+    let test_path_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_path(test_path),
+        span: dummy_sp(),
+    };
 
-    let test_path_expr: ast::expr =
-        {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
-         node: test_path_expr_, span: dummy_sp()};
-
-    let test_call_expr_ = ast::expr_call(@test_path_expr, ~[], false);
-
-    let test_call_expr: ast::expr =
-        {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
-         node: test_call_expr_, span: dummy_sp()};
+    let test_call_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_call(@test_path_expr, ~[], false),
+        span: dummy_sp(),
+    };
 
     // Call std::test::test_main
     let test_main_path =
         mk_path(cx, ~[cx.sess.ident_of(~"test"),
                       cx.sess.ident_of(~"test_main")]);
 
-    let test_main_path_expr_: ast::expr_ = ast::expr_path(test_main_path);
+    let test_main_path_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_path(test_main_path),
+        span: dummy_sp(),
+    };
 
-    let test_main_path_expr: ast::expr =
-        {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
-         node: test_main_path_expr_, span: dummy_sp()};
-
-    let test_main_call_expr_: ast::expr_ =
-        ast::expr_call(@test_main_path_expr,
-                       ~[@args_call_expr, @test_call_expr], false);
-
-    let test_main_call_expr: ast::expr =
-        {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
-         node: test_main_call_expr_, span: dummy_sp()};
+    let test_main_call_expr = ast::expr {
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
+        node: ast::expr_call(
+            @test_main_path_expr,
+            ~[@args_call_expr, @test_call_expr],
+            false
+        ),
+        span: dummy_sp(),
+    };
 
     return @test_main_call_expr;
 }
