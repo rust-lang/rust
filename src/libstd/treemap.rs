@@ -50,7 +50,7 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
         } else {
             let mut x = self.iter();
             let mut y = other.iter();
-            for self.len().times unsafe { // unsafe used as a purity workaround
+            for self.len().times unsafe { // unsafe as a purity workaround
                 // ICE: x.next() != y.next()
 
                 let (x1, x2) = x.next().unwrap();
@@ -216,7 +216,9 @@ impl <T: Ord> TreeSet<T> {
     }
 
     /// Return true if the set contains a value
-    pure fn contains(&self, value: &T) -> bool { self.map.contains_key(value) }
+    pure fn contains(&self, value: &T) -> bool {
+        self.map.contains_key(value)
+    }
 
     /// Add a value to the set. Return true if the value was not
     /// already present in the set.
@@ -425,7 +427,8 @@ fn skew<K: Ord, V>(node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
 fn split<K: Ord, V>(node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
-    if node.right.map_default(false, |x| x.right.map_default(false, |y| y.level == node.level)) {
+    if node.right.map_default(false,
+      |x| x.right.map_default(false, |y| y.level == node.level)) {
         let mut node = node;
         let mut save = node.right.swap_unwrap();
         node.right <-> save.left; // save.left now None
@@ -501,20 +504,10 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
                         remove(&mut save.left, key);
                     }
                 } else {
-                    let mut rm = save.left.swap_unwrap();
-                    save.key <-> rm.key;
-                    save.value <-> rm.value;
-                    save.level <-> rm.level; // FIXME: may not be needed
-                    save.left <-> rm.left; // FIXME: may not be needed
-                    save.right <-> rm.right; // FIXME: may not be needed
+                    save = save.left.swap_unwrap();
                 }
             } else if save.right.is_some() {
-                let mut rm = save.right.swap_unwrap();
-                save.key <-> rm.key;
-                save.value <-> rm.value;
-                save.level <-> rm.level; // FIXME: may not be needed
-                save.left <-> rm.left; // FIXME: may not be needed
-                save.right <-> rm.right; // FIXME: may not be needed
+                save = save.right.swap_unwrap();
             } else {
                 return true // leaf
             }
@@ -615,7 +608,8 @@ mod test_treemap {
         }
     }
 
-    fn check_left<K: Ord, V>(node: &Option<~TreeNode<K, V>>, parent: &~TreeNode<K, V>) {
+    fn check_left<K: Ord, V>(node: &Option<~TreeNode<K, V>>,
+                             parent: &~TreeNode<K, V>) {
         match *node {
           Some(ref r) => {
             assert r.key < parent.key;
@@ -634,7 +628,7 @@ mod test_treemap {
             assert r.key > parent.key;
             let red = r.level == parent.level;
             if parent_red { assert !red } // no dual horizontal links
-            assert red || r.level == parent.level - 1; // right is red or black
+            assert red || r.level == parent.level - 1; // right red or black
             check_left(&r.left, r);
             check_right(&r.right, r, red);
           }
