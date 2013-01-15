@@ -267,7 +267,10 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
             }
         };
         // XXX: Bad copy.
-        let blk_sans_items = { stmts: stmts_sans_items,.. copy blk };
+        let blk_sans_items = ast::blk_ {
+            stmts: stmts_sans_items,
+            .. copy blk
+        };
         fold::noop_fold_block(blk_sans_items, fld)
     }
 

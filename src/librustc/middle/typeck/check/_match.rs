@@ -377,7 +377,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             let region_var =
                 fcx.infcx().next_region_var_with_lb(
                     pat.span, pcx.block_region);
-            let mt = {ty: expected, mutbl: mutbl};
+            let mt = ty::mt {ty: expected, mutbl: mutbl};
             let region_ty = ty::mk_rptr(tcx, region_var, mt);
             demand::eqtype(fcx, pat.span, region_ty, typ);
           }
@@ -575,7 +575,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         match tail {
             Some(tail_pat) => {
                 let slice_ty = ty::mk_evec(tcx,
-                    {ty: elt_type.ty, mutbl: elt_type.mutbl},
+                    ty::mt {ty: elt_type.ty, mutbl: elt_type.mutbl},
                     ty::vstore_slice(region_var)
                 );
                 check_pat(pcx, tail_pat, slice_ty);

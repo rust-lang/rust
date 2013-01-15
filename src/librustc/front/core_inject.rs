@@ -69,7 +69,7 @@ fn inject_libcore_ref(sess: Session,
             new_module = fld.fold_mod(new_module);
 
             // XXX: Bad copy.
-            let new_crate = { module: new_module, ..copy crate };
+            let new_crate = ast::crate_ { module: new_module, ..copy crate };
             (new_crate, span)
         },
         fold_mod: |module, fld| {

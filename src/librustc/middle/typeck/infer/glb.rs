@@ -50,17 +50,17 @@ impl Glb: Combine {
           // the precise type from the mut side.
           (m_mutbl, m_const) => {
             Sub(*self).tys(a.ty, b.ty).chain(|_t| {
-                Ok({ty: a.ty, mutbl: m_mutbl})
+                Ok(ty::mt {ty: a.ty, mutbl: m_mutbl})
             })
           }
           (m_const, m_mutbl) => {
             Sub(*self).tys(b.ty, a.ty).chain(|_t| {
-                Ok({ty: b.ty, mutbl: m_mutbl})
+                Ok(ty::mt {ty: b.ty, mutbl: m_mutbl})
             })
           }
           (m_mutbl, m_mutbl) => {
             eq_tys(&self, a.ty, b.ty).then(|| {
-                Ok({ty: a.ty, mutbl: m_mutbl})
+                Ok(ty::mt {ty: a.ty, mutbl: m_mutbl})
             })
           }
 
@@ -70,7 +70,7 @@ impl Glb: Combine {
           (m_const, m_imm) |
           (m_imm, m_imm) => {
             self.tys(a.ty, b.ty).chain(|t| {
-                Ok({ty: t, mutbl: m_imm})
+                Ok(ty::mt {ty: t, mutbl: m_imm})
             })
           }
 
@@ -78,7 +78,7 @@ impl Glb: Combine {
           // sides and mutbl of only `m_const`.
           (m_const, m_const) => {
             self.tys(a.ty, b.ty).chain(|t| {
-                Ok({ty: t, mutbl: m_const})
+                Ok(ty::mt {ty: t, mutbl: m_const})
             })
           }
 
