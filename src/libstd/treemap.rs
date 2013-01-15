@@ -243,20 +243,46 @@ impl <T: Ord> TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the difference
-    pure fn difference(&self, _other: &TreeSet<T>,
-                       _f: fn(&T) -> bool) {
-        fail ~"not yet implemented" // TODO
+    pure fn difference(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
+        unsafe { // purity workaround
+            let mut x = self.map.iter();
+            let mut y = other.map.iter();
+
+            let mut a = x.next();
+            let mut b = y.next();
+
+            while a.is_some() {
+                if b.is_none() {
+                    while a.is_some() {
+                        let (a1, _) = a.unwrap();
+                        if !f(a1) { return }
+                        a = x.next();
+                    }
+                    return
+                }
+
+                let (a1, _) = a.unwrap();
+                let (b1, _) = b.unwrap();
+
+                if a1 < b1 {
+                    if !f(a1) { return }
+                    a = x.next();
+                } else {
+                    if !(b1 < a1) { a = x.next() }
+                    b = y.next();
+                }
+            }
+        }
     }
 
     /// Visit the values (in-order) representing the symmetric difference
     pure fn symmetric_difference(&self, _other: &TreeSet<T>,
                                  _f: fn(&T) -> bool) {
-        fail ~"not yet implemented" // TODO
+        fail ~"not yet implemented"
     }
 
     /// Visit the values (in-order) representing the intersection
-    pure fn intersection(&self, other: &TreeSet<T>,
-                         f: fn(&T) -> bool) {
+    pure fn intersection(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
         // FIXME: this is a naive O(n*log(m)) implementation, could be O(n)
         for self.each |x| {
             if other.contains(x) {
@@ -267,7 +293,7 @@ impl <T: Ord> TreeSet<T> {
 
     /// Visit the values (in-order) representing the union
     pure fn union(&self, _other: &TreeSet<T>, _f: fn(&T) -> bool) {
-        fail ~"not yet implemented" // TODO
+        fail ~"not yet implemented"
     }
 }
 
@@ -801,6 +827,30 @@ mod test_set {
         let mut i = 0;
         let expected = [3, 5, 11, 77];
         for a.intersection(&b) |x| {
+            assert *x == expected[i];
+            i += 1
+        }
+        assert i == expected.len();
+    }
+
+    #[test]
+    fn test_difference() {
+        let mut a = TreeSet::new();
+        let mut b = TreeSet::new();
+
+        a.insert(1);
+        a.insert(3);
+        a.insert(5);
+        a.insert(9);
+        a.insert(11);
+
+        b.insert(3);
+        b.insert(9);
+
+        let mut i = 0;
+        let expected = [1, 5, 11];
+        for a.difference(&b) |x| {
+            io::println(fmt!("%?", x));
             assert *x == expected[i];
             i += 1
         }
