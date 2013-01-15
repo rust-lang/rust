@@ -25,6 +25,8 @@ use core::prelude::*;
 
 // Future improvements:
 
+// range search - O(log n) retrieval of an iterator from some key
+
 // implement Ord for TreeSet
 // could be superset/subset-based or in-order lexicographic comparison... but
 // there are methods for is_superset/is_subset so lexicographic is more useful
