@@ -1040,7 +1040,11 @@ impl float_ty : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type Ty = {id: node_id, node: ty_, span: span};
+struct Ty {
+    id: node_id,
+    node: ty_,
+    span: span,
+}
 
 // Not represented directly in the AST, referred to by name through a ty_path.
 #[auto_encode]

@@ -130,7 +130,10 @@ fn expand_auto_encode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_encode) {
             match item.node {
-                ast::item_ty(@{node: ast::ty_rec(ref fields), _}, tps) => {
+                ast::item_ty(
+                    @ast::Ty {node: ast::ty_rec(ref fields), _},
+                    tps
+                ) => {
                     let ser_impl = mk_rec_ser_impl(
                         cx,
                         item.span,
@@ -196,7 +199,10 @@ fn expand_auto_decode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_decode) {
             match item.node {
-                ast::item_ty(@{node: ast::ty_rec(ref fields), _}, tps) => {
+                ast::item_ty(
+                    @ast::Ty {node: ast::ty_rec(ref fields), _},
+                    tps
+                ) => {
                     let deser_impl = mk_rec_deser_impl(
                         cx,
                         item.span,
@@ -249,7 +255,7 @@ priv impl ext_ctxt {
         path: @ast::path,
         bounds: @~[ast::ty_param_bound]
     ) -> ast::ty_param {
-        let bound = ast::TraitTyParamBound(@{
+        let bound = ast::TraitTyParamBound(@ast::Ty {
             id: self.next_id(),
             node: ast::ty_path(path, self.next_id()),
             span: span,
@@ -315,9 +321,13 @@ priv impl ext_ctxt {
 
     fn ty_path(span: span, strs: ~[ast::ident],
                tps: ~[@ast::Ty]) -> @ast::Ty {
-        @{id: self.next_id(),
-          node: ast::ty_path(self.path_tps(span, strs, tps), self.next_id()),
-          span: span}
+        @ast::Ty {
+            id: self.next_id(),
+            node: ast::ty_path(
+                self.path_tps(span, strs, tps),
+                self.next_id()),
+            span: span,
+        }
     }
 
     fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
@@ -438,7 +448,7 @@ fn mk_impl(
     let mut trait_tps = vec::append(
         ~[ty_param],
          do tps.map |tp| {
-            let t_bound = ast::TraitTyParamBound(@{
+            let t_bound = ast::TraitTyParamBound(@ast::Ty {
                 id: cx.next_id(),
                 node: ast::ty_path(path, cx.next_id()),
                 span: span,
@@ -568,7 +578,7 @@ fn mk_ser_method(
     span: span,
     ser_body: ast::blk
 ) -> @ast::method {
-    let ty_s = @{
+    let ty_s = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_rptr(
             @{
@@ -597,7 +607,7 @@ fn mk_ser_method(
         id: cx.next_id(),
     }];
 
-    let ser_output = @{
+    let ser_output = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_nil,
         span: span,
@@ -631,7 +641,7 @@ fn mk_deser_method(
     ty: @ast::Ty,
     deser_body: ast::blk
 ) -> @ast::method {
-    let ty_d = @{
+    let ty_d = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_rptr(
             @{
@@ -670,8 +680,7 @@ fn mk_deser_method(
         ident: cx.ident_of(~"decode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: ast::spanned { node: ast::sty_static,
-                                span: span },
+        self_ty: ast::spanned { node: ast::sty_static, span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
         body: deser_body,
@@ -1181,7 +1190,7 @@ fn mk_enum_deser_body(
             {
                 inputs: ~[{
                     mode: ast::infer(cx.next_id()),
-                    ty: @{
+                    ty: @ast::Ty {
                         id: cx.next_id(),
                         node: ast::ty_infer,
                         span: span
@@ -1196,7 +1205,7 @@ fn mk_enum_deser_body(
                     },
                     id: cx.next_id(),
                 }],
-                output: @{
+                output: @ast::Ty {
                     id: cx.next_id(),
                     node: ast::ty_infer,
                     span: span,
