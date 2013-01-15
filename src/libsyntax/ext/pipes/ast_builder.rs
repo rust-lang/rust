@@ -181,15 +181,19 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn arg(name: ident, ty: @ast::Ty) -> ast::arg {
-        {mode: ast::infer(self.next_id()),
-         ty: ty,
-         pat: @{id: self.next_id(),
+        {
+            mode: ast::infer(self.next_id()),
+            ty: ty,
+            pat: @ast::pat {
+                id: self.next_id(),
                 node: ast::pat_ident(
                     ast::bind_by_value,
                     ast_util::ident_to_path(dummy_sp(), name),
                     None),
-                span: dummy_sp()},
-         id: self.next_id()}
+                span: dummy_sp(),
+            },
+            id: self.next_id(),
+        }
     }
 
     fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk {

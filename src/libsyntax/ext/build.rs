@@ -181,18 +181,25 @@ fn mk_glob_use(cx: ext_ctxt, sp: span,
 fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
             ident: ast::ident, ex: @ast::expr) -> @ast::stmt {
 
-    let pat : @ast::pat = @{id: cx.next_id(),
-                            node: ast::pat_ident(ast::bind_by_value,
-                                                 mk_raw_path(sp, ~[ident]),
-                                                 None),
-                           span: sp};
+    let pat = @ast::pat {
+        id: cx.next_id(),
+        node: ast::pat_ident(
+            ast::bind_by_value,
+            mk_raw_path(sp, ~[ident]),
+            None),
+        span: sp,
+    };
     let ty : @ast::Ty = @{ id: cx.next_id(), node: ast::ty_infer, span: sp };
-    let local : @ast::local = @ast::spanned { node: { is_mutbl: mutbl,
-                                                      ty: ty,
-                                                      pat: pat,
-                                                      init: Some(ex),
-                                                      id: cx.next_id()},
-                                              span: sp};
+    let local = @ast::spanned {
+        node: ast::local_ {
+            is_mutbl: mutbl,
+            ty: ty,
+            pat: pat,
+            init: Some(ex),
+            id: cx.next_id(),
+        },
+        span: sp,
+    };
     let decl = ast::spanned {node: ast::decl_local(~[local]), span: sp};
     @ast::spanned { node: ast::stmt_decl(@decl, cx.next_id()), span: sp }
 }
@@ -243,7 +250,7 @@ fn mk_managed(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_unary(ast::box(ast::m_imm), e))
 }
 fn mk_pat(cx: ext_ctxt, span: span, +pat: ast::pat_) -> @ast::pat {
-    @{ id: cx.next_id(), node: move pat, span: span }
+    @ast::pat { id: cx.next_id(), node: pat, span: span }
 }
 fn mk_pat_ident(cx: ext_ctxt, span: span, ident: ast::ident) -> @ast::pat {
     let path = mk_raw_path(span, ~[ ident ]);

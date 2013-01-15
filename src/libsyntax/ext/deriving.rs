@@ -374,22 +374,17 @@ fn create_enum_variant_pattern(cx: ext_ctxt,
                                              prefix,
                                              struct_def.fields.len());
 
-            let field_pats = dvec::DVec();
-            for struct_def.fields.eachi |i, struct_field| {
+            let field_pats = do struct_def.fields.mapi |i, struct_field| {
                 let ident = match struct_field.node.kind {
                     named_field(ident, _, _) => ident,
                     unnamed_field => {
                         cx.span_bug(span, ~"unexpected unnamed field");
                     }
                 };
-                field_pats.push({ ident: ident, pat: subpats[i] });
-            }
-            let field_pats = dvec::unwrap(move field_pats);
+                ast::field_pat { ident: ident, pat: subpats[i] }
+            };
 
-            return build::mk_pat_struct(cx,
-                                        span,
-                                        matching_path,
-                                        move field_pats);
+            build::mk_pat_struct(cx, span, matching_path, field_pats)
         }
         enum_variant_kind(*) => {
             cx.span_unimpl(span, ~"enum variants for `deriving`");
@@ -732,7 +727,7 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
                                                          matching_body_expr);
 
         // Create the matching arm.
-        let matching_arm = {
+        let matching_arm = ast::arm {
             pats: ~[ matching_pat ],
             guard: None,
             body: move matching_body_block
@@ -743,7 +738,7 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
         // variant then there will always be a match.
         if enum_definition.variants.len() > 1 {
             // Create the nonmatching pattern.
-            let nonmatching_pat = @{
+            let nonmatching_pat = @ast::pat {
                 id: cx.next_id(),
                 node: pat_wild,
                 span: span
@@ -757,12 +752,12 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
                                        nonmatching_expr);
 
             // Create the nonmatching arm.
-            let nonmatching_arm = {
+            let nonmatching_arm = ast::arm {
                 pats: ~[ nonmatching_pat ],
                 guard: None,
-                body: move nonmatching_body_block
+                body: nonmatching_body_block,
             };
-            other_arms.push(move nonmatching_arm);
+            other_arms.push(nonmatching_arm);
         }
 
         // Create the self pattern.
@@ -784,10 +779,10 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
                                                             other_match_expr);
 
         // Create the self arm.
-        let self_arm = {
+        let self_arm = ast::arm {
             pats: ~[ self_pat ],
             guard: None,
-            body: move other_match_body_block
+            body: other_match_body_block,
         };
         self_arms.push(move self_arm);
     }
@@ -813,8 +808,7 @@ fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
                                           enum_definition: &enum_def)
                                        -> @method {
     // Create the arms of the match in the method body.
-    let arms = dvec::DVec();
-    for enum_definition.variants.eachi |i, variant| {
+    let arms = do enum_definition.variants.mapi |i, variant| {
         // Create the matching pattern.
         let pat = create_enum_variant_pattern(cx, span, variant, ~"__self");
 
@@ -850,24 +844,22 @@ fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
         let match_body_block = build::mk_block_(cx, span, move stmts);
 
         // Create the arm.
-        let arm = {
+        ast::arm {
             pats: ~[ pat ],
             guard: None,
-            body: move match_body_block
-        };
-        arms.push(move arm);
-    }
+            body: match_body_block,
+        }
+    };
 
     // Create the method body.
     let self_ident = cx.ident_of(~"self");
     let self_expr = build::mk_path(cx, span, ~[ self_ident ]);
     let self_expr = build::mk_unary(cx, span, deref, self_expr);
-    let arms = dvec::unwrap(move arms);
-    let self_match_expr = expr_match(self_expr, move arms);
-    let self_match_expr = build::mk_expr(cx, span, move self_match_expr);
+    let self_match_expr = expr_match(self_expr, arms);
+    let self_match_expr = build::mk_expr(cx, span, self_match_expr);
     let self_match_stmt = build::mk_stmt(cx, span, self_match_expr);
 
     // Create the method.
-    return create_iter_bytes_method(cx, span, ~[ self_match_stmt ]);
+    create_iter_bytes_method(cx, span, ~[ self_match_stmt ])
 }
 

@@ -1769,7 +1769,7 @@ impl Parser {
                 span: expr.span,
             };
 
-            arms.push({pats: pats, guard: guard, body: blk});
+            arms.push(ast::arm { pats: pats, guard: guard, body: blk });
         }
         let mut hi = self.span.hi;
         self.bump();
@@ -1833,9 +1833,9 @@ impl Parser {
             let subpat = self.parse_pat(refutable);
             if is_tail {
                 match subpat {
-                    @{ node: pat_wild, _ } => (),
-                    @{ node: pat_ident(_, _, _), _ } => (),
-                    @{ span, _ } => self.span_fatal(
+                    @ast::pat { node: pat_wild, _ } => (),
+                    @ast::pat { node: pat_ident(_, _, _), _ } => (),
+                    @ast::pat { span, _ } => self.span_fatal(
                         span, ~"expected an identifier or `_`"
                     )
                 }
@@ -1881,13 +1881,13 @@ impl Parser {
                 self.bump();
                 subpat = self.parse_pat(refutable);
             } else {
-                subpat = @{
+                subpat = @ast::pat {
                     id: self.get_id(),
                     node: pat_ident(bind_infer, fieldpath, None),
                     span: self.last_span
                 };
             }
-            fields.push({ident: fieldname, pat: subpat});
+            fields.push(ast::field_pat { ident: fieldname, pat: subpat });
         }
         return (fields, etc);
     }
@@ -2092,7 +2092,7 @@ impl Parser {
             hi = self.span.hi;
           }
         }
-        return @{id: self.get_id(), node: pat, span: mk_sp(lo, hi)};
+        @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
     }
 
     fn parse_pat_ident(refutable: bool,
@@ -2131,9 +2131,17 @@ impl Parser {
                        span: mk_sp(lo, lo)};
         if self.eat(token::COLON) { ty = self.parse_ty(false); }
         let init = if allow_init { self.parse_initializer() } else { None };
-        return @spanned(lo, self.last_span.hi,
-                     {is_mutbl: is_mutbl, ty: ty, pat: pat,
-                      init: init, id: self.get_id()});
+        @spanned(
+            lo,
+            self.last_span.hi,
+            ast::local_ {
+                is_mutbl: is_mutbl,
+                ty: ty,
+                pat: pat,
+                init: init,
+                id: self.get_id(),
+            }
+        )
     }
 
     fn parse_let() -> @decl {

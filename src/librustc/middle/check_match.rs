@@ -478,7 +478,7 @@ fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
 }
 
 fn wild() -> @pat {
-    @{id: 0, node: pat_wild, span: ast_util::dummy_sp()}
+    @pat {id: 0, node: pat_wild, span: ast_util::dummy_sp()}
 }
 
 fn specialize(cx: @MatchCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,

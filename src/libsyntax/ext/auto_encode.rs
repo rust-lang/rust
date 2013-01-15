@@ -317,11 +317,14 @@ priv impl ext_ctxt {
     }
 
     fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
-        @{id: self.next_id(),
-          node: ast::pat_ident(ast::bind_by_ref(ast::m_imm),
-                               self.path(span, ~[nm]),
-                               None),
-          span: span}
+        @ast::pat {
+            id: self.next_id(),
+            node: ast::pat_ident(
+                ast::bind_by_ref(ast::m_imm),
+                self.path(span, ~[nm]),
+                None),
+            span: span,
+        }
     }
 
     fn stmt(expr: @ast::expr) -> @ast::stmt {
@@ -579,12 +582,14 @@ fn mk_ser_method(
     let ser_inputs = ~[{
         mode: ast::infer(cx.next_id()),
         ty: ty_s,
-        pat: @{id: cx.next_id(),
-               node: ast::pat_ident(
-                    ast::bind_by_value,
-                    ast_util::ident_to_path(span, cx.ident_of(~"__s")),
-                    None),
-               span: span},
+        pat: @ast::pat {
+            id: cx.next_id(),
+            node: ast::pat_ident(
+                ast::bind_by_value,
+                ast_util::ident_to_path(span, cx.ident_of(~"__s")),
+                None),
+            span: span,
+        },
         id: cx.next_id(),
     }];
 
@@ -640,12 +645,14 @@ fn mk_deser_method(
     let deser_inputs = ~[{
         mode: ast::infer(cx.next_id()),
         ty: ty_d,
-        pat: @{id: cx.next_id(),
-               node: ast::pat_ident(
-                    ast::bind_by_value,
-                    ast_util::ident_to_path(span, cx.ident_of(~"__d")),
-                    None),
-               span: span},
+        pat: @ast::pat {
+            id: cx.next_id(),
+            node: ast::pat_ident(
+                ast::bind_by_value,
+                ast_util::ident_to_path(span, cx.ident_of(~"__d")),
+                None),
+            span: span,
+        },
         id: cx.next_id(),
     }];
 
@@ -967,7 +974,7 @@ fn ser_variant(
         )
     };
 
-    let pat = @{
+    let pat = @ast::pat {
         id: cx.next_id(),
         node: pat_node,
         span: span,
@@ -1020,7 +1027,7 @@ fn ser_variant(
         ]
     );
 
-    { pats: ~[pat], guard: None, body: cx.expr_blk(body) }
+    ast::arm { pats: ~[pat], guard: None, body: cx.expr_blk(body) }
 }
 
 fn mk_enum_ser_body(
@@ -1132,21 +1139,25 @@ fn mk_enum_deser_body(
                 fail ~"enum variants unimplemented",
         };
 
-        let pat = @{
+        let pat = @ast::pat {
             id: cx.next_id(),
             node: ast::pat_lit(cx.lit_uint(span, v_idx)),
             span: span,
         };
 
-        {
+        ast::arm {
             pats: ~[pat],
             guard: None,
             body: cx.expr_blk(body),
         }
     };
 
-    let impossible_case = {
-        pats: ~[@{ id: cx.next_id(), node: ast::pat_wild, span: span}],
+    let impossible_case = ast::arm {
+        pats: ~[@ast::pat {
+            id: cx.next_id(),
+            node: ast::pat_wild,
+            span: span,
+        }],
         guard: None,
 
         // FIXME(#3198): proper error message
@@ -1167,13 +1178,14 @@ fn mk_enum_deser_body(
                         node: ast::ty_infer,
                         span: span
                     },
-                    pat: @{id: cx.next_id(),
-                           node: ast::pat_ident(
-                                ast::bind_by_value,
-                                ast_util::ident_to_path(span,
-                                                        cx.ident_of(~"i")),
-                                None),
-                           span: span},
+                    pat: @ast::pat {
+                        id: cx.next_id(),
+                        node: ast::pat_ident(
+                            ast::bind_by_value,
+                            ast_util::ident_to_path(span, cx.ident_of(~"i")),
+                            None),
+                        span: span,
+                    },
                     id: cx.next_id(),
                 }],
                 output: @{
