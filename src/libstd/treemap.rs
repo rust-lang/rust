@@ -178,7 +178,6 @@ impl <K: Ord, V> TreeMapIterator<K, V> {
     }
 }
 
-
 pub struct TreeSet<T: Ord> {
     priv map: TreeMap<T, ()>
 }
