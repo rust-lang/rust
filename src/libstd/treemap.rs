@@ -259,13 +259,35 @@ impl <T: Ord> TreeSet<T> {
 
     /// Check of the set is a subset of another
     pure fn is_subset(&self, other: &TreeSet<T>) -> bool {
-        // FIXME: this is a naive O(n*log(m)) implementation, could be O(n + m)
-        !iter::any(self, |x| !other.contains(x))
+        other.is_superset(self)
     }
 
     /// Check of the set is a superset of another
     pure fn is_superset(&self, other: &TreeSet<T>) -> bool {
-        other.is_subset(self)
+        let mut x = self.iter();
+        let mut y = other.iter();
+        unsafe { // purity workaround
+            let mut a = x.next();
+            let mut b = y.next();
+            while b.is_some() {
+                if a.is_none() {
+                    return false
+                }
+
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
+
+                if b1 < a1 {
+                    return false
+                }
+
+                if !(a1 < b1) {
+                    b = y.next();
+                }
+                a = x.next();
+            }
+        }
+        true
     }
 
     /// Visit the values (in-order) representing the difference
