@@ -1234,6 +1234,16 @@ pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
     (port, chan)
 }
 
+impl<T: Owned> PortOne<T> {
+    fn recv(self) -> T { recv_one(self) }
+    fn try_recv(self) -> Option<T> { try_recv_one(self) }
+}
+
+impl<T: Owned> ChanOne<T> {
+    fn send(self, data: T) { send_one(self, data) }
+    fn try_send(self, data: T) -> bool { try_send_one(self, data) }
+}
+
 /**
  * Receive a message from a oneshot pipe, failing if the connection was
  * closed.
