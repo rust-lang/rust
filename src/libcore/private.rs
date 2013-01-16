@@ -32,6 +32,8 @@ use uint;
 pub mod at_exit;
 #[path = "private/global.rs"]
 pub mod global;
+#[path = "private/finally.rs"]
+pub mod finally;
 
 extern mod rustrt {
     #[legacy_exports];
