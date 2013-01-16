@@ -444,8 +444,14 @@ fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
 }
 fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
     let free_fn = match heap {
-      heap_shared => |a| glue::trans_free(a, ptr),
-      heap_exchange => |a| glue::trans_unique_free(a, ptr)
+      heap_shared => {
+        let f: @fn(block) -> block = |a| glue::trans_free(a, ptr);
+        f
+      }
+      heap_exchange => {
+        let f: @fn(block) -> block = |a| glue::trans_unique_free(a, ptr);
+        f
+      }
     };
     do in_scope_cx(cx) |scope_info| {
         scope_info.cleanups.push(clean_temp(ptr, free_fn,

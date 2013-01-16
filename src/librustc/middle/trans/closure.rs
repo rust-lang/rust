@@ -427,24 +427,23 @@ fn trans_expr_fn(bcx: block,
                                                  ~"expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    // XXX: Bad copies.
-    let trans_closure_env = |proto, copy body, copy sub_path, copy decl| {
+    let trans_closure_env: &fn(ast::Proto) -> Result = |proto| {
         let cap_vars = capture::compute_capture_vars(ccx.tcx, user_id, proto,
                                                      cap_clause);
         let ret_handle = match is_loop_body { Some(x) => x, None => None };
         // XXX: Bad copy.
         let {llbox, cdata_ty, bcx} = build_closure(bcx, copy cap_vars, proto,
                                                    ret_handle);
-        trans_closure(ccx, /*bad*/copy sub_path, decl, body, llfn, no_self,
-                      /*bad*/copy bcx.fcx.param_substs, user_id, None,
-                      |fcx| {
-            load_environment(fcx, cdata_ty, copy cap_vars,
-                             ret_handle.is_some(), proto);
+        trans_closure(ccx, /*bad*/copy sub_path, decl, /*bad*/copy body,
+                      llfn, no_self, /*bad*/copy bcx.fcx.param_substs,
+                      user_id, None, |fcx| {
+                          load_environment(fcx, cdata_ty, copy cap_vars,
+                                           ret_handle.is_some(), proto);
                       }, |bcx| {
-            if is_loop_body.is_some() {
-                Store(bcx, C_bool(true), bcx.fcx.llretptr);
-            }
-        });
+                          if is_loop_body.is_some() {
+                              Store(bcx, C_bool(true), bcx.fcx.llretptr);
+                          }
+                      });
         rslt(bcx, llbox)
     };
 

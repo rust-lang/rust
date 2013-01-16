@@ -58,8 +58,9 @@ fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
 // of b -- skipping any inner loops (loop, while, loop_body)
 fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     let rs = @mut false;
-    let visit_expr =
-        |e: @ast::expr, &&flag: @mut bool, v: visit::vt<@mut bool>| {
+    let visit_expr: @fn(@ast::expr,
+                        &&flag: @mut bool,
+                        v: visit::vt<@mut bool>) = |e, &&flag, v| {
         *flag |= p(e.node);
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
@@ -80,8 +81,9 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
 // of b -- skipping any inner loops (loop, while, loop_body)
 fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
     let rs = @mut false;
-    let visit_expr =
-        |e: @ast::expr, &&flag: @mut bool, v: visit::vt<@mut bool>| {
+    let visit_expr: @fn(@ast::expr,
+                        &&flag: @mut bool,
+                        v: visit::vt<@mut bool>) = |e, &&flag, v| {
         *flag |= p(e);
         visit::visit_expr(e, flag, v)
     };
