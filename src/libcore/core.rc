@@ -169,6 +169,7 @@ pub mod reflect;
 pub mod condition;
 pub mod logging;
 pub mod util;
+pub mod semver;
 
 
 /* Reexported core operators */

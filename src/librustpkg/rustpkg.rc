@@ -17,6 +17,8 @@
 
 #[crate_type = "lib"];
 #[no_core];
+#[allow(vecs_implicitly_copyable,
+        non_implicitly_copyable_typarams)];
 
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
@@ -24,26 +26,171 @@ extern mod rustc(vers = "0.6");
 extern mod syntax(vers = "0.6");
 
 use core::*;
+use io::{ReaderUtil, WriterUtil};
 use std::getopts;
-use getopts::{optflag, optopt, opt_present};
 use rustc::metadata::{filesearch};
+use syntax::{ast, codemap, parse, visit, attr};
+use semver::Version;
 
 mod api;
 mod usage;
 mod util;
 
-use util::*;
+struct PackageScript {
+    id: ~str,
+    name: ~str,
+    vers: Version
+}
+
+impl PackageScript {
+    static fn parse(parent: Path) -> PackageScript {
+        let script = parent.push(~"package.rs");
+
+        if !os::path_exists(&script) {
+            fail ~"no package.rs file";
+        }
+
+        let sess = parse::new_parse_sess(None);
+        let crate = parse::parse_crate_from_file(&script, ~[], sess);
+        let mut id = None;
+        let mut vers = None;
+
+        fn load_pkg_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
+                                                      Option<~str>) {
+            let mut id = None;
+            let mut vers = None;
+
+            for mis.each |a| {
+                match a.node {
+                    ast::meta_name_value(v, ast::spanned {
+                                                node: ast::lit_str(s),
+                                                span: _}) => {
+                        match v {
+                            ~"id" => id = Some(*s),
+                            ~"vers" => vers = Some(*s),
+                            _ => ()
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            (id, vers)
+        }
+
+        for crate.node.attrs.each |a| {
+            match a.node.value.node {
+                ast::meta_list(v, mis) => {
+                    match v {
+                        ~"pkg" => {
+                            let (i, v) = load_pkg_attr(mis);
+
+                            id = i;
+                            vers = v;
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if id.is_none() || vers.is_none() {
+            fail ~"id or vers isn't defined in a pkg attribute in package.rs";
+        }
+
+        let id = id.get();
+        let vers = vers.get();
+
+        PackageScript {
+            id: id,
+            name: util::parse_id(id),
+            vers: util::parse_vers(vers)
+        }
+    }
+
+    fn hash() -> ~str {
+        let hasher = hash::default_state();
+
+        hasher.write_str(self.id + self.vers.to_str());
+
+        self.name + hasher.result_str() + self.vers.to_str()
+    }
+
+    fn work_dir() -> Path {
+        util::root().push(self.hash())
+    }
+}
+
+struct Ctx {
+    cmd: ~str,
+    args: ~[~str],
+    cfgs: ~[~str],
+    prefer: bool
+}
+
+impl Ctx {
+    fn run() {
+        match self.cmd {
+            ~"build" => self.build(),
+            ~"clean" => self.clean(),
+            ~"install" => self.install(),
+            ~"prefer" => self.prefer(),
+            ~"test" => self.test(),
+            ~"uninstall" => self.uninstall(),
+            ~"unprefer" => self.unprefer(),
+            _ => fail ~"reached an unhandled command"
+        }
+    }
+
+    fn build() {
+        let script = PackageScript::parse(os::getcwd());
+
+        io::println(fmt!("build: %s (v%s)", script.id, script.vers.to_str()));
+    }
+
+    fn clean() {
+
+    }
+
+    fn install() {
+
+    }
+
+    fn prefer() {
+
+    }
+
+    fn test() {
+
+    }
+
+    fn uninstall() {
+
+    }
+
+    fn unprefer() {
+
+    }
+}
 
 pub fn main() {
     let args = os::args();
-    let opts = ~[optflag(~"h"), optflag(~"help")];
+    let opts = ~[getopts::optflag(~"h"), getopts::optflag(~"help"),
+                 getopts::optmulti(~"c"), getopts::optmulti(~"cfg"),
+                 getopts::optmulti(~"p"), getopts::optmulti(~"prefer")];
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
         result::Err(f) => {
             fail fmt!("%s", getopts::fail_str(f));
         }
     };
-    let help = opt_present(matches, ~"h") || opt_present(matches, ~"help");
+    let help = getopts::opt_present(matches, ~"h") ||
+               getopts::opt_present(matches, ~"help");
+    let cfgs = vec::append(getopts::opt_strs(matches, ~"cfg"),
+                           getopts::opt_strs(matches, ~"c"));
+    let prefer = getopts::opt_present(matches, ~"p") ||
+                 getopts::opt_present(matches, ~"prefer");
     let mut args = copy matches.free;
 
     args.shift();
@@ -52,12 +199,12 @@ pub fn main() {
         return usage::general();
     }
 
-    let cmd = copy args[0];
+    let cmd = args.shift();
 
-    if !is_cmd(cmd) {
+    if !util::is_cmd(cmd) {
         return usage::general();
     } else if help {
-        match cmd {
+        return match cmd {
             ~"build" => usage::build(),
             ~"clean" => usage::clean(),
             ~"install" => usage::install(),
@@ -66,10 +213,15 @@ pub fn main() {
             ~"uninstall" => usage::uninstall(),
             ~"unprefer" => usage::unprefer(),
             _ => usage::general()
-        }
+        };
     }
 
-    Ctx { cmd: cmd, args: args }
+    Ctx {
+        cmd: cmd,
+        args: args,
+        cfgs: cfgs,
+        prefer: prefer
+    }.run();
 }
 
 pub use Crate = api::Crate;
