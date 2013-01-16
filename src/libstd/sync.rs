@@ -109,7 +109,7 @@ impl<Q: Owned> &Sem<Q> {
                 state.count -= 1;
                 if state.count < 0 {
                     // Create waiter nobe.
-                    let (SignalEnd, WaitEnd) = pipes::oneshot();
+                    let (WaitEnd, SignalEnd) = pipes::oneshot();
                     // Tell outer scope we need to block.
                     waiter_nobe = Some(move WaitEnd);
                     // Enqueue ourself.
@@ -216,7 +216,7 @@ impl &Condvar {
      */
     fn wait_on(condvar_id: uint) {
         // Create waiter nobe.
-        let (SignalEnd, WaitEnd) = pipes::oneshot();
+        let (WaitEnd, SignalEnd) = pipes::oneshot();
         let mut WaitEnd   = Some(move WaitEnd);
         let mut SignalEnd = Some(move SignalEnd);
         let mut reacquire = None;
