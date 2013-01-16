@@ -9,7 +9,7 @@ pub struct Crate {
 pub impl Crate {
     fn flag(flag: ~str) -> Crate {
         Crate {
-            flags: vec::append(self.flags, flag),
+            flags: vec::append(copy self.flags, ~[flag]),
             .. copy self
         }
     }
@@ -17,4 +17,8 @@ pub impl Crate {
 
 pub fn build(_targets: ~[Crate]) {
     // TODO: magic
+}
+
+pub mod util {
+    
 }
