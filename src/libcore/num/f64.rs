@@ -21,6 +21,7 @@ use to_str;
 use from_str;
 
 pub use cmath::c_double_targ_consts::*;
+pub use cmp::{min, max};
 
 macro_rules! delegate(
     (
