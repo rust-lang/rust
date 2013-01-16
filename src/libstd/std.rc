@@ -98,6 +98,7 @@ pub mod base64;
 pub mod rl;
 pub mod workcache;
 pub mod bigint;
+pub mod stats;
 
 #[cfg(unicode)]
 mod unicode;
