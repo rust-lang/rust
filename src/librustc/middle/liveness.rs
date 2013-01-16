@@ -1662,7 +1662,7 @@ fn check_fn(_fk: visit::fn_kind, _decl: fn_decl,
 enum ReadKind {
     PossiblyUninitializedVariable,
     PossiblyUninitializedField,
-    MovedVariable
+    MovedValue
 }
 
 impl @Liveness {
@@ -1815,7 +1815,7 @@ impl @Liveness {
                            lnk: LiveNodeKind,
                            var: Variable) {
 
-        // the only time that it is possible to have a moved variable
+        // the only time that it is possible to have a moved value
         // used by ExitNode would be arguments or fields in a ctor.
         // we give a slightly different error message in those cases.
         if lnk == ExitNode {
@@ -1837,7 +1837,7 @@ impl @Liveness {
             }
         }
 
-        self.report_illegal_read(move_span, lnk, var, MovedVariable);
+        self.report_illegal_read(move_span, lnk, var, MovedValue);
         self.tcx.sess.span_note(
             move_span, ~"move of variable occurred here");
 
@@ -1852,7 +1852,7 @@ impl @Liveness {
             ~"possibly uninitialized variable"
           }
           PossiblyUninitializedField => ~"possibly uninitialized field",
-          MovedVariable => ~"moved variable"
+          MovedValue => ~"moved value"
         };
         let name = (*self.ir).variable_name(var);
         match lnk {
