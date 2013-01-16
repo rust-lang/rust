@@ -424,8 +424,8 @@ pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
 
     do task::unkillable {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&rc.data);
-        let (c1,p1) = pipes::oneshot(); // ()
-        let (c2,p2) = pipes::oneshot(); // bool
+        let (p1,c1) = pipes::oneshot(); // ()
+        let (p2,c2) = pipes::oneshot(); // bool
         let server: UnwrapProto = ~mut Some((move c1,move p2));
         let serverp: int = cast::transmute(move server);
         // Try to put our server end in the unwrapper slot.
