@@ -57,7 +57,6 @@ delegate!(fn exp2(n: c_double) -> c_double = cmath::c_double_utils::exp2)
 delegate!(fn abs(n: c_double) -> c_double = cmath::c_double_utils::abs)
 delegate!(fn abs_sub(a: c_double, b: c_double) -> c_double =
     cmath::c_double_utils::abs_sub)
-delegate!(fn floor(n: c_double) -> c_double = cmath::c_double_utils::floor)
 delegate!(fn mul_add(a: c_double, b: c_double, c: c_double) -> c_double =
     cmath::c_double_utils::mul_add)
 delegate!(fn fmax(a: c_double, b: c_double) -> c_double =
@@ -210,11 +209,15 @@ pub pure fn is_infinite(x: f64) -> bool {
     return x == infinity || x == neg_infinity;
 }
 
-/// Returns true if `x`is a finite number
+/// Returns true if `x` is a finite number
 #[inline(always)]
 pub pure fn is_finite(x: f64) -> bool {
     return !(is_NaN(x) || is_infinite(x));
 }
+
+/// Returns `x` rounded down
+#[inline(always)]
+pub pure fn floor(x: f64) -> f64 { unsafe { floorf64(x) } }
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
@@ -320,6 +323,11 @@ impl f64: num::Zero {
 impl f64: num::One {
     #[inline(always)]
     static pure fn one() -> f64 { 1.0 }
+}
+
+#[abi="rust-intrinsic"]
+pub extern {
+    fn floorf64(val: f64) -> f64;
 }
 
 //
