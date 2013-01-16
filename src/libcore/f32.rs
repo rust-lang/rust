@@ -56,7 +56,6 @@ delegate!(fn exp2(n: c_float) -> c_float = cmath::c_float_utils::exp2)
 delegate!(fn abs(n: c_float) -> c_float = cmath::c_float_utils::abs)
 delegate!(fn abs_sub(a: c_float, b: c_float) -> c_float =
     cmath::c_float_utils::abs_sub)
-delegate!(fn floor(n: c_float) -> c_float = cmath::c_float_utils::floor)
 delegate!(fn mul_add(a: c_float, b: c_float, c: c_float) -> c_float =
     cmath::c_float_utils::mul_add)
 delegate!(fn fmax(a: c_float, b: c_float) -> c_float =
@@ -140,6 +139,10 @@ pub pure fn ge(x: f32, y: f32) -> bool { return x >= y; }
 
 #[inline(always)]
 pub pure fn gt(x: f32, y: f32) -> bool { return x > y; }
+
+/// Returns `x` rounded down
+#[inline(always)]
+pub pure fn floor(x: f32) -> f32 { unsafe { floorf32(x) } }
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
@@ -296,6 +299,11 @@ impl f32: num::Zero {
 impl f32: num::One {
     #[inline(always)]
     static pure fn one() -> f32 { 1.0 }
+}
+
+#[abi="rust-intrinsic"]
+pub extern {
+    fn floorf32(val: f32) -> f32;
 }
 
 //
