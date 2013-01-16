@@ -62,7 +62,7 @@ fn inject_libcore_ref(sess: Session,
             };
 
             let vis = vec::append(~[vi1], crate.module.view_items);
-            let mut new_module = {
+            let mut new_module = ast::_mod {
                 view_items: vis,
                 ../*bad*/copy crate.module
             };
@@ -95,7 +95,7 @@ fn inject_libcore_ref(sess: Session,
             let vis = vec::append(~[vi2], module.view_items);
 
             // FIXME #2543: Bad copy.
-            let new_module = { view_items: vis, ..copy module };
+            let new_module = ast::_mod { view_items: vis, ..copy module };
             fold::noop_fold_mod(new_module, fld)
         },
         ..*fold::default_ast_fold()

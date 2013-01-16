@@ -317,7 +317,7 @@ fn mk_arg(cx: ext_ctxt,
           ty: @ast::Ty)
        -> ast::arg {
     let arg_pat = mk_pat_ident(cx, span, ident);
-    {
+    ast::arg {
         mode: ast::infer(cx.next_id()),
         ty: ty,
         pat: arg_pat,
@@ -325,7 +325,7 @@ fn mk_arg(cx: ext_ctxt,
     }
 }
 fn mk_fn_decl(+inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
-    { inputs: move inputs, output: output, cf: ast::return_val }
+    ast::fn_decl { inputs: inputs, output: output, cf: ast::return_val }
 }
 fn mk_ty_param(cx: ext_ctxt,
                ident: ast::ident,

@@ -119,7 +119,7 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
         }
     };
 
-    return {items: new_items, ..module_};
+    ast::_mod { items: new_items, ..module_ }
 }
 
 
