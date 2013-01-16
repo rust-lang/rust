@@ -512,7 +512,7 @@ mod tests {
     fn test_mutex_arc_condvar() {
         let arc = ~MutexARC(false);
         let arc2 = ~arc.clone();
-        let (c,p) = pipes::oneshot();
+        let (p,c) = pipes::oneshot();
         let (c,p) = (~mut Some(move c), ~mut Some(move p));
         do task::spawn |move arc2, move p| {
             // wait until parent gets in

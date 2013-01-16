@@ -1229,8 +1229,9 @@ pub type ChanOne<T: Owned> = oneshot::client::Oneshot<T>;
 pub type PortOne<T: Owned> = oneshot::server::Oneshot<T>;
 
 /// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
-pub fn oneshot<T: Owned>() -> (ChanOne<T>, PortOne<T>) {
-    oneshot::init()
+pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
+    let (chan, port) = oneshot::init();
+    (port, chan)
 }
 
 /**
