@@ -104,6 +104,7 @@ Max Penet <max.penet@gmail.com>
 Michael Arntzenius <daekharel@gmail.com>
 Michael Bebenita <mbebenita@mozilla.com>
 Michael Sullivan <sully@msully.net>
+Nick Desaulniers <ndesaulniers@mozilla.com>
 Niko Matsakis <niko@alum.mit.edu>
 Or Brostovski <tohava@gmail.com>
 Orphée Lafond-Lummis <o@orftz.com>
