@@ -97,10 +97,12 @@ fn fold_mod(cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
         } else { item }
     }
 
-    let mod_nomain =
-        {view_items: /*bad*/copy m.view_items,
-         items: vec::map(m.items, |i| nomain(cx, *i))};
-    return fold::noop_fold_mod(mod_nomain, fld);
+    let mod_nomain = ast::_mod {
+        view_items: /*bad*/copy m.view_items,
+        items: vec::map(m.items, |i| nomain(cx, *i)),
+    };
+
+    fold::noop_fold_mod(mod_nomain, fld)
 }
 
 fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
@@ -182,7 +184,10 @@ fn should_fail(i: @ast::item) -> bool {
 
 fn add_test_module(cx: test_ctxt, +m: ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
-    return {items: vec::append_one(/*bad*/copy m.items, testmod),.. m};
+    ast::_mod {
+        items: vec::append_one(/*bad*/copy m.items, testmod),
+        .. m
+    }
 }
 
 /*
@@ -213,8 +218,9 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
     // The synthesized main function which will call the console test runner
     // with our list of tests
     let mainfn = mk_main(cx);
-    let testmod: ast::_mod = {
-        view_items: view_items, items: ~[mainfn, testsfn]
+    let testmod = ast::_mod {
+        view_items: view_items,
+        items: ~[mainfn, testsfn],
     };
     let item_ = ast::item_mod(testmod);
     // This attribute tells resolve to let us call unexported functions
@@ -276,10 +282,11 @@ fn mk_std(cx: test_ctxt) -> @ast::view_item {
 fn mk_tests(cx: test_ctxt) -> @ast::item {
     let ret_ty = mk_test_desc_vec_ty(cx);
 
-    let decl: ast::fn_decl =
-        {inputs: ~[],
-         output: ret_ty,
-         cf: ast::return_val};
+    let decl = ast::fn_decl {
+        inputs: ~[],
+        output: ret_ty,
+        cf: ast::return_val,
+    };
 
     // The vector of test_descs for this crate
     let test_descs = mk_test_desc_vec(cx);
@@ -486,7 +493,7 @@ fn mk_test_wrapper(cx: test_ctxt,
     let call_stmt: ast::stmt = nospan(
         ast::stmt_semi(@call_expr, cx.sess.next_node_id()));
 
-    let wrapper_decl: ast::fn_decl = {
+    let wrapper_decl = ast::fn_decl {
         inputs: ~[],
         output: @ast::Ty {
             id: cx.sess.next_node_id(),
@@ -521,10 +528,11 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
         span: dummy_sp(),
     };
 
-    let decl: ast::fn_decl =
-        {inputs: ~[],
-         output: @ret_ty,
-         cf: ast::return_val};
+    let decl = ast::fn_decl {
+        inputs: ~[],
+        output: @ret_ty,
+        cf: ast::return_val,
+    };
 
     let test_main_call_expr = mk_test_main_call(cx);
 

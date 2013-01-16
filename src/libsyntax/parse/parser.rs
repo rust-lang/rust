@@ -383,8 +383,7 @@ impl Parser {
             p.parse_arg_general(false)
         };
         let (ret_style, ret_ty) = self.parse_ret_ty();
-        return {inputs: inputs, output: ret_ty,
-                cf: ret_style};
+        ast::fn_decl { inputs: inputs, output: ret_ty, cf: ret_style }
     }
 
     fn parse_trait_methods() -> ~[trait_method] {
@@ -437,17 +436,19 @@ impl Parser {
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block(true);
                 let attrs = vec::append(attrs, inner_attrs);
-                provided(@{ident: ident,
-                           attrs: attrs,
-                           tps: tps,
-                           self_ty: self_ty,
-                           purity: pur,
-                           decl: d,
-                           body: body,
-                           id: p.get_id(),
-                           span: mk_sp(lo, hi),
-                           self_id: p.get_id(),
-                           vis: vis})
+                provided(@ast::method {
+                    ident: ident,
+                    attrs: attrs,
+                    tps: tps,
+                    self_ty: self_ty,
+                    purity: pur,
+                    decl: d,
+                    body: body,
+                    id: p.get_id(),
+                    span: mk_sp(lo, hi),
+                    self_id: p.get_id(),
+                    vis: vis,
+                })
               }
 
               _ => { p.fatal(~"expected `;` or `}` but found `" +
@@ -516,7 +517,7 @@ impl Parser {
             None => re_anon
         };
 
-        @{id: self.get_id(), node: r}
+        @ast::region { id: self.get_id(), node: r }
     }
 
     // Parses something like "&x"
@@ -729,7 +730,7 @@ impl Parser {
 
         let t = self.parse_ty(false);
 
-        {mode: m, ty: t, pat: pat, id: self.get_id()}
+        ast::arg { mode: m, ty: t, pat: pat, id: self.get_id() }
     }
 
     fn parse_arg() -> arg_or_capture_item {
@@ -753,7 +754,12 @@ impl Parser {
                     span: mk_sp(p.span.lo, p.span.hi),
                 }
             };
-            either::Left({mode: m, ty: t, pat: pat, id: p.get_id()})
+            either::Left(ast::arg {
+                mode: m,
+                ty: t,
+                pat: pat,
+                id: p.get_id()
+            })
         }
     }
 
@@ -1580,8 +1586,8 @@ impl Parser {
                   }
                   _ => {
                     // No argument list - `do foo {`
-                    ({
-                        {
+                    (
+                        ast::fn_decl {
                             inputs: ~[],
                             output: @Ty {
                                 id: self.get_id(),
@@ -1589,9 +1595,9 @@ impl Parser {
                                 span: self.span
                             },
                             cf: return_val
-                        }
-                    },
-                    @~[])
+                        },
+                        @~[]
+                    )
                   }
                 }
             },
@@ -2549,9 +2555,14 @@ impl Parser {
         let capture_clause = @either::rights(args_or_capture_items);
 
         let (ret_style, ret_ty) = self.parse_ret_ty();
-        return ({inputs: inputs,
-                 output: ret_ty,
-                 cf: ret_style}, capture_clause);
+        (
+            ast::fn_decl {
+                inputs: inputs,
+                output: ret_ty,
+                cf: ret_style,
+            },
+            capture_clause
+        )
     }
 
     fn is_self_ident() -> bool {
@@ -2651,7 +2662,7 @@ impl Parser {
         let capture_clause = @either::rights(args_or_capture_items);
         let (ret_style, ret_ty) = self.parse_ret_ty();
 
-        let fn_decl = {
+        let fn_decl = ast::fn_decl {
             inputs: inputs,
             output: ret_ty,
             cf: ret_style
@@ -2676,10 +2687,15 @@ impl Parser {
         } else {
             @Ty { id: self.get_id(), node: ty_infer, span: self.span }
         };
-        return ({inputs: either::lefts(inputs_captures),
-                 output: output,
-                 cf: return_val},
-                @either::rights(inputs_captures));
+
+        (
+            ast::fn_decl {
+                inputs: either::lefts(inputs_captures),
+                output: output,
+                cf: return_val,
+            },
+            @either::rights(inputs_captures)
+        )
     }
 
     fn parse_fn_header() -> {ident: ident, tps: ~[ty_param]} {
@@ -2729,10 +2745,19 @@ impl Parser {
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let attrs = vec::append(attrs, inner_attrs);
-        @{ident: ident, attrs: attrs,
-          tps: tps, self_ty: self_ty, purity: pur, decl: decl,
-          body: body, id: self.get_id(), span: mk_sp(lo, body.span.hi),
-          self_id: self.get_id(), vis: visa}
+        @ast::method {
+            ident: ident,
+            attrs: attrs,
+            tps: tps,
+            self_ty: self_ty,
+            purity: pur,
+            decl: decl,
+            body: body,
+            id: self.get_id(),
+            span: mk_sp(lo, body.span.hi),
+            self_id: self.get_id(),
+            vis: visa,
+        }
     }
 
     fn parse_item_trait() -> item_info {
@@ -2832,8 +2857,10 @@ impl Parser {
     }
 
     fn parse_trait_ref() -> @trait_ref {
-        @{path: self.parse_path_with_tps(false),
-          ref_id: self.get_id()}
+        @ast::trait_ref {
+            path: self.parse_path_with_tps(false),
+            ref_id: self.get_id(),
+        }
     }
 
     fn parse_trait_ref_list(ket: token::Token) -> ~[@trait_ref] {
@@ -3065,7 +3092,7 @@ impl Parser {
             self.fatal(~"expected item");
         }
 
-        return {view_items: view_items, items: items};
+        ast::_mod { view_items: view_items, items: items }
     }
 
     fn parse_item_const() -> item_info {
@@ -3117,7 +3144,7 @@ impl Parser {
                     (item_mod(m), item_mod(n)) => (m, n),
                     _ => self.bug(~"parsed mod item should be mod")
                 };
-                let merged_mod = {
+                let merged_mod = ast::_mod {
                     view_items: main_mod.view_items + new_mod.view_items,
                     items: main_mod.items + new_mod.items
                 };
@@ -3272,12 +3299,12 @@ impl Parser {
             initial_attrs = ~[];
             items.push(self.parse_foreign_item(attrs));
         }
-        return {
+        ast::foreign_mod {
             sort: sort,
             abi: move abi,
             view_items: view_items,
             items: items
-        };
+        }
     }
 
     fn parse_item_foreign_mod(lo: BytePos,
@@ -3473,7 +3500,10 @@ impl Parser {
                         seq_sep_trailing_disallowed(token::COMMA),
                         |p| p.parse_ty(false));
                     for arg_tys.each |ty| {
-                        args.push({ty: *ty, id: self.get_id()});
+                        args.push(ast::variant_arg {
+                            ty: *ty,
+                            id: self.get_id(),
+                        });
                     }
                     kind = tuple_variant_kind(args);
                 } else if self.eat(token::EQ) {
@@ -3486,9 +3516,14 @@ impl Parser {
                 needs_comma = true;
             }
 
-            let vr = {name: ident, attrs: variant_attrs,
-                      kind: kind, id: self.get_id(),
-                      disr_expr: disr_expr, vis: vis};
+            let vr = ast::variant_ {
+                name: ident,
+                attrs: variant_attrs,
+                kind: kind,
+                id: self.get_id(),
+                disr_expr: disr_expr,
+                vis: vis,
+            };
             variants.push(spanned(vlo, self.last_span.hi, vr));
 
             if needs_comma && !self.eat(token::COMMA) { break; }
@@ -3499,7 +3534,7 @@ impl Parser {
                         enum");
         }
 
-        return enum_def({ variants: variants, common: common_fields });
+        enum_def(ast::enum_def_ { variants: variants, common: common_fields })
     }
 
     fn parse_item_enum() -> item_info {
@@ -3511,18 +3546,26 @@ impl Parser {
             self.bump();
             let ty = self.parse_ty(false);
             self.expect(token::SEMI);
-            let variant =
-                spanned(ty.span.lo, ty.span.hi,
-                        {name: id,
-                         attrs: ~[],
-                         kind: tuple_variant_kind
-                            (~[{ty: ty, id: self.get_id()}]),
-                         id: self.get_id(),
-                         disr_expr: None,
-                         vis: public});
-            return (id, item_enum(enum_def({ variants: ~[variant],
-                                             common: None }),
-                                  ty_params), None);
+            let variant = spanned(ty.span.lo, ty.span.hi, ast::variant_ {
+                name: id,
+                attrs: ~[],
+                kind: tuple_variant_kind(
+                    ~[ast::variant_arg {ty: ty, id: self.get_id()}]
+                ),
+                id: self.get_id(),
+                disr_expr: None,
+                vis: public,
+            });
+
+            return (
+                id,
+                item_enum(
+                    enum_def(
+                        ast::enum_def_ { variants: ~[variant], common: None }
+                    ),
+                    ty_params),
+                None
+            );
         }
         self.expect(token::LBRACE);
 

@@ -67,15 +67,14 @@ fn filter_view_item(cx: ctxt, &&view_item: @ast::view_item
     }
 }
 
-fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
-   ast::_mod {
+fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     let filtered_items = vec::filter_map(m.items, |a| filter_item(cx, *a));
     let filtered_view_items = vec::filter_map(m.view_items,
                                               |a| filter_view_item(cx, *a));
-    return {
-        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
-        items: vec::filter_map(filtered_items, |x| fld.fold_item(*x))
-    };
+    ast::_mod {
+        view_items: filtered_view_items.map(|x| fld.fold_view_item(*x)),
+        items: filtered_items.filter_map(|x| fld.fold_item(*x)),
+    }
 }
 
 fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->
@@ -85,18 +84,21 @@ fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->
     } else { option::None }
 }
 
-fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
-                   fld: fold::ast_fold) -> ast::foreign_mod {
+fn fold_foreign_mod(
+    cx: ctxt,
+    nm: ast::foreign_mod,
+    fld: fold::ast_fold
+) -> ast::foreign_mod {
     let filtered_items = vec::filter_map(nm.items,
                                          |a| filter_foreign_item(cx, *a));
     let filtered_view_items = vec::filter_map(nm.view_items,
                                               |a| filter_view_item(cx, *a));
-    return {
+    ast::foreign_mod {
         sort: nm.sort,
         abi: nm.abi,
         view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
         items: filtered_items
-    };
+    }
 }
 
 fn fold_item_underscore(cx: ctxt, +item: ast::item_,
