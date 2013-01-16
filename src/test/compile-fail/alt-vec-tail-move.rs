@@ -4,5 +4,5 @@ fn main() {
         [1, 2, ..move tail] => tail,
         _ => core::util::unreachable()
     };
-    a[0] = 0; //~ ERROR: use of moved variable
+    a[0] = 0; //~ ERROR: use of moved value
 }
