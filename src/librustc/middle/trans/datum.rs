@@ -98,6 +98,7 @@
 use core::prelude::*;
 
 use lib::llvm::ValueRef;
+use middle::borrowck::RootInfo;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
@@ -534,7 +535,7 @@ impl Datum {
         }
     }
 
-    fn root(bcx: block, scope_id: ast::node_id) {
+    fn root(bcx: block, root_info: RootInfo) -> block {
         /*!
          *
          * In some cases, borrowck will decide that an @T/@[]/@str
@@ -542,18 +543,48 @@ impl Datum {
          * case, we will call this function, which will stash a copy
          * away until we exit the scope `scope_id`. */
 
-        debug!("root(scope_id=%?, self=%?)",
-               scope_id, self.to_str(bcx.ccx()));
+        debug!("root(scope_id=%?, freezes=%?, self=%?)",
+               root_info.scope, root_info.freezes, self.to_str(bcx.ccx()));
 
         if bcx.sess().trace() {
             trans_trace(
                 bcx, None,
-                fmt!("preserving until end of scope %d", scope_id));
+                fmt!("preserving until end of scope %d", root_info.scope));
         }
 
         let scratch = scratch_datum(bcx, self.ty, true);
         self.copy_to_datum(bcx, INIT, scratch);
-        base::add_root_cleanup(bcx, scope_id, scratch.val, scratch.ty);
+        base::add_root_cleanup(bcx, root_info, scratch.val, scratch.ty);
+
+        // If we need to freeze the box, do that now.
+        if root_info.freezes {
+            callee::trans_rtcall_or_lang_call(
+                bcx,
+                bcx.tcx().lang_items.borrow_as_imm_fn(),
+                ~[
+                    Load(bcx,
+                         PointerCast(bcx,
+                                     scratch.val,
+                                     T_ptr(T_ptr(T_i8()))))
+                ],
+                expr::Ignore)
+        } else {
+            bcx
+        }
+    }
+
+    fn perform_write_guard(bcx: block) -> block {
+        // Create scratch space, but do not root it.
+        let llval = match self.mode {
+            ByValue => self.val,
+            ByRef => Load(bcx, self.val),
+        };
+
+        callee::trans_rtcall_or_lang_call(
+            bcx,
+            bcx.tcx().lang_items.check_not_borrowed_fn(),
+            ~[ PointerCast(bcx, llval, T_ptr(T_i8())) ],
+            expr::Ignore)
     }
 
     fn drop_val(bcx: block) -> block {
@@ -610,7 +641,7 @@ impl Datum {
         expr_id: ast::node_id, // id of expr being deref'd
         derefs: uint,          // number of times deref'd already
         is_auto: bool)         // if true, only deref if auto-derefable
-        -> Option<Datum>
+        -> (Option<Datum>, block)
     {
         let ccx = bcx.ccx();
 
@@ -621,32 +652,39 @@ impl Datum {
         // root the autoderef'd value, if necessary:
         //
         // (Note: root'd values are always boxes)
-        match ccx.maps.root_map.find({id:expr_id, derefs:derefs}) {
-            None => (),
-            Some(scope_id) => {
-                self.root(bcx, scope_id);
-            }
-        }
+        let key = {id:expr_id, derefs:derefs};
+        let bcx = match ccx.maps.root_map.find(key) {
+            None => bcx,
+            Some(root_info) => self.root(bcx, root_info)
+        };
+
+        // Perform the write guard, if necessary.
+        //
+        // (Note: write-guarded values are always boxes)
+        let bcx = match ccx.maps.write_guard_map.find(key) {
+            None => bcx,
+            Some(_) => self.perform_write_guard(bcx)
+        };
 
         match ty::get(self.ty).sty {
             ty::ty_box(_) | ty::ty_uniq(_) => {
-                return Some(self.box_body(bcx));
+                return (Some(self.box_body(bcx)), bcx);
             }
             ty::ty_ptr(mt) => {
                 if is_auto { // unsafe ptrs are not AUTO-derefable
-                    return None;
+                    return (None, bcx);
                 } else {
-                    return Some(deref_ptr(bcx, &self, mt.ty));
+                    return (Some(deref_ptr(bcx, &self, mt.ty)), bcx);
                 }
             }
             ty::ty_rptr(_, mt) => {
-                return Some(deref_ptr(bcx, &self, mt.ty));
+                return (Some(deref_ptr(bcx, &self, mt.ty)), bcx);
             }
             ty::ty_enum(did, ref substs) => {
                 // Check whether this enum is a newtype enum:
                 let variants = ty::enum_variants(ccx.tcx, did);
                 if (*variants).len() != 1 || variants[0].args.len() != 1 {
-                    return None;
+                    return (None, bcx);
                 }
 
                 let ty = ty::subst(ccx.tcx, substs, variants[0].args[0]);
@@ -655,12 +693,15 @@ impl Datum {
                         // Recast lv.val as a pointer to the newtype
                         // rather than a ptr to the enum type.
                         let llty = T_ptr(type_of::type_of(ccx, ty));
-                        Some(Datum {
-                            val: PointerCast(bcx, self.val, llty),
-                            ty: ty,
-                            mode: ByRef,
-                            source: FromLvalue
-                        })
+                        (
+                            Some(Datum {
+                                val: PointerCast(bcx, self.val, llty),
+                                ty: ty,
+                                mode: ByRef,
+                                source: FromLvalue
+                            }),
+                            bcx
+                        )
                     }
                     ByValue => {
                         // Actually, this case cannot happen right
@@ -672,7 +713,7 @@ impl Datum {
                         // code in place here to do the right
                         // thing if this change ever goes through.
                         assert ty::type_is_immediate(ty);
-                        Some(Datum {ty: ty, ..self})
+                        (Some(Datum {ty: ty, ..self}), bcx)
                     }
                 };
             }
@@ -681,7 +722,7 @@ impl Datum {
                 let fields = ty::struct_fields(ccx.tcx, did, substs);
                 if fields.len() != 1 || fields[0].ident !=
                     special_idents::unnamed_field {
-                    return None;
+                    return (None, bcx);
                 }
 
                 let ty = fields[0].mt.ty;
@@ -691,12 +732,15 @@ impl Datum {
                         // than a pointer to the struct type.
                         // XXX: This isn't correct for structs with
                         // destructors.
-                        Some(Datum {
-                            val: GEPi(bcx, self.val, [0, 0, 0]),
-                            ty: ty,
-                            mode: ByRef,
-                            source: FromLvalue
-                        })
+                        (
+                            Some(Datum {
+                                val: GEPi(bcx, self.val, [0, 0, 0]),
+                                ty: ty,
+                                mode: ByRef,
+                                source: FromLvalue
+                            }),
+                            bcx
+                        )
                     }
                     ByValue => {
                         // Actually, this case cannot happen right now,
@@ -707,12 +751,12 @@ impl Datum {
                         // code in place here to do the right thing if this
                         // change ever goes through.
                         assert ty::type_is_immediate(ty);
-                        Some(Datum {ty: ty, ..self})
+                        (Some(Datum {ty: ty, ..self}), bcx)
                     }
                 }
             }
             _ => { // not derefable.
-                return None;
+                return (None, bcx);
             }
         }
 
@@ -728,10 +772,11 @@ impl Datum {
 
     fn deref(bcx: block,
              expr: @ast::expr,  // the expression whose value is being deref'd
-             derefs: uint) -> Datum {
+             derefs: uint)
+          -> DatumBlock {
         match self.try_deref(bcx, expr.id, derefs, false) {
-            Some(lvres) => lvres,
-            None => {
+            (Some(lvres), bcx) => DatumBlock { bcx: bcx, datum: lvres },
+            (None, _) => {
                 bcx.ccx().sess.span_bug(
                     expr.span, ~"Cannot deref this expression");
             }
@@ -740,7 +785,8 @@ impl Datum {
 
     fn autoderef(bcx: block,
                  expr_id: ast::node_id,
-                 max: uint) -> Datum {
+                 max: uint)
+              -> DatumBlock {
         let _icx = bcx.insn_ctxt("autoderef");
 
         debug!("autoderef(expr_id=%d, max=%?, self=%?)",
@@ -749,12 +795,14 @@ impl Datum {
 
         let mut datum = self;
         let mut derefs = 0u;
+        let mut bcx = bcx;
         while derefs < max {
             derefs += 1u;
             match datum.try_deref(bcx, expr_id, derefs, true) {
-                None => break,
-                Some(datum_deref) => {
+                (None, new_bcx) => { bcx = new_bcx; break }
+                (Some(datum_deref), new_bcx) => {
                     datum = datum_deref;
+                    bcx = new_bcx;
                 }
             }
         }
@@ -763,7 +811,7 @@ impl Datum {
         // in which case we should have, or we asked to deref as many
         // times as we can
         assert derefs == max || max == uint::max_value;
-        datum
+        DatumBlock { bcx: bcx, datum: datum }
     }
 
     fn get_base_and_len(bcx: block) -> (ValueRef, ValueRef) {

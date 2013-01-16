@@ -17,12 +17,25 @@ use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use libc::{c_uint, c_int};
 use middle::trans::common::*;
 
+use core::cast::transmute;
 use core::cast;
 use core::libc;
 use core::str;
 use core::vec;
 use std::map::HashMap;
 use syntax::codemap;
+
+fn terminate(cx: block, _: &str) {
+    unsafe {
+        cx.terminated = true;
+    }
+}
+
+fn check_not_terminated(cx: block) {
+    if cx.terminated {
+        fail ~"already terminated!";
+    }
+}
 
 fn B(cx: block) -> BuilderRef {
     unsafe {
@@ -86,8 +99,8 @@ fn count_insn(cx: block, category: &str) {
 fn RetVoid(cx: block) {
     unsafe {
         if cx.unreachable { return; }
-        assert (!cx.terminated);
-        cx.terminated = true;
+        check_not_terminated(cx);
+        terminate(cx, "RetVoid");
         count_insn(cx, "retvoid");
         llvm::LLVMBuildRetVoid(B(cx));
     }
@@ -96,8 +109,8 @@ fn RetVoid(cx: block) {
 fn Ret(cx: block, V: ValueRef) {
     unsafe {
         if cx.unreachable { return; }
-        assert (!cx.terminated);
-        cx.terminated = true;
+        check_not_terminated(cx);
+        terminate(cx, "Ret");
         count_insn(cx, "ret");
         llvm::LLVMBuildRet(B(cx), V);
     }
@@ -105,8 +118,8 @@ fn Ret(cx: block, V: ValueRef) {
 
 fn AggregateRet(cx: block, RetVals: ~[ValueRef]) {
     if cx.unreachable { return; }
-    assert (!cx.terminated);
-    cx.terminated = true;
+    check_not_terminated(cx);
+    terminate(cx, "AggregateRet");
     unsafe {
         llvm::LLVMBuildAggregateRet(B(cx), vec::raw::to_ptr(RetVals),
                                     RetVals.len() as c_uint);
@@ -116,8 +129,8 @@ fn AggregateRet(cx: block, RetVals: ~[ValueRef]) {
 fn Br(cx: block, Dest: BasicBlockRef) {
     unsafe {
         if cx.unreachable { return; }
-        assert (!cx.terminated);
-        cx.terminated = true;
+        check_not_terminated(cx);
+        terminate(cx, "Br");
         count_insn(cx, "br");
         llvm::LLVMBuildBr(B(cx), Dest);
     }
@@ -127,8 +140,8 @@ fn CondBr(cx: block, If: ValueRef, Then: BasicBlockRef,
           Else: BasicBlockRef) {
     unsafe {
         if cx.unreachable { return; }
-        assert (!cx.terminated);
-        cx.terminated = true;
+        check_not_terminated(cx);
+        terminate(cx, "CondBr");
         count_insn(cx, "condbr");
         llvm::LLVMBuildCondBr(B(cx), If, Then, Else);
     }
@@ -138,8 +151,8 @@ fn Switch(cx: block, V: ValueRef, Else: BasicBlockRef, NumCases: uint)
     -> ValueRef {
     unsafe {
         if cx.unreachable { return _Undef(V); }
-        assert !cx.terminated;
-        cx.terminated = true;
+        check_not_terminated(cx);
+        terminate(cx, "Switch");
         return llvm::LLVMBuildSwitch(B(cx), V, Else, NumCases as c_uint);
     }
 }
@@ -154,8 +167,8 @@ fn AddCase(S: ValueRef, OnVal: ValueRef, Dest: BasicBlockRef) {
 fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
     unsafe {
         if cx.unreachable { return; }
-        assert (!cx.terminated);
-        cx.terminated = true;
+        check_not_terminated(cx);
+        terminate(cx, "IndirectBr");
         count_insn(cx, "indirectbr");
         llvm::LLVMBuildIndirectBr(B(cx), Addr, NumDests as c_uint);
     }
@@ -171,8 +184,8 @@ fn noname() -> *libc::c_char unsafe {
 fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
           Then: BasicBlockRef, Catch: BasicBlockRef) {
     if cx.unreachable { return; }
-    assert (!cx.terminated);
-    cx.terminated = true;
+    check_not_terminated(cx);
+    terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
            str::connect(vec::map(Args, |a| val_str(cx.ccx().tn, *a)),
@@ -188,8 +201,8 @@ fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
 fn FastInvoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
               Then: BasicBlockRef, Catch: BasicBlockRef) {
     if cx.unreachable { return; }
-    assert (!cx.terminated);
-    cx.terminated = true;
+    check_not_terminated(cx);
+    terminate(cx, "FastInvoke");
     unsafe {
         count_insn(cx, "fastinvoke");
         let v = llvm::LLVMBuildInvoke(B(cx), Fn, vec::raw::to_ptr(Args),
@@ -985,7 +998,8 @@ fn Trap(cx: block) {
 fn LandingPad(cx: block, Ty: TypeRef, PersFn: ValueRef,
               NumClauses: uint) -> ValueRef {
     unsafe {
-        assert !cx.terminated && !cx.unreachable;
+        check_not_terminated(cx);
+        assert !cx.unreachable;
         count_insn(cx, "landingpad");
         return llvm::LLVMBuildLandingPad(B(cx), Ty, PersFn,
                                       NumClauses as c_uint, noname());
@@ -1001,8 +1015,8 @@ fn SetCleanup(cx: block, LandingPad: ValueRef) {
 
 fn Resume(cx: block, Exn: ValueRef) -> ValueRef {
     unsafe {
-        assert (!cx.terminated);
-        cx.terminated = true;
+        check_not_terminated(cx);
+        terminate(cx, "Resume");
         count_insn(cx, "resume");
         return llvm::LLVMBuildResume(B(cx), Exn);
     }

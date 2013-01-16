@@ -32,6 +32,7 @@ use middle::trans::build;
 use middle::trans::callee;
 use middle::trans::datum;
 use middle::trans::debuginfo;
+use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::meth;
 use middle::trans::reachable;
@@ -439,6 +440,31 @@ fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
         scope_info.cleanups.push(
             clean_temp(val, |a| glue::drop_ty_root(a, root, rooted, t),
                        cleanup_type));
+        scope_clean_changed(scope_info);
+    }
+}
+fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
+    debug!("add_clean_frozen_root(%s, %s, %s)",
+           bcx.to_str(), val_str(bcx.ccx().tn, val),
+           ty_to_str(bcx.ccx().tcx, t));
+    let {root, rooted} = root_for_cleanup(bcx, val, t);
+    let cleanup_type = cleanup_type(bcx.tcx(), t);
+    do in_scope_cx(bcx) |scope_info| {
+        scope_info.cleanups.push(
+            clean_temp(val, |bcx| {
+                let bcx = callee::trans_rtcall_or_lang_call(
+                    bcx,
+                    bcx.tcx().lang_items.return_to_mut_fn(),
+                    ~[
+                        build::Load(bcx,
+                                    build::PointerCast(bcx,
+                                                       root,
+                                                       T_ptr(T_ptr(T_i8()))))
+                    ],
+                    expr::Ignore
+                );
+                glue::drop_ty_root(bcx, root, rooted, t)
+            }, cleanup_type));
         scope_clean_changed(scope_info);
     }
 }

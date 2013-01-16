@@ -19,7 +19,8 @@ use middle::borrowck::{err_out_of_scope};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_discr, cat_comp};
 use middle::mem_categorization::{cat_deref, cat_discr, cat_local};
 use middle::mem_categorization::{cat_special, cat_stack_upvar, comp_field};
-use middle::mem_categorization::{comp_index, comp_variant, region_ptr};
+use middle::mem_categorization::{comp_index, comp_variant, gc_ptr};
+use middle::mem_categorization::{region_ptr};
 use middle::ty;
 use util::common::indenter;
 
@@ -162,7 +163,7 @@ impl LoanContext {
             self.loan_unstable_deref(cmt, cmt_base, req_mutbl)
           }
           cat_deref(_, _, unsafe_ptr) |
-          cat_deref(_, _, gc_ptr) |
+          cat_deref(_, _, gc_ptr(_)) |
           cat_deref(_, _, region_ptr(_)) => {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(

@@ -202,7 +202,10 @@ fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
             });
 
             if adj.autoderefs > 0 {
-                datum = datum.autoderef(bcx, expr.id, adj.autoderefs);
+                let DatumBlock { bcx: new_bcx, datum: new_datum } =
+                    datum.autoderef(bcx, expr.id, adj.autoderefs);
+                datum = new_datum;
+                bcx = new_bcx;
             }
 
             datum = match adj.autoref {
@@ -755,8 +758,8 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     // the lvalue in there, and then arrange for it to be cleaned up
     // at the end of the scope with id `scope_id`:
     let root_key = {id:expr.id, derefs:0u};
-    for bcx.ccx().maps.root_map.find(root_key).each |scope_id| {
-        unrooted_datum.root(bcx, *scope_id);
+    for bcx.ccx().maps.root_map.find(root_key).each |&root_info| {
+        bcx = unrooted_datum.root(bcx, root_info);
     }
 
     return DatumBlock {bcx: bcx, datum: unrooted_datum};
@@ -779,8 +782,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
             }
             ast::expr_unary(ast::deref, base) => {
                 let basedatum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-                let derefdatum = basedatum.deref(bcx, base, 0);
-                return DatumBlock {bcx: bcx, datum: derefdatum};
+                return basedatum.deref(bcx, base, 0);
             }
             _ => {
                 bcx.tcx().sess.span_bug(

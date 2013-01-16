@@ -56,6 +56,15 @@ pub unsafe fn rt_fail_bounds_check(file: *c_char, line: size_t,
     }
 }
 
+pub unsafe fn rt_fail_borrowed() {
+    let msg = "borrowed";
+    do str::as_buf(msg) |msg_p, _| {
+        do str::as_buf("???") |file_p, _| {
+            rt_fail_(msg_p as *c_char, file_p as *c_char, 0);
+        }
+    }
+}
+
 #[rt(exchange_malloc)]
 #[lang="exchange_malloc"]
 pub unsafe fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
