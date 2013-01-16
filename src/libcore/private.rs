@@ -34,6 +34,8 @@ pub mod at_exit;
 pub mod global;
 #[path = "private/finally.rs"]
 pub mod finally;
+#[path = "private/weak_task.rs"]
+pub mod weak_task;
 
 extern mod rustrt {
     #[legacy_exports];

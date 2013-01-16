@@ -377,17 +377,12 @@ rust_kernel::weaken_task(rust_port_id chan) {
         KLOG_("Weakening task with channel %" PRIdPTR, chan);
         weak_task_chans.push_back(chan);
     }
-    uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
-    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
-    if (new_non_weak_tasks == 0) {
-        begin_shutdown();
-    }
+    inc_weak_task_count();
 }
 
 void
 rust_kernel::unweaken_task(rust_port_id chan) {
-    uintptr_t new_non_weak_tasks = sync::increment(non_weak_tasks);
-    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
+    dec_weak_task_count();
     {
         scoped_lock with(weak_task_lock);
         KLOG_("Unweakening task with channel %" PRIdPTR, chan);
@@ -397,6 +392,21 @@ rust_kernel::unweaken_task(rust_port_id chan) {
             weak_task_chans.erase(iter);
         }
     }
+}
+
+void
+rust_kernel::inc_weak_task_count() {
+    uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
+    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
+    if (new_non_weak_tasks == 0) {
+        begin_shutdown();
+    }
+}
+
+void
+rust_kernel::dec_weak_task_count() {
+    uintptr_t new_non_weak_tasks = sync::increment(non_weak_tasks);
+    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
 }
 
 void

@@ -187,6 +187,8 @@ public:
     void unregister_task();
     void weaken_task(rust_port_id chan);
     void unweaken_task(rust_port_id chan);
+    void inc_weak_task_count();
+    void dec_weak_task_count();
 
     bool send_to_port(rust_port_id chan, void *sptr);
 

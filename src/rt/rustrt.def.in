@@ -212,3 +212,5 @@ rust_raw_thread_start
 rust_raw_thread_join_delete
 rust_register_exit_function
 rust_get_global_data_ptr
+rust_inc_weak_task_count
+rust_dec_weak_task_count
