@@ -86,24 +86,20 @@ fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
 
 fn fold_mod(cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
 
-    // Remove any defined main function from the AST so it doesn't clash with
+    // Remove any #[main] from the AST so it doesn't clash with
     // the one we're going to add. Only if compiling an executable.
 
-    fn nomain(cx: test_ctxt, item: @ast::item) -> Option<@ast::item> {
-        match item.node {
-          ast::item_fn(*) => {
-            if attrs_contains_name(item.attrs, ~"main")
-                    && !cx.sess.building_library {
-                option::None
-            } else { option::Some(item) }
-          }
-          _ => option::Some(item)
-        }
+    fn nomain(cx: test_ctxt, item: @ast::item) -> @ast::item {
+        if !cx.sess.building_library {
+            @ast::item{attrs: item.attrs.filtered(|attr| {
+                               attr::get_attr_name(*attr) != ~"main"
+                           }),.. copy *item}
+        } else { item }
     }
 
     let mod_nomain =
         {view_items: /*bad*/copy m.view_items,
-         items: vec::filter_map(m.items, |i| nomain(cx, *i))};
+         items: vec::map(m.items, |i| nomain(cx, *i))};
     return fold::noop_fold_mod(mod_nomain, fld);
 }
 
