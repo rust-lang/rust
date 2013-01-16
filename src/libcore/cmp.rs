@@ -85,3 +85,12 @@ pub pure fn gt<T: Ord>(v1: &T, v2: &T) -> bool {
     (*v1).gt(v2)
 }
 
+#[inline(always)]
+pub pure fn min<T: Ord>(v1: T, v2: T) -> T {
+    if v1 < v2 { v1 } else { v2 }
+}
+
+#[inline(always)]
+pub pure fn max<T: Ord>(v1: T, v2: T) -> T {
+    if v1 > v2 { v1 } else { v2 }
+}

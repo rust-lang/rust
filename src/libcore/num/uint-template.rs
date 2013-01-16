@@ -27,16 +27,13 @@ use u8;
 use u16;
 use u32;
 
+pub use cmp::{min, max};
+
 pub const bits : uint = inst::bits;
 pub const bytes : uint = (inst::bits / 8);
 
 pub const min_value: T = 0 as T;
 pub const max_value: T = 0 as T - 1 as T;
-
-#[inline(always)]
-pub pure fn min(x: T, y: T) -> T { if x < y { x } else { y } }
-#[inline(always)]
-pub pure fn max(x: T, y: T) -> T { if x > y { x } else { y } }
 
 #[inline(always)]
 pub pure fn add(x: T, y: T) -> T { x + y }
