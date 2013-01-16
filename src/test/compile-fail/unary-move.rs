@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: use of moved variable
+// error-pattern: use of moved value
 
 fn main() {
     let x = 3;

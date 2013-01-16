@@ -6,7 +6,7 @@ struct S {
 impl S {
     fn foo(self) -> int {
         self.bar();
-        return self.x;  //~ ERROR use of moved variable
+        return self.x;  //~ ERROR use of moved value
     }
 
     fn bar(self) {}
