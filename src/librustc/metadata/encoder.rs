@@ -66,10 +66,10 @@ export encode_def_id;
 
 type abbrev_map = map::HashMap<ty::t, tyencode::ty_abbrev>;
 
-type encode_inlined_item = fn@(ecx: @encode_ctxt,
-                               ebml_w: writer::Encoder,
-                               path: ast_map::path,
-                               ii: ast::inlined_item);
+pub type encode_inlined_item = fn@(ecx: @encode_ctxt,
+                                   ebml_w: writer::Encoder,
+                                   path: ast_map::path,
+                                   ii: ast::inlined_item);
 
 type encode_parms = {
     diag: span_handler,
@@ -572,7 +572,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                      index: @mut ~[entry<int>]) {
         index.push({val: item.id, pos: ebml_w.writer.tell()});
     }
-    let add_to_index = |copy ebml_w| add_to_index_(item, ebml_w, index);
+    let add_to_index: &fn() = || add_to_index_(item, ebml_w, index);
 
     debug!("encoding info for item at %s",
            ecx.tcx.sess.codemap.span_to_str(item.span));

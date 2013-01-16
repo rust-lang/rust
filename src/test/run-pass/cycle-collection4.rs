@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type foo = { mut z : fn@() };
+struct foo { mut z : fn@() }
 
 fn nop() { }
 fn nop_foo(_y: ~[int], _x : @foo) { }
 
 fn main() {
-    let w = @{ mut z: {||nop()} };
-    let x = {||nop_foo(~[], w)};
+    let w = @foo{ z: || nop() };
+    let x : fn@() = || nop_foo(~[], w);
     w.z = x;
 }

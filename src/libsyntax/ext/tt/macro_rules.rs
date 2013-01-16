@@ -136,8 +136,8 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         cx.span_fatal(best_fail_spot, best_fail_msg);
     }
 
-    let exp = |cx, sp, arg| generic_extension(cx, sp, name,
-                                              arg, lhses, rhses);
+    let exp: @fn(ext_ctxt, span, ~[ast::token_tree]) -> mac_result =
+        |cx, sp, arg| generic_extension(cx, sp, name, arg, lhses, rhses);
 
     return mr_def({
         name: *cx.parse_sess().interner.get(name),

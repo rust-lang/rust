@@ -30,6 +30,7 @@ use syntax::ast_map::{node_item, node_method};
 use syntax::ast_map;
 use syntax::ast_util::{Private, Public, has_legacy_export_attr, is_local};
 use syntax::ast_util::{visibility_to_privacy};
+use syntax::codemap::span;
 use syntax::visit;
 
 fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
@@ -37,7 +38,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
     let legacy_exports = has_legacy_export_attr(crate.node.attrs);
 
     // Adds structs that are privileged to this scope.
-    let add_privileged_items = |items: &[@ast::item]| {
+    let add_privileged_items: @fn(&[@ast::item]) -> int = |items| {
         let mut count = 0;
         for items.each |item| {
             match item.node {
@@ -53,7 +54,8 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
     };
 
     // Checks that an enum variant is in scope
-    let check_variant = |span, enum_id| {
+    let check_variant: @fn(span: span, enum_id: ast::def_id) =
+            |span, enum_id| {
         let variant_info = ty::enum_variants(tcx, enum_id)[0];
         let parental_privacy = if is_local(enum_id) {
             let parent_vis = ast_map::node_item_query(tcx.items, enum_id.node,
@@ -81,7 +83,8 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
     };
 
     // Checks that a private field is in scope.
-    let check_field = |span, id, ident| {
+    let check_field: @fn(span: span, id: ast::def_id, ident: ast::ident) =
+            |span, id, ident| {
         let fields = ty::lookup_struct_fields(tcx, id);
         for fields.each |field| {
             if field.ident != ident { loop; }
@@ -95,7 +98,8 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
     };
 
     // Checks that a private method is in scope.
-    let check_method = |span, origin: &method_origin| {
+    let check_method: @fn(span: span, origin: &method_origin) =
+            |span, origin| {
         match *origin {
             method_static(method_id) => {
                 if method_id.crate == local_crate {
