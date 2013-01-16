@@ -240,11 +240,16 @@ impl state: to_type_decls {
             items_msg.push(v);
         }
 
-        ~[cx.item_enum_poly(name,
-                            self.span,
-                            ast::enum_def({ variants: items_msg,
-                                            common: None }),
-                            self.ty_params)]
+        ~[
+            cx.item_enum_poly(
+                name,
+                self.span,
+                ast::enum_def(enum_def_ {
+                    variants: items_msg,
+                    common: None }),
+                self.ty_params
+            )
+        ]
     }
 
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {

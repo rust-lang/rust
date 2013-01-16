@@ -1842,13 +1842,17 @@ fn trans_enum_variant(ccx: @crate_ctxt,
                       llfndecl: ValueRef) {
     let _icx = ccx.insn_ctxt("trans_enum_variant");
     // Translate variant arguments to function arguments.
-    let fn_args = vec::map(args, |varg|
-        {mode: ast::expl(ast::by_copy),
-         ty: varg.ty,
-         pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
-                                     ast_util::dummy_sp(),
-                                     special_idents::arg),
-         id: varg.id});
+    let fn_args = do args.map |varg| {
+        ast::arg {
+            mode: ast::expl(ast::by_copy),
+            ty: varg.ty,
+            pat: ast_util::ident_to_pat(
+                ccx.tcx.sess.next_node_id(),
+                ast_util::dummy_sp(),
+                special_idents::arg),
+            id: varg.id,
+        }
+    };
     // XXX: Bad copy of `param_substs`.
     let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id, None,
                                copy param_substs, None);
@@ -1902,7 +1906,7 @@ fn trans_tuple_struct(ccx: @crate_ctxt,
 
     // Translate struct fields to function arguments.
     let fn_args = do fields.map |field| {
-        {
+        ast::arg {
             mode: ast::expl(ast::by_copy),
             ty: field.node.ty,
             pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),

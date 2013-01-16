@@ -125,10 +125,12 @@ fn fold_attribute_(at: attribute, fld: ast_fold) -> attribute {
 }
 //used in noop_fold_foreign_item and noop_fold_fn_decl
 fn fold_arg_(a: arg, fld: ast_fold) -> arg {
-    return {mode: a.mode,
-            ty: fld.fold_ty(a.ty),
-            pat: fld.fold_pat(a.pat),
-            id: fld.new_id(a.id)};
+    ast::arg {
+        mode: a.mode,
+        ty: fld.fold_ty(a.ty),
+        pat: fld.fold_pat(a.pat),
+        id: fld.new_id(a.id),
+    }
 }
 //used in noop_fold_expr, and possibly elsewhere in the future
 fn fold_mac_(m: mac, fld: ast_fold) -> mac {
@@ -139,9 +141,11 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
 }
 
 fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
-    return {inputs: vec::map(decl.inputs, |x| fold_arg_(*x, fld) ),
-         output: fld.fold_ty(decl.output),
-         cf: decl.cf}
+    ast::fn_decl {
+        inputs: decl.inputs.map(|x| fold_arg_(*x, fld)),
+        output: fld.fold_ty(decl.output),
+        cf: decl.cf,
+    }
 }
 
 fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
@@ -189,7 +193,7 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
             match ni.node {
                 foreign_item_fn(fdec, purity, typms) => {
                     foreign_item_fn(
-                        {
+                        ast::fn_decl {
                             inputs: fdec.inputs.map(|a| fold_arg(*a)),
                             output: fld.fold_ty(fdec.output),
                             cf: fdec.cf,
@@ -240,11 +244,11 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_ty(t, typms) => item_ty(fld.fold_ty(t),
                                        fold_ty_params(typms, fld)),
           item_enum(ref enum_definition, typms) => {
-            item_enum(ast::enum_def({
-                variants: vec::map((*enum_definition).variants,
-                                   |x| fld.fold_variant(*x)),
-                common: option::map(&(*enum_definition).common,
-                                    |x| fold_struct_def(*x, fld))
+            item_enum(ast::enum_def(ast::enum_def_ {
+                variants: enum_definition.variants.map(
+                    |x| fld.fold_variant(*x)),
+                common: enum_definition.common.map(
+                    |x| fold_struct_def(*x, fld)),
             }), fold_ty_params(typms, fld))
           }
           item_struct(struct_def, typms) => {
@@ -285,15 +289,18 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
                                             .. dtor.node},
                   span: dtor.span }
     };
-    return @ast::struct_def {
-        fields: vec::map(struct_def.fields, |f| fold_struct_field(*f, fld)),
+    @ast::struct_def {
+        fields: struct_def.fields.map(|f| fold_struct_field(*f, fld)),
         dtor: dtor,
-        ctor_id: option::map(&struct_def.ctor_id, |cid| fld.new_id(*cid))
-    };
+        ctor_id: struct_def.ctor_id.map(|cid| fld.new_id(*cid)),
+    }
 }
 
 fn fold_trait_ref(&&p: @trait_ref, fld: ast_fold) -> @trait_ref {
-    @{path: fld.fold_path(p.path), ref_id: fld.new_id(p.ref_id)}
+    @ast::trait_ref {
+        path: fld.fold_path(p.path),
+        ref_id: fld.new_id(p.ref_id),
+    }
 }
 
 fn fold_struct_field(&&f: @struct_field, fld: ast_fold) -> @struct_field {
@@ -304,17 +311,19 @@ fn fold_struct_field(&&f: @struct_field, fld: ast_fold) -> @struct_field {
 }
 
 fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
-    return @{ident: fld.fold_ident(m.ident),
-          attrs: /* FIXME (#2543) */ copy m.attrs,
-          tps: fold_ty_params(m.tps, fld),
-          self_ty: m.self_ty,
-          purity: m.purity,
-          decl: fold_fn_decl(m.decl, fld),
-          body: fld.fold_block(m.body),
-          id: fld.new_id(m.id),
-          span: fld.new_span(m.span),
-          self_id: fld.new_id(m.self_id),
-          vis: m.vis};
+    @ast::method {
+        ident: fld.fold_ident(m.ident),
+        attrs: /* FIXME (#2543) */ copy m.attrs,
+        tps: fold_ty_params(m.tps, fld),
+        self_ty: m.self_ty,
+        purity: m.purity,
+        decl: fold_fn_decl(m.decl, fld),
+        body: fld.fold_block(m.body),
+        id: fld.new_id(m.id),
+        span: fld.new_span(m.span),
+        self_id: fld.new_id(m.self_id),
+        vis: m.vis,
+    }
 }
 
 
@@ -577,20 +586,24 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
 
 // ...nor do modules
 fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
-    return {view_items: vec::map(m.view_items, |x| fld.fold_view_item(*x)),
-         items: vec::filter_map(m.items, |x| fld.fold_item(*x))};
+    ast::_mod {
+        view_items: vec::map(m.view_items, |x| fld.fold_view_item(*x)),
+        items: vec::filter_map(m.items, |x| fld.fold_item(*x)),
+    }
 }
 
 fn noop_fold_foreign_mod(nm: foreign_mod, fld: ast_fold) -> foreign_mod {
-    return {sort: nm.sort,
-            abi: nm.abi,
-            view_items: vec::map(nm.view_items, |x| fld.fold_view_item(*x)),
-            items: vec::map(nm.items, |x| fld.fold_foreign_item(*x))}
+    ast::foreign_mod {
+        sort: nm.sort,
+        abi: nm.abi,
+        view_items: vec::map(nm.view_items, |x| fld.fold_view_item(*x)),
+        items: vec::map(nm.items, |x| fld.fold_foreign_item(*x)),
+    }
 }
 
 fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     fn fold_variant_arg_(va: variant_arg, fld: ast_fold) -> variant_arg {
-        return {ty: fld.fold_ty(va.ty), id: fld.new_id(va.id)};
+        ast::variant_arg { ty: fld.fold_ty(va.ty), id: fld.new_id(va.id) }
     }
     let fold_variant_arg = |x| fold_variant_arg_(x, fld);
 
@@ -621,8 +634,12 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                                     |x| fld.fold_variant(*x));
             let common = option::map(&(*enum_definition).common,
                                      |x| fold_struct_def(*x, fld));
-            kind = enum_variant_kind(ast::enum_def({ variants: variants,
-                                                     common: common }));
+            kind = enum_variant_kind(
+                ast::enum_def(ast::enum_def_ {
+                    variants: variants,
+                    common: common
+                })
+            );
         }
     }
 
@@ -633,12 +650,14 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
       Some(e) => Some(fld.fold_expr(e)),
       None => None
     };
-    return {name: /* FIXME (#2543) */ copy v.name,
-         attrs: attrs,
-         kind: kind,
-         id: fld.new_id(v.id),
-         disr_expr: de,
-         vis: v.vis};
+    ast::variant_ {
+        name: /* FIXME (#2543) */ copy v.name,
+        attrs: attrs,
+        kind: kind,
+        id: fld.new_id(v.id),
+        disr_expr: de,
+        vis: v.vis,
+    }
 }
 
 fn noop_fold_ident(&&i: ident, _fld: ast_fold) -> ident {

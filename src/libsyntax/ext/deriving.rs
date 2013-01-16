@@ -135,7 +135,7 @@ fn create_eq_method(cx: ext_ctxt,
                                                      span,
                                                      type_ident,
                                                      ty_params);
-    let arg_region = @{ id: cx.next_id(), node: re_anon };
+    let arg_region = @ast::region { id: cx.next_id(), node: re_anon };
     let arg_type = ty_rptr(
         arg_region,
         ast::mt { ty: arg_path_type, mutbl: m_imm }
@@ -168,7 +168,7 @@ fn create_eq_method(cx: ext_ctxt,
 
     // Create the method.
     let self_ty = spanned { node: sty_region(m_imm), span: span };
-    return @{
+    @ast::method {
         ident: method_ident,
         attrs: ~[],
         tps: ~[],
@@ -180,7 +180,7 @@ fn create_eq_method(cx: ext_ctxt,
         span: span,
         self_id: cx.next_id(),
         vis: public
-    };
+    }
 }
 
 fn create_self_type_with_params(cx: ext_ctxt,
@@ -234,7 +234,7 @@ fn create_derived_impl(cx: ext_ctxt,
         types: ~[]
     };
     let trait_path = @move trait_path;
-    let trait_ref = {
+    let trait_ref = ast::trait_ref {
         path: trait_path,
         ref_id: cx.next_id()
     };
@@ -319,7 +319,7 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     // Create the method.
     let self_ty = spanned { node: sty_region(m_imm), span: span };
     let method_ident = cx.ident_of(~"iter_bytes");
-    return @{
+    @ast::method {
         ident: method_ident,
         attrs: ~[],
         tps: ~[],

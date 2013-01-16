@@ -198,7 +198,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     }
 
     fn arg(name: ident, ty: @ast::Ty) -> ast::arg {
-        {
+        ast::arg {
             mode: ast::infer(self.next_id()),
             ty: ty,
             pat: @ast::pat {
@@ -231,9 +231,11 @@ impl ext_ctxt: ext_ctxt_ast_builder {
 
     fn fn_decl(+inputs: ~[ast::arg],
                output: @ast::Ty) -> ast::fn_decl {
-        {inputs: inputs,
-         output: output,
-         cf: ast::return_val}
+        ast::fn_decl {
+            inputs: inputs,
+            output: output,
+            cf: ast::return_val,
+        }
     }
 
     fn item(name: ident,
@@ -295,15 +297,20 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn variant(name: ident,
                span: span,
                +tys: ~[@ast::Ty]) -> ast::variant {
-        let args = tys.map(|ty| {ty: *ty, id: self.next_id()});
+        let args = do tys.map |ty| {
+            ast::variant_arg { ty: *ty, id: self.next_id() }
+        };
 
-        spanned { node: { name: name,
-                          attrs: ~[],
-                          kind: ast::tuple_variant_kind(args),
-                          id: self.next_id(),
-                          disr_expr: None,
-                          vis: ast::public},
-                  span: span}
+        spanned {
+            node: ast::variant_ {
+                name: name,
+                attrs: ~[],
+                kind: ast::tuple_variant_kind(args),
+                id: self.next_id(),
+                disr_expr: None,
+                vis: ast::public},
+            span: span,
+        }
     }
 
     fn item_mod(name: ident,
@@ -336,11 +343,14 @@ impl ext_ctxt: ext_ctxt_ast_builder {
             span: ast_util::dummy_sp()
         };
 
-        self.item(name,
-                  span,
-                  ast::item_mod({
-                      view_items: ~[vi],
-                      items: items}))
+        self.item(
+            name,
+            span,
+            ast::item_mod(ast::_mod {
+                view_items: ~[vi],
+                items: items,
+            })
+        )
     }
 
     fn ty_path_ast_builder(path: @ast::path) -> @ast::Ty {

@@ -462,7 +462,7 @@ fn mk_impl(
         }
     );
 
-    let opt_trait = Some(@{
+    let opt_trait = Some(@ast::trait_ref {
         path: path,
         ref_id: cx.next_id(),
     });
@@ -581,7 +581,7 @@ fn mk_ser_method(
     let ty_s = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_rptr(
-            @{
+            @ast::region {
                 id: cx.next_id(),
                 node: ast::re_anon,
             },
@@ -593,7 +593,7 @@ fn mk_ser_method(
         span: span,
     };
 
-    let ser_inputs = ~[{
+    let ser_inputs = ~[ast::arg {
         mode: ast::infer(cx.next_id()),
         ty: ty_s,
         pat: @ast::pat {
@@ -613,13 +613,13 @@ fn mk_ser_method(
         span: span,
     };
 
-    let ser_decl = {
+    let ser_decl = ast::fn_decl {
         inputs: ser_inputs,
         output: ser_output,
         cf: ast::return_val,
     };
 
-    @{
+    @ast::method {
         ident: cx.ident_of(~"encode"),
         attrs: ~[],
         tps: ~[],
@@ -644,7 +644,7 @@ fn mk_deser_method(
     let ty_d = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_rptr(
-            @{
+            @ast::region {
                 id: cx.next_id(),
                 node: ast::re_anon,
             },
@@ -656,7 +656,7 @@ fn mk_deser_method(
         span: span,
     };
 
-    let deser_inputs = ~[{
+    let deser_inputs = ~[ast::arg {
         mode: ast::infer(cx.next_id()),
         ty: ty_d,
         pat: @ast::pat {
@@ -670,13 +670,13 @@ fn mk_deser_method(
         id: cx.next_id(),
     }];
 
-    let deser_decl = {
+    let deser_decl = ast::fn_decl {
         inputs: deser_inputs,
         output: ty,
         cf: ast::return_val,
     };
 
-    @{
+    @ast::method {
         ident: cx.ident_of(~"decode"),
         attrs: ~[],
         tps: ~[],
@@ -1187,8 +1187,8 @@ fn mk_enum_deser_body(
     let expr_lambda = cx.expr(
         span,
         ast::expr_fn_block(
-            {
-                inputs: ~[{
+            ast::fn_decl {
+                inputs: ~[ast::arg {
                     mode: ast::infer(cx.next_id()),
                     ty: @ast::Ty {
                         id: cx.next_id(),

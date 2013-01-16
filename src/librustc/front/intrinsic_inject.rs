@@ -38,7 +38,7 @@ fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
 
     @ast::spanned {
         node: ast::crate_ {
-            module: {
+            module: ast::_mod {
                 items: items,
                 .. /*bad*/copy crate.node.module
             },
