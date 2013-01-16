@@ -10,19 +10,21 @@
 
 #[forbid(deprecated_mode)];
 
-use io::Writer;
-use io::WriterUtil;
 use serialize;
 
-pub struct Encoder {
+use core::io::Writer;
+use core::io::WriterUtil;
+use core::io;
+
+pub struct Serializer {
     wr: io::Writer,
 }
 
-pub fn Encoder(wr: io::Writer) -> Encoder {
-    Encoder { wr: wr }
+pub fn Serializer(wr: io::Writer) -> Serializer {
+    Serializer { wr: wr }
 }
 
-pub impl Encoder: serialize::Encoder {
+pub impl Serializer: serialize::Encoder {
     fn emit_nil(&self) {
         self.wr.write_str(~"()")
     }
@@ -160,7 +162,16 @@ pub impl Encoder: serialize::Encoder {
         self.wr.write_str(~"}");
     }
 
+    #[cfg(stage0)]
     fn emit_struct(&self, name: &str, f: fn()) {
+        self.wr.write_str(fmt!("%s {", name));
+        f();
+        self.wr.write_str(~"}");
+    }
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn emit_struct(&self, name: &str, _len: uint, f: fn()) {
         self.wr.write_str(fmt!("%s {", name));
         f();
         self.wr.write_str(~"}");

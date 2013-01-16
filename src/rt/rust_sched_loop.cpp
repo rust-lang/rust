@@ -28,6 +28,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched, int id, bool killed) :
     id(id),
     should_exit(false),
     cached_c_stack(NULL),
+    extra_c_stack(NULL),
     dead_task(NULL),
     killed(killed),
     pump_signal(NULL),
@@ -100,6 +101,7 @@ rust_sched_loop::kill_all_tasks() {
 
 size_t
 rust_sched_loop::number_of_live_tasks() {
+    lock.must_have_lock();
     return running_tasks.length() + blocked_tasks.length();
 }
 
@@ -148,14 +150,10 @@ rust_sched_loop::release_task(rust_task *task) {
 rust_task *
 rust_sched_loop::schedule_task() {
     lock.must_have_lock();
-    assert(this);
     if (running_tasks.length() > 0) {
         size_t k = isaac_rand(&rctx);
-        // Look around for a runnable task, starting at k.
-        for(size_t j = 0; j < running_tasks.length(); ++j) {
-            size_t  i = (j + k) % running_tasks.length();
-            return (rust_task *)running_tasks[i];
-        }
+        size_t i = k % running_tasks.length();
+        return (rust_task *)running_tasks[i];
     }
     return NULL;
 }

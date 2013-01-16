@@ -11,7 +11,12 @@
 //! Simple ANSI color library
 #[forbid(deprecated_mode)];
 
-use core::Option;
+use core::i32;
+use core::io;
+use core::option;
+use core::os;
+use core::str;
+use core::vec;
 
 // FIXME (#2807): Windows support.
 

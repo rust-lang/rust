@@ -40,11 +40,13 @@ struct AllocHeader { priv opaque: () }
 struct MemoryRegion { priv opaque: () }
 
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 struct Registers {
     data: [u32 * 16]
 }
 
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 struct Context {
     regs: Registers,
     next: *Context,
@@ -70,6 +72,7 @@ struct BoxedRegion {
 }
 
 #[cfg(target_arch="x86")]
+#[cfg(target_arch="arm")]
 struct Task {
     // Public fields
     refcount: intptr_t,                 // 0
@@ -160,6 +163,7 @@ pub unsafe fn annihilate() {
 extern mod rustrt {
     #[legacy_exports];
     #[rust_stack]
-    /*priv*/ fn rust_get_task() -> *c_void;
+    // FIXME (#4386): Unable to make following method private.
+    /* priv */ unsafe fn rust_get_task() -> *c_void;
 }
 

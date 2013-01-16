@@ -16,12 +16,20 @@
 // and methods are represented as just a fn ptr and not a full
 // closure.
 
+use core::prelude::*;
+
 use lib::llvm::ValueRef;
 use middle::trans::base::{get_item_val, trans_external_path};
 use middle::trans::build::*;
+use middle::trans::callee;
+use middle::trans::closure;
 use middle::trans::common::{block, node_id_type_params};
 use middle::trans::datum::*;
 use middle::trans::datum::Datum;
+use middle::trans::inline;
+use middle::trans::meth;
+use middle::trans::monomorphize;
+use middle::typeck;
 use util::common::indenter;
 
 use syntax::ast;
@@ -153,7 +161,7 @@ fn trans_fn_ref(bcx: block,
 fn trans_fn_ref_with_vtables_to_callee(bcx: block,
                                        def_id: ast::def_id,
                                        ref_id: ast::node_id,
-                                       type_params: ~[ty::t],
+                                       +type_params: ~[ty::t],
                                        vtables: Option<typeck::vtable_res>)
     -> Callee
 {
@@ -166,7 +174,7 @@ fn trans_fn_ref_with_vtables(
     bcx: block,            //
     def_id: ast::def_id,   // def id of fn
     ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
-    type_params: ~[ty::t], // values for fn's ty params
+    +type_params: ~[ty::t], // values for fn's ty params
     vtables: Option<typeck::vtable_res>)
     -> FnData
 {
@@ -327,13 +335,6 @@ fn trans_method_call(in_cx: block,
         DontAutorefArg)
 }
 
-fn trans_rtcall(bcx: block, name: ~str, args: ~[ValueRef], dest: expr::Dest)
-    -> block
-{
-    let did = bcx.ccx().rtcalls[name];
-    return trans_rtcall_or_lang_call(bcx, did, args, dest);
-}
-
 fn trans_rtcall_or_lang_call(bcx: block, did: ast::def_id, args: ~[ValueRef],
                              dest: expr::Dest) -> block {
     let fty = if did.crate == ast::local_crate {
@@ -365,7 +366,8 @@ fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
         bcx, None, fty, rty,
         |bcx| {
             let callee =
-                trans_fn_ref_with_vtables_to_callee(bcx, did, 0, type_params,
+                trans_fn_ref_with_vtables_to_callee(bcx, did, 0,
+                                                    copy type_params,
                                                     None);
 
             let new_llval;
@@ -389,7 +391,7 @@ fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
 
 fn body_contains_ret(body: ast::blk) -> bool {
     let cx = {mut found: false};
-    visit::visit_block(body, cx, visit::mk_vt(@{
+    visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
         visit_item: |_i, _cx, _v| { },
         visit_expr: |e: @ast::expr, cx: {mut found: bool}, v| {
             if !cx.found {
@@ -416,7 +418,7 @@ fn trans_call_inner(
     autoref_arg: AutorefArg) -> block
 {
     do base::with_scope(in_cx, call_info, ~"call") |cx| {
-        let ret_in_loop = match args {
+        let ret_in_loop = match /*bad*/copy args {
           ArgExprs(args) => {
             args.len() > 0u && match vec::last(args).node {
               ast::expr_loop_body(@{
@@ -438,32 +440,34 @@ fn trans_call_inner(
             Some(flag)
         } else { None };
 
-        let (llfn, llenv) = match callee.data {
-            Fn(d) => {
-                (d.llfn, llvm::LLVMGetUndef(T_opaque_box_ptr(ccx)))
-            }
-            Method(d) => {
-                // Weird but true: we pass self in the *environment* slot!
-                let llself = PointerCast(bcx, d.llself,
-                                         T_opaque_box_ptr(ccx));
-                (d.llfn, llself)
-            }
-            Closure(d) => {
-                // Closures are represented as (llfn, llclosure) pair:
-                // load the requisite values out.
-                let pair = d.to_ref_llval(bcx);
-                let llfn = GEPi(bcx, pair, [0u, abi::fn_field_code]);
-                let llfn = Load(bcx, llfn);
-                let llenv = GEPi(bcx, pair, [0u, abi::fn_field_box]);
-                let llenv = Load(bcx, llenv);
-                (llfn, llenv)
+        let (llfn, llenv) = unsafe {
+            match callee.data {
+                Fn(d) => {
+                    (d.llfn, llvm::LLVMGetUndef(T_opaque_box_ptr(ccx)))
+                }
+                Method(d) => {
+                    // Weird but true: we pass self in the *environment* slot!
+                    let llself = PointerCast(bcx, d.llself,
+                                             T_opaque_box_ptr(ccx));
+                    (d.llfn, llself)
+                }
+                Closure(d) => {
+                    // Closures are represented as (llfn, llclosure) pair:
+                    // load the requisite values out.
+                    let pair = d.to_ref_llval(bcx);
+                    let llfn = GEPi(bcx, pair, [0u, abi::fn_field_code]);
+                    let llfn = Load(bcx, llfn);
+                    let llenv = GEPi(bcx, pair, [0u, abi::fn_field_box]);
+                    let llenv = Load(bcx, llenv);
+                    (llfn, llenv)
+                }
             }
         };
 
-        let args_res = trans_args(bcx, llenv, args, fn_expr_ty,
+        let args_res = trans_args(bcx, llenv, /*bad*/copy args, fn_expr_ty,
                                   dest, ret_flag, autoref_arg);
         bcx = args_res.bcx;
-        let mut llargs = args_res.args;
+        let mut llargs = /*bad*/copy args_res.args;
 
         let llretslot = args_res.retslot;
 
@@ -491,8 +495,10 @@ fn trans_call_inner(
         bcx = base::invoke(bcx, llfn, llargs);
         match dest { // drop the value if it is not being saved.
             expr::Ignore => {
-                if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
-                    bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+                unsafe {
+                    if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
+                        bcx = glue::drop_ty(bcx, llretslot, ret_ty);
+                    }
                 }
             }
             expr::SaveIn(_) => { }
@@ -520,8 +526,12 @@ enum CallArgs {
     ArgVals(~[ValueRef])
 }
 
-fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
-              dest: expr::Dest, ret_flag: Option<ValueRef>,
+fn trans_args(cx: block,
+              llenv: ValueRef,
+              +args: CallArgs,
+              fn_ty: ty::t,
+              dest: expr::Dest,
+              ret_flag: Option<ValueRef>,
               +autoref_arg: AutorefArg)
     -> {bcx: block, args: ~[ValueRef], retslot: ValueRef}
 {
@@ -539,7 +549,9 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
         expr::SaveIn(dst) => dst,
         expr::Ignore => {
             if ty::type_is_nil(retty) {
-                llvm::LLVMGetUndef(T_ptr(T_nil()))
+                unsafe {
+                    llvm::LLVMGetUndef(T_ptr(T_nil()))
+                }
             } else {
                 alloc_ty(bcx, retty)
             }
@@ -615,15 +627,19 @@ fn trans_arg_expr(bcx: block,
         Some(_) => {
             match arg_expr.node {
                 ast::expr_loop_body(
-                    blk@@{node:ast::expr_fn_block(decl, ref body, cap), _}) =>
+                    // XXX: Bad copy.
+                    blk@@{
+                        node: ast::expr_fn_block(copy decl, ref body, cap),
+                        _
+                    }) =>
                 {
-                    let scratch_ty = expr_ty(bcx, blk);
+                    let scratch_ty = expr_ty(bcx, arg_expr);
                     let scratch = alloc_ty(bcx, scratch_ty);
                     let arg_ty = expr_ty(bcx, arg_expr);
                     let proto = ty::ty_fn_proto(arg_ty);
                     let bcx = closure::trans_expr_fn(
-                        bcx, proto, decl, (*body), blk.id, cap,
-                        Some(ret_flag), expr::SaveIn(scratch));
+                        bcx, proto, decl, /*bad*/copy *body, arg_expr.id,
+                        blk.id, cap, Some(ret_flag), expr::SaveIn(scratch));
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,
                                               ty: scratch_ty,
@@ -652,7 +668,9 @@ fn trans_arg_expr(bcx: block,
         // be inspected. It's important for the value
         // to have type lldestty (the callee's expected type).
         let llformal_ty = type_of::type_of(ccx, formal_ty.ty);
-        val = llvm::LLVMGetUndef(llformal_ty);
+        unsafe {
+            val = llvm::LLVMGetUndef(llformal_ty);
+        }
     } else {
         // FIXME(#3548) use the adjustments table
         match autoref_arg {

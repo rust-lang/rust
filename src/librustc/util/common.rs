@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::HashMap;
+use core::prelude::*;
+
 use syntax::ast;
 use syntax::codemap::{span};
 use syntax::visit;
 use syntax::print;
+use syntax;
+
+use core::option;
+use core::str;
+use core::vec;
+use std::map::HashMap;
 
 fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
@@ -62,8 +69,9 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
           _ => visit::visit_expr(e, flag, v)
         }
     };
-    let v = visit::mk_vt(@{visit_expr: visit_expr
-                           ,.. *visit::default_visitor()});
+    let v = visit::mk_vt(@visit::Visitor {
+        visit_expr: visit_expr,
+        .. *visit::default_visitor()});
     visit::visit_block(b, rs, v);
     return *rs;
 }
@@ -77,8 +85,9 @@ fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
         *flag |= p(e);
         visit::visit_expr(e, flag, v)
     };
-    let v = visit::mk_vt(@{visit_expr: visit_expr
-                           ,.. *visit::default_visitor()});
+    let v = visit::mk_vt(@visit::Visitor{
+        visit_expr: visit_expr,
+        .. *visit::default_visitor()});
     visit::visit_block(b, rs, v);
     return *rs;
 }
@@ -96,7 +105,7 @@ fn is_main_name(path: syntax::ast_map::path) -> bool {
     )
 }
 
-fn pluralize(n: uint, s: ~str) -> ~str {
+fn pluralize(n: uint, +s: ~str) -> ~str {
     if n == 1 { s }
     else { str::concat([s, ~"s"]) }
 }

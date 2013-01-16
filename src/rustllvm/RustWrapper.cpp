@@ -91,6 +91,12 @@ void LLVMInitializeX86TargetMC();
 void LLVMInitializeX86AsmPrinter();
 void LLVMInitializeX86AsmParser();
 
+
+void LLVMInitializeARMTargetInfo();
+void LLVMInitializeARMTarget();
+void LLVMInitializeARMTargetMC();
+void LLVMInitializeARMAsmPrinter();
+void LLVMInitializeARMAsmParser();
 // Only initialize the platforms supported by Rust here,
 // because using --llvm-root will have multiple platforms
 // that rustllvm doesn't actually link to and it's pointless to put target info
@@ -102,6 +108,12 @@ void LLVMRustInitializeTargets() {
   LLVMInitializeX86TargetMC();
   LLVMInitializeX86AsmPrinter();
   LLVMInitializeX86AsmParser();
+	
+  LLVMInitializeARMTargetInfo();
+  LLVMInitializeARMTarget();
+  LLVMInitializeARMTargetMC();
+  LLVMInitializeARMAsmPrinter();
+  LLVMInitializeARMAsmParser();	
 }
 
 // Custom memory manager for MCJITting. It needs special features
@@ -281,7 +293,7 @@ void *RustMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
   if (Name == "mknod") return (void*)(intptr_t)&mknod;
 #endif
 
-  if (Name == "__morestack") return &__morestack;
+  if (Name == "__morestack" || Name == "___morestack") return &__morestack;
 
   const char *NameStr = Name.c_str();
 

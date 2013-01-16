@@ -11,6 +11,7 @@
 // xfail-fast
 #[legacy_modes];
 
+use core::bool;
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 use libc::c_void;
 use vec::UnboxedVecRepr;

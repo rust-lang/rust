@@ -10,22 +10,32 @@
 
 //! Pulls type information out of the AST and attaches it to the document
 
+use core::prelude::*;
+
+use astsrv;
 use doc::ItemUtils;
+use doc;
+use extract::to_str;
+use extract;
 use fold::Fold;
+use fold;
+use pass::Pass;
+
+use core::vec;
+use std::map::HashMap;
+use std::par;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::ast_map;
-use std::map::HashMap;
-use extract::to_str;
 
 pub fn mk_pass() -> Pass {
-    {
+    Pass {
         name: ~"tystr",
         f: run
     }
 }
 
-fn run(
+pub fn run(
     srv: astsrv::Srv,
     +doc: doc::Doc
 ) -> doc::Doc {
@@ -58,11 +68,11 @@ fn fold_fn(
 fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
     do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(fn_id) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             ident: ident,
             node: ast::item_fn(decl, _, tys, _), _
           }, _) |
-          ast_map::node_foreign_item(@{
+          ast_map::node_foreign_item(@ast::foreign_item {
             ident: ident,
             node: ast::foreign_item_fn(decl, _, tys), _
           }, _, _) => {
@@ -94,7 +104,7 @@ fn fold_const(
     {
         sig: Some(do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
-              ast_map::node_item(@{
+              ast_map::node_item(@ast::item {
                 node: ast::item_const(ty, _), _
               }, _) => {
                 pprust::ty_to_str(ty, extract::interner())
@@ -124,7 +134,7 @@ fn fold_enum(
             let variant = *variant;
             let sig = do astsrv::exec(srv) |ctxt| {
                 match ctxt.ast_map.get(doc_id) {
-                  ast_map::node_item(@{
+                  ast_map::node_item(@ast::item {
                     node: ast::item_enum(enum_definition, _), _
                   }, _) => {
                     let ast_variant =
@@ -183,7 +193,7 @@ fn get_method_sig(
 ) -> Option<~str> {
     do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(item_id) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             node: ast::item_trait(_, _, methods), _
           }, _) => {
             match vec::find(methods, |method| {
@@ -215,7 +225,7 @@ fn get_method_sig(
                 _ => fail ~"method not found"
             }
           }
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             node: ast::item_impl(_, _, _, methods), _
           }, _) => {
             match vec::find(methods, |method| {
@@ -253,7 +263,7 @@ fn fold_impl(
 
     let (trait_types, self_ty) = do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(doc.id()) {
-          ast_map::node_item(@{
+          ast_map::node_item(@ast::item {
             node: ast::item_impl(_, opt_trait_type, self_ty, _), _
           }, _) => {
             let trait_types = opt_trait_type.map_default(~[], |p| {
@@ -309,7 +319,7 @@ fn fold_type(
     {
         sig: do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
-              ast_map::node_item(@{
+              ast_map::node_item(@ast::item {
                 ident: ident,
                 node: ast::item_ty(ty, params), _
               }, _) => {
@@ -361,7 +371,7 @@ fn fold_struct(
 fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
     let node = match item.node {
         ast::item_struct(def, tys) => {
-            let def = @{
+            let def = @ast::struct_def {
                 dtor: None, // Remove the drop { } block
                 .. *def
             };
@@ -370,7 +380,7 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
         _ => fail ~"not a struct"
     };
 
-    @{
+    @ast::item {
         attrs: ~[], // Remove the attributes
         node: node,
         .. *item
@@ -398,9 +408,13 @@ fn should_not_serialize_struct_attrs() {
 }
 
 #[cfg(test)]
-mod test {
-    #[legacy_exports];
-    fn mk_doc(source: ~str) -> doc::Doc {
+pub mod test {
+    use astsrv;
+    use doc;
+    use extract;
+    use tystr_pass::run;
+
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

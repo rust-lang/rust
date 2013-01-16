@@ -12,7 +12,8 @@
 
 // rustc --test map_to_str.rs && ./map_to_str
 extern mod std;
-use io::{WriterUtil};
+
+use core::io::{WriterUtil};
 use std::map::*;
 
 #[cfg(test)]

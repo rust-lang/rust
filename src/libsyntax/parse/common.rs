@@ -8,10 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::map::{HashMap};
+use core::prelude::*;
+
+use ast;
 use ast_util::spanned;
-use parse::parser::Parser;
+use codemap::BytePos;
 use parse::lexer::reader;
+use parse::parser::Parser;
+use parse::token;
+
+use core::option::{None, Option, Some};
+use core::option;
+use std::map::HashMap;
 
 type seq_sep = {
     sep: Option<token::Token>,
@@ -73,7 +81,8 @@ impl Parser {
         let lo = self.span.lo;
         let ident = self.parse_ident();
         let hi = self.span.hi;
-        return spanned(lo, hi, {name: ident, id: self.get_id()});
+        spanned(lo, hi, ast::path_list_ident_ { name: ident,
+                                                id: self.get_id() })
     }
 
     fn parse_value_ident() -> ast::ident {

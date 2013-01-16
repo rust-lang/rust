@@ -23,9 +23,12 @@
  * CPRNG like rand::rng.
  */
 
-use io::Writer;
-use io::WriterUtil;
+use io;
+use io::{Writer, WriterUtil};
+use os;
 use to_bytes::IterBytes;
+use uint;
+use vec;
 
 /**
  * Types that can meaningfully be hashed should implement this.

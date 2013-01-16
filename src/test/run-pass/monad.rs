@@ -43,6 +43,8 @@ fn transform(x: Option<int>) -> Option<~str> {
 fn main() {
     assert transform(Some(10)) == Some(~"11");
     assert transform(None) == None;
-    assert (~[~"hi"]).bind(|x| ~[x, x + ~"!"] ).bind(|x| ~[x, x + ~"?"] ) ==
+    assert (~[~"hi"])
+        .bind(|x| ~[copy x, x + ~"!"] )
+        .bind(|x| ~[copy x, x + ~"?"] ) ==
         ~[~"hi", ~"hi?", ~"hi!", ~"hi!?"];
 }

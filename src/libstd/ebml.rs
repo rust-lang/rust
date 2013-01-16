@@ -9,7 +9,14 @@
 // except according to those terms.
 
 #[forbid(deprecated_mode)];
+
 use serialize;
+
+use core::io;
+use core::ops;
+use core::prelude::*;
+use core::str;
+use core::vec;
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
@@ -27,18 +34,18 @@ struct EbmlState {
     data_pos: uint,
 }
 
-struct Doc {
+pub struct Doc {
     data: @~[u8],
     start: uint,
     end: uint,
 }
 
-struct TaggedDoc {
+pub struct TaggedDoc {
     tag: uint,
     doc: Doc,
 }
 
-enum EbmlEncoderTag {
+pub enum EbmlEncoderTag {
     EsUint, EsU64, EsU32, EsU16, EsU8,
     EsInt, EsI64, EsI32, EsI16, EsI8,
     EsBool,
@@ -54,6 +61,18 @@ enum EbmlEncoderTag {
 // --------------------------------------
 
 pub mod reader {
+    use ebml::{Doc, EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
+    use ebml::{EsF32, EsF64, EsFloat, EsI16, EsI32, EsI64, EsI8, EsInt};
+    use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};
+    use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
+    use serialize;
+
+    use core::int;
+    use core::io;
+    use core::ops;
+    use core::prelude::*;
+    use core::str;
+    use core::vec;
 
     // ebml reading
 
@@ -271,7 +290,7 @@ pub mod reader {
         fn read_u8 (&self) -> u8  { doc_as_u8 (self.next_doc(EsU8 )) }
         fn read_uint(&self) -> uint {
             let v = doc_as_u64(self.next_doc(EsUint));
-            if v > (core::uint::max_value as u64) {
+            if v > (::core::uint::max_value as u64) {
                 fail fmt!("uint %? too large for this architecture", v);
             }
             v as uint
@@ -360,7 +379,15 @@ pub mod reader {
             f()
         }
 
+        #[cfg(stage0)]
         fn read_struct<T>(&self, name: &str, f: fn() -> T) -> T {
+            debug!("read_struct(name=%s)", name);
+            f()
+        }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn read_struct<T>(&self, name: &str, _len: uint, f: fn() -> T) -> T {
             debug!("read_struct(name=%s)", name);
             f()
         }
@@ -385,6 +412,14 @@ pub mod reader {
 }
 
 pub mod writer {
+    use ebml::{Doc, EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
+    use ebml::{EsF32, EsF64, EsFloat, EsI16, EsI32, EsI64, EsI8, EsInt};
+    use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};
+    use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
+
+    use core::io;
+    use core::str;
+    use core::vec;
 
     // ebml writing
     pub struct Encoder {
@@ -546,7 +581,7 @@ pub mod writer {
         }
     }
 
-    impl Encoder: serialize::Encoder {
+    impl Encoder: ::serialize::Encoder {
         fn emit_nil(&self) {}
 
         fn emit_uint(&self, v: uint) {
@@ -631,7 +666,12 @@ pub mod writer {
         }
 
         fn emit_rec(&self, f: fn()) { f() }
+        #[cfg(stage0)]
         fn emit_struct(&self, _name: &str, f: fn()) { f() }
+        #[cfg(stage1)]
+        #[cfg(stage2)]
+        #[cfg(stage3)]
+        fn emit_struct(&self, _name: &str, _len: uint, f: fn()) { f() }
         fn emit_field(&self, name: &str, _idx: uint, f: fn()) {
             self._emit_label(name);
             f()
@@ -647,6 +687,13 @@ pub mod writer {
 
 #[cfg(test)]
 mod tests {
+    use ebml::reader;
+    use ebml::writer;
+    use serialize;
+
+    use core::io;
+    use core::option::{None, Option, Some};
+
     #[test]
     fn test_option_int() {
         fn test_v(v: Option<int>) {

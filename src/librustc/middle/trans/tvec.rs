@@ -8,13 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 use back::abi;
 use lib::llvm::{ValueRef, TypeRef};
 use middle::trans::build::*;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore, SaveIn};
-use middle::trans::shape::llsize_of;
+use middle::trans::expr;
+use middle::trans::glue;
+use middle::trans::shape::{llsize_of, nonzero_llsize_of};
+use middle::trans::type_of;
+use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
@@ -91,7 +96,7 @@ fn alloc_vec(bcx: block, unit_ty: ty::t, elts: uint, heap: heap) -> Result {
     let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
     let llunitty = type_of::type_of(ccx, unit_ty);
-    let unit_sz = llsize_of(ccx, llunitty);
+    let unit_sz = nonzero_llsize_of(ccx, llunitty);
 
     let fill = Mul(bcx, C_uint(ccx, elts), unit_sz);
     let alloc = if elts < 4u { Mul(bcx, C_int(ccx, 4), unit_sz) }
@@ -192,7 +197,7 @@ fn trans_slice_vstore(bcx: block,
 
     // Handle the &"..." case:
     match content_expr.node {
-        ast::expr_lit(@{node: ast::lit_str(s), span: _}) => {
+        ast::expr_lit(@ast::spanned {node: ast::lit_str(s), span: _}) => {
             return trans_lit_str(bcx, content_expr, s, dest);
         }
         _ => {}
@@ -251,13 +256,20 @@ fn trans_lit_str(bcx: block,
     match dest {
         Ignore => bcx,
         SaveIn(lldest) => {
-            let bytes = lit_str.len() + 1; // count null-terminator too
-            let llbytes = C_uint(bcx.ccx(), bytes);
-            let llcstr = C_cstr(bcx.ccx(), *lit_str);
-            let llcstr = llvm::LLVMConstPointerCast(llcstr, T_ptr(T_i8()));
-            Store(bcx, llcstr, GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
-            Store(bcx, llbytes, GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
-            bcx
+            unsafe {
+                let bytes = lit_str.len() + 1; // count null-terminator too
+                let llbytes = C_uint(bcx.ccx(), bytes);
+                let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *lit_str);
+                let llcstr = llvm::LLVMConstPointerCast(llcstr,
+                                                        T_ptr(T_i8()));
+                Store(bcx,
+                      llcstr,
+                      GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
+                Store(bcx,
+                      llbytes,
+                      GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
+                bcx
+            }
         }
     }
 }
@@ -310,8 +322,8 @@ fn write_content(bcx: block,
            bcx.expr_to_str(vstore_expr));
     let _indenter = indenter();
 
-    match content_expr.node {
-        ast::expr_lit(@{node: ast::lit_str(s), span: _}) => {
+    match /*bad*/copy content_expr.node {
+        ast::expr_lit(@ast::spanned { node: ast::lit_str(s), _ }) => {
             match dest {
                 Ignore => {
                     return bcx;
@@ -319,7 +331,7 @@ fn write_content(bcx: block,
                 SaveIn(lldest) => {
                     let bytes = s.len() + 1; // copy null-terminator too
                     let llbytes = C_uint(bcx.ccx(), bytes);
-                    let llcstr = C_cstr(bcx.ccx(), *s);
+                    let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *s);
                     base::call_memcpy(bcx, lldest, llcstr, llbytes);
                     return bcx;
                 }
@@ -406,7 +418,8 @@ fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunit_ty = type_of::type_of(ccx, unit_ty);
-    let llunit_size = llsize_of(ccx, llunit_ty);
+    let llunit_size = nonzero_llsize_of(ccx, llunit_ty);
+
     VecTypes {vec_ty: vec_ty,
               unit_ty: unit_ty,
               llunit_ty: llunit_ty,
@@ -416,8 +429,10 @@ fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
 fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
-    match content_expr.node {
-        ast::expr_lit(@{node: ast::lit_str(s), span: _}) => s.len() + 1,
+    match /*bad*/copy content_expr.node {
+        ast::expr_lit(@ast::spanned { node: ast::lit_str(s), _ }) => {
+            s.len() + 1
+        },
         ast::expr_vec(es, _) => es.len(),
         ast::expr_repeat(_, count_expr, _) => {
             ty::eval_repeat_count(bcx.tcx(), count_expr, content_expr.span)

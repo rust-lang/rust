@@ -8,9 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use run::spawn_process;
+use core::prelude::*;
+
+use io;
 use io::{ReaderUtil, WriterUtil};
+use libc;
 use libc::{c_int, pid_t};
+use os;
+use run;
+use run::spawn_process;
+use pipes;
+use str;
+use task;
+use vec;
 
 export run;
 
@@ -108,14 +118,16 @@ fn writeclose(fd: c_int, s: Option<~str>) {
 }
 
 fn readclose(fd: c_int) -> ~str {
-    // Copied from run::program_output
-    let file = os::fdopen(fd);
-    let reader = io::FILE_reader(file, false);
-    let mut buf = ~"";
-    while !reader.eof() {
-        let bytes = reader.read_bytes(4096u);
-        str::push_str(&mut buf, str::from_bytes(bytes));
+    unsafe {
+        // Copied from run::program_output
+        let file = os::fdopen(fd);
+        let reader = io::FILE_reader(file, false);
+        let mut buf = ~"";
+        while !reader.eof() {
+            let bytes = reader.read_bytes(4096u);
+            str::push_str(&mut buf, str::from_bytes(bytes));
+        }
+        os::fclose(file);
+        return buf;
     }
-    os::fclose(file);
-    return buf;
 }

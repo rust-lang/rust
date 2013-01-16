@@ -13,7 +13,8 @@
 #[legacy_modes]; // tjc: remove after snapshot
 
 // NB: transitionary, de-mode-ing.
-// XXX: Can't forbid this because frame_address needs a deprecated mode.
+// FIXME #4425: Can't forbid this because frame_address needs a deprecated
+// mode.
 #[allow(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
@@ -84,20 +85,24 @@ fn test_simple_deep() {
 }
 
 fn breakpoint() {
-    rustrt::rust_dbg_breakpoint()
+    unsafe {
+        rustrt::rust_dbg_breakpoint()
+    }
 }
 
 fn frame_address(f: fn(++x: *u8)) {
-    rusti::frame_address(f)
+    unsafe {
+        rusti::frame_address(f)
+    }
 }
 
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_dbg_breakpoint();
+    unsafe fn rust_dbg_breakpoint();
 }
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     #[legacy_exports];
-    fn frame_address(f: fn(++x: *u8));
+    fn frame_address(f: &once fn(++x: *u8));
 }

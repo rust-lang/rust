@@ -19,6 +19,11 @@ Cross-platform file path handling
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
+use libc;
+use option::{None, Option, Some};
+use ptr;
+use str;
+use to_str::ToStr;
 
 #[deriving_eq]
 pub struct WindowsPath {
@@ -84,9 +89,13 @@ pub pure fn Path(s: &str) -> Path {
 }
 
 #[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
 mod stat {
     #[cfg(target_arch = "x86")]
+    #[cfg(target_arch = "arm")]
     pub mod arch {
+        use libc;
+
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -115,6 +124,8 @@ mod stat {
 
     #[cfg(target_arch = "x86_64")]
     pub mod arch {
+        use libc;
+
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -144,6 +155,8 @@ mod stat {
 mod stat {
     #[cfg(target_arch = "x86_64")]
     pub mod arch {
+        use libc;
+
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -176,6 +189,8 @@ mod stat {
 #[cfg(target_os = "macos")]
 mod stat {
     pub mod arch {
+        use libc;
+
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -208,6 +223,7 @@ mod stat {
 #[cfg(target_os = "win32")]
 mod stat {
     pub mod arch {
+        use libc;
         pub fn default_stat() -> libc::stat {
             libc::stat {
                 st_dev: 0,
@@ -229,21 +245,25 @@ mod stat {
 
 impl Path {
     fn stat(&self) -> Option<libc::stat> {
-         do str::as_c_str(self.to_str()) |buf| {
-            let mut st = stat::arch::default_stat();
-            let r = libc::stat(buf, ptr::mut_addr_of(&st));
+        unsafe {
+             do str::as_c_str(self.to_str()) |buf| {
+                let mut st = stat::arch::default_stat();
+                let r = libc::stat(buf, ptr::mut_addr_of(&st));
 
-            if r == 0 { Some(move st) } else { None }
+                if r == 0 { Some(move st) } else { None }
+            }
         }
     }
 
     #[cfg(unix)]
     fn lstat(&self) -> Option<libc::stat> {
-         do str::as_c_str(self.to_str()) |buf| {
-            let mut st = stat::arch::default_stat();
-            let r = libc::lstat(buf, ptr::mut_addr_of(&st));
+        unsafe {
+            do str::as_c_str(self.to_str()) |buf| {
+                let mut st = stat::arch::default_stat();
+                let r = libc::lstat(buf, ptr::mut_addr_of(&st));
 
-            if r == 0 { Some(move st) } else { None }
+                if r == 0 { Some(move st) } else { None }
+            }
         }
     }
 
@@ -737,7 +757,11 @@ pub pure fn normalize(components: &[~str]) -> ~[~str] {
 }
 
 // Various windows helpers, and tests for the impl.
-mod windows {
+pub mod windows {
+    use libc;
+    use option::{None, Option, Some};
+    use to_str::ToStr;
+
     #[inline(always)]
     pub pure fn is_sep(u: u8) -> bool {
         u == '/' as u8 || u == '\\' as u8
@@ -779,6 +803,10 @@ mod windows {
 
 #[cfg(test)]
 mod tests {
+    use option::{None, Some};
+    use path::{PosixPath, WindowsPath, windows};
+    use str;
+
     #[test]
     fn test_double_slash_collapsing() {
         let path = PosixPath("tmp/");

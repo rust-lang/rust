@@ -14,7 +14,7 @@ fn main() {
     let x = [1, 2, 3, 4, 5];
     match x {
         [a, b, c, d, e, f] => {
-            core::util::unreachable();
+            ::core::util::unreachable();
         }
         [a, b, c, d, e] => {
             assert a == 1;
@@ -24,7 +24,7 @@ fn main() {
             assert e == 5;
         }
         _ => {
-            core::util::unreachable();
+            ::core::util::unreachable();
         }
     }
 

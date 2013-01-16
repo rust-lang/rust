@@ -701,7 +701,7 @@ tmp/$(FT).rc tmp/$(FT_DRIVER).rs: \
 		$(RPASS_TESTS) \
 		$(S)src/etc/combine-tests.py
 	@$(call E, check: building combined stage2 test runner)
-	$(Q)$(S)src/etc/combine-tests.py
+	$(Q)$(CFG_PYTHON) $(S)src/etc/combine-tests.py
 
 define DEF_CHECK_FAST_FOR_T_H
 # $(1) unused

@@ -10,8 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_double, c_int};
-use f64::*;
+use core::cast;
+use core::libc::{c_double, c_int};
+use core::f64::*;
 
 fn to_c_int(v: &mut int) -> &mut c_int unsafe {
     cast::reinterpret_cast(&v)
@@ -24,13 +25,12 @@ fn lgamma(n: c_double, value: &mut int) -> c_double {
 #[link_name = "m"]
 #[abi = "cdecl"]
 extern mod m {
-    #[legacy_exports];
     #[cfg(unix)]
-    #[link_name="lgamma_r"] fn lgamma(n: c_double, sign: &mut c_int)
+    #[link_name="lgamma_r"] pub fn lgamma(n: c_double, sign: &mut c_int)
       -> c_double;
     #[cfg(windows)]
-    #[link_name="__lgamma_r"] fn lgamma(n: c_double,
-                                        sign: &mut c_int) -> c_double;
+    #[link_name="__lgamma_r"] pub fn lgamma(n: c_double,
+                                            sign: &mut c_int) -> c_double;
 
 }
 

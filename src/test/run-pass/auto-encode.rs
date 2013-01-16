@@ -26,12 +26,12 @@ use std::serialize::{Encodable, Decodable};
 use std::prettyprint;
 use std::time;
 
-fn test_prettyprint<A: Encodable<prettyprint::Encoder>>(
+fn test_prettyprint<A: Encodable<prettyprint::Serializer>>(
     a: &A,
     expected: &~str
 ) {
     let s = do io::with_str_writer |w| {
-        a.encode(&prettyprint::Encoder(w))
+        a.encode(&prettyprint::Serializer(w))
     };
     debug!("s == %?", s);
     assert s == *expected;

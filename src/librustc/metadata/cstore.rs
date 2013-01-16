@@ -8,11 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-use std::map;
+use core::prelude::*;
+
+use metadata::creader;
+use metadata::cstore;
+use metadata::decoder;
+
+use core::option;
+use core::str;
+use core::vec;
 use std::map::HashMap;
+use std::map;
+use std;
 use syntax::{ast, attr};
 use syntax::parse::token::ident_interner;
 
@@ -35,7 +46,6 @@ export get_used_link_args;
 export add_use_stmt_cnum;
 export find_use_stmt_cnum;
 export get_dep_hashes;
-export get_path;
 
 
 // A map from external crate numbers (as decoded from some crate file) to
@@ -43,11 +53,6 @@ export get_path;
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
 type cnum_map = map::HashMap<ast::crate_num, ast::crate_num>;
-
-// Multiple items may have the same def_id in crate metadata. They may be
-// renamed imports or reexports. This map keeps the "real" module path
-// and def_id.
-type mod_path_map = map::HashMap<ast::def_id, @~str>;
 
 type crate_metadata = @{name: ~str,
                         data: @~[u8],
@@ -64,7 +69,6 @@ enum CStore { private(cstore_private), }
 type cstore_private =
     @{metas: map::HashMap<ast::crate_num, crate_metadata>,
       use_crate_map: use_crate_map,
-      mod_path_map: mod_path_map,
       mut used_crate_files: ~[Path],
       mut used_libraries: ~[~str],
       mut used_link_args: ~[~str],
@@ -81,10 +85,8 @@ pure fn p(cstore: CStore) -> cstore_private {
 fn mk_cstore(intr: @ident_interner) -> CStore {
     let meta_cache = map::HashMap();
     let crate_map = map::HashMap();
-    let mod_path_map = HashMap();
     return private(@{metas: meta_cache,
                      use_crate_map: crate_map,
-                     mod_path_map: mod_path_map,
                      mut used_crate_files: ~[],
                      mut used_libraries: ~[],
                      mut used_link_args: ~[],
@@ -105,18 +107,10 @@ fn get_crate_vers(cstore: CStore, cnum: ast::crate_num) -> ~str {
     return decoder::get_crate_vers(cdata.data);
 }
 
-fn set_crate_data(cstore: CStore, cnum: ast::crate_num,
+fn set_crate_data(cstore: CStore,
+                  cnum: ast::crate_num,
                   data: crate_metadata) {
     p(cstore).metas.insert(cnum, data);
-    let get_crate_data: decoder::GetCrateDataCb = |cnum| {
-        cstore::get_crate_data(cstore, cnum)
-    };
-    for vec::each(decoder::get_crate_module_paths(cstore.intr, data,
-                                                  get_crate_data)) |dp| {
-        let (did, path) = *dp;
-        let d = {crate: cnum, node: did.node};
-        p(cstore).mod_path_map.insert(d, @path);
-    }
 }
 
 fn have_crate_data(cstore: CStore, cnum: ast::crate_num) -> bool {
@@ -134,10 +128,10 @@ fn add_used_crate_file(cstore: CStore, lib: &Path) {
 }
 
 fn get_used_crate_files(cstore: CStore) -> ~[Path] {
-    return p(cstore).used_crate_files;
+    return /*bad*/copy p(cstore).used_crate_files;
 }
 
-fn add_used_library(cstore: CStore, lib: ~str) -> bool {
+fn add_used_library(cstore: CStore, +lib: ~str) -> bool {
     assert lib != ~"";
 
     if vec::contains(p(cstore).used_libraries, &lib) { return false; }
@@ -146,7 +140,7 @@ fn add_used_library(cstore: CStore, lib: ~str) -> bool {
 }
 
 fn get_used_libraries(cstore: CStore) -> ~[~str] {
-    return p(cstore).used_libraries;
+    return /*bad*/copy p(cstore).used_libraries;
 }
 
 fn add_used_link_args(cstore: CStore, args: ~str) {
@@ -154,7 +148,7 @@ fn add_used_link_args(cstore: CStore, args: ~str) {
 }
 
 fn get_used_link_args(cstore: CStore) -> ~[~str] {
-    return p(cstore).used_link_args;
+    return /*bad*/copy p(cstore).used_link_args;
 }
 
 fn add_use_stmt_cnum(cstore: CStore, use_id: ast::node_id,
@@ -177,7 +171,7 @@ fn get_dep_hashes(cstore: CStore) -> ~[~str] {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", cdata.name, hash);
-        result.push({name: cdata.name, hash: hash});
+        result.push({name: /*bad*/copy cdata.name, hash: hash});
     };
     pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {a.name <= b.name}
     let sorted = std::sort::merge_sort(result, lteq);
@@ -185,14 +179,10 @@ fn get_dep_hashes(cstore: CStore) -> ~[~str] {
     for sorted.each |x| {
         debug!("  hash[%s]: %s", x.name, x.hash);
     }
-    fn mapper(ch: &crate_hash) -> ~str { return ch.hash; }
+    fn mapper(ch: &crate_hash) -> ~str { return /*bad*/copy ch.hash; }
     return vec::map(sorted, mapper);
 }
 
-fn get_path(cstore: CStore, d: ast::def_id) -> ~[~str] {
-    option::map_default(&p(cstore).mod_path_map.find(d), ~[],
-                        |ds| str::split_str(**ds, ~"::"))
-}
 // Local Variables:
 // mode: rust
 // fill-column: 78;

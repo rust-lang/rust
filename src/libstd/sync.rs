@@ -17,7 +17,14 @@
  * in std.
  */
 
-use private::{Exclusive, exclusive};
+use core::option;
+use core::pipes;
+use core::prelude::*;
+use core::private::{Exclusive, exclusive};
+use core::ptr;
+use core::task;
+use core::util;
+use core::vec;
 
 /****************************************************************************
  * Internals
@@ -102,7 +109,7 @@ impl<Q: Owned> &Sem<Q> {
                 state.count -= 1;
                 if state.count < 0 {
                     // Create waiter nobe.
-                    let (SignalEnd, WaitEnd) = pipes::oneshot();
+                    let (WaitEnd, SignalEnd) = pipes::oneshot();
                     // Tell outer scope we need to block.
                     waiter_nobe = Some(move WaitEnd);
                     // Enqueue ourself.
@@ -209,7 +216,7 @@ impl &Condvar {
      */
     fn wait_on(condvar_id: uint) {
         // Create waiter nobe.
-        let (SignalEnd, WaitEnd) = pipes::oneshot();
+        let (WaitEnd, SignalEnd) = pipes::oneshot();
         let mut WaitEnd   = Some(move WaitEnd);
         let mut SignalEnd = Some(move SignalEnd);
         let mut reacquire = None;
@@ -353,7 +360,7 @@ impl &Sem<~[mut Waitqueue]> {
 struct Semaphore { priv sem: Sem<()> }
 
 /// Create a new semaphore with the specified count.
-fn semaphore(count: int) -> Semaphore {
+pub fn semaphore(count: int) -> Semaphore {
     Semaphore { sem: new_sem(count, ()) }
 }
 
@@ -442,9 +449,9 @@ struct RWlockInner {
  * unwinds.
  */
 struct RWlock {
-    /* priv */ order_lock:  Semaphore,
-    /* priv */ access_lock: Sem<~[mut Waitqueue]>,
-    /* priv */ state:       Exclusive<RWlockInner>
+    priv order_lock:  Semaphore,
+    priv access_lock: Sem<~[mut Waitqueue]>,
+    priv state:       Exclusive<RWlockInner>
 }
 
 /// Create a new rwlock, with one associated condvar.
@@ -676,7 +683,7 @@ fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-pub struct RWlockWriteMode { /* priv */ lock: &RWlock }
+pub struct RWlockWriteMode { priv lock: &RWlock }
 impl RWlockWriteMode : Drop { fn finalize(&self) {} }
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWlockReadMode  { priv lock: &RWlock }
@@ -702,6 +709,19 @@ impl &RWlockReadMode {
 #[cfg(test)]
 mod tests {
     #[legacy_exports];
+
+    use core::prelude::*;
+
+    use sync::*;
+
+    use core::cast;
+    use core::option;
+    use core::pipes;
+    use core::ptr;
+    use core::result;
+    use core::task;
+    use core::vec;
+
     /************************************************************************
      * Semaphore tests
      ************************************************************************/

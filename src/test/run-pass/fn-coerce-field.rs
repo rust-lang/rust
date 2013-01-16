@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type r = {
+struct r {
     field: fn@()
-};
+}
 
 fn main() {
     fn f() {}
-    let i: r = {field: f};
+    let i: r = r {field: f};
 }

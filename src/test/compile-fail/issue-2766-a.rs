@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod stream {
-    #[legacy_exports];
-    enum Stream<T: Owned> { send(T, server::Stream<T>), }
-    mod server {
-        #[legacy_exports];
+pub mod stream {
+    pub enum Stream<T: Owned> { send(T, ::stream::server::Stream<T>), }
+    pub mod server {
+        use core::option;
+        use core::pipes;
+
         impl<T: Owned> Stream<T> {
-            fn recv() -> extern fn(+v: Stream<T>) -> stream::Stream<T> {
+            pub fn recv() -> extern fn(+v: Stream<T>) -> ::stream::Stream<T> {
               // resolve really should report just one error here.
               // Change the test case when it changes.
-              fn recv(+pipe: Stream<T>) -> stream::Stream<T> { //~ ERROR attempt to use a type argument out of scope
+              pub fn recv(+pipe: Stream<T>) -> ::stream::Stream<T> { //~ ERROR attempt to use a type argument out of scope
                 //~^ ERROR use of undeclared type name
                 //~^^ ERROR attempt to use a type argument out of scope
                 //~^^^ ERROR use of undeclared type name
@@ -26,7 +27,8 @@ mod stream {
                 recv
             }
         }
-        type Stream<T: Owned> = pipes::RecvPacket<stream::Stream<T>>;
+
+        pub type Stream<T: Owned> = pipes::RecvPacket<::stream::Stream<T>>;
     }
 }
 

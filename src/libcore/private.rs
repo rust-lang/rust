@@ -15,26 +15,72 @@
 
 #[doc(hidden)];
 
-use task::TaskBuilder;
-use task::atomically;
+use cast;
+use iter;
+use libc;
+use oldcomm;
+use option;
+use pipes;
+use prelude::*;
+use ptr;
+use result;
+use task;
+use task::{TaskBuilder, atomically};
+use uint;
 
 extern mod rustrt {
     #[legacy_exports];
-    fn rust_task_weaken(ch: rust_port_id);
-    fn rust_task_unweaken(ch: rust_port_id);
+    unsafe fn rust_task_weaken(ch: rust_port_id);
+    unsafe fn rust_task_unweaken(ch: rust_port_id);
 
-    fn rust_create_little_lock() -> rust_little_lock;
-    fn rust_destroy_little_lock(lock: rust_little_lock);
-    fn rust_lock_little_lock(lock: rust_little_lock);
-    fn rust_unlock_little_lock(lock: rust_little_lock);
+    unsafe fn rust_create_little_lock() -> rust_little_lock;
+    unsafe fn rust_destroy_little_lock(lock: rust_little_lock);
+    unsafe fn rust_lock_little_lock(lock: rust_little_lock);
+    unsafe fn rust_unlock_little_lock(lock: rust_little_lock);
+
+    unsafe fn rust_raw_thread_start(f: &fn()) -> *raw_thread;
+    unsafe fn rust_raw_thread_join_delete(thread: *raw_thread);
 }
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-
     fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
     fn atomic_xadd(dst: &mut int, src: int) -> int;
     fn atomic_xsub(dst: &mut int, src: int) -> int;
+}
+
+#[allow(non_camel_case_types)] // runtime type
+type raw_thread = libc::c_void;
+
+/**
+
+Start a new thread outside of the current runtime context and wait
+for it to terminate.
+
+The executing thread has no access to a task pointer and will be using
+a normal large stack.
+*/
+pub unsafe fn run_in_bare_thread(f: ~fn()) {
+    let (port, chan) = pipes::stream();
+    // XXX Unfortunate that this creates an extra scheduler but it's necessary
+    // since rust_raw_thread_join_delete is blocking
+    do task::spawn_sched(task::SingleThreaded) unsafe {
+        let closure: &fn() = || {
+            f()
+        };
+        let thread = rustrt::rust_raw_thread_start(closure);
+        rustrt::rust_raw_thread_join_delete(thread);
+        chan.send(());
+    }
+    port.recv();
+}
+
+#[test]
+fn test_run_in_bare_thread() unsafe {
+    let i = 100;
+    do run_in_bare_thread {
+        assert i == 100;
+    }
 }
 
 #[allow(non_camel_case_types)] // runtime type
@@ -73,8 +119,7 @@ pub unsafe fn chan_from_global_ptr<T: Owned>(
         let (setup1_po, setup1_ch) = pipes::stream();
         let (setup2_po, setup2_ch) = pipes::stream();
 
-        // XXX: Ugly type inference hints
-        let setup1_po: pipes::Port<oldcomm::Chan<T>> = setup1_po;
+        // FIXME #4422: Ugly type inference hint
         let setup2_po: pipes::Port<Msg> = setup2_po;
 
         do task_fn().spawn |move f, move setup1_ch, move setup2_po| {
@@ -379,8 +424,8 @@ pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
 
     do task::unkillable {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&rc.data);
-        let (c1,p1) = pipes::oneshot(); // ()
-        let (c2,p2) = pipes::oneshot(); // bool
+        let (p1,c1) = pipes::oneshot(); // ()
+        let (p2,c2) = pipes::oneshot(); // bool
         let server: UnwrapProto = ~mut Some((move c1,move p2));
         let serverp: int = cast::transmute(move server);
         // Try to put our server end in the unwrapper slot.
@@ -481,12 +526,18 @@ type rust_little_lock = *libc::c_void;
 
 struct LittleLock {
     l: rust_little_lock,
-    drop { rustrt::rust_destroy_little_lock(self.l); }
+    drop {
+        unsafe {
+            rustrt::rust_destroy_little_lock(self.l);
+        }
+    }
 }
 
 fn LittleLock() -> LittleLock {
-    LittleLock {
-        l: rustrt::rust_create_little_lock()
+    unsafe {
+        LittleLock {
+            l: rustrt::rust_create_little_lock()
+        }
     }
 }
 
@@ -495,7 +546,11 @@ impl LittleLock {
     unsafe fn lock<T>(f: fn() -> T) -> T {
         struct Unlock {
             l: rust_little_lock,
-            drop { rustrt::rust_unlock_little_lock(self.l); }
+            drop {
+                unsafe {
+                    rustrt::rust_unlock_little_lock(self.l);
+                }
+            }
         }
 
         fn Unlock(l: rust_little_lock) -> Unlock {
@@ -571,6 +626,15 @@ pub fn unwrap_exclusive<T: Owned>(arc: Exclusive<T>) -> T {
 
 #[cfg(test)]
 pub mod tests {
+    use core::option::{None, Some};
+
+    use option;
+    use pipes;
+    use private::{exclusive, unwrap_exclusive};
+    use result;
+    use task;
+    use uint;
+
     #[test]
     pub fn exclusive_arc() {
         let mut futures = ~[];

@@ -58,10 +58,21 @@
 // A.  But this upper-bound might be stricter than what is truly
 // needed.
 
-use middle::typeck::infer::combine::combine_fields;
-use middle::typeck::infer::to_str::ToStr;
+use core::prelude::*;
 
-fn to_ares(+c: cres<ty::t>) -> ares {
+use middle::ty::TyVar;
+use middle::ty;
+use middle::typeck::infer::{ares, cres};
+use middle::typeck::infer::combine::CombineFields;
+use middle::typeck::infer::sub::Sub;
+use middle::typeck::infer::to_str::InferStr;
+use util::common::{indent, indenter};
+
+use core::option;
+use syntax::ast::{m_const, m_imm, m_mutbl};
+use syntax::ast;
+
+fn to_ares<T>(+c: cres<T>) -> ares {
     match c {
         Ok(_) => Ok(None),
         Err(ref e) => Err((*e))
@@ -71,16 +82,22 @@ fn to_ares(+c: cres<ty::t>) -> ares {
 // Note: Assign is not actually a combiner, in that it does not
 // conform to the same interface, though it performs a similar
 // function.
-enum Assign = combine_fields;
+enum Assign = CombineFields;
 
 impl Assign {
     fn tys(a: ty::t, b: ty::t) -> ares {
-        debug!("Assign.tys(%s -> %s)",
-               a.to_str(self.infcx),
-               b.to_str(self.infcx));
+        debug!("Assign.tys(%s => %s)",
+               a.inf_str(self.infcx),
+               b.inf_str(self.infcx));
         let _r = indenter();
 
-        match (ty::get(a).sty, ty::get(b).sty) {
+        debug!("Assign.tys: copying first type");
+        let copy_a = copy ty::get(a).sty;
+        debug!("Assign.tys: copying second type");
+        let copy_b = copy ty::get(b).sty;
+        debug!("Assign.tys: performing match");
+
+        let r = match (copy_a, copy_b) {
             (ty::ty_bot, _) => {
                 Ok(None)
             }
@@ -115,7 +132,11 @@ impl Assign {
             (_, _) => {
                 self.assign_tys_or_sub(a, b, Some(a), Some(b))
             }
-        }
+        };
+
+        debug!("Assign.tys end");
+
+        move r
     }
 }
 
@@ -124,9 +145,9 @@ priv impl Assign {
         a: ty::t, b: ty::t,
         +a_bnd: Option<ty::t>, +b_bnd: Option<ty::t>) -> ares {
 
-        debug!("Assign.assign_tys_or_sub(%s -> %s, %s -> %s)",
-               a.to_str(self.infcx), b.to_str(self.infcx),
-               a_bnd.to_str(self.infcx), b_bnd.to_str(self.infcx));
+        debug!("Assign.assign_tys_or_sub(%s => %s, %s => %s)",
+               a.inf_str(self.infcx), b.inf_str(self.infcx),
+               a_bnd.inf_str(self.infcx), b_bnd.inf_str(self.infcx));
         let _r = indenter();
 
         fn is_borrowable(v: ty::vstore) -> bool {
@@ -146,7 +167,8 @@ priv impl Assign {
 
         match (a_bnd, b_bnd) {
             (Some(a_bnd), Some(b_bnd)) => {
-                match (ty::get(a_bnd).sty, ty::get(b_bnd).sty) {
+                match (/*bad*/copy ty::get(a_bnd).sty,
+                       /*bad*/copy ty::get(b_bnd).sty) {
                     // check for a case where a non-region pointer (@, ~) is
                     // being assigned to a region pointer:
                     (ty::ty_box(_), ty::ty_rptr(r_b, mt_b)) => {
@@ -188,18 +210,28 @@ priv impl Assign {
                         let nr_b = ty::mk_fn(self.infcx.tcx, ty::FnTyBase {
                             meta: ty::FnMeta {proto: a_f.meta.proto,
                                               ..b_f.meta},
-                            sig: b_f.sig
+                            sig: copy b_f.sig
                         });
                         self.try_assign(0, ty::AutoBorrowFn,
                                         a, nr_b, m_imm, b_f.meta.region)
                     }
 
+                    (ty::ty_fn(ref a_f), ty::ty_fn(ref b_f))
+                    if a_f.meta.proto == ast::ProtoBare => {
+                        let b1_f = ty::FnTyBase {
+                            meta: ty::FnMeta {proto: ast::ProtoBare,
+                                              ..b_f.meta},
+                            sig: copy b_f.sig
+                        };
+                        // Eventually we will need to add some sort of
+                        // adjustment here so that trans can add an
+                        // extra NULL env pointer:
+                        to_ares(Sub(*self).fns(a_f, &b1_f))
+                    }
+
                     // check for &T being assigned to *T:
                     (ty::ty_rptr(_, ref a_t), ty::ty_ptr(ref b_t)) => {
-                        match Sub(*self).mts(*a_t, *b_t) {
-                            Ok(_) => Ok(None),
-                            Err(ref e) => Err((*e))
-                        }
+                        to_ares(Sub(*self).mts(*a_t, *b_t))
                     }
 
                     // otherwise, assignment follows normal subtype rules:
@@ -230,10 +262,10 @@ priv impl Assign {
                   r_b: ty::Region) -> ares {
 
         debug!("try_assign(a=%s, nr_b=%s, m=%?, r_b=%s)",
-               a.to_str(self.infcx),
-               nr_b.to_str(self.infcx),
+               a.inf_str(self.infcx),
+               nr_b.inf_str(self.infcx),
                m,
-               r_b.to_str(self.infcx));
+               r_b.inf_str(self.infcx));
 
         do indent {
             let sub = Sub(*self);

@@ -8,14 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Type decoding
 
 // tjc note: Would be great to have a `match check` macro equivalent
 // for some of these
 
+use core::prelude::*;
+
 use middle::ty;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 
+use core::io;
+use core::str;
+use core::uint;
+use core::vec;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util;
@@ -85,13 +92,6 @@ fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
     parse_arg(st, conv)
 }
 
-fn parse_ret_ty(st: @pstate, conv: conv_did) -> (ast::ret_style, ty::t) {
-    match peek(st) {
-      '!' => { next(st); (ast::noreturn, ty::mk_bot(st.tcx)) }
-      _ => (ast::return_val, parse_ty(st, conv))
-    }
-}
-
 fn parse_path(st: @pstate) -> @ast::path {
     let mut idents: ~[ast::ident] = ~[];
     fn is_last(c: char) -> bool { return c == '(' || c == ':'; }
@@ -101,9 +101,11 @@ fn parse_path(st: @pstate) -> @ast::path {
           ':' => { next(st); next(st); }
           c => {
             if c == '(' {
-                return @{span: ast_util::dummy_sp(),
-                      global: false, idents: idents,
-                      rp: None, types: ~[]};
+                return @ast::path { span: ast_util::dummy_sp(),
+                                    global: false,
+                                    idents: idents,
+                                    rp: None,
+                                    types: ~[] };
             } else { idents.push(parse_ident_(st, is_last)); }
           }
         }
@@ -432,14 +434,13 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
         inputs.push({mode: mode, ty: parse_ty(st, conv)});
     }
     st.pos += 1u; // eat the ']'
-    let (ret_style, ret_ty) = parse_ret_ty(st, conv);
+    let ret_ty = parse_ty(st, conv);
     return FnTyBase {
         meta: FnMeta {purity: purity,
                       proto: proto,
                       onceness: onceness,
                       bounds: bounds,
-                      region: region,
-                      ret_style: ret_style},
+                      region: region},
         sig: FnSig {inputs: inputs,
                     output: ret_ty}
     };
@@ -469,7 +470,7 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
        None => fail (fmt!("internal error: parse_def_id: id expected, but \
                                found %?", def_part))
     };
-    return {crate: crate_num, node: def_num};
+    ast::def_id { crate: crate_num, node: def_num }
 }
 
 fn parse_bounds_data(data: @~[u8], start: uint,

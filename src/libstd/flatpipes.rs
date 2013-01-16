@@ -38,10 +38,14 @@ block the scheduler thread, so will their pipes.
 */
 
 // The basic send/recv interface FlatChan and PortChan will implement
+use core::io;
 use core::pipes::GenericChan;
 use core::pipes::GenericPort;
-
+use core::pipes;
+use core::prelude::*;
 use core::sys::size_of;
+use core::uint;
+use core::vec;
 
 /**
 A FlatPort, consisting of a `BytePort` that recieves byte vectors,
@@ -69,18 +73,20 @@ pub struct FlatChan<T, F: Flattener<T>, C: ByteChan> {
 Constructors for flat pipes that using serialization-based flattening.
 */
 pub mod serial {
-
     pub use DefaultEncoder = ebml::writer::Encoder;
     pub use DefaultDecoder = ebml::reader::Decoder;
 
-    use core::io::{Reader, Writer};
-    use core::pipes::{Port, Chan};
     use serialize::{Decodable, Encodable};
     use flatpipes::flatteners::{DeserializingUnflattener,
                                 SerializingFlattener};
     use flatpipes::flatteners::{deserialize_buffer, serialize_value};
     use flatpipes::bytepipes::{ReaderBytePort, WriterByteChan};
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
+    use flatpipes::{FlatPort, FlatChan};
+
+    use core::io::{Reader, Writer};
+    use core::pipes::{Port, Chan};
+    use core::pipes;
 
     pub type ReaderPort<T, R> = FlatPort<
         T, DeserializingUnflattener<DefaultDecoder, T>,
@@ -141,7 +147,6 @@ pub mod serial {
         let (port, chan) = pipes::stream();
         return (pipe_port(move port), pipe_chan(move chan));
     }
-
 }
 
 // FIXME #4074 this doesn't correctly enforce POD bounds
@@ -156,12 +161,15 @@ POD are not equivelant.
 
 */
 pub mod pod {
-
-    use core::io::{Reader, Writer};
-    use core::pipes::{Port, Chan};
     use flatpipes::flatteners::{PodUnflattener, PodFlattener};
     use flatpipes::bytepipes::{ReaderBytePort, WriterByteChan};
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
+    use flatpipes::{FlatPort, FlatChan};
+
+    use core::io::{Reader, Writer};
+    use core::pipes::{Port, Chan};
+    use core::pipes;
+    use core::prelude::*;
 
     pub type ReaderPort<T: Copy Owned, R> =
         FlatPort<T, PodUnflattener<T>, ReaderBytePort<R>>;
@@ -242,7 +250,7 @@ pub trait ByteChan {
 
 const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
 
-impl<T, U: Unflattener<T>, P: BytePort> FlatPort<T, U, P>: GenericPort<T> {
+pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
     fn recv() -> T {
         match self.try_recv() {
             Some(move val) => move val,
@@ -287,7 +295,7 @@ impl<T, U: Unflattener<T>, P: BytePort> FlatPort<T, U, P>: GenericPort<T> {
     }
 }
 
-impl<T, F: Flattener<T>, C: ByteChan> FlatChan<T, F, C>: GenericChan<T> {
+impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C>: GenericChan<T> {
     fn send(val: T) {
         self.byte_chan.send(CONTINUE.to_vec());
         let bytes = self.flattener.flatten(move val);
@@ -299,7 +307,7 @@ impl<T, F: Flattener<T>, C: ByteChan> FlatChan<T, F, C>: GenericChan<T> {
     }
 }
 
-impl<T, U: Unflattener<T>, P: BytePort> FlatPort<T, U, P> {
+pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
     static fn new(u: U, p: P) -> FlatPort<T, U, P> {
         FlatPort {
             unflattener: move u,
@@ -308,7 +316,7 @@ impl<T, U: Unflattener<T>, P: BytePort> FlatPort<T, U, P> {
     }
 }
 
-impl<T, F: Flattener<T>, C: ByteChan> FlatChan<T, F, C> {
+pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
     static fn new(f: F, c: C) -> FlatChan<T, F, C> {
         FlatChan {
             flattener: move f,
@@ -319,16 +327,21 @@ impl<T, F: Flattener<T>, C: ByteChan> FlatChan<T, F, C> {
 
 
 pub mod flatteners {
+    use ebml;
+    use flatpipes::{ByteChan, BytePort, Flattener, Unflattener};
+    use io_util::BufReader;
+    use json;
+    use serialize::{Encoder, Decoder, Encodable, Decodable};
 
-    use core::sys::size_of;
-
-    use serialize::{Encoder, Decoder,
-                        Encodable, Decodable};
-
+    use core::cast;
     use core::io::{Writer, Reader, BytesWriter, ReaderUtil};
-    use flatpipes::util::BufReader;
+    use core::prelude::*;
+    use core::ptr;
+    use core::sys::size_of;
+    use core::vec;
 
-    // XXX: Is copy/send equivalent to pod?
+
+    // FIXME #4074: Copy + Owned != POD
     pub struct PodUnflattener<T: Copy Owned> {
         bogus: ()
     }
@@ -488,9 +501,12 @@ pub mod flatteners {
 }
 
 pub mod bytepipes {
+    use flatpipes::{ByteChan, BytePort};
 
     use core::io::{Writer, Reader, ReaderUtil};
     use core::pipes::{Port, Chan};
+    use core::pipes;
+    use core::prelude::*;
 
     pub struct ReaderBytePort<R: Reader> {
         reader: R
@@ -556,12 +572,12 @@ pub mod bytepipes {
     pub impl PipeBytePort: BytePort {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             if self.buf.len() >= count {
-                let mut bytes = core::util::replace(&mut self.buf, ~[]);
+                let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
                 self.buf = bytes.slice(count, bytes.len());
                 bytes.truncate(count);
                 return Some(bytes);
             } else if self.buf.len() > 0 {
-                let mut bytes = core::util::replace(&mut self.buf, ~[]);
+                let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
                 assert count > bytes.len();
                 match self.try_recv(count - bytes.len()) {
                     Some(move rest) => {
@@ -580,7 +596,7 @@ pub mod bytepipes {
                     None => return None
                 }
             } else {
-                core::util::unreachable()
+                ::core::util::unreachable()
             }
         }
     }
@@ -610,78 +626,30 @@ pub mod bytepipes {
 
 }
 
-// XXX: This belongs elsewhere
-mod util {
-
-    use io::{Reader, BytesReader};
-
-    pub struct BufReader {
-        buf: ~[u8],
-        mut pos: uint
-    }
-
-    pub impl BufReader {
-        static pub fn new(v: ~[u8]) -> BufReader {
-            BufReader {
-                buf: move v,
-                pos: 0
-            }
-        }
-
-        priv fn as_bytes_reader<A>(f: &fn(&BytesReader) -> A) -> A {
-            // Recreating the BytesReader state every call since
-            // I can't get the borrowing to work correctly
-            let bytes_reader = BytesReader {
-                bytes: core::util::id::<&[u8]>(self.buf),
-                pos: self.pos
-            };
-
-            let res = f(&bytes_reader);
-
-            // XXX: This isn't correct if f fails
-            self.pos = bytes_reader.pos;
-
-            return move res;
-        }
-    }
-
-    impl BufReader: Reader {
-        fn read(&self, bytes: &[mut u8], len: uint) -> uint {
-            self.as_bytes_reader(|r| r.read(bytes, len) )
-        }
-        fn read_byte(&self) -> int {
-            self.as_bytes_reader(|r| r.read_byte() )
-        }
-        fn eof(&self) -> bool {
-            self.as_bytes_reader(|r| r.eof() )
-        }
-        fn seek(&self, offset: int, whence: io::SeekStyle) {
-            self.as_bytes_reader(|r| r.seek(offset, whence) )
-        }
-        fn tell(&self) -> uint {
-            self.as_bytes_reader(|r| r.tell() )
-        }
-    }
-
-}
-
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
 
-    // XXX: json::Decoder doesn't work because of problems related to
-    // its interior pointers
-    //use DefaultEncoder = json::Encoder;
-    //use DefaultDecoder = json::Decoder;
-    use DefaultEncoder = ebml::writer::Encoder;
-    use DefaultDecoder = ebml::reader::Decoder;
+    use DefaultEncoder = json::Encoder;
+    use DefaultDecoder = json::Decoder;
 
     use flatpipes::flatteners::*;
     use flatpipes::bytepipes::*;
+    use flatpipes::pod;
+    use flatpipes::serial;
+    use io_util::BufReader;
+    use flatpipes::{BytePort, FlatChan, FlatPort};
+    use net::ip;
+    use net::tcp::TcpSocketBuf;
 
     use core::dvec::DVec;
-    use io::BytesReader;
-    use util::BufReader;
-    use net::tcp::TcpSocketBuf;
+    use core::int;
+    use core::io::BytesReader;
+    use core::io;
+    use core::prelude::*;
+    use core::result;
+    use core::sys;
+    use core::task;
 
     #[test]
     fn test_serializing_memory_stream() {
@@ -760,7 +728,7 @@ mod test {
         }
     }
 
-    // XXX: Networking doesn't work on x86
+    // FIXME #2064: Networking doesn't work on x86
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_pod_tcp_stream() {
@@ -803,6 +771,7 @@ mod test {
         use net::ip;
         use cell::Cell;
         use net::tcp::TcpSocket;
+        use uv;
 
         // Indicate to the client task that the server is listening
         let (begin_connect_port, begin_connect_chan) = pipes::stream();
@@ -901,6 +870,18 @@ mod test {
     // Tests that the different backends behave the same when the
     // binary streaming protocol is broken
     mod broken_protocol {
+        use core::prelude::*;
+
+        use flatpipes::{BytePort, FlatPort};
+        use flatpipes::flatteners::PodUnflattener;
+        use flatpipes::pod;
+        use io_util::BufReader;
+
+        use core::io;
+        use core::pipes;
+        use core::sys;
+        use core::task;
+
         type PortLoader<P: BytePort> =
             ~fn(~[u8]) -> FlatPort<int, PodUnflattener<int>, P>;
 

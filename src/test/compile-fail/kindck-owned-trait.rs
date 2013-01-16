@@ -11,10 +11,10 @@
 trait foo { fn foo(); }
 
 fn to_foo<T: Copy foo>(t: T) -> foo {
-    t as foo //~ ERROR value may contain borrowed pointers; use `durable` bound
+    t as foo //~ ERROR value may contain borrowed pointers; use `&static` bound
 }
 
-fn to_foo2<T: Copy foo Durable>(t: T) -> foo {
+fn to_foo2<T: Copy foo &static>(t: T) -> foo {
     t as foo
 }
 

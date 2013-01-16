@@ -11,23 +11,28 @@
 #[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
-use libc::{c_char, c_int, c_long, size_t, time_t};
-use io::{Reader, ReaderUtil};
-use result::{Result, Ok, Err};
+use core::int;
+use core::libc::{c_char, c_int, c_long, size_t, time_t};
+use core::i32;
+use core::io::{Reader, ReaderUtil};
+use core::io;
+use core::prelude::*;
+use core::result::{Result, Ok, Err};
+use core::str;
 
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports]
-    fn get_time(sec: &mut i64, nsec: &mut i32);
+    unsafe fn get_time(sec: &mut i64, nsec: &mut i32);
 
-    fn precise_time_ns(ns: &mut u64);
+    unsafe fn precise_time_ns(ns: &mut u64);
 
-    fn rust_tzset();
+    unsafe fn rust_tzset();
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
-    fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    fn rust_timegm(&&tm: Tm, sec: &mut i64);
-    fn rust_mktime(&&tm: Tm, sec: &mut i64);
+    unsafe fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    unsafe fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    unsafe fn rust_timegm(&&tm: Tm, sec: &mut i64);
+    unsafe fn rust_mktime(&&tm: Tm, sec: &mut i64);
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
@@ -53,10 +58,12 @@ impl Timespec : Eq {
  * nanoseconds since 1970-01-01T00:00:00Z.
  */
 pub fn get_time() -> Timespec {
-    let mut sec = 0i64;
-    let mut nsec = 0i32;
-    rustrt::get_time(&mut sec, &mut nsec);
-    return Timespec::new(sec, nsec);
+    unsafe {
+        let mut sec = 0i64;
+        let mut nsec = 0i32;
+        rustrt::get_time(&mut sec, &mut nsec);
+        return Timespec::new(sec, nsec);
+    }
 }
 
 
@@ -65,9 +72,11 @@ pub fn get_time() -> Timespec {
  * in nanoseconds since an unspecified epoch.
  */
 pub fn precise_time_ns() -> u64 {
-    let mut ns = 0u64;
-    rustrt::precise_time_ns(&mut ns);
-    ns
+    unsafe {
+        let mut ns = 0u64;
+        rustrt::precise_time_ns(&mut ns);
+        ns
+    }
 }
 
 
@@ -80,7 +89,9 @@ pub fn precise_time_s() -> float {
 }
 
 pub fn tzset() {
-    rustrt::rust_tzset();
+    unsafe {
+        rustrt::rust_tzset();
+    }
 }
 
 #[auto_encode]
@@ -137,10 +148,12 @@ pub pure fn empty_tm() -> Tm {
 
 /// Returns the specified time in UTC
 pub fn at_utc(clock: Timespec) -> Tm {
-    let mut Timespec { sec, nsec } = clock;
-    let mut tm = empty_tm();
-    rustrt::rust_gmtime(sec, nsec, tm);
-    move tm
+    unsafe {
+        let mut Timespec { sec, nsec } = clock;
+        let mut tm = empty_tm();
+        rustrt::rust_gmtime(sec, nsec, tm);
+        move tm
+    }
 }
 
 /// Returns the current time in UTC
@@ -150,10 +163,12 @@ pub fn now_utc() -> Tm {
 
 /// Returns the specified time in the local timezone
 pub fn at(clock: Timespec) -> Tm {
-    let mut Timespec { sec, nsec } = clock;
-    let mut tm = empty_tm();
-    rustrt::rust_localtime(sec, nsec, tm);
-    move tm
+    unsafe {
+        let mut Timespec { sec, nsec } = clock;
+        let mut tm = empty_tm();
+        rustrt::rust_localtime(sec, nsec, tm);
+        move tm
+    }
 }
 
 /// Returns the current time in the local timezone
@@ -178,13 +193,15 @@ pub pure fn strftime(format: &str, tm: &Tm) -> ~str {
 impl Tm {
     /// Convert time to the seconds from January 1, 1970
     fn to_timespec() -> Timespec {
-        let mut sec = 0i64;
-        if self.tm_gmtoff == 0_i32 {
-            rustrt::rust_timegm(self, &mut sec);
-        } else {
-            rustrt::rust_mktime(self, &mut sec);
+        unsafe {
+            let mut sec = 0i64;
+            if self.tm_gmtoff == 0_i32 {
+                rustrt::rust_timegm(self, &mut sec);
+            } else {
+                rustrt::rust_mktime(self, &mut sec);
+            }
+            Timespec::new(sec, self.tm_nsec)
         }
-        Timespec::new(sec, self.tm_nsec)
     }
 
     /// Convert time to the local timezone
@@ -853,6 +870,16 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 mod tests {
     #[legacy_exports];
 
+    use time::*;
+
+    use core::float;
+    use core::os;
+    use core::result;
+    use core::str;
+    use core::u64;
+    use core::uint;
+    use core::vec;
+
     #[test]
     fn test_get_time() {
         const some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
@@ -900,7 +927,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
         assert utc.tm_sec == 30_i32;
@@ -922,7 +949,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let local = at(time);
 
         error!("time_at: %?", local);
@@ -951,7 +978,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
         assert utc.to_timespec() == time;
@@ -963,7 +990,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 
@@ -1136,7 +1163,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc   = at_utc(time);
         let local = at(time);
 
@@ -1152,7 +1179,7 @@ mod tests {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
-        let time = Timespec::new(1234567890, 54321);
+        let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 

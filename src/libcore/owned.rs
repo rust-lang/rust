@@ -18,15 +18,21 @@ use cmp::{Eq, Ord};
 
 #[cfg(notest)]
 impl<T:Eq> ~const T : Eq {
+    #[inline(always)]
     pure fn eq(&self, other: &~const T) -> bool { *(*self) == *(*other) }
+    #[inline(always)]
     pure fn ne(&self, other: &~const T) -> bool { *(*self) != *(*other) }
 }
 
 #[cfg(notest)]
 impl<T:Ord> ~const T : Ord {
+    #[inline(always)]
     pure fn lt(&self, other: &~const T) -> bool { *(*self) < *(*other) }
+    #[inline(always)]
     pure fn le(&self, other: &~const T) -> bool { *(*self) <= *(*other) }
+    #[inline(always)]
     pure fn ge(&self, other: &~const T) -> bool { *(*self) >= *(*other) }
+    #[inline(always)]
     pure fn gt(&self, other: &~const T) -> bool { *(*self) > *(*other) }
 }
 

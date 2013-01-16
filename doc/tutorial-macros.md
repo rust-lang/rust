@@ -43,7 +43,7 @@ macro_rules! early_return(
             _ => {}
         }
     );
-);
+)
 // ...
 early_return!(input_1 special_a);
 // ...
@@ -115,7 +115,7 @@ to transcribe into the macro expansion; its type need not be repeated.
 The right-hand side must be enclosed by delimiters, which are ignored by the
 transcriber (therefore `() => ((1,2,3))` is a macro that expands to a tuple
 expression, `() => (let $x=$val)` is a macro that expands to a statement, and
-`() => (1,2,3)` is a macro that expands to a syntax errror).
+`() => (1,2,3)` is a macro that expands to a syntax error).
 
 Except for permissibility of `$name` (and `$(...)*`, discussed below), the
 right-hand side of a macro definition is ordinary Rust syntax. In particular,
@@ -160,7 +160,7 @@ macro_rules! early_return(
             _ => {}
         }
     );
-);
+)
 // ...
 early_return!(input_1, [special_a|special_c|special_d]);
 // ...

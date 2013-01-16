@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+use back::target_strs;
 use driver::session;
-use session::sess_os_to_meta_os;
 use metadata::loader::meta_section_name;
+use session::sess_os_to_meta_os;
 
 fn get_target_strs(target_os: session::os) -> target_strs::t {
     return {
@@ -37,6 +39,11 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
                 ~"f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-"+
                 ~"s0:64:64-f80:128:128-n8:16:32:64-S128"
           }
+          session::os_android => {
+            ~"e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-"+
+                ~"f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-"+
+                ~"s0:64:64-f80:128:128-n8:16:32:64-S128"
+          }
 
           session::os_freebsd => {
             ~"e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-"+
@@ -49,6 +56,7 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
           session::os_macos => ~"x86_64-apple-darwin",
           session::os_win32 => ~"x86_64-pc-mingw32",
           session::os_linux => ~"x86_64-unknown-linux-gnu",
+          session::os_android => ~"x86_64-unknown-android-gnu",
           session::os_freebsd => ~"x86_64-unknown-freebsd",
         },
 

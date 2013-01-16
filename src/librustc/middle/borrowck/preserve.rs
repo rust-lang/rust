@@ -13,6 +13,21 @@
 // the scope S.
 //
 
+use core::prelude::*;
+
+use middle::borrowck::{bckerr, bckerr_code, bckres, borrowck_ctxt, cmt};
+use middle::borrowck::{err_mut_uniq, err_mut_variant, err_out_of_root_scope};
+use middle::borrowck::{err_out_of_scope, err_root_not_permitted};
+use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
+use middle::mem_categorization::{cat_discr, cat_local, cat_special};
+use middle::mem_categorization::{cat_stack_upvar, comp_field, comp_index};
+use middle::mem_categorization::{comp_variant, region_ptr};
+use middle::ty;
+use util::common::indenter;
+
+use syntax::ast::{m_const, m_imm, m_mutbl};
+use syntax::ast;
+
 export public_methods, preserve_condition, pc_ok, pc_if_pure;
 
 enum preserve_condition {
@@ -91,6 +106,9 @@ priv impl &preserve_ctxt {
             let scope_region = if self.root_ub == 0 {
                 ty::re_static
             } else {
+                // Maybe if we pass in the parent instead here,
+                // we can prevent the "scope not found" error
+                debug!("scope_region thing: %? ", cmt.id);
                 ty::re_scope(self.tcx().region_map.get(cmt.id))
             };
 
@@ -190,15 +208,15 @@ priv impl &preserve_ctxt {
                 self.attempt_root(cmt, base, derefs)
             }
           }
-          cat_discr(base, alt_id) => {
-            // Subtle: in an alt, we must ensure that each binding
+          cat_discr(base, match_id) => {
+            // Subtle: in a match, we must ensure that each binding
             // variable remains valid for the duration of the arm in
             // which it appears, presuming that this arm is taken.
             // But it is inconvenient in trans to root something just
             // for one arm.  Therefore, we insert a cat_discr(),
             // basically a special kind of category that says "if this
             // value must be dynamically rooted, root it for the scope
-            // `alt_id`.
+            // `match_id`.
             //
             // As an example, consider this scenario:
             //
@@ -208,7 +226,7 @@ priv impl &preserve_ctxt {
             // Technically, the value `x` need only be rooted
             // in the `some` arm.  However, we evaluate `x` in trans
             // before we know what arm will be taken, so we just
-            // always root it for the duration of the alt.
+            // always root it for the duration of the match.
             //
             // As a second example, consider *this* scenario:
             //
@@ -220,7 +238,7 @@ priv impl &preserve_ctxt {
             // found only when checking which pattern matches: but
             // this check is done before entering the arm.  Therefore,
             // even in this case we just choose to keep the value
-            // rooted for the entire alt.  This means the value will be
+            // rooted for the entire match.  This means the value will be
             // rooted even if the none arm is taken.  Oh well.
             //
             // At first, I tried to optimize the second case to only
@@ -242,12 +260,12 @@ priv impl &preserve_ctxt {
             // Nonetheless, if you decide to optimize this case in the
             // future, you need only adjust where the cat_discr()
             // node appears to draw the line between what will be rooted
-            // in the *arm* vs the *alt*.
+            // in the *arm* vs the *match*.
 
-            let alt_rooting_ctxt =
-                preserve_ctxt({scope_region: ty::re_scope(alt_id),
+            let match_rooting_ctxt =
+                preserve_ctxt({scope_region: ty::re_scope(match_id),
                                .. **self});
-            (&alt_rooting_ctxt).preserve(base)
+            (&match_rooting_ctxt).preserve(base)
           }
         }
     }

@@ -165,6 +165,9 @@
 #define RED_ZONE_SIZE RZ_BSD_64
 #endif
 #endif
+#ifdef __ANDROID__
+#define RED_ZONE_SIZE RZ_MAC_32
+#endif
 
 struct rust_box;
 

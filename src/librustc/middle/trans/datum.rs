@@ -95,12 +95,23 @@
  * methods themselves.  Most are only suitable for some types of
  * values. */
 
+use core::prelude::*;
+
 use lib::llvm::ValueRef;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
+use middle::trans::common;
+use middle::trans::tvec;
+use middle::typeck;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
+
+use core::cmp;
+use core::option;
+use core::uint;
+use core::vec;
+use syntax::parse::token::special_idents;
 
 enum CopyAction {
     INIT,
@@ -669,7 +680,7 @@ impl Datum {
                 // Check whether this struct is a newtype struct.
                 let fields = ty::struct_fields(ccx.tcx, did, substs);
                 if fields.len() != 1 || fields[0].ident !=
-                    syntax::parse::token::special_idents::unnamed_field {
+                    special_idents::unnamed_field {
                     return None;
                 }
 

@@ -208,3 +208,5 @@ linenoiseHistoryAdd
 linenoiseHistorySetMaxLen
 linenoiseHistorySave
 linenoiseHistoryLoad
+rust_raw_thread_start
+rust_raw_thread_join_delete

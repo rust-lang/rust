@@ -15,7 +15,7 @@ fn main() {
     let carrots = @~"crunchy";
 
     fn@(tasties: @~str, macerate: fn(~str)) {
-        macerate(*tasties);
+        macerate(copy *tasties);
     } (carrots, |food| {
         let mush = food + cheese;
         let f = fn@() {

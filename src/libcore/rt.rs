@@ -15,10 +15,9 @@
 #[forbid(deprecated_pattern)];
 //! Runtime calls emitted by the compiler.
 
-use libc::c_char;
-use libc::c_void;
-use libc::size_t;
-use libc::uintptr_t;
+use libc::{c_char, c_void, size_t, uintptr_t};
+use str;
+use sys;
 
 use gc::{cleanup_stack_for_failure, gc, Word};
 
@@ -27,29 +26,29 @@ pub type rust_task = c_void;
 
 extern mod rustrt {
     #[rust_stack]
-    fn rust_upcall_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char;
+    unsafe fn rust_upcall_exchange_malloc(td: *c_char, size: uintptr_t)
+                                       -> *c_char;
 
     #[rust_stack]
-    fn rust_upcall_exchange_free(ptr: *c_char);
+    unsafe fn rust_upcall_exchange_free(ptr: *c_char);
 
     #[rust_stack]
-    fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
+    unsafe fn rust_upcall_malloc(td: *c_char, size: uintptr_t) -> *c_char;
 
     #[rust_stack]
-    fn rust_upcall_free(ptr: *c_char);
+    unsafe fn rust_upcall_free(ptr: *c_char);
 }
 
-// FIXME (#2861): This needs both the attribute, and the name prefixed with
-// 'rt_', otherwise the compiler won't find it. To fix this, see
-// gather_rust_rtcalls.
 #[rt(fail_)]
+#[lang="fail_"]
 pub fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
     sys::begin_unwind_(expr, file, line);
 }
 
 #[rt(fail_bounds_check)]
-pub fn rt_fail_bounds_check(file: *c_char, line: size_t,
-                        index: size_t, len: size_t) {
+#[lang="fail_bounds_check"]
+pub unsafe fn rt_fail_bounds_check(file: *c_char, line: size_t,
+                                   index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
     do str::as_buf(msg) |p, _len| {
@@ -58,7 +57,8 @@ pub fn rt_fail_bounds_check(file: *c_char, line: size_t,
 }
 
 #[rt(exchange_malloc)]
-pub fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+#[lang="exchange_malloc"]
+pub unsafe fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_exchange_malloc(td, size);
 }
 
@@ -66,12 +66,14 @@ pub fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[rt(exchange_free)]
-pub fn rt_exchange_free(ptr: *c_char) {
+#[lang="exchange_free"]
+pub unsafe fn rt_exchange_free(ptr: *c_char) {
     rustrt::rust_upcall_exchange_free(ptr);
 }
 
 #[rt(malloc)]
-pub fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+#[lang="malloc"]
+pub unsafe fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_malloc(td, size);
 }
 
@@ -79,7 +81,8 @@ pub fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[rt(free)]
-pub fn rt_free(ptr: *c_char) {
+#[lang="free"]
+pub unsafe fn rt_free(ptr: *c_char) {
     rustrt::rust_upcall_free(ptr);
 }
 

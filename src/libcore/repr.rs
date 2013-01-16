@@ -17,16 +17,31 @@ More runtime type reflection
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cast::transmute;
+use cast;
+use char;
+use dvec::DVec;
+use intrinsic;
+use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
+use io;
 use io::{Writer, WriterUtil};
 use libc::c_void;
-use to_str::ToStr;
-use cast::transmute;
-use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
+use managed;
+use managed::raw::BoxHeaderRepr;
+use ptr;
+use reflect;
 use reflect::{MovePtr, MovePtrAdaptor, align};
+use repr;
+use str;
+use sys;
+use sys::TypeDesc;
+use to_str::ToStr;
+use uint;
 use vec::UnboxedVecRepr;
 use vec::raw::{VecRepr, SliceRepr};
+use vec;
+
 pub use managed::raw::BoxRepr;
-use dvec::DVec;
 
 /// Helpers
 
@@ -45,7 +60,8 @@ impl Writer : EscapedCharWriter {
             '"' => self.write_str("\\\""),
             '\x20'..'\x7e' => self.write_char(ch),
             _ => {
-                // XXX: This is inefficient because it requires a malloc.
+                // FIXME #4423: This is inefficient because it requires a
+                // malloc.
                 self.write_str(char::escape_unicode(ch))
             }
         }
@@ -81,7 +97,7 @@ impl i32 : Repr {
     fn write_repr(writer: @Writer) { writer.write_int(self as int); }
 }
 impl i64 : Repr {
-    // XXX: This can lose precision.
+    // FIXME #4424: This can lose precision.
     fn write_repr(writer: @Writer) { writer.write_int(self as int); }
 }
 
@@ -98,20 +114,20 @@ impl u32 : Repr {
     fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
 }
 impl u64 : Repr {
-    // XXX: This can lose precision.
+    // FIXME #4424: This can lose precision.
     fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
 }
 
 impl float : Repr {
-    // XXX: This mallocs.
+    // FIXME #4423: This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
 impl f32 : Repr {
-    // XXX: This mallocs.
+    // FIXME #4423 This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
 impl f64 : Repr {
-    // XXX: This mallocs.
+    // FIXME #4423: This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
 
@@ -270,7 +286,7 @@ impl ReprVisitor : TyVisitor {
     fn visit_f32() -> bool { self.write::<f32>() }
     fn visit_f64() -> bool { self.write::<f64>() }
 
-    fn visit_char() -> bool { self.write::<uint>() }
+    fn visit_char() -> bool { self.write::<u32>() }
 
     // Type no longer exists, vestigial function.
     fn visit_str() -> bool { fail; }

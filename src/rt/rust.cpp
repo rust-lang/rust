@@ -19,64 +19,6 @@
 #include "rust_scheduler.h"
 #include "rust_gc_metadata.h"
 
-// Creates a rust argument vector from the platform argument vector
-struct
-command_line_args : public kernel_owned<command_line_args>
-{
-    rust_kernel *kernel;
-    rust_task *task;
-    int argc;
-    char **argv;
-
-    // [str] passed to rust_task::start.
-    rust_vec_box *args;
-
-    command_line_args(rust_task *task,
-                      int sys_argc,
-                      char **sys_argv)
-        : kernel(task->kernel),
-          task(task),
-          argc(sys_argc),
-          argv(sys_argv)
-    {
-#if defined(__WIN32__)
-        LPCWSTR cmdline = GetCommandLineW();
-        LPWSTR *wargv = CommandLineToArgvW(cmdline, &argc);
-        kernel->win32_require("CommandLineToArgvW", wargv != NULL);
-        argv = (char **) kernel->malloc(sizeof(char*) * argc,
-                                        "win32 command line");
-        for (int i = 0; i < argc; ++i) {
-            int n_chars = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,
-                                              NULL, 0, NULL, NULL);
-            kernel->win32_require("WideCharToMultiByte(0)", n_chars != 0);
-            argv[i] = (char *) kernel->malloc(n_chars,
-                                              "win32 command line arg");
-            n_chars = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,
-                                          argv[i], n_chars, NULL, NULL);
-            kernel->win32_require("WideCharToMultiByte(1)", n_chars != 0);
-        }
-        LocalFree(wargv);
-#endif
-
-        args = make_str_vec(kernel, argc, argv);
-    }
-
-    ~command_line_args() {
-        for (int i = 0; i < argc; ++i) {
-            rust_vec *s = ((rust_vec**)&args->body.data)[i];
-            kernel->free(s);
-        }
-        kernel->free(args);
-
-#ifdef __WIN32__
-        for (int i = 0; i < argc; ++i) {
-            kernel->free(argv[i]);
-        }
-        kernel->free(argv);
-#endif
-    }
-};
-
 void* global_crate_map = NULL;
 
 /**
@@ -107,19 +49,8 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     assert(sched != NULL);
     rust_task *root_task = sched->create_task(NULL, "main");
 
-    // Build the command line arguments to pass to the root task
-    command_line_args *args
-        = new (kernel, "main command line args")
-        command_line_args(root_task, argc, argv);
-
-    LOG(root_task, dom, "startup: %d args in 0x%" PRIxPTR,
-        args->argc, (uintptr_t)args->args);
-    for (int i = 0; i < args->argc; i++) {
-        LOG(root_task, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
-    }
-
     // Schedule the main Rust task
-    root_task->start((spawn_fn)main_fn, NULL, args->args);
+    root_task->start((spawn_fn)main_fn, NULL, NULL);
 
     // At this point the task lifecycle is responsible for it
     // and our pointer may not be valid
@@ -128,7 +59,6 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
     // Run the kernel until all schedulers exit
     int ret = kernel->run();
 
-    delete args;
     delete kernel;
     free_env(env);
 

@@ -39,10 +39,16 @@ with destructors.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-pub use stackwalk::Word;
-use libc::size_t;
-use libc::uintptr_t;
+use cast;
+use io;
+use libc::{size_t, uintptr_t};
+use option::{None, Option, Some};
+use ptr;
 use send_map::linear::LinearMap;
+use stackwalk;
+use sys;
+
+pub use stackwalk::Word;
 
 // Mirrors rust_stack.h stk_seg
 struct StackSegment {
@@ -55,12 +61,14 @@ struct StackSegment {
 extern mod rustrt {
     #[legacy_exports];
     #[rust_stack]
-    fn rust_call_tydesc_glue(root: *Word, tydesc: *Word, field: size_t);
+    unsafe fn rust_call_tydesc_glue(root: *Word,
+                                    tydesc: *Word,
+                                    field: size_t);
 
     #[rust_stack]
-    fn rust_gc_metadata() -> *Word;
+    unsafe fn rust_gc_metadata() -> *Word;
 
-    fn rust_get_stack_segment() -> *StackSegment;
+    unsafe fn rust_get_stack_segment() -> *StackSegment;
 }
 
 unsafe fn bump<T, U>(ptr: *T, count: uint) -> *U {
@@ -338,7 +346,7 @@ pub fn cleanup_stack_for_failure() {
             roots.insert(*root, ());
 
             if ptr::is_null(tydesc) {
-                // XXX: Destroy this box
+                // FIXME #4420: Destroy this box
             } else {
                 rustrt::rust_call_tydesc_glue(*root, tydesc, 3 as size_t);
             }

@@ -34,6 +34,12 @@ impl Point : ops::Neg<Point> {
     }
 }
 
+impl Point : ops::Not<Point> {
+    pure fn not(&self) -> Point {
+        Point {x: !self.x, y: !self.y }
+    }
+}
+
 impl Point : ops::Index<bool,int> {
     pure fn index(&self, +x: bool) -> int {
         if x { self.x } else { self.y }
@@ -55,6 +61,11 @@ fn main() {
     assert -p == Point {x: -11, y: -22};
     assert p[true] == 11;
     assert p[false] == 22;
+
+    let q = !p;
+    assert q.x == !(p.x);
+    assert q.y == !(p.y);
+
     // Issue #1733
     fn~(_x: int){}(p[true]);
 }

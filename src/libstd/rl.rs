@@ -11,17 +11,20 @@
 // FIXME #3921. This is unsafe because linenoise uses global mutable
 // state without mutexes.
 
-use libc::{c_char, c_int};
+use core::libc::{c_char, c_int};
+use core::prelude::*;
+use core::str;
+use core::task;
 
 extern mod rustrt {
     #[legacy_exports];
-    fn linenoise(prompt: *c_char) -> *c_char;
-    fn linenoiseHistoryAdd(line: *c_char) -> c_int;
-    fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;
-    fn linenoiseHistorySave(file: *c_char) -> c_int;
-    fn linenoiseHistoryLoad(file: *c_char) -> c_int;
-    fn linenoiseSetCompletionCallback(callback: *u8);
-    fn linenoiseAddCompletion(completions: *(), line: *c_char);
+    unsafe fn linenoise(prompt: *c_char) -> *c_char;
+    unsafe fn linenoiseHistoryAdd(line: *c_char) -> c_int;
+    unsafe fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;
+    unsafe fn linenoiseHistorySave(file: *c_char) -> c_int;
+    unsafe fn linenoiseHistoryLoad(file: *c_char) -> c_int;
+    unsafe fn linenoiseSetCompletionCallback(callback: *u8);
+    unsafe fn linenoiseAddCompletion(completions: *(), line: *c_char);
 }
 
 /// Add a line to history

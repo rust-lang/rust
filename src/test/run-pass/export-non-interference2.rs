@@ -9,16 +9,11 @@
 // except according to those terms.
 
 mod foo {
-    #[legacy_exports];
-
-    export bar;
-
     mod bar {
-        #[legacy_exports];
-        fn y() { x(); }
+        pub fn y() { super::super::foo::x(); }
     }
 
-    fn x() { debug!("x"); }
+    pub fn x() { debug!("x"); }
 }
 
-fn main() { foo::bar::y(); }
+fn main() { self::foo::bar::y(); }

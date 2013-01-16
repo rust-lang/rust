@@ -10,6 +10,10 @@
 
 #[forbid(deprecated_mode)];
 
+use core::str;
+use core::uint;
+use core::vec;
+
 pub pure fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined

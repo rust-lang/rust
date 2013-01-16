@@ -10,13 +10,23 @@
 
 // Functions dealing with attributes and meta_items
 
-use std::map;
-use std::map::HashMap;
-use either::Either;
-use diagnostic::span_handler;
+use core::prelude::*;
+
+use ast;
 use ast_util::{spanned, dummy_spanned};
-use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+use attr;
 use codemap::BytePos;
+use diagnostic::span_handler;
+use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+
+use core::cmp;
+use core::either::Either;
+use core::either;
+use core::option;
+use core::vec;
+use std::map::HashMap;
+use std::map;
+use std;
 
 // Constructors
 export mk_name_value_item_str;
@@ -60,7 +70,7 @@ export require_unique_names;
 
 /* Constructors */
 
-fn mk_name_value_item_str(name: ~str, +value: ~str) ->
+fn mk_name_value_item_str(name: ~str, value: ~str) ->
     @ast::meta_item {
     let value_lit = dummy_spanned(ast::lit_str(@value));
     return mk_name_value_item(name, value_lit);
@@ -81,19 +91,20 @@ fn mk_word_item(name: ~str) -> @ast::meta_item {
 }
 
 fn mk_attr(item: @ast::meta_item) -> ast::attribute {
-    return dummy_spanned({style: ast::attr_inner, value: *item,
-                       is_sugared_doc: false});
+    dummy_spanned(ast::attribute_ { style: ast::attr_inner,
+                                    value: *item,
+                                    is_sugared_doc: false })
 }
 
 fn mk_sugared_doc_attr(text: ~str,
                        +lo: BytePos, +hi: BytePos) -> ast::attribute {
     let lit = spanned(lo, hi, ast::lit_str(@text));
-    let attr = {
+    let attr = ast::attribute_ {
         style: doc_comment_style(text),
         value: spanned(lo, hi, ast::meta_name_value(~"doc", lit)),
         is_sugared_doc: true
     };
-    return spanned(lo, hi, attr);
+    spanned(lo, hi, attr)
 }
 
 /* Conversion */
@@ -170,27 +181,28 @@ fn get_name_value_str_pair(item: @ast::meta_item) -> Option<(~str, ~str)> {
 /* Searching */
 
 /// Search a list of attributes and return only those with a specific name
-fn find_attrs_by_name(attrs: ~[ast::attribute], name: ~str) ->
+fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
    ~[ast::attribute] {
-    let filter = (
-        fn@(a: &ast::attribute) -> Option<ast::attribute> {
-            if get_attr_name(*a) == name {
-                option::Some(*a)
-            } else { option::None }
+    let filter: &fn(a: &ast::attribute) -> Option<ast::attribute> = |a| {
+        if name == get_attr_name(*a) {
+            option::Some(*a)
+        } else {
+            option::None
         }
-    );
+    };
     return vec::filter_map(attrs, filter);
 }
 
 /// Search a list of meta items and return only those with a specific name
-fn find_meta_items_by_name(metas: ~[@ast::meta_item], name: ~str) ->
+fn find_meta_items_by_name(metas: &[@ast::meta_item], name: &str) ->
    ~[@ast::meta_item] {
-    let filter = fn@(m: &@ast::meta_item) -> Option<@ast::meta_item> {
-        if get_meta_item_name(*m) == name {
-            option::Some(*m)
-        } else { option::None }
-    };
-    return vec::filter_map(metas, filter);
+    let mut rs = ~[];
+    for metas.each |mi| {
+        if name == get_meta_item_name(*mi) {
+            rs.push(*mi)
+        }
+    }
+    rs
 }
 
 /**
@@ -227,12 +239,12 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
         }
 }
 
-fn contains_name(metas: ~[@ast::meta_item], name: ~str) -> bool {
+fn contains_name(metas: &[@ast::meta_item], name: &str) -> bool {
     let matches = find_meta_items_by_name(metas, name);
     return vec::len(matches) > 0u;
 }
 
-fn attrs_contains_name(attrs: ~[ast::attribute], name: ~str) -> bool {
+fn attrs_contains_name(attrs: &[ast::attribute], name: &str) -> bool {
     vec::is_not_empty(find_attrs_by_name(attrs, name))
 }
 
@@ -313,7 +325,7 @@ fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->
  * From a list of crate attributes get only the meta_items that affect crate
  * linkage
  */
-fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
+fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
     do find_attrs_by_name(attrs, ~"link").flat_map |attr| {
         match attr.node.value.node {
             ast::meta_list(_, items) => /* FIXME (#2543) */ copy items,
@@ -379,7 +391,7 @@ fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
 
 
 fn require_unique_names(diagnostic: span_handler,
-                        metas: ~[@ast::meta_item]) {
+                        metas: &[@ast::meta_item]) {
     let map = map::HashMap();
     for metas.each |meta| {
         let name = get_meta_item_name(*meta);

@@ -26,14 +26,14 @@ not required in or otherwise suitable for the core library.
 #[license = "MIT"];
 #[crate_type = "lib"];
 
-#[no_core];
-
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 // XXX this is set to allow because there are two methods in encoding
 // that can't be silenced otherwise. Most every module is set to forbid
 #[allow(deprecated_mode)];
 #[forbid(deprecated_pattern)];
+
+#[no_core];
 
 extern mod core(vers = "0.6");
 use core::*;
@@ -57,6 +57,7 @@ pub mod uv_global_loop;
 pub mod c_vec;
 pub mod timer;
 pub mod cell;
+pub mod io_util;
 
 // Concurrency
 
@@ -98,6 +99,7 @@ pub mod cmp;
 pub mod base64;
 pub mod rl;
 pub mod workcache;
+pub mod bigint;
 
 #[cfg(unicode)]
 mod unicode;

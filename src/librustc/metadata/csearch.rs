@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Searching for information from the cstore
 
+use core::prelude::*;
+
 use metadata::common::*;
+use metadata::cstore;
+use metadata::decoder;
+use metadata;
 use middle::ty;
 
 use core::dvec::DVec;
-use core::option::{Some, None};
+use core::vec;
 use reader = std::ebml::reader;
 use std::ebml;
 use std::map::HashMap;
@@ -40,11 +46,13 @@ export get_method_names_if_trait;
 export get_type_name_if_impl;
 export get_static_methods_if_impl;
 export get_item_attrs;
+export each_lang_item;
 export each_path;
 export get_type;
 export get_impl_traits;
 export get_impl_method;
 export get_item_path;
+export get_lang_items;
 export maybe_get_item_ast, found_ast, found, found_parent, not_found;
 export ProvidedTraitMethodInfo;
 export StaticMethodInfo;
@@ -70,6 +78,14 @@ fn get_type_param_count(cstore: cstore::CStore, def: ast::def_id) -> uint {
     return decoder::get_type_param_count(cdata, def.node);
 }
 
+/// Iterates over all the language items in the given crate.
+fn each_lang_item(cstore: cstore::CStore,
+                  cnum: ast::crate_num,
+                  f: &fn(ast::node_id, uint) -> bool) {
+    let crate_data = cstore::get_crate_data(cstore, cnum);
+    decoder::each_lang_item(crate_data, f)
+}
+
 /// Iterates over all the paths in the given crate.
 fn each_path(cstore: cstore::CStore, cnum: ast::crate_num,
              f: fn(decoder::path_entry) -> bool) {
@@ -87,7 +103,8 @@ fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec::append(~[ast_map::path_mod(tcx.sess.ident_of(cdata.name))], path)
+    vec::append(~[ast_map::path_mod(tcx.sess.ident_of(
+        /*bad*/copy cdata.name))], path)
 }
 
 enum found_ast {

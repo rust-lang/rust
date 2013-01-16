@@ -160,13 +160,13 @@ pub mod icu {
     #[link_name = "icuuc"]
     #[abi = "cdecl"]
     pub extern mod libicu {
-        pure fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
-        pure fn u_isdigit(c: UChar32) -> UBool;
-        pure fn u_islower(c: UChar32) -> UBool;
-        pure fn u_isspace(c: UChar32) -> UBool;
-        pure fn u_isupper(c: UChar32) -> UBool;
-        pure fn u_tolower(c: UChar32) -> UChar32;
-        pure fn u_toupper(c: UChar32) -> UChar32;
+        unsafe fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
+        unsafe fn u_isdigit(c: UChar32) -> UBool;
+        unsafe fn u_islower(c: UChar32) -> UBool;
+        unsafe fn u_isspace(c: UChar32) -> UBool;
+        unsafe fn u_isupper(c: UChar32) -> UBool;
+        unsafe fn u_tolower(c: UChar32) -> UChar32;
+        unsafe fn u_toupper(c: UChar32) -> UChar32;
     }
 }
 

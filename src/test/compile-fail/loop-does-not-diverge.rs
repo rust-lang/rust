@@ -14,7 +14,7 @@ fn forever() -> ! {
   loop {
     break;
   }
-  return 42i; //~ ERROR expected `_|_` but found `int`
+  return 42i; //~ ERROR expected `!` but found `int`
 }
 
 fn main() {

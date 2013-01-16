@@ -25,7 +25,7 @@ would generate two implementations like:
 
     impl<S: Encoder> node_id: Encodable<S> {
         fn encode(s: &S) {
-            do s.emit_struct("Node") {
+            do s.emit_struct("Node", 1) {
                 s.emit_field("id", 0, || s.emit_uint(self))
             }
         }
@@ -33,7 +33,7 @@ would generate two implementations like:
 
     impl<D: Decoder> node_id: Decodable {
         static fn decode(d: &D) -> Node {
-            do d.read_struct("Node") {
+            do d.read_struct("Node", 1) {
                 Node {
                     id: d.read_field(~"x", 0, || decode(d))
                 }
@@ -88,8 +88,16 @@ node twice.
 
 */
 
-use ext::base::*;
+use core::prelude::*;
+
+use ast;
+use ast_util;
+use attr;
 use codemap::span;
+use ext::base::*;
+use parse;
+
+use core::vec;
 use std::map;
 use std::map::HashMap;
 
@@ -113,8 +121,10 @@ fn expand_auto_encode(
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: vec::filter(item.attrs, |a| !is_auto_encode(a)),
-          .. *item}
+        @ast::item {
+            attrs: item.attrs.filtered(|a| !is_auto_encode(a)),
+            .. *item
+        }
     }
 
     do vec::flat_map(in_items) |item| {
@@ -131,7 +141,7 @@ fn expand_auto_encode(
 
                     ~[filter_attrs(*item), ser_impl]
                 },
-                ast::item_struct(@{ fields, _}, tps) => {
+                ast::item_struct(@ast::struct_def { fields, _}, tps) => {
                     let ser_impl = mk_struct_ser_impl(
                         cx,
                         item.span,
@@ -177,8 +187,10 @@ fn expand_auto_decode(
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: vec::filter(item.attrs, |a| !is_auto_decode(a)),
-          .. *item}
+        @ast::item {
+            attrs: item.attrs.filtered(|a| !is_auto_decode(a)),
+            .. *item
+        }
     }
 
     do vec::flat_map(in_items) |item| {
@@ -195,7 +207,7 @@ fn expand_auto_decode(
 
                     ~[filter_attrs(*item), deser_impl]
                 },
-                ast::item_struct(@{ fields, _}, tps) => {
+                ast::item_struct(@ast::struct_def { fields, _}, tps) => {
                     let deser_impl = mk_struct_deser_impl(
                         cx,
                         item.span,
@@ -237,13 +249,13 @@ priv impl ext_ctxt {
         path: @ast::path,
         bounds: @~[ast::ty_param_bound]
     ) -> ast::ty_param {
-        let bound = ast::ty_param_bound(@{
+        let bound = ast::TraitTyParamBound(@{
             id: self.next_id(),
             node: ast::ty_path(path, self.next_id()),
             span: span,
         });
 
-        {
+        ast::ty_param {
             ident: ident,
             id: self.next_id(),
             bounds: @vec::append(~[bound], *bounds)
@@ -256,12 +268,45 @@ priv impl ext_ctxt {
     }
 
     fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: None, types: ~[]}
+        @ast::path {
+            span: span,
+            global: false,
+            idents: strs,
+            rp: None,
+            types: ~[]
+        }
+    }
+
+    fn path_global(span: span, strs: ~[ast::ident]) -> @ast::path {
+        @ast::path {
+            span: span,
+            global: true,
+            idents: strs,
+            rp: None,
+            types: ~[]
+        }
     }
 
     fn path_tps(span: span, strs: ~[ast::ident],
                 tps: ~[@ast::Ty]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: None, types: tps}
+        @ast::path {
+            span: span,
+            global: false,
+            idents: strs,
+            rp: None,
+            types: tps
+        }
+    }
+
+    fn path_tps_global(span: span, strs: ~[ast::ident],
+                       tps: ~[@ast::Ty]) -> @ast::path {
+        @ast::path {
+            span: span,
+            global: true,
+            idents: strs,
+            rp: None,
+            types: tps
+        }
     }
 
     fn ty_path(span: span, strs: ~[ast::ident],
@@ -272,18 +317,16 @@ priv impl ext_ctxt {
     }
 
     fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
-        let path = @{span: span, global: false, idents: ~[nm],
-                     rp: None, types: ~[]};
         @{id: self.next_id(),
           node: ast::pat_ident(ast::bind_by_ref(ast::m_imm),
-                               path,
+                               self.path(span, ~[nm]),
                                None),
           span: span}
     }
 
     fn stmt(expr: @ast::expr) -> @ast::stmt {
-        @{node: ast::stmt_semi(expr, self.next_id()),
-          span: expr.span}
+        @ast::spanned { node: ast::stmt_semi(expr, self.next_id()),
+                       span: expr.span }
     }
 
     fn lit_str(span: span, s: @~str) -> @ast::expr {
@@ -293,8 +336,8 @@ priv impl ext_ctxt {
                 self.expr(
                     span,
                     ast::expr_lit(
-                        @{node: ast::lit_str(s),
-                          span: span})),
+                        @ast::spanned { node: ast::lit_str(s),
+                                        span: span})),
                 ast::expr_vstore_uniq))
     }
 
@@ -302,8 +345,8 @@ priv impl ext_ctxt {
         self.expr(
             span,
             ast::expr_lit(
-                @{node: ast::lit_uint(i as u64, ast::ty_u),
-                  span: span}))
+                @ast::spanned { node: ast::lit_uint(i as u64, ast::ty_u),
+                                span: span}))
     }
 
     fn lambda(blk: ast::blk) -> @ast::expr {
@@ -313,25 +356,29 @@ priv impl ext_ctxt {
     }
 
     fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
-        {node: {view_items: ~[],
-                stmts: stmts,
-                expr: None,
-                id: self.next_id(),
-                rules: ast::default_blk},
-         span: span}
+        ast::spanned { node: { view_items: ~[],
+                               stmts: stmts,
+                               expr: None,
+                               id: self.next_id(),
+                               rules: ast::default_blk},
+                       span: span }
     }
 
     fn expr_blk(expr: @ast::expr) -> ast::blk {
-        {node: {view_items: ~[],
-                stmts: ~[],
-                expr: Some(expr),
-                id: self.next_id(),
-                rules: ast::default_blk},
-         span: expr.span}
+        ast::spanned { node: { view_items: ~[],
+                               stmts: ~[],
+                               expr: Some(expr),
+                               id: self.next_id(),
+                               rules: ast::default_blk},
+                       span: expr.span }
     }
 
     fn expr_path(span: span, strs: ~[ast::ident]) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path(span, strs)))
+    }
+
+    fn expr_path_global(span: span, strs: ~[ast::ident]) -> @ast::expr {
+        self.expr(span, ast::expr_path(self.path_global(span, strs)))
     }
 
     fn expr_var(span: span, var: ~str) -> @ast::expr {
@@ -376,13 +423,13 @@ fn mk_impl(
     let mut trait_tps = vec::append(
         ~[ty_param],
          do tps.map |tp| {
-            let t_bound = ast::ty_param_bound(@{
+            let t_bound = ast::TraitTyParamBound(@{
                 id: cx.next_id(),
                 node: ast::ty_path(path, cx.next_id()),
                 span: span,
             });
 
-            {
+            ast::ty_param {
                 ident: tp.ident,
                 id: cx.next_id(),
                 bounds: @vec::append(~[t_bound], *tp.bounds)
@@ -401,10 +448,10 @@ fn mk_impl(
         tps.map(|tp| cx.ty_path(span, ~[tp.ident], ~[]))
     );
 
-    @{
+    @ast::item {
         // This is a new-style impl declaration.
         // XXX: clownshoes
-        ident: ast::token::special_idents::clownshoes_extensions,
+        ident: parse::token::special_idents::clownshoes_extensions,
         attrs: ~[],
         id: cx.next_id(),
         node: ast::item_impl(trait_tps, opt_trait, ty, ~[f(ty)]),
@@ -424,7 +471,7 @@ fn mk_ser_impl(
     let ty_param = cx.bind_path(
         span,
         cx.ident_of(~"__S"),
-        cx.path(
+        cx.path_global(
             span,
             ~[
                 cx.ident_of(~"std"),
@@ -436,7 +483,7 @@ fn mk_ser_impl(
     );
 
     // Make a path to the std::serialize::Encodable trait.
-    let path = cx.path_tps(
+    let path = cx.path_tps_global(
         span,
         ~[
             cx.ident_of(~"std"),
@@ -468,7 +515,7 @@ fn mk_deser_impl(
     let ty_param = cx.bind_path(
         span,
         cx.ident_of(~"__D"),
-        cx.path(
+        cx.path_global(
             span,
             ~[
                 cx.ident_of(~"std"),
@@ -480,7 +527,7 @@ fn mk_deser_impl(
     );
 
     // Make a path to the std::serialize::Decodable trait.
-    let path = cx.path_tps(
+    let path = cx.path_tps_global(
         span,
         ~[
             cx.ident_of(~"std"),
@@ -549,7 +596,8 @@ fn mk_ser_method(
         ident: cx.ident_of(~"encode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: { node: ast::sty_region(ast::m_imm), span: span },
+        self_ty: ast::spanned { node: ast::sty_region(ast::m_imm),
+                                span: span },
         purity: ast::impure_fn,
         decl: ser_decl,
         body: ser_body,
@@ -603,7 +651,8 @@ fn mk_deser_method(
         ident: cx.ident_of(~"decode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: { node: ast::sty_static, span: span },
+        self_ty: ast::spanned { node: ast::sty_static,
+                                span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
         body: deser_body,
@@ -686,6 +735,7 @@ fn mk_struct_ser_impl(
         ),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
+            cx.lit_uint(span, vec::len(fields)),
             cx.lambda_stmts(span, fields),
         ]
     );
@@ -712,6 +762,7 @@ fn mk_struct_deser_impl(
         ),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
+            cx.lit_uint(span, vec::len(fields)),
             cx.lambda_expr(
                 cx.expr(
                     span,
@@ -815,7 +866,7 @@ fn mk_deser_fields(
             cx.expr_blk(
                 cx.expr_call(
                     span,
-                    cx.expr_path(span, ~[
+                    cx.expr_path_global(span, ~[
                         cx.ident_of(~"std"),
                         cx.ident_of(~"serialize"),
                         cx.ident_of(~"Decodable"),
@@ -841,7 +892,7 @@ fn mk_deser_fields(
             ]
         );
 
-        {
+        ast::spanned {
             node: { mutbl: field.mutbl, ident: field.ident, expr: expr },
             span: span,
         }
@@ -1019,7 +1070,7 @@ fn mk_enum_deser_variant_nary(
         let expr_lambda = cx.lambda_expr(
             cx.expr_call(
                 span,
-                cx.expr_path(span, ~[
+                cx.expr_path_global(span, ~[
                     cx.ident_of(~"std"),
                     cx.ident_of(~"serialize"),
                     cx.ident_of(~"Decodable"),

@@ -10,7 +10,11 @@
 
 
 #ifndef __WIN32__
+#ifdef __ANDROID__
+#include "rust_android_dummy.h"
+#else
 #include <execinfo.h>
+#endif
 #endif
 #include <iostream>
 #include <algorithm>
