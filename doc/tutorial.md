@@ -863,11 +863,34 @@ allocating memory and indirecting through a pointer. But for big structs, or
 those with mutable fields, it can be useful to have a single copy on
 the stack or on the heap, and refer to that through a pointer.
 
-Rust supports several types of pointers. The safe pointer types are
-`@T`, for managed boxes allocated on the local heap, `~T`, for
-uniquely-owned boxes allocated on the exchange heap, and `&T`, for
-borrowed pointers, which may point to any memory, and whose lifetimes
-are governed by the call stack.
+Whenever memory is allocated on the heap, the program needs a strategy to
+dispose of the memory when no longer needed. Most languages, such as Java or
+Python, use *garbage collection* for this, a strategy in which the program
+periodically searches for allocations that are no longer reachable in order
+to dispose of them. Other languages, such as C, use *manual memory
+management*, which relies on the programmer to specify when memory should be
+reclaimed.
+
+Rust is in a different position. It differs from the garbage-collected
+environments in that allows the programmer to choose the disposal
+strategy on an object-by-object basis. Not only does this have benefits for
+performance, but we will later see that this model has benefits for
+concurrency as well, by making it possible for the Rust compiler to detect
+data races at compile time. Rust also differs from the manually managed
+languages in that it is *safe*—it uses a [pointer lifetime
+analysis][borrow] to ensure that manual memory management cannot cause memory
+errors at runtime.
+
+[borrow]: tutorial-borrowed-ptr.html
+
+The cornerstone of Rust's memory management is the concept of a *smart
+pointer*—a pointer type that indicates the lifetime of the object it points
+to. This solution is familiar to C++ programmers; Rust differs from C++,
+however, in that a small set of smart pointers are built into the language.
+The safe pointer types are `@T`, for *managed* boxes allocated on the *local
+heap*, `~T`, for *uniquely-owned* boxes allocated on the *exchange
+heap*, and `&T`, for *borrowed* pointers, which may point to any memory, and
+whose lifetimes are governed by the call stack.
 
 All pointer types can be dereferenced with the `*` unary operator.
 
@@ -919,7 +942,17 @@ node2.next = SomeNode(node3);
 node3.prev = SomeNode(node2);
 ~~~
 
-Managed boxes never cross task boundaries.
+Managed boxes never cross task boundaries. This has several benefits for
+performance:
+
+* The Rust garbage collector does not need to stop multiple threads in order
+  to collect garbage.
+
+* You can separate your application into "real-time" tasks that do not use
+  the garbage collector and "non-real-time" tasks that do, and the real-time
+  tasks will not be interrupted by the non-real-time tasks.
+
+C++ programmers will recognize `@T` as similar to `std::shared_ptr<T>`.
 
 > ***Note:*** Currently, the Rust compiler generates code to reclaim
 > managed boxes through reference counting and a cycle collector, but
@@ -956,10 +989,19 @@ let z = *x + *y;
 assert z == 20;
 ~~~~
 
-Owned boxes, when they do not contain any managed boxes, can be sent
-to other tasks. The sending task will give up ownership of the box,
+When they do not contain any managed boxes, owned boxes can be sent
+to other tasks. The sending task will give up ownership of the box
 and won't be able to access it afterwards. The receiving task will
-become the sole owner of the box.
+become the sole owner of the box. This prevents *data races*—errors
+that could otherwise result from multiple tasks working on the same
+data without synchronization.
+
+When an owned pointer goes out of scope or is overwritten, the object
+it points to is immediately freed. Effective use of owned boxes can
+therefore be an efficient alternative to garbage collection.
+
+C++ programmers will recognize `~T` as similar to `std::unique_ptr<T>`
+(or `std::auto_ptr<T>` in C++03 and below).
 
 ## Borrowed pointers
 
