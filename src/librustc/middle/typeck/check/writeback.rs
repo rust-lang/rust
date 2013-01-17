@@ -20,6 +20,7 @@ use middle::typeck::check::{fn_ctxt, lookup_local, self_info};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
 use middle::typeck::infer;
+use middle::typeck::method_map_entry;
 use middle::typeck::{vtable_param, vtable_trait, write_substs_to_tcx};
 use middle::typeck::{write_ty_to_tcx};
 use util::ppaux;
@@ -63,8 +64,11 @@ fn resolve_method_map_entry(fcx: @fn_ctxt, sp: span, id: ast::node_id)
             for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
                 fcx.ccx.method_map.insert(
                     id,
-                    {self_arg: {mode: mme.self_arg.mode, ty: *t},
-                     ..*mme});
+                    method_map_entry {
+                        self_arg: {mode: mme.self_arg.mode, ty: *t},
+                        .. *mme
+                    }
+                );
             }
         }
     }
@@ -91,14 +95,16 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
                             Some(*autoref)
                         }
                         Ok(r) => {
-                            Some({region: r, ..*autoref})
+                            Some(ty::AutoRef {region: r, ..*autoref})
                         }
                     }
                 }
                 None => None
             };
 
-            let resolved_adj = @{autoref: resolved_autoref, ..*adj};
+            let resolved_adj = @ty::AutoAdjustment {
+                autoref: resolved_autoref,
+                ..*adj};
             debug!("Adjustments for node %d: %?", id, resolved_adj);
             fcx.tcx().adjustments.insert(id, resolved_adj);
         }

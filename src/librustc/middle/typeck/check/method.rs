@@ -455,10 +455,13 @@ impl LookupContext {
                     explicit_self: method.self_ty,
                     num_method_tps: method.tps.len(),
                     self_mode: get_mode_from_self_type(method.self_ty),
-                    origin: method_param({trait_id:init_trait_id,
-                                          method_num:pos,
-                                          param_num:param_ty.idx,
-                                          bound_num:this_bound_idx})
+                    origin: method_param(
+                        method_param {
+                            trait_id: init_trait_id,
+                            method_num: pos,
+                            param_num: param_ty.idx,
+                            bound_num: this_bound_idx,
+                        })
                 };
 
                 debug!("pushing inherent candidate for param: %?", cand);
@@ -834,10 +837,14 @@ impl LookupContext {
                 Some(move mme) => {
                     self.fcx.write_adjustment(
                         self.self_expr.id,
-                        @{autoderefs: autoderefs,
-                          autoref: Some({kind: kind,
-                                         region: region,
-                                         mutbl: *mutbl})});
+                        @ty::AutoAdjustment {
+                            autoderefs: autoderefs,
+                            autoref: Some(ty::AutoRef {
+                                kind: kind,
+                                region: region,
+                                mutbl: *mutbl,
+                            }),
+                        });
                     return Some(mme);
                 }
             }
@@ -1004,10 +1011,14 @@ impl LookupContext {
         };
 
         self.fcx.write_ty_substs(self.callee_id, fty, all_substs);
-        return {self_arg: {mode: ast::expl(candidate.self_mode),
-                           ty: candidate.rcvr_ty},
-                explicit_self: candidate.explicit_self,
-                origin: candidate.origin};
+        method_map_entry {
+            self_arg: {
+                mode: ast::expl(candidate.self_mode),
+                ty: candidate.rcvr_ty,
+            },
+            explicit_self: candidate.explicit_self,
+            origin: candidate.origin,
+        }
     }
 
     fn enforce_trait_instance_limitations(&self,
@@ -1050,7 +1061,7 @@ impl LookupContext {
             method_static(method_id) | method_self(method_id, _) => {
                 bad = self.tcx().destructors.contains_key(method_id);
             }
-            method_param({trait_id: trait_id, _}) |
+            method_param(method_param { trait_id: trait_id, _ }) |
             method_trait(trait_id, _, _) => {
                 bad = self.tcx().destructor_for_type.contains_key(trait_id);
             }

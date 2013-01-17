@@ -34,10 +34,10 @@ export has_freevars;
 // (The def_upvar will already have been stripped).
 #[auto_encode]
 #[auto_decode]
-type freevar_entry = {
+struct freevar_entry {
     def: ast::def, //< The variable being accessed free.
     span: span     //< First span where it is accessed (there can be multiple)
-};
+}
 type freevar_info = @~[@freevar_entry];
 type freevar_map = HashMap<ast::node_id, freevar_info>;
 
@@ -79,7 +79,10 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
                       if i == depth { // Made it to end of loop
                         let dnum = ast_util::def_id_of_def(def).node;
                         if !seen.contains_key(dnum) {
-                            refs.push(@{def:def, span:expr.span});
+                            refs.push(@freevar_entry {
+                                def: def,
+                                span: expr.span,
+                            });
                             seen.insert(dnum, ());
                         }
                       }
