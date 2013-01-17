@@ -90,7 +90,7 @@ export method_map_entry;
 export vtable_map;
 export vtable_res;
 export vtable_origin;
-export method_static, method_param, method_trait, method_self;
+export method_static, method_param, method_trait, method_self, method_super;
 export vtable_static, vtable_param, vtable_trait;
 export provided_methods_map;
 export coherence;
@@ -125,6 +125,12 @@ pub mod coherence;
 #[auto_encode]
 #[auto_decode]
 pub enum method_origin {
+    // supertrait method invoked on "self" inside a default method
+    // first field is supertrait ID;
+    // second field is method index (relative to the *supertrait*
+    // method list)
+    method_super(ast::def_id, uint),
+
     // fully statically resolved method
     method_static(ast::def_id),
 
@@ -135,7 +141,8 @@ pub enum method_origin {
     method_trait(ast::def_id, uint, ty::vstore),
 
     // method invoked on "self" inside a default method
-    method_self(ast::def_id, uint),
+    method_self(ast::def_id, uint)
+
 }
 
 // details for a method invoked with a receiver whose type is a type parameter

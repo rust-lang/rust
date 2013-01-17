@@ -312,7 +312,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
     let precise_param_ids = match vtables {
       Some(vts) => {
         let bounds = ty::lookup_item_type(ccx.tcx, item).bounds;
-        let mut i = 0u;
+        let mut i = 0;
         vec::map2(*bounds, substs, |bounds, subst| {
             let mut v = ~[];
             for bounds.each |bound| {

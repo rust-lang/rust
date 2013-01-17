@@ -630,15 +630,14 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         ensure_trait_methods(ccx, it.id, tpt.ty);
         ensure_supertraits(ccx, it.id, it.span, rp, *supertraits);
 
-        let (_, provided_methods) =
-            split_trait_methods(/*bad*/copy *trait_methods);
-        let {bounds, _} = mk_substs(ccx, /*bad*/copy *tps, rp);
+          debug!("trait %s has supertraits %?",
+                 ppaux::ty_to_str(tcx, tpt.ty),
+                 supertraits);
+
+        let (_, provided_methods) = split_trait_methods(/*bad*/copy
+                                                        *trait_methods);
+        let mut {bounds, _} = mk_substs(ccx, /*bad*/copy *tps, rp);
         let _cms = convert_methods(ccx, provided_methods, rp, bounds);
-        // FIXME (#2616): something like this, when we start having
-        // trait inheritance?
-        // for trait_ref.each |t| {
-        // check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
-        // }
       }
       ast::item_struct(struct_def, tps) => {
         // Write the class type
