@@ -145,19 +145,17 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
 }
 
 fn is_test_fn(i: @ast::item) -> bool {
-    let has_test_attr =
-        vec::len(attr::find_attrs_by_name(i.attrs, ~"test")) > 0u;
+    let has_test_attr = attr::find_attrs_by_name(i.attrs,
+                                                 ~"test").is_not_empty();
 
     fn has_test_signature(i: @ast::item) -> bool {
-        match /*bad*/copy i.node {
-          ast::item_fn(decl, _, tps, _) => {
-            let input_cnt = vec::len(decl.inputs);
+        match &i.node {
+          &ast::item_fn(ref decl, _, ref tps, _) => {
             let no_output = match decl.output.node {
                 ast::ty_nil => true,
                 _ => false
             };
-            let tparm_cnt = vec::len(tps);
-            input_cnt == 0u && no_output && tparm_cnt == 0u
+            decl.inputs.is_empty() && no_output && tps.is_empty()
           }
           _ => false
         }
