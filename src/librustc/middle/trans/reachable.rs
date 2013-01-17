@@ -182,7 +182,10 @@ fn traverse_inline_body(cx: ctx, body: blk) {
           }
           expr_field(_, _, _) => {
             match cx.method_map.find(e.id) {
-              Some({origin: typeck::method_static(did), _}) => {
+              Some(typeck::method_map_entry {
+                  origin: typeck::method_static(did),
+                  _
+                }) => {
                 traverse_def_id(cx, did);
               }
               _ => ()
@@ -190,7 +193,10 @@ fn traverse_inline_body(cx: ctx, body: blk) {
           }
           expr_method_call(*) => {
             match cx.method_map.find(e.id) {
-              Some({origin: typeck::method_static(did), _}) => {
+              Some(typeck::method_map_entry {
+                  origin: typeck::method_static(did),
+                  _
+                }) => {
                 traverse_def_id(cx, did);
               }
               Some(_) => {}

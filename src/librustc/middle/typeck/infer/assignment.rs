@@ -275,9 +275,9 @@ priv impl Assign {
             do sub.tys(a, nr_b).chain |_t| {
                 let r_a = self.infcx.next_region_var_nb(self.span);
                 do sub.contraregions(r_a, r_b).chain |_r| {
-                    Ok(Some(@{
+                    Ok(Some(@ty::AutoAdjustment {
                         autoderefs: autoderefs,
-                        autoref: Some({
+                        autoref: Some(ty::AutoRef {
                             kind: kind,
                             region: r_a,
                             mutbl: m

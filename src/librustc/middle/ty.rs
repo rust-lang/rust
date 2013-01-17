@@ -272,12 +272,12 @@ enum vstore {
     vstore_slice(Region)
 }
 
-type field_ty = {
+struct field_ty {
   ident: ident,
   id: def_id,
   vis: ast::visibility,
-  mutability: ast::struct_mutability
-};
+  mutability: ast::struct_mutability,
+}
 
 /// How an lvalue is to be used.
 #[auto_encode]
@@ -356,18 +356,18 @@ impl region_variance : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-pub type AutoAdjustment = {
+pub struct AutoAdjustment {
     autoderefs: uint,
     autoref: Option<AutoRef>
-};
+}
 
 #[auto_encode]
 #[auto_decode]
-pub type AutoRef = {
+pub struct AutoRef {
     kind: AutoRefKind,
     region: Region,
     mutbl: ast::mutability
-};
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -3086,8 +3086,9 @@ fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
             // and then the method bounds themselves...
             ty::lookup_item_type(tcx, did).bounds
           }
-          typeck::method_param({trait_id:trt_id,
-                                method_num:n_mth, _}) |
+          typeck::method_param(typeck::method_param {
+              trait_id: trt_id,
+              method_num: n_mth, _}) |
           typeck::method_trait(trt_id, n_mth, _) |
           typeck::method_self(trt_id, n_mth) => {
             // ...trait methods bounds, in contrast, include only the
@@ -4075,25 +4076,27 @@ pure fn is_public(f: field_ty) -> bool {
 }
 
 fn struct_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
-    let mut rslt = ~[];
-    for fields.each |field| {
+    do fields.map |field| {
         match field.node.kind {
             named_field(ident, mutability, visibility) => {
-                rslt.push({ident: ident,
-                           id: ast_util::local_def(field.node.id),
-                           vis: visibility,
-                           mutability: mutability});
+                field_ty {
+                    ident: ident,
+                    id: ast_util::local_def(field.node.id),
+                    vis: visibility,
+                    mutability: mutability,
+                }
             }
             unnamed_field => {
-                rslt.push({ident:
-                    syntax::parse::token::special_idents::unnamed_field,
-                           id: ast_util::local_def(field.node.id),
-                           vis: ast::public,
-                           mutability: ast::struct_immutable});
+                field_ty {
+                    ident:
+                        syntax::parse::token::special_idents::unnamed_field,
+                    id: ast_util::local_def(field.node.id),
+                    vis: ast::public,
+                    mutability: ast::struct_immutable,
+                }
             }
-       }
+        }
     }
-    rslt
 }
 
 // Return a list of fields corresponding to the struct's items

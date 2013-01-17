@@ -448,16 +448,20 @@ impl ast::def: tr {
 
 impl ty::AutoAdjustment: tr {
     fn tr(xcx: extended_decode_ctxt) -> ty::AutoAdjustment {
-        {autoderefs: self.autoderefs,
-         autoref: self.autoref.map(|ar| ar.tr(xcx))}
+        ty::AutoAdjustment {
+            autoderefs: self.autoderefs,
+            autoref: self.autoref.map(|ar| ar.tr(xcx)),
+        }
     }
 }
 
 impl ty::AutoRef: tr {
     fn tr(xcx: extended_decode_ctxt) -> ty::AutoRef {
-        {kind: self.kind,
-         region: self.region.tr(xcx),
-         mutbl: self.mutbl}
+        ty::AutoRef {
+            kind: self.kind,
+            region: self.region.tr(xcx),
+            mutbl: self.mutbl,
+        }
     }
 }
 
@@ -503,7 +507,10 @@ impl reader::Decoder: ebml_decoder_helper {
 
 impl freevar_entry: tr {
     fn tr(xcx: extended_decode_ctxt) -> freevar_entry {
-        {def: self.def.tr(xcx), span: self.span.tr(xcx)}
+        freevar_entry {
+            def: self.def.tr(xcx),
+            span: self.span.tr(xcx),
+        }
     }
 }
 
@@ -533,21 +540,20 @@ fn encode_method_map_entry(ecx: @e::encode_ctxt,
 impl reader::Decoder: read_method_map_entry_helper {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry {
         do self.read_rec {
-            {self_arg:
-                 self.read_field(~"self_arg", 0u, || {
-                     self.read_arg(xcx)
-                 }),
-             explicit_self:
-                 self.read_field(~"explicit_self", 2u, || {
+            method_map_entry {
+                self_arg: self.read_field(~"self_arg", 0u, || {
+                    self.read_arg(xcx)
+                }),
+                explicit_self: self.read_field(~"explicit_self", 2u, || {
                     let self_type: ast::self_ty_ = Decodable::decode(&self);
                     self_type
-                 }),
-             origin:
-                 self.read_field(~"origin", 1u, || {
-                     let method_origin: method_origin =
-                         Decodable::decode(&self);
-                     method_origin.tr(xcx)
-                 })}
+                }),
+                origin: self.read_field(~"origin", 1u, || {
+                    let method_origin: method_origin =
+                        Decodable::decode(&self);
+                    method_origin.tr(xcx)
+                }),
+            }
         }
     }
 }
@@ -559,7 +565,12 @@ impl method_origin: tr {
             typeck::method_static(did.tr(xcx))
           }
           typeck::method_param(ref mp) => {
-            typeck::method_param({trait_id:(*mp).trait_id.tr(xcx),.. (*mp)})
+            typeck::method_param(
+                typeck::method_param {
+                    trait_id: mp.trait_id.tr(xcx),
+                    .. *mp
+                }
+            )
           }
           typeck::method_trait(did, m, vstore) => {
             typeck::method_trait(did.tr(xcx), m, vstore)
