@@ -46,7 +46,9 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                     cx.span_fatal(pth.span,
                                   fmt!("macro undefined: '%s'", *extname))
                   }
-                  Some(normal_tt({expander: exp, span: exp_sp})) => {
+                  Some(normal_tt(
+                    syntax_expander_tt { expander: exp, span: exp_sp }
+                  )) => {
                     cx.bt_push(ExpandedFrom({call_site: s,
                                 callie: {name: *extname, span: exp_sp}}));
 
@@ -231,7 +233,9 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
         None =>
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extname)),
 
-        Some(normal_tt({expander: exp, span: exp_sp})) => {
+        Some(normal_tt(
+            syntax_expander_tt { expander: exp, span: exp_sp }
+        )) => {
             cx.bt_push(ExpandedFrom(
                 {call_site: sp, callie: {name: *extname, span: exp_sp}}));
             let expanded = match exp(cx, mac.span, tts) {

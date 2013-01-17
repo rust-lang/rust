@@ -164,7 +164,7 @@ fn reserve_id_range(sess: Session,
     let to_id_min = sess.parse_sess.next_id;
     let to_id_max = sess.parse_sess.next_id + cnt;
     sess.parse_sess.next_id = to_id_max;
-    return {min: to_id_min, max: to_id_min};
+    ast_util::id_range { min: to_id_min, max: to_id_min }
 }
 
 impl extended_decode_ctxt {

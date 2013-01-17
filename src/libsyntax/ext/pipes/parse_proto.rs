@@ -88,7 +88,7 @@ impl parser::Parser: proto_parser {
                                          |p| p.parse_ty(false))
             }
             else { ~[] };
-            Some({state: name, tys: ntys})
+            Some(next_state {state: name, tys: ntys})
           }
           token::NOT => {
             // -> !
