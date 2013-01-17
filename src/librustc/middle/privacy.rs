@@ -132,7 +132,11 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                     // XXX: External crates.
                 }
             }
-            method_param({trait_id: trait_id, method_num: method_num, _}) |
+            method_param(method_param {
+                trait_id: trait_id,
+                 method_num: method_num,
+                 _
+            }) |
             method_trait(trait_id, method_num, _) |
             method_self(trait_id, method_num) => {
                 if trait_id.crate == local_crate {

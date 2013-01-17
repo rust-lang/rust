@@ -730,7 +730,10 @@ impl @fn_ctxt {
 
     fn write_autoderef_adjustment(node_id: ast::node_id, derefs: uint) {
         if derefs == 0 { return; }
-        self.write_adjustment(node_id, @{autoderefs: derefs, autoref: None});
+        self.write_adjustment(
+            node_id,
+            @ty::AutoAdjustment { autoderefs: derefs, autoref: None }
+        );
     }
 
     fn write_adjustment(node_id: ast::node_id, adj: @ty::AutoAdjustment) {

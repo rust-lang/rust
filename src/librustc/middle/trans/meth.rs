@@ -209,8 +209,12 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                 })
             }
         }
-        typeck::method_param({trait_id:trait_id, method_num:off,
-                              param_num:p, bound_num:b}) => {
+        typeck::method_param(typeck::method_param {
+            trait_id: trait_id,
+            method_num: off,
+            param_num: p,
+            bound_num: b
+        }) => {
             match bcx.fcx.param_substs {
                 Some(ref substs) => {
                     let vtbl = base::find_vtable(bcx.tcx(), substs, p, b);
