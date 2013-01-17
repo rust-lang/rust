@@ -49,7 +49,7 @@ impl message: gen_send {
         debug!("pipec: gen_send");
         match self {
           message(ref _id, span, tys, this,
-                  Some({state: ref next, tys: next_tys})) => {
+                  Some(next_state {state: ref next, tys: next_tys})) => {
             debug!("pipec: next state exists");
             let next = this.proto.get_state((*next));
             assert next_tys.len() == next.ty_params.len();
@@ -217,7 +217,7 @@ impl state: to_type_decls {
             let message(name, span, tys, this, next) = *m;
 
             let tys = match next {
-              Some({state: ref next, tys: next_tys}) => {
+              Some(next_state { state: ref next, tys: next_tys }) => {
                 let next = this.proto.get_state((*next));
                 let next_name = cx.str_of(next.data_name());
 

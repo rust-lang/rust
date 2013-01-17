@@ -46,7 +46,7 @@ references other non-built-in types.  A type definition like:
 
     #[auto_encode]
     #[auto_decode]
-    type spanned<T> = {node: T, span: span};
+    struct spanned<T> {node: T, span: span}
 
 would yield functions like:
 
@@ -810,11 +810,15 @@ fn mk_struct_deser_impl(
 // Records and structs don't have the same fields types, but they share enough
 // that if we extract the right subfields out we can share the code
 // generator code.
-type field = { span: span, ident: ast::ident, mutbl: ast::mutability };
+struct field {
+    span: span,
+    ident: ast::ident,
+    mutbl: ast::mutability,
+}
 
 fn mk_rec_fields(fields: ~[ast::ty_field]) -> ~[field] {
     do fields.map |field| {
-        {
+        field {
             span: field.span,
             ident: field.node.ident,
             mutbl: field.node.mt.mutbl,
@@ -830,7 +834,7 @@ fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
                         unnamed fields",
         };
 
-        {
+        field {
             span: field.span,
             ident: ident,
             mutbl: match mutbl {
@@ -886,7 +890,7 @@ fn mk_ser_fields(
 fn mk_deser_fields(
     cx: ext_ctxt,
     span: span,
-    fields: ~[{ span: span, ident: ast::ident, mutbl: ast::mutability }]
+    fields: ~[field]
 ) -> ~[ast::field] {
     do fields.mapi |idx, field| {
         // ast for `|| std::serialize::decode(__d)`

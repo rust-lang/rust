@@ -455,7 +455,10 @@ fn dtor_dec() -> fn_decl {
 
 #[auto_encode]
 #[auto_decode]
-type id_range = {min: node_id, max: node_id};
+struct id_range {
+    min: node_id,
+    max: node_id,
+}
 
 fn empty(range: id_range) -> bool {
     range.min >= range.max
@@ -596,7 +599,7 @@ fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
         *min = int::min(*min, id);
         *max = int::max(*max, id + 1);
     }
-    return {min:*min, max:*max};
+    id_range { min: *min, max: *max }
 }
 
 fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {

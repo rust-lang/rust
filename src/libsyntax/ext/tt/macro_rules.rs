@@ -139,8 +139,11 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     let exp: @fn(ext_ctxt, span, ~[ast::token_tree]) -> mac_result =
         |cx, sp, arg| generic_extension(cx, sp, name, arg, lhses, rhses);
 
-    return mr_def({
+    mr_def(base::macro_def {
         name: *cx.parse_sess().interner.get(name),
-        ext: normal_tt({expander: exp, span: Some(sp)})
-    });
+        ext: normal_tt(base::syntax_expander_tt {
+            expander: exp,
+            span: Some(sp),
+        })
+    })
 }

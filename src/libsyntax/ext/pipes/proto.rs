@@ -51,11 +51,14 @@ impl direction {
     }
 }
 
-type next_state = Option<{state: ~str, tys: ~[@ast::Ty]}>;
+struct next_state {
+    state: ~str,
+    tys: ~[@ast::Ty],
+}
 
 enum message {
     // name, span, data, current state, next state
-    message(~str, span, ~[@ast::Ty], state, next_state)
+    message(~str, span, ~[@ast::Ty], state, Option<next_state>)
 }
 
 impl message {
@@ -94,7 +97,7 @@ enum state {
 
 impl state {
     fn add_message(name: ~str, span: span,
-                   +data: ~[@ast::Ty], next: next_state) {
+                   +data: ~[@ast::Ty], next: Option<next_state>) {
         self.messages.push(message(name, span, data, self,
                                    next));
     }
@@ -119,7 +122,7 @@ impl state {
     fn reachable(f: fn(state) -> bool) {
         for self.messages.each |m| {
             match *m {
-              message(_, _, _, _, Some({state: ref id, _})) => {
+              message(_, _, _, _, Some(next_state { state: ref id, _ })) => {
                 let state = self.proto.get_state((*id));
                 if !f(state) { break }
               }
@@ -217,7 +220,7 @@ trait visitor<Tproto, Tstate, Tmessage> {
     fn visit_proto(proto: protocol, st: &[Tstate]) -> Tproto;
     fn visit_state(state: state, m: &[Tmessage]) -> Tstate;
     fn visit_message(name: ~str, spane: span, tys: &[@ast::Ty],
-                     this: state, next: next_state) -> Tmessage;
+                     this: state, next: Option<next_state>) -> Tmessage;
 }
 
 fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(

@@ -32,17 +32,27 @@ use std::map::HashMap;
 // is now probably a redundant AST node, can be merged with
 // ast::mac_invoc_tt.
 
-type macro_def = {name: ~str, ext: syntax_extension};
+struct macro_def {
+    name: ~str,
+    ext: syntax_extension,
+}
 
 type item_decorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
-type syntax_expander_tt = {expander: syntax_expander_tt_, span: Option<span>};
+struct syntax_expander_tt {
+    expander: syntax_expander_tt_,
+    span: Option<span>,
+}
+
 type syntax_expander_tt_ = fn@(ext_ctxt, span, ~[ast::token_tree])
     -> mac_result;
 
-type syntax_expander_tt_item
-    = {expander: syntax_expander_tt_item_, span: Option<span>};
+struct syntax_expander_tt_item {
+    expander: syntax_expander_tt_item_,
+    span: Option<span>,
+}
+
 type syntax_expander_tt_item_
     = fn@(ext_ctxt, span, ast::ident, ~[ast::token_tree]) -> mac_result;
 
@@ -70,10 +80,10 @@ enum syntax_extension {
 // AST nodes into full ASTs
 fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     fn builtin_normal_tt(f: syntax_expander_tt_) -> syntax_extension {
-        normal_tt({expander: f, span: None})
+        normal_tt(syntax_expander_tt {expander: f, span: None})
     }
     fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
-        item_tt({expander: f, span: None})
+        item_tt(syntax_expander_tt_item {expander: f, span: None})
     }
     let syntax_expanders = HashMap();
     syntax_expanders.insert(~"macro_rules",
