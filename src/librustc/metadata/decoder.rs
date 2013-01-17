@@ -264,9 +264,8 @@ fn variant_disr_val(d: ebml::Doc) -> Option<int> {
 
 fn doc_type(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let tp = reader::get_doc(doc, tag_items_data_item_type);
-    parse_ty_data(tp.data, cdata.cnum, tp.start, tcx, |did| {
-        translate_def_id(cdata, did)
-    })
+    parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+                  |_, did| translate_def_id(cdata, did))
 }
 
 fn item_type(item_id: ast::def_id, item: ebml::Doc,
@@ -289,9 +288,8 @@ fn item_ty_param_bounds(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
     -> @~[ty::param_bounds] {
     let mut bounds = ~[];
     for reader::tagged_docs(item, tag_items_data_item_ty_param_bounds) |p| {
-        let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx, |did| {
-            translate_def_id(cdata, did)
-        });
+        let bd = parse_bounds_data(p.data, p.start, cdata.cnum, tcx,
+                                   |_, did| translate_def_id(cdata, did));
         bounds.push(bd);
     }
     @bounds
