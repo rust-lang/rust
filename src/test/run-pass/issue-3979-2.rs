@@ -8,33 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Positioned {
-  fn SetX(&self, int);
-  fn X(&self) -> int;
+trait A {
+    fn a_method();
 }
 
-#[allow(default_methods)]
-trait Movable: Positioned {
-  fn translate(&self, dx: int) {
-    self.SetX(self.X() + dx);
-  }
+trait B: A {
+    fn b_method();
 }
 
-struct Point { mut x: int, mut y: int }
-
-impl Point: Positioned {
-    fn SetX(&self, x: int) {
-        self.x = x;
-    }
-    fn X(&self) -> int {
-        self.x
+trait C: B {
+    fn c_method() {
+        self.a_method();
     }
 }
 
-impl Point: Movable;
+fn main() {}
 
-fn main() {
-    let p = Point{ x: 1, y: 2};
-    p.translate(3);
-    assert p.X() == 4;
-}

@@ -429,6 +429,11 @@ pub impl CoherenceChecker {
             let implementation_a = a;
             let polytype_a =
                 self.get_self_type_for_implementation(implementation_a);
+
+            // "We have an impl of trait <trait_def_id> for type <polytype_a>,
+            // and that impl is <implementation_a>"
+            self.add_impl_for_trait(trait_def_id, polytype_a.ty,
+                                    implementation_a);
             do self.iter_impls_of_trait(trait_def_id) |b| {
                 let implementation_b = b;
 
@@ -447,6 +452,24 @@ pub impl CoherenceChecker {
                                             here");
                     }
                 }
+            }
+        }
+    }
+
+    // Adds an impl of trait trait_t for self type self_t; that impl
+    // is the_impl
+    fn add_impl_for_trait(trait_t: def_id, self_t: t, the_impl: @Impl) {
+        debug!("Adding impl %? of %? for %s",
+               the_impl.did, trait_t,
+               ty_to_str(self.crate_context.tcx, self_t));
+        match self.crate_context.tcx.trait_impls.find(trait_t) {
+            None => {
+                let m = HashMap();
+                m.insert(self_t, the_impl);
+                self.crate_context.tcx.trait_impls.insert(trait_t, m);
+            }
+            Some(m) => {
+                m.insert(self_t, the_impl);
             }
         }
     }

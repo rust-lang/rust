@@ -239,7 +239,8 @@ fn mark_for_method_call(cx: ctx, e_id: node_id, callee_id: node_id) {
           }) => {
             cx.uses[param] |= use_tydesc;
           }
-          typeck::method_trait(*) | typeck::method_self(*) => (),
+          typeck::method_trait(*) | typeck::method_self(*)
+              | typeck::method_super(*) => (),
         }
     }
 }

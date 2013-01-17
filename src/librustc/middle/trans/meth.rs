@@ -193,6 +193,29 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                                              method_name);
             origin = typeck::method_static(method_id);
         }
+        typeck::method_super(trait_id, method_index) => {
+            // <self_ty> is the self type for this method call
+            let self_ty = node_id_type(bcx, self.id);
+            let tcx = bcx.tcx();
+            // <impl_id> is the ID of the implementation of
+            // trait <trait_id> for type <self_ty>
+            let impl_id = ty::get_impl_id(tcx, trait_id, self_ty);
+            // Get the supertrait's methods
+            let supertrait_methods = ty::trait_methods(tcx, trait_id);
+            // Make sure to fail with a readable error message if
+            // there's some internal error here
+            if !(method_index < supertrait_methods.len()) {
+                tcx.sess.bug(~"trans_method_callee: supertrait method \
+                               index is out of bounds");
+            }
+            // Get the method name using the method index in the origin
+            let method_name = supertrait_methods[method_index].ident;
+            // Now that we know the impl ID, we can look up the method
+            // ID from its name
+            origin = typeck::method_static(method_with_name(bcx.ccx(),
+                                              impl_id,
+                                              method_name));
+        }
         typeck::method_static(*) | typeck::method_param(*) |
         typeck::method_trait(*) => {}
     }
@@ -236,8 +259,8 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                                vstore,
                                mentry.explicit_self)
         }
-        typeck::method_self(*) => {
-            fail ~"method_self should have been handled above"
+        typeck::method_self(*) | typeck::method_super(*) => {
+            fail ~"method_self or method_super should have been handled above"
         }
     }
 }

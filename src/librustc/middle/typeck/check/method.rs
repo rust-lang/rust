@@ -93,7 +93,7 @@ use middle::typeck::check;
 use middle::typeck::coherence::get_base_type_def_id;
 use middle::typeck::infer;
 use middle::typeck::{method_map_entry, method_origin, method_param};
-use middle::typeck::{method_self, method_static, method_trait};
+use middle::typeck::{method_self, method_static, method_trait, method_super};
 use util::common::indenter;
 use util::ppaux::expr_repr;
 
@@ -543,33 +543,67 @@ pub impl LookupContext {
                                           did: def_id,
                                           substs: &ty::substs) {
         let tcx = self.tcx();
-        let methods = ty::trait_methods(tcx, did);  // XXX: Inherited methods.
-        let index;
+        // First, try self methods
+        let mut method = None;
+        let methods = ty::trait_methods(tcx, did);
+        let mut index = None;
+        let mut trait_did = None;
         match vec::position(*methods, |m| m.ident == self.m_name) {
-            Some(i) => index = i,
-            None => return
+            Some(i) => {
+                index = Some(i);
+                trait_did = Some(did);
+                method = Some((methods[i].self_ty, methods[i].tps.len()));
+            }
+            None => ()
         }
-        let method = &methods[index];
+        // No method found yet? Check each supertrait
+        if method.is_none() {
+            for ty::trait_supertraits(tcx, did).each() |trait_ref| {
+                let supertrait_methods =
+                    ty::trait_methods(tcx, trait_ref.def_id);
+                match vec::position(*supertrait_methods,
+                                    |m| m.ident == self.m_name) {
+                    Some(i) => {
+                        index = Some(i);
+                        trait_did = Some(trait_ref.def_id);
+                        method = Some((supertrait_methods[i].self_ty,
+                                       supertrait_methods[i].tps.len()));
+                        break;
+                    }
+                    None => ()
+                }
+            }
+        }
+        match (method, index, trait_did) {
+            (Some((method_self_ty, method_num_tps)),
+             Some(index), Some(trait_did)) => {
 
-        let rcvr_substs = substs {
-            self_ty: Some(self_ty),
-            ../*bad*/copy *substs
-        };
-        let (rcvr_ty, rcvr_substs) =
-            self.create_rcvr_ty_and_substs_for_method(
-                method.self_ty,
-                self_ty,
-                move rcvr_substs,
-                TransformTypeNormally);
-
-        self.inherent_candidates.push(Candidate {
-            rcvr_ty: rcvr_ty,
-            rcvr_substs: move rcvr_substs,
-            explicit_self: method.self_ty,
-            num_method_tps: method.tps.len(),
-            self_mode: get_mode_from_self_type(method.self_ty),
-            origin: method_self(did, index)
-        });
+                // We've found a method -- return it
+                let rcvr_substs = substs { self_ty: Some(self_ty),
+                                          ..copy *substs };
+                let (rcvr_ty, rcvr_substs) =
+                    self.create_rcvr_ty_and_substs_for_method(
+                        method_self_ty,
+                        self_ty,
+                        move rcvr_substs,
+                        TransformTypeNormally);
+                let origin = if trait_did == did {
+                    method_self(trait_did, index)
+                }
+                else {
+                    method_super(trait_did, index)
+                };
+                self.inherent_candidates.push(Candidate {
+                    rcvr_ty: rcvr_ty,
+                    rcvr_substs: move rcvr_substs,
+                    explicit_self: method_self_ty,
+                    num_method_tps: method_num_tps,
+                    self_mode: get_mode_from_self_type(method_self_ty),
+                    origin: origin
+                });
+            }
+            _ => return
+        }
     }
 
     fn push_inherent_impl_candidates_for_type(did: def_id) {
@@ -1111,7 +1145,8 @@ pub impl LookupContext {
          * vtable and hence cannot be monomorphized. */
 
         match candidate.origin {
-            method_static(*) | method_param(*) | method_self(*) => {
+            method_static(*) | method_param(*) |
+                method_self(*) | method_super(*) => {
                 return; // not a call to a trait instance
             }
             method_trait(*) => {}
@@ -1135,7 +1170,8 @@ pub impl LookupContext {
         // No code can call the finalize method explicitly.
         let bad;
         match candidate.origin {
-            method_static(method_id) | method_self(method_id, _) => {
+            method_static(method_id) | method_self(method_id, _)
+                | method_super(method_id, _) => {
                 bad = self.tcx().destructors.contains_key(method_id);
             }
             method_param(method_param { trait_id: trait_id, _ }) |
@@ -1165,7 +1201,8 @@ pub impl LookupContext {
             method_param(ref mp) => {
                 type_of_trait_method(self.tcx(), mp.trait_id, mp.method_num)
             }
-            method_trait(did, idx, _) | method_self(did, idx) => {
+            method_trait(did, idx, _) | method_self(did, idx) |
+                method_super(did, idx) => {
                 type_of_trait_method(self.tcx(), did, idx)
             }
         };
@@ -1186,7 +1223,8 @@ pub impl LookupContext {
             method_param(ref mp) => {
                 self.report_param_candidate(idx, (*mp).trait_id)
             }
-            method_trait(trait_did, _, _) | method_self(trait_did, _) => {
+            method_trait(trait_did, _, _) | method_self(trait_did, _)
+                | method_super(trait_did, _) => {
                 self.report_param_candidate(idx, trait_did)
             }
         }
@@ -1194,9 +1232,9 @@ pub impl LookupContext {
 
     fn report_static_candidate(&self, idx: uint, did: def_id) {
         let span = if did.crate == ast::local_crate {
-            match self.tcx().items.get(did.node) {
-              ast_map::node_method(m, _, _) => m.span,
-              _ => fail ~"report_static_candidate: bad item"
+            match self.tcx().items.find(did.node) {
+              Some(ast_map::node_method(m, _, _)) => m.span,
+              _ => fail fmt!("report_static_candidate: bad item %?", did)
             }
         } else {
             self.expr.span

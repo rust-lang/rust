@@ -564,7 +564,7 @@ impl method_origin: tr {
     fn tr(xcx: extended_decode_ctxt) -> method_origin {
         match self {
           typeck::method_static(did) => {
-            typeck::method_static(did.tr(xcx))
+              typeck::method_static(did.tr(xcx))
           }
           typeck::method_param(ref mp) => {
             typeck::method_param(
@@ -575,10 +575,13 @@ impl method_origin: tr {
             )
           }
           typeck::method_trait(did, m, vstore) => {
-            typeck::method_trait(did.tr(xcx), m, vstore)
+              typeck::method_trait(did.tr(xcx), m, vstore)
           }
           typeck::method_self(did, m) => {
-            typeck::method_self(did.tr(xcx), m)
+              typeck::method_self(did.tr(xcx), m)
+          }
+          typeck::method_super(trait_did, m) => {
+              typeck::method_super(trait_did.tr(xcx), m)
           }
         }
     }

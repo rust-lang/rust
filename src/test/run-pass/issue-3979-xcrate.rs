@@ -8,17 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Positioned {
-  fn SetX(&self, int);
-  fn X(&self) -> int;
-}
-
-#[allow(default_methods)]
-trait Movable: Positioned {
-  fn translate(&self, dx: int) {
-    self.SetX(self.X() + dx);
-  }
-}
+// xfail-test // tjc: ???
+// aux-build:issue_3979_traits.rs
+extern mod issue_3979_traits;
+use issue_3979_traits::*;
 
 struct Point { mut x: int, mut y: int }
 
