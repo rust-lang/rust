@@ -8,21 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Positioned {
-  fn SetX(&self, int);
-  fn X(&self) -> int;
+// xfail-test
+trait Positioned<S> {
+  fn SetX(&self, S);
+  fn X(&self) -> S;
 }
 
 #[allow(default_methods)]
-trait Movable: Positioned {
-  fn translate(&self, dx: int) {
+trait Movable<S, T>: Positioned<T> {
+  fn translate(&self, dx: T) {
     self.SetX(self.X() + dx);
   }
 }
 
 struct Point { mut x: int, mut y: int }
 
-impl Point: Positioned {
+impl Point: Positioned<int> {
     fn SetX(&self, x: int) {
         self.x = x;
     }
@@ -31,7 +32,7 @@ impl Point: Positioned {
     }
 }
 
-impl Point: Movable;
+impl Point: Movable<int, int>;
 
 fn main() {
     let p = Point{ x: 1, y: 2};

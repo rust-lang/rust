@@ -243,6 +243,7 @@ export iter_bound_traits_and_supertraits;
 export count_traits_and_supertraits;
 export IntVarValue, IntType, UintType;
 export creader_cache_key;
+export get_impl_id;
 
 // Data types
 
@@ -486,6 +487,9 @@ type ctxt =
 
       // Records the value mode (read, copy, or move) for every value.
       value_modes: HashMap<ast::node_id, ValueMode>,
+
+      // Maps a trait onto a mapping from self-ty to impl
+      trait_impls: HashMap<ast::def_id, HashMap<t, @Impl>>
       };
 
 enum tbox_flag {
@@ -1051,7 +1055,9 @@ fn mk_ctxt(s: session::Session,
       supertraits: HashMap(),
       destructor_for_type: HashMap(),
       destructors: HashMap(),
-      value_modes: HashMap()}
+      value_modes: HashMap(),
+      trait_impls: HashMap()
+     }
 }
 
 
@@ -3130,7 +3136,8 @@ fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
               trait_id: trt_id,
               method_num: n_mth, _}) |
           typeck::method_trait(trt_id, n_mth, _) |
-          typeck::method_self(trt_id, n_mth) => {
+          typeck::method_self(trt_id, n_mth) |
+          typeck::method_super(trt_id, n_mth) => {
             // ...trait methods bounds, in contrast, include only the
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
@@ -4372,9 +4379,14 @@ pure fn determine_inherited_purity(parent_purity: ast::purity,
 
 // Iterate over a type parameter's bounded traits and any supertraits
 // of those traits, ignoring kinds.
+// Here, the supertraits are the transitive closure of the supertrait
+// relation on the supertraits from each bounded trait's constraint
+// list.
 fn iter_bound_traits_and_supertraits(tcx: ctxt,
                                      bounds: param_bounds,
                                      f: &fn(t) -> bool) {
+    let mut fin = false;
+
     for bounds.each |bound| {
 
         let bound_trait_ty = match *bound {
@@ -4386,34 +4398,45 @@ fn iter_bound_traits_and_supertraits(tcx: ctxt,
             }
         };
 
-        let mut worklist = ~[];
-
-        let init_trait_ty = bound_trait_ty;
-
-        worklist.push(init_trait_ty);
-
+        let mut supertrait_map = HashMap();
+        let mut seen_def_ids = ~[];
         let mut i = 0;
-        while i < worklist.len() {
-            let init_trait_ty = worklist[i];
-            i += 1;
+        let trait_ty_id = ty_to_def_id(bound_trait_ty).expect(
+            ~"iter_trait_ty_supertraits got a non-trait type");
+        let mut trait_ty = bound_trait_ty;
 
-            let init_trait_id = match ty_to_def_id(init_trait_ty) {
-                Some(id) => id,
-                None => tcx.sess.bug(
-                    ~"trait type should have def_id")
-            };
+        debug!("iter_bound_traits_and_supertraits: trait_ty = %s",
+               ty_to_str(tcx, trait_ty));
 
-            // Add supertraits to worklist
-            let supertraits = trait_supertraits(tcx,
-                                                init_trait_id);
-            for supertraits.each |supertrait| {
-                worklist.push(supertrait.tpt.ty);
+        // Add the given trait ty to the hash map
+        supertrait_map.insert(trait_ty_id, trait_ty);
+        seen_def_ids.push(trait_ty_id);
+
+        if f(trait_ty) {
+            // Add all the supertraits to the hash map,
+            // executing <f> on each of them
+            while i < supertrait_map.size() && !fin {
+                let init_trait_id = seen_def_ids[i];
+                i += 1;
+                 // Add supertraits to supertrait_map
+                let supertraits = trait_supertraits(tcx, init_trait_id);
+                for supertraits.each |supertrait| {
+                    let super_t = supertrait.tpt.ty;
+                    let d_id = ty_to_def_id(super_t).expect("supertrait \
+                        should be a trait ty");
+                    if !supertrait_map.contains_key(d_id) {
+                        supertrait_map.insert(d_id, super_t);
+                        trait_ty = super_t;
+                        seen_def_ids.push(d_id);
+                    }
+                    debug!("A super_t = %s", ty_to_str(tcx, trait_ty));
+                    if !f(trait_ty) {
+                        fin = true;
+                    }
+                }
             }
-
-            if !f(init_trait_ty) {
-                return;
-            }
-        }
+        };
+        fin = false;
     }
 }
 
@@ -4426,6 +4449,22 @@ fn count_traits_and_supertraits(tcx: ctxt,
         }
     }
     return total;
+}
+
+// Given a trait and a type, returns the impl of that type
+fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
+    match tcx.trait_impls.find(trait_id) {
+        Some(ty_to_impl) => match ty_to_impl.find(self_ty) {
+            Some(the_impl) => the_impl.did,
+            None => // try autoderef!
+                match deref(tcx, self_ty, false) {
+                    Some(some_ty) => get_impl_id(tcx, trait_id, some_ty.ty),
+                    None => tcx.sess.bug(~"get_impl_id: no impl of trait for \
+                                           this type")
+            }
+        },
+        None => tcx.sess.bug(~"get_impl_id: trait isn't in trait_impls")
+    }
 }
 
 impl mt : cmp::Eq {
