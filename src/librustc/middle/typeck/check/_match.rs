@@ -14,7 +14,7 @@ use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::pat_util::{pat_is_variant_or_struct};
 use middle::ty;
 use middle::typeck::check::demand;
-use middle::typeck::check::{check_block, check_expr_with, fn_ctxt};
+use middle::typeck::check::{check_block, check_expr_has_type, fn_ctxt};
 use middle::typeck::check::{instantiate_path, lookup_def, lookup_local};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
@@ -35,7 +35,7 @@ fn check_match(fcx: @fn_ctxt,
     let mut bot;
 
     let pattern_ty = fcx.infcx().next_ty_var();
-    bot = check_expr_with(fcx, discrim, pattern_ty);
+    bot = check_expr_has_type(fcx, discrim, pattern_ty);
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
@@ -55,7 +55,7 @@ fn check_match(fcx: @fn_ctxt,
     let mut arm_non_bot = false;
     for arms.each |arm| {
         match arm.guard {
-          Some(e) => { check_expr_with(fcx, e, ty::mk_bool(tcx)); },
+          Some(e) => { check_expr_has_type(fcx, e, ty::mk_bool(tcx)); },
           None => ()
         }
         if !check_block(fcx, arm.body) { arm_non_bot = true; }
@@ -334,12 +334,12 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fcx.write_ty(pat.id, expected);
       }
       ast::pat_lit(lt) => {
-        check_expr_with(fcx, lt, expected);
+        check_expr_has_type(fcx, lt, expected);
         fcx.write_ty(pat.id, fcx.expr_ty(lt));
       }
       ast::pat_range(begin, end) => {
-        check_expr_with(fcx, begin, expected);
-        check_expr_with(fcx, end, expected);
+        check_expr_has_type(fcx, begin, expected);
+        check_expr_has_type(fcx, end, expected);
         let b_ty =
             fcx.infcx().resolve_type_vars_if_possible(fcx.expr_ty(begin));
         let e_ty =
