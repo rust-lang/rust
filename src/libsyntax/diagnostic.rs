@@ -57,15 +57,15 @@ trait handler {
     fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level);
 }
 
-type handler_t = @{
+struct handler_t {
     mut err_count: uint,
-    emit: emitter
-};
+    emit: emitter,
+}
 
-type codemap_t = @{
+struct codemap_t {
     handler: handler,
-    cm: @codemap::CodeMap
-};
+    cm: @codemap::CodeMap,
+}
 
 impl codemap_t: span_handler {
     fn span_fatal(sp: span, msg: &str) -> ! {
@@ -138,7 +138,7 @@ fn ice_msg(msg: &str) -> ~str {
 }
 
 fn mk_span_handler(handler: handler, cm: @codemap::CodeMap) -> span_handler {
-    @{ handler: handler, cm: cm } as span_handler
+    @codemap_t { handler: handler, cm: cm } as span_handler
 }
 
 fn mk_handler(emitter: Option<emitter>) -> handler {
@@ -154,12 +154,7 @@ fn mk_handler(emitter: Option<emitter>) -> handler {
       }
     };
 
-    let x: handler_t = @{
-        mut err_count: 0,
-        emit: emit
-    };
-
-    x as handler
+    @handler_t { mut err_count: 0, emit: emit } as handler
 }
 
 enum level {
