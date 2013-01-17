@@ -168,8 +168,8 @@ impl <K: Ord, V> TreeMapIterator<K, V> {
         while self.stack.is_not_empty() || self.node.is_some() {
             match *self.node {
               Some(ref x) => {
-                  self.stack.push(x);
-                  self.node = &x.left;
+                self.stack.push(x);
+                self.node = &x.left;
               }
               None => {
                 let res = self.stack.pop();
