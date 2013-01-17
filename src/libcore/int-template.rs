@@ -71,13 +71,34 @@ pub pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
 pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
-/// Iterate over the range [`lo`..`hi`)
-pub fn range(lo: T, hi: T, it: fn(T) -> bool) {
-    let mut i = lo;
-    while i < hi {
-        if !it(i) { break }
-        i += 1 as T;
+/// Iterate over the range [`start`,`start`+`step`..`stop`)
+pub pure fn range_step(start: T, stop: T, step: T, it: fn(T) -> bool) {
+    let mut i = start;
+    if step == 0 {
+        fail ~"range_step called with step == 0";
+    } else if step > 0 { // ascending
+        while i < stop {
+            if !it(i) { break }
+            i += step;
+        }
+    } else { // descending
+        while i > stop {
+            if !it(i) { break }
+            i += step;
+        }
     }
+}
+
+#[inline(always)]
+/// Iterate over the range [`lo`..`hi`)
+pub pure fn range(lo: T, hi: T, it: fn(T) -> bool) {
+    range_step(lo, hi, 1 as T, it);
+}
+
+#[inline(always)]
+/// Iterate over the range [`hi`..`lo`)
+pub pure fn range_rev(hi: T, lo: T, it: fn(T) -> bool) {
+    range_step(hi, lo, -1 as T, it);
 }
 
 /// Computes the bitwise complement
@@ -313,4 +334,46 @@ fn test_times() {
 fn test_times_negative() {
     use iter::Times;
     for (-10).times { log(error, ~"nope!"); }
+}
+
+#[test]
+pub fn test_ranges() {
+    let mut l = ~[];
+
+    for range(0,3) |i| {
+        l.push(i);
+    }
+    for range_rev(13,10) |i| {
+        l.push(i);
+    }
+    for range_step(20,26,2) |i| {
+        l.push(i);
+    }
+    for range_step(36,30,-2) |i| {
+        l.push(i);
+    }
+    assert l == ~[0,1,2,
+                  13,12,11,
+                  20,22,24,
+                  36,34,32];
+
+    // None of the `fail`s should execute.
+    for range(10,0) |_i| {
+        fail ~"unreachable";
+    }
+    for range_rev(0,10) |_i| {
+        fail ~"unreachable";
+    }
+    for range_step(10,0,1) |_i| {
+        fail ~"unreachable";
+    }
+    for range_step(0,10,-1) |_i| {
+        fail ~"unreachable";
+    }
+}
+
+#[test]
+#[should_fail]
+fn test_range_step_zero_step() {
+    for range_step(0,10,0) |_i| {}
 }
