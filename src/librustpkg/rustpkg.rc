@@ -39,7 +39,9 @@ mod util;
 struct PackageScript {
     id: ~str,
     name: ~str,
-    vers: Version
+    vers: Version,
+    crates: ~[~str],
+    deps: ~[(~str, Option<~str>)]
 }
 
 impl PackageScript {
@@ -54,6 +56,8 @@ impl PackageScript {
         let crate = parse::parse_crate_from_file(&script, ~[], sess);
         let mut id = None;
         let mut vers = None;
+        let mut crates = ~[];
+        let mut deps = ~[];
 
         fn load_pkg_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
                                                       Option<~str>) {
@@ -78,6 +82,49 @@ impl PackageScript {
             (id, vers)
         }
 
+        fn load_pkg_dep_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
+                                                          Option<~str>) {
+            let mut url = None;
+            let mut target = None;
+
+            for mis.each |a| {
+                match a.node {
+                    ast::meta_name_value(v, ast::spanned {
+                                                node: ast::lit_str(s),
+                                                span: _}) => {
+                        match v {
+                            ~"url" => url = Some(*s),
+                            ~"target" => target = Some(*s),
+                            _ => ()
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            (url, target)
+        }
+
+        fn load_pkg_crate_attr(mis: ~[@ast::meta_item]) -> Option<~str> {
+            let mut file = None;
+
+            for mis.each |a| {
+                match a.node {
+                    ast::meta_name_value(v, ast::spanned {
+                                                node: ast::lit_str(s),
+                                                span: _}) => {
+                        match v {
+                            ~"file" => file = Some(*s),
+                            _ => ()
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            file
+        }
+
         for crate.node.attrs.each |a| {
             match a.node.value.node {
                 ast::meta_list(v, mis) => {
@@ -87,6 +134,24 @@ impl PackageScript {
 
                             id = i;
                             vers = v;
+                        }
+                        ~"pkg_dep" => {
+                            let (u, t) = load_pkg_dep_attr(mis);
+
+                            if u.is_none() {
+                                fail ~"pkg_dep attr without a url value";
+                            }
+
+                            deps.push((u.get(), t));
+                        }
+                        ~"pkg_crate" => {
+                            let f = load_pkg_crate_attr(mis);
+
+                            if f.is_none() {
+                                fail ~"pkg_file attr without a file value";
+                            }
+
+                            crates.push(f.get());
                         }
                         _ => {}
                     }
@@ -105,7 +170,9 @@ impl PackageScript {
         PackageScript {
             id: id,
             name: util::parse_id(id),
-            vers: util::parse_vers(vers)
+            vers: util::parse_vers(vers),
+            crates: crates,
+            deps: deps
         }
     }
 
@@ -114,63 +181,214 @@ impl PackageScript {
 
         hasher.write_str(self.id + self.vers.to_str());
 
-        self.name + hasher.result_str() + self.vers.to_str()
+        fmt!("%s-%s-%s", self.name, hasher.result_str(), self.vers.to_str())
     }
 
     fn work_dir() -> Path {
-        util::root().push(self.hash())
+        util::root().push(~"work").push(self.hash())
     }
 }
 
 struct Ctx {
-    cmd: ~str,
-    args: ~[~str],
     cfgs: ~[~str],
     prefer: bool
 }
 
 impl Ctx {
-    fn run() {
-        match self.cmd {
-            ~"build" => self.build(),
-            ~"clean" => self.clean(),
-            ~"install" => self.install(),
-            ~"prefer" => self.prefer(),
-            ~"test" => self.test(),
-            ~"uninstall" => self.uninstall(),
-            ~"unprefer" => self.unprefer(),
+    fn run(cmd: ~str, args: ~[~str]) {
+        let root = util::root();
+
+        util::need_dir(&root);
+        util::need_dir(&root.push(~"work"));
+        util::need_dir(&root.push(~"lib"));
+        util::need_dir(&root.push(~"bin"));
+        util::need_dir(&root.push(~"tmp"));
+
+        match cmd {
+            ~"build" => self.build(args),
+            ~"clean" => self.clean(args),
+            ~"install" => self.install(args),
+            ~"prefer" => self.prefer(args),
+            ~"test" => self.test(args),
+            ~"uninstall" => self.uninstall(args),
+            ~"unprefer" => self.unprefer(args),
             _ => fail ~"reached an unhandled command"
-        }
+        };
     }
 
-    fn build() {
+    fn build(_args: ~[~str]) -> bool {
         let script = PackageScript::parse(os::getcwd());
+        let dir = script.work_dir();
+        let mut success = true;
 
-        io::println(fmt!("build: %s (v%s)", script.id, script.vers.to_str()));
+        util::need_dir(&dir);
+        util::info(fmt!("building %s v%s (%s)", script.name, script.vers.to_str(),
+                                                script.id));
+
+        if script.deps.len() >= 1 {
+            util::info(~"installing dependencies..");
+
+            for script.deps.each |&dep| {
+                let (url, target) = dep;
+
+                success = self.install(if target.is_none() { ~[url] }
+                                       else { ~[url, target.get()] });
+
+                if !success { break; }
+            }
+
+            if !success {
+                util::error(fmt!("building %s v%s failed: a dep wasn't installed",
+                                 script.name, script.vers.to_str()));
+
+                return false;
+            }
+
+            util::info(~"installed dependencies");
+        }
+
+        for script.crates.each |&crate| {
+            success = self.compile(&dir, crate, ~[]);
+
+            if !success { break; }
+        }
+
+        if !success {
+            util::error(fmt!("building %s v%s failed: a crate failed to compile",
+                             script.name, script.vers.to_str()));
+
+            return false;
+        }
+
+        util::info(fmt!("built %s v%s", script.name, script.vers.to_str()));
+
+        true
     }
 
-    fn clean() {
+    fn compile(dir: &Path, crate: ~str, flags: ~[~str]) -> bool {
+        util::info(~"compiling " + crate);
 
+        true
     }
 
-    fn install() {
+    fn clean(_args: ~[~str]) -> bool {
+        let script = PackageScript::parse(os::getcwd());
+        let dir = script.work_dir();
 
+        util::info(fmt!("cleaning %s v%s (%s)", script.name, script.vers.to_str(),
+                                                script.id));
+
+        if os::path_is_dir(&dir) {
+            if os::remove_dir(&dir) {
+                util::info(fmt!("cleaned %s v%s", script.name,
+                                                  script.vers.to_str()));
+            } else {
+                util::error(fmt!("cleaning %s v%s failed",
+                                 script.name, script.vers.to_str()));
+            }
+        } else {
+            util::info(fmt!("cleaned %s v%s", script.name,
+                                              script.vers.to_str()));
+        }
+
+        true
     }
 
-    fn prefer() {
+    fn install(args: ~[~str]) -> bool {
+        let mut success;
+        let mut dir;
 
+        if args.len() < 1 {
+            util::info(~"installing from the cwd");
+
+            dir = os::getcwd();
+
+            return true;
+        } else {
+            let url = args[0];
+            let target = if args.len() >= 2 { Some(args[1]) }
+                         else { None };
+            let hasher = hash::default_state();
+
+            hasher.write_str(url);
+
+            if !target.is_none() {
+                hasher.write_str(target.get());
+            }
+
+            dir = util::root().push(~"tmp").push(hasher.result_str());
+            success = self.fetch(&dir, url, target);
+
+            if !success {
+                return false;
+            }
+        }
+
+        let script = PackageScript::parse(dir);
+        dir = script.work_dir();
+
+        util::info(fmt!("installing %s v%s (%s)", script.name, script.vers.to_str(),
+                                                  script.id));
+
+        if script.deps.len() >= 1 {
+            util::info(~"installing dependencies..");
+
+            for script.deps.each |&dep| {
+                let (url, target) = dep;
+
+                success = self.install(if target.is_none() { ~[url] }
+                                       else { ~[url, target.get()] });
+
+                if !success { break; }
+            }
+
+            if !success {
+                util::error(fmt!("installing %s v%s failed: a dep wasn't installed",
+                                 script.name, script.vers.to_str()));
+                return false;
+            }
+
+            util::info(~"installed dependencies");
+        }
+
+        for script.crates.each |&crate| {
+            success = self.compile(&dir, crate, ~[]);
+
+            if !success { break; }
+        }
+
+        if !success {
+            util::error(fmt!("installing %s v%s failed: a crate failed to compile",
+                             script.name, script.vers.to_str()));
+            return false;
+        }
+
+        util::info(fmt!("installed %s v%s", script.name,
+                                            script.vers.to_str()));
+
+        true
     }
 
-    fn test() {
+    fn fetch(dir: &Path, url: ~str, target: Option<~str>) -> bool {
+        util::info(fmt!("installing from %s", url));
 
+        true
     }
 
-    fn uninstall() {
-
+    fn prefer(_args: ~[~str]) -> bool {
+        true
     }
 
-    fn unprefer() {
+    fn test(_args: ~[~str]) -> bool {
+        true
+    }
 
+    fn uninstall(_args: ~[~str]) -> bool {
+        true
+    }
+
+    fn unprefer(_args: ~[~str]) -> bool {
+        true
     }
 }
 
@@ -217,11 +435,9 @@ pub fn main() {
     }
 
     Ctx {
-        cmd: cmd,
-        args: args,
         cfgs: cfgs,
         prefer: prefer
-    }.run();
+    }.run(cmd, args);
 }
 
 pub use Crate = api::Crate;
