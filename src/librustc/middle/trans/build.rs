@@ -188,7 +188,8 @@ fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
     terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
-           str::connect(vec::map(Args, |a| val_str(cx.ccx().tn, *a)),
+           str::connect(vec::map(Args, |a| val_str(cx.ccx().tn,
+                                                   *a).to_owned()),
                         ~", "));
     unsafe {
         count_insn(cx, "invoke");
