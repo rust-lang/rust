@@ -523,7 +523,7 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
         do child.mutate |child| {
             let mut child = child;
             if child.right.is_some() {
-                heir_swap(node, &mut child.right);
+                heir_swap(&mut *node, &mut child.right);
             } else {
                 node.key <-> child.key;
                 node.value <-> child.value;
