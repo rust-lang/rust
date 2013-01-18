@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# xfail-license
 
 # This script is for extracting the grammar from the rust docs.
 

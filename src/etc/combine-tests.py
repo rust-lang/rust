@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# xfail-license
 
 # this combines all the working run-pass tests into a single large crate so we
 # can run it "fast": spawning zillions of windows processes is our major build

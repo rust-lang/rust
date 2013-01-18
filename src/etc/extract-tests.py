@@ -1,3 +1,5 @@
+# xfail-license
+
 # Script for extracting compilable fragments from markdown
 # documentation. See prep.js for a description of the format
 # recognized by this tool. Expects a directory fragements/ to exist

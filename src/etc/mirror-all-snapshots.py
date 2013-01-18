@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# xfail-license
 
 import os, tarfile, hashlib, re, shutil
 from snapshot import *

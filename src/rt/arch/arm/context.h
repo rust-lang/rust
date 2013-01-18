@@ -1,4 +1,5 @@
 // -*- mode: c++ -*-
+// xfail-license
 
 #ifndef CONTEXT_H
 #define CONTEXT_H
