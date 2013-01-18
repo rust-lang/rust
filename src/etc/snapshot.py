@@ -1,3 +1,5 @@
+# xfail-license
+
 import re, os, sys, glob, tarfile, shutil, subprocess, tempfile
 
 try:
