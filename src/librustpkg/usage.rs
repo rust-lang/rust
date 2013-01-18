@@ -43,7 +43,7 @@ Examples:
     rustpkg install
     rustpkg install git://github.com/mozilla/servo.git
     rustpkg install git://github.com/mozilla/servo.git v0.1.2
-    rustpkg install http://rust-lang.org/hello-world-0.3.4.tar.gz
+    rustpkg install http://rust-lang.org/servo-0.1.2.tar.gz
 
 Options:
     -c, --cfg      Pass a cfg flag to the package script

@@ -46,15 +46,15 @@ pub fn need_dir(s: &Path) {
     }
 }
 
-pub fn info(msg: ~str) {
+pub fn note(msg: ~str) {
     let out = io::stdout();
 
     if term::color_supported() {
         term::fg(out, term::color_green);
-        out.write_str(~"info: ");
+        out.write_str(~"note: ");
         term::reset(out);
         out.write_line(msg);
-    } else { out.write_line(~"info: " + msg); }
+    } else { out.write_line(~"note: " + msg); }
 }
 
 pub fn warn(msg: ~str) {
@@ -78,6 +78,14 @@ pub fn error(msg: ~str) {
         out.write_line(msg);
     }
     else { out.write_line(~"error: " + msg); }
+}
+
+pub fn temp_change_dir<T>(dir: &Path, cb: fn() -> T) {
+    let cwd = os::getcwd();
+
+    os::change_dir(dir);
+    cb();
+    os::change_dir(&cwd);
 }
 
 #[test]
