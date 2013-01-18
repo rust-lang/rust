@@ -16,8 +16,7 @@ fn main() {
 
     match x {
       {f: ref mut v} => {
-        impure(*v); //~ ERROR illegal borrow unless pure
-        //~^ NOTE impure due to access to impure function
+        impure(*v);
       }
     }
 }

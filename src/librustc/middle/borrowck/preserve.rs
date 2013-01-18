@@ -20,7 +20,7 @@ use middle::borrowck::{cmt, err_mut_uniq, err_mut_variant};
 use middle::borrowck::{err_out_of_root_scope, err_out_of_scope};
 use middle::borrowck::{err_root_not_permitted};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
-use middle::mem_categorization::{cat_discr, cat_local, cat_special};
+use middle::mem_categorization::{cat_discr, cat_local, cat_self, cat_special};
 use middle::mem_categorization::{cat_stack_upvar, comp_field, comp_index};
 use middle::mem_categorization::{comp_variant, gc_ptr, region_ptr};
 use middle::ty;
@@ -90,7 +90,6 @@ priv impl &preserve_ctxt {
         let _i = indenter();
 
         match cmt.cat {
-          cat_special(sk_self) |
           cat_special(sk_implicit_self) |
           cat_special(sk_heap_upvar) => {
             self.compare_scope(cmt, ty::re_scope(self.item_ub))
@@ -148,6 +147,10 @@ priv impl &preserve_ctxt {
             let local_scope_id = self.tcx().region_map.get(local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
+          cat_self(local_id) => {
+            let local_scope_id = self.tcx().region_map.get(local_id);
+            self.compare_scope(cmt, ty::re_scope(local_scope_id))
+          }
           cat_comp(cmt_base, comp_field(*)) |
           cat_comp(cmt_base, comp_index(*)) |
           cat_comp(cmt_base, comp_tuple) |
@@ -171,7 +174,7 @@ priv impl &preserve_ctxt {
             // freed, so require imm.
             self.require_imm(cmt, cmt_base, err_mut_uniq)
           }
-          cat_deref(_, _, region_ptr(region)) => {
+          cat_deref(_, _, region_ptr(_, region)) => {
             // References are always "stable" for lifetime `region` by
             // induction (when the reference of type &MT was created,
             // the memory must have been stable).
