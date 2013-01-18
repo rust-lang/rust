@@ -1,3 +1,5 @@
+// xfail-license
+
 #define RUSTRT_RBX   0
 #define RUSTRT_RSP   1
 #define RUSTRT_RBP   2

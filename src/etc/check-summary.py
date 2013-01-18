@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# xfail-license
 
 import sys
 

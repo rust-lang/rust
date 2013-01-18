@@ -1,3 +1,5 @@
+// xfail-license
+
 #include "gpr.h"
 
 #define LOAD(rn) do { \

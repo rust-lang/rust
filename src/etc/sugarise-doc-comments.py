@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# xfail-license
 
 #
 # this script attempts to turn doc comment attributes (#[doc = "..."])

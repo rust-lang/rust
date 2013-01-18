@@ -1,3 +1,4 @@
+// xfail-license
 // General-purpose registers. This structure is used during stack crawling.
 
 #ifndef GPR_H

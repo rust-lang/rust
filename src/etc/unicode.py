@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# xfail-license
 
 # This digests UnicodeData.txt and DerivedCoreProperties.txt and emits rust
 # code covering the core properties. Since this is a pretty rare event we
