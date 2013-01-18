@@ -68,7 +68,7 @@ fn inject_libcore_ref(sess: Session,
             };
             new_module = fld.fold_mod(new_module);
 
-            // XXX: Bad copy.
+            // FIXME #2543: Bad copy.
             let new_crate = ast::crate_ { module: new_module, ..copy crate };
             (new_crate, span)
         },
@@ -94,7 +94,7 @@ fn inject_libcore_ref(sess: Session,
 
             let vis = vec::append(~[vi2], module.view_items);
 
-            // XXX: Bad copy.
+            // FIXME #2543: Bad copy.
             let new_module = { view_items: vis, ..copy module };
             fold::noop_fold_mod(new_module, fld)
         },
