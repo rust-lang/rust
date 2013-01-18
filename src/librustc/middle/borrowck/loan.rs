@@ -251,7 +251,7 @@ impl LoanContext {
         // Variant components: the base must be immutable, because
         // if it is overwritten, the types of the embedded data
         // could change.
-        do self.loan(cmt_base, m_imm).chain |_ok| {
+        do self.loan(cmt_base, m_imm).chain |_| {
             // can use static, as in loan_stable_comp()
             self.issue_loan(cmt, ty::re_static, req_mutbl)
         }

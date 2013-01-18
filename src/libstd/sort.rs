@@ -630,9 +630,15 @@ impl<T: Copy Ord> MergeState<T> {
                 dest -= 1; c2 -= 1; len2 -= 1;
                 if len2 == 1 { break_outer = true; break; }
 
-                let tmp_view = vec::mut_view(tmp, 0, len2);
-                let count2 = len2 - gallop_left(&const array[c1],
-                                                tmp_view, len2-1);
+                let count2;
+                {
+                    let tmp_view = vec::mut_view(tmp, 0, len2);
+                    count2 = len2 - gallop_left(&const array[c1],
+                                                tmp_view,
+                                                len2-1);
+                    // Make tmp_view go out of scope to appease borrowck.
+                }
+
                 if count2 != 0 {
                     dest -= count2; c2 -= count2; len2 -= count2;
                     copy_vec(array, dest+1, tmp, c2+1, count2);

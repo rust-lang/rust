@@ -296,12 +296,11 @@ impl check_loan_ctxt {
         }
 
         match (old_loan.mutbl, new_loan.mutbl) {
-            (m_const, _) | (_, m_const) |
-            (m_mutbl, m_mutbl) | (m_imm, m_imm) => {
+            (m_const, _) | (_, m_const) | (m_imm, m_imm) => {
                 /*ok*/
             }
 
-            (m_mutbl, m_imm) | (m_imm, m_mutbl) => {
+            (m_mutbl, m_mutbl) | (m_mutbl, m_imm) | (m_imm, m_mutbl) => {
                 self.bccx.span_err(
                     new_loan.cmt.span,
                     fmt!("loan of %s as %s \
@@ -418,8 +417,8 @@ impl check_loan_ctxt {
 
         for self.walk_loans_of(ex.id, lp) |loan| {
             match loan.mutbl {
-              m_mutbl | m_const => { /*ok*/ }
-              m_imm => {
+              m_const => { /*ok*/ }
+              m_mutbl | m_imm => {
                 self.bccx.span_err(
                     ex.span,
                     fmt!("%s prohibited due to outstanding loan",
