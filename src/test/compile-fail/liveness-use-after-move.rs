@@ -10,7 +10,7 @@
 
 fn main() {
     let x = @5;
-    let y = move x; //~ NOTE move of variable occurred here
+    let y = move x; //~ NOTE move of value occurred here
     log(debug, *x); //~ ERROR use of moved value: `x`
     copy y;
 }
