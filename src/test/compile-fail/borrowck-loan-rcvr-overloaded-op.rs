@@ -55,9 +55,8 @@ fn c() {
     *q + 3;
 
 
-    // ...but not impure fns
-    (*q).times(3); //~ ERROR illegal borrow unless pure
-    //~^ NOTE impure due to access to impure function
+    // ...and impure fns
+    (*q).times(3);
 }
 
 fn main() {

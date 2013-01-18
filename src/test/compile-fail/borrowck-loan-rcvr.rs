@@ -62,9 +62,8 @@ fn c() {
     // ...this is ok for pure fns
     (*q).purem();
 
-    // ...but not impure fns
-    (*q).impurem(); //~ ERROR illegal borrow unless pure
-    //~^ NOTE impure due to access to impure function
+    // ...and impure fns
+    (*q).impurem();
 }
 
 fn main() {

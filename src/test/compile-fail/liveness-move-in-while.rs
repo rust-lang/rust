@@ -17,8 +17,8 @@ fn main() {
 // tjc: not sure why it prints the same error twice
         while true { while true { while true { x = move y; copy x; } } }
         //~^ ERROR use of moved value: `y`
-        //~^^ NOTE move of value occurred here
+        //~^^ NOTE move of variable occurred here
         //~^^^ ERROR use of moved value: `y`
-        //~^^^^ NOTE move of value occurred here
+        //~^^^^ NOTE move of variable occurred here
     }
 }
