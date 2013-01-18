@@ -47,16 +47,11 @@ fn b() {
 }
 
 fn c() {
-    // Here the receiver is in aliased memory and hence we cannot
-    // consider it immutable:
+    // Here the receiver is in aliased memory but due to write
+    // barriers we can still consider it immutable.
     let q = @mut Point {x: 3, y: 4};
-
-    // ...this is ok for pure fns
     *q + 3;
-
-
-    // ...and impure fns
-    (*q).times(3);
+    q.times(3);
 }
 
 fn main() {

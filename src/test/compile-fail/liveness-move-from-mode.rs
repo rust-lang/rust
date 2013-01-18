@@ -15,6 +15,6 @@ fn main() {
     let x: int = 25;
     loop {
         take(move x); //~ ERROR use of moved value: `x`
-        //~^ NOTE move of variable occurred here
+        //~^ NOTE move of value occurred here
     }
 }

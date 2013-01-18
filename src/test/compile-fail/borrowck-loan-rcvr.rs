@@ -55,15 +55,10 @@ fn b() {
 }
 
 fn c() {
-    // Here the receiver is in aliased memory and hence we cannot
-    // consider it immutable:
+    // Loaning @mut as & is considered legal due to dynamic checks:
     let q = @mut {x: 3, y: 4};
-
-    // ...this is ok for pure fns
-    (*q).purem();
-
-    // ...and impure fns
-    (*q).impurem();
+    q.purem();
+    q.impurem();
 }
 
 fn main() {

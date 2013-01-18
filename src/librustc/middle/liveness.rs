@@ -1839,7 +1839,7 @@ impl @Liveness {
 
         self.report_illegal_read(move_span, lnk, var, MovedValue);
         self.tcx.sess.span_note(
-            move_span, ~"move of variable occurred here");
+            move_span, ~"move of value occurred here");
 
     }
 
