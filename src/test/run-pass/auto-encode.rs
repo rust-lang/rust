@@ -123,29 +123,33 @@ impl CLike : cmp::Eq {
     pure fn eq(&self, other: &CLike) -> bool {
         (*self) as int == *other as int
     }
-    pure fn ne(&self, other: &CLike) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: &CLike) -> bool { !self.eq(other) }
 }
 
 #[auto_encode]
 #[auto_decode]
-type Spanned<T> = {lo: uint, hi: uint, node: T};
+struct Spanned<T> {
+    lo: uint,
+    hi: uint,
+    node: T,
+}
 
 impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
     pure fn eq(&self, other: &Spanned<T>) -> bool {
-        (*self).lo == other.lo &&
-        (*self).hi == other.hi &&
-        (*self).node == other.node
+        self.lo == other.lo &&
+        self.hi == other.hi &&
+        self.node == other.node
     }
-    pure fn ne(&self, other: &Spanned<T>) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: &Spanned<T>) -> bool { !self.eq(other) }
 }
 
 #[auto_encode]
 #[auto_decode]
-type SomeRec = {v: ~[uint]};
+struct SomeStruct { v: ~[uint] }
 
 #[auto_encode]
 #[auto_decode]
-enum AnEnum = SomeRec;
+enum AnEnum = SomeStruct;
 
 #[auto_encode]
 #[auto_decode]
@@ -168,12 +172,12 @@ fn main() {
                            @Plus(@Val(22u), @Val(5u)))");
     test_ebml(a);
 
-    let a = &{lo: 0u, hi: 5u, node: 22u};
-    test_prettyprint(a, &~"{lo: 0u, hi: 5u, node: 22u}");
+    let a = &Spanned {lo: 0u, hi: 5u, node: 22u};
+    test_prettyprint(a, &~"Spanned {lo: 0u, hi: 5u, node: 22u}");
     test_ebml(a);
 
-    let a = &AnEnum({v: ~[1u, 2u, 3u]});
-    test_prettyprint(a, &~"AnEnum({v: ~[1u, 2u, 3u]})");
+    let a = &AnEnum(SomeStruct {v: ~[1u, 2u, 3u]});
+    test_prettyprint(a, &~"AnEnum(SomeStruct {v: ~[1u, 2u, 3u]})");
     test_ebml(a);
 
     let a = &Point {x: 3u, y: 5u};
