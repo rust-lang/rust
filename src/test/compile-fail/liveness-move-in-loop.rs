@@ -19,9 +19,9 @@ fn main() {
                 loop {
 // tjc: Not sure why it prints the same error twice
                     x = move y; //~ ERROR use of moved value
-                    //~^ NOTE move of value occurred here
+                    //~^ NOTE move of variable occurred here
                     //~^^ ERROR use of moved value
-                    //~^^^ NOTE move of value occurred here
+                    //~^^^ NOTE move of variable occurred here
 
                     copy x;
                 }
