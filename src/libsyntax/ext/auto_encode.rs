@@ -130,20 +130,6 @@ fn expand_auto_encode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_encode) {
             match item.node {
-                ast::item_ty(
-                    @ast::Ty {node: ast::ty_rec(ref fields), _},
-                    tps
-                ) => {
-                    let ser_impl = mk_rec_ser_impl(
-                        cx,
-                        item.span,
-                        item.ident,
-                        (*fields),
-                        tps
-                    );
-
-                    ~[filter_attrs(*item), ser_impl]
-                },
                 ast::item_struct(@ast::struct_def { fields, _}, tps) => {
                     let ser_impl = mk_struct_ser_impl(
                         cx,
@@ -199,20 +185,6 @@ fn expand_auto_decode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_decode) {
             match item.node {
-                ast::item_ty(
-                    @ast::Ty {node: ast::ty_rec(ref fields), _},
-                    tps
-                ) => {
-                    let deser_impl = mk_rec_deser_impl(
-                        cx,
-                        item.span,
-                        item.ident,
-                        (*fields),
-                        tps
-                    );
-
-                    ~[filter_attrs(*item), deser_impl]
-                },
                 ast::item_struct(@ast::struct_def { fields, _}, tps) => {
                     let deser_impl = mk_struct_deser_impl(
                         cx,
@@ -693,59 +665,6 @@ fn mk_deser_method(
     }
 }
 
-fn mk_rec_ser_impl(
-    cx: ext_ctxt,
-    span: span,
-    ident: ast::ident,
-    fields: ~[ast::ty_field],
-    tps: ~[ast::ty_param]
-) -> @ast::item {
-    let fields = mk_ser_fields(cx, span, mk_rec_fields(fields));
-
-    // ast for `__s.emit_rec(|| $(fields))`
-    let body = cx.expr_call(
-        span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__s"),
-            cx.ident_of(~"emit_rec")
-        ),
-        ~[cx.lambda_stmts(span, fields)]
-    );
-
-    mk_ser_impl(cx, span, ident, tps, body)
-}
-
-fn mk_rec_deser_impl(
-    cx: ext_ctxt,
-    span: span,
-    ident: ast::ident,
-    fields: ~[ast::ty_field],
-    tps: ~[ast::ty_param]
-) -> @ast::item {
-    let fields = mk_deser_fields(cx, span, mk_rec_fields(fields));
-
-    // ast for `read_rec(|| $(fields))`
-    let body = cx.expr_call(
-        span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__d"),
-            cx.ident_of(~"read_rec")
-        ),
-        ~[
-            cx.lambda_expr(
-                cx.expr(
-                    span,
-                    ast::expr_rec(fields, None)
-                )
-            )
-        ]
-    );
-
-    mk_deser_impl(cx, span, ident, tps, body)
-}
-
 fn mk_struct_ser_impl(
     cx: ext_ctxt,
     span: span,
@@ -753,106 +672,7 @@ fn mk_struct_ser_impl(
     fields: ~[@ast::struct_field],
     tps: ~[ast::ty_param]
 ) -> @ast::item {
-    let fields = mk_ser_fields(cx, span, mk_struct_fields(fields));
-
-    // ast for `__s.emit_struct($(name), || $(fields))`
-    let ser_body = cx.expr_call(
-        span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__s"),
-            cx.ident_of(~"emit_struct")
-        ),
-        ~[
-            cx.lit_str(span, @cx.str_of(ident)),
-            cx.lit_uint(span, vec::len(fields)),
-            cx.lambda_stmts(span, fields),
-        ]
-    );
-
-    mk_ser_impl(cx, span, ident, tps, ser_body)
-}
-
-fn mk_struct_deser_impl(
-    cx: ext_ctxt,
-    span: span,
-    ident: ast::ident,
-    fields: ~[@ast::struct_field],
-    tps: ~[ast::ty_param]
-) -> @ast::item {
-    let fields = mk_deser_fields(cx, span, mk_struct_fields(fields));
-
-    // ast for `read_struct($(name), || $(fields))`
-    let body = cx.expr_call(
-        span,
-        cx.expr_field(
-            span,
-            cx.expr_var(span, ~"__d"),
-            cx.ident_of(~"read_struct")
-        ),
-        ~[
-            cx.lit_str(span, @cx.str_of(ident)),
-            cx.lit_uint(span, vec::len(fields)),
-            cx.lambda_expr(
-                cx.expr(
-                    span,
-                    ast::expr_struct(
-                        cx.path(span, ~[ident]),
-                        fields,
-                        None
-                    )
-                )
-            ),
-        ]
-    );
-
-    mk_deser_impl(cx, span, ident, tps, body)
-}
-
-// Records and structs don't have the same fields types, but they share enough
-// that if we extract the right subfields out we can share the code
-// generator code.
-struct field {
-    span: span,
-    ident: ast::ident,
-    mutbl: ast::mutability,
-}
-
-fn mk_rec_fields(fields: ~[ast::ty_field]) -> ~[field] {
-    do fields.map |field| {
-        field {
-            span: field.span,
-            ident: field.node.ident,
-            mutbl: field.node.mt.mutbl,
-        }
-    }
-}
-
-fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
-    do fields.map |field| {
-        let (ident, mutbl) = match field.node.kind {
-            ast::named_field(ident, mutbl, _) => (ident, mutbl),
-            _ => fail ~"[auto_encode] does not support \
-                        unnamed fields",
-        };
-
-        field {
-            span: field.span,
-            ident: ident,
-            mutbl: match mutbl {
-                ast::struct_mutable => ast::m_mutbl,
-                ast::struct_immutable => ast::m_imm,
-            },
-        }
-    }
-}
-
-fn mk_ser_fields(
-    cx: ext_ctxt,
-    span: span,
-    fields: ~[field]
-) -> ~[@ast::stmt] {
-    do fields.mapi |idx, field| {
+    let fields = do mk_struct_fields(fields).mapi |idx, field| {
         // ast for `|| self.$(name).encode(__s)`
         let expr_lambda = cx.lambda_expr(
             cx.expr_call(
@@ -886,15 +706,34 @@ fn mk_ser_fields(
                 ]
             )
         )
-    }
+    };
+
+    // ast for `__s.emit_struct($(name), || $(fields))`
+    let ser_body = cx.expr_call(
+        span,
+        cx.expr_field(
+            span,
+            cx.expr_var(span, ~"__s"),
+            cx.ident_of(~"emit_struct")
+        ),
+        ~[
+            cx.lit_str(span, @cx.str_of(ident)),
+            cx.lit_uint(span, vec::len(fields)),
+            cx.lambda_stmts(span, fields),
+        ]
+    );
+
+    mk_ser_impl(cx, span, ident, tps, ser_body)
 }
 
-fn mk_deser_fields(
+fn mk_struct_deser_impl(
     cx: ext_ctxt,
     span: span,
-    fields: ~[field]
-) -> ~[ast::field] {
-    do fields.mapi |idx, field| {
+    ident: ast::ident,
+    fields: ~[@ast::struct_field],
+    tps: ~[ast::ty_param]
+) -> @ast::item {
+    let fields = do mk_struct_fields(fields).mapi |idx, field| {
         // ast for `|| std::serialize::decode(__d)`
         let expr_lambda = cx.lambda(
             cx.expr_blk(
@@ -933,6 +772,60 @@ fn mk_deser_fields(
                 expr: expr,
             },
             span: span,
+        }
+    };
+
+    // ast for `read_struct($(name), || $(fields))`
+    let body = cx.expr_call(
+        span,
+        cx.expr_field(
+            span,
+            cx.expr_var(span, ~"__d"),
+            cx.ident_of(~"read_struct")
+        ),
+        ~[
+            cx.lit_str(span, @cx.str_of(ident)),
+            cx.lit_uint(span, vec::len(fields)),
+            cx.lambda_expr(
+                cx.expr(
+                    span,
+                    ast::expr_struct(
+                        cx.path(span, ~[ident]),
+                        fields,
+                        None
+                    )
+                )
+            ),
+        ]
+    );
+
+    mk_deser_impl(cx, span, ident, tps, body)
+}
+
+// Records and structs don't have the same fields types, but they share enough
+// that if we extract the right subfields out we can share the code
+// generator code.
+struct field {
+    span: span,
+    ident: ast::ident,
+    mutbl: ast::mutability,
+}
+
+fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
+    do fields.map |field| {
+        let (ident, mutbl) = match field.node.kind {
+            ast::named_field(ident, mutbl, _) => (ident, mutbl),
+            _ => fail ~"[auto_encode] does not support \
+                        unnamed fields",
+        };
+
+        field {
+            span: field.span,
+            ident: ident,
+            mutbl: match mutbl {
+                ast::struct_mutable => ast::m_mutbl,
+                ast::struct_immutable => ast::m_imm,
+            },
         }
     }
 }
