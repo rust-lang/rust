@@ -401,10 +401,13 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           ast::expr_path(pth) => {
             assert pth.types.len() == 0;
             match cx.tcx.def_map.find(e.id) {
-                Some(ast::def_fn(def_id, _)) => {
+                Some(ast::def_fn(def_id, purity)) => {
                     assert ast_util::is_local(def_id);
                     let f = base::get_item_val(cx, def_id.node);
-                    C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
+                    match purity {
+                      ast::extern_fn => llvm::LLVMConstPointerCast(f, T_ptr(T_i8())),
+                      _ => C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
+                    }
                 }
                 Some(ast::def_const(def_id)) => {
                     get_const_val(cx, def_id)
