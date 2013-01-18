@@ -227,7 +227,7 @@ fn resolve_crate(e: env, ident: ast::ident, +metas: ~[@ast::meta_item],
             filesearch: e.filesearch,
             span: span,
             ident: ident,
-            metas: copy metas,  // XXX: Bad copy.
+            metas: metas,
             hash: hash,
             os: e.os,
             static: e.static,
@@ -252,7 +252,8 @@ fn resolve_crate(e: env, ident: ast::ident, +metas: ~[@ast::meta_item],
         let cnum_map = resolve_crate_deps(e, cdata);
 
         let cname =
-            match attr::last_meta_item_value_str_by_name(metas, ~"name") {
+            match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
+                                                         ~"name") {
               option::Some(ref v) => (/*bad*/copy *v),
               option::None => /*bad*/copy *e.intr.get(ident)
             };
