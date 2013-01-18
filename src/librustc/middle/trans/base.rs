@@ -2979,9 +2979,9 @@ fn trans_crate(sess: session::Session,
         let float_type = T_float(targ_cfg);
         let task_type = T_task(targ_cfg);
         let taskptr_type = T_ptr(task_type);
-        lib::llvm::associate_type(tn, ~"taskptr", taskptr_type);
+        lib::llvm::associate_type(tn, @"taskptr", taskptr_type);
         let tydesc_type = T_tydesc(targ_cfg);
-        lib::llvm::associate_type(tn, ~"tydesc", tydesc_type);
+        lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
         let crate_map = decl_crate_map(sess, link_meta, llmod);
         let dbg_cx = if sess.opts.debuginfo {
             Some(debuginfo::mk_ctxt(copy llmod_id, sess.parse_sess.interner))

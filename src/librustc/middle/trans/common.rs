@@ -645,7 +645,7 @@ impl Result {
     }
 }
 
-fn ty_str(tn: type_names, t: TypeRef) -> ~str {
+fn ty_str(tn: type_names, t: TypeRef) -> @str {
     return lib::llvm::type_to_str(tn, t);
 }
 
@@ -655,7 +655,7 @@ fn val_ty(v: ValueRef) -> TypeRef {
     }
 }
 
-fn val_str(tn: type_names, v: ValueRef) -> ~str {
+fn val_str(tn: type_names, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
 }
 
@@ -729,11 +729,11 @@ impl block {
         }
     }
 
-    fn val_str(val: ValueRef) -> ~str {
+    fn val_str(val: ValueRef) -> @str {
         val_str(self.ccx().tn, val)
     }
 
-    fn llty_str(llty: TypeRef) -> ~str {
+    fn llty_str(llty: TypeRef) -> @str {
         ty_str(self.ccx().tn, llty)
     }
 
@@ -924,7 +924,7 @@ fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef unsafe {
 }
 
 fn T_generic_glue_fn(cx: @crate_ctxt) -> TypeRef {
-    let s = ~"glue_fn";
+    let s = @"glue_fn";
     match name_has_type(cx.tn, s) {
       Some(t) => return t,
       _ => ()
@@ -1038,7 +1038,7 @@ fn T_taskptr(cx: @crate_ctxt) -> TypeRef { return T_ptr(cx.task_type); }
 
 // This type must never be used directly; it must always be cast away.
 fn T_typaram(tn: type_names) -> TypeRef {
-    let s = ~"typaram";
+    let s = @"typaram";
     match name_has_type(tn, s) {
       Some(t) => return t,
       _ => ()
@@ -1061,7 +1061,7 @@ fn T_enum_discrim(cx: @crate_ctxt) -> TypeRef {
 }
 
 fn T_opaque_enum(cx: @crate_ctxt) -> TypeRef {
-    let s = ~"opaque_enum";
+    let s = @"opaque_enum";
     match name_has_type(cx.tn, s) {
       Some(t) => return t,
       _ => ()

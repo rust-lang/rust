@@ -1251,20 +1251,19 @@ fn SetLinkage(Global: ValueRef, Link: Linkage) {
 
 /* Memory-managed object interface to type handles. */
 
-type type_names = @{type_names: HashMap<TypeRef, ~str>,
-                    named_types: HashMap<~str, TypeRef>};
+type type_names = @{type_names: HashMap<TypeRef, @str>,
+                    named_types: HashMap<@str, TypeRef>};
 
-fn associate_type(tn: type_names, +s: ~str, t: TypeRef) {
-    // XXX: Bad copy, use @str instead?
-    assert tn.type_names.insert(t, copy s);
+fn associate_type(tn: type_names, s: @str, t: TypeRef) {
+    assert tn.type_names.insert(t, s);
     assert tn.named_types.insert(s, t);
 }
 
-fn type_has_name(tn: type_names, t: TypeRef) -> Option<~str> {
+fn type_has_name(tn: type_names, t: TypeRef) -> Option<@str> {
     return tn.type_names.find(t);
 }
 
-fn name_has_type(tn: type_names, +s: ~str) -> Option<TypeRef> {
+fn name_has_type(tn: type_names, s: @str) -> Option<TypeRef> {
     return tn.named_types.find(s);
 }
 
@@ -1273,101 +1272,104 @@ fn mk_type_names() -> type_names {
       named_types: HashMap()}
 }
 
-fn type_to_str(names: type_names, ty: TypeRef) -> ~str {
+fn type_to_str(names: type_names, ty: TypeRef) -> @str {
     return type_to_str_inner(names, ~[], ty);
 }
 
 fn type_to_str_inner(names: type_names, +outer0: ~[TypeRef], ty: TypeRef) ->
-   ~str {
+   @str {
     unsafe {
         match type_has_name(names, ty) {
-          option::Some(ref n) => return (/*bad*/copy *n),
+          option::Some(n) => return n,
           _ => {}
         }
 
-        // XXX: Bad copy.
+        // FIXME #2543: Bad copy.
         let outer = vec::append_one(copy outer0, ty);
 
         let kind = llvm::LLVMGetTypeKind(ty);
 
         fn tys_str(names: type_names, outer: ~[TypeRef],
-                   tys: ~[TypeRef]) -> ~str {
-            let mut s: ~str = ~"";
+                   tys: ~[TypeRef]) -> @str {
+            let mut s = ~"";
             let mut first: bool = true;
             for tys.each |t| {
                 if first { first = false; } else { s += ~", "; }
-                s += type_to_str_inner(names, outer, *t);
+                s += type_to_str_inner(names, outer, *t).to_owned();
             }
-            return s;
+            // [Note at-str] FIXME #2543: Could rewrite this without the copy,
+            // but need better @str support.
+            return s.to_managed();
         }
 
         match kind {
-          Void => return ~"Void",
-          Half => return ~"Half",
-          Float => return ~"Float",
-          Double => return ~"Double",
-          X86_FP80 => return ~"X86_FP80",
-          FP128 => return ~"FP128",
-          PPC_FP128 => return ~"PPC_FP128",
-          Label => return ~"Label",
+          Void => return @"Void",
+          Half => return @"Half",
+          Float => return @"Float",
+          Double => return @"Double",
+          X86_FP80 => return @"X86_FP80",
+          FP128 => return @"FP128",
+          PPC_FP128 => return @"PPC_FP128",
+          Label => return @"Label",
           Integer => {
-            return ~"i" + int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
+            // See [Note at-str]
+            return fmt!("i%d", llvm::LLVMGetIntTypeWidth(ty)
+                        as int).to_managed();
           }
           Function => {
-            let mut s = ~"fn(";
             let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
             let n_args = llvm::LLVMCountParamTypes(ty) as uint;
             let args = vec::from_elem(n_args, 0 as TypeRef);
             unsafe {
                 llvm::LLVMGetParamTypes(ty, vec::raw::to_ptr(args));
             }
-            s += tys_str(names, outer, args);
-            s += ~") -> ";
-            s += type_to_str_inner(names, outer, out_ty);
-            return s;
+            // See [Note at-str]
+            return fmt!("fn(%s) -> %s",
+                        tys_str(names, outer, args),
+                        type_to_str_inner(names, outer, out_ty)).to_managed();
           }
           Struct => {
-            let mut s: ~str = ~"{";
             let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
             let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
-            if elts.len() > 0 {
+            if elts.is_not_empty() {
                 llvm::LLVMGetStructElementTypes(
                     ty, ptr::to_mut_unsafe_ptr(&mut elts[0]));
             }
-            s += tys_str(names, outer, elts);
-            s += ~"}";
-            return s;
+            // See [Note at-str]
+            return fmt!("{%s}", tys_str(names, outer, elts)).to_managed();
           }
           Array => {
             let el_ty = llvm::LLVMGetElementType(ty);
-            return ~"[" + type_to_str_inner(names, outer, el_ty) + ~" x " +
-                uint::str(llvm::LLVMGetArrayLength(ty) as uint) + ~"]";
+            // See [Note at-str]
+            return fmt!("[%s@ x %u", type_to_str_inner(names, outer, el_ty),
+                llvm::LLVMGetArrayLength(ty) as uint).to_managed();
           }
           Pointer => {
-            let mut i: uint = 0u;
+            let mut i = 0;
             for outer0.each |tout| {
-                i += 1u;
+                i += 1;
                 if *tout as int == ty as int {
-                    let n: uint = vec::len::<TypeRef>(outer0) - i;
-                    return ~"*\\" + int::str(n as int);
+                    let n = outer0.len() - i;
+                    // See [Note at-str]
+                    return fmt!("*\\%d", n as int).to_managed();
                 }
             }
             let addrstr = {
                 let addrspace = llvm::LLVMGetPointerAddressSpace(ty) as uint;
-                if addrspace == 0u {
+                if addrspace == 0 {
                     ~""
                 } else {
                     fmt!("addrspace(%u)", addrspace)
                 }
             };
-            return addrstr + ~"*" +
-                    type_to_str_inner(names,
-                                      outer,
-                                      llvm::LLVMGetElementType(ty));
+            // See [Note at-str]
+            return fmt!("%s*%s", addrstr, type_to_str_inner(names,
+                        outer,
+                        llvm::LLVMGetElementType(ty))).to_managed();
           }
-          Vector => return ~"Vector",
-          Metadata => return ~"Metadata",
-          X86_MMX => return ~"X86_MMAX"
+          Vector => return @"Vector",
+          Metadata => return @"Metadata",
+          X86_MMX => return @"X86_MMAX"
         }
     }
 }
