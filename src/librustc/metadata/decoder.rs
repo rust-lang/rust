@@ -930,14 +930,18 @@ fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
     let item = lookup_item(id, data);
     let mut result = ~[];
     for reader::tagged_docs(item, tag_item_field) |an_item| {
-       let f = item_family(an_item);
-       if f == PublicField || f == PrivateField || f == InheritedField {
-          let name = item_name(intr, an_item);
-          let did = item_def_id(an_item, cdata);
-          let mt = field_mutability(an_item);
-          result.push({ident: name, id: did, vis:
-                  family_to_visibility(f), mutability: mt});
-       }
+        let f = item_family(an_item);
+        if f == PublicField || f == PrivateField || f == InheritedField {
+            let name = item_name(intr, an_item);
+            let did = item_def_id(an_item, cdata);
+            let mt = field_mutability(an_item);
+            result.push(ty::field_ty {
+                ident: name,
+                id: did, vis:
+                family_to_visibility(f),
+                mutability: mt,
+            });
+        }
     }
     result
 }

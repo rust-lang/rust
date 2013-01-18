@@ -19,10 +19,13 @@ use ext::build;
 use core::dvec;
 use core::option;
 
-fn mk_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) ->
+fn mk_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) -> @ast::expr {
     @ast::expr {
-    return @{id: cx.next_id(), callee_id: cx.next_id(),
-          node: expr, span: sp};
+        id: cx.next_id(),
+        callee_id: cx.next_id(),
+        node: expr,
+        span: sp,
+    }
 }
 
 fn mk_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
@@ -191,7 +194,7 @@ fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
             None),
         span: sp,
     };
-    let ty : @ast::Ty = @{ id: cx.next_id(), node: ast::ty_infer, span: sp };
+    let ty = @ast::Ty { id: cx.next_id(), node: ast::ty_infer, span: sp };
     let local = @ast::spanned {
         node: ast::local_ {
             is_mutbl: mutbl,
@@ -290,7 +293,7 @@ fn mk_ty_path(cx: ext_ctxt,
            -> @ast::Ty {
     let ty = build::mk_raw_path(span, idents);
     let ty = ast::ty_path(ty, cx.next_id());
-    let ty = @{ id: cx.next_id(), node: move ty, span: span };
+    let ty = @ast::Ty { id: cx.next_id(), node: move ty, span: span };
     ty
 }
 fn mk_ty_path_global(cx: ext_ctxt,
@@ -299,7 +302,7 @@ fn mk_ty_path_global(cx: ext_ctxt,
                   -> @ast::Ty {
     let ty = build::mk_raw_path_global(span, idents);
     let ty = ast::ty_path(ty, cx.next_id());
-    let ty = @{ id: cx.next_id(), node: move ty, span: span };
+    let ty = @ast::Ty { id: cx.next_id(), node: move ty, span: span };
     ty
 }
 fn mk_simple_ty_path(cx: ext_ctxt,
@@ -314,7 +317,7 @@ fn mk_arg(cx: ext_ctxt,
           ty: @ast::Ty)
        -> ast::arg {
     let arg_pat = mk_pat_ident(cx, span, ident);
-    {
+    ast::arg {
         mode: ast::infer(cx.next_id()),
         ty: ty,
         pat: arg_pat,
@@ -322,7 +325,7 @@ fn mk_arg(cx: ext_ctxt,
     }
 }
 fn mk_fn_decl(+inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
-    { inputs: move inputs, output: output, cf: ast::return_val }
+    ast::fn_decl { inputs: inputs, output: output, cf: ast::return_val }
 }
 fn mk_ty_param(cx: ext_ctxt,
                ident: ast::ident,

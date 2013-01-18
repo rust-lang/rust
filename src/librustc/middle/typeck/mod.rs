@@ -142,7 +142,7 @@ pub enum method_origin {
 // with a bounded trait.
 #[auto_encode]
 #[auto_decode]
-type method_param = {
+struct method_param {
     // the trait containing the method to be invoked
     trait_id: ast::def_id,
 
@@ -154,10 +154,10 @@ type method_param = {
     param_num: uint,
 
     // index of the bound for this type parameter which specifies the trait
-    bound_num: uint
-};
+    bound_num: uint,
+}
 
-pub type method_map_entry = {
+pub struct method_map_entry {
     // the type and mode of the self parameter, which is not reflected
     // in the fn type (FIXME #3446)
     self_arg: ty::arg,
@@ -166,8 +166,8 @@ pub type method_map_entry = {
     explicit_self: ast::self_ty_,
 
     // method details being invoked
-    origin: method_origin
-};
+    origin: method_origin,
+}
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked

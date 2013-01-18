@@ -108,8 +108,12 @@ enum ast_node {
 }
 
 type map = std::map::HashMap<node_id, ast_node>;
-type ctx = {map: map, mut path: path,
-            mut local_id: uint, diag: span_handler};
+struct ctx {
+    map: map,
+    mut path: path,
+    mut local_id: uint,
+    diag: span_handler,
+}
 type vt = visit::vt<ctx>;
 
 fn extend(cx: ctx, +elt: ident) -> @path {
@@ -131,12 +135,14 @@ fn mk_ast_map_visitor() -> vt {
 }
 
 fn map_crate(diag: span_handler, c: crate) -> map {
-    let cx = {map: std::map::HashMap(),
-              mut path: ~[],
-              mut local_id: 0u,
-              diag: diag};
+    let cx = ctx {
+        map: std::map::HashMap(),
+        mut path: ~[],
+        mut local_id: 0u,
+        diag: diag,
+    };
     visit::visit_crate(c, cx, mk_ast_map_visitor());
-    return cx.map;
+    cx.map
 }
 
 // Used for items loaded from external crate that are being inlined into this
@@ -150,10 +156,12 @@ fn map_decoded_item(diag: span_handler,
     // alias analysis, which we will not be running on the inlined items, and
     // even if we did I think it only needs an ordering between local
     // variables that are simultaneously in scope).
-    let cx = {map: map,
-              mut path: /* FIXME (#2543) */ copy path,
-              mut local_id: 0u,
-              diag: diag};
+    let cx = ctx {
+        map: map,
+        mut path: /* FIXME (#2543) */ copy path,
+        mut local_id: 0u,
+        diag: diag,
+    };
     let v = mk_ast_map_visitor();
 
     // methods get added to the AST map when their impl is visited.  Since we

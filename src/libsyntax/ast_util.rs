@@ -341,13 +341,19 @@ fn public_methods(ms: ~[@method]) -> ~[@method] {
 // a default, pull out the useful fields to make a ty_method
 fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     match method {
-      required(ref m) => (*m),
-      provided(m) => {
-        {ident: m.ident, attrs: m.attrs,
-         purity: m.purity, decl: m.decl,
-         tps: m.tps, self_ty: m.self_ty,
-         id: m.id, span: m.span}
-      }
+        required(ref m) => (*m),
+        provided(m) => {
+            ty_method {
+                ident: m.ident,
+                attrs: m.attrs,
+                purity: m.purity,
+                decl: m.decl,
+                tps: m.tps,
+                self_ty: m.self_ty,
+                id: m.id,
+                span: m.span,
+            }
+        }
     }
 }
 
@@ -435,10 +441,13 @@ fn operator_prec(op: ast::binop) -> uint {
 }
 
 fn dtor_dec() -> fn_decl {
-    let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
+    let nil_t = @ast::Ty { id: 0, node: ty_nil, span: dummy_sp() };
     // dtor has no args
-    {inputs: ~[],
-     output: nil_t, cf: return_val}
+    ast::fn_decl {
+        inputs: ~[],
+        output: nil_t,
+        cf: return_val,
+    }
 }
 
 // ______________________________________________________________________
@@ -446,7 +455,10 @@ fn dtor_dec() -> fn_decl {
 
 #[auto_encode]
 #[auto_decode]
-type id_range = {min: node_id, max: node_id};
+struct id_range {
+    min: node_id,
+    max: node_id,
+}
 
 fn empty(range: id_range) -> bool {
     range.min >= range.max
@@ -587,7 +599,7 @@ fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
         *min = int::min(*min, id);
         *max = int::max(*max, id + 1);
     }
-    return {min:*min, max:*max};
+    id_range { min: *min, max: *max }
 }
 
 fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {

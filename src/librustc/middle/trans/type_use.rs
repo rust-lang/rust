@@ -96,7 +96,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     match map_node {
       ast_map::node_item(@ast::item { node: item_fn(_, _, _, ref body),
                                       _ }, _) |
-      ast_map::node_method(@{body: ref body, _}, _, _) => {
+      ast_map::node_method(@ast::method {body: ref body, _}, _, _) => {
         handle_body(cx, (*body));
       }
       ast_map::node_trait_method(*) => {
@@ -233,7 +233,10 @@ fn mark_for_method_call(cx: ctx, e_id: node_id, callee_id: node_id) {
                 }
             }
           }
-          typeck::method_param({param_num: param, _}) => {
+          typeck::method_param(typeck::method_param {
+              param_num: param,
+              _
+          }) => {
             cx.uses[param] |= use_tydesc;
           }
           typeck::method_trait(*) | typeck::method_self(*) => (),

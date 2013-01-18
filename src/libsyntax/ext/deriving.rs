@@ -135,12 +135,16 @@ fn create_eq_method(cx: ext_ctxt,
                                                      span,
                                                      type_ident,
                                                      ty_params);
-    let arg_region = @{ id: cx.next_id(), node: re_anon };
+    let arg_region = @ast::region { id: cx.next_id(), node: re_anon };
     let arg_type = ty_rptr(
         arg_region,
         ast::mt { ty: arg_path_type, mutbl: m_imm }
     );
-    let arg_type = @{ id: cx.next_id(), node: move arg_type, span: span };
+    let arg_type = @ast::Ty {
+        id: cx.next_id(),
+        node: arg_type,
+        span: span,
+    };
 
     // Create the `other` parameter.
     let other_ident = cx.ident_of(~"__other");
@@ -150,10 +154,10 @@ fn create_eq_method(cx: ext_ctxt,
     let bool_ident = cx.ident_of(~"bool");
     let output_type = build::mk_raw_path(span, ~[ bool_ident ]);
     let output_type = ty_path(output_type, cx.next_id());
-    let output_type = @{
+    let output_type = @ast::Ty {
         id: cx.next_id(),
-        node: move output_type,
-        span: span
+        node: output_type,
+        span: span,
     };
 
     // Create the function declaration.
@@ -164,7 +168,7 @@ fn create_eq_method(cx: ext_ctxt,
 
     // Create the method.
     let self_ty = spanned { node: sty_region(m_imm), span: span };
-    return @{
+    @ast::method {
         ident: method_ident,
         attrs: ~[],
         tps: ~[],
@@ -176,7 +180,7 @@ fn create_eq_method(cx: ext_ctxt,
         span: span,
         self_id: cx.next_id(),
         vis: public
-    };
+    }
 }
 
 fn create_self_type_with_params(cx: ext_ctxt,
@@ -199,7 +203,7 @@ fn create_self_type_with_params(cx: ext_ctxt,
                                         ~[ type_ident ],
                                         move self_ty_params);
     let self_type = ty_path(self_type, cx.next_id());
-    @{ id: cx.next_id(), node: move self_type, span: span }
+    @ast::Ty { id: cx.next_id(), node: self_type, span: span }
 }
 
 fn create_derived_impl(cx: ext_ctxt,
@@ -230,7 +234,7 @@ fn create_derived_impl(cx: ext_ctxt,
         types: ~[]
     };
     let trait_path = @move trait_path;
-    let trait_ref = {
+    let trait_ref = ast::trait_ref {
         path: trait_path,
         ref_id: cx.next_id()
     };
@@ -303,7 +307,7 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     let f_arg = build::mk_arg(cx, span, f_ident, f_arg_type);
 
     // Create the type of the return value.
-    let output_type = @{ id: cx.next_id(), node: ty_nil, span: span };
+    let output_type = @ast::Ty { id: cx.next_id(), node: ty_nil, span: span };
 
     // Create the function declaration.
     let inputs = ~[ move lsb0_arg, move f_arg ];
@@ -315,7 +319,7 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     // Create the method.
     let self_ty = spanned { node: sty_region(m_imm), span: span };
     let method_ident = cx.ident_of(~"iter_bytes");
-    return @{
+    @ast::method {
         ident: method_ident,
         attrs: ~[],
         tps: ~[],

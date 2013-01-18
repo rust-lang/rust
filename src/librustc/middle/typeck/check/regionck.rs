@@ -324,7 +324,9 @@ fn constrain_auto_ref(
 
     let adjustment = rcx.fcx.inh.adjustments.find(expr.id);
     let region = match adjustment {
-        Some(@{autoref: Some(ref auto_ref), _}) => auto_ref.region,
+        Some(@ty::AutoAdjustment { autoref: Some(ref auto_ref), _ }) => {
+            auto_ref.region
+        },
         _ => { return; }
     };
 

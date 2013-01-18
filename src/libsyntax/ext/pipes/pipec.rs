@@ -49,7 +49,7 @@ impl message: gen_send {
         debug!("pipec: gen_send");
         match self {
           message(ref _id, span, tys, this,
-                  Some({state: ref next, tys: next_tys})) => {
+                  Some(next_state {state: ref next, tys: next_tys})) => {
             debug!("pipec: next state exists");
             let next = this.proto.get_state((*next));
             assert next_tys.len() == next.ty_params.len();
@@ -217,7 +217,7 @@ impl state: to_type_decls {
             let message(name, span, tys, this, next) = *m;
 
             let tys = match next {
-              Some({state: ref next, tys: next_tys}) => {
+              Some(next_state { state: ref next, tys: next_tys }) => {
                 let next = this.proto.get_state((*next));
                 let next_name = cx.str_of(next.data_name());
 
@@ -240,11 +240,16 @@ impl state: to_type_decls {
             items_msg.push(v);
         }
 
-        ~[cx.item_enum_poly(name,
-                            self.span,
-                            ast::enum_def({ variants: items_msg,
-                                            common: None }),
-                            self.ty_params)]
+        ~[
+            cx.item_enum_poly(
+                name,
+                self.span,
+                ast::enum_def(enum_def_ {
+                    variants: items_msg,
+                    common: None }),
+                self.ty_params
+            )
+        ]
     }
 
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {

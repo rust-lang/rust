@@ -46,7 +46,7 @@ references other non-built-in types.  A type definition like:
 
     #[auto_encode]
     #[auto_decode]
-    type spanned<T> = {node: T, span: span};
+    struct spanned<T> {node: T, span: span}
 
 would yield functions like:
 
@@ -130,7 +130,10 @@ fn expand_auto_encode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_encode) {
             match item.node {
-                ast::item_ty(@{node: ast::ty_rec(ref fields), _}, tps) => {
+                ast::item_ty(
+                    @ast::Ty {node: ast::ty_rec(ref fields), _},
+                    tps
+                ) => {
                     let ser_impl = mk_rec_ser_impl(
                         cx,
                         item.span,
@@ -196,7 +199,10 @@ fn expand_auto_decode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_decode) {
             match item.node {
-                ast::item_ty(@{node: ast::ty_rec(ref fields), _}, tps) => {
+                ast::item_ty(
+                    @ast::Ty {node: ast::ty_rec(ref fields), _},
+                    tps
+                ) => {
                     let deser_impl = mk_rec_deser_impl(
                         cx,
                         item.span,
@@ -249,7 +255,7 @@ priv impl ext_ctxt {
         path: @ast::path,
         bounds: @~[ast::ty_param_bound]
     ) -> ast::ty_param {
-        let bound = ast::TraitTyParamBound(@{
+        let bound = ast::TraitTyParamBound(@ast::Ty {
             id: self.next_id(),
             node: ast::ty_path(path, self.next_id()),
             span: span,
@@ -263,8 +269,12 @@ priv impl ext_ctxt {
     }
 
     fn expr(span: span, node: ast::expr_) -> @ast::expr {
-        @{id: self.next_id(), callee_id: self.next_id(),
-          node: node, span: span}
+        @ast::expr {
+            id: self.next_id(),
+            callee_id: self.next_id(),
+            node: node,
+            span: span,
+        }
     }
 
     fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
@@ -311,9 +321,13 @@ priv impl ext_ctxt {
 
     fn ty_path(span: span, strs: ~[ast::ident],
                tps: ~[@ast::Ty]) -> @ast::Ty {
-        @{id: self.next_id(),
-          node: ast::ty_path(self.path_tps(span, strs, tps), self.next_id()),
-          span: span}
+        @ast::Ty {
+            id: self.next_id(),
+            node: ast::ty_path(
+                self.path_tps(span, strs, tps),
+                self.next_id()),
+            span: span,
+        }
     }
 
     fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
@@ -434,7 +448,7 @@ fn mk_impl(
     let mut trait_tps = vec::append(
         ~[ty_param],
          do tps.map |tp| {
-            let t_bound = ast::TraitTyParamBound(@{
+            let t_bound = ast::TraitTyParamBound(@ast::Ty {
                 id: cx.next_id(),
                 node: ast::ty_path(path, cx.next_id()),
                 span: span,
@@ -448,7 +462,7 @@ fn mk_impl(
         }
     );
 
-    let opt_trait = Some(@{
+    let opt_trait = Some(@ast::trait_ref {
         path: path,
         ref_id: cx.next_id(),
     });
@@ -564,10 +578,10 @@ fn mk_ser_method(
     span: span,
     ser_body: ast::blk
 ) -> @ast::method {
-    let ty_s = @{
+    let ty_s = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_rptr(
-            @{
+            @ast::region {
                 id: cx.next_id(),
                 node: ast::re_anon,
             },
@@ -579,7 +593,7 @@ fn mk_ser_method(
         span: span,
     };
 
-    let ser_inputs = ~[{
+    let ser_inputs = ~[ast::arg {
         mode: ast::infer(cx.next_id()),
         ty: ty_s,
         pat: @ast::pat {
@@ -593,19 +607,19 @@ fn mk_ser_method(
         id: cx.next_id(),
     }];
 
-    let ser_output = @{
+    let ser_output = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_nil,
         span: span,
     };
 
-    let ser_decl = {
+    let ser_decl = ast::fn_decl {
         inputs: ser_inputs,
         output: ser_output,
         cf: ast::return_val,
     };
 
-    @{
+    @ast::method {
         ident: cx.ident_of(~"encode"),
         attrs: ~[],
         tps: ~[],
@@ -627,10 +641,10 @@ fn mk_deser_method(
     ty: @ast::Ty,
     deser_body: ast::blk
 ) -> @ast::method {
-    let ty_d = @{
+    let ty_d = @ast::Ty {
         id: cx.next_id(),
         node: ast::ty_rptr(
-            @{
+            @ast::region {
                 id: cx.next_id(),
                 node: ast::re_anon,
             },
@@ -642,7 +656,7 @@ fn mk_deser_method(
         span: span,
     };
 
-    let deser_inputs = ~[{
+    let deser_inputs = ~[ast::arg {
         mode: ast::infer(cx.next_id()),
         ty: ty_d,
         pat: @ast::pat {
@@ -656,18 +670,17 @@ fn mk_deser_method(
         id: cx.next_id(),
     }];
 
-    let deser_decl = {
+    let deser_decl = ast::fn_decl {
         inputs: deser_inputs,
         output: ty,
         cf: ast::return_val,
     };
 
-    @{
+    @ast::method {
         ident: cx.ident_of(~"decode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: ast::spanned { node: ast::sty_static,
-                                span: span },
+        self_ty: ast::spanned { node: ast::sty_static, span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
         body: deser_body,
@@ -797,11 +810,15 @@ fn mk_struct_deser_impl(
 // Records and structs don't have the same fields types, but they share enough
 // that if we extract the right subfields out we can share the code
 // generator code.
-type field = { span: span, ident: ast::ident, mutbl: ast::mutability };
+struct field {
+    span: span,
+    ident: ast::ident,
+    mutbl: ast::mutability,
+}
 
 fn mk_rec_fields(fields: ~[ast::ty_field]) -> ~[field] {
     do fields.map |field| {
-        {
+        field {
             span: field.span,
             ident: field.node.ident,
             mutbl: field.node.mt.mutbl,
@@ -817,7 +834,7 @@ fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
                         unnamed fields",
         };
 
-        {
+        field {
             span: field.span,
             ident: ident,
             mutbl: match mutbl {
@@ -873,7 +890,7 @@ fn mk_ser_fields(
 fn mk_deser_fields(
     cx: ext_ctxt,
     span: span,
-    fields: ~[{ span: span, ident: ast::ident, mutbl: ast::mutability }]
+    fields: ~[field]
 ) -> ~[ast::field] {
     do fields.mapi |idx, field| {
         // ast for `|| std::serialize::decode(__d)`
@@ -1174,10 +1191,10 @@ fn mk_enum_deser_body(
     let expr_lambda = cx.expr(
         span,
         ast::expr_fn_block(
-            {
-                inputs: ~[{
+            ast::fn_decl {
+                inputs: ~[ast::arg {
                     mode: ast::infer(cx.next_id()),
-                    ty: @{
+                    ty: @ast::Ty {
                         id: cx.next_id(),
                         node: ast::ty_infer,
                         span: span
@@ -1192,7 +1209,7 @@ fn mk_enum_deser_body(
                     },
                     id: cx.next_id(),
                 }],
-                output: @{
+                output: @ast::Ty {
                     id: cx.next_id(),
                     node: ast::ty_infer,
                     span: span,

@@ -696,8 +696,14 @@ impl blk_check_mode : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
-// Extra node ID is only used for index, assign_op, unary, binary, method call
+struct expr {
+    id: node_id,
+    // Extra node ID is only used for index, assign_op, unary, binary, method
+    // call
+    callee_id: node_id,
+    node: expr_,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -934,15 +940,25 @@ struct mt {
 
 #[auto_encode]
 #[auto_decode]
-type ty_field_ = {ident: ident, mt: mt};
+struct ty_field_ {
+    ident: ident,
+    mt: mt,
+}
 
 type ty_field = spanned<ty_field_>;
 
 #[auto_encode]
 #[auto_decode]
-type ty_method = {ident: ident, attrs: ~[attribute], purity: purity,
-                  decl: fn_decl, tps: ~[ty_param], self_ty: self_ty,
-                  id: node_id, span: span};
+struct ty_method {
+    ident: ident,
+    attrs: ~[attribute],
+    purity: purity,
+    decl: fn_decl,
+    tps: ~[ty_param],
+    self_ty: self_ty,
+    id: node_id,
+    span: span,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1034,7 +1050,11 @@ impl float_ty : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type Ty = {id: node_id, node: ty_, span: span};
+struct Ty {
+    id: node_id,
+    node: ty_,
+    span: span,
+}
 
 // Not represented directly in the AST, referred to by name through a ty_path.
 #[auto_encode]
@@ -1087,7 +1107,10 @@ impl prim_ty : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type region = {id: node_id, node: region_};
+struct region {
+    id: node_id,
+    node: region_,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1174,14 +1197,20 @@ impl Ty : to_bytes::IterBytes {
 
 #[auto_encode]
 #[auto_decode]
-type arg = {mode: mode, ty: @Ty, pat: @pat, id: node_id};
+struct arg {
+    mode: mode,
+    ty: @Ty,
+    pat: @pat,
+    id: node_id,
+}
 
 #[auto_encode]
 #[auto_decode]
-type fn_decl =
-    {inputs: ~[arg],
-     output: @Ty,
-     cf: ret_style};
+struct fn_decl {
+    inputs: ~[arg],
+    output: @Ty,
+    cf: ret_style,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1301,15 +1330,26 @@ type self_ty = spanned<self_ty_>;
 
 #[auto_encode]
 #[auto_decode]
-type method = {ident: ident, attrs: ~[attribute],
-               tps: ~[ty_param], self_ty: self_ty,
-               purity: purity, decl: fn_decl, body: blk,
-               id: node_id, span: span, self_id: node_id,
-               vis: visibility};
+struct method {
+    ident: ident,
+    attrs: ~[attribute],
+    tps: ~[ty_param],
+    self_ty: self_ty,
+    purity: purity,
+    decl: fn_decl,
+    body: blk,
+    id: node_id,
+    span: span,
+    self_id: node_id,
+    vis: visibility,
+}
 
 #[auto_encode]
 #[auto_decode]
-type _mod = {view_items: ~[@view_item], items: ~[@item]};
+struct _mod {
+    view_items: ~[@view_item],
+    items: ~[@item],
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1347,15 +1387,19 @@ impl foreign_abi : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type foreign_mod =
-    {sort: foreign_mod_sort,
-     abi: ident,
-     view_items: ~[@view_item],
-     items: ~[@foreign_item]};
+struct foreign_mod {
+    sort: foreign_mod_sort,
+    abi: ident,
+    view_items: ~[@view_item],
+    items: ~[@foreign_item],
+}
 
 #[auto_encode]
 #[auto_decode]
-type variant_arg = {ty: @Ty, id: node_id};
+struct variant_arg {
+    ty: @Ty,
+    id: node_id,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1367,7 +1411,10 @@ enum variant_kind {
 
 #[auto_encode]
 #[auto_decode]
-type enum_def_ = { variants: ~[variant], common: Option<@struct_def> };
+struct enum_def_ {
+    variants: ~[variant],
+    common: Option<@struct_def>,
+}
 
 #[auto_encode]
 #[auto_decode]
@@ -1375,8 +1422,14 @@ enum enum_def = enum_def_;
 
 #[auto_encode]
 #[auto_decode]
-type variant_ = {name: ident, attrs: ~[attribute], kind: variant_kind,
-                 id: node_id, disr_expr: Option<@expr>, vis: visibility};
+struct variant_ {
+    name: ident,
+    attrs: ~[attribute],
+    kind: variant_kind,
+    id: node_id,
+    disr_expr: Option<@expr>,
+    vis: visibility,
+}
 
 type variant = spanned<variant_>;
 
@@ -1472,7 +1525,10 @@ struct attribute_ {
  */
 #[auto_encode]
 #[auto_decode]
-type trait_ref = {path: @path, ref_id: node_id};
+struct trait_ref {
+    path: @path,
+    ref_id: node_id,
+}
 
 #[auto_encode]
 #[auto_decode]
