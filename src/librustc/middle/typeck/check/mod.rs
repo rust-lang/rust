@@ -2279,9 +2279,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_block(ref b) => {
         // If this is an unchecked block, turn off purity-checking
-        bot = check_block(fcx, (*b));
+        bot = check_block_with_expected(fcx, *b, expected);
         let typ =
-            match (*b).node.expr {
+            match b.node.expr {
               Some(expr) => fcx.expr_ty(expr),
               None => ty::mk_nil(tcx)
             };
@@ -2577,6 +2577,12 @@ fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
 }
 
 fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
+    check_block_with_expected(fcx0, blk, None)
+}
+
+fn check_block_with_expected(fcx0: @fn_ctxt,
+                             blk: ast::blk,
+                             expected: Option<ty::t>) -> bool {
     let fcx = match blk.node.rules {
       ast::unsafe_blk => @fn_ctxt {purity: ast::unsafe_fn,.. copy *fcx0},
       ast::default_blk => fcx0
@@ -2605,7 +2611,7 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
             if bot && !warned {
                 fcx.ccx.tcx.sess.span_warn(e.span, ~"unreachable expression");
             }
-            bot |= check_expr(fcx, e, None);
+            bot |= check_expr(fcx, e, expected);
             let ety = fcx.expr_ty(e);
             fcx.write_ty(blk.node.id, ety);
           }

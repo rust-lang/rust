@@ -33,13 +33,33 @@ export parse_state_from_data;
 export parse_arg_data, parse_ty_data, parse_def_id, parse_ident;
 export parse_bounds_data;
 export pstate;
+export DefIdSource, NominalType, TypeWithId, TypeParameter;
 
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
 // data buffer. Whatever format you choose should not contain pipe characters.
 
-// Callback to translate defs to strs or back:
-type conv_did = fn(ast::def_id) -> ast::def_id;
+// Def id conversion: when we encounter def-ids, they have to be translated.
+// For example, the crate number must be converted from the crate number used
+// in the library we are reading from into the local crate numbers in use
+// here.  To perform this translation, the type decoder is supplied with a
+// conversion function of type `conv_did`.
+//
+// Sometimes, particularly when inlining, the correct translation of the
+// def-id will depend on where it originated from.  Therefore, the conversion
+// function is given an indicator of the source of the def-id.  See
+// astencode.rs for more information.
+enum DefIdSource {
+    // Identifies a struct, trait, enum, etc.
+    NominalType,
+
+    // Identifies a type alias (`type X = ...`).
+    TypeWithId,
+
+    // Identifies a type parameter (`fn foo<X>() { ... }`).
+    TypeParameter
+}
+type conv_did = fn(source: DefIdSource, ast::def_id) -> ast::def_id;
 
 type pstate = {data: @~[u8], crate: int, mut pos: uint, tcx: ty::ctxt};
 
@@ -245,21 +265,21 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       'c' => return ty::mk_char(st.tcx),
       't' => {
         assert (next(st) == '[');
-        let def = parse_def(st, conv);
+        let def = parse_def(st, NominalType, conv);
         let substs = parse_substs(st, conv);
         assert next(st) == ']';
         return ty::mk_enum(st.tcx, def, substs);
       }
       'x' => {
         assert next(st) == '[';
-        let def = parse_def(st, conv);
+        let def = parse_def(st, NominalType, conv);
         let substs = parse_substs(st, conv);
         let vstore = parse_vstore(st);
         assert next(st) == ']';
         return ty::mk_trait(st.tcx, def, substs, vstore);
       }
       'p' => {
-        let did = parse_def(st, conv);
+        let did = parse_def(st, TypeParameter, conv);
         return ty::mk_param(st.tcx, parse_int(st) as uint, did);
       }
       's' => {
@@ -327,17 +347,14 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         }
       }
       '"' => {
-        let def = parse_def(st, conv);
+        let def = parse_def(st, TypeWithId, conv);
         let inner = parse_ty(st, conv);
         ty::mk_with_id(st.tcx, inner, def)
       }
       'B' => ty::mk_opaque_box(st.tcx),
       'a' => {
-          debug!("saw a class");
           assert (next(st) == '[');
-          debug!("saw a [");
-          let did = parse_def(st, conv);
-          debug!("parsed a def_id %?", did);
+          let did = parse_def(st, NominalType, conv);
           let substs = parse_substs(st, conv);
           assert (next(st) == ']');
           return ty::mk_struct(st.tcx, did, substs);
@@ -356,11 +373,12 @@ fn parse_mt(st: @pstate, conv: conv_did) -> ty::mt {
     ty::mt { ty: parse_ty(st, conv), mutbl: m }
 }
 
-fn parse_def(st: @pstate, conv: conv_did) -> ast::def_id {
+fn parse_def(st: @pstate, source: DefIdSource,
+             conv: conv_did) -> ast::def_id {
     let mut def = ~[];
     while peek(st) != '|' { def.push(next_byte(st)); }
     st.pos = st.pos + 1u;
-    return conv(parse_def_id(def));
+    return conv(source, parse_def_id(def));
 }
 
 fn parse_int(st: @pstate) -> int {

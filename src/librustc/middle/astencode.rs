@@ -17,6 +17,7 @@ use e = metadata::encoder;
 use metadata::decoder;
 use metadata::encoder;
 use metadata::tydecode;
+use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
 use metadata::tyencode;
 use middle::freevars::freevar_entry;
 use middle::typeck::{method_origin, method_map_entry, vtable_res};
@@ -168,14 +169,55 @@ fn reserve_id_range(sess: Session,
 
 impl extended_decode_ctxt {
     fn tr_id(id: ast::node_id) -> ast::node_id {
+        /*!
+         *
+         * Translates an internal id, meaning a node id that is known
+         * to refer to some part of the item currently being inlined,
+         * such as a local variable or argument.  All naked node-ids
+         * that appear in types have this property, since if something
+         * might refer to an external item we would use a def-id to
+         * allow for the possibility that the item resides in another
+         * crate.
+         */
+
         // from_id_range should be non-empty
         assert !ast_util::empty(self.from_id_range);
         (id - self.from_id_range.min + self.to_id_range.min)
     }
     fn tr_def_id(did: ast::def_id) -> ast::def_id {
+        /*!
+         *
+         * Translates an EXTERNAL def-id, converting the crate number
+         * from the one used in the encoded data to the current crate
+         * numbers..  By external, I mean that it be translated to a
+         * reference to the item in its original crate, as opposed to
+         * being translated to a reference to the inlined version of
+         * the item.  This is typically, but not always, what you
+         * want, because most def-ids refer to external things like
+         * types or other fns that may or may not be inlined.  Note
+         * that even when the inlined function is referencing itself
+         * recursively, we would want `tr_def_id` for that
+         * reference--- conceptually the function calls the original,
+         * non-inlined version, and trans deals with linking that
+         * recursive call to the inlined copy.
+         *
+         * However, there are a *few* cases where def-ids are used but
+         * we know that the thing being referenced is in fact *internal*
+         * to the item being inlined.  In those cases, you should use
+         * `tr_intern_def_id()` below.
+         */
+
         decoder::translate_def_id(self.dcx.cdata, did)
     }
     fn tr_intern_def_id(did: ast::def_id) -> ast::def_id {
+        /*!
+         *
+         * Translates an INTERNAL def-id, meaning a def-id that is
+         * known to refer to some part of the item currently being
+         * inlined.  In that case, we want to convert the def-id to
+         * refer to the current crate and to the new, inlined node-id.
+         */
+
         assert did.crate == ast::local_crate;
         ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
@@ -906,15 +948,17 @@ trait ebml_decoder_decoder_helpers {
     fn read_bounds(xcx: extended_decode_ctxt) -> @~[ty::param_bound];
     fn read_ty_param_bounds_and_ty(xcx: extended_decode_ctxt)
                                 -> ty::ty_param_bounds_and_ty;
+    fn convert_def_id(xcx: extended_decode_ctxt,
+                      source: DefIdSource,
+                      did: ast::def_id) -> ast::def_id;
 }
 
 impl reader::Decoder: ebml_decoder_decoder_helpers {
-
     fn read_arg(xcx: extended_decode_ctxt) -> ty::arg {
         do self.read_opaque |doc| {
             tydecode::parse_arg_data(
                 doc.data, xcx.dcx.cdata.cnum, doc.start, xcx.dcx.tcx,
-                |a| xcx.tr_def_id(a))
+                |s, a| self.convert_def_id(xcx, s, a))
         }
     }
 
@@ -927,7 +971,7 @@ impl reader::Decoder: ebml_decoder_decoder_helpers {
         do self.read_opaque |doc| {
             tydecode::parse_ty_data(
                 doc.data, xcx.dcx.cdata.cnum, doc.start, xcx.dcx.tcx,
-                |a| xcx.tr_def_id(a))
+                |s, a| self.convert_def_id(xcx, s, a))
         }
     }
 
@@ -939,7 +983,7 @@ impl reader::Decoder: ebml_decoder_decoder_helpers {
         do self.read_opaque |doc| {
             tydecode::parse_bounds_data(
                 doc.data, doc.start, xcx.dcx.cdata.cnum, xcx.dcx.tcx,
-                |a| xcx.tr_def_id(a))
+                |s, a| self.convert_def_id(xcx, s, a))
         }
     }
 
@@ -958,6 +1002,29 @@ impl reader::Decoder: ebml_decoder_decoder_helpers {
                     self.read_ty(xcx)
                 })
             }
+        }
+    }
+
+    fn convert_def_id(xcx: extended_decode_ctxt,
+                      source: tydecode::DefIdSource,
+                      did: ast::def_id) -> ast::def_id {
+        /*!
+         *
+         * Converts a def-id that appears in a type.  The correct
+         * translation will depend on what kind of def-id this is.
+         * This is a subtle point: type definitions are not
+         * inlined into the current crate, so if the def-id names
+         * a nominal type or type alias, then it should be
+         * translated to refer to the source crate.
+         *
+         * However, *type parameters* are cloned along with the function
+         * they are attached to.  So we should translate those def-ids
+         * to refer to the new, cloned copy of the type parameter.
+         */
+
+        match source {
+            NominalType | TypeWithId => xcx.tr_def_id(did),
+            TypeParameter => xcx.tr_intern_def_id(did)
         }
     }
 }
