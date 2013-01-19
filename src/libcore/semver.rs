@@ -17,6 +17,7 @@ use uint;
 use str;
 use to_str::ToStr;
 use char;
+use cmp;
 
 pub struct Version {
     major: uint,
@@ -34,6 +35,61 @@ impl Version: ToStr {
         };
 
         fmt!("%u.%u.%u%s", self.major, self.minor, self.patch, suffix)
+    }
+}
+
+impl Version: cmp::Ord {
+    #[inline(always)]
+    pure fn lt(&self, other: &Version) -> bool {
+        self.major < other.major ||
+        self.minor < other.minor ||
+        self.patch < other.patch ||
+        (match self.tag {
+            Some(stag) => match other.tag {
+                Some(otag) => stag < otag,
+                None => true
+            },
+            None => false
+        })
+    } 
+    #[inline(always)]
+    pure fn le(&self, other: &Version) -> bool {
+        self.major <= other.major ||
+        self.minor <= other.minor ||
+        self.patch <= other.patch ||
+        (match self.tag {
+            Some(stag) => match other.tag {
+                Some(otag) => stag <= otag,
+                None => true
+            },
+            None => false
+        })
+    }
+    #[inline(always)]
+    pure fn gt(&self, other: &Version) -> bool {
+        self.major > other.major ||
+        self.minor > other.minor ||
+        self.patch > other.patch ||
+        (match self.tag {
+            Some(stag) => match other.tag {
+                Some(otag) => stag > otag,
+                None => false
+            },
+            None => true
+        })
+    }
+    #[inline(always)]
+    pure fn ge(&self, other: &Version) -> bool {
+        self.major >= other.major ||
+        self.minor >= other.minor ||
+        self.patch >= other.patch ||
+        (match self.tag {
+            Some(stag) => match other.tag {
+                Some(otag) => stag >= otag,
+                None => false
+            },
+            None => true
+        })
     }
 }
 
