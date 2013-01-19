@@ -139,6 +139,22 @@ pub fn parse_item_from_source_str(
     maybe_aborted(p.parse_item(attrs),p)
 }
 
+pub fn parse_meta_from_source_str(
+    name: ~str,
+    source: @~str,
+    +cfg: ast::crate_cfg,
+    sess: @mut ParseSess
+) -> @ast::meta_item {
+    let p = new_parser_from_source_str(
+        sess,
+        cfg,
+        /*bad*/ copy name,
+        codemap::FssNone,
+        source
+    );
+    maybe_aborted(p.parse_meta_item(),p)
+}
+
 pub fn parse_stmt_from_source_str(
     name: ~str,
     source: @~str,

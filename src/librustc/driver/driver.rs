@@ -132,15 +132,15 @@ pub fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-pub fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
-    // FIXME (#2399): It would be nice to use the parser to parse all
-    // varieties of meta_item here. At the moment we just support the
-    // meta_word variant.
-    let mut words = ~[];
+fn parse_cfgspecs(cfgspecs: ~[~str],
+                  demitter: diagnostic::Emitter) -> ast::crate_cfg {
+    let mut meta = ~[];
     for cfgspecs.each |s| {
-        words.push(attr::mk_word_item(@/*bad*/copy *s));
+        let sess = parse::new_parse_sess(Some(demitter));
+        let m = parse::parse_meta_from_source_str(~"cfgspec", @/*bad*/ copy *s, ~[], sess);
+        meta.push(m)
     }
-    return words;
+    return meta;
 }
 
 pub enum input {
@@ -639,7 +639,7 @@ pub fn build_session_options(+binary: ~str,
     let addl_lib_search_paths =
         getopts::opt_strs(matches, ~"L")
         .map(|s| Path(*s));
-    let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"));
+    let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"), demitter);
     let test = opt_present(matches, ~"test");
     let android_cross_path = getopts::opt_maybe_str(
         matches, ~"android-cross-path");
