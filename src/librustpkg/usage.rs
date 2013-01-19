@@ -1,5 +1,5 @@
 use core::io;
-
+ 
 pub fn general() {
     io::println(~"Usage: rustpkg [options] <cmd> [args..]
 
@@ -46,29 +46,22 @@ Examples:
     rustpkg install http://rust-lang.org/servo-0.1.2.tar.gz
 
 Options:
-    -c, --cfg      Pass a cfg flag to the package script
-    -p, --prefer   Prefer the package after installing
-                   (see `rustpkg prefer -h`)");
+    -c, --cfg      Pass a cfg flag to the package script");
 }
 
 pub fn uninstall() {
-    io::println(~"rustpkg uninstall <name>[@version]
+    io::println(~"rustpkg uninstall <id|name>[@version]
 
-Remove a package by name and/or version. If version is omitted then all
-versions of the package will be removed. If the package[s] is/are depended
-on by another package then they cannot be removed.  If the package is preferred
-(see `rustpkg prefer -h`), it will attempt to prefer the next latest
-version of the package if another version is installed, otherwise it'll remove
-the symlink.");
+Remove a package by id or name and optionally version. If the package(s) is/are depended
+on by another package then they cannot be removed.");
 }
 
 pub fn prefer() {
-    io::println(~"rustpkg [options..] prefer <name>[@version]
+    io::println(~"rustpkg [options..] prefer <id|name>[@version]
 
 By default all binaries are given a unique name so that multiple versions can
 coexist. The prefer command will symlink the uniquely named binary to
-the binary directory under its bare name. The user will need to confirm
-if the symlink will overwrite another. If version is not supplied, the latest
+the binary directory under its bare name. If version is not supplied, the latest
 version of the package will be preferred.
 
 Example:
@@ -82,10 +75,12 @@ Example:
 }
 
 pub fn unprefer() {
-    io::println(~"rustpkg [options..] unprefer <name>
+    io::println(~"rustpkg [options..] unprefer <id|name>[@version]
 
 Remove all symlinks from the store to the binary directory for a package
-name. See `rustpkg prefer -h` for more information.");
+name and optionally version. If version is not supplied, the latest version
+of the package will be unpreferred. See `rustpkg prefer -h` for more
+information.");
 }
 
 pub fn test() {
