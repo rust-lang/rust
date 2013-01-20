@@ -474,8 +474,12 @@ pub mod linear {
     }
 
     impl <T: Hash IterBytes Eq> LinearSet<T>: Eq {
-        pure fn eq(&self, other: &LinearSet<T>) -> bool { self.map == other.map }
-        pure fn ne(&self, other: &LinearSet<T>) -> bool { self.map != other.map }
+        pure fn eq(&self, other: &LinearSet<T>) -> bool {
+            self.map == other.map
+        }
+        pure fn ne(&self, other: &LinearSet<T>) -> bool {
+            self.map != other.map
+        }
     }
 
     impl <T: Hash IterBytes Eq> LinearSet<T>: Set<T> {
