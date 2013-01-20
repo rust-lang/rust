@@ -10,7 +10,7 @@
 
 #[forbid(deprecated_mode)];
 
-use core::cmp::Eq;
+use core::cmp::{Eq, Ord};
 use core::int;
 use core::libc::{c_char, c_int, c_long, size_t, time_t};
 use core::i32;
@@ -41,7 +41,7 @@ extern mod rustrt {
 pub struct Timespec { sec: i64, nsec: i32 }
 
 impl Timespec {
-    static fn new(sec: i64, nsec: i32) -> Timespec {
+    static pure fn new(sec: i64, nsec: i32) -> Timespec {
         Timespec { sec: sec, nsec: nsec }
     }
 }
@@ -51,6 +51,16 @@ impl Timespec : Eq {
         self.sec == other.sec && self.nsec == other.nsec
     }
     pure fn ne(&self, other: &Timespec) -> bool { !self.eq(other) }
+}
+
+impl Timespec : Ord {
+    pure fn lt(&self, other: &Timespec) -> bool {
+        self.sec < other.sec ||
+            (self.sec == other.sec && self.nsec < other.nsec)
+    }
+    pure fn le(&self, other: &Timespec) -> bool { !other.lt(self) }
+    pure fn ge(&self, other: &Timespec) -> bool { !self.lt(other) }
+    pure fn gt(&self, other: &Timespec) -> bool { !self.le(other) }
 }
 
 /**
@@ -1246,5 +1256,39 @@ mod tests {
         assert utc.rfc822() == ~"Fri, 13 Feb 2009 23:31:30 GMT";
         assert utc.rfc822z() == ~"Fri, 13 Feb 2009 23:31:30 -0000";
         assert utc.rfc3339() == ~"2009-02-13T23:31:30Z";
+    }
+
+    #[test]
+    fn test_timespec_eq_ord() {
+        use core::cmp::{eq, ge, gt, le, lt, ne};
+
+        let a = &Timespec::new(-2, 1);
+        let b = &Timespec::new(-1, 2);
+        let c = &Timespec::new(1, 2);
+        let d = &Timespec::new(2, 1);
+        let e = &Timespec::new(2, 1);
+
+        assert eq(d, e);
+        assert ne(c, e);
+
+        assert lt(a, b);
+        assert lt(b, c);
+        assert lt(c, d);
+
+        assert le(a, b);
+        assert le(b, c);
+        assert le(c, d);
+        assert le(d, e);
+        assert le(e, d);
+
+        assert ge(b, a);
+        assert ge(c, b);
+        assert ge(d, c);
+        assert ge(e, d);
+        assert ge(d, e);
+
+        assert gt(b, a);
+        assert gt(c, b);
+        assert gt(d, c);
     }
 }
