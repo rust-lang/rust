@@ -870,12 +870,6 @@ rust_task_unweaken(rust_port_id chan) {
     task->kernel->unweaken_task(chan);
 }
 
-extern "C" CDECL uintptr_t*
-rust_global_env_chan_ptr() {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->get_global_env_chan();
-}
-
 extern "C" void
 rust_task_inhibit_kill(rust_task *task) {
     task->inhibit_kill();
