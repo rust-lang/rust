@@ -27,7 +27,7 @@ proto! oneshot (
 )
 
 fn main() {
-    let iotask = uv::global_loop::get();
+    let iotask = &uv::global_loop::get();
     
     pipes::spawn_service(oneshot::init, |p| { 
         match try_recv(move p) {

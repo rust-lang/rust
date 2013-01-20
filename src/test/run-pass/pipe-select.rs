@@ -35,7 +35,7 @@ fn main() {
     use oneshot::client::*;
     use stream::client::*;
 
-    let iotask = uv::global_loop::get();
+    let iotask = &uv::global_loop::get();
     
     let c = pipes::spawn_service(stream::init, |p| { 
         error!("waiting for pipes");
