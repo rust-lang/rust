@@ -82,6 +82,9 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
               _ => explain_span(cx, "expression", expr.span)
             }
           }
+          Some(ast_map::node_stmt(stmt)) => {
+              explain_span(cx, "statement", stmt.span)
+          }
           Some(_) | None => {
             // this really should not happen
             (fmt!("unknown scope: %d.  Please report a bug.", node_id),

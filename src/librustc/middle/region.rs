@@ -622,7 +622,7 @@ fn determine_rp_in_ty(ty: @ast::Ty,
                       &&cx: determine_rp_ctxt,
                       visitor: visit::vt<determine_rp_ctxt>) {
 
-    // we are only interesting in types that will require an item to
+    // we are only interested in types that will require an item to
     // be region-parameterized.  if cx.item_id is zero, then this type
     // is not a member of a type defn nor is it a constitutent of an
     // impl etc.  So we can ignore it and its components.
