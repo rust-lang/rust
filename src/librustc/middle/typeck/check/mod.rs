@@ -1677,6 +1677,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         expr.span,
                         ~"attempted to take value of method \
                           (try writing an anonymous function)");
+                    // Add error type for the result
+                    fcx.write_ty(expr.id, ty::mk_err(tcx));
                 }
             }
             None => {
