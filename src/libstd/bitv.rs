@@ -59,7 +59,7 @@ impl SmallBitv {
 
     #[inline(always)]
     fn difference(s: &SmallBitv, nbits: uint) -> bool {
-        self.bits_op(s.bits, nbits, |u1, u2| u1 ^ u2)
+        self.bits_op(s.bits, nbits, |u1, u2| u1 & !u2)
     }
 
     #[inline(always)]
@@ -180,10 +180,7 @@ impl BigBitv {
 
     #[inline(always)]
     fn difference(b: &BigBitv, nbits: uint) -> bool {
-        self.invert();
-        let b = self.intersect(b, nbits);
-        self.invert();
-        b
+        self.process(b, nbits, difference)
     }
 
     #[inline(always)]
@@ -566,6 +563,8 @@ const uint_bits: uint = 32u + (1u << 32u >> 27u);
 pure fn lor(w0: uint, w1: uint) -> uint { return w0 | w1; }
 
 pure fn land(w0: uint, w1: uint) -> uint { return w0 & w1; }
+
+pure fn difference(w0: uint, w1: uint) -> uint { return w0 & !w1; }
 
 pure fn right(_w0: uint, w1: uint) -> uint { return w1; }
 
@@ -953,6 +952,34 @@ mod tests {
     fn test_to_bools() {
         let bools = ~[false, false, true, false, false, true, true, false];
         assert from_bytes([0b00100110]).to_bools() == bools;
+    }
+
+    #[test]
+    fn test_small_difference() {
+      let b1 = Bitv(3, false);
+      let b2 = Bitv(3, false);
+      b1.set(0, true);
+      b1.set(1, true);
+      b2.set(1, true);
+      b2.set(2, true);
+      assert b1.difference(&b2);
+      assert b1[0];
+      assert !b1[1];
+      assert !b1[2];
+    }
+
+    #[test]
+    fn test_big_difference() {
+      let b1 = Bitv(100, false);
+      let b2 = Bitv(100, false);
+      b1.set(0, true);
+      b1.set(40, true);
+      b2.set(40, true);
+      b2.set(80, true);
+      assert b1.difference(&b2);
+      assert b1[0];
+      assert !b1[40];
+      assert !b1[80];
     }
 }
 
