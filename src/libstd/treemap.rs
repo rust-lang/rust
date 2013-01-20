@@ -14,6 +14,7 @@
 
 #[forbid(deprecated_mode)];
 
+use core::container::Set;
 use core::cmp::{Eq, Ord};
 use core::option::{Option, Some, None};
 use core::prelude::*;
@@ -197,6 +198,21 @@ impl <T: Eq Ord> TreeSet<T>: Eq {
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
+impl <T: Ord> TreeSet<T>: Set<T> {
+    /// Return true if the set contains a value
+    pure fn contains(&self, value: &T) -> bool {
+        self.map.contains_key(value)
+    }
+
+    /// Add a value to the set. Return true if the value was not already
+    /// present in the set.
+    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
+
+    /// Remove a value from the set. Return true if the value was
+    /// present in the set.
+    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
+}
+
 impl <T: Ord> TreeSet<T> {
     /// Create an empty TreeSet
     static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
@@ -214,19 +230,6 @@ impl <T: Ord> TreeSet<T> {
     pure fn each_reverse(&self, f: fn(&T) -> bool) {
         self.map.each_key_reverse(f)
     }
-
-    /// Return true if the set contains a value
-    pure fn contains(&self, value: &T) -> bool {
-        self.map.contains_key(value)
-    }
-
-    /// Add a value to the set. Return true if the value was not
-    /// already present in the set.
-    fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
