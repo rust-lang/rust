@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -46,6 +46,8 @@ pub trait SendMap<K:Eq Hash, V: Copy> {
 
 /// Open addressing with linear probing.
 pub mod linear {
+    use iter::BaseIter;
+    use container::Set;
     use cmp::Eq;
     use cmp;
     use hash::Hash;
@@ -442,7 +444,7 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash IterBytes Eq, V: Eq> LinearMap<K, V>: cmp::Eq {
+    impl<K:Hash IterBytes Eq, V: Eq> LinearMap<K, V>: Eq {
         pure fn eq(&self, other: &LinearMap<K, V>) -> bool {
             if self.len() != other.len() { return false; }
 
@@ -459,6 +461,47 @@ pub mod linear {
         pure fn ne(&self, other: &LinearMap<K, V>) -> bool {
             !self.eq(other)
         }
+    }
+
+    pub struct LinearSet<T: Hash IterBytes Eq> {
+        priv map: LinearMap<T, ()>
+    }
+
+    impl <T: Hash IterBytes Eq> LinearSet<T>: BaseIter<T> {
+        /// Visit all values in order
+        pure fn each(&self, f: fn(&T) -> bool) { self.map.each_key(f) }
+        pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+    }
+
+    impl <T: Hash IterBytes Eq> LinearSet<T>: Eq {
+        pure fn eq(&self, other: &LinearSet<T>) -> bool { self.map == other.map }
+        pure fn ne(&self, other: &LinearSet<T>) -> bool { self.map != other.map }
+    }
+
+    impl <T: Hash IterBytes Eq> LinearSet<T>: Set<T> {
+        /// Return true if the set contains a value
+        pure fn contains(&self, value: &T) -> bool {
+            self.map.contains_key(value)
+        }
+
+        /// Add a value to the set. Return true if the value was not already
+        /// present in the set.
+        fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
+
+        /// Remove a value from the set. Return true if the value was
+        /// present in the set.
+        fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
+    }
+
+    impl <T: Hash IterBytes Eq> LinearSet<T> {
+        /// Create an empty LinearSet
+        static fn new() -> LinearSet<T> { LinearSet{map: LinearMap()} }
+
+        /// Return the number of elements in the set
+        pure fn len(&self) -> uint { self.map.len() }
+
+        /// Return true if the set contains no elements
+        pure fn is_empty(&self) -> bool { self.map.is_empty() }
     }
 }
 
