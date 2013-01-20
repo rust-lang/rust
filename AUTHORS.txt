@@ -128,6 +128,7 @@ Sean Stangl <sstangl@mozilla.com>
 Sebastian N. Fernandez <cachobot@gmail.com>
 Seo Sanghyeon <sanxiyn@gmail.com>
 Simon Barber-Dueck <sbarberdueck@gmail.com>
+Simon Sapin <simon@exyr.org>
 startling <tdixon51793@gmail.com>
 Stefan Plantikow <stefan.plantikow@googlemail.com>
 Steve Klabnik <steve@steveklabnik.com>
