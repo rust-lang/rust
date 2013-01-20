@@ -106,7 +106,7 @@ fn verify(root: &Path, data: &Path, sig: &Path) -> bool {
     let path = root.push("gpg");
     let res = gpgv(~[~"--homedir", path.to_str(),
                   ~"--keyring", ~"pubring.gpg",
-                  ~"--verify",
+                  ~"--verbose",
                  sig.to_str(), data.to_str()]);
     if res.status != 0 {
         return false;
