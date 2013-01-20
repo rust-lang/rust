@@ -139,169 +139,101 @@ pub mod win32 {
     }
 }
 
-pub fn getenv(n: &str) -> Option<~str> {
-    global_env::getenv(n)
-}
+/*
+Accessing environment variables is not generally threadsafe.
+This uses a per-runtime lock to serialize access.
+XXX: It would probably be appropriate to make this a real global
+*/
+fn with_env_lock<T>(f: &fn() -> T) -> T {
+    use private::global::global_data_clone_create;
+    use private::{Exclusive, exclusive};
 
-pub fn setenv(n: &str, v: &str) {
-    global_env::setenv(n, v)
+    struct SharedValue(());
+    type ValueMutex = Exclusive<SharedValue>;
+    fn key(_: ValueMutex) { }
+
+    unsafe {
+        let lock: ValueMutex = global_data_clone_create(key, || {
+            ~exclusive(SharedValue(()))
+        });
+
+        lock.with_imm(|_| f() )
+    }
 }
 
 pub fn env() -> ~[(~str,~str)] {
-    global_env::env()
+    extern mod rustrt {
+        unsafe fn rust_env_pairs() -> ~[~str];
+    }
+
+    unsafe {
+        do with_env_lock {
+            let mut pairs = ~[];
+            for vec::each(rustrt::rust_env_pairs()) |p| {
+                let vs = str::splitn_char(*p, '=', 1u);
+                assert vec::len(vs) == 2u;
+                pairs.push((copy vs[0], copy vs[1]));
+            }
+            move pairs
+        }
+    }
 }
 
-mod global_env {
-    //! Internal module for serializing access to getenv/setenv
-    use either;
-    use libc;
-    use oldcomm;
-    use option::Option;
-    use private;
-    use str;
-    use task;
-
-    extern mod rustrt {
-        unsafe fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
-    }
-
-    enum Msg {
-        MsgGetEnv(~str, oldcomm::Chan<Option<~str>>),
-        MsgSetEnv(~str, ~str, oldcomm::Chan<()>),
-        MsgEnv(oldcomm::Chan<~[(~str,~str)]>)
-    }
-
-    pub fn getenv(n: &str) -> Option<~str> {
-        let env_ch = get_global_env_chan();
-        let po = oldcomm::Port();
-        oldcomm::send(env_ch, MsgGetEnv(str::from_slice(n),
-                                        oldcomm::Chan(&po)));
-        oldcomm::recv(po)
-    }
-
-    pub fn setenv(n: &str, v: &str) {
-        let env_ch = get_global_env_chan();
-        let po = oldcomm::Port();
-        oldcomm::send(env_ch, MsgSetEnv(str::from_slice(n),
-                                        str::from_slice(v),
-                                        oldcomm::Chan(&po)));
-        oldcomm::recv(po)
-    }
-
-    pub fn env() -> ~[(~str,~str)] {
-        let env_ch = get_global_env_chan();
-        let po = oldcomm::Port();
-        oldcomm::send(env_ch, MsgEnv(oldcomm::Chan(&po)));
-        oldcomm::recv(po)
-    }
-
-    fn get_global_env_chan() -> oldcomm::Chan<Msg> {
-        unsafe {
-            let global_ptr = rustrt::rust_global_env_chan_ptr();
-            private::chan_from_global_ptr(global_ptr, || {
-                // FIXME (#2621): This would be a good place to use a very
-                // small foreign stack
-                task::task().sched_mode(task::SingleThreaded).unlinked()
-            }, global_env_task)
+#[cfg(unix)]
+pub fn getenv(n: &str) -> Option<~str> {
+    unsafe {
+        do with_env_lock {
+            let s = str::as_c_str(n, |s| libc::getenv(s));
+            if ptr::null::<u8>() == cast::reinterpret_cast(&s) {
+                option::None::<~str>
+            } else {
+                let s = cast::reinterpret_cast(&s);
+                option::Some::<~str>(str::raw::from_buf(s))
+            }
         }
     }
+}
 
-    fn global_env_task(msg_po: oldcomm::Port<Msg>) {
-        unsafe {
-            do private::weaken_task |weak_po| {
-                loop {
-                    match oldcomm::select2(msg_po, weak_po) {
-                      either::Left(MsgGetEnv(ref n, resp_ch)) => {
-                        oldcomm::send(resp_ch, impl_::getenv(*n))
-                      }
-                      either::Left(MsgSetEnv(ref n, ref v, resp_ch)) => {
-                        oldcomm::send(resp_ch, impl_::setenv(*n, *v))
-                      }
-                      either::Left(MsgEnv(resp_ch)) => {
-                        oldcomm::send(resp_ch, impl_::env())
-                      }
-                      either::Right(_) => break
-                    }
+#[cfg(windows)]
+pub fn getenv(n: &str) -> Option<~str> {
+    unsafe {
+        do with_env_lock {
+            use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
+            do as_utf16_p(n) |u| {
+                do fill_utf16_buf_and_decode() |buf, sz| {
+                    libc::GetEnvironmentVariableW(u, buf, sz)
                 }
             }
         }
     }
+}
 
-    mod impl_ {
-        use cast;
-        use libc;
-        use option::Option;
-        use option;
-        use ptr;
-        use str;
-        use vec;
 
-        extern mod rustrt {
-            unsafe fn rust_env_pairs() -> ~[~str];
-        }
-
-        pub fn env() -> ~[(~str,~str)] {
-            unsafe {
-                let mut pairs = ~[];
-                for vec::each(rustrt::rust_env_pairs()) |p| {
-                    let vs = str::splitn_char(*p, '=', 1u);
-                    assert vec::len(vs) == 2u;
-                    pairs.push((copy vs[0], copy vs[1]));
-                }
-                move pairs
-            }
-        }
-
-        #[cfg(unix)]
-        pub fn getenv(n: &str) -> Option<~str> {
-            unsafe {
-                let s = str::as_c_str(n, |s| libc::getenv(s));
-                return if ptr::null::<u8>() == cast::reinterpret_cast(&s) {
-                    option::None::<~str>
-                } else {
-                    let s = cast::reinterpret_cast(&s);
-                    option::Some::<~str>(str::raw::from_buf(s))
-                };
-            }
-        }
-
-        #[cfg(windows)]
-        pub fn getenv(n: &str) -> Option<~str> {
-            unsafe {
-                use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
-                do as_utf16_p(n) |u| {
-                    do fill_utf16_buf_and_decode() |buf, sz| {
-                        libc::GetEnvironmentVariableW(u, buf, sz)
-                    }
+#[cfg(unix)]
+pub fn setenv(n: &str, v: &str) {
+    unsafe {
+        do with_env_lock {
+            do str::as_c_str(n) |nbuf| {
+                do str::as_c_str(v) |vbuf| {
+                    libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
                 }
             }
         }
+    }
+}
 
 
-        #[cfg(unix)]
-        pub fn setenv(n: &str, v: &str) {
-            unsafe {
-                do str::as_c_str(n) |nbuf| {
-                    do str::as_c_str(v) |vbuf| {
-                        libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1);
-                    }
+#[cfg(windows)]
+pub fn setenv(n: &str, v: &str) {
+    unsafe {
+        do with_env_lock {
+            use os::win32::as_utf16_p;
+            do as_utf16_p(n) |nbuf| {
+                do as_utf16_p(v) |vbuf| {
+                    libc::SetEnvironmentVariableW(nbuf, vbuf);
                 }
             }
         }
-
-
-        #[cfg(windows)]
-        pub fn setenv(n: &str, v: &str) {
-            unsafe {
-                use os::win32::as_utf16_p;
-                do as_utf16_p(n) |nbuf| {
-                    do as_utf16_p(v) |vbuf| {
-                        libc::SetEnvironmentVariableW(nbuf, vbuf);
-                    }
-                }
-            }
-        }
-
     }
 }
 

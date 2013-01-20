@@ -35,7 +35,6 @@ rust_kernel::rust_kernel(rust_env *env) :
     osmain_driver(NULL),
     non_weak_tasks(0),
     global_loop_chan(0),
-    global_env_chan(0),
     at_exit_runner(NULL),
     at_exit_started(false),
     env(env),
