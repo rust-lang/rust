@@ -19,16 +19,16 @@ use uv_iotask::{IoTask, spawn_iotask};
 
 use core::either::{Left, Right};
 use core::libc;
-use core::oldcomm::{Port, Chan, select2, listen};
-use core::private::{chan_from_global_ptr, weaken_task};
+use core::pipes::{Port, Chan, SharedChan, select2i};
+use core::private::global::{global_data_clone_create,
+                            global_data_clone};
+use core::private::weak_task::weaken_task;
 use core::str;
-use core::task::TaskBuilder;
+use core::task::{task, SingleThreaded, spawn};
 use core::task;
 use core::vec;
-
-extern mod rustrt {
-    unsafe fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
-}
+use core::clone::Clone;
+use core::option::{Some, None};
 
 /**
  * Race-free helper to get access to a global task where a libuv
@@ -49,64 +49,58 @@ pub fn get() -> IoTask {
 #[doc(hidden)]
 fn get_monitor_task_gl() -> IoTask unsafe {
 
-    let monitor_loop_chan_ptr = rustrt::rust_uv_get_kernel_global_chan_ptr();
-
-    debug!("ENTERING global_loop::get() loop chan: %?",
-           monitor_loop_chan_ptr);
-
-    debug!("before priv::chan_from_global_ptr");
     type MonChan = Chan<IoTask>;
 
-    let monitor_ch =
-        do chan_from_global_ptr::<MonChan>(monitor_loop_chan_ptr,
-                                           || {
-                                                task::task().sched_mode
-                                                (task::SingleThreaded)
-                                                .unlinked()
-                                           }) |msg_po| unsafe {
-        debug!("global monitor task starting");
+    struct GlobalIoTask(IoTask);
 
-        // As a weak task the runtime will notify us when to exit
-        do weaken_task() |weak_exit_po| {
-            debug!("global monitor task is now weak");
-            let hl_loop = spawn_loop();
-            loop {
-                debug!("in outer_loop...");
-                match select2(weak_exit_po, msg_po) {
-                  Left(weak_exit) => {
-                    // all normal tasks have ended, tell the
-                    // libuv loop to tear_down, then exit
-                    debug!("weak_exit_po recv'd msg: %?", weak_exit);
-                    iotask::exit(hl_loop);
-                    break;
-                  }
-                  Right(fetch_ch) => {
-                    debug!("hl_loop req recv'd: %?", fetch_ch);
-                    fetch_ch.send(hl_loop);
-                  }
+    impl GlobalIoTask: Clone {
+        fn clone(&self) -> GlobalIoTask {
+            GlobalIoTask((**self).clone())
+        }
+    }
+
+    fn key(_: GlobalIoTask) { }
+
+    match global_data_clone(key) {
+        Some(GlobalIoTask(iotask)) => iotask,
+        None => {
+            let iotask: IoTask = spawn_loop();
+            let mut installed = false;
+            let final_iotask = do global_data_clone_create(key) {
+                installed = true;
+                ~GlobalIoTask(iotask.clone())
+            };
+            if installed {
+                do task().unlinked().spawn() unsafe {
+                    debug!("global monitor task starting");
+                    // As a weak task the runtime will notify us when to exit
+                    do weaken_task |weak_exit_po| {
+                        debug!("global monitor task is now weak");
+                        weak_exit_po.recv();
+                        iotask::exit(&iotask);
+                        debug!("global monitor task is leaving weakend state");
+                    };
+                    debug!("global monitor task exiting");
                 }
+            } else {
+                iotask::exit(&iotask);
             }
-            debug!("global monitor task is leaving weakend state");
-        };
-        debug!("global monitor task exiting");
-    };
 
-    // once we have a chan to the monitor loop, we ask it for
-    // the libuv loop's async handle
-    do listen |fetch_ch| {
-        monitor_ch.send(fetch_ch);
-        fetch_ch.recv()
+            match final_iotask {
+                GlobalIoTask(iotask) => iotask
+            }
+        }
     }
 }
 
 fn spawn_loop() -> IoTask {
-    let builder = do task::task().add_wrapper |task_body| {
+    let builder = do task().add_wrapper |task_body| {
         fn~(move task_body) {
             // The I/O loop task also needs to be weak so it doesn't keep
             // the runtime alive
             unsafe {
-                do weaken_task |weak_exit_po| {
-                    debug!("global libuv task is now weak %?", weak_exit_po);
+                do weaken_task |_| {
+                    debug!("global libuv task is now weak");
                     task_body();
 
                     // We don't wait for the exit message on weak_exit_po
@@ -118,6 +112,7 @@ fn spawn_loop() -> IoTask {
             }
         }
     };
+    let builder = builder.unlinked();
     spawn_iotask(move builder)
 }
 
@@ -147,7 +142,7 @@ mod test {
                              _status: libc::c_int) unsafe {
         log(debug, ~"in simple timer cb");
         ll::timer_stop(timer_ptr);
-        let hl_loop = get_gl();
+        let hl_loop = &get_gl();
         do iotask::interact(hl_loop) |_loop_ptr| unsafe {
             log(debug, ~"closing timer");
             ll::close(timer_ptr, simple_timer_close_cb);
@@ -157,7 +152,7 @@ mod test {
         log(debug, ~"exiting simple timer cb");
     }
 
-    fn impl_uv_hl_simple_timer(iotask: IoTask) unsafe {
+    fn impl_uv_hl_simple_timer(iotask: &IoTask) unsafe {
         let exit_po = oldcomm::Port::<bool>();
         let exit_ch = oldcomm::Chan(&exit_po);
         let exit_ch_ptr = ptr::addr_of(&exit_ch);
@@ -190,10 +185,11 @@ mod test {
 
     #[test]
     fn test_gl_uv_global_loop_high_level_global_timer() unsafe {
-        let hl_loop = get_gl();
+        let hl_loop = &get_gl();
         let exit_po = oldcomm::Port::<()>();
         let exit_ch = oldcomm::Chan(&exit_po);
         task::spawn_sched(task::ManualThreads(1u), || {
+            let hl_loop = &get_gl();
             impl_uv_hl_simple_timer(hl_loop);
             oldcomm::send(exit_ch, ());
         });
@@ -206,12 +202,12 @@ mod test {
     #[test]
     #[ignore]
     fn test_stress_gl_uv_global_loop_high_level_global_timer() unsafe {
-        let hl_loop = get_gl();
         let exit_po = oldcomm::Port::<()>();
         let exit_ch = oldcomm::Chan(&exit_po);
         let cycles = 5000u;
         for iter::repeat(cycles) {
             task::spawn_sched(task::ManualThreads(1u), || {
+                let hl_loop = &get_gl();
                 impl_uv_hl_simple_timer(hl_loop);
                 oldcomm::send(exit_ch, ());
             });

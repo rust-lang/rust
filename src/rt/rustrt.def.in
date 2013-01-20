@@ -158,7 +158,6 @@ rust_uv_get_data_for_req
 rust_uv_set_data_for_req
 rust_uv_get_base_from_buf
 rust_uv_get_len_from_buf
-rust_uv_get_kernel_global_chan_ptr
 rust_uv_current_kernel_malloc
 rust_uv_current_kernel_free
 rust_uv_getaddrinfo

@@ -114,6 +114,21 @@ unsafe fn global_data_modify_<T: Owned>(
     }
 }
 
+pub unsafe fn global_data_clone<T: Owned Clone>(
+    key: GlobalDataKey<T>) -> Option<T> {
+    let mut maybe_clone: Option<T> = None;
+    do global_data_modify(key) |current| {
+        match &current {
+            &Some(~ref value) => {
+                maybe_clone = Some(value.clone());
+            }
+            &None => ()
+        }
+        current
+    }
+    return maybe_clone;
+}
+
 // GlobalState is a map from keys to unique pointers and a
 // destructor. Keys are pointers derived from the type of the
 // global value.  There is a single GlobalState instance per runtime.

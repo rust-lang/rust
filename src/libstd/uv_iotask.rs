@@ -20,7 +20,7 @@ use ll = uv_ll;
 
 use core::libc::c_void;
 use core::libc;
-use core::oldcomm::{Port, Chan, listen};
+use core::pipes::{stream, Port, Chan, SharedChan};
 use core::prelude::*;
 use core::ptr::addr_of;
 use core::task::TaskBuilder;
@@ -30,22 +30,30 @@ use core::task;
 pub enum IoTask {
     IoTask_({
         async_handle: *ll::uv_async_t,
-        op_chan: Chan<IoTaskMsg>
+        op_chan: SharedChan<IoTaskMsg>
     })
+}
+
+impl IoTask: Clone {
+    fn clone(&self) -> IoTask {
+        IoTask_({
+            async_handle: self.async_handle,
+            op_chan: self.op_chan.clone()
+        })
+    }
 }
 
 pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
 
-    do listen |iotask_ch| {
+    let (iotask_port, iotask_chan) = stream();
 
-        do task.sched_mode(task::SingleThreaded).spawn {
-            debug!("entering libuv task");
-            run_loop(iotask_ch);
-            debug!("libuv task exiting");
-        };
+    do task.sched_mode(task::SingleThreaded).spawn {
+        debug!("entering libuv task");
+        run_loop(&iotask_chan);
+        debug!("libuv task exiting");
+    };
 
-        iotask_ch.recv()
-    }
+    iotask_port.recv()
 }
 
 
@@ -71,7 +79,7 @@ pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
  * module. It is not safe to send the `loop_ptr` param to this callback out
  * via ports/chans.
  */
-pub unsafe fn interact(iotask: IoTask,
+pub unsafe fn interact(iotask: &IoTask,
                    cb: fn~(*c_void)) {
     send_msg(iotask, Interaction(move cb));
 }
@@ -83,7 +91,7 @@ pub unsafe fn interact(iotask: IoTask,
  * async handle and do a sanity check to make sure that all other handles are
  * closed, causing a failure otherwise.
  */
-pub fn exit(iotask: IoTask) unsafe {
+pub fn exit(iotask: &IoTask) unsafe {
     send_msg(iotask, TeardownLoop);
 }
 
@@ -96,8 +104,9 @@ enum IoTaskMsg {
 }
 
 /// Run the loop and begin handling messages
-fn run_loop(iotask_ch: Chan<IoTask>) unsafe {
+fn run_loop(iotask_ch: &Chan<IoTask>) unsafe {
 
+    debug!("creating loop");
     let loop_ptr = ll::loop_new();
 
     // set up the special async handle we'll use to allow multi-task
@@ -108,10 +117,12 @@ fn run_loop(iotask_ch: Chan<IoTask>) unsafe {
     // associate the async handle with the loop
     ll::async_init(loop_ptr, async_handle, wake_up_cb);
 
+    let (msg_po, msg_ch) = stream::<IoTaskMsg>();
+
     // initialize our loop data and store it in the loop
     let data: IoTaskLoopData = {
         async_handle: async_handle,
-        msg_po: Port()
+        msg_po: msg_po
     };
     ll::set_data_for_uv_handle(async_handle, addr_of(&data));
 
@@ -119,7 +130,7 @@ fn run_loop(iotask_ch: Chan<IoTask>) unsafe {
     // while we dwell in the I/O loop
     let iotask = IoTask_({
         async_handle: async_handle,
-        op_chan: data.msg_po.chan()
+        op_chan: SharedChan(msg_ch)
     });
     iotask_ch.send(iotask);
 
@@ -136,7 +147,7 @@ type IoTaskLoopData = {
     msg_po: Port<IoTaskMsg>
 };
 
-fn send_msg(iotask: IoTask,
+fn send_msg(iotask: &IoTask,
             msg: IoTaskMsg) unsafe {
     iotask.op_chan.send(move msg);
     ll::async_send(iotask.async_handle);
@@ -151,7 +162,7 @@ extern fn wake_up_cb(async_handle: *ll::uv_async_t,
 
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
     let data = ll::get_data_for_uv_handle(async_handle) as *IoTaskLoopData;
-    let msg_po = (*data).msg_po;
+    let msg_po = &(*data).msg_po;
 
     while msg_po.peek() {
         match msg_po.recv() {
@@ -203,34 +214,37 @@ mod test {
         iotask: IoTask,
         exit_ch: oldcomm::Chan<()>
     };
-    fn impl_uv_iotask_async(iotask: IoTask) unsafe {
+    fn impl_uv_iotask_async(iotask: &IoTask) unsafe {
         let async_handle = ll::async_t();
         let ah_ptr = ptr::addr_of(&async_handle);
         let exit_po = oldcomm::Port::<()>();
         let exit_ch = oldcomm::Chan(&exit_po);
         let ah_data = {
-            iotask: iotask,
+            iotask: iotask.clone(),
             exit_ch: exit_ch
         };
-        let ah_data_ptr = ptr::addr_of(&ah_data);
+        let ah_data_ptr: *AhData = ptr::to_unsafe_ptr(&ah_data);
+        debug!("about to interact");
         do interact(iotask) |loop_ptr| unsafe {
+            debug!("interacting");
             ll::async_init(loop_ptr, ah_ptr, async_handle_cb);
             ll::set_data_for_uv_handle(ah_ptr, ah_data_ptr as *libc::c_void);
             ll::async_send(ah_ptr);
         };
+        debug!("waiting for async close");
         oldcomm::recv(exit_po);
     }
 
     // this fn documents the bear minimum neccesary to roll your own
     // high_level_loop
     unsafe fn spawn_test_loop(exit_ch: oldcomm::Chan<()>) -> IoTask {
-        let iotask_port = oldcomm::Port::<IoTask>();
-        let iotask_ch = oldcomm::Chan(&iotask_port);
+        let (iotask_port, iotask_ch) = stream::<IoTask>();
         do task::spawn_sched(task::ManualThreads(1u)) {
-            run_loop(iotask_ch);
+            debug!("about to run a test loop");
+            run_loop(&iotask_ch);
             exit_ch.send(());
         };
-        return oldcomm::recv(iotask_port);
+        return iotask_port.recv();
     }
 
     extern fn lifetime_handle_close(handle: *libc::c_void) unsafe {
@@ -247,7 +261,9 @@ mod test {
     fn test_uv_iotask_async() unsafe {
         let exit_po = oldcomm::Port::<()>();
         let exit_ch = oldcomm::Chan(&exit_po);
-        let iotask = spawn_test_loop(exit_ch);
+        let iotask = &spawn_test_loop(exit_ch);
+
+        debug!("spawned iotask");
 
         // using this handle to manage the lifetime of the high_level_loop,
         // as it will exit the first time one of the impl_uv_hl_async() is
@@ -258,12 +274,16 @@ mod test {
         let work_exit_po = oldcomm::Port::<()>();
         let work_exit_ch = oldcomm::Chan(&work_exit_po);
         for iter::repeat(7u) {
+            let iotask_clone = iotask.clone();
             do task::spawn_sched(task::ManualThreads(1u)) {
-                impl_uv_iotask_async(iotask);
+                debug!("async");
+                impl_uv_iotask_async(&iotask_clone);
+                debug!("done async");
                 oldcomm::send(work_exit_ch, ());
             };
         };
         for iter::repeat(7u) {
+            debug!("waiting");
             oldcomm::recv(work_exit_po);
         };
         log(debug, ~"sending teardown_loop msg..");
