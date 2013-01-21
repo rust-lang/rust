@@ -23,30 +23,10 @@ use hash::Hash;
 use prelude::*;
 use to_bytes::IterBytes;
 
-pub trait SendMap<K:Eq Hash, V: Copy> {
-    // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy
-
-    fn insert(&mut self, k: K, +v: V) -> bool;
-    fn remove(&mut self, k: &K) -> bool;
-    fn pop(&mut self, k: &K) -> Option<V>;
-    fn swap(&mut self, k: K, +v: V) -> Option<V>;
-    fn consume(&mut self, f: fn(K, V));
-    pure fn len(&const self) -> uint;
-    pure fn is_empty(&const self) -> bool;
-    pure fn contains_key(&const self, k: &K) -> bool;
-    pure fn each(&self, blk: fn(k: &K, v: &V) -> bool);
-    pure fn each_key_ref(&self, blk: fn(k: &K) -> bool);
-    pure fn each_value_ref(&self, blk: fn(v: &V) -> bool);
-    pure fn find(&const self, k: &K) -> Option<V>;
-    pure fn get(&const self, k: &K) -> V;
-    pure fn find_ref(&self, k: &K) -> Option<&self/V>;
-    pure fn get_ref(&self, k: &K) -> &self/V;
-}
-
 /// Open addressing with linear probing.
 pub mod linear {
     use iter::BaseIter;
-    use container::{Mutable, Set};
+    use container::{Mutable, Map, Set};
     use cmp::Eq;
     use cmp;
     use hash::Hash;
@@ -287,7 +267,34 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
+    impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Map<K, V> {
+        pure fn contains_key(&self, k: &K) -> bool {
+            match self.bucket_for_key(self.buckets, k) {
+                FoundEntry(_) => {true}
+                TableFull | FoundHole(_) => {false}
+            }
+        }
+
+        pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
+            for vec::each(self.buckets) |slot| {
+                let mut broke = false;
+                do slot.iter |bucket| {
+                    if !blk(&bucket.key, &bucket.value) {
+                        broke = true; // FIXME(#3064) just write "break;"
+                    }
+                }
+                if broke { break; }
+            }
+        }
+
+        pure fn each_key(&self, blk: fn(k: &K) -> bool) {
+            self.each(|k, _v| blk(k))
+        }
+
+        pure fn each_value(&self, blk: fn(v: &V) -> bool) {
+            self.each(|_k, v| blk(v))
+        }
+
         fn insert(&mut self, k: K, v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
@@ -309,7 +316,9 @@ pub mod linear {
                 None => false,
             }
         }
+    }
 
+    impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
         fn pop(&mut self, k: &K) -> Option<V> {
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             self.pop_internal(hash, k)
@@ -363,14 +372,6 @@ pub mod linear {
             self.len() == 0
         }
 
-        pure fn contains_key(&const self,
-                        k: &K) -> bool {
-            match self.bucket_for_key(self.buckets, k) {
-                FoundEntry(_) => {true}
-                TableFull | FoundHole(_) => {false}
-            }
-        }
-
         pure fn find_ref(&self, k: &K) -> Option<&self/V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
@@ -396,26 +397,6 @@ pub mod linear {
                 Some(v) => v,
                 None => fail fmt!("No entry found for key: %?", k),
             }
-        }
-
-        pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
-            for vec::each(self.buckets) |slot| {
-                let mut broke = false;
-                do slot.iter |bucket| {
-                    if !blk(&bucket.key, &bucket.value) {
-                        broke = true; // FIXME(#3064) just write "break;"
-                    }
-                }
-                if broke { break; }
-            }
-        }
-
-        pure fn each_key(&self, blk: fn(k: &K) -> bool) {
-            self.each(|k, _v| blk(k))
-        }
-
-        pure fn each_value(&self, blk: fn(v: &V) -> bool) {
-            self.each(|_k, v| blk(v))
         }
     }
 
