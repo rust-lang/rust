@@ -10,9 +10,35 @@
 
 //! Container traits
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 pub trait Mutable {
     /// Clear the container, removing all values.
     fn clear(&mut self);
+}
+
+pub trait Map<K, V>: Mutable {
+    /// Return true if the map contains a value for the specified key
+    pure fn contains_key(&self, key: &K) -> bool;
+
+    /// Visit all key-value pairs
+    pure fn each(&self, f: fn(&K, &V) -> bool);
+
+    /// Visit all keys
+    pure fn each_key(&self, f: fn(&K) -> bool);
+
+    /// Visit all values
+    pure fn each_value(&self, f: fn(&V) -> bool);
+
+    /// Insert a key-value pair into the map. An existing value for a
+    /// key is replaced by the new value. Return true if the key did
+    /// not already exist in the map.
+    fn insert(&mut self, key: K, value: V) -> bool;
+
+    /// Remove a key-value pair from the map. Return true if the key
+    /// was present in the map, otherwise false.
+    fn remove(&mut self, key: &K) -> bool;
 }
 
 pub trait Set<T>: Mutable {
