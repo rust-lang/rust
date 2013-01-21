@@ -594,16 +594,16 @@ and may optionally begin with any number of `attributes` that apply to the conta
 Atributes on the anonymous crate module define important metadata that influences
 the behavior of the compiler.
 
-~~~~~~~~{.xfail-test}
+~~~~~~~~
 // Linkage attributes
-#[ link(name = "projx"
+#[ link(name = "projx",
         vers = "2.5",
         uuid = "9cccc5d5-aceb-4af5-8285-811211826b82") ];
 
 // Additional metadata attributes
-#[ desc = "Project X",
-   license = "BSD" ];
-   author = "Jane Doe" ];
+#[ desc = "Project X" ];
+#[ license = "BSD" ];
+#[ author = "Jane Doe" ];
 
 // Specify the output type
 #[ crate_type = "lib" ];
