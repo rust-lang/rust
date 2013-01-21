@@ -2393,7 +2393,7 @@ override the name used to search for the crate.
 
 Our example crate declared this set of `link` attributes:
 
-~~~~ {.xfail-test}
+~~~~
 #[link(name = "farm", vers = "2.5", author = "mjh")];
 ~~~~
 

@@ -2,11 +2,11 @@
 
 # Script for extracting compilable fragments from markdown
 # documentation. See prep.js for a description of the format
-# recognized by this tool. Expects a directory fragements/ to exist
+# recognized by this tool. Expects a directory fragments/ to exist
 # under the current directory, and writes the fragments in there as
 # individual .rs files.
 
-import sys, re;
+import sys, re
 
 if len(sys.argv) < 3:
     print("Please provide an input filename")
@@ -26,7 +26,7 @@ chapter_n = 0
 while cur < len(lines):
     line = lines[cur]
     cur += 1
-    chap = re.match("# (.*)", line);
+    chap = re.match("# (.*)", line)
     if chap:
         chapter = re.sub(r"\W", "_", chap.group(1)).lower()
         chapter_n = 1
@@ -51,14 +51,30 @@ while cur < len(lines):
             else:
                 # Lines beginning with '# ' are turned into valid code
                 line = re.sub("^# ", "", line)
-                # Allow elipses in code snippets
+                # Allow ellipses in code snippets
                 line = re.sub("\.\.\.", "", line)
                 block += line
         if not ignore:
             if not re.search(r"\bfn main\b", block):
                 block = "fn main() {\n" + block + "\n}\n"
             if not re.search(r"\bextern mod std\b", block):
-                block = "extern mod std;\n" + block;
+                block = "extern mod std;\n" + block
+            block = """#[ forbid(ctypes) ];
+#[ forbid(deprecated_mode) ];
+#[ forbid(deprecated_pattern) ];
+#[ forbid(implicit_copies) ];
+#[ forbid(non_implicitly_copyable_typarams) ];
+#[ forbid(path_statement) ];
+#[ forbid(type_limits) ];
+#[ forbid(unrecognized_lint) ];
+#[ forbid(unused_imports) ];
+#[ forbid(vecs_implicitly_copyable) ];
+#[ forbid(while_true) ];
+
+#[ warn(deprecated_self) ];
+#[ warn(non_camel_case_types) ];
+#[ warn(structural_records) ];\n
+""" + block
             if xfail:
                 block = "// xfail-test\n" + block
             filename = (dest + "/" + str(chapter)
