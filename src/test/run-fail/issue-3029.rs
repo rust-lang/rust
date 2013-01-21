@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-fn fail_then_concat() {
+// error-pattern:so long
+fn main() {
     let x = ~[], y = ~[3];
-    fail;
+    fail ~"so long";
     x += y;
     ~"good" + ~"bye";
 }
-
