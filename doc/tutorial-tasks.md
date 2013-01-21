@@ -220,7 +220,7 @@ let result = port.recv();
 The `Port` and `Chan` pair created by `stream` enables efficient communication
 between a single sender and a single receiver, but multiple senders cannot use
 a single `Chan`, and multiple receivers cannot use a single `Port`.  What if our
-example needed to computer multiple results across a number of tasks? The
+example needed to compute multiple results across a number of tasks? The
 following program is ill-typed:
 
 ~~~ {.xfail-test}
