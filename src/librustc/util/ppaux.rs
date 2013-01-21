@@ -85,6 +85,10 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
           Some(ast_map::node_stmt(stmt)) => {
               explain_span(cx, "statement", stmt.span)
           }
+          Some(ast_map::node_item(it, _)) if (match it.node {
+                ast::item_fn(*) => true, _ => false}) => {
+              explain_span(cx, "function body", it.span)
+          }
           Some(_) | None => {
             // this really should not happen
             (fmt!("unknown scope: %d.  Please report a bug.", node_id),
