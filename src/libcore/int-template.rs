@@ -45,6 +45,27 @@ pub pure fn sub(x: T, y: T) -> T { x - y }
 pub pure fn mul(x: T, y: T) -> T { x * y }
 #[inline(always)]
 pub pure fn div(x: T, y: T) -> T { x / y }
+
+/**
+ * Returns the remainder of y / x.
+ *
+ * # Examples
+ * ~~~
+ * assert int::rem(5 / 2) == 1;
+ * ~~~
+ *
+ * When faced with negative numbers, the result copies the sign of the
+ * dividend.
+ *
+ * ~~~
+ * assert int::rem(2 / -3) ==  2;
+ * ~~~
+ *
+ * ~~~
+ * assert int::rem(-2 / 3) ==  -2;
+ * ~~~
+ *
+ */
 #[inline(always)]
 pub pure fn rem(x: T, y: T) -> T { x % y }
 
@@ -70,8 +91,24 @@ pub pure fn is_nonpositive(x: T) -> bool { x <= 0 as T }
 #[inline(always)]
 pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
+/**
+ * Iterate over the range [`lo`..`hi`)
+ *
+ * # Arguments
+ *
+ * * `lo` - lower bound, inclusive
+ * * `hi` - higher bound, exclusive
+ *
+ * # Examples
+ * ~~~
+ * let mut sum = 0;
+ * for int::range(1, 5) |i| {
+ *     sum += i;
+ * }
+ * assert sum == 10;
+ * ~~~
+ */
 #[inline(always)]
-/// Iterate over the range [`lo`..`hi`)
 pub pure fn range(lo: T, hi: T, it: fn(T) -> bool) {
     let mut i = lo;
     while i < hi {

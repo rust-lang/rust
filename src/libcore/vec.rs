@@ -922,7 +922,23 @@ pub pure fn connect<T: Copy>(v: &[~[T]], sep: &T) -> ~[T] {
     r
 }
 
-/// Reduce a vector from left to right
+/**
+ * Reduces a vector from left to right.
+ *
+ * # Arguments
+ * * `z` - initial accumulator value
+ * * `v` - vector to iterate over
+ * * `p` - a closure to do operate on vector elements
+ *
+ * # Examples
+ *
+ * Sum all values in the vector [1, 2, 3]:
+ *
+ * ~~~
+ * vec::foldl(0, [1, 2, 3], |a, b| a + *b);
+ * ~~~
+ *
+ */
 pub pure fn foldl<T, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
     let mut accum = z;
     let mut i = 0;
@@ -936,7 +952,25 @@ pub pure fn foldl<T, U>(z: T, v: &[U], p: fn(t: T, u: &U) -> T) -> T {
     return accum;
 }
 
-/// Reduce a vector from right to left
+/**
+ * Reduces a vector from right to left. Note that the argument order is
+ * reversed compared to `foldl` to reflect the order they are provided to
+ * the closure.
+ *
+ * # Arguments
+ * * `v` - vector to iterate over
+ * * `z` - initial accumulator value
+ * * `p` - a closure to do operate on vector elements
+ *
+ * # Examples
+ *
+ * Sum all values in the vector [1, 2, 3]:
+ *
+ * ~~~
+ * vec::foldr([1, 2, 3], 0, |a, b| a + *b);
+ * ~~~
+ *
+ */
 pub pure fn foldr<T, U: Copy>(v: &[T], z: U, p: fn(t: &T, u: U) -> U) -> U {
     let mut accum = z;
     for rev_each(v) |elt| {
