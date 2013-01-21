@@ -10,6 +10,7 @@
 
 //! A priority queue implemented with a binary heap
 
+use core::container::Mutable;
 use core::cmp::Ord;
 use core::prelude::*;
 use core::ptr::addr_of;
@@ -22,6 +23,11 @@ extern "C" mod rusti {
 
 pub struct PriorityQueue <T: Ord>{
     priv data: ~[T],
+}
+
+impl <T: Ord> PriorityQueue<T>: Mutable {
+    /// Drop all items from the queue
+    fn clear(&mut self) { self.data.truncate(0) }
 }
 
 impl <T: Ord> PriorityQueue<T> {
@@ -50,9 +56,6 @@ impl <T: Ord> PriorityQueue<T> {
     fn reserve_at_least(&mut self, n: uint) {
         vec::reserve_at_least(&mut self.data, n)
     }
-
-    /// Drop all items from the queue
-    fn clear(&mut self) { self.data.truncate(0) }
 
     /// Pop the greatest item from the queue - fails if empty
     fn pop(&mut self) -> T {

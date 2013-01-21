@@ -31,7 +31,6 @@ pub trait SendMap<K:Eq Hash, V: Copy> {
     fn pop(&mut self, k: &K) -> Option<V>;
     fn swap(&mut self, k: K, +v: V) -> Option<V>;
     fn consume(&mut self, f: fn(K, V));
-    fn clear(&mut self);
     pure fn len(&const self) -> uint;
     pure fn is_empty(&const self) -> bool;
     pure fn contains_key(&const self, k: &K) -> bool;
@@ -47,7 +46,7 @@ pub trait SendMap<K:Eq Hash, V: Copy> {
 /// Open addressing with linear probing.
 pub mod linear {
     use iter::BaseIter;
-    use container::Set;
+    use container::{Mutable, Set};
     use cmp::Eq;
     use cmp;
     use hash::Hash;
@@ -279,6 +278,15 @@ pub mod linear {
         }
     }
 
+    impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Mutable {
+        fn clear(&mut self) {
+            for uint::range(0, self.buckets.len()) |idx| {
+                self.buckets[idx] = None;
+            }
+            self.size = 0;
+        }
+    }
+
     impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
         fn insert(&mut self, k: K, v: V) -> bool {
             if self.size >= self.resize_at {
@@ -345,13 +353,6 @@ pub mod linear {
                     }
                 }
             }
-        }
-
-        fn clear(&mut self) {
-            for uint::range(0, self.buckets.len()) |idx| {
-                self.buckets[idx] = None;
-            }
-            self.size = 0;
         }
 
         pure fn len(&const self) -> uint {
@@ -480,6 +481,10 @@ pub mod linear {
         pure fn ne(&self, other: &LinearSet<T>) -> bool {
             self.map != other.map
         }
+    }
+
+    impl <T: Hash IterBytes Eq> LinearSet<T>: Mutable {
+        fn clear(&mut self) { self.map.clear() }
     }
 
     impl <T: Hash IterBytes Eq> LinearSet<T>: Set<T> {

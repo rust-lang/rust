@@ -10,7 +10,12 @@
 
 //! Container traits
 
-pub trait Set<T> {
+pub trait Mutable {
+    /// Clear the container, removing all values.
+    fn clear(&mut self);
+}
+
+pub trait Set<T>: Mutable {
     /// Return true if the set contains a value
     pure fn contains(&self, value: &T) -> bool;
 
