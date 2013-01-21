@@ -14,7 +14,7 @@
 
 #[forbid(deprecated_mode)];
 
-use core::container::Set;
+use core::container::{Mutable, Set};
 use core::cmp::{Eq, Ord};
 use core::option::{Option, Some, None};
 use core::prelude::*;
@@ -65,6 +65,14 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
         }
     }
     pure fn ne(&self, other: &TreeMap<K, V>) -> bool { !self.eq(other) }
+}
+
+impl <K: Ord, V> TreeMap<K, V>: Mutable {
+    /// Clear the map, removing all key-value pairs.
+    fn clear(&mut self) {
+        self.root = None;
+        self.length = 0
+    }
 }
 
 impl <K: Ord, V> TreeMap<K, V> {
@@ -194,6 +202,11 @@ impl <T: Ord> TreeSet<T>: iter::BaseIter<T> {
 impl <T: Eq Ord> TreeSet<T>: Eq {
     pure fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
+}
+
+impl <T: Ord> TreeSet<T>: Mutable {
+    /// Clear the set, removing all values.
+    fn clear(&mut self) { self.map.clear() }
 }
 
 impl <T: Ord> TreeSet<T>: Set<T> {
@@ -625,6 +638,20 @@ mod test_treemap {
     }
 
     #[test]
+    fn test_clear() {
+        let mut m = TreeMap::new();
+        m.clear();
+        assert m.insert(5, 11);
+        assert m.insert(12, -3);
+        assert m.insert(19, 2);
+        m.clear();
+        assert m.find(&5).is_none();
+        assert m.find(&12).is_none();
+        assert m.find(&19).is_none();
+        assert m.is_empty();
+    }
+
+    #[test]
     fn u8_map() {
         let mut m = TreeMap::new();
 
@@ -843,6 +870,20 @@ mod test_treemap {
 #[cfg(test)]
 mod test_set {
     use super::*;
+
+    #[test]
+    fn test_clear() {
+        let mut s = TreeSet::new();
+        s.clear();
+        assert s.insert(5);
+        assert s.insert(12);
+        assert s.insert(19);
+        s.clear();
+        assert !s.contains(&5);
+        assert !s.contains(&12);
+        assert !s.contains(&19);
+        assert s.is_empty();
+    }
 
     #[test]
     fn test_disjoint() {
