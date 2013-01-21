@@ -64,9 +64,7 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
             true
         }
     }
-    pure fn ne(&self, other: &TreeMap<K, V>) -> bool {
-        !self.eq(other)
-    }
+    pure fn ne(&self, other: &TreeMap<K, V>) -> bool { !self.eq(other) }
 }
 
 impl <K: Ord, V> TreeMap<K, V> {
