@@ -39,8 +39,6 @@ pub mod weak_task;
 
 extern mod rustrt {
     #[legacy_exports];
-    unsafe fn rust_task_weaken(ch: rust_port_id);
-    unsafe fn rust_task_unweaken(ch: rust_port_id);
 
     unsafe fn rust_create_little_lock() -> rust_little_lock;
     unsafe fn rust_destroy_little_lock(lock: rust_little_lock);
@@ -92,109 +90,9 @@ fn test_run_in_bare_thread() unsafe {
     }
 }
 
-#[allow(non_camel_case_types)] // runtime type
-type rust_port_id = uint;
-
 fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
     let old = rusti::atomic_cxchg(address, oldval, newval);
     old == oldval
-}
-
-/**
- * Convert the current task to a 'weak' task temporarily
- *
- * As a weak task it will not be counted towards the runtime's set
- * of live tasks. When there are no more outstanding live (non-weak) tasks
- * the runtime will send an exit message on the provided channel.
- *
- * This function is super-unsafe. Do not use.
- *
- * # Safety notes
- *
- * * Weak tasks must either die on their own or exit upon receipt of
- *   the exit message. Failure to do so will cause the runtime to never
- *   exit
- * * Tasks must not call `weaken_task` multiple times. This will
- *   break the kernel's accounting of live tasks.
- * * Weak tasks must not be supervised. A supervised task keeps
- *   a reference to its parent, so the parent will not die.
- */
-pub unsafe fn weaken_task(f: fn(oldcomm::Port<()>)) {
-    let po = oldcomm::Port();
-    let ch = oldcomm::Chan(&po);
-    unsafe {
-        rustrt::rust_task_weaken(cast::reinterpret_cast(&ch));
-    }
-    let _unweaken = Unweaken(ch);
-    f(po);
-
-    struct Unweaken {
-      ch: oldcomm::Chan<()>,
-      drop unsafe {
-        rustrt::rust_task_unweaken(cast::reinterpret_cast(&self.ch));
-      }
-    }
-
-    fn Unweaken(ch: oldcomm::Chan<()>) -> Unweaken {
-        Unweaken {
-            ch: ch
-        }
-    }
-}
-
-#[test]
-pub fn test_weaken_task_then_unweaken() {
-    do task::try {
-        unsafe {
-            do weaken_task |_po| {
-            }
-        }
-    };
-}
-
-#[test]
-pub fn test_weaken_task_wait() {
-    do task::spawn_unlinked {
-        unsafe {
-            do weaken_task |po| {
-                oldcomm::recv(po);
-            }
-        }
-    }
-}
-
-#[test]
-pub fn test_weaken_task_stress() {
-    // Create a bunch of weak tasks
-    for iter::repeat(100u) {
-        do task::spawn {
-            unsafe {
-                do weaken_task |_po| {
-                }
-            }
-        }
-        do task::spawn_unlinked {
-            unsafe {
-                do weaken_task |po| {
-                    // Wait for it to tell us to die
-                    oldcomm::recv(po);
-                }
-            }
-        }
-    }
-}
-
-#[test]
-#[ignore(cfg(windows))]
-pub fn test_weaken_task_fail() {
-    let res = do task::try {
-        unsafe {
-            do weaken_task |_po| {
-                fail;
-            }
-        }
-    };
-    assert result::is_err(&res);
 }
 
 /****************************************************************************

@@ -119,14 +119,9 @@ class rust_kernel {
 
     // An atomically updated count of the live, 'non-weak' tasks
     uintptr_t non_weak_tasks;
-    // Protects weak_task_chans
-    lock_and_signal weak_task_lock;
-    // A list of weak tasks that need to be told when to exit
-    std::vector<rust_port_id> weak_task_chans;
 
     rust_scheduler* get_scheduler_by_id_nolock(rust_sched_id id);
     void allow_scheduler_exit();
-    void end_weak_tasks();
     void begin_shutdown();
 
     lock_and_signal at_exit_lock;
@@ -180,8 +175,6 @@ public:
 
     void register_task();
     void unregister_task();
-    void weaken_task(rust_port_id chan);
-    void unweaken_task(rust_port_id chan);
     void inc_weak_task_count();
     void dec_weak_task_count();
 
