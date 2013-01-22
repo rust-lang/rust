@@ -2027,10 +2027,10 @@ pub mod raw {
         unboxed: UnboxedVecRepr
     }
 
-    pub type SliceRepr = {
+    pub struct SliceRepr {
         mut data: *u8,
         mut len: uint
-    };
+    }
 
     /**
      * Sets the length of a vector
