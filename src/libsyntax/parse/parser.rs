@@ -2531,6 +2531,10 @@ impl Parser {
                 } else {
                     break;
                 }
+
+                if self.eat(token::BINOP(token::PLUS)) {
+                    // Should be `break;` but that isn't backwards compatible.
+                }
             }
         }
         return @move bounds;

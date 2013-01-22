@@ -1791,8 +1791,15 @@ fn print_arg_mode(s: ps, m: ast::mode) {
 fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
     if bounds.is_not_empty() {
         word(s.s, ~":");
+        let mut first = true;
         for vec::each(*bounds) |&bound| {
             nbsp(s);
+            if first {
+                first = false;
+            } else {
+                word_space(s, ~"+");
+            }
+
             match bound {
                 TraitTyParamBound(ty) => print_type(s, ty),
                 RegionTyParamBound => word(s.s, ~"&static"),
