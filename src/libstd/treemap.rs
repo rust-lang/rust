@@ -14,7 +14,7 @@
 
 #[forbid(deprecated_mode)];
 
-use core::container::Set;
+use core::container::{Container, Mutable, Map, Set};
 use core::cmp::{Eq, Ord};
 use core::option::{Option, Some, None};
 use core::prelude::*;
@@ -64,23 +64,30 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
             true
         }
     }
-    pure fn ne(&self, other: &TreeMap<K, V>) -> bool {
-        !self.eq(other)
-    }
+    pure fn ne(&self, other: &TreeMap<K, V>) -> bool { !self.eq(other) }
 }
 
-impl <K: Ord, V> TreeMap<K, V> {
-    /// Create an empty TreeMap
-    static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
-
+impl <K: Ord, V> TreeMap<K, V>: Container {
     /// Return the number of elements in the map
     pure fn len(&self) -> uint { self.length }
 
     /// Return true if the map contains no elements
     pure fn is_empty(&self) -> bool { self.root.is_none() }
+}
 
-    /// Return true if the map contains some elements
-    pure fn is_not_empty(&self) -> bool { self.root.is_some() }
+impl <K: Ord, V> TreeMap<K, V>: Mutable {
+    /// Clear the map, removing all key-value pairs.
+    fn clear(&mut self) {
+        self.root = None;
+        self.length = 0
+    }
+}
+
+impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
+    /// Return true if the map contains a value for the specified key
+    pure fn contains_key(&self, key: &K) -> bool {
+        self.find(key).is_some()
+    }
 
     /// Visit all key-value pairs in order
     pure fn each(&self, f: fn(&K, &V) -> bool) { each(&self.root, f) }
@@ -90,6 +97,31 @@ impl <K: Ord, V> TreeMap<K, V> {
 
     /// Visit all values in order
     pure fn each_value(&self, f: fn(&V) -> bool) { self.each(|_, v| f(v)) }
+
+    /// Insert a key-value pair into the map. An existing value for a
+    /// key is replaced by the new value. Return true if the key did
+    /// not already exist in the map.
+    fn insert(&mut self, key: K, value: V) -> bool {
+        let ret = insert(&mut self.root, key, value);
+        if ret { self.length += 1 }
+        ret
+    }
+
+    /// Remove a key-value pair from the map. Return true if the key
+    /// was present in the map, otherwise false.
+    fn remove(&mut self, key: &K) -> bool {
+        let ret = remove(&mut self.root, key);
+        if ret { self.length -= 1 }
+        ret
+    }
+}
+
+impl <K: Ord, V> TreeMap<K, V> {
+    /// Create an empty TreeMap
+    static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
+
+    /// Return true if the map contains some elements
+    pure fn is_not_empty(&self) -> bool { self.root.is_some() }
 
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, f: fn(&K, &V) -> bool) {
@@ -104,11 +136,6 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Visit all values in reverse order
     pure fn each_value_reverse(&self, f: fn(&V) -> bool) {
         self.each_reverse(|_, v| f(v))
-    }
-
-    /// Return true if the map contains a value for the specified key
-    pure fn contains_key(&self, key: &K) -> bool {
-        self.find(key).is_some()
     }
 
     /// Return the value corresponding to the key in the map
@@ -129,23 +156,6 @@ impl <K: Ord, V> TreeMap<K, V> {
               None => return None
             }
         }
-    }
-
-    /// Insert a key-value pair into the map. An existing value for a
-    /// key is replaced by the new value. Return true if the key did
-    /// not already exist in the map.
-    fn insert(&mut self, key: K, value: V) -> bool {
-        let ret = insert(&mut self.root, key, value);
-        if ret { self.length += 1 }
-        ret
-    }
-
-    /// Remove a key-value pair from the map. Return true if the key
-    /// was present in the map, otherwise false.
-    fn remove(&mut self, key: &K) -> bool {
-        let ret = remove(&mut self.root, key);
-        if ret { self.length -= 1 }
-        ret
     }
 
     /// Get a lazy iterator over the key-value pairs in the map.
@@ -198,6 +208,19 @@ impl <T: Eq Ord> TreeSet<T>: Eq {
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
+impl <T: Ord> TreeSet<T>: Container {
+    /// Return the number of elements in the map
+    pure fn len(&self) -> uint { self.map.len() }
+
+    /// Return true if the map contains no elements
+    pure fn is_empty(&self) -> bool { self.map.is_empty() }
+}
+
+impl <T: Ord> TreeSet<T>: Mutable {
+    /// Clear the set, removing all values.
+    fn clear(&mut self) { self.map.clear() }
+}
+
 impl <T: Ord> TreeSet<T>: Set<T> {
     /// Return true if the set contains a value
     pure fn contains(&self, value: &T) -> bool {
@@ -216,12 +239,6 @@ impl <T: Ord> TreeSet<T>: Set<T> {
 impl <T: Ord> TreeSet<T> {
     /// Create an empty TreeSet
     static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Return the number of elements in the set
-    pure fn len(&self) -> uint { self.map.len() }
-
-    /// Return true if the set contains no elements
-    pure fn is_empty(&self) -> bool { self.map.is_empty() }
 
     /// Return true if the set contains some elements
     pure fn is_not_empty(&self) -> bool { self.map.is_not_empty() }
@@ -627,6 +644,20 @@ mod test_treemap {
     }
 
     #[test]
+    fn test_clear() {
+        let mut m = TreeMap::new();
+        m.clear();
+        assert m.insert(5, 11);
+        assert m.insert(12, -3);
+        assert m.insert(19, 2);
+        m.clear();
+        assert m.find(&5).is_none();
+        assert m.find(&12).is_none();
+        assert m.find(&19).is_none();
+        assert m.is_empty();
+    }
+
+    #[test]
     fn u8_map() {
         let mut m = TreeMap::new();
 
@@ -845,6 +876,20 @@ mod test_treemap {
 #[cfg(test)]
 mod test_set {
     use super::*;
+
+    #[test]
+    fn test_clear() {
+        let mut s = TreeSet::new();
+        s.clear();
+        assert s.insert(5);
+        assert s.insert(12);
+        assert s.insert(19);
+        s.clear();
+        assert !s.contains(&5);
+        assert !s.contains(&12);
+        assert !s.contains(&19);
+        assert s.is_empty();
+    }
 
     #[test]
     fn test_disjoint() {
