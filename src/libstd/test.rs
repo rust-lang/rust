@@ -74,8 +74,11 @@ pub fn test_main(args: &[~str], tests: &[TestDesc]) {
     if !run_tests_console(&opts, tests) { fail ~"Some tests failed"; }
 }
 
-pub type TestOpts = {filter: Option<~str>, run_ignored: bool,
-                  logfile: Option<~str>};
+pub struct TestOpts {
+    filter: Option<~str>,
+    run_ignored: bool,
+    logfile: Option<~str>,
+}
 
 type OptRes = Either<TestOpts, ~str>;
 
@@ -97,10 +100,13 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
     let run_ignored = getopts::opt_present(&matches, ~"ignored");
     let logfile = getopts::opt_maybe_str(&matches, ~"logfile");
 
-    let test_opts = {filter: filter, run_ignored: run_ignored,
-                     logfile: logfile};
+    let test_opts = TestOpts {
+        filter: filter,
+        run_ignored: run_ignored,
+        logfile: logfile,
+    };
 
-    return either::Left(test_opts);
+    either::Left(test_opts)
 }
 
 #[deriving_eq]
@@ -396,7 +402,10 @@ pub fn filter_tests(opts: &TestOpts,
     move filtered
 }
 
-type TestFuture = {test: TestDesc, wait: fn@() -> TestResult};
+struct TestFuture {
+    test: TestDesc,
+    wait: fn@() -> TestResult,
+}
 
 pub fn run_test(test: TestDesc, monitor_ch: oldcomm::Chan<MonitorMsg>) {
     if test.ignore {
@@ -431,7 +440,7 @@ mod tests {
     #[legacy_exports];
 
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc};
-    use test::{run_test};
+    use test::{TestOpts, run_test};
 
     use core::either;
     use core::oldcomm;
@@ -528,13 +537,26 @@ mod tests {
         // When we run ignored tests the test filter should filter out all the
         // unignored tests and flip the ignore flag on the rest to false
 
-        let opts = {filter: option::None, run_ignored: true,
-            logfile: option::None};
-        let tests =
-            ~[TestDesc {name: ~"1", testfn: fn~() { },
-                        ignore: true, should_fail: false},
-              TestDesc {name: ~"2", testfn: fn~() { },
-                        ignore: false, should_fail: false}];
+        let opts = TestOpts {
+            filter: option::None,
+            run_ignored: true,
+            logfile: option::None,
+        };
+
+        let tests = ~[
+            TestDesc {
+                name: ~"1",
+                testfn: fn~() { },
+                ignore: true,
+                should_fail: false,
+            },
+            TestDesc {
+                name: ~"2",
+                testfn: fn~() { },
+                ignore: false,
+                should_fail: false,
+            },
+        ];
         let filtered = filter_tests(&opts, tests);
 
         assert (vec::len(filtered) == 1u);
@@ -544,8 +566,11 @@ mod tests {
 
     #[test]
     fn sort_tests() {
-        let opts = {filter: option::None, run_ignored: false,
-            logfile: option::None};
+        let opts = TestOpts {
+            filter: option::None,
+            run_ignored: false,
+            logfile: option::None,
+        };
 
         let names =
             ~[~"sha1::test", ~"int::test_to_str", ~"int::test_pow",

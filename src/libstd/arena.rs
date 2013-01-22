@@ -68,7 +68,11 @@ const tydesc_drop_glue_index: size_t = 3 as size_t;
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
 // will always stay at 0.
-type Chunk = {data: @[u8], mut fill: uint, is_pod: bool};
+struct Chunk {
+    data: @[u8],
+    mut fill: uint,
+    is_pod: bool,
+}
 
 pub struct Arena {
     // The head is seperated out from the list as a unbenchmarked
@@ -93,13 +97,19 @@ impl Arena : Drop {
 fn chunk(size: uint, is_pod: bool) -> Chunk {
     let mut v: @[const u8] = @[];
     unsafe { at_vec::raw::reserve(&mut v, size); }
-    { data: unsafe { cast::transmute(v) }, mut fill: 0u, is_pod: is_pod }
+    Chunk {
+        data: unsafe { cast::transmute(v) },
+        fill: 0u,
+        is_pod: is_pod,
+    }
 }
 
 pub fn arena_with_size(initial_size: uint) -> Arena {
-    return Arena {mut head: chunk(initial_size, false),
-                  mut pod_head: chunk(initial_size, true),
-                  mut chunks: @Nil};
+    Arena {
+        head: chunk(initial_size, false),
+        pod_head: chunk(initial_size, true),
+        chunks: @Nil,
+    }
 }
 
 pub fn Arena() -> Arena {
