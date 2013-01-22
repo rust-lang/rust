@@ -12,12 +12,12 @@ argument, which it then converts to a hexadecimal string and prints to
 standard output. If you have the OpenSSL libraries installed, it
 should compile and run without any extra effort.
 
-~~~~
+~~~~ {.xfail-test}
 extern mod std;
-use libc::size_t;
+use libc::c_uint;
 
 extern mod crypto {
-    fn SHA1(src: *u8, sz: size_t, out: *u8) -> *u8;
+    fn SHA1(src: *u8, sz: c_uint, out: *u8) -> *u8;
 }
 
 fn as_hex(data: ~[u8]) -> ~str {
@@ -29,7 +29,7 @@ fn as_hex(data: ~[u8]) -> ~str {
 fn sha1(data: ~str) -> ~str unsafe {
     let bytes = str::to_bytes(data);
     let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
-                            vec::len(bytes) as size_t, ptr::null());
+                            vec::len(bytes) as c_uint, ptr::null());
     return as_hex(vec::from_buf(hash, 20));
 }
 
@@ -43,11 +43,9 @@ fn main() {
 Before we can call the `SHA1` function defined in the OpenSSL library, we have
 to declare it. That is what this part of the program does:
 
-~~~~
-# use libc::size_t;
+~~~~ {.xfail-test}
 extern mod crypto {
-    fn SHA1(src: *u8, sz: size_t, out: *u8) -> *u8;
-}
+    fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8; }
 ~~~~
 
 An `extern` module declaration containing function signatures introduces the
@@ -64,11 +62,10 @@ searches for the shared library with that name, and links the library into the
 program. If you want the module to have a different name from the actual
 library, you can use the `"link_name"` attribute, like:
 
-~~~~
-# use libc::size_t;
+~~~~ {.xfail-test}
 #[link_name = "crypto"]
 extern mod something {
-    fn SHA1(src: *u8, sz: size_t, out: *u8) -> *u8;
+    fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8;
 }
 ~~~~
 
@@ -97,10 +94,9 @@ calling conventions.
 
 The foreign `SHA1` function takes three arguments, and returns a pointer.
 
-~~~~
-# use libc::size_t;
+~~~~ {.xfail-test}
 # extern mod crypto {
-fn SHA1(src: *u8, sz: size_t, out: *u8) -> *u8;
+fn SHA1(src: *u8, sz: libc::c_uint, out: *u8) -> *u8;
 # }
 ~~~~
 
@@ -112,8 +108,8 @@ probably even worse, your code will work on one platform, but break on
 another.
 
 In this case, we declare that `SHA1` takes two `unsigned char*`
-arguments and one `size_t`. The Rust equivalents are `*u8`
-unsafe pointers and an `libc::size_t` (which, like `unsigned long`, is a
+arguments and one `unsigned long`. The Rust equivalents are `*u8`
+unsafe pointers and an `uint` (which, like `unsigned long`, is a
 machine-word-sized type).
 
 The standard library provides various functions to create unsafe pointers,
@@ -128,16 +124,14 @@ The `sha1` function is the most obscure part of the program.
 
 ~~~~
 # pub mod crypto {
-#   use libc::size_t;
-#   pub fn SHA1(src: *u8, sz: size_t, out: *u8) -> *u8 { out }
+#   pub fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out }
 # }
-# use libc::size_t;
 # fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
 fn sha1(data: ~str) -> ~str {
     unsafe {
         let bytes = str::to_bytes(data);
         let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
-                                vec::len(bytes) as size_t, ptr::null());
+                                vec::len(bytes), ptr::null());
         return as_hex(vec::from_buf(hash, 20));
     }
 }
@@ -175,16 +169,14 @@ Let's look at our `sha1` function again.
 
 ~~~~
 # pub mod crypto {
-#     use libc::size_t;
-#     pub fn SHA1(src: *u8, sz: size_t, out: *u8) -> *u8 { out }
+#     pub fn SHA1(src: *u8, sz: uint, out: *u8) -> *u8 { out }
 # }
-# use libc::size_t;
 # fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
 # fn x(data: ~str) -> ~str {
 # unsafe {
 let bytes = str::to_bytes(data);
 let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
-                        vec::len(bytes) as size_t, ptr::null());
+                        vec::len(bytes), ptr::null());
 return as_hex(vec::from_buf(hash, 20));
 # }
 # }
