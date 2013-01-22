@@ -357,10 +357,21 @@ priv impl &preserve_ctxt {
             if self.bccx.is_subregion_of(self.scope_region, root_region) {
                 debug!("Elected to root");
                 let rk = {id: base.id, derefs: derefs};
+                let scope_to_use = if
+                    self.bccx.stmt_map.contains_key(scope_id) {
+                    // Root it in its parent scope, b/c
+                    // trans won't introduce a new scope for the
+                    // stmt
+                    self.root_ub
+                }
+                else {
+                    // Use the more precise scope
+                    scope_id
+                };
                 // We freeze if and only if this is a *mutable* @ box that
                 // we're borrowing into a pointer.
                 self.bccx.root_map.insert(rk, RootInfo {
-                    scope: scope_id,
+                    scope: scope_to_use,
                     freezes: cmt.cat.derefs_through_mutable_box()
                 });
                 return Ok(pc_ok);
