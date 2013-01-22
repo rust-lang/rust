@@ -49,11 +49,10 @@
 use core::prelude::*;
 
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
-use middle::ty::{type_is_bot};
+use middle::ty::{type_is_bot, IntType, UintType};
 use middle::ty;
 use middle::typeck::infer::{cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
-use middle::typeck::infer::{IntType, UintType};
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::Root;
 use util::common::{indent, indenter};
@@ -219,7 +218,7 @@ impl ResolveState {
             // tend to carry more restrictions or higher
             // perf. penalties, so it pays to know more.
 
-            let nde = self.infcx.get(&self.infcx.ty_var_bindings, vid);
+            let nde = self.infcx.get(vid);
             let bounds = nde.possible_types;
 
             let t1 = match bounds {
@@ -243,7 +242,7 @@ impl ResolveState {
             return ty::mk_int_var(self.infcx.tcx, vid);
         }
 
-        let node = self.infcx.get(&self.infcx.int_var_bindings, vid);
+        let node = self.infcx.get(vid);
         match node.possible_types {
           Some(IntType(t)) => ty::mk_mach_int(self.infcx.tcx, t),
           Some(UintType(t)) => ty::mk_mach_uint(self.infcx.tcx, t),
@@ -251,9 +250,8 @@ impl ResolveState {
             if self.should(force_ivar) {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
-                self.infcx.set(
-                    &self.infcx.int_var_bindings, vid,
-                    Root(Some(IntType(ast::ty_i)), node.rank));
+                self.infcx.set(vid,
+                               Root(Some(IntType(ast::ty_i)), node.rank));
                 ty
             } else {
                 ty::mk_int_var(self.infcx.tcx, vid)
@@ -267,17 +265,14 @@ impl ResolveState {
             return ty::mk_float_var(self.infcx.tcx, vid);
         }
 
-        let node = self.infcx.get(&self.infcx.float_var_bindings, vid);
+        let node = self.infcx.get(vid);
         match node.possible_types {
           Some(t) => ty::mk_mach_float(self.infcx.tcx, t),
           None => {
             if self.should(force_fvar) {
                 // As a last resort, default to float.
                 let ty = ty::mk_float(self.infcx.tcx);
-                self.infcx.set(
-                    &self.infcx.float_var_bindings,
-                    vid,
-                    Root(Some(ast::ty_f), node.rank));
+                self.infcx.set(vid, Root(Some(ast::ty_f), node.rank));
                 ty
             } else {
                 ty::mk_float_var(self.infcx.tcx, vid)

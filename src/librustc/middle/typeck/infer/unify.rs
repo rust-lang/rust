@@ -9,24 +9,24 @@
 // except according to those terms.
 
 use core::prelude::*;
+use core::result;
+use std::smallintmap::SmallIntMap;
 
-use middle::ty::Vid;
+use middle::ty::{Vid, expected_found, IntVarValue};
 use middle::ty;
 use middle::typeck::infer::{Bound, Bounds, cres, uok, ures};
 use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::to_str::InferStr;
+use syntax::ast;
 use util::common::{indent, indenter};
-
-use core::result;
-use std::smallintmap::SmallIntMap;
 
 enum VarValue<V, T> {
     Redirect(V),
     Root(T, uint),
 }
 
-struct ValsAndBindings<V:Copy, T:Copy> {
+struct ValsAndBindings<V, T> {
     vals: SmallIntMap<VarValue<V, T>>,
     mut bindings: ~[(V, VarValue<V, T>)],
 }
@@ -37,11 +37,15 @@ struct Node<V:Copy, T:Copy> {
     rank: uint,
 }
 
-impl @InferCtxt {
-    fn get<V:Copy Eq Vid, T:Copy>(
-        vb: &ValsAndBindings<V, T>,
-        vid: V)
-        -> Node<V, T>
+trait UnifyVid<T> {
+    static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
+        -> &v/ValsAndBindings<self, T>;
+}
+
+impl InferCtxt {
+    fn get<T:Copy, V:Copy Eq Vid UnifyVid<T>>(
+        &self,
+        +vid: V) -> Node<V, T>
     {
         /*!
          *
@@ -50,6 +54,7 @@ impl @InferCtxt {
          * http://en.wikipedia.org/wiki/Disjoint-set_data_structure
          */
 
+        let vb = UnifyVid::appropriate_vals_and_bindings(self);
         let vid_u = vid.to_uint();
         match vb.vals.find(vid_u) {
           None => {
@@ -57,9 +62,9 @@ impl @InferCtxt {
           }
           Some(ref var_val) => {
             match (*var_val) {
-              Redirect(ref vid) => {
-                let node = self.get(vb, (*vid));
-                if node.root.ne(vid) {
+              Redirect(vid) => {
+                let node: Node<V,T> = self.get(vid);
+                if node.root != vid {
                     // Path compression
                     vb.vals.insert(vid.to_uint(), Redirect(node.root));
                 }
@@ -73,9 +78,9 @@ impl @InferCtxt {
         }
     }
 
-    fn set<V:Copy Vid ToStr, T:Copy InferStr>(
-        vb: &ValsAndBindings<V, T>,
-        vid: V,
+    fn set<T:Copy InferStr, V:Copy Vid ToStr UnifyVid<T>>(
+        &self,
+        +vid: V,
         +new_v: VarValue<V, T>)
     {
         /*!
@@ -83,6 +88,7 @@ impl @InferCtxt {
          * Sets the value for `vid` to `new_v`.  `vid` MUST be a root node!
          */
 
+        let vb = UnifyVid::appropriate_vals_and_bindings(self);
         let old_v = vb.vals.get(vid.to_uint());
         vb.bindings.push((vid, old_v));
         vb.vals.insert(vid.to_uint(), new_v);
@@ -91,8 +97,8 @@ impl @InferCtxt {
                vid.to_str(), old_v.inf_str(self), new_v.inf_str(self));
     }
 
-    fn unify<V:Copy Vid ToStr, T:Copy InferStr, R>(
-        vb: &ValsAndBindings<V, T>,
+    fn unify<T:Copy InferStr, V:Copy Vid ToStr UnifyVid<T>, R>(
+        &self,
         node_a: &Node<V, T>,
         node_b: &Node<V, T>,
         op: &fn(new_root: V, new_rank: uint) -> R
@@ -108,17 +114,17 @@ impl @InferCtxt {
         if node_a.rank > node_b.rank {
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
-            self.set(vb, node_b.root, Redirect(node_a.root));
+            self.set(node_b.root, Redirect(node_a.root));
             op(node_a.root, node_a.rank)
         } else if node_a.rank < node_b.rank {
             // b has greater rank, so a should redirect to b.
-            self.set(vb, node_a.root, Redirect(node_b.root));
+            self.set(node_a.root, Redirect(node_b.root));
             op(node_b.root, node_b.rank)
         } else {
             // If equal, redirect one to the other and increment the
             // other's rank.
             assert node_a.rank == node_b.rank;
-            self.set(vb, node_b.root, Redirect(node_a.root));
+            self.set(node_b.root, Redirect(node_a.root));
             op(node_a.root, node_a.rank + 1)
         }
     }
@@ -129,12 +135,30 @@ impl @InferCtxt {
 // Code to handle simple variables like ints, floats---anything that
 // doesn't have a subtyping relationship we need to worry about.
 
-impl @InferCtxt {
-    fn simple_vars<V:Copy Eq Vid ToStr, T:Copy Eq InferStr>(
-        vb: &ValsAndBindings<V, Option<T>>,
-        err: ty::type_err,
-        a_id: V,
-        b_id: V) -> ures
+trait SimplyUnifiable {
+    static fn to_type_err(expected_found<self>) -> ty::type_err;
+}
+
+fn mk_err<T: SimplyUnifiable>(+a_is_expected: bool,
+                              +a_t: T,
+                              +b_t: T) -> ures
+{
+    if a_is_expected {
+        Err(SimplyUnifiable::to_type_err(
+            ty::expected_found {expected: a_t, found: b_t}))
+    } else {
+        Err(SimplyUnifiable::to_type_err(
+            ty::expected_found {expected: b_t, found: a_t}))
+    }
+}
+
+impl InferCtxt {
+    fn simple_vars<T:Copy Eq InferStr SimplyUnifiable,
+                   V:Copy Eq Vid ToStr UnifyVid<Option<T>>>(
+        &self,
+        +a_is_expected: bool,
+        +a_id: V,
+        +b_id: V) -> ures
     {
         /*!
          *
@@ -143,8 +167,8 @@ impl @InferCtxt {
          * have already been associated with a value, then those two
          * values must be the same. */
 
-        let node_a = self.get(vb, a_id);
-        let node_b = self.get(vb, b_id);
+        let node_a = self.get(a_id);
+        let node_b = self.get(b_id);
         let a_id = node_a.root;
         let b_id = node_b.root;
 
@@ -155,22 +179,24 @@ impl @InferCtxt {
             (&None, &None) => None,
             (&Some(ref v), &None) | (&None, &Some(ref v)) => Some(*v),
             (&Some(ref v1), &Some(ref v2)) => {
-                if *v1 != *v2 { return Err(err); }
+                if *v1 != *v2 {
+                    return mk_err(a_is_expected, *v1, *v2);
+                }
                 Some(*v1)
             }
         };
 
-        self.unify(vb, &node_a, &node_b, |new_root, new_rank| {
-            self.set(vb, new_root, Root(combined, new_rank));
+        self.unify(&node_a, &node_b, |new_root, new_rank| {
+            self.set(new_root, Root(combined, new_rank));
         });
         return uok();
     }
 
-    fn simple_var_t<V:Copy Eq Vid ToStr, T:Copy Eq InferStr>(
-        vb: &ValsAndBindings<V, Option<T>>,
-        err: ty::type_err,
-        a_id: V,
-        b: T) -> ures
+    fn simple_var_t<T:Copy Eq InferStr SimplyUnifiable,
+                    V:Copy Eq Vid ToStr UnifyVid<Option<T>>>(
+        +a_is_expected: bool,
+        +a_id: V,
+        +b: T) -> ures
     {
         /*!
          *
@@ -179,19 +205,66 @@ impl @InferCtxt {
          * if `a_id` already has a value, it must be the same as
          * `b`. */
 
-        let node_a = self.get(vb, a_id);
+        let node_a = self.get(a_id);
         let a_id = node_a.root;
 
-        if node_a.possible_types.is_none() {
-            self.set(vb, a_id, Root(Some(b), node_a.rank));
-            return uok();
-        }
+        match node_a.possible_types {
+            None => {
+                self.set(a_id, Root(Some(b), node_a.rank));
+                return uok();
+            }
 
-        if node_a.possible_types == Some(b) {
-            return uok();
+            Some(ref a_t) => {
+                if *a_t == b {
+                    return uok();
+                } else {
+                    return mk_err(a_is_expected, *a_t, b);
+                }
+            }
         }
-
-        return Err(err);
     }
 }
+
+// ______________________________________________________________________
+
+impl ty::TyVid : UnifyVid<Bounds<ty::t>> {
+    static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
+        -> &v/ValsAndBindings<ty::TyVid, Bounds<ty::t>>
+    {
+        return &infcx.ty_var_bindings;
+    }
+}
+
+impl ty::IntVid : UnifyVid<Option<IntVarValue>> {
+    static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
+        -> &v/ValsAndBindings<ty::IntVid, Option<IntVarValue>>
+    {
+        return &infcx.int_var_bindings;
+    }
+}
+
+impl IntVarValue : SimplyUnifiable {
+    static fn to_type_err(err: expected_found<IntVarValue>)
+        -> ty::type_err
+    {
+        return ty::terr_int_mismatch(err);
+    }
+}
+
+impl ty::FloatVid : UnifyVid<Option<ast::float_ty>> {
+    static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
+        -> &v/ValsAndBindings<ty::FloatVid, Option<ast::float_ty>>
+    {
+        return &infcx.float_var_bindings;
+    }
+}
+
+impl ast::float_ty : SimplyUnifiable {
+    static fn to_type_err(err: expected_found<ast::float_ty>)
+        -> ty::type_err
+    {
+        return ty::terr_float_mismatch(err);
+    }
+}
+
 
