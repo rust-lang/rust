@@ -440,8 +440,10 @@ fn operator_prec(op: ast::binop) -> uint {
   }
 }
 
+fn dtor_ty() -> @ast::Ty { @ast::Ty {id: 0, node: ty_nil, span: dummy_sp()} }
+
 fn dtor_dec() -> fn_decl {
-    let nil_t = @ast::Ty { id: 0, node: ty_nil, span: dummy_sp() };
+    let nil_t = dtor_ty();
     // dtor has no args
     ast::fn_decl {
         inputs: ~[],
