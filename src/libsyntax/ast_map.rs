@@ -56,9 +56,9 @@ impl path_elt : cmp::Eq {
 
 type path = ~[path_elt];
 
-/* FIXMEs that say "bad" are as per #2543 */
-fn path_to_str_with_sep(p: path, sep: ~str, itr: @ident_interner) -> ~str {
-    let strs = do vec::map(p) |e| {
+fn path_to_str_with_sep(p: &[path_elt], sep: ~str, itr: @ident_interner)
+    -> ~str {
+    let strs = do p.map |e| {
         match *e {
           path_mod(s) => *itr.get(s),
           path_name(s) => *itr.get(s)
@@ -76,7 +76,7 @@ fn path_ident_to_str(p: path, i: ident, itr: @ident_interner) -> ~str {
     }
 }
 
-fn path_to_str(p: path, itr: @ident_interner) -> ~str {
+fn path_to_str(p: &[path_elt], itr: @ident_interner) -> ~str {
     path_to_str_with_sep(p, ~"::", itr)
 }
 

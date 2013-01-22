@@ -93,7 +93,7 @@ trait tr_intern {
 
 fn encode_inlined_item(ecx: @e::encode_ctxt,
                        ebml_w: writer::Encoder,
-                       path: ast_map::path,
+                       path: &[ast_map::path_elt],
                        ii: ast::inlined_item,
                        maps: maps) {
     debug!("> Encoding inlined item: %s::%s (%u)",
