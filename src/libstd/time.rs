@@ -20,6 +20,8 @@ use core::prelude::*;
 use core::result::{Result, Ok, Err};
 use core::str;
 
+const NSEC_PER_SEC: i32 = 1_000_000_000_i32;
+
 #[abi = "cdecl"]
 extern mod rustrt {
     #[legacy_exports]
@@ -40,8 +42,17 @@ extern mod rustrt {
 #[auto_decode]
 pub struct Timespec { sec: i64, nsec: i32 }
 
+/*
+ * Timespec assumes that pre-epoch Timespecs have negative sec and positive
+ * nsec fields. Darwin's and Linux's struct timespec functions handle pre-
+ * epoch timestamps using a "two steps back, one step forward" representation,
+ * though the man pages do not actually document this. For example, the time
+ * -1.2 seconds before the epoch is represented by `Timespec { sec: -2_i64,
+ * nsec: 800_000_000_i32 }`.
+ */
 impl Timespec {
     static pure fn new(sec: i64, nsec: i32) -> Timespec {
+        assert nsec >= 0 && nsec < NSEC_PER_SEC;
         Timespec { sec: sec, nsec: nsec }
     }
 }
