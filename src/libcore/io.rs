@@ -1086,11 +1086,9 @@ pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
 // fsync related
 
 pub mod fsync {
+    use prelude::*;
     use io::{FILERes, FdRes, fd_t};
-    use kinds::Copy;
     use libc;
-    use option::Option;
-    use option;
     use os;
 
     pub enum Level {
@@ -1127,11 +1125,11 @@ pub mod fsync {
         }
     }
 
-    pub type Arg<t> = {
+    pub struct Arg<t> {
         val: t,
         opt_level: Option<Level>,
-        fsync_fn: fn@(f: t, Level) -> int
-    };
+        fsync_fn: fn@(f: t, Level) -> int,
+    }
 
     // fsync file after executing blk
     // FIXME (#2004) find better way to create resources within lifetime of
@@ -1139,7 +1137,7 @@ pub mod fsync {
     pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
                          blk: fn(v: Res<*libc::FILE>)) {
         unsafe {
-            blk(move Res({
+            blk(Res(Arg {
                 val: file.f, opt_level: opt_level,
                 fsync_fn: fn@(file: *libc::FILE, l: Level) -> int {
                     unsafe {
@@ -1153,7 +1151,7 @@ pub mod fsync {
     // fsync fd after executing blk
     pub fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
                        blk: fn(v: Res<fd_t>)) {
-        blk(move Res({
+        blk(Res(Arg {
             val: fd.fd, opt_level: opt_level,
             fsync_fn: fn@(fd: fd_t, l: Level) -> int {
                 return os::fsync_fd(fd, l) as int;
@@ -1167,7 +1165,7 @@ pub mod fsync {
     // Call o.fsync after executing blk
     pub fn obj_sync(o: FSyncable, opt_level: Option<Level>,
                     blk: fn(v: Res<FSyncable>)) {
-        blk(Res({
+        blk(Res(Arg {
             val: o, opt_level: opt_level,
             fsync_fn: fn@(o: FSyncable, l: Level) -> int {
                 return o.fsync(l);

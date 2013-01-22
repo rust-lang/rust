@@ -220,11 +220,13 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
             libc::close(pipe_err.out);
         }
 
-        type ProgRepr = {pid: pid_t,
-                         mut in_fd: c_int,
-                         out_file: *libc::FILE,
-                         err_file: *libc::FILE,
-                         mut finished: bool};
+        struct ProgRepr {
+            pid: pid_t,
+            mut in_fd: c_int,
+            out_file: *libc::FILE,
+            err_file: *libc::FILE,
+            mut finished: bool,
+        }
 
         fn close_repr_input(r: &ProgRepr) {
             let invalid_fd = -1i32;
@@ -274,12 +276,15 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
             fn finish() -> int { finish_repr(&self.r) }
             fn destroy() { destroy_repr(&self.r); }
         }
-        let repr = {pid: pid,
-                    mut in_fd: pipe_input.out,
-                    out_file: os::fdopen(pipe_output.in),
-                    err_file: os::fdopen(pipe_err.in),
-                    mut finished: false};
-        return ProgRes(move repr) as Program;
+        let repr = ProgRepr {
+            pid: pid,
+            in_fd: pipe_input.out,
+            out_file: os::fdopen(pipe_output.in),
+            err_file: os::fdopen(pipe_err.in),
+            finished: false,
+        };
+
+        ProgRes(repr) as Program
     }
 }
 
