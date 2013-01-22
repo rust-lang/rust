@@ -812,7 +812,7 @@ impl @fn_ctxt {
     fn mk_assignty(expr: @ast::expr, sub: ty::t, sup: ty::t)
         -> Result<(), ty::type_err>
     {
-        match infer::mk_assignty(self.infcx(), false, expr.span, sub, sup) {
+        match infer::mk_coercety(self.infcx(), false, expr.span, sub, sup) {
             Ok(None) => result::Ok(()),
             Err(ref e) => result::Err((*e)),
             Ok(Some(adjustment)) => {
@@ -823,7 +823,7 @@ impl @fn_ctxt {
     }
 
     fn can_mk_assignty(sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
-        infer::can_mk_assignty(self.infcx(), sub, sup)
+        infer::can_mk_coercety(self.infcx(), sub, sup)
     }
 
     fn mk_eqty(a_is_expected: bool, span: span,
@@ -986,12 +986,12 @@ fn check_expr_has_type(
     }
 }
 
-fn check_expr_assignable_to_type(
+fn check_expr_coercable_to_type(
     fcx: @fn_ctxt, expr: @ast::expr,
     expected: ty::t) -> bool
 {
     do check_expr_with_unifier(fcx, expr, Some(expected)) {
-        demand::assign(fcx, expr.span, expected, expr)
+        demand::coerce(fcx, expr.span, expected, expr)
     }
 }
 
@@ -1225,7 +1225,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     }
 
                     // mismatch error happens in here
-                    bot |= check_expr_assignable_to_type(
+                    bot |= check_expr_coercable_to_type(
                         fcx, *arg, formal_ty);
 
                 }
@@ -1243,7 +1243,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                      -> bool {
         let mut bot = check_expr(fcx, lhs);
         let lhs_type = fcx.expr_ty(lhs);
-        bot |= check_expr_assignable_to_type(fcx, rhs, lhs_type);
+        bot |= check_expr_has_type(fcx, rhs, lhs_type);
         fcx.write_ty(id, ty::mk_nil(fcx.ccx.tcx));
         return bot;
     }
@@ -1739,7 +1739,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         ty::lookup_field_type(
                             tcx, class_id, field_id, substitutions);
                     bot |=
-                        check_expr_assignable_to_type(
+                        check_expr_coercable_to_type(
                             fcx,
                             field.node.expr,
                             expected_field_type);
@@ -2552,7 +2552,7 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
                           init: @ast::expr) -> bool {
     let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.span, nid));
-    return check_expr_assignable_to_type(fcx, init, lty);
+    return check_expr_coercable_to_type(fcx, init, lty);
 }
 
 fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
