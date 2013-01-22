@@ -72,7 +72,7 @@ pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 
 #[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
-pub fn range(lo: T, hi: T, it: fn(T) -> bool) {
+pub pure fn range(lo: T, hi: T, it: fn(T) -> bool) {
     let mut i = lo;
     while i < hi {
         if !it(i) { break }
@@ -150,7 +150,7 @@ impl T: iter::Times {
         `x` is an int, this is functionally equivalent to \
         `for int::range(0, x) |_i| { /* anything */ }`."]
     pure fn times(&self, it: fn() -> bool) {
-        if *self < 0 {
+        if is_negative(*self) {
             fail fmt!("The .times method expects a nonnegative number, \
                        but found %?", self);
         }
