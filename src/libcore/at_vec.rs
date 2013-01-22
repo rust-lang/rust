@@ -150,6 +150,29 @@ pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
     }
 }
 
+/**
+ * Creates and initializes an immutable managed vector by moving all the
+ * elements from an owned vector.
+ */
+fn from_owned<T>(v: ~[T]) -> @[T] {
+    let mut av = @[];
+    unsafe {
+        raw::reserve(&mut av, v.len());
+        do vec::consume(v) |_i, x| {
+            raw::push(&mut av, x);
+        }
+        transmute(av)
+    }
+}
+
+/**
+ * Creates and initializes an immutable managed vector by copying all the
+ * elements of a slice.
+ */
+fn from_slice<T:Copy>(v: &[T]) -> @[T] {
+    from_fn(v.len(), |i| v[i])
+}
+
 #[cfg(notest)]
 pub mod traits {
     use at_vec::append;
@@ -281,3 +304,22 @@ pub fn test() {
 pub fn append_test() {
     assert @[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6];
 }
+
+#[test]
+pub fn test_from_owned() {
+    assert from_owned::<int>(~[]) == @[];
+    assert from_owned(~[true]) == @[true];
+    assert from_owned(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5];
+    assert from_owned(~[~"abc", ~"123"]) == @[~"abc", ~"123"];
+    assert from_owned(~[~[42]]) == @[~[42]];
+}
+
+#[test]
+pub fn test_from_slice() {
+    assert from_slice::<int>([]) == @[];
+    assert from_slice([true]) == @[true];
+    assert from_slice([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5];
+    assert from_slice([@"abc", @"123"]) == @[@"abc", @"123"];
+    assert from_slice([@[42]]) == @[@[42]];
+}
+
