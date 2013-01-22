@@ -14,7 +14,7 @@
 
 #[forbid(deprecated_mode)];
 
-use core::container::{Mutable, Map, Set};
+use core::container::{Container, Mutable, Map, Set};
 use core::cmp::{Eq, Ord};
 use core::option::{Option, Some, None};
 use core::prelude::*;
@@ -67,6 +67,14 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
     pure fn ne(&self, other: &TreeMap<K, V>) -> bool { !self.eq(other) }
 }
 
+impl <K: Ord, V> TreeMap<K, V>: Container {
+    /// Return the number of elements in the map
+    pure fn len(&self) -> uint { self.length }
+
+    /// Return true if the map contains no elements
+    pure fn is_empty(&self) -> bool { self.root.is_none() }
+}
+
 impl <K: Ord, V> TreeMap<K, V>: Mutable {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
@@ -111,12 +119,6 @@ impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
 impl <K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
-
-    /// Return the number of elements in the map
-    pure fn len(&self) -> uint { self.length }
-
-    /// Return true if the map contains no elements
-    pure fn is_empty(&self) -> bool { self.root.is_none() }
 
     /// Return true if the map contains some elements
     pure fn is_not_empty(&self) -> bool { self.root.is_some() }
@@ -206,6 +208,14 @@ impl <T: Eq Ord> TreeSet<T>: Eq {
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
+impl <T: Ord> TreeSet<T>: Container {
+    /// Return the number of elements in the map
+    pure fn len(&self) -> uint { self.map.len() }
+
+    /// Return true if the map contains no elements
+    pure fn is_empty(&self) -> bool { self.map.is_empty() }
+}
+
 impl <T: Ord> TreeSet<T>: Mutable {
     /// Clear the set, removing all values.
     fn clear(&mut self) { self.map.clear() }
@@ -229,12 +239,6 @@ impl <T: Ord> TreeSet<T>: Set<T> {
 impl <T: Ord> TreeSet<T> {
     /// Create an empty TreeSet
     static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Return the number of elements in the set
-    pure fn len(&self) -> uint { self.map.len() }
-
-    /// Return true if the set contains no elements
-    pure fn is_empty(&self) -> bool { self.map.is_empty() }
 
     /// Return true if the set contains some elements
     pure fn is_not_empty(&self) -> bool { self.map.is_not_empty() }
