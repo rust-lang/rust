@@ -10,7 +10,7 @@
 
 //! A priority queue implemented with a binary heap
 
-use core::container::Mutable;
+use core::container::{Container, Mutable};
 use core::cmp::Ord;
 use core::prelude::*;
 use core::ptr::addr_of;
@@ -23,6 +23,14 @@ extern "C" mod rusti {
 
 pub struct PriorityQueue <T: Ord>{
     priv data: ~[T],
+}
+
+impl <T: Ord> PriorityQueue<T>: Container {
+    /// Returns the length of the queue
+    pure fn len(&self) -> uint { self.data.len() }
+
+    /// Returns true if a queue contains no elements
+    pure fn is_empty(&self) -> bool { self.data.is_empty() }
 }
 
 impl <T: Ord> PriorityQueue<T>: Mutable {
@@ -38,12 +46,6 @@ impl <T: Ord> PriorityQueue<T> {
     pure fn maybe_top(&self) -> Option<&self/T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }
-
-    /// Returns the length of the queue
-    pure fn len(&self) -> uint { self.data.len() }
-
-    /// Returns true if a queue contains no elements
-    pure fn is_empty(&self) -> bool { self.data.is_empty() }
 
     /// Returns true if a queue contains some elements
     pure fn is_not_empty(&self) -> bool { self.data.is_not_empty() }

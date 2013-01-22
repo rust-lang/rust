@@ -13,7 +13,15 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-pub trait Mutable {
+pub trait Container {
+    /// Return the number of elements in the container
+    pure fn len(&self) -> uint;
+
+    /// Return true if the container contains no elements
+    pure fn is_empty(&self) -> bool;
+}
+
+pub trait Mutable: Container {
     /// Clear the container, removing all values.
     fn clear(&mut self);
 }

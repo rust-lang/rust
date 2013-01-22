@@ -26,7 +26,7 @@ use to_bytes::IterBytes;
 /// Open addressing with linear probing.
 pub mod linear {
     use iter::BaseIter;
-    use container::{Mutable, Map, Set};
+    use container::{Container, Mutable, Map, Set};
     use cmp::Eq;
     use cmp;
     use hash::Hash;
@@ -258,6 +258,11 @@ pub mod linear {
         }
     }
 
+    impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Container {
+        pure fn len(&self) -> uint { self.size }
+        pure fn is_empty(&self) -> bool { self.len() == 0 }
+    }
+
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Mutable {
         fn clear(&mut self) {
             for uint::range(0, self.buckets.len()) |idx| {
@@ -364,14 +369,6 @@ pub mod linear {
             }
         }
 
-        pure fn len(&const self) -> uint {
-            self.size
-        }
-
-        pure fn is_empty(&const self) -> bool {
-            self.len() == 0
-        }
-
         pure fn find_ref(&self, k: &K) -> Option<&self/V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
@@ -464,6 +461,11 @@ pub mod linear {
         }
     }
 
+    impl <T: Hash IterBytes Eq> LinearSet<T>: Container {
+        pure fn len(&self) -> uint { self.map.len() }
+        pure fn is_empty(&self) -> bool { self.map.is_empty() }
+    }
+
     impl <T: Hash IterBytes Eq> LinearSet<T>: Mutable {
         fn clear(&mut self) { self.map.clear() }
     }
@@ -486,12 +488,6 @@ pub mod linear {
     impl <T: Hash IterBytes Eq> LinearSet<T> {
         /// Create an empty LinearSet
         static fn new() -> LinearSet<T> { LinearSet{map: LinearMap()} }
-
-        /// Return the number of elements in the set
-        pure fn len(&self) -> uint { self.map.len() }
-
-        /// Return true if the set contains no elements
-        pure fn is_empty(&self) -> bool { self.map.is_empty() }
     }
 }
 
