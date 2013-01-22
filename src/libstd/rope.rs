@@ -595,12 +595,12 @@ pub mod node {
      *     string can be shared between several ropes, e.g. for indexing
      *     purposes.
      */
-    pub type Leaf = {
+    pub struct Leaf {
         byte_offset: uint,
-        byte_len:    uint,
-        char_len:   uint,
-        content:    @~str
-    };
+        byte_len: uint,
+        char_len: uint,
+        content: @~str,
+    }
 
     /**
      * A node obtained from the concatenation of two other nodes
@@ -619,14 +619,14 @@ pub mod node {
      *
      *     Used for rebalancing and to allocate stacks for traversals.
      */
-    pub type Concat = {
+    pub struct Concat {
         //FIXME (#2744): Perhaps a `vec` instead of `left`/`right`
-        left:     @Node,
-        right:    @Node,
+        left: @Node,
+        right: @Node,
         char_len: uint,
         byte_len: uint,
-        height:   uint
-    };
+        height: uint,
+    }
 
     pub enum Node {
         /// A leaf consisting in a `str`
@@ -709,11 +709,12 @@ pub mod node {
     pub fn of_substr_unsafer(str: @~str, byte_start: uint, byte_len: uint,
                              char_len: uint) -> @Node {
         assert(byte_start + byte_len <= str::len(*str));
-        let candidate = @Leaf({
-                byte_offset: byte_start,
-                byte_len:    byte_len,
-                char_len:    char_len,
-                content:     str});
+        let candidate = @Leaf(Leaf {
+            byte_offset: byte_start,
+            byte_len: byte_len,
+            char_len: char_len,
+            content: str,
+        });
         if char_len <= hint_max_leaf_char_len {
             return candidate;
         } else {
@@ -736,11 +737,11 @@ pub mod node {
                     else { hint_max_leaf_char_len };
                 let chunk_byte_len =
                     str::count_bytes(*str, offset, chunk_char_len);
-                nodes[i] = @Leaf({
+                nodes[i] = @Leaf(Leaf {
                     byte_offset: offset,
-                    byte_len:    chunk_byte_len,
-                    char_len:    chunk_char_len,
-                    content:     str
+                    byte_len: chunk_byte_len,
+                    char_len: chunk_char_len,
+                    content: str,
                 });
 
                 offset += chunk_byte_len;
@@ -767,15 +768,15 @@ pub mod node {
     pub pure fn byte_len(node: @Node) -> uint {
         //FIXME (#2744): Could we do this without the pattern-matching?
         match (*node) {
-          Leaf(y)   => return y.byte_len,
-          Concat(ref y) => return y.byte_len
+          Leaf(y) => y.byte_len,
+          Concat(ref y) => y.byte_len
         }
     }
 
     pub pure fn char_len(node: @Node) -> uint {
         match (*node) {
-          Leaf(y)   => return y.char_len,
-          Concat(ref y) => return y.char_len
+          Leaf(y) => y.char_len,
+          Concat(ref y) => y.char_len
         }
     }
 
@@ -867,15 +868,15 @@ pub mod node {
     pub fn flatten(node: @Node) -> @Node {
         unsafe {
             match (*node) {
-              Leaf(_) => return node,
-              Concat(ref x) => {
-                return @Leaf({
-                    byte_offset: 0u,
-                    byte_len:    x.byte_len,
-                    char_len:    x.char_len,
-                    content:     @serialize_node(node)
-                })
-              }
+                Leaf(_) => node,
+                Concat(ref x) => {
+                    @Leaf(Leaf {
+                        byte_offset: 0u,
+                        byte_len: x.byte_len,
+                        char_len: x.char_len,
+                        content: @serialize_node(node),
+                    })
+                }
             }
         }
     }
@@ -943,10 +944,12 @@ pub mod node {
               node::Leaf(x) => {
                 let char_len =
                     str::count_chars(*x.content, byte_offset, byte_len);
-                return @Leaf({byte_offset: byte_offset,
-                                byte_len:    byte_len,
-                                char_len:    char_len,
-                                content:     x.content});
+                return @Leaf(Leaf {
+                    byte_offset: byte_offset,
+                    byte_len: byte_len,
+                    char_len: char_len,
+                    content: x.content,
+                });
               }
               node::Concat(ref x) => {
                 let left_len: uint = node::byte_len(x.left);
@@ -1007,10 +1010,12 @@ pub mod node {
                     str::count_bytes(*x.content, 0u, char_offset);
                 let byte_len    =
                     str::count_bytes(*x.content, byte_offset, char_len);
-                return @Leaf({byte_offset: byte_offset,
-                           byte_len:    byte_len,
-                           char_len:    char_len,
-                           content:     x.content});
+                return @Leaf(Leaf {
+                    byte_offset: byte_offset,
+                    byte_len: byte_len,
+                    char_len: char_len,
+                    content: x.content,
+                });
               }
               node::Concat(ref x) => {
                 if char_offset == 0u && char_len == x.char_len {return node;}
@@ -1040,18 +1045,19 @@ pub mod node {
     }
 
     pub fn concat2(left: @Node, right: @Node) -> @Node {
-        return @Concat({left    : left,
-                     right   : right,
-             char_len: char_len(left) + char_len(right),
-                     byte_len: byte_len(left) + byte_len(right),
-             height: uint::max(height(left), height(right)) + 1u
-                    })
+        @Concat(Concat {
+            left: left,
+            right: right,
+            char_len: char_len(left) + char_len(right),
+            byte_len: byte_len(left) + byte_len(right),
+            height: uint::max(height(left), height(right)) + 1u,
+        })
     }
 
     pub pure fn height(node: @Node) -> uint {
         match (*node) {
-          Leaf(_)   => return 0u,
-          Concat(ref x) => return x.height
+          Leaf(_) => 0u,
+          Concat(ref x) => x.height,
         }
     }
 
@@ -1135,7 +1141,7 @@ pub mod node {
         loop {
             match *node {
               Leaf(x) => return str::char_at(*x.content, pos),
-              Concat({left, right, _}) => {
+              Concat(Concat {left, right, _}) => {
                 let left_len = char_len(left);
                 node = if left_len > pos { left }
                        else { pos -= left_len; right };
@@ -1151,22 +1157,22 @@ pub mod node {
         use core::prelude::*;
         use core::vec;
 
-        pub type T = {
-            stack:            ~[mut @Node],
-            mut stackpos: int
-        };
+        pub struct T {
+            stack: ~[mut @Node],
+            mut stackpos: int,
+        }
 
         pub fn empty() -> T {
             let stack : ~[mut @Node] = ~[mut];
-            return {stack: move stack, mut stackpos: -1}
+            T { stack: stack, stackpos: -1 }
         }
 
         pub fn start(node: @Node) -> T {
             let stack = vec::cast_to_mut(
                 vec::from_elem(height(node)+1u, node));
-            return {
-                stack:         move stack,
-                mut stackpos:  0
+            T {
+                stack: stack,
+                stackpos:  0,
             }
         }
 
@@ -1196,25 +1202,25 @@ pub mod node {
         use core::prelude::*;
         use core::str;
 
-        pub type T = {
+        pub struct T {
             leaf_iterator: leaf_iterator::T,
             mut leaf:  Option<Leaf>,
-            mut leaf_byte_pos: uint
-        };
+            mut leaf_byte_pos: uint,
+        }
 
         pub fn start(node: @Node) -> T {
-            return {
+            T {
                 leaf_iterator: leaf_iterator::start(node),
-                mut leaf:          option::None,
-                mut leaf_byte_pos: 0u
+                leaf: option::None,
+                leaf_byte_pos: 0u,
             }
         }
 
         pub fn empty() -> T {
-            return {
+            T {
                 leaf_iterator: leaf_iterator::empty(),
-                mut leaf:  option::None,
-                mut leaf_byte_pos: 0u
+                leaf:  option::None,
+                leaf_byte_pos: 0u,
             }
         }
 

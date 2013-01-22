@@ -111,7 +111,7 @@ fn run_loop(iotask_ch: Chan<IoTask>) {
         ll::async_init(loop_ptr, async_handle, wake_up_cb);
 
         // initialize our loop data and store it in the loop
-        let data: IoTaskLoopData = {
+        let data = IoTaskLoopData {
             async_handle: async_handle,
             msg_po: Port()
         };
@@ -134,10 +134,10 @@ fn run_loop(iotask_ch: Chan<IoTask>) {
 }
 
 // data that lives for the lifetime of the high-evel oo
-type IoTaskLoopData = {
+struct IoTaskLoopData {
     async_handle: *ll::uv_async_t,
-    msg_po: Port<IoTaskMsg>
-};
+    msg_po: Port<IoTaskMsg>,
+}
 
 fn send_msg(iotask: IoTask, msg: IoTaskMsg) {
     unsafe {
@@ -214,10 +214,10 @@ mod test {
             ll::close(handle, async_close_cb);
         }
     }
-    type AhData = {
+    struct AhData {
         iotask: IoTask,
-        exit_ch: oldcomm::Chan<()>
-    };
+        exit_ch: oldcomm::Chan<()>,
+    }
     fn impl_uv_iotask_async(iotask: IoTask) {
         unsafe {
             let async_handle = ll::async_t();

@@ -287,7 +287,7 @@ fn get_lint_settings_level(settings: lint_settings,
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: lint_modes) -> lint_modes {
-    smallintmap::SmallIntMap_(@{v: copy modes.v})
+    smallintmap::SmallIntMap_(@smallintmap::SmallIntMap_ { v: copy modes.v })
 }
 
 type ctxt_ = {dict: lint_dict,
