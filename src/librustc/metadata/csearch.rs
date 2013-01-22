@@ -88,7 +88,7 @@ fn each_lang_item(cstore: cstore::CStore,
 
 /// Iterates over all the paths in the given crate.
 fn each_path(cstore: cstore::CStore, cnum: ast::crate_num,
-             f: fn(decoder::path_entry) -> bool) {
+             f: fn(&str, decoder::def_like) -> bool) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
