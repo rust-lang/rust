@@ -18,7 +18,6 @@
 use cast;
 use iter;
 use libc;
-use oldcomm;
 use option;
 use pipes;
 use prelude::*;
