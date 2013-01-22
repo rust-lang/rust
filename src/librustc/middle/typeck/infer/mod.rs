@@ -217,11 +217,11 @@ when possible but otherwise merge the variables" strategy.  In other
 words, `GLB(A, B)` where `A` and `B` are variables will often result
 in `A` and `B` being merged and the result being `A`.
 
-## Type assignment
+## Type coercion
 
 We have a notion of assignability which differs somewhat from
 subtyping; in particular it may cause region borrowing to occur.  See
-the big comment later in this file on Type Assignment for specifics.
+the big comment later in this file on Type Coercion for specifics.
 
 ### In conclusion
 
@@ -254,7 +254,7 @@ use middle::ty::{ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
 use middle::ty::IntVarValue;
 use middle::ty;
 use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};
-use middle::typeck::infer::assignment::Assign;
+use middle::typeck::infer::coercion::Coerce;
 use middle::typeck::infer::combine::{CombineFields, eq_tys};
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
@@ -293,17 +293,15 @@ export new_infer_ctxt;
 export mk_subty, can_mk_subty;
 export mk_subr;
 export mk_eqty;
-export mk_assignty, can_mk_assignty;
+export mk_coercety, can_mk_coercety;
 export resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all;
 export force_tvar, force_rvar, force_ivar, force_all;
 export resolve_and_force_all_but_regions, not_regions;
 export resolve_type, resolve_region;
 export resolve_borrowings;
 export cres, fres, fixup_err, fixup_err_to_str;
-export assignment;
 export root, to_str;
 export int_ty_set_all;
-export assignment;
 export combine;
 export glb;
 export integral;
@@ -312,6 +310,7 @@ export lub;
 export region_inference;
 export resolve;
 export sub;
+export coercion;
 export to_str;
 export unify;
 export uok;
@@ -323,8 +322,7 @@ export infer_ctxt;
 export fixup_err;
 export IntVarValue, IntType, UintType;
 
-#[legacy_exports]
-mod assignment;
+mod coercion;
 #[legacy_exports]
 mod combine;
 #[legacy_exports]
@@ -458,22 +456,22 @@ fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-fn mk_assignty(cx: @InferCtxt, a_is_expected: bool, span: span,
+fn mk_coercety(cx: @InferCtxt, a_is_expected: bool, span: span,
                a: ty::t, b: ty::t) -> ares {
-    debug!("mk_assignty(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
+    debug!("mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            Assign(cx.combine_fields(a_is_expected, span)).tys(a, b)
+            Coerce(cx.combine_fields(a_is_expected, span)).tys(a, b)
         }
     }
 }
 
-fn can_mk_assignty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
-    debug!("can_mk_assignty(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
+fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
+    debug!("can_mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
             let span = ast_util::dummy_sp();
-            Assign(cx.combine_fields(true, span)).tys(a, b)
+            Coerce(cx.combine_fields(true, span)).tys(a, b)
         }
     }.to_ures()
 }
