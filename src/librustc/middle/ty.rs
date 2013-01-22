@@ -55,7 +55,7 @@ export ProvidedMethodSource;
 export ProvidedMethodInfo;
 export ProvidedMethodsMap;
 export InstantiatedTraitRef;
-export TyVid, IntVid, FloatVid, FnVid, RegionVid, Vid;
+export TyVid, IntVid, FloatVid, RegionVid, Vid;
 export br_hashmap;
 export is_instantiable;
 export node_id_to_type;
@@ -215,7 +215,7 @@ export ty_sort_str;
 export normalize_ty;
 export to_str;
 export bound_const;
-export terr_no_integral_type, terr_no_floating_point_type;
+export terr_int_mismatch, terr_float_mismatch, terr_sigil_mismatch;
 export terr_ty_param_size, terr_self_substs;
 export terr_in_field, terr_record_fields, terr_vstores_differ, terr_arg_count;
 export terr_sorts, terr_vec, terr_str, terr_record_size, terr_tuple_size;
@@ -241,6 +241,7 @@ export AutoRef;
 export AutoRefKind, AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn;
 export iter_bound_traits_and_supertraits;
 export count_traits_and_supertraits;
+export IntVarValue, IntType, UintType;
 
 // Data types
 
@@ -703,6 +704,12 @@ enum sty {
     ty_unboxed_vec(mt),
 }
 
+#[deriving_eq]
+enum IntVarValue {
+    IntType(ast::int_ty),
+    UintType(ast::uint_ty),
+}
+
 enum terr_vstore_kind {
     terr_vec, terr_str, terr_fn, terr_trait
 }
@@ -740,8 +747,8 @@ enum type_err {
     terr_sorts(expected_found<t>),
     terr_self_substs,
     terr_integer_as_char,
-    terr_no_integral_type,
-    terr_no_floating_point_type,
+    terr_int_mismatch(expected_found<IntVarValue>),
+    terr_float_mismatch(expected_found<ast::float_ty>)
 }
 
 enum param_bound {
@@ -752,10 +759,16 @@ enum param_bound {
     bound_trait(t),
 }
 
+#[deriving_eq]
 enum TyVid = uint;
+
+#[deriving_eq]
 enum IntVid = uint;
+
+#[deriving_eq]
 enum FloatVid = uint;
-enum FnVid = uint;
+
+#[deriving_eq]
 #[auto_encode]
 #[auto_decode]
 enum RegionVid = uint;
@@ -851,14 +864,6 @@ impl FloatVid: ToStr {
     pure fn to_str() -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
-impl FnVid: Vid {
-    pure fn to_uint() -> uint { *self }
-}
-
-impl FnVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("<F%u>", self.to_uint()) }
-}
-
 impl RegionVid: Vid {
     pure fn to_uint() -> uint { *self }
 }
@@ -884,33 +889,36 @@ impl InferTy: ToStr {
     }
 }
 
-impl RegionVid : to_bytes::IterBytes {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        (**self).iter_bytes(lsb0, f)
+impl IntVarValue : ToStr {
+    pure fn to_str() -> ~str {
+        match self {
+            IntType(ref v) => v.to_str(),
+            UintType(ref v) => v.to_str(),
+        }
     }
 }
 
 impl TyVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        (**self).iter_bytes(lsb0, f)
+        self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
 impl IntVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        (**self).iter_bytes(lsb0, f)
+        self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
 impl FloatVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        (**self).iter_bytes(lsb0, f)
+        self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-impl FnVid : to_bytes::IterBytes {
+impl RegionVid : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        (**self).iter_bytes(lsb0, f)
+        self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
@@ -3575,17 +3583,18 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_self_substs => {
             ~"inconsistent self substitution" // XXX this is more of a bug
         }
-        terr_no_integral_type => {
-            ~"couldn't determine an appropriate integral type for integer \
-              literal"
-        }
         terr_integer_as_char => {
-            ~"integer literals can't be inferred to char type \
-              (try an explicit cast)"
+            fmt!("expected an integral type but found char")
         }
-        terr_no_floating_point_type => {
-            ~"couldn't determine an appropriate floating point type for \
-              floating point literal"
+        terr_int_mismatch(ref values) => {
+            fmt!("expected %s but found %s",
+                 values.expected.to_str(),
+                 values.found.to_str())
+        }
+        terr_float_mismatch(ref values) => {
+            fmt!("expected %s but found %s",
+                 values.expected.to_str(),
+                 values.found.to_str())
         }
     }
 }
@@ -4449,31 +4458,6 @@ impl vstore : cmp::Eq {
         }
     }
     pure fn ne(&self, other: &vstore) -> bool { !(*self).eq(other) }
-}
-
-impl TyVid : cmp::Eq {
-    pure fn eq(&self, other: &TyVid) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &TyVid) -> bool { *(*self) != *(*other) }
-}
-
-impl IntVid : cmp::Eq {
-    pure fn eq(&self, other: &IntVid) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &IntVid) -> bool { *(*self) != *(*other) }
-}
-
-impl FloatVid : cmp::Eq {
-    pure fn eq(&self, other: &FloatVid) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &FloatVid) -> bool { *(*self) != *(*other) }
-}
-
-impl FnVid : cmp::Eq {
-    pure fn eq(&self, other: &FnVid) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &FnVid) -> bool { *(*self) != *(*other) }
-}
-
-impl RegionVid : cmp::Eq {
-    pure fn eq(&self, other: &RegionVid) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &RegionVid) -> bool { *(*self) != *(*other) }
 }
 
 impl Region : cmp::Eq {
