@@ -25,11 +25,11 @@ use core::prelude::*;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
-struct SmallIntMap_<T: Copy> {
+struct SmallIntMap_<T> {
     v: DVec<Option<T>>,
 }
 
-pub enum SmallIntMap<T:Copy> {
+pub enum SmallIntMap<T> {
     SmallIntMap_(@SmallIntMap_<T>)
 }
 
