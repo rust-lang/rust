@@ -204,88 +204,86 @@ pub fn run_program(prog: &str, args: &[~str]) -> int {
  * A class with a <program> field
  */
 pub fn start_program(prog: &str, args: &[~str]) -> Program {
+    let pipe_input = os::pipe();
+    let pipe_output = os::pipe();
+    let pipe_err = os::pipe();
+    let pid =
+        spawn_process(prog, args, &None, &None,
+                      pipe_input.in, pipe_output.out,
+                      pipe_err.out);
+
     unsafe {
-        let pipe_input = os::pipe();
-        let pipe_output = os::pipe();
-        let pipe_err = os::pipe();
-        let pid =
-            spawn_process(prog, args, &None, &None,
-                          pipe_input.in, pipe_output.out,
-                          pipe_err.out);
-
-        unsafe {
-            if pid == -1 as pid_t { fail; }
-            libc::close(pipe_input.in);
-            libc::close(pipe_output.out);
-            libc::close(pipe_err.out);
-        }
-
-        struct ProgRepr {
-            pid: pid_t,
-            mut in_fd: c_int,
-            out_file: *libc::FILE,
-            err_file: *libc::FILE,
-            mut finished: bool,
-        }
-
-        fn close_repr_input(r: &ProgRepr) {
-            let invalid_fd = -1i32;
-            if r.in_fd != invalid_fd {
-                unsafe {
-                    libc::close(r.in_fd);
-                }
-                r.in_fd = invalid_fd;
-            }
-        }
-        fn finish_repr(r: &ProgRepr) -> int {
-            if r.finished { return 0; }
-            r.finished = true;
-            close_repr_input(r);
-            return waitpid(r.pid);
-        }
-        fn destroy_repr(r: &ProgRepr) {
-            unsafe {
-                finish_repr(r);
-                libc::fclose(r.out_file);
-                libc::fclose(r.err_file);
-            }
-        }
-        struct ProgRes {
-            r: ProgRepr,
-            drop { destroy_repr(&self.r); }
-        }
-
-        fn ProgRes(r: ProgRepr) -> ProgRes {
-            ProgRes {
-                r: move r
-            }
-        }
-
-        impl ProgRes: Program {
-            fn get_id() -> pid_t { return self.r.pid; }
-            fn input() -> io::Writer {
-                io::fd_writer(self.r.in_fd, false)
-            }
-            fn output() -> io::Reader {
-                io::FILE_reader(self.r.out_file, false)
-            }
-            fn err() -> io::Reader {
-                io::FILE_reader(self.r.err_file, false)
-            }
-            fn close_input() { close_repr_input(&self.r); }
-            fn finish() -> int { finish_repr(&self.r) }
-            fn destroy() { destroy_repr(&self.r); }
-        }
-        let repr = ProgRepr {
-            pid: pid,
-            in_fd: pipe_input.out,
-            out_file: os::fdopen(pipe_output.in),
-            err_file: os::fdopen(pipe_err.in),
-            finished: false,
-        };
-
-        ProgRes(repr) as Program
+        if pid == -1 as pid_t { fail; }
+        libc::close(pipe_input.in);
+        libc::close(pipe_output.out);
+        libc::close(pipe_err.out);
     }
+
+    struct ProgRepr {
+        pid: pid_t,
+        mut in_fd: c_int,
+        out_file: *libc::FILE,
+        err_file: *libc::FILE,
+        mut finished: bool,
+    }
+
+    fn close_repr_input(r: &ProgRepr) {
+        let invalid_fd = -1i32;
+        if r.in_fd != invalid_fd {
+            unsafe {
+                libc::close(r.in_fd);
+            }
+            r.in_fd = invalid_fd;
+        }
+    }
+    fn finish_repr(r: &ProgRepr) -> int {
+        if r.finished { return 0; }
+        r.finished = true;
+        close_repr_input(r);
+        return waitpid(r.pid);
+    }
+    fn destroy_repr(r: &ProgRepr) {
+        unsafe {
+            finish_repr(r);
+            libc::fclose(r.out_file);
+            libc::fclose(r.err_file);
+        }
+    }
+    struct ProgRes {
+        r: ProgRepr,
+        drop { destroy_repr(&self.r); }
+    }
+
+    fn ProgRes(r: ProgRepr) -> ProgRes {
+        ProgRes {
+            r: move r
+        }
+    }
+
+    impl ProgRes: Program {
+        fn get_id() -> pid_t { return self.r.pid; }
+        fn input() -> io::Writer {
+            io::fd_writer(self.r.in_fd, false)
+        }
+        fn output() -> io::Reader {
+            io::FILE_reader(self.r.out_file, false)
+        }
+        fn err() -> io::Reader {
+            io::FILE_reader(self.r.err_file, false)
+        }
+        fn close_input() { close_repr_input(&self.r); }
+        fn finish() -> int { finish_repr(&self.r) }
+        fn destroy() { destroy_repr(&self.r); }
+    }
+    let repr = ProgRepr {
+        pid: pid,
+        in_fd: pipe_input.out,
+        out_file: os::fdopen(pipe_output.in),
+        err_file: os::fdopen(pipe_err.in),
+        finished: false,
+    };
+
+    ProgRes(repr) as Program
 }
 
 fn read_all(rd: io::Reader) -> ~str {
