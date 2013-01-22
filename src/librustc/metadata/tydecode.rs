@@ -323,9 +323,6 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       'f' => {
         parse_ty_rust_fn(st, conv)
       }
-      'X' => {
-        return ty::mk_var(st.tcx, ty::TyVid(parse_int(st) as uint));
-      }
       'Y' => return ty::mk_type(st.tcx),
       'C' => {
         let proto = parse_proto(st);

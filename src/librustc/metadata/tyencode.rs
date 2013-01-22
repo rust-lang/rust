@@ -298,19 +298,8 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
       ty::ty_fn(ref f) => {
         enc_ty_fn(w, cx, (*f));
       }
-      ty::ty_infer(ty::TyVar(id)) => {
-        w.write_char('X');
-        w.write_uint(id.to_uint());
-      }
-      ty::ty_infer(ty::IntVar(id)) => {
-        w.write_char('X');
-        w.write_char('I');
-        w.write_uint(id.to_uint());
-      }
-      ty::ty_infer(ty::FloatVar(id)) => {
-        w.write_char('X');
-        w.write_char('F');
-        w.write_uint(id.to_uint());
+      ty::ty_infer(_) => {
+        cx.diag.handler().bug(~"Cannot encode inference variable types");
       }
       ty::ty_param({idx: id, def_id: did}) => {
         w.write_char('p');
