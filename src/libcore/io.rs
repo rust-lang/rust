@@ -1108,10 +1108,13 @@ pub mod fsync {
     // Artifacts that need to fsync on destruction
     pub struct Res<t: Copy> {
         arg: Arg<t>,
-        drop {
+    }
+
+    impl<T: Copy> Res<T>: Drop {
+        fn finalize(&self) {
           match self.arg.opt_level {
-            option::None => (),
-            option::Some(level) => {
+            None => (),
+            Some(level) => {
               // fail hard if not succesful
               assert((self.arg.fsync_fn)(self.arg.val, level) != -1);
             }
