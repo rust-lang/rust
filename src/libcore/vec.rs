@@ -928,7 +928,7 @@ pub pure fn connect<T: Copy>(v: &[~[T]], sep: &T) -> ~[T] {
  * # Arguments
  * * `z` - initial accumulator value
  * * `v` - vector to iterate over
- * * `p` - a closure to do operate on vector elements
+ * * `p` - a closure to operate on vector elements
  *
  * # Examples
  *
