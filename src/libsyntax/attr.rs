@@ -369,7 +369,7 @@ impl inline_attr : cmp::Eq {
 }
 
 /// True if something like #[inline] is found in the list of attrs.
-fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
+fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline(always)]
     do vec::foldl(ia_none, attrs) |ia,attr| {
         match attr.node.value.node {

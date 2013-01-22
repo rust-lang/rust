@@ -68,7 +68,7 @@ type abbrev_map = map::HashMap<ty::t, tyencode::ty_abbrev>;
 
 pub type encode_inlined_item = fn@(ecx: @encode_ctxt,
                                    ebml_w: writer::Encoder,
-                                   path: ast_map::path,
+                                   path: &[ast_map::path_elt],
                                    ii: ast::inlined_item);
 
 type encode_parms = {
@@ -194,7 +194,7 @@ fn encode_ty_type_param_bounds(ebml_w: writer::Encoder, ecx: @encode_ctxt,
 }
 
 fn encode_type_param_bounds(ebml_w: writer::Encoder, ecx: @encode_ctxt,
-                            params: ~[ty_param]) {
+                            params: &[ty_param]) {
     let ty_param_bounds =
         @params.map(|param| ecx.tcx.ty_param_bounds.get(param.id));
     encode_ty_type_param_bounds(ebml_w, ecx, ty_param_bounds);
@@ -268,9 +268,10 @@ fn encode_parent_item(ebml_w: writer::Encoder, id: def_id) {
 }
 
 fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: writer::Encoder,
-                            id: node_id, variants: ~[variant],
-                            path: ast_map::path, index: @mut ~[entry<int>],
-                            ty_params: ~[ty_param]) {
+                            id: node_id, variants: &[variant],
+                            path: &[ast_map::path_elt],
+                            index: @mut ~[entry<int>],
+                            ty_params: &[ty_param]) {
     let mut disr_val = 0;
     let mut i = 0;
     let vi = ty::enum_variants(ecx.tcx,
@@ -297,8 +298,8 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: writer::Encoder,
             encode_disr_val(ecx, ebml_w, vi[i].disr_val);
             disr_val = vi[i].disr_val;
         }
-        encode_type_param_bounds(ebml_w, ecx, /*bad*/copy ty_params);
-        encode_path(ecx, ebml_w, &path,
+        encode_type_param_bounds(ebml_w, ecx, ty_params);
+        encode_path(ecx, ebml_w, path,
                     ast_map::path_name(variant.node.name));
         ebml_w.end_tag();
         disr_val += 1;
@@ -307,7 +308,7 @@ fn encode_enum_variant_info(ecx: @encode_ctxt, ebml_w: writer::Encoder,
 }
 
 fn encode_path(ecx: @encode_ctxt, ebml_w: writer::Encoder,
-               path: &ast_map::path, name: ast_map::path_elt) {
+               path: &[ast_map::path_elt], name: ast_map::path_elt) {
     fn encode_path_elt(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                        elt: ast_map::path_elt) {
         let (tag, name) = match elt {
@@ -328,7 +329,7 @@ fn encode_path(ecx: @encode_ctxt, ebml_w: writer::Encoder,
 }
 
 fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: writer::Encoder,
-                       md: _mod, id: node_id, +path: ast_map::path,
+                       md: _mod, id: node_id, path: &[ast_map::path_elt],
                        name: ident) {
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
@@ -357,7 +358,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         }
     }
 
-    encode_path(ecx, ebml_w, &path, ast_map::path_mod(name));
+    encode_path(ecx, ebml_w, path, ast_map::path_mod(name));
 
     // Encode the reexports of this module.
     debug!("(encoding info for module) encoding reexports for %d", id);
@@ -434,8 +435,8 @@ fn encode_method_sort(ebml_w: writer::Encoder, sort: char) {
 
 /* Returns an index of items in this class */
 fn encode_info_for_struct(ecx: @encode_ctxt, ebml_w: writer::Encoder,
-                         path: ast_map::path,
-                         fields: ~[@struct_field],
+                         path: &[ast_map::path_elt],
+                         fields: &[@struct_field],
                          global_index: @mut~[entry<int>]) -> ~[entry<int>] {
     /* Each class has its own index, since different classes
        may have fields with the same name */
@@ -455,7 +456,7 @@ fn encode_info_for_struct(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                        tcx.sess.str_of(nm), id);
                 encode_visibility(ebml_w, vis);
                 encode_name(ecx, ebml_w, nm);
-                encode_path(ecx, ebml_w, &path, ast_map::path_name(nm));
+                encode_path(ecx, ebml_w, path, ast_map::path_name(nm));
                 encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
                 encode_mutability(ebml_w, mt);
                 encode_def_id(ebml_w, local_def(id));
@@ -469,8 +470,8 @@ fn encode_info_for_struct(ecx: @encode_ctxt, ebml_w: writer::Encoder,
 
 // This is for encoding info for ctors and dtors
 fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: writer::Encoder,
-                        id: node_id, ident: ident, +path: ast_map::path,
-                        item: Option<inlined_item>, +tps: ~[ty_param]) {
+                        id: node_id, ident: ident, path: &[ast_map::path_elt],
+                        item: Option<inlined_item>, tps: &[ty_param]) {
         ebml_w.start_tag(tag_items_data_item);
         encode_name(ecx, ebml_w, ident);
         encode_def_id(ebml_w, local_def(id));
@@ -481,7 +482,7 @@ fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                ecx.tcx.sess.str_of(ident),
                ty_to_str(ecx.tcx, its_ty), id);
         encode_type(ecx, ebml_w, its_ty);
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(ident));
         match item {
            Some(ref it) => {
              (ecx.encode_inlined_item)(ecx, ebml_w, path, (*it));
@@ -495,7 +496,7 @@ fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: writer::Encoder,
 
 fn encode_info_for_method(ecx: @encode_ctxt,
                           ebml_w: writer::Encoder,
-                          +impl_path: ast_map::path,
+                          impl_path: &[ast_map::path_elt],
                           should_inline: bool,
                           parent_id: node_id,
                           m: @method,
@@ -514,7 +515,7 @@ fn encode_info_for_method(ecx: @encode_ctxt,
     encode_type_param_bounds(ebml_w, ecx, all_tps);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, m.id));
     encode_name(ecx, ebml_w, m.ident);
-    encode_path(ecx, ebml_w, &impl_path, ast_map::path_name(m.ident));
+    encode_path(ecx, ebml_w, impl_path, ast_map::path_name(m.ident));
     encode_self_type(ebml_w, m.self_ty.node);
     if len > 0u || should_inline {
         (ecx.encode_inlined_item)(
@@ -544,7 +545,7 @@ fn purity_static_method_family(p: purity) -> char {
 }
 
 
-fn should_inline(attrs: ~[attribute]) -> bool {
+fn should_inline(attrs: &[attribute]) -> bool {
     match attr::find_inline_attr(attrs) {
         attr::ia_none | attr::ia_never  => false,
         attr::ia_hint | attr::ia_always => true
@@ -554,7 +555,7 @@ fn should_inline(attrs: ~[attribute]) -> bool {
 
 fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                         item: @item, index: @mut ~[entry<int>],
-                        +path: ast_map::path) {
+                        path: &[ast_map::path_elt]) {
 
     let tcx = ecx.tcx;
     let must_write =
@@ -582,7 +583,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         encode_family(ebml_w, 'c');
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
       item_fn(_, purity, tps, _) => {
@@ -593,8 +594,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         let tps_len = tps.len();
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(item.ident));
-        encode_attributes(ebml_w, /*bad*/copy item.attrs);
+        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        encode_attributes(ebml_w, item.attrs);
         if tps_len > 0u || should_inline(item.attrs) {
             (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         } else {
@@ -612,7 +613,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'n');
         encode_name(ecx, ebml_w, item.ident);
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
       item_ty(_, tps) => {
@@ -623,7 +624,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
         ebml_w.end_tag();
       }
@@ -632,33 +633,31 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         do ebml_w.wr_tag(tag_items_data_item) {
             encode_def_id(ebml_w, local_def(item.id));
             encode_family(ebml_w, 't');
-            encode_type_param_bounds(ebml_w, ecx, /*bad*/copy *tps);
+            encode_type_param_bounds(ebml_w, ecx, *tps);
             encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
             encode_name(ecx, ebml_w, item.ident);
             for (*enum_definition).variants.each |v| {
                 encode_variant_id(ebml_w, local_def(v.node.id));
             }
-            (ecx.encode_inlined_item)(ecx, ebml_w, /*bad*/copy path,
-                                      ii_item(item));
-            encode_path(ecx, ebml_w, &path, ast_map::path_name(item.ident));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
+            encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
             encode_region_param(ecx, ebml_w, item);
         }
         encode_enum_variant_info(ecx,
                                  ebml_w,
                                  item.id,
-                                 /*bad*/copy (*enum_definition).variants,
+                                 (*enum_definition).variants,
                                  path,
                                  index,
-                                 /*bad*/copy *tps);
+                                 *tps);
       }
       item_struct(struct_def, tps) => {
         /* First, encode the fields
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
            class itself */
-        // XXX: Bad copy of `path`.
-        let idx = encode_info_for_struct(ecx, ebml_w, copy path,
-                                        /*bad*/copy struct_def.fields, index);
+        let idx = encode_info_for_struct(ecx, ebml_w, path,
+                                         struct_def.fields, index);
         /* Encode the dtor */
         do struct_def.dtor.iter |dtor| {
             index.push({val: dtor.node.id, pos: ebml_w.writer.tell()});
@@ -666,10 +665,10 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                                ecx.tcx.sess.ident_of(
                                    ecx.tcx.sess.str_of(item.ident) +
                                    ~"_dtor"),
-                               /*bad*/copy path, if tps.len() > 0u {
+                               path, if tps.len() > 0u {
                                    Some(ii_dtor(*dtor, item.ident, tps,
                                                 local_def(item.id))) }
-                               else { None }, /*bad*/copy tps);
+                               else { None }, tps);
         }
 
         /* Index the class*/
@@ -681,7 +680,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
         /* Encode the dtor */
         /* Encode id for dtor */
@@ -718,11 +717,10 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i');
         encode_region_param(ecx, ebml_w, item);
-        // XXX: Bad copy.
-        encode_type_param_bounds(ebml_w, ecx, copy tps);
+        encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
-        encode_attributes(ebml_w, /*bad*/copy item.attrs);
+        encode_attributes(ebml_w, item.attrs);
         match ty.node {
             ast::ty_path(path, _) if path.idents.len() == 1 => {
                 encode_impl_type_basename(ecx, ebml_w,
@@ -739,15 +737,17 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         do opt_trait.iter() |associated_trait| {
            encode_trait_ref(ebml_w, ecx, *associated_trait);
         }
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
 
-        let impl_path = vec::append_one(path,
-                                        ast_map::path_name(item.ident));
+        // >:-<
+        let mut impl_path = vec::append(~[], path);
+        impl_path += ~[ast_map::path_name(item.ident)];
+
         for methods.each |m| {
             index.push({val: m.id, pos: ebml_w.writer.tell()});
-            encode_info_for_method(ecx, ebml_w, /*bad*/copy impl_path,
-                                   should_inline(/*bad*/copy m.attrs),
+            encode_info_for_method(ecx, ebml_w, impl_path,
+                                   should_inline(m.attrs),
                                    item.id, *m,
                                    vec::append(/*bad*/copy tps, m.tps));
         }
@@ -760,10 +760,10 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'I');
         encode_region_param(ecx, ebml_w, item);
-        encode_type_param_bounds(ebml_w, ecx, /*bad*/copy *tps);
+        encode_type_param_bounds(ebml_w, ecx, *tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
-        encode_attributes(ebml_w, /*bad*/copy item.attrs);
+        encode_attributes(ebml_w, item.attrs);
         let mut i = 0u;
         for vec::each(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
             match (*ms)[i] {
@@ -772,7 +772,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                 encode_def_id(ebml_w, local_def((*ty_m).id));
                 encode_name(ecx, ebml_w, mty.ident);
                 encode_type_param_bounds(ebml_w, ecx,
-                                         /*bad*/copy (*ty_m).tps);
+                                         (*ty_m).tps);
                 encode_type(ecx, ebml_w, ty::mk_fn(tcx, /*bad*/copy mty.fty));
                 encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
                 encode_self_type(ebml_w, mty.self_ty);
@@ -785,7 +785,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                 ebml_w.start_tag(tag_item_trait_method);
                 encode_def_id(ebml_w, local_def(m.id));
                 encode_name(ecx, ebml_w, mty.ident);
-                encode_type_param_bounds(ebml_w, ecx, /*bad*/copy m.tps);
+                encode_type_param_bounds(ebml_w, ecx, m.tps);
                 encode_type(ecx, ebml_w, ty::mk_fn(tcx, /*bad*/copy mty.fty));
                 encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
                 encode_self_type(ebml_w, mty.self_ty);
@@ -793,9 +793,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                 ebml_w.end_tag();
               }
             }
-            i += 1u;
+            i += 1;
         }
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         for traits.each |associated_trait| {
            encode_trait_ref(ebml_w, ecx, *associated_trait)
         }
@@ -821,9 +821,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
             let polyty = ecx.tcx.tcache.get(local_def(ty_m.id));
             encode_ty_type_param_bounds(ebml_w, ecx, polyty.bounds);
             encode_type(ecx, ebml_w, polyty.ty);
-            let m_path = vec::append_one(/*bad*/copy path,
-                                         ast_map::path_name(item.ident));
-            encode_path(ecx, ebml_w, &m_path, ast_map::path_name(ty_m.ident));
+            let mut m_path = vec::append(~[], path); // :-(
+            m_path += [ast_map::path_name(item.ident)];
+            encode_path(ecx, ebml_w, m_path, ast_map::path_name(ty_m.ident));
             ebml_w.end_tag();
         }
 
@@ -855,20 +855,18 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         if abi == foreign_abi_rust_intrinsic {
-            // XXX: Bad copy of `path`.
-            (ecx.encode_inlined_item)(ecx, ebml_w, copy path,
-                                      ii_foreign(nitem));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_foreign(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
         }
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(nitem.ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(nitem.ident));
       }
       foreign_item_const(*) => {
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, 'c');
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
-        encode_path(ecx, ebml_w, &path, ast_map::path_name(nitem.ident));
+        encode_path(ecx, ebml_w, path, ast_map::path_name(nitem.ident));
       }
     }
     ebml_w.end_tag();
@@ -888,7 +886,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
             visit::visit_item(i, cx, v);
             match ecx.tcx.items.get(i.id) {
               ast_map::node_item(_, pt) => {
-                encode_info_for_item(ecx, ebml_w, i, index, /*bad*/copy *pt);
+                encode_info_for_item(ecx, ebml_w, i, index, *pt);
               }
               _ => fail ~"bad item"
             }
@@ -1001,7 +999,7 @@ fn encode_meta_item(ebml_w: writer::Encoder, mi: meta_item) {
     }
 }
 
-fn encode_attributes(ebml_w: writer::Encoder, attrs: ~[attribute]) {
+fn encode_attributes(ebml_w: writer::Encoder, attrs: &[attribute]) {
     ebml_w.start_tag(tag_attributes);
     for attrs.each |attr| {
         ebml_w.start_tag(tag_attribute);

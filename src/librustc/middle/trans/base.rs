@@ -2885,9 +2885,9 @@ fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
 }
 
 fn crate_ctxt_to_encode_parms(cx: @crate_ctxt) -> encoder::encode_parms {
-    // XXX: Bad copy of `c`, whatever it is.
     let encode_inlined_item: encoder::encode_inlined_item =
-        |a,b,c,d| astencode::encode_inlined_item(a, b, copy c, d, cx.maps);
+        |ecx, ebml_w, path, ii|
+        astencode::encode_inlined_item(ecx, ebml_w, path, ii, cx.maps);
 
     return {
         diag: cx.sess.diagnostic(),
