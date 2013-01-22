@@ -74,9 +74,8 @@
 #[warn(deprecated_mode)];
 
 use cast;
-use oldcomm;
 use option;
-use pipes::{Chan, Port};
+use pipes::{stream, Chan, Port};
 use pipes;
 use prelude::*;
 use private;
@@ -667,12 +666,11 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
 
 #[test]
 fn test_spawn_raw_simple() {
-    let po = oldcomm::Port();
-    let ch = oldcomm::Chan(&po);
+    let (po, ch) = stream();
     do spawn_raw(default_task_opts()) {
-        oldcomm::send(ch, ());
+        ch.send(());
     }
-    oldcomm::recv(po);
+    po.recv();
 }
 
 #[test]
