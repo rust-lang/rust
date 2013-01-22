@@ -75,7 +75,6 @@ export def_like;
 export dl_def;
 export dl_impl;
 export dl_field;
-export path_entry;
 export each_lang_item;
 export each_path;
 export get_item_path;
@@ -468,21 +467,6 @@ fn def_like_to_def(def_like: def_like) -> ast::def {
     }
 }
 
-// A path.
-struct path_entry {
-    // The full path, separated by '::'.
-    path_string: ~str,
-    // The definition, implementation, or field that this path corresponds to.
-    def_like: def_like,
-}
-
-fn path_entry(+path_string: ~str, def_like: def_like) -> path_entry {
-    path_entry {
-        path_string: path_string,
-        def_like: def_like
-    }
-}
-
 /// Iterates over the language items in the given crate.
 fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
     let root = reader::Doc(cdata.data);
@@ -503,7 +487,7 @@ fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
 /// Iterates over all the paths in the given crate.
 fn each_path(intr: @ident_interner, cdata: cmd,
              get_crate_data: GetCrateDataCb,
-             f: fn(path_entry) -> bool) {
+             f: fn(&str, def_like) -> bool) {
     let root = reader::Doc(cdata.data);
     let items = reader::get_doc(root, tag_items);
     let items_data = reader::get_doc(items, tag_items_data);
@@ -515,7 +499,8 @@ fn each_path(intr: @ident_interner, cdata: cmd,
         if !broken {
             let path = ast_map::path_to_str_with_sep(
                 item_path(intr, item_doc), ~"::", intr);
-            if path != ~"" {
+            let path_is_empty = path.is_empty();
+            if !path_is_empty {
                 // Extract the def ID.
                 let def_id = item_def_id(item_doc, cdata);
 
@@ -524,10 +509,8 @@ fn each_path(intr: @ident_interner, cdata: cmd,
                 let def_like = item_to_def_like(item_doc, def_id, cdata.cnum);
 
                 // Hand the information off to the iteratee.
-                // XXX: Bad copy.
-                let this_path_entry = path_entry(copy path, def_like);
-                if !f(this_path_entry) {
-                    broken = true;      // XXX: This is awful.
+                if !f(path, def_like) {
+                    broken = true;      // FIXME #4572: This is awful.
                 }
             }
 
@@ -548,7 +531,7 @@ fn each_path(intr: @ident_interner, cdata: cmd,
                     let reexport_name = reader::doc_as_str(reexport_name_doc);
 
                     let reexport_path;
-                    if path == ~"" {
+                    if path_is_empty {
                         reexport_path = reexport_name;
                     } else {
                         reexport_path = path + ~"::" + reexport_name;
@@ -576,10 +559,8 @@ fn each_path(intr: @ident_interner, cdata: cmd,
                             debug!("(each_path) yielding reexported \
                                     item: %s", reexport_path);
 
-                            let this_path_entry =
-                                path_entry(reexport_path, def_like);
-                            if (!f(this_path_entry)) {
-                                broken = true;  // XXX: This is awful.
+                            if (!f(reexport_path, def_like)) {
+                                broken = true;  // FIXME #4572: This is awful.
                             }
                         }
                     }
@@ -1123,12 +1104,12 @@ fn get_crate_vers(data: @~[u8]) -> ~str {
 
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
                     get_crate_data: GetCrateDataCb,
-                    proc: fn(+path: ~str, ast::def_id)) {
-    for each_path(intr, cdata, get_crate_data) |path_entry| {
-        match path_entry.def_like {
+                    proc: fn(path: &str, ast::def_id)) {
+    for each_path(intr, cdata, get_crate_data) |path_string, def_like| {
+        match def_like {
             dl_impl(*) | dl_field => {}
             dl_def(def) => {
-                proc(/*bad*/copy path_entry.path_string,
+                proc(path_string,
                      ast_util::def_id_of_def(def))
             }
         }

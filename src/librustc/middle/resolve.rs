@@ -1808,14 +1808,13 @@ impl Resolver {
 
         // Create all the items reachable by paths.
         for each_path(self.session.cstore, root.def_id.get().crate)
-                |path_entry| {
+                |path_string, def_like| {
 
             debug!("(building reduced graph for external crate) found path \
                         entry: %s (%?)",
-                    path_entry.path_string,
-                    path_entry.def_like);
+                    path_string, def_like);
 
-            let mut pieces = split_str(path_entry.path_string, ~"::");
+            let mut pieces = split_str(path_string, ~"::");
             let final_ident_str = pieces.pop();
             let final_ident = self.session.ident_of(final_ident_str);
 
@@ -1867,7 +1866,7 @@ impl Resolver {
                 current_module = (*child_name_bindings).get_module();
             }
 
-            match path_entry.def_like {
+            match def_like {
                 dl_def(def) => {
                     // Add the new child item.
                     let (child_name_bindings, new_parent) =
