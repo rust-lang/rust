@@ -75,10 +75,10 @@ fn get_monitor_task_gl() -> IoTask unsafe {
                     debug!("global monitor task starting");
                     // As a weak task the runtime will notify us when to exit
                     do weaken_task |weak_exit_po| {
-                        debug!("global monitor task is now weak");
+                        debug!("global monitor task is weak");
                         weak_exit_po.recv();
                         iotask::exit(&iotask);
-                        debug!("global monitor task is leaving weakend state");
+                        debug!("global monitor task is unweak");
                     };
                     debug!("global monitor task exiting");
                 }
