@@ -10,6 +10,7 @@
 
 //! A priority queue implemented with a binary heap
 
+use core::container::{Container, Mutable};
 use core::cmp::Ord;
 use core::prelude::*;
 use core::ptr::addr_of;
@@ -24,6 +25,19 @@ pub struct PriorityQueue <T: Ord>{
     priv data: ~[T],
 }
 
+impl <T: Ord> PriorityQueue<T>: Container {
+    /// Returns the length of the queue
+    pure fn len(&self) -> uint { self.data.len() }
+
+    /// Returns true if a queue contains no elements
+    pure fn is_empty(&self) -> bool { self.data.is_empty() }
+}
+
+impl <T: Ord> PriorityQueue<T>: Mutable {
+    /// Drop all items from the queue
+    fn clear(&mut self) { self.data.truncate(0) }
+}
+
 impl <T: Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
     pure fn top(&self) -> &self/T { &self.data[0] }
@@ -32,12 +46,6 @@ impl <T: Ord> PriorityQueue<T> {
     pure fn maybe_top(&self) -> Option<&self/T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }
-
-    /// Returns the length of the queue
-    pure fn len(&self) -> uint { self.data.len() }
-
-    /// Returns true if a queue contains no elements
-    pure fn is_empty(&self) -> bool { self.data.is_empty() }
 
     /// Returns true if a queue contains some elements
     pure fn is_not_empty(&self) -> bool { self.data.is_not_empty() }
@@ -50,9 +58,6 @@ impl <T: Ord> PriorityQueue<T> {
     fn reserve_at_least(&mut self, n: uint) {
         vec::reserve_at_least(&mut self.data, n)
     }
-
-    /// Drop all items from the queue
-    fn clear(&mut self) { self.data.truncate(0) }
 
     /// Pop the greatest item from the queue - fails if empty
     fn pop(&mut self) -> T {
