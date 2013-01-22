@@ -57,6 +57,7 @@
 use core::prelude::*;
 
 use middle::ty::{FloatVar, FnTyBase, FnMeta, FnSig, IntVar, TyVar};
+use middle::ty::{IntType, UintType};
 use middle::ty;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
@@ -112,8 +113,8 @@ pub struct CombineFields {
 }
 
 fn expected_found<C:Combine,T>(
-    self: &C, +a: T, +b: T) -> ty::expected_found<T> {
-
+    self: &C, +a: T, +b: T) -> ty::expected_found<T>
+{
     if self.a_is_expected() {
         ty::expected_found {expected: move a, found: move b}
     } else {
@@ -392,7 +393,7 @@ fn super_tys<C:Combine>(
     self: &C, a: ty::t, b: ty::t) -> cres<ty::t>
 {
     let tcx = self.infcx().tcx;
-    match (/*bad*/copy ty::get(a).sty, /*bad*/copy ty::get(b).sty) {
+    return match (/*bad*/copy ty::get(a).sty, /*bad*/copy ty::get(b).sty) {
       // The "subtype" ought to be handling cases involving bot or var:
       (ty::ty_bot, _) |
       (_, ty::ty_bot) |
@@ -405,53 +406,46 @@ fn super_tys<C:Combine>(
                  b.inf_str(self.infcx())));
       }
 
-      // Relate integral variables to other types
-      (ty::ty_infer(IntVar(a_id)), ty::ty_infer(IntVar(b_id))) => {
-        if_ok!(self.infcx().simple_vars(&self.infcx().int_var_bindings,
-                                        ty::terr_no_integral_type,
-                                        a_id, b_id));
-        Ok(a)
-      }
-      (ty::ty_infer(IntVar(v_id)), ty::ty_int(v)) |
-      (ty::ty_int(v), ty::ty_infer(IntVar(v_id))) => {
-        if v == ast::ty_char {
-            Err(ty::terr_integer_as_char)
-        } else {
-            if_ok!(self.infcx().simple_var_t(&self.infcx().int_var_bindings,
-                                             ty::terr_no_integral_type,
-                                             v_id, IntType(v)));
-            Ok(ty::mk_mach_int(tcx, v))
+        // Relate integral variables to other types
+        (ty::ty_infer(IntVar(a_id)), ty::ty_infer(IntVar(b_id))) => {
+            if_ok!(self.infcx().simple_vars(self.a_is_expected(),
+                                            a_id, b_id));
+            Ok(a)
         }
-      }
-      (ty::ty_infer(IntVar(v_id)), ty::ty_uint(v)) |
-      (ty::ty_uint(v), ty::ty_infer(IntVar(v_id))) => {
-        if_ok!(self.infcx().simple_var_t(&self.infcx().int_var_bindings,
-                                         ty::terr_no_integral_type,
-                                         v_id, UintType(v)));
-        Ok(ty::mk_mach_uint(tcx, v))
-      }
+        (ty::ty_infer(IntVar(v_id)), ty::ty_int(v)) => {
+            unify_integral_variable(self, self.a_is_expected(),
+                                    v_id, IntType(v))
+        }
+        (ty::ty_int(v), ty::ty_infer(IntVar(v_id))) => {
+            unify_integral_variable(self, !self.a_is_expected(),
+                                    v_id, IntType(v))
+        }
+        (ty::ty_infer(IntVar(v_id)), ty::ty_uint(v)) => {
+            unify_integral_variable(self, self.a_is_expected(),
+                                    v_id, UintType(v))
+        }
+        (ty::ty_uint(v), ty::ty_infer(IntVar(v_id))) => {
+            unify_integral_variable(self, !self.a_is_expected(),
+                                    v_id, UintType(v))
+        }
 
-      // Relate floating-point variables to other types
-      (ty::ty_infer(FloatVar(a_id)), ty::ty_infer(FloatVar(b_id))) => {
-        if_ok!(self.infcx().simple_vars(&self.infcx().float_var_bindings,
-                                        ty::terr_no_floating_point_type,
-                                        a_id, b_id));
-        Ok(a)
-      }
-      (ty::ty_infer(FloatVar(v_id)), ty::ty_float(v)) |
-      (ty::ty_float(v), ty::ty_infer(FloatVar(v_id))) => {
-        if_ok!(self.infcx().simple_var_t(&self.infcx().float_var_bindings,
-                                         ty::terr_no_floating_point_type,
-                                         v_id, v));
-        Ok(ty::mk_mach_float(tcx, v))
-      }
+        // Relate floating-point variables to other types
+        (ty::ty_infer(FloatVar(a_id)), ty::ty_infer(FloatVar(b_id))) => {
+            if_ok!(self.infcx().simple_vars(self.a_is_expected(),
+                                            a_id, b_id));
+            Ok(a)
+        }
+        (ty::ty_infer(FloatVar(v_id)), ty::ty_float(v)) => {
+            unify_float_variable(self, self.a_is_expected(), v_id, v)
+        }
+        (ty::ty_float(v), ty::ty_infer(FloatVar(v_id))) => {
+            unify_float_variable(self, !self.a_is_expected(), v_id, v)
+        }
 
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
       (ty::ty_float(_), _) => {
-        let as_ = /*bad*/copy ty::get(a).sty;
-        let bs = /*bad*/copy ty::get(b).sty;
-        if as_ == bs {
+        if ty::get(a).sty == ty::get(b).sty {
             Ok(a)
         } else {
             Err(ty::terr_sorts(expected_found(self, a, b)))
@@ -516,11 +510,9 @@ fn super_tys<C:Combine>(
       }
 
       (ty::ty_rptr(a_r, a_mt), ty::ty_rptr(b_r, b_mt)) => {
-        do self.contraregions(a_r, b_r).chain |r| {
-            do self.mts(a_mt, b_mt).chain |mt| {
-                Ok(ty::mk_rptr(tcx, r, mt))
-            }
-        }
+          let r = if_ok!(self.contraregions(a_r, b_r));
+          let mt = if_ok!(self.mts(a_mt, b_mt));
+          Ok(ty::mk_rptr(tcx, r, mt))
       }
 
       (ty::ty_evec(a_mt, vs_a), ty::ty_evec(b_mt, vs_b)) => {
@@ -565,5 +557,34 @@ fn super_tys<C:Combine>(
       }
 
       _ => Err(ty::terr_sorts(expected_found(self, a, b)))
+    };
+
+    fn unify_integral_variable<C:Combine>(
+        self: &C,
+        vid_is_expected: bool,
+        vid: ty::IntVid,
+        val: ty::IntVarValue) -> cres<ty::t>
+    {
+        let tcx = self.infcx().tcx;
+        if val == IntType(ast::ty_char) {
+            Err(ty::terr_integer_as_char)
+        } else {
+            if_ok!(self.infcx().simple_var_t(vid_is_expected, vid, val));
+            match val {
+                IntType(v) => Ok(ty::mk_mach_int(tcx, v)),
+                UintType(v) => Ok(ty::mk_mach_uint(tcx, v))
+            }
+        }
+    }
+
+    fn unify_float_variable<C:Combine>(
+        self: &C,
+        vid_is_expected: bool,
+        vid: ty::FloatVid,
+        val: ast::float_ty) -> cres<ty::t>
+    {
+        let tcx = self.infcx().tcx;
+        if_ok!(self.infcx().simple_var_t(vid_is_expected, vid, val));
+        Ok(ty::mk_mach_float(tcx, val))
     }
 }

@@ -251,6 +251,7 @@ use core::prelude::*;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty::{mk_fn, type_is_bot};
 use middle::ty::{ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
+use middle::ty::IntVarValue;
 use middle::ty;
 use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};
 use middle::typeck::infer::assignment::Assign;
@@ -351,12 +352,6 @@ type ures = cres<()>; // "unify result"
 type fres<T> = Result<T, fixup_err>; // "fixup result"
 type ares = cres<Option<@ty::AutoAdjustment>>; // "assignment result"
 
-#[deriving_eq]
-enum IntVarValue {
-    IntType(ast::int_ty),
-    UintType(ast::uint_ty),
-}
-
 struct InferCtxt {
     tcx: ty::ctxt,
 
@@ -364,22 +359,14 @@ struct InferCtxt {
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
     ty_var_bindings: ValsAndBindings<ty::TyVid, Bounds<ty::t>>,
-
-    // Number of type variables created thus far.
     mut ty_var_counter: uint,
 
-    // The types that might instantiate an integral type variable are
-    // represented by an int_ty_set.
+    // Map from integral variable to the kind of integer it represents
     int_var_bindings: ValsAndBindings<ty::IntVid, Option<IntVarValue>>,
-
-    // Number of integral variables created thus far.
     mut int_var_counter: uint,
 
-    // The types that might instantiate a floating-point type variable are
-    // represented by an float_ty_set.
+    // Map from floating variable to the kind of float it represents
     float_var_bindings: ValsAndBindings<ty::FloatVid, Option<ast::float_ty>>,
-
-    // Number of floating-point variables created thus far.
     mut float_var_counter: uint,
 
     // For region variables.
@@ -582,6 +569,7 @@ fn rollback_to<V:Copy Vid, T:Copy>(
 struct Snapshot {
     ty_var_bindings_len: uint,
     int_var_bindings_len: uint,
+    float_var_bindings_len: uint,
     region_vars_snapshot: uint,
 }
 
@@ -607,6 +595,8 @@ impl @InferCtxt {
                 self.ty_var_bindings.bindings.len(),
             int_var_bindings_len:
                 self.int_var_bindings.bindings.len(),
+            float_var_bindings_len:
+                self.float_var_bindings.bindings.len(),
             region_vars_snapshot:
                 self.region_vars.start_snapshot(),
         }
@@ -616,9 +606,11 @@ impl @InferCtxt {
         debug!("rollback!");
         rollback_to(&self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
-        // FIXME(#3211) -- int_var not transactional
+        // FIXME(#3211) -- int_var and float_var not transactional
         //rollback_to(&self.int_var_bindings,
         //            snapshot.int_var_bindings_len);
+        //rollback_to(&self.float_var_bindings,
+        //            snapshot.float_var_bindings_len);
 
         self.region_vars.rollback_to(snapshot.region_vars_snapshot);
     }
@@ -664,6 +656,16 @@ impl @InferCtxt {
     }
 }
 
+fn next_simple_var<V: Copy,T: Copy>(
+    +counter: &mut uint,
+    +bindings: &ValsAndBindings<V,Option<T>>) -> uint
+{
+    let id = *counter;
+    *counter += 1;
+    bindings.vals.insert(id, Root(None, 0));
+    return id;
+}
+
 impl @InferCtxt {
     fn next_ty_var_id() -> TyVid {
         let id = self.ty_var_counter;
@@ -682,11 +684,8 @@ impl @InferCtxt {
     }
 
     fn next_int_var_id() -> IntVid {
-        let id = self.int_var_counter;
-        self.int_var_counter += 1;
-
-        self.int_var_bindings.vals.insert(id, Root(None, 0));
-        return IntVid(id);
+        IntVid(next_simple_var(&mut self.int_var_counter,
+                               &self.int_var_bindings))
     }
 
     fn next_int_var() -> ty::t {
@@ -694,11 +693,8 @@ impl @InferCtxt {
     }
 
     fn next_float_var_id() -> FloatVid {
-        let id = self.float_var_counter;
-        self.float_var_counter += 1;
-
-        self.float_var_bindings.vals.insert(id, Root(None, 0));
-        return FloatVid(id);
+        FloatVid(next_simple_var(&mut self.float_var_counter,
+                                 &self.float_var_bindings))
     }
 
     fn next_float_var() -> ty::t {
