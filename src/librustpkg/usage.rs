@@ -39,6 +39,13 @@ Remove all build files in the work cache for the package in the current
 directory.");
 }
 
+pub fn do_cmd() {
+    io::println(~"rustpkg do <cmd>
+
+Runs a command in the package script. You can listen to a command
+by tagging a function with the attribute `#[pkg_do(cmd)]`.");
+}
+
 pub fn install() {
     io::println(~"rustpkg [options..] install [url] [target]
 
