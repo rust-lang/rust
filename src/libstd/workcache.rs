@@ -297,7 +297,7 @@ impl @Mut<Prep> : TPrep {
                 name: &str, val: &str) -> bool {
         do self.borrow_imm |p| {
             let k = kind.to_owned();
-            let f = (*p.ctxt.freshness.get_ref(&k))(name, val);
+            let f = (*p.ctxt.freshness.get(&k))(name, val);
             do p.ctxt.logger.borrow_imm |lg| {
                 if f {
                     lg.info(fmt!("%s %s:%s is fresh",

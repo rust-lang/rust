@@ -911,7 +911,7 @@ pub impl Decoder: serialize::Decoder {
                 // FIXME(#3148) This hint should not be necessary.
                 let obj: &self/~Object = obj;
 
-                match obj.find_ref(&name.to_owned()) {
+                match obj.find(&name.to_owned()) {
                     None => fail fmt!("no such field: %s", name),
                     Some(json) => {
                         self.stack.push(json);
@@ -969,7 +969,7 @@ impl Json : Eq {
                         if d0.len() == d1.len() {
                             let mut equal = true;
                             for d0.each |k, v0| {
-                                match d1.find_ref(k) {
+                                match d1.find(k) {
                                     Some(v1) if v0 == v1 => { },
                                     _ => { equal = false; break }
                                 }
