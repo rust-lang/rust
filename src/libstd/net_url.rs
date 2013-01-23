@@ -11,9 +11,6 @@
 //! Types/fns concerning URLs (see RFC 3986)
 #[forbid(deprecated_mode)];
 
-use map;
-use map::HashMap;
-
 use core::cmp::Eq;
 use core::dvec::DVec;
 use core::from_str::FromStr;
@@ -21,7 +18,6 @@ use core::io::{Reader, ReaderUtil};
 use core::io;
 use core::prelude::*;
 use core::hashmap::linear::LinearMap;
-use core::hashmap;
 use core::str;
 use core::to_bytes::IterBytes;
 use core::to_bytes;
@@ -244,9 +240,7 @@ pub fn encode_form_urlencoded(m: &LinearMap<~str, ~[~str]>) -> ~str {
  * Decode a string encoded with the 'application/x-www-form-urlencoded' media
  * type into a hashmap.
  */
-pub fn decode_form_urlencoded(
-    s: &[u8]
-) -> hashmap::linear::LinearMap<~str, ~[~str]> {
+pub fn decode_form_urlencoded(s: &[u8]) -> LinearMap<~str, ~[~str]> {
     do io::with_bytes_reader(s) |rdr| {
         let mut m = LinearMap();
         let mut key = ~"";
