@@ -369,7 +369,7 @@ pub mod linear {
             }
         }
 
-        pure fn find_ref(&self, k: &K) -> Option<&self/V> {
+        pure fn find(&self, k: &K) -> Option<&self/V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
                     match self.buckets[idx] {
@@ -389,8 +389,8 @@ pub mod linear {
             }
         }
 
-        pure fn get_ref(&self, k: &K) -> &self/V {
-            match self.find_ref(k) {
+        pure fn get(&self, k: &K) -> &self/V {
+            match self.find(k) {
                 Some(v) => v,
                 None => fail fmt!("No entry found for key: %?", k),
             }
@@ -428,7 +428,7 @@ pub mod linear {
             if self.len() != other.len() { return false; }
 
             for self.each |key, value| {
-                match other.find_ref(key) {
+                match other.find(key) {
                     None => return false,
                     Some(v) => if value != v { return false },
                 }
@@ -593,11 +593,11 @@ pub mod test {
     }
 
     #[test]
-    pub fn find_ref() {
+    pub fn find() {
         let mut m = ~LinearMap();
-        assert m.find_ref(&1).is_none();
+        assert m.find(&1).is_none();
         m.insert(1, 2);
-        match m.find_ref(&1) {
+        match m.find(&1) {
             None => fail,
             Some(v) => assert *v == 2
         }
