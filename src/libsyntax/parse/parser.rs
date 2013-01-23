@@ -747,6 +747,7 @@ impl Parser {
     fn parse_fn_block_arg() -> arg_or_capture_item {
         do self.parse_capture_item_or |p| {
             let m = p.parse_arg_mode();
+            let is_mutbl = self.eat_keyword(~"mut");
             let pat = p.parse_pat(false);
             let t = if p.eat(token::COLON) {
                 p.parse_ty(false)
@@ -759,7 +760,7 @@ impl Parser {
             };
             either::Left(ast::arg {
                 mode: m,
-                is_mutbl: false,
+                is_mutbl: is_mutbl,
                 ty: t,
                 pat: pat,
                 id: p.get_id()
