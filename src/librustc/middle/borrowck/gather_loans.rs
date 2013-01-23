@@ -480,13 +480,44 @@ impl gather_loan_ctxt {
             return;
         }
 
+        // Normally we wouldn't allow `re_free` here. However, in this case
+        // it should be sound. Below is nmatsakis' reasoning:
+        //
+        // Perhaps [this permits] a function kind of like this one here, which
+        // consumes one mut pointer and returns a narrower one:
+        //
+        //     struct Foo { f: int }
+        //     fn foo(p: &v/mut Foo) -> &v/mut int { &mut p.f }
+        //
+        // I think this should work fine but there is more subtlety to it than
+        // I at first imagined. Unfortunately it's a very important use case,
+        // I think, so it really ought to work. The changes you [pcwalton]
+        // made to permit re_free() do permit this case, I think, but I'm not
+        // sure what else they permit. I have to think that over a bit.
+        //
+        // Ordinarily, a loan with scope re_free wouldn't make sense, because
+        // you couldn't enforce it. But in this case, your function signature
+        // informs the caller that you demand exclusive access to p and its
+        // contents for the lifetime v. Since borrowed pointers are
+        // non-copyable, they must have (a) made a borrow which will enforce
+        // those conditions and then (b) given you the resulting pointer.
+        // Therefore, they should be respecting the loan. So it actually seems
+        // that it's ok in this case to have a loan with re_free, so long as
+        // the scope of the loan is no greater than the region pointer on
+        // which it is based. Neat but not something I had previously
+        // considered all the way through. (Note that we already rely on
+        // similar reasoning to permit you to return borrowed pointers into
+        // immutable structures, this is just the converse I suppose)
+
         let scope_id = match scope_r {
-            ty::re_scope(scope_id) => scope_id,
+            ty::re_scope(scope_id) | ty::re_free(scope_id, _) => scope_id,
             _ => {
                 self.bccx.tcx.sess.span_bug(
                     cmt.span,
-                    fmt!("loans required but scope is scope_region is %s",
-                         region_to_str(self.tcx(), scope_r)));
+                    fmt!("loans required but scope is scope_region is %s \
+                          (%?)",
+                         region_to_str(self.tcx(), scope_r),
+                         scope_r));
             }
         };
 

@@ -241,19 +241,24 @@ fn check_poison(is_mutex: bool, failed: bool) {
 
 #[doc(hidden)]
 struct PoisonOnFail {
-    failed: &mut bool,
+    failed: *mut bool,
 }
 
 impl PoisonOnFail : Drop {
     fn finalize(&self) {
-        /* assert !*self.failed; -- might be false in case of cond.wait() */
-        if task::failing() { *self.failed = true; }
+        unsafe {
+            /* assert !*self.failed;
+               -- might be false in case of cond.wait() */
+            if task::failing() {
+                *self.failed = true;
+            }
+        }
     }
 }
 
-fn PoisonOnFail(failed: &r/mut bool) -> PoisonOnFail/&r {
+fn PoisonOnFail(failed: &r/mut bool) -> PoisonOnFail {
     PoisonOnFail {
-        failed: failed
+        failed: ptr::to_mut_unsafe_ptr(failed)
     }
 }
 
@@ -415,7 +420,7 @@ pub fn unwrap_rw_arc<T: Const Owned>(arc: RWARC<T>) -> T {
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
 fn borrow_rwlock<T: Const Owned>(state: &r/mut RWARCInner<T>) -> &r/RWlock {
-    unsafe { cast::transmute_immut(&mut state.lock) }
+    unsafe { cast::transmute(&mut state.lock) }
 }
 
 // FIXME (#3154) ice with struct/&<T> prevents these from being structs.
@@ -442,12 +447,14 @@ impl<T: Const Owned> &RWWriteMode<T> {
         match *self {
             RWWriteMode((ref data, ref token, ref poison)) => {
                 do token.write_cond |cond| {
-                    let cvar = Condvar {
-                        is_mutex: false,
-                        failed: &mut *poison.failed,
-                        cond: cond
-                    };
-                    blk(&mut **data, &cvar)
+                    unsafe {
+                        let cvar = Condvar {
+                            is_mutex: false,
+                            failed: &mut *poison.failed,
+                            cond: cond
+                        };
+                        blk(&mut **data, &cvar)
+                    }
                 }
             }
         }
