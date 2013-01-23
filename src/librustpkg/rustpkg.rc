@@ -31,7 +31,6 @@ use std::getopts;
 use std::net::url;
 use send_map::linear::LinearMap;
 use rustc::driver::{driver, session};
-use rustc::metadata::{filesearch};
 use syntax::{ast, attr, codemap, diagnostic, parse, visit};
 use semver::Version;
 
@@ -46,19 +45,33 @@ struct PackageScript {
     name: ~str,
     vers: Version,
     crates: ~[~str],
-    deps: ~[(~str, Option<~str>)]
+    deps: ~[(~str, Option<~str>)],
+    input: driver::input,
+    sess: session::Session,
+    cfg: ast::crate_cfg,
+    crate: @ast::crate,
+    custom: bool
 }
 
 impl PackageScript {
-    static fn parse(parent: Path) -> Result<PackageScript, ~str> {
+    static fn parse(parent: &Path) -> Result<PackageScript, ~str> {
         let script = parent.push(~"package.rs");
 
         if !os::path_exists(&script) {
             return result::Err(~"no package.rs file");
         }
 
-        let sess = parse::new_parse_sess(None);
-        let crate = parse::parse_crate_from_file(&script, ~[], sess);
+        let binary = os::args()[0];
+        let options: @session::options = @{
+            binary: binary,
+            crate_type: session::bin_crate,
+            .. *session::basic_options()
+        };
+        let input = driver::file_input(script);
+        let sess = driver::build_session(options, diagnostic::emit);
+        let cfg = driver::build_configuration(sess, binary, input);
+        let {crate, _} = driver::compile_upto(sess, cfg, input,
+                                              driver::cu_parse, None);
         let mut id = None;
         let mut vers = None;
         let mut crates = ~[];
@@ -165,8 +178,19 @@ impl PackageScript {
             }
         }
 
+        let mut custom = false;
+
+        // If we hit a function, we assume they want to use
+        // the build API.
+        for crate.node.module.items.each |i| {
+            match i.node {
+                ast::item_fn(_, _, _, _) => custom = true,
+                _ => {}
+            }
+        }
+
         if id.is_none() || vers.is_none() {
-            return result::Err(~"package's pkg attr is missing required data (id, vers)");
+            return result::Err(~"pkg attr without (id, vers) values");
         }
 
         let id = id.get();
@@ -184,12 +208,35 @@ impl PackageScript {
             name: name,
             vers: vers,
             crates: crates,
-            deps: deps
+            deps: deps,
+            input: input,
+            sess: sess,
+            cfg: cfg,
+            crate: crate,
+            custom: custom
         })
     }
 
+    // Build the bootstrap and run a command
+    // TODO: Use JIT once it works, it should be faster
+    fn run(cmd: ~str) -> int {
+        let work_dir = self.work_dir();
+        let input = self.input;
+        let sess = self.sess;
+        let cfg = self.cfg;
+        let crate = util::ready_crate(sess, self.crate);
+        let outputs = driver::build_output_filenames(input, &Some(work_dir),
+                                                     &None, sess);
+        let exe = work_dir.push(~"package" + util::exe_suffix());
+
+        driver::compile_rest(sess, cfg, driver::cu_parse,
+                         Some(outputs), Some(crate));
+        run::run_program(exe.to_str(), ~[cmd])
+    }
+
     fn hash() -> ~str {
-        fmt!("%s-%s-%s", self.name, util::hash(self.id + self.vers.to_str()), self.vers.to_str())
+        fmt!("%s-%s-%s", self.name, util::hash(self.id + self.vers.to_str()),
+                         self.vers.to_str())
     }
 
     fn work_dir() -> Path {
@@ -198,7 +245,7 @@ impl PackageScript {
 }
 
 struct Ctx {
-    cfg: ast::crate_cfg,
+    cfgs: ~[~str],
     mut dep_cache: LinearMap<~str, bool>
 }
 
@@ -229,13 +276,17 @@ impl Ctx {
         }
 
         match cmd {
-            ~"build" => self.build(),
-            ~"clean" => self.clean(),
+            ~"build" => {
+                self.build(&os::getcwd(), true, false, false);
+            }
+            ~"clean" => {
+                self.clean();
+            }
             ~"install" => {
                 self.install(if args.len() >= 1 { Some(args[0]) }
                              else { None }, 
                              if args.len() >= 2 { Some(args[1]) }
-                             else { None }, false)
+                             else { None }, false);
             }
             ~"prefer" => {
                 if args.len() < 1 {
@@ -244,9 +295,11 @@ impl Ctx {
 
                 let (name, vers) = sep_name_vers(args[0]);
 
-                self.prefer(name.get(), vers)
+                self.prefer(name.get(), vers);
             }
-            ~"test" => self.test(),
+            ~"test" => {
+                self.test();
+            }
             ~"uninstall" => {
                 if args.len() < 1 {
                     return usage::uninstall();
@@ -254,7 +307,7 @@ impl Ctx {
 
                 let (name, vers) = sep_name_vers(args[0]);
 
-                self.uninstall(name.get(), vers)
+                self.uninstall(name.get(), vers);
             }
             ~"unprefer" => {
                 if args.len() < 1 {
@@ -263,28 +316,27 @@ impl Ctx {
 
                 let (name, vers) = sep_name_vers(args[0]);
 
-                self.unprefer(name.get(), vers)
+                self.unprefer(name.get(), vers);
             }
             _ => fail ~"reached an unhandled command"
-        };
+        }
     }
 
-    fn build() -> bool {
-        let dir = os::getcwd();
+    fn build(dir: &Path, verbose: bool, opt: bool,
+             test: bool) -> Option<PackageScript> {
+        let cwd = &os::getcwd();
         let script = match PackageScript::parse(dir) {
             result::Ok(script) => script,
             result::Err(err) => {
                 util::error(err);
 
-                return false; 
+                return None; 
             }
         };
         let work_dir = script.work_dir();
         let mut success = true;
 
         util::need_dir(&work_dir);
-        util::note(fmt!("building %s v%s (%s)", script.name, script.vers.to_str(),
-                                                script.id));
 
         if script.deps.len() >= 1 {
             util::note(~"installing dependencies");
@@ -302,15 +354,31 @@ impl Ctx {
                 util::error(fmt!("building %s v%s failed: a dep wasn't installed",
                                  script.name, script.vers.to_str()));
 
-                return false;
+                return None;
             }
 
             util::note(~"installed dependencies");
         }
 
+        // Build imperative crates
+        os::change_dir(dir);
+
+        if script.custom && script.run(~"build") != 0 {
+            util::error(fmt!("building %s v%s failed: custom build logic failed",
+                             script.name, script.vers.to_str()));
+
+            return None;
+        }
+
+        os::change_dir(cwd);
+
         for script.crates.each |&crate| {
-            success = self.compile(&work_dir, &dir.push_rel(&Path(crate)), ~[],
-                                   false, false);
+            let crate = &dir.push_rel(&Path(crate)).normalize();
+
+            util::note(fmt!("compiling %s", crate.to_str()));
+
+            success = self.compile(crate, &work_dir, ~[],
+                                   ~[], opt, test);
 
             if !success { break; }
         }
@@ -319,159 +387,23 @@ impl Ctx {
             util::error(fmt!("building %s v%s failed: a crate failed to compile",
                              script.name, script.vers.to_str()));
 
-            return false;
+            return None;
         }
 
-        util::note(fmt!("built %s v%s", script.name, script.vers.to_str()));
+        if verbose {
+            util::note(fmt!("built %s v%s", script.name, script.vers.to_str()));
+        }
 
-        true
+        Some(script)
     }
 
-    fn compile(dir: &Path, crate: &Path, flags: ~[~str],
-               opt: bool, test: bool) -> bool {
-        util::note(~"compiling " + crate.to_str());
-
-        let lib_dir = dir.push(~"lib");
-        let bin_dir = dir.push(~"bin");
-        let test_dir = dir.push(~"test");
-        let binary = os::args()[0];
-        let options: @session::options = @{
-            binary: binary,
-            addl_lib_search_paths: ~[util::root().push(~"lib")],
-            crate_type: session::unknown_crate,
-            optimize: if opt { session::Aggressive } else { session::No },
-            test: test,
-            .. *session::basic_options()
-        };
-        let input = driver::file_input(*crate);
-        let sess = driver::build_session(options, diagnostic::emit);
-        let cfg = driver::build_configuration(sess, binary, input);
-        let mut outputs = driver::build_output_filenames(input, &None, &None,
-                                                         sess);
-        let {crate, _} = driver::compile_upto(sess, cfg, input, driver::cu_parse,
-                                              Some(outputs));
-
-        let mut name = None;
-        let mut vers = None;
-        let mut uuid = None;
-        let mut crate_type = None;
-
-        fn load_link_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
-                                                       Option<~str>,
-                                                       Option<~str>) {
-            let mut name = None;
-            let mut vers = None;
-            let mut uuid = None;
-
-            for mis.each |a| {
-                match a.node {
-                    ast::meta_name_value(v, ast::spanned {node: ast::lit_str(s),
-                                             span: _}) => {
-                        match v {
-                            ~"name" => name = Some(*s),
-                            ~"vers" => vers = Some(*s),
-                            ~"uuid" => uuid = Some(*s),
-                            _ => { }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            (name, vers, uuid)
-        }
-
-        for crate.node.attrs.each |a| {
-            match a.node.value.node {
-                ast::meta_name_value(v, ast::spanned {node: ast::lit_str(s),
-                                         span: _}) => {
-                    match v {
-                        ~"crate_type" => crate_type = Some(*s),
-                        _ => {}
-                    }
-                }
-                ast::meta_list(v, mis) => {
-                    match v {
-                        ~"link" => {
-                            let (n, v, u) = load_link_attr(mis);
-
-                            name = n;
-                            vers = v;
-                            uuid = u;
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        if name.is_none() || vers.is_none() || uuid.is_none() {
-            util::error(~"crate's link attr is missing required data (name, vers, uuid)");
-
-            return false;
-        }
-
-        let name = name.get();
-        let vers = vers.get();
-        let uuid = uuid.get();
-
-        let is_bin = match crate_type {
-            Some(crate_type) => {
-                match crate_type {
-                    ~"bin" => true,
-                    ~"lib" => false,
-                    _ => {
-                        util::warn(~"unknown crate_type, falling back to lib");
-
-                        false
-                    }
-                }
-            }
-            None => {
-                util::warn(~"missing crate_type attr, assuming lib");
-
-                false
-            }
-        };
-
-        if test {
-            util::need_dir(&test_dir);
-
-            outputs = driver::build_output_filenames(input, &Some(test_dir),
-                                                     &None, sess)
-        }
-        else if is_bin {
-            util::need_dir(&bin_dir);
-
-            #[cfg(windows)]
-            fn suffix() -> ~str { ~".exe" }
-
-            #[cfg(target_os = "linux")]
-            #[cfg(target_os = "android")]
-            #[cfg(target_os = "freebsd")]
-            #[cfg(target_os = "macos")]
-            fn suffix() -> ~str { ~"" }
-
-            let path = bin_dir.push(fmt!("%s-%s-%s%s", name,
-                                                       util::hash(name + uuid + vers),
-                                                       vers, suffix()));
-            outputs = driver::build_output_filenames(input, &None, &Some(path), sess);
-        } else {
-            util::need_dir(&lib_dir);
-
-            outputs = driver::build_output_filenames(input, &Some(lib_dir),
-                                                     &None, sess)
-        }
-
-        driver::compile_upto(sess, cfg, input, driver::cu_everything,
-                             Some(outputs));
-
-        true
+    fn compile(crate: &Path, dir: &Path, flags: ~[~str],
+               cfgs: ~[~str], opt: bool, test: bool) -> bool {
+        util::compile_crate(crate, dir, flags, cfgs, opt, test)
     }
 
     fn clean() -> bool {
-        let script = match PackageScript::parse(os::getcwd()) {
+        let script = match PackageScript::parse(&os::getcwd()) {
             result::Ok(script) => script,
             result::Err(err) => {
                 util::error(err);
@@ -505,7 +437,8 @@ impl Ctx {
             dir = os::getcwd();
         } else {
             let url = url.get();
-            let hash = util::hash(if !target.is_none() { url + target.get() } else { url });
+            let hash = util::hash(if !target.is_none() { url + target.get() }
+                                  else { url });
 
             if self.dep_cache.contains_key(&hash) {
                 util::warn(~"already installed dep this run");
@@ -528,53 +461,13 @@ impl Ctx {
             }
         }
 
-        let script = match PackageScript::parse(dir) {
-            result::Ok(script) => script,
-            result::Err(err) => {
-                util::error(err);
-
+        let script = match self.build(&dir, false, true, false) {
+            Some(script) => script,
+            None => {
                 return false;
             }
         };
         let work_dir = script.work_dir();
-
-        util::need_dir(&work_dir);
-        util::note(fmt!("installing %s v%s (%s)", script.name, script.vers.to_str(),
-                                                  script.id));
-
-        if script.deps.len() >= 1 {
-            util::note(~"installing dependencies");
-
-            for script.deps.each |&dep| {
-                let (url, target) = dep;
-
-                success = self.install(Some(url), target, false);
-
-                if !success { break; }
-            }
-
-            if !success {
-                util::error(fmt!("installing %s v%s failed: a dep wasn't installed",
-                                 script.name, script.vers.to_str()));
-                return false;
-            }
-
-            util::note(~"installed dependencies");
-        }
-
-        for script.crates.each |&crate| {
-            success = self.compile(&work_dir, &dir.push_rel(&Path(crate)), ~[],
-                                 true, false);
-
-            if !success { break; }
-        }
-
-        if !success {
-            util::error(fmt!("installing %s v%s failed: a crate failed to compile",
-                             script.name, script.vers.to_str()));
-            return false;
-        }
-
         let from_bin_dir = work_dir.push(~"bin");
         let from_lib_dir = work_dir.push(~"lib");
         let to_bin_dir = util::root().push(~"bin");
@@ -728,58 +621,14 @@ impl Ctx {
     }
 
     fn test() -> bool {
-        let dir = os::getcwd();
-        let script = match PackageScript::parse(dir) {
-            result::Ok(script) => script,
-            result::Err(err) => {
-                util::error(err);
-
-                return false; 
+        let script = match self.build(&os::getcwd(), false, false, true) {
+            Some(script) => script,
+            None => {
+                return false;
             }
         };
         let work_dir = script.work_dir();
         let test_dir = work_dir.push(~"test");
-        let mut success = true;
-
-        util::need_dir(&work_dir);
-        util::note(fmt!("testing %s v%s (%s)", script.name, script.vers.to_str(),
-                                               script.id));
-
-        if script.deps.len() >= 1 {
-            util::note(~"installing dependencies");
-
-            for script.deps.each |&dep| {
-                let (url, target) = dep;
-
-                success = self.install(Some(url), target, true);
-
-                if !success { break; }
-            }
-
-
-            if !success {
-                util::error(fmt!("testing %s v%s failed: a dep wasn't installed",
-                                 script.name, script.vers.to_str()));
-
-                return false;
-            }
-
-            util::note(~"installed dependencies");
-        }
-
-        for script.crates.each |&crate| {
-            success = self.compile(&work_dir, &dir.push_rel(&Path(crate)), ~[],
-                                   false, true);
-
-            if !success { break; }
-        }
-
-        if !success {
-            util::error(fmt!("testing %s v%s failed: a crate failed to compile",
-                             script.name, script.vers.to_str()));
-
-            return false;
-        }
 
         for os::walk_dir(&test_dir) |test| {
             util::note(fmt!("running %s", test.to_str()));
@@ -892,7 +741,7 @@ pub fn main() {
     };
     let help = getopts::opt_present(matches, ~"h") ||
                getopts::opt_present(matches, ~"help");
-    let cfg = vec::append(getopts::opt_strs(matches, ~"cfg"),
+    let cfgs = vec::append(getopts::opt_strs(matches, ~"cfg"),
                            getopts::opt_strs(matches, ~"c"));
     let mut args = copy matches.free;
 
@@ -919,14 +768,8 @@ pub fn main() {
         };
     }
 
-    let mut cfg_specs = ~[];
-
-    for cfg.each |s| {
-        cfg_specs.push(attr::mk_word_item(/*bad*/copy *s));
-    }
-
     Ctx {
-        cfg: cfg_specs,
+        cfgs: cfgs,
         mut dep_cache: LinearMap()
     }.run(cmd, args);
 }
@@ -934,3 +777,5 @@ pub fn main() {
 pub use Crate = api::Crate;
 pub use build = api::build;
 pub use util = api::util;
+pub use Listener = api::Listener;
+pub use run = api::run;

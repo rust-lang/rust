@@ -189,14 +189,14 @@ impl compile_upto : cmp::Eq {
     pure fn ne(&self, other: &compile_upto) -> bool { !(*self).eq(other) }
 }
 
-fn compile_upto(sess: Session, cfg: ast::crate_cfg,
-                input: input, upto: compile_upto,
-                outputs: Option<output_filenames>)
+// For continuing compilation after a parsed crate has been
+// modified
+fn compile_rest(sess: Session, cfg: ast::crate_cfg,
+                upto: compile_upto, outputs: Option<output_filenames>,
+                curr: Option<@ast::crate>)
     -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
     let time_passes = sess.time_passes();
-    let mut crate = time(time_passes, ~"parsing",
-                         || parse_input(sess, copy cfg, input) );
-    if upto == cu_parse { return {crate: crate, tcx: None}; }
+    let mut crate = curr.get();
 
     sess.building_library = session::building_library(
         sess.opts.crate_type, crate, sess.opts.test);
@@ -317,7 +317,6 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
 
     };
 
-
     time(time_passes, ~"LLVM passes", ||
         link::write::run_passes(sess, llmod,
                                 &outputs.obj_filename));
@@ -335,6 +334,18 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
                            &outputs.out_filename, link_meta));
 
     return {crate: crate, tcx: None};
+}
+
+fn compile_upto(sess: Session, +cfg: ast::crate_cfg,
+                input: input, upto: compile_upto,
+                outputs: Option<output_filenames>)
+    -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
+    let time_passes = sess.time_passes();
+    let mut crate = time(time_passes, ~"parsing",
+                         || parse_input(sess, copy cfg, input) );
+    if upto == cu_parse { return {crate: crate, tcx: None}; }
+
+    compile_rest(sess, cfg, upto, outputs, Some(crate))
 }
 
 fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
