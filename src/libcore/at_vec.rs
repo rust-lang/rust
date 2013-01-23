@@ -154,7 +154,7 @@ pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
  * Creates and initializes an immutable managed vector by moving all the
  * elements from an owned vector.
  */
-fn from_owned<T>(v: ~[T]) -> @[T] {
+pub fn from_owned<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
         raw::reserve(&mut av, v.len());
@@ -169,7 +169,7 @@ fn from_owned<T>(v: ~[T]) -> @[T] {
  * Creates and initializes an immutable managed vector by copying all the
  * elements of a slice.
  */
-fn from_slice<T:Copy>(v: &[T]) -> @[T] {
+pub fn from_slice<T:Copy>(v: &[T]) -> @[T] {
     from_fn(v.len(), |i| v[i])
 }
 
