@@ -16,7 +16,8 @@ use syntax::ast_util::*;
 use syntax::{ast, attr, codemap, diagnostic, fold, parse, visit};
 use codemap::span;
 use semver::Version;
-use std::{json, term, sort};
+use std::{json, term, sort, getopts};
+use getopts::groups::getopts;
 use api::Listener;
 
 pub struct Package {
@@ -866,14 +867,15 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
     let bin_dir = dir.push(~"bin");
     let test_dir = dir.push(~"test");
     let binary = os::args()[0];
-    let options: @session::options = @{
-        binary: binary,
-        crate_type: session::unknown_crate,
-        optimize: if opt { session::Aggressive } else { session::No },
-        test: test,
-        maybe_sysroot: sysroot,
-        .. *session::basic_options()
-    };
+    let matches = getopts(flags, driver::optgroups()).get();
+    let mut options = driver::build_session_options(binary, matches,
+                                                    diagnostic::emit);
+
+    options.crate_type = session::unknown_crate;
+    options.optimize = if opt { session::Aggressive } else { session::No };
+    options.test = test;
+    options.maybe_sysroot = sysroot;
+
     let sess = driver::build_session(options, diagnostic::emit);
     let cfg = driver::build_configuration(sess, binary, input);
     let mut outputs = driver::build_output_filenames(input, &None, &None,
