@@ -176,9 +176,11 @@ fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 
 // This is a really awful way to get a zero-length c-string, but better (and a
 // lot more efficient) than doing str::as_c_str("", ...) every time.
-fn noname() -> *libc::c_char unsafe {
-    const cnull: uint = 0u;
-    return cast::reinterpret_cast(&ptr::addr_of(&cnull));
+fn noname() -> *libc::c_char {
+    unsafe {
+        const cnull: uint = 0u;
+        return cast::reinterpret_cast(&ptr::addr_of(&cnull));
+    }
 }
 
 fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],

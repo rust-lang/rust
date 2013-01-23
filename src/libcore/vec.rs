@@ -450,51 +450,52 @@ pub pure fn partitioned<T: Copy>(v: &[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
 // Mutators
 
 /// Removes the first element from a vector and return it
-pub fn shift<T>(v: &mut ~[T]) -> T unsafe {
+pub fn shift<T>(v: &mut ~[T]) -> T {
+    unsafe {
+        assert v.is_not_empty();
 
-    assert v.is_not_empty();
+        if v.len() == 1 { return v.pop() }
 
-    if v.len() == 1 { return v.pop() }
+        if v.len() == 2 {
+            let last = v.pop();
+            let first = v.pop();
+            v.push(last);
+            return first;
+        }
 
-    if v.len() == 2 {
-        let last = v.pop();
-        let first = v.pop();
-        v.push(last);
-        return first;
+        let ln = v.len();
+        let next_ln = v.len() - 1;
+
+        // Save the last element. We're going to overwrite its position
+        let mut work_elt = v.pop();
+        // We still should have room to work where what last element was
+        assert capacity(v) >= ln;
+        // Pretend like we have the original length so we can use
+        // the vector copy_memory to overwrite the hole we just made
+        raw::set_len(&mut *v, ln);
+
+        // Memcopy the head element (the one we want) to the location we just
+        // popped. For the moment it unsafely exists at both the head and last
+        // positions
+        let first_slice = view(*v, 0, 1);
+        let last_slice = mut_view(*v, next_ln, ln);
+        raw::copy_memory(last_slice, first_slice, 1);
+
+        // Memcopy everything to the left one element
+        let init_slice = mut_view(*v, 0, next_ln);
+        let tail_slice = view(*v, 1, ln);
+        raw::copy_memory(init_slice, tail_slice, next_ln);
+
+        // Set the new length. Now the vector is back to normal
+        raw::set_len(&mut *v, next_ln);
+
+        // Swap out the element we want from the end
+        let vp = raw::to_mut_ptr(*v);
+        let vp = ptr::mut_offset(vp, next_ln - 1);
+        *vp <-> work_elt;
+
+        return work_elt;
     }
-
-    let ln = v.len();
-    let next_ln = v.len() - 1;
-
-    // Save the last element. We're going to overwrite its position
-    let mut work_elt = v.pop();
-    // We still should have room to work where what last element was
-    assert capacity(v) >= ln;
-    // Pretend like we have the original length so we can use
-    // the vector copy_memory to overwrite the hole we just made
-    raw::set_len(&mut *v, ln);
-
-    // Memcopy the head element (the one we want) to the location we just
-    // popped. For the moment it unsafely exists at both the head and last
-    // positions
-    let first_slice = view(*v, 0, 1);
-    let last_slice = mut_view(*v, next_ln, ln);
-    raw::copy_memory(last_slice, first_slice, 1);
-
-    // Memcopy everything to the left one element
-    let init_slice = mut_view(*v, 0, next_ln);
-    let tail_slice = view(*v, 1, ln);
-    raw::copy_memory(init_slice, tail_slice, next_ln);
-
-    // Set the new length. Now the vector is back to normal
-    raw::set_len(&mut *v, next_ln);
-
-    // Swap out the element we want from the end
-    let vp = raw::to_mut_ptr(*v);
-    let vp = ptr::mut_offset(vp, next_ln - 1);
-    *vp <-> work_elt;
-
-    return work_elt;
 }
 
 /// Prepend an element to the vector
@@ -532,23 +533,25 @@ pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
     v.pop()
 }
 
-pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) unsafe {
-    let mut v = v; // FIXME(#3488)
+pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) {
+    unsafe {
+        let mut v = v; // FIXME(#3488)
 
-    do as_mut_buf(v) |p, ln| {
-        for uint::range(0, ln) |i| {
-            // NB: This unsafe operation counts on init writing 0s to the
-            // holes we create in the vector. That ensures that, if the
-            // iterator fails then we won't try to clean up the consumed
-            // elements during unwinding
-            let mut x = rusti::init();
-            let p = ptr::mut_offset(p, i);
-            x <-> *p;
-            f(i, x);
+        do as_mut_buf(v) |p, ln| {
+            for uint::range(0, ln) |i| {
+                // NB: This unsafe operation counts on init writing 0s to the
+                // holes we create in the vector. That ensures that, if the
+                // iterator fails then we won't try to clean up the consumed
+                // elements during unwinding
+                let mut x = rusti::init();
+                let p = ptr::mut_offset(p, i);
+                x <-> *p;
+                f(i, x);
+            }
         }
-    }
 
-    raw::set_len(&mut v, 0);
+        raw::set_len(&mut v, 0);
+    }
 }
 
 pub fn consume_mut<T>(v: ~[mut T], f: fn(uint, v: T)) {
@@ -666,36 +669,39 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
  * Remove consecutive repeated elements from a vector; if the vector is
  * sorted, this removes all duplicates.
  */
-pub fn dedup<T: Eq>(v: &mut ~[T]) unsafe {
-    if v.len() < 1 { return; }
-    let mut last_written = 0, next_to_read = 1;
-    do as_const_buf(*v) |p, ln| {
-        // We have a mutable reference to v, so we can make arbitrary changes.
-        // (cf. push and pop)
-        let p = p as *mut T;
-        // last_written < next_to_read <= ln
-        while next_to_read < ln {
-            // last_written < next_to_read < ln
-            if *ptr::mut_offset(p, next_to_read) ==
-                *ptr::mut_offset(p, last_written) {
-                // FIXME #4204 Should be rusti::uninit() - don't need to zero
-                let mut dropped = rusti::init();
-                dropped <-> *ptr::mut_offset(p, next_to_read);
-            } else {
-                last_written += 1;
-                // last_written <= next_to_read < ln
-                if next_to_read != last_written {
-                    *ptr::mut_offset(p, last_written) <->
-                        *ptr::mut_offset(p, next_to_read);
-                }
-            }
-            // last_written <= next_to_read < ln
-            next_to_read += 1;
+pub fn dedup<T: Eq>(v: &mut ~[T]) {
+    unsafe {
+        if v.len() < 1 { return; }
+        let mut last_written = 0, next_to_read = 1;
+        do as_const_buf(*v) |p, ln| {
+            // We have a mutable reference to v, so we can make arbitrary
+            // changes. (cf. push and pop)
+            let p = p as *mut T;
             // last_written < next_to_read <= ln
+            while next_to_read < ln {
+                // last_written < next_to_read < ln
+                if *ptr::mut_offset(p, next_to_read) ==
+                    *ptr::mut_offset(p, last_written) {
+                    // FIXME #4204 Should be rusti::uninit() - don't need to
+                    // zero
+                    let mut dropped = rusti::init();
+                    dropped <-> *ptr::mut_offset(p, next_to_read);
+                } else {
+                    last_written += 1;
+                    // last_written <= next_to_read < ln
+                    if next_to_read != last_written {
+                        *ptr::mut_offset(p, last_written) <->
+                            *ptr::mut_offset(p, next_to_read);
+                    }
+                }
+                // last_written <= next_to_read < ln
+                next_to_read += 1;
+                // last_written < next_to_read <= ln
+            }
         }
+        // last_written < next_to_read == ln
+        raw::set_len(v, last_written + 1);
     }
-    // last_written < next_to_read == ln
-    raw::set_len(v, last_written + 1);
 }
 
 
@@ -1215,7 +1221,9 @@ pub pure fn zip_slice<T: Copy, U: Copy>(v: &[const T], u: &[const U])
     let sz = len(v);
     let mut i = 0u;
     assert sz == len(u);
-    while i < sz unsafe { zipped.push((v[i], u[i])); i += 1u; }
+    while i < sz {
+        unsafe { zipped.push((v[i], u[i])); i += 1u; }
+    }
     zipped
 }
 
@@ -1454,8 +1462,10 @@ pub pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     assert 1u <= nn;
     for vec::eachi (xx) |ii, _x| {
         let len = vec::len(xx);
-        if ii+nn <= len unsafe {
-            ww.push(vec::slice(xx, ii, ii+nn));
+        if ii+nn <= len {
+            unsafe {
+                ww.push(vec::slice(xx, ii, ii+nn));
+            }
         }
     }
     ww
@@ -3909,10 +3919,12 @@ mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_copy_memory_oob() unsafe {
-        let a = [mut 1, 2, 3, 4];
-        let b = [1, 2, 3, 4, 5];
-        raw::copy_memory(a, b, 5);
+    fn test_copy_memory_oob() {
+        unsafe {
+            let a = [mut 1, 2, 3, 4];
+            let b = [1, 2, 3, 4, 5];
+            raw::copy_memory(a, b, 5);
+        }
     }
 
 }

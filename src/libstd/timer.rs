@@ -49,25 +49,27 @@ pub fn delayed_send<T: Owned>(iotask: IoTask,
             let timer_done_ch_ptr = ptr::addr_of(&timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(&timer);
-            do iotask::interact(iotask) |loop_ptr| unsafe {
-                let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
-                if (init_result == 0i32) {
-                    let start_result = uv::ll::timer_start(
-                        timer_ptr, delayed_send_cb, msecs, 0u);
-                    if (start_result == 0i32) {
-                        uv::ll::set_data_for_uv_handle(
-                            timer_ptr,
-                            timer_done_ch_ptr as *libc::c_void);
-                    }
-                    else {
+            do iotask::interact(iotask) |loop_ptr| {
+                unsafe {
+                    let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
+                    if (init_result == 0i32) {
+                        let start_result = uv::ll::timer_start(
+                            timer_ptr, delayed_send_cb, msecs, 0u);
+                        if (start_result == 0i32) {
+                            uv::ll::set_data_for_uv_handle(
+                                timer_ptr,
+                                timer_done_ch_ptr as *libc::c_void);
+                        } else {
+                            let error_msg = uv::ll::get_last_err_info(
+                                loop_ptr);
+                            fail ~"timer::delayed_send() start failed: " +
+                                error_msg;
+                        }
+                    } else {
                         let error_msg = uv::ll::get_last_err_info(loop_ptr);
-                        fail ~"timer::delayed_send() start failed: " +
+                        fail ~"timer::delayed_send() init failed: " +
                             error_msg;
                     }
-                }
-                else {
-                    let error_msg = uv::ll::get_last_err_info(loop_ptr);
-                    fail ~"timer::delayed_send() init failed: "+error_msg;
                 }
             };
             // delayed_send_cb has been processed by libuv
@@ -138,27 +140,31 @@ pub fn recv_timeout<T: Copy Owned>(iotask: IoTask,
 
 // INTERNAL API
 extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
-                                status: libc::c_int) unsafe {
-    log(debug, fmt!("delayed_send_cb handle %? status %?", handle, status));
-    let timer_done_ch =
-        *(uv::ll::get_data_for_uv_handle(handle) as *oldcomm::Chan<()>);
-    let stop_result = uv::ll::timer_stop(handle);
-    if (stop_result == 0i32) {
-        oldcomm::send(timer_done_ch, ());
-        uv::ll::close(handle, delayed_send_close_cb);
-    }
-    else {
-        let loop_ptr = uv::ll::get_loop_for_uv_handle(handle);
-        let error_msg = uv::ll::get_last_err_info(loop_ptr);
-        fail ~"timer::sleep() init failed: "+error_msg;
+                                status: libc::c_int) {
+    unsafe {
+        log(debug,
+            fmt!("delayed_send_cb handle %? status %?", handle, status));
+        let timer_done_ch =
+            *(uv::ll::get_data_for_uv_handle(handle) as *oldcomm::Chan<()>);
+        let stop_result = uv::ll::timer_stop(handle);
+        if (stop_result == 0i32) {
+            oldcomm::send(timer_done_ch, ());
+            uv::ll::close(handle, delayed_send_close_cb);
+        } else {
+            let loop_ptr = uv::ll::get_loop_for_uv_handle(handle);
+            let error_msg = uv::ll::get_last_err_info(loop_ptr);
+            fail ~"timer::sleep() init failed: "+error_msg;
+        }
     }
 }
 
-extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
-    log(debug, fmt!("delayed_send_close_cb handle %?", handle));
-    let timer_done_ch =
-        *(uv::ll::get_data_for_uv_handle(handle) as *oldcomm::Chan<()>);
-    oldcomm::send(timer_done_ch, ());
+extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) {
+    unsafe {
+        log(debug, fmt!("delayed_send_close_cb handle %?", handle));
+        let timer_done_ch =
+            *(uv::ll::get_data_for_uv_handle(handle) as *oldcomm::Chan<()>);
+        oldcomm::send(timer_done_ch, ());
+    }
 }
 
 #[cfg(test)]

@@ -14,6 +14,8 @@
 extern mod issue_2723_a;
 use issue_2723_a::*;
 
-fn main() unsafe {
-  f(~[2]);
+fn main() {
+    unsafe {
+        f(~[2]);
+    }
 }

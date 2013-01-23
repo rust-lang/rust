@@ -19,10 +19,12 @@ extern mod libc {
     fn my_strlen(str: *u8) -> uint;
 }
 
-fn strlen(str: ~str) -> uint unsafe {
-    // C string is terminated with a zero
-    let bytes = str::to_bytes(str) + ~[0u8];
-    return libc::my_strlen(vec::raw::to_ptr(bytes));
+fn strlen(str: ~str) -> uint {
+    unsafe {
+        // C string is terminated with a zero
+        let bytes = str::to_bytes(str) + ~[0u8];
+        return libc::my_strlen(vec::raw::to_ptr(bytes));
+    }
 }
 
 fn main() {

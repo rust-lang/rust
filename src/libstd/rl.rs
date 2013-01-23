@@ -55,11 +55,13 @@ pub unsafe fn load_history(file: ~str) -> bool {
 
 /// Print out a prompt and then wait for input and return it
 pub unsafe fn read(prompt: ~str) -> Option<~str> {
-    do str::as_c_str(prompt) |buf| unsafe {
-        let line = rustrt::linenoise(buf);
+    do str::as_c_str(prompt) |buf| {
+        unsafe {
+            let line = rustrt::linenoise(buf);
 
-        if line.is_null() { None }
-        else { Some(str::raw::from_c_str(line)) }
+            if line.is_null() { None }
+            else { Some(str::raw::from_c_str(line)) }
+        }
     }
 }
 
@@ -68,18 +70,23 @@ pub type CompletionCb = fn~(~str, fn(~str));
 fn complete_key(_v: @CompletionCb) {}
 
 /// Bind to the main completion callback
-pub unsafe fn complete(cb: CompletionCb) unsafe {
-    task::local_data::local_data_set(complete_key, @(move cb));
+pub unsafe fn complete(cb: CompletionCb) {
+    unsafe {
+        task::local_data::local_data_set(complete_key, @(move cb));
 
-    extern fn callback(line: *c_char, completions: *()) unsafe {
-        let cb = copy *task::local_data::local_data_get(complete_key).get();
+        extern fn callback(line: *c_char, completions: *()) {
+            unsafe {
+                let cb = copy *task::local_data::local_data_get(complete_key)
+                    .get();
 
-        do cb(str::raw::from_c_str(line)) |suggestion| {
-            do str::as_c_str(suggestion) |buf| {
-                rustrt::linenoiseAddCompletion(completions, buf);
+                do cb(str::raw::from_c_str(line)) |suggestion| {
+                    do str::as_c_str(suggestion) |buf| {
+                        rustrt::linenoiseAddCompletion(completions, buf);
+                    }
+                }
             }
         }
-    }
 
-    rustrt::linenoiseSetCompletionCallback(callback);
+        rustrt::linenoiseSetCompletionCallback(callback);
+    }
 }

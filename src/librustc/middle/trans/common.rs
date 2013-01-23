@@ -660,7 +660,7 @@ fn val_str(tn: type_names, v: ValueRef) -> @str {
 }
 
 // Returns the nth element of the given LLVM structure type.
-fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef unsafe {
+fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
     unsafe {
         let elt_count = llvm::LLVMCountStructElementTypes(llstructty) as uint;
         assert (n < elt_count);
@@ -832,10 +832,12 @@ fn T_size_t(targ_cfg: @session::config) -> TypeRef {
     return T_int(targ_cfg);
 }
 
-fn T_fn(inputs: ~[TypeRef], output: TypeRef) -> TypeRef unsafe {
-    return llvm::LLVMFunctionType(output, to_ptr(inputs),
-                               inputs.len() as c_uint,
-                               False);
+fn T_fn(inputs: ~[TypeRef], output: TypeRef) -> TypeRef {
+    unsafe {
+        return llvm::LLVMFunctionType(output, to_ptr(inputs),
+                                   inputs.len() as c_uint,
+                                   False);
+    }
 }
 
 fn T_fn_pair(cx: @crate_ctxt, tfn: TypeRef) -> TypeRef {
@@ -854,7 +856,7 @@ fn T_root(t: TypeRef, addrspace: addrspace) -> TypeRef {
     }
 }
 
-fn T_struct(elts: ~[TypeRef]) -> TypeRef unsafe {
+fn T_struct(elts: ~[TypeRef]) -> TypeRef {
     unsafe {
         return llvm::LLVMStructType(to_ptr(elts),
                                     elts.len() as c_uint,
@@ -869,7 +871,7 @@ fn T_named_struct(name: ~str) -> TypeRef {
     }
 }
 
-fn set_struct_body(t: TypeRef, elts: ~[TypeRef]) unsafe {
+fn set_struct_body(t: TypeRef, elts: ~[TypeRef]) {
     unsafe {
         llvm::LLVMStructSetBody(t,
                                 to_ptr(elts),
@@ -908,7 +910,7 @@ fn T_task(targ_cfg: @session::config) -> TypeRef {
     return t;
 }
 
-fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef unsafe {
+fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     unsafe {
@@ -1188,7 +1190,7 @@ fn C_postr(s: ~str) -> ValueRef {
     }
 }
 
-fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
+fn C_zero_byte_arr(size: uint) -> ValueRef {
     unsafe {
         let mut i = 0u;
         let mut elts: ~[ValueRef] = ~[];
@@ -1215,14 +1217,14 @@ fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-fn C_array(ty: TypeRef, elts: ~[ValueRef]) -> ValueRef unsafe {
+fn C_array(ty: TypeRef, elts: ~[ValueRef]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts),
                                  elts.len() as c_uint);
     }
 }
 
-fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
+fn C_bytes(bytes: ~[u8]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstString(
             cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
@@ -1230,7 +1232,7 @@ fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
     }
 }
 
-fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef unsafe {
+fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstString(
             cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),

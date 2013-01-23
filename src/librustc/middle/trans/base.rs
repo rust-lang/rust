@@ -2255,14 +2255,16 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef) {
                              val_ty(crate_map)], ccx.int_type);
         let start = decl_cdecl_fn(ccx.llmod, ~"rust_start", start_ty);
 
-        let args = if ccx.sess.building_library unsafe {
-            ~[rust_main,
-              llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-              llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-              crate_map]
-        } else unsafe {
-            ~[rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
-              llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map]
+        let args = unsafe {
+            if ccx.sess.building_library {
+                ~[rust_main,
+                  llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
+                  llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
+                  crate_map]
+            } else {
+                ~[rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
+                  llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map]
+            }
         };
 
         let result = unsafe {

@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() unsafe {
-    let i = ~@1;
-    let j = ~@2;
-    let rc1 = sys::refcount(*i);
-    let j = copy i;
-    let rc2 = sys::refcount(*i);
-    error!("rc1: %u rc2: %u", rc1, rc2);
-    assert rc1 + 1u == rc2;
+fn main() {
+    unsafe {
+        let i = ~@1;
+        let j = ~@2;
+        let rc1 = sys::refcount(*i);
+        let j = copy i;
+        let rc2 = sys::refcount(*i);
+        error!("rc1: %u rc2: %u", rc1, rc2);
+        assert rc1 + 1u == rc2;
+    }
 }

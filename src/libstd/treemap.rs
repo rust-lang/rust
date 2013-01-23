@@ -51,14 +51,16 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
         } else {
             let mut x = self.iter();
             let mut y = other.iter();
-            for self.len().times unsafe { // unsafe as a purity workaround
-                // ICE: x.next() != y.next()
+            for self.len().times {
+                unsafe { // unsafe as a purity workaround
+                    // ICE: x.next() != y.next()
 
-                let (x1, x2) = x.next().unwrap();
-                let (y1, y2) = y.next().unwrap();
+                    let (x1, x2) = x.next().unwrap();
+                    let (y1, y2) = y.next().unwrap();
 
-                if x1 != y1 || x2 != y2 {
-                    return false
+                    if x1 != y1 || x2 != y2 {
+                        return false
+                    }
                 }
             }
             true

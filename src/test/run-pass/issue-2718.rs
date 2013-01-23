@@ -34,13 +34,15 @@ pub mod pipes {
         mut payload: Option<T>
     };
 
-    pub fn packet<T: Owned>() -> *packet<T> unsafe {
-        let p: *packet<T> = cast::transmute(~{
-            mut state: empty,
-            mut blocked_task: None::<task::Task>,
-            mut payload: None::<T>
-        });
-        p
+    pub fn packet<T: Owned>() -> *packet<T> {
+        unsafe {
+            let p: *packet<T> = cast::transmute(~{
+                mut state: empty,
+                mut blocked_task: None::<task::Task>,
+                mut payload: None::<T>
+            });
+            p
+        }
     }
 
     #[abi = "rust-intrinsic"]
@@ -218,22 +220,26 @@ pub mod pingpong {
     pub enum ping = ::pipes::send_packet<pong>;
     pub enum pong = ::pipes::send_packet<ping>;
 
-    pub fn liberate_ping(-p: ping) -> ::pipes::send_packet<pong> unsafe {
-        let addr : *::pipes::send_packet<pong> = match &p {
-          &ping(ref x) => { cast::transmute(ptr::addr_of(x)) }
-        };
-        let liberated_value = move *addr;
-        cast::forget(move p);
-        move liberated_value
+    pub fn liberate_ping(-p: ping) -> ::pipes::send_packet<pong> {
+        unsafe {
+            let addr : *::pipes::send_packet<pong> = match &p {
+              &ping(ref x) => { cast::transmute(ptr::addr_of(x)) }
+            };
+            let liberated_value = move *addr;
+            cast::forget(move p);
+            move liberated_value
+        }
     }
 
-    pub fn liberate_pong(-p: pong) -> ::pipes::send_packet<ping> unsafe {
-        let addr : *::pipes::send_packet<ping> = match &p {
-          &pong(ref x) => { cast::transmute(ptr::addr_of(x)) }
-        };
-        let liberated_value = move *addr;
-        cast::forget(move p);
-        move liberated_value
+    pub fn liberate_pong(-p: pong) -> ::pipes::send_packet<ping> {
+        unsafe {
+            let addr : *::pipes::send_packet<ping> = match &p {
+              &pong(ref x) => { cast::transmute(ptr::addr_of(x)) }
+            };
+            let liberated_value = move *addr;
+            cast::forget(move p);
+            move liberated_value
+        }
     }
 
     pub fn init() -> (client::ping, server::ping) {

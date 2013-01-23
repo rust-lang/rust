@@ -366,10 +366,12 @@ Section: Transforming strings
  *
  * The result vector is not null-terminated.
  */
-pub pure fn to_bytes(s: &str) -> ~[u8] unsafe {
-    let mut v: ~[u8] = ::cast::transmute(from_slice(s));
-    vec::raw::set_len(&mut v, len(s));
-    v
+pub pure fn to_bytes(s: &str) -> ~[u8] {
+    unsafe {
+        let mut v: ~[u8] = ::cast::transmute(from_slice(s));
+        vec::raw::set_len(&mut v, len(s));
+        v
+    }
 }
 
 /// Work with the string as a byte slice, not including trailing null.
@@ -454,8 +456,10 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
         let mut i = 0u, start = 0u;
         while i < l && done < count {
             if s[i] == b {
-                if allow_empty || start < i unsafe {
-                    result.push(unsafe { raw::slice_bytes(s, start, i) });
+                if allow_empty || start < i {
+                    unsafe {
+                        result.push(raw::slice_bytes(s, start, i));
+                    }
                 }
                 start = i + 1u;
                 done += 1u;
@@ -497,16 +501,20 @@ pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
     while i < l && done < count {
         let CharRange {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
-            if allow_empty || start < i unsafe {
-                result.push(unsafe { raw::slice_bytes(s, start, i)});
+            if allow_empty || start < i {
+                unsafe {
+                    result.push(raw::slice_bytes(s, start, i));
+                }
             }
             start = next;
             done += 1u;
         }
         i = next;
     }
-    if allow_empty || start < l unsafe {
-        result.push(unsafe { raw::slice_bytes(s, start, l) });
+    if allow_empty || start < l {
+        unsafe {
+            result.push(raw::slice_bytes(s, start, l));
+        }
     }
     result
 }
@@ -1490,17 +1498,20 @@ pub pure fn to_utf16(s: &str) -> ~[u16] {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = cch as u32;
 
-        if (ch & 0xFFFF_u32) == ch unsafe {
-            // The BMP falls through (assuming non-surrogate, as it should)
-            assert ch <= 0xD7FF_u32 || ch >= 0xE000_u32;
-            u.push(ch as u16)
-        } else unsafe {
-            // Supplementary planes break into surrogates.
-            assert ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32;
-            ch -= 0x1_0000_u32;
-            let w1 = 0xD800_u16 | ((ch >> 10) as u16);
-            let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            u.push_all(~[w1, w2])
+        unsafe {
+            if (ch & 0xFFFF_u32) == ch {
+                // The BMP falls through (assuming non-surrogate, as it
+                // should)
+                assert ch <= 0xD7FF_u32 || ch >= 0xE000_u32;
+                u.push(ch as u16)
+            } else {
+                // Supplementary planes break into surrogates.
+                assert ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32;
+                ch -= 0x1_0000_u32;
+                let w1 = 0xD800_u16 | ((ch >> 10) as u16);
+                let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
+                u.push_all(~[w1, w2])
+            }
         }
     }
     u

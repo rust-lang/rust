@@ -59,12 +59,14 @@ impl output_type : cmp::Eq {
     pure fn ne(&self, other: &output_type) -> bool { !(*self).eq(other) }
 }
 
-pub fn llvm_err(sess: Session, +msg: ~str) -> ! unsafe {
-    let cstr = llvm::LLVMRustGetLastError();
-    if cstr == ptr::null() {
-        sess.fatal(msg);
-    } else {
-        sess.fatal(msg + ~": " + str::raw::from_c_str(cstr));
+pub fn llvm_err(sess: Session, +msg: ~str) -> ! {
+    unsafe {
+        let cstr = llvm::LLVMRustGetLastError();
+        if cstr == ptr::null() {
+            sess.fatal(msg);
+        } else {
+            sess.fatal(msg + ~": " + str::raw::from_c_str(cstr));
+        }
     }
 }
 
@@ -121,50 +123,52 @@ pub mod jit {
             pm: PassManagerRef,
             m: ModuleRef,
             opt: c_int,
-            stacks: bool) unsafe {
-        let manager = llvm::LLVMRustPrepareJIT(rusti::morestack_addr());
+            stacks: bool) {
+        unsafe {
+            let manager = llvm::LLVMRustPrepareJIT(rusti::morestack_addr());
 
-        // We need to tell JIT where to resolve all linked
-        // symbols from. The equivalent of -lstd, -lcore, etc.
-        // By default the JIT will resolve symbols from the std and
-        // core linked into rustc. We don't want that,
-        // incase the user wants to use an older std library.
+            // We need to tell JIT where to resolve all linked
+            // symbols from. The equivalent of -lstd, -lcore, etc.
+            // By default the JIT will resolve symbols from the std and
+            // core linked into rustc. We don't want that,
+            // incase the user wants to use an older std library.
 
-        let cstore = sess.cstore;
-        for cstore::get_used_crate_files(cstore).each |cratepath| {
-            let path = cratepath.to_str();
+            let cstore = sess.cstore;
+            for cstore::get_used_crate_files(cstore).each |cratepath| {
+                let path = cratepath.to_str();
 
-            debug!("linking: %s", path);
+                debug!("linking: %s", path);
 
-            let _: () = str::as_c_str(
-                path,
-                |buf_t| {
-                    if !llvm::LLVMRustLoadCrate(manager, buf_t) {
-                        llvm_err(sess, ~"Could not link");
-                    }
-                    debug!("linked: %s", path);
-                });
-        }
+                let _: () = str::as_c_str(
+                    path,
+                    |buf_t| {
+                        if !llvm::LLVMRustLoadCrate(manager, buf_t) {
+                            llvm_err(sess, ~"Could not link");
+                        }
+                        debug!("linked: %s", path);
+                    });
+            }
 
-        // The execute function will return a void pointer
-        // to the _rust_main function. We can do closure
-        // magic here to turn it straight into a callable rust
-        // closure. It will also cleanup the memory manager
-        // for us.
+            // The execute function will return a void pointer
+            // to the _rust_main function. We can do closure
+            // magic here to turn it straight into a callable rust
+            // closure. It will also cleanup the memory manager
+            // for us.
 
-        let entry = llvm::LLVMRustExecuteJIT(manager,
-                                             pm, m, opt, stacks);
+            let entry = llvm::LLVMRustExecuteJIT(manager,
+                                                 pm, m, opt, stacks);
 
-        if ptr::is_null(entry) {
-            llvm_err(sess, ~"Could not JIT");
-        } else {
-            let closure = Closure {
-                code: entry,
-                env: ptr::null()
-            };
-            let func: fn(++argv: ~[~str]) = cast::transmute(move closure);
+            if ptr::is_null(entry) {
+                llvm_err(sess, ~"Could not JIT");
+            } else {
+                let closure = Closure {
+                    code: entry,
+                    env: ptr::null()
+                };
+                let func: fn(++argv: ~[~str]) = cast::transmute(move closure);
 
-            func(~[/*bad*/copy sess.opts.binary]);
+                func(~[/*bad*/copy sess.opts.binary]);
+            }
         }
     }
 }
@@ -576,8 +580,10 @@ fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
     return {name: name, vers: vers, extras_hash: extras_hash};
 }
 
-fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str unsafe {
-    symbol_hasher.result_str()
+fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
+    unsafe {
+        symbol_hasher.result_str()
+    }
 }
 
 

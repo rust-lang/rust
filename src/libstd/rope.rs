@@ -831,28 +831,30 @@ pub mod node {
         return forest[0];
     }
 
-    pub fn serialize_node(node: @Node) -> ~str unsafe {
-        let mut buf = vec::cast_to_mut(vec::from_elem(byte_len(node), 0u8));
-        let mut offset = 0u;//Current position in the buffer
-        let it = leaf_iterator::start(node);
-        loop {
-            match (leaf_iterator::next(&it)) {
-              option::None => break,
-              option::Some(x) => {
-                //FIXME (#2744): Replace with memcpy or something similar
-                let mut local_buf: ~[u8] =
-                    cast::reinterpret_cast(&*x.content);
-                let mut i = x.byte_offset;
-                while i < x.byte_len {
-                    buf[offset] = local_buf[i];
-                    offset += 1u;
-                    i      += 1u;
+    pub fn serialize_node(node: @Node) -> ~str {
+        unsafe {
+            let mut buf = vec::cast_to_mut(vec::from_elem(byte_len(node), 0));
+            let mut offset = 0u;//Current position in the buffer
+            let it = leaf_iterator::start(node);
+            loop {
+                match (leaf_iterator::next(&it)) {
+                  option::None => break,
+                  option::Some(x) => {
+                    //FIXME (#2744): Replace with memcpy or something similar
+                    let mut local_buf: ~[u8] =
+                        cast::reinterpret_cast(&*x.content);
+                    let mut i = x.byte_offset;
+                    while i < x.byte_len {
+                        buf[offset] = local_buf[i];
+                        offset += 1u;
+                        i      += 1u;
+                    }
+                    cast::forget(move local_buf);
+                  }
                 }
-                cast::forget(move local_buf);
-              }
             }
+            return cast::transmute(move buf);
         }
-        return cast::transmute(move buf);
     }
 
     /**
@@ -862,17 +864,19 @@ pub mod node {
      *
      * This function executes in linear time.
      */
-    pub fn flatten(node: @Node) -> @Node unsafe {
-        match (*node) {
-          Leaf(_) => return node,
-          Concat(ref x) => {
-            return @Leaf({
-                byte_offset: 0u,
-                byte_len:    x.byte_len,
-                char_len:    x.char_len,
-                content:     @serialize_node(node)
-            })
-          }
+    pub fn flatten(node: @Node) -> @Node {
+        unsafe {
+            match (*node) {
+              Leaf(_) => return node,
+              Concat(ref x) => {
+                return @Leaf({
+                    byte_offset: 0u,
+                    byte_len:    x.byte_len,
+                    char_len:    x.char_len,
+                    content:     @serialize_node(node)
+                })
+              }
+            }
         }
     }
 
@@ -1284,17 +1288,19 @@ mod tests {
           node::Empty => return ~"",
           node::Content(x) => {
             let str = @mut ~"";
-            fn aux(str: @mut ~str, node: @node::Node) unsafe {
-                match (*node) {
-                  node::Leaf(x) => {
-                    *str += str::slice(
-                        *x.content, x.byte_offset,
-                        x.byte_offset + x.byte_len);
-                  }
-                  node::Concat(ref x) => {
-                    aux(str, x.left);
-                    aux(str, x.right);
-                  }
+            fn aux(str: @mut ~str, node: @node::Node) {
+                unsafe {
+                    match (*node) {
+                      node::Leaf(x) => {
+                        *str += str::slice(
+                            *x.content, x.byte_offset,
+                            x.byte_offset + x.byte_len);
+                      }
+                      node::Concat(ref x) => {
+                        aux(str, x.left);
+                        aux(str, x.right);
+                      }
+                    }
                 }
             }
             aux(str, x);

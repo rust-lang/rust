@@ -86,8 +86,10 @@ pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     -> Option<~str> {
     let buf = vec::cast_to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
     do vec::as_mut_buf(buf) |b, sz| {
-        if f(b, sz as size_t) unsafe {
-            Some(str::raw::from_buf(b as *u8))
+        if f(b, sz as size_t) {
+            unsafe {
+                Some(str::raw::from_buf(b as *u8))
+            }
         } else {
             None
         }
