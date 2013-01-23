@@ -358,14 +358,14 @@ priv impl &preserve_ctxt {
                 debug!("Elected to root");
                 let rk = {id: base.id, derefs: derefs};
                 // This code could potentially lead cause boxes to be frozen
-                // for longer than necessarily at runtime. It prevents an ICE
-                // in trans; the fundamental problem is that it's hard to make
-                // sure trans and borrowck have the same notion of scope. The
-                // real fix is to clean up how trans handles cleanups, but
-                // that's hard. If this becomes an issue, it's an option to just
-                // change this to `let scope_to_use = scope_id;`. Though that
-                // would potentially re-introduce the ICE. See #3511 for more
-                // details.
+                // for longer than necessarily at runtime. It prevents an
+                // ICE in trans; the fundamental problem is that it's hard
+                // to make sure trans and borrowck have the same notion of
+                // scope. The real fix is to clean up how trans handles
+                // cleanups, but that's hard. If this becomes an issue, it's
+                // an option to just change this to `let scope_to_use =
+                // scope_id;`. Though that would potentially re-introduce
+                // the ICE. See #3511 for more details.
                 let scope_to_use = if
                     self.bccx.stmt_map.contains_key(scope_id) {
                     // Root it in its parent scope, b/c

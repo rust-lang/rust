@@ -405,7 +405,8 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                     assert ast_util::is_local(def_id);
                     let f = base::get_item_val(cx, def_id.node);
                     match purity {
-                      ast::extern_fn => llvm::LLVMConstPointerCast(f, T_ptr(T_i8())),
+                      ast::extern_fn =>
+                        llvm::LLVMConstPointerCast(f, T_ptr(T_i8())),
                       _ => C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
                     }
                 }
