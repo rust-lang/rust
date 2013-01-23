@@ -1025,6 +1025,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore(reason = "randomred")]
     fn test_strptime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
