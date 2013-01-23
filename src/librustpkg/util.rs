@@ -34,8 +34,8 @@ pub fn root() -> Path {
 }
 
 pub fn is_cmd(cmd: ~str) -> bool {
-    let cmds = &[~"build", ~"clean", ~"install", ~"prefer", ~"test",
-                 ~"uninstall", ~"unprefer"];
+    let cmds = &[~"build", ~"clean", ~"do", ~"install", ~"prefer",
+                 ~"test", ~"uninstall", ~"unprefer"];
 
     vec::contains(cmds, &cmd)
 }
@@ -74,6 +74,7 @@ fn mk_rustpkg_use(ctx: @ReadyCtx) -> @ast::view_item {
 }
 
 struct ListenerFn {
+    cmds: ~[~str],
     span: codemap::span,
     path: ~[ast::ident]
 }
@@ -119,8 +120,27 @@ fn fold_item(ctx: @ReadyCtx, &&item: @ast::item,
 
     ctx.path.push(item.ident);
 
-    if attr::find_attrs_by_name(item.attrs, ~"pkg_do").is_not_empty() {
+    let attrs = attr::find_attrs_by_name(item.attrs, ~"pkg_do");
+
+    if attrs.len() > 0 {
+        let mut cmds = ~[];
+
+        for attrs.each |attr| {
+            match attr.node.value.node {
+                ast::meta_list(_, mis) => {
+                    for mis.each |mi| {
+                        match mi.node {
+                            ast::meta_word(cmd) => cmds.push(cmd),
+                            _ => {}
+                        };
+                    }
+                }
+                _ => cmds.push(~"build")
+            };
+        }
+
         ctx.fns.push(ListenerFn {
+            cmds: cmds,
             span: item.span,
             path: /*bad*/copy ctx.path
         });
@@ -284,13 +304,26 @@ fn mk_listener_vec(ctx: @ReadyCtx) -> @ast::expr {
 fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
     let span = listener.span;
     let path = /*bad*/copy listener.path;
-    let cmd_lit = no_span(ast::lit_str(@path_name_i(path,
-                                       ctx.sess.parse_sess.interner)));
+    let descs = do listener.cmds.map |&cmd| {
+        let inner = @{
+            id: ctx.sess.next_node_id(),
+            callee_id: ctx.sess.next_node_id(),
+            node: ast::expr_lit(@no_span(ast::lit_str(@cmd))),
+            span: span
+        };
+
+        @{
+            id: ctx.sess.next_node_id(),
+            callee_id: ctx.sess.next_node_id(),
+            node: ast::expr_vstore(inner, ast::expr_vstore_uniq),
+            span: dummy_sp()
+        }
+    };
     let cmd_expr_inner = @{
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
-        node: ast::expr_lit(@cmd_lit),
-        span: span
+        node: ast::expr_vec(descs, ast::m_imm),
+        span: dummy_sp()
     };
     let cmd_expr = {
         id: ctx.sess.next_node_id(),
@@ -300,7 +333,7 @@ fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
     };
     let cmd_field = no_span(ast::field_ {
         mutbl: ast::m_imm,
-        ident: ctx.sess.ident_of(~"cmd"),
+        ident: ctx.sess.ident_of(~"cmds"),
         expr: @cmd_expr,
     });
 
@@ -827,7 +860,7 @@ pub fn remove_pkg(pkg: &Package) -> bool {
     true
 }
 
-pub fn compile_input(input: driver::input, dir: &Path,
+pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
                flags: ~[~str], cfgs: ~[~str], opt: bool, test: bool) -> bool {
     let lib_dir = dir.push(~"lib");
     let bin_dir = dir.push(~"bin");
@@ -838,6 +871,7 @@ pub fn compile_input(input: driver::input, dir: &Path,
         crate_type: session::unknown_crate,
         optimize: if opt { session::Aggressive } else { session::No },
         test: test,
+        maybe_sysroot: sysroot,
         .. *session::basic_options()
     };
     let sess = driver::build_session(options, diagnostic::emit);
@@ -966,14 +1000,14 @@ pub fn exe_suffix() -> ~str { ~".exe" }
 #[cfg(target_os = "macos")]
 pub fn exe_suffix() -> ~str { ~"" }
 
-pub fn compile_crate(crate: &Path, dir: &Path, flags: ~[~str],
+pub fn compile_crate(sysroot: Option<Path>, crate: &Path, dir: &Path, flags: ~[~str],
                cfgs: ~[~str], opt: bool, test: bool) -> bool {
-    compile_input(driver::file_input(*crate), dir, flags, cfgs, opt, test)
+    compile_input(sysroot, driver::file_input(*crate), dir, flags, cfgs, opt, test)
 }
 
-pub fn compile_str(code: ~str, dir: &Path, flags: ~[~str],
+pub fn compile_str(sysroot: Option<Path>, code: ~str, dir: &Path, flags: ~[~str],
                    cfgs: ~[~str], opt: bool, test: bool) -> bool {
-    compile_input(driver::str_input(code), dir, flags, cfgs, opt, test)
+    compile_input(sysroot, driver::str_input(code), dir, flags, cfgs, opt, test)
 }
 
 #[cfg(windows)]
@@ -1002,6 +1036,7 @@ pub fn link_exe(src: &Path, dest: &Path) -> bool unsafe {
 fn test_is_cmd() {
     assert is_cmd(~"build");
     assert is_cmd(~"clean");
+    assert is_cmd(~"do");
     assert is_cmd(~"install");
     assert is_cmd(~"prefer");
     assert is_cmd(~"test");
