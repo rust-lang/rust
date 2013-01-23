@@ -200,19 +200,24 @@ fn to_str(in: @ident_interner, t: Token) -> ~str {
       DOC_COMMENT(s) => *in.get(s),
       EOF => ~"<eof>",
       INTERPOLATED(ref nt) => {
-        ~"an interpolated " +
-            match (*nt) {
-              nt_item(*) => ~"item",
-              nt_block(*) => ~"block",
-              nt_stmt(*) => ~"statement",
-              nt_pat(*) => ~"pattern",
-              nt_expr(*) => ~"expression",
-              nt_ty(*) => ~"type",
-              nt_ident(*) => ~"identifier",
-              nt_path(*) => ~"path",
-              nt_tt(*) => ~"tt",
-              nt_matchers(*) => ~"matcher sequence"
+        match nt {
+            &nt_expr(e) => ::print::pprust::expr_to_str(e, in),
+            _ => {
+                ~"an interpolated " +
+                    match (*nt) {
+                      nt_item(*) => ~"item",
+                      nt_block(*) => ~"block",
+                      nt_stmt(*) => ~"statement",
+                      nt_pat(*) => ~"pattern",
+                      nt_expr(*) => fail ~"should have been handled above",
+                      nt_ty(*) => ~"type",
+                      nt_ident(*) => ~"identifier",
+                      nt_path(*) => ~"path",
+                      nt_tt(*) => ~"tt",
+                      nt_matchers(*) => ~"matcher sequence"
+                    }
             }
+        }
       }
     }
 }
