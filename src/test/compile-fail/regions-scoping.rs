@@ -25,8 +25,7 @@ fn nested(x: &x/int) {  // (1)
             //~^ ERROR cannot infer an appropriate lifetime
 
             return z(y, x, x);
-            //~^ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            //~^^ ERROR mismatched types: expected `&y/int` but found `&x/int`
+            //~^ ERROR cannot infer an appropriate lifetime
         }
     ) |foo| {
 

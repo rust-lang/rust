@@ -15,7 +15,7 @@ use middle::pat_util::{pat_is_variant_or_struct};
 use middle::ty;
 use middle::typeck::check::demand;
 use middle::typeck::check::{check_block, check_expr_has_type, fn_ctxt};
-use middle::typeck::check::{instantiate_path, lookup_def, lookup_local};
+use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
@@ -365,8 +365,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fcx.write_ty(pat.id, const_tpt.ty);
       }
       ast::pat_ident(bm, name, sub) if pat_is_binding(tcx.def_map, pat) => {
-        let vid = lookup_local(fcx, pat.span, pat.id);
-        let mut typ = ty::mk_var(tcx, vid);
+        let typ = fcx.local_ty(pat.span, pat.id);
 
         match bm {
           ast::bind_by_ref(mutbl) => {
@@ -389,8 +388,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
 
         let canon_id = pcx.map.get(ast_util::path_to_ident(name));
         if canon_id != pat.id {
-            let tv_id = lookup_local(fcx, pat.span, canon_id);
-            let ct = ty::mk_var(tcx, tv_id);
+            let ct = fcx.local_ty(pat.span, canon_id);
             demand::eqtype(fcx, pat.span, ct, typ);
         }
         fcx.write_ty(pat.id, typ);

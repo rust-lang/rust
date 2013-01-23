@@ -700,6 +700,8 @@ impl LookupContext {
         autoderefs: uint)
         -> Option<method_map_entry>
     {
+        let (self_ty, autoadjust) =
+            self.consider_reborrow(self_ty, autoderefs);
         match self.search_for_method(self_ty) {
             None => None,
             Some(move mme) => {
@@ -707,10 +709,79 @@ impl LookupContext {
                        adjustment (%u) to %d",
                        autoderefs,
                        self.self_expr.id);
-                self.fcx.write_autoderef_adjustment(
-                    self.self_expr.id, autoderefs);
+                self.fcx.write_adjustment(self.self_expr.id, @autoadjust);
                 Some(mme)
             }
+        }
+    }
+
+    fn consider_reborrow(&self,
+                         self_ty: ty::t,
+                         autoderefs: uint) -> (ty::t, ty::AutoAdjustment)
+    {
+        /*!
+         *
+         * In the event that we are invoking a method with a receiver
+         * of a linear borrowed type like `&mut T` or `&[mut T]`,
+         * we will "reborrow" the receiver implicitly.  For example, if
+         * you have a call `r.inc()` and where `r` has type `&mut T`,
+         * then we treat that like `(&mut *r).inc()`.  This avoids
+         * consuming the original pointer.
+         *
+         * You might think that this would be a natural byproduct of
+         * the auto-deref/auto-ref process.  This is true for `@mut T`
+         * but not for an `&mut T` receiver.  With `@mut T`, we would
+         * begin by testing for methods with a self type `@mut T`,
+         * then autoderef to `T`, then autoref to `&mut T`.  But with
+         * an `&mut T` receiver the process begins with `&mut T`, only
+         * without any autoadjustments.
+         */
+
+        let tcx = self.tcx();
+        return match ty::get(self_ty).sty {
+            ty::ty_rptr(self_r, self_mt) if self_mt.mutbl == m_mutbl => {
+                let region = fresh_region(self, self_r);
+                (ty::mk_rptr(tcx, region, self_mt),
+                 ty::AutoAdjustment {
+                     autoderefs: autoderefs+1,
+                     autoref: Some(ty::AutoRef {kind: AutoPtr,
+                                                region: region,
+                                                mutbl: self_mt.mutbl})})
+            }
+            ty::ty_evec(self_mt, vstore_slice(self_r))
+            if self_mt.mutbl == m_mutbl => {
+                let region = fresh_region(self, self_r);
+                (ty::mk_evec(tcx, self_mt, vstore_slice(region)),
+                 ty::AutoAdjustment {
+                    autoderefs: autoderefs,
+                    autoref: Some(ty::AutoRef {kind: AutoBorrowVec,
+                                               region: region,
+                                               mutbl: self_mt.mutbl})})
+            }
+            _ => {
+                (self_ty, ty::AutoAdjustment {autoderefs: autoderefs,
+                                              autoref: None})
+            }
+        };
+
+        fn fresh_region(self: &LookupContext,
+                        self_r: ty::Region) -> ty::Region {
+            let region = self.infcx().next_region_var(self.expr.span,
+                                                      self.expr.id);
+
+            // FIXME(#3148)---in principle this dependency should
+            // be done more generally as part of regionck
+            match infer::mk_subr(self.infcx(), true, self.expr.span,
+                                 region, self_r) {
+                Ok(_) => {}
+                Err(e) => {
+                    self.tcx().sess.span_bug(
+                        self.expr.span,
+                        fmt!("Failed with error: %?", e));
+                }
+            }
+
+            return region;
         }
     }
 
@@ -729,6 +800,7 @@ impl LookupContext {
         match ty::get(self_ty).sty {
             ty_evec(mt, vstore_box) |
             ty_evec(mt, vstore_uniq) |
+            ty_evec(mt, vstore_slice(_)) | // NDM(#3148)
             ty_evec(mt, vstore_fixed(_)) => {
                 // First try to borrow to a slice
                 let entry = self.search_for_some_kind_of_autorefd_method(
