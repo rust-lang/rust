@@ -33,7 +33,7 @@ use send_map::linear::LinearMap;
 use rustc::metadata::filesearch;
 use rustc::driver::{driver, session};
 use syntax::{ast, attr, codemap, diagnostic, parse, visit};
-use semver::Version;
+use std::semver;
 
 mod usage;
 mod util;
@@ -43,7 +43,7 @@ use util::Package;
 struct PackageScript {
     id: ~str,
     name: ~str,
-    vers: Version,
+    vers: semver::Version,
     crates: ~[~str],
     deps: ~[(~str, Option<~str>)],
     input: driver::input,
@@ -222,8 +222,7 @@ impl PackageScript {
     }
 
     // Build the bootstrap and run a command
-    // FIXME: Use workcache to only compile the script when changed
-    // FIXME: Use JIT once it works, it should be faster
+    // FIXME (#4432): Use workcache to only compile the script when changed
     fn run(cmd: ~str) -> int {
         let work_dir = self.work_dir();
         let input = self.input;

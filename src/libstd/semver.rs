@@ -17,7 +17,7 @@ use uint;
 use str;
 use to_str::ToStr;
 use char;
-use cmp;
+use core::cmp;
 
 pub struct Version {
     major: uint,
