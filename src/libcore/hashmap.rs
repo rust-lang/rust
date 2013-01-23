@@ -352,6 +352,10 @@ pub mod linear {
     }
 
     impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
+        static fn new() -> LinearMap<K, V> {
+            linear_map_with_capacity(INITIAL_CAPACITY)
+        }
+
         fn pop(&mut self, k: &K) -> Option<V> {
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             self.pop_internal(hash, k)
@@ -405,7 +409,7 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash IterBytes Eq, V: Copy> LinearMap<K,V> {
+    impl<K:Hash IterBytes Eq, V: Copy> LinearMap<K, V> {
         pure fn find_copy(&const self, k: &K) -> Option<V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
@@ -504,7 +508,7 @@ pub mod test {
 
     #[test]
     pub fn inserts() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
         assert *m.get(&1) == 2;
@@ -513,7 +517,7 @@ pub mod test {
 
     #[test]
     pub fn overwrite() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert *m.get(&1) == 2;
         assert !m.insert(1, 3);
@@ -553,7 +557,7 @@ pub mod test {
 
     #[test]
     pub fn pops() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         m.insert(1, 2);
         assert m.pop(&1) == Some(2);
         assert m.pop(&1) == None;
@@ -561,7 +565,7 @@ pub mod test {
 
     #[test]
     pub fn swaps() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.swap(1, 2) == None;
         assert m.swap(1, 3) == Some(2);
         assert m.swap(1, 4) == Some(3);
@@ -569,10 +573,10 @@ pub mod test {
 
     #[test]
     pub fn consumes() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert m.insert(2, 3);
-        let mut m2 = ~LinearMap();
+        let mut m2 = LinearMap::new();
         do m.consume |k, v| {
             m2.insert(k, v);
         }
@@ -598,7 +602,7 @@ pub mod test {
 
     #[test]
     pub fn find() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.find(&1).is_none();
         m.insert(1, 2);
         match m.find(&1) {
@@ -609,12 +613,12 @@ pub mod test {
 
     #[test]
     pub fn test_eq() {
-        let mut m1 = ~LinearMap();
+        let mut m1 = LinearMap::new();
         m1.insert(1, 2);
         m1.insert(2, 3);
         m1.insert(3, 4);
 
-        let mut m2 = ~LinearMap();
+        let mut m2 = LinearMap::new();
         m2.insert(1, 2);
         m2.insert(2, 3);
 
@@ -627,7 +631,7 @@ pub mod test {
 
     #[test]
     pub fn test_expand() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
 
         assert m.len() == 0;
         assert m.is_empty();

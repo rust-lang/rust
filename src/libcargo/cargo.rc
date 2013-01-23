@@ -1617,7 +1617,7 @@ fn dump_cache(c: &Cargo) {
     need_dir(&c.root);
 
     let out = c.root.push("cache.json");
-    let _root = json::Object(~LinearMap());
+    let _root = json::Object(~LinearMap::new());
 
     if os::path_exists(&out) {
         copy_warn(&out, &c.root.push("cache.json.old"));
@@ -1638,10 +1638,10 @@ fn dump_sources(c: &Cargo) {
 
     match io::buffered_file_writer(&out) {
         result::Ok(writer) => {
-            let mut hash = ~LinearMap();
+            let mut hash = ~LinearMap::new();
 
             for c.sources.each |k, v| {
-                let mut chash = ~LinearMap();
+                let mut chash = ~LinearMap::new();
 
                 chash.insert(~"url", json::String(v.url));
                 chash.insert(~"method", json::String(v.method));

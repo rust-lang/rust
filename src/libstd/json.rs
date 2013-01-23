@@ -24,7 +24,7 @@ use core::float;
 use core::io::{WriterUtil, ReaderUtil};
 use core::io;
 use core::prelude::*;
-use core::hashmap::linear;
+use core::hashmap::linear::LinearMap;
 use core::str;
 use core::to_str;
 use core::vec;
@@ -40,7 +40,7 @@ pub enum Json {
 }
 
 pub type List = ~[Json];
-pub type Object = linear::LinearMap<~str, Json>;
+pub type Object = LinearMap<~str, Json>;
 
 pub struct Error {
     line: uint,
@@ -671,7 +671,7 @@ priv impl Parser {
         self.bump();
         self.parse_whitespace();
 
-        let mut values = ~linear::LinearMap();
+        let mut values = ~LinearMap::new();
 
         if self.ch == '}' {
           self.bump();
@@ -1175,9 +1175,9 @@ impl <A: ToJson> ~[A]: ToJson {
     fn to_json() -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl <A: ToJson Copy> linear::LinearMap<~str, A>: ToJson {
+impl <A: ToJson Copy> LinearMap<~str, A>: ToJson {
     fn to_json() -> Json {
-        let mut d = linear::LinearMap();
+        let mut d = LinearMap::new();
         for self.each() |key, value| {
             d.insert(copy *key, value.to_json());
         }
@@ -1188,7 +1188,7 @@ impl <A: ToJson Copy> linear::LinearMap<~str, A>: ToJson {
 /*
 impl <A: ToJson Copy> @std::map::HashMap<~str, A>: ToJson {
     fn to_json() -> Json {
-        let mut d = linear::LinearMap();
+        let mut d = LinearMap::new();
         for self.each_ref |key, value| {
             d.insert(copy *key, value.to_json());
         }
@@ -1223,10 +1223,10 @@ mod tests {
     use json::*;
 
     use core::result;
-    use core::hashmap::linear;
+    use core::hashmap::linear::LinearMap;
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
-        let mut d = ~linear::LinearMap();
+        let mut d = LinearMap::new();
 
         for items.each |item| {
             match *item {

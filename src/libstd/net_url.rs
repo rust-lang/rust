@@ -242,7 +242,7 @@ pub fn encode_form_urlencoded(m: &LinearMap<~str, ~[~str]>) -> ~str {
  */
 pub fn decode_form_urlencoded(s: &[u8]) -> LinearMap<~str, ~[~str]> {
     do io::with_bytes_reader(s) |rdr| {
-        let mut m = LinearMap();
+        let mut m = LinearMap::new();
         let mut key = ~"";
         let mut value = ~"";
         let mut parsing_key = true;
@@ -1053,18 +1053,18 @@ mod tests {
 
     #[test]
     fn test_encode_form_urlencoded() {
-        let mut m = LinearMap();
+        let mut m = LinearMap::new();
         assert encode_form_urlencoded(&m) == ~"";
 
         m.insert(~"", ~[]);
         m.insert(~"foo", ~[]);
         assert encode_form_urlencoded(&m) == ~"";
 
-        let mut m = LinearMap();
+        let mut m = LinearMap::new();
         m.insert(~"foo", ~[~"bar", ~"123"]);
         assert encode_form_urlencoded(&m) == ~"foo=bar&foo=123";
 
-        let mut m = LinearMap();
+        let mut m = LinearMap::new();
         m.insert(~"foo bar", ~[~"abc", ~"12 = 34"]);
         assert encode_form_urlencoded(&m) == ~"foo+bar=abc&foo+bar=12+%3D+34";
     }

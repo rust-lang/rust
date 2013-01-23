@@ -152,7 +152,7 @@ pub impl<S: Encoder> WorkMap: Encodable<S> {
 pub impl<D: Decoder> WorkMap: Decodable<D> {
     static fn decode(&self, d: &D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
-        let mut w = LinearMap();
+        let mut w = LinearMap::new();
         for v.each |&(k,v)| {
             w.insert(copy k, copy v);
         }
@@ -348,8 +348,8 @@ impl @Mut<Prep> : TPrep {
                     let blk = blk.unwrap();
                     let chan = ~mut Some(move chan);
                     do task::spawn |move blk, move chan| {
-                        let exe = Exec { discovered_inputs: LinearMap(),
-                                         discovered_outputs: LinearMap() };
+                        let exe = Exec{discovered_inputs: LinearMap::new(),
+                                       discovered_outputs: LinearMap::new()};
                         let chan = option::swap_unwrap(&mut *chan);
                         let v = blk(&exe);
                         send_one(move chan, (move exe, move v));
@@ -411,10 +411,10 @@ fn test() {
     use io::WriterUtil;
 
     let db = @Mut(Database { db_filename: Path("db.json"),
-                             db_cache: LinearMap(),
+                             db_cache: LinearMap::new(),
                              db_dirty: false });
     let lg = @Mut(Logger { a: () });
-    let cfg = @LinearMap();
+    let cfg = @LinearMap::new();
     let cx = @Context::new(db, lg, cfg);
     let w:Work<~str> = do cx.prep("test1") |prep| {
         let pth = Path("foo.c");

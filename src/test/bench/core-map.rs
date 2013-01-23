@@ -178,10 +178,10 @@ fn main() {
         let rng = rand::seeded_rng(&seed);
         let mut results = empty_results();
         int_benchmarks::<@Mut<LinearMap<uint, uint>>>(
-            || @Mut(LinearMap()),
+            || @Mut(LinearMap::new()),
             rng, num_keys, &mut results);
         str_benchmarks::<@Mut<LinearMap<~str, uint>>>(
-            || @Mut(LinearMap()),
+            || @Mut(LinearMap::new()),
             rng, num_keys, &mut results);
         write_results("libstd::map::hashmap", &results);
     }
