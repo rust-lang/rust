@@ -1716,7 +1716,7 @@ fn print_fn_args(s: ps, decl: ast::fn_decl,
     // It is unfortunate to duplicate the commasep logic, but we
     // we want the self type, the args, and the capture clauses all
     // in the same box.
-    box(s, 0u, inconsistent);
+    box(s, 0, inconsistent);
     let mut first = true;
     for opt_self_ty.each |self_ty| {
         first = !print_self_ty(s, *self_ty);
@@ -1913,6 +1913,9 @@ fn print_mt(s: ps, mt: ast::mt) {
 fn print_arg(s: ps, input: ast::arg) {
     ibox(s, indent_unit);
     print_arg_mode(s, input.mode);
+    if input.is_mutbl {
+        word_space(s, ~"mut");
+    }
     match input.ty.node {
       ast::ty_infer => print_irrefutable_pat(s, input.pat),
       _ => {
