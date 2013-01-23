@@ -633,12 +633,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let (_, provided_methods) =
             split_trait_methods(/*bad*/copy *trait_methods);
         let {bounds, _} = mk_substs(ccx, /*bad*/copy *tps, rp);
-        let _cms = convert_methods(ccx, provided_methods, rp, bounds);
-        // FIXME (#2616): something like this, when we start having
-        // trait inheritance?
-        // for trait_ref.each |t| {
-        // check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
-        // }
+        let _ = convert_methods(ccx, provided_methods, rp, bounds);
       }
       ast::item_struct(struct_def, tps) => {
         // Write the class type
