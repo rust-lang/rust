@@ -25,7 +25,7 @@ use core::os;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
-    -> base::mac_result {
+    -> base::MacResult {
 
     let var = get_single_str_from_tts(cx, sp, tts, "env!");
 
@@ -36,7 +36,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
       option::None => mk_uniq_str(cx, sp, ~""),
       option::Some(ref s) => mk_uniq_str(cx, sp, (*s))
     };
-    mr_expr(e)
+    MRExpr(e)
 }
 
 //

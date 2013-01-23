@@ -25,65 +25,65 @@ use std::map::HashMap;
 
 // new-style macro! tt code:
 //
-//    syntax_expander_tt, syntax_expander_tt_item, mac_result,
-//    normal_tt, item_tt
+//    SyntaxExpanderTT, SyntaxExpanderTTItem, MacResult,
+//    NormalTT, ItemTT
 //
 // also note that ast::mac used to have a bunch of extraneous cases and
 // is now probably a redundant AST node, can be merged with
 // ast::mac_invoc_tt.
 
-struct macro_def {
+struct MacroDef {
     name: ~str,
-    ext: syntax_extension,
+    ext: SyntaxExtension
 }
 
-type item_decorator =
+type ItemDecorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
-struct syntax_expander_tt {
-    expander: syntax_expander_tt_,
-    span: Option<span>,
+struct SyntaxExpanderTT {
+    expander: SyntaxExpanderTTFun,
+    span: Option<span>
 }
 
-type syntax_expander_tt_ = fn@(ext_ctxt, span, ~[ast::token_tree])
-    -> mac_result;
+type SyntaxExpanderTTFun = fn@(ext_ctxt, span, ~[ast::token_tree])
+    -> MacResult;
 
-struct syntax_expander_tt_item {
-    expander: syntax_expander_tt_item_,
-    span: Option<span>,
+struct SyntaxExpanderTTItem {
+    expander: SyntaxExpanderTTItemFun,
+    span: Option<span>
 }
 
-type syntax_expander_tt_item_
-    = fn@(ext_ctxt, span, ast::ident, ~[ast::token_tree]) -> mac_result;
+type SyntaxExpanderTTItemFun
+    = fn@(ext_ctxt, span, ast::ident, ~[ast::token_tree]) -> MacResult;
 
-enum mac_result {
-    mr_expr(@ast::expr),
-    mr_item(@ast::item),
-    mr_any(fn@()-> @ast::expr, fn@()-> Option<@ast::item>, fn@()->@ast::stmt),
-    mr_def(macro_def)
+enum MacResult {
+    MRExpr(@ast::expr),
+    MRItem(@ast::item),
+    MRAny(fn@()-> @ast::expr, fn@()-> Option<@ast::item>, fn@()->@ast::stmt),
+    MRDef(MacroDef)
 }
 
-enum syntax_extension {
+enum SyntaxExtension {
 
     // #[auto_encode] and such
-    item_decorator(item_decorator),
+    ItemDecorator(ItemDecorator),
 
     // Token-tree expanders
-    normal_tt(syntax_expander_tt),
+    NormalTT(SyntaxExpanderTT),
 
     // perhaps macro_rules! will lose its odd special identifier argument,
     // and this can go away also
-    item_tt(syntax_expander_tt_item),
+    ItemTT(SyntaxExpanderTTItem),
 }
 
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
-fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
-    fn builtin_normal_tt(f: syntax_expander_tt_) -> syntax_extension {
-        normal_tt(syntax_expander_tt {expander: f, span: None})
+fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
+    fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> SyntaxExtension {
+        NormalTT(SyntaxExpanderTT{expander: f, span: None})
     }
-    fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
-        item_tt(syntax_expander_tt_item {expander: f, span: None})
+    fn builtin_item_tt(f: SyntaxExpanderTTItemFun) -> SyntaxExtension {
+        ItemTT(SyntaxExpanderTTItem{expander: f, span: None})
     }
     let syntax_expanders = HashMap();
     syntax_expanders.insert(~"macro_rules",
@@ -93,10 +93,10 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
                             builtin_normal_tt(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(
         ~"auto_encode",
-        item_decorator(ext::auto_encode::expand_auto_encode));
+        ItemDecorator(ext::auto_encode::expand_auto_encode));
     syntax_expanders.insert(
         ~"auto_decode",
-        item_decorator(ext::auto_encode::expand_auto_decode));
+        ItemDecorator(ext::auto_encode::expand_auto_decode));
     syntax_expanders.insert(~"env",
                             builtin_normal_tt(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"concat_idents",
@@ -106,10 +106,10 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
                             builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(~"deriving_eq",
-                            item_decorator(
+                            ItemDecorator(
                                 ext::deriving::expand_deriving_eq));
     syntax_expanders.insert(~"deriving_iter_bytes",
-                            item_decorator(
+                            ItemDecorator(
                                 ext::deriving::expand_deriving_iter_bytes));
 
     // Quasi-quoting expanders
