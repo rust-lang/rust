@@ -96,13 +96,13 @@ macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = move *ptr::addr_of(&($x)); move y } )
 )
 
-type TaskSet = send_map::linear::LinearMap<*rust_task,()>;
+type TaskSet = send_map::linear::LinearSet<*rust_task>;
 
 fn new_taskset() -> TaskSet {
-    send_map::linear::LinearMap()
+    send_map::linear::LinearSet::new()
 }
 fn taskset_insert(tasks: &mut TaskSet, task: *rust_task) {
-    let didnt_overwrite = tasks.insert(task, ());
+    let didnt_overwrite = tasks.insert(task);
     assert didnt_overwrite;
 }
 fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
@@ -110,7 +110,7 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     assert was_present;
 }
 pub fn taskset_each(tasks: &TaskSet, blk: fn(v: *rust_task) -> bool) {
-    tasks.each_key(|k| blk(*k))
+    tasks.each(|k| blk(*k))
 }
 
 // One of these per group of linked-failure tasks.

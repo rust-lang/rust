@@ -30,7 +30,7 @@ use util::common::indenter;
 use util::ppaux::{expr_repr, region_to_str};
 
 use core::dvec;
-use core::send_map::linear::LinearMap;
+use core::send_map::linear::LinearSet;
 use core::vec;
 use std::map::HashMap;
 use syntax::ast::{m_const, m_imm, m_mutbl};
@@ -73,7 +73,7 @@ enum gather_loan_ctxt = @{bccx: borrowck_ctxt,
                           req_maps: req_maps,
                           mut item_ub: ast::node_id,
                           mut root_ub: ast::node_id,
-                          mut ignore_adjustments: LinearMap<ast::node_id,()>};
+                          mut ignore_adjustments: LinearSet<ast::node_id>};
 
 fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
     let glcx = gather_loan_ctxt(@{bccx: bccx,
@@ -81,7 +81,7 @@ fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
                                              pure_map: HashMap()},
                                   mut item_ub: 0,
                                   mut root_ub: 0,
-                                  mut ignore_adjustments: LinearMap()});
+                                  mut ignore_adjustments: LinearSet::new()});
     let v = visit::mk_vt(@visit::Visitor {visit_expr: req_loans_in_expr,
                                           visit_fn: req_loans_in_fn,
                                           visit_stmt: add_stmt_to_map,
@@ -126,7 +126,7 @@ fn req_loans_in_expr(ex: @ast::expr,
            ex.id, pprust::expr_to_str(ex, tcx.sess.intr()));
 
     // If this expression is borrowed, have to ensure it remains valid:
-    if !self.ignore_adjustments.contains_key(&ex.id) {
+    if !self.ignore_adjustments.contains(&ex.id) {
         for tcx.adjustments.find(ex.id).each |adjustments| {
             self.guarantee_adjustments(ex, *adjustments);
         }
@@ -221,7 +221,7 @@ fn req_loans_in_expr(ex: @ast::expr,
 
         // FIXME (#3387): Total hack: Ignore adjustments for the left-hand
         // side. Their regions will be inferred to be too large.
-        self.ignore_adjustments.insert(rcvr.id, ());
+        self.ignore_adjustments.insert(rcvr.id);
 
         visit::visit_expr(ex, self, vt);
       }
