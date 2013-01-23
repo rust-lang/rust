@@ -1226,6 +1226,18 @@ match crayons[0] {
 }
 ~~~~
 
+A vector can be destructured using pattern matching:
+
+~~~~
+let numbers: [int * 3] = [1, 2, 3];
+let score = match numbers {
+    [] => 0,
+    [a] => a * 10,
+    [a, b] => a * 6 + b * 4,
+    [a, b, c, ..rest] => a * 5 + b * 3 + c * 2 + rest.len() as int
+};
+~~~~
+
 The elements of a vector _inherit the mutability of the vector_,
 and as such, individual elements may not be reassigned when the
 vector lives in an immutable slot.
