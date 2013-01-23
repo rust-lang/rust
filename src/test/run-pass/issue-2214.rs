@@ -14,8 +14,10 @@ use core::cast;
 use core::libc::{c_double, c_int};
 use core::f64::*;
 
-fn to_c_int(v: &mut int) -> &mut c_int unsafe {
-    cast::reinterpret_cast(&v)
+fn to_c_int(v: &mut int) -> &mut c_int {
+    unsafe {
+        cast::reinterpret_cast(&v)
+    }
 }
 
 fn lgamma(n: c_double, value: &mut int) -> c_double {

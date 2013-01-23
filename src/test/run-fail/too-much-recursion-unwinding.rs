@@ -21,16 +21,20 @@ fn recurse() {
 
 struct r {
     recursed: *mut bool,
-    drop unsafe { 
-        if !*(self.recursed) {
-            *(self.recursed) = true;
-            recurse();
+    drop {
+        unsafe {
+            if !*(self.recursed) {
+                *(self.recursed) = true;
+                recurse();
+            }
         }
     }
 }
 
-fn r(recursed: *mut bool) -> r unsafe {
-    r { recursed: recursed }
+fn r(recursed: *mut bool) -> r {
+    unsafe {
+        r { recursed: recursed }
+    }
 }
 
 fn main() {

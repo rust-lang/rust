@@ -114,17 +114,21 @@ impl<A: ToStr Copy, B: ToStr Copy, C: ToStr Copy> (A, B, C): ToStr {
 
 impl<A: ToStr> ~[A]: ToStr {
     #[inline(always)]
-    pure fn to_str() -> ~str unsafe {
-        // Bleh -- not really unsafe
-        // push_str and push_char
-        let mut acc = ~"[", first = true;
-        for vec::each(self) |elt| unsafe {
-            if first { first = false; }
-            else { str::push_str(&mut acc, ~", "); }
-            str::push_str(&mut acc, elt.to_str());
+    pure fn to_str() -> ~str {
+        unsafe {
+            // Bleh -- not really unsafe
+            // push_str and push_char
+            let mut acc = ~"[", first = true;
+            for vec::each(self) |elt| {
+                unsafe {
+                    if first { first = false; }
+                    else { str::push_str(&mut acc, ~", "); }
+                    str::push_str(&mut acc, elt.to_str());
+                }
+            }
+            str::push_char(&mut acc, ']');
+            move acc
         }
-        str::push_char(&mut acc, ']');
-        move acc
     }
 }
 

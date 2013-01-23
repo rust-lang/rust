@@ -69,6 +69,7 @@ use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
 use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
 use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith, ObsoleteClassMethod};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
+use parse::obsolete::{ObsoleteUnsafeBlock};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -2336,12 +2337,13 @@ impl Parser {
         }
 
         let lo = self.span.lo;
-        let us = self.eat_keyword(~"unsafe");
+        if self.eat_keyword(~"unsafe") {
+            self.obsolete(copy self.span, ObsoleteUnsafeBlock);
+        }
         self.expect(token::LBRACE);
         let {inner: move inner, next: move next} =
             maybe_parse_inner_attrs_and_next(self, parse_attrs);
-        let blk_check_mode = if us { unsafe_blk } else { default_blk };
-        return (inner, self.parse_block_tail_(lo, blk_check_mode, next));
+        return (inner, self.parse_block_tail_(lo, default_blk, next));
     }
 
     fn parse_block_no_value() -> blk {

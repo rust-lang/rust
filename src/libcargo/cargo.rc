@@ -1135,28 +1135,30 @@ fn get_temp_workdir(c: &Cargo) -> Path {
     }
 }
 
-fn cmd_install(c: &Cargo) unsafe {
-    let wd = get_temp_workdir(c);
+fn cmd_install(c: &Cargo) {
+    unsafe {
+        let wd = get_temp_workdir(c);
 
-    if vec::len(c.opts.free) == 2u {
-        let cwd = os::getcwd();
-        let status = run::run_program(~"cp", ~[~"-R", cwd.to_str(),
-                                               wd.to_str()]);
+        if vec::len(c.opts.free) == 2u {
+            let cwd = os::getcwd();
+            let status = run::run_program(~"cp", ~[~"-R", cwd.to_str(),
+                                                   wd.to_str()]);
 
-        if status != 0 {
-            fail fmt!("could not copy directory: %s", cwd.to_str());
+            if status != 0 {
+                fail fmt!("could not copy directory: %s", cwd.to_str());
+            }
+
+            install_source(c, &wd);
+            return;
         }
 
-        install_source(c, &wd);
-        return;
+        sync(c);
+
+        let query = c.opts.free[2];
+        c.current_install = query.to_str();
+
+        install_query(c, &wd, query);
     }
-
-    sync(c);
-
-    let query = c.opts.free[2];
-    c.current_install = query.to_str();
-
-    install_query(c, &wd, query);
 }
 
 fn sync(c: &Cargo) {

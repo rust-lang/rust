@@ -1386,7 +1386,7 @@ fn float_width(llt: TypeRef) -> uint {
     }
 }
 
-fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] unsafe {
+fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] {
     unsafe {
         let args = vec::from_elem(llvm::LLVMCountParamTypes(fn_ty) as uint,
                                  0 as TypeRef);

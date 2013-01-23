@@ -165,8 +165,10 @@ pub pure fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
   (I couldn't think of a cutesy name for this one.)
 */
 #[inline(always)]
-pub pure fn to_uint<T>(thing: &T) -> uint unsafe {
-    cast::reinterpret_cast(&thing)
+pub pure fn to_uint<T>(thing: &T) -> uint {
+    unsafe {
+        cast::reinterpret_cast(&thing)
+    }
 }
 
 /// Determine if two borrowed pointers point to the same thing.
@@ -215,10 +217,12 @@ impl<T> *mut T: Ptr<T> {
 #[cfg(notest)]
 impl<T> *const T : Eq {
     #[inline(always)]
-    pure fn eq(&self, other: &*const T) -> bool unsafe {
-        let a: uint = cast::reinterpret_cast(&(*self));
-        let b: uint = cast::reinterpret_cast(&(*other));
-        return a == b;
+    pure fn eq(&self, other: &*const T) -> bool {
+        unsafe {
+            let a: uint = cast::reinterpret_cast(&(*self));
+            let b: uint = cast::reinterpret_cast(&(*other));
+            return a == b;
+        }
     }
     #[inline(always)]
     pure fn ne(&self, other: &*const T) -> bool { !(*self).eq(other) }
@@ -228,28 +232,36 @@ impl<T> *const T : Eq {
 #[cfg(notest)]
 impl<T> *const T : Ord {
     #[inline(always)]
-    pure fn lt(&self, other: &*const T) -> bool unsafe {
-        let a: uint = cast::reinterpret_cast(&(*self));
-        let b: uint = cast::reinterpret_cast(&(*other));
-        return a < b;
+    pure fn lt(&self, other: &*const T) -> bool {
+        unsafe {
+            let a: uint = cast::reinterpret_cast(&(*self));
+            let b: uint = cast::reinterpret_cast(&(*other));
+            return a < b;
+        }
     }
     #[inline(always)]
-    pure fn le(&self, other: &*const T) -> bool unsafe {
-        let a: uint = cast::reinterpret_cast(&(*self));
-        let b: uint = cast::reinterpret_cast(&(*other));
-        return a <= b;
+    pure fn le(&self, other: &*const T) -> bool {
+        unsafe {
+            let a: uint = cast::reinterpret_cast(&(*self));
+            let b: uint = cast::reinterpret_cast(&(*other));
+            return a <= b;
+        }
     }
     #[inline(always)]
-    pure fn ge(&self, other: &*const T) -> bool unsafe {
-        let a: uint = cast::reinterpret_cast(&(*self));
-        let b: uint = cast::reinterpret_cast(&(*other));
-        return a >= b;
+    pure fn ge(&self, other: &*const T) -> bool {
+        unsafe {
+            let a: uint = cast::reinterpret_cast(&(*self));
+            let b: uint = cast::reinterpret_cast(&(*other));
+            return a >= b;
+        }
     }
     #[inline(always)]
-    pure fn gt(&self, other: &*const T) -> bool unsafe {
-        let a: uint = cast::reinterpret_cast(&(*self));
-        let b: uint = cast::reinterpret_cast(&(*other));
-        return a > b;
+    pure fn gt(&self, other: &*const T) -> bool {
+        unsafe {
+            let a: uint = cast::reinterpret_cast(&(*self));
+            let b: uint = cast::reinterpret_cast(&(*other));
+            return a > b;
+        }
     }
 }
 

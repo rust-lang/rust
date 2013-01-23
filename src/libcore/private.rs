@@ -64,22 +64,26 @@ pub unsafe fn run_in_bare_thread(f: ~fn()) {
     let (port, chan) = pipes::stream();
     // FIXME #4525: Unfortunate that this creates an extra scheduler but it's
     // necessary since rust_raw_thread_join_delete is blocking
-    do task::spawn_sched(task::SingleThreaded) unsafe {
-        let closure: &fn() = || {
-            f()
-        };
-        let thread = rustrt::rust_raw_thread_start(closure);
-        rustrt::rust_raw_thread_join_delete(thread);
-        chan.send(());
+    do task::spawn_sched(task::SingleThreaded) {
+        unsafe {
+            let closure: &fn() = || {
+                f()
+            };
+            let thread = rustrt::rust_raw_thread_start(closure);
+            rustrt::rust_raw_thread_join_delete(thread);
+            chan.send(());
+        }
     }
     port.recv();
 }
 
 #[test]
-fn test_run_in_bare_thread() unsafe {
-    let i = 100;
-    do run_in_bare_thread {
-        assert i == 100;
+fn test_run_in_bare_thread() {
+    unsafe {
+        let i = 100;
+        do run_in_bare_thread {
+            assert i == 100;
+        }
     }
 }
 
@@ -273,8 +277,10 @@ pub unsafe fn weaken_task(f: fn(oldcomm::Port<()>)) {
 
     struct Unweaken {
       ch: oldcomm::Chan<()>,
-      drop unsafe {
-        rustrt::rust_task_unweaken(cast::reinterpret_cast(&self.ch));
+      drop {
+        unsafe {
+            rustrt::rust_task_unweaken(cast::reinterpret_cast(&self.ch));
+        }
       }
     }
 
@@ -359,37 +365,40 @@ struct ArcData<T> {
 
 struct ArcDestruct<T> {
     mut data: *libc::c_void,
-    drop unsafe {
-        if self.data.is_null() {
-            return; // Happens when destructing an unwrapper's handle.
-        }
-        do task::unkillable {
-            let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
-            let new_count = rusti::atomic_xsub(&mut data.count, 1) - 1;
-            assert new_count >= 0;
-            if new_count == 0 {
-                // Were we really last, or should we hand off to an unwrapper?
-                // It's safe to not xchg because the unwrapper will set the
-                // unwrap lock *before* dropping his/her reference. In effect,
-                // being here means we're the only *awake* task with the data.
-                if data.unwrapper != 0 {
-                    let p: UnwrapProto =
-                        cast::reinterpret_cast(&data.unwrapper);
-                    let (message, response) = option::swap_unwrap(p);
-                    // Send 'ready' and wait for a response.
-                    pipes::send_one(move message, ());
-                    // Unkillable wait. Message guaranteed to come.
-                    if pipes::recv_one(move response) {
-                        // Other task got the data.
-                        cast::forget(move data);
+    drop {
+        unsafe {
+            if self.data.is_null() {
+                return; // Happens when destructing an unwrapper's handle.
+            }
+            do task::unkillable {
+                let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
+                let new_count = rusti::atomic_xsub(&mut data.count, 1) - 1;
+                assert new_count >= 0;
+                if new_count == 0 {
+                    // Were we really last, or should we hand off to an
+                    // unwrapper? It's safe to not xchg because the unwrapper
+                    // will set the unwrap lock *before* dropping his/her
+                    // reference. In effect, being here means we're the only
+                    // *awake* task with the data.
+                    if data.unwrapper != 0 {
+                        let p: UnwrapProto =
+                            cast::reinterpret_cast(&data.unwrapper);
+                        let (message, response) = option::swap_unwrap(p);
+                        // Send 'ready' and wait for a response.
+                        pipes::send_one(move message, ());
+                        // Unkillable wait. Message guaranteed to come.
+                        if pipes::recv_one(move response) {
+                            // Other task got the data.
+                            cast::forget(move data);
+                        } else {
+                            // Other task was killed. drop glue takes over.
+                        }
                     } else {
-                        // Other task was killed. drop glue takes over.
+                        // drop glue takes over.
                     }
                 } else {
-                    // drop glue takes over.
+                    cast::forget(move data);
                 }
-            } else {
-                cast::forget(move data);
             }
         }
     }
@@ -406,18 +415,21 @@ pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>,
         mut response: Option<pipes::ChanOne<bool>>,
-        drop unsafe {
-            let response = option::swap_unwrap(&mut self.response);
-            // In case we get killed early, we need to tell the person who
-            // tried to wake us whether they should hand-off the data to us.
-            if task::failing() {
-                pipes::send_one(move response, false);
-                // Either this swap_unwrap or the one below (at "Got here")
-                // ought to run.
-                cast::forget(option::swap_unwrap(&mut self.ptr));
-            } else {
-                assert self.ptr.is_none();
-                pipes::send_one(move response, true);
+        drop {
+            unsafe {
+                let response = option::swap_unwrap(&mut self.response);
+                // In case we get killed early, we need to tell the person who
+                // tried to wake us whether they should hand-off the data to
+                // us.
+                if task::failing() {
+                    pipes::send_one(move response, false);
+                    // Either this swap_unwrap or the one below (at "Got
+                    // here") ought to run.
+                    cast::forget(option::swap_unwrap(&mut self.ptr));
+                } else {
+                    assert self.ptr.is_none();
+                    pipes::send_one(move response, true);
+                }
             }
         }
     }

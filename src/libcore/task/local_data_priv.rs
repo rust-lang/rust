@@ -29,10 +29,12 @@ pub trait LocalData { }
 impl<T: Durable> @T: LocalData { }
 
 impl LocalData: Eq {
-    pure fn eq(&self, other: &@LocalData) -> bool unsafe {
-        let ptr_a: (uint, uint) = cast::reinterpret_cast(&(*self));
-        let ptr_b: (uint, uint) = cast::reinterpret_cast(other);
-        return ptr_a == ptr_b;
+    pure fn eq(&self, other: &@LocalData) -> bool {
+        unsafe {
+            let ptr_a: (uint, uint) = cast::reinterpret_cast(&(*self));
+            let ptr_b: (uint, uint) = cast::reinterpret_cast(other);
+            return ptr_a == ptr_b;
+        }
     }
     pure fn ne(&self, other: &@LocalData) -> bool { !(*self).eq(other) }
 }
@@ -43,11 +45,14 @@ type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
 type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
 
-extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
-    assert !map_ptr.is_null();
-    // Get and keep the single reference that was created at the beginning.
-    let _map: TaskLocalMap = cast::reinterpret_cast(&map_ptr);
-    // All local_data will be destroyed along with the map.
+extern fn cleanup_task_local_map(map_ptr: *libc::c_void) {
+    unsafe {
+        assert !map_ptr.is_null();
+        // Get and keep the single reference that was created at the
+        // beginning.
+        let _map: TaskLocalMap = cast::reinterpret_cast(&map_ptr);
+        // All local_data will be destroyed along with the map.
+    }
 }
 
 // Gets the map from the runtime. Lazily initialises if not done so already.

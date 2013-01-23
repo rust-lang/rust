@@ -193,8 +193,10 @@ impl PacketHeader {
         reinterpret_cast(&self.buffer)
     }
 
-    fn set_buffer<T: Owned>(b: ~Buffer<T>) unsafe {
-        self.buffer = reinterpret_cast(&b);
+    fn set_buffer<T: Owned>(b: ~Buffer<T>) {
+        unsafe {
+            self.buffer = reinterpret_cast(&b);
+        }
     }
 }
 
@@ -356,19 +358,21 @@ pub unsafe fn get_buffer<T: Owned>(p: *PacketHeader) -> ~Buffer<T> {
 struct BufferResource<T: Owned> {
     buffer: ~Buffer<T>,
 
-    drop unsafe {
-        let b = move_it!(self.buffer);
-        //let p = ptr::addr_of(*b);
-        //error!("drop %?", p);
-        let old_count = atomic_sub_rel(&mut b.header.ref_count, 1);
-        //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
-        if old_count == 1 {
-            // The new count is 0.
+    drop {
+        unsafe {
+            let b = move_it!(self.buffer);
+            //let p = ptr::addr_of(*b);
+            //error!("drop %?", p);
+            let old_count = atomic_sub_rel(&mut b.header.ref_count, 1);
+            //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
+            if old_count == 1 {
+                // The new count is 0.
 
-            // go go gadget drop glue
-        }
-        else {
-            forget(move b)
+                // go go gadget drop glue
+            }
+            else {
+                forget(move b)
+            }
         }
     }
 }
@@ -641,18 +645,20 @@ fn wait_many<T: Selectable>(pkts: &[T]) -> uint {
 
     let mut data_avail = false;
     let mut ready_packet = pkts.len();
-    for pkts.eachi |i, p| unsafe {
-        let p = unsafe { &*p.header() };
-        let old = p.mark_blocked(this);
-        match old {
-          Full | Terminated => {
-            data_avail = true;
-            ready_packet = i;
-            (*p).state = old;
-            break;
-          }
-          Blocked => fail ~"blocking on blocked packet",
-          Empty => ()
+    for pkts.eachi |i, p| {
+        unsafe {
+            let p = &*p.header();
+            let old = p.mark_blocked(this);
+            match old {
+              Full | Terminated => {
+                data_avail = true;
+                ready_packet = i;
+                (*p).state = old;
+                break;
+              }
+              Blocked => fail ~"blocking on blocked packet",
+              Empty => ()
+            }
         }
     }
 
@@ -1072,23 +1078,27 @@ impl<T: Owned> Port<T>: GenericPort<T> {
 }
 
 impl<T: Owned> Port<T>: Peekable<T> {
-    pure fn peek() -> bool unsafe {
-        let mut endp = None;
-        endp <-> self.endp;
-        let peek = match &endp {
-          &Some(ref endp) => pipes::peek(endp),
-          &None => fail ~"peeking empty stream"
-        };
-        self.endp <-> endp;
-        peek
+    pure fn peek() -> bool {
+        unsafe {
+            let mut endp = None;
+            endp <-> self.endp;
+            let peek = match &endp {
+              &Some(ref endp) => pipes::peek(endp),
+              &None => fail ~"peeking empty stream"
+            };
+            self.endp <-> endp;
+            peek
+        }
     }
 }
 
 impl<T: Owned> Port<T>: Selectable {
-    pure fn header() -> *PacketHeader unsafe {
-        match self.endp {
-          Some(ref endp) => endp.header(),
-          None => fail ~"peeking empty stream"
+    pure fn header() -> *PacketHeader {
+        unsafe {
+            match self.endp {
+              Some(ref endp) => endp.header(),
+              None => fail ~"peeking empty stream"
+            }
         }
     }
 }

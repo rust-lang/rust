@@ -23,9 +23,11 @@ type ccx = {
     x: int
 };
 
-fn alloc(_bcx : &arena) -> &bcx unsafe {
-    return cast::reinterpret_cast(
-        &libc::malloc(sys::size_of::<bcx/&blk>() as libc::size_t));
+fn alloc(_bcx : &arena) -> &bcx {   
+    unsafe {
+        return cast::reinterpret_cast(
+            &libc::malloc(sys::size_of::<bcx/&blk>() as libc::size_t));
+    }
 }
 
 fn h(bcx : &bcx) -> &bcx {

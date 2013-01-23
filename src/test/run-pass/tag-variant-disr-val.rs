@@ -37,7 +37,7 @@ fn main() {
     test_color(orange, 4, ~"orange");
 }
 
-fn test_color(color: color, val: int, name: ~str) unsafe {
+fn test_color(color: color, val: int, name: ~str) {
     //assert unsafe::reinterpret_cast(color) == val;
     assert color as int == val;
     assert color as float == val as float;

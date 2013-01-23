@@ -131,41 +131,46 @@ impl <T: Ord> PriorityQueue<T> {
     // vector over the junk element.  This reduces the constant factor
     // compared to using swaps, which involves twice as many moves.
 
-    priv fn siftup(&mut self, start: uint, pos: uint) unsafe {
-        let mut pos = pos;
-        let new = move *addr_of(&self.data[pos]);
+    priv fn siftup(&mut self, start: uint, pos: uint) {
+        unsafe {
+            let mut pos = pos;
+            let new = move *addr_of(&self.data[pos]);
 
-        while pos > start {
-            let parent = (pos - 1) >> 1;
-            if new > self.data[parent] {
-                rusti::move_val_init(&mut self.data[pos],
-                                     move *addr_of(&self.data[parent]));
-                pos = parent;
-                loop
+            while pos > start {
+                let parent = (pos - 1) >> 1;
+                if new > self.data[parent] {
+                    rusti::move_val_init(&mut self.data[pos],
+                                         move *addr_of(&self.data[parent]));
+                    pos = parent;
+                    loop
+                }
+                break
             }
-            break
+            rusti::move_val_init(&mut self.data[pos], move new);
         }
-        rusti::move_val_init(&mut self.data[pos], move new);
     }
 
-    priv fn siftdown_range(&mut self, pos: uint, end: uint) unsafe {
-        let mut pos = pos;
-        let start = pos;
-        let new = move *addr_of(&self.data[pos]);
+    priv fn siftdown_range(&mut self, pos: uint, end: uint) {
+        unsafe {
+            let mut pos = pos;
+            let start = pos;
+            let new = move *addr_of(&self.data[pos]);
 
-        let mut child = 2 * pos + 1;
-        while child < end {
-            let right = child + 1;
-            if right < end && !(self.data[child] > self.data[right]) {
-                child = right;
+            let mut child = 2 * pos + 1;
+            while child < end {
+                let right = child + 1;
+                if right < end && !(self.data[child] > self.data[right]) {
+                    child = right;
+                }
+                rusti::move_val_init(&mut self.data[pos],
+                                     move *addr_of(&self.data[child]));
+                pos = child;
+                child = 2 * pos + 1;
             }
-            rusti::move_val_init(&mut self.data[pos],
-                                 move *addr_of(&self.data[child]));
-            pos = child;
-            child = 2 * pos + 1;
+
+            rusti::move_val_init(&mut self.data[pos], move new);
+            self.siftup(start, pos);
         }
-        rusti::move_val_init(&mut self.data[pos], move new);
-        self.siftup(start, pos);
     }
 
     priv fn siftdown(&mut self, pos: uint) {

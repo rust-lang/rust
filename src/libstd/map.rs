@@ -435,9 +435,11 @@ pub mod chained {
     }
 
     impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> T<K, V>: ToStr {
-        pure fn to_str() -> ~str unsafe {
-            // Meh -- this should be safe
-            do io::with_str_writer |wr| { self.to_writer(wr) }
+        pure fn to_str() -> ~str {
+            unsafe {
+                // Meh -- this should be safe
+                do io::with_str_writer |wr| { self.to_writer(wr) }
+            }
         }
     }
 

@@ -32,11 +32,13 @@ fn r(v: *int) -> r {
     }
 }
 
-fn main() unsafe {
-    let i1 = ~0;
-    let i1p = cast::reinterpret_cast(&i1);
-    cast::forget(move i1);
-    let x = @r(i1p);
-    failfn();
-    log(error, x);
+fn main() {
+    unsafe {
+        let i1 = ~0;
+        let i1p = cast::reinterpret_cast(&i1);
+        cast::forget(move i1);
+        let x = @r(i1p);
+        failfn();
+        log(error, x);
+    }
 }

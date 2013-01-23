@@ -20,9 +20,5 @@ fn g() {
     }
 }
 
-fn h() unsafe {
-    f();
-}
-
 fn main() {
 }

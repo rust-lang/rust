@@ -121,8 +121,9 @@ pub fn listen<T: Owned, U>(f: fn(Chan<T>) -> U) -> U {
 }
 
 struct PortPtr<T:Owned> {
-    po: *rust_port,
-  drop unsafe {
+  po: *rust_port,
+  drop {
+    unsafe {
       do task::unkillable {
         // Once the port is detached it's guaranteed not to receive further
         // messages
@@ -140,6 +141,7 @@ struct PortPtr<T:Owned> {
             recv_::<T>(self.po);
         }
         rustrt::del_port(self.po);
+      }
     }
   }
 }
@@ -209,7 +211,7 @@ pub fn send<T: Owned>(ch: Chan<T>, data: T) {
         let Chan_(p) = ch;
         let data_ptr = ptr::addr_of(&data) as *();
         let res = rustrt::rust_port_id_send(p, data_ptr);
-        if res != 0 unsafe {
+        if res != 0 {
             // Data sent successfully
             cast::forget(move data);
         }

@@ -62,19 +62,21 @@ fn test_box() {
     assert (@10 == @10);
 }
 
-fn test_ptr() unsafe {
-    let p1: *u8 = ::core::cast::reinterpret_cast(&0);
-    let p2: *u8 = ::core::cast::reinterpret_cast(&0);
-    let p3: *u8 = ::core::cast::reinterpret_cast(&1);
+fn test_ptr() {
+    unsafe {
+        let p1: *u8 = ::core::cast::reinterpret_cast(&0);
+        let p2: *u8 = ::core::cast::reinterpret_cast(&0);
+        let p3: *u8 = ::core::cast::reinterpret_cast(&1);
 
-    assert p1 == p2;
-    assert p1 != p3;
-    assert p1 < p3;
-    assert p1 <= p3;
-    assert p3 > p1;
-    assert p3 >= p3;
-    assert p1 <= p2;
-    assert p1 >= p2;
+        assert p1 == p2;
+        assert p1 != p3;
+        assert p1 < p3;
+        assert p1 <= p3;
+        assert p3 > p1;
+        assert p3 >= p3;
+        assert p1 <= p2;
+        assert p1 >= p2;
+    }
 }
 
 #[abi = "cdecl"]

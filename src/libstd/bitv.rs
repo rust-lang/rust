@@ -141,9 +141,11 @@ impl BigBitv {
             let w0 = self.storage[i] & mask;
             let w1 = b.storage[i] & mask;
             let w = op(w0, w1) & mask;
-            if w0 != w unsafe {
-                changed = true;
-                self.storage[i] = w;
+            if w0 != w {
+                unsafe {
+                    changed = true;
+                    self.storage[i] = w;
+                }
             }
             true
         }

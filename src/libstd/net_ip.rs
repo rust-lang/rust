@@ -117,32 +117,36 @@ enum IpGetAddrErr {
 pub fn get_addr(node: &str, iotask: iotask)
         -> result::Result<~[IpAddr], IpGetAddrErr> {
     do oldcomm::listen |output_ch| {
-        do str::as_buf(node) |node_ptr, len| unsafe {
-            log(debug, fmt!("slice len %?", len));
-            let handle = create_uv_getaddrinfo_t();
-            let handle_ptr = ptr::addr_of(&handle);
-            let handle_data: GetAddrData = {
-                output_ch: output_ch
-            };
-            let handle_data_ptr = ptr::addr_of(&handle_data);
-            do interact(iotask) |loop_ptr| unsafe {
-                let result = uv_getaddrinfo(
-                    loop_ptr,
-                    handle_ptr,
-                    get_addr_cb,
-                    node_ptr,
-                    ptr::null(),
-                    ptr::null());
-                match result {
-                  0i32 => {
-                    set_data_for_req(handle_ptr, handle_data_ptr);
-                  }
-                  _ => {
-                    output_ch.send(result::Err(GetAddrUnknownError));
-                  }
-                }
-            };
-            output_ch.recv()
+        do str::as_buf(node) |node_ptr, len| {
+            unsafe {
+                log(debug, fmt!("slice len %?", len));
+                let handle = create_uv_getaddrinfo_t();
+                let handle_ptr = ptr::addr_of(&handle);
+                let handle_data: GetAddrData = {
+                    output_ch: output_ch
+                };
+                let handle_data_ptr = ptr::addr_of(&handle_data);
+                do interact(iotask) |loop_ptr| {
+                    unsafe {
+                        let result = uv_getaddrinfo(
+                            loop_ptr,
+                            handle_ptr,
+                            get_addr_cb,
+                            node_ptr,
+                            ptr::null(),
+                            ptr::null());
+                        match result {
+                          0i32 => {
+                            set_data_for_req(handle_ptr, handle_data_ptr);
+                          }
+                          _ => {
+                            output_ch.send(result::Err(GetAddrUnknownError));
+                          }
+                        }
+                    }
+                };
+                output_ch.recv()
+            }
         }
     }
 }
@@ -300,62 +304,64 @@ type GetAddrData = {
 };
 
 extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
-                      res: *addrinfo) unsafe {
-    log(debug, ~"in get_addr_cb");
-    let handle_data = get_data_for_req(handle) as
-        *GetAddrData;
-    if status == 0i32 {
-        if res != (ptr::null::<addrinfo>()) {
-            let mut out_vec = ~[];
-            log(debug, fmt!("initial addrinfo: %?", res));
-            let mut curr_addr = res;
-            loop {
-                let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
-                    Ipv4(copy((
-                        *ll::addrinfo_as_sockaddr_in(curr_addr))))
-                }
-                else if ll::is_ipv6_addrinfo(curr_addr) {
-                    Ipv6(copy((
-                        *ll::addrinfo_as_sockaddr_in6(curr_addr))))
-                }
-                else {
-                    log(debug, ~"curr_addr is not of family AF_INET or "+
-                        ~"AF_INET6. Error.");
-                    (*handle_data).output_ch.send(
-                        result::Err(GetAddrUnknownError));
-                    break;
-                };
-                out_vec.push(move new_ip_addr);
+                      res: *addrinfo) {
+    unsafe {
+        log(debug, ~"in get_addr_cb");
+        let handle_data = get_data_for_req(handle) as
+            *GetAddrData;
+        if status == 0i32 {
+            if res != (ptr::null::<addrinfo>()) {
+                let mut out_vec = ~[];
+                log(debug, fmt!("initial addrinfo: %?", res));
+                let mut curr_addr = res;
+                loop {
+                    let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
+                        Ipv4(copy((
+                            *ll::addrinfo_as_sockaddr_in(curr_addr))))
+                    }
+                    else if ll::is_ipv6_addrinfo(curr_addr) {
+                        Ipv6(copy((
+                            *ll::addrinfo_as_sockaddr_in6(curr_addr))))
+                    }
+                    else {
+                        log(debug, ~"curr_addr is not of family AF_INET or "+
+                            ~"AF_INET6. Error.");
+                        (*handle_data).output_ch.send(
+                            result::Err(GetAddrUnknownError));
+                        break;
+                    };
+                    out_vec.push(move new_ip_addr);
 
-                let next_addr = ll::get_next_addrinfo(curr_addr);
-                if next_addr == ptr::null::<addrinfo>() as *addrinfo {
-                    log(debug, ~"null next_addr encountered. no mas");
-                    break;
+                    let next_addr = ll::get_next_addrinfo(curr_addr);
+                    if next_addr == ptr::null::<addrinfo>() as *addrinfo {
+                        log(debug, ~"null next_addr encountered. no mas");
+                        break;
+                    }
+                    else {
+                        curr_addr = next_addr;
+                        log(debug, fmt!("next_addr addrinfo: %?", curr_addr));
+                    }
                 }
-                else {
-                    curr_addr = next_addr;
-                    log(debug, fmt!("next_addr addrinfo: %?", curr_addr));
-                }
+                log(debug, fmt!("successful process addrinfo result, len: %?",
+                                vec::len(out_vec)));
+                (*handle_data).output_ch.send(result::Ok(move out_vec));
             }
-            log(debug, fmt!("successful process addrinfo result, len: %?",
-                            vec::len(out_vec)));
-            (*handle_data).output_ch.send(result::Ok(move out_vec));
+            else {
+                log(debug, ~"addrinfo pointer is NULL");
+                (*handle_data).output_ch.send(
+                    result::Err(GetAddrUnknownError));
+            }
         }
         else {
-            log(debug, ~"addrinfo pointer is NULL");
+            log(debug, ~"status != 0 error in get_addr_cb");
             (*handle_data).output_ch.send(
                 result::Err(GetAddrUnknownError));
         }
+        if res != (ptr::null::<addrinfo>()) {
+            uv_freeaddrinfo(res);
+        }
+        log(debug, ~"leaving get_addr_cb");
     }
-    else {
-        log(debug, ~"status != 0 error in get_addr_cb");
-        (*handle_data).output_ch.send(
-            result::Err(GetAddrUnknownError));
-    }
-    if res != (ptr::null::<addrinfo>()) {
-        uv_freeaddrinfo(res);
-    }
-    log(debug, ~"leaving get_addr_cb");
 }
 
 #[cfg(test)]
