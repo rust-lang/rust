@@ -50,7 +50,10 @@ fn eqtype(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) {
 }
 
 // Checks that the type `actual` can be coerced to `expected`.
-fn coerce(fcx: @fn_ctxt, sp: span, expected: ty::t, expr: @ast::expr) {
+fn coerce(fcx: @fn_ctxt,
+          sp: span,
+          expected: ty::t,
+          expr: @ast::expr) {
     let expr_ty = fcx.expr_ty(expr);
     match fcx.mk_assignty(expr, expr_ty, expected) {
       result::Ok(()) => { /* ok */ }

@@ -317,12 +317,11 @@ export uok;
 export cyclic_ty, unresolved_ty, region_var_bound_by_region_var;
 export Bound, Bounds;
 export ures;
-export ares;
+export CoerceResult;
 export infer_ctxt;
 export fixup_err;
 export IntVarValue, IntType, UintType;
 
-mod coercion;
 #[legacy_exports]
 mod combine;
 #[legacy_exports]
@@ -341,6 +340,7 @@ mod sub;
 mod to_str;
 #[legacy_exports]
 mod unify;
+mod coercion;
 
 type Bound<T> = Option<T>;
 type Bounds<T> = {lb: Bound<T>, ub: Bound<T>};
@@ -348,7 +348,7 @@ type Bounds<T> = {lb: Bound<T>, ub: Bound<T>};
 type cres<T> = Result<T,ty::type_err>; // "combine result"
 type ures = cres<()>; // "unify result"
 type fres<T> = Result<T, fixup_err>; // "fixup result"
-type ares = cres<Option<@ty::AutoAdjustment>>; // "assignment result"
+type CoerceResult = cres<Option<@ty::AutoAdjustment>>;
 
 struct InferCtxt {
     tcx: ty::ctxt,
@@ -457,7 +457,8 @@ fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
 }
 
 fn mk_coercety(cx: @InferCtxt, a_is_expected: bool, span: span,
-               a: ty::t, b: ty::t) -> ares {
+               a: ty::t, b: ty::t) -> CoerceResult
+{
     debug!("mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {

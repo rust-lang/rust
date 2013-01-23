@@ -10,6 +10,5 @@
 
 fn main () {
     let mut _p: & int = & 4;
-    _p = ~3; //~ ERROR illegal borrow: borrowed value does not live long enough
-    //~^ NOTE ...but borrowed value is only valid for the statement
+    _p = &*~3; //~ ERROR illegal borrow
 }
