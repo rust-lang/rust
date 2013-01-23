@@ -145,7 +145,7 @@ impl<A> DVec<A> {
     #[inline(always)]
     fn swap_mut(f: &fn(v: ~[mut A]) -> ~[mut A]) {
         do self.swap |v| {
-            vec::from_mut(f(vec::to_mut(move v)))
+            vec::cast_from_mut(f(vec::cast_to_mut(move v)))
         }
     }
 

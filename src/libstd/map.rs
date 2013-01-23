@@ -450,7 +450,7 @@ pub mod chained {
     }
 
     fn chains<K,V>(nchains: uint) -> ~[mut Option<@Entry<K,V>>] {
-        vec::to_mut(vec::from_elem(nchains, None))
+        vec::cast_to_mut(vec::from_elem(nchains, None))
     }
 
     pub fn mk<K:Eq IterBytes Hash, V: Copy>() -> T<K,V> {

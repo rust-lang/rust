@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    use vec::to_mut;
-    log(debug, vec::len(to_mut(~[1, 2])));
+    use vec::cast_to_mut;
+    log(debug, vec::len(cast_to_mut(~[1, 2])));
     {
         use vec::*;
         log(debug, len(~[2]));

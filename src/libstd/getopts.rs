@@ -222,7 +222,7 @@ pub type Result = result::Result<Matches, Fail_>;
 pub fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
     let n_opts = opts.len();
     fn f(_x: uint) -> ~[Optval] { return ~[]; }
-    let vals = vec::to_mut(vec::from_fn(n_opts, f));
+    let vals = vec::cast_to_mut(vec::from_fn(n_opts, f));
     let mut free: ~[~str] = ~[];
     let l = args.len();
     let mut i = 0;
@@ -337,7 +337,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
         i += 1;
     }
     return Ok(Matches {opts: vec::from_slice(opts),
-               vals: vec::from_mut(move vals),
+               vals: vec::cast_from_mut(move vals),
                free: free});
 }
 

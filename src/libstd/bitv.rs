@@ -13,7 +13,7 @@
 use core::ops;
 use core::prelude::*;
 use core::uint;
-use core::vec::{to_mut, from_elem};
+use core::vec::{cast_to_mut, from_elem};
 use core::vec;
 
 struct SmallBitv {
@@ -231,7 +231,7 @@ pub fn Bitv (nbits: uint, init: bool) -> Bitv {
         let nelems = nbits/uint_bits +
                      if nbits % uint_bits == 0 {0} else {1};
         let elem = if init {!0} else {0};
-        let s = to_mut(from_elem(nelems, elem));
+        let s = cast_to_mut(from_elem(nelems, elem));
         Big(~BigBitv(move s))
     };
     Bitv {rep: move rep, nbits: nbits}
@@ -516,7 +516,7 @@ impl Bitv: Clone {
             Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
           }
           Big(ref b) => {
-            let st = to_mut(from_elem(self.nbits / uint_bits + 1, 0));
+            let st = cast_to_mut(from_elem(self.nbits / uint_bits + 1, 0));
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
             Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: move st})}
