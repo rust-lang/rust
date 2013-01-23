@@ -297,14 +297,14 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     let words = (ty_size(ty) + 7) / 8;
-    let cls = vec::to_mut(vec::from_elem(words, no_class));
+    let cls = vec::cast_to_mut(vec::from_elem(words, no_class));
     if words > 4 {
         all_mem(cls);
-        return vec::from_mut(move cls);
+        return vec::cast_from_mut(move cls);
     }
     classify(ty, cls, 0, 0);
     fixup(ty, cls);
-    return vec::from_mut(move cls);
+    return vec::cast_from_mut(move cls);
 }
 
 fn llreg_ty(cls: &[x86_64_reg_class]) -> TypeRef {

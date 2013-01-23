@@ -151,7 +151,7 @@ fn main() {
    // initialize each sequence sorter
    let sizes = ~[1,2,3,4,6,12,18];
     let streams = vec::map(sizes, |_sz| Some(stream()));
-    let streams = vec::to_mut(move streams);
+    let streams = vec::cast_to_mut(move streams);
     let mut from_child = ~[];
     let to_child   = vec::mapi(sizes, |ii, sz| {
         let sz = *sz;
