@@ -3652,7 +3652,8 @@ impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if foreign_items_allowed &&
-            (self.is_keyword(~"fn") || self.is_keyword(~"pure")) {
+            (self.is_keyword(~"fn") || self.is_keyword(~"pure") ||
+             self.is_keyword(~"unsafe")) {
                 let item = self.parse_item_foreign_fn(attrs);
                 return iovi_foreign_item(item);
         } else if items_allowed && self.is_keyword(~"unsafe")
