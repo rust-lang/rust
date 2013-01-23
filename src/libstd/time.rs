@@ -576,7 +576,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             match match_digits_in_range(s, pos, 1u, false, 1_i32, 7_i32) {
               Some(item) => {
                 let (v, pos) = item;
-                tm.tm_wday = v-1_i32;
+                tm.tm_wday = if v == 7 { 0 } else { v };
                 Ok(pos)
               }
               None => Err(~"Invalid day of week")
@@ -1025,7 +1025,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore(reason = "randomred")]
     fn test_strptime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
