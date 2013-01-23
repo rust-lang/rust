@@ -19,20 +19,28 @@ pub struct Crate {
 }
 
 pub struct Listener {
-    cmd: ~str,
+    cmds: ~[~str],
     cb: fn~()
 }
 
 pub fn run(listeners: ~[Listener]) {
-    io::println(src_dir().to_str());
-    io::println(work_dir().to_str());
-
-    let cmd = os::args()[1];
+    let rcmd = os::args()[2];
+    let mut found = false;
 
     for listeners.each |listener| {
-        if listener.cmd == cmd {
-            (listener.cb)();
+        for listener.cmds.each |&cmd| {
+            if cmd == rcmd {
+                (listener.cb)();
+
+                found = true;
+
+                break;
+            }
         }
+    }
+
+    if !found {
+        os::set_exit_status(1);
     }
 }
 
@@ -108,19 +116,22 @@ pub fn build(crates: ~[Crate]) -> bool {
     let dir = src_dir();
     let work_dir = work_dir();
     let mut success = true;
+    let sysroot = Path(os::args()[1]);
 
     for crates.each |&crate| {
         let path = &dir.push_rel(&Path(crate.file)).normalize();
 
         note(fmt!("compiling %s", path.to_str()));
 
-        success = compile_crate(path, &work_dir, crate.flags, crate.cfgs,
+        success = compile_crate(Some(sysroot), path, &work_dir, crate.flags, crate.cfgs,
                                 false, false);
 
         if !success { break; }
     }
 
-    os::set_exit_status(101);
+    if !success {
+        os::set_exit_status(2);
+    }
 
     success
 }

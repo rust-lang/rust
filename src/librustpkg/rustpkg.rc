@@ -30,6 +30,7 @@ use io::{ReaderUtil, WriterUtil};
 use std::getopts;
 use std::net::url;
 use send_map::linear::LinearMap;
+use rustc::metadata::filesearch;
 use rustc::driver::{driver, session};
 use syntax::{ast, attr, codemap, diagnostic, parse, visit};
 use semver::Version;
@@ -184,7 +185,11 @@ impl PackageScript {
         // the build API.
         for crate.node.module.items.each |i| {
             match i.node {
-                ast::item_fn(_, _, _, _) => custom = true,
+                ast::item_fn(_, _, _, _) => {
+                    custom = true;
+
+                    break;
+                }
                 _ => {}
             }
         }
@@ -228,10 +233,11 @@ impl PackageScript {
         let outputs = driver::build_output_filenames(input, &Some(work_dir),
                                                      &None, sess);
         let exe = work_dir.push(~"package" + util::exe_suffix());
+        let root = filesearch::get_rustpkg_sysroot().get().pop().pop();
 
         driver::compile_rest(sess, cfg, driver::cu_parse,
                          Some(outputs), Some(crate));
-        run::run_program(exe.to_str(), ~[cmd])
+        run::run_program(exe.to_str(), ~[root.to_str(), cmd])
     }
 
     fn hash() -> ~str {
@@ -282,6 +288,13 @@ impl Ctx {
             ~"clean" => {
                 self.clean();
             }
+            ~"do" => {
+                if args.len() < 1 {
+                    return usage::do_cmd();
+                }
+
+                self.do_cmd(args[0]);
+            }
             ~"install" => {
                 self.install(if args.len() >= 1 { Some(args[0]) }
                              else { None }, 
@@ -320,6 +333,33 @@ impl Ctx {
             }
             _ => fail ~"reached an unhandled command"
         }
+    }
+
+    fn do_cmd(cmd: ~str) -> bool {
+        if cmd == ~"build" {
+            util::error(~"the build cmd is reserved");
+
+            return false;
+        }
+
+        let cwd = &os::getcwd();
+        let script = match PackageScript::parse(cwd) {
+            result::Ok(script) => script,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+        let status = script.run(cmd);
+
+        if status == 1 {
+            util::error(~"no fns are listening for that cmd");
+
+            return false;
+        }
+
+        status == 0
     }
 
     fn build(dir: &Path, verbose: bool, opt: bool,
@@ -399,7 +439,7 @@ impl Ctx {
 
     fn compile(crate: &Path, dir: &Path, flags: ~[~str],
                cfgs: ~[~str], opt: bool, test: bool) -> bool {
-        util::compile_crate(crate, dir, flags, cfgs, opt, test)
+        util::compile_crate(None, crate, dir, flags, cfgs, opt, test)
     }
 
     fn clean() -> bool {
@@ -759,6 +799,7 @@ pub fn main() {
         return match cmd {
             ~"build" => usage::build(),
             ~"clean" => usage::clean(),
+            ~"do" => usage::do_cmd(),
             ~"install" => usage::install(),
             ~"prefer" => usage::prefer(),
             ~"test" => usage::test(),
