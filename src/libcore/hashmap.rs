@@ -300,6 +300,26 @@ pub mod linear {
             self.each(|_k, v| blk(v))
         }
 
+        pure fn find(&self, k: &K) -> Option<&self/V> {
+            match self.bucket_for_key(self.buckets, k) {
+                FoundEntry(idx) => {
+                    match self.buckets[idx] {
+                        Some(ref bkt) => {
+                            // FIXME(#3148)---should be inferred
+                            let bkt: &self/Bucket<K,V> = bkt;
+                            Some(&bkt.value)
+                        }
+                        None => {
+                            fail ~"LinearMap::find: internal logic error"
+                        }
+                    }
+                }
+                TableFull | FoundHole(_) => {
+                    None
+                }
+            }
+        }
+
         fn insert(&mut self, k: K, v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
@@ -365,26 +385,6 @@ pub mod linear {
                         } = move bucket;
                         f(move key, move value)
                     }
-                }
-            }
-        }
-
-        pure fn find(&self, k: &K) -> Option<&self/V> {
-            match self.bucket_for_key(self.buckets, k) {
-                FoundEntry(idx) => {
-                    match self.buckets[idx] {
-                        Some(ref bkt) => {
-                            // FIXME(#3148)---should be inferred
-                            let bkt: &self/Bucket<K,V> = bkt;
-                            Some(&bkt.value)
-                        }
-                        None => {
-                            fail ~"LinearMap::find: internal logic error"
-                        }
-                    }
-                }
-                TableFull | FoundHole(_) => {
-                    None
                 }
             }
         }

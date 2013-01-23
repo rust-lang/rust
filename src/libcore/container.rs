@@ -13,6 +13,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use option::Option;
+
 pub trait Container {
     /// Return the number of elements in the container
     pure fn len(&self) -> uint;
@@ -38,6 +40,9 @@ pub trait Map<K, V>: Mutable {
 
     /// Visit all values
     pure fn each_value(&self, f: fn(&V) -> bool);
+
+    /// Return the value corresponding to the key in the map
+    pure fn find(&self, key: &K) -> Option<&self/V>;
 
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
