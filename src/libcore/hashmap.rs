@@ -413,14 +413,6 @@ pub mod linear {
                 }
             }
         }
-
-        pure fn get_copy(&const self, k: &K) -> V {
-            let value = self.find_copy(k);
-            if value.is_none() {
-                fail fmt!("No entry found for key: %?", k);
-            }
-            option::unwrap(move value)
-        }
     }
 
     impl<K:Hash IterBytes Eq, V: Eq> LinearMap<K, V>: Eq {
@@ -503,17 +495,17 @@ pub mod test {
         let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
-        assert m.get_copy(&1) == 2;
-        assert m.get_copy(&2) == 4;
+        assert *m.get(&1) == 2;
+        assert *m.get(&2) == 4;
     }
 
     #[test]
     pub fn overwrite() {
         let mut m = ~LinearMap();
         assert m.insert(1, 2);
-        assert m.get_copy(&1) == 2;
+        assert *m.get(&1) == 2;
         assert !m.insert(1, 3);
-        assert m.get_copy(&1) == 3;
+        assert *m.get(&1) == 3;
     }
 
     #[test]
@@ -522,9 +514,9 @@ pub mod test {
         assert m.insert(1, 2);
         assert m.insert(5, 3);
         assert m.insert(9, 4);
-        assert m.get_copy(&9) == 4;
-        assert m.get_copy(&5) == 3;
-        assert m.get_copy(&1) == 2;
+        assert *m.get(&9) == 4;
+        assert *m.get(&5) == 3;
+        assert *m.get(&1) == 2;
     }
 
     #[test]
@@ -534,8 +526,8 @@ pub mod test {
         assert m.insert(5, 3);
         assert m.insert(9, 4);
         assert m.remove(&1);
-        assert m.get_copy(&9) == 4;
-        assert m.get_copy(&5) == 3;
+        assert *m.get(&9) == 4;
+        assert *m.get(&5) == 3;
     }
 
     #[test]
