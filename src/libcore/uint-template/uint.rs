@@ -20,6 +20,8 @@ mod inst {
     use uint;
 
     pub type T = uint;
+    #[allow(non_camel_case_types)]
+    pub type T_SIGNED = int;
 
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]

@@ -12,5 +12,7 @@
 
 mod inst {
     pub type T = u64;
+    #[allow(non_camel_case_types)]
+    pub type T_SIGNED = i64;
     pub const bits: uint = 64;
 }
