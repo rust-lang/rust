@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::io;
- 
+
 pub fn general() {
     io::println(~"Usage: rustpkg [options] <cmd> [args..]
 
@@ -69,8 +69,8 @@ Options:
 pub fn uninstall() {
     io::println(~"rustpkg uninstall <id|name>[@version]
 
-Remove a package by id or name and optionally version. If the package(s) is/are depended
-on by another package then they cannot be removed.");
+Remove a package by id or name and optionally version. If the package(s)
+is/are depended on by another package then they cannot be removed.");
 }
 
 pub fn prefer() {
@@ -78,8 +78,8 @@ pub fn prefer() {
 
 By default all binaries are given a unique name so that multiple versions can
 coexist. The prefer command will symlink the uniquely named binary to
-the binary directory under its bare name. If version is not supplied, the latest
-version of the package will be preferred.
+the binary directory under its bare name. If version is not supplied, the
+latest version of the package will be preferred.
 
 Example:
     export PATH=$PATH:/home/user/.rustpkg/bin
