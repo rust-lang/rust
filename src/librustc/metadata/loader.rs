@@ -201,51 +201,53 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
 }
 
 fn get_metadata_section(os: os,
-                        filename: &Path) -> Option<@~[u8]> unsafe {
-    let mb = str::as_c_str(filename.to_str(), |buf| {
-        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-    });
-    if mb as int == 0 { return option::None::<@~[u8]>; }
-    let of = match mk_object_file(mb) {
-        option::Some(of) => of,
-        _ => return option::None::<@~[u8]>
-    };
-    let si = mk_section_iter(of.llof);
-    while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
-        let name_buf = llvm::LLVMGetSectionName(si.llsi);
-        let name = unsafe { str::raw::from_c_str(name_buf) };
-        if name == meta_section_name(os) {
-            let cbuf = llvm::LLVMGetSectionContents(si.llsi);
-            let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
-            let mut found = None;
-            unsafe {
-                let cvbuf: *u8 = cast::reinterpret_cast(&cbuf);
-                let vlen = vec::len(encoder::metadata_encoding_version);
-                debug!("checking %u bytes of metadata-version stamp",
-                       vlen);
-                let minsz = uint::min(vlen, csz);
-                let mut version_ok = false;
-                do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
-                    version_ok = (buf0 ==
-                                  encoder::metadata_encoding_version);
-                }
-                if !version_ok { return None; }
+                        filename: &Path) -> Option<@~[u8]> {
+    unsafe {
+        let mb = str::as_c_str(filename.to_str(), |buf| {
+            llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
+        });
+        if mb as int == 0 { return option::None::<@~[u8]>; }
+        let of = match mk_object_file(mb) {
+            option::Some(of) => of,
+            _ => return option::None::<@~[u8]>
+        };
+        let si = mk_section_iter(of.llof);
+        while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
+            let name_buf = llvm::LLVMGetSectionName(si.llsi);
+            let name = unsafe { str::raw::from_c_str(name_buf) };
+            if name == meta_section_name(os) {
+                let cbuf = llvm::LLVMGetSectionContents(si.llsi);
+                let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
+                let mut found = None;
+                unsafe {
+                    let cvbuf: *u8 = cast::reinterpret_cast(&cbuf);
+                    let vlen = vec::len(encoder::metadata_encoding_version);
+                    debug!("checking %u bytes of metadata-version stamp",
+                           vlen);
+                    let minsz = uint::min(vlen, csz);
+                    let mut version_ok = false;
+                    do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
+                        version_ok = (buf0 ==
+                                      encoder::metadata_encoding_version);
+                    }
+                    if !version_ok { return None; }
 
-                let cvbuf1 = ptr::offset(cvbuf, vlen);
-                debug!("inflating %u bytes of compressed metadata",
-                       csz - vlen);
-                do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
-                    let inflated = flate::inflate_bytes(bytes);
-                    found = move Some(@(move inflated));
-                }
-                if found != None {
-                    return found;
+                    let cvbuf1 = ptr::offset(cvbuf, vlen);
+                    debug!("inflating %u bytes of compressed metadata",
+                           csz - vlen);
+                    do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
+                        let inflated = flate::inflate_bytes(bytes);
+                        found = move Some(@(move inflated));
+                    }
+                    if found != None {
+                        return found;
+                    }
                 }
             }
+            llvm::LLVMMoveToNextSection(si.llsi);
         }
-        llvm::LLVMMoveToNextSection(si.llsi);
+        return option::None::<@~[u8]>;
     }
-    return option::None::<@~[u8]>;
 }
 
 fn meta_section_name(os: os) -> ~str {

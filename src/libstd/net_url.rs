@@ -361,20 +361,22 @@ pure fn query_from_str(rawquery: &str) -> Query {
     return query;
 }
 
-pub pure fn query_to_str(query: &Query) -> ~str unsafe {
-    // FIXME(#3722): unsafe only because decode_inner does (string) IO
-    let mut strvec = ~[];
-    for query.each |kv| {
-        match kv {
-            &(ref k, ref v) => {
-                strvec.push(fmt!("%s=%s",
-                    encode_component(*k),
-                    encode_component(*v))
-                );
+pub pure fn query_to_str(query: &Query) -> ~str {
+    unsafe {
+        // FIXME(#3722): unsafe only because decode_inner does (string) IO
+        let mut strvec = ~[];
+        for query.each |kv| {
+            match kv {
+                &(ref k, ref v) => {
+                    strvec.push(fmt!("%s=%s",
+                        encode_component(*k),
+                        encode_component(*v))
+                    );
+                }
             }
         }
+        return str::connect(strvec, ~"&");
     }
-    return str::connect(strvec, ~"&");
 }
 
 // returns the scheme and the rest of the url, or a parsing error

@@ -337,9 +337,11 @@ pub fn to_writer(wr: io::Writer, json: &Json) {
 }
 
 /// Encodes a json value into a string
-pub pure fn to_str(json: &Json) -> ~str unsafe {
-    // ugh, should be safe
-    io::with_str_writer(|wr| to_writer(wr, json))
+pub pure fn to_str(json: &Json) -> ~str {
+    unsafe {
+        // ugh, should be safe
+        io::with_str_writer(|wr| to_writer(wr, json))
+    }
 }
 
 /// Encodes a json value into a io::writer

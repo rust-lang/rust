@@ -44,7 +44,8 @@ pub enum ObsoleteSyntax {
     ObsoletePrivSection,
     ObsoleteModeInFnType,
     ObsoleteMoveInit,
-    ObsoleteBinaryMove
+    ObsoleteBinaryMove,
+    ObsoleteUnsafeBlock
 }
 
 impl ObsoleteSyntax : cmp::Eq {
@@ -118,6 +119,10 @@ impl Parser {
             ObsoleteBinaryMove => (
                 "binary move",
                 "Write `foo = move bar` instead"
+            ),
+            ObsoleteUnsafeBlock => (
+                "non-standalone unsafe block",
+                "use an inner `unsafe { ... }` block instead"
             )
         };
 

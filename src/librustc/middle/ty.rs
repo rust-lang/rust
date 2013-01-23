@@ -498,11 +498,13 @@ type t_box = @{sty: sty,
 enum t_opaque {}
 type t = *t_opaque;
 
-pure fn get(t: t) -> t_box unsafe {
-    let t2 = cast::reinterpret_cast::<t, t_box>(&t);
-    let t3 = t2;
-    cast::forget(move t2);
-    t3
+pure fn get(t: t) -> t_box {
+    unsafe {
+        let t2 = cast::reinterpret_cast::<t, t_box>(&t);
+        let t3 = t2;
+        cast::forget(move t2);
+        t3
+    }
 }
 
 pure fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {

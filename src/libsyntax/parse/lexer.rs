@@ -157,11 +157,13 @@ fn byte_offset(rdr: string_reader) -> BytePos {
     (rdr.pos - rdr.filemap.start_pos)
 }
 
-fn get_str_from(rdr: string_reader, start: BytePos) -> ~str unsafe {
-    // I'm pretty skeptical about this subtraction. What if there's a
-    // multi-byte character before the mark?
-    return str::slice(*rdr.src, start.to_uint() - 1u,
-                      byte_offset(rdr).to_uint() - 1u);
+fn get_str_from(rdr: string_reader, start: BytePos) -> ~str {
+    unsafe {
+        // I'm pretty skeptical about this subtraction. What if there's a
+        // multi-byte character before the mark?
+        return str::slice(*rdr.src, start.to_uint() - 1u,
+                          byte_offset(rdr).to_uint() - 1u);
+    }
 }
 
 fn bump(rdr: string_reader) {

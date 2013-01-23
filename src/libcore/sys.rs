@@ -213,24 +213,26 @@ pub mod tests {
     }
 
     #[test]
-    pub fn synthesize_closure() unsafe {
-        let x = 10;
-        let f: fn(int) -> int = |y| x + y;
+    pub fn synthesize_closure() {
+        unsafe {
+            let x = 10;
+            let f: fn(int) -> int = |y| x + y;
 
-        assert f(20) == 30;
+            assert f(20) == 30;
 
-        let original_closure: Closure = cast::transmute(move f);
+            let original_closure: Closure = cast::transmute(move f);
 
-        let actual_function_pointer = original_closure.code;
-        let environment = original_closure.env;
+            let actual_function_pointer = original_closure.code;
+            let environment = original_closure.env;
 
-        let new_closure = Closure {
-            code: actual_function_pointer,
-            env: environment
-        };
+            let new_closure = Closure {
+                code: actual_function_pointer,
+                env: environment
+            };
 
-        let new_f: fn(int) -> int = cast::transmute(move new_closure);
-        assert new_f(20) == 30;
+            let new_f: fn(int) -> int = cast::transmute(move new_closure);
+            assert new_f(20) == 30;
+        }
     }
 }
 
