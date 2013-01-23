@@ -140,7 +140,6 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, f: fn(&K, &V) -> bool) {
         each_reverse(&self.root, f);
@@ -207,10 +206,10 @@ impl <T: Eq Ord> TreeSet<T>: Eq {
 }
 
 impl <T: Ord> TreeSet<T>: Container {
-    /// Return the number of elements in the map
+    /// Return the number of elements in the set
     pure fn len(&self) -> uint { self.map.len() }
 
-    /// Return true if the map contains no elements
+    /// Return true if the set contains no elements
     pure fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 

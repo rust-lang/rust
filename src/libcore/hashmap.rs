@@ -253,11 +253,15 @@ pub mod linear {
     }
 
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Container {
+        /// Return the number of elements in the map
         pure fn len(&self) -> uint { self.size }
+
+        /// Return true if the map contains no elements
         pure fn is_empty(&self) -> bool { self.len() == 0 }
     }
 
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Mutable {
+        /// Clear the map, removing all key-value pairs.
         fn clear(&mut self) {
             for uint::range(0, self.buckets.len()) |idx| {
                 self.buckets[idx] = None;
@@ -267,6 +271,7 @@ pub mod linear {
     }
 
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Map<K, V> {
+        /// Return true if the map contains a value for the specified key
         pure fn contains_key(&self, k: &K) -> bool {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(_) => {true}
@@ -274,6 +279,7 @@ pub mod linear {
             }
         }
 
+        /// Visit all key-value pairs
         pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
             for vec::each(self.buckets) |slot| {
                 let mut broke = false;
@@ -286,14 +292,17 @@ pub mod linear {
             }
         }
 
+        /// Visit all keys
         pure fn each_key(&self, blk: fn(k: &K) -> bool) {
             self.each(|k, _v| blk(k))
         }
 
+        /// Visit all values
         pure fn each_value(&self, blk: fn(v: &V) -> bool) {
             self.each(|_k, v| blk(v))
         }
 
+        /// Return the value corresponding to the key in the map
         pure fn find(&self, k: &K) -> Option<&self/V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
@@ -314,6 +323,9 @@ pub mod linear {
             }
         }
 
+        /// Insert a key-value pair into the map. An existing value for a
+        /// key is replaced by the new value. Return true if the key did
+        /// not already exist in the map.
         fn insert(&mut self, k: K, v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
@@ -329,6 +341,8 @@ pub mod linear {
             self.insert_internal(hash, move k, move v)
         }
 
+        /// Remove a key-value pair from the map. Return true if the key
+        /// was present in the map, otherwise false.
         fn remove(&mut self, k: &K) -> bool {
             match self.pop(k) {
                 Some(_) => true,
@@ -448,11 +462,15 @@ pub mod linear {
     }
 
     impl <T: Hash IterBytes Eq> LinearSet<T>: Container {
+        /// Return the number of elements in the set
         pure fn len(&self) -> uint { self.map.len() }
+
+        /// Return true if the set contains no elements
         pure fn is_empty(&self) -> bool { self.map.is_empty() }
     }
 
     impl <T: Hash IterBytes Eq> LinearSet<T>: Mutable {
+        /// Clear the set, removing all values.
         fn clear(&mut self) { self.map.clear() }
     }
 
