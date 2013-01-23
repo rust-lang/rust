@@ -16,7 +16,8 @@ use core::prelude::*;
 
 use middle::ty::{ty_struct, ty_enum};
 use middle::ty;
-use middle::typeck::{method_map, method_origin, method_param, method_self};
+use middle::typeck::{method_map, method_origin, method_param, method_self,
+                     method_super};
 use middle::typeck::{method_static, method_trait};
 
 use core::dvec::DVec;
@@ -138,7 +139,8 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                  _
             }) |
             method_trait(trait_id, method_num, _) |
-            method_self(trait_id, method_num) => {
+            method_self(trait_id, method_num) |
+            method_super(trait_id, method_num) => {
                 if trait_id.crate == local_crate {
                     match tcx.items.find(trait_id.node) {
                         Some(node_item(item, _)) => {

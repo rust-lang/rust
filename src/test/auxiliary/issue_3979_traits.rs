@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[link(name = "issue_3979_traits",
+       vers = "0.1")];
+
+#[crate_type = "lib"];
+
 trait Positioned {
   fn SetX(&self, int);
   fn X(&self) -> int;
@@ -18,23 +23,4 @@ trait Movable: Positioned {
   fn translate(&self, dx: int) {
     self.SetX(self.X() + dx);
   }
-}
-
-struct Point { mut x: int, mut y: int }
-
-impl Point: Positioned {
-    fn SetX(&self, x: int) {
-        self.x = x;
-    }
-    fn X(&self) -> int {
-        self.x
-    }
-}
-
-impl Point: Movable;
-
-fn main() {
-    let p = Point{ x: 1, y: 2};
-    p.translate(3);
-    assert p.X() == 4;
 }
