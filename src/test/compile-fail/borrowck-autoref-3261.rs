@@ -20,7 +20,7 @@ fn main() {
     do (&mut x).with |opt| {  //~ ERROR illegal borrow
         match opt {
             &Right(ref f) => {
-                x = X(Left((0,0)));
+                x = X(Left((0,0))); //~ ERROR assigning to captured outer mutable variable
                 (*f)()
             },
             _ => fail

@@ -22,9 +22,9 @@ use core::prelude::*;
 use middle::borrowck::{Loan, bckerr, borrowck_ctxt, cmt, inherent_mutability};
 use middle::borrowck::{req_maps, save_and_restore};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
-use middle::mem_categorization::{cat_local, cat_rvalue, cat_special, gc_ptr};
-use middle::mem_categorization::{loan_path, lp_arg, lp_comp, lp_deref};
-use middle::mem_categorization::{lp_local};
+use middle::mem_categorization::{cat_local, cat_rvalue, cat_self};
+use middle::mem_categorization::{cat_special, gc_ptr, loan_path, lp_arg};
+use middle::mem_categorization::{lp_comp, lp_deref, lp_local};
 use middle::ty::{CopyValue, MoveValue, ReadValue};
 use middle::ty;
 use util::ppaux::ty_to_str;
@@ -296,12 +296,11 @@ impl check_loan_ctxt {
         }
 
         match (old_loan.mutbl, new_loan.mutbl) {
-            (m_const, _) | (_, m_const) |
-            (m_mutbl, m_mutbl) | (m_imm, m_imm) => {
+            (m_const, _) | (_, m_const) | (m_imm, m_imm) => {
                 /*ok*/
             }
 
-            (m_mutbl, m_imm) | (m_imm, m_mutbl) => {
+            (m_mutbl, m_mutbl) | (m_mutbl, m_imm) | (m_imm, m_mutbl) => {
                 self.bccx.span_err(
                     new_loan.cmt.span,
                     fmt!("loan of %s as %s \
@@ -418,8 +417,8 @@ impl check_loan_ctxt {
 
         for self.walk_loans_of(ex.id, lp) |loan| {
             match loan.mutbl {
-              m_mutbl | m_const => { /*ok*/ }
-              m_imm => {
+              m_const => { /*ok*/ }
+              m_mutbl | m_imm => {
                 self.bccx.span_err(
                     ex.span,
                     fmt!("%s prohibited due to outstanding loan",
@@ -445,7 +444,7 @@ impl check_loan_ctxt {
             self.check_for_loan_conflicting_with_assignment(
                 at, ex, cmt, lp_base);
           }
-          lp_comp(*) | lp_local(*) | lp_arg(*) | lp_deref(*) => ()
+          lp_comp(*) | lp_self | lp_local(*) | lp_arg(*) | lp_deref(*) => ()
         }
     }
 
@@ -482,15 +481,12 @@ impl check_loan_ctxt {
 
         match cmt.cat {
           // Rvalues, locals, and arguments can be moved:
-          cat_rvalue | cat_local(_) | cat_arg(_) => {}
+          cat_rvalue | cat_local(_) | cat_arg(_) | cat_self(_) => {}
 
           // We allow moving out of static items because the old code
           // did.  This seems consistent with permitting moves out of
           // rvalues, I guess.
           cat_special(sk_static_item) => {}
-
-          // We allow moving out of explicit self only.
-          cat_special(sk_self) => {}
 
           cat_deref(_, _, unsafe_ptr) => {}
 
