@@ -485,7 +485,7 @@ pub mod linear {
         fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
     }
 
-    impl <T: Hash IterBytes Eq> LinearSet<T> {
+    pub impl <T: Hash IterBytes Eq> LinearSet<T> {
         /// Create an empty LinearSet
         static fn new() -> LinearSet<T> { LinearSet{map: LinearMap()} }
     }

@@ -44,7 +44,7 @@ use io;
 use libc::{size_t, uintptr_t};
 use option::{None, Option, Some};
 use ptr;
-use send_map::linear::LinearMap;
+use send_map::linear::LinearSet;
 use stackwalk;
 use sys;
 
@@ -294,12 +294,6 @@ pub fn gc() {
     }
 }
 
-type RootSet = LinearMap<*Word,()>;
-
-fn RootSet() -> RootSet {
-    LinearMap()
-}
-
 #[cfg(gc)]
 fn expect_sentinel() -> bool { true }
 
@@ -337,13 +331,13 @@ pub fn cleanup_stack_for_failure() {
             ptr::null()
         };
 
-        let mut roots = ~RootSet();
+        let mut roots = LinearSet::new();
         for walk_gc_roots(need_cleanup, sentinel) |root, tydesc| {
             // Track roots to avoid double frees.
-            if roots.find(&*root).is_some() {
+            if roots.contains(&*root) {
                 loop;
             }
-            roots.insert(*root, ());
+            roots.insert(*root);
 
             if ptr::is_null(tydesc) {
                 // FIXME #4420: Destroy this box
