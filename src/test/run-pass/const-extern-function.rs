@@ -18,4 +18,6 @@ struct S {
 }
 
 fn main() {
+    assert foopy == f;
+    assert f == s.f;
 }
