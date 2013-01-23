@@ -44,7 +44,7 @@ use io;
 use libc::{size_t, uintptr_t};
 use option::{None, Option, Some};
 use ptr;
-use send_map::linear::LinearSet;
+use hashmap::linear::LinearSet;
 use stackwalk;
 use sys;
 

@@ -17,7 +17,7 @@
 extern mod std;
 use std::map;
 use core::mutable::Mut;
-use core::send_map::linear::*;
+use core::hashmap::linear::*;
 use core::io::WriterUtil;
 
 struct Results {

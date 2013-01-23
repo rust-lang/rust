@@ -494,8 +494,8 @@ pub mod linear {
 #[test]
 pub mod test {
     use option::{None, Some};
-    use send_map::linear::LinearMap;
-    use send_map::linear;
+    use hashmap::linear::LinearMap;
+    use hashmap::linear;
     use uint;
 
     #[test]

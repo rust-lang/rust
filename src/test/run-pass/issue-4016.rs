@@ -11,7 +11,7 @@
 // xfail-test
 extern mod std;
 
-use send_map::linear;
+use hashmap::linear;
 use std::json;
 use std::serialization::{Deserializable, deserialize};
 

@@ -20,8 +20,8 @@ use core::from_str::FromStr;
 use core::io::{Reader, ReaderUtil};
 use core::io;
 use core::prelude::*;
-use core::send_map::linear::LinearMap;
-use core::send_map;
+use core::hashmap::linear::LinearMap;
+use core::hashmap;
 use core::str;
 use core::to_bytes::IterBytes;
 use core::to_bytes;
@@ -246,7 +246,7 @@ pub fn encode_form_urlencoded(m: &LinearMap<~str, ~[~str]>) -> ~str {
  */
 pub fn decode_form_urlencoded(
     s: &[u8]
-) -> send_map::linear::LinearMap<~str, ~[~str]> {
+) -> hashmap::linear::LinearMap<~str, ~[~str]> {
     do io::with_bytes_reader(s) |rdr| {
         let mut m = LinearMap();
         let mut key = ~"";
