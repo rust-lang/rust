@@ -47,7 +47,7 @@ pub pure fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
 
     let mut i = 0u;
     let e = vec::len(msg);
-    let x = vec::to_mut(vec::from_elem(16u, 0u32));
+    let x = vec::cast_to_mut(vec::from_elem(16u, 0u32));
     while i < e {
         let aa = a, bb = b, cc = c, dd = d;
 

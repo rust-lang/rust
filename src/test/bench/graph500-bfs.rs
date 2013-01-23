@@ -122,7 +122,7 @@ fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
  */
 fn bfs(graph: graph, key: node_id) -> bfs_result {
     let marks : ~[mut node_id] 
-        = vec::to_mut(vec::from_elem(vec::len(graph), -1i64));
+        = vec::cast_to_mut(vec::from_elem(vec::len(graph), -1i64));
 
     let Q = deque::create();
 
@@ -141,7 +141,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
         };
     }
 
-    vec::from_mut(move marks)
+    vec::cast_from_mut(move marks)
 }
 
 /**
