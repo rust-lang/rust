@@ -70,7 +70,7 @@ mod liveness;
 
 
 fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
-                tt: ~[ast::token_tree]) -> base::mac_result
+                tt: ~[ast::token_tree]) -> base::MacResult
 {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
@@ -88,6 +88,6 @@ fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
     liveness::analyze(proto, cx);
 
     // compile
-    base::mr_item(proto.compile(cx))
+    base::MRItem(proto.compile(cx))
 }
 

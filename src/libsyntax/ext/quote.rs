@@ -219,45 +219,45 @@ pub mod rt {
 
 pub fn expand_quote_tokens(cx: ext_ctxt,
                            sp: span,
-                           tts: ~[ast::token_tree]) -> base::mac_result {
-    base::mr_expr(expand_tts(cx, sp, tts))
+                           tts: ~[ast::token_tree]) -> base::MacResult {
+    base::MRExpr(expand_tts(cx, sp, tts))
 }
 
 pub fn expand_quote_expr(cx: ext_ctxt,
                          sp: span,
-                         tts: ~[ast::token_tree]) -> base::mac_result {
-    base::mr_expr(expand_parse_call(cx, sp, ~"parse_expr", ~[], tts))
+                         tts: ~[ast::token_tree]) -> base::MacResult {
+    base::MRExpr(expand_parse_call(cx, sp, ~"parse_expr", ~[], tts))
 }
 
 pub fn expand_quote_item(cx: ext_ctxt,
                          sp: span,
-                         tts: ~[ast::token_tree]) -> base::mac_result {
+                         tts: ~[ast::token_tree]) -> base::MacResult {
     let e_attrs = build::mk_uniq_vec_e(cx, sp, ~[]);
-    base::mr_expr(expand_parse_call(cx, sp, ~"parse_item",
+    base::MRExpr(expand_parse_call(cx, sp, ~"parse_item",
                                     ~[e_attrs], tts))
 }
 
 pub fn expand_quote_pat(cx: ext_ctxt,
                         sp: span,
-                        tts: ~[ast::token_tree]) -> base::mac_result {
+                        tts: ~[ast::token_tree]) -> base::MacResult {
     let e_refutable = build::mk_lit(cx, sp, ast::lit_bool(true));
-    base::mr_expr(expand_parse_call(cx, sp, ~"parse_pat",
+    base::MRExpr(expand_parse_call(cx, sp, ~"parse_pat",
                                     ~[e_refutable], tts))
 }
 
 pub fn expand_quote_ty(cx: ext_ctxt,
                        sp: span,
-                       tts: ~[ast::token_tree]) -> base::mac_result {
+                       tts: ~[ast::token_tree]) -> base::MacResult {
     let e_param_colons = build::mk_lit(cx, sp, ast::lit_bool(false));
-    base::mr_expr(expand_parse_call(cx, sp, ~"parse_ty",
+    base::MRExpr(expand_parse_call(cx, sp, ~"parse_ty",
                                     ~[e_param_colons], tts))
 }
 
 pub fn expand_quote_stmt(cx: ext_ctxt,
                          sp: span,
-                         tts: ~[ast::token_tree]) -> base::mac_result {
+                         tts: ~[ast::token_tree]) -> base::MacResult {
     let e_attrs = build::mk_uniq_vec_e(cx, sp, ~[]);
-    base::mr_expr(expand_parse_call(cx, sp, ~"parse_stmt",
+    base::MRExpr(expand_parse_call(cx, sp, ~"parse_stmt",
                                     ~[e_attrs], tts))
 }
 
