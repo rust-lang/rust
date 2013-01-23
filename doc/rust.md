@@ -3018,6 +3018,11 @@ Local variables are immutable unless declared with `let mut`.  The
 declaration (so `let mut x, y` declares two mutable variables, `x` and
 `y`).
 
+Function parameters are immutable unless declared with `mut`. The
+`mut` keyword applies only to the following parameter (so `|mut x, y|`
+and `fn f(mut x: ~int, y: ~int)` declare one mutable variable `x` and
+one immutable variable `y`).
+
 Local variables are not initialized when allocated; the entire frame worth of
 local variables are allocated at once, on frame-entry, in an uninitialized
 state. Subsequent statements within a function may or may not initialize the
