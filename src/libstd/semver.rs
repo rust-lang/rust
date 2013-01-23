@@ -51,7 +51,7 @@ impl Version: cmp::Ord {
             },
             None => false
         })
-    } 
+    }
     #[inline(always)]
     pure fn le(&self, other: &Version) -> bool {
         self.major <= other.major ||
@@ -173,7 +173,7 @@ fn parse_reader(rdr: io::Reader) -> Option<(Version, char)> {
           ch))
 }
 
-pub fn parse(s: ~str) -> Option<Version> {
+pub fn parse(s: &str) -> Option<Version> {
     do io::with_str_reader(s) |rdr| {
         do parse_reader(rdr).chain_ref |&item| {
             let (version, ch) = item;
@@ -200,25 +200,25 @@ fn test_parse() {
     assert parse("a.b.c") == None;
     assert parse("1.2.3 abc") == None;
 
-    assert parse("1.2.3") == Some({
+    assert parse("1.2.3") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
         tag: None,
     });
-    assert parse("  1.2.3  ") == Some({
+    assert parse("  1.2.3  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
         tag: None,
     });
-    assert parse("1.2.3-alpha1") == Some({
+    assert parse("1.2.3-alpha1") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
         tag: Some("alpha1")
     });
-    assert parse("  1.2.3-alpha1  ") == Some({
+    assert parse("  1.2.3-alpha1  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
