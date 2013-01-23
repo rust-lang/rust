@@ -78,6 +78,7 @@ const force_all: uint           = 0b1111100000;
 
 const not_regions: uint         = !(force_rvar | resolve_rvar);
 
+const try_resolve_tvar_shallow: uint = 0;
 const resolve_and_force_all_but_regions: uint =
     (resolve_all | force_all) & not_regions;
 

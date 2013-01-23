@@ -8,76 +8,79 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ______________________________________________________________________
-// Type assignment
-//
-// True if rvalues of type `a` can be assigned to lvalues of type `b`.
-// This may cause borrowing to the region scope enclosing `a_node_id`.
-//
-// The strategy here is somewhat non-obvious.  The problem is
-// that the constraint we wish to contend with is not a subtyping
-// constraint.  Currently, for variables, we only track what it
-// must be a subtype of, not what types it must be assignable to
-// (or from).  Possibly, we should track that, but I leave that
-// refactoring for another day.
-//
-// Instead, we look at each variable involved and try to extract
-// *some* sort of bound.  Typically, the type a is the argument
-// supplied to a call; it typically has a *lower bound* (which
-// comes from having been assigned a value).  What we'd actually
-// *like* here is an upper-bound, but we generally don't have
-// one.  The type b is the expected type and it typically has a
-// lower-bound too, which is good.
-//
-// The way we deal with the fact that we often don't have the
-// bounds we need is to be a bit careful.  We try to get *some*
-// bound from each side, preferring the upper from a and the
-// lower from b.  If we fail to get a bound from both sides, then
-// we just fall back to requiring that a <: b.
-//
-// Assuming we have a bound from both sides, we will then examine
-// these bounds and see if they have the form (@M_a T_a, &rb.M_b T_b)
-// (resp. ~M_a T_a, ~[M_a T_a], etc).  If they do not, we fall back to
-// subtyping.
-//
-// If they *do*, then we know that the two types could never be
-// subtypes of one another.  We will then construct a type @const T_b
-// and ensure that type a is a subtype of that.  This allows for the
-// possibility of assigning from a type like (say) @~[mut T1] to a type
-// &~[T2] where T1 <: T2.  This might seem surprising, since the `@`
-// points at mutable memory but the `&` points at immutable memory.
-// This would in fact be unsound, except for the borrowck, which comes
-// later and guarantees that such mutability conversions are safe.
-// See borrowck for more details.  Next we require that the region for
-// the enclosing scope be a superregion of the region r.
-//
-// You might wonder why we don't make the type &e.const T_a where e is
-// the enclosing region and check that &e.const T_a <: B.  The reason
-// is that the type of A is (generally) just a *lower-bound*, so this
-// would be imposing that lower-bound also as the upper-bound on type
-// A.  But this upper-bound might be stricter than what is truly
-// needed.
+/*!
+
+# Type Coercion
+
+Under certain circumstances we will coerce from one type to another,
+for example by auto-borrowing.  This occurs in situations where the
+compiler has a firm 'expected type' that was supplied from the user,
+and where the actual type is similar to that expected type in purpose
+but not in representation (so actual subtyping is inappropriate).
+
+## Reborrowing
+
+Note that if we are expecting a borrowed pointer, we will *reborrow*
+even if the argument provided was already a borrowed pointer.  This is
+useful for freezing mut/const things (that is, when the expected is &T
+but you have &const T or &mut T) and also for avoiding the linearity
+of mut things (when the expected is &mut T and you have &mut T).  See
+the various `src/test/run-pass/coerce-reborrow-*.rs` tests for
+examples of where this is useful.
+
+## Subtle note
+
+When deciding what type coercions to consider, we do not attempt to
+resolve any type variables we may encounter.  This is because `b`
+represents the expected type "as the user wrote it", meaning that if
+the user defined a generic function like
+
+   fn foo<A>(a: A, b: A) { ... }
+
+and then we wrote `foo(&1, @2)`, we will not auto-borrow
+either argument.  In older code we went to some lengths to
+resolve the `b` variable, which could mean that we'd
+auto-borrow later arguments but not earlier ones, which
+seems very confusing.
+
+## Subtler note
+
+However, right now, if the user manually specifies the
+values for the type variables, as so:
+
+   foo::<&int>(@1, @2)
+
+then we *will* auto-borrow, because we can't distinguish this from a
+function that declared `&int`.  This is inconsistent but it's easiest
+at the moment. The right thing to do, I think, is to consider the
+*unsubstituted* type when deciding whether to auto-borrow, but the
+*substituted* type when considering the bounds and so forth. But most
+of our methods don't give access to the unsubstituted type, and
+rightly so because they'd be error-prone.  So maybe the thing to do is
+to actually determine the kind of coercions that should occur
+separately and pass them in.  Or maybe it's ok as is.  Anyway, it's
+sort of a minor point so I've opted to leave it for later---after all
+we may want to adjust precisely when coercions occur.
+
+*/
 
 use core::prelude::*;
 
-use middle::ty::TyVar;
+use middle::ty::{TyVar, AutoPtr, AutoBorrowVec, AutoBorrowFn};
+use middle::ty::{AutoAdjustment, AutoRef};
+use middle::ty::{vstore_slice, vstore_box, vstore_uniq, vstore_fixed};
+use middle::ty::{FnMeta, FnTyBase, mt};
 use middle::ty;
-use middle::typeck::infer::{ares, cres};
+use middle::typeck::infer::{CoerceResult, resolve_type};
 use middle::typeck::infer::combine::CombineFields;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
+use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
 use util::common::{indent, indenter};
 
 use core::option;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
-
-fn to_ares<T>(+c: cres<T>) -> ares {
-    match c {
-        Ok(_) => Ok(None),
-        Err(ref e) => Err((*e))
-    }
-}
 
 // Note: Coerce is not actually a combiner, in that it does not
 // conform to the same interface, though it performs a similar
@@ -85,203 +88,309 @@ fn to_ares<T>(+c: cres<T>) -> ares {
 pub enum Coerce = CombineFields;
 
 impl Coerce {
-    fn tys(&self, a: ty::t, b: ty::t) -> ares {
+    fn tys(&self, a: ty::t, b: ty::t) -> CoerceResult {
         debug!("Coerce.tys(%s => %s)",
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
         let _indent = indenter();
-        let r = match (&ty::get(a).sty, &ty::get(b).sty) {
-            (&ty::ty_bot, _) => {
-                Ok(None)
+
+        // Examine the supertype and consider auto-borrowing.
+        //
+        // Note: does not attempt to resolve type variables we encounter.
+        // See above for details.
+        match ty::get(b).sty {
+            ty::ty_rptr(_, mt_b) => {
+                return do self.unpack_actual_value(a) |sty_a| {
+                    self.coerce_borrowed_pointer(a, sty_a, b, mt_b)
+                };
             }
 
-            (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
-                let nde_a = self.infcx.get(a_id);
-                let nde_b = self.infcx.get(b_id);
-                let a_bounds = nde_a.possible_types;
-                let b_bounds = nde_b.possible_types;
-
-                let a_bnd = option::or(a_bounds.ub, a_bounds.lb);
-                let b_bnd = option::or(b_bounds.lb, b_bounds.ub);
-                self.coerce_tys_or_sub(a, b, a_bnd, b_bnd)
+            ty::ty_estr(vstore_slice(_)) => {
+                return do self.unpack_actual_value(a) |sty_a| {
+                    self.coerce_borrowed_string(a, sty_a, b)
+                };
             }
 
-            (&ty::ty_infer(TyVar(a_id)), _) => {
-                let nde_a = self.infcx.get(a_id);
-                let a_bounds = nde_a.possible_types;
-
-                let a_bnd = option::or(a_bounds.ub, a_bounds.lb);
-                self.coerce_tys_or_sub(a, b, a_bnd, Some(b))
+            ty::ty_evec(mt_b, vstore_slice(_)) => {
+                return do self.unpack_actual_value(a) |sty_a| {
+                    self.coerce_borrowed_vector(a, sty_a, b, mt_b)
+                };
             }
 
-            (_, &ty::ty_infer(TyVar(b_id))) => {
-                let nde_b = self.infcx.get(b_id);
-                let b_bounds = nde_b.possible_types;
-
-                let b_bnd = option::or(b_bounds.lb, b_bounds.ub);
-                self.coerce_tys_or_sub(a, b, Some(a), b_bnd)
+            ty::ty_fn(ref b_f) if b_f.meta.proto == ast::ProtoBorrowed => {
+                return do self.unpack_actual_value(a) |sty_a| {
+                    self.coerce_borrowed_fn(a, sty_a, b)
+                };
             }
 
-            (_, _) => {
-                self.coerce_tys_or_sub(a, b, Some(a), Some(b))
+            ty::ty_ptr(_) => {
+                return do self.unpack_actual_value(a) |sty_a| {
+                    self.coerce_unsafe_ptr(a, sty_a, b)
+                };
+            }
+
+            _ => {}
+        }
+
+        do self.unpack_actual_value(a) |sty_a| {
+            match *sty_a {
+                ty::ty_fn(ref a_f) if a_f.meta.proto == ast::ProtoBare => {
+                    // Bare functions are coercable to any closure type.
+                    //
+                    // FIXME(#3320) this should go away and be
+                    // replaced with proper inference, got a patch
+                    // underway - ndm
+                    self.coerce_from_bare_fn(a, a_f, b)
+                }
+                _ => {
+                    // Otherwise, just use subtyping rules.
+                    self.subtype(a, b)
+                }
+            }
+        }
+    }
+
+    fn subtype(&self, a: ty::t, b: ty::t) -> CoerceResult {
+        match Sub(**self).tys(a, b) {
+            Ok(_) => Ok(None),         // No coercion required.
+            Err(ref e) => Err(*e)
+        }
+    }
+
+    fn unpack_actual_value(&self,
+                           a: ty::t,
+                           f: &fn(&ty::sty) -> CoerceResult) -> CoerceResult
+    {
+        match resolve_type(self.infcx, a, try_resolve_tvar_shallow) {
+            Ok(t) => {
+                f(&ty::get(t).sty)
+            }
+            Err(e) => {
+                self.infcx.tcx.sess.span_bug(
+                    self.span,
+                    fmt!("Failed to resolve even without \
+                          any force options: %?", e));
+            }
+        }
+    }
+
+    fn coerce_borrowed_pointer(&self,
+                               a: ty::t,
+                               sty_a: &ty::sty,
+                               b: ty::t,
+                               mt_b: ty::mt) -> CoerceResult
+    {
+        debug!("coerce_borrowed_pointer(a=%s, sty_a=%?, b=%s, mt_b=%?)",
+               a.inf_str(self.infcx), sty_a,
+               b.inf_str(self.infcx), mt_b);
+
+        // If we have a parameter of type `&M T_a` and the value
+        // provided is `expr`, we will be adding an implicit borrow,
+        // meaning that we convert `f(expr)` to `f(&M *expr)`.  Therefore,
+        // to type check, we will construct the type that `&M*expr` would
+        // yield.
+
+        let sub = Sub(**self);
+        let r_borrow = self.infcx.next_region_var_nb(self.span);
+
+        let inner_ty = match *sty_a {
+            ty::ty_box(mt_a) => mt_a.ty,
+            ty::ty_uniq(mt_a) => mt_a.ty,
+            ty::ty_rptr(r_a, mt_a) => {
+                // Ensure that the pointer we are borrowing from lives
+                // at least as long as the borrowed result.
+                //
+                // FIXME(#3148)---in principle this dependency should
+                // be done more generally
+                if_ok!(sub.contraregions(r_a, r_borrow));
+                mt_a.ty
+            }
+            _ => {
+                return self.subtype(a, b);
             }
         };
 
-        debug!("Coerce.tys end");
-
-        move r
+        let a_borrowed = ty::mk_rptr(self.infcx.tcx,
+                                     r_borrow,
+                                     mt {ty: inner_ty, mutbl: mt_b.mutbl});
+        if_ok!(sub.tys(a_borrowed, b));
+        Ok(Some(@AutoAdjustment {
+            autoderefs: 1,
+            autoref: Some(AutoRef {
+                kind: AutoPtr,
+                region: r_borrow,
+                mutbl: mt_b.mutbl
+            })
+        }))
     }
-}
 
-impl Coerce {
-    fn coerce_tys_or_sub(
-        &self,
-        +a: ty::t,
-        +b: ty::t,
-        +a_bnd: Option<ty::t>,
-        +b_bnd: Option<ty::t>) -> ares
+    fn coerce_borrowed_string(&self,
+                              a: ty::t,
+                              sty_a: &ty::sty,
+                              b: ty::t) -> CoerceResult
     {
-        debug!("Coerce.coerce_tys_or_sub(%s => %s, %s => %s)",
-               a.inf_str(self.infcx), b.inf_str(self.infcx),
-               a_bnd.inf_str(self.infcx), b_bnd.inf_str(self.infcx));
-        let _r = indenter();
+        debug!("coerce_borrowed_string(a=%s, sty_a=%?, b=%s)",
+               a.inf_str(self.infcx), sty_a,
+               b.inf_str(self.infcx));
 
-        fn is_borrowable(v: ty::vstore) -> bool {
-            match v {
-              ty::vstore_fixed(_) | ty::vstore_uniq | ty::vstore_box => true,
-              ty::vstore_slice(_) => false
+        match *sty_a {
+            ty::ty_estr(vstore_box) |
+            ty::ty_estr(vstore_uniq) => {}
+            _ => {
+                return self.subtype(a, b);
             }
-        }
+        };
 
-        fn borrowable_protos(a_p: ast::Proto, b_p: ast::Proto) -> bool {
-            match (a_p, b_p) {
-                (ast::ProtoBox, ast::ProtoBorrowed) => true,
-                (ast::ProtoUniq, ast::ProtoBorrowed) => true,
-                _ => false
-            }
-        }
+        let r_a = self.infcx.next_region_var_nb(self.span);
+        let a_borrowed = ty::mk_estr(self.infcx.tcx, vstore_slice(r_a));
+        if_ok!(self.subtype(a_borrowed, b));
+        Ok(Some(@AutoAdjustment {
+            autoderefs: 0,
+            autoref: Some(AutoRef {
+                kind: AutoBorrowVec,
+                region: r_a,
+                mutbl: m_imm
+            })
+        }))
+    }
 
-        match (a_bnd, b_bnd) {
-            (Some(a_bnd), Some(b_bnd)) => {
-                match (&ty::get(a_bnd).sty, &ty::get(b_bnd).sty) {
-                    // check for a case where a non-region pointer (@, ~) is
-                    // being coerceed to a region pointer:
-                    (&ty::ty_box(_), &ty::ty_rptr(r_b, mt_b)) => {
-                        let nr_b = ty::mk_box(self.infcx.tcx,
-                                              ty::mt {ty: mt_b.ty,
-                                                      mutbl: m_const});
-                        self.try_coerce(1, ty::AutoPtr,
-                                        a, nr_b,
-                                        mt_b.mutbl, r_b)
-                    }
-                    (&ty::ty_uniq(_), &ty::ty_rptr(r_b, mt_b)) => {
-                        let nr_b = ty::mk_uniq(self.infcx.tcx,
-                                               ty::mt {ty: mt_b.ty,
-                                                       mutbl: m_const});
-                        self.try_coerce(1, ty::AutoPtr,
-                                        a, nr_b,
-                                        mt_b.mutbl, r_b)
-                    }
-                    (&ty::ty_estr(vs_a),
-                     &ty::ty_estr(ty::vstore_slice(r_b)))
-                    if is_borrowable(vs_a) => {
-                        let nr_b = ty::mk_estr(self.infcx.tcx, vs_a);
-                        self.try_coerce(0, ty::AutoBorrowVec,
-                                        a, nr_b,
-                                        m_imm, r_b)
-                    }
+    fn coerce_borrowed_vector(&self,
+                              a: ty::t,
+                              sty_a: &ty::sty,
+                              b: ty::t,
+                              mt_b: ty::mt) -> CoerceResult
+    {
+        debug!("coerce_borrowed_vector(a=%s, sty_a=%?, b=%s)",
+               a.inf_str(self.infcx), sty_a,
+               b.inf_str(self.infcx));
 
-                    (&ty::ty_evec(_, vs_a),
-                     &ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
-                    if is_borrowable(vs_a) => {
-                        let nr_b = ty::mk_evec(self.infcx.tcx,
-                                               ty::mt {ty: mt_b.ty,
-                                                       mutbl: m_const},
-                                               vs_a);
-                        self.try_coerce(0, ty::AutoBorrowVec,
-                                        a, nr_b,
-                                        mt_b.mutbl, r_b)
-                    }
-
-                    (&ty::ty_fn(ref a_f), &ty::ty_fn(ref b_f))
-                    if borrowable_protos(a_f.meta.proto, b_f.meta.proto) => {
-                        let nr_b = ty::mk_fn(self.infcx.tcx, ty::FnTyBase {
-                            meta: ty::FnMeta {proto: a_f.meta.proto,
-                                              ..b_f.meta},
-                            sig: copy b_f.sig
-                        });
-                        self.try_coerce(0, ty::AutoBorrowFn,
-                                        a, nr_b, m_imm, b_f.meta.region)
-                    }
-
-                    (&ty::ty_fn(ref a_f), &ty::ty_fn(ref b_f))
-                    if a_f.meta.proto == ast::ProtoBare => {
-                        let b1_f = ty::FnTyBase {
-                            meta: ty::FnMeta {proto: ast::ProtoBare,
-                                              ..b_f.meta},
-                            sig: copy b_f.sig
-                        };
-                        // Eventually we will need to add some sort of
-                        // adjustment here so that trans can add an
-                        // extra NULL env pointer:
-                        to_ares(Sub(**self).fns(a_f, &b1_f))
-                    }
-
-                    // check for &T being coerced to *T:
-                    (&ty::ty_rptr(_, ref a_t), &ty::ty_ptr(ref b_t)) => {
-                        to_ares(Sub(**self).mts(*a_t, *b_t))
-                    }
-
-                    // otherwise, coercement follows normal subtype rules:
-                    _ => {
-                        to_ares(Sub(**self).tys(a, b))
-                    }
-                }
+        let sub = Sub(**self);
+        let r_borrow = self.infcx.next_region_var_nb(self.span);
+        let ty_inner = match *sty_a {
+            ty::ty_evec(mt, vstore_box) => mt.ty,
+            ty::ty_evec(mt, vstore_uniq) => mt.ty,
+            ty::ty_evec(mt, vstore_fixed(_)) => mt.ty,
+            ty::ty_evec(mt, vstore_slice(r_a)) => {
+                // Ensure that the pointer we are borrowing from lives
+                // at least as long as the borrowed result.
+                //
+                // FIXME(#3148)---in principle this dependency should
+                // be done more generally
+                if_ok!(sub.contraregions(r_a, r_borrow));
+                mt.ty
             }
             _ => {
-                // if insufficient bounds were available, just follow
-                // normal subtype rules:
-                to_ares(Sub(**self).tys(a, b))
+                return self.subtype(a, b);
             }
+        };
+
+        let a_borrowed = ty::mk_evec(self.infcx.tcx,
+                                     mt {ty: ty_inner, mutbl: mt_b.mutbl},
+                                     vstore_slice(r_borrow));
+        if_ok!(sub.tys(a_borrowed, b));
+        Ok(Some(@AutoAdjustment {
+            autoderefs: 0,
+            autoref: Some(AutoRef {
+                kind: AutoBorrowVec,
+                region: r_borrow,
+                mutbl: mt_b.mutbl
+            })
+        }))
+    }
+
+    fn coerce_borrowed_fn(&self,
+                          a: ty::t,
+                          sty_a: &ty::sty,
+                          b: ty::t) -> CoerceResult
+    {
+        debug!("coerce_borrowed_fn(a=%s, sty_a=%?, b=%s)",
+               a.inf_str(self.infcx), sty_a,
+               b.inf_str(self.infcx));
+
+        let fn_ty = match *sty_a {
+            ty::ty_fn(ref f) if f.meta.proto == ast::ProtoBox => {f}
+            ty::ty_fn(ref f) if f.meta.proto == ast::ProtoUniq => {f}
+            ty::ty_fn(ref f) if f.meta.proto == ast::ProtoBare => {
+                return self.coerce_from_bare_fn(a, f, b);
+            }
+            _ => {
+                return self.subtype(a, b);
+            }
+        };
+
+        let r_borrow = self.infcx.next_region_var_nb(self.span);
+        let meta = FnMeta {proto: ast::ProtoBorrowed,
+                           region: r_borrow,
+                           ..fn_ty.meta};
+        let a_borrowed = ty::mk_fn(self.infcx.tcx,
+                                   FnTyBase {meta: meta,
+                                             sig: copy fn_ty.sig});
+
+        if_ok!(self.subtype(a_borrowed, b));
+        Ok(Some(@AutoAdjustment {
+            autoderefs: 0,
+            autoref: Some(AutoRef {
+                kind: AutoBorrowFn,
+                region: r_borrow,
+                mutbl: m_imm
+            })
+        }))
+    }
+
+    fn coerce_from_bare_fn(&self,
+                           a: ty::t,
+                           fn_ty_a: &ty::FnTy,
+                           b: ty::t) -> CoerceResult
+    {
+        do self.unpack_actual_value(b) |sty_b| {
+            self.coerce_from_bare_fn_post_unpack(a, fn_ty_a, b, sty_b)
         }
     }
 
-    /// Given an coercement from a type like `@a` to `&r_b/m nr_b`,
-    /// this function checks that `a <: nr_b`.  In that case, the
-    /// coercement is permitted, so it constructs a fresh region
-    /// variable `r_a >= r_b` and returns a corresponding coercement
-    /// record.  See the discussion at the top of this file for more
-    /// details.
-    fn try_coerce(&self,
-                  autoderefs: uint,
-                  kind: ty::AutoRefKind,
-                  a: ty::t,
-                  nr_b: ty::t,
-                  m: ast::mutability,
-                  r_b: ty::Region) -> ares
+    fn coerce_from_bare_fn_post_unpack(&self,
+                                       a: ty::t,
+                                       fn_ty_a: &ty::FnTy,
+                                       b: ty::t,
+                                       sty_b: &ty::sty) -> CoerceResult
     {
-        debug!("try_coerce(a=%s, nr_b=%s, m=%?, r_b=%s)",
-               a.inf_str(self.infcx),
-               nr_b.inf_str(self.infcx),
-               m,
-               r_b.inf_str(self.infcx));
+        debug!("coerce_from_bare_fn(a=%s, b=%s)",
+               a.inf_str(self.infcx), b.inf_str(self.infcx));
 
-        do indent {
-            let sub = Sub(**self);
-            do sub.tys(a, nr_b).chain |_t| {
-                let r_a = self.infcx.next_region_var_nb(self.span);
-                do sub.contraregions(r_a, r_b).chain |_r| {
-                    Ok(Some(@ty::AutoAdjustment {
-                        autoderefs: autoderefs,
-                        autoref: Some(ty::AutoRef {
-                            kind: kind,
-                            region: r_a,
-                            mutbl: m
-                        })
-                    }))
-                }
+        let fn_ty_b = match *sty_b {
+            ty::ty_fn(ref f) if f.meta.proto != ast::ProtoBare => {f}
+            _ => {
+                return self.subtype(a, b);
             }
-        }
+        };
+
+            // for now, bare fn and closures have the same
+            // representation
+        let a_adapted = ty::mk_fn(self.infcx.tcx,
+                                  FnTyBase {meta: copy fn_ty_b.meta,
+                                            sig: copy fn_ty_a.sig});
+        self.subtype(a_adapted, b)
+    }
+
+    fn coerce_unsafe_ptr(&self,
+                         a: ty::t,
+                         sty_a: &ty::sty,
+                         b: ty::t) -> CoerceResult
+    {
+        debug!("coerce_unsafe_ptr(a=%s, sty_a=%?, b=%s)",
+               a.inf_str(self.infcx), sty_a,
+               b.inf_str(self.infcx));
+
+        let mt_a = match *sty_a {
+            ty::ty_rptr(_, mt) => mt,
+            _ => {
+                return self.subtype(a, b);
+            }
+        };
+
+        // borrowed pointers and unsafe pointers have the same
+        // representation, so just check that the types which they
+        // point at are compatible:
+        let a_unsafe = ty::mk_ptr(self.infcx.tcx, mt_a);
+        self.subtype(a_unsafe, b)
     }
 }
-
