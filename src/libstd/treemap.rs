@@ -98,6 +98,26 @@ impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
     /// Visit all values in order
     pure fn each_value(&self, f: fn(&V) -> bool) { self.each(|_, v| f(v)) }
 
+    /// Return the value corresponding to the key in the map
+    pure fn find(&self, key: &K) -> Option<&self/V> {
+        let mut current: &self/Option<~TreeNode<K, V>> = &self.root;
+        loop {
+            match *current {
+              Some(ref r) => {
+                let r: &self/~TreeNode<K, V> = r; // FIXME: #3148
+                if *key < r.key {
+                    current = &r.left;
+                } else if r.key < *key {
+                    current = &r.right;
+                } else {
+                    return Some(&r.value);
+                }
+              }
+              None => return None
+            }
+        }
+    }
+
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
@@ -134,26 +154,6 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Visit all values in reverse order
     pure fn each_value_reverse(&self, f: fn(&V) -> bool) {
         self.each_reverse(|_, v| f(v))
-    }
-
-    /// Return the value corresponding to the key in the map
-    pure fn find(&self, key: &K) -> Option<&self/V> {
-        let mut current: &self/Option<~TreeNode<K, V>> = &self.root;
-        loop {
-            match *current {
-              Some(ref r) => {
-                let r: &self/~TreeNode<K, V> = r; // FIXME: #3148
-                if *key < r.key {
-                    current = &r.left;
-                } else if r.key < *key {
-                    current = &r.right;
-                } else {
-                    return Some(&r.value);
-                }
-              }
-              None => return None
-            }
-        }
     }
 
     /// Get a lazy iterator over the key-value pairs in the map.
