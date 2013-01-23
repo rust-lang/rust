@@ -120,8 +120,6 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Return true if the map contains some elements
-    pure fn is_not_empty(&self) -> bool { self.root.is_some() }
 
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, f: fn(&K, &V) -> bool) {
@@ -176,7 +174,7 @@ impl <K: Ord, V> TreeMapIterator<K, V> {
     /// tuple with a reference to the key and value. If there are no
     /// more nodes, return `None`.
     fn next(&mut self) -> Option<(&self/K, &self/V)> {
-        while self.stack.is_not_empty() || self.node.is_some() {
+        while !self.stack.is_empty() || self.node.is_some() {
             match *self.node {
               Some(ref x) => {
                 self.stack.push(x);
@@ -239,9 +237,6 @@ impl <T: Ord> TreeSet<T>: Set<T> {
 impl <T: Ord> TreeSet<T> {
     /// Create an empty TreeSet
     static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Return true if the set contains some elements
-    pure fn is_not_empty(&self) -> bool { self.map.is_not_empty() }
 
     /// Visit all values in reverse order
     pure fn each_reverse(&self, f: fn(&T) -> bool) {
@@ -675,7 +670,6 @@ mod test_treemap {
 
     fn check_equal<K: Eq Ord, V: Eq>(ctrl: &[(K, V)], map: &TreeMap<K, V>) {
         assert ctrl.is_empty() == map.is_empty();
-        assert ctrl.is_not_empty() == map.is_not_empty();
         for ctrl.each |x| {
             let &(k, v) = x;
             assert map.find(&k).unwrap() == &v
