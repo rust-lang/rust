@@ -98,9 +98,7 @@ pub mod linear {
                             idx: uint,
                             len_buckets: uint) -> uint {
             let n = (idx + 1) % len_buckets;
-            unsafe{ // argh. log not considered pure.
-                debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
-            }
+            debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
             return n;
         }
 
