@@ -15,6 +15,7 @@ Andrew Dunham <andrew@du.nham.ca>
 Andrew Paseltiner <apaseltiner@gmail.com>
 Arkaitz Jimenez <arkaitzj@gmail.com>
 Armin Ronacher <armin.ronacher@active-4.com>
+Ashok Gautham <ScriptDevil@gmail.com>
 Austin Seipp <mad.one@gmail.com>
 auREAX <mark@xn--hwg34fba.ws>
 Ben Alpert <ben@benalpert.com>
