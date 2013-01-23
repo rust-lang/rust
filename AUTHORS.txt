@@ -26,6 +26,7 @@ Benjamin Jackman <ben@jackman.biz>
 Benjamin Kircher <benjamin.kircher@gmail.com>
 Benjamin Peterson <benjamin@python.org>
 Bilal Husain <bilal@bilalhusain.com>
+Bill Fallon <bill.fallon@robos.li>
 Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Brian J. Burg <burg@cs.washington.edu>
