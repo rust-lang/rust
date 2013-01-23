@@ -33,8 +33,6 @@ macro_rules! interner_key (
         (-3 as uint, 0u)))
 )
 
-// FIXME(#3534): Replace with the struct-based newtype when it's been
-// implemented.
 struct ident { repr: uint }
 
 impl<S: Encoder> ident: Encodable<S> {

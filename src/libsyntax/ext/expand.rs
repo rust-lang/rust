@@ -22,7 +22,7 @@ use core::option;
 use core::vec;
 use std::map::HashMap;
 
-fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
+fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
                e: expr_, s: span, fld: ast_fold,
                orig: fn@(expr_, span, ast_fold) -> (expr_, span))
     -> (expr_, span)
@@ -46,15 +46,13 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                     cx.span_fatal(pth.span,
                                   fmt!("macro undefined: '%s'", *extname))
                   }
-                  Some(normal_tt(
-                    syntax_expander_tt { expander: exp, span: exp_sp }
-                  )) => {
+                  Some(NormalTT(SyntaxExpanderTT{expander: exp, span: exp_sp})) => {
                     cx.bt_push(ExpandedFrom({call_site: s,
                                 callie: {name: *extname, span: exp_sp}}));
 
                     let expanded = match exp(cx, (*mac).span, (*tts)) {
-                      mr_expr(e) => e,
-                      mr_any(expr_maker,_,_) => expr_maker(),
+                      MRExpr(e) => e,
+                      MRAny(expr_maker,_,_) => expr_maker(),
                       _ => cx.span_fatal(
                           pth.span, fmt!("non-expr macro in expr pos: %s",
                                          *extname))
@@ -85,11 +83,11 @@ fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 // attribute prefixing an item, and are interpreted by feeding the item
 // through the named attribute _as a syntax extension_ and splicing in the
 // resulting item vec into place in favour of the decorator. Note that
-// these do _not_ work for macro extensions, just item_decorator ones.
+// these do _not_ work for macro extensions, just ItemDecorator ones.
 //
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
-fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
+fn expand_mod_items(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
                     module_: ast::_mod, fld: ast_fold,
                     orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
     -> ast::_mod
@@ -108,8 +106,8 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
               ast::meta_list(ref n, _) => (*n)
             };
             match exts.find(mname) {
-              None | Some(normal_tt(_)) | Some(item_tt(*)) => items,
-              Some(item_decorator(dec_fn)) => {
+              None | Some(NormalTT(_)) | Some(ItemTT(*)) => items,
+              Some(ItemDecorator(dec_fn)) => {
                   cx.bt_push(ExpandedFrom({call_site: attr.span,
                                            callie: {name: copy mname,
                                                     span: None}}));
@@ -126,7 +124,7 @@ fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
 
 
 // When we enter a module, record it, for the sake of `module!`
-fn expand_item(exts: HashMap<~str, syntax_extension>,
+fn expand_item(exts: HashMap<~str, SyntaxExtension>,
                cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                orig: fn@(&&v: @ast::item, ast_fold) -> Option<@ast::item>)
     -> Option<@ast::item>
@@ -153,7 +151,7 @@ fn expand_item(exts: HashMap<~str, syntax_extension>,
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
+fn expand_item_mac(exts: HashMap<~str, SyntaxExtension>,
                    cx: ext_ctxt, &&it: @ast::item,
                    fld: ast_fold) -> Option<@ast::item> {
 
@@ -169,7 +167,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
         None => cx.span_fatal(pth.span,
                               fmt!("macro undefined: '%s!'", *extname)),
 
-        Some(normal_tt(ref expand)) => {
+        Some(NormalTT(ref expand)) => {
             if it.ident != parse::token::special_idents::invalid {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects no ident argument, \
@@ -181,7 +179,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
                                               span: (*expand).span}}));
             ((*expand).expander)(cx, it.span, tts)
         }
-        Some(item_tt(ref expand)) => {
+        Some(ItemTT(ref expand)) => {
             if it.ident == parse::token::special_idents::invalid {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects an ident argument",
@@ -197,13 +195,13 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
     };
 
     let maybe_it = match expanded {
-        mr_item(it) => fld.fold_item(it),
-        mr_expr(_) => cx.span_fatal(pth.span,
+        MRItem(it) => fld.fold_item(it),
+        MRExpr(_) => cx.span_fatal(pth.span,
                                     ~"expr macro in item position: "
                                     + *extname),
-        mr_any(_, item_maker, _) =>
+        MRAny(_, item_maker, _) =>
             option::chain(item_maker(), |i| {fld.fold_item(i)}),
-        mr_def(ref mdef) => {
+        MRDef(ref mdef) => {
             exts.insert((*mdef).name, (*mdef).ext);
             None
         }
@@ -212,7 +210,7 @@ fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
     return maybe_it;
 }
 
-fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
+fn expand_stmt(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
                && s: stmt_, sp: span, fld: ast_fold,
                orig: fn@(&&s: stmt_, span, ast_fold) -> (stmt_, span))
     -> (stmt_, span)
@@ -233,16 +231,15 @@ fn expand_stmt(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
         None =>
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extname)),
 
-        Some(normal_tt(
-            syntax_expander_tt { expander: exp, span: exp_sp }
-        )) => {
+        Some(NormalTT(
+            SyntaxExpanderTT{expander: exp, span: exp_sp})) => {
             cx.bt_push(ExpandedFrom(
                 {call_site: sp, callie: {name: *extname, span: exp_sp}}));
             let expanded = match exp(cx, mac.span, tts) {
-                mr_expr(e) =>
+                MRExpr(e) =>
                     @ast::spanned { node: stmt_expr(e, cx.next_id()),
                                     span: e.span},
-                mr_any(_,_,stmt_mkr) => stmt_mkr(),
+                MRAny(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
                     pth.span,
                     fmt!("non-stmt macro in stmt pos: %s", *extname))
