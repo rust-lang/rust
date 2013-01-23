@@ -13,6 +13,7 @@
 #[forbid(deprecated_pattern)];
 
 use T = self::inst::T;
+use T_SIGNED = self::inst::T_SIGNED;
 
 use char;
 use cmp::{Eq, Ord};
@@ -72,50 +73,36 @@ pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 /**
  * Iterate over the range [`start`,`start`+`step`..`stop`)
  *
- * Note that `uint` requires separate `range_step` functions for each
- * direction.
- *
  */
-pub pure fn range_step_up(start: T, stop: T, step: T, it: fn(T) -> bool) {
+pub pure fn range_step(start: T, stop: T, step: T_SIGNED, it: fn(T) -> bool) {
     let mut i = start;
     if step == 0 {
-        fail ~"range_step_up called with step == 0";
+        fail ~"range_step called with step == 0";
     }
-    while i < stop {
-        if !it(i) { break }
-        i += step;
+    if step >= 0 {
+        while i < stop {
+            if !it(i) { break }
+            i += step as T;
+        }
     }
-}
-
-#[inline(always)]
-/**
- * Iterate over the range [`start`,`start`-`step`..`stop`)
- *
- * Note that `uint` requires separate `range_step` functions for each
- * direction.
- *
- */
-pub pure fn range_step_down(start: T, stop: T, step: T, it: fn(T) -> bool) {
-    let mut i = start;
-    if step == 0 {
-        fail ~"range_step_down called with step == 0";
-    }
-    while i > stop {
-        if !it(i) { break }
-        i -= step;
+    else {
+        while i > stop {
+            if !it(i) { break }
+            i -= -step as T;
+        }
     }
 }
 
 #[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
 pub pure fn range(lo: T, hi: T, it: fn(T) -> bool) {
-    range_step_up(lo, hi, 1 as T, it);
+    range_step(lo, hi, 1 as T_SIGNED, it);
 }
 
 #[inline(always)]
 /// Iterate over the range [`hi`..`lo`)
 pub pure fn range_rev(hi: T, lo: T, it: fn(T) -> bool) {
-    range_step_down(hi, lo, 1 as T, it);
+    range_step(hi, lo, -1 as T_SIGNED, it);
 }
 
 /// Computes the bitwise complement
@@ -381,10 +368,10 @@ pub fn test_ranges() {
     for range_rev(13,10) |i| {
         l.push(i);
     }
-    for range_step_up(20,26,2) |i| {
+    for range_step(20,26,2) |i| {
         l.push(i);
     }
-    for range_step_down(36,30,2) |i| {
+    for range_step(36,30,-2) |i| {
         l.push(i);
     }
 
@@ -400,21 +387,21 @@ pub fn test_ranges() {
     for range_rev(0,0) |_i| {
         fail ~"unreachable";
     }
-    for range_step_up(10,0,1) |_i| {
+    for range_step(10,0,1) |_i| {
         fail ~"unreachable";
     }
-    for range_step_down(0,10,1) |_i| {
+    for range_step(0,1,-10) |_i| {
         fail ~"unreachable";
     }
 }
 
 #[test]
 #[should_fail]
-fn test_range_step_up_zero_step() {
-    for range_step_up(0,10,0) |_i| {}
+fn test_range_step_zero_step_up() {
+    for range_step(0,10,0) |_i| {}
 }
 #[test]
 #[should_fail]
-fn test_range_step_down_zero_step() {
-    for range_step_down(0,10,0) |_i| {}
+fn test_range_step_zero_step_down() {
+    for range_step(0,-10,0) |_i| {}
 }

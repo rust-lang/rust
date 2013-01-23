@@ -14,6 +14,8 @@ pub use self::inst::is_ascii;
 
 mod inst {
     pub type T = u8;
+    #[allow(non_camel_case_types)]
+    pub type T_SIGNED = i8;
     pub const bits: uint = 8;
 
     // Type-specific functions here. These must be reexported by the
