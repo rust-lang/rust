@@ -19,7 +19,7 @@ use parse::parser::Parser;
 use core::option::None;
 
 fn expand_trace_macros(cx: ext_ctxt, sp: span,
-                       tt: ~[ast::token_tree]) -> base::mac_result {
+                       tt: ~[ast::token_tree]) -> base::MacResult {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
@@ -39,5 +39,5 @@ fn expand_trace_macros(cx: ext_ctxt, sp: span,
 
     let rust_parser = Parser(sess, cfg, rdr.dup());
     let result = rust_parser.parse_expr();
-    base::mr_expr(result)
+    base::MRExpr(result)
 }

@@ -14,7 +14,7 @@ use ext::base::*;
 use ext::base;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
-    -> base::mac_result {
+    -> base::MacResult {
     let mut res_str = ~"";
     for tts.eachi |i, e| {
         if i & 1 == 1 {
@@ -48,5 +48,5 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
         ),
         span: sp,
     };
-    mr_expr(e)
+    MRExpr(e)
 }

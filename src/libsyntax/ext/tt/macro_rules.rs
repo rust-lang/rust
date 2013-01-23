@@ -15,7 +15,7 @@ use ast::{tt_delim};
 use ast;
 use ast_util::dummy_sp;
 use codemap::span;
-use ext::base::{ext_ctxt, mac_result, mr_any, mr_def, normal_tt};
+use ext::base::{ext_ctxt, MacResult, MRAny, MRDef, MacroDef, NormalTT};
 use ext::base;
 use ext::tt::macro_parser::{error};
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
@@ -30,7 +30,7 @@ use core::io;
 use std::map::HashMap;
 
 fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
-                     arg: ~[ast::token_tree]) -> base::mac_result {
+                     arg: ~[ast::token_tree]) -> base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
         ast::spanned { node: m, span: dummy_sp() }
@@ -73,7 +73,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     fn generic_extension(cx: ext_ctxt, sp: span, name: ident,
                          arg: ~[ast::token_tree],
                          lhses: ~[@named_match], rhses: ~[@named_match])
-    -> mac_result {
+    -> MacResult {
 
         if cx.trace_macros() {
             io::println(fmt!("%s! { %s }",
@@ -119,7 +119,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
                     // Let the context choose how to interpret the result.
                     // Weird, but useful for X-macros.
-                    return mr_any(|| p.parse_expr(),
+                    return MRAny(|| p.parse_expr(),
                                   || p.parse_item(~[/* no attrs*/]),
                                   || p.parse_stmt(~[/* no attrs*/]));
                   }
@@ -136,14 +136,11 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         cx.span_fatal(best_fail_spot, best_fail_msg);
     }
 
-    let exp: @fn(ext_ctxt, span, ~[ast::token_tree]) -> mac_result =
+    let exp: @fn(ext_ctxt, span, ~[ast::token_tree]) -> MacResult =
         |cx, sp, arg| generic_extension(cx, sp, name, arg, lhses, rhses);
 
-    mr_def(base::macro_def {
+    return MRDef(MacroDef{
         name: *cx.parse_sess().interner.get(name),
-        ext: normal_tt(base::syntax_expander_tt {
-            expander: exp,
-            span: Some(sp),
-        })
-    })
+        ext: NormalTT(base::SyntaxExpanderTT{expander: exp, span: Some(sp)})
+    });
 }
