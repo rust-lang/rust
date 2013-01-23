@@ -465,19 +465,19 @@ fn parse_source(name: ~str, j: &json::Json) -> @Source {
 
     match *j {
         json::Object(j) => {
-            let mut url = match j.find(&~"url") {
+            let mut url = match j.find_copy(&~"url") {
                 Some(json::String(u)) => u,
                 _ => fail ~"needed 'url' field in source"
             };
-            let method = match j.find(&~"method") {
+            let method = match j.find_copy(&~"method") {
                 Some(json::String(u)) => u,
                 _ => assume_source_method(url)
             };
-            let key = match j.find(&~"key") {
+            let key = match j.find_copy(&~"key") {
                 Some(json::String(u)) => Some(u),
                 _ => None
             };
-            let keyfp = match j.find(&~"keyfp") {
+            let keyfp = match j.find_copy(&~"keyfp") {
                 Some(json::String(u)) => Some(u),
                 _ => None
             };
@@ -512,7 +512,7 @@ fn try_parse_sources(filename: &Path, sources: map::HashMap<~str, @Source>) {
 }
 
 fn load_one_source_package(src: @Source, p: &json::Object) {
-    let name = match p.find(&~"name") {
+    let name = match p.find_copy(&~"name") {
         Some(json::String(n)) => {
             if !valid_pkg_name(n) {
                 warn(~"malformed source json: "
@@ -529,7 +529,7 @@ fn load_one_source_package(src: @Source, p: &json::Object) {
         }
     };
 
-    let uuid = match p.find(&~"uuid") {
+    let uuid = match p.find_copy(&~"uuid") {
         Some(json::String(n)) => {
             if !is_uuid(n) {
                 warn(~"malformed source json: "
@@ -545,7 +545,7 @@ fn load_one_source_package(src: @Source, p: &json::Object) {
         }
     };
 
-    let url = match p.find(&~"url") {
+    let url = match p.find_copy(&~"url") {
         Some(json::String(n)) => n,
         _ => {
             warn(~"malformed source json: " + src.name + ~" (missing url)");
@@ -553,7 +553,7 @@ fn load_one_source_package(src: @Source, p: &json::Object) {
         }
     };
 
-    let method = match p.find(&~"method") {
+    let method = match p.find_copy(&~"method") {
         Some(json::String(n)) => n,
         _ => {
             warn(~"malformed source json: "
@@ -562,13 +562,13 @@ fn load_one_source_package(src: @Source, p: &json::Object) {
         }
     };
 
-    let reference = match p.find(&~"ref") {
+    let reference = match p.find_copy(&~"ref") {
         Some(json::String(n)) => Some(n),
         _ => None
     };
 
     let mut tags = ~[];
-    match p.find(&~"tags") {
+    match p.find_copy(&~"tags") {
         Some(json::List(js)) => {
           for js.each |j| {
                 match *j {
@@ -580,7 +580,7 @@ fn load_one_source_package(src: @Source, p: &json::Object) {
         _ => ()
     }
 
-    let description = match p.find(&~"description") {
+    let description = match p.find_copy(&~"description") {
         Some(json::String(n)) => n,
         _ => {
             warn(~"malformed source json: " + src.name
