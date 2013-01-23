@@ -35,7 +35,6 @@ use rustc::driver::{driver, session};
 use syntax::{ast, attr, codemap, diagnostic, parse, visit};
 use semver::Version;
 
-mod api;
 mod usage;
 mod util;
 
@@ -223,7 +222,8 @@ impl PackageScript {
     }
 
     // Build the bootstrap and run a command
-    // TODO: Use JIT once it works, it should be faster
+    // FIXME: Use workcache to only compile the script when changed
+    // FIXME: Use JIT once it works, it should be faster
     fn run(cmd: ~str) -> int {
         let work_dir = self.work_dir();
         let input = self.input;
@@ -297,7 +297,7 @@ impl Ctx {
             }
             ~"install" => {
                 self.install(if args.len() >= 1 { Some(args[0]) }
-                             else { None }, 
+                             else { None },
                              if args.len() >= 2 { Some(args[1]) }
                              else { None }, false);
             }
@@ -370,7 +370,7 @@ impl Ctx {
             result::Err(err) => {
                 util::error(err);
 
-                return None; 
+                return None;
             }
         };
         let work_dir = script.work_dir();
@@ -391,8 +391,9 @@ impl Ctx {
 
 
             if !success {
-                util::error(fmt!("building %s v%s failed: a dep wasn't installed",
-                                 script.name, script.vers.to_str()));
+                util::error(
+                    fmt!("building %s v%s failed: a dep wasn't installed",
+                         script.name, script.vers.to_str()));
 
                 return None;
             }
@@ -404,8 +405,9 @@ impl Ctx {
         os::change_dir(dir);
 
         if script.custom && script.run(~"build") != 0 {
-            util::error(fmt!("building %s v%s failed: custom build logic failed",
-                             script.name, script.vers.to_str()));
+            util::error(
+                fmt!("building %s v%s failed: custom build logic failed",
+                     script.name, script.vers.to_str()));
 
             return None;
         }
@@ -424,14 +426,16 @@ impl Ctx {
         }
 
         if !success {
-            util::error(fmt!("building %s v%s failed: a crate failed to compile",
-                             script.name, script.vers.to_str()));
+            util::error(
+                fmt!("building %s v%s failed: a crate failed to compile",
+                     script.name, script.vers.to_str()));
 
             return None;
         }
 
         if verbose {
-            util::note(fmt!("built %s v%s", script.name, script.vers.to_str()));
+            util::note(fmt!("built %s v%s", script.name,
+                            script.vers.to_str()));
         }
 
         Some(script)
@@ -453,8 +457,8 @@ impl Ctx {
         };
         let dir = script.work_dir();
 
-        util::note(fmt!("cleaning %s v%s (%s)", script.name, script.vers.to_str(),
-                                                script.id));
+        util::note(fmt!("cleaning %s v%s (%s)", script.name,
+                        script.vers.to_str(), script.id));
 
         if os::path_exists(&dir) {
             util::remove_dir_r(&dir);
@@ -468,7 +472,7 @@ impl Ctx {
     }
 
     fn install(url: Option<~str>, target: Option<~str>, cache: bool) -> bool {
-        let mut success = true;
+        let mut success;
         let mut dir;
 
         if url.is_none() {
@@ -544,8 +548,10 @@ impl Ctx {
     }
 
     fn fetch(dir: &Path, url: ~str, target: Option<~str>) -> bool {
-        let url = match url::from_str(if str::find_str(url, "://").is_none() { ~"http://" + url }
-                                                       else { url }) {
+        let url = if str::find_str(url, "://").is_none() {
+            ~"http://" + url }
+        else { url };
+        let url = match url::from_str(url) {
             result::Ok(url) => url,
             result::Err(err) => {
                 util::error(fmt!("failed parsing %s", err.to_lower()));
@@ -579,14 +585,19 @@ impl Ctx {
 
         let tar = dir.dir_path().push(&dir.file_path().to_str() + ~".tar");
 
-        if run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o", tar.to_str(), url]).status != 0 {
+        if run::program_output(~"curl", ~[~"-f", ~"-s",
+                                          ~"-o", tar.to_str(),
+                                          url]).status != 0 {
             util::error(~"fetching failed: downloading using curl failed");
 
             return false;
         }
 
-        if run::program_output(~"tar", ~[~"-x", ~"--strip-components=1", ~"-C", dir.to_str(), ~"-f", tar.to_str()]).status != 0 {
-            util::error(~"fetching failed: extracting using tar failed (is it a valid tar archive?)");
+        if run::program_output(~"tar", ~[~"-x", ~"--strip-components=1",
+                                         ~"-C", dir.to_str(), ~"-f",
+                                         tar.to_str()]).status != 0 {
+            util::error(~"fetching failed: extracting using tar failed" +
+                        ~"(is it a valid tar archive?)");
 
             return false;
         }
@@ -600,7 +611,8 @@ impl Ctx {
         // Git can't clone into a non-empty directory
         util::remove_dir_r(dir);
 
-        if run::program_output(~"git", ~[~"clone", url, dir.to_str()]).status != 0 {
+        if run::program_output(~"git", ~[~"clone", url,
+                                         dir.to_str()]).status != 0 {
             util::error(~"fetching failed: can't clone repository");
 
             return false;
@@ -610,7 +622,9 @@ impl Ctx {
             let mut success = true;
 
             do util::temp_change_dir(dir) {
-                success = run::program_output(~"git", ~[~"checkout", target.get()]).status != 0
+                success = run::program_output(~"git",
+                                              ~[~"checkout",
+                                                target.get()]).status != 0
             }
 
             if !success {
@@ -703,8 +717,8 @@ impl Ctx {
             }
         };
 
-        util::note(fmt!("uninstalling %s v%s (%s)", name, package.vers.to_str(),
-                                                    package.id));
+        util::note(fmt!("uninstalling %s v%s (%s)", name,
+                        package.vers.to_str(), package.id));
 
         for vec::append(package.bins, package.libs).each |&file| {
             let path = Path(file);
@@ -742,8 +756,8 @@ impl Ctx {
             }
         };
 
-        util::note(fmt!("unpreferring %s v%s (%s)", name, package.vers.to_str(),
-                                                    package.id));
+        util::note(fmt!("unpreferring %s v%s (%s)", name,
+                        package.vers.to_str(), package.id));
 
         let bin_dir = util::root().push(~"bin");
 
@@ -815,8 +829,120 @@ pub fn main() {
     }.run(cmd, args);
 }
 
-pub use Crate = api::Crate;
-pub use build = api::build;
-pub use util = api::util;
-pub use Listener = api::Listener;
-pub use run = api::run;
+
+/// A crate is a unit of Rust code to be compiled into a binary or library
+pub struct Crate {
+    file: ~str,
+    flags: ~[~str],
+    cfgs: ~[~str]
+}
+
+pub struct Listener {
+    cmds: ~[~str],
+    cb: fn~()
+}
+
+pub fn run(listeners: ~[Listener]) {
+    let rcmd = os::args()[2];
+    let mut found = false;
+
+    for listeners.each |listener| {
+        for listener.cmds.each |&cmd| {
+            if cmd == rcmd {
+                (listener.cb)();
+
+                found = true;
+
+                break;
+            }
+        }
+    }
+
+    if !found {
+        os::set_exit_status(1);
+    }
+}
+
+pub impl Crate {
+    pub fn flag(flag: ~str) -> Crate {
+        Crate {
+            flags: vec::append(copy self.flags, ~[flag]),
+            .. copy self
+        }
+    }
+
+    pub fn flags(flags: ~[~str]) -> Crate {
+        Crate {
+            flags: vec::append(copy self.flags, flags),
+            .. copy self
+        }
+    }
+
+    pub fn cfg(cfg: ~str) -> Crate {
+        Crate {
+            cfgs: vec::append(copy self.cfgs, ~[cfg]),
+            .. copy self
+        }
+    }
+
+    pub fn cfgs(cfgs: ~[~str]) -> Crate {
+        Crate {
+            cfgs: vec::append(copy self.cfgs, cfgs),
+            .. copy self
+        }
+    }
+}
+
+/// Create a crate target from a source file
+pub fn Crate(file: ~str) -> Crate {
+    Crate {
+        file: file,
+        flags: ~[],
+        cfgs: ~[]
+    }
+}
+
+/**
+ * Get the working directory of the package script.
+ * Assumes that the package script has been compiled
+ * in is the working directory.
+ */
+fn work_dir() -> Path {
+    os::self_exe_path().get()
+}
+
+/**
+ * Get the source directory of the package (i.e.
+ * where the crates are located). Assumes
+ * that the cwd is changed to it before
+ * running this executable.
+ */
+fn src_dir() -> Path {
+    os::getcwd()
+}
+
+/// Build a set of crates, should be called once
+pub fn build(crates: ~[Crate]) -> bool {
+    let dir = src_dir();
+    let work_dir = work_dir();
+    let mut success = true;
+    let sysroot = Path(os::args()[1]);
+
+    for crates.each |&crate| {
+        let path = &dir.push_rel(&Path(crate.file)).normalize();
+
+        util::note(fmt!("compiling %s", path.to_str()));
+
+        success = util::compile_crate(Some(sysroot), path, &work_dir,
+                                      crate.flags, crate.cfgs,
+                                      false, false);
+
+        if !success { break; }
+    }
+
+    if !success {
+        os::set_exit_status(2);
+    }
+
+    success
+}

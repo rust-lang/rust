@@ -18,7 +18,7 @@ use codemap::span;
 use semver::Version;
 use std::{json, term, sort, getopts};
 use getopts::groups::getopts;
-use api::Listener;
+use Listener;
 
 pub struct Package {
     id: ~str,
@@ -47,9 +47,11 @@ pub fn parse_name(id: ~str) -> result::Result<~str, ~str> {
     for parts.each |&part| {
         for str::chars(part).each |&char| {
             if char::is_whitespace(char) {
-                return result::Err(~"could not parse id: contains whitespace");
+                return result::Err(
+                    ~"could not parse id: contains whitespace");
             } else if char::is_uppercase(char) {
-                return result::Err(~"could not parse id: should be all lowercase");
+                return result::Err(
+                    ~"could not parse id: should be all lowercase");
             }
         }
     }
@@ -98,7 +100,7 @@ fn fold_mod(ctx: @ReadyCtx, m: ast::_mod,
         }
     }
 
-    fold::noop_fold_mod({
+    fold::noop_fold_mod(ast::_mod {
         view_items: vec::append_one(m.view_items, mk_rustpkg_use(ctx)),
         items: do vec::map(m.items) |item| {
             strip_main(*item)
@@ -116,7 +118,7 @@ fn fold_crate(ctx: @ReadyCtx, crate: ast::crate_,
     }
 }
 
-fn fold_item(ctx: @ReadyCtx, &&item: @ast::item,
+fn fold_item(ctx: @ReadyCtx, item: @ast::item,
              fold: fold::ast_fold) -> Option<@ast::item> {
 
     ctx.path.push(item.ident);
@@ -177,7 +179,7 @@ fn mk_rustpkg_import(ctx: @ReadyCtx) -> @ast::view_item {
 fn add_pkg_module(ctx: @ReadyCtx, m: ast::_mod) -> ast::_mod {
     let listeners = mk_listeners(ctx);
     let main = mk_main(ctx);
-    let pkg_mod = @{
+    let pkg_mod = @ast::_mod {
         view_items: ~[mk_rustpkg_import(ctx)],
         items: ~[main, listeners]
     };
@@ -193,7 +195,7 @@ fn add_pkg_module(ctx: @ReadyCtx, m: ast::_mod) -> ast::_mod {
         span: dummy_sp(),
     };
 
-    {
+    ast::_mod {
         items: vec::append_one(/*bad*/copy m.items, item),
         .. m
     }
@@ -228,7 +230,7 @@ fn path_node_global(ids: ~[ast::ident]) -> @ast::path {
 
 fn mk_listeners(ctx: @ReadyCtx) -> @ast::item {
     let ret_ty = mk_listener_vec_ty(ctx);
-    let decl = {
+    let decl = ast::fn_decl {
         inputs: ~[],
         output: ret_ty,
         cf: ast::return_val
@@ -255,7 +257,7 @@ fn mk_path(ctx: @ReadyCtx, path: ~[ast::ident]) -> @ast::path {
 
 fn mk_listener_vec_ty(ctx: @ReadyCtx) -> @ast::Ty {
     let listener_ty_path = mk_path(ctx, ~[ctx.sess.ident_of(~"Listener")]);
-    let listener_ty = {
+    let listener_ty = ast::Ty {
         id: ctx.sess.next_node_id(),
         node: ast::ty_path(listener_ty_path,
                            ctx.sess.next_node_id()),
@@ -265,13 +267,13 @@ fn mk_listener_vec_ty(ctx: @ReadyCtx) -> @ast::Ty {
         ty: @listener_ty,
         mutbl: ast::m_imm
     };
-    let inner_ty = @{
+    let inner_ty = @ast::Ty {
         id: ctx.sess.next_node_id(),
         node: ast::ty_vec(vec_mt),
         span: dummy_sp()
     };
 
-    @{
+    @ast::Ty {
         id: ctx.sess.next_node_id(),
         node: ast::ty_uniq(ast::mt {
             ty: inner_ty,
@@ -287,14 +289,14 @@ fn mk_listener_vec(ctx: @ReadyCtx) -> @ast::expr {
     let descs = do fns.map |listener| {
         mk_listener_rec(ctx, *listener)
     };
-    let inner_expr = @{
+    let inner_expr = @ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: ast::expr_vec(descs, ast::m_imm),
         span: dummy_sp()
     };
 
-    @{
+    @ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: ast::expr_vstore(inner_expr, ast::expr_vstore_uniq),
@@ -306,27 +308,27 @@ fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
     let span = listener.span;
     let path = /*bad*/copy listener.path;
     let descs = do listener.cmds.map |&cmd| {
-        let inner = @{
+        let inner = @ast::expr {
             id: ctx.sess.next_node_id(),
             callee_id: ctx.sess.next_node_id(),
             node: ast::expr_lit(@no_span(ast::lit_str(@cmd))),
             span: span
         };
 
-        @{
+        @ast::expr {
             id: ctx.sess.next_node_id(),
             callee_id: ctx.sess.next_node_id(),
             node: ast::expr_vstore(inner, ast::expr_vstore_uniq),
             span: dummy_sp()
         }
     };
-    let cmd_expr_inner = @{
+    let cmd_expr_inner = @ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: ast::expr_vec(descs, ast::m_imm),
         span: dummy_sp()
     };
-    let cmd_expr = {
+    let cmd_expr = ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: ast::expr_vstore(cmd_expr_inner, ast::expr_vstore_uniq),
@@ -339,7 +341,7 @@ fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
     });
 
     let cb_path = path_node_global(path);
-    let cb_expr = {
+    let cb_expr = ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: ast::expr_path(cb_path),
@@ -356,7 +358,7 @@ fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
     let listener_rec_ = ast::expr_struct(listener_path,
                                          ~[cmd_field, cb_field],
                                          option::None);
-    @{
+    @ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: listener_rec_,
@@ -366,16 +368,17 @@ fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
 
 fn mk_fn_wrapper(ctx: @ReadyCtx, fn_path_expr: ast::expr,
                  span: span) -> @ast::expr {
-    let call_expr = {
+    let call_expr = ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: ast::expr_call(@fn_path_expr, ~[], false),
         span: span
     };
-    let call_stmt = no_span(ast::stmt_semi(@call_expr, ctx.sess.next_node_id()));
-    let wrapper_decl = {
+    let call_stmt = no_span(ast::stmt_semi(@call_expr,
+                                           ctx.sess.next_node_id()));
+    let wrapper_decl = ast::fn_decl {
         inputs: ~[],
-        output: @{
+        output: @ast::Ty {
             id: ctx.sess.next_node_id(),
             node: ast::ty_nil, span: span
         },
@@ -389,7 +392,7 @@ fn mk_fn_wrapper(ctx: @ReadyCtx, fn_path_expr: ast::expr,
         rules: ast::default_blk
     });
 
-    @{
+    @ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: ast::expr_fn(ast::ProtoBare, wrapper_decl,
@@ -399,12 +402,12 @@ fn mk_fn_wrapper(ctx: @ReadyCtx, fn_path_expr: ast::expr,
 }
 
 fn mk_main(ctx: @ReadyCtx) -> @ast::item {
-    let ret_ty = {
+    let ret_ty = ast::Ty {
         id: ctx.sess.next_node_id(),
         node: ast::ty_nil,
         span: dummy_sp()
     };
-    let decl = {
+    let decl = ast::fn_decl {
         inputs: ~[],
         output: @ret_ty,
         cf: ast::return_val
@@ -431,14 +434,14 @@ fn mk_main(ctx: @ReadyCtx) -> @ast::item {
 fn mk_run_call(ctx: @ReadyCtx) -> @ast::expr {
     let listener_path = path_node(~[ctx.sess.ident_of(~"listeners")]);
     let listener_path_expr_ = ast::expr_path(listener_path);
-    let listener_path_expr = {
+    let listener_path_expr = ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: listener_path_expr_,
         span: dummy_sp()
     };
     let listener_call_expr_ = ast::expr_call(@listener_path_expr, ~[], false);
-    let listener_call_expr = {
+    let listener_call_expr = ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: listener_call_expr_,
@@ -447,7 +450,7 @@ fn mk_run_call(ctx: @ReadyCtx) -> @ast::expr {
     let rustpkg_run_path = mk_path(ctx, ~[ctx.sess.ident_of(~"run")]);
 
     let rustpkg_run_path_expr_ = ast::expr_path(rustpkg_run_path);
-    let rustpkg_run_path_expr = {
+    let rustpkg_run_path_expr = ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: rustpkg_run_path_expr_,
@@ -456,7 +459,7 @@ fn mk_run_call(ctx: @ReadyCtx) -> @ast::expr {
     let rustpkg_run_call_expr_ = ast::expr_call(@rustpkg_run_path_expr,
                                                ~[@listener_call_expr],
                                                false);
-    @{
+    @ast::expr {
         id: ctx.sess.next_node_id(),
         callee_id: ctx.sess.next_node_id(),
         node: rustpkg_run_call_expr_,
@@ -602,7 +605,7 @@ fn _add_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
 
                 match map.get(&~"vers") {
                     json::String(str) => {
-                        if pkg.vers.to_str() == str {
+                        if has_id && pkg.vers.to_str() == str {
                             return packages;
                         }
                     }
@@ -644,8 +647,8 @@ fn _rm_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
 
                 match map.get(&~"vers") {
                     json::String(str) => {
-                        if pkg.vers.to_str() == str { None }
-                        else { Some(package) } 
+                        if has_id && pkg.vers.to_str() == str { None }
+                        else { Some(package) }
                     }
                     _ => { Some(package) }
                 }
@@ -673,21 +676,25 @@ pub fn load_pkgs() -> result::Result<~[json::Json], ~str> {
                             _ => {
                                 os::remove_file(&db_lock);
 
-                                return result::Err(~"package db's json is not a list");
+                                return result::Err(
+                                    ~"package db's json is not a list");
                             }
                         }
                     }
                     result::Err(err) => {
                         os::remove_file(&db_lock);
 
-                        return result::Err(fmt!("failed to parse package db: %s", err.to_str()));
+                        return result::Err(
+                            fmt!("failed to parse package db: %s",
+                            err.to_str()));
                     }
                 }
             }
             result::Err(err) => {
                 os::remove_file(&db_lock);
 
-                return result::Err(fmt!("failed to read package db: %s", err));
+                return result::Err(fmt!("failed to read package db: %s",
+                                        err));
             }
         }
     } else { ~[] };
@@ -697,7 +704,8 @@ pub fn load_pkgs() -> result::Result<~[json::Json], ~str> {
     result::Ok(packages)
 }
 
-pub fn get_pkg(id: ~str, vers: Option<~str>) -> result::Result<Package, ~str> {
+pub fn get_pkg(id: ~str,
+               vers: Option<~str>) -> result::Result<Package, ~str> {
     let name = match parse_name(id) {
         result::Ok(name) => name,
         result::Err(err) => return result::Err(err)
@@ -812,7 +820,8 @@ pub fn add_pkg(pkg: &Package) -> bool {
 
     match io::mk_file_writer(&db, ~[io::Create]) {
         result::Ok(writer) => {
-            writer.write_line(json::to_pretty_str(&json::List(_add_pkg(packages, pkg))));
+            writer.write_line(json::to_pretty_str(&json::List(
+                _add_pkg(packages, pkg))));
         }
         result::Err(err) => {
             error(fmt!("failed to dump package db: %s", err));
@@ -846,7 +855,8 @@ pub fn remove_pkg(pkg: &Package) -> bool {
 
     match io::mk_file_writer(&db, ~[io::Create]) {
         result::Ok(writer) => {
-            writer.write_line(json::to_pretty_str(&json::List(_rm_pkg(packages, pkg))));
+            writer.write_line(json::to_pretty_str(&json::List(
+                _rm_pkg(packages, pkg))));
         }
         result::Err(err) => {
             error(fmt!("failed to dump package db: %s", err));
@@ -868,14 +878,23 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
     let test_dir = dir.push(~"test");
     let binary = os::args()[0];
     let matches = getopts(flags, driver::optgroups()).get();
-    let mut options = driver::build_session_options(binary, matches,
-                                                    diagnostic::emit);
+    let options = @{
+        crate_type: session::unknown_crate,
+        optimize: if opt { session::Aggressive } else { session::No },
+        test: test,
+        maybe_sysroot: sysroot,
+        .. *driver::build_session_options(binary, &matches, diagnostic::emit)
+    };
+    let mut crate_cfg = options.cfg;
 
-    options.crate_type = session::unknown_crate;
-    options.optimize = if opt { session::Aggressive } else { session::No };
-    options.test = test;
-    options.maybe_sysroot = sysroot;
+    for cfgs.each |&cfg| {
+        crate_cfg.push(attr::mk_word_item(cfg));
+    }
 
+    let options = @{
+        cfg: vec::append(options.cfg, crate_cfg),
+        .. *options
+    };
     let sess = driver::build_session(options, diagnostic::emit);
     let cfg = driver::build_configuration(sess, binary, input);
     let mut outputs = driver::build_output_filenames(input, &None, &None,
@@ -979,7 +998,8 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
         let path = bin_dir.push(fmt!("%s-%s-%s%s", name,
                                                    hash(name + uuid + vers),
                                                    vers, exe_suffix()));
-        outputs = driver::build_output_filenames(input, &None, &Some(path), sess);
+        outputs = driver::build_output_filenames(input, &None, &Some(path),
+                                                 sess);
     } else {
         need_dir(&lib_dir);
 
@@ -1002,18 +1022,24 @@ pub fn exe_suffix() -> ~str { ~".exe" }
 #[cfg(target_os = "macos")]
 pub fn exe_suffix() -> ~str { ~"" }
 
-pub fn compile_crate(sysroot: Option<Path>, crate: &Path, dir: &Path, flags: ~[~str],
-               cfgs: ~[~str], opt: bool, test: bool) -> bool {
-    compile_input(sysroot, driver::file_input(*crate), dir, flags, cfgs, opt, test)
+
+// FIXME: Use workcache to only compile when needed
+pub fn compile_crate(sysroot: Option<Path>, crate: &Path, dir: &Path,
+                     flags: ~[~str], cfgs: ~[~str], opt: bool,
+                     test: bool) -> bool {
+    compile_input(sysroot, driver::file_input(*crate), dir, flags, cfgs,
+                  opt, test)
 }
 
-pub fn compile_str(sysroot: Option<Path>, code: ~str, dir: &Path, flags: ~[~str],
-                   cfgs: ~[~str], opt: bool, test: bool) -> bool {
-    compile_input(sysroot, driver::str_input(code), dir, flags, cfgs, opt, test)
+pub fn compile_str(sysroot: Option<Path>, code: ~str, dir: &Path,
+                   flags: ~[~str], cfgs: ~[~str], opt: bool,
+                   test: bool) -> bool {
+    compile_input(sysroot, driver::str_input(code), dir, flags, cfgs,
+                  opt, test)
 }
 
 #[cfg(windows)]
-pub fn link_exe(_src: &Path, _dest: &Path) -> bool{
+pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
     /* FIXME: Investigate how to do this on win32
        Node wraps symlinks by having a .bat,
        but that won't work with minGW. */
