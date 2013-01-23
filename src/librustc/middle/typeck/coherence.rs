@@ -693,18 +693,18 @@ impl CoherenceChecker {
 
         let tcx = self.crate_context.tcx;
 
-        let mut provided_names = send_map::linear::LinearMap();
+        let mut provided_names = send_map::linear::LinearSet::new();
         // Implemented methods
         for uint::range(0, all_methods.len()) |i| {
-            provided_names.insert(all_methods[i].ident, ());
+            provided_names.insert(all_methods[i].ident);
         }
         // Default methods
         for ty::provided_trait_methods(tcx, trait_did).each |ident| {
-            provided_names.insert(*ident, ());
+            provided_names.insert(*ident);
         }
 
         for (*ty::trait_methods(tcx, trait_did)).each |method| {
-            if provided_names.contains_key(&method.ident) { loop; }
+            if provided_names.contains(&method.ident) { loop; }
 
             tcx.sess.span_err(trait_ref_span,
                               fmt!("missing method `%s`",
