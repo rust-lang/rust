@@ -209,12 +209,12 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 }
 
 /// Produces a mut vector from an immutable vector.
-pub pure fn to_mut<T>(v: ~[T]) -> ~[mut T] {
+pub pure fn cast_to_mut<T>(v: ~[T]) -> ~[mut T] {
     unsafe { ::cast::transmute(v) }
 }
 
 /// Produces an immutable vector from a mut vector.
-pub pure fn from_mut<T>(v: ~[mut T]) -> ~[T] {
+pub pure fn cast_from_mut<T>(v: ~[mut T]) -> ~[T] {
     unsafe { ::cast::transmute(v) }
 }
 
@@ -552,7 +552,7 @@ pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) unsafe {
 }
 
 pub fn consume_mut<T>(v: ~[mut T], f: fn(uint, v: T)) {
-    consume(vec::from_mut(v), f)
+    consume(vec::cast_from_mut(v), f)
 }
 
 /// Remove the last element from a vector and return it
@@ -718,7 +718,7 @@ pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
 
 #[inline(always)]
 pub pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
-    to_mut(append(from_mut(lhs), rhs))
+    cast_to_mut(append(cast_from_mut(lhs), rhs))
 }
 
 /**
@@ -3271,22 +3271,22 @@ mod tests {
     }
 
     #[test]
-    fn to_mut_no_copy() {
+    fn cast_to_mut_no_copy() {
         unsafe {
             let x = ~[1, 2, 3];
             let addr = raw::to_ptr(x);
-            let x_mut = to_mut(x);
+            let x_mut = cast_to_mut(x);
             let addr_mut = raw::to_ptr(x_mut);
             assert addr == addr_mut;
         }
     }
 
     #[test]
-    fn from_mut_no_copy() {
+    fn cast_from_mut_no_copy() {
         unsafe {
             let x = ~[mut 1, 2, 3];
             let addr = raw::to_ptr(x);
-            let x_imm = from_mut(x);
+            let x_imm = cast_from_mut(x);
             let addr_imm = raw::to_ptr(x_imm);
             assert addr == addr_imm;
         }

@@ -259,13 +259,13 @@ pub fn sha1() -> Sha1 {
         }
     }
     let st = {
-        h: vec::to_mut(vec::from_elem(digest_buf_len, 0u32)),
+        h: vec::cast_to_mut(vec::from_elem(digest_buf_len, 0u32)),
         mut len_low: 0u32,
         mut len_high: 0u32,
-        msg_block: vec::to_mut(vec::from_elem(msg_block_len, 0u8)),
+        msg_block: vec::cast_to_mut(vec::from_elem(msg_block_len, 0u8)),
         mut msg_block_idx: 0u,
         mut computed: false,
-        work_buf: @vec::to_mut(vec::from_elem(work_buf_len, 0u32))
+        work_buf: @vec::cast_to_mut(vec::from_elem(work_buf_len, 0u32))
     };
     let sh = (move st) as Sha1;
     sh.reset();

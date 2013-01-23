@@ -72,7 +72,7 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt
             {
                 let mut line = ~[];   
                 vec::grow_set(&mut line, width-1, &'.', '.');
-                push(vec::to_mut(line));
+                push(vec::cast_to_mut(line));
             }
         };
 

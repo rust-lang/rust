@@ -97,7 +97,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
     for num_condvars.times {
         queues.push(new_waitqueue());
     }
-    new_sem(count, vec::to_mut(move queues))
+    new_sem(count, vec::cast_to_mut(move queues))
 }
 
 #[doc(hidden)]
