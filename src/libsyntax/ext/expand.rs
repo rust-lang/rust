@@ -300,6 +300,14 @@ fn core_macros() -> ~str {
         )
     )
 
+    macro_rules! fail_unless(
+        ($cond:expr) => {
+            if !$cond {
+                die!(~\"assertion failed: \" + stringify!($cond))
+            }
+        }
+    )
+
     macro_rules! condition (
 
         { $c:ident: $in:ty -> $out:ty; } => {
