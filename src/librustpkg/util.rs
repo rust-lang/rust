@@ -15,14 +15,14 @@ use rustc::driver::{driver, session};
 use syntax::ast_util::*;
 use syntax::{ast, attr, codemap, diagnostic, fold, parse, visit};
 use codemap::span;
-use semver::Version;
+use std::semver;
 use std::{json, term, sort, getopts};
 use getopts::groups::getopts;
 use Listener;
 
 pub struct Package {
     id: ~str,
-    vers: Version,
+    vers: semver::Version,
     bins: ~[~str],
     libs: ~[~str],
 }
@@ -488,7 +488,7 @@ pub fn ready_crate(sess: session::Session,
     @fold.fold_crate(*crate)
 }
 
-pub fn parse_vers(vers: ~str) -> result::Result<Version, ~str> {
+pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
     match semver::parse(vers) {
         Some(vers) => result::Ok(vers),
         None => result::Err(~"could not parse version: invalid")
@@ -1023,7 +1023,7 @@ pub fn exe_suffix() -> ~str { ~".exe" }
 pub fn exe_suffix() -> ~str { ~"" }
 
 
-// FIXME: Use workcache to only compile when needed
+// FIXME (#4432): Use workcache to only compile when needed
 pub fn compile_crate(sysroot: Option<Path>, crate: &Path, dir: &Path,
                      flags: ~[~str], cfgs: ~[~str], opt: bool,
                      test: bool) -> bool {
@@ -1040,7 +1040,7 @@ pub fn compile_str(sysroot: Option<Path>, code: ~str, dir: &Path,
 
 #[cfg(windows)]
 pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
-    /* FIXME: Investigate how to do this on win32
+    /* FIXME (#1768): Investigate how to do this on win32
        Node wraps symlinks by having a .bat,
        but that won't work with minGW. */
 
