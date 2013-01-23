@@ -19,7 +19,7 @@ use core::ops;
 use core::to_str::ToStr;
 use core::mutable::Mut;
 use core::prelude::*;
-use core::send_map::linear::LinearMap;
+use core::hashmap::linear::LinearMap;
 use core::to_bytes::IterBytes;
 use core::uint;
 use core::vec;

@@ -22,7 +22,7 @@ use core::pipes::{recv, oneshot, PortOne, send_one};
 use core::prelude::*;
 use core::result;
 use core::run;
-use core::send_map::linear::LinearMap;
+use core::hashmap::linear::LinearMap;
 use core::task;
 use core::to_bytes;
 use core::mutable::Mut;

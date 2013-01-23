@@ -24,7 +24,7 @@ use core::float;
 use core::io::{WriterUtil, ReaderUtil};
 use core::io;
 use core::prelude::*;
-use core::send_map::linear;
+use core::hashmap::linear;
 use core::str;
 use core::to_str;
 use core::vec;
@@ -1223,7 +1223,7 @@ mod tests {
     use json::*;
 
     use core::result;
-    use core::send_map::linear;
+    use core::hashmap::linear;
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~linear::LinearMap();

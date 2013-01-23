@@ -138,7 +138,7 @@ pub mod dvec_iter;
 pub mod dlist;
 #[path="iter-trait.rs"] #[merge = "iter-trait/dlist.rs"]
 pub mod dlist_iter;
-pub mod send_map;
+pub mod hashmap;
 
 
 /* Tasks and communication */

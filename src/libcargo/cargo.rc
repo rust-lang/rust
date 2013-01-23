@@ -52,7 +52,7 @@ use core::*;
 use core::dvec::DVec;
 use core::io::WriterUtil;
 use core::result::{Ok, Err};
-use core::send_map::linear::LinearMap;
+use core::hashmap::linear::LinearMap;
 use std::getopts::{optflag, optopt, opt_present};
 use std::map::HashMap;
 use std::{map, json, tempfile, term, sort, getopts};
