@@ -14,9 +14,9 @@ extern mod std;
 fn fannkuch(n: int) -> int {
     fn perm1init(i: uint) -> int { return i as int; }
 
-    let perm = vec::to_mut(vec::from_elem(n as uint, 0));
-    let perm1 = vec::to_mut(vec::from_fn(n as uint, |i| perm1init(i)));
-    let count = vec::to_mut(vec::from_elem(n as uint, 0));
+    let perm = vec::cast_to_mut(vec::from_elem(n as uint, 0));
+    let perm1 = vec::cast_to_mut(vec::from_fn(n as uint, |i| perm1init(i)));
+    let count = vec::cast_to_mut(vec::from_elem(n as uint, 0));
     let mut f = 0;
     let mut i = 0;
     let mut k = 0;

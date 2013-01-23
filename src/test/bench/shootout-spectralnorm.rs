@@ -45,7 +45,7 @@ fn eval_At_times_u(u: &[const float], Au: &[mut float]) {
 }
 
 fn eval_AtA_times_u(u: &[const float], AtAu: &[mut float]) {
-    let v = vec::to_mut(vec::from_elem(vec::len(u), 0.0));
+    let v = vec::cast_to_mut(vec::from_elem(vec::len(u), 0.0));
     eval_A_times_u(u, v);
     eval_At_times_u(v, AtAu);
 }
@@ -62,8 +62,8 @@ fn main() {
 
     let N = uint::from_str(args[1]).get();
 
-    let u = vec::to_mut(vec::from_elem(N, 1.0));
-    let v = vec::to_mut(vec::from_elem(N, 0.0));
+    let u = vec::cast_to_mut(vec::from_elem(N, 1.0));
+    let v = vec::cast_to_mut(vec::from_elem(N, 0.0));
     let mut i = 0u;
     while i < 10u {
         eval_AtA_times_u(u, v);

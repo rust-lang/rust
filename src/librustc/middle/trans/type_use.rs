@@ -68,7 +68,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     // Conservatively assume full use for recursive loops
     ccx.type_use_cache.insert(fn_id, vec::from_elem(n_tps, 3u));
 
-    let cx = {ccx: ccx, uses: vec::to_mut(vec::from_elem(n_tps, 0u))};
+    let cx = {ccx: ccx, uses: vec::cast_to_mut(vec::from_elem(n_tps, 0u))};
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
         ty::ty_fn(ref fn_ty) => {
             for vec::each(fn_ty.sig.inputs) |arg| {
@@ -84,7 +84,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     }
 
     if fn_id_loc.crate != local_crate {
-        let uses = vec::from_mut(copy cx.uses);
+        let uses = vec::cast_from_mut(copy cx.uses);
         ccx.type_use_cache.insert(fn_id, copy uses);
         return uses;
     }
@@ -167,7 +167,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                                 ccx.tcx.sess.parse_sess.interner)));
       }
     }
-    let uses = vec::from_mut(copy cx.uses);
+    let uses = vec::cast_from_mut(copy cx.uses);
     // XXX: Bad copy, use @vec instead?
     ccx.type_use_cache.insert(fn_id, copy uses);
     uses

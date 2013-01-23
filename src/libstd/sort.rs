@@ -457,7 +457,7 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
-        let tmp = vec::to_mut(vec::slice(array, base1, base1+len1));
+        let tmp = vec::cast_to_mut(vec::slice(array, base1, base1+len1));
 
         let mut c1 = 0;
         let mut c2 = base2;
@@ -560,7 +560,7 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
-        let tmp = vec::to_mut(vec::slice(array, base2, base2+len2));
+        let tmp = vec::cast_to_mut(vec::slice(array, base2, base2+len2));
 
         let mut c1 = base1 + len1 - 1;
         let mut c2 = len2 - 1;
@@ -816,7 +816,7 @@ mod test_qsort {
 
         do quick_sort(names) |x, y| { int::le(*x, *y) };
 
-        let immut_names = vec::from_mut(move names);
+        let immut_names = vec::cast_from_mut(move names);
 
         let pairs = vec::zip_slice(expected, immut_names);
         for vec::each(pairs) |p| {
@@ -1025,7 +1025,7 @@ mod big_tests {
         let res = do vec::from_fn(num) |i| {
             arr[i % size]
         };
-        vec::to_mut(move res)
+        vec::cast_to_mut(move res)
     }
 
     fn makeRange(n: uint) -> ~[uint] {
@@ -1051,7 +1051,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 rng.gen_float()
             };
-            let arr = vec::to_mut(move arr);
+            let arr = vec::cast_to_mut(move arr);
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1123,7 +1123,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 @rng.gen_float()
             };
-            let arr = vec::to_mut(move arr);
+            let arr = vec::cast_to_mut(move arr);
 
             tim_sort(arr); // *sort
             isSorted(arr);

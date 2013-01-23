@@ -42,7 +42,7 @@ fn read_grid(f: io::Reader) -> grid_t {
     assert f.read_line() == ~"9,9"; /* assert first line is exactly "9,9" */
 
     let g = vec::from_fn(10u, {|_i|
-        vec::to_mut(vec::from_elem(10u, 0 as u8))
+        vec::cast_to_mut(vec::from_elem(10u, 0 as u8))
     });
     while !f.eof() {
         let comps = str::split_char(str::trim(f.read_line()), ',');
@@ -142,7 +142,7 @@ fn main() {
         // FIXME create sudoku inline since nested vec consts dont work yet
         // (#3733)
         let g = vec::from_fn(10u, |_i| {
-            vec::to_mut(vec::from_elem(10u, 0 as u8))
+            vec::cast_to_mut(vec::from_elem(10u, 0 as u8))
         });
         g[0][1] = 4u8;
         g[0][3] = 6u8;

@@ -661,11 +661,11 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
         tcx: ir.tcx,
         s: specials,
         successors:
-            vec::to_mut(
+            vec::cast_to_mut(
                 vec::from_elem(ir.num_live_nodes,
                                invalid_node())),
         users:
-            vec::to_mut(
+            vec::cast_to_mut(
                 vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                invalid_users())),
         loop_scope: DVec(),

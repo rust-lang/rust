@@ -273,7 +273,7 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
                          procres: procres) {
 
     // true if we found the error in question
-    let found_flags = vec::to_mut(vec::from_elem(
+    let found_flags = vec::cast_to_mut(vec::from_elem(
         vec::len(expected_errors), false));
 
     if procres.status == 0 {
