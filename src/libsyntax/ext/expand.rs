@@ -46,7 +46,8 @@ fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
                     cx.span_fatal(pth.span,
                                   fmt!("macro undefined: '%s'", *extname))
                   }
-                  Some(NormalTT(SyntaxExpanderTT{expander: exp, span: exp_sp})) => {
+                  Some(NormalTT(SyntaxExpanderTT{expander: exp,
+                                                 span: exp_sp})) => {
                     cx.bt_push(ExpandedFrom({call_site: s,
                                 callie: {name: *extname, span: exp_sp}}));
 
