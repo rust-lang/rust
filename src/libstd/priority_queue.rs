@@ -47,9 +47,6 @@ impl <T: Ord> PriorityQueue<T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }
 
-    /// Returns true if a queue contains some elements
-    pure fn is_not_empty(&self) -> bool { self.data.is_not_empty() }
-
     /// Returns the number of elements the queue can hold without reallocating
     pure fn capacity(&self) -> uint { vec::capacity(&self.data) }
 
@@ -62,7 +59,7 @@ impl <T: Ord> PriorityQueue<T> {
     /// Pop the greatest item from the queue - fails if empty
     fn pop(&mut self) -> T {
         let mut item = self.data.pop();
-        if self.is_not_empty() { item <-> self.data[0]; self.siftdown(0); }
+        if !self.is_empty() { item <-> self.data[0]; self.siftdown(0); }
         item
     }
 
@@ -80,7 +77,7 @@ impl <T: Ord> PriorityQueue<T> {
     /// Optimized version of a push followed by a pop
     fn push_pop(&mut self, item: T) -> T {
         let mut item = item;
-        if self.is_not_empty() && self.data[0] > item {
+        if !self.is_empty() && self.data[0] > item {
             item <-> self.data[0];
             self.siftdown(0);
         }
@@ -189,7 +186,7 @@ mod tests {
         let data = ~[2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
         let mut sorted = merge_sort(data, le);
         let mut heap = from_vec(data);
-        while heap.is_not_empty() {
+        while !heap.is_empty() {
             assert *heap.top() == sorted.last();
             assert heap.pop() == sorted.pop();
         }
