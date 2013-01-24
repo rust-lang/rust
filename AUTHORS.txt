@@ -148,4 +148,5 @@ Vincent Belliard <vincent@famillebelliard.fr>
 Wade Mealing <wmealing@gmail.com>
 William Ting <william.h.ting@gmail.com>
 Yasuhiro Fujii <y-fujii@mimosa-pudica.net>
+Youngsoo Son <ysson83@gmail.com>
 Zack Corr <zackcorr95@gmail.com>
