@@ -98,23 +98,25 @@ mod NBodySystem {
 
     pub fn advance_one(bi: &mut Body::props,
                        bj: &mut Body::props,
-                       dt: float) unsafe {
-        let dx = bi.x - bj.x;
-        let dy = bi.y - bj.y;
-        let dz = bi.z - bj.z;
+                       dt: float) {
+        unsafe {
+            let dx = bi.x - bj.x;
+            let dy = bi.y - bj.y;
+            let dz = bi.z - bj.z;
 
-        let dSquared = dx * dx + dy * dy + dz * dz;
+            let dSquared = dx * dx + dy * dy + dz * dz;
 
-        let distance = ::libc::sqrt(dSquared);
-        let mag = dt / (dSquared * distance);
+            let distance = ::libc::sqrt(dSquared);
+            let mag = dt / (dSquared * distance);
 
-        bi.vx -= dx * bj.mass * mag;
-        bi.vy -= dy * bj.mass * mag;
-        bi.vz -= dz * bj.mass * mag;
+            bi.vx -= dx * bj.mass * mag;
+            bi.vy -= dy * bj.mass * mag;
+            bi.vz -= dz * bj.mass * mag;
 
-        bj.vx += dx * bi.mass * mag;
-        bj.vy += dy * bi.mass * mag;
-        bj.vz += dz * bi.mass * mag;
+            bj.vx += dx * bi.mass * mag;
+            bj.vy += dy * bi.mass * mag;
+            bj.vz += dz * bi.mass * mag;
+        }
     }
 
     pub fn move_(b: &mut Body::props, dt: float) {
@@ -123,36 +125,41 @@ mod NBodySystem {
         b.z += dt * b.vz;
     }
 
-    pub fn energy(bodies: &[Body::props]) -> float unsafe {
-        let mut dx;
-        let mut dy;
-        let mut dz;
-        let mut distance;
-        let mut e = 0.0;
+    pub fn energy(bodies: &[Body::props]) -> float {
+        unsafe {
+            let mut dx;
+            let mut dy;
+            let mut dz;
+            let mut distance;
+            let mut e = 0.0;
 
-        let mut i = 0;
-        while i < 5 {
-            e +=
-                0.5 * bodies[i].mass *
-                (bodies[i].vx * bodies[i].vx + bodies[i].vy * bodies[i].vy
-                 + bodies[i].vz * bodies[i].vz);
+            let mut i = 0;
+            while i < 5 {
+                e +=
+                    0.5 * bodies[i].mass *
+                    (bodies[i].vx * bodies[i].vx
+                     + bodies[i].vy * bodies[i].vy
+                     + bodies[i].vz * bodies[i].vz);
 
-            let mut j = i + 1;
-            while j < 5 {
-                dx = bodies[i].x - bodies[j].x;
-                dy = bodies[i].y - bodies[j].y;
-                dz = bodies[i].z - bodies[j].z;
+                let mut j = i + 1;
+                while j < 5 {
+                    dx = bodies[i].x - bodies[j].x;
+                    dy = bodies[i].y - bodies[j].y;
+                    dz = bodies[i].z - bodies[j].z;
 
-                distance = ::libc::sqrt(dx * dx + dy * dy + dz * dz);
-                e -= bodies[i].mass * bodies[j].mass / distance;
+                    distance = ::libc::sqrt(dx * dx
+                                            + dy * dy
+                                            + dz * dz);
+                    e -= bodies[i].mass
+                        * bodies[j].mass / distance;
 
-                j += 1;
+                    j += 1;
+                }
+
+                i += 1;
             }
-
-            i += 1;
+            return e;
         }
-        return e;
-
     }
 }
 
