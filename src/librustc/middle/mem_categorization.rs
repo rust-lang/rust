@@ -73,6 +73,7 @@ enum categorization {
     cat_deref(cmt, uint, ptr_kind), // deref of a ptr
     cat_comp(cmt, comp_kind),       // adjust to locate an internal component
     cat_discr(cmt, ast::node_id),   // match discriminant (see preserve())
+    cat_self(ast::node_id),         // explicit `self`
 }
 
 // different kinds of pointers:
@@ -80,7 +81,7 @@ enum categorization {
 pub enum ptr_kind {
     uniq_ptr,
     gc_ptr(ast::mutability),
-    region_ptr(ty::Region),
+    region_ptr(ast::mutability, ty::Region),
     unsafe_ptr
 }
 
@@ -103,7 +104,6 @@ pub enum comp_kind {
 enum special_kind {
     sk_method,
     sk_static_item,
-    sk_self,
     sk_implicit_self,   // old by-reference `self`
     sk_heap_upvar
 }
@@ -135,43 +135,13 @@ impl cmt_ : cmp::Eq {
 // a loan path is like a category, but it exists only when the data is
 // interior to the stack frame.  loan paths are used as the key to a
 // map indicating what is borrowed at any point in time.
+#[deriving_eq]
 pub enum loan_path {
     lp_local(ast::node_id),
     lp_arg(ast::node_id),
+    lp_self,
     lp_deref(@loan_path, ptr_kind),
     lp_comp(@loan_path, comp_kind)
-}
-
-impl loan_path : cmp::Eq {
-    pure fn eq(&self, other: &loan_path) -> bool {
-        match (*self) {
-            lp_local(e0a) => {
-                match (*other) {
-                    lp_local(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            lp_arg(e0a) => {
-                match (*other) {
-                    lp_arg(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            lp_deref(e0a, e1a) => {
-                match (*other) {
-                    lp_deref(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            lp_comp(e0a, e1a) => {
-                match (*other) {
-                    lp_comp(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &loan_path) -> bool { !(*self).eq(other) }
 }
 
 // We pun on *T to mean both actual deref of a ptr as well
@@ -193,14 +163,17 @@ fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         Some(deref_ptr(uniq_ptr))
       }
 
-      ty::ty_rptr(r, _) |
-      ty::ty_evec(_, ty::vstore_slice(r)) |
+      ty::ty_rptr(r, mt) |
+      ty::ty_evec(mt, ty::vstore_slice(r)) => {
+        Some(deref_ptr(region_ptr(mt.mutbl, r)))
+      }
+
       ty::ty_estr(ty::vstore_slice(r)) => {
-        Some(deref_ptr(region_ptr(r)))
+        Some(deref_ptr(region_ptr(ast::m_imm, r)))
       }
 
       ty::ty_fn(ref f) if (*f).meta.proto == ast::ProtoBorrowed => {
-        Some(deref_ptr(region_ptr((*f).meta.region)))
+        Some(deref_ptr(region_ptr(ast::m_imm, (*f).meta.region)))
       }
 
       ty::ty_box(mt) |
@@ -481,15 +454,18 @@ impl &mem_categorization_ctxt {
               mutbl:m, ty:expr_ty}
           }
 
-          ast::def_self(_, is_implicit) => {
-            let special_kind = if is_implicit {
-                sk_implicit_self
+          ast::def_self(self_id, is_implicit) => {
+            let cat, loan_path;
+            if is_implicit {
+                cat = cat_special(sk_implicit_self);
+                loan_path = None;
             } else {
-                sk_self
+                cat = cat_self(self_id);
+                loan_path = Some(@lp_self);
             };
 
             @{id:id, span:span,
-              cat:cat_special(special_kind), lp:None,
+              cat:cat, lp:loan_path,
               mutbl:m_imm, ty:expr_ty}
           }
 
@@ -626,13 +602,16 @@ impl &mem_categorization_ctxt {
             deref_ptr(ptr) => {
                 let lp = do base_cmt.lp.chain_ref |l| {
                     // Given that the ptr itself is loanable, we can
-                    // loan out deref'd uniq ptrs as the data they are
-                    // the only way to reach the data they point at.
-                    // Other ptr types admit aliases and are therefore
-                    // not loanable.
+                    // loan out deref'd uniq ptrs or mut ptrs as the data
+                    // they are the only way to mutably reach the data they
+                    // point at. Other ptr types admit mutable aliases and
+                    // are therefore not loanable.
                     match ptr {
-                        uniq_ptr => {Some(@lp_deref(*l, ptr))}
-                        gc_ptr(*) | region_ptr(_) | unsafe_ptr => {None}
+                        uniq_ptr => Some(@lp_deref(*l, ptr)),
+                        region_ptr(ast::m_mutbl, _) => {
+                            Some(@lp_deref(*l, ptr))
+                        }
+                        gc_ptr(*) | region_ptr(_, _) | unsafe_ptr => None
                     }
                 };
 
@@ -642,7 +621,7 @@ impl &mem_categorization_ctxt {
                     uniq_ptr => {
                         self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
                     }
-                    gc_ptr(*) | region_ptr(_) | unsafe_ptr => {
+                    gc_ptr(*) | region_ptr(_, _) | unsafe_ptr => {
                         mt.mutbl
                     }
                 };
@@ -688,7 +667,7 @@ impl &mem_categorization_ctxt {
               uniq_ptr => {
                 self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
               }
-              gc_ptr(_) | region_ptr(_) | unsafe_ptr => {
+              gc_ptr(_) | region_ptr(_, _) | unsafe_ptr => {
                 mt.mutbl
               }
             };
@@ -866,13 +845,13 @@ impl &mem_categorization_ctxt {
           cat_special(sk_method) => ~"method",
           cat_special(sk_static_item) => ~"static_item",
           cat_special(sk_implicit_self) => ~"implicit-self",
-          cat_special(sk_self) => ~"self",
           cat_special(sk_heap_upvar) => ~"heap-upvar",
           cat_stack_upvar(_) => ~"stack-upvar",
           cat_rvalue => ~"rvalue",
           cat_local(node_id) => fmt!("local(%d)", node_id),
           cat_binding(node_id) => fmt!("binding(%d)", node_id),
           cat_arg(node_id) => fmt!("arg(%d)", node_id),
+          cat_self(node_id) => fmt!("self(%d)", node_id),
           cat_deref(cmt, derefs, ptr) => {
             fmt!("%s->(%s, %u)", self.cat_to_repr(cmt.cat),
                  self.ptr_sigil(ptr), derefs)
@@ -896,7 +875,7 @@ impl &mem_categorization_ctxt {
         match ptr {
           uniq_ptr => ~"~",
           gc_ptr(_) => ~"@",
-          region_ptr(_) => ~"&",
+          region_ptr(_, _) => ~"&",
           unsafe_ptr => ~"*"
         }
     }
@@ -919,6 +898,7 @@ impl &mem_categorization_ctxt {
           lp_arg(node_id) => {
             fmt!("arg(%d)", node_id)
           }
+          lp_self => ~"self",
           lp_deref(lp, ptr) => {
             fmt!("%s->(%s)", self.lp_to_str(lp),
                  self.ptr_sigil(ptr))
@@ -945,13 +925,13 @@ impl &mem_categorization_ctxt {
           cat_special(sk_method) => ~"method",
           cat_special(sk_static_item) => ~"static item",
           cat_special(sk_implicit_self) => ~"self reference",
-          cat_special(sk_self) => ~"self value",
           cat_special(sk_heap_upvar) => {
               ~"captured outer variable in a heap closure"
           }
           cat_rvalue => ~"non-lvalue",
           cat_local(_) => mut_str + ~" local variable",
           cat_binding(_) => ~"pattern binding",
+          cat_self(_) => ~"self value",
           cat_arg(_) => ~"argument",
           cat_deref(_, _, pk) => fmt!("dereference of %s %s pointer",
                                       mut_str, self.ptr_sigil(pk)),
@@ -1045,7 +1025,8 @@ impl categorization {
             cat_special(*) |
             cat_local(*) |
             cat_binding(*) |
-            cat_arg(*) => {
+            cat_arg(*) |
+            cat_self(*) => {
                 false
             }
         }
