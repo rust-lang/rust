@@ -26,11 +26,14 @@ fn as_hex(data: ~[u8]) -> ~str {
     return acc;
 }
 
-fn sha1(data: ~str) -> ~str unsafe {
-    let bytes = str::to_bytes(data);
-    let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
-                            vec::len(bytes) as c_uint, ptr::null());
-    return as_hex(vec::from_buf(hash, 20));
+fn sha1(data: ~str) -> ~str {
+    unsafe {
+        let bytes = str::to_bytes(data);
+        let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
+                                vec::len(bytes) as c_uint,
+                                ptr::null());
+        return as_hex(vec::from_buf(hash, 20));
+    }
 }
 
 fn main() {
@@ -225,13 +228,15 @@ struct timeval {
 extern mod lib_c {
     fn gettimeofday(tv: *timeval, tz: *()) -> i32;
 }
-fn unix_time_in_microseconds() -> u64 unsafe {
-    let x = timeval {
-        mut tv_sec: 0 as c_ulonglong,
-        mut tv_usec: 0 as c_ulonglong
-    };
-    lib_c::gettimeofday(ptr::addr_of(&x), ptr::null());
-    return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
+fn unix_time_in_microseconds() -> u64 {
+    unsafe {
+        let x = timeval {
+            mut tv_sec: 0 as c_ulonglong,
+            mut tv_usec: 0 as c_ulonglong
+        };
+        lib_c::gettimeofday(ptr::addr_of(&x), ptr::null());
+        return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
+    }
 }
 
 # fn main() { assert fmt!("%?", unix_time_in_microseconds()) != ~""; }
