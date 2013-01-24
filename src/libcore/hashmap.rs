@@ -60,10 +60,6 @@ pub mod linear {
         ((capacity as float) * 3. / 4.) as uint
     }
 
-    pub fn LinearMap<K:Eq Hash,V>() -> LinearMap<K,V> {
-        linear_map_with_capacity(INITIAL_CAPACITY)
-    }
-
     pub fn linear_map_with_capacity<K:Eq Hash,V>(
         initial_capacity: uint) -> LinearMap<K,V> {
         let r = rand::Rng();
@@ -351,7 +347,7 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
+    pub impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
         static fn new() -> LinearMap<K, V> {
             linear_map_with_capacity(INITIAL_CAPACITY)
         }
@@ -495,7 +491,7 @@ pub mod linear {
 
     pub impl <T: Hash IterBytes Eq> LinearSet<T> {
         /// Create an empty LinearSet
-        static fn new() -> LinearSet<T> { LinearSet{map: LinearMap()} }
+        static fn new() -> LinearSet<T> { LinearSet{map: LinearMap::new()} }
     }
 }
 
