@@ -169,20 +169,20 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
             iotask: iotask.clone()
         };
         let socket_data_ptr = ptr::addr_of(&(*socket_data));
-        log(debug, fmt!("tcp_connect result_ch %?", conn_data.result_ch));
+        debug!("tcp_connect result_ch %?", conn_data.result_ch);
         // get an unsafe representation of our stream_handle_ptr that
         // we can send into the interact cb to be handled in libuv..
-        log(debug, fmt!("stream_handle_ptr outside interact %?",
-                        stream_handle_ptr));
+        debug!("stream_handle_ptr outside interact %?",
+                        stream_handle_ptr);
         do iotask::interact(iotask) |move input_ip, loop_ptr| {
             unsafe {
-                log(debug, ~"in interact cb for tcp client connect..");
-                log(debug, fmt!("stream_handle_ptr in interact %?",
-                                stream_handle_ptr));
+                debug!("in interact cb for tcp client connect..");
+                debug!("stream_handle_ptr in interact %?",
+                                stream_handle_ptr);
                 match uv::ll::tcp_init( loop_ptr, stream_handle_ptr) {
                     0i32 => {
-                        log(debug, ~"tcp_init successful");
-                        log(debug, ~"dealing w/ ipv4 connection..");
+                        debug!("tcp_init successful");
+                        debug!("dealing w/ ipv4 connection..");
                         let connect_req_ptr =
                             ptr::addr_of(&((*socket_data_ptr).connect_req));
                         let addr_str = ip::format_addr(&input_ip);
@@ -195,7 +195,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                 // type that actually is closer to
                                 // what the libuv API expects (ip str
                                 // + port num)
-                                log(debug, fmt!("addr: %?", addr));
+                                debug!("addr: %?", addr);
                                 let in_addr = uv::ll::ip4_addr(addr_str,
                                                                port as int);
                                 uv::ll::tcp_connect(
@@ -205,7 +205,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                     tcp_connect_on_connect_cb)
                             }
                             ip::Ipv6(ref addr) => {
-                                log(debug, fmt!("addr: %?", addr));
+                                debug!("addr: %?", addr);
                                 let in_addr = uv::ll::ip6_addr(addr_str,
                                                                port as int);
                                 uv::ll::tcp_connect6(
@@ -217,7 +217,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                         };
                         match connect_result {
                             0i32 => {
-                                log(debug, ~"tcp_connect successful");
+                                debug!("tcp_connect successful");
                                 // reusable data that we'll have for the
                                 // duration..
                                 uv::ll::set_data_for_uv_handle(
@@ -228,8 +228,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                 // outcome..
                                 uv::ll::set_data_for_req(connect_req_ptr,
                                                          conn_data_ptr);
-                                log(debug,
-                                    ~"leaving tcp_connect interact cb...");
+                                debug!("leaving tcp_connect interact cb...");
                                 // let tcp_connect_on_connect_cb send on
                                 // the result_ch, now..
                             }
@@ -260,12 +259,12 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
         }
         match oldcomm::recv(result_po) {
             ConnSuccess => {
-                log(debug, ~"tcp::connect - received success on result_po");
+                debug!("tcp::connect - received success on result_po");
                 result::Ok(TcpSocket(socket_data))
             }
             ConnFailure(ref err_data) => {
                 oldcomm::recv(closed_signal_po);
-                log(debug, ~"tcp::connect - received failure on result_po");
+                debug!("tcp::connect - received failure on result_po");
                 // still have to free the malloc'd stream handle..
                 rustrt::rust_uv_current_kernel_free(stream_handle_ptr
                                                     as *libc::c_void);
@@ -379,8 +378,8 @@ pub fn read_stop(sock: &TcpSocket,
              read_port: oldcomm::Port<result::Result<~[u8], TcpErrData>>) ->
     result::Result<(), TcpErrData> {
     unsafe {
-        log(debug,
-            fmt!("taking the read_port out of commission %?", read_port));
+        debug!(
+            "taking the read_port out of commission %?", read_port);
         let socket_data = ptr::addr_of(&(*sock.socket_data));
         read_stop_common_impl(socket_data)
     }
@@ -548,7 +547,7 @@ pub fn accept(new_conn: TcpNewConnection)
                 // the rules here because this always has to be
                 // called within the context of a listen() new_connect_cb
                 // callback (or it will likely fail and drown your cat)
-                log(debug, ~"in interact cb for tcp::accept");
+                debug!("in interact cb for tcp::accept");
                 let loop_ptr = uv::ll::get_loop_for_uv_handle(
                     server_handle_ptr);
                 match uv::ll::tcp_init(loop_ptr, client_stream_handle_ptr) {
@@ -908,7 +907,7 @@ impl TcpSocketBuf: io::Reader {
         self.end_of_stream
     }
     fn seek(&self, dist: int, seek: io::SeekStyle) {
-        log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
+        debug!("tcp_socket_buf seek stub %? %?", dist, seek);
         // noop
     }
     fn tell(&self) -> uint {
@@ -935,7 +934,7 @@ impl TcpSocketBuf: io::Writer {
         }
     }
     fn seek(&self, dist: int, seek: io::SeekStyle) {
-      log(debug, fmt!("tcp_socket_buf seek stub %? %?", dist, seek));
+      debug!("tcp_socket_buf seek stub %? %?", dist, seek);
         // noop
     }
     fn tell(&self) -> uint {
@@ -1524,7 +1523,7 @@ pub mod test {
         };
         oldcomm::recv(cont_po);
         // client
-        log(debug, ~"server started, firing up client..");
+        debug!("server started, firing up client..");
         let actual_resp_result = do oldcomm::listen |client_ch| {
             run_tcp_test_client(
                 server_ip,
@@ -1536,10 +1535,10 @@ pub mod test {
         assert actual_resp_result.is_ok();
         let actual_resp = actual_resp_result.get();
         let actual_req = oldcomm::recv(server_result_po);
-        log(debug, fmt!("REQ: expected: '%s' actual: '%s'",
-                       expected_req, actual_req));
-        log(debug, fmt!("RESP: expected: '%s' actual: '%s'",
-                       expected_resp, actual_resp));
+        debug!("REQ: expected: '%s' actual: '%s'",
+                       expected_req, actual_req);
+        debug!("RESP: expected: '%s' actual: '%s'",
+                       expected_resp, actual_resp);
         assert str::contains(actual_req, expected_req);
         assert str::contains(actual_resp, expected_resp);
     }
@@ -1570,7 +1569,7 @@ pub mod test {
         };
         oldcomm::recv(cont_po);
         // client
-        log(debug, ~"server started, firing up client..");
+        debug!("server started, firing up client..");
         do oldcomm::listen |client_ch| {
             let server_ip_addr = ip::v4::parse_addr(server_ip);
             let iotask = uv::global_loop::get();
@@ -1600,7 +1599,7 @@ pub mod test {
         let server_port = 8889u;
         let expected_req = ~"ping";
         // client
-        log(debug, ~"firing up client..");
+        debug!("firing up client..");
         let actual_resp_result = do oldcomm::listen |client_ch| {
             run_tcp_test_client(
                 server_ip,
@@ -1647,7 +1646,7 @@ pub mod test {
                             server_port,
                             hl_loop);
         // client.. just doing this so that the first server tears down
-        log(debug, ~"server started, firing up client..");
+        debug!("server started, firing up client..");
         do oldcomm::listen |client_ch| {
             run_tcp_test_client(
                 server_ip,
@@ -1766,7 +1765,7 @@ pub mod test {
         };
         oldcomm::recv(cont_po);
         // client
-        log(debug, ~"server started, firing up client..");
+        debug!("server started, firing up client..");
         let server_addr = ip::v4::parse_addr(server_ip);
         let conn_result = connect(move server_addr, server_port, hl_loop);
         if result::is_err(&conn_result) {
@@ -1777,23 +1776,23 @@ pub mod test {
 
         let buf_reader = sock_buf as Reader;
         let actual_response = str::from_bytes(buf_reader.read_whole_stream());
-        log(debug, fmt!("Actual response: %s", actual_response));
+        debug!("Actual response: %s", actual_response);
         assert expected_resp == actual_response;
     }
 
     fn buf_write<W:io::Writer>(w: &W, val: &str) {
-        log(debug, fmt!("BUF_WRITE: val len %?", str::len(val)));
+        debug!("BUF_WRITE: val len %?", str::len(val));
         do str::byte_slice(val) |b_slice| {
-            log(debug, fmt!("BUF_WRITE: b_slice len %?",
-                            vec::len(b_slice)));
+            debug!("BUF_WRITE: b_slice len %?",
+                            vec::len(b_slice));
             w.write(b_slice)
         }
     }
 
     fn buf_read<R:io::Reader>(r: &R, len: uint) -> ~str {
         let new_bytes = (*r).read_bytes(len);
-        log(debug, fmt!("in buf_read.. new_bytes len: %?",
-                        vec::len(new_bytes)));
+        debug!("in buf_read.. new_bytes len: %?",
+                        vec::len(new_bytes));
         str::from_bytes(new_bytes)
     }
 
@@ -1806,65 +1805,61 @@ pub mod test {
                                    iotask,
             // on_establish_cb -- called when listener is set up
             |kill_ch| {
-                log(debug, fmt!("establish_cb %?",
-                    kill_ch));
+                debug!("establish_cb %?", kill_ch);
                 oldcomm::send(cont_ch, ());
             },
             // risky to run this on the loop, but some users
             // will want the POWER
             |new_conn, kill_ch| {
-            log(debug, ~"SERVER: new connection!");
+            debug!("SERVER: new connection!");
             do oldcomm::listen |cont_ch| {
                 do task::spawn_sched(task::ManualThreads(1u)) {
-                    log(debug, ~"SERVER: starting worker for new req");
+                    debug!("SERVER: starting worker for new req");
 
                     let accept_result = accept(new_conn);
-                    log(debug, ~"SERVER: after accept()");
+                    debug!("SERVER: after accept()");
                     if result::is_err(&accept_result) {
-                        log(debug, ~"SERVER: error accept connection");
+                        debug!("SERVER: error accept connection");
                         let err_data = result::get_err(&accept_result);
                         oldcomm::send(kill_ch, Some(err_data));
-                        log(debug,
-                            ~"SERVER/WORKER: send on err cont ch");
+                        debug!("SERVER/WORKER: send on err cont ch");
                         cont_ch.send(());
                     }
                     else {
-                        log(debug,
-                            ~"SERVER/WORKER: send on cont ch");
+                        debug!("SERVER/WORKER: send on cont ch");
                         cont_ch.send(());
                         let sock = result::unwrap(move accept_result);
                         let peer_addr = sock.get_peer_addr();
-                        log(debug, ~"SERVER: successfully accepted"+
-                            fmt!(" connection from %s:%u",
+                        debug!("SERVER: successfully accepted connection from %s:%u",
                                  ip::format_addr(&peer_addr),
-                                 ip::get_port(&peer_addr)));
+                                 ip::get_port(&peer_addr));
                         let received_req_bytes = read(&sock, 0u);
                         match move received_req_bytes {
                           result::Ok(move data) => {
-                            log(debug, ~"SERVER: got REQ str::from_bytes..");
-                            log(debug, fmt!("SERVER: REQ data len: %?",
-                                            vec::len(data)));
+                            debug!("SERVER: got REQ str::from_bytes..");
+                            debug!("SERVER: REQ data len: %?",
+                                            vec::len(data));
                             server_ch.send(
                                 str::from_bytes(data));
-                            log(debug, ~"SERVER: before write");
+                            debug!("SERVER: before write");
                             tcp_write_single(&sock, str::to_bytes(resp));
-                            log(debug, ~"SERVER: after write.. die");
+                            debug!("SERVER: after write.. die");
                             oldcomm::send(kill_ch, None);
                           }
                           result::Err(move err_data) => {
-                            log(debug, fmt!("SERVER: error recvd: %s %s",
-                                err_data.err_name, err_data.err_msg));
+                            debug!("SERVER: error recvd: %s %s",
+                                err_data.err_name, err_data.err_msg);
                             oldcomm::send(kill_ch, Some(err_data));
                             server_ch.send(~"");
                           }
                         }
-                        log(debug, ~"SERVER: worker spinning down");
+                        debug!("SERVER: worker spinning down");
                     }
                 }
-                log(debug, ~"SERVER: waiting to recv on cont_ch");
+                debug!("SERVER: waiting to recv on cont_ch");
                 cont_ch.recv()
             };
-            log(debug, ~"SERVER: recv'd on cont_ch..leaving listen cb");
+            debug!("SERVER: recv'd on cont_ch..leaving listen cb");
         });
         // err check on listen_result
         if result::is_err(&listen_result) {
@@ -1882,7 +1877,7 @@ pub mod test {
             }
         }
         let ret_val = server_ch.recv();
-        log(debug, fmt!("SERVER: exited and got return val: '%s'", ret_val));
+        debug!("SERVER: exited and got return val: '%s'", ret_val);
         ret_val
     }
 
@@ -1893,8 +1888,7 @@ pub mod test {
                                    iotask,
             // on_establish_cb -- called when listener is set up
             |kill_ch| {
-                log(debug, fmt!("establish_cb %?",
-                    kill_ch));
+                debug!("establish_cb %?", kill_ch);
             },
             |new_conn, kill_ch| {
                 fail fmt!("SERVER: shouldn't be called.. %? %?",
@@ -1915,11 +1909,11 @@ pub mod test {
                                                     TcpConnectErrData> {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
 
-        log(debug, ~"CLIENT: starting..");
+        debug!("CLIENT: starting..");
         let connect_result = connect(move server_ip_addr, server_port,
                                      iotask);
         if result::is_err(&connect_result) {
-            log(debug, ~"CLIENT: failed to connect");
+            debug!("CLIENT: failed to connect");
             let err_data = result::get_err(&connect_result);
             Err(err_data)
         }
@@ -1929,14 +1923,13 @@ pub mod test {
             tcp_write_single(&sock, resp_bytes);
             let read_result = sock.read(0u);
             if read_result.is_err() {
-                log(debug, ~"CLIENT: failure to read");
+                debug!("CLIENT: failure to read");
                 Ok(~"")
             }
             else {
                 client_ch.send(str::from_bytes(read_result.get()));
                 let ret_val = client_ch.recv();
-                log(debug, fmt!("CLIENT: after client_ch recv ret: '%s'",
-                   ret_val));
+                debug!("CLIENT: after client_ch recv ret: '%s'", ret_val);
                 Ok(ret_val)
             }
         }
@@ -1946,10 +1939,10 @@ pub mod test {
         let write_result_future = sock.write_future(val);
         let write_result = write_result_future.get();
         if result::is_err(&write_result) {
-            log(debug, ~"tcp_write_single: write failed!");
+            debug!("tcp_write_single: write failed!");
             let err_data = result::get_err(&write_result);
-            log(debug, fmt!("tcp_write_single err name: %s msg: %s",
-                err_data.err_name, err_data.err_msg));
+            debug!("tcp_write_single err name: %s msg: %s",
+                err_data.err_name, err_data.err_msg);
             // meh. torn on what to do here.
             fail ~"tcp_write_single failed";
         }
