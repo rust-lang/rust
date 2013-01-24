@@ -132,7 +132,7 @@ pub struct BufferHeader {
     // thing along.
 }
 
-pub fn BufferHeader() -> BufferHeader{
+pub fn BufferHeader() -> BufferHeader {
     BufferHeader {
         ref_count: 0
     }
