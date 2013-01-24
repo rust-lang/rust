@@ -1660,43 +1660,45 @@ impl Parser {
         // them as the lambda arguments
         let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
         match e.node {
-          expr_call(f, args, false) => {
-            let block = self.parse_lambda_block_expr();
-            let last_arg = self.mk_expr(block.span.lo, block.span.hi,
-                                    ctor(block));
-            let args = vec::append(args, ~[last_arg]);
-            @expr {node: expr_call(f, args, true), .. *e}
-          }
-          expr_method_call(f, i, tps, args, false) => {
-            let block = self.parse_lambda_block_expr();
-            let last_arg = self.mk_expr(block.span.lo, block.span.hi,
-                                    ctor(block));
-            let args = vec::append(args, ~[last_arg]);
-            @expr {node: expr_method_call(f, i, tps, args, true), .. *e}
-          }
-          expr_field(f, i, tps) => {
-            let block = self.parse_lambda_block_expr();
-            let last_arg = self.mk_expr(block.span.lo, block.span.hi,
-                                    ctor(block));
-            @expr {node: expr_method_call(f, i, tps, ~[last_arg], true),
-                   .. *e}
-          }
-          expr_path(*) | expr_call(*) | expr_method_call(*) |
-          expr_paren(*) => {
-            let block = self.parse_lambda_block_expr();
-            let last_arg = self.mk_expr(block.span.lo, block.span.hi,
-                                    ctor(block));
-            self.mk_expr(lo.lo, last_arg.span.hi,
-                         expr_call(e, ~[last_arg], true))
-          }
-          _ => {
-            // There may be other types of expressions that can
-            // represent the callee in `for` and `do` expressions
-            // but they aren't represented by tests
-            debug!("sugary call on %?", e.node);
-            self.span_fatal(
-                lo, fmt!("`%s` must be followed by a block call", keyword));
-          }
+            expr_call(f, args, false) => {
+                let block = self.parse_lambda_block_expr();
+                let last_arg = self.mk_expr(block.span.lo, block.span.hi,
+                                            ctor(block));
+                let args = vec::append(args, ~[last_arg]);
+                self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, true))
+            }
+            expr_method_call(f, i, tps, args, false) => {
+                let block = self.parse_lambda_block_expr();
+                let last_arg = self.mk_expr(block.span.lo, block.span.hi,
+                                            ctor(block));
+                let args = vec::append(args, ~[last_arg]);
+                self.mk_expr(lo.lo, block.span.hi,
+                             expr_method_call(f, i, tps, args, true))
+            }
+            expr_field(f, i, tps) => {
+                let block = self.parse_lambda_block_expr();
+                let last_arg = self.mk_expr(block.span.lo, block.span.hi,
+                                            ctor(block));
+                self.mk_expr(lo.lo, block.span.hi,
+                             expr_method_call(f, i, tps, ~[last_arg], true))
+            }
+            expr_path(*) | expr_call(*) | expr_method_call(*) |
+                expr_paren(*) => {
+                let block = self.parse_lambda_block_expr();
+                let last_arg = self.mk_expr(block.span.lo, block.span.hi,
+                                            ctor(block));
+                self.mk_expr(lo.lo, last_arg.span.hi,
+                             expr_call(e, ~[last_arg], true))
+            }
+            _ => {
+                // There may be other types of expressions that can
+                // represent the callee in `for` and `do` expressions
+                // but they aren't represented by tests
+                debug!("sugary call on %?", e.node);
+                self.span_fatal(
+                    lo, fmt!("`%s` must be followed by a block call",
+                             keyword));
+            }
         }
     }
 
