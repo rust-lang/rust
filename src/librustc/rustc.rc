@@ -86,10 +86,6 @@ mod middle {
         #[legacy_exports]
         mod meth;
         #[legacy_exports]
-        mod cabi;
-        #[legacy_exports]
-        mod cabi_x86_64;
-        #[legacy_exports]
         mod foreign;
         #[legacy_exports]
         mod reflect;
