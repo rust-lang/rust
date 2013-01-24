@@ -163,7 +163,6 @@ struct crate_ctxt {
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
      item_symbols: HashMap<ast::node_id, ~str>,
-     mut main_fn: Option<ValueRef>,
      link_meta: link_meta,
      enum_sizes: HashMap<ty::t, uint>,
      discrims: HashMap<ast::def_id, ValueRef>,

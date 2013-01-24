@@ -62,7 +62,6 @@ use middle::trans::shape::*;
 use middle::trans::tvec;
 use middle::trans::type_of::*;
 use util::common::indenter;
-use util::common::is_main_name;
 use util::ppaux::{ty_to_str, ty_to_short_str};
 use util::ppaux;
 
@@ -2191,14 +2190,9 @@ fn is_main_fn(sess: &Session, node_id: ast::node_id) -> bool {
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef) {
-
-    if ccx.main_fn != None::<ValueRef> {
-        ccx.sess.span_fatal(sp, ~"multiple 'main' functions");
-    }
+fn create_main_wrapper(ccx: @crate_ctxt, _sp: span, main_llfn: ValueRef) {
 
     let llfn = create_main(ccx, main_llfn);
-    ccx.main_fn = Some(llfn);
     create_entry_fn(ccx, llfn);
 
     fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef) -> ValueRef {
@@ -3008,7 +3002,6 @@ fn trans_crate(sess: session::Session,
               exp_map2: emap2,
               reachable: reachable,
               item_symbols: HashMap(),
-              mut main_fn: None::<ValueRef>,
               link_meta: link_meta,
               enum_sizes: ty::new_ty_hash(),
               discrims: HashMap(),
