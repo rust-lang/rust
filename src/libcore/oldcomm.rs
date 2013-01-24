@@ -24,14 +24,14 @@ across channels.
 # Example
 
 ~~~
-let po = comm::Port();
-let ch = comm::Chan(po);
+let po = oldcomm::Port();
+let ch = oldcomm::Chan(&po);
 
 do task::spawn {
-    comm::send(ch, "Hello, World");
+    oldcomm::send(ch, ~"Hello, World");
 }
 
-io::println(comm::recv(p));
+io::println(oldcomm::recv(po));
 ~~~
 
 # Note
