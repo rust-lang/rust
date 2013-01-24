@@ -259,7 +259,7 @@ impl Context {
     static fn new(db: @Mut<Database>,
                   lg: @Mut<Logger>,
                   cfg: @json::Object) -> Context {
-        Context {db: db, logger: lg, cfg: cfg, freshness: LinearMap()}
+        Context{db: db, logger: lg, cfg: cfg, freshness: LinearMap::new()}
     }
 
     fn prep<T:Owned
@@ -270,7 +270,7 @@ impl Context {
                   blk: fn(@Mut<Prep>)->Work<T>) -> Work<T> {
         let p = @Mut(Prep {ctxt: self,
                            fn_name: fn_name.to_owned(),
-                           declared_inputs: LinearMap()});
+                           declared_inputs: LinearMap::new()});
         blk(p)
     }
 }
