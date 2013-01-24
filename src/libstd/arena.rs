@@ -254,9 +254,13 @@ impl &Arena {
     // The external interface
     #[inline(always)]
     fn alloc<T>(op: fn() -> T) -> &self/T {
-        if !rusti::needs_drop::<T>() {
-            self.alloc_pod(op)
-        } else { self.alloc_nonpod(op) }
+        unsafe {
+            if !rusti::needs_drop::<T>() {
+                self.alloc_pod(op)
+            } else {
+                self.alloc_nonpod(op)
+            }
+        }
     }
 }
 

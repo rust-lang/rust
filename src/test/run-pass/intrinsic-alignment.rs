@@ -23,14 +23,18 @@ extern mod rusti {
 mod m {
     #[cfg(target_arch = "x86")]
     pub fn main() {
-        assert ::rusti::pref_align_of::<u64>() == 8u;
-        assert ::rusti::min_align_of::<u64>() == 4u;
+        unsafe {
+            assert ::rusti::pref_align_of::<u64>() == 8u;
+            assert ::rusti::min_align_of::<u64>() == 4u;
+        }
     }
 
     #[cfg(target_arch = "x86_64")]
     pub fn main() {
-        assert ::rusti::pref_align_of::<u64>() == 8u;
-        assert ::rusti::min_align_of::<u64>() == 8u;
+        unsafe {
+            assert ::rusti::pref_align_of::<u64>() == 8u;
+            assert ::rusti::min_align_of::<u64>() == 8u;
+        }
     }
 }
 
@@ -38,7 +42,9 @@ mod m {
 mod m {
     #[cfg(target_arch = "x86")]
     pub fn main() {
-        assert ::rusti::pref_align_of::<u64>() == 8u;
-        assert ::rusti::min_align_of::<u64>() == 8u;
+        unsafe {
+            assert ::rusti::pref_align_of::<u64>() == 8u;
+            assert ::rusti::min_align_of::<u64>() == 8u;
+        }
     }
 }

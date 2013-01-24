@@ -21,8 +21,10 @@ extern mod rustrt {
 }
 
 fn fact(n: uint) -> uint {
-    debug!("n = %?", n);
-    rustrt::rust_dbg_call(cb, n)
+    unsafe {
+        debug!("n = %?", n);
+        rustrt::rust_dbg_call(cb, n)
+    }
 }
 
 extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {

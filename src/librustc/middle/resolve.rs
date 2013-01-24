@@ -56,6 +56,7 @@ use syntax::ast::{type_value_ns, ty_param_bound, unnamed_field};
 use syntax::ast::{variant, view_item, view_item_export, view_item_import};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named, not};
+use syntax::ast::{unsafe_fn};
 use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private, visibility_to_privacy};
@@ -1643,8 +1644,8 @@ impl Resolver {
                            foreign_item.span);
 
         match /*bad*/copy foreign_item.node {
-            foreign_item_fn(_, purity, type_parameters) => {
-                let def = def_fn(local_def(foreign_item.id), purity);
+            foreign_item_fn(_, _, type_parameters) => {
+                let def = def_fn(local_def(foreign_item.id), unsafe_fn);
                 (*name_bindings).define_value(Public, def, foreign_item.span);
 
                 do self.with_type_parameter_rib

@@ -280,17 +280,23 @@ extern mod rusti {
 // I get link errors. This is a bug that needs investigated more.
 #[doc(hidden)]
 pub fn atomic_xchng_rel(dst: &mut int, src: int) -> int {
-    rusti::atomic_xchg_rel(dst, src)
+    unsafe {
+        rusti::atomic_xchg_rel(dst, src)
+    }
 }
 
 #[doc(hidden)]
 pub fn atomic_add_acq(dst: &mut int, src: int) -> int {
-    rusti::atomic_xadd_acq(dst, src)
+    unsafe {
+        rusti::atomic_xadd_acq(dst, src)
+    }
 }
 
 #[doc(hidden)]
 pub fn atomic_sub_rel(dst: &mut int, src: int) -> int {
-    rusti::atomic_xsub_rel(dst, src)
+    unsafe {
+        rusti::atomic_xsub_rel(dst, src)
+    }
 }
 
 #[doc(hidden)]

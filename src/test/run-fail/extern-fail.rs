@@ -27,8 +27,10 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
 }
 
 fn count(n: uint) -> uint {
-    task::yield();
-    rustrt::rust_dbg_call(cb, n)
+    unsafe {
+        task::yield();
+        rustrt::rust_dbg_call(cb, n)
+    }
 }
 
 fn main() {

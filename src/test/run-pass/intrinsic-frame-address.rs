@@ -17,7 +17,9 @@ extern mod rusti {
 }
 
 fn main() {
-    do rusti::frame_address |addr| {
-        assert addr.is_not_null();
+    unsafe {
+        do rusti::frame_address |addr| {
+            assert addr.is_not_null();
+        }
     }
 }
