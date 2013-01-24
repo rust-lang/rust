@@ -47,6 +47,9 @@ pub mod BigDigit {
     #[cfg(target_arch = "x86_64")]
     pub const bits: uint = 32;
 
+    pub const max_value: BigDigit = !0;
+    pub const min_value: BigDigit =  0;
+
     pub const base: uint = 1 << bits;
     priv const hi_mask: uint = (-1 as uint) << bits;
     priv const lo_mask: uint = (-1 as uint) >> bits;
@@ -55,11 +58,13 @@ pub mod BigDigit {
     priv pure fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
 
     /// Split one machine sized unsigned integer into two BigDigits.
+    #[inline(always)]
     pub pure fn from_uint(n: uint) -> (BigDigit, BigDigit) {
         (get_hi(n), get_lo(n))
     }
 
     /// Join two BigDigits into one machine sized unsigned integer
+    #[inline(always)]
     pub pure fn to_uint(hi: BigDigit, lo: BigDigit) -> uint {
         (lo as uint) | ((hi as uint) << bits)
     }
@@ -76,170 +81,115 @@ pub struct BigUint {
 }
 
 impl BigUint : Eq {
+    #[inline(always)]
     pure fn eq(&self, other: &BigUint) -> bool { self.cmp(other) == 0 }
+    #[inline(always)]
     pure fn ne(&self, other: &BigUint) -> bool { self.cmp(other) != 0 }
 }
 
 impl BigUint : Ord {
+    #[inline(always)]
     pure fn lt(&self, other: &BigUint) -> bool { self.cmp(other) <  0 }
+    #[inline(always)]
     pure fn le(&self, other: &BigUint) -> bool { self.cmp(other) <= 0 }
+    #[inline(always)]
     pure fn ge(&self, other: &BigUint) -> bool { self.cmp(other) >= 0 }
+    #[inline(always)]
     pure fn gt(&self, other: &BigUint) -> bool { self.cmp(other) >  0 }
 }
 
 impl BigUint : ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { self.to_str_radix(10) }
 }
 
 impl BigUint : from_str::FromStr {
+    #[inline(always)]
     static pure fn from_str(s: &str) -> Option<BigUint> {
         BigUint::from_str_radix(s, 10)
     }
 }
 
 impl BigUint : Shl<uint, BigUint> {
+    #[inline(always)]
     pure fn shl(&self, rhs: &uint) -> BigUint {
-        let n_unit = *rhs / BigDigit::bits;
-        let n_bits = *rhs % BigDigit::bits;
-        return self.shl_unit(n_unit).shl_bits(n_bits);
+        let mut shifted = ~[];
+        unsafe { // call impure function
+            vec_ops::shl_set(&mut shifted, self.data, *rhs);
+        }
+        return BigUint::new(shifted);
     }
 }
 
 impl BigUint : Shr<uint, BigUint> {
+    #[inline(always)]
     pure fn shr(&self, rhs: &uint) -> BigUint {
-        let n_unit = *rhs / BigDigit::bits;
-        let n_bits = *rhs % BigDigit::bits;
-        return self.shr_unit(n_unit).shr_bits(n_bits);
+        let mut shifted = ~[];
+        unsafe { // call impure function
+            vec_ops::shr_set(&mut shifted, self.data, *rhs);
+        }
+        return BigUint::new(shifted);
     }
 }
 
 impl BigUint : Zero {
+    #[inline(always)]
     static pure fn zero() -> BigUint { BigUint::new(~[]) }
 }
 
 impl BigUint : One {
+    #[inline(always)]
     static pub pure fn one() -> BigUint { BigUint::new(~[1]) }
 }
 
 impl BigUint : Num {
+    #[inline(always)]
     pure fn add(&self, other: &BigUint) -> BigUint {
-        let new_len = uint::max(self.data.len(), other.data.len());
-
-        let mut carry = 0;
-        let sum = do vec::from_fn(new_len) |i| {
-            let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
-            let bi = if i < other.data.len() { other.data[i] } else { 0 };
-            let (hi, lo) = BigDigit::from_uint(
-                (ai as uint) + (bi as uint) + (carry as uint)
-            );
-            carry = hi;
-            lo
-        };
-        if carry == 0 { return BigUint::new(sum) };
-        return BigUint::new(sum + [carry]);
+        let mut sum = ~[];
+        unsafe { // call impure function
+            vec_ops::add_set(&mut sum, self.data, other.data);
+        }
+        return BigUint::new(sum);
     }
 
+    #[inline(always)]
     pure fn sub(&self, other: &BigUint) -> BigUint {
-        let new_len = uint::max(self.data.len(), other.data.len());
-
-        let mut borrow = 0;
-        let diff = do vec::from_fn(new_len) |i| {
-            let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
-            let bi = if i < other.data.len() { other.data[i] } else { 0 };
-            let (hi, lo) = BigDigit::from_uint(
-                (BigDigit::base) +
-                (ai as uint) - (bi as uint) - (borrow as uint)
-            );
-            /*
-            hi * (base) + lo == 1*(base) + ai - bi - borrow
-            => ai - bi - borrow < 0 <=> hi == 0
-            */
-            borrow = if hi == 0 { 1 } else { 0 };
-            lo
-        };
-
-        assert borrow == 0;     // <=> assert (self >= other);
+        let mut diff = ~[];
+        unsafe { // call impure function
+            vec_ops::sub_set(&mut diff, self.data, other.data);
+        }
         return BigUint::new(diff);
     }
 
+    #[inline(always)]
     pure fn mul(&self, other: &BigUint) -> BigUint {
-        if self.is_zero() || other.is_zero() { return Zero::zero(); }
-
-        let s_len = self.data.len(), o_len = other.data.len();
-        if s_len == 1 { return mul_digit(other, self.data[0]);  }
-        if o_len == 1 { return mul_digit(self,  other.data[0]); }
-
-        // Using Karatsuba multiplication
-        // (a1 * base + a0) * (b1 * base + b0)
-        // = a1*b1 * base^2 +
-        //   (a1*b1 + a0*b0 - (a1-b0)*(b1-a0)) * base +
-        //   a0*b0
-        let half_len = uint::max(s_len, o_len) / 2;
-        let (sHi, sLo) = cut_at(self,  half_len);
-        let (oHi, oLo) = cut_at(other, half_len);
-
-        let ll = sLo * oLo;
-        let hh = sHi * oHi;
-        let mm = {
-            let (s1, n1) = sub_sign(sHi, sLo);
-            let (s2, n2) = sub_sign(oHi, oLo);
-            if s1 * s2 < 0 {
-                hh + ll + (n1 * n2)
-            } else if s1 * s2 > 0 {
-                hh + ll - (n1 * n2)
-            } else {
-                hh + ll
-            }
-        };
-
-        return ll + mm.shl_unit(half_len) + hh.shl_unit(half_len * 2);
-
-        pure fn mul_digit(a: &BigUint, n: BigDigit) -> BigUint {
-            if n == 0 { return Zero::zero(); }
-            if n == 1 { return copy *a; }
-
-            let mut carry = 0;
-            let prod = do vec::map(a.data) |ai| {
-                let (hi, lo) = BigDigit::from_uint(
-                    (*ai as uint) * (n as uint) + (carry as uint)
-                );
-                carry = hi;
-                lo
-            };
-            if carry == 0 { return BigUint::new(prod) };
-            return BigUint::new(prod + [carry]);
+        let mut prod = ~[];
+        unsafe { // call impure function
+            vec_ops::mul_set(&mut prod, self.data, other.data);
         }
-
-        pure fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
-            let mid = uint::min(a.data.len(), n);
-            return (BigUint::from_slice(vec::view(a.data, mid, a.data.len())),
-                    BigUint::from_slice(vec::view(a.data, 0, mid)));
-        }
-
-        pure fn sub_sign(a: BigUint, b: BigUint) -> (int, BigUint) {
-            match a.cmp(&b) {
-                s if s < 0 => (s, b - a),
-                s if s > 0 => (s, a - b),
-                _          => (0, Zero::zero())
-            }
-        }
+        return BigUint::new(prod);
     }
 
+    #[inline(always)]
     pure fn div(&self, other: &BigUint) -> BigUint {
         let (d, _) = self.divmod(other);
         return d;
     }
+    #[inline(always)]
     pure fn modulo(&self, other: &BigUint) -> BigUint {
         let (_, m) = self.divmod(other);
         return m;
     }
 
+    #[inline(always)]
     pure fn neg(&self) -> BigUint { fail }
 
+    #[inline(always)]
     pure fn to_int(&self) -> int {
         uint::min(self.to_uint(), int::max_value as uint) as int
     }
 
+    #[inline(always)]
     static pure fn from_int(n: int) -> BigUint {
         if (n < 0) { Zero::zero() } else { BigUint::from_uint(n as uint) }
     }
@@ -247,167 +197,119 @@ impl BigUint : Num {
 
 pub impl BigUint {
     /// Creates and initializes an BigUint.
+    #[inline(always)]
     static pub pure fn new(v: ~[BigDigit]) -> BigUint {
-        // omit trailing zeros
-        let new_len = v.rposition(|n| *n != 0).map_default(0, |p| *p + 1);
-
-        if new_len == v.len() { return BigUint { data: v }; }
         let mut v = v;
-        unsafe { v.truncate(new_len); }
+        vec_ops::reduce_zeros(&mut v);
         return BigUint { data: v };
     }
 
     /// Creates and initializes an BigUint.
+    #[inline(always)]
     static pub pure fn from_uint(n: uint) -> BigUint {
-        match BigDigit::from_uint(n) {
-            (0,  0)  => Zero::zero(),
-            (0,  n0) => BigUint::new(~[n0]),
-            (n1, n0) => BigUint::new(~[n0, n1])
+        let mut buf = ~[];
+        unsafe { // call impure function
+            vec_ops::from_uint_set(&mut buf, n);
         }
+        return BigUint::new(buf);
     }
 
     /// Creates and initializes an BigUint.
+    #[inline(always)]
     static pub pure fn from_slice(slice: &[BigDigit]) -> BigUint {
         return BigUint::new(vec::from_slice(slice));
     }
 
     /// Creates and initializes an BigUint.
+    #[inline(always)]
     static pub pure fn from_str_radix(s: &str, radix: uint)
         -> Option<BigUint> {
         BigUint::parse_bytes(str::to_bytes(s), radix)
     }
 
     /// Creates and initializes an BigUint.
+    #[inline(always)]
     static pub pure fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigUint> {
-        let (base, unit_len) = get_radix_base(radix);
-        let base_num: BigUint = BigUint::from_uint(base);
-
-        let mut end             = buf.len();
-        let mut n: BigUint      = Zero::zero();
-        let mut power: BigUint  = One::one();
-        loop {
-            let start = uint::max(end, unit_len) - unit_len;
-            match uint::parse_bytes(vec::view(buf, start, end), radix) {
-                Some(d) => n += BigUint::from_uint(d) * power,
-                None    => return None
-            }
-            if end <= unit_len {
-                return Some(n);
-            }
-            end -= unit_len;
-            power *= base_num;
+        let result = unsafe { // call impure function
+            vec_ops::parse_bytes(buf, radix)
+        };
+        do option::map_consume(result) |v| {
+            BigUint::new(v)
         }
     }
 
+    #[inline(always)]
     pure fn abs(&self) -> BigUint { copy *self }
 
     /// Compare two BigUint value.
+    #[inline(always)]
     pure fn cmp(&self, other: &BigUint) -> int {
-        let s_len = self.data.len(), o_len = other.data.len();
-        if s_len < o_len { return -1; }
-        if s_len > o_len { return  1;  }
-
-        for vec::rev_eachi(self.data) |i, elm| {
-            match (*elm, other.data[i]) {
-                (l, r) if l < r => return -1,
-                (l, r) if l > r => return  1,
-                _               => loop
-            };
-        }
-        return 0;
+        vec_ops::cmp_offset(self.data, other.data, 0)
     }
 
+    #[inline(always)]
+    pure fn add_assign(&mut self, other: &BigUint) {
+        unsafe { // call impure function
+            vec_ops::add_offset_assign(&mut self.data, other.data, 0);
+        }
+    }
+
+    #[inline(always)]
+    pure fn sub_assign(&mut self, other: &BigUint) {
+        unsafe { // call impure function
+            vec_ops::sub_offset_assign(&mut self.data, other.data, 0);
+        }
+    }
+
+    #[inline(always)]
+    pure fn mul_digit(&self, n: BigDigit) -> BigUint {
+        let mut prod = ~[];
+        unsafe { // call impure function
+            vec_ops::mul_digit_set(&mut prod, self.data, n);
+        }
+        return BigUint::new(prod);
+    }
+
+    #[inline(always)]
     pure fn divmod(&self, other: &BigUint) -> (BigUint, BigUint) {
-        if other.is_zero() { fail }
-        if self.is_zero() { return (Zero::zero(), Zero::zero()); }
-        if *other == One::one() { return (copy *self, Zero::zero()); }
-
-        match self.cmp(other) {
-            s if s < 0 => return (Zero::zero(), copy *self),
-            0          => return (One::one(), Zero::zero()),
-            _          => {} // Do nothing
+        let mut d = ~[];
+        let mut m = ~[];
+        unsafe { // call impure function
+            vec_ops::divmod_set(&mut d, &mut m, self.data, other.data);
         }
-
-        let mut shift = 0;
-        let mut n = other.data.last();
-        while n < (1 << BigDigit::bits - 2) {
-            n <<= 1;
-            shift += 1;
-        }
-        assert shift < BigDigit::bits;
-        let (d, m) = divmod_inner(self << shift, other << shift);
-        return (d, m >> shift);
-
-        pure fn divmod_inner(a: BigUint, b: BigUint) -> (BigUint, BigUint) {
-            let mut r = a;
-            let mut d = Zero::zero::<BigUint>();
-            let mut n = 1;
-            while r >= b {
-                let mut (d0, d_unit, b_unit) = div_estimate(&r, &b, n);
-                let mut prod = b * d0;
-                while prod > r {
-                    d0   -= d_unit;
-                    prod -= b_unit;
-                }
-                if d0.is_zero() {
-                    n = 2;
-                    loop;
-                }
-                n = 1;
-                d += d0;
-                r -= prod;
-            }
-            return (d, r);
-        }
-
-        pure fn div_estimate(a: &BigUint, b: &BigUint, n: uint)
-            -> (BigUint, BigUint, BigUint) {
-            if a.data.len() < n {
-                return (Zero::zero(), Zero::zero(), copy *a);
-            }
-
-            let an = vec::view(a.data, a.data.len() - n, a.data.len());
-            let bn = b.data.last();
-            let mut d = ~[];
-            let mut carry = 0;
-            for vec::rev_each(an) |elt| {
-                let ai = BigDigit::to_uint(carry, *elt);
-                let di = ai / (bn as uint);
-                assert di < BigDigit::base;
-                carry = (ai % (bn as uint)) as BigDigit;
-                d = ~[di as BigDigit] + d;
-            }
-
-            let shift = (a.data.len() - an.len()) - (b.data.len() - 1);
-            if shift == 0 {
-                return (BigUint::new(d), One::one(), copy *b);
-            }
-            return (BigUint::from_slice(d).shl_unit(shift),
-                    One::one::<BigUint>().shl_unit(shift),
-                    b.shl_unit(shift));
-        }
+        return (BigUint::new(d), BigUint::new(m));
     }
 
+    #[inline(always)]
     pure fn quot(&self, other: &BigUint) -> BigUint {
         let (q, _) = self.quotrem(other);
         return q;
     }
+    #[inline(always)]
     pure fn rem(&self, other: &BigUint) -> BigUint {
         let (_, r) = self.quotrem(other);
         return r;
     }
+    #[inline(always)]
     pure fn quotrem(&self, other: &BigUint) -> (BigUint, BigUint) {
         self.divmod(other)
     }
 
+    #[inline(always)]
     pure fn is_zero(&self) -> bool { self.data.is_empty() }
+    #[inline(always)]
     pure fn is_not_zero(&self) -> bool { self.data.is_not_empty() }
+    #[inline(always)]
     pure fn is_positive(&self) -> bool { self.is_not_zero() }
+    #[inline(always)]
     pure fn is_negative(&self) -> bool { false }
+    #[inline(always)]
     pure fn is_nonpositive(&self) -> bool { self.is_zero() }
+    #[inline(always)]
     pure fn is_nonnegative(&self) -> bool { true }
 
+    #[inline(always)]
     pure fn to_uint(&self) -> uint {
         match self.data.len() {
             0 => 0,
@@ -417,124 +319,11 @@ pub impl BigUint {
         }
     }
 
+    #[inline(always)]
     pure fn to_str_radix(&self, radix: uint) -> ~str {
-        assert 1 < radix && radix <= 16;
-        let (base, max_len) = get_radix_base(radix);
-        if base == BigDigit::base {
-            return fill_concat(self.data, radix, max_len)
+        unsafe { // call impure function
+            vec_ops::to_str_radix(self.data, radix)
         }
-        return fill_concat(convert_base(copy *self, base), radix, max_len);
-
-        pure fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
-            let divider    = BigUint::from_uint(base);
-            let mut result = ~[];
-            let mut r      = n;
-            while r > divider {
-                let (d, r0) = r.divmod(&divider);
-                result += [r0.to_uint() as BigDigit];
-                r = d;
-            }
-            if r.is_not_zero() {
-                result += [r.to_uint() as BigDigit];
-            }
-            return result;
-        }
-
-        pure fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
-            if v.is_empty() { return ~"0" }
-            str::trim_left_chars(str::concat(vec::reversed(v).map(|n| {
-                let s = uint::to_str(*n as uint, radix);
-                str::from_chars(vec::from_elem(l - s.len(), '0')) + s
-            })), ['0'])
-        }
-    }
-
-    priv pure fn shl_unit(self, n_unit: uint) -> BigUint {
-        if n_unit == 0 || self.is_zero() { return self; }
-
-        return BigUint::new(vec::from_elem(n_unit, 0) + self.data);
-    }
-
-    priv pure fn shl_bits(self, n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.is_zero() { return self; }
-
-        let mut carry = 0;
-        let shifted = do vec::map(self.data) |elem| {
-            let (hi, lo) = BigDigit::from_uint(
-                (*elem as uint) << n_bits | (carry as uint)
-            );
-            carry = hi;
-            lo
-        };
-        if carry == 0 { return BigUint::new(shifted); }
-        return BigUint::new(shifted + [carry]);
-    }
-
-    priv pure fn shr_unit(self, n_unit: uint) -> BigUint {
-        if n_unit == 0 { return self; }
-        if self.data.len() < n_unit { return Zero::zero(); }
-        return BigUint::from_slice(
-            vec::view(self.data, n_unit, self.data.len())
-        );
-    }
-
-    priv pure fn shr_bits(self, n_bits: uint) -> BigUint {
-        if n_bits == 0 || self.data.is_empty() { return self; }
-
-        let mut borrow = 0;
-        let mut shifted = ~[];
-        for vec::rev_each(self.data) |elem| {
-            shifted = ~[(*elem >> n_bits) | borrow] + shifted;
-            borrow = *elem << (uint::bits - n_bits);
-        }
-        return BigUint::new(shifted);
-    }
-}
-
-#[cfg(target_arch = "x86_64")]
-priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
-    assert 1 < radix && radix <= 16;
-    match radix {
-        2  => (4294967296, 32),
-        3  => (3486784401, 20),
-        4  => (4294967296, 16),
-        5  => (1220703125, 13),
-        6  => (2176782336, 12),
-        7  => (1977326743, 11),
-        8  => (1073741824, 10),
-        9  => (3486784401, 10),
-        10 => (1000000000, 9),
-        11 => (2357947691, 9),
-        12 => (429981696,  8),
-        13 => (815730721,  8),
-        14 => (1475789056, 8),
-        15 => (2562890625, 8),
-        16 => (4294967296, 8),
-        _  => fail
-    }
-}
-
-#[cfg(target_arch = "arm")]
-#[cfg(target_arch = "x86")]
-priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
-    assert 1 < radix && radix <= 16;
-    match radix {
-        2  => (65536, 16),
-        3  => (59049, 10),
-        4  => (65536, 8),
-        5  => (15625, 6),
-        6  => (46656, 6),
-        7  => (16807, 5),
-        8  => (32768, 5),
-        9  => (59049, 5),
-        10 => (10000, 4),
-        11 => (14641, 4),
-        12 => (20736, 4),
-        13 => (28561, 4),
-        14 => (38416, 4),
-        15 => (50625, 4),
-        16 => (65536, 4),
-        _  => fail
     }
 }
 
@@ -542,33 +331,41 @@ priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
 pub enum Sign { Minus, Zero, Plus }
 
 impl Sign : Eq {
+    #[inline(always)]
     pure fn eq(&self, other: &Sign) -> bool { self.cmp(other) == 0 }
+    #[inline(always)]
     pure fn ne(&self, other: &Sign) -> bool { self.cmp(other) != 0 }
 }
 
 impl Sign : Ord {
+    #[inline(always)]
     pure fn lt(&self, other: &Sign) -> bool { self.cmp(other) <  0 }
+    #[inline(always)]
     pure fn le(&self, other: &Sign) -> bool { self.cmp(other) <= 0 }
+    #[inline(always)]
     pure fn ge(&self, other: &Sign) -> bool { self.cmp(other) >= 0 }
+    #[inline(always)]
     pure fn gt(&self, other: &Sign) -> bool { self.cmp(other) >  0 }
 }
 
 pub impl Sign {
     /// Compare two Sign.
+    #[inline(always)]
     pure fn cmp(&self, other: &Sign) -> int {
         match (*self, *other) {
-          (Minus, Minus) | (Zero,  Zero) | (Plus, Plus) =>  0,
-          (Minus, Zero)  | (Minus, Plus) | (Zero, Plus) => -1,
-          _                                             =>  1
+            (Minus, Minus) | (Zero,  Zero) | (Plus, Plus) =>  0,
+            (Minus, Zero)  | (Minus, Plus) | (Zero, Plus) => -1,
+            _                                             =>  1
         }
     }
 
     /// Negate Sign value.
+    #[inline(always)]
     pure fn neg(&self) -> Sign {
         match *self {
-          Minus => Plus,
-          Zero  => Zero,
-          Plus  => Minus
+            Minus => Plus,
+            Zero  => Zero,
+            Plus  => Minus
         }
     }
 }
@@ -580,52 +377,65 @@ pub struct BigInt {
 }
 
 impl BigInt : Eq {
+    #[inline(always)]
     pure fn eq(&self, other: &BigInt) -> bool { self.cmp(other) == 0 }
+    #[inline(always)]
     pure fn ne(&self, other: &BigInt) -> bool { self.cmp(other) != 0 }
 }
 
 impl BigInt : Ord {
+    #[inline(always)]
     pure fn lt(&self, other: &BigInt) -> bool { self.cmp(other) <  0 }
+    #[inline(always)]
     pure fn le(&self, other: &BigInt) -> bool { self.cmp(other) <= 0 }
+    #[inline(always)]
     pure fn ge(&self, other: &BigInt) -> bool { self.cmp(other) >= 0 }
+    #[inline(always)]
     pure fn gt(&self, other: &BigInt) -> bool { self.cmp(other) >  0 }
 }
 
 impl BigInt : ToStr {
+    #[inline(always)]
     pure fn to_str() -> ~str { self.to_str_radix(10) }
 }
 
 impl BigInt : from_str::FromStr {
+    #[inline(always)]
     static pure fn from_str(s: &str) -> Option<BigInt> {
         BigInt::from_str_radix(s, 10)
     }
 }
 
 impl BigInt : Shl<uint, BigInt> {
+    #[inline(always)]
     pure fn shl(&self, rhs: &uint) -> BigInt {
         BigInt::from_biguint(self.sign, self.data << *rhs)
     }
 }
 
 impl BigInt : Shr<uint, BigInt> {
+    #[inline(always)]
     pure fn shr(&self, rhs: &uint) -> BigInt {
         BigInt::from_biguint(self.sign, self.data >> *rhs)
     }
 }
 
 impl BigInt : Zero {
+    #[inline(always)]
     static pub pure fn zero() -> BigInt {
         BigInt::from_biguint(Zero, Zero::zero())
     }
 }
 
 impl BigInt : One {
+    #[inline(always)]
     static pub pure fn one() -> BigInt {
         BigInt::from_biguint(Plus, One::one())
     }
 }
 
 impl BigInt : Num {
+    #[inline(always)]
     pure fn add(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)      => copy *other,
@@ -637,6 +447,7 @@ impl BigInt : Num {
             (Minus, Minus) => -((-self) + (-*other))
         }
     }
+    #[inline(always)]
     pure fn sub(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)    => -other,
@@ -654,6 +465,7 @@ impl BigInt : Num {
             (Minus, Minus) => (-other) - (-*self)
         }
     }
+    #[inline(always)]
     pure fn mul(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)     | (_,     Zero)  => Zero::zero(),
@@ -665,18 +477,22 @@ impl BigInt : Num {
             }
         }
     }
+    #[inline(always)]
     pure fn div(&self, other: &BigInt) -> BigInt {
         let (d, _) = self.divmod(other);
         return d;
     }
+    #[inline(always)]
     pure fn modulo(&self, other: &BigInt) -> BigInt {
         let (_, m) = self.divmod(other);
         return m;
     }
+    #[inline(always)]
     pure fn neg(&self) -> BigInt {
         BigInt::from_biguint(self.sign.neg(), copy self.data)
     }
 
+    #[inline(always)]
     pure fn to_int(&self) -> int {
         match self.sign {
             Plus  => uint::min(self.to_uint(), int::max_value as uint) as int,
@@ -686,9 +502,10 @@ impl BigInt : Num {
         }
     }
 
+    #[inline(always)]
     static pure fn from_int(n: int) -> BigInt {
         if n > 0 {
-           return BigInt::from_biguint(Plus,  BigUint::from_uint(n as uint));
+            return BigInt::from_biguint(Plus,  BigUint::from_uint(n as uint));
         }
         if n < 0 {
             return BigInt::from_biguint(
@@ -701,11 +518,13 @@ impl BigInt : Num {
 
 pub impl BigInt {
     /// Creates and initializes an BigInt.
+    #[inline(always)]
     static pub pure fn new(sign: Sign, v: ~[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::new(v))
     }
 
     /// Creates and initializes an BigInt.
+    #[inline(always)]
     static pub pure fn from_biguint(sign: Sign, data: BigUint) -> BigInt {
         if sign == Zero || data.is_zero() {
             return BigInt { sign: Zero, data: Zero::zero() };
@@ -714,23 +533,27 @@ pub impl BigInt {
     }
 
     /// Creates and initializes an BigInt.
+    #[inline(always)]
     static pub pure fn from_uint(n: uint) -> BigInt {
         if n == 0 { return Zero::zero(); }
         return BigInt::from_biguint(Plus, BigUint::from_uint(n));
     }
 
     /// Creates and initializes an BigInt.
+    #[inline(always)]
     static pub pure fn from_slice(sign: Sign, slice: &[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::from_slice(slice))
     }
 
     /// Creates and initializes an BigInt.
+    #[inline(always)]
     static pub pure fn from_str_radix(s: &str, radix: uint)
         -> Option<BigInt> {
         BigInt::parse_bytes(str::to_bytes(s), radix)
     }
 
     /// Creates and initializes an BigInt.
+    #[inline(always)]
     static pub pure fn parse_bytes(buf: &[u8], radix: uint)
         -> Option<BigInt> {
         if buf.is_empty() { return None; }
@@ -740,14 +563,20 @@ pub impl BigInt {
             sign  = Minus;
             start = 1;
         }
-        return BigUint::parse_bytes(vec::view(buf, start, buf.len()), radix)
-            .map(|bu| BigInt::from_biguint(sign, *bu));
+
+        let bu = BigUint::parse_bytes(
+            vec::view(buf, start, buf.len()), radix);
+        return do option::map_consume(bu) |bu| {
+            BigInt::from_biguint(sign, bu)
+        };
     }
 
+    #[inline(always)]
     pure fn abs(&self) -> BigInt {
         BigInt::from_biguint(Plus, copy self.data)
     }
 
+    #[inline(always)]
     pure fn cmp(&self, other: &BigInt) -> int {
         let ss = self.sign, os = other.sign;
         if ss < os { return -1; }
@@ -761,11 +590,12 @@ pub impl BigInt {
         }
     }
 
+    #[inline(always)]
     pure fn divmod(&self, other: &BigInt) -> (BigInt, BigInt) {
         // m.sign == other.sign
         let (d_ui, m_ui) = self.data.divmod(&other.data);
-        let d = BigInt::from_biguint(Plus, d_ui),
-            m = BigInt::from_biguint(Plus, m_ui);
+        let d = BigInt::from_biguint(Plus, d_ui);
+        let m = BigInt::from_biguint(Plus, m_ui);
         match (self.sign, other.sign) {
             (_,    Zero)   => fail,
             (Plus, Plus)  | (Zero, Plus)  => (d, m),
@@ -783,15 +613,18 @@ pub impl BigInt {
         }
     }
 
+    #[inline(always)]
     pure fn quot(&self, other: &BigInt) -> BigInt {
         let (q, _) = self.quotrem(other);
         return q;
     }
+    #[inline(always)]
     pure fn rem(&self, other: &BigInt) -> BigInt {
         let (_, r) = self.quotrem(other);
         return r;
     }
 
+    #[inline(always)]
     pure fn quotrem(&self, other: &BigInt) -> (BigInt, BigInt) {
         // r.sign == self.sign
         let (q_ui, r_ui) = self.data.quotrem(&other.data);
@@ -806,13 +639,20 @@ pub impl BigInt {
         }
     }
 
+    #[inline(always)]
     pure fn is_zero(&self) -> bool { self.sign == Zero }
+    #[inline(always)]
     pure fn is_not_zero(&self) -> bool { self.sign != Zero }
+    #[inline(always)]
     pure fn is_positive(&self) -> bool { self.sign == Plus }
+    #[inline(always)]
     pure fn is_negative(&self) -> bool { self.sign == Minus }
+    #[inline(always)]
     pure fn is_nonpositive(&self) -> bool { self.sign != Plus }
+    #[inline(always)]
     pure fn is_nonnegative(&self) -> bool { self.sign != Minus }
 
+    #[inline(always)]
     pure fn to_uint(&self) -> uint {
         match self.sign {
             Plus  => self.data.to_uint(),
@@ -821,11 +661,722 @@ pub impl BigInt {
         }
     }
 
+    #[inline(always)]
     pure fn to_str_radix(&self, radix: uint) -> ~str {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
             Zero  => ~"0",
             Minus => ~"-" + self.data.to_str_radix(radix)
+        }
+    }
+}
+
+priv mod vec_ops {
+
+    use core::*;
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    use super::{BigDigit};
+
+    pub fn from_uint_set(buf: &mut ~[BigDigit], n: uint) {
+        let (hi, lo) = BigDigit::from_uint(n);
+        if hi == 0 {
+            if lo == 0 { assign(buf, &[]); }
+            else { assign(buf, &[lo]); }
+        } else {
+            assign(buf, &[lo, hi]);
+        }
+    }
+
+    pub pure fn reduce_zeros(v: &mut ~[BigDigit]) {
+        let new_len = v.rposition(|n| *n != 0).map_default(0, |p| *p + 1);
+        unsafe { vec::raw::set_len(v, new_len); }
+    }
+
+    pub pure fn reduce_zeros_view(v: &a/[BigDigit]) -> &a/[BigDigit] {
+        let new_len = v.rposition(|n| *n != 0).map_default(0, |p| *p + 1);
+        return vec::view(v, 0, new_len);
+    }
+
+    pub pure fn cmp_offset(a: &[BigDigit], b: &[BigDigit], offset: uint)
+        -> int {
+        let a_len = a.len(), b_len = b.len();
+        if a_len < b_len + offset { return -1; }
+        if a_len > b_len + offset { return  1; }
+
+        let mut i = a_len;
+        while i > offset {
+            i -= 1;
+            if a[i] < b[i - offset] { return -1; }
+            if a[i] > b[i - offset] { return  1;}
+        }
+        return 0;
+    }
+
+    pub fn replace_offset(dst: &mut ~[BigDigit], src: &[BigDigit],
+                          offset: uint) {
+        let s_len = src.len();
+        if s_len == 0 { return; }
+        let d_len = dst.len();
+
+        vec::reserve(dst, s_len + offset);
+        unsafe { vec::raw::set_len(dst, uint::max(s_len + offset, d_len)); }
+
+        if d_len < offset {
+            do vec::as_mut_buf(vec::mut_view(*dst, d_len, offset)) |p, len| {
+                unsafe { ptr::memset(p, 0, len); }
+            }
+        }
+        unsafe {
+            vec::raw::memcpy(vec::mut_view(*dst, offset, s_len + offset),
+                             src, s_len);
+        }
+    }
+
+    pub fn cut_at(a: &a/[BigDigit], n: uint)
+        -> (&a/[BigDigit], &a/[BigDigit]) {
+        let a_len = a.len();
+        let hi, lo;
+        if n < a_len {
+            hi = vec::view(a, n, a_len);
+            lo = vec::view(a, 0, n);
+        } else {
+            hi = vec::view(a, 0, 0);
+            lo = vec::view(a, 0, a_len);
+        }
+        return (reduce_zeros_view(hi), reduce_zeros_view(lo));
+    }
+
+    pub fn assign(dst: &mut ~[BigDigit], src: &[BigDigit]) {
+        replace_offset(dst, src, 0);
+        unsafe {
+            vec::raw::set_len(dst, src.len());
+        }
+    }
+
+    priv macro_rules! shl_unit (
+        ($dst:ident, $src:ident, $n:ident) => ({
+            let s_len = $src.len();
+            let new_len = $n + s_len;
+            vec::reserve($dst, new_len);
+            unsafe {
+                vec::raw::set_len($dst, new_len);
+                vec::raw::memmove(vec::mut_view(*$dst, $n, s_len + $n),
+                                  $src.view(0, s_len), s_len);
+                do vec::as_mut_buf(*$dst) |ptr, _len| {
+                    ptr::memset(ptr, 0, $n);
+                }
+            }
+        })
+    )
+
+    priv macro_rules! shl_bits (
+        ($dst:ident, $src:ident, $n:ident) => ({
+            let s_len = $src.len();
+            vec::reserve($dst, s_len);
+            unsafe { vec::raw::set_len($dst, s_len); }
+            let mut carry = 0;
+            for uint::range(0, s_len) |i| {
+                let (hi, lo) = BigDigit::from_uint(
+                    ($src[i] as uint) << $n | (carry as uint));
+                carry = hi;
+                $dst[i] = lo;
+            }
+            if carry != 0 { $dst.push(carry); }
+        })
+    )
+
+    pub fn shl_set(dst: &mut ~[BigDigit], a: &[BigDigit], n: uint) {
+        let n_unit = n / BigDigit::bits;
+        let n_bits = n % BigDigit::bits;
+        if n_unit > 0 {
+            shl_unit!(dst, a, n_unit);
+            if n_bits > 0 {
+                shl_bits!(dst, dst, n_bits);
+            }
+        } else if n_bits > 0 {
+            shl_bits!(dst, a, n_bits);
+        } else {
+            assign(dst, a);
+        }
+    }
+
+    pub fn shl_assign(a: &mut ~[BigDigit], n: uint) {
+        let n_unit = n / BigDigit::bits;
+        let n_bits = n % BigDigit::bits;
+        if n_unit > 0 { shl_unit!(a, a, n_unit); }
+        if n_bits > 0 { shl_bits!(a, a, n_bits); }
+    }
+
+    priv macro_rules! shr_unit (
+        ($dst:ident, $src:ident, $n:ident) => ({
+            let s_len = $src.len();
+            if s_len < $n {
+                unsafe { vec::raw::set_len($dst, 0); }
+            } else {
+                let new_len = s_len - $n;
+                vec::reserve($dst, new_len);
+                unsafe {
+                    if $dst.len() < new_len {
+                        vec::raw::set_len($dst, new_len);
+                    }
+                    vec::raw::memmove(*$dst, $src.view($n, s_len), new_len);
+                    vec::raw::set_len($dst, new_len);
+                }
+            }
+        })
+    )
+
+    priv macro_rules! shr_bits (
+        ($dst:ident, $src:ident, $n:ident) => ({
+            let s_len = $src.len();
+            vec::reserve($dst, s_len);
+            unsafe { vec::raw::set_len($dst, s_len); }
+            if s_len > 0 {
+                let mut borrow = 0;
+                let mut i = s_len - 1;
+                loop {
+                    let elem = $src[i];
+                    $dst[i] = (elem >> $n) | borrow;
+                    borrow = elem << (uint::bits - $n);
+                    if i == 0 { break; }
+                    i -= 1;
+                }
+                reduce_zeros($dst);
+            }
+        })
+    )
+
+    pub fn shr_set(dst: &mut ~[BigDigit], a: &[BigDigit], n: uint) {
+        let n_unit = n / BigDigit::bits;
+        let n_bits = n % BigDigit::bits;
+        if n_unit > 0 {
+            shr_unit!(dst, a, n_unit);
+            if n_bits > 0 {
+                shr_bits!(dst, dst, n_bits);
+            }
+        } else if n_bits > 0 {
+            shr_bits!(dst, a, n_bits);
+        } else {
+            assign(dst, a)
+        }
+    }
+
+    pub fn shr_assign(a: &mut ~[BigDigit], n: uint) {
+        let n_unit = n / BigDigit::bits;
+        let n_bits = n % BigDigit::bits;
+        if n_unit > 0 { shr_unit!(a, a, n_unit); }
+        if n_bits > 0 { shr_bits!(a, a, n_bits); }
+    }
+
+    priv pure fn shr_unit_view(a: &a/[BigDigit], n: uint) -> &a/[BigDigit] {
+        if a.len() > n { return vec::view(a, n, a.len()); }
+        return a;
+    }
+
+
+    priv macro_rules! add_carry {
+        (($carry:expr, $dst:expr) = sum($($elem:expr),+)) => ({
+            let (hi, lo) = BigDigit::from_uint( 0 $( + ($elem as uint) )+ );
+            $carry = hi;
+            $dst   = lo;
+        })
+    }
+
+    pub fn add_offset_assign(a: &mut ~[BigDigit], b: &[BigDigit],
+                             offset: uint) {
+        let a_len = a.len();
+        let b_len = b.len();
+        if b_len == 0 { return; }
+
+        if a_len < offset {
+            replace_offset(a, b, offset);
+            return;
+        }
+
+        let new_len = uint::max(a_len, b_len + offset);
+        if vec::capacity(a) < new_len {
+            // reallocating only if reallocation must be needed
+            vec::reserve(a, new_len + 1);
+        }
+        unsafe { vec::raw::set_len(a, new_len); }
+
+        let mut carry = 0;
+        for uint::range(offset, uint::min(a_len, b_len + offset)) |i| {
+            add_carry!(
+                (carry, a[i]) = sum(a[i], b[i - offset], carry)
+            );
+        }
+
+        if a_len < b_len + offset {
+            let mut i = a_len;
+            while i < b_len + offset {
+                if carry == 0 { break; }
+                add_carry!(
+                    (carry, a[i]) = sum(b[i - offset], carry)
+                );
+                i += 1;
+            }
+
+            replace_offset(a, b.view(i - offset, b_len), i);
+        } else {
+            for uint::range(b_len + offset, a_len) |i| {
+                if carry == 0 { break; }
+                add_carry!(
+                    (carry, a[i]) = sum(a[i], carry)
+                );
+            }
+        }
+
+        if carry != 0 { a.push(carry); }
+    }
+
+    pub fn add_set(sum: &mut ~[BigDigit], a: &[BigDigit], b: &[BigDigit]) {
+        let a_len = a.len();
+        let b_len = b.len();
+        if a_len < b_len {
+            add_set(sum, b, a);
+            return;
+        }
+        assert a_len >= b_len;
+
+        if vec::capacity(sum) < a_len {
+            // reallocating only if reallocation must be needed
+            vec::reserve(sum, a_len + 1);
+        }
+        unsafe { vec::raw::set_len(sum, a_len); }
+
+        let mut carry = 0;
+        for uint::range(0, b_len) |i| {
+            add_carry!(
+                (carry, sum[i]) = sum(a[i], b[i], carry)
+            );
+        }
+        let mut i = b_len;
+        while i < a_len {
+            if carry == 0 { break; }
+            add_carry!(
+                (carry, sum[i]) = sum(a[i], carry)
+            );
+            i += 1;
+        }
+        if i < a_len {
+            replace_offset(sum, a.view(i, a_len), i);
+        }
+        if carry != 0 { sum.push(carry); }
+    }
+
+    priv macro_rules! sub_borrow {
+        (($borrow:expr, $dst:expr) = sub($($elem:expr),+)) => ({
+            let (hi, lo) = BigDigit::from_uint(
+                BigDigit::base + $( ($elem as uint) )-+ );
+            /*
+            hi*(base) + lo == 1*(base) + ai - bi - borrow
+            =>  ai - bi - borrow < 0 <=> hi == 0
+            */
+            $borrow = 1 - hi;
+            $dst   = lo;
+        })
+    }
+
+    pub fn sub_offset_assign(a: &mut ~[BigDigit], b: &[BigDigit],
+                             offset: uint) {
+        if b.is_empty() { return; }
+        let c = cmp_offset(*a, b, offset);
+        assert c >= 0;
+        if c == 0 {
+            unsafe { vec::raw::set_len(a, offset); }
+            reduce_zeros(a);
+            return;
+        }
+
+        let a_len = a.len();
+        let b_len = b.len();
+
+        let mut borrow = 0;
+        for uint::range(offset, b_len + offset) |i| {
+            sub_borrow!((borrow, a[i]) = sub(a[i], b[i - offset], borrow));
+        }
+        for uint::range(b_len + offset, a_len) |i| {
+            if borrow == 0 { break; }
+            sub_borrow!((borrow, a[i]) = sub(a[i], borrow));
+        }
+        assert borrow == 0;
+        reduce_zeros(a);
+    }
+
+    pub fn sub_set(diff: &mut ~[BigDigit], a: &[BigDigit], b: &[BigDigit]) {
+        if b.is_empty() {
+            replace_offset(diff, a, 0);
+            return;
+        }
+        let c = cmp_offset(a, b, 0);
+        assert c >= 0;
+        if c == 0 {
+            unsafe { vec::raw::set_len(diff, 0); }
+            return;
+        }
+
+        let a_len = a.len();
+        let b_len = b.len();
+        vec::reserve(diff, a_len);
+        unsafe { vec::raw::set_len(diff, a_len); }
+
+        let mut borrow = 0;
+        for uint::range(0, b_len) |i| {
+            sub_borrow!((borrow, diff[i]) = sub(a[i], b[i], borrow));
+        }
+        let mut i = b_len;
+        while i < a_len {
+            if borrow == 0 { break; }
+            sub_borrow!((borrow, diff[i]) = sub(a[i], borrow));
+            i += 1;
+        }
+        if i < a_len {
+            replace_offset(diff, a.view(i, a_len), i);
+        }
+        assert borrow == 0;
+        reduce_zeros(diff);
+    }
+
+    priv macro_rules! mul_carry {
+        (($carry:expr, $dst:expr) = mul($a:expr, $b:expr, $c:expr)) => ({
+            let (hi, lo) = BigDigit::from_uint(
+                ($a as uint) * ($b as uint) + ($c as uint));
+            $carry = hi;
+            $dst   = lo;
+        })
+    }
+
+    pub fn mul_digit_assign(a: &mut ~[BigDigit], n: BigDigit) {
+        if n == 0 {
+            unsafe { vec::raw::set_len(a, 0); }
+            return;
+        }
+        if n == 1 { return; }
+
+        let mut carry = 0;
+        for uint::range(0, a.len()) |i| {
+            mul_carry!((carry, a[i]) = mul(a[i], n, carry));
+        }
+        if carry != 0 { a.push(carry); }
+    }
+
+
+    pub fn mul_digit_set(prod: &mut ~[BigDigit],
+                         a: &[BigDigit], n: BigDigit) {
+        if n == 0 {
+            unsafe { vec::raw::set_len(prod, 0); }
+            return;
+        }
+        if n == 1 {
+            assign(prod, a);
+            return;
+        }
+
+        let a_len = a.len();
+        if vec::capacity(prod) < a_len {
+            vec::reserve(prod, a_len + 1);
+        }
+        unsafe { vec::raw::set_len(prod, a_len); }
+
+        let mut carry = 0;
+        for uint::range(0, a_len) |i| {
+            mul_carry!((carry, prod[i]) = mul(a[i], n, carry));
+        }
+        if carry != 0 { prod.push(carry); }
+    }
+
+    pub fn mul_set(prod: &mut ~[BigDigit],
+                   a: &[BigDigit], b: &[BigDigit]) {
+        let a_len = a.len();
+        let b_len = b.len();
+        if a_len == 0 || b_len == 0 {
+            unsafe { vec::raw::set_len(prod, 0); }
+            return;
+        }
+        if a_len == 1 { mul_digit_set(prod, b, a[0]); return; }
+        if b_len == 1 { mul_digit_set(prod, a, b[0]); return; }
+
+        // Using Karatsuba multiplication
+        // (a1 * base + a0) * (b1 * base + b0)
+        // = a1*b1 * base^2 +
+        //   (a1*b1 + a0*b0 - (a1-b0)*(b1-a0)) * base +
+        //   a0*b0
+        let half_len = uint::max(a_len, b_len) / 2;
+        let (aHi, aLo) = cut_at(a, half_len);
+        let (bHi, bLo) = cut_at(b, half_len);
+
+        // XXX: reduce memory allocation
+        let mut ll = ~[];
+        mul_set(&mut ll, aLo, bLo);
+        let mut hh = ~[];
+        mul_set(&mut hh, aHi, bHi);
+        let mut mm = ~[];
+        add_offset_assign(&mut mm, hh, 0);
+        add_offset_assign(&mut mm, ll, 0);
+        {
+            let mut m1 = ~[];
+            let s1 = sub_sign_set(&mut m1, aHi, aLo);
+            let mut m2 = ~[];
+            let s2 = sub_sign_set(&mut m2, bHi, bLo);
+            let mut mprod = ~[];
+            mul_set(&mut mprod, m1, m2);
+            if s1 * s2 < 0 {
+                add_offset_assign(&mut mm, mprod, 0);
+            } else if s1 * s2 > 0 {
+                sub_offset_assign(&mut mm, mprod, 0);
+            } else { /* Do nothing */ }
+        }
+
+        unsafe {
+            add_offset_assign(prod, ll, 0);
+            add_offset_assign(prod, mm, half_len);
+            add_offset_assign(prod, hh, half_len * 2);
+        }
+
+        fn sub_sign_set(diff: &mut ~[BigDigit],
+                        a: &[BigDigit], b: &[BigDigit]) -> int {
+            let s = cmp_offset(a, b, 0);
+            match s {
+                s if s < 0 => sub_set(diff, b, a),
+                s if s > 0 => sub_set(diff, a, b),
+                _          => unsafe { vec::raw::set_len(diff, 0); }
+            }
+            return s;
+        }
+    }
+
+    pub fn divmod_set(d: &mut ~[BigDigit], m: &mut ~[BigDigit],
+                      a: &[BigDigit], b: &[BigDigit]) {
+        let a_len = a.len();
+        let b_len = b.len();
+        if b_len == 0 { fail }
+        if a_len == 0 {
+            unsafe { vec::raw::set_len(d, 0); }
+            unsafe { vec::raw::set_len(m, 0); }
+            return;
+        }
+        if b_len == 1 && b[0] == 1 {
+            assign(d, a);
+            unsafe { vec::raw::set_len(m, 0); }
+            return;
+        }
+
+        let c = cmp_offset(a, b, 0);
+        if c < 0 {
+            unsafe { vec::raw::set_len(d, 0); }
+            assign(m, a);
+            return;
+        }
+        if c == 0 {
+            assign(d, &[1]);
+            unsafe { vec::raw::set_len(m, 0); }
+            return;
+        }
+
+        let shift = {
+            let mut n = b.last();
+            let mut s = 0;
+            while n < (1 << BigDigit::bits - 1) {
+                n <<= 1;
+                s += 1;
+            }
+            assert s < BigDigit::bits;
+            s
+        };
+        let mut a2 = ~[], b2 = ~[];
+        shl_set(&mut a2, a, shift);
+        shl_set(&mut b2, b, shift);
+        inner(d, m, a2, b2);
+        shr_assign(m, shift);
+
+        fn inner(d: &mut ~[BigDigit], m: &mut ~[BigDigit],
+                 a: &[BigDigit], b: &[BigDigit]) {
+            let b_len = b.len();
+            unsafe {
+                vec::raw::set_len(d, 0);
+                assign(m, a);
+            }
+            let mut n = 1;
+            let mut buf = ~[];
+            vec::reserve(&mut buf, b_len + 1);
+            while cmp_offset(*m, b, 0) >= 0 {
+                let mut d0 = div_estimate(*m, b, n);
+                if d0 == 0 {
+                    unsafe { vec::raw::set_len(&mut buf, 0); }
+                    n = 2;
+                    loop;
+                }
+                mul_digit_set(&mut buf, b, d0);
+                let offset = m.len() - b_len - n + 1;
+                if cmp_offset(buf, shr_unit_view(*m, offset), 0) > 0 {
+                    sub_offset_assign(&mut buf, b, 0);
+                    if d0 == 1 {
+                        n = 2;
+                        loop;
+                    }
+                    d0 -= 1;
+                }
+                add_offset_assign(d, &[d0], offset);
+                sub_offset_assign(m, buf, offset);
+                n = 1;
+            }
+            reduce_zeros(d);
+            reduce_zeros(m);
+        }
+    }
+
+    priv pure fn div_estimate(a: &[BigDigit], b: &[BigDigit], n: uint)
+        -> BigDigit {
+        assert n == 1 || n == 2;
+
+        let a_len = a.len();
+        if a_len < n { return 0; }
+
+        let b_len = b.len();
+        let an = a[a_len - 1];
+        let bn = b[b_len - 1];
+        if n == 1 { return an / bn; }
+
+        // n == 2
+        if an == bn { return -1; }
+        let an = BigDigit::to_uint(an, a[a_len - 2]);
+        return (an / (bn as uint)) as BigDigit;
+    }
+
+
+    pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<~[BigDigit]> {
+        let (base, unit_len) = get_radix_base(radix);
+        let buf_len = buf.len();
+        let n_len   = uint::div_ceil(buf_len, unit_len);
+        let mut n   = ~[];
+        vec::reserve(&mut n, n_len);
+
+        if base == BigDigit::base {
+            for uint::range(0, n_len) |exp| {
+                let end   = buf_len - unit_len * exp;
+                let start = uint::max(end, unit_len) - unit_len;
+                match uint::parse_bytes(buf.view(start, end), radix) {
+                    None    => { return None; }
+                    Some(d) => {
+                        assert d < BigDigit::base;
+                        replace_offset(&mut n, &[d as BigDigit], exp);
+                    }
+                }
+            }
+            return Some(n);
+        }
+
+        assert base < BigDigit::base;
+
+        let mut end   = buf_len;
+        let mut power = ~[1];
+        let mut prod  = ~[];
+        vec::reserve(&mut power, n_len);
+        vec::reserve(&mut prod,  n_len);
+        for n_len.times {
+            let start = uint::max(end, unit_len) - unit_len;
+            match uint::parse_bytes(buf.view(start, end), radix) {
+                None    => { return None; }
+                Some(d) => {
+                    assert d < BigDigit::base;
+                    mul_digit_set(&mut prod, power, d as BigDigit);
+                    add_offset_assign(&mut n, prod, 0);
+                }
+            }
+            end -= unit_len;
+            mul_digit_assign(&mut power, base as BigDigit);
+        }
+        return Some(n);
+    }
+
+    pub fn to_str_radix(buf: &[BigDigit], radix: uint) -> ~str {
+        assert 1 < radix && radix <= 16;
+        let len = buf.len();
+        if len == 0 { return ~"0"; }
+
+        let (base, max_len) = get_radix_base(radix);
+        if base == BigDigit::base {
+            return fill_concat(buf, radix, max_len)
+        }
+
+        let divider = {
+            let mut d = ~[];
+            from_uint_set(&mut d, base);
+            d
+        };
+
+        let result_len = len * 2;
+        let mut converted = ~[];
+        let mut d = ~[];
+        let mut m = ~[];
+        vec::reserve(&mut converted, result_len);
+        vec::reserve(&mut d, result_len);
+
+        assign(&mut d, buf);
+        let mut acc = ~[];
+        for uint::range(0, result_len) |i| {
+            assign(&mut acc, d);
+            divmod_set(&mut d, &mut m, acc, divider);
+            replace_offset(&mut converted, m, i);
+            if d.len() == 0 { break; }
+        }
+        return fill_concat(converted, radix, max_len);
+
+        pure fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
+            if v.is_empty() { return ~"0" }
+            str::trim_left_chars(str::concat(vec::reversed(v).map(|n| {
+                let s = uint::to_str(*n as uint, radix);
+                str::from_chars(vec::from_elem(l - s.len(), '0')) + s
+            })), ['0'])
+        }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
+        assert 1 < radix && radix <= 16;
+        match radix {
+            2  => (4294967296, 32),
+            3  => (3486784401, 20),
+            4  => (4294967296, 16),
+            5  => (1220703125, 13),
+            6  => (2176782336, 12),
+            7  => (1977326743, 11),
+            8  => (1073741824, 10),
+            9  => (3486784401, 10),
+            10 => (1000000000, 9),
+            11 => (2357947691, 9),
+            12 => (429981696,  8),
+            13 => (815730721,  8),
+            14 => (1475789056, 8),
+            15 => (2562890625, 8),
+            16 => (4294967296, 8),
+            _  => fail
+        }
+    }
+
+    #[cfg(target_arch = "arm")]
+    #[cfg(target_arch = "x86")]
+    priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
+        assert 1 < radix && radix <= 16;
+        match radix {
+            2  => (65536, 16),
+            3  => (59049, 10),
+            4  => (65536, 8),
+            5  => (15625, 6),
+            6  => (46656, 6),
+            7  => (16807, 5),
+            8  => (32768, 5),
+            9  => (59049, 5),
+            10 => (10000, 4),
+            11 => (14641, 4),
+            12 => (20736, 4),
+            13 => (28561, 4),
+            14 => (38416, 4),
+            15 => (50625, 4),
+            16 => (65536, 4),
+            _  => fail
         }
     }
 }
@@ -1185,6 +1736,16 @@ mod biguint_tests {
             (16, ~"3" +
              str::from_chars(vec::from_elem(bits / 4 - 1, '0')) + "2" +
              str::from_chars(vec::from_elem(bits / 4 - 1, '0')) + "1")
+        ]), ( BigUint::from_slice(~[ BigDigit::max_value ]), ~[
+            (2, str::from_chars(vec::from_elem(bits, '1'))),
+            (4, str::from_chars(vec::from_elem(bits / 2, '3'))),
+            (16, str::from_chars(vec::from_elem(bits / 4, 'f')))
+        ]), ( BigUint::from_slice(~[
+            BigDigit::max_value, BigDigit::max_value
+        ]), ~[
+            (2, str::from_chars(vec::from_elem(2 * bits, '1'))),
+            (4, str::from_chars(vec::from_elem(2 * bits / 2, '3'))),
+            (16, str::from_chars(vec::from_elem(2 * bits / 4, 'f')))
         ]) ]
     }
 
@@ -1598,3 +2159,198 @@ mod bigint_tests {
     }
 }
 
+#[cfg(test)]
+mod vec_ops_test {
+    use vec_ops, BigDigit;
+    use core::*;
+
+    #[test]
+    fn test_reduce_zeros() {
+        fn check(inp: ~[BigDigit], out: &[BigDigit]) {
+            let mut inp = inp;
+            vec_ops::reduce_zeros(&mut inp);
+            assert vec::eq(inp, out);
+        }
+
+        check(~[1, 2, 3], [1, 2, 3]);
+        check(~[1, 2, 3, 0, 0, 0], [1, 2, 3]);
+        check(~[], []);
+        check(~[0, 0], []);
+    }
+
+    #[test]
+    fn test_cmp() {
+        fn check(a: &[BigDigit], b: &[BigDigit], offset: uint, c: int) {
+            if c != 0 {
+                // c and result have same sign
+                assert vec_ops::cmp_offset(a, b, offset) * c > 0;
+            } else {
+                assert vec_ops::cmp_offset(a, b, offset) == 0;
+            }
+            if offset == 0 {
+                if c != 0 {
+                    // c and result have different sign
+                    assert vec_ops::cmp_offset(b, a, offset) * c < 0;
+                } else {
+                    assert vec_ops::cmp_offset(b, a, offset) == 0;
+                }
+            }
+        }
+
+        check(~[], ~[], 0, 0);
+        check(~[1, 2, 3], ~[], 0, 1);
+        check(~[1, 2, 3], ~[1, 1, 1], 0, 1);
+        check(~[1, 2, 3], ~[1, 2, 3], 0, 0);
+
+        check(~[], ~[], 3, -1);
+        check(~[1, 2, 3], ~[], 3, 0);
+        check(~[1, 2, 3, 4], ~[], 3, 1);
+        check(~[1, 2, 3, 4], ~[4], 3, 0);
+        check(~[1, 2, 3, 4], ~[5], 3, -1);
+    }
+
+    #[test]
+    fn test_replace_offset() {
+        fn check(buf: ~[BigDigit], inp: &[BigDigit], offset: uint,
+                 out: &[BigDigit]) {
+            let mut buf = buf;
+            vec_ops::replace_offset(&mut buf, inp, offset);
+            assert vec::eq(buf, out);
+        }
+
+        check(~[], &[], 0, &[]);
+        check(~[], &[], 3, &[]);
+
+        check(~[], &[1, 2, 3], 0, &[1, 2, 3]);
+        check(~[], &[1, 2, 3], 3, &[0, 0, 0, 1, 2, 3]);
+
+        check(~[1, 2, 3], &[], 0, &[1, 2, 3]);
+        check(~[1, 2, 3], &[], 3, &[1, 2, 3]);
+        check(~[1, 2, 3], &[4, 5, 6], 0, &[4, 5, 6]);
+        check(~[1, 2, 3], &[4, 5, 6], 3, &[1, 2, 3, 4, 5, 6]);
+        check(~[1, 2, 3, 0, 0, 0, 7, 8, 9], &[4, 5, 6], 3,
+              &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    }
+
+    #[test]
+    fn test_assign() {
+        fn check(dst: ~[BigDigit], src: &[BigDigit]) {
+            let mut dst = dst;
+            vec_ops::assign(&mut dst, src);
+            assert vec::eq(dst, src);
+        }
+        check(~[], ~[]);
+        check(~[], ~[1, 2, 3]);
+        check(~[1, 2, 3], ~[]);
+        check(~[1, 2, 3], ~[4, 5, 6]);
+    }
+
+    #[test]
+    fn test_add_sub_offset_assign() {
+        fn check(a: &[BigDigit], b: &[BigDigit], offset: uint,
+                 sum: &[BigDigit]) {
+            let mut v1 = vec::from_slice(a);
+            vec_ops::add_offset_assign(&mut v1, b, offset);
+            assert vec::eq(v1, sum);
+
+            let mut v1 = vec::from_slice(sum);
+            vec_ops::sub_offset_assign(&mut v1, b, offset);
+            assert vec::eq(v1, a);
+
+            if offset > 0 {
+                let b2 = if b.is_empty() {
+                    ~[]
+                } else {
+                    vec::from_elem(offset, 0) + b
+                };
+
+                let mut v2 = vec::from_slice(a);
+                vec_ops::add_offset_assign(&mut v2, b2, 0);
+                assert vec::eq(v2, sum);
+
+                let mut v2 = vec::from_slice(sum);
+                vec_ops::sub_offset_assign(&mut v2, a, 0);
+                assert vec::eq(v2, b2);
+
+                let mut v3 = vec::from_slice(b2);
+                vec_ops::add_offset_assign(&mut v3, a, 0);
+                assert vec::eq(v3, sum);
+
+                let mut v3 = vec::from_slice(sum);
+                vec_ops::sub_offset_assign(&mut v3, b2, 0);
+                assert vec::eq(v3, a);
+            }
+        }
+
+        check([], [], 0, []);
+        check([1, 2, 3], [], 0, [1, 2, 3]);
+        check([], [1, 2, 3], 0, [1, 2, 3]);
+        check([BigDigit::max_value], [1], 0, [0, 1]);
+
+        check([], [1, 2, 3], 3, [0, 0, 0, 1, 2, 3]);
+        check([1, 2], [2, 3, 4], 1, [1, 4, 3, 4]);
+        check([1, 2], [], 3, [1, 2]);
+    }
+
+    #[test]
+    fn test_add_sub_set() {
+        fn check(a: &[BigDigit], b: &[BigDigit], sum: &[BigDigit]) {
+            let mut v1 = ~[];
+            vec_ops::add_set(&mut v1, a, b);
+            assert vec::eq(v1, sum);
+
+            let mut v1 = ~[];
+            vec_ops::sub_set(&mut v1, sum, a);
+            assert vec::eq(v1, b);
+
+            let mut v2 = ~[];
+            vec_ops::add_set(&mut v2, b, a);
+            assert vec::eq(v2, sum);
+
+            let mut v2 = ~[];
+            vec_ops::sub_set(&mut v2, sum, b);
+            assert vec::eq(v2, a);
+        }
+
+        check([], [], []);
+        check([1, 2, 3], [], [1, 2, 3]);
+        check([], [1, 2, 3], [1, 2, 3]);
+        check([BigDigit::max_value], [1], [0, 1]);
+        check([BigDigit::max_value], [1, BigDigit::max_value], [0, 0, 1]);
+    }
+
+    #[test]
+    fn test_mul_digit() {
+        fn check(a: ~[BigDigit], n: BigDigit, prod: &[BigDigit]) {
+            let mut a = a;
+            vec_ops::mul_digit_assign(&mut a, n);
+            assert vec::eq(a, prod);
+        }
+
+        check(~[], 0, &[]);
+        check(~[], 1, &[]);
+        check(~[1, 2], 0, &[]);
+        check(~[1, 2], 1, &[1, 2]);
+        check(~[1, 2], 100, &[100, 200]);
+        check(~[1, 2], BigDigit::max_value,
+              &[BigDigit::max_value, BigDigit::max_value - 1, 1]);
+    }
+
+
+    #[test]
+    fn test_mul_digit_set() {
+        fn check(a: &[BigDigit], n: BigDigit, prod: &[BigDigit]) {
+            let mut v = ~[];
+            vec_ops::mul_digit_set(&mut v, a, n);
+            assert vec::eq(v, prod);
+        }
+
+        check(&[], 0, &[]);
+        check(&[], 1, &[]);
+        check(&[1, 2], 0, &[]);
+        check(&[1, 2], 1, &[1, 2]);
+        check(&[1, 2], 100, &[100, 200]);
+        check(&[1, 2], BigDigit::max_value,
+              &[BigDigit::max_value, BigDigit::max_value - 1, 1]);
+    }
+}
