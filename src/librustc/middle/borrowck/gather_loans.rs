@@ -30,7 +30,7 @@ use util::common::indenter;
 use util::ppaux::{expr_repr, region_to_str};
 
 use core::dvec;
-use core::send_map::linear::LinearSet;
+use core::hashmap::linear::LinearSet;
 use core::vec;
 use std::map::HashMap;
 use syntax::ast::{m_const, m_imm, m_mutbl};

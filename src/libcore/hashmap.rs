@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Sendable hash maps.  Very much a work in progress.
-
-*/
+//! Sendable hash maps.
 
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
@@ -102,9 +98,7 @@ pub mod linear {
                             idx: uint,
                             len_buckets: uint) -> uint {
             let n = (idx + 1) % len_buckets;
-            unsafe{ // argh. log not considered pure.
-                debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
-            }
+            debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
             return n;
         }
 
@@ -259,11 +253,15 @@ pub mod linear {
     }
 
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Container {
+        /// Return the number of elements in the map
         pure fn len(&self) -> uint { self.size }
+
+        /// Return true if the map contains no elements
         pure fn is_empty(&self) -> bool { self.len() == 0 }
     }
 
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Mutable {
+        /// Clear the map, removing all key-value pairs.
         fn clear(&mut self) {
             for uint::range(0, self.buckets.len()) |idx| {
                 self.buckets[idx] = None;
@@ -273,6 +271,7 @@ pub mod linear {
     }
 
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Map<K, V> {
+        /// Return true if the map contains a value for the specified key
         pure fn contains_key(&self, k: &K) -> bool {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(_) => {true}
@@ -280,6 +279,7 @@ pub mod linear {
             }
         }
 
+        /// Visit all key-value pairs
         pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
             for vec::each(self.buckets) |slot| {
                 let mut broke = false;
@@ -292,14 +292,40 @@ pub mod linear {
             }
         }
 
+        /// Visit all keys
         pure fn each_key(&self, blk: fn(k: &K) -> bool) {
             self.each(|k, _v| blk(k))
         }
 
+        /// Visit all values
         pure fn each_value(&self, blk: fn(v: &V) -> bool) {
             self.each(|_k, v| blk(v))
         }
 
+        /// Return the value corresponding to the key in the map
+        pure fn find(&self, k: &K) -> Option<&self/V> {
+            match self.bucket_for_key(self.buckets, k) {
+                FoundEntry(idx) => {
+                    match self.buckets[idx] {
+                        Some(ref bkt) => {
+                            // FIXME(#3148)---should be inferred
+                            let bkt: &self/Bucket<K,V> = bkt;
+                            Some(&bkt.value)
+                        }
+                        None => {
+                            fail ~"LinearMap::find: internal logic error"
+                        }
+                    }
+                }
+                TableFull | FoundHole(_) => {
+                    None
+                }
+            }
+        }
+
+        /// Insert a key-value pair into the map. An existing value for a
+        /// key is replaced by the new value. Return true if the key did
+        /// not already exist in the map.
         fn insert(&mut self, k: K, v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
@@ -315,6 +341,8 @@ pub mod linear {
             self.insert_internal(hash, move k, move v)
         }
 
+        /// Remove a key-value pair from the map. Return true if the key
+        /// was present in the map, otherwise false.
         fn remove(&mut self, k: &K) -> bool {
             match self.pop(k) {
                 Some(_) => true,
@@ -324,6 +352,10 @@ pub mod linear {
     }
 
     impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
+        static fn new() -> LinearMap<K, V> {
+            linear_map_with_capacity(INITIAL_CAPACITY)
+        }
+
         fn pop(&mut self, k: &K) -> Option<V> {
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             self.pop_internal(hash, k)
@@ -369,36 +401,16 @@ pub mod linear {
             }
         }
 
-        pure fn find_ref(&self, k: &K) -> Option<&self/V> {
-            match self.bucket_for_key(self.buckets, k) {
-                FoundEntry(idx) => {
-                    match self.buckets[idx] {
-                        Some(ref bkt) => {
-                            // FIXME(#3148)---should be inferred
-                            let bkt: &self/Bucket<K,V> = bkt;
-                            Some(&bkt.value)
-                        }
-                        None => {
-                            fail ~"LinearMap::find: internal logic error"
-                        }
-                    }
-                }
-                TableFull | FoundHole(_) => {
-                    None
-                }
-            }
-        }
-
-        pure fn get_ref(&self, k: &K) -> &self/V {
-            match self.find_ref(k) {
+        pure fn get(&self, k: &K) -> &self/V {
+            match self.find(k) {
                 Some(v) => v,
                 None => fail fmt!("No entry found for key: %?", k),
             }
         }
     }
 
-    impl<K:Hash IterBytes Eq, V: Copy> LinearMap<K,V> {
-        pure fn find(&const self, k: &K) -> Option<V> {
+    impl<K:Hash IterBytes Eq, V: Copy> LinearMap<K, V> {
+        pure fn find_copy(&const self, k: &K) -> Option<V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
                     // FIXME (#3148): Once we rewrite found_entry, this
@@ -413,14 +425,6 @@ pub mod linear {
                 }
             }
         }
-
-        pure fn get(&const self, k: &K) -> V {
-            let value = self.find(k);
-            if value.is_none() {
-                fail fmt!("No entry found for key: %?", k);
-            }
-            option::unwrap(move value)
-        }
     }
 
     impl<K:Hash IterBytes Eq, V: Eq> LinearMap<K, V>: Eq {
@@ -428,7 +432,7 @@ pub mod linear {
             if self.len() != other.len() { return false; }
 
             for self.each |key, value| {
-                match other.find_ref(key) {
+                match other.find(key) {
                     None => return false,
                     Some(v) => if value != v { return false },
                 }
@@ -462,11 +466,15 @@ pub mod linear {
     }
 
     impl <T: Hash IterBytes Eq> LinearSet<T>: Container {
+        /// Return the number of elements in the set
         pure fn len(&self) -> uint { self.map.len() }
+
+        /// Return true if the set contains no elements
         pure fn is_empty(&self) -> bool { self.map.is_empty() }
     }
 
     impl <T: Hash IterBytes Eq> LinearSet<T>: Mutable {
+        /// Clear the set, removing all values.
         fn clear(&mut self) { self.map.clear() }
     }
 
@@ -494,26 +502,26 @@ pub mod linear {
 #[test]
 pub mod test {
     use option::{None, Some};
-    use send_map::linear::LinearMap;
-    use send_map::linear;
+    use hashmap::linear::LinearMap;
+    use hashmap::linear;
     use uint;
 
     #[test]
     pub fn inserts() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
-        assert m.get(&1) == 2;
-        assert m.get(&2) == 4;
+        assert *m.get(&1) == 2;
+        assert *m.get(&2) == 4;
     }
 
     #[test]
     pub fn overwrite() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.insert(1, 2);
-        assert m.get(&1) == 2;
+        assert *m.get(&1) == 2;
         assert !m.insert(1, 3);
-        assert m.get(&1) == 3;
+        assert *m.get(&1) == 3;
     }
 
     #[test]
@@ -522,9 +530,9 @@ pub mod test {
         assert m.insert(1, 2);
         assert m.insert(5, 3);
         assert m.insert(9, 4);
-        assert m.get(&9) == 4;
-        assert m.get(&5) == 3;
-        assert m.get(&1) == 2;
+        assert *m.get(&9) == 4;
+        assert *m.get(&5) == 3;
+        assert *m.get(&1) == 2;
     }
 
     #[test]
@@ -534,8 +542,8 @@ pub mod test {
         assert m.insert(5, 3);
         assert m.insert(9, 4);
         assert m.remove(&1);
-        assert m.get(&9) == 4;
-        assert m.get(&5) == 3;
+        assert *m.get(&9) == 4;
+        assert *m.get(&5) == 3;
     }
 
     #[test]
@@ -549,7 +557,7 @@ pub mod test {
 
     #[test]
     pub fn pops() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         m.insert(1, 2);
         assert m.pop(&1) == Some(2);
         assert m.pop(&1) == None;
@@ -557,7 +565,7 @@ pub mod test {
 
     #[test]
     pub fn swaps() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.swap(1, 2) == None;
         assert m.swap(1, 3) == Some(2);
         assert m.swap(1, 4) == Some(3);
@@ -565,17 +573,17 @@ pub mod test {
 
     #[test]
     pub fn consumes() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert m.insert(2, 3);
-        let mut m2 = ~LinearMap();
+        let mut m2 = LinearMap::new();
         do m.consume |k, v| {
             m2.insert(k, v);
         }
         assert m.len() == 0;
         assert m2.len() == 2;
-        assert m2.find(&1) == Some(2);
-        assert m2.find(&2) == Some(3);
+        assert m2.find_copy(&1) == Some(2);
+        assert m2.find_copy(&2) == Some(3);
     }
 
     #[test]
@@ -593,11 +601,11 @@ pub mod test {
     }
 
     #[test]
-    pub fn find_ref() {
-        let mut m = ~LinearMap();
-        assert m.find_ref(&1).is_none();
+    pub fn find() {
+        let mut m = LinearMap::new();
+        assert m.find(&1).is_none();
         m.insert(1, 2);
-        match m.find_ref(&1) {
+        match m.find(&1) {
             None => fail,
             Some(v) => assert *v == 2
         }
@@ -605,12 +613,12 @@ pub mod test {
 
     #[test]
     pub fn test_eq() {
-        let mut m1 = ~LinearMap();
+        let mut m1 = LinearMap::new();
         m1.insert(1, 2);
         m1.insert(2, 3);
         m1.insert(3, 4);
 
-        let mut m2 = ~LinearMap();
+        let mut m2 = LinearMap::new();
         m2.insert(1, 2);
         m2.insert(2, 3);
 
@@ -623,7 +631,7 @@ pub mod test {
 
     #[test]
     pub fn test_expand() {
-        let mut m = ~LinearMap();
+        let mut m = LinearMap::new();
 
         assert m.len() == 0;
         assert m.is_empty();

@@ -57,7 +57,7 @@ use util::ppaux::ty_to_str;
 
 use core::dvec::DVec;
 use core::result::Ok;
-use core::send_map;
+use core::hashmap::linear::LinearSet;
 use core::uint::range;
 use core::uint;
 use core::vec::{len, push};
@@ -693,7 +693,7 @@ impl CoherenceChecker {
 
         let tcx = self.crate_context.tcx;
 
-        let mut provided_names = send_map::linear::LinearSet::new();
+        let mut provided_names = LinearSet::new();
         // Implemented methods
         for uint::range(0, all_methods.len()) |i| {
             provided_names.insert(all_methods[i].ident);
