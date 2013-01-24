@@ -29,7 +29,7 @@ fn mk<T:Eq IterBytes Hash Const Copy>() -> Interner<T> {
     move ((move hi) as Interner::<T>)
 }
 
-fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: ~[T]) -> Interner<T> {
+fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: &[T]) -> Interner<T> {
     let rv = mk();
     for init.each() |v| { rv.intern(*v); }
     return rv;
@@ -69,4 +69,46 @@ impl <T:Eq IterBytes Hash Const Copy> hash_interner<T>: Interner<T> {
     pure fn get(idx: uint) -> T { self.vect.get_elt(idx) }
 
     fn len() -> uint { return self.vect.len(); }
+}
+
+
+#[test]
+#[should_fail]
+fn i1 () {
+    let i : Interner<@~str> = mk();
+    i.get(13);
+} 
+
+#[test]
+fn i2 () {
+    let i : Interner<@~str> = mk();
+    // first one is zero:
+    assert i.intern (@~"dog") == 0;
+    // re-use gets the same entry:
+    assert i.intern (@~"dog") == 0;
+    // different string gets a different #:
+    assert i.intern (@~"cat") == 1;
+    assert i.intern (@~"cat") == 1;
+    // dog is still at zero
+    assert i.intern (@~"dog") == 0;
+    // gensym gets 3
+    assert i.gensym (@~"zebra" ) == 2;
+    // gensym of same string gets new number :
+    assert i.gensym (@~"zebra" ) == 3;
+    // gensym of *existing* string gets new number:
+    assert i.gensym (@~"dog") == 4;
+    assert i.get(0) == @~"dog";
+    assert i.get(1) == @~"cat";
+    assert i.get(2) == @~"zebra";
+    assert i.get(3) == @~"zebra";
+    assert i.get(4) == @~"dog";
+} 
+
+#[test]
+fn i3 () {
+    let i : Interner<@~str> = mk_prefill([@~"Alan",@~"Bob",@~"Carol"]);
+    assert i.get(0) == @~"Alan";
+    assert i.get(1) == @~"Bob";
+    assert i.get(2) == @~"Carol";
+    assert i.intern(@~"Bob") == 1;
 }
