@@ -100,6 +100,26 @@ impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
     /// Visit all values in order
     pure fn each_value(&self, f: fn(&V) -> bool) { self.each(|_, v| f(v)) }
 
+    /// Return the value corresponding to the key in the map
+    pure fn find(&self, key: &K) -> Option<&self/V> {
+        let mut current: &self/Option<~TreeNode<K, V>> = &self.root;
+        loop {
+            match *current {
+              Some(ref r) => {
+                let r: &self/~TreeNode<K, V> = r; // FIXME: #3148
+                if *key < r.key {
+                    current = &r.left;
+                } else if r.key < *key {
+                    current = &r.right;
+                } else {
+                    return Some(&r.value);
+                }
+              }
+              None => return None
+            }
+        }
+    }
+
     /// Insert a key-value pair into the map. An existing value for a
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
@@ -122,7 +142,6 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, f: fn(&K, &V) -> bool) {
         each_reverse(&self.root, f);
@@ -136,26 +155,6 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Visit all values in reverse order
     pure fn each_value_reverse(&self, f: fn(&V) -> bool) {
         self.each_reverse(|_, v| f(v))
-    }
-
-    /// Return the value corresponding to the key in the map
-    pure fn find(&self, key: &K) -> Option<&self/V> {
-        let mut current: &self/Option<~TreeNode<K, V>> = &self.root;
-        loop {
-            match *current {
-              Some(ref r) => {
-                let r: &self/~TreeNode<K, V> = r; // FIXME: #3148
-                if *key < r.key {
-                    current = &r.left;
-                } else if r.key < *key {
-                    current = &r.right;
-                } else {
-                    return Some(&r.value);
-                }
-              }
-              None => return None
-            }
-        }
     }
 
     /// Get a lazy iterator over the key-value pairs in the map.
@@ -209,10 +208,10 @@ impl <T: Eq Ord> TreeSet<T>: Eq {
 }
 
 impl <T: Ord> TreeSet<T>: Container {
-    /// Return the number of elements in the map
+    /// Return the number of elements in the set
     pure fn len(&self) -> uint { self.map.len() }
 
-    /// Return true if the map contains no elements
+    /// Return true if the set contains no elements
     pure fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 

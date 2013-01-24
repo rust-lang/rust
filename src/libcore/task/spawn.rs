@@ -81,7 +81,7 @@ use pipes;
 use prelude::*;
 use private;
 use ptr;
-use send_map;
+use hashmap::linear::LinearSet;
 use task::local_data_priv::{local_get, local_set};
 use task::rt::rust_task;
 use task::rt::rust_closure;
@@ -96,10 +96,10 @@ macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = move *ptr::addr_of(&($x)); move y } )
 )
 
-type TaskSet = send_map::linear::LinearSet<*rust_task>;
+type TaskSet = LinearSet<*rust_task>;
 
 fn new_taskset() -> TaskSet {
-    send_map::linear::LinearSet::new()
+    LinearSet::new()
 }
 fn taskset_insert(tasks: &mut TaskSet, task: *rust_task) {
     let didnt_overwrite = tasks.insert(task);

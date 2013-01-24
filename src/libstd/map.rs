@@ -19,7 +19,6 @@ use core::ops;
 use core::to_str::ToStr;
 use core::mutable::Mut;
 use core::prelude::*;
-use core::send_map::linear::LinearMap;
 use core::to_bytes::IterBytes;
 use core::uint;
 use core::vec;
@@ -498,121 +497,6 @@ pub fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
         }
     }
     map
-}
-
-// FIXME #4431: Transitional
-impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
-    Map<K, V> {
-    pure fn size() -> uint {
-        unsafe {
-            do self.borrow_const |p| {
-                p.len()
-            }
-        }
-    }
-
-    fn insert(key: K, value: V) -> bool {
-        do self.borrow_mut |p| {
-            p.insert(key, value)
-        }
-    }
-
-    pure fn contains_key(key: K) -> bool {
-        do self.borrow_const |p| {
-            p.contains_key(&key)
-        }
-    }
-
-    pure fn contains_key_ref(key: &K) -> bool {
-        do self.borrow_const |p| {
-            p.contains_key(key)
-        }
-    }
-
-    pure fn get(key: K) -> V {
-        do self.borrow_const |p| {
-            p.get(&key)
-        }
-    }
-
-    pure fn find(key: K) -> Option<V> {
-        unsafe {
-            do self.borrow_const |p| {
-                p.find(&key)
-            }
-        }
-    }
-
-    fn update_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool {
-        match self.find(key) {
-            None            => return self.insert(key, newval),
-            Some(copy orig) => return self.insert(key, ff(key, orig, newval))
-        }
-    }
-
-    fn update(key: K, newval: V, ff: fn(V, V) -> V) -> bool {
-        return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
-    }
-
-    fn remove(key: K) -> bool {
-        do self.borrow_mut |p| {
-            p.remove(&key)
-        }
-    }
-
-    fn clear() {
-        do self.borrow_mut |p| {
-            p.clear()
-        }
-    }
-
-    pure fn each(op: fn(key: K, value: V) -> bool) {
-        unsafe {
-            do self.borrow_imm |p| {
-                p.each(|k, v| op(*k, *v))
-            }
-        }
-    }
-
-    pure fn each_key(op: fn(key: K) -> bool) {
-        unsafe {
-            do self.borrow_imm |p| {
-                p.each_key(|k| op(*k))
-            }
-        }
-    }
-
-    pure fn each_value(op: fn(value: V) -> bool) {
-        unsafe {
-            do self.borrow_imm |p| {
-                p.each_value(|v| op(*v))
-            }
-        }
-    }
-
-    pure fn each_ref(op: fn(key: &K, value: &V) -> bool) {
-        unsafe {
-            do self.borrow_imm |p| {
-                p.each(op)
-            }
-        }
-    }
-
-    pure fn each_key_ref(op: fn(key: &K) -> bool) {
-        unsafe {
-            do self.borrow_imm |p| {
-                p.each_key(op)
-            }
-        }
-    }
-
-    pure fn each_value_ref(op: fn(value: &V) -> bool) {
-        unsafe {
-            do self.borrow_imm |p| {
-                p.each_value(op)
-            }
-        }
-    }
 }
 
 #[cfg(test)]
