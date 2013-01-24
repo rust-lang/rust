@@ -466,7 +466,7 @@ pub mod ct {
 // Functions used by the fmt extension at runtime. For now there are a lot of
 // decisions made a runtime. If it proves worthwhile then some of these
 // conditions can be evaluated at compile-time. For now though it's cleaner to
-// implement it 0this way, I think.
+// implement it this way, I think.
 #[doc(hidden)]
 pub mod rt {
     use float;
