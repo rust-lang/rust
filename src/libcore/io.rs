@@ -455,10 +455,15 @@ impl *libc::FILE: Reader {
     }
 }
 
+struct Wrapper<T, C> {
+    base: T,
+    cleanup: C,
+}
+
 // A forwarding impl of reader that also holds on to a resource for the
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
-impl<T: Reader, C> {base: T, cleanup: C}: Reader {
+impl<R: Reader, C> Wrapper<R, C>: Reader {
     fn read(&self, bytes: &[mut u8], len: uint) -> uint {
         self.base.read(bytes, len)
     }
@@ -487,7 +492,7 @@ pub fn FILERes(f: *libc::FILE) -> FILERes {
 
 pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
     if cleanup {
-        {base: f, cleanup: FILERes(f)} as Reader
+        Wrapper { base: f, cleanup: FILERes(f) } as Reader
     } else {
         f as Reader
     }
@@ -587,7 +592,7 @@ pub trait Writer {
     fn get_type(&self) -> WriterType;
 }
 
-impl<T: Writer, C> {base: T, cleanup: C}: Writer {
+impl<W: Writer, C> Wrapper<W, C>: Writer {
     fn write(&self, bs: &[const u8]) { self.base.write(bs); }
     fn seek(&self, off: int, style: SeekStyle) { self.base.seek(off, style); }
     fn tell(&self) -> uint { self.base.tell() }
@@ -639,7 +644,7 @@ impl *libc::FILE: Writer {
 
 pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> Writer {
     if cleanup {
-        {base: f, cleanup: FILERes(f)} as Writer
+        Wrapper { base: f, cleanup: FILERes(f) } as Writer
     } else {
         f as Writer
     }
@@ -696,7 +701,7 @@ pub fn FdRes(fd: fd_t) -> FdRes {
 
 pub fn fd_writer(fd: fd_t, cleanup: bool) -> Writer {
     if cleanup {
-        {base: fd, cleanup: FdRes(fd)} as Writer
+        Wrapper { base: fd, cleanup: FdRes(fd) } as Writer
     } else {
         fd as Writer
     }
