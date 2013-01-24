@@ -9,6 +9,8 @@
 // except according to those terms.
 
 //! An interface for numeric types
+use cmp::Eq;
+use option::{None, Option, Some};
 
 pub trait Num {
     // FIXME: Trait composition. (#2616)
@@ -49,4 +51,12 @@ pub enum RoundMode {
     RoundUp,
     RoundToZero,
     RoundFromZero
+}
+
+pub trait ToStrRadix {
+    pub pure fn to_str_radix(&self, radix: uint) -> ~str;
+}
+
+pub trait FromStrRadix {
+    static pub pure fn from_str_radix(str: &str, radix: uint) -> Option<self>;
 }
