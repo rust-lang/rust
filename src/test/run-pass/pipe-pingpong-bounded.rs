@@ -27,7 +27,7 @@ mod pingpong {
     };
 
     pub fn init() -> (client::ping, server::ping) {
-        let buffer = ~{
+        let buffer = ~Buffer {
             header: BufferHeader(),
             data: {
                 ping: mk_packet::<ping>(),
