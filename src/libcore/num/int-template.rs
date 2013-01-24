@@ -353,25 +353,25 @@ fn test_to_str() {
 fn test_int_to_str_overflow() {
     let mut i8_val: i8 = 127_i8;
     assert (i8::to_str(i8_val) == ~"127");
-    
+
     i8_val += 1 as i8;
     assert (i8::to_str(i8_val) == ~"-128");
 
     let mut i16_val: i16 = 32_767_i16;
     assert (i16::to_str(i16_val) == ~"32767");
-    
+
     i16_val += 1 as i16;
     assert (i16::to_str(i16_val) == ~"-32768");
 
     let mut i32_val: i32 = 2_147_483_647_i32;
     assert (i32::to_str(i32_val) == ~"2147483647");
-    
+
     i32_val += 1 as i32;
     assert (i32::to_str(i32_val) == ~"-2147483648");
 
     let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
     assert (i64::to_str(i64_val) == ~"9223372036854775807");
-    
+
     i64_val += 1 as i64;
     assert (i64::to_str(i64_val) == ~"-9223372036854775808");
 }
@@ -380,25 +380,25 @@ fn test_int_to_str_overflow() {
 fn test_int_from_str_overflow() {
     let mut i8_val: i8 = 127_i8;
     assert (i8::from_str(~"127") == Some(i8_val));
-    
+
     i8_val += 1 as i8;
     assert (i8::from_str(~"-128") == Some(i8_val));
 
     let mut i16_val: i16 = 32_767_i16;
     assert (i16::from_str(~"32767") == Some(i16_val));
-    
+
     i16_val += 1 as i16;
     assert (i16::from_str(~"-32768") == Some(i16_val));
 
     let mut i32_val: i32 = 2_147_483_647_i32;
     assert (i32::from_str(~"2147483647") == Some(i32_val));
-    
+
     i32_val += 1 as i32;
     assert (i32::from_str(~"-2147483648") == Some(i32_val));
 
     let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
     assert (i64::from_str(~"9223372036854775807") == Some(i64_val));
-    
+
     i64_val += 1 as i64;
     assert (i64::from_str(~"-9223372036854775808") == Some(i64_val));
 }

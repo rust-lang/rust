@@ -24,26 +24,6 @@ use vec;
 
 pub trait ToStr { pub pure fn to_str() -> ~str; }
 
-impl uint: ToStr {
-    #[inline(always)]
-    pure fn to_str() -> ~str { ::uint::str(self) }
-}
-impl u8: ToStr {
-    #[inline(always)]
-    pure fn to_str() -> ~str { ::u8::str(self) }
-}
-impl u16: ToStr {
-    #[inline(always)]
-    pure fn to_str() -> ~str { ::u16::str(self) }
-}
-impl u32: ToStr {
-    #[inline(always)]
-    pure fn to_str() -> ~str { ::u32::str(self) }
-}
-impl u64: ToStr {
-    #[inline(always)]
-    pure fn to_str() -> ~str { ::u64::str(self) }
-}
 impl float: ToStr {
     #[inline(always)]
     pure fn to_str() -> ~str { ::float::to_str(self, 4u) }

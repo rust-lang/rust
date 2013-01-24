@@ -200,7 +200,7 @@ pub pure fn from_digit(num: uint, radix: uint) -> Option<char> {
  *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
  */
 pub pure fn escape_unicode(c: char) -> ~str {
-    let s = u32::to_str(c as u32, 16u);
+    let s = u32::to_str_radix(c as u32, 16u);
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
                     else if c <= '\uffff' { ('u', 4u) }
                     else { ('U', 8u) });
