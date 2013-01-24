@@ -172,15 +172,15 @@ fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
 
 #[test]
 fn test_fun_to_str() {
-    let decl: ast::fn_decl = {
+    let decl: ast::fn_decl = ast::fn_decl {
         inputs: ~[],
-        output: @{id: 0,
+        output: @ast::Ty {id: 0,
                   node: ast::ty_nil,
                   span: ast_util::dummy_sp()},
-        purity: ast::impure_fn,
+        //purity: ast::impure_fn,
         cf: ast::return_val
     };
-    assert fun_to_str(decl, "a", ~[]) == "fn a()";
+    assert fun_to_str(decl, "abba", ~[]) == "fn abba()";
 }
 
 fn block_to_str(blk: ast::blk, intr: @ident_interner) -> ~str {
@@ -214,7 +214,7 @@ fn test_variant_to_str() {
         attrs: ~[],
         args: ~[],
         id: 0,
-        disr_expr: none
+        disr_expr: None
     });
 
     let varstr = variant_to_str(var);
