@@ -308,25 +308,28 @@ struct TCB {
     notifier:      Option<AutoNotify>,
     // Runs on task exit.
     drop {
-        // If we are failing, the whole taskgroup needs to die.
-        if rt::rust_task_is_unwinding(self.me) {
-            self.notifier.iter(|x| { x.failed = true; });
-            // Take everybody down with us.
-            do access_group(&self.tasks) |tg| {
-                kill_taskgroup(tg, self.me, self.is_main);
+        unsafe {
+            // If we are failing, the whole taskgroup needs to die.
+            if rt::rust_task_is_unwinding(self.me) {
+                self.notifier.iter(|x| { x.failed = true; });
+                // Take everybody down with us.
+                do access_group(&self.tasks) |tg| {
+                    kill_taskgroup(tg, self.me, self.is_main);
+                }
+            } else {
+                // Remove ourselves from the group(s).
+                do access_group(&self.tasks) |tg| {
+                    leave_taskgroup(tg, self.me, true);
+                }
             }
-        } else {
-            // Remove ourselves from the group(s).
-            do access_group(&self.tasks) |tg| {
-                leave_taskgroup(tg, self.me, true);
-            }
+            // It doesn't matter whether this happens before or after dealing
+            // with our own taskgroup, so long as both happen before we die.
+            // We remove ourself from every ancestor we can, so no cleanup; no
+            // break.
+            for each_ancestor(&mut self.ancestors, None) |ancestor_group| {
+                leave_taskgroup(ancestor_group, self.me, false);
+            };
         }
-        // It doesn't matter whether this happens before or after dealing with
-        // our own taskgroup, so long as both happen before we die. We need to
-        // remove ourself from every ancestor we can, so no cleanup; no break.
-        for each_ancestor(&mut self.ancestors, None) |ancestor_group| {
-            leave_taskgroup(ancestor_group, self.me, false);
-        };
     }
 }
 
@@ -391,38 +394,41 @@ fn leave_taskgroup(state: TaskGroupInner, me: *rust_task,
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
 fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
-    // NB: We could do the killing iteration outside of the group arc, by
-    // having "let mut newstate" here, swapping inside, and iterating after.
-    // But that would let other exiting tasks fall-through and exit while we
-    // were trying to kill them, causing potential use-after-free. A task's
-    // presence in the arc guarantees it's alive only while we hold the lock,
-    // so if we're failing, all concurrently exiting tasks must wait for us.
-    // To do it differently, we'd have to use the runtime's task refcounting,
-    // but that could leave task structs around long after their task exited.
-    let newstate = util::replace(state, None);
-    // Might already be None, if Somebody is failing simultaneously.
-    // That's ok; only one task needs to do the dirty work. (Might also
-    // see 'None' if Somebody already failed and we got a kill signal.)
-    if newstate.is_some() {
-        let group = option::unwrap(move newstate);
-        for taskset_each(&group.members) |sibling| {
-            // Skip self - killing ourself won't do much good.
-            if sibling != me {
-                rt::rust_task_kill_other(sibling);
+    unsafe {
+        // NB: We could do the killing iteration outside of the group arc, by
+        // having "let mut newstate" here, swapping inside, and iterating
+        // after. But that would let other exiting tasks fall-through and exit
+        // while we were trying to kill them, causing potential
+        // use-after-free. A task's presence in the arc guarantees it's alive
+        // only while we hold the lock, so if we're failing, all concurrently
+        // exiting tasks must wait for us. To do it differently, we'd have to
+        // use the runtime's task refcounting, but that could leave task
+        // structs around long after their task exited.
+        let newstate = util::replace(state, None);
+        // Might already be None, if Somebody is failing simultaneously.
+        // That's ok; only one task needs to do the dirty work. (Might also
+        // see 'None' if Somebody already failed and we got a kill signal.)
+        if newstate.is_some() {
+            let group = option::unwrap(move newstate);
+            for taskset_each(&group.members) |sibling| {
+                // Skip self - killing ourself won't do much good.
+                if sibling != me {
+                    rt::rust_task_kill_other(sibling);
+                }
             }
+            for taskset_each(&group.descendants) |child| {
+                assert child != me;
+                rt::rust_task_kill_other(child);
+            }
+            // Only one task should ever do this.
+            if is_main {
+                rt::rust_task_kill_all(me);
+            }
+            // Do NOT restore state to Some(..)! It stays None to indicate
+            // that the whole taskgroup is failing, to forbid new spawns.
         }
-        for taskset_each(&group.descendants) |child| {
-            assert child != me;
-            rt::rust_task_kill_other(child);
-        }
-        // Only one task should ever do this.
-        if is_main {
-            rt::rust_task_kill_all(me);
-        }
-        // Do NOT restore state to Some(..)! It stays None to indicate
-        // that the whole taskgroup is failing, to forbid new spawns.
+        // (note: multiple tasks may reach this point)
     }
-    // (note: multiple tasks may reach this point)
 }
 
 // FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
@@ -434,68 +440,72 @@ macro_rules! taskgroup_key (
 
 fn gen_child_taskgroup(linked: bool, supervised: bool)
     -> (TaskGroupArc, AncestorList, bool) {
-    let spawner = rt::rust_get_task();
-    /*######################################################################*
-     * Step 1. Get spawner's taskgroup info.
-     *######################################################################*/
-    let spawner_group = match unsafe { local_get(spawner,
-                                                 taskgroup_key!()) } {
-        None => {
-            // Main task, doing first spawn ever. Lazily initialise here.
-            let mut members = new_taskset();
-            taskset_insert(&mut members, spawner);
-            let tasks =
-                private::exclusive(Some({ mut members:     move members,
-                                         mut descendants: new_taskset() }));
-            // Main task/group has no ancestors, no notifier, etc.
-            let group =
-                @TCB(spawner, move tasks, AncestorList(None), true, None);
-            unsafe {
+    unsafe {
+        let spawner = rt::rust_get_task();
+        /*##################################################################*
+         * Step 1. Get spawner's taskgroup info.
+         *##################################################################*/
+        let spawner_group = match local_get(spawner, taskgroup_key!()) {
+            None => {
+                // Main task, doing first spawn ever. Lazily initialise here.
+                let mut members = new_taskset();
+                taskset_insert(&mut members, spawner);
+                let tasks =
+                    private::exclusive(Some({
+                        mut members:     move members,
+                        mut descendants: new_taskset()
+                    }));
+                // Main task/group has no ancestors, no notifier, etc.
+                let group =
+                    @TCB(spawner, move tasks, AncestorList(None), true, None);
                 local_set(spawner, taskgroup_key!(), group);
+                group
             }
-            group
-        }
-        Some(group) => group
-    };
-    /*######################################################################*
-     * Step 2. Process spawn options for child.
-     *######################################################################*/
-    return if linked {
-        // Child is in the same group as spawner.
-        let g = spawner_group.tasks.clone();
-        // Child's ancestors are spawner's ancestors.
-        let a = share_ancestors(&mut spawner_group.ancestors);
-        // Propagate main-ness.
-        (move g, move a, spawner_group.is_main)
-    } else {
-        // Child is in a separate group from spawner.
-        let g = private::exclusive(Some({ mut members:     new_taskset(),
-                                         mut descendants: new_taskset() }));
-        let a = if supervised {
-            // Child's ancestors start with the spawner.
-            let old_ancestors = share_ancestors(&mut spawner_group.ancestors);
-            // FIXME(#3068) - The generation counter is only used for a debug
-            // assertion, but initialising it requires locking a mutex. Hence
-            // it should be enabled only in debug builds.
-            let new_generation =
-                match *old_ancestors {
-                    Some(ref arc) => {
-                        access_ancestors(arc, |a| a.generation+1)
-                    }
-                    None      => 0 // the actual value doesn't really matter.
-                };
-            assert new_generation < uint::max_value;
-            // Build a new node in the ancestor list.
-            AncestorList(Some(private::exclusive(
-                { generation:       new_generation,
-                  mut parent_group: Some(spawner_group.tasks.clone()),
-                  mut ancestors:    move old_ancestors })))
-        } else {
-            // Child has no ancestors.
-            AncestorList(None)
+            Some(group) => group
         };
-        (move g, move a, false)
-    };
+        /*##################################################################*
+         * Step 2. Process spawn options for child.
+         *##################################################################*/
+        return if linked {
+            // Child is in the same group as spawner.
+            let g = spawner_group.tasks.clone();
+            // Child's ancestors are spawner's ancestors.
+            let a = share_ancestors(&mut spawner_group.ancestors);
+            // Propagate main-ness.
+            (move g, move a, spawner_group.is_main)
+        } else {
+            // Child is in a separate group from spawner.
+            let g = private::exclusive(Some({
+                mut members:     new_taskset(),
+                mut descendants: new_taskset()
+            }));
+            let a = if supervised {
+                // Child's ancestors start with the spawner.
+                let old_ancestors =
+                    share_ancestors(&mut spawner_group.ancestors);
+                // FIXME(#3068) - The generation counter is only used for a
+                // debug assertion, but initialising it requires locking a
+                // mutex. Hence it should be enabled only in debug builds.
+                let new_generation =
+                    match *old_ancestors {
+                        Some(ref arc) => {
+                            access_ancestors(arc, |a| a.generation+1)
+                        }
+                        None => 0 // the actual value doesn't really matter.
+                    };
+                assert new_generation < uint::max_value;
+                // Build a new node in the ancestor list.
+                AncestorList(Some(private::exclusive(
+                    { generation:       new_generation,
+                      mut parent_group: Some(spawner_group.tasks.clone()),
+                      mut ancestors:    move old_ancestors })))
+            } else {
+                // Child has no ancestors.
+                AncestorList(None)
+            };
+            (move g, move a, false)
+        };
+    }
 
     fn share_ancestors(ancestors: &mut AncestorList) -> AncestorList {
         // Appease the borrow-checker. Really this wants to be written as:
@@ -632,31 +642,33 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
     }
 
     fn new_task_in_new_sched(opts: SchedOpts) -> *rust_task {
-        if opts.foreign_stack_size != None {
-            fail ~"foreign_stack_size scheduler option unimplemented";
-        }
-
-        let num_threads = match opts.mode {
-          SingleThreaded => 1u,
-          ThreadPerCore => rt::rust_num_threads(),
-          ThreadPerTask => {
-            fail ~"ThreadPerTask scheduling mode unimplemented"
-          }
-          ManualThreads(threads) => {
-            if threads == 0u {
-                fail ~"can not create a scheduler with no threads";
+        unsafe {
+            if opts.foreign_stack_size != None {
+                fail ~"foreign_stack_size scheduler option unimplemented";
             }
-            threads
-          }
-          PlatformThread => 0u /* Won't be used */
-        };
 
-        let sched_id = if opts.mode != PlatformThread {
-            rt::rust_new_sched(num_threads)
-        } else {
-            rt::rust_osmain_sched_id()
-        };
-        rt::rust_new_task_in_sched(sched_id)
+            let num_threads = match opts.mode {
+              SingleThreaded => 1u,
+              ThreadPerCore => rt::rust_num_threads(),
+              ThreadPerTask => {
+                fail ~"ThreadPerTask scheduling mode unimplemented"
+              }
+              ManualThreads(threads) => {
+                if threads == 0u {
+                    fail ~"can not create a scheduler with no threads";
+                }
+                threads
+              }
+              PlatformThread => 0u /* Won't be used */
+            };
+
+            let sched_id = if opts.mode != PlatformThread {
+                rt::rust_new_sched(num_threads)
+            } else {
+                rt::rust_osmain_sched_id()
+            };
+            rt::rust_new_task_in_sched(sched_id)
+        }
     }
 }
 

@@ -571,23 +571,29 @@ pub fn try<T:Owned>(f: fn~() -> T) -> Result<T,()> {
 pub fn yield() {
     //! Yield control to the task scheduler
 
-    let task_ = rt::rust_get_task();
-    let killed = rt::rust_task_yield(task_);
-    if killed && !failing() {
-        fail ~"killed";
+    unsafe {
+        let task_ = rt::rust_get_task();
+        let killed = rt::rust_task_yield(task_);
+        if killed && !failing() {
+            fail ~"killed";
+        }
     }
 }
 
 pub fn failing() -> bool {
     //! True if the running task has failed
 
-    rt::rust_task_is_unwinding(rt::rust_get_task())
+    unsafe {
+        rt::rust_task_is_unwinding(rt::rust_get_task())
+    }
 }
 
 pub fn get_task() -> Task {
     //! Get a handle to the running task
 
-    TaskHandle(rt::get_task_id())
+    unsafe {
+        TaskHandle(rt::get_task_id())
+    }
 }
 
 /**
@@ -608,7 +614,11 @@ pub fn get_task() -> Task {
 pub unsafe fn unkillable<U>(f: fn() -> U) -> U {
     struct AllowFailure {
         t: *rust_task,
-        drop { rt::rust_task_allow_kill(self.t); }
+        drop {
+            unsafe {
+                rt::rust_task_allow_kill(self.t);
+            }
+        }
     }
 
     fn AllowFailure(t: *rust_task) -> AllowFailure{
@@ -617,17 +627,23 @@ pub unsafe fn unkillable<U>(f: fn() -> U) -> U {
         }
     }
 
-    let t = rt::rust_get_task();
-    let _allow_failure = AllowFailure(t);
-    rt::rust_task_inhibit_kill(t);
-    f()
+    unsafe {
+        let t = rt::rust_get_task();
+        let _allow_failure = AllowFailure(t);
+        rt::rust_task_inhibit_kill(t);
+        f()
+    }
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
 pub unsafe fn rekillable<U>(f: fn() -> U) -> U {
     struct DisallowFailure {
         t: *rust_task,
-        drop { rt::rust_task_inhibit_kill(self.t); }
+        drop {
+            unsafe {
+                rt::rust_task_inhibit_kill(self.t);
+            }
+        }
     }
 
     fn DisallowFailure(t: *rust_task) -> DisallowFailure {
@@ -636,10 +652,12 @@ pub unsafe fn rekillable<U>(f: fn() -> U) -> U {
         }
     }
 
-    let t = rt::rust_get_task();
-    let _allow_failure = DisallowFailure(t);
-    rt::rust_task_allow_kill(t);
-    f()
+    unsafe {
+        let t = rt::rust_get_task();
+        let _allow_failure = DisallowFailure(t);
+        rt::rust_task_allow_kill(t);
+        f()
+    }
 }
 
 /**
@@ -650,8 +668,10 @@ pub unsafe fn atomically<U>(f: fn() -> U) -> U {
     struct DeferInterrupts {
         t: *rust_task,
         drop {
-            rt::rust_task_allow_yield(self.t);
-            rt::rust_task_allow_kill(self.t);
+            unsafe {
+                rt::rust_task_allow_yield(self.t);
+                rt::rust_task_allow_kill(self.t);
+            }
         }
     }
 
@@ -661,11 +681,13 @@ pub unsafe fn atomically<U>(f: fn() -> U) -> U {
         }
     }
 
-    let t = rt::rust_get_task();
-    let _interrupts = DeferInterrupts(t);
-    rt::rust_task_inhibit_kill(t);
-    rt::rust_task_inhibit_yield(t);
-    f()
+    unsafe {
+        let t = rt::rust_get_task();
+        let _interrupts = DeferInterrupts(t);
+        rt::rust_task_inhibit_kill(t);
+        rt::rust_task_inhibit_yield(t);
+        f()
+    }
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]

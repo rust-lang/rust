@@ -889,9 +889,8 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
 fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
     -> ty::ty_param_bounds_and_ty {
     match /*bad*/copy it.node {
-      ast::foreign_item_fn(fn_decl, purity, params) => {
-        return ty_of_foreign_fn_decl(ccx, fn_decl, purity, params,
-                                     local_def(it.id));
+      ast::foreign_item_fn(fn_decl, _, params) => {
+        return ty_of_foreign_fn_decl(ccx, fn_decl, params, local_def(it.id));
       }
       ast::foreign_item_const(t) => {
         let rb = in_binding_rscope(empty_rscope);
@@ -962,7 +961,6 @@ fn ty_param_bounds(ccx: @crate_ctxt,
 
 fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
                          decl: ast::fn_decl,
-                         purity: ast::purity,
                          +ty_params: ~[ast::ty_param],
                          def_id: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let bounds = ty_param_bounds(ccx, ty_params);
@@ -971,7 +969,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
     let t_fn = ty::mk_fn(ccx.tcx, FnTyBase {
-        meta: FnMeta {purity: purity,
+        meta: FnMeta {purity: ast::unsafe_fn,
                       onceness: ast::Many,
                       proto: ast::ProtoBare,
                       bounds: @~[],

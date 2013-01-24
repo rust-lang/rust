@@ -19,7 +19,9 @@ mod intrinsic {
     // FIXME (#3727): remove this when the interface has settled and the
     // version in sys is no longer present.
     pub fn get_tydesc<T>() -> *TyDesc {
-        rusti::get_tydesc::<T>() as *TyDesc
+        unsafe {
+            rusti::get_tydesc::<T>() as *TyDesc
+        }
     }
 
     pub enum TyDesc = {
