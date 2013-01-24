@@ -14,12 +14,14 @@ fn main() {
     for uint::range(0, 100000) |_i| { //~ ERROR A for-loop body must return (), but
         false
     };
-    for not_bool |_i| { //~ ERROR a `for` loop iterator should expect a closure that returns `bool`
+    for not_bool |_i| {
+    //~^ ERROR A `for` loop iterator should expect a closure that returns `bool`
         ~"hi"
     };
     for uint::range(0, 100000) |_i| { //~ ERROR A for-loop body must return (), but
         ~"hi"
     };
-    for not_bool() |_i| { //~ ERROR a `for` loop iterator should expect a closure that returns `bool`
+    for not_bool() |_i| {
+    //~^ ERROR A `for` loop iterator should expect a closure that returns `bool`
     };
 }
