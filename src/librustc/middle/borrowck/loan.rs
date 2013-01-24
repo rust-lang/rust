@@ -17,7 +17,7 @@ use core::prelude::*;
 use middle::borrowck::{Loan, bckres, borrowck_ctxt, cmt, err_mutbl};
 use middle::borrowck::{err_out_of_scope};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_discr, cat_comp};
-use middle::mem_categorization::{cat_deref, cat_discr, cat_local};
+use middle::mem_categorization::{cat_deref, cat_discr, cat_local, cat_self};
 use middle::mem_categorization::{cat_special, cat_stack_upvar, comp_field};
 use middle::mem_categorization::{comp_index, comp_variant, gc_ptr};
 use middle::mem_categorization::{region_ptr};
@@ -121,7 +121,7 @@ impl LoanContext {
                 cmt.span,
                 ~"rvalue with a non-none lp");
           }
-          cat_local(local_id) | cat_arg(local_id) => {
+          cat_local(local_id) | cat_arg(local_id) | cat_self(local_id) => {
             let local_scope_id = self.tcx().region_map.get(local_id);
             self.issue_loan(cmt, ty::re_scope(local_scope_id), req_mutbl)
           }
@@ -162,9 +162,18 @@ impl LoanContext {
             // then the memory is freed.
             self.loan_unstable_deref(cmt, cmt_base, req_mutbl)
           }
+          cat_deref(cmt_base, _, region_ptr(ast::m_mutbl, region)) => {
+            // Mutable data can be loaned out as immutable or const. We must
+            // loan out the base as well as the main memory. For example,
+            // if someone borrows `*b`, we want to borrow `b` as immutable
+            // as well.
+            do self.loan(cmt_base, m_imm).chain |_| {
+                self.issue_loan(cmt, region, m_const)
+            }
+          }
           cat_deref(_, _, unsafe_ptr) |
           cat_deref(_, _, gc_ptr(_)) |
-          cat_deref(_, _, region_ptr(_)) => {
+          cat_deref(_, _, region_ptr(_, _)) => {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(
                 cmt.span,

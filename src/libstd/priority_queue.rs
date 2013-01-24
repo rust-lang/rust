@@ -19,6 +19,7 @@ use core::vec;
 #[abi = "rust-intrinsic"]
 extern "C" mod rusti {
     fn move_val_init<T>(dst: &mut T, -src: T);
+    fn init<T>() -> T;
 }
 
 pub struct PriorityQueue <T: Ord>{
@@ -136,8 +137,9 @@ impl <T: Ord> PriorityQueue<T> {
             while pos > start {
                 let parent = (pos - 1) >> 1;
                 if new > self.data[parent] {
-                    rusti::move_val_init(&mut self.data[pos],
-                                         move *addr_of(&self.data[parent]));
+                    let mut x = rusti::init();
+                    x <-> self.data[parent];
+                    rusti::move_val_init(&mut self.data[pos], move x);
                     pos = parent;
                     loop
                 }
@@ -159,8 +161,9 @@ impl <T: Ord> PriorityQueue<T> {
                 if right < end && !(self.data[child] > self.data[right]) {
                     child = right;
                 }
-                rusti::move_val_init(&mut self.data[pos],
-                                     move *addr_of(&self.data[child]));
+                let mut x = rusti::init();
+                x <-> self.data[child];
+                rusti::move_val_init(&mut self.data[pos], move x);
                 pos = child;
                 child = 2 * pos + 1;
             }

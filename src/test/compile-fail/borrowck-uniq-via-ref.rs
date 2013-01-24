@@ -11,7 +11,7 @@
 fn borrow(_v: &int) {}
 
 fn box_mut(v: &mut ~int) {
-    borrow(*v); //~ ERROR illegal borrow unless pure
+    borrow(*v); // OK: &mut -> &imm
 }
 
 fn box_rec_mut(v: &{mut f: ~int}) {
@@ -19,11 +19,11 @@ fn box_rec_mut(v: &{mut f: ~int}) {
 }
 
 fn box_mut_rec(v: &mut {f: ~int}) {
-    borrow(v.f); //~ ERROR illegal borrow unless pure
+    borrow(v.f); // OK: &mut -> &imm
 }
 
 fn box_mut_recs(v: &mut {f: {g: {h: ~int}}}) {
-    borrow(v.f.g.h); //~ ERROR illegal borrow unless pure
+    borrow(v.f.g.h); // OK: &mut -> &imm
 }
 
 fn box_imm(v: &~int) {

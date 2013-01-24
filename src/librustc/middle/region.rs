@@ -336,6 +336,14 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
         }
     };
 
+    // Record the ID of `self`.
+    match fk {
+        visit::fk_method(_, _, method) => {
+            cx.region_map.insert(method.self_id, body.node.id);
+        }
+        _ => {}
+    }
+
     debug!("visiting fn with body %d. cx.parent: %? \
             fn_cx.parent: %?",
            body.node.id, cx.parent, fn_cx.parent);

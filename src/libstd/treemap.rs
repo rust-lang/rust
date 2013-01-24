@@ -55,8 +55,10 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
                 unsafe { // unsafe as a purity workaround
                     // ICE: x.next() != y.next()
 
-                    let (x1, x2) = x.next().unwrap();
-                    let (y1, y2) = y.next().unwrap();
+                    x = x.next();
+                    y = y.next();
+                    let (x1, x2) = x.get().unwrap();
+                    let (y1, y2) = y.get().unwrap();
 
                     if x1 != y1 || x2 != y2 {
                         return false
@@ -160,35 +162,46 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
     pure fn iter(&self) -> TreeMapIterator/&self<K, V> {
-        TreeMapIterator{stack: ~[], node: &self.root}
+        TreeMapIterator{stack: ~[], node: &self.root, current: None}
     }
 }
 
 /// Lazy forward iterator over a map
 pub struct TreeMapIterator<K: Ord, V> {
     priv stack: ~[&~TreeNode<K, V>],
-    priv node: &Option<~TreeNode<K, V>>
+    priv node: &Option<~TreeNode<K, V>>,
+    priv current: Option<&~TreeNode<K, V>>
 }
 
 impl <K: Ord, V> TreeMapIterator<K, V> {
-    /// Advance the iterator to the next node (in order) and return a
-    /// tuple with a reference to the key and value. If there are no
-    /// more nodes, return `None`.
-    fn next(&mut self) -> Option<(&self/K, &self/V)> {
-        while !self.stack.is_empty() || self.node.is_some() {
-            match *self.node {
+    // Returns the current node, or None if this iterator is at the end.
+    fn get(&const self) -> Option<(&self/K, &self/V)> {
+        match self.current {
+            Some(res) => Some((&res.key, &res.value)),
+            None => None
+        }
+    }
+
+    /// Advance the iterator to the next node (in order). If this iterator
+    /// is finished, does nothing.
+    fn next(self) -> TreeMapIterator/&self<K, V> {
+        let mut this = self;
+        while !this.stack.is_empty() || this.node.is_some() {
+            match *this.node {
               Some(ref x) => {
-                self.stack.push(x);
-                self.node = &x.left;
+                this.stack.push(x);
+                this.node = &x.left;
               }
               None => {
-                let res = self.stack.pop();
-                self.node = &res.right;
-                return Some((&res.key, &res.value));
+                let res = this.stack.pop();
+                this.node = &res.right;
+                this.current = Some(res);
+                return this;
               }
             }
         }
-        None
+        this.current = None;
+        return this;
     }
 }
 
@@ -256,15 +269,19 @@ impl <T: Ord> TreeSet<T> {
         let mut x = self.iter();
         let mut y = other.iter();
         unsafe { // purity workaround
-            let mut a = x.next();
-            let mut b = y.next();
+            x = x.next();
+            y = y.next();
+            let mut a = x.get();
+            let mut b = y.get();
             while a.is_some() && b.is_some() {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
                 if a1 < b1 {
-                    a = x.next();
+                    x = x.next();
+                    a = x.get();
                 } else if b1 < a1 {
-                    b = y.next();
+                    y = y.next();
+                    b = y.get();
                 } else {
                     return false;
                 }
@@ -283,8 +300,10 @@ impl <T: Ord> TreeSet<T> {
         let mut x = self.iter();
         let mut y = other.iter();
         unsafe { // purity workaround
-            let mut a = x.next();
-            let mut b = y.next();
+            x = x.next();
+            y = y.next();
+            let mut a = x.get();
+            let mut b = y.get();
             while b.is_some() {
                 if a.is_none() {
                     return false
@@ -298,9 +317,11 @@ impl <T: Ord> TreeSet<T> {
                 }
 
                 if !(a1 < b1) {
-                    b = y.next();
+                    y = y.next();
+                    b = y.get();
                 }
-                a = x.next();
+                x = x.next();
+                a = x.get();
             }
         }
         true
@@ -312,13 +333,15 @@ impl <T: Ord> TreeSet<T> {
         let mut y = other.iter();
 
         unsafe { // purity workaround
-            let mut a = x.next();
-            let mut b = y.next();
+            x = x.next();
+            y = y.next();
+            let mut a = x.get();
+            let mut b = y.get();
 
             while a.is_some() {
                 if b.is_none() {
                     return do a.while_some() |a1| {
-                        if f(a1) { x.next() } else { None }
+                        if f(a1) { x = x.next(); x.get() } else { None }
                     }
                 }
 
@@ -327,10 +350,12 @@ impl <T: Ord> TreeSet<T> {
 
                 if a1 < b1 {
                     if !f(a1) { return }
-                    a = x.next();
+                    x = x.next();
+                    a = x.get();
                 } else {
-                    if !(b1 < a1) { a = x.next() }
-                    b = y.next();
+                    if !(b1 < a1) { x = x.next(); a = x.get() }
+                    y = y.next();
+                    b = y.get();
                 }
             }
         }
@@ -343,13 +368,15 @@ impl <T: Ord> TreeSet<T> {
         let mut y = other.iter();
 
         unsafe { // purity workaround
-            let mut a = x.next();
-            let mut b = y.next();
+            x = x.next();
+            y = y.next();
+            let mut a = x.get();
+            let mut b = y.get();
 
             while a.is_some() {
                 if b.is_none() {
                     return do a.while_some() |a1| {
-                        if f(a1) { x.next() } else { None }
+                        if f(a1) { x.next(); x.get() } else { None }
                     }
                 }
 
@@ -358,18 +385,21 @@ impl <T: Ord> TreeSet<T> {
 
                 if a1 < b1 {
                     if !f(a1) { return }
-                    a = x.next();
+                    x = x.next();
+                    a = x.get();
                 } else {
                     if b1 < a1 {
                         if !f(b1) { return }
                     } else {
-                        a = x.next();
+                        x = x.next();
+                        a = x.get();
                     }
-                    b = y.next();
+                    y = y.next();
+                    b = y.get();
                 }
             }
             do b.while_some |b1| {
-                if f(b1) { y.next() } else { None }
+                if f(b1) { y = y.next(); y.get() } else { None }
             }
         }
     }
@@ -380,19 +410,23 @@ impl <T: Ord> TreeSet<T> {
         let mut y = other.iter();
 
         unsafe { // purity workaround
-            let mut a = x.next();
-            let mut b = y.next();
+            x = x.next();
+            y = y.next();
+            let mut a = x.get();
+            let mut b = y.get();
 
             while a.is_some() && b.is_some() {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
                 if a1 < b1 {
-                    a = x.next();
+                    x = x.next();
+                    a = x.get();
                 } else {
                     if !(b1 < a1) {
                         if !f(a1) { return }
                     }
-                    b = y.next();
+                    y = y.next();
+                    b = y.get();
                 }
             }
         }
@@ -404,13 +438,15 @@ impl <T: Ord> TreeSet<T> {
         let mut y = other.iter();
 
         unsafe { // purity workaround
-            let mut a = x.next();
-            let mut b = y.next();
+            x = x.next();
+            y = y.next();
+            let mut a = x.get();
+            let mut b = y.get();
 
             while a.is_some() {
                 if b.is_none() {
                     return do a.while_some() |a1| {
-                        if f(a1) { x.next() } else { None }
+                        if f(a1) { x = x.next(); x.get() } else { None }
                     }
                 }
 
@@ -419,13 +455,16 @@ impl <T: Ord> TreeSet<T> {
 
                 if b1 < a1 {
                     if !f(b1) { return }
-                    b = y.next();
+                    y = y.next();
+                    b = y.get();
                 } else {
                     if !f(a1) { return }
                     if !(a1 < b1) {
-                        b = y.next()
+                        y = y.next();
+                        b = y.get()
                     }
-                    a = x.next();
+                    x = x.next();
+                    a = x.get();
                 }
             }
         }
@@ -438,11 +477,18 @@ pub struct TreeSetIterator<T: Ord> {
 }
 
 impl <T: Ord> TreeSetIterator<T> {
-    /// Advance the iterator to the next node (in order) and return a
-    /// tuple with a reference to the value. If there are no more nodes,
-    /// return `None`.
-    fn next(&mut self) -> Option<&self/T> {
-        self.iter.next().map_consume(|(x, _)| x)
+    /// Returns the current node, or None if this iterator is at the end.
+    fn get(&const self) -> Option<&self/T> {
+        match self.iter.get() {
+            None => None,
+            Some((k, _)) => Some(k)
+        }
+    }
+
+    /// Advance the iterator to the next node (in order). If this iterator is
+    /// finished, does nothing.
+    fn next(self) -> TreeSetIterator/&self<T> {
+        TreeSetIterator { iter: self.iter.next() }
     }
 }
 
@@ -854,17 +900,23 @@ mod test_treemap {
         //assert iter.next() == Some((&x1, &y1));
         //assert iter.next().eq(&Some((&x1, &y1)));
 
-        assert iter.next().unwrap() == (&x1, &y1);
-        assert iter.next().unwrap() == (&x2, &y2);
-        assert iter.next().unwrap() == (&x3, &y3);
-        assert iter.next().unwrap() == (&x4, &y4);
-        assert iter.next().unwrap() == (&x5, &y5);
+        iter = iter.next();
+        assert iter.get().unwrap() == (&x1, &y1);
+        iter = iter.next();
+        assert iter.get().unwrap() == (&x2, &y2);
+        iter = iter.next();
+        assert iter.get().unwrap() == (&x3, &y3);
+        iter = iter.next();
+        assert iter.get().unwrap() == (&x4, &y4);
+        iter = iter.next();
+        assert iter.get().unwrap() == (&x5, &y5);
 
         // ICE:
         //assert iter.next() == None;
         //assert iter.next().eq(&None);
 
-        assert iter.next().is_none();
+        iter = iter.next();
+        assert iter.get().is_none();
     }
 }
 

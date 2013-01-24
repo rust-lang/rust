@@ -14,6 +14,7 @@
 #[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
+use cast::transmute;
 use cast;
 use cmp::{Eq, Ord};
 use iter::BaseIter;
@@ -477,14 +478,20 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         // Memcopy the head element (the one we want) to the location we just
         // popped. For the moment it unsafely exists at both the head and last
         // positions
-        let first_slice = view(*v, 0, 1);
-        let last_slice = mut_view(*v, next_ln, ln);
-        raw::copy_memory(last_slice, first_slice, 1);
+        {
+            let first_slice = view(*v, 0, 1);
+            let last_slice = view(*v, next_ln, ln);
+            raw::copy_memory(::cast::transmute(last_slice), first_slice, 1);
+        }
 
         // Memcopy everything to the left one element
-        let init_slice = mut_view(*v, 0, next_ln);
-        let tail_slice = view(*v, 1, ln);
-        raw::copy_memory(init_slice, tail_slice, next_ln);
+        {
+            let init_slice = view(*v, 0, next_ln);
+            let tail_slice = view(*v, 1, ln);
+            raw::copy_memory(::cast::transmute(init_slice),
+                             tail_slice,
+                             next_ln);
+        }
 
         // Set the new length. Now the vector is back to normal
         raw::set_len(&mut *v, next_ln);

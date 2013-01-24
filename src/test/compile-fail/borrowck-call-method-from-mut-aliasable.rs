@@ -19,7 +19,7 @@ impl Foo {
 }
 
 fn a(x: &mut Foo) {
-    x.f(); //~ ERROR illegal borrow unless pure
+    x.f();
     x.g();
     x.h();
 }
