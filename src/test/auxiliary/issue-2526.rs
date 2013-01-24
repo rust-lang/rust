@@ -35,8 +35,10 @@ fn arc<T: Const>(_data: T) -> arc_destruct<T> {
     arc_destruct(0)
 }
 
-fn init() -> arc_destruct<context_res> unsafe {
-    arc(context_res())
+fn init() -> arc_destruct<context_res> {
+    unsafe {
+        arc(context_res())
+    }
 }
 
 struct context_res {
