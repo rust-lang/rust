@@ -635,7 +635,7 @@ pub mod uv_ll_struct_stubgen {
             a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
             a11: 0 as *u8,
             a12: 0 as *u8
-        };
+        }
     }
     pub fn gen_stub_uv_getaddrinfo_t() -> uv_getaddrinfo_t {
         uv_getaddrinfo_t {
