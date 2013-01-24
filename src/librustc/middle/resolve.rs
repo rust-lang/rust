@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use driver::session;
 use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
 use metadata::csearch::{get_static_methods_if_impl, get_type_name_if_impl};
@@ -3931,7 +3932,10 @@ impl Resolver {
             item_fn(ref fn_decl, _, ref ty_params, ref block) => {
                 // If this is the main function, we must record it in the
                 // session.
-                if !self.session.building_library {
+                // FIXME #4404 android JNI hacks
+                if !self.session.building_library ||
+                    self.session.targ_cfg.os == session::os_android {
+
                     if self.attr_main_fn.is_none() &&
                            item.ident == special_idents::main {
 
