@@ -148,10 +148,12 @@ fn get_cargo_root_nearest() -> Result<Path, ~str> {
     do result::chain(get_cargo_root()) |p| {
         let cwd = os::getcwd();
         let cwd_cargo = cwd.push(".cargo");
+        let cargo_is_non_root_file =
+            !os::path_is_dir(&cwd_cargo) && cwd_cargo != p;
         let mut par_cargo = cwd.pop().push(".cargo");
-        let mut rslt = result::Ok(copy cwd_cargo);  // XXX: Bad copy.
+        let mut rslt = result::Ok(cwd_cargo);
 
-        if !os::path_is_dir(&cwd_cargo) && cwd_cargo != p {
+        if cargo_is_non_root_file {
             while par_cargo != p {
                 if os::path_is_dir(&par_cargo) {
                     rslt = result::Ok(par_cargo);
