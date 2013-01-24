@@ -397,11 +397,13 @@ pub fn test_ranges() {
 
 #[test]
 #[should_fail]
+#[ignore(cfg(windows))]
 fn test_range_step_zero_step_up() {
     for range_step(0,10,0) |_i| {}
 }
 #[test]
 #[should_fail]
+#[ignore(cfg(windows))]
 fn test_range_step_zero_step_down() {
     for range_step(0,-10,0) |_i| {}
 }
