@@ -902,7 +902,6 @@ mod tests {
     use core::uint;
     use core::vec;
 
-    #[test]
     fn test_get_time() {
         const some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
         const some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
@@ -926,7 +925,6 @@ mod tests {
         }
     }
 
-    #[test]
     fn test_precise_time() {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
@@ -944,7 +942,6 @@ mod tests {
         assert ns2 >= ns1;
     }
 
-    #[test]
     fn test_at_utc() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
@@ -966,7 +963,6 @@ mod tests {
         assert utc.tm_nsec == 54321_i32;
     }
 
-    #[test]
     fn test_at() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
@@ -995,7 +991,6 @@ mod tests {
         assert local.tm_nsec == 54321_i32;
     }
 
-    #[test]
     fn test_to_timespec() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
@@ -1007,7 +1002,6 @@ mod tests {
         assert utc.to_local().to_timespec() == time;
     }
 
-    #[test]
     fn test_conversions() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
@@ -1024,7 +1018,6 @@ mod tests {
         assert utc.to_local().to_utc() == utc;
     }
 
-    #[test]
     fn test_strptime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
@@ -1179,8 +1172,6 @@ mod tests {
         assert test(~"%", ~"%%");
     }
 
-    #[test]
-    #[ignore(reason = "randomred")]
     fn test_ctime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
@@ -1195,8 +1186,6 @@ mod tests {
         assert local.ctime() == ~"Fri Feb 13 15:31:30 2009";
     }
 
-    #[test]
-    #[ignore(reason = "randomred")]
     fn test_strftime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
@@ -1270,7 +1259,6 @@ mod tests {
         assert utc.rfc3339() == ~"2009-02-13T23:31:30Z";
     }
 
-    #[test]
     fn test_timespec_eq_ord() {
         use core::cmp::{eq, ge, gt, le, lt, ne};
 
@@ -1302,5 +1290,21 @@ mod tests {
         assert gt(b, a);
         assert gt(c, b);
         assert gt(d, c);
+    }
+
+    #[test]
+    fn run_tests() {
+        // The tests race on tzset. So instead of having many independent
+        // tests, we will just call the functions now.
+        test_get_time();
+        test_precise_time();
+        test_at_utc();
+        test_at();
+        test_to_timespec();
+        test_conversions();
+        test_strptime();
+        test_ctime();
+        test_strftime();
+        test_timespec_eq_ord();
     }
 }
