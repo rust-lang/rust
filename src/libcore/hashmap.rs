@@ -348,6 +348,7 @@ pub mod linear {
     }
 
     pub impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
+        /// Create an empty LinearMap
         static fn new() -> LinearMap<K, V> {
             linear_map_with_capacity(INITIAL_CAPACITY)
         }
