@@ -101,12 +101,6 @@ fn local_rhs_span(l: @ast::local, def: span) -> span {
     }
 }
 
-fn is_main_name(path: syntax::ast_map::path) -> bool {
-    vec::last(path) == syntax::ast_map::path_name(
-        syntax::parse::token::special_idents::main
-    )
-}
-
 fn pluralize(n: uint, +s: ~str) -> ~str {
     if n == 1 { s }
     else { str::concat([s, ~"s"]) }
