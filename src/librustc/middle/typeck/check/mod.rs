@@ -1497,7 +1497,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           match ty::get(lhs_resolved_t).sty {
             ty::ty_fn(_) => {
               tcx.sess.span_note(
-                  ex.span, ~"did you forget the 'do' keyword for the call?");
+                  ex.span, ~"did you forget the `do` keyword for the call?");
             }
             _ => ()
           }
@@ -2207,23 +2207,33 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           Some(ty::ty_fn(ref fty)) => {
             match fcx.mk_subty(false, expr.span,
                                (*fty).sig.output, ty::mk_bool(tcx)) {
-              result::Ok(_) => (),
+              result::Ok(_) =>
+                  ty::mk_fn(tcx, FnTyBase {
+                      meta: (*fty).meta,
+                      sig: FnSig {output: ty::mk_nil(tcx),
+                                  ../*bad*/copy (*fty).sig}
+                  }),
               result::Err(_) => {
                    fcx.type_error_message(expr.span,
                       |actual| {
-                          fmt!("a `loop` function's last argument \
-                                should return `bool`, not `%s`", actual)
+                          fmt!("A `for` loop iterator should expect a \
+                                closure that returns `bool`. This iterator \
+                                expects a closure that returns `%s`. %s",
+                               actual, if ty::type_is_nil((*fty).sig.output) {
+                                   "\nDid you mean to use `do` instead of \
+                                        `for`?" } else { "" } )
                       },
                       (*fty).sig.output, None);
                 err_happened = true;
+                // Kind of a hack: create a function type with the result
+                // replaced with ty_err, to suppress derived errors.
+                let t = ty::replace_fn_return_type(tcx, ty::mk_fn(tcx,
+                                                                  copy *fty),
+                                                   ty::mk_err(tcx));
                 fcx.write_ty(id, ty::mk_err(tcx));
+                t
               }
             }
-            ty::mk_fn(tcx, FnTyBase {
-                meta: (*fty).meta,
-                sig: FnSig {output: ty::mk_nil(tcx),
-                            ../*bad*/copy (*fty).sig}
-            })
           }
           _ =>
               match expected {
@@ -2245,14 +2255,22 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               }
         };
         match b.node {
-          ast::expr_fn_block(ref decl, ref body, cap_clause) => {
-            check_expr_fn(fcx, b, None,
-                          decl, *body, ForLoop, Some(inner_ty));
-            demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
-            capture::check_capture_clause(tcx, b.id, cap_clause);
-          }
-          // argh
-          _ => fail ~"expr_fn_block"
+                ast::expr_fn_block(ref decl, ref body, cap_clause) => {
+                    // If an error occurred, we pretend this isn't a for
+                    // loop, so as to assign types to all nodes while also
+                    // propagating ty_err throughout so as to suppress
+                    // derived errors. If we passed in ForLoop in the
+                    // error case, we'd potentially emit a spurious error
+                    // message because of the indirect_ret_ty.
+                    let fn_kind = if err_happened { Vanilla }
+                                  else { ForLoop };
+                    check_expr_fn(fcx, b, None,
+                                  decl, *body, fn_kind, Some(inner_ty));
+                    demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
+                    capture::check_capture_clause(tcx, b.id, cap_clause);
+                }
+                // argh
+                _ => fail ~"expr_fn_block"
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));

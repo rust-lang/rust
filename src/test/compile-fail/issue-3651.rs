@@ -8,18 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn not_bool(f: fn(int) -> ~str) {}
-
 fn main() {
-    for uint::range(0, 100000) |_i| { //~ ERROR A for-loop body must return (), but
-        false
-    };
-    for not_bool |_i| { //~ ERROR a `for` loop iterator should expect a closure that returns `bool`
-        ~"hi"
-    };
-    for uint::range(0, 100000) |_i| { //~ ERROR A for-loop body must return (), but
-        ~"hi"
-    };
-    for not_bool() |_i| { //~ ERROR a `for` loop iterator should expect a closure that returns `bool`
-    };
+    for task::spawn { return true; } //~ ERROR A `for` loop iterator should expect a closure that
 }
