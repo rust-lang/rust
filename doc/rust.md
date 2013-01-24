@@ -222,7 +222,7 @@ let log loop
 match mod move mut
 priv pub pure
 ref return
-self static struct
+self static struct super
 true trait type
 unsafe use
 while
