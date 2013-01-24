@@ -493,7 +493,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"once",
         ~"priv", ~"pub", ~"pure",
         ~"ref", ~"return",
-        ~"struct",
+        ~"struct", ~"super",
         ~"true", ~"trait", ~"type",
         ~"unsafe", ~"use",
         ~"while"
