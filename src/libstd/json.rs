@@ -24,7 +24,7 @@ use core::float;
 use core::io::{WriterUtil, ReaderUtil};
 use core::io;
 use core::prelude::*;
-use core::send_map::linear;
+use core::hashmap::linear::LinearMap;
 use core::str;
 use core::to_str;
 use core::vec;
@@ -40,7 +40,7 @@ pub enum Json {
 }
 
 pub type List = ~[Json];
-pub type Object = linear::LinearMap<~str, Json>;
+pub type Object = LinearMap<~str, Json>;
 
 pub struct Error {
     line: uint,
@@ -673,7 +673,7 @@ priv impl Parser {
         self.bump();
         self.parse_whitespace();
 
-        let mut values = ~linear::LinearMap();
+        let mut values = ~LinearMap::new();
 
         if self.ch == '}' {
           self.bump();
@@ -913,7 +913,7 @@ pub impl Decoder: serialize::Decoder {
                 // FIXME(#3148) This hint should not be necessary.
                 let obj: &self/~Object = obj;
 
-                match obj.find_ref(&name.to_owned()) {
+                match obj.find(&name.to_owned()) {
                     None => fail fmt!("no such field: %s", name),
                     Some(json) => {
                         self.stack.push(json);
@@ -971,7 +971,7 @@ impl Json : Eq {
                         if d0.len() == d1.len() {
                             let mut equal = true;
                             for d0.each |k, v0| {
-                                match d1.find_ref(k) {
+                                match d1.find(k) {
                                     Some(v1) if v0 == v1 => { },
                                     _ => { equal = false; break }
                                 }
@@ -1177,9 +1177,9 @@ impl <A: ToJson> ~[A]: ToJson {
     fn to_json() -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl <A: ToJson Copy> linear::LinearMap<~str, A>: ToJson {
+impl <A: ToJson Copy> LinearMap<~str, A>: ToJson {
     fn to_json() -> Json {
-        let mut d = linear::LinearMap();
+        let mut d = LinearMap::new();
         for self.each() |key, value| {
             d.insert(copy *key, value.to_json());
         }
@@ -1190,7 +1190,7 @@ impl <A: ToJson Copy> linear::LinearMap<~str, A>: ToJson {
 /*
 impl <A: ToJson Copy> @std::map::HashMap<~str, A>: ToJson {
     fn to_json() -> Json {
-        let mut d = linear::LinearMap();
+        let mut d = LinearMap::new();
         for self.each_ref |key, value| {
             d.insert(copy *key, value.to_json());
         }
@@ -1225,10 +1225,10 @@ mod tests {
     use json::*;
 
     use core::result;
-    use core::send_map::linear;
+    use core::hashmap::linear::LinearMap;
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
-        let mut d = ~linear::LinearMap();
+        let mut d = ~LinearMap::new();
 
         for items.each |item| {
             match *item {
