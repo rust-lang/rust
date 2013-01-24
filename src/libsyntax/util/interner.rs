@@ -77,7 +77,7 @@ impl <T:Eq IterBytes Hash Const Copy> hash_interner<T>: Interner<T> {
 fn i1 () {
     let i : Interner<@~str> = mk();
     i.get(13);
-} 
+}
 
 #[test]
 fn i2 () {
@@ -102,7 +102,7 @@ fn i2 () {
     assert i.get(2) == @~"zebra";
     assert i.get(3) == @~"zebra";
     assert i.get(4) == @~"dog";
-} 
+}
 
 #[test]
 fn i3 () {
