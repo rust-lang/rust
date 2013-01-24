@@ -1659,13 +1659,13 @@ fn subst(cx: ctxt,
     }
 }
 
-// Performs substitutions on a set of substitutions (result = super(sub)) to
+// Performs substitutions on a set of substitutions (result = sup(sub)) to
 // yield a new set of substitutions. This is used in trait inheritance.
-fn subst_substs(cx: ctxt, super: &substs, sub: &substs) -> substs {
+fn subst_substs(cx: ctxt, sup: &substs, sub: &substs) -> substs {
     {
-        self_r: super.self_r,
-        self_ty: super.self_ty.map(|typ| subst(cx, sub, *typ)),
-        tps: super.tps.map(|typ| subst(cx, sub, *typ))
+        self_r: sup.self_r,
+        self_ty: sup.self_ty.map(|typ| subst(cx, sub, *typ)),
+        tps: sup.tps.map(|typ| subst(cx, sub, *typ))
     }
 }
 
