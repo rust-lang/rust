@@ -3342,7 +3342,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       }
     };
     let fty = ty::mk_fn(tcx, FnTyBase {
-        meta: FnMeta {purity: ast::impure_fn,
+        meta: FnMeta {purity: ast::unsafe_fn,
                       proto: ast::ProtoBare,
                       onceness: ast::Many,
                       region: ty::re_static,

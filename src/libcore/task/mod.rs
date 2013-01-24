@@ -571,23 +571,29 @@ pub fn try<T:Owned>(f: fn~() -> T) -> Result<T,()> {
 pub fn yield() {
     //! Yield control to the task scheduler
 
-    let task_ = rt::rust_get_task();
-    let killed = rt::rust_task_yield(task_);
-    if killed && !failing() {
-        fail ~"killed";
+    unsafe {
+        let task_ = rt::rust_get_task();
+        let killed = rt::rust_task_yield(task_);
+        if killed && !failing() {
+            fail ~"killed";
+        }
     }
 }
 
 pub fn failing() -> bool {
     //! True if the running task has failed
 
-    rt::rust_task_is_unwinding(rt::rust_get_task())
+    unsafe {
+        rt::rust_task_is_unwinding(rt::rust_get_task())
+    }
 }
 
 pub fn get_task() -> Task {
     //! Get a handle to the running task
 
-    TaskHandle(rt::get_task_id())
+    unsafe {
+        TaskHandle(rt::get_task_id())
+    }
 }
 
 /**
@@ -608,7 +614,11 @@ pub fn get_task() -> Task {
 pub unsafe fn unkillable<U>(f: fn() -> U) -> U {
     struct AllowFailure {
         t: *rust_task,
-        drop { rt::rust_task_allow_kill(self.t); }
+        drop {
+            unsafe {
+                rt::rust_task_allow_kill(self.t);
+            }
+        }
     }
 
     fn AllowFailure(t: *rust_task) -> AllowFailure{
@@ -617,17 +627,23 @@ pub unsafe fn unkillable<U>(f: fn() -> U) -> U {
         }
     }
 
-    let t = rt::rust_get_task();
-    let _allow_failure = AllowFailure(t);
-    rt::rust_task_inhibit_kill(t);
-    f()
+    unsafe {
+        let t = rt::rust_get_task();
+        let _allow_failure = AllowFailure(t);
+        rt::rust_task_inhibit_kill(t);
+        f()
+    }
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
 pub unsafe fn rekillable<U>(f: fn() -> U) -> U {
     struct DisallowFailure {
         t: *rust_task,
-        drop { rt::rust_task_inhibit_kill(self.t); }
+        drop {
+            unsafe {
+                rt::rust_task_inhibit_kill(self.t);
+            }
+        }
     }
 
     fn DisallowFailure(t: *rust_task) -> DisallowFailure {
@@ -636,10 +652,12 @@ pub unsafe fn rekillable<U>(f: fn() -> U) -> U {
         }
     }
 
-    let t = rt::rust_get_task();
-    let _allow_failure = DisallowFailure(t);
-    rt::rust_task_allow_kill(t);
-    f()
+    unsafe {
+        let t = rt::rust_get_task();
+        let _allow_failure = DisallowFailure(t);
+        rt::rust_task_allow_kill(t);
+        f()
+    }
 }
 
 /**
@@ -650,8 +668,10 @@ pub unsafe fn atomically<U>(f: fn() -> U) -> U {
     struct DeferInterrupts {
         t: *rust_task,
         drop {
-            rt::rust_task_allow_yield(self.t);
-            rt::rust_task_allow_kill(self.t);
+            unsafe {
+                rt::rust_task_allow_yield(self.t);
+                rt::rust_task_allow_kill(self.t);
+            }
         }
     }
 
@@ -661,11 +681,13 @@ pub unsafe fn atomically<U>(f: fn() -> U) -> U {
         }
     }
 
-    let t = rt::rust_get_task();
-    let _interrupts = DeferInterrupts(t);
-    rt::rust_task_inhibit_kill(t);
-    rt::rust_task_inhibit_yield(t);
-    f()
+    unsafe {
+        let t = rt::rust_get_task();
+        let _interrupts = DeferInterrupts(t);
+        rt::rust_task_inhibit_kill(t);
+        rt::rust_task_inhibit_yield(t);
+        f()
+    }
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -908,18 +930,22 @@ fn test_spawn_sched() {
     let ch = oldcomm::Chan(&po);
 
     fn f(i: int, ch: oldcomm::Chan<()>) {
-        let parent_sched_id = rt::rust_get_sched_id();
+        unsafe {
+            let parent_sched_id = rt::rust_get_sched_id();
 
-        do spawn_sched(SingleThreaded) {
-            let child_sched_id = rt::rust_get_sched_id();
-            assert parent_sched_id != child_sched_id;
+            do spawn_sched(SingleThreaded) {
+                unsafe {
+                    let child_sched_id = rt::rust_get_sched_id();
+                    assert parent_sched_id != child_sched_id;
 
-            if (i == 0) {
-                oldcomm::send(ch, ());
-            } else {
-                f(i - 1, ch);
-            }
-        };
+                    if (i == 0) {
+                        oldcomm::send(ch, ());
+                    } else {
+                        f(i - 1, ch);
+                    }
+                }
+            };
+        }
 
     }
     f(10, ch);
@@ -932,13 +958,17 @@ fn test_spawn_sched_childs_on_same_sched() {
     let ch = oldcomm::Chan(&po);
 
     do spawn_sched(SingleThreaded) {
-        let parent_sched_id = rt::rust_get_sched_id();
-        do spawn {
-            let child_sched_id = rt::rust_get_sched_id();
-            // This should be on the same scheduler
-            assert parent_sched_id == child_sched_id;
-            oldcomm::send(ch, ());
-        };
+        unsafe {
+            let parent_sched_id = rt::rust_get_sched_id();
+            do spawn {
+                unsafe {
+                    let child_sched_id = rt::rust_get_sched_id();
+                    // This should be on the same scheduler
+                    assert parent_sched_id == child_sched_id;
+                    oldcomm::send(ch, ());
+                }
+            };
+        }
     };
 
     oldcomm::recv(po);
@@ -1185,10 +1215,12 @@ fn test_sched_thread_per_core() {
     let (port, chan) = pipes::stream();
 
     do spawn_sched(ThreadPerCore) |move chan| {
-        let cores = rt::rust_num_threads();
-        let reported_threads = rt::rust_sched_threads();
-        assert(cores as uint == reported_threads as uint);
-        chan.send(());
+        unsafe {
+            let cores = rt::rust_num_threads();
+            let reported_threads = rt::rust_sched_threads();
+            assert(cores as uint == reported_threads as uint);
+            chan.send(());
+        }
     }
 
     port.recv();
@@ -1199,22 +1231,24 @@ fn test_spawn_thread_on_demand() {
     let (port, chan) = pipes::stream();
 
     do spawn_sched(ManualThreads(2)) |move chan| {
-        let max_threads = rt::rust_sched_threads();
-        assert(max_threads as int == 2);
-        let running_threads = rt::rust_sched_current_nonlazy_threads();
-        assert(running_threads as int == 1);
+        unsafe {
+            let max_threads = rt::rust_sched_threads();
+            assert(max_threads as int == 2);
+            let running_threads = rt::rust_sched_current_nonlazy_threads();
+            assert(running_threads as int == 1);
 
-        let (port2, chan2) = pipes::stream();
+            let (port2, chan2) = pipes::stream();
 
-        do spawn() |move chan2| {
-            chan2.send(());
+            do spawn() |move chan2| {
+                chan2.send(());
+            }
+
+            let running_threads2 = rt::rust_sched_current_nonlazy_threads();
+            assert(running_threads2 as int == 2);
+
+            port2.recv();
+            chan.send(());
         }
-
-        let running_threads2 = rt::rust_sched_current_nonlazy_threads();
-        assert(running_threads2 as int == 2);
-
-        port2.recv();
-        chan.send(());
     }
 
     port.recv();

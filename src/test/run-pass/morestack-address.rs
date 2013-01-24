@@ -16,7 +16,9 @@ extern mod rusti {
 }
 
 fn main() {
-    let addr = rusti::morestack_addr();
-    assert addr.is_not_null();
-    error!("%?", addr);
+    unsafe {
+        let addr = rusti::morestack_addr();
+        assert addr.is_not_null();
+        error!("%?", addr);
+    }
 }

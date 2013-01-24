@@ -93,8 +93,10 @@ type rust_port_id = uint;
 type GlobalPtr = *libc::uintptr_t;
 
 fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
-    let old = rusti::atomic_cxchg(address, oldval, newval);
-    old == oldval
+    unsafe {
+        let old = rusti::atomic_cxchg(address, oldval, newval);
+        old == oldval
+    }
 }
 
 /**

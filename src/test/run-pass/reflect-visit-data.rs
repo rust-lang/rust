@@ -483,10 +483,12 @@ impl my_visitor {
     }
 
     fn visit_inner(inner: *TyDesc) -> bool {
-        let u = my_visitor(*self);
-        let v = ptr_visit_adaptor({inner: u});
-        visit_tydesc(inner, v as TyVisitor);
-        true
+        unsafe {
+            let u = my_visitor(*self);
+            let v = ptr_visit_adaptor({inner: u});
+            visit_tydesc(inner, v as TyVisitor);
+            true
+        }
     }
 }
 
@@ -621,21 +623,25 @@ fn get_tydesc_for<T>(&&_t: T) -> *TyDesc {
 }
 
 fn main() {
-    let r = (1,2,3,true,false,{x:5,y:4,z:3});
-    let p = ptr::addr_of(&r) as *c_void;
-    let u = my_visitor(@{mut ptr1: p,
-                         mut ptr2: p,
-                         mut vals: ~[]});
-    let v = ptr_visit_adaptor({inner: u});
-    let td = get_tydesc_for(r);
-    unsafe { error!("tydesc sz: %u, align: %u",
-                    (*td).size, (*td).align); }
-    let v = v as TyVisitor;
-    visit_tydesc(td, v);
+    unsafe {
+        let r = (1,2,3,true,false,{x:5,y:4,z:3});
+        let p = ptr::addr_of(&r) as *c_void;
+        let u = my_visitor(@{mut ptr1: p,
+                             mut ptr2: p,
+                             mut vals: ~[]});
+        let v = ptr_visit_adaptor({inner: u});
+        let td = get_tydesc_for(r);
+        unsafe { error!("tydesc sz: %u, align: %u",
+                        (*td).size, (*td).align); }
+        let v = v as TyVisitor;
+        visit_tydesc(td, v);
 
-    for (copy u.vals).each |s| {
-        io::println(fmt!("val: %s", *s));
+        for (copy u.vals).each |s| {
+            io::println(fmt!("val: %s", *s));
+        }
+        error!("%?", copy u.vals);
+        assert u.vals == ~[
+            ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3"
+        ];
     }
-    error!("%?", copy u.vals);
-    assert u.vals == ~[~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3"];
  }

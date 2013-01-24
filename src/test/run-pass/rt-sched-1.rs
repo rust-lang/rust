@@ -36,11 +36,13 @@ fn main() {
         let new_task_id = rustrt::rust_new_task_in_sched(new_sched_id);
         assert !new_task_id.is_null();
         let f = fn~() {
-            let child_sched_id = rustrt::rust_get_sched_id();
-            error!("child_sched_id %?", child_sched_id);
-            assert child_sched_id != parent_sched_id;
-            assert child_sched_id == new_sched_id;
-            oldcomm::send(ch, ());
+            unsafe {
+                let child_sched_id = rustrt::rust_get_sched_id();
+                error!("child_sched_id %?", child_sched_id);
+                assert child_sched_id != parent_sched_id;
+                assert child_sched_id == new_sched_id;
+                oldcomm::send(ch, ());
+            }
         };
         let fptr = cast::reinterpret_cast(&ptr::addr_of(&f));
         rustrt::start_task(new_task_id, fptr);

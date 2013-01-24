@@ -31,5 +31,7 @@ extern mod rusti {
 
 #[inline(always)]
 fn atomic_xchg(dst: &mut int, src: int) -> int {
-    rusti::atomic_xchg(dst, src)
+    unsafe {
+        rusti::atomic_xchg(dst, src)
+    }
 }

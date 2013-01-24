@@ -30,7 +30,9 @@ pub enum port<T: Owned> {
 
 /// Constructs a port
 pub fn port<T: Owned>() -> port<T> {
-    port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
+    unsafe {
+        port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
+    }
 }
 
 struct port_ptr<T:Owned> {
@@ -75,21 +77,23 @@ pub fn recv<T: Owned>(p: port<T>) -> T { recv_((**p).po) }
 
 /// Receive on a raw port pointer
 pub fn recv_<T: Owned>(p: *rust_port) -> T {
-    let yield = 0;
-    let yieldp = ptr::addr_of(&yield);
-    let mut res;
-    res = rusti::init::<T>();
-    rustrt::port_recv(ptr::addr_of(&res) as *uint, p, yieldp);
+    unsafe {
+        let yield = 0;
+        let yieldp = ptr::addr_of(&yield);
+        let mut res;
+        res = rusti::init::<T>();
+        rustrt::port_recv(ptr::addr_of(&res) as *uint, p, yieldp);
 
-    if yield != 0 {
-        // Data isn't available yet, so res has not been initialized.
-        task::yield();
-    } else {
-        // In the absense of compiler-generated preemption points
-        // this is a good place to yield
-        task::yield();
+        if yield != 0 {
+            // Data isn't available yet, so res has not been initialized.
+            task::yield();
+        } else {
+            // In the absense of compiler-generated preemption points
+            // this is a good place to yield
+            task::yield();
+        }
+        move res
     }
-    move res
 }
 
 

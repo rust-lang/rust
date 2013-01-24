@@ -26,6 +26,8 @@ extern mod rustrt2 {
 }
 
 fn main() {
-    rustrt1::last_os_error();
-    rustrt2::last_os_error();
+    unsafe {
+        rustrt1::last_os_error();
+        rustrt2::last_os_error();
+    }
 }

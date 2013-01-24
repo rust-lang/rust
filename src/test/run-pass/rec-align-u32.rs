@@ -45,22 +45,23 @@ mod m {
 }
 
 fn main() {
+    unsafe {
+        let x = {c8: 22u8, t: {c64: 44u32}};
 
-    let x = {c8: 22u8, t: {c64: 44u32}};
+        // Send it through the shape code
+        let y = fmt!("%?", x);
 
-    // Send it through the shape code
-    let y = fmt!("%?", x);
+        debug!("align inner = %?", rusti::min_align_of::<inner>());
+        debug!("size outer = %?", sys::size_of::<outer>());
+        debug!("y = %s", y);
 
-    debug!("align inner = %?", rusti::min_align_of::<inner>());
-    debug!("size outer = %?", sys::size_of::<outer>());
-    debug!("y = %s", y);
+        // per clang/gcc the alignment of `inner` is 4 on x86.
+        assert rusti::min_align_of::<inner>() == m::align();
 
-    // per clang/gcc the alignment of `inner` is 4 on x86.
-    assert rusti::min_align_of::<inner>() == m::align();
+        // per clang/gcc the size of `outer` should be 12
+        // because `inner`s alignment was 4.
+        assert sys::size_of::<outer>() == m::size();
 
-    // per clang/gcc the size of `outer` should be 12
-    // because `inner`s alignment was 4.
-    assert sys::size_of::<outer>() == m::size();
-
-    assert y == ~"{c8: 22, t: {c64: 44}}";
+        assert y == ~"{c8: 22, t: {c64: 44}}";
+    }
 }

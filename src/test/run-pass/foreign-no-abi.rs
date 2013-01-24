@@ -16,5 +16,7 @@ extern mod rustrt {
 }
 
 fn main() {
-    rustrt::get_task_id();
+    unsafe {
+        rustrt::get_task_id();
+    }
 }
