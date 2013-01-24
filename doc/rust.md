@@ -587,7 +587,7 @@ source files that represent crates have the extension `.rc`, called *crate files
 A Rust source file describes a module, the name and
 location of which -- in the module tree of the current crate -- are defined
 from outside the source file: either by an explicit `mod_item` in
-a referencing source file, or by the name of the crate ittself.
+a referencing source file, or by the name of the crate itself.
 
 Each source file contains a sequence of zero or more `item` definitions,
 and may optionally begin with any number of `attributes` that apply to the containing module.
