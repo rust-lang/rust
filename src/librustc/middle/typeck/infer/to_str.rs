@@ -88,7 +88,7 @@ pub impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
         match *self {
           Redirect(ref vid) => fmt!("Redirect(%s)", vid.to_str()),
           Root(ref pt, rk) => fmt!("Root(%s, %s)", pt.inf_str(cx),
-                               uint::to_str(rk, 10u))
+                               uint::to_str_radix(rk, 10u))
         }
     }
 }

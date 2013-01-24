@@ -2006,24 +2006,24 @@ pub fn print_literal(s: ps, &&lit: @ast::lit) {
       ast::lit_int(i, t) => {
         if i < 0_i64 {
             word(s.s,
-                 ~"-" + u64::to_str(-i as u64, 10u)
+                 ~"-" + u64::to_str_radix(-i as u64, 10u)
                  + ast_util::int_ty_to_str(t));
         } else {
             word(s.s,
-                 u64::to_str(i as u64, 10u)
+                 u64::to_str_radix(i as u64, 10u)
                  + ast_util::int_ty_to_str(t));
         }
       }
       ast::lit_uint(u, t) => {
         word(s.s,
-             u64::to_str(u, 10u)
+             u64::to_str_radix(u, 10u)
              + ast_util::uint_ty_to_str(t));
       }
       ast::lit_int_unsuffixed(i) => {
         if i < 0_i64 {
-            word(s.s, ~"-" + u64::to_str(-i as u64, 10u));
+            word(s.s, ~"-" + u64::to_str_radix(-i as u64, 10u));
         } else {
-            word(s.s, u64::to_str(i as u64, 10u));
+            word(s.s, u64::to_str_radix(i as u64, 10u));
         }
       }
       ast::lit_float(f, t) => {

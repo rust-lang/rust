@@ -910,7 +910,7 @@ impl<T: Writer> T : WriterUtil {
         int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
     }
     fn write_uint(&self, n: uint) {
-        uint::to_str_bytes(false, n, 10u, |bytes| self.write(bytes))
+        uint::to_str_bytes(n, 10u, |bytes| self.write(bytes))
     }
     fn write_le_uint(&self, n: uint) {
         u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
