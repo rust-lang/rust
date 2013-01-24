@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-
-
-
-*/
-
 extern mod std;
 use std::map;
-use core::mutable::Mut;
+use std::treemap::TreeMap;
 use core::hashmap::linear::*;
 use core::io::WriterUtil;
 
@@ -38,13 +32,10 @@ fn timed(result: &mut float,
     *result = (end - start);
 }
 
-fn int_benchmarks<M: map::Map<uint, uint>>(make_map: fn() -> M,
-                                           rng: @rand::Rng,
-                                           num_keys: uint,
-                                           results: &mut Results) {
+fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
     {
-        let map = make_map();
+        let map = map::HashMap();
         do timed(&mut results.sequential_ints) {
             for uint::range(0, num_keys) |i| {
                 map.insert(i, i+1);
@@ -57,7 +48,7 @@ fn int_benchmarks<M: map::Map<uint, uint>>(make_map: fn() -> M,
     }
 
     {
-        let map = make_map();
+        let map = map::HashMap();
         do timed(&mut results.random_ints) {
             for uint::range(0, num_keys) |i| {
                 map.insert(rng.next() as uint, i);
@@ -66,7 +57,7 @@ fn int_benchmarks<M: map::Map<uint, uint>>(make_map: fn() -> M,
     }
 
     {
-        let map = make_map();
+        let map = map::HashMap();
         for uint::range(0, num_keys) |i| {
             map.insert(i, i);;
         }
@@ -79,12 +70,9 @@ fn int_benchmarks<M: map::Map<uint, uint>>(make_map: fn() -> M,
     }
 }
 
-fn str_benchmarks<M: map::Map<~str, uint>>(make_map: fn() -> M,
-                                           rng: @rand::Rng,
-                                           num_keys: uint,
-                                           results: &mut Results) {
+fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
     {
-        let map = make_map();
+        let map = map::HashMap();
         do timed(&mut results.sequential_strings) {
             for uint::range(0, num_keys) |i| {
                 let s = uint::to_str(i, 10);
@@ -99,7 +87,7 @@ fn str_benchmarks<M: map::Map<~str, uint>>(make_map: fn() -> M,
     }
 
     {
-        let map = make_map();
+        let map = map::HashMap();
         do timed(&mut results.random_strings) {
             for uint::range(0, num_keys) |i| {
                 let s = uint::to_str(rng.next() as uint, 10);
@@ -109,13 +97,165 @@ fn str_benchmarks<M: map::Map<~str, uint>>(make_map: fn() -> M,
     }
 
     {
-        let map = make_map();
+        let map = map::HashMap();
         for uint::range(0, num_keys) |i| {
             map.insert(uint::to_str(i, 10), i);
         }
         do timed(&mut results.delete_strings) {
             for uint::range(0, num_keys) |i| {
                 assert map.remove(uint::to_str(i, 10));
+            }
+        }
+    }
+}
+
+fn linear_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
+    {
+        let mut map = LinearMap::new();
+        do timed(&mut results.sequential_ints) {
+            for uint::range(0, num_keys) |i| {
+                map.insert(i, i+1);
+            }
+
+            for uint::range(0, num_keys) |i| {
+                assert map.find(&i).unwrap() == &(i+1);
+            }
+        }
+    }
+
+    {
+        let mut map = LinearMap::new();
+        do timed(&mut results.random_ints) {
+            for uint::range(0, num_keys) |i| {
+                map.insert(rng.next() as uint, i);
+            }
+        }
+    }
+
+    {
+        let mut map = LinearMap::new();
+        for uint::range(0, num_keys) |i| {
+            map.insert(i, i);;
+        }
+
+        do timed(&mut results.delete_ints) {
+            for uint::range(0, num_keys) |i| {
+                assert map.remove(&i);
+            }
+        }
+    }
+}
+
+fn linear_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
+    {
+        let mut map = LinearMap::new();
+        do timed(&mut results.sequential_strings) {
+            for uint::range(0, num_keys) |i| {
+                let s = uint::to_str(i, 10);
+                map.insert(s, i);
+            }
+
+            for uint::range(0, num_keys) |i| {
+                let s = uint::to_str(i, 10);
+                assert map.find(&s).unwrap() == &i;
+            }
+        }
+    }
+
+    {
+        let mut map = LinearMap::new();
+        do timed(&mut results.random_strings) {
+            for uint::range(0, num_keys) |i| {
+                let s = uint::to_str(rng.next() as uint, 10);
+                map.insert(s, i);
+            }
+        }
+    }
+
+    {
+        let mut map = LinearMap::new();
+        for uint::range(0, num_keys) |i| {
+            map.insert(uint::to_str(i, 10), i);
+        }
+        do timed(&mut results.delete_strings) {
+            for uint::range(0, num_keys) |i| {
+                assert map.remove(&uint::to_str(i, 10));
+            }
+        }
+    }
+}
+
+fn tree_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
+    {
+        let mut map = TreeMap::new();
+        do timed(&mut results.sequential_ints) {
+            for uint::range(0, num_keys) |i| {
+                map.insert(i, i+1);
+            }
+
+            for uint::range(0, num_keys) |i| {
+                assert map.find(&i).unwrap() == &(i+1);
+            }
+        }
+    }
+
+    {
+        let mut map = TreeMap::new();
+        do timed(&mut results.random_ints) {
+            for uint::range(0, num_keys) |i| {
+                map.insert(rng.next() as uint, i);
+            }
+        }
+    }
+
+    {
+        let mut map = TreeMap::new();
+        for uint::range(0, num_keys) |i| {
+            map.insert(i, i);;
+        }
+
+        do timed(&mut results.delete_ints) {
+            for uint::range(0, num_keys) |i| {
+                assert map.remove(&i);
+            }
+        }
+    }
+}
+
+fn tree_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
+    {
+        let mut map = TreeMap::new();
+        do timed(&mut results.sequential_strings) {
+            for uint::range(0, num_keys) |i| {
+                let s = uint::to_str(i, 10);
+                map.insert(s, i);
+            }
+
+            for uint::range(0, num_keys) |i| {
+                let s = uint::to_str(i, 10);
+                assert map.find(&s).unwrap() == &i;
+            }
+        }
+    }
+
+    {
+        let mut map = TreeMap::new();
+        do timed(&mut results.random_strings) {
+            for uint::range(0, num_keys) |i| {
+                let s = uint::to_str(rng.next() as uint, 10);
+                map.insert(s, i);
+            }
+        }
+    }
+
+    {
+        let mut map = TreeMap::new();
+        for uint::range(0, num_keys) |i| {
+            map.insert(uint::to_str(i, 10), i);
+        }
+        do timed(&mut results.delete_strings) {
+            for uint::range(0, num_keys) |i| {
+                assert map.remove(&uint::to_str(i, 10));
             }
         }
     }
@@ -167,22 +307,24 @@ fn main() {
     {
         let rng = rand::seeded_rng(&seed);
         let mut results = empty_results();
-        int_benchmarks::<map::HashMap<uint, uint>>(
-            map::HashMap, rng, num_keys, &mut results);
-        str_benchmarks::<map::HashMap<~str, uint>>(
-            map::HashMap, rng, num_keys, &mut results);
-        write_results("libstd::map::hashmap", &results);
+        old_int_benchmarks(rng, num_keys, &mut results);
+        old_str_benchmarks(rng, num_keys, &mut results);
+        write_results("std::map::HashMap", &results);
     }
 
     {
         let rng = rand::seeded_rng(&seed);
         let mut results = empty_results();
-        int_benchmarks::<@Mut<LinearMap<uint, uint>>>(
-            || @Mut(LinearMap::new()),
-            rng, num_keys, &mut results);
-        str_benchmarks::<@Mut<LinearMap<~str, uint>>>(
-            || @Mut(LinearMap::new()),
-            rng, num_keys, &mut results);
-        write_results("libstd::map::hashmap", &results);
+        linear_int_benchmarks(rng, num_keys, &mut results);
+        linear_str_benchmarks(rng, num_keys, &mut results);
+        write_results("core::hashmap::linear::LinearMap", &results);
+    }
+
+    {
+        let rng = rand::seeded_rng(&seed);
+        let mut results = empty_results();
+        tree_int_benchmarks(rng, num_keys, &mut results);
+        tree_str_benchmarks(rng, num_keys, &mut results);
+        write_results("std::treemap::TreeMap", &results);
     }
 }
