@@ -1209,6 +1209,14 @@ fn C_struct(elts: &[ValueRef]) -> ValueRef {
     }
 }
 
+fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
+    unsafe {
+        do vec::as_imm_buf(elts) |ptr, len| {
+            llvm::LLVMConstStruct(ptr, len as c_uint, True)
+        }
+    }
+}
+
 fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do vec::as_imm_buf(elts) |ptr, len| {

@@ -455,15 +455,14 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                 let discrim = base::get_discrim_val(cx, e.span, tid, vid);
                 let c_args = C_struct(args.map(|a| const_expr(cx, *a)));
 
-                let fields = if !degen {
-                    ~[discrim, c_args]
+                // FIXME (#1645): enum body alignment is generaly wrong.
+                if !degen {
+                    C_packed_struct(~[discrim, c_args])
                 } else if size == 0 {
-                    ~[discrim]
+                    C_struct(~[discrim])
                 } else {
-                    ~[c_args]
-                };
-
-                C_struct(fields)
+                    C_struct(~[c_args])
+                }
             }
                 _ => cx.sess.span_bug(e.span, ~"expected a struct def")
             }
