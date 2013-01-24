@@ -376,13 +376,23 @@ pub mod ct {
     fn test_parse_fmt_string() {
         assert parse_fmt_string("foo %s bar", die) == ~[
             PieceString(~"foo "),
-            PieceConv(Conv {param: None, flags: ~[], width: CountImplied,
-                            precision: CountImplied, ty: TyStr}),
+            PieceConv(Conv {
+                param: None,
+                flags: ~[],
+                width: CountImplied,
+                precision: CountImplied,
+                ty: TyStr,
+            }),
             PieceString(~" bar")];
 
         assert parse_fmt_string("%s", die) == ~[
-            PieceConv(Conv {param: None, flags: ~[], width: CountImplied,
-                            precision: CountImplied, ty: TyStr })];
+            PieceConv(Conv {
+                param: None,
+                flags: ~[],
+                width: CountImplied,
+                precision: CountImplied,
+                ty: TyStr,
+            })];
 
         assert parse_fmt_string("%%%%", die) == ~[
             PieceString(~"%"), PieceString(~"%")];
@@ -486,7 +496,18 @@ pub mod rt {
 
     pub enum Ty { TyDefault, TyBits, TyHexUpper, TyHexLower, TyOctal, }
 
+    #[cfg(stage0)]
     pub type Conv = {flags: u32, width: Count, precision: Count, ty: Ty};
+
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    pub struct Conv {
+        flags: u32,
+        width: Count,
+        precision: Count,
+        ty: Ty,
+    }
 
     pub pure fn conv_int(cv: Conv, i: int) -> ~str {
         let radix = 10;
