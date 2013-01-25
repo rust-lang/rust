@@ -111,6 +111,8 @@ enum special_kind {
 // a complete categorization of a value indicating where it originated
 // and how it is located, as well as the mutability of the memory in
 // which the value is stored.
+//
+// note: cmt stands for "categorized mutable type".
 type cmt_ = {id: ast::node_id,        // id of expr/pat producing this value
              span: span,              // span of same expr/pat
              cat: categorization,     // categorization of expr

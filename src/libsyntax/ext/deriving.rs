@@ -363,7 +363,8 @@ fn create_enum_variant_pattern(cx: ext_ctxt,
     match variant.node.kind {
         tuple_variant_kind(ref variant_args) => {
             if variant_args.len() == 0 {
-                return build::mk_pat_ident(cx, span, variant_ident);
+                return build::mk_pat_ident_with_binding_mode(
+                    cx, span, variant_ident, ast::bind_infer);
             }
 
             let matching_path = build::mk_raw_path(span, ~[ variant_ident ]);
