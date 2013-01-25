@@ -138,7 +138,7 @@ impl LanguageItems {
         }
     }
 
-    // XXX: Method macros sure would be nice here.
+    // FIXME #4621: Method macros sure would be nice here.
 
     pub fn const_trait(&const self) -> def_id {
         self.items[ConstTraitLangItem as uint].get()
