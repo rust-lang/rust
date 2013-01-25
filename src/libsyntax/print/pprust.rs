@@ -2264,13 +2264,7 @@ pub mod test {
     use ast_util;
     use parse;
     use super::*;
-    //use util;
-
-    fn string_check<T : Eq> (given : &T, expected: &T) {
-        if !(given == expected) {
-            fail (fmt!("given %?, expected %?",given,expected));
-        }
-    }
+    use util::testing::check_equal;
 
     #[test]
     fn test_fun_to_str() {
@@ -2284,8 +2278,8 @@ pub mod test {
                               span: ast_util::dummy_sp()},
             cf: ast::return_val
         };
-        assert fun_to_str(decl, abba_ident, ~[],mock_interner)
-            == ~"fn abba()";
+        check_equal (&fun_to_str(decl, abba_ident, ~[],mock_interner),
+                     &~"fn abba()");
     }
 
     #[test]
@@ -2304,7 +2298,7 @@ pub mod test {
         });
 
         let varstr = variant_to_str(var,mock_interner);
-        string_check(&varstr,&~"pub principal_skinner");
+        check_equal(&varstr,&~"pub principal_skinner");
     }
 }
 

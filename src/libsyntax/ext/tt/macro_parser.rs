@@ -10,8 +10,8 @@
 
 // Earley-like parser for macros.
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
-use ast_util::mk_sp;
 use codemap::BytePos;
+use codemap::{dummy_sp, mk_sp};
 use codemap;
 use parse::common::*; //resolve bug?
 use parse::lexer::*; //resolve bug?

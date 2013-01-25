@@ -17,10 +17,10 @@ use core::prelude::*;
 
 use ast::{ident, node_id};
 use ast;
-use ast_util::{ident_to_path, respan, dummy_sp};
+use ast_util::{ident_to_path, respan};
 use ast_util;
 use attr;
-use codemap::span;
+use codemap::{span, dummy_sp};
 use ext::base::{ext_ctxt, mk_ctxt};
 use ext::quote::rt::*;
 
