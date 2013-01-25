@@ -481,161 +481,170 @@ fn wild() -> @pat {
     @pat {id: 0, node: pat_wild, span: ast_util::dummy_sp()}
 }
 
-fn specialize(cx: @MatchCheckCtxt, r: ~[@pat], ctor_id: ctor, arity: uint,
+fn specialize(cx: @MatchCheckCtxt, +r: ~[@pat], ctor_id: ctor, arity: uint,
               left_ty: ty::t) -> Option<~[@pat]> {
-    let r0 = raw_pat(r[0]);
-    match /*bad*/copy r0.node {
-      pat_wild => Some(vec::append(vec::from_elem(arity, wild()),
-                                   vec::tail(r))),
-      pat_ident(_, _, _) => {
-        match cx.tcx.def_map.find(r0.id) {
-          Some(def_variant(_, id)) => {
-            if variant(id) == ctor_id { Some(vec::tail(r)) }
-            else { None }
-          }
-          Some(def_const(did)) => {
-            let const_expr = lookup_const_by_id(cx.tcx, did).get();
-            let e_v = eval_const_expr(cx.tcx, const_expr);
-            let match_ = match ctor_id {
-                val(ref v) => compare_const_vals(e_v, (*v)) == 0,
-                range(ref c_lo, ref c_hi) => {
-                    compare_const_vals((*c_lo), e_v) >= 0 &&
-                        compare_const_vals((*c_hi), e_v) <= 0
+    // Sad, but I can't get rid of this easily
+    let mut r0 = copy *raw_pat(r[0]);
+    match r0 {
+        pat{id: pat_id, node: n, span: pat_span} =>
+            match n {
+            pat_wild => Some(vec::append(vec::from_elem(arity, wild()),
+                                         vec::tail(r))),
+            pat_ident(_, _, _) => {
+                match cx.tcx.def_map.find(pat_id) {
+                    Some(def_variant(_, id)) => {
+                        if variant(id) == ctor_id { Some(vec::tail(r)) }
+                        else { None }
+                    }
+                    Some(def_const(did)) => {
+                        let const_expr =
+                            lookup_const_by_id(cx.tcx, did).get();
+                        let e_v = eval_const_expr(cx.tcx, const_expr);
+                        let match_ = match ctor_id {
+                            val(ref v) => compare_const_vals(e_v, (*v)) == 0,
+                            range(ref c_lo, ref c_hi) => {
+                                compare_const_vals((*c_lo), e_v) >= 0 &&
+                                    compare_const_vals((*c_hi), e_v) <= 0
+                            }
+                            single => true,
+                            _ => fail ~"type error"
+                        };
+                        if match_ { Some(vec::tail(r)) } else { None }
+                    }
+                    _ => Some(vec::append(vec::from_elem(arity, wild()),
+                                          vec::tail(r)))
                 }
-                single => true,
-                _ => fail ~"type error"
-            };
-            if match_ { Some(vec::tail(r)) } else { None }
-          }
-          _ => Some(vec::append(vec::from_elem(arity, wild()), vec::tail(r)))
-        }
-      }
-      pat_enum(_, args) => {
-        match cx.tcx.def_map.get(r0.id) {
-          def_variant(_, id) if variant(id) == ctor_id => {
-            let args = match args {
-              Some(args) => args,
-              None => vec::from_elem(arity, wild())
-            };
-            Some(vec::append(args, vec::tail(r)))
-          }
-          def_variant(_, _) => None,
-          def_struct(*) => {
-            // XXX: Is this right? --pcw
-            let new_args;
-            match args {
-              Some(args) => new_args = args,
-              None => new_args = vec::from_elem(arity, wild())
             }
-            Some(vec::append(new_args, vec::tail(r)))
-          }
-          _ => None
-        }
-      }
-      pat_rec(flds, _) => {
-        let ty_flds = match /*bad*/copy ty::get(left_ty).sty {
-            ty::ty_rec(flds) => flds,
-            _ => fail ~"bad type for pat_rec"
-        };
-        let args = vec::map(ty_flds, |ty_fld| {
-            match vec::find(flds, |f| f.ident == ty_fld.ident ) {
-              Some(f) => f.pat,
-              _ => wild()
-            }
-        });
-        Some(vec::append(args, vec::tail(r)))
-      }
-      pat_struct(_, flds, _) => {
-        // Is this a struct or an enum variant?
-        match cx.tcx.def_map.get(r0.id) {
-            def_variant(_, variant_id) => {
-                if variant(variant_id) == ctor_id {
-                    // XXX: Is this right? --pcw
-                    let args = flds.map(|ty_field| {
-                        match vec::find(flds, |f| f.ident == ty_field.ident) {
-                            Some(f) => f.pat,
-                            _ => wild()
+            pat_enum(_, args) => {
+                match cx.tcx.def_map.get(pat_id) {
+                    def_variant(_, id) if variant(id) == ctor_id => {
+                        let args = match args {
+                            Some(args) => args,
+                            None => vec::from_elem(arity, wild())
+                        };
+                        Some(vec::append(args, vec::tail(r)))
+                    }
+                    def_variant(_, _) => None,
+                    def_struct(*) => {
+                        // XXX: Is this right? --pcw
+                        let new_args;
+                        match args {
+                            Some(args) => new_args = args,
+                            None => new_args = vec::from_elem(arity, wild())
                         }
-                    });
-                    Some(vec::append(args, vec::tail(r)))
-                } else {
-                    None
+                        Some(vec::append(new_args, vec::tail(r)))
+                    }
+                    _ => None
                 }
             }
-            _ => {
-                // Grab the class data that we care about.
-                let class_fields, class_id;
-                match ty::get(left_ty).sty {
-                    ty::ty_struct(cid, _) => {
-                        class_id = cid;
-                        class_fields = ty::lookup_struct_fields(cx.tcx,
-                                                               class_id);
-                    }
-                    _ => {
-                        cx.tcx.sess.span_bug(r0.span, ~"struct pattern \
-                                                        didn't resolve to a \
-                                                        struct");
-                    }
-                }
-                let args = vec::map(class_fields, |class_field| {
-                    match vec::find(flds, |f| f.ident == class_field.ident ) {
-                      Some(f) => f.pat,
-                      _ => wild()
+            pat_rec(ref flds, _) => {
+                let ty_flds = match /*bad*/copy ty::get(left_ty).sty {
+                    ty::ty_rec(flds) => flds,
+                    _ => fail ~"bad type for pat_rec"
+                };
+                let args = vec::map(ty_flds, |ty_fld| {
+                    match flds.find(|f| f.ident == ty_fld.ident) {
+                        Some(f) => f.pat,
+                        _ => wild()
                     }
                 });
                 Some(vec::append(args, vec::tail(r)))
             }
-        }
-      }
-      pat_tup(args) => Some(vec::append(args, vec::tail(r))),
-      pat_box(a) | pat_uniq(a) | pat_region(a) =>
-          Some(vec::append(~[a], vec::tail(r))),
-      pat_lit(expr) => {
-        let e_v = eval_const_expr(cx.tcx, expr);
-        let match_ = match ctor_id {
-          val(ref v) => compare_const_vals(e_v, (*v)) == 0,
-          range(ref c_lo, ref c_hi) => {
-            compare_const_vals((*c_lo), e_v) >= 0 &&
-                compare_const_vals((*c_hi), e_v) <= 0
-          }
-          single => true,
-          _ => fail ~"type error"
-        };
-        if match_ { Some(vec::tail(r)) } else { None }
-      }
-      pat_range(lo, hi) => {
-        let (c_lo, c_hi) = match ctor_id {
-          val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
-          range(ref lo, ref hi) => ((/*bad*/copy *lo), (/*bad*/copy *hi)),
-          single => return Some(vec::tail(r)),
-          _ => fail ~"type error"
-        };
-        let v_lo = eval_const_expr(cx.tcx, lo),
-            v_hi = eval_const_expr(cx.tcx, hi);
-        let match_ = compare_const_vals(c_lo, v_lo) >= 0 &&
-                    compare_const_vals(c_hi, v_hi) <= 0;
-        if match_ { Some(vec::tail(r)) } else { None }
-      }
-      pat_vec(elems, tail) => {
-        match ctor_id {
-          vec(_) => {
-            if elems.len() < arity && tail.is_some() {
-              // XXX: Bad copy.
-              Some(vec::append(
-                vec::append(copy elems, vec::from_elem(
-                    arity - elems.len(), wild()
-                )),
-                vec::tail(r)
-              ))
-            } else if elems.len() == arity {
-              Some(vec::append(elems, vec::tail(r)))
-            } else {
-              None
+            pat_struct(_, ref flds, _) => {
+                // Is this a struct or an enum variant?
+                match cx.tcx.def_map.get(pat_id) {
+                    def_variant(_, variant_id) => {
+                        if variant(variant_id) == ctor_id {
+                            // XXX: Is this right? --pcw
+                            let args = flds.map(|ty_field| {
+                                match flds.find(|f|
+                                                f.ident == ty_field.ident) {
+                                    Some(f) => f.pat,
+                                    _ => wild()
+                                }
+                            });
+                            Some(vec::append(args, vec::tail(r)))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => {
+                        // Grab the class data that we care about.
+                        let class_fields, class_id;
+                        match ty::get(left_ty).sty {
+                            ty::ty_struct(cid, _) => {
+                                class_id = cid;
+                                class_fields =
+                                    ty::lookup_struct_fields(cx.tcx,
+                                                             class_id);
+                            }
+                            _ => {
+                                cx.tcx.sess.span_bug(pat_span,
+                                ~"struct pattern didn't resolve to a struct");
+                            }
+                        }
+                        let args = vec::map(class_fields, |class_field| {
+                            match flds.find(|f|
+                                            f.ident == class_field.ident) {
+                                Some(f) => f.pat,
+                                _ => wild()
+                            }
+                        });
+                        Some(vec::append(args, vec::tail(r)))
+                    }
+                }
             }
-          }
-          _ => None
-        }
+            pat_tup(args) => Some(vec::append(args, vec::tail(r))),
+            pat_box(a) | pat_uniq(a) | pat_region(a) =>
+                Some(vec::append(~[a], vec::tail(r))),
+            pat_lit(expr) => {
+                let e_v = eval_const_expr(cx.tcx, expr);
+                let match_ = match ctor_id {
+                    val(ref v) => compare_const_vals(e_v, (*v)) == 0,
+                    range(ref c_lo, ref c_hi) => {
+                        compare_const_vals((*c_lo), e_v) >= 0 &&
+                            compare_const_vals((*c_hi), e_v) <= 0
+                    }
+                    single => true,
+                    _ => fail ~"type error"
+                };
+                if match_ { Some(vec::tail(r)) } else { None }
+            }
+            pat_range(lo, hi) => {
+                let (c_lo, c_hi) = match ctor_id {
+                    val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
+                    range(ref lo, ref hi) =>
+                        ((/*bad*/copy *lo), (/*bad*/copy *hi)),
+                    single => return Some(vec::tail(r)),
+                    _ => fail ~"type error"
+                };
+                let v_lo = eval_const_expr(cx.tcx, lo),
+                v_hi = eval_const_expr(cx.tcx, hi);
+                let match_ = compare_const_vals(c_lo, v_lo) >= 0 &&
+                    compare_const_vals(c_hi, v_hi) <= 0;
+          if match_ { Some(vec::tail(r)) } else { None }
       }
+            pat_vec(elems, tail) => {
+                match ctor_id {
+                    vec(_) => {
+                        let num_elements = elems.len();
+                        if num_elements < arity && tail.is_some() {
+                            Some(vec::append(
+                                vec::append(elems, vec::from_elem(
+                                    arity - num_elements, wild()
+                                )),
+                                vec::tail(r)
+                            ))
+                        } else if num_elements == arity {
+                            Some(vec::append(elems, vec::tail(r)))
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None
+                }
+            }
+        }
     }
 }
 
