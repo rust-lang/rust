@@ -72,7 +72,7 @@ pub fn TcpSocket(socket_data: @TcpSocketData) -> TcpSocket {
  */
 pub struct TcpSocketBuf {
     data: @TcpBufferedSocketData,
-    mut end_of_stream: bool,
+    mut end_of_stream: bool
 }
 
 pub fn TcpSocketBuf(data: @TcpBufferedSocketData) -> TcpSocketBuf {
@@ -809,7 +809,7 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
  * A buffered wrapper that you can cast as an `io::reader` or `io::writer`
  */
 pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
-    TcpSocketBuf(@TcpBufferedSocketData { sock: sock, buf: ~[] })
+    TcpSocketBuf(@TcpBufferedSocketData { sock: move sock, mut buf: ~[], buf_off: 0 })
 }
 
 /// Convenience methods extending `net::tcp::tcp_socket`
@@ -859,48 +859,89 @@ impl TcpSocket {
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl TcpSocketBuf: io::Reader {
     fn read(&self, buf: &[mut u8], len: uint) -> uint {
-        // Loop until our buffer has enough data in it for us to read from.
-        while self.data.buf.len() < len {
-            let read_result = read(&self.data.sock, 0u);
-            if read_result.is_err() {
-                let err_data = read_result.get_err();
+        if len == 0 { return 0 }
+        let mut count: uint = 0;
 
-                if err_data.err_name == ~"EOF" {
-                    self.end_of_stream = true;
-                    break;
-                } else {
-                    debug!("ERROR sock_buf as io::reader.read err %? %?",
-                           err_data.err_name, err_data.err_msg);
+        loop {
+          assert count < len;
 
-                    return 0;
+          // If possible, copy up to `len` bytes from the internal 
+          // `data.buf` into `buf`
+          let nbuffered = self.data.buf.len() - self.data.buf_off;
+          let needed = len - count;
+            if nbuffered > 0 {
+                unsafe {
+                    let ncopy = uint::min(nbuffered, needed); 
+                    let dst = ptr::mut_offset(
+                        vec::raw::to_mut_ptr(buf), count);
+                    let src = ptr::const_offset(
+                        vec::raw::to_const_ptr(self.data.buf),
+                        self.data.buf_off);
+                    ptr::copy_memory(dst, src, ncopy); 
+                    self.data.buf_off += ncopy;
+                    count += ncopy;
                 }
-            }
-            else {
-                self.data.buf.push_all(result::unwrap(read_result));
-            }
+          }
+
+          assert count <= len;
+          if count == len {
+              break;
+          }
+
+          // We copied all the bytes we had in the internal buffer into
+          // the result buffer, but the caller wants more bytes, so we
+          // need to read in data from the socket. Note that the internal
+          // buffer is of no use anymore as we read all bytes from it,
+          // so we can throw it away.
+          let read_result = read(&self.data.sock, 0u);
+          if read_result.is_err() {
+              let err_data = read_result.get_err();
+
+              if err_data.err_name == ~"EOF" {
+                  self.end_of_stream = true;
+                  break;
+              } else {
+                  debug!("ERROR sock_buf as io::reader.read err %? %?",
+                         err_data.err_name, err_data.err_msg);
+                  // As we have already copied data into result buffer,
+                  // we cannot simply return 0 here. Instead the error
+                  // should show up in a later call to read(). 
+                  break;
+              }
+          }
+          else {
+              self.data.buf = result::unwrap(read_result);
+              self.data.buf_off = 0;
+          }
         }
-
-        let count = uint::min(len, self.data.buf.len());
-
-        let mut data = ~[];
-        self.data.buf <-> data;
-
-        vec::bytes::copy_memory(buf, vec::view(data, 0, data.len()), count);
-
-        self.data.buf.push_all(vec::view(data, count, data.len()));
 
         count
     }
     fn read_byte(&self) -> int {
-        let mut bytes = ~[0];
-        if self.read(bytes, 1u) == 0 {
-            if self.end_of_stream {
-                -1
-            } else {
-                fail
-            }
-        } else {
-            bytes[0] as int
+        loop {
+          if self.data.buf.len() > self.data.buf_off {
+            let c = self.data.buf[self.data.buf_off];
+            self.data.buf_off += 1;
+            return c as int
+          }
+
+          let read_result = read(&self.data.sock, 0u);
+          if read_result.is_err() {
+              let err_data = read_result.get_err();
+
+              if err_data.err_name == ~"EOF" {
+                  self.end_of_stream = true;
+                  return -1
+              } else {
+                  debug!("ERROR sock_buf as io::reader.read err %? %?",
+                         err_data.err_name, err_data.err_msg);
+                  fail
+              }
+          }
+          else {
+              self.data.buf = result::unwrap(read_result);
+              self.data.buf_off = 0;
+          }
         }
     }
     fn eof(&self) -> bool {
@@ -1375,6 +1416,7 @@ struct TcpSocketData {
 struct TcpBufferedSocketData {
     sock: TcpSocket,
     mut buf: ~[u8],
+    mut buf_off: uint
 }
 
 //#[cfg(test)]
