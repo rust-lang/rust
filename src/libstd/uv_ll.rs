@@ -496,7 +496,7 @@ pub mod uv_ll_struct_stubgen {
                     a10: 0 as *u8, a11: 0 as *u8,
                     a12: 0 as *u8, a13: 0 as *u8
                 }
-            };
+            }
         }
     }
     #[cfg(windows)]
@@ -617,7 +617,7 @@ pub mod uv_ll_struct_stubgen {
                     a13: 0 as *u8,
                     a14: 0 as *u8,
                 }
-            };
+            }
         }
     }
     #[cfg(windows)]
