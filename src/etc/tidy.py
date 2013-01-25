@@ -23,6 +23,11 @@ def report_error_name_no(name, no, s):
 def report_err(s):
     report_error_name_no(fileinput.filename(), fileinput.filelineno(), s)
 
+def report_warn(s):
+    print("%s:%d: %s" % (fileinput.filename(),
+                         fileinput.filelineno(),
+                         s))
+
 def do_license_check(name, contents):
     if not check_license(name, contents):
         report_error_name_no(name, 1, "incorrect license")
@@ -44,6 +49,9 @@ try:
                     report_err("FIXME without issue number")
             if line.find("TODO") != -1:
                 report_err("TODO is deprecated; use FIXME")
+            if line.find("// WARN") != -1:
+                mo = re.match("// WARN (.*)", line)
+                report_warn("WARN: " + mo.group(1))
         if (line.find('\t') != -1 and
             fileinput.filename().find("Makefile") == -1):
             report_err("tab character")
