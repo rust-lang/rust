@@ -73,10 +73,10 @@ fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
 }
 
 impl @rcx {
-    fn resolve_type(unresolved_ty: ty::t) -> Option<ty::t> {
+    fn resolve_type(unresolved_ty: ty::t) -> ty::t {
         /*!
          * Try to resolve the type for the given node, returning
-         * None if an error results.  Note that we never care
+         * t_err if an error results.  Note that we never care
          * about the details of the error, the same error will be
          * detected and reported in the writeback phase.
          *
@@ -104,13 +104,13 @@ impl @rcx {
          */
         match resolve_type(self.fcx.infcx(), unresolved_ty,
                            resolve_and_force_all_but_regions) {
-            Ok(t) => Some(t),
-            Err(_) => None
+            Ok(t) => t,
+            Err(_) => ty::mk_err(self.fcx.tcx())
         }
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_node_type(id: ast::node_id) -> Option<ty::t> {
+    fn resolve_node_type(id: ast::node_id) -> ty::t {
         self.resolve_type(self.fcx.node_ty(id))
     }
 }
@@ -181,6 +181,12 @@ fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
 fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!("visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
+    for rcx.fcx.inh.adjustments.find(expr.id).each |adjustment| {
+        for adjustment.autoref.each |autoref| {
+            guarantor::for_autoref(rcx, expr, *adjustment, autoref);
+        }
+    }
+
     match /*bad*/copy expr.node {
         ast::expr_path(*) => {
             // Avoid checking the use of local variables, as we
@@ -250,15 +256,14 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
             // particular case.  There is an extensive comment on the
             // function check_cast_for_escaping_regions() in kind.rs
             // explaining how it goes about doing that.
-            for rcx.resolve_node_type(expr.id).each |target_ty| {
-                match ty::get(*target_ty).sty {
-                    ty::ty_trait(_, _, vstore_slice(trait_region)) => {
-                        let source_ty = rcx.fcx.expr_ty(source);
-                        constrain_regions_in_type(rcx, trait_region,
-                                                  expr.span, source_ty);
-                    }
-                    _ => ()
+            let target_ty = rcx.resolve_node_type(expr.id);
+            match ty::get(target_ty).sty {
+                ty::ty_trait(_, _, vstore_slice(trait_region)) => {
+                    let source_ty = rcx.fcx.expr_ty(source);
+                    constrain_regions_in_type(rcx, trait_region,
+                                              expr.span, source_ty);
                 }
+                _ => ()
             }
         }
 
@@ -271,16 +276,15 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
         }
 
         ast::expr_fn(*) | ast::expr_fn_block(*) => {
-            for rcx.resolve_node_type(expr.id).each |function_type| {
-                match ty::get(*function_type).sty {
-                    ty::ty_fn(ref fn_ty) => {
-                        if fn_ty.meta.proto == ast::ProtoBorrowed {
-                            constrain_free_variables(
-                                rcx, fn_ty.meta.region, expr);
-                        }
+            let function_type = rcx.resolve_node_type(expr.id);
+            match ty::get(function_type).sty {
+                ty::ty_fn(ref fn_ty) => {
+                    if fn_ty.meta.proto == ast::ProtoBorrowed {
+                        constrain_free_variables(
+                            rcx, fn_ty.meta.region, expr);
                     }
-                    _ => ()
                 }
+                _ => ()
             }
         }
 
@@ -409,15 +413,10 @@ fn constrain_regions_in_type_of_node(
     // Try to resolve the type.  If we encounter an error, then typeck
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
-    let ty = match rcx.resolve_node_type(id) {
-        None => { return true; }
-        Some(ty) => { ty }
-    };
-
+    let ty = rcx.resolve_node_type(id);
     debug!("constrain_regions_in_type_of_node(\
             ty=%s, id=%d, encl_region=%?)",
            ty_to_str(tcx, ty), id, encl_region);
-
     constrain_regions_in_type(rcx, encl_region, span, ty)
 }
 
@@ -567,6 +566,30 @@ mod guarantor {
         }
     }
 
+    pub fn for_autoref(rcx: @rcx,
+                       expr: @ast::expr,
+                       adjustment: &ty::AutoAdjustment,
+                       autoref: &ty::AutoRef)
+    {
+        /*!
+         *
+         * Computes the guarantor for an expression that has an
+         * autoref adjustment and links it to the lifetime of the
+         * autoref.  This is only important when auto re-borrowing
+         * region pointers.
+         */
+
+        debug!("guarantor::for_autoref(expr=%s)", rcx.fcx.expr_to_str(expr));
+        let _i = ::util::common::indenter();
+
+        let mut expr_ct = categorize_unadjusted(rcx, expr);
+        expr_ct = apply_autoderefs(
+            rcx, expr, adjustment.autoderefs, expr_ct);
+        for expr_ct.cat.guarantor.each |g| {
+            infallibly_mk_subr(rcx, true, expr.span, autoref.region, *g);
+        }
+    }
+
     fn link(
         rcx: @rcx,
         span: span,
@@ -589,9 +612,10 @@ mod guarantor {
         // this routine is used for the result of ref bindings and &
         // expressions, both of which always yield a region variable, so
         // mk_subr should never fail.
-        for rcx.resolve_node_type(id).each |rptr_ty| {
-            debug!("rptr_ty=%s", ty_to_str(rcx.fcx.ccx.tcx, *rptr_ty));
-            let r = ty::ty_region(*rptr_ty);
+        let rptr_ty = rcx.resolve_node_type(id);
+        if !ty::type_contains_err(rptr_ty) {
+            debug!("rptr_ty=%s", ty_to_str(rcx.fcx.ccx.tcx, rptr_ty));
+            let r = ty::ty_region(rptr_ty);
             infallibly_mk_subr(rcx, true, span, r, bound);
         }
     }
@@ -606,6 +630,11 @@ mod guarantor {
     struct ExprCategorization {
         guarantor: Option<ty::Region>,
         pointer: PointerCat
+    }
+
+    struct ExprCategorizationType {
+        cat: ExprCategorization,
+        ty: ty::t
     }
 
     fn guarantor(rcx: @rcx, expr: @ast::expr) -> Option<ty::Region> {
@@ -683,52 +712,76 @@ mod guarantor {
         debug!("categorize(expr=%s)", rcx.fcx.expr_to_str(expr));
         let _i = ::util::common::indenter();
 
-        let tcx = rcx.fcx.ccx.tcx;
-        if rcx.fcx.ccx.method_map.contains_key(expr.id) {
-            debug!("method call");
-            return id_categorization(rcx, None, expr.id);
-        }
-
-        let expr_ty = match rcx.resolve_node_type(expr.id) {
-            None => { return id_categorization(rcx, None, expr.id); }
-            Some(t) => { t }
-        };
-        let mut cat = ExprCategorization {
-            guarantor: guarantor(rcx, expr),
-            pointer: pointer_categorize(expr_ty)
-        };
-
-        debug!("before adjustments, cat=%?", cat);
+        let mut expr_ct = categorize_unadjusted(rcx, expr);
+        debug!("before adjustments, cat=%?", expr_ct.cat);
 
         for rcx.fcx.inh.adjustments.find(expr.id).each |adjustment| {
             debug!("adjustment=%?", adjustment);
-            for uint::range(0, adjustment.autoderefs) |_| {
-                cat.guarantor = guarantor_of_deref(&cat);
 
-                match ty::deref(tcx, expr_ty, true) {
-                    Some(t) => {
-                        cat.pointer = pointer_categorize(t.ty);
-                    }
-                    None => {
-                        tcx.sess.span_bug(
-                            expr.span,
-                            fmt!("Autoderef but type not derefable: %s",
-                                 ty_to_str(tcx, expr_ty)));
-                    }
-                }
-
-                debug!("autoderef, cat=%?", cat);
-            }
+            expr_ct = apply_autoderefs(
+                rcx, expr, adjustment.autoderefs, expr_ct);
 
             for adjustment.autoref.each |autoref| {
-                cat.guarantor = None;
-                cat.pointer = BorrowedPointer(autoref.region);
-                debug!("autoref, cat=%?", cat);
+                expr_ct.cat.guarantor = None;
+                expr_ct.cat.pointer = BorrowedPointer(autoref.region);
+                debug!("autoref, cat=%?", expr_ct.cat);
             }
         }
 
-        debug!("result=%?", cat);
-        return cat;
+        debug!("result=%?", expr_ct.cat);
+        return expr_ct.cat;
+    }
+
+    fn categorize_unadjusted(rcx: @rcx,
+                             expr: @ast::expr) -> ExprCategorizationType {
+        debug!("categorize_unadjusted(expr=%s)", rcx.fcx.expr_to_str(expr));
+        let _i = ::util::common::indenter();
+
+        let guarantor = {
+            if rcx.fcx.ccx.method_map.contains_key(expr.id) {
+                None
+            } else {
+                guarantor(rcx, expr)
+            }
+        };
+
+        let expr_ty = rcx.resolve_node_type(expr.id);
+        ExprCategorizationType {
+            cat: ExprCategorization {
+                guarantor: guarantor,
+                pointer: pointer_categorize(expr_ty)
+            },
+            ty: expr_ty
+        }
+    }
+
+    fn apply_autoderefs(
+        +rcx: @rcx,
+        +expr: @ast::expr,
+        +autoderefs: uint,
+        +ct: ExprCategorizationType) -> ExprCategorizationType
+    {
+        let mut ct = ct;
+        let tcx = rcx.fcx.ccx.tcx;
+        for uint::range(0, autoderefs) |_| {
+            ct.cat.guarantor = guarantor_of_deref(&ct.cat);
+
+            match ty::deref(tcx, ct.ty, true) {
+                Some(mt) => {
+                    ct.ty = mt.ty;
+                    ct.cat.pointer = pointer_categorize(ct.ty);
+                }
+                None => {
+                    tcx.sess.span_bug(
+                        expr.span,
+                        fmt!("Autoderef but type not derefable: %s",
+                             ty_to_str(tcx, ct.ty)));
+                }
+            }
+
+            debug!("autoderef, cat=%?", ct.cat);
+        }
+        return ct;
     }
 
     fn pointer_categorize(ty: ty::t) -> PointerCat {
@@ -750,19 +803,6 @@ mod guarantor {
                 NotPointer
             }
         }
-    }
-
-    fn id_categorization(rcx: @rcx,
-                         guarantor: Option<ty::Region>,
-                         id: ast::node_id) -> ExprCategorization
-    {
-        let pointer = match rcx.resolve_node_type(id) {
-            None => NotPointer,
-            Some(t) => pointer_categorize(t)
-        };
-
-        ExprCategorization {guarantor: guarantor,
-                            pointer: pointer}
     }
 
     fn guarantor_of_deref(cat: &ExprCategorization) -> Option<ty::Region> {
@@ -824,16 +864,18 @@ mod guarantor {
                 link_ref_bindings_in_pat(rcx, p, guarantor)
             }
             ast::pat_region(p) => {
-                for rcx.resolve_node_type(pat.id).each |rptr_ty| {
-                    let r = ty::ty_region(*rptr_ty);
+                let rptr_ty = rcx.resolve_node_type(pat.id);
+                if !ty::type_contains_err(rptr_ty) {
+                    let r = ty::ty_region(rptr_ty);
                     link_ref_bindings_in_pat(rcx, p, Some(r));
                 }
             }
             ast::pat_lit(*) => {}
             ast::pat_range(*) => {}
             ast::pat_vec(ref ps, ref opt_tail_pat) => {
-                for rcx.resolve_node_type(pat.id).each |vec_ty| {
-                    let vstore = ty::ty_vstore(*vec_ty);
+                let vec_ty = rcx.resolve_node_type(pat.id);
+                if !ty::type_contains_err(vec_ty) {
+                    let vstore = ty::ty_vstore(vec_ty);
                     let guarantor1 = match vstore {
                         ty::vstore_fixed(_) | ty::vstore_uniq => guarantor,
                         ty::vstore_slice(r) => Some(r),
