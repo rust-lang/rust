@@ -492,13 +492,13 @@ fn lattice_var_and_t<L:LatticeDir Combine,
     match self.bnd(a_bounds) {
         Some(ref a_bnd) => {
             // If a has an upper bound, return the LUB(a.ub, b)
-            debug!("bnd=some(%s)", a_bnd.inf_str(self.infcx()));
+            debug!("bnd=Some(%s)", a_bnd.inf_str(self.infcx()));
             lattice_dir_op(a_bnd, b)
         }
         None => {
             // If a does not have an upper bound, make b the upper bound of a
             // and then return b.
-            debug!("bnd=none");
+            debug!("bnd=None");
             let a_bounds = self.with_bnd(a_bounds, *b);
             do self.combine_fields().bnds(&a_bounds.lb, &a_bounds.ub).then {
                 self.infcx().set(vb, a_id, Root(a_bounds, nde_a.rank));
