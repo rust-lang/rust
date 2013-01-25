@@ -42,7 +42,10 @@ pub trait Rng {
 }
 
 /// A value with a particular weight compared to other values
-pub type Weighted<T> = { weight: uint, item: T };
+pub struct Weighted<T> {
+    weight: uint,
+    item: T,
+}
 
 /// Extension methods for random number generators
 impl Rng {
@@ -312,12 +315,12 @@ pub fn seeded_rng(seed: &~[u8]) -> Rng {
     }
 }
 
-type XorShiftState = {
+struct XorShiftState {
     mut x: u32,
     mut y: u32,
     mut z: u32,
-    mut w: u32
-};
+    mut w: u32,
+}
 
 impl XorShiftState: Rng {
     fn next() -> u32 {
@@ -338,7 +341,7 @@ pub pure fn xorshift() -> Rng {
 }
 
 pub pure fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
-    {mut x: x, mut y: y, mut z: z, mut w: w} as Rng
+    XorShiftState { x: x, y: y, z: z, w: w } as Rng
 }
 
 
@@ -492,21 +495,24 @@ pub mod tests {
     #[test]
     pub fn choose_weighted() {
         let r = rand::Rng();
-        assert r.choose_weighted(~[{weight: 1u, item: 42}]) == 42;
         assert r.choose_weighted(~[
-            {weight: 0u, item: 42},
-            {weight: 1u, item: 43}
+            rand::Weighted { weight: 1u, item: 42 },
+        ]) == 42;
+        assert r.choose_weighted(~[
+            rand::Weighted { weight: 0u, item: 42 },
+            rand::Weighted { weight: 1u, item: 43 },
         ]) == 43;
     }
 
     #[test]
     pub fn choose_weighted_option() {
         let r = rand::Rng();
-        assert r.choose_weighted_option(~[{weight: 1u, item: 42}]) ==
-               Some(42);
         assert r.choose_weighted_option(~[
-            {weight: 0u, item: 42},
-            {weight: 1u, item: 43}
+            rand::Weighted { weight: 1u, item: 42 },
+        ]) == Some(42);
+        assert r.choose_weighted_option(~[
+            rand::Weighted { weight: 0u, item: 42 },
+            rand::Weighted { weight: 1u, item: 43 },
         ]) == Some(43);
         let v: Option<int> = r.choose_weighted_option([]);
         assert v.is_none();
@@ -518,9 +524,9 @@ pub mod tests {
         let empty: ~[int] = ~[];
         assert r.weighted_vec(~[]) == empty;
         assert r.weighted_vec(~[
-            {weight: 0u, item: 3u},
-            {weight: 1u, item: 2u},
-            {weight: 2u, item: 1u}
+            rand::Weighted { weight: 0u, item: 3u },
+            rand::Weighted { weight: 1u, item: 2u },
+            rand::Weighted { weight: 2u, item: 1u },
         ]) == ~[2u, 1u, 1u];
     }
 

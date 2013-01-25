@@ -168,10 +168,10 @@ impl SchedMode : cmp::Eq {
  *     default these foreign stacks have unspecified size, but with this
  *     option their size can be precisely specified.
  */
-pub type SchedOpts = {
+pub struct SchedOpts {
     mode: SchedMode,
-    foreign_stack_size: Option<uint>
-};
+    foreign_stack_size: Option<uint>,
+}
 
 /**
  * Task configuration options
@@ -200,12 +200,12 @@ pub type SchedOpts = {
  *     into foreign code that blocks. Without doing so in a different
  *     scheduler other tasks will be impeded or even blocked indefinitely.
  */
-pub type TaskOpts = {
+pub struct TaskOpts {
     linked: bool,
     supervised: bool,
     mut notify_chan: Option<Chan<TaskResult>>,
     sched: Option<SchedOpts>,
-};
+}
 
 /**
  * The task builder type.
@@ -251,15 +251,15 @@ priv impl TaskBuilder {
         self.consumed = true;
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder {
-            opts: {
+            opts: TaskOpts {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                mut notify_chan: move notify_chan,
+                notify_chan: notify_chan,
                 sched: self.opts.sched
             },
             gen_body: self.gen_body,
             can_not_copy: None,
-            mut consumed: false
+            consumed: false
         }
     }
 }
@@ -272,10 +272,10 @@ impl TaskBuilder {
     fn unlinked() -> TaskBuilder {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder {
-            opts: {
+            opts: TaskOpts {
                 linked: false,
                 supervised: self.opts.supervised,
-                mut notify_chan: move notify_chan,
+                notify_chan: notify_chan,
                 sched: self.opts.sched
             },
             can_not_copy: None,
@@ -290,10 +290,10 @@ impl TaskBuilder {
     fn supervised() -> TaskBuilder {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder {
-            opts: {
+            opts: TaskOpts {
                 linked: false,
                 supervised: true,
-                mut notify_chan: move notify_chan,
+                notify_chan: notify_chan,
                 sched: self.opts.sched
             },
             can_not_copy: None,
@@ -307,10 +307,10 @@ impl TaskBuilder {
     fn linked() -> TaskBuilder {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder {
-            opts: {
+            opts: TaskOpts {
                 linked: true,
                 supervised: false,
-                mut notify_chan: move notify_chan,
+                notify_chan: notify_chan,
                 sched: self.opts.sched
             },
             can_not_copy: None,
@@ -352,10 +352,10 @@ impl TaskBuilder {
 
         // Reconfigure self to use a notify channel.
         TaskBuilder {
-            opts: {
+            opts: TaskOpts {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                mut notify_chan: Some(move notify_pipe_ch),
+                notify_chan: Some(notify_pipe_ch),
                 sched: self.opts.sched
             },
             can_not_copy: None,
@@ -366,11 +366,14 @@ impl TaskBuilder {
     fn sched_mode(mode: SchedMode) -> TaskBuilder {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder {
-            opts: {
+            opts: TaskOpts {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                mut notify_chan: move notify_chan,
-                sched: Some({ mode: mode, foreign_stack_size: None})
+                notify_chan: notify_chan,
+                sched: Some(SchedOpts {
+                    mode: mode,
+                    foreign_stack_size: None,
+                })
             },
             can_not_copy: None,
             .. self.consume()
@@ -393,10 +396,10 @@ impl TaskBuilder {
         let prev_gen_body = self.gen_body;
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         TaskBuilder {
-            opts: {
+            opts: TaskOpts {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                mut notify_chan: move notify_chan,
+                notify_chan: notify_chan,
                 sched: self.opts.sched
             },
             // tjc: I think this is the line that gets miscompiled
@@ -424,10 +427,10 @@ impl TaskBuilder {
     fn spawn(f: fn~()) {
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         let x = self.consume();
-        let opts = {
+        let opts = TaskOpts {
             linked: x.opts.linked,
             supervised: x.opts.supervised,
-            mut notify_chan: move notify_chan,
+            notify_chan: notify_chan,
             sched: x.opts.sched
         };
         spawn::spawn_raw(move opts, (x.gen_body)(move f));
@@ -482,10 +485,10 @@ pub fn default_task_opts() -> TaskOpts {
      * into the same scheduler, and do not post lifecycle notifications.
      */
 
-    {
+    TaskOpts {
         linked: true,
         supervised: false,
-        mut notify_chan: None,
+        notify_chan: None,
         sched: None
     }
 }

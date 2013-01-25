@@ -25,7 +25,9 @@ use core::prelude::*;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
-type SmallIntMap_<T: Copy> = {v: DVec<Option<T>>};
+struct SmallIntMap_<T: Copy> {
+    v: DVec<Option<T>>,
+}
 
 pub enum SmallIntMap<T:Copy> {
     SmallIntMap_(@SmallIntMap_<T>)
@@ -34,7 +36,7 @@ pub enum SmallIntMap<T:Copy> {
 /// Create a smallintmap
 pub fn mk<T: Copy>() -> SmallIntMap<T> {
     let v = DVec();
-    return SmallIntMap_(@{v: move v});
+    SmallIntMap_(@SmallIntMap_ { v: v } )
 }
 
 /**

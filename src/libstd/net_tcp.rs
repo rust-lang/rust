@@ -83,10 +83,11 @@ pub fn TcpSocketBuf(data: @TcpBufferedSocketData) -> TcpSocketBuf {
 }
 
 /// Contains raw, string-based, error information returned from libuv
-pub type TcpErrData = {
+pub struct TcpErrData {
     err_name: ~str,
-    err_msg: ~str
-};
+    err_msg: ~str,
+}
+
 /// Details returned as part of a `result::err` result from `tcp::listen`
 pub enum TcpListenErrData {
     /**
@@ -155,7 +156,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
         let reader_po = oldcomm::Port::<result::Result<~[u8], TcpErrData>>();
         let stream_handle_ptr = malloc_uv_tcp_t();
         *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
-        let socket_data = @{
+        let socket_data = @TcpSocketData {
             reader_po: reader_po,
             reader_ch: oldcomm::Chan(&reader_po),
             stream_handle_ptr: stream_handle_ptr,
@@ -231,7 +232,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                         // ip or somesuch
                         let err_data = uv::ll::get_last_err_data(loop_ptr);
                         oldcomm::send((*conn_data_ptr).result_ch,
-                                   ConnFailure(err_data.to_tcp_err()));
+                                   ConnFailure(err_data));
                         uv::ll::set_data_for_uv_handle(stream_handle_ptr,
                                                        conn_data_ptr);
                         uv::ll::close(stream_handle_ptr,
@@ -243,7 +244,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                     // failure to create a tcp handle
                     let err_data = uv::ll::get_last_err_data(loop_ptr);
                     oldcomm::send((*conn_data_ptr).result_ch,
-                               ConnFailure(err_data.to_tcp_err()));
+                               ConnFailure(err_data));
                   }
                 }
             }
@@ -513,7 +514,7 @@ pub fn accept(new_conn: TcpNewConnection)
             let iotask = (*server_data_ptr).iotask;
             let stream_handle_ptr = malloc_uv_tcp_t();
             *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
-            let client_socket_data = @{
+            let client_socket_data = @TcpSocketData {
                 reader_po: reader_po,
                 reader_ch: oldcomm::Chan(&reader_po),
                 stream_handle_ptr : stream_handle_ptr,
@@ -785,7 +786,7 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
  * A buffered wrapper that you can cast as an `io::reader` or `io::writer`
  */
 pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
-    TcpSocketBuf(@{ sock: move sock, mut buf: ~[] })
+    TcpSocketBuf(@TcpBufferedSocketData { sock: sock, buf: ~[] })
 }
 
 /// Convenience methods extending `net::tcp::tcp_socket`
@@ -979,7 +980,7 @@ fn read_common_impl(socket_data: *TcpSocketData, timeout_msecs: uint)
             match move read_result {
               None => {
                 log(debug, ~"tcp::read: timed out..");
-                let err_data = {
+                let err_data = TcpErrData {
                     err_name: ~"TIMEOUT",
                     err_msg: ~"req timed out"
                 };
@@ -1020,9 +1021,10 @@ fn read_stop_common_impl(socket_data: *TcpSocketData) ->
                 }
             }
         };
+
         match oldcomm::recv(stop_po) {
-          Some(ref err_data) => result::Err(err_data.to_tcp_err()),
-          None => result::Ok(())
+          Some(move err_data) => Err(err_data),
+          None => Ok(())
         }
     }
 }
@@ -1108,8 +1110,8 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
         // ownership of everything to the I/O task and let it deal with the
         // aftermath, so we don't have to sit here blocking.
         match oldcomm::recv(result_po) {
-          TcpWriteSuccess => result::Ok(()),
-          TcpWriteError(ref err_data) => result::Err(err_data.to_tcp_err())
+            TcpWriteSuccess => Ok(()),
+            TcpWriteError(move err_data) => Err(err_data)
         }
     }
 }
@@ -1118,15 +1120,15 @@ enum TcpNewConnection {
     NewTcpConn(*uv::ll::uv_tcp_t)
 }
 
-type TcpListenFcData = {
+struct TcpListenFcData {
     server_stream_ptr: *uv::ll::uv_tcp_t,
     stream_closed_ch: oldcomm::Chan<()>,
     kill_ch: oldcomm::Chan<Option<TcpErrData>>,
     on_connect_cb: fn~(*uv::ll::uv_tcp_t),
     iotask: IoTask,
     ipv6: bool,
-    mut active: bool
-};
+    mut active: bool,
+}
 
 extern fn tcp_lfc_close_cb(handle: *uv::ll::uv_tcp_t) {
     unsafe {
@@ -1191,7 +1193,7 @@ trait ToTcpErr {
 
 impl uv::ll::uv_err_data: ToTcpErr {
     fn to_tcp_err() -> TcpErrData {
-        { err_name: self.err_name, err_msg: self.err_msg }
+        TcpErrData { err_name: self.err_name, err_msg: self.err_msg }
     }
 }
 
@@ -1244,9 +1246,9 @@ extern fn on_alloc_cb(handle: *libc::c_void,
     }
 }
 
-type TcpSocketCloseData = {
-    closed_ch: oldcomm::Chan<()>
-};
+struct TcpSocketCloseData {
+    closed_ch: oldcomm::Chan<()>,
+}
 
 extern fn tcp_socket_dtor_close_cb(handle: *uv::ll::uv_tcp_t) {
     unsafe {
@@ -1273,19 +1275,19 @@ extern fn tcp_write_complete_cb(write_req: *uv::ll::uv_write_t,
             let err_data = uv::ll::get_last_err_data(loop_ptr);
             log(debug, ~"failure to write");
             oldcomm::send((*write_data_ptr).result_ch,
-                             TcpWriteError(err_data));
+                             TcpWriteError(err_data.to_tcp_err()));
         }
     }
 }
 
-type WriteReqData = {
-    result_ch: oldcomm::Chan<TcpWriteResult>
-};
+struct WriteReqData {
+    result_ch: oldcomm::Chan<TcpWriteResult>,
+}
 
-type ConnectReqData = {
+struct ConnectReqData {
     result_ch: oldcomm::Chan<ConnAttempt>,
-    closed_signal_ch: oldcomm::Chan<()>
-};
+    closed_signal_ch: oldcomm::Chan<()>,
+}
 
 extern fn stream_error_close_cb(handle: *uv::ll::uv_tcp_t) {
     unsafe {
@@ -1337,20 +1339,20 @@ enum ConnAttempt {
     ConnFailure(uv::ll::uv_err_data)
 }
 
-type TcpSocketData = {
+struct TcpSocketData {
     reader_po: oldcomm::Port<result::Result<~[u8], TcpErrData>>,
     reader_ch: oldcomm::Chan<result::Result<~[u8], TcpErrData>>,
     stream_handle_ptr: *uv::ll::uv_tcp_t,
     connect_req: uv::ll::uv_connect_t,
     write_req: uv::ll::uv_write_t,
     ipv6: bool,
-    iotask: IoTask
-};
+    iotask: IoTask,
+}
 
-type TcpBufferedSocketData = {
+struct TcpBufferedSocketData {
     sock: TcpSocket,
-    mut buf: ~[u8]
-};
+    mut buf: ~[u8],
+}
 
 //#[cfg(test)]
 pub mod test {
