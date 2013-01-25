@@ -185,13 +185,13 @@ impl<T: Reader> T : ReaderUtil {
     }
 
     fn read_line(&self) -> ~str {
-        let mut bytes = ~[];
+        let mut line = ~"";
         loop {
             let ch = self.read_byte();
             if ch == -1 || ch == 10 { break; }
-            bytes.push(ch as u8);
+            str::push_char(&mut line, ch as char);
         }
-        str::from_bytes(bytes)
+        line
     }
 
     fn read_chars(&self, n: uint) -> ~[char] {
