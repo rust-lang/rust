@@ -76,7 +76,8 @@ impl <T: Ord> PriorityQueue<T> {
     }
 
     /// Optimized version of a push followed by a pop
-    fn push_pop(&mut self, mut item: T) -> T {
+    fn push_pop(&mut self, item: T) -> T {
+        let mut item = item;
         if !self.is_empty() && self.data[0] > item {
             item <-> self.data[0];
             self.siftdown(0);
@@ -85,7 +86,8 @@ impl <T: Ord> PriorityQueue<T> {
     }
 
     /// Optimized version of a pop followed by a push - fails if empty
-    fn replace(&mut self, mut item: T) -> T {
+    fn replace(&mut self, item: T) -> T {
+        let mut item = item;
         item <-> self.data[0];
         self.siftdown(0);
         item
@@ -127,8 +129,9 @@ impl <T: Ord> PriorityQueue<T> {
     // vector over the junk element.  This reduces the constant factor
     // compared to using swaps, which involves twice as many moves.
 
-    priv fn siftup(&mut self, start: uint, mut pos: uint) {
+    priv fn siftup(&mut self, start: uint, pos: uint) {
         unsafe {
+            let mut pos = pos;
             let new = move *addr_of(&self.data[pos]);
 
             while pos > start {
@@ -146,8 +149,9 @@ impl <T: Ord> PriorityQueue<T> {
         }
     }
 
-    priv fn siftdown_range(&mut self, mut pos: uint, end: uint) {
+    priv fn siftdown_range(&mut self, pos: uint, end: uint) {
         unsafe {
+            let mut pos = pos;
             let start = pos;
             let new = move *addr_of(&self.data[pos]);
 
