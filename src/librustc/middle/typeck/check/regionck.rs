@@ -530,6 +530,13 @@ mod guarantor {
      * but more special purpose.
      */
 
+    use core::prelude::*;
+    use middle::typeck::check::regionck::{rcx, infallibly_mk_subr};
+    use middle::ty;
+    use syntax::ast;
+    use syntax::codemap::span;
+    use util::ppaux::{ty_to_str};
+
     pub fn for_addr_of(rcx: @rcx, expr: @ast::expr, base: @ast::expr) {
         /*!
          *
@@ -726,17 +733,17 @@ mod guarantor {
 
     fn pointer_categorize(ty: ty::t) -> PointerCat {
         match ty::get(ty).sty {
-            ty::ty_rptr(r, _) | ty::ty_evec(_, vstore_slice(r)) |
-            ty::ty_estr(vstore_slice(r)) => {
+            ty::ty_rptr(r, _) | ty::ty_evec(_, ty::vstore_slice(r)) |
+            ty::ty_estr(ty::vstore_slice(r)) => {
                 BorrowedPointer(r)
             }
-            ty::ty_uniq(*) | ty::ty_estr(vstore_uniq) |
-            ty::ty_evec(_, vstore_uniq) => {
+            ty::ty_uniq(*) | ty::ty_estr(ty::vstore_uniq) |
+            ty::ty_evec(_, ty::vstore_uniq) => {
                 OwnedPointer
             }
             ty::ty_box(*) | ty::ty_ptr(*) |
-            ty::ty_evec(_, vstore_box) |
-            ty::ty_estr(vstore_box) => {
+            ty::ty_evec(_, ty::vstore_box) |
+            ty::ty_estr(ty::vstore_box) => {
                 OtherPointer
             }
             _ => {
@@ -828,9 +835,9 @@ mod guarantor {
                 for rcx.resolve_node_type(pat.id).each |vec_ty| {
                     let vstore = ty::ty_vstore(*vec_ty);
                     let guarantor1 = match vstore {
-                        vstore_fixed(_) | vstore_uniq => guarantor,
-                        vstore_slice(r) => Some(r),
-                        vstore_box => None
+                        ty::vstore_fixed(_) | ty::vstore_uniq => guarantor,
+                        ty::vstore_slice(r) => Some(r),
+                        ty::vstore_box => None
                     };
 
                     link_ref_bindings_in_pats(rcx, ps, guarantor1);
@@ -844,8 +851,8 @@ mod guarantor {
     }
 
     fn link_ref_bindings_in_pats(rcx: @rcx,
-                      pats: &~[@ast::pat],
-                      guarantor: Option<ty::Region>)
+                                 pats: &~[@ast::pat],
+                                 guarantor: Option<ty::Region>)
     {
         for pats.each |pat| {
             link_ref_bindings_in_pat(rcx, *pat, guarantor);

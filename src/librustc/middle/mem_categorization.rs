@@ -521,8 +521,8 @@ impl &mem_categorization_ctxt {
           ty: self.tcx.ty(arg)}
     }
 
-    fn cat_rvalue(expr: @ast::expr, expr_ty: ty::t) -> cmt {
-        @{id:expr.id, span:expr.span,
+    fn cat_rvalue<N: ast_node>(elt: N, expr_ty: ty::t) -> cmt {
+        @{id:elt.id(), span:elt.span(),
           cat:cat_rvalue, lp:None,
           mutbl:m_imm, ty:expr_ty}
     }
@@ -643,12 +643,12 @@ impl &mem_categorization_ctxt {
         }
     }
 
-    fn cat_index(expr: @ast::expr, base_cmt: cmt) -> cmt {
+    fn cat_index<N: ast_node>(elt: N, base_cmt: cmt) -> cmt {
         let mt = match ty::index(self.tcx, base_cmt.ty) {
           Some(mt) => mt,
           None => {
             self.tcx.sess.span_bug(
-                expr.span,
+                elt.span(),
                 fmt!("Explicit index of non-index type `%s`",
                      ty_to_str(self.tcx, base_cmt.ty)));
           }
@@ -675,25 +675,27 @@ impl &mem_categorization_ctxt {
             };
 
             // (c) the deref is explicit in the resulting cmt
-            let deref_cmt = @{id:expr.id, span:expr.span,
+            let deref_cmt = @{id:elt.id(), span:elt.span(),
               cat:cat_deref(base_cmt, 0u, ptr), lp:deref_lp,
               mutbl:m, ty:mt.ty};
 
-            comp(expr, deref_cmt, base_cmt.ty, m, mt.ty)
+            comp(elt, deref_cmt, base_cmt.ty, m, mt.ty)
           }
 
           deref_comp(_) => {
             // fixed-length vectors have no deref
             let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
-            comp(expr, base_cmt, base_cmt.ty, m, mt.ty)
+            comp(elt, base_cmt, base_cmt.ty, m, mt.ty)
           }
         };
 
-        fn comp(expr: @ast::expr, of_cmt: cmt,
-                vect: ty::t, mutbl: ast::mutability, ty: ty::t) -> cmt {
+        fn comp<N: ast_node>(elt: N, of_cmt: cmt,
+                             vect: ty::t, mutbl: ast::mutability,
+                             ty: ty::t) -> cmt
+        {
             let comp = comp_index(vect, mutbl);
             let index_lp = of_cmt.lp.map(|lp| @lp_comp(*lp, comp) );
-            @{id:expr.id, span:expr.span,
+            @{id:elt.id(), span:elt.span(),
               cat:cat_comp(of_cmt, comp), lp:index_lp,
               mutbl:mutbl, ty:ty}
         }
@@ -722,8 +724,6 @@ impl &mem_categorization_ctxt {
     }
 
     fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
-
-        op(cmt, pat);
 
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
@@ -759,13 +759,15 @@ impl &mem_categorization_ctxt {
         // and the id of `local(x)->@->@` is the id of the `y` pattern.
 
 
-        let _i = indenter();
         let tcx = self.tcx;
         debug!("cat_pattern: id=%d pat=%s cmt=%s",
                pat.id, pprust::pat_to_str(pat, tcx.sess.intr()),
                self.cmt_to_repr(cmt));
+        let _i = indenter();
 
-        match /*bad*/copy pat.node {
+        op(cmt, pat);
+
+        match pat.node {
           ast::pat_wild => {
             // _
           }
@@ -773,7 +775,7 @@ impl &mem_categorization_ctxt {
           ast::pat_enum(_, None) => {
             // variant(*)
           }
-          ast::pat_enum(_, Some(subpats)) => {
+          ast::pat_enum(_, Some(ref subpats)) => {
             match self.tcx.def_map.find(pat.id) {
                 Some(ast::def_variant(enum_did, _)) => {
                     // variant(x, y, z)
@@ -805,7 +807,8 @@ impl &mem_categorization_ctxt {
               // nullary variant or identifier: ignore
           }
 
-          ast::pat_rec(field_pats, _) => {
+          ast::pat_rec(ref field_pats, _) |
+          ast::pat_struct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for field_pats.each |fp| {
                 let cmt_field = self.cat_field(fp.pat, cmt, fp.ident, pat.id);
@@ -813,15 +816,7 @@ impl &mem_categorization_ctxt {
             }
           }
 
-          ast::pat_struct(_, field_pats, _) => {
-            // {f1: p1, ..., fN: pN}
-            for field_pats.each |fp| {
-                let cmt_field = self.cat_field(fp.pat, cmt, fp.ident, pat.id);
-                self.cat_pattern(cmt_field, fp.pat, op);
-            }
-          }
-
-          ast::pat_tup(subpats) => {
+          ast::pat_tup(ref subpats) => {
             // (p1, ..., pN)
             for subpats.each |subpat| {
                 let subcmt = self.cat_tuple_elt(*subpat, cmt);
@@ -836,7 +831,20 @@ impl &mem_categorization_ctxt {
             self.cat_pattern(subcmt, subpat, op);
           }
 
-          ast::pat_vec(*) | ast::pat_lit(_) | ast::pat_range(_, _) => {
+          ast::pat_vec(ref pats, opt_tail_pat) => {
+              for pats.each |pat| {
+                  let elt_cmt = self.cat_index(*pat, cmt);
+                  self.cat_pattern(elt_cmt, *pat, op);
+              }
+
+              for opt_tail_pat.each |tail_pat| {
+                  let tail_ty = self.tcx.ty(*tail_pat);
+                  let tail_cmt = self.cat_rvalue(*tail_pat, tail_ty);
+                  self.cat_pattern(tail_cmt, *tail_pat, op);
+              }
+          }
+
+          ast::pat_lit(_) | ast::pat_range(_, _) => {
               /*always ok*/
           }
         }
