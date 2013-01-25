@@ -739,8 +739,9 @@ impl LookupContext {
 
         let tcx = self.tcx();
         return match ty::get(self_ty).sty {
-            ty::ty_rptr(self_r, self_mt) if self_mt.mutbl == m_mutbl => {
-                let region = fresh_region(self, self_r);
+            ty::ty_rptr(_, self_mt) if self_mt.mutbl == m_mutbl => {
+                let region = self.infcx().next_region_var(self.expr.span,
+                                                          self.expr.id);
                 (ty::mk_rptr(tcx, region, self_mt),
                  ty::AutoAdjustment {
                      autoderefs: autoderefs+1,
@@ -748,9 +749,10 @@ impl LookupContext {
                                                 region: region,
                                                 mutbl: self_mt.mutbl})})
             }
-            ty::ty_evec(self_mt, vstore_slice(self_r))
+            ty::ty_evec(self_mt, vstore_slice(_))
             if self_mt.mutbl == m_mutbl => {
-                let region = fresh_region(self, self_r);
+                let region = self.infcx().next_region_var(self.expr.span,
+                                                          self.expr.id);
                 (ty::mk_evec(tcx, self_mt, vstore_slice(region)),
                  ty::AutoAdjustment {
                     autoderefs: autoderefs,
@@ -763,26 +765,6 @@ impl LookupContext {
                                               autoref: None})
             }
         };
-
-        fn fresh_region(self: &LookupContext,
-                        self_r: ty::Region) -> ty::Region {
-            let region = self.infcx().next_region_var(self.expr.span,
-                                                      self.expr.id);
-
-            // FIXME(#3148)---in principle this dependency should
-            // be done more generally as part of regionck
-            match infer::mk_subr(self.infcx(), true, self.expr.span,
-                                 region, self_r) {
-                Ok(_) => {}
-                Err(e) => {
-                    self.tcx().sess.span_bug(
-                        self.expr.span,
-                        fmt!("Failed with error: %?", e));
-                }
-            }
-
-            return region;
-        }
     }
 
     fn search_for_autosliced_method(
