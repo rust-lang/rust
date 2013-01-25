@@ -14,6 +14,7 @@
 #[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
+use container::Container;
 use cast::transmute;
 use cast;
 use cmp::{Eq, Ord};
@@ -453,7 +454,7 @@ pub pure fn partitioned<T: Copy>(v: &[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
 /// Removes the first element from a vector and return it
 pub fn shift<T>(v: &mut ~[T]) -> T {
     unsafe {
-        assert v.is_not_empty();
+        assert !v.is_empty();
 
         if v.len() == 1 { return v.pop() }
 
@@ -1647,20 +1648,11 @@ pub mod traits {
     }
 }
 
-pub trait ConstVector {
-    pure fn is_empty(&self) -> bool;
-    pure fn is_not_empty(&self) -> bool;
-    pure fn len(&self) -> uint;
-}
-
-/// Extension methods for vectors
-impl<T> &[const T]: ConstVector {
+impl<T> &[const T]: Container {
     /// Returns true if a vector contains no elements
     #[inline]
     pure fn is_empty(&self) -> bool { is_empty(*self) }
-    /// Returns true if a vector contains some elements
-    #[inline]
-    pure fn is_not_empty(&self) -> bool { is_not_empty(*self) }
+
     /// Returns the length of a vector
     #[inline]
     pure fn len(&self) -> uint { len(*self) }

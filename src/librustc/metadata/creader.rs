@@ -95,7 +95,7 @@ fn warn_if_multiple_versions(e: env, diag: span_handler,
                 }
             }));
 
-        assert matches.is_not_empty();
+        assert !matches.is_empty();
 
         if matches.len() != 1u {
             diag.handler().warn(
@@ -168,7 +168,7 @@ fn visit_item(e: env, i: @ast::item) {
                 already_added = !cstore::add_used_library(cstore,
                                                           foreign_name);
             }
-            if link_args.is_not_empty() && already_added {
+            if !link_args.is_empty() && already_added {
                 e.diag.span_fatal(i.span, ~"library '" + foreign_name +
                            ~"' already added: can't specify link_args.");
             }

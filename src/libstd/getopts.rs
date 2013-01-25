@@ -45,7 +45,7 @@
  *     }
  *
  *     fn main(args: ~[str]) {
- *         check vec::is_not_empty(args);
+ *         check !args.is_empty()
  *
  *         let program : str = vec::head(args);
  *
@@ -63,7 +63,7 @@
  *             return;
  *         }
  *         let output = opt_maybe_str(matches, "o");
- *         let input = if vec::is_not_empty(matches.free) {
+ *         let input = if !matches.free.is_empty() {
  *             matches.free[0]
  *         } else {
  *             print_usage(program);
@@ -357,7 +357,7 @@ fn opt_val(mm: &Matches, nm: &str) -> Optval { return opt_vals(mm, nm)[0]; }
 
 /// Returns true if an option was matched
 pub fn opt_present(mm: &Matches, nm: &str) -> bool {
-    opt_vals(mm, nm).is_not_empty()
+    !opt_vals(mm, nm).is_empty()
 }
 
 /// Returns the number of times an option was matched

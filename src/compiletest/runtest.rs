@@ -59,8 +59,8 @@ fn run_cfail_test(config: config, props: test_props, testfile: &Path) {
     check_correct_failure_status(procres);
 
     let expected_errors = errors::load_errors(testfile);
-    if vec::is_not_empty(expected_errors) {
-        if vec::is_not_empty(props.error_patterns) {
+    if !expected_errors.is_empty() {
+        if !props.error_patterns.is_empty() {
             fatal(~"both error pattern and expected errors specified");
         }
         check_expected_errors(expected_errors, testfile, procres);
@@ -440,7 +440,7 @@ fn compose_and_run_compiler(
     args: procargs,
     input: Option<~str>) -> procres {
 
-    if props.aux_builds.is_not_empty() {
+    if !props.aux_builds.is_empty() {
         ensure_dir(&aux_output_dir_name(config, testfile));
     }
 
