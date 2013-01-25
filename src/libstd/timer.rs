@@ -255,7 +255,7 @@ mod test {
             };
 
             match recv_timeout(hl_loop, 10u, test_po) {
-              some(val) => {
+              Some(val) => {
                 assert val == expected;
                 successes += 1;
               }
