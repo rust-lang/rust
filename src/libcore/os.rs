@@ -894,8 +894,8 @@ pub fn real_args() -> ~[~str] {
 pub fn real_args() -> ~[~str] {
     let mut nArgs: c_int = 0;
     let lpArgCount = ptr::to_mut_unsafe_ptr(&mut nArgs);
-    let lpCmdLine = GetCommandLineW();
-    let szArgList = CommandLineToArgvW(lpCmdLine, lpArgCount);
+    let lpCmdLine = unsafe { GetCommandLineW() };
+    let szArgList = unsafe { CommandLineToArgvW(lpCmdLine, lpArgCount) };
 
     let mut args = ~[];
     for uint::range(0, nArgs as uint) |i| {
