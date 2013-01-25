@@ -192,7 +192,7 @@ fn diagnosticcolor(lvl: level) -> u8 {
 fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
     let use_color = term::color_supported() &&
         io::stderr().get_type() == io::Screen;
-    if str::is_not_empty(topic) {
+    if !topic.is_empty() {
         io::stderr().write_str(fmt!("%s ", topic));
     }
     if use_color {

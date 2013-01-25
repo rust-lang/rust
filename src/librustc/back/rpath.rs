@@ -167,7 +167,7 @@ fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
 
     path.push_all(vec::view(split2, start_idx, len2 - 1));
 
-    if vec::is_not_empty(path) {
+    if !path.is_empty() {
         return Path("").push_many(path);
     } else {
         return Path(".");
