@@ -157,15 +157,6 @@ pub impl Encoder: serialize::Encoder {
         f();
         self.wr.write_char('}');
     }
-    #[cfg(stage0)]
-    fn emit_struct(&self, _name: &str, f: fn()) {
-        self.wr.write_char('{');
-        f();
-        self.wr.write_char('}');
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn emit_struct(&self, _name: &str, _len: uint, f: fn()) {
         self.wr.write_char('{');
         f();
@@ -279,13 +270,6 @@ pub impl PrettyEncoder: serialize::Encoder {
         self.indent -= 2;
         self.wr.write_char('}');
     }
-    #[cfg(stage0)]
-    fn emit_struct(&self, _name: &str, f: fn()) {
-        self.emit_rec(f)
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn emit_struct(&self, _name: &str, _len: uint, f: fn()) {
         self.emit_rec(f)
     }
@@ -888,16 +872,6 @@ pub impl Decoder: serialize::Decoder {
         move value
     }
 
-    #[cfg(stage0)]
-    fn read_struct<T>(&self, _name: &str, f: fn() -> T) -> T {
-        debug!("read_struct()");
-        let value = f();
-        self.pop();
-        move value
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn read_struct<T>(&self, _name: &str, _len: uint, f: fn() -> T) -> T {
         debug!("read_struct()");
         let value = f();
