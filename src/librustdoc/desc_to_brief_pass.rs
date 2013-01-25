@@ -143,7 +143,7 @@ fn parse_desc(desc: ~str) -> Option<~str> {
 
 fn first_sentence(s: ~str) -> Option<~str> {
     let paras = paragraphs(s);
-    if vec::is_not_empty(paras) {
+    if !paras.is_empty() {
         let first_para = vec::head(paras);
         Some(str::replace(first_sentence_(first_para), ~"\n", ~" "))
     } else {
@@ -193,7 +193,7 @@ fn paragraphs(s: ~str) -> ~[~str] {
             whitespace_lines += 1;
         } else {
             if whitespace_lines > 0 {
-                if str::is_not_empty(accum) {
+                if !accum.is_empty() {
                     res += ~[accum];
                     accum = ~"";
                 }
@@ -211,7 +211,7 @@ fn paragraphs(s: ~str) -> ~[~str] {
         res
     };
 
-    if str::is_not_empty(accum) {
+    if !accum.is_empty() {
         paras + ~[accum]
     } else {
         paras

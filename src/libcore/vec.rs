@@ -49,11 +49,6 @@ pub pure fn is_empty<T>(v: &[const T]) -> bool {
     as_const_buf(v, |_p, len| len == 0u)
 }
 
-/// Returns true if a vector contains some elements
-pub pure fn is_not_empty<T>(v: &[const T]) -> bool {
-    as_const_buf(v, |_p, len| len > 0u)
-}
-
 /// Returns true if two vectors have the same length
 pub pure fn same_length<T, U>(xs: &[const T], ys: &[const U]) -> bool {
     len(xs) == len(ys)
@@ -2513,12 +2508,6 @@ mod tests {
     fn test_is_empty() {
         assert (is_empty::<int>(~[]));
         assert (!is_empty(~[0]));
-    }
-
-    #[test]
-    fn test_is_not_empty() {
-        assert (is_not_empty(~[0]));
-        assert (!is_not_empty::<int>(~[]));
     }
 
     #[test]

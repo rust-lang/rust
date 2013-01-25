@@ -2237,7 +2237,7 @@ impl Parser {
 
         fn check_expected_item(p: Parser, current_attrs: ~[attribute]) {
             // If we have attributes then we should have an item
-            if vec::is_not_empty(current_attrs) {
+            if !current_attrs.is_empty() {
                 p.fatal(~"expected item after attrs");
             }
         }

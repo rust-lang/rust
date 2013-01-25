@@ -1419,9 +1419,6 @@ pub pure fn is_ascii(s: &str) -> bool {
 /// Returns true if the string has length 0
 pub pure fn is_empty(s: &str) -> bool { len(s) == 0u }
 
-/// Returns true if the string has length greater than 0
-pub pure fn is_not_empty(s: &str) -> bool { !is_empty(s) }
-
 /**
  * Returns true if the string contains only whitespace
  *
@@ -2167,7 +2164,6 @@ pub trait StrSlice {
     pure fn each_chari(it: fn(uint, char) -> bool);
     pure fn ends_with(needle: &str) -> bool;
     pure fn is_empty() -> bool;
-    pure fn is_not_empty() -> bool;
     pure fn is_whitespace() -> bool;
     pure fn is_alphanumeric() -> bool;
     pure fn len() -> uint;
@@ -2229,9 +2225,6 @@ impl &str: StrSlice {
     /// Returns true if the string has length 0
     #[inline]
     pure fn is_empty() -> bool { is_empty(self) }
-    /// Returns true if the string has length greater than 0
-    #[inline]
-    pure fn is_not_empty() -> bool { is_not_empty(self) }
     /**
      * Returns true if the string contains only whitespace
      *
@@ -2737,12 +2730,6 @@ mod tests {
     fn test_is_empty() {
         assert (is_empty(~""));
         assert (!is_empty(~"a"));
-    }
-
-    #[test]
-    fn test_is_not_empty() {
-        assert (is_not_empty(~"a"));
-        assert (!is_not_empty(~""));
     }
 
     #[test]
