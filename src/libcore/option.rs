@@ -149,7 +149,7 @@ pub pure fn chain_ref<T, U>(opt: &Option<T>,
 #[inline(always)]
 pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
     /*!
-     * Returns the leftmost some() value, or none if both are none.
+     * Returns the leftmost Some() value, or None if both are None.
      */
     match move opta {
         Some(move opta) => Some(move opta),
