@@ -270,6 +270,12 @@ fn expr_repr(cx: ctxt, expr: @ast::expr) -> ~str {
          pprust::expr_to_str(expr, cx.sess.intr()))
 }
 
+fn pat_repr(cx: ctxt, pat: @ast::pat) -> ~str {
+    fmt!("pat(%d: %s)",
+         pat.id,
+         pprust::pat_to_str(pat, cx.sess.intr()))
+}
+
 fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
     let tstrs = ts.map(|t| ty_to_str(cx, *t));
     fmt!("(%s)", str::connect(tstrs, ", "))
