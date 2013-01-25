@@ -20,11 +20,13 @@ extern "stdcall" mod kernel32 {
 
 #[cfg(target_os = "win32")]
 fn main() {
-    let expected = 1234u;
-    kernel32::SetLastError(expected);
-    let actual = kernel32::GetLastError();
-    log(error, actual);
-    assert (expected == actual);
+    unsafe {
+        let expected = 1234u;
+        kernel32::SetLastError(expected);
+        let actual = kernel32::GetLastError();
+        log(error, actual);
+        assert (expected == actual);
+    }
 }
 
 #[cfg(target_os = "macos")]
