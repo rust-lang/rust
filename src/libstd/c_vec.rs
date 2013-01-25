@@ -38,7 +38,6 @@
 #[forbid(deprecated_mode)];
 
 use core::libc;
-use core::oldcomm;
 use core::option;
 use core::prelude::*;
 use core::ptr;

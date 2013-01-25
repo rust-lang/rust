@@ -39,6 +39,7 @@ use core::ptr::to_unsafe_ptr;
 use core::ptr;
 use core::str;
 use core::vec;
+use core::pipes::{stream, Chan, SharedChan, Port};
 
 // libuv struct mappings
 pub struct uv_ip4_addr {
@@ -1132,7 +1133,6 @@ pub mod test {
     use uv_ll::*;
 
     use core::libc;
-    use core::oldcomm;
     use core::ptr;
     use core::str;
     use core::sys;
@@ -1148,7 +1148,7 @@ pub mod test {
     struct request_wrapper {
         write_req: *uv_write_t,
         req_buf: *~[uv_buf_t],
-        read_chan: *oldcomm::Chan<~str>,
+        read_chan: SharedChan<~str>,
     }
 
     extern fn after_close_cb(handle: *libc::c_void) {
@@ -1187,9 +1187,9 @@ pub mod test {
                 let buf_base = get_base_from_buf(buf);
                 let buf_len = get_len_from_buf(buf);
                 let bytes = vec::from_buf(buf_base, buf_len as uint);
-                let read_chan = *((*client_data).read_chan);
+                let read_chan = (*client_data).read_chan.clone();
                 let msg_from_server = str::from_bytes(bytes);
-                oldcomm::send(read_chan, msg_from_server);
+                read_chan.send(msg_from_server);
                 close(stream as *libc::c_void, after_close_cb)
             }
             else if (nread == -1) {
@@ -1257,7 +1257,7 @@ pub mod test {
     }
 
     fn impl_uv_tcp_request(ip: &str, port: int, req_str: &str,
-                          client_chan: *oldcomm::Chan<~str>) {
+                          client_chan: SharedChan<~str>) {
         unsafe {
             let test_loop = loop_new();
             let tcp_handle = tcp_t();
@@ -1283,9 +1283,11 @@ pub mod test {
             log(debug, fmt!("tcp req: tcp stream: %d write_handle: %d",
                              tcp_handle_ptr as int,
                              write_handle_ptr as int));
-            let client_data = { writer_handle: write_handle_ptr,
-                        req_buf: ptr::addr_of(&req_msg),
-                        read_chan: client_chan };
+            let client_data = request_wrapper {
+                write_req: write_handle_ptr,
+                req_buf: ptr::addr_of(&req_msg),
+                read_chan: client_chan
+            };
 
             let tcp_init_result = tcp_init(
                 test_loop as *libc::c_void, tcp_handle_ptr);
@@ -1388,8 +1390,8 @@ pub mod test {
                     log(debug, ~"SERVER: client req contains kill_msg!");
                     log(debug, ~"SERVER: sending response to client");
                     read_stop(client_stream_ptr);
-                    let server_chan = *((*client_data).server_chan);
-                    oldcomm::send(server_chan, request_str);
+                    let server_chan = (*client_data).server_chan.clone();
+                    server_chan.send(request_str);
                     let write_result = write(
                         write_req,
                         client_stream_ptr as *libc::c_void,
@@ -1484,12 +1486,12 @@ pub mod test {
         server: *uv_tcp_t,
         server_kill_msg: ~str,
         server_resp_buf: *~[uv_buf_t],
-        server_chan: *oldcomm::Chan<~str>,
+        server_chan: SharedChan<~str>,
         server_write_req: *uv_write_t,
     }
 
     struct async_handle_data {
-        continue_chan: *oldcomm::Chan<bool>,
+        continue_chan: SharedChan<bool>,
     }
 
     extern fn async_close_cb(handle: *libc::c_void) {
@@ -1506,9 +1508,9 @@ pub mod test {
             // do its thang
             let data = get_data_for_uv_handle(
                 async_handle as *libc::c_void) as *async_handle_data;
-            let continue_chan = *((*data).continue_chan);
+            let continue_chan = (*data).continue_chan.clone();
             let should_continue = status == 0i32;
-            oldcomm::send(continue_chan, should_continue);
+            continue_chan.send(should_continue);
             close(async_handle as *libc::c_void, async_close_cb);
         }
     }
@@ -1517,8 +1519,8 @@ pub mod test {
                           server_port: int,
                           +kill_server_msg: ~str,
                           +server_resp_msg: ~str,
-                          server_chan: *oldcomm::Chan<~str>,
-                          continue_chan: *oldcomm::Chan<bool>) {
+                          server_chan: SharedChan<~str>,
+                          continue_chan: SharedChan<bool>) {
         unsafe {
             let test_loop = loop_new();
             let tcp_server = tcp_t();
@@ -1626,36 +1628,35 @@ pub mod test {
             let port = 8886;
             let kill_server_msg = ~"does a dog have buddha nature?";
             let server_resp_msg = ~"mu!";
-            let client_port = oldcomm::Port::<~str>();
-            let client_chan = oldcomm::Chan::<~str>(&client_port);
-            let server_port = oldcomm::Port::<~str>();
-            let server_chan = oldcomm::Chan::<~str>(&server_port);
+            let (client_port, client_chan) = stream::<~str>();
+            let client_chan = SharedChan(client_chan);
+            let (server_port, server_chan) = stream::<~str>();
+            let server_chan = SharedChan(server_chan);
 
-            let continue_port = oldcomm::Port::<bool>();
-            let continue_chan = oldcomm::Chan::<bool>(&continue_port);
-            let continue_chan_ptr = ptr::addr_of(&continue_chan);
+            let (continue_port, continue_chan) = stream::<bool>();
+            let continue_chan = SharedChan(continue_chan);
 
             do task::spawn_sched(task::ManualThreads(1)) {
                 impl_uv_tcp_server(bind_ip, port,
                                    kill_server_msg,
                                    server_resp_msg,
-                                   ptr::addr_of(&server_chan),
-                                   continue_chan_ptr);
+                                   server_chan.clone(),
+                                   continue_chan.clone());
             };
 
             // block until the server up is.. possibly a race?
             log(debug, ~"before receiving on server continue_port");
-            oldcomm::recv(continue_port);
+            continue_port.recv();
             log(debug, ~"received on continue port, set up tcp client");
 
             do task::spawn_sched(task::ManualThreads(1u)) {
                 impl_uv_tcp_request(request_ip, port,
                                    kill_server_msg,
-                                   ptr::addr_of(&client_chan));
+                                   client_chan.clone());
             };
 
-            let msg_from_client = oldcomm::recv(server_port);
-            let msg_from_server = oldcomm::recv(client_port);
+            let msg_from_client = server_port.recv();
+            let msg_from_server = client_port.recv();
 
             assert str::contains(msg_from_client, kill_server_msg);
             assert str::contains(msg_from_server, server_resp_msg);
