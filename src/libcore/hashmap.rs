@@ -36,52 +36,52 @@ pub mod linear {
 
     const INITIAL_CAPACITY: uint = 32u; // 2^5
 
-    struct Bucket<K:Eq Hash,V> {
+    struct Bucket<K: Eq Hash, V> {
         hash: uint,
         key: K,
         value: V,
     }
-    pub struct LinearMap<K:Eq Hash,V> {
+
+    pub struct LinearMap<K: Eq Hash, V> {
         k0: u64,
         k1: u64,
         resize_at: uint,
         size: uint,
-        buckets: ~[Option<Bucket<K,V>>],
+        buckets: ~[Option<Bucket<K, V>>],
     }
 
-    // FIXME(#3148) -- we could rewrite found_entry
-    // to have type option<&bucket<K,V>> which would be nifty
+    // FIXME(#3148) -- we could rewrite FoundEntry
+    // to have type Option<&Bucket<K, V>> which would be nifty
     // However, that won't work until #3148 is fixed
     enum SearchResult {
         FoundEntry(uint), FoundHole(uint), TableFull
     }
 
-    fn resize_at(capacity: uint) -> uint {
+    pure fn resize_at(capacity: uint) -> uint {
         ((capacity as float) * 3. / 4.) as uint
     }
 
-    pub fn linear_map_with_capacity<K:Eq Hash,V>(
-        initial_capacity: uint) -> LinearMap<K,V> {
+    pub fn linear_map_with_capacity<K: Eq Hash, V>(
+        initial_capacity: uint) -> LinearMap<K, V> {
         let r = rand::Rng();
         linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(),
                                           initial_capacity)
     }
 
-    fn linear_map_with_capacity_and_keys<K:Eq Hash,V> (
+    pure fn linear_map_with_capacity_and_keys<K: Eq Hash, V>(
         k0: u64, k1: u64,
-        initial_capacity: uint) -> LinearMap<K,V> {
+        initial_capacity: uint) -> LinearMap<K, V> {
         LinearMap {
             k0: k0, k1: k1,
             resize_at: resize_at(initial_capacity),
             size: 0,
-            buckets: vec::from_fn(initial_capacity, |_i| None)
+            buckets: vec::from_fn(initial_capacity, |_| None)
         }
     }
 
-    priv impl<K:Hash IterBytes Eq, V> LinearMap<K,V> {
+    priv impl<K: Hash IterBytes Eq, V> LinearMap<K, V> {
         #[inline(always)]
-        pure fn to_bucket(&const self,
-                          h: uint) -> uint {
+        pure fn to_bucket(&self, h: uint) -> uint {
             // FIXME(#3041) borrow a more sophisticated technique here from
             // Gecko, for example borrowing from Knuth, as Eich so
             // colorfully argues for here:
@@ -90,17 +90,14 @@ pub mod linear {
         }
 
         #[inline(always)]
-        pure fn next_bucket(&const self,
-                            idx: uint,
-                            len_buckets: uint) -> uint {
+        pure fn next_bucket(&self, idx: uint, len_buckets: uint) -> uint {
             let n = (idx + 1) % len_buckets;
             debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
-            return n;
+            n
         }
 
         #[inline(always)]
-        pure fn bucket_sequence(&const self,
-                                hash: uint,
+        pure fn bucket_sequence(&self, hash: uint,
                                 op: fn(uint) -> bool) -> uint {
             let start_idx = self.to_bucket(hash);
             let len_buckets = self.buckets.len();
@@ -117,16 +114,15 @@ pub mod linear {
         }
 
         #[inline(always)]
-        pure fn bucket_for_key(&const self,
-                               buckets: &[Option<Bucket<K,V>>],
+        pure fn bucket_for_key(&self, buckets: &[Option<Bucket<K, V>>],
                                k: &K) -> SearchResult {
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             self.bucket_for_key_with_hash(buckets, hash, k)
         }
 
         #[inline(always)]
-        pure fn bucket_for_key_with_hash(&const self,
-                                         buckets: &[Option<Bucket<K,V>>],
+        pure fn bucket_for_key_with_hash(&self,
+                                         buckets: &[Option<Bucket<K, V>>],
                                          hash: uint,
                                          k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
@@ -137,7 +133,7 @@ pub mod linear {
                     None => return FoundHole(i)
                 }
             };
-            return TableFull;
+            TableFull
         }
 
         /// Expands the capacity of the array and re-inserts each
@@ -147,23 +143,21 @@ pub mod linear {
             let new_capacity = old_capacity * 2;
             self.resize_at = ((new_capacity as float) * 3.0 / 4.0) as uint;
 
-            let mut old_buckets = vec::from_fn(new_capacity, |_i| None);
+            let mut old_buckets = vec::from_fn(new_capacity, |_| None);
             self.buckets <-> old_buckets;
 
             self.size = 0;
             for uint::range(0, old_capacity) |i| {
                 let mut bucket = None;
                 bucket <-> old_buckets[i];
-                self.insert_opt_bucket(move bucket);
+                self.insert_opt_bucket(bucket);
             }
         }
 
-        fn insert_opt_bucket(&mut self, bucket: Option<Bucket<K,V>>) {
-            match move bucket {
-                Some(Bucket {hash: move hash,
-                             key: move key,
-                             value: move value}) => {
-                    self.insert_internal(hash, move key, move value);
+        fn insert_opt_bucket(&mut self, bucket: Option<Bucket<K, V>>) {
+            match bucket {
+                Some(Bucket{hash: hash, key: key, value: value}) => {
+                    self.insert_internal(hash, key, value);
                 }
                 None => {}
             }
@@ -178,18 +172,16 @@ pub mod linear {
                 FoundHole(idx) => {
                     debug!("insert fresh (%?->%?) at idx %?, hash %?",
                            k, v, idx, hash);
-                    self.buckets[idx] = Some(Bucket {hash: hash,
-                                                     key: move k,
-                                                     value: move v});
+                    self.buckets[idx] = Some(Bucket{hash: hash, key: k,
+                                                    value: v});
                     self.size += 1;
                     true
                 }
                 FoundEntry(idx) => {
                     debug!("insert overwrite (%?->%?) at idx %?, hash %?",
                            k, v, idx, hash);
-                    self.buckets[idx] = Some(Bucket {hash: hash,
-                                                     key: move k,
-                                                     value: move v});
+                    self.buckets[idx] = Some(Bucket{hash: hash, key: k,
+                                                    value: v});
                     false
                 }
             }
@@ -220,11 +212,11 @@ pub mod linear {
             let mut bucket = None;
             self.buckets[idx] <-> bucket;
 
-            let value = match move bucket {
+            let value = match bucket {
                 None => None,
-                Some(move bucket) => {
-                    let Bucket { value: move value, _ } = move bucket;
-                    Some(move value)
+                Some(bucket) => {
+                    let Bucket{value: value, _} = bucket;
+                    Some(value)
                 },
             };
 
@@ -232,18 +224,16 @@ pub mod linear {
             while self.buckets[idx].is_some() {
                 let mut bucket = None;
                 bucket <-> self.buckets[idx];
-                self.insert_opt_bucket(move bucket);
+                self.insert_opt_bucket(bucket);
                 idx = self.next_bucket(idx, len_buckets);
             }
             self.size -= 1;
 
-            move value
-
+            value
         }
 
-        fn search(&self,
-                  hash: uint,
-                  op: fn(x: &Option<Bucket<K,V>>) -> bool) {
+        fn search(&self, hash: uint,
+                  op: fn(x: &Option<Bucket<K, V>>) -> bool) {
             let _ = self.bucket_sequence(hash, |i| op(&self.buckets[i]));
         }
     }
@@ -277,7 +267,7 @@ pub mod linear {
 
         /// Visit all key-value pairs
         pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
-            for vec::each(self.buckets) |slot| {
+            for self.buckets.each |slot| {
                 let mut broke = false;
                 do slot.iter |bucket| {
                     if !blk(&bucket.key, &bucket.value) {
@@ -290,12 +280,12 @@ pub mod linear {
 
         /// Visit all keys
         pure fn each_key(&self, blk: fn(k: &K) -> bool) {
-            self.each(|k, _v| blk(k))
+            self.each(|k, _| blk(k))
         }
 
         /// Visit all values
         pure fn each_value(&self, blk: fn(v: &V) -> bool) {
-            self.each(|_k, v| blk(v))
+            self.each(|_, v| blk(v))
         }
 
         /// Return the value corresponding to the key in the map
@@ -305,7 +295,7 @@ pub mod linear {
                     match self.buckets[idx] {
                         Some(ref bkt) => {
                             // FIXME(#3148)---should be inferred
-                            let bkt: &self/Bucket<K,V> = bkt;
+                            let bkt: &self/Bucket<K, V> = bkt;
                             Some(&bkt.value)
                         }
                         None => {
@@ -334,20 +324,17 @@ pub mod linear {
             }
 
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
-            self.insert_internal(hash, move k, move v)
+            self.insert_internal(hash, k, v)
         }
 
         /// Remove a key-value pair from the map. Return true if the key
         /// was present in the map, otherwise false.
         fn remove(&mut self, k: &K) -> bool {
-            match self.pop(k) {
-                Some(_) => true,
-                None => false,
-            }
+            self.pop(k).is_some()
         }
     }
 
-    pub impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
+    pub impl<K:Hash IterBytes Eq, V> LinearMap<K, V> {
         /// Create an empty LinearMap
         static fn new() -> LinearMap<K, V> {
             linear_map_with_capacity(INITIAL_CAPACITY)
@@ -373,9 +360,9 @@ pub mod linear {
                 self.expand();
             }
 
-            self.insert_internal(hash, move k, move v);
+            self.insert_internal(hash, k, v);
 
-            move old_value
+            old_value
         }
 
         fn consume(&mut self, f: fn(K, V)) {
@@ -383,16 +370,12 @@ pub mod linear {
             self.buckets <-> buckets;
             self.size = 0;
 
-            do vec::consume(move buckets) |_i, bucket| {
-                match move bucket {
-                    None => { },
-                    Some(move bucket) => {
-                        let Bucket {
-                            key: move key,
-                            value: move value,
-                            _
-                        } = move bucket;
-                        f(move key, move value)
+            do vec::consume(buckets) |_, bucket| {
+                match bucket {
+                    None => {},
+                    Some(bucket) => {
+                        let Bucket{key: key, value: value, _} = bucket;
+                        f(key, value)
                     }
                 }
             }
@@ -406,8 +389,8 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash IterBytes Eq, V: Copy> LinearMap<K, V> {
-        pure fn find_copy(&const self, k: &K) -> Option<V> {
+    impl<K: Hash IterBytes Eq, V: Copy> LinearMap<K, V> {
+        pure fn find_copy(&self, k: &K) -> Option<V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
                     // FIXME (#3148): Once we rewrite found_entry, this
@@ -424,7 +407,7 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash IterBytes Eq, V: Eq> LinearMap<K, V>: Eq {
+    impl<K: Hash IterBytes Eq, V: Eq> LinearMap<K, V>: Eq {
         pure fn eq(&self, other: &LinearMap<K, V>) -> bool {
             if self.len() != other.len() { return false; }
 
@@ -435,12 +418,10 @@ pub mod linear {
                 }
             }
 
-            return true;
+            true
         }
 
-        pure fn ne(&self, other: &LinearMap<K, V>) -> bool {
-            !self.eq(other)
-        }
+        pure fn ne(&self, other: &LinearMap<K, V>) -> bool { !self.eq(other) }
     }
 
     pub struct LinearSet<T: Hash IterBytes Eq> {
