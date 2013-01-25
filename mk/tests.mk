@@ -236,6 +236,7 @@ check-stage$(1)-T-$(2)-H-$(3):     				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc			\
 	check-stage$(1)-T-$(2)-H-$(3)-core          \
 	check-stage$(1)-T-$(2)-H-$(3)-std			\
+	check-stage$(1)-T-$(2)-H-$(3)-syntax			\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass			\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass-full			\
 	check-stage$(1)-T-$(2)-H-$(3)-rfail			\
@@ -260,6 +261,9 @@ check-stage$(1)-T-$(2)-H-$(3)-core:				\
 
 check-stage$(1)-T-$(2)-H-$(3)-std:				\
 	check-stage$(1)-T-$(2)-H-$(3)-std-dummy
+
+check-stage$(1)-T-$(2)-H-$(3)-syntax:				\
+	check-stage$(1)-T-$(2)-H-$(3)-syntax-dummy
 
 check-stage$(1)-T-$(2)-H-$(3)-rustc:				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc-dummy
@@ -358,6 +362,20 @@ check-stage$(1)-T-$(2)-H-$(3)-std-dummy:			\
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-std.log
+
+# Rules for the libsyntax test runner
+
+$(3)/test/syntaxtest.stage$(1)-$(2)$$(X):			\
+		$$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS)	\
+        $$(SREQ$(1)_T_$(2)_H_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+
+check-stage$(1)-T-$(2)-H-$(3)-syntax-dummy:			\
+		$(3)/test/syntaxtest.stage$(1)-$(2)$$(X)
+	@$$(call E, run: $$<)
+	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
+	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-syntax.log
 
 # Rules for the rustc test runner
 
@@ -760,6 +778,9 @@ check-stage$(1)-H-$(2)-core:					\
 check-stage$(1)-H-$(2)-std:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-std)
+check-stage$(1)-H-$(2)-syntax:					\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-syntax)
 check-stage$(1)-H-$(2)-rpass:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rpass)
@@ -856,6 +877,9 @@ check-stage$(1)-H-all-core: \
 check-stage$(1)-H-all-std: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-std)
+check-stage$(1)-H-all-syntax: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-syntax)
 check-stage$(1)-H-all-rpass: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rpass)
@@ -917,6 +941,7 @@ check-stage$(1)-perf: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-perf
 check-stage$(1)-rustc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustc
 check-stage$(1)-core: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-core
 check-stage$(1)-std: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-std
+check-stage$(1)-syntax: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-syntax
 check-stage$(1)-rpass: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rpass
 check-stage$(1)-rpass-full: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rpass-full
 check-stage$(1)-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rfail
