@@ -172,6 +172,15 @@ fn mk_struct_e(cx: ext_ctxt, sp: span,
                              mk_fields(sp, fields),
                                     option::None::<@ast::expr>))
 }
+fn mk_global_struct_e(cx: ext_ctxt, sp: span,
+               ctor_path: ~[ast::ident],
+               fields: ~[{ident: ast::ident, ex: @ast::expr}]) ->
+    @ast::expr {
+    mk_expr(cx, sp,
+            ast::expr_struct(mk_raw_path_global(sp, ctor_path),
+                             mk_fields(sp, fields),
+                                    option::None::<@ast::expr>))
+}
 fn mk_glob_use(cx: ext_ctxt, sp: span,
                path: ~[ast::ident]) -> @ast::view_item {
     let glob = @ast::spanned {

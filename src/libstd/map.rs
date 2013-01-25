@@ -107,7 +107,11 @@ pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
 }
 
 pub mod util {
-    pub type Rational = {num: int, den: int}; // : int::positive(*.den);
+    pub struct Rational {
+        // : int::positive(*.den);
+        num: int,
+        den: int,
+    }
 
     pub pure fn rational_leq(x: Rational, y: Rational) -> bool {
         // NB: Uses the fact that rationals have positive denominators WLOG:
@@ -265,9 +269,11 @@ pub mod chained {
 
                 // consider rehashing if more 3/4 full
                 let nchains = vec::len(self.chains);
-                let load = {num: (self.count + 1u) as int,
-                            den: nchains as int};
-                if !util::rational_leq(load, {num:3, den:4}) {
+                let load = util::Rational {
+                    num: (self.count + 1u) as int,
+                    den: nchains as int,
+                };
+                if !util::rational_leq(load, util::Rational {num:3, den:4}) {
                     self.rehash();
                 }
 
@@ -324,9 +330,11 @@ pub mod chained {
 
                 // consider rehashing if more 3/4 full
                 let nchains = vec::len(self.chains);
-                let load = {num: (self.count + 1u) as int,
-                            den: nchains as int};
-                if !util::rational_leq(load, {num:3, den:4}) {
+                let load = util::Rational {
+                    num: (self.count + 1u) as int,
+                    den: nchains as int,
+                };
+                if !util::rational_leq(load, util::Rational {num:3, den:4}) {
                     self.rehash();
                 }
 

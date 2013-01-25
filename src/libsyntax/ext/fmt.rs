@@ -56,8 +56,8 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
 fn pieces_to_expr(cx: ext_ctxt, sp: span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {
-    fn make_path_vec(_cx: ext_ctxt, ident: @~str) -> ~[ast::ident] {
-        let intr = _cx.parse_sess().interner;
+    fn make_path_vec(cx: ext_ctxt, ident: @~str) -> ~[ast::ident] {
+        let intr = cx.parse_sess().interner;
         return ~[intr.intern(@~"extfmt"), intr.intern(@~"rt"),
                  intr.intern(ident)];
     }
@@ -111,23 +111,28 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             }
             return make_rt_path_expr(cx, sp, @rt_type);
         }
-        fn make_conv_rec(cx: ext_ctxt, sp: span, flags_expr: @ast::expr,
+        fn make_conv_struct(cx: ext_ctxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             let intr = cx.parse_sess().interner;
-            return mk_rec_e(cx, sp,
-                         ~[{ident: intr.intern(@~"flags"), ex: flags_expr},
-                           {ident: intr.intern(@~"width"), ex: width_expr},
-                           {ident: intr.intern(@~"precision"),
-                            ex: precision_expr},
-                           {ident: intr.intern(@~"ty"), ex: ty_expr}]);
+            mk_global_struct_e(
+                cx,
+                sp,
+                make_path_vec(cx, @~"Conv"),
+                ~[
+                    {ident: intr.intern(@~"flags"), ex: flags_expr},
+                    {ident: intr.intern(@~"width"), ex: width_expr},
+                    {ident: intr.intern(@~"precision"), ex: precision_expr},
+                    {ident: intr.intern(@~"ty"), ex: ty_expr},
+                ]
+            )
         }
         let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
         let rt_conv_precision = make_count(cx, sp, cnv.precision);
         let rt_conv_ty = make_ty(cx, sp, cnv.ty);
-        return make_conv_rec(cx, sp, rt_conv_flags, rt_conv_width,
-                          rt_conv_precision, rt_conv_ty);
+        make_conv_struct(cx, sp, rt_conv_flags, rt_conv_width,
+                         rt_conv_precision, rt_conv_ty)
     }
     fn make_conv_call(cx: ext_ctxt, sp: span, conv_type: ~str, cnv: Conv,
                       arg: @ast::expr) -> @ast::expr {

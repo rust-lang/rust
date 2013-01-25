@@ -158,17 +158,10 @@ fn run_tests(config: config) {
 }
 
 fn test_opts(config: config) -> test::TestOpts {
-    {filter:
-         match config.filter {
-           option::Some(s) => option::Some(s),
-           option::None => option::None
-         },
-     run_ignored: config.run_ignored,
-     logfile:
-         match config.logfile {
-           option::Some(s) => option::Some(s.to_str()),
-           option::None => option::None
-         }
+    test::TestOpts {
+        filter: config.filter,
+        run_ignored: config.run_ignored,
+        logfile: config.logfile.map(|s| s.to_str()),
     }
 }
 

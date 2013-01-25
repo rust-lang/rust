@@ -41,10 +41,10 @@ use core::str;
 use core::vec;
 
 // libuv struct mappings
-pub type uv_ip4_addr = {
+pub struct uv_ip4_addr {
     ip: ~[u8],
-    port: int
-};
+    port: int,
+}
 pub type uv_ip6_addr = uv_ip4_addr;
 
 pub enum uv_handle_type {
@@ -67,31 +67,31 @@ pub enum uv_handle_type {
 
 pub type handle_type = libc::c_uint;
 
-pub type uv_handle_fields = {
+pub struct uv_handle_fields {
    loop_handle: *libc::c_void,
    type_: handle_type,
    close_cb: *u8,
    mut data: *libc::c_void,
-};
+}
 
 // unix size: 8
-pub type uv_err_t = {
+pub struct uv_err_t {
     code: libc::c_int,
     sys_errno_: libc::c_int
-};
+}
 
 // don't create one of these directly. instead,
 // count on it appearing in libuv callbacks or embedded
 // in other types as a pointer to be used in other
 // operations (so mostly treat it as opaque, once you
 // have it in this form..)
-pub type uv_stream_t = {
-    fields: uv_handle_fields
-};
+pub struct uv_stream_t {
+    fields: uv_handle_fields,
+}
 
 // 64bit unix size: 272
 #[cfg(unix)]
-pub type uv_tcp_t = {
+pub struct uv_tcp_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -101,24 +101,24 @@ pub type uv_tcp_t = {
     a20: *u8, a21: *u8, a22: *u8, a23: *u8,
     a24: *u8, a25: *u8, a26: *u8, a27: *u8,
     a28: *u8,
-    a30: uv_tcp_t_32bit_unix_riders
-};
+    a30: uv_tcp_t_32bit_unix_riders,
+}
 // 32bit unix size: 328 (164)
 #[cfg(target_arch="x86_64")]
-pub type uv_tcp_t_32bit_unix_riders = {
-    a29: *u8
-};
+pub struct uv_tcp_t_32bit_unix_riders {
+    a29: *u8,
+}
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
-pub type uv_tcp_t_32bit_unix_riders = {
+pub struct uv_tcp_t_32bit_unix_riders {
     a29: *u8, a30: *u8, a31: *u8,
     a32: *u8, a33: *u8, a34: *u8,
-    a35: *u8, a36: *u8
-};
+    a35: *u8, a36: *u8,
+}
 
 // 32bit win32 size: 240 (120)
 #[cfg(windows)]
-pub type uv_tcp_t = {
+pub struct uv_tcp_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -126,140 +126,140 @@ pub type uv_tcp_t = {
     a12: *u8, a13: *u8, a14: *u8, a15: *u8,
     a16: *u8, a17: *u8, a18: *u8, a19: *u8,
     a20: *u8, a21: *u8, a22: *u8, a23: *u8,
-    a24: *u8, a25: *u8
-};
+    a24: *u8, a25: *u8,
+}
 
 // unix size: 48
 #[cfg(unix)]
-pub type uv_connect_t = {
+pub struct uv_connect_t {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
-    a04: *u8, a05: *u8
-};
+    a04: *u8, a05: *u8,
+}
 // win32 size: 88 (44)
 #[cfg(windows)]
-pub type uv_connect_t = {
+pub struct uv_connect_t {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
-    a08: *u8, a09: *u8, a10: *u8
-};
+    a08: *u8, a09: *u8, a10: *u8,
+}
 
 // unix size: 16
-pub type uv_buf_t = {
+pub struct uv_buf_t {
     base: *u8,
-    len: libc::size_t
-};
+    len: libc::size_t,
+}
 // no gen stub method.. should create
 // it via uv::direct::buf_init()
 
 // unix size: 144
 #[cfg(unix)]
-pub type uv_write_t = {
+pub struct uv_write_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
     a08: *u8, a09: *u8, a10: *u8, a11: *u8,
     a12: *u8,
-    a14: uv_write_t_32bit_unix_riders
-};
+    a14: uv_write_t_32bit_unix_riders,
+}
 #[cfg(target_arch="x86_64")]
-pub type uv_write_t_32bit_unix_riders = {
-    a13: *u8
-};
+pub struct uv_write_t_32bit_unix_riders {
+    a13: *u8,
+}
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
-pub type uv_write_t_32bit_unix_riders = {
-    a13: *u8, a14: *u8
-};
+pub struct uv_write_t_32bit_unix_riders {
+    a13: *u8, a14: *u8,
+}
 // win32 size: 136 (68)
 #[cfg(windows)]
-pub type uv_write_t = {
+pub struct uv_write_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
     a08: *u8, a09: *u8, a10: *u8, a11: *u8,
-    a12: *u8
-};
+    a12: *u8,
+}
 // 64bit unix size: 120
 // 32bit unix size: 152 (76)
 #[cfg(unix)]
-pub type uv_async_t = {
+pub struct uv_async_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
     a08: *u8, a09: *u8,
-    a11: uv_async_t_32bit_unix_riders
-};
+    a11: uv_async_t_32bit_unix_riders,
+}
 #[cfg(target_arch="x86_64")]
-pub type uv_async_t_32bit_unix_riders = {
-    a10: *u8
-};
+pub struct uv_async_t_32bit_unix_riders {
+    a10: *u8,
+}
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
-pub type uv_async_t_32bit_unix_riders = {
-    a10: *u8, a11: *u8, a12: *u8, a13: *u8
-};
+pub struct uv_async_t_32bit_unix_riders {
+    a10: *u8, a11: *u8, a12: *u8, a13: *u8,
+}
 // win32 size 132 (68)
 #[cfg(windows)]
-pub type uv_async_t = {
+pub struct uv_async_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
     a08: *u8, a09: *u8, a10: *u8, a11: *u8,
-    a12: *u8
-};
+    a12: *u8,
+}
 
 // 64bit unix size: 128
 // 32bit unix size: 84
 #[cfg(unix)]
-pub type uv_timer_t = {
+pub struct uv_timer_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
     a08: *u8, a09: *u8,
-    a11: uv_timer_t_32bit_unix_riders
-};
+    a11: uv_timer_t_32bit_unix_riders,
+}
 #[cfg(target_arch="x86_64")]
-pub type uv_timer_t_32bit_unix_riders = {
-    a10: *u8, a11: *u8
-};
+pub struct uv_timer_t_32bit_unix_riders {
+    a10: *u8, a11: *u8,
+}
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
-pub type uv_timer_t_32bit_unix_riders = {
+pub struct uv_timer_t_32bit_unix_riders {
     a10: *u8, a11: *u8, a12: *u8, a13: *u8,
-    a14: *u8, a15: *u8, a16: *u8
-};
+    a14: *u8, a15: *u8, a16: *u8,
+}
 // win32 size: 64
 #[cfg(windows)]
-pub type uv_timer_t = {
+pub struct uv_timer_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
     a04: *u8, a05: *u8, a06: *u8, a07: *u8,
-    a08: *u8, a09: *u8, a10: *u8, a11: *u8
-};
+    a08: *u8, a09: *u8, a10: *u8, a11: *u8,
+}
 
 // unix size: 16
-pub type sockaddr_in = {
+pub struct sockaddr_in {
     mut sin_family: u16,
     mut sin_port: u16,
     mut sin_addr: u32, // in_addr: this is an opaque, per-platform struct
-    mut sin_zero: (u8, u8, u8, u8, u8, u8, u8, u8)
-};
+    mut sin_zero: (u8, u8, u8, u8, u8, u8, u8, u8),
+}
 
 // unix size: 28 .. FIXME #1645
 // stuck with 32 becuse of rust padding structs?
 #[cfg(target_arch="x86_64")]
-pub type sockaddr_in6 = {
+pub struct sockaddr_in6 {
     a0: *u8, a1: *u8,
-    a2: *u8, a3: *u8
-};
+    a2: *u8, a3: *u8,
+}
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
-pub type sockaddr_in6 = {
+pub struct sockaddr_in6 {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8,
     a4: *u8, a5: *u8,
-    a6: *u8, a7: *u8
-};
+    a6: *u8, a7: *u8,
+}
 
 // unix size: 28 .. FIXME #1645
 // stuck with 32 becuse of rust padding structs?
@@ -267,25 +267,25 @@ pub type addr_in = addr_in_impl::addr_in;
 #[cfg(unix)]
 pub mod addr_in_impl {
     #[cfg(target_arch="x86_64")]
-    pub type addr_in = {
+    pub struct addr_in {
         a0: *u8, a1: *u8,
-        a2: *u8, a3: *u8
-    };
+        a2: *u8, a3: *u8,
+    }
     #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
-    pub type addr_in = {
+    pub struct addr_in {
         a0: *u8, a1: *u8,
         a2: *u8, a3: *u8,
         a4: *u8, a5: *u8,
         a6: *u8, a7: *u8,
-    };
+    }
 }
 #[cfg(windows)]
 pub mod addr_in_impl {
-    pub type addr_in = {
+    pub struct addr_in {
         a0: *u8, a1: *u8,
-        a2: *u8, a3: *u8
-    };
+        a2: *u8, a3: *u8,
+    }
 }
 
 // unix size: 48, 32bit: 32
@@ -294,42 +294,60 @@ pub type addrinfo = addrinfo_impl::addrinfo;
 #[cfg(target_os="android")]
 pub mod addrinfo_impl {
     #[cfg(target_arch="x86_64")]
-    pub type addrinfo = {
+    pub struct addrinfo {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
-        a04: *u8, a05: *u8
-    };
+        a04: *u8, a05: *u8,
+    }
     #[cfg(target_arch="x86")]
     #[cfg(target_arch="arm")]
-    pub type addrinfo = {
+    pub struct addrinfo {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
-        a04: *u8, a05: *u8, a06: *u8, a07: *u8
-    };
+        a04: *u8, a05: *u8, a06: *u8, a07: *u8,
+    }
 }
 #[cfg(target_os="macos")]
 #[cfg(target_os="freebsd")]
 pub mod addrinfo_impl {
-    pub type addrinfo = {
+    pub struct addrinfo {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
-        a04: *u8, a05: *u8
-    };
+        a04: *u8, a05: *u8,
+    }
 }
 #[cfg(windows)]
 pub mod addrinfo_impl {
-    pub type addrinfo = {
+    pub struct addrinfo {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
-        a04: *u8, a05: *u8
-    };
+        a04: *u8, a05: *u8,
+    }
 }
 
 // unix size: 72
-pub type uv_getaddrinfo_t = {
+pub struct uv_getaddrinfo_t {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8, a04: *u8, a05: *u8,
-    a06: *u8, a07: *u8, a08: *u8
-};
+    a06: *u8, a07: *u8, a08: *u8,
+}
 
 pub mod uv_ll_struct_stubgen {
-    use uv_ll::{uv_async_t, uv_connect_t, uv_getaddrinfo_t, uv_tcp_t};
-    use uv_ll::{uv_timer_t, uv_write_t};
+    use uv_ll::{
+        uv_async_t,
+        uv_connect_t,
+        uv_getaddrinfo_t,
+        uv_handle_fields,
+        uv_tcp_t,
+        uv_timer_t,
+        uv_write_t,
+    };
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    use uv_ll::{
+        uv_async_t_32bit_unix_riders,
+        uv_tcp_t_32bit_unix_riders,
+        uv_timer_t_32bit_unix_riders,
+        uv_write_t_32bit_unix_riders,
+    };
 
     use core::ptr;
 
@@ -343,9 +361,12 @@ pub mod uv_ll_struct_stubgen {
             return gen_stub_arch();
             #[cfg(target_arch="x86_64")]
             pub fn gen_stub_arch() -> uv_tcp_t {
-                return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                                close_cb: ptr::null(),
-                                mut data: ptr::null() },
+                uv_tcp_t {
+                    fields: uv_handle_fields {
+                        loop_handle: ptr::null(), type_: 0u32,
+                        close_cb: ptr::null(),
+                        data: ptr::null(),
+                    },
                     a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                     a03: 0 as *u8,
                     a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
@@ -361,17 +382,18 @@ pub mod uv_ll_struct_stubgen {
                     a24: 0 as *u8, a25: 0 as *u8, a26: 0 as *u8,
                     a27: 0 as *u8,
                     a28: 0 as *u8,
-                    a30: {
-                        a29: 0 as *u8
-                    }
-                };
+                    a30: uv_tcp_t_32bit_unix_riders { a29: 0 as *u8 },
+                }
             }
             #[cfg(target_arch="x86")]
             #[cfg(target_arch="arm")]
             pub fn gen_stub_arch() -> uv_tcp_t {
-                return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                                close_cb: ptr::null(),
-                                mut data: ptr::null() },
+                uv_tcp_t {
+                    fields: uv_handle_fields {
+                        loop_handle: ptr::null(), type_: 0u32,
+                        close_cb: ptr::null(),
+                        data: ptr::null(),
+                    },
                     a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                     a03: 0 as *u8,
                     a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
@@ -387,19 +409,22 @@ pub mod uv_ll_struct_stubgen {
                     a24: 0 as *u8, a25: 0 as *u8, a26: 0 as *u8,
                     a27: 0 as *u8,
                     a28: 0 as *u8,
-                    a30: {
+                    a30: uv_tcp_t_32bit_unix_riders {
                         a29: 0 as *u8, a30: 0 as *u8, a31: 0 as *u8,
                         a32: 0 as *u8, a33: 0 as *u8, a34: 0 as *u8,
-                        a35: 0 as *u8, a36: 0 as *u8
-                    }
-                };
+                        a35: 0 as *u8, a36: 0 as *u8,
+                    },
+                }
             }
         }
         #[cfg(windows)]
         pub fn gen_stub_os() -> uv_tcp_t {
-            return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                            close_cb: ptr::null(),
-                            mut data: ptr::null() },
+            uv_tcp_t {
+                fields: uv_handle_fields {
+                    loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    data: ptr::null(),
+                },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
@@ -412,58 +437,62 @@ pub mod uv_ll_struct_stubgen {
                 a19: 0 as *u8,
                 a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
                 a23: 0 as *u8,
-                a24: 0 as *u8, a25: 0 as *u8
-            };
+                a24: 0 as *u8, a25: 0 as *u8,
+            }
         }
     }
     #[cfg(unix)]
     pub fn gen_stub_uv_connect_t() -> uv_connect_t {
-        return {
+        uv_connect_t {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
-            a04: 0 as *u8, a05: 0 as *u8
-        };
+            a04: 0 as *u8, a05: 0 as *u8,
+        }
     }
     #[cfg(windows)]
     pub fn gen_stub_uv_connect_t() -> uv_connect_t {
-        return {
+        uv_connect_t {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
             a07: 0 as *u8,
-            a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8
-        };
+            a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
+        }
     }
     #[cfg(unix)]
     pub fn gen_stub_uv_async_t() -> uv_async_t {
         return gen_stub_arch();
         #[cfg(target_arch = "x86_64")]
         pub fn gen_stub_arch() -> uv_async_t {
-            return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                            close_cb: ptr::null(),
-                            mut data: ptr::null() },
+            uv_async_t {
+                fields: uv_handle_fields {
+                    loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    data: ptr::null(),
+                },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
                 a07: 0 as *u8,
                 a08: 0 as *u8, a09: 0 as *u8,
-                a11: {
-                    a10: 0 as *u8
-                }
-            };
+                a11: uv_async_t_32bit_unix_riders { a10: 0 as *u8 },
+            }
         }
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch="arm")]
         pub fn gen_stub_arch() -> uv_async_t {
-            return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                            close_cb: ptr::null(),
-                            mut data: ptr::null() },
+            uv_async_t {
+                fields: uv_handle_fields {
+                    loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    data: ptr::null(),
+                },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
                 a07: 0 as *u8,
                 a08: 0 as *u8, a09: 0 as *u8,
-                a11: {
+                a11: uv_async_t_32bit_unix_riders {
                     a10: 0 as *u8, a11: 0 as *u8,
                     a12: 0 as *u8, a13: 0 as *u8
                 }
@@ -472,107 +501,133 @@ pub mod uv_ll_struct_stubgen {
     }
     #[cfg(windows)]
     pub fn gen_stub_uv_async_t() -> uv_async_t {
-        return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                        close_cb: ptr::null(),
-                        mut data: ptr::null() },
+        uv_async_t {
+            fields: uv_handle_fields {
+                loop_handle: ptr::null(), type_: 0u32,
+                close_cb: ptr::null(),
+                data: ptr::null(),
+            },
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
             a07: 0 as *u8,
             a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
             a11: 0 as *u8,
-            a12: 0 as *u8
-        };
+            a12: 0 as *u8,
+        }
     }
     #[cfg(unix)]
     pub fn gen_stub_uv_timer_t() -> uv_timer_t {
         return gen_stub_arch();
         #[cfg(target_arch = "x86_64")]
         pub fn gen_stub_arch() -> uv_timer_t {
-            return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                            close_cb: ptr::null(),
-                            mut data: ptr::null() },
+            uv_timer_t {
+                fields: uv_handle_fields {
+                    loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    data: ptr::null(),
+                },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
                 a07: 0 as *u8,
                 a08: 0 as *u8, a09: 0 as *u8,
-                a11: {
+                a11: uv_timer_t_32bit_unix_riders {
                     a10: 0 as *u8, a11: 0 as *u8
-                }
-            };
+                },
+            }
         }
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch="arm")]
         pub fn gen_stub_arch() -> uv_timer_t {
-            return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                            close_cb: ptr::null(),
-                            mut data: ptr::null() },
+            uv_timer_t {
+                fields: uv_handle_fields {
+                    loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    data: ptr::null(),
+                },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
                 a07: 0 as *u8,
                 a08: 0 as *u8, a09: 0 as *u8,
-                a11: {
+                a11: uv_timer_t_32bit_unix_riders {
                     a10: 0 as *u8, a11: 0 as *u8,
                     a12: 0 as *u8, a13: 0 as *u8,
                     a14: 0 as *u8, a15: 0 as *u8,
-                    a16: 0 as *u8
-                }
-            };
+                    a16: 0 as *u8,
+                },
+            }
         }
     }
     #[cfg(windows)]
     pub fn gen_stub_uv_timer_t() -> uv_timer_t {
-        return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                        close_cb: ptr::null(),
-                        mut data: ptr::null() },
+        uv_timer_t {
+            fields: uv_handle_fields {
+                loop_handle: ptr::null(), type_: 0u32,
+                close_cb: ptr::null(),
+                data: ptr::null(),
+            },
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
             a07: 0 as *u8,
             a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
-            a11: 0 as *u8
-        };
+            a11: 0 as *u8,
+        }
     }
     #[cfg(unix)]
     pub fn gen_stub_uv_write_t() -> uv_write_t {
         return gen_stub_arch();
         #[cfg(target_arch="x86_64")]
         pub fn gen_stub_arch() -> uv_write_t {
-            return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                            close_cb: ptr::null(),
-                            mut data: ptr::null() },
+            uv_write_t {
+                fields: uv_handle_fields {
+                    loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    data: ptr::null(),
+                },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
                 a07: 0 as *u8,
                 a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
                 a11: 0 as *u8,
-                a12: 0 as *u8, a14: { a13: 0 as *u8 }
-            };
+                a12: 0 as *u8,
+                a14: uv_write_t_32bit_unix_riders { a13: 0 as *u8 },
+            }
         }
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
         pub fn gen_stub_arch() -> uv_write_t {
-            return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                            close_cb: ptr::null(),
-                            mut data: ptr::null() },
+            uv_write_t {
+                fields: uv_handle_fields {
+                    loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    data: ptr::null(),
+                },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
                 a07: 0 as *u8,
                 a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
                 a11: 0 as *u8,
-                a12: 0 as *u8, a14: { a13: 0 as *u8, a14: 0 as *u8 }
+                a12: 0 as *u8,
+                a14: uv_write_t_32bit_unix_riders {
+                    a13: 0 as *u8,
+                    a14: 0 as *u8,
+                }
             };
         }
     }
     #[cfg(windows)]
     pub fn gen_stub_uv_write_t() -> uv_write_t {
-        return { fields: { loop_handle: ptr::null(), type_: 0u32,
-                        close_cb: ptr::null(),
-                        mut data: ptr::null() },
+        uv_write_t {
+            fields: uv_handle_fields {
+                loop_handle: ptr::null(), type_: 0u32,
+                close_cb: ptr::null(),
+                data: ptr::null(),
+            },
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
@@ -583,7 +638,7 @@ pub mod uv_ll_struct_stubgen {
         };
     }
     pub fn gen_stub_uv_getaddrinfo_t() -> uv_getaddrinfo_t {
-        {
+        uv_getaddrinfo_t {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8, a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8, a07: 0 as *u8,
             a08: 0 as *u8
@@ -851,7 +906,7 @@ pub unsafe fn async_send(async_handle: *uv_async_t) {
     return rustrt::rust_uv_async_send(async_handle);
 }
 pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
-    let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
+    let out_buf = uv_buf_t { base: ptr::null(), len: 0 as libc::size_t };
     let out_buf_ptr = ptr::addr_of(&out_buf);
     log(debug, fmt!("buf_init - input %u len %u out_buf: %u",
                      input as uint,
@@ -1043,13 +1098,13 @@ pub unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
     let err_ptr = ptr::addr_of(&err);
     let err_name = str::raw::from_c_str(err_name(err_ptr));
     let err_msg = str::raw::from_c_str(strerror(err_ptr));
-    { err_name: err_name, err_msg: err_msg }
+    uv_err_data { err_name: err_name, err_msg: err_msg }
 }
 
-pub type uv_err_data = {
+pub struct uv_err_data {
     err_name: ~str,
-    err_msg: ~str
-};
+    err_msg: ~str,
+}
 
 pub unsafe fn is_ipv4_addrinfo(input: *addrinfo) -> bool {
     rustrt::rust_uv_is_ipv4_addrinfo(input)
@@ -1090,11 +1145,11 @@ pub mod test {
         tcp_read_error
     }
 
-    type request_wrapper = {
+    struct request_wrapper {
         write_req: *uv_write_t,
         req_buf: *~[uv_buf_t],
-        read_chan: *oldcomm::Chan<~str>
-    };
+        read_chan: *oldcomm::Chan<~str>,
+    }
 
     extern fn after_close_cb(handle: *libc::c_void) {
         log(debug, fmt!("after uv_close! handle ptr: %?",
@@ -1424,18 +1479,18 @@ pub mod test {
         }
     }
 
-    type tcp_server_data = {
+    struct tcp_server_data {
         client: *uv_tcp_t,
         server: *uv_tcp_t,
         server_kill_msg: ~str,
         server_resp_buf: *~[uv_buf_t],
         server_chan: *oldcomm::Chan<~str>,
-        server_write_req: *uv_write_t
-    };
+        server_write_req: *uv_write_t,
+    }
 
-    type async_handle_data = {
-        continue_chan: *oldcomm::Chan<bool>
-    };
+    struct async_handle_data {
+        continue_chan: *oldcomm::Chan<bool>,
+    }
 
     extern fn async_close_cb(handle: *libc::c_void) {
         log(debug, fmt!("SERVER: closing async cb... h: %?",
@@ -1489,7 +1544,7 @@ pub mod test {
                 { continue_chan: continue_chan };
             let async_data_ptr = ptr::addr_of(&async_data);
 
-            let server_data: tcp_server_data = {
+            let server_data = tcp_server_data {
                 client: tcp_client_ptr,
                 server: tcp_server_ptr,
                 server_kill_msg: kill_server_msg,

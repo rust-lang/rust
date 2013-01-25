@@ -132,7 +132,7 @@ pub struct BufferHeader {
     // thing along.
 }
 
-pub fn BufferHeader() -> BufferHeader{
+pub fn BufferHeader() -> BufferHeader {
     BufferHeader {
         ref_count: 0
     }
@@ -140,10 +140,19 @@ pub fn BufferHeader() -> BufferHeader{
 
 // This is for protocols to associate extra data to thread around.
 #[doc(hidden)]
+#[cfg(stage0)]
 type Buffer<T: Owned> = {
     header: BufferHeader,
     data: T,
 };
+#[doc(hidden)]
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub struct Buffer<T: Owned> {
+    header: BufferHeader,
+    data: T,
+}
 
 struct PacketHeader {
     mut state: State,
@@ -201,10 +210,10 @@ impl PacketHeader {
 }
 
 #[doc(hidden)]
-pub type Packet<T: Owned> = {
+pub struct Packet<T: Owned> {
     header: PacketHeader,
     mut payload: Option<T>,
-};
+}
 
 #[doc(hidden)]
 pub trait HasBuffer {
@@ -223,19 +232,39 @@ impl<T: Owned> Packet<T>: HasBuffer {
 
 #[doc(hidden)]
 pub fn mk_packet<T: Owned>() -> Packet<T> {
-    {
+    Packet {
         header: PacketHeader(),
-        mut payload: None
+        payload: None,
     }
 }
 
 #[doc(hidden)]
+#[cfg(stage0)]
 fn unibuffer<T: Owned>() -> ~Buffer<Packet<T>> {
     let b = ~{
         header: BufferHeader(),
-        data: {
+        data: Packet {
             header: PacketHeader(),
-            mut payload: None,
+            payload: None,
+        }
+    };
+
+    unsafe {
+        b.data.header.buffer = reinterpret_cast(&b);
+    }
+    move b
+}
+
+#[doc(hidden)]
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+fn unibuffer<T: Owned>() -> ~Buffer<Packet<T>> {
+    let b = ~Buffer {
+        header: BufferHeader(),
+        data: Packet {
+            header: PacketHeader(),
+            payload: None,
         }
     };
 
@@ -1011,7 +1040,9 @@ pub trait Peekable<T> {
 }
 
 #[doc(hidden)]
-type Chan_<T:Owned> = { mut endp: Option<streamp::client::Open<T>> };
+struct Chan_<T:Owned> {
+    mut endp: Option<streamp::client::Open<T>>,
+}
 
 /// An endpoint that can send many messages.
 pub enum Chan<T:Owned> {
@@ -1019,7 +1050,9 @@ pub enum Chan<T:Owned> {
 }
 
 #[doc(hidden)]
-type Port_<T:Owned> = { mut endp: Option<streamp::server::Open<T>> };
+struct Port_<T:Owned> {
+    mut endp: Option<streamp::server::Open<T>>,
+}
 
 /// An endpoint that can receive many messages.
 pub enum Port<T:Owned> {
@@ -1034,7 +1067,7 @@ These allow sending or receiving an unlimited number of messages.
 pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
     let (c, s) = streamp::init();
 
-    (Port_({ mut endp: Some(move s) }), Chan_({ mut endp: Some(move c) }))
+    (Port_(Port_ { endp: Some(s) }), Chan_(Chan_{ endp: Some(c) }))
 }
 
 impl<T: Owned> Chan<T>: GenericChan<T> {

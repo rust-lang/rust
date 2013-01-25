@@ -455,10 +455,15 @@ impl *libc::FILE: Reader {
     }
 }
 
+struct Wrapper<T, C> {
+    base: T,
+    cleanup: C,
+}
+
 // A forwarding impl of reader that also holds on to a resource for the
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
-impl<T: Reader, C> {base: T, cleanup: C}: Reader {
+impl<R: Reader, C> Wrapper<R, C>: Reader {
     fn read(&self, bytes: &[mut u8], len: uint) -> uint {
         self.base.read(bytes, len)
     }
@@ -487,7 +492,7 @@ pub fn FILERes(f: *libc::FILE) -> FILERes {
 
 pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
     if cleanup {
-        {base: f, cleanup: FILERes(f)} as Reader
+        Wrapper { base: f, cleanup: FILERes(f) } as Reader
     } else {
         f as Reader
     }
@@ -587,7 +592,7 @@ pub trait Writer {
     fn get_type(&self) -> WriterType;
 }
 
-impl<T: Writer, C> {base: T, cleanup: C}: Writer {
+impl<W: Writer, C> Wrapper<W, C>: Writer {
     fn write(&self, bs: &[const u8]) { self.base.write(bs); }
     fn seek(&self, off: int, style: SeekStyle) { self.base.seek(off, style); }
     fn tell(&self) -> uint { self.base.tell() }
@@ -639,7 +644,7 @@ impl *libc::FILE: Writer {
 
 pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> Writer {
     if cleanup {
-        {base: f, cleanup: FILERes(f)} as Writer
+        Wrapper { base: f, cleanup: FILERes(f) } as Writer
     } else {
         f as Writer
     }
@@ -696,7 +701,7 @@ pub fn FdRes(fd: fd_t) -> FdRes {
 
 pub fn fd_writer(fd: fd_t, cleanup: bool) -> Writer {
     if cleanup {
-        {base: fd, cleanup: FdRes(fd)} as Writer
+        Wrapper { base: fd, cleanup: FdRes(fd) } as Writer
     } else {
         fd as Writer
     }
@@ -1086,11 +1091,9 @@ pub fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
 // fsync related
 
 pub mod fsync {
+    use prelude::*;
     use io::{FILERes, FdRes, fd_t};
-    use kinds::Copy;
     use libc;
-    use option::Option;
-    use option;
     use os;
 
     pub enum Level {
@@ -1110,10 +1113,13 @@ pub mod fsync {
     // Artifacts that need to fsync on destruction
     pub struct Res<t: Copy> {
         arg: Arg<t>,
-        drop {
+    }
+
+    impl<T: Copy> Res<T>: Drop {
+        fn finalize(&self) {
           match self.arg.opt_level {
-            option::None => (),
-            option::Some(level) => {
+            None => (),
+            Some(level) => {
               // fail hard if not succesful
               assert((self.arg.fsync_fn)(self.arg.val, level) != -1);
             }
@@ -1127,11 +1133,11 @@ pub mod fsync {
         }
     }
 
-    pub type Arg<t> = {
+    pub struct Arg<t> {
         val: t,
         opt_level: Option<Level>,
-        fsync_fn: fn@(f: t, Level) -> int
-    };
+        fsync_fn: fn@(f: t, Level) -> int,
+    }
 
     // fsync file after executing blk
     // FIXME (#2004) find better way to create resources within lifetime of
@@ -1139,7 +1145,7 @@ pub mod fsync {
     pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
                          blk: fn(v: Res<*libc::FILE>)) {
         unsafe {
-            blk(move Res({
+            blk(Res(Arg {
                 val: file.f, opt_level: opt_level,
                 fsync_fn: fn@(file: *libc::FILE, l: Level) -> int {
                     unsafe {
@@ -1153,7 +1159,7 @@ pub mod fsync {
     // fsync fd after executing blk
     pub fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
                        blk: fn(v: Res<fd_t>)) {
-        blk(move Res({
+        blk(Res(Arg {
             val: fd.fd, opt_level: opt_level,
             fsync_fn: fn@(fd: fd_t, l: Level) -> int {
                 return os::fsync_fd(fd, l) as int;
@@ -1167,7 +1173,7 @@ pub mod fsync {
     // Call o.fsync after executing blk
     pub fn obj_sync(o: FSyncable, opt_level: Option<Level>,
                     blk: fn(v: Res<FSyncable>)) {
-        blk(Res({
+        blk(Res(Arg {
             val: o, opt_level: opt_level,
             fsync_fn: fn@(o: FSyncable, l: Level) -> int {
                 return o.fsync(l);
