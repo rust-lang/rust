@@ -1018,8 +1018,8 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: &crate) -> ~[attribute] {
     fn synthesize_link_attr(ecx: @encode_ctxt, +items: ~[@meta_item]) ->
        attribute {
 
-        assert ecx.link_meta.name.is_not_empty();
-        assert ecx.link_meta.vers.is_not_empty();
+        assert !ecx.link_meta.name.is_empty();
+        assert !ecx.link_meta.vers.is_empty();
 
         let name_item =
             attr::mk_name_value_item_str(~"name",

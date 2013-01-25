@@ -84,7 +84,7 @@ terminate normally, but instead directly return from a function.
 
 ~~~
 fn choose_weighted_item(v: &[Item]) -> Item {
-    assert v.is_not_empty();
+    assert !v.is_empty();
     let mut so_far = 0u;
     for v.each |item| {
         so_far += item.weight;

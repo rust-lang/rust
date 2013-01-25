@@ -245,7 +245,7 @@ fn contains_name(metas: &[@ast::meta_item], name: &str) -> bool {
 }
 
 fn attrs_contains_name(attrs: &[ast::attribute], name: &str) -> bool {
-    vec::is_not_empty(find_attrs_by_name(attrs, name))
+    !find_attrs_by_name(attrs, name).is_empty()
 }
 
 fn first_attr_value_str_by_name(attrs: ~[ast::attribute], name: ~str)
