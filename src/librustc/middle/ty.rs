@@ -119,6 +119,7 @@ export ty_opaque_box, mk_opaque_box;
 export ty_float, mk_float, mk_mach_float, type_is_fp;
 export ty_fn, FnTy, FnTyBase, FnMeta, FnSig, mk_fn;
 export ty_fn_proto, ty_fn_purity, ty_fn_ret, tys_in_fn_sig;
+export ty_vstore;
 export replace_fn_return_type;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
@@ -3002,6 +3003,14 @@ fn is_fn_ty(fty: t) -> bool {
     match get(fty).sty {
       ty_fn(_) => true,
       _ => false
+    }
+}
+
+pure fn ty_vstore(ty: t) -> vstore {
+    match get(ty).sty {
+        ty_evec(_, vstore) => vstore,
+        ty_estr(vstore) => vstore,
+        ref s => fail fmt!("ty_vstore() called on invalid sty: %?", s)
     }
 }
 

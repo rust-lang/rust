@@ -105,7 +105,7 @@ use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
 use middle::typeck::{method_origin, method_self, method_trait, no_params};
 use middle::typeck::{require_same_types};
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux::{bound_region_to_str, expr_repr};
+use util::ppaux::{bound_region_to_str, expr_repr, pat_repr};
 use util::ppaux;
 
 use core::either;
@@ -127,7 +127,6 @@ use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::parse::token::special_idents;
-use syntax::print::pprust::{expr_to_str, pat_to_str};
 use syntax::print::pprust;
 use syntax::visit;
 use syntax;
@@ -469,7 +468,7 @@ fn check_fn(ccx: @crate_ctxt,
             };
             assign(local.span, local.node.id, o_ty);
             debug!("Local variable %s is assigned to %s",
-                   pat_to_str(local.node.pat, tcx.sess.intr()),
+                   fcx.pat_to_str(local.node.pat),
                    fcx.inh.locals.get(local.node.id).to_str());
             visit::visit_local(local, e, v);
         };
@@ -754,6 +753,10 @@ impl @fn_ctxt {
 
     fn expr_to_str(expr: @ast::expr) -> ~str {
         expr_repr(self.tcx(), expr)
+    }
+
+    fn pat_to_str(pat: @ast::pat) -> ~str {
+        pat_repr(self.tcx(), pat)
     }
 
     fn expr_ty(ex: @ast::expr) -> ty::t {
@@ -1600,7 +1603,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let fty = ty::mk_fn(tcx, copy fn_ty);
 
         debug!("check_expr_fn_with_unifier %s fty=%s",
-               expr_to_str(expr, tcx.sess.intr()),
+               fcx.expr_to_str(expr),
                fcx.infcx().ty_to_str(fty));
 
         fcx.write_ty(expr.id, fty);
@@ -2713,7 +2716,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
             do v.node.disr_expr.iter |e_ref| {
                 let e = *e_ref;
                 debug!("disr expr, checking %s",
-                       expr_to_str(e, ccx.tcx.sess.intr()));
+                       pprust::expr_to_str(e, ccx.tcx.sess.intr()));
                 let declty = ty::mk_int(ccx.tcx);
                 let fcx = blank_fn_ctxt(ccx, rty, e.id);
                 check_const_with_ty(fcx, e.span, e, declty);

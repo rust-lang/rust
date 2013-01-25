@@ -879,7 +879,7 @@ fn ser_variant(
 
     let pat_node = if pats.is_empty() {
         ast::pat_ident(
-            ast::bind_by_ref(ast::m_imm),
+            ast::bind_infer,
             cx.path(span, ~[v_name]),
             None
         )
