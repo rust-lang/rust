@@ -149,7 +149,7 @@ fn map_crate(diag: span_handler, c: crate) -> map {
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
 fn map_decoded_item(diag: span_handler,
-                    map: map, +path: path, ii: inlined_item) {
+                    map: map, path: path, ii: inlined_item) {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.  (In particular, I think these ids are only used in
@@ -158,8 +158,8 @@ fn map_decoded_item(diag: span_handler,
     // variables that are simultaneously in scope).
     let cx = ctx {
         map: map,
-        mut path: /* FIXME (#2543) */ copy path,
-        mut local_id: 0u,
+        mut path: path,
+        mut local_id: 0,
         diag: diag,
     };
     let v = mk_ast_map_visitor();
