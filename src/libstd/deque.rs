@@ -61,10 +61,12 @@ pub fn create<T: Copy>() -> Deque<T> {
         match (*elts).get_elt(i) { Some(move t) => t, _ => fail }
     }
 
-    type Repr<T> = {mut nelts: uint,
-                    mut lo: uint,
-                    mut hi: uint,
-                    elts: DVec<Cell<T>>};
+    struct Repr<T> {
+        mut nelts: uint,
+        mut lo: uint,
+        mut hi: uint,
+        elts: DVec<Cell<T>>,
+    }
 
     impl <T: Copy> Repr<T>: Deque<T> {
         fn size() -> uint { return self.nelts; }
@@ -119,15 +121,14 @@ pub fn create<T: Copy>() -> Deque<T> {
         }
     }
 
-    let repr: Repr<T> = {
-        mut nelts: 0u,
-        mut lo: 0u,
-        mut hi: 0u,
-        elts:
-            dvec::from_vec(
-                vec::from_elem(initial_capacity, None))
+    let repr: Repr<T> = Repr {
+        nelts: 0u,
+        lo: 0u,
+        hi: 0u,
+        elts: dvec::from_vec(vec::from_elem(initial_capacity, None)),
     };
-    (move repr) as Deque::<T>
+
+    repr as Deque::<T>
 }
 
 #[cfg(test)]
@@ -254,7 +255,11 @@ mod tests {
         Onepar(int), Twopar(int, int), Threepar(int, int, int),
     }
 
-    type RecCy = {x: int, y: int, t: Taggy};
+    struct RecCy {
+        x: int,
+        y: int,
+        t: Taggy,
+    }
 
     impl Taggy : Eq {
         pure fn eq(&self, other: &Taggy) -> bool {
@@ -335,10 +340,10 @@ mod tests {
 
     #[test]
     fn test_param_reccy() {
-        let reccy1: RecCy = {x: 1, y: 2, t: One(1)};
-        let reccy2: RecCy = {x: 345, y: 2, t: Two(1, 2)};
-        let reccy3: RecCy = {x: 1, y: 777, t: Three(1, 2, 3)};
-        let reccy4: RecCy = {x: 19, y: 252, t: Two(17, 42)};
+        let reccy1 = RecCy { x: 1, y: 2, t: One(1) };
+        let reccy2 = RecCy { x: 345, y: 2, t: Two(1, 2) };
+        let reccy3 = RecCy { x: 1, y: 777, t: Three(1, 2, 3) };
+        let reccy4 = RecCy { x: 19, y: 252, t: Two(17, 42) };
         test_parameterized::<RecCy>(reccy1, reccy2, reccy3, reccy4);
     }
 }

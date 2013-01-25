@@ -87,7 +87,10 @@ unsafe fn get_safe_point_count() -> uint {
     return *module_meta;
 }
 
-type SafePoint = { sp_meta: *Word, fn_meta: *Word };
+struct SafePoint {
+    sp_meta: *Word,
+    fn_meta: *Word,
+}
 
 // Returns the safe point metadata for the given program counter, if
 // any.
@@ -106,7 +109,10 @@ unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
         let sp: **Word = bump(safe_points, spi*3);
         let sp_loc = *sp;
         if sp_loc == pc {
-            return Some({sp_meta: *bump(sp, 1), fn_meta: *bump(sp, 2)});
+            return Some(SafePoint {
+                sp_meta: *bump(sp, 1),
+                fn_meta: *bump(sp, 2),
+            });
         }
         spi += 1;
     }

@@ -357,10 +357,10 @@ impl protocol: gen_init {
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
         debug!("gen_init_bounded");
         let buffer_fields = self.gen_buffer_init(ext_cx);
-        let buffer = quote_expr!(
-            ~{header: ::pipes::BufferHeader(),
-              data: $buffer_fields}
-        );
+        let buffer = quote_expr!(~::pipes::Buffer {
+            header: ::pipes::BufferHeader(),
+            data: $buffer_fields,
+        });
 
         let entangle_body = ext_cx.block_expr(
             ext_cx.block(

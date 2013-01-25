@@ -114,14 +114,14 @@ pub fn taskset_each(tasks: &TaskSet, blk: fn(v: *rust_task) -> bool) {
 }
 
 // One of these per group of linked-failure tasks.
-type TaskGroupData = {
+struct TaskGroupData {
     // All tasks which might kill this group. When this is empty, the group
     // can be "GC"ed (i.e., its link in the ancestor list can be removed).
     mut members:     TaskSet,
     // All tasks unidirectionally supervised by (directly or transitively)
     // tasks in this group.
     mut descendants: TaskSet,
-};
+}
 type TaskGroupArc = private::Exclusive<Option<TaskGroupData>>;
 
 type TaskGroupInner = &mut Option<TaskGroupData>;
@@ -138,7 +138,7 @@ pure fn taskgroup_is_dead(tg: &TaskGroupData) -> bool {
 // taskgroup which was spawned-unlinked. Tasks from intermediate generations
 // have references to the middle of the list; when intermediate generations
 // die, their node in the list will be collected at a descendant's spawn-time.
-type AncestorNode = {
+struct AncestorNode {
     // Since the ancestor list is recursive, we end up with references to
     // exclusives within other exclusives. This is dangerous business (if
     // circular references arise, deadlock and memory leaks are imminent).
@@ -150,7 +150,8 @@ type AncestorNode = {
     mut parent_group: Option<TaskGroupArc>,
     // Recursive rest of the list.
     mut ancestors:    AncestorList,
-};
+}
+
 enum AncestorList = Option<private::Exclusive<AncestorNode>>;
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
@@ -450,11 +451,10 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 // Main task, doing first spawn ever. Lazily initialise here.
                 let mut members = new_taskset();
                 taskset_insert(&mut members, spawner);
-                let tasks =
-                    private::exclusive(Some({
-                        mut members:     move members,
-                        mut descendants: new_taskset()
-                    }));
+                let tasks = private::exclusive(Some(TaskGroupData {
+                    members: members,
+                    descendants: new_taskset(),
+                }));
                 // Main task/group has no ancestors, no notifier, etc.
                 let group =
                     @TCB(spawner, move tasks, AncestorList(None), true, None);
@@ -475,9 +475,9 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             (move g, move a, spawner_group.is_main)
         } else {
             // Child is in a separate group from spawner.
-            let g = private::exclusive(Some({
-                mut members:     new_taskset(),
-                mut descendants: new_taskset()
+            let g = private::exclusive(Some(TaskGroupData {
+                members:     new_taskset(),
+                descendants: new_taskset(),
             }));
             let a = if supervised {
                 // Child's ancestors start with the spawner.
@@ -495,10 +495,11 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                     };
                 assert new_generation < uint::max_value;
                 // Build a new node in the ancestor list.
-                AncestorList(Some(private::exclusive(
-                    { generation:       new_generation,
-                      mut parent_group: Some(spawner_group.tasks.clone()),
-                      mut ancestors:    move old_ancestors })))
+                AncestorList(Some(private::exclusive(AncestorNode {
+                    generation: new_generation,
+                    parent_group: Some(spawner_group.tasks.clone()),
+                    ancestors: old_ancestors,
+                })))
             } else {
                 // Child has no ancestors.
                 AncestorList(None)
@@ -685,9 +686,9 @@ fn test_spawn_raw_simple() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_spawn_raw_unsupervise() {
-    let opts = {
+    let opts = task::TaskOpts {
         linked: false,
-        mut notify_chan: None,
+        notify_chan: None,
         .. default_task_opts()
     };
     do spawn_raw(move opts) {
@@ -700,8 +701,8 @@ fn test_spawn_raw_unsupervise() {
 fn test_spawn_raw_notify_success() {
     let (notify_po, notify_ch) = pipes::stream();
 
-    let opts = {
-        notify_chan: Some(move notify_ch),
+    let opts = task::TaskOpts {
+        notify_chan: Some(notify_ch),
         .. default_task_opts()
     };
     do spawn_raw(move opts) {
@@ -715,9 +716,9 @@ fn test_spawn_raw_notify_failure() {
     // New bindings for these
     let (notify_po, notify_ch) = pipes::stream();
 
-    let opts = {
+    let opts = task::TaskOpts {
         linked: false,
-        notify_chan: Some(move notify_ch),
+        notify_chan: Some(notify_ch),
         .. default_task_opts()
     };
     do spawn_raw(move opts) {

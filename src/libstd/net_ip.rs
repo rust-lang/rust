@@ -48,9 +48,9 @@ pub enum IpAddr {
 }
 
 /// Human-friendly feedback on why a parse_addr attempt failed
-pub type ParseAddrErr = {
-    err_msg: ~str
-};
+pub struct ParseAddrErr {
+    err_msg: ~str,
+}
 
 /**
  * Convert a `IpAddr` to a str
@@ -122,7 +122,7 @@ pub fn get_addr(node: &str, iotask: iotask)
                 log(debug, fmt!("slice len %?", len));
                 let handle = create_uv_getaddrinfo_t();
                 let handle_ptr = ptr::addr_of(&handle);
-                let handle_data: GetAddrData = {
+                let handle_data = GetAddrData {
                     output_ch: output_ch
                 };
                 let handle_data_ptr = ptr::addr_of(&handle_data);
@@ -187,7 +187,7 @@ pub mod v4 {
     }
     // the simple, old style numberic representation of
     // ipv4
-    pub type Ipv4Rep = { a: u8, b: u8, c: u8, d:u8 };
+    pub struct Ipv4Rep { a: u8, b: u8, c: u8, d: u8 }
 
     pub trait AsUnsafeU32 {
         unsafe fn as_u32() -> u32;
@@ -207,14 +207,14 @@ pub mod v4 {
             }
         });
         if parts.len() != 4 {
-                result::Err(fmt!("'%s' doesn't have 4 parts", ip))
-                }
-        else if parts.contains(&256) {
-                result::Err(fmt!("invalid octal in addr '%s'", ip))
-                }
-        else {
-            result::Ok({a: parts[0] as u8, b: parts[1] as u8,
-                        c: parts[2] as u8, d: parts[3] as u8})
+            Err(fmt!("'%s' doesn't have 4 parts", ip))
+        } else if parts.contains(&256) {
+            Err(fmt!("invalid octal in addr '%s'", ip))
+        } else {
+            Ok(Ipv4Rep {
+                a: parts[0] as u8, b: parts[1] as u8,
+                c: parts[2] as u8, d: parts[3] as u8,
+            })
         }
     }
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
@@ -223,7 +223,7 @@ pub mod v4 {
             let ip_rep_result = parse_to_ipv4_rep(ip);
             if result::is_err(&ip_rep_result) {
                 let err_str = result::get_err(&ip_rep_result);
-                return result::Err({err_msg: err_str})
+                return result::Err(ParseAddrErr { err_msg: err_str })
             }
             // ipv4_rep.as_u32 is unsafe :/
             let input_is_inaddr_none =
@@ -236,15 +236,16 @@ pub mod v4 {
             let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name);
             if result::is_err(&ref_ip_rep_result) {
                 let err_str = result::get_err(&ref_ip_rep_result);
-                return result::Err({err_msg: err_str})
+                return Err(ParseAddrErr { err_msg: err_str })
             }
+
             if result::get(&ref_ip_rep_result).as_u32() == INADDR_NONE &&
                  !input_is_inaddr_none {
-                return result::Err(
-                    {err_msg: ~"uv_ip4_name produced invalid result."})
-            }
-            else {
-                result::Ok(Ipv4(copy(new_addr)))
+                Err(ParseAddrErr {
+                    err_msg: ~"uv_ip4_name produced invalid result.",
+                })
+            } else {
+                Ok(Ipv4(copy(new_addr)))
             }
         }
     }
@@ -289,19 +290,18 @@ pub mod v6 {
             // '::' appears to be uv_ip6_name() returns for bogus
             // parses..
             if  ip != &"::" && reparsed_name == ~"::" {
-                result::Err({err_msg:fmt!("failed to parse '%s'",
-                                           ip)})
+                Err(ParseAddrErr { err_msg:fmt!("failed to parse '%s'", ip) })
             }
             else {
-                result::Ok(Ipv6(new_addr))
+                Ok(Ipv6(new_addr))
             }
         }
     }
 }
 
-type GetAddrData = {
+struct GetAddrData {
     output_ch: oldcomm::Chan<result::Result<~[IpAddr],IpGetAddrErr>>
-};
+}
 
 extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                       res: *addrinfo) {
