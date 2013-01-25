@@ -208,8 +208,6 @@ impl<T> DList<T> {
     pure fn len(@self) -> uint { self.size }
     /// Returns true if the list is empty. O(1).
     pure fn is_empty(@self) -> bool { self.len() == 0 }
-    /// Returns true if the list is not empty. O(1).
-    pure fn is_not_empty(@self) -> bool { self.len() != 0 }
 
     /// Add data to the head of the list. O(1).
     fn push_head(@self, data: T) {
@@ -648,8 +646,6 @@ mod tests {
         let full1 = from_vec(~[1,2,3]);
         assert empty.is_empty();
         assert !full1.is_empty();
-        assert !empty.is_not_empty();
-        assert full1.is_not_empty();
     }
     #[test]
     fn test_dlist_head_tail() {

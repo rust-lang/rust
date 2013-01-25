@@ -14,6 +14,7 @@
 #[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
+use container::{Container, Mutable};
 use cast::transmute;
 use cast;
 use cmp::{Eq, Ord};
@@ -46,11 +47,6 @@ pub extern mod rusti {
 /// Returns true if a vector contains no elements
 pub pure fn is_empty<T>(v: &[const T]) -> bool {
     as_const_buf(v, |_p, len| len == 0u)
-}
-
-/// Returns true if a vector contains some elements
-pub pure fn is_not_empty<T>(v: &[const T]) -> bool {
-    as_const_buf(v, |_p, len| len > 0u)
 }
 
 /// Returns true if two vectors have the same length
@@ -453,7 +449,7 @@ pub pure fn partitioned<T: Copy>(v: &[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
 /// Removes the first element from a vector and return it
 pub fn shift<T>(v: &mut ~[T]) -> T {
     unsafe {
-        assert v.is_not_empty();
+        assert !v.is_empty();
 
         if v.len() == 1 { return v.pop() }
 
@@ -1647,20 +1643,11 @@ pub mod traits {
     }
 }
 
-pub trait ConstVector {
-    pure fn is_empty(&self) -> bool;
-    pure fn is_not_empty(&self) -> bool;
-    pure fn len(&self) -> uint;
-}
-
-/// Extension methods for vectors
-impl<T> &[const T]: ConstVector {
+impl<T> &[const T]: Container {
     /// Returns true if a vector contains no elements
     #[inline]
     pure fn is_empty(&self) -> bool { is_empty(*self) }
-    /// Returns true if a vector contains some elements
-    #[inline]
-    pure fn is_not_empty(&self) -> bool { is_not_empty(*self) }
+
     /// Returns the length of a vector
     #[inline]
     pure fn len(&self) -> uint { len(*self) }
@@ -1947,6 +1934,11 @@ impl<T> ~[T]: OwnedVector<T> {
     fn partition(self, f: fn(&T) -> bool) -> (~[T], ~[T]) {
         partition(self, f)
     }
+}
+
+impl<T> ~[T]: Mutable {
+    /// Clear the vector, removing all values.
+    fn clear(&mut self) { self.truncate(0) }
 }
 
 pub trait OwnedCopyableVector<T: Copy> {
@@ -2519,12 +2511,6 @@ mod tests {
     }
 
     #[test]
-    fn test_is_not_empty() {
-        assert (is_not_empty(~[0]));
-        assert (!is_not_empty::<int>(~[]));
-    }
-
-    #[test]
     fn test_len_divzero() {
         type Z = [i8 * 0];
         let v0 : &[Z] = &[];
@@ -2697,6 +2683,14 @@ mod tests {
         v.truncate(1);
         assert(v.len() == 1);
         assert(*(v[0]) == 6);
+        // If the unsafe block didn't drop things properly, we blow up here.
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut v = ~[@6,@5,@4];
+        v.clear();
+        assert(v.len() == 0);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 

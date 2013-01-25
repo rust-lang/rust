@@ -1331,7 +1331,7 @@ fn type_to_str_inner(names: type_names, +outer0: ~[TypeRef], ty: TypeRef) ->
           Struct => {
             let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
             let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
-            if elts.is_not_empty() {
+            if !elts.is_empty() {
                 llvm::LLVMGetStructElementTypes(
                     ty, ptr::to_mut_unsafe_ptr(&mut elts[0]));
             }
