@@ -459,7 +459,7 @@ fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
                 parent_id: ast::def_id, substs: ~[ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
-    if (substs.is_not_empty()) {
+    if !substs.is_empty() {
         let did = if did.crate != ast::local_crate {
             inline::maybe_instantiate_inline(ccx, did, true)
         } else { did };

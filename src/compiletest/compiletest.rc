@@ -70,7 +70,7 @@ fn parse_config(args: ~[~str]) -> config {
           getopts::optopt(~"logfile"),
           getopts::optflag(~"jit")];
 
-    assert (vec::is_not_empty(args));
+    assert !args.is_empty();
     let args_ = vec::tail(args);
     let matches =
         &match getopts::getopts(args_, opts) {

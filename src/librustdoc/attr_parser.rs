@@ -127,7 +127,7 @@ pub fn parse_hidden(+attrs: ~[ast::attribute]) -> bool {
         match attr::get_meta_item_list(*meta) {
           Some(metas) => {
             let hiddens = attr::find_meta_items_by_name(metas, ~"hidden");
-            vec::is_not_empty(hiddens)
+            !hiddens.is_empty()
           }
           None => false
         }

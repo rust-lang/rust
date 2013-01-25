@@ -147,8 +147,8 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
 }
 
 fn is_test_fn(i: @ast::item) -> bool {
-    let has_test_attr = attr::find_attrs_by_name(i.attrs,
-                                                 ~"test").is_not_empty();
+    let has_test_attr = !attr::find_attrs_by_name(i.attrs,
+                                                  ~"test").is_empty();
 
     fn has_test_signature(i: @ast::item) -> bool {
         match &i.node {
@@ -171,7 +171,7 @@ fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
     let ignoreitems = attr::attr_metas(ignoreattrs);
     let cfg_metas = vec::concat(vec::filter_map(ignoreitems,
         |i| attr::get_meta_item_list(*i)));
-    return if vec::is_not_empty(ignoreitems) {
+    return if !ignoreitems.is_empty() {
         config::metas_in_cfg(/*bad*/copy cx.crate.node.config, cfg_metas)
     } else {
         false

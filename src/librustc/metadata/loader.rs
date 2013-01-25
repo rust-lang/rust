@@ -179,7 +179,7 @@ fn crate_matches(crate_data: @~[u8], +metas: ~[@ast::meta_item],
                  hash: ~str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
-    if hash.is_not_empty() {
+    if !hash.is_empty() {
         let chash = decoder::get_crate_hash(crate_data);
         if chash != hash { return false; }
     }

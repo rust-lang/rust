@@ -83,11 +83,6 @@ pub pure fn is_empty<T: Copy>(ls: @List<T>) -> bool {
     }
 }
 
-/// Returns true if the list is not empty
-pub pure fn is_not_empty<T: Copy>(ls: @List<T>) -> bool {
-    return !is_empty(ls);
-}
-
 /// Returns the length of a list
 pub pure fn len<T>(ls: @List<T>) -> uint {
     let mut count = 0u;
@@ -177,10 +172,6 @@ mod tests {
         assert is_empty(empty);
         assert !is_empty(full1);
         assert !is_empty(full2);
-
-        assert !is_not_empty(empty);
-        assert is_not_empty(full1);
-        assert is_not_empty(full2);
     }
 
     #[test]

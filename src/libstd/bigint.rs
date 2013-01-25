@@ -402,7 +402,7 @@ pub impl BigUint {
     }
 
     pure fn is_zero(&self) -> bool { self.data.is_empty() }
-    pure fn is_not_zero(&self) -> bool { self.data.is_not_empty() }
+    pure fn is_not_zero(&self) -> bool { !self.data.is_empty() }
     pure fn is_positive(&self) -> bool { self.is_not_zero() }
     pure fn is_negative(&self) -> bool { false }
     pure fn is_nonpositive(&self) -> bool { self.is_zero() }

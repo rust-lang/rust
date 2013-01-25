@@ -157,7 +157,7 @@ pub pure fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
 
     // turn digits into string
     // using stack of digits
-    while fractionalParts.is_not_empty() {
+    while !fractionalParts.is_empty() {
         // Bleh; shouldn't need to be unsafe
         let mut adjusted_digit = carry + unsafe { fractionalParts.pop() };
 

@@ -599,7 +599,7 @@ pub mod bytepipes {
             } else if self.buf.is_empty() {
                 match self.port.try_recv() {
                     Some(move buf) => {
-                        assert buf.is_not_empty();
+                        assert !buf.is_empty();
                         self.buf = move buf;
                         return self.try_recv(count);
                     }
@@ -904,7 +904,7 @@ mod test {
         fn pipe_port_loader(bytes: ~[u8]
                            ) -> pod::PipePort<int> {
             let (port, chan) = pipes::stream();
-            if bytes.is_not_empty() {
+            if !bytes.is_empty() {
                 chan.send(move bytes);
             }
             pod::pipe_port(move port)

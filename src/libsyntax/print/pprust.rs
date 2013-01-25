@@ -532,7 +532,7 @@ fn print_item(s: ps, &&item: @ast::item) {
 
       ast::item_impl(tps, opt_trait, ty, methods) => {
         head(s, visibility_qualified(item.vis, ~"impl"));
-        if tps.is_not_empty() {
+        if !tps.is_empty() {
             print_type_params(s, tps);
             space(s.s);
         }
@@ -770,7 +770,7 @@ fn print_variant(s: ps, v: ast::variant) {
     match v.node.kind {
         ast::tuple_variant_kind(args) => {
             print_ident(s, v.node.name);
-            if args.is_not_empty() {
+            if !args.is_empty() {
                 popen(s);
                 fn print_variant_arg(s: ps, arg: ast::variant_arg) {
                     print_type(s, arg.ty);
@@ -1054,7 +1054,7 @@ fn print_call_post(s: ps,
                    has_block: bool,
                    blk: &Option<@ast::expr>,
                    base_args: &mut ~[@ast::expr]) {
-    if !has_block || base_args.is_not_empty() {
+    if !has_block || !base_args.is_empty() {
         popen(s);
         commasep_exprs(s, inconsistent, *base_args);
         pclose(s);
@@ -1564,7 +1564,7 @@ fn print_pat(s: ps, &&pat: @ast::pat, refutable: bool) {
         match args_ {
           None => word(s.s, ~"(*)"),
           Some(args) => {
-            if args.is_not_empty() {
+            if !args.is_empty() {
               popen(s);
               commasep(s, inconsistent, args,
                        |s, p| print_pat(s, p, refutable));
@@ -1762,7 +1762,7 @@ fn print_arg_mode(s: ps, m: ast::mode) {
 }
 
 fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
-    if bounds.is_not_empty() {
+    if !bounds.is_empty() {
         word(s.s, ~":");
         let mut first = true;
         for vec::each(*bounds) |&bound| {
@@ -1855,7 +1855,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
       ast::view_item_use(id, mta, _) => {
         head(s, ~"extern mod");
         print_ident(s, id);
-        if mta.is_not_empty() {
+        if !mta.is_empty() {
             popen(s);
             commasep(s, consistent, mta, print_meta_item);
             pclose(s);
@@ -2101,7 +2101,7 @@ fn print_comment(s: ps, cmnt: comments::cmnt) {
         for cmnt.lines.each |line| {
             // Don't print empty lines because they will end up as trailing
             // whitespace
-            if str::is_not_empty(*line) { word(s.s, *line); }
+            if !line.is_empty() { word(s.s, *line); }
             hardbreak(s.s);
         }
       }
@@ -2113,7 +2113,7 @@ fn print_comment(s: ps, cmnt: comments::cmnt) {
         } else {
             ibox(s, 0u);
             for cmnt.lines.each |line| {
-                if str::is_not_empty(*line) { word(s.s, *line); }
+                if !line.is_empty() { word(s.s, *line); }
                 hardbreak(s.s);
             }
             end(s);

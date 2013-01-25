@@ -635,7 +635,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         } else {
             for m.items.each |item| {
                 let tpt = ty::lookup_item_type(ccx.tcx, local_def(item.id));
-                if (*tpt.bounds).is_not_empty() {
+                if !tpt.bounds.is_empty() {
                     ccx.tcx.sess.span_err(
                         item.span,
                         fmt!("foreign items may not have type parameters"));
