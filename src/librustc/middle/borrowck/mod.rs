@@ -504,9 +504,13 @@ impl borrowck_ctxt {
         return @{cat:cat_discr(cmt, match_id),.. *cmt};
     }
 
+    fn mc_ctxt() -> mem_categorization_ctxt {
+        mem_categorization_ctxt {tcx: self.tcx,
+                                 method_map: self.method_map}
+    }
+
     fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
-        let mc = &mem_categorization_ctxt {tcx: self.tcx,
-                                           method_map: self.method_map};
+        let mc = self.mc_ctxt();
         mc.cat_pattern(cmt, pat, op);
     }
 

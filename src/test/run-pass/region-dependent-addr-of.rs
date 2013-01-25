@@ -109,4 +109,7 @@ fn main() {
 
     let p = get_v6_c(&a, 1);
     assert *p == a.value.v6.get().f;
+
+    let p = get_v5_ref(&a, 1);
+    assert *p == a.value.v5.f;
 }
