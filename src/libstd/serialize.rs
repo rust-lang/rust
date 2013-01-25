@@ -58,11 +58,6 @@ pub trait Encoder {
     fn emit_vec_elt(&self, idx: uint, f: fn());
 
     fn emit_rec(&self, f: fn());
-    #[cfg(stage0)]
-    fn emit_struct(&self, name: &str, f: fn());
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn emit_struct(&self, name: &str, _len: uint, f: fn());
     fn emit_field(&self, f_name: &str, f_idx: uint, f: fn());
 
@@ -104,11 +99,6 @@ pub trait Decoder {
     fn read_vec_elt<T>(&self, idx: uint, f: fn() -> T) -> T;
 
     fn read_rec<T>(&self, f: fn() -> T) -> T;
-    #[cfg(stage0)]
-    fn read_struct<T>(&self, name: &str, f: fn() -> T) -> T;
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn read_struct<T>(&self, name: &str, _len: uint, f: fn() -> T) -> T;
     fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T;
 

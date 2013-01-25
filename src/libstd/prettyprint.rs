@@ -162,15 +162,6 @@ pub impl Serializer: serialize::Encoder {
         self.wr.write_str(~"}");
     }
 
-    #[cfg(stage0)]
-    fn emit_struct(&self, name: &str, f: fn()) {
-        self.wr.write_str(fmt!("%s {", name));
-        f();
-        self.wr.write_str(~"}");
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn emit_struct(&self, name: &str, _len: uint, f: fn()) {
         self.wr.write_str(fmt!("%s {", name));
         f();
