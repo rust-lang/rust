@@ -196,15 +196,7 @@ impl Coerce {
         let inner_ty = match *sty_a {
             ty::ty_box(mt_a) => mt_a.ty,
             ty::ty_uniq(mt_a) => mt_a.ty,
-            ty::ty_rptr(r_a, mt_a) => {
-                // Ensure that the pointer we are borrowing from lives
-                // at least as long as the borrowed result.
-                //
-                // FIXME(#3148)---in principle this dependency should
-                // be done more generally
-                if_ok!(sub.contraregions(r_a, r_borrow));
-                mt_a.ty
-            }
+            ty::ty_rptr(r_a, mt_a) => mt_a.ty,
             _ => {
                 return self.subtype(a, b);
             }
@@ -267,18 +259,7 @@ impl Coerce {
         let sub = Sub(**self);
         let r_borrow = self.infcx.next_region_var_nb(self.span);
         let ty_inner = match *sty_a {
-            ty::ty_evec(mt, vstore_box) => mt.ty,
-            ty::ty_evec(mt, vstore_uniq) => mt.ty,
-            ty::ty_evec(mt, vstore_fixed(_)) => mt.ty,
-            ty::ty_evec(mt, vstore_slice(r_a)) => {
-                // Ensure that the pointer we are borrowing from lives
-                // at least as long as the borrowed result.
-                //
-                // FIXME(#3148)---in principle this dependency should
-                // be done more generally
-                if_ok!(sub.contraregions(r_a, r_borrow));
-                mt.ty
-            }
+            ty::ty_evec(mt, _) => mt.ty,
             _ => {
                 return self.subtype(a, b);
             }
