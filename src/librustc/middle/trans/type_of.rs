@@ -100,8 +100,8 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
     // Rust types are defined as the same LLVM types.  If we don't do
-    // this then, e.g. `option<{myfield: bool}>` would be a different
-    // type than `option<myrec>`.
+    // this then, e.g. `Option<{myfield: bool}>` would be a different
+    // type than `Option<myrec>`.
     let t_norm = ty::normalize_ty(cx.tcx, t);
 
     if t != t_norm {
