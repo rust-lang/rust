@@ -49,9 +49,9 @@ try:
                     report_err("FIXME without issue number")
             if line.find("TODO") != -1:
                 report_err("TODO is deprecated; use FIXME")
-            if line.find("// WARN") != -1:
-                mo = re.match("// WARN (.*)", line)
-                report_warn("WARN: " + mo.group(1))
+            idx = line.find("// WARN")
+            if idx != -1:
+                report_warn("WARN:" + line[idx + len("// WARN"):])
         if (line.find('\t') != -1 and
             fileinput.filename().find("Makefile") == -1):
             report_err("tab character")
