@@ -3017,7 +3017,9 @@ pure fn ty_vstore(ty: t) -> vstore {
 fn ty_region(ty: t) -> Region {
     match get(ty).sty {
       ty_rptr(r, _) => r,
-      ref s => fail fmt!("ty_region() invoked on non-rptr: %?", (*s))
+      ty_evec(_, vstore_slice(r)) => r,
+      ty_estr(vstore_slice(r)) => r,
+      ref s => fail fmt!("ty_region() invoked on in appropriate ty: %?", (*s))
     }
 }
 
