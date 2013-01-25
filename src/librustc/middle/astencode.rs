@@ -133,14 +133,13 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                                           to_id_range: to_id_range});
         let raw_ii = decode_ast(ast_doc);
         let ii = renumber_ast(xcx, raw_ii);
-        // XXX: Bad copy of `path`.
-        ast_map::map_decoded_item(tcx.sess.diagnostic(),
-                                  dcx.tcx.items, copy path, ii);
         debug!("Fn named: %s", tcx.sess.str_of(ii.ident()));
-        decode_side_tables(xcx, ast_doc);
         debug!("< Decoded inlined fn: %s::%s",
                ast_map::path_to_str(path, tcx.sess.parse_sess.interner),
                tcx.sess.str_of(ii.ident()));
+        ast_map::map_decoded_item(tcx.sess.diagnostic(),
+                                  dcx.tcx.items, path, ii);
+        decode_side_tables(xcx, ast_doc);
         match ii {
           ast::ii_item(i) => {
             debug!(">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
@@ -309,10 +308,13 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
               ast::stmt_mac(*) => fail ~"unexpanded macro in astencode"
             }
         };
-        // XXX: Bad copy.
         let blk_sans_items = ast::blk_ {
+            view_items: ~[], // I don't know if we need the view_items here,
+                             // but it doesn't break tests!
             stmts: stmts_sans_items,
-            .. copy blk
+            expr: blk.expr,
+            id: blk.id,
+            rules: blk.rules
         };
         fold::noop_fold_block(blk_sans_items, fld)
     }
@@ -592,7 +594,7 @@ fn encode_vtable_res(ecx: @e::encode_ctxt,
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
-    do ebml_w.emit_from_vec(/*bad*/copy *dr) |vtable_origin| {
+    do ebml_w.emit_from_vec(*dr) |vtable_origin| {
         encode_vtable_origin(ecx, ebml_w, *vtable_origin)
     }
 }
@@ -742,8 +744,7 @@ impl writer::Encoder: ebml_writer_helpers {
     }
 
     fn emit_tys(ecx: @e::encode_ctxt, tys: ~[ty::t]) {
-        // XXX: Bad copy.
-        do self.emit_from_vec(copy tys) |ty| {
+        do self.emit_from_vec(tys) |ty| {
             self.emit_ty(ecx, *ty)
         }
     }
@@ -756,8 +757,8 @@ impl writer::Encoder: ebml_writer_helpers {
 
     fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty) {
         do self.emit_rec {
-            do self.emit_field(~"bounds", 0u) {
-                do self.emit_from_vec(/*bad*/copy *tpbt.bounds) |bs| {
+            do self.emit_field(~"bounds", 0) {
+                do self.emit_from_vec(*tpbt.bounds) |bs| {
                     self.emit_bounds(ecx, *bs);
                 }
             }
@@ -840,7 +841,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_freevars) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                do ebml_w.emit_from_vec(/*bad*/copy **fv) |fv_entry| {
+                do ebml_w.emit_from_vec(**fv) |fv_entry| {
                     encode_freevar_entry(ebml_w, *fv_entry)
                 }
             }

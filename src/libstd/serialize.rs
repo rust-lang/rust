@@ -566,11 +566,11 @@ pub impl<
 // In some cases, these should eventually be coded as traits.
 
 pub trait EncoderHelpers {
-    fn emit_from_vec<T>(&self, v: ~[T], f: fn(v: &T));
+    fn emit_from_vec<T>(&self, v: &[T], f: fn(v: &T));
 }
 
 pub impl<S: Encoder> S: EncoderHelpers {
-    fn emit_from_vec<T>(&self, v: ~[T], f: fn(v: &T)) {
+    fn emit_from_vec<T>(&self, v: &[T], f: fn(v: &T)) {
         do self.emit_owned_vec(v.len()) {
             for v.eachi |i, e| {
                 do self.emit_vec_elt(i) {
