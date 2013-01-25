@@ -22,6 +22,12 @@ use syntax::ast::{deref, expr, expr_addr_of, expr_assign, expr_assign_op};
 use syntax::ast::{expr_binary, expr_call, expr_copy, expr_field, expr_index};
 use syntax::ast::{expr_match, expr_method_call, expr_paren, expr_path};
 use syntax::ast::{expr_swap, expr_unary, neg, node_id, not, pat, pat_ident};
+use syntax::ast::{expr_vstore, expr_vec, expr_rec, expr_tup, expr_lit};
+use syntax::ast::{expr_cast, expr_if, expr_while, expr_loop, expr_fn};
+use syntax::ast::{expr_fn_block, expr_loop_body, expr_do_body, expr_block};
+use syntax::ast::{expr_unary_move, expr_fail, expr_break, expr_again};
+use syntax::ast::{expr_ret, expr_log, expr_assert, expr_mac, expr_struct};
+use syntax::ast::{expr_repeat};
 use syntax::ast::{sty_uniq, sty_value, uniq};
 use syntax::ast::{fn_decl, blk};
 use syntax::visit;
@@ -225,9 +231,16 @@ fn compute_modes_for_expr(expr: @expr,
                 compute_modes_for_expr(head, head_cx, v);
             }
         }
-        _ => {
-            // XXX: Spell out every expression above so when we add them we
-            // don't forget to update this file.
+        // Spell out every remaining expression so we don't forget to
+        // update this code if we add a new variant.
+        // (Maybe a macro to do this would be nice...)
+        expr_vstore(*) | expr_vec(*) | expr_rec(*) | expr_tup(*) |
+            expr_lit(*) | expr_cast(*) | expr_if(*) | expr_while(*) |
+            expr_loop(*) | expr_fn(*) | expr_fn_block(*) |
+            expr_loop_body(*) | expr_do_body(*) | expr_block(*) |
+            expr_unary_move(*) | expr_fail(*) | expr_break(*) |
+            expr_again(*) | expr_ret(*) | expr_log(*) | expr_assert(*) |
+            expr_mac(*) | expr_struct(*) | expr_repeat(*) => {
             visit::visit_expr(expr, cx, v)
         }
     }
