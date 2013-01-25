@@ -14,7 +14,7 @@
 #[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
-use container::Container;
+use container::{Container, Mutable};
 use cast::transmute;
 use cast;
 use cmp::{Eq, Ord};
@@ -1941,6 +1941,11 @@ impl<T> ~[T]: OwnedVector<T> {
     }
 }
 
+impl<T> ~[T]: Mutable {
+    /// Clear the vector, removing all values.
+    fn clear(&mut self) { self.truncate(0) }
+}
+
 pub trait OwnedCopyableVector<T: Copy> {
     fn push_all(&mut self, rhs: &[const T]);
     fn grow(&mut self, n: uint, initval: &T);
@@ -2689,6 +2694,14 @@ mod tests {
         v.truncate(1);
         assert(v.len() == 1);
         assert(*(v[0]) == 6);
+        // If the unsafe block didn't drop things properly, we blow up here.
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut v = ~[@6,@5,@4];
+        v.clear();
+        assert(v.len() == 0);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
