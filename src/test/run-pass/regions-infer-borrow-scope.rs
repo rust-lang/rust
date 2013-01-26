@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type point = {x: int, y: int};
+struct Point {x: int, y: int}
 
-fn x_coord(p: &r/point) -> &r/int {
+fn x_coord(p: &r/Point) -> &r/int {
     return &p.x;
 }
 
 fn main() {
-    let p = @{x: 3, y: 4};
+    let p = @Point {x: 3, y: 4};
     let xc = x_coord(p);
     assert *xc == 3;
 }

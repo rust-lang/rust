@@ -10,17 +10,17 @@
 
 enum maybe_pointy {
     none,
-    p(@pointy),
+    p(@Pointy),
 }
 
-type pointy = {
+struct Pointy {
     mut a : maybe_pointy,
     c : ~int,
     d : fn~()->(),
-};
+}
 
-fn empty_pointy() -> @pointy {
-    return @{
+fn empty_pointy() -> @Pointy {
+    return @Pointy {
         mut a : none,
         c : ~22,
         d : fn~()->(){},

@@ -11,7 +11,7 @@
 // Issue #1112
 // Alignment of interior pointers to dynamic-size types
 
-type x<T> = {
+struct X<T> {
     a: T,
     b: u8,
     c: bool,
@@ -19,10 +19,10 @@ type x<T> = {
     e: u16,
     f: u8,
     g: u8
-};
+}
 
 fn main() {
-    let x: x<int> = {
+    let x: X<int> = X {
         a: 12345678,
         b: 9u8,
         c: true,
@@ -34,7 +34,7 @@ fn main() {
     bar(x);
 }
 
-fn bar<T>(x: x<T>) {
+fn bar<T>(x: X<T>) {
     assert x.b == 9u8;
     assert x.c == true;
     assert x.d == 10u8;

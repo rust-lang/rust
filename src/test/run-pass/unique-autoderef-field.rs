@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct J { j: int }
+
 fn main() {
-    let i = ~{
+    let i = ~J {
         j: 100
     };
     assert i.j == 100;

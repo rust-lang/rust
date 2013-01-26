@@ -18,13 +18,13 @@ use oldcomm::send;
 
 fn main() { test05(); }
 
-type pair<A,B> = { a: A, b: B };
+struct Pair<A,B> { a: A, b: B }
 
-fn make_generic_record<A: Copy, B: Copy>(a: A, b: B) -> pair<A,B> {
-    return {a: a, b: b};
+fn make_generic_record<A: Copy, B: Copy>(a: A, b: B) -> Pair<A,B> {
+    return Pair {a: a, b: b};
 }
 
-fn test05_start(&&f: fn~(&&v: float, &&v: ~str) -> pair<float, ~str>) {
+fn test05_start(&&f: fn~(&&v: float, &&v: ~str) -> Pair<float, ~str>) {
     let p = f(22.22f, ~"Hi");
     log(debug, copy p);
     assert p.a == 22.22f;
@@ -36,8 +36,8 @@ fn test05_start(&&f: fn~(&&v: float, &&v: ~str) -> pair<float, ~str>) {
     assert q.b == ~"Ho";
 }
 
-fn spawn<A: Copy, B: Copy>(f: extern fn(fn~(A,B)->pair<A,B>)) {
-    let arg = fn~(a: A, b: B) -> pair<A,B> {
+fn spawn<A: Copy, B: Copy>(f: extern fn(fn~(A,B)->Pair<A,B>)) {
+    let arg = fn~(a: A, b: B) -> Pair<A,B> {
         return make_generic_record(a, b);
     };
     task::spawn(|| f(arg) );

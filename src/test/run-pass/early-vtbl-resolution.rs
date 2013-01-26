@@ -17,9 +17,11 @@ impl<A> int: thing<A> {
 }
 fn foo_func<A, B: thing<A>>(x: B) -> Option<A> { x.foo() }
 
+struct A { a: int }
+
 fn main() {
 
-    for iter::eachi(&(Some({a: 0}))) |i, a| { 
+    for iter::eachi(&(Some(A {a: 0}))) |i, a| { 
         debug!("%u %d", i, a.a);
     }
 

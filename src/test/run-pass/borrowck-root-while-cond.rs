@@ -10,7 +10,9 @@
 
 fn borrow<T>(x: &r/T) -> &r/T {x}
 
+struct Rec { mut f: @int }
+
 fn main() {
-    let rec = @{mut f: @22};
+    let rec = @Rec {mut f: @22};
     while *borrow(rec.f) == 23 {}
 }

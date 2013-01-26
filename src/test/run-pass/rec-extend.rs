@@ -12,12 +12,12 @@
 
 
 // -*- rust -*-
-type point = {x: int, y: int};
+struct Point {x: int, y: int}
 
 fn main() {
-    let origin: point = {x: 0, y: 0};
-    let right: point = {x: origin.x + 10,.. origin};
-    let up: point = {y: origin.y + 10,.. origin};
+    let origin: Point = Point {x: 0, y: 0};
+    let right: Point = Point {x: origin.x + 10,.. origin};
+    let up: Point = Point {y: origin.y + 10,.. origin};
     assert (origin.x == 0);
     assert (origin.y == 0);
     assert (right.x == 10);

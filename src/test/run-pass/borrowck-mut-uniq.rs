@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type ints = {sum: ~int, values: ~[int]};
+struct Ints {sum: ~int, values: ~[int]}
 
-fn add_int(x: &mut ints, v: int) {
+fn add_int(x: &mut Ints, v: int) {
     *x.sum += v;
     let mut values = ~[];
     x.values <-> values;
@@ -18,13 +18,13 @@ fn add_int(x: &mut ints, v: int) {
     x.values <-> values;
 }
 
-fn iter_ints(x: &ints, f: fn(x: &int) -> bool) {
+fn iter_ints(x: &Ints, f: fn(x: &int) -> bool) {
     let l = x.values.len();
     uint::range(0, l, |i| f(&x.values[i]))
 }
 
 fn main() {
-    let mut ints = ~{sum: ~0, values: ~[]};
+    let mut ints = ~Ints {sum: ~0, values: ~[]};
     add_int(ints, 22);
     add_int(ints, 44);
 

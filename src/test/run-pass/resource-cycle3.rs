@@ -12,19 +12,19 @@
 
 // Don't leak the unique pointers
 
-type u = {
+struct U {
     a: int,
     b: int,
     c: *int
-};
+}
 
-struct r {
-  v: u,
+struct R {
+  v: U,
   w: int,
   x: *int,
 }
 
-impl r : Drop {
+impl R : Drop {
     fn finalize(&self) {
         unsafe {
             let _v2: ~int = cast::reinterpret_cast(&self.v.c);
@@ -33,9 +33,9 @@ impl r : Drop {
     }
 }
 
-fn r(v: u, w: int, _x: *int) -> r {
+fn r(v: U, w: int, _x: *int) -> R {
     unsafe {
-        r {
+        R {
             v: v,
             w: w,
             x: cast::reinterpret_cast(&0)
@@ -43,10 +43,12 @@ fn r(v: u, w: int, _x: *int) -> r {
     }
 }
 
-enum t = {
+enum t = Node;
+
+struct Node {
     mut next: Option<@t>,
-    r: r
-};
+    r: R
+}
 
 fn main() { 
     unsafe {
@@ -57,14 +59,14 @@ fn main() {
         let i2p = cast::reinterpret_cast(&i2);
         cast::forget(move i2);
 
-        let u1 = {a: 0xB, b: 0xC, c: i1p};
-        let u2 = {a: 0xB, b: 0xC, c: i2p};
+        let u1 = U {a: 0xB, b: 0xC, c: i1p};
+        let u2 = U {a: 0xB, b: 0xC, c: i2p};
 
-        let x1 = @t({
+        let x1 = @t(Node{
             mut next: None,
             r: r(u1, 42, i1p)
         });
-        let x2 = @t({
+        let x2 = @t(Node{
             mut next: None,
             r: r(u2, 42, i2p)
         });

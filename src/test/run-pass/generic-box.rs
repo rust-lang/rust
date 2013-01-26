@@ -10,9 +10,11 @@
 
 
 
-fn box<T: Copy>(x: {x: T, y: T, z: T}) -> @{x: T, y: T, z: T} { return @x; }
+fn box<T: Copy>(x: Box<T>) -> @Box<T> { return @x; }
+
+struct Box<T> {x: T, y: T, z: T}
 
 fn main() {
-    let x: @{x: int, y: int, z: int} = box::<int>({x: 1, y: 2, z: 3});
+    let x: @Box<int> = box::<int>(Box{x: 1, y: 2, z: 3});
     assert (x.y == 2);
 }

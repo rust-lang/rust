@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Foo { foo: bool, bar: Option<int>, baz: int }
+
 fn main() {
-    match @{foo: true, bar: Some(10), baz: 20} {
-      @{foo: true, bar: Some(_), _} => {}
-      @{foo: false, bar: None, _} => {}
-      @{foo: true, bar: None, _} => {}
-      @{foo: false, bar: Some(_), _} => {}
+    match @Foo{foo: true, bar: Some(10), baz: 20} {
+      @Foo{foo: true, bar: Some(_), _} => {}
+      @Foo{foo: false, bar: None, _} => {}
+      @Foo{foo: true, bar: None, _} => {}
+      @Foo{foo: false, bar: Some(_), _} => {}
     }
 }

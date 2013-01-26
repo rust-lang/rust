@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Foo { a: int, b: int }
+
 fn main() {
-    let ~{a, b} = ~{a: 100, b: 200};
+    let ~Foo{a, b} = ~Foo{a: 100, b: 200};
     assert a + b == 300;
 }

@@ -34,10 +34,12 @@ fn r(v: *int) -> r {
     }
 }
 
-enum t = {
+enum t = Node;
+
+struct Node {
     mut next: Option<@t>,
     r: r
-};
+}
 
 fn main() {
     unsafe {
@@ -48,7 +50,7 @@ fn main() {
         let i2p = cast::reinterpret_cast(&i2);
         cast::forget(move i2);
 
-        let x1 = @t({
+        let x1 = @t(Node{
             mut next: None,
               r: {
               let rs = r(i1p);
@@ -61,7 +63,7 @@ fn main() {
             cast::reinterpret_cast::<@t, uint>(&x1),
             cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&(x1.r))));
 
-        let x2 = @t({
+        let x2 = @t(Node{
             mut next: None,
               r: {
               let rs = r(i2p);

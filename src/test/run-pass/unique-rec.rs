@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct X { x: int }
 
 fn main() {
-    let x = ~{x: 1};
+    let x = ~X {x: 1};
     let bar = x;
     assert bar.x == 1;
 }

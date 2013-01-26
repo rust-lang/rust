@@ -8,20 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Pair { f: int, g: int }
+
 fn main() {
 
-    let x = {
+    let x = Pair {
         f: 0,
         g: 0,
     };
 
-    let y = {
+    let y = Pair {
         f: 1,
         g: 1,
         .. x
     };
 
-    let z = {
+    let z = Pair {
         f: 1,
         .. x
     };

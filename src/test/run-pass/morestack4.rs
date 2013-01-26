@@ -11,7 +11,7 @@
 // This is testing for stack frames greater than 256 bytes,
 // for which function prologues are generated differently
 
-type biggy = {
+struct Biggy {
     a00: u64,
     a01: u64,
     a02: u64,
@@ -52,17 +52,17 @@ type biggy = {
     a37: u64,
     a38: u64,
     a39: u64,
-};
+}
 
 
-fn getbig(i: biggy) {
+fn getbig(i: Biggy) {
     if i.a00 != 0u64 {
-        getbig({a00: i.a00 - 1u64,.. i});
+        getbig(Biggy{a00: i.a00 - 1u64,.. i});
     }
 }
 
 fn main() {
-    getbig({
+    getbig(Biggy {
         a00: 10000u64,
         a01: 10000u64,
         a02: 10000u64,

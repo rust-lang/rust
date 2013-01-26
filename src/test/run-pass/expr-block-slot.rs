@@ -9,9 +9,13 @@
 // except according to those terms.
 
 // Regression test for issue #377
+
+struct A { a: int }
+struct V { v: int }
+
 fn main() {
-    let a = { let b = {a: 3}; b };
+    let a = { let b = A {a: 3}; b };
     assert (a.a == 3);
-    let c = { let d = {v: 3}; d };
+    let c = { let d = V {v: 3}; d };
     assert (c.v == 3);
 }

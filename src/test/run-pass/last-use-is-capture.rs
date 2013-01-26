@@ -10,9 +10,11 @@
 
 // Make sure #1399 stays fixed
 
+struct A { a: ~int }
+
 fn main() {
     fn invoke(f: fn@()) { f(); }
     let k = ~22;
-    let _u = {a: copy k};
+    let _u = A {a: copy k};
     invoke(|| log(error, copy k) )
 }

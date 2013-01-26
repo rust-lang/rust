@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type ctxt = { v: uint };
+struct Ctxt { v: uint }
 
 trait get_ctxt {
-    fn get_ctxt() -> &self/ctxt;
+    fn get_ctxt() -> &self/Ctxt;
 }
 
-type has_ctxt = { c: &ctxt };
+struct HasCtxt { c: &Ctxt }
 
-impl has_ctxt: get_ctxt {
-    fn get_ctxt() -> &self/ctxt {
+impl HasCtxt: get_ctxt {
+    fn get_ctxt() -> &self/Ctxt {
         self.c
     }
 }
@@ -27,8 +27,8 @@ fn get_v(gc: get_ctxt) -> uint {
 }
 
 fn main() {
-    let ctxt = { v: 22u };
-    let hc = { c: &ctxt };
+    let ctxt = Ctxt { v: 22 };
+    let hc = HasCtxt { c: &ctxt };
 
-    assert get_v(hc as get_ctxt) == 22u;
+    assert get_v(hc as get_ctxt) == 22;
 }

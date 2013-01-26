@@ -17,8 +17,8 @@ extern mod cr5_2 (name = "crateresolve5", vers = "0.2");
 
 fn main() {
     // Structural types can be used between two versions of the same crate
-    assert cr5_1::structural().name == cr5_2::structural().name;
-    assert cr5_1::structural().val == cr5_2::structural().val;
+    assert cr5_1::struct_nameval().name == cr5_2::struct_nameval().name;
+    assert cr5_1::struct_nameval().val == cr5_2::struct_nameval().val;
     // Make sure these are actually two different crates
     assert cr5_1::f() == 10 && cr5_2::f() == 20;
 }

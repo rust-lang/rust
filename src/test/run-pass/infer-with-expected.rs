@@ -13,10 +13,13 @@
 // type must be known in this context' if the passing down doesn't
 // happen.)
 
-fn eat_tup(_r: ~@(int, fn@({x: int, y: int}) -> int)) {}
-fn eat_rec(_r: @~{a: int, b: fn@({x: int, y: int}) -> int}) {}
+fn eat_tup(_r: ~@(int, fn@(Pair) -> int)) {}
+fn eat_rec(_r: @~Rec) {}
+
+struct Rec { a: int, b: fn(Pair) -> int }
+struct Pair { x: int, y: int }
 
 fn main() {
     eat_tup(~@(10, |a| a.x ));
-    eat_rec(@~{a: 10, b: |a| a.x });
+    eat_rec(@~Rec{a: 10, b: |a| a.x });
 }

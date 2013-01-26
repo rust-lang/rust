@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type clam = { chowder: &int };
+struct Clam { chowder: &int }
 
 trait get_chowder {
     fn get_chowder() -> &self/int;
 }
 
-impl clam: get_chowder {
+impl Clam: get_chowder {
     fn get_chowder() -> &self/int { return self.chowder; }
 }
 
 fn main() {
-    let clam = { chowder: &3 };
+    let clam = Clam { chowder: &3 };
     log(debug, *clam.get_chowder());
     clam.get_chowder();
 }

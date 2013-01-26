@@ -10,14 +10,14 @@
 
 // Don't leak the unique pointers
 
-type u = {
+struct U {
     a: int,
     b: int,
     c: *int
-};
+}
 
 struct r {
-  v: u,
+  v: U,
 }
 
 impl r : Drop {
@@ -28,16 +28,18 @@ impl r : Drop {
     }
 }
 
-fn r(v: u) -> r {
+fn r(v: U) -> r {
     r {
         v: v
     }
 }
 
-enum t = {
+enum t = Node;
+
+struct Node {
     mut next: Option<@t>,
     r: r
-};
+}
 
 fn main() {
     unsafe {
@@ -48,14 +50,14 @@ fn main() {
         let i2p = cast::reinterpret_cast(&i2);
         cast::forget(move i2);
 
-        let u1 = {a: 0xB, b: 0xC, c: i1p};
-        let u2 = {a: 0xB, b: 0xC, c: i2p};
+        let u1 = U {a: 0xB, b: 0xC, c: i1p};
+        let u2 = U {a: 0xB, b: 0xC, c: i2p};
 
-        let x1 = @t({
+        let x1 = @t(Node {
             mut next: None,
             r: r(u1)
         });
-        let x2 = @t({
+        let x2 = @t(Node {
             mut next: None,
             r: r(u2)
         });

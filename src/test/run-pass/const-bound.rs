@@ -14,11 +14,13 @@
 
 fn foo<T: Copy Const>(x: T) -> T { x }
 
+struct F { field: int }
+
 fn main() {
     foo(1);
     foo(~"hi");
     foo(~[1, 2, 3]);
-    foo({field: 42});
+    foo(F{field: 42});
     foo((1, 2u));
     foo(@1);
     foo(~1);

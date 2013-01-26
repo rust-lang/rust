@@ -18,14 +18,14 @@ extern mod std;
 type HashFn<K> = pure fn~(K) -> uint;
 type EqFn<K> = pure fn~(K, K) -> bool;
 
+struct LM { resize_at: uint, size: uint }
+
 enum LinearMap<K,V> {
-    LinearMap_({
-        resize_at: uint,
-        size: uint})
+    LinearMap_(LM)
 }
 
 fn linear_map<K,V>() -> LinearMap<K,V> {
-    LinearMap_({
+    LinearMap_(LM{
         resize_at: 32,
         size: 0})
 }

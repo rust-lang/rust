@@ -9,8 +9,10 @@
 // except according to those terms.
 
 
+struct Pair { a: int, b: int}
+
 fn main() {
     // This just tests whether the vec leaks its members.
-    let pvec: ~[mut @{a: int, b: int}] =
-        ~[mut @{a: 1, b: 2}, @{a: 3, b: 4}, @{a: 5, b: 6}];
+    let pvec: ~[mut @Pair] =
+        ~[mut @Pair{a: 1, b: 2}, @Pair{a: 3, b: 4}, @Pair{a: 5, b: 6}];
 }

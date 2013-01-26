@@ -15,6 +15,8 @@ struct r {
   i: @mut int,
 }
 
+struct Box { x: r }
+
 impl r : Drop {
     fn finalize(&self) {
         *(self.i) = *(self.i) + 1;
@@ -38,7 +40,7 @@ fn test_box() {
 fn test_rec() {
     let i = @mut 0;
     {
-        let a = move {x: r(i)};
+        let a = move Box {x: r(i)};
     }
     assert *i == 1;
 }
@@ -74,7 +76,7 @@ fn test_unique() {
 fn test_box_rec() {
     let i = @mut 0;
     {
-        let a = move @{
+        let a = move @Box {
             x: r(i)
         };
     }

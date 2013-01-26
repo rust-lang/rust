@@ -11,11 +11,11 @@
 
 const tau: float = 2.0*3.14159265358979323;
 
-type point = {x: float, y: float};
-type size = {w: float, h: float};
+struct Point {x: float, y: float}
+struct Size {w: float, h: float}
 enum shape {
-    circle(point, float),
-    rectangle(point, size)
+    circle(Point, float),
+    rectangle(Point, Size)
 }
 
 
@@ -37,16 +37,18 @@ impl shape {
 fn select_based_on_unit_circle<T>(
     threshold: float, a: &r/T, b: &r/T) -> &r/T {
 
-    let shape = &circle({x: 0.0, y: 0.0}, 1.0);
+    let shape = &circle(Point{x: 0.0, y: 0.0}, 1.0);
     shape.select(threshold, a, b)
 }
 
 
 struct thing {
-    x: {mut a: @int}
+    x: A
 }
 
-fn thing(x: {mut a: @int}) -> thing {
+struct A { mut a: @int }
+
+fn thing(x: A) -> thing {
     thing {
         x: copy x
     }
@@ -56,7 +58,7 @@ impl thing {
     fn foo(@self) -> int { *self.x.a }
     fn bar(~self) -> int { *self.x.a }
     fn quux(&self) -> int { *self.x.a }
-    fn baz(&self) -> &self/{mut a: @int} { &self.x }
+    fn baz(&self) -> &self/A { &self.x }
     fn spam(self) -> int { *self.x.a }
 }
 
@@ -65,14 +67,14 @@ impl thing: Nus { fn f(&self) {} }
 
 fn main() {
 
-    let x = @thing({mut a: @10});
+    let x = @thing(A {mut a: @10});
     assert x.foo() == 10;
     assert x.quux() == 10;
 
-    let y = ~thing({mut a: @10});
+    let y = ~thing(A {mut a: @10});
     assert (copy y).bar() == 10;
     assert y.quux() == 10;
 
-    let z = thing({mut a: @11});
+    let z = thing(A {mut a: @11});
     assert z.spam() == 11;
 }

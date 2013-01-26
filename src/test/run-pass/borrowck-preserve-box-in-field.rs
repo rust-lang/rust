@@ -17,12 +17,14 @@ fn borrow(x: &int, f: fn(x: &int)) {
     assert before == after;
 }
 
+struct F { f: ~int }
+
 fn main() {
-    let mut x = @{f: ~3};
+    let mut x = @F {f: ~3};
     do borrow(x.f) |b_x| {
         assert *b_x == 3;
         assert ptr::addr_of(&(*x.f)) == ptr::addr_of(&(*b_x));
-        x = @{f: ~4};
+        x = @F {f: ~4};
 
         debug!("ptr::addr_of(*b_x) = %x", ptr::addr_of(&(*b_x)) as uint);
         assert *b_x == 3;
