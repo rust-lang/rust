@@ -7,6 +7,6 @@ Pull requests should be targeted at Rust's `incoming` branch (note that by defau
 
 Pull requests will be treated as "review requests", and we will give feedback we expect to see corrected on [style](https://github.com/mozilla/rust/wiki/Note-style-guide) and substance before pulling. Changes contributed via pull request should focus on a single issue at a time, like any other. We will not look kindly on pull-requests that try to "sneak" unrelated changes in.
 
-Normally, all pull requests must include regression tests (see [[Note-testsuite]]) that test your change. Occasionally, a change will be very difficult to test for. In those cases, please include a note in your commit message explaining why.
+Normally, all pull requests must include regression tests (see [Note-testsuite](https://github.com/mozilla/rust/wiki/Note-testsuite)) that test your change. Occasionally, a change will be very difficult to test for. In those cases, please include a note in your commit message explaining why.
 
-For more details, please refer to [[Note-development-policy]].
+For more details, please refer to [Note-development-policy](https://github.com/mozilla/rust/wiki/Note-development-policy).
