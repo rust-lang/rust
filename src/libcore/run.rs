@@ -17,7 +17,7 @@ use io;
 use io::ReaderUtil;
 use libc;
 use libc::{pid_t, c_void, c_int};
-use oldcomm;
+use pipes::{stream, SharedChan};
 use option::{Some, None};
 use os;
 use prelude::*;
@@ -336,22 +336,23 @@ pub fn program_output(prog: &str, args: &[~str]) ->
         // in parallel so we don't deadlock while blocking on one
         // or the other. FIXME (#2625): Surely there's a much more
         // clever way to do this.
-        let p = oldcomm::Port();
-        let ch = oldcomm::Chan(&p);
+        let (p, ch) = stream();
+        let ch = SharedChan(ch);
+        let ch_clone = ch.clone();
         do task::spawn_sched(task::SingleThreaded) {
             let errput = readclose(pipe_err.in);
-            oldcomm::send(ch, (2, move errput));
+            ch.send((2, move errput));
         };
         do task::spawn_sched(task::SingleThreaded) {
             let output = readclose(pipe_out.in);
-            oldcomm::send(ch, (1, move output));
+            ch_clone.send((1, move output));
         };
         let status = run::waitpid(pid);
         let mut errs = ~"";
         let mut outs = ~"";
         let mut count = 2;
         while count > 0 {
-            let stream = oldcomm::recv(p);
+            let stream = p.recv();
             match stream {
                 (1, copy s) => {
                     outs = move s;
