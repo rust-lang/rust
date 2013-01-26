@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn matcher(x: option<int>) {
+fn matcher(x: Option<int>) {
     match x {
-      ref some(i) => {} //~ ERROR expected identifier, found enum pattern
-      none => {}
+      ref Some(i) => {} //~ ERROR expected identifier, found enum pattern
+      None => {}
     }
 }
 

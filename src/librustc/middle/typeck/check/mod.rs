@@ -2696,7 +2696,7 @@ fn check_instantiable(tcx: ty::ctxt,
     if !ty::is_instantiable(tcx, item_ty) {
         tcx.sess.span_err(sp, fmt!("this type cannot be instantiated \
                   without an instance of itself; \
-                  consider using `option<%s>`",
+                  consider using `Option<%s>`",
                                    ppaux::ty_to_str(tcx, item_ty)));
     }
 }

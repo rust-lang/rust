@@ -226,8 +226,8 @@ priv impl &preserve_ctxt {
             //
             // As an example, consider this scenario:
             //
-            //    let mut x = @some(3);
-            //    match *x { Some(y) {...} none {...} }
+            //    let mut x = @Some(3);
+            //    match *x { Some(y) {...} None {...} }
             //
             // Technically, the value `x` need only be rooted
             // in the `some` arm.  However, we evaluate `x` in trans
@@ -236,8 +236,8 @@ priv impl &preserve_ctxt {
             //
             // As a second example, consider *this* scenario:
             //
-            //    let x = @mut @some(3);
-            //    match x { @@some(y) {...} @@none {...} }
+            //    let x = @mut @Some(3);
+            //    match x { @@Some(y) {...} @@None {...} }
             //
             // Here again, `x` need only be rooted in the `some` arm.
             // In this case, the value which needs to be rooted is

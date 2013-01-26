@@ -15,9 +15,9 @@
   xfailed for now (see Issue #2354)
  */
 fn foo() { //~ ERROR this open brace is not closed
-  match some(x) {
-      some(y) { fail; }
-      none    { fail; }
+  match Some(x) {
+      Some(y) { fail; }
+      None    { fail; }
 }
 
 fn bar() {

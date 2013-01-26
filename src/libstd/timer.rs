@@ -100,11 +100,11 @@ pub fn sleep(iotask: IoTask, msecs: uint) {
 }
 
 /**
- * Receive on a port for (up to) a specified time, then return an `option<T>`
+ * Receive on a port for (up to) a specified time, then return an `Option<T>`
  *
  * This call will block to receive on the provided port for up to the
  * specified timeout. Depending on whether the provided port receives in that
- * time period, `recv_timeout` will return an `option<T>` representing the
+ * time period, `recv_timeout` will return an `Option<T>` representing the
  * result.
  *
  * # Arguments
@@ -115,9 +115,9 @@ pub fn sleep(iotask: IoTask, msecs: uint) {
  *
  * # Returns
  *
- * An `option<T>` representing the outcome of the call. If the call `recv`'d
+ * An `Option<T>` representing the outcome of the call. If the call `recv`'d
  * on the provided port in the allotted timeout period, then the result will
- * be a `some(T)`. If not, then `none` will be returned.
+ * be a `Some(T)`. If not, then `None` will be returned.
  */
 pub fn recv_timeout<T: Copy Owned>(iotask: IoTask,
                                    msecs: uint,
@@ -255,7 +255,7 @@ mod test {
             };
 
             match recv_timeout(hl_loop, 10u, test_po) {
-              some(val) => {
+              Some(val) => {
                 assert val == expected;
                 successes += 1;
               }

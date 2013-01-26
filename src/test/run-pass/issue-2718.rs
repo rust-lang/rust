@@ -310,8 +310,8 @@ fn main() {
 //    Commented out because of option::get error
 
     let (client_, server_) = pingpong::init();
-    let client_ = ~mut some(client_);
-    let server_ = ~mut some(server_);
+    let client_ = ~mut Some(client_);
+    let server_ = ~mut Some(server_);
 
     task::spawn {|move client_|
         let mut client__ = none;

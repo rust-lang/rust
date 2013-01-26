@@ -114,10 +114,10 @@ variables from reassigned if there may be pointers to their interior)
 Finally, in some cases, both dangers can arise.  For example, something
 like the following:
 
-    let mut x = ~some(5);
+    let mut x = ~Some(5);
     match x {
-      ~some(ref y) => { ... }
-      ~none => { ... }
+      ~Some(ref y) => { ... }
+      ~None => { ... }
     }
 
 In this case, if `x` to be reassigned or `*x` were to be mutated, then
