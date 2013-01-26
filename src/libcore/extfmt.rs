@@ -55,6 +55,9 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+// Transitional
+#[allow(structural_records)]; // Macros -- needs a snapshot
+
 /*
 Syntax Extension: fmt
 
