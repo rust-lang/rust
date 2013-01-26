@@ -26,7 +26,7 @@ use common::config;
 use errors;
 use header;
 use header::load_props;
-use header::test_props;
+use header::TestProps;
 use procsrv;
 use util;
 use util::logv;
@@ -49,32 +49,32 @@ fn run(config: config, testfile: ~str) {
     }
 }
 
-fn run_cfail_test(config: config, props: test_props, testfile: &Path) {
-    let procres = compile_test(config, props, testfile);
+fn run_cfail_test(config: config, props: TestProps, testfile: &Path) {
+    let ProcRes = compile_test(config, props, testfile);
 
-    if procres.status == 0 {
-        fatal_procres(~"compile-fail test compiled successfully!", procres);
+    if ProcRes.status == 0 {
+        fatal_ProcRes(~"compile-fail test compiled successfully!", ProcRes);
     }
 
-    check_correct_failure_status(procres);
+    check_correct_failure_status(ProcRes);
 
     let expected_errors = errors::load_errors(testfile);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
             fatal(~"both error pattern and expected errors specified");
         }
-        check_expected_errors(expected_errors, testfile, procres);
+        check_expected_errors(expected_errors, testfile, ProcRes);
     } else {
-        check_error_patterns(props, testfile, procres);
+        check_error_patterns(props, testfile, ProcRes);
     }
 }
 
-fn run_rfail_test(config: config, props: test_props, testfile: &Path) {
-    let procres = if !config.jit {
-        let procres = compile_test(config, props, testfile);
+fn run_rfail_test(config: config, props: TestProps, testfile: &Path) {
+    let ProcRes = if !config.jit {
+        let ProcRes = compile_test(config, props, testfile);
 
-        if procres.status != 0 {
-            fatal_procres(~"compilation failed!", procres);
+        if ProcRes.status != 0 {
+            fatal_ProcRes(~"compilation failed!", ProcRes);
         }
 
         exec_compiled_test(config, props, testfile)
@@ -84,46 +84,46 @@ fn run_rfail_test(config: config, props: test_props, testfile: &Path) {
 
     // The value our Makefile configures valgrind to return on failure
     const valgrind_err: int = 100;
-    if procres.status == valgrind_err {
-        fatal_procres(~"run-fail test isn't valgrind-clean!", procres);
+    if ProcRes.status == valgrind_err {
+        fatal_ProcRes(~"run-fail test isn't valgrind-clean!", ProcRes);
     }
 
-    check_correct_failure_status(procres);
-    check_error_patterns(props, testfile, procres);
+    check_correct_failure_status(ProcRes);
+    check_error_patterns(props, testfile, ProcRes);
 }
 
-fn check_correct_failure_status(procres: procres) {
+fn check_correct_failure_status(ProcRes: ProcRes) {
     // The value the rust runtime returns on failure
     const rust_err: int = 101;
-    if procres.status != rust_err {
-        fatal_procres(
+    if ProcRes.status != rust_err {
+        fatal_ProcRes(
             fmt!("failure produced the wrong error code: %d",
-                 procres.status),
-            procres);
+                 ProcRes.status),
+            ProcRes);
     }
 }
 
-fn run_rpass_test(config: config, props: test_props, testfile: &Path) {
+fn run_rpass_test(config: config, props: TestProps, testfile: &Path) {
     if !config.jit {
-        let mut procres = compile_test(config, props, testfile);
+        let mut ProcRes = compile_test(config, props, testfile);
 
-        if procres.status != 0 {
-            fatal_procres(~"compilation failed!", procres);
+        if ProcRes.status != 0 {
+            fatal_ProcRes(~"compilation failed!", ProcRes);
         }
 
-        procres = exec_compiled_test(config, props, testfile);
+        ProcRes = exec_compiled_test(config, props, testfile);
 
-        if procres.status != 0 {
-            fatal_procres(~"test run failed!", procres);
+        if ProcRes.status != 0 {
+            fatal_ProcRes(~"test run failed!", ProcRes);
         }
     } else {
-        let mut procres = jit_test(config, props, testfile);
+        let mut ProcRes = jit_test(config, props, testfile);
 
-        if procres.status != 0 { fatal_procres(~"jit failed!", procres); }
+        if ProcRes.status != 0 { fatal_ProcRes(~"jit failed!", ProcRes); }
     }
 }
 
-fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
+fn run_pretty_test(config: config, props: TestProps, testfile: &Path) {
     if props.pp_exact.is_some() {
         logv(config, ~"testing for exact pretty-printing");
     } else { logv(config, ~"testing for converging pretty-printing"); }
@@ -136,14 +136,14 @@ fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
     let mut round = 0;
     while round < rounds {
         logv(config, fmt!("pretty-printing round %d", round));
-        let procres = print_source(config, testfile, srcs[round]);
+        let ProcRes = print_source(config, testfile, srcs[round]);
 
-        if procres.status != 0 {
-            fatal_procres(fmt!("pretty-printing failed in round %d", round),
-                          procres);
+        if ProcRes.status != 0 {
+            fatal_ProcRes(fmt!("pretty-printing failed in round %d", round),
+                          ProcRes);
         }
 
-        srcs.push(procres.stdout);
+        srcs.push(ProcRes.stdout);
         round += 1;
     }
 
@@ -167,23 +167,23 @@ fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
     compare_source(expected, actual);
 
     // Finally, let's make sure it actually appears to remain valid code
-    let procres = typecheck_source(config, props, testfile, actual);
+    let ProcRes = typecheck_source(config, props, testfile, actual);
 
-    if procres.status != 0 {
-        fatal_procres(~"pretty-printed source does not typecheck", procres);
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"pretty-printed source does not typecheck", ProcRes);
     }
 
     return;
 
-    fn print_source(config: config, testfile: &Path, src: ~str) -> procres {
+    fn print_source(config: config, testfile: &Path, src: ~str) -> ProcRes {
         compose_and_run(config, testfile, make_pp_args(config, testfile),
                         ~[], config.compile_lib_path, Some(src))
     }
 
-    fn make_pp_args(config: config, _testfile: &Path) -> procargs {
+    fn make_pp_args(config: config, _testfile: &Path) -> ProcArgs {
         let prog = config.rustc_path;
         let args = ~[~"-", ~"--pretty", ~"normal"];
-        return {prog: prog.to_str(), args: args};
+        return ProcArgs {prog: prog.to_str(), args: args};
     }
 
     fn compare_source(expected: ~str, actual: ~str) {
@@ -206,15 +206,15 @@ actual:\n\
         }
     }
 
-    fn typecheck_source(config: config, props: test_props,
-                        testfile: &Path, src: ~str) -> procres {
+    fn typecheck_source(config: config, props: TestProps,
+                        testfile: &Path, src: ~str) -> ProcRes {
         compose_and_run_compiler(
             config, props, testfile,
             make_typecheck_args(config, testfile),
             Some(src))
     }
 
-    fn make_typecheck_args(config: config, testfile: &Path) -> procargs {
+    fn make_typecheck_args(config: config, testfile: &Path) -> ProcArgs {
         let prog = config.rustc_path;
         let mut args = ~[~"-",
                          ~"--no-trans", ~"--lib",
@@ -222,25 +222,25 @@ actual:\n\
                          ~"-L",
                          aux_output_dir_name(config, testfile).to_str()];
         args += split_maybe_args(config.rustcflags);
-        return {prog: prog.to_str(), args: args};
+        return ProcArgs {prog: prog.to_str(), args: args};
     }
 }
 
-fn check_error_patterns(props: test_props,
+fn check_error_patterns(props: TestProps,
                         testfile: &Path,
-                        procres: procres) {
+                        ProcRes: ProcRes) {
     if vec::is_empty(props.error_patterns) {
         fatal(~"no error pattern specified in " + testfile.to_str());
     }
 
-    if procres.status == 0 {
+    if ProcRes.status == 0 {
         fatal(~"process did not return an error status");
     }
 
     let mut next_err_idx = 0u;
     let mut next_err_pat = props.error_patterns[next_err_idx];
     let mut done = false;
-    for str::split_char(procres.stderr, '\n').each |line| {
+    for str::split_char(ProcRes.stderr, '\n').each |line| {
         if str::contains(*line, next_err_pat) {
             debug!("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
@@ -258,25 +258,25 @@ fn check_error_patterns(props: test_props,
         vec::slice(props.error_patterns, next_err_idx,
                    vec::len(props.error_patterns));
     if vec::len(missing_patterns) == 1u {
-        fatal_procres(fmt!("error pattern '%s' not found!",
-                           missing_patterns[0]), procres);
+        fatal_ProcRes(fmt!("error pattern '%s' not found!",
+                           missing_patterns[0]), ProcRes);
     } else {
         for missing_patterns.each |pattern| {
             error(fmt!("error pattern '%s' not found!", *pattern));
         }
-        fatal_procres(~"multiple error patterns not found", procres);
+        fatal_ProcRes(~"multiple error patterns not found", ProcRes);
     }
 }
 
-fn check_expected_errors(expected_errors: ~[errors::expected_error],
+fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
                          testfile: &Path,
-                         procres: procres) {
+                         ProcRes: ProcRes) {
 
     // true if we found the error in question
     let found_flags = vec::cast_to_mut(vec::from_elem(
         vec::len(expected_errors), false));
 
-    if procres.status == 0 {
+    if ProcRes.status == 0 {
         fatal(~"process did not return an error status");
     }
 
@@ -290,7 +290,7 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for str::split_char(procres.stderr, '\n').each |line| {
+    for str::split_char(ProcRes.stderr, '\n').each |line| {
         let mut was_expected = false;
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
@@ -312,17 +312,17 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
         }
 
         if !was_expected && is_compiler_error_or_warning(*line) {
-            fatal_procres(fmt!("unexpected compiler error or warning: '%s'",
+            fatal_ProcRes(fmt!("unexpected compiler error or warning: '%s'",
                                *line),
-                          procres);
+                          ProcRes);
         }
     }
 
     for uint::range(0u, vec::len(found_flags)) |i| {
         if !found_flags[i] {
             let ee = expected_errors[i];
-            fatal_procres(fmt!("expected %s on line %u not found: %s",
-                               ee.kind, ee.line, ee.msg), procres);
+            fatal_ProcRes(fmt!("expected %s on line %u not found: %s",
+                               ee.kind, ee.line, ee.msg), ProcRes);
         }
     }
 }
@@ -402,21 +402,21 @@ fn scan_string(haystack: ~str, needle: ~str, idx: &mut uint) -> bool {
     return true;
 }
 
-type procargs = {prog: ~str, args: ~[~str]};
+struct ProcArgs {prog: ~str, args: ~[~str]}
 
-type procres = {status: int, stdout: ~str, stderr: ~str, cmdline: ~str};
+struct ProcRes {status: int, stdout: ~str, stderr: ~str, cmdline: ~str}
 
-fn compile_test(config: config, props: test_props,
-                testfile: &Path) -> procres {
+fn compile_test(config: config, props: TestProps,
+                testfile: &Path) -> ProcRes {
     compile_test_(config, props, testfile, [])
 }
 
-fn jit_test(config: config, props: test_props, testfile: &Path) -> procres {
+fn jit_test(config: config, props: TestProps, testfile: &Path) -> ProcRes {
     compile_test_(config, props, testfile, [~"--jit"])
 }
 
-fn compile_test_(config: config, props: test_props,
-                 testfile: &Path, extra_args: &[~str]) -> procres {
+fn compile_test_(config: config, props: TestProps,
+                 testfile: &Path, extra_args: &[~str]) -> ProcRes {
     let link_args = ~[~"-L", aux_output_dir_name(config, testfile).to_str()];
     compose_and_run_compiler(
         config, props, testfile,
@@ -425,8 +425,8 @@ fn compile_test_(config: config, props: test_props,
         None)
 }
 
-fn exec_compiled_test(config: config, props: test_props,
-                      testfile: &Path) -> procres {
+fn exec_compiled_test(config: config, props: TestProps,
+                      testfile: &Path) -> ProcRes {
     compose_and_run(config, testfile,
                     make_run_args(config, props, testfile),
                     props.exec_env,
@@ -435,10 +435,10 @@ fn exec_compiled_test(config: config, props: test_props,
 
 fn compose_and_run_compiler(
     config: config,
-    props: test_props,
+    props: TestProps,
     testfile: &Path,
-    args: procargs,
-    input: Option<~str>) -> procres {
+    args: ProcArgs,
+    input: Option<~str>) -> ProcRes {
 
     if !props.aux_builds.is_empty() {
         ensure_dir(&aux_output_dir_name(config, testfile));
@@ -455,7 +455,7 @@ fn compose_and_run_compiler(
         let auxres = compose_and_run(config, &abs_ab, aux_args, ~[],
                                      config.compile_lib_path, None);
         if auxres.status != 0 {
-            fatal_procres(
+            fatal_ProcRes(
                 fmt!("auxiliary build of %s failed to compile: ",
                      abs_ab.to_str()),
                 auxres);
@@ -474,17 +474,17 @@ fn ensure_dir(path: &Path) {
 }
 
 fn compose_and_run(config: config, testfile: &Path,
-                   procargs: procargs,
+                   ProcArgs: ProcArgs,
                    procenv: ~[(~str, ~str)],
                    lib_path: ~str,
-                   input: Option<~str>) -> procres {
+                   input: Option<~str>) -> ProcRes {
     return program_output(config, testfile, lib_path,
-                       procargs.prog, procargs.args, procenv, input);
+                       ProcArgs.prog, ProcArgs.args, procenv, input);
 }
 
-fn make_compile_args(config: config, props: test_props, extras: ~[~str],
+fn make_compile_args(config: config, props: TestProps, extras: ~[~str],
                      xform: fn(config, (&Path)) -> Path,
-                     testfile: &Path) -> procargs {
+                     testfile: &Path) -> ProcArgs {
     let prog = config.rustc_path;
     let mut args = ~[testfile.to_str(),
                      ~"-o", xform(config, testfile).to_str(),
@@ -492,7 +492,7 @@ fn make_compile_args(config: config, props: test_props, extras: ~[~str],
         + extras;
     args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
-    return {prog: prog.to_str(), args: args};
+    return ProcArgs {prog: prog.to_str(), args: args};
 }
 
 fn make_lib_name(config: config, auxfile: &Path, testfile: &Path) -> Path {
@@ -507,8 +507,8 @@ fn make_exe_name(config: config, testfile: &Path) -> Path {
             str::from_slice(os::EXE_SUFFIX))
 }
 
-fn make_run_args(config: config, _props: test_props, testfile: &Path) ->
-   procargs {
+fn make_run_args(config: config, _props: TestProps, testfile: &Path) ->
+   ProcArgs {
     let toolargs = {
             // If we've got another tool to run under (valgrind),
             // then split apart its command
@@ -521,7 +521,7 @@ fn make_run_args(config: config, _props: test_props, testfile: &Path) ->
         };
 
     let args = toolargs + ~[make_exe_name(config, testfile).to_str()];
-    return {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
+    return ProcArgs {prog: args[0], args: vec::slice(args, 1, args.len())};
 }
 
 fn split_maybe_args(argstr: Option<~str>) -> ~[~str] {
@@ -537,7 +537,7 @@ fn split_maybe_args(argstr: Option<~str>) -> ~[~str] {
 
 fn program_output(config: config, testfile: &Path, lib_path: ~str, prog: ~str,
                   args: ~[~str], env: ~[(~str, ~str)],
-                  input: Option<~str>) -> procres {
+                  input: Option<~str>) -> ProcRes {
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
@@ -546,7 +546,7 @@ fn program_output(config: config, testfile: &Path, lib_path: ~str, prog: ~str,
         };
     let res = procsrv::run(lib_path, prog, args, env, input);
     dump_output(config, testfile, res.out, res.err);
-    return {status: res.status,
+    return ProcRes {status: res.status,
          stdout: res.out,
          stderr: res.err,
          cmdline: cmdline};
@@ -621,7 +621,7 @@ fn error(err: ~str) { io::stdout().write_line(fmt!("\nerror: %s", err)); }
 
 fn fatal(err: ~str) -> ! { error(err); fail; }
 
-fn fatal_procres(err: ~str, procres: procres) -> ! {
+fn fatal_ProcRes(err: ~str, ProcRes: ProcRes) -> ! {
     let msg =
         fmt!("\n\
 error: %s\n\
@@ -635,7 +635,7 @@ stderr:\n\
 %s\n\
 ------------------------------------------\n\
 \n",
-             err, procres.cmdline, procres.stdout, procres.stderr);
+             err, ProcRes.cmdline, ProcRes.stdout, ProcRes.stderr);
     io::stdout().write_str(msg);
     fail;
 }
