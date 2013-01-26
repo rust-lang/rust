@@ -18,7 +18,6 @@
 use cast;
 use iter;
 use libc;
-use oldcomm;
 use option;
 use pipes;
 use prelude::*;
@@ -28,10 +27,17 @@ use task;
 use task::{TaskBuilder, atomically};
 use uint;
 
+#[path = "private/at_exit.rs"]
+pub mod at_exit;
+#[path = "private/global.rs"]
+pub mod global;
+#[path = "private/finally.rs"]
+pub mod finally;
+#[path = "private/weak_task.rs"]
+pub mod weak_task;
+
 extern mod rustrt {
     #[legacy_exports];
-    unsafe fn rust_task_weaken(ch: rust_port_id);
-    unsafe fn rust_task_unweaken(ch: rust_port_id);
 
     unsafe fn rust_create_little_lock() -> rust_little_lock;
     unsafe fn rust_destroy_little_lock(lock: rust_little_lock);
@@ -87,265 +93,11 @@ fn test_run_in_bare_thread() {
     }
 }
 
-#[allow(non_camel_case_types)] // runtime type
-type rust_port_id = uint;
-
-type GlobalPtr = *libc::uintptr_t;
-
 fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
     unsafe {
         let old = rusti::atomic_cxchg(address, oldval, newval);
         old == oldval
     }
-}
-
-/**
- * Atomically gets a channel from a pointer to a pointer-sized memory location
- * or, if no channel exists creates and installs a new channel and sets up a
- * new task to receive from it.
- */
-pub unsafe fn chan_from_global_ptr<T: Owned>(
-    global: GlobalPtr,
-    task_fn: fn() -> task::TaskBuilder,
-    f: fn~(oldcomm::Port<T>)
-) -> oldcomm::Chan<T> {
-
-    enum Msg {
-        Proceed,
-        Abort
-    }
-
-    log(debug,~"ENTERING chan_from_global_ptr, before is_prob_zero check");
-    let is_probably_zero = *global == 0u;
-    log(debug,~"after is_prob_zero check");
-    if is_probably_zero {
-        log(debug,~"is probably zero...");
-        // There's no global channel. We must make it
-
-        let (setup1_po, setup1_ch) = pipes::stream();
-        let (setup2_po, setup2_ch) = pipes::stream();
-
-        // FIXME #4422: Ugly type inference hint
-        let setup2_po: pipes::Port<Msg> = setup2_po;
-
-        do task_fn().spawn |move f, move setup1_ch, move setup2_po| {
-            let po = oldcomm::Port::<T>();
-            let ch = oldcomm::Chan(&po);
-            setup1_ch.send(ch);
-
-            // Wait to hear if we are the official instance of
-            // this global task
-            match setup2_po.recv() {
-              Proceed => f(move po),
-              Abort => ()
-            }
-        };
-
-        log(debug,~"before setup recv..");
-        // This is the proposed global channel
-        let ch = setup1_po.recv();
-        // 0 is our sentinal value. It is not a valid channel
-        assert *ch != 0;
-
-        // Install the channel
-        log(debug,~"BEFORE COMPARE AND SWAP");
-        let swapped = compare_and_swap(
-            cast::reinterpret_cast(&global),
-            0, cast::reinterpret_cast(&ch));
-        log(debug,fmt!("AFTER .. swapped? %?", swapped));
-
-        if swapped {
-            // Success!
-            setup2_ch.send(Proceed);
-            ch
-        } else {
-            // Somebody else got in before we did
-            setup2_ch.send(Abort);
-            cast::reinterpret_cast(&*global)
-        }
-    } else {
-        log(debug, ~"global != 0");
-        cast::reinterpret_cast(&*global)
-    }
-}
-
-#[test]
-pub fn test_from_global_chan1() {
-
-    // This is unreadable, right?
-
-    // The global channel
-    let globchan = 0;
-    let globchanp = ptr::addr_of(&globchan);
-
-    // Create the global channel, attached to a new task
-    let ch = unsafe {
-        do chan_from_global_ptr(globchanp, task::task) |po| {
-            let ch = oldcomm::recv(po);
-            oldcomm::send(ch, true);
-            let ch = oldcomm::recv(po);
-            oldcomm::send(ch, true);
-        }
-    };
-    // Talk to it
-    let po = oldcomm::Port();
-    oldcomm::send(ch, oldcomm::Chan(&po));
-    assert oldcomm::recv(po) == true;
-
-    // This one just reuses the previous channel
-    let ch = unsafe {
-        do chan_from_global_ptr(globchanp, task::task) |po| {
-            let ch = oldcomm::recv(po);
-            oldcomm::send(ch, false);
-        }
-    };
-
-    // Talk to the original global task
-    let po = oldcomm::Port();
-    oldcomm::send(ch, oldcomm::Chan(&po));
-    assert oldcomm::recv(po) == true;
-}
-
-#[test]
-pub fn test_from_global_chan2() {
-
-    for iter::repeat(100) {
-        // The global channel
-        let globchan = 0;
-        let globchanp = ptr::addr_of(&globchan);
-
-        let resultpo = oldcomm::Port();
-        let resultch = oldcomm::Chan(&resultpo);
-
-        // Spawn a bunch of tasks that all want to compete to
-        // create the global channel
-        for uint::range(0, 10) |i| {
-            do task::spawn {
-                let ch = unsafe {
-                    do chan_from_global_ptr(
-                        globchanp, task::task) |po| {
-
-                        for uint::range(0, 10) |_j| {
-                            let ch = oldcomm::recv(po);
-                            oldcomm::send(ch, {i});
-                        }
-                    }
-                };
-                let po = oldcomm::Port();
-                oldcomm::send(ch, oldcomm::Chan(&po));
-                // We are The winner if our version of the
-                // task was installed
-                let winner = oldcomm::recv(po);
-                oldcomm::send(resultch, winner == i);
-            }
-        }
-        // There should be only one winner
-        let mut winners = 0u;
-        for uint::range(0u, 10u) |_i| {
-            let res = oldcomm::recv(resultpo);
-            if res { winners += 1u };
-        }
-        assert winners == 1u;
-    }
-}
-
-/**
- * Convert the current task to a 'weak' task temporarily
- *
- * As a weak task it will not be counted towards the runtime's set
- * of live tasks. When there are no more outstanding live (non-weak) tasks
- * the runtime will send an exit message on the provided channel.
- *
- * This function is super-unsafe. Do not use.
- *
- * # Safety notes
- *
- * * Weak tasks must either die on their own or exit upon receipt of
- *   the exit message. Failure to do so will cause the runtime to never
- *   exit
- * * Tasks must not call `weaken_task` multiple times. This will
- *   break the kernel's accounting of live tasks.
- * * Weak tasks must not be supervised. A supervised task keeps
- *   a reference to its parent, so the parent will not die.
- */
-pub unsafe fn weaken_task(f: fn(oldcomm::Port<()>)) {
-    let po = oldcomm::Port();
-    let ch = oldcomm::Chan(&po);
-    unsafe {
-        rustrt::rust_task_weaken(cast::reinterpret_cast(&ch));
-    }
-    let _unweaken = Unweaken(ch);
-    f(po);
-
-    struct Unweaken {
-      ch: oldcomm::Chan<()>,
-      drop {
-        unsafe {
-            rustrt::rust_task_unweaken(cast::reinterpret_cast(&self.ch));
-        }
-      }
-    }
-
-    fn Unweaken(ch: oldcomm::Chan<()>) -> Unweaken {
-        Unweaken {
-            ch: ch
-        }
-    }
-}
-
-#[test]
-pub fn test_weaken_task_then_unweaken() {
-    do task::try {
-        unsafe {
-            do weaken_task |_po| {
-            }
-        }
-    };
-}
-
-#[test]
-pub fn test_weaken_task_wait() {
-    do task::spawn_unlinked {
-        unsafe {
-            do weaken_task |po| {
-                oldcomm::recv(po);
-            }
-        }
-    }
-}
-
-#[test]
-pub fn test_weaken_task_stress() {
-    // Create a bunch of weak tasks
-    for iter::repeat(100u) {
-        do task::spawn {
-            unsafe {
-                do weaken_task |_po| {
-                }
-            }
-        }
-        do task::spawn_unlinked {
-            unsafe {
-                do weaken_task |po| {
-                    // Wait for it to tell us to die
-                    oldcomm::recv(po);
-                }
-            }
-        }
-    }
-}
-
-#[test]
-#[ignore(cfg(windows))]
-pub fn test_weaken_task_fail() {
-    let res = do task::try {
-        unsafe {
-            do weaken_task |_po| {
-                fail;
-            }
-        }
-    };
-    assert result::is_err(&res);
 }
 
 /****************************************************************************
@@ -531,6 +283,14 @@ pub unsafe fn clone_shared_mutable_state<T: Owned>(rc: &SharedMutableState<T>)
         cast::forget(move ptr);
     }
     ArcDestruct((*rc).data)
+}
+
+impl<T: Owned> SharedMutableState<T>: Clone {
+    fn clone(&self) -> SharedMutableState<T> {
+        unsafe {
+            clone_shared_mutable_state(self)
+        }
+    }
 }
 
 /****************************************************************************/

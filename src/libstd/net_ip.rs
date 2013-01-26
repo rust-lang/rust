@@ -114,7 +114,7 @@ enum IpGetAddrErr {
  * a vector of `ip_addr` results, in the case of success, or an error
  * object in the case of failure
  */
-pub fn get_addr(node: &str, iotask: iotask)
+pub fn get_addr(node: &str, iotask: &iotask)
         -> result::Result<~[IpAddr], IpGetAddrErr> {
     do oldcomm::listen |output_ch| {
         do str::as_buf(node) |node_ptr, len| {
@@ -419,7 +419,7 @@ mod test {
     #[ignore(reason = "valgrind says it's leaky")]
     fn test_ip_get_addr() {
         let localhost_name = ~"localhost";
-        let iotask = uv::global_loop::get();
+        let iotask = &uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
         if result::is_err(&ga_result) {
             fail ~"got err result from net::ip::get_addr();"
@@ -445,7 +445,7 @@ mod test {
     #[ignore(reason = "valgrind says it's leaky")]
     fn test_ip_get_addr_bad_input() {
         let localhost_name = ~"sjkl234m,./sdf";
-        let iotask = uv::global_loop::get();
+        let iotask = &uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
         assert result::is_err(&ga_result);
     }

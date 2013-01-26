@@ -513,15 +513,6 @@ rust_uv_ip6_port(struct sockaddr_in6* src) {
     return ntohs(src->sin6_port);
 }
 
-extern "C" uintptr_t*
-rust_uv_get_kernel_global_chan_ptr() {
-    uintptr_t* result = rust_get_current_task()->kernel->get_global_loop();
-    rust_task* task = rust_get_current_task();
-    LOG(task, stdlib, "global loop: %lu", (unsigned long int)result);
-    LOG(task, stdlib,"global loop val: %lu", (unsigned long int)*result);
-    return result;
-}
-
 extern "C" void*
 rust_uv_current_kernel_malloc(size_t size) {
     return current_kernel_malloc(size, "rust_uv_current_kernel_malloc");

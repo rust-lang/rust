@@ -27,7 +27,7 @@ fn main() {
 
     let c = pipes::spawn_service(oneshot::init, |p| { recv(move p); });
 
-    let iotask = uv::global_loop::get();
+    let iotask = &uv::global_loop::get();
     sleep(iotask, 500);
     
     signal(move c);
