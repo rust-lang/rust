@@ -41,7 +41,7 @@ use syntax::print::pprust;
 use syntax::diagnostic;
 
 enum test_mode { tm_converge, tm_run, }
-type context = { mode: test_mode }; // + rng
+struct Context { mode: test_mode } // + rng
 
 impl test_mode : cmp::Eq {
     pure fn eq(&self, other: &test_mode) -> bool {
@@ -166,9 +166,9 @@ fn stash_ty_if(c: fn@(@ast::Ty, test_mode)->bool,
     } else {/* now my indices are wrong :( */ }
 }
 
-type stolen_stuff = {exprs: ~[ast::expr], tys: ~[ast::Ty]};
+struct StolenStuff {exprs: ~[ast::expr], tys: ~[ast::Ty]}
 
-fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
+fn steal(crate: ast::crate, tm: test_mode) -> StolenStuff {
     let exprs = @mut ~[];
     let tys = @mut ~[];
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
@@ -177,7 +177,7 @@ fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
         .. *visit::default_simple_visitor()
     });
     visit::visit_crate(crate, (), v);
-    {exprs: *exprs, tys: *tys}
+    StolenStuff {exprs: *exprs, tys: *tys}
 }
 
 
@@ -264,7 +264,7 @@ fn as_str(f: fn@(+x: io::Writer)) -> ~str {
 }
 
 fn check_variants_of_ast(crate: ast::crate, codemap: @codemap::CodeMap,
-                         filename: &Path, cx: context) {
+                         filename: &Path, cx: Context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = do common_exprs().filtered |a| {
         safe_to_use_expr(*a, cx.mode)
@@ -284,7 +284,7 @@ fn check_variants_T<T: Copy>(
   things: ~[T],
   stringifier: fn@(@T, @syntax::parse::token::ident_interner) -> ~str,
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
-  cx: context
+  cx: Context
   ) {
     error!("%s contains %u %s objects", filename.to_str(),
            things.len(), thing_label);
@@ -594,7 +594,7 @@ fn check_convergence(files: &[Path]) {
     }
 }
 
-fn check_variants(files: &[Path], cx: context) {
+fn check_variants(files: &[Path], cx: Context) {
     for files.each |file| {
         if cx.mode == tm_converge &&
             file_might_not_converge(file) {
@@ -652,9 +652,9 @@ fn main() {
     error!("== check_convergence ==");
     check_convergence(files);
     error!("== check_variants: converge ==");
-    check_variants(files, { mode: tm_converge });
+    check_variants(files, Context { mode: tm_converge });
     error!("== check_variants: run ==");
-    check_variants(files, { mode: tm_run });
+    check_variants(files, Context { mode: tm_run });
 
     error!("Fuzzer done");
 }
