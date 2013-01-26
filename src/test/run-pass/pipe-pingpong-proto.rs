@@ -12,6 +12,8 @@
 
 // An example to make sure the protocol parsing syntax extension works.
 
+#[legacy_records];
+
 use core::option;
 
 proto! pingpong (

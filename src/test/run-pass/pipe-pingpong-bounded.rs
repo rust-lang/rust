@@ -17,6 +17,8 @@
 
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
+#[legacy_records];
+
 mod pingpong {
     use core::pipes::*;
     use core::ptr;

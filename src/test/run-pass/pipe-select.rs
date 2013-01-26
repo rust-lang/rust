@@ -13,6 +13,8 @@
 // xfail-pretty
 // xfail-win32
 
+#[legacy_records];
+
 extern mod std;
 use std::timer::sleep;
 use std::uv;

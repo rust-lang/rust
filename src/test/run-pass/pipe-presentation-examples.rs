@@ -15,6 +15,7 @@
 // Code is easier to write in emacs, and it's good to be sure all the
 // code samples compile (or not) as they should.
 
+#[legacy_records];
 
 use double_buffer::client::*;
 use double_buffer::give_buffer;
