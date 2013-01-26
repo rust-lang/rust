@@ -21,6 +21,7 @@
 
 #[no_core];
 #[legacy_modes];
+#[legacy_records];
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_implicitly_copyable_typarams)];

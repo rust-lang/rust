@@ -20,6 +20,7 @@
 
 #[legacy_modes];
 #[legacy_exports];
+#[legacy_records];
 
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(non_camel_case_types)];
