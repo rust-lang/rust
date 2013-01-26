@@ -55,8 +55,8 @@ class cat : map<int, bool> {
   fn contains_key(&&k: int) -> bool { k <= self.meows }
   fn get(&&k:int) -> bool { k <= self.meows }
   fn [](&&k:int) -> bool { k <= self.meows }
-  fn find(&&k:int) -> option<bool> { some(self.get(k)) }
-  fn remove(&&k:int) -> option<bool> { self.meows -= k; some(true) }
+  fn find(&&k:int) -> Option<bool> { Some(self.get(k)) }
+  fn remove(&&k:int) -> Option<bool> { self.meows -= k; Some(true) }
   fn each(f: fn(&&int, &&bool) -> bool) {
     let mut n = int::abs(self.meows);
     while n > 0 {

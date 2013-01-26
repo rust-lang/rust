@@ -893,7 +893,7 @@ pub mod node {
      * # Return value
      *
      * * `option::None` if no transformation happened
-     * * `option::some(x)` otherwise, in which case `x` has the same contents
+     * * `option::Some(x)` otherwise, in which case `x` has the same contents
      *    as `node` bot lower height and/or fragmentation.
      */
     pub fn bal(node: @Node) -> Option<@Node> {
