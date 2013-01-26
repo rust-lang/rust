@@ -49,6 +49,7 @@
 #include "memory_region.h"
 #include "rust_log.h"
 #include "rust_sched_reaper.h"
+#include "rust_type.h"
 #include "util/hash_map.h"
 
 class rust_scheduler;
@@ -64,6 +65,13 @@ typedef intptr_t rust_task_id;
 typedef intptr_t rust_port_id;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
+
+// This is defined as a struct only because we need a single pointer to pass
+// to the Rust function that runs the at_exit functions
+struct exit_functions {
+    size_t count;
+    fn_env_pair **start;
+};
 
 class rust_kernel {
     memory_region _region;
@@ -81,7 +89,8 @@ class rust_kernel {
     lock_and_signal rval_lock;
     int rval;
 
-    // Protects max_sched_id and sched_table, join_list, killed
+    // Protects max_sched_id and sched_table, join_list, killed,
+    // already_exiting
     lock_and_signal sched_lock;
     // The next scheduler id
     rust_sched_id max_sched_id;
@@ -94,8 +103,13 @@ class rust_kernel {
     // task group fails). This propagates to all new schedulers and tasks
     // created after it is set.
     bool killed;
+    bool already_exiting;
+
 
     rust_sched_reaper sched_reaper;
+
+    // The primary scheduler
+    rust_sched_id main_scheduler;
     // The single-threaded scheduler that uses the main thread
     rust_sched_id osmain_scheduler;
     // Runs the single-threaded scheduler that executes tasks
@@ -104,21 +118,22 @@ class rust_kernel {
 
     // An atomically updated count of the live, 'non-weak' tasks
     uintptr_t non_weak_tasks;
-    // Protects weak_task_chans
-    lock_and_signal weak_task_lock;
-    // A list of weak tasks that need to be told when to exit
-    std::vector<rust_port_id> weak_task_chans;
 
     rust_scheduler* get_scheduler_by_id_nolock(rust_sched_id id);
-    void end_weak_tasks();
+    void allow_scheduler_exit();
+    void begin_shutdown();
 
-    // Used to communicate with the process-side, global libuv loop
-    uintptr_t global_loop_chan;
-    // Used to serialize access to getenv/setenv
-    uintptr_t global_env_chan;
+    lock_and_signal at_exit_lock;
+    spawn_fn at_exit_runner;
+    bool at_exit_started;
+    std::vector<fn_env_pair*> at_exit_fns;
+    exit_functions final_exit_fns;
+
+    void run_exit_functions();
 
 public:
     struct rust_env *env;
+    uintptr_t global_data;
 
     rust_kernel(rust_env *env);
 
@@ -154,17 +169,17 @@ public:
 
     void set_exit_status(int code);
 
+    rust_sched_id main_sched_id() { return main_scheduler; }
     rust_sched_id osmain_sched_id() { return osmain_scheduler; }
 
     void register_task();
     void unregister_task();
-    void weaken_task(rust_port_id chan);
-    void unweaken_task(rust_port_id chan);
+    void inc_weak_task_count();
+    void dec_weak_task_count();
 
     bool send_to_port(rust_port_id chan, void *sptr);
 
-    uintptr_t* get_global_loop() { return &global_loop_chan; }
-    uintptr_t* get_global_env_chan() { return &global_env_chan; }
+    void register_exit_function(spawn_fn runner, fn_env_pair *f);
 };
 
 template <typename T> struct kernel_owned {

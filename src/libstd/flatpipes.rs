@@ -792,7 +792,6 @@ mod test {
         let (finish_port, finish_chan) = pipes::stream();
 
         let addr = ip::v4::parse_addr("127.0.0.1");
-        let iotask = uv::global_loop::get();
 
         let begin_connect_chan = Cell(move begin_connect_chan);
         let accept_chan = Cell(move accept_chan);
@@ -800,6 +799,7 @@ mod test {
         // The server task
         do task::spawn |copy addr, move begin_connect_chan,
                         move accept_chan| {
+            let iotask = &uv::global_loop::get();
             let begin_connect_chan = begin_connect_chan.take();
             let accept_chan = accept_chan.take();
             let listen_res = do tcp::listen(
@@ -831,6 +831,7 @@ mod test {
             begin_connect_port.recv();
 
             debug!("connecting");
+            let iotask = &uv::global_loop::get();
             let connect_result = tcp::connect(copy addr, port, iotask);
             assert connect_result.is_ok();
             let sock = result::unwrap(move connect_result);
