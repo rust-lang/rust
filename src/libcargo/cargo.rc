@@ -345,11 +345,11 @@ fn load_crate(filename: &Path) -> Option<Crate> {
         }
     }
 
-    type env = @{
+    struct Env {
         mut deps: ~[~str]
-    };
+    }
 
-    fn goto_view_item(ps: syntax::parse::parse_sess, e: env,
+    fn goto_view_item(ps: syntax::parse::parse_sess, e: @Env,
                       i: @ast::view_item) {
         match i.node {
             ast::view_item_use(ident, metas, _) => {
@@ -396,10 +396,10 @@ fn load_crate(filename: &Path) -> Option<Crate> {
             _ => ()
         }
     }
-    fn goto_item(_e: env, _i: @ast::item) {
+    fn goto_item(_e: @Env, _i: @ast::item) {
     }
 
-    let e = @{
+    let e = @Env {
         mut deps: ~[]
     };
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
