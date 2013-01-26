@@ -255,7 +255,7 @@ use middle::ty::IntVarValue;
 use middle::ty;
 use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};
 use middle::typeck::infer::coercion::Coerce;
-use middle::typeck::infer::combine::{CombineFields, eq_tys};
+use middle::typeck::infer::combine::{Combine, CombineFields, eq_tys};
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::region_inference::{RegionVarBindings};

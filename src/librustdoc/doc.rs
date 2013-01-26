@@ -21,94 +21,47 @@ use core::vec;
 
 pub type AstId = int;
 
-pub type Doc_ = {
+#[deriving_eq]
+pub struct Doc_ {
     pages: ~[Page]
-};
-
-impl Doc_ : cmp::Eq {
-    pure fn eq(&self, other: &Doc_) -> bool {
-        (*self).pages == (*other).pages
-    }
-    pure fn ne(&self, other: &Doc_) -> bool { !(*self).eq(other) }
 }
 
+#[deriving_eq]
 pub enum Doc {
     Doc_(Doc_)
 }
 
-impl Doc : cmp::Eq {
-    pure fn eq(&self, other: &Doc) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &Doc) -> bool { *(*self) != *(*other) }
-}
-
+#[deriving_eq]
 pub enum Page {
     CratePage(CrateDoc),
     ItemPage(ItemTag)
 }
 
-impl Page : cmp::Eq {
-    pure fn eq(&self, other: &Page) -> bool {
-        match (*self) {
-            CratePage(e0a) => {
-                match (*other) {
-                    CratePage(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ItemPage(e0a) => {
-                match (*other) {
-                    ItemPage(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &Page) -> bool { !(*self).eq(other) }
-}
-
+#[deriving_eq]
 pub enum Implementation {
     Required,
     Provided,
 }
 
-impl Implementation : cmp::Eq {
-    pure fn eq(&self, other: &Implementation) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Implementation) -> bool { !(*self).eq(other) }
-}
-
-
 /**
  * Most rustdocs can be parsed into 'sections' according to their markdown
  * headers
  */
-pub type Section = {
+#[deriving_eq]
+pub struct Section {
     header: ~str,
     body: ~str
-};
-
-impl Section : cmp::Eq {
-    pure fn eq(&self, other: &Section) -> bool {
-        (*self).header == (*other).header && (*self).body == (*other).body
-    }
-    pure fn ne(&self, other: &Section) -> bool { !(*self).eq(other) }
 }
 
 // FIXME (#2596): We currently give topmod the name of the crate.  There
 // would probably be fewer special cases if the crate had its own name
 // and topmod's name was the empty string.
-pub type CrateDoc = {
-    topmod: ModDoc,
-};
-
-impl CrateDoc : cmp::Eq {
-    pure fn eq(&self, other: &CrateDoc) -> bool {
-        (*self).topmod == (*other).topmod
-    }
-    pure fn ne(&self, other: &CrateDoc) -> bool { !(*self).eq(other) }
+#[deriving_eq]
+pub struct CrateDoc {
+    topmod: ModDoc
 }
 
+#[deriving_eq]
 pub enum ItemTag {
     ModTag(ModDoc),
     NmodTag(NmodDoc),
@@ -121,69 +74,8 @@ pub enum ItemTag {
     StructTag(StructDoc)
 }
 
-impl ItemTag : cmp::Eq {
-    pure fn eq(&self, other: &ItemTag) -> bool {
-        match (*self) {
-            ModTag(e0a) => {
-                match (*other) {
-                    ModTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            NmodTag(e0a) => {
-                match (*other) {
-                    NmodTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ConstTag(e0a) => {
-                match (*other) {
-                    ConstTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            FnTag(e0a) => {
-                match (*other) {
-                    FnTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            EnumTag(e0a) => {
-                match (*other) {
-                    EnumTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            TraitTag(e0a) => {
-                match (*other) {
-                    TraitTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ImplTag(e0a) => {
-                match (*other) {
-                    ImplTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            TyTag(e0a) => {
-                match (*other) {
-                    TyTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            StructTag(e0a) => {
-                match (*other) {
-                    StructTag(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &ItemTag) -> bool { !(*self).eq(other) }
-}
-
-pub type ItemDoc = {
+#[deriving_eq]
+pub struct ItemDoc {
     id: AstId,
     name: ~str,
     path: ~[~str],
@@ -192,179 +84,86 @@ pub type ItemDoc = {
     sections: ~[Section],
     // Indicates that this node is a reexport of a different item
     reexport: bool
-};
-
-impl ItemDoc : cmp::Eq {
-    pure fn eq(&self, other: &ItemDoc) -> bool {
-        (*self).id == (*other).id &&
-        (*self).name == (*other).name &&
-        (*self).path == (*other).path &&
-        (*self).brief == (*other).brief &&
-        (*self).desc == (*other).desc &&
-        (*self).sections == (*other).sections &&
-        (*self).reexport == (*other).reexport
-    }
-    pure fn ne(&self, other: &ItemDoc) -> bool { !(*self).eq(other) }
 }
 
-pub type SimpleItemDoc = {
+#[deriving_eq]
+pub struct SimpleItemDoc {
     item: ItemDoc,
     sig: Option<~str>
-};
-
-impl SimpleItemDoc : cmp::Eq {
-    pure fn eq(&self, other: &SimpleItemDoc) -> bool {
-        (*self).item == (*other).item && (*self).sig == (*other).sig
-    }
-    pure fn ne(&self, other: &SimpleItemDoc) -> bool { !(*self).eq(other) }
 }
 
-pub type ModDoc_ = {
+#[deriving_eq]
+pub struct ModDoc_ {
     item: ItemDoc,
     items: ~[ItemTag],
     index: Option<Index>
-};
-
-impl ModDoc_ : cmp::Eq {
-    pure fn eq(&self, other: &ModDoc_) -> bool {
-        (*self).item == (*other).item &&
-        (*self).items == (*other).items &&
-        (*self).index == (*other).index
-    }
-    pure fn ne(&self, other: &ModDoc_) -> bool { !(*self).eq(other) }
 }
 
+#[deriving_eq]
 pub enum ModDoc {
     ModDoc_(ModDoc_)
 }
 
-impl ModDoc : cmp::Eq {
-    pure fn eq(&self, other: &ModDoc) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &ModDoc) -> bool { *(*self) != *(*other) }
-}
-
-pub type NmodDoc = {
+#[deriving_eq]
+pub struct NmodDoc {
     item: ItemDoc,
     fns: ~[FnDoc],
     index: Option<Index>
-};
-
-impl NmodDoc : cmp::Eq {
-    pure fn eq(&self, other: &NmodDoc) -> bool {
-        (*self).item == (*other).item &&
-        (*self).fns == (*other).fns &&
-        (*self).index == (*other).index
-    }
-    pure fn ne(&self, other: &NmodDoc) -> bool { !(*self).eq(other) }
 }
 
 pub type ConstDoc = SimpleItemDoc;
 
 pub type FnDoc = SimpleItemDoc;
 
-pub type EnumDoc = {
+#[deriving_eq]
+pub struct EnumDoc {
     item: ItemDoc,
     variants: ~[VariantDoc]
-};
-
-impl EnumDoc : cmp::Eq {
-    pure fn eq(&self, other: &EnumDoc) -> bool {
-        (*self).item == (*other).item && (*self).variants == (*other).variants
-    }
-    pure fn ne(&self, other: &EnumDoc) -> bool { !(*self).eq(other) }
 }
 
-pub type VariantDoc = {
+#[deriving_eq]
+pub struct VariantDoc {
     name: ~str,
     desc: Option<~str>,
     sig: Option<~str>
-};
-
-impl VariantDoc : cmp::Eq {
-    pure fn eq(&self, other: &VariantDoc) -> bool {
-        (*self).name == (*other).name &&
-        (*self).desc == (*other).desc &&
-        (*self).sig == (*other).sig
-    }
-    pure fn ne(&self, other: &VariantDoc) -> bool { !(*self).eq(other) }
 }
 
-pub type TraitDoc = {
+#[deriving_eq]
+pub struct TraitDoc {
     item: ItemDoc,
     methods: ~[MethodDoc]
-};
-
-impl TraitDoc : cmp::Eq {
-    pure fn eq(&self, other: &TraitDoc) -> bool {
-        (*self).item == (*other).item && (*self).methods == (*other).methods
-    }
-    pure fn ne(&self, other: &TraitDoc) -> bool { !(*self).eq(other) }
 }
 
-pub type MethodDoc = {
+#[deriving_eq]
+pub struct MethodDoc {
     name: ~str,
     brief: Option<~str>,
     desc: Option<~str>,
     sections: ~[Section],
     sig: Option<~str>,
     implementation: Implementation,
-};
-
-impl MethodDoc : cmp::Eq {
-    pure fn eq(&self, other: &MethodDoc) -> bool {
-        (*self).name == (*other).name &&
-        (*self).brief == (*other).brief &&
-        (*self).desc == (*other).desc &&
-        (*self).sections == (*other).sections &&
-        (*self).sig == (*other).sig &&
-        (*self).implementation == (*other).implementation
-    }
-    pure fn ne(&self, other: &MethodDoc) -> bool { !(*self).eq(other) }
 }
 
-pub type ImplDoc = {
+#[deriving_eq]
+pub struct ImplDoc {
     item: ItemDoc,
     trait_types: ~[~str],
     self_ty: Option<~str>,
     methods: ~[MethodDoc]
-};
-
-impl ImplDoc : cmp::Eq {
-    pure fn eq(&self, other: &ImplDoc) -> bool {
-        (*self).item == (*other).item &&
-        (*self).trait_types == (*other).trait_types &&
-        (*self).self_ty == (*other).self_ty &&
-        (*self).methods == (*other).methods
-    }
-    pure fn ne(&self, other: &ImplDoc) -> bool { !(*self).eq(other) }
 }
 
 pub type TyDoc = SimpleItemDoc;
 
-pub type StructDoc = {
+#[deriving_eq]
+pub struct StructDoc {
     item: ItemDoc,
     fields: ~[~str],
     sig: Option<~str>
-};
-
-impl StructDoc : cmp::Eq {
-    pure fn eq(&self, other: &StructDoc) -> bool {
-        return (*self).item == other.item
-            && (*self).fields == other.fields
-            && (*self).sig == other.sig;
-    }
-    pure fn ne(&self, other: &StructDoc) -> bool { !(*self).eq(other) }
 }
 
-pub type Index = {
+#[deriving_eq]
+pub struct Index {
     entries: ~[IndexEntry]
-};
-
-impl Index : cmp::Eq {
-    pure fn eq(&self, other: &Index) -> bool {
-        (*self).entries == (*other).entries
-    }
-    pure fn ne(&self, other: &Index) -> bool { !(*self).eq(other) }
 }
 
 /**
@@ -377,21 +176,12 @@ impl Index : cmp::Eq {
  * * brief - The brief description
  * * link - A format-specific string representing the link target
  */
-pub type IndexEntry = {
+#[deriving_eq]
+pub struct IndexEntry {
     kind: ~str,
     name: ~str,
     brief: Option<~str>,
     link: ~str
-};
-
-impl IndexEntry : cmp::Eq {
-    pure fn eq(&self, other: &IndexEntry) -> bool {
-        (*self).kind == (*other).kind &&
-        (*self).name == (*other).name &&
-        (*self).brief == (*other).brief &&
-        (*self).link == (*other).link
-    }
-    pure fn ne(&self, other: &IndexEntry) -> bool { !(*self).eq(other) }
 }
 
 impl Doc {
@@ -411,7 +201,6 @@ impl Doc {
 
 /// Some helper methods on ModDoc, mostly for testing
 impl ModDoc {
-
     fn mods() -> ~[ModDoc] {
         do vec::filter_map(self.items) |itemtag| {
             match *itemtag {

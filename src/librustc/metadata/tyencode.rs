@@ -13,8 +13,8 @@
 
 use core::prelude::*;
 
+use middle::ty::{Vid, param_ty};
 use middle::ty;
-use middle::ty::Vid;
 
 use core::io::WriterUtil;
 use core::io;
@@ -301,7 +301,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
       ty::ty_infer(_) => {
         cx.diag.handler().bug(~"Cannot encode inference variable types");
       }
-      ty::ty_param({idx: id, def_id: did}) => {
+      ty::ty_param(param_ty {idx: id, def_id: did}) => {
         w.write_char('p');
         w.write_str((cx.ds)(did));
         w.write_char('|');

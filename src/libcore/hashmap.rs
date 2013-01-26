@@ -16,7 +16,6 @@
 
 use cmp::Eq;
 use hash::Hash;
-use prelude::*;
 use to_bytes::IterBytes;
 
 /// Open addressing with linear probing.
@@ -464,6 +463,7 @@ pub mod linear {
 
 #[test]
 pub mod test {
+    use container::{Container, Mutable, Map, Set};
     use option::{None, Some};
     use hashmap::linear::LinearMap;
     use hashmap::linear;

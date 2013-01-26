@@ -23,6 +23,11 @@ pub trait Num {
     static pure fn from_int(n: int) -> self;
 }
 
+pub trait IntConvertible {
+    pure fn to_int(&self) -> int;
+    static pure fn from_int(n: int) -> self;
+}
+
 pub trait Zero {
     static pure fn zero() -> self;
 }

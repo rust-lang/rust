@@ -25,8 +25,8 @@ use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
 use middle::ty::{kind_can_be_copied, lookup_item_type, param_bounds, subst};
-use middle::ty::{t, ty_bool, ty_bot, ty_box, ty_enum, ty_err, ty_estr};
-use middle::ty::{ty_evec, ty_float, ty_fn, ty_infer, ty_int, ty_nil};
+use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
+use middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rec, ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_type, ty_uint, ty_uniq};
@@ -34,6 +34,7 @@ use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_kind_ext};
 use middle::ty::{type_is_ty_var};
 use middle::ty;
 use middle::typeck::crate_ctxt;
+use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::{InferCtxt, can_mk_subty};
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
 use middle::typeck::infer::{resolve_nested_tvar, resolve_type};
@@ -286,8 +287,8 @@ impl CoherenceChecker {
         }
 
         // Add the implementation to the mapping from implementation to base
-        // type def ID, if there is a base type for this implementation.
-
+        // type def ID, if there is a base type for this implementation and
+        // the implementation does not have any associated traits.
         match get_base_type_def_id(self.inference_context,
                                    item.span,
                                    self_type.ty) {
@@ -296,16 +297,19 @@ impl CoherenceChecker {
             }
             Some(base_type_def_id) => {
                 // XXX: Gather up default methods?
-                let implementation;
-                match implementation_opt {
-                    None => {
-                        implementation = self.create_impl_from_item(item);
+                if associated_traits.len() == 0 {
+                    let implementation;
+                    match implementation_opt {
+                        None => {
+                            implementation = self.create_impl_from_item(item);
+                        }
+                        Some(copy existing_implementation) => {
+                            implementation = existing_implementation;
+                        }
                     }
-                    Some(copy existing_implementation) => {
-                        implementation = existing_implementation;
-                    }
+                    self.add_inherent_method(base_type_def_id,
+                                             implementation);
                 }
-                self.add_inherent_method(base_type_def_id, implementation);
 
                 self.base_type_def_ids.insert(local_def(item.id),
                                               base_type_def_id);
@@ -510,7 +514,7 @@ impl CoherenceChecker {
         let type_parameters =
             self.inference_context.next_ty_vars(bounds_count);
 
-        let substitutions = {
+        let substitutions = substs {
             self_r: self_region,
             self_ty: None,
             tps: type_parameters
@@ -520,7 +524,8 @@ impl CoherenceChecker {
                              polytype.ty);
 
         // Get our type parameters back.
-        let { self_r: _, self_ty: _, tps: type_parameters } = substitutions;
+        let substs { self_r: _, self_ty: _, tps: type_parameters } =
+            substitutions;
 
         UniversalQuantificationResult {
             monotype: monotype,
@@ -597,6 +602,7 @@ impl CoherenceChecker {
                         visit_mod(module_, item.span, item.id, (), visitor);
                     }
                     item_impl(_, opt_trait, _, _) => {
+                        let mut ok = false;
                         match self.base_type_def_ids.find(
                             local_def(item.id)) {
 
@@ -611,57 +617,50 @@ impl CoherenceChecker {
                                     // Record that this implementation is OK.
                                     self.privileged_implementations.insert
                                         (item.id, ());
-                                } else {
-                                    // This implementation is not in scope of
-                                    // its base type. This still might be OK
-                                    // if the traits are defined in the same
-                                    // crate.
+                                    ok = true;
+                                }
+                            }
+                        }
 
-                                  match opt_trait {
-                                    None => {
-                                        // There is no trait to implement, so
-                                        // this is an error.
+                        if !ok {
+                            // This implementation is not in scope of its base
+                            // type. This still might be OK if the trait is
+                            // defined in the same crate.
 
-                                        let session =
-                                            self.crate_context.tcx.sess;
-                                        session.span_err(item.span,
-                                                         ~"cannot implement \
-                                                          inherent methods \
-                                                          for a type outside \
-                                                          the crate the type \
-                                                          was defined in; \
-                                                          define and \
-                                                          implement a trait \
-                                                          or new type \
-                                                          instead");
-                                    }
-                                    _ => ()
-                                  }
+                            match opt_trait {
+                                None => {
+                                    // There is no trait to implement, so
+                                    // this is an error.
 
-                                  do opt_trait.iter() |trait_ref| {
-                                        // This is OK if and only if the
-                                        // trait was defined in this
-                                        // crate.
+                                    let session = self.crate_context.tcx.sess;
+                                    session.span_err(item.span,
+                                                     ~"cannot implement \
+                                                      inherent methods for a \
+                                                      type outside the crate \
+                                                      the type was defined \
+                                                      in; define and \
+                                                      implement a trait or \
+                                                      new type instead");
+                                }
+                                _ => ()
+                          }
 
-                                        let trait_def_id =
-                                            self.trait_ref_to_trait_def_id(
-                                                *trait_ref);
+                          do opt_trait.iter() |trait_ref| {
+                                // This is OK if and only if the trait was
+                                // defined in this crate.
 
-                                        if trait_def_id.crate != local_crate {
-                                            let session =
-                                                self.crate_context.tcx.sess;
-                                            session.span_err(item.span,
-                                                             ~"cannot \
-                                                               provide an \
-                                                               extension \
-                                                               implementa\
-                                                                  tion \
-                                                               for a trait \
-                                                               not defined \
-                                                               in this \
-                                                               crate");
-                                        }
-                                    }
+                                let trait_def_id =
+                                    self.trait_ref_to_trait_def_id(
+                                        *trait_ref);
+
+                                if trait_def_id.crate != local_crate {
+                                    let session = self.crate_context.tcx.sess;
+                                    session.span_err(item.span,
+                                                     ~"cannot provide an \
+                                                       extension \
+                                                       implementation for a \
+                                                       trait not defined in \
+                                                       this crate");
                                 }
                             }
                         }

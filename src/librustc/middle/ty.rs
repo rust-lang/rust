@@ -242,14 +242,23 @@ export AutoRefKind, AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn;
 export iter_bound_traits_and_supertraits;
 export count_traits_and_supertraits;
 export IntVarValue, IntType, UintType;
+export creader_cache_key;
 
 // Data types
 
 // Note: after typeck, you should use resolved_mode() to convert this mode
 // into an rmode, which will take into account the results of mode inference.
-type arg = {mode: ast::mode, ty: t};
+#[deriving_eq]
+struct arg {
+    mode: ast::mode,
+    ty: t
+}
 
-type field = {ident: ast::ident, mt: mt};
+#[deriving_eq]
+struct field {
+    ident: ast::ident,
+    mt: mt
+}
 
 type param_bounds = @~[param_bound];
 
@@ -292,19 +301,14 @@ pub enum ValueMode {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-type creader_cache_key = {cnum: int, pos: uint, len: uint};
-type creader_cache = HashMap<creader_cache_key, t>;
-
-impl creader_cache_key : cmp::Eq {
-    pure fn eq(&self, other: &creader_cache_key) -> bool {
-        (*self).cnum == (*other).cnum &&
-            (*self).pos == (*other).pos &&
-            (*self).len == (*other).len
-    }
-    pure fn ne(&self, other: &creader_cache_key) -> bool {
-        !((*self) == (*other))
-    }
+#[deriving_eq]
+struct creader_cache_key {
+    cnum: int,
+    pos: uint,
+    len: uint
 }
+
+type creader_cache = HashMap<creader_cache_key, t>;
 
 impl creader_cache_key : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
@@ -312,15 +316,23 @@ impl creader_cache_key : to_bytes::IterBytes {
     }
 }
 
-type intern_key = {sty: *sty, o_def_id: Option<ast::def_id>};
+struct intern_key {
+    sty: *sty,
+    o_def_id: Option<ast::def_id>
+}
 
+// NB: Do not replace this with #[deriving_eq]. The automatically-derived
+// implementation will not recurse through sty and you will get stack
+// exhaustion.
 impl intern_key : cmp::Eq {
     pure fn eq(&self, other: &intern_key) -> bool {
         unsafe {
             *self.sty == *other.sty && self.o_def_id == other.o_def_id
         }
     }
-    pure fn ne(&self, other: &intern_key) -> bool { !(*self).eq(other) }
+    pure fn ne(&self, other: &intern_key) -> bool {
+        !self.eq(other)
+    }
 }
 
 impl intern_key : to_bytes::IterBytes {
@@ -570,13 +582,10 @@ impl<M: to_bytes::IterBytes> FnTyBase<M> : to_bytes::IterBytes {
 
 type FnTy = FnTyBase<FnMeta>;
 
-type param_ty = {idx: uint, def_id: def_id};
-
-impl param_ty : cmp::Eq {
-    pure fn eq(&self, other: &param_ty) -> bool {
-        (*self).idx == (*other).idx && (*self).def_id == (*other).def_id
-    }
-    pure fn ne(&self, other: &param_ty) -> bool { !(*self).eq(other) }
+#[deriving_eq]
+struct param_ty {
+    idx: uint,
+    def_id: def_id
 }
 
 impl param_ty : to_bytes::IterBytes {
@@ -662,11 +671,12 @@ type opt_region = Option<Region>;
  * - `self_ty` is the type to which `self` should be remapped, if any.  The
  *   `self` type is rather funny in that it can only appear on traits and is
  *   always substituted away to the implementing type for a trait. */
-type substs = {
+#[deriving_eq]
+struct substs {
     self_r: opt_region,
     self_ty: Option<ty::t>,
     tps: ~[t]
-};
+}
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
@@ -1051,7 +1061,7 @@ fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
 fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
-    let key = {sty: to_unsafe_ptr(&st), o_def_id: o_def_id};
+    let key = intern_key { sty: to_unsafe_ptr(&st), o_def_id: o_def_id };
     match cx.interner.find(key) {
       Some(t) => unsafe { return cast::reinterpret_cast(&t); },
       _ => ()
@@ -1110,7 +1120,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
 
     let t = @{sty: move st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
 
-    let key = {sty: to_unsafe_ptr(&t.sty), o_def_id: o_def_id};
+    let key = intern_key {sty: to_unsafe_ptr(&t.sty), o_def_id: o_def_id};
     cx.interner.insert(move key, t);
 
     cx.next_id += 1u;
@@ -1243,7 +1253,7 @@ fn mk_infer(cx: ctxt, +it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
 
 fn mk_param(cx: ctxt, n: uint, k: def_id) -> t {
-    mk_t(cx, ty_param({idx: n, def_id: k}))
+    mk_t(cx, ty_param(param_ty { idx: n, def_id: k }))
 }
 
 fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
@@ -1359,7 +1369,7 @@ fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: fn(t) -> t) -> t {
 
 fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
     let args = do sig.inputs.map |arg| {
-        { mode: arg.mode, ty: fldop(arg.ty) }
+        arg { mode: arg.mode, ty: fldop(arg.ty) }
     };
 
     FnSig {
@@ -1370,9 +1380,9 @@ fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
 
 fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
     fn fold_substs(substs: &substs, fldop: fn(t) -> t) -> substs {
-        {self_r: substs.self_r,
-         self_ty: substs.self_ty.map(|t| fldop(*t)),
-         tps: substs.tps.map(|t| fldop(*t))}
+        substs {self_r: substs.self_r,
+                self_ty: substs.self_ty.map(|t| fldop(*t)),
+                tps: substs.tps.map(|t| fldop(*t))}
     }
 
     match /*bad*/copy *sty {
@@ -1400,8 +1410,8 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
         ty_rec(fields) => {
             let new_fields = do vec::map(fields) |fl| {
                 let new_ty = fldop(fl.mt.ty);
-                let new_mt = mt {ty: new_ty, mutbl: fl.mt.mutbl};
-                {ident: fl.ident, mt: new_mt}
+                let new_mt = mt { ty: new_ty, mutbl: fl.mt.mutbl };
+                field { ident: fl.ident, mt: new_mt }
             };
             ty_rec(new_fields)
         }
@@ -1458,11 +1468,13 @@ fn fold_regions_and_ty(
     fn fold_substs(
         substs: &substs,
         fldr: fn(r: Region) -> Region,
-        fldt: fn(t: t) -> t) -> substs
-    {
-        {self_r: substs.self_r.map(|r| fldr(*r)),
-         self_ty: substs.self_ty.map(|t| fldt(*t)),
-         tps: substs.tps.map(|t| fldt(*t))}
+        fldt: fn(t: t) -> t)
+     -> substs {
+        substs {
+            self_r: substs.self_r.map(|r| fldr(*r)),
+            self_ty: substs.self_ty.map(|t| fldt(*t)),
+            tps: substs.tps.map(|t| fldt(*t))
+        }
     }
 
     let tb = ty::get(ty);
@@ -1678,7 +1690,7 @@ fn subst(cx: ctxt,
 // Performs substitutions on a set of substitutions (result = sup(sub)) to
 // yield a new set of substitutions. This is used in trait inheritance.
 fn subst_substs(cx: ctxt, sup: &substs, sub: &substs) -> substs {
-    {
+    substs {
         self_r: sup.self_r,
         self_ty: sup.self_ty.map(|typ| subst(cx, sub, *typ)),
         tps: sup.tps.map(|typ| subst(cx, sub, *typ))
@@ -4159,7 +4171,7 @@ fn struct_item_fields(cx:ctxt,
     do lookup_struct_fields(cx, did).map |f| {
        // consider all instance vars mut, because the
        // constructor may mutate all vars
-       {
+       field {
            ident: f.ident,
             mt: mt {
                 ty: lookup_field_type(cx, did, f.id, substs),
@@ -4288,9 +4300,11 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
                 Some(_) =>
                     // Use re_static since trans doesn't care about regions
                     mk_enum(cx, did,
-                     {self_r: Some(ty::re_static),
-                      self_ty: None,
-                      tps: /*bad*/copy (*r).tps}),
+                     substs {
+                        self_r: Some(ty::re_static),
+                        self_ty: None,
+                        tps: /*bad*/copy (*r).tps
+                     }),
                 None =>
                     t
             },
@@ -4299,9 +4313,9 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             match (*r).self_r {
               Some(_) =>
                 // Ditto.
-                mk_struct(cx, did, {self_r: Some(ty::re_static),
-                                    self_ty: None,
-                                    tps: /*bad*/copy (*r).tps}),
+                mk_struct(cx, did, substs {self_r: Some(ty::re_static),
+                                           self_ty: None,
+                                           tps: /*bad*/copy (*r).tps}),
               None =>
                 t
             },
@@ -4421,20 +4435,6 @@ impl mt : cmp::Eq {
     pure fn ne(&self, other: &mt) -> bool { !(*self).eq(other) }
 }
 
-impl arg : cmp::Eq {
-    pure fn eq(&self, other: &arg) -> bool {
-        (*self).mode == (*other).mode && (*self).ty == (*other).ty
-    }
-    pure fn ne(&self, other: &arg) -> bool { !(*self).eq(other) }
-}
-
-impl field : cmp::Eq {
-    pure fn eq(&self, other: &field) -> bool {
-        (*self).ident == (*other).ident && (*self).mt == (*other).mt
-    }
-    pure fn ne(&self, other: &field) -> bool { !(*self).eq(other) }
-}
-
 impl vstore : cmp::Eq {
     pure fn eq(&self, other: &vstore) -> bool {
         match (*self) {
@@ -4541,15 +4541,6 @@ impl bound_region : cmp::Eq {
         }
     }
     pure fn ne(&self, other: &bound_region) -> bool { !(*self).eq(other) }
-}
-
-impl substs : cmp::Eq {
-    pure fn eq(&self, other: &substs) -> bool {
-        (*self).self_r == (*other).self_r &&
-        (*self).self_ty == (*other).self_ty &&
-        (*self).tps == (*other).tps
-    }
-    pure fn ne(&self, other: &substs) -> bool { !(*self).eq(other) }
 }
 
 impl sty : cmp::Eq {
