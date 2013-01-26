@@ -63,7 +63,7 @@ use core::prelude::*;
 use middle::ty::TyVar;
 use middle::ty;
 use middle::typeck::infer::{ares, cres};
-use middle::typeck::infer::combine::CombineFields;
+use middle::typeck::infer::combine::{Combine, CombineFields};
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use util::common::{indent, indenter};

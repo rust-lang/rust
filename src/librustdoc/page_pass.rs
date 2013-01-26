@@ -76,7 +76,7 @@ fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
             break;
         }
     }
-    doc::Doc_({
+    doc::Doc_(doc::Doc_ {
         pages: pages
     })
 }
@@ -100,7 +100,7 @@ fn fold_crate(
 
     let doc = fold::default_seq_fold_crate(fold, doc);
 
-    let page = doc::CratePage({
+    let page = doc::CratePage(doc::CrateDoc {
         topmod: strip_mod(doc.topmod),
         .. doc
     });
@@ -128,7 +128,7 @@ fn fold_mod(
 }
 
 fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
-    doc::ModDoc_({
+    doc::ModDoc_(doc::ModDoc_ {
         items: do doc.items.filtered |item| {
             match *item {
               doc::ModTag(_) => false,

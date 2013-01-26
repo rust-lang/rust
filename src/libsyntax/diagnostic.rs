@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use codemap::span;
+use codemap::{Pos, span};
 use codemap;
 
 use core::cmp;

@@ -158,7 +158,7 @@ pub fn default_par_fold<T:Owned Clone>(+ctxt: T) -> Fold<T> {
 }
 
 pub fn default_seq_fold_doc<T>(fold: &Fold<T>, +doc: doc::Doc) -> doc::Doc {
-    doc::Doc_({
+    doc::Doc_(doc::Doc_ {
         pages: do vec::map(doc.pages) |page| {
             match *page {
               doc::CratePage(doc) => {
@@ -177,7 +177,7 @@ pub fn default_seq_fold_crate<T>(
     fold: &Fold<T>,
     +doc: doc::CrateDoc
 ) -> doc::CrateDoc {
-    {
+    doc::CrateDoc {
         topmod: (fold.fold_mod)(fold, doc.topmod)
     }
 }
@@ -194,7 +194,7 @@ pub fn default_any_fold_mod<T:Owned Clone>(
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
     let fold_copy = fold.clone();
-    doc::ModDoc_({
+    doc::ModDoc_(doc::ModDoc_ {
         item: (fold.fold_item)(fold, doc.item),
         items: par::map(doc.items, |ItemTag, move fold_copy| {
             fold_ItemTag(&fold_copy, *ItemTag)
@@ -207,7 +207,7 @@ pub fn default_seq_fold_mod<T>(
     fold: &Fold<T>,
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
-    doc::ModDoc_({
+    doc::ModDoc_(doc::ModDoc_ {
         item: (fold.fold_item)(fold, doc.item),
         items: vec::map(doc.items, |ItemTag| {
             fold_ItemTag(fold, *ItemTag)
@@ -221,7 +221,7 @@ pub fn default_par_fold_mod<T:Owned Clone>(
     +doc: doc::ModDoc
 ) -> doc::ModDoc {
     let fold_copy = fold.clone();
-    doc::ModDoc_({
+    doc::ModDoc_(doc::ModDoc_ {
         item: (fold.fold_item)(fold, doc.item),
         items: par::map(doc.items, |ItemTag, move fold_copy| {
             fold_ItemTag(&fold_copy, *ItemTag)
@@ -235,7 +235,7 @@ pub fn default_any_fold_nmod<T:Owned Clone>(
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     let fold_copy = fold.clone();
-    {
+    doc::NmodDoc {
         item: (fold.fold_item)(fold, doc.item),
         fns: par::map(doc.fns, |FnDoc, move fold_copy| {
             (fold_copy.fold_fn)(&fold_copy, *FnDoc)
@@ -248,7 +248,7 @@ pub fn default_seq_fold_nmod<T>(
     fold: &Fold<T>,
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
-    {
+    doc::NmodDoc {
         item: (fold.fold_item)(fold, doc.item),
         fns: vec::map(doc.fns, |FnDoc| {
             (fold.fold_fn)(fold, *FnDoc)
@@ -262,7 +262,7 @@ pub fn default_par_fold_nmod<T:Owned Clone>(
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     let fold_copy = fold.clone();
-    {
+    doc::NmodDoc {
         item: (fold.fold_item)(fold, doc.item),
         fns: par::map(doc.fns, |FnDoc, move fold_copy| {
             (fold_copy.fold_fn)(&fold_copy, *FnDoc)
@@ -307,7 +307,7 @@ pub fn default_seq_fold_fn<T>(
     fold: &Fold<T>,
     +doc: doc::FnDoc
 ) -> doc::FnDoc {
-    {
+    doc::SimpleItemDoc {
         item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
@@ -317,7 +317,7 @@ pub fn default_seq_fold_const<T>(
     fold: &Fold<T>,
     +doc: doc::ConstDoc
 ) -> doc::ConstDoc {
-    {
+    doc::SimpleItemDoc {
         item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
@@ -327,7 +327,7 @@ pub fn default_seq_fold_enum<T>(
     fold: &Fold<T>,
     +doc: doc::EnumDoc
 ) -> doc::EnumDoc {
-    {
+    doc::EnumDoc {
         item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
@@ -337,7 +337,7 @@ pub fn default_seq_fold_trait<T>(
     fold: &Fold<T>,
     +doc: doc::TraitDoc
 ) -> doc::TraitDoc {
-    {
+    doc::TraitDoc {
         item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
@@ -347,7 +347,7 @@ pub fn default_seq_fold_impl<T>(
     fold: &Fold<T>,
     +doc: doc::ImplDoc
 ) -> doc::ImplDoc {
-    {
+    doc::ImplDoc {
         item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
@@ -357,7 +357,7 @@ pub fn default_seq_fold_type<T>(
     fold: &Fold<T>,
     +doc: doc::TyDoc
 ) -> doc::TyDoc {
-    {
+    doc::SimpleItemDoc {
         item: (fold.fold_item)(fold, doc.item),
         .. doc
     }
@@ -367,7 +367,7 @@ pub fn default_seq_fold_struct<T>(
     fold: &Fold<T>,
     +doc: doc::StructDoc
 ) -> doc::StructDoc {
-    {
+    doc::StructDoc {
         item: (fold.fold_item)(fold, doc.item),
         .. doc
     }

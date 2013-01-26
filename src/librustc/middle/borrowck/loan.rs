@@ -14,7 +14,7 @@
 
 use core::prelude::*;
 
-use middle::borrowck::{Loan, bckres, borrowck_ctxt, cmt, err_mutbl};
+use middle::borrowck::{Loan, bckerr, bckres, borrowck_ctxt, cmt, err_mutbl};
 use middle::borrowck::{err_out_of_scope};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_discr, cat_comp};
 use middle::mem_categorization::{cat_deref, cat_discr, cat_local, cat_self};
@@ -72,8 +72,10 @@ impl LoanContext {
                     // We do not allow non-mutable data to be loaned
                     // out as mutable under any circumstances.
                     if cmt.mutbl != m_mutbl {
-                        return Err({cmt:cmt,
-                                    code:err_mutbl(req_mutbl)});
+                        return Err(bckerr {
+                            cmt: cmt,
+                            code: err_mutbl(req_mutbl)
+                        });
                     }
                 }
                 m_const | m_imm => {
@@ -95,9 +97,10 @@ impl LoanContext {
         } else {
             // The loan being requested lives longer than the data
             // being loaned out!
-            return Err({cmt:cmt,
-                        code:err_out_of_scope(scope_ub,
-                                              self.scope_region)});
+            return Err(bckerr {
+                cmt: cmt,
+                code: err_out_of_scope(scope_ub, self.scope_region)
+            });
         }
     }
 

@@ -13,8 +13,8 @@
 
 use core::prelude::*;
 
+use middle::ty::{Vid, param_ty};
 use middle::ty;
-use middle::ty::Vid;
 
 use core::io::WriterUtil;
 use core::io;
@@ -312,7 +312,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
         w.write_char('F');
         w.write_uint(id.to_uint());
       }
-      ty::ty_param({idx: id, def_id: did}) => {
+      ty::ty_param(param_ty {idx: id, def_id: did}) => {
         w.write_char('p');
         w.write_str((cx.ds)(did));
         w.write_char('|');

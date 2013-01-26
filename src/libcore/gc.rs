@@ -40,6 +40,7 @@ with destructors.
 #[forbid(deprecated_pattern)];
 
 use cast;
+use container::{Container, Mutable, Map, Set};
 use io;
 use libc::{size_t, uintptr_t};
 use option::{None, Option, Some};

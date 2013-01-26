@@ -114,6 +114,7 @@ lvalues are *never* stored by value.
 use core::prelude::*;
 
 use lib::llvm::ValueRef;
+use middle::borrowck::root_map_key;
 use middle::resolve;
 use middle::trans::base::*;
 use middle::trans::callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
@@ -757,7 +758,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     // If the lvalue must remain rooted, create a scratch datum, copy
     // the lvalue in there, and then arrange for it to be cleaned up
     // at the end of the scope with id `scope_id`:
-    let root_key = {id:expr.id, derefs:0u};
+    let root_key = root_map_key { id: expr.id, derefs: 0u };
     for bcx.ccx().maps.root_map.find(root_key).each |&root_info| {
         bcx = unrooted_datum.root(bcx, root_info);
     }

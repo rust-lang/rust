@@ -46,7 +46,7 @@ use libc;
 use oldcomm;
 use option;
 use result::Result;
-use pipes::{stream, Chan, Port};
+use pipes::{stream, Chan, GenericChan, GenericPort, Port};
 use pipes;
 use prelude::*;
 use ptr;

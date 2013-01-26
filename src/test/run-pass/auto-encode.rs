@@ -128,24 +128,10 @@ impl CLike : cmp::Eq {
 
 #[auto_encode]
 #[auto_decode]
-type Spanned<T> = {lo: uint, hi: uint, node: T};
-
-impl<T:cmp::Eq> Spanned<T> : cmp::Eq {
-    pure fn eq(&self, other: &Spanned<T>) -> bool {
-        (*self).lo == other.lo &&
-        (*self).hi == other.hi &&
-        (*self).node == other.node
-    }
-    pure fn ne(&self, other: &Spanned<T>) -> bool { !(*self).eq(other) }
+enum AnEnum {
+    AVariant,
+    AnotherVariant
 }
-
-#[auto_encode]
-#[auto_decode]
-type SomeRec = {v: ~[uint]};
-
-#[auto_encode]
-#[auto_decode]
-enum AnEnum = SomeRec;
 
 #[auto_encode]
 #[auto_decode]

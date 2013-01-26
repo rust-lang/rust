@@ -37,6 +37,7 @@ use core::to_bytes::IterBytes;
 use core::uint;
 use core::vec;
 use std::map::HashMap;
+use std::serialize::Encodable;
 use std::{ebml, map};
 use std;
 use syntax::ast::*;

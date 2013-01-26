@@ -13,6 +13,7 @@
 
 use middle::trans::common::*;
 use middle::trans::type_of;
+use middle::ty::field;
 use middle::ty;
 
 use syntax::parse::token::special_idents;
@@ -44,13 +45,17 @@ pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_struct(did, ref substs) => {
             let simpl_fields = (if ty::ty_dtor(tcx, did).is_present() {
                 // remember the drop flag
-                  ~[{ident: special_idents::dtor,
-                     mt: ty::mt {ty: ty::mk_u8(tcx), mutbl: ast::m_mutbl}}] }
+                  ~[field {
+                    ident: special_idents::dtor,
+                    mt: ty::mt {ty: ty::mk_u8(tcx), mutbl: ast::m_mutbl}
+                   }] }
                 else { ~[] }) +
                 do ty::lookup_struct_fields(tcx, did).map |f| {
                  let t = ty::lookup_field_type(tcx, did, f.id, substs);
-                 {ident: f.ident,
-                  mt: ty::mt {ty: simplify_type(tcx, t), mutbl: ast::m_const}}
+                 field {
+                    ident: f.ident,
+                    mt: ty::mt {ty: simplify_type(tcx, t), mutbl: ast::m_const
+                 }}
             };
             ty::mk_rec(tcx, simpl_fields)
           }
