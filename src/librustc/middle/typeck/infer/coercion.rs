@@ -196,7 +196,7 @@ impl Coerce {
         let inner_ty = match *sty_a {
             ty::ty_box(mt_a) => mt_a.ty,
             ty::ty_uniq(mt_a) => mt_a.ty,
-            ty::ty_rptr(r_a, mt_a) => mt_a.ty,
+            ty::ty_rptr(_, mt_a) => mt_a.ty,
             _ => {
                 return self.subtype(a, b);
             }
