@@ -12,6 +12,7 @@
 
 #[no_core];
 #[legacy_exports];
+#[legacy_records];
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];

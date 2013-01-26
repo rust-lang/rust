@@ -16,12 +16,12 @@ use io::ReaderUtil;
 use str;
 
 export load_errors;
-export expected_error;
+export ExpectedError;
 
-type expected_error = { line: uint, kind: ~str, msg: ~str };
+struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 
 // Load any test directives embedded in the file
-fn load_errors(testfile: &Path) -> ~[expected_error] {
+fn load_errors(testfile: &Path) -> ~[ExpectedError] {
     let mut error_patterns = ~[];
     let rdr = io::file_reader(testfile).get();
     let mut line_num = 1u;
@@ -33,7 +33,7 @@ fn load_errors(testfile: &Path) -> ~[expected_error] {
     return error_patterns;
 }
 
-fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] {
+fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
     unsafe {
         let error_tag = ~"//~";
         let mut idx;
@@ -63,6 +63,7 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] {
 
         debug!("line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg);
 
-        return ~[{line: line_num - adjust_line, kind: kind, msg: msg}];
+        return ~[ExpectedError{line: line_num - adjust_line, kind: kind,
+                               msg: msg}];
     }
 }

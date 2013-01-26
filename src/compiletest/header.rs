@@ -17,11 +17,11 @@ use io::ReaderUtil;
 use os;
 use str;
 
-export test_props;
+export TestProps;
 export load_props;
 export is_test_ignored;
 
-type test_props = {
+struct TestProps {
     // Lines that should be expected, in order, on standard out
     error_patterns: ~[~str],
     // Extra flags to pass to the compiler
@@ -33,10 +33,10 @@ type test_props = {
     aux_builds: ~[~str],
     // Environment settings to use during execution
     exec_env: ~[(~str,~str)]
-};
+}
 
 // Load any test directives embedded in the file
-fn load_props(testfile: &Path) -> test_props {
+fn load_props(testfile: &Path) -> TestProps {
     let mut error_patterns = ~[];
     let mut aux_builds = ~[];
     let mut exec_env = ~[];
@@ -64,7 +64,7 @@ fn load_props(testfile: &Path) -> test_props {
             exec_env.push(*ee);
         }
     };
-    return {
+    return TestProps {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
         pp_exact: pp_exact,
