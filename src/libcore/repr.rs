@@ -570,6 +570,9 @@ pub fn write_repr<T>(writer: @Writer, object: &T) {
 }
 
 #[test]
+struct P {a: int, b: float}
+
+#[test]
 fn test_repr() {
 
     fn exact_test<T>(t: &T, e:&str) {
@@ -609,11 +612,11 @@ fn test_repr() {
                "~[\"hi\", \"there\"]");
     exact_test(&(&["hi", "there"]),
                "&[\"hi\", \"there\"]");
-    exact_test(&({a:10, b:1.234}),
+    exact_test(&(P{a:10, b:1.234}),
                "{a: 10, b: 1.2340}");
-    exact_test(&(@{a:10, b:1.234}),
+    exact_test(&(@P{a:10, b:1.234}),
                "@{a: 10, b: 1.2340}");
-    exact_test(&(~{a:10, b:1.234}),
+    exact_test(&(~P{a:10, b:1.234}),
                "~{a: 10, b: 1.2340}");
     exact_test(&(10_u8, ~"hello"),
                "(10, ~\"hello\")");
