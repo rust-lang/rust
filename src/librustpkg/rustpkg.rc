@@ -55,10 +55,10 @@ struct PackageScript {
 
 impl PackageScript {
     static fn parse(parent: &Path) -> Result<PackageScript, ~str> {
-        let script = parent.push(~"package.rs");
+        let script = parent.push(~"pkg.rs");
 
         if !os::path_exists(&script) {
-            return result::Err(~"no package.rs file");
+            return result::Err(~"no pkg.rs file");
         }
 
         let binary = os::args()[0];
