@@ -20,11 +20,12 @@ fn repeater<A:Copy>(v: @A) -> repeat<A> {
 }
 
 fn main() {
-    // Here, an error results as the type of y is inferred to
-    // repeater<&lt/3> where lt is the block.
-    let y = {
-        let x: &blk/int = &3; //~ ERROR cannot infer an appropriate lifetime
+    // Error results because the type of is inferred to be
+    // repeat<&blk/int> where blk is the lifetime of the block below.
+
+    let y = { //~ ERROR reference is not valid
+        let x: &blk/int = &3;
         repeater(@x)
     };
-    assert 3 == *(y.get());
+    assert 3 == *(y.get()); //~ ERROR reference is not valid
 }

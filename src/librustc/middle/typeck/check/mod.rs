@@ -105,7 +105,7 @@ use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
 use middle::typeck::{method_origin, method_self, method_trait, no_params};
 use middle::typeck::{require_same_types};
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux::{bound_region_to_str, expr_repr};
+use util::ppaux::{bound_region_to_str, expr_repr, pat_repr};
 use util::ppaux;
 
 use core::either;
@@ -127,7 +127,6 @@ use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::parse::token::special_idents;
-use syntax::print::pprust::{expr_to_str, pat_to_str};
 use syntax::print::pprust;
 use syntax::visit;
 use syntax;
@@ -140,7 +139,6 @@ export regionck;
 export demand;
 export method;
 export fn_ctxt;
-export lookup_local;
 export impl_self_ty;
 export DerefArgs;
 export DontDerefArgs;
@@ -190,7 +188,7 @@ type self_info = {
 /// share the inherited fields.
 struct inherited {
     infcx: @infer::InferCtxt,
-    locals: HashMap<ast::node_id, TyVid>,
+    locals: HashMap<ast::node_id, ty::t>,
     node_types: HashMap<ast::node_id, ty::t>,
     node_type_substs: HashMap<ast::node_id, ty::substs>,
     adjustments: HashMap<ast::node_id, @ty::AutoAdjustment>
@@ -377,8 +375,7 @@ fn check_fn(ccx: @crate_ctxt,
         }
     };
 
-    // XXX: Bad copy.
-    gather_locals(fcx, decl, body, copy arg_tys, self_info);
+    gather_locals(fcx, decl, body, arg_tys, self_info);
     check_block(fcx, body);
 
     // We unify the tail expr's type with the
@@ -415,30 +412,31 @@ fn check_fn(ccx: @crate_ctxt,
     fn gather_locals(fcx: @fn_ctxt,
                      decl: &ast::fn_decl,
                      body: ast::blk,
-                     arg_tys: ~[ty::t],
+                     arg_tys: &[ty::t],
                      self_info: Option<self_info>) {
         let tcx = fcx.ccx.tcx;
 
-        let assign = fn@(span: span, nid: ast::node_id,
-                         ty_opt: Option<ty::t>) {
-            let var_id = fcx.infcx().next_ty_var_id();
-            fcx.inh.locals.insert(nid, var_id);
+        let assign = fn@(nid: ast::node_id, ty_opt: Option<ty::t>) {
             match ty_opt {
-                None => {/* nothing to do */ }
+                None => {
+                    // infer the variable's type
+                    let var_id = fcx.infcx().next_ty_var_id();
+                    let var_ty = ty::mk_var(fcx.tcx(), var_id);
+                    fcx.inh.locals.insert(nid, var_ty);
+                }
                 Some(typ) => {
-                    infer::mk_eqty(fcx.infcx(), false, span,
-                                   ty::mk_var(tcx, var_id), typ);
+                    // take type that the user specified
+                    fcx.inh.locals.insert(nid, typ);
                 }
             }
         };
 
         // Add the self parameter
         for self_info.each |self_info| {
-            assign(self_info.explicit_self.span,
-                   self_info.self_id,
-                   Some(self_info.self_ty));
+            assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
-                   fcx.inh.locals.get(self_info.self_id).to_str());
+                   fcx.infcx().ty_to_str(
+                       fcx.inh.locals.get(self_info.self_id)));
         }
 
         // Add formal parameters.
@@ -446,7 +444,7 @@ fn check_fn(ccx: @crate_ctxt,
             // Create type variables for each argument.
             do pat_util::pat_bindings(tcx.def_map, input.pat)
                     |_bm, pat_id, _sp, _path| {
-                assign(input.ty.span, pat_id, None);
+                assign(pat_id, None);
             }
 
             // Check the pattern.
@@ -467,10 +465,11 @@ fn check_fn(ccx: @crate_ctxt,
               ast::ty_infer => None,
               _ => Some(fcx.to_ty(local.node.ty))
             };
-            assign(local.span, local.node.id, o_ty);
-            debug!("Local variable %s is assigned to %s",
-                   pat_to_str(local.node.pat, tcx.sess.intr()),
-                   fcx.inh.locals.get(local.node.id).to_str());
+            assign(local.node.id, o_ty);
+            debug!("Local variable %s is assigned type %s",
+                   fcx.pat_to_str(local.node.pat),
+                   fcx.infcx().ty_to_str(
+                       fcx.inh.locals.get(local.node.id)));
             visit::visit_local(local, e, v);
         };
 
@@ -479,10 +478,11 @@ fn check_fn(ccx: @crate_ctxt,
             match p.node {
               ast::pat_ident(_, path, _)
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
-                assign(p.span, p.id, None);
+                assign(p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
                        tcx.sess.str_of(path.idents[0]),
-                       fcx.inh.locals.get(p.id).to_str());
+                       fcx.infcx().ty_to_str(
+                           fcx.inh.locals.get(p.id)));
               }
               _ => {}
             }
@@ -695,6 +695,17 @@ impl @fn_ctxt: region_scope {
 impl @fn_ctxt {
     fn tag() -> ~str { fmt!("%x", ptr::addr_of(&(*self)) as uint) }
 
+    fn local_ty(span: span, nid: ast::node_id) -> ty::t {
+        match self.inh.locals.find(nid) {
+            Some(t) => t,
+            None => {
+                self.tcx().sess.span_bug(
+                    span,
+                    fmt!("No type for local variable %?", nid));
+            }
+        }
+    }
+
     fn expr_to_str(expr: @ast::expr) -> ~str {
         fmt!("expr(%?:%s)", expr.id,
              pprust::expr_to_str(expr, self.tcx().sess.intr()))
@@ -756,6 +767,10 @@ impl @fn_ctxt {
         expr_repr(self.tcx(), expr)
     }
 
+    fn pat_to_str(pat: @ast::pat) -> ~str {
+        pat_repr(self.tcx(), pat)
+    }
+
     fn expr_ty(ex: @ast::expr) -> ty::t {
         match self.inh.node_types.find(ex.id) {
             Some(t) => t,
@@ -809,7 +824,7 @@ impl @fn_ctxt {
     fn mk_assignty(expr: @ast::expr, sub: ty::t, sup: ty::t)
         -> Result<(), ty::type_err>
     {
-        match infer::mk_assignty(self.infcx(), false, expr.span, sub, sup) {
+        match infer::mk_coercety(self.infcx(), false, expr.span, sub, sup) {
             Ok(None) => result::Ok(()),
             Err(ref e) => result::Err((*e)),
             Ok(Some(adjustment)) => {
@@ -820,7 +835,7 @@ impl @fn_ctxt {
     }
 
     fn can_mk_assignty(sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
-        infer::can_mk_assignty(self.infcx(), sub, sup)
+        infer::can_mk_coercety(self.infcx(), sub, sup)
     }
 
     fn mk_eqty(a_is_expected: bool, span: span,
@@ -983,12 +998,12 @@ fn check_expr_has_type(
     }
 }
 
-fn check_expr_assignable_to_type(
+fn check_expr_coercable_to_type(
     fcx: @fn_ctxt, expr: @ast::expr,
     expected: ty::t) -> bool
 {
     do check_expr_with_unifier(fcx, expr, Some(expected)) {
-        demand::assign(fcx, expr.span, expected, expr)
+        demand::coerce(fcx, expr.span, expected, expr)
     }
 }
 
@@ -1222,7 +1237,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     }
 
                     // mismatch error happens in here
-                    bot |= check_expr_assignable_to_type(
+                    bot |= check_expr_coercable_to_type(
                         fcx, *arg, formal_ty);
 
                 }
@@ -1240,7 +1255,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                      -> bool {
         let mut bot = check_expr(fcx, lhs);
         let lhs_type = fcx.expr_ty(lhs);
-        bot |= check_expr_assignable_to_type(fcx, rhs, lhs_type);
+        bot |= check_expr_has_type(fcx, rhs, lhs_type);
         fcx.write_ty(id, ty::mk_nil(fcx.ccx.tcx));
         return bot;
     }
@@ -1356,10 +1371,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     fn check_for(fcx: @fn_ctxt, local: @ast::local,
                  element_ty: ty::t, body: ast::blk,
                  node_id: ast::node_id) -> bool {
-        let locid = lookup_local(fcx, local.span, local.node.id);
-        demand::suptype(fcx, local.span,
-                       ty::mk_var(fcx.ccx.tcx, locid),
-                       element_ty);
+        let local_ty = fcx.local_ty(local.span, local.node.id);
+        demand::suptype(fcx, local.span, local_ty, element_ty);
         let bot = check_decl_local(fcx, local);
         check_block_no_value(fcx, body);
         fcx.write_nil(node_id);
@@ -1600,7 +1613,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let fty = ty::mk_fn(tcx, copy fn_ty);
 
         debug!("check_expr_fn_with_unifier %s fty=%s",
-               expr_to_str(expr, tcx.sess.intr()),
+               fcx.expr_to_str(expr),
                fcx.infcx().ty_to_str(fty));
 
         fcx.write_ty(expr.id, fty);
@@ -1736,7 +1749,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                         ty::lookup_field_type(
                             tcx, class_id, field_id, substitutions);
                     bot |=
-                        check_expr_assignable_to_type(
+                        check_expr_coercable_to_type(
                             fcx,
                             field.node.expr,
                             expected_field_type);
@@ -2548,15 +2561,15 @@ fn require_integral(fcx: @fn_ctxt, sp: span, t: ty::t) {
 
 fn check_decl_initializer(fcx: @fn_ctxt, nid: ast::node_id,
                           init: @ast::expr) -> bool {
-    let lty = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, init.span, nid));
-    return check_expr_assignable_to_type(fcx, init, lty);
+    let local_ty = fcx.local_ty(init.span, nid);
+    return check_expr_coercable_to_type(fcx, init, local_ty);
 }
 
 fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
     let mut bot = false;
     let tcx = fcx.ccx.tcx;
 
-    let t = ty::mk_var(tcx, fcx.inh.locals.get(local.node.id));
+    let t = fcx.local_ty(local.span, local.node.id);
     fcx.write_ty(local.node.id, t);
 
     match local.node.init {
@@ -2713,7 +2726,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
             do v.node.disr_expr.iter |e_ref| {
                 let e = *e_ref;
                 debug!("disr expr, checking %s",
-                       expr_to_str(e, ccx.tcx.sess.intr()));
+                       pprust::expr_to_str(e, ccx.tcx.sess.intr()));
                 let declty = ty::mk_int(ccx.tcx);
                 let fcx = blank_fn_ctxt(ccx, rty, e.id);
                 check_const_with_ty(fcx, e.span, e, declty);
@@ -2816,17 +2829,6 @@ fn check_enum_variants(ccx: @crate_ctxt,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-pub fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> TyVid {
-    match fcx.inh.locals.find(id) {
-        Some(x) => x,
-        _ => {
-            fcx.ccx.tcx.sess.span_fatal(
-                sp,
-                ~"internal error looking up a local var")
-        }
-    }
-}
-
 fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
     lookup_def_ccx(fcx.ccx, sp, id)
 }
@@ -2838,9 +2840,8 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
     match defn {
       ast::def_arg(nid, _, _) | ast::def_local(nid, _) |
       ast::def_self(nid, _) | ast::def_binding(nid, _) => {
-        assert (fcx.inh.locals.contains_key(nid));
-        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
-        return no_params(typ);
+          let typ = fcx.local_ty(sp, nid);
+          return no_params(typ);
       }
       ast::def_fn(_, ast::extern_fn) => {
         // extern functions are just u8 pointers

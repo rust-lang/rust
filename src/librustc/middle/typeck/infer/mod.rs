@@ -217,11 +217,11 @@ when possible but otherwise merge the variables" strategy.  In other
 words, `GLB(A, B)` where `A` and `B` are variables will often result
 in `A` and `B` being merged and the result being `A`.
 
-## Type assignment
+## Type coercion
 
 We have a notion of assignability which differs somewhat from
 subtyping; in particular it may cause region borrowing to occur.  See
-the big comment later in this file on Type Assignment for specifics.
+the big comment later in this file on Type Coercion for specifics.
 
 ### In conclusion
 
@@ -251,9 +251,10 @@ use core::prelude::*;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty::{mk_fn, type_is_bot};
 use middle::ty::{ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
+use middle::ty::IntVarValue;
 use middle::ty;
 use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};
-use middle::typeck::infer::assignment::Assign;
+use middle::typeck::infer::coercion::Coerce;
 use middle::typeck::infer::combine::{CombineFields, eq_tys};
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
@@ -292,17 +293,15 @@ export new_infer_ctxt;
 export mk_subty, can_mk_subty;
 export mk_subr;
 export mk_eqty;
-export mk_assignty, can_mk_assignty;
+export mk_coercety, can_mk_coercety;
 export resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all;
 export force_tvar, force_rvar, force_ivar, force_all;
 export resolve_and_force_all_but_regions, not_regions;
 export resolve_type, resolve_region;
 export resolve_borrowings;
 export cres, fres, fixup_err, fixup_err_to_str;
-export assignment;
 export root, to_str;
 export int_ty_set_all;
-export assignment;
 export combine;
 export glb;
 export integral;
@@ -311,19 +310,18 @@ export lub;
 export region_inference;
 export resolve;
 export sub;
+export coercion;
 export to_str;
 export unify;
 export uok;
 export cyclic_ty, unresolved_ty, region_var_bound_by_region_var;
 export Bound, Bounds;
 export ures;
-export ares;
+export CoerceResult;
 export infer_ctxt;
 export fixup_err;
 export IntVarValue, IntType, UintType;
 
-#[legacy_exports]
-mod assignment;
 #[legacy_exports]
 mod combine;
 #[legacy_exports]
@@ -342,6 +340,7 @@ mod sub;
 mod to_str;
 #[legacy_exports]
 mod unify;
+mod coercion;
 
 type Bound<T> = Option<T>;
 type Bounds<T> = {lb: Bound<T>, ub: Bound<T>};
@@ -349,13 +348,7 @@ type Bounds<T> = {lb: Bound<T>, ub: Bound<T>};
 type cres<T> = Result<T,ty::type_err>; // "combine result"
 type ures = cres<()>; // "unify result"
 type fres<T> = Result<T, fixup_err>; // "fixup result"
-type ares = cres<Option<@ty::AutoAdjustment>>; // "assignment result"
-
-#[deriving_eq]
-enum IntVarValue {
-    IntType(ast::int_ty),
-    UintType(ast::uint_ty),
-}
+type CoerceResult = cres<Option<@ty::AutoAdjustment>>;
 
 struct InferCtxt {
     tcx: ty::ctxt,
@@ -364,22 +357,14 @@ struct InferCtxt {
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
     ty_var_bindings: ValsAndBindings<ty::TyVid, Bounds<ty::t>>,
-
-    // Number of type variables created thus far.
     mut ty_var_counter: uint,
 
-    // The types that might instantiate an integral type variable are
-    // represented by an int_ty_set.
+    // Map from integral variable to the kind of integer it represents
     int_var_bindings: ValsAndBindings<ty::IntVid, Option<IntVarValue>>,
-
-    // Number of integral variables created thus far.
     mut int_var_counter: uint,
 
-    // The types that might instantiate a floating-point type variable are
-    // represented by an float_ty_set.
+    // Map from floating variable to the kind of float it represents
     float_var_bindings: ValsAndBindings<ty::FloatVid, Option<ast::float_ty>>,
-
-    // Number of floating-point variables created thus far.
     mut float_var_counter: uint,
 
     // For region variables.
@@ -471,22 +456,23 @@ fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-fn mk_assignty(cx: @InferCtxt, a_is_expected: bool, span: span,
-               a: ty::t, b: ty::t) -> ares {
-    debug!("mk_assignty(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
+fn mk_coercety(cx: @InferCtxt, a_is_expected: bool, span: span,
+               a: ty::t, b: ty::t) -> CoerceResult
+{
+    debug!("mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            Assign(cx.combine_fields(a_is_expected, span)).tys(a, b)
+            Coerce(cx.combine_fields(a_is_expected, span)).tys(a, b)
         }
     }
 }
 
-fn can_mk_assignty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
-    debug!("can_mk_assignty(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
+fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
+    debug!("can_mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
             let span = ast_util::dummy_sp();
-            Assign(cx.combine_fields(true, span)).tys(a, b)
+            Coerce(cx.combine_fields(true, span)).tys(a, b)
         }
     }.to_ures()
 }
@@ -582,6 +568,7 @@ fn rollback_to<V:Copy Vid, T:Copy>(
 struct Snapshot {
     ty_var_bindings_len: uint,
     int_var_bindings_len: uint,
+    float_var_bindings_len: uint,
     region_vars_snapshot: uint,
 }
 
@@ -607,6 +594,8 @@ impl @InferCtxt {
                 self.ty_var_bindings.bindings.len(),
             int_var_bindings_len:
                 self.int_var_bindings.bindings.len(),
+            float_var_bindings_len:
+                self.float_var_bindings.bindings.len(),
             region_vars_snapshot:
                 self.region_vars.start_snapshot(),
         }
@@ -616,9 +605,11 @@ impl @InferCtxt {
         debug!("rollback!");
         rollback_to(&self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
-        // FIXME(#3211) -- int_var not transactional
+        // FIXME(#3211) -- int_var and float_var not transactional
         //rollback_to(&self.int_var_bindings,
         //            snapshot.int_var_bindings_len);
+        //rollback_to(&self.float_var_bindings,
+        //            snapshot.float_var_bindings_len);
 
         self.region_vars.rollback_to(snapshot.region_vars_snapshot);
     }
@@ -664,6 +655,16 @@ impl @InferCtxt {
     }
 }
 
+fn next_simple_var<V: Copy,T: Copy>(
+    +counter: &mut uint,
+    +bindings: &ValsAndBindings<V,Option<T>>) -> uint
+{
+    let id = *counter;
+    *counter += 1;
+    bindings.vals.insert(id, Root(None, 0));
+    return id;
+}
+
 impl @InferCtxt {
     fn next_ty_var_id() -> TyVid {
         let id = self.ty_var_counter;
@@ -682,11 +683,8 @@ impl @InferCtxt {
     }
 
     fn next_int_var_id() -> IntVid {
-        let id = self.int_var_counter;
-        self.int_var_counter += 1;
-
-        self.int_var_bindings.vals.insert(id, Root(None, 0));
-        return IntVid(id);
+        IntVid(next_simple_var(&mut self.int_var_counter,
+                               &self.int_var_bindings))
     }
 
     fn next_int_var() -> ty::t {
@@ -694,11 +692,8 @@ impl @InferCtxt {
     }
 
     fn next_float_var_id() -> FloatVid {
-        let id = self.float_var_counter;
-        self.float_var_counter += 1;
-
-        self.float_var_bindings.vals.insert(id, Root(None, 0));
-        return FloatVid(id);
+        FloatVid(next_simple_var(&mut self.float_var_counter,
+                                 &self.float_var_bindings))
     }
 
     fn next_float_var() -> ty::t {

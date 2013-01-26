@@ -16,7 +16,7 @@ use core::prelude::*;
 
 use middle::pat_util;
 use middle::ty;
-use middle::typeck::check::{fn_ctxt, lookup_local, self_info};
+use middle::typeck::check::{fn_ctxt, self_info};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
 use middle::typeck::infer;
@@ -216,8 +216,7 @@ fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
 }
 fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { return; }
-    let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
-    let var_ty = ty::mk_var(wbcx.fcx.tcx(), var_id);
+    let var_ty = wbcx.fcx.local_ty(l.span, l.node.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
         Ok(lty) => {
             debug!("Type for local %s (id %d) resolved to %s",

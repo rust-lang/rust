@@ -25,6 +25,7 @@ use core::str;
 use core::vec;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound, _mod, add, arm};
 use syntax::ast::{binding_mode, bitand, bitor, bitxor, blk, capture_clause};
+use syntax::ast::{bind_by_value, bind_infer, bind_by_ref, bind_by_move};
 use syntax::ast::{crate, crate_num, decl_item, def, def_arg, def_binding};
 use syntax::ast::{def_const, def_foreign_mod, def_fn, def_id, def_label};
 use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
@@ -4521,6 +4522,10 @@ impl Resolver {
                                     struct or enum variant",
                                     self.session.str_of(ident));
 
+                            self.enforce_default_binding_mode(
+                                pattern,
+                                binding_mode,
+                                "an enum variant");
                             self.record_def(pattern.id, def);
                         }
                         FoundStructOrEnumVariant(_) => {
@@ -4537,6 +4542,10 @@ impl Resolver {
                                     constant",
                                     self.session.str_of(ident));
 
+                            self.enforce_default_binding_mode(
+                                pattern,
+                                binding_mode,
+                                "a constant");
                             self.record_def(pattern.id, def);
                         }
                         FoundConst(_) => {
@@ -5369,6 +5378,32 @@ impl Resolver {
     fn record_def(node_id: node_id, def: def) {
         debug!("(recording def) recording %? for %?", def, node_id);
         self.def_map.insert(node_id, def);
+    }
+
+    fn enforce_default_binding_mode(pat: @pat,
+                                    pat_binding_mode: binding_mode,
+                                    descr: &str) {
+        match pat_binding_mode {
+            bind_infer => {}
+            bind_by_value => {
+                self.session.span_err(
+                    pat.span,
+                    fmt!("cannot use `copy` binding mode with %s",
+                         descr));
+            }
+            bind_by_move => {
+                self.session.span_err(
+                    pat.span,
+                    fmt!("cannot use `move` binding mode with %s",
+                         descr));
+            }
+            bind_by_ref(*) => {
+                self.session.span_err(
+                    pat.span,
+                    fmt!("cannot use `ref` binding mode with %s",
+                         descr));
+            }
+        }
     }
 
     //

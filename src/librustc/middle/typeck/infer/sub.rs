@@ -102,38 +102,31 @@ impl Sub: Combine {
         debug!("%s.tys(%s, %s)", self.tag(),
                a.inf_str(self.infcx), b.inf_str(self.infcx));
         if a == b { return Ok(a); }
-        do indent {
-            match (ty::get(a).sty, ty::get(b).sty) {
-                (ty::ty_bot, _) => {
-                    Ok(a)
-                }
+        let _indenter = indenter();
+        match (ty::get(a).sty, ty::get(b).sty) {
+            (ty::ty_bot, _) => {
+                Ok(a)
+            }
 
-                (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
-                    do self.var_sub_var(&self.infcx.ty_var_bindings,
-                                        a_id, b_id).then {
-                        Ok(a)
-                    }
-                }
-                (ty::ty_infer(TyVar(a_id)), _) => {
-                    do self.var_sub_t(&self.infcx.ty_var_bindings,
-                                      a_id, b).then {
-                        Ok(a)
-                    }
-                }
-                (_, ty::ty_infer(TyVar(b_id))) => {
-                    do self.t_sub_var(&self.infcx.ty_var_bindings,
-                                      a, b_id).then {
-                        Ok(a)
-                    }
-                }
+            (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
+                if_ok!(self.var_sub_var(a_id, b_id));
+                Ok(a)
+            }
+            (ty::ty_infer(TyVar(a_id)), _) => {
+                if_ok!(self.var_sub_t(a_id, b));
+                Ok(a)
+            }
+            (_, ty::ty_infer(TyVar(b_id))) => {
+                if_ok!(self.t_sub_var(a, b_id));
+                Ok(a)
+            }
 
-                (_, ty::ty_bot) => {
-                    Err(ty::terr_sorts(expected_found(&self, a, b)))
-                }
+            (_, ty::ty_bot) => {
+                Err(ty::terr_sorts(expected_found(&self, a, b)))
+            }
 
-                _ => {
-                    super_tys(&self, a, b)
-                }
+            _ => {
+                super_tys(&self, a, b)
             }
         }
     }

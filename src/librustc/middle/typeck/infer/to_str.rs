@@ -10,10 +10,10 @@
 
 use core::prelude::*;
 
-use middle::ty::{FnMeta, FnTyBase, FnSig, FnVid, Vid};
+use middle::ty::{FnMeta, FnTyBase, FnSig, Vid};
+use middle::ty::{IntVarValue, IntType, UintType};
 use middle::ty;
 use middle::typeck::infer::{Bound, Bounds};
-use middle::typeck::infer::{IntVarValue, IntType, UintType};
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::unify::{Redirect, Root, VarValue};
 use util::ppaux::{mt_to_str, ty_to_str};
@@ -25,23 +25,23 @@ use core::uint;
 use core::str;
 
 pub trait InferStr {
-    fn inf_str(cx: @InferCtxt) -> ~str;
+    fn inf_str(&self, cx: &InferCtxt) -> ~str;
 }
 
 impl ty::t : InferStr {
-    fn inf_str(cx: @InferCtxt) -> ~str {
-        ty_to_str(cx.tcx, self)
+    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+        ty_to_str(cx.tcx, *self)
     }
 }
 
 impl FnMeta : InferStr {
-    fn inf_str(_cx: @InferCtxt) -> ~str {
-        fmt!("%?", self)
+    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
+        fmt!("%?", *self)
     }
 }
 
 impl FnSig : InferStr {
-    fn inf_str(cx: @InferCtxt) -> ~str {
+    fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("(%s) -> %s",
              str::connect(self.inputs.map(|a| a.ty.inf_str(cx)), ", "),
              self.output.inf_str(cx))
@@ -49,26 +49,26 @@ impl FnSig : InferStr {
 }
 
 impl<M:InferStr> FnTyBase<M> : InferStr {
-    fn inf_str(cx: @InferCtxt) -> ~str {
+    fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("%s%s", self.meta.inf_str(cx), self.sig.inf_str(cx))
     }
 }
 
 impl ty::mt : InferStr {
-    fn inf_str(cx: @InferCtxt) -> ~str {
-        mt_to_str(cx.tcx, self)
+    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+        mt_to_str(cx.tcx, *self)
     }
 }
 
 impl ty::Region : InferStr {
-    fn inf_str(_cx: @InferCtxt) -> ~str {
-        fmt!("%?", self)
+    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
+        fmt!("%?", *self)
     }
 }
 
 impl<V:InferStr> Bound<V> : InferStr {
-    fn inf_str(cx: @InferCtxt) -> ~str {
-        match self {
+    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+        match *self {
           Some(ref v) => v.inf_str(cx),
           None => ~"none"
         }
@@ -76,7 +76,7 @@ impl<V:InferStr> Bound<V> : InferStr {
 }
 
 impl<T:InferStr> Bounds<T> : InferStr {
-    fn inf_str(cx: @InferCtxt) -> ~str {
+    fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("{%s <: %s}",
              self.lb.inf_str(cx),
              self.ub.inf_str(cx))
@@ -84,8 +84,8 @@ impl<T:InferStr> Bounds<T> : InferStr {
 }
 
 impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
-    fn inf_str(cx: @InferCtxt) -> ~str {
-        match self {
+    fn inf_str(&self, cx: &InferCtxt) -> ~str {
+        match *self {
           Redirect(ref vid) => fmt!("Redirect(%s)", vid.to_str()),
           Root(ref pt, rk) => fmt!("Root(%s, %s)", pt.inf_str(cx),
                                uint::to_str(rk, 10u))
@@ -94,17 +94,13 @@ impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
 }
 
 impl IntVarValue : InferStr {
-    fn inf_str(_cx: @InferCtxt) -> ~str {
-        match self {
-            IntType(t) => ast_util::int_ty_to_str(t),
-            UintType(t) => ast_util::uint_ty_to_str(t)
-        }
+    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
+        self.to_str()
     }
 }
 
 impl ast::float_ty : InferStr {
-    fn inf_str(_cx: @InferCtxt) -> ~str {
-        ast_util::float_ty_to_str(self)
+    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
+        self.to_str()
     }
 }
-
