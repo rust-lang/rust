@@ -18,6 +18,7 @@
 
 #[legacy_modes];
 #[legacy_exports];
+#[legacy_records];
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
@@ -40,6 +41,7 @@ pub mod syntax {
 mod attr;
 #[legacy_exports]
 mod diagnostic;
+#[legacy_records]
 mod codemap;
 #[legacy_exports]
 mod ast;
@@ -107,8 +109,8 @@ mod ext {
     #[legacy_exports]
     mod source_util;
 
-    #[legacy_exports]
     #[path = "pipes/mod.rs"]
+    #[legacy_exports]
     mod pipes;
 
     #[legacy_exports]

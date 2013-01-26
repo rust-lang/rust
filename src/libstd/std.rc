@@ -33,6 +33,10 @@ not required in or otherwise suitable for the core library.
 #[allow(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+
+// Transitional
+#[legacy_records];
+
 #[no_core];
 
 extern mod core(vers = "0.6");
