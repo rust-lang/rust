@@ -74,9 +74,8 @@
 #[warn(deprecated_mode)];
 
 use cast;
-use oldcomm;
 use option;
-use pipes::{Chan, Port};
+use pipes::{stream, Chan, Port};
 use pipes;
 use prelude::*;
 use private;
@@ -88,6 +87,7 @@ use task::rt::rust_closure;
 use task::rt;
 use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult, ThreadPerCore, ThreadPerTask};
+use task::{ExistingScheduler, SchedulerHandle};
 use task::{default_task_opts, unkillable};
 use uint;
 use util;
@@ -536,9 +536,9 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let (child_tg, ancestors, f) = option::swap_unwrap(child_data);
             // Create child task.
-            let new_task = match opts.sched {
-              None             => rt::new_task(),
-              Some(sched_opts) => new_task_in_new_sched(sched_opts)
+            let new_task = match opts.sched.mode {
+                DefaultScheduler => rt::new_task(),
+                _ => new_task_in_sched(opts.sched)
             };
             assert !new_task.is_null();
             // Getting killed after here would leak the task.
@@ -642,31 +642,35 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
         }
     }
 
-    fn new_task_in_new_sched(opts: SchedOpts) -> *rust_task {
-        unsafe {
-            if opts.foreign_stack_size != None {
-                fail ~"foreign_stack_size scheduler option unimplemented";
+    fn new_task_in_sched(opts: SchedOpts) -> *rust_task {
+        if opts.foreign_stack_size != None {
+            fail ~"foreign_stack_size scheduler option unimplemented";
+        }
+
+        let num_threads = match opts.mode {
+          DefaultScheduler
+          | CurrentScheduler
+          | ExistingScheduler(*)
+          | PlatformThread => 0u, /* Won't be used */
+          SingleThreaded => 1u,
+          ThreadPerCore => unsafe { rt::rust_num_threads() },
+          ThreadPerTask => {
+            fail ~"ThreadPerTask scheduling mode unimplemented"
+          }
+          ManualThreads(threads) => {
+            if threads == 0u {
+                fail ~"can not create a scheduler with no threads";
             }
+            threads
+          }
+        };
 
-            let num_threads = match opts.mode {
-              SingleThreaded => 1u,
-              ThreadPerCore => rt::rust_num_threads(),
-              ThreadPerTask => {
-                fail ~"ThreadPerTask scheduling mode unimplemented"
-              }
-              ManualThreads(threads) => {
-                if threads == 0u {
-                    fail ~"can not create a scheduler with no threads";
-                }
-                threads
-              }
-              PlatformThread => 0u /* Won't be used */
-            };
-
-            let sched_id = if opts.mode != PlatformThread {
-                rt::rust_new_sched(num_threads)
-            } else {
-                rt::rust_osmain_sched_id()
+        unsafe {
+            let sched_id = match opts.mode {
+                CurrentScheduler => rt::rust_get_sched_id(),
+                ExistingScheduler(SchedulerHandle(id)) => id,
+                PlatformThread => rt::rust_osmain_sched_id(),
+                _ => rt::rust_new_sched(num_threads)
             };
             rt::rust_new_task_in_sched(sched_id)
         }
@@ -675,12 +679,11 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
 
 #[test]
 fn test_spawn_raw_simple() {
-    let po = oldcomm::Port();
-    let ch = oldcomm::Chan(&po);
+    let (po, ch) = stream();
     do spawn_raw(default_task_opts()) {
-        oldcomm::send(ch, ());
+        ch.send(());
     }
-    oldcomm::recv(po);
+    po.recv();
 }
 
 #[test]

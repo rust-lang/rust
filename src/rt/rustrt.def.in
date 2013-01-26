@@ -61,8 +61,6 @@ rust_task_yield
 rust_task_is_unwinding
 rust_get_task
 rust_get_stack_segment
-rust_task_weaken
-rust_task_unweaken
 rust_log_str
 start_task
 vec_reserve_shared_actual
@@ -158,7 +156,6 @@ rust_uv_get_data_for_req
 rust_uv_set_data_for_req
 rust_uv_get_base_from_buf
 rust_uv_get_len_from_buf
-rust_uv_get_kernel_global_chan_ptr
 rust_uv_current_kernel_malloc
 rust_uv_current_kernel_free
 rust_uv_getaddrinfo
@@ -174,7 +171,6 @@ rust_dbg_do_nothing
 rust_dbg_breakpoint
 rust_osmain_sched_id
 rust_compare_and_swap_ptr
-rust_global_env_chan_ptr
 rust_port_take
 rust_port_drop
 rust_port_task
@@ -210,3 +206,7 @@ linenoiseHistorySave
 linenoiseHistoryLoad
 rust_raw_thread_start
 rust_raw_thread_join_delete
+rust_register_exit_function
+rust_get_global_data_ptr
+rust_inc_weak_task_count
+rust_dec_weak_task_count
