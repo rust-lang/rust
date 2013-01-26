@@ -19,7 +19,8 @@
 use core::prelude::*;
 
 use middle::borrowck::preserve::{preserve_condition, pc_ok, pc_if_pure};
-use middle::borrowck::{Loan, bckres, borrowck_ctxt, err_mutbl, req_maps};
+use middle::borrowck::{Loan, bckerr, bckres, borrowck_ctxt, err_mutbl};
+use middle::borrowck::{req_maps};
 use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
 use middle::mem_categorization::{mem_categorization_ctxt};
 use middle::mem_categorization::{opt_deref_kind};
@@ -452,8 +453,7 @@ impl gather_loan_ctxt {
             debug!("required is const or they are the same");
             Ok(pc_ok)
         } else {
-            let e = {cmt: cmt,
-                     code: err_mutbl(req_mutbl)};
+            let e = bckerr { cmt: cmt, code: err_mutbl(req_mutbl) };
             if req_mutbl == m_imm {
                 // if this is an @mut box, then it's generally OK to borrow as
                 // &imm; this will result in a write guard

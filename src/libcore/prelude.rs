@@ -35,6 +35,8 @@ pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
+pub use container::{Container, Mutable, Map, Set};
+pub use pipes::{GenericChan, GenericPort};
 
 pub use num::Num;
 pub use ptr::Ptr;

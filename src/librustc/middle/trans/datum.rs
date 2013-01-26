@@ -98,7 +98,7 @@
 use core::prelude::*;
 
 use lib::llvm::ValueRef;
-use middle::borrowck::RootInfo;
+use middle::borrowck::{RootInfo, root_map_key};
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
@@ -652,7 +652,7 @@ impl Datum {
         // root the autoderef'd value, if necessary:
         //
         // (Note: root'd values are always boxes)
-        let key = {id:expr_id, derefs:derefs};
+        let key = root_map_key { id: expr_id, derefs: derefs };
         let bcx = match ccx.maps.root_map.find(key) {
             None => bcx,
             Some(root_info) => self.root(bcx, root_info)

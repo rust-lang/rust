@@ -10,7 +10,7 @@
 
 use ast;
 use attr;
-use codemap::{span, BytePos};
+use codemap::{BytePos, Pos, span};
 use ext::base::ext_ctxt;
 use ext::base;
 use ext::build;

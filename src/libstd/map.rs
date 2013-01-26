@@ -28,7 +28,7 @@ pub type Set<K:Eq IterBytes Hash> = HashMap<K, ()>;
 
 pub type HashMap<K:Eq IterBytes Hash, V> = chained::T<K, V>;
 
-pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
+pub trait StdMap<K:Eq IterBytes Hash Copy, V: Copy> {
     /// Return the number of elements in the map
     pure fn size() -> uint;
 
@@ -124,7 +124,7 @@ pub mod util {
 // FIXME (#2344): package this up and export it as a datatype usable for
 // external code that doesn't want to pay the cost of a box.
 pub mod chained {
-    use map::{Map, util};
+    use map::{StdMap, util};
 
     use core::io;
     use core::ops;
@@ -239,7 +239,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: Map<K, V> {
+    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: StdMap<K, V> {
         pure fn size() -> uint { self.count }
 
         pure fn contains_key(k: K) -> bool {

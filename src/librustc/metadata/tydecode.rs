@@ -17,7 +17,8 @@
 use core::prelude::*;
 
 use middle::ty;
-use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::ty::{FnTyBase, FnMeta, FnSig, arg, creader_cache_key, field};
+use middle::ty::{substs};
 
 use core::io;
 use core::str;
@@ -174,9 +175,11 @@ fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
     while peek(st) != ']' { params.push(parse_ty(st, conv)); }
     st.pos = st.pos + 1u;
 
-    return {self_r: self_r,
-         self_ty: self_ty,
-         tps: params};
+    return substs {
+        self_r: self_r,
+        self_ty: self_ty,
+        tps: params
+    };
 }
 
 fn parse_bound_region(st: @pstate) -> ty::bound_region {
@@ -308,7 +311,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let mut fields: ~[ty::field] = ~[];
         while peek(st) != ']' {
             let name = st.tcx.sess.ident_of(parse_str(st, '='));
-            fields.push({ident: name, mt: parse_mt(st, conv)});
+            fields.push(ty::field { ident: name, mt: parse_mt(st, conv) });
         }
         st.pos = st.pos + 1u;
         return ty::mk_rec(st.tcx, fields);
@@ -333,12 +336,13 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert (next(st) == ':');
         let len = parse_hex(st);
         assert (next(st) == '#');
-        match st.tcx.rcache.find({cnum: st.crate, pos: pos, len: len}) {
+        let key = creader_cache_key { cnum: st.crate, pos: pos, len: len };
+        match st.tcx.rcache.find(key) {
           Some(tt) => return tt,
           None => {
             let ps = @{pos: pos ,.. copy *st};
             let tt = parse_ty(ps, conv);
-            st.tcx.rcache.insert({cnum: st.crate, pos: pos, len: len}, tt);
+            st.tcx.rcache.insert(key, tt);
             return tt;
           }
         }
@@ -421,8 +425,7 @@ fn parse_onceness(c: char) -> ast::Onceness {
 }
 
 fn parse_arg(st: @pstate, conv: conv_did) -> ty::arg {
-    {mode: parse_mode(st),
-     ty: parse_ty(st, conv)}
+    ty::arg { mode: parse_mode(st), ty: parse_ty(st, conv) }
 }
 
 fn parse_mode(st: @pstate) -> ast::mode {
@@ -446,7 +449,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
     let mut inputs: ~[ty::arg] = ~[];
     while peek(st) != ']' {
         let mode = parse_mode(st);
-        inputs.push({mode: mode, ty: parse_ty(st, conv)});
+        inputs.push(ty::arg { mode: mode, ty: parse_ty(st, conv) });
     }
     st.pos += 1u; // eat the ']'
     let ret_ty = parse_ty(st, conv);

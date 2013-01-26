@@ -66,7 +66,7 @@ impl @ast::path: append_types {
     }
 }
 
-trait ext_ctxt_ast_builder {
+pub trait ext_ctxt_ast_builder {
     fn ty_param(id: ast::ident, +bounds: ~[ast::ty_param_bound])
         -> ast::ty_param;
     fn arg(name: ident, ty: @ast::Ty) -> ast::arg;

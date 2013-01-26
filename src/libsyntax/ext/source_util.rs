@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use codemap;
-use codemap::{span, Loc, FileMap};
+use codemap::{FileMap, Loc, Pos, span};
 use ext::base::*;
 use ext::base;
 use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_base_str};
