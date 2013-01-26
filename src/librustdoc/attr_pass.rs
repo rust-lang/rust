@@ -69,9 +69,9 @@ fn fold_crate(
         attr_parser::parse_crate(attrs)
     };
 
-    {
-        topmod: doc::ModDoc_({
-            item: {
+    doc::CrateDoc {
+        topmod: doc::ModDoc_(doc::ModDoc_ {
+            item: doc::ItemDoc {
                 name: option::get_or_default(attrs.name, doc.topmod.name()),
                 .. doc.topmod.item
             },
@@ -103,7 +103,7 @@ fn fold_item(
         parse_item_attrs(srv, doc.id, attr_parser::parse_desc)
     };
 
-    {
+    doc::ItemDoc {
         desc: desc,
         .. doc
     }
@@ -162,7 +162,7 @@ fn fold_enum(
     let doc_id = doc.id();
     let doc = fold::default_seq_fold_enum(fold, doc);
 
-    {
+    doc::EnumDoc {
         variants: do par::map(doc.variants) |variant| {
             let variant = *variant;
             let desc = do astsrv::exec(srv) |ctxt| {
@@ -182,7 +182,7 @@ fn fold_enum(
                 }
             };
 
-            {
+            doc::VariantDoc {
                 desc: desc,
                 .. variant
             }
@@ -211,7 +211,7 @@ fn fold_trait(
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_trait(fold, doc);
 
-    {
+    doc::TraitDoc {
         methods: merge_method_attrs(srv, doc.id(), doc.methods),
         .. doc
     }
@@ -256,7 +256,7 @@ fn merge_method_attrs(
         assert doc.name == attrs.first();
         let desc = attrs.second();
 
-        {
+        doc::MethodDoc {
             desc: desc,
             ..*doc
         }
@@ -287,7 +287,7 @@ fn fold_impl(
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_impl(fold, doc);
 
-    {
+    doc::ImplDoc {
         methods: merge_method_attrs(srv, doc.id(), doc.methods),
         .. doc
     }

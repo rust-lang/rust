@@ -57,9 +57,9 @@ pub fn extract(
     crate: @ast::crate,
     +default_name: ~str
 ) -> doc::Doc {
-    doc::Doc_({
+    doc::Doc_(doc::Doc_ {
         pages: ~[
-            doc::CratePage({
+            doc::CratePage(doc::CrateDoc {
                 topmod: top_moddoc_from_crate(crate, default_name),
             })
         ]
@@ -75,7 +75,7 @@ fn top_moddoc_from_crate(
 }
 
 fn mk_itemdoc(id: ast::node_id, +name: ~str) -> doc::ItemDoc {
-    {
+    doc::ItemDoc {
         id: id,
         name: name,
         path: ~[],
@@ -90,7 +90,7 @@ fn moddoc_from_mod(
     +itemdoc: doc::ItemDoc,
     module_: ast::_mod
 ) -> doc::ModDoc {
-    doc::ModDoc_({
+    doc::ModDoc_(doc::ModDoc_ {
         item: itemdoc,
         items: do vec::filter_map(module_.items) |item| {
             let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
@@ -161,7 +161,7 @@ fn nmoddoc_from_mod(
           ast::foreign_item_const(*) => {} // XXX: Not implemented.
         }
     }
-    {
+    doc:: NmodDoc {
         item: itemdoc,
         fns: fns,
         index: None
@@ -169,14 +169,14 @@ fn nmoddoc_from_mod(
 }
 
 fn fndoc_from_fn(+itemdoc: doc::ItemDoc) -> doc::FnDoc {
-    {
+    doc::SimpleItemDoc {
         item: itemdoc,
         sig: None
     }
 }
 
 fn constdoc_from_const(+itemdoc: doc::ItemDoc) -> doc::ConstDoc {
-    {
+    doc::SimpleItemDoc {
         item: itemdoc,
         sig: None
     }
@@ -193,7 +193,7 @@ fn enumdoc_from_enum(
     +itemdoc: doc::ItemDoc,
     +variants: ~[ast::variant]
 ) -> doc::EnumDoc {
-    {
+    doc::EnumDoc {
         item: itemdoc,
         variants: variantdocs_from_variants(variants)
     }
@@ -206,8 +206,7 @@ fn variantdocs_from_variants(
 }
 
 fn variantdoc_from_variant(variant: &ast::variant) -> doc::VariantDoc {
-
-    {
+    doc::VariantDoc {
         name: to_str(variant.node.name),
         desc: None,
         sig: None
@@ -231,12 +230,12 @@ fn traitdoc_from_trait(
     +itemdoc: doc::ItemDoc,
     +methods: ~[ast::trait_method]
 ) -> doc::TraitDoc {
-    {
+    doc::TraitDoc {
         item: itemdoc,
         methods: do vec::map(methods) |method| {
             match *method {
               ast::required(ty_m) => {
-                {
+                doc::MethodDoc {
                     name: to_str(ty_m.ident),
                     brief: None,
                     desc: None,
@@ -246,7 +245,7 @@ fn traitdoc_from_trait(
                 }
               }
               ast::provided(m) => {
-                {
+                doc::MethodDoc {
                     name: to_str(m.ident),
                     brief: None,
                     desc: None,
@@ -276,12 +275,12 @@ fn impldoc_from_impl(
     +itemdoc: doc::ItemDoc,
     methods: ~[@ast::method]
 ) -> doc::ImplDoc {
-    {
+    doc::ImplDoc {
         item: itemdoc,
         trait_types: ~[],
         self_ty: None,
         methods: do vec::map(methods) |method| {
-            {
+            doc::MethodDoc {
                 name: to_str(method.ident),
                 brief: None,
                 desc: None,
@@ -302,7 +301,7 @@ fn should_extract_impl_methods() {
 fn tydoc_from_ty(
     +itemdoc: doc::ItemDoc
 ) -> doc::TyDoc {
-    {
+    doc::SimpleItemDoc {
         item: itemdoc,
         sig: None
     }
@@ -318,7 +317,7 @@ fn structdoc_from_struct(
     +itemdoc: doc::ItemDoc,
     struct_def: @ast::struct_def
 ) -> doc::StructDoc {
-    {
+    doc::StructDoc {
         item: itemdoc,
         fields: do struct_def.fields.map |field| {
             match field.node.kind {

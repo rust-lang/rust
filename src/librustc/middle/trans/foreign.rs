@@ -31,7 +31,7 @@ use middle::trans::machine;
 use middle::trans::shape;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
-use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::ty::{FnTyBase, FnMeta, FnSig, arg};
 use util::ppaux::ty_to_str;
 
 use core::libc::c_uint;
@@ -546,8 +546,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                               onceness: ast::Many,
                               region: ty::re_bound(ty::br_anon(0)),
                               bounds: @~[]},
-                sig: FnSig {inputs: ~[{mode: ast::expl(ast::by_val),
-                                       ty: star_u8}],
+                sig: FnSig {inputs: ~[arg {mode: ast::expl(ast::by_val),
+                                           ty: star_u8}],
                             output: ty::mk_nil(bcx.tcx())}
             });
             let datum = Datum {val: get_param(decl, first_real_arg),

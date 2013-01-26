@@ -15,6 +15,7 @@
 use core::prelude::*;
 
 use middle::pat_util;
+use middle::ty::arg;
 use middle::ty;
 use middle::typeck::check::{fn_ctxt, self_info};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
@@ -65,7 +66,7 @@ fn resolve_method_map_entry(fcx: @fn_ctxt, sp: span, id: ast::node_id)
                 fcx.ccx.method_map.insert(
                     id,
                     method_map_entry {
-                        self_arg: {mode: mme.self_arg.mode, ty: *t},
+                        self_arg: arg {mode: mme.self_arg.mode, ty: *t},
                         .. *mme
                     }
                 );

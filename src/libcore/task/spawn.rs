@@ -74,8 +74,10 @@
 #[warn(deprecated_mode)];
 
 use cast;
+use container::Map;
+use oldcomm;
 use option;
-use pipes::{stream, Chan, Port};
+use pipes::{Chan, GenericChan, GenericPort, Port};
 use pipes;
 use prelude::*;
 use private;

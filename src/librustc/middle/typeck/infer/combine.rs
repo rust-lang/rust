@@ -57,7 +57,7 @@
 use core::prelude::*;
 
 use middle::ty::{FloatVar, FnTyBase, FnMeta, FnSig, IntVar, TyVar};
-use middle::ty::{IntType, UintType};
+use middle::ty::{IntType, UintType, arg, substs};
 use middle::ty;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
@@ -233,7 +233,11 @@ fn super_substs<C:Combine>(
             do relate_region_param(self, did,
                                    a.self_r, b.self_r).chain |self_r|
             {
-                Ok({self_r: self_r, self_ty: self_ty, tps: /*bad*/copy tps})
+                Ok(substs {
+                    self_r: self_r,
+                    self_ty: self_ty,
+                    tps: /*bad*/copy tps
+                })
             }
         }
     }
@@ -295,7 +299,7 @@ fn super_flds<C:Combine>(
 
     if a.ident == b.ident {
         self.mts(a.mt, b.mt)
-            .chain(|mt| Ok({ident: a.ident, mt: mt}) )
+            .chain(|mt| Ok(ty::field {ident: a.ident, mt: mt}) )
             .chain_err(|e| Err(ty::terr_in_field(@e, a.ident)) )
     } else {
         Err(ty::terr_record_fields(
@@ -317,7 +321,7 @@ fn super_args<C:Combine>(
 
     do self.modes(a.mode, b.mode).chain |m| {
         do self.contratys(a.ty, b.ty).chain |t| {
-            Ok({mode: m, ty: t})
+            Ok(arg {mode: m, ty: t})
         }
     }
 }

@@ -910,7 +910,8 @@ fn root_pats_as_necessary(bcx: block,
     for vec::each(m) |br| {
         let pat_id = br.pats[col].id;
 
-        match bcx.ccx().maps.root_map.find({id:pat_id, derefs:0u}) {
+        let key = root_map_key {id: pat_id, derefs: 0u };
+        match bcx.ccx().maps.root_map.find(key) {
             None => (),
             Some(root_info) => {
                 // Note: the scope_id will always be the id of the match.  See

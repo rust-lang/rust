@@ -397,16 +397,14 @@ fn resolve_crate(sess: Session, def_map: resolve::DefMap,
 // dependencies until a fixed point is reached.
 
 type region_paramd_items = HashMap<ast::node_id, region_variance>;
-type region_dep = {ambient_variance: region_variance, id: ast::node_id};
-type dep_map = HashMap<ast::node_id, @DVec<region_dep>>;
 
-impl region_dep : cmp::Eq {
-    pure fn eq(&self, other: &region_dep) -> bool {
-        (*self).ambient_variance == (*other).ambient_variance &&
-        (*self).id == (*other).id
-    }
-    pure fn ne(&self, other: &region_dep) -> bool { !(*self).eq(other) }
+#[deriving_eq]
+struct region_dep {
+    ambient_variance: region_variance,
+    id: ast::node_id
 }
+
+type dep_map = HashMap<ast::node_id, @DVec<region_dep>>;
 
 type determine_rp_ctxt_ = {
     sess: Session,
@@ -511,7 +509,10 @@ impl determine_rp_ctxt {
                 vec
             }
         };
-        let dep = {ambient_variance: self.ambient_variance, id: self.item_id};
+        let dep = region_dep {
+            ambient_variance: self.ambient_variance,
+            id: self.item_id
+        };
         if !vec.contains(&dep) { vec.push(dep); }
     }
 

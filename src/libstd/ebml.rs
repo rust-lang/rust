@@ -676,6 +676,7 @@ pub mod writer {
 mod tests {
     use ebml::reader;
     use ebml::writer;
+    use serialize::Encodable;
     use serialize;
 
     use core::io;

@@ -59,7 +59,7 @@ fn fold_fn(
 
     let srv = fold.ctxt;
 
-    {
+    doc::SimpleItemDoc {
         sig: get_fn_sig(srv, doc.id()),
         .. doc
     }
@@ -101,7 +101,7 @@ fn fold_const(
 ) -> doc::ConstDoc {
     let srv = fold.ctxt;
 
-    {
+    doc::SimpleItemDoc {
         sig: Some(do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@ast::item {
@@ -129,7 +129,7 @@ fn fold_enum(
     let doc_id = doc.id();
     let srv = fold.ctxt;
 
-    {
+    doc::EnumDoc {
         variants: do par::map(doc.variants) |variant| {
             let variant = *variant;
             let sig = do astsrv::exec(srv) |ctxt| {
@@ -148,7 +148,7 @@ fn fold_enum(
                 }
             };
 
-            {
+            doc::VariantDoc {
                 sig: Some(sig),
                 .. variant
             }
@@ -167,7 +167,7 @@ fn fold_trait(
     fold: &fold::Fold<astsrv::Srv>,
     +doc: doc::TraitDoc
 ) -> doc::TraitDoc {
-    {
+    doc::TraitDoc {
         methods: merge_methods(fold.ctxt, doc.id(), doc.methods),
         .. doc
     }
@@ -179,7 +179,7 @@ fn merge_methods(
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc| {
-        {
+        doc::MethodDoc {
             sig: get_method_sig(srv, item_id, doc.name),
             .. *doc
         }
@@ -276,7 +276,7 @@ fn fold_impl(
         }
     };
 
-    {
+    doc::ImplDoc {
         trait_types: trait_types,
         self_ty: self_ty,
         methods: merge_methods(fold.ctxt, doc.id(), doc.methods),
@@ -316,7 +316,7 @@ fn fold_type(
 
     let srv = fold.ctxt;
 
-    {
+    doc::SimpleItemDoc {
         sig: do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@ast::item {
@@ -349,7 +349,7 @@ fn fold_struct(
 ) -> doc::StructDoc {
     let srv = fold.ctxt;
 
-    {
+    doc::StructDoc {
         sig: do astsrv::exec(srv) |ctxt| {
             match ctxt.ast_map.get(doc.id()) {
                 ast_map::node_item(item, _) => {
