@@ -11,6 +11,7 @@
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
+#[allow(structural_records)];
 
 /*!
  * Higher-level interfaces to libc::* functions and operating system services.
