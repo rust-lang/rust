@@ -114,7 +114,7 @@ pub fn clone<T: Const Owned>(rc: &ARC<T>) -> ARC<T> {
  * unwrap from a task that holds another reference to the same ARC; it is
  * guaranteed to deadlock.
  */
-fn unwrap<T: Const Owned>(rc: ARC<T>) -> T {
+pub fn unwrap<T: Const Owned>(rc: ARC<T>) -> T {
     let ARC { x: x } = move rc;
     unsafe { unwrap_shared_mutable_state(move x) }
 }
