@@ -144,6 +144,7 @@ Tom Lee <github@tomlee.co>
 Tomoki Aonuma <uasi@99cm.org>
 Tony Young <tony@rfw.name>
 Tycho Sci <tychosci@gmail.com>
+Tyler Bindon <martica@martica.org>
 Viktor Dahl <pazaconyoman@gmail.com>
 Vincent Belliard <vincent@famillebelliard.fr>
 Wade Mealing <wmealing@gmail.com>
