@@ -8,6 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+
+The `Loan` module deals with borrows of *uniquely mutable* data.  We
+say that data is uniquely mutable if the current activation (stack
+frame) controls the only mutable reference to the data.  The most
+common way that this can occur is if the current activation owns the
+data being borrowed, but it can also occur with `&mut` pointers.  The
+primary characteristic of uniquely mutable data is that, at any given
+time, there is at most one path that can be used to mutate it, and
+that path is only accessible from the top stack frame.
+
+Given that some data found at a path P is being borrowed to a borrowed
+pointer with mutability M and lifetime L, the job of the code in this
+module is to compute the set of *loans* that are necessary to ensure
+that (1) the data found at P outlives L and that (2) if M is mutable
+then the path P will not be modified directly or indirectly except
+through that pointer.  A *loan* is the combination of a path P_L, a
+mutability M_L, and a lifetime L_L where:
+
+- The path P_L indicates what data has been lent.
+- The mutability M_L indicates the access rights on the data:
+  - const: the data cannot be moved
+  - immutable/mutable: the data cannot be moved or mutated
+- The lifetime L_L indicates the *scope* of the loan.
+
+XXX --- much more needed, don't have time to write this all up now
+
+*/
+
 // ----------------------------------------------------------------------
 // Loan(Ex, M, S) = Ls holds if ToAddr(Ex) will remain valid for the entirety
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
@@ -39,7 +68,7 @@ impl borrowck_ctxt {
             scope_region: scope_region,
             loans: ~[]
         };
-        match lc.loan(cmt, mutbl) {
+        match lc.loan(cmt, mutbl, true) {
           Err(ref e) => Err((*e)),
           Ok(()) => {
               let LoanContext {loans, _} = move lc;
@@ -62,46 +91,25 @@ struct LoanContext {
 impl LoanContext {
     fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    fn issue_loan(&self,
-                  cmt: cmt,
-                  scope_ub: ty::Region,
-                  req_mutbl: ast::mutability) -> bckres<()> {
-        if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
-            match req_mutbl {
-                m_mutbl => {
-                    // We do not allow non-mutable data to be loaned
-                    // out as mutable under any circumstances.
-                    if cmt.mutbl != m_mutbl {
-                        return Err({cmt:cmt,
-                                    code:err_mutbl(req_mutbl)});
-                    }
-                }
-                m_const | m_imm => {
-                    // However, mutable data can be loaned out as
-                    // immutable (and any data as const).  The
-                    // `check_loans` pass will then guarantee that no
-                    // writes occur for the duration of the loan.
-                }
-            }
+    fn loan(&self,
+            cmt: cmt,
+            req_mutbl: ast::mutability,
+            owns_lent_data: bool) -> bckres<()>
+    {
+        /*!
+         *
+         * The main routine.
+         *
+         * # Parameters
+         *
+         * - `cmt`: the categorization of the data being borrowed
+         * - `req_mutbl`: the mutability of the borrowed pointer
+         *                that was created
+         * - `owns_lent_data`: indicates whether `cmt` owns the
+         *                     data that is being lent.  See
+         *                     discussion in `issue_loan()`.
+         */
 
-            self.loans.push(Loan {
-                // Note: cmt.lp must be Some(_) because otherwise this
-                // loan process does not apply at all.
-                lp: cmt.lp.get(),
-                cmt: cmt,
-                mutbl: req_mutbl
-            });
-            return Ok(());
-        } else {
-            // The loan being requested lives longer than the data
-            // being loaned out!
-            return Err({cmt:cmt,
-                        code:err_out_of_scope(scope_ub,
-                                              self.scope_region)});
-        }
-    }
-
-    fn loan(&self, cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
         debug!("loan(%s, %s)",
                self.bccx.cmt_to_repr(cmt),
                self.bccx.mut_to_str(req_mutbl));
@@ -123,13 +131,14 @@ impl LoanContext {
           }
           cat_local(local_id) | cat_arg(local_id) | cat_self(local_id) => {
             let local_scope_id = self.tcx().region_map.get(local_id);
-            self.issue_loan(cmt, ty::re_scope(local_scope_id), req_mutbl)
+            self.issue_loan(cmt, ty::re_scope(local_scope_id), req_mutbl,
+                            owns_lent_data)
           }
           cat_stack_upvar(cmt) => {
-            self.loan(cmt, req_mutbl) // NDM correct?
+            self.loan(cmt, req_mutbl, owns_lent_data)
           }
           cat_discr(base, _) => {
-            self.loan(base, req_mutbl)
+            self.loan(base, req_mutbl, owns_lent_data)
           }
           cat_comp(cmt_base, comp_field(_, m)) |
           cat_comp(cmt_base, comp_index(_, m)) => {
@@ -139,36 +148,41 @@ impl LoanContext {
             // that case, it must also be embedded in an immutable
             // location, or else the whole structure could be
             // overwritten and the component along with it.
-            self.loan_stable_comp(cmt, cmt_base, req_mutbl, m)
+            self.loan_stable_comp(cmt, cmt_base, req_mutbl, m,
+                                  owns_lent_data)
           }
           cat_comp(cmt_base, comp_tuple) |
           cat_comp(cmt_base, comp_anon_field) => {
             // As above.
-            self.loan_stable_comp(cmt, cmt_base, req_mutbl, m_imm)
+            self.loan_stable_comp(cmt, cmt_base, req_mutbl, m_imm,
+                                  owns_lent_data)
           }
           cat_comp(cmt_base, comp_variant(enum_did)) => {
             // For enums, the memory is unstable if there are multiple
             // variants, because if the enum value is overwritten then
             // the memory changes type.
             if ty::enum_is_univariant(self.bccx.tcx, enum_did) {
-                self.loan_stable_comp(cmt, cmt_base, req_mutbl, m_imm)
+                self.loan_stable_comp(cmt, cmt_base, req_mutbl, m_imm,
+                                      owns_lent_data)
             } else {
-                self.loan_unstable_deref(cmt, cmt_base, req_mutbl)
+                self.loan_unstable_deref(cmt, cmt_base, req_mutbl,
+                                         owns_lent_data)
             }
           }
           cat_deref(cmt_base, _, uniq_ptr) => {
             // For unique pointers, the memory being pointed out is
             // unstable because if the unique pointer is overwritten
             // then the memory is freed.
-            self.loan_unstable_deref(cmt, cmt_base, req_mutbl)
+            self.loan_unstable_deref(cmt, cmt_base, req_mutbl,
+                                     owns_lent_data)
           }
           cat_deref(cmt_base, _, region_ptr(ast::m_mutbl, region)) => {
             // Mutable data can be loaned out as immutable or const. We must
             // loan out the base as well as the main memory. For example,
             // if someone borrows `*b`, we want to borrow `b` as immutable
             // as well.
-            do self.loan(cmt_base, m_imm).chain |_| {
-                self.issue_loan(cmt, region, m_const)
+            do self.loan(cmt_base, m_imm, false).chain |_| {
+                self.issue_loan(cmt, region, m_const, owns_lent_data)
             }
           }
           cat_deref(_, _, unsafe_ptr) |
@@ -189,7 +203,8 @@ impl LoanContext {
                         cmt: cmt,
                         cmt_base: cmt,
                         req_mutbl: ast::mutability,
-                        comp_mutbl: ast::mutability) -> bckres<()> {
+                        comp_mutbl: ast::mutability,
+                        owns_lent_data: bool) -> bckres<()> {
         // Determine the mutability that the base component must have,
         // given the required mutability of the pointer (`req_mutbl`)
         // and the declared mutability of the component (`comp_mutbl`).
@@ -243,10 +258,11 @@ impl LoanContext {
             (m_const, _) => m_const        // (5)
         };
 
-        do self.loan(cmt_base, base_mutbl).chain |_ok| {
+        do self.loan(cmt_base, base_mutbl, owns_lent_data).chain |_ok| {
             // can use static for the scope because the base
             // determines the lifetime, ultimately
-            self.issue_loan(cmt, ty::re_static, req_mutbl)
+            self.issue_loan(cmt, ty::re_static, req_mutbl,
+                            owns_lent_data)
         }
     }
 
@@ -256,13 +272,69 @@ impl LoanContext {
     fn loan_unstable_deref(&self,
                            cmt: cmt,
                            cmt_base: cmt,
-                           req_mutbl: ast::mutability) -> bckres<()> {
+                           req_mutbl: ast::mutability,
+                           owns_lent_data: bool) -> bckres<()>
+    {
         // Variant components: the base must be immutable, because
         // if it is overwritten, the types of the embedded data
         // could change.
-        do self.loan(cmt_base, m_imm).chain |_| {
+        do self.loan(cmt_base, m_imm, owns_lent_data).chain |_| {
             // can use static, as in loan_stable_comp()
-            self.issue_loan(cmt, ty::re_static, req_mutbl)
+            self.issue_loan(cmt, ty::re_static, req_mutbl,
+                            owns_lent_data)
+        }
+    }
+
+    fn issue_loan(&self,
+                  cmt: cmt,
+                  scope_ub: ty::Region,
+                  req_mutbl: ast::mutability,
+                  owns_lent_data: bool) -> bckres<()>
+    {
+        // Subtle: the `scope_ub` is the maximal lifetime of `cmt`.
+        // Therefore, if `cmt` owns the data being lent, then the
+        // scope of the loan must be less than `scope_ub`, or else the
+        // data would be freed while the loan is active.
+        //
+        // However, if `cmt` does *not* own the data being lent, then
+        // it is ok if `cmt` goes out of scope during the loan.  This
+        // can occur when you have an `&mut` parameter that is being
+        // reborrowed.
+
+        if !owns_lent_data ||
+            self.bccx.is_subregion_of(self.scope_region, scope_ub)
+        {
+            match req_mutbl {
+                m_mutbl => {
+                    // We do not allow non-mutable data to be loaned
+                    // out as mutable under any circumstances.
+                    if cmt.mutbl != m_mutbl {
+                        return Err({cmt:cmt,
+                                    code:err_mutbl(req_mutbl)});
+                    }
+                }
+                m_const | m_imm => {
+                    // However, mutable data can be loaned out as
+                    // immutable (and any data as const).  The
+                    // `check_loans` pass will then guarantee that no
+                    // writes occur for the duration of the loan.
+                }
+            }
+
+            self.loans.push(Loan {
+                // Note: cmt.lp must be Some(_) because otherwise this
+                // loan process does not apply at all.
+                lp: cmt.lp.get(),
+                cmt: cmt,
+                mutbl: req_mutbl
+            });
+            return Ok(());
+        } else {
+            // The loan being requested lives longer than the data
+            // being loaned out!
+            return Err({cmt:cmt,
+                        code:err_out_of_scope(scope_ub,
+                                              self.scope_region)});
         }
     }
 }
