@@ -468,7 +468,7 @@ fn read_future(sock: &TcpSocket, timeout_msecs: uint)
  *     }
  *     // this callback is ran when a new connection arrives
  *     {|new_conn, kill_ch|
- *     let cont_po = core::comm::port::<option<tcp_err_data>>();
+ *     let cont_po = core::comm::port::<Option<tcp_err_data>>();
  *     let cont_ch = core::comm::chan(cont_po);
  *     task::spawn {||
  *         let accept_result = net::tcp::accept(new_conn);
@@ -484,9 +484,9 @@ fn read_future(sock: &TcpSocket, timeout_msecs: uint)
  *     };
  *     match core::comm::recv(cont_po) {
  *       // shut down listen()
- *       some(err_data) { core::comm::send(kill_chan, some(err_data)) }
+ *       Some(err_data) { core::comm::send(kill_chan, Some(err_data)) }
  *       // wait for next connection
- *       none {}
+ *       None {}
  *     }
  * };
  * ~~~~~~~~~~~
@@ -593,7 +593,7 @@ pub fn accept(new_conn: TcpNewConnection)
  * callback's arguments are:
  *     * `new_conn` - an opaque type that can be passed to
  *     `net::tcp::accept` in order to be converted to a `tcp_socket`.
- *     * `kill_ch` - channel of type `core::comm::chan<option<tcp_err_data>>`.
+ *     * `kill_ch` - channel of type `core::comm::chan<Option<tcp_err_data>>`.
  *     this channel can be used to send a message to cause `listen` to begin
  *     closing the underlying libuv data structures.
  *

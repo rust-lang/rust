@@ -23,7 +23,7 @@ trait noisy {
 }
 
 trait scratchy {
-  fn scratch() -> option<furniture>;
+  fn scratch() -> Option<furniture>;
 }
 
 trait bitey {
@@ -72,13 +72,13 @@ class cat : noisy, scratchy, bitey {
 
   fn speak() -> int { self.meow() as int }
   fn meow_count() -> uint { *self.meows }
-  fn scratch() -> option<furniture> {
+  fn scratch() -> Option<furniture> {
     let all = ~[chair, couch, bed];
     log(error, self.scratched);
-    let mut rslt = none;
+    let mut rslt = None;
     for each(all) |thing| { if !self.scratched.contains(thing) {
           self.scratched.push(thing);
-          return some(thing); }}
+          return Some(thing); }}
     rslt
   }
   fn bite() -> body_part {

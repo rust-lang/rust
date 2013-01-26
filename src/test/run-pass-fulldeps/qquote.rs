@@ -69,8 +69,8 @@ fn main() {
     let stmt = quote_stmt!(let x = 20;);
     check_pp(ext_cx, *stmt, pprust::print_stmt, ~"let x = 20;");
 
-    let pat = quote_pat!(some(_));
-    check_pp(ext_cx, pat, pprust::print_refutable_pat, ~"some(_)");
+    let pat = quote_pat!(Some(_));
+    check_pp(ext_cx, pat, pprust::print_refutable_pat, ~"Some(_)");
 
 }
 
