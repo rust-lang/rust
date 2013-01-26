@@ -26,11 +26,11 @@ extern mod kernel32 {
 
 #[cfg(target_os = "win32")]
 fn main() {
-   let heap = kernel32::GetProcessHeap();
-   let mem = kernel32::HeapAlloc(heap, 0u32, 100u32);
-   assert mem != 0u;
-   let res = kernel32::HeapFree(heap, 0u32, mem);
-   assert res != 0u8;
+    let heap = unsafe { kernel32::GetProcessHeap() };
+    let mem = unsafe { kernel32::HeapAlloc(heap, 0u32, 100u32) };
+    assert mem != 0u;
+    let res = unsafe { kernel32::HeapFree(heap, 0u32, mem) };
+    assert res != 0u8;
 }
 
 #[cfg(target_os = "macos")]
