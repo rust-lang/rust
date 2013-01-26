@@ -222,7 +222,7 @@ impl PackageScript {
 
     // Build the bootstrap and run a command
     // FIXME (#4432): Use workcache to only compile the script when changed
-    fn run(cmd: ~str) -> int {
+    fn run(cmd: ~str, test: bool) -> int {
         let work_dir = self.work_dir();
         let input = self.input;
         let sess = self.sess;
@@ -230,12 +230,12 @@ impl PackageScript {
         let crate = util::ready_crate(sess, self.crate);
         let outputs = driver::build_output_filenames(input, &Some(work_dir),
                                                      &None, sess);
-        let exe = work_dir.push(~"package" + util::exe_suffix());
+        let exe = work_dir.push(~"pkg" + util::exe_suffix());
         let root = filesearch::get_rustpkg_sysroot().get().pop().pop();
 
         driver::compile_rest(sess, cfg, driver::cu_parse,
-                         Some(outputs), Some(crate));
-        run::run_program(exe.to_str(), ~[root.to_str(), cmd])
+                             Some(outputs), Some(crate));
+        run::run_program(exe.to_str(), ~[root.to_str(), cmd, test.to_str()])
     }
 
     fn hash() -> ~str {
@@ -338,10 +338,13 @@ impl Ctx {
     }
 
     fn do_cmd(cmd: ~str) -> bool {
-        if cmd == ~"build" {
-            util::error(~"the build cmd is reserved");
+        match cmd {
+            ~"build" | ~"test" => {
+                util::error(~"that command cannot be manually called");
 
-            return false;
+                return false;
+            }
+            _ => {}
         }
 
         let cwd = &os::getcwd();
@@ -353,9 +356,9 @@ impl Ctx {
                 return false;
             }
         };
-        let status = script.run(cmd);
+        let status = script.run(cmd, false);
 
-        if status == 1 {
+        if status == 42 {
             util::error(~"no fns are listening for that cmd");
 
             return false;
@@ -406,12 +409,16 @@ impl Ctx {
         // Build imperative crates
         os::change_dir(dir);
 
-        if script.custom && script.run(~"build") != 0 {
-            util::error(
-                fmt!("building %s v%s failed: custom build logic failed",
-                     script.name, script.vers.to_str()));
+        if script.custom {
+            let status = script.run(~"build", test);
 
-            return None;
+            if status != 0 && status != 42 {
+                util::error(
+                    fmt!("building %s v%s failed: custom logic failed (%d)",
+                         script.name, script.vers.to_str(), status));
+
+                return None;
+            }
         }
 
         os::change_dir(cwd);
@@ -748,6 +755,19 @@ impl Ctx {
             }
         }
 
+        // Run custom test listener
+        if script.custom {
+            let status = script.run(~"test", false);
+
+            if status != 0 && status != 42 {
+                util::error(
+                    fmt!("testing %s v%s failed: custom logic failed (%d)",
+                         script.name, script.vers.to_str(), status));
+
+                os::set_exit_status(status);
+            }
+        }
+
         util::note(fmt!("tested %s v%s", script.name, script.vers.to_str()));
 
         true
@@ -888,7 +908,6 @@ pub fn main() {
     }.run(cmd, args);
 }
 
-
 /// A crate is a unit of Rust code to be compiled into a binary or library
 pub struct Crate {
     file: ~str,
@@ -918,7 +937,7 @@ pub fn run(listeners: ~[Listener]) {
     }
 
     if !found {
-        os::set_exit_status(1);
+        os::set_exit_status(42);
     }
 }
 
@@ -982,10 +1001,12 @@ pub fn src_dir() -> Path {
 
 /// Build a set of crates, should be called once
 pub fn build(crates: ~[Crate]) -> bool {
+    let args = os::args();
     let dir = src_dir();
     let work_dir = work_dir();
     let mut success = true;
-    let sysroot = Path(os::args()[1]);
+    let sysroot = Path(args[1]);
+    let test = args[3] == ~"true";
 
     for crates.each |&crate| {
         let path = &dir.push_rel(&Path(crate.file)).normalize();
@@ -994,13 +1015,13 @@ pub fn build(crates: ~[Crate]) -> bool {
 
         success = util::compile_crate(Some(sysroot), path, &work_dir,
                                       crate.flags, crate.cfgs,
-                                      false, false);
+                                      false, test);
 
         if !success { break; }
     }
 
     if !success {
-        os::set_exit_status(2);
+        os::set_exit_status(101);
     }
 
     success
