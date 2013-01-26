@@ -11,6 +11,7 @@
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
+#[allow(structural_records)];
 
 //! Process spawning
 use io;

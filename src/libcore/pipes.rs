@@ -87,6 +87,9 @@ bounded and unbounded protocols allows for less code duplication.
 // re-forbid after snapshot
 #[forbid(deprecated_pattern)];
 
+// Transitional -- needs snapshot
+#[allow(structural_records)];
+
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
 use either::{Either, Left, Right};
