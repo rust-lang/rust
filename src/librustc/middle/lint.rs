@@ -36,7 +36,8 @@ use std::map::{Map, HashMap};
 use std::map;
 use std::smallintmap::{Map, SmallIntMap};
 use std::smallintmap;
-use syntax::ast_util::{path_to_ident};
+use syntax::ast_map;
+use syntax::ast_util::path_to_ident;
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
@@ -81,6 +82,7 @@ enum lint {
     unrecognized_lint,
     non_implicitly_copyable_typarams,
     vecs_implicitly_copyable,
+    deprecated_item,
     deprecated_mode,
     deprecated_pattern,
     non_camel_case_types,
@@ -178,6 +180,11 @@ fn get_lint_dict() -> lint_dict {
         (~"implicit_copies",
          @{lint: implicit_copies,
            desc: "implicit copies of non implicitly copyable data",
+           default: warn}),
+
+        (~"deprecated_item",
+         @{lint: deprecated_item,
+           desc: "warn about use of items marked deprecated",
            default: warn}),
 
         (~"deprecated_mode",
@@ -446,6 +453,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_non_camel_case_types(cx, i);
     check_item_heap(cx, i);
     check_item_structural_records(cx, i);
+    check_item_deprecated(cx, i);
     check_item_deprecated_modes(cx, i);
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
@@ -869,6 +877,53 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
       }
       _ => ()
     }
+}
+
+fn check_item_deprecated(tcx: ty::ctxt, it: @ast::item) {
+
+    fn check_deprecated(cx: ty::ctxt, item: @ast::item,
+                        span: span, eid: ast::node_id, id: ast::node_id) {
+
+        let at = attr::find_attrs_by_name(item.attrs, ~"deprecated");
+        for at.each |attr| {
+            let fmt = match attr.node.value.node {
+                ast::meta_name_value(_, ref l) =>
+                    match l.node {
+                        ast::lit_str(ref reason) =>
+                            fmt!("deprecated: %s", **reason),
+                        _ => ~"item is deprecated"
+                    },
+                _ => ~"item is deprecated"
+            };
+            cx.sess.span_lint(deprecated_item, eid, id,
+                    span, fmt);
+        }
+    }
+
+    let v = item_stopping_visitor(visit::mk_simple_visitor(@visit::SimpleVisitor{
+        visit_expr: |e| {
+            match e.node {
+                // Check if calling a deprecated function
+                ast::expr_call(f, _, _) => {
+                    match tcx.def_map.find(f.id) {
+                        Some(ast::def_fn(def_id, _)) => {
+                            match tcx.items.find(def_id.node) {
+                                Some(ast_map::node_item(item, _)) => {
+                                    check_deprecated(tcx, item, e.span, e.id, it.id);
+                                }
+                                _ => ()
+                            }
+                        }
+                        _ => ()
+                    }
+                }
+                _ => ()
+            }
+        },
+        .. *visit::default_simple_visitor()
+    }));
+    visit::visit_item(it, (), v);
+
 }
 
 fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
