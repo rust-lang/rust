@@ -591,7 +591,49 @@ impl gather_loan_ctxt {
                 }
               }
 
+              ast::pat_vec(_, Some(tail_pat)) => {
+                  // The `tail_pat` here creates a slice into the
+                  // original vector.  This is effectively a borrow of
+                  // the elements of the vector being matched.
+
+                  let tail_ty = self.tcx().ty(tail_pat);
+                  let (tail_mutbl, tail_r) =
+                      self.vec_slice_info(tail_pat, tail_ty);
+                  let mcx = self.bccx.mc_ctxt();
+                  let cmt_index = mcx.cat_index(tail_pat, cmt);
+                  self.guarantee_valid(cmt_index, tail_mutbl, tail_r);
+              }
+
               _ => {}
+            }
+        }
+    }
+
+    fn vec_slice_info(&self,
+                      pat: @ast::pat,
+                      tail_ty: ty::t) -> (ast::mutability, ty::Region)
+    {
+        /*!
+         *
+         * In a pattern like [a, b, ..c], normally `c` has slice type,
+         * but if you have [a, b, ..ref c], then the type of `ref c`
+         * will be `&&[]`, so to extract the slice details we have
+         * to recurse through rptrs.
+         */
+
+        match ty::get(tail_ty).sty {
+            ty::ty_evec(tail_mt, ty::vstore_slice(tail_r)) => {
+                (tail_mt.mutbl, tail_r)
+            }
+
+            ty::ty_rptr(_, ref mt) => {
+                self.vec_slice_info(pat, mt.ty)
+            }
+
+            _ => {
+                self.tcx().sess.span_bug(
+                    pat.span,
+                    fmt!("Type of tail pattern is not a slice"));
             }
         }
     }
