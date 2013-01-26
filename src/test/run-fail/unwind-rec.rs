@@ -14,8 +14,10 @@ fn build() -> ~[int] {
     fail;
 }
 
+struct Blk { node: ~[int] }
+
 fn main() {
-    let blk = {
+    let blk = Blk {
         node: build()
     };
 }

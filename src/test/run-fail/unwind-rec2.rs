@@ -18,8 +18,10 @@ fn build2() -> ~[int] {
     fail;
 }
 
+struct Blk { node: ~[int], span: ~[int] }
+
 fn main() {
-    let blk = {
+    let blk = Blk {
         node: build1(),
         span: build2()
     };
