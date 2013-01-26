@@ -34,6 +34,7 @@ Brian Leibig <brian.leibig@gmail.com>
 Chris Double <chris.double@double.co.nz>
 Chris Peterson <cpeterson@mozilla.com>
 Chris Pressey <cpressey@gmail.com>
+Cody Schroeder <codys@cs.washington.edu>
 Damian Gryski <damian@gryski.com>
 Damien Grassart <damien@grassart.com>
 Damien Schoof <damien.schoof@gmail.com>
