@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type pair<A,B> = {
+struct Pair<A,B> {
     a: A, b: B
-};
+}
 
-enum rec<A> = _rec<A>;
-type _rec<A> = {
+enum RecEnum<A> = Rec<A>;
+struct Rec<A> {
     val: A,
-    mut rec: Option<@rec<A>>
-};
+    mut rec: Option<@RecEnum<A>>
+}
 
 fn make_cycle<A:Copy>(a: A) {
-    let g: @rec<A> = @rec({val: a, mut rec: None});
+    let g: @RecEnum<A> = @RecEnum(Rec {val: a, mut rec: None});
     g.rec = Some(g);
 }
 

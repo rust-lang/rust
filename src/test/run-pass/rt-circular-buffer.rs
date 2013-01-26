@@ -14,7 +14,7 @@
 // that has a size that is not a power of two
 
 // A 12-byte unit to ::core::oldcomm::send over the channel
-type record = {val1: u32, val2: u32, val3: u32};
+struct Record {val1: u32, val2: u32, val3: u32}
 
 
 // Assuming that the default buffer size needs to hold 8 units,
@@ -24,7 +24,7 @@ type record = {val1: u32, val2: u32, val3: u32};
 fn test_init() {
     let myport = ::core::oldcomm::Port();
     let mychan = ::core::oldcomm::Chan(&myport);
-    let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
+    let val: Record = Record {val1: 0u32, val2: 0u32, val3: 0u32};
     ::core::oldcomm::send(mychan, val);
 }
 
@@ -35,7 +35,7 @@ fn test_grow() {
     let myport = ::core::oldcomm::Port();
     let mychan = ::core::oldcomm::Chan(&myport);
     for uint::range(0u, 100u) |i| {
-        let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
+        let val: Record = Record {val1: 0u32, val2: 0u32, val3: 0u32};
         ::core::oldcomm::send(mychan, val);
     }
 }
@@ -53,7 +53,7 @@ fn test_shrink2() {
     let myport = ::core::oldcomm::Port();
     let mychan = ::core::oldcomm::Chan(&myport);
     for uint::range(0u, 100u) |_i| {
-        let val: record = {val1: 0u32, val2: 0u32, val3: 0u32};
+        let val: Record = Record {val1: 0u32, val2: 0u32, val3: 0u32};
         ::core::oldcomm::send(mychan, val);
     }
     for uint::range(0u, 100u) |_i| { let x = ::core::oldcomm::recv(myport); }
@@ -65,7 +65,7 @@ fn test_rotate() {
     let myport = ::core::oldcomm::Port();
     let mychan = ::core::oldcomm::Chan(&myport);
     for uint::range(0u, 100u) |i| {
-        let val = {val1: i as u32, val2: i as u32, val3: i as u32};
+        let val = Record {val1: i as u32, val2: i as u32, val3: i as u32};
         ::core::oldcomm::send(mychan, val);
         let x = ::core::oldcomm::recv(myport);
         assert (x.val1 == i as u32);
@@ -78,12 +78,12 @@ fn test_rotate() {
 // Test rotating and growing the buffer when
 // the unit size is not a power of two
 fn test_rotate_grow() {
-    let myport = ::core::oldcomm::Port::<record>();
+    let myport = ::core::oldcomm::Port::<Record>();
     let mychan = ::core::oldcomm::Chan(&myport);
     for uint::range(0u, 10u) |j| {
         for uint::range(0u, 10u) |i| {
-            let val: record =
-                {val1: i as u32, val2: i as u32, val3: i as u32};
+            let val: Record =
+                Record {val1: i as u32, val2: i as u32, val3: i as u32};
             ::core::oldcomm::send(mychan, val);
         }
         for uint::range(0u, 10u) |i| {

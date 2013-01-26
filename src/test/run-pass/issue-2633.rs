@@ -18,14 +18,14 @@ fn cat() -> cat {
     }
 }
 
-type kitty_info = {kitty: cat};
+struct KittyInfo {kitty: cat}
 
 // Code compiles and runs successfully if we add a + before the first arg
-fn nyan(kitty: cat, _kitty_info: kitty_info) {
+fn nyan(kitty: cat, _kitty_info: KittyInfo) {
     (kitty.meow)();
 }
 
 fn main() {
     let mut kitty = cat();
-    nyan(copy kitty, {kitty: copy kitty});
+    nyan(copy kitty, KittyInfo {kitty: copy kitty});
 }

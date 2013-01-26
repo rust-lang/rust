@@ -13,9 +13,11 @@
 
 // -*- rust -*-
 
-// Tests for match as expressions resulting in structural types
+// Tests for match as expressions resulting in struct types
+struct R { i: int }
+
 fn test_rec() {
-    let rs = match true { true => {i: 100}, _ => fail };
+    let rs = match true { true => R {i: 100}, _ => fail };
     assert (rs.i == 100);
 }
 

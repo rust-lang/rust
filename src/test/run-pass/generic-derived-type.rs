@@ -12,11 +12,12 @@
 
 fn g<X: Copy>(x: X) -> X { return x; }
 
-fn f<T: Copy>(t: T) -> {a: T, b: T} {
-    type pair = {a: T, b: T};
+struct Pair<T> {a: T, b: T}
 
-    let x: pair = {a: t, b: t};
-    return g::<pair>(x);
+fn f<T: Copy>(t: T) -> Pair<T> {
+
+    let x: Pair<T> = Pair {a: t, b: t};
+    return g::<Pair<T>>(x);
 }
 
 fn main() {

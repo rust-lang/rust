@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type a = {a: int};
+struct A { a: int }
 
-fn a(a: a) -> int { return a.a; }
+fn a(a: A) -> int { return a.a; }
 
-fn main() { let x: a = {a: 1}; assert (a(x) == 1); }
+fn main() { let x: A = A {a: 1}; assert (a(x) == 1); }

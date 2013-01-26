@@ -9,7 +9,8 @@
 // except according to those terms.
 
 
+struct Pair { x: @int, y: @int }
 
 fn f<T: Copy>(t: T) { let t1: T = t; }
 
-fn main() { let x = {x: @10, y: @12}; f(x); }
+fn main() { let x = Pair {x: @10, y: @12}; f(x); }

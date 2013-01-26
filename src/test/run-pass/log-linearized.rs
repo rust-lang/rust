@@ -15,11 +15,13 @@ enum option<T> {
     some(T),
 }
 
-type smallintmap<T> = @{mut v: ~[mut option<T>]};
+struct Smallintmap<T> {mut v: ~[mut option<T>]}
 
-fn mk<T>() -> smallintmap<T> {
+struct V<T> { v: ~[mut option<T>] }
+
+fn mk<T>() -> @Smallintmap<T> {
     let v: ~[mut option<T>] = ~[mut];
-    return @{mut v: move v};
+    return @Smallintmap {mut v: move v};
 }
 
 fn f<T,U>() {

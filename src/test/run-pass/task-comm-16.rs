@@ -17,12 +17,12 @@ use pipes::Chan;
 
 // Tests of ports and channels on various types
 fn test_rec() {
-    type r = {val0: int, val1: u8, val2: char};
+    struct R {val0: int, val1: u8, val2: char}
 
     let (po, ch) = pipes::stream();
-    let r0: r = {val0: 0, val1: 1u8, val2: '2'};
+    let r0: R = R {val0: 0, val1: 1u8, val2: '2'};
     ch.send(r0);
-    let mut r1: r;
+    let mut r1: R;
     r1 = po.recv();
     assert (r1.val0 == 0);
     assert (r1.val1 == 1u8);

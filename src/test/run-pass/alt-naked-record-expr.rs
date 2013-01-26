@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct X { x: int }
+
 fn main() {
     let x = match 0 {
-      _ => {
+      _ => X {
         x: 0
       }.x
     };

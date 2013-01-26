@@ -18,16 +18,16 @@ extern mod rusti {
 }
 
 // This is the type with the questionable alignment
-type inner = {
+struct Inner {
     c64: u32
-};
+}
 
 // This is the type that contains the type with the
 // questionable alignment, for testing
-type outer = {
+struct Outer {
     c8: u8,
-    t: inner
-};
+    t: Inner
+}
 
 
 #[cfg(target_arch = "x86")]
@@ -46,21 +46,21 @@ mod m {
 
 fn main() {
     unsafe {
-        let x = {c8: 22u8, t: {c64: 44u32}};
+        let x = Outer {c8: 22u8, t: Inner {c64: 44u32}};
 
         // Send it through the shape code
         let y = fmt!("%?", x);
 
-        debug!("align inner = %?", rusti::min_align_of::<inner>());
-        debug!("size outer = %?", sys::size_of::<outer>());
+        debug!("align inner = %?", rusti::min_align_of::<Inner>());
+        debug!("size outer = %?", sys::size_of::<Outer>());
         debug!("y = %s", y);
 
         // per clang/gcc the alignment of `inner` is 4 on x86.
-        assert rusti::min_align_of::<inner>() == m::align();
+        assert rusti::min_align_of::<Inner>() == m::align();
 
         // per clang/gcc the size of `outer` should be 12
         // because `inner`s alignment was 4.
-        assert sys::size_of::<outer>() == m::size();
+        assert sys::size_of::<Outer>() == m::size();
 
         assert y == ~"{c8: 22, t: {c64: 44}}";
     }

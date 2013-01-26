@@ -29,7 +29,7 @@ pure fn sums_to_using_uniq(v: ~[int], sum: int) -> bool {
 }
 
 pure fn sums_to_using_rec(v: ~[int], sum: int) -> bool {
-    let mut i = 0u, sum0 = {f: 0};
+    let mut i = 0u, sum0 = F {f: 0};
     while i < v.len() {
         sum0.f += v[i];
         i += 1u;
@@ -37,8 +37,10 @@ pure fn sums_to_using_rec(v: ~[int], sum: int) -> bool {
     return sum0.f == sum;
 }
 
+struct F<T> { f: T }
+
 pure fn sums_to_using_uniq_rec(v: ~[int], sum: int) -> bool {
-    let mut i = 0u, sum0 = {f: ~mut 0};
+    let mut i = 0u, sum0 = F {f: ~mut 0};
     while i < v.len() {
         *sum0.f += v[i];
         i += 1u;

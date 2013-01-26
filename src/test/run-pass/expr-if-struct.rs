@@ -13,9 +13,12 @@
 
 // -*- rust -*-
 
-// Tests for if as expressions returning structural types
+// Tests for if as expressions returning nominal types
+
+struct I { i: int }
+
 fn test_rec() {
-    let rs = if true { {i: 100} } else { {i: 101} };
+    let rs = if true { I {i: 100} } else { I {i: 101} };
     assert (rs.i == 100);
 }
 

@@ -29,9 +29,7 @@ fn align(size: uint, align: uint) -> uint {
     ((size + align) - 1u) & !(align - 1u)
 }
 
-enum ptr_visit_adaptor<V: TyVisitor movable_ptr> = {
-    inner: V
-};
+enum ptr_visit_adaptor<V: TyVisitor movable_ptr> = Inner<V>;
 
 impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V> {
 
@@ -469,11 +467,13 @@ impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V>: TyVisitor {
     }
 }
 
-enum my_visitor = @{
+enum my_visitor = @Stuff;
+
+struct Stuff {
     mut ptr1: *c_void,
     mut ptr2: *c_void,
     mut vals: ~[~str]
-};
+}
 
 impl my_visitor {
     fn get<T>(f: fn(T)) {
@@ -485,12 +485,14 @@ impl my_visitor {
     fn visit_inner(inner: *TyDesc) -> bool {
         unsafe {
             let u = my_visitor(*self);
-            let v = ptr_visit_adaptor({inner: u});
+            let v = ptr_visit_adaptor::<my_visitor>(Inner {inner: u});
             visit_tydesc(inner, v as TyVisitor);
             true
         }
     }
 }
+
+struct Inner<V> { inner: V }
 
 impl my_visitor: movable_ptr {
     fn move_ptr(adjustment: fn(*c_void) -> *c_void) {
@@ -622,14 +624,16 @@ fn get_tydesc_for<T>(&&_t: T) -> *TyDesc {
     get_tydesc::<T>()
 }
 
+struct Triple { x: int, y: int, z: int }
+
 fn main() {
     unsafe {
-        let r = (1,2,3,true,false,{x:5,y:4,z:3});
+        let r = (1,2,3,true,false, Triple {x:5,y:4,z:3});
         let p = ptr::addr_of(&r) as *c_void;
-        let u = my_visitor(@{mut ptr1: p,
+        let u = my_visitor(@Stuff {mut ptr1: p,
                              mut ptr2: p,
                              mut vals: ~[]});
-        let v = ptr_visit_adaptor({inner: u});
+        let v = ptr_visit_adaptor(Inner {inner: u});
         let td = get_tydesc_for(r);
         unsafe { error!("tydesc sz: %u, align: %u",
                         (*td).size, (*td).align); }

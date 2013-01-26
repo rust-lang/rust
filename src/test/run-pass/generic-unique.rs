@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Triple<T> { x: T, y: T, z: T }
 
-fn box<T: Copy>(x: {x: T, y: T, z: T}) -> ~{x: T, y: T, z: T} { return ~x; }
+fn box<T: Copy>(x: Triple<T>) -> ~Triple<T> { return ~x; }
 
 fn main() {
-    let x: ~{x: int, y: int, z: int} = box::<int>({x: 1, y: 2, z: 3});
+    let x: ~Triple<int> = box::<int>(Triple{x: 1, y: 2, z: 3});
     assert (x.y == 2);
 }

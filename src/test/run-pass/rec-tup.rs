@@ -9,12 +9,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type point = {x: int, y: int};
+struct Point {x: int, y: int}
 
-type rect = (point, point);
+type rect = (Point, Point);
 
-fn fst(r: rect) -> point { let (fst, _) = r; return fst; }
-fn snd(r: rect) -> point { let (_, snd) = r; return snd; }
+fn fst(r: rect) -> Point { let (fst, _) = r; return fst; }
+fn snd(r: rect) -> Point { let (_, snd) = r; return snd; }
 
 fn f(r: rect, x1: int, y1: int, x2: int, y2: int) {
     assert (fst(r).x == x1);
@@ -24,7 +24,7 @@ fn f(r: rect, x1: int, y1: int, x2: int, y2: int) {
 }
 
 fn main() {
-    let r: rect = ({x: 10, y: 20}, {x: 11, y: 22});
+    let r: rect = (Point {x: 10, y: 20}, Point {x: 11, y: 22});
     assert (fst(r).x == 10);
     assert (fst(r).y == 20);
     assert (snd(r).x == 11);

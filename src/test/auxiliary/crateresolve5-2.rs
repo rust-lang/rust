@@ -14,8 +14,9 @@
 #[crate_type = "lib"];
 #[legacy_exports];
 
-fn structural() -> { name: ~str, val: int } {
-    { name: ~"crateresolve5", val: 10 }
+struct NameVal { name: ~str, val: int }
+fn struct_nameval() -> NameVal {
+    NameVal { name: ~"crateresolve5", val: 10 }
 }
 
 enum e {

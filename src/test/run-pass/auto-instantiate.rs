@@ -12,9 +12,13 @@
 
 
 // -*- rust -*-
-fn f<T: Copy, U: Copy>(x: T, y: U) -> {a: T, b: U} { return {a: x, b: y}; }
+
+struct Pair<T, U> { a: T, b: U }
+struct Triple { x: int, y: int, z: int }
+
+fn f<T: Copy, U: Copy>(x: T, y: U) -> Pair<T, U> { return Pair {a: x, b: y}; }
 
 fn main() {
-    log(debug, f({x: 3, y: 4, z: 5}, 4).a.x);
+    log(debug, f(Triple {x: 3, y: 4, z: 5}, 4).a.x);
     log(debug, f(5, 6).a);
 }

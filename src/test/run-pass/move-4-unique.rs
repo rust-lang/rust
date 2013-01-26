@@ -10,7 +10,9 @@
 
 extern mod std;
 
-fn test(foo: ~{a: int, b: int, c: int}) -> ~{a: int, b: int, c: int} {
+struct Triple {a: int, b: int, c: int}
+
+fn test(foo: ~Triple) -> ~Triple {
     let foo = foo;
     let bar = move foo;
     let baz = move bar;
@@ -18,4 +20,4 @@ fn test(foo: ~{a: int, b: int, c: int}) -> ~{a: int, b: int, c: int} {
     return quux;
 }
 
-fn main() { let x = ~{a: 1, b: 2, c: 3}; let y = test(x); assert (y.c == 3); }
+fn main() { let x = ~Triple{a: 1, b: 2, c: 3}; let y = test(x); assert (y.c == 3); }

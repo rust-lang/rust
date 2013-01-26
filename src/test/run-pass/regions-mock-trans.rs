@@ -10,46 +10,46 @@
 
 enum arena = ();
 
-type bcx = {
-    fcx: &fcx
-};
+struct Bcx {
+    fcx: &Fcx
+}
 
-type fcx = {
+struct Fcx {
     arena: &arena,
-    ccx: &ccx
-};
+    ccx: &Ccx
+}
 
-type ccx = {
+struct Ccx {
     x: int
-};
+}
 
-fn alloc(_bcx : &arena) -> &bcx {   
+fn alloc(_bcx : &arena) -> &Bcx {   
     unsafe {
         return cast::reinterpret_cast(
-            &libc::malloc(sys::size_of::<bcx/&blk>() as libc::size_t));
+            &libc::malloc(sys::size_of::<Bcx/&blk>() as libc::size_t));
     }
 }
 
-fn h(bcx : &bcx) -> &bcx {
+fn h(bcx : &Bcx) -> &Bcx {
     return alloc(bcx.fcx.arena);
 }
 
-fn g(fcx : &fcx) {
-    let bcx = { fcx: fcx };
+fn g(fcx : &Fcx) {
+    let bcx = Bcx { fcx: fcx };
     let bcx2 = h(&bcx);
     unsafe {
         libc::free(cast::reinterpret_cast(&bcx2));
     }
 }
 
-fn f(ccx : &ccx) {
+fn f(ccx : &Ccx) {
     let a = arena(());
-    let fcx = { arena: &a, ccx: ccx };
+    let fcx = Fcx { arena: &a, ccx: ccx };
     return g(&fcx);
 }
 
 fn main() {
-    let ccx = { x: 0 };
+    let ccx = Ccx { x: 0 };
     f(&ccx);
 }
 

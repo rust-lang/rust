@@ -14,6 +14,12 @@
 pub mod pipes {
     use core::cast::{forget, transmute};
 
+    pub struct Stuff<T> {
+        mut state: state,
+        mut blocked_task: Option<task::Task>,
+        mut payload: Option<T>
+    }
+
     pub enum state {
         empty,
         full,
@@ -36,7 +42,7 @@ pub mod pipes {
 
     pub fn packet<T: Owned>() -> *packet<T> {
         unsafe {
-            let p: *packet<T> = cast::transmute(~{
+            let p: *packet<T> = cast::transmute(~Stuff{
                 mut state: empty,
                 mut blocked_task: None::<task::Task>,
                 mut payload: None::<T>

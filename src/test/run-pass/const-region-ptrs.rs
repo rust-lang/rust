@@ -9,9 +9,11 @@
 // except according to those terms.
 
 
+struct Pair { a: int, b: &int }
+
 const x: &int = &10;
 
-const y: &{a: int, b: &int} = &{a: 15, b: x};
+const y: &Pair = &Pair {a: 15, b: x};
 
 fn main() {
     io::println(fmt!("x = %?", *x));

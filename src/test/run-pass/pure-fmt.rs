@@ -10,9 +10,12 @@
 
 // Testing that calling fmt! (via debug!) doesn't complain about impure borrows
 
+struct Big { b: @~str, c: uint, d: int, e: char,
+            f: float, g: bool }
+
 pure fn foo() {
-    let a = {
-        b: @"hi",
+    let a = Big {
+        b: @~"hi",
         c: 0,
         d: 1,
         e: 'a',

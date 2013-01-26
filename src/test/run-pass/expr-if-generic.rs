@@ -25,13 +25,13 @@ fn test_bool() {
     test_generic::<bool>(true, false, compare_bool);
 }
 
-type t = {a: int, b: int};
+struct Pair {a: int, b: int}
 
 fn test_rec() {
-    fn compare_rec(t1: t, t2: t) -> bool {
+    fn compare_rec(t1: Pair, t2: Pair) -> bool {
         t1.a == t2.a && t1.b == t2.b
     }
-    test_generic::<t>({a: 1, b: 2}, {a: 2, b: 3}, compare_rec);
+    test_generic::<Pair>(Pair{a: 1, b: 2}, Pair{a: 2, b: 3}, compare_rec);
 }
 
 fn main() { test_bool(); test_rec(); }

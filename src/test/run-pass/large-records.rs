@@ -12,9 +12,8 @@
 
 
 // -*- rust -*-
-fn f() {
-    let foo:
-            {a: int,
+
+struct Large {a: int,
              b: int,
              c: int,
              d: int,
@@ -25,8 +24,10 @@ fn f() {
              i: int,
              j: int,
              k: int,
-             l: int} =
-        {a: 0,
+             l: int}
+fn f() {
+    let foo: Large =
+        Large {a: 0,
          b: 0,
          c: 0,
          d: 0,

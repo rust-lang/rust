@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct X { x: int, y: @A }
+struct A { a: int }
+
 fn main() {
-    let u = {x: 10, y: @{a: 20}};
-    let mut {x: x, y: @{a: a}} = u;
+    let u = X {x: 10, y: @A {a: 20}};
+    let mut X {x: x, y: @A {a: a}} = u;
     x = 100;
     a = 100;
     assert (x == 100);

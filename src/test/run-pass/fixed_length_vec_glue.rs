@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Struc { a: u8, b: [int * 3], c: int }
+
 fn main() {
     let arr = [1,2,3];
-    let struc = {a: 13u8, b: arr, c: 42};
+    let struc = Struc {a: 13u8, b: arr, c: 42};
     let s = sys::log_str(&struc);
     assert(s == ~"{a: 13, b: [1, 2, 3], c: 42}");
 }

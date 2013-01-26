@@ -11,8 +11,10 @@
 // xfail-fast
 #[legacy_modes];
 
+struct Arg<T> {val: T, fin: extern fn(T)}
+
 struct finish<T: Copy> {
-  arg: {val: T, fin: extern fn(T)},
+  arg: Arg<T>
 }
 
 impl<T: Copy> finish<T> : Drop {
@@ -21,7 +23,7 @@ impl<T: Copy> finish<T> : Drop {
     }
 }
 
-fn finish<T: Copy>(arg: {val: T, fin: extern fn(T)}) -> finish<T> {
+fn finish<T: Copy>(arg: Arg<T>) -> finish<T> {
     finish {
         arg: arg
     }
@@ -31,6 +33,6 @@ fn main() {
     let box = @mut 10;
     fn dec_box(&&i: @mut int) { *i -= 1; }
 
-    { let _i = move finish({val: box, fin: dec_box}); }
+    { let _i = move finish(Arg{val: box, fin: dec_box}); }
     assert (*box == 9);
 }

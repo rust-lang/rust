@@ -22,21 +22,23 @@ enum opt_span {
 
     //hack (as opposed to option), to make `span` compile
     os_none,
-    os_some(@span),
+    os_some(@Span),
 }
-type span = {lo: uint, hi: uint, expanded_from: opt_span};
-type spanned<T> = { data: T, span: span };
+struct Span {lo: uint, hi: uint, expanded_from: opt_span}
+struct Spanned<T> { data: T, span: Span }
 type ty_ = uint;
-type path_ = { global: bool, idents: ~[~str], types: ~[@ty] };
-type path = spanned<path_>;
-type ty = spanned<ty_>;
+struct Path_ { global: bool, idents: ~[~str], types: ~[@ty] }
+type path = Spanned<Path_>;
+type ty = Spanned<ty_>;
+
+struct X { sp: Span, path: path }
 
 fn main() {
-    let sp: span = {lo: 57451u, hi: 57542u, expanded_from: os_none};
-    let t: @ty = @{ data: 3u, span: sp };
-    let p_: path_ = { global: true, idents: ~[~"hi"], types: ~[t] };
-    let p: path = { data: p_, span: sp };
-    let x = { sp: sp, path: p };
+    let sp: Span = Span {lo: 57451u, hi: 57542u, expanded_from: os_none};
+    let t: @ty = @Spanned { data: 3u, span: sp };
+    let p_: Path_ = Path_ { global: true, idents: ~[~"hi"], types: ~[t] };
+    let p: path = Spanned { data: p_, span: sp };
+    let x = X { sp: sp, path: p };
     log(error, copy x.path);
     log(error, copy x);
 }

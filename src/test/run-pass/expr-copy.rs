@@ -11,12 +11,14 @@
 // xfail-fast
 #[legacy_modes];
 
-fn f(arg: {mut a: int}) {
+fn f(arg: A) {
     arg.a = 100;
 }
 
+struct A { mut a: int }
+
 fn main() {
-    let x = {mut a: 10};
+    let x = A {a: 10};
     f(x);
     assert x.a == 100;
     x.a = 20;

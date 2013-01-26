@@ -10,12 +10,12 @@
 
 
 
-type recbox<T: Copy> = {x: @T};
+struct Recbox<T: Copy> {x: @T}
 
-fn reclift<T: Copy>(t: T) -> recbox<T> { return {x: @t}; }
+fn reclift<T: Copy>(t: T) -> Recbox<T> { return Recbox {x: @t}; }
 
 fn main() {
     let foo: int = 17;
-    let rbfoo: recbox<int> = reclift::<int>(foo);
+    let rbfoo: Recbox<int> = reclift::<int>(foo);
     assert (*rbfoo.x == foo);
 }
