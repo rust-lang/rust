@@ -19,6 +19,7 @@ use future_spawn = future::spawn;
 use result::{Result};
 use libc::size_t;
 use io::{Reader, ReaderUtil, Writer};
+use core::ptr::*;
 
 #[nolink]
 extern mod rustrt {
@@ -803,8 +804,8 @@ impl TcpSocketBuf: io::Reader {
             let ncopy = uint::min(nbuffered, needed); 
             let dst = ptr::mut_offset(vec::raw::to_mut_ptr(buf), count);
             let src = ptr::const_offset(vec::raw::to_const_ptr(self.data.buf),
-                                        self.data_buf_off);
-            ptr::copy_memory(dst, src, ncopy); 
+                                        self.data.buf_off);
+            ptr::memcpy(dst, src, ncopy); 
             self.data.buf_off += ncopy;
             count += ncopy;
           }
@@ -1292,7 +1293,7 @@ struct TcpBufferedSocketData {
     sock: TcpSocket,
     mut buf: ~[u8],
     mut buf_off: uint
-};
+}
 
 //#[cfg(test)]
 mod test {
