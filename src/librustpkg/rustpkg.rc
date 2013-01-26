@@ -27,13 +27,12 @@ extern mod syntax(vers = "0.6");
 
 use core::*;
 use io::{ReaderUtil, WriterUtil};
-use std::getopts;
+use std::{json, semver, getopts};
 use std::net::url;
 use send_map::linear::LinearMap;
 use rustc::metadata::filesearch;
 use rustc::driver::{driver, session};
 use syntax::{ast, attr, codemap, diagnostic, parse, visit};
-use std::semver;
 
 mod usage;
 mod util;
@@ -251,6 +250,7 @@ impl PackageScript {
 
 struct Ctx {
     cfgs: ~[~str],
+    json: bool,
     mut dep_cache: LinearMap<~str, bool>
 }
 
@@ -293,6 +293,9 @@ impl Ctx {
                 }
 
                 self.do_cmd(args[0]);
+            }
+            ~"info" => {
+                self.info();
             }
             ~"install" => {
                 self.install(if args.len() >= 1 { Some(args[0]) }
@@ -468,6 +471,58 @@ impl Ctx {
                                           script.vers.to_str()));
 
         true
+    }
+
+    fn info() {
+        if self.json {
+            match PackageScript::parse(&os::getcwd()) {
+                result::Ok(script) => {
+                    let mut map = ~LinearMap();
+
+                    map.insert(~"id", json::String(script.id));
+                    map.insert(~"name", json::String(script.name));
+                    map.insert(~"vers", json::String(script.vers.to_str()));
+                    map.insert(~"deps", json::List(do script.deps.map |&dep| {
+                        let (url, target) = dep;
+                        let mut inner = ~LinearMap();
+
+                        inner.insert(~"url", json::String(url));
+
+                        if !target.is_none() {
+                            inner.insert(~"target", json::String(target.get()));
+                        }
+
+                        json::Object(inner)
+                    }));
+
+                    io::println(json::to_pretty_str(&json::Object(map)));
+                }
+                result::Err(_) => io::println(~"{}")
+            }
+        } else {
+            let script = match PackageScript::parse(&os::getcwd()) {
+                result::Ok(script) => script,
+                result::Err(err) => {
+                    util::error(err);
+
+                    return;
+                }
+            };
+
+            util::note(fmt!("id: %s", script.id));
+            util::note(fmt!("name: %s", script.name));
+            util::note(fmt!("vers: %s", script.vers.to_str()));
+            util::note(fmt!("deps: %s", if script.deps.len() > 0 { ~"" } else { ~"none" }));
+
+            for script.deps.each |&dep| {
+                let (url, target) = dep;
+
+                util::note(fmt!("  <%s> (%s)", url, match target {
+                    Some(target) => target,
+                    None => ~""
+                }));
+            }
+        }
     }
 
     fn install(url: Option<~str>, target: Option<~str>, cache: bool) -> bool {
@@ -783,6 +838,7 @@ impl Ctx {
 pub fn main() {
     let args = os::args();
     let opts = ~[getopts::optflag(~"h"), getopts::optflag(~"help"),
+                 getopts::optflag(~"j"), getopts::optflag(~"json"),
                  getopts::optmulti(~"c"), getopts::optmulti(~"cfg")];
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
@@ -794,6 +850,8 @@ pub fn main() {
     };
     let help = getopts::opt_present(matches, ~"h") ||
                getopts::opt_present(matches, ~"help");
+    let json = getopts::opt_present(matches, ~"j") ||
+               getopts::opt_present(matches, ~"json");
     let cfgs = vec::append(getopts::opt_strs(matches, ~"cfg"),
                            getopts::opt_strs(matches, ~"c"));
     let mut args = copy matches.free;
@@ -813,6 +871,7 @@ pub fn main() {
             ~"build" => usage::build(),
             ~"clean" => usage::clean(),
             ~"do" => usage::do_cmd(),
+            ~"info" => usage::info(),
             ~"install" => usage::install(),
             ~"prefer" => usage::prefer(),
             ~"test" => usage::test(),
@@ -824,6 +883,7 @@ pub fn main() {
 
     Ctx {
         cfgs: cfgs,
+        json: json,
         mut dep_cache: LinearMap()
     }.run(cmd, args);
 }
@@ -906,7 +966,7 @@ pub fn Crate(file: ~str) -> Crate {
  * Assumes that the package script has been compiled
  * in is the working directory.
  */
-fn work_dir() -> Path {
+pub fn work_dir() -> Path {
     os::self_exe_path().get()
 }
 
@@ -916,7 +976,7 @@ fn work_dir() -> Path {
  * that the cwd is changed to it before
  * running this executable.
  */
-fn src_dir() -> Path {
+pub fn src_dir() -> Path {
     os::getcwd()
 }
 

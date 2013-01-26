@@ -14,7 +14,7 @@ pub fn general() {
     io::println(~"Usage: rustpkg [options] <cmd> [args..]
 
 Where <cmd> is one of:
-    build, clean, install, prefer, test, uninstall, unprefer
+    build, clean, do, info, install, prefer, test, uninstall, unprefer
 
 Options:
 
@@ -44,6 +44,15 @@ pub fn do_cmd() {
 
 Runs a command in the package script. You can listen to a command
 by tagging a function with the attribute `#[pkg_do(cmd)]`.");
+}
+
+pub fn info() {
+    io::println(~"rustpkg [options..] info
+
+Probe the package script in the current directory for information.
+
+Options:
+    -j, --json      Output the result as JSON");
 }
 
 pub fn install() {

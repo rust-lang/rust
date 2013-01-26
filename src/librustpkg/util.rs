@@ -35,7 +35,7 @@ pub fn root() -> Path {
 }
 
 pub fn is_cmd(cmd: ~str) -> bool {
-    let cmds = &[~"build", ~"clean", ~"do", ~"install", ~"prefer",
+    let cmds = &[~"build", ~"clean", ~"do", ~"info", ~"install", ~"prefer",
                  ~"test", ~"uninstall", ~"unprefer"];
 
     vec::contains(cmds, &cmd)
@@ -1065,6 +1065,7 @@ fn test_is_cmd() {
     assert is_cmd(~"build");
     assert is_cmd(~"clean");
     assert is_cmd(~"do");
+    assert is_cmd(~"info");
     assert is_cmd(~"install");
     assert is_cmd(~"prefer");
     assert is_cmd(~"test");
