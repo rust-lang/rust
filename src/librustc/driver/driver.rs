@@ -382,21 +382,21 @@ pub fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
         match node {
           pprust::node_item(s, item) => {
             pp::space(s.s);
-            pprust::synth_comment(s, int::to_str(item.id, 10u));
+            pprust::synth_comment(s, int::to_str(item.id));
           }
           pprust::node_block(s, ref blk) => {
             pp::space(s.s);
             pprust::synth_comment(
-                s, ~"block " + int::to_str((*blk).node.id, 10u));
+                s, ~"block " + int::to_str((*blk).node.id));
           }
           pprust::node_expr(s, expr) => {
             pp::space(s.s);
-            pprust::synth_comment(s, int::to_str(expr.id, 10u));
+            pprust::synth_comment(s, int::to_str(expr.id));
             pprust::pclose(s);
           }
           pprust::node_pat(s, pat) => {
             pp::space(s.s);
-            pprust::synth_comment(s, ~"pat " + int::to_str(pat.id, 10u));
+            pprust::synth_comment(s, ~"pat " + int::to_str(pat.id));
           }
         }
     }

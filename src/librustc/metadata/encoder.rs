@@ -245,7 +245,7 @@ fn encode_discriminant(ecx: @encode_ctxt, ebml_w: writer::Encoder,
 fn encode_disr_val(_ecx: @encode_ctxt, ebml_w: writer::Encoder,
                    disr_val: int) {
     ebml_w.start_tag(tag_disr_val);
-    ebml_w.writer.write(str::to_bytes(int::to_str(disr_val,10u)));
+    ebml_w.writer.write(str::to_bytes(int::to_str(disr_val)));
     ebml_w.end_tag();
 }
 

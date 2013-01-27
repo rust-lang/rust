@@ -679,7 +679,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             let variant_cx =
                 sub_block(cx,
                                    ~"enum-iter-variant-" +
-                                       int::to_str(variant.disr_val, 10u));
+                                       int::to_str(variant.disr_val));
             AddCase(llswitch, C_int(ccx, variant.disr_val), variant_cx.llbb);
             let variant_cx =
                 iter_variant(variant_cx, llunion_a_ptr, *variant,
