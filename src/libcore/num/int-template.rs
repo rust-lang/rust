@@ -200,6 +200,18 @@ impl T: num::One {
     static pure fn one() -> T { 1 }
 }
 
+impl T: num::Round {
+    #[inline(always)]
+    pure fn round(&self, _: num::RoundMode) -> T { *self }
+
+    #[inline(always)]
+    pure fn floor(&self) -> T { *self }
+    #[inline(always)]
+    pure fn ceil(&self) -> T { *self }
+    #[inline(always)]
+    pure fn fract(&self) -> T { 0 }
+}
+
 /**
  * Parse a buffer of bytes
  *

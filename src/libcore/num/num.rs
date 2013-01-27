@@ -35,3 +35,18 @@ pub trait Zero {
 pub trait One {
     static pure fn one() -> Self;
 }
+
+pub trait Round {
+    pure fn round(&self, mode: RoundMode) -> self;
+
+    pure fn floor(&self) -> self;
+    pure fn ceil(&self)  -> self;
+    pure fn fract(&self) -> self;
+}
+
+pub enum RoundMode {
+    RoundDown,
+    RoundUp,
+    RoundToZero,
+    RoundFromZero
+}
