@@ -306,6 +306,33 @@ pub extern {
     fn floorf32(val: f32) -> f32;
 }
 
+impl f32: num::Round {
+    #[inline(always)]
+    pure fn round(&self, mode: num::RoundMode) -> f32 {
+        match mode {
+            num::RoundDown                           => floor(*self),
+            num::RoundUp                             => ceil(*self),
+            num::RoundToZero   if is_negative(*self) => ceil(*self),
+            num::RoundToZero                         => floor(*self),
+            num::RoundFromZero if is_negative(*self) => floor(*self),
+            num::RoundFromZero                       => ceil(*self)
+        }
+    }
+
+    #[inline(always)]
+    pure fn floor(&self) -> f32 { floor(*self) }
+    #[inline(always)]
+    pure fn ceil(&self) -> f32 { ceil(*self) }
+    #[inline(always)]
+    pure fn fract(&self) -> f32 {
+        if is_negative(*self) {
+            (*self) - ceil(*self)
+        } else {
+            (*self) - floor(*self)
+        }
+    }
+}
+
 //
 // Local Variables:
 // mode: rust
