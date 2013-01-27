@@ -27,6 +27,9 @@ use prelude::*;
 use str;
 use uint;
 use vec;
+use u8;
+use u16;
+use u32;
 
 pub const bits : uint = inst::bits;
 pub const bytes : uint = (inst::bits / 8);
@@ -274,7 +277,7 @@ pub fn test_from_str() {
     assert from_str(~"0") == Some(0u as T);
     assert from_str(~"3") == Some(3u as T);
     assert from_str(~"10") == Some(10u as T);
-    assert from_str(~"123456789") == Some(123456789u as T);
+    assert u32::from_str(~"123456789") == Some(123456789 as u32);
     assert from_str(~"00100") == Some(100u as T);
 
     assert from_str(~"").is_none();
@@ -288,8 +291,8 @@ pub fn test_parse_bytes() {
     assert parse_bytes(to_bytes(~"123"), 10u) == Some(123u as T);
     assert parse_bytes(to_bytes(~"1001"), 2u) == Some(9u as T);
     assert parse_bytes(to_bytes(~"123"), 8u) == Some(83u as T);
-    assert parse_bytes(to_bytes(~"123"), 16u) == Some(291u as T);
-    assert parse_bytes(to_bytes(~"ffff"), 16u) == Some(65535u as T);
+    assert u16::parse_bytes(to_bytes(~"123"), 16u) == Some(291u as u16);
+    assert u16::parse_bytes(to_bytes(~"ffff"), 16u) == Some(65535u as u16);
     assert parse_bytes(to_bytes(~"z"), 36u) == Some(35u as T);
 
     assert parse_bytes(to_bytes(~"Z"), 10u).is_none();
@@ -327,27 +330,35 @@ fn test_uint_to_str_overflow() {
 fn test_uint_from_str_overflow() {
     let mut u8_val: u8 = 255_u8;
     assert (u8::from_str(~"255") == Some(u8_val));
+    assert (u8::from_str(~"256").is_none());
 
     u8_val += 1 as u8;
     assert (u8::from_str(~"0") == Some(u8_val));
+    assert (u8::from_str(~"-1").is_none());
 
     let mut u16_val: u16 = 65_535_u16;
     assert (u16::from_str(~"65535") == Some(u16_val));
+    assert (u16::from_str(~"65536").is_none());
 
     u16_val += 1 as u16;
     assert (u16::from_str(~"0") == Some(u16_val));
+    assert (u16::from_str(~"-1").is_none());
 
     let mut u32_val: u32 = 4_294_967_295_u32;
     assert (u32::from_str(~"4294967295") == Some(u32_val));
+    assert (u32::from_str(~"4294967296").is_none());
 
     u32_val += 1 as u32;
     assert (u32::from_str(~"0") == Some(u32_val));
+    assert (u32::from_str(~"-1").is_none());
 
     let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
     assert (u64::from_str(~"18446744073709551615") == Some(u64_val));
+    assert (u64::from_str(~"18446744073709551616").is_none());
 
     u64_val += 1 as u64;
     assert (u64::from_str(~"0") == Some(u64_val));
+    assert (u64::from_str(~"-1").is_none());
 }
 
 #[test]

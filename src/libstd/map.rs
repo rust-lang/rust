@@ -619,32 +619,35 @@ mod tests {
             map::HashMap::<~str, ~str>();
         i = 0u;
         while i < num_to_insert {
-            assert hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u));
+            assert hm_ss.insert(uint::to_str_radix(i, 2u),
+                                uint::to_str_radix(i * i, 2u));
             debug!("inserting \"%s\" -> \"%s\"",
-                   uint::to_str(i, 2u),
-                   uint::to_str(i*i, 2u));
+                   uint::to_str_radix(i, 2u),
+                   uint::to_str_radix(i*i, 2u));
             i += 1u;
         }
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
             debug!("get(\"%s\") = \"%s\"",
-                   uint::to_str(i, 2u),
-                   hm_ss.get(uint::to_str(i, 2u)));
-            assert hm_ss.get(uint::to_str(i, 2u)) == uint::to_str(i * i, 2u);
+                   uint::to_str_radix(i, 2u),
+                   hm_ss.get(uint::to_str_radix(i, 2u)));
+            assert hm_ss.get(uint::to_str_radix(i, 2u)) ==
+                             uint::to_str_radix(i * i, 2u);
             i += 1u;
         }
-        assert (hm_ss.insert(uint::to_str(num_to_insert, 2u),
-                             uint::to_str(17u, 2u)));
-        assert hm_ss.get(uint::to_str(num_to_insert, 2u)) ==
-            uint::to_str(17u, 2u);
+        assert (hm_ss.insert(uint::to_str_radix(num_to_insert, 2u),
+                             uint::to_str_radix(17u, 2u)));
+        assert hm_ss.get(uint::to_str_radix(num_to_insert, 2u)) ==
+            uint::to_str_radix(17u, 2u);
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
             debug!("get(\"%s\") = \"%s\"",
-                   uint::to_str(i, 2u),
-                   hm_ss.get(uint::to_str(i, 2u)));
-            assert hm_ss.get(uint::to_str(i, 2u)) == uint::to_str(i * i, 2u);
+                   uint::to_str_radix(i, 2u),
+                   hm_ss.get(uint::to_str_radix(i, 2u)));
+            assert hm_ss.get(uint::to_str_radix(i, 2u)) ==
+                             uint::to_str_radix(i * i, 2u);
             i += 1u;
         }
         debug!("*** finished test_growth");
