@@ -893,7 +893,7 @@ fn test_repr() {
     exact_test(&10, "10");
     exact_test(&true, "true");
     exact_test(&false, "false");
-    exact_test(&1.234, "1.2340");
+    exact_test(&1.234, "1.234");
     exact_test(&(&"hello"), "\"hello\"");
     exact_test(&(@"hello"), "@\"hello\"");
     exact_test(&(~"he\u10f3llo"), "~\"he\\u10f3llo\"");
@@ -918,11 +918,11 @@ fn test_repr() {
     exact_test(&(&["hi", "there"]),
                "&[\"hi\", \"there\"]");
     exact_test(&(P{a:10, b:1.234}),
-               "{a: 10, b: 1.2340}");
+               "{a: 10, b: 1.234}");
     exact_test(&(@P{a:10, b:1.234}),
-               "@{a: 10, b: 1.2340}");
+               "@{a: 10, b: 1.234}");
     exact_test(&(~P{a:10, b:1.234}),
-               "~{a: 10, b: 1.2340}");
+               "~{a: 10, b: 1.234}");
     exact_test(&(10_u8, ~"hello"),
                "(10, ~\"hello\")");
     exact_test(&(10_u16, ~"hello"),

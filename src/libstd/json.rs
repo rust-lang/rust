@@ -109,7 +109,7 @@ pub impl Encoder: serialize::Encoder {
     fn emit_f64(&self, v: f64) { self.emit_float(v as float); }
     fn emit_f32(&self, v: f32) { self.emit_float(v as float); }
     fn emit_float(&self, v: float) {
-        self.wr.write_str(float::to_str(v, 6u));
+        self.wr.write_str(float::to_str_digits(v, 6u));
     }
 
     fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
@@ -213,7 +213,7 @@ pub impl PrettyEncoder: serialize::Encoder {
     fn emit_f64(&self, v: f64) { self.emit_float(v as float); }
     fn emit_f32(&self, v: f32) { self.emit_float(v as float); }
     fn emit_float(&self, v: float) {
-        self.wr.write_str(float::to_str(v, 6u));
+        self.wr.write_str(float::to_str_digits(v, 6u));
     }
 
     fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }

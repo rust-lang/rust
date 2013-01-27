@@ -24,18 +24,6 @@ use vec;
 
 pub trait ToStr { pub pure fn to_str() -> ~str; }
 
-impl float: ToStr {
-    #[inline(always)]
-    pure fn to_str() -> ~str { ::float::to_str(self, 4u) }
-}
-impl f32: ToStr {
-    #[inline(always)]
-    pure fn to_str() -> ~str { ::float::to_str(self as float, 4u) }
-}
-impl f64: ToStr {
-    #[inline(always)]
-    pure fn to_str() -> ~str { ::float::to_str(self as float, 4u) }
-}
 impl bool: ToStr {
     #[inline(always)]
     pure fn to_str() -> ~str { ::bool::to_str(self) }

@@ -563,7 +563,7 @@ pub mod rt {
     pub pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
-              CountImplied => (float::to_str, 6u)
+              CountImplied => (float::to_str_digits, 6u)
         };
         let mut s = unsafe { to_str(f, digits) };
         if 0.0 <= f {
