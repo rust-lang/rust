@@ -45,7 +45,7 @@ use task;
  *
  * These two cases aside, the interface is safe.
  */
-pub type LocalDataKey<T: Durable> = &fn(v: @T);
+pub type LocalDataKey<T> = &fn(v: @T);
 
 /**
  * Remove a task-local data value from the table, returning the

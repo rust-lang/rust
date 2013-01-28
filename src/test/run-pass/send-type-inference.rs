@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // tests that ctrl's type gets inferred properly
-type command<K: Owned, V: Owned> = {key: K, val: V};
+type command<K, V> = {key: K, val: V};
 
 fn cache_server<K: Owned, V: Owned>(c: oldcomm::Chan<oldcomm::Chan<command<K, V>>>) {
     let ctrl = oldcomm::Port();

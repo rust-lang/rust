@@ -77,7 +77,7 @@ use cast;
 use container::Map;
 use oldcomm;
 use option;
-use pipes::{Chan, GenericChan, GenericPort, Port};
+use pipes::{Chan, GenericChan, GenericPort, Port, stream};
 use pipes;
 use prelude::*;
 use private;
