@@ -28,10 +28,6 @@ use core::prelude::*;
 
 // range search - O(log n) retrieval of an iterator from some key
 
-// implement Ord for TreeSet
-// could be superset/subset-based or in-order lexicographic comparison... but
-// there are methods for is_superset/is_subset so lexicographic is more useful
-
 // (possibly) implement the overloads Python does for sets:
 //   * union: |
 //   * intersection: &
@@ -69,6 +65,45 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
         }
     }
     pure fn ne(&self, other: &TreeMap<K, V>) -> bool { !self.eq(other) }
+}
+
+// Lexicographical comparison
+pure fn lt<K: Ord, V>(a: &TreeMap<K, V>, b: &TreeMap<K, V>) -> bool {
+    let mut x = a.iter();
+    let mut y = b.iter();
+
+    let (a_len, b_len) = (a.len(), b.len());
+    for uint::min(a_len, b_len).times {
+        unsafe { // purity workaround
+            x = x.next();
+            y = y.next();
+            let (key_a,_) = x.get().unwrap();
+            let (key_b,_) = y.get().unwrap();
+            if *key_a < *key_b { return true; }
+            if *key_a > *key_b { return false; }
+        }
+    };
+
+    return a_len < b_len;
+}
+
+impl <K: Ord, V> TreeMap<K, V>: Ord {
+    #[inline(always)]
+    pure fn lt(&self, other: &TreeMap<K, V>) -> bool {
+        lt(self, other)
+    }
+    #[inline(always)]
+    pure fn le(&self, other: &TreeMap<K, V>) -> bool {
+        !lt(other, self)
+    }
+    #[inline(always)]
+    pure fn ge(&self, other: &TreeMap<K, V>) -> bool {
+        !lt(self, other)
+    }
+    #[inline(always)]
+    pure fn gt(&self, other: &TreeMap<K, V>) -> bool {
+        lt(other, self)
+    }
 }
 
 impl <K: Ord, V> TreeMap<K, V>: Container {
@@ -218,6 +253,17 @@ impl <T: Ord> TreeSet<T>: iter::BaseIter<T> {
 impl <T: Eq Ord> TreeSet<T>: Eq {
     pure fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
+}
+
+impl <T: Ord> TreeSet<T>: Ord {
+    #[inline(always)]
+    pure fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
+    #[inline(always)]
+    pure fn le(&self, other: &TreeSet<T>) -> bool { self.map <= other.map }
+    #[inline(always)]
+    pure fn ge(&self, other: &TreeSet<T>) -> bool { self.map >= other.map }
+    #[inline(always)]
+    pure fn gt(&self, other: &TreeSet<T>) -> bool { self.map > other.map }
 }
 
 impl <T: Ord> TreeSet<T>: Container {
@@ -876,6 +922,38 @@ mod test_treemap {
         assert a != b;
         assert b.insert(5, 19);
         assert a == b;
+    }
+
+    #[test]
+    fn test_lt() {
+        let mut a = TreeMap::new();
+        let mut b = TreeMap::new();
+
+        assert !(a < b) && !(b < a);
+        assert b.insert(0, 5);
+        assert a < b;
+        assert a.insert(0, 7);
+        assert !(a < b) && !(b < a);
+        assert b.insert(-2, 0);
+        assert b < a;
+        assert a.insert(-5, 2);
+        assert a < b;
+        assert a.insert(6, 2);
+        assert a < b && !(b < a);
+    }
+
+    #[test]
+    fn test_ord() {
+        let mut a = TreeMap::new();
+        let mut b = TreeMap::new();
+
+        assert a <= b && a >= b;
+        assert a.insert(1, 1);
+        assert a > b && a >= b;
+        assert b < a && b <= a;
+        assert b.insert(2, 2);
+        assert b > a && b >= a;
+        assert a < b && a <= b;
     }
 
     #[test]
