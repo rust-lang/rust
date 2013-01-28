@@ -485,17 +485,16 @@ mod guarantor {
     /*!
      *
      * The routines in this module are aiming to deal with the case
-     * where the lifetime resulting from a borrow is linked to the
-     * lifetime of the thing being borrowed.  Imagine you have a
-     * borrowed pointer `b` with lifetime L1 and you have an
-     * expression `&*b`.  The result of this borrow will be another
-     * borrowed pointer with lifetime L2 (which is an inference
-     * variable).  The borrow checker is going to enforce the
-     * constraint that L2 < L1, because otherwise you are re-borrowing
-     * data for a lifetime larger than the original loan.  However,
-     * without the routines in this module, the region inferencer would
-     * not know of this dependency and thus it might infer the
-     * lifetime of L2 to be greater than L1 (issue #3148).
+     * where a the contents of a borrowed pointer are re-borrowed.
+     * Imagine you have a borrowed pointer `b` with lifetime L1 and
+     * you have an expression `&*b`.  The result of this borrow will
+     * be another borrowed pointer with lifetime L2 (which is an
+     * inference variable).  The borrow checker is going to enforce
+     * the constraint that L2 < L1, because otherwise you are
+     * re-borrowing data for a lifetime larger than the original loan.
+     * However, without the routines in this module, the region
+     * inferencer would not know of this dependency and thus it might
+     * infer the lifetime of L2 to be greater than L1 (issue #3148).
      *
      * There are a number of troublesome scenarios in the test
      * `region-dependent-addr-of.rs`, but here is one example:
@@ -515,16 +514,17 @@ mod guarantor {
      * is "guaranteed" by a borrowed pointer, you must link the
      * lifetime of that borrowed pointer (L1, here) to the lifetime of
      * the borrow itself (L2).  What do I mean by "guaranteed" by a
-     * borrowed pointer? Well, I would say the data "owned" by the
-     * borrowed pointer, except that a borrowed pointer never owns its
-     * contents, but the relation is the same.  That is, I mean any
-     * data that is reached by first derefencing a borrowed pointer
-     * and then either traversing interior offsets or owned pointers.
-     * We say that the guarantor of such data it the region of the borrowed
-     * pointer that was traversed.
+     * borrowed pointer? I mean any data that is reached by first
+     * dereferencing a borrowed pointer and then either traversing
+     * interior offsets or owned pointers.  We say that the guarantor
+     * of such data it the region of the borrowed pointer that was
+     * traversed.  This is essentially the same as the ownership
+     * relation, except that a borrowed pointer never owns its
+     * contents.
      *
      * NB: I really wanted to use the `mem_categorization` code here
-     * but I cannot because final type resolution hasn't happened yet.
+     * but I cannot because final type resolution hasn't happened yet,
+     * and `mem_categorization` requires that all types be known.
      * So this is very similar logic to what you would find there,
      * but more special purpose.
      */
@@ -540,7 +540,8 @@ mod guarantor {
         /*!
          *
          * Computes the guarantor for an expression `&base` and then
-         * ensures that the lifetime of the resulting pointer is linked.
+         * ensures that the lifetime of the resulting pointer is linked
+         * to the lifetime of its guarantor (if any).
          */
 
         debug!("guarantor::for_addr_of(base=%s)", rcx.fcx.expr_to_str(base));
@@ -555,7 +556,7 @@ mod guarantor {
          *
          * Computes the guarantors for any ref bindings in a match and
          * then ensures that the lifetime of the resulting pointer is
-         * linked.
+         * linked to the lifetime of its guarantor (if any).
          */
 
         let discr_guarantor = guarantor(rcx, discr);
@@ -599,13 +600,18 @@ mod guarantor {
         /*!
          *
          * Links the lifetime of the borrowed pointer resulting from a borrow
-         * to the lifetime of its guarantor.
+         * to the lifetime of its guarantor (if any).
          */
 
         debug!("opt_constrain_region(id=%?, guarantor=%?)", id, guarantor);
 
         let bound = match guarantor {
-            None => { return; }
+            None => {
+                // If guarantor is None, then the value being borrowed
+                // is not guaranteed by a region pointer, so there are
+                // no lifetimes to link.
+                return;
+            }
             Some(r) => { r }
         };
 
@@ -620,24 +626,38 @@ mod guarantor {
         }
     }
 
-    enum PointerCat {
+    /// Categorizes types based on what kind of pointer they are.
+    /// Note that we don't bother to distinguish between rptrs (&T)
+    /// and slices (&[T], &str)---they are all just `BorrowedPointer`.
+    enum PointerCategorization {
         NotPointer,
         OwnedPointer,
         BorrowedPointer(ty::Region),
         OtherPointer
     }
 
+    /// Guarantor of an expression paired with the
+    /// PointerCategorization` of its type.
     struct ExprCategorization {
         guarantor: Option<ty::Region>,
-        pointer: PointerCat
+        pointer: PointerCategorization
     }
 
+    /// ExprCategorization paired with the full type of the expr
     struct ExprCategorizationType {
         cat: ExprCategorization,
         ty: ty::t
     }
 
     fn guarantor(rcx: @rcx, expr: @ast::expr) -> Option<ty::Region> {
+        /*!
+         *
+         * Computes the guarantor of `expr`, or None if `expr` is
+         * not guaranteed by any region.  Here `expr` is some expression
+         * whose address is being taken (e.g., there is an expression
+         * `&expr`).
+         */
+
         debug!("guarantor(expr=%s)", rcx.fcx.expr_to_str(expr));
         match expr.node {
             ast::expr_unary(ast::deref, b) => {
@@ -706,9 +726,7 @@ mod guarantor {
         }
     }
 
-    fn categorize(rcx: @rcx,
-                  expr: @ast::expr) -> ExprCategorization
-    {
+    fn categorize(rcx: @rcx, expr: @ast::expr) -> ExprCategorization {
         debug!("categorize(expr=%s)", rcx.fcx.expr_to_str(expr));
         let _i = ::util::common::indenter();
 
@@ -722,6 +740,8 @@ mod guarantor {
                 rcx, expr, adjustment.autoderefs, expr_ct);
 
             for adjustment.autoref.each |autoref| {
+                // If there is an autoref, then the result of this
+                // expression will be some sort of borrowed pointer.
                 expr_ct.cat.guarantor = None;
                 expr_ct.cat.pointer = BorrowedPointer(autoref.region);
                 debug!("autoref, cat=%?", expr_ct.cat);
@@ -784,7 +804,7 @@ mod guarantor {
         return ct;
     }
 
-    fn pointer_categorize(ty: ty::t) -> PointerCat {
+    fn pointer_categorize(ty: ty::t) -> PointerCategorization {
         match ty::get(ty).sty {
             ty::ty_rptr(r, _) | ty::ty_evec(_, ty::vstore_slice(r)) |
             ty::ty_estr(ty::vstore_slice(r)) => {
@@ -911,7 +931,7 @@ fn infallibly_mk_subr(rcx: @rcx,
 {
     /*!
      *
-     * Constraints `a` to be a subregion of `b`.  In many cases, we
+     * Constrains `a` to be a subregion of `b`.  In many cases, we
      * know that this can never yield an error due to the way that
      * region inferencing works.  Therefore just report a bug if we
      * ever see `Err(_)`.
