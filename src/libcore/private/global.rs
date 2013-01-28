@@ -41,7 +41,7 @@ use sys::Closure;
 use task::spawn;
 use uint;
 
-pub type GlobalDataKey<T: Owned> = &fn(v: T);
+pub type GlobalDataKey<T> = &fn(v: T);
 
 pub unsafe fn global_data_clone_create<T: Owned Clone>(
     key: GlobalDataKey<T>, create: &fn() -> ~T) -> T {

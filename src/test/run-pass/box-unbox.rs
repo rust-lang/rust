@@ -10,7 +10,7 @@
 
 
 
-struct Box<T: Copy> {c: @T}
+struct Box<T> {c: @T}
 
 fn unbox<T: Copy>(b: Box<T>) -> T { return *b.c; }
 

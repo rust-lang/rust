@@ -83,7 +83,7 @@ struct SemInner<Q> {
     blocked:   Q
 }
 #[doc(hidden)]
-enum Sem<Q: Owned> = Exclusive<SemInner<Q>>;
+enum Sem<Q> = Exclusive<SemInner<Q>>;
 
 #[doc(hidden)]
 fn new_sem<Q: Owned>(count: int, q: Q) -> Sem<Q> {
@@ -167,7 +167,7 @@ impl &Sem<~[mut Waitqueue]> {
 #[doc(hidden)]
 type SemRelease = SemReleaseGeneric<()>;
 type SemAndSignalRelease = SemReleaseGeneric<~[mut Waitqueue]>;
-struct SemReleaseGeneric<Q: Owned> { sem: &Sem<Q> }
+struct SemReleaseGeneric<Q> { sem: &Sem<Q> }
 
 impl<Q: Owned> SemReleaseGeneric<Q> : Drop {
     fn finalize(&self) {

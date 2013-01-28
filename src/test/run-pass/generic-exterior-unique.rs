@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Recbox<T: Copy> {x: ~T}
+struct Recbox<T> {x: ~T}
 
 fn reclift<T: Copy>(t: T) -> Recbox<T> { return Recbox {x: ~t}; }
 

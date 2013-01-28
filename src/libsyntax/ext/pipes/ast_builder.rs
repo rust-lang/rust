@@ -110,6 +110,7 @@ pub trait ext_ctxt_ast_builder {
     fn ty_option(ty: @ast::Ty) -> @ast::Ty;
     fn ty_infer() -> @ast::Ty;
     fn ty_nil_ast_builder() -> @ast::Ty;
+    fn strip_bounds(bounds: &[ast::ty_param]) -> ~[ast::ty_param];
 }
 
 impl ext_ctxt: ext_ctxt_ast_builder {
@@ -367,6 +368,12 @@ impl ext_ctxt: ext_ctxt_ast_builder {
             id: self.next_id(),
             node: ast::ty_nil,
             span: dummy_sp(),
+        }
+    }
+
+    fn strip_bounds(bounds: &[ast::ty_param]) -> ~[ast::ty_param] {
+        do bounds.map |ty_param| {
+            ast::ty_param { bounds: @~[], ..copy *ty_param }
         }
     }
 

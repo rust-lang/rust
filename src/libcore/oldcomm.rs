@@ -68,7 +68,7 @@ use vec;
  * transmitted. If a port value is copied, both copies refer to the same
  * port.  Ports may be associated with multiple `chan`s.
  */
-pub enum Port<T: Owned> {
+pub enum Port<T> {
     Port_(@PortPtr<T>)
 }
 
@@ -84,7 +84,7 @@ pub enum Port<T: Owned> {
  * data will be silently dropped.  Channels may be duplicated and
  * themselves transmitted over other channels.
  */
-pub enum Chan<T: Owned> {
+pub enum Chan<T> {
     Chan_(port_id)
 }
 
@@ -120,7 +120,7 @@ pub fn listen<T: Owned, U>(f: fn(Chan<T>) -> U) -> U {
     f(po.chan())
 }
 
-struct PortPtr<T:Owned> {
+struct PortPtr<T> {
   po: *rust_port,
   drop {
     unsafe {
@@ -238,7 +238,7 @@ fn peek_chan<T: Owned>(ch: Chan<T>) -> bool {
 }
 
 /// Receive on a raw port pointer
-fn recv_<T: Owned>(p: *rust_port) -> T {
+fn recv_<T>(p: *rust_port) -> T {
     unsafe {
         let yield = 0;
         let yieldp = ptr::addr_of(&yield);

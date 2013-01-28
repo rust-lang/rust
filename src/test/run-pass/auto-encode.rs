@@ -135,11 +135,6 @@ struct Spanned<T> {
     node: T,
 }
 
-enum AnEnum {
-    AVariant,
-    AnotherVariant
-}
-
 #[auto_encode]
 #[auto_decode]
 struct SomeStruct { v: ~[uint] }

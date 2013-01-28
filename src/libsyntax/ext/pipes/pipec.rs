@@ -248,7 +248,7 @@ impl state: to_type_decls {
                 ast::enum_def(enum_def_ {
                     variants: items_msg,
                     common: None }),
-                self.ty_params
+                cx.strip_bounds(self.ty_params)
             )
         ]
     }
@@ -281,7 +281,7 @@ impl state: to_type_decls {
                                    self.data_name()],
                                  dummy_sp())
                             .add_tys(cx.ty_vars_global(self.ty_params))))),
-                    self.ty_params));
+                    cx.strip_bounds(self.ty_params)));
         }
         else {
             items.push(
@@ -299,7 +299,7 @@ impl state: to_type_decls {
                                         dummy_sp())
                             .add_tys(cx.ty_vars_global(self.ty_params))),
                                    self.proto.buffer_ty_path(cx)])),
-                    self.ty_params));
+                    cx.strip_bounds(self.ty_params)));
         };
         items
     }
@@ -417,7 +417,7 @@ impl protocol: gen_init {
             cx.ident_of(~"__Buffer"),
             dummy_sp(),
             cx.ty_rec(fields),
-            params)
+            cx.strip_bounds(params))
     }
 
     fn compile(cx: ext_ctxt) -> @ast::item {

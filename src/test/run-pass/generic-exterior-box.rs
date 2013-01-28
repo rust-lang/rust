@@ -10,7 +10,7 @@
 
 
 
-struct Recbox<T: Copy> {x: @T}
+struct Recbox<T> {x: @T}
 
 fn reclift<T: Copy>(t: T) -> Recbox<T> { return Recbox {x: @t}; }
 
