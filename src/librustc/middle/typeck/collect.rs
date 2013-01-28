@@ -598,6 +598,20 @@ fn convert_methods(ccx: @crate_ctxt,
     }
 }
 
+fn ensure_no_ty_param_bounds(ccx: @crate_ctxt,
+                             span: span,
+                             ty_params: &[ast::ty_param],
+                             thing: &static/str) {
+    for ty_params.each |ty_param| {
+        if ty_param.bounds.len() > 0 {
+            ccx.tcx.sess.span_err(
+                span,
+                fmt!("trait bounds are not allowed in %s definitions",
+                     thing));
+        }
+    }
+}
+
 fn convert(ccx: @crate_ctxt, it: @ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.find(it.id);
@@ -607,6 +621,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
       ast::item_enum(ref enum_definition, ref ty_params) => {
+        ensure_no_ty_param_bounds(ccx, it.span, *ty_params, "enumeration");
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         get_enum_variant_types(ccx,
@@ -644,12 +659,19 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let _ = convert_methods(ccx, provided_methods, rp, bounds);
       }
       ast::item_struct(struct_def, tps) => {
+        ensure_no_ty_param_bounds(ccx, it.span, tps, "structure");
+
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
 
         convert_struct(ccx, rp, struct_def, tps, tpt, it.id);
+      }
+      ast::item_ty(_, ref ty_params) => {
+        ensure_no_ty_param_bounds(ccx, it.span, *ty_params, "type");
+        let tpt = ty_of_item(ccx, it);
+        write_ty_to_tcx(tcx, it.id, tpt.ty);
       }
       _ => {
         // This call populates the type cache with the converted type

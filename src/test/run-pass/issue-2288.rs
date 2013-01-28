@@ -11,7 +11,7 @@
 trait clam<A: Copy> {
   fn chowder(y: A);
 }
-struct foo<A: Copy> {
+struct foo<A> {
   x: A,
 }
 

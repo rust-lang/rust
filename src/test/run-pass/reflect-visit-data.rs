@@ -29,7 +29,7 @@ fn align(size: uint, align: uint) -> uint {
     ((size + align) - 1u) & !(align - 1u)
 }
 
-enum ptr_visit_adaptor<V: TyVisitor movable_ptr> = Inner<V>;
+enum ptr_visit_adaptor<V> = Inner<V>;
 
 impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V> {
 

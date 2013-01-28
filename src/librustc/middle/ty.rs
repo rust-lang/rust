@@ -569,7 +569,7 @@ struct FnSig {
  * by the meta information because, in some cases, the
  * meta information is inferred. */
 #[deriving_eq]
-struct FnTyBase<M: cmp::Eq> {
+struct FnTyBase<M> {
     meta: M,        // Either FnMeta or FnVid
     sig: FnSig      // Types of arguments/return type
 }

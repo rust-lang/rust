@@ -18,7 +18,7 @@ use core::dvec::DVec;
 use std::map::HashMap;
 use std::map;
 
-type hash_interner<T: Const> =
+type hash_interner<T> =
     {map: HashMap<T, uint>,
      vect: DVec<T>};
 

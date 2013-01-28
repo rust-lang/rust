@@ -13,7 +13,7 @@
 
 struct Arg<T> {val: T, fin: extern fn(T)}
 
-struct finish<T: Copy> {
+struct finish<T> {
   arg: Arg<T>
 }
 

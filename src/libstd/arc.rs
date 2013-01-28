@@ -79,7 +79,7 @@ impl &Condvar {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-struct ARC<T: Const Owned> { x: SharedMutableState<T> }
+struct ARC<T> { x: SharedMutableState<T> }
 
 /// Create an atomically reference counted wrapper.
 pub fn ARC<T: Const Owned>(data: T) -> ARC<T> {
@@ -130,9 +130,9 @@ impl<T: Const Owned> ARC<T>: Clone {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct MutexARCInner<T: Owned> { lock: Mutex, failed: bool, data: T }
+struct MutexARCInner<T> { lock: Mutex, failed: bool, data: T }
 /// An ARC with mutable data protected by a blocking mutex.
-struct MutexARC<T: Owned> { x: SharedMutableState<MutexARCInner<T>> }
+struct MutexARC<T> { x: SharedMutableState<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
 pub fn MutexARC<T: Owned>(user_data: T) -> MutexARC<T> {
@@ -267,14 +267,14 @@ fn PoisonOnFail(failed: &r/mut bool) -> PoisonOnFail {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct RWARCInner<T: Const Owned> { lock: RWlock, failed: bool, data: T }
+struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
 /**
  * A dual-mode ARC protected by a reader-writer lock. The data can be accessed
  * mutably or immutably, and immutably-accessing tasks may run concurrently.
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
-struct RWARC<T: Const Owned> {
+struct RWARC<T> {
     x: SharedMutableState<RWARCInner<T>>,
     mut cant_nest: ()
 }
@@ -426,10 +426,10 @@ fn borrow_rwlock<T: Const Owned>(state: &r/mut RWARCInner<T>) -> &r/RWlock {
 // FIXME (#3154) ice with struct/&<T> prevents these from being structs.
 
 /// The "write permission" token used for RWARC.write_downgrade().
-pub enum RWWriteMode<T: Const Owned> =
+pub enum RWWriteMode<T> =
     (&mut T, sync::RWlockWriteMode, PoisonOnFail);
 /// The "read permission" token used for RWARC.write_downgrade().
-pub enum RWReadMode<T:Const Owned> = (&T, sync::RWlockReadMode);
+pub enum RWReadMode<T> = (&T, sync::RWlockReadMode);
 
 impl<T: Const Owned> &RWWriteMode<T> {
     /// Access the pre-downgrade RWARC in write mode.
