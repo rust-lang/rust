@@ -108,6 +108,7 @@ Matthew O'Connor <thegreendragon@gmail.com>
 Max Penet <max.penet@gmail.com>
 Michael Arntzenius <daekharel@gmail.com>
 Michael Bebenita <mbebenita@mozilla.com>
+Michael Neumann <mneumann@ntecs.de>
 Michael Sullivan <sully@msully.net>
 Nick Desaulniers <ndesaulniers@mozilla.com>
 Niko Matsakis <niko@alum.mit.edu>
