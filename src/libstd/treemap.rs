@@ -572,9 +572,8 @@ pure fn each_reverse<K: Ord, V>(node: &Option<~TreeNode<K, V>>,
 }
 
 // Remove left horizontal link by rotating right
-fn skew<K: Ord, V>(node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
+fn skew<K: Ord, V>(mut node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
     if node.left.map_default(false, |x| x.level == node.level) {
-        let mut node = node;
         let mut save = node.left.swap_unwrap();
         node.left <-> save.right; // save.right now None
         save.right = Some(node);
@@ -586,10 +585,9 @@ fn skew<K: Ord, V>(node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
 
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
-fn split<K: Ord, V>(node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
+fn split<K: Ord, V>(mut node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
     if node.right.map_default(false,
       |x| x.right.map_default(false, |y| y.level == node.level)) {
-        let mut node = node;
         let mut save = node.right.swap_unwrap();
         node.right <-> save.left; // save.left now None
         save.left = Some(node);
@@ -628,8 +626,7 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
     fn heir_swap<K: Ord, V>(node: &mut TreeNode<K, V>,
                             child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
-        do child.mutate |child| {
-            let mut child = child;
+        do child.mutate |mut child| {
             if child.right.is_some() {
                 heir_swap(&mut *node, &mut child.right);
             } else {
@@ -682,15 +679,13 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
             save.level -= 1;
 
             if right_level > save.level {
-                do save.right.mutate |x| {
-                    let mut x = x; x.level = save.level; x
-                }
+                do save.right.mutate |mut x| { x.level = save.level; x }
             }
 
             save = skew(save);
 
-            do save.right.mutate |right| {
-                let mut right = skew(right);
+            do save.right.mutate |mut right| {
+                right = skew(right);
                 right.right.mutate(skew);
                 right
             }
