@@ -167,15 +167,27 @@ struct Database {
 }
 
 impl Database {
-
-    fn prepare(&mut self,
-               fn_name: &str,
-               declared_inputs: &WorkMap) ->
-        Option<(WorkMap, WorkMap, ~str)> {
+    #[cfg(stage0)]
+    #[cfg(stage1)]
+    fn prepare(&mut self, fn_name: &str,
+               declared_inputs: &WorkMap) -> Option<(WorkMap, WorkMap, ~str)>
+    {
         let k = json_encode(&(fn_name, declared_inputs));
-        match self.db_cache.find_copy(&k) {
+        let db_cache = copy self.db_cache;
+        match db_cache.find(&k) {
             None => None,
-            Some(v) => Some(json_decode(v))
+            Some(&v) => Some(json_decode(copy v))
+        }
+    }
+
+    #[cfg(stage2)]
+    fn prepare(&mut self, fn_name: &str,
+               declared_inputs: &WorkMap) -> Option<(WorkMap, WorkMap, ~str)>
+    {
+        let k = json_encode(&(fn_name, declared_inputs));
+        match self.db_cache.find(&k) {
+            None => None,
+            Some(&v) => Some(json_decode(copy v))
         }
     }
 

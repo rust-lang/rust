@@ -23,9 +23,9 @@ enum object
 
 fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
 {
-    match table.find_copy(&key)
+    match table.find(&key)
     {
-        option::Some(std::json::String(copy s)) =>
+        option::Some(&std::json::String(copy s)) =>
         {
             copy s
         }
