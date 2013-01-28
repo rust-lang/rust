@@ -215,10 +215,6 @@ pub enum SignFormat {
  * with a 'divide by zero'. Likewise, it will fail if `num` **is** one of
  * those special values, and `special` is `false`, because then the
  * algorithm just does normal calculations on them.
- *
- * # Possible improvements
- * - Currently performs no rounding if truncating trailing digits.
- * - Make function handle numbers with expensive copies better.
  */
 pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
         num: &T, radix: uint, special: bool, negative_zero: bool,
