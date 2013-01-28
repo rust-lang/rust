@@ -389,24 +389,6 @@ pub mod linear {
         }
     }
 
-    impl<K: Hash IterBytes Eq, V: Copy> LinearMap<K, V> {
-        pure fn find_copy(&self, k: &K) -> Option<V> {
-            match self.bucket_for_key(self.buckets, k) {
-                FoundEntry(idx) => {
-                    // FIXME (#3148): Once we rewrite found_entry, this
-                    // failure case won't be necessary
-                    match self.buckets[idx] {
-                        Some(Bucket {value: copy value, _}) => {Some(value)}
-                        None => fail ~"LinearMap::find: internal logic error"
-                    }
-                }
-                TableFull | FoundHole(_) => {
-                    None
-                }
-            }
-        }
-    }
-
     impl<K: Hash IterBytes Eq, V: Eq> LinearMap<K, V>: Eq {
         pure fn eq(&self, other: &LinearMap<K, V>) -> bool {
             if self.len() != other.len() { return false; }
@@ -560,8 +542,8 @@ pub mod test {
         }
         assert m.len() == 0;
         assert m2.len() == 2;
-        assert m2.find_copy(&1) == Some(2);
-        assert m2.find_copy(&2) == Some(3);
+        assert m2.get(&1) == &2;
+        assert m2.get(&2) == &3;
     }
 
     #[test]
