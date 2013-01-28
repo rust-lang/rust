@@ -809,7 +809,9 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
  * A buffered wrapper that you can cast as an `io::reader` or `io::writer`
  */
 pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
-    TcpSocketBuf(@TcpBufferedSocketData { sock: move sock, mut buf: ~[], buf_off: 0 })
+    TcpSocketBuf(@TcpBufferedSocketData {
+        sock: move sock, mut buf: ~[], buf_off: 0
+    })
 }
 
 /// Convenience methods extending `net::tcp::tcp_socket`
@@ -865,19 +867,19 @@ impl TcpSocketBuf: io::Reader {
         loop {
           assert count < len;
 
-          // If possible, copy up to `len` bytes from the internal 
+          // If possible, copy up to `len` bytes from the internal
           // `data.buf` into `buf`
           let nbuffered = self.data.buf.len() - self.data.buf_off;
           let needed = len - count;
             if nbuffered > 0 {
                 unsafe {
-                    let ncopy = uint::min(nbuffered, needed); 
+                    let ncopy = uint::min(nbuffered, needed);
                     let dst = ptr::mut_offset(
                         vec::raw::to_mut_ptr(buf), count);
                     let src = ptr::const_offset(
                         vec::raw::to_const_ptr(self.data.buf),
                         self.data.buf_off);
-                    ptr::copy_memory(dst, src, ncopy); 
+                    ptr::copy_memory(dst, src, ncopy);
                     self.data.buf_off += ncopy;
                     count += ncopy;
                 }
@@ -905,7 +907,7 @@ impl TcpSocketBuf: io::Reader {
                          err_data.err_name, err_data.err_msg);
                   // As we have already copied data into result buffer,
                   // we cannot simply return 0 here. Instead the error
-                  // should show up in a later call to read(). 
+                  // should show up in a later call to read().
                   break;
               }
           }
@@ -1872,7 +1874,8 @@ pub mod test {
                         cont_ch.send(());
                         let sock = result::unwrap(move accept_result);
                         let peer_addr = sock.get_peer_addr();
-                        debug!("SERVER: successfully accepted connection from %s:%u",
+                        debug!("SERVER: successfully accepted \
+                                connection from %s:%u",
                                  ip::format_addr(&peer_addr),
                                  ip::get_port(&peer_addr));
                         let received_req_bytes = read(&sock, 0u);
