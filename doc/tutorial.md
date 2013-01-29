@@ -2219,7 +2219,6 @@ Likewise, supertrait methods may also be called on trait objects.
 # impl CircleStruct: Shape { fn area(&self) -> float { pi * square(self.radius) } }
 
 let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
-
 let mycircle: Circle = concrete as @Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
