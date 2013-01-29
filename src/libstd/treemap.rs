@@ -292,6 +292,33 @@ impl <T: Ord> TreeSet<T>: Set<T> {
     /// present in the set.
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 
+    /// Return true if the set has no elements in common with `other`.
+    /// This is equivalent to checking for an empty intersection.
+    pure fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
+        let mut x = self.iter();
+        let mut y = other.iter();
+        unsafe { // purity workaround
+            x = x.next();
+            y = y.next();
+            let mut a = x.get();
+            let mut b = y.get();
+            while a.is_some() && b.is_some() {
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
+                if a1 < b1 {
+                    x = x.next();
+                    a = x.get();
+                } else if b1 < a1 {
+                    y = y.next();
+                    b = y.get();
+                } else {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     /// Return true if the set is a subset of another
     pure fn is_subset(&self, other: &TreeSet<T>) -> bool {
         other.is_superset(self)
@@ -343,33 +370,6 @@ impl <T: Ord> TreeSet<T> {
     /// Requires that it be frozen (immutable).
     pure fn iter(&self) -> TreeSetIterator/&self<T> {
         TreeSetIterator{iter: self.map.iter()}
-    }
-
-    /// Return true if the set has no elements in common with `other`.
-    /// This is equivalent to checking for an empty intersection.
-    pure fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-        unsafe { // purity workaround
-            x = x.next();
-            y = y.next();
-            let mut a = x.get();
-            let mut b = y.get();
-            while a.is_some() && b.is_some() {
-                let a1 = a.unwrap();
-                let b1 = b.unwrap();
-                if a1 < b1 {
-                    x = x.next();
-                    a = x.get();
-                } else if b1 < a1 {
-                    y = y.next();
-                    b = y.get();
-                } else {
-                    return false;
-                }
-            }
-        }
-        true
     }
 
     /// Visit the values (in-order) representing the difference
