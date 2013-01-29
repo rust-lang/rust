@@ -295,7 +295,11 @@ impl LookupContext {
                     let self_did = self.fcx.self_info.expect(
                         ~"self_impl_def_id is undefined (`self` may not \
                           be in scope here").def_id;
-                    let substs = {self_r: None, self_ty: None, tps: ~[]};
+                    let substs = substs {
+                        self_r: None,
+                        self_ty: None,
+                        tps: ~[]
+                    };
                     self.push_inherent_candidates_from_self(
                         self_ty, self_did, &substs);
                 }
@@ -392,7 +396,10 @@ impl LookupContext {
             // impl or class (where the self type is not permitted),
             // or from a trait type (in which case methods that refer
             // to self are not permitted).
-            let init_substs = {self_ty: Some(rcvr_ty), ..init_substs};
+            let init_substs = substs {
+                self_ty: Some(rcvr_ty),
+                ..init_substs
+            };
 
             worklist.push((init_trait_ty, init_substs));
 
@@ -416,7 +423,10 @@ impl LookupContext {
                         &init_substs);
 
                     // Again replacing the self type
-                    let new_substs = {self_ty: Some(rcvr_ty), ..new_substs};
+                    let new_substs = substs {
+                        self_ty: Some(rcvr_ty),
+                        ..new_substs
+                    };
 
                     worklist.push((supertrait.tpt.ty, new_substs));
                 }
@@ -506,7 +516,10 @@ impl LookupContext {
         // `trait_ty` for `self` here, because it allows the compiler
         // to soldier on.  An error will be reported should this
         // candidate be selected if the method refers to `self`.
-        let rcvr_substs = {self_ty: Some(self_ty), ../*bad*/copy *substs};
+        let rcvr_substs = substs {
+            self_ty: Some(self_ty),
+            ../*bad*/copy *substs
+        };
 
         let (rcvr_ty, rcvr_substs) =
             self.create_rcvr_ty_and_substs_for_method(method.self_ty,
@@ -537,7 +550,10 @@ impl LookupContext {
         }
         let method = &methods[index];
 
-        let rcvr_substs = { self_ty: Some(self_ty), ../*bad*/copy *substs };
+        let rcvr_substs = substs {
+            self_ty: Some(self_ty),
+            ../*bad*/copy *substs
+        };
         let (rcvr_ty, rcvr_substs) =
             self.create_rcvr_ty_and_substs_for_method(
                 method.self_ty,
@@ -628,7 +644,11 @@ impl LookupContext {
                     candidate");
 
             // XXX: Needs to support generics.
-            let dummy_substs = { self_r: None, self_ty: None, tps: ~[] };
+            let dummy_substs = substs {
+                self_r: None,
+                self_ty: None,
+                tps: ~[]
+            };
             let (impl_ty, impl_substs) =
                 self.create_rcvr_ty_and_substs_for_method(
                     provided_method_info.method_info.self_type,
@@ -673,11 +693,13 @@ impl LookupContext {
                     move self_substs
                 }
                 sty_region(_) => {
-                    {self_r:
-                         Some(self.infcx().next_region_var(
-                             self.expr.span,
-                             self.expr.id)),
-                     ..self_substs}
+                    substs {
+                        self_r:
+                             Some(self.infcx().next_region_var(
+                                 self.expr.span,
+                                 self.expr.id)),
+                        ..self_substs
+                    }
                 }
             }
         };
@@ -1058,7 +1080,7 @@ impl LookupContext {
 
         // Construct the full set of type parameters for the method,
         // which is equal to the class tps + the method tps.
-        let all_substs = {
+        let all_substs = substs {
             tps: vec::append(/*bad*/copy candidate.rcvr_substs.tps,
                              m_substs),
             ../*bad*/copy candidate.rcvr_substs
@@ -1066,7 +1088,7 @@ impl LookupContext {
 
         self.fcx.write_ty_substs(self.callee_id, fty, all_substs);
         method_map_entry {
-            self_arg: {
+            self_arg: arg {
                 mode: ast::expl(candidate.self_mode),
                 ty: candidate.rcvr_ty,
             },

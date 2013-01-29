@@ -20,7 +20,7 @@
 use core::prelude::*;
 
 use middle::borrowck::{Loan, bckerr, borrowck_ctxt, cmt, inherent_mutability};
-use middle::borrowck::{req_maps, save_and_restore};
+use middle::borrowck::{req_maps, root_map_key, save_and_restore};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
 use middle::mem_categorization::{cat_local, cat_rvalue, cat_self};
 use middle::mem_categorization::{cat_special, gc_ptr, loan_path, lp_arg};
@@ -396,7 +396,10 @@ impl check_loan_ctxt {
 
                 match ptr_kind {
                     gc_ptr(ast::m_mutbl) => {
-                        let key = { id: base.id, derefs: deref_count };
+                        let key = root_map_key {
+                            id: base.id,
+                            derefs: deref_count
+                        };
                         self.bccx.write_guard_map.insert(key, ());
                     }
                     _ => {}

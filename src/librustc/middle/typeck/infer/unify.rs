@@ -31,7 +31,7 @@ struct ValsAndBindings<V, T> {
     mut bindings: ~[(V, VarValue<V, T>)],
 }
 
-struct Node<V:Copy, T:Copy> {
+struct Node<V, T> {
     root: V,
     possible_types: T,
     rank: uint,

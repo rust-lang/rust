@@ -51,7 +51,7 @@ pub fn run(
 fn fold_item(fold: &fold::Fold<()>, +doc: doc::ItemDoc) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
-    {
+    doc::ItemDoc {
         brief: extract(doc.desc),
         .. doc
     }
@@ -60,8 +60,8 @@ fn fold_item(fold: &fold::Fold<()>, +doc: doc::ItemDoc) -> doc::ItemDoc {
 fn fold_trait(fold: &fold::Fold<()>, +doc: doc::TraitDoc) -> doc::TraitDoc {
     let doc =fold::default_seq_fold_trait(fold, doc);
 
-    {
-        methods: par::map(doc.methods, |doc| {
+    doc::TraitDoc {
+        methods: par::map(doc.methods, |doc| doc::MethodDoc {
             brief: extract(doc.desc),
             .. *doc
         }),
@@ -72,8 +72,8 @@ fn fold_trait(fold: &fold::Fold<()>, +doc: doc::TraitDoc) -> doc::TraitDoc {
 fn fold_impl(fold: &fold::Fold<()>, +doc: doc::ImplDoc) -> doc::ImplDoc {
     let doc =fold::default_seq_fold_impl(fold, doc);
 
-    {
-        methods: par::map(doc.methods, |doc| {
+    doc::ImplDoc {
+        methods: par::map(doc.methods, |doc| doc::MethodDoc {
             brief: extract(doc.desc),
             .. *doc
         }),

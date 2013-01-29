@@ -155,9 +155,9 @@ fn build_error_handlers(
     codemap: @codemap::CodeMap
 ) -> ErrorHandlers {
 
-    type DiagnosticHandler = {
+    struct DiagnosticHandler {
         inner: diagnostic::handler,
-    };
+    }
 
     impl DiagnosticHandler: diagnostic::handler {
         fn fatal(msg: &str) -> ! { self.inner.fatal(msg) }
@@ -182,7 +182,7 @@ fn build_error_handlers(
         diagnostic::emit(cmsp, msg, lvl);
     };
     let inner_handler = diagnostic::mk_handler(Some(emitter));
-    let handler = {
+    let handler = DiagnosticHandler {
         inner: inner_handler,
     };
     let span_handler = diagnostic::mk_span_handler(

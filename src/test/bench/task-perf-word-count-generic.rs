@@ -122,15 +122,15 @@ mod map_reduce {
     use std::map::HashMap;
     use std::map;
 
-    pub type putter<K: Owned, V: Owned> = fn(&K, V);
+    pub type putter<K, V> = fn(&K, V);
 
-    pub type mapper<K1: Owned, K2: Owned, V: Owned> = fn~(K1, putter<K2, V>);
+    pub type mapper<K1, K2, V> = fn~(K1, putter<K2, V>);
 
-    pub type getter<V: Owned> = fn() -> Option<V>;
+    pub type getter<V> = fn() -> Option<V>;
 
-    pub type reducer<K: Copy Owned, V: Copy Owned> = fn~(&K, getter<V>);
+    pub type reducer<K, V> = fn~(&K, getter<V>);
 
-    enum ctrl_proto<K: Copy Owned, V: Copy Owned> {
+    enum ctrl_proto<K, V> {
         find_reducer(K, Chan<Chan<::map_reduce::reduce_proto<V>>>),
         mapper_done
     }
@@ -148,7 +148,7 @@ mod map_reduce {
         }
     )
 
-    pub enum reduce_proto<V: Copy Owned> {
+    pub enum reduce_proto<V> {
         emit_val(V),
         done,
         addref,
