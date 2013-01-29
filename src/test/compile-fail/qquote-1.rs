@@ -17,7 +17,7 @@ use io::*;
 
 use syntax::diagnostic;
 use syntax::ast;
-use syntax::codemap;
+use codemap;
 use syntax::parse;
 use syntax::print::*;
 

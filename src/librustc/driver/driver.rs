@@ -40,7 +40,7 @@ use std;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
-use syntax::codemap;
+use codemap;
 use syntax::diagnostic;
 use syntax::parse;
 use syntax::print::{pp, pprust};

@@ -17,7 +17,7 @@ use core::option;
 use core::vec;
 use std::map::HashMap;
 use std::map;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::{ast, ast_util};
 
 export capture_mode;

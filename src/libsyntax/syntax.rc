@@ -31,6 +31,16 @@ extern mod core(vers = "0.6");
 use core::*;
 
 extern mod std(vers = "0.6");
+extern mod codemap (vers = "0.6");
+
+// FIXME (#4677) extern mod decl can move down into
+// modules once that's supported.
+extern mod testingfuns (vers="0.6");
+
+// FIXME (#4677) : move into test module (down at the bottom) when
+// it works correctly
+extern mod testingfuns(vers = "0.6");
+
 
 pub mod syntax {
     pub use ext;

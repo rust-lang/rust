@@ -548,7 +548,7 @@ use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
 use middle::ty::{re_scope, ReVar, ReSkolemized, br_fresh};
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::cres;
-use syntax::codemap;
+use codemap;
 use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
@@ -562,8 +562,8 @@ use result::{Ok, Err};
 use std::map::HashMap;
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
-use syntax::codemap::span;
-use syntax::codemap;
+use codemap::span;
+use codemap;
 
 export RegionVarBindings;
 export make_subregion;

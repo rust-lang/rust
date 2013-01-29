@@ -18,7 +18,7 @@ use metadata::decoder;
 use metadata::encoder;
 use metadata::filesearch::FileSearch;
 use metadata::filesearch;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;

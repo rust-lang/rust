@@ -16,7 +16,8 @@ use core::vec;
 use syntax::ast;
 use syntax::ast_util::*;
 use syntax::attr;
-use syntax::codemap;
+use codemap;
+use codemap::dummy_sp;
 use syntax::fold;
 
 export maybe_inject_libcore_ref;

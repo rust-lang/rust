@@ -17,10 +17,10 @@ use core::prelude::*;
 
 use ast::{ident, node_id};
 use ast;
-use ast_util::{ident_to_path, respan, dummy_sp};
+use ast_util::{ident_to_path, respan};
 use ast_util;
 use attr;
-use codemap::span;
+use codemap::{span, dummy_sp};
 use ext::base::{ext_ctxt, mk_ctxt};
 use ext::quote::rt::*;
 
@@ -329,19 +329,19 @@ pub impl ext_ctxt: ext_ctxt_ast_builder {
                             self.ident_of(~"kinds"),
                             self.ident_of(~"Owned")
                         ],
-                        ast_util::dummy_sp()
+                        dummy_sp()
                     ),
                     ast::type_value_ns,
                     self.next_id()
                 ),
-                span: ast_util::dummy_sp()
+                span: dummy_sp()
             }
         ]);
         let vi = @ast::view_item {
             node: vi,
             attrs: ~[],
             vis: ast::private,
-            span: ast_util::dummy_sp()
+            span: dummy_sp()
         };
 
         self.item(

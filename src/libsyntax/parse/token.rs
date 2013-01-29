@@ -12,7 +12,6 @@ use core::prelude::*;
 
 use ast;
 use ast_util;
-use parse::token;
 use util::interner::Interner;
 use util::interner;
 
@@ -254,14 +253,14 @@ pub pure fn can_begin_expr(t: Token) -> bool {
 }
 
 /// what's the opposite delimiter?
-pub fn flip_delimiter(t: token::Token) -> token::Token {
+pub fn flip_delimiter(t: Token) -> Token {
     match t {
-      token::LPAREN => token::RPAREN,
-      token::LBRACE => token::RBRACE,
-      token::LBRACKET => token::RBRACKET,
-      token::RPAREN => token::LPAREN,
-      token::RBRACE => token::LBRACE,
-      token::RBRACKET => token::LBRACKET,
+      LPAREN => RPAREN,
+      LBRACE => RBRACE,
+      LBRACKET => RBRACKET,
+      RPAREN => LPAREN,
+      RBRACE => LBRACE,
+      RBRACKET => LBRACKET,
       _ => fail
     }
 }
@@ -374,7 +373,7 @@ pub impl ident_interner {
  * so we have to use a unique number. See taskgroup_key! in task.rs
  * for another case of this. */
 macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint), &fn(+v: @@token::ident_interner)>(
+    () => (cast::transmute::<(uint, uint), &fn(+v: @@ident_interner)>(
         (-3 as uint, 0u)))
 )
 

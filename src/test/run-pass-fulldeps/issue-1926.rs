@@ -13,7 +13,7 @@
 use syntax;
 use syntax::diagnostic;
 use syntax::ast;
-use syntax::codemap;
+use codemap;
 use syntax::print::pprust;
 use syntax::parse::parser;
 

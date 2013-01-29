@@ -24,7 +24,7 @@ use std::map::HashMap;
 use syntax::ast;
 use syntax::ast_util::walk_pat;
 use syntax::ast_util;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust;
 
 fn check_match(fcx: @fn_ctxt,

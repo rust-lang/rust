@@ -28,8 +28,7 @@ use core::option::is_some;
 use core::vec;
 use std::map::HashMap;
 use syntax::ast;
-use syntax::ast_util::dummy_sp;
-use syntax::codemap::span;
+use codemap::{span, dummy_sp};
 use syntax::util::interner;
 
 use ty_ctxt = middle::ty::ctxt;

@@ -31,7 +31,7 @@ use std::map::HashMap;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust::expr_to_str;
 
 // ___Good to know (tm)__________________________________________________

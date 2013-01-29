@@ -12,8 +12,7 @@ use core::prelude::*;
 
 use ast::*;
 use ast;
-use ast_util;
-use codemap::{span, BytePos};
+use codemap::{span, BytePos, dummy_sp, mk_sp};
 use parse::token;
 use visit;
 
@@ -35,16 +34,6 @@ pub pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
 pub pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
     respan(dummy_sp(), move t)
 }
-
-/* assuming that we're not in macro expansion */
-pub pure fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
-    span {lo: lo, hi: hi, expn_info: None}
-}
-
-// make this a const, once the compiler supports it
-pub pure fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
-
-
 
 pub pure fn path_name_i(idents: &[ident], intr: @token::ident_interner)
                      -> ~str {
@@ -510,7 +499,7 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_stmt: fn@(s: @stmt) {
-            vfn(ast_util::stmt_id(*s));
+            vfn(stmt_id(*s));
         },
 
         visit_arm: fn@(_a: arm) { },

@@ -19,8 +19,8 @@ use core::io::*;
 
 use syntax::diagnostic;
 use syntax::ast;
-use syntax::codemap;
-use syntax::codemap::span;
+use codemap;
+use codemap::span;
 use syntax::parse;
 use syntax::print::*;
 

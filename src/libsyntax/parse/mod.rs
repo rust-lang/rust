@@ -16,7 +16,7 @@ use codemap::{span, CodeMap, FileMap, CharPos, BytePos};
 use codemap;
 use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 use parse::attr::parser_attr;
-use parse::lexer::{reader, string_reader};
+use parse::lexer::{reader, StringReader};
 use parse::parser::Parser;
 use parse::token::{ident_interner, mk_ident_interner};
 use util::interner;

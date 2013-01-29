@@ -55,10 +55,10 @@ use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::{visibility, vstore, vstore_box, vstore_fixed, vstore_slice};
 use ast::{vstore_uniq};
 use ast;
-use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
+use ast_util::{spanned, respan, ident_to_path, operator_prec};
 use ast_util;
 use classify;
-use codemap::{span,FssNone, BytePos};
+use codemap::{span,FssNone, BytePos, mk_sp};
 use codemap;
 use parse::attr::parser_attr;
 use parse::common::{seq_sep_none, token_to_str};
@@ -233,6 +233,7 @@ pub struct Parser {
 }
 
 pub impl Parser {
+    // advance the parser by one token
     fn bump() {
         self.last_span = self.span;
         let next = if self.buffer_start == self.buffer_end {

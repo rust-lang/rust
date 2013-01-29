@@ -28,6 +28,7 @@ use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::ast_util::respan;
+use codemap;
 use std::map::HashMap;
 
 export parse_state_from_data;
@@ -122,7 +123,7 @@ fn parse_path(st: @pstate) -> @ast::path {
           ':' => { next(st); next(st); }
           c => {
             if c == '(' {
-                return @ast::path { span: ast_util::dummy_sp(),
+                return @ast::path { span: codemap::dummy_sp(),
                                     global: false,
                                     idents: idents,
                                     rp: None,

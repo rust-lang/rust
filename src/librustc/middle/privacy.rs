@@ -30,7 +30,7 @@ use syntax::ast_map::{node_item, node_method};
 use syntax::ast_map;
 use syntax::ast_util::{Private, Public, has_legacy_export_attr, is_local};
 use syntax::ast_util::{visibility_to_privacy};
-use syntax::codemap::span;
+use codemap::span;
 use syntax::visit;
 
 fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
