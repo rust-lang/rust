@@ -17,7 +17,7 @@ extern mod std;
 
 export context;
 
-struct arc_destruct<T:Const> {
+struct arc_destruct<T> {
   _data: int,
 }
 

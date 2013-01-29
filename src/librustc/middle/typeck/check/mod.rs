@@ -84,7 +84,7 @@ use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::ty::{TyVid, Vid, FnTyBase, FnMeta, FnSig, VariantInfo_, field};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
-use middle::ty::{re_bound, br_cap_avoid};
+use middle::ty::{re_bound, br_cap_avoid, substs, arg, param_ty};
 use middle::ty;
 use middle::typeck::astconv::{ast_conv, ast_path_to_ty};
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
@@ -1059,9 +1059,11 @@ pub fn impl_self_ty(vcx: &VtableContext,
               {n_tps: ts.len(),
                region_param: region_param,
                raw_ty: ty::mk_struct(tcx, local_def(class_id),
-                      {self_r: rscope::bound_self_region(region_param),
-                       self_ty: None,
-                       tps: ty::ty_params_to_tys(tcx, /*bad*/copy *ts)})}
+                      substs {
+                        self_r: rscope::bound_self_region(region_param),
+                        self_ty: None,
+                        tps: ty::ty_params_to_tys(tcx, /*bad*/copy *ts)
+                      })}
           }
           _ => { tcx.sess.bug(~"impl_self_ty: unbound item or item that \
                doesn't have a self_ty"); }
@@ -1081,7 +1083,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
     };
     let tps = vcx.infcx.next_ty_vars(n_tps);
 
-    let substs = {self_r: self_r, self_ty: None, tps: tps};
+    let substs = substs { self_r: self_r, self_ty: None, tps: tps };
     let substd_ty = ty::subst(tcx, &substs, raw_ty);
     {substs: substs, ty: substd_ty}
 }
@@ -1814,7 +1816,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     let self_region =
                         bound_self_region(region_parameterized);
 
-                    raw_type = ty::mk_struct(tcx, class_id, {
+                    raw_type = ty::mk_struct(tcx, class_id, substs {
                         self_r: self_region,
                         self_ty: None,
                         tps: ty::ty_params_to_tys(
@@ -1840,7 +1842,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                             span,
                                             ty::re_scope(id));
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
-        let substitutions = {
+        let substitutions = substs {
             self_r: self_region,
             self_ty: None,
             tps: type_parameters
@@ -1897,7 +1899,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     let self_region =
                         bound_self_region(region_parameterized);
 
-                    raw_type = ty::mk_enum(tcx, enum_id, {
+                    raw_type = ty::mk_enum(tcx, enum_id, substs {
                         self_r: self_region,
                         self_ty: None,
                         tps: ty::ty_params_to_tys(
@@ -1923,7 +1925,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                             span,
                                             ty::re_scope(id));
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
-        let substitutions = {
+        let substitutions = substs {
             self_r: self_region,
             self_ty: None,
             tps: type_parameters
@@ -2434,7 +2436,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let expr_mt = ty::mt {ty: expr_t, mutbl: f.node.mutbl};
             // for the most precise error message,
             // should be f.node.expr.span, not f.span
-            respan(f.node.expr.span, {ident: f.node.ident, mt: expr_mt})
+            respan(f.node.expr.span, field {ident: f.node.ident, mt: expr_mt})
         });
         match base {
           None => {
@@ -2951,7 +2953,7 @@ fn instantiate_path(fcx: @fn_ctxt,
         pth.types.map(|aty| fcx.to_ty(*aty))
     };
 
-    let substs = {self_r: self_r, self_ty: None, tps: tps};
+    let substs = substs { self_r: self_r, self_ty: None, tps: tps };
     fcx.write_ty_substs(node_id, tpt.ty, substs);
 
     debug!("<<<");
@@ -3050,7 +3052,7 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
         |_r| {},
         |t| {
             match ty::get(t).sty {
-              ty::ty_param({idx, _}) => {
+              ty::ty_param(param_ty {idx, _}) => {
                   debug!("Found use of ty param #%u", idx);
                   tps_used[idx] = true;
               }
@@ -3073,7 +3075,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         ty::mk_param(ccx.tcx, n, local_def(0))
     }
     fn arg(m: ast::rmode, ty: ty::t) -> ty::arg {
-        {mode: ast::expl(m), ty: ty}
+        arg {mode: ast::expl(m), ty: ty}
     }
     let tcx = ccx.tcx;
     let (n_tps, inputs, output) = match ccx.tcx.sess.str_of(it.ident) {
@@ -3136,12 +3138,14 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
                           onceness: ast::Once,
                           region: ty::re_bound(ty::br_anon(0)),
                           bounds: @~[]},
-            sig: FnSig {inputs: ~[{mode: ast::expl(ast::by_val),
-                                   ty: ty::mk_imm_ptr(
-                                       ccx.tcx,
-                                       ty::mk_mach_uint(ccx.tcx, ast::ty_u8))
-                                  }],
-                        output: ty::mk_nil(ccx.tcx)}
+            sig: FnSig {
+                inputs: ~[arg {
+                    mode: ast::expl(ast::by_val),
+                    ty: ty::mk_imm_ptr(
+                        ccx.tcx,
+                        ty::mk_mach_uint(ccx.tcx, ast::ty_u8))
+                }],
+                output: ty::mk_nil(ccx.tcx)}
         });
         (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil(tcx))
       }

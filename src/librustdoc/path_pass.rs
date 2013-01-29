@@ -54,7 +54,7 @@ fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
 }
 
 fn fold_item(fold: &fold::Fold<Ctxt>, +doc: doc::ItemDoc) -> doc::ItemDoc {
-    {
+    doc::ItemDoc {
         path: fold.ctxt.path,
         .. doc
     }
@@ -68,7 +68,7 @@ fn fold_mod(fold: &fold::Fold<Ctxt>, +doc: doc::ModDoc) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
     if !is_topmod { fold.ctxt.path.pop(); }
 
-    doc::ModDoc_({
+    doc::ModDoc_(doc::ModDoc_ {
         item: (fold.fold_item)(fold, doc.item),
         .. *doc
     })
@@ -79,7 +79,7 @@ fn fold_nmod(fold: &fold::Fold<Ctxt>, +doc: doc::NmodDoc) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
     fold.ctxt.path.pop();
 
-    {
+    doc::NmodDoc {
         item: (fold.fold_item)(fold, doc.item),
         .. doc
     }

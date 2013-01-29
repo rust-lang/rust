@@ -33,7 +33,7 @@ use core::uint;
 use core::vec;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
-trait Pos {
+pub trait Pos {
     static pure fn from_uint(n: uint) -> self;
     pure fn to_uint(&self) -> uint;
 }

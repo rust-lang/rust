@@ -376,7 +376,7 @@ pure fn struct_field_visibility(field: ast::struct_field) -> visibility {
     }
 }
 
-trait inlined_item_utils {
+pub trait inlined_item_utils {
     fn ident() -> ident;
     fn id() -> ast::node_id;
     fn accept<E>(e: E, v: visit::vt<E>);

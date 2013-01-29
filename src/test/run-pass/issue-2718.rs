@@ -34,7 +34,7 @@ pub mod pipes {
         pure fn ne(&self, other: &state) -> bool { !(*self).eq(other) }
     }
 
-    pub type packet<T: Owned> = {
+    pub type packet<T> = {
         mut state: state,
         mut blocked_task: Option<task::Task>,
         mut payload: Option<T>
@@ -157,7 +157,7 @@ pub mod pipes {
         }
     }
 
-    pub struct send_packet<T: Owned> {
+    pub struct send_packet<T> {
         mut p: Option<*packet<T>>,
     }
 
@@ -185,7 +185,7 @@ pub mod pipes {
         }
     }
 
-    pub struct recv_packet<T: Owned> {
+    pub struct recv_packet<T> {
         mut p: Option<*packet<T>>,
     }
 

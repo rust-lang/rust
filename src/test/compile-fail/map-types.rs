@@ -11,12 +11,13 @@
 extern mod std;
 use std::map;
 use std::map::HashMap;
-use std::map::Map;
+use std::map::StdMap;
 
 // Test that trait types printed in error msgs include the type arguments.
 
 fn main() {
-    let x: Map<~str,~str> = map::HashMap::<~str,~str>() as Map::<~str,~str>;
-    let y: Map<uint,~str> = x;
-    //~^ ERROR mismatched types: expected `@std::map::Map<uint,~str>`
+    let x: StdMap<~str,~str> = map::HashMap::<~str,~str>() as
+        StdMap::<~str,~str>;
+    let y: StdMap<uint,~str> = x;
+    //~^ ERROR mismatched types: expected `@std::map::StdMap<uint,~str>`
 }

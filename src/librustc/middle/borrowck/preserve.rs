@@ -18,7 +18,7 @@ use core::prelude::*;
 use middle::borrowck::{RootInfo, bckerr, bckerr_code, bckres, borrowck_ctxt};
 use middle::borrowck::{cmt, err_mut_uniq, err_mut_variant};
 use middle::borrowck::{err_out_of_root_scope, err_out_of_scope};
-use middle::borrowck::{err_root_not_permitted};
+use middle::borrowck::{err_root_not_permitted, root_map_key};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
 use middle::mem_categorization::{cat_discr, cat_local, cat_self, cat_special};
 use middle::mem_categorization::{cat_stack_upvar, comp_field, comp_index};
@@ -291,7 +291,7 @@ priv impl &preserve_ctxt {
           Ok(pc_ok) => {
             match cmt_base.mutbl {
               m_mutbl | m_const => {
-                Ok(pc_if_pure({cmt:cmt, code:code}))
+                Ok(pc_if_pure(bckerr { cmt: cmt, code: code }))
               }
               m_imm => {
                 Ok(pc_ok)
@@ -318,8 +318,10 @@ priv impl &preserve_ctxt {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
             Ok(pc_ok)
         } else {
-            Err({cmt:cmt, code:err_out_of_scope(scope_ub,
-                                                self.scope_region)})
+            Err(bckerr {
+                cmt:cmt,
+                code:err_out_of_scope(scope_ub, self.scope_region)
+            })
         }
     }
 
@@ -345,7 +347,7 @@ priv impl &preserve_ctxt {
             // would be sort of pointless to avoid rooting the inner
             // box by rooting an outer box, as it would just keep more
             // memory live than necessary, so we set root_ub to none.
-            return Err({cmt:cmt, code:err_root_not_permitted});
+            return Err(bckerr { cmt: cmt, code: err_root_not_permitted });
         }
 
         let root_region = ty::re_scope(self.root_ub);
@@ -359,7 +361,7 @@ priv impl &preserve_ctxt {
                    derefs, scope_id, self.root_ub);
             if self.bccx.is_subregion_of(self.scope_region, root_region) {
                 debug!("Elected to root");
-                let rk = {id: base.id, derefs: derefs};
+                let rk = root_map_key { id: base.id, derefs: derefs };
                 // This code could potentially lead cause boxes to be frozen
                 // for longer than necessarily at runtime. It prevents an
                 // ICE in trans; the fundamental problem is that it's hard
@@ -389,17 +391,20 @@ priv impl &preserve_ctxt {
                 return Ok(pc_ok);
             } else {
                 debug!("Unable to root");
-                return Err({cmt:cmt,
-                            code:err_out_of_root_scope(root_region,
-                                                       self.scope_region)});
+                return Err(bckerr {
+                    cmt: cmt,
+                    code: err_out_of_root_scope(root_region,
+                                                self.scope_region)
+                });
             }
           }
 
           // we won't be able to root long enough
           _ => {
-              return Err({cmt:cmt,
-                          code:err_out_of_root_scope(root_region,
-                                                     self.scope_region)});
+              return Err(bckerr {
+                cmt:cmt,
+                code:err_out_of_root_scope(root_region, self.scope_region)
+              });
           }
 
         }

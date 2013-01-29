@@ -61,6 +61,7 @@ use middle::trans::reachable;
 use middle::trans::shape::*;
 use middle::trans::tvec;
 use middle::trans::type_of::*;
+use middle::ty::arg;
 use util::common::indenter;
 use util::ppaux::{ty_to_str, ty_to_short_str};
 use util::ppaux;
@@ -2198,9 +2199,12 @@ fn create_main_wrapper(ccx: @crate_ctxt, _sp: span, main_llfn: ValueRef) {
     fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef) -> ValueRef {
         let unit_ty = ty::mk_estr(ccx.tcx, ty::vstore_uniq);
         let vecarg_ty: ty::arg =
-            {mode: ast::expl(ast::by_val),
-             ty: ty::mk_evec(ccx.tcx, ty::mt {ty: unit_ty, mutbl: ast::m_imm},
-                             ty::vstore_uniq)};
+            arg {
+                mode: ast::expl(ast::by_val),
+                ty: ty::mk_evec(ccx.tcx,
+                    ty::mt {ty: unit_ty, mutbl: ast::m_imm},
+                    ty::vstore_uniq)
+            };
         let nt = ty::mk_nil(ccx.tcx);
         let llfty = type_of_fn(ccx, ~[vecarg_ty], nt);
         let llfdecl = decl_fn(ccx.llmod, ~"_rust_main",

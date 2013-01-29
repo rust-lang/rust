@@ -33,8 +33,8 @@ are represented as `ty_param()` instances.
 use core::prelude::*;
 
 use metadata::csearch;
-use middle::ty::{FnMeta, FnSig, FnTyBase, InstantiatedTraitRef};
-use middle::ty::{ty_param_substs_and_ty};
+use middle::ty::{FnMeta, FnSig, FnTyBase, InstantiatedTraitRef, arg};
+use middle::ty::{substs, ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::astconv::{ast_conv, ty_of_fn_decl, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
@@ -75,7 +75,11 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
                 for m.items.each |intrinsic_item| {
                     let def_id = ast::def_id { crate: ast::local_crate,
                                                node: intrinsic_item.id };
-                    let substs = {self_r: None, self_ty: None, tps: ~[]};
+                    let substs = substs {
+                        self_r: None,
+                        self_ty: None,
+                        tps: ~[]
+                    };
 
                     match intrinsic_item.node {
                       ast::item_trait(*) => {
@@ -164,7 +168,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                 let rs = type_rscope(rp);
                 let args = args.map(|va| {
                     let arg_ty = ccx.to_ty(rs, va.ty);
-                    {mode: ast::expl(ast::by_copy), ty: arg_ty}
+                    arg { mode: ast::expl(ast::by_copy), ty: arg_ty }
                 });
                 result_ty = Some(ty::mk_fn(tcx, FnTyBase {
                     meta: FnMeta {purity: ast::pure_fn,
@@ -195,8 +199,9 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                     variant.node.id);
                 // Compute the ctor arg types from the struct fields
                 let struct_fields = do struct_def.fields.map |struct_field| {
-                    {mode: ast::expl(ast::by_val),
-                     ty: ty::node_id_to_type(ccx.tcx, (*struct_field).node.id)
+                    arg {
+                        mode: ast::expl(ast::by_val),
+                        ty: ty::node_id_to_type(ccx.tcx, struct_field.node.id)
                     }
                 };
                 result_ty = Some(ty::mk_fn(tcx, FnTyBase {
@@ -265,8 +270,11 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
             ty::mk_param(ccx.tcx, i + 1, dummy_defid)
         };
 
-        let substs = { self_r: None, self_ty: Some(self_param),
-                       tps: non_shifted_trait_tps + shifted_method_tps };
+        let substs = substs {
+            self_r: None,
+            self_ty: Some(self_param),
+            tps: non_shifted_trait_tps + shifted_method_tps
+        };
         let ty = ty::subst(ccx.tcx,
                            &substs,
                            ty::mk_fn(ccx.tcx, /*bad*/copy m.fty));
@@ -462,7 +470,7 @@ fn compare_impl_method(tcx: ty::ctxt,
         };
         let trait_tps = trait_substs.tps.map(
             |t| replace_bound_self(tcx, *t, dummy_self_r));
-        let substs = {
+        let substs = substs {
             self_r: Some(dummy_self_r),
             self_ty: Some(self_ty),
             tps: vec::append(trait_tps, dummy_tps)
@@ -590,6 +598,20 @@ fn convert_methods(ccx: @crate_ctxt,
     }
 }
 
+fn ensure_no_ty_param_bounds(ccx: @crate_ctxt,
+                             span: span,
+                             ty_params: &[ast::ty_param],
+                             thing: &static/str) {
+    for ty_params.each |ty_param| {
+        if ty_param.bounds.len() > 0 {
+            ccx.tcx.sess.span_err(
+                span,
+                fmt!("trait bounds are not allowed in %s definitions",
+                     thing));
+        }
+    }
+}
+
 fn convert(ccx: @crate_ctxt, it: @ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.find(it.id);
@@ -599,6 +621,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
       ast::item_enum(ref enum_definition, ref ty_params) => {
+        ensure_no_ty_param_bounds(ccx, it.span, *ty_params, "enumeration");
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         get_enum_variant_types(ccx,
@@ -636,12 +659,19 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let _ = convert_methods(ccx, provided_methods, rp, bounds);
       }
       ast::item_struct(struct_def, tps) => {
+        ensure_no_ty_param_bounds(ccx, it.span, tps, "structure");
+
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
 
         convert_struct(ccx, rp, struct_def, tps, tpt, it.id);
+      }
+      ast::item_ty(_, ref ty_params) => {
+        ensure_no_ty_param_bounds(ccx, it.span, *ty_params, "type");
+        let tpt = ty_of_item(ccx, it);
+        write_ty_to_tcx(tcx, it.id, tpt.ty);
       }
       _ => {
         // This call populates the type cache with the converted type
@@ -705,7 +735,7 @@ fn convert_struct(ccx: @crate_ctxt,
                     },
                     sig: FnSig {
                         inputs: do struct_def.fields.map |field| {
-                            {
+                            arg {
                                 mode: ast::expl(ast::by_copy),
                                 ty: ccx.tcx.tcache.get
                                         (local_def(field.node.id)).ty
@@ -1002,5 +1032,8 @@ fn mk_substs(ccx: @crate_ctxt,
           -> {bounds: @~[ty::param_bounds], substs: ty::substs} {
     let {bounds, params} = mk_ty_params(ccx, atps);
     let self_r = rscope::bound_self_region(rp);
-    {bounds: bounds, substs: {self_r: self_r, self_ty: None, tps: params}}
+    {
+        bounds: bounds,
+        substs: substs { self_r: self_r, self_ty: None, tps: params }
+    }
 }

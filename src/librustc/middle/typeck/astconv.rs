@@ -55,7 +55,8 @@
 use core::prelude::*;
 
 use middle::pat_util::pat_id_map;
-use middle::ty::{FnTyBase, FnMeta, FnSig, ty_param_substs_and_ty};
+use middle::ty::{FnTyBase, FnMeta, FnSig, arg, field, substs};
+use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::check::fn_ctxt;
 use middle::typeck::collect;
@@ -151,7 +152,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     }
     let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, *a_t));
 
-    let substs = {self_r:self_r, self_ty:None, tps:tps};
+    let substs = substs {self_r:self_r, self_ty:None, tps:tps};
     let ty = ty::subst(tcx, &substs, decl_ty);
     {substs: substs, ty: ty}
 }
@@ -315,7 +316,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
       ast::ty_rec(ref fields) => {
         let flds = do (*fields).map |f| {
             let tm = ast_mt_to_mt(self, rscope, f.node.mt);
-            {ident: f.node.ident, mt: tm}
+            field {ident: f.node.ident, mt: tm}
         };
         ty::mk_rec(tcx, flds)
       }
@@ -447,7 +448,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Durable>(
         }
     };
 
-    {mode: mode, ty: ty}
+    arg {mode: mode, ty: ty}
 }
 
 type expected_tys = Option<{inputs: ~[ty::arg],

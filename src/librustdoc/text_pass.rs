@@ -62,7 +62,7 @@ fn fold_item(
 ) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
-    {
+    doc::ItemDoc {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc),
         sections: apply_to_sections(fold.ctxt, doc.sections),
@@ -74,7 +74,7 @@ fn apply_to_sections(
     op: NominalOp<Op>,
     sections: ~[doc::Section]
 ) -> ~[doc::Section] {
-    par::map(sections, |section, copy op| {
+    par::map(sections, |section, copy op| doc::Section {
         header: (op.op)(section.header),
         body: (op.op)(section.body)
     })
@@ -86,9 +86,9 @@ fn fold_enum(
     let doc = fold::default_seq_fold_enum(fold, doc);
     let fold_copy = copy *fold;
 
-    {
+    doc::EnumDoc {
         variants: do par::map(doc.variants) |variant, copy fold_copy| {
-            {
+            doc::VariantDoc {
                 desc: maybe_apply_op(fold_copy.ctxt, variant.desc),
                 .. *variant
             }
@@ -103,7 +103,7 @@ fn fold_trait(
 ) -> doc::TraitDoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
-    {
+    doc::TraitDoc {
         methods: apply_to_methods(fold.ctxt, doc.methods),
         .. doc
     }
@@ -114,7 +114,7 @@ fn apply_to_methods(
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc, copy op| {
-        {
+        doc::MethodDoc {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),
             sections: apply_to_sections(op, doc.sections),
@@ -129,7 +129,7 @@ fn fold_impl(
 ) -> doc::ImplDoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
-    {
+    doc::ImplDoc {
         methods: apply_to_methods(fold.ctxt, doc.methods),
         .. doc
     }

@@ -238,7 +238,7 @@ pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
  * Data races between tasks can result in crashes and, with sufficient
  * cleverness, arbitrary type coercion.
  */
-pub type SharedMutableState<T: Owned> = ArcDestruct<T>;
+pub type SharedMutableState<T> = ArcDestruct<T>;
 
 pub unsafe fn shared_mutable_state<T: Owned>(data: T) ->
         SharedMutableState<T> {
@@ -341,11 +341,11 @@ impl LittleLock {
     }
 }
 
-struct ExData<T: Owned> { lock: LittleLock, mut failed: bool, mut data: T, }
+struct ExData<T> { lock: LittleLock, mut failed: bool, mut data: T, }
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
-pub struct Exclusive<T: Owned> { x: SharedMutableState<ExData<T>> }
+pub struct Exclusive<T> { x: SharedMutableState<ExData<T>> }
 
 pub fn exclusive<T:Owned >(user_data: T) -> Exclusive<T> {
     let data = ExData {

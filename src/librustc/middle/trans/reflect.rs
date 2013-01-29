@@ -105,7 +105,8 @@ impl reflector {
                                                       mth_idx,
                                                       v,
                                                       ty::vstore_box,
-                                                      ast::sty_by_ref),
+                                                      ast::sty_region(
+                                                        ast::m_imm)),
             ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
         let result = scratch.to_value_llval(bcx);
         let next_bcx = sub_block(bcx, ~"next");

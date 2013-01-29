@@ -45,7 +45,7 @@ use iter;
 use libc;
 use option;
 use result::Result;
-use pipes::{stream, Chan, Port, SharedChan};
+use pipes::{stream, Chan, GenericChan, GenericPort, Port, SharedChan};
 use pipes;
 use prelude::*;
 use ptr;

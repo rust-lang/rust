@@ -27,7 +27,7 @@ impl cat_type : cmp::Eq {
 // for any int value that's less than the meows field
 
 // ok: T should be in scope when resolving the trait ref for map
-struct cat<T: Copy> {
+struct cat<T> {
   // Yes, you can have negative meows
   priv mut meows : int,
 
@@ -51,7 +51,7 @@ impl<T: Copy> cat<T> {
   }
 }
 
-impl<T: Copy> cat<T> : Map<int, T> {
+impl<T: Copy> cat<T> : StdMap<int, T> {
   pure fn size() -> uint { self.meows as uint }
   fn insert(+k: int, +_v: T) -> bool {
     self.meows += k;
