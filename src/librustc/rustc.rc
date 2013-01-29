@@ -70,6 +70,7 @@ pub mod middle {
         pub mod cabi;
         pub mod cabi_x86_64;
         pub mod cabi_arm;
+        pub mod cabi_mips;
         pub mod foreign;
         pub mod reflect;
         pub mod shape;

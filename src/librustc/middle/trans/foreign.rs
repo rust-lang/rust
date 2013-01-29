@@ -14,6 +14,7 @@ use back::{link, abi};
 use driver::session;
 use driver::session::arch_x86_64;
 use driver::session::arch_arm;
+use driver::session::arch_mips;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{Struct, Array, ModuleRef, CallConv, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
@@ -23,6 +24,7 @@ use middle::trans::base::*;
 use middle::trans::cabi;
 use middle::trans::cabi_x86_64::*;
 use middle::trans::cabi_arm;
+use middle::trans::cabi_mips::*;
 use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::common::*;
@@ -48,6 +50,7 @@ fn abi_info(arch: session::arch) -> cabi::ABIInfo {
     return match arch {
         arch_x86_64 => x86_64_abi_info(),
         arch_arm => cabi_arm::abi_info(),
+        arch_mips => mips_abi_info(),
         _ => cabi::llvm_abi_info()
     }
 }
