@@ -25,7 +25,6 @@ fn foo(i:int, j: @~str) -> foo {
 
 fn main() {
   let cat = ~"kitty";
-  let po = oldcomm::Port();         //~ ERROR missing `owned`
-  let ch = oldcomm::Chan(&po);       //~ ERROR missing `owned`
-  oldcomm::send(ch, foo(42, @(move cat))); //~ ERROR missing `owned`
+    let (_, ch) = pipes::stream(); //~ ERROR missing `owned`
+  ch.send(foo(42, @(move cat))); //~ ERROR missing `owned`
 }

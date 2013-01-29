@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::pipes::*;
+
 fn main() {
-    let p = oldcomm::Port::<uint>();
-    let ch = oldcomm::Chan(&p);
+    let (p, ch) = stream::<uint>();
 
     let x = ~1;
     let x_in_parent = ptr::addr_of(&(*x)) as uint;
@@ -18,19 +19,19 @@ fn main() {
     let y = ~2;
     let y_in_parent = ptr::addr_of(&(*y)) as uint;
 
-    task::spawn(fn~(copy ch, copy y, move x) {
+    task::spawn(fn~(copy y, move x) {
         let x_in_child = ptr::addr_of(&(*x)) as uint;
-        oldcomm::send(ch, x_in_child);
+        ch.send(x_in_child);
 
         let y_in_child = ptr::addr_of(&(*y)) as uint;
-        oldcomm::send(ch, y_in_child);
+        ch.send(y_in_child);
     });
     // Ensure last-use analysis doesn't move y to child.
     let _q = y;
 
-    let x_in_child = oldcomm::recv(p);
+    let x_in_child = p.recv();
     assert x_in_parent == x_in_child;
 
-    let y_in_child = oldcomm::recv(p);
+    let y_in_child = p.recv();
     assert y_in_parent != y_in_child;
 }

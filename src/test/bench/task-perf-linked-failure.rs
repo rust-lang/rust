@@ -19,21 +19,26 @@
 
 // Creates in the background 'num_tasks' tasks, all blocked forever.
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
+
+use core::pipes::*;
+
 fn grandchild_group(num_tasks: uint) {
-    let po = oldcomm::Port();
-    let ch = oldcomm::Chan(&po);
+    let (po, ch) = stream();
+    let ch = SharedChan(ch);
 
     for num_tasks.times {
+        let ch = ch.clone();
         do task::spawn { // linked
-            oldcomm::send(ch, ());
-            oldcomm::recv(oldcomm::Port::<()>()); // block forever
+            ch.send(());
+            let (p, _c) = stream::<()>();
+            p.recv(); // block forever
         }
     }
     error!("Grandchild group getting started");
     for num_tasks.times {
         // Make sure all above children are fully spawned; i.e., enlisted in
         // their ancestor groups.
-        oldcomm::recv(po);
+        po.recv();
     }
     error!("Grandchild group ready to go.");
     // Master grandchild task exits early.

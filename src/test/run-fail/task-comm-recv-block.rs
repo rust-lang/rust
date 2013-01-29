@@ -10,8 +10,6 @@
 
 // error-pattern:goodfail
 
-extern mod std;
-
 fn goodfail() {
     task::yield();
     fail ~"goodfail";
@@ -19,9 +17,9 @@ fn goodfail() {
 
 fn main() {
     task::spawn(|| goodfail() );
-    let po = oldcomm::Port();
+    let (po, _c) = pipes::stream();
     // We shouldn't be able to get past this recv since there's no
     // message available
-    let i: int = oldcomm::recv(po);
+    let i: int = po.recv();
     fail ~"badfail";
 }

@@ -10,6 +10,8 @@
 
 // Tests of the runtime's scheduler interface
 
+use core::pipes::*;
+
 type sched_id = int;
 type task_id = *libc::c_void;
 
@@ -26,8 +28,7 @@ extern mod rustrt {
 
 fn main() {
     unsafe {
-        let po = oldcomm::Port();
-        let ch = oldcomm::Chan(&po);
+        let (po, ch) = stream();
         let parent_sched_id = rustrt::rust_get_sched_id();
         error!("parent %?", parent_sched_id);
         let num_threads = 1u;
@@ -41,12 +42,12 @@ fn main() {
                 error!("child_sched_id %?", child_sched_id);
                 assert child_sched_id != parent_sched_id;
                 assert child_sched_id == new_sched_id;
-                oldcomm::send(ch, ());
+                ch.send(());
             }
         };
         let fptr = cast::reinterpret_cast(&ptr::addr_of(&f));
         rustrt::start_task(new_task_id, fptr);
         cast::forget(move f);
-        oldcomm::recv(po);
+        po.recv();
     }
 }

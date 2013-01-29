@@ -11,15 +11,11 @@
 
 
 // error-pattern:fail
-extern mod std;
-use oldcomm::Chan;
-use oldcomm::Port;
-use oldcomm::recv;
 
 fn child() { fail; }
 
 fn main() {
-    let p = Port::<int>();
+    let (p, _c) = pipes::stream::<()>();
     task::spawn(|| child() );
     task::yield();
 }

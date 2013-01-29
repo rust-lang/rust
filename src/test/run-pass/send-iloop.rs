@@ -17,13 +17,15 @@ fn die() {
 
 fn iloop() {
     task::spawn(|| die() );
-    let p = oldcomm::Port::<()>();
-    let c = oldcomm::Chan(&p);
+    let (p, c) = core::pipes::stream::<()>();
     loop {
         // Sending and receiving here because these actions yield,
-        // at which point our child can kill us
-        oldcomm::send(c, ());
-        oldcomm::recv(p);
+        // at which point our child can kill us.
+        c.send(());
+        p.recv();
+        // The above comment no longer makes sense but I'm
+        // reluctant to remove a linked failure test case.
+        task::yield();
     }
 }
 

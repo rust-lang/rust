@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::pipes::*;
+
 struct test {
   f: int,
 }
@@ -23,14 +25,13 @@ fn test(f: int) -> test {
 }
 
 fn main() {
-    let p = ::core::oldcomm::Port();
-    let c = ::core::oldcomm::Chan(&p);
+    let (p, c) = stream();
 
     do task::spawn() {
-        let p = ::core::oldcomm::Port();
-        c.send(::core::oldcomm::Chan(&p));
+        let (pp, cc) = stream();
+        c.send(cc);
 
-        let _r = p.recv();
+        let _r = pp.recv();
     }
 
     p.recv().send(test(42));
