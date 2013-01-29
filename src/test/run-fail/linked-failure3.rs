@@ -11,20 +11,17 @@
 
 
 // error-pattern:fail
-extern mod std;
-use oldcomm::Port;
-use oldcomm::recv;
 
 fn grandchild() { fail ~"grandchild dies"; }
 
 fn child() {
-    let p = Port::<int>();
+    let (p, _c) = pipes::stream::<int>();
     task::spawn(|| grandchild() );
-    let x = recv(p);
+    let x = p.recv();
 }
 
 fn main() {
-    let p = Port::<int>();
+    let (p, _c) = pipes::stream::<int>();
     task::spawn(|| child() );
-    let x = recv(p);
+    let x = p.recv();
 }

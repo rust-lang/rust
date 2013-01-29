@@ -14,17 +14,15 @@
   Arnold.
  */
 
-extern mod std;
+use core::pipes::*;
 
+type ctx = Chan<int>;
 
-type ctx = oldcomm::Chan<int>;
-
-fn iotask(cx: ctx, ip: ~str) {
+fn iotask(cx: &ctx, ip: ~str) {
     assert (ip == ~"localhost");
 }
 
 fn main() {
-    let p = oldcomm::Port::<int>();
-    let ch = oldcomm::Chan(&p);
-    task::spawn(|| iotask(ch, ~"localhost") );
+    let (p, ch) = stream::<int>();
+    task::spawn(|| iotask(&ch, ~"localhost") );
 }

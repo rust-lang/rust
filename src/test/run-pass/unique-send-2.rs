@@ -8,25 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+use core::pipes::*;
 
-fn child(c: oldcomm::Chan<~uint>, i: uint) {
-    oldcomm::send(c, ~i);
+fn child(c: &SharedChan<~uint>, i: uint) {
+    c.send(~i);
 }
 
 fn main() {
-    let p = oldcomm::Port();
-    let ch = oldcomm::Chan(&p);
+    let (p, ch) = stream();
+    let ch = SharedChan(ch);
     let n = 100u;
     let mut expected = 0u;
     for uint::range(0u, n) |i| {
-        task::spawn(|| child(ch, i) );
+        let ch = ch.clone();
+        task::spawn(|| child(&ch, i) );
         expected += i;
     }
 
     let mut actual = 0u;
     for uint::range(0u, n) |_i| {
-        let j = oldcomm::recv(p);
+        let j = p.recv();
         actual += *j;
     }
 

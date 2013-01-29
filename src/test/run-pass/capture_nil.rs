@@ -24,10 +24,11 @@
 // course preferable, as the value itself is
 // irrelevant).
 
-fn foo(&&x: ()) -> ::core::oldcomm::Port<()> {
-    let p = ::core::oldcomm::Port();
-    let c = ::core::oldcomm::Chan(&p);
-    do task::spawn() |copy c, copy x| {
+use core::pipes::*;
+
+fn foo(&&x: ()) -> Port<()> {
+    let (p, c) = stream::<()>();
+    do task::spawn() |copy x| {
         c.send(x);
     }
     p

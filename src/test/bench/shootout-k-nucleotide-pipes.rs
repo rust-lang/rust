@@ -129,7 +129,6 @@ fn make_sequence_processor(sz: uint, from_parent: pipes::Port<~[u8]>,
         _ => { ~"" }
    };
 
-   //oldcomm::send(to_parent, fmt!("yay{%u}", sz));
     to_parent.send(move buffer);
 }
 

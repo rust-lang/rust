@@ -23,7 +23,6 @@ fn foo(i:int, j: char) -> foo {
 }
 
 fn main() {
-  let po = oldcomm::Port::<foo>();
-  let ch = oldcomm::Chan(&po);
-  oldcomm::send(ch, foo(42, 'c'));
+    let (_po, ch) = pipes::stream();
+    ch.send(foo(42, 'c'));
 }

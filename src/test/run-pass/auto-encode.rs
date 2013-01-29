@@ -15,7 +15,7 @@
 extern mod std;
 
 // These tests used to be separate files, but I wanted to refactor all
-// the oldcommon code.
+// the common code.
 
 use cmp::Eq;
 use std::ebml;

@@ -10,79 +10,55 @@
 
 // Test for concurrent tasks
 
-enum msg {
-    ready(oldcomm::Chan<msg>),
-    start,
-    done(int),
-}
+use core::pipes::*;
 
-fn calc(children: uint, parent_ch: oldcomm::Chan<msg>) {
-    let port = oldcomm::Port();
-    let chan = oldcomm::Chan(&port);
-    let mut child_chs = ~[];
-    let mut sum = 0;
+fn calc(children: uint, parent_wait_chan: &Chan<Chan<Chan<int>>>) {
 
-    for iter::repeat (children) {
+    let wait_ports: ~[Port<Chan<Chan<int>>>] = do vec::from_fn(children) |_| {
+        let (wait_port, wait_chan) = stream::<Chan<Chan<int>>>();
         do task::spawn {
-            calc(0u, chan);
-        };
-    }
-
-    for iter::repeat (children) {
-        match oldcomm::recv(port) {
-          ready(child_ch) => {
-            child_chs.push(child_ch);
-          }
-          _ => fail ~"task-perf-one-million failed (port not ready)"
+            calc(children / 2, &wait_chan);
         }
-    }
+        wait_port
+    };
 
-    oldcomm::send(parent_ch, ready(chan));
+    let child_start_chans: ~[Chan<Chan<int>>] = vec::map_consume(wait_ports, |port| port.recv());
 
-    match oldcomm::recv(port) {
-        start => {
-            for vec::each(child_chs) |child_ch| {
-                oldcomm::send(*child_ch, start);
-            }
-        }
-        _ => fail ~"task-perf-one-million failed (port not in start state)"
-    }
+    let (start_port, start_chan) = stream::<Chan<int>>();
+    parent_wait_chan.send(start_chan);
+    let parent_result_chan: Chan<int> = start_port.recv();
 
-    for iter::repeat (children) {
-        match oldcomm::recv(port) {
-          done(child_sum) => { sum += child_sum; }
-          _ => fail ~"task-perf-one-million failed (port not done)"
-        }
-    }
+    let child_sum_ports: ~[Port<int>] = do vec::map_consume(child_start_chans) |child_start_chan| {
+        let (child_sum_port, child_sum_chan) = stream::<int>();
+        child_start_chan.send(child_sum_chan);
+        child_sum_port
+    };
 
-    oldcomm::send(parent_ch, done(sum + 1));
+    let mut sum = 0;
+    vec::consume(child_sum_ports, |_, sum_port| sum += sum_port.recv() );
+
+    parent_result_chan.send(sum + 1);
 }
 
 fn main() {
     let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
-        ~[~"", ~"100000"]
+        ~[~"", ~"30"]
     } else if args.len() <= 1u {
-        ~[~"", ~"100"]
+        ~[~"", ~"10"]
     } else {
         args
     };
 
     let children = uint::from_str(args[1]).get();
-    let port = oldcomm::Port();
-    let chan = oldcomm::Chan(&port);
+    let (wait_port, wait_chan) = stream();
     do task::spawn {
-        calc(children, chan);
+        calc(children, &wait_chan);
     };
-    match oldcomm::recv(port) {
-      ready(chan) => {
-        oldcomm::send(chan, start);
-      }
-      _ => fail ~"task-perf-one-million failed (port not ready)"
-    }
-    let sum = match oldcomm::recv(port) {
-      done(sum) => { sum }
-      _ => fail ~"task-perf-one-million failed (port not done)"
-    };
+
+    let start_chan = wait_port.recv();
+    let (sum_port, sum_chan) = stream::<int>();
+    start_chan.send(sum_chan);
+    let sum = sum_port.recv();
     error!("How many tasks? %d tasks.", sum);
 }

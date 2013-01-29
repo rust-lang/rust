@@ -13,8 +13,10 @@
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
+use core::pipes::*;
+
 struct notify {
-    ch: oldcomm::Chan<bool>, v: @mut bool,
+    ch: Chan<bool>, v: @mut bool,
 }
 
 impl notify : Drop {
@@ -25,19 +27,19 @@ impl notify : Drop {
                task::failing(),
                *(self.v));
         let b = *(self.v);
-        oldcomm::send(self.ch, b);
+        self.ch.send(b);
     }
 }
 
-fn notify(ch: oldcomm::Chan<bool>, v: @mut bool) -> notify {
+fn notify(ch: Chan<bool>, v: @mut bool) -> notify {
     notify {
         ch: ch,
         v: v
     }
 }
 
-fn joinable(+f: fn~()) -> oldcomm::Port<bool> {
-    fn wrapper(+c: oldcomm::Chan<bool>, +f: fn()) {
+fn joinable(f: fn~()) -> Port<bool> {
+    fn wrapper(c: Chan<bool>, f: fn()) {
         let b = @mut false;
         error!("wrapper: task=%? allocated v=%x",
                task::get_task(),
@@ -46,14 +48,19 @@ fn joinable(+f: fn~()) -> oldcomm::Port<bool> {
         f();
         *b = true;
     }
-    let p = oldcomm::Port();
-    let c = oldcomm::Chan(&p);
-    do task::spawn_unlinked { wrapper(c, f) };
+    let (p, c) = stream();
+    let c = ~mut Some(c);
+    do task::spawn_unlinked {
+        let mut cc = None;
+        *c <-> cc;
+        let ccc = option::unwrap(cc);
+        wrapper(ccc, f)
+    }
     p
 }
 
-fn join(port: oldcomm::Port<bool>) -> bool {
-    oldcomm::recv(port)
+fn join(port: Port<bool>) -> bool {
+    port.recv()
 }
 
 fn supervised() {

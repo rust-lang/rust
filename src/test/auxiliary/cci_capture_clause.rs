@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::oldcomm::*;
+use core::pipes::*;
 
 pub fn foo<T: Owned Copy>(x: T) -> Port<T> {
-    let p = Port();
-    let c = Chan(&p);
-    do task::spawn() |copy c, copy x| {
+    let (p, c) = stream();
+    do task::spawn() |copy x| {
         c.send(x);
     }
     p

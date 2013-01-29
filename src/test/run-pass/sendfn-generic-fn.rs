@@ -11,11 +11,6 @@
 // xfail-fast
 #[legacy_modes];
 
-extern mod std;
-
-use oldcomm::Chan;
-use oldcomm::send;
-
 fn main() { test05(); }
 
 struct Pair<A,B> { a: A, b: B }

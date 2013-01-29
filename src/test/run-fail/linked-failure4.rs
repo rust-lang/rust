@@ -10,24 +10,20 @@
 // except according to those terms.
 
 // error-pattern:1 == 2
-extern mod std;
-use oldcomm::Chan;
-use oldcomm::Port;
-use oldcomm::recv;
 
 fn child() { assert (1 == 2); }
 
 fn parent() {
-    let p = Port::<int>();
+    let (p, _c) = pipes::stream::<int>();
     task::spawn(|| child() );
-    let x = recv(p);
+    let x = p.recv();
 }
 
 // This task is not linked to the failure chain, but since the other
 // tasks are going to fail the kernel, this one will fail too
 fn sleeper() {
-    let p = Port::<int>();
-    let x = recv(p);
+    let (p, _c) = pipes::stream::<int>();
+    let x = p.recv();
 }
 
 fn main() {

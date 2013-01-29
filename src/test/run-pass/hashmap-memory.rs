@@ -20,20 +20,14 @@ extern mod std;
 
 use std::map;
 use std::map::HashMap;
-use core::oldcomm::Chan;
-use core::oldcomm::Port;
-use core::oldcomm::send;
-use core::oldcomm::recv;
+use core::pipes::*;
 
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
     use std::map;
     use std::map::HashMap;
-    use core::oldcomm::Chan;
-    use core::oldcomm::Port;
-    use core::oldcomm::send;
-    use core::oldcomm::recv;
+    use core::pipes::*;
 
     pub type putter = fn@(~str, ~str);
 
@@ -41,39 +35,42 @@ mod map_reduce {
 
     enum ctrl_proto { find_reducer(~[u8], Chan<int>), mapper_done, }
 
-    fn start_mappers(ctrl: Chan<ctrl_proto>, inputs: ~[~str]) {
+    fn start_mappers(ctrl: SharedChan<ctrl_proto>, inputs: ~[~str]) {
         for inputs.each |i| {
+            let ctrl = ctrl.clone();
             let i = copy *i;
-            task::spawn(|move i| map_task(ctrl, copy i) );
+            task::spawn(|move i| map_task(ctrl.clone(), copy i) );
         }
     }
 
-    fn map_task(ctrl: Chan<ctrl_proto>, input: ~str) {
+    fn map_task(ctrl: SharedChan<ctrl_proto>, input: ~str) {
         let intermediates = map::HashMap();
 
-        fn emit(im: map::HashMap<~str, int>, ctrl: Chan<ctrl_proto>, key: ~str,
+        fn emit(im: map::HashMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
                 val: ~str) {
             let mut c;
             match im.find(copy key) {
               Some(_c) => { c = _c }
               None => {
-                let p = Port();
+                  let (pp, cc) = stream();
                 error!("sending find_reducer");
-                send(ctrl, find_reducer(str::to_bytes(key), Chan(&p)));
+                ctrl.send(find_reducer(str::to_bytes(key), cc));
                 error!("receiving");
-                c = recv(p);
+                c = pp.recv();
                 log(error, c);
                 im.insert(key, c);
               }
             }
         }
 
-        ::map(input, |a,b| emit(intermediates, ctrl, a, b) );
-        send(ctrl, mapper_done);
+        let ctrl_clone = ctrl.clone();
+        ::map(input, |a,b| emit(intermediates, ctrl.clone(), a, b) );
+        ctrl_clone.send(mapper_done);
     }
 
     pub fn map_reduce(inputs: ~[~str]) {
-        let ctrl = Port();
+        let (ctrl_port, ctrl_chan) = stream();
+        let ctrl_chan = SharedChan(ctrl_chan);
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
@@ -82,12 +79,12 @@ mod map_reduce {
 
         reducers = map::HashMap();
 
-        start_mappers(Chan(&ctrl), copy inputs);
+        start_mappers(ctrl_chan, copy inputs);
 
         let mut num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
-            match recv(ctrl) {
+            match ctrl_port.recv() {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
                 let mut c;
@@ -95,7 +92,7 @@ mod map_reduce {
                   Some(_c) => { c = _c; }
                   None => { c = 0; }
                 }
-                send(cc, c);
+                cc.send(c);
               }
             }
         }

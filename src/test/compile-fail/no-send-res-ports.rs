@@ -8,22 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Port<T>(@T);
+
 fn main() {
     struct foo {
-      _x: oldcomm::Port<()>,
+      _x: Port<()>,
     }
 
     impl foo : Drop {
         fn finalize(&self) {}
     }
 
-    fn foo(x: oldcomm::Port<()>) -> foo {
+    fn foo(x: Port<()>) -> foo {
         foo {
             _x: x
         }
     }
    
-    let x = ~mut Some(foo(oldcomm::Port()));
+    let x = ~mut Some(foo(Port(@())));
 
     do task::spawn |move x| { //~ ERROR not a sendable value
         let mut y = None;

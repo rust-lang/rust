@@ -11,34 +11,36 @@
 // xfail-win32
 extern mod std;
 
+use core::pipes::*;
+
 struct complainer {
-  c: oldcomm::Chan<bool>,
+  c: SharedChan<bool>,
 }
 
 impl complainer : Drop {
     fn finalize(&self) {
         error!("About to send!");
-        oldcomm::send(self.c, true);
+        self.c.send(true);
         error!("Sent!");
     }
 }
 
-fn complainer(c: oldcomm::Chan<bool>) -> complainer {
+fn complainer(c: SharedChan<bool>) -> complainer {
     error!("Hello!");
     complainer {
         c: c
     }
 }
 
-fn f(c: oldcomm::Chan<bool>) {
+fn f(c: SharedChan<bool>) {
     let _c = move complainer(c);
     fail;
 }
 
 fn main() {
-    let p = oldcomm::Port();
-    let c = oldcomm::Chan(&p);
-    task::spawn_unlinked(|| f(c) );
+    let (p, c) = stream();
+    let c = SharedChan(c);
+    task::spawn_unlinked(|| f(c.clone()) );
     error!("hiiiiiiiii");
-    assert oldcomm::recv(p);
+    assert p.recv();
 }

@@ -9,19 +9,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::pipes::*;
 
 fn main() {
-    let p = oldcomm::Port();
-    let ch = ::core::oldcomm::Chan(&p);
-    let t = task::spawn(|| child(ch) );
-    let y = ::core::oldcomm::recv(p);
+    let (p, ch) = stream();
+    let t = task::spawn(|| child(&ch) );
+    let y = p.recv();
     error!("received");
     log(error, y);
     assert (y == 10);
 }
 
-fn child(c: ::core::oldcomm::Chan<int>) {
+fn child(c: &Chan<int>) {
     error!("sending");
-    ::core::oldcomm::send(c, 10);
+    c.send(10);
     error!("value sent");
 }

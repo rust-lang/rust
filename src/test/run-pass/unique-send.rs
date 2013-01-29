@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+use core::pipes::*;
 
 fn main() {
-    let p = oldcomm::Port();
-    let c = oldcomm::Chan(&p);
-    oldcomm::send(c, ~100);
-    let v = oldcomm::recv(p);
+    let (p, c) = stream();
+    c.send(~100);
+    let v = p.recv();
     assert v == ~100;
 }

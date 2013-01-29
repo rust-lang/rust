@@ -12,13 +12,11 @@
 
 // error-pattern:1 == 2
 extern mod std;
-use oldcomm::Port;
-use oldcomm::recv;
 
 fn child() { assert (1 == 2); }
 
 fn main() {
-    let p = Port::<int>();
+    let (p, _c) = pipes::stream::<int>();
     task::spawn(|| child() );
-    let x = recv(p);
+    let x = p.recv();
 }
