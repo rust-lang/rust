@@ -233,7 +233,7 @@ fn get_lint_dict() -> lint_dict {
         (~"deprecated_self",
          @{lint: deprecated_self,
            desc: "warn about deprecated uses of `self`",
-           default: allow}),
+           default: warn}),
 
         /* FIXME(#3266)--make liveness warnings lintable
         (~"unused_variable",
@@ -631,13 +631,18 @@ fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
     fn maybe_warn(cx: ty::ctxt,
                   item: @ast::item,
                   self_ty: ast::self_ty) {
-        cx.sess.span_lint(
-            deprecated_self,
-            item.id,
-            item.id,
-            self_ty.span,
-            ~"this method form is deprecated; use an explicit `self` \
-              parameter or mark the method as static");
+        match self_ty.node {
+            ast::sty_by_ref => {
+                cx.sess.span_lint(
+                    deprecated_self,
+                    item.id,
+                    item.id,
+                    self_ty.span,
+                    ~"this method form is deprecated; use an explicit `self` \
+                      parameter or mark the method as static");
+            }
+            _ => {}
+        }
     }
 
     match /*bad*/copy item.node {
