@@ -129,6 +129,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                 ~"visit_tydesc"  | ~"forget" | ~"addr_of" |
                 ~"frame_address" | ~"morestack_addr" => 0,
 
+                ~"memmove32" | ~"memmove64" => 0,
+
                 ~"sqrtf32" | ~"sqrtf64" | ~"powif32" | ~"powif64" |
                 ~"sinf32"  | ~"sinf64"  | ~"cosf32"  | ~"cosf64"  |
                 ~"powf32"  | ~"powf64"  | ~"expf32"  | ~"expf64"  |
