@@ -55,7 +55,7 @@ use core::vec;
 use std::map::{HashMap, Set};
 use syntax::ast::ident;
 use syntax::ast_map::path;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust::expr_to_str;
 use syntax::{ast, ast_map};

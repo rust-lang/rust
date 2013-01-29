@@ -23,7 +23,7 @@ use core::libc;
 use core::str;
 use core::vec;
 use std::map::HashMap;
-use syntax::codemap;
+use codemap;
 
 fn terminate(cx: block, _: &str) {
     unsafe {

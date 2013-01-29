@@ -17,7 +17,8 @@ use middle::trans::consts;
 use middle::trans::expr;
 use middle::ty;
 
-use syntax::{ast, ast_util, codemap, ast_map};
+use syntax::{ast, ast_util, ast_map};
+use codemap;
 
 fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     -> ValueRef {

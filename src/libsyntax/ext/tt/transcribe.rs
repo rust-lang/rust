@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
-use ast_util;
+use codemap;
 use codemap::span;
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
@@ -71,7 +71,7 @@ fn new_tt_reader(sp_diag: span_handler, itr: @ident_interner,
               mut repeat_len: ~[],
               /* dummy values, never read: */
               mut cur_tok: EOF,
-              mut cur_span: ast_util::dummy_sp()
+              mut cur_span: codemap::dummy_sp()
              };
     tt_next_token(r); /* get cur_tok and cur_span set up */
     return r;

@@ -165,7 +165,7 @@ impl<D: Decoder> span: Decodable<D> {
     }
 }
 
-// assuming that we're not in macro expansion 
+// assuming that we're not in macro expansion
 pub pure fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
     span {lo: lo, hi: hi, expn_info: None}
 }
@@ -497,7 +497,7 @@ mod test {
     use super::*;
     extern mod testingfuns;
     use testingfuns::check_equal;
-    
+
     #[test]
     fn t1 () {
         let cm = CodeMap::new();

@@ -35,7 +35,7 @@ use middle::ty::{FnTyBase, FnMeta, FnSig};
 use util::ppaux::ty_to_str;
 
 use core::libc::c_uint;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
 use syntax::parse::token::special_idents;

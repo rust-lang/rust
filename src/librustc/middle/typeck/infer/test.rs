@@ -31,7 +31,7 @@ use std::getopts::{opt_present};
 use std::getopts;
 use std::getopts;
 use std::map::HashMap;
-use syntax::ast_util::dummy_sp;
+use codemap::dummy_sp;
 use syntax::parse::parse_crate_from_source_str;
 use syntax::{ast, attr, parse};
 

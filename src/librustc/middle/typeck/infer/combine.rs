@@ -70,7 +70,7 @@ use core::result::{iter_vec2, map_vec2};
 use core::vec;
 use syntax::ast::{Onceness, purity, ret_style};
 use syntax::ast;
-use syntax::codemap::span;
+use codemap::span;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 

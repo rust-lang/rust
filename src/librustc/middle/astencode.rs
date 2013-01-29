@@ -39,8 +39,8 @@ use std::serialize::Decodable;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
-use syntax::codemap::span;
-use syntax::codemap;
+use codemap::span;
+use codemap;
 use syntax::diagnostic;
 use syntax::fold::*;
 use syntax::fold;
@@ -221,7 +221,7 @@ impl extended_decode_ctxt {
         ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
     fn tr_span(_span: span) -> span {
-        ast_util::dummy_sp() // FIXME (#1972): handle span properly
+        codemap::dummy_sp() // FIXME (#1972): handle span properly
     }
 }
 

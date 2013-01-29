@@ -79,7 +79,7 @@ use std::{map, time, list};
 use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::attr;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::diagnostic::expect;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
@@ -1848,7 +1848,7 @@ fn trans_enum_variant(ccx: @crate_ctxt,
             ty: varg.ty,
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
-                ast_util::dummy_sp(),
+                codemap::dummy_sp(),
                 special_idents::arg),
             id: varg.id,
         }
@@ -1911,7 +1911,7 @@ fn trans_tuple_struct(ccx: @crate_ctxt,
             is_mutbl: false,
             ty: field.node.ty,
             pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
-                                        ast_util::dummy_sp(),
+                                        codemap::dummy_sp(),
                                         special_idents::arg),
             id: field.node.id
         }

@@ -329,19 +329,19 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                             self.ident_of(~"kinds"),
                             self.ident_of(~"Owned")
                         ],
-                        ast_util::dummy_sp()
+                        dummy_sp()
                     ),
                     ast::type_value_ns,
                     self.next_id()
                 ),
-                span: ast_util::dummy_sp()
+                span: dummy_sp()
             }
         ]);
         let vi = @ast::view_item {
             node: vi,
             attrs: ~[],
             vis: ast::private,
-            span: ast_util::dummy_sp()
+            span: dummy_sp()
         };
 
         self.item(

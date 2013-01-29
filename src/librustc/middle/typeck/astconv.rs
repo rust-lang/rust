@@ -67,7 +67,7 @@ use middle::typeck::{crate_ctxt, write_substs_to_tcx, write_ty_to_tcx};
 use core::result;
 use core::vec;
 use syntax::ast;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust::path_to_str;
 use util::common::indent;
 
