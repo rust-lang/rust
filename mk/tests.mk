@@ -367,7 +367,8 @@ check-stage$(1)-T-$(2)-H-$(3)-std-dummy:			\
 
 $(3)/test/syntaxtest.stage$(1)-$(2)$$(X):			\
 		$$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS)	\
-        $$(SREQ$(1)_T_$(2)_H_$(3))
+		$$(LIBTESTINGFUNS_CRATE)			\
+	        $$(SREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 

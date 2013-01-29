@@ -12,7 +12,7 @@
 
 // Linkage attributes
 #[ link(name = "testingfuns",
-        vers = "1.0",
+        vers = "0.6",
         uuid = "F8BF9F34-147D-47FF-9849-E6C17D34D2FF") ];
 
 // Specify the output type

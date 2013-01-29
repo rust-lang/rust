@@ -38,6 +38,10 @@ source code snippets, etc.
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
 
+// FIXME (#4677) : move into test module (down at the bottom) when
+// it works correctly
+extern mod testingfuns(vers = "0.6");
+
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 use core::prelude::*;
@@ -494,7 +498,6 @@ priv impl CodeMap {
 #[cfg(test)]
 mod test {
     use super::*;
-    extern mod testingfuns;
     use testingfuns::check_equal;
 
     #[test]

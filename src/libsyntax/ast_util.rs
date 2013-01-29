@@ -12,9 +12,7 @@ use core::prelude::*;
 
 use ast::*;
 use ast;
-use ast_util;
-use codemap::{span, BytePos, dummy_sp};
-use codemap::mk_sp;
+use codemap::{span, BytePos, dummy_sp, mk_sp};
 use parse::token;
 use visit;
 
@@ -501,7 +499,7 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_stmt: fn@(s: @stmt) {
-            vfn(ast_util::stmt_id(*s));
+            vfn(stmt_id(*s));
         },
 
         visit_arm: fn@(_a: arm) { },

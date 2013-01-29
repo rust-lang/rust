@@ -2264,7 +2264,10 @@ pub mod test {
     use ast_util;
     use parse;
     use super::*;
-    use util::testing::check_equal;
+    // FIXME (#4677) : uncomment this and remove the one in syntax.rc
+    // when this issue is resolved.
+    //extern mod testingfuns(vers = "0.6");
+    use testingfuns::check_equal;
 
     #[test]
     fn test_fun_to_str() {

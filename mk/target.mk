@@ -50,11 +50,14 @@ ifdef CFG_ENABLE_PAX_FLAGS
 	@"$(CFG_PAXCTL)" -cm "$$@"
 endif
 
+# FIXME (#4677) explicit dependencies on libtestingfuns disappear
+# when it's possible to move those "extern mod" decls into test modules.
 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX): \
                 $$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)	\
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBCODEMAP) \
+                $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBTESTINGFUNS) \
 		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
 		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
@@ -64,6 +67,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBCODEMAP): \
                 $$(LIBCODEMAP_CRATE) $$(LIBCODEMAP_INPUTS) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)	\
+                $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBTESTINGFUNS) \
 		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
 		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)

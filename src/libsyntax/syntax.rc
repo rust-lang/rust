@@ -37,6 +37,11 @@ extern mod codemap (vers = "0.6");
 // modules once that's supported.
 extern mod testingfuns (vers="0.6");
 
+// FIXME (#4677) : move into test module (down at the bottom) when
+// it works correctly
+extern mod testingfuns(vers = "0.6");
+
+
 pub mod syntax {
     pub use ext;
     pub use parse;

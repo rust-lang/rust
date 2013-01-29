@@ -166,6 +166,7 @@ pub fn get_str_from(rdr: StringReader, start: BytePos) -> ~str {
     }
 }
 
+// advance the StringReader by one character.
 pub fn bump(rdr: StringReader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr).to_uint();;

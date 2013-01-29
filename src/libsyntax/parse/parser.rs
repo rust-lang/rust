@@ -233,6 +233,7 @@ pub struct Parser {
 }
 
 pub impl Parser {
+    // advance the parser by one token
     fn bump() {
         self.last_span = self.span;
         let next = if self.buffer_start == self.buffer_end {

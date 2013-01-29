@@ -14,7 +14,7 @@ use ast::*;
 use ast;
 use ast_util;
 use codemap::span;
-use parse;
+use parse::token;
 
 use core::option;
 use core::vec;
@@ -44,8 +44,8 @@ pub fn name_of_fn(fk: fn_kind) -> ident {
       fk_item_fn(name, _, _) | fk_method(name, _, _) => {
           /* FIXME (#2543) */ copy name
       }
-      fk_anon(*) | fk_fn_block(*) => parse::token::special_idents::anon,
-      fk_dtor(*)                  => parse::token::special_idents::dtor
+      fk_anon(*) | fk_fn_block(*) => token::special_idents::anon,
+      fk_dtor(*)                  => token::special_idents::dtor
     }
 }
 
