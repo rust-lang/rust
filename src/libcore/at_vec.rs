@@ -29,16 +29,14 @@ use vec;
 
 #[abi = "cdecl"]
 pub extern mod rustrt {
-    #[legacy_exports];
-    unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
-                                        ++v: **vec::raw::VecRepr,
-                                        ++n: libc::size_t);
+    pub unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
+                                            ++v: **vec::raw::VecRepr,
+                                            ++n: libc::size_t);
 }
 
 #[abi = "rust-intrinsic"]
 pub extern mod rusti {
-    #[legacy_exports];
-    fn move_val_init<T>(dst: &mut T, -src: T);
+    pub fn move_val_init<T>(dst: &mut T, -src: T);
 }
 
 /// Returns the number of elements the vector can hold without reallocating

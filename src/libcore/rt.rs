@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports];
-
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
@@ -27,11 +25,11 @@ use gc::{cleanup_stack_for_failure, gc, Word};
 pub type rust_task = c_void;
 
 #[cfg(target_word_size = "32")]
-const FROZEN_BIT: uint = 0x80000000;
+pub const FROZEN_BIT: uint = 0x80000000;
 #[cfg(target_word_size = "64")]
-const FROZEN_BIT: uint = 0x8000000000000000;
+pub const FROZEN_BIT: uint = 0x8000000000000000;
 
-extern mod rustrt {
+pub extern mod rustrt {
     #[rust_stack]
     unsafe fn rust_upcall_exchange_malloc(td: *c_char, size: uintptr_t)
                                        -> *c_char;
