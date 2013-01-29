@@ -198,11 +198,15 @@ do spawn |move chan| {
 }
 ~~~~
 
-Notice that the creation of the task closure transfers `chan` to the child
-task implicitly: the closure captures `chan` in its environment. Both `Chan`
+Notice that `move chan` is not a normal formal parameter binding; it is a
+environment capture clause for the closure.  This capture clause binds the
+variable `chan` within the closure; the keyword `move` indicates the channel
+should be transferred (as opposed to copied or captured by reference) when the
+anonymous function expression is evaluated. The resulting closure has zero
+formal parameters, as required by the type signature of `spawn`.  Both `Chan`
 and `Port` are sendable types and may be captured into tasks or otherwise
 transferred between them. In the example, the child task runs an expensive
-computation, then sends the result over the captured channel.
+computation, then sends the result over the transferred channel.
 
 Finally, the parent continues with some other expensive
 computation, then waits for the child's result to arrive on the
