@@ -10,12 +10,13 @@
 
 #[forbid(heap_memory)];
 
-type Foo = { //~ ERROR type uses managed
-    x: @int
-};
+struct Foo {
+    x: @int //~ ERROR type uses managed
+}
+
+struct Bar { x: ~int } //~ ERROR type uses owned
 
 fn main() {
-    let _x : { x : ~int } = {x : ~10};
+    let _x : Bar = Bar {x : ~10};
     //~^ ERROR type uses owned
-    //~^^ ERROR type uses owned
 }
