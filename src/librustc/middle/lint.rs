@@ -786,6 +786,18 @@ fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
       _ => ()
     }
 
+    // If it's a struct, we also have to check the fields' types
+    match it.node {
+        ast::item_struct(struct_def, _) => {
+            for struct_def.fields.each |struct_field| {
+                check_type(cx, struct_field.node.id, it.id,
+                           struct_field.span,
+                           ty::node_id_to_type(cx, struct_field.node.id));
+            }
+        }
+        _ => ()
+    }
+
     let visit = item_stopping_visitor(
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_expr: |e: @ast::expr| {
