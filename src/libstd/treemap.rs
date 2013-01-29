@@ -652,14 +652,12 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
                     let mut left = save.left.swap_unwrap();
                     if left.right.is_some() {
                         heir_swap(save, &mut left.right);
-                        save.left = Some(left);
-                        remove(&mut save.left, key);
                     } else {
                         save.key <-> left.key;
                         save.value <-> left.value;
-                        save.left = Some(left);
-                        remove(&mut save.left, key);
                     }
+                    save.left = Some(left);
+                    remove(&mut save.left, key);
                 } else {
                     save = save.left.swap_unwrap();
                 }
