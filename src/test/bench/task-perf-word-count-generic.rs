@@ -20,6 +20,8 @@
 
 // xfail-pretty
 
+#[allow(structural_records)]; // Pipes
+
 extern mod std;
 
 use core::option;

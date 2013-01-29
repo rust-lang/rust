@@ -10,6 +10,10 @@
 
 // Compare bounded and unbounded protocol performance.
 
+#[allow(structural_records)]; // Pipes
+// Until a snapshot
+// xfail-pretty
+ 
 extern mod std;
 
 use pipes::{spawn_service, recv};
