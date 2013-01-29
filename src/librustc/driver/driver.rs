@@ -46,7 +46,7 @@ use syntax::parse;
 use syntax::print::{pp, pprust};
 use syntax;
 
-enum pp_mode {
+pub enum pp_mode {
     ppm_normal,
     ppm_expanded,
     ppm_typed,
@@ -58,16 +58,16 @@ enum pp_mode {
  * The name used for source code that doesn't originate in a file
  * (e.g. source from stdin or a string)
  */
-fn anon_src() -> ~str { ~"<anon>" }
+pub fn anon_src() -> ~str { ~"<anon>" }
 
-fn source_name(input: input) -> ~str {
+pub fn source_name(input: input) -> ~str {
     match input {
       file_input(ref ifile) => (*ifile).to_str(),
       str_input(_) => anon_src()
     }
 }
 
-fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
+pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
    ast::crate_cfg {
     let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
@@ -106,7 +106,8 @@ fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
          mk(~"build_input", source_name(input))];
 }
 
-fn append_configuration(+cfg: ast::crate_cfg, +name: ~str) -> ast::crate_cfg {
+pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
+                         -> ast::crate_cfg {
     if attr::contains_name(cfg, name) {
         return cfg;
     } else {
@@ -114,7 +115,7 @@ fn append_configuration(+cfg: ast::crate_cfg, +name: ~str) -> ast::crate_cfg {
     }
 }
 
-fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
+pub fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
@@ -132,7 +133,7 @@ fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
+pub fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // FIXME (#2399): It would be nice to use the parser to parse all
     // varieties of meta_item here. At the moment we just support the
     // meta_word variant.
@@ -143,14 +144,14 @@ fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     return words;
 }
 
-enum input {
+pub enum input {
     /// Load source from file
     file_input(Path),
     /// The string is the source
     str_input(~str)
 }
 
-fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
+pub fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
       file_input(ref file) => {
@@ -164,7 +165,7 @@ fn parse_input(sess: Session, +cfg: ast::crate_cfg, input: input)
     }
 }
 
-fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
+pub fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
     if !do_it { return thunk(); }
     let start = std::time::precise_time_s();
     let rv = thunk();
@@ -174,7 +175,7 @@ fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
     move rv
 }
 
-enum compile_upto {
+pub enum compile_upto {
     cu_parse,
     cu_expand,
     cu_typeck,
@@ -182,17 +183,17 @@ enum compile_upto {
     cu_everything,
 }
 
-impl compile_upto : cmp::Eq {
+pub impl compile_upto : cmp::Eq {
     pure fn eq(&self, other: &compile_upto) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
     pure fn ne(&self, other: &compile_upto) -> bool { !(*self).eq(other) }
 }
 
-fn compile_upto(sess: Session, cfg: ast::crate_cfg,
-                input: input, upto: compile_upto,
-                outputs: Option<output_filenames>)
-    -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
+pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
+                    input: input, upto: compile_upto,
+                    outputs: Option<output_filenames>)
+                 -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
     let time_passes = sess.time_passes();
     let mut crate = time(time_passes, ~"parsing",
                          || parse_input(sess, copy cfg, input) );
@@ -337,8 +338,8 @@ fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     return {crate: crate, tcx: None};
 }
 
-fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
-                 outdir: &Option<Path>, output: &Option<Path>) {
+pub fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
+                     outdir: &Option<Path>, output: &Option<Path>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
@@ -347,8 +348,8 @@ fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
     compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
-fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
-                      ppm: pp_mode) {
+pub fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
+                          ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {
           pprust::node_expr(s, _) => pprust::popen(s),
@@ -424,7 +425,7 @@ fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
     }
 }
 
-fn get_os(triple: ~str) -> Option<session::os> {
+pub fn get_os(triple: ~str) -> Option<session::os> {
     if str::contains(triple, ~"win32") ||
                str::contains(triple, ~"mingw32") {
             Some(session::os_win32)
@@ -439,7 +440,7 @@ fn get_os(triple: ~str) -> Option<session::os> {
         } else { None }
 }
 
-fn get_arch(triple: ~str) -> Option<session::arch> {
+pub fn get_arch(triple: ~str) -> Option<session::arch> {
     if str::contains(triple, ~"i386") ||
         str::contains(triple, ~"i486") ||
                str::contains(triple, ~"i586") ||
@@ -454,8 +455,9 @@ fn get_arch(triple: ~str) -> Option<session::arch> {
         } else { None }
 }
 
-fn build_target_config(sopts: @session::options,
-                       demitter: diagnostic::emitter) -> @session::config {
+pub fn build_target_config(sopts: @session::options,
+                           demitter: diagnostic::emitter)
+                        -> @session::config {
     let os = match get_os(sopts.target_triple) {
       Some(os) => os,
       None => early_error(demitter, ~"unknown operating system")
@@ -481,7 +483,7 @@ fn build_target_config(sopts: @session::options,
     return target_cfg;
 }
 
-fn host_triple() -> ~str {
+pub fn host_triple() -> ~str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've
     // actually built.  We can't just take LLVM's host triple because they
@@ -498,9 +500,10 @@ fn host_triple() -> ~str {
         };
 }
 
-fn build_session_options(+binary: ~str,
-                         matches: &getopts::Matches,
-                         demitter: diagnostic::emitter) -> @session::options {
+pub fn build_session_options(+binary: ~str,
+                             matches: &getopts::Matches,
+                             demitter: diagnostic::emitter)
+                          -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
         session::lib_crate
     } else if opt_present(matches, ~"bin") {
@@ -637,8 +640,8 @@ fn build_session_options(+binary: ~str,
     return sopts;
 }
 
-fn build_session(sopts: @session::options,
-                 demitter: diagnostic::emitter) -> Session {
+pub fn build_session(sopts: @session::options,
+                     demitter: diagnostic::emitter) -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
@@ -647,11 +650,11 @@ fn build_session(sopts: @session::options,
     build_session_(sopts, codemap, demitter, span_diagnostic_handler)
 }
 
-fn build_session_(sopts: @session::options,
-                  cm: @codemap::CodeMap,
-                  demitter: diagnostic::emitter,
-                  span_diagnostic_handler: diagnostic::span_handler)
-               -> Session {
+pub fn build_session_(sopts: @session::options,
+                      cm: @codemap::CodeMap,
+                      demitter: diagnostic::emitter,
+                      span_diagnostic_handler: diagnostic::span_handler)
+                   -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
@@ -675,7 +678,7 @@ fn build_session_(sopts: @session::options,
                lint_settings: lint_settings})
 }
 
-fn parse_pretty(sess: Session, &&name: ~str) -> pp_mode {
+pub fn parse_pretty(sess: Session, &&name: ~str) -> pp_mode {
     match name {
       ~"normal" => ppm_normal,
       ~"expanded" => ppm_expanded,
@@ -691,7 +694,7 @@ fn parse_pretty(sess: Session, &&name: ~str) -> pp_mode {
 }
 
 // rustc command line options
-fn optgroups() -> ~[getopts::groups::OptGroup] {
+pub fn optgroups() -> ~[getopts::groups::OptGroup] {
  ~[
   optflag(~"",  ~"bin", ~"Compile an executable crate (default)"),
   optflag(~"c", ~"",    ~"Compile and assemble, but do not link"),
@@ -755,13 +758,13 @@ fn optgroups() -> ~[getopts::groups::OptGroup] {
  ]
 }
 
-type output_filenames = @{out_filename:Path, obj_filename:Path};
+pub type output_filenames = @{out_filename:Path, obj_filename:Path};
 
-fn build_output_filenames(input: input,
-                          odir: &Option<Path>,
-                          ofile: &Option<Path>,
-                          sess: Session)
-        -> output_filenames {
+pub fn build_output_filenames(input: input,
+                              odir: &Option<Path>,
+                              ofile: &Option<Path>,
+                              sess: Session)
+                           -> output_filenames {
     let obj_path;
     let out_path;
     let sopts = sess.opts;
@@ -831,21 +834,19 @@ fn build_output_filenames(input: input,
              obj_filename: obj_path};
 }
 
-fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
+pub fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
     emitter(None, msg, diagnostic::fatal);
     fail;
 }
 
-fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
+pub fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
     metadata::loader::list_file_metadata(
         sess.parse_sess.interner,
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);
 }
 
 #[cfg(test)]
-mod test {
-    #[legacy_exports];
-
+pub mod test {
     use core::prelude::*;
 
     use driver::driver::{build_configuration, build_session};
@@ -859,7 +860,7 @@ mod test {
 
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
-    fn test_switch_implies_cfg_test() {
+    pub fn test_switch_implies_cfg_test() {
         let matches =
             &match getopts(~[~"--test"], optgroups()) {
               Ok(copy m) => m,
@@ -876,7 +877,7 @@ mod test {
     // When the user supplies --test and --cfg test, don't implicitly add
     // another --cfg test
     #[test]
-    fn test_switch_implies_cfg_test_unless_cfg_test() {
+    pub fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
             &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(copy m) => m,

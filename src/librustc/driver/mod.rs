@@ -8,16 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports];
+pub use syntax::diagnostic;
 
-use syntax::diagnostic;
-
-export diagnostic;
-
-export driver;
-export session;
-
-#[legacy_exports]
-mod driver;
-#[legacy_exports]
-mod session;
+pub mod driver;
+pub mod session;

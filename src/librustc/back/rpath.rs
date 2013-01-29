@@ -208,8 +208,6 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 
 #[cfg(unix)]
 mod test {
-    #[legacy_exports];
-
     use core::prelude::*;
 
     use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
@@ -221,14 +219,14 @@ mod test {
     use core::str;
 
     #[test]
-    fn test_rpaths_to_flags() {
+    pub fn test_rpaths_to_flags() {
         let flags = rpaths_to_flags(~[Path("path1"),
                                       Path("path2")]);
         assert flags == ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"];
     }
 
     #[test]
-    fn test_prefix_rpath() {
+    pub fn test_prefix_rpath() {
         let res = get_install_prefix_rpath("triple");
         let d = Path(env!("CFG_PREFIX"))
             .push_rel(&Path("lib/rustc/triple/lib"));
@@ -239,13 +237,13 @@ mod test {
     }
 
     #[test]
-    fn test_prefix_rpath_abs() {
+    pub fn test_prefix_rpath_abs() {
         let res = get_install_prefix_rpath("triple");
         assert res.is_absolute;
     }
 
     #[test]
-    fn test_minimize1() {
+    pub fn test_minimize1() {
         let res = minimize_rpaths([Path("rpath1"),
                                    Path("rpath2"),
                                    Path("rpath1")]);
@@ -253,7 +251,7 @@ mod test {
     }
 
     #[test]
-    fn test_minimize2() {
+    pub fn test_minimize2() {
         let res = minimize_rpaths(~[Path("1a"), Path("2"), Path("2"),
                                     Path("1a"), Path("4a"),Path("1a"),
                                     Path("2"), Path("3"), Path("4a"),
@@ -262,7 +260,7 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to1() {
+    pub fn test_relative_to1() {
         let p1 = Path("/usr/bin/rustc");
         let p2 = Path("/usr/lib/mylib");
         let res = get_relative_to(&p1, &p2);
@@ -270,7 +268,7 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to2() {
+    pub fn test_relative_to2() {
         let p1 = Path("/usr/bin/rustc");
         let p2 = Path("/usr/bin/../lib/mylib");
         let res = get_relative_to(&p1, &p2);
@@ -278,7 +276,7 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to3() {
+    pub fn test_relative_to3() {
         let p1 = Path("/usr/bin/whatever/rustc");
         let p2 = Path("/usr/lib/whatever/mylib");
         let res = get_relative_to(&p1, &p2);
@@ -286,7 +284,7 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to4() {
+    pub fn test_relative_to4() {
         let p1 = Path("/usr/bin/whatever/../rustc");
         let p2 = Path("/usr/lib/whatever/mylib");
         let res = get_relative_to(&p1, &p2);
@@ -294,7 +292,7 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to5() {
+    pub fn test_relative_to5() {
         let p1 = Path("/usr/bin/whatever/../rustc");
         let p2 = Path("/usr/lib/whatever/../mylib");
         let res = get_relative_to(&p1, &p2);
@@ -302,7 +300,7 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to6() {
+    pub fn test_relative_to6() {
         let p1 = Path("/1");
         let p2 = Path("/2/3");
         let res = get_relative_to(&p1, &p2);
@@ -310,7 +308,7 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to7() {
+    pub fn test_relative_to7() {
         let p1 = Path("/1/2");
         let p2 = Path("/3");
         let res = get_relative_to(&p1, &p2);
@@ -318,7 +316,7 @@ mod test {
     }
 
     #[test]
-    fn test_relative_to8() {
+    pub fn test_relative_to8() {
         let p1 = Path("/home/brian/Dev/rust/build/").push_rel(
             &Path("stage2/lib/rustc/i686-unknown-linux-gnu/lib/librustc.so"));
         let p2 = Path("/home/brian/Dev/rust/build/stage2/bin/..").push_rel(
@@ -333,7 +331,7 @@ mod test {
     #[test]
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "andorid")]
-    fn test_rpath_relative() {
+    pub fn test_rpath_relative() {
       let o = session::os_linux;
       let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
@@ -342,7 +340,7 @@ mod test {
 
     #[test]
     #[cfg(target_os = "freebsd")]
-    fn test_rpath_relative() {
+    pub fn test_rpath_relative() {
         let o = session::os_freebsd;
         let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
@@ -351,7 +349,7 @@ mod test {
 
     #[test]
     #[cfg(target_os = "macos")]
-    fn test_rpath_relative() {
+    pub fn test_rpath_relative() {
         // this is why refinements would be nice
         let o = session::os_macos;
         let res = get_rpath_relative_to_output(o,
@@ -361,7 +359,7 @@ mod test {
     }
 
     #[test]
-    fn test_get_absolute_rpath() {
+    pub fn test_get_absolute_rpath() {
         let res = get_absolute_rpath(&Path("lib/libstd.so"));
         debug!("test_get_absolute_rpath: %s vs. %s",
                res.to_str(),

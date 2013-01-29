@@ -94,8 +94,6 @@ pub fn WriteOutputFile(sess: Session,
 }
 
 pub mod jit {
-    #[legacy_exports];
-
     use back::link::llvm_err;
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, PassManagerRef, mk_target_data};
@@ -109,21 +107,20 @@ pub mod jit {
 
     #[nolink]
     #[abi = "rust-intrinsic"]
-    extern mod rusti {
-        #[legacy_exports];
-        fn morestack_addr() -> *();
+    pub extern mod rusti {
+        pub fn morestack_addr() -> *();
     }
 
-    struct Closure {
+    pub struct Closure {
         code: *(),
         env: *(),
     }
 
-    fn exec(sess: Session,
-            pm: PassManagerRef,
-            m: ModuleRef,
-            opt: c_int,
-            stacks: bool) {
+    pub fn exec(sess: Session,
+                pm: PassManagerRef,
+                m: ModuleRef,
+                opt: c_int,
+                stacks: bool) {
         unsafe {
             let manager = llvm::LLVMRustPrepareJIT(rusti::morestack_addr());
 
@@ -174,8 +171,6 @@ pub mod jit {
 }
 
 mod write {
-    #[legacy_exports];
-
     use back::link::jit;
     use back::link::{ModuleRef, WriteOutputFile, output_type};
     use back::link::{output_type_assembly, output_type_bitcode};
@@ -193,7 +188,7 @@ mod write {
     use core::str;
     use core::vec;
 
-    fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
+    pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
                ot == output_type_exe {
             return true;
@@ -201,7 +196,7 @@ mod write {
         return false;
     }
 
-    fn run_passes(sess: Session, llmod: ModuleRef, output: &Path) {
+    pub fn run_passes(sess: Session, llmod: ModuleRef, output: &Path) {
         unsafe {
             let opts = sess.opts;
             if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }

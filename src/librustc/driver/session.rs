@@ -29,27 +29,27 @@ use syntax::parse::parse_sess;
 use syntax::{ast, codemap};
 use syntax;
 
-enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
+pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
 
-impl os : cmp::Eq {
+pub impl os : cmp::Eq {
     pure fn eq(&self, other: &os) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
     pure fn ne(&self, other: &os) -> bool { !(*self).eq(other) }
 }
 
-enum arch { arch_x86, arch_x86_64, arch_arm, }
+pub enum arch { arch_x86, arch_x86_64, arch_arm, }
 
-impl arch : cmp::Eq {
+pub impl arch : cmp::Eq {
     pure fn eq(&self, other: &arch) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
     pure fn ne(&self, other: &arch) -> bool { !(*self).eq(other) }
 }
 
-enum crate_type { bin_crate, lib_crate, unknown_crate, }
+pub enum crate_type { bin_crate, lib_crate, unknown_crate, }
 
-type config =
+pub type config =
     {os: os,
      arch: arch,
      target_strs: target_strs::t,
@@ -57,26 +57,26 @@ type config =
      uint_type: uint_ty,
      float_type: float_ty};
 
-const verbose: uint = 1 << 0;
-const time_passes: uint = 1 << 1;
-const count_llvm_insns: uint = 1 << 2;
-const time_llvm_passes: uint = 1 << 3;
-const trans_stats: uint = 1 << 4;
-const no_asm_comments: uint = 1 << 5;
-const no_verify: uint = 1 << 6;
-const trace: uint = 1 << 7;
-const coherence: uint = 1 << 8;
-const borrowck_stats: uint = 1 << 9;
-const borrowck_note_pure: uint = 1 << 10;
-const borrowck_note_loan: uint = 1 << 11;
-const no_landing_pads: uint = 1 << 12;
-const debug_llvm: uint = 1 << 13;
-const count_type_sizes: uint = 1 << 14;
-const meta_stats: uint = 1 << 15;
-const no_opt: uint = 1 << 16;
-const no_monomorphic_collapse: uint = 1 << 17;
+pub const verbose: uint = 1 << 0;
+pub const time_passes: uint = 1 << 1;
+pub const count_llvm_insns: uint = 1 << 2;
+pub const time_llvm_passes: uint = 1 << 3;
+pub const trans_stats: uint = 1 << 4;
+pub const no_asm_comments: uint = 1 << 5;
+pub const no_verify: uint = 1 << 6;
+pub const trace: uint = 1 << 7;
+pub const coherence: uint = 1 << 8;
+pub const borrowck_stats: uint = 1 << 9;
+pub const borrowck_note_pure: uint = 1 << 10;
+pub const borrowck_note_loan: uint = 1 << 11;
+pub const no_landing_pads: uint = 1 << 12;
+pub const debug_llvm: uint = 1 << 13;
+pub const count_type_sizes: uint = 1 << 14;
+pub const meta_stats: uint = 1 << 15;
+pub const no_opt: uint = 1 << 16;
+pub const no_monomorphic_collapse: uint = 1 << 17;
 
-fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
+pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
      (~"time-passes", ~"measure time of each rustc pass", time_passes),
      (~"count-llvm-insns", ~"count where LLVM \
@@ -105,21 +105,21 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ]
 }
 
-enum OptLevel {
+pub enum OptLevel {
     No, // -O0
     Less, // -O1
     Default, // -O2
     Aggressive // -O3
 }
 
-impl OptLevel : cmp::Eq {
+pub impl OptLevel : cmp::Eq {
     pure fn eq(&self, other: &OptLevel) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
     pure fn ne(&self, other: &OptLevel) -> bool { !(*self).eq(other) }
 }
 
-type options =
+pub type options =
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
     {crate_type: crate_type,
@@ -147,26 +147,26 @@ type options =
      debugging_opts: uint,
     };
 
-type crate_metadata = {name: ~str, data: ~[u8]};
+pub type crate_metadata = {name: ~str, data: ~[u8]};
 
-type Session_ = {targ_cfg: @config,
-                 opts: @options,
-                 cstore: metadata::cstore::CStore,
-                 parse_sess: parse_sess,
-                 codemap: @codemap::CodeMap,
-                 // For a library crate, this is always none
-                 mut main_fn: Option<(node_id, codemap::span)>,
-                 span_diagnostic: diagnostic::span_handler,
-                 filesearch: filesearch::FileSearch,
-                 mut building_library: bool,
-                 working_dir: Path,
-                 lint_settings: lint::lint_settings};
+pub type Session_ = {targ_cfg: @config,
+                     opts: @options,
+                     cstore: metadata::cstore::CStore,
+                     parse_sess: parse_sess,
+                     codemap: @codemap::CodeMap,
+                     // For a library crate, this is always none
+                     mut main_fn: Option<(node_id, codemap::span)>,
+                     span_diagnostic: diagnostic::span_handler,
+                     filesearch: filesearch::FileSearch,
+                     mut building_library: bool,
+                     working_dir: Path,
+                     lint_settings: lint::lint_settings};
 
-enum Session {
+pub enum Session {
     Session_(@Session_)
 }
 
-impl Session {
+pub impl Session {
     fn span_fatal(sp: span, msg: ~str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }
@@ -271,7 +271,7 @@ impl Session {
 }
 
 /// Some reasonable defaults
-fn basic_options() -> @options {
+pub fn basic_options() -> @options {
     @{
         crate_type: session::lib_crate,
         static: false,
@@ -296,12 +296,15 @@ fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-fn expect<T: Copy>(sess: Session, opt: Option<T>, msg: fn() -> ~str) -> T {
+pub fn expect<T: Copy>(sess: Session,
+                       opt: Option<T>,
+                       msg: fn() -> ~str)
+                    -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
-fn building_library(req_crate_type: crate_type, crate: @ast::crate,
-                    testing: bool) -> bool {
+pub fn building_library(req_crate_type: crate_type, crate: @ast::crate,
+                        testing: bool) -> bool {
     match req_crate_type {
       bin_crate => false,
       lib_crate => true,
@@ -320,7 +323,7 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
     }
 }
 
-fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
+pub fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
     use metadata::loader;
 
     match os {
@@ -333,9 +336,7 @@ fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
 }
 
 #[cfg(test)]
-mod test {
-    #[legacy_exports];
-
+pub mod test {
     use core::prelude::*;
 
     use driver::session::{bin_crate, building_library, lib_crate};
@@ -344,7 +345,7 @@ mod test {
     use syntax::ast;
     use syntax::ast_util;
 
-    fn make_crate_type_attr(+t: ~str) -> ast::attribute {
+    pub fn make_crate_type_attr(+t: ~str) -> ast::attribute {
         ast_util::respan(ast_util::dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
             value: ast_util::respan(ast_util::dummy_sp(),
@@ -356,7 +357,7 @@ mod test {
         })
     }
 
-    fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
+    pub fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
         let mut attrs = ~[];
         if with_bin { attrs += ~[make_crate_type_attr(~"bin")]; }
         if with_lib { attrs += ~[make_crate_type_attr(~"lib")]; }
@@ -368,43 +369,43 @@ mod test {
     }
 
     #[test]
-    fn bin_crate_type_attr_results_in_bin_output() {
+    pub fn bin_crate_type_attr_results_in_bin_output() {
         let crate = make_crate(true, false);
         assert !building_library(unknown_crate, crate, false);
     }
 
     #[test]
-    fn lib_crate_type_attr_results_in_lib_output() {
+    pub fn lib_crate_type_attr_results_in_lib_output() {
         let crate = make_crate(false, true);
         assert building_library(unknown_crate, crate, false);
     }
 
     #[test]
-    fn bin_option_overrides_lib_crate_type() {
+    pub fn bin_option_overrides_lib_crate_type() {
         let crate = make_crate(false, true);
         assert !building_library(bin_crate, crate, false);
     }
 
     #[test]
-    fn lib_option_overrides_bin_crate_type() {
+    pub fn lib_option_overrides_bin_crate_type() {
         let crate = make_crate(true, false);
         assert building_library(lib_crate, crate, false);
     }
 
     #[test]
-    fn bin_crate_type_is_default() {
+    pub fn bin_crate_type_is_default() {
         let crate = make_crate(false, false);
         assert !building_library(unknown_crate, crate, false);
     }
 
     #[test]
-    fn test_option_overrides_lib_crate_type() {
+    pub fn test_option_overrides_lib_crate_type() {
         let crate = make_crate(false, true);
         assert !building_library(unknown_crate, crate, true);
     }
 
     #[test]
-    fn test_option_does_not_override_requested_lib_type() {
+    pub fn test_option_does_not_override_requested_lib_type() {
         let crate = make_crate(false, false);
         assert building_library(lib_crate, crate, true);
     }
