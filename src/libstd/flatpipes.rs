@@ -63,7 +63,7 @@ and an `Unflattener` that converts the bytes to a value.
 
 Create using the constructors in the `serial` and `pod` modules.
 */
-pub struct FlatPort<T, U: Unflattener<T>, P: BytePort> {
+pub struct FlatPort<T, U, P> {
     unflattener: U,
     byte_port: P
 }
@@ -74,7 +74,7 @@ byte vectors, and a `ByteChan` that transmits the bytes.
 
 Create using the constructors in the `serial` and `pod` modules.
 */
-pub struct FlatChan<T, F: Flattener<T>, C: ByteChan> {
+pub struct FlatChan<T, F, C> {
     flattener: F,
     byte_chan: C
 }
@@ -181,14 +181,12 @@ pub mod pod {
     use core::pipes;
     use core::prelude::*;
 
-    pub type ReaderPort<T: Copy Owned, R> =
+    pub type ReaderPort<T, R> =
         FlatPort<T, PodUnflattener<T>, ReaderBytePort<R>>;
-    pub type WriterChan<T: Copy Owned, W> =
+    pub type WriterChan<T, W> =
         FlatChan<T, PodFlattener<T>, WriterByteChan<W>>;
-    pub type PipePort<T: Copy Owned> =
-        FlatPort<T, PodUnflattener<T>, PipeBytePort>;
-    pub type PipeChan<T: Copy Owned> =
-        FlatChan<T, PodFlattener<T>, PipeByteChan>;
+    pub type PipePort<T> = FlatPort<T, PodUnflattener<T>, PipeBytePort>;
+    pub type PipeChan<T> = FlatChan<T, PodFlattener<T>, PipeByteChan>;
 
     /// Create a `FlatPort` from a `Reader`
     pub fn reader_port<T: Copy Owned, R: Reader>(
@@ -352,11 +350,11 @@ pub mod flatteners {
 
 
     // FIXME #4074: Copy + Owned != POD
-    pub struct PodUnflattener<T: Copy Owned> {
+    pub struct PodUnflattener<T> {
         bogus: ()
     }
 
-    pub struct PodFlattener<T: Copy Owned> {
+    pub struct PodFlattener<T> {
         bogus: ()
     }
 
@@ -398,14 +396,13 @@ pub mod flatteners {
 
     pub type DeserializeBuffer<T> = ~fn(buf: &[u8]) -> T;
 
-    pub struct DeserializingUnflattener<D: Decoder,
-                                        T: Decodable<D>> {
+    pub struct DeserializingUnflattener<D, T> {
         deserialize_buffer: DeserializeBuffer<T>
     }
 
     pub type SerializeValue<T> = ~fn(val: &T) -> ~[u8];
 
-    pub struct SerializingFlattener<S: Encoder, T: Encodable<S>> {
+    pub struct SerializingFlattener<S, T> {
         serialize_value: SerializeValue<T>
     }
 
@@ -518,11 +515,11 @@ pub mod bytepipes {
     use core::pipes;
     use core::prelude::*;
 
-    pub struct ReaderBytePort<R: Reader> {
+    pub struct ReaderBytePort<R> {
         reader: R
     }
 
-    pub struct WriterByteChan<W: Writer> {
+    pub struct WriterByteChan<W> {
         writer: W
     }
 
@@ -767,9 +764,9 @@ mod test {
         test_some_tcp_stream(reader_port, writer_chan, 9667);
     }
 
-    type ReaderPortFactory<U: Unflattener<int>> =
+    type ReaderPortFactory<U> =
         ~fn(TcpSocketBuf) -> FlatPort<int, U, ReaderBytePort<TcpSocketBuf>>;
-    type WriterChanFactory<F: Flattener<int>> =
+    type WriterChanFactory<F> =
         ~fn(TcpSocketBuf) -> FlatChan<int, F, WriterByteChan<TcpSocketBuf>>;
 
     fn test_some_tcp_stream<U: Unflattener<int>, F: Flattener<int>>(
@@ -792,7 +789,6 @@ mod test {
         let (finish_port, finish_chan) = pipes::stream();
 
         let addr = ip::v4::parse_addr("127.0.0.1");
-        let iotask = uv::global_loop::get();
 
         let begin_connect_chan = Cell(move begin_connect_chan);
         let accept_chan = Cell(move accept_chan);
@@ -800,6 +796,7 @@ mod test {
         // The server task
         do task::spawn |copy addr, move begin_connect_chan,
                         move accept_chan| {
+            let iotask = &uv::global_loop::get();
             let begin_connect_chan = begin_connect_chan.take();
             let accept_chan = accept_chan.take();
             let listen_res = do tcp::listen(
@@ -831,6 +828,7 @@ mod test {
             begin_connect_port.recv();
 
             debug!("connecting");
+            let iotask = &uv::global_loop::get();
             let connect_result = tcp::connect(copy addr, port, iotask);
             assert connect_result.is_ok();
             let sock = result::unwrap(move connect_result);
@@ -892,7 +890,7 @@ mod test {
         use core::sys;
         use core::task;
 
-        type PortLoader<P: BytePort> =
+        type PortLoader<P> =
             ~fn(~[u8]) -> FlatPort<int, PodUnflattener<int>, P>;
 
         fn reader_port_loader(bytes: ~[u8]

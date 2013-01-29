@@ -39,6 +39,7 @@ use middle::trans::reachable;
 use middle::trans::shape;
 use middle::trans::type_of;
 use middle::trans::type_use;
+use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{expr_repr, ty_to_str};
@@ -1459,9 +1460,11 @@ fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
 }
 
 fn dummy_substs(+tps: ~[ty::t]) -> ty::substs {
-    {self_r: Some(ty::re_bound(ty::br_self)),
-     self_ty: None,
-     tps: tps}
+    substs {
+        self_r: Some(ty::re_bound(ty::br_self)),
+        self_ty: None,
+        tps: tps
+    }
 }
 
 fn struct_field(index: uint) -> [uint * 3] {

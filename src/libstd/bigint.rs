@@ -17,7 +17,7 @@ A BigInt is a combination of BigUint and Sign.
 */
 
 use core::cmp::{Eq, Ord};
-use core::num::{Num, Zero, One};
+use core::num::{IntConvertible, Zero, One};
 use core::*;
 
 /**
@@ -121,7 +121,7 @@ impl BigUint : One {
     static pub pure fn one() -> BigUint { BigUint::new(~[1]) }
 }
 
-impl BigUint : Num {
+impl BigUint : Add<BigUint, BigUint> {
     pure fn add(&self, other: &BigUint) -> BigUint {
         let new_len = uint::max(self.data.len(), other.data.len());
 
@@ -138,7 +138,9 @@ impl BigUint : Num {
         if carry == 0 { return BigUint::new(sum) };
         return BigUint::new(sum + [carry]);
     }
+}
 
+impl BigUint : Sub<BigUint, BigUint> {
     pure fn sub(&self, other: &BigUint) -> BigUint {
         let new_len = uint::max(self.data.len(), other.data.len());
 
@@ -161,7 +163,9 @@ impl BigUint : Num {
         assert borrow == 0;     // <=> assert (self >= other);
         return BigUint::new(diff);
     }
+}
 
+impl BigUint : Mul<BigUint, BigUint> {
     pure fn mul(&self, other: &BigUint) -> BigUint {
         if self.is_zero() || other.is_zero() { return Zero::zero(); }
 
@@ -224,18 +228,27 @@ impl BigUint : Num {
             }
         }
     }
+}
 
+impl BigUint : Div<BigUint, BigUint> {
     pure fn div(&self, other: &BigUint) -> BigUint {
         let (d, _) = self.divmod(other);
         return d;
     }
+}
+
+impl BigUint : Modulo<BigUint, BigUint> {
     pure fn modulo(&self, other: &BigUint) -> BigUint {
         let (_, m) = self.divmod(other);
         return m;
     }
+}
 
+impl BigUint : Neg<BigUint> {
     pure fn neg(&self) -> BigUint { fail }
+}
 
+impl BigUint : IntConvertible {
     pure fn to_int(&self) -> int {
         uint::min(self.to_uint(), int::max_value as uint) as int
     }
@@ -625,7 +638,7 @@ impl BigInt : One {
     }
 }
 
-impl BigInt : Num {
+impl BigInt : Add<BigInt, BigInt> {
     pure fn add(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)      => copy *other,
@@ -637,6 +650,9 @@ impl BigInt : Num {
             (Minus, Minus) => -((-self) + (-*other))
         }
     }
+}
+
+impl BigInt : Sub<BigInt, BigInt> {
     pure fn sub(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)    => -other,
@@ -654,6 +670,9 @@ impl BigInt : Num {
             (Minus, Minus) => (-other) - (-*self)
         }
     }
+}
+
+impl BigInt : Mul<BigInt, BigInt> {
     pure fn mul(&self, other: &BigInt) -> BigInt {
         match (self.sign, other.sign) {
             (Zero, _)     | (_,     Zero)  => Zero::zero(),
@@ -665,18 +684,29 @@ impl BigInt : Num {
             }
         }
     }
+}
+
+impl BigInt : Div<BigInt, BigInt> {
     pure fn div(&self, other: &BigInt) -> BigInt {
         let (d, _) = self.divmod(other);
         return d;
     }
+}
+
+impl BigInt : Modulo<BigInt, BigInt> {
     pure fn modulo(&self, other: &BigInt) -> BigInt {
         let (_, m) = self.divmod(other);
         return m;
     }
+}
+
+impl BigInt : Neg<BigInt> {
     pure fn neg(&self) -> BigInt {
         BigInt::from_biguint(self.sign.neg(), copy self.data)
     }
+}
 
+impl BigInt : IntConvertible {
     pure fn to_int(&self) -> int {
         match self.sign {
             Plus  => uint::min(self.to_uint(), int::max_value as uint) as int,
@@ -834,7 +864,7 @@ pub impl BigInt {
 mod biguint_tests {
 
     use core::*;
-    use core::num::{Num, Zero, One};
+    use num::{IntConvertible, Zero, One};
     use super::{BigInt, BigUint, BigDigit};
 
     #[test]
@@ -974,7 +1004,7 @@ mod biguint_tests {
     fn test_convert_int() {
         fn check(v: ~[BigDigit], i: int) {
             let b = BigUint::new(v);
-            assert b == Num::from_int(i);
+            assert b == IntConvertible::from_int(i);
             assert b.to_int() == i;
         }
 
@@ -1244,7 +1274,7 @@ mod bigint_tests {
     use super::{BigInt, BigUint, BigDigit, Sign, Minus, Zero, Plus};
 
     use core::*;
-    use core::num::{Num, Zero, One};
+    use core::num::{IntConvertible, Zero, One};
 
     #[test]
     fn test_from_biguint() {
@@ -1303,7 +1333,7 @@ mod bigint_tests {
     #[test]
     fn test_convert_int() {
         fn check(b: BigInt, i: int) {
-            assert b == Num::from_int(i);
+            assert b == IntConvertible::from_int(i);
             assert b.to_int() == i;
         }
 
@@ -1563,7 +1593,8 @@ mod bigint_tests {
     #[test]
     fn test_to_str_radix() {
         fn check(n: int, ans: &str) {
-            assert ans == Num::from_int::<BigInt>(n).to_str_radix(10);
+            assert ans == IntConvertible::from_int::<BigInt>(
+                n).to_str_radix(10);
         }
         check(10, "10");
         check(1, "1");
@@ -1576,7 +1607,7 @@ mod bigint_tests {
     #[test]
     fn test_from_str_radix() {
         fn check(s: &str, ans: Option<int>) {
-            let ans = ans.map(|&n| Num::from_int(n));
+            let ans = ans.map(|&n| IntConvertible::from_int(n));
             assert BigInt::from_str_radix(s, 10) == ans;
         }
         check("10", Some(10));

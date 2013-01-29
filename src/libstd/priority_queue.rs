@@ -22,7 +22,7 @@ extern "C" mod rusti {
     fn init<T>() -> T;
 }
 
-pub struct PriorityQueue <T: Ord>{
+pub struct PriorityQueue<T> {
     priv data: ~[T],
 }
 

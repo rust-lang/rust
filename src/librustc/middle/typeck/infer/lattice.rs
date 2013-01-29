@@ -89,9 +89,9 @@ impl FnMeta: LatticeValue {
 }
 
 impl CombineFields {
-    fn var_sub_var<V:Copy Eq Vid ToStr, T:Copy InferStr LatticeValue>(
+    fn var_sub_var<T:Copy InferStr LatticeValue,
+                   V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
         &self,
-        vb: &ValsAndBindings<V, Bounds<T>>,
         +a_id: V,
         +b_id: V) -> ures
     {
@@ -102,8 +102,8 @@ impl CombineFields {
          * top of infer.rs*/
 
         // Need to make sub_id a subtype of sup_id.
-        let node_a = self.infcx.get(vb, a_id);
-        let node_b = self.infcx.get(vb, b_id);
+        let node_a = self.infcx.get(a_id);
+        let node_b = self.infcx.get(b_id);
         let a_id = node_a.root;
         let b_id = node_b.root;
         let a_bounds = node_a.possible_types;
@@ -135,17 +135,17 @@ impl CombineFields {
         // A remains a subtype of B.  Actually, there are other options,
         // but that's the route we choose to take.
 
-        self.infcx.unify(vb, &node_a, &node_b, |new_root, new_rank| {
-            self.set_var_to_merged_bounds(vb, new_root,
+        self.infcx.unify(&node_a, &node_b, |new_root, new_rank| {
+            self.set_var_to_merged_bounds(new_root,
                                           &a_bounds, &b_bounds,
                                           new_rank)
         })
     }
 
     /// make variable a subtype of T
-    fn var_sub_t<V:Copy Eq Vid ToStr, T:Copy InferStr LatticeValue>(
+    fn var_sub_t<T:Copy InferStr LatticeValue,
+                 V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
         &self,
-        vb: &ValsAndBindings<V, Bounds<T>>,
         +a_id: V,
         +b: T) -> ures
     {
@@ -153,7 +153,7 @@ impl CombineFields {
          *
          * Make a variable (`a_id`) a subtype of the concrete type `b` */
 
-        let node_a = self.infcx.get(vb, a_id);
+        let node_a = self.infcx.get(a_id);
         let a_id = node_a.root;
         let a_bounds = &node_a.possible_types;
         let b_bounds = &{lb: None, ub: Some(b)};
@@ -164,12 +164,12 @@ impl CombineFields {
                b.inf_str(self.infcx));
 
         self.set_var_to_merged_bounds(
-            vb, a_id, a_bounds, b_bounds, node_a.rank)
+            a_id, a_bounds, b_bounds, node_a.rank)
     }
 
-    fn t_sub_var<V:Copy Eq Vid ToStr, T:Copy InferStr LatticeValue>(
+    fn t_sub_var<T:Copy InferStr LatticeValue,
+                 V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
         &self,
-        vb: &ValsAndBindings<V, Bounds<T>>,
         +a: T,
         +b_id: V) -> ures
     {
@@ -178,7 +178,7 @@ impl CombineFields {
          * Make a concrete type (`a`) a subtype of the variable `b_id` */
 
         let a_bounds = &{lb: Some(a), ub: None};
-        let node_b = self.infcx.get(vb, b_id);
+        let node_b = self.infcx.get(b_id);
         let b_id = node_b.root;
         let b_bounds = &node_b.possible_types;
 
@@ -188,7 +188,7 @@ impl CombineFields {
                b_bounds.inf_str(self.infcx));
 
         self.set_var_to_merged_bounds(
-            vb, b_id, a_bounds, b_bounds, node_b.rank)
+            b_id, a_bounds, b_bounds, node_b.rank)
     }
 
     fn merge_bnd<T:Copy InferStr LatticeValue>(
@@ -219,10 +219,9 @@ impl CombineFields {
         }
     }
 
-    fn set_var_to_merged_bounds<V:Copy Eq Vid ToStr,
-                                T:Copy InferStr LatticeValue>(
+    fn set_var_to_merged_bounds<T:Copy InferStr LatticeValue,
+                                V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
         &self,
-        vb: &ValsAndBindings<V, Bounds<T>>,
         +v_id: V,
         a: &Bounds<T>,
         b: &Bounds<T>,
@@ -278,7 +277,7 @@ impl CombineFields {
         // the new bounds must themselves
         // be relatable:
         let () = if_ok!(self.bnds(&bounds.lb, &bounds.ub));
-        self.infcx.set(vb, v_id, Root(bounds, rank));
+        self.infcx.set(v_id, Root(bounds, rank));
         uok()
     }
 
@@ -369,8 +368,7 @@ fn super_lattice_tys<L:LatticeDir TyLatticeDir Combine>(
         (_, ty::ty_bot) => { return self.ty_bot(a); }
 
         (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
-            let r = if_ok!(lattice_vars(self, &self.infcx().ty_var_bindings,
-                                        a_id, b_id,
+            let r = if_ok!(lattice_vars(self, a_id, b_id,
                                         |x, y| self.tys(*x, *y)));
             return match r {
                 VarResult(v) => Ok(ty::mk_var(tcx, v)),
@@ -379,14 +377,12 @@ fn super_lattice_tys<L:LatticeDir TyLatticeDir Combine>(
         }
 
         (ty::ty_infer(TyVar(a_id)), _) => {
-            return lattice_var_and_t(self, &self.infcx().ty_var_bindings,
-                                     a_id, &b,
+            return lattice_var_and_t(self, a_id, &b,
                                      |x, y| self.tys(*x, *y));
         }
 
         (_, ty::ty_infer(TyVar(b_id))) => {
-            return lattice_var_and_t(self, &self.infcx().ty_var_bindings,
-                                     b_id, &a,
+            return lattice_var_and_t(self, b_id, &a,
                                      |x, y| self.tys(*x, *y));
         }
 
@@ -419,17 +415,16 @@ enum LatticeVarResult<V,T> {
  *   result is a variable.  This is indicated with a `VarResult`
  *   return. */
 fn lattice_vars<L:LatticeDir Combine,
-                V:Copy Eq Vid ToStr,
-                T:Copy InferStr LatticeValue>(
+                T:Copy InferStr LatticeValue,
+                V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
     self: &L,                           // defines whether we want LUB or GLB
-    vb: &ValsAndBindings<V, Bounds<T>>, // relevant variable bindings
     +a_vid: V,                          // first variable
     +b_vid: V,                          // second variable
     lattice_dir_op: LatticeDirOp<T>)    // LUB or GLB operation on types
     -> cres<LatticeVarResult<V,T>>
 {
-    let nde_a = self.infcx().get(vb, a_vid);
-    let nde_b = self.infcx().get(vb, b_vid);
+    let nde_a = self.infcx().get(a_vid);
+    let nde_b = self.infcx().get(b_vid);
     let a_vid = nde_a.root;
     let b_vid = nde_b.root;
     let a_bounds = &nde_a.possible_types;
@@ -461,22 +456,21 @@ fn lattice_vars<L:LatticeDir Combine,
     // Otherwise, we need to merge A and B into one variable.  We can
     // then use either variable as an upper bound:
     let cf = self.combine_fields();
-    do cf.var_sub_var(vb, a_vid, b_vid).then {
+    do cf.var_sub_var(a_vid, b_vid).then {
         Ok(VarResult(a_vid))
     }
 }
 
 fn lattice_var_and_t<L:LatticeDir Combine,
-                     V:Copy Eq Vid ToStr,
-                     T:Copy InferStr LatticeValue>(
+                     T:Copy InferStr LatticeValue,
+                     V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
     self: &L,
-    vb: &ValsAndBindings<V, Bounds<T>>,
     +a_id: V,
     b: &T,
     lattice_dir_op: LatticeDirOp<T>)
     -> cres<T>
 {
-    let nde_a = self.infcx().get(vb, a_id);
+    let nde_a = self.infcx().get(a_id);
     let a_id = nde_a.root;
     let a_bounds = &nde_a.possible_types;
 
@@ -501,7 +495,7 @@ fn lattice_var_and_t<L:LatticeDir Combine,
             debug!("bnd=None");
             let a_bounds = self.with_bnd(a_bounds, *b);
             do self.combine_fields().bnds(&a_bounds.lb, &a_bounds.ub).then {
-                self.infcx().set(vb, a_id, Root(a_bounds, nde_a.rank));
+                self.infcx().set(a_id, Root(a_bounds, nde_a.rank));
                 Ok(*b)
             }
         }

@@ -19,7 +19,8 @@
 use core::prelude::*;
 
 use middle::borrowck::preserve::{preserve_condition, pc_ok, pc_if_pure};
-use middle::borrowck::{Loan, bckres, borrowck_ctxt, err_mutbl, req_maps};
+use middle::borrowck::{Loan, bckerr, bckres, borrowck_ctxt, err_mutbl};
+use middle::borrowck::{req_maps};
 use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
 use middle::mem_categorization::{mem_categorization_ctxt};
 use middle::mem_categorization::{opt_deref_kind};
@@ -452,8 +453,7 @@ impl gather_loan_ctxt {
             debug!("required is const or they are the same");
             Ok(pc_ok)
         } else {
-            let e = {cmt: cmt,
-                     code: err_mutbl(req_mutbl)};
+            let e = bckerr { cmt: cmt, code: err_mutbl(req_mutbl) };
             if req_mutbl == m_imm {
                 // if this is an @mut box, then it's generally OK to borrow as
                 // &imm; this will result in a write guard
@@ -591,7 +591,49 @@ impl gather_loan_ctxt {
                 }
               }
 
+              ast::pat_vec(_, Some(tail_pat)) => {
+                  // The `tail_pat` here creates a slice into the
+                  // original vector.  This is effectively a borrow of
+                  // the elements of the vector being matched.
+
+                  let tail_ty = self.tcx().ty(tail_pat);
+                  let (tail_mutbl, tail_r) =
+                      self.vec_slice_info(tail_pat, tail_ty);
+                  let mcx = self.bccx.mc_ctxt();
+                  let cmt_index = mcx.cat_index(tail_pat, cmt);
+                  self.guarantee_valid(cmt_index, tail_mutbl, tail_r);
+              }
+
               _ => {}
+            }
+        }
+    }
+
+    fn vec_slice_info(&self,
+                      pat: @ast::pat,
+                      tail_ty: ty::t) -> (ast::mutability, ty::Region)
+    {
+        /*!
+         *
+         * In a pattern like [a, b, ..c], normally `c` has slice type,
+         * but if you have [a, b, ..ref c], then the type of `ref c`
+         * will be `&&[]`, so to extract the slice details we have
+         * to recurse through rptrs.
+         */
+
+        match ty::get(tail_ty).sty {
+            ty::ty_evec(tail_mt, ty::vstore_slice(tail_r)) => {
+                (tail_mt.mutbl, tail_r)
+            }
+
+            ty::ty_rptr(_, ref mt) => {
+                self.vec_slice_info(pat, mt.ty)
+            }
+
+            _ => {
+                self.tcx().sess.span_bug(
+                    pat.span,
+                    fmt!("Type of tail pattern is not a slice"));
             }
         }
     }

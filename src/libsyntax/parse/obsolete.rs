@@ -33,6 +33,7 @@ use core::str;
 use core::to_bytes;
 
 /// The specific types of unsupported syntax
+#[deriving_eq]
 pub enum ObsoleteSyntax {
     ObsoleteLowerCaseKindBounds,
     ObsoleteLet,
@@ -45,16 +46,8 @@ pub enum ObsoleteSyntax {
     ObsoleteModeInFnType,
     ObsoleteMoveInit,
     ObsoleteBinaryMove,
-    ObsoleteUnsafeBlock
-}
-
-impl ObsoleteSyntax : cmp::Eq {
-    pure fn eq(&self, other: &ObsoleteSyntax) -> bool {
-        (*self) as uint == (*other) as uint
-    }
-    pure fn ne(&self, other: &ObsoleteSyntax) -> bool {
-        !(*self).eq(other)
-    }
+    ObsoleteUnsafeBlock,
+    ObsoleteUnenforcedBound
 }
 
 impl ObsoleteSyntax: to_bytes::IterBytes {
@@ -123,6 +116,11 @@ impl Parser {
             ObsoleteUnsafeBlock => (
                 "non-standalone unsafe block",
                 "use an inner `unsafe { ... }` block instead"
+            ),
+            ObsoleteUnenforcedBound => (
+                "unenforced type parameter bound",
+                "use trait bounds on the functions that take the type as \
+                 arguments, not on the types themselves"
             )
         };
 

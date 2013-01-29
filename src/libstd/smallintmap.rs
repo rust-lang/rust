@@ -15,7 +15,7 @@
 #[forbid(deprecated_mode)];
 
 use map;
-use map::Map;
+use map::StdMap;
 
 use core::dvec::DVec;
 use core::ops;
@@ -25,11 +25,11 @@ use core::prelude::*;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
-struct SmallIntMap_<T: Copy> {
+struct SmallIntMap_<T> {
     v: DVec<Option<T>>,
 }
 
-pub enum SmallIntMap<T:Copy> {
+pub enum SmallIntMap<T> {
     SmallIntMap_(@SmallIntMap_<T>)
 }
 
@@ -81,7 +81,7 @@ pub pure fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
 }
 
 /// Implements the map::map interface for smallintmap
-impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
+impl<V: Copy> SmallIntMap<V>: map::StdMap<uint, V> {
     pure fn size() -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
@@ -165,8 +165,8 @@ impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
 }
 
 /// Cast the given smallintmap to a map::map
-pub fn as_map<V: Copy>(s: SmallIntMap<V>) -> map::Map<uint, V> {
-    s as map::Map::<uint, V>
+pub fn as_map<V: Copy>(s: SmallIntMap<V>) -> map::StdMap<uint, V> {
+    s as map::StdMap::<uint, V>
 }
 
 #[cfg(test)]

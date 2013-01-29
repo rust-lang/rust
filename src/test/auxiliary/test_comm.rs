@@ -24,7 +24,7 @@ use core::libc::size_t;
  * transmitted. If a port value is copied, both copies refer to the same
  * port.  Ports may be associated with multiple `chan`s.
  */
-pub enum port<T: Owned> {
+pub enum port<T> {
     port_t(@port_ptr<T>)
 }
 
@@ -35,7 +35,7 @@ pub fn port<T: Owned>() -> port<T> {
     }
 }
 
-struct port_ptr<T:Owned> {
+struct port_ptr<T> {
    po: *rust_port,
 }
 

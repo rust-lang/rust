@@ -973,6 +973,12 @@ enum trait_method {
 #[auto_decode]
 enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
+impl int_ty : ToStr {
+    pure fn to_str() -> ~str {
+        ::ast_util::int_ty_to_str(self)
+    }
+}
+
 impl int_ty : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
@@ -1003,6 +1009,12 @@ impl int_ty : cmp::Eq {
 #[auto_decode]
 enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
+impl uint_ty : ToStr {
+    pure fn to_str() -> ~str {
+        ::ast_util::uint_ty_to_str(self)
+    }
+}
+
 impl uint_ty : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
@@ -1030,6 +1042,12 @@ impl uint_ty : cmp::Eq {
 #[auto_encode]
 #[auto_decode]
 enum float_ty { ty_f, ty_f32, ty_f64, }
+
+impl float_ty : ToStr {
+    pure fn to_str() -> ~str {
+        ::ast_util::float_ty_to_str(self)
+    }
+}
 
 impl float_ty : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {

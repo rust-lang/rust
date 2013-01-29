@@ -652,7 +652,10 @@ new_task_common(rust_scheduler *sched, rust_task *parent) {
 extern "C" CDECL rust_task*
 new_task() {
     rust_task *task = rust_get_current_task();
-    return new_task_common(task->sched, task);
+    rust_sched_id sched_id = task->kernel->main_sched_id();
+    rust_scheduler *sched = task->kernel->get_scheduler_by_id(sched_id);
+    assert(sched != NULL && "should always have a main scheduler");
+    return new_task_common(sched, task);
 }
 
 extern "C" CDECL rust_task*
@@ -855,24 +858,6 @@ rust_compare_and_swap_ptr(intptr_t *address,
     return sync::compare_and_swap(address, oldval, newval);
 }
 
-extern "C" CDECL void
-rust_task_weaken(rust_port_id chan) {
-    rust_task *task = rust_get_current_task();
-    task->kernel->weaken_task(chan);
-}
-
-extern "C" CDECL void
-rust_task_unweaken(rust_port_id chan) {
-    rust_task *task = rust_get_current_task();
-    task->kernel->unweaken_task(chan);
-}
-
-extern "C" CDECL uintptr_t*
-rust_global_env_chan_ptr() {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->get_global_env_chan();
-}
-
 extern "C" void
 rust_task_inhibit_kill(rust_task *task) {
     task->inhibit_kill();
@@ -1023,6 +1008,29 @@ rust_raw_thread_join_delete(raw_thread *thread) {
     delete thread;
 }
 
+extern "C" void
+rust_register_exit_function(spawn_fn runner, fn_env_pair *f) {
+    rust_task *task = rust_get_current_task();
+    task->kernel->register_exit_function(runner, f);
+}
+
+extern "C" void *
+rust_get_global_data_ptr() {
+    rust_task *task = rust_get_current_task();
+    return &task->kernel->global_data;
+}
+
+extern "C" void
+rust_inc_weak_task_count() {
+    rust_task *task = rust_get_current_task();
+    task->kernel->inc_weak_task_count();
+}
+
+extern "C" void
+rust_dec_weak_task_count() {
+    rust_task *task = rust_get_current_task();
+    task->kernel->dec_weak_task_count();
+}
 
 //
 // Local Variables:

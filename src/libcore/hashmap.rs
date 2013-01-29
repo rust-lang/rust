@@ -16,7 +16,6 @@
 
 use cmp::Eq;
 use hash::Hash;
-use prelude::*;
 use to_bytes::IterBytes;
 
 /// Open addressing with linear probing.
@@ -36,13 +35,13 @@ pub mod linear {
 
     const INITIAL_CAPACITY: uint = 32u; // 2^5
 
-    struct Bucket<K: Eq Hash, V> {
+    struct Bucket<K,V> {
         hash: uint,
         key: K,
         value: V,
     }
 
-    pub struct LinearMap<K: Eq Hash, V> {
+    pub struct LinearMap<K,V> {
         k0: u64,
         k1: u64,
         resize_at: uint,
@@ -424,7 +423,7 @@ pub mod linear {
         pure fn ne(&self, other: &LinearMap<K, V>) -> bool { !self.eq(other) }
     }
 
-    pub struct LinearSet<T: Hash IterBytes Eq> {
+    pub struct LinearSet<T> {
         priv map: LinearMap<T, ()>
     }
 
@@ -479,6 +478,7 @@ pub mod linear {
 
 #[test]
 pub mod test {
+    use container::{Container, Mutable, Map, Set};
     use option::{None, Some};
     use hashmap::linear::LinearMap;
     use hashmap::linear;

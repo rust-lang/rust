@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use ast;
 use ast_util;
-use codemap::{span, CodeMap, CharPos, BytePos};
+use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
 use diagnostic::span_handler;
 use ext::tt::transcribe::{tt_next_token};

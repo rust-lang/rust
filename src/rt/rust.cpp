@@ -43,8 +43,8 @@ rust_start(uintptr_t main_fn, int argc, char **argv, void* crate_map) {
 
     rust_kernel *kernel = new rust_kernel(env);
 
-    // Create the main scheduler and the main task
-    rust_sched_id sched_id = kernel->create_scheduler(env->num_sched_threads);
+    // Create the main task
+    rust_sched_id sched_id = kernel->main_sched_id();
     rust_scheduler *sched = kernel->get_scheduler_by_id(sched_id);
     assert(sched != NULL);
     rust_task *root_task = sched->create_task(NULL, "main");

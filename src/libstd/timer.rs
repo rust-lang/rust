@@ -39,7 +39,7 @@ use core;
  * * ch - a channel of type T to send a `val` on
  * * val - a value of type T to send over the provided `ch`
  */
-pub fn delayed_send<T: Owned>(iotask: IoTask,
+pub fn delayed_send<T: Owned>(iotask: &IoTask,
                               msecs: uint,
                               ch: oldcomm::Chan<T>,
                               val: T) {
@@ -92,7 +92,7 @@ pub fn delayed_send<T: Owned>(iotask: IoTask,
  * * `iotask` - a `uv::iotask` that the tcp request will run on
  * * msecs - an amount of time, in milliseconds, for the current task to block
  */
-pub fn sleep(iotask: IoTask, msecs: uint) {
+pub fn sleep(iotask: &IoTask, msecs: uint) {
     let exit_po = oldcomm::Port::<()>();
     let exit_ch = oldcomm::Chan(&exit_po);
     delayed_send(iotask, msecs, exit_ch, ());
@@ -119,7 +119,7 @@ pub fn sleep(iotask: IoTask, msecs: uint) {
  * on the provided port in the allotted timeout period, then the result will
  * be a `Some(T)`. If not, then `None` will be returned.
  */
-pub fn recv_timeout<T: Copy Owned>(iotask: IoTask,
+pub fn recv_timeout<T: Copy Owned>(iotask: &IoTask,
                                    msecs: uint,
                                    wait_po: oldcomm::Port<T>)
                                 -> Option<T> {
@@ -183,13 +183,13 @@ mod test {
 
     #[test]
     fn test_gl_timer_simple_sleep_test() {
-        let hl_loop = uv::global_loop::get();
+        let hl_loop = &uv::global_loop::get();
         sleep(hl_loop, 1u);
     }
 
     #[test]
     fn test_gl_timer_sleep_stress1() {
-        let hl_loop = uv::global_loop::get();
+        let hl_loop = &uv::global_loop::get();
         for iter::repeat(50u) {
             sleep(hl_loop, 1u);
         }
@@ -199,7 +199,7 @@ mod test {
     fn test_gl_timer_sleep_stress2() {
         let po = oldcomm::Port();
         let ch = oldcomm::Chan(&po);
-        let hl_loop = uv::global_loop::get();
+        let hl_loop = &uv::global_loop::get();
 
         let repeat = 20u;
         let spec = {
@@ -214,11 +214,12 @@ mod test {
 
             for spec.each |spec| {
                 let (times, maxms) = *spec;
+                let hl_loop_clone = hl_loop.clone();
                 do task::spawn {
                     use rand::*;
                     let rng = Rng();
                     for iter::repeat(times) {
-                        sleep(hl_loop, rng.next() as uint % maxms);
+                        sleep(&hl_loop_clone, rng.next() as uint % maxms);
                     }
                     oldcomm::send(ch, ());
                 }
@@ -277,12 +278,12 @@ mod test {
             let expected = rand::Rng().gen_str(16u);
             let test_po = oldcomm::Port::<~str>();
             let test_ch = oldcomm::Chan(&test_po);
-
+            let hl_loop_clone = hl_loop.clone();
             do task::spawn() {
-                delayed_send(hl_loop, 50u, test_ch, expected);
+                delayed_send(&hl_loop_clone, 50u, test_ch, expected);
             };
 
-            match recv_timeout(hl_loop, 1u, test_po) {
+            match recv_timeout(&hl_loop, 1u, test_po) {
               None => successes += 1,
               _ => failures += 1
             };

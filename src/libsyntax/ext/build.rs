@@ -267,8 +267,14 @@ fn mk_pat(cx: ext_ctxt, span: span, +pat: ast::pat_) -> @ast::pat {
     @ast::pat { id: cx.next_id(), node: pat, span: span }
 }
 fn mk_pat_ident(cx: ext_ctxt, span: span, ident: ast::ident) -> @ast::pat {
+    mk_pat_ident_with_binding_mode(cx, span, ident, ast::bind_by_value)
+}
+fn mk_pat_ident_with_binding_mode(cx: ext_ctxt,
+                                  span: span,
+                                  ident: ast::ident,
+                                  bm: ast::binding_mode) -> @ast::pat {
     let path = mk_raw_path(span, ~[ ident ]);
-    let pat = ast::pat_ident(ast::bind_by_value, path, None);
+    let pat = ast::pat_ident(bm, path, None);
     mk_pat(cx, span, move pat)
 }
 fn mk_pat_enum(cx: ext_ctxt,
