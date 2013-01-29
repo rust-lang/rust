@@ -83,8 +83,12 @@ RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
 
 ifeq ($$(HOST_$(1)), i386)
   LIBUV_ARCH_$(1) := ia32
-else
+else ifeq  ($$(HOST_$(1)), x86_64)
   LIBUV_ARCH_$(1) := x86_64
+else ifeq  ($$(HOST_$(1)), arm)
+  LIBUV_ARCH_$(1) := arm
+else ifeq  ($$(HOST_$(1)), mips)
+  LIBUV_ARCH_$(1) := mips
 endif
 
 ifeq ($$(CFG_WINDOWSY), 1)
