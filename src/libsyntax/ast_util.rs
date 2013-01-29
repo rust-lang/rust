@@ -24,43 +24,44 @@ use core::str;
 use core::to_bytes;
 use core::vec;
 
-pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
+pub pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
     respan(mk_sp(lo, hi), move t)
 }
 
-pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
+pub pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
     spanned {node: t, span: sp}
 }
 
-pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
+pub pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
     respan(dummy_sp(), move t)
 }
 
 /* assuming that we're not in macro expansion */
-pure fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
+pub pure fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
     span {lo: lo, hi: hi, expn_info: None}
 }
 
 // make this a const, once the compiler supports it
-pure fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
+pub pure fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
 
 
 
-pure fn path_name_i(idents: &[ident], intr: @token::ident_interner) -> ~str {
+pub pure fn path_name_i(idents: &[ident], intr: @token::ident_interner)
+                     -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     str::connect(idents.map(|i| *intr.get(*i)), ~"::")
 }
 
 
-pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
+pub pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
 
-pure fn local_def(id: node_id) -> def_id {
+pub pure fn local_def(id: node_id) -> def_id {
     ast::def_id { crate: local_crate, node: id }
 }
 
-pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
+pub pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
-pure fn stmt_id(s: stmt) -> node_id {
+pub pure fn stmt_id(s: stmt) -> node_id {
     match s.node {
       stmt_decl(_, id) => id,
       stmt_expr(_, id) => id,
@@ -69,7 +70,7 @@ pure fn stmt_id(s: stmt) -> node_id {
     }
 }
 
-fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
+pub fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
     match d {
       def_variant(enum_id, var_id) => {
         return {enm: enum_id, var: var_id}
@@ -78,7 +79,7 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
     }
 }
 
-pure fn def_id_of_def(d: def) -> def_id {
+pub pure fn def_id_of_def(d: def) -> def_id {
     match d {
       def_fn(id, _) | def_static_method(id, _, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
@@ -96,7 +97,7 @@ pure fn def_id_of_def(d: def) -> def_id {
     }
 }
 
-pure fn binop_to_str(op: binop) -> ~str {
+pub pure fn binop_to_str(op: binop) -> ~str {
     match op {
       add => return ~"+",
       subtract => return ~"-",
@@ -119,7 +120,7 @@ pure fn binop_to_str(op: binop) -> ~str {
     }
 }
 
-pure fn binop_to_method_name(op: binop) -> Option<~str> {
+pub pure fn binop_to_method_name(op: binop) -> Option<~str> {
     match op {
       add => return Some(~"add"),
       subtract => return Some(~"sub"),
@@ -141,7 +142,7 @@ pure fn binop_to_method_name(op: binop) -> Option<~str> {
     }
 }
 
-pure fn lazy_binop(b: binop) -> bool {
+pub pure fn lazy_binop(b: binop) -> bool {
     match b {
       and => true,
       or => true,
@@ -149,7 +150,7 @@ pure fn lazy_binop(b: binop) -> bool {
     }
 }
 
-pure fn is_shift_binop(b: binop) -> bool {
+pub pure fn is_shift_binop(b: binop) -> bool {
     match b {
       shl => true,
       shr => true,
@@ -157,7 +158,7 @@ pure fn is_shift_binop(b: binop) -> bool {
     }
 }
 
-pure fn unop_to_str(op: unop) -> ~str {
+pub pure fn unop_to_str(op: unop) -> ~str {
     match op {
       box(mt) => if mt == m_mutbl { ~"@mut " } else { ~"@" },
       uniq(mt) => if mt == m_mutbl { ~"~mut " } else { ~"~" },
@@ -167,11 +168,11 @@ pure fn unop_to_str(op: unop) -> ~str {
     }
 }
 
-pure fn is_path(e: @expr) -> bool {
+pub pure fn is_path(e: @expr) -> bool {
     return match e.node { expr_path(_) => true, _ => false };
 }
 
-pure fn int_ty_to_str(t: int_ty) -> ~str {
+pub pure fn int_ty_to_str(t: int_ty) -> ~str {
     match t {
       ty_char => ~"u8", // ???
       ty_i => ~"",
@@ -182,7 +183,7 @@ pure fn int_ty_to_str(t: int_ty) -> ~str {
     }
 }
 
-pure fn int_ty_max(t: int_ty) -> u64 {
+pub pure fn int_ty_max(t: int_ty) -> u64 {
     match t {
       ty_i8 => 0x80u64,
       ty_i16 => 0x8000u64,
@@ -191,7 +192,7 @@ pure fn int_ty_max(t: int_ty) -> u64 {
     }
 }
 
-pure fn uint_ty_to_str(t: uint_ty) -> ~str {
+pub pure fn uint_ty_to_str(t: uint_ty) -> ~str {
     match t {
       ty_u => ~"u",
       ty_u8 => ~"u8",
@@ -201,7 +202,7 @@ pure fn uint_ty_to_str(t: uint_ty) -> ~str {
     }
 }
 
-pure fn uint_ty_max(t: uint_ty) -> u64 {
+pub pure fn uint_ty_max(t: uint_ty) -> u64 {
     match t {
       ty_u8 => 0xffu64,
       ty_u16 => 0xffffu64,
@@ -210,11 +211,11 @@ pure fn uint_ty_max(t: uint_ty) -> u64 {
     }
 }
 
-pure fn float_ty_to_str(t: float_ty) -> ~str {
+pub pure fn float_ty_to_str(t: float_ty) -> ~str {
     match t { ty_f => ~"f", ty_f32 => ~"f32", ty_f64 => ~"f64" }
 }
 
-fn is_exported(i: ident, m: _mod) -> bool {
+pub fn is_exported(i: ident, m: _mod) -> bool {
     let mut local = false;
     let mut parent_enum : Option<ident> = None;
     for m.items.each |it| {
@@ -272,24 +273,24 @@ fn is_exported(i: ident, m: _mod) -> bool {
     return !has_explicit_exports && local;
 }
 
-pure fn is_call_expr(e: @expr) -> bool {
+pub pure fn is_call_expr(e: @expr) -> bool {
     match e.node { expr_call(_, _, _) => true, _ => false }
 }
 
 // This makes def_id hashable
-impl def_id : to_bytes::IterBytes {
+pub impl def_id : to_bytes::IterBytes {
     #[inline(always)]
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
     }
 }
 
-fn block_from_expr(e: @expr) -> blk {
+pub fn block_from_expr(e: @expr) -> blk {
     let blk_ = default_block(~[], option::Some::<@expr>(e), e.id);
     return spanned {node: blk_, span: e.span};
 }
 
-fn default_block(
+pub fn default_block(
     +stmts1: ~[@stmt],
     expr1: Option<@expr>,
     id1: node_id
@@ -303,7 +304,7 @@ fn default_block(
     }
 }
 
-fn ident_to_path(s: span, +i: ident) -> @path {
+pub fn ident_to_path(s: span, +i: ident) -> @path {
     @ast::path { span: s,
                  global: false,
                  idents: ~[i],
@@ -311,24 +312,24 @@ fn ident_to_path(s: span, +i: ident) -> @path {
                  types: ~[] }
 }
 
-fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {
+pub fn ident_to_pat(id: node_id, s: span, +i: ident) -> @pat {
     @ast::pat { id: id,
                 node: pat_ident(bind_by_value, ident_to_path(s, i), None),
                 span: s }
 }
 
-pure fn is_unguarded(a: &arm) -> bool {
+pub pure fn is_unguarded(a: &arm) -> bool {
     match a.guard {
       None => true,
       _    => false
     }
 }
 
-pure fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
+pub pure fn unguarded_pat(a: &arm) -> Option<~[@pat]> {
     if is_unguarded(a) { Some(/* FIXME (#2543) */ copy a.pats) } else { None }
 }
 
-fn public_methods(ms: ~[@method]) -> ~[@method] {
+pub fn public_methods(ms: ~[@method]) -> ~[@method] {
     do ms.filtered |m| {
         match m.vis {
             public => true,
@@ -339,7 +340,7 @@ fn public_methods(ms: ~[@method]) -> ~[@method] {
 
 // extract a ty_method from a trait_method. if the trait_method is
 // a default, pull out the useful fields to make a ty_method
-fn trait_method_to_ty_method(method: trait_method) -> ty_method {
+pub fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     match method {
         required(ref m) => (*m),
         provided(m) => {
@@ -357,7 +358,7 @@ fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     }
 }
 
-fn split_trait_methods(trait_methods: ~[trait_method])
+pub fn split_trait_methods(trait_methods: ~[trait_method])
     -> (~[ty_method], ~[@method]) {
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
@@ -369,7 +370,7 @@ fn split_trait_methods(trait_methods: ~[trait_method])
     (reqd, provd)
 }
 
-pure fn struct_field_visibility(field: ast::struct_field) -> visibility {
+pub pure fn struct_field_visibility(field: ast::struct_field) -> visibility {
     match field.node.kind {
         ast::named_field(_, _, visibility) => visibility,
         ast::unnamed_field => ast::public
@@ -382,7 +383,7 @@ pub trait inlined_item_utils {
     fn accept<E>(e: E, v: visit::vt<E>);
 }
 
-impl inlined_item: inlined_item_utils {
+pub impl inlined_item: inlined_item_utils {
     fn ident() -> ident {
         match self {
           ii_item(i) => /* FIXME (#2543) */ copy i.ident,
@@ -415,7 +416,7 @@ impl inlined_item: inlined_item_utils {
 
 /* True if d is either a def_self, or a chain of def_upvars
  referring to a def_self */
-fn is_self(d: ast::def) -> bool {
+pub fn is_self(d: ast::def) -> bool {
   match d {
     def_self(*)           => true,
     def_upvar(_, d, _, _) => is_self(*d),
@@ -424,7 +425,7 @@ fn is_self(d: ast::def) -> bool {
 }
 
 /// Maps a binary operator to its precedence
-fn operator_prec(op: ast::binop) -> uint {
+pub fn operator_prec(op: ast::binop) -> uint {
   match op {
       mul | div | rem   => 12u,
       // 'as' sits between here with 11
@@ -440,9 +441,11 @@ fn operator_prec(op: ast::binop) -> uint {
   }
 }
 
-fn dtor_ty() -> @ast::Ty { @ast::Ty {id: 0, node: ty_nil, span: dummy_sp()} }
+pub fn dtor_ty() -> @ast::Ty {
+    @ast::Ty {id: 0, node: ty_nil, span: dummy_sp()}
+}
 
-fn dtor_dec() -> fn_decl {
+pub fn dtor_dec() -> fn_decl {
     let nil_t = dtor_ty();
     // dtor has no args
     ast::fn_decl {
@@ -457,16 +460,16 @@ fn dtor_dec() -> fn_decl {
 
 #[auto_encode]
 #[auto_decode]
-struct id_range {
+pub struct id_range {
     min: node_id,
     max: node_id,
 }
 
-fn empty(range: id_range) -> bool {
+pub fn empty(range: id_range) -> bool {
     range.min >= range.max
 }
 
-fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
+pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
     visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_mod: |_m, _sp, id| vfn(id),
 
@@ -590,11 +593,11 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
     })
 }
 
-fn visit_ids_for_inlined_item(item: inlined_item, vfn: fn@(node_id)) {
+pub fn visit_ids_for_inlined_item(item: inlined_item, vfn: fn@(node_id)) {
     item.accept((), id_visitor(vfn));
 }
 
-fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
+pub fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
     let min = @mut int::max_value;
     let max = @mut int::min_value;
     do visit_ids_fn |id| {
@@ -604,18 +607,18 @@ fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
     id_range { min: *min, max: *max }
 }
 
-fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
+pub fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
     compute_id_range(|f| visit_ids_for_inlined_item(item, f))
 }
 
-pure fn is_item_impl(item: @ast::item) -> bool {
+pub pure fn is_item_impl(item: @ast::item) -> bool {
     match item.node {
        item_impl(*) => true,
        _            => false
     }
 }
 
-fn walk_pat(pat: @pat, it: fn(@pat)) {
+pub fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
@@ -646,7 +649,7 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
     }
 }
 
-fn view_path_id(p: @view_path) -> node_id {
+pub fn view_path_id(p: @view_path) -> node_id {
     match p.node {
       view_path_simple(_, _, _, id) | view_path_glob(_, id) |
       view_path_list(_, _, id) => id
@@ -655,13 +658,13 @@ fn view_path_id(p: @view_path) -> node_id {
 
 /// Returns true if the given struct def is tuple-like; i.e. that its fields
 /// are unnamed.
-fn struct_def_is_tuple_like(struct_def: @ast::struct_def) -> bool {
+pub fn struct_def_is_tuple_like(struct_def: @ast::struct_def) -> bool {
     struct_def.ctor_id.is_some()
 }
 
 
-fn visibility_to_privacy(visibility: visibility,
-                         legacy_exports: bool) -> Privacy {
+pub fn visibility_to_privacy(visibility: visibility,
+                             legacy_exports: bool) -> Privacy {
     if legacy_exports {
         match visibility {
             inherited | public => Public,
@@ -675,19 +678,19 @@ fn visibility_to_privacy(visibility: visibility,
     }
 }
 
-enum Privacy {
+pub enum Privacy {
     Private,
     Public
 }
 
-impl Privacy : cmp::Eq {
+pub impl Privacy : cmp::Eq {
     pure fn eq(&self, other: &Privacy) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
     pure fn ne(&self, other: &Privacy) -> bool { !(*self).eq(other) }
 }
 
-fn has_legacy_export_attr(attrs: &[attribute]) -> bool {
+pub fn has_legacy_export_attr(attrs: &[attribute]) -> bool {
     for attrs.each |attribute| {
         match attribute.node.value.node {
           meta_word(ref w) if (*w) == ~"legacy_exports" => {

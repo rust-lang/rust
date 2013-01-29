@@ -27,32 +27,22 @@ use core::path::Path;
 use core::result::{Err, Ok, Result};
 use core::result;
 
-#[legacy_exports]
 pub mod lexer;
-#[legacy_exports]
 pub mod parser;
-#[legacy_exports]
 pub mod token;
-#[legacy_exports]
 pub mod comments;
-#[legacy_exports]
 pub mod attr;
-#[legacy_exports]
 
 /// Common routines shared by parser mods
-#[legacy_exports]
 pub mod common;
 
 /// Functions dealing with operator precedence
-#[legacy_exports]
 pub mod prec;
 
 /// Routines the parser uses to classify AST nodes
-#[legacy_exports]
 pub mod classify;
 
 /// Reporting obsolete syntax
-#[legacy_exports]
 pub mod obsolete;
 
 pub type parse_sess = @{

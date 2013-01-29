@@ -26,12 +26,12 @@ use core::str;
 use core::to_str::ToStr;
 use core::vec;
 
-trait gen_send {
+pub trait gen_send {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item;
     fn to_ty(cx: ext_ctxt) -> @ast::Ty;
 }
 
-trait to_type_decls {
+pub trait to_type_decls {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item];
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item];
 }
@@ -45,7 +45,7 @@ pub trait gen_init {
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr;
 }
 
-impl message: gen_send {
+pub impl message: gen_send {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
         match self {
@@ -201,7 +201,7 @@ impl message: gen_send {
     }
 }
 
-impl state: to_type_decls {
+pub impl state: to_type_decls {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
         debug!("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
@@ -305,7 +305,7 @@ impl state: to_type_decls {
     }
 }
 
-impl protocol: gen_init {
+pub impl protocol: gen_init {
 
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
@@ -445,4 +445,4 @@ impl protocol: gen_init {
 
         cx.item_mod(cx.ident_of(self.name), self.span, items)
     }
-    }
+}

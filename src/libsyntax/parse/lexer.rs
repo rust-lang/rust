@@ -16,7 +16,7 @@ use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
 use diagnostic::span_handler;
 use ext::tt::transcribe::{tt_next_token};
-use ext::tt::transcribe::{tt_reader, new_tt_reader, dup_tt_reader};
+use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 
 use core::char;
@@ -24,14 +24,11 @@ use core::either;
 use core::str;
 use core::u64;
 
+pub use ext::tt::transcribe::{tt_reader, new_tt_reader};
+
 use std;
 
-export reader, string_reader, new_string_reader, is_whitespace;
-export tt_reader,  new_tt_reader;
-export nextch, is_eof, bump, get_str_from, new_low_level_string_reader;
-export string_reader_as_reader, tt_reader_as_reader;
-
-trait reader {
+pub trait reader {
     fn is_eof() -> bool;
     fn next_token() -> {tok: token::Token, sp: span};
     fn fatal(~str) -> !;
@@ -41,7 +38,7 @@ trait reader {
     fn dup() -> reader;
 }
 
-type string_reader = @{
+pub type string_reader = @{
     span_diagnostic: span_handler,
     src: @~str,
     // The absolute offset within the codemap of the next character to read
@@ -59,18 +56,18 @@ type string_reader = @{
     mut peek_span: span
 };
 
-fn new_string_reader(span_diagnostic: span_handler,
-                     filemap: @codemap::FileMap,
-                     itr: @token::ident_interner) -> string_reader {
+pub fn new_string_reader(span_diagnostic: span_handler,
+                         filemap: @codemap::FileMap,
+                         itr: @token::ident_interner) -> string_reader {
     let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
     string_advance_token(r); /* fill in peek_* */
     return r;
 }
 
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
-fn new_low_level_string_reader(span_diagnostic: span_handler,
-                               filemap: @codemap::FileMap,
-                               itr: @token::ident_interner)
+pub fn new_low_level_string_reader(span_diagnostic: span_handler,
+                                   filemap: @codemap::FileMap,
+                                   itr: @token::ident_interner)
     -> string_reader {
     // Force the initial reader bump to start on a fresh line
     let initial_char = '\n';
@@ -114,7 +111,7 @@ impl string_reader: reader {
     fn dup() -> reader { dup_string_reader(self) as reader }
 }
 
-impl tt_reader: reader {
+pub impl tt_reader: reader {
     fn is_eof() -> bool { self.cur_tok == token::EOF }
     fn next_token() -> {tok: token::Token, sp: span} {
         /* weird resolve bug: if the following `if`, or any of its
@@ -157,7 +154,7 @@ fn byte_offset(rdr: string_reader) -> BytePos {
     (rdr.pos - rdr.filemap.start_pos)
 }
 
-fn get_str_from(rdr: string_reader, start: BytePos) -> ~str {
+pub fn get_str_from(rdr: string_reader, start: BytePos) -> ~str {
     unsafe {
         // I'm pretty skeptical about this subtraction. What if there's a
         // multi-byte character before the mark?
@@ -166,7 +163,7 @@ fn get_str_from(rdr: string_reader, start: BytePos) -> ~str {
     }
 }
 
-fn bump(rdr: string_reader) {
+pub fn bump(rdr: string_reader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr).to_uint();;
     if current_byte_offset < (*rdr.src).len() {
@@ -190,10 +187,10 @@ fn bump(rdr: string_reader) {
         rdr.curr = -1 as char;
     }
 }
-fn is_eof(rdr: string_reader) -> bool {
+pub fn is_eof(rdr: string_reader) -> bool {
     rdr.curr == -1 as char
 }
-fn nextch(rdr: string_reader) -> char {
+pub fn nextch(rdr: string_reader) -> char {
     let offset = byte_offset(rdr).to_uint();
     if offset < (*rdr.src).len() {
         return str::char_at(*rdr.src, offset);
@@ -211,7 +208,7 @@ fn hex_digit_val(c: char) -> int {
 
 fn bin_digit_value(c: char) -> int { if c == '0' { return 0; } return 1; }
 
-fn is_whitespace(c: char) -> bool {
+pub fn is_whitespace(c: char) -> bool {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 

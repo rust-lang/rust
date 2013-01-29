@@ -19,9 +19,9 @@ use core::cmp;
 use core::dvec::DVec;
 use core::to_str::ToStr;
 
-enum direction { send, recv }
+pub enum direction { send, recv }
 
-impl direction : cmp::Eq {
+pub impl direction : cmp::Eq {
     pure fn eq(&self, other: &direction) -> bool {
         match ((*self), (*other)) {
             (send, send) => true,
@@ -33,7 +33,7 @@ impl direction : cmp::Eq {
     pure fn ne(&self, other: &direction) -> bool { !(*self).eq(other) }
 }
 
-impl direction: ToStr {
+pub impl direction: ToStr {
     pure fn to_str() -> ~str {
         match self {
           send => ~"Send",
@@ -42,7 +42,7 @@ impl direction: ToStr {
     }
 }
 
-impl direction {
+pub impl direction {
     fn reverse() -> direction {
         match self {
           send => recv,
@@ -51,17 +51,17 @@ impl direction {
     }
 }
 
-struct next_state {
+pub struct next_state {
     state: ~str,
     tys: ~[@ast::Ty],
 }
 
-enum message {
+pub enum message {
     // name, span, data, current state, next state
     message(~str, span, ~[@ast::Ty], state, Option<next_state>)
 }
 
-impl message {
+pub impl message {
     fn name() -> ~str {
         match self {
           message(ref id, _, _, _, _) => (*id)
@@ -82,7 +82,7 @@ impl message {
     }
 }
 
-enum state {
+pub enum state {
     state_(@{
         id: uint,
         name: ~str,
@@ -95,7 +95,7 @@ enum state {
     }),
 }
 
-impl state {
+pub impl state {
     fn add_message(name: ~str, span: span,
                    +data: ~[@ast::Ty], next: Option<next_state>) {
         self.messages.push(message(name, span, data, self,
@@ -132,13 +132,13 @@ impl state {
     }
 }
 
-type protocol = @protocol_;
+pub type protocol = @protocol_;
 
-fn protocol(name: ~str, +span: span) -> protocol {
+pub fn protocol(name: ~str, +span: span) -> protocol {
     @protocol_(name, span)
 }
 
-fn protocol_(name: ~str, span: span) -> protocol_ {
+pub fn protocol_(name: ~str, span: span) -> protocol_ {
     protocol_ {
         name: name,
         span: span,
@@ -147,7 +147,7 @@ fn protocol_(name: ~str, span: span) -> protocol_ {
     }
 }
 
-struct protocol_ {
+pub struct protocol_ {
     name: ~str,
     span: span,
     states: DVec<state>,
@@ -155,7 +155,7 @@ struct protocol_ {
     mut bounded: Option<bool>,
 }
 
-impl protocol_ {
+pub impl protocol_ {
 
     /// Get a state.
     fn get_state(name: ~str) -> state {
@@ -195,7 +195,7 @@ impl protocol_ {
     }
 }
 
-impl protocol {
+pub impl protocol {
     fn add_state_poly(name: ~str, ident: ast::ident, dir: direction,
                       +ty_params: ~[ast::ty_param]) -> state {
         let messages = DVec();
@@ -216,14 +216,14 @@ impl protocol {
     }
 }
 
-trait visitor<Tproto, Tstate, Tmessage> {
+pub trait visitor<Tproto, Tstate, Tmessage> {
     fn visit_proto(proto: protocol, st: &[Tstate]) -> Tproto;
     fn visit_state(state: state, m: &[Tmessage]) -> Tstate;
     fn visit_message(name: ~str, spane: span, tys: &[@ast::Ty],
                      this: state, next: Option<next_state>) -> Tmessage;
 }
 
-fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
+pub fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
     proto: protocol, visitor: V) -> Tproto {
 
     // the copy keywords prevent recursive use of dvec
@@ -236,3 +236,4 @@ fn visit<Tproto, Tstate, Tmessage, V: visitor<Tproto, Tstate, Tmessage>>(
     };
     visitor.visit_proto(proto, states)
 }
+

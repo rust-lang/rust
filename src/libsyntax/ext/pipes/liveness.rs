@@ -45,7 +45,7 @@ use ext::pipes::protocol;
 use core::str;
 use std::bitv::{Bitv};
 
-fn analyze(proto: protocol, _cx: ext_ctxt) {
+pub fn analyze(proto: protocol, _cx: ext_ctxt) {
     debug!("initializing colive analysis");
     let num_states = proto.num_states();
     let colive = do (copy proto.states).map_to_vec |state| {
@@ -103,3 +103,4 @@ fn analyze(proto: protocol, _cx: ext_ctxt) {
         proto.bounded = Some(true);
     }
 }
+

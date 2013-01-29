@@ -23,18 +23,11 @@ use core::dvec::DVec;
 
 use std::term;
 
-export emitter, collect, emit;
-export level, fatal, error, warning, note;
-export span_handler, handler, mk_span_handler, mk_handler;
-export codemap_span_handler, codemap_handler;
-export ice_msg;
-export expect;
-
-type emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
+pub type emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
                    msg: &str, lvl: level);
 
 
-trait span_handler {
+pub trait span_handler {
     fn span_fatal(sp: span, msg: &str) -> !;
     fn span_err(sp: span, msg: &str);
     fn span_warn(sp: span, msg: &str);
@@ -44,7 +37,7 @@ trait span_handler {
     fn handler() -> handler;
 }
 
-trait handler {
+pub trait handler {
     fn fatal(msg: &str) -> !;
     fn err(msg: &str);
     fn bump_err_count();
@@ -133,15 +126,16 @@ impl handler_t: handler {
     }
 }
 
-fn ice_msg(msg: &str) -> ~str {
+pub fn ice_msg(msg: &str) -> ~str {
     fmt!("internal compiler error: %s", msg)
 }
 
-fn mk_span_handler(handler: handler, cm: @codemap::CodeMap) -> span_handler {
+pub fn mk_span_handler(handler: handler, cm: @codemap::CodeMap)
+                    -> span_handler {
     @codemap_t { handler: handler, cm: cm } as span_handler
 }
 
-fn mk_handler(emitter: Option<emitter>) -> handler {
+pub fn mk_handler(emitter: Option<emitter>) -> handler {
 
     let emit = match emitter {
       Some(e) => e,
@@ -157,7 +151,7 @@ fn mk_handler(emitter: Option<emitter>) -> handler {
     @handler_t { mut err_count: 0, emit: emit } as handler
 }
 
-enum level {
+pub enum level {
     fatal,
     error,
     warning,
@@ -205,7 +199,7 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
     io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
-fn collect(messages: @DVec<~str>)
+pub fn collect(messages: @DVec<~str>)
     -> fn@(Option<(@codemap::CodeMap, span)>, &str, level)
 {
     let f: @fn(Option<(@codemap::CodeMap, span)>, &str, level) =
@@ -213,7 +207,7 @@ fn collect(messages: @DVec<~str>)
     f
 }
 
-fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
+pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
     match cmsp {
       Some((cm, sp)) => {
         let sp = cm.adjust_span(sp);
@@ -296,8 +290,9 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
     }
 }
 
-fn expect<T: Copy>(diag: span_handler,
-                   opt: Option<T>, msg: fn() -> ~str) -> T {
+pub fn expect<T: Copy>(diag: span_handler,
+                       opt: Option<T>,
+                       msg: fn() -> ~str) -> T {
     match opt {
        Some(ref t) => (*t),
        None => diag.handler().bug(msg())

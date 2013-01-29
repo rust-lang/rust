@@ -15,7 +15,7 @@
 use ast;
 use ast_util::operator_prec;
 
-fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
+pub fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     match e.node {
       ast::expr_if(*)
       | ast::expr_match(*)
@@ -28,7 +28,7 @@ fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     }
 }
 
-fn expr_is_simple_block(e: @ast::expr) -> bool {
+pub fn expr_is_simple_block(e: @ast::expr) -> bool {
     match e.node {
         ast::expr_block(
             ast::spanned { node: ast::blk_ { rules: ast::default_blk, _ }, _ }
@@ -37,7 +37,7 @@ fn expr_is_simple_block(e: @ast::expr) -> bool {
     }
 }
 
-fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
+pub fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
     return match stmt.node {
         ast::stmt_decl(d, _) => {
             match d.node {

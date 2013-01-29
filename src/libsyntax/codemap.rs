@@ -48,71 +48,71 @@ pub enum CharPos = uint;
 // XXX: Lots of boilerplate in these impls, but so far my attempts to fix
 // have been unsuccessful
 
-impl BytePos: Pos {
+pub impl BytePos: Pos {
     static pure fn from_uint(n: uint) -> BytePos { BytePos(n) }
     pure fn to_uint(&self) -> uint { **self }
 }
 
-impl BytePos: cmp::Eq {
+pub impl BytePos: cmp::Eq {
     pure fn eq(&self, other: &BytePos) -> bool { **self == **other }
     pure fn ne(&self, other: &BytePos) -> bool { !(*self).eq(other) }
 }
 
-impl BytePos: cmp::Ord {
+pub impl BytePos: cmp::Ord {
     pure fn lt(&self, other: &BytePos) -> bool { **self < **other }
     pure fn le(&self, other: &BytePos) -> bool { **self <= **other }
     pure fn ge(&self, other: &BytePos) -> bool { **self >= **other }
     pure fn gt(&self, other: &BytePos) -> bool { **self > **other }
 }
 
-impl BytePos: Add<BytePos, BytePos> {
+pub impl BytePos: Add<BytePos, BytePos> {
     pure fn add(&self, rhs: &BytePos) -> BytePos {
         BytePos(**self + **rhs)
     }
 }
 
-impl BytePos: Sub<BytePos, BytePos> {
+pub impl BytePos: Sub<BytePos, BytePos> {
     pure fn sub(&self, rhs: &BytePos) -> BytePos {
         BytePos(**self - **rhs)
     }
 }
 
-impl BytePos: to_bytes::IterBytes {
+pub impl BytePos: to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-impl CharPos: Pos {
+pub impl CharPos: Pos {
     static pure fn from_uint(n: uint) -> CharPos { CharPos(n) }
     pure fn to_uint(&self) -> uint { **self }
 }
 
-impl CharPos: cmp::Eq {
+pub impl CharPos: cmp::Eq {
     pure fn eq(&self, other: &CharPos) -> bool { **self == **other }
     pure fn ne(&self, other: &CharPos) -> bool { !(*self).eq(other) }
 }
 
-impl CharPos: cmp::Ord {
+pub impl CharPos: cmp::Ord {
     pure fn lt(&self, other: &CharPos) -> bool { **self < **other }
     pure fn le(&self, other: &CharPos) -> bool { **self <= **other }
     pure fn ge(&self, other: &CharPos) -> bool { **self >= **other }
     pure fn gt(&self, other: &CharPos) -> bool { **self > **other }
 }
 
-impl CharPos: to_bytes::IterBytes {
+pub impl CharPos: to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-impl CharPos: Add<CharPos, CharPos> {
+pub impl CharPos: Add<CharPos, CharPos> {
     pure fn add(&self, rhs: &CharPos) -> CharPos {
         CharPos(**self + **rhs)
     }
 }
 
-impl CharPos: Sub<CharPos, CharPos> {
+pub impl CharPos: Sub<CharPos, CharPos> {
     pure fn sub(&self, rhs: &CharPos) -> CharPos {
         CharPos(**self - **rhs)
     }
@@ -130,19 +130,19 @@ pub struct span {
     expn_info: Option<@ExpnInfo>
 }
 
-impl span : cmp::Eq {
+pub impl span : cmp::Eq {
     pure fn eq(&self, other: &span) -> bool {
         return (*self).lo == (*other).lo && (*self).hi == (*other).hi;
     }
     pure fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
 }
 
-impl<S: Encoder> span: Encodable<S> {
+pub impl<S: Encoder> span: Encodable<S> {
     /* Note #1972 -- spans are encoded but not decoded */
     fn encode(&self, _s: &S) { }
 }
 
-impl<D: Decoder> span: Decodable<D> {
+pub impl<D: Decoder> span: Decodable<D> {
     static fn decode(_d: &D) -> span {
         ast_util::dummy_sp()
     }

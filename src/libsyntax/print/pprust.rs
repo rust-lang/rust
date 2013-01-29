@@ -593,7 +593,7 @@ fn print_item(s: ps, &&item: @ast::item) {
 
 fn print_enum_def(s: ps, enum_definition: ast::enum_def,
                   params: ~[ast::ty_param], ident: ast::ident,
-                  span: ast::span, visibility: ast::visibility) {
+                  span: codemap::span, visibility: ast::visibility) {
     let mut newtype =
         vec::len(enum_definition.variants) == 1u &&
         ident == enum_definition.variants[0].node.name;
@@ -626,7 +626,7 @@ fn print_enum_def(s: ps, enum_definition: ast::enum_def,
     }
 }
 
-fn print_variants(s: ps, variants: ~[ast::variant], span: ast::span) {
+fn print_variants(s: ps, variants: ~[ast::variant], span: codemap::span) {
     bopen(s);
     for variants.each |v| {
         space_if_not_bol(s);
@@ -666,7 +666,7 @@ fn print_visibility(s: ps, vis: ast::visibility) {
 }
 
 fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
-                ident: ast::ident, span: ast::span) {
+                ident: ast::ident, span: codemap::span) {
     print_ident(s, ident);
     nbsp(s);
     print_type_params(s, tps);

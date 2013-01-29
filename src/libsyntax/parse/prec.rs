@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-export as_prec;
-export unop_prec;
-export token_to_binop;
-
 use ast::*;
 use parse::token::*;
 use parse::token::Token;
@@ -19,19 +15,19 @@ use parse::token::Token;
 use core::prelude::*;
 
 /// Unary operators have higher precedence than binary
-const unop_prec: uint = 100u;
+pub const unop_prec: uint = 100u;
 
 /**
  * Precedence of the `as` operator, which is a binary operator
  * but is not represented in the precedence table.
  */
-const as_prec: uint = 11u;
+pub const as_prec: uint = 11u;
 
 /**
  * Maps a token to a record specifying the corresponding binary
  * operator and its precedence
  */
-fn token_to_binop(tok: Token) -> Option<ast::binop> {
+pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
   match tok {
       BINOP(STAR)    => Some(mul),
       BINOP(SLASH)   => Some(div),
