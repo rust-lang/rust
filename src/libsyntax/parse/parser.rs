@@ -2791,8 +2791,9 @@ impl Parser {
         (ident, item_trait(tps, traits, meths), None)
     }
 
-    // Parses four variants (with the region/type params always optional):
+    // Parses two variants (with the region/type params always optional):
     //    impl<T> ~[T] : to_str { ... }
+    //    impl<T> to_str for ~[T] { ... }
     fn parse_item_impl() -> item_info {
         fn wrap_path(p: Parser, pt: @path) -> @Ty {
             @Ty {
@@ -2801,8 +2802,6 @@ impl Parser {
                 span: pt.span,
             }
         }
-
-        // We do two separate paths here: old-style impls and new-style impls.
 
         // First, parse type parameters if necessary.
         let mut tps;
@@ -2816,14 +2815,32 @@ impl Parser {
         // XXX: clownshoes
         let ident = special_idents::clownshoes_extensions;
 
-        // Parse the type.
-        let ty = self.parse_ty(false);
-
+        // Parse the type. (If this is `impl trait for type`, however, this
+        // actually parses the trait.)
+        let mut ty = self.parse_ty(false);
 
         // Parse traits, if necessary.
         let opt_trait = if self.token == token::COLON {
+            // Old-style trait.
             self.bump();
             Some(self.parse_trait_ref())
+        } else if self.eat_keyword(~"for") {
+            // New-style trait. Reinterpret the type as a trait.
+            let opt_trait_ref = match ty.node {
+                ty_path(path, node_id) => {
+                    Some(@trait_ref {
+                        path: path,
+                        ref_id: node_id
+                    })
+                }
+                _ => {
+                    self.span_err(copy self.span, ~"not a trait");
+                    None
+                }
+            };
+
+            ty = self.parse_ty(false);
+            opt_trait_ref
         } else {
             None
         };
