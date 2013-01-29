@@ -65,4 +65,10 @@ pub trait Set<T>: Mutable {
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
     fn remove(&mut self, value: &T) -> bool;
+
+    /// Return true if the set is a subset of another
+    pure fn is_subset(&self, other: &self) -> bool;
+
+    /// Return true if the set is a superset of another
+    pure fn is_superset(&self, other: &self) -> bool;
 }

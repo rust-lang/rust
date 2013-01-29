@@ -25,6 +25,7 @@ pub mod linear {
     use cmp::Eq;
     use cmp;
     use hash::Hash;
+    use iter;
     use kinds::Copy;
     use option::{None, Option, Some};
     use option;
@@ -453,6 +454,16 @@ pub mod linear {
         /// Remove a value from the set. Return true if the value was
         /// present in the set.
         fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
+
+        /// Return true if the set is a subset of another
+        pure fn is_subset(&self, other: &LinearSet<T>) -> bool {
+            iter::all(self, |v| other.contains(v))
+        }
+
+        /// Return true if the set is a superset of another
+        pure fn is_superset(&self, other: &LinearSet<T>) -> bool {
+            other.is_subset(self)
+        }
     }
 
     pub impl <T: Hash IterBytes Eq> LinearSet<T> {
@@ -462,7 +473,7 @@ pub mod linear {
 }
 
 #[test]
-pub mod test {
+mod test_map {
     use container::{Container, Mutable, Map, Set};
     use option::{None, Some};
     use hashmap::linear::LinearMap;
@@ -608,5 +619,39 @@ pub mod test {
 
         assert m.len() == i;
         assert !m.is_empty();
+    }
+}
+
+#[test]
+mod test_set {
+    use super::*;
+
+    #[test]
+    fn test_subset_and_superset() {
+        let mut a = linear::LinearSet::new();
+        assert a.insert(0);
+        assert a.insert(5);
+        assert a.insert(11);
+        assert a.insert(7);
+
+        let mut b = linear::LinearSet::new();
+        assert b.insert(0);
+        assert b.insert(7);
+        assert b.insert(19);
+        assert b.insert(250);
+        assert b.insert(11);
+        assert b.insert(200);
+
+        assert !a.is_subset(&b);
+        assert !a.is_superset(&b);
+        assert !b.is_subset(&a);
+        assert !b.is_superset(&a);
+
+        assert b.insert(5);
+
+        assert a.is_subset(&b);
+        assert !a.is_superset(&b);
+        assert !b.is_subset(&a);
+        assert b.is_superset(&a);
     }
 }

@@ -291,6 +291,43 @@ impl <T: Ord> TreeSet<T>: Set<T> {
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
+
+    /// Return true if the set is a subset of another
+    pure fn is_subset(&self, other: &TreeSet<T>) -> bool {
+        other.is_superset(self)
+    }
+
+    /// Return true if the set is a superset of another
+    pure fn is_superset(&self, other: &TreeSet<T>) -> bool {
+        let mut x = self.iter();
+        let mut y = other.iter();
+        unsafe { // purity workaround
+            x = x.next();
+            y = y.next();
+            let mut a = x.get();
+            let mut b = y.get();
+            while b.is_some() {
+                if a.is_none() {
+                    return false
+                }
+
+                let a1 = a.unwrap();
+                let b1 = b.unwrap();
+
+                if b1 < a1 {
+                    return false
+                }
+
+                if !(a1 < b1) {
+                    y = y.next();
+                    b = y.get();
+                }
+                x = x.next();
+                a = x.get();
+            }
+        }
+        true
+    }
 }
 
 impl <T: Ord> TreeSet<T> {
@@ -330,43 +367,6 @@ impl <T: Ord> TreeSet<T> {
                 } else {
                     return false;
                 }
-            }
-        }
-        true
-    }
-
-    /// Check of the set is a subset of another
-    pure fn is_subset(&self, other: &TreeSet<T>) -> bool {
-        other.is_superset(self)
-    }
-
-    /// Check of the set is a superset of another
-    pure fn is_superset(&self, other: &TreeSet<T>) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-        unsafe { // purity workaround
-            x = x.next();
-            y = y.next();
-            let mut a = x.get();
-            let mut b = y.get();
-            while b.is_some() {
-                if a.is_none() {
-                    return false
-                }
-
-                let a1 = a.unwrap();
-                let b1 = b.unwrap();
-
-                if b1 < a1 {
-                    return false
-                }
-
-                if !(a1 < b1) {
-                    y = y.next();
-                    b = y.get();
-                }
-                x = x.next();
-                a = x.get();
             }
         }
         true
