@@ -14,6 +14,7 @@
 
 extern mod std;
 extern mod syntax;
+extern mod codemap;
 
 use core::io::*;
 

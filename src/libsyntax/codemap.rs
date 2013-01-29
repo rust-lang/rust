@@ -38,9 +38,10 @@ source code snippets, etc.
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
 
-// FIXME (#4677) : move into test module (down at the bottom) when
-// it works correctly
-extern mod testingfuns(vers = "0.6");
+// FIXME (#4677) extern mod decl can move down into
+// test module once that's supported.
+extern mod testingfuns (vers="0.6");
+
 
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -187,6 +188,21 @@ pub struct Loc {
     col: CharPos
 }
 
+/// A source code location used as the result of lookup_char_pos_adj
+// Actually, *none* of the clients use the filename *or* file field;
+// perhaps they should just be removed.
+pub struct LocWithOpt {
+    filename: ~str,
+    line: uint,
+    col: CharPos,
+    file: Option<@FileMap>,
+}
+
+// used to be structural records. Better names, anyone?
+pub struct FileMapAndLine {fm: @FileMap, line: uint}
+pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
+    
+
 /// Extra information for tracking macro expansion of spans
 pub enum ExpnInfo {
     ExpandedFrom({call_site: span,
@@ -316,27 +332,25 @@ pub impl CodeMap {
         return self.lookup_pos(pos);
     }
 
-    pub fn lookup_char_pos_adj(&self, +pos: BytePos)
-        -> {filename: ~str, line: uint, col: CharPos, file: Option<@FileMap>}
+    pub fn lookup_char_pos_adj(&self, +pos: BytePos) -> LocWithOpt
     {
         let loc = self.lookup_char_pos(pos);
         match (loc.file.substr) {
-            FssNone => {
-                {filename: /* FIXME (#2543) */ copy loc.file.name,
-                 line: loc.line,
-                 col: loc.col,
-                 file: Some(loc.file)}
-            }
-            FssInternal(sp) => {
-                self.lookup_char_pos_adj(
-                    sp.lo + (pos - loc.file.start_pos))
-            }
-            FssExternal(ref eloc) => {
-                {filename: /* FIXME (#2543) */ copy (*eloc).filename,
-                 line: (*eloc).line + loc.line - 1u,
-                 col: if loc.line == 1 {eloc.col + loc.col} else {loc.col},
-                 file: None}
-            }
+            FssNone =>
+            LocWithOpt {
+                filename: /* FIXME (#2543) */ copy loc.file.name,
+                line: loc.line,
+                col: loc.col,
+                file: Some(loc.file)},
+            FssInternal(sp) =>
+            self.lookup_char_pos_adj(
+                sp.lo + (pos - loc.file.start_pos)),
+            FssExternal(ref eloc) =>
+            LocWithOpt {
+                filename: /* FIXME (#2543) */ copy (*eloc).filename,
+                line: (*eloc).line + loc.line - 1u,
+                col: if loc.line == 1 {eloc.col + loc.col} else {loc.col},
+                file: None}
         }
     }
 
@@ -398,6 +412,7 @@ pub impl CodeMap {
 
 }
 
+
 priv impl CodeMap {
 
     fn lookup_filemap_idx(&self, pos: BytePos) -> uint {
@@ -420,8 +435,7 @@ priv impl CodeMap {
         return a;
     }
 
-    fn lookup_line(&self, pos: BytePos)
-        -> {fm: @FileMap, line: uint}
+    fn lookup_line(&self, pos: BytePos) -> FileMapAndLine
     {
         let idx = self.lookup_filemap_idx(pos);
         let f = self.files[idx];
@@ -431,11 +445,11 @@ priv impl CodeMap {
             let m = (a + b) / 2u;
             if f.lines[m] > pos { b = m; } else { a = m; }
         }
-        return {fm: f, line: a};
+        return FileMapAndLine {fm: f, line: a};
     }
 
     fn lookup_pos(&self, pos: BytePos) -> Loc {
-        let {fm: f, line: a} = self.lookup_line(pos);
+        let FileMapAndLine {fm: f, line: a} = self.lookup_line(pos);
         let line = a + 1u; // Line numbers start at 1
         let chpos = self.bytepos_to_local_charpos(pos);
         let linebpos = f.lines[a];
@@ -461,11 +475,11 @@ priv impl CodeMap {
     }
 
     fn lookup_byte_offset(&self, bpos: BytePos)
-        -> {fm: @FileMap, pos: BytePos} {
+        -> FileMapAndBytePos {
         let idx = self.lookup_filemap_idx(bpos);
         let fm = self.files[idx];
         let offset = bpos - fm.start_pos;
-        return {fm: fm, pos: offset};
+        return FileMapAndBytePos {fm: fm, pos: offset};
     }
 
     // Converts an absolute BytePos to a CharPos relative to the file it is
@@ -498,6 +512,7 @@ priv impl CodeMap {
 #[cfg(test)]
 mod test {
     use super::*;
+    extern mod testingfuns;
     use testingfuns::check_equal;
 
     #[test]

@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use ast;
-use ast_util;
 use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
 use diagnostic::span_handler;
@@ -136,21 +135,23 @@ pub impl tt_reader: reader {
     fn dup() -> reader { dup_tt_reader(self) as reader }
 }
 
+// advance peek_tok and peek_span to refer to the next token.
 fn string_advance_token(&&r: StringReader) {
-    for consume_whitespace_and_comments(r).each |comment| {
-        r.peek_tok = comment.tok;
-        r.peek_span = comment.sp;
-        return;
+    match (consume_whitespace_and_comments(r)) {
+        Some(comment) => {
+            r.peek_tok = comment.tok;
+            r.peek_span = comment.sp;
+            return; },
+        None => {
+            if is_eof(r) {
+                r.peek_tok = token::EOF;
+            } else {
+                let start_bytepos = r.last_pos;
+                r.peek_tok = next_token_inner(r);
+                r.peek_span = codemap::mk_sp(start_bytepos, r.last_pos);
+            };
+        },
     }
-
-    if is_eof(r) {
-        r.peek_tok = token::EOF;
-    } else {
-        let start_bytepos = r.last_pos;
-        r.peek_tok = next_token_inner(r);
-        r.peek_span = ast_util::mk_sp(start_bytepos, r.last_pos);
-    };
-
 }
 
 fn byte_offset(rdr: StringReader) -> BytePos {
@@ -262,7 +263,7 @@ fn consume_any_line_comment(rdr: StringReader)
                 }
                 return Some({
                     tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                    sp: ast_util::mk_sp(start_bpos, rdr.pos)
+                    sp: codemap::mk_sp(start_bpos, rdr.pos)
                 });
             } else {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
@@ -307,7 +308,7 @@ fn consume_block_comment(rdr: StringReader)
             bump(rdr);
             return Some({
                 tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                sp: ast_util::mk_sp(start_bpos, rdr.pos)
+                sp: codemap::mk_sp(start_bpos, rdr.pos)
             });
         }
     } else {
@@ -706,6 +707,10 @@ fn consume_whitespace(rdr: StringReader) {
     while is_whitespace(rdr.curr) && !is_eof(rdr) { bump(rdr); }
 }
 
+#[cfg(test)]
+pub mod test {
+    #[test] fn t1 () {}
+}
 
 //
 // Local Variables:
