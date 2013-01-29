@@ -1123,10 +1123,23 @@ pub mod funcs {
             unsafe fn strerror(n: c_int) -> *c_char;
             unsafe fn strtok(s: *c_char, t: *c_char) -> *c_char;
             unsafe fn strxfrm(s: *c_char, ct: *c_char, n: size_t) -> size_t;
+
+            // These are fine to execute on the Rust stack. They must be, in
+            // fact, because LLVM generates calls to them!
+            #[rust_stack]
+            #[inline(always)]
             unsafe fn memcpy(s: *c_void, ct: *c_void, n: size_t) -> *c_void;
+            #[rust_stack]
+            #[inline(always)]
             unsafe fn memmove(s: *c_void, ct: *c_void, n: size_t) -> *c_void;
+            #[rust_stack]
+            #[inline(always)]
             unsafe fn memcmp(cx: *c_void, ct: *c_void, n: size_t) -> c_int;
+            #[rust_stack]
+            #[inline(always)]
             unsafe fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
+            #[rust_stack]
+            #[inline(always)]
             unsafe fn memset(s: *c_void, c: c_int, n: size_t) -> *c_void;
         }
     }

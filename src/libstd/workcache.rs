@@ -235,7 +235,14 @@ struct Exec {
     discovered_outputs: WorkMap
 }
 
+#[cfg(stage0)]
 struct Work<T:Owned> {
+    prep: @Mut<Prep>,
+    res: Option<Either<T,PortOne<(Exec,T)>>>
+}
+#[cfg(stage1)]
+#[cfg(stage2)]
+struct Work<T> {
     prep: @Mut<Prep>,
     res: Option<Either<T,PortOne<(Exec,T)>>>
 }

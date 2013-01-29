@@ -1111,7 +1111,7 @@ pub mod fsync {
 
 
     // Artifacts that need to fsync on destruction
-    pub struct Res<t: Copy> {
+    pub struct Res<t> {
         arg: Arg<t>,
     }
 

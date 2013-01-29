@@ -17,7 +17,7 @@ use middle::ty::{bound_copy, bound_const, bound_durable, bound_owned,
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid,
                  br_fresh};
 use middle::ty::{ctxt, field, method};
-use middle::ty::{mt, t, param_bound};
+use middle::ty::{mt, t, param_bound, param_ty};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
@@ -292,9 +292,8 @@ fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
 }
 
 fn ty_to_str(cx: ctxt, typ: t) -> ~str {
-    fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
-       ~str {
-        let {mode, ty} = input;
+    fn fn_input_to_str(cx: ctxt, input: ty::arg) -> ~str {
+        let ty::arg {mode: mode, ty: ty} = input;
         let modestr = match canon_mode(cx, mode) {
           ast::infer(_) => ~"",
           ast::expl(m) => {
@@ -423,7 +422,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
-      ty_param({idx: id, _}) => {
+      ty_param(param_ty {idx: id, _}) => {
         ~"'" + str::from_bytes(~[('a' as u8) + (id as u8)])
       }
       ty_self => ~"self",

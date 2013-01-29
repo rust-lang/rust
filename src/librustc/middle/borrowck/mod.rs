@@ -344,7 +344,11 @@ type root_map = HashMap<root_map_key, RootInfo>;
 // if you have an expression `x.f` and x has type ~@T, we could add an
 // entry {id:x, derefs:0} to refer to `x` itself, `{id:x, derefs:1}`
 // to refer to the deref of the unique pointer, and so on.
-type root_map_key = {id: ast::node_id, derefs: uint};
+#[deriving_eq]
+struct root_map_key {
+    id: ast::node_id,
+    derefs: uint
+}
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
@@ -411,13 +415,10 @@ impl bckerr_code : cmp::Eq {
 
 // Combination of an error code and the categorization of the expression
 // that caused it
-type bckerr = {cmt: cmt, code: bckerr_code};
-
-impl bckerr : cmp::Eq {
-    pure fn eq(&self, other: &bckerr) -> bool {
-        (*self).cmt == (*other).cmt && (*self).code == (*other).code
-    }
-    pure fn ne(&self, other: &bckerr) -> bool { !(*self).eq(other) }
+#[deriving_eq]
+struct bckerr {
+    cmt: cmt,
+    code: bckerr_code
 }
 
 // shorthand for something that fails with `bckerr` or succeeds with `T`
@@ -445,15 +446,6 @@ fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T, f: fn() -> U) -> U {
 }
 
 /// Creates and returns a new root_map
-
-impl root_map_key : cmp::Eq {
-    pure fn eq(&self, other: &root_map_key) -> bool {
-        (*self).id == (*other).id && (*self).derefs == (*other).derefs
-    }
-    pure fn ne(&self, other: &root_map_key) -> bool {
-        ! ((*self) == (*other))
-    }
-}
 
 impl root_map_key : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
@@ -501,7 +493,7 @@ impl borrowck_ctxt {
     }
 
     fn cat_discr(cmt: cmt, match_id: ast::node_id) -> cmt {
-        return @{cat:cat_discr(cmt, match_id),.. *cmt};
+        return @cmt_ { cat: cat_discr(cmt, match_id),.. *cmt };
     }
 
     fn mc_ctxt() -> mem_categorization_ctxt {

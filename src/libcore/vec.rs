@@ -266,6 +266,7 @@ pub pure fn slice<T: Copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
 }
 
 /// Return a slice that points into another slice.
+#[inline(always)]
 pub pure fn view<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
     assert (start <= end);
     assert (end <= len(v));
@@ -279,6 +280,7 @@ pub pure fn view<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
 }
 
 /// Return a slice that points into another slice.
+#[inline(always)]
 pub pure fn mut_view<T>(v: &r/[mut T], start: uint, end: uint) -> &r/[mut T] {
     assert (start <= end);
     assert (end <= len(v));
@@ -292,6 +294,7 @@ pub pure fn mut_view<T>(v: &r/[mut T], start: uint, end: uint) -> &r/[mut T] {
 }
 
 /// Return a slice that points into another slice.
+#[inline(always)]
 pub pure fn const_view<T>(v: &r/[const T], start: uint,
                       end: uint) -> &r/[const T] {
     assert (start <= end);
@@ -304,6 +307,8 @@ pub pure fn const_view<T>(v: &r/[const T], start: uint,
         }
     }
 }
+
+/// Copies 
 
 /// Split the vector `v` by applying each element against the predicate `f`.
 pub fn split<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
@@ -2127,6 +2132,7 @@ pub mod raw {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
+    #[inline(always)]
     pub unsafe fn copy_memory<T>(dst: &[mut T], src: &[const T],
                                  count: uint) {
         assert dst.len() >= count;
@@ -2193,6 +2199,7 @@ pub mod bytes {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
+    #[inline(always)]
     pub fn copy_memory(dst: &[mut u8], src: &[const u8], count: uint) {
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }

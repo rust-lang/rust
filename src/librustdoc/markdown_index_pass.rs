@@ -54,7 +54,7 @@ fn fold_mod(
 
     let doc = fold::default_any_fold_mod(fold, doc);
 
-    doc::ModDoc_({
+    doc::ModDoc_(doc::ModDoc_ {
         index: Some(build_mod_index(doc, fold.ctxt)),
         .. *doc
     })
@@ -67,7 +67,7 @@ fn fold_nmod(
 
     let doc = fold::default_any_fold_nmod(fold, doc);
 
-    {
+    doc::NmodDoc {
         index: Some(build_nmod_index(doc, fold.ctxt)),
         .. doc
     }
@@ -77,7 +77,7 @@ fn build_mod_index(
     +doc: doc::ModDoc,
     +config: config::Config
 ) -> doc::Index {
-    {
+    doc::Index {
         entries: par::map(doc.items, |doc| {
             item_to_entry(*doc, config)
         })
@@ -88,7 +88,7 @@ fn build_nmod_index(
     +doc: doc::NmodDoc,
     +config: config::Config
 ) -> doc::Index {
-    {
+    doc::Index {
         entries: par::map(doc.fns, |doc| {
             item_to_entry(doc::FnTag(*doc), config)
         })
@@ -109,7 +109,7 @@ fn item_to_entry(
       }
     };
 
-    {
+    doc::IndexEntry {
         kind: markdown_pass::header_kind(doc),
         name: markdown_pass::header_name(doc),
         brief: doc.brief(),

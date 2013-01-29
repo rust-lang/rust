@@ -13,7 +13,8 @@
 use ast::ident;
 use ast_util::dummy_sp;
 use ext::base::ext_ctxt;
-use ext::pipes::ast_builder::{append_types, path, path_global};
+use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
+use ext::pipes::ast_builder::{path_global};
 use ext::pipes::proto::*;
 use ext::quote::rt::*;
 use parse::*;
@@ -35,7 +36,7 @@ trait to_type_decls {
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item];
 }
 
-trait gen_init {
+pub trait gen_init {
     fn gen_init(cx: ext_ctxt) -> @ast::item;
     fn compile(cx: ext_ctxt) -> @ast::item;
     fn buffer_ty_path(cx: ext_ctxt) -> @ast::Ty;
@@ -247,7 +248,7 @@ impl state: to_type_decls {
                 ast::enum_def(enum_def_ {
                     variants: items_msg,
                     common: None }),
-                self.ty_params
+                cx.strip_bounds(self.ty_params)
             )
         ]
     }
@@ -280,7 +281,7 @@ impl state: to_type_decls {
                                    self.data_name()],
                                  dummy_sp())
                             .add_tys(cx.ty_vars_global(self.ty_params))))),
-                    self.ty_params));
+                    cx.strip_bounds(self.ty_params)));
         }
         else {
             items.push(
@@ -298,7 +299,7 @@ impl state: to_type_decls {
                                         dummy_sp())
                             .add_tys(cx.ty_vars_global(self.ty_params))),
                                    self.proto.buffer_ty_path(cx)])),
-                    self.ty_params));
+                    cx.strip_bounds(self.ty_params)));
         };
         items
     }
@@ -416,7 +417,7 @@ impl protocol: gen_init {
             cx.ident_of(~"__Buffer"),
             dummy_sp(),
             cx.ty_rec(fields),
-            params)
+            cx.strip_bounds(params))
     }
 
     fn compile(cx: ext_ctxt) -> @ast::item {

@@ -24,11 +24,11 @@ use core::uint;
 use core::vec;
 
 /// A convenience type to treat a hashmap as a set
-pub type Set<K:Eq IterBytes Hash> = HashMap<K, ()>;
+pub type Set<K> = HashMap<K, ()>;
 
-pub type HashMap<K:Eq IterBytes Hash, V> = chained::T<K, V>;
+pub type HashMap<K, V> = chained::T<K, V>;
 
-pub trait Map<K:Eq IterBytes Hash Copy, V: Copy> {
+pub trait StdMap<K:Eq IterBytes Hash Copy, V: Copy> {
     /// Return the number of elements in the map
     pure fn size() -> uint;
 
@@ -124,7 +124,7 @@ pub mod util {
 // FIXME (#2344): package this up and export it as a datatype usable for
 // external code that doesn't want to pay the cost of a box.
 pub mod chained {
-    use map::{Map, util};
+    use map::{StdMap, util};
 
     use core::io;
     use core::ops;
@@ -142,12 +142,12 @@ pub mod chained {
         mut next: Option<@Entry<K, V>>
     }
 
-    struct HashMap_<K:Eq IterBytes Hash, V> {
+    struct HashMap_<K, V> {
         mut count: uint,
         mut chains: ~[mut Option<@Entry<K,V>>]
     }
 
-    pub type T<K:Eq IterBytes Hash, V> = @HashMap_<K, V>;
+    pub type T<K, V> = @HashMap_<K, V>;
 
     enum SearchResult<K, V> {
         NotFound,
@@ -239,7 +239,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: Map<K, V> {
+    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: StdMap<K, V> {
         pure fn size() -> uint { self.count }
 
         pure fn contains_key(k: K) -> bool {

@@ -50,13 +50,13 @@ impl OutputStyle : cmp::Eq {
 }
 
 /// The configuration for a rustdoc session
-pub type Config = {
+pub struct Config {
     input_crate: Path,
     output_dir: Path,
     output_format: OutputFormat,
     output_style: OutputStyle,
     pandoc_cmd: Option<~str>
-};
+}
 
 pub impl Config: Clone {
     fn clone(&self) -> Config { copy *self }
@@ -95,7 +95,7 @@ pub fn usage() {
 }
 
 pub fn default_config(input_crate: &Path) -> Config {
-    {
+    Config {
         input_crate: *input_crate,
         output_dir: Path("."),
         output_format: PandocHtml,
@@ -155,7 +155,7 @@ fn config_from_opts(
     let result = do result::chain(result) |config| {
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
         let output_dir = output_dir.map(|s| Path(*s));
-        result::Ok({
+        result::Ok(Config {
             output_dir: output_dir.get_or_default(config.output_dir),
             .. config
         })
@@ -168,7 +168,7 @@ fn config_from_opts(
             do result::chain(parse_output_format(*output_format))
                 |output_format| {
 
-                result::Ok({
+                result::Ok(Config {
                     output_format: output_format,
                     .. config
                 })
@@ -182,7 +182,7 @@ fn config_from_opts(
             |output_style| {
             do result::chain(parse_output_style(*output_style))
                 |output_style| {
-                result::Ok({
+                result::Ok(Config {
                     output_style: output_style,
                     .. config
                 })
@@ -195,7 +195,7 @@ fn config_from_opts(
         let pandoc_cmd = maybe_find_pandoc(
             &config, pandoc_cmd, move program_output.take());
         do result::chain(pandoc_cmd) |pandoc_cmd| {
-            result::Ok({
+            result::Ok(Config {
                 pandoc_cmd: pandoc_cmd,
                 .. config
             })

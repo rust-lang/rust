@@ -15,6 +15,7 @@
 
 //! json serialization
 
+use serialize::Encodable;
 use serialize;
 use sort::Sort;
 

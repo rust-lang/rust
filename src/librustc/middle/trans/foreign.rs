@@ -31,7 +31,7 @@ use middle::trans::machine;
 use middle::trans::shape;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
-use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::ty::{FnTyBase, FnMeta, FnSig, arg};
 use util::ppaux::ty_to_str;
 
 use core::libc::c_uint;
@@ -546,8 +546,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                               onceness: ast::Many,
                               region: ty::re_bound(ty::br_anon(0)),
                               bounds: @~[]},
-                sig: FnSig {inputs: ~[{mode: ast::expl(ast::by_val),
-                                       ty: star_u8}],
+                sig: FnSig {inputs: ~[arg {mode: ast::expl(ast::by_val),
+                                           ty: star_u8}],
                             output: ty::mk_nil(bcx.tcx())}
             });
             let datum = Datum {val: get_param(decl, first_real_arg),
@@ -567,6 +567,24 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let morestack_addr = PointerCast(bcx, morestack_addr,
                                              T_ptr(T_nil()));
             Store(bcx, morestack_addr, fcx.llretptr);
+        }
+        ~"memmove32" => {
+            let dst_ptr = get_param(decl, first_real_arg);
+            let src_ptr = get_param(decl, first_real_arg + 1);
+            let size = get_param(decl, first_real_arg + 2);
+            let align = C_i32(1);
+            let volatile = C_bool(false);
+            let llfn = bcx.ccx().intrinsics.get(~"llvm.memmove.p0i8.p0i8.i32");
+            Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
+        }
+        ~"memmove64" => {
+            let dst_ptr = get_param(decl, first_real_arg);
+            let src_ptr = get_param(decl, first_real_arg + 1);
+            let size = get_param(decl, first_real_arg + 2);
+            let align = C_i32(1);
+            let volatile = C_bool(false);
+            let llfn = bcx.ccx().intrinsics.get(~"llvm.memmove.p0i8.p0i8.i64");
+            Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
         }
         ~"sqrtf32" => {
             let x = get_param(decl, first_real_arg);

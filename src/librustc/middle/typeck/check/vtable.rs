@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use middle::resolve;
+use middle::ty::{param_ty, substs};
 use middle::ty;
 use middle::typeck::check::{fn_ctxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};
@@ -103,7 +104,10 @@ fn lookup_vtables(vcx: &VtableContext,
                    ppaux::ty_to_str(tcx, trait_ty),
                    ty::substs_to_str(tcx, substs));
 
-            let new_substs = {self_ty: Some(*ty), ../*bad*/copy *substs};
+            let new_substs = substs {
+                self_ty: Some(*ty),
+                ../*bad*/copy *substs
+            };
             let trait_ty = ty::subst(tcx, &new_substs, trait_ty);
 
             debug!("after subst: %?",
@@ -189,7 +193,7 @@ fn lookup_vtable(vcx: &VtableContext,
     };
 
     match ty::get(ty).sty {
-        ty::ty_param({idx: n, def_id: did}) => {
+        ty::ty_param(param_ty {idx: n, def_id: did}) => {
             let mut n_bound = 0;
             let bounds = tcx.ty_param_bounds.get(did.node);
             for ty::iter_bound_traits_and_supertraits(

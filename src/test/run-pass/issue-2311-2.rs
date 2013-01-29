@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait clam<A: Copy> { }
-struct foo<A: Copy> {
+struct foo<A> {
     x: A,
 }
 

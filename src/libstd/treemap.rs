@@ -35,7 +35,7 @@ use core::prelude::*;
 //   * symmetric difference: ^
 // These would be convenient since the methods work like `each`
 
-pub struct TreeMap<K: Ord, V> {
+pub struct TreeMap<K, V> {
     priv root: Option<~TreeNode<K, V>>,
     priv length: uint
 }
@@ -202,7 +202,7 @@ impl <K: Ord, V> TreeMap<K, V> {
 }
 
 /// Lazy forward iterator over a map
-pub struct TreeMapIterator<K: Ord, V> {
+pub struct TreeMapIterator<K, V> {
     priv stack: ~[&~TreeNode<K, V>],
     priv node: &Option<~TreeNode<K, V>>,
     priv current: Option<&~TreeNode<K, V>>
@@ -240,7 +240,7 @@ impl <K: Ord, V> TreeMapIterator<K, V> {
     }
 }
 
-pub struct TreeSet<T: Ord> {
+pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }
 
@@ -518,7 +518,7 @@ impl <T: Ord> TreeSet<T> {
 }
 
 /// Lazy forward iterator over a set
-pub struct TreeSetIterator<T: Ord> {
+pub struct TreeSetIterator<T> {
     priv iter: TreeMapIterator<T, ()>
 }
 
@@ -540,7 +540,7 @@ impl <T: Ord> TreeSetIterator<T> {
 
 // Nodes keep track of their level in the tree, starting at 1 in the
 // leaves and with a red child sharing the level of the parent.
-struct TreeNode<K: Ord, V> {
+struct TreeNode<K, V> {
     key: K,
     value: V,
     left: Option<~TreeNode<K, V>>,

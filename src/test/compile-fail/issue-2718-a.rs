@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct send_packet<T: Copy> {
+pub struct send_packet<T> {
   p: T
 }
 

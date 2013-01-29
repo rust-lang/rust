@@ -116,9 +116,16 @@ pub pure fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
  * and destination may overlap.
  */
 #[inline(always)]
+#[cfg(target_word_size = "32")]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     let n = count * sys::size_of::<T>();
-    libc_::memmove(dst as *mut c_void, src as *c_void, n as size_t);
+    memmove32(dst as *mut u8, src as *u8, n as u32);
+}
+#[inline(always)]
+#[cfg(target_word_size = "64")]
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    let n = count * sys::size_of::<T>();
+    memmove64(dst as *mut u8, src as *u8, n as u64);
 }
 
 #[inline(always)]
@@ -181,6 +188,23 @@ pub trait Ptr<T> {
     pure fn is_null() -> bool;
     pure fn is_not_null() -> bool;
     pure fn offset(count: uint) -> self;
+}
+
+#[cfg(stage0)]
+unsafe fn memmove32(dst: *mut u8, src: *const u8, count: u32) {
+    libc::memmove(dst as *c_void, src as *c_void, count as size_t);
+}
+#[cfg(stage0)]
+unsafe fn memmove64(dst: *mut u8, src: *const u8, count: u64) {
+    libc::memmove(dst as *c_void, src as *c_void, count as size_t);
+}
+
+#[abi="rust-intrinsic"]
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub extern {
+    fn memmove32(dst: *mut u8, src: *u8, size: u32);
+    fn memmove64(dst: *mut u8, src: *u8, size: u64);
 }
 
 /// Extension methods for immutable pointers

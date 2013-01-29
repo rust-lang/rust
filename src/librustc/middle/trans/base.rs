@@ -61,6 +61,7 @@ use middle::trans::reachable;
 use middle::trans::shape::*;
 use middle::trans::tvec;
 use middle::trans::type_of::*;
+use middle::ty::arg;
 use util::common::indenter;
 use util::ppaux::{ty_to_str, ty_to_short_str};
 use util::ppaux;
@@ -2198,9 +2199,12 @@ fn create_main_wrapper(ccx: @crate_ctxt, _sp: span, main_llfn: ValueRef) {
     fn create_main(ccx: @crate_ctxt, main_llfn: ValueRef) -> ValueRef {
         let unit_ty = ty::mk_estr(ccx.tcx, ty::vstore_uniq);
         let vecarg_ty: ty::arg =
-            {mode: ast::expl(ast::by_val),
-             ty: ty::mk_evec(ccx.tcx, ty::mt {ty: unit_ty, mutbl: ast::m_imm},
-                             ty::vstore_uniq)};
+            arg {
+                mode: ast::expl(ast::by_val),
+                ty: ty::mk_evec(ccx.tcx,
+                    ty::mt {ty: unit_ty, mutbl: ast::m_imm},
+                    ty::vstore_uniq)
+            };
         let nt = ty::mk_nil(ccx.tcx);
         let llfty = type_of_fn(ccx, ~[vecarg_ty], nt);
         let llfdecl = decl_fn(ccx.llmod, ~"_rust_main",
@@ -2589,9 +2593,15 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
                            T_void()));
     let memcpy32 =
         decl_cdecl_fn(llmod, ~"llvm.memcpy.p0i8.p0i8.i32",
-                      T_fn(T_memcpy32_args, T_void()));
+                      T_fn(copy T_memcpy32_args, T_void()));
     let memcpy64 =
         decl_cdecl_fn(llmod, ~"llvm.memcpy.p0i8.p0i8.i64",
+                      T_fn(copy T_memcpy64_args, T_void()));
+    let memmove32 =
+        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i32",
+                      T_fn(T_memcpy32_args, T_void()));
+    let memmove64 =
+        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i64",
                       T_fn(T_memcpy64_args, T_void()));
     let memset32 =
         decl_cdecl_fn(llmod, ~"llvm.memset.p0i8.i32",
@@ -2700,6 +2710,8 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     intrinsics.insert(~"llvm.gcread", gcread);
     intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i32", memcpy32);
     intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i64", memcpy64);
+    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i32", memmove32);
+    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i64", memmove64);
     intrinsics.insert(~"llvm.memset.p0i8.i32", memset32);
     intrinsics.insert(~"llvm.memset.p0i8.i64", memset64);
     intrinsics.insert(~"llvm.trap", trap);
