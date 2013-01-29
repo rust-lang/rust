@@ -17,14 +17,13 @@ use core::str;
 use core::task;
 
 extern mod rustrt {
-    #[legacy_exports];
-    unsafe fn linenoise(prompt: *c_char) -> *c_char;
-    unsafe fn linenoiseHistoryAdd(line: *c_char) -> c_int;
-    unsafe fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;
-    unsafe fn linenoiseHistorySave(file: *c_char) -> c_int;
-    unsafe fn linenoiseHistoryLoad(file: *c_char) -> c_int;
-    unsafe fn linenoiseSetCompletionCallback(callback: *u8);
-    unsafe fn linenoiseAddCompletion(completions: *(), line: *c_char);
+    pub unsafe fn linenoise(prompt: *c_char) -> *c_char;
+    pub unsafe fn linenoiseHistoryAdd(line: *c_char) -> c_int;
+    pub unsafe fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;
+    pub unsafe fn linenoiseHistorySave(file: *c_char) -> c_int;
+    pub unsafe fn linenoiseHistoryLoad(file: *c_char) -> c_int;
+    pub unsafe fn linenoiseSetCompletionCallback(callback: *u8);
+    pub unsafe fn linenoiseAddCompletion(completions: *(), line: *c_char);
 }
 
 /// Add a line to history

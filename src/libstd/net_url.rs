@@ -731,8 +731,6 @@ impl Url: to_bytes::IterBytes {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use core::prelude::*;
 
     use net_url::*;
@@ -742,7 +740,7 @@ mod tests {
     use core::str;
 
     #[test]
-    fn test_split_char_first() {
+    pub fn test_split_char_first() {
         let (u,v) = split_char_first(~"hello, sweet world", ',');
         assert u == ~"hello";
         assert v == ~" sweet world";
@@ -753,7 +751,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_authority() {
+    pub fn test_get_authority() {
         let (u, h, p, r) = get_authority(
             "//user:pass@rust-lang.org/something").unwrap();
         assert u == Some(UserInfo::new(~"user", Some(~"pass")));
@@ -808,7 +806,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_path() {
+    pub fn test_get_path() {
         let (p, r) = get_path("/something+%20orother", true).unwrap();
         assert p == ~"/something+ orother";
         assert r == ~"";
@@ -824,7 +822,7 @@ mod tests {
     }
 
     #[test]
-    fn test_url_parse() {
+    pub fn test_url_parse() {
         let url = ~"http://user:pass@rust-lang.org/doc?s=v#something";
 
         let up = from_str(url);
@@ -840,7 +838,7 @@ mod tests {
     }
 
     #[test]
-    fn test_url_parse_host_slash() {
+    pub fn test_url_parse_host_slash() {
         let urlstr = ~"http://0.42.42.42/";
         let url = from_str(urlstr).unwrap();
         assert url.host == ~"0.42.42.42";
@@ -848,87 +846,87 @@ mod tests {
     }
 
     #[test]
-    fn test_url_with_underscores() {
+    pub fn test_url_with_underscores() {
         let urlstr = ~"http://dotcom.com/file_name.html";
         let url = from_str(urlstr).unwrap();
         assert url.path == ~"/file_name.html";
     }
 
     #[test]
-    fn test_url_with_dashes() {
+    pub fn test_url_with_dashes() {
         let urlstr = ~"http://dotcom.com/file-name.html";
         let url = from_str(urlstr).unwrap();
         assert url.path == ~"/file-name.html";
     }
 
     #[test]
-    fn test_no_scheme() {
+    pub fn test_no_scheme() {
         assert get_scheme("noschemehere.html").is_err();
     }
 
     #[test]
-    fn test_invalid_scheme_errors() {
+    pub fn test_invalid_scheme_errors() {
         assert from_str("99://something").is_err();
         assert from_str("://something").is_err();
     }
 
     #[test]
-    fn test_full_url_parse_and_format() {
+    pub fn test_full_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc?s=v#something";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_userless_url_parse_and_format() {
+    pub fn test_userless_url_parse_and_format() {
         let url = ~"http://rust-lang.org/doc?s=v#something";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_queryless_url_parse_and_format() {
+    pub fn test_queryless_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc#something";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_empty_query_url_parse_and_format() {
+    pub fn test_empty_query_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc?#something";
         let should_be = ~"http://user:pass@rust-lang.org/doc#something";
         assert from_str(url).unwrap().to_str() == should_be;
     }
 
     #[test]
-    fn test_fragmentless_url_parse_and_format() {
+    pub fn test_fragmentless_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc?q=v";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_minimal_url_parse_and_format() {
+    pub fn test_minimal_url_parse_and_format() {
         let url = ~"http://rust-lang.org/doc";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_scheme_host_only_url_parse_and_format() {
+    pub fn test_scheme_host_only_url_parse_and_format() {
         let url = ~"http://rust-lang.org";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_pathless_url_parse_and_format() {
+    pub fn test_pathless_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org?q=v#something";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_scheme_host_fragment_only_url_parse_and_format() {
+    pub fn test_scheme_host_fragment_only_url_parse_and_format() {
         let url = ~"http://rust-lang.org#something";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_url_component_encoding() {
+    pub fn test_url_component_encoding() {
         let url = ~"http://rust-lang.org/doc%20uments?ba%25d%20=%23%26%2B";
         let u = from_str(url).unwrap();
         assert u.path == ~"/doc uments";
@@ -936,13 +934,13 @@ mod tests {
     }
 
     #[test]
-    fn test_url_without_authority() {
+    pub fn test_url_without_authority() {
         let url = ~"mailto:test@email.com";
         assert from_str(url).unwrap().to_str() == url;
     }
 
     #[test]
-    fn test_encode() {
+    pub fn test_encode() {
         assert encode("") == ~"";
         assert encode("http://example.com") == ~"http://example.com";
         assert encode("foo bar% baz") == ~"foo%20bar%25%20baz";
@@ -970,7 +968,7 @@ mod tests {
     }
 
     #[test]
-    fn test_encode_component() {
+    pub fn test_encode_component() {
         assert encode_component("") == ~"";
         assert encode_component("http://example.com") ==
             ~"http%3A%2F%2Fexample.com";
@@ -998,7 +996,7 @@ mod tests {
     }
 
     #[test]
-    fn test_decode() {
+    pub fn test_decode() {
         assert decode("") == ~"";
         assert decode("abc/def 123") == ~"abc/def 123";
         assert decode("abc%2Fdef%20123") == ~"abc%2Fdef 123";
@@ -1026,7 +1024,7 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_component() {
+    pub fn test_decode_component() {
         assert decode_component("") == ~"";
         assert decode_component("abc/def 123") == ~"abc/def 123";
         assert decode_component("abc%2Fdef%20123") == ~"abc/def 123";
@@ -1054,7 +1052,7 @@ mod tests {
     }
 
     #[test]
-    fn test_encode_form_urlencoded() {
+    pub fn test_encode_form_urlencoded() {
         let mut m = LinearMap::new();
         assert encode_form_urlencoded(&m) == ~"";
 
@@ -1072,7 +1070,7 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_form_urlencoded() {
+    pub fn test_decode_form_urlencoded() {
         // FIXME #4449: Commented out because this causes an ICE, but only
         // on FreeBSD
         /*

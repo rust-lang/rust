@@ -38,8 +38,7 @@ use core::vec;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
-    unsafe fn rust_sched_threads() -> size_t;
+    pub unsafe fn rust_sched_threads() -> size_t;
 }
 
 // The name of a test. By convention this follows the rules for rust
@@ -437,8 +436,6 @@ fn calc_result(test: &TestDesc, task_succeeded: bool) -> TestResult {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc};
     use test::{TestOpts, run_test};
 
@@ -448,7 +445,7 @@ mod tests {
     use core::vec;
 
     #[test]
-    fn do_not_run_ignored_tests() {
+    pub fn do_not_run_ignored_tests() {
         fn f() { fail; }
         let desc = TestDesc {
             name: ~"whatever",
@@ -464,7 +461,7 @@ mod tests {
     }
 
     #[test]
-    fn ignored_tests_result_in_ignored() {
+    pub fn ignored_tests_result_in_ignored() {
         fn f() { }
         let desc = TestDesc {
             name: ~"whatever",
@@ -481,7 +478,7 @@ mod tests {
 
     #[test]
     #[ignore(cfg(windows))]
-    fn test_should_fail() {
+    pub fn test_should_fail() {
         fn f() { fail; }
         let desc = TestDesc {
             name: ~"whatever",
@@ -497,7 +494,7 @@ mod tests {
     }
 
     #[test]
-    fn test_should_fail_but_succeeds() {
+    pub fn test_should_fail_but_succeeds() {
         fn f() { }
         let desc = TestDesc {
             name: ~"whatever",
@@ -513,7 +510,7 @@ mod tests {
     }
 
     #[test]
-    fn first_free_arg_should_be_a_filter() {
+    pub fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
@@ -523,7 +520,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_ignored_flag() {
+    pub fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
@@ -533,7 +530,7 @@ mod tests {
     }
 
     #[test]
-    fn filter_for_ignored_option() {
+    pub fn filter_for_ignored_option() {
         // When we run ignored tests the test filter should filter out all the
         // unignored tests and flip the ignore flag on the rest to false
 
@@ -565,7 +562,7 @@ mod tests {
     }
 
     #[test]
-    fn sort_tests() {
+    pub fn sort_tests() {
         let opts = TestOpts {
             filter: option::None,
             run_ignored: false,

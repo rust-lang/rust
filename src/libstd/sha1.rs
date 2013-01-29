@@ -274,15 +274,13 @@ pub fn sha1() -> Sha1 {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use sha1;
 
     use core::str;
     use core::vec;
 
     #[test]
-    fn test() {
+    pub fn test() {
         unsafe {
             struct Test {
                 input: ~str,
@@ -397,7 +395,6 @@ mod tests {
             }
         }
     }
-
 }
 
 // Local Variables:

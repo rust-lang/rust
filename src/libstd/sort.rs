@@ -720,15 +720,13 @@ fn copy_vec<T: Copy>(dest: &[mut T], s1: uint,
 
 #[cfg(test)]
 mod test_qsort3 {
-    #[legacy_exports];
-
     use core::prelude::*;
 
     use sort::*;
 
     use core::vec;
 
-    fn check_sort(v1: &[mut int], v2: &[mut int]) {
+    pub fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         quick_sort3::<int>(v1);
         let mut i = 0;
@@ -740,7 +738,7 @@ mod test_qsort3 {
     }
 
     #[test]
-    fn test() {
+    pub fn test() {
         {
             let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
             let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
@@ -767,8 +765,6 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
-    #[legacy_exports];
-
     use core::prelude::*;
 
     use sort::*;
@@ -776,7 +772,7 @@ mod test_qsort {
     use core::int;
     use core::vec;
 
-    fn check_sort(v1: &[mut int], v2: &[mut int]) {
+    pub fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         pure fn leual(a: &int, b: &int) -> bool { *a <= *b }
         quick_sort::<int>(v1, leual);
@@ -789,7 +785,7 @@ mod test_qsort {
     }
 
     #[test]
-    fn test() {
+    pub fn test() {
         {
             let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
             let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
@@ -815,7 +811,7 @@ mod test_qsort {
 
     // Regression test for #750
     #[test]
-    fn test_simple() {
+    pub fn test_simple() {
         let names = ~[mut 2, 1, 3];
 
         let expected = ~[1, 2, 3];
@@ -835,15 +831,13 @@ mod test_qsort {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use core::prelude::*;
 
     use sort::*;
 
     use core::vec;
 
-    fn check_sort(v1: &[int], v2: &[int]) {
+    pub fn check_sort(v1: &[int], v2: &[int]) {
         let len = vec::len::<int>(v1);
         pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;
@@ -857,7 +851,7 @@ mod tests {
     }
 
     #[test]
-    fn test() {
+    pub fn test() {
         {
             let v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
             let v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
@@ -874,7 +868,7 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_sort_mutable() {
+    pub fn test_merge_sort_mutable() {
         pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let v1 = ~[mut 3, 2, 1];
         let v2 = merge_sort(v1, le);
@@ -882,8 +876,7 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_sort_stability()
-    {
+    pub fn test_merge_sort_stability() {
         // tjc: funny that we have to use parens
         pure fn ile(x: &(&static/str), y: &(&static/str)) -> bool
         {
