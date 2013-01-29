@@ -38,10 +38,10 @@ use core::str;
 use core::vec;
 use std::map::HashMap;
 
-fn note_and_explain_region(cx: ctxt,
-                           prefix: ~str,
-                           region: ty::Region,
-                           suffix: ~str) {
+pub fn note_and_explain_region(cx: ctxt,
+                               prefix: ~str,
+                               region: ty::Region,
+                               suffix: ~str) {
     match explain_region_and_span(cx, region) {
       (ref str, Some(span)) => {
         cx.sess.span_note(
@@ -57,15 +57,14 @@ fn note_and_explain_region(cx: ctxt,
 
 /// Returns a string like "the block at 27:31" that attempts to explain a
 /// lifetime in a way it might plausibly be understood.
-fn explain_region(cx: ctxt, region: ty::Region) -> ~str {
+pub fn explain_region(cx: ctxt, region: ty::Region) -> ~str {
   let (res, _) = explain_region_and_span(cx, region);
   return res;
 }
 
 
-fn explain_region_and_span(cx: ctxt, region: ty::Region)
-    -> (~str, Option<span>)
-{
+pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
+                            -> (~str, Option<span>) {
     return match region {
       re_scope(node_id) => {
         match cx.items.find(node_id) {
@@ -136,12 +135,12 @@ fn explain_region_and_span(cx: ctxt, region: ty::Region)
     }
 }
 
-fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
+pub fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
     bound_region_to_str_adorned(cx, "&", br, "")
 }
 
-fn bound_region_to_str_adorned(cx: ctxt, prefix: &str,
-                               br: bound_region, sep: &str) -> ~str {
+pub fn bound_region_to_str_adorned(cx: ctxt, prefix: &str,
+                                   br: bound_region, sep: &str) -> ~str {
     if cx.sess.verbose() { return fmt!("%s%?%s", prefix, br, sep); }
 
     match br {
@@ -154,7 +153,7 @@ fn bound_region_to_str_adorned(cx: ctxt, prefix: &str,
     }
 }
 
-fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
+pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     match cx.items.find(node_id) {
       Some(ast_map::node_block(ref blk)) => {
         fmt!("<block at %s>",
@@ -197,12 +196,12 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 // In general, if you are giving a region error message,
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
-fn region_to_str(cx: ctxt, region: Region) -> ~str {
+pub fn region_to_str(cx: ctxt, region: Region) -> ~str {
     region_to_str_adorned(cx, "&", region, "")
 }
 
-fn region_to_str_adorned(cx: ctxt, prefix: &str,
-                         region: Region, sep: &str) -> ~str {
+pub fn region_to_str_adorned(cx: ctxt, prefix: &str,
+                             region: Region, sep: &str) -> ~str {
     if cx.sess.verbose() {
         return fmt!("%s%?%s", prefix, region, sep);
     }
@@ -223,7 +222,7 @@ fn region_to_str_adorned(cx: ctxt, prefix: &str,
     }
 }
 
-fn mt_to_str(cx: ctxt, m: mt) -> ~str {
+pub fn mt_to_str(cx: ctxt, m: mt) -> ~str {
     let mstr = match m.mutbl {
       ast::m_mutbl => "mut ",
       ast::m_imm => "",
@@ -232,7 +231,7 @@ fn mt_to_str(cx: ctxt, m: mt) -> ~str {
     return fmt!("%s%s", mstr, ty_to_str(cx, m.ty));
 }
 
-fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
+pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
     match vs {
       ty::vstore_fixed(n) => fmt!("%u", n),
       ty::vstore_uniq => ~"~",
@@ -241,7 +240,7 @@ fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
     }
 }
 
-fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
+pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     match vs {
       ty::vstore_fixed(_) => {
         fmt!("%s/%s", ty, vstore_to_str(cx, vs))
@@ -253,8 +252,8 @@ fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     }
 }
 
-fn proto_ty_to_str(_cx: ctxt, proto: ast::Proto,
-                   followed_by_word: bool) -> &static/str {
+pub fn proto_ty_to_str(_cx: ctxt, proto: ast::Proto,
+                       followed_by_word: bool) -> &static/str {
     match proto {
         ast::ProtoBare if followed_by_word => "extern ",
         ast::ProtoBare => "extern",
@@ -264,34 +263,34 @@ fn proto_ty_to_str(_cx: ctxt, proto: ast::Proto,
     }
 }
 
-fn expr_repr(cx: ctxt, expr: @ast::expr) -> ~str {
+pub fn expr_repr(cx: ctxt, expr: @ast::expr) -> ~str {
     fmt!("expr(%d: %s)",
          expr.id,
          pprust::expr_to_str(expr, cx.sess.intr()))
 }
 
-fn pat_repr(cx: ctxt, pat: @ast::pat) -> ~str {
+pub fn pat_repr(cx: ctxt, pat: @ast::pat) -> ~str {
     fmt!("pat(%d: %s)",
          pat.id,
          pprust::pat_to_str(pat, cx.sess.intr()))
 }
 
-fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
+pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
     let tstrs = ts.map(|t| ty_to_str(cx, *t));
     fmt!("(%s)", str::connect(tstrs, ", "))
 }
 
-fn bound_to_str(cx: ctxt, b: param_bound) -> ~str {
+pub fn bound_to_str(cx: ctxt, b: param_bound) -> ~str {
     ty::param_bound_to_str(cx, &b)
 }
 
-fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
+pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
     fmt!("fn%s -> %s",
          tys_to_str(cx, typ.inputs.map(|a| a.ty)),
          ty_to_str(cx, typ.output))
 }
 
-fn ty_to_str(cx: ctxt, typ: t) -> ~str {
+pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn fn_input_to_str(cx: ctxt, input: ty::arg) -> ~str {
         let ty::arg {mode: mode, ty: ty} = input;
         let modestr = match canon_mode(cx, mode) {
@@ -449,10 +448,10 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
 }
 
-fn parameterized(cx: ctxt,
-                 base: &str,
-                 self_r: Option<ty::Region>,
-                 tps: &[ty::t]) -> ~str {
+pub fn parameterized(cx: ctxt,
+                     base: &str,
+                     self_r: Option<ty::Region>,
+                     tps: &[ty::t]) -> ~str {
 
     let r_str = match self_r {
       None => ~"",
@@ -469,7 +468,7 @@ fn parameterized(cx: ctxt,
     }
 }
 
-fn ty_to_short_str(cx: ctxt, typ: t) -> ~str {
+pub fn ty_to_short_str(cx: ctxt, typ: t) -> ~str {
     let mut s = encoder::encoded_ty(cx, typ);
     if str::len(s) >= 32u { s = str::slice(s, 0u, 32u); }
     return s;

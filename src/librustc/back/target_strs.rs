@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-type t = {
+pub type t = {
     module_asm: ~str,
     meta_sect_name: ~str,
     data_layout: ~str,

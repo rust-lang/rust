@@ -14,7 +14,7 @@ use driver::session;
 use metadata::loader::meta_section_name;
 use session::sess_os_to_meta_os;
 
-fn get_target_strs(target_os: session::os) -> target_strs::t {
+pub fn get_target_strs(target_os: session::os) -> target_strs::t {
     return {
         module_asm: ~"",
 

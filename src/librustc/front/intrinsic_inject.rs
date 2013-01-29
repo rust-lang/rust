@@ -16,9 +16,7 @@ use syntax::ast;
 
 use core::vec;
 
-export inject_intrinsic;
-
-fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
+pub fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
     let intrinsic_module = @(include_str!("intrinsic.rs").to_owned());
 
     let item = parse::parse_item_from_source_str(~"<intrinsic>",

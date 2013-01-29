@@ -21,14 +21,6 @@ use core::vec;
 use std::map::HashMap;
 use std::map;
 
-export get_absolute_rpath;
-export get_install_prefix_rpath;
-export get_relative_to;
-export get_rpath_flags;
-export get_rpath_relative_to_output;
-export minimize_rpaths;
-export rpaths_to_flags;
-
 pure fn not_win32(os: session::os) -> bool {
   match os {
       session::os_win32 => false,
@@ -36,7 +28,8 @@ pure fn not_win32(os: session::os) -> bool {
   }
 }
 
-fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> ~[~str] {
+pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
+                    -> ~[~str] {
     let os = sess.targ_cfg.os;
 
     // No rpath on windows
@@ -63,7 +56,7 @@ fn get_sysroot_absolute_rt_lib(sess: session::Session) -> Path {
     sess.filesearch.sysroot().push_rel(&r).push(os::dll_filename("rustrt"))
 }
 
-fn rpaths_to_flags(rpaths: &[Path]) -> ~[~str] {
+pub fn rpaths_to_flags(rpaths: &[Path]) -> ~[~str] {
     vec::map(rpaths, |rpath| fmt!("-Wl,-rpath,%s",rpath.to_str()))
 }
 
@@ -120,10 +113,10 @@ fn get_rpaths_relative_to_output(os: session::os,
     })
 }
 
-fn get_rpath_relative_to_output(os: session::os,
-                                output: &Path,
-                                lib: &Path)
-                             -> Path {
+pub fn get_rpath_relative_to_output(os: session::os,
+                                    output: &Path,
+                                    lib: &Path)
+                                 -> Path {
     use core::os;
 
     assert not_win32(os);
@@ -141,7 +134,7 @@ fn get_rpath_relative_to_output(os: session::os,
 }
 
 // Find the relative path from one file to another
-fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
+pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     assert abs1.is_absolute;
     assert abs2.is_absolute;
     let abs1 = abs1.normalize();
@@ -178,11 +171,11 @@ fn get_absolute_rpaths(libs: &[Path]) -> ~[Path] {
     vec::map(libs, |a| get_absolute_rpath(a) )
 }
 
-fn get_absolute_rpath(lib: &Path) -> Path {
+pub fn get_absolute_rpath(lib: &Path) -> Path {
     os::make_absolute(lib).dir_path()
 }
 
-fn get_install_prefix_rpath(target_triple: &str) -> Path {
+pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
     let install_prefix = env!("CFG_PREFIX");
 
     if install_prefix == ~"" {
@@ -193,7 +186,7 @@ fn get_install_prefix_rpath(target_triple: &str) -> Path {
     os::make_absolute(&Path(install_prefix).push_rel(&tlib))
 }
 
-fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
+pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
     let set = map::HashMap();
     let mut minimized = ~[];
     for rpaths.each |rpath| {

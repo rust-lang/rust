@@ -21,7 +21,7 @@ use core::str;
 use core::vec;
 use std::map::HashMap;
 
-fn indent<R>(op: fn() -> R) -> R {
+pub fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
     debug!(">>");
@@ -30,33 +30,33 @@ fn indent<R>(op: fn() -> R) -> R {
     move r
 }
 
-struct _indenter {
+pub struct _indenter {
     _i: (),
     drop { debug!("<<"); }
 }
 
-fn _indenter(_i: ()) -> _indenter {
+pub fn _indenter(_i: ()) -> _indenter {
     _indenter {
         _i: ()
     }
 }
 
-fn indenter() -> _indenter {
+pub fn indenter() -> _indenter {
     debug!(">>");
     _indenter(())
 }
 
-type flag = HashMap<~str, ()>;
+pub type flag = HashMap<~str, ()>;
 
-fn field_expr(f: ast::field) -> @ast::expr { return f.node.expr; }
+pub fn field_expr(f: ast::field) -> @ast::expr { return f.node.expr; }
 
-fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
+pub fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
     fields.map(|f| f.node.expr)
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
+pub fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
                         &&flag: @mut bool,
@@ -79,7 +79,7 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
+pub fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
                         &&flag: @mut bool,
@@ -94,20 +94,20 @@ fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
     return *rs;
 }
 
-fn local_rhs_span(l: @ast::local, def: span) -> span {
+pub fn local_rhs_span(l: @ast::local, def: span) -> span {
     match l.node.init {
       Some(i) => return i.span,
       _ => return def
     }
 }
 
-fn pluralize(n: uint, +s: ~str) -> ~str {
+pub fn pluralize(n: uint, +s: ~str) -> ~str {
     if n == 1 { s }
     else { str::concat([s, ~"s"]) }
 }
 
 // A set of node IDs (used to keep track of which node IDs are for statements)
-type stmt_set = HashMap<ast::node_id, ()>;
+pub type stmt_set = HashMap<ast::node_id, ()>;
 
 //
 // Local Variables:

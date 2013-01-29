@@ -19,12 +19,10 @@ use syntax::attr;
 use syntax::codemap;
 use syntax::fold;
 
-export maybe_inject_libcore_ref;
-
 const CORE_VERSION: &static/str = "0.6";
 
-fn maybe_inject_libcore_ref(sess: Session,
-                            crate: @ast::crate) -> @ast::crate {
+pub fn maybe_inject_libcore_ref(sess: Session,
+                                crate: @ast::crate) -> @ast::crate {
     if use_core(crate) {
         inject_libcore_ref(sess, crate)
     } else {

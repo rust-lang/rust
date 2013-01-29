@@ -43,20 +43,14 @@ use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
 use syntax::print::pprust;
 
-enum output_type {
+#[deriving_eq]
+pub enum output_type {
     output_type_none,
     output_type_bitcode,
     output_type_assembly,
     output_type_llvm_assembly,
     output_type_object,
     output_type_exe,
-}
-
-impl output_type : cmp::Eq {
-    pure fn eq(&self, other: &output_type) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &output_type) -> bool { !(*self).eq(other) }
 }
 
 pub fn llvm_err(sess: Session, +msg: ~str) -> ! {
@@ -170,15 +164,15 @@ pub mod jit {
     }
 }
 
-mod write {
+pub mod write {
     use back::link::jit;
-    use back::link::{ModuleRef, WriteOutputFile, output_type};
+    use back::link::{WriteOutputFile, output_type};
     use back::link::{output_type_assembly, output_type_bitcode};
     use back::link::{output_type_exe, output_type_llvm_assembly};
     use back::link::{output_type_object};
     use driver::session;
     use lib::llvm::llvm;
-    use lib::llvm::{False, True, mk_pass_manager, mk_target_data};
+    use lib::llvm::{False, True, ModuleRef, mk_pass_manager, mk_target_data};
     use lib;
     use session::Session;
 
@@ -456,7 +450,7 @@ mod write {
  *
  */
 
-fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
+pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
                    symbol_hasher: &hash::State) -> link_meta {
 
     type provided_metas =
@@ -575,7 +569,7 @@ fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
     return {name: name, vers: vers, extras_hash: extras_hash};
 }
 
-fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
+pub fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
     unsafe {
         symbol_hasher.result_str()
     }
@@ -583,7 +577,7 @@ fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
+pub fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
                link_meta: link_meta) -> @str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
@@ -601,7 +595,7 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
     hash.to_managed()
 }
 
-fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
+pub fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
     match ccx.type_hashcodes.find(t) {
       Some(h) => h,
       None => {
@@ -615,7 +609,7 @@ fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
-fn sanitize(s: ~str) -> ~str {
+pub fn sanitize(s: ~str) -> ~str {
     let mut result = ~"";
     for str::chars_each(s) |c| {
         match c {
@@ -648,7 +642,7 @@ fn sanitize(s: ~str) -> ~str {
     return result;
 }
 
-fn mangle(sess: Session, ss: path) -> ~str {
+pub fn mangle(sess: Session, ss: path) -> ~str {
     // Follow C++ namespace-mangling style
 
     let mut n = ~"_ZN"; // Begin name-sequence.
@@ -663,26 +657,26 @@ fn mangle(sess: Session, ss: path) -> ~str {
     n
 }
 
-fn exported_name(sess: Session,
-                 +path: path,
-                 hash: &str,
-                 vers: &str) -> ~str {
+pub fn exported_name(sess: Session,
+                     +path: path,
+                     hash: &str,
+                     vers: &str) -> ~str {
     return mangle(sess,
             vec::append_one(
             vec::append_one(path, path_name(sess.ident_of(hash.to_owned()))),
             path_name(sess.ident_of(vers.to_owned()))));
 }
 
-fn mangle_exported_name(ccx: @crate_ctxt, +path: path, t: ty::t) -> ~str {
+pub fn mangle_exported_name(ccx: @crate_ctxt, +path: path, t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
                          hash,
                          ccx.link_meta.vers);
 }
 
-fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
-                                     t: ty::t,
-                                     name: &str) -> ~str {
+pub fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
+                                         t: ty::t,
+                                         name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     return mangle(ccx.sess,
@@ -691,23 +685,23 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
           path_name(ccx.sess.ident_of(hash.to_owned()))]);
 }
 
-fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt,
-                                        +path: path,
-                                        +flav: ~str) -> ~str {
+pub fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt,
+                                            +path: path,
+                                            +flav: ~str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
-fn mangle_internal_name_by_path(ccx: @crate_ctxt, +path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: @crate_ctxt, +path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-fn mangle_internal_name_by_seq(ccx: @crate_ctxt, +flav: ~str) -> ~str {
+pub fn mangle_internal_name_by_seq(ccx: @crate_ctxt, +flav: ~str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
 
-fn output_dll_filename(os: session::os, lm: link_meta) -> ~str {
+pub fn output_dll_filename(os: session::os, lm: link_meta) -> ~str {
     let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
     let (dll_prefix, dll_suffix) = match os {
         session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
@@ -722,10 +716,10 @@ fn output_dll_filename(os: session::os, lm: link_meta) -> ~str {
 
 // If the user wants an exe generated we need to invoke
 // cc to link the object file with some libs
-fn link_binary(sess: Session,
-               obj_filename: &Path,
-               out_filename: &Path,
-               lm: link_meta) {
+pub fn link_binary(sess: Session,
+                   obj_filename: &Path,
+                   out_filename: &Path,
+                   lm: link_meta) {
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: @session::config, +stem: ~str) -> ~str {
         if stem.starts_with("lib") &&
