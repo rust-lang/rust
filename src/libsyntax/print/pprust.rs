@@ -2252,13 +2252,7 @@ mod test {
     use ast_util;
     use parse;
     use super::*;
-    //use util;
-
-    fn string_check<T : Eq> (given : &T, expected: &T) {
-        if !(given == expected) {
-            fail (fmt!("given %?, expected %?",given,expected));
-        }
-    }
+    use util::testing::check_equal;
 
     #[test]
     fn test_fun_to_str() {
@@ -2269,11 +2263,11 @@ mod test {
             inputs: ~[],
             output: @ast::Ty {id: 0,
                               node: ast::ty_nil,
-                              span: ast_util::dummy_sp()},
+                              span: codemap::dummy_sp()},
             cf: ast::return_val
         };
-        assert fun_to_str(decl, abba_ident, ~[],mock_interner)
-            == ~"fn abba()";
+        check_equal (&fun_to_str(decl, abba_ident, ~[],mock_interner),
+                     &~"fn abba()");
     }
 
     #[test]
@@ -2281,7 +2275,7 @@ mod test {
         let mock_interner = parse::token::mk_fake_ident_interner();
         let ident = mock_interner.intern(@~"principal_skinner");
 
-        let var = ast_util::respan(ast_util::dummy_sp(), ast::variant_ {
+        let var = ast_util::respan(codemap::dummy_sp(), ast::variant_ {
             name: ident,
             attrs: ~[],
             // making this up as I go.... ?
@@ -2292,7 +2286,7 @@ mod test {
         });
 
         let varstr = variant_to_str(var,mock_interner);
-        string_check(&varstr,&~"pub principal_skinner");
+        check_equal(&varstr,&~"pub principal_skinner");
     }
 }
 

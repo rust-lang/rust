@@ -45,7 +45,7 @@ use core::result;
 use syntax::ast::{ProtoBare, ProtoBox, ProtoUniq, ProtoBorrowed};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 
@@ -533,7 +533,7 @@ mod guarantor {
     use middle::typeck::check::regionck::{rcx, infallibly_mk_subr};
     use middle::ty;
     use syntax::ast;
-    use syntax::codemap::span;
+    use codemap::span;
     use util::ppaux::{ty_to_str};
 
     pub fn for_addr_of(rcx: @rcx, expr: @ast::expr, base: @ast::expr) {

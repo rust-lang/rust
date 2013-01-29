@@ -59,7 +59,7 @@ use core::to_bytes;
 use core::uint;
 use syntax::ast::{m_imm, m_const, m_mutbl};
 use syntax::ast;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust;
 
 #[deriving_eq]

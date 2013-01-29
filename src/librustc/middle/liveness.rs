@@ -122,7 +122,7 @@ use core::uint;
 use core::vec;
 use std::map::HashMap;
 use syntax::ast::*;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, block_to_str};
 use syntax::visit::{fk_anon, fk_dtor, fk_fn_block, fk_item_fn, fk_method};

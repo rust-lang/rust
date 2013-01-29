@@ -23,10 +23,11 @@ use core::cmp;
 use core::option;
 use syntax::ast::node_id;
 use syntax::ast::{int_ty, uint_ty, float_ty};
-use syntax::codemap::span;
+use codemap::span;
 use syntax::diagnostic;
 use syntax::parse::parse_sess;
-use syntax::{ast, codemap};
+use syntax::ast;
+use codemap;
 use syntax;
 
 enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
@@ -345,12 +346,12 @@ mod test {
     use syntax::ast_util;
 
     fn make_crate_type_attr(+t: ~str) -> ast::attribute {
-        ast_util::respan(ast_util::dummy_sp(), ast::attribute_ {
+        ast_util::respan(codemap::dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
-            value: ast_util::respan(ast_util::dummy_sp(),
+            value: ast_util::respan(codemap::dummy_sp(),
                 ast::meta_name_value(
                     ~"crate_type",
-                    ast_util::respan(ast_util::dummy_sp(),
+                    ast_util::respan(codemap::dummy_sp(),
                                      ast::lit_str(@t)))),
             is_sugared_doc: false
         })
@@ -360,7 +361,7 @@ mod test {
         let mut attrs = ~[];
         if with_bin { attrs += ~[make_crate_type_attr(~"bin")]; }
         if with_lib { attrs += ~[make_crate_type_attr(~"lib")]; }
-        @ast_util::respan(ast_util::dummy_sp(), ast::crate_ {
+        @ast_util::respan(codemap::dummy_sp(), ast::crate_ {
             module: ast::_mod { view_items: ~[], items: ~[] },
             attrs: attrs,
             config: ~[]

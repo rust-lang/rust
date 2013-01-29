@@ -21,11 +21,12 @@ use core::option;
 use core::vec;
 use syntax::ast_util::*;
 use syntax::attr;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::fold;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::attr::attrs_contains_name;
+use codemap::dummy_sp;
 
 export modify_for_testing;
 

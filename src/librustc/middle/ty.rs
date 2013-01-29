@@ -46,7 +46,7 @@ use std::{map, smallintmap};
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust;
 use syntax::{ast, ast_map};
 use syntax;

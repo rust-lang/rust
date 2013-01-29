@@ -31,6 +31,8 @@ use core::*;
 
 extern mod std(vers = "0.6");
 
+extern mod codemap;
+
 pub mod syntax {
     pub use ext;
     pub use parse;
@@ -40,7 +42,6 @@ pub mod syntax {
 mod attr;
 #[legacy_exports]
 mod diagnostic;
-mod codemap;
 #[legacy_exports]
 mod ast;
 #[legacy_exports]
@@ -51,12 +52,8 @@ mod ast_map;
 mod visit;
 #[legacy_exports]
 mod fold;
-#[legacy_exports]
 mod util {
-    #[legacy_exports];
-    #[legacy_exports]
-    #[path = "interner.rs"]
-    mod interner;
+    pub mod interner;
 }
 
 #[path = "parse/mod.rs"]

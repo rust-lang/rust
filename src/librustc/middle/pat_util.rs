@@ -19,7 +19,7 @@ use syntax::ast_util;
 use syntax::ast_util::{path_to_ident, respan, walk_pat};
 use syntax::fold;
 use syntax::fold::*;
-use syntax::codemap::span;
+use codemap::span;
 use std::map::HashMap;
 
 export pat_binding_ids, pat_bindings, pat_id_map, PatIdMap;

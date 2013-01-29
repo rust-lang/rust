@@ -33,7 +33,7 @@ use syntax::ast::{fn_decl, blk};
 use syntax::visit;
 use syntax::visit::{fn_kind, vt};
 use syntax::print::pprust;
-use syntax::codemap::span;
+use codemap::span;
 
 struct VisitContext {
     tcx: ctxt,

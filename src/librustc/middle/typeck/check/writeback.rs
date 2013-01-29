@@ -29,7 +29,7 @@ use core::result::{Result, Ok, Err};
 use core::vec;
 use std::map::HashMap;
 use syntax::ast;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 

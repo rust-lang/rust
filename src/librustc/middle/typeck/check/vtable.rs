@@ -30,7 +30,7 @@ use result::{Result, Ok, Err};
 use std::map::HashMap;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust::expr_to_str;
 use syntax::print::pprust;
 use syntax::visit;

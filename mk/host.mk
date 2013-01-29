@@ -48,12 +48,25 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBSYNTAX): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBSYNTAX) \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME) \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUSTLLVM) \
+	$$(HLIB$(2)_H_$(4))/$$(CFG_LIBCODEMAP) \
 	$$(HCORELIB_DEFAULT$(2)_H_$(3)) \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(3))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBSYNTAX_GLOB) \
 		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBSYNTAX_DSYM_GLOB)) \
+	        $$(HLIB$(2)_H_$(4))
+
+$$(HLIB$(2)_H_$(4))/$$(CFG_LIBCODEMAP): \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBCODEMAP) \
+	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME) \
+	$$(HLIB$(2)_H_$(4))/$$(CFG_RUSTLLVM) \
+	$$(HCORELIB_DEFAULT$(2)_H_$(3)) \
+	$$(HSTDLIB_DEFAULT$(2)_H_$(3))
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBCODEMAP_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBCODEMAP_DSYM_GLOB)) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME): \

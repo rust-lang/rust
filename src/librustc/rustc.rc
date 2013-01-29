@@ -34,6 +34,8 @@ use core::*;
 extern mod std(vers = "0.6");
 extern mod syntax(vers = "0.6");
 
+extern mod codemap;
+
 /*
 Alternate names for some modules.
 
@@ -202,7 +204,7 @@ use std::getopts;
 use std::map::HashMap;
 use getopts::{opt_present};
 use getopts::groups;
-use syntax::codemap;
+use codemap;
 use syntax::diagnostic;
 use driver::driver::{host_triple, optgroups, early_error,
                      str_input, file_input, build_session_options,

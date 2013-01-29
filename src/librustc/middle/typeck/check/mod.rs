@@ -124,8 +124,8 @@ use syntax::ast_map;
 use syntax::ast_util::{Private, Public, is_local, local_def, respan};
 use syntax::ast_util::{visibility_to_privacy};
 use syntax::ast_util;
-use syntax::codemap::span;
-use syntax::codemap;
+use codemap::span;
+use codemap;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust;
 use syntax::visit;
@@ -560,7 +560,7 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                         def_id: local_def(id),
                         explicit_self:
                             spanned { node: ast::sty_by_ref,
-                                      span: ast_util::dummy_sp() } };
+                                      span: codemap::dummy_sp() } };
         // typecheck the dtor
         let dtor_dec = ast_util::dtor_dec();
         check_bare_fn(ccx, &dtor_dec,

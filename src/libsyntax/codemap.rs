@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Linkage attributes
+
 /*!
 
 The CodeMap tracks all the source code used within a single crate, mapping
@@ -21,9 +23,24 @@ source code snippets, etc.
 
 */
 
-use core::prelude::*;
+#[warn(vecs_implicitly_copyable)];
+#[warn(deprecated_mode)];
+#[warn(deprecated_pattern)];
 
-use ast_util;
+
+#[ link(name = "codemap",
+        vers = "1.0",
+        uuid = "A0F4AB1E-002B-4CF2-A280-5DE62C8E13A3") ];
+
+#[ crate_type = "lib" ];
+
+#[no_core];
+extern mod core(vers = "0.6");
+extern mod std(vers = "0.6");
+
+use std::serialize::{Encodable, Decodable, Encoder, Decoder};
+
+use core::prelude::*;
 
 use core::cmp;
 use core::dvec::DVec;
@@ -144,9 +161,18 @@ impl<S: Encoder> span: Encodable<S> {
 
 impl<D: Decoder> span: Decodable<D> {
     static fn decode(_d: &D) -> span {
-        ast_util::dummy_sp()
+        dummy_sp()
     }
 }
+
+// assuming that we're not in macro expansion
+pub pure fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
+    span {lo: lo, hi: hi, expn_info: None}
+}
+
+// make this a const, once the compiler supports it
+pub pure fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
+
 
 /// A source code location used for error reporting
 pub struct Loc {
@@ -204,10 +230,18 @@ pub struct FileMap {
 }
 
 pub impl FileMap {
+    // register a start-of-line offset in the table of line-beginnings.
+    // UNCHECKED INVARIANT: these offsets must be added in the right
+    // order and must be in the right places; there is shared knowledge
+    // about what ends a line between this file and parse.rs
     fn next_line(&self, +pos: BytePos) {
+        // the new charpos must be > the last one (or it's the first one).
+        assert ((self.lines.len() == 0)
+               || (self.lines[self.lines.len() - 1] < pos));
         self.lines.push(pos);
     }
 
+    // get a line from the list of pre-computed line-beginnings
     pub fn get_line(&self, line: int) -> ~str {
         unsafe {
             let begin: BytePos = self.lines[line] - self.start_pos;
@@ -242,11 +276,11 @@ pub impl CodeMap {
     }
 
     /// Add a new FileMap to the CodeMap and return it
-    fn new_filemap(+filename: FileName, src: @~str) -> @FileMap {
+    fn new_filemap(&self, filename: FileName, src: @~str) -> @FileMap {
         return self.new_filemap_w_substr(filename, FssNone, src);
     }
 
-    fn new_filemap_w_substr(+filename: FileName, +substr: FileSubstr,
+    fn new_filemap_w_substr(&self, filename: FileName, substr: FileSubstr,
                             src: @~str) -> @FileMap {
         let start_pos = if self.files.len() == 0 {
             0
@@ -275,7 +309,7 @@ pub impl CodeMap {
     }
 
     /// Lookup source information about a BytePos
-    pub fn lookup_char_pos(&self, +pos: BytePos) -> Loc {
+    pub fn lookup_char_pos(&self, pos: BytePos) -> Loc {
         return self.lookup_pos(pos);
     }
 
@@ -319,7 +353,7 @@ pub impl CodeMap {
     }
 
     pub fn span_to_str(&self, sp: span) -> ~str {
-        if self.files.len() == 0 && sp == ast_util::dummy_sp() {
+        if self.files.len() == 0 && sp == dummy_sp() {
             return ~"no-location";
         }
 
@@ -363,7 +397,7 @@ pub impl CodeMap {
 
 priv impl CodeMap {
 
-    fn lookup_filemap_idx(&self, +pos: BytePos) -> uint {
+    fn lookup_filemap_idx(&self, pos: BytePos) -> uint {
         let len = self.files.len();
         let mut a = 0u;
         let mut b = len;
@@ -383,7 +417,7 @@ priv impl CodeMap {
         return a;
     }
 
-    fn lookup_line(&self, +pos: BytePos)
+    fn lookup_line(&self, pos: BytePos)
         -> {fm: @FileMap, line: uint}
     {
         let idx = self.lookup_filemap_idx(pos);
@@ -397,7 +431,7 @@ priv impl CodeMap {
         return {fm: f, line: a};
     }
 
-    fn lookup_pos(&self, +pos: BytePos) -> Loc {
+    fn lookup_pos(&self, pos: BytePos) -> Loc {
         let {fm: f, line: a} = self.lookup_line(pos);
         let line = a + 1u; // Line numbers start at 1
         let chpos = self.bytepos_to_local_charpos(pos);
@@ -423,7 +457,7 @@ priv impl CodeMap {
                     lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
     }
 
-    fn lookup_byte_offset(&self, +bpos: BytePos)
+    fn lookup_byte_offset(&self, bpos: BytePos)
         -> {fm: @FileMap, pos: BytePos} {
         let idx = self.lookup_filemap_idx(bpos);
         let fm = self.files[idx];
@@ -433,7 +467,7 @@ priv impl CodeMap {
 
     // Converts an absolute BytePos to a CharPos relative to the file it is
     // located in
-    fn bytepos_to_local_charpos(&self, +bpos: BytePos) -> CharPos {
+    fn bytepos_to_local_charpos(&self, bpos: BytePos) -> CharPos {
         debug!("codemap: converting %? to char pos", bpos);
         let idx = self.lookup_filemap_idx(bpos);
         let map = self.files[idx];
@@ -457,6 +491,36 @@ priv impl CodeMap {
         CharPos(bpos.to_uint() - total_extra_bytes)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    extern mod testingfuns;
+    use testingfuns::check_equal;
+
+    #[test]
+    fn t1 () {
+        let cm = CodeMap::new();
+        let fm = cm.new_filemap(~"blork.rs",@~"first line.\nsecond line");
+        fm.next_line(BytePos(0));
+        check_equal(&fm.get_line(0),&~"first line.");
+        // TESTING BROKEN BEHAVIOR:
+        fm.next_line(BytePos(10));
+        check_equal(&fm.get_line(1),&~".");
+    }
+
+    #[test]
+    #[should_fail]
+    fn t2 () {
+        let cm = CodeMap::new();
+        let fm = cm.new_filemap(~"blork.rs",@~"first line.\nsecond line");
+        // TESTING *REALLY* BROKEN BEHAVIOR:
+        fm.next_line(BytePos(0));
+        fm.next_line(BytePos(10));
+        fm.next_line(BytePos(2));
+    }
+}
+
 
 //
 // Local Variables:
