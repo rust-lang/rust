@@ -13,7 +13,7 @@ use core::prelude::*;
 use ext::base::*;
 use ext::base;
 
-fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {
     let mut res_str = ~"";
     for tts.eachi |i, e| {

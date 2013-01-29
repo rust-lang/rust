@@ -101,18 +101,18 @@ eof: [a $( a )* a b ·]
 /* to avoid costly uniqueness checks, we require that `match_seq` always has a
 nonempty body. */
 
-enum matcher_pos_up { /* to break a circularity */
+pub enum matcher_pos_up { /* to break a circularity */
     matcher_pos_up(Option<matcher_pos>)
 }
 
-fn is_some(&&mpu: matcher_pos_up) -> bool {
+pub fn is_some(&&mpu: matcher_pos_up) -> bool {
     match &mpu {
       &matcher_pos_up(None) => false,
       _ => true
     }
 }
 
-type matcher_pos = ~{
+pub type matcher_pos = ~{
     elts: ~[ast::matcher], // maybe should be /&? Need to understand regions.
     sep: Option<Token>,
     mut idx: uint,
@@ -122,14 +122,14 @@ type matcher_pos = ~{
     sp_lo: BytePos,
 };
 
-fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
+pub fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
     match &mpu {
       &matcher_pos_up(Some(ref mp)) => copy (*mp),
       _ => fail
     }
 }
 
-fn count_names(ms: &[matcher]) -> uint {
+pub fn count_names(ms: &[matcher]) -> uint {
     vec::foldl(0u, ms, |ct, m| {
         ct + match m.node {
           match_tok(_) => 0u,
@@ -139,8 +139,8 @@ fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
-    -> matcher_pos {
+pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
+                        -> matcher_pos {
     let mut match_idx_hi = 0u;
     for ms.each() |elt| {
         match elt.node {
@@ -177,15 +177,15 @@ fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
 // only on the nesting depth of ast::match_seqs in the originating
 // ast::matcher it was derived from.
 
-enum named_match {
+pub enum named_match {
     matched_seq(~[@named_match], codemap::span),
     matched_nonterminal(nonterminal)
 }
 
-type earley_item = matcher_pos;
+pub type earley_item = matcher_pos;
 
-fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
-    -> HashMap<ident,@named_match> {
+pub fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
+            -> HashMap<ident,@named_match> {
     fn n_rec(p_s: parse_sess, m: matcher, res: ~[@named_match],
              ret_val: HashMap<ident, @named_match>) {
         match m {
@@ -211,14 +211,14 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
     return ret_val;
 }
 
-enum parse_result {
+pub enum parse_result {
     success(HashMap<ident, @named_match>),
     failure(codemap::span, ~str),
     error(codemap::span, ~str)
 }
 
-fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
-                 ms: ~[matcher]) -> HashMap<ident, @named_match> {
+pub fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
+                     ms: ~[matcher]) -> HashMap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, ref str) => sess.span_diagnostic.span_fatal(sp, (*str)),
@@ -226,8 +226,11 @@ fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
     }
 }
 
-fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
-    -> parse_result {
+pub fn parse(sess: parse_sess,
+             cfg: ast::crate_cfg,
+             rdr: reader,
+             ms: ~[matcher])
+          -> parse_result {
     let mut cur_eis = ~[];
     cur_eis.push(initial_matcher_pos(ms, None, rdr.peek().sp.lo));
 
@@ -398,7 +401,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     }
 }
 
-fn parse_nt(p: Parser, name: ~str) -> nonterminal {
+pub fn parse_nt(p: Parser, name: ~str) -> nonterminal {
     match name {
       ~"item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),

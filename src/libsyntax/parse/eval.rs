@@ -13,10 +13,6 @@ use attr::parser_attr;
 use ast_util::mk_sp;
 use codemap::span;
 
-export eval_crate_directives_to_mod;
-export eval_src_mod;
-export eval_src_mod_from_path;
-
 type ctx =
     @{sess: parse::parse_sess,
       cfg: ast::crate_cfg};
@@ -31,8 +27,8 @@ fn eval_crate_directives(cx: ctx,
     }
 }
 
-fn eval_crate_directives_to_mod(cx: ctx, cdirs: ~[@ast::crate_directive],
-                                prefix: &Path, suffix: &Option<Path>)
+pub fn eval_crate_directives_to_mod(cx: ctx, cdirs: ~[@ast::crate_directive],
+                                    prefix: &Path, suffix: &Option<Path>)
     -> (ast::_mod, ~[ast::attribute]) {
     let (cview_items, citems, cattrs)
         = parse_companion_mod(cx, prefix, suffix);
@@ -95,19 +91,19 @@ fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
     }
 }
 
-fn eval_src_mod(cx: ctx, prefix: &Path,
-                outer_attrs: ~[ast::attribute],
-                id: ast::ident, sp: span
-               ) -> (ast::item_, ~[ast::attribute]) {
+pub fn eval_src_mod(cx: ctx, prefix: &Path,
+                    outer_attrs: ~[ast::attribute],
+                    id: ast::ident, sp: span)
+                 -> (ast::item_, ~[ast::attribute]) {
     let file_path = Path(cdir_path_opt(
         cx.sess.interner.get(id) + ~".rs", outer_attrs));
     eval_src_mod_from_path(cx, prefix, &file_path, outer_attrs, sp)
 }
 
-fn eval_src_mod_from_path(cx: ctx, prefix: &Path, path: &Path,
-                          outer_attrs: ~[ast::attribute],
-                          sp: span
-                         ) -> (ast::item_, ~[ast::attribute]) {
+pub fn eval_src_mod_from_path(cx: ctx, prefix: &Path, path: &Path,
+                              outer_attrs: ~[ast::attribute],
+                              sp: span)
+                           -> (ast::item_, ~[ast::attribute]) {
     let full_path = if path.is_absolute {
         copy *path
     } else {

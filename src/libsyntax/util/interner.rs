@@ -18,18 +18,16 @@ use core::dvec::DVec;
 use std::map::HashMap;
 use std::map;
 
-type hash_interner<T> =
-    {map: HashMap<T, uint>,
-     vect: DVec<T>};
+pub type hash_interner<T> = {map: HashMap<T, uint>, vect: DVec<T>};
 
-fn mk<T:Eq IterBytes Hash Const Copy>() -> Interner<T> {
+pub fn mk<T:Eq IterBytes Hash Const Copy>() -> Interner<T> {
     let m = map::HashMap::<T, uint>();
     let hi: hash_interner<T> =
         {map: m, vect: DVec()};
     move ((move hi) as Interner::<T>)
 }
 
-fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: &[T]) -> Interner<T> {
+pub fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: &[T]) -> Interner<T> {
     let rv = mk();
     for init.each() |v| { rv.intern(*v); }
     return rv;
@@ -37,14 +35,14 @@ fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: &[T]) -> Interner<T> {
 
 
 /* when traits can extend traits, we should extend index<uint,T> to get [] */
-trait Interner<T:Eq IterBytes Hash Const Copy> {
+pub trait Interner<T:Eq IterBytes Hash Const Copy> {
     fn intern(T) -> uint;
     fn gensym(T) -> uint;
     pure fn get(uint) -> T;
     fn len() -> uint;
 }
 
-impl <T:Eq IterBytes Hash Const Copy> hash_interner<T>: Interner<T> {
+pub impl <T:Eq IterBytes Hash Const Copy> hash_interner<T>: Interner<T> {
     fn intern(val: T) -> uint {
         match self.map.find(val) {
           Some(idx) => return idx,
@@ -74,13 +72,13 @@ impl <T:Eq IterBytes Hash Const Copy> hash_interner<T>: Interner<T> {
 
 #[test]
 #[should_fail]
-fn i1 () {
+pub fn i1 () {
     let i : Interner<@~str> = mk();
     i.get(13);
 }
 
 #[test]
-fn i2 () {
+pub fn i2 () {
     let i : Interner<@~str> = mk();
     // first one is zero:
     assert i.intern (@~"dog") == 0;
@@ -105,7 +103,7 @@ fn i2 () {
 }
 
 #[test]
-fn i3 () {
+pub fn i3 () {
     let i : Interner<@~str> = mk_prefill([@~"Alan",@~"Bob",@~"Carol"]);
     assert i.get(0) == @~"Alan";
     assert i.get(1) == @~"Bob";

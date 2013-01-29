@@ -17,8 +17,10 @@ use print;
 use core::io::WriterUtil;
 use core::option;
 
-fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, tt: ~[ast::token_tree])
-    -> base::MacResult {
+pub fn expand_syntax_ext(cx: ext_ctxt,
+                         sp: codemap::span,
+                         tt: ~[ast::token_tree])
+                      -> base::MacResult {
 
     cx.print_backtrace();
     io::stdout().write_line(

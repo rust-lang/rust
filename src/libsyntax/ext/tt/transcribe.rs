@@ -23,8 +23,6 @@ use core::vec;
 use std;
 use std::map::HashMap;
 
-export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
-
 enum tt_frame_up { /* to break a circularity */
     tt_frame_up(Option<tt_frame>)
 }
@@ -40,7 +38,7 @@ type tt_frame = @{
     up: tt_frame_up,
 };
 
-type tt_reader = @{
+pub type tt_reader = @{
     sp_diag: span_handler,
     interner: @ident_interner,
     mut cur: tt_frame,
@@ -56,10 +54,10 @@ type tt_reader = @{
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
-fn new_tt_reader(sp_diag: span_handler, itr: @ident_interner,
-                 interp: Option<std::map::HashMap<ident,@named_match>>,
-                 src: ~[ast::token_tree])
-    -> tt_reader {
+pub fn new_tt_reader(sp_diag: span_handler, itr: @ident_interner,
+                     interp: Option<std::map::HashMap<ident,@named_match>>,
+                     src: ~[ast::token_tree])
+                  -> tt_reader {
     let r = @{sp_diag: sp_diag, interner: itr,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: None, up: tt_frame_up(option::None)},
@@ -88,7 +86,7 @@ pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
      }
 }
 
-pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
+pub pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
     @{sp_diag: r.sp_diag, interner: r.interner,
       mut cur: dup_tt_frame(r.cur),
       interpolations: r.interpolations,
@@ -151,7 +149,7 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
 }
 
 
-fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
+pub fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
     let ret_val = { tok: r.cur_tok, sp: r.cur_span };
     while r.cur.idx >= r.cur.readme.len() {
         /* done with this set; pop or repeat? */

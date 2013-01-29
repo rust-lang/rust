@@ -69,9 +69,9 @@ use core::vec;
  * line (which it can't) and so naturally place the content on its own line to
  * avoid combining it with other lines and making matters even worse.
  */
-enum breaks { consistent, inconsistent, }
+pub enum breaks { consistent, inconsistent, }
 
-impl breaks : cmp::Eq {
+pub impl breaks : cmp::Eq {
     pure fn eq(&self, other: &breaks) -> bool {
         match ((*self), (*other)) {
             (consistent, consistent) => true,
@@ -83,13 +83,19 @@ impl breaks : cmp::Eq {
     pure fn ne(&self, other: &breaks) -> bool { !(*self).eq(other) }
 }
 
-type break_t = {offset: int, blank_space: int};
+pub type break_t = {offset: int, blank_space: int};
 
-type begin_t = {offset: int, breaks: breaks};
+pub type begin_t = {offset: int, breaks: breaks};
 
-enum token { STRING(@~str, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
+pub enum token {
+    STRING(@~str, int),
+    BREAK(break_t),
+    BEGIN(begin_t),
+    END,
+    EOF,
+}
 
-impl token {
+pub impl token {
     fn is_eof() -> bool {
         match self { EOF => true, _ => false }
     }
@@ -103,7 +109,7 @@ impl token {
     }
 }
 
-fn tok_str(++t: token) -> ~str {
+pub fn tok_str(++t: token) -> ~str {
     match t {
       STRING(s, len) => return fmt!("STR(%s,%d)", *s, len),
       BREAK(_) => return ~"BREAK",
@@ -113,8 +119,8 @@ fn tok_str(++t: token) -> ~str {
     }
 }
 
-fn buf_str(toks: ~[mut token], szs: ~[mut int], left: uint, right: uint,
-           lim: uint) -> ~str {
+pub fn buf_str(toks: ~[mut token], szs: ~[mut int], left: uint, right: uint,
+               lim: uint) -> ~str {
     let n = vec::len(toks);
     assert (n == vec::len(szs));
     let mut i = left;
@@ -131,13 +137,13 @@ fn buf_str(toks: ~[mut token], szs: ~[mut int], left: uint, right: uint,
     return s;
 }
 
-enum print_stack_break { fits, broken(breaks), }
+pub enum print_stack_break { fits, broken(breaks), }
 
-type print_stack_elt = {offset: int, pbreak: print_stack_break};
+pub type print_stack_elt = {offset: int, pbreak: print_stack_break};
 
-const size_infinity: int = 0xffff;
+pub const size_infinity: int = 0xffff;
 
-fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
+pub fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
     let n: uint = 3 * linewidth;
@@ -241,7 +247,7 @@ fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
  * the method called 'pretty_print', and the 'PRINT' process is the method
  * called 'print'.
  */
-type printer_ = {
+pub type printer_ = {
     out: io::Writer,
     buf_len: uint,
     mut margin: int, // width of lines we're constrained to
@@ -268,11 +274,11 @@ type printer_ = {
     mut pending_indentation: int,
 };
 
-enum printer {
+pub enum printer {
     printer_(@printer_)
 }
 
-impl printer {
+pub impl printer {
     fn last_token() -> token { self.token[self.right] }
     // be very careful with this!
     fn replace_last_token(t: token) { self.token[self.right] = t; }
@@ -533,45 +539,45 @@ impl printer {
 }
 
 // Convenience functions to talk to the printer.
-fn box(p: printer, indent: uint, b: breaks) {
+pub fn box(p: printer, indent: uint, b: breaks) {
     p.pretty_print(BEGIN({offset: indent as int, breaks: b}));
 }
 
-fn ibox(p: printer, indent: uint) { box(p, indent, inconsistent); }
+pub fn ibox(p: printer, indent: uint) { box(p, indent, inconsistent); }
 
-fn cbox(p: printer, indent: uint) { box(p, indent, consistent); }
+pub fn cbox(p: printer, indent: uint) { box(p, indent, consistent); }
 
-fn break_offset(p: printer, n: uint, off: int) {
+pub fn break_offset(p: printer, n: uint, off: int) {
     p.pretty_print(BREAK({offset: off, blank_space: n as int}));
 }
 
-fn end(p: printer) { p.pretty_print(END); }
+pub fn end(p: printer) { p.pretty_print(END); }
 
-fn eof(p: printer) { p.pretty_print(EOF); }
+pub fn eof(p: printer) { p.pretty_print(EOF); }
 
-fn word(p: printer, wrd: ~str) {
+pub fn word(p: printer, wrd: ~str) {
     p.pretty_print(STRING(@wrd, str::len(wrd) as int));
 }
 
-fn huge_word(p: printer, wrd: ~str) {
+pub fn huge_word(p: printer, wrd: ~str) {
     p.pretty_print(STRING(@wrd, size_infinity));
 }
 
-fn zero_word(p: printer, wrd: ~str) { p.pretty_print(STRING(@wrd, 0)); }
+pub fn zero_word(p: printer, wrd: ~str) { p.pretty_print(STRING(@wrd, 0)); }
 
-fn spaces(p: printer, n: uint) { break_offset(p, n, 0); }
+pub fn spaces(p: printer, n: uint) { break_offset(p, n, 0); }
 
-fn zerobreak(p: printer) { spaces(p, 0u); }
+pub fn zerobreak(p: printer) { spaces(p, 0u); }
 
-fn space(p: printer) { spaces(p, 1u); }
+pub fn space(p: printer) { spaces(p, 1u); }
 
-fn hardbreak(p: printer) { spaces(p, size_infinity as uint); }
+pub fn hardbreak(p: printer) { spaces(p, size_infinity as uint); }
 
-fn hardbreak_tok_offset(off: int) -> token {
+pub fn hardbreak_tok_offset(off: int) -> token {
     return BREAK({offset: off, blank_space: size_infinity});
 }
 
-fn hardbreak_tok() -> token { return hardbreak_tok_offset(0); }
+pub fn hardbreak_tok() -> token { return hardbreak_tok_offset(0); }
 
 
 //

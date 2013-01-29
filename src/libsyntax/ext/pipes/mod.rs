@@ -56,17 +56,16 @@ use parse::parser::Parser;
 
 use core::option::None;
 
-mod ast_builder;
-mod parse_proto;
-mod pipec;
-mod proto;
-mod check;
-mod liveness;
+pub mod ast_builder;
+pub mod parse_proto;
+pub mod pipec;
+pub mod proto;
+pub mod check;
+pub mod liveness;
 
 
-fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
-                tt: ~[ast::token_tree]) -> base::MacResult
-{
+pub fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
+                tt: ~[ast::token_tree]) -> base::MacResult {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,

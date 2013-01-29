@@ -22,11 +22,10 @@ use core::option;
 use core::vec;
 use std::map::HashMap;
 
-fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
-               e: expr_, s: span, fld: ast_fold,
-               orig: fn@(expr_, span, ast_fold) -> (expr_, span))
-    -> (expr_, span)
-{
+pub fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
+                   e: expr_, s: span, fld: ast_fold,
+                   orig: fn@(expr_, span, ast_fold) -> (expr_, span))
+                -> (expr_, span) {
     return match e {
       // expr_mac should really be expr_ext or something; it's the
       // entry-point for all syntax extensions.
@@ -88,11 +87,10 @@ fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
 //
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
-fn expand_mod_items(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
-                    module_: ast::_mod, fld: ast_fold,
-                    orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
-    -> ast::_mod
-{
+pub fn expand_mod_items(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
+                        module_: ast::_mod, fld: ast_fold,
+                        orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
+                     -> ast::_mod {
     // Fold the contents first:
     let module_ = orig(module_, fld);
 
@@ -125,11 +123,10 @@ fn expand_mod_items(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
 
 
 // When we enter a module, record it, for the sake of `module!`
-fn expand_item(exts: HashMap<~str, SyntaxExtension>,
-               cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
-               orig: fn@(&&v: @ast::item, ast_fold) -> Option<@ast::item>)
-    -> Option<@ast::item>
-{
+pub fn expand_item(exts: HashMap<~str, SyntaxExtension>,
+                   cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
+                   orig: fn@(&&v: @ast::item, ast_fold) -> Option<@ast::item>)
+                -> Option<@ast::item> {
     let is_mod = match it.node {
       ast::item_mod(_) | ast::item_foreign_mod(_) => true,
       _ => false
@@ -152,9 +149,9 @@ fn expand_item(exts: HashMap<~str, SyntaxExtension>,
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-fn expand_item_mac(exts: HashMap<~str, SyntaxExtension>,
-                   cx: ext_ctxt, &&it: @ast::item,
-                   fld: ast_fold) -> Option<@ast::item> {
+pub fn expand_item_mac(exts: HashMap<~str, SyntaxExtension>,
+                       cx: ext_ctxt, &&it: @ast::item,
+                       fld: ast_fold) -> Option<@ast::item> {
 
     let (pth, tts) = match it.node {
         item_mac(ast::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
@@ -211,11 +208,10 @@ fn expand_item_mac(exts: HashMap<~str, SyntaxExtension>,
     return maybe_it;
 }
 
-fn expand_stmt(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
-               && s: stmt_, sp: span, fld: ast_fold,
-               orig: fn@(&&s: stmt_, span, ast_fold) -> (stmt_, span))
-    -> (stmt_, span)
-{
+pub fn expand_stmt(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
+                   && s: stmt_, sp: span, fld: ast_fold,
+                   orig: fn@(&&s: stmt_, span, ast_fold) -> (stmt_, span))
+                -> (stmt_, span) {
 
     let (mac, pth, tts, semi) = match s {
         stmt_mac(ref mac, semi) => {
@@ -267,7 +263,7 @@ fn expand_stmt(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
 }
 
 
-fn new_span(cx: ext_ctxt, sp: span) -> span {
+pub fn new_span(cx: ext_ctxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
     return span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
@@ -277,7 +273,7 @@ fn new_span(cx: ext_ctxt, sp: span) -> span {
 // is substantially more mature, these should move from here, into a
 // compiled part of libcore at very least.
 
-fn core_macros() -> ~str {
+pub fn core_macros() -> ~str {
     return
 ~"{
     macro_rules! ignore (($($x:tt)*) => (()))
@@ -327,8 +323,8 @@ fn core_macros() -> ~str {
 }";
 }
 
-fn expand_crate(parse_sess: parse::parse_sess,
-                cfg: ast::crate_cfg, c: @crate) -> @crate {
+pub fn expand_crate(parse_sess: parse::parse_sess,
+                    cfg: ast::crate_cfg, c: @crate) -> @crate {
     let exts = syntax_expander_table();
     let afp = default_ast_fold();
     let cx: ext_ctxt = mk_ctxt(parse_sess, cfg);

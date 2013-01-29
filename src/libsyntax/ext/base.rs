@@ -32,38 +32,38 @@ use std::map::HashMap;
 // is now probably a redundant AST node, can be merged with
 // ast::mac_invoc_tt.
 
-struct MacroDef {
+pub struct MacroDef {
     name: ~str,
     ext: SyntaxExtension
 }
 
-type ItemDecorator =
+pub type ItemDecorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
-struct SyntaxExpanderTT {
+pub struct SyntaxExpanderTT {
     expander: SyntaxExpanderTTFun,
     span: Option<span>
 }
 
-type SyntaxExpanderTTFun = fn@(ext_ctxt, span, ~[ast::token_tree])
-    -> MacResult;
+pub type SyntaxExpanderTTFun = fn@(ext_ctxt, span, ~[ast::token_tree])
+                                -> MacResult;
 
-struct SyntaxExpanderTTItem {
+pub struct SyntaxExpanderTTItem {
     expander: SyntaxExpanderTTItemFun,
     span: Option<span>
 }
 
-type SyntaxExpanderTTItemFun
+pub type SyntaxExpanderTTItemFun
     = fn@(ext_ctxt, span, ast::ident, ~[ast::token_tree]) -> MacResult;
 
-enum MacResult {
+pub enum MacResult {
     MRExpr(@ast::expr),
     MRItem(@ast::item),
     MRAny(fn@()-> @ast::expr, fn@()-> Option<@ast::item>, fn@()->@ast::stmt),
     MRDef(MacroDef)
 }
 
-enum SyntaxExtension {
+pub enum SyntaxExtension {
 
     // #[auto_encode] and such
     ItemDecorator(ItemDecorator),
@@ -78,7 +78,7 @@ enum SyntaxExtension {
 
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
-fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
+pub fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
     fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> SyntaxExtension {
         NormalTT(SyntaxExpanderTT{expander: f, span: None})
     }
@@ -161,7 +161,7 @@ fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
 // One of these is made during expansion and incrementally updated as we go;
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
-trait ext_ctxt {
+pub trait ext_ctxt {
     fn codemap() -> @CodeMap;
     fn parse_sess() -> parse::parse_sess;
     fn cfg() -> ast::crate_cfg;
@@ -187,8 +187,8 @@ trait ext_ctxt {
     fn ident_of(st: ~str) -> ast::ident;
 }
 
-fn mk_ctxt(parse_sess: parse::parse_sess,
-           cfg: ast::crate_cfg) -> ext_ctxt {
+pub fn mk_ctxt(parse_sess: parse::parse_sess,
+               cfg: ast::crate_cfg) -> ext_ctxt {
     type ctxt_repr = {parse_sess: parse::parse_sess,
                       cfg: ast::crate_cfg,
                       mut backtrace: Option<@ExpnInfo>,
@@ -281,7 +281,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
     move ((move imp) as ext_ctxt)
 }
 
-fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
+pub fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
     match expr.node {
       ast::expr_lit(l) => match l.node {
         ast::lit_str(s) => return *s,
@@ -291,9 +291,9 @@ fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
     }
 }
 
-fn expr_to_ident(cx: ext_ctxt,
-                 expr: @ast::expr,
-                 err_msg: ~str) -> ast::ident {
+pub fn expr_to_ident(cx: ext_ctxt,
+                     expr: @ast::expr,
+                     err_msg: ~str) -> ast::ident {
     match expr.node {
       ast::expr_path(p) => {
         if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
@@ -305,15 +305,17 @@ fn expr_to_ident(cx: ext_ctxt,
     }
 }
 
-fn check_zero_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree],
-                  name: &str) {
+pub fn check_zero_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree],
+                      name: &str) {
     if tts.len() != 0 {
         cx.span_fatal(sp, fmt!("%s takes no arguments", name));
     }
 }
 
-fn get_single_str_from_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree],
-                           name: &str) -> ~str {
+pub fn get_single_str_from_tts(cx: ext_ctxt,
+                               sp: span,
+                               tts: &[ast::token_tree],
+                               name: &str) -> ~str {
     if tts.len() != 1 {
         cx.span_fatal(sp, fmt!("%s takes 1 argument.", name));
     }
@@ -325,8 +327,8 @@ fn get_single_str_from_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree],
     }
 }
 
-fn get_exprs_from_tts(cx: ext_ctxt, tts: ~[ast::token_tree])
-    -> ~[@ast::expr] {
+pub fn get_exprs_from_tts(cx: ext_ctxt, tts: ~[ast::token_tree])
+                       -> ~[@ast::expr] {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
                                        tts);

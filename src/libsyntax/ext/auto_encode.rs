@@ -101,16 +101,13 @@ use core::vec;
 use std::map;
 use std::map::HashMap;
 
-export expand_auto_encode;
-export expand_auto_decode;
-
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
     pub use ext;
     pub use parse;
 }
 
-fn expand_auto_encode(
+pub fn expand_auto_encode(
     cx: ext_ctxt,
     span: span,
     _mitem: ast::meta_item,
@@ -165,7 +162,7 @@ fn expand_auto_encode(
     }
 }
 
-fn expand_auto_decode(
+pub fn expand_auto_decode(
     cx: ext_ctxt,
     span: span,
     _mitem: ast::meta_item,
