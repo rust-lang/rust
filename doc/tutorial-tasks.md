@@ -394,7 +394,7 @@ before returning. Hence:
 
 ~~~
 # use pipes::{stream, Chan, Port};
-# use task::{spawn, try};
+use task::{spawn, try};
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
