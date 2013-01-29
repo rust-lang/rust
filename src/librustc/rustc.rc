@@ -19,7 +19,6 @@
 #[crate_type = "lib"];
 
 #[legacy_modes];
-#[legacy_exports];
 #[legacy_records];
 
 #[allow(non_implicitly_copyable_typarams)];
@@ -49,153 +48,147 @@ use driver_ = driver;
 use middle_ = middle;
 use back_ = back;
 
-mod middle {
-    #[legacy_exports];
-    mod trans {
-        #[legacy_exports];
+pub mod middle {
+    pub mod trans {
         #[legacy_exports]
-        mod inline;
+        pub mod inline;
         #[legacy_exports]
-        mod monomorphize;
+        pub mod monomorphize;
         #[legacy_exports]
-        mod controlflow;
+        pub mod controlflow;
         #[legacy_exports]
-        mod glue;
+        pub mod glue;
         #[legacy_exports]
-        mod datum;
+        pub mod datum;
         #[legacy_exports]
-        mod callee;
+        pub mod callee;
         #[legacy_exports]
-        mod expr;
+        pub mod expr;
         #[legacy_exports]
-        mod common;
+        pub mod common;
         #[legacy_exports]
-        mod consts;
+        pub mod consts;
         #[legacy_exports]
-        mod type_of;
+        pub mod type_of;
         #[legacy_exports]
-        mod build;
+        pub mod build;
         #[legacy_exports]
-        mod base;
+        pub mod base;
         #[legacy_exports]
-        mod _match;
+        pub mod _match;
         #[legacy_exports]
-        mod uniq;
+        pub mod uniq;
         #[legacy_exports]
-        mod closure;
+        pub mod closure;
         #[legacy_exports]
-        mod tvec;
+        pub mod tvec;
         #[legacy_exports]
-        mod meth;
+        pub mod meth;
         #[legacy_exports]
-        mod cabi;
+        pub mod cabi;
         #[legacy_exports]
-        mod cabi_x86_64;
+        pub mod cabi_x86_64;
         #[legacy_exports]
-        mod foreign;
+        pub mod foreign;
         #[legacy_exports]
-        mod reflect;
+        pub mod reflect;
         #[legacy_exports]
-        mod shape;
+        pub mod shape;
         #[legacy_exports]
-        mod debuginfo;
+        pub mod debuginfo;
         #[legacy_exports]
-        mod type_use;
+        pub mod type_use;
         #[legacy_exports]
-        mod reachable;
-        mod machine;
+        pub mod reachable;
+        pub mod machine;
     }
     #[legacy_exports]
-    mod ty;
+    pub mod ty;
     #[legacy_exports]
-    mod resolve;
+    pub mod resolve;
     #[path = "typeck/mod.rs"]
     pub mod typeck;
     #[legacy_exports]
-    mod check_loop;
+    pub mod check_loop;
     #[legacy_exports]
-    mod check_match;
+    pub mod check_match;
     #[legacy_exports]
-    mod check_const;
+    pub mod check_const;
     #[legacy_exports]
-    mod lint;
+    pub mod lint;
     #[path = "borrowck/mod.rs"]
     pub mod borrowck;
     #[legacy_exports]
-    mod mem_categorization;
+    pub mod mem_categorization;
     #[legacy_exports]
-    mod liveness;
+    pub mod liveness;
     #[legacy_exports]
-    mod kind;
+    pub mod kind;
     #[legacy_exports]
-    mod freevars;
+    pub mod freevars;
     #[legacy_exports]
-    mod capture;
+    pub mod capture;
     #[legacy_exports]
-    mod pat_util;
+    pub mod pat_util;
     #[legacy_exports]
-    mod region;
+    pub mod region;
     #[legacy_exports]
-    mod const_eval;
+    pub mod const_eval;
     #[legacy_exports]
-    mod astencode;
+    pub mod astencode;
     #[legacy_exports]
-    mod lang_items;
+    pub mod lang_items;
     #[legacy_exports]
-    mod privacy;
-    mod mode;
+    pub mod privacy;
+    pub mod mode;
 }
 
-mod front {
-    #[legacy_exports];
+pub mod front {
     #[legacy_exports]
-    mod config;
+    pub mod config;
     #[legacy_exports]
-    mod test;
+    pub mod test;
     #[legacy_exports]
-    mod core_inject;
+    pub mod core_inject;
     #[legacy_exports]
-    mod intrinsic_inject;
+    pub mod intrinsic_inject;
 }
 
-mod back {
-    #[legacy_exports];
+pub mod back {
     #[legacy_exports]
-    mod link;
+    pub mod link;
     #[legacy_exports]
-    mod abi;
+    pub mod abi;
     #[legacy_exports]
-    mod upcall;
+    pub mod upcall;
     #[legacy_exports]
-    mod arm;
+    pub mod arm;
     #[legacy_exports]
-    mod x86;
+    pub mod x86;
     #[legacy_exports]
-    mod x86_64;
+    pub mod x86_64;
     #[legacy_exports]
-    mod rpath;
+    pub mod rpath;
     #[legacy_exports]
-    mod target_strs;
+    pub mod target_strs;
 }
 
 #[path = "metadata/mod.rs"]
-mod metadata;
+pub mod metadata;
 
 #[path = "driver/mod.rs"]
-mod driver;
+pub mod driver;
 
-mod util {
-    #[legacy_exports];
+pub mod util {
     #[legacy_exports]
-    mod common;
+    pub mod common;
     #[legacy_exports]
-    mod ppaux;
+    pub mod ppaux;
 }
 
-mod lib {
-    #[legacy_exports];
+pub mod lib {
     #[legacy_exports]
-    mod llvm;
+    pub mod llvm;
 }
 
 use result::{Ok, Err};
@@ -214,7 +207,7 @@ use driver::driver::{host_triple, optgroups, early_error,
 use driver::session;
 use middle::lint;
 
-fn version(argv0: &str) {
+pub fn version(argv0: &str) {
     let mut vers = ~"unknown version";
     let env_vers = env!("CFG_VERSION");
     if env_vers.len() != 0 { vers = env_vers; }
@@ -222,7 +215,7 @@ fn version(argv0: &str) {
     io::println(fmt!("host: %s", host_triple()));
 }
 
-fn usage(argv0: &str) {
+pub fn usage(argv0: &str) {
     let message = fmt!("Usage: %s [OPTIONS] INPUT", argv0);
     io::println(groups::usage(message, optgroups()) +
                 ~"Additional help:
@@ -231,7 +224,7 @@ fn usage(argv0: &str) {
 ");
 }
 
-fn describe_warnings() {
+pub fn describe_warnings() {
     io::println(fmt!("
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -266,7 +259,7 @@ Available lint options:
     io::println(~"");
 }
 
-fn describe_debug_flags() {
+pub fn describe_debug_flags() {
     io::println(fmt!("\nAvailable debug options:\n"));
     for session::debugging_opts_map().each |pair| {
         let (name, desc, _) = /*bad*/copy *pair;
@@ -274,7 +267,7 @@ fn describe_debug_flags() {
     }
 }
 
-fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
+pub fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     logging::console_off();
 
@@ -361,12 +354,12 @@ fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
     compile_input(sess, cfg, input, &odir, &ofile);
 }
 
-enum monitor_msg {
+pub enum monitor_msg {
     fatal,
     done,
 }
 
-impl monitor_msg : cmp::Eq {
+pub impl monitor_msg : cmp::Eq {
     pure fn eq(&self, other: &monitor_msg) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
@@ -385,7 +378,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-fn monitor(+f: fn~(diagnostic::emitter)) {
+pub fn monitor(+f: fn~(diagnostic::emitter)) {
     let p = oldcomm::Port();
     let ch = oldcomm::Chan(&p);
 
@@ -435,7 +428,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
     }
 }
 
-fn main() {
+pub fn main() {
     let mut args = os::args();
     do monitor |move args, demitter| {
         run_compiler(&args, demitter);
