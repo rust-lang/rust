@@ -41,6 +41,7 @@ extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
 extern mod rustc(vers = "0.6");
 extern mod syntax(vers = "0.6");
+extern mod codemap(vers = "0.6");
 
 #[legacy_exports]
 mod pgp;
@@ -57,10 +58,11 @@ use core::hashmap::linear::LinearMap;
 use std::getopts::{optflag, optopt, opt_present};
 use std::map::HashMap;
 use std::{map, json, tempfile, term, sort, getopts};
-use syntax::codemap::span;
+use codemap::span;
+use codemap;
 use syntax::diagnostic::span_handler;
 use syntax::diagnostic;
-use syntax::{ast, codemap, parse, visit, attr};
+use syntax::{ast, parse, visit, attr};
 
 struct Package {
     name: ~str,

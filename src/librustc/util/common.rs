@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use syntax::ast;
-use syntax::codemap::{span};
+use codemap::{span};
 use syntax::visit;
 use syntax::print;
 use syntax;

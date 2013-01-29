@@ -33,6 +33,7 @@ extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
 extern mod rustc(vers = "0.6");
 extern mod syntax(vers = "0.6");
+extern mod codemap(vers = "0.6");
 
 use core::*;
 use std::par;

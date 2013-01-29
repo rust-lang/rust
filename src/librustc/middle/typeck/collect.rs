@@ -56,8 +56,8 @@ use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::ast_util::{trait_method_to_ty_method};
 use syntax::ast_util;
-use syntax::codemap::span;
-use syntax::codemap;
+use codemap::span;
+use codemap;
 use syntax::print::pprust::path_to_str;
 use syntax::visit;
 

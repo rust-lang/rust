@@ -24,7 +24,7 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use syntax::ast;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust::{expr_to_str};
 
 // Boxed vector types are in some sense currently a "shorthand" for a box

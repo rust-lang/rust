@@ -130,6 +130,8 @@ CFG_CORELIB :=$(call CFG_LIB_NAME,core)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
 CFG_LIBSYNTAX :=$(call CFG_LIB_NAME,syntax)
+CFG_LIBTESTINGFUNS :=$(call CFG_LIB_NAME,testingfuns)
+CFG_LIBCODEMAP :=$(call CFG_LIB_NAME,codemap)
 CFG_LIBFUZZER :=$(call CFG_LIB_NAME,fuzzer)
 CFG_LIBCARGO :=$(call CFG_LIB_NAME,cargo)
 CFG_LIBRUSTDOC :=$(call CFG_LIB_NAME,rustdoc)
@@ -147,6 +149,8 @@ STDLIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,std)
 CORELIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,core)
 LIBRUSTC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustc)
 LIBSYNTAX_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,syntax)
+LIBTESTINGFUNS_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,testingfuns)
+LIBCODEMAP_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,codemap)
 LIBFUZZER_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,fuzzer)
 LIBCARGO_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,cargo)
 LIBRUSTDOC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustdoc)
@@ -230,9 +234,19 @@ COMPILER_CRATE := $(S)src/librustc/rustc.rc
 COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/librustc/,      \
                            rustc.rc *.rs */*.rs */*/*.rs */*/*/*.rs))
 
+## NB: these dependencies overlap with the ones for libtestingfuns
+## and libcodemap, but there's an indirect dependency there anyway...
 LIBSYNTAX_CRATE := $(S)src/libsyntax/syntax.rc
 LIBSYNTAX_INPUTS := $(wildcard $(addprefix $(S)src/libsyntax/, \
                             syntax.rc *.rs */*.rs */*/*.rs))
+
+LIBTESTINGFUNS_CRATE := $(S)src/libsyntax/util/testing.rs
+LIBTESTINGFUNS_INPUTS := $(wildcard $(addprefix $(S)src/libsyntax/, \
+                            util/testing.rs ))
+
+LIBCODEMAP_CRATE := $(S)src/libsyntax/codemap.rs
+LIBCODEMAP_INPUTS := $(wildcard $(addprefix $(S)src/libsyntax/, \
+                            codemap.rs ))
 
 DRIVER_CRATE := $(S)src/driver/driver.rs
 

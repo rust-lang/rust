@@ -29,7 +29,7 @@ source code snippets, etc.
 
 
 #[ link(name = "codemap",
-        vers = "1.0",
+        vers = "0.6",
         uuid = "A0F4AB1E-002B-4CF2-A280-5DE62C8E13A3") ];
 
 #[ crate_type = "lib" ];
@@ -165,7 +165,7 @@ pub impl<D: Decoder> span: Decodable<D> {
     }
 }
 
-/* assuming that we're not in macro expansion */
+// assuming that we're not in macro expansion
 pub pure fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
     span {lo: lo, hi: hi, expn_info: None}
 }
@@ -496,7 +496,7 @@ mod test {
     use super::*;
     extern mod testingfuns;
     use testingfuns::check_equal;
-    
+
     #[test]
     fn t1 () {
         let cm = CodeMap::new();

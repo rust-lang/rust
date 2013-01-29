@@ -38,7 +38,7 @@ use std::smallintmap::{Map, SmallIntMap};
 use std::smallintmap;
 use syntax::ast_util::{path_to_ident};
 use syntax::attr;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
 use syntax::{ast, ast_util, visit};
 

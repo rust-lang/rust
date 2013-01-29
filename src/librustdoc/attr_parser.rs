@@ -22,7 +22,7 @@ use core::tuple;
 use core::vec;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap;
+use codemap;
 use syntax;
 
 pub type CrateAttrs = {
@@ -40,7 +40,7 @@ mod test {
         use syntax::parse;
         use syntax::parse::parser;
         use syntax::parse::attr::parser_attr;
-        use syntax::codemap;
+        use codemap;
         use syntax::diagnostic;
 
         let parse_sess = syntax::parse::new_parse_sess(None);

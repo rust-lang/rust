@@ -26,7 +26,7 @@ use std::ebml;
 use std::map::HashMap;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::dummy_sp;
+use codemap::dummy_sp;
 use syntax::ast_util;
 use syntax::diagnostic::expect;
 use syntax::diagnostic::span_handler;

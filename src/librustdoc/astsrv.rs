@@ -34,7 +34,7 @@ use rustc::metadata::filesearch;
 use std::map::HashMap;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::codemap;
+use codemap;
 use syntax::diagnostic::handler;
 use syntax::diagnostic;
 use syntax;

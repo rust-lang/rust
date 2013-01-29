@@ -54,6 +54,25 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX): \
                 $$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)	\
+                $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBCODEMAP) \
+		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
+		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) -o $$@ $$< && touch $$@
+
+$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBCODEMAP): \
+                $$(LIBCODEMAP_CRATE) $$(LIBCODEMAP_INPUTS) \
+		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)	\
+		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
+		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) -o $$@ $$< && touch $$@
+
+$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBTESTINGFUNS): \
+                $$(LIBTESTINGFUNS_CRATE) $$(LIBTESTINGFUNS_INPUTS) \
+		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)	\
 		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
 		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)

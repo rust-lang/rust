@@ -29,9 +29,10 @@ use core::sys;
 use std::map::HashMap;
 use std::map;
 use syntax::ast::Ty;
-use syntax::codemap::{span, CharPos};
+use codemap;
+use codemap::{span, CharPos};
 use syntax::parse::token::ident_interner;
-use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::{ast, ast_util, ast_map};
 
 export create_local_var;
 export create_function;

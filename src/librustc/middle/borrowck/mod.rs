@@ -247,7 +247,7 @@ use syntax::ast::{mutability, m_mutbl, m_imm, m_const};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 

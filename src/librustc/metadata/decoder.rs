@@ -45,6 +45,7 @@ use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+use codemap;
 
 export struct_dtor;
 export get_struct_fields;
@@ -1023,7 +1024,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
                         value: /*bad*/copy *meta_item,
                         is_sugared_doc: false,
                     },
-                    span: ast_util::dummy_sp()
+                    span: codemap::dummy_sp()
                 });
         };
       }

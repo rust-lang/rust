@@ -17,7 +17,7 @@ use std::io::*;
 
 use syntax::diagnostic;
 use syntax::ast;
-use syntax::codemap;
+use codemap;
 use syntax::parse::parser;
 use syntax::print::*;
 

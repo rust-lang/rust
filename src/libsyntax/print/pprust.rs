@@ -2275,7 +2275,7 @@ pub mod test {
             inputs: ~[],
             output: @ast::Ty {id: 0,
                               node: ast::ty_nil,
-                              span: ast_util::dummy_sp()},
+                              span: codemap::dummy_sp()},
             cf: ast::return_val
         };
         check_equal (&fun_to_str(decl, abba_ident, ~[],mock_interner),
@@ -2287,7 +2287,7 @@ pub mod test {
         let mock_interner = parse::token::mk_fake_ident_interner();
         let ident = mock_interner.intern(@~"principal_skinner");
 
-        let var = ast_util::respan(ast_util::dummy_sp(), ast::variant_ {
+        let var = ast_util::respan(codemap::dummy_sp(), ast::variant_ {
             name: ident,
             attrs: ~[],
             // making this up as I go.... ?

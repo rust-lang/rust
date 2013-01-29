@@ -34,7 +34,7 @@ use std::list;
 use std::list::list;
 use std::map::HashMap;
 use syntax::ast_map;
-use syntax::codemap::span;
+use codemap::span;
 use syntax::print::pprust;
 use syntax::{ast, visit};
 

@@ -168,9 +168,9 @@ use core::dvec;
 use std::map::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
-use syntax::ast_util::{dummy_sp, path_to_ident};
+use syntax::ast_util::path_to_ident;
 use syntax::ast_util;
-use syntax::codemap::span;
+use codemap::{span, dummy_sp};
 use syntax::print::pprust::pat_to_str;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
