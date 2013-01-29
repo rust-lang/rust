@@ -45,8 +45,14 @@ struct Registers {
     data: [u32 * 16]
 }
 
+#[cfg(target_arch="mips")]
+struct Registers {
+    data: [u32 * 32]
+}
+
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
+#[cfg(target_arch="mips")]
 struct Context {
     regs: Registers,
     next: *Context,
@@ -73,6 +79,7 @@ struct BoxedRegion {
 
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
+#[cfg(target_arch="mips")]
 struct Task {
     // Public fields
     refcount: intptr_t,                 // 0

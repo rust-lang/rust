@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use back::link;
-use back::{arm, x86, x86_64};
+use back::{arm, x86, x86_64, mips};
 use front;
 use lib::llvm::llvm;
 use metadata::{creader, cstore, filesearch};
@@ -91,7 +91,8 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
     let (arch,wordsz) = match sess.targ_cfg.arch {
       session::arch_x86 => (~"x86",~"32"),
       session::arch_x86_64 => (~"x86_64",~"64"),
-      session::arch_arm => (~"arm",~"32")
+      session::arch_arm => (~"arm",~"32"),
+      session::arch_mips => (~"mips",~"32")
     };
 
     return ~[ // Target bindings.
@@ -452,6 +453,8 @@ pub fn get_arch(triple: ~str) -> Option<session::arch> {
         } else if str::contains(triple, ~"arm") ||
                       str::contains(triple, ~"xscale") {
             Some(session::arch_arm)
+        } else if str::contains(triple, ~"mips") {
+            Some(session::arch_mips)
         } else { None }
 }
 
@@ -470,12 +473,14 @@ pub fn build_target_config(sopts: @session::options,
     let (int_type, uint_type, float_type) = match arch {
       session::arch_x86 => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
       session::arch_x86_64 => (ast::ty_i64, ast::ty_u64, ast::ty_f64),
-      session::arch_arm => (ast::ty_i32, ast::ty_u32, ast::ty_f64)
+      session::arch_arm => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
+      session::arch_mips => (ast::ty_i32, ast::ty_u32, ast::ty_f64)
     };
     let target_strs = match arch {
       session::arch_x86 => x86::get_target_strs(os),
       session::arch_x86_64 => x86_64::get_target_strs(os),
-      session::arch_arm => arm::get_target_strs(os)
+      session::arch_arm => arm::get_target_strs(os),
+      session::arch_mips => mips::get_target_strs(os)
     };
     let target_cfg: @session::config =
         @{os: os, arch: arch, target_strs: target_strs, int_type: int_type,

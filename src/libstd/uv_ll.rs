@@ -111,6 +111,7 @@ pub struct uv_tcp_t_32bit_unix_riders {
 }
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
+#[cfg(target_arch="mips")]
 pub struct uv_tcp_t_32bit_unix_riders {
     a29: *u8, a30: *u8, a31: *u8,
     a32: *u8, a33: *u8, a34: *u8,
@@ -168,6 +169,7 @@ pub struct uv_write_t_32bit_unix_riders {
 }
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
+#[cfg(target_arch="mips")]
 pub struct uv_write_t_32bit_unix_riders {
     a13: *u8, a14: *u8,
 }
@@ -196,6 +198,7 @@ pub struct uv_async_t_32bit_unix_riders {
 }
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
+#[cfg(target_arch="mips")]
 pub struct uv_async_t_32bit_unix_riders {
     a10: *u8, a11: *u8, a12: *u8, a13: *u8,
 }
@@ -225,6 +228,7 @@ pub struct uv_timer_t_32bit_unix_riders {
 }
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
+#[cfg(target_arch="mips")]
 pub struct uv_timer_t_32bit_unix_riders {
     a10: *u8, a11: *u8, a12: *u8, a13: *u8,
     a14: *u8, a15: *u8, a16: *u8,
@@ -255,6 +259,7 @@ pub struct sockaddr_in6 {
 }
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
+#[cfg(target_arch="mips")]
 pub struct sockaddr_in6 {
     a0: *u8, a1: *u8,
     a2: *u8, a3: *u8,
@@ -273,7 +278,8 @@ pub mod addr_in_impl {
         a2: *u8, a3: *u8,
     }
     #[cfg(target_arch="x86")]
-#[cfg(target_arch="arm")]
+    #[cfg(target_arch="arm")]
+    #[cfg(target_arch="mips")]
     pub struct addr_in {
         a0: *u8, a1: *u8,
         a2: *u8, a3: *u8,
@@ -301,6 +307,7 @@ pub mod addrinfo_impl {
     }
     #[cfg(target_arch="x86")]
     #[cfg(target_arch="arm")]
+    #[cfg(target_arch="mips")]
     pub struct addrinfo {
         a00: *u8, a01: *u8, a02: *u8, a03: *u8,
         a04: *u8, a05: *u8, a06: *u8, a07: *u8,
@@ -388,6 +395,7 @@ pub mod uv_ll_struct_stubgen {
             }
             #[cfg(target_arch="x86")]
             #[cfg(target_arch="arm")]
+            #[cfg(target_arch="mips")]
             pub fn gen_stub_arch() -> uv_tcp_t {
                 uv_tcp_t {
                     fields: uv_handle_fields {
@@ -481,6 +489,7 @@ pub mod uv_ll_struct_stubgen {
         }
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch="arm")]
+        #[cfg(target_arch="mips")]
         pub fn gen_stub_arch() -> uv_async_t {
             uv_async_t {
                 fields: uv_handle_fields {
@@ -540,6 +549,7 @@ pub mod uv_ll_struct_stubgen {
         }
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch="arm")]
+        #[cfg(target_arch="mips")]
         pub fn gen_stub_arch() -> uv_timer_t {
             uv_timer_t {
                 fields: uv_handle_fields {
@@ -600,6 +610,7 @@ pub mod uv_ll_struct_stubgen {
         }
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
+        #[cfg(target_arch="mips")]
         pub fn gen_stub_arch() -> uv_write_t {
             uv_write_t {
                 fields: uv_handle_fields {
@@ -1681,6 +1692,7 @@ pub mod test {
         }
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
+        #[cfg(target_arch="mips")]
         pub mod impl32 {
             use uv_ll::test::*;
             #[test]

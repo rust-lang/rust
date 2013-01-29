@@ -38,7 +38,7 @@ pub impl os : cmp::Eq {
     pure fn ne(&self, other: &os) -> bool { !(*self).eq(other) }
 }
 
-pub enum arch { arch_x86, arch_x86_64, arch_arm, }
+pub enum arch { arch_x86, arch_x86_64, arch_arm, arch_mips, }
 
 pub impl arch : cmp::Eq {
     pure fn eq(&self, other: &arch) -> bool {

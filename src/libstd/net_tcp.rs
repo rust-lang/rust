@@ -1500,6 +1500,7 @@ pub mod test {
         }
         #[cfg(target_arch="x86")]
         #[cfg(target_arch="arm")]
+        #[cfg(target_arch="mips")]
         pub mod impl32 {
             use net::tcp::test::*;
 
