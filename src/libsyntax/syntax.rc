@@ -17,7 +17,6 @@
 #[crate_type = "lib"];
 
 #[legacy_modes];
-#[legacy_exports];
 #[legacy_records];
 
 #[allow(vecs_implicitly_copyable)];
@@ -38,76 +37,52 @@ pub mod syntax {
     pub use parse;
 }
 
-mod attr;
-mod diagnostic;
-mod codemap;
-mod ast;
-mod ast_util;
-mod ast_map;
-#[legacy_exports]
-mod visit;
-#[legacy_exports]
-mod fold;
-#[legacy_exports]
-mod util {
-    #[legacy_exports];
-    #[legacy_exports]
+pub mod attr;
+pub mod diagnostic;
+pub mod codemap;
+pub mod ast;
+pub mod ast_util;
+pub mod ast_map;
+pub mod visit;
+pub mod fold;
+pub mod util {
     #[path = "interner.rs"]
-    mod interner;
+    pub mod interner;
 }
 
 #[path = "parse/mod.rs"]
-mod parse;
+pub mod parse;
 
-mod print {
-    #[legacy_exports];
-    #[legacy_exports]
-    mod pp;
-    #[legacy_exports]
-    mod pprust;
+pub mod print {
+    pub mod pp;
+    pub mod pprust;
 }
 
-mod ext {
-    #[legacy_exports];
-    #[legacy_exports]
-    mod base;
-    #[legacy_exports]
-    mod expand;
+pub mod ext {
+    pub mod base;
+    pub mod expand;
 
-    mod quote;
-    mod deriving;
+    pub mod quote;
+    pub mod deriving;
 
-    #[legacy_exports]
-    mod build;
+    pub mod build;
 
-    mod tt {
-        #[legacy_exports];
-        #[legacy_exports]
-        mod transcribe;
-        #[legacy_exports]
-        mod macro_parser;
-        #[legacy_exports]
-        mod macro_rules;
+    pub mod tt {
+        pub mod transcribe;
+        pub mod macro_parser;
+        pub mod macro_rules;
     }
 
 
-    #[legacy_exports]
-    mod fmt;
-    #[legacy_exports]
-    mod env;
-    #[legacy_exports]
-    mod concat_idents;
-    #[legacy_exports]
-    mod log_syntax;
-    #[legacy_exports]
-    mod auto_encode;
-    #[legacy_exports]
-    mod source_util;
+    pub mod fmt;
+    pub mod env;
+    pub mod concat_idents;
+    pub mod log_syntax;
+    pub mod auto_encode;
+    pub mod source_util;
 
     #[path = "pipes/mod.rs"]
-    #[legacy_exports]
-    mod pipes;
+    pub mod pipes;
 
-    #[legacy_exports]
-    mod trace_macros;
+    pub mod trace_macros;
 }

@@ -29,8 +29,8 @@ use print;
 use core::io;
 use std::map::HashMap;
 
-fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
-                     arg: ~[ast::token_tree]) -> base::MacResult {
+pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
+                         arg: ~[ast::token_tree]) -> base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
         ast::spanned { node: m, span: dummy_sp() }

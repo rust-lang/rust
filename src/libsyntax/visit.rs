@@ -27,9 +27,9 @@ use core::vec;
 
 // Our typesystem doesn't do circular types, so the visitor record can not
 // hold functions that take visitors. A vt enum is used to break the cycle.
-enum vt<E> { mk_vt(visitor<E>), }
+pub enum vt<E> { mk_vt(visitor<E>), }
 
-enum fn_kind {
+pub enum fn_kind {
     fk_item_fn(ident, ~[ty_param], purity), //< an item declared with fn()
     fk_method(ident, ~[ty_param], @method),
     fk_anon(Proto, capture_clause),  //< an anonymous function like fn@(...)
@@ -39,7 +39,7 @@ enum fn_kind {
 
 }
 
-fn name_of_fn(fk: fn_kind) -> ident {
+pub fn name_of_fn(fk: fn_kind) -> ident {
     match fk {
       fk_item_fn(name, _, _) | fk_method(name, _, _) => {
           /* FIXME (#2543) */ copy name
@@ -49,7 +49,7 @@ fn name_of_fn(fk: fn_kind) -> ident {
     }
 }
 
-fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
+pub fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
     match fk {
         fk_item_fn(_, tps, _) | fk_method(_, tps, _) |
         fk_dtor(tps, _, _, _) => {
@@ -59,7 +59,7 @@ fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
     }
 }
 
-struct Visitor<E> {
+pub struct Visitor<E> {
     visit_mod: fn@(_mod, span, node_id, E, vt<E>),
     visit_view_item: fn@(@view_item, E, vt<E>),
     visit_foreign_item: fn@(@foreign_item, E, vt<E>),
@@ -83,9 +83,9 @@ struct Visitor<E> {
     visit_struct_method: fn@(@method, E, vt<E>)
 }
 
-type visitor<E> = @Visitor<E>;
+pub type visitor<E> = @Visitor<E>;
 
-fn default_visitor<E>() -> visitor<E> {
+pub fn default_visitor<E>() -> visitor<E> {
     return @Visitor {
         visit_mod: |a,b,c,d,e|visit_mod::<E>(a, b, c, d, e),
         visit_view_item: |a,b,c|visit_view_item::<E>(a, b, c),
@@ -111,18 +111,18 @@ fn default_visitor<E>() -> visitor<E> {
     };
 }
 
-fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
+pub fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
     (v.visit_mod)(c.node.module, c.span, crate_node_id, e, v);
 }
 
-fn visit_mod<E>(m: _mod, _sp: span, _id: node_id, e: E, v: vt<E>) {
+pub fn visit_mod<E>(m: _mod, _sp: span, _id: node_id, e: E, v: vt<E>) {
     for m.view_items.each |vi| { (v.visit_view_item)(*vi, e, v); }
     for m.items.each |i| { (v.visit_item)(*i, e, v); }
 }
 
-fn visit_view_item<E>(_vi: @view_item, _e: E, _v: vt<E>) { }
+pub fn visit_view_item<E>(_vi: @view_item, _e: E, _v: vt<E>) { }
 
-fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
+pub fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
     (v.visit_pat)(loc.node.pat, e, v);
     (v.visit_ty)(loc.node.ty, e, v);
     match loc.node.init {
@@ -131,7 +131,7 @@ fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
     }
 }
 
-fn visit_item<E>(i: @item, e: E, v: vt<E>) {
+pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     match i.node {
       item_const(t, ex) => {
         (v.visit_ty)(t, e, v);
@@ -181,8 +181,10 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     }
 }
 
-fn visit_enum_def<E>(enum_definition: ast::enum_def, tps: ~[ast::ty_param],
-                     e: E, v: vt<E>) {
+pub fn visit_enum_def<E>(enum_definition: ast::enum_def,
+                         tps: ~[ast::ty_param],
+                         e: E,
+                         v: vt<E>) {
     for enum_definition.variants.each |vr| {
         match vr.node.kind {
             tuple_variant_kind(variant_args) => {
@@ -201,9 +203,9 @@ fn visit_enum_def<E>(enum_definition: ast::enum_def, tps: ~[ast::ty_param],
     }
 }
 
-fn skip_ty<E>(_t: @Ty, _e: E, _v: vt<E>) {}
+pub fn skip_ty<E>(_t: @Ty, _e: E, _v: vt<E>) {}
 
-fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
+pub fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
     match t.node {
       ty_box(mt) | ty_uniq(mt) |
       ty_vec(mt) | ty_ptr(mt) | ty_rptr(_, mt) => {
@@ -229,11 +231,11 @@ fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
     }
 }
 
-fn visit_path<E>(p: @path, e: E, v: vt<E>) {
+pub fn visit_path<E>(p: @path, e: E, v: vt<E>) {
     for p.types.each |tp| { (v.visit_ty)(*tp, e, v); }
 }
 
-fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
+pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     match p.node {
       pat_enum(path, children) => {
         visit_path(path, e, v);
@@ -275,7 +277,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     }
 }
 
-fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
+pub fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     match ni.node {
       foreign_item_fn(fd, _, tps) => {
         (v.visit_ty_params)(tps, e, v);
@@ -287,7 +289,7 @@ fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     }
 }
 
-fn visit_ty_param_bounds<E>(bounds: @~[ty_param_bound], e: E, v: vt<E>) {
+pub fn visit_ty_param_bounds<E>(bounds: @~[ty_param_bound], e: E, v: vt<E>) {
     for bounds.each |&bound| {
         match bound {
             TraitTyParamBound(ty) => (v.visit_ty)(ty, e, v),
@@ -296,13 +298,13 @@ fn visit_ty_param_bounds<E>(bounds: @~[ty_param_bound], e: E, v: vt<E>) {
     }
 }
 
-fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
+pub fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
     for tps.each |tp| {
         visit_ty_param_bounds(tp.bounds, e, v);
     }
 }
 
-fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
+pub fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
     for fd.inputs.each |a| {
         (v.visit_pat)(a.pat, e, v);
         (v.visit_ty)(a.ty, e, v);
@@ -314,42 +316,42 @@ fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
 // visit_fn() and check for fk_method().  I named this visit_method_helper()
 // because it is not a default impl of any method, though I doubt that really
 // clarifies anything. - Niko
-fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
+pub fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
     (v.visit_fn)(fk_method(/* FIXME (#2543) */ copy m.ident,
                          /* FIXME (#2543) */ copy m.tps, m),
                m.decl, m.body, m.span, m.id, e, v);
 }
 
-fn visit_struct_dtor_helper<E>(dtor: struct_dtor, tps: ~[ty_param],
-                              parent_id: def_id, e: E, v: vt<E>) {
+pub fn visit_struct_dtor_helper<E>(dtor: struct_dtor, tps: ~[ty_param],
+                                   parent_id: def_id, e: E, v: vt<E>) {
     (v.visit_fn)(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.attrs,
                        dtor.node.self_id, parent_id), ast_util::dtor_dec(),
                dtor.node.body, dtor.span, dtor.node.id, e, v)
 
 }
 
-fn visit_fn<E>(fk: fn_kind, decl: fn_decl, body: blk, _sp: span,
-               _id: node_id, e: E, v: vt<E>) {
+pub fn visit_fn<E>(fk: fn_kind, decl: fn_decl, body: blk, _sp: span,
+                   _id: node_id, e: E, v: vt<E>) {
     visit_fn_decl(decl, e, v);
     (v.visit_ty_params)(tps_of_fn(fk), e, v);
     (v.visit_block)(body, e, v);
 }
 
-fn visit_ty_method<E>(m: ty_method, e: E, v: vt<E>) {
+pub fn visit_ty_method<E>(m: ty_method, e: E, v: vt<E>) {
     for m.decl.inputs.each |a| { (v.visit_ty)(a.ty, e, v); }
     (v.visit_ty_params)(m.tps, e, v);
     (v.visit_ty)(m.decl.output, e, v);
 }
 
-fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
+pub fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
     match m {
       required(ref ty_m) => (v.visit_ty_method)((*ty_m), e, v),
       provided(m) => visit_method_helper(m, e, v)
     }
 }
 
-fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: ~[ty_param],
-                       id: node_id, e: E, v: vt<E>) {
+pub fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: ~[ty_param],
+                           id: node_id, e: E, v: vt<E>) {
     for sd.fields.each |f| {
         (v.visit_struct_field)(*f, e, v);
     }
@@ -358,15 +360,15 @@ fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: ~[ty_param],
     };
 }
 
-fn visit_struct_field<E>(sf: @struct_field, e: E, v: vt<E>) {
+pub fn visit_struct_field<E>(sf: @struct_field, e: E, v: vt<E>) {
     (v.visit_ty)(sf.node.ty, e, v);
 }
 
-fn visit_struct_method<E>(m: @method, e: E, v: vt<E>) {
+pub fn visit_struct_method<E>(m: @method, e: E, v: vt<E>) {
     visit_method_helper(m, e, v);
 }
 
-fn visit_block<E>(b: ast::blk, e: E, v: vt<E>) {
+pub fn visit_block<E>(b: ast::blk, e: E, v: vt<E>) {
     for b.node.view_items.each |vi| {
         (v.visit_view_item)(*vi, e, v);
     }
@@ -376,7 +378,7 @@ fn visit_block<E>(b: ast::blk, e: E, v: vt<E>) {
     visit_expr_opt(b.node.expr, e, v);
 }
 
-fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
+pub fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
     match s.node {
       stmt_decl(d, _) => (v.visit_decl)(d, e, v),
       stmt_expr(ex, _) => (v.visit_expr)(ex, e, v),
@@ -385,7 +387,7 @@ fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
     }
 }
 
-fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
+pub fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
     match d.node {
       decl_local(locs) => for locs.each |loc| {
         (v.visit_local)(*loc, e, v)
@@ -394,19 +396,19 @@ fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
     }
 }
 
-fn visit_expr_opt<E>(eo: Option<@expr>, e: E, v: vt<E>) {
+pub fn visit_expr_opt<E>(eo: Option<@expr>, e: E, v: vt<E>) {
     match eo { None => (), Some(ex) => (v.visit_expr)(ex, e, v) }
 }
 
-fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {
+pub fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {
     for exprs.each |ex| { (v.visit_expr)(*ex, e, v); }
 }
 
-fn visit_mac<E>(_m: mac, _e: E, _v: vt<E>) {
+pub fn visit_mac<E>(_m: mac, _e: E, _v: vt<E>) {
     /* no user-serviceable parts inside */
 }
 
-fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
+pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
     match ex.node {
       expr_vstore(x, _) => (v.visit_expr)(x, e, v),
       expr_vec(es, _) => visit_exprs(es, e, v),
@@ -498,7 +500,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
     (v.visit_expr_post)(ex, e, v);
 }
 
-fn visit_arm<E>(a: arm, e: E, v: vt<E>) {
+pub fn visit_arm<E>(a: arm, e: E, v: vt<E>) {
     for a.pats.each |p| { (v.visit_pat)(*p, e, v); }
     visit_expr_opt(a.guard, e, v);
     (v.visit_block)(a.body, e, v);
@@ -507,7 +509,7 @@ fn visit_arm<E>(a: arm, e: E, v: vt<E>) {
 // Simpler, non-context passing interface. Always walks the whole tree, simply
 // calls the given functions on the nodes.
 
-struct SimpleVisitor {
+pub struct SimpleVisitor {
     visit_mod: fn@(_mod, span, node_id),
     visit_view_item: fn@(@view_item),
     visit_foreign_item: fn@(@foreign_item),
@@ -530,11 +532,11 @@ struct SimpleVisitor {
     visit_struct_method: fn@(@method)
 }
 
-type simple_visitor = @SimpleVisitor;
+pub type simple_visitor = @SimpleVisitor;
 
-fn simple_ignore_ty(_t: @Ty) {}
+pub fn simple_ignore_ty(_t: @Ty) {}
 
-fn default_simple_visitor() -> @SimpleVisitor {
+pub fn default_simple_visitor() -> @SimpleVisitor {
     return @SimpleVisitor {visit_mod: |_m: _mod, _sp: span, _id: node_id| { },
           visit_view_item: |_vi: @view_item| { },
           visit_foreign_item: |_ni: @foreign_item| { },
@@ -560,7 +562,7 @@ fn default_simple_visitor() -> @SimpleVisitor {
          };
 }
 
-fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
+pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
     fn v_mod(f: fn@(_mod, span, node_id), m: _mod, sp: span, id: node_id,
              &&e: (), v: vt<()>) {
         f(m, sp, id);

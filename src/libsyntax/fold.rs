@@ -17,26 +17,7 @@ use codemap::span;
 use core::option;
 use core::vec;
 
-export ast_fold_fns;
-export ast_fold;
-export default_ast_fold;
-export make_fold;
-export noop_fold_crate;
-export noop_fold_item;
-export noop_fold_expr;
-export noop_fold_pat;
-export noop_fold_mod;
-export noop_fold_ty;
-export noop_fold_block;
-export noop_fold_item_underscore;
-export wrap;
-export fold_ty_param;
-export fold_ty_params;
-export fold_fn_decl;
-export extensions;
-export AstFoldFns;
-
-trait ast_fold {
+pub trait ast_fold {
     fn fold_crate(crate) -> crate;
     fn fold_view_item(&&v: @view_item) -> @view_item;
     fn fold_foreign_item(&&v: @foreign_item) -> @foreign_item;
@@ -64,7 +45,7 @@ trait ast_fold {
 
 // We may eventually want to be able to fold over type parameters, too
 
-struct AstFoldFns {
+pub struct AstFoldFns {
     //unlike the others, item_ is non-trivial
     fold_crate: fn@(crate_, span, ast_fold) -> (crate_, span),
     fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
@@ -91,7 +72,7 @@ struct AstFoldFns {
     new_span: fn@(span) -> span
 }
 
-type ast_fold_fns = @AstFoldFns;
+pub type ast_fold_fns = @AstFoldFns;
 
 /* some little folds that probably aren't useful to have in ast_fold itself*/
 
@@ -141,7 +122,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
               span: fld.new_span(m.span) }
 }
 
-fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
+pub fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
     ast::fn_decl {
         inputs: decl.inputs.map(|x| fold_arg_(*x, fld)),
         output: fld.fold_ty(decl.output),
@@ -156,17 +137,17 @@ fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
     }
 }
 
-fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {
+pub fn fold_ty_param(tp: ty_param, fld: ast_fold) -> ty_param {
     ast::ty_param { ident: /* FIXME (#2543) */ copy tp.ident,
                     id: fld.new_id(tp.id),
                     bounds: @tp.bounds.map(|x| fold_ty_param_bound(*x, fld) )}
 }
 
-fn fold_ty_params(tps: ~[ty_param], fld: ast_fold) -> ~[ty_param] {
+pub fn fold_ty_params(tps: ~[ty_param], fld: ast_fold) -> ~[ty_param] {
     tps.map(|x| fold_ty_param(*x, fld))
 }
 
-fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
+pub fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
     let fold_meta_item = |x| fold_meta_item_(x, fld);
     let fold_attribute = |x| fold_attribute_(x, fld);
 
@@ -212,7 +193,7 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
     }
 }
 
-fn noop_fold_item(&&i: @item, fld: ast_fold) -> Option<@item> {
+pub fn noop_fold_item(&&i: @item, fld: ast_fold) -> Option<@item> {
     let fold_attribute = |x| fold_attribute_(x, fld);
 
     Some(@ast::item { ident: fld.fold_ident(i.ident),
@@ -231,7 +212,7 @@ fn noop_fold_struct_field(&&sf: @struct_field, fld: ast_fold)
                span: sf.span }
 }
 
-fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
+pub fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
     return match i {
           item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
           item_fn(decl, purity, typms, ref body) => {
@@ -328,7 +309,7 @@ fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
 }
 
 
-fn noop_fold_block(b: blk_, fld: ast_fold) -> blk_ {
+pub fn noop_fold_block(b: blk_, fld: ast_fold) -> blk_ {
     ast::blk_ {
         view_items: b.view_items.map(|x| fld.fold_view_item(*x)),
         stmts: b.stmts.map(|x| fld.fold_stmt(*x)),
@@ -356,7 +337,7 @@ fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {
     }
 }
 
-fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
+pub fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
     return match p {
           pat_wild => pat_wild,
           pat_ident(binding_mode, pth, sub) => {
@@ -412,7 +393,7 @@ fn noop_fold_decl(d: decl_, fld: ast_fold) -> decl_ {
     }
 }
 
-fn wrap<T>(f: fn@(T, ast_fold) -> T)
+pub fn wrap<T>(f: fn@(T, ast_fold) -> T)
     -> fn@(T, span, ast_fold) -> (T, span)
 {
     return fn@(x: T, s: span, fld: ast_fold) -> (T, span) {
@@ -420,7 +401,7 @@ fn wrap<T>(f: fn@(T, ast_fold) -> T)
     }
 }
 
-fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
+pub fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: ast_fold) -> field {
         spanned {
             node: ast::field_ {
@@ -545,7 +526,7 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
         }
 }
 
-fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
+pub fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
     let fold_mac = |x| fold_mac_(x, fld);
     fn fold_mt(mt: mt, fld: ast_fold) -> mt {
         mt { ty: fld.fold_ty(mt.ty), mutbl: mt.mutbl }
@@ -586,7 +567,7 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
 }
 
 // ...nor do modules
-fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
+pub fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
     ast::_mod {
         view_items: vec::map(m.view_items, |x| fld.fold_view_item(*x)),
         items: vec::filter_map(m.items, |x| fld.fold_item(*x)),
@@ -693,7 +674,7 @@ fn noop_id(i: node_id) -> node_id { return i; }
 
 fn noop_span(sp: span) -> span { return sp; }
 
-fn default_ast_fold() -> ast_fold_fns {
+pub fn default_ast_fold() -> ast_fold_fns {
     return @AstFoldFns {fold_crate: wrap(noop_fold_crate),
           fold_view_item: noop_fold_view_item,
           fold_foreign_item: noop_fold_foreign_item,
@@ -719,7 +700,7 @@ fn default_ast_fold() -> ast_fold_fns {
           new_span: noop_span};
 }
 
-impl ast_fold_fns: ast_fold {
+pub impl ast_fold_fns: ast_fold {
     /* naturally, a macro to write these would be nice */
     fn fold_crate(c: crate) -> crate {
         let (n, s) = (self.fold_crate)(c.node, c.span, self as ast_fold);
@@ -833,13 +814,13 @@ impl ast_fold_fns: ast_fold {
     }
 }
 
-impl ast_fold {
+pub impl ast_fold {
     fn fold_attributes(attrs: ~[attribute]) -> ~[attribute] {
         attrs.map(|x| fold_attribute_(*x, self))
     }
 }
 
-fn make_fold(afp: ast_fold_fns) -> ast_fold {
+pub fn make_fold(afp: ast_fold_fns) -> ast_fold {
     afp as ast_fold
 }
 
