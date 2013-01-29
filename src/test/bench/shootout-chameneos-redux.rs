@@ -27,7 +27,10 @@ fn print_complements() {
 
 enum color { Red, Yellow, Blue }
 
-type creature_info = { name: uint, color: color };
+struct CreatureInfo {
+    name: uint,
+    color: color
+}
 
 fn show_color(cc: color) -> ~str {
     match (cc) {
@@ -95,8 +98,8 @@ fn transform(aa: color, bb: color) -> color {
 fn creature(
     name: uint,
     color: color,
-    from_rendezvous: oldcomm::Port<Option<creature_info>>,
-    to_rendezvous: oldcomm::Chan<creature_info>,
+    from_rendezvous: oldcomm::Port<Option<CreatureInfo>>,
+    to_rendezvous: oldcomm::Chan<CreatureInfo>,
     to_rendezvous_log: oldcomm::Chan<~str>
 ) {
     let mut color = color;
@@ -105,7 +108,7 @@ fn creature(
 
     loop {
         // ask for a pairing
-        oldcomm::send(to_rendezvous, {name: name, color: color});
+        oldcomm::send(to_rendezvous, CreatureInfo {name: name, color: color});
         let resp = oldcomm::recv(from_rendezvous);
 
         // log and change, or print and quit
@@ -145,7 +148,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
     }
 
     // these ports will allow us to hear from the creatures
-    let from_creatures:     oldcomm::Port<creature_info> = oldcomm::Port();
+    let from_creatures:     oldcomm::Port<CreatureInfo> = oldcomm::Port();
     let from_creatures_log: oldcomm::Port<~str> = oldcomm::Port();
 
     // these channels will be passed to the creatures so they can talk to us
@@ -153,7 +156,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
     let to_rendezvous_log = oldcomm::Chan(&from_creatures_log);
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let to_creature: ~[oldcomm::Chan<Option<creature_info>>] =
+    let to_creature: ~[oldcomm::Chan<Option<CreatureInfo>>] =
         vec::mapi(set, |ii, col| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
@@ -169,8 +172,8 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // set up meetings...
     for nn.times {
-        let fst_creature: creature_info = oldcomm::recv(from_creatures);
-        let snd_creature: creature_info = oldcomm::recv(from_creatures);
+        let fst_creature: CreatureInfo = oldcomm::recv(from_creatures);
+        let snd_creature: CreatureInfo = oldcomm::recv(from_creatures);
 
         creatures_met += 2;
 

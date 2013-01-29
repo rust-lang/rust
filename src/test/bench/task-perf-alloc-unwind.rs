@@ -38,16 +38,15 @@ fn run(repeat: int, depth: int) {
 type nillist = List<()>;
 
 // Filled with things that have to be unwound
-enum st {
-    st_({
-        box: @nillist,
-        unique: ~nillist,
-        fn_box: fn@() -> @nillist,
-        fn_unique: fn~() -> ~nillist,
-        tuple: (@nillist, ~nillist),
-        vec: ~[@nillist],
-        res: r
-    })
+
+struct State {
+    box: @nillist,
+    unique: ~nillist,
+    fn_box: fn@() -> @nillist,
+    fn_unique: fn~() -> ~nillist,
+    tuple: (@nillist, ~nillist),
+    vec: ~[@nillist],
+    res: r
 }
 
 struct r {
@@ -64,7 +63,7 @@ fn r(l: @nillist) -> r {
     }
 }
 
-fn recurse_or_fail(depth: int, st: Option<st>) {
+fn recurse_or_fail(depth: int, st: Option<State>) {
     if depth == 0 {
         debug!("unwinding %.4f", precise_time_s());
         fail;
@@ -73,7 +72,7 @@ fn recurse_or_fail(depth: int, st: Option<st>) {
 
         let st = match st {
           None => {
-            st_({
+            State {
                 box: @Nil,
                 unique: ~Nil,
                 fn_box: fn@() -> @nillist { @Nil::<()> },
@@ -81,13 +80,13 @@ fn recurse_or_fail(depth: int, st: Option<st>) {
                 tuple: (@Nil, ~Nil),
                 vec: ~[@Nil],
                 res: r(@Nil)
-            })
+            }
           }
           Some(st) => {
             let fn_box = st.fn_box;
             let fn_unique = copy st.fn_unique;
 
-            st_({
+            State {
                 box: @Cons((), st.box),
                 unique: ~Cons((), @*st.unique),
                 fn_box: fn@() -> @nillist { @Cons((), fn_box()) },
@@ -97,7 +96,7 @@ fn recurse_or_fail(depth: int, st: Option<st>) {
                         ~Cons((), @*st.tuple.second())),
                 vec: st.vec + ~[@Cons((), st.vec.last())],
                 res: r(@Cons((), st.res._l))
-            })
+            }
           }
         };
 

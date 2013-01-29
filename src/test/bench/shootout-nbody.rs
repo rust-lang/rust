@@ -36,7 +36,7 @@ fn main() {
         args
     };
     let n = int::from_str(args[1]).get();
-    let mut bodies: ~[Body::props] = NBodySystem::make();
+    let mut bodies: ~[Body::Props] = NBodySystem::make();
     io::println(fmt!("%f", NBodySystem::energy(bodies)));
     let mut i = 0;
     while i < n {
@@ -49,8 +49,8 @@ fn main() {
 mod NBodySystem {
     use Body;
 
-    pub fn make() -> ~[Body::props] {
-        let mut bodies: ~[Body::props] =
+    pub fn make() -> ~[Body::Props] {
+        let mut bodies: ~[Body::Props] =
             ~[Body::sun(),
               Body::jupiter(),
               Body::saturn(),
@@ -76,7 +76,7 @@ mod NBodySystem {
         return bodies;
     }
 
-    pub fn advance(bodies: &mut [Body::props], dt: float) {
+    pub fn advance(bodies: &mut [Body::Props], dt: float) {
         let mut i = 0;
         while i < 5 {
             let mut j = i + 1;
@@ -96,8 +96,8 @@ mod NBodySystem {
         }
     }
 
-    pub fn advance_one(bi: &mut Body::props,
-                       bj: &mut Body::props,
+    pub fn advance_one(bi: &mut Body::Props,
+                       bj: &mut Body::Props,
                        dt: float) {
         unsafe {
             let dx = bi.x - bj.x;
@@ -119,13 +119,13 @@ mod NBodySystem {
         }
     }
 
-    pub fn move_(b: &mut Body::props, dt: float) {
+    pub fn move_(b: &mut Body::Props, dt: float) {
         b.x += dt * b.vx;
         b.y += dt * b.vy;
         b.z += dt * b.vz;
     }
 
-    pub fn energy(bodies: &[Body::props]) -> float {
+    pub fn energy(bodies: &[Body::Props]) -> float {
         unsafe {
             let mut dx;
             let mut dy;
@@ -171,17 +171,17 @@ mod Body {
     // was 4 * PI * PI originally
     pub const DAYS_PER_YEAR: float = 365.24;
 
-    pub type props =
+    pub struct Props
         {mut x: float,
          mut y: float,
          mut z: float,
          mut vx: float,
          mut vy: float,
          mut vz: float,
-         mass: float};
+         mass: float}
 
-    pub fn jupiter() -> Body::props {
-        return {mut x: 4.84143144246472090e+00,
+    pub fn jupiter() -> Body::Props {
+        return Props {mut x: 4.84143144246472090e+00,
              mut y: -1.16032004402742839e+00,
              mut z: -1.03622044471123109e-01,
              mut vx: 1.66007664274403694e-03 * DAYS_PER_YEAR,
@@ -190,8 +190,8 @@ mod Body {
              mass: 9.54791938424326609e-04 * SOLAR_MASS};
     }
 
-    pub fn saturn() -> Body::props {
-        return {mut x: 8.34336671824457987e+00,
+    pub fn saturn() -> Body::Props {
+        return Props {mut x: 8.34336671824457987e+00,
              mut y: 4.12479856412430479e+00,
              mut z: -4.03523417114321381e-01,
              mut vx: -2.76742510726862411e-03 * DAYS_PER_YEAR,
@@ -200,8 +200,8 @@ mod Body {
              mass: 2.85885980666130812e-04 * SOLAR_MASS};
     }
 
-    pub fn uranus() -> Body::props {
-        return {mut x: 1.28943695621391310e+01,
+    pub fn uranus() -> Body::Props {
+        return Props {mut x: 1.28943695621391310e+01,
              mut y: -1.51111514016986312e+01,
              mut z: -2.23307578892655734e-01,
              mut vx: 2.96460137564761618e-03 * DAYS_PER_YEAR,
@@ -210,8 +210,8 @@ mod Body {
              mass: 4.36624404335156298e-05 * SOLAR_MASS};
     }
 
-    pub fn neptune() -> Body::props {
-        return {mut x: 1.53796971148509165e+01,
+    pub fn neptune() -> Body::Props {
+        return Props {mut x: 1.53796971148509165e+01,
              mut y: -2.59193146099879641e+01,
              mut z: 1.79258772950371181e-01,
              mut vx: 2.68067772490389322e-03 * DAYS_PER_YEAR,
@@ -220,8 +220,8 @@ mod Body {
              mass: 5.15138902046611451e-05 * SOLAR_MASS};
     }
 
-    pub fn sun() -> Body::props {
-        return {mut x: 0.0,
+    pub fn sun() -> Body::Props {
+        return Props {mut x: 0.0,
              mut y: 0.0,
              mut z: 0.0,
              mut vx: 0.0,
@@ -230,7 +230,7 @@ mod Body {
              mass: SOLAR_MASS};
     }
 
-    pub fn offset_momentum(props: &mut Body::props,
+    pub fn offset_momentum(props: &mut Body::Props,
                        px: float, py: float, pz: float) {
         props.vx = -px / SOLAR_MASS;
         props.vy = -py / SOLAR_MASS;
