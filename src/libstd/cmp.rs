@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,7 +24,7 @@ pub trait FuzzyEq {
 
 impl float: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &float) -> bool {
-        float::abs(*self - *other) < fuzzy_epsilon
+        self.fuzzy_eq_eps(other, fuzzy_epsilon)
     }
 
     pure fn fuzzy_eq_eps(&self, other: &float, epsilon: &float) -> bool {
@@ -34,7 +34,7 @@ impl float: FuzzyEq {
 
 impl f32: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &f32) -> bool {
-        f32::abs(*self - *other) < (fuzzy_epsilon as f32)
+        self.fuzzy_eq_eps(other, fuzzy_epsilon as f32)
     }
 
     pure fn fuzzy_eq_eps(&self, other: &f32, epsilon: &f32) -> bool {
@@ -44,7 +44,7 @@ impl f32: FuzzyEq {
 
 impl f64: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &f64) -> bool {
-        f64::abs(*self - *other) < (fuzzy_epsilon as f64)
+        self.fuzzy_eq_eps(other, fuzzy_epsilon as f64)
     }
 
     pure fn fuzzy_eq_eps(&self, other: &f64, epsilon: &f64) -> bool {
