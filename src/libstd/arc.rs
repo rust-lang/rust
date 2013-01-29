@@ -478,8 +478,6 @@ impl<T: Const Owned> &RWReadMode<T> {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use core::prelude::*;
 
     use arc::*;
@@ -493,7 +491,7 @@ mod tests {
     use core::vec;
 
     #[test]
-    fn manually_share_arc() {
+    pub fn manually_share_arc() {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let arc_v = arc::ARC(v);
 
@@ -518,7 +516,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mutex_arc_condvar() {
+    pub fn test_mutex_arc_condvar() {
         let arc = ~MutexARC(false);
         let arc2 = ~arc.clone();
         let (p,c) = pipes::oneshot();
@@ -540,7 +538,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_arc_condvar_poison() {
+    pub fn test_arc_condvar_poison() {
         let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
         let (p, c) = pipes::stream();
@@ -561,7 +559,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_mutex_arc_poison() {
+    pub fn test_mutex_arc_poison() {
         let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
         do task::try |move arc2| {
@@ -574,7 +572,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_mutex_arc_unwrap_poison() {
+    pub fn test_mutex_arc_unwrap_poison() {
         let arc = MutexARC(1);
         let arc2 = ~(&arc).clone();
         let (p, c) = pipes::stream();
@@ -589,7 +587,7 @@ mod tests {
         assert one == 1;
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_rw_arc_poison_wr() {
+    pub fn test_rw_arc_poison_wr() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try |move arc2| {
@@ -602,7 +600,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_rw_arc_poison_ww() {
+    pub fn test_rw_arc_poison_ww() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try |move arc2| {
@@ -615,7 +613,7 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    fn test_rw_arc_poison_dw() {
+    pub fn test_rw_arc_poison_dw() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try |move arc2| {
@@ -630,7 +628,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    fn test_rw_arc_no_poison_rr() {
+    pub fn test_rw_arc_no_poison_rr() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try |move arc2| {
@@ -643,7 +641,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    fn test_rw_arc_no_poison_rw() {
+    pub fn test_rw_arc_no_poison_rw() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try |move arc2| {
@@ -656,7 +654,7 @@ mod tests {
         }
     }
     #[test] #[ignore(cfg(windows))]
-    fn test_rw_arc_no_poison_dr() {
+    pub fn test_rw_arc_no_poison_dr() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try |move arc2| {
@@ -672,7 +670,7 @@ mod tests {
         }
     }
     #[test]
-    fn test_rw_arc() {
+    pub fn test_rw_arc() {
         let arc = ~RWARC(0);
         let arc2 = ~arc.clone();
         let (p,c) = pipes::stream();
@@ -709,7 +707,7 @@ mod tests {
         do arc.read |num| { assert *num == 10; }
     }
     #[test]
-    fn test_rw_downgrade() {
+    pub fn test_rw_downgrade() {
         // (1) A downgrader gets in write mode and does cond.wait.
         // (2) A writer gets in write mode, sets state to 42, and does signal.
         // (3) Downgrader wakes, sets state to 31337.

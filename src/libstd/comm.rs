@@ -87,11 +87,10 @@ pub fn DuplexStream<T: Owned, U: Owned>()
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
     use comm::DuplexStream;
 
     #[test]
-    fn DuplexStream1() {
+    pub fn DuplexStream1() {
         let (left, right) = DuplexStream();
 
         left.send(~"abc");

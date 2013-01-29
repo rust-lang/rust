@@ -578,8 +578,6 @@ impl Bitv: ops::Index<uint,bool> {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use core::prelude::*;
 
     use bitv::*;
@@ -589,7 +587,7 @@ mod tests {
     use core::vec;
 
     #[test]
-    fn test_to_str() {
+    pub fn test_to_str() {
         let zerolen = Bitv(0u, false);
         assert zerolen.to_str() == ~"";
 
@@ -598,7 +596,7 @@ mod tests {
     }
 
     #[test]
-    fn test_0_elements() {
+    pub fn test_0_elements() {
         let mut act;
         let mut exp;
         act = Bitv(0u, false);
@@ -607,7 +605,7 @@ mod tests {
     }
 
     #[test]
-    fn test_1_element() {
+    pub fn test_1_element() {
         let mut act;
         act = Bitv(1u, false);
         assert act.eq_vec(~[0u]);
@@ -616,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn test_2_elements() {
+    pub fn test_2_elements() {
         let b = bitv::Bitv(2, false);
         b.set(0, true);
         b.set(1, false);
@@ -624,7 +622,7 @@ mod tests {
     }
 
     #[test]
-    fn test_10_elements() {
+    pub fn test_10_elements() {
         let mut act;
         // all 0
 
@@ -663,7 +661,7 @@ mod tests {
     }
 
     #[test]
-    fn test_31_elements() {
+    pub fn test_31_elements() {
         let mut act;
         // all 0
 
@@ -736,7 +734,7 @@ mod tests {
     }
 
     #[test]
-    fn test_32_elements() {
+    pub fn test_32_elements() {
         let mut act;
         // all 0
 
@@ -811,7 +809,7 @@ mod tests {
     }
 
     #[test]
-    fn test_33_elements() {
+    pub fn test_33_elements() {
         let mut act;
         // all 0
 
@@ -887,21 +885,21 @@ mod tests {
     }
 
     #[test]
-    fn test_equal_differing_sizes() {
+    pub fn test_equal_differing_sizes() {
         let v0 = Bitv(10u, false);
         let v1 = Bitv(11u, false);
         assert !v0.equal(&v1);
     }
 
     #[test]
-    fn test_equal_greatly_differing_sizes() {
+    pub fn test_equal_greatly_differing_sizes() {
         let v0 = Bitv(10u, false);
         let v1 = Bitv(110u, false);
         assert !v0.equal(&v1);
     }
 
     #[test]
-    fn test_equal_sneaky_small() {
+    pub fn test_equal_sneaky_small() {
         let a = bitv::Bitv(1, false);
         a.set(0, true);
 
@@ -912,7 +910,7 @@ mod tests {
     }
 
     #[test]
-    fn test_equal_sneaky_big() {
+    pub fn test_equal_sneaky_big() {
         let a = bitv::Bitv(100, false);
         for uint::range(0, 100) |i| {
             a.set(i, true);
@@ -927,14 +925,14 @@ mod tests {
     }
 
     #[test]
-    fn test_from_bytes() {
+    pub fn test_from_bytes() {
         let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
         let str = ~"10110110" + ~"00000000" + ~"11111111";
         assert bitv.to_str() == str;
     }
 
     #[test]
-    fn test_to_bytes() {
+    pub fn test_to_bytes() {
         let bv = Bitv(3, true);
         bv.set(1, false);
         assert bv.to_bytes() == ~[0b10100000];
@@ -946,18 +944,18 @@ mod tests {
     }
 
     #[test]
-    fn test_from_bools() {
+    pub fn test_from_bools() {
         assert from_bools([true, false, true, true]).to_str() == ~"1011";
     }
 
     #[test]
-    fn test_to_bools() {
+    pub fn test_to_bools() {
         let bools = ~[false, false, true, false, false, true, true, false];
         assert from_bytes([0b00100110]).to_bools() == bools;
     }
 
     #[test]
-    fn test_small_difference() {
+    pub fn test_small_difference() {
       let b1 = Bitv(3, false);
       let b2 = Bitv(3, false);
       b1.set(0, true);
@@ -971,7 +969,7 @@ mod tests {
     }
 
     #[test]
-    fn test_big_difference() {
+    pub fn test_big_difference() {
       let b1 = Bitv(100, false);
       let b2 = Bitv(100, false);
       b1.set(0, true);

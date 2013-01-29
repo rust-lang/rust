@@ -24,17 +24,16 @@ const NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports]
-    unsafe fn get_time(sec: &mut i64, nsec: &mut i32);
+    pub unsafe fn get_time(sec: &mut i64, nsec: &mut i32);
 
-    unsafe fn precise_time_ns(ns: &mut u64);
+    pub unsafe fn precise_time_ns(ns: &mut u64);
 
-    unsafe fn rust_tzset();
+    pub unsafe fn rust_tzset();
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
-    unsafe fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    unsafe fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    unsafe fn rust_timegm(&&tm: Tm, sec: &mut i64);
-    unsafe fn rust_mktime(&&tm: Tm, sec: &mut i64);
+    pub unsafe fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    pub unsafe fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    pub unsafe fn rust_timegm(&&tm: Tm, sec: &mut i64);
+    pub unsafe fn rust_mktime(&&tm: Tm, sec: &mut i64);
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
@@ -890,8 +889,6 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use time::*;
 
     use core::float;
@@ -902,7 +899,7 @@ mod tests {
     use core::uint;
     use core::vec;
 
-    fn test_get_time() {
+    pub fn test_get_time() {
         const some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
         const some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
@@ -925,7 +922,7 @@ mod tests {
         }
     }
 
-    fn test_precise_time() {
+    pub fn test_precise_time() {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
 
@@ -942,7 +939,7 @@ mod tests {
         assert ns2 >= ns1;
     }
 
-    fn test_at_utc() {
+    pub fn test_at_utc() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -963,7 +960,7 @@ mod tests {
         assert utc.tm_nsec == 54321_i32;
     }
 
-    fn test_at() {
+    pub fn test_at() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -991,7 +988,7 @@ mod tests {
         assert local.tm_nsec == 54321_i32;
     }
 
-    fn test_to_timespec() {
+    pub fn test_to_timespec() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -1002,7 +999,7 @@ mod tests {
         assert utc.to_local().to_timespec() == time;
     }
 
-    fn test_conversions() {
+    pub fn test_conversions() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -1018,7 +1015,7 @@ mod tests {
         assert utc.to_local().to_utc() == utc;
     }
 
-    fn test_strptime() {
+    pub fn test_strptime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -1172,7 +1169,7 @@ mod tests {
         assert test(~"%", ~"%%");
     }
 
-    fn test_ctime() {
+    pub fn test_ctime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -1186,7 +1183,7 @@ mod tests {
         assert local.ctime() == ~"Fri Feb 13 15:31:30 2009";
     }
 
-    fn test_strftime() {
+    pub fn test_strftime() {
         os::setenv(~"TZ", ~"America/Los_Angeles");
         tzset();
 
@@ -1259,7 +1256,7 @@ mod tests {
         assert utc.rfc3339() == ~"2009-02-13T23:31:30Z";
     }
 
-    fn test_timespec_eq_ord() {
+    pub fn test_timespec_eq_ord() {
         use core::cmp::{eq, ge, gt, le, lt, ne};
 
         let a = &Timespec::new(-2, 1);
@@ -1293,7 +1290,7 @@ mod tests {
     }
 
     #[test]
-    fn run_tests() {
+    pub fn run_tests() {
         // The tests race on tzset. So instead of having many independent
         // tests, we will just call the functions now.
         test_get_time();

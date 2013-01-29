@@ -156,15 +156,13 @@ pub pure fn each<T>(l: @List<T>, f: fn(&T) -> bool) {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use list::*;
     use list;
 
     use core::option;
 
     #[test]
-    fn test_is_empty() {
+    pub fn test_is_empty() {
         let empty : @list::List<int> = from_vec(~[]);
         let full1 = from_vec(~[1]);
         let full2 = from_vec(~['r', 'u']);
@@ -175,7 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_vec() {
+    pub fn test_from_vec() {
         let l = from_vec(~[0, 1, 2]);
 
         assert (head(l) == 0);
@@ -188,13 +186,13 @@ mod tests {
     }
 
     #[test]
-    fn test_from_vec_empty() {
+    pub fn test_from_vec_empty() {
         let empty : @list::List<int> = from_vec(~[]);
         assert (empty == @list::Nil::<int>);
     }
 
     #[test]
-    fn test_foldl() {
+    pub fn test_foldl() {
         fn add(a: &uint, b: &int) -> uint { return *a + (*b as uint); }
         let l = from_vec(~[0, 1, 2, 3, 4]);
         let empty = @list::Nil::<int>;
@@ -203,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn test_foldl2() {
+    pub fn test_foldl2() {
         fn sub(a: &int, b: &int) -> int {
             *a - *b
         }
@@ -212,14 +210,14 @@ mod tests {
     }
 
     #[test]
-    fn test_find_success() {
+    pub fn test_find_success() {
         fn match_(i: &int) -> bool { return *i == 2; }
         let l = from_vec(~[0, 1, 2]);
         assert (list::find(l, match_) == option::Some(2));
     }
 
     #[test]
-    fn test_find_fail() {
+    pub fn test_find_fail() {
         fn match_(_i: &int) -> bool { return false; }
         let l = from_vec(~[0, 1, 2]);
         let empty = @list::Nil::<int>;
@@ -228,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn test_has() {
+    pub fn test_has() {
         let l = from_vec(~[5, 8, 6]);
         let empty = @list::Nil::<int>;
         assert (list::has(l, 5));
@@ -238,7 +236,7 @@ mod tests {
     }
 
     #[test]
-    fn test_len() {
+    pub fn test_len() {
         let l = from_vec(~[0, 1, 2]);
         let empty = @list::Nil::<int>;
         assert (list::len(l) == 3u);
@@ -246,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn test_append() {
+    pub fn test_append() {
         assert from_vec(~[1,2,3,4])
             == list::append(list::from_vec(~[1,2]), list::from_vec(~[3,4]));
     }

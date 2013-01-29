@@ -17,14 +17,13 @@ use core::sys;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
-    unsafe fn debug_tydesc(td: *sys::TypeDesc);
-    unsafe fn debug_opaque(td: *sys::TypeDesc, x: *());
-    unsafe fn debug_box(td: *sys::TypeDesc, x: *());
-    unsafe fn debug_tag(td: *sys::TypeDesc, x: *());
-    unsafe fn debug_fn(td: *sys::TypeDesc, x: *());
-    unsafe fn debug_ptrcast(td: *sys::TypeDesc, x: *()) -> *();
-    unsafe fn rust_dbg_breakpoint();
+    pub unsafe fn debug_tydesc(td: *sys::TypeDesc);
+    pub unsafe fn debug_opaque(td: *sys::TypeDesc, x: *());
+    pub unsafe fn debug_box(td: *sys::TypeDesc, x: *());
+    pub unsafe fn debug_tag(td: *sys::TypeDesc, x: *());
+    pub unsafe fn debug_fn(td: *sys::TypeDesc, x: *());
+    pub unsafe fn debug_ptrcast(td: *sys::TypeDesc, x: *()) -> *();
+    pub unsafe fn rust_dbg_breakpoint();
 }
 
 pub fn debug_tydesc<T>() {

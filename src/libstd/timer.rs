@@ -169,8 +169,6 @@ extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) {
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
-
     use core::prelude::*;
 
     use timer::*;
@@ -182,13 +180,13 @@ mod test {
     use core::task;
 
     #[test]
-    fn test_gl_timer_simple_sleep_test() {
+    pub fn test_gl_timer_simple_sleep_test() {
         let hl_loop = &uv::global_loop::get();
         sleep(hl_loop, 1u);
     }
 
     #[test]
-    fn test_gl_timer_sleep_stress1() {
+    pub fn test_gl_timer_sleep_stress1() {
         let hl_loop = &uv::global_loop::get();
         for iter::repeat(50u) {
             sleep(hl_loop, 1u);
@@ -196,7 +194,7 @@ mod test {
     }
 
     #[test]
-    fn test_gl_timer_sleep_stress2() {
+    pub fn test_gl_timer_sleep_stress2() {
         let po = oldcomm::Port();
         let ch = oldcomm::Chan(&po);
         let hl_loop = &uv::global_loop::get();
@@ -238,7 +236,7 @@ mod test {
 
     #[test]
     #[cfg(ignore)]
-    fn test_gl_timer_recv_timeout_before_time_passes() {
+    pub fn test_gl_timer_recv_timeout_before_time_passes() {
         let times = 100;
         let mut successes = 0;
         let mut failures = 0;
@@ -268,7 +266,7 @@ mod test {
     }
 
     #[test]
-    fn test_gl_timer_recv_timeout_after_time_passes() {
+    pub fn test_gl_timer_recv_timeout_after_time_passes() {
         let times = 100;
         let mut successes = 0;
         let mut failures = 0;

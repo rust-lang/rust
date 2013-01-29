@@ -152,12 +152,10 @@ impl ~str: FromBase64 {
 
 #[cfg(test)]
 mod tests {
-    #[legacy_exports];
-
     use core::str;
 
     #[test]
-    fn test_to_base64() {
+    pub fn test_to_base64() {
         assert (~"").to_base64()       == ~"";
         assert (~"f").to_base64()      == ~"Zg==";
         assert (~"fo").to_base64()     == ~"Zm8=";
@@ -168,7 +166,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_base64() {
+    pub fn test_from_base64() {
         assert (~"").from_base64() == str::to_bytes(~"");
         assert (~"Zg==").from_base64() == str::to_bytes(~"f");
         assert (~"Zm8=").from_base64() == str::to_bytes(~"fo");
