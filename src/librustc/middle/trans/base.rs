@@ -2589,9 +2589,15 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
                            T_void()));
     let memcpy32 =
         decl_cdecl_fn(llmod, ~"llvm.memcpy.p0i8.p0i8.i32",
-                      T_fn(T_memcpy32_args, T_void()));
+                      T_fn(copy T_memcpy32_args, T_void()));
     let memcpy64 =
         decl_cdecl_fn(llmod, ~"llvm.memcpy.p0i8.p0i8.i64",
+                      T_fn(copy T_memcpy64_args, T_void()));
+    let memmove32 =
+        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i32",
+                      T_fn(T_memcpy32_args, T_void()));
+    let memmove64 =
+        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i64",
                       T_fn(T_memcpy64_args, T_void()));
     let memset32 =
         decl_cdecl_fn(llmod, ~"llvm.memset.p0i8.i32",
@@ -2700,6 +2706,8 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     intrinsics.insert(~"llvm.gcread", gcread);
     intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i32", memcpy32);
     intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i64", memcpy64);
+    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i32", memmove32);
+    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i64", memmove64);
     intrinsics.insert(~"llvm.memset.p0i8.i32", memset32);
     intrinsics.insert(~"llvm.memset.p0i8.i64", memset64);
     intrinsics.insert(~"llvm.trap", trap);
