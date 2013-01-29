@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #include "rust_crate_map.h"
+#include <set>
 
 void iter_module_map(const mod_entry* map,
                      void (*fn)(const mod_entry* entry, void *cookie),
@@ -20,18 +21,27 @@ void iter_module_map(const mod_entry* map,
 
 void iter_crate_map(const cratemap* map,
                     void (*fn)(const mod_entry* map, void *cookie),
-                    void *cookie) {
-    // First iterate this crate
-    iter_module_map(map->entries(), fn, cookie);
-    // Then recurse on linked crates
-    // FIXME (#2673) this does double work in diamond-shaped deps. could
-    //   keep a set of visited addresses, if it turns out to be actually
-    //   slow
-    for (cratemap::iterator i = map->begin(), e = map->end(); i != e; ++i) {
-        iter_crate_map(*i, fn, cookie);
+                    void *cookie,
+                    std::set<const cratemap*>& visited) {
+    if (visited.find(map) == visited.end()) {
+        // Mark this crate visited
+        visited.insert(map);
+        // First iterate this crate
+        iter_module_map(map->entries(), fn, cookie);
+        // Then recurse on linked crates
+        for (cratemap::iterator i = map->begin(),
+                e = map->end(); i != e; ++i) {
+            iter_crate_map(*i, fn, cookie, visited);
+        }
     }
 }
 
+void iter_crate_map(const cratemap* map,
+                    void (*fn)(const mod_entry* map, void *cookie),
+                    void *cookie) {
+    std::set<const cratemap*> visited;
+    iter_crate_map(map, fn, cookie, visited);
+}
 //
 // Local Variables:
 // mode: C++
