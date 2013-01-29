@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test
 fn parse_args() -> ~str {
     let args = core::os::args();
     let mut n = 0;
