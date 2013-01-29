@@ -27,8 +27,6 @@ use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::attr::attrs_contains_name;
 
-export modify_for_testing;
-
 type node_id_gen = fn@() -> ast::node_id;
 
 type test = {span: span, path: ~[ast::ident],
@@ -42,8 +40,8 @@ type test_ctxt =
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
-fn modify_for_testing(sess: session::Session,
-                      crate: @ast::crate) -> @ast::crate {
+pub fn modify_for_testing(sess: session::Session,
+                          crate: @ast::crate) -> @ast::crate {
 
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'

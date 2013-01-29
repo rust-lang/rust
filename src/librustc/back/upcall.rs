@@ -17,15 +17,15 @@ use middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
                                T_size_t, T_void, T_vec2};
 use lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
 
-type upcalls =
+pub type upcalls =
     {trace: ValueRef,
      call_shim_on_c_stack: ValueRef,
      call_shim_on_rust_stack: ValueRef,
      rust_personality: ValueRef,
      reset_stack_limit: ValueRef};
 
-fn declare_upcalls(targ_cfg: @session::config,
-                   llmod: ModuleRef) -> @upcalls {
+pub fn declare_upcalls(targ_cfg: @session::config,
+                       llmod: ModuleRef) -> @upcalls {
     fn decl(llmod: ModuleRef, prefix: ~str, name: ~str,
             tys: ~[TypeRef], rv: TypeRef) ->
        ValueRef {

@@ -15,10 +15,6 @@ use syntax::{ast, fold, attr};
 use core::option;
 use core::vec;
 
-export strip_unconfigured_items;
-export metas_in_cfg;
-export strip_items;
-
 type in_cfg_pred = fn@(+attrs: ~[ast::attribute]) -> bool;
 
 type ctxt = @{
@@ -27,13 +23,13 @@ type ctxt = @{
 
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
-fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
+pub fn strip_unconfigured_items(crate: @ast::crate) -> @ast::crate {
     do strip_items(crate) |attrs| {
         in_cfg(/*bad*/copy crate.node.config, attrs)
     }
 }
 
-fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
+pub fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
     -> @ast::crate {
 
     let ctxt = @{in_cfg: in_cfg};
@@ -179,7 +175,8 @@ fn in_cfg(+cfg: ast::crate_cfg, +attrs: ~[ast::attribute]) -> bool {
     metas_in_cfg(cfg, attr::attr_metas(attrs))
 }
 
-fn metas_in_cfg(cfg: ast::crate_cfg, +metas: ~[@ast::meta_item]) -> bool {
+pub fn metas_in_cfg(cfg: ast::crate_cfg,
+                    +metas: ~[@ast::meta_item]) -> bool {
     // The "cfg" attributes on the item
     let cfg_metas = attr::find_meta_items_by_name(metas, ~"cfg");
 

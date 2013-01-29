@@ -144,32 +144,20 @@ pub mod middle {
 }
 
 pub mod front {
-    #[legacy_exports]
     pub mod config;
-    #[legacy_exports]
     pub mod test;
-    #[legacy_exports]
     pub mod core_inject;
-    #[legacy_exports]
     pub mod intrinsic_inject;
 }
 
 pub mod back {
-    #[legacy_exports]
     pub mod link;
-    #[legacy_exports]
     pub mod abi;
-    #[legacy_exports]
     pub mod upcall;
-    #[legacy_exports]
     pub mod arm;
-    #[legacy_exports]
     pub mod x86;
-    #[legacy_exports]
     pub mod x86_64;
-    #[legacy_exports]
     pub mod rpath;
-    #[legacy_exports]
     pub mod target_strs;
 }
 
@@ -180,14 +168,11 @@ pub mod metadata;
 pub mod driver;
 
 pub mod util {
-    #[legacy_exports]
     pub mod common;
-    #[legacy_exports]
     pub mod ppaux;
 }
 
 pub mod lib {
-    #[legacy_exports]
     pub mod llvm;
 }
 
