@@ -265,6 +265,7 @@ impl ReprVisitor {
 
 }
 
+#[cfg(stage0)]
 impl ReprVisitor : TyVisitor {
     fn visit_bot() -> bool {
         self.writer.write_str("!");
@@ -557,6 +558,310 @@ impl ReprVisitor : TyVisitor {
     fn visit_constr(_inner: *TyDesc) -> bool { fail; }
 
     fn visit_closure_ptr(_ck: uint) -> bool { true }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl ReprVisitor : TyVisitor {
+    fn visit_bot(&self) -> bool {
+        self.writer.write_str("!");
+        true
+    }
+    fn visit_nil(&self) -> bool { self.write::<()>() }
+    fn visit_bool(&self) -> bool { self.write::<bool>() }
+    fn visit_int(&self) -> bool { self.write::<int>() }
+    fn visit_i8(&self) -> bool { self.write::<i8>() }
+    fn visit_i16(&self) -> bool { self.write::<i16>() }
+    fn visit_i32(&self) -> bool { self.write::<i32>()  }
+    fn visit_i64(&self) -> bool { self.write::<i64>() }
+
+    fn visit_uint(&self) -> bool { self.write::<uint>() }
+    fn visit_u8(&self) -> bool { self.write::<u8>() }
+    fn visit_u16(&self) -> bool { self.write::<u16>() }
+    fn visit_u32(&self) -> bool { self.write::<u32>() }
+    fn visit_u64(&self) -> bool { self.write::<u64>() }
+
+    fn visit_float(&self) -> bool { self.write::<float>() }
+    fn visit_f32(&self) -> bool { self.write::<f32>() }
+    fn visit_f64(&self) -> bool { self.write::<f64>() }
+
+    fn visit_char(&self) -> bool {
+        do self.get::<char> |&ch| {
+            self.writer.write_char('\'');
+            self.writer.write_escaped_char(ch);
+            self.writer.write_char('\'');
+        }
+    }
+
+    // Type no longer exists, vestigial function.
+    fn visit_str(&self) -> bool { fail; }
+
+    fn visit_estr_box(&self) -> bool {
+        do self.get::<@str> |s| {
+            self.writer.write_char('@');
+            self.write_escaped_slice(*s);
+        }
+    }
+    fn visit_estr_uniq(&self) -> bool {
+        do self.get::<~str> |s| {
+            self.writer.write_char('~');
+            self.write_escaped_slice(*s);
+        }
+    }
+    fn visit_estr_slice(&self) -> bool {
+        do self.get::<&str> |s| {
+            self.write_escaped_slice(*s);
+        }
+    }
+
+    // Type no longer exists, vestigial function.
+    fn visit_estr_fixed(&self, _n: uint, _sz: uint,
+                        _align: uint) -> bool { fail; }
+
+    fn visit_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        self.writer.write_char('@');
+        self.write_mut_qualifier(mtbl);
+        do self.get::<&managed::raw::BoxRepr> |b| {
+            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            self.visit_ptr_inner(p, inner);
+        }
+    }
+
+    fn visit_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        self.writer.write_char('~');
+        self.write_mut_qualifier(mtbl);
+        do self.get::<&managed::raw::BoxRepr> |b| {
+            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            self.visit_ptr_inner(p, inner);
+        }
+    }
+
+    fn visit_ptr(&self, _mtbl: uint, _inner: *TyDesc) -> bool {
+        do self.get::<*c_void> |p| {
+            self.writer.write_str(fmt!("(0x%x as *())",
+                                       *p as uint));
+        }
+    }
+
+    fn visit_rptr(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        self.writer.write_char('&');
+        self.write_mut_qualifier(mtbl);
+        do self.get::<*c_void> |p| {
+            self.visit_ptr_inner(*p, inner);
+        }
+    }
+
+    // Type no longer exists, vestigial function.
+    fn visit_vec(&self, _mtbl: uint, _inner: *TyDesc) -> bool { fail; }
+
+
+    fn visit_unboxed_vec(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<vec::UnboxedVecRepr> |b| {
+            self.write_unboxed_vec_repr(mtbl, b, inner);
+        }
+    }
+
+    fn visit_evec_box(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<&VecRepr> |b| {
+            self.writer.write_char('@');
+            self.write_unboxed_vec_repr(mtbl, &b.unboxed, inner);
+        }
+    }
+
+    fn visit_evec_uniq(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<&VecRepr> |b| {
+            self.writer.write_char('~');
+            self.write_unboxed_vec_repr(mtbl, &b.unboxed, inner);
+        }
+    }
+
+    fn visit_evec_slice(&self, mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<SliceRepr> |s| {
+            self.writer.write_char('&');
+            self.write_vec_range(mtbl, s.data, s.len, inner);
+        }
+    }
+
+    fn visit_evec_fixed(&self, _n: uint, sz: uint, _align: uint,
+                        mtbl: uint, inner: *TyDesc) -> bool {
+        do self.get::<u8> |b| {
+            self.write_vec_range(mtbl, ptr::to_unsafe_ptr(b), sz, inner);
+        }
+    }
+
+    fn visit_enter_rec(&self, _n_fields: uint,
+                       _sz: uint, _align: uint) -> bool {
+        self.writer.write_char('{');
+        true
+    }
+
+    fn visit_rec_field(&self, i: uint, name: &str,
+                       mtbl: uint, inner: *TyDesc) -> bool {
+        if i != 0 {
+            self.writer.write_str(", ");
+        }
+        self.write_mut_qualifier(mtbl);
+        self.writer.write_str(name);
+        self.writer.write_str(": ");
+        self.visit_inner(inner);
+        true
+    }
+
+    fn visit_leave_rec(&self, _n_fields: uint,
+                       _sz: uint, _align: uint) -> bool {
+        self.writer.write_char('}');
+        true
+    }
+
+    fn visit_enter_class(&self, _n_fields: uint,
+                         _sz: uint, _align: uint) -> bool {
+        self.writer.write_char('{');
+        true
+    }
+    fn visit_class_field(&self, i: uint, name: &str,
+                         mtbl: uint, inner: *TyDesc) -> bool {
+        if i != 0 {
+            self.writer.write_str(", ");
+        }
+        self.write_mut_qualifier(mtbl);
+        self.writer.write_str(name);
+        self.writer.write_str(": ");
+        self.visit_inner(inner);
+        true
+    }
+    fn visit_leave_class(&self, _n_fields: uint,
+                         _sz: uint, _align: uint) -> bool {
+        self.writer.write_char('}');
+        true
+    }
+
+    fn visit_enter_tup(&self, _n_fields: uint,
+                       _sz: uint, _align: uint) -> bool {
+        self.writer.write_char('(');
+        true
+    }
+    fn visit_tup_field(&self, i: uint, inner: *TyDesc) -> bool {
+        if i != 0 {
+            self.writer.write_str(", ");
+        }
+        self.visit_inner(inner);
+        true
+    }
+    fn visit_leave_tup(&self, _n_fields: uint,
+                       _sz: uint, _align: uint) -> bool {
+        self.writer.write_char(')');
+        true
+    }
+
+    fn visit_enter_enum(&self, n_variants: uint,
+                        _sz: uint, _align: uint) -> bool {
+        if n_variants == 1 {
+            self.var_stk.push(Degenerate)
+        } else {
+            self.var_stk.push(TagMatch)
+        }
+        true
+    }
+
+    fn visit_enter_enum_variant(&self, _variant: uint,
+                                disr_val: int,
+                                n_fields: uint,
+                                name: &str) -> bool {
+        let mut write = false;
+        match self.var_stk.pop() {
+            Degenerate => {
+                write = true;
+                self.var_stk.push(Degenerate);
+            }
+            TagMatch | TagMismatch => {
+                do self.get::<int>() |t| {
+                    if disr_val == *t {
+                        write = true;
+                        self.var_stk.push(TagMatch);
+                    } else {
+                        self.var_stk.push(TagMismatch);
+                    }
+                };
+                self.bump_past::<int>();
+            }
+        }
+
+        if write {
+            self.writer.write_str(name);
+            if n_fields > 0 {
+                self.writer.write_char('(');
+            }
+        }
+        true
+    }
+
+    fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
+        match self.var_stk.last() {
+            Degenerate | TagMatch => {
+                if i != 0 {
+                    self.writer.write_str(", ");
+                }
+                if ! self.visit_inner(inner) {
+                    return false;
+                }
+            }
+            TagMismatch => ()
+        }
+        true
+    }
+
+    fn visit_leave_enum_variant(&self, _variant: uint,
+                                _disr_val: int,
+                                n_fields: uint,
+                                _name: &str) -> bool {
+        match self.var_stk.last() {
+            Degenerate | TagMatch => {
+                if n_fields > 0 {
+                    self.writer.write_char(')');
+                }
+            }
+            TagMismatch => ()
+        }
+        true
+    }
+
+    fn visit_leave_enum(&self, _n_variants: uint,
+                        _sz: uint, _align: uint) -> bool {
+        self.var_stk.pop();
+        true
+    }
+
+    fn visit_enter_fn(&self, _purity: uint, _proto: uint,
+                      _n_inputs: uint, _retstyle: uint) -> bool { true }
+    fn visit_fn_input(&self, _i: uint, _mode: uint, _inner: *TyDesc) -> bool {
+        true
+    }
+    fn visit_fn_output(&self, _retstyle: uint, _inner: *TyDesc) -> bool {
+        true
+    }
+    fn visit_leave_fn(&self, _purity: uint, _proto: uint,
+                      _n_inputs: uint, _retstyle: uint) -> bool { true }
+
+
+    fn visit_trait(&self) -> bool { true }
+    fn visit_var(&self) -> bool { true }
+    fn visit_var_integral(&self) -> bool { true }
+    fn visit_param(&self, _i: uint) -> bool { true }
+    fn visit_self(&self) -> bool { true }
+    fn visit_type(&self) -> bool { true }
+
+    fn visit_opaque_box(&self) -> bool {
+        self.writer.write_char('@');
+        do self.get::<&managed::raw::BoxRepr> |b| {
+            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            self.visit_ptr_inner(p, b.header.type_desc);
+        }
+    }
+
+    // Type no longer exists, vestigial function.
+    fn visit_constr(&self, _inner: *TyDesc) -> bool { fail; }
+
+    fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
 pub fn write_repr<T>(writer: @Writer, object: &T) {

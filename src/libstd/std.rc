@@ -32,6 +32,7 @@ not required in or otherwise suitable for the core library.
 // that can't be silenced otherwise. Most every module is set to forbid
 #[allow(deprecated_mode)];
 #[forbid(deprecated_pattern)];
+#[allow(deprecated_self)];
 
 
 // Transitional

@@ -52,6 +52,7 @@ Implicitly, all crates behave as if they included the following prologue:
 #[warn(deprecated_pattern)];
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
+#[allow(deprecated_self)];
 
 /* The Prelude. */
 
