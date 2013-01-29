@@ -568,6 +568,24 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                                              T_ptr(T_nil()));
             Store(bcx, morestack_addr, fcx.llretptr);
         }
+        ~"memmove32" => {
+            let dst_ptr = get_param(decl, first_real_arg);
+            let src_ptr = get_param(decl, first_real_arg + 1);
+            let size = get_param(decl, first_real_arg + 2);
+            let align = C_i32(1);
+            let volatile = C_bool(false);
+            let llfn = bcx.ccx().intrinsics.get(~"llvm.memmove.p0i8.p0i8.i32");
+            Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
+        }
+        ~"memmove64" => {
+            let dst_ptr = get_param(decl, first_real_arg);
+            let src_ptr = get_param(decl, first_real_arg + 1);
+            let size = get_param(decl, first_real_arg + 2);
+            let align = C_i32(1);
+            let volatile = C_bool(false);
+            let llfn = bcx.ccx().intrinsics.get(~"llvm.memmove.p0i8.p0i8.i64");
+            Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
+        }
         ~"sqrtf32" => {
             let x = get_param(decl, first_real_arg);
             let sqrtf = ccx.intrinsics.get(~"llvm.sqrt.f32");
