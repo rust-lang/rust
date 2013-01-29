@@ -219,8 +219,8 @@ pub mod linear {
                 },
             };
 
-            /* re-inserting buckets may cause changes in size, so remember what
-               our new size is ahead of time before we start insertions */
+            /* re-inserting buckets may cause changes in size, so remember
+            what our new size is ahead of time before we start insertions */
             let size = self.size - 1;
             idx = self.next_bucket(idx, len_buckets);
             while self.buckets[idx].is_some() {
