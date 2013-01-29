@@ -185,13 +185,13 @@ impl<T: Reader> T : ReaderUtil {
     }
 
     fn read_line(&self) -> ~str {
-        let mut line = ~"";
+        let mut bytes = ~[];
         loop {
             let ch = self.read_byte();
             if ch == -1 || ch == 10 { break; }
-            str::push_char(&mut line, ch as char);
+            bytes.push(ch as u8);
         }
-        line
+        str::from_bytes(bytes)
     }
 
     fn read_chars(&self, n: uint) -> ~[char] {
@@ -1218,6 +1218,14 @@ mod tests {
         do io::with_str_reader(~"") |inp| {
             let res : ~[char] = inp.read_chars(128);
             assert(vec::len(res) == 0);
+        }
+    }
+
+    #[test]
+    fn test_read_line_utf8() {
+        do io::with_str_reader(~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
+            let line = inp.read_line();
+            assert line == ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤";
         }
     }
 
