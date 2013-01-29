@@ -1484,7 +1484,9 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
     let _icx = cx.insn_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess.targ_cfg.arch {
-      session::arch_x86 | session::arch_arm => ~"llvm.memcpy.p0i8.p0i8.i32",
+      session::arch_x86
+      | session::arch_arm
+      | session::arch_mips => ~"llvm.memcpy.p0i8.p0i8.i32",
       session::arch_x86_64 => ~"llvm.memcpy.p0i8.p0i8.i64"
     };
     let memcpy = ccx.intrinsics.get(&key);
@@ -1526,7 +1528,9 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
 
     let intrinsic_key;
     match ccx.sess.targ_cfg.arch {
-        session::arch_x86 | session::arch_arm => {
+        session::arch_x86
+        | session::arch_arm
+        | session::arch_mips => {
             intrinsic_key = ~"llvm.memset.p0i8.i32";
         }
         session::arch_x86_64 => {

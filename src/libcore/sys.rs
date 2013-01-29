@@ -166,6 +166,7 @@ pub mod tests {
     #[test]
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
+    #[cfg(target_arch = "mips")]
     pub fn size_of_32() {
         assert size_of::<uint>() == 4u;
         assert size_of::<*uint>() == 4u;
@@ -196,6 +197,7 @@ pub mod tests {
     #[test]
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
+    #[cfg(target_arch = "mips")]
     pub fn align_of_32() {
         assert pref_align_of::<uint>() == 4u;
         assert pref_align_of::<*uint>() == 4u;

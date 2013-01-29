@@ -33,7 +33,7 @@ use syntax;
 pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
 
 #[deriving_eq]
-pub enum arch { arch_x86, arch_x86_64, arch_arm, }
+pub enum arch { arch_x86, arch_x86_64, arch_arm, arch_mips, }
 
 pub enum crate_type { bin_crate, lib_crate, unknown_crate, }
 

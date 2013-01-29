@@ -766,7 +766,8 @@ pub fn T_int(targ_cfg: @session::config) -> TypeRef {
     return match targ_cfg.arch {
       session::arch_x86 => T_i32(),
       session::arch_x86_64 => T_i64(),
-      session::arch_arm => T_i32()
+      session::arch_arm => T_i32(),
+      session::arch_mips => T_i32()
     };
 }
 
@@ -803,7 +804,8 @@ pub fn T_float(targ_cfg: @session::config) -> TypeRef {
     return match targ_cfg.arch {
       session::arch_x86 => T_f64(),
       session::arch_x86_64 => T_f64(),
-      session::arch_arm => T_f64()
+      session::arch_arm => T_f64(),
+      session::arch_mips => T_f64()
     };
 }
 

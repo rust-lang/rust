@@ -97,6 +97,12 @@ void LLVMInitializeARMTarget();
 void LLVMInitializeARMTargetMC();
 void LLVMInitializeARMAsmPrinter();
 void LLVMInitializeARMAsmParser();
+
+void LLVMInitializeMipsTargetInfo();
+void LLVMInitializeMipsTarget();
+void LLVMInitializeMipsTargetMC();
+void LLVMInitializeMipsAsmPrinter();
+void LLVMInitializeMipsAsmParser();
 // Only initialize the platforms supported by Rust here,
 // because using --llvm-root will have multiple platforms
 // that rustllvm doesn't actually link to and it's pointless to put target info
@@ -114,6 +120,12 @@ void LLVMRustInitializeTargets() {
   LLVMInitializeARMTargetMC();
   LLVMInitializeARMAsmPrinter();
   LLVMInitializeARMAsmParser();	
+
+  LLVMInitializeMipsTargetInfo();
+  LLVMInitializeMipsTarget();
+  LLVMInitializeMipsTargetMC();
+  LLVMInitializeMipsAsmPrinter();
+  LLVMInitializeMipsAsmParser();	
 }
 
 // Custom memory manager for MCJITting. It needs special features
