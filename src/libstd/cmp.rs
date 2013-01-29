@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[forbid(deprecated_mode)];
-/// Additional general-purpose comparison functionality.
+//! Additional general-purpose comparison functionality.
 
 use core::f32;
 use core::f64;
