@@ -29,12 +29,12 @@ use std::map::HashMap;
 use std::map;
 use std;
 
-enum path_elt {
+pub enum path_elt {
     path_mod(ident),
     path_name(ident)
 }
 
-impl path_elt : cmp::Eq {
+pub impl path_elt : cmp::Eq {
     pure fn eq(&self, other: &path_elt) -> bool {
         match (*self) {
             path_mod(e0a) => {
@@ -54,10 +54,10 @@ impl path_elt : cmp::Eq {
     pure fn ne(&self, other: &path_elt) -> bool { !(*self).eq(other) }
 }
 
-type path = ~[path_elt];
+pub type path = ~[path_elt];
 
-fn path_to_str_with_sep(p: &[path_elt], sep: ~str, itr: @ident_interner)
-    -> ~str {
+pub fn path_to_str_with_sep(p: &[path_elt], sep: ~str, itr: @ident_interner)
+                         -> ~str {
     let strs = do p.map |e| {
         match *e {
           path_mod(s) => *itr.get(s),
@@ -67,7 +67,7 @@ fn path_to_str_with_sep(p: &[path_elt], sep: ~str, itr: @ident_interner)
     str::connect(strs, sep)
 }
 
-fn path_ident_to_str(p: path, i: ident, itr: @ident_interner) -> ~str {
+pub fn path_ident_to_str(p: path, i: ident, itr: @ident_interner) -> ~str {
     if vec::is_empty(p) {
         //FIXME /* FIXME (#2543) */ copy *i
         *itr.get(i)
@@ -76,18 +76,18 @@ fn path_ident_to_str(p: path, i: ident, itr: @ident_interner) -> ~str {
     }
 }
 
-fn path_to_str(p: &[path_elt], itr: @ident_interner) -> ~str {
+pub fn path_to_str(p: &[path_elt], itr: @ident_interner) -> ~str {
     path_to_str_with_sep(p, ~"::", itr)
 }
 
-fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
+pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
     match pe {
         path_mod(s) => *itr.get(s),
         path_name(s) => *itr.get(s)
     }
 }
 
-enum ast_node {
+pub enum ast_node {
     node_item(@item, @path),
     node_foreign_item(@foreign_item, foreign_abi, @path),
     node_trait_method(@trait_method, def_id /* trait did */,
@@ -107,20 +107,20 @@ enum ast_node {
     node_struct_ctor(@struct_def, @item, @path),
 }
 
-type map = std::map::HashMap<node_id, ast_node>;
-struct ctx {
+pub type map = std::map::HashMap<node_id, ast_node>;
+pub struct ctx {
     map: map,
     mut path: path,
     mut local_id: uint,
     diag: span_handler,
 }
-type vt = visit::vt<ctx>;
+pub type vt = visit::vt<ctx>;
 
-fn extend(cx: ctx, +elt: ident) -> @path {
+pub fn extend(cx: ctx, +elt: ident) -> @path {
     @(vec::append(cx.path, ~[path_name(elt)]))
 }
 
-fn mk_ast_map_visitor() -> vt {
+pub fn mk_ast_map_visitor() -> vt {
     return visit::mk_vt(@visit::Visitor {
         visit_item: map_item,
         visit_expr: map_expr,
@@ -134,7 +134,7 @@ fn mk_ast_map_visitor() -> vt {
     });
 }
 
-fn map_crate(diag: span_handler, c: crate) -> map {
+pub fn map_crate(diag: span_handler, c: crate) -> map {
     let cx = ctx {
         map: std::map::HashMap(),
         mut path: ~[],
@@ -148,8 +148,8 @@ fn map_crate(diag: span_handler, c: crate) -> map {
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
-fn map_decoded_item(diag: span_handler,
-                    map: map, path: path, ii: inlined_item) {
+pub fn map_decoded_item(diag: span_handler,
+                        map: map, path: path, ii: inlined_item) {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.  (In particular, I think these ids are only used in
@@ -182,8 +182,8 @@ fn map_decoded_item(diag: span_handler,
     ii.accept(cx, v);
 }
 
-fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
-          sp: codemap::span, id: node_id, cx: ctx, v: vt) {
+pub fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
+              sp: codemap::span, id: node_id, cx: ctx, v: vt) {
     for decl.inputs.each |a| {
         cx.map.insert(a.id,
                       node_arg(/* FIXME (#2543) */
@@ -210,12 +210,12 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
 
-fn map_block(b: blk, cx: ctx, v: vt) {
+pub fn map_block(b: blk, cx: ctx, v: vt) {
     cx.map.insert(b.node.id, node_block(/* FIXME (#2543) */ copy b));
     visit::visit_block(b, cx, v);
 }
 
-fn number_pat(cx: ctx, pat: @pat) {
+pub fn number_pat(cx: ctx, pat: @pat) {
     do ast_util::walk_pat(pat) |p| {
         match p.node {
           pat_ident(*) => {
@@ -227,24 +227,24 @@ fn number_pat(cx: ctx, pat: @pat) {
     };
 }
 
-fn map_local(loc: @local, cx: ctx, v: vt) {
+pub fn map_local(loc: @local, cx: ctx, v: vt) {
     number_pat(cx, loc.node.pat);
     visit::visit_local(loc, cx, v);
 }
 
-fn map_arm(arm: arm, cx: ctx, v: vt) {
+pub fn map_arm(arm: arm, cx: ctx, v: vt) {
     number_pat(cx, arm.pats[0]);
     visit::visit_arm(arm, cx, v);
 }
 
-fn map_method(impl_did: def_id, impl_path: @path,
-              m: @method, cx: ctx) {
+pub fn map_method(impl_did: def_id, impl_path: @path,
+                  m: @method, cx: ctx) {
     cx.map.insert(m.id, node_method(m, impl_did, impl_path));
     cx.map.insert(m.self_id, node_local(cx.local_id));
     cx.local_id += 1u;
 }
 
-fn map_item(i: @item, cx: ctx, v: vt) {
+pub fn map_item(i: @item, cx: ctx, v: vt) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     match i.node {
@@ -306,8 +306,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     cx.path.pop();
 }
 
-fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
-                  ident: ast::ident, cx: ctx, _v: vt) {
+pub fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
+                      ident: ast::ident, cx: ctx, _v: vt) {
     let p = extend(cx, ident);
     // If this is a tuple-like struct, register the constructor.
     match struct_def.ctor_id {
@@ -324,7 +324,7 @@ fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
     }
 }
 
-fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
+pub fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
     match vi.node {
       view_item_export(vps) => for vps.each |vp| {
         let (id, name) = match vp.node {
@@ -341,17 +341,17 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
     }
 }
 
-fn map_expr(ex: @expr, cx: ctx, v: vt) {
+pub fn map_expr(ex: @expr, cx: ctx, v: vt) {
     cx.map.insert(ex.id, node_expr(ex));
     visit::visit_expr(ex, cx, v);
 }
 
-fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
+pub fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
     cx.map.insert(stmt_id(*stmt), node_stmt(stmt));
     visit::visit_stmt(stmt, cx, v);
 }
 
-fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
+pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
     match map.find(id) {
       None => {
         fmt!("unknown node (id=%d)", id)
@@ -419,7 +419,7 @@ fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
     }
 }
 
-fn node_item_query<Result>(items: map, id: node_id,
+pub fn node_item_query<Result>(items: map, id: node_id,
                            query: fn(@item) -> Result,
                            error_msg: ~str) -> Result {
     match items.find(id) {

@@ -18,9 +18,7 @@ use parse::token;
 
 use core::either::{Either, Left, Right};
 
-export parser_attr;
-
-trait parser_attr {
+pub trait parser_attr {
     fn parse_outer_attributes() -> ~[ast::attribute];
     fn parse_attribute(style: ast::attr_style) -> ast::attribute;
     fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->

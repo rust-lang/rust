@@ -28,12 +28,11 @@ use core::vec;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
-    #[legacy_exports];
     pub use ext;
     pub use parse;
 }
 
-fn path(ids: ~[ident], span: span) -> @ast::path {
+pub fn path(ids: ~[ident], span: span) -> @ast::path {
     @ast::path { span: span,
                  global: false,
                  idents: ids,
@@ -41,7 +40,7 @@ fn path(ids: ~[ident], span: span) -> @ast::path {
                  types: ~[] }
 }
 
-fn path_global(ids: ~[ident], span: span) -> @ast::path {
+pub fn path_global(ids: ~[ident], span: span) -> @ast::path {
     @ast::path { span: span,
                  global: true,
                  idents: ids,
@@ -49,12 +48,12 @@ fn path_global(ids: ~[ident], span: span) -> @ast::path {
                  types: ~[] }
 }
 
-trait append_types {
+pub trait append_types {
     fn add_ty(ty: @ast::Ty) -> @ast::path;
     fn add_tys(+tys: ~[@ast::Ty]) -> @ast::path;
 }
 
-impl @ast::path: append_types {
+pub impl @ast::path: append_types {
     fn add_ty(ty: @ast::Ty) -> @ast::path {
         @ast::path { types: vec::append_one(self.types, ty),
                      .. *self}
@@ -113,7 +112,7 @@ pub trait ext_ctxt_ast_builder {
     fn strip_bounds(bounds: &[ast::ty_param]) -> ~[ast::ty_param];
 }
 
-impl ext_ctxt: ext_ctxt_ast_builder {
+pub impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_option(ty: @ast::Ty) -> @ast::Ty {
         self.ty_path_ast_builder(path_global(~[
             self.ident_of(~"core"),

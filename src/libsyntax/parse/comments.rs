@@ -27,14 +27,7 @@ use core::str;
 use core::uint;
 use core::vec;
 
-export cmnt;
-export lit;
-export cmnt_style;
-export gather_comments_and_literals;
-export is_doc_comment, doc_comment_style, strip_doc_comment_decoration;
-export isolated, trailing, mixed, blank_line;
-
-enum cmnt_style {
+pub enum cmnt_style {
     isolated, // No code on either side of each line of the comment
     trailing, // Code exists to the left of the comment
     mixed, // Code before /* foo */ and after the comment
@@ -50,16 +43,16 @@ impl cmnt_style : cmp::Eq {
     }
 }
 
-type cmnt = {style: cmnt_style, lines: ~[~str], pos: BytePos};
+pub type cmnt = {style: cmnt_style, lines: ~[~str], pos: BytePos};
 
-fn is_doc_comment(s: ~str) -> bool {
+pub fn is_doc_comment(s: ~str) -> bool {
     s.starts_with(~"///") ||
     s.starts_with(~"//!") ||
     s.starts_with(~"/**") ||
     s.starts_with(~"/*!")
 }
 
-fn doc_comment_style(comment: ~str) -> ast::attr_style {
+pub fn doc_comment_style(comment: ~str) -> ast::attr_style {
     assert is_doc_comment(comment);
     if comment.starts_with(~"//!") || comment.starts_with(~"/*!") {
         ast::attr_inner
@@ -68,7 +61,7 @@ fn doc_comment_style(comment: ~str) -> ast::attr_style {
     }
 }
 
-fn strip_doc_comment_decoration(comment: ~str) -> ~str {
+pub fn strip_doc_comment_decoration(comment: ~str) -> ~str {
 
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
@@ -306,11 +299,11 @@ fn consume_comment(rdr: string_reader, code_to_the_left: bool,
     debug!("<<< consume comment");
 }
 
-type lit = {lit: ~str, pos: BytePos};
+pub type lit = {lit: ~str, pos: BytePos};
 
-fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
-                                path: ~str,
-                                srdr: io::Reader) ->
+pub fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
+                                    path: ~str,
+                                    srdr: io::Reader) ->
    {cmnts: ~[cmnt], lits: ~[lit]} {
     let src = @str::from_bytes(srdr.read_whole_stream());
     let itr = parse::token::mk_fake_ident_interner();

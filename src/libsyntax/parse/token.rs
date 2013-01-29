@@ -25,7 +25,7 @@ use std::map::HashMap;
 
 #[auto_encode]
 #[auto_decode]
-enum binop {
+pub enum binop {
     PLUS,
     MINUS,
     STAR,
@@ -40,7 +40,7 @@ enum binop {
 
 #[auto_encode]
 #[auto_decode]
-enum Token {
+pub enum Token {
     /* Expression-operator symbols. */
     EQ,
     LT,
@@ -99,7 +99,7 @@ enum Token {
 #[auto_encode]
 #[auto_decode]
 /// For interpolation during macro expansion.
-enum nonterminal {
+pub enum nonterminal {
     nt_item(@ast::item),
     nt_block(ast::blk),
     nt_stmt(@ast::stmt),
@@ -112,7 +112,7 @@ enum nonterminal {
     nt_matchers(~[ast::matcher])
 }
 
-fn binop_to_str(o: binop) -> ~str {
+pub fn binop_to_str(o: binop) -> ~str {
     match o {
       PLUS => ~"+",
       MINUS => ~"-",
@@ -127,7 +127,7 @@ fn binop_to_str(o: binop) -> ~str {
     }
 }
 
-fn to_str(in: @ident_interner, t: Token) -> ~str {
+pub fn to_str(in: @ident_interner, t: Token) -> ~str {
     match t {
       EQ => ~"=",
       LT => ~"<",
@@ -222,7 +222,7 @@ fn to_str(in: @ident_interner, t: Token) -> ~str {
     }
 }
 
-pure fn can_begin_expr(t: Token) -> bool {
+pub pure fn can_begin_expr(t: Token) -> bool {
     match t {
       LPAREN => true,
       LBRACE => true,
@@ -254,7 +254,7 @@ pure fn can_begin_expr(t: Token) -> bool {
 }
 
 /// what's the opposite delimiter?
-fn flip_delimiter(t: token::Token) -> token::Token {
+pub fn flip_delimiter(t: token::Token) -> token::Token {
     match t {
       token::LPAREN => token::RPAREN,
       token::LBRACE => token::RBRACE,
@@ -268,7 +268,7 @@ fn flip_delimiter(t: token::Token) -> token::Token {
 
 
 
-fn is_lit(t: Token) -> bool {
+pub fn is_lit(t: Token) -> bool {
     match t {
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,
@@ -280,79 +280,80 @@ fn is_lit(t: Token) -> bool {
     }
 }
 
-pure fn is_ident(t: Token) -> bool {
+pub pure fn is_ident(t: Token) -> bool {
     match t { IDENT(_, _) => true, _ => false }
 }
 
-pure fn is_ident_or_path(t: Token) -> bool {
+pub pure fn is_ident_or_path(t: Token) -> bool {
     match t {
       IDENT(_, _) | INTERPOLATED(nt_path(*)) => true,
       _ => false
     }
 }
 
-pure fn is_plain_ident(t: Token) -> bool {
+pub pure fn is_plain_ident(t: Token) -> bool {
     match t { IDENT(_, false) => true, _ => false }
 }
 
-pure fn is_bar(t: Token) -> bool {
+pub pure fn is_bar(t: Token) -> bool {
     match t { BINOP(OR) | OROR => true, _ => false }
 }
 
 
-mod special_idents {
-    #[legacy_exports];
+pub mod special_idents {
     use ast::ident;
-    const underscore : ident = ident { repr: 0u };
-    const anon : ident = ident { repr: 1u };
-    const dtor : ident = ident { repr: 2u }; // 'drop', but that's reserved
-    const invalid : ident = ident { repr: 3u }; // ''
-    const unary : ident = ident { repr: 4u };
-    const not_fn : ident = ident { repr: 5u };
-    const idx_fn : ident = ident { repr: 6u };
-    const unary_minus_fn : ident = ident { repr: 7u };
-    const clownshoes_extensions : ident = ident { repr: 8u };
 
-    const self_ : ident = ident { repr: 9u }; // 'self'
+    pub const underscore : ident = ident { repr: 0u };
+    pub const anon : ident = ident { repr: 1u };
+    pub const dtor : ident = ident { repr: 2u }; // 'drop', but that's
+                                                 // reserved
+    pub const invalid : ident = ident { repr: 3u }; // ''
+    pub const unary : ident = ident { repr: 4u };
+    pub const not_fn : ident = ident { repr: 5u };
+    pub const idx_fn : ident = ident { repr: 6u };
+    pub const unary_minus_fn : ident = ident { repr: 7u };
+    pub const clownshoes_extensions : ident = ident { repr: 8u };
+
+    pub const self_ : ident = ident { repr: 9u }; // 'self'
 
     /* for matcher NTs */
-    const item : ident = ident { repr: 10u };
-    const block : ident = ident { repr: 11u };
-    const stmt : ident = ident { repr: 12u };
-    const pat : ident = ident { repr: 13u };
-    const expr : ident = ident { repr: 14u };
-    const ty : ident = ident { repr: 15u };
-    const ident : ident = ident { repr: 16u };
-    const path : ident = ident { repr: 17u };
-    const tt : ident = ident { repr: 18u };
-    const matchers : ident = ident { repr: 19u };
+    pub const item : ident = ident { repr: 10u };
+    pub const block : ident = ident { repr: 11u };
+    pub const stmt : ident = ident { repr: 12u };
+    pub const pat : ident = ident { repr: 13u };
+    pub const expr : ident = ident { repr: 14u };
+    pub const ty : ident = ident { repr: 15u };
+    pub const ident : ident = ident { repr: 16u };
+    pub const path : ident = ident { repr: 17u };
+    pub const tt : ident = ident { repr: 18u };
+    pub const matchers : ident = ident { repr: 19u };
 
-    const str : ident = ident { repr: 20u }; // for the type
+    pub const str : ident = ident { repr: 20u }; // for the type
 
     /* outside of libsyntax */
-    const ty_visitor : ident = ident { repr: 21u };
-    const arg : ident = ident { repr: 22u };
-    const descrim : ident = ident { repr: 23u };
-    const clownshoe_abi : ident = ident { repr: 24u };
-    const clownshoe_stack_shim : ident = ident { repr: 25u };
-    const tydesc : ident = ident { repr: 26u };
-    const literally_dtor : ident = ident { repr: 27u };
-    const main : ident = ident { repr: 28u };
-    const opaque : ident = ident { repr: 29u };
-    const blk : ident = ident { repr: 30u };
-    const static : ident = ident { repr: 31u };
-    const intrinsic : ident = ident { repr: 32u };
-    const clownshoes_foreign_mod: ident = ident { repr: 33 };
-    const unnamed_field: ident = ident { repr: 34 };
-    const c_abi: ident = ident { repr: 35 };
-    const type_self: ident = ident { repr: 36 };    // `Self`
+    pub const ty_visitor : ident = ident { repr: 21u };
+    pub const arg : ident = ident { repr: 22u };
+    pub const descrim : ident = ident { repr: 23u };
+    pub const clownshoe_abi : ident = ident { repr: 24u };
+    pub const clownshoe_stack_shim : ident = ident { repr: 25u };
+    pub const tydesc : ident = ident { repr: 26u };
+    pub const literally_dtor : ident = ident { repr: 27u };
+    pub const main : ident = ident { repr: 28u };
+    pub const opaque : ident = ident { repr: 29u };
+    pub const blk : ident = ident { repr: 30u };
+    pub const static : ident = ident { repr: 31u };
+    pub const intrinsic : ident = ident { repr: 32u };
+    pub const clownshoes_foreign_mod: ident = ident { repr: 33 };
+    pub const unnamed_field: ident = ident { repr: 34 };
+    pub const c_abi: ident = ident { repr: 35 };
+    pub const type_self: ident = ident { repr: 36 };    // `Self`
 }
 
-struct ident_interner {
+pub struct ident_interner {
     priv interner: Interner<@~str>,
 }
 
-impl ident_interner {
+pub impl ident_interner {
     fn intern(val: @~str) -> ast::ident {
         ast::ident { repr: self.interner.intern(val) }
     }
@@ -377,7 +378,7 @@ macro_rules! interner_key (
         (-3 as uint, 0u)))
 )
 
-fn mk_ident_interner() -> @ident_interner {
+pub fn mk_ident_interner() -> @ident_interner {
     unsafe {
         match task::local_data::local_data_get(interner_key!()) {
             Some(interner) => *interner,
@@ -438,7 +439,7 @@ fn mk_ident_interner() -> @ident_interner {
 
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
-fn mk_fake_ident_interner() -> @ident_interner {
+pub fn mk_fake_ident_interner() -> @ident_interner {
     @ident_interner { interner: interner::mk::<@~str>() }
 }
 
@@ -451,7 +452,7 @@ fn mk_fake_ident_interner() -> @ident_interner {
  * appear as identifiers at all. Reserved keywords are not used anywhere in
  * the language and may not appear as identifiers.
  */
-fn keyword_table() -> HashMap<~str, ()> {
+pub fn keyword_table() -> HashMap<~str, ()> {
     let keywords = HashMap();
     for temporary_keyword_table().each_key |word| {
         keywords.insert(word, ());
@@ -466,7 +467,7 @@ fn keyword_table() -> HashMap<~str, ()> {
 }
 
 /// Keywords that may be used as identifiers
-fn temporary_keyword_table() -> HashMap<~str, ()> {
+pub fn temporary_keyword_table() -> HashMap<~str, ()> {
     let words = HashMap();
     let keys = ~[
         ~"self", ~"static",
@@ -478,7 +479,7 @@ fn temporary_keyword_table() -> HashMap<~str, ()> {
 }
 
 /// Full keywords. May not appear anywhere else.
-fn strict_keyword_table() -> HashMap<~str, ()> {
+pub fn strict_keyword_table() -> HashMap<~str, ()> {
     let words = HashMap();
     let keys = ~[
         ~"as", ~"assert",
@@ -504,7 +505,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
     words
 }
 
-fn reserved_keyword_table() -> HashMap<~str, ()> {
+pub fn reserved_keyword_table() -> HashMap<~str, ()> {
     let words = HashMap();
     let keys = ~[
         ~"be"

@@ -38,17 +38,11 @@ pub mod syntax {
     pub use parse;
 }
 
-#[legacy_exports]
 mod attr;
-#[legacy_exports]
 mod diagnostic;
-#[legacy_records]
 mod codemap;
-#[legacy_exports]
 mod ast;
-#[legacy_exports]
 mod ast_util;
-#[legacy_exports]
 mod ast_map;
 #[legacy_exports]
 mod visit;

@@ -50,14 +50,14 @@ pub enum ObsoleteSyntax {
     ObsoleteUnenforcedBound
 }
 
-impl ObsoleteSyntax: to_bytes::IterBytes {
+pub impl ObsoleteSyntax: to_bytes::IterBytes {
     #[inline(always)]
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
     }
 }
 
-impl Parser {
+pub impl Parser {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(sp: span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {

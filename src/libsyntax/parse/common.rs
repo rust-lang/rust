@@ -21,26 +21,26 @@ use core::option::{None, Option, Some};
 use core::option;
 use std::map::HashMap;
 
-type seq_sep = {
+pub type seq_sep = {
     sep: Option<token::Token>,
     trailing_sep_allowed: bool
 };
 
-fn seq_sep_trailing_disallowed(t: token::Token) -> seq_sep {
+pub fn seq_sep_trailing_disallowed(t: token::Token) -> seq_sep {
     return {sep: option::Some(t), trailing_sep_allowed: false};
 }
-fn seq_sep_trailing_allowed(t: token::Token) -> seq_sep {
+pub fn seq_sep_trailing_allowed(t: token::Token) -> seq_sep {
     return {sep: option::Some(t), trailing_sep_allowed: true};
 }
-fn seq_sep_none() -> seq_sep {
+pub fn seq_sep_none() -> seq_sep {
     return {sep: option::None, trailing_sep_allowed: false};
 }
 
-fn token_to_str(reader: reader, ++token: token::Token) -> ~str {
+pub fn token_to_str(reader: reader, ++token: token::Token) -> ~str {
     token::to_str(reader.interner(), token)
 }
 
-impl Parser {
+pub impl Parser {
     fn unexpected_last(t: token::Token) -> ! {
         self.span_fatal(
             copy self.last_span,
@@ -229,7 +229,7 @@ impl Parser {
     }
 
     fn parse_seq_lt_gt<T: Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> spanned<~[T]> {
+                                f: fn(Parser) -> T) -> ast::spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(token::LT);
         let result = self.parse_seq_to_before_gt::<T>(sep, f);
@@ -277,7 +277,7 @@ impl Parser {
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
     fn parse_seq<T: Copy>(bra: token::Token, ket: token::Token, sep: seq_sep,
-                          f: fn(Parser) -> T) -> spanned<~[T]> {
+                          f: fn(Parser) -> T) -> ast::spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(bra);
         let result = self.parse_seq_to_before_end::<T>(ket, sep, f);

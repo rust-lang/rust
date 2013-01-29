@@ -16,13 +16,13 @@ use parse::token;
 
 use core::prelude::*;
 
-trait proto_parser {
+pub trait proto_parser {
     fn parse_proto(id: ~str) -> protocol;
     fn parse_state(proto: protocol);
     fn parse_message(state: state);
 }
 
-impl parser::Parser: proto_parser {
+pub impl parser::Parser: proto_parser {
     fn parse_proto(id: ~str) -> protocol {
         let proto = protocol(id, self.span);
 
