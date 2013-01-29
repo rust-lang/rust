@@ -55,15 +55,19 @@ fn fib(n: int) -> int {
     p.recv()
 }
 
-type config = {stress: bool};
+struct Config {
+    stress: bool
+}
 
-fn parse_opts(argv: ~[~str]) -> config {
+fn parse_opts(argv: ~[~str]) -> Config {
     let opts = ~[getopts::optflag(~"stress")];
 
-    let opt_args = vec::slice(argv, 1u, vec::len(argv));
+    let opt_args = vec::slice(argv, 1, argv.len());
 
     match getopts::getopts(opt_args, opts) {
-      Ok(ref m) => { return {stress: getopts::opt_present(m, ~"stress")} }
+      Ok(ref m) => {
+          return Config {stress: getopts::opt_present(m, ~"stress")}
+      }
       Err(_) => { fail; }
     }
 }

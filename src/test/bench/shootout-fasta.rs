@@ -20,25 +20,33 @@ use io::WriterUtil;
 
 fn LINE_LENGTH() -> uint { return 60u; }
 
-type myrandom = @{mut last: u32};
+struct MyRandom {
+    mut last: u32
+}
 
-fn myrandom_next(r: myrandom, mx: u32) -> u32 {
+fn myrandom_next(r: @MyRandom, mx: u32) -> u32 {
     r.last = (r.last * 3877u32 + 29573u32) % 139968u32;
     mx * r.last / 139968u32
 }
 
-type aminoacids = {ch: char, prob: u32};
+struct AminoAcids {
+    ch: char,
+    prob: u32
+}
 
-fn make_cumulative(aa: ~[aminoacids]) -> ~[aminoacids] {
+fn make_cumulative(aa: ~[AminoAcids]) -> ~[AminoAcids] {
     let mut cp: u32 = 0u32;
-    let mut ans: ~[aminoacids] = ~[];
-    for aa.each |a| { cp += a.prob; ans += ~[{ch: a.ch, prob: cp}]; }
+    let mut ans: ~[AminoAcids] = ~[];
+    for aa.each |a| {
+        cp += a.prob;
+        ans += ~[AminoAcids {ch: a.ch, prob: cp}];
+    }
     return ans;
 }
 
-fn select_random(r: u32, genelist: ~[aminoacids]) -> char {
+fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
     if r < genelist[0].prob { return genelist[0].ch; }
-    fn bisect(v: ~[aminoacids], lo: uint, hi: uint, target: u32) -> char {
+    fn bisect(v: ~[AminoAcids], lo: uint, hi: uint, target: u32) -> char {
         if hi > lo + 1u {
             let mid: uint = lo + (hi - lo) / 2u;
             if target < v[mid].prob {
@@ -46,12 +54,12 @@ fn select_random(r: u32, genelist: ~[aminoacids]) -> char {
             } else { return bisect(v, mid, hi, target); }
         } else { return v[hi].ch; }
     }
-    return bisect(copy genelist, 0, vec::len::<aminoacids>(genelist) - 1, r);
+    return bisect(copy genelist, 0, vec::len::<AminoAcids>(genelist) - 1, r);
 }
 
-fn make_random_fasta(wr: io::Writer, id: ~str, desc: ~str, genelist: ~[aminoacids], n: int) {
+fn make_random_fasta(wr: io::Writer, id: ~str, desc: ~str, genelist: ~[AminoAcids], n: int) {
     wr.write_line(~">" + id + ~" " + desc);
-    let rng = @{mut last: rand::Rng().next()};
+    let rng = @MyRandom {mut last: rand::Rng().next()};
     let mut op: ~str = ~"";
     for uint::range(0u, n as uint) |_i| {
         str::push_char(&mut op, select_random(myrandom_next(rng, 100u32),
@@ -80,7 +88,9 @@ fn make_repeat_fasta(wr: io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
     }
 }
 
-fn acid(ch: char, prob: u32) -> aminoacids { return {ch: ch, prob: prob}; }
+fn acid(ch: char, prob: u32) -> AminoAcids {
+    return AminoAcids {ch: ch, prob: prob};
+}
 
 fn main() {
     let args = os::args();
@@ -102,13 +112,13 @@ fn main() {
 
     let n = int::from_str(args[1]).get();
 
-    let iub: ~[aminoacids] =
+    let iub: ~[AminoAcids] =
         make_cumulative(~[acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
                          acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
                          acid('H', 2u32), acid('K', 2u32), acid('M', 2u32),
                          acid('N', 2u32), acid('R', 2u32), acid('S', 2u32),
                          acid('V', 2u32), acid('W', 2u32), acid('Y', 2u32)]);
-    let homosapiens: ~[aminoacids] =
+    let homosapiens: ~[AminoAcids] =
         make_cumulative(~[acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
                          acid('t', 30u32)]);
     let alu: ~str =
