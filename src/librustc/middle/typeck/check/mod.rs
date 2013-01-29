@@ -2374,6 +2374,49 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
             if type_is_c_like_enum(fcx,expr.span,t_e) && t_1_is_scalar {
                 /* this case is allowed */
+            } else if type_is_region_ptr(fcx, expr.span, t_e) &&
+                      type_is_unsafe_ptr(fcx, expr.span, t_1) {
+                let t1 = structurally_resolved_type(fcx, expr.span, t_e);
+                let t2 = structurally_resolved_type(fcx, expr.span, t_1);
+
+                fn is_vec(t: ty::t) -> bool {
+                    match ty::get(t).sty {
+                      ty::ty_evec(_,_) => true,
+                      _ => false
+                    }
+                }
+                fn types_compatible(fcx: @fn_ctxt, t1: ty::t, t2: ty::t)
+                    -> bool {
+                    t1 == t2 ||
+                      (is_vec(t1) &&
+                       ty::sequence_element_type(fcx.tcx(), t1) == t2)
+                }
+
+                /* this cast is only allowed it's from &static/T or
+                   &static/[T] to *T. */
+                match (ty::get(t1).sty, ty::get(t2).sty) {
+                  (ty::ty_rptr(re, mt1), ty::ty_ptr(mt2))
+                    if types_compatible(fcx, mt1.ty, mt2.ty) => {
+                      match fcx.mk_subr(true, expr.span, ty::re_static, re) {
+                        result::Ok(()) => {
+                          /* this case is allowed for const expresisons */
+                        }
+                        result::Err(_) => {
+                          fcx.type_error_message(expr.span, |actual| {
+                              fmt!("non-static region to unsafe pointer \
+                                    cast: `%s` as `%s`", actual,
+                                   fcx.infcx().ty_to_str(t_1))
+                          }, t_e, None);
+                        }
+                      }
+                  }
+                  _ => {
+                    fcx.type_error_message(expr.span, |actual| {
+                        fmt!("unrelated cast: `%s` as `%s`", actual,
+                             fcx.infcx().ty_to_str(t_1))
+                    }, t_e, None);
+                  }
+                }
             } else if !(type_is_scalar(fcx,expr.span,t_e) && t_1_is_scalar) {
                 /*
                 If more type combinations should be supported than are
@@ -2986,6 +3029,16 @@ fn type_is_integral(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
 fn type_is_scalar(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_scalar(typ_s);
+}
+
+fn type_is_unsafe_ptr(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_unsafe_ptr(typ_s);
+}
+
+fn type_is_region_ptr(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_region_ptr(typ_s);
 }
 
 fn type_is_c_like_enum(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {

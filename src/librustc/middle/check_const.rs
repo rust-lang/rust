@@ -96,7 +96,7 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
           expr_lit(_) => (),
           expr_cast(_, _) => {
             let ety = ty::expr_ty(tcx, e);
-            if !ty::type_is_numeric(ety) {
+            if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +
                               ppaux::ty_to_str(tcx, ety) +
                               ~"` in a constant expression");

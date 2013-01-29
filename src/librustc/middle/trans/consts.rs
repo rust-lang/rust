@@ -325,6 +325,9 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                 if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty) }
                 else { llvm::LLVMConstFPToUI(v, llty) }
               }
+              (expr::cast_pointer, expr::cast_pointer) => {
+                llvm::LLVMConstPointerCast(v, llty)
+              }
               _ => {
                 cx.sess.impossible_case(e.span,
                                         ~"bad combination of types for cast")
