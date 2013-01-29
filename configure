@@ -577,9 +577,9 @@ make_dir rt
 for t in $CFG_TARGET_TRIPLES
 do
   make_dir rt/$t
-  for i in                                          \
-    isaac linenoise sync test arch/i386 arch/x86_64    \
-    libuv
+  for i in                                   \
+    isaac linenoise sync test libuv          \
+    arch/i386 arch/x86_64 arch/arm arch/mips
   do
     make_dir rt/$t/$i
   done
@@ -718,7 +718,7 @@ do
     then
         msg "configuring LLVM for $t"
 
-        LLVM_TARGETS="--enable-targets=x86,x86_64,arm"
+        LLVM_TARGETS="--enable-targets=x86,x86_64,arm,mips"
         LLVM_BUILD="--build=$t"
         LLVM_HOST="--host=$t"
         LLVM_TARGET="--target=$t"
