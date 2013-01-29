@@ -10,7 +10,7 @@
 
 use back::target_strs;
 use driver::session;
-use session::sess_os_to_meta_os;
+use driver::session::sess_os_to_meta_os;
 use metadata::loader::meta_section_name;
 
 pub fn get_target_strs(target_os: session::os) -> target_strs::t {
