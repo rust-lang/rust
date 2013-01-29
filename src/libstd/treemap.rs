@@ -49,10 +49,9 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
             let mut y = other.iter();
             for self.len().times {
                 unsafe { // unsafe as a purity workaround
-                    // ICE: x.next() != y.next()
-
                     x = x.next();
                     y = y.next();
+                    // FIXME: #4492 (ICE), x.get() == y.get()
                     let (x1, x2) = x.get().unwrap();
                     let (y1, y2) = y.get().unwrap();
 
@@ -967,9 +966,7 @@ mod test_treemap {
         let m = m;
         let mut iter = m.iter();
 
-        // ICE:
-        //assert iter.next() == Some((&x1, &y1));
-        //assert iter.next().eq(&Some((&x1, &y1)));
+        // FIXME: #4492 (ICE): iter.next() == Some((&x1, &y1))
 
         iter = iter.next();
         assert iter.get().unwrap() == (&x1, &y1);
@@ -981,10 +978,6 @@ mod test_treemap {
         assert iter.get().unwrap() == (&x4, &y4);
         iter = iter.next();
         assert iter.get().unwrap() == (&x5, &y5);
-
-        // ICE:
-        //assert iter.next() == None;
-        //assert iter.next().eq(&None);
 
         iter = iter.next();
         assert iter.get().is_none();
