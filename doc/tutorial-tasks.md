@@ -198,7 +198,7 @@ do spawn |move chan| {
 }
 ~~~~
 
-Notice that `move chan` is not a normal formal parameter binding; it is a
+Notice that `move chan` is not a normal formal parameter binding; it is an
 environment capture clause for the closure.  This capture clause binds the
 variable `chan` within the closure; the keyword `move` indicates the channel
 should be transferred (as opposed to copied or captured by reference) when the
