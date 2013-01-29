@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// NOTE this is a pretty-printer bug that I fixed, but it's
+// not in the snapshot yet. After a new snapshot, can un-xfail
+// xfail-pretty
 // pp-exact
-type thing = {x: int, y: int,};
+struct Thing {
+    x: int,
+    y: int,
+}
 
 fn main() {
-    let sth = {x: 0, y: 1,};
-    let sth2 = {y: 9, ..sth};
+    let sth = Thing{x: 0, y: 1,};
+    let sth2 = Thing{y: 9 , ..sth};
     assert sth.x + sth2.y == 9;
 }
