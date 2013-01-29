@@ -28,6 +28,7 @@ pub mod inst {
 
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
+    #[cfg(target_arch = "mips")]
     pub const bits: uint = 32;
 
     #[cfg(target_arch = "x86_64")]

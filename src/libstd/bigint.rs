@@ -27,6 +27,7 @@ A BigDigit is half the size of machine word size.
 */
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "arm")]
+#[cfg(target_arch = "mips")]
 pub type BigDigit = u16;
 
 /**
@@ -42,6 +43,7 @@ pub mod BigDigit {
 
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
+    #[cfg(target_arch = "mips")]
     pub const bits: uint = 16;
 
     #[cfg(target_arch = "x86_64")]
@@ -530,6 +532,7 @@ priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
 
 #[cfg(target_arch = "arm")]
 #[cfg(target_arch = "x86")]
+#[cfg(target_arch = "mips")]
 priv pure fn get_radix_base(radix: uint) -> (uint, uint) {
     assert 1 < radix && radix <= 16;
     match radix {
@@ -946,6 +949,7 @@ mod biguint_tests {
 
         #[cfg(target_arch = "arm")]
         #[cfg(target_arch = "x86")]
+        #[cfg(target_arch = "mips")]
         fn test_shl_bits() {
             check(~[0x3210, 0x7654, 0xba98, 0xfedc,
                     0x3210, 0x7654, 0xba98, 0xfedc], 4,
@@ -962,6 +966,7 @@ mod biguint_tests {
     #[test]
     #[ignore(cfg(target_arch = "x86"))]
     #[ignore(cfg(target_arch = "arm"))]
+    #[ignore(cfg(target_arch = "mips"))]
     fn test_shr() {
         fn check(v: ~[BigDigit], shift: uint, ans: ~[BigDigit]) {
             assert BigUint::new(v) >> shift == BigUint::new(ans);
@@ -989,6 +994,7 @@ mod biguint_tests {
 
         #[cfg(target_arch = "arm")]
         #[cfg(target_arch = "x86")]
+        #[cfg(target_arch = "mips")]
         fn test_shr_bits() {
             check(~[0x2100, 0x6543, 0xa987, 0xedcb,
                     0x210f, 0x6543, 0xa987, 0xedcb, 0xf], 4,
