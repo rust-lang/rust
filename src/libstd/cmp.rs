@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -19,11 +19,16 @@ const fuzzy_epsilon: float = 1.0e-6;
 
 pub trait FuzzyEq {
     pure fn fuzzy_eq(&self, other: &self) -> bool;
+    pure fn fuzzy_eq_eps(&self, other: &self, epsilon: &self) -> bool;
 }
 
 impl float: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &float) -> bool {
         float::abs(*self - *other) < fuzzy_epsilon
+    }
+
+    pure fn fuzzy_eq_eps(&self, other: &float, epsilon: &float) -> bool {
+        float::abs(*self - *other) < *epsilon
     }
 }
 
@@ -31,11 +36,19 @@ impl f32: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &f32) -> bool {
         f32::abs(*self - *other) < (fuzzy_epsilon as f32)
     }
+
+    pure fn fuzzy_eq_eps(&self, other: &f32, epsilon: &f32) -> bool {
+        f32::abs(*self - *other) < *epsilon
+    }
 }
 
 impl f64: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &f64) -> bool {
         f64::abs(*self - *other) < (fuzzy_epsilon as f64)
+    }
+
+    pure fn fuzzy_eq_eps(&self, other: &f64, epsilon: &f64) -> bool {
+        f64::abs(*self - *other) < *epsilon
     }
 }
 
@@ -44,4 +57,10 @@ fn test_fuzzy_equals() {
     assert (&1.0).fuzzy_eq(&1.0);
     assert (&1.0f32).fuzzy_eq(&1.0f32);
     assert (&1.0f64).fuzzy_eq(&1.0f64);
+}
+
+#[test]
+fn test_fuzzy_eq_eps() {
+    assert (&1.2).fuzzy_eq_eps(&0.9, &0.5);
+    assert !(&1.5).fuzzy_eq_eps(&0.9, &0.5);
 }
