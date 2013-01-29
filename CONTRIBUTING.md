@@ -9,4 +9,10 @@ Pull requests will be treated as "review requests", and we will give feedback we
 
 Normally, all pull requests must include regression tests (see [Note-testsuite](https://github.com/mozilla/rust/wiki/Note-testsuite)) that test your change. Occasionally, a change will be very difficult to test for. In those cases, please include a note in your commit message explaining why.
 
+In the licensing header at the beginning of any files you change, please make sure the listed date range includes the current year. For example, if it's 2013, and you change a Rust file that was created in 2010, it should begin:
+
+```
+// Copyright 2010-2013 The Rust Project Developers.
+```
+
 For more details, please refer to [Note-development-policy](https://github.com/mozilla/rust/wiki/Note-development-policy).
