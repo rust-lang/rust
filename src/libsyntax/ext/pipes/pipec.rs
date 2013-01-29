@@ -368,7 +368,7 @@ pub impl protocol: gen_init {
             ext_cx.block(
                 self.states.map_to_vec(
                     |s| ext_cx.parse_stmt(
-                        fmt!("data.%s.set_buffer_(buffer)",
+                        fmt!("data.%s.set_buffer(buffer)",
                              s.name))),
                 ext_cx.parse_expr(
                     fmt!("::ptr::addr_of(&(data.%s))",
@@ -395,7 +395,7 @@ pub impl protocol: gen_init {
             ext_cx.block(
                 self.states.map_to_vec(
                     |s| ext_cx.parse_stmt(
-                        fmt!("data.%s.set_buffer_(buffer)",
+                        fmt!("data.%s.set_buffer(buffer)",
                              s.name))),
                 ext_cx.parse_expr(
                     fmt!("::ptr::addr_of(&(data.%s))",
