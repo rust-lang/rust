@@ -2574,7 +2574,6 @@ pub mod general_category {
 
 }
 mod derived_property {
-    #[legacy_exports];
     /// Check if a character has the alphabetic unicode property
     pub pure fn Alphabetic(c: char) -> bool {
         return match c {
@@ -4690,5 +4689,5 @@ mod derived_property {
           _ => false
         };
     }
-
 }
+

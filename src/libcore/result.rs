@@ -398,31 +398,29 @@ pub pure fn unwrap_err<T, U>(res: Result<T, U>) -> U {
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
-    #[legacy_exports];
-
     use result::{Err, Ok, Result, chain, get, get_err};
     use result;
 
-    fn op1() -> result::Result<int, ~str> { result::Ok(666) }
+    pub fn op1() -> result::Result<int, ~str> { result::Ok(666) }
 
-    fn op2(i: int) -> result::Result<uint, ~str> {
+    pub fn op2(i: int) -> result::Result<uint, ~str> {
         result::Ok(i as uint + 1u)
     }
 
-    fn op3() -> result::Result<int, ~str> { result::Err(~"sadface") }
+    pub fn op3() -> result::Result<int, ~str> { result::Err(~"sadface") }
 
     #[test]
-    fn chain_success() {
+    pub fn chain_success() {
         assert get(&chain(op1(), op2)) == 667u;
     }
 
     #[test]
-    fn chain_failure() {
+    pub fn chain_failure() {
         assert get_err(&chain(op3(), op2)) == ~"sadface";
     }
 
     #[test]
-    fn test_impl_iter() {
+    pub fn test_impl_iter() {
         let mut valid = false;
         Ok::<~str, ~str>(~"a").iter(|_x| valid = true);
         assert valid;
@@ -432,7 +430,7 @@ mod tests {
     }
 
     #[test]
-    fn test_impl_iter_err() {
+    pub fn test_impl_iter_err() {
         let mut valid = true;
         Ok::<~str, ~str>(~"a").iter_err(|_x| valid = false);
         assert valid;
@@ -443,19 +441,19 @@ mod tests {
     }
 
     #[test]
-    fn test_impl_map() {
+    pub fn test_impl_map() {
         assert Ok::<~str, ~str>(~"a").map(|_x| ~"b") == Ok(~"b");
         assert Err::<~str, ~str>(~"a").map(|_x| ~"b") == Err(~"a");
     }
 
     #[test]
-    fn test_impl_map_err() {
+    pub fn test_impl_map_err() {
         assert Ok::<~str, ~str>(~"a").map_err(|_x| ~"b") == Ok(~"a");
         assert Err::<~str, ~str>(~"a").map_err(|_x| ~"b") == Err(~"b");
     }
 
     #[test]
-    fn test_get_ref_method() {
+    pub fn test_get_ref_method() {
         let foo: Result<int, ()> = Ok(100);
         assert *foo.get_ref() == 100;
     }

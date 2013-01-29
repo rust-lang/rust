@@ -104,13 +104,11 @@ pub fn unreachable() -> ! {
 }
 
 mod tests {
-    #[legacy_exports];
-
     use option::{None, Some};
     use util::{NonCopyable, id, replace, swap};
 
     #[test]
-    fn identity_crisis() {
+    pub fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?
         let x = ~[(5, false)];
         //FIXME #3387 assert x.eq(id(copy x));
@@ -118,7 +116,7 @@ mod tests {
         assert x.eq(&id(move y));
     }
     #[test]
-    fn test_swap() {
+    pub fn test_swap() {
         let mut x = 31337;
         let mut y = 42;
         swap(&mut x, &mut y);
@@ -126,7 +124,7 @@ mod tests {
         assert y == 31337;
     }
     #[test]
-    fn test_replace() {
+    pub fn test_replace() {
         let mut x = Some(NonCopyable());
         let y = replace(&mut x, None);
         assert x.is_none();
