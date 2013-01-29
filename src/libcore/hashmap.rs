@@ -14,16 +14,15 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use container::{Container, Mutable, Map, Set};
 use cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
 
 /// Open addressing with linear probing.
 pub mod linear {
+    use super::*;
     use iter::BaseIter;
-    use container::{Container, Mutable, Map, Set};
-    use cmp::Eq;
-    use cmp;
     use hash::Hash;
     use iter;
     use kinds::Copy;
@@ -455,6 +454,12 @@ pub mod linear {
         /// present in the set.
         fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 
+        /// Return true if the set has no elements in common with `other`.
+        /// This is equivalent to checking for an empty intersection.
+        pure fn is_disjoint(&self, other: &LinearSet<T>) -> bool {
+            iter::all(self, |v| !other.contains(v))
+        }
+
         /// Return true if the set is a subset of another
         pure fn is_subset(&self, other: &LinearSet<T>) -> bool {
             iter::all(self, |v| other.contains(v))
@@ -625,6 +630,28 @@ mod test_map {
 #[test]
 mod test_set {
     use super::*;
+
+    #[test]
+    fn test_disjoint() {
+        let mut xs = linear::LinearSet::new();
+        let mut ys = linear::LinearSet::new();
+        assert xs.is_disjoint(&ys);
+        assert ys.is_disjoint(&xs);
+        assert xs.insert(5);
+        assert ys.insert(11);
+        assert xs.is_disjoint(&ys);
+        assert ys.is_disjoint(&xs);
+        assert xs.insert(7);
+        assert xs.insert(19);
+        assert xs.insert(4);
+        assert ys.insert(2);
+        assert ys.insert(-11);
+        assert xs.is_disjoint(&ys);
+        assert ys.is_disjoint(&xs);
+        assert ys.insert(7);
+        assert !xs.is_disjoint(&ys);
+        assert !ys.is_disjoint(&xs);
+    }
 
     #[test]
     fn test_subset_and_superset() {
