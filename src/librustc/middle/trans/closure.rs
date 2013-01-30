@@ -525,7 +525,7 @@ fn make_opaque_cbox_take_glue(
 
         // Allocate memory, update original ptr, and copy existing data
         let opaque_tydesc = PointerCast(bcx, tydesc, T_ptr(T_i8()));
-        let rval = alloca_zeroed(bcx, T_ptr(T_i8()));
+        let rval = alloca(bcx, T_ptr(T_i8()));
         let bcx = callee::trans_rtcall_or_lang_call(
             bcx,
             bcx.tcx().lang_items.exchange_malloc_fn(),
