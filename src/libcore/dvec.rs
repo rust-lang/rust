@@ -46,7 +46,7 @@ use vec;
  * # WARNING
  *
  * For maximum performance, this type is implemented using some rather
- * unsafe code.  In particular, this innocent looking `~[A]` pointer
+ * unsafe code.  In particular, this innocent looking `~[mut A]` pointer
  * *may be null!*  Therefore, it is important you not reach into the
  * data structure manually but instead use the provided extensions.
  *
@@ -143,7 +143,7 @@ impl<A> DVec<A> {
      * and return a new vector to replace it with.
      */
     #[inline(always)]
-    fn swap_mut(f: &fn(v: ~[A]) -> ~[A]) {
+    fn swap_mut(f: &fn(v: ~[mut A]) -> ~[mut A]) {
         do self.swap |v| {
             vec::cast_from_mut(f(vec::cast_to_mut(move v)))
         }
@@ -223,7 +223,7 @@ impl<A> DVec<A> {
     }
 
     /// Gives access to the vector as a slice with mutable contents
-    fn borrow_mut<R>(op: fn(x: &mut [A]) -> R) -> R {
+    fn borrow_mut<R>(op: fn(x: &[mut A]) -> R) -> R {
         do self.check_out |v| {
             let mut v = move v;
             let result = op(v);
