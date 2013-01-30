@@ -1163,7 +1163,7 @@ pub mod node {
         }
 
         pub fn empty() -> T {
-            let stack : ~[mut @Node] = ~[mut];
+            let mut stack : ~[mut @Node] = ~[];
             T { stack: stack, stackpos: -1 }
         }
 

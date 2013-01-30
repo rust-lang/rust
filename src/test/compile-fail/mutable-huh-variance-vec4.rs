@@ -13,9 +13,9 @@ fn main() {
     // Note: here we do not have any type annotations
     // but we do express conflicting requirements:
 
-    let v = ~[mut ~[0]];
-    let w = ~[mut ~[mut 0]];
-    let x = ~[mut ~[mut 0]];
+    let mut v = ~[~[0]];
+    let mut w = ~[mut ~[0]];
+    let mut x = ~[mut ~[0]];
 
     fn f(&&v: ~[mut ~[int]]) {
         v[0] = ~[3]

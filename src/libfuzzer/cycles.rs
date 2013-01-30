@@ -68,7 +68,7 @@ fn nop<T>(_x: T) { }
 
 fn test_cycles(r : rand::rng, k: uint, n: uint)
 {
-    let v : ~[mut @pointy] = ~[mut];
+    let mut v : ~[mut @pointy] = ~[];
 
     // Create a graph with no edges
     range(0u, vlen) {|_i|

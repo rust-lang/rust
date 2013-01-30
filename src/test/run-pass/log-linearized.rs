@@ -20,7 +20,7 @@ struct Smallintmap<T> {mut v: ~[mut option<T>]}
 struct V<T> { v: ~[mut option<T>] }
 
 fn mk<T>() -> @Smallintmap<T> {
-    let v: ~[mut option<T>] = ~[mut];
+    let mut v: ~[mut option<T>] = ~[];
     return @Smallintmap {mut v: move v};
 }
 
