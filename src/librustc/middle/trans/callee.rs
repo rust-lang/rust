@@ -39,29 +39,29 @@ use syntax::visit;
 // Represents a (possibly monomorphized) top-level fn item or method
 // item.  Note that this is just the fn-ptr and is not a Rust closure
 // value (which is a pair).
-struct FnData {
+pub struct FnData {
     llfn: ValueRef,
 }
 
-struct MethodData {
+pub struct MethodData {
     llfn: ValueRef,
     llself: ValueRef,
     self_ty: ty::t,
     self_mode: ast::rmode
 }
 
-enum CalleeData {
+pub enum CalleeData {
     Closure(Datum),
     Fn(FnData),
     Method(MethodData)
 }
 
-struct Callee {
+pub struct Callee {
     bcx: block,
     data: CalleeData
 }
 
-fn trans(bcx: block, expr: @ast::expr) -> Callee {
+pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
     let _icx = bcx.insn_ctxt("trans_callee");
 
     // pick out special kinds of expressions that can be called:
@@ -133,17 +133,16 @@ fn trans(bcx: block, expr: @ast::expr) -> Callee {
     }
 }
 
-fn trans_fn_ref_to_callee(bcx: block,
-                          def_id: ast::def_id,
-                          ref_id: ast::node_id) -> Callee
-{
+pub fn trans_fn_ref_to_callee(bcx: block,
+                              def_id: ast::def_id,
+                              ref_id: ast::node_id) -> Callee {
     Callee {bcx: bcx,
             data: Fn(trans_fn_ref(bcx, def_id, ref_id))}
 }
 
-fn trans_fn_ref(bcx: block,
-                def_id: ast::def_id,
-                ref_id: ast::node_id) -> FnData {
+pub fn trans_fn_ref(bcx: block,
+                    def_id: ast::def_id,
+                    ref_id: ast::node_id) -> FnData {
     /*!
      *
      * Translates a reference (with id `ref_id`) to the fn/method
@@ -158,26 +157,25 @@ fn trans_fn_ref(bcx: block,
     trans_fn_ref_with_vtables(bcx, def_id, ref_id, type_params, vtables)
 }
 
-fn trans_fn_ref_with_vtables_to_callee(bcx: block,
-                                       def_id: ast::def_id,
-                                       ref_id: ast::node_id,
-                                       +type_params: ~[ty::t],
-                                       vtables: Option<typeck::vtable_res>)
-    -> Callee
-{
+pub fn trans_fn_ref_with_vtables_to_callee(
+        bcx: block,
+        def_id: ast::def_id,
+        ref_id: ast::node_id,
+        +type_params: ~[ty::t],
+        vtables: Option<typeck::vtable_res>)
+     -> Callee {
     Callee {bcx: bcx,
             data: Fn(trans_fn_ref_with_vtables(bcx, def_id, ref_id,
                                                type_params, vtables))}
 }
 
-fn trans_fn_ref_with_vtables(
-    bcx: block,            //
-    def_id: ast::def_id,   // def id of fn
-    ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
-    +type_params: ~[ty::t], // values for fn's ty params
-    vtables: Option<typeck::vtable_res>)
-    -> FnData
-{
+pub fn trans_fn_ref_with_vtables(
+        bcx: block,            //
+        def_id: ast::def_id,   // def id of fn
+        ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
+        +type_params: ~[ty::t], // values for fn's ty params
+        vtables: Option<typeck::vtable_res>)
+     -> FnData {
     //!
     //
     // Translates a reference to a fn/method item, monomorphizing and
@@ -289,26 +287,25 @@ fn trans_fn_ref_with_vtables(
 // ______________________________________________________________________
 // Translating calls
 
-fn trans_call(in_cx: block,
-              call_ex: @ast::expr,
-              f: @ast::expr,
-              args: CallArgs,
-              id: ast::node_id,
-              dest: expr::Dest)
-    -> block
-{
+pub fn trans_call(in_cx: block,
+                  call_ex: @ast::expr,
+                  f: @ast::expr,
+                  args: CallArgs,
+                  id: ast::node_id,
+                  dest: expr::Dest)
+               -> block {
     let _icx = in_cx.insn_ctxt("trans_call");
     trans_call_inner(
         in_cx, call_ex.info(), expr_ty(in_cx, f), node_id_type(in_cx, id),
         |cx| trans(cx, f), args, dest, DontAutorefArg)
 }
 
-fn trans_method_call(in_cx: block,
-                     call_ex: @ast::expr,
-                     rcvr: @ast::expr,
-                     args: CallArgs,
-                     dest: expr::Dest)
-                  -> block {
+pub fn trans_method_call(in_cx: block,
+                         call_ex: @ast::expr,
+                         rcvr: @ast::expr,
+                         args: CallArgs,
+                         dest: expr::Dest)
+                      -> block {
     let _icx = in_cx.insn_ctxt("trans_method_call");
     trans_call_inner(
         in_cx,
@@ -335,8 +332,11 @@ fn trans_method_call(in_cx: block,
         DontAutorefArg)
 }
 
-fn trans_rtcall_or_lang_call(bcx: block, did: ast::def_id, args: ~[ValueRef],
-                             dest: expr::Dest) -> block {
+pub fn trans_rtcall_or_lang_call(bcx: block,
+                                 did: ast::def_id,
+                                 args: ~[ValueRef],
+                                 dest: expr::Dest)
+                              -> block {
     let fty = if did.crate == ast::local_crate {
         ty::node_id_to_type(bcx.ccx().tcx, did.node)
     } else {
@@ -349,11 +349,12 @@ fn trans_rtcall_or_lang_call(bcx: block, did: ast::def_id, args: ~[ValueRef],
         ArgVals(args), dest, DontAutorefArg);
 }
 
-fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
-                                              did: ast::def_id,
-                                              args: ~[ValueRef],
-                                              type_params: ~[ty::t],
-                                              dest: expr::Dest) -> block {
+pub fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
+                                                  did: ast::def_id,
+                                                  args: ~[ValueRef],
+                                                  type_params: ~[ty::t],
+                                                  dest: expr::Dest)
+                                               -> block {
     let fty;
     if did.crate == ast::local_crate {
         fty = ty::node_id_to_type(bcx.tcx(), did.node);
@@ -389,7 +390,7 @@ fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
         ArgVals(args), dest, DontAutorefArg);
 }
 
-fn body_contains_ret(body: ast::blk) -> bool {
+pub fn body_contains_ret(body: ast::blk) -> bool {
     let cx = {mut found: false};
     visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
         visit_item: |_i, _cx, _v| { },
@@ -407,7 +408,7 @@ fn body_contains_ret(body: ast::blk) -> bool {
 }
 
 // See [Note-arg-mode]
-fn trans_call_inner(
+pub fn trans_call_inner(
     ++in_cx: block,
     call_info: Option<node_info>,
     fn_expr_ty: ty::t,
@@ -415,8 +416,7 @@ fn trans_call_inner(
     get_callee: fn(block) -> Callee,
     args: CallArgs,
     dest: expr::Dest,
-    autoref_arg: AutorefArg) -> block
-{
+    autoref_arg: AutorefArg) -> block {
     do base::with_scope(in_cx, call_info, ~"call") |cx| {
         let ret_in_loop = match /*bad*/copy args {
           ArgExprs(args) => {
@@ -520,21 +520,19 @@ fn trans_call_inner(
     }
 }
 
-
-enum CallArgs {
+pub enum CallArgs {
     ArgExprs(~[@ast::expr]),
     ArgVals(~[ValueRef])
 }
 
-fn trans_args(cx: block,
-              llenv: ValueRef,
-              +args: CallArgs,
-              fn_ty: ty::t,
-              dest: expr::Dest,
-              ret_flag: Option<ValueRef>,
-              +autoref_arg: AutorefArg)
-    -> {bcx: block, args: ~[ValueRef], retslot: ValueRef}
-{
+pub fn trans_args(cx: block,
+                  llenv: ValueRef,
+                  +args: CallArgs,
+                  fn_ty: ty::t,
+                  dest: expr::Dest,
+                  ret_flag: Option<ValueRef>,
+                  +autoref_arg: AutorefArg)
+               -> {bcx: block, args: ~[ValueRef], retslot: ValueRef} {
     let _icx = cx.insn_ctxt("trans_args");
     let mut temp_cleanups = ~[];
     let arg_tys = ty::ty_fn_args(fn_ty);
@@ -594,21 +592,19 @@ fn trans_args(cx: block,
     return {bcx: bcx, args: llargs, retslot: llretslot};
 }
 
-enum AutorefArg {
+pub enum AutorefArg {
     DontAutorefArg,
     DoAutorefArg
 }
 
 // temp_cleanups: cleanups that should run only if failure occurs before the
 // call takes place:
-fn trans_arg_expr(bcx: block,
-                  formal_ty: ty::arg,
-                  arg_expr: @ast::expr,
-                  temp_cleanups: &mut ~[ValueRef],
-                  ret_flag: Option<ValueRef>,
-                  +autoref_arg: AutorefArg)
-    -> Result
-{
+pub fn trans_arg_expr(bcx: block,
+                      formal_ty: ty::arg,
+                      arg_expr: @ast::expr,
+                      temp_cleanups: &mut ~[ValueRef],
+                      ret_flag: Option<ValueRef>,
+                      +autoref_arg: AutorefArg) -> Result {
     let _icx = bcx.insn_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
