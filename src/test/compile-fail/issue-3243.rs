@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-fn function() -> &[mut int] {
+fn function() -> &mut [int] {
     let mut x: &static/[int] = &[1,2,3];
     x[0] = 12345;
     x //~ ERROR bad
