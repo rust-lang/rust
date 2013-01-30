@@ -13,11 +13,9 @@
 use foo::bar::{baz, quux,};
 
 mod foo {
-    #[legacy_exports];
-    mod bar {
-        #[legacy_exports];
-        fn baz() { }
-        fn quux() { }
+    pub mod bar {
+        pub fn baz() { }
+        pub fn quux() { }
     }
 }
 

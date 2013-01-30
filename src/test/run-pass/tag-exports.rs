@@ -13,21 +13,10 @@
 use alder::*;
 
 mod alder {
-    #[legacy_exports];
-  export burnside;
-  export couch;
-  export everett;
-  export flanders;
-  export irving;
-  export johnson;
-  export kearney;
-  export marshall;
-
-  enum burnside { couch, davis }
-  enum everett { flanders, glisan, hoyt }
-  enum irving { johnson, kearney, lovejoy }
-  enum marshall { northrup, overton }
-
+    pub enum burnside { couch, davis }
+    pub enum everett { flanders, glisan, hoyt }
+    pub enum irving { johnson, kearney, lovejoy }
+    pub enum marshall { northrup, overton }
 }
 
 fn main() {

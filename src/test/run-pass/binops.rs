@@ -82,9 +82,8 @@ fn test_ptr() {
 #[abi = "cdecl"]
 #[nolink]
 extern mod test {
-    #[legacy_exports];
-    fn rust_get_sched_id() -> libc::intptr_t;
-    fn get_task_id() -> libc::intptr_t;
+    pub fn rust_get_sched_id() -> libc::intptr_t;
+    pub fn get_task_id() -> libc::intptr_t;
 }
 
 struct p {

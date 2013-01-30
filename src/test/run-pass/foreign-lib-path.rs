@@ -16,8 +16,7 @@
 // wouthout providing a -L argument to the compiler, and that
 // will also be found successfully at runtime.
 extern mod WHATGOESHERE {
-    #[legacy_exports];
-    fn IDONTKNOW() -> u32;
+    pub fn IDONTKNOW() -> u32;
 }
 
 fn main() {

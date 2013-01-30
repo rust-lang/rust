@@ -13,13 +13,11 @@
 
 // -*- rust -*-
 mod foo {
-    #[legacy_exports];
-    fn baz() { }
+    pub fn baz() { }
 }
 
 mod bar {
-    #[legacy_exports];
-    fn baz() { }
+    pub fn baz() { }
 }
 
 fn main() { }

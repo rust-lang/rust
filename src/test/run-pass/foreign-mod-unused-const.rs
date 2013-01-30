@@ -10,8 +10,7 @@
 
 #[nolink]
 extern mod foo {
-    #[legacy_exports];
-    const errno: int;
+    pub const errno: int;
 }
 
 fn main() {

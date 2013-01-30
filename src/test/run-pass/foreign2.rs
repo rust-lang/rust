@@ -10,25 +10,21 @@
 
 #[abi = "cdecl"]
 #[nolink]
-extern mod bar {
-    #[legacy_exports]; }
+extern mod bar {}
 
 #[abi = "cdecl"]
 #[nolink]
-extern mod zed {
-    #[legacy_exports]; }
+extern mod zed {}
 
 #[abi = "cdecl"]
 #[nolink]
 extern mod libc {
-    #[legacy_exports];
-    fn write(fd: int, buf: *u8,
-             count: ::core::libc::size_t) -> ::core::libc::ssize_t;
+    pub fn write(fd: int, buf: *u8,
+                 count: ::core::libc::size_t) -> ::core::libc::ssize_t;
 }
 
 #[abi = "cdecl"]
 #[nolink]
-extern mod baz {
-    #[legacy_exports]; }
+extern mod baz {}
 
 fn main() { }

@@ -12,10 +12,6 @@
 // that are not exported, allowing for a sort of poor-man's ADT
 
 mod foo {
-    #[legacy_exports];
-    export f;
-    export g;
-
     // not exported
     enum t { t1, t2, }
 
@@ -26,9 +22,9 @@ mod foo {
         pure fn ne(&self, other: &t) -> bool { !(*self).eq(other) }
     }
 
-    fn f() -> t { return t1; }
+    pub fn f() -> t { return t1; }
 
-    fn g(v: t) { assert (v == t1); }
+    pub fn g(v: t) { assert (v == t1); }
 }
 
 fn main() { foo::g(foo::f()); }

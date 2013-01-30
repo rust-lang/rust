@@ -13,9 +13,8 @@ struct Floats { a: f64, b: u8, c: f64 }
 
 #[nolink]
 extern mod rustrt {
-    #[legacy_exports];
-    fn debug_abi_1(++q: Quad) -> Quad;
-    fn debug_abi_2(++f: Floats) -> Floats;
+    pub fn debug_abi_1(++q: Quad) -> Quad;
+    pub fn debug_abi_2(++f: Floats) -> Floats;
 }
 
 fn test1() {

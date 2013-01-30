@@ -10,8 +10,7 @@
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
-    fn get_task_id() -> libc::intptr_t;
+    pub fn get_task_id() -> libc::intptr_t;
 }
 
 fn main() {

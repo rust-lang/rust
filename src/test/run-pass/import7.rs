@@ -13,20 +13,14 @@
 use foo::zed;
 use bar::baz;
 mod foo {
-    #[legacy_exports];
-    mod zed {
-        #[legacy_exports];
-        fn baz() { debug!("baz"); }
+    pub mod zed {
+        pub fn baz() { debug!("baz"); }
     }
 }
 mod bar {
-    #[legacy_exports];
-    use zed::baz;
-    export baz;
-    mod foo {
-        #[legacy_exports];
-        mod zed {
-            #[legacy_exports]; }
+    pub use zed::baz;
+    pub mod foo {
+        pub mod zed {}
     }
 }
 fn main() { baz(); }

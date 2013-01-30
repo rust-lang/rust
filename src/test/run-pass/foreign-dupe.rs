@@ -14,15 +14,13 @@
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 extern mod rustrt1 {
-    #[legacy_exports];
-    fn last_os_error() -> ~str;
+    pub fn last_os_error() -> ~str;
 }
 
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 extern mod rustrt2 {
-    #[legacy_exports];
-    fn last_os_error() -> ~str;
+    pub fn last_os_error() -> ~str;
 }
 
 fn main() {

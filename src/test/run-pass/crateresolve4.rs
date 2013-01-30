@@ -14,21 +14,17 @@
 // aux-build:crateresolve4b-1.rs
 // aux-build:crateresolve4b-2.rs
 
-#[legacy_exports];
-
-mod a {
-    #[legacy_exports];
+pub mod a {
     extern mod crateresolve4b(vers = "0.1");
-    fn f() { assert crateresolve4b::f() == 20; }
+    pub fn f() { assert crateresolve4b::f() == 20; }
 }
 
-mod b {
-    #[legacy_exports];
+pub mod b {
     extern mod crateresolve4b(vers = "0.2");
-    fn f() { assert crateresolve4b::g() == 10; }
+    pub fn f() { assert crateresolve4b::g() == 10; }
 }
 
-fn main() {
+pub fn main() {
     a::f();
     b::f();
 }

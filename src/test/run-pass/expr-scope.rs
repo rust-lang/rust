@@ -11,7 +11,5 @@
 // Regression test for issue #762
 // xfail-fast
 
-#[legacy_exports];
-
-fn f() { }
+pub fn f() { }
 fn main() { return ::f(); }

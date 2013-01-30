@@ -17,9 +17,8 @@
 // begin failing.
 
 mod m {
-    #[legacy_exports];
     use core::vec;
-    fn f() -> ~[int] { vec::from_elem(1u, 0) }
+    pub fn f() -> ~[int] { vec::from_elem(1u, 0) }
 }
 
 fn main() { let x = m::f(); }

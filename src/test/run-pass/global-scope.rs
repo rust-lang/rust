@@ -10,14 +10,11 @@
 
 // xfail-fast
 
-#[legacy_exports];
+pub fn f() -> int { return 1; }
 
-fn f() -> int { return 1; }
-
-mod foo {
-    #[legacy_exports];
-    fn f() -> int { return 2; }
-    fn g() { assert (f() == 2); assert (::f() == 1); }
+pub mod foo {
+    pub fn f() -> int { return 2; }
+    pub fn g() { assert (f() == 2); assert (::f() == 1); }
 }
 
 fn main() { return foo::g(); }

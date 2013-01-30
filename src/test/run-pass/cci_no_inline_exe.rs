@@ -11,12 +11,10 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_no_inline_lib.rs
 
-#[legacy_exports];
-
 extern mod cci_no_inline_lib;
 use cci_no_inline_lib::iter;
 
-fn main() {
+pub fn main() {
     // Check that a cross-crate call function not marked as inline
     // does not, in fact, get inlined.  Also, perhaps more
     // importantly, checks that our scheme of using

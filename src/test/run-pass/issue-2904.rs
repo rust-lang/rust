@@ -75,14 +75,13 @@ fn read_board_grid<rdr: &static io::Reader>(+in: rdr) -> ~[~[square]] {
 }
 
 mod test {
-    #[legacy_exports];
     #[test]
-    fn trivial_to_str() {
+    pub fn trivial_to_str() {
         assert lambda.to_str() == "\\"
     }
 
     #[test]
-    fn read_simple_board() {
+    pub fn read_simple_board() {
         let s = include_str!("./maps/contest1.map");
         io::with_str_reader(s, read_board_grid)
     }
