@@ -10,4 +10,4 @@
 
 
 
-fn main() { let v: ~[mut int] = ~[mut]; }
+fn main() { let mut v: ~[mut int] = ~[]; }

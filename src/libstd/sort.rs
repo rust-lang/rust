@@ -740,24 +740,24 @@ mod test_qsort3 {
     #[test]
     pub fn test() {
         {
-            let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
+            let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
+            let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
             check_sort(v1, v2);
         }
         {
-            let v1 = ~[mut 1, 1, 1];
-            let v2 = ~[mut 1, 1, 1];
+            let mut v1 = ~[1, 1, 1];
+            let mut v2 = ~[1, 1, 1];
             check_sort(v1, v2);
         }
         {
-            let v1: ~[mut int] = ~[mut];
-            let v2: ~[mut int] = ~[mut];
+            let mut v1: ~[mut int] = ~[];
+            let mut v2: ~[mut int] = ~[];
             check_sort(v1, v2);
         }
-        { let v1 = ~[mut 9]; let v2 = ~[mut 9]; check_sort(v1, v2); }
+        { let mut v1 = ~[mut 9]; let v2 = ~[9]; check_sort(v1, v2); }
         {
-            let v1 = ~[mut 9, 3, 3, 3, 9];
-            let v2 = ~[mut 3, 3, 3, 9, 9];
+            let mut v1 = ~[9, 3, 3, 3, 9];
+            let mut v2 = ~[3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
     }
@@ -787,24 +787,24 @@ mod test_qsort {
     #[test]
     pub fn test() {
         {
-            let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
+            let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
+            let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
             check_sort(v1, v2);
         }
         {
-            let v1 = ~[mut 1, 1, 1];
-            let v2 = ~[mut 1, 1, 1];
+            let mut v1 = ~[1, 1, 1];
+            let mut v2 = ~[1, 1, 1];
             check_sort(v1, v2);
         }
         {
-            let v1: ~[mut int] = ~[mut];
-            let v2: ~[mut int] = ~[mut];
+            let mut v1: ~[mut int] = ~[];
+            let mut v2: ~[mut int] = ~[];
             check_sort(v1, v2);
         }
-        { let v1 = ~[mut 9]; let v2 = ~[mut 9]; check_sort(v1, v2); }
+        { let mut v1 = ~[mut 9]; let v2 = ~[9]; check_sort(v1, v2); }
         {
-            let v1 = ~[mut 9, 3, 3, 3, 9];
-            let v2 = ~[mut 3, 3, 3, 9, 9];
+            let mut v1 = ~[9, 3, 3, 3, 9];
+            let mut v2 = ~[3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
     }
@@ -812,7 +812,7 @@ mod test_qsort {
     // Regression test for #750
     #[test]
     pub fn test_simple() {
-        let names = ~[mut 2, 1, 3];
+        let mut names = ~[2, 1, 3];
 
         let expected = ~[1, 2, 3];
 
@@ -870,7 +870,7 @@ mod tests {
     #[test]
     pub fn test_merge_sort_mutable() {
         pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
-        let v1 = ~[mut 3, 2, 1];
+        let mut v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
         assert v2 == ~[1, 2, 3];
     }
@@ -937,24 +937,24 @@ mod test_tim_sort {
     #[test]
     fn test() {
         {
-            let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
+            let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
+            let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
             check_sort(v1, v2);
         }
         {
-            let v1 = ~[mut 1, 1, 1];
-            let v2 = ~[mut 1, 1, 1];
+            let mut v1 = ~[1, 1, 1];
+            let mut v2 = ~[1, 1, 1];
             check_sort(v1, v2);
         }
         {
-            let v1: ~[mut int] = ~[mut];
-            let v2: ~[mut int] = ~[mut];
+            let mut v1: ~[mut int] = ~[];
+            let mut v2: ~[mut int] = ~[];
             check_sort(v1, v2);
         }
-        { let v1 = ~[mut 9]; let v2 = ~[mut 9]; check_sort(v1, v2); }
+        { let mut v1 = ~[mut 9]; let v2 = ~[9]; check_sort(v1, v2); }
         {
-            let v1 = ~[mut 9, 3, 3, 3, 9];
-            let v2 = ~[mut 3, 3, 3, 9, 9];
+            let mut v1 = ~[9, 3, 3, 3, 9];
+            let mut v2 = ~[3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
     }

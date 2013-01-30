@@ -3155,7 +3155,7 @@ mod tests {
 
     #[test]
     fn reverse_and_reversed() {
-        let v: ~[mut int] = ~[mut 10, 20];
+        let mut v: ~[mut int] = ~[10, 20];
         assert (v[0] == 10);
         assert (v[1] == 20);
         reverse(v);
@@ -3170,13 +3170,13 @@ mod tests {
 
         let v4 = reversed::<int>(~[]);
         assert (v4 == ~[]);
-        let v3: ~[mut int] = ~[mut];
+        let mut v3: ~[mut int] = ~[];
         reverse::<int>(v3);
     }
 
     #[test]
     fn reversed_mut() {
-        let v2 = reversed::<int>(~[mut 10, 20]);
+        let mut v2 = reversed::<int>(~[10, 20]);
         assert (v2[0] == 20);
         assert (v2[1] == 10);
     }
@@ -3302,7 +3302,7 @@ mod tests {
     #[test]
     fn cast_from_mut_no_copy() {
         unsafe {
-            let x = ~[mut 1, 2, 3];
+            let mut x = ~[1, 2, 3];
             let addr = raw::to_ptr(x);
             let x_imm = cast_from_mut(x);
             let addr_imm = raw::to_ptr(x_imm);
@@ -3564,7 +3564,7 @@ mod tests {
     #[ignore(windows)]
     #[should_fail]
     fn test_consume_mut_fail() {
-        let v = ~[mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut v = ~[(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do consume_mut(v) |_i, _elt| {
             if i == 2 {
@@ -3592,7 +3592,7 @@ mod tests {
     #[ignore(windows)]
     #[should_fail]
     fn test_map_fail() {
-        let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do map(v) |_elt| {
             if i == 2 {
@@ -3918,7 +3918,7 @@ mod tests {
     #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_mut_buf_fail() {
-        let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do as_mut_buf(v) |_buf, _i| {
             fail
         }
@@ -3929,7 +3929,7 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_copy_memory_oob() {
         unsafe {
-            let a = [mut 1, 2, 3, 4];
+            let mut a = [1, 2, 3, 4];
             let b = [1, 2, 3, 4, 5];
             raw::copy_memory(a, b, 5);
         }

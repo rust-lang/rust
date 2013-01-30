@@ -86,7 +86,7 @@ fn main()
     log(error, choice(r, ~[10, 20, 30]));
     log(error, if unlikely(r, 5u) { "unlikely" } else { "likely" });
 
-    let a = ~[mut 1, 2, 3];
+    let mut a = ~[1, 2, 3];
     shuffle(r, a);
     log(error, a);
 

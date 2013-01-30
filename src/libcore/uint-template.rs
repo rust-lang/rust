@@ -252,7 +252,7 @@ pub pure fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
     // Enough room to hold any number in any radix.
     // Worst case: 64-bit number, binary-radix, with
     // a leading negative sign = 65 bytes.
-    let buf : [mut u8 * 65] = [mut 0u8, ..65];
+    let mut buf : [mut u8 * 65] = [0u8, ..65];
     let len = buf.len();
 
     let mut i = len;

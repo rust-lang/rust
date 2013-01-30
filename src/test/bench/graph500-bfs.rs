@@ -120,7 +120,7 @@ fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
  * Nodes that are unreachable have a parent of -1.
  */
 fn bfs(graph: graph, key: node_id) -> bfs_result {
-    let marks : ~[mut node_id] 
+    let mut marks : ~[node_id] 
         = vec::cast_to_mut(vec::from_elem(vec::len(graph), -1i64));
 
     let Q = deque::create();
