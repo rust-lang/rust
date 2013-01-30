@@ -37,7 +37,7 @@ pub use path::WindowsPath;
 pub use pipes::{GenericChan, GenericPort};
 pub use ptr::Ptr;
 pub use str::{StrSlice, Trimmable};
-pub use to_bytes::IterBytes;
+pub use to_bytes::{IterBytes, ToBytes};
 pub use to_str::ToStr;
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
 pub use vec::{CopyableVector, ImmutableVector};

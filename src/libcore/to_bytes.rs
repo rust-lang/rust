@@ -423,8 +423,7 @@ impl<A> *const A: IterBytes {
     }
 }
 
-
-trait ToBytes {
+pub trait ToBytes {
     fn to_bytes(&self, lsb0: bool) -> ~[u8];
 }
 
