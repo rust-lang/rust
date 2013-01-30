@@ -11,7 +11,7 @@
 fn swap<T>(v: &[mut T], i: int, j: int) { v[i] <-> v[j]; }
 
 fn main() {
-    let mut a: ~[mut int] = ~[0, 1, 2, 3, 4, 5, 6];
+    let mut a: ~[int] = ~[0, 1, 2, 3, 4, 5, 6];
     swap(a, 2, 4);
     assert (a[2] == 4);
     assert (a[4] == 2);
