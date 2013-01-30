@@ -26,6 +26,7 @@ pub use result::{Result, Ok, Err};
 pub use clone::Clone;
 pub use cmp::{Eq, Ord};
 pub use container::{Container, Mutable, Map, Set};
+pub use from_str::FromStr;
 pub use hash::Hash;
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
