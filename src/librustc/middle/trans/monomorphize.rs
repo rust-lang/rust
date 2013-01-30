@@ -36,13 +36,13 @@ use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util::local_def;
 use syntax::parse::token::special_idents;
 
-fn monomorphic_fn(ccx: @crate_ctxt,
-                  fn_id: ast::def_id,
-                  real_substs: ~[ty::t],
-                  vtables: Option<typeck::vtable_res>,
-                  impl_did_opt: Option<ast::def_id>,
-                  ref_id: Option<ast::node_id>) ->
-                  {val: ValueRef, must_cast: bool} {
+pub fn monomorphic_fn(ccx: @crate_ctxt,
+                      fn_id: ast::def_id,
+                      real_substs: ~[ty::t],
+                      vtables: Option<typeck::vtable_res>,
+                      impl_did_opt: Option<ast::def_id>,
+                      ref_id: Option<ast::node_id>) ->
+                      {val: ValueRef, must_cast: bool} {
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs, |t| {
@@ -268,7 +268,8 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     {val: lldecl, must_cast: must_cast}
 }
 
-fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> Option<ty::t> {
+pub fn normalize_for_monomorphization(tcx: ty::ctxt,
+                                      ty: ty::t) -> Option<ty::t> {
     // FIXME[mono] could do this recursively. is that worthwhile? (#2529)
     match ty::get(ty).sty {
         ty::ty_box(*) => {
@@ -305,10 +306,10 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> Option<ty::t> {
     }
 }
 
-fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
-                vtables: Option<typeck::vtable_res>,
-                impl_did_opt: Option<ast::def_id>,
-                param_uses: Option<~[type_use::type_uses]>) -> mono_id {
+pub fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
+                    vtables: Option<typeck::vtable_res>,
+                    impl_did_opt: Option<ast::def_id>,
+                    param_uses: Option<~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
         let bounds = ty::lookup_item_type(ccx.tcx, item).bounds;
