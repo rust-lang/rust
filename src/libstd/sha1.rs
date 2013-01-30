@@ -70,7 +70,7 @@ pub fn sha1() -> Sha1 {
         {h: ~[mut u32],
          mut len_low: u32,
          mut len_high: u32,
-         msg_block: ~[mut u8],
+         mut msg_block: ~[u8],
          mut msg_block_idx: uint,
          mut computed: bool,
          work_buf: @~[mut u32]};

@@ -254,8 +254,8 @@ pub type printer_ = {
     mut space: int, // number of spaces left on line
     mut left: uint, // index of left side of input stream
     mut right: uint, // index of right side of input stream
-    token: ~[mut token], // ring-buffr stream goes through
-    size: ~[mut int], // ring-buffer of calculated sizes
+    mut token: ~[token], // ring-buffr stream goes through
+    mut size: ~[int], // ring-buffer of calculated sizes
     mut left_total: int, // running size of stream "...left"
     mut right_total: int, // running size of stream "...right"
     // pseudo-stack, really a ring too. Holds the
