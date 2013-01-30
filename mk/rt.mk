@@ -88,16 +88,16 @@ endif
 
 ifeq ($$(CFG_WINDOWSY), 1)
   LIBUV_OSTYPE_$(1) := win
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 else ifeq ($(CFG_OSTYPE), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 else ifeq ($(CFG_OSTYPE), unknown-freebsd)
   LIBUV_OSTYPE_$(1) := unix/freebsd
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 else
   LIBUV_OSTYPE_$(1) := unix/linux
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/Release/obj.target/src/libuv/libuv.a
+  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 endif
 
 RUNTIME_DEF_$(1) := rt/rustrt$$(CFG_DEF_SUFFIX)
@@ -158,7 +158,7 @@ LIBUV_DEPS := $$(wildcard \
 endif
 
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
-	$$(Q)$$(MAKE) -C $$(S)mk/libuv/$$(LIBUV_ARCH_$(1))/$$(LIBUV_OSTYPE_$(1)) \
+	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
         LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CFG_GCCISH_CROSS)$$(CC)" \
@@ -166,7 +166,7 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 		AR="$$(CFG_GCCISH_CROSS)$$(AR)" \
 		BUILDTYPE=Release \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
-		V=$$(VERBOSE) FLOCK= uv
+		V=$$(VERBOSE) FLOCK= 
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 

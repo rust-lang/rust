@@ -578,7 +578,7 @@ do
   make_dir rt/$t
   for i in                                          \
     isaac linenoise sync test arch/i386 arch/x86_64    \
-    libuv libuv/src/ares libuv/src/eio libuv/src/ev
+    libuv
   do
     make_dir rt/$t/$i
   done
