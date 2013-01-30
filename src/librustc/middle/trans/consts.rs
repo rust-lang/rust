@@ -470,7 +470,12 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
 
                 // FIXME (#1645): enum body alignment is generaly wrong.
                 if !degen {
-                    C_packed_struct(~[discrim, c_args])
+                    // A packed_struct has an alignment of 1; thus,
+                    // wrapping one around c_args will misalign it the
+                    // same way we normally misalign enum bodies
+                    // without affecting its internal alignment or
+                    // changing the alignment of the enum.
+                    C_struct(~[discrim, C_packed_struct(~[c_args])])
                 } else if size == 0 {
                     C_struct(~[discrim])
                 } else {
