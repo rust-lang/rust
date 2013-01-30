@@ -21,34 +21,23 @@ use core::result::Result;
 use core::result;
 use core::str;
 
-export FileSearch;
-export mk_filesearch;
-export pick;
-export pick_file;
-export search;
-export relative_target_lib_path;
-export get_cargo_sysroot;
-export get_cargo_root;
-export get_cargo_root_nearest;
-export libdir;
+pub type pick<T> = fn(path: &Path) -> Option<T>;
 
-type pick<T> = fn(path: &Path) -> Option<T>;
-
-fn pick_file(file: Path, path: &Path) -> Option<Path> {
+pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
     if path.file_path() == file { option::Some(copy *path) }
     else { option::None }
 }
 
-trait FileSearch {
+pub trait FileSearch {
     fn sysroot() -> Path;
     fn lib_search_paths() -> ~[Path];
     fn get_target_lib_path() -> Path;
     fn get_target_lib_file_path(file: &Path) -> Path;
 }
 
-fn mk_filesearch(maybe_sysroot: Option<Path>,
-                 target_triple: &str,
-                 +addl_lib_search_paths: ~[Path]) -> FileSearch {
+pub fn mk_filesearch(maybe_sysroot: Option<Path>,
+                     target_triple: &str,
+                     +addl_lib_search_paths: ~[Path]) -> FileSearch {
     type filesearch_impl = {sysroot: Path,
                             addl_lib_search_paths: ~[Path],
                             target_triple: ~str};
@@ -85,7 +74,7 @@ fn mk_filesearch(maybe_sysroot: Option<Path>,
      target_triple: str::from_slice(target_triple)} as FileSearch
 }
 
-fn search<T: Copy>(filesearch: FileSearch, pick: pick<T>) -> Option<T> {
+pub fn search<T: Copy>(filesearch: FileSearch, pick: pick<T>) -> Option<T> {
     let mut rslt = None;
     for filesearch.lib_search_paths().each |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());
@@ -105,7 +94,7 @@ fn search<T: Copy>(filesearch: FileSearch, pick: pick<T>) -> Option<T> {
     return rslt;
 }
 
-fn relative_target_lib_path(target_triple: &str) -> Path {
+pub fn relative_target_lib_path(target_triple: &str) -> Path {
     Path(libdir()).push_many([~"rustc",
                               str::from_slice(target_triple),
                               libdir()])
@@ -130,11 +119,11 @@ fn get_sysroot(maybe_sysroot: Option<Path>) -> Path {
     }
 }
 
-fn get_cargo_sysroot() -> Result<Path, ~str> {
+pub fn get_cargo_sysroot() -> Result<Path, ~str> {
     result::Ok(get_or_default_sysroot().push_many([libdir(), ~"cargo"]))
 }
 
-fn get_cargo_root() -> Result<Path, ~str> {
+pub fn get_cargo_root() -> Result<Path, ~str> {
     match os::getenv(~"CARGO_ROOT") {
         Some(ref _p) => result::Ok(Path((*_p))),
         None => match os::homedir() {
@@ -144,7 +133,7 @@ fn get_cargo_root() -> Result<Path, ~str> {
     }
 }
 
-fn get_cargo_root_nearest() -> Result<Path, ~str> {
+pub fn get_cargo_root_nearest() -> Result<Path, ~str> {
     do result::chain(get_cargo_root()) |p| {
         let cwd = os::getcwd();
         let cwd_cargo = cwd.push(".cargo");
@@ -184,7 +173,7 @@ fn get_cargo_lib_path_nearest() -> Result<Path, ~str> {
 
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
-fn libdir() -> ~str {
+pub fn libdir() -> ~str {
    let libdir = env!("CFG_LIBDIR");
    if str::is_empty(libdir) {
       fail ~"rustc compiled without CFG_LIBDIR environment variable";

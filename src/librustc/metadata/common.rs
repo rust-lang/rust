@@ -11,84 +11,84 @@
 
 // EBML enum definitions and utils shared by the encoder and decoder
 
-const tag_items: uint = 0x02u;
+pub const tag_items: uint = 0x02u;
 
-const tag_paths_data_name: uint = 0x04u;
+pub const tag_paths_data_name: uint = 0x04u;
 
-const tag_def_id: uint = 0x07u;
+pub const tag_def_id: uint = 0x07u;
 
-const tag_items_data: uint = 0x08u;
+pub const tag_items_data: uint = 0x08u;
 
-const tag_items_data_item: uint = 0x09u;
+pub const tag_items_data_item: uint = 0x09u;
 
-const tag_items_data_item_family: uint = 0x0au;
+pub const tag_items_data_item_family: uint = 0x0au;
 
-const tag_items_data_item_ty_param_bounds: uint = 0x0bu;
+pub const tag_items_data_item_ty_param_bounds: uint = 0x0bu;
 
-const tag_items_data_item_type: uint = 0x0cu;
+pub const tag_items_data_item_type: uint = 0x0cu;
 
-const tag_items_data_item_symbol: uint = 0x0du;
+pub const tag_items_data_item_symbol: uint = 0x0du;
 
-const tag_items_data_item_variant: uint = 0x0eu;
+pub const tag_items_data_item_variant: uint = 0x0eu;
 
-const tag_items_data_parent_item: uint = 0x0fu;
+pub const tag_items_data_parent_item: uint = 0x0fu;
 
-const tag_index: uint = 0x11u;
+pub const tag_index: uint = 0x11u;
 
-const tag_index_buckets: uint = 0x12u;
+pub const tag_index_buckets: uint = 0x12u;
 
-const tag_index_buckets_bucket: uint = 0x13u;
+pub const tag_index_buckets_bucket: uint = 0x13u;
 
-const tag_index_buckets_bucket_elt: uint = 0x14u;
+pub const tag_index_buckets_bucket_elt: uint = 0x14u;
 
-const tag_index_table: uint = 0x15u;
+pub const tag_index_table: uint = 0x15u;
 
-const tag_meta_item_name_value: uint = 0x18u;
+pub const tag_meta_item_name_value: uint = 0x18u;
 
-const tag_meta_item_name: uint = 0x19u;
+pub const tag_meta_item_name: uint = 0x19u;
 
-const tag_meta_item_value: uint = 0x20u;
+pub const tag_meta_item_value: uint = 0x20u;
 
-const tag_attributes: uint = 0x21u;
+pub const tag_attributes: uint = 0x21u;
 
-const tag_attribute: uint = 0x22u;
+pub const tag_attribute: uint = 0x22u;
 
-const tag_meta_item_word: uint = 0x23u;
+pub const tag_meta_item_word: uint = 0x23u;
 
-const tag_meta_item_list: uint = 0x24u;
+pub const tag_meta_item_list: uint = 0x24u;
 
 // The list of crates that this crate depends on
-const tag_crate_deps: uint = 0x25u;
+pub const tag_crate_deps: uint = 0x25u;
 
 // A single crate dependency
-const tag_crate_dep: uint = 0x26u;
+pub const tag_crate_dep: uint = 0x26u;
 
-const tag_crate_hash: uint = 0x28u;
+pub const tag_crate_hash: uint = 0x28u;
 
-const tag_parent_item: uint = 0x29u;
+pub const tag_parent_item: uint = 0x29u;
 
-const tag_crate_dep_name: uint = 0x2au;
-const tag_crate_dep_hash: uint = 0x2bu;
-const tag_crate_dep_vers: uint = 0x2cu;
+pub const tag_crate_dep_name: uint = 0x2au;
+pub const tag_crate_dep_hash: uint = 0x2bu;
+pub const tag_crate_dep_vers: uint = 0x2cu;
 
-const tag_mod_impl: uint = 0x30u;
+pub const tag_mod_impl: uint = 0x30u;
 
-const tag_item_trait_method: uint = 0x31u;
-const tag_impl_trait: uint = 0x32u;
+pub const tag_item_trait_method: uint = 0x31u;
+pub const tag_impl_trait: uint = 0x32u;
 
 // discriminator value for variants
-const tag_disr_val: uint = 0x34u;
+pub const tag_disr_val: uint = 0x34u;
 
 // used to encode ast_map::path and ast_map::path_elt
-const tag_path: uint = 0x40u;
-const tag_path_len: uint = 0x41u;
-const tag_path_elt_mod: uint = 0x42u;
-const tag_path_elt_name: uint = 0x43u;
-const tag_item_field: uint = 0x44u;
-const tag_struct_mut: uint = 0x45u;
+pub const tag_path: uint = 0x40u;
+pub const tag_path_len: uint = 0x41u;
+pub const tag_path_elt_mod: uint = 0x42u;
+pub const tag_path_elt_name: uint = 0x43u;
+pub const tag_item_field: uint = 0x44u;
+pub const tag_struct_mut: uint = 0x45u;
 
-const tag_region_param: uint = 0x46u;
-const tag_mod_impl_trait: uint = 0x47u;
+pub const tag_region_param: uint = 0x46u;
+pub const tag_mod_impl_trait: uint = 0x47u;
 /*
   trait items contain tag_item_trait_method elements,
   impl items contain tag_item_impl_method elements, and classes
@@ -97,19 +97,19 @@ const tag_mod_impl_trait: uint = 0x47u;
   both, tag_item_trait_method and tag_item_impl_method have to be two
   different tags.
  */
-const tag_item_impl_method: uint = 0x48u;
-const tag_item_dtor: uint = 0x49u;
-const tag_item_trait_method_self_ty: uint = 0x4b;
-const tag_item_trait_method_self_ty_region: uint = 0x4c;
+pub const tag_item_impl_method: uint = 0x48u;
+pub const tag_item_dtor: uint = 0x49u;
+pub const tag_item_trait_method_self_ty: uint = 0x4b;
+pub const tag_item_trait_method_self_ty_region: uint = 0x4c;
 
 // Reexports are found within module tags. Each reexport contains def_ids
 // and names.
-const tag_items_data_item_reexport: uint = 0x4d;
-const tag_items_data_item_reexport_def_id: uint = 0x4e;
-const tag_items_data_item_reexport_name: uint = 0x4f;
+pub const tag_items_data_item_reexport: uint = 0x4d;
+pub const tag_items_data_item_reexport_def_id: uint = 0x4e;
+pub const tag_items_data_item_reexport_name: uint = 0x4f;
 
 // used to encode crate_ctxt side tables
-enum astencode_tag { // Reserves 0x50 -- 0x6f
+pub enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_ast = 0x50,
 
     tag_tree = 0x51,
@@ -136,9 +136,9 @@ enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_value_mode = 0x64
 }
 
-const tag_item_trait_method_sort: uint = 0x70;
+pub const tag_item_trait_method_sort: uint = 0x70;
 
-const tag_item_impl_type_basename: uint = 0x71;
+pub const tag_item_impl_type_basename: uint = 0x71;
 
 // Language items are a top-level directory (for speed). Hierarchy:
 //
@@ -147,10 +147,10 @@ const tag_item_impl_type_basename: uint = 0x71;
 //   - tag_lang_items_item_id: u32
 //   - tag_lang_items_item_node_id: u32
 
-const tag_lang_items: uint = 0x72;
-const tag_lang_items_item: uint = 0x73;
-const tag_lang_items_item_id: uint = 0x74;
-const tag_lang_items_item_node_id: uint = 0x75;
+pub const tag_lang_items: uint = 0x72;
+pub const tag_lang_items_item: uint = 0x73;
+pub const tag_lang_items_item_id: uint = 0x74;
+pub const tag_lang_items_item_node_id: uint = 0x75;
 
-type link_meta = {name: @str, vers: @str, extras_hash: @str};
+pub type link_meta = {name: @str, vers: @str, extras_hash: @str};
 

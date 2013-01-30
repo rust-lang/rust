@@ -32,17 +32,15 @@ use syntax::visit;
 use syntax::{ast, ast_util};
 use std::map::HashMap;
 
-export read_crates;
-
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
-fn read_crates(diag: span_handler,
-               crate: ast::crate,
-               cstore: cstore::CStore,
-               filesearch: FileSearch,
-               os: loader::os,
-               static: bool,
-               intr: @ident_interner) {
+pub fn read_crates(diag: span_handler,
+                   crate: ast::crate,
+                   cstore: cstore::CStore,
+                   filesearch: FileSearch,
+                   os: loader::os,
+                   static: bool,
+                   intr: @ident_interner) {
     let e = @{diag: diag,
               filesearch: filesearch,
               cstore: cstore,

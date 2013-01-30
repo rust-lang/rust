@@ -35,17 +35,7 @@ use core::str;
 use core::uint;
 use core::vec;
 
-export os;
-export os_macos, os_win32, os_linux, os_freebsd, os_android;
-export ctxt;
-export load_library_crate;
-export list_file_metadata;
-export note_linkage_attrs;
-export crate_name_from_metas;
-export metadata_matches;
-export meta_section_name;
-
-enum os {
+pub enum os {
     os_macos,
     os_win32,
     os_linux,
@@ -53,7 +43,7 @@ enum os {
     os_freebsd
 }
 
-type ctxt = {
+pub type ctxt = {
     diag: span_handler,
     filesearch: FileSearch,
     span: span,
@@ -65,7 +55,7 @@ type ctxt = {
     intr: @ident_interner
 };
 
-fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
+pub fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
     match find_library_crate(cx) {
       Some(ref t) => return (/*bad*/copy *t),
       None => {
@@ -152,7 +142,7 @@ fn find_library_crate_aux(cx: ctxt,
     }
 }
 
-fn crate_name_from_metas(+metas: ~[@ast::meta_item]) -> ~str {
+pub fn crate_name_from_metas(+metas: ~[@ast::meta_item]) -> ~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
     match vec::last_opt(name_items) {
       Some(i) => {
@@ -167,8 +157,8 @@ fn crate_name_from_metas(+metas: ~[@ast::meta_item]) -> ~str {
     }
 }
 
-fn note_linkage_attrs(intr: @ident_interner, diag: span_handler,
-                      attrs: ~[ast::attribute]) {
+pub fn note_linkage_attrs(intr: @ident_interner, diag: span_handler,
+                          attrs: ~[ast::attribute]) {
     for attr::find_linkage_metas(attrs).each |mi| {
         diag.handler().note(fmt!("meta: %s",
               pprust::meta_item_to_str(*mi,intr)));
@@ -186,8 +176,8 @@ fn crate_matches(crate_data: @~[u8], +metas: ~[@ast::meta_item],
     metadata_matches(linkage_metas, metas)
 }
 
-fn metadata_matches(extern_metas: ~[@ast::meta_item],
-                    local_metas: ~[@ast::meta_item]) -> bool {
+pub fn metadata_matches(extern_metas: ~[@ast::meta_item],
+                        local_metas: ~[@ast::meta_item]) -> bool {
 
     debug!("matching %u metadata requirements against %u items",
            vec::len(local_metas), vec::len(extern_metas));
@@ -250,7 +240,7 @@ fn get_metadata_section(os: os,
     }
 }
 
-fn meta_section_name(os: os) -> ~str {
+pub fn meta_section_name(os: os) -> ~str {
     match os {
       os_macos => ~"__DATA,__note.rustc",
       os_win32 => ~".note.rustc",
@@ -261,8 +251,8 @@ fn meta_section_name(os: os) -> ~str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(intr: @ident_interner,
-                      os: os, path: &Path, out: io::Writer) {
+pub fn list_file_metadata(intr: @ident_interner,
+                          os: os, path: &Path, out: io::Writer) {
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {

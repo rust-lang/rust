@@ -46,48 +46,6 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
-export struct_dtor;
-export get_struct_fields;
-export get_symbol;
-export get_enum_variants;
-export get_type;
-export get_region_param;
-export get_type_param_count;
-export get_impl_traits;
-export get_impl_method;
-export get_static_methods_if_impl;
-export lookup_def;
-export resolve_path;
-export get_crate_attributes;
-export list_crate_metadata;
-export crate_dep;
-export get_crate_deps;
-export get_crate_hash;
-export get_crate_vers;
-export get_impls_for_mod;
-export get_trait_methods;
-export get_provided_trait_methods;
-export get_supertraits;
-export get_method_names_if_trait;
-export get_type_name_if_impl;
-export get_item_attrs;
-export def_like;
-export dl_def;
-export dl_impl;
-export dl_field;
-export each_lang_item;
-export each_path;
-export get_item_path;
-export maybe_find_item; // sketchy
-export item_type; // sketchy
-export maybe_get_item_ast;
-export decode_inlined_item;
-export method_info, _impl;
-export GetCrateDataCb;
-
-// Used internally by astencode:
-export translate_def_id;
-
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
 // def_id for an item defined in another crate, somebody needs to figure out
@@ -114,7 +72,7 @@ fn lookup_hash(d: ebml::Doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
 
 pub type GetCrateDataCb = &fn(ast::crate_num) -> cmd;
 
-fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
+pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
         return io::u64_from_be_bytes(vec::view(bytes, 0u, 4u), 0u, 4u) as int
             == item_id;
@@ -267,8 +225,8 @@ fn doc_type(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
                   |_, did| translate_def_id(cdata, did))
 }
 
-fn item_type(item_id: ast::def_id, item: ebml::Doc,
-             tcx: ty::ctxt, cdata: cmd) -> ty::t {
+pub fn item_type(item_id: ast::def_id, item: ebml::Doc,
+                 tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let t = doc_type(item, tcx, cdata);
     if family_names_type(item_family(item)) {
         ty::mk_with_id(tcx, t, item_id)
@@ -380,7 +338,7 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
     }
 }
 
-fn lookup_def(cnum: ast::crate_num, data: @~[u8], did_: ast::def_id) ->
+pub fn lookup_def(cnum: ast::crate_num, data: @~[u8], did_: ast::def_id) ->
    ast::def {
     let item = lookup_item(did_.node, data);
     let did = ast::def_id { crate: cnum, node: did_.node };
@@ -388,7 +346,7 @@ fn lookup_def(cnum: ast::crate_num, data: @~[u8], did_: ast::def_id) ->
     return def_like_to_def(item_to_def_like(item, did, cnum));
 }
 
-fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+pub fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     -> ty::ty_param_bounds_and_ty {
 
     let item = lookup_item(id, cdata.data);
@@ -403,23 +361,24 @@ fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
             ty: t};
 }
 
-fn get_region_param(cdata: cmd, id: ast::node_id)
+pub fn get_region_param(cdata: cmd, id: ast::node_id)
     -> Option<ty::region_variance> {
 
     let item = lookup_item(id, cdata.data);
     return item_ty_region_param(item);
 }
 
-fn get_type_param_count(data: @~[u8], id: ast::node_id) -> uint {
+pub fn get_type_param_count(data: @~[u8], id: ast::node_id) -> uint {
     item_ty_param_count(lookup_item(id, data))
 }
 
-fn get_impl_traits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt) -> ~[ty::t] {
+pub fn get_impl_traits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+                    -> ~[ty::t] {
     item_impl_traits(lookup_item(id, cdata.data), tcx, cdata)
 }
 
-fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                   name: ast::ident) -> ast::def_id {
+pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
+                       name: ast::ident) -> ast::def_id {
     let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
     let mut found = None;
     for reader::tagged_docs(find_item(id, items), tag_item_impl_method)
@@ -432,7 +391,7 @@ fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     found.get()
 }
 
-fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
+pub fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
     let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
     let mut found = None;
     let cls_items = match maybe_find_item(id, items) {
@@ -448,12 +407,12 @@ fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
     found
 }
 
-fn get_symbol(data: @~[u8], id: ast::node_id) -> ~str {
+pub fn get_symbol(data: @~[u8], id: ast::node_id) -> ~str {
     return item_symbol(lookup_item(id, data));
 }
 
 // Something that a name can resolve to.
-enum def_like {
+pub enum def_like {
     dl_def(ast::def),
     dl_impl(ast::def_id),
     dl_field
@@ -468,7 +427,7 @@ fn def_like_to_def(def_like: def_like) -> ast::def {
 }
 
 /// Iterates over the language items in the given crate.
-fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
+pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
     let root = reader::Doc(cdata.data);
     let lang_items = reader::get_doc(root, tag_lang_items);
     for reader::tagged_docs(lang_items, tag_lang_items_item) |item_doc| {
@@ -485,9 +444,9 @@ fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
 }
 
 /// Iterates over all the paths in the given crate.
-fn each_path(intr: @ident_interner, cdata: cmd,
-             get_crate_data: GetCrateDataCb,
-             f: fn(&str, def_like) -> bool) {
+pub fn each_path(intr: @ident_interner, cdata: cmd,
+                 get_crate_data: GetCrateDataCb,
+                 f: fn(&str, def_like) -> bool) {
     let root = reader::Doc(cdata.data);
     let items = reader::get_doc(root, tag_items);
     let items_data = reader::get_doc(items, tag_items_data);
@@ -575,21 +534,21 @@ fn each_path(intr: @ident_interner, cdata: cmd,
     }
 }
 
-fn get_item_path(intr: @ident_interner, cdata: cmd, id: ast::node_id)
+pub fn get_item_path(intr: @ident_interner, cdata: cmd, id: ast::node_id)
     -> ast_map::path {
     item_path(intr, lookup_item(id, cdata.data))
 }
 
-type decode_inlined_item = fn(
+pub type decode_inlined_item = fn(
     cdata: cstore::crate_metadata,
     tcx: ty::ctxt,
     path: ast_map::path,
     par_doc: ebml::Doc) -> Option<ast::inlined_item>;
 
-fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
-                      id: ast::node_id,
-                      decode_inlined_item: decode_inlined_item
-                     ) -> csearch::found_ast {
+pub fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
+                          id: ast::node_id,
+                          decode_inlined_item: decode_inlined_item)
+                       -> csearch::found_ast {
     debug!("Looking up item: %d", id);
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(intr, item_doc));
@@ -612,7 +571,7 @@ fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
     }
 }
 
-fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
+pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                      tcx: ty::ctxt) -> ~[ty::VariantInfo] {
     let data = cdata.data;
     let items = reader::get_doc(reader::Doc(data), tag_items);
@@ -646,14 +605,18 @@ fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
 }
 
 // NB: These types are duplicated in resolve.rs
-type method_info = {
+pub type method_info = {
     did: ast::def_id,
     n_tps: uint,
     ident: ast::ident,
     self_type: ast::self_ty_
 };
 
-type _impl = {did: ast::def_id, ident: ast::ident, methods: ~[@method_info]};
+pub type _impl = {
+    did: ast::def_id,
+    ident: ast::ident,
+    methods: ~[@method_info]
+};
 
 fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
     fn get_mutability(ch: u8) -> ast::mutability {
@@ -699,10 +662,10 @@ fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
     rslt
 }
 
-fn get_impls_for_mod(intr: @ident_interner, cdata: cmd,
-                     m_id: ast::node_id, name: Option<ast::ident>,
-                     get_cdata: fn(ast::crate_num) -> cmd)
-                  -> @~[@_impl] {
+pub fn get_impls_for_mod(intr: @ident_interner, cdata: cmd,
+                         m_id: ast::node_id, name: Option<ast::ident>,
+                         get_cdata: fn(ast::crate_num) -> cmd)
+                      -> @~[@_impl] {
 
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
@@ -730,8 +693,8 @@ fn get_impls_for_mod(intr: @ident_interner, cdata: cmd,
 }
 
 /* Works for both classes and traits */
-fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                     tcx: ty::ctxt) -> @~[ty::method] {
+pub fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
+                         tcx: ty::ctxt) -> @~[ty::method] {
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
@@ -754,8 +717,8 @@ fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     @result
 }
 
-fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
-                              id: ast::node_id, tcx: ty::ctxt) ->
+pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
+                                  id: ast::node_id, tcx: ty::ctxt) ->
         ~[ProvidedTraitMethodInfo] {
     let data = cdata.data;
     let item = lookup_item(id, data);
@@ -794,7 +757,8 @@ fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
 }
 
 /// Returns the supertraits of the given trait.
-fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt) -> ~[ty::t] {
+pub fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
+                    -> ~[ty::t] {
     let results = dvec::DVec();
     let item_doc = lookup_item(id, cdata.data);
     for reader::tagged_docs(item_doc, tag_impl_trait) |trait_doc| {
@@ -806,9 +770,9 @@ fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt) -> ~[ty::t] {
 // If the item in question is a trait, returns its set of methods and
 // their self types. Otherwise, returns none. This overlaps in an
 // annoying way with get_trait_methods.
-fn get_method_names_if_trait(intr: @ident_interner, cdata: cmd,
-                             node_id: ast::node_id)
-                          -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
+pub fn get_method_names_if_trait(intr: @ident_interner, cdata: cmd,
+                                 node_id: ast::node_id)
+                              -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
 
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != Trait {
@@ -823,9 +787,9 @@ fn get_method_names_if_trait(intr: @ident_interner, cdata: cmd,
     return Some(resulting_methods);
 }
 
-fn get_type_name_if_impl(intr: @ident_interner,
-                         cdata: cmd,
-                         node_id: ast::node_id) -> Option<ast::ident> {
+pub fn get_type_name_if_impl(intr: @ident_interner,
+                             cdata: cmd,
+                             node_id: ast::node_id) -> Option<ast::ident> {
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != Impl {
         return None;
@@ -838,10 +802,10 @@ fn get_type_name_if_impl(intr: @ident_interner,
     return None;
 }
 
-fn get_static_methods_if_impl(intr: @ident_interner,
-                               cdata: cmd,
-                               node_id: ast::node_id) ->
-                               Option<~[StaticMethodInfo]> {
+pub fn get_static_methods_if_impl(intr: @ident_interner,
+                                  cdata: cmd,
+                                  node_id: ast::node_id)
+                               -> Option<~[StaticMethodInfo]> {
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != Impl {
         return None;
@@ -884,9 +848,9 @@ fn get_static_methods_if_impl(intr: @ident_interner,
     return Some(dvec::unwrap(move static_impl_methods));
 }
 
-fn get_item_attrs(cdata: cmd,
-                  node_id: ast::node_id,
-                  f: fn(~[@ast::meta_item])) {
+pub fn get_item_attrs(cdata: cmd,
+                      node_id: ast::node_id,
+                      f: fn(~[@ast::meta_item])) {
 
     let item = lookup_item(node_id, cdata.data);
     for reader::tagged_docs(item, tag_attributes) |attributes| {
@@ -905,7 +869,7 @@ pure fn family_to_visibility(family: Family) -> ast::visibility {
     }
 }
 
-fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
+pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
     -> ~[ty::field_ty] {
     let data = cdata.data;
     let item = lookup_item(id, data);
@@ -1050,14 +1014,14 @@ fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: ~str,
     out.write_str(~"\n\n");
 }
 
-fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
+pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
     return get_attributes(reader::Doc(data));
 }
 
-type crate_dep = {cnum: ast::crate_num, name: ast::ident,
-                  vers: ~str, hash: ~str};
+pub type crate_dep = {cnum: ast::crate_num, name: ast::ident,
+                      vers: ~str, hash: ~str};
 
-fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
+pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     let mut deps: ~[crate_dep] = ~[];
     let cratedoc = reader::Doc(data);
     let depsdoc = reader::get_doc(cratedoc, tag_crate_deps);
@@ -1087,13 +1051,13 @@ fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: io::Writer) {
     out.write_str(~"\n");
 }
 
-fn get_crate_hash(data: @~[u8]) -> ~str {
+pub fn get_crate_hash(data: @~[u8]) -> ~str {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
     return str::from_bytes(reader::doc_data(hashdoc));
 }
 
-fn get_crate_vers(data: @~[u8]) -> ~str {
+pub fn get_crate_vers(data: @~[u8]) -> ~str {
     let attrs = decoder::get_crate_attributes(data);
     return match attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), ~"vers") {
@@ -1116,8 +1080,8 @@ fn iter_crate_items(intr: @ident_interner, cdata: cmd,
     }
 }
 
-fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
-                       out: io::Writer) {
+pub fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
+                           out: io::Writer) {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
     list_crate_attributes(intr, md, hash, out);
@@ -1129,7 +1093,7 @@ fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
 // external crates - if those types further refer to types in other crates
 // then we must translate the crate number from that encoded in the external
 // crate to the correct local crate number.
-fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
+pub fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
     if did.crate == ast::local_crate {
         return ast::def_id { crate: cdata.cnum, node: did.node };
     }
