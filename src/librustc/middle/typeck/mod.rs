@@ -48,8 +48,6 @@ independently:
 
 */
 
-#[legacy_exports];
-
 use core::prelude::*;
 
 use metadata::csearch;
@@ -81,45 +79,13 @@ use syntax::print::pprust::*;
 use syntax::visit;
 use syntax::{ast, ast_util, ast_map};
 
-export check;
-export check_crate;
-export infer;
-export method_map;
-export method_origin;
-export method_map_entry;
-export vtable_map;
-export vtable_res;
-export vtable_origin;
-export method_static, method_param, method_trait, method_self;
-export vtable_static, vtable_param, vtable_trait;
-export provided_methods_map;
-export coherence;
-export check;
-export rscope;
-export astconv;
-export infer;
-export collect;
-export coherence;
-export deriving;
-export crate_ctxt;
-export write_ty_to_tcx, write_substs_to_tcx;
-export no_params;
-export isr_alist;
-export require_same_types;
-export lookup_def_ccx, lookup_def_tcx;
-
-#[legacy_exports]
 #[path = "check/mod.rs"]
 pub mod check;
-#[legacy_exports]
 pub mod rscope;
-#[legacy_exports]
 pub mod astconv;
 #[path = "infer/mod.rs"]
 pub mod infer;
-#[legacy_exports]
 pub mod collect;
-#[legacy_exports]
 pub mod coherence;
 
 #[auto_encode]
@@ -142,7 +108,7 @@ pub enum method_origin {
 // with a bounded trait.
 #[auto_encode]
 #[auto_decode]
-struct method_param {
+pub struct method_param {
     // the trait containing the method to be invoked
     trait_id: ast::def_id,
 
@@ -199,7 +165,7 @@ pub enum vtable_origin {
     vtable_trait(ast::def_id, ~[ty::t]),
 }
 
-impl vtable_origin {
+pub impl vtable_origin {
     fn to_str(tcx: ty::ctxt) -> ~str {
         match self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
@@ -222,7 +188,7 @@ impl vtable_origin {
     }
 }
 
-type vtable_map = HashMap<ast::node_id, vtable_res>;
+pub type vtable_map = HashMap<ast::node_id, vtable_res>;
 
 struct crate_ctxt__ {
     // A mapping from method call sites to traits that have that method.
@@ -238,13 +204,13 @@ pub enum crate_ctxt {
 }
 
 // Functions that write types into the node type table
-fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
+pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
     debug!("write_ty_to_tcx(%d, %s)", node_id, ppaux::ty_to_str(tcx, ty));
     smallintmap::insert(*tcx.node_types, node_id as uint, ty);
 }
-fn write_substs_to_tcx(tcx: ty::ctxt,
-                       node_id: ast::node_id,
-                       +substs: ~[ty::t]) {
+pub fn write_substs_to_tcx(tcx: ty::ctxt,
+                           node_id: ast::node_id,
+                           +substs: ~[ty::t]) {
     if substs.len() > 0u {
         debug!("write_substs_to_tcx(%d, %?)", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
@@ -252,7 +218,7 @@ fn write_substs_to_tcx(tcx: ty::ctxt,
     }
 }
 
-fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
+pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     match tcx.def_map.find(id) {
       Some(x) => x,
       _ => {
@@ -261,15 +227,16 @@ fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     }
 }
 
-fn lookup_def_ccx(ccx: @crate_ctxt, sp: span, id: ast::node_id) -> ast::def {
+pub fn lookup_def_ccx(ccx: @crate_ctxt, sp: span, id: ast::node_id)
+                   -> ast::def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
 
-fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
+pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     {bounds: @~[], region_param: None, ty: t}
 }
 
-fn require_same_types(
+pub fn require_same_types(
     tcx: ty::ctxt,
     maybe_infcx: Option<@infer::InferCtxt>,
     t1_is_expected: bool,
@@ -303,7 +270,7 @@ fn require_same_types(
 
 // a list of mapping from in-scope-region-names ("isr") to the
 // corresponding ty::Region
-type isr_alist = @List<(ty::bound_region, ty::Region)>;
+pub type isr_alist = @List<(ty::bound_region, ty::Region)>;
 
 trait get_and_find_region {
     fn get(br: ty::bound_region) -> ty::Region;
@@ -397,10 +364,10 @@ fn check_for_main_fn(ccx: @crate_ctxt) {
     }
 }
 
-fn check_crate(tcx: ty::ctxt,
-               trait_map: resolve::TraitMap,
-               crate: @ast::crate)
-    -> (method_map, vtable_map) {
+pub fn check_crate(tcx: ty::ctxt,
+                   trait_map: resolve::TraitMap,
+                   crate: @ast::crate)
+                -> (method_map, vtable_map) {
 
     let ccx = @crate_ctxt_(crate_ctxt__ {
         trait_map: trait_map,

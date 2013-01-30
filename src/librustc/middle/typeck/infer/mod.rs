@@ -242,16 +242,23 @@ section on "Type Combining" below for details.
 
 */
 
-#[legacy_exports];
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
 use core::prelude::*;
 
+pub use middle::ty::IntVarValue;
+pub use middle::typeck::infer::resolve::resolve_and_force_all_but_regions;
+pub use middle::typeck::infer::resolve::{force_all, not_regions};
+pub use middle::typeck::infer::resolve::{force_ivar};
+pub use middle::typeck::infer::resolve::{force_tvar, force_rvar};
+pub use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
+pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
+pub use middle::typeck::infer::resolve::{resolve_rvar};
+
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty::{mk_fn, type_is_bot};
 use middle::ty::{ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
-use middle::ty::IntVarValue;
 use middle::ty;
 use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};
 use middle::typeck::infer::coercion::Coerce;
@@ -259,11 +266,6 @@ use middle::typeck::infer::combine::{Combine, CombineFields, eq_tys};
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::region_inference::{RegionVarBindings};
-use middle::typeck::infer::resolve::{force_all, not_regions};
-use middle::typeck::infer::resolve::{force_tvar, force_rvar, force_ivar};
-use middle::typeck::infer::resolve::{resolve_and_force_all_but_regions};
-use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
-use middle::typeck::infer::resolve::{resolve_nested_tvar, resolve_rvar};
 use middle::typeck::infer::resolve::{resolver};
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
@@ -288,69 +290,26 @@ use syntax::ast_util::dummy_sp;
 use syntax::ast_util;
 use syntax::codemap::span;
 
-export InferCtxt;
-export new_infer_ctxt;
-export mk_subty, can_mk_subty;
-export mk_subr;
-export mk_eqty;
-export mk_coercety, can_mk_coercety;
-export resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all;
-export force_tvar, force_rvar, force_ivar, force_all;
-export resolve_and_force_all_but_regions, not_regions;
-export resolve_type, resolve_region;
-export resolve_borrowings;
-export cres, fres, fixup_err, fixup_err_to_str;
-export root, to_str;
-export int_ty_set_all;
-export combine;
-export glb;
-export integral;
-export lattice;
-export lub;
-export region_inference;
-export resolve;
-export sub;
-export coercion;
-export to_str;
-export unify;
-export uok;
-export cyclic_ty, unresolved_ty, region_var_bound_by_region_var;
-export Bound, Bounds;
-export ures;
-export CoerceResult;
-export infer_ctxt;
-export fixup_err;
-export IntVarValue, IntType, UintType;
+pub mod combine;
+pub mod glb;
+pub mod lattice;
+pub mod lub;
+pub mod region_inference;
+pub mod resolve;
+pub mod sub;
+pub mod to_str;
+pub mod unify;
+pub mod coercion;
 
-#[legacy_exports]
-mod combine;
-#[legacy_exports]
-mod glb;
-#[legacy_exports]
-mod lattice;
-#[legacy_exports]
-mod lub;
-#[legacy_exports]
-mod region_inference;
-#[legacy_exports]
-mod resolve;
-#[legacy_exports]
-mod sub;
-#[legacy_exports]
-mod to_str;
-#[legacy_exports]
-mod unify;
-mod coercion;
+pub type Bound<T> = Option<T>;
+pub type Bounds<T> = {lb: Bound<T>, ub: Bound<T>};
 
-type Bound<T> = Option<T>;
-type Bounds<T> = {lb: Bound<T>, ub: Bound<T>};
+pub type cres<T> = Result<T,ty::type_err>; // "combine result"
+pub type ures = cres<()>; // "unify result"
+pub type fres<T> = Result<T, fixup_err>; // "fixup result"
+pub type CoerceResult = cres<Option<@ty::AutoAdjustment>>;
 
-type cres<T> = Result<T,ty::type_err>; // "combine result"
-type ures = cres<()>; // "unify result"
-type fres<T> = Result<T, fixup_err>; // "fixup result"
-type CoerceResult = cres<Option<@ty::AutoAdjustment>>;
-
-struct InferCtxt {
+pub struct InferCtxt {
     tcx: ty::ctxt,
 
     // We instantiate ValsAndBindings with bounds<ty::t> because the
@@ -371,7 +330,7 @@ struct InferCtxt {
     region_vars: RegionVarBindings,
 }
 
-enum fixup_err {
+pub enum fixup_err {
     unresolved_int_ty(IntVid),
     unresolved_ty(TyVid),
     cyclic_ty(TyVid),
@@ -379,7 +338,7 @@ enum fixup_err {
     region_var_bound_by_region_var(RegionVid, RegionVid)
 }
 
-fn fixup_err_to_str(f: fixup_err) -> ~str {
+pub fn fixup_err_to_str(f: fixup_err) -> ~str {
     match f {
       unresolved_int_ty(_) => ~"unconstrained integral type",
       unresolved_ty(_) => ~"unconstrained type",
@@ -399,7 +358,7 @@ fn new_ValsAndBindings<V:Copy, T:Copy>() -> ValsAndBindings<V, T> {
     }
 }
 
-fn new_infer_ctxt(tcx: ty::ctxt) -> @InferCtxt {
+pub fn new_infer_ctxt(tcx: ty::ctxt) -> @InferCtxt {
     @InferCtxt {
         tcx: tcx,
 
@@ -416,8 +375,8 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> @InferCtxt {
     }
 }
 
-fn mk_subty(cx: @InferCtxt, a_is_expected: bool, span: span,
-            a: ty::t, b: ty::t) -> ures {
+pub fn mk_subty(cx: @InferCtxt, a_is_expected: bool, span: span,
+                a: ty::t, b: ty::t) -> ures {
     debug!("mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -426,7 +385,7 @@ fn mk_subty(cx: @InferCtxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-fn can_mk_subty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
+pub fn can_mk_subty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
@@ -435,8 +394,8 @@ fn can_mk_subty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
     }.to_ures()
 }
 
-fn mk_subr(cx: @InferCtxt, a_is_expected: bool, span: span,
-           a: ty::Region, b: ty::Region) -> ures {
+pub fn mk_subr(cx: @InferCtxt, a_is_expected: bool, span: span,
+               a: ty::Region, b: ty::Region) -> ures {
     debug!("mk_subr(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -445,8 +404,8 @@ fn mk_subr(cx: @InferCtxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
-           a: ty::t, b: ty::t) -> ures {
+pub fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
+               a: ty::t, b: ty::t) -> ures {
     debug!("mk_eqty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -456,9 +415,8 @@ fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-fn mk_coercety(cx: @InferCtxt, a_is_expected: bool, span: span,
-               a: ty::t, b: ty::t) -> CoerceResult
-{
+pub fn mk_coercety(cx: @InferCtxt, a_is_expected: bool, span: span,
+                   a: ty::t, b: ty::t) -> CoerceResult {
     debug!("mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -467,7 +425,7 @@ fn mk_coercety(cx: @InferCtxt, a_is_expected: bool, span: span,
     }
 }
 
-fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
+pub fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
@@ -478,13 +436,12 @@ fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
 }
 
 // See comment on the type `resolve_state` below
-fn resolve_type(cx: @InferCtxt, a: ty::t, modes: uint)
-    -> fres<ty::t> {
+pub fn resolve_type(cx: @InferCtxt, a: ty::t, modes: uint) -> fres<ty::t> {
     resolver(cx, modes).resolve_type_chk(a)
 }
 
-fn resolve_region(cx: @InferCtxt, r: ty::Region, modes: uint)
-    -> fres<ty::Region> {
+pub fn resolve_region(cx: @InferCtxt, r: ty::Region, modes: uint)
+                   -> fres<ty::Region> {
     resolver(cx, modes).resolve_region_chk(r)
 }
 

@@ -565,11 +565,6 @@ use std::list::{List, Nil, Cons};
 use syntax::codemap::span;
 use syntax::codemap;
 
-export RegionVarBindings;
-export make_subregion;
-export lub_regions;
-export glb_regions;
-
 enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),
     ConstrainRegSubVar(Region, RegionVid),
@@ -638,7 +633,7 @@ enum UndoLogEntry {
 
 type CombineMap = HashMap<TwoRegions, RegionVid>;
 
-struct RegionVarBindings {
+pub struct RegionVarBindings {
     tcx: ty::ctxt,
     var_spans: DVec<span>,
     constraints: HashMap<Constraint, span>,
@@ -663,7 +658,7 @@ struct RegionVarBindings {
     values: Cell<~[GraphNodeValue]>,
 }
 
-fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
+pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     RegionVarBindings {
         tcx: tcx,
         var_spans: DVec(),
@@ -684,7 +679,7 @@ fn CombineMap() -> CombineMap {
     return HashMap();
 }
 
-impl RegionVarBindings {
+pub impl RegionVarBindings {
     fn in_snapshot(&self) -> bool {
         self.undo_log.len() > 0
     }

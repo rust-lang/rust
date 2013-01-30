@@ -24,16 +24,19 @@ use std::list;
 use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn, noreturn};
 use syntax::ast::{pure_fn, ret_style, return_val, unsafe_fn};
 
-fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
+pub fn macros() {
+    // FIXME(#3114): Macro import/export.
+    include!("macros.rs");
+}
 
-enum Lub = CombineFields;  // least-upper-bound: common supertype
+pub enum Lub = CombineFields;  // least-upper-bound: common supertype
 
-impl Lub {
+pub impl Lub {
     fn bot_ty(b: ty::t) -> cres<ty::t> { Ok(b) }
     fn ty_bot(b: ty::t) -> cres<ty::t> { self.bot_ty(b) } // commutative
 }
 
-impl Lub: Combine {
+pub impl Lub: Combine {
     fn infcx() -> @InferCtxt { self.infcx }
     fn tag() -> ~str { ~"lub" }
     fn a_is_expected() -> bool { self.a_is_expected }

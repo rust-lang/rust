@@ -49,15 +49,15 @@ use middle::typeck::infer::to_str::InferStr;
 
 use std::list;
 
-trait LatticeValue {
+pub trait LatticeValue {
     static fn sub(cf: &CombineFields, a: &self, b: &self) -> ures;
     static fn lub(cf: &CombineFields, a: &self, b: &self) -> cres<self>;
     static fn glb(cf: &CombineFields, a: &self, b: &self) -> cres<self>;
 }
 
-type LatticeOp<T> = &fn(cf: &CombineFields, a: &T, b: &T) -> cres<T>;
+pub type LatticeOp<T> = &fn(cf: &CombineFields, a: &T, b: &T) -> cres<T>;
 
-impl ty::t: LatticeValue {
+pub impl ty::t: LatticeValue {
     static fn sub(cf: &CombineFields, a: &ty::t, b: &ty::t) -> ures {
         Sub(*cf).tys(*a, *b).to_ures()
     }
@@ -71,7 +71,7 @@ impl ty::t: LatticeValue {
     }
 }
 
-impl FnMeta: LatticeValue {
+pub impl FnMeta: LatticeValue {
     static fn sub(cf: &CombineFields,
                   a: &FnMeta, b: &FnMeta) -> ures {
         Sub(*cf).fn_metas(a, b).to_ures()
@@ -88,7 +88,7 @@ impl FnMeta: LatticeValue {
     }
 }
 
-impl CombineFields {
+pub impl CombineFields {
     fn var_sub_var<T:Copy InferStr LatticeValue,
                    V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
         &self,
@@ -309,17 +309,17 @@ impl CombineFields {
 // This is common code used by both LUB and GLB to compute the LUB/GLB
 // for pairs of variables or for variables and values.
 
-trait LatticeDir {
+pub trait LatticeDir {
     fn combine_fields() -> CombineFields;
     fn bnd<T:Copy>(b: &Bounds<T>) -> Option<T>;
     fn with_bnd<T:Copy>(b: &Bounds<T>, +t: T) -> Bounds<T>;
 }
 
-trait TyLatticeDir {
+pub trait TyLatticeDir {
     fn ty_bot(t: ty::t) -> cres<ty::t>;
 }
 
-impl Lub: LatticeDir {
+pub impl Lub: LatticeDir {
     fn combine_fields() -> CombineFields { *self }
     fn bnd<T:Copy>(b: &Bounds<T>) -> Option<T> { b.ub }
     fn with_bnd<T:Copy>(b: &Bounds<T>, +t: T) -> Bounds<T> {
@@ -327,13 +327,13 @@ impl Lub: LatticeDir {
     }
 }
 
-impl Lub: TyLatticeDir {
+pub impl Lub: TyLatticeDir {
     fn ty_bot(t: ty::t) -> cres<ty::t> {
         Ok(t)
     }
 }
 
-impl Glb: LatticeDir {
+pub impl Glb: LatticeDir {
     fn combine_fields() -> CombineFields { *self }
     fn bnd<T:Copy>(b: &Bounds<T>) -> Option<T> { b.lb }
     fn with_bnd<T:Copy>(b: &Bounds<T>, +t: T) -> Bounds<T> {
@@ -341,17 +341,16 @@ impl Glb: LatticeDir {
     }
 }
 
-impl Glb: TyLatticeDir {
+pub impl Glb: TyLatticeDir {
     fn ty_bot(_t: ty::t) -> cres<ty::t> {
         Ok(ty::mk_bot(self.infcx.tcx))
     }
 }
 
-fn super_lattice_tys<L:LatticeDir TyLatticeDir Combine>(
+pub fn super_lattice_tys<L:LatticeDir TyLatticeDir Combine>(
     self: &L,
     a: ty::t,
-    b: ty::t) -> cres<ty::t>
-{
+    b: ty::t) -> cres<ty::t> {
     debug!("%s.lattice_tys(%s, %s)", self.tag(),
            a.inf_str(self.infcx()),
            b.inf_str(self.infcx()));
@@ -392,9 +391,9 @@ fn super_lattice_tys<L:LatticeDir TyLatticeDir Combine>(
     }
 }
 
-type LatticeDirOp<T> = &fn(a: &T, b: &T) -> cres<T>;
+pub type LatticeDirOp<T> = &fn(a: &T, b: &T) -> cres<T>;
 
-enum LatticeVarResult<V,T> {
+pub enum LatticeVarResult<V,T> {
     VarResult(V),
     ValueResult(T)
 }
@@ -414,15 +413,14 @@ enum LatticeVarResult<V,T> {
  *   the variables and return the unified variable, in which case the
  *   result is a variable.  This is indicated with a `VarResult`
  *   return. */
-fn lattice_vars<L:LatticeDir Combine,
-                T:Copy InferStr LatticeValue,
-                V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
+pub fn lattice_vars<L:LatticeDir Combine,
+                    T:Copy InferStr LatticeValue,
+                    V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
     self: &L,                           // defines whether we want LUB or GLB
     +a_vid: V,                          // first variable
     +b_vid: V,                          // second variable
     lattice_dir_op: LatticeDirOp<T>)    // LUB or GLB operation on types
-    -> cres<LatticeVarResult<V,T>>
-{
+    -> cres<LatticeVarResult<V,T>> {
     let nde_a = self.infcx().get(a_vid);
     let nde_b = self.infcx().get(b_vid);
     let a_vid = nde_a.root;
@@ -461,15 +459,14 @@ fn lattice_vars<L:LatticeDir Combine,
     }
 }
 
-fn lattice_var_and_t<L:LatticeDir Combine,
-                     T:Copy InferStr LatticeValue,
-                     V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
+pub fn lattice_var_and_t<L:LatticeDir Combine,
+                         T:Copy InferStr LatticeValue,
+                         V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
     self: &L,
     +a_id: V,
     b: &T,
     lattice_dir_op: LatticeDirOp<T>)
-    -> cres<T>
-{
+    -> cres<T> {
     let nde_a = self.infcx().get(a_id);
     let a_id = nde_a.root;
     let a_bounds = &nde_a.possible_types;
@@ -506,7 +503,7 @@ fn lattice_var_and_t<L:LatticeDir Combine,
 // Random utility functions used by LUB/GLB when computing LUB/GLB of
 // fn types
 
-fn var_ids<T: Combine>(self: &T, isr: isr_alist) -> ~[RegionVid] {
+pub fn var_ids<T: Combine>(self: &T, isr: isr_alist) -> ~[RegionVid] {
     let mut result = ~[];
     for list::each(isr) |pair| {
         match pair.second() {
@@ -521,7 +518,7 @@ fn var_ids<T: Combine>(self: &T, isr: isr_alist) -> ~[RegionVid] {
     return result;
 }
 
-fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {
+pub fn is_var_in_set(new_vars: &[RegionVid], r: ty::Region) -> bool {
     match r {
         ty::re_infer(ty::ReVar(ref v)) => new_vars.contains(v),
         _ => false

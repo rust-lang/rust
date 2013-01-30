@@ -28,19 +28,19 @@ pub trait InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str;
 }
 
-impl ty::t : InferStr {
+pub impl ty::t : InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         ty_to_str(cx.tcx, *self)
     }
 }
 
-impl FnMeta : InferStr {
+pub impl FnMeta : InferStr {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         fmt!("%?", *self)
     }
 }
 
-impl FnSig : InferStr {
+pub impl FnSig : InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("(%s) -> %s",
              str::connect(self.inputs.map(|a| a.ty.inf_str(cx)), ", "),
@@ -48,25 +48,25 @@ impl FnSig : InferStr {
     }
 }
 
-impl<M:InferStr> FnTyBase<M> : InferStr {
+pub impl<M:InferStr> FnTyBase<M> : InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("%s%s", self.meta.inf_str(cx), self.sig.inf_str(cx))
     }
 }
 
-impl ty::mt : InferStr {
+pub impl ty::mt : InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         mt_to_str(cx.tcx, *self)
     }
 }
 
-impl ty::Region : InferStr {
+pub impl ty::Region : InferStr {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         fmt!("%?", *self)
     }
 }
 
-impl<V:InferStr> Bound<V> : InferStr {
+pub impl<V:InferStr> Bound<V> : InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         match *self {
           Some(ref v) => v.inf_str(cx),
@@ -75,7 +75,7 @@ impl<V:InferStr> Bound<V> : InferStr {
     }
 }
 
-impl<T:InferStr> Bounds<T> : InferStr {
+pub impl<T:InferStr> Bounds<T> : InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("{%s <: %s}",
              self.lb.inf_str(cx),
@@ -83,7 +83,7 @@ impl<T:InferStr> Bounds<T> : InferStr {
     }
 }
 
-impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
+pub impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         match *self {
           Redirect(ref vid) => fmt!("Redirect(%s)", vid.to_str()),
@@ -93,13 +93,13 @@ impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
     }
 }
 
-impl IntVarValue : InferStr {
+pub impl IntVarValue : InferStr {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         self.to_str()
     }
 }
 
-impl ast::float_ty : InferStr {
+pub impl ast::float_ty : InferStr {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         self.to_str()
     }

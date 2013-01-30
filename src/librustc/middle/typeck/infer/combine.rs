@@ -72,9 +72,12 @@ use syntax::ast::{Onceness, purity, ret_style};
 use syntax::ast;
 use syntax::codemap::span;
 
-fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
+pub fn macros() {
+    // FIXME(#3114): Macro import/export.
+    include!("macros.rs");
+}
 
-trait Combine {
+pub trait Combine {
     fn infcx() -> @InferCtxt;
     fn tag() -> ~str;
     fn a_is_expected() -> bool;
@@ -112,9 +115,8 @@ pub struct CombineFields {
     span: span,
 }
 
-fn expected_found<C:Combine,T>(
-    self: &C, +a: T, +b: T) -> ty::expected_found<T>
-{
+pub fn expected_found<C:Combine,T>(
+        self: &C, +a: T, +b: T) -> ty::expected_found<T> {
     if self.a_is_expected() {
         ty::expected_found {expected: move a, found: move b}
     } else {
@@ -131,7 +133,8 @@ pub fn eq_tys<C:Combine>(self: &C, a: ty::t, b: ty::t) -> ures {
     }
 }
 
-fn eq_regions<C:Combine>(self: &C, a: ty::Region, b: ty::Region) -> ures {
+pub fn eq_regions<C:Combine>(self: &C, a: ty::Region, b: ty::Region)
+                          -> ures {
     debug!("eq_regions(%s, %s)",
            a.inf_str(self.infcx()),
            b.inf_str(self.infcx()));
@@ -153,7 +156,7 @@ fn eq_regions<C:Combine>(self: &C, a: ty::Region, b: ty::Region) -> ures {
     }
 }
 
-fn eq_opt_regions<C:Combine>(
+pub fn eq_opt_regions<C:Combine>(
     self: &C,
     a: Option<ty::Region>,
     b: Option<ty::Region>) -> cres<Option<ty::Region>> {
@@ -181,7 +184,7 @@ fn eq_opt_regions<C:Combine>(
     }
 }
 
-fn super_substs<C:Combine>(
+pub fn super_substs<C:Combine>(
     self: &C, did: ast::def_id,
     a: &ty::substs, b: &ty::substs) -> cres<ty::substs> {
 
@@ -243,7 +246,7 @@ fn super_substs<C:Combine>(
     }
 }
 
-fn super_tps<C:Combine>(
+pub fn super_tps<C:Combine>(
     self: &C, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
 
     // Note: type parameters are always treated as *invariant*
@@ -261,7 +264,7 @@ fn super_tps<C:Combine>(
     }
 }
 
-fn super_self_tys<C:Combine>(
+pub fn super_self_tys<C:Combine>(
     self: &C, a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
 
     // Note: the self type parameter is (currently) always treated as
@@ -284,9 +287,8 @@ fn super_self_tys<C:Combine>(
     }
 }
 
-fn super_protos<C: Combine>(
-    self: &C, p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto>
-{
+pub fn super_protos<C: Combine>(
+    self: &C, p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
     if p1 == p2 {
         Ok(p1)
     } else {
@@ -294,7 +296,7 @@ fn super_protos<C: Combine>(
     }
 }
 
-fn super_flds<C:Combine>(
+pub fn super_flds<C:Combine>(
     self: &C, a: ty::field, b: ty::field) -> cres<ty::field> {
 
     if a.ident == b.ident {
@@ -307,7 +309,7 @@ fn super_flds<C:Combine>(
     }
 }
 
-fn super_modes<C:Combine>(
+pub fn super_modes<C:Combine>(
     self: &C, a: ast::mode, b: ast::mode)
     -> cres<ast::mode> {
 
@@ -326,10 +328,9 @@ fn super_args<C:Combine>(
     }
 }
 
-fn super_vstores<C:Combine>(
+pub fn super_vstores<C:Combine>(
     self: &C, vk: ty::terr_vstore_kind,
-    a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>
-{
+    a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
     debug!("%s.super_vstores(a=%?, b=%?)", self.tag(), a, b);
 
     match (a, b) {
@@ -349,9 +350,8 @@ fn super_vstores<C:Combine>(
     }
 }
 
-fn super_fn_metas<C:Combine>(
-    self: &C, a_f: &ty::FnMeta, b_f: &ty::FnMeta) -> cres<ty::FnMeta>
-{
+pub fn super_fn_metas<C:Combine>(
+    self: &C, a_f: &ty::FnMeta, b_f: &ty::FnMeta) -> cres<ty::FnMeta> {
     let p = if_ok!(self.protos(a_f.proto, b_f.proto));
     let r = if_ok!(self.contraregions(a_f.region, b_f.region));
     let purity = if_ok!(self.purities(a_f.purity, b_f.purity));
@@ -363,9 +363,8 @@ fn super_fn_metas<C:Combine>(
                bounds: a_f.bounds}) // XXX: This is wrong!
 }
 
-fn super_fn_sigs<C:Combine>(
-    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig>
-{
+pub fn super_fn_sigs<C:Combine>(
+    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig> {
     fn argvecs<C:Combine>(self: &C,
                           +a_args: ~[ty::arg],
                           +b_args: ~[ty::arg]) -> cres<~[ty::arg]>
@@ -385,17 +384,15 @@ fn super_fn_sigs<C:Combine>(
     }
 }
 
-fn super_fns<C:Combine>(
-    self: &C, a_f: &ty::FnTy, b_f: &ty::FnTy) -> cres<ty::FnTy>
-{
+pub fn super_fns<C:Combine>(
+    self: &C, a_f: &ty::FnTy, b_f: &ty::FnTy) -> cres<ty::FnTy> {
     let m = if_ok!(self.fn_metas(&a_f.meta, &b_f.meta));
     let s = if_ok!(self.fn_sigs(&a_f.sig, &b_f.sig));
     Ok(FnTyBase {meta: m, sig: s})
 }
 
-fn super_tys<C:Combine>(
-    self: &C, a: ty::t, b: ty::t) -> cres<ty::t>
-{
+pub fn super_tys<C:Combine>(
+    self: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
     let tcx = self.infcx().tcx;
     return match (/*bad*/copy ty::get(a).sty, /*bad*/copy ty::get(b).sty) {
       // The "subtype" ought to be handling cases involving bot or var:
