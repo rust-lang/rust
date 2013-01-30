@@ -14,6 +14,7 @@ record_sp_limit:
         addiu $3, $3, -0x7008
         sw $4, 4($3)
         jr $31
+        nop
 .end record_sp_limit
 
 .globl get_sp_limit
@@ -30,6 +31,7 @@ get_sp_limit:
         addiu $3, $3, -0x7008
         lw $2, 4($3)
         jr $31
+        nop
 .end get_sp_limit
 
 .globl get_sp
@@ -41,4 +43,5 @@ get_sp:
         .set nomacro
         move $2, $29
         jr $31
+        nop
 .end get_sp

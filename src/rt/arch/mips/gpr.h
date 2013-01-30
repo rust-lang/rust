@@ -21,10 +21,10 @@ public:
     uintptr_t r24, r25, r26, r27, r28, r29, r30, r31;
 
     inline uintptr_t get_fp() { return r30; }
-    inline uintptr_t get_ip() { return r0; }
+    inline uintptr_t get_ip() { return r31; }
 
     inline void set_fp(uintptr_t new_fp) { r30 = new_fp; }
-    inline void set_ip(uintptr_t new_ip) { r0 = new_ip; }
+    inline void set_ip(uintptr_t new_ip) { r31 = new_ip; }
 
     void load();
 };
