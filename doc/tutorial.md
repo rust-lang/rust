@@ -2015,7 +2015,7 @@ the method name with the trait name.
 The compiler will use type inference to decide which implementation to call.
 
 ~~~~
-# trait Shape { static fn new(area: float) -> self; }
+trait Shape { static fn new(area: float) -> self; }
 # use float::consts::pi;
 # use float::sqrt;
 struct Circle { radius: float }
@@ -2211,11 +2211,15 @@ Likewise, supertrait methods may also be called on trait objects.
 ~~~ {.xfail-test}
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
-# impl int: Shape { fn area(&self) -> float { 0.0 } }
-# impl int: Circle { fn radius(&self) -> float { 0.0 } }
-# let mycircle = 0;
+# use float::consts::pi;
+# use float::sqrt;
+# struct Point { x: float, y: float }
+# struct CircleStruct { center: Point, radius: float }
+# impl CircleStruct: Circle { fn radius(&self) -> float { sqrt(self.area() / pi) } }
+# impl CircleStruct: Shape { fn area(&self) -> float { pi * square(self.radius) } }
 
-let mycircle: Circle = @mycircle as @Circle;
+let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
+let mycircle: Circle = concrete as @Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
 
