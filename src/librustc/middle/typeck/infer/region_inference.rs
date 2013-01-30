@@ -1191,11 +1191,11 @@ struct GraphNode {
     span: span,
     mut classification: Classification,
     mut value: GraphNodeValue,
-    head_edge: [mut uint * 2], // FIXME(#3226)--should not need mut
+    head_edge: [uint * 2],
 }
 
 struct GraphEdge {
-    next_edge: [mut uint * 2], // FIXME(#3226)--should not need mut
+    next_edge: [uint * 2],
     constraint: Constraint,
     span: span,
 }
