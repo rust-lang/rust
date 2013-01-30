@@ -750,11 +750,11 @@ mod test_qsort3 {
             check_sort(v1, v2);
         }
         {
-            let mut v1: ~[mut int] = ~[];
-            let mut v2: ~[mut int] = ~[];
+            let mut v1: ~[int] = ~[];
+            let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let mut v1 = ~[mut 9]; let v2 = ~[9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let v2 = ~[9]; check_sort(v1, v2); }
         {
             let mut v1 = ~[9, 3, 3, 3, 9];
             let mut v2 = ~[3, 3, 3, 9, 9];
@@ -797,11 +797,11 @@ mod test_qsort {
             check_sort(v1, v2);
         }
         {
-            let mut v1: ~[mut int] = ~[];
-            let mut v2: ~[mut int] = ~[];
+            let mut v1: ~[int] = ~[];
+            let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let mut v1 = ~[mut 9]; let v2 = ~[9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let v2 = ~[9]; check_sort(v1, v2); }
         {
             let mut v1 = ~[9, 3, 3, 3, 9];
             let mut v2 = ~[3, 3, 3, 9, 9];
@@ -947,11 +947,11 @@ mod test_tim_sort {
             check_sort(v1, v2);
         }
         {
-            let mut v1: ~[mut int] = ~[];
-            let mut v2: ~[mut int] = ~[];
+            let mut v1: ~[int] = ~[];
+            let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let mut v1 = ~[mut 9]; let v2 = ~[9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let v2 = ~[9]; check_sort(v1, v2); }
         {
             let mut v1 = ~[9, 3, 3, 3, 9];
             let mut v2 = ~[3, 3, 3, 9, 9];

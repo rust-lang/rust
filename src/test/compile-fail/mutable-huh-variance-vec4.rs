@@ -14,8 +14,8 @@ fn main() {
     // but we do express conflicting requirements:
 
     let mut v = ~[~[0]];
-    let mut w = ~[mut ~[0]];
-    let mut x = ~[mut ~[0]];
+    let mut w = ~[~[0]];
+    let mut x = ~[~[0]];
 
     fn f(&&v: ~[mut ~[int]]) {
         v[0] = ~[3]
