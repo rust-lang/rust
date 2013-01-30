@@ -76,9 +76,9 @@ fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
             break;
         }
     }
-    doc::Doc_(doc::Doc_ {
+    doc::Doc {
         pages: pages
-    })
+    }
 }
 
 fn find_pages(doc: doc::Doc, page_chan: PageChan) {
@@ -128,7 +128,7 @@ fn fold_mod(
 }
 
 fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
-    doc::ModDoc_(doc::ModDoc_ {
+    doc::ModDoc {
         items: do doc.items.filtered |item| {
             match *item {
               doc::ModTag(_) => false,
@@ -136,8 +136,8 @@ fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
               _ => true
             }
         },
-        .. *doc
-    })
+        .. doc
+    }
 }
 
 fn fold_nmod(

@@ -22,13 +22,8 @@ use core::vec;
 pub type AstId = int;
 
 #[deriving_eq]
-pub struct Doc_ {
+pub struct Doc {
     pages: ~[Page]
-}
-
-#[deriving_eq]
-pub enum Doc {
-    Doc_(Doc_)
 }
 
 #[deriving_eq]
@@ -93,15 +88,10 @@ pub struct SimpleItemDoc {
 }
 
 #[deriving_eq]
-pub struct ModDoc_ {
+pub struct ModDoc {
     item: ItemDoc,
     items: ~[ItemTag],
     index: Option<Index>
-}
-
-#[deriving_eq]
-pub enum ModDoc {
-    ModDoc_(ModDoc_)
 }
 
 #[deriving_eq]

@@ -70,13 +70,13 @@ fn fold_crate(
     };
 
     doc::CrateDoc {
-        topmod: doc::ModDoc_(doc::ModDoc_ {
+        topmod: doc::ModDoc {
             item: doc::ItemDoc {
                 name: option::get_or_default(attrs.name, doc.topmod.name()),
                 .. doc.topmod.item
             },
-            .. *doc.topmod
-        })
+            .. doc.topmod
+        }
     }
 }
 

@@ -573,20 +573,20 @@ fn should_insert_blank_line_after_fn_signature() {
 #[test]
 fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc(~"fn a() { }");
-    let doc = doc::Doc_({
+    let doc = doc::Doc{
         pages: ~[
-            doc::CratePage({
-                topmod: doc::ModDoc_({
-                    items: ~[doc::FnTag({
+            doc::CratePage(doc::CrateDoc{
+                topmod: doc::ModDoc{
+                    items: ~[doc::FnTag(doc::SimpleItemDoc{
                         sig: Some(~"line 1\nline 2"),
                         .. doc.cratemod().fns()[0]
                     })],
-                    .. *doc.cratemod()
-                }),
+                    .. doc.cratemod()
+                },
                 .. doc.CrateDoc()
             })
         ]
-    });
+    };
     let markdown = test::write_markdown_str(doc);
     assert str::contains(markdown, ~"    line 1\n    line 2");
 }
@@ -863,7 +863,7 @@ mod test {
     fn create_doc_srv(+source: ~str) -> (astsrv::Srv, doc::Doc) {
         do astsrv::from_str(source) |srv| {
 
-            let config = {
+            let config = config::Config {
                 output_style: config::DocPerCrate,
                 .. config::default_config(&Path("whatever"))
             };

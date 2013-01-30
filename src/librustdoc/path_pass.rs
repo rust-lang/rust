@@ -68,10 +68,10 @@ fn fold_mod(fold: &fold::Fold<Ctxt>, +doc: doc::ModDoc) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
     if !is_topmod { fold.ctxt.path.pop(); }
 
-    doc::ModDoc_(doc::ModDoc_ {
+    doc::ModDoc {
         item: (fold.fold_item)(fold, doc.item),
-        .. *doc
-    })
+        .. doc
+    }
 }
 
 fn fold_nmod(fold: &fold::Fold<Ctxt>, +doc: doc::NmodDoc) -> doc::NmodDoc {
