@@ -209,7 +209,7 @@ pub mod chained {
         fn rehash() {
             let n_old_chains = self.chains.len();
             let n_new_chains: uint = uint::next_power_of_two(n_old_chains+1u);
-            let new_chains = chains(n_new_chains);
+            let mut new_chains = chains(n_new_chains);
             for self.each_entry |entry| {
                 let idx = entry.hash % n_new_chains;
                 entry.next = new_chains[idx];
@@ -459,7 +459,7 @@ pub mod chained {
     }
 
     fn chains<K,V>(nchains: uint) -> ~[Option<@Entry<K,V>>] {
-        vec::cast_to_mut(vec::from_elem(nchains, None))
+        vec::from_elem(nchains, None)
     }
 
     pub fn mk<K:Eq IterBytes Hash, V: Copy>() -> T<K,V> {

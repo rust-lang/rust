@@ -1168,8 +1168,7 @@ pub mod node {
         }
 
         pub fn start(node: @Node) -> T {
-            let stack = vec::cast_to_mut(
-                vec::from_elem(height(node)+1u, node));
+            let stack = vec::from_elem(height(node)+1u, node);
             T {
                 stack: stack,
                 stackpos:  0,
