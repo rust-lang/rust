@@ -280,8 +280,12 @@ pub pure fn view<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
 }
 
 /// Return a slice that points into another slice.
+<<<<<<< HEAD
 #[inline(always)]
 pub pure fn mut_view<T>(v: &r/[mut T], start: uint, end: uint) -> &r/[mut T] {
+=======
+pub pure fn mut_view<T>(v: &mut r/[T], start: uint, end: uint) -> &mut r/[T] {
+>>>>>>> RIMOV, round 11
     assert (start <= end);
     assert (end <= len(v));
     do as_mut_buf(v) |p, _len| {
@@ -2199,12 +2203,8 @@ pub mod bytes {
       * Copies `count` bytes from `src` to `dst`. The source and destination
       * may overlap.
       */
-<<<<<<< HEAD
     #[inline(always)]
-    pub fn copy_memory(dst: &[mut u8], src: &[const u8], count: uint) {
-=======
     pub fn copy_memory(dst: &mut [u8], src: &[const u8], count: uint) {
->>>>>>> RIMOV, round 5
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }
     }
