@@ -27,8 +27,8 @@ use syntax::ast_util::local_def;
 // `translate` will be true if this function is allowed to translate the
 // item and false otherwise. Currently, this parameter is set to false when
 // translating default methods.
-fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
-                            translate: bool)
+pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
+                                translate: bool)
     -> ast::def_id {
     let _icx = ccx.insn_ctxt("maybe_instantiate_inline");
     match ccx.external.find(fn_id) {

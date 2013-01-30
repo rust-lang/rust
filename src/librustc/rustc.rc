@@ -50,19 +50,12 @@ use back_ = back;
 
 pub mod middle {
     pub mod trans {
-        #[legacy_exports]
         pub mod inline;
-        #[legacy_exports]
         pub mod monomorphize;
-        #[legacy_exports]
         pub mod controlflow;
-        #[legacy_exports]
         pub mod glue;
-        #[legacy_exports]
         pub mod datum;
-        #[legacy_exports]
         pub mod callee;
-        #[legacy_exports]
         pub mod expr;
         #[legacy_exports]
         pub mod common;

@@ -18,9 +18,12 @@ use middle::trans::datum::*;
 
 use core::str;
 
-fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
+pub fn macros() {
+    // FIXME(#3114): Macro import/export.
+    include!("macros.rs");
+}
 
-fn trans_block(bcx: block, b: ast::blk, dest: expr::Dest) -> block {
+pub fn trans_block(bcx: block, b: ast::blk, dest: expr::Dest) -> block {
     let _icx = bcx.insn_ctxt("trans_block");
     let mut bcx = bcx;
     do block_locals(b) |local| {
@@ -42,13 +45,12 @@ fn trans_block(bcx: block, b: ast::blk, dest: expr::Dest) -> block {
     return bcx;
 }
 
-fn trans_if(bcx: block,
+pub fn trans_if(bcx: block,
             cond: @ast::expr,
             thn: ast::blk,
             els: Option<@ast::expr>,
             dest: expr::Dest)
-    -> block
-{
+         -> block {
     debug!("trans_if(bcx=%s, cond=%s, thn=%?, dest=%s)",
            bcx.to_str(), bcx.expr_to_str(cond), thn.node.id,
            dest.to_str(bcx.ccx()));
@@ -95,7 +97,7 @@ fn trans_if(bcx: block,
 
 }
 
-fn join_blocks(parent_bcx: block, in_cxs: ~[block]) -> block {
+pub fn join_blocks(parent_bcx: block, in_cxs: ~[block]) -> block {
     let out = sub_block(parent_bcx, ~"join");
     let mut reachable = false;
     for vec::each(in_cxs) |bcx| {
@@ -110,8 +112,7 @@ fn join_blocks(parent_bcx: block, in_cxs: ~[block]) -> block {
     return out;
 }
 
-fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk)
-    -> block {
+pub fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk) -> block {
     let _icx = bcx.insn_ctxt("trans_while");
     let next_bcx = sub_block(bcx, ~"while next");
 
@@ -149,7 +150,10 @@ fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk)
     return next_bcx;
 }
 
-fn trans_loop(bcx:block, body: ast::blk, opt_label: Option<ident>) -> block {
+pub fn trans_loop(bcx:block,
+                  body: ast::blk,
+                  opt_label: Option<ident>)
+               -> block {
     let _icx = bcx.insn_ctxt("trans_loop");
     let next_bcx = sub_block(bcx, ~"next");
     let body_bcx_in = loop_scope_block(bcx, next_bcx, opt_label, ~"`loop`",
@@ -160,11 +164,10 @@ fn trans_loop(bcx:block, body: ast::blk, opt_label: Option<ident>) -> block {
     return next_bcx;
 }
 
-fn trans_log(log_ex: @ast::expr,
-             lvl: @ast::expr,
-             bcx: block,
-             e: @ast::expr) -> block
-{
+pub fn trans_log(log_ex: @ast::expr,
+                 lvl: @ast::expr,
+                 bcx: block,
+                 e: @ast::expr) -> block {
     let _icx = bcx.insn_ctxt("trans_log");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
@@ -223,8 +226,10 @@ fn trans_log(log_ex: @ast::expr,
     }
 }
 
-fn trans_break_cont(bcx: block, opt_label: Option<ident>, to_end: bool)
-    -> block {
+pub fn trans_break_cont(bcx: block,
+                        opt_label: Option<ident>,
+                        to_end: bool)
+                     -> block {
     let _icx = bcx.insn_ctxt("trans_break_cont");
     // Locate closest loop block, outputting cleanup as we go.
     let mut unwind = bcx;
@@ -270,15 +275,15 @@ fn trans_break_cont(bcx: block, opt_label: Option<ident>, to_end: bool)
     return bcx;
 }
 
-fn trans_break(bcx: block, label_opt: Option<ident>) -> block {
+pub fn trans_break(bcx: block, label_opt: Option<ident>) -> block {
     return trans_break_cont(bcx, label_opt, true);
 }
 
-fn trans_cont(bcx: block, label_opt: Option<ident>) -> block {
+pub fn trans_cont(bcx: block, label_opt: Option<ident>) -> block {
     return trans_break_cont(bcx, label_opt, false);
 }
 
-fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
+pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
     let _icx = bcx.insn_ctxt("trans_ret");
     let mut bcx = bcx;
     let retptr = match copy bcx.fcx.loop_ret {
@@ -306,8 +311,12 @@ fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
     Unreachable(bcx);
     return bcx;
 }
-fn trans_check_expr(bcx: block, chk_expr: @ast::expr,
-                    pred_expr: @ast::expr, s: ~str) -> block {
+
+pub fn trans_check_expr(bcx: block,
+                        chk_expr: @ast::expr,
+                        pred_expr: @ast::expr,
+                        s: ~str)
+                     -> block {
     let _icx = bcx.insn_ctxt("trans_check_expr");
     let expr_str = s + ~" " + expr_to_str(pred_expr, bcx.ccx().sess.intr())
         + ~" failed";
@@ -321,9 +330,10 @@ fn trans_check_expr(bcx: block, chk_expr: @ast::expr,
     }
 }
 
-fn trans_fail_expr(bcx: block,
-                   sp_opt: Option<span>,
-                   fail_expr: Option<@ast::expr>) -> block {
+pub fn trans_fail_expr(bcx: block,
+                       sp_opt: Option<span>,
+                       fail_expr: Option<@ast::expr>)
+                    -> block {
     let _icx = bcx.insn_ctxt("trans_fail_expr");
     let mut bcx = bcx;
     match fail_expr {
@@ -347,17 +357,19 @@ fn trans_fail_expr(bcx: block,
     }
 }
 
-fn trans_fail(bcx: block, sp_opt: Option<span>, +fail_str: ~str)
-    -> block
-{
+pub fn trans_fail(bcx: block,
+                  sp_opt: Option<span>,
+                  +fail_str: ~str)
+               -> block {
     let _icx = bcx.insn_ctxt("trans_fail");
     let V_fail_str = C_cstr(bcx.ccx(), fail_str);
     return trans_fail_value(bcx, sp_opt, V_fail_str);
 }
 
-fn trans_fail_value(bcx: block, sp_opt: Option<span>, V_fail_str: ValueRef)
-    -> block
-{
+fn trans_fail_value(bcx: block,
+                    sp_opt: Option<span>,
+                    V_fail_str: ValueRef)
+                 -> block {
     let _icx = bcx.insn_ctxt("trans_fail_value");
     let ccx = bcx.ccx();
     let {V_filename, V_line} = match sp_opt {
@@ -381,8 +393,8 @@ fn trans_fail_value(bcx: block, sp_opt: Option<span>, V_fail_str: ValueRef)
     return bcx;
 }
 
-fn trans_fail_bounds_check(bcx: block, sp: span,
-                           index: ValueRef, len: ValueRef) -> block {
+pub fn trans_fail_bounds_check(bcx: block, sp: span,
+                               index: ValueRef, len: ValueRef) -> block {
     let _icx = bcx.insn_ctxt("trans_fail_bounds_check");
     let ccx = bcx.ccx();
 

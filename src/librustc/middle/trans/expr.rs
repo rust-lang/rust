@@ -137,20 +137,6 @@ use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::ast::spanned;
 
-// The primary two functions for translating expressions:
-export trans_to_datum, trans_into;
-
-// More specific variants than trans_to_datum/trans_into that are useful
-// in some scenarios:
-export trans_local_var;
-
-// Other helpers, types, and so forth:
-export with_field_tys;
-export Dest, SaveIn, Ignore;
-export cast_type_kind;
-export cast_kind, cast_pointer, cast_integral, cast_float;
-export cast_enum, cast_other;
-
 // Destinations
 
 // These are passed around by the code generating functions to track the
@@ -158,7 +144,7 @@ export cast_enum, cast_other;
 
 fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
-enum Dest {
+pub enum Dest {
     SaveIn(ValueRef),
     Ignore,
 }
@@ -190,7 +176,7 @@ fn drop_and_cancel_clean(bcx: block, dat: Datum) -> block {
     return bcx;
 }
 
-fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
+pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
     debug!("trans_to_datum(expr=%s)", bcx.expr_to_str(expr));
     return match bcx.tcx().adjustments.find(expr.id) {
         None => {
@@ -271,7 +257,7 @@ fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
     }
 }
 
-fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
+pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
     return match bcx.tcx().adjustments.find(expr.id) {
         None => trans_into_unadjusted(bcx, expr, dest),
         Some(_) => {
@@ -830,10 +816,10 @@ fn trans_def_lvalue(bcx: block,
     }
 }
 
-fn trans_local_var(bcx: block,
-                   def: ast::def,
-                   expr_id_opt: Option<ast::node_id>)
-                -> Datum {
+pub fn trans_local_var(bcx: block,
+                       def: ast::def,
+                       expr_id_opt: Option<ast::node_id>)
+                    -> Datum {
     let _icx = bcx.insn_ctxt("trans_local_var");
 
     return match def {
@@ -949,10 +935,10 @@ fn fn_data_to_datum(bcx: block,
 // The optional node ID here is the node ID of the path identifying the enum
 // variant in use. If none, this cannot possibly an enum variant (so, if it
 // is and `node_id_opt` is none, this function fails).
-fn with_field_tys<R>(tcx: ty::ctxt,
-                     ty: ty::t,
-                     node_id_opt: Option<ast::node_id>,
-                     op: fn(bool, (&[ty::field])) -> R) -> R {
+pub fn with_field_tys<R>(tcx: ty::ctxt,
+                         ty: ty::t,
+                         node_id_opt: Option<ast::node_id>,
+                         op: fn(bool, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
         ty::ty_rec(ref fields) => {
             op(false, *fields)
@@ -1521,7 +1507,7 @@ fn float_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
     } else { llsrc };
 }
 
-enum cast_kind {
+pub enum cast_kind {
     cast_pointer,
     cast_integral,
     cast_float,
@@ -1547,7 +1533,7 @@ impl cast_kind : cmp::Eq {
     pure fn ne(&self, other: &cast_kind) -> bool { !(*self).eq(other) }
 }
 
-fn cast_type_kind(t: ty::t) -> cast_kind {
+pub fn cast_type_kind(t: ty::t) -> cast_kind {
     match ty::get(t).sty {
         ty::ty_float(*)   => cast_float,
         ty::ty_ptr(*)     => cast_pointer,

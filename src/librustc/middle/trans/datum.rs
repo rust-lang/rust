@@ -114,12 +114,12 @@ use core::uint;
 use core::vec;
 use syntax::parse::token::special_idents;
 
-enum CopyAction {
+pub enum CopyAction {
     INIT,
     DROP_EXISTING
 }
 
-struct Datum {
+pub struct Datum {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `mode` below.
     val: ValueRef,
@@ -137,12 +137,12 @@ struct Datum {
     source: DatumSource
 }
 
-struct DatumBlock {
+pub struct DatumBlock {
     bcx: block,
     datum: Datum,
 }
 
-enum DatumMode {
+pub enum DatumMode {
     /// `val` is a pointer to the actual value (and thus has type *T)
     ByRef,
 
@@ -150,7 +150,7 @@ enum DatumMode {
     ByValue,
 }
 
-impl DatumMode {
+pub impl DatumMode {
     fn is_by_ref() -> bool {
         match self { ByRef => true, ByValue => false }
     }
@@ -160,27 +160,27 @@ impl DatumMode {
     }
 }
 
-impl DatumMode: cmp::Eq {
+pub impl DatumMode: cmp::Eq {
     pure fn eq(&self, other: &DatumMode) -> bool {
         (*self) as uint == (*other as uint)
     }
     pure fn ne(&self, other: &DatumMode) -> bool { !(*self).eq(other) }
 }
 
-impl DatumMode: to_bytes::IterBytes {
+pub impl DatumMode: to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
 /// See `Datum Sources` section at the head of this module.
-enum DatumSource {
+pub enum DatumSource {
     FromRvalue,
     FromLvalue,
     FromLastUseLvalue,
 }
 
-impl DatumSource {
+pub impl DatumSource {
     fn is_rvalue() -> bool {
         match self {
             FromRvalue => true,
@@ -196,16 +196,19 @@ impl DatumSource {
     }
 }
 
-fn immediate_rvalue(val: ValueRef, ty: ty::t) -> Datum {
+pub fn immediate_rvalue(val: ValueRef, ty: ty::t) -> Datum {
     return Datum {val: val, ty: ty,
                   mode: ByValue, source: FromRvalue};
 }
 
-fn immediate_rvalue_bcx(bcx: block, val: ValueRef, ty: ty::t) -> DatumBlock {
+pub fn immediate_rvalue_bcx(bcx: block,
+                            val: ValueRef,
+                            ty: ty::t)
+                         -> DatumBlock {
     return DatumBlock {bcx: bcx, datum: immediate_rvalue(val, ty)};
 }
 
-fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
+pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
     /*!
      *
      * Allocates temporary space on the stack using alloca() and
@@ -221,7 +224,7 @@ fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
     Datum { val: scratch, ty: ty, mode: ByRef, source: FromRvalue }
 }
 
-fn appropriate_mode(ty: ty::t) -> DatumMode {
+pub fn appropriate_mode(ty: ty::t) -> DatumMode {
     /*!
     *
     * Indicates the "appropriate" mode for this value,
@@ -237,7 +240,7 @@ fn appropriate_mode(ty: ty::t) -> DatumMode {
     }
 }
 
-impl Datum {
+pub impl Datum {
     fn store_will_move() -> bool {
         match self.source {
             FromRvalue | FromLastUseLvalue => true,
@@ -348,7 +351,7 @@ impl Datum {
                 Store(bcx, self.val, dst);
             }
             ByRef => {
-                memcpy_ty(bcx, dst, self.val, self.ty);
+                base::memcpy_ty(bcx, dst, self.val, self.ty);
             }
         }
 
@@ -375,7 +378,7 @@ impl Datum {
 
         match self.mode {
             ByRef => {
-                glue::memcpy_ty(bcx, dst, self.val, self.ty);
+                base::memcpy_ty(bcx, dst, self.val, self.ty);
             }
             ByValue => {
                 Store(bcx, self.val, dst);
@@ -823,7 +826,7 @@ impl Datum {
     }
 }
 
-impl DatumBlock {
+pub impl DatumBlock {
     fn unpack(bcx: &mut block) -> Datum {
         *bcx = self.bcx;
         return self.datum;
@@ -871,7 +874,7 @@ impl DatumBlock {
     }
 }
 
-impl CopyAction : cmp::Eq {
+pub impl CopyAction : cmp::Eq {
     pure fn eq(&self, other: &CopyAction) -> bool {
         match ((*self), (*other)) {
             (INIT, INIT) => true,
