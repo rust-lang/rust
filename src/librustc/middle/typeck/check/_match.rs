@@ -27,10 +27,10 @@ use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust;
 
-fn check_match(fcx: @fn_ctxt,
-               expr: @ast::expr,
-               discrim: @ast::expr,
-               arms: ~[ast::arm]) -> bool {
+pub fn check_match(fcx: @fn_ctxt,
+                   expr: @ast::expr,
+                   discrim: @ast::expr,
+                   arms: ~[ast::arm]) -> bool {
     let tcx = fcx.ccx.tcx;
     let mut bot;
 
@@ -68,15 +68,15 @@ fn check_match(fcx: @fn_ctxt,
     return bot;
 }
 
-struct pat_ctxt {
+pub struct pat_ctxt {
     fcx: @fn_ctxt,
     map: PatIdMap,
     match_region: ty::Region, // Region for the match as a whole
     block_region: ty::Region, // Region for the block of the arm
 }
 
-fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
-                     +subpats: Option<~[@ast::pat]>, expected: ty::t) {
+pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
+                         +subpats: Option<~[@ast::pat]>, expected: ty::t) {
 
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -197,14 +197,14 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 /// `substitutions` are the type substitutions applied to this struct type
 /// (e.g. K,V in HashMap<K,V>).
 /// `etc` is true if the pattern said '...' and false otherwise.
-fn check_struct_pat_fields(pcx: pat_ctxt,
-                           span: span,
-                           path: @ast::path,
-                           fields: ~[ast::field_pat],
-                           class_fields: ~[ty::field_ty],
-                           class_id: ast::def_id,
-                           substitutions: &ty::substs,
-                           etc: bool) {
+pub fn check_struct_pat_fields(pcx: pat_ctxt,
+                               span: span,
+                               path: @ast::path,
+                               fields: ~[ast::field_pat],
+                               class_fields: ~[ty::field_ty],
+                               class_id: ast::def_id,
+                               substitutions: &ty::substs,
+                               etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields.
@@ -249,10 +249,10 @@ fn check_struct_pat_fields(pcx: pat_ctxt,
     }
 }
 
-fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
-                    expected: ty::t, path: @ast::path,
-                    +fields: ~[ast::field_pat], etc: bool,
-                    class_id: ast::def_id, substitutions: &ty::substs) {
+pub fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
+                        expected: ty::t, path: @ast::path,
+                        +fields: ~[ast::field_pat], etc: bool,
+                        class_id: ast::def_id, substitutions: &ty::substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -287,15 +287,15 @@ fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
                             substitutions, etc);
 }
 
-fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
-                                      pat_id: ast::node_id,
-                                      span: span,
-                                      expected: ty::t,
-                                      path: @ast::path,
-                                      +fields: ~[ast::field_pat],
-                                      etc: bool,
-                                      enum_id: ast::def_id,
-                                      substitutions: &ty::substs) {
+pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
+                                          pat_id: ast::node_id,
+                                          span: span,
+                                          expected: ty::t,
+                                          path: @ast::path,
+                                          +fields: ~[ast::field_pat],
+                                          etc: bool,
+                                          enum_id: ast::def_id,
+                                          substitutions: &ty::substs) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -325,7 +325,7 @@ fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
+pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 

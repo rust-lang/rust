@@ -111,7 +111,7 @@ use syntax::ast_map::node_id_to_str;
 use syntax::ast_util::dummy_sp;
 use syntax::codemap::span;
 
-fn lookup(
+pub fn lookup(
     fcx: @fn_ctxt,
 
     // In a call `a.b::<X, Y, ...>(...)`:
@@ -142,7 +142,7 @@ fn lookup(
     return move mme;
 }
 
-struct LookupContext {
+pub struct LookupContext {
     fcx: @fn_ctxt,
     expr: @ast::expr,
     self_expr: @ast::expr,
@@ -157,8 +157,9 @@ struct LookupContext {
 
 /**
  * A potential method that might be called, assuming the receiver
- * is of a suitable type. */
-struct Candidate {
+ * is of a suitable type.
+ */
+pub struct Candidate {
     rcvr_ty: ty::t,
     rcvr_substs: ty::substs,
     explicit_self: ast::self_ty_,
@@ -175,12 +176,12 @@ struct Candidate {
  * How the self type should be transformed according to the form of explicit
  * self provided by the method.
  */
-enum TransformTypeFlag {
+pub enum TransformTypeFlag {
     TransformTypeNormally,
     TransformTypeForObject,
 }
 
-impl LookupContext {
+pub impl LookupContext {
     fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
         debug!("do_lookup(self_ty=%s, expr=%s, self_expr=%s)",
                self.ty_to_str(self_ty),
@@ -1253,12 +1254,12 @@ impl LookupContext {
     }
 }
 
-fn transform_self_type_for_method(tcx: ty::ctxt,
-                                  self_region: Option<ty::Region>,
-                                  impl_ty: ty::t,
-                                  self_type: ast::self_ty_,
-                                  flag: TransformTypeFlag)
-                               -> ty::t {
+pub fn transform_self_type_for_method(tcx: ty::ctxt,
+                                      self_region: Option<ty::Region>,
+                                      impl_ty: ty::t,
+                                      self_type: ast::self_ty_,
+                                      flag: TransformTypeFlag)
+                                   -> ty::t {
     match self_type {
       sty_static => {
         tcx.sess.bug(~"calling transform_self_type_for_method on \
@@ -1291,6 +1292,6 @@ fn transform_self_type_for_method(tcx: ty::ctxt,
     }
 }
 
-fn get_mode_from_self_type(self_type: ast::self_ty_) -> ast::rmode {
+pub fn get_mode_from_self_type(self_type: ast::self_ty_) -> ast::rmode {
     match self_type { sty_value => by_copy, _ => by_ref }
 }

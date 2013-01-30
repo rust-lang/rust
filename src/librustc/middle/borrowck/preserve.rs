@@ -16,22 +16,21 @@
 use core::prelude::*;
 
 use middle::borrowck::{RootInfo, bckerr, bckerr_code, bckres, borrowck_ctxt};
-use middle::borrowck::{cmt, err_mut_uniq, err_mut_variant};
+use middle::borrowck::{err_mut_uniq, err_mut_variant};
 use middle::borrowck::{err_out_of_root_scope, err_out_of_scope};
 use middle::borrowck::{err_root_not_permitted, root_map_key};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
 use middle::mem_categorization::{cat_discr, cat_local, cat_self, cat_special};
-use middle::mem_categorization::{cat_stack_upvar, comp_field, comp_index};
-use middle::mem_categorization::{comp_variant, gc_ptr, region_ptr};
+use middle::mem_categorization::{cat_stack_upvar, cmt, comp_field};
+use middle::mem_categorization::{comp_index, comp_variant, gc_ptr};
+use middle::mem_categorization::{region_ptr};
 use middle::ty;
 use util::common::indenter;
 
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 
-export public_methods, preserve_condition, pc_ok, pc_if_pure;
-
-enum preserve_condition {
+pub enum preserve_condition {
     pc_ok,
     pc_if_pure(bckerr)
 }

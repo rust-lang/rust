@@ -131,45 +131,15 @@ use syntax::print::pprust;
 use syntax::visit;
 use syntax;
 
-export _match;
-export vtable;
-export writeback;
-export regionmanip;
-export regionck;
-export demand;
-export method;
-export fn_ctxt;
-export impl_self_ty;
-export DerefArgs;
-export DontDerefArgs;
-export DoDerefArgs;
-export check_item_types;
-export check_block;
-export check_expr_has_type;
-export fn_ctxt;
-export lookup_def;
-export structure_of;
-export self_info;
-export structurally_resolved_type;
-export instantiate_path;
-export valid_range_bounds;
-
-#[legacy_exports]
 pub mod _match;
-#[legacy_exports]
 pub mod vtable;
-#[legacy_exports]
 pub mod writeback;
-#[legacy_exports]
 pub mod regionmanip;
-#[legacy_exports]
 pub mod regionck;
-#[legacy_exports]
 pub mod demand;
-#[legacy_exports]
 pub mod method;
 
-type self_info = {
+pub type self_info = {
     self_ty: ty::t,
     self_id: ast::node_id,
     def_id: ast::def_id,
@@ -264,7 +234,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
     }
 }
 
-fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
+pub fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     let visit = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_item: |a| check_item(ccx, a),
         .. *visit::default_simple_visitor()
@@ -984,12 +954,12 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
     }
 }
 
-fn valid_range_bounds(ccx: @crate_ctxt, from: @ast::expr, to: @ast::expr)
+pub fn valid_range_bounds(ccx: @crate_ctxt, from: @ast::expr, to: @ast::expr)
     -> bool {
     const_eval::compare_lit_exprs(ccx.tcx, from, to) <= 0
 }
 
-fn check_expr_has_type(
+pub fn check_expr_has_type(
     fcx: @fn_ctxt, expr: @ast::expr,
     expected: ty::t) -> bool
 {
@@ -2630,7 +2600,7 @@ fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
     return bot;
 }
 
-fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
+pub fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
     check_block_with_expected(fcx0, blk, None)
 }
 
@@ -2831,7 +2801,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
+pub fn lookup_def(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ast::def {
     lookup_def_ccx(fcx.ccx, sp, id)
 }
 
@@ -2901,12 +2871,12 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
 
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
-fn instantiate_path(fcx: @fn_ctxt,
-                    pth: @ast::path,
-                    tpt: ty_param_bounds_and_ty,
-                    span: span,
-                    node_id: ast::node_id,
-                    region_lb: ty::Region) {
+pub fn instantiate_path(fcx: @fn_ctxt,
+                        pth: @ast::path,
+                        tpt: ty_param_bounds_and_ty,
+                        span: span,
+                        node_id: ast::node_id,
+                        region_lb: ty::Region) {
     debug!(">>> instantiate_path");
 
     let ty_param_count = vec::len(*tpt.bounds);
@@ -2961,7 +2931,8 @@ fn instantiate_path(fcx: @fn_ctxt,
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
-fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
+pub fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t)
+                               -> ty::t {
     match infer::resolve_type(fcx.infcx(), tp, force_tvar) {
         Ok(t_s) if !ty::type_is_ty_var(t_s) => return t_s,
         _ => {
@@ -2974,7 +2945,7 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
 }
 
 // Returns the one-level-deep structure of the given type.
-fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
+pub fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
     /*bad*/copy ty::get(structurally_resolved_type(fcx, sp, typ)).sty
 }
 

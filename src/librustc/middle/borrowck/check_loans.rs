@@ -19,11 +19,11 @@
 
 use core::prelude::*;
 
-use middle::borrowck::{Loan, bckerr, borrowck_ctxt, cmt, inherent_mutability};
+use middle::borrowck::{Loan, bckerr, borrowck_ctxt, inherent_mutability};
 use middle::borrowck::{req_maps, root_map_key, save_and_restore};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
 use middle::mem_categorization::{cat_local, cat_rvalue, cat_self};
-use middle::mem_categorization::{cat_special, gc_ptr, loan_path, lp_arg};
+use middle::mem_categorization::{cat_special, cmt, gc_ptr, loan_path, lp_arg};
 use middle::mem_categorization::{lp_comp, lp_deref, lp_local};
 use middle::ty::{CopyValue, MoveValue, ReadValue};
 use middle::ty;
@@ -40,8 +40,6 @@ use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
-
-export check_loans;
 
 enum check_loan_ctxt = @{
     bccx: borrowck_ctxt,
@@ -65,9 +63,9 @@ enum purity_cause {
     pc_cmt(bckerr)
 }
 
-fn check_loans(bccx: borrowck_ctxt,
-               req_maps: req_maps,
-               crate: @ast::crate) {
+pub fn check_loans(bccx: borrowck_ctxt,
+                   req_maps: req_maps,
+                   crate: @ast::crate) {
     let clcx = check_loan_ctxt(@{bccx: bccx,
                                  req_maps: req_maps,
                                  reported: HashMap(),
