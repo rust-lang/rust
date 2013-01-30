@@ -30,12 +30,6 @@ use syntax::ast_util;
 use syntax::ast_util::respan;
 use std::map::HashMap;
 
-export parse_state_from_data;
-export parse_arg_data, parse_ty_data, parse_def_id, parse_ident;
-export parse_bounds_data;
-export pstate;
-export DefIdSource, NominalType, TypeWithId, TypeParameter;
-
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
 // data buffer. Whatever format you choose should not contain pipe characters.
@@ -50,7 +44,7 @@ export DefIdSource, NominalType, TypeWithId, TypeParameter;
 // def-id will depend on where it originated from.  Therefore, the conversion
 // function is given an indicator of the source of the def-id.  See
 // astencode.rs for more information.
-enum DefIdSource {
+pub enum DefIdSource {
     // Identifies a struct, trait, enum, etc.
     NominalType,
 
@@ -62,7 +56,7 @@ enum DefIdSource {
 }
 type conv_did = fn(source: DefIdSource, ast::def_id) -> ast::def_id;
 
-type pstate = {data: @~[u8], crate: int, mut pos: uint, tcx: ty::ctxt};
+pub type pstate = {data: @~[u8], crate: int, mut pos: uint, tcx: ty::ctxt};
 
 fn peek(st: @pstate) -> char {
     st.data[st.pos] as char
@@ -80,7 +74,7 @@ fn next_byte(st: @pstate) -> u8 {
     return b;
 }
 
-fn parse_ident(st: @pstate, last: char) -> ast::ident {
+pub fn parse_ident(st: @pstate, last: char) -> ast::ident {
     fn is_last(b: char, c: char) -> bool { return c == b; }
     return parse_ident_(st, |a| is_last(last, a) );
 }
@@ -94,21 +88,19 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
     return st.tcx.sess.ident_of(rslt);
 }
 
-fn parse_state_from_data(data: @~[u8], crate_num: int,
-                         pos: uint, tcx: ty::ctxt)
-    -> @pstate
-{
+pub fn parse_state_from_data(data: @~[u8], crate_num: int,
+                         pos: uint, tcx: ty::ctxt) -> @pstate {
     @{data: data, crate: crate_num, mut pos: pos, tcx: tcx}
 }
 
-fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
-                 conv: conv_did) -> ty::t {
+pub fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+                     conv: conv_did) -> ty::t {
     let st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_ty(st, conv)
 }
 
-fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
-                  conv: conv_did) -> ty::arg {
+pub fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+                      conv: conv_did) -> ty::arg {
     let st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_arg(st, conv)
 }
@@ -466,7 +458,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
 
 
 // Rust metadata parsing
-fn parse_def_id(buf: &[u8]) -> ast::def_id {
+pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let mut colon_idx = 0u;
     let len = vec::len(buf);
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
@@ -491,10 +483,9 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
     ast::def_id { crate: crate_num, node: def_num }
 }
 
-fn parse_bounds_data(data: @~[u8], start: uint,
-                     crate_num: int, tcx: ty::ctxt, conv: conv_did)
-    -> @~[ty::param_bound]
-{
+pub fn parse_bounds_data(data: @~[u8], start: uint,
+                         crate_num: int, tcx: ty::ctxt, conv: conv_did)
+                      -> @~[ty::param_bound] {
     let st = parse_state_from_data(data, crate_num, start, tcx);
     parse_bounds(st, conv)
 }

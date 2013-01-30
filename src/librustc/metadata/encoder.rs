@@ -51,20 +51,7 @@ use syntax::{ast_util, visit};
 use syntax;
 use writer = std::ebml::writer;
 
-export encode_parms;
-export encode_metadata;
-export encoded_ty;
-export reachable;
-export encode_inlined_item;
-export metadata_encoding_version;
-
 // used by astencode:
-export def_to_str;
-export encode_ctxt;
-export write_type;
-export write_vstore;
-export encode_def_id;
-
 type abbrev_map = map::HashMap<ty::t, tyencode::ty_abbrev>;
 
 pub type encode_inlined_item = fn@(ecx: @encode_ctxt,
@@ -72,7 +59,7 @@ pub type encode_inlined_item = fn@(ecx: @encode_ctxt,
                                    path: &[ast_map::path_elt],
                                    ii: ast::inlined_item);
 
-type encode_parms = {
+pub type encode_parms = {
     diag: span_handler,
     tcx: ty::ctxt,
     reachable: HashMap<ast::node_id, ()>,
@@ -97,7 +84,7 @@ type stats = {
     mut n_inlines: uint
 };
 
-enum encode_ctxt = {
+pub enum encode_ctxt = {
     diag: span_handler,
     tcx: ty::ctxt,
     stats: stats,
@@ -111,7 +98,7 @@ enum encode_ctxt = {
     type_abbrevs: abbrev_map
 };
 
-fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
+pub fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
     ecx.reachable.contains_key(id)
 }
 
@@ -125,7 +112,7 @@ fn encode_impl_type_basename(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                          ecx.tcx.sess.str_of(name));
 }
 
-fn encode_def_id(ebml_w: writer::Encoder, id: def_id) {
+pub fn encode_def_id(ebml_w: writer::Encoder, id: def_id) {
     ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
 }
 
@@ -177,7 +164,7 @@ fn encode_family(ebml_w: writer::Encoder, c: char) {
     ebml_w.end_tag();
 }
 
-fn def_to_str(did: def_id) -> ~str { fmt!("%d:%d", did.crate, did.node) }
+pub fn def_to_str(did: def_id) -> ~str { fmt!("%d:%d", did.crate, did.node) }
 
 fn encode_ty_type_param_bounds(ebml_w: writer::Encoder, ecx: @encode_ctxt,
                                params: @~[ty::param_bounds]) {
@@ -208,7 +195,7 @@ fn encode_variant_id(ebml_w: writer::Encoder, vid: def_id) {
     ebml_w.end_tag();
 }
 
-fn write_type(ecx: @encode_ctxt, ebml_w: writer::Encoder, typ: ty::t) {
+pub fn write_type(ecx: @encode_ctxt, ebml_w: writer::Encoder, typ: ty::t) {
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -218,8 +205,8 @@ fn write_type(ecx: @encode_ctxt, ebml_w: writer::Encoder, typ: ty::t) {
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
 
-fn write_vstore(ecx: @encode_ctxt, ebml_w: writer::Encoder,
-                vstore: ty::vstore) {
+pub fn write_vstore(ecx: @encode_ctxt, ebml_w: writer::Encoder,
+                    vstore: ty::vstore) {
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
@@ -1156,13 +1143,13 @@ fn encode_hash(ebml_w: writer::Encoder, hash: &str) {
 }
 
 // NB: Increment this as you change the metadata encoding version.
-const metadata_encoding_version : &[u8] = &[0x72, //'r' as u8,
-                                            0x75, //'u' as u8,
-                                            0x73, //'s' as u8,
-                                            0x74, //'t' as u8,
-                                            0, 0, 0, 1 ];
+pub const metadata_encoding_version : &[u8] = &[0x72, //'r' as u8,
+                                                0x75, //'u' as u8,
+                                                0x73, //'s' as u8,
+                                                0x74, //'t' as u8,
+                                                0, 0, 0, 1 ];
 
-fn encode_metadata(parms: encode_parms, crate: &crate) -> ~[u8] {
+pub fn encode_metadata(parms: encode_parms, crate: &crate) -> ~[u8] {
     let wr = @io::BytesWriter();
     let stats =
         {mut inline_bytes: 0,
@@ -1260,7 +1247,7 @@ fn encode_metadata(parms: encode_parms, crate: &crate) -> ~[u8] {
 }
 
 // Get the encoded string for a type
-fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
+pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
     let cx = @tyencode::ctxt {
         diag: tcx.diag,
         ds: def_to_str,

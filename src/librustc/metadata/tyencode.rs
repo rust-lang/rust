@@ -26,17 +26,7 @@ use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
 use middle::ty::Vid;
 
-export ctxt;
-export ty_abbrev;
-export ac_no_abbrevs;
-export ac_use_abbrevs;
-export enc_ty;
-export enc_bounds;
-export enc_mode;
-export enc_arg;
-export enc_vstore;
-
-struct ctxt {
+pub struct ctxt {
     diag: span_handler,
     // Def -> str Callback:
     ds: fn@(def_id) -> ~str,
@@ -49,9 +39,12 @@ struct ctxt {
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
-type ty_abbrev = {pos: uint, len: uint, s: @~str};
+pub type ty_abbrev = {pos: uint, len: uint, s: @~str};
 
-enum abbrev_ctxt { ac_no_abbrevs, ac_use_abbrevs(HashMap<ty::t, ty_abbrev>), }
+pub enum abbrev_ctxt {
+    ac_no_abbrevs,
+    ac_use_abbrevs(HashMap<ty::t, ty_abbrev>),
+}
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     match cx.abbrevs {
@@ -60,7 +53,7 @@ fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     }
 }
 
-fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
+pub fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(t) {
@@ -197,7 +190,7 @@ fn enc_bound_region(w: io::Writer, cx: @ctxt, br: ty::bound_region) {
     }
 }
 
-fn enc_vstore(w: io::Writer, cx: @ctxt, v: ty::vstore) {
+pub fn enc_vstore(w: io::Writer, cx: @ctxt, v: ty::vstore) {
     w.write_char('/');
     match v {
       ty::vstore_fixed(u) => {
@@ -342,12 +335,12 @@ fn enc_proto(w: io::Writer, proto: Proto) {
     }
 }
 
-fn enc_arg(w: io::Writer, cx: @ctxt, arg: ty::arg) {
+pub fn enc_arg(w: io::Writer, cx: @ctxt, arg: ty::arg) {
     enc_mode(w, cx, arg.mode);
     enc_ty(w, cx, arg.ty);
 }
 
-fn enc_mode(w: io::Writer, cx: @ctxt, m: mode) {
+pub fn enc_mode(w: io::Writer, cx: @ctxt, m: mode) {
     match ty::resolved_mode(cx.tcx, m) {
       by_move => w.write_char('-'),
       by_copy => w.write_char('+'),
@@ -386,7 +379,7 @@ fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
     enc_ty(w, cx, ft.sig.output);
 }
 
-fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
+pub fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
     for vec::each(*bs) |bound| {
         match *bound {
           ty::bound_owned => w.write_char('S'),
