@@ -264,7 +264,7 @@ pub type printer_ = {
     // BEGIN (if there is any) on top of it. Stuff is flushed off the
     // bottom as it becomes irrelevant due to the primary ring-buffer
     // advancing.
-    mut scan_stack: ~[mut uint],
+    mut scan_stack: ~[uint],
     mut scan_stack_empty: bool, // top==bottom disambiguator
     mut top: uint, // index of top of scan_stack
     mut bottom: uint, // index of bottom of scan_stack

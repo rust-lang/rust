@@ -144,7 +144,7 @@ pub mod chained {
 
     struct HashMap_<K, V> {
         mut count: uint,
-        mut chains: ~[mut Option<@Entry<K,V>>]
+        mut chains: ~[Option<@Entry<K,V>>]
     }
 
     pub type T<K, V> = @HashMap_<K, V>;
