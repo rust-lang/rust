@@ -31,7 +31,7 @@ pub fn mk_pass() -> Pass {
 fn should_trim_text() {
     let doc = test::mk_doc(~"#[doc = \" desc \"] \
                             mod m {
-                                #[legacy_exports]; }");
+                            }");
     assert doc.cratemod().mods()[0].desc() == Some(~"desc");
 }
 

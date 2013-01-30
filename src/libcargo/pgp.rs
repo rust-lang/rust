@@ -12,11 +12,11 @@ use core::os;
 use core::path::Path;
 use core::run;
 
-fn gpgv(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {
+pub fn gpgv(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {
     return run::program_output(~"gpgv", args);
 }
 
-fn signing_key() -> ~str {
+pub fn signing_key() -> ~str {
     ~"
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 Version: SKS 1.1.0
@@ -68,16 +68,16 @@ HI1jilzwKSXuV2EmyBk3tKh9NwscT/A78pr30FxxPUg3v72raNgusTo=
 "
 }
 
-fn signing_key_fp() -> ~str {
+pub fn signing_key_fp() -> ~str {
     ~"FE79 EDB0 3DEF B0D8 27D2  6C41 0B2D 6A28 3033 6376"
 }
 
-fn supported() -> bool {
+pub fn supported() -> bool {
     let r = gpgv(~[~"--version"]);
     r.status == 0
 }
 
-fn init(root: &Path) {
+pub fn init(root: &Path) {
     let p = root.push("gpg");
     if !os::path_is_dir(&p) {
         os::make_dir(&p, 0x1c0i32);
@@ -92,7 +92,7 @@ fn init(root: &Path) {
     }
 }
 
-fn add(root: &Path, key: &Path) {
+pub fn add(root: &Path, key: &Path) {
     let path = root.push("gpg");
     let p =
         run::program_output(~"gpg", ~[~"--homedir", path.to_str(),
@@ -102,7 +102,7 @@ fn add(root: &Path, key: &Path) {
     }
 }
 
-fn verify(root: &Path, data: &Path, sig: &Path) -> bool {
+pub fn verify(root: &Path, data: &Path, sig: &Path) -> bool {
     let path = root.push("gpg");
     let res = gpgv(~[~"--homedir", path.to_str(),
                   ~"--keyring", ~"pubring.gpg",

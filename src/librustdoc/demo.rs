@@ -75,7 +75,6 @@ fn take_my_order_please(
 }
 
 mod fortress_of_solitude {
-    #[legacy_exports];
     /*!
      * Superman's vacation home
      *
@@ -90,7 +89,6 @@ mod fortress_of_solitude {
 }
 
 mod blade_runner {
-    #[legacy_exports];
     /*!
      * Blade Runner is probably the best movie ever
      *
