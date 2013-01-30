@@ -50,7 +50,7 @@ pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
 // FIXME (#2249): A lot of these functions for producing expressions can
 // probably be factored out in common with other code that builds
 // expressions.  Also: Cleanup the naming of these functions.
-// NOTE: Moved many of the common ones to build.rs --kevina
+// Note: Moved many of the common ones to build.rs --kevina
 fn pieces_to_expr(cx: ext_ctxt, sp: span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {

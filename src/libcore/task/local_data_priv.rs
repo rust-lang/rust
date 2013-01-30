@@ -59,7 +59,7 @@ extern fn cleanup_task_local_map(map_ptr: *libc::c_void) {
 unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
 
     // Relies on the runtime initialising the pointer to null.
-    // NOTE: The map's box lives in TLS invisibly referenced once. Each time
+    // Note: The map's box lives in TLS invisibly referenced once. Each time
     // we retrieve it for get/set, we make another reference, which get/set
     // drop when they finish. No "re-storing after modifying" is needed.
     let map_ptr = rt::rust_get_task_local_data(task);
