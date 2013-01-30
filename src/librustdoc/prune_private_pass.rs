@@ -10,8 +10,6 @@
 
 //! Prune things that are private
 
-#[legacy_exports];
-
 use core::prelude::*;
 
 use astsrv;
@@ -24,10 +22,7 @@ use core::util;
 use core::vec;
 use syntax::ast;
 
-export mk_pass;
-export run;
-
-fn mk_pass() -> Pass {
+pub fn mk_pass() -> Pass {
     Pass {
         name: ~"prune_private",
         f: run

@@ -96,7 +96,7 @@ fn should_write_modules_last() {
         ~"mod a { }\
          fn b() { }\
          mod c {
-             #[legacy_exports]; }\
+         }\
          fn d() { }"
     );
 
@@ -371,7 +371,7 @@ fn should_write_sections() {
          # Header\n\
          Body\"]\
          mod a {
-             #[legacy_exports]; }");
+         }");
     assert str::contains(markdown, ~"#### Header\n\nBody\n\n");
 }
 
@@ -832,8 +832,6 @@ fn should_write_struct_header() {
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
-
     use astsrv;
     use attr_pass;
     use config;
@@ -853,14 +851,14 @@ mod test {
     use core::path::Path;
     use core::str;
 
-    fn render(+source: ~str) -> ~str {
+    pub fn render(+source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);
         let markdown = write_markdown_str_srv(srv, doc);
         debug!("markdown: %s", markdown);
         markdown
     }
 
-    fn create_doc_srv(+source: ~str) -> (astsrv::Srv, doc::Doc) {
+    pub fn create_doc_srv(+source: ~str) -> (astsrv::Srv, doc::Doc) {
         do astsrv::from_str(source) |srv| {
 
             let config = config::Config {
@@ -890,12 +888,12 @@ mod test {
         }
     }
 
-    fn create_doc(+source: ~str) -> doc::Doc {
+    pub fn create_doc(+source: ~str) -> doc::Doc {
         let (_, doc) = create_doc_srv(source);
         doc
     }
 
-    fn write_markdown_str(
+    pub fn write_markdown_str(
         +doc: doc::Doc
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
@@ -903,7 +901,7 @@ mod test {
         return oldcomm::recv(po).second();
     }
 
-    fn write_markdown_str_srv(
+    pub fn write_markdown_str_srv(
         srv: astsrv::Srv,
         +doc: doc::Doc
     ) -> ~str {
@@ -914,13 +912,13 @@ mod test {
     }
 
     #[test]
-    fn write_markdown_should_write_mod_headers() {
+    pub fn write_markdown_should_write_mod_headers() {
         let markdown = render(~"mod moo { }");
         assert str::contains(markdown, ~"# Module `moo`");
     }
 
     #[test]
-    fn should_leave_blank_line_after_header() {
+    pub fn should_leave_blank_line_after_header() {
         let markdown = render(~"mod morp { }");
         assert str::contains(markdown, ~"Module `morp`\n\n");
     }

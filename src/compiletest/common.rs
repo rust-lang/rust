@@ -12,16 +12,15 @@ use core::prelude::*;
 
 use cmp;
 
-enum mode { mode_compile_fail, mode_run_fail, mode_run_pass, mode_pretty, }
-
-impl mode : cmp::Eq {
-    pure fn eq(&self, other: &mode) -> bool {
-        (*other) as int == (*self) as int
-    }
-    pure fn ne(&self, other: &mode) -> bool { !(*self).eq(other) }
+#[deriving_eq]
+pub enum mode {
+    mode_compile_fail,
+    mode_run_fail,
+    mode_run_pass,
+    mode_pretty,
 }
 
-type config = {
+pub type config = {
     // The library paths required for running the compiler
     compile_lib_path: ~str,
 

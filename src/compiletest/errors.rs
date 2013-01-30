@@ -15,13 +15,10 @@ use io;
 use io::ReaderUtil;
 use str;
 
-export load_errors;
-export ExpectedError;
-
-struct ExpectedError { line: uint, kind: ~str, msg: ~str }
+pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 
 // Load any test directives embedded in the file
-fn load_errors(testfile: &Path) -> ~[ExpectedError] {
+pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
     let mut error_patterns = ~[];
     let rdr = io::file_reader(testfile).get();
     let mut line_num = 1u;

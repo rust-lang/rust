@@ -20,7 +20,6 @@
 #[no_core];
 
 #[legacy_modes];
-#[legacy_exports];
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
@@ -40,27 +39,22 @@ use syntax::parse;
 use syntax::print::pprust;
 use syntax::diagnostic;
 
-enum test_mode { tm_converge, tm_run, }
-struct Context { mode: test_mode } // + rng
+#[deriving_eq]
+pub enum test_mode { tm_converge, tm_run, }
 
-impl test_mode : cmp::Eq {
-    pure fn eq(&self, other: &test_mode) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &test_mode) -> bool { !(*self).eq(other) }
-}
+pub struct Context { mode: test_mode } // + rng
 
-fn write_file(filename: &Path, content: ~str) {
+pub fn write_file(filename: &Path, content: ~str) {
     result::get(
         &io::file_writer(filename, ~[io::Create, io::Truncate]))
         .write_str(content);
 }
 
-fn contains(haystack: ~str, needle: ~str) -> bool {
+pub fn contains(haystack: ~str, needle: ~str) -> bool {
     str::contains(haystack, needle)
 }
 
-fn find_rust_files(files: &mut ~[Path], path: &Path) {
+pub fn find_rust_files(files: &mut ~[Path], path: &Path) {
     if path.filetype() == Some(~".rs") && !contains(path.to_str(), ~"utf8") {
         // ignoring "utf8" tests because something is broken
         files.push(*path);
@@ -74,7 +68,7 @@ fn find_rust_files(files: &mut ~[Path], path: &Path) {
 }
 
 
-fn common_exprs() -> ~[ast::expr] {
+pub fn common_exprs() -> ~[ast::expr] {
     fn dse(e: ast::expr_) -> ast::expr {
         ast::expr {
             id: 0,
@@ -104,11 +98,11 @@ fn common_exprs() -> ~[ast::expr] {
     ]
 }
 
-pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
+pub pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
     safe_to_use_expr(*e, tm)
 }
 
-pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
+pub pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
     match tm {
       tm_converge => {
         match e.node {
@@ -142,33 +136,37 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
     }
 }
 
-fn safe_to_steal_ty(t: @ast::Ty, tm: test_mode) -> bool {
+pub fn safe_to_steal_ty(t: @ast::Ty, tm: test_mode) -> bool {
     // Restrictions happen to be the same.
     safe_to_replace_ty(t.node, tm)
 }
 
 // Not type-parameterized: https://github.com/mozilla/rust/issues/898 (FIXED)
-fn stash_expr_if(c: fn@(@ast::expr, test_mode)->bool,
-                 es: @mut ~[ast::expr],
-                 e: @ast::expr,
-                 tm: test_mode) {
+pub fn stash_expr_if(c: fn@(@ast::expr, test_mode)->bool,
+                     es: @mut ~[ast::expr],
+                     e: @ast::expr,
+                     tm: test_mode) {
     if c(e, tm) {
         *es += ~[*e];
-    } else {/* now my indices are wrong :( */ }
+    } else {
+        /* now my indices are wrong :( */
+    }
 }
 
-fn stash_ty_if(c: fn@(@ast::Ty, test_mode)->bool,
-               es: @mut ~[ast::Ty],
-               e: @ast::Ty,
-               tm: test_mode) {
+pub fn stash_ty_if(c: fn@(@ast::Ty, test_mode)->bool,
+                   es: @mut ~[ast::Ty],
+                   e: @ast::Ty,
+                   tm: test_mode) {
     if c(e, tm) {
         es.push(*e);
-    } else {/* now my indices are wrong :( */ }
+    } else {
+        /* now my indices are wrong :( */
+    }
 }
 
-struct StolenStuff {exprs: ~[ast::expr], tys: ~[ast::Ty]}
+pub struct StolenStuff {exprs: ~[ast::expr], tys: ~[ast::Ty]}
 
-fn steal(crate: ast::crate, tm: test_mode) -> StolenStuff {
+pub fn steal(crate: ast::crate, tm: test_mode) -> StolenStuff {
     let exprs = @mut ~[];
     let tys = @mut ~[];
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
@@ -181,7 +179,7 @@ fn steal(crate: ast::crate, tm: test_mode) -> StolenStuff {
 }
 
 
-fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
+pub fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
     match e {
       // https://github.com/mozilla/rust/issues/652
       ast::expr_if(*) => { false }
@@ -194,7 +192,7 @@ fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
     }
 }
 
-fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
+pub fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
     match t {
       ast::ty_infer => { false } // always implicit, always top level
       ast::ty_bot => { false }   // in source, can only appear
@@ -205,8 +203,8 @@ fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
 }
 
 // Replace the |i|th expr (in fold order) of |crate| with |newexpr|.
-fn replace_expr_in_crate(crate: ast::crate, i: uint,
-                         newexpr: ast::expr, tm: test_mode) ->
+pub fn replace_expr_in_crate(crate: ast::crate, i: uint,
+                             newexpr: ast::expr, tm: test_mode) ->
    ast::crate {
     let j: @mut uint = @mut 0u;
     fn fold_expr_rep(j_: @mut uint, i_: uint, newexpr_: ast::expr_,
@@ -233,8 +231,8 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint,
 
 
 // Replace the |i|th ty (in fold order) of |crate| with |newty|.
-fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
-                       tm: test_mode) -> ast::crate {
+pub fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
+                           tm: test_mode) -> ast::crate {
     let j: @mut uint = @mut 0u;
     fn fold_ty_rep(j_: @mut uint, i_: uint, newty_: ast::ty_,
                    original: ast::ty_, fld: fold::ast_fold,
@@ -254,17 +252,17 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
     *crate2
 }
 
-fn under(n: uint, it: fn(uint)) {
+pub fn under(n: uint, it: fn(uint)) {
     let mut i: uint = 0u;
     while i < n { it(i); i += 1u; }
 }
 
-fn as_str(f: fn@(+x: io::Writer)) -> ~str {
+pub fn as_str(f: fn@(+x: io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
-fn check_variants_of_ast(crate: ast::crate, codemap: @codemap::CodeMap,
-                         filename: &Path, cx: Context) {
+pub fn check_variants_of_ast(crate: ast::crate, codemap: @codemap::CodeMap,
+                             filename: &Path, cx: Context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = do common_exprs().filtered |a| {
         safe_to_use_expr(*a, cx.mode)
@@ -276,7 +274,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: @codemap::CodeMap,
                      pprust::ty_to_str, replace_ty_in_crate, cx);
 }
 
-fn check_variants_T<T: Copy>(
+pub fn check_variants_T<T: Copy>(
   crate: ast::crate,
   codemap: @codemap::CodeMap,
   filename: &Path,
@@ -334,12 +332,12 @@ fn check_variants_T<T: Copy>(
     }
 }
 
-fn last_part(filename: ~str) -> ~str {
+pub fn last_part(filename: ~str) -> ~str {
   let ix = option::get(str::rfind_char(filename, '/'));
   str::slice(filename, ix + 1u, str::len(filename) - 3u)
 }
 
-enum happiness {
+pub enum happiness {
     passed,
     cleanly_rejected(~str),
     known_bug(~str),
@@ -351,8 +349,8 @@ enum happiness {
 // - that would be tricky, requiring use of tasks or serialization
 //   or randomness.
 // This seems to find plenty of bugs as it is :)
-fn check_whole_compiler(code: ~str, suggested_filename_prefix: &Path,
-                        allow_running: bool) {
+pub fn check_whole_compiler(code: ~str, suggested_filename_prefix: &Path,
+                            allow_running: bool) {
     let filename = &suggested_filename_prefix.with_filetype("rs");
     write_file(filename, code);
 
@@ -376,19 +374,19 @@ fn check_whole_compiler(code: ~str, suggested_filename_prefix: &Path,
     }
 }
 
-fn removeIfExists(filename: &Path) {
+pub fn removeIfExists(filename: &Path) {
     // So sketchy!
     assert !contains(filename.to_str(), ~" ");
     run::program_output(~"bash", ~[~"-c", ~"rm " + filename.to_str()]);
 }
 
-fn removeDirIfExists(filename: &Path) {
+pub fn removeDirIfExists(filename: &Path) {
     // So sketchy!
     assert !contains(filename.to_str(), ~" ");
     run::program_output(~"bash", ~[~"-c", ~"rm -r " + filename.to_str()]);
 }
 
-fn check_running(exe_filename: &Path) -> happiness {
+pub fn check_running(exe_filename: &Path) -> happiness {
     let p = run::program_output(
         ~"/Users/jruderman/scripts/timed_run_rust_program.py",
         ~[exe_filename.to_str()]);
@@ -427,7 +425,7 @@ fn check_running(exe_filename: &Path) -> happiness {
     }
 }
 
-fn check_compiling(filename: &Path) -> happiness {
+pub fn check_compiling(filename: &Path) -> happiness {
     let p = run::program_output(
         ~"/Users/jruderman/code/rust/build/x86_64-apple-darwin/\
          stage1/bin/rustc",
@@ -460,7 +458,7 @@ fn check_compiling(filename: &Path) -> happiness {
 }
 
 
-fn parse_and_print(code: @~str) -> ~str {
+pub fn parse_and_print(code: @~str) -> ~str {
     let filename = Path("tmp.rs");
     let sess = parse::new_parse_sess(option::None);
     write_file(&filename, *code);
@@ -481,7 +479,7 @@ fn parse_and_print(code: @~str) -> ~str {
     }
 }
 
-fn has_raw_pointers(c: ast::crate) -> bool {
+pub fn has_raw_pointers(c: ast::crate) -> bool {
     let has_rp = @mut false;
     fn visit_ty(flag: @mut bool, t: @ast::Ty) {
         match t.node {
@@ -497,7 +495,7 @@ fn has_raw_pointers(c: ast::crate) -> bool {
     return *has_rp;
 }
 
-fn content_is_dangerous_to_run(code: ~str) -> bool {
+pub fn content_is_dangerous_to_run(code: ~str) -> bool {
     let dangerous_patterns =
         ~[~"xfail-test",
          ~"import",  // espeically fs, run
@@ -509,7 +507,7 @@ fn content_is_dangerous_to_run(code: ~str) -> bool {
     return false;
 }
 
-fn content_is_dangerous_to_compile(code: ~str) -> bool {
+pub fn content_is_dangerous_to_compile(code: ~str) -> bool {
     let dangerous_patterns =
         ~[~"xfail-test"];
 
@@ -517,7 +515,7 @@ fn content_is_dangerous_to_compile(code: ~str) -> bool {
     return false;
 }
 
-fn content_might_not_converge(code: ~str) -> bool {
+pub fn content_might_not_converge(code: ~str) -> bool {
     let confusing_patterns =
         ~[~"xfail-test",
          ~"xfail-pretty",
@@ -533,7 +531,7 @@ fn content_might_not_converge(code: ~str) -> bool {
     return false;
 }
 
-fn file_might_not_converge(filename: &Path) -> bool {
+pub fn file_might_not_converge(filename: &Path) -> bool {
     let confusing_files = ~[
       ~"expr-alt.rs", // pretty-printing "(a = b) = c"
                      // vs "a = b = c" and wrapping
@@ -552,7 +550,7 @@ fn file_might_not_converge(filename: &Path) -> bool {
     return false;
 }
 
-fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
+pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
 
     let mut i = 0u;
     let mut newv = code;
@@ -579,7 +577,7 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
     }
 }
 
-fn check_convergence(files: &[Path]) {
+pub fn check_convergence(files: &[Path]) {
     error!("pp convergence tests: %u files", vec::len(files));
     for files.each |file| {
         if !file_might_not_converge(file) {
@@ -594,7 +592,7 @@ fn check_convergence(files: &[Path]) {
     }
 }
 
-fn check_variants(files: &[Path], cx: Context) {
+pub fn check_variants(files: &[Path], cx: Context) {
     for files.each |file| {
         if cx.mode == tm_converge &&
             file_might_not_converge(file) {
@@ -639,7 +637,7 @@ fn check_variants(files: &[Path], cx: Context) {
     }
 }
 
-fn main() {
+pub fn main() {
     let args = os::args();
     if vec::len(args) != 2u {
         error!("usage: %s <testdir>", args[0]);

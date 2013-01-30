@@ -22,8 +22,6 @@ use str;
 use task;
 use vec;
 
-export run;
-
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
 
@@ -54,12 +52,11 @@ fn target_env(_lib_path: ~str, _prog: ~str) -> ~[(~str,~str)] {
 struct Result {status: int, out: ~str, err: ~str}
 
 // FIXME (#2659): This code is duplicated in core::run::program_output
-fn run(lib_path: ~str,
-       prog: ~str,
-       args: ~[~str],
-       env: ~[(~str, ~str)],
-       input: Option<~str>) -> Result {
-
+pub fn run(lib_path: ~str,
+           prog: ~str,
+           args: ~[~str],
+           env: ~[(~str, ~str)],
+           input: Option<~str>) -> Result {
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();

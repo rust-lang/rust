@@ -17,11 +17,7 @@ use io::ReaderUtil;
 use os;
 use str;
 
-export TestProps;
-export load_props;
-export is_test_ignored;
-
-struct TestProps {
+pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     error_patterns: ~[~str],
     // Extra flags to pass to the compiler
@@ -36,7 +32,7 @@ struct TestProps {
 }
 
 // Load any test directives embedded in the file
-fn load_props(testfile: &Path) -> TestProps {
+pub fn load_props(testfile: &Path) -> TestProps {
     let mut error_patterns = ~[];
     let mut aux_builds = ~[];
     let mut exec_env = ~[];
@@ -73,7 +69,7 @@ fn load_props(testfile: &Path) -> TestProps {
     };
 }
 
-fn is_test_ignored(config: config, testfile: &Path) -> bool {
+pub fn is_test_ignored(config: config, testfile: &Path) -> bool {
     let mut found = false;
     for iter_header(testfile) |ln| {
         if parse_name_directive(ln, ~"xfail-test") { return true; }

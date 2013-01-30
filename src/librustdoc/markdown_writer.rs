@@ -272,14 +272,12 @@ fn should_name_mod_file_names_by_path() {
 
 #[cfg(test)]
 mod test {
-    #[legacy_exports];
-
     use astsrv;
     use doc;
     use extract;
     use path_pass;
 
-    fn mk_doc(+name: ~str, +source: ~str) -> doc::Doc {
+    pub fn mk_doc(+name: ~str, +source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, name);
             let doc = (path_pass::mk_pass().f)(srv, doc);

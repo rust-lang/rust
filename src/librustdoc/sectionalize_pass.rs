@@ -171,7 +171,7 @@ fn should_create_section_headers() {
          # Header\n\
          Body\"]\
          mod a {
-             #[legacy_exports]; }");
+         }");
     assert str::contains(
         doc.cratemod().mods()[0].item.sections[0].header,
         ~"Header");
@@ -184,7 +184,7 @@ fn should_create_section_bodies() {
          # Header\n\
          Body\"]\
          mod a {
-             #[legacy_exports]; }");
+         }");
     assert str::contains(
         doc.cratemod().mods()[0].item.sections[0].body,
         ~"Body");
@@ -197,7 +197,7 @@ fn should_not_create_sections_from_indented_headers() {
          Text\n             # Header\n\
          Body\"]\
          mod a {
-             #[legacy_exports]; }");
+         }");
     assert vec::is_empty(doc.cratemod().mods()[0].item.sections);
 }
 
@@ -209,7 +209,7 @@ fn should_remove_section_text_from_main_desc() {
          # Header\n\
          Body\"]\
          mod a {
-             #[legacy_exports]; }");
+         }");
     assert !str::contains(
         doc.cratemod().mods()[0].desc().get(),
         ~"Header");
@@ -225,7 +225,7 @@ fn should_eliminate_desc_if_it_is_just_whitespace() {
          # Header\n\
          Body\"]\
          mod a {
-             #[legacy_exports]; }");
+         }");
     assert doc.cratemod().mods()[0].desc() == None;
 }
 

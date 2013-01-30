@@ -46,7 +46,7 @@ fn test() {
     let source =
         ~"mod imod { } \
          extern mod inmod {
-             #[legacy_exports]; } \
+         } \
          const iconst: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \

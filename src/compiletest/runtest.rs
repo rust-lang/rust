@@ -31,9 +31,7 @@ use procsrv;
 use util;
 use util::logv;
 
-export run;
-
-fn run(config: config, testfile: ~str) {
+pub fn run(config: config, testfile: ~str) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str(~"\n\n");

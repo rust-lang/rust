@@ -11,7 +11,6 @@
 #[crate_type = "bin"];
 
 #[no_core];
-#[legacy_exports];
 #[legacy_records];
 
 #[allow(vecs_implicitly_copyable)];
@@ -24,17 +23,11 @@ extern mod std(vers = "0.6");
 
 use core::*;
 
-#[legacy_exports]
 mod procsrv;
-#[legacy_exports]
 mod util;
-#[legacy_exports]
 mod header;
-#[legacy_exports]
 mod runtest;
-#[legacy_exports]
 mod common;
-#[legacy_exports]
 mod errors;
 
 use std::getopts;
@@ -51,14 +44,14 @@ use common::mode_pretty;
 use common::mode;
 use util::logv;
 
-fn main() {
+pub fn main() {
     let args = os::args();
     let config = parse_config(args);
     log_config(config);
     run_tests(config);
 }
 
-fn parse_config(args: ~[~str]) -> config {
+pub fn parse_config(args: ~[~str]) -> config {
     let opts =
         ~[getopts::reqopt(~"compile-lib-path"),
           getopts::reqopt(~"run-lib-path"),
@@ -105,7 +98,7 @@ fn parse_config(args: ~[~str]) -> config {
          verbose: getopts::opt_present(matches, ~"verbose")};
 }
 
-fn log_config(config: config) {
+pub fn log_config(config: config) {
     let c = config;
     logv(c, fmt!("configuration:"));
     logv(c, fmt!("compile_lib_path: %s", config.compile_lib_path));
@@ -124,15 +117,15 @@ fn log_config(config: config) {
     logv(c, fmt!("\n"));
 }
 
-fn opt_str(maybestr: Option<~str>) -> ~str {
+pub fn opt_str(maybestr: Option<~str>) -> ~str {
     match maybestr { option::Some(s) => s, option::None => ~"(none)" }
 }
 
-fn str_opt(maybestr: ~str) -> Option<~str> {
+pub fn str_opt(maybestr: ~str) -> Option<~str> {
     if maybestr != ~"(none)" { option::Some(maybestr) } else { option::None }
 }
 
-fn str_mode(s: ~str) -> mode {
+pub fn str_mode(s: ~str) -> mode {
     match s {
       ~"compile-fail" => mode_compile_fail,
       ~"run-fail" => mode_run_fail,
@@ -142,7 +135,7 @@ fn str_mode(s: ~str) -> mode {
     }
 }
 
-fn mode_str(mode: mode) -> ~str {
+pub fn mode_str(mode: mode) -> ~str {
     match mode {
       mode_compile_fail => ~"compile-fail",
       mode_run_fail => ~"run-fail",
@@ -151,14 +144,14 @@ fn mode_str(mode: mode) -> ~str {
     }
 }
 
-fn run_tests(config: config) {
+pub fn run_tests(config: config) {
     let opts = test_opts(config);
     let tests = make_tests(config);
     let res = test::run_tests_console(&opts, tests);
     if !res { fail ~"Some tests failed"; }
 }
 
-fn test_opts(config: config) -> test::TestOpts {
+pub fn test_opts(config: config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter,
         run_ignored: config.run_ignored,
@@ -166,7 +159,7 @@ fn test_opts(config: config) -> test::TestOpts {
     }
 }
 
-fn make_tests(config: config) -> ~[test::TestDesc] {
+pub fn make_tests(config: config) -> ~[test::TestDesc] {
     debug!("making tests from %s",
            config.src_base.to_str());
     let mut tests = ~[];
@@ -180,7 +173,7 @@ fn make_tests(config: config) -> ~[test::TestDesc] {
     move tests
 }
 
-fn is_test(config: config, testfile: &Path) -> bool {
+pub fn is_test(config: config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
@@ -203,7 +196,7 @@ fn is_test(config: config, testfile: &Path) -> bool {
     return valid;
 }
 
-fn make_test(config: config, testfile: &Path) ->
+pub fn make_test(config: config, testfile: &Path) ->
    test::TestDesc {
     test::TestDesc {
         name: make_test_name(config, testfile),
@@ -213,11 +206,11 @@ fn make_test(config: config, testfile: &Path) ->
     }
 }
 
-fn make_test_name(config: config, testfile: &Path) -> ~str {
+pub fn make_test_name(config: config, testfile: &Path) -> ~str {
     fmt!("[%s] %s", mode_str(config.mode), testfile.to_str())
 }
 
-fn make_test_closure(config: config, testfile: &Path) -> test::TestFn {
+pub fn make_test_closure(config: config, testfile: &Path) -> test::TestFn {
     let testfile = testfile.to_str();
     fn~() { runtest::run(config, testfile) }
 }
