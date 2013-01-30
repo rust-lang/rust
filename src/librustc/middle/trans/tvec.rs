@@ -276,10 +276,9 @@ fn trans_lit_str(bcx: block,
 
 
 fn trans_uniq_or_managed_vstore(bcx: block,
-                            heap: heap,
-                            vstore_expr: @ast::expr,
-                            content_expr: @ast::expr) -> DatumBlock
-{
+                                heap: heap,
+                                vstore_expr: @ast::expr,
+                                content_expr: @ast::expr) -> DatumBlock {
     //!
     //
     // @[...] or ~[...] (also @"..." or ~"...") allocate boxes in the
@@ -288,6 +287,34 @@ fn trans_uniq_or_managed_vstore(bcx: block,
     debug!("trans_uniq_or_managed_vstore(vstore_expr=%s, heap=%?)",
            bcx.expr_to_str(vstore_expr), heap);
     let _indenter = indenter();
+
+    // Handle ~"".
+    match heap {
+        heap_exchange => {
+            match content_expr.node {
+                ast::expr_lit(@ast::spanned {
+                    node: ast::lit_str(s), _
+                }) => {
+                    let llptrval = C_cstr(bcx.ccx(), copy *s);
+                    let llptrval = PointerCast(bcx, llptrval, T_ptr(T_i8()));
+                    let llsizeval = C_uint(bcx.ccx(), s.len());
+                    let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
+                    let lldestval = datum::scratch_datum(bcx, typ, false);
+                    let bcx = callee::trans_rtcall_or_lang_call(
+                        bcx,
+                        bcx.tcx().lang_items.strdup_uniq_fn(),
+                        ~[ llptrval, llsizeval ],
+                        expr::SaveIn(lldestval.to_ref_llval(bcx)));
+                    return datum::DatumBlock {
+                        bcx: bcx,
+                        datum: lldestval
+                    };
+                }
+                _ => {}
+            }
+        }
+        heap_shared => {}
+    }
 
     let vt = vec_types_from_expr(bcx, vstore_expr);
     let count = elements_required(bcx, content_expr);
