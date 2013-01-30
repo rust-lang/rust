@@ -851,6 +851,9 @@ mod quux {
 
 In this example, the module `quux` re-exports all of the public names defined in `foo`.
 
+Also note that the paths contained in `use` items are relative to the crate root; so, in the previous
+example, the use refers to `quux::foo::*`, and not simply to `foo::*`.
+
 ### Functions
 
 A _function item_ defines a sequence of [statements](#statements) and an optional final [expression](#expressions), along with a name and a set of parameters.

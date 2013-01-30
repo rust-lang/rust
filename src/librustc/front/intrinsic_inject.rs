@@ -13,6 +13,7 @@ use core::prelude::*;
 use driver::session::Session;
 use syntax::parse;
 use syntax::ast;
+use syntax::codemap::spanned;
 
 use core::vec;
 
@@ -34,7 +35,7 @@ pub fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
 
     let items = vec::append(~[item], crate.node.module.items);
 
-    @ast::spanned {
+    @spanned {
         node: ast::crate_ {
             module: ast::_mod {
                 items: items,

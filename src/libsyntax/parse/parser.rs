@@ -55,15 +55,16 @@ use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::{visibility, vstore, vstore_box, vstore_fixed, vstore_slice};
 use ast::{vstore_uniq};
 use ast;
-use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
+use ast_util::{ident_to_path, operator_prec};
 use ast_util;
 use classify;
-use codemap::{span,FssNone, BytePos};
+use codemap::{span,FssNone, BytePos, spanned, respan, mk_sp};
 use codemap;
 use parse::attr::parser_attr;
 use parse::common::{seq_sep_none, token_to_str};
 use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::reader;
+use parse::lexer::TokenAndSpan;
 use parse::obsolete::{ObsoleteClassTraits, ObsoleteModeInFnType};
 use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
 use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
@@ -193,7 +194,7 @@ pub fn Parser(sess: parse_sess,
         token: tok0.tok,
         span: span0,
         last_span: span0,
-        buffer: [mut {tok: tok0.tok, sp: span0}, ..4],
+        buffer: [mut TokenAndSpan {tok: tok0.tok, sp: span0}, ..4],
         buffer_start: 0,
         buffer_end: 0,
         tokens_consumed: 0u,
@@ -213,7 +214,7 @@ pub struct Parser {
     mut token: token::Token,
     mut span: span,
     mut last_span: span,
-    mut buffer: [mut {tok: token::Token, sp: span} * 4],
+    mut buffer: [mut TokenAndSpan * 4],
     mut buffer_start: int,
     mut buffer_end: int,
     mut tokens_consumed: uint,
@@ -234,6 +235,7 @@ pub struct Parser {
 }
 
 pub impl Parser {
+    // advance the parser by one token
     fn bump() {
         self.last_span = self.span;
         let next = if self.buffer_start == self.buffer_end {
@@ -247,7 +249,8 @@ pub impl Parser {
         self.span = next.sp;
         self.tokens_consumed += 1u;
     }
-    fn swap(next: token::Token, +lo: BytePos, +hi: BytePos) {
+    // EFFECT: replace the current token and span with the given one
+    fn replace_token(next: token::Token, +lo: BytePos, +hi: BytePos) {
         self.token = next;
         self.span = mk_sp(lo, hi);
     }
@@ -800,7 +803,7 @@ pub impl Parser {
             self.bump();
             self.lit_from_token(tok)
         };
-        ast::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
+        codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
     fn parse_path_without_tps() -> @path {
@@ -875,7 +878,7 @@ pub impl Parser {
                 self.parse_seq_lt_gt(Some(token::COMMA),
                                      |p| p.parse_ty(false))
             } else {
-                ast::spanned {node: ~[], span: path.span}
+                codemap::spanned {node: ~[], span: path.span}
             }
         };
 
@@ -917,14 +920,14 @@ pub impl Parser {
         @expr {
             id: self.get_id(),
             callee_id: self.get_id(),
-            node: expr_mac(ast::spanned {node: m, span: mk_sp(lo, hi)}),
+            node: expr_mac(codemap::spanned {node: m, span: mk_sp(lo, hi)}),
             span: mk_sp(lo, hi),
         }
     }
 
     fn mk_lit_u32(i: u32) -> @expr {
         let span = self.span;
-        let lv_lit = @ast::spanned { node: lit_uint(i as u64, ty_u32),
+        let lv_lit = @codemap::spanned { node: lit_uint(i as u64, ty_u32),
                                      span: span };
 
         @expr {
@@ -1404,7 +1407,7 @@ pub impl Parser {
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-evec
                 ex = match e.node {
-                  expr_vec(*) | expr_lit(@ast::spanned {
+                  expr_vec(*) | expr_lit(@codemap::spanned {
                     node: lit_str(_), span: _
                   })
                   if m == m_imm => {
@@ -1429,7 +1432,7 @@ pub impl Parser {
               expr_vec(*) if m == m_mutbl =>
                 expr_vstore(e, expr_vstore_mut_box),
               expr_vec(*) if m == m_imm => expr_vstore(e, expr_vstore_box),
-              expr_lit(@ast::spanned {
+              expr_lit(@codemap::spanned {
                   node: lit_str(_), span: _}) if m == m_imm =>
                 expr_vstore(e, expr_vstore_box),
               _ => expr_unary(box(m), e)
@@ -1442,7 +1445,7 @@ pub impl Parser {
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
-              expr_vec(*) | expr_lit(@ast::spanned {
+              expr_vec(*) | expr_lit(@codemap::spanned {
                 node: lit_str(_), span: _})
               if m == m_imm => expr_vstore(e, expr_vstore_uniq),
               _ => expr_unary(uniq(m), e)
@@ -1496,6 +1499,7 @@ pub impl Parser {
         return lhs;
     }
 
+    // parse an arbitrary expression.
     fn parse_assign_expr() -> @expr {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
@@ -1794,7 +1798,7 @@ pub impl Parser {
                 self.eat(token::COMMA);
             }
 
-            let blk = ast::spanned {
+            let blk = codemap::spanned {
                 node: ast::blk_ {
                     view_items: ~[],
                     stmts: ~[],
@@ -1812,10 +1816,12 @@ pub impl Parser {
         return self.mk_expr(lo, hi, expr_match(discriminant, arms));
     }
 
+    // parse an expression
     fn parse_expr() -> @expr {
         return self.parse_expr_res(UNRESTRICTED);
     }
 
+    // parse an expression, subject to the given restriction
     fn parse_expr_res(r: restriction) -> @expr {
         let old = self.restriction;
         self.restriction = r;
@@ -1943,7 +1949,9 @@ pub impl Parser {
             // HACK: parse @"..." as a literal of a vstore @str
             pat = match sub.node {
               pat_lit(e@@expr {
-                node: expr_lit(@ast::spanned {node: lit_str(_), span: _}), _
+                node: expr_lit(@codemap::spanned {
+                    node: lit_str(_),
+                    span: _}), _
               }) => {
                 let vst = @expr {
                     id: self.get_id(),
@@ -1963,7 +1971,9 @@ pub impl Parser {
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = match sub.node {
               pat_lit(e@@expr {
-                node: expr_lit(@ast::spanned {node: lit_str(_), span: _}), _
+                node: expr_lit(@codemap::spanned {
+                    node: lit_str(_),
+                    span: _}), _
               }) => {
                 let vst = @expr {
                     id: self.get_id(),
@@ -1985,7 +1995,7 @@ pub impl Parser {
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
                   pat_lit(e@@expr {
-                      node: expr_lit(@ast::spanned {
+                      node: expr_lit(@codemap::spanned {
                             node: lit_str(_), span: _}), _
                   }) => {
                       let vst = @expr {
@@ -2011,7 +2021,9 @@ pub impl Parser {
             if self.token == token::RPAREN {
                 hi = self.span.hi;
                 self.bump();
-                let lit = @ast::spanned {node: lit_nil, span: mk_sp(lo, hi)};
+                let lit = @codemap::spanned {
+                    node: lit_nil,
+                    span: mk_sp(lo, hi)};
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
                 pat = pat_lit(expr);
             } else {
@@ -2381,7 +2393,7 @@ pub impl Parser {
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(@ast::spanned {
+                                    stmts.push(@codemap::spanned {
                                         node: stmt_semi(e, stmt_id),
                                         .. *stmt});
                                 }
@@ -2406,7 +2418,7 @@ pub impl Parser {
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(@ast::spanned {
+                                    stmts.push(@codemap::spanned {
                                         node: stmt_mac((*m), true),
                                         .. *stmt});
                                 }
@@ -2940,7 +2952,7 @@ pub impl Parser {
 
         let actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            ast::spanned { node: ast::struct_dtor_ { id: self.get_id(),
+            codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
                                                      attrs: d_attrs,
                                                      self_id: self.get_id(),
                                                      body: d_body},
@@ -3445,7 +3457,7 @@ pub impl Parser {
         self.bump();
         let mut actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            ast::spanned { node: ast::struct_dtor_ { id: self.get_id(),
+            codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
                                                      attrs: d_attrs,
                                                      self_id: self.get_id(),
                                                      body: d_body },
@@ -3737,7 +3749,7 @@ pub impl Parser {
               _ => self.fatal(~"expected open delimiter")
             };
             let m = ast::mac_invoc_tt(pth, tts);
-            let m: ast::mac = ast::spanned { node: m,
+            let m: ast::mac = codemap::spanned { node: m,
                                              span: mk_sp(self.span.lo,
                                                          self.span.hi) };
             let item_ = item_mac(m);

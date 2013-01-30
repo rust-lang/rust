@@ -47,6 +47,7 @@ use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
 use syntax::codemap::span;
+use syntax::codemap;
 use syntax::print::pprust;
 use syntax::{ast, ast_map};
 use syntax;
@@ -3166,7 +3167,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_block(*) |
         ast::expr_copy(*) |
         ast::expr_repeat(*) |
-        ast::expr_lit(@ast::spanned {node: lit_str(_), _}) |
+        ast::expr_lit(@codemap::spanned {node: lit_str(_), _}) |
         ast::expr_vstore(_, ast::expr_vstore_slice) |
         ast::expr_vstore(_, ast::expr_vstore_mut_slice) |
         ast::expr_vstore(_, ast::expr_vstore_fixed(_)) |

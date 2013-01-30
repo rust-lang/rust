@@ -13,6 +13,7 @@
  */
 
 use ast;
+use codemap;
 use ast_util::operator_prec;
 
 pub fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
@@ -31,7 +32,8 @@ pub fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
 pub fn expr_is_simple_block(e: @ast::expr) -> bool {
     match e.node {
         ast::expr_block(
-            ast::spanned { node: ast::blk_ { rules: ast::default_blk, _ }, _ }
+            codemap::spanned {
+                node: ast::blk_ { rules: ast::default_blk, _ }, _ }
         ) => true,
       _ => false
     }

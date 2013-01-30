@@ -17,6 +17,7 @@ use syntax::ast;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::codemap;
+use syntax::codemap::dummy_sp;
 use syntax::fold;
 
 const CORE_VERSION: &static/str = "0.6";
@@ -36,8 +37,8 @@ fn use_core(crate: @ast::crate) -> bool {
 
 fn inject_libcore_ref(sess: Session,
                       crate: @ast::crate) -> @ast::crate {
-    fn spanned<T: Copy>(x: T) -> ast::spanned<T> {
-        ast::spanned { node: x, span: dummy_sp() }
+    fn spanned<T: Copy>(x: T) -> codemap::spanned<T> {
+        codemap::spanned { node: x, span: dummy_sp() }
     }
 
     let precursor = @fold::AstFoldFns {

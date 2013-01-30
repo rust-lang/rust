@@ -220,7 +220,7 @@ impl extended_decode_ctxt {
         ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
     fn tr_span(_span: span) -> span {
-        ast_util::dummy_sp() // FIXME (#1972): handle span properly
+        codemap::dummy_sp() // FIXME (#1972): handle span properly
     }
 }
 
@@ -300,9 +300,9 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         let stmts_sans_items = do blk.stmts.filtered |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
-              ast::stmt_decl(@ast::spanned { node: ast::decl_local(_),
+              ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_),
                                              span: _}, _) => true,
-              ast::stmt_decl(@ast::spanned { node: ast::decl_item(_),
+              ast::stmt_decl(@codemap::spanned { node: ast::decl_item(_),
                                              span: _}, _) => false,
               ast::stmt_mac(*) => die!(~"unexpanded macro in astencode")
             }
@@ -336,7 +336,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
         let dtor_body = fld.fold_block((*dtor).node.body);
         ast::ii_dtor(
-            ast::spanned {
+            codemap::spanned {
                 node: ast::struct_dtor_ { body: dtor_body,
                                           .. /*bad*/copy (*dtor).node },
                 .. (/*bad*/copy *dtor) },
@@ -377,7 +377,7 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
         let new_parent = xcx.tr_def_id(parent_id);
         let new_self = fld.new_id((*dtor).node.self_id);
         ast::ii_dtor(
-            ast::spanned {
+            codemap::spanned {
                 node: ast::struct_dtor_ { id: dtor_id,
                                           attrs: dtor_attrs,
                                           self_id: new_self,

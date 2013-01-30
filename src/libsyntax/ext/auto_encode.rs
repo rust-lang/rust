@@ -311,7 +311,7 @@ priv impl ext_ctxt {
     }
 
     fn stmt(expr: @ast::expr) -> @ast::stmt {
-        @ast::spanned { node: ast::stmt_semi(expr, self.next_id()),
+        @codemap::spanned { node: ast::stmt_semi(expr, self.next_id()),
                        span: expr.span }
     }
 
@@ -322,7 +322,7 @@ priv impl ext_ctxt {
                 self.expr(
                     span,
                     ast::expr_lit(
-                        @ast::spanned { node: ast::lit_str(s),
+                        @codemap::spanned { node: ast::lit_str(s),
                                         span: span})),
                 ast::expr_vstore_uniq))
     }
@@ -331,7 +331,7 @@ priv impl ext_ctxt {
         self.expr(
             span,
             ast::expr_lit(
-                @ast::spanned { node: ast::lit_uint(i as u64, ast::ty_u),
+                @codemap::spanned { node: ast::lit_uint(i as u64, ast::ty_u),
                                 span: span}))
     }
 
@@ -342,7 +342,7 @@ priv impl ext_ctxt {
     }
 
     fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
-        ast::spanned {
+        codemap::spanned {
             node: ast::blk_ {
                 view_items: ~[],
                 stmts: stmts,
@@ -355,7 +355,7 @@ priv impl ext_ctxt {
     }
 
     fn expr_blk(expr: @ast::expr) -> ast::blk {
-        ast::spanned {
+        codemap::spanned {
             node: ast::blk_ {
                 view_items: ~[],
                 stmts: ~[],
@@ -593,7 +593,7 @@ fn mk_ser_method(
         ident: cx.ident_of(~"encode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: ast::spanned { node: ast::sty_region(ast::m_imm),
+        self_ty: codemap::spanned { node: ast::sty_region(ast::m_imm),
                                 span: span },
         purity: ast::impure_fn,
         decl: ser_decl,
@@ -651,7 +651,7 @@ fn mk_deser_method(
         ident: cx.ident_of(~"decode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: ast::spanned { node: ast::sty_static, span: span },
+        self_ty: codemap::spanned { node: ast::sty_static, span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
         body: deser_body,
@@ -762,7 +762,7 @@ fn mk_struct_deser_impl(
             ]
         );
 
-        ast::spanned {
+        codemap::spanned {
             node: ast::field_ {
                 mutbl: field.mutbl,
                 ident: field.ident,
