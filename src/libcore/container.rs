@@ -81,4 +81,10 @@ pub trait Set<T>: Mutable {
 
     /// Visit the values representing the symmetric difference
     pure fn symmetric_difference(&self, other: &self, f: fn(&T) -> bool);
+
+    /// Visit the values representing the intersection
+    pure fn intersection(&self, other: &self, f: fn(&T) -> bool);
+
+    /// Visit the values representing the union
+    pure fn union(&self, other: &self, f: fn(&T) -> bool);
 }
