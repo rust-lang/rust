@@ -668,6 +668,7 @@ mod test_map {
 #[test]
 mod test_set {
     use super::*;
+    use vec;
 
     #[test]
     fn test_disjoint() {
