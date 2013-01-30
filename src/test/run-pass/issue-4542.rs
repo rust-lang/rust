@@ -8,20 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test
 fn main() {
-    let a = &~1;
-    let mut c: ~int;
-    match copy *a {
-        b => c = b
-    };
-    log(error, *c);
-    log(error, *a);
-
-/*
     for os::args().each |arg| {
         match copy *arg {
             s => { }
         }
     }
-*/
 }
