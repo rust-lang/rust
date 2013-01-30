@@ -206,12 +206,12 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 }
 
 /// Produces a mut vector from an immutable vector.
-pub pure fn cast_to_mut<T>(v: ~[T]) -> ~[T] {
+pub pure fn cast_to_mut<T>(v: ~[T]) -> ~[mut T] {
     unsafe { ::cast::transmute(v) }
 }
 
 /// Produces an immutable vector from a mut vector.
-pub pure fn cast_from_mut<T>(v: ~[T]) -> ~[T] {
+pub pure fn cast_from_mut<T>(v: ~[mut T]) -> ~[T] {
     unsafe { ::cast::transmute(v) }
 }
 
@@ -562,7 +562,7 @@ pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) {
     }
 }
 
-pub fn consume_mut<T>(v: ~[T], f: fn(uint, v: T)) {
+pub fn consume_mut<T>(v: ~[mut T], f: fn(uint, v: T)) {
     consume(vec::cast_from_mut(v), f)
 }
 
@@ -731,7 +731,7 @@ pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
 }
 
 #[inline(always)]
-pub pure fn append_mut<T: Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
+pub pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
     cast_to_mut(append(cast_from_mut(lhs), rhs))
 }
 
@@ -1263,12 +1263,12 @@ pub pure fn zip<T, U>(v: ~[T], u: ~[U]) -> ~[(T, U)] {
  * * a - The index of the first element
  * * b - The index of the second element
  */
-pub fn swap<T>(v: &mut [T], a: uint, b: uint) {
+pub fn swap<T>(v: &[mut T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
 /// Reverse the order of elements in a vector, in place
-pub fn reverse<T>(v: &mut [T]) {
+pub fn reverse<T>(v: &[mut T]) {
     let mut i: uint = 0;
     let ln = len::<T>(v);
     while i < ln / 2 { v[i] <-> v[ln - i - 1]; i += 1; }
@@ -1349,7 +1349,7 @@ pub pure fn each<T>(v: &r/[T], f: fn(&r/T) -> bool) {
 /// a vector with mutable contents and you would like
 /// to mutate the contents as you iterate.
 #[inline(always)]
-pub fn each_mut<T>(v: &mut [T], f: fn(elem: &mut T) -> bool) {
+pub fn each_mut<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
     let mut i = 0;
     let n = v.len();
     while i < n {
@@ -1519,7 +1519,7 @@ pub pure fn as_const_buf<T,U>(s: &[const T],
 
 /// Similar to `as_imm_buf` but passing a `*mut T`
 #[inline(always)]
-pub pure fn as_mut_buf<T,U>(s: &mut [T],
+pub pure fn as_mut_buf<T,U>(s: &[mut T],
                         f: fn(*mut T, uint) -> U) -> U {
 
     unsafe {
@@ -1640,9 +1640,9 @@ pub mod traits {
         }
     }
 
-    impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
+    impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
         #[inline(always)]
-        pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
+        pure fn add(&self, rhs: & &self/[const T]) -> ~[mut T] {
             append_mut(copy *self, (*rhs))
         }
     }
@@ -2066,7 +2066,7 @@ pub mod raw {
 
     /** see `to_ptr()` */
     #[inline(always)]
-    pub unsafe fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
+    pub unsafe fn to_mut_ptr<T>(v: &[mut T]) -> *mut T {
         let repr: **SliceRepr = ::cast::transmute(&v);
         return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
     }
@@ -2099,7 +2099,7 @@ pub mod raw {
      * is newly allocated.
      */
     #[inline(always)]
-    pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
+    pub unsafe fn init_elem<T>(v: &[mut T], i: uint, val: T) {
         let mut box = Some(val);
         do as_mut_buf(v) |p, _len| {
             let mut box2 = None;
@@ -2133,7 +2133,7 @@ pub mod raw {
       * may overlap.
       */
     #[inline(always)]
-    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[const T],
+    pub unsafe fn copy_memory<T>(dst: &[mut T], src: &[const T],
                                  count: uint) {
         assert dst.len() >= count;
         assert src.len() >= count;
@@ -2200,7 +2200,7 @@ pub mod bytes {
       * may overlap.
       */
     #[inline(always)]
-    pub fn copy_memory(dst: &mut [u8], src: &[const u8], count: uint) {
+    pub fn copy_memory(dst: &[mut u8], src: &[const u8], count: uint) {
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }
     }
@@ -3155,7 +3155,7 @@ mod tests {
 
     #[test]
     fn reverse_and_reversed() {
-        let mut v: ~[int] = ~[10, 20];
+        let v: ~[mut int] = ~[mut 10, 20];
         assert (v[0] == 10);
         assert (v[1] == 20);
         reverse(v);
@@ -3170,13 +3170,13 @@ mod tests {
 
         let v4 = reversed::<int>(~[]);
         assert (v4 == ~[]);
-        let mut v3: ~[int] = ~[];
+        let v3: ~[mut int] = ~[mut];
         reverse::<int>(v3);
     }
 
     #[test]
     fn reversed_mut() {
-        let mut v2 = reversed::<int>(~[10, 20]);
+        let v2 = reversed::<int>(~[mut 10, 20]);
         assert (v2[0] == 20);
         assert (v2[1] == 10);
     }
@@ -3302,7 +3302,7 @@ mod tests {
     #[test]
     fn cast_from_mut_no_copy() {
         unsafe {
-            let mut x = ~[1, 2, 3];
+            let x = ~[mut 1, 2, 3];
             let addr = raw::to_ptr(x);
             let x_imm = cast_from_mut(x);
             let addr_imm = raw::to_ptr(x_imm);
@@ -3564,7 +3564,7 @@ mod tests {
     #[ignore(windows)]
     #[should_fail]
     fn test_consume_mut_fail() {
-        let mut v = ~[(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let v = ~[mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do consume_mut(v) |_i, _elt| {
             if i == 2 {
@@ -3592,7 +3592,7 @@ mod tests {
     #[ignore(windows)]
     #[should_fail]
     fn test_map_fail() {
-        let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do map(v) |_elt| {
             if i == 2 {
@@ -3918,7 +3918,7 @@ mod tests {
     #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_mut_buf_fail() {
-        let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do as_mut_buf(v) |_buf, _i| {
             fail
         }
@@ -3929,7 +3929,7 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_copy_memory_oob() {
         unsafe {
-            let mut a = [1, 2, 3, 4];
+            let a = [mut 1, 2, 3, 4];
             let b = [1, 2, 3, 4, 5];
             raw::copy_memory(a, b, 5);
         }
