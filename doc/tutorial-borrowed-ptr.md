@@ -302,7 +302,7 @@ rejected by the compiler):
 fn example3() -> int {
     let mut x = ~X {f: 3};
     let y = &x.f;
-    x = ~{f: 4};  // Error reported here.
+    x = ~X {f: 4};  // Error reported here.
     *y
 }
 ~~~
@@ -366,11 +366,13 @@ Things get trickier when the unique box is not uniquely owned by the
 stack frame, or when there is no way for the compiler to determine the
 box's owner. Consider a program like this:
 
-~~~
+~~~ {.xfail-test}
 struct R { g: int }
 struct S { mut f: ~R }
-fn example5a(x: @S ...) -> int {
+fn example5a(x: @S, callback: @fn()) -> int {
     let y = &x.f.g;   // Error reported here.
+    ...
+    callback();
     ...
 #   return 0;
 }
