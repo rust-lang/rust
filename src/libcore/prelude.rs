@@ -12,6 +12,7 @@
 
 /* Reexported core operators */
 
+pub use either::{Either, Left, Right};
 pub use kinds::{Const, Copy, Owned, Durable};
 pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
