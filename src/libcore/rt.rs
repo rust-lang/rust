@@ -14,7 +14,7 @@
 //! Runtime calls emitted by the compiler.
 
 use cast::transmute;
-use libc::{c_char, c_void, size_t, uintptr_t};
+use libc::{c_char, c_uchar, c_void, size_t, uintptr_t};
 use managed::raw::BoxRepr;
 use str;
 use sys;
@@ -121,6 +121,11 @@ pub unsafe fn check_not_borrowed(a: *u8) {
     if ((*a).header.ref_count & FROZEN_BIT) != 0 {
         rt_fail_borrowed();
     }
+}
+
+#[lang="strdup_uniq"]
+pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
+    str::raw::from_buf_len(ptr, len)
 }
 
 // Local Variables:
