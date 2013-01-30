@@ -60,9 +60,9 @@ use syntax::{visit, ast_util};
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
-const try_adding: &str = "Try adding a move";
+pub const try_adding: &str = "Try adding a move";
 
-fn kind_to_str(k: Kind) -> ~str {
+pub fn kind_to_str(k: Kind) -> ~str {
     let mut kinds = ~[];
 
     if ty::kind_lteq(kind_const(), k) {
@@ -82,17 +82,19 @@ fn kind_to_str(k: Kind) -> ~str {
     str::connect(kinds, ~" ")
 }
 
-type rval_map = HashMap<node_id, ()>;
+pub type rval_map = HashMap<node_id, ()>;
 
-type ctx = {tcx: ty::ctxt,
-            method_map: typeck::method_map,
-            last_use_map: liveness::last_use_map,
-            current_item: node_id};
+pub type ctx = {
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    last_use_map: liveness::last_use_map,
+    current_item: node_id
+};
 
-fn check_crate(tcx: ty::ctxt,
-               method_map: typeck::method_map,
-               last_use_map: liveness::last_use_map,
-               crate: @crate) {
+pub fn check_crate(tcx: ty::ctxt,
+                   method_map: typeck::method_map,
+                   last_use_map: liveness::last_use_map,
+                   crate: @crate) {
     let ctx = {tcx: tcx,
                method_map: method_map,
                last_use_map: last_use_map,
@@ -116,13 +118,17 @@ fn check_crate(tcx: ty::ctxt,
 // bool flag is only used for checking closures,
 // where it refers to whether a var is 'move' in the
 // capture clause
-type check_fn = fn@(ctx, node_id, Option<@freevar_entry>,
-                   bool, ty::t, sp: span);
+pub type check_fn = fn@(ctx,
+                        node_id,
+                        Option<@freevar_entry>,
+                        bool,
+                        ty::t,
+                        sp: span);
 
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the
 // closure.
-fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
+pub fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
     fn check_for_uniq(cx: ctx, id: node_id, fv: Option<@freevar_entry>,
                       is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be sendable, regardless of whether it is
@@ -191,9 +197,8 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
 
 // Check that the free variables used in a shared/sendable closure conform
 // to the copy/move kind bounds. Then recursively check the function body.
-fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
-            fn_id: node_id, cx: ctx, v: visit::vt<ctx>) {
-
+pub fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
+                fn_id: node_id, cx: ctx, v: visit::vt<ctx>) {
     // Find the check function that enforces the appropriate bounds for this
     // kind of function:
     do with_appropriate_checker(cx, fn_id) |chk| {
@@ -237,7 +242,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
     visit::visit_fn(fk, decl, body, sp, fn_id, cx, v);
 }
 
-fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
+pub fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
     match b.node.expr {
       Some(ex) => maybe_copy(cx, ex,
          Some(("Tail expressions in blocks must be copyable",
@@ -247,7 +252,7 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
     visit::visit_block(b, cx, v);
 }
 
-fn check_arm(a: arm, cx: ctx, v: visit::vt<ctx>) {
+pub fn check_arm(a: arm, cx: ctx, v: visit::vt<ctx>) {
     for vec::each(a.pats) |p| {
         do pat_util::pat_bindings(cx.tcx.def_map, *p) |mode, id, span, _pth| {
             if mode == bind_by_value {
@@ -260,7 +265,7 @@ fn check_arm(a: arm, cx: ctx, v: visit::vt<ctx>) {
     visit::visit_arm(a, cx, v);
 }
 
-fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
+pub fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
     let id_to_use = match e.node {
         expr_index(*)|expr_assign_op(*)|
@@ -407,7 +412,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     visit::visit_expr(e, cx, v);
 }
 
-fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
+pub fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     match stmt.node {
       stmt_decl(@spanned {node: decl_local(ref locals), _}, _) => {
         for locals.each |local| {
@@ -424,7 +429,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     visit::visit_stmt(stmt, cx, v);
 }
 
-fn check_ty(aty: @Ty, cx: ctx, v: visit::vt<ctx>) {
+pub fn check_ty(aty: @Ty, cx: ctx, v: visit::vt<ctx>) {
     match aty.node {
       ty_path(_, id) => {
         do option::iter(&cx.tcx.node_type_substs.find(id)) |ts| {
@@ -440,8 +445,8 @@ fn check_ty(aty: @Ty, cx: ctx, v: visit::vt<ctx>) {
     visit::visit_ty(aty, cx, v);
 }
 
-fn check_bounds(cx: ctx, id: node_id, sp: span,
-                ty: ty::t, bounds: ty::param_bounds) {
+pub fn check_bounds(cx: ctx, id: node_id, sp: span,
+                    ty: ty::t, bounds: ty::param_bounds) {
     let kind = ty::type_kind(cx.tcx, ty);
     let p_kind = ty::param_bounds_to_kind(bounds);
     if !ty::kind_lteq(p_kind, kind) {
@@ -466,11 +471,11 @@ fn check_bounds(cx: ctx, id: node_id, sp: span,
     }
 }
 
-fn maybe_copy(cx: ctx, ex: @expr, why: Option<(&str,&str)>) {
+pub fn maybe_copy(cx: ctx, ex: @expr, why: Option<(&str,&str)>) {
     check_copy_ex(cx, ex, true, why);
 }
 
-fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
+pub fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
     match ex.node {
       expr_path(_) => {
         match cx.tcx.def_map.get(ex.id) {
@@ -484,8 +489,8 @@ fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
     }
 }
 
-fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool,
-                 why: Option<(&str,&str)>) {
+pub fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool,
+                     why: Option<(&str,&str)>) {
     if ty::expr_is_lval(cx.tcx, cx.method_map, ex) &&
 
         // a reference to a constant like `none`... no need to warn
@@ -515,7 +520,7 @@ fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool,
     }
 }
 
-fn check_imm_free_var(cx: ctx, def: def, sp: span) {
+pub fn check_imm_free_var(cx: ctx, def: def, sp: span) {
     let msg = ~"mutable variables cannot be implicitly captured; \
                use a capture clause";
     match def {
@@ -537,8 +542,8 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
     }
 }
 
-fn check_copy(cx: ctx, id: node_id, ty: ty::t, sp: span,
-              implicit_copy: bool, why: Option<(&str,&str)>) {
+pub fn check_copy(cx: ctx, id: node_id, ty: ty::t, sp: span,
+                  implicit_copy: bool, why: Option<(&str,&str)>) {
     let k = ty::type_kind(cx.tcx, ty);
     if !ty::kind_can_be_copied(k) {
         cx.tcx.sess.span_err(sp, ~"copying a noncopyable value");
@@ -556,7 +561,7 @@ fn check_copy(cx: ctx, id: node_id, ty: ty::t, sp: span,
     }
 }
 
-fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
+pub fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
     if !ty::kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
         cx.tcx.sess.span_err(sp, ~"not a sendable value");
         false
@@ -566,7 +571,7 @@ fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
 }
 
 // note: also used from middle::typeck::regionck!
-fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
+pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
     if !ty::kind_is_durable(ty::type_kind(tcx, ty)) {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
@@ -607,7 +612,7 @@ fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 ///
 /// (3) The type parameter is owned (and therefore does not contain
 /// borrowed ptrs).
-fn check_cast_for_escaping_regions(
+pub fn check_cast_for_escaping_regions(
     cx: ctx,
     source: @expr,
     target: @expr) {
@@ -652,7 +657,7 @@ fn check_cast_for_escaping_regions(
 }
 
 /// Ensures that values placed into a ~Trait are copyable and sendable.
-fn check_kind_bounds_of_cast(cx: ctx, source: @expr, target: @expr) {
+pub fn check_kind_bounds_of_cast(cx: ctx, source: @expr, target: @expr) {
     let target_ty = ty::expr_ty(cx.tcx, target);
     match ty::get(target_ty).sty {
         ty::ty_trait(_, _, ty::vstore_uniq) => {

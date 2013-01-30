@@ -14,9 +14,9 @@ use middle::ty;
 use syntax::ast::*;
 use syntax::visit;
 
-type ctx = {in_loop: bool, can_ret: bool};
+pub type ctx = {in_loop: bool, can_ret: bool};
 
-fn check_crate(tcx: ty::ctxt, crate: @crate) {
+pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate,
                        {in_loop: false, can_ret: true},
                        visit::mk_vt(@visit::Visitor {

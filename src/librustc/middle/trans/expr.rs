@@ -1272,12 +1272,12 @@ fn trans_unary_datum(bcx: block,
                         contents_ty: ty::t,
                         heap: heap) -> DatumBlock {
         let _icx = bcx.insn_ctxt("trans_boxed_expr");
-        let {bcx, box, body} =
+        let {bcx, box: bx, body} =
             base::malloc_general(bcx, contents_ty, heap);
-        add_clean_free(bcx, box, heap);
+        add_clean_free(bcx, bx, heap);
         let bcx = trans_into(bcx, contents, SaveIn(body));
-        revoke_clean(bcx, box);
-        return immediate_rvalue_bcx(bcx, box, box_ty);
+        revoke_clean(bcx, bx);
+        return immediate_rvalue_bcx(bcx, bx, box_ty);
     }
 }
 

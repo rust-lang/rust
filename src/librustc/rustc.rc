@@ -78,41 +78,25 @@ pub mod middle {
         pub mod machine;
     }
     pub mod ty;
-    #[legacy_exports]
     pub mod resolve;
     #[path = "typeck/mod.rs"]
     pub mod typeck;
-    #[legacy_exports]
     pub mod check_loop;
-    #[legacy_exports]
     pub mod check_match;
-    #[legacy_exports]
     pub mod check_const;
-    #[legacy_exports]
     pub mod lint;
     #[path = "borrowck/mod.rs"]
     pub mod borrowck;
-    #[legacy_exports]
     pub mod mem_categorization;
-    #[legacy_exports]
     pub mod liveness;
-    #[legacy_exports]
     pub mod kind;
-    #[legacy_exports]
     pub mod freevars;
-    #[legacy_exports]
     pub mod capture;
-    #[legacy_exports]
     pub mod pat_util;
-    #[legacy_exports]
     pub mod region;
-    #[legacy_exports]
     pub mod const_eval;
-    #[legacy_exports]
     pub mod astencode;
-    #[legacy_exports]
     pub mod lang_items;
-    #[legacy_exports]
     pub mod privacy;
     pub mod mode;
 }

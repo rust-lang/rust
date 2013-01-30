@@ -23,23 +23,16 @@ use syntax::codemap::span;
 use syntax::print::pprust::path_to_str;
 use syntax::{ast, ast_util, visit};
 
-export annotate_freevars;
-export freevar_map;
-export freevar_info;
-export freevar_entry;
-export get_freevars;
-export has_freevars;
-
 // A vector of defs representing the free variables referred to in a function.
 // (The def_upvar will already have been stripped).
 #[auto_encode]
 #[auto_decode]
-struct freevar_entry {
+pub struct freevar_entry {
     def: ast::def, //< The variable being accessed free.
     span: span     //< First span where it is accessed (there can be multiple)
 }
-type freevar_info = @~[@freevar_entry];
-type freevar_map = HashMap<ast::node_id, freevar_info>;
+pub type freevar_info = @~[@freevar_entry];
+pub type freevar_map = HashMap<ast::node_id, freevar_info>;
 
 // Searches through part of the AST for all references to locals or
 // upvars in this frame and returns the list of definition IDs thus found.
@@ -105,7 +98,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
 // efficient as it fully recomputes the free variables at every
 // node of interest rather than building up the free variables in
 // one pass. This could be improved upon if it turns out to matter.
-fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
+pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
    freevar_map {
     let freevars = HashMap();
 
@@ -124,13 +117,13 @@ fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
     return freevars;
 }
 
-fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
+pub fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     match tcx.freevars.find(fid) {
       None => fail ~"get_freevars: " + int::str(fid) + ~" has no freevars",
       Some(d) => return d
     }
 }
-fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
+pub fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
     return vec::len(*get_freevars(tcx, fid)) != 0u;
 }
 

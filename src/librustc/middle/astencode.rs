@@ -50,12 +50,8 @@ use syntax::visit;
 use syntax;
 use writer = std::ebml::writer;
 
-export maps;
-export encode_inlined_item;
-export decode_inlined_item;
-
 // Auxiliary maps of things to be encoded
-type maps = {
+pub type maps = {
     mutbl_map: middle::borrowck::mutbl_map,
     root_map: middle::borrowck::root_map,
     last_use_map: middle::liveness::last_use_map,
@@ -91,11 +87,11 @@ trait tr_intern {
 // ______________________________________________________________________
 // Top-level methods.
 
-fn encode_inlined_item(ecx: @e::encode_ctxt,
-                       ebml_w: writer::Encoder,
-                       path: &[ast_map::path_elt],
-                       ii: ast::inlined_item,
-                       maps: maps) {
+pub fn encode_inlined_item(ecx: @e::encode_ctxt,
+                           ebml_w: writer::Encoder,
+                           path: &[ast_map::path_elt],
+                           ii: ast::inlined_item,
+                           maps: maps) {
     debug!("> Encoding inlined item: %s::%s (%u)",
            ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
            ecx.tcx.sess.str_of(ii.ident()),
@@ -114,11 +110,12 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
            ebml_w.writer.tell());
 }
 
-fn decode_inlined_item(cdata: cstore::crate_metadata,
-                       tcx: ty::ctxt,
-                       maps: maps,
-                       +path: ast_map::path,
-                       par_doc: ebml::Doc) -> Option<ast::inlined_item> {
+pub fn decode_inlined_item(cdata: cstore::crate_metadata,
+                           tcx: ty::ctxt,
+                           maps: maps,
+                           +path: ast_map::path,
+                           par_doc: ebml::Doc)
+                        -> Option<ast::inlined_item> {
     let dcx = @{cdata: cdata, tcx: tcx, maps: maps};
     match par_doc.opt_child(c::tag_ast) {
       None => None,

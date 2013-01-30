@@ -42,15 +42,6 @@ use syntax::codemap::span;
 use syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
 use syntax::{ast, ast_util, visit};
 
-export lint, ctypes, unused_imports, while_true, path_statement, old_vecs;
-export unrecognized_lint, non_implicitly_copyable_typarams;
-export vecs_implicitly_copyable, implicit_copies, legacy_modes;
-export level, allow, warn, deny, forbid;
-export lint_dict, get_lint_dict, level_to_str;
-export get_lint_level, get_lint_settings_level;
-export check_crate, build_settings_crate, mk_lint_settings;
-export lint_settings;
-
 /**
  * A 'lint' check is a kind of miscellaneous constraint that a user _might_
  * want to enforce, but might reasonably want to permit as well, on a
@@ -72,7 +63,8 @@ export lint_settings;
  * process.
  */
 
-enum lint {
+#[deriving_eq]
+pub enum lint {
     ctypes,
     unused_imports,
     while_true,
@@ -100,14 +92,7 @@ enum lint {
     // dead_assignment
 }
 
-impl lint : cmp::Eq {
-    pure fn eq(&self, other: &lint) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &lint) -> bool { !(*self).eq(other) }
-}
-
-fn level_to_str(lv: level) -> &static/str {
+pub fn level_to_str(lv: level) -> &static/str {
     match lv {
       allow => "allow",
       warn => "warn",
@@ -116,7 +101,7 @@ fn level_to_str(lv: level) -> &static/str {
     }
 }
 
-enum level {
+pub enum level {
     allow, warn, deny, forbid
 }
 
@@ -131,13 +116,13 @@ type lint_spec = @{lint: lint,
                    desc: &static/str,
                    default: level};
 
-type lint_dict = HashMap<~str,lint_spec>;
+pub type lint_dict = HashMap<~str,lint_spec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes
   '-' to '_' in command-line flags
  */
-fn get_lint_dict() -> lint_dict {
+pub fn get_lint_dict() -> lint_dict {
     let v = ~[
         (~"ctypes",
          @{lint: ctypes,
@@ -257,27 +242,28 @@ type lint_mode_map = HashMap<ast::node_id, lint_modes>;
 // settings_map maps node ids of items with non-default lint settings
 // to their settings; default_settings contains the settings for everything
 // not in the map.
-type lint_settings = {
+pub type lint_settings = {
     default_settings: lint_modes,
     settings_map: lint_mode_map
 };
 
-fn mk_lint_settings() -> lint_settings {
+pub fn mk_lint_settings() -> lint_settings {
     {default_settings: smallintmap::mk(),
      settings_map: HashMap()}
 }
 
-fn get_lint_level(modes: lint_modes, lint: lint) -> level {
+pub fn get_lint_level(modes: lint_modes, lint: lint) -> level {
     match modes.find(lint as uint) {
       Some(c) => c,
       None => allow
     }
 }
 
-fn get_lint_settings_level(settings: lint_settings,
-                              lint_mode: lint,
-                              _expr_id: ast::node_id,
-                              item_id: ast::node_id) -> level {
+pub fn get_lint_settings_level(settings: lint_settings,
+                               lint_mode: lint,
+                               _expr_id: ast::node_id,
+                               item_id: ast::node_id)
+                            -> level {
     match settings.settings_map.find(item_id) {
       Some(modes) => get_lint_level(modes, lint_mode),
       None => get_lint_level(settings.default_settings, lint_mode)
@@ -405,8 +391,7 @@ fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
     }
 }
 
-fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
-
+pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
     let cx = ctxt_({dict: get_lint_dict(),
                     curr: smallintmap::mk(),
                     is_default: true,
@@ -999,8 +984,7 @@ fn check_item_deprecated_modes(tcx: ty::ctxt, it: @ast::item) {
     }
 }
 
-fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
-
+pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_item: |it|
             check_item(it, tcx),

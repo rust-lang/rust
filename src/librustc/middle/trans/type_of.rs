@@ -20,16 +20,6 @@ use util::ppaux;
 use std::map::HashMap;
 use syntax::ast;
 
-export type_of;
-export type_of_dtor;
-export type_of_explicit_arg;
-export type_of_explicit_args;
-export type_of_fn_from_ty;
-export type_of_fn;
-export type_of_glue_fn;
-export type_of_non_gc_box;
-export type_of_rooted;
-
 pub fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
     let llty = type_of(ccx, arg.ty);
     match ty::resolved_mode(ccx.tcx, arg.mode) {
