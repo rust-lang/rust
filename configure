@@ -385,7 +385,6 @@ fi
 probe CFG_CLANG            clang++
 probe CFG_GCC              gcc
 probe CFG_LD               ld
-probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
