@@ -82,6 +82,8 @@ pub mod middle {
         #[legacy_exports]
         pub mod cabi_x86_64;
         #[legacy_exports]
+        pub mod cabi_mips;
+        #[legacy_exports]
         pub mod foreign;
         #[legacy_exports]
         pub mod reflect;
@@ -148,6 +150,7 @@ pub mod back {
     pub mod abi;
     pub mod upcall;
     pub mod arm;
+    pub mod mips;
     pub mod x86;
     pub mod x86_64;
     pub mod rpath;

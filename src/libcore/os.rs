@@ -974,6 +974,9 @@ pub mod consts {
     #[cfg(target_arch = "arm")]
     use os::consts::arm::*;
 
+    #[cfg(target_arch = "mips")]
+    use os::consts::mips::*;
+
     pub mod x86 {
         pub const ARCH: &str = "x86";
     }
@@ -982,6 +985,9 @@ pub mod consts {
     }
     pub mod arm {
         pub const ARCH: &str = "arm";
+    }
+    pub mod mips {
+        pub const ARCH: &str = "mips";
     }
 }
 

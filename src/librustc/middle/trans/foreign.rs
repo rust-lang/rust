@@ -11,8 +11,7 @@
 use core::prelude::*;
 
 use back::{link, abi};
-use driver::session::arch_x86_64;
-use driver::session::arch_arm;
+use driver::session::{arch_x86_64, arch_mips};
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{Struct, Array, ModuleRef, CallConv, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
@@ -21,6 +20,7 @@ use lib;
 use middle::trans::base::*;
 use middle::trans::cabi;
 use middle::trans::cabi_x86_64::*;
+use middle::trans::cabi_mips::*;
 use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::common::*;
@@ -46,6 +46,7 @@ export link_name, trans_foreign_mod, register_foreign_fn, trans_foreign_fn,
 fn abi_info(arch: session::arch) -> cabi::ABIInfo {
     return match arch {
         arch_x86_64 => x86_64_abi_info(),
+        arch_mips => mips_abi_info(),
         _ => cabi::llvm_abi_info()
     }
 }
