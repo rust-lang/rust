@@ -29,9 +29,7 @@ use syntax::attr;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util, ast_map};
 
-export map, find_reachable;
-
-type map = HashMap<node_id, ()>;
+pub type map = HashMap<node_id, ()>;
 
 struct ctx {
     exp_map2: resolve::ExportMap2,
@@ -40,8 +38,8 @@ struct ctx {
     rmap: map
 }
 
-fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
-                  tcx: ty::ctxt, method_map: typeck::method_map) -> map {
+pub fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
+                      tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let rmap = HashMap();
     let cx = ctx {
         exp_map2: exp_map2,

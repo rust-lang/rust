@@ -13,29 +13,26 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
 
-export ABIInfo, LLVMType, FnType;
-export llvm_abi_info;
-
-trait ABIInfo {
+pub trait ABIInfo {
     fn compute_info(&self,
                     atys: &[TypeRef],
                     rty: TypeRef,
                     ret_def: bool) -> FnType;
 }
 
-struct LLVMType {
+pub struct LLVMType {
     cast: bool,
     ty: TypeRef
 }
 
-struct FnType {
+pub struct FnType {
     arg_tys: ~[LLVMType],
     ret_ty: LLVMType,
     attrs: ~[Option<Attribute>],
     sret: bool
 }
 
-impl FnType {
+pub impl FnType {
     fn decl_fn(&self, decl: fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
         let atys = vec::map(self.arg_tys, |t| t.ty);
         let rty = self.ret_ty.ty;
@@ -208,7 +205,7 @@ impl LLVM_ABIInfo: ABIInfo {
     }
 }
 
-fn llvm_abi_info() -> ABIInfo {
+pub fn llvm_abi_info() -> ABIInfo {
     return LLVM_ABIInfo as ABIInfo;
 }
 

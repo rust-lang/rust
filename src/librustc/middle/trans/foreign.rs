@@ -40,9 +40,6 @@ use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
 use syntax::parse::token::special_idents;
 
-export link_name, trans_foreign_mod, register_foreign_fn, trans_foreign_fn,
-       trans_intrinsic;
-
 fn abi_info(arch: session::arch) -> cabi::ABIInfo {
     return match arch {
         arch_x86_64 => x86_64_abi_info(),
@@ -50,7 +47,7 @@ fn abi_info(arch: session::arch) -> cabi::ABIInfo {
     }
 }
 
-fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> ~str {
+pub fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> ~str {
     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
         None => ccx.sess.str_of(i.ident),
         option::Some(ref ln) => (/*bad*/copy *ln)
@@ -206,8 +203,9 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
 // stack pointer appropriately to avoid a round of copies.  (In fact, the shim
 // function itself is unnecessary). We used to do this, in fact, and will
 // perhaps do so in the future.
-fn trans_foreign_mod(ccx: @crate_ctxt,
-                    foreign_mod: ast::foreign_mod, abi: ast::foreign_abi) {
+pub fn trans_foreign_mod(ccx: @crate_ctxt,
+                         foreign_mod: ast::foreign_mod,
+                         abi: ast::foreign_abi) {
 
     let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
 
@@ -332,10 +330,12 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
     }
 }
 
-fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
-                   +path: ast_map::path, +substs: param_substs,
-                   ref_id: Option<ast::node_id>)
-{
+pub fn trans_intrinsic(ccx: @crate_ctxt,
+                       decl: ValueRef,
+                       item: @ast::foreign_item,
+                       +path: ast_map::path,
+                       +substs: param_substs,
+                       ref_id: Option<ast::node_id>) {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
     // XXX: Bad copy.
@@ -433,7 +433,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         ~"size_of" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            Store(bcx, C_uint(ccx, shape::llsize_of_real(ccx, lltp_ty)),
+            Store(bcx, C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty)),
                   fcx.llretptr);
         }
         ~"move_val" => {
@@ -464,13 +464,13 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         ~"min_align_of" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            Store(bcx, C_uint(ccx, shape::llalign_of_min(ccx, lltp_ty)),
+            Store(bcx, C_uint(ccx, machine::llalign_of_min(ccx, lltp_ty)),
                   fcx.llretptr);
         }
         ~"pref_align_of"=> {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            Store(bcx, C_uint(ccx, shape::llalign_of_pref(ccx, lltp_ty)),
+            Store(bcx, C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty)),
                   fcx.llretptr);
         }
         ~"get_tydesc" => {
@@ -839,9 +839,12 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
     finish_fn(fcx, lltop);
 }
 
-fn trans_foreign_fn(ccx: @crate_ctxt, +path: ast_map::path,
-                    decl: ast::fn_decl, body: ast::blk, llwrapfn: ValueRef,
-                    id: ast::node_id) {
+pub fn trans_foreign_fn(ccx: @crate_ctxt,
+                        +path: ast_map::path,
+                        decl: ast::fn_decl,
+                        body: ast::blk,
+                        llwrapfn: ValueRef,
+                        id: ast::node_id) {
     let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @crate_ctxt, +path: ast_map::path,
@@ -930,12 +933,12 @@ fn trans_foreign_fn(ccx: @crate_ctxt, +path: ast_map::path,
     build_wrap_fn(ccx, llshimfn, llwrapfn, tys)
 }
 
-fn register_foreign_fn(ccx: @crate_ctxt,
-                       sp: span,
-                       +path: ast_map::path,
-                       node_id: ast::node_id,
-                       attrs: &[ast::attribute])
-                    -> ValueRef {
+pub fn register_foreign_fn(ccx: @crate_ctxt,
+                           sp: span,
+                           +path: ast_map::path,
+                           node_id: ast::node_id,
+                           attrs: &[ast::attribute])
+                        -> ValueRef {
     let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, node_id);

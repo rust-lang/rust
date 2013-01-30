@@ -31,7 +31,7 @@ use syntax::print::pprust::{expr_to_str};
 // containing an unboxed vector. This expands a boxed vector type into such an
 // expanded type. It doesn't respect mutability, but that doesn't matter at
 // this point.
-fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
+pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
@@ -46,35 +46,35 @@ fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     }
 }
 
-fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
+pub fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_fill");
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]))
 }
-fn set_fill(bcx: block, vptr: ValueRef, fill: ValueRef) {
+pub fn set_fill(bcx: block, vptr: ValueRef, fill: ValueRef) {
     Store(bcx, fill, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]));
 }
-fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
+pub fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
 }
 
-fn get_bodyptr(bcx: block, vptr: ValueRef) -> ValueRef {
+pub fn get_bodyptr(bcx: block, vptr: ValueRef) -> ValueRef {
     base::non_gc_box_cast(bcx, GEPi(bcx, vptr, [0u, abi::box_field_body]))
 }
 
-fn get_dataptr(bcx: block, vptr: ValueRef) -> ValueRef {
+pub fn get_dataptr(bcx: block, vptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_dataptr");
     GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u])
 }
 
-fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
+pub fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::pointer_add");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, T_ptr(T_i8()));
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, ~[bytes]), old_ty);
 }
 
-fn alloc_raw(bcx: block, unit_ty: ty::t,
-              fill: ValueRef, alloc: ValueRef, heap: heap) -> Result {
+pub fn alloc_raw(bcx: block, unit_ty: ty::t,
+                 fill: ValueRef, alloc: ValueRef, heap: heap) -> Result {
     let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
 
@@ -87,12 +87,16 @@ fn alloc_raw(bcx: block, unit_ty: ty::t,
     Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
     return rslt(bcx, box);
 }
-fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
-                  fill: ValueRef, alloc: ValueRef) -> Result {
+pub fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
+                      fill: ValueRef, alloc: ValueRef) -> Result {
     alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
 }
 
-fn alloc_vec(bcx: block, unit_ty: ty::t, elts: uint, heap: heap) -> Result {
+pub fn alloc_vec(bcx: block,
+                 unit_ty: ty::t,
+                 elts: uint,
+                 heap: heap)
+              -> Result {
     let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
     let llunitty = type_of::type_of(ccx, unit_ty);
@@ -106,7 +110,7 @@ fn alloc_vec(bcx: block, unit_ty: ty::t, elts: uint, heap: heap) -> Result {
     return rslt(bcx, vptr);
 }
 
-fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
+pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
     let _icx = bcx.insn_ctxt("tvec::duplicate_uniq");
 
     let fill = get_fill(bcx, get_bodyptr(bcx, vptr));
@@ -123,7 +127,7 @@ fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
     return rslt(bcx, newptr);
 }
 
-fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
+pub fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
    block {
     let _icx = bcx.insn_ctxt("tvec::make_drop_glue_unboxed");
     let tcx = bcx.tcx(), unit_ty = ty::sequence_element_type(tcx, vec_ty);
@@ -132,14 +136,14 @@ fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
     } else { bcx }
 }
 
-struct VecTypes {
+pub struct VecTypes {
     vec_ty: ty::t,
     unit_ty: ty::t,
     llunit_ty: TypeRef,
     llunit_size: ValueRef
 }
 
-impl VecTypes {
+pub impl VecTypes {
     fn to_str(ccx: @crate_ctxt) -> ~str {
         fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
              ty_to_str(ccx.tcx, self.vec_ty),
@@ -149,11 +153,11 @@ impl VecTypes {
     }
 }
 
-fn trans_fixed_vstore(bcx: block,
-                      vstore_expr: @ast::expr,
-                      content_expr: @ast::expr,
-                      dest: expr::Dest) -> block
-{
+pub fn trans_fixed_vstore(bcx: block,
+                          vstore_expr: @ast::expr,
+                          content_expr: @ast::expr,
+                          dest: expr::Dest)
+                       -> block {
     //!
     //
     // [...] allocates a fixed-size array and moves it around "by value".
@@ -178,11 +182,11 @@ fn trans_fixed_vstore(bcx: block,
     };
 }
 
-fn trans_slice_vstore(bcx: block,
-                      vstore_expr: @ast::expr,
-                      content_expr: @ast::expr,
-                      dest: expr::Dest) -> block
-{
+pub fn trans_slice_vstore(bcx: block,
+                          vstore_expr: @ast::expr,
+                          content_expr: @ast::expr,
+                          dest: expr::Dest)
+                       -> block {
     //!
     //
     // &[...] allocates memory on the stack and writes the values into it,
@@ -237,11 +241,11 @@ fn trans_slice_vstore(bcx: block,
     return bcx;
 }
 
-fn trans_lit_str(bcx: block,
-                 lit_expr: @ast::expr,
-                 lit_str: @~str,
-                 dest: Dest) -> block
-{
+pub fn trans_lit_str(bcx: block,
+                     lit_expr: @ast::expr,
+                     lit_str: @~str,
+                     dest: Dest)
+                  -> block {
     //!
     //
     // Literal strings translate to slices into static memory.  This is
@@ -275,10 +279,10 @@ fn trans_lit_str(bcx: block,
 }
 
 
-fn trans_uniq_or_managed_vstore(bcx: block,
-                                heap: heap,
-                                vstore_expr: @ast::expr,
-                                content_expr: @ast::expr) -> DatumBlock {
+pub fn trans_uniq_or_managed_vstore(bcx: block,
+                                    heap: heap,
+                                    vstore_expr: @ast::expr,
+                                    content_expr: @ast::expr) -> DatumBlock {
     //!
     //
     // @[...] or ~[...] (also @"..." or ~"...") allocate boxes in the
@@ -334,12 +338,12 @@ fn trans_uniq_or_managed_vstore(bcx: block,
     return immediate_rvalue_bcx(bcx, val, vt.vec_ty);
 }
 
-fn write_content(bcx: block,
-                 vt: &VecTypes,
-                 vstore_expr: @ast::expr,
-                 content_expr: @ast::expr,
-                 dest: Dest) -> block
-{
+pub fn write_content(bcx: block,
+                     vt: &VecTypes,
+                     vstore_expr: @ast::expr,
+                     content_expr: @ast::expr,
+                     dest: Dest)
+                  -> block {
     let _icx = bcx.insn_ctxt("tvec::write_content");
     let mut bcx = bcx;
 
@@ -436,12 +440,12 @@ fn write_content(bcx: block,
     }
 }
 
-fn vec_types_from_expr(bcx: block, vec_expr: @ast::expr) -> VecTypes {
+pub fn vec_types_from_expr(bcx: block, vec_expr: @ast::expr) -> VecTypes {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, vec_ty)
 }
 
-fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
+pub fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunit_ty = type_of::type_of(ccx, unit_ty);
@@ -453,7 +457,7 @@ fn vec_types(bcx: block, vec_ty: ty::t) -> VecTypes {
               llunit_size: llunit_size}
 }
 
-fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
+pub fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match /*bad*/copy content_expr.node {
@@ -469,9 +473,9 @@ fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
     }
 }
 
-fn get_base_and_len(bcx: block,
-                    llval: ValueRef,
-                    vec_ty: ty::t) -> (ValueRef, ValueRef) {
+pub fn get_base_and_len(bcx: block,
+                        llval: ValueRef,
+                        vec_ty: ty::t) -> (ValueRef, ValueRef) {
     //!
     //
     // Converts a vector into the slice pair.  The vector should be stored in
@@ -507,12 +511,12 @@ fn get_base_and_len(bcx: block,
     }
 }
 
-type val_and_ty_fn = fn@(block, ValueRef, ty::t) -> Result;
+pub type val_and_ty_fn = fn@(block, ValueRef, ty::t) -> Result;
 
-type iter_vec_block = fn(block, ValueRef, ty::t) -> block;
+pub type iter_vec_block = fn(block, ValueRef, ty::t) -> block;
 
-fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
-                fill: ValueRef, f: iter_vec_block) -> block {
+pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
+                    fill: ValueRef, f: iter_vec_block) -> block {
     let _icx = bcx.insn_ctxt("tvec::iter_vec_raw");
 
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
@@ -542,15 +546,15 @@ fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
 
 }
 
-fn iter_vec_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t,
-                 fill: ValueRef, f: iter_vec_block) -> block {
+pub fn iter_vec_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t,
+                     fill: ValueRef, f: iter_vec_block) -> block {
     let _icx = bcx.insn_ctxt("tvec::iter_vec_uniq");
     let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr));
     iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 
-fn iter_vec_unboxed(bcx: block, body_ptr: ValueRef, vec_ty: ty::t,
-                    f: iter_vec_block) -> block {
+pub fn iter_vec_unboxed(bcx: block, body_ptr: ValueRef, vec_ty: ty::t,
+                        f: iter_vec_block) -> block {
     let _icx = bcx.insn_ctxt("tvec::iter_vec_unboxed");
     let fill = get_fill(bcx, body_ptr);
     let dataptr = get_dataptr(bcx, body_ptr);

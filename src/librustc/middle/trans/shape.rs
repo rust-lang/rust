@@ -34,10 +34,13 @@ use syntax::util::interner;
 
 use ty_ctxt = middle::ty::ctxt;
 
-type ctxt = {mut next_tag_id: u16, pad: u16, pad2: u32};
+pub type ctxt = {mut next_tag_id: u16, pad: u16, pad2: u32};
 
-fn mk_global(ccx: @crate_ctxt, name: ~str, llval: ValueRef, internal: bool) ->
-   ValueRef {
+pub fn mk_global(ccx: @crate_ctxt,
+                 name: ~str,
+                 llval: ValueRef,
+                 internal: bool)
+              -> ValueRef {
     unsafe {
         let llglobal = do str::as_c_str(name) |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
@@ -54,7 +57,7 @@ fn mk_global(ccx: @crate_ctxt, name: ~str, llval: ValueRef, internal: bool) ->
     }
 }
 
-fn mk_ctxt(llmod: ModuleRef) -> ctxt {
+pub fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     unsafe {
         let llshapetablesty = trans::common::T_named_struct(~"shapes");
         let _llshapetables = str::as_c_str(~"shapes", |buf| {
@@ -69,11 +72,11 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
 Although these two functions are never called, they are here
 for a VERY GOOD REASON. See #3670
 */
-fn add_u16(dest: &mut ~[u8], val: u16) {
+pub fn add_u16(dest: &mut ~[u8], val: u16) {
     *dest += ~[(val & 0xffu16) as u8, (val >> 8u16) as u8];
 }
 
-fn add_substr(dest: &mut ~[u8], src: ~[u8]) {
+pub fn add_substr(dest: &mut ~[u8], src: ~[u8]) {
     add_u16(&mut *dest, vec::len(src) as u16);
     *dest += src;
 }

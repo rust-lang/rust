@@ -19,8 +19,8 @@ use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::SaveIn;
 use middle::trans::glue;
+use middle::trans::machine;
 use middle::trans::meth;
-use middle::trans::shape;
 use middle::trans::type_of::*;
 use util::ppaux::ty_to_str;
 
@@ -28,7 +28,7 @@ use std::map::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
 
-enum reflector = {
+pub enum reflector = {
     visitor_val: ValueRef,
     visitor_methods: @~[ty::method],
     final_bcx: block,
@@ -36,7 +36,7 @@ enum reflector = {
     mut bcx: block
 };
 
-impl reflector {
+pub impl reflector {
 
     fn c_uint(u: uint) -> ValueRef {
         C_uint(self.bcx.ccx(), u)
@@ -62,8 +62,8 @@ impl reflector {
 
     fn c_size_and_align(t: ty::t) -> ~[ValueRef] {
         let tr = type_of::type_of(self.bcx.ccx(), t);
-        let s = shape::llsize_of_real(self.bcx.ccx(), tr);
-        let a = shape::llalign_of_min(self.bcx.ccx(), tr);
+        let s = machine::llsize_of_real(self.bcx.ccx(), tr);
+        let a = machine::llalign_of_min(self.bcx.ccx(), tr);
         return ~[self.c_uint(s),
              self.c_uint(a)];
     }
@@ -310,9 +310,11 @@ impl reflector {
 }
 
 // Emit a sequence of calls to visit_ty::visit_foo
-fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
-                                visitor_val: ValueRef,
-                                visitor_trait_id: def_id) -> block {
+pub fn emit_calls_to_trait_visit_ty(bcx: block,
+                                    t: ty::t,
+                                    visitor_val: ValueRef,
+                                    visitor_trait_id: def_id)
+                                 -> block {
     use syntax::parse::token::special_idents::tydesc;
     let final = sub_block(bcx, ~"final");
     assert bcx.ccx().tcx.intrinsic_defs.contains_key(tydesc);
@@ -330,7 +332,7 @@ fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
     return final;
 }
 
-fn ast_proto_constant(proto: ast::Proto) -> uint {
+pub fn ast_proto_constant(proto: ast::Proto) -> uint {
     match proto {
         ast::ProtoBare => 0u,
         ast::ProtoUniq => 2u,
@@ -338,3 +340,4 @@ fn ast_proto_constant(proto: ast::Proto) -> uint {
         ast::ProtoBorrowed => 4u,
     }
 }
+

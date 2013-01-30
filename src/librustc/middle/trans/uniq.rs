@@ -20,9 +20,7 @@ use middle::trans::glue;
 
 use syntax::ast;
 
-export make_free_glue, autoderef, duplicate;
-
-fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
+pub fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
     -> block {
     let _icx = bcx.insn_ctxt("uniq::make_free_glue");
     let box_datum = immediate_rvalue(Load(bcx, vptrptr), box_ty);
@@ -36,7 +34,7 @@ fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
     }
 }
 
-fn duplicate(bcx: block, src_box: ValueRef, src_ty: ty::t) -> Result {
+pub fn duplicate(bcx: block, src_box: ValueRef, src_ty: ty::t) -> Result {
     let _icx = bcx.insn_ctxt("uniq::duplicate");
 
     // Load the body of the source (*src)

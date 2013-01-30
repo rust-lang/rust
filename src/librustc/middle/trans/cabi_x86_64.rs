@@ -17,8 +17,6 @@ use lib::llvm::{StructRetAttribute, ByValAttribute};
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
-export x86_64_abi_info;
-
 enum x86_64_reg_class {
     no_class,
     integer_class,
@@ -412,6 +410,6 @@ impl X86_64_ABIInfo: ABIInfo {
     }
 }
 
-fn x86_64_abi_info() -> ABIInfo {
+pub fn x86_64_abi_info() -> ABIInfo {
     return X86_64_ABIInfo as ABIInfo;
 }
