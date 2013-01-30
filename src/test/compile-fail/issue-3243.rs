@@ -10,7 +10,7 @@
 
 // xfail-test
 fn function() -> &[mut int] {
-    let mut x: &static/[mut int] = &[1,2,3];
+    let mut x: &static/[int] = &[1,2,3];
     x[0] = 12345;
     x //~ ERROR bad
 }
