@@ -185,15 +185,19 @@ fn begin_teardown(data: *IoTaskLoopData) {
         ll::close(async_handle as *c_void, tear_down_close_cb);
     }
 }
+extern fn tear_down_walk_cb(handle: *libc::c_void, arg: *libc::c_void) {
+    log(debug, ~"IN TEARDOWN WALK CB BOYEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+    // pretty much, if we still have an active handle and it is *not*
+    // the async handle that facilities global loop communication, we
+    // want to barf out and fail
+    assert handle == arg;
+}
 
 extern fn tear_down_close_cb(handle: *ll::uv_async_t) {
     unsafe {
         let loop_ptr = ll::get_loop_for_uv_handle(handle);
-        let loop_refs = ll::loop_refcount(loop_ptr);
-        log(debug,
-            fmt!("tear_down_close_cb called, closing handle at %? refs %?",
-                 handle, loop_refs));
-        assert loop_refs == 1i32;
+        log(debug, ~"in tear_down_close_cb");
+        ll::walk(loop_ptr, tear_down_walk_cb, handle as *libc::c_void);
     }
 }
 

@@ -90,7 +90,7 @@ pub struct uv_stream_t {
     fields: uv_handle_fields,
 }
 
-// 64bit unix size: 272
+// 64bit unix size: 216
 #[cfg(unix)]
 pub struct uv_tcp_t {
     fields: uv_handle_fields,
@@ -99,10 +99,8 @@ pub struct uv_tcp_t {
     a08: *u8, a09: *u8, a10: *u8, a11: *u8,
     a12: *u8, a13: *u8, a14: *u8, a15: *u8,
     a16: *u8, a17: *u8, a18: *u8, a19: *u8,
-    a20: *u8, a21: *u8, a22: *u8, a23: *u8,
-    a24: *u8, a25: *u8, a26: *u8, a27: *u8,
-    a28: *u8,
-    a30: uv_tcp_t_32bit_unix_riders,
+    a20: *u8, a21: *u8,
+    a22: uv_tcp_t_32bit_unix_riders,
 }
 // 32bit unix size: 328 (164)
 #[cfg(target_arch="x86_64")]
@@ -113,8 +111,6 @@ pub struct uv_tcp_t_32bit_unix_riders {
 #[cfg(target_arch="arm")]
 pub struct uv_tcp_t_32bit_unix_riders {
     a29: *u8, a30: *u8, a31: *u8,
-    a32: *u8, a33: *u8, a34: *u8,
-    a35: *u8, a36: *u8,
 }
 
 // 32bit win32 size: 240 (120)
@@ -130,11 +126,11 @@ pub struct uv_tcp_t {
     a24: *u8, a25: *u8,
 }
 
-// unix size: 48
+// unix size: 64
 #[cfg(unix)]
 pub struct uv_connect_t {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
-    a04: *u8, a05: *u8,
+    a04: *u8, a05: *u8, a06: *u8, a07: *u8
 }
 // win32 size: 88 (44)
 #[cfg(windows)]
@@ -152,7 +148,7 @@ pub struct uv_buf_t {
 // no gen stub method.. should create
 // it via uv::direct::buf_init()
 
-// unix size: 144
+// unix size: 160
 #[cfg(unix)]
 pub struct uv_write_t {
     fields: uv_handle_fields,
@@ -164,12 +160,13 @@ pub struct uv_write_t {
 }
 #[cfg(target_arch="x86_64")]
 pub struct uv_write_t_32bit_unix_riders {
-    a13: *u8,
+    a13: *u8, a14: *u8, a15: *u8
 }
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
 pub struct uv_write_t_32bit_unix_riders {
-    a13: *u8, a14: *u8,
+    a13: *u8, a14: *u8, a15: *u8,
+    a16: *u8,
 }
 // win32 size: 136 (68)
 #[cfg(windows)]
@@ -180,15 +177,14 @@ pub struct uv_write_t {
     a08: *u8, a09: *u8, a10: *u8, a11: *u8,
     a12: *u8,
 }
-// 64bit unix size: 120
+// 64bit unix size: 96
 // 32bit unix size: 152 (76)
 #[cfg(unix)]
 pub struct uv_async_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
-    a04: *u8, a05: *u8, a06: *u8, a07: *u8,
-    a08: *u8, a09: *u8,
-    a11: uv_async_t_32bit_unix_riders,
+    a04: *u8, a05: *u8, a06: *u8,
+    a07: uv_async_t_32bit_unix_riders,
 }
 #[cfg(target_arch="x86_64")]
 pub struct uv_async_t_32bit_unix_riders {
@@ -197,7 +193,7 @@ pub struct uv_async_t_32bit_unix_riders {
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
 pub struct uv_async_t_32bit_unix_riders {
-    a10: *u8, a11: *u8, a12: *u8, a13: *u8,
+    a10: *u8,
 }
 // win32 size 132 (68)
 #[cfg(windows)]
@@ -209,7 +205,7 @@ pub struct uv_async_t {
     a12: *u8,
 }
 
-// 64bit unix size: 128
+// 64bit unix size: 120
 // 32bit unix size: 84
 #[cfg(unix)]
 pub struct uv_timer_t {
@@ -221,13 +217,12 @@ pub struct uv_timer_t {
 }
 #[cfg(target_arch="x86_64")]
 pub struct uv_timer_t_32bit_unix_riders {
-    a10: *u8, a11: *u8,
+    a10: *u8,
 }
 #[cfg(target_arch="x86")]
 #[cfg(target_arch="arm")]
 pub struct uv_timer_t_32bit_unix_riders {
-    a10: *u8, a11: *u8, a12: *u8, a13: *u8,
-    a14: *u8, a15: *u8, a16: *u8,
+    a10: *u8, a11: *u8, a12: *u8
 }
 // win32 size: 64
 #[cfg(windows)]
@@ -325,7 +320,8 @@ pub mod addrinfo_impl {
 // unix size: 72
 pub struct uv_getaddrinfo_t {
     a00: *u8, a01: *u8, a02: *u8, a03: *u8, a04: *u8, a05: *u8,
-    a06: *u8, a07: *u8, a08: *u8,
+    a06: *u8, a07: *u8, a08: *u8, a09: *u8,
+    a10: *u8, a11: *u8, a12: *u8, a13: *u8, a14: *u8, a15: *u8
 }
 
 pub mod uv_ll_struct_stubgen {
@@ -378,12 +374,8 @@ pub mod uv_ll_struct_stubgen {
                     a15: 0 as *u8,
                     a16: 0 as *u8, a17: 0 as *u8, a18: 0 as *u8,
                     a19: 0 as *u8,
-                    a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
-                    a23: 0 as *u8,
-                    a24: 0 as *u8, a25: 0 as *u8, a26: 0 as *u8,
-                    a27: 0 as *u8,
-                    a28: 0 as *u8,
-                    a30: uv_tcp_t_32bit_unix_riders { a29: 0 as *u8 },
+                    a20: 0 as *u8, a21: 0 as *u8,
+                    a22: uv_tcp_t_32bit_unix_riders { a29: 0 as *u8 },
                 }
             }
             #[cfg(target_arch="x86")]
@@ -405,15 +397,9 @@ pub mod uv_ll_struct_stubgen {
                     a15: 0 as *u8,
                     a16: 0 as *u8, a17: 0 as *u8, a18: 0 as *u8,
                     a19: 0 as *u8,
-                    a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
-                    a23: 0 as *u8,
-                    a24: 0 as *u8, a25: 0 as *u8, a26: 0 as *u8,
-                    a27: 0 as *u8,
-                    a28: 0 as *u8,
-                    a30: uv_tcp_t_32bit_unix_riders {
+                    a20: 0 as *u8, a21: 0 as *u8,
+                    a22: uv_tcp_t_32bit_unix_riders {
                         a29: 0 as *u8, a30: 0 as *u8, a31: 0 as *u8,
-                        a32: 0 as *u8, a33: 0 as *u8, a34: 0 as *u8,
-                        a35: 0 as *u8, a36: 0 as *u8,
                     },
                 }
             }
@@ -447,7 +433,8 @@ pub mod uv_ll_struct_stubgen {
         uv_connect_t {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
-            a04: 0 as *u8, a05: 0 as *u8,
+            a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+            a07: 0 as *u8
         }
     }
     #[cfg(windows)]
@@ -474,9 +461,7 @@ pub mod uv_ll_struct_stubgen {
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
-                a07: 0 as *u8,
-                a08: 0 as *u8, a09: 0 as *u8,
-                a11: uv_async_t_32bit_unix_riders { a10: 0 as *u8 },
+                a07: uv_async_t_32bit_unix_riders { a10: 0 as *u8 },
             }
         }
         #[cfg(target_arch = "x86")]
@@ -491,11 +476,8 @@ pub mod uv_ll_struct_stubgen {
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
                 a03: 0 as *u8,
                 a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
-                a07: 0 as *u8,
-                a08: 0 as *u8, a09: 0 as *u8,
-                a11: uv_async_t_32bit_unix_riders {
-                    a10: 0 as *u8, a11: 0 as *u8,
-                    a12: 0 as *u8, a13: 0 as *u8
+                a07: uv_async_t_32bit_unix_riders {
+                    a10: 0 as *u8,
                 }
             }
         }
@@ -534,7 +516,7 @@ pub mod uv_ll_struct_stubgen {
                 a07: 0 as *u8,
                 a08: 0 as *u8, a09: 0 as *u8,
                 a11: uv_timer_t_32bit_unix_riders {
-                    a10: 0 as *u8, a11: 0 as *u8
+                    a10: 0 as *u8
                 },
             }
         }
@@ -554,9 +536,7 @@ pub mod uv_ll_struct_stubgen {
                 a08: 0 as *u8, a09: 0 as *u8,
                 a11: uv_timer_t_32bit_unix_riders {
                     a10: 0 as *u8, a11: 0 as *u8,
-                    a12: 0 as *u8, a13: 0 as *u8,
-                    a14: 0 as *u8, a15: 0 as *u8,
-                    a16: 0 as *u8,
+                    a12: 0 as *u8,
                 },
             }
         }
@@ -595,7 +575,9 @@ pub mod uv_ll_struct_stubgen {
                 a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
                 a11: 0 as *u8,
                 a12: 0 as *u8,
-                a14: uv_write_t_32bit_unix_riders { a13: 0 as *u8 },
+                a14: uv_write_t_32bit_unix_riders { a13: 0 as *u8,
+                                                   a14: 0 as *u8,
+                                                   a15: 0 as *u8},
             }
         }
         #[cfg(target_arch="x86")]
@@ -617,6 +599,8 @@ pub mod uv_ll_struct_stubgen {
                 a14: uv_write_t_32bit_unix_riders {
                     a13: 0 as *u8,
                     a14: 0 as *u8,
+                    a15: 0 as *u8,
+                    a16: 0 as *u8,
                 }
             }
         }
@@ -642,7 +626,9 @@ pub mod uv_ll_struct_stubgen {
         uv_getaddrinfo_t {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8, a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8, a07: 0 as *u8,
-            a08: 0 as *u8
+            a08: 0 as *u8, a09: 0 as *u8,
+            a10: 1 as *u8, a11: 1 as *u8, a12: 1 as *u8, a13: 1 as *u8,
+            a14: 1 as *u8, a15: 1 as *u8
         }
     }
 }
@@ -652,9 +638,10 @@ extern mod rustrt {
     // libuv public API
     unsafe fn rust_uv_loop_new() -> *libc::c_void;
     unsafe fn rust_uv_loop_delete(lp: *libc::c_void);
-    unsafe fn rust_uv_loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int;
     unsafe fn rust_uv_run(loop_handle: *libc::c_void);
     unsafe fn rust_uv_close(handle: *libc::c_void, cb: *u8);
+    unsafe fn rust_uv_walk(loop_handle: *libc::c_void, cb: *u8,
+                           arg: *libc::c_void);
     unsafe fn rust_uv_async_send(handle: *uv_async_t);
     unsafe fn rust_uv_async_init(loop_handle: *libc::c_void,
                           async_handle: *uv_async_t,
@@ -796,16 +783,16 @@ pub unsafe fn loop_delete(loop_handle: *libc::c_void) {
     rustrt::rust_uv_loop_delete(loop_handle);
 }
 
-pub unsafe fn loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int {
-    return rustrt::rust_uv_loop_refcount(loop_ptr);
-}
-
 pub unsafe fn run(loop_handle: *libc::c_void) {
     rustrt::rust_uv_run(loop_handle);
 }
 
 pub unsafe fn close<T>(handle: *T, cb: *u8) {
     rustrt::rust_uv_close(handle as *libc::c_void, cb);
+}
+
+pub unsafe fn walk(loop_handle: *libc::c_void, cb: *u8, arg: *libc::c_void) {
+    rustrt::rust_uv_walk(loop_handle, cb, arg);
 }
 
 pub unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
@@ -1126,7 +1113,7 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
     rustrt::rust_uv_addrinfo_as_sockaddr_in6(input)
 }
 
-#[cfg(test)]
+//#[cfg(test)]
 pub mod test {
     use core::prelude::*;
 
@@ -1693,66 +1680,66 @@ pub mod test {
         }
     }
 
+    fn struct_size_check_common<TStruct>(t_name: ~str,
+                                         foreign_size: libc::c_uint) {
+        unsafe {
+            let rust_size = sys::size_of::<TStruct>();
+            let sizes_match = foreign_size as uint == rust_size;
+            if !sizes_match {
+                let output = fmt!(
+                    "STRUCT_SIZE FAILURE: %s -- actual: %u expected: %u",
+                    t_name, rust_size, foreign_size as uint);
+                log(debug, output);
+            }
+            assert sizes_match;
+        }
+    }
+
     // struct size tests
     #[test]
     fn test_uv_ll_struct_size_uv_tcp_t() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_uv_tcp_t_size();
-            let rust_handle_size = sys::size_of::<uv_tcp_t>();
-            let output = fmt!("uv_tcp_t -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<uv_tcp_t>(
+                ~"uv_tcp_t",
+                ::uv_ll::rustrt::rust_uv_helper_uv_tcp_t_size()
+            );
         }
     }
     #[test]
     fn test_uv_ll_struct_size_uv_connect_t() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_uv_connect_t_size();
-            let rust_handle_size = sys::size_of::<uv_connect_t>();
-            let output = fmt!("uv_connect_t -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<uv_connect_t>(
+                ~"uv_connect_t",
+                ::uv_ll::rustrt::rust_uv_helper_uv_connect_t_size()
+            );
         }
     }
     #[test]
     fn test_uv_ll_struct_size_uv_buf_t() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_uv_buf_t_size();
-            let rust_handle_size = sys::size_of::<uv_buf_t>();
-            let output = fmt!("uv_buf_t -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<uv_buf_t>(
+                ~"uv_buf_t",
+                ::uv_ll::rustrt::rust_uv_helper_uv_buf_t_size()
+            );
         }
     }
     #[test]
     fn test_uv_ll_struct_size_uv_write_t() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_uv_write_t_size();
-            let rust_handle_size = sys::size_of::<uv_write_t>();
-            let output = fmt!("uv_write_t -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<uv_write_t>(
+                ~"uv_write_t",
+                ::uv_ll::rustrt::rust_uv_helper_uv_write_t_size()
+            );
         }
     }
 
     #[test]
     fn test_uv_ll_struct_size_sockaddr_in() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_sockaddr_in_size();
-            let rust_handle_size = sys::size_of::<sockaddr_in>();
-            let output = fmt!("sockaddr_in -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<sockaddr_in>(
+                ~"sockaddr_in",
+                ::uv_ll::rustrt::rust_uv_helper_sockaddr_in_size()
+            );
         }
     }
     #[test]
@@ -1790,26 +1777,20 @@ pub mod test {
     #[test]
     fn test_uv_ll_struct_size_uv_async_t() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_uv_async_t_size();
-            let rust_handle_size = sys::size_of::<uv_async_t>();
-            let output = fmt!("uv_async_t -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<uv_async_t>(
+                ~"uv_async_t",
+                ::uv_ll::rustrt::rust_uv_helper_uv_async_t_size()
+            );
         }
     }
 
     #[test]
     fn test_uv_ll_struct_size_uv_timer_t() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_uv_timer_t_size();
-            let rust_handle_size = sys::size_of::<uv_timer_t>();
-            let output = fmt!("uv_timer_t -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<uv_timer_t>(
+                ~"uv_timer_t",
+                ::uv_ll::rustrt::rust_uv_helper_uv_timer_t_size()
+            );
         }
     }
 
@@ -1817,13 +1798,10 @@ pub mod test {
     #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_uv_getaddrinfo_t() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_uv_getaddrinfo_t_size();
-            let rust_handle_size = sys::size_of::<uv_getaddrinfo_t>();
-            let output = fmt!("uv_getaddrinfo_t -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<uv_getaddrinfo_t>(
+                ~"uv_getaddrinfo_t",
+                ::uv_ll::rustrt::rust_uv_helper_uv_getaddrinfo_t_size()
+            );
         }
     }
     #[test]
@@ -1831,13 +1809,10 @@ pub mod test {
     #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_addrinfo() {
         unsafe {
-            let foreign_handle_size =
-                ::uv_ll::rustrt::rust_uv_helper_addrinfo_size();
-            let rust_handle_size = sys::size_of::<addrinfo>();
-            let output = fmt!("addrinfo -- foreign: %u rust: %u",
-                              foreign_handle_size as uint, rust_handle_size);
-            log(debug, output);
-            assert foreign_handle_size as uint == rust_handle_size;
+            struct_size_check_common::<uv_timer_t>(
+                ~"addrinfo",
+                ::uv_ll::rustrt::rust_uv_helper_uv_timer_t_size()
+            );
         }
     }
 }
