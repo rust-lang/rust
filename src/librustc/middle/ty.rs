@@ -339,7 +339,9 @@ pub pure fn get(t: t) -> t_box {
 pub pure fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {
     (tb.flags & (flag as uint)) != 0u
 }
-pub pure fn type_has_params(t: t) -> bool { tbox_has_flag(get(t), has_params) }
+pub pure fn type_has_params(t: t) -> bool {
+    tbox_has_flag(get(t), has_params)
+}
 pub pure fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
 pub pure fn type_needs_infer(t: t) -> bool {
     tbox_has_flag(get(t), needs_infer)
