@@ -640,8 +640,8 @@ struct Liveness {
     tcx: ty::ctxt,
     ir: @IrMaps,
     s: Specials,
-    mut successors: ~[LiveNode],
-    mut users: ~[users],
+    successors: ~[mut LiveNode],
+    users: ~[mut users],
     // The list of node IDs for the nested loop scopes
     // we're in.
     loop_scope: DVec<node_id>,

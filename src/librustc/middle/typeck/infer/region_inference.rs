@@ -1191,11 +1191,11 @@ struct GraphNode {
     span: span,
     mut classification: Classification,
     mut value: GraphNodeValue,
-    head_edge: [uint * 2],
+    head_edge: [mut uint * 2], // FIXME(#3226)--should not need mut
 }
 
 struct GraphEdge {
-    next_edge: [uint * 2],
+    next_edge: [mut uint * 2], // FIXME(#3226)--should not need mut
     constraint: Constraint,
     span: span,
 }
@@ -1237,7 +1237,7 @@ impl RegionVarBindings {
                 classification: Contracting,
                 span: self.var_spans[var_idx],
                 value: NoValue,
-                head_edge: [uint::max_value, uint::max_value]
+                head_edge: [mut uint::max_value, uint::max_value]
             }
         });
 
@@ -1245,7 +1245,7 @@ impl RegionVarBindings {
         let mut edges = vec::with_capacity(num_edges);
         for self.constraints.each_ref |constraint, span| {
             edges.push(GraphEdge {
-                next_edge: [uint::max_value, uint::max_value],
+                next_edge: [mut uint::max_value, uint::max_value],
                 constraint: *constraint,
                 span: *span
             });
