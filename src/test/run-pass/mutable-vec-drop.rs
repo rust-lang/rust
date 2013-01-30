@@ -14,5 +14,5 @@ struct Pair { a: int, b: int}
 fn main() {
     // This just tests whether the vec leaks its members.
     let mut pvec: ~[@Pair] =
-        ~[mut @Pair{a: 1, b: 2}, @Pair{a: 3, b: 4}, @Pair{a: 5, b: 6}];
+        ~[@Pair{a: 1, b: 2}, @Pair{a: 3, b: 4}, @Pair{a: 5, b: 6}];
 }

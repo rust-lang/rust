@@ -15,9 +15,9 @@ enum option<T> {
     some(T),
 }
 
-struct Smallintmap<T> {mut v: ~[mut option<T>]}
+struct Smallintmap<T> {mut v: ~[option<T>]}
 
-struct V<T> { v: ~[mut option<T>] }
+struct V<T> { v: ~[option<T>] }
 
 fn mk<T>() -> @Smallintmap<T> {
     let mut v: ~[option<T>] = ~[];

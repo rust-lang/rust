@@ -34,7 +34,7 @@ fn main() {
         let mut res = foo(x);
 
         let mut v = ~[];
-        v = move ~[mut (move res)] + v; //~ ERROR instantiating a type parameter with an incompatible type (needs `copy`, got `&static`, missing `copy`)
+        v = move ~[(move res)] + v; //~ ERROR instantiating a type parameter with an incompatible type (needs `copy`, got `&static`, missing `copy`)
         assert (v.len() == 2);
     }
 

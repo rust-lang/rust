@@ -206,12 +206,12 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 }
 
 /// Produces a mut vector from an immutable vector.
-pub pure fn cast_to_mut<T>(v: ~[T]) -> ~[mut T] {
+pub pure fn cast_to_mut<T>(v: ~[T]) -> ~[T] {
     unsafe { ::cast::transmute(v) }
 }
 
 /// Produces an immutable vector from a mut vector.
-pub pure fn cast_from_mut<T>(v: ~[mut T]) -> ~[T] {
+pub pure fn cast_from_mut<T>(v: ~[T]) -> ~[T] {
     unsafe { ::cast::transmute(v) }
 }
 
@@ -562,7 +562,7 @@ pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) {
     }
 }
 
-pub fn consume_mut<T>(v: ~[mut T], f: fn(uint, v: T)) {
+pub fn consume_mut<T>(v: ~[T], f: fn(uint, v: T)) {
     consume(vec::cast_from_mut(v), f)
 }
 
@@ -731,7 +731,7 @@ pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
 }
 
 #[inline(always)]
-pub pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
+pub pure fn append_mut<T: Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
     cast_to_mut(append(cast_from_mut(lhs), rhs))
 }
 
@@ -1640,9 +1640,9 @@ pub mod traits {
         }
     }
 
-    impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
+    impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
         #[inline(always)]
-        pure fn add(&self, rhs: & &self/[const T]) -> ~[mut T] {
+        pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
             append_mut(copy *self, (*rhs))
         }
     }

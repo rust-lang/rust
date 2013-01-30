@@ -109,7 +109,7 @@ struct BigBitv {
     mut storage: ~[uint]
 }
 
-fn BigBitv(storage: ~[mut uint]) -> BigBitv {
+fn BigBitv(storage: ~[uint]) -> BigBitv {
     BigBitv {storage: move storage}
 }
 

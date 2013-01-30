@@ -32,7 +32,7 @@ use io::{ReaderUtil, WriterUtil};
 export grid_t, read_grid, solve_grid, write_grid;
 
 // internal type of sudoku grids
-type grid = ~[~[mut u8]];
+type grid = ~[~[u8]];
 
 // exported type of sudoku grids
 enum grid_t { grid_ctor(grid), }

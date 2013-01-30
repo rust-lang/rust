@@ -43,7 +43,7 @@ type pointy = {
     mut g : fn~()->(),
 
     mut m : ~[maybe_pointy],
-    mut n : ~[mut maybe_pointy],
+    mut n : ~[maybe_pointy],
     mut o : {x : int, y : maybe_pointy}
 };
 // To add: objects; traits; anything type-parameterized?
