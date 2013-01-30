@@ -254,7 +254,7 @@ impl Rng {
     }
 
     /// Shuffle a mutable vec in place
-    fn shuffle_mut<T>(values: &[mut T]) {
+    fn shuffle_mut<T>(values: &mut [T]) {
         let mut i = values.len();
         while i >= 2u {
             // invariant: elements with index >= i have been locked in place.

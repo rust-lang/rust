@@ -223,7 +223,7 @@ impl<A> DVec<A> {
     }
 
     /// Gives access to the vector as a slice with mutable contents
-    fn borrow_mut<R>(op: fn(x: &[mut A]) -> R) -> R {
+    fn borrow_mut<R>(op: fn(x: &mut [A]) -> R) -> R {
         do self.check_out |v| {
             let mut v = move v;
             let result = op(v);

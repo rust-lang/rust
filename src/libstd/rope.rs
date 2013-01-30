@@ -788,7 +788,7 @@ pub mod node {
      * * forest - The forest. This vector is progressively rewritten during
      *            execution and should be discarded as meaningless afterwards.
      */
-    pub fn tree_from_forest_destructive(forest: &[mut @Node]) -> @Node {
+    pub fn tree_from_forest_destructive(forest: &mut [@Node]) -> @Node {
         let mut i;
         let mut len = vec::len(forest);
         while len > 1u {
