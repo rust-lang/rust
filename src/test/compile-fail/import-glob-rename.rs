@@ -13,8 +13,7 @@
 use baz = foo::*;
 
 mod foo {
-    #[legacy_exports];
-    fn bar() {}
+    pub fn bar() {}
 }
 
 fn main() {

@@ -11,15 +11,11 @@
 // error-pattern:import
 
 mod a {
-    #[legacy_exports];
-    import b::x;
-    export x;
+    pub use b::x;
 }
 
 mod b {
-    #[legacy_exports];
-    import a::x;
-    export x;
+    pub use a::x;
 
     fn main() { let y = x; }
 }

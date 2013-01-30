@@ -22,8 +22,7 @@ use core::os;
 // an llvm intrinsic.
 #[nolink]
 extern mod libc {
-    #[legacy_exports];
-    fn sqrt(n: float) -> float;
+    pub fn sqrt(n: float) -> float;
 }
 
 fn main() {

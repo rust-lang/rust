@@ -11,13 +11,11 @@
 // Test that we use fully-qualified type names in error messages.
 
 mod x {
-    #[legacy_exports];
-    enum foo { }
+    pub enum foo { }
 }
 
 mod y {
-    #[legacy_exports];
-    enum foo { }
+    pub enum foo { }
 }
 
 fn bar(x: x::foo) -> y::foo {

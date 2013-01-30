@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod kitties {
-
+pub mod kitties {
     pub struct cat {
         priv mut meows : uint,
         how_hungry : int,
     }
 
-    impl cat {
+    pub impl cat {
       priv fn nap() { for uint::range(1, 10000u) |_i|{}}
     }
 

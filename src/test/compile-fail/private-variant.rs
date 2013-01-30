@@ -9,8 +9,7 @@
 // except according to those terms.
 
 mod a {
-    #[legacy_exports];
-    enum Waffle {
+    pub enum Waffle {
         Belgian,
         Brussels,
         priv Liege

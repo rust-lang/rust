@@ -13,10 +13,7 @@
 use m::unexported;
 
 mod m {
-    #[legacy_exports];
-    export exported;
-
-    fn exported() { }
+    pub fn exported() { }
 
     fn unexported() { }
 }

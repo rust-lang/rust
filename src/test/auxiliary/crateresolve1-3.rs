@@ -12,6 +12,5 @@
        vers = "0.3")];
 
 #[crate_type = "lib"];
-#[legacy_exports];
 
-fn f() -> int { 30 }
+pub fn f() -> int { 30 }

@@ -13,15 +13,10 @@
 use module_of_many_things::*;
 
 mod module_of_many_things {
-    #[legacy_exports];
-    export f1;
-    export f2;
-    export f4;
-
-    fn f1() { debug!("f1"); }
-    fn f2() { debug!("f2"); }
+    pub fn f1() { debug!("f1"); }
+    pub fn f2() { debug!("f2"); }
     fn f3() { debug!("f3"); }
-    fn f4() { debug!("f4"); }
+    pub fn f4() { debug!("f4"); }
 }
 
 

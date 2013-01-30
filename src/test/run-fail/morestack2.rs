@@ -18,8 +18,7 @@
 extern mod std;
 
 extern mod rustrt {
-    #[legacy_exports];
-    fn last_os_error() -> ~str;
+    pub fn last_os_error() -> ~str;
 }
 
 fn getbig_call_c_and_fail(i: int) {

@@ -12,18 +12,17 @@
        vers = "0.1")];
 
 #[crate_type = "lib"];
-#[legacy_exports];
 
-struct NameVal { name: ~str, val: int }
+pub struct NameVal { name: ~str, val: int }
 
-fn struct_nameval() -> NameVal {
+pub fn struct_nameval() -> NameVal {
     NameVal { name: ~"crateresolve5", val: 10 }
 }
 
-enum e {
+pub enum e {
     e_val
 }
 
-fn nominal() -> e { e_val }
+pub fn nominal() -> e { e_val }
 
-fn f() -> int { 10 }
+pub fn f() -> int { 10 }

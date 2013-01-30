@@ -11,12 +11,11 @@
 use a::Foo;
 
 mod a {
-    #[legacy_exports];
-    struct Foo {
+    pub struct Foo {
         priv x: int
     }
 
-    fn make() -> Foo {
+    pub fn make() -> Foo {
         Foo { x: 3 }
     }
 }

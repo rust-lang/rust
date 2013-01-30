@@ -9,7 +9,6 @@
 // except according to those terms.
 
 mod a {
-    #[legacy_exports];
     priv fn f() {}
 }
 
