@@ -14,7 +14,7 @@ use ast;
 use codemap::{BytePos, CharPos, CodeMap, FileMap, Pos};
 use diagnostic;
 use parse::lexer::{is_whitespace, get_str_from, reader};
-use parse::lexer::{string_reader, bump, is_eof, nextch};
+use parse::lexer::{string_reader, bump, is_eof, nextch, TokenAndSpan};
 use parse::lexer;
 use parse::token;
 use parse;
@@ -334,7 +334,7 @@ pub fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
         let bstart = rdr.pos;
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
-        let {tok: tok, sp: sp} = rdr.peek();
+        let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(tok) {
             let s = get_str_from(rdr, bstart);
             literals.push({lit: s, pos: sp.lo});

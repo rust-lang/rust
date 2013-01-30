@@ -45,6 +45,7 @@ use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+use syntax::codemap;
 
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
@@ -981,13 +982,13 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             assert (vec::len(meta_items) == 1u);
             let meta_item = meta_items[0];
             attrs.push(
-                ast::spanned {
+                codemap::spanned {
                     node: ast::attribute_ {
                         style: ast::attr_outer,
                         value: /*bad*/copy *meta_item,
                         is_sugared_doc: false,
                     },
-                    span: ast_util::dummy_sp()
+                    span: codemap::dummy_sp()
                 });
         };
       }

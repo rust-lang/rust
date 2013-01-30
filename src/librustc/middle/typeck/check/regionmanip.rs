@@ -22,6 +22,7 @@ use util::ppaux;
 
 use std::list::Cons;
 use syntax::ast;
+use syntax::codemap;
 use syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
@@ -57,7 +58,7 @@ pub fn replace_bound_regions_in_fn_sig(
     let mut all_tys = ty::tys_in_fn_sig(fn_sig);
 
     match self_info {
-      Some({explicit_self: ast::spanned { node: ast::sty_region(m),
+      Some({explicit_self: codemap::spanned { node: ast::sty_region(m),
                                           _}, _}) => {
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,

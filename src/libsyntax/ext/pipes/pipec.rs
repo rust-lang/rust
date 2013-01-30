@@ -11,7 +11,7 @@
 // A protocol compiler for Rust.
 
 use ast::ident;
-use ast_util::dummy_sp;
+use codemap::dummy_sp;
 use ext::base::ext_ctxt;
 use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
 use ext::pipes::ast_builder::{path_global};

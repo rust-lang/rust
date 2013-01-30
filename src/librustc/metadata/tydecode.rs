@@ -26,8 +26,7 @@ use core::uint;
 use core::vec;
 use syntax::ast;
 use syntax::ast::*;
-use syntax::ast_util;
-use syntax::ast_util::respan;
+use syntax::codemap::{respan, dummy_sp};
 use std::map::HashMap;
 
 // Compact string representation for ty::t values. API ty_str &
@@ -114,7 +113,7 @@ fn parse_path(st: @pstate) -> @ast::path {
           ':' => { next(st); next(st); }
           c => {
             if c == '(' {
-                return @ast::path { span: ast_util::dummy_sp(),
+                return @ast::path { span: dummy_sp(),
                                     global: false,
                                     idents: idents,
                                     rp: None,
