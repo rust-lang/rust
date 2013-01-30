@@ -305,7 +305,7 @@ fn malloc_raw_dyn(bcx: block,
 
     // Allocate space:
     let tydesc = PointerCast(bcx, static_ti.tydesc, T_ptr(T_i8()));
-    let rval = alloca_zeroed(bcx, T_ptr(T_i8()));
+    let rval = alloca(bcx, T_ptr(T_i8()));
     let bcx = callee::trans_rtcall_or_lang_call(
         bcx,
         langcall,
@@ -1502,10 +1502,6 @@ fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
 
 fn alloca(cx: block, t: TypeRef) -> ValueRef {
     alloca_maybe_zeroed(cx, t, false)
-}
-
-fn alloca_zeroed(cx: block, t: TypeRef) -> ValueRef {
-    alloca_maybe_zeroed(cx, t, true)
 }
 
 fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
