@@ -29,7 +29,7 @@ type ItemLtEq = NominalOp<ItemLtEqOp>;
 
 pub fn mk_pass(name: ~str, +lteq: ItemLtEqOp) -> Pass {
     Pass {
-        name: name,
+        name: copy name,
         f: fn~(move lteq, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, NominalOp { op: copy lteq })
         }

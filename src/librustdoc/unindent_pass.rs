@@ -82,7 +82,7 @@ fn unindent(s: ~str) -> ~str {
         let unindented = ~[str::trim(vec::head(lines))]
             + do par::map(vec::tail(lines)) |line| {
             if str::is_whitespace(*line) {
-                *line
+                copy *line
             } else {
                 assert str::len(*line) >= min_indent;
                 str::slice(*line, min_indent, str::len(*line))
@@ -90,7 +90,7 @@ fn unindent(s: ~str) -> ~str {
         };
         str::connect(unindented, ~"\n")
     } else {
-        s
+        copy s
     }
 }
 

@@ -22,6 +22,7 @@ use core::prelude::*;
 use parse;
 use util;
 
+use core::pipes::stream;
 use core::oldcomm;
 use core::vec;
 use rustc::back::link;
@@ -62,18 +63,18 @@ impl Srv: Clone {
 }
 
 pub fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
-    run(owner, source, parse::from_str_sess)
+    run(owner, copy source, parse::from_str_sess)
 }
 
 pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
-    run(owner, file, |sess, f| parse::from_file_sess(sess, &Path(f)))
+    run(owner, copy file, |sess, f| parse::from_file_sess(sess, &Path(f)))
 }
 
 fn run<T>(owner: SrvOwner<T>, source: ~str, +parse: Parser) -> T {
 
     let srv_ = Srv({
-        ch: do util::spawn_listener |move parse, po| {
-            act(po, source, parse);
+        ch: do util::spawn_listener |copy source, move parse, po| {
+            act(po, copy source, parse);
         }
     });
 
@@ -87,7 +88,7 @@ fn act(po: oldcomm::Port<Msg>, source: ~str, parse: Parser) {
 
     let ctxt = build_ctxt(
         sess,
-        parse(sess, source)
+        parse(sess, copy source)
     );
 
     let mut keep_going = true;
@@ -107,13 +108,12 @@ pub fn exec<T:Owned>(
     srv: Srv,
     +f: fn~(ctxt: Ctxt) -> T
 ) -> T {
-    let po = oldcomm::Port();
-    let ch = oldcomm::Chan(&po);
+    let (po, ch) = stream();
     let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {
-        oldcomm::send(ch, f(ctxt))
+        ch.send(f(ctxt))
     });
     oldcomm::send(srv.ch, move msg);
-    oldcomm::recv(po)
+    po.recv()
 }
 
 fn build_ctxt(sess: Session,
@@ -123,7 +123,7 @@ fn build_ctxt(sess: Session,
 
     let ast = config::strip_unconfigured_items(ast);
     let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
-                                                sess.opts.cfg, ast);
+                                                copy sess.opts.cfg, ast);
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), *ast);
 

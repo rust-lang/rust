@@ -177,7 +177,7 @@ pub struct IndexEntry {
 impl Doc {
     fn CrateDoc() -> CrateDoc {
         option::get(vec::foldl(None, self.pages, |_m, page| {
-            match *page {
+            match copy *page {
               doc::CratePage(doc) => Some(doc),
               _ => None
             }
@@ -185,7 +185,7 @@ impl Doc {
     }
 
     fn cratemod() -> ModDoc {
-        self.CrateDoc().topmod
+        copy self.CrateDoc().topmod
     }
 }
 
@@ -193,7 +193,7 @@ impl Doc {
 impl ModDoc {
     fn mods() -> ~[ModDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
               ModTag(ModDoc) => Some(ModDoc),
               _ => None
             }
@@ -202,7 +202,7 @@ impl ModDoc {
 
     fn nmods() -> ~[NmodDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
               NmodTag(nModDoc) => Some(nModDoc),
               _ => None
             }
@@ -211,7 +211,7 @@ impl ModDoc {
 
     fn fns() -> ~[FnDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
               FnTag(FnDoc) => Some(FnDoc),
               _ => None
             }
@@ -220,7 +220,7 @@ impl ModDoc {
 
     fn consts() -> ~[ConstDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
               ConstTag(ConstDoc) => Some(ConstDoc),
               _ => None
             }
@@ -229,7 +229,7 @@ impl ModDoc {
 
     fn enums() -> ~[EnumDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
               EnumTag(EnumDoc) => Some(EnumDoc),
               _ => None
             }
@@ -238,7 +238,7 @@ impl ModDoc {
 
     fn traits() -> ~[TraitDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
               TraitTag(TraitDoc) => Some(TraitDoc),
               _ => None
             }
@@ -247,7 +247,7 @@ impl ModDoc {
 
     fn impls() -> ~[ImplDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
               ImplTag(ImplDoc) => Some(ImplDoc),
               _ => None
             }
@@ -256,7 +256,7 @@ impl ModDoc {
 
     fn types() -> ~[TyDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
               TyTag(TyDoc) => Some(TyDoc),
               _ => None
             }
@@ -265,7 +265,7 @@ impl ModDoc {
 
     fn structs() -> ~[StructDoc] {
         do vec::filter_map(self.items) |itemtag| {
-            match *itemtag {
+            match copy *itemtag {
                 StructTag(StructDoc) => Some(StructDoc),
                 _ => None
             }
@@ -288,7 +288,7 @@ impl ~[Page]: PageUtils {
 
     fn mods(&self) -> ~[ModDoc] {
         do vec::filter_map(*self) |page| {
-            match *page {
+            match copy *page {
               ItemPage(ModTag(ModDoc)) => Some(ModDoc),
               _ => None
             }
@@ -297,7 +297,7 @@ impl ~[Page]: PageUtils {
 
     fn nmods(&self) -> ~[NmodDoc] {
         do vec::filter_map(*self) |page| {
-            match *page {
+            match copy *page {
               ItemPage(NmodTag(nModDoc)) => Some(nModDoc),
               _ => None
             }
@@ -306,7 +306,7 @@ impl ~[Page]: PageUtils {
 
     fn fns(&self) -> ~[FnDoc] {
         do vec::filter_map(*self) |page| {
-            match *page {
+            match copy *page {
               ItemPage(FnTag(FnDoc)) => Some(FnDoc),
               _ => None
             }
@@ -315,7 +315,7 @@ impl ~[Page]: PageUtils {
 
     fn consts(&self) -> ~[ConstDoc] {
         do vec::filter_map(*self) |page| {
-            match *page {
+            match copy *page {
               ItemPage(ConstTag(ConstDoc)) => Some(ConstDoc),
               _ => None
             }
@@ -324,7 +324,7 @@ impl ~[Page]: PageUtils {
 
     fn enums(&self) -> ~[EnumDoc] {
         do vec::filter_map(*self) |page| {
-            match *page {
+            match copy *page {
               ItemPage(EnumTag(EnumDoc)) => Some(EnumDoc),
               _ => None
             }
@@ -333,7 +333,7 @@ impl ~[Page]: PageUtils {
 
     fn traits(&self) -> ~[TraitDoc] {
         do vec::filter_map(*self) |page| {
-            match *page {
+            match copy *page {
               ItemPage(TraitTag(TraitDoc)) => Some(TraitDoc),
               _ => None
             }
@@ -342,7 +342,7 @@ impl ~[Page]: PageUtils {
 
     fn impls(&self) -> ~[ImplDoc] {
         do vec::filter_map(*self) |page| {
-            match *page {
+            match copy *page {
               ItemPage(ImplTag(ImplDoc)) => Some(ImplDoc),
               _ => None
             }
@@ -351,7 +351,7 @@ impl ~[Page]: PageUtils {
 
     fn types(&self) -> ~[TyDoc] {
         do vec::filter_map(*self) |page| {
-            match *page {
+            match copy *page {
               ItemPage(TyTag(TyDoc)) => Some(TyDoc),
               _ => None
             }
@@ -365,46 +365,46 @@ pub trait Item {
 
 impl ItemTag: Item {
     pure fn item(&self) -> ItemDoc {
-        match *self {
-          doc::ModTag(doc) => doc.item,
-          doc::NmodTag(doc) => doc.item,
-          doc::FnTag(doc) => doc.item,
-          doc::ConstTag(doc) => doc.item,
-          doc::EnumTag(doc) => doc.item,
-          doc::TraitTag(doc) => doc.item,
-          doc::ImplTag(doc) => doc.item,
-          doc::TyTag(doc) => doc.item,
-          doc::StructTag(doc) => doc.item
+        match self {
+          &doc::ModTag(ref doc) => copy doc.item,
+          &doc::NmodTag(ref doc) => copy doc.item,
+          &doc::FnTag(ref doc) => copy doc.item,
+          &doc::ConstTag(ref doc) => copy doc.item,
+          &doc::EnumTag(ref doc) => copy doc.item,
+          &doc::TraitTag(ref doc) => copy doc.item,
+          &doc::ImplTag(ref doc) => copy doc.item,
+          &doc::TyTag(ref doc) => copy doc.item,
+          &doc::StructTag(ref doc) => copy doc.item
         }
     }
 }
 
 impl SimpleItemDoc: Item {
-    pure fn item(&self) -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl ModDoc: Item {
-    pure fn item(&self) -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl NmodDoc: Item {
-    pure fn item(&self) -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl EnumDoc: Item {
-    pure fn item(&self) -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl TraitDoc: Item {
-    pure fn item(&self) -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl ImplDoc: Item {
-    pure fn item(&self) -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
 impl StructDoc: Item {
-    pure fn item(&self) -> ItemDoc { self.item }
+    pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
 pub trait ItemUtils {
@@ -422,22 +422,22 @@ impl<A:Item> A: ItemUtils {
     }
 
     pure fn name(&self) -> ~str {
-        self.item().name
+        copy self.item().name
     }
 
     pure fn path(&self) -> ~[~str] {
-        self.item().path
+        copy self.item().path
     }
 
     pure fn brief(&self) -> Option<~str> {
-        self.item().brief
+        copy self.item().brief
     }
 
     pure fn desc(&self) -> Option<~str> {
-        self.item().desc
+        copy self.item().desc
     }
 
     pure fn sections(&self) -> ~[Section] {
-        self.item().sections
+        copy self.item().sections
     }
 }

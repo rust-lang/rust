@@ -70,13 +70,14 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
         match ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@ast::item {
             ident: ident,
-            node: ast::item_fn(decl, _, tys, _), _
+            node: ast::item_fn(ref decl, _, ref tys, _), _
           }, _) |
           ast_map::node_foreign_item(@ast::foreign_item {
             ident: ident,
-            node: ast::foreign_item_fn(decl, _, tys), _
+            node: ast::foreign_item_fn(ref decl, _, ref tys), _
           }, _, _) => {
-            Some(pprust::fun_to_str(decl, ident, tys, extract::interner()))
+            Some(pprust::fun_to_str(*decl, ident, copy *tys,
+                                    extract::interner()))
           }
           _ => fail ~"get_fn_sig: fn_id not bound to a fn item"
         }
@@ -102,7 +103,7 @@ fn fold_const(
     let srv = fold.ctxt;
 
     doc::SimpleItemDoc {
-        sig: Some(do astsrv::exec(srv) |ctxt| {
+        sig: Some(do astsrv::exec(srv) |copy doc, ctxt| {
             match ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@ast::item {
                 node: ast::item_const(ty, _), _
@@ -131,11 +132,11 @@ fn fold_enum(
 
     doc::EnumDoc {
         variants: do par::map(doc.variants) |variant| {
-            let variant = *variant;
-            let sig = do astsrv::exec(srv) |ctxt| {
+            let variant = copy *variant;
+            let sig = do astsrv::exec(srv) |copy variant, ctxt| {
                 match ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@ast::item {
-                    node: ast::item_enum(enum_definition, _), _
+                    node: ast::item_enum(ref enum_definition, _), _
                   }, _) => {
                     let ast_variant =
                         do vec::find(enum_definition.variants) |v| {
@@ -168,7 +169,7 @@ fn fold_trait(
     +doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     doc::TraitDoc {
-        methods: merge_methods(fold.ctxt, doc.id(), doc.methods),
+        methods: merge_methods(fold.ctxt, doc.id(), copy doc.methods),
         .. doc
     }
 }
@@ -180,8 +181,8 @@ fn merge_methods(
 ) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc| {
         doc::MethodDoc {
-            sig: get_method_sig(srv, item_id, doc.name),
-            .. *doc
+            sig: get_method_sig(srv, item_id, copy doc.name),
+            .. copy *doc
         }
     }
 }
@@ -191,13 +192,13 @@ fn get_method_sig(
     item_id: doc::AstId,
     method_name: ~str
 ) -> Option<~str> {
-    do astsrv::exec(srv) |ctxt| {
+    do astsrv::exec(srv) |copy method_name, ctxt| {
         match ctxt.ast_map.get(item_id) {
           ast_map::node_item(@ast::item {
-            node: ast::item_trait(_, _, methods), _
+            node: ast::item_trait(_, _, ref methods), _
           }, _) => {
-            match vec::find(methods, |method| {
-                match *method {
+            match vec::find(*methods, |method| {
+                match copy *method {
                   ast::required(ty_m) => to_str(ty_m.ident) == method_name,
                   ast::provided(m) => to_str(m.ident) == method_name,
                 }
@@ -208,7 +209,7 @@ fn get_method_sig(
                       Some(pprust::fun_to_str(
                           ty_m.decl,
                           ty_m.ident,
-                          ty_m.tps,
+                          copy ty_m.tps,
                           extract::interner()
                       ))
                     }
@@ -216,7 +217,7 @@ fn get_method_sig(
                       Some(pprust::fun_to_str(
                           m.decl,
                           m.ident,
-                          m.tps,
+                          copy m.tps,
                           extract::interner()
                       ))
                     }
@@ -226,16 +227,16 @@ fn get_method_sig(
             }
           }
           ast_map::node_item(@ast::item {
-            node: ast::item_impl(_, _, _, methods), _
+            node: ast::item_impl(_, _, _, ref methods), _
           }, _) => {
-            match vec::find(methods, |method| {
+            match vec::find(*methods, |method| {
                 to_str(method.ident) == method_name
             }) {
                 Some(method) => {
                     Some(pprust::fun_to_str(
                         method.decl,
                         method.ident,
-                        method.tps,
+                        copy method.tps,
                         extract::interner()
                     ))
                 }
@@ -261,7 +262,7 @@ fn fold_impl(
 
     let srv = fold.ctxt;
 
-    let (trait_types, self_ty) = do astsrv::exec(srv) |ctxt| {
+    let (trait_types, self_ty) = do astsrv::exec(srv) |copy doc, ctxt| {
         match ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@ast::item {
             node: ast::item_impl(_, opt_trait_type, self_ty, _), _
@@ -279,7 +280,7 @@ fn fold_impl(
     doc::ImplDoc {
         trait_types: trait_types,
         self_ty: self_ty,
-        methods: merge_methods(fold.ctxt, doc.id(), doc.methods),
+        methods: merge_methods(fold.ctxt, doc.id(), copy doc.methods),
         .. doc
     }
 }
@@ -317,16 +318,16 @@ fn fold_type(
     let srv = fold.ctxt;
 
     doc::SimpleItemDoc {
-        sig: do astsrv::exec(srv) |ctxt| {
+        sig: do astsrv::exec(srv) |copy doc, ctxt| {
             match ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@ast::item {
                 ident: ident,
-                node: ast::item_ty(ty, params), _
+                node: ast::item_ty(ty, ref params), _
               }, _) => {
                 Some(fmt!(
                     "type %s%s = %s",
                     to_str(ident),
-                    pprust::typarams_to_str(params, extract::interner()),
+                    pprust::typarams_to_str(*params, extract::interner()),
                     pprust::ty_to_str(ty, extract::interner())
                 ))
               }
@@ -350,7 +351,7 @@ fn fold_struct(
     let srv = fold.ctxt;
 
     doc::StructDoc {
-        sig: do astsrv::exec(srv) |ctxt| {
+        sig: do astsrv::exec(srv) |copy doc, ctxt| {
             match ctxt.ast_map.get(doc.id()) {
                 ast_map::node_item(item, _) => {
                     let item = strip_struct_extra_stuff(item);
@@ -369,11 +370,11 @@ fn fold_struct(
 /// should be a simple pprust::struct_to_str function that does
 /// what I actually want
 fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
-    let node = match item.node {
+    let node = match copy item.node {
         ast::item_struct(def, tys) => {
             let def = @ast::struct_def {
                 dtor: None, // Remove the drop { } block
-                .. *def
+                .. copy *def
             };
             ast::item_struct(def, tys)
         }
@@ -383,28 +384,28 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
     @ast::item {
         attrs: ~[], // Remove the attributes
         node: node,
-        .. *item
+        .. copy *item
     }
 }
 
 #[test]
 fn should_add_struct_defs() {
     let doc = test::mk_doc(~"struct S { field: () }");
-    assert doc.cratemod().structs()[0].sig.get().contains("struct S {");
+    assert (&doc.cratemod().structs()[0].sig).get().contains("struct S {");
 }
 
 #[test]
 fn should_not_serialize_struct_drop_blocks() {
     // All we care about are the fields
     let doc = test::mk_doc(~"struct S { field: (), drop { } }");
-    assert !doc.cratemod().structs()[0].sig.get().contains("drop");
+    assert !(&doc.cratemod().structs()[0].sig).get().contains("drop");
 }
 
 #[test]
 fn should_not_serialize_struct_attrs() {
     // All we care about are the fields
     let doc = test::mk_doc(~"#[wut] struct S { field: () }");
-    assert !doc.cratemod().structs()[0].sig.get().contains("wut");
+    assert !(&doc.cratemod().structs()[0].sig).get().contains("wut");
 }
 
 #[cfg(test)]
@@ -415,7 +416,7 @@ pub mod test {
     use tystr_pass::run;
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
+        do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)
         }

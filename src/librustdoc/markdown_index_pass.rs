@@ -29,7 +29,7 @@ pub fn mk_pass(+config: config::Config) -> Pass {
     Pass {
         name: ~"markdown_index",
         f: fn~(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-            run(srv, doc, config)
+            run(srv, doc, copy config)
         }
     }
 }
@@ -55,7 +55,7 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     doc::ModDoc {
-        index: Some(build_mod_index(doc, fold.ctxt)),
+        index: Some(build_mod_index(copy doc, copy fold.ctxt)),
         .. doc
     }
 }
@@ -68,7 +68,7 @@ fn fold_nmod(
     let doc = fold::default_any_fold_nmod(fold, doc);
 
     doc::NmodDoc {
-        index: Some(build_nmod_index(doc, fold.ctxt)),
+        index: Some(build_nmod_index(copy doc, copy fold.ctxt)),
         .. doc
     }
 }
@@ -79,7 +79,7 @@ fn build_mod_index(
 ) -> doc::Index {
     doc::Index {
         entries: par::map(doc.items, |doc| {
-            item_to_entry(*doc, config)
+            item_to_entry(copy *doc, copy config)
         })
     }
 }
@@ -90,7 +90,7 @@ fn build_nmod_index(
 ) -> doc::Index {
     doc::Index {
         entries: par::map(doc.fns, |doc| {
-            item_to_entry(doc::FnTag(*doc), config)
+            item_to_entry(doc::FnTag(copy *doc), copy config)
         })
     }
 }
@@ -110,8 +110,8 @@ fn item_to_entry(
     };
 
     doc::IndexEntry {
-        kind: markdown_pass::header_kind(doc),
-        name: markdown_pass::header_name(doc),
+        kind: markdown_pass::header_kind(copy doc),
+        name: markdown_pass::header_name(copy doc),
         brief: doc.brief(),
         link: link
     }
@@ -180,13 +180,13 @@ fn should_index_mod_contents() {
         config::DocPerCrate,
         ~"mod a { } fn b() { }"
     );
-    assert doc.cratemod().index.get().entries[0] == doc::IndexEntry {
+    assert (&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
         kind: ~"Module",
         name: ~"a",
         brief: None,
         link: ~"#module-a"
     };
-    assert doc.cratemod().index.get().entries[1] == doc::IndexEntry {
+    assert (&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -200,13 +200,13 @@ fn should_index_mod_contents_multi_page() {
         config::DocPerMod,
         ~"mod a { } fn b() { }"
     );
-    assert doc.cratemod().index.get().entries[0] == doc::IndexEntry {
+    assert (&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
         kind: ~"Module",
         name: ~"a",
         brief: None,
         link: ~"a.html"
     };
-    assert doc.cratemod().index.get().entries[1] == doc::IndexEntry {
+    assert (&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -220,7 +220,7 @@ fn should_index_foreign_mod_pages() {
         config::DocPerMod,
         ~"extern mod a { }"
     );
-    assert doc.cratemod().index.get().entries[0] == doc::IndexEntry {
+    assert (&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
         kind: ~"Foreign module",
         name: ~"a",
         brief: None,
@@ -234,7 +234,7 @@ fn should_add_brief_desc_to_index() {
         config::DocPerMod,
         ~"#[doc = \"test\"] mod a { }"
     );
-    assert doc.cratemod().index.get().entries[0].brief
+    assert (&doc.cratemod().index).get().entries[0].brief
         == Some(~"test");
 }
 
@@ -244,7 +244,7 @@ fn should_index_foreign_mod_contents() {
         config::DocPerCrate,
         ~"extern mod a { fn b(); }"
     );
-    assert doc.cratemod().nmods()[0].index.get().entries[0]
+    assert (&doc.cratemod().nmods()[0].index).get().entries[0]
         == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",

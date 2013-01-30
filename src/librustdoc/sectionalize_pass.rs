@@ -63,7 +63,7 @@ fn fold_trait(fold: &fold::Fold<()>, +doc: doc::TraitDoc) -> doc::TraitDoc {
             doc::MethodDoc {
                 desc: desc,
                 sections: sections,
-                .. *method
+                .. copy *method
             }
         },
         .. doc
@@ -80,7 +80,7 @@ fn fold_impl(fold: &fold::Fold<()>, +doc: doc::ImplDoc) -> doc::ImplDoc {
             doc::MethodDoc {
                 desc: desc,
                 sections: sections,
-                .. *method
+                .. copy *method
             }
         },
         .. doc
@@ -109,17 +109,17 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
         return (None, ~[]);
     }
 
-    let lines = str::lines(desc.get());
+    let lines = str::lines((copy desc).get());
 
     let mut new_desc = None::<~str>;
     let mut current_section = None;
     let mut sections = ~[];
 
     for lines.each |line| {
-        match parse_header(*line) {
+        match parse_header(copy *line) {
           Some(header) => {
             if current_section.is_some() {
-                sections += ~[current_section.get()];
+                sections += ~[(&current_section).get()];
             }
             current_section = Some(doc::Section {
                 header: header,
@@ -135,12 +135,12 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
                 });
               }
               None => {
-                new_desc = match new_desc {
+                new_desc = match copy new_desc {
                   Some(desc) => {
                     Some(desc + ~"\n" + *line)
                   }
                   None => {
-                    Some(*line)
+                    Some(copy *line)
                   }
                 };
               }
@@ -260,7 +260,7 @@ pub mod test {
     use sectionalize_pass::run;
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
+        do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = (attr_pass::mk_pass().f)(srv, doc);
             run(srv, doc)

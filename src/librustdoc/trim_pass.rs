@@ -44,7 +44,7 @@ mod test {
     use trim_pass::mk_pass;
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
+        do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = (attr_pass::mk_pass().f)(srv, doc);
             (mk_pass().f)(srv, doc)

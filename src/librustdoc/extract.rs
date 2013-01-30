@@ -34,7 +34,7 @@ macro_rules! interner_key (
 pub fn to_str(id: ast::ident) -> ~str {
     let intr = unsafe{ local_data_get(interner_key!()) };
 
-    return *(*intr.get()).get(id);
+    return copy *(*intr.get()).get(id);
 }
 
 pub fn interner() -> @syntax::parse::token::ident_interner {
@@ -49,7 +49,7 @@ pub fn from_srv(
     //! Use the AST service to create a document tree
 
     do astsrv::exec(srv) |ctxt| {
-        extract(ctxt.ast, default_name)
+        extract(ctxt.ast, copy default_name)
     }
 }
 
@@ -94,7 +94,7 @@ fn moddoc_from_mod(
         item: itemdoc,
         items: do vec::filter_map(module_.items) |item| {
             let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
-            match item.node {
+            match copy item.node {
               ast::item_mod(m) => {
                 Some(doc::ModTag(
                     moddoc_from_mod(ItemDoc, m)
@@ -117,7 +117,7 @@ fn moddoc_from_mod(
               }
               ast::item_enum(enum_definition, _) => {
                 Some(doc::EnumTag(
-                    enumdoc_from_enum(ItemDoc, enum_definition.variants)
+                    enumdoc_from_enum(ItemDoc, copy enum_definition.variants)
                 ))
               }
               ast::item_trait(_, _, methods) => {
@@ -233,7 +233,7 @@ fn traitdoc_from_trait(
     doc::TraitDoc {
         item: itemdoc,
         methods: do vec::map(methods) |method| {
-            match *method {
+            match copy *method {
               ast::required(ty_m) => {
                 doc::MethodDoc {
                     name: to_str(ty_m.ident),
@@ -398,7 +398,7 @@ mod test {
     pub fn extract_fns() {
         let doc = mk_doc(
             ~"fn a() { } \
-             mod b {
+              mod b { fn c() {
              } }");
         assert doc.cratemod().fns()[0].name() == ~"a";
         assert doc.cratemod().mods()[0].fns()[0].name() == ~"c";

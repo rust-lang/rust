@@ -88,7 +88,7 @@ fn find_pages(doc: doc::Doc, page_chan: PageChan) {
         fold_nmod: fold_nmod,
         .. fold::default_any_fold(NominalOp { op: page_chan })
     };
-    (fold.fold_doc)(&fold, doc);
+    (fold.fold_doc)(&fold, copy doc);
 
     oldcomm::send(page_chan, None);
 }
@@ -102,7 +102,7 @@ fn fold_crate(
 
     let page = doc::CratePage(doc::CrateDoc {
         topmod: strip_mod(doc.topmod),
-        .. doc
+        .. copy doc
     });
 
     oldcomm::send(fold.ctxt.op, Some(page));
@@ -136,7 +136,7 @@ fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
               _ => true
             }
         },
-        .. doc
+        .. copy doc
     }
 }
 
@@ -145,7 +145,7 @@ fn fold_nmod(
     +doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
-    let page = doc::ItemPage(doc::NmodTag(doc));
+    let page = doc::ItemPage(doc::NmodTag(copy doc));
     oldcomm::send(fold.ctxt.op, Some(page));
     return doc;
 }
@@ -195,13 +195,13 @@ mod test {
         output_style: config::OutputStyle,
         source: ~str
     ) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
+        do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc, output_style)
         }
     }
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
-        mk_doc_(config::DocPerMod, source)
+        mk_doc_(config::DocPerMod, copy source)
     }
 }
