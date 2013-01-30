@@ -582,6 +582,15 @@ pub fn test_to_str_inf() {
 }
 
 #[test]
+pub fn test_round() {
+    assert round(5.8) == 6.0;
+    assert round(5.2) == 5.0;
+    assert round(3.0) == 3.0;
+    assert round(2.5) == 3.0;
+    assert round(-3.5) == -4.0;
+}
+
+#[test]
 pub fn test_traits() {
     fn test<U:num::Num cmp::Eq>(ten: &U) {
         assert (ten.to_int() == 10);
@@ -609,8 +618,3 @@ pub fn test_traits() {
 // buffer-file-coding-system: utf-8-unix
 // End:
 //
-
-
-
-
-
