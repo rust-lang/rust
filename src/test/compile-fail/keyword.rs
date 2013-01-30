@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports]
-mod break {
+pub mod break {
     //~^ ERROR found `break` in ident position
 }

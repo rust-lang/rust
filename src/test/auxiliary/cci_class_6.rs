@@ -8,32 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports];
+pub mod kitties {
+    pub struct cat<U> {
+        priv mut info : ~[U],
+        priv mut meows : uint,
 
-mod kitties {
-    #[legacy_exports];
+        how_hungry : int,
+    }
 
-struct cat<U> {
-  priv mut info : ~[U],
-  priv mut meows : uint,
-
-  how_hungry : int,
-}
-
-    impl<U> cat<U> {
+    pub impl<U> cat<U> {
         fn speak<T>(stuff: ~[T]) {
             self.meows += stuff.len();
         }
         fn meow_count() -> uint { self.meows }
     }
 
-fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {
-    cat {
-        meows: in_x,
-        how_hungry: in_y,
-        info: move in_info
+    pub fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {
+        cat {
+            meows: in_x,
+            how_hungry: in_y,
+            info: move in_info
+        }
     }
 }
 
-
-}

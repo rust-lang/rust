@@ -13,6 +13,5 @@
        calories = "100")];
 
 #[crate_type = "lib"];
-#[legacy_exports];
 
-fn f() -> int { 100 }
+pub fn f() -> int { 100 }

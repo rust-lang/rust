@@ -11,24 +11,22 @@
 // error-pattern:method `nap` is private
 
 mod kitties {
-    #[legacy_exports];
-struct cat {
-  priv mut meows : uint,
+    pub struct cat {
+        priv mut meows : uint,
 
-  how_hungry : int,
-
-}
-
-impl cat {
-    priv fn nap() { uint::range(1u, 10000u, |_i| false)}
-}
-
-fn cat(in_x : uint, in_y : int) -> cat {
-    cat {
-        meows: in_x,
-        how_hungry: in_y
+        how_hungry : int,
     }
-}
+
+    pub impl cat {
+        priv fn nap() { uint::range(1u, 10000u, |_i| false)}
+    }
+
+    pub fn cat(in_x : uint, in_y : int) -> cat {
+        cat {
+            meows: in_x,
+            how_hungry: in_y
+        }
+    }
 }
 
 fn main() {

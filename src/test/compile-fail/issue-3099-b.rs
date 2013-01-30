@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports]
-mod a {}
+pub mod a {}
 
-#[legacy_exports]
-mod a {} //~ ERROR duplicate definition of type a
+pub mod a {} //~ ERROR duplicate definition of type a
 
 fn main() {}

@@ -10,18 +10,12 @@
 
 extern mod issue_2316_a;
 
-mod cloth {
-    #[legacy_exports];
+pub mod cloth {
+    use issue_2316_a::*;
 
-use issue_2316_a::*;
-
-export calico, gingham, flannel;
-export fabric;
-
-enum fabric {
-  gingham, flannel, calico
-}
-
+    pub enum fabric {
+        gingham, flannel, calico
+    }
 }
 
 

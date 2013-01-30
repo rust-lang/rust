@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports];
-unsafe fn f(xs: ~[int]) {
-  xs.map(|_x| { unsafe fn q() { fail; } });
+pub unsafe fn f(xs: ~[int]) {
+    xs.map(|_x| { unsafe fn q() { fail; } });
 }

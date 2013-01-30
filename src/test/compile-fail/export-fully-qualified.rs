@@ -15,11 +15,7 @@
 // want to change eventually.
 
 mod foo {
-    #[legacy_exports];
-
-    export bar;
-
-    fn bar() { foo::baz(); }
+    pub fn bar() { foo::baz(); }
 
     fn baz() { }
 }

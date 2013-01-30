@@ -10,9 +10,7 @@
 
 // error-pattern: import
 
-mod a {
-    #[legacy_exports]; import foo = b::foo; export foo; }
-mod b {
-    #[legacy_exports]; import foo = a::foo; export foo; }
+mod a { pub use b::foo; }
+mod b { pub use a::foo; }
 
 fn main(args: ~[str]) { debug!("loop"); }

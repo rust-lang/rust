@@ -9,8 +9,7 @@
 // except according to those terms.
 
 mod bar {
-    #[legacy_exports];
-    enum foo {
+    pub enum foo {
         alpha,
         beta,
         charlie

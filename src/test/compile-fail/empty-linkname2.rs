@@ -14,5 +14,4 @@
 #[link_name = ""]
 #[nolink]
 extern mod foo {
-    #[legacy_exports];
 }

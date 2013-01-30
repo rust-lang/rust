@@ -9,8 +9,7 @@
 // except according to those terms.
 
 mod a {
-    #[legacy_exports];
-    struct Foo {
+    pub struct Foo {
         priv x: int
     }
 }

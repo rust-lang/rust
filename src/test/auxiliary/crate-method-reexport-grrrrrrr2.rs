@@ -10,40 +10,31 @@
 
 #[link(name = "crate_method_reexport_grrrrrrr2")];
 
-export rust;
-
 use name_pool::add;
 
 mod name_pool {
-    #[legacy_exports];
+    pub type name_pool = ();
 
-    type name_pool = ();
-
-    trait add {
+    pub trait add {
         fn add(s: ~str);
     }
 
-    impl name_pool: add {
+    pub impl name_pool: add {
         fn add(s: ~str) {
         }
     }
 }
 
-mod rust {
-    #[legacy_exports];
-
+pub mod rust {
     use name_pool::add;
-    export add;
-    export rt;
-    export cx;
 
-    type rt = @();
+    pub type rt = @();
 
-    trait cx {
+    pub trait cx {
         fn cx();
     }
 
-    impl rt: cx {
+    pub impl rt: cx {
         fn cx() {
         }
     }

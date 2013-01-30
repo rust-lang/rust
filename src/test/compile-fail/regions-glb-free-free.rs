@@ -9,23 +9,22 @@
 // except according to those terms.
 
 mod argparse {
-    #[legacy_exports];
     extern mod std;
 
     use either::{Either, Left, Right};
 
-    struct Flag {
+    pub struct Flag {
         name: &str,
         desc: &str,
         max_count: uint,
         mut value: uint
     }
 
-    fn flag(name: &r/str, desc: &r/str) -> Flag/&r {
+    pub fn flag(name: &r/str, desc: &r/str) -> Flag/&r {
         Flag { name: name, desc: desc, max_count: 1, value: 0 }
     }
 
-    impl Flag {
+    pub impl Flag {
         fn set_desc(self, s: &str) -> Flag {
             Flag { //~ ERROR cannot infer an appropriate lifetime
                 name: self.name,

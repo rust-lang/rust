@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_exports];
 #[abi = "rust-intrinsic"]
-extern mod rusti {
-    #[legacy_exports];
+pub extern mod rusti {
     fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
     fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;
     fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
@@ -30,7 +28,7 @@ extern mod rusti {
 }
 
 #[inline(always)]
-fn atomic_xchg(dst: &mut int, src: int) -> int {
+pub fn atomic_xchg(dst: &mut int, src: int) -> int {
     unsafe {
         rusti::atomic_xchg(dst, src)
     }

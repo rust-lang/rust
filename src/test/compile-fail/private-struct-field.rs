@@ -9,12 +9,11 @@
 // except according to those terms.
 
 mod cat {
-    #[legacy_exports];
-    struct Cat {
+    pub struct Cat {
         priv meows: uint
     }
 
-    fn new_cat() -> Cat {
+    pub fn new_cat() -> Cat {
         Cat { meows: 52 }
     }
 }

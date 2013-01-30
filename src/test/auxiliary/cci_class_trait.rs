@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod animals {
-    #[legacy_exports];
-
-trait noisy {
-  fn speak();
-}
-
+pub mod animals {
+    pub trait noisy {
+        fn speak();
+    }
 }
