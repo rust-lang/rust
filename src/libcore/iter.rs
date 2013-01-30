@@ -50,6 +50,10 @@ pub trait Times {
     pure fn times(&self, it: fn() -> bool);
 }
 
+pub trait OwnedIter<A> {
+    fn consume(self, blk: fn(uint, A));
+}
+
 pub trait CopyableIter<A:Copy> {
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A];
     pure fn to_vec(&self) -> ~[A];
