@@ -1237,7 +1237,7 @@ impl RegionVarBindings {
                 classification: Contracting,
                 span: self.var_spans[var_idx],
                 value: NoValue,
-                head_edge: [mut uint::max_value, uint::max_value]
+                head_edge: [uint::max_value, uint::max_value]
             }
         });
 
@@ -1245,7 +1245,7 @@ impl RegionVarBindings {
         let mut edges = vec::with_capacity(num_edges);
         for self.constraints.each_ref |constraint, span| {
             edges.push(GraphEdge {
-                next_edge: [mut uint::max_value, uint::max_value],
+                next_edge: [uint::max_value, uint::max_value],
                 constraint: *constraint,
                 span: *span
             });
