@@ -357,24 +357,27 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 pub fn monitor(+f: fn~(diagnostic::emitter)) {
-    let p = oldcomm::Port();
-    let ch = oldcomm::Chan(&p);
-
+    use core::pipes::*;
+    use std::cell::Cell;
+    let (p, ch) = stream();
+    let ch = SharedChan(ch);
+    let ch_capture = ch.clone();
     match do task::try |move f| {
-
+        let ch = ch_capture.clone();
+        let ch_capture = ch.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
         let demitter = fn@(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
                            msg: &str, lvl: diagnostic::level) {
             if lvl == diagnostic::fatal {
-                oldcomm::send(ch, fatal);
+                ch_capture.send(fatal);
             }
             diagnostic::emit(cmsp, msg, lvl);
         };
 
         struct finally {
-            ch: oldcomm::Chan<monitor_msg>,
-            drop { oldcomm::send(self.ch, done); }
+            ch: SharedChan<monitor_msg>,
+            drop { self.ch.send(done); }
         }
 
         let _finally = finally { ch: ch };
@@ -384,7 +387,7 @@ pub fn monitor(+f: fn~(diagnostic::emitter)) {
         result::Ok(_) => { /* fallthrough */ }
         result::Err(_) => {
             // Task failed without emitting a fatal diagnostic
-            if oldcomm::recv(p) == done {
+            if p.recv() == done {
                 diagnostic::emit(
                     None,
                     diagnostic::ice_msg(~"unexpected failure"),
