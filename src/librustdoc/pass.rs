@@ -45,39 +45,39 @@ fn test_run_passes() {
         _srv: astsrv::Srv,
         +doc: doc::Doc
     ) -> doc::Doc {
-        doc::Doc_({
+        doc::Doc{
             pages: ~[
-                doc::CratePage({
-                    topmod: doc::ModDoc_({
-                        item: {
+                doc::CratePage(doc::CrateDoc{
+                    topmod: doc::ModDoc{
+                        item: doc::ItemDoc {
                             name: doc.cratemod().name() + ~"two",
                             .. doc.cratemod().item
                         },
                         items: ~[],
                         index: None
-                    })
+                    }
                 })
             ]
-        })
+        }
     }
     fn pass2(
         _srv: astsrv::Srv,
         +doc: doc::Doc
     ) -> doc::Doc {
-        doc::Doc_({
+        doc::Doc{
             pages: ~[
-                doc::CratePage({
-                    topmod: doc::ModDoc_({
-                        item: {
+                doc::CratePage(doc::CrateDoc{
+                    topmod: doc::ModDoc{
+                        item: doc::ItemDoc {
                             name: doc.cratemod().name() + ~"three",
                             .. doc.cratemod().item
                         },
                         items: ~[],
                         index: None
-                    })
+                    }
                 })
             ]
-        })
+        }
     }
     let source = ~"";
     do astsrv::from_str(source) |srv| {

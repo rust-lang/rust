@@ -42,12 +42,12 @@ fn fold_mod(
 ) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
 
-    doc::ModDoc_(doc::ModDoc_ {
+    doc::ModDoc {
         items: do doc.items.filtered |ItemTag| {
             !is_hidden(fold.ctxt, ItemTag.item())
         },
-        .. *doc
-    })
+        .. doc
+    }
 }
 
 fn is_hidden(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {

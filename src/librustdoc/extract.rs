@@ -57,13 +57,13 @@ pub fn extract(
     crate: @ast::crate,
     +default_name: ~str
 ) -> doc::Doc {
-    doc::Doc_(doc::Doc_ {
+    doc::Doc {
         pages: ~[
             doc::CratePage(doc::CrateDoc {
                 topmod: top_moddoc_from_crate(crate, default_name),
             })
         ]
-    })
+    }
 }
 
 fn top_moddoc_from_crate(
@@ -90,7 +90,7 @@ fn moddoc_from_mod(
     +itemdoc: doc::ItemDoc,
     module_: ast::_mod
 ) -> doc::ModDoc {
-    doc::ModDoc_(doc::ModDoc_ {
+    doc::ModDoc {
         item: itemdoc,
         items: do vec::filter_map(module_.items) |item| {
             let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
@@ -144,7 +144,7 @@ fn moddoc_from_mod(
             }
         },
         index: None
-    })
+    }
 }
 
 fn nmoddoc_from_mod(

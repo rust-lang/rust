@@ -54,10 +54,10 @@ fn fold_mod(
 
     let doc = fold::default_any_fold_mod(fold, doc);
 
-    doc::ModDoc_(doc::ModDoc_ {
+    doc::ModDoc {
         index: Some(build_mod_index(doc, fold.ctxt)),
-        .. *doc
-    })
+        .. doc
+    }
 }
 
 fn fold_nmod(
@@ -180,13 +180,13 @@ fn should_index_mod_contents() {
         config::DocPerCrate,
         ~"mod a { } fn b() { }"
     );
-    assert doc.cratemod().index.get().entries[0] == {
+    assert doc.cratemod().index.get().entries[0] == doc::IndexEntry {
         kind: ~"Module",
         name: ~"a",
         brief: None,
         link: ~"#module-a"
     };
-    assert doc.cratemod().index.get().entries[1] == {
+    assert doc.cratemod().index.get().entries[1] == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -200,13 +200,13 @@ fn should_index_mod_contents_multi_page() {
         config::DocPerMod,
         ~"mod a { } fn b() { }"
     );
-    assert doc.cratemod().index.get().entries[0] == {
+    assert doc.cratemod().index.get().entries[0] == doc::IndexEntry {
         kind: ~"Module",
         name: ~"a",
         brief: None,
         link: ~"a.html"
     };
-    assert doc.cratemod().index.get().entries[1] == {
+    assert doc.cratemod().index.get().entries[1] == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -220,7 +220,7 @@ fn should_index_foreign_mod_pages() {
         config::DocPerMod,
         ~"extern mod a { }"
     );
-    assert doc.cratemod().index.get().entries[0] == {
+    assert doc.cratemod().index.get().entries[0] == doc::IndexEntry {
         kind: ~"Foreign module",
         name: ~"a",
         brief: None,
@@ -244,7 +244,8 @@ fn should_index_foreign_mod_contents() {
         config::DocPerCrate,
         ~"extern mod a { fn b(); }"
     );
-    assert doc.cratemod().nmods()[0].index.get().entries[0] == {
+    assert doc.cratemod().nmods()[0].index.get().entries[0]
+        == doc::IndexEntry {
         kind: ~"Function",
         name: ~"b",
         brief: None,
@@ -268,7 +269,7 @@ mod test {
     pub fn mk_doc(output_style: config::OutputStyle, +source: ~str)
                -> doc::Doc {
         do astsrv::from_str(source) |srv| {
-            let config = {
+            let config = config::Config {
                 output_style: output_style,
                 .. config::default_config(&Path("whatever"))
             };

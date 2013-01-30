@@ -256,7 +256,7 @@ fn maybe_find_pandoc(
 
 #[test]
 fn should_find_pandoc() {
-    let config = {
+    let config = Config {
         output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
@@ -273,7 +273,7 @@ fn should_find_pandoc() {
 
 #[test]
 fn should_error_with_no_pandoc() {
-    let config = {
+    let config = Config {
         output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
