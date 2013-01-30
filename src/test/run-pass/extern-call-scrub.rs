@@ -13,9 +13,8 @@
 // directions
 
 extern mod rustrt {
-    #[legacy_exports];
-    fn rust_dbg_call(cb: *u8,
-                     data: libc::uintptr_t) -> libc::uintptr_t;
+    pub fn rust_dbg_call(cb: *u8,
+                         data: libc::uintptr_t) -> libc::uintptr_t;
 }
 
 extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {

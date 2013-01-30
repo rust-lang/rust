@@ -11,13 +11,10 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_nested_lib.rs
 
-#[legacy_modes];
-#[legacy_exports];
-
 extern mod cci_nested_lib;
 use cci_nested_lib::*;
 
-fn main() {
+pub fn main() {
     let lst = new_int_alist();
     alist_add(lst, 22, ~"hi");
     alist_add(lst, 44, ~"ho");

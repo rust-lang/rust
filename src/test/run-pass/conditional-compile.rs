@@ -22,15 +22,13 @@ const b: bool = true;
 #[cfg(bogus)]
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
     // This symbol doesn't exist and would be a link error if this
     // module was translated
-    fn bogus();
+    pub fn bogus();
 }
 
 #[abi = "cdecl"]
-extern mod rustrt {
-    #[legacy_exports]; }
+extern mod rustrt {}
 
 #[cfg(bogus)]
 type t = int;
@@ -66,21 +64,18 @@ fn r(i:int) -> r {
 
 #[cfg(bogus)]
 mod m {
-    #[legacy_exports];
     // This needs to parse but would fail in typeck. Since it's not in
     // the current config it should not be typechecked.
-    fn bogus() { return 0; }
+    pub fn bogus() { return 0; }
 }
 
 mod m {
-    #[legacy_exports];
-
     // Submodules have slightly different code paths than the top-level
     // module, so let's make sure this jazz works here as well
     #[cfg(bogus)]
-    fn f() { }
+    pub fn f() { }
 
-    fn f() { }
+    pub fn f() { }
 }
 
 // Since the bogus configuration isn't defined main will just be
@@ -111,23 +106,19 @@ fn test_in_fn_ctxt() {
 }
 
 mod test_foreign_items {
-    #[legacy_exports];
     #[abi = "cdecl"]
-    extern mod rustrt {
-        #[legacy_exports];
+    pub extern mod rustrt {
         #[cfg(bogus)]
-        fn rust_getcwd() -> ~str;
-        fn rust_getcwd() -> ~str;
+        pub fn rust_getcwd() -> ~str;
+        pub fn rust_getcwd() -> ~str;
     }
 }
 
 mod test_use_statements {
-    #[legacy_exports];
     #[cfg(bogus)]
     use flippity_foo;
 
-    extern mod rustrt {
-        #[legacy_exports];
+    pub extern mod rustrt {
         #[cfg(bogus)]
         use flippity_foo;
     }

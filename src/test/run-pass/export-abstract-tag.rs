@@ -12,13 +12,9 @@
 // sort of ADT.
 
 mod foo {
-    #[legacy_exports];
-    export t;
-    export f;
+    pub enum t { t1, }
 
-    enum t { t1, }
-
-    fn f() -> t { return t1; }
+    pub fn f() -> t { return t1; }
 }
 
 fn main() { let v: foo::t = foo::f(); }

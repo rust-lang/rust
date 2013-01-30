@@ -11,8 +11,7 @@
 #[nolink]
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    #[legacy_exports];
-    fn morestack_addr() -> *();
+    pub fn morestack_addr() -> *();
 }
 
 fn main() {

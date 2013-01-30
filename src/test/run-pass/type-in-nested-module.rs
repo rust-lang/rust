@@ -11,12 +11,10 @@
 
 
 mod a {
-    #[legacy_exports];
-    mod b {
-        #[legacy_exports];
-        type t = int;
+    pub mod b {
+        pub type t = int;
 
-        fn foo() { let x: t = 10; }
+        pub fn foo() { let x: t = 10; }
     }
 }
 

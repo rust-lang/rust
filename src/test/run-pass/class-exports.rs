@@ -16,24 +16,21 @@
 use kitty::*;
 
 mod kitty {
-    #[legacy_exports];
-  export cat;
-  struct cat {
-    meows: uint,
-    name: ~str,
-  }
+    pub struct cat {
+        meows: uint,
+        name: ~str,
+    }
 
-  impl cat {
-    fn get_name() -> ~str { copy self.name }
-  }
+    pub impl cat {
+        fn get_name() -> ~str { copy self.name }
+    }
 
-    fn cat(in_name: ~str) -> cat {
+    pub fn cat(in_name: ~str) -> cat {
         cat {
             name: in_name,
             meows: 0u
         }
     }
-
 }
 
 fn main() {

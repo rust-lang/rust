@@ -11,17 +11,13 @@
 // except according to those terms.
 
 mod spam {
-    #[legacy_exports];
-    fn ham() { }
-    fn eggs() { }
+    pub fn ham() { }
+    pub fn eggs() { }
 }
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    #[legacy_exports];
-    use spam::{ham, eggs};
-    export ham;
-    export eggs;
+    pub use spam::{ham, eggs};
 }
 
 fn main() { rustrt::ham(); rustrt::eggs(); }

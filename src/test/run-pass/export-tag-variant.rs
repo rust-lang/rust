@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Export the enum variants, without the enum
-
 mod foo {
-    #[legacy_exports];
-    export t1;
-    enum t { t1, }
+    pub enum t { t1, }
 }
 
 fn main() { let v = foo::t1; }

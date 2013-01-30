@@ -10,18 +10,15 @@
 
 // This test is brittle!
 // xfail-pretty - the pretty tests lose path information, breaking include!
-#[legacy_exports];
 
-mod m1 {
-    #[legacy_exports];
-    mod m2 {
-        #[legacy_exports];
-        fn where_am_i() -> ~str { (module_path!()).to_owned() }
+pub mod m1 {
+    pub mod m2 {
+        pub fn where_am_i() -> ~str { (module_path!()).to_owned() }
     }
 }
 
 fn main() {
-    assert(line!() == 24);
+    assert(line!() == 21);
     assert(col!() == 11);
     assert(file!().to_owned().ends_with(~"syntax-extension-source-utils.rs"));
     assert(stringify!((2*3) + 5).to_owned() == ~"( 2 * 3 ) + 5");

@@ -16,13 +16,11 @@
 // Modified to not use export since it's going away. --pcw
 
 mod foo {
-    #[legacy_exports];
     use foo::bar::*;
-    mod bar {
-        #[legacy_exports];
-        const a : int = 10;
+    pub mod bar {
+        pub const a : int = 10;
     }
-    fn zum() {
+    pub fn zum() {
         let b = a;
     }
 }

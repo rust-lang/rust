@@ -13,9 +13,8 @@ extern mod std;
 #[abi = "cdecl"]
 #[nolink]
 extern mod libc {
-    #[legacy_exports];
-    fn atol(x: *u8) -> int;
-    fn atoll(x: *u8) -> i64;
+    pub fn atol(x: *u8) -> int;
+    pub fn atoll(x: *u8) -> i64;
 }
 
 fn atol(s: ~str) -> int {

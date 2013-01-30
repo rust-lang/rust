@@ -12,13 +12,9 @@
 
 use foo::bar;
 mod foo {
-    #[legacy_exports];
-    use foo::zed::bar;
-    export bar;
-    export zed;
-    mod zed {
-        #[legacy_exports];
-        fn bar() { debug!("foo"); }
+    pub use foo::zed::bar;
+    pub mod zed {
+        pub fn bar() { debug!("foo"); }
     }
 }
 

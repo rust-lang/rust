@@ -10,9 +10,9 @@
 
 #[link(name = "crate_method_reexport_grrrrrrr2")];
 
-use name_pool::add;
+pub use name_pool::add;
 
-mod name_pool {
+pub mod name_pool {
     pub type name_pool = ();
 
     pub trait add {
@@ -26,7 +26,7 @@ mod name_pool {
 }
 
 pub mod rust {
-    use name_pool::add;
+    pub use name_pool::add;
 
     pub type rt = @();
 

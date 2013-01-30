@@ -12,9 +12,8 @@
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    #[legacy_exports];
-    fn pref_align_of<T>() -> uint;
-    fn min_align_of<T>() -> uint;
+    pub fn pref_align_of<T>() -> uint;
+    pub fn min_align_of<T>() -> uint;
 }
 
 #[cfg(target_os = "linux")]

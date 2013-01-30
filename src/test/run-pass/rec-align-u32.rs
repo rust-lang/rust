@@ -12,9 +12,8 @@
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
-    #[legacy_exports];
-    fn pref_align_of<T>() -> uint;
-    fn min_align_of<T>() -> uint;
+    pub fn pref_align_of<T>() -> uint;
+    pub fn min_align_of<T>() -> uint;
 }
 
 // This is the type with the questionable alignment
@@ -32,16 +31,14 @@ struct Outer {
 
 #[cfg(target_arch = "x86")]
 mod m {
-    #[legacy_exports];
-    fn align() -> uint { 4u }
-    fn size() -> uint { 8u }
+    pub fn align() -> uint { 4u }
+    pub fn size() -> uint { 8u }
 }
 
 #[cfg(target_arch = "x86_64")]
 mod m {
-    #[legacy_exports];
-    fn align() -> uint { 4u }
-    fn size() -> uint { 8u }
+    pub fn align() -> uint { 4u }
+    pub fn size() -> uint { 8u }
 }
 
 fn main() {

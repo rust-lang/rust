@@ -12,15 +12,14 @@
 // external symbols as close to the red zone as possible.
 
 extern mod rustrt {
-    #[legacy_exports];
-    fn debug_get_stk_seg() -> *u8;
+    pub fn debug_get_stk_seg() -> *u8;
 
-    fn rust_get_sched_id() -> libc::intptr_t;
-    fn last_os_error() -> ~str;
-    fn rust_getcwd() -> ~str;
-    fn get_task_id() -> libc::intptr_t;
-    fn rust_sched_threads();
-    fn rust_get_task();
+    pub fn rust_get_sched_id() -> libc::intptr_t;
+    pub fn last_os_error() -> ~str;
+    pub fn rust_getcwd() -> ~str;
+    pub fn get_task_id() -> libc::intptr_t;
+    pub fn rust_sched_threads();
+    pub fn rust_get_task();
 }
 
 fn calllink01() { unsafe { rustrt::rust_get_sched_id(); } }
