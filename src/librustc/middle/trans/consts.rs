@@ -470,12 +470,20 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
 
                 // FIXME (#1645): enum body alignment is generaly wrong.
                 if !degen {
+                    // Pad out the data to the size of its type_of;
+                    // this is necessary if the enum is contained
+                    // within an aggregate (tuple, struct, vector) so
+                    // that the next element is at the right offset.
+                    let actual_size =
+                        machine::llsize_of_real(cx, llvm::LLVMTypeOf(c_args));
+                    let padding =
+                        C_null(T_array(T_i8(), size - actual_size));
                     // A packed_struct has an alignment of 1; thus,
                     // wrapping one around c_args will misalign it the
                     // same way we normally misalign enum bodies
                     // without affecting its internal alignment or
                     // changing the alignment of the enum.
-                    C_struct(~[discrim, C_packed_struct(~[c_args])])
+                    C_struct(~[discrim, C_packed_struct(~[c_args]), padding])
                 } else if size == 0 {
                     C_struct(~[discrim])
                 } else {
