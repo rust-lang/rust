@@ -469,6 +469,22 @@ pub mod linear {
         pure fn is_superset(&self, other: &LinearSet<T>) -> bool {
             other.is_subset(self)
         }
+
+        /// Visit the values representing the difference
+        pure fn difference(&self, other: &LinearSet<T>, f: fn(&T) -> bool) {
+            for self.each |v| {
+                if !other.contains(v) {
+                    if !f(v) { return; }
+                }
+            }
+        }
+
+        /// Visit the values representing the symmetric difference
+        pure fn symmetric_difference(&self, other: &LinearSet<T>,
+                                     f: fn(&T) -> bool) {
+            self.difference(other, f);
+            other.difference(self, f);
+        }
     }
 
     pub impl <T: Hash IterBytes Eq> LinearSet<T> {
@@ -680,5 +696,54 @@ mod test_set {
         assert !a.is_superset(&b);
         assert !b.is_subset(&a);
         assert b.is_superset(&a);
+    }
+
+    #[test]
+    fn test_difference() {
+        let mut a = linear::LinearSet::new();
+        let mut b = linear::LinearSet::new();
+
+        assert a.insert(1);
+        assert a.insert(3);
+        assert a.insert(5);
+        assert a.insert(9);
+        assert a.insert(11);
+
+        assert b.insert(3);
+        assert b.insert(9);
+
+        let mut i = 0;
+        let expected = [1, 5, 11];
+        for a.difference(&b) |x| {
+            assert vec::contains(expected, x);
+            i += 1
+        }
+        assert i == expected.len();
+    }
+
+    #[test]
+    fn test_symmetric_difference() {
+        let mut a = linear::LinearSet::new();
+        let mut b = linear::LinearSet::new();
+
+        assert a.insert(1);
+        assert a.insert(3);
+        assert a.insert(5);
+        assert a.insert(9);
+        assert a.insert(11);
+
+        assert b.insert(-2);
+        assert b.insert(3);
+        assert b.insert(9);
+        assert b.insert(14);
+        assert b.insert(22);
+
+        let mut i = 0;
+        let expected = [-2, 1, 5, 11, 14, 22];
+        for a.symmetric_difference(&b) |x| {
+            assert vec::contains(expected, x);
+            i += 1
+        }
+        assert i == expected.len();
     }
 }

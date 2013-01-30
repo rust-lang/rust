@@ -75,4 +75,10 @@ pub trait Set<T>: Mutable {
 
     /// Return true if the set is a superset of another
     pure fn is_superset(&self, other: &self) -> bool;
+
+    /// Visit the values representing the difference
+    pure fn difference(&self, other: &self, f: fn(&T) -> bool);
+
+    /// Visit the values representing the symmetric difference
+    pure fn symmetric_difference(&self, other: &self, f: fn(&T) -> bool);
 }
