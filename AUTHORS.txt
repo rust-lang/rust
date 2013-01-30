@@ -53,6 +53,7 @@ Eric Holmes <eric@ejholmes.net>
 Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Erik Rose <erik@mozilla.com>
 Evan McClanahan <evan@evanmcc.com>
+Felix S. Klock II <pnkfelix@pnkfx.org>
 Francisco Souza <f@souza.cc>
 Franklin Chen <franklinchen@franklinchen.com>
 Gabriel <g2p.code@gmail.com>
