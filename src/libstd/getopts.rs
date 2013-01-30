@@ -1295,7 +1295,7 @@ mod tests {
         let sample_args = ~[~"-k", ~"15", ~"--apple", ~"1", ~"k",
                             ~"-p", ~"16", ~"l", ~"35"];
 
-        // NOTE: we should sort before comparing
+        // FIXME #4681: sort options here?
         assert getopts(sample_args, short)
             == groups::getopts(sample_args, verbose);
     }
