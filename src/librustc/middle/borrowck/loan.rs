@@ -43,21 +43,19 @@ XXX --- much more needed, don't have time to write this all up now
 
 use core::prelude::*;
 
-use middle::borrowck::{Loan, bckerr, bckres, borrowck_ctxt, cmt, err_mutbl};
+use middle::borrowck::{Loan, bckerr, bckres, borrowck_ctxt, err_mutbl};
 use middle::borrowck::{err_out_of_scope};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_discr, cat_comp};
 use middle::mem_categorization::{cat_deref, cat_discr, cat_local, cat_self};
-use middle::mem_categorization::{cat_special, cat_stack_upvar, comp_field};
-use middle::mem_categorization::{comp_index, comp_variant, gc_ptr};
-use middle::mem_categorization::{region_ptr};
+use middle::mem_categorization::{cat_special, cat_stack_upvar, cmt};
+use middle::mem_categorization::{comp_field, comp_index, comp_variant};
+use middle::mem_categorization::{gc_ptr, region_ptr};
 use middle::ty;
 use util::common::indenter;
 
 use core::result::{Err, Ok, Result};
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
-
-export public_methods;
 
 impl borrowck_ctxt {
     fn loan(cmt: cmt,

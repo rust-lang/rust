@@ -40,8 +40,6 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 
-export gather_loans;
-
 /// Context used while gathering loans:
 ///
 /// - `bccx`: the the borrow check context
@@ -76,7 +74,7 @@ enum gather_loan_ctxt = @{bccx: borrowck_ctxt,
                           mut root_ub: ast::node_id,
                           mut ignore_adjustments: LinearSet<ast::node_id>};
 
-fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
+pub fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
     let glcx = gather_loan_ctxt(@{bccx: bccx,
                                   req_maps: {req_loan_map: HashMap(),
                                              pure_map: HashMap()},

@@ -49,10 +49,10 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 
-enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
-type rvt = visit::vt<@rcx>;
+pub enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
+pub type rvt = visit::vt<@rcx>;
 
-fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
+pub fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
         def_local(node_id, _) | def_arg(node_id, _, _) |
@@ -72,7 +72,7 @@ fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
     }
 }
 
-impl @rcx {
+pub impl @rcx {
     fn resolve_type(unresolved_ty: ty::t) -> ty::t {
         /*!
          * Try to resolve the type for the given node, returning
@@ -115,22 +115,22 @@ impl @rcx {
     }
 }
 
-fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
+pub fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
     let v = regionck_visitor();
     (v.visit_expr)(e, @(move rcx), v);
     fcx.infcx().resolve_regions();
 }
 
-fn regionck_fn(fcx: @fn_ctxt,
-               blk: ast::blk) {
+pub fn regionck_fn(fcx: @fn_ctxt,
+                   blk: ast::blk) {
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
     let v = regionck_visitor();
     (v.visit_block)(blk, @(move rcx), v);
     fcx.infcx().resolve_regions();
 }
 
-fn regionck_visitor() -> rvt {
+pub fn regionck_visitor() -> rvt {
     visit::mk_vt(@visit::Visitor {visit_item: visit_item,
                                   visit_stmt: visit_stmt,
                                   visit_expr: visit_expr,
@@ -139,11 +139,11 @@ fn regionck_visitor() -> rvt {
                                   .. *visit::default_visitor()})
 }
 
-fn visit_item(_item: @ast::item, &&_rcx: @rcx, _v: rvt) {
+pub fn visit_item(_item: @ast::item, &&_rcx: @rcx, _v: rvt) {
     // Ignore items
 }
 
-fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
+pub fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
     // Check to make sure that the regions in all local variables are
     // within scope.
     //
@@ -174,11 +174,11 @@ fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
     }
 }
 
-fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
+pub fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
     visit::visit_block(b, rcx, v);
 }
 
-fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
+pub fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!("visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
     for rcx.fcx.inh.adjustments.find(expr.id).each |adjustment| {
@@ -295,11 +295,11 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     visit::visit_expr(expr, rcx, v);
 }
 
-fn visit_stmt(s: @ast::stmt, &&rcx: @rcx, v: rvt) {
+pub fn visit_stmt(s: @ast::stmt, &&rcx: @rcx, v: rvt) {
     visit::visit_stmt(s, rcx, v);
 }
 
-fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
+pub fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     /*!
      *
      * checks the type of the node `id` and reports an error if it
@@ -318,10 +318,7 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     constrain_regions_in_type_of_node(rcx, id, encl_region, span)
 }
 
-fn constrain_auto_ref(
-    rcx: @rcx,
-    expr: @ast::expr)
-{
+pub fn constrain_auto_ref(rcx: @rcx, expr: @ast::expr) {
     /*!
      *
      * If `expr` is auto-ref'd (e.g., as part of a borrow), then this
@@ -365,11 +362,10 @@ fn constrain_auto_ref(
     }
 }
 
-fn constrain_free_variables(
+pub fn constrain_free_variables(
     rcx: @rcx,
     region: ty::Region,
-    expr: @ast::expr)
-{
+    expr: @ast::expr) {
     /*!
      *
      * Make sure that all free variables referenced inside the closure
@@ -402,12 +398,11 @@ fn constrain_free_variables(
     }
 }
 
-fn constrain_regions_in_type_of_node(
+pub fn constrain_regions_in_type_of_node(
     rcx: @rcx,
     id: ast::node_id,
     encl_region: ty::Region,
-    span: span) -> bool
-{
+    span: span) -> bool {
     let tcx = rcx.fcx.tcx();
 
     // Try to resolve the type.  If we encounter an error, then typeck
@@ -420,12 +415,11 @@ fn constrain_regions_in_type_of_node(
     constrain_regions_in_type(rcx, encl_region, span, ty)
 }
 
-fn constrain_regions_in_type(
+pub fn constrain_regions_in_type(
     rcx: @rcx,
     encl_region: ty::Region,
     span: span,
-    ty: ty::t) -> bool
-{
+    ty: ty::t) -> bool {
     /*!
      *
      * Requires that any regions which appear in `ty` must be
@@ -481,7 +475,7 @@ fn constrain_regions_in_type(
     }
 }
 
-mod guarantor {
+pub mod guarantor {
     /*!
      *
      * The routines in this module are aiming to deal with the case
@@ -923,12 +917,11 @@ mod guarantor {
 
 }
 
-fn infallibly_mk_subr(rcx: @rcx,
-                      a_is_expected: bool,
-                      span: span,
-                      a: ty::Region,
-                      b: ty::Region)
-{
+pub fn infallibly_mk_subr(rcx: @rcx,
+                          a_is_expected: bool,
+                         span: span,
+                         a: ty::Region,
+                         b: ty::Region) {
     /*!
      *
      * Constrains `a` to be a subregion of `b`.  In many cases, we

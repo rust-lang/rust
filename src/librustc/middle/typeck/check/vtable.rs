@@ -55,23 +55,23 @@ use syntax::visit;
 /// Location info records the span and ID of the expression or item that is
 /// responsible for this vtable instantiation. (This may not be an expression
 /// if the vtable instantiation is being performed as part of "deriving".)
-struct LocationInfo {
+pub struct LocationInfo {
     span: span,
     id: ast::node_id
 }
 
 /// A vtable context includes an inference context, a crate context, and a
 /// callback function to call in case of type error.
-struct VtableContext {
+pub struct VtableContext {
     ccx: @crate_ctxt,
     infcx: @infer::InferCtxt
 }
 
-impl VtableContext {
+pub impl VtableContext {
     fn tcx(&const self) -> ty::ctxt { self.ccx.tcx }
 }
 
-fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
+pub fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
         bs.any(|b| {
             match b { &ty::bound_trait(_) => true, _ => false }
@@ -79,13 +79,12 @@ fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     })
 }
 
-fn lookup_vtables(vcx: &VtableContext,
-                  location_info: &LocationInfo,
-                  bounds: @~[ty::param_bounds],
-                  substs: &ty::substs,
-                  allow_unsafe: bool,
-                  is_early: bool) -> vtable_res
-{
+pub fn lookup_vtables(vcx: &VtableContext,
+                      location_info: &LocationInfo,
+                      bounds: @~[ty::param_bounds],
+                      substs: &ty::substs,
+                      allow_unsafe: bool,
+                      is_early: bool) -> vtable_res {
     debug!("lookup_vtables(location_info=%?,
             # bounds=%?, \
             substs=%s",
@@ -140,9 +139,9 @@ fn lookup_vtables(vcx: &VtableContext,
     @result
 }
 
-fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
-                id: ast::def_id, +substs: ty::substs,
-                is_early: bool) -> Option<ty::substs> {
+pub fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
+                    id: ast::def_id, +substs: ty::substs,
+                    is_early: bool) -> Option<ty::substs> {
     let tcx = vcx.tcx();
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
@@ -154,20 +153,20 @@ fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
     }
 }
 
-fn relate_trait_tys(vcx: &VtableContext, location_info: &LocationInfo,
-                    exp_trait_ty: ty::t, act_trait_ty: ty::t) {
+pub fn relate_trait_tys(vcx: &VtableContext, location_info: &LocationInfo,
+                        exp_trait_ty: ty::t, act_trait_ty: ty::t) {
     demand_suptype(vcx, location_info.span, exp_trait_ty, act_trait_ty)
 }
 
 // Look up the vtable to use when treating an item of type `t` as if it has
 // type `trait_ty`
-fn lookup_vtable(vcx: &VtableContext,
-                 location_info: &LocationInfo,
-                 ty: ty::t,
-                 trait_ty: ty::t,
-                 allow_unsafe: bool,
-                 is_early: bool)
-    -> Option<vtable_origin> {
+pub fn lookup_vtable(vcx: &VtableContext,
+                     location_info: &LocationInfo,
+                     ty: ty::t,
+                     trait_ty: ty::t,
+                     allow_unsafe: bool,
+                     is_early: bool)
+                  -> Option<vtable_origin> {
     debug!("lookup_vtable(ty=%s, trait_ty=%s)",
            vcx.infcx.ty_to_str(ty), vcx.infcx.ty_to_str(trait_ty));
     let _i = indenter();
@@ -446,11 +445,10 @@ fn lookup_vtable(vcx: &VtableContext,
     return None;
 }
 
-fn fixup_ty(vcx: &VtableContext,
-            location_info: &LocationInfo,
-            ty: ty::t,
-            is_early: bool) -> Option<ty::t>
-{
+pub fn fixup_ty(vcx: &VtableContext,
+                location_info: &LocationInfo,
+                ty: ty::t,
+                is_early: bool) -> Option<ty::t> {
     let tcx = vcx.tcx();
     match resolve_type(vcx.infcx, ty, resolve_and_force_all_but_regions) {
         Ok(new_type) => Some(new_type),
@@ -469,7 +467,7 @@ fn fixup_ty(vcx: &VtableContext,
 
 // Version of demand::suptype() that takes a vtable context instead of a
 // function context.
-fn demand_suptype(vcx: &VtableContext, sp: span, e: ty::t, a: ty::t) {
+pub fn demand_suptype(vcx: &VtableContext, sp: span, e: ty::t, a: ty::t) {
     // NB: Order of actual, expected is reversed.
     match infer::mk_subty(vcx.infcx, false, sp, a, e) {
         result::Ok(()) => {} // Ok.
@@ -479,12 +477,12 @@ fn demand_suptype(vcx: &VtableContext, sp: span, e: ty::t, a: ty::t) {
     }
 }
 
-fn connect_trait_tps(vcx: &VtableContext,
-                     location_info: &LocationInfo,
-                     impl_tys: ~[ty::t],
-                     trait_tys: ~[ty::t],
-                     impl_did: ast::def_id,
-                     vstore: ty::vstore) {
+pub fn connect_trait_tps(vcx: &VtableContext,
+                         location_info: &LocationInfo,
+                         impl_tys: ~[ty::t],
+                         trait_tys: ~[ty::t],
+                         impl_did: ast::def_id,
+                         vstore: ty::vstore) {
     let tcx = vcx.tcx();
 
     // XXX: This should work for multiple traits.
@@ -503,21 +501,21 @@ fn connect_trait_tps(vcx: &VtableContext,
     }
 }
 
-fn insert_vtables(ccx: @crate_ctxt, callee_id: ast::node_id,
-                  vtables: vtable_res) {
+pub fn insert_vtables(ccx: @crate_ctxt, callee_id: ast::node_id,
+                      vtables: vtable_res) {
     debug!("insert_vtables(callee_id=%d, vtables=%?)",
            callee_id, vtables.map(|v| v.to_str(ccx.tcx)));
     ccx.vtable_map.insert(callee_id, vtables);
 }
 
-fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
+pub fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
     LocationInfo {
         span: expr.span,
         id: expr.id
     }
 }
 
-fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
+pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id %? (early: %b): %s",
            ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
     let _indent = indenter();
@@ -710,14 +708,16 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
     }
 }
 
-fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
+pub fn resolve_expr(ex: @ast::expr,
+                    &&fcx: @fn_ctxt,
+                    v: visit::vt<@fn_ctxt>) {
     early_resolve_expr(ex, fcx, false);
     visit::visit_expr(ex, fcx, v);
 }
 
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
-fn resolve_in_block(fcx: @fn_ctxt, bl: ast::blk) {
+pub fn resolve_in_block(fcx: @fn_ctxt, bl: ast::blk) {
     visit::visit_block(bl, fcx, visit::mk_vt(@visit::Visitor {
         visit_expr: resolve_expr,
         visit_item: fn@(_i: @ast::item, &&_e: @fn_ctxt,

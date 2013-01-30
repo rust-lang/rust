@@ -32,8 +32,7 @@ pub fn replace_bound_regions_in_fn_ty(
     self_info: Option<self_info>,
     fn_ty: &ty::FnTy,
     mapf: fn(ty::bound_region) -> ty::Region) ->
-    {isr: isr_alist, self_info: Option<self_info>, fn_ty: ty::FnTy}
-{
+    {isr: isr_alist, self_info: Option<self_info>, fn_ty: ty::FnTy} {
     let {isr, self_info, fn_sig} =
         replace_bound_regions_in_fn_sig(
             tcx, isr, self_info, &fn_ty.sig, mapf);
@@ -49,8 +48,7 @@ pub fn replace_bound_regions_in_fn_sig(
     self_info: Option<self_info>,
     fn_sig: &ty::FnSig,
     mapf: fn(ty::bound_region) -> ty::Region) ->
-    {isr: isr_alist, self_info: Option<self_info>, fn_sig: ty::FnSig}
-{
+    {isr: isr_alist, self_info: Option<self_info>, fn_sig: ty::FnSig} {
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
     let self_ty = self_info.map(|s| s.self_ty);

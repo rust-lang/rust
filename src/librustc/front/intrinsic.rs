@@ -12,8 +12,6 @@
 // and injected into each crate the compiler builds. Keep it small.
 
 mod intrinsic {
-    #[legacy_exports];
-
     pub use intrinsic::rusti::visit_tydesc;
 
     // FIXME (#3727): remove this when the interface has settled and the
@@ -30,7 +28,7 @@ mod intrinsic {
         // Remaining fields not listed
     };
 
-    trait TyVisitor {
+    pub trait TyVisitor {
         fn visit_bot(&self) -> bool;
         fn visit_nil(&self) -> bool;
         fn visit_bool(&self) -> bool;
@@ -125,9 +123,8 @@ mod intrinsic {
     }
 
     #[abi = "rust-intrinsic"]
-    extern mod rusti {
-        #[legacy_exports];
-        fn get_tydesc<T>() -> *();
-        fn visit_tydesc(++td: *TyDesc, &&tv: TyVisitor);
+    pub extern mod rusti {
+        pub fn get_tydesc<T>() -> *();
+        pub fn visit_tydesc(++td: *TyDesc, &&tv: TyVisitor);
     }
 }

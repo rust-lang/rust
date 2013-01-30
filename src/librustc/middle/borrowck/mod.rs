@@ -224,8 +224,6 @@ Borrowck results in two maps.
   given a memory location and not used as immediates.
  */
 
-#[legacy_exports];
-
 use core::prelude::*;
 
 use middle::liveness;
@@ -251,20 +249,16 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 
-#[legacy_exports]
 pub mod check_loans;
-#[legacy_exports]
 pub mod gather_loans;
-#[legacy_exports]
 pub mod loan;
-#[legacy_exports]
 pub mod preserve;
 
-fn check_crate(tcx: ty::ctxt,
-               method_map: typeck::method_map,
-               last_use_map: liveness::last_use_map,
-               crate: @ast::crate)
-            -> (root_map, mutbl_map, write_guard_map) {
+pub fn check_crate(tcx: ty::ctxt,
+                   method_map: typeck::method_map,
+                   last_use_map: liveness::last_use_map,
+                   crate: @ast::crate)
+                -> (root_map, mutbl_map, write_guard_map) {
 
     let bccx = borrowck_ctxt_(@{tcx: tcx,
                                 method_map: method_map,
@@ -308,26 +302,26 @@ fn check_crate(tcx: ty::ctxt,
 // ----------------------------------------------------------------------
 // Type definitions
 
-type borrowck_ctxt_ = {tcx: ty::ctxt,
-                       method_map: typeck::method_map,
-                       last_use_map: liveness::last_use_map,
-                       root_map: root_map,
-                       mutbl_map: mutbl_map,
-                       write_guard_map: write_guard_map,
-                       stmt_map: stmt_set,
+pub type borrowck_ctxt_ = {tcx: ty::ctxt,
+                           method_map: typeck::method_map,
+                           last_use_map: liveness::last_use_map,
+                           root_map: root_map,
+                           mutbl_map: mutbl_map,
+                           write_guard_map: write_guard_map,
+                           stmt_map: stmt_set,
 
-                       // Statistics:
-                       mut loaned_paths_same: uint,
-                       mut loaned_paths_imm: uint,
-                       mut stable_paths: uint,
-                       mut req_pure_paths: uint,
-                       mut guaranteed_paths: uint};
+                           // Statistics:
+                           mut loaned_paths_same: uint,
+                           mut loaned_paths_imm: uint,
+                           mut stable_paths: uint,
+                           mut req_pure_paths: uint,
+                           mut guaranteed_paths: uint};
 
-enum borrowck_ctxt {
+pub enum borrowck_ctxt {
     borrowck_ctxt_(@borrowck_ctxt_)
 }
 
-struct RootInfo {
+pub struct RootInfo {
     scope: ast::node_id,
     // This will be true if we need to freeze this box at runtime. This will
     // result in a call to `borrow_as_imm()` and `return_to_mut()`.
@@ -337,7 +331,7 @@ struct RootInfo {
 // a map mapping id's of expressions of gc'd type (@T, @[], etc) where
 // the box needs to be kept live to the id of the scope for which they
 // must stay live.
-type root_map = HashMap<root_map_key, RootInfo>;
+pub type root_map = HashMap<root_map_key, RootInfo>;
 
 // the keys to the root map combine the `id` of the expression with
 // the number of types that it is autodereferenced.  So, for example,
@@ -345,21 +339,22 @@ type root_map = HashMap<root_map_key, RootInfo>;
 // entry {id:x, derefs:0} to refer to `x` itself, `{id:x, derefs:1}`
 // to refer to the deref of the unique pointer, and so on.
 #[deriving_eq]
-struct root_map_key {
+pub struct root_map_key {
     id: ast::node_id,
     derefs: uint
 }
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
-type mutbl_map = HashMap<ast::node_id, ()>;
+pub type mutbl_map = HashMap<ast::node_id, ()>;
 
 // A set containing IDs of expressions of gc'd type that need to have a write
 // guard.
-type write_guard_map = HashMap<root_map_key, ()>;
+pub type write_guard_map = HashMap<root_map_key, ()>;
 
-// Errors that can occur"]
-enum bckerr_code {
+// Errors that can occur
+#[deriving_eq]
+pub enum bckerr_code {
     err_mut_uniq,
     err_mut_variant,
     err_root_not_permitted,
@@ -368,61 +363,16 @@ enum bckerr_code {
     err_out_of_scope(ty::Region, ty::Region) // superscope, subscope
 }
 
-impl bckerr_code : cmp::Eq {
-    pure fn eq(&self, other: &bckerr_code) -> bool {
-        match (*self) {
-            err_mut_uniq => {
-                match (*other) {
-                    err_mut_uniq => true,
-                    _ => false
-                }
-            }
-            err_mut_variant => {
-                match (*other) {
-                    err_mut_variant => true,
-                    _ => false
-                }
-            }
-            err_root_not_permitted => {
-                match (*other) {
-                    err_root_not_permitted => true,
-                    _ => false
-                }
-            }
-            err_mutbl(e0a) => {
-                match (*other) {
-                    err_mutbl(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            err_out_of_root_scope(e0a, e1a) => {
-                match (*other) {
-                    err_out_of_root_scope(e0b, e1b) =>
-                        e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            err_out_of_scope(e0a, e1a) => {
-                match (*other) {
-                    err_out_of_scope(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &bckerr_code) -> bool { !(*self).eq(other) }
-}
-
 // Combination of an error code and the categorization of the expression
 // that caused it
 #[deriving_eq]
-struct bckerr {
+pub struct bckerr {
     cmt: cmt,
     code: bckerr_code
 }
 
 // shorthand for something that fails with `bckerr` or succeeds with `T`
-type bckres<T> = Result<T, bckerr>;
+pub type bckres<T> = Result<T, bckerr>;
 
 /// a complete record of a loan that was granted
 pub struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
@@ -438,7 +388,8 @@ pub type req_maps = {
     pure_map: HashMap<ast::node_id, bckerr>
 };
 
-fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T, f: fn() -> U) -> U {
+pub fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T,
+                                  f: fn() -> U) -> U {
     let old_save_and_restore_t = *save_and_restore_t;
     let u = f();
     *save_and_restore_t = old_save_and_restore_t;
@@ -447,20 +398,20 @@ fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T, f: fn() -> U) -> U {
 
 /// Creates and returns a new root_map
 
-impl root_map_key : to_bytes::IterBytes {
+pub impl root_map_key : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
     }
 }
 
-fn root_map() -> root_map {
+pub fn root_map() -> root_map {
     return HashMap();
 }
 
 // ___________________________________________________________________________
 // Misc
 
-impl borrowck_ctxt {
+pub impl borrowck_ctxt {
     fn is_subregion_of(r_sub: ty::Region, r_sup: ty::Region) -> bool {
         region::is_subregion_of(self.tcx.region_map, r_sub, r_sup)
     }
@@ -632,7 +583,7 @@ impl borrowck_ctxt {
 // assuming it is embedded in an immutable context.  In general, the
 // mutability can be "overridden" if the component is embedded in a
 // mutable structure.
-fn inherent_mutability(ck: comp_kind) -> mutability {
+pub fn inherent_mutability(ck: comp_kind) -> mutability {
     match ck {
       comp_tuple | comp_anon_field | comp_variant(_) => m_imm,
       comp_field(_, m) | comp_index(_, m)            => m

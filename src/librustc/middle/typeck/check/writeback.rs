@@ -34,12 +34,8 @@ use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 
-export resolve_type_vars_in_fn;
-export resolve_type_vars_in_expr;
-
 fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t)
-    -> Option<ty::t>
-{
+    -> Option<ty::t> {
     if !ty::type_needs_infer(typ) { return Some(typ); }
     match resolve_type(fcx.infcx(), typ, resolve_all | force_all) {
         Ok(new_type) => return Some(new_type),
@@ -251,17 +247,17 @@ fn mk_visitor() -> visit::vt<wb_ctxt> {
                                   .. *visit::default_visitor()})
 }
 
-fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
+pub fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     let wbcx = {fcx: fcx, mut success: true};
     let visit = mk_visitor();
     (visit.visit_expr)(e, wbcx, visit);
     return wbcx.success;
 }
 
-fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
-                           decl: &ast::fn_decl,
-                           blk: ast::blk,
-                           self_info: Option<self_info>) -> bool {
+pub fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
+                               decl: &ast::fn_decl,
+                               blk: ast::blk,
+                               self_info: Option<self_info>) -> bool {
     let wbcx = {fcx: fcx, mut success: true};
     let visit = mk_visitor();
     (visit.visit_block)(blk, wbcx, visit);

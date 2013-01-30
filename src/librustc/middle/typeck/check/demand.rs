@@ -20,16 +20,16 @@ use syntax::codemap::span;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.
-fn suptype(fcx: @fn_ctxt, sp: span,
-           expected: ty::t, actual: ty::t) {
+pub fn suptype(fcx: @fn_ctxt, sp: span,
+               expected: ty::t, actual: ty::t) {
     suptype_with_fn(fcx, sp, expected, actual,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
-fn suptype_with_fn(fcx: @fn_ctxt,
-                   sp: span,
-                   expected: ty::t, actual: ty::t,
-                   handle_err: fn(span, ty::t, ty::t, &ty::type_err)) {
+pub fn suptype_with_fn(fcx: @fn_ctxt,
+                       sp: span,
+                       expected: ty::t, actual: ty::t,
+                       handle_err: fn(span, ty::t, ty::t, &ty::type_err)) {
     // n.b.: order of actual, expected is reversed
     match infer::mk_subty(fcx.infcx(), false, sp,
                           actual, expected) {
@@ -40,7 +40,7 @@ fn suptype_with_fn(fcx: @fn_ctxt,
     }
 }
 
-fn eqtype(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) {
+pub fn eqtype(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) {
     match infer::mk_eqty(fcx.infcx(), false, sp, actual, expected) {
         Ok(()) => { /* ok */ }
         Err(ref err) => {
@@ -50,10 +50,10 @@ fn eqtype(fcx: @fn_ctxt, sp: span, expected: ty::t, actual: ty::t) {
 }
 
 // Checks that the type `actual` can be coerced to `expected`.
-fn coerce(fcx: @fn_ctxt,
-          sp: span,
-          expected: ty::t,
-          expr: @ast::expr) {
+pub fn coerce(fcx: @fn_ctxt,
+              sp: span,
+              expected: ty::t,
+              expr: @ast::expr) {
     let expr_ty = fcx.expr_ty(expr);
     match fcx.mk_assignty(expr, expr_ty, expected) {
       result::Ok(()) => { /* ok */ }
