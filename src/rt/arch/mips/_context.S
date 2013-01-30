@@ -78,4 +78,5 @@ swap_registers:
         lw $31, 31 * 4($5)
 
         jr $31
+        nop
 .end swap_registers
