@@ -29,10 +29,10 @@ use core::prelude::*;
 // range search - O(log n) retrieval of an iterator from some key
 
 // (possibly) implement the overloads Python does for sets:
-//   * union: |
 //   * intersection: &
 //   * difference: -
 //   * symmetric difference: ^
+//   * union: |
 // These would be convenient since the methods work like `each`
 
 pub struct TreeMap<K, V> {
@@ -355,22 +355,6 @@ impl <T: Ord> TreeSet<T>: Set<T> {
         }
         true
     }
-}
-
-impl <T: Ord> TreeSet<T> {
-    /// Create an empty TreeSet
-    static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Visit all values in reverse order
-    pure fn each_reverse(&self, f: fn(&T) -> bool) {
-        self.map.each_key_reverse(f)
-    }
-
-    /// Get a lazy iterator over the values in the set.
-    /// Requires that it be frozen (immutable).
-    pure fn iter(&self) -> TreeSetIterator/&self<T> {
-        TreeSetIterator{iter: self.map.iter()}
-    }
 
     /// Visit the values (in-order) representing the difference
     pure fn difference(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
@@ -447,6 +431,22 @@ impl <T: Ord> TreeSet<T> {
                 if f(b1) { y = y.next(); y.get() } else { None }
             }
         }
+    }
+}
+
+impl <T: Ord> TreeSet<T> {
+    /// Create an empty TreeSet
+    static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
+
+    /// Visit all values in reverse order
+    pure fn each_reverse(&self, f: fn(&T) -> bool) {
+        self.map.each_key_reverse(f)
+    }
+
+    /// Get a lazy iterator over the values in the set.
+    /// Requires that it be frozen (immutable).
+    pure fn iter(&self) -> TreeSetIterator/&self<T> {
+        TreeSetIterator{iter: self.map.iter()}
     }
 
     /// Visit the values (in-order) representing the intersection
