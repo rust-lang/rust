@@ -474,7 +474,7 @@ pub mod linear {
         pure fn difference(&self, other: &LinearSet<T>, f: fn(&T) -> bool) {
             for self.each |v| {
                 if !other.contains(v) {
-                    if !f(v) { return; }
+                    if !f(v) { return }
                 }
             }
         }
@@ -484,6 +484,28 @@ pub mod linear {
                                      f: fn(&T) -> bool) {
             self.difference(other, f);
             other.difference(self, f);
+        }
+
+        /// Visit the values representing the intersection
+        pure fn intersection(&self, other: &LinearSet<T>, f: fn(&T) -> bool) {
+            for self.each |v| {
+                if other.contains(v) {
+                    if !f(v) { return }
+                }
+            }
+        }
+
+        /// Visit the values representing the union
+        pure fn union(&self, other: &LinearSet<T>, f: fn(&T) -> bool) {
+            for self.each |v| {
+                if !f(v) { return }
+            }
+
+            for other.each |v| {
+                if !self.contains(v) {
+                    if !f(v) { return }
+                }
+            }
         }
     }
 
@@ -699,6 +721,36 @@ mod test_set {
     }
 
     #[test]
+    fn test_intersection() {
+        let mut a = linear::LinearSet::new();
+        let mut b = linear::LinearSet::new();
+
+        assert a.insert(11);
+        assert a.insert(1);
+        assert a.insert(3);
+        assert a.insert(77);
+        assert a.insert(103);
+        assert a.insert(5);
+        assert a.insert(-5);
+
+        assert b.insert(2);
+        assert b.insert(11);
+        assert b.insert(77);
+        assert b.insert(-9);
+        assert b.insert(-42);
+        assert b.insert(5);
+        assert b.insert(3);
+
+        let mut i = 0;
+        let expected = [3, 5, 11, 77];
+        for a.intersection(&b) |x| {
+            assert vec::contains(expected, x);
+            i += 1
+        }
+        assert i == expected.len();
+    }
+
+    #[test]
     fn test_difference() {
         let mut a = linear::LinearSet::new();
         let mut b = linear::LinearSet::new();
@@ -741,6 +793,36 @@ mod test_set {
         let mut i = 0;
         let expected = [-2, 1, 5, 11, 14, 22];
         for a.symmetric_difference(&b) |x| {
+            assert vec::contains(expected, x);
+            i += 1
+        }
+        assert i == expected.len();
+    }
+
+    #[test]
+    fn test_union() {
+        let mut a = linear::LinearSet::new();
+        let mut b = linear::LinearSet::new();
+
+        assert a.insert(1);
+        assert a.insert(3);
+        assert a.insert(5);
+        assert a.insert(9);
+        assert a.insert(11);
+        assert a.insert(16);
+        assert a.insert(19);
+        assert a.insert(24);
+
+        assert b.insert(-2);
+        assert b.insert(1);
+        assert b.insert(5);
+        assert b.insert(9);
+        assert b.insert(13);
+        assert b.insert(19);
+
+        let mut i = 0;
+        let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
+        for a.union(&b) |x| {
             assert vec::contains(expected, x);
             i += 1
         }

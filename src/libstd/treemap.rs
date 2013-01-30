@@ -432,22 +432,6 @@ impl <T: Ord> TreeSet<T>: Set<T> {
             }
         }
     }
-}
-
-impl <T: Ord> TreeSet<T> {
-    /// Create an empty TreeSet
-    static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Visit all values in reverse order
-    pure fn each_reverse(&self, f: fn(&T) -> bool) {
-        self.map.each_key_reverse(f)
-    }
-
-    /// Get a lazy iterator over the values in the set.
-    /// Requires that it be frozen (immutable).
-    pure fn iter(&self) -> TreeSetIterator/&self<T> {
-        TreeSetIterator{iter: self.map.iter()}
-    }
 
     /// Visit the values (in-order) representing the intersection
     pure fn intersection(&self, other: &TreeSet<T>, f: fn(&T) -> bool) {
@@ -513,6 +497,22 @@ impl <T: Ord> TreeSet<T> {
                 }
             }
         }
+    }
+}
+
+impl <T: Ord> TreeSet<T> {
+    /// Create an empty TreeSet
+    static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
+
+    /// Visit all values in reverse order
+    pure fn each_reverse(&self, f: fn(&T) -> bool) {
+        self.map.each_key_reverse(f)
+    }
+
+    /// Get a lazy iterator over the values in the set.
+    /// Requires that it be frozen (immutable).
+    pure fn iter(&self) -> TreeSetIterator/&self<T> {
+        TreeSetIterator{iter: self.map.iter()}
     }
 }
 
