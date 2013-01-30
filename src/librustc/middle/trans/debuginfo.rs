@@ -171,14 +171,16 @@ fn md_from_metadata<T>(val: debug_metadata) -> T {
     }
 }
 
-fn cached_metadata<T: Copy>(cache: metadata_cache, mdtag: int,
-                           eq: fn(md: T) -> bool) -> Option<T> {
+fn cached_metadata<T: Copy>(cache: metadata_cache,
+                            mdtag: int,
+                            eq_fn: fn(md: T) -> bool)
+                         -> Option<T> {
     unsafe {
         if cache.contains_key(mdtag) {
             let items = cache.get(mdtag);
             for items.each |item| {
                 let md: T = md_from_metadata::<T>(*item);
-                if eq(md) {
+                if eq_fn(md) {
                     return option::Some(md);
                 }
             }

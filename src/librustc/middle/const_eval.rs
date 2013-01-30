@@ -53,13 +53,13 @@ use syntax::ast::*;
 //   - Non-constants: everything else.
 //
 
-enum constness {
+pub enum constness {
     integral_const,
     general_const,
     non_const
 }
 
-fn join(a: constness, b: constness) -> constness {
+pub fn join(a: constness, b: constness) -> constness {
     match (a, b) {
       (integral_const, integral_const) => integral_const,
       (integral_const, general_const)
@@ -69,13 +69,14 @@ fn join(a: constness, b: constness) -> constness {
     }
 }
 
-fn join_all(cs: &[constness]) -> constness {
+pub fn join_all(cs: &[constness]) -> constness {
     vec::foldl(integral_const, cs, |a, b| join(a, *b))
 }
 
-fn classify(e: @expr,
-            def_map: resolve::DefMap,
-            tcx: ty::ctxt) -> constness {
+pub fn classify(e: @expr,
+                def_map: resolve::DefMap,
+                tcx: ty::ctxt)
+             -> constness {
     let did = ast_util::local_def(e.id);
     match tcx.ccache.find(did) {
       Some(x) => x,
@@ -168,14 +169,16 @@ fn classify(e: @expr,
     }
 }
 
-fn lookup_const(tcx: ty::ctxt, e: @expr) -> Option<@expr> {
+pub fn lookup_const(tcx: ty::ctxt, e: @expr) -> Option<@expr> {
     match tcx.def_map.find(e.id) {
         Some(ast::def_const(def_id)) => lookup_const_by_id(tcx, def_id),
         _ => None
     }
 }
 
-fn lookup_const_by_id(tcx: ty::ctxt, def_id: ast::def_id) -> Option<@expr> {
+pub fn lookup_const_by_id(tcx: ty::ctxt,
+                          def_id: ast::def_id)
+                       -> Option<@expr> {
     if ast_util::is_local(def_id) {
         match tcx.items.find(def_id.node) {
             None => None,
@@ -190,7 +193,7 @@ fn lookup_const_by_id(tcx: ty::ctxt, def_id: ast::def_id) -> Option<@expr> {
     }
 }
 
-fn lookup_constness(tcx: ty::ctxt, e: @expr) -> constness {
+pub fn lookup_constness(tcx: ty::ctxt, e: @expr) -> constness {
     match lookup_const(tcx, e) {
         Some(rhs) => {
             let ty = ty::expr_ty(tcx, rhs);
@@ -204,9 +207,9 @@ fn lookup_constness(tcx: ty::ctxt, e: @expr) -> constness {
     }
 }
 
-fn process_crate(crate: @ast::crate,
-                 def_map: resolve::DefMap,
-                 tcx: ty::ctxt) {
+pub fn process_crate(crate: @ast::crate,
+                     def_map: resolve::DefMap,
+                     tcx: ty::ctxt) {
     let v = visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_expr_post: |e| { classify(e, def_map, tcx); },
         .. *visit::default_simple_visitor()
@@ -218,7 +221,8 @@ fn process_crate(crate: @ast::crate,
 
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).
-enum const_val {
+#[deriving_eq]
+pub enum const_val {
     const_float(f64),
     const_int(i64),
     const_uint(u64),
@@ -226,30 +230,15 @@ enum const_val {
     const_bool(bool)
 }
 
-impl const_val : cmp::Eq {
-    pure fn eq(&self, other: &const_val) -> bool {
-        match ((*self), (*other)) {
-            (const_float(a), const_float(b)) => a == b,
-            (const_int(a), const_int(b)) => a == b,
-            (const_uint(a), const_uint(b)) => a == b,
-            (const_str(ref a), const_str(ref b)) => (*a) == (*b),
-            (const_bool(a), const_bool(b)) => a == b,
-            (const_float(_), _) | (const_int(_), _) | (const_uint(_), _) |
-            (const_str(_), _) | (const_bool(_), _) => false
-        }
-    }
-    pure fn ne(&self, other: &const_val) -> bool { !(*self).eq(other) }
-}
-
-fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
+pub fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
         Ok(ref r) => (/*bad*/copy *r),
         Err(ref s) => fail (/*bad*/copy *s)
     }
 }
 
-fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
-    -> Result<const_val, ~str> {
+pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
+                            -> Result<const_val, ~str> {
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
     match e.node {
@@ -409,7 +398,7 @@ fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
     }
 }
 
-fn lit_to_const(lit: @lit) -> const_val {
+pub fn lit_to_const(lit: @lit) -> const_val {
     match lit.node {
       lit_str(s) => const_str(/*bad*/copy *s),
       lit_int(n, _) => const_int(n),
@@ -423,7 +412,7 @@ fn lit_to_const(lit: @lit) -> const_val {
     }
 }
 
-fn compare_const_vals(a: const_val, b: const_val) -> int {
+pub fn compare_const_vals(a: const_val, b: const_val) -> int {
   match (a, b) {
     (const_int(a), const_int(b)) => {
         if a == b {
@@ -474,15 +463,15 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
   }
 }
 
-fn compare_lit_exprs(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> int {
+pub fn compare_lit_exprs(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> int {
   compare_const_vals(eval_const_expr(tcx, a), eval_const_expr(tcx, b))
 }
 
-fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
+pub fn lit_expr_eq(tcx: middle::ty::ctxt, a: @expr, b: @expr) -> bool {
     compare_lit_exprs(tcx, a, b) == 0
 }
 
-fn lit_eq(a: @lit, b: @lit) -> bool {
+pub fn lit_eq(a: @lit, b: @lit) -> bool {
     compare_const_vals(lit_to_const(a), lit_to_const(b)) == 0
 }
 

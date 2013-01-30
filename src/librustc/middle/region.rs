@@ -38,12 +38,14 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::{ast, visit};
 
-type parent = Option<ast::node_id>;
+pub type parent = Option<ast::node_id>;
 
 /* Records the parameter ID of a region name. */
-type binding = {node_id: ast::node_id,
-                name: ~str,
-                br: ty::bound_region};
+pub type binding = {
+    node_id: ast::node_id,
+    name: ~str,
+    br: ty::bound_region
+};
 
 /**
 Encodes the bounding lifetime for a given AST node:
@@ -55,9 +57,9 @@ Encodes the bounding lifetime for a given AST node:
 - Variables and bindings are mapped to the block in which they are declared.
 
 */
-type region_map = HashMap<ast::node_id, ast::node_id>;
+pub type region_map = HashMap<ast::node_id, ast::node_id>;
 
-struct ctxt {
+pub struct ctxt {
     sess: Session,
     def_map: resolve::DefMap,
 
@@ -109,8 +111,8 @@ struct ctxt {
 
 /// Returns true if `subscope` is equal to or is lexically nested inside
 /// `superscope` and false otherwise.
-fn scope_contains(region_map: region_map, superscope: ast::node_id,
-                  subscope: ast::node_id) -> bool {
+pub fn scope_contains(region_map: region_map, superscope: ast::node_id,
+                      subscope: ast::node_id) -> bool {
     let mut subscope = subscope;
     while superscope != subscope {
         match region_map.find(subscope) {
@@ -124,9 +126,9 @@ fn scope_contains(region_map: region_map, superscope: ast::node_id,
 /// Determines whether one region is a subregion of another.  This is
 /// intended to run *after inference* and sadly the logic is somewhat
 /// duplicated with the code in infer.rs.
-fn is_subregion_of(region_map: region_map,
-                   sub_region: ty::Region,
-                   super_region: ty::Region) -> bool {
+pub fn is_subregion_of(region_map: region_map,
+                       sub_region: ty::Region,
+                       super_region: ty::Region) -> bool {
     sub_region == super_region ||
         match (sub_region, super_region) {
             (_, ty::re_static) => {
@@ -147,8 +149,10 @@ fn is_subregion_of(region_map: region_map,
 /// Finds the nearest common ancestor (if any) of two scopes.  That
 /// is, finds the smallest scope which is greater than or equal to
 /// both `scope_a` and `scope_b`.
-fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
-                           scope_b: ast::node_id) -> Option<ast::node_id> {
+pub fn nearest_common_ancestor(region_map: region_map,
+                               scope_a: ast::node_id,
+                               scope_b: ast::node_id)
+                            -> Option<ast::node_id> {
 
     fn ancestors_of(region_map: region_map, scope: ast::node_id)
                     -> ~[ast::node_id] {
@@ -198,7 +202,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
 }
 
 /// Extracts that current parent from cx, failing if there is none.
-fn parent_id(cx: ctxt, span: span) -> ast::node_id {
+pub fn parent_id(cx: ctxt, span: span) -> ast::node_id {
     match cx.parent {
       None => {
         cx.sess.span_bug(span, ~"crate should not be parent here");
@@ -210,14 +214,14 @@ fn parent_id(cx: ctxt, span: span) -> ast::node_id {
 }
 
 /// Records the current parent (if any) as the parent of `child_id`.
-fn record_parent(cx: ctxt, child_id: ast::node_id) {
+pub fn record_parent(cx: ctxt, child_id: ast::node_id) {
     for cx.parent.each |parent_id| {
         debug!("parent of node %d is node %d", child_id, *parent_id);
         cx.region_map.insert(child_id, *parent_id);
     }
 }
 
-fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Record the parent of this block.
     record_parent(cx, blk.node.id);
 
@@ -226,11 +230,11 @@ fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_block(blk, new_cx, visitor);
 }
 
-fn resolve_arm(arm: ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_arm(arm: ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_arm(arm, cx, visitor);
 }
 
-fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
     match pat.node {
       ast::pat_ident(*) => {
         let defn_opt = cx.def_map.find(pat.id);
@@ -250,7 +254,7 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_pat(pat, cx, visitor);
 }
 
-fn resolve_stmt(stmt: @ast::stmt, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_stmt(stmt: @ast::stmt, cx: ctxt, visitor: visit::vt<ctxt>) {
     match stmt.node {
       ast::stmt_decl(*) => {
         visit::visit_stmt(stmt, cx, visitor);
@@ -267,7 +271,7 @@ fn resolve_stmt(stmt: @ast::stmt, cx: ctxt, visitor: visit::vt<ctxt>) {
     }
 }
 
-fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, expr.id);
 
     let mut new_cx = cx;
@@ -308,21 +312,26 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_expr(expr, new_cx, visitor);
 }
 
-fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_local(local: @ast::local,
+                     cx: ctxt,
+                     visitor: visit::vt<ctxt>) {
     record_parent(cx, local.node.id);
     visit::visit_local(local, cx, visitor);
 }
 
-fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
     let new_cx: ctxt = ctxt {parent: None,.. cx};
     visit::visit_item(item, new_cx, visitor);
 }
 
-fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
-              sp: span, id: ast::node_id, cx: ctxt,
-              visitor: visit::vt<ctxt>) {
-
+pub fn resolve_fn(fk: visit::fn_kind,
+                  decl: ast::fn_decl,
+                  body: ast::blk,
+                  sp: span,
+                  id: ast::node_id,
+                  cx: ctxt,
+                  visitor: visit::vt<ctxt>) {
     let fn_cx = match fk {
         visit::fk_item_fn(*) | visit::fk_method(*) |
         visit::fk_dtor(*) => {
@@ -355,8 +364,10 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
     visit::visit_fn(fk, decl, body, sp, id, fn_cx, visitor);
 }
 
-fn resolve_crate(sess: Session, def_map: resolve::DefMap,
-                 crate: @ast::crate) -> region_map {
+pub fn resolve_crate(sess: Session,
+                     def_map: resolve::DefMap,
+                     crate: @ast::crate)
+                  -> region_map {
     let cx: ctxt = ctxt {sess: sess,
                          def_map: def_map,
                          region_map: HashMap(),
@@ -396,17 +407,17 @@ fn resolve_crate(sess: Session, def_map: resolve::DefMap,
 // a worklist.  We can then process the worklist, propagating indirect
 // dependencies until a fixed point is reached.
 
-type region_paramd_items = HashMap<ast::node_id, region_variance>;
+pub type region_paramd_items = HashMap<ast::node_id, region_variance>;
 
 #[deriving_eq]
-struct region_dep {
+pub struct region_dep {
     ambient_variance: region_variance,
     id: ast::node_id
 }
 
-type dep_map = HashMap<ast::node_id, @DVec<region_dep>>;
+pub type dep_map = HashMap<ast::node_id, @DVec<region_dep>>;
 
-type determine_rp_ctxt_ = {
+pub type determine_rp_ctxt_ = {
     sess: Session,
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
@@ -426,12 +437,13 @@ type determine_rp_ctxt_ = {
     mut ambient_variance: region_variance,
 };
 
-enum determine_rp_ctxt {
+pub enum determine_rp_ctxt {
     determine_rp_ctxt_(@determine_rp_ctxt_)
 }
 
-fn join_variance(++variance1: region_variance,
-                 ++variance2: region_variance) -> region_variance{
+pub fn join_variance(++variance1: region_variance,
+                     ++variance2: region_variance)
+                  -> region_variance {
     match (variance1, variance2) {
       (rv_invariant, _) => {rv_invariant}
       (_, rv_invariant) => {rv_invariant}
@@ -450,8 +462,9 @@ fn join_variance(++variance1: region_variance,
 /// appears in a co-variant position.  This implies that this
 /// occurrence of `r` is contra-variant with respect to the current
 /// item, and hence the function returns `rv_contravariant`.
-fn add_variance(+ambient_variance: region_variance,
-                +variance: region_variance) -> region_variance {
+pub fn add_variance(+ambient_variance: region_variance,
+                    +variance: region_variance)
+                 -> region_variance {
     match (ambient_variance, variance) {
       (rv_invariant, _) => rv_invariant,
       (_, rv_invariant) => rv_invariant,
@@ -461,7 +474,7 @@ fn add_variance(+ambient_variance: region_variance,
     }
 }
 
-impl determine_rp_ctxt {
+pub impl determine_rp_ctxt {
     fn add_variance(variance: region_variance) -> region_variance {
         add_variance(self.ambient_variance, variance)
     }
@@ -594,21 +607,21 @@ impl determine_rp_ctxt {
     }
 }
 
-fn determine_rp_in_item(item: @ast::item,
-                        &&cx: determine_rp_ctxt,
-                        visitor: visit::vt<determine_rp_ctxt>) {
+pub fn determine_rp_in_item(item: @ast::item,
+                            &&cx: determine_rp_ctxt,
+                            visitor: visit::vt<determine_rp_ctxt>) {
     do cx.with(item.id, true) {
         visit::visit_item(item, cx, visitor);
     }
 }
 
-fn determine_rp_in_fn(fk: visit::fn_kind,
-                      decl: ast::fn_decl,
-                      body: ast::blk,
-                      _sp: span,
-                      _id: ast::node_id,
-                      &&cx: determine_rp_ctxt,
-                      visitor: visit::vt<determine_rp_ctxt>) {
+pub fn determine_rp_in_fn(fk: visit::fn_kind,
+                          decl: ast::fn_decl,
+                          body: ast::blk,
+                          _sp: span,
+                          _id: ast::node_id,
+                          &&cx: determine_rp_ctxt,
+                          visitor: visit::vt<determine_rp_ctxt>) {
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.each |a| {
@@ -621,18 +634,17 @@ fn determine_rp_in_fn(fk: visit::fn_kind,
     }
 }
 
-fn determine_rp_in_ty_method(ty_m: ast::ty_method,
-                             &&cx: determine_rp_ctxt,
-                             visitor: visit::vt<determine_rp_ctxt>) {
+pub fn determine_rp_in_ty_method(ty_m: ast::ty_method,
+                                 &&cx: determine_rp_ctxt,
+                                 visitor: visit::vt<determine_rp_ctxt>) {
     do cx.with(cx.item_id, false) {
         visit::visit_ty_method(ty_m, cx, visitor);
     }
 }
 
-fn determine_rp_in_ty(ty: @ast::Ty,
-                      &&cx: determine_rp_ctxt,
-                      visitor: visit::vt<determine_rp_ctxt>) {
-
+pub fn determine_rp_in_ty(ty: @ast::Ty,
+                          &&cx: determine_rp_ctxt,
+                          visitor: visit::vt<determine_rp_ctxt>) {
     // we are only interested in types that will require an item to
     // be region-parameterized.  if cx.item_id is zero, then this type
     // is not a member of a type defn nor is it a constitutent of an
@@ -762,9 +774,9 @@ fn determine_rp_in_ty(ty: @ast::Ty,
     }
 }
 
-fn determine_rp_in_struct_field(cm: @ast::struct_field,
-                                &&cx: determine_rp_ctxt,
-                                visitor: visit::vt<determine_rp_ctxt>) {
+pub fn determine_rp_in_struct_field(cm: @ast::struct_field,
+                                    &&cx: determine_rp_ctxt,
+                                    visitor: visit::vt<determine_rp_ctxt>) {
     match cm.node.kind {
       ast::named_field(_, ast::struct_mutable, _) => {
         do cx.with_ambient_variance(rv_invariant) {
@@ -778,10 +790,11 @@ fn determine_rp_in_struct_field(cm: @ast::struct_field,
     }
 }
 
-fn determine_rp_in_crate(sess: Session,
-                         ast_map: ast_map::map,
-                         def_map: resolve::DefMap,
-                         crate: @ast::crate) -> region_paramd_items {
+pub fn determine_rp_in_crate(sess: Session,
+                             ast_map: ast_map::map,
+                             def_map: resolve::DefMap,
+                             crate: @ast::crate)
+                          -> region_paramd_items {
     let cx = determine_rp_ctxt_(@{sess: sess,
                                   ast_map: ast_map,
                                   def_map: def_map,
@@ -842,3 +855,4 @@ fn determine_rp_in_crate(sess: Session,
     // return final set
     return cx.region_paramd_items;
 }
+

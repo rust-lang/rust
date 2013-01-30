@@ -83,79 +83,51 @@ use std::map::HashMap;
 use str_eq = str::eq;
 
 // Definition mapping
-type DefMap = HashMap<node_id,def>;
+pub type DefMap = HashMap<node_id,def>;
 
-struct binding_info {
+pub struct binding_info {
     span: span,
     binding_mode: binding_mode,
 }
 
 // Map from the name in a pattern to its binding mode.
-type BindingMap = HashMap<ident,binding_info>;
+pub type BindingMap = HashMap<ident,binding_info>;
 
 // Implementation resolution
 //
 // XXX: This kind of duplicates information kept in ty::method. Maybe it
 // should go away.
 
-type MethodInfo = {
+pub type MethodInfo = {
     did: def_id,
     n_tps: uint,
     ident: ident,
     self_type: self_ty_
 };
 
-type Impl = { did: def_id, ident: ident, methods: ~[@MethodInfo] };
+pub type Impl = { did: def_id, ident: ident, methods: ~[@MethodInfo] };
 
 // Trait method resolution
-type TraitMap = @HashMap<node_id,@DVec<def_id>>;
+pub type TraitMap = @HashMap<node_id,@DVec<def_id>>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-type ExportMap2 = HashMap<node_id, ~[Export2]>;
+pub type ExportMap2 = HashMap<node_id, ~[Export2]>;
 
-struct Export2 {
+pub struct Export2 {
     name: ~str,         // The name of the target.
     def_id: def_id,     // The definition of the target.
     reexport: bool,     // Whether this is a reexport.
 }
 
-enum PatternBindingMode {
+#[deriving_eq]
+pub enum PatternBindingMode {
     RefutableMode,
     LocalIrrefutableMode,
     ArgumentIrrefutableMode(mode)
 }
 
-impl PatternBindingMode : cmp::Eq {
-    pure fn eq(&self, other: &PatternBindingMode) -> bool {
-        match (*self) {
-            RefutableMode => {
-                match *other {
-                    RefutableMode => true,
-                    _ => false
-                }
-            }
-            LocalIrrefutableMode => {
-                match *other {
-                    LocalIrrefutableMode => true,
-                    _ => false
-                }
-            }
-            ArgumentIrrefutableMode(mode_a) => {
-                match *other {
-                    ArgumentIrrefutableMode(mode_b) => mode_a == mode_b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &PatternBindingMode) -> bool {
-        !(*self).eq(other)
-    }
-}
-
-
-enum Namespace {
+pub enum Namespace {
     TypeNS,
     ValueNS
 }
@@ -163,7 +135,7 @@ enum Namespace {
 /// A NamespaceResult represents the result of resolving an import in
 /// a particular namespace. The result is either definitely-resolved,
 /// definitely- unresolved, or unknown.
-enum NamespaceResult {
+pub enum NamespaceResult {
     /// Means that resolve hasn't gathered enough information yet to determine
     /// whether the name is bound in this namespace. (That is, it hasn't
     /// resolved all `use` directives yet.)
@@ -176,7 +148,7 @@ enum NamespaceResult {
     BoundResult(@Module, @NameBindings)
 }
 
-impl NamespaceResult {
+pub impl NamespaceResult {
     pure fn is_unknown() -> bool {
         match self {
             UnknownResult => true,
@@ -185,69 +157,55 @@ impl NamespaceResult {
     }
 }
 
-enum NameDefinition {
+pub enum NameDefinition {
     NoNameDefinition,           //< The name was unbound.
     ChildNameDefinition(def),   //< The name identifies an immediate child.
     ImportNameDefinition(def)   //< The name identifies an import.
 
 }
 
-enum Mutability {
+#[deriving_eq]
+pub enum Mutability {
     Mutable,
     Immutable
 }
 
-impl Mutability : cmp::Eq {
-    pure fn eq(&self, other: &Mutability) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Mutability) -> bool { !(*self).eq(other) }
-}
-
-enum SelfBinding {
+pub enum SelfBinding {
     NoSelfBinding,
     HasSelfBinding(node_id, bool /* is implicit */)
 }
 
-enum CaptureClause {
+pub enum CaptureClause {
     NoCaptureClause,
     HasCaptureClause(capture_clause)
 }
 
-type ResolveVisitor = vt<()>;
+pub type ResolveVisitor = vt<()>;
 
-enum ImportDirectiveNS {
+#[deriving_eq]
+pub enum ImportDirectiveNS {
     TypeNSOnly,
     AnyNS
 }
 
-impl ImportDirectiveNS : cmp::Eq {
-    pure fn eq(&self, other: &ImportDirectiveNS) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &ImportDirectiveNS) -> bool {
-        !(*self).eq(other)
-    }
-}
-
 /// Contains data for specific types of import directives.
-enum ImportDirectiveSubclass {
+pub enum ImportDirectiveSubclass {
     SingleImport(ident /* target */, ident /* source */, ImportDirectiveNS),
     GlobImport
 }
 
 /// The context that we thread through while building the reduced graph.
-enum ReducedGraphParent {
+pub enum ReducedGraphParent {
     ModuleReducedGraphParent(@Module)
 }
 
-enum ResolveResult<T> {
+pub enum ResolveResult<T> {
     Failed,         // Failed to resolve the name.
     Indeterminate,  // Couldn't determine due to unresolved globs.
     Success(T)      // Successfully resolved the import.
 }
 
-impl<T> ResolveResult<T> {
+pub impl<T> ResolveResult<T> {
     fn failed() -> bool {
         match self { Failed => true, _ => false }
     }
@@ -256,7 +214,7 @@ impl<T> ResolveResult<T> {
     }
 }
 
-enum TypeParameters/& {
+pub enum TypeParameters/& {
     NoTypeParameters,               //< No type parameters.
     HasTypeParameters(&~[ty_param], //< Type parameters.
                       node_id,      //< ID of the enclosing item
@@ -282,7 +240,7 @@ enum TypeParameters/& {
 // The rib kind controls the translation of argument or local definitions
 // (`def_arg` or `def_local`) to upvars (`def_upvar`).
 
-enum RibKind {
+pub enum RibKind {
     // No translation needs to be applied.
     NormalRibKind,
 
@@ -305,7 +263,7 @@ enum RibKind {
 }
 
 // Methods can be required or provided. Required methods only occur in traits.
-enum MethodSort {
+pub enum MethodSort {
     Required,
     Provided(node_id)
 }
@@ -317,48 +275,34 @@ enum MethodSort {
 // XXX: The X-ray flag is kind of questionable in the first place. It might
 // be better to introduce an expr_xray_path instead.
 
-enum XrayFlag {
+#[deriving_eq]
+pub enum XrayFlag {
     NoXray,     //< Private items cannot be accessed.
     Xray        //< Private items can be accessed.
 }
 
-enum UseLexicalScopeFlag {
+pub enum UseLexicalScopeFlag {
     DontUseLexicalScope,
     UseLexicalScope
 }
 
-enum SearchThroughModulesFlag {
+pub enum SearchThroughModulesFlag {
     DontSearchThroughModules,
     SearchThroughModules
 }
 
-enum ModulePrefixResult {
+pub enum ModulePrefixResult {
     NoPrefixFound,
     PrefixFound(@Module, uint)
 }
 
-impl XrayFlag : cmp::Eq {
-    pure fn eq(&self, other: &XrayFlag) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &XrayFlag) -> bool { !(*self).eq(other) }
-}
-
-enum AllowCapturingSelfFlag {
+#[deriving_eq]
+pub enum AllowCapturingSelfFlag {
     AllowCapturingSelf,         //< The "self" definition can be captured.
     DontAllowCapturingSelf,     //< The "self" definition cannot be captured.
 }
 
-impl AllowCapturingSelfFlag : cmp::Eq {
-    pure fn eq(&self, other: &AllowCapturingSelfFlag) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &AllowCapturingSelfFlag) -> bool {
-        !(*self).eq(other)
-    }
-}
-
-enum BareIdentifierPatternResolution {
+pub enum BareIdentifierPatternResolution {
     FoundStructOrEnumVariant(def),
     FoundConst(def),
     BareIdentifierPatternUnresolved
@@ -366,7 +310,8 @@ enum BareIdentifierPatternResolution {
 
 // Specifies how duplicates should be handled when adding a child item if
 // another item exists with the same name in some namespace.
-enum DuplicateCheckingMode {
+#[deriving_eq]
+pub enum DuplicateCheckingMode {
     ForbidDuplicateModules,
     ForbidDuplicateTypes,
     ForbidDuplicateValues,
@@ -374,19 +319,10 @@ enum DuplicateCheckingMode {
     OverwriteDuplicates
 }
 
-impl DuplicateCheckingMode : cmp::Eq {
-    pure fn eq(&self, other: &DuplicateCheckingMode) -> bool {
-        ((*self) as uint) == (*other as uint)
-    }
-    pure fn ne(&self, other: &DuplicateCheckingMode) -> bool {
-        !(*self).eq(other)
-    }
-}
-
 // Returns the namespace associated with the given duplicate checking mode,
 // or fails for OverwriteDuplicates. This is used for error messages.
-fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode) ->
-        Namespace {
+pub fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode)
+                                          -> Namespace {
     match mode {
         ForbidDuplicateModules | ForbidDuplicateTypes |
         ForbidDuplicateTypesAndValues => TypeNS,
@@ -396,12 +332,12 @@ fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode) ->
 }
 
 /// One local scope.
-struct Rib {
+pub struct Rib {
     bindings: HashMap<ident,def_like>,
     kind: RibKind,
 }
 
-fn Rib(kind: RibKind) -> Rib {
+pub fn Rib(kind: RibKind) -> Rib {
     Rib {
         bindings: HashMap(),
         kind: kind
@@ -410,17 +346,18 @@ fn Rib(kind: RibKind) -> Rib {
 
 
 /// One import directive.
-struct ImportDirective {
+pub struct ImportDirective {
     privacy: Privacy,
     module_path: @DVec<ident>,
     subclass: @ImportDirectiveSubclass,
     span: span,
 }
 
-fn ImportDirective(privacy: Privacy,
-                   module_path: @DVec<ident>,
-                   subclass: @ImportDirectiveSubclass,
-                   span: span) -> ImportDirective {
+pub fn ImportDirective(privacy: Privacy,
+                       module_path: @DVec<ident>,
+                       subclass: @ImportDirectiveSubclass,
+                       span: span)
+                    -> ImportDirective {
     ImportDirective {
         privacy: privacy,
         module_path: module_path,
@@ -430,12 +367,12 @@ fn ImportDirective(privacy: Privacy,
 }
 
 /// The item that an import resolves to.
-struct Target {
+pub struct Target {
     target_module: @Module,
     bindings: @NameBindings,
 }
 
-fn Target(target_module: @Module, bindings: @NameBindings) -> Target {
+pub fn Target(target_module: @Module, bindings: @NameBindings) -> Target {
     Target {
         target_module: target_module,
         bindings: bindings
@@ -443,7 +380,7 @@ fn Target(target_module: @Module, bindings: @NameBindings) -> Target {
 }
 
 /// An ImportResolution represents a particular `use` directive.
-struct ImportResolution {
+pub struct ImportResolution {
     /// The privacy of this `use` directive (whether it's `use` or
     /// `pub use`.
     privacy: Privacy,
@@ -463,7 +400,7 @@ struct ImportResolution {
     mut used: bool,
 }
 
-fn ImportResolution(privacy: Privacy, span: span) -> ImportResolution {
+pub fn ImportResolution(privacy: Privacy, span: span) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
         span: span,
@@ -474,7 +411,7 @@ fn ImportResolution(privacy: Privacy, span: span) -> ImportResolution {
     }
 }
 
-impl ImportResolution {
+pub impl ImportResolution {
     fn target_for_namespace(namespace: Namespace) -> Option<Target> {
         match namespace {
             TypeNS      => return copy self.type_target,
@@ -484,14 +421,14 @@ impl ImportResolution {
 }
 
 /// The link from a module up to its nearest parent node.
-enum ParentLink {
+pub enum ParentLink {
     NoParentLink,
     ModuleParentLink(@Module, ident),
     BlockParentLink(@Module, node_id)
 }
 
 /// The type of module this is.
-enum ModuleKind {
+pub enum ModuleKind {
     NormalModuleKind,
     ExternModuleKind,
     TraitModuleKind,
@@ -499,7 +436,7 @@ enum ModuleKind {
 }
 
 /// One node in the tree of modules.
-struct Module {
+pub struct Module {
     parent_link: ParentLink,
     mut def_id: Option<def_id>,
     kind: ModuleKind,
@@ -549,10 +486,11 @@ struct Module {
     mut resolved_import_count: uint,
 }
 
-fn Module(parent_link: ParentLink,
-          def_id: Option<def_id>,
-          kind: ModuleKind,
-          legacy_exports: bool) -> Module {
+pub fn Module(parent_link: ParentLink,
+              def_id: Option<def_id>,
+              kind: ModuleKind,
+              legacy_exports: bool)
+           -> Module {
     Module {
         parent_link: parent_link,
         def_id: def_id,
@@ -568,13 +506,13 @@ fn Module(parent_link: ParentLink,
     }
 }
 
-impl Module {
+pub impl Module {
     fn all_imports_resolved() -> bool {
         return self.imports.len() == self.resolved_import_count;
     }
 }
 
-fn unused_import_lint_level(session: Session) -> level {
+pub fn unused_import_lint_level(session: Session) -> level {
     for session.opts.lint_opts.each |lint_option_pair| {
         let (lint_type, lint_level) = *lint_option_pair;
         if lint_type == unused_imports {
@@ -585,21 +523,21 @@ fn unused_import_lint_level(session: Session) -> level {
 }
 
 // Records a possibly-private type definition.
-struct TypeNsDef {
+pub struct TypeNsDef {
     mut privacy: Privacy,
     mut module_def: Option<@Module>,
     mut type_def: Option<def>
 }
 
 // Records a possibly-private value definition.
-struct ValueNsDef {
+pub struct ValueNsDef {
     privacy: Privacy,
     def: def,
 }
 
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
-struct NameBindings {
+pub struct NameBindings {
     mut type_def: Option<TypeNsDef>,    //< Meaning in type namespace.
     mut value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
 
@@ -609,8 +547,7 @@ struct NameBindings {
     mut value_span: Option<span>,
 }
 
-impl NameBindings {
-
+pub impl NameBindings {
     /// Creates a new module in this set of name bindings.
     fn define_module(privacy: Privacy,
                      parent_link: ParentLink,
@@ -758,7 +695,7 @@ impl NameBindings {
     }
 }
 
-fn NameBindings() -> NameBindings {
+pub fn NameBindings() -> NameBindings {
     NameBindings {
         type_def: None,
         value_def: None,
@@ -767,13 +704,12 @@ fn NameBindings() -> NameBindings {
     }
 }
 
-
 /// Interns the names of the primitive types.
-struct PrimitiveTypeTable {
+pub struct PrimitiveTypeTable {
     primitive_types: HashMap<ident,prim_ty>,
 }
 
-impl PrimitiveTypeTable {
+pub impl PrimitiveTypeTable {
     fn intern(intr: @ident_interner, string: @~str,
               primitive_type: prim_ty) {
         let ident = intr.intern(string);
@@ -781,7 +717,7 @@ impl PrimitiveTypeTable {
     }
 }
 
-fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
+pub fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
     let table = PrimitiveTypeTable {
         primitive_types: HashMap()
     };
@@ -807,15 +743,17 @@ fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
 }
 
 
-fn namespace_to_str(ns: Namespace) -> ~str {
+pub fn namespace_to_str(ns: Namespace) -> ~str {
     match ns {
         TypeNS  => ~"type",
         ValueNS => ~"value",
     }
 }
 
-fn Resolver(session: Session, lang_items: LanguageItems,
-            crate: @crate) -> Resolver {
+pub fn Resolver(session: Session,
+                lang_items: LanguageItems,
+                crate: @crate)
+             -> Resolver {
     let graph_root = @NameBindings();
 
     (*graph_root).define_module(Public,
@@ -874,7 +812,7 @@ fn Resolver(session: Session, lang_items: LanguageItems,
 }
 
 /// The main resolver class.
-struct Resolver {
+pub struct Resolver {
     session: Session,
     lang_items: LanguageItems,
     crate: @crate,
@@ -932,8 +870,7 @@ struct Resolver {
     trait_map: TraitMap,
 }
 
-impl Resolver {
-
+pub impl Resolver {
     /// The main name resolution procedure.
     fn resolve(@self, this: @Resolver) {
         self.build_reduced_graph(this);
@@ -5576,11 +5513,14 @@ impl Resolver {
 }
 
 /// Entry point to crate resolution.
-fn resolve_crate(session: Session, lang_items: LanguageItems, crate: @crate)
-              -> { def_map: DefMap,
-                   exp_map2: ExportMap2,
-                   trait_map: TraitMap } {
-
+pub fn resolve_crate(session: Session,
+                     lang_items: LanguageItems,
+                     crate: @crate)
+                  -> {
+                    def_map: DefMap,
+                    exp_map2: ExportMap2,
+                    trait_map: TraitMap
+                  } {
     let resolver = @Resolver(session, lang_items, crate);
     resolver.resolve(resolver);
     return {

@@ -129,9 +129,6 @@ use syntax::visit::{fk_anon, fk_dtor, fk_fn_block, fk_item_fn, fk_method};
 use syntax::visit::{vt};
 use syntax::{visit, ast_util};
 
-export check_crate;
-export last_use_map;
-
 // Maps from an expr id to a list of variable ids for which this expr
 // is the last use.  Typically, the expr is a path and the node id is
 // the local/argument/etc that the path refers to.  However, it also
@@ -140,7 +137,7 @@ export last_use_map;
 //
 // Very subtle (#2633): borrowck will remove entries from this table
 // if it detects an outstanding loan (that is, the addr is taken).
-type last_use_map = HashMap<node_id, @DVec<node_id>>;
+pub type last_use_map = HashMap<node_id, @DVec<node_id>>;
 
 enum Variable = uint;
 enum LiveNode = uint;
@@ -204,9 +201,9 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
     }
 }
 
-fn check_crate(tcx: ty::ctxt,
-               method_map: typeck::method_map,
-               crate: @crate) -> last_use_map {
+pub fn check_crate(tcx: ty::ctxt,
+                   method_map: typeck::method_map,
+                   crate: @crate) -> last_use_map {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: visit_fn,
         visit_local: visit_local,

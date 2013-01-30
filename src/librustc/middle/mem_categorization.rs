@@ -63,7 +63,7 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 
 #[deriving_eq]
-enum categorization {
+pub enum categorization {
     cat_rvalue,                     // result of eval'ing some misc expr
     cat_special(special_kind),      //
     cat_local(ast::node_id),        // local variable
@@ -101,7 +101,7 @@ pub enum comp_kind {
 
 // different kinds of expressions we might evaluate
 #[deriving_eq]
-enum special_kind {
+pub enum special_kind {
     sk_method,
     sk_static_item,
     sk_implicit_self,   // old by-reference `self`
@@ -114,7 +114,7 @@ enum special_kind {
 //
 // note: cmt stands for "categorized mutable type".
 #[deriving_eq]
-struct cmt_ {
+pub struct cmt_ {
     id: ast::node_id,        // id of expr/pat producing this value
     span: span,              // span of same expr/pat
     cat: categorization,     // categorization of expr
@@ -123,7 +123,7 @@ struct cmt_ {
     ty: ty::t                // type of the expr
 }
 
-type cmt = @cmt_;
+pub type cmt = @cmt_;
 
 // a loan path is like a category, but it exists only when the data is
 // interior to the stack frame.  loan paths are used as the key to a
@@ -139,12 +139,12 @@ pub enum loan_path {
 
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
-enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
+pub enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
 
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
 // pointer adjustment).
-fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
+pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).sty {
       ty::ty_uniq(*) |
       ty::ty_evec(_, ty::vstore_uniq) |
@@ -206,7 +206,7 @@ fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     }
 }
 
-fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
+pub fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
     match opt_deref_kind(t) {
       Some(k) => k,
       None => {
@@ -217,29 +217,27 @@ fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
     }
 }
 
-fn cat_expr(
-    tcx: ty::ctxt,
-    method_map: typeck::method_map,
-    expr: @ast::expr) -> cmt {
-
+pub fn cat_expr(tcx: ty::ctxt,
+                method_map: typeck::method_map,
+                expr: @ast::expr)
+             -> cmt {
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
     };
     return mcx.cat_expr(expr);
 }
 
-fn cat_expr_unadjusted(
-    tcx: ty::ctxt,
-    method_map: typeck::method_map,
-    expr: @ast::expr) -> cmt {
-
+pub fn cat_expr_unadjusted(tcx: ty::ctxt,
+                           method_map: typeck::method_map,
+                           expr: @ast::expr)
+                        -> cmt {
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
     };
     return mcx.cat_expr_unadjusted(expr);
 }
 
-fn cat_expr_autoderefd(
+pub fn cat_expr_autoderefd(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     expr: @ast::expr,
@@ -251,7 +249,7 @@ fn cat_expr_autoderefd(
     return mcx.cat_expr_autoderefd(expr, adj);
 }
 
-fn cat_def(
+pub fn cat_def(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     expr_id: ast::node_id,
@@ -265,7 +263,7 @@ fn cat_def(
     return mcx.cat_def(expr_id, expr_span, expr_ty, def);
 }
 
-fn cat_variant<N: ast_node>(
+pub fn cat_variant<N: ast_node>(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     arg: N,
@@ -278,37 +276,37 @@ fn cat_variant<N: ast_node>(
     return mcx.cat_variant(arg, enum_did, cmt);
 }
 
-trait ast_node {
+pub trait ast_node {
     fn id() -> ast::node_id;
     fn span() -> span;
 }
 
-impl @ast::expr: ast_node {
+pub impl @ast::expr: ast_node {
     fn id() -> ast::node_id { self.id }
     fn span() -> span { self.span }
 }
 
-impl @ast::pat: ast_node {
+pub impl @ast::pat: ast_node {
     fn id() -> ast::node_id { self.id }
     fn span() -> span { self.span }
 }
 
-trait get_type_for_node {
+pub trait get_type_for_node {
     fn ty<N: ast_node>(node: N) -> ty::t;
 }
 
-impl ty::ctxt: get_type_for_node {
+pub impl ty::ctxt: get_type_for_node {
     fn ty<N: ast_node>(node: N) -> ty::t {
         ty::node_id_to_type(self, node.id())
     }
 }
 
-struct mem_categorization_ctxt {
+pub struct mem_categorization_ctxt {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
 }
 
-impl &mem_categorization_ctxt {
+pub impl &mem_categorization_ctxt {
     fn cat_expr(expr: @ast::expr) -> cmt {
         match self.tcx.adjustments.find(expr.id) {
             None => {
@@ -1043,10 +1041,11 @@ impl &mem_categorization_ctxt {
 /// The node_id here is the node of the expression that references the field.
 /// This function looks it up in the def map in case the type happens to be
 /// an enum to determine which variant is in use.
-fn field_mutbl(tcx: ty::ctxt,
-               base_ty: ty::t,
-               f_name: ast::ident,
-               node_id: ast::node_id) -> Option<ast::mutability> {
+pub fn field_mutbl(tcx: ty::ctxt,
+                   base_ty: ty::t,
+                   f_name: ast::ident,
+                   node_id: ast::node_id)
+                -> Option<ast::mutability> {
     // Need to refactor so that records/class fields can be treated uniformly.
     match /*bad*/copy ty::get(base_ty).sty {
       ty::ty_rec(fields) => {
@@ -1089,7 +1088,7 @@ fn field_mutbl(tcx: ty::ctxt,
     return None;
 }
 
-impl categorization {
+pub impl categorization {
     fn derefs_through_mutable_box(&const self) -> bool {
         match *self {
             cat_deref(_, _, gc_ptr(ast::m_mutbl)) => {

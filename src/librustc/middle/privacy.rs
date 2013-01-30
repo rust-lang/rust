@@ -34,7 +34,9 @@ use syntax::ast_util::{visibility_to_privacy};
 use syntax::codemap::span;
 use syntax::visit;
 
-fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
+pub fn check_crate(tcx: ty::ctxt,
+                   method_map: &method_map,
+                   crate: @ast::crate) {
     let privileged_items = @DVec();
     let legacy_exports = has_legacy_export_attr(crate.node.attrs);
 

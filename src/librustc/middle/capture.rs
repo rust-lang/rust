@@ -20,37 +20,27 @@ use std::map;
 use syntax::codemap::span;
 use syntax::{ast, ast_util};
 
-export capture_mode;
-export capture_var;
-export capture_map;
-export check_capture_clause;
-export compute_capture_vars;
-export cap_copy;
-export cap_move;
-export cap_drop;
-export cap_ref;
-
-enum capture_mode {
+pub enum capture_mode {
     cap_copy, // Copy the value into the closure.
     cap_move, // Move the value into the closure.
     cap_drop, // Drop value after creating closure.
     cap_ref,  // Reference directly from parent stack frame (block fn).
 }
 
-type capture_var = {
+pub type capture_var = {
     def: ast::def,                       // Variable being accessed free
     span: span,                          // Location of access or cap item
     cap_item: Option<ast::capture_item>, // Capture item, if any
     mode: capture_mode                   // How variable is being accessed
 };
 
-type capture_map = map::HashMap<ast::def_id, capture_var>;
+pub type capture_map = map::HashMap<ast::def_id, capture_var>;
 
 // checks the capture clause for a fn_expr() and issues warnings or
 // errors for any irregularities which we identify.
-fn check_capture_clause(tcx: ty::ctxt,
-                        fn_expr_id: ast::node_id,
-                        cap_clause: ast::capture_clause) {
+pub fn check_capture_clause(tcx: ty::ctxt,
+                            fn_expr_id: ast::node_id,
+                            cap_clause: ast::capture_clause) {
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let seen_defs = map::HashMap();
 
@@ -73,10 +63,11 @@ fn check_capture_clause(tcx: ty::ctxt,
     }
 }
 
-fn compute_capture_vars(tcx: ty::ctxt,
-                        fn_expr_id: ast::node_id,
-                        fn_proto: ast::Proto,
-                        cap_clause: ast::capture_clause) -> ~[capture_var] {
+pub fn compute_capture_vars(tcx: ty::ctxt,
+                            fn_expr_id: ast::node_id,
+                            fn_proto: ast::Proto,
+                            cap_clause: ast::capture_clause)
+                         -> ~[capture_var] {
     let freevars = freevars::get_freevars(tcx, fn_expr_id);
     let cap_map = map::HashMap();
 

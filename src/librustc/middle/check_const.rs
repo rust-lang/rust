@@ -22,9 +22,12 @@ use std::map::HashMap;
 use syntax::ast::*;
 use syntax::{visit, ast_util, ast_map};
 
-fn check_crate(sess: Session, crate: @crate, ast_map: ast_map::map,
-               def_map: resolve::DefMap,
-                method_map: typeck::method_map, tcx: ty::ctxt) {
+pub fn check_crate(sess: Session,
+                   crate: @crate,
+                   ast_map: ast_map::map,
+                   def_map: resolve::DefMap,
+                   method_map: typeck::method_map,
+                   tcx: ty::ctxt) {
     visit::visit_crate(*crate, false, visit::mk_vt(@visit::Visitor {
         visit_item: |a,b,c| check_item(sess, ast_map, def_map, a, b, c),
         visit_pat: check_pat,
@@ -35,9 +38,12 @@ fn check_crate(sess: Session, crate: @crate, ast_map: ast_map::map,
     sess.abort_if_errors();
 }
 
-fn check_item(sess: Session, ast_map: ast_map::map,
-              def_map: resolve::DefMap,
-              it: @item, &&_is_const: bool, v: visit::vt<bool>) {
+pub fn check_item(sess: Session,
+                  ast_map: ast_map::map,
+                  def_map: resolve::DefMap,
+                  it: @item,
+                  &&_is_const: bool,
+                  v: visit::vt<bool>) {
     match it.node {
       item_const(_, ex) => {
         (v.visit_expr)(ex, true, v);
@@ -54,7 +60,7 @@ fn check_item(sess: Session, ast_map: ast_map::map,
     }
 }
 
-fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
+pub fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
         match e.node {
             expr_vstore(
@@ -75,9 +81,13 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     }
 }
 
-fn check_expr(sess: Session, def_map: resolve::DefMap,
-              method_map: typeck::method_map, tcx: ty::ctxt,
-              e: @expr, &&is_const: bool, v: visit::vt<bool>) {
+pub fn check_expr(sess: Session,
+                  def_map: resolve::DefMap,
+                  method_map: typeck::method_map,
+                  tcx: ty::ctxt,
+                  e: @expr,
+                  &&is_const: bool,
+                  v: visit::vt<bool>) {
     if is_const {
         match e.node {
           expr_unary(box(_), _) | expr_unary(uniq(_), _) |
@@ -194,9 +204,10 @@ fn check_expr(sess: Session, def_map: resolve::DefMap,
 
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
-fn check_item_recursion(sess: Session, ast_map: ast_map::map,
-                        def_map: resolve::DefMap, it: @item) {
-
+pub fn check_item_recursion(sess: Session,
+                            ast_map: ast_map::map,
+                            def_map: resolve::DefMap,
+                            it: @item) {
     type env = {
         root_it: @item,
         sess: Session,

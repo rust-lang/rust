@@ -81,11 +81,11 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
-    let {bcx, box, body} =
+    let {bcx, box: bx, body} =
         base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
     Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
-    return rslt(bcx, box);
+    return rslt(bcx, bx);
 }
 pub fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                       fill: ValueRef, alloc: ValueRef) -> Result {
@@ -243,7 +243,7 @@ pub fn trans_slice_vstore(bcx: block,
 
 pub fn trans_lit_str(bcx: block,
                      lit_expr: @ast::expr,
-                     lit_str: @~str,
+                     str_lit: @~str,
                      dest: Dest)
                   -> block {
     //!
@@ -261,9 +261,9 @@ pub fn trans_lit_str(bcx: block,
         Ignore => bcx,
         SaveIn(lldest) => {
             unsafe {
-                let bytes = lit_str.len() + 1; // count null-terminator too
+                let bytes = str_lit.len() + 1; // count null-terminator too
                 let llbytes = C_uint(bcx.ccx(), bytes);
-                let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *lit_str);
+                let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *str_lit);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr,
                                                         T_ptr(T_i8()));
                 Store(bcx,

@@ -77,11 +77,11 @@ pub enum LangItem {
     StrDupUniqFnLangItem,       // 33
 }
 
-struct LanguageItems {
+pub struct LanguageItems {
     items: [ Option<def_id> * 34 ]
 }
 
-impl LanguageItems {
+pub impl LanguageItems {
     static pub fn new() -> LanguageItems {
         LanguageItems {
             items: [ None, ..34 ]
@@ -410,7 +410,9 @@ impl LanguageItemCollector {
     }
 }
 
-fn collect_language_items(crate: @crate, session: Session) -> LanguageItems {
+pub fn collect_language_items(crate: @crate,
+                              session: Session)
+                           -> LanguageItems {
     let mut items = LanguageItems::new();
     let collector = LanguageItemCollector(crate, session, &mut items);
     collector.collect();
