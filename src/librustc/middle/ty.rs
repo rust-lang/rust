@@ -233,72 +233,74 @@ pub struct InstantiatedTraitRef {
     tpt: ty_param_substs_and_ty
 }
 
-pub type ctxt =
-    @{diag: syntax::diagnostic::span_handler,
-      interner: HashMap<intern_key, t_box>,
-      mut next_id: uint,
-      vecs_implicitly_copyable: bool,
-      legacy_modes: bool,
-      legacy_records: bool,
-      cstore: metadata::cstore::CStore,
-      sess: session::Session,
-      def_map: resolve::DefMap,
+pub type ctxt = @ctxt_;
 
-      region_map: middle::region::region_map,
-      region_paramd_items: middle::region::region_paramd_items,
+struct ctxt_ {
+    diag: syntax::diagnostic::span_handler,
+    interner: HashMap<intern_key, t_box>,
+    mut next_id: uint,
+    vecs_implicitly_copyable: bool,
+    legacy_modes: bool,
+    legacy_records: bool,
+    cstore: metadata::cstore::CStore,
+    sess: session::Session,
+    def_map: resolve::DefMap,
 
-      // Stores the types for various nodes in the AST.  Note that this table
-      // is not guaranteed to be populated until after typeck.  See
-      // typeck::check::fn_ctxt for details.
-      node_types: node_type_table,
+    region_map: middle::region::region_map,
+    region_paramd_items: middle::region::region_paramd_items,
 
-      // Stores the type parameters which were substituted to obtain the type
-      // of this node.  This only applies to nodes that refer to entities
-      // parameterized by type parameters, such as generic fns, types, or
-      // other items.
-      node_type_substs: HashMap<node_id, ~[t]>,
+    // Stores the types for various nodes in the AST.  Note that this table
+    // is not guaranteed to be populated until after typeck.  See
+    // typeck::check::fn_ctxt for details.
+    node_types: node_type_table,
 
-      items: ast_map::map,
-      intrinsic_defs: HashMap<ast::ident, (ast::def_id, t)>,
-      freevars: freevars::freevar_map,
-      tcache: type_cache,
-      rcache: creader_cache,
-      ccache: constness_cache,
-      short_names_cache: HashMap<t, @~str>,
-      needs_drop_cache: HashMap<t, bool>,
-      needs_unwind_cleanup_cache: HashMap<t, bool>,
-      kind_cache: HashMap<t, Kind>,
-      ast_ty_to_ty_cache: HashMap<@ast::Ty, ast_ty_to_ty_cache_entry>,
-      enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
-      trait_method_cache: HashMap<def_id, @~[method]>,
-      ty_param_bounds: HashMap<ast::node_id, param_bounds>,
-      inferred_modes: HashMap<ast::node_id, ast::mode>,
-      adjustments: HashMap<ast::node_id, @AutoAdjustment>,
-      normalized_cache: HashMap<t, t>,
-      lang_items: middle::lang_items::LanguageItems,
-      legacy_boxed_traits: HashMap<node_id, ()>,
-      // A mapping from an implementation ID to the method info and trait
-      // method ID of the provided (a.k.a. default) methods in the traits that
-      // that implementation implements.
-      provided_methods: ProvidedMethodsMap,
-      provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
-      supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
+    // Stores the type parameters which were substituted to obtain the type
+    // of this node.  This only applies to nodes that refer to entities
+    // parameterized by type parameters, such as generic fns, types, or
+    // other items.
+    node_type_substs: HashMap<node_id, ~[t]>,
 
-      // A mapping from the def ID of an enum or struct type to the def ID
-      // of the method that implements its destructor. If the type is not
-      // present in this map, it does not have a destructor. This map is
-      // populated during the coherence phase of typechecking.
-      destructor_for_type: HashMap<ast::def_id, ast::def_id>,
+    items: ast_map::map,
+    intrinsic_defs: HashMap<ast::ident, (ast::def_id, t)>,
+    freevars: freevars::freevar_map,
+    tcache: type_cache,
+    rcache: creader_cache,
+    ccache: constness_cache,
+    short_names_cache: HashMap<t, @~str>,
+    needs_drop_cache: HashMap<t, bool>,
+    needs_unwind_cleanup_cache: HashMap<t, bool>,
+    kind_cache: HashMap<t, Kind>,
+    ast_ty_to_ty_cache: HashMap<@ast::Ty, ast_ty_to_ty_cache_entry>,
+    enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
+    trait_method_cache: HashMap<def_id, @~[method]>,
+    ty_param_bounds: HashMap<ast::node_id, param_bounds>,
+    inferred_modes: HashMap<ast::node_id, ast::mode>,
+    adjustments: HashMap<ast::node_id, @AutoAdjustment>,
+    normalized_cache: HashMap<t, t>,
+    lang_items: middle::lang_items::LanguageItems,
+    legacy_boxed_traits: HashMap<node_id, ()>,
+    // A mapping from an implementation ID to the method info and trait
+    // method ID of the provided (a.k.a. default) methods in the traits that
+    // that implementation implements.
+    provided_methods: ProvidedMethodsMap,
+    provided_method_sources: HashMap<ast::def_id, ProvidedMethodSource>,
+    supertraits: HashMap<ast::def_id, @~[InstantiatedTraitRef]>,
 
-      // A method will be in this list if and only if it is a destructor.
-      destructors: HashMap<ast::def_id, ()>,
+    // A mapping from the def ID of an enum or struct type to the def ID
+    // of the method that implements its destructor. If the type is not
+    // present in this map, it does not have a destructor. This map is
+    // populated during the coherence phase of typechecking.
+    destructor_for_type: HashMap<ast::def_id, ast::def_id>,
 
-      // Records the value mode (read, copy, or move) for every value.
-      value_modes: HashMap<ast::node_id, ValueMode>,
+    // A method will be in this list if and only if it is a destructor.
+    destructors: HashMap<ast::def_id, ()>,
 
-      // Maps a trait onto a mapping from self-ty to impl
-      trait_impls: HashMap<ast::def_id, HashMap<t, @Impl>>
-      };
+    // Records the value mode (read, copy, or move) for every value.
+    value_modes: HashMap<ast::node_id, ValueMode>,
+
+    // Maps a trait onto a mapping from self-ty to impl
+    trait_impls: HashMap<ast::def_id, HashMap<t, @Impl>>
+}
 
 enum tbox_flag {
     has_params = 1,
@@ -833,45 +835,46 @@ pub fn mk_ctxt(s: session::Session,
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
                        lint::vecs_implicitly_copyable) == allow;
-    @{diag: s.diagnostic(),
-      interner: interner,
-      mut next_id: 0u,
-      vecs_implicitly_copyable: vecs_implicitly_copyable,
-      legacy_modes: legacy_modes,
-      legacy_records: legacy_records,
-      cstore: s.cstore,
-      sess: s,
-      def_map: dm,
-      region_map: region_map,
-      region_paramd_items: region_paramd_items,
-      node_types: @smallintmap::mk(),
-      node_type_substs: map::HashMap(),
-      items: amap,
-      intrinsic_defs: map::HashMap(),
-      freevars: freevars,
-      tcache: HashMap(),
-      rcache: mk_rcache(),
-      ccache: HashMap(),
-      short_names_cache: new_ty_hash(),
-      needs_drop_cache: new_ty_hash(),
-      needs_unwind_cleanup_cache: new_ty_hash(),
-      kind_cache: new_ty_hash(),
-      ast_ty_to_ty_cache: HashMap(),
-      enum_var_cache: HashMap(),
-      trait_method_cache: HashMap(),
-      ty_param_bounds: HashMap(),
-      inferred_modes: HashMap(),
-      adjustments: HashMap(),
-      normalized_cache: new_ty_hash(),
-      lang_items: move lang_items,
-      legacy_boxed_traits: HashMap(),
-      provided_methods: HashMap(),
-      provided_method_sources: HashMap(),
-      supertraits: HashMap(),
-      destructor_for_type: HashMap(),
-      destructors: HashMap(),
-      value_modes: HashMap(),
-      trait_impls: HashMap()
+    @ctxt_ {
+        diag: s.diagnostic(),
+        interner: interner,
+        mut next_id: 0u,
+        vecs_implicitly_copyable: vecs_implicitly_copyable,
+        legacy_modes: legacy_modes,
+        legacy_records: legacy_records,
+        cstore: s.cstore,
+        sess: s,
+        def_map: dm,
+        region_map: region_map,
+        region_paramd_items: region_paramd_items,
+        node_types: @smallintmap::mk(),
+        node_type_substs: map::HashMap(),
+        items: amap,
+        intrinsic_defs: map::HashMap(),
+        freevars: freevars,
+        tcache: HashMap(),
+        rcache: mk_rcache(),
+        ccache: HashMap(),
+        short_names_cache: new_ty_hash(),
+        needs_drop_cache: new_ty_hash(),
+        needs_unwind_cleanup_cache: new_ty_hash(),
+        kind_cache: new_ty_hash(),
+        ast_ty_to_ty_cache: HashMap(),
+        enum_var_cache: HashMap(),
+        trait_method_cache: HashMap(),
+        ty_param_bounds: HashMap(),
+        inferred_modes: HashMap(),
+        adjustments: HashMap(),
+        normalized_cache: new_ty_hash(),
+        lang_items: move lang_items,
+        legacy_boxed_traits: HashMap(),
+        provided_methods: HashMap(),
+        provided_method_sources: HashMap(),
+        supertraits: HashMap(),
+        destructor_for_type: HashMap(),
+        destructors: HashMap(),
+        value_modes: HashMap(),
+        trait_impls: HashMap()
      }
 }
 
