@@ -77,7 +77,6 @@ pub mod middle {
         pub mod reachable;
         pub mod machine;
     }
-    #[legacy_exports]
     pub mod ty;
     #[legacy_exports]
     pub mod resolve;
