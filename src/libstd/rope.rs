@@ -1158,7 +1158,7 @@ pub mod node {
         use core::vec;
 
         pub struct T {
-            stack: ~[mut @Node],
+            mut stack: ~[@Node],
             mut stackpos: int,
         }
 
