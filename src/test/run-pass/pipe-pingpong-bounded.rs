@@ -37,8 +37,8 @@ mod pingpong {
             }
         };
         do pipes::entangle_buffer(move buffer) |buffer, data| {
-            data.ping.set_buffer_(buffer);
-            data.pong.set_buffer_(buffer);
+            data.ping.set_buffer(buffer);
+            data.pong.set_buffer(buffer);
             ptr::addr_of(&(data.ping))
         }
     }
