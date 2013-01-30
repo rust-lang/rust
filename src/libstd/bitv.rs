@@ -106,7 +106,7 @@ impl SmallBitv {
 
 struct BigBitv {
     // only mut b/c of clone and lack of other constructor
-    mut storage: ~[mut uint]
+    mut storage: ~[uint]
 }
 
 fn BigBitv(storage: ~[mut uint]) -> BigBitv {
