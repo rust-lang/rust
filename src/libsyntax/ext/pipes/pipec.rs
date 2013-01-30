@@ -355,34 +355,6 @@ pub impl protocol: gen_init {
         }))
     }
 
-    #[cfg(stage0)]
-    fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
-        debug!("gen_init_bounded");
-        let buffer_fields = self.gen_buffer_init(ext_cx);
-        let buffer = quote_expr!(~{
-            header: ::pipes::BufferHeader(),
-            data: $buffer_fields,
-        });
-
-        let entangle_body = ext_cx.block_expr(
-            ext_cx.block(
-                self.states.map_to_vec(
-                    |s| ext_cx.parse_stmt(
-                        fmt!("data.%s.set_buffer(buffer)",
-                             s.name))),
-                ext_cx.parse_expr(
-                    fmt!("::ptr::addr_of(&(data.%s))",
-                         self.states[0].name))));
-
-        quote_expr!({
-            let buffer = $buffer;
-            do ::pipes::entangle_buffer(move buffer) |buffer, data| {
-                $entangle_body
-            }
-        })
-    }
-    #[cfg(stage1)]
-    #[cfg(stage2)]
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
         debug!("gen_init_bounded");
         let buffer_fields = self.gen_buffer_init(ext_cx);
