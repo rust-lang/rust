@@ -25,11 +25,14 @@ use std::list::Nil;
 use std::list;
 use syntax::ast::{m_const, purity, ret_style};
 
-fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
+pub fn macros() {
+    // FIXME(#3114): Macro import/export.
+    include!("macros.rs");
+}
 
-enum Sub = CombineFields;  // "subtype", "subregion" etc
+pub enum Sub = CombineFields;  // "subtype", "subregion" etc
 
-impl Sub: Combine {
+pub impl Sub: Combine {
     fn infcx() -> @InferCtxt { self.infcx }
     fn tag() -> ~str { ~"sub" }
     fn a_is_expected() -> bool { self.a_is_expected }

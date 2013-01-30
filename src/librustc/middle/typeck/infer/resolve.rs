@@ -63,26 +63,26 @@ use syntax::ast;
 use core::uint;
 use core::vec;
 
-const resolve_nested_tvar: uint = 0b0000000001;
-const resolve_rvar: uint        = 0b0000000010;
-const resolve_ivar: uint        = 0b0000000100;
-const resolve_fvar: uint        = 0b0000001000;
-const resolve_fnvar: uint       = 0b0000010000;
-const resolve_all: uint         = 0b0000011111;
-const force_tvar: uint          = 0b0000100000;
-const force_rvar: uint          = 0b0001000000;
-const force_ivar: uint          = 0b0010000000;
-const force_fvar: uint          = 0b0100000000;
-const force_fnvar: uint         = 0b1000000000;
-const force_all: uint           = 0b1111100000;
+pub const resolve_nested_tvar: uint = 0b0000000001;
+pub const resolve_rvar: uint        = 0b0000000010;
+pub const resolve_ivar: uint        = 0b0000000100;
+pub const resolve_fvar: uint        = 0b0000001000;
+pub const resolve_fnvar: uint       = 0b0000010000;
+pub const resolve_all: uint         = 0b0000011111;
+pub const force_tvar: uint          = 0b0000100000;
+pub const force_rvar: uint          = 0b0001000000;
+pub const force_ivar: uint          = 0b0010000000;
+pub const force_fvar: uint          = 0b0100000000;
+pub const force_fnvar: uint         = 0b1000000000;
+pub const force_all: uint           = 0b1111100000;
 
-const not_regions: uint         = !(force_rvar | resolve_rvar);
+pub const not_regions: uint         = !(force_rvar | resolve_rvar);
 
-const try_resolve_tvar_shallow: uint = 0;
-const resolve_and_force_all_but_regions: uint =
+pub const try_resolve_tvar_shallow: uint = 0;
+pub const resolve_and_force_all_but_regions: uint =
     (resolve_all | force_all) & not_regions;
 
-struct ResolveState {
+pub struct ResolveState {
     infcx: @InferCtxt,
     modes: uint,
     mut err: Option<fixup_err>,
@@ -90,7 +90,7 @@ struct ResolveState {
     mut type_depth: uint
 }
 
-fn resolver(infcx: @InferCtxt, modes: uint) -> ResolveState {
+pub fn resolver(infcx: @InferCtxt, modes: uint) -> ResolveState {
     ResolveState {
         infcx: infcx,
         modes: modes,
@@ -100,7 +100,7 @@ fn resolver(infcx: @InferCtxt, modes: uint) -> ResolveState {
     }
 }
 
-impl ResolveState {
+pub impl ResolveState {
     fn should(&self, mode: uint) -> bool {
         (self.modes & mode) == mode
     }

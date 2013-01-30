@@ -81,9 +81,10 @@ pub trait ast_conv {
     fn ty_infer(span: span) -> ty::t;
 }
 
-fn get_region_reporting_err(tcx: ty::ctxt,
-                            span: span,
-                            res: Result<ty::Region, ~str>) -> ty::Region {
+pub fn get_region_reporting_err(tcx: ty::ctxt,
+                                span: span,
+                                res: Result<ty::Region, ~str>)
+                             -> ty::Region {
 
     match res {
       result::Ok(r) => r,
@@ -94,7 +95,7 @@ fn get_region_reporting_err(tcx: ty::ctxt,
     }
 }
 
-fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Durable>(
+pub fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Durable>(
     self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::Region {
 
     let res = match a_r.node {
@@ -107,7 +108,7 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Durable>(
     get_region_reporting_err(self.tcx(), span, res)
 }
 
-fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Durable>(
+pub fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     self: AC, rscope: RS, did: ast::def_id,
     path: @ast::path) -> ty_param_substs_and_ty {
 
@@ -174,13 +175,13 @@ pub fn ast_path_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     return {substs: substs, ty: ty};
 }
 
-const NO_REGIONS: uint = 1;
-const NO_TPS: uint = 2;
+pub const NO_REGIONS: uint = 1;
+pub const NO_TPS: uint = 2;
 
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
+pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     self: AC, rscope: RS, &&ast_ty: @ast::Ty) -> ty::t {
 
     fn ast_mt_to_mt<AC: ast_conv, RS: region_scope Copy Durable>(
@@ -405,7 +406,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     return typ;
 }
 
-fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Durable>(
+pub fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Durable>(
     self: AC, rscope: RS, a: ast::arg,
     expected_ty: Option<ty::arg>) -> ty::arg {
 
@@ -451,10 +452,10 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Durable>(
     arg {mode: mode, ty: ty}
 }
 
-type expected_tys = Option<{inputs: ~[ty::arg],
-                            output: ty::t}>;
+pub type expected_tys = Option<{inputs: ~[ty::arg],
+                                output: ty::t}>;
 
-fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Durable>(
+pub fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Durable>(
     self: AC, rscope: RS,
     ast_proto: ast::Proto,
     purity: ast::purity,
@@ -463,8 +464,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Durable>(
     opt_region: Option<@ast::region>,
     decl: ast::fn_decl,
     expected_tys: expected_tys,
-    span: span) -> ty::FnTy
-{
+    span: span) -> ty::FnTy {
     debug!("ty_of_fn_decl");
     do indent {
         // resolve the function bound region in the original region

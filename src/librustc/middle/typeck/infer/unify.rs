@@ -21,28 +21,28 @@ use middle::typeck::infer::to_str::InferStr;
 use syntax::ast;
 use util::common::{indent, indenter};
 
-enum VarValue<V, T> {
+pub enum VarValue<V, T> {
     Redirect(V),
     Root(T, uint),
 }
 
-struct ValsAndBindings<V, T> {
+pub struct ValsAndBindings<V, T> {
     vals: SmallIntMap<VarValue<V, T>>,
     mut bindings: ~[(V, VarValue<V, T>)],
 }
 
-struct Node<V, T> {
+pub struct Node<V, T> {
     root: V,
     possible_types: T,
     rank: uint,
 }
 
-trait UnifyVid<T> {
+pub trait UnifyVid<T> {
     static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
         -> &v/ValsAndBindings<self, T>;
 }
 
-impl InferCtxt {
+pub impl InferCtxt {
     fn get<T:Copy, V:Copy Eq Vid UnifyVid<T>>(
         &self,
         +vid: V) -> Node<V, T>
@@ -135,14 +135,13 @@ impl InferCtxt {
 // Code to handle simple variables like ints, floats---anything that
 // doesn't have a subtyping relationship we need to worry about.
 
-trait SimplyUnifiable {
+pub trait SimplyUnifiable {
     static fn to_type_err(expected_found<self>) -> ty::type_err;
 }
 
-fn mk_err<T: SimplyUnifiable>(+a_is_expected: bool,
-                              +a_t: T,
-                              +b_t: T) -> ures
-{
+pub fn mk_err<T: SimplyUnifiable>(+a_is_expected: bool,
+                                  +a_t: T,
+                                  +b_t: T) -> ures {
     if a_is_expected {
         Err(SimplyUnifiable::to_type_err(
             ty::expected_found {expected: a_t, found: b_t}))
@@ -152,7 +151,7 @@ fn mk_err<T: SimplyUnifiable>(+a_is_expected: bool,
     }
 }
 
-impl InferCtxt {
+pub impl InferCtxt {
     fn simple_vars<T:Copy Eq InferStr SimplyUnifiable,
                    V:Copy Eq Vid ToStr UnifyVid<Option<T>>>(
         &self,
@@ -227,7 +226,7 @@ impl InferCtxt {
 
 // ______________________________________________________________________
 
-impl ty::TyVid : UnifyVid<Bounds<ty::t>> {
+pub impl ty::TyVid : UnifyVid<Bounds<ty::t>> {
     static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
         -> &v/ValsAndBindings<ty::TyVid, Bounds<ty::t>>
     {
@@ -235,7 +234,7 @@ impl ty::TyVid : UnifyVid<Bounds<ty::t>> {
     }
 }
 
-impl ty::IntVid : UnifyVid<Option<IntVarValue>> {
+pub impl ty::IntVid : UnifyVid<Option<IntVarValue>> {
     static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
         -> &v/ValsAndBindings<ty::IntVid, Option<IntVarValue>>
     {
@@ -243,7 +242,7 @@ impl ty::IntVid : UnifyVid<Option<IntVarValue>> {
     }
 }
 
-impl IntVarValue : SimplyUnifiable {
+pub impl IntVarValue : SimplyUnifiable {
     static fn to_type_err(err: expected_found<IntVarValue>)
         -> ty::type_err
     {
@@ -251,7 +250,7 @@ impl IntVarValue : SimplyUnifiable {
     }
 }
 
-impl ty::FloatVid : UnifyVid<Option<ast::float_ty>> {
+pub impl ty::FloatVid : UnifyVid<Option<ast::float_ty>> {
     static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
         -> &v/ValsAndBindings<ty::FloatVid, Option<ast::float_ty>>
     {
@@ -259,7 +258,7 @@ impl ty::FloatVid : UnifyVid<Option<ast::float_ty>> {
     }
 }
 
-impl ast::float_ty : SimplyUnifiable {
+pub impl ast::float_ty : SimplyUnifiable {
     static fn to_type_err(err: expected_found<ast::float_ty>)
         -> ty::type_err
     {

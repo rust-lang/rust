@@ -25,9 +25,9 @@ use util::ppaux::mt_to_str;
 
 use std::list;
 
-enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
+pub enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
 
-impl Glb: Combine {
+pub impl Glb: Combine {
     fn infcx() -> @InferCtxt { self.infcx }
     fn tag() -> ~str { ~"glb" }
     fn a_is_expected() -> bool { self.a_is_expected }

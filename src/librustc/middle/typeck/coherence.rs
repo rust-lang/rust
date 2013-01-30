@@ -65,15 +65,16 @@ use core::vec::{len, push};
 use core::vec;
 use std::map::HashMap;
 
-struct UniversalQuantificationResult {
+pub struct UniversalQuantificationResult {
     monotype: t,
     type_variables: ~[ty::t],
     bounds: @~[param_bounds]
 }
 
-fn get_base_type(inference_context: @InferCtxt, span: span, original_type: t)
-              -> Option<t> {
-
+pub fn get_base_type(inference_context: @InferCtxt,
+                     span: span,
+                     original_type: t)
+                  -> Option<t> {
     let resolved_type;
     match resolve_type(inference_context,
                      original_type,
@@ -118,11 +119,10 @@ fn get_base_type(inference_context: @InferCtxt, span: span, original_type: t)
 }
 
 // Returns the def ID of the base type, if there is one.
-fn get_base_type_def_id(inference_context: @InferCtxt,
-                        span: span,
-                        original_type: t)
-                     -> Option<def_id> {
-
+pub fn get_base_type_def_id(inference_context: @InferCtxt,
+                            span: span,
+                            original_type: t)
+                         -> Option<def_id> {
     match get_base_type(inference_context, span, original_type) {
         None => {
             return None;
@@ -144,7 +144,7 @@ fn get_base_type_def_id(inference_context: @InferCtxt,
 }
 
 
-fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
+pub fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
     @{
         did: local_def(ast_method.id),
         n_tps: ast_method.tps.len(),
@@ -153,7 +153,7 @@ fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
     }
 }
 
-struct CoherenceInfo {
+pub struct CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
     inherent_methods: HashMap<def_id,@DVec<@Impl>>,
@@ -164,14 +164,14 @@ struct CoherenceInfo {
 
 }
 
-fn CoherenceInfo() -> CoherenceInfo {
+pub fn CoherenceInfo() -> CoherenceInfo {
     CoherenceInfo {
         inherent_methods: HashMap(),
         extension_methods: HashMap(),
     }
 }
 
-fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
+pub fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
     CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
@@ -181,7 +181,7 @@ fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
     }
 }
 
-struct CoherenceChecker {
+pub struct CoherenceChecker {
     crate_context: @crate_ctxt,
     inference_context: @InferCtxt,
 
@@ -196,7 +196,7 @@ struct CoherenceChecker {
     privileged_implementations: HashMap<node_id,()>,
 }
 
-impl CoherenceChecker {
+pub impl CoherenceChecker {
     fn check_coherence(crate: @crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
@@ -1011,7 +1011,7 @@ impl CoherenceChecker {
     }
 }
 
-fn check_coherence(crate_context: @crate_ctxt, crate: @crate) {
+pub fn check_coherence(crate_context: @crate_ctxt, crate: @crate) {
     let coherence_checker = @CoherenceChecker(crate_context);
     (*coherence_checker).check_coherence(crate);
 }
