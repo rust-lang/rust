@@ -57,41 +57,23 @@ pub mod middle {
         pub mod datum;
         pub mod callee;
         pub mod expr;
-        #[legacy_exports]
         pub mod common;
-        #[legacy_exports]
         pub mod consts;
-        #[legacy_exports]
         pub mod type_of;
-        #[legacy_exports]
         pub mod build;
-        #[legacy_exports]
         pub mod base;
-        #[legacy_exports]
         pub mod _match;
-        #[legacy_exports]
         pub mod uniq;
-        #[legacy_exports]
         pub mod closure;
-        #[legacy_exports]
         pub mod tvec;
-        #[legacy_exports]
         pub mod meth;
-        #[legacy_exports]
         pub mod cabi;
-        #[legacy_exports]
         pub mod cabi_x86_64;
-        #[legacy_exports]
         pub mod foreign;
-        #[legacy_exports]
         pub mod reflect;
-        #[legacy_exports]
         pub mod shape;
-        #[legacy_exports]
         pub mod debuginfo;
-        #[legacy_exports]
         pub mod type_use;
-        #[legacy_exports]
         pub mod reachable;
         pub mod machine;
     }

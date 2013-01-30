@@ -15,11 +15,12 @@ use middle::trans::base::get_insn_ctxt;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::expr;
+use middle::trans::machine;
 use middle::ty;
 
 use syntax::{ast, ast_util, codemap, ast_map};
 
-fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
+pub fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
     let _icx = cx.insn_ctxt("trans_lit");
     match lit.node {
@@ -58,7 +59,7 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     }
 }
 
-fn const_ptrcast(cx: @crate_ctxt, a: ValueRef, t: TypeRef) -> ValueRef {
+pub fn const_ptrcast(cx: @crate_ctxt, a: ValueRef, t: TypeRef) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, T_ptr(t));
         assert cx.const_globals.insert(b as int, a);
@@ -66,20 +67,20 @@ fn const_ptrcast(cx: @crate_ctxt, a: ValueRef, t: TypeRef) -> ValueRef {
     }
 }
 
-fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
+pub fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
     -> (ValueRef, ValueRef, TypeRef) {
     unsafe {
         let vec_ty = ty::expr_ty(cx.tcx, e);
         let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
         let llunitty = type_of::type_of(cx, unit_ty);
         let v = C_array(llunitty, es.map(|e| const_expr(cx, *e)));
-        let unit_sz = shape::llsize_of(cx, llunitty);
+        let unit_sz = machine::llsize_of(cx, llunitty);
         let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
         return (v, sz, llunitty);
     }
 }
 
-fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
+pub fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
     unsafe {
         let v = match cx.const_globals.find(v as int) {
             Some(v) => v,
@@ -91,7 +92,8 @@ fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
     }
 }
 
-fn const_get_elt(cx: @crate_ctxt, v: ValueRef, us: &[c_uint]) -> ValueRef {
+pub fn const_get_elt(cx: @crate_ctxt, v: ValueRef, us: &[c_uint])
+                  -> ValueRef {
     unsafe {
         let r = do vec::as_imm_buf(us) |p, len| {
             llvm::LLVMConstExtractValue(v, p, len as c_uint)
@@ -104,7 +106,7 @@ fn const_get_elt(cx: @crate_ctxt, v: ValueRef, us: &[c_uint]) -> ValueRef {
     }
 }
 
-fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
+pub fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
     -> (ty::t, ValueRef) {
     let mut t1 = ty;
     let mut v1 = v;
@@ -120,7 +122,7 @@ fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
     }
 }
 
-fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
+pub fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
     if !ast_util::is_local(def_id) {
         cx.tcx.sess.bug(~"cross-crate constants");
     }
@@ -137,7 +139,7 @@ fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
     cx.const_values.get(def_id.node)
 }
 
-fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
+pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     unsafe {
         let _icx = cx.insn_ctxt("const_expr");
         return match /*bad*/copy e.node {
@@ -244,7 +246,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                       ty::vstore_slice(_) => {
                           let unit_ty = ty::sequence_element_type(cx.tcx, bt);
                           let llunitty = type_of::type_of(cx, unit_ty);
-                          let unit_sz = shape::llsize_of(cx, llunitty);
+                          let unit_sz = machine::llsize_of(cx, llunitty);
 
                           (const_deref(cx, const_get_elt(cx, bv, [0])),
                            llvm::LLVMConstUDiv(const_get_elt(cx, bv, [1]),
@@ -450,7 +452,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
             Some(ast::def_variant(tid, vid)) => {
                 let ety = ty::expr_ty(cx.tcx, e);
                 let degen = ty::enum_is_univariant(cx.tcx, tid);
-                let size = shape::static_size_of_enum(cx, ety);
+                let size = machine::static_size_of_enum(cx, ety);
 
                 let discrim = base::get_discrim_val(cx, e.span, tid, vid);
                 let c_args = C_struct(args.map(|a| const_expr(cx, *a)));
@@ -474,7 +476,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     }
 }
 
-fn trans_const(ccx: @crate_ctxt, _e: @ast::expr, id: ast::node_id) {
+pub fn trans_const(ccx: @crate_ctxt, _e: @ast::expr, id: ast::node_id) {
     unsafe {
         let _icx = ccx.insn_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);

@@ -351,7 +351,7 @@ pub fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
                         {
                             let llty = type_of::type_of(ccx, subst);
                             let size = machine::llbitsize_of_real(ccx, llty);
-                            let align = shape::llalign_of_pref(ccx, llty);
+                            let align = machine::llalign_of_pref(ccx, llty);
                             let mode = datum::appropriate_mode(subst);
 
                             // FIXME(#3547)---scalars and floats are

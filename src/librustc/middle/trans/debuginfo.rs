@@ -17,7 +17,7 @@ use middle::pat_util::*;
 use middle::trans::base;
 use middle::trans::build::B;
 use middle::trans::common::*;
-use middle::trans::shape;
+use middle::trans::machine;
 use middle::trans::type_of;
 use middle::trans;
 use middle::ty;
@@ -32,13 +32,6 @@ use syntax::ast::Ty;
 use syntax::codemap::{span, CharPos};
 use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};
-
-export create_local_var;
-export create_function;
-export create_arg;
-export update_source_pos;
-export debug_ctxt;
-export mk_ctxt;
 
 const LLVMDebugVersion: int = (9 << 16);
 
@@ -111,13 +104,13 @@ fn add_named_metadata(cx: @crate_ctxt, name: ~str, val: ValueRef) {
 
 ////////////////
 
-type debug_ctxt = {
+pub type debug_ctxt = {
     llmetadata: metadata_cache,
     names: namegen,
     crate_file: ~str
 };
 
-fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> debug_ctxt {
+pub fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> debug_ctxt {
     {llmetadata: map::HashMap(),
      names: new_namegen(intr),
      crate_file: crate}
@@ -313,8 +306,8 @@ fn create_block(cx: block) -> @metadata<block_md> {
 
 fn size_and_align_of(cx: @crate_ctxt, t: ty::t) -> (int, int) {
     let llty = type_of::type_of(cx, t);
-    (shape::llsize_of_real(cx, llty) as int,
-     shape::llalign_of_pref(cx, llty) as int)
+    (machine::llsize_of_real(cx, llty) as int,
+     machine::llalign_of_pref(cx, llty) as int)
 }
 
 fn create_basic_type(cx: @crate_ctxt, t: ty::t, span: span)
@@ -654,7 +647,7 @@ fn create_var(type_tag: int, context: ValueRef, +name: ~str, file: ValueRef,
     return llmdnode(lldata);
 }
 
-fn create_local_var(bcx: block, local: @ast::local)
+pub fn create_local_var(bcx: block, local: @ast::local)
     -> @metadata<local_var_md> {
     unsafe {
         let cx = bcx.ccx();
@@ -705,7 +698,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     }
 }
 
-fn create_arg(bcx: block, arg: ast::arg, sp: span)
+pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
     -> Option<@metadata<argument_md>> {
     unsafe {
         let fcx = bcx.fcx, cx = fcx.ccx;
@@ -752,7 +745,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     }
 }
 
-fn update_source_pos(cx: block, s: span) {
+pub fn update_source_pos(cx: block, s: span) {
     if !cx.sess().opts.debuginfo {
         return;
     }
@@ -769,7 +762,7 @@ fn update_source_pos(cx: block, s: span) {
     }
 }
 
-fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
+pub fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let cx = fcx.ccx;
     let dbg_cx = (/*bad*/copy cx.dbg_cx).get();
 

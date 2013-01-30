@@ -14,6 +14,7 @@ use lib::llvm::{TypeRef};
 use middle::trans::common::*;
 use middle::trans::common;
 use middle::trans::expr;
+use middle::trans::machine;
 use util::ppaux;
 
 use std::map::HashMap;
@@ -29,7 +30,7 @@ export type_of_glue_fn;
 export type_of_non_gc_box;
 export type_of_rooted;
 
-fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
+pub fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
     let llty = type_of(ccx, arg.ty);
     match ty::resolved_mode(ccx.tcx, arg.mode) {
         ast::by_val => llty,
@@ -44,12 +45,13 @@ fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
     }
 }
 
-fn type_of_explicit_args(ccx: @crate_ctxt, inputs: ~[ty::arg]) -> ~[TypeRef] {
+pub fn type_of_explicit_args(ccx: @crate_ctxt, inputs: ~[ty::arg])
+                          -> ~[TypeRef] {
     inputs.map(|arg| type_of_explicit_arg(ccx, *arg))
 }
 
-fn type_of_fn(cx: @crate_ctxt, inputs: ~[ty::arg],
-              output: ty::t) -> TypeRef {
+pub fn type_of_fn(cx: @crate_ctxt, inputs: ~[ty::arg],
+                  output: ty::t) -> TypeRef {
     unsafe {
         let mut atys: ~[TypeRef] = ~[];
 
@@ -66,11 +68,11 @@ fn type_of_fn(cx: @crate_ctxt, inputs: ~[ty::arg],
 }
 
 // Given a function type and a count of ty params, construct an llvm type
-fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t) -> TypeRef {
+pub fn type_of_fn_from_ty(cx: @crate_ctxt, fty: ty::t) -> TypeRef {
     type_of_fn(cx, ty::ty_fn_args(fty), ty::ty_fn_ret(fty))
 }
 
-fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
+pub fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     assert !ty::type_needs_infer(t);
 
     let t_norm = ty::normalize_ty(cx.tcx, t);
@@ -91,7 +93,7 @@ fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     }
 }
 
-fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
+pub fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     debug!("type_of %?: %?", t, ty::get(t));
 
     // Check the cache.
@@ -234,14 +236,14 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     return llty;
 }
 
-fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
-                     llty: TypeRef) {
+pub fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
+                         llty: TypeRef) {
 
     debug!("type_of_enum %?: %?", t, ty::get(t));
 
     let lltys = {
         let degen = ty::enum_is_univariant(cx.tcx, did);
-        let size = shape::static_size_of_enum(cx, t);
+        let size = machine::static_size_of_enum(cx, t);
         if !degen {
             ~[T_enum_discrim(cx), T_array(T_i8(), size)]
         }
@@ -257,13 +259,12 @@ fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
 }
 
 // Want refinements! (Or case classes, I guess
-enum named_ty { a_struct, an_enum }
+pub enum named_ty { a_struct, an_enum }
 
-fn llvm_type_name(cx: @crate_ctxt,
-                  what: named_ty,
-                  did: ast::def_id,
-                  tps: ~[ty::t]
-                  ) -> ~str {
+pub fn llvm_type_name(cx: @crate_ctxt,
+                      what: named_ty,
+                      did: ast::def_id,
+                      tps: ~[ty::t]) -> ~str {
     let name = match what {
         a_struct => { "~struct" }
         an_enum => { "~enum" }
@@ -280,7 +281,7 @@ fn llvm_type_name(cx: @crate_ctxt,
     );
 }
 
-fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
+pub fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
     unsafe {
         T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))), // output pointer
                T_ptr(type_of(ccx, self_ty))],            // self arg
@@ -288,14 +289,14 @@ fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
     }
 }
 
-fn type_of_rooted(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
+pub fn type_of_rooted(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
     let addrspace = base::get_tydesc(ccx, t).addrspace;
     debug!("type_of_rooted %s in addrspace %u",
            ty_to_str(ccx.tcx, t), addrspace as uint);
     return T_root(type_of(ccx, t), addrspace);
 }
 
-fn type_of_glue_fn(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
+pub fn type_of_glue_fn(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
     let llty = T_ptr(type_of(ccx, t));
     return T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty],

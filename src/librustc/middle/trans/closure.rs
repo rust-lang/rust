@@ -23,6 +23,7 @@ use middle::trans::common::*;
 use middle::trans::datum::{Datum, INIT, ByRef, ByValue, FromLvalue};
 use middle::trans::expr;
 use middle::trans::glue;
+use middle::trans::machine;
 use middle::trans::type_of::*;
 use util::ppaux::ty_to_str;
 
@@ -103,7 +104,7 @@ use syntax::print::pprust::expr_to_str;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-enum EnvAction {
+pub enum EnvAction {
     /// Copy the value from this llvm ValueRef into the environment.
     EnvStore,
 
@@ -114,12 +115,12 @@ enum EnvAction {
     EnvRef
 }
 
-struct EnvValue {
+pub struct EnvValue {
     action: EnvAction,
     datum: Datum
 }
 
-impl EnvAction {
+pub impl EnvAction {
     fn to_str() -> ~str {
         match self {
             EnvStore => ~"EnvStore",
@@ -129,21 +130,21 @@ impl EnvAction {
     }
 }
 
-impl EnvValue {
+pub impl EnvValue {
     fn to_str(ccx: @crate_ctxt) -> ~str {
         fmt!("%s(%s)", self.action.to_str(), self.datum.to_str(ccx))
     }
 }
 
-fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
+pub fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
     return ty::mk_imm_uniq(tcx, cbox_ty);
 }
 
 // Given a closure ty, emits a corresponding tuple ty
-fn mk_closure_tys(tcx: ty::ctxt,
-                  bound_values: ~[EnvValue])
-    -> ty::t {
+pub fn mk_closure_tys(tcx: ty::ctxt,
+                      bound_values: ~[EnvValue])
+                   -> ty::t {
     // determine the types of the values in the env.  Note that this
     // is the actual types that will be stored in the map, not the
     // logical types as the user sees them, so by-ref upvars must be
@@ -159,9 +160,8 @@ fn mk_closure_tys(tcx: ty::ctxt,
     return cdata_ty;
 }
 
-fn allocate_cbox(bcx: block, proto: ast::Proto, cdata_ty: ty::t)
-    -> Result
-{
+pub fn allocate_cbox(bcx: block, proto: ast::Proto, cdata_ty: ty::t)
+                  -> Result {
     let _icx = bcx.insn_ctxt("closure::allocate_cbox");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -196,7 +196,7 @@ fn allocate_cbox(bcx: block, proto: ast::Proto, cdata_ty: ty::t)
     }
 }
 
-type closure_result = {
+pub type closure_result = {
     llbox: ValueRef,     // llvalue of ptr to closure
     cdata_ty: ty::t,      // type of the closure data
     bcx: block     // final bcx
@@ -206,9 +206,9 @@ type closure_result = {
 // construct a closure out of them. If copying is true, it is a
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
-fn store_environment(bcx: block,
-                     bound_values: ~[EnvValue],
-                     proto: ast::Proto) -> closure_result {
+pub fn store_environment(bcx: block,
+                         bound_values: ~[EnvValue],
+                         proto: ast::Proto) -> closure_result {
     let _icx = bcx.insn_ctxt("closure::store_environment");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -263,10 +263,10 @@ fn store_environment(bcx: block,
 
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
-fn build_closure(bcx0: block,
-                 cap_vars: ~[capture::capture_var],
-                 proto: ast::Proto,
-                 include_ret_handle: Option<ValueRef>) -> closure_result {
+pub fn build_closure(bcx0: block,
+                     cap_vars: ~[capture::capture_var],
+                     proto: ast::Proto,
+                     include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
     let mut bcx = bcx0;;
@@ -326,11 +326,11 @@ fn build_closure(bcx0: block,
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
-fn load_environment(fcx: fn_ctxt,
-                    cdata_ty: ty::t,
-                    cap_vars: ~[capture::capture_var],
-                    load_ret_handle: bool,
-                    proto: ast::Proto) {
+pub fn load_environment(fcx: fn_ctxt,
+                        cdata_ty: ty::t,
+                        cap_vars: ~[capture::capture_var],
+                        load_ret_handle: bool,
+                        proto: ast::Proto) {
     let _icx = fcx.insn_ctxt("closure::load_environment");
 
     let llloadenv = match fcx.llloadenv {
@@ -377,16 +377,15 @@ fn load_environment(fcx: fn_ctxt,
     }
 }
 
-fn trans_expr_fn(bcx: block,
-                 proto: ast::Proto,
-                 +decl: ast::fn_decl,
-                 +body: ast::blk,
-                 outer_id: ast::node_id,
-                 user_id: ast::node_id,
-                 cap_clause: ast::capture_clause,
-                 is_loop_body: Option<Option<ValueRef>>,
-                 dest: expr::Dest) -> block
-{
+pub fn trans_expr_fn(bcx: block,
+                     proto: ast::Proto,
+                     +decl: ast::fn_decl,
+                     +body: ast::blk,
+                     outer_id: ast::node_id,
+                     user_id: ast::node_id,
+                     cap_clause: ast::capture_clause,
+                     is_loop_body: Option<Option<ValueRef>>,
+                     dest: expr::Dest) -> block {
     /*!
      *
      * Translates the body of a closure expression.
@@ -462,13 +461,11 @@ fn trans_expr_fn(bcx: block,
     return bcx;
 }
 
-fn make_fn_glue(
-    cx: block,
-    v: ValueRef,
-    t: ty::t,
-    glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
-    -> block
-{
+pub fn make_fn_glue(cx: block,
+                    v: ValueRef,
+                    t: ty::t,
+                    glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
+                 -> block {
     let _icx = cx.insn_ctxt("closure::make_fn_glue");
     let bcx = cx;
     let tcx = cx.tcx();
@@ -487,12 +484,11 @@ fn make_fn_glue(
     }
 }
 
-fn make_opaque_cbox_take_glue(
+pub fn make_opaque_cbox_take_glue(
     bcx: block,
     proto: ast::Proto,
     cboxptr: ValueRef)     // ptr to ptr to the opaque closure
-    -> block
-{
+    -> block {
     // Easy cases:
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_take_glue");
     match proto {
@@ -521,7 +517,7 @@ fn make_opaque_cbox_take_glue(
         let sz = Load(bcx, GEPi(bcx, tydesc, [0u, abi::tydesc_field_size]));
 
         // Adjust sz to account for the rust_opaque_box header fields
-        let sz = Add(bcx, sz, shape::llsize_of(ccx, T_box_header(ccx)));
+        let sz = Add(bcx, sz, machine::llsize_of(ccx, T_box_header(ccx)));
 
         // Allocate memory, update original ptr, and copy existing data
         let opaque_tydesc = PointerCast(bcx, tydesc, T_ptr(T_i8()));
@@ -547,7 +543,7 @@ fn make_opaque_cbox_take_glue(
     }
 }
 
-fn make_opaque_cbox_drop_glue(
+pub fn make_opaque_cbox_drop_glue(
     bcx: block,
     proto: ast::Proto,
     cboxptr: ValueRef)     // ptr to the opaque closure
@@ -568,7 +564,7 @@ fn make_opaque_cbox_drop_glue(
     }
 }
 
-fn make_opaque_cbox_free_glue(
+pub fn make_opaque_cbox_free_glue(
     bcx: block,
     proto: ast::Proto,
     cbox: ValueRef)     // ptr to ptr to the opaque closure
