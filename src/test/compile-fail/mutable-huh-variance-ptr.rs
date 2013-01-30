@@ -18,7 +18,7 @@ fn main() {
 
     fn f(&&v: *mut ~[const int]) {
         unsafe {
-            *v = ~[mut 3]
+            *v = ~[3]
         }
     }
 

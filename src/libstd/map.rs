@@ -458,7 +458,7 @@ pub mod chained {
         }
     }
 
-    fn chains<K,V>(nchains: uint) -> ~[mut Option<@Entry<K,V>>] {
+    fn chains<K,V>(nchains: uint) -> ~[Option<@Entry<K,V>>] {
         vec::cast_to_mut(vec::from_elem(nchains, None))
     }
 

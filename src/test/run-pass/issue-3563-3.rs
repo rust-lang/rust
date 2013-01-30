@@ -51,7 +51,7 @@ struct AsciiArt
     width: uint,
     height: uint,
     priv fill: char,
-    priv lines: ~[~[mut char]],
+    priv lines: ~[~[char]],
 
     // This struct can be quite large so we'll disable copying: developers need
     // to either pass these structs around via borrowed pointers or move them.

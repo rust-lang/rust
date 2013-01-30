@@ -92,7 +92,7 @@ fn new_sem<Q: Owned>(count: int, q: Q) -> Sem<Q> {
 }
 #[doc(hidden)]
 fn new_sem_and_signal(count: int, num_condvars: uint)
-        -> Sem<~[mut Waitqueue]> {
+        -> Sem<~[Waitqueue]> {
     let mut queues = ~[];
     for num_condvars.times {
         queues.push(new_waitqueue());
@@ -150,7 +150,7 @@ impl &Sem<()> {
     }
 }
 #[doc(hidden)]
-impl &Sem<~[mut Waitqueue]> {
+impl &Sem<~[Waitqueue]> {
     fn access<U>(blk: fn() -> U) -> U {
         let mut release = None;
         unsafe {
@@ -166,7 +166,7 @@ impl &Sem<~[mut Waitqueue]> {
 // FIXME(#3588) should go inside of access()
 #[doc(hidden)]
 type SemRelease = SemReleaseGeneric<()>;
-type SemAndSignalRelease = SemReleaseGeneric<~[mut Waitqueue]>;
+type SemAndSignalRelease = SemReleaseGeneric<~[Waitqueue]>;
 struct SemReleaseGeneric<Q> { sem: &Sem<Q> }
 
 impl<Q: Owned> SemReleaseGeneric<Q> : Drop {
@@ -181,7 +181,7 @@ fn SemRelease(sem: &r/Sem<()>) -> SemRelease/&r {
     }
 }
 
-fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
+fn SemAndSignalRelease(sem: &r/Sem<~[Waitqueue]>)
     -> SemAndSignalRelease/&r {
     SemReleaseGeneric {
         sem: sem
@@ -189,7 +189,7 @@ fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-pub struct Condvar { priv sem: &Sem<~[mut Waitqueue]> }
+pub struct Condvar { priv sem: &Sem<~[Waitqueue]> }
 
 impl Condvar : Drop { fn finalize(&self) {} }
 
@@ -259,7 +259,7 @@ impl &Condvar {
         // mutex during unwinding. As long as the wrapper (mutex, etc) is
         // bounded in when it gets released, this shouldn't hang forever.
         struct SemAndSignalReacquire {
-            sem: &Sem<~[mut Waitqueue]>,
+            sem: &Sem<~[Waitqueue]>,
         }
 
         impl SemAndSignalReacquire : Drop {
@@ -273,7 +273,7 @@ impl &Condvar {
             }
         }
 
-        fn SemAndSignalReacquire(sem: &r/Sem<~[mut Waitqueue]>)
+        fn SemAndSignalReacquire(sem: &r/Sem<~[Waitqueue]>)
             -> SemAndSignalReacquire/&r {
             SemAndSignalReacquire {
                 sem: sem
@@ -345,7 +345,7 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
 }
 
 #[doc(hidden)]
-impl &Sem<~[mut Waitqueue]> {
+impl &Sem<~[Waitqueue]> {
     // The only other place that condvars get built is rwlock_write_mode.
     fn access_cond<U>(blk: fn(c: &Condvar) -> U) -> U {
         do self.access { blk(&Condvar { sem: self }) }
@@ -400,7 +400,7 @@ impl &Semaphore {
  * A task which fails while holding a mutex will unlock the mutex as it
  * unwinds.
  */
-struct Mutex { priv sem: Sem<~[mut Waitqueue]> }
+struct Mutex { priv sem: Sem<~[Waitqueue]> }
 
 /// Create a new mutex, with one associated condvar.
 pub fn Mutex() -> Mutex { mutex_with_condvars(1) }
@@ -450,7 +450,7 @@ struct RWlockInner {
  */
 struct RWlock {
     priv order_lock:  Semaphore,
-    priv access_lock: Sem<~[mut Waitqueue]>,
+    priv access_lock: Sem<~[Waitqueue]>,
     priv state:       Exclusive<RWlockInner>
 }
 

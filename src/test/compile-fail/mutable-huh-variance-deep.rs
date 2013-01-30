@@ -13,7 +13,7 @@
 fn main() {
     let mut v = ~[@mut ~mut ~[0]];
 
-    fn f(&&v: ~[mut @mut ~mut ~[const int]]) {
+    fn f(&&v: ~[@mut ~mut ~[const int]]) {
     }
 
     f(v);

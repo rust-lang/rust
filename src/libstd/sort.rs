@@ -1019,7 +1019,7 @@ mod big_tests {
         tabulate_managed(low, high);
     }
 
-    fn multiplyVec<T: Copy>(arr: &[const T], num: uint) -> ~[mut T] {
+    fn multiplyVec<T: Copy>(arr: &[const T], num: uint) -> ~[T] {
         let size = arr.len();
         let res = do vec::from_fn(num) |i| {
             arr[i % size]

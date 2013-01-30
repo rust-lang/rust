@@ -67,13 +67,13 @@ const k3: u32 = 0xCA62C1D6u32;
 /// Construct a `sha` object
 pub fn sha1() -> Sha1 {
     type Sha1State =
-        {h: ~[mut u32],
+        {h: ~[u32],
          mut len_low: u32,
          mut len_high: u32,
          mut msg_block: ~[u8],
          mut msg_block_idx: uint,
          mut computed: bool,
-         work_buf: @~[mut u32]};
+         work_buf: @~[u32]};
 
     fn add_input(st: &Sha1State, msg: &[const u8]) {
         assert (!st.computed);
