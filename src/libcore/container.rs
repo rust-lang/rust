@@ -65,4 +65,26 @@ pub trait Set<T>: Mutable {
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
     fn remove(&mut self, value: &T) -> bool;
+
+    /// Return true if the set has no elements in common with `other`.
+    /// This is equivalent to checking for an empty intersection.
+    pure fn is_disjoint(&self, other: &self) -> bool;
+
+    /// Return true if the set is a subset of another
+    pure fn is_subset(&self, other: &self) -> bool;
+
+    /// Return true if the set is a superset of another
+    pure fn is_superset(&self, other: &self) -> bool;
+
+    /// Visit the values representing the difference
+    pure fn difference(&self, other: &self, f: fn(&T) -> bool);
+
+    /// Visit the values representing the symmetric difference
+    pure fn symmetric_difference(&self, other: &self, f: fn(&T) -> bool);
+
+    /// Visit the values representing the intersection
+    pure fn intersection(&self, other: &self, f: fn(&T) -> bool);
+
+    /// Visit the values representing the union
+    pure fn union(&self, other: &self, f: fn(&T) -> bool);
 }
