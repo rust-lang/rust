@@ -308,7 +308,7 @@ pub pure fn const_view<T>(v: &r/[const T], start: uint,
     }
 }
 
-/// Copies 
+/// Copies
 
 /// Split the vector `v` by applying each element against the predicate `f`.
 pub fn split<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
