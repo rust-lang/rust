@@ -62,7 +62,7 @@ pub mod linear {
 
     pub fn linear_map_with_capacity<K: Eq Hash, V>(
         initial_capacity: uint) -> LinearMap<K, V> {
-        let r = rand::Rng();
+        let r = rand::task_rng();
         linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(),
                                           initial_capacity)
     }
