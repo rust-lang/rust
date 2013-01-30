@@ -81,7 +81,7 @@ pub mod test {
     use prune_private_pass::run;
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
+        do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)
         }

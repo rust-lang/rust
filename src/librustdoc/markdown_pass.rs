@@ -76,7 +76,7 @@ fn run(
     // makes the headers come out nested correctly.
     let sorted_doc = (sort_pass::mk_pass(
         ~"mods last", mods_last
-    ).f)(srv, doc);
+    ).f)(srv, copy doc);
 
     write_markdown(sorted_doc, move writer_factory);
 
@@ -123,15 +123,15 @@ pub fn write_markdown(
     // (See #2484, which is closed.)
     do doc.pages.map |page| {
         let ctxt = {
-            w: writer_factory(*page)
+            w: writer_factory(copy *page)
         };
         write_page(&ctxt, page)
     };
 }
 
 fn write_page(ctxt: &Ctxt, page: &doc::Page) {
-    write_title(ctxt, *page);
-    match *page {
+    write_title(ctxt, copy *page);
+    match copy *page {
       doc::CratePage(doc) => {
         write_crate(ctxt, doc);
       }
@@ -167,7 +167,7 @@ fn write_title(ctxt: &Ctxt, +page: doc::Page) {
 fn make_title(+page: doc::Page) -> ~str {
     let item = match page {
       doc::CratePage(CrateDoc) => {
-        doc::ModTag(CrateDoc.topmod)
+        doc::ModTag(copy CrateDoc.topmod)
       }
       doc::ItemPage(ItemTag) => {
         ItemTag
@@ -254,16 +254,16 @@ pub fn header_kind(+doc: doc::ItemTag) -> ~str {
 
 pub fn header_name(+doc: doc::ItemTag) -> ~str {
     let fullpath = str::connect(doc.path() + ~[doc.name()], ~"::");
-    match doc {
-      doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
+    match &doc {
+      &doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
         fullpath
       }
-      doc::NmodTag(_) => {
+      &doc::NmodTag(_) => {
         fullpath
       }
-      doc::ImplTag(doc) => {
+      &doc::ImplTag(ref doc) => {
         assert doc.self_ty.is_some();
-        let self_ty = doc.self_ty.get();
+        let self_ty = (&doc.self_ty).get();
         let mut trait_part = ~"";
         for doc.trait_types.eachi |i, trait_type| {
             if i == 0 {
@@ -282,14 +282,14 @@ pub fn header_name(+doc: doc::ItemTag) -> ~str {
 }
 
 pub fn header_text(+doc: doc::ItemTag) -> ~str {
-    match doc {
-      doc::ImplTag(ImplDoc) => {
-        let header_kind = header_kind(doc);
+    match &doc {
+      &doc::ImplTag(ref ImplDoc) => {
+        let header_kind = header_kind(copy doc);
         let desc = if ImplDoc.trait_types.is_empty() {
-            fmt!("for `%s`", ImplDoc.self_ty.get())
+            fmt!("for `%s`", (&ImplDoc.self_ty).get())
         } else {
             fmt!("of `%s` for `%s`", ImplDoc.trait_types[0],
-                 ImplDoc.self_ty.get())
+                 (&ImplDoc.self_ty).get())
         };
         fmt!("%s %s", header_kind, desc)
       }
@@ -307,7 +307,7 @@ fn write_crate(
     ctxt: &Ctxt,
     +doc: doc::CrateDoc
 ) {
-    write_top_module(ctxt, doc.topmod);
+    write_top_module(ctxt, copy doc.topmod);
 }
 
 fn write_top_module(
@@ -354,13 +354,13 @@ fn write_desc(
 
 fn write_sections(ctxt: &Ctxt, sections: &[doc::Section]) {
     for vec::each(sections) |section| {
-        write_section(ctxt, *section);
+        write_section(ctxt, copy *section);
     }
 }
 
 fn write_section(ctxt: &Ctxt, +section: doc::Section) {
-    write_header_(ctxt, H4, section.header);
-    ctxt.w.write_line(section.body);
+    write_header_(ctxt, H4, copy section.header);
+    ctxt.w.write_line(copy section.body);
     ctxt.w.write_line(~"");
 }
 
@@ -381,11 +381,11 @@ fn write_mod_contents(
 ) {
     write_oldcommon(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
-        write_index(ctxt, doc.index.get());
+        write_index(ctxt, (&doc.index).get());
     }
 
     for doc.items.each |itemTag| {
-        write_item(ctxt, *itemTag);
+        write_item(ctxt, copy *itemTag);
     }
 }
 
@@ -399,7 +399,7 @@ fn write_item_no_header(ctxt: &Ctxt, +doc: doc::ItemTag) {
 
 fn write_item_(ctxt: &Ctxt, +doc: doc::ItemTag, write_header: bool) {
     if write_header {
-        write_item_header(ctxt, doc);
+        write_item_header(ctxt, copy doc);
     }
 
     match doc {
@@ -439,10 +439,10 @@ fn write_index(ctxt: &Ctxt, +index: doc::Index) {
 
     for index.entries.each |entry| {
         let header = header_text_(entry.kind, entry.name);
-        let id = entry.link;
+        let id = copy entry.link;
         if entry.brief.is_some() {
             ctxt.w.write_line(fmt!("* [%s](%s) - %s",
-                                   header, id, entry.brief.get()));
+                                   header, id, (&entry.brief).get()));
         } else {
             ctxt.w.write_line(fmt!("* [%s](%s)", header, id));
         }
@@ -484,12 +484,12 @@ fn should_write_index_for_foreign_mods() {
 fn write_nmod(ctxt: &Ctxt, +doc: doc::NmodDoc) {
     write_oldcommon(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
-        write_index(ctxt, doc.index.get());
+        write_index(ctxt, (&doc.index).get());
     }
 
     for doc.fns.each |FnDoc| {
-        write_item_header(ctxt, doc::FnTag(*FnDoc));
-        write_fn(ctxt, *FnDoc);
+        write_item_header(ctxt, doc::FnTag(copy *FnDoc));
+        write_fn(ctxt, copy *FnDoc);
     }
 }
 
@@ -520,7 +520,7 @@ fn write_fn(
 ) {
     write_fnlike(
         ctxt,
-        doc.sig,
+        copy doc.sig,
         doc.desc(),
         doc.sections()
     );
@@ -579,7 +579,7 @@ fn should_correctly_indent_fn_signature() {
                 topmod: doc::ModDoc{
                     items: ~[doc::FnTag(doc::SimpleItemDoc{
                         sig: Some(~"line 1\nline 2"),
-                        .. doc.cratemod().fns()[0]
+                        .. copy doc.cratemod().fns()[0]
                     })],
                     .. doc.cratemod()
                 },
@@ -601,7 +601,7 @@ fn write_const(
     ctxt: &Ctxt,
     +doc: doc::ConstDoc
 ) {
-    write_sig(ctxt, doc.sig);
+    write_sig(ctxt, copy doc.sig);
     write_oldcommon(ctxt, doc.desc(), doc.sections());
 }
 
@@ -651,7 +651,7 @@ fn write_variants(
     write_header_(ctxt, H4, ~"Variants");
 
     for vec::each(docs) |variant| {
-        write_variant(ctxt, *variant);
+        write_variant(ctxt, copy *variant);
     }
 
     ctxt.w.write_line(~"");
@@ -659,8 +659,8 @@ fn write_variants(
 
 fn write_variant(ctxt: &Ctxt, +doc: doc::VariantDoc) {
     assert doc.sig.is_some();
-    let sig = doc.sig.get();
-    match doc.desc {
+    let sig = (&doc.sig).get();
+    match copy doc.desc {
       Some(desc) => {
         ctxt.w.write_line(fmt!("* `%s` - %s", sig, desc));
       }
@@ -710,7 +710,7 @@ fn write_trait(ctxt: &Ctxt, +doc: doc::TraitDoc) {
 
 fn write_methods(ctxt: &Ctxt, docs: &[doc::MethodDoc]) {
     for vec::each(docs) |doc| {
-        write_method(ctxt, *doc);
+        write_method(ctxt, copy *doc);
     }
 }
 
@@ -718,8 +718,8 @@ fn write_method(ctxt: &Ctxt, +doc: doc::MethodDoc) {
     write_header_(ctxt, H3, header_text_(~"Method", doc.name));
     write_fnlike(
         ctxt,
-        doc.sig,
-        doc.desc,
+        copy doc.sig,
+        copy doc.desc,
         doc.sections
     );
 }
@@ -793,7 +793,7 @@ fn write_type(
     ctxt: &Ctxt,
     +doc: doc::TyDoc
 ) {
-    write_sig(ctxt, doc.sig);
+    write_sig(ctxt, copy doc.sig);
     write_oldcommon(ctxt, doc.desc(), doc.sections());
 }
 
@@ -820,7 +820,7 @@ fn write_struct(
     ctxt: &Ctxt,
     +doc: doc::StructDoc
 ) {
-    write_sig(ctxt, doc.sig);
+    write_sig(ctxt, copy doc.sig);
     write_oldcommon(ctxt, doc.desc(), doc.sections());
 }
 

@@ -96,7 +96,7 @@ pub fn usage() {
 
 pub fn default_config(input_crate: &Path) -> Config {
     Config {
-        input_crate: *input_crate,
+        input_crate: copy *input_crate,
         output_dir: Path("."),
         output_format: PandocHtml,
         output_style: DocPerMod,
@@ -156,21 +156,21 @@ fn config_from_opts(
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
         let output_dir = output_dir.map(|s| Path(*s));
         result::Ok(Config {
-            output_dir: output_dir.get_or_default(config.output_dir),
+            output_dir: output_dir.get_or_default(copy config.output_dir),
             .. config
         })
     };
     let result = do result::chain(result) |config| {
         let output_format = getopts::opt_maybe_str(
             matches, opt_output_format());
-        do output_format.map_default(result::Ok(config))
+        do output_format.map_default(result::Ok(copy config))
             |output_format| {
             do result::chain(parse_output_format(*output_format))
                 |output_format| {
 
                 result::Ok(Config {
                     output_format: output_format,
-                    .. config
+                    .. copy config
                 })
             }
         }
@@ -178,13 +178,13 @@ fn config_from_opts(
     let result = do result::chain(result) |config| {
         let output_style =
             getopts::opt_maybe_str(matches, opt_output_style());
-        do output_style.map_default(result::Ok(config))
+        do output_style.map_default(result::Ok(copy config))
             |output_style| {
             do result::chain(parse_output_style(*output_style))
                 |output_style| {
                 result::Ok(Config {
                     output_style: output_style,
-                    .. config
+                    .. copy config
                 })
             }
         }
@@ -197,7 +197,7 @@ fn config_from_opts(
         do result::chain(pandoc_cmd) |pandoc_cmd| {
             result::Ok(Config {
                 pandoc_cmd: pandoc_cmd,
-                .. config
+                .. copy config
             })
         }
     };

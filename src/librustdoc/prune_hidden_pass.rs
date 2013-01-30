@@ -56,7 +56,7 @@ fn is_hidden(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
     let id = doc.id;
     do astsrv::exec(srv) |ctxt| {
         let attrs = match ctxt.ast_map.get(id) {
-          ast_map::node_item(item, _) => item.attrs,
+          ast_map::node_item(item, _) => copy item.attrs,
           _ => ~[]
         };
         attr_parser::parse_hidden(attrs)
@@ -77,7 +77,7 @@ pub mod test {
     use prune_hidden_pass::run;
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
+        do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)
         }

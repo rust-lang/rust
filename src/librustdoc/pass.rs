@@ -32,9 +32,8 @@ pub fn run_passes(
     do vec::foldl(doc, passes) |doc, pass| {
         log(debug, fmt!("pass #%d", passno));
         passno += 1;
-        log(debug, doc);
-        do time(pass.name) {
-            (pass.f)(srv, doc)
+        do time(copy pass.name) {
+            (pass.f)(srv, copy doc)
         }
     }
 }
@@ -51,7 +50,7 @@ fn test_run_passes() {
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
                             name: doc.cratemod().name() + ~"two",
-                            .. doc.cratemod().item
+                            .. copy doc.cratemod().item
                         },
                         items: ~[],
                         index: None
@@ -70,7 +69,7 @@ fn test_run_passes() {
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
                             name: doc.cratemod().name() + ~"three",
-                            .. doc.cratemod().item
+                            .. copy doc.cratemod().item
                         },
                         items: ~[],
                         index: None

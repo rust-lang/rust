@@ -70,13 +70,13 @@ pub fn make_writer_factory(+config: config::Config) -> WriterFactory {
 
 fn markdown_writer_factory(+config: config::Config) -> WriterFactory {
     fn~(+page: doc::Page) -> Writer {
-        markdown_writer(config, page)
+        markdown_writer(copy config, page)
     }
 }
 
 fn pandoc_writer_factory(+config: config::Config) -> WriterFactory {
     fn~(+page: doc::Page) -> Writer {
-        pandoc_writer(config, page)
+        pandoc_writer(copy config, page)
     }
 }
 
@@ -95,7 +95,7 @@ fn pandoc_writer(
     +page: doc::Page
 ) -> Writer {
     assert config.pandoc_cmd.is_some();
-    let pandoc_cmd = config.pandoc_cmd.get();
+    let pandoc_cmd = (&config.pandoc_cmd).get();
     let filename = make_local_filename(config, page);
 
     let pandoc_args = ~[
@@ -195,7 +195,7 @@ fn make_local_filename(
     +config: config::Config,
     +page: doc::Page
 ) -> Path {
-    let filename = make_filename(config, page);
+    let filename = make_filename(copy config, page);
     config.output_dir.push_rel(&filename)
 }
 
@@ -264,7 +264,7 @@ fn should_name_mod_file_names_by_path() {
         .. config::default_config(&Path("input/test.rc"))
     };
     let doc = test::mk_doc(~"", ~"mod a { mod b { } }");
-    let modb = doc.cratemod().mods()[0].mods()[0];
+    let modb = copy doc.cratemod().mods()[0].mods()[0];
     let page = doc::ItemPage(doc::ModTag(modb));
     let filename = make_local_filename(config, page);
     assert  filename == Path("output/dir/a_b.html");
@@ -279,7 +279,7 @@ mod test {
 
     pub fn mk_doc(+name: ~str, +source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, name);
+            let doc = extract::from_srv(srv, copy name);
             let doc = (path_pass::mk_pass().f)(srv, doc);
             doc
         }
@@ -307,7 +307,7 @@ pub fn future_writer_factory(
             let (writer, future) = future_writer();
             writer_ch.send(move writer);
             let s = future.get();
-            oldcomm::send(markdown_ch, (page, s));
+            oldcomm::send(markdown_ch, (copy page, s));
         }
         writer_po.recv()
     };

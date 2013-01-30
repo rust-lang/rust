@@ -24,7 +24,7 @@ use std::par;
 
 pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
     Pass {
-        name: name,
+        name: copy name,
         f: fn~(move op, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
             run(srv, doc, copy op)
         }
@@ -53,7 +53,7 @@ fn run(
 }
 
 fn maybe_apply_op(op: NominalOp<Op>, s: Option<~str>) -> Option<~str> {
-    s.map(|s| (op.op)(*s) )
+    s.map(|s| (op.op)(copy *s) )
 }
 
 fn fold_item(
@@ -65,7 +65,7 @@ fn fold_item(
     doc::ItemDoc {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc),
-        sections: apply_to_sections(fold.ctxt, doc.sections),
+        sections: apply_to_sections(fold.ctxt, copy doc.sections),
         .. doc
     }
 }
@@ -75,8 +75,8 @@ fn apply_to_sections(
     sections: ~[doc::Section]
 ) -> ~[doc::Section] {
     par::map(sections, |section, copy op| doc::Section {
-        header: (op.op)(section.header),
-        body: (op.op)(section.body)
+        header: (op.op)(copy section.header),
+        body: (op.op)(copy section.body)
     })
 }
 
@@ -90,7 +90,7 @@ fn fold_enum(
         variants: do par::map(doc.variants) |variant, copy fold_copy| {
             doc::VariantDoc {
                 desc: maybe_apply_op(fold_copy.ctxt, variant.desc),
-                .. *variant
+                .. copy *variant
             }
         },
         .. doc
@@ -104,7 +104,7 @@ fn fold_trait(
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     doc::TraitDoc {
-        methods: apply_to_methods(fold.ctxt, doc.methods),
+        methods: apply_to_methods(fold.ctxt, copy doc.methods),
         .. doc
     }
 }
@@ -117,8 +117,8 @@ fn apply_to_methods(
         doc::MethodDoc {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),
-            sections: apply_to_sections(op, doc.sections),
-            .. *doc
+            sections: apply_to_sections(op, copy doc.sections),
+            .. copy *doc
         }
     }
 }
@@ -130,7 +130,7 @@ fn fold_impl(
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     doc::ImplDoc {
-        methods: apply_to_methods(fold.ctxt, doc.methods),
+        methods: apply_to_methods(fold.ctxt, copy doc.methods),
         .. doc
     }
 }
@@ -302,7 +302,7 @@ mod test {
     use core::str;
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
+        do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = (attr_pass::mk_pass().f)(srv, doc);
             let doc = (desc_to_brief_pass::mk_pass().f)(srv, doc);

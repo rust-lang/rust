@@ -63,7 +63,7 @@ fn fold_trait(fold: &fold::Fold<()>, +doc: doc::TraitDoc) -> doc::TraitDoc {
     doc::TraitDoc {
         methods: par::map(doc.methods, |doc| doc::MethodDoc {
             brief: extract(doc.desc),
-            .. *doc
+            .. copy *doc
         }),
         .. doc
     }
@@ -75,7 +75,7 @@ fn fold_impl(fold: &fold::Fold<()>, +doc: doc::ImplDoc) -> doc::ImplDoc {
     doc::ImplDoc {
         methods: par::map(doc.methods, |doc| doc::MethodDoc {
             brief: extract(doc.desc),
-            .. *doc
+            .. copy *doc
         }),
         .. doc
     }
@@ -109,7 +109,7 @@ pub mod test {
     use extract;
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
-        do astsrv::from_str(source) |srv| {
+        do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = (attr_pass::mk_pass().f)(srv, doc);
             run(srv, doc)
@@ -122,14 +122,14 @@ fn extract(desc: Option<~str>) -> Option<~str> {
         return None
     }
 
-    parse_desc(desc.get())
+    parse_desc((copy desc).get())
 }
 
 fn parse_desc(desc: ~str) -> Option<~str> {
 
     const max_brief_len: uint = 120u;
 
-    match first_sentence(desc) {
+    match first_sentence(copy desc) {
       Some(first_sentence) => {
         if str::len(first_sentence) <= max_brief_len {
             Some(first_sentence)
@@ -142,7 +142,7 @@ fn parse_desc(desc: ~str) -> Option<~str> {
 }
 
 fn first_sentence(s: ~str) -> Option<~str> {
-    let paras = paragraphs(s);
+    let paras = paragraphs(copy s);
     if !paras.is_empty() {
         let first_para = vec::head(paras);
         Some(str::replace(first_sentence_(first_para), ~"\n", ~" "))
@@ -176,7 +176,7 @@ fn first_sentence_(s: ~str) -> ~str {
         if str::ends_with(s, ~".") {
             str::slice(s, 0u, str::len(s))
         } else {
-            s
+            copy s
         }
       }
     }
@@ -202,7 +202,7 @@ fn paragraphs(s: ~str) -> ~[~str] {
             whitespace_lines = 0;
 
             accum = if str::is_empty(accum) {
-                *line
+                copy *line
             } else {
                 accum + ~"\n" + *line
             }
