@@ -574,7 +574,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let size = get_param(decl, first_real_arg + 2);
             let align = C_i32(1);
             let volatile = C_bool(false);
-            let llfn = bcx.ccx().intrinsics.get(~"llvm.memmove.p0i8.p0i8.i32");
+            let llfn = bcx.ccx().intrinsics.get(
+                ~"llvm.memmove.p0i8.p0i8.i32");
             Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
         }
         ~"memmove64" => {
@@ -583,7 +584,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
             let size = get_param(decl, first_real_arg + 2);
             let align = C_i32(1);
             let volatile = C_bool(false);
-            let llfn = bcx.ccx().intrinsics.get(~"llvm.memmove.p0i8.p0i8.i64");
+            let llfn = bcx.ccx().intrinsics.get(
+                ~"llvm.memmove.p0i8.p0i8.i64");
             Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
         }
         ~"sqrtf32" => {
