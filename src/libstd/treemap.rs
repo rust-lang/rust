@@ -29,10 +29,10 @@ use core::prelude::*;
 // range search - O(log n) retrieval of an iterator from some key
 
 // (possibly) implement the overloads Python does for sets:
-//   * union: |
 //   * intersection: &
 //   * difference: -
 //   * symmetric difference: ^
+//   * union: |
 // These would be convenient since the methods work like `each`
 
 pub struct TreeMap<K, V> {
@@ -49,10 +49,9 @@ impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
             let mut y = other.iter();
             for self.len().times {
                 unsafe { // unsafe as a purity workaround
-                    // ICE: x.next() != y.next()
-
                     x = x.next();
                     y = y.next();
+                    // FIXME: #4492 (ICE), x.get() == y.get()
                     let (x1, x2) = x.get().unwrap();
                     let (y1, y2) = y.get().unwrap();
 
@@ -292,22 +291,6 @@ impl <T: Ord> TreeSet<T>: Set<T> {
     /// Remove a value from the set. Return true if the value was
     /// present in the set.
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
-}
-
-impl <T: Ord> TreeSet<T> {
-    /// Create an empty TreeSet
-    static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Visit all values in reverse order
-    pure fn each_reverse(&self, f: fn(&T) -> bool) {
-        self.map.each_key_reverse(f)
-    }
-
-    /// Get a lazy iterator over the values in the set.
-    /// Requires that it be frozen (immutable).
-    pure fn iter(&self) -> TreeSetIterator/&self<T> {
-        TreeSetIterator{iter: self.map.iter()}
-    }
 
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
@@ -336,12 +319,12 @@ impl <T: Ord> TreeSet<T> {
         true
     }
 
-    /// Check of the set is a subset of another
+    /// Return true if the set is a subset of another
     pure fn is_subset(&self, other: &TreeSet<T>) -> bool {
         other.is_superset(self)
     }
 
-    /// Check of the set is a superset of another
+    /// Return true if the set is a superset of another
     pure fn is_superset(&self, other: &TreeSet<T>) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
@@ -517,6 +500,22 @@ impl <T: Ord> TreeSet<T> {
     }
 }
 
+impl <T: Ord> TreeSet<T> {
+    /// Create an empty TreeSet
+    static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
+
+    /// Visit all values in reverse order
+    pure fn each_reverse(&self, f: fn(&T) -> bool) {
+        self.map.each_key_reverse(f)
+    }
+
+    /// Get a lazy iterator over the values in the set.
+    /// Requires that it be frozen (immutable).
+    pure fn iter(&self) -> TreeSetIterator/&self<T> {
+        TreeSetIterator{iter: self.map.iter()}
+    }
+}
+
 /// Lazy forward iterator over a set
 pub struct TreeSetIterator<T> {
     priv iter: TreeMapIterator<T, ()>
@@ -652,14 +651,12 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
                     let mut left = save.left.swap_unwrap();
                     if left.right.is_some() {
                         heir_swap(save, &mut left.right);
-                        save.left = Some(left);
-                        remove(&mut save.left, key);
                     } else {
                         save.key <-> left.key;
                         save.value <-> left.value;
-                        save.left = Some(left);
-                        remove(&mut save.left, key);
                     }
+                    save.left = Some(left);
+                    remove(&mut save.left, key);
                 } else {
                     save = save.left.swap_unwrap();
                 }
@@ -969,9 +966,7 @@ mod test_treemap {
         let m = m;
         let mut iter = m.iter();
 
-        // ICE:
-        //assert iter.next() == Some((&x1, &y1));
-        //assert iter.next().eq(&Some((&x1, &y1)));
+        // FIXME: #4492 (ICE): iter.next() == Some((&x1, &y1))
 
         iter = iter.next();
         assert iter.get().unwrap() == (&x1, &y1);
@@ -983,10 +978,6 @@ mod test_treemap {
         assert iter.get().unwrap() == (&x4, &y4);
         iter = iter.next();
         assert iter.get().unwrap() == (&x5, &y5);
-
-        // ICE:
-        //assert iter.next() == None;
-        //assert iter.next().eq(&None);
 
         iter = iter.next();
         assert iter.get().is_none();
