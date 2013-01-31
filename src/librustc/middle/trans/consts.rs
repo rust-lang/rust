@@ -73,9 +73,15 @@ pub fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
         let vec_ty = ty::expr_ty(cx.tcx, e);
         let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
         let llunitty = type_of::type_of(cx, unit_ty);
-        let v = C_array(llunitty, es.map(|e| const_expr(cx, *e)));
         let unit_sz = machine::llsize_of(cx, llunitty);
         let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
+        let vs = es.map(|e| const_expr(cx, *e));
+        // If the vector contains enums, an LLVM array won't work.
+        let v = if vs.any(|vi| val_ty(*vi) != llunitty) {
+            C_struct(vs)
+        } else {
+            C_array(llunitty, vs)
+        };
         return (v, sz, llunitty);
     }
 }
