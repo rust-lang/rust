@@ -459,14 +459,12 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           ast::expr_call(callee, args, _) => {
             match cx.tcx.def_map.find(&callee.id) {
                 Some(ast::def_struct(def_id)) => {
-                    let ety = ty::expr_ty(cx.tcx, e);
-                    let llty = type_of::type_of(cx, ety);
                     let llstructbody =
                         C_struct(args.map(|a| const_expr(cx, *a)));
                     if ty::ty_dtor(cx.tcx, def_id).is_present() {
-                        C_named_struct(llty, ~[ llstructbody, C_u8(0) ])
+                        C_struct(~[ llstructbody, C_u8(0) ])
                     } else {
-                        C_named_struct(llty, ~[ llstructbody ])
+                        C_struct(~[ llstructbody ])
                     }
                 }
             Some(ast::def_variant(tid, vid)) => {
