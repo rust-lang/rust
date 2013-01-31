@@ -1,5 +1,5 @@
 pub trait Number: NumConv {
-    static pure fn from<T:Number>(n: T) -> self;
+    static pure fn from<T:Number>(n: T) -> Self;
 }
 
 pub impl float: Number {

@@ -12,26 +12,26 @@
 
 pub trait Num {
     // FIXME: Trait composition. (#2616)
-    pure fn add(&self, other: &self) -> self;
-    pure fn sub(&self, other: &self) -> self;
-    pure fn mul(&self, other: &self) -> self;
-    pure fn div(&self, other: &self) -> self;
-    pure fn modulo(&self, other: &self) -> self;
-    pure fn neg(&self) -> self;
+    pure fn add(&self, other: &Self) -> Self;
+    pure fn sub(&self, other: &Self) -> Self;
+    pure fn mul(&self, other: &Self) -> Self;
+    pure fn div(&self, other: &Self) -> Self;
+    pure fn modulo(&self, other: &Self) -> Self;
+    pure fn neg(&self) -> Self;
 
     pure fn to_int(&self) -> int;
-    static pure fn from_int(n: int) -> self;
+    static pure fn from_int(n: int) -> Self;
 }
 
 pub trait IntConvertible {
     pure fn to_int(&self) -> int;
-    static pure fn from_int(n: int) -> self;
+    static pure fn from_int(n: int) -> Self;
 }
 
 pub trait Zero {
-    static pure fn zero() -> self;
+    static pure fn zero() -> Self;
 }
 
 pub trait One {
-    static pure fn one() -> self;
+    static pure fn one() -> Self;
 }

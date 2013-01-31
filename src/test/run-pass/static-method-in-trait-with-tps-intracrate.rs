@@ -13,7 +13,7 @@ trait Deserializer {
 }
 
 trait Deserializable<D: Deserializer> {
-    static fn deserialize(d: &D) -> self;
+    static fn deserialize(d: &D) -> Self;
 }
 
 impl<D: Deserializer> int: Deserializable<D> {

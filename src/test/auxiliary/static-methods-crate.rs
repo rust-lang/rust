@@ -14,7 +14,7 @@
 #[crate_type = "lib"];
 
 pub trait read {
-    static fn readMaybe(s: ~str) -> Option<self>;
+    static fn readMaybe(s: ~str) -> Option<Self>;
 }
 
 impl int: read {

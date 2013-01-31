@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait add {
-    fn plus(++x: self) -> self;
+    fn plus(++x: Self) -> Self;
 }
 
 impl int: add {
