@@ -104,21 +104,33 @@ pub fn default_config(input_crate: &Path) -> Config {
     }
 }
 
-type ProgramOutput = fn~((&str), (&[~str])) ->
-    {status: int, out: ~str, err: ~str};
+struct ProcOut {
+    status: int,
+    out: ~str,
+    err: ~str
+}
 
-pub fn mock_program_output(_prog: &str, _args: &[~str]) -> {
-    status: int, out: ~str, err: ~str
-} {
-    {
+type ProgramOutput = fn~((&str), (&[~str])) -> ProcOut;
+
+pub fn mock_program_output(_prog: &str, _args: &[~str]) -> ProcOut {
+    ProcOut {
         status: 0,
         out: ~"",
         err: ~""
     }
 }
 
+pub fn program_output(prog: &str, args: &[~str]) -> ProcOut {
+    let {status, out, err} = run::program_output(prog, args);
+    ProcOut {
+        status: status,
+        out: out,
+        err: err
+    }
+}
+
 pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
-    parse_config_(args, run::program_output)
+    parse_config_(args, program_output)
 }
 
 pub fn parse_config_(
@@ -260,10 +272,8 @@ fn should_find_pandoc() {
         output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
-    let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
-        status: int, out: ~str, err: ~str
-    } {
-        {
+    let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> ProcOut {
+        ProcOut {
             status: 0, out: ~"pandoc 1.8.2.1", err: ~""
         }
     };
@@ -277,10 +287,8 @@ fn should_error_with_no_pandoc() {
         output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
-    let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
-        status: int, out: ~str, err: ~str
-    } {
-        {
+    let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> ProcOut {
+        ProcOut {
             status: 1, out: ~"", err: ~""
         }
     };

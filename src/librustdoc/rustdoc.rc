@@ -20,7 +20,6 @@
 #[crate_type = "lib"];
 
 #[no_core];
-#[legacy_records];
 
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(deprecated_self)];

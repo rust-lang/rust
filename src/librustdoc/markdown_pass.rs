@@ -110,9 +110,9 @@ fn should_write_modules_last() {
     assert idx_a < idx_c;
 }
 
-type Ctxt = {
+struct Ctxt {
     w: Writer
-};
+}
 
 pub fn write_markdown(
     doc: doc::Doc,
@@ -122,7 +122,7 @@ pub fn write_markdown(
     // we don't want to spawn too many pandoc processes.
     // (See #2484, which is closed.)
     do doc.pages.map |page| {
-        let ctxt = {
+        let ctxt = Ctxt {
             w: writer_factory(copy *page)
         };
         write_page(&ctxt, page)
