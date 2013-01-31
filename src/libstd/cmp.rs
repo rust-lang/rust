@@ -54,13 +54,13 @@ impl f64: FuzzyEq {
 
 #[test]
 fn test_fuzzy_equals() {
-    assert (&1.0).fuzzy_eq(&1.0);
+    assert (&1.0f).fuzzy_eq(&1.0);
     assert (&1.0f32).fuzzy_eq(&1.0f32);
     assert (&1.0f64).fuzzy_eq(&1.0f64);
 }
 
 #[test]
 fn test_fuzzy_eq_eps() {
-    assert (&1.2).fuzzy_eq_eps(&0.9, &0.5);
-    assert !(&1.5).fuzzy_eq_eps(&0.9, &0.5);
+    assert (&1.2f).fuzzy_eq_eps(&0.9, &0.5);
+    assert !(&1.5f).fuzzy_eq_eps(&0.9, &0.5);
 }

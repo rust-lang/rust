@@ -15,9 +15,10 @@ pub use self::inst::{
     next_power_of_two
 };
 
-mod inst {
+pub mod inst {
     use sys;
     use uint;
+    use iter;
 
     pub type T = uint;
     #[allow(non_camel_case_types)]
@@ -107,6 +108,27 @@ mod inst {
         return true;
     }
 
+    pub impl uint: iter::Times {
+        #[inline(always)]
+        /**
+        * A convenience form for basic iteration. Given a uint `x`,
+        * `for x.times { ... }` executes the given block x times.
+        *
+        * Equivalent to `for uint::range(0, x) |_| { ... }`.
+        *
+        * Not defined on all integer types to permit unambiguous
+        * use with integer literals of inferred integer-type as
+        * the self-value (eg. `for 100.times { ... }`).
+        */
+        pure fn times(&self, it: fn() -> bool) {
+            let mut i = *self;
+            while i > 0 {
+                if !it() { break }
+                i -= 1;
+            }
+        }
+    }
+
     /// Returns the smallest power of 2 greater than or equal to `n`
     #[inline(always)]
     pub pure fn next_power_of_two(n: uint) -> uint {
@@ -173,5 +195,14 @@ mod inst {
         assert(uint::div_floor(3u, 4u) == 0u);
         assert(uint::div_ceil(3u, 4u)  == 1u);
         assert(uint::div_round(3u, 4u) == 1u);
+    }
+
+    #[test]
+    pub fn test_times() {
+        use iter::Times;
+        let ten = 10 as uint;
+        let mut accum = 0;
+        for ten.times { accum += 1; }
+        assert (accum == 10);
     }
 }

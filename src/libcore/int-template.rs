@@ -18,7 +18,6 @@ use char;
 use cmp::{Eq, Ord};
 use cmp;
 use from_str::FromStr;
-use iter;
 use num;
 use num::Num::from_int;
 use prelude::*;
@@ -201,26 +200,6 @@ impl T: num::One {
     static pure fn one() -> T { 1 }
 }
 
-impl T: iter::Times {
-    #[inline(always)]
-    #[doc = "A convenience form for basic iteration. Given a variable `x` \
-        of any numeric type, the expression `for x.times { /* anything */ }` \
-        will execute the given function exactly x times. If we assume that \
-        `x` is an int, this is functionally equivalent to \
-        `for int::range(0, x) |_i| { /* anything */ }`."]
-    pure fn times(&self, it: fn() -> bool) {
-        if is_negative(*self) {
-            fail fmt!("The .times method expects a nonnegative number, \
-                       but found %?", self);
-        }
-        let mut i = *self;
-        while i > 0 {
-            if !it() { break }
-            i -= 1;
-        }
-    }
-}
-
 /**
  * Parse a buffer of bytes
  *
@@ -355,23 +334,6 @@ fn test_interfaces() {
     }
 
     test(10 as T);
-}
-
-#[test]
-fn test_times() {
-    use iter::Times;
-    let ten = 10 as T;
-    let mut accum = 0;
-    for ten.times { accum += 1; }
-    assert (accum == 10);
-}
-
-#[test]
-#[should_fail]
-#[ignore(cfg(windows))]
-fn test_times_negative() {
-    use iter::Times;
-    for (-10).times { log(error, ~"nope!"); }
 }
 
 #[test]

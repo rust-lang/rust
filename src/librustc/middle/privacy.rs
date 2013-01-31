@@ -41,7 +41,7 @@ pub fn check_crate(tcx: ty::ctxt,
     let legacy_exports = has_legacy_export_attr(crate.node.attrs);
 
     // Adds structs that are privileged to this scope.
-    let add_privileged_items: @fn(&[@ast::item]) -> int = |items| {
+    let add_privileged_items: @fn(&[@ast::item]) -> uint = |items| {
         let mut count = 0;
         for items.each |item| {
             match item.node {
