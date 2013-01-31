@@ -434,7 +434,13 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                     let lldiscrim = base::get_discrim_val(cx, e.span,
                                                           enum_did,
                                                           variant_did);
-                    C_struct(~[lldiscrim])
+                    // However, we still have to pad it out to the
+                    // size of the full enum; see the expr_call case,
+                    // below.
+                    let ety = ty::expr_ty(cx.tcx, e);
+                    let size = machine::static_size_of_enum(cx, ety);
+                    let padding = C_null(T_array(T_i8(), size));
+                    C_struct(~[lldiscrim, padding])
                 }
                 Some(ast::def_struct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
