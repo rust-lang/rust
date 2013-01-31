@@ -10,7 +10,7 @@
 
 mod a {
 	pub trait Foo {
-		static pub fn foo() -> self;
+		static pub fn foo() -> Self;
 	}
 
 	impl int : Foo {

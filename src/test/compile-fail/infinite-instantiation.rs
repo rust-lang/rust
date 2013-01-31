@@ -12,7 +12,7 @@
 // issue 2258
 
 trait to_opt {
-    fn to_option() -> Option<self>;
+    fn to_option() -> Option<Self>;
 }
 
 impl uint: to_opt {

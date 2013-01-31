@@ -18,8 +18,8 @@ use core::float;
 const fuzzy_epsilon: float = 1.0e-6;
 
 pub trait FuzzyEq {
-    pure fn fuzzy_eq(&self, other: &self) -> bool;
-    pure fn fuzzy_eq_eps(&self, other: &self, epsilon: &self) -> bool;
+    pure fn fuzzy_eq(&self, other: &Self) -> bool;
+    pure fn fuzzy_eq_eps(&self, other: &Self, epsilon: &Self) -> bool;
 }
 
 impl float: FuzzyEq {

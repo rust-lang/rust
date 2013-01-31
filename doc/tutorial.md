@@ -1993,10 +1993,10 @@ trait, `self` is a type, and in an impl, `self` is a value. The
 following trait describes types that support an equality operation:
 
 ~~~~
-// In a trait, `self` refers both to the self argument
-// and to the type implementing the trait
+// In a trait, `self` refers to the self argument.
+// `Self` refers to the type implementing the trait.
 trait Eq {
-    fn equals(&self, other: &self) -> bool;
+    fn equals(&self, other: &Self) -> bool;
 }
 
 // In an impl, `self` refers just to the value of the receiver
@@ -2015,7 +2015,7 @@ the method name with the trait name.
 The compiler will use type inference to decide which implementation to call.
 
 ~~~~
-trait Shape { static fn new(area: float) -> self; }
+trait Shape { static fn new(area: float) -> Self; }
 # use float::consts::pi;
 # use float::sqrt;
 struct Circle { radius: float }

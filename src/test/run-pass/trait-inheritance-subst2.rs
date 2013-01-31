@@ -16,7 +16,7 @@ trait Add<RHS,Result>: Panda<RHS> {
     fn add(rhs: &RHS) -> Result;
 }
 
-trait MyNum : Add<self,self> { }
+trait MyNum : Add<Self,Self> { }
 
 struct MyInt { val: int }
 

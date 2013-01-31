@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait bar { fn dup() -> self; fn blah<X>(); }
+trait bar { fn dup() -> Self; fn blah<X>(); }
 impl int: bar { fn dup() -> int { self } fn blah<X>() {} }
 impl uint: bar { fn dup() -> uint { self } fn blah<X>() {} }
 

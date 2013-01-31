@@ -12,7 +12,7 @@
 Clonable types are copied with the clone method
 */
 pub trait Clone {
-    fn clone(&self) -> self;
+    fn clone(&self) -> Self;
 }
 
 impl (): Clone {

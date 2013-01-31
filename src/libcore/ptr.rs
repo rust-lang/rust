@@ -187,7 +187,7 @@ pub pure fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
 pub trait Ptr<T> {
     pure fn is_null() -> bool;
     pure fn is_not_null() -> bool;
-    pure fn offset(count: uint) -> self;
+    pure fn offset(count: uint) -> Self;
 }
 
 #[cfg(stage0)]
