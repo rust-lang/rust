@@ -8,22 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-export rsrc;
-
 fn foo(_x: i32) {
 }
 
-struct rsrc {
+pub struct rsrc {
   x: i32,
 }
 
-impl rsrc : Drop {
+pub impl rsrc : Drop {
     fn finalize(&self) {
         foo(self.x);
     }
 }
 
-fn rsrc(x: i32) -> rsrc {
+pub fn rsrc(x: i32) -> rsrc {
     rsrc {
         x: x
     }

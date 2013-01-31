@@ -54,14 +54,14 @@ use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path};
 use syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
 use syntax::ast::{type_value_ns, ty_param_bound, unnamed_field};
-use syntax::ast::{variant, view_item, view_item_export, view_item_import};
+use syntax::ast::{variant, view_item, view_item_import};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named, not};
 use syntax::ast::{unsafe_fn};
 use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
-use syntax::ast_util::{Privacy, Public, Private, visibility_to_privacy};
-use syntax::ast_util::has_legacy_export_attr;
+use syntax::ast_util::{Privacy, Public, Private};
+use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr::{attr_metas, contains_name, attrs_contains_name};
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
@@ -469,13 +469,6 @@ pub struct Module {
 
     exported_names: HashMap<ident,node_id>,
 
-    // XXX: This is a transition measure to let us switch export-evaluation
-    // logic when compiling modules that have transitioned to listing their
-    // pub/priv qualifications on items, explicitly, rather than using the
-    // old export rule.
-
-    legacy_exports: bool,
-
     // The status of resolving each import in this module.
     import_resolutions: HashMap<ident,@ImportResolution>,
 
@@ -488,8 +481,7 @@ pub struct Module {
 
 pub fn Module(parent_link: ParentLink,
               def_id: Option<def_id>,
-              kind: ModuleKind,
-              legacy_exports: bool)
+              kind: ModuleKind)
            -> Module {
     Module {
         parent_link: parent_link,
@@ -499,7 +491,6 @@ pub fn Module(parent_link: ParentLink,
         imports: DVec(),
         anonymous_children: HashMap(),
         exported_names: HashMap(),
-        legacy_exports: legacy_exports,
         import_resolutions: HashMap(),
         glob_count: 0,
         resolved_import_count: 0
@@ -553,10 +544,9 @@ pub impl NameBindings {
                      parent_link: ParentLink,
                      def_id: Option<def_id>,
                      kind: ModuleKind,
-                     legacy_exports: bool,
                      sp: span) {
         // Merges the module with the existing type def or creates a new one.
-        let module_ = @Module(parent_link, def_id, kind, legacy_exports);
+        let module_ = @Module(parent_link, def_id, kind);
         match self.type_def {
             None => {
                 self.type_def = Some(TypeNsDef {
@@ -760,7 +750,6 @@ pub fn Resolver(session: Session,
                                 NoParentLink,
                                 Some(def_id { crate: 0, node: 0 }),
                                 NormalModuleKind,
-                                has_legacy_export_attr(crate.node.attrs),
                                 crate.span);
 
     let current_module = (*graph_root).get_module();
@@ -1076,14 +1065,10 @@ pub impl Resolver {
                                     &&visitor: vt<ReducedGraphParent>) {
         let ident = item.ident;
         let sp = item.span;
-        let legacy = match parent {
-          ModuleReducedGraphParent(m) => m.legacy_exports
-        };
-        let privacy = visibility_to_privacy(item.vis, legacy);
+        let privacy = visibility_to_privacy(item.vis);
 
         match /*bad*/copy item.node {
             item_mod(module_) => {
-                let legacy = has_legacy_export_attr(item.attrs);
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateModules, sp);
 
@@ -1093,7 +1078,6 @@ pub impl Resolver {
                                                parent_link,
                                                Some(def_id),
                                                NormalModuleKind,
-                                               legacy,
                                                sp);
 
                 let new_parent =
@@ -1103,7 +1087,6 @@ pub impl Resolver {
             }
 
             item_foreign_mod(fm) => {
-                let legacy = has_legacy_export_attr(item.attrs);
                 let new_parent = match fm.sort {
                     named => {
                         let (name_bindings, new_parent) =
@@ -1117,7 +1100,6 @@ pub impl Resolver {
                                                        parent_link,
                                                        Some(def_id),
                                                        ExternModuleKind,
-                                                       legacy,
                                                        sp);
 
                         ModuleReducedGraphParent(name_bindings.get_module())
@@ -1168,9 +1150,10 @@ pub impl Resolver {
                     self.build_reduced_graph_for_variant(*variant,
                         local_def(item.id),
                         // inherited => privacy of the enum item
-                        visibility_to_privacy(variant.node.vis,
-                                              privacy == Public),
-                        new_parent, visitor);
+                        variant_visibility_to_privacy(variant.node.vis,
+                                                      privacy == Public),
+                        new_parent,
+                        visitor);
                 }
             }
 
@@ -1238,7 +1221,6 @@ pub impl Resolver {
                                                     parent_link,
                                                     Some(def_id),
                                                     TraitModuleKind,
-                                                    false,
                                                     sp);
 
                         let new_parent = ModuleReducedGraphParent(
@@ -1301,7 +1283,6 @@ pub impl Resolver {
                                                 parent_link,
                                                 Some(local_def(item.id)),
                                                 TraitModuleKind,
-                                                false,
                                                 sp);
                     module_parent_opt = Some(ModuleReducedGraphParent(
                         name_bindings.get_module()));
@@ -1408,11 +1389,7 @@ pub impl Resolver {
     fn build_reduced_graph_for_view_item(view_item: @view_item,
                                          parent: ReducedGraphParent,
                                          &&_visitor: vt<ReducedGraphParent>) {
-
-        let legacy = match parent {
-          ModuleReducedGraphParent(m) => m.legacy_exports
-        };
-        let privacy = visibility_to_privacy(view_item.vis, legacy);
+        let privacy = visibility_to_privacy(view_item.vis);
         match /*bad*/copy view_item.node {
             view_item_import(view_paths) => {
                 for view_paths.each |view_path| {
@@ -1484,64 +1461,6 @@ pub impl Resolver {
                 }
             }
 
-            view_item_export(view_paths) => {
-                let module_ = self.get_module_from_parent(parent);
-                for view_paths.each |view_path| {
-                    match view_path.node {
-                        view_path_simple(ident, full_path, _, ident_id) => {
-                            let last_ident = full_path.idents.last();
-                            if last_ident != ident {
-                                self.session.span_err(view_item.span,
-                                                      ~"cannot export under \
-                                                       a new name");
-                            }
-                            if full_path.idents.len() != 1u {
-                                self.session.span_err(
-                                    view_item.span,
-                                    ~"cannot export an item \
-                                      that is not in this \
-                                      module");
-                            }
-
-                            module_.exported_names.insert(ident, ident_id);
-                        }
-
-                        view_path_glob(*) => {
-                            self.session.span_err(view_item.span,
-                                                  ~"export globs are \
-                                                   unsupported");
-                        }
-
-                        view_path_list(path, ref path_list_idents, _) => {
-                            if path.idents.len() == 1u &&
-                                    (*path_list_idents).len() == 0 {
-
-                                self.session.span_warn(view_item.span,
-                                                       ~"this syntax for \
-                                                        exporting no \
-                                                        variants is \
-                                                        unsupported; export \
-                                                        variants \
-                                                        individually");
-                            } else {
-                                if path.idents.len() != 0 {
-                                    self.session.span_err(view_item.span,
-                                                          ~"cannot export an \
-                                                           item that is not \
-                                                           in this module");
-                                }
-
-                                for path_list_idents.each |path_list_ident| {
-                                    let ident = path_list_ident.node.name;
-                                    let id = path_list_ident.node.id;
-                                    module_.exported_names.insert(ident, id);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             view_item_use(name, _, node_id) => {
                 match find_use_stmt_cnum(self.session.cstore, node_id) {
                     Some(crate_id) => {
@@ -1553,12 +1472,11 @@ pub impl Resolver {
                         let parent_link = ModuleParentLink
                             (self.get_module_from_parent(new_parent), name);
 
-                        (*child_name_bindings).define_module(privacy,
-                                                             parent_link,
-                                                             Some(def_id),
-                                                             NormalModuleKind,
-                                                             false,
-                                                             view_item.span);
+                        child_name_bindings.define_module(privacy,
+                                                          parent_link,
+                                                          Some(def_id),
+                                                          NormalModuleKind,
+                                                          view_item.span);
                         self.build_reduced_graph_for_external_crate
                             ((*child_name_bindings).get_module());
                     }
@@ -1616,8 +1534,7 @@ pub impl Resolver {
             let parent_module = self.get_module_from_parent(parent);
             let new_module = @Module(BlockParentLink(parent_module, block_id),
                                      None,
-                                     AnonymousModuleKind,
-                                     false);
+                                     AnonymousModuleKind);
             parent_module.anonymous_children.insert(block_id, new_module);
             new_parent = ModuleReducedGraphParent(new_module);
         } else {
@@ -1652,7 +1569,6 @@ pub impl Resolver {
                                                       parent_link,
                                                       Some(def_id),
                                                       NormalModuleKind,
-                                                      false,
                                                       dummy_sp());
                     modules.insert(def_id,
                                    child_name_bindings.get_module());
@@ -1779,12 +1695,11 @@ pub impl Resolver {
                                 *ident_str);
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
-                        (*child_name_bindings).define_module(Public,
-                                                             parent_link,
-                                                             None,
-                                                             NormalModuleKind,
-                                                             false,
-                                                             dummy_sp());
+                        child_name_bindings.define_module(Public,
+                                                          parent_link,
+                                                          None,
+                                                          NormalModuleKind,
+                                                          dummy_sp());
                     }
                     Some(copy type_ns_def)
                             if type_ns_def.module_def.is_none() => {
@@ -1793,12 +1708,11 @@ pub impl Resolver {
                                 *ident_str);
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
-                        (*child_name_bindings).define_module(Public,
-                                                             parent_link,
-                                                             None,
-                                                             NormalModuleKind,
-                                                             false,
-                                                             dummy_sp());
+                        child_name_bindings.define_module(Public,
+                                                          parent_link,
+                                                          None,
+                                                          NormalModuleKind,
+                                                          dummy_sp());
                     }
                     _ => {} // Fall through.
                 }
@@ -1865,7 +1779,6 @@ pub impl Resolver {
                                                 parent_link,
                                                 Some(def),
                                                 NormalModuleKind,
-                                                false,
                                                 dummy_sp());
                                             type_module =
                                                 child_name_bindings.
@@ -2110,7 +2023,6 @@ pub impl Resolver {
             // First, resolve the module path for the directive, if necessary.
             match self.resolve_module_path_for_import(module_,
                                                       module_path,
-                                                      NoXray,
                                                       DontUseLexicalScope,
                                                       import_directive.span) {
 
@@ -2195,12 +2107,6 @@ pub impl Resolver {
                self.module_to_str(containing_module),
                self.session.str_of(source),
                self.module_to_str(module_));
-
-        if !self.name_is_exported(containing_module, source) {
-            debug!("(resolving single import) name `%s` is unexported",
-                   self.session.str_of(source));
-            return Failed;
-        }
 
         // We need to resolve both namespaces for this to succeed.
         //
@@ -2392,12 +2298,6 @@ pub impl Resolver {
                self.session.str_of(source),
                self.module_to_str(module_));
 
-        if !self.name_is_exported(containing_module, source) {
-            debug!("(resolving single import) name `%s` is unexported",
-                   self.session.str_of(source));
-            return Failed;
-        }
-
         // We need to resolve the module namespace for this to succeed.
         let mut module_result = UnknownResult;
 
@@ -2538,12 +2438,6 @@ pub impl Resolver {
         for containing_module.import_resolutions.each
                 |ident, target_import_resolution| {
 
-            if !self.name_is_exported(containing_module, ident) {
-                debug!("(resolving glob import) name `%s` is unexported",
-                       self.session.str_of(ident));
-                loop;
-            }
-
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
                    is_none(&target_import_resolution.type_target),
@@ -2592,12 +2486,6 @@ pub impl Resolver {
 
         // Add all children from the containing module.
         for containing_module.children.each |ident, name_bindings| {
-            if !self.name_is_exported(containing_module, ident) {
-                debug!("(resolving glob import) name `%s` is unexported",
-                       self.session.str_of(ident));
-                loop;
-            }
-
             let mut dest_import_resolution;
             match module_.import_resolutions.find(ident) {
                 None => {
@@ -2639,7 +2527,6 @@ pub impl Resolver {
     fn resolve_module_path_from_root(module_: @Module,
                                      module_path: @DVec<ident>,
                                      index: uint,
-                                     xray: XrayFlag,
                                      span: span)
                                   -> ResolveResult<@Module> {
         let mut search_module = module_;
@@ -2655,7 +2542,6 @@ pub impl Resolver {
             match self.resolve_name_in_module(search_module,
                                               name,
                                               TypeNS,
-                                              xray,
                                               false) {
                 Failed => {
                     self.session.span_err(span, ~"unresolved name");
@@ -2712,7 +2598,6 @@ pub impl Resolver {
      */
     fn resolve_module_path_for_import(module_: @Module,
                                       module_path: @DVec<ident>,
-                                      xray: XrayFlag,
                                       use_lexical_scope: UseLexicalScopeFlag,
                                       span: span)
                                    -> ResolveResult<@Module> {
@@ -2787,7 +2672,6 @@ pub impl Resolver {
         return self.resolve_module_path_from_root(search_module,
                                                   module_path,
                                                   start_index,
-                                                  xray,
                                                   span);
     }
 
@@ -2884,7 +2768,6 @@ pub impl Resolver {
             match self.resolve_name_in_module(search_module,
                                               name,
                                               namespace,
-                                              Xray,
                                               false) {
                 Failed => {
                     // Continue up the search chain.
@@ -3030,12 +2913,6 @@ pub impl Resolver {
         return Success(PrefixFound(containing_module, i));
     }
 
-    fn name_is_exported(module_: @Module, name: ident) -> bool {
-        return !module_.legacy_exports ||
-            module_.exported_names.size() == 0 ||
-            module_.exported_names.contains_key(name);
-    }
-
     /**
      * Attempts to resolve the supplied name in the given module for the
      * given namespace. If successful, returns the target corresponding to
@@ -3044,18 +2921,11 @@ pub impl Resolver {
     fn resolve_name_in_module(module_: @Module,
                               name: ident,
                               namespace: Namespace,
-                              xray: XrayFlag,
                               allow_globs: bool)
                            -> ResolveResult<Target> {
         debug!("(resolving name in module) resolving `%s` in `%s`",
                self.session.str_of(name),
                self.module_to_str(module_));
-
-        if xray == NoXray && !self.name_is_exported(module_, name) {
-            debug!("(resolving name in module) name `%s` is unexported",
-                   self.session.str_of(name));
-            return Failed;
-        }
 
         // First, check the direct children of the module.
         match module_.children.find(name) {
@@ -3358,11 +3228,7 @@ pub impl Resolver {
     fn record_exports_for_module(module_: @Module) {
         let mut exports2 = ~[];
 
-        if module_.legacy_exports {
-            self.add_exports_for_legacy_module(&mut exports2, module_);
-        } else {
-            self.add_exports_for_module(&mut exports2, module_);
-        }
+        self.add_exports_for_module(&mut exports2, module_);
         match copy module_.def_id {
             Some(def_id) => {
                 self.export_map2.insert(def_id.node, move exports2);
@@ -3435,44 +3301,6 @@ pub impl Resolver {
                                                          true)
                     }
                     _ => ()
-                }
-            }
-        }
-    }
-
-    fn add_exports_for_legacy_module(exports2: &mut ~[Export2],
-                                     module_: @Module) {
-        for module_.exported_names.each |name, _exp_node_id| {
-            for self.namespaces.each |namespace| {
-                match self.resolve_definition_of_name_in_module(module_,
-                                                                name,
-                                                                *namespace,
-                                                                Xray) {
-                    NoNameDefinition => {
-                        // Nothing to do.
-                    }
-                    ChildNameDefinition(target_def) => {
-                        debug!("(computing exports) legacy export '%s' \
-                                for %?",
-                               self.session.str_of(name),
-                               module_.def_id);
-                        exports2.push(Export2 {
-                            reexport: false,
-                            name: self.session.str_of(name),
-                            def_id: def_id_of_def(target_def)
-                        });
-                    }
-                    ImportNameDefinition(target_def) => {
-                        debug!("(computing exports) legacy reexport '%s' for \
-                                %?",
-                               self.session.str_of(name),
-                               module_.def_id);
-                        exports2.push(Export2 {
-                            reexport: true,
-                            name: self.session.str_of(name),
-                            def_id: def_id_of_def(target_def)
-                        });
-                    }
                 }
             }
         }
@@ -4730,13 +4558,6 @@ pub impl Resolver {
                                             xray: XrayFlag)
                                          -> NameDefinition {
 
-        if xray == NoXray && !self.name_is_exported(containing_module, name) {
-            debug!("(resolving definition of name in module) name `%s` is \
-                    unexported",
-                   self.session.str_of(name));
-            return NoNameDefinition;
-        }
-
         // First, search children.
         match containing_module.children.find(name) {
             Some(child_name_bindings) => {
@@ -4816,7 +4637,6 @@ pub impl Resolver {
         let mut containing_module;
         match self.resolve_module_path_for_import(self.current_module,
                                                   module_path_idents,
-                                                  xray,
                                                   UseLexicalScope,
                                                   path.span) {
             Failed => {
@@ -4864,7 +4684,6 @@ pub impl Resolver {
         match self.resolve_module_path_from_root(root_module,
                                                  module_path_idents,
                                                  0,
-                                                 xray,
                                                  path.span) {
 
             Failed => {
