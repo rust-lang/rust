@@ -2,13 +2,13 @@ trait Reverser {
     fn reverse(&self);
 }
 
-impl &[mut uint] : Reverser {
+impl &mut [uint] : Reverser {
     fn reverse(&self) {
         vec::reverse(*self);
     }
 }
 
-fn bar(v: &[mut uint]) {
+fn bar(v: &mut [uint]) {
     v.reverse();
     v.reverse();
     v.reverse();

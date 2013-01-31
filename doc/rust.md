@@ -1234,7 +1234,7 @@ For example:
 
 ~~~~
 trait Num {
-    static pure fn from_int(n: int) -> self;
+    static pure fn from_int(n: int) -> Self;
 }
 impl float: Num {
     static pure fn from_int(n: int) -> float { n as float }
@@ -1716,15 +1716,12 @@ vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
 
 A [_vector_](#vector-types) _expression_ is written by enclosing zero or
 more comma-separated expressions of uniform type in square brackets.
-The keyword `mut` can be written after the opening bracket to
-indicate that the elements of the resulting vector may be mutated.
-When no mutability is specified, the vector is immutable.
 
 ~~~~
 [1, 2, 3, 4];
 ["a", "b", "c", "d"];
 [0, ..128];             // vector with 128 zeros
-[mut 0u8, 0u8, 0u8, 0u8];
+[0u8, 0u8, 0u8, 0u8];
 ~~~~
 
 ### Index expressions
@@ -1746,7 +1743,6 @@ task in a _failing state_.
 # do task::spawn_unlinked {
 
 ([1, 2, 3, 4])[0];
-([mut 'x', 'y'])[1] = 'z';
 (["a", "b"])[10]; // fails
 
 # }
@@ -1909,8 +1905,8 @@ No allocation or destruction is entailed.
 An example of three different swap expressions:
 
 ~~~~~~~~
-# let mut x = &[mut 0];
-# let mut a = &[mut 0];
+# let mut x = &mut [0];
+# let mut a = &mut [0];
 # let i = 0;
 # let y = {mut z: 0};
 # let b = {mut c: 0};
@@ -2005,11 +2001,11 @@ the unary copy operator is typically only used to cause an argument to a functio
 An example of a copy expression:
 
 ~~~~
-fn mutate(vec: ~[mut int]) {
+fn mutate(mut vec: ~[int]) {
    vec[0] = 10;
 }
 
-let v = ~[mut 1,2,3];
+let v = ~[1,2,3];
 
 mutate(copy v);   // Pass a copy
 

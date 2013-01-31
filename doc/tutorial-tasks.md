@@ -440,8 +440,8 @@ Finally, tasks can be configured to not propagate failure to each
 other at all, using `task::spawn_unlinked` for _isolated failure_.
 
 ~~~
-# fn random() -> int { 100 }
-# fn sleep_for(i: int) { for i.times { task::yield() } }
+# fn random() -> uint { 100 }
+# fn sleep_for(i: uint) { for i.times { task::yield() } }
 # do task::try::<()> {
 let (time1, time2) = (random(), random());
 do task::spawn_unlinked {

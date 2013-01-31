@@ -43,7 +43,7 @@ pub impl BufReader {
 }
 
 impl BufReader: Reader {
-    fn read(&self, bytes: &[mut u8], len: uint) -> uint {
+    fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         self.as_bytes_reader(|r| r.read(bytes, len) )
     }
     fn read_byte(&self) -> int {

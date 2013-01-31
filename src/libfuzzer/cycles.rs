@@ -43,7 +43,7 @@ type pointy = {
     mut g : fn~()->(),
 
     mut m : ~[maybe_pointy],
-    mut n : ~[mut maybe_pointy],
+    mut n : ~[maybe_pointy],
     mut o : {x : int, y : maybe_pointy}
 };
 // To add: objects; traits; anything type-parameterized?
@@ -58,7 +58,7 @@ fn empty_pointy() -> @pointy {
         mut g : fn~()->(){},
 
         mut m : ~[],
-        mut n : ~[mut],
+        mut n : ~[],
         mut o : {x : 0, y : none}
     }
 }
@@ -68,7 +68,7 @@ fn nop<T>(_x: T) { }
 
 fn test_cycles(r : rand::rng, k: uint, n: uint)
 {
-    let v : ~[mut @pointy] = ~[mut];
+    let mut v : ~[@pointy] = ~[];
 
     // Create a graph with no edges
     range(0u, vlen) {|_i|

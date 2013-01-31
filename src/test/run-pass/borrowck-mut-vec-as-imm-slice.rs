@@ -14,10 +14,10 @@ fn want_slice(v: &[int]) -> int {
     return sum;
 }
 
-fn has_mut_vec(+v: ~[mut int]) -> int {
+fn has_mut_vec(+v: ~[int]) -> int {
     want_slice(v)
 }
 
 fn main() {
-    assert has_mut_vec(~[mut 1, 2, 3]) == 6;
+    assert has_mut_vec(~[1, 2, 3]) == 6;
 }

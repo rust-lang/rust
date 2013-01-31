@@ -4,7 +4,7 @@ pub trait Reader {
     /// Read up to len bytes (or EOF) and put them into bytes (which
     /// must be at least len bytes long). Return number of bytes read.
     // FIXME (#2982): This should probably return an error.
-    fn read(&self, bytes: &[mut u8], len: uint) -> uint;
+    fn read(&self, bytes: &mut [u8], len: uint) -> uint;
 }
 
 pub trait ReaderUtil {
@@ -16,7 +16,7 @@ pub trait ReaderUtil {
 impl<T: Reader> T : ReaderUtil {
 
     fn read_bytes(len: uint) {
-        let count = self.read(&[mut 0], len);
+        let mut count = self.read(&mut [0], len);
     }
 
 }
@@ -27,7 +27,7 @@ struct S {
 }
 
 impl S: Reader {
-    fn read(&self, bytes: &[mut u8], len: uint) -> uint {
+    fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         0
     }
 }

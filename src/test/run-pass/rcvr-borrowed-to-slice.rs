@@ -29,7 +29,7 @@ fn main() {
     debug!("y==%d", y);
     assert y == 6;
 
-    let x = ~[mut 1, 2, 3];
+    let mut x = ~[1, 2, 3];
     let y = x.sum();
     debug!("y==%d", y);
     assert y == 6;
