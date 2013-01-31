@@ -1212,7 +1212,7 @@ pub impl Resolver {
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
                         let def_id = local_def(item.id);
-                        name_bindings.define_module(privacy,
+                        name_bindings.define_module(Public,
                                                     parent_link,
                                                     Some(def_id),
                                                     TraitModuleKind,
