@@ -15,8 +15,6 @@
 
 extern mod std;
 
-export context;
-
 struct arc_destruct<T> {
   _data: int,
 }
@@ -55,8 +53,8 @@ fn context_res() -> context_res {
     }
 }
 
-type context = arc_destruct<context_res>;
+pub type context = arc_destruct<context_res>;
 
-impl context {
+pub impl context {
     fn socket() { }
 }

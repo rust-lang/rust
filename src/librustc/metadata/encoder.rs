@@ -331,12 +331,11 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: writer::Encoder,
             item_impl(*) | item_struct(*) => {
                 let (ident, did) = (item.ident, item.id);
                 debug!("(encoding info for module) ... encoding impl %s \
-                        (%?/%?), exported? %?",
+                        (%?/%?)",
                         ecx.tcx.sess.str_of(ident),
                         did,
                         ast_map::node_id_to_str(ecx.tcx.items, did, ecx.tcx
-                                                .sess.parse_sess.interner),
-                        ast_util::is_exported(ident, md));
+                                                .sess.parse_sess.interner));
 
                 ebml_w.start_tag(tag_mod_impl);
                 ebml_w.wr_str(def_to_str(local_def(did)));

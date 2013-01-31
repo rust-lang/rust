@@ -50,7 +50,7 @@ use ast::{ty_field, ty_fixed_length_vec, ty_fn, ty_infer, ty_mac, ty_method};
 use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, type_value_ns, uniq};
 use ast::{unnamed_field, unsafe_blk, unsafe_fn, variant, view_item};
-use ast::{view_item_, view_item_export, view_item_import, view_item_use};
+use ast::{view_item_, view_item_import, view_item_use};
 use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::{visibility, vstore, vstore_box, vstore_fixed, vstore_slice};
 use ast::{vstore_uniq};
@@ -88,6 +88,7 @@ use core::vec::push;
 use core::vec;
 use std::map::HashMap;
 
+#[deriving_eq]
 enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,
@@ -3735,15 +3736,6 @@ pub impl Parser {
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
             });
-        } else if self.eat_keyword(~"export") {
-            let view_paths = self.parse_view_paths();
-            self.expect(token::SEMI);
-            return iovi_view_item(@ast::view_item {
-                node: view_item_export(view_paths),
-                attrs: attrs,
-                vis: visibility,
-                span: mk_sp(lo, self.last_span.hi)
-            });
         } else if macros_allowed && !self.is_any_keyword(copy self.token)
                 && self.look_ahead(1) == token::NOT
                 && (is_plain_ident(self.look_ahead(2))
@@ -3916,7 +3908,6 @@ pub impl Parser {
             next_tok = self.look_ahead(2);
         };
         self.token_is_keyword(~"use", tok)
-            || self.token_is_keyword(~"export", tok)
             || (self.token_is_keyword(~"extern", tok) &&
                 self.token_is_keyword(~"mod", next_tok))
     }
@@ -3925,8 +3916,6 @@ pub impl Parser {
         let lo = self.span.lo;
         let node = if self.eat_keyword(~"use") {
             self.parse_use()
-        } else if self.eat_keyword(~"export") {
-            view_item_export(self.parse_view_paths())
         } else if self.eat_keyword(~"extern") {
             self.expect_keyword(~"mod");
             let ident = self.parse_ident();
@@ -3979,8 +3968,8 @@ pub impl Parser {
                     if restricted_to_imports {
                             match view_item.node {
                                 view_item_import(_) => {}
-                                view_item_export(_) | view_item_use(*) =>
-                                    self.fatal(~"exports and \"extern mod\" \
+                                view_item_use(*) =>
+                                    self.fatal(~"\"extern mod\" \
                                                  declarations are not \
                                                  allowed here")
                             }
@@ -4023,13 +4012,6 @@ pub impl Parser {
           _ =>  self.fatal(~"expected string literal")
         }
     }
-}
-
-impl restriction : cmp::Eq {
-    pure fn eq(&self, other: &restriction) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &restriction) -> bool { !(*self).eq(other) }
 }
 
 //

@@ -72,7 +72,6 @@ use std::map;
 use std::smallintmap;
 use syntax::ast::{provided, required, spanned};
 use syntax::ast_map::node_id_to_str;
-use syntax::ast_util::{has_legacy_export_attr};
 use syntax::ast_util::{local_def, respan, split_trait_methods};
 use syntax::codemap::span;
 use syntax::print::pprust::*;

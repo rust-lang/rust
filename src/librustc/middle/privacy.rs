@@ -29,8 +29,8 @@ use syntax::ast::{provided, required};
 use syntax::ast;
 use syntax::ast_map::{node_item, node_method};
 use syntax::ast_map;
-use syntax::ast_util::{Private, Public, has_legacy_export_attr, is_local};
-use syntax::ast_util::{visibility_to_privacy};
+use syntax::ast_util::{Private, Public, is_local};
+use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::codemap::span;
 use syntax::visit;
 
@@ -38,7 +38,6 @@ pub fn check_crate(tcx: ty::ctxt,
                    method_map: &method_map,
                    crate: @ast::crate) {
     let privileged_items = @DVec();
-    let legacy_exports = has_legacy_export_attr(crate.node.attrs);
 
     // Adds structs that are privileged to this scope.
     let add_privileged_items: @fn(&[@ast::item]) -> uint = |items| {
@@ -65,20 +64,20 @@ pub fn check_crate(tcx: ty::ctxt,
                                    |it| { it.vis },
                                    ~"unbound enum parent when checking \
                                     dereference of enum type");
-            visibility_to_privacy(parent_vis, legacy_exports)
+            visibility_to_privacy(parent_vis)
         }
         else {
             // WRONG
             Public
         };
         debug!("parental_privacy = %?", parental_privacy);
-        debug!("vis = %?, priv = %?, legacy_exports = %?",
+        debug!("vis = %?, priv = %?",
                variant_info.vis,
-               visibility_to_privacy(variant_info.vis, legacy_exports),
-               legacy_exports);
+               visibility_to_privacy(variant_info.vis))
         // inherited => privacy of the enum item
-        if visibility_to_privacy(variant_info.vis,
-                                 parental_privacy == Public) == Private {
+        if variant_visibility_to_privacy(variant_info.vis,
+                                         parental_privacy == Public)
+                                         == Private {
             tcx.sess.span_err(span,
                 ~"can only dereference enums \
                   with a single, public variant");
