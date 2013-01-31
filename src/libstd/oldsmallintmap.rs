@@ -172,7 +172,7 @@ impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
 
 #[cfg(test)]
 mod tests {
-    use smallintmap::{mk, SmallIntMap};
+    use super::{mk, SmallIntMap};
 
     use core::option::None;
 

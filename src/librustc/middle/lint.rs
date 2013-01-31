@@ -34,8 +34,8 @@ use core::uint;
 use core::vec;
 use std::map::{Map, HashMap};
 use std::map;
-use std::smallintmap::{Map, SmallIntMap};
-use std::smallintmap;
+use std::oldsmallintmap::{Map, SmallIntMap};
+use std::oldsmallintmap;
 use syntax::ast_util::{path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
@@ -248,7 +248,7 @@ pub type lint_settings = {
 };
 
 pub fn mk_lint_settings() -> lint_settings {
-    {default_settings: smallintmap::mk(),
+    {default_settings: oldsmallintmap::mk(),
      settings_map: HashMap()}
 }
 
@@ -273,7 +273,8 @@ pub fn get_lint_settings_level(settings: lint_settings,
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: lint_modes) -> lint_modes {
-    smallintmap::SmallIntMap_(@smallintmap::SmallIntMap_ { v: copy modes.v })
+    oldsmallintmap::SmallIntMap_(@oldsmallintmap::SmallIntMap_
+    {v: copy modes.v})
 }
 
 type ctxt_ = {dict: lint_dict,
@@ -393,7 +394,7 @@ fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
 
 pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
     let cx = ctxt_({dict: get_lint_dict(),
-                    curr: smallintmap::mk(),
+                    curr: oldsmallintmap::mk(),
                     is_default: true,
                     sess: sess});
 

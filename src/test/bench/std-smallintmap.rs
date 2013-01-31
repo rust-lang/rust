@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Microbenchmark for the smallintmap library
+// Microbenchmark for the oldsmallintmap library
 
 extern mod std;
-use std::smallintmap;
-use std::smallintmap::SmallIntMap;
+use std::oldsmallintmap;
+use std::oldsmallintmap::SmallIntMap;
 use io::WriterUtil;
 
 fn append_sequential(min: uint, max: uint, map: SmallIntMap<uint>) {
@@ -43,7 +43,7 @@ fn main() {
     let mut appendf = 0.0;
 
     for uint::range(0u, rep) |_r| {
-        let map = smallintmap::mk();
+        let map = oldsmallintmap::mk();
         let start = std::time::precise_time_s();
         append_sequential(0u, max, map);
         let mid = std::time::precise_time_s();
