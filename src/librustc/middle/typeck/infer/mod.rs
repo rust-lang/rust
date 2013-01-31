@@ -562,11 +562,10 @@ impl @InferCtxt {
         debug!("rollback!");
         rollback_to(&self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
-        // FIXME(#3211) -- int_var and float_var not transactional
-        //rollback_to(&self.int_var_bindings,
-        //            snapshot.int_var_bindings_len);
-        //rollback_to(&self.float_var_bindings,
-        //            snapshot.float_var_bindings_len);
+        rollback_to(&self.int_var_bindings,
+                    snapshot.int_var_bindings_len);
+        rollback_to(&self.float_var_bindings,
+                    snapshot.float_var_bindings_len);
 
         self.region_vars.rollback_to(snapshot.region_vars_snapshot);
     }

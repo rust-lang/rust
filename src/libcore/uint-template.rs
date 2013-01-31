@@ -18,7 +18,6 @@ use T_SIGNED = self::inst::T_SIGNED;
 use char;
 use cmp::{Eq, Ord};
 use from_str::FromStr;
-use iter;
 use num;
 use option::{None, Option, Some};
 use str;
@@ -159,22 +158,6 @@ impl T: num::Zero {
 impl T: num::One {
     #[inline(always)]
     static pure fn one() -> T { 1 }
-}
-
-impl T: iter::Times {
-    #[inline(always)]
-    #[doc = "A convenience form for basic iteration. Given a variable `x` \
-        of any numeric type, the expression `for x.times { /* anything */ }` \
-        will execute the given function exactly x times. If we assume that \
-        `x` is an int, this is functionally equivalent to \
-        `for int::range(0, x) |_i| { /* anything */ }`."]
-    pure fn times(&self, it: fn() -> bool) {
-        let mut i = *self;
-        while i > 0 {
-            if !it() { break }
-            i -= 1;
-        }
-    }
 }
 
 /**
@@ -349,14 +332,6 @@ pub fn to_str_radix17() {
     uint::to_str(100u, 17u);
 }
 
-#[test]
-pub fn test_times() {
-    use iter::Times;
-    let ten = 10 as T;
-    let mut accum = 0;
-    for ten.times { accum += 1; }
-    assert (accum == 10);
-}
 use io;
 #[test]
 pub fn test_ranges() {

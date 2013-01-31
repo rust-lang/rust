@@ -257,7 +257,6 @@ pub impl LookupContext {
         match ty::deref(self.tcx(), ty, false) {
             None => None,
             Some(t) => {
-                //FIXME(#3211) -- probably want to force ivars
                 Some(structurally_resolved_type(self.fcx,
                                                 self.self_expr.span,
                                                 t.ty))
@@ -907,8 +906,8 @@ pub impl LookupContext {
         let tcx = self.tcx();
         match ty::get(self_ty).sty {
             ty_box(*) | ty_uniq(*) | ty_rptr(*) |
-            ty_infer(IntVar(_)) | // FIXME(#3211)---should be resolved
-            ty_infer(FloatVar(_)) | // FIXME(#3211)---should be resolved
+            ty_infer(IntVar(_)) |
+            ty_infer(FloatVar(_)) |
             ty_self | ty_param(*) | ty_nil | ty_bot | ty_bool |
             ty_int(*) | ty_uint(*) |
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_rec(*) |
