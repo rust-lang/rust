@@ -174,7 +174,6 @@ mod tests {
     use smallintmap::{mk, SmallIntMap};
 
     use core::option::None;
-    use core::option;
 
     #[test]
     fn test_len() {
@@ -214,9 +213,9 @@ mod tests {
         map.update_with_key(3, 2, addMoreToCount);
 
         // check the total counts
-        assert 10 == option::get(map.find(3));
-        assert  3 == option::get(map.find(5));
-        assert  1 == option::get(map.find(9));
+        assert map.find(3).get() == 10;
+        assert map.find(5).get() == 3;
+        assert map.find(9).get() == 1;
 
         // sadly, no sevens were counted
         assert None == map.find(7);
