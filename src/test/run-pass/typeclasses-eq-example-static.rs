@@ -12,7 +12,7 @@
 // methods!
 
 trait Equal {
-    static fn isEq(a: self, b: self) -> bool;
+    static fn isEq(a: Self, b: Self) -> bool;
 }
 
 enum Color { cyan, magenta, yellow, black }

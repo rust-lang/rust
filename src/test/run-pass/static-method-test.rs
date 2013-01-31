@@ -14,7 +14,7 @@
 // A trait for objects that can be used to do an if-then-else
 // (No actual need for this to be static, but it is a simple test.)
 trait bool_like {
-    static fn select<A>(b: self, +x1: A, +x2: A) -> A;
+    static fn select<A>(b: Self, +x1: A, +x2: A) -> A;
 }
 
 fn andand<T: bool_like Copy>(x1: T, x2: T) -> T {
@@ -36,7 +36,7 @@ impl int: bool_like {
 // A trait for sequences that can be constructed imperatively.
 trait buildable<A> {
      static pure fn build_sized(size: uint,
-                                builder: fn(push: pure fn(+v: A))) -> self;
+                                builder: fn(push: pure fn(+v: A))) -> Self;
 }
 
 

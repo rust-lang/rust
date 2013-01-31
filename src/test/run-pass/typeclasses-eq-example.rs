@@ -11,7 +11,7 @@
 // Example from lkuper's intern talk, August 2012.
 
 trait Equal {
-    fn isEq(a: self) -> bool;
+    fn isEq(a: Self) -> bool;
 }
 
 enum Color { cyan, magenta, yellow, black }

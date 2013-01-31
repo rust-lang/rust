@@ -50,9 +50,9 @@ use middle::typeck::infer::to_str::InferStr;
 use std::list;
 
 pub trait LatticeValue {
-    static fn sub(cf: &CombineFields, a: &self, b: &self) -> ures;
-    static fn lub(cf: &CombineFields, a: &self, b: &self) -> cres<self>;
-    static fn glb(cf: &CombineFields, a: &self, b: &self) -> cres<self>;
+    static fn sub(cf: &CombineFields, a: &Self, b: &Self) -> ures;
+    static fn lub(cf: &CombineFields, a: &Self, b: &Self) -> cres<Self>;
+    static fn glb(cf: &CombineFields, a: &Self, b: &Self) -> cres<Self>;
 }
 
 pub type LatticeOp<T> = &fn(cf: &CombineFields, a: &T, b: &T) -> cres<T>;

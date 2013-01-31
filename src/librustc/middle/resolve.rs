@@ -3581,8 +3581,6 @@ pub impl Resolver {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
-                self_type_rib.bindings.insert(self.self_ident,
-                                              dl_def(def_self_ty(item.id)));
                 self_type_rib.bindings.insert(self.type_self_ident,
                                               dl_def(def_self_ty(item.id)));
 

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait MyEq {
-    pure fn eq(&self, other: &self) -> bool;
+    pure fn eq(&self, other: &Self) -> bool;
 }
 
 struct A {

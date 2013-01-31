@@ -467,11 +467,11 @@ pub mod flatteners {
     }
 
     pub trait FromReader {
-        static fn from_reader(r: Reader) -> self;
+        static fn from_reader(r: Reader) -> Self;
     }
 
     pub trait FromWriter {
-        static fn from_writer(w: Writer) -> self;
+        static fn from_writer(w: Writer) -> Self;
     }
 
     impl json::Decoder: FromReader {

@@ -77,7 +77,7 @@ enum extended_decode_ctxt {
 }
 
 trait tr {
-    fn tr(xcx: extended_decode_ctxt) -> self;
+    fn tr(xcx: extended_decode_ctxt) -> Self;
 }
 
 trait tr_intern {

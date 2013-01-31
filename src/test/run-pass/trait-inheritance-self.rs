@@ -2,7 +2,7 @@ trait Foo<T> {
     fn f(&self, x: &T);
 }
 
-trait Bar : Foo<self> {
+trait Bar : Foo<Self> {
     fn g(&self);
 }
 
