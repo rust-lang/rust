@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     pub fn frame_address(f: &once fn(*u8));

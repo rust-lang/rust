@@ -19,7 +19,6 @@
 #[crate_type = "lib"];
 #[no_core];
 
-#[legacy_modes];
 
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];

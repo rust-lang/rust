@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 struct Arg<T> {val: T, fin: extern fn(T)}
 

@@ -10,7 +10,6 @@
 
 #[doc(hidden)]; // FIXME #3538
 
-#[legacy_modes]; // tjc: remove after snapshot
 
 // NB: transitionary, de-mode-ing.
 // FIXME #4425: Can't forbid this because frame_address needs a deprecated

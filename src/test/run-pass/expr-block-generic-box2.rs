@@ -10,7 +10,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 type compare<T> = fn@(T, T) -> bool;
 

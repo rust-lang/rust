@@ -10,7 +10,6 @@
 
 // xfail-fast
 // -*- rust -*-
-#[legacy_modes];
 
 // Tests for if as expressions with dynamic type sizes
 type compare<T> = fn@(T, T) -> bool;
