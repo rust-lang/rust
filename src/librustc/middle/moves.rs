@@ -590,9 +590,14 @@ impl VisitContext {
             }
 
             expr_assign_op(_, lhs, rhs) => {
-                // XXX METHOD
+                // FIXME(#4712) --- Overloaded operators?
+                //
+                // if !self.use_overloaded_operator(
+                //     expr, DoDerefArgs, lhs, [rhs], visitor)
+                // {
                 self.consume_expr(lhs, visitor);
                 self.consume_expr(rhs, visitor);
+                // }
             }
 
             expr_repeat(base, count, _) => {

@@ -283,7 +283,7 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
 
         let middle::moves::MoveMaps {moves_map, variable_moves_map,
                                      capture_map} =
-            time(time_passes, ~"mode computation", ||
+            time(time_passes, ~"compute moves", ||
                  middle::moves::compute_moves(ty_cx, method_map, crate));
 
         time(time_passes, ~"match checking", ||
