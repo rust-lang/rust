@@ -14,9 +14,9 @@
  */
 #[forbid(deprecated_mode)];
 
-use map;
 use map::StdMap;
 
+use core::container::{Container, Mutable, Map, Set};
 use core::dvec::DVec;
 use core::ops;
 use core::option::{Some, None};
@@ -80,9 +80,9 @@ pub pure fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
     return !find(self, key).is_none();
 }
 
-/// Implements the map::map interface for smallintmap
-impl<V: Copy> SmallIntMap<V>: map::StdMap<uint, V> {
-    pure fn size() -> uint {
+impl<V> SmallIntMap<V>: Container {
+    /// Return the number of elements in the map
+    pure fn len(&self) -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
             match *item {
@@ -92,6 +92,14 @@ impl<V: Copy> SmallIntMap<V>: map::StdMap<uint, V> {
         }
         sz
     }
+
+    /// Return true if the map contains no elements
+    pure fn is_empty(&self) -> bool { self.len() == 0 }
+}
+
+/// Implements the map::map interface for smallintmap
+impl<V: Copy> SmallIntMap<V>: StdMap<uint, V> {
+    pure fn size() -> uint { self.len() }
     #[inline(always)]
     fn insert(key: uint, value: V) -> bool {
         let exists = contains_key(self, key);
@@ -165,8 +173,8 @@ impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
 }
 
 /// Cast the given smallintmap to a map::map
-pub fn as_map<V: Copy>(s: SmallIntMap<V>) -> map::StdMap<uint, V> {
-    s as map::StdMap::<uint, V>
+pub fn as_map<V: Copy>(s: SmallIntMap<V>) -> StdMap<uint, V> {
+    s as StdMap::<uint, V>
 }
 
 #[cfg(test)]
@@ -175,6 +183,22 @@ mod tests {
 
     use core::option::None;
     use core::option;
+
+    #[test]
+    fn test_len() {
+        let mut map = mk();
+        assert map.len() == 0;
+        assert map.is_empty();
+        map.insert(5, 20);
+        assert map.len() == 1;
+        assert !map.is_empty();
+        map.insert(11, 12);
+        assert map.len() == 2;
+        assert !map.is_empty();
+        map.insert(14, 22);
+        assert map.len() == 3;
+        assert !map.is_empty();
+    }
 
     #[test]
     fn test_insert_with_key() {
