@@ -16,7 +16,7 @@ fn main() {
     // temporary, which would be a source of confusion
 
     let mut a = @[0];
-    a.test_mut(); //~ ERROR type `@[int]` does not implement any method in scope named `test_mut`
+    a.test_mut(); //~ ERROR does not implement any method in scope named `test_mut`
 }
 
 trait MyIter {
