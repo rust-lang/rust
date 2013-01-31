@@ -177,7 +177,7 @@ fn fold_trait(
 fn merge_methods(
     srv: astsrv::Srv,
     item_id: doc::AstId,
-    docs: ~[doc::MethodDoc]
+    +docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc| {
         doc::MethodDoc {
@@ -190,7 +190,7 @@ fn merge_methods(
 fn get_method_sig(
     srv: astsrv::Srv,
     item_id: doc::AstId,
-    method_name: ~str
+    +method_name: ~str
 ) -> Option<~str> {
     do astsrv::exec(srv) |copy method_name, ctxt| {
         match ctxt.ast_map.get(item_id) {
@@ -415,7 +415,7 @@ pub mod test {
     use extract;
     use tystr_pass::run;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    pub fn mk_doc(+source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

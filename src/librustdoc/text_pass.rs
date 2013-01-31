@@ -21,17 +21,19 @@ use pass::Pass;
 use util::NominalOp;
 
 use std::par;
+use std::cell::Cell;
 
-pub fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
+pub fn mk_pass(+name: ~str, +op: fn~(&str) -> ~str) -> Pass {
+    let op = Cell(op);
     Pass {
         name: copy name,
         f: fn~(move op, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
-            run(srv, doc, copy op)
+            run(srv, doc, op.take())
         }
     }
 }
 
-type Op = fn~(~str) -> ~str;
+type Op = fn~(&str) -> ~str;
 
 #[allow(non_implicitly_copyable_typarams)]
 fn run(
@@ -52,8 +54,8 @@ fn run(
     (fold.fold_doc)(&fold, doc)
 }
 
-fn maybe_apply_op(op: NominalOp<Op>, s: Option<~str>) -> Option<~str> {
-    s.map(|s| (op.op)(copy *s) )
+fn maybe_apply_op(+op: NominalOp<Op>, s: &Option<~str>) -> Option<~str> {
+    s.map(|s| (op.op)(*s) )
 }
 
 fn fold_item(
@@ -63,16 +65,16 @@ fn fold_item(
     let doc = fold::default_seq_fold_item(fold, doc);
 
     doc::ItemDoc {
-        brief: maybe_apply_op(fold.ctxt, doc.brief),
-        desc: maybe_apply_op(fold.ctxt, doc.desc),
-        sections: apply_to_sections(fold.ctxt, copy doc.sections),
+        brief: maybe_apply_op(copy fold.ctxt, &doc.brief),
+        desc: maybe_apply_op(copy fold.ctxt, &doc.desc),
+        sections: apply_to_sections(copy fold.ctxt, copy doc.sections),
         .. doc
     }
 }
 
 fn apply_to_sections(
-    op: NominalOp<Op>,
-    sections: ~[doc::Section]
+    +op: NominalOp<Op>,
+    +sections: ~[doc::Section]
 ) -> ~[doc::Section] {
     par::map(sections, |section, copy op| doc::Section {
         header: (op.op)(copy section.header),
@@ -89,7 +91,7 @@ fn fold_enum(
     doc::EnumDoc {
         variants: do par::map(doc.variants) |variant, copy fold_copy| {
             doc::VariantDoc {
-                desc: maybe_apply_op(fold_copy.ctxt, variant.desc),
+                desc: maybe_apply_op(copy fold_copy.ctxt, &variant.desc),
                 .. copy *variant
             }
         },
@@ -104,20 +106,20 @@ fn fold_trait(
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     doc::TraitDoc {
-        methods: apply_to_methods(fold.ctxt, copy doc.methods),
+        methods: apply_to_methods(copy fold.ctxt, copy doc.methods),
         .. doc
     }
 }
 
 fn apply_to_methods(
-    op: NominalOp<Op>,
-    docs: ~[doc::MethodDoc]
+    +op: NominalOp<Op>,
+    +docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc, copy op| {
         doc::MethodDoc {
-            brief: maybe_apply_op(op, doc.brief),
-            desc: maybe_apply_op(op, doc.desc),
-            sections: apply_to_sections(op, copy doc.sections),
+            brief: maybe_apply_op(copy op, &doc.brief),
+            desc: maybe_apply_op(copy op, &doc.desc),
+            sections: apply_to_sections(copy op, copy doc.sections),
             .. copy *doc
         }
     }
@@ -130,7 +132,7 @@ fn fold_impl(
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     doc::ImplDoc {
-        methods: apply_to_methods(fold.ctxt, copy doc.methods),
+        methods: apply_to_methods(copy fold.ctxt, copy doc.methods),
         .. doc
     }
 }
@@ -301,7 +303,7 @@ mod test {
 
     use core::str;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    pub fn mk_doc(+source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = (attr_pass::mk_pass().f)(srv, doc);

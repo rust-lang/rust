@@ -27,7 +27,7 @@ pub type ItemLtEqOp = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
 type ItemLtEq = NominalOp<ItemLtEqOp>;
 
-pub fn mk_pass(name: ~str, +lteq: ItemLtEqOp) -> Pass {
+pub fn mk_pass(+name: ~str, +lteq: ItemLtEqOp) -> Pass {
     Pass {
         name: copy name,
         f: fn~(move lteq, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {

@@ -24,7 +24,6 @@
 #[legacy_records];
 
 #[allow(non_implicitly_copyable_typarams)];
-#[allow(deprecated_mode)];
 #[allow(deprecated_self)];
 
 extern mod core(vers = "0.6");
@@ -89,7 +88,7 @@ fn main() {
 }
 
 /// Runs rustdoc over the given file
-fn run(config: Config) {
+fn run(+config: Config) {
 
     let source_file = copy config.input_crate;
 
@@ -148,7 +147,7 @@ fn run(config: Config) {
     }
 }
 
-fn time<T>(what: ~str, f: fn() -> T) -> T {
+fn time<T>(+what: ~str, f: fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = f();
     let end = std::time::precise_time_s();
