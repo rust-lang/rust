@@ -50,7 +50,7 @@ Suppose we wanted to write a procedure that computed the distance between any
 two points, no matter where they were stored. For example, we might like to
 compute the distance between `on_the_stack` and `shared_box`, or between
 `shared_box` and `unique_box`. One option is to define a function that takes
-two arguments of type `Point`—that is, it takes the points by value. But we
+two arguments of type `Point`—that is, it takes the points by value. But if we
 define it this way, calling the function will cause the points to be
 copied. For points, this is probably not so bad, but often copies are
 expensive. Worse, if the data type contains mutable fields, copying can change
