@@ -13,23 +13,23 @@ fn main() {
     // Note: here we do not have any type annotations
     // but we do express conflicting requirements:
 
-    let mut v = ~[~[0]];
-    let mut w = ~[~[0]];
-    let mut x = ~[~[0]];
+    let v = ~[mut ~[0]];
+    let w = ~[mut ~[mut 0]];
+    let x = ~[mut ~[mut 0]];
 
-    fn f(&&v: ~[~[int]]) {
+    fn f(&&v: ~[mut ~[int]]) {
         v[0] = ~[3]
     }
 
     fn g(&&v: ~[const ~[const int]]) {
     }
 
-    fn h(&&v: ~[~[int]]) {
-        v[0] = ~[3]
+    fn h(&&v: ~[mut ~[mut int]]) {
+        v[0] = ~[mut 3]
     }
 
-    fn i(&&v: ~[~[const int]]) {
-        v[0] = ~[3]
+    fn i(&&v: ~[mut ~[const int]]) {
+        v[0] = ~[mut 3]
     }
 
     fn j(&&v: ~[~[const int]]) {
@@ -48,7 +48,7 @@ fn main() {
     j(w); //~ ERROR (values differ in mutability)
 
     // Note that without adding f() or h() to the mix, it is valid for
-    // x to have the type ~[~[const int]], and thus we can safely
+    // x to have the type ~[mut ~[const int]], and thus we can safely
     // call g() and i() but not j():
     g(x);
     i(x);
