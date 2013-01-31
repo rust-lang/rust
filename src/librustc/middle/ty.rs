@@ -3756,7 +3756,7 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
 
           ast_map::node_stmt(*) | ast_map::node_expr(*) |
           ast_map::node_arg(*) | ast_map::node_local(*) |
-          ast_map::node_export(*) | ast_map::node_block(*) => {
+          ast_map::node_block(*) => {
             cx.sess.bug(fmt!("cannot find item_path for node %?", node));
           }
         }

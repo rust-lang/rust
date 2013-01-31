@@ -215,64 +215,6 @@ pub pure fn float_ty_to_str(t: float_ty) -> ~str {
     match t { ty_f => ~"f", ty_f32 => ~"f32", ty_f64 => ~"f64" }
 }
 
-pub fn is_exported(i: ident, m: _mod) -> bool {
-    let mut local = false;
-    let mut parent_enum : Option<ident> = None;
-    for m.items.each |it| {
-        if it.ident == i { local = true; }
-        match it.node {
-          item_enum(ref enum_definition, _) =>
-            for (*enum_definition).variants.each |v| {
-                if v.node.name == i {
-                    local = true;
-                    parent_enum = Some(/* FIXME (#2543) */ copy it.ident);
-                }
-            },
-          _ => ()
-        }
-        if local { break; }
-    }
-    let mut has_explicit_exports = false;
-    for m.view_items.each |vi| {
-        match vi.node {
-          view_item_export(vps) => {
-            has_explicit_exports = true;
-            for vps.each |vp| {
-                match vp.node {
-                  ast::view_path_simple(id, _, _, _) => {
-                    if id == i { return true; }
-                    match parent_enum {
-                      Some(parent_enum_id) => {
-                        if id == parent_enum_id { return true; }
-                      }
-                      _ => ()
-                    }
-                  }
-
-                  ast::view_path_list(path, ref ids, _) => {
-                    if vec::len(path.idents) == 1u {
-                        if i == path.idents[0] { return true; }
-                        for (*ids).each |id| {
-                            if id.node.name == i { return true; }
-                        }
-                    } else {
-                        fail ~"export of path-qualified list";
-                    }
-                  }
-
-                  _ => ()
-                }
-            }
-          }
-          _ => ()
-        }
-    }
-    // If there are no declared exports then
-    // everything not imported is exported
-    // even if it's local (since it's explicit)
-    return !has_explicit_exports && local;
-}
-
 pub pure fn is_call_expr(e: @expr) -> bool {
     match e.node { expr_call(_, _, _) => true, _ => false }
 }
@@ -476,7 +418,7 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_view_item: fn@(vi: @view_item) {
             match vi.node {
               view_item_use(_, _, id) => vfn(id),
-              view_item_import(vps) | view_item_export(vps) => {
+              view_item_import(vps) => {
                   for vec::each(vps) |vp| {
                       match vp.node {
                           view_path_simple(_, _, _, id) => vfn(id),
@@ -662,44 +604,30 @@ pub fn struct_def_is_tuple_like(struct_def: @ast::struct_def) -> bool {
     struct_def.ctor_id.is_some()
 }
 
+pub fn visibility_to_privacy(visibility: visibility) -> Privacy {
+    match visibility {
+        public => Public,
+        inherited | private => Private
+    }
+}
 
-pub fn visibility_to_privacy(visibility: visibility,
-                             legacy_exports: bool) -> Privacy {
-    if legacy_exports {
+pub fn variant_visibility_to_privacy(visibility: visibility,
+                                     enclosing_is_public: bool)
+                                  -> Privacy {
+    if enclosing_is_public {
         match visibility {
-            inherited | public => Public,
+            public | inherited => Public,
             private => Private
         }
     } else {
-        match visibility {
-            public => Public,
-            inherited | private => Private
-        }
+        visibility_to_privacy(visibility)
     }
 }
 
+#[deriving_eq]
 pub enum Privacy {
     Private,
     Public
-}
-
-pub impl Privacy : cmp::Eq {
-    pure fn eq(&self, other: &Privacy) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Privacy) -> bool { !(*self).eq(other) }
-}
-
-pub fn has_legacy_export_attr(attrs: &[attribute]) -> bool {
-    for attrs.each |attribute| {
-        match attribute.node.value.node {
-          meta_word(ref w) if (*w) == ~"legacy_exports" => {
-            return true;
-          }
-          _ => {}
-        }
-    }
-    return false;
 }
 
 // Local Variables:

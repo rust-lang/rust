@@ -1504,7 +1504,6 @@ pub struct view_item {
 pub enum view_item_ {
     view_item_use(ident, ~[@meta_item], node_id),
     view_item_import(~[@view_path]),
-    view_item_export(~[@view_path])
 }
 
 // Meta-data associated with an item

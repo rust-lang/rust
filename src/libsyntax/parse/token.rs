@@ -486,7 +486,7 @@ pub fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"break",
         ~"const", ~"copy",
         ~"do", ~"drop",
-        ~"else", ~"enum", ~"export", ~"extern",
+        ~"else", ~"enum", ~"extern",
         ~"fail", ~"false", ~"fn", ~"for",
         ~"if", ~"impl",
         ~"let", ~"log", ~"loop",

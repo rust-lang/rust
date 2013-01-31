@@ -111,9 +111,6 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
       ast_map::node_stmt(*) => {
         ccx.tcx.sess.bug(~"Can't monomorphize a stmt")
       }
-      ast_map::node_export(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize an export")
-      }
       ast_map::node_arg(*) => ccx.tcx.sess.bug(~"Can't monomorphize an arg"),
       ast_map::node_block(*) => {
           ccx.tcx.sess.bug(~"Can't monomorphize a block")
@@ -255,7 +252,6 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
       ast_map::node_expr(*) |
       ast_map::node_stmt(*) |
       ast_map::node_trait_method(*) |
-      ast_map::node_export(*) |
       ast_map::node_arg(*) |
       ast_map::node_block(*) |
       ast_map::node_local(*) => {

@@ -1865,25 +1865,20 @@ pub fn print_view_item(s: ps, item: @ast::view_item) {
     print_outer_attributes(s, item.attrs);
     print_visibility(s, item.vis);
     match item.node {
-      ast::view_item_use(id, mta, _) => {
-        head(s, ~"extern mod");
-        print_ident(s, id);
-        if !mta.is_empty() {
-            popen(s);
-            commasep(s, consistent, mta, print_meta_item);
-            pclose(s);
+        ast::view_item_use(id, mta, _) => {
+            head(s, ~"extern mod");
+            print_ident(s, id);
+            if !mta.is_empty() {
+                popen(s);
+                commasep(s, consistent, mta, print_meta_item);
+                pclose(s);
+            }
         }
-      }
 
-      ast::view_item_import(vps) => {
-        head(s, ~"use");
-        print_view_paths(s, vps);
-      }
-
-      ast::view_item_export(vps) => {
-        head(s, ~"export");
-        print_view_paths(s, vps);
-      }
+        ast::view_item_import(vps) => {
+            head(s, ~"use");
+            print_view_paths(s, vps);
+        }
     }
     word(s.s, ~";");
     end(s); // end inner head-block

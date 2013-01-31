@@ -96,7 +96,6 @@ pub enum ast_node {
     node_variant(variant, @item, @path),
     node_expr(@expr),
     node_stmt(@stmt),
-    node_export(@view_path, @path),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
     node_arg(arg, uint),
@@ -128,7 +127,6 @@ pub fn mk_ast_map_visitor() -> vt {
         visit_fn: map_fn,
         visit_local: map_local,
         visit_arm: map_arm,
-        visit_view_item: map_view_item,
         visit_block: map_block,
         .. *visit::default_visitor()
     });
@@ -324,23 +322,6 @@ pub fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
     }
 }
 
-pub fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
-    match vi.node {
-      view_item_export(vps) => for vps.each |vp| {
-        let (id, name) = match vp.node {
-          view_path_simple(nm, _, _, id) => {
-            (id, /* FIXME (#2543) */ copy nm)
-          }
-          view_path_glob(pth, id) | view_path_list(pth, _, id) => {
-            (id, path_to_ident(pth))
-          }
-        };
-        cx.map.insert(id, node_export(*vp, extend(cx, name)));
-      },
-      _ => ()
-    }
-}
-
 pub fn map_expr(ex: @expr, cx: ctx, v: vt) {
     cx.map.insert(ex.id, node_expr(ex));
     visit::visit_expr(ex, cx, v);
@@ -395,11 +376,6 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       Some(node_stmt(stmt)) => {
         fmt!("stmt %s (id=%?)",
              pprust::stmt_to_str(*stmt, itr), id)
-      }
-      // FIXMEs are as per #2410
-      Some(node_export(_, path)) => {
-        fmt!("export %s (id=%?)", // add more info here
-             path_to_str(*path, itr), id)
       }
       Some(node_arg(_, _)) => { // add more info here
         fmt!("arg (id=%?)", id)
