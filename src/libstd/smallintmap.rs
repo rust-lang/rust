@@ -95,6 +95,10 @@ impl<V> SmallIntMap<V>: Container {
     pure fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
+impl<V> SmallIntMap<V>: Mutable {
+    fn clear(&mut self) { self.v.set(~[]) }
+}
+
 /// Implements the map::map interface for smallintmap
 impl<V: Copy> SmallIntMap<V> {
     #[inline(always)]
@@ -110,9 +114,6 @@ impl<V: Copy> SmallIntMap<V> {
         let old = self.v.get_elt(key);
         self.v.set_elt(key, None);
         old.is_some()
-    }
-    fn clear() {
-        self.v.set(~[]);
     }
     pure fn contains_key(key: uint) -> bool {
         contains_key(self, key)
@@ -189,6 +190,19 @@ mod tests {
         map.insert(14, 22);
         assert map.len() == 3;
         assert !map.is_empty();
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut map = mk();
+        map.insert(5, 20);
+        map.insert(11, 12);
+        map.insert(14, 22);
+        map.clear();
+        assert map.is_empty();
+        assert map.find(5).is_none();
+        assert map.find(11).is_none();
+        assert map.find(14).is_none();
     }
 
     #[test]
