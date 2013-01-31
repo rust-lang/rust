@@ -754,7 +754,7 @@ mod test_qsort3 {
             let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let mut v1 = ~[9]; let v2 = ~[9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let mut v2 = ~[9]; check_sort(v1, v2); }
         {
             let mut v1 = ~[9, 3, 3, 3, 9];
             let mut v2 = ~[3, 3, 3, 9, 9];
@@ -801,7 +801,7 @@ mod test_qsort {
             let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let mut v1 = ~[9]; let v2 = ~[9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let mut v2 = ~[9]; check_sort(v1, v2); }
         {
             let mut v1 = ~[9, 3, 3, 3, 9];
             let mut v2 = ~[3, 3, 3, 9, 9];
@@ -818,7 +818,7 @@ mod test_qsort {
 
         do quick_sort(names) |x, y| { int::le(*x, *y) };
 
-        let immut_names = vec::cast_from_mut(move names);
+        let immut_names = move names;
 
         let pairs = vec::zip_slice(expected, immut_names);
         for vec::each(pairs) |p| {
@@ -951,7 +951,7 @@ mod test_tim_sort {
             let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let mut v1 = ~[9]; let v2 = ~[9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let mut v2 = ~[9]; check_sort(v1, v2); }
         {
             let mut v1 = ~[9, 3, 3, 3, 9];
             let mut v2 = ~[3, 3, 3, 9, 9];
@@ -1024,7 +1024,7 @@ mod big_tests {
         let res = do vec::from_fn(num) |i| {
             arr[i % size]
         };
-        vec::cast_to_mut(move res)
+        move res
     }
 
     fn makeRange(n: uint) -> ~[uint] {
@@ -1050,7 +1050,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 rng.gen_float()
             };
-            let arr = vec::cast_to_mut(move arr);
+            let mut arr = move arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1088,7 +1088,7 @@ mod big_tests {
             tim_sort(arr);
             isSorted(arr);
 
-            let arr = if n > 4 {
+            let mut arr = if n > 4 {
                 let part = vec::view(arr, 0, 4);
                 multiplyVec(part, n)
             } else { move arr };
@@ -1122,7 +1122,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 @rng.gen_float()
             };
-            let arr = vec::cast_to_mut(move arr);
+            let mut arr = move arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1160,7 +1160,7 @@ mod big_tests {
             tim_sort(arr);
             isSorted(arr);
 
-            let arr = if n > 4 {
+            let mut arr = if n > 4 {
                 let part = vec::view(arr, 0, 4);
                 multiplyVec(part, n)
             } else { move arr };
