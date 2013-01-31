@@ -19,7 +19,6 @@
 
 */
 
-#[legacy_modes];
 
 extern mod std;
 

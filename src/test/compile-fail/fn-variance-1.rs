@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_modes];
 
 fn takes_mut(&&x: @mut int) { }
 fn takes_const(&&x: @const int) { }

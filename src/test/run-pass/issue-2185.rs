@@ -14,7 +14,6 @@
 // However, the condition it was testing seemed complex enough to
 // warrant still having a test, so I inlined the old definitions.
 
-#[legacy_modes];
 
 trait iterable<A> {
     fn iter(blk: fn(A));

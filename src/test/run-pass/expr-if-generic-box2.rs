@@ -10,7 +10,6 @@
 
 // xfail-fast
 // -*- rust -*-
-#[legacy_modes];
 
 type compare<T> = fn@(T, T) -> bool;
 

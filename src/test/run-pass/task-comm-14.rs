@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 fn main() {
     let po = pipes::PortSet();

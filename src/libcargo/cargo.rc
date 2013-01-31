@@ -27,7 +27,6 @@
 
 #[no_core];
 
-#[legacy_modes];
 
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];

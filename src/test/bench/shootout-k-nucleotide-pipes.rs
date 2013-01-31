@@ -11,7 +11,6 @@
 // xfail-pretty (extra blank line is inserted in vec::mapi call)
 // multi tasking k-nucleotide
 
-#[legacy_modes];
 
 extern mod std;
 use std::map;

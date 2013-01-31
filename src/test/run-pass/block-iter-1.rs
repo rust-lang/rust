@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 fn iter_vec<T>(v: ~[T], f: fn(T)) { for v.each |x| { f(*x); } }
 

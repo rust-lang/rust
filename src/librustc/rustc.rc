@@ -18,7 +18,6 @@
 #[license = "MIT"];
 #[crate_type = "lib"];
 
-#[legacy_modes];
 #[legacy_records];
 
 #[allow(non_implicitly_copyable_typarams)];
