@@ -23,11 +23,11 @@ use util::NominalOp;
 use std::par;
 use std::cell::Cell;
 
-pub fn mk_pass(+name: ~str, +op: fn~(&str) -> ~str) -> Pass {
+pub fn mk_pass(name: ~str, op: fn~(&str) -> ~str) -> Pass {
     let op = Cell(op);
     Pass {
         name: copy name,
-        f: fn~(move op, srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
+        f: fn~(move op, srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
             run(srv, doc, op.take())
         }
     }
@@ -38,8 +38,8 @@ type Op = fn~(&str) -> ~str;
 #[allow(non_implicitly_copyable_typarams)]
 fn run(
     _srv: astsrv::Srv,
-    +doc: doc::Doc,
-    +op: Op
+    doc: doc::Doc,
+    op: Op
 ) -> doc::Doc {
     let op = NominalOp {
         op: move op
@@ -54,13 +54,13 @@ fn run(
     (fold.fold_doc)(&fold, doc)
 }
 
-fn maybe_apply_op(+op: NominalOp<Op>, s: &Option<~str>) -> Option<~str> {
+fn maybe_apply_op(op: NominalOp<Op>, s: &Option<~str>) -> Option<~str> {
     s.map(|s| (op.op)(*s) )
 }
 
 fn fold_item(
     fold: &fold::Fold<NominalOp<Op>>,
-    +doc: doc::ItemDoc
+    doc: doc::ItemDoc
 ) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
@@ -73,8 +73,8 @@ fn fold_item(
 }
 
 fn apply_to_sections(
-    +op: NominalOp<Op>,
-    +sections: ~[doc::Section]
+    op: NominalOp<Op>,
+    sections: ~[doc::Section]
 ) -> ~[doc::Section] {
     par::map(sections, |section, copy op| doc::Section {
         header: (op.op)(copy section.header),
@@ -84,7 +84,7 @@ fn apply_to_sections(
 
 fn fold_enum(
     fold: &fold::Fold<NominalOp<Op>>,
-    +doc: doc::EnumDoc) -> doc::EnumDoc {
+    doc: doc::EnumDoc) -> doc::EnumDoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
     let fold_copy = copy *fold;
 
@@ -101,7 +101,7 @@ fn fold_enum(
 
 fn fold_trait(
     fold: &fold::Fold<NominalOp<Op>>,
-    +doc: doc::TraitDoc
+    doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
@@ -112,8 +112,8 @@ fn fold_trait(
 }
 
 fn apply_to_methods(
-    +op: NominalOp<Op>,
-    +docs: ~[doc::MethodDoc]
+    op: NominalOp<Op>,
+    docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc, copy op| {
         doc::MethodDoc {
@@ -127,7 +127,7 @@ fn apply_to_methods(
 
 fn fold_impl(
     fold: &fold::Fold<NominalOp<Op>>,
-    +doc: doc::ImplDoc
+    doc: doc::ImplDoc
 ) -> doc::ImplDoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
@@ -303,7 +303,7 @@ mod test {
 
     use core::str;
 
-    pub fn mk_doc(+source: ~str) -> doc::Doc {
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = (attr_pass::mk_pass().f)(srv, doc);

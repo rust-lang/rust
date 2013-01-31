@@ -34,8 +34,8 @@ pub enum WriteInstr {
     Done
 }
 
-pub type Writer = fn~(+v: WriteInstr);
-pub type WriterFactory = fn~(+page: doc::Page) -> Writer;
+pub type Writer = fn~(v: WriteInstr);
+pub type WriterFactory = fn~(page: doc::Page) -> Writer;
 
 pub trait WriterUtils {
     fn write_str(+str: ~str);
@@ -44,11 +44,11 @@ pub trait WriterUtils {
 }
 
 impl Writer: WriterUtils {
-    fn write_str(+str: ~str) {
+    fn write_str(str: ~str) {
         self(Write(str));
     }
 
-    fn write_line(+str: ~str) {
+    fn write_line(str: ~str) {
         self.write_str(str + ~"\n");
     }
 
@@ -57,7 +57,7 @@ impl Writer: WriterUtils {
     }
 }
 
-pub fn make_writer_factory(+config: config::Config) -> WriterFactory {
+pub fn make_writer_factory(config: config::Config) -> WriterFactory {
     match config.output_format {
       config::Markdown => {
         markdown_writer_factory(config)
@@ -68,21 +68,21 @@ pub fn make_writer_factory(+config: config::Config) -> WriterFactory {
     }
 }
 
-fn markdown_writer_factory(+config: config::Config) -> WriterFactory {
-    fn~(+page: doc::Page) -> Writer {
+fn markdown_writer_factory(config: config::Config) -> WriterFactory {
+    fn~(page: doc::Page) -> Writer {
         markdown_writer(copy config, page)
     }
 }
 
-fn pandoc_writer_factory(+config: config::Config) -> WriterFactory {
-    fn~(+page: doc::Page) -> Writer {
+fn pandoc_writer_factory(config: config::Config) -> WriterFactory {
+    fn~(page: doc::Page) -> Writer {
         pandoc_writer(copy config, page)
     }
 }
 
 fn markdown_writer(
-    +config: config::Config,
-    +page: doc::Page
+    config: config::Config,
+    page: doc::Page
 ) -> Writer {
     let filename = make_local_filename(config, page);
     do generic_writer |markdown| {
@@ -91,8 +91,8 @@ fn markdown_writer(
 }
 
 fn pandoc_writer(
-    +config: config::Config,
-    +page: doc::Page
+    config: config::Config,
+    page: doc::Page
 ) -> Writer {
     assert config.pandoc_cmd.is_some();
     let pandoc_cmd = (&config.pandoc_cmd).get();
@@ -167,7 +167,7 @@ fn readclose(fd: libc::c_int) -> ~str {
     }
 }
 
-fn generic_writer(+process: fn~(+markdown: ~str)) -> Writer {
+fn generic_writer(process: fn~(markdown: ~str)) -> Writer {
     let (setup_po, setup_ch) = pipes::stream();
     do task::spawn |move process, move setup_ch| {
         let po: oldcomm::Port<WriteInstr> = oldcomm::Port();
@@ -186,22 +186,22 @@ fn generic_writer(+process: fn~(+markdown: ~str)) -> Writer {
     };
     let ch = setup_po.recv();
 
-    fn~(+instr: WriteInstr) {
+    fn~(instr: WriteInstr) {
         oldcomm::send(ch, instr);
     }
 }
 
 fn make_local_filename(
-    +config: config::Config,
-    +page: doc::Page
+    config: config::Config,
+    page: doc::Page
 ) -> Path {
     let filename = make_filename(copy config, page);
     config.output_dir.push_rel(&filename)
 }
 
 pub fn make_filename(
-    +config: config::Config,
-    +page: doc::Page
+    config: config::Config,
+    page: doc::Page
 ) -> Path {
     let filename = {
         match page {
@@ -277,7 +277,7 @@ mod test {
     use extract;
     use path_pass;
 
-    pub fn mk_doc(+name: ~str, +source: ~str) -> doc::Doc {
+    pub fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, copy name);
             let doc = (path_pass::mk_pass().f)(srv, doc);
@@ -286,7 +286,7 @@ mod test {
     }
 }
 
-fn write_file(path: &Path, +s: ~str) {
+fn write_file(path: &Path, s: ~str) {
     use io::WriterUtil;
 
     match io::file_writer(path, ~[io::Create, io::Truncate]) {
@@ -301,7 +301,7 @@ pub fn future_writer_factory(
 ) -> (WriterFactory, oldcomm::Port<(doc::Page, ~str)>) {
     let markdown_po = oldcomm::Port();
     let markdown_ch = oldcomm::Chan(&markdown_po);
-    let writer_factory = fn~(+page: doc::Page) -> Writer {
+    let writer_factory = fn~(page: doc::Page) -> Writer {
         let (writer_po, writer_ch) = pipes::stream();
         do task::spawn |move writer_ch| {
             let (writer, future) = future_writer();
@@ -317,7 +317,7 @@ pub fn future_writer_factory(
 
 fn future_writer() -> (Writer, future::Future<~str>) {
     let (port, chan) = pipes::stream();
-    let writer = fn~(move chan, +instr: WriteInstr) {
+    let writer = fn~(move chan, instr: WriteInstr) {
         chan.send(copy instr);
     };
     let future = do future::from_fn |move port| {

@@ -25,10 +25,10 @@ use pass::Pass;
 use core::str;
 use std::par;
 
-pub fn mk_pass(+config: config::Config) -> Pass {
+pub fn mk_pass(config: config::Config) -> Pass {
     Pass {
         name: ~"markdown_index",
-        f: fn~(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
+        f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
             run(srv, doc, copy config)
         }
     }
@@ -36,8 +36,8 @@ pub fn mk_pass(+config: config::Config) -> Pass {
 
 pub fn run(
     _srv: astsrv::Srv,
-    +doc: doc::Doc,
-    +config: config::Config
+    doc: doc::Doc,
+    config: config::Config
 ) -> doc::Doc {
     let fold = Fold {
         fold_mod: fold_mod,
@@ -49,7 +49,7 @@ pub fn run(
 
 fn fold_mod(
     fold: &fold::Fold<config::Config>,
-    +doc: doc::ModDoc
+    doc: doc::ModDoc
 ) -> doc::ModDoc {
 
     let doc = fold::default_any_fold_mod(fold, doc);
@@ -62,7 +62,7 @@ fn fold_mod(
 
 fn fold_nmod(
     fold: &fold::Fold<config::Config>,
-    +doc: doc::NmodDoc
+    doc: doc::NmodDoc
 ) -> doc::NmodDoc {
 
     let doc = fold::default_any_fold_nmod(fold, doc);
@@ -74,8 +74,8 @@ fn fold_nmod(
 }
 
 fn build_mod_index(
-    +doc: doc::ModDoc,
-    +config: config::Config
+    doc: doc::ModDoc,
+    config: config::Config
 ) -> doc::Index {
     doc::Index {
         entries: par::map(doc.items, |doc| {
@@ -85,8 +85,8 @@ fn build_mod_index(
 }
 
 fn build_nmod_index(
-    +doc: doc::NmodDoc,
-    +config: config::Config
+    doc: doc::NmodDoc,
+    config: config::Config
 ) -> doc::Index {
     doc::Index {
         entries: par::map(doc.fns, |doc| {
@@ -96,8 +96,8 @@ fn build_nmod_index(
 }
 
 fn item_to_entry(
-    +doc: doc::ItemTag,
-    +config: config::Config
+    doc: doc::ItemTag,
+    config: config::Config
 ) -> doc::IndexEntry {
     let link = match doc {
       doc::ModTag(_) | doc::NmodTag(_)
@@ -266,7 +266,7 @@ mod test {
 
     use core::path::Path;
 
-    pub fn mk_doc(output_style: config::OutputStyle, +source: ~str)
+    pub fn mk_doc(output_style: config::OutputStyle, source: ~str)
                -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let config = config::Config {
