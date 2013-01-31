@@ -1234,7 +1234,7 @@ For example:
 
 ~~~~
 trait Num {
-    static pure fn from_int(n: int) -> self;
+    static pure fn from_int(n: int) -> Self;
 }
 impl float: Num {
     static pure fn from_int(n: int) -> float { n as float }
@@ -1743,7 +1743,6 @@ task in a _failing state_.
 # do task::spawn_unlinked {
 
 ([1, 2, 3, 4])[0];
-(['x', 'y'])[1] = 'z';
 (["a", "b"])[10]; // fails
 
 # }
@@ -1906,8 +1905,8 @@ No allocation or destruction is entailed.
 An example of three different swap expressions:
 
 ~~~~~~~~
-# let mut x = &[0];
-# let mut a = &[0];
+# let mut x = &mut [0];
+# let mut a = &mut [0];
 # let i = 0;
 # let y = {mut z: 0};
 # let b = {mut c: 0};
@@ -2002,7 +2001,7 @@ the unary copy operator is typically only used to cause an argument to a functio
 An example of a copy expression:
 
 ~~~~
-fn mutate(vec: ~[int]) {
+fn mutate(mut vec: ~[int]) {
    vec[0] = 10;
 }
 
