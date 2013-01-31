@@ -25,9 +25,9 @@ use syntax::attr;
 use syntax::codemap;
 use syntax;
 
-pub type CrateAttrs = {
+pub struct CrateAttrs {
     name: Option<~str>
-};
+}
 
 #[cfg(test)]
 mod test {
@@ -66,7 +66,7 @@ fn doc_metas(
 pub fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
     let link_metas = attr::find_linkage_metas(attrs);
 
-    {
+    CrateAttrs {
         name: attr::last_meta_item_value_str_by_name(link_metas, ~"name")
     }
 }

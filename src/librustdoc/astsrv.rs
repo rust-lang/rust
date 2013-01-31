@@ -40,10 +40,10 @@ use syntax::diagnostic::handler;
 use syntax::diagnostic;
 use syntax;
 
-pub type Ctxt = {
+pub struct Ctxt {
     ast: @ast::crate,
     ast_map: ast_map::map
-};
+}
 
 type SrvOwner<T> = fn(srv: Srv) -> T;
 pub type CtxtHandler<T> = fn~(ctxt: Ctxt) -> T;
@@ -54,9 +54,9 @@ enum Msg {
     Exit
 }
 
-pub enum Srv = {
+pub struct Srv {
     ch: oldcomm::Chan<Msg>
-};
+}
 
 impl Srv: Clone {
     fn clone(&self) -> Srv { copy *self }
@@ -72,11 +72,11 @@ pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
 
 fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
 
-    let srv_ = Srv({
+    let srv_ = Srv {
         ch: do util::spawn_listener |copy source, move parse, po| {
             act(po, copy source, copy parse);
         }
-    });
+    };
 
     let res = owner(srv_);
     oldcomm::send(srv_.ch, Exit);
@@ -127,7 +127,7 @@ fn build_ctxt(sess: Session,
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), *ast);
 
-    {
+    Ctxt {
         ast: ast,
         ast_map: ast_map,
     }
