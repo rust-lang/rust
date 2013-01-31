@@ -164,7 +164,7 @@ trait TheShunnedHouse {
      * * unkempt_yard - A yard dating from a time when the region was partly
      *                  open country
      */
-    fn dingy_house(unkempt_yard: int);
+    fn dingy_house(&self, unkempt_yard: int);
 
     /**
      * The house was--and for that matter still is--of a kind to attract
@@ -183,15 +183,15 @@ trait TheShunnedHouse {
      * the removal of the bodies to the North Burial Ground made it
      * decently possible to cut through the old family plots.
      */
-    fn construct() -> bool;
+    fn construct(&self) -> bool;
 }
 
 /// Whatever
 impl OmNomNomy: TheShunnedHouse {
-    fn dingy_house(_unkempt_yard: int) {
+    fn dingy_house(&self, _unkempt_yard: int) {
     }
 
-    fn construct() -> bool {
+    fn construct(&self) -> bool {
         fail;
     }
 }
