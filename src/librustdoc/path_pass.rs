@@ -39,7 +39,7 @@ impl Ctxt: Clone {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
+fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
     let ctxt = Ctxt {
         srv: srv,
         mut path: ~[]
@@ -53,7 +53,7 @@ fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
     (fold.fold_doc)(&fold, doc)
 }
 
-fn fold_item(fold: &fold::Fold<Ctxt>, +doc: doc::ItemDoc) -> doc::ItemDoc {
+fn fold_item(fold: &fold::Fold<Ctxt>, doc: doc::ItemDoc) -> doc::ItemDoc {
     doc::ItemDoc {
         path: copy fold.ctxt.path,
         .. doc
@@ -61,7 +61,7 @@ fn fold_item(fold: &fold::Fold<Ctxt>, +doc: doc::ItemDoc) -> doc::ItemDoc {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn fold_mod(fold: &fold::Fold<Ctxt>, +doc: doc::ModDoc) -> doc::ModDoc {
+fn fold_mod(fold: &fold::Fold<Ctxt>, doc: doc::ModDoc) -> doc::ModDoc {
     let is_topmod = doc.id() == ast::crate_node_id;
 
     if !is_topmod { fold.ctxt.path.push(doc.name()); }
@@ -74,7 +74,7 @@ fn fold_mod(fold: &fold::Fold<Ctxt>, +doc: doc::ModDoc) -> doc::ModDoc {
     }
 }
 
-fn fold_nmod(fold: &fold::Fold<Ctxt>, +doc: doc::NmodDoc) -> doc::NmodDoc {
+fn fold_nmod(fold: &fold::Fold<Ctxt>, doc: doc::NmodDoc) -> doc::NmodDoc {
     fold.ctxt.path.push(doc.name());
     let doc = fold::default_seq_fold_nmod(fold, doc);
     fold.ctxt.path.pop();

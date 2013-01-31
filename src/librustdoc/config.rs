@@ -123,7 +123,7 @@ pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
 
 pub fn parse_config_(
     args: &[~str],
-    +program_output: ProgramOutput
+    program_output: ProgramOutput
 ) -> Result<Config, ~str> {
     let args = args.tail();
     let opts = vec::unzip(opts()).first();
@@ -147,7 +147,7 @@ pub fn parse_config_(
 fn config_from_opts(
     input_crate: &Path,
     matches: &getopts::Matches,
-    +program_output: ProgramOutput
+    program_output: ProgramOutput
 ) -> Result<Config, ~str> {
 
     let config = default_config(input_crate);
@@ -222,8 +222,8 @@ fn parse_output_style(output_style: &str) -> Result<OutputStyle, ~str> {
 
 fn maybe_find_pandoc(
     config: &Config,
-    +maybe_pandoc_cmd: Option<~str>,
-    +program_output: ProgramOutput
+    maybe_pandoc_cmd: Option<~str>,
+    program_output: ProgramOutput
 ) -> Result<Option<~str>, ~str> {
     if config.output_format != PandocHtml {
         return result::Ok(maybe_pandoc_cmd);

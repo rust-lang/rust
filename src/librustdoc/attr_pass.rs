@@ -43,7 +43,7 @@ pub fn mk_pass() -> Pass {
 
 pub fn run(
     srv: astsrv::Srv,
-    +doc: doc::Doc
+    doc: doc::Doc
 ) -> doc::Doc {
     let fold = Fold {
         fold_crate: fold_crate,
@@ -58,7 +58,7 @@ pub fn run(
 
 fn fold_crate(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::CrateDoc
+    doc: doc::CrateDoc
 ) -> doc::CrateDoc {
 
     let srv = fold.ctxt;
@@ -89,7 +89,7 @@ fn should_replace_top_module_name_with_crate_name() {
 
 fn fold_item(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::ItemDoc
+    doc: doc::ItemDoc
 ) -> doc::ItemDoc {
 
     let srv = fold.ctxt;
@@ -113,7 +113,7 @@ fn fold_item(
 fn parse_item_attrs<T:Owned>(
     srv: astsrv::Srv,
     id: doc::AstId,
-    +parse_attrs: fn~(+a: ~[ast::attribute]) -> T) -> T {
+    parse_attrs: fn~(a: ~[ast::attribute]) -> T) -> T {
     do astsrv::exec(srv) |move parse_attrs, ctxt| {
         let attrs = match ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) => copy item.attrs,
@@ -156,7 +156,7 @@ fn should_extract_fn_attributes() {
 
 fn fold_enum(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::EnumDoc
+    doc: doc::EnumDoc
 ) -> doc::EnumDoc {
 
     let srv = fold.ctxt;
@@ -207,7 +207,7 @@ fn should_extract_variant_docs() {
 
 fn fold_trait(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::TraitDoc
+    doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_trait(fold, doc);
@@ -221,7 +221,7 @@ fn fold_trait(
 fn merge_method_attrs(
     srv: astsrv::Srv,
     item_id: doc::AstId,
-    +docs: ~[doc::MethodDoc]
+    docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
 
     // Create an assoc list from method name to attributes
@@ -284,7 +284,7 @@ fn should_extract_trait_method_docs() {
 
 fn fold_impl(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::ImplDoc
+    doc: doc::ImplDoc
 ) -> doc::ImplDoc {
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_impl(fold, doc);
@@ -319,7 +319,7 @@ mod test {
     use doc;
     use extract;
 
-    pub fn mk_doc(+source: ~str) -> doc::Doc {
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

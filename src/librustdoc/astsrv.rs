@@ -47,7 +47,7 @@ pub type Ctxt = {
 
 type SrvOwner<T> = fn(srv: Srv) -> T;
 pub type CtxtHandler<T> = fn~(ctxt: Ctxt) -> T;
-type Parser = fn~(Session, +s: ~str) -> @ast::crate;
+type Parser = fn~(Session, s: ~str) -> @ast::crate;
 
 enum Msg {
     HandleRequest(fn~(Ctxt)),
@@ -62,15 +62,15 @@ impl Srv: Clone {
     fn clone(&self) -> Srv { copy *self }
 }
 
-pub fn from_str<T>(+source: ~str, owner: SrvOwner<T>) -> T {
+pub fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
     run(owner, copy source, parse::from_str_sess)
 }
 
-pub fn from_file<T>(+file: ~str, owner: SrvOwner<T>) -> T {
+pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
     run(owner, copy file, |sess, f| parse::from_file_sess(sess, &Path(f)))
 }
 
-fn run<T>(owner: SrvOwner<T>, +source: ~str, +parse: Parser) -> T {
+fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
 
     let srv_ = Srv({
         ch: do util::spawn_listener |copy source, move parse, po| {
@@ -83,7 +83,7 @@ fn run<T>(owner: SrvOwner<T>, +source: ~str, +parse: Parser) -> T {
     move res
 }
 
-fn act(po: oldcomm::Port<Msg>, +source: ~str, +parse: Parser) {
+fn act(po: oldcomm::Port<Msg>, source: ~str, parse: Parser) {
     let sess = build_session();
 
     let ctxt = build_ctxt(
@@ -106,7 +106,7 @@ fn act(po: oldcomm::Port<Msg>, +source: ~str, +parse: Parser) {
 
 pub fn exec<T:Owned>(
     srv: Srv,
-    +f: fn~(ctxt: Ctxt) -> T
+    f: fn~(ctxt: Ctxt) -> T
 ) -> T {
     let (po, ch) = stream();
     let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {

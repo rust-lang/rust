@@ -37,7 +37,7 @@ pub fn mk_pass() -> Pass {
 
 pub fn run(
     srv: astsrv::Srv,
-    +doc: doc::Doc
+    doc: doc::Doc
 ) -> doc::Doc {
     let fold = Fold {
         fold_fn: fold_fn,
@@ -54,7 +54,7 @@ pub fn run(
 
 fn fold_fn(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::FnDoc
+    doc: doc::FnDoc
 ) -> doc::FnDoc {
 
     let srv = fold.ctxt;
@@ -98,7 +98,7 @@ fn should_add_foreign_fn_sig() {
 
 fn fold_const(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::ConstDoc
+    doc: doc::ConstDoc
 ) -> doc::ConstDoc {
     let srv = fold.ctxt;
 
@@ -125,7 +125,7 @@ fn should_add_const_types() {
 
 fn fold_enum(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::EnumDoc
+    doc: doc::EnumDoc
 ) -> doc::EnumDoc {
     let doc_id = doc.id();
     let srv = fold.ctxt;
@@ -166,7 +166,7 @@ fn should_add_variant_sigs() {
 
 fn fold_trait(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::TraitDoc
+    doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     doc::TraitDoc {
         methods: merge_methods(fold.ctxt, doc.id(), copy doc.methods),
@@ -177,7 +177,7 @@ fn fold_trait(
 fn merge_methods(
     srv: astsrv::Srv,
     item_id: doc::AstId,
-    +docs: ~[doc::MethodDoc]
+    docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc| {
         doc::MethodDoc {
@@ -190,7 +190,7 @@ fn merge_methods(
 fn get_method_sig(
     srv: astsrv::Srv,
     item_id: doc::AstId,
-    +method_name: ~str
+    method_name: ~str
 ) -> Option<~str> {
     do astsrv::exec(srv) |copy method_name, ctxt| {
         match ctxt.ast_map.get(item_id) {
@@ -257,7 +257,7 @@ fn should_add_trait_method_sigs() {
 
 fn fold_impl(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::ImplDoc
+    doc: doc::ImplDoc
 ) -> doc::ImplDoc {
 
     let srv = fold.ctxt;
@@ -312,7 +312,7 @@ fn should_add_impl_method_sigs() {
 
 fn fold_type(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::TyDoc
+    doc: doc::TyDoc
 ) -> doc::TyDoc {
 
     let srv = fold.ctxt;
@@ -346,7 +346,7 @@ fn should_add_type_signatures() {
 
 fn fold_struct(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::StructDoc
+    doc: doc::StructDoc
 ) -> doc::StructDoc {
     let srv = fold.ctxt;
 
@@ -415,7 +415,7 @@ pub mod test {
     use extract;
     use tystr_pass::run;
 
-    pub fn mk_doc(+source: ~str) -> doc::Doc {
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

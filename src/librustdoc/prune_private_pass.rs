@@ -29,7 +29,7 @@ pub fn mk_pass() -> Pass {
     }
 }
 
-pub fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
+pub fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
     let fold = Fold {
         fold_mod: fold_mod,
         .. fold::default_any_fold(srv)
@@ -39,7 +39,7 @@ pub fn run(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
 
 fn fold_mod(
     fold: &fold::Fold<astsrv::Srv>,
-    +doc: doc::ModDoc
+    doc: doc::ModDoc
 ) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
 
@@ -51,7 +51,7 @@ fn fold_mod(
     }
 }
 
-fn is_visible(srv: astsrv::Srv, +doc: doc::ItemDoc) -> bool {
+fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
     use syntax::ast_map;
     use syntax::ast;
 
@@ -80,7 +80,7 @@ pub mod test {
     use extract;
     use prune_private_pass::run;
 
-    pub fn mk_doc(+source: ~str) -> doc::Doc {
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

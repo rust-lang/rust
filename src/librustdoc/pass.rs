@@ -25,8 +25,8 @@ pub struct Pass {
 
 pub fn run_passes(
     srv: astsrv::Srv,
-    +doc: doc::Doc,
-    +passes: ~[Pass]
+    doc: doc::Doc,
+    passes: ~[Pass]
 ) -> doc::Doc {
     let mut passno = 0;
     do vec::foldl(doc, passes) |doc, pass| {
@@ -42,7 +42,7 @@ pub fn run_passes(
 fn test_run_passes() {
     fn pass1(
         _srv: astsrv::Srv,
-        +doc: doc::Doc
+        doc: doc::Doc
     ) -> doc::Doc {
         doc::Doc{
             pages: ~[
@@ -61,7 +61,7 @@ fn test_run_passes() {
     }
     fn pass2(
         _srv: astsrv::Srv,
-        +doc: doc::Doc
+        doc: doc::Doc
     ) -> doc::Doc {
         doc::Doc{
             pages: ~[

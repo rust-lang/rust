@@ -23,7 +23,7 @@ impl<T: Copy> NominalOp<T>: Clone {
 }
 
 pub fn spawn_listener<A: Owned>(
-    +f: fn~(oldcomm::Port<A>)) -> oldcomm::Chan<A> {
+    f: fn~(oldcomm::Port<A>)) -> oldcomm::Chan<A> {
     let setup_po = oldcomm::Port();
     let setup_ch = oldcomm::Chan(&setup_po);
     do task::spawn |move f| {
@@ -36,7 +36,7 @@ pub fn spawn_listener<A: Owned>(
 }
 
 pub fn spawn_conversation<A: Owned, B: Owned>
-    (+f: fn~(oldcomm::Port<A>, oldcomm::Chan<B>))
+    (f: fn~(oldcomm::Port<A>, oldcomm::Chan<B>))
     -> (oldcomm::Port<B>, oldcomm::Chan<A>) {
     let from_child = oldcomm::Port();
     let to_parent = oldcomm::Chan(&from_child);

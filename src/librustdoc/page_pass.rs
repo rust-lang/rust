@@ -36,7 +36,7 @@ use syntax::ast;
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
     Pass {
         name: ~"page",
-        f: fn~(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc {
+        f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
             run(srv, doc, output_style)
         }
     }
@@ -44,7 +44,7 @@ pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
 
 pub fn run(
     _srv: astsrv::Srv,
-    +doc: doc::Doc,
+    doc: doc::Doc,
     output_style: config::OutputStyle
 ) -> doc::Doc {
 
@@ -81,7 +81,7 @@ fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
     }
 }
 
-fn find_pages(+doc: doc::Doc, page_chan: PageChan) {
+fn find_pages(doc: doc::Doc, page_chan: PageChan) {
     let fold = Fold {
         fold_crate: fold_crate,
         fold_mod: fold_mod,
@@ -95,7 +95,7 @@ fn find_pages(+doc: doc::Doc, page_chan: PageChan) {
 
 fn fold_crate(
     fold: &fold::Fold<NominalPageChan>,
-    +doc: doc::CrateDoc
+    doc: doc::CrateDoc
 ) -> doc::CrateDoc {
 
     let doc = fold::default_seq_fold_crate(fold, doc);
@@ -112,7 +112,7 @@ fn fold_crate(
 
 fn fold_mod(
     fold: &fold::Fold<NominalPageChan>,
-    +doc: doc::ModDoc
+    doc: doc::ModDoc
 ) -> doc::ModDoc {
 
     let doc = fold::default_any_fold_mod(fold, doc);
@@ -127,7 +127,7 @@ fn fold_mod(
     doc
 }
 
-fn strip_mod(+doc: doc::ModDoc) -> doc::ModDoc {
+fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
     doc::ModDoc {
         items: do doc.items.filtered |item| {
             match *item {
@@ -142,7 +142,7 @@ fn strip_mod(+doc: doc::ModDoc) -> doc::ModDoc {
 
 fn fold_nmod(
     fold: &fold::Fold<NominalPageChan>,
-    +doc: doc::NmodDoc
+    doc: doc::NmodDoc
 ) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
     let page = doc::ItemPage(doc::NmodTag(copy doc));
@@ -193,7 +193,7 @@ mod test {
 
     pub fn mk_doc_(
         output_style: config::OutputStyle,
-        +source: ~str
+        source: ~str
     ) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
@@ -201,7 +201,7 @@ mod test {
         }
     }
 
-    pub fn mk_doc(+source: ~str) -> doc::Doc {
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         mk_doc_(config::DocPerMod, copy source)
     }
 }

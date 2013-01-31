@@ -39,8 +39,8 @@ enum OmNomNomy {
 }
 
 fn take_my_order_please(
-    +_waitperson: WaitPerson,
-    +_order: ~[OmNomNomy]
+    _waitperson: WaitPerson,
+    _order: ~[OmNomNomy]
 ) -> uint {
 
     /*!

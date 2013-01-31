@@ -43,7 +43,7 @@ pub fn interner() -> @syntax::parse::token::ident_interner {
 
 pub fn from_srv(
     srv: astsrv::Srv,
-    +default_name: ~str
+    default_name: ~str
 ) -> doc::Doc {
 
     //! Use the AST service to create a document tree
@@ -55,7 +55,7 @@ pub fn from_srv(
 
 pub fn extract(
     crate: @ast::crate,
-    +default_name: ~str
+    default_name: ~str
 ) -> doc::Doc {
     doc::Doc {
         pages: ~[
@@ -68,13 +68,13 @@ pub fn extract(
 
 fn top_moddoc_from_crate(
     crate: @ast::crate,
-    +default_name: ~str
+    default_name: ~str
 ) -> doc::ModDoc {
     moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
                     copy crate.node.module)
 }
 
-fn mk_itemdoc(id: ast::node_id, +name: ~str) -> doc::ItemDoc {
+fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::ItemDoc {
     doc::ItemDoc {
         id: id,
         name: name,
@@ -87,8 +87,8 @@ fn mk_itemdoc(id: ast::node_id, +name: ~str) -> doc::ItemDoc {
 }
 
 fn moddoc_from_mod(
-    +itemdoc: doc::ItemDoc,
-    +module_: ast::_mod
+    itemdoc: doc::ItemDoc,
+    module_: ast::_mod
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: itemdoc,
@@ -148,8 +148,8 @@ fn moddoc_from_mod(
 }
 
 fn nmoddoc_from_mod(
-    +itemdoc: doc::ItemDoc,
-    +module_: ast::foreign_mod
+    itemdoc: doc::ItemDoc,
+    module_: ast::foreign_mod
 ) -> doc::NmodDoc {
     let mut fns = ~[];
     for module_.items.each |item| {
@@ -168,14 +168,14 @@ fn nmoddoc_from_mod(
     }
 }
 
-fn fndoc_from_fn(+itemdoc: doc::ItemDoc) -> doc::FnDoc {
+fn fndoc_from_fn(itemdoc: doc::ItemDoc) -> doc::FnDoc {
     doc::SimpleItemDoc {
         item: itemdoc,
         sig: None
     }
 }
 
-fn constdoc_from_const(+itemdoc: doc::ItemDoc) -> doc::ConstDoc {
+fn constdoc_from_const(itemdoc: doc::ItemDoc) -> doc::ConstDoc {
     doc::SimpleItemDoc {
         item: itemdoc,
         sig: None
@@ -190,8 +190,8 @@ fn should_extract_const_name_and_id() {
 }
 
 fn enumdoc_from_enum(
-    +itemdoc: doc::ItemDoc,
-    +variants: ~[ast::variant]
+    itemdoc: doc::ItemDoc,
+    variants: ~[ast::variant]
 ) -> doc::EnumDoc {
     doc::EnumDoc {
         item: itemdoc,
@@ -200,7 +200,7 @@ fn enumdoc_from_enum(
 }
 
 fn variantdocs_from_variants(
-    +variants: ~[ast::variant]
+    variants: ~[ast::variant]
 ) -> ~[doc::VariantDoc] {
     vec::map(variants, variantdoc_from_variant)
 }
@@ -227,8 +227,8 @@ fn should_extract_enum_variants() {
 }
 
 fn traitdoc_from_trait(
-    +itemdoc: doc::ItemDoc,
-    +methods: ~[ast::trait_method]
+    itemdoc: doc::ItemDoc,
+    methods: ~[ast::trait_method]
 ) -> doc::TraitDoc {
     doc::TraitDoc {
         item: itemdoc,
@@ -272,8 +272,8 @@ fn should_extract_trait_methods() {
 }
 
 fn impldoc_from_impl(
-    +itemdoc: doc::ItemDoc,
-    +methods: ~[@ast::method]
+    itemdoc: doc::ItemDoc,
+    methods: ~[@ast::method]
 ) -> doc::ImplDoc {
     doc::ImplDoc {
         item: itemdoc,
@@ -299,7 +299,7 @@ fn should_extract_impl_methods() {
 }
 
 fn tydoc_from_ty(
-    +itemdoc: doc::ItemDoc
+    itemdoc: doc::ItemDoc
 ) -> doc::TyDoc {
     doc::SimpleItemDoc {
         item: itemdoc,
@@ -314,7 +314,7 @@ fn should_extract_tys() {
 }
 
 fn structdoc_from_struct(
-    +itemdoc: doc::ItemDoc,
+    itemdoc: doc::ItemDoc,
     struct_def: @ast::struct_def
 ) -> doc::StructDoc {
     doc::StructDoc {
@@ -350,7 +350,7 @@ mod test {
 
     use core::vec;
 
-    pub fn mk_doc(+source: ~str) -> doc::Doc {
+    pub fn mk_doc(source: ~str) -> doc::Doc {
         let ast = parse::from_str(source);
         extract(ast, ~"")
     }
