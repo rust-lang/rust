@@ -41,8 +41,8 @@ enum grid_t { grid_ctor(grid), }
 fn read_grid(f: io::Reader) -> grid_t {
     assert f.read_line() == ~"9,9"; /* assert first line is exactly "9,9" */
 
-    let g = vec::from_fn(10u, {|_i|
-        vec::cast_to_mut(vec::from_elem(10u, 0 as u8))
+    let mut g = vec::from_fn(10u, {|_i|
+        vec::from_elem(10u, 0 as u8)
     });
     while !f.eof() {
         let comps = str::split_char(str::trim(f.read_line()), ',');
@@ -57,7 +57,7 @@ fn read_grid(f: io::Reader) -> grid_t {
 
 // solve sudoku grid
 fn solve_grid(g: grid_t) {
-    fn next_color(g: grid, row: u8, col: u8, start_color: u8) -> bool {
+    fn next_color(mut g: grid, row: u8, col: u8, start_color: u8) -> bool {
         if start_color < 10u8 {
             // colors not yet used
             let avail = bitv::Bitv(10u, false);
@@ -141,8 +141,8 @@ fn main() {
     let grid = if vec::len(args) == 1u {
         // FIXME create sudoku inline since nested vec consts dont work yet
         // (#3733)
-        let g = vec::from_fn(10u, |_i| {
-            vec::cast_to_mut(vec::from_elem(10u, 0 as u8))
+        let mut g = vec::from_fn(10u, |_i| {
+            vec::from_elem(10u, 0 as u8)
         });
         g[0][1] = 4u8;
         g[0][3] = 6u8;
