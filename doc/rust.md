@@ -1234,7 +1234,7 @@ For example:
 
 ~~~~
 trait Num {
-    static pure fn from_int(n: int) -> self;
+    static pure fn from_int(n: int) -> Self;
 }
 impl float: Num {
     static pure fn from_int(n: int) -> float { n as float }
