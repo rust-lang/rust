@@ -441,7 +441,7 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
             //
             // - the datum will be by ref if the value is non-immediate;
             //
-            // - the datum has a FromRvalue source because, that way,
+            // - the datum has a RevokeClean source because, that way,
             //   the `move_to()` method does not feel compelled to
             //   zero out the memory where the datum resides.  Zeroing
             //   is not necessary since, for intrinsics, there is no
@@ -449,7 +449,7 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
             let tp_ty = substs.tys[0];
             let mode = appropriate_mode(tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode, source: FromRvalue};
+                             ty: tp_ty, mode: mode, source: RevokeClean};
             bcx = src.move_to(bcx, DROP_EXISTING,
                               get_param(decl, first_real_arg));
         }
@@ -458,7 +458,7 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
             let tp_ty = substs.tys[0];
             let mode = appropriate_mode(tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode, source: FromRvalue};
+                             ty: tp_ty, mode: mode, source: RevokeClean};
             bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
         }
         ~"min_align_of" => {
@@ -551,7 +551,7 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
                             output: ty::mk_nil(bcx.tcx())}
             });
             let datum = Datum {val: get_param(decl, first_real_arg),
-                               mode: ByRef, ty: fty, source: FromLvalue};
+                               mode: ByRef, ty: fty, source: ZeroMem};
             let arg_vals = ~[frameaddress_val];
             bcx = trans_call_inner(
                 bcx, None, fty, ty::mk_nil(bcx.tcx()),

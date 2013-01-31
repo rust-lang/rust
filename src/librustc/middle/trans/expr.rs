@@ -58,7 +58,7 @@ conditioned on the type of the expression) at some point.
 ## Translating local variables
 
 `trans_local_var()` can be used to trans a ref to a local variable
-that is not an expression.  This is needed for capture clauses.
+that is not an expression.  This is needed for captures.
 
 ## Ownership and cleanups
 
@@ -811,7 +811,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 datum: base_datum.GEPi(bcx,
                                        [0u, 0u, ix],
                                        field_tys[ix].mt.ty,
-                                       FromLvalue),
+                                       ZeroMem),
                 bcx: bcx
             }
         }
@@ -880,7 +880,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
             datum: Datum {val: elt,
                           ty: vt.unit_ty,
                           mode: ByRef,
-                          source: FromLvalue}
+                          source: ZeroMem}
         };
     }
 
@@ -917,7 +917,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                     datum: Datum {val: val,
                                   ty: const_ty,
                                   mode: ByRef,
-                                  source: FromLvalue}
+                                  source: ZeroMem}
                 }
             }
             _ => {
@@ -935,7 +935,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
 
     return match def {
         ast::def_upvar(nid, _, _, _) => {
-            // Can't move upvars, so this is never a FromLvalueLastUse.
+            // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             match bcx.fcx.llupvars.find(nid) {
                 Some(val) => {
@@ -943,7 +943,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
                         val: val,
                         ty: local_ty,
                         mode: ByRef,
-                        source: FromLvalue
+                        source: ZeroMem
                     }
                 }
                 None => {
@@ -978,7 +978,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
                 val: casted_val,
                 ty: self_info.t,
                 mode: ByRef,
-                source: FromLvalue
+                source: ZeroMem
             }
         }
         _ => {
@@ -1007,7 +1007,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             val: v,
             ty: ty,
             mode: mode,
-            source: FromLvalue
+            source: ZeroMem
         }
     }
 }
@@ -1180,7 +1180,7 @@ fn trans_rec_or_struct(bcx: block,
                         base_datum.GEPi(bcx,
                                         struct_field(i),
                                         field_ty.mt.ty,
-                                        FromLvalue);
+                                        ZeroMem);
                     bcx = base_field.store_to(bcx, base_expr.id, INIT, dest);
                 }
             }

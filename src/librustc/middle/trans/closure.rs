@@ -20,7 +20,7 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
-use middle::trans::datum::{Datum, INIT, ByRef, ByValue, FromLvalue};
+use middle::trans::datum::{Datum, INIT, ByRef, ByValue, ZeroMem};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::machine;
@@ -299,7 +299,7 @@ pub fn build_closure(bcx0: block,
     do option::iter(&include_ret_handle) |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(tcx),
-                                mode: ByRef, source: FromLvalue};
+                                mode: ByRef, source: ZeroMem};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: flag_datum});
 
@@ -311,7 +311,7 @@ pub fn build_closure(bcx0: block,
         };
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
         let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(tcx),
-                               mode: ByRef, source: FromLvalue};
+                               mode: ByRef, source: ZeroMem};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: ret_datum});
     }

@@ -641,7 +641,7 @@ pub fn trans_arg_expr(bcx: block,
                                 datum: Datum {val: scratch,
                                               ty: scratch_ty,
                                               mode: ByRef,
-                                              source: FromRvalue}}
+                                              source: RevokeClean}}
                 }
                 _ => {
                     bcx.sess().impossible_case(

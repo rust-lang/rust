@@ -934,7 +934,7 @@ pub fn root_pats_as_necessary(bcx: block,
                 // for details (look for the case covering cat_discr).
 
                 let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
-                                   mode: ByRef, source: FromLvalue};
+                                   mode: ByRef, source: ZeroMem};
                 bcx = datum.root(bcx, root_info);
                 // If we kept going, we'd only re-root the same value, so
                 // return now.
@@ -1090,7 +1090,7 @@ pub fn store_non_ref_bindings(bcx: block,
             TrByValue(is_move, lldest) => {
                 let llval = Load(bcx, binding_info.llmatch); // get a T*
                 let datum = Datum {val: llval, ty: binding_info.ty,
-                                   mode: ByRef, source: FromLvalue};
+                                   mode: ByRef, source: ZeroMem};
                 bcx = {
                     if is_move {
                         datum.move_to(bcx, INIT, lldest)
@@ -1686,7 +1686,7 @@ pub fn bind_irrefutable_pat(bcx: block,
             if make_copy {
                 let binding_ty = node_id_type(bcx, pat.id);
                 let datum = Datum {val: val, ty: binding_ty,
-                                   mode: ByRef, source: FromRvalue};
+                                   mode: ByRef, source: RevokeClean};
                 let scratch = scratch_datum(bcx, binding_ty, false);
                 datum.copy_to_datum(bcx, INIT, scratch);
                 match binding_mode {
