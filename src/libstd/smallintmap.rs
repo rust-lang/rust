@@ -14,8 +14,6 @@
  */
 #[forbid(deprecated_mode)];
 
-use map::StdMap;
-
 use core::container::{Container, Mutable, Map, Set};
 use core::dvec::DVec;
 use core::ops;
@@ -98,8 +96,7 @@ impl<V> SmallIntMap<V>: Container {
 }
 
 /// Implements the map::map interface for smallintmap
-impl<V: Copy> SmallIntMap<V>: StdMap<uint, V> {
-    pure fn size() -> uint { self.len() }
+impl<V: Copy> SmallIntMap<V> {
     #[inline(always)]
     fn insert(key: uint, value: V) -> bool {
         let exists = contains_key(self, key);
@@ -170,11 +167,6 @@ impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
             get(*self, key)
         }
     }
-}
-
-/// Cast the given smallintmap to a map::map
-pub fn as_map<V: Copy>(s: SmallIntMap<V>) -> StdMap<uint, V> {
-    s as StdMap::<uint, V>
 }
 
 #[cfg(test)]
