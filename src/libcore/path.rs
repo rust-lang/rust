@@ -48,28 +48,27 @@ pub pure fn PosixPath(s: &str) -> PosixPath {
 }
 
 pub trait GenericPath {
-
-    static pure fn from_str(&str) -> self;
+    static pure fn from_str(&str) -> Self;
 
     pure fn dirname() -> ~str;
     pure fn filename() -> Option<~str>;
     pure fn filestem() -> Option<~str>;
     pure fn filetype() -> Option<~str>;
 
-    pure fn with_dirname((&str)) -> self;
-    pure fn with_filename((&str)) -> self;
-    pure fn with_filestem((&str)) -> self;
-    pure fn with_filetype((&str)) -> self;
+    pure fn with_dirname((&str)) -> Self;
+    pure fn with_filename((&str)) -> Self;
+    pure fn with_filestem((&str)) -> Self;
+    pure fn with_filetype((&str)) -> Self;
 
-    pure fn dir_path() -> self;
-    pure fn file_path() -> self;
+    pure fn dir_path() -> Self;
+    pure fn file_path() -> Self;
 
-    pure fn push((&str)) -> self;
-    pure fn push_rel((&self)) -> self;
-    pure fn push_many((&[~str])) -> self;
-    pure fn pop() -> self;
+    pure fn push((&str)) -> Self;
+    pure fn push_rel((&Self)) -> Self;
+    pure fn push_many((&[~str])) -> Self;
+    pure fn pop() -> Self;
 
-    pure fn normalize() -> self;
+    pure fn normalize() -> Self;
 }
 
 #[cfg(windows)]

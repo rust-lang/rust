@@ -2119,9 +2119,9 @@ pub mod raw {
 }
 
 pub trait Trimmable {
-    pure fn trim() -> self;
-    pure fn trim_left() -> self;
-    pure fn trim_right() -> self;
+    pure fn trim() -> Self;
+    pure fn trim_left() -> Self;
+    pure fn trim_right() -> Self;
 }
 
 /// Extension methods for strings

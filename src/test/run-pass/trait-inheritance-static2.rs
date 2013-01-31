@@ -11,7 +11,7 @@
 trait MyEq { }
 
 trait MyNum {
-    static fn from_int(int) -> self;
+    static fn from_int(int) -> Self;
 }
 
 pub trait NumExt: MyEq MyNum { }

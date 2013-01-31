@@ -39,7 +39,7 @@ pub struct Node<V, T> {
 
 pub trait UnifyVid<T> {
     static fn appropriate_vals_and_bindings(infcx: &v/InferCtxt)
-        -> &v/ValsAndBindings<self, T>;
+        -> &v/ValsAndBindings<Self, T>;
 }
 
 pub impl InferCtxt {
@@ -136,7 +136,7 @@ pub impl InferCtxt {
 // doesn't have a subtyping relationship we need to worry about.
 
 pub trait SimplyUnifiable {
-    static fn to_type_err(expected_found<self>) -> ty::type_err;
+    static fn to_type_err(expected_found<Self>) -> ty::type_err;
 }
 
 pub fn mk_err<T: SimplyUnifiable>(+a_is_expected: bool,

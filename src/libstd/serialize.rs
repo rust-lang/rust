@@ -111,7 +111,7 @@ pub trait Encodable<S: Encoder> {
 }
 
 pub trait Decodable<D: Decoder> {
-    static fn decode(&self, d: &D) -> self;
+    static fn decode(&self, d: &D) -> Self;
 }
 
 pub impl<S: Encoder> uint: Encodable<S> {

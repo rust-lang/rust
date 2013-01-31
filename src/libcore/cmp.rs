@@ -37,8 +37,8 @@ and `Eq` to overload the `==` and `!=` operators.
 */
 #[lang="eq"]
 pub trait Eq {
-    pure fn eq(&self, other: &self) -> bool;
-    pure fn ne(&self, other: &self) -> bool;
+    pure fn eq(&self, other: &Self) -> bool;
+    pure fn ne(&self, other: &Self) -> bool;
 }
 
 /**
@@ -53,10 +53,10 @@ pub trait Eq {
 */
 #[lang="ord"]
 pub trait Ord {
-    pure fn lt(&self, other: &self) -> bool;
-    pure fn le(&self, other: &self) -> bool;
-    pure fn ge(&self, other: &self) -> bool;
-    pure fn gt(&self, other: &self) -> bool;
+    pure fn lt(&self, other: &Self) -> bool;
+    pure fn le(&self, other: &Self) -> bool;
+    pure fn ge(&self, other: &Self) -> bool;
+    pure fn gt(&self, other: &Self) -> bool;
 }
 
 #[inline(always)]

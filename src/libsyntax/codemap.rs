@@ -34,7 +34,7 @@ use core::vec;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
-    static pure fn from_uint(n: uint) -> self;
+    static pure fn from_uint(n: uint) -> Self;
     pure fn to_uint(&self) -> uint;
 }
 

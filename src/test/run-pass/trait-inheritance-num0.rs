@@ -15,8 +15,8 @@
 use Num::from_int;
 
 trait Num {
-    static fn from_int(i: int) -> self;
-    fn gt(&self, other: &self) -> bool;
+    static fn from_int(i: int) -> Self;
+    fn gt(&self, other: &Self) -> bool;
 }
 
 pub trait NumExt: Num { }
