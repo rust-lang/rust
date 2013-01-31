@@ -547,8 +547,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
     let tcx = ecx.tcx;
     let must_write =
         match item.node {
-          item_enum(_, _) | item_impl(*)
-          | item_trait(*) | item_struct(*) => true,
+          item_enum(_, _) | item_impl(*) | item_trait(*) | item_struct(*) |
+          item_mod(*) | item_foreign_mod(*) => true,
           _ => false
         };
     if !must_write && !reachable(ecx, item.id) { return; }
