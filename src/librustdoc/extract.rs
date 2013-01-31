@@ -71,7 +71,7 @@ fn top_moddoc_from_crate(
     +default_name: ~str
 ) -> doc::ModDoc {
     moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
-                    crate.node.module)
+                    copy crate.node.module)
 }
 
 fn mk_itemdoc(id: ast::node_id, +name: ~str) -> doc::ItemDoc {
@@ -88,7 +88,7 @@ fn mk_itemdoc(id: ast::node_id, +name: ~str) -> doc::ItemDoc {
 
 fn moddoc_from_mod(
     +itemdoc: doc::ItemDoc,
-    module_: ast::_mod
+    +module_: ast::_mod
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: itemdoc,
@@ -149,7 +149,7 @@ fn moddoc_from_mod(
 
 fn nmoddoc_from_mod(
     +itemdoc: doc::ItemDoc,
-    module_: ast::foreign_mod
+    +module_: ast::foreign_mod
 ) -> doc::NmodDoc {
     let mut fns = ~[];
     for module_.items.each |item| {
@@ -273,7 +273,7 @@ fn should_extract_trait_methods() {
 
 fn impldoc_from_impl(
     +itemdoc: doc::ItemDoc,
-    methods: ~[@ast::method]
+    +methods: ~[@ast::method]
 ) -> doc::ImplDoc {
     doc::ImplDoc {
         item: itemdoc,

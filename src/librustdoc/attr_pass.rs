@@ -221,7 +221,7 @@ fn fold_trait(
 fn merge_method_attrs(
     srv: astsrv::Srv,
     item_id: doc::AstId,
-    docs: ~[doc::MethodDoc]
+    +docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
 
     // Create an assoc list from method name to attributes
@@ -319,7 +319,7 @@ mod test {
     use doc;
     use extract;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    pub fn mk_doc(+source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

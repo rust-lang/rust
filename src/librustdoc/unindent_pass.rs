@@ -33,7 +33,7 @@ pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"unindent", unindent)
 }
 
-fn unindent(s: ~str) -> ~str {
+fn unindent(s: &str) -> ~str {
     let lines = str::lines_any(s);
     let mut saw_first_line = false;
     let mut saw_second_line = false;
@@ -90,7 +90,7 @@ fn unindent(s: ~str) -> ~str {
         };
         str::connect(unindented, ~"\n")
     } else {
-        copy s
+        s.to_str()
     }
 }
 

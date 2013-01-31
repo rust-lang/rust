@@ -51,7 +51,7 @@ fn fold_mod(
     }
 }
 
-fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
+fn is_visible(srv: astsrv::Srv, +doc: doc::ItemDoc) -> bool {
     use syntax::ast_map;
     use syntax::ast;
 
@@ -80,7 +80,7 @@ pub mod test {
     use extract;
     use prune_private_pass::run;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    pub fn mk_doc(+source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

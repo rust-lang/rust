@@ -50,7 +50,7 @@ fn fold_mod(
     }
 }
 
-fn is_hidden(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
+fn is_hidden(srv: astsrv::Srv, +doc: doc::ItemDoc) -> bool {
     use syntax::ast_map;
 
     let id = doc.id;
@@ -76,7 +76,7 @@ pub mod test {
     use extract;
     use prune_hidden_pass::run;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    pub fn mk_doc(+source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

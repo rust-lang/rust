@@ -52,7 +52,7 @@ fn fold_item(fold: &fold::Fold<()>, +doc: doc::ItemDoc) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
     doc::ItemDoc {
-        brief: extract(doc.desc),
+        brief: extract(copy doc.desc),
         .. doc
     }
 }
@@ -62,7 +62,7 @@ fn fold_trait(fold: &fold::Fold<()>, +doc: doc::TraitDoc) -> doc::TraitDoc {
 
     doc::TraitDoc {
         methods: par::map(doc.methods, |doc| doc::MethodDoc {
-            brief: extract(doc.desc),
+            brief: extract(copy doc.desc),
             .. copy *doc
         }),
         .. doc
@@ -74,7 +74,7 @@ fn fold_impl(fold: &fold::Fold<()>, +doc: doc::ImplDoc) -> doc::ImplDoc {
 
     doc::ImplDoc {
         methods: par::map(doc.methods, |doc| doc::MethodDoc {
-            brief: extract(doc.desc),
+            brief: extract(copy doc.desc),
             .. copy *doc
         }),
         .. doc
@@ -108,7 +108,7 @@ pub mod test {
     use doc;
     use extract;
 
-    pub fn mk_doc(source: ~str) -> doc::Doc {
+    pub fn mk_doc(+source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = (attr_pass::mk_pass().f)(srv, doc);
@@ -117,7 +117,7 @@ pub mod test {
     }
 }
 
-fn extract(desc: Option<~str>) -> Option<~str> {
+fn extract(+desc: Option<~str>) -> Option<~str> {
     if desc.is_none() {
         return None
     }
@@ -125,7 +125,7 @@ fn extract(desc: Option<~str>) -> Option<~str> {
     parse_desc((copy desc).get())
 }
 
-fn parse_desc(desc: ~str) -> Option<~str> {
+fn parse_desc(+desc: ~str) -> Option<~str> {
 
     const max_brief_len: uint = 120u;
 
@@ -141,7 +141,7 @@ fn parse_desc(desc: ~str) -> Option<~str> {
     }
 }
 
-fn first_sentence(s: ~str) -> Option<~str> {
+fn first_sentence(+s: ~str) -> Option<~str> {
     let paras = paragraphs(copy s);
     if !paras.is_empty() {
         let first_para = vec::head(paras);
@@ -151,7 +151,7 @@ fn first_sentence(s: ~str) -> Option<~str> {
     }
 }
 
-fn first_sentence_(s: ~str) -> ~str {
+fn first_sentence_(+s: ~str) -> ~str {
     let mut dotcount = 0;
     // The index of the character following a single dot. This allows
     // Things like [0..1) to appear in the brief description
@@ -182,7 +182,7 @@ fn first_sentence_(s: ~str) -> ~str {
     }
 }
 
-fn paragraphs(s: ~str) -> ~[~str] {
+fn paragraphs(+s: ~str) -> ~[~str] {
     let lines = str::lines_any(s);
     let mut whitespace_lines = 0;
     let mut accum = ~"";
@@ -233,7 +233,7 @@ fn test_paragraphs_2() {
 #[test]
 fn should_promote_short_descs() {
     let desc = Some(~"desc");
-    let brief = extract(desc);
+    let brief = extract(copy desc);
     assert brief == desc;
 }
 

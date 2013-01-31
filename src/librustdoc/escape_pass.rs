@@ -19,7 +19,7 @@ pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"escape", escape)
 }
 
-fn escape(s: ~str) -> ~str {
+fn escape(s: &str) -> ~str {
     str::replace(s, ~"\\", ~"\\\\")
 }
 
