@@ -1456,11 +1456,12 @@ pub impl Parser {
         return self.mk_expr(lo, hi, ex);
     }
 
-
+    // parse an expression of binops
     fn parse_binops() -> @expr {
-        return self.parse_more_binops(self.parse_prefix_expr(), 0);
+        self.parse_more_binops(self.parse_prefix_expr(), 0)
     }
 
+    // parse an expression of binops of at least min_prec precedence
     fn parse_more_binops(lhs: @expr, min_prec: uint) ->
         @expr {
         if self.expr_is_complete(lhs) { return lhs; }
@@ -1468,66 +1469,73 @@ pub impl Parser {
         if peeked == token::BINOP(token::OR) &&
             (self.restriction == RESTRICT_NO_BAR_OP ||
              self.restriction == RESTRICT_NO_BAR_OR_DOUBLEBAR_OP) {
-            return lhs;
-        }
-        if peeked == token::OROR &&
+            lhs
+        } else if peeked == token::OROR &&
             self.restriction == RESTRICT_NO_BAR_OR_DOUBLEBAR_OP {
-            return lhs;
-        }
-        let cur_opt   = token_to_binop(peeked);
-        match cur_opt {
-          Some(cur_op) => {
-            let cur_prec = operator_prec(cur_op);
-            if cur_prec > min_prec {
-                self.bump();
-                let expr = self.parse_prefix_expr();
-                let rhs = self.parse_more_binops(expr, cur_prec);
-                self.get_id(); // see ast_util::op_expr_callee_id
-                let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
-                                        expr_binary(cur_op, lhs, rhs));
-                return self.parse_more_binops(bin, min_prec);
+            lhs
+        } else {
+            let cur_opt = token_to_binop(peeked);
+            match cur_opt {
+                Some(cur_op) => {
+                    let cur_prec = operator_prec(cur_op);
+                    if cur_prec > min_prec {
+                        self.bump();
+                        let expr = self.parse_prefix_expr();
+                        let rhs = self.parse_more_binops(expr, cur_prec);
+                        self.get_id(); // see ast_util::op_expr_callee_id
+                        let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
+                                               expr_binary(cur_op, lhs, rhs));
+                        self.parse_more_binops(bin, min_prec)
+                    } else {
+                        lhs
+                    }
+                }
+                None => {
+                    if as_prec > min_prec && self.eat_keyword(~"as") {
+                        let rhs = self.parse_ty(true);
+                        let _as = self.mk_expr(lhs.span.lo,
+                                               rhs.span.hi,
+                                               expr_cast(lhs, rhs));
+                        self.parse_more_binops(_as, min_prec)
+                    } else {
+                        lhs
+                    }
+                }
             }
-          }
-          _ => ()
         }
-        if as_prec > min_prec && self.eat_keyword(~"as") {
-            let rhs = self.parse_ty(true);
-            let _as =
-                self.mk_expr(lhs.span.lo, rhs.span.hi, expr_cast(lhs, rhs));
-            return self.parse_more_binops(_as, min_prec);
-        }
-        return lhs;
     }
 
-    // parse an arbitrary expression.
+    // parse an assignment expression....
+    // actually, this seems to be the main entry point for
+    // parsing an arbitrary expression.
     fn parse_assign_expr() -> @expr {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
         match copy self.token {
-          token::EQ => {
-            self.bump();
-            let rhs = self.parse_expr();
-            return self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs));
+            token::EQ => {
+                self.bump();
+                let rhs = self.parse_expr();
+                self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs)) 
           }
           token::BINOPEQ(op) => {
-            self.bump();
-            let rhs = self.parse_expr();
-            let mut aop;
-            match op {
-              token::PLUS => aop = add,
-              token::MINUS => aop = subtract,
-              token::STAR => aop = mul,
-              token::SLASH => aop = div,
-              token::PERCENT => aop = rem,
-              token::CARET => aop = bitxor,
-              token::AND => aop = bitand,
-              token::OR => aop = bitor,
-              token::SHL => aop = shl,
-              token::SHR => aop = shr
-            }
-            self.get_id(); // see ast_util::op_expr_callee_id
-            return self.mk_expr(lo, rhs.span.hi,
-                                expr_assign_op(aop, lhs, rhs));
+              self.bump();
+              let rhs = self.parse_expr();
+              let mut aop;
+              match op {
+                  token::PLUS => aop = add,
+                  token::MINUS => aop = subtract,
+                  token::STAR => aop = mul,
+                  token::SLASH => aop = div,
+                  token::PERCENT => aop = rem,
+                  token::CARET => aop = bitxor,
+                  token::AND => aop = bitand,
+                  token::OR => aop = bitor,
+                  token::SHL => aop = shl,
+                  token::SHR => aop = shr
+              }
+              self.get_id(); // see ast_util::op_expr_callee_id
+              self.mk_expr(lo, rhs.span.hi,
+                           expr_assign_op(aop, lhs, rhs))
           }
           token::LARROW => {
               self.obsolete(copy self.span, ObsoleteBinaryMove);
@@ -1535,17 +1543,18 @@ pub impl Parser {
               self.bump(); // <-
               self.bump(); // rhs
               self.bump(); // ;
-              return self.mk_expr(lo, self.span.hi,
-                                  expr_break(None));
+              self.mk_expr(lo, self.span.hi,
+                           expr_break(None))
           }
           token::DARROW => {
             self.bump();
             let rhs = self.parse_expr();
-            return self.mk_expr(lo, rhs.span.hi, expr_swap(lhs, rhs));
+            self.mk_expr(lo, rhs.span.hi, expr_swap(lhs, rhs))
           }
-          _ => {/* fall through */ }
+          _ => {
+              lhs
+          }
         }
-        return lhs;
     }
 
     fn parse_if_expr() -> @expr {
@@ -1560,7 +1569,7 @@ pub impl Parser {
             hi = elexpr.span.hi;
         }
         let q = {cond: cond, then: thn, els: els, lo: lo, hi: hi};
-        return self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els));
+        f.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els))
     }
 
     fn parse_fn_expr(proto: Proto) -> @expr {
@@ -1571,8 +1580,9 @@ pub impl Parser {
         let decl = self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
 
         let body = self.parse_block();
-        return self.mk_expr(lo, body.span.hi,
-                            expr_fn(proto, decl, body, @()));
+
+        self.mk_expr(lo, body.span.hi,
+                            expr_fn(proto, decl, body, capture_clause));
     }
 
     // `|args| { ... }` like in `do` expressions
