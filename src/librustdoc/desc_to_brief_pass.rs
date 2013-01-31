@@ -26,6 +26,7 @@ use pass::Pass;
 
 use core::str;
 use core::vec;
+use core::util;
 use std::par;
 
 pub fn mk_pass() -> Pass {
@@ -194,8 +195,8 @@ fn paragraphs(s: ~str) -> ~[~str] {
         } else {
             if whitespace_lines > 0 {
                 if !accum.is_empty() {
-                    res += ~[accum];
-                    accum = ~"";
+                    let v = util::replace(&mut accum, ~"");
+                    res.push(v);
                 }
             }
 
