@@ -285,15 +285,17 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               // call. Despite that being "a const", it's not the kind of
               // const you can ask for the integer-value of, evidently. This
               // might be an LLVM bug, not sure. In any case, to work around
-              // this we drop down to the array-type level here and just ask
-              // how long the array-type itself is, ignoring the length we
-              // pulled out of the slice. This in turn only works because we
-              // picked out the original globalvar via const_deref and so can
-              // recover the array-size of the underlying array, and all this
-              // will hold together exactly as long as we _don't_ support
-              // const sub-slices (that is, slices that represent something
-              // other than a whole array).  At that point we'll have more and
-              // uglier work to do here, but for now this should work.
+              // this we obtain the initializer and count how many elements it
+              // has, ignoring the length we pulled out of the slice. (Note
+              // that the initializer might be a struct rather than an array,
+              // if enums are involved.) This only works because we picked out
+              // the original globalvar via const_deref and so can recover the
+              // array-size of the underlying array (or the element count of
+              // the underlying struct), and all this will hold together
+              // exactly as long as we _don't_ support const sub-slices (that
+              // is, slices that represent something other than a whole
+              // array).  At that point we'll have more and uglier work to do
+              // here, but for now this should work.
               //
               // In the future, what we should be doing here is the
               // moral equivalent of:
@@ -305,7 +307,7 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               // not want to consider sizeof() a constant expression
               // we can get the value (as a number) out of.
 
-              let len = llvm::LLVMGetArrayLength(val_ty(arr)) as u64;
+              let len = llvm::LLVMGetNumOperands(arr) as u64;
               let len = match ty::get(bt).sty {
                   ty::ty_estr(*) => {assert len > 0; len - 1},
                   _ => len
