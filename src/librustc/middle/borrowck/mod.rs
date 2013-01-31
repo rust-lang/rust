@@ -259,11 +259,13 @@ pub fn check_crate(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     moves_map: moves::MovesMap,
+    capture_map: moves::CaptureMap,
     crate: @ast::crate) -> (root_map, mutbl_map, write_guard_map)
 {
     let bccx = @BorrowckCtxt   {tcx: tcx,
                                 method_map: method_map,
                                 moves_map: moves_map,
+                                capture_map: capture_map,
                                 root_map: root_map(),
                                 mutbl_map: HashMap(),
                                 write_guard_map: HashMap(),
@@ -307,6 +309,7 @@ pub struct BorrowckCtxt {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     moves_map: moves::MovesMap,
+    capture_map: moves::CaptureMap,
     root_map: root_map,
     mutbl_map: mutbl_map,
     write_guard_map: write_guard_map,

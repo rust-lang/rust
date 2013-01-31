@@ -12,9 +12,10 @@
 
 # Moves Computation
 
-The goal of this file is to compute which expressions/patterns
-correspond to *moves*.  This is generally a function of the context
-in which the expression appears as well as the expression's type.
+The goal of this file is to compute which
+expressions/patterns/captures correspond to *moves*.  This is
+generally a function of the context in which the expression appears as
+well as the expression's type.
 
 ## Examples
 
@@ -88,7 +89,7 @@ Similar reasoning can be applied to `let` expressions:
 ## Output
 
 The pass results in the struct `MoveMaps` which contains two sets,
-`moves_map` and `variable_moves_map`.
+`moves_map` and `variable_moves_map`, and one map, `capture_map`.
 
 `moves_map` is a set containing the id of every *outermost
 expression* or *binding* that is moved.  Note that `moves_map` only
@@ -106,6 +107,10 @@ section below for more details).  That is, for the `x.b`
 expression, liveness only cares about the `x`.  For this purpose,
 we have a second map, `variable_moves_map`, that contains the ids
 of all variable references which is moved.
+
+The `capture_map` maps from the node_id of a closure expression to an
+array of `CaptureVar` structs detailing which variables are captured
+and how (by ref, by copy, by move).
 
 ## Enforcement of Moves
 
@@ -204,19 +209,40 @@ and so on.
 use core::prelude::*;
 
 use middle::pat_util::{pat_bindings};
+use middle::freevars;
 use middle::ty;
-use middle::ty::ctxt;
 use middle::typeck::{method_map, method_map_entry};
 use middle::typeck::check::{DerefArgs, DoDerefArgs, DontDerefArgs};
 use util::ppaux;
+use util::common::indenter;
 
 use core::vec;
 use std::map::HashMap;
 use syntax::ast::*;
+use syntax::ast_util;
 use syntax::visit;
-use syntax::visit::{fn_kind, vt};
+use syntax::visit::{fn_kind, fk_item_fn, fk_method, fk_dtor,
+                    fk_anon, fk_fn_block, vt};
 use syntax::print::pprust;
 use syntax::codemap::span;
+
+#[auto_encode]
+#[auto_decode]
+pub enum CaptureMode {
+    CapCopy, // Copy the value into the closure.
+    CapMove, // Move the value into the closure.
+    CapRef,  // Reference directly from parent stack frame (used by `&fn()`).
+}
+
+#[auto_encode]
+#[auto_decode]
+pub struct CaptureVar {
+    def: def,         // Variable being accessed free
+    span: span,       // Location of an access to this variable
+    mode: CaptureMode // How variable is being accessed
+}
+
+pub type CaptureMap = HashMap<node_id, @[CaptureVar]>;
 
 pub type MovesMap = HashMap<node_id, ()>;
 
@@ -228,11 +254,12 @@ pub type VariableMovesMap = HashMap<node_id, @expr>;
 /** See the section Output on the module comment for explanation. */
 pub struct MoveMaps {
     moves_map: MovesMap,
-    variable_moves_map: VariableMovesMap
+    variable_moves_map: VariableMovesMap,
+    capture_map: CaptureMap
 }
 
 struct VisitContext {
-    tcx: ctxt,
+    tcx: ty::ctxt,
     method_map: HashMap<node_id,method_map_entry>,
     move_maps: MoveMaps
 }
@@ -243,7 +270,7 @@ enum UseMode {
     Read                 // Read no matter what the type.
 }
 
-pub fn compute_moves(tcx: ctxt,
+pub fn compute_moves(tcx: ty::ctxt,
                      method_map: method_map,
                      crate: @crate) -> MoveMaps
 {
@@ -256,12 +283,16 @@ pub fn compute_moves(tcx: ctxt,
         method_map: method_map,
         move_maps: MoveMaps {
             moves_map: HashMap(),
-            variable_moves_map: HashMap()
+            variable_moves_map: HashMap(),
+            capture_map: HashMap()
         }
     };
     visit::visit_crate(*crate, visit_cx, visitor);
     return visit_cx.move_maps;
 }
+
+// ______________________________________________________________________
+// Expressions
 
 fn compute_modes_for_expr(expr: @expr,
                           &&cx: VisitContext,
@@ -581,6 +612,8 @@ impl VisitContext {
 
             expr_fn(_, _, ref body) |
             expr_fn_block(_, ref body) => {
+                let cap_vars = self.compute_captures(expr.id);
+                self.move_maps.capture_map.insert(expr.id, cap_vars);
                 self.consume_block(body, visitor);
             }
 
@@ -743,6 +776,35 @@ impl VisitContext {
         }
         return false;
     }
+
+    fn compute_captures(&self, fn_expr_id: node_id) -> @[CaptureVar] {
+        debug!("compute_capture_vars(fn_expr_id=%?)", fn_expr_id);
+        let _indenter = indenter();
+
+        let fn_ty = ty::node_id_to_type(self.tcx, fn_expr_id);
+        let proto = ty::ty_fn_proto(fn_ty);
+        let freevars = freevars::get_freevars(self.tcx, fn_expr_id);
+        if proto == ProtoBorrowed {
+            // &fn() captures everything by ref
+            at_vec::from_fn(freevars.len(), |i| {
+                let fvar = &freevars[i];
+                CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef}
+            })
+        } else {
+            // @fn() and ~fn() capture by copy or by move depending on type
+            at_vec::from_fn(freevars.len(), |i| {
+                let fvar = &freevars[i];
+                let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
+                let fvar_ty = ty::node_id_to_type(self.tcx, fvar_def_id);
+                debug!("fvar_def_id=%? fvar_ty=%s",
+                       fvar_def_id, ppaux::ty_to_str(self.tcx, fvar_ty));
+                let mode = if ty::type_implicitly_moves(self.tcx, fvar_ty) {
+                    CapMove
+                } else {
+                    CapCopy
+                };
+                CaptureVar {def: fvar.def, span: fvar.span, mode:mode}
+            })
+        }
+    }
 }
-
-

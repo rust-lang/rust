@@ -35,7 +35,8 @@ pub fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
     }
 }
 
-pub fn type_of_explicit_args(ccx: @crate_ctxt, inputs: &[ty::arg]) -> ~[TypeRef] {
+pub fn type_of_explicit_args(ccx: @crate_ctxt,
+                             inputs: &[ty::arg]) -> ~[TypeRef] {
     inputs.map(|arg| type_of_explicit_arg(ccx, *arg))
 }
 

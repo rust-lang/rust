@@ -2945,7 +2945,7 @@ pub fn trans_crate(sess: session::Session,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
-                   maps: astencode::maps) -> (ModuleRef, link_meta) {
+                   maps: astencode::Maps) -> (ModuleRef, link_meta) {
 
     let symbol_hasher = @hash::default_state();
     let link_meta =

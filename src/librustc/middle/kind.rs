@@ -253,20 +253,24 @@ pub fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                             ty::struct_fields(cx.tcx, did, substs)
                         }
                         _ => {
-                            cx.tcx.sess.span_bug(ex.span,
-                                                 ~"bad base expr type in record")
+                            cx.tcx.sess.span_bug(
+                                ex.span,
+                                ~"bad base expr type in record")
                         }
                     };
                     for ty_fields.each |tf| {
-                        if !fields.any(|f| f.node.ident == tf.ident) &&
-                            !ty::kind_can_be_copied(ty::type_kind(cx.tcx, tf.mt.ty))
-                        {
-                            cx.tcx.sess.span_err(
-                                e.span,
-                                fmt!("cannot copy field `%s` of base expression, \
-                                      which has a noncopyable type",
-                                     *cx.tcx.sess.intr().get(tf.ident)));
-                        }
+                        // If this field would not be copied, ok.
+                        if fields.any(|f| f.node.ident == tf.ident) { loop; }
+
+                        // If this field is copyable, ok.
+                        let kind = ty::type_kind(cx.tcx, tf.mt.ty);
+                        if ty::kind_can_be_copied(kind) { loop; }
+
+                        cx.tcx.sess.span_err(
+                            e.span,
+                            fmt!("cannot copy field `%s` of base expression, \
+                                  which has a noncopyable type",
+                                 *cx.tcx.sess.intr().get(tf.ident)));
                     }
                 }
                 _ => {}

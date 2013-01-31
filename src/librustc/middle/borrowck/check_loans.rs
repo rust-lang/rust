@@ -19,11 +19,11 @@
 
 use core::prelude::*;
 
+use middle::moves;
 use middle::borrowck::{Loan, bckerr, BorrowckCtxt, inherent_mutability};
 use middle::borrowck::{req_maps, root_map_key, save_and_restore};
 use middle::borrowck::{MoveError, MoveOk, MoveFromIllegalCmt};
 use middle::borrowck::{MoveWhileBorrowed};
-use middle::capture;
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
 use middle::mem_categorization::{cat_local, cat_rvalue, cat_self};
 use middle::mem_categorization::{cat_special, cmt, gc_ptr, loan_path, lp_arg};
@@ -612,12 +612,11 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
     {
         match fty_proto {
             ast::ProtoBox | ast::ProtoUniq => {
-                let cap_vars =
-                    capture::compute_capture_vars(self.tcx(), id, fty_proto);
+                let cap_vars = self.bccx.capture_map.get(id);
                 for cap_vars.each |cap_var| {
                     match cap_var.mode {
-                        capture::CapRef | capture::CapCopy => { loop; }
-                        capture::CapMove => { }
+                        moves::CapRef | moves::CapCopy => { loop; }
+                        moves::CapMove => { }
                     }
                     let def_id = ast_util::def_id_of_def(cap_var.def).node;
                     let ty = ty::node_id_to_type(self.tcx(), def_id);

@@ -16,7 +16,7 @@ use front;
 use lib::llvm::llvm;
 use metadata::{creader, cstore, filesearch};
 use metadata;
-use middle::{trans, freevars, kind, ty, typeck, lint};
+use middle::{trans, freevars, kind, ty, typeck, lint, astencode};
 use middle;
 use session::{Session, Session_, OptLevel, No, Less, Default, Aggressive};
 use session;
@@ -281,7 +281,8 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
         time(time_passes, ~"loop checking", ||
              middle::check_loop::check_crate(ty_cx, crate));
 
-        let middle::moves::MoveMaps {moves_map, variable_moves_map} =
+        let middle::moves::MoveMaps {moves_map, variable_moves_map,
+                                     capture_map} =
             time(time_passes, ~"mode computation", ||
                  middle::moves::compute_moves(ty_cx, method_map, crate));
 
@@ -292,12 +293,14 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
         let last_use_map =
             time(time_passes, ~"liveness checking", ||
                  middle::liveness::check_crate(ty_cx, method_map,
-                                               variable_moves_map, crate));
+                                               variable_moves_map,
+                                               capture_map, crate));
 
         let (root_map, mutbl_map, write_guard_map) =
             time(time_passes, ~"borrow checking", ||
                  middle::borrowck::check_crate(ty_cx, method_map,
-                                               moves_map, crate));
+                                               moves_map, capture_map,
+                                               crate));
 
         time(time_passes, ~"kind checking", ||
              kind::check_crate(ty_cx, method_map, last_use_map, crate));
@@ -307,13 +310,16 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
 
         if upto == cu_no_trans { return {crate: crate, tcx: Some(ty_cx)}; }
 
-        let maps = {mutbl_map: mutbl_map,
-                    root_map: root_map,
-                    last_use_map: last_use_map,
-                    method_map: method_map,
-                    vtable_map: vtable_map,
-                    write_guard_map: write_guard_map,
-                    moves_map: moves_map};
+        let maps = astencode::Maps {
+            mutbl_map: mutbl_map,
+            root_map: root_map,
+            last_use_map: last_use_map,
+            method_map: method_map,
+            vtable_map: vtable_map,
+            write_guard_map: write_guard_map,
+            moves_map: moves_map,
+            capture_map: capture_map
+        };
 
         time(time_passes, ~"translation", ||
              trans::base::trans_crate(sess, crate, ty_cx,

@@ -105,8 +105,6 @@
 
 use core::prelude::*;
 
-use middle::capture::{CapMove, CapCopy, CapRef};
-use middle::capture;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
@@ -205,6 +203,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    variable_moves_map: moves::VariableMovesMap,
+                   capture_map: moves::CaptureMap,
                    crate: @crate) -> last_use_map {
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: visit_fn,
@@ -215,8 +214,8 @@ pub fn check_crate(tcx: ty::ctxt,
     });
 
     let last_use_map = HashMap();
-    let initial_maps = @IrMaps(tcx, method_map,
-                               variable_moves_map, last_use_map);
+    let initial_maps = @IrMaps(tcx, method_map, variable_moves_map,
+                               capture_map, last_use_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
     return last_use_map;
@@ -298,13 +297,14 @@ struct IrMaps {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     variable_moves_map: moves::VariableMovesMap,
+    capture_map: moves::CaptureMap,
     last_use_map: last_use_map,
 
     mut num_live_nodes: uint,
     mut num_vars: uint,
     live_node_map: HashMap<node_id, LiveNode>,
     variable_map: HashMap<node_id, Variable>,
-    capture_map: HashMap<node_id, @~[CaptureInfo]>,
+    capture_info_map: HashMap<node_id, @~[CaptureInfo]>,
     mut var_kinds: ~[VarKind],
     mut lnks: ~[LiveNodeKind],
 }
@@ -312,17 +312,19 @@ struct IrMaps {
 fn IrMaps(tcx: ty::ctxt,
           method_map: typeck::method_map,
           variable_moves_map: moves::VariableMovesMap,
+          capture_map: moves::CaptureMap,
           last_use_map: last_use_map) -> IrMaps {
     IrMaps {
         tcx: tcx,
         method_map: method_map,
         variable_moves_map: variable_moves_map,
+        capture_map: capture_map,
         last_use_map: last_use_map,
         num_live_nodes: 0,
         num_vars: 0,
         live_node_map: HashMap(),
         variable_map: HashMap(),
-        capture_map: HashMap(),
+        capture_info_map: HashMap(),
         var_kinds: ~[],
         lnks: ~[]
     }
@@ -384,11 +386,11 @@ impl IrMaps {
     }
 
     fn set_captures(node_id: node_id, +cs: ~[CaptureInfo]) {
-        self.capture_map.insert(node_id, @cs);
+        self.capture_info_map.insert(node_id, @cs);
     }
 
     fn captures(expr: @expr) -> @~[CaptureInfo] {
-        match self.capture_map.find(expr.id) {
+        match self.capture_info_map.find(expr.id) {
           Some(caps) => caps,
           None => {
             self.tcx.sess.span_bug(expr.span, ~"no registered caps");
@@ -436,6 +438,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let fn_maps = @IrMaps(self.tcx,
                           self.method_map,
                           self.variable_moves_map,
+                          self.capture_map,
                           self.last_use_map);
 
     debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
@@ -566,16 +569,18 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
         // being the location that the variable is used.  This results
         // in better error messages than just pointing at the closure
         // construction site.
-        let proto = ty::ty_fn_proto(ty::expr_ty(self.tcx, expr));
-        let cvs = capture::compute_capture_vars(self.tcx, expr.id, proto);
+        let cvs = self.capture_map.get(expr.id);
         let mut call_caps = ~[];
         for cvs.each |cv| {
             match relevant_def(cv.def) {
               Some(rv) => {
                 let cv_ln = self.add_live_node(FreeVarNode(cv.span));
                 let is_move = match cv.mode {
-                  CapMove => true, // var must be dead afterwards
-                  CapCopy | CapRef => false // var can still be used
+                    // var must be dead afterwards
+                    moves::CapMove => true,
+
+                    // var can stil be used
+                    moves::CapCopy | moves::CapRef => false
                 };
                 call_caps.push(CaptureInfo {ln: cv_ln,
                                             is_move: is_move,

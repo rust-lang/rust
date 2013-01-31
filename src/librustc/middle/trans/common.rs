@@ -205,7 +205,7 @@ pub struct crate_ctxt {
      type_short_names: HashMap<ty::t, ~str>,
      all_llvm_symbols: Set<~str>,
      tcx: ty::ctxt,
-     maps: astencode::maps,
+     maps: astencode::Maps,
      stats: stats,
      upcalls: @upcall::upcalls,
      tydesc_type: TypeRef,

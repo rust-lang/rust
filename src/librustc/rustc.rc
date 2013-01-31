@@ -91,7 +91,6 @@ pub mod middle {
     pub mod liveness;
     pub mod kind;
     pub mod freevars;
-    pub mod capture;
     pub mod pat_util;
     pub mod region;
     pub mod const_eval;

@@ -15,7 +15,7 @@ use back::link::{mangle_internal_name_by_path_and_seq};
 use back::link::{mangle_internal_name_by_path};
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, TypeRef};
-use middle::capture;
+use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -264,7 +264,7 @@ pub fn store_environment(bcx: block,
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
 pub fn build_closure(bcx0: block,
-                     cap_vars: &[capture::CaptureVar],
+                     cap_vars: &[moves::CaptureVar],
                      proto: ast::Proto,
                      include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
@@ -278,16 +278,16 @@ pub fn build_closure(bcx0: block,
         debug!("Building closure: captured variable %?", *cap_var);
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
-            capture::CapRef => {
+            moves::CapRef => {
                 assert proto == ast::ProtoBorrowed;
                 env_vals.push(EnvValue {action: EnvRef,
                                         datum: datum});
             }
-            capture::CapCopy => {
+            moves::CapCopy => {
                 env_vals.push(EnvValue {action: EnvCopy,
                                         datum: datum});
             }
-            capture::CapMove => {
+            moves::CapMove => {
                 env_vals.push(EnvValue {action: EnvMove,
                                         datum: datum});
             }
@@ -324,7 +324,7 @@ pub fn build_closure(bcx0: block,
 // with the upvars and type descriptors.
 pub fn load_environment(fcx: fn_ctxt,
                         cdata_ty: ty::t,
-                        cap_vars: &[capture::CaptureVar],
+                        cap_vars: &[moves::CaptureVar],
                         load_ret_handle: bool,
                         proto: ast::Proto) {
     let _icx = fcx.insn_ctxt("closure::load_environment");
@@ -419,8 +419,7 @@ pub fn trans_expr_fn(bcx: block,
 
     let Result {bcx: bcx, val: closure} = match proto {
         ast::ProtoBorrowed | ast::ProtoBox | ast::ProtoUniq => {
-            let cap_vars = capture::compute_capture_vars(ccx.tcx, user_id,
-                                                         proto);
+            let cap_vars = ccx.maps.capture_map.get(user_id);
             let ret_handle = match is_loop_body {Some(x) => x,
                                                  None => None};
             let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, proto,
