@@ -135,63 +135,10 @@ fn build_ctxt(sess: Session,
 
 fn build_session() -> Session {
     let sopts: @options = basic_options();
-    let codemap = @codemap::CodeMap::new();
-    let error_handlers = build_error_handlers(codemap);
-    let {emitter, span_handler} = error_handlers;
+    let emitter = syntax::diagnostic::emit;
 
-    let session = driver::build_session_(sopts, codemap, emitter,
-                                         span_handler);
+    let session = driver::build_session(sopts, emitter);
     session
-}
-
-type ErrorHandlers = {
-    emitter: diagnostic::emitter,
-    span_handler: diagnostic::span_handler
-};
-
-// Build a custom error handler that will allow us to ignore non-fatal
-// errors
-fn build_error_handlers(
-    codemap: @codemap::CodeMap
-) -> ErrorHandlers {
-
-    struct DiagnosticHandler {
-        inner: diagnostic::handler,
-    }
-
-    impl DiagnosticHandler: diagnostic::handler {
-        fn fatal(msg: &str) -> ! { self.inner.fatal(msg) }
-        fn err(msg: &str) { self.inner.err(msg) }
-        fn bump_err_count() {
-            self.inner.bump_err_count();
-        }
-        fn has_errors() -> bool { self.inner.has_errors() }
-        fn abort_if_errors() { self.inner.abort_if_errors() }
-        fn warn(msg: &str) { self.inner.warn(msg) }
-        fn note(msg: &str) { self.inner.note(msg) }
-        fn bug(msg: &str) -> ! { self.inner.bug(msg) }
-        fn unimpl(msg: &str) -> ! { self.inner.unimpl(msg) }
-        fn emit(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
-                msg: &str, lvl: diagnostic::level) {
-            self.inner.emit(cmsp, msg, lvl)
-        }
-    }
-
-    let emitter = fn@(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
-                       msg: &str, lvl: diagnostic::level) {
-        diagnostic::emit(cmsp, msg, lvl);
-    };
-    let inner_handler = diagnostic::mk_handler(Some(emitter));
-    let handler = DiagnosticHandler {
-        inner: inner_handler,
-    };
-    let span_handler = diagnostic::mk_span_handler(
-        handler as diagnostic::handler, codemap);
-
-    {
-        emitter: emitter,
-        span_handler: span_handler
-    }
 }
 
 #[test]
