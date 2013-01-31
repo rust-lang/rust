@@ -38,22 +38,22 @@ pub type Writer = fn~(v: WriteInstr);
 pub type WriterFactory = fn~(page: doc::Page) -> Writer;
 
 pub trait WriterUtils {
-    fn write_str(+str: ~str);
-    fn write_line(+str: ~str);
-    fn write_done();
+    fn write_str(&self, +str: ~str);
+    fn write_line(&self, +str: ~str);
+    fn write_done(&self);
 }
 
 impl Writer: WriterUtils {
-    fn write_str(str: ~str) {
-        self(Write(str));
+    fn write_str(&self, str: ~str) {
+        (*self)(Write(str));
     }
 
-    fn write_line(str: ~str) {
+    fn write_line(&self, str: ~str) {
         self.write_str(str + ~"\n");
     }
 
-    fn write_done() {
-        self(Done)
+    fn write_done(&self) {
+        (*self)(Done)
     }
 }
 
