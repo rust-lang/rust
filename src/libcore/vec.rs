@@ -541,10 +541,8 @@ pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
     v.pop()
 }
 
-pub fn consume<T>(v: ~[T], f: fn(uint, v: T)) {
+pub fn consume<T>(mut v: ~[T], f: fn(uint, v: T)) {
     unsafe {
-        let mut v = v; // FIXME(#3488)
-
         do as_mut_buf(v) |p, ln| {
             for uint::range(0, ln) |i| {
                 // NB: This unsafe operation counts on init writing 0s to the
@@ -641,8 +639,7 @@ pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
 }
 
 #[inline(always)]
-pub fn push_all_move<T>(v: &mut ~[T], rhs: ~[T]) {
-    let mut rhs = rhs; // FIXME(#3488)
+pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
     reserve(&mut *v, v.len() + rhs.len());
     unsafe {
         do as_mut_buf(rhs) |p, len| {
@@ -1241,8 +1238,7 @@ pub pure fn zip_slice<T: Copy, U: Copy>(v: &[const T], u: &[const U])
  * Returns a vector of tuples, where the i-th tuple contains contains the
  * i-th elements from each of the input vectors.
  */
-pub pure fn zip<T, U>(v: ~[T], u: ~[U]) -> ~[(T, U)] {
-    let mut v = v, u = u; // FIXME(#3488)
+pub pure fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
     let mut i = len(v);
     assert i == len(u);
     let mut w = with_capacity(i);
