@@ -352,10 +352,8 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           }
           ast::expr_addr_of(ast::m_imm, sub) => {
             let cv = const_expr(cx, sub);
-            let subty = ty::expr_ty(cx.tcx, sub),
-            llty = type_of::type_of(cx, subty);
             let gv = do str::as_c_str("const") |name| {
-                llvm::LLVMAddGlobal(cx.llmod, llty, name)
+                llvm::LLVMAddGlobal(cx.llmod, val_ty(cv), name)
             };
             llvm::LLVMSetInitializer(gv, cv);
             llvm::LLVMSetGlobalConstant(gv, True);
