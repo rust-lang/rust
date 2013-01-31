@@ -381,8 +381,7 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                       }
                   })
               };
-              let llty = type_of::type_of(cx, ety);
-              C_named_struct(llty, [C_struct(cs)])
+              C_struct([C_struct(cs)])
           }
           ast::expr_vec(es, ast::m_imm) => {
             let (v, _, _) = const_vec(cx, e, es);
