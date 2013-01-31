@@ -14,7 +14,7 @@ fn main() {
     let v = @mut ~[0];
 
     fn f(&&v: @mut ~[const int]) {
-        *v = ~[3]
+        *v = ~[mut 3]
     }
 
     f(v);
