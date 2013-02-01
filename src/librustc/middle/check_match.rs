@@ -516,7 +516,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     }
                     def_variant(_, _) => None,
                     def_struct(*) => {
-                        // XXX: Is this right? --pcw
+                        // FIXME #4731: Is this right? --pcw
                         let new_args;
                         match args {
                             Some(args) => new_args = args,
@@ -545,7 +545,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 match cx.tcx.def_map.get(pat_id) {
                     def_variant(_, variant_id) => {
                         if variant(variant_id) == ctor_id {
-                            // XXX: Is this right? --pcw
+                            // FIXME #4731: Is this right? --pcw
                             let args = flds.map(|ty_field| {
                                 match flds.find(|f|
                                                 f.ident == ty_field.ident) {

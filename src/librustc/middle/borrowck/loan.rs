@@ -33,7 +33,7 @@ mutability M_L, and a lifetime L_L where:
   - immutable/mutable: the data cannot be moved or mutated
 - The lifetime L_L indicates the *scope* of the loan.
 
-XXX --- much more needed, don't have time to write this all up now
+FIXME #4730 --- much more needed, don't have time to write this all up now
 
 */
 

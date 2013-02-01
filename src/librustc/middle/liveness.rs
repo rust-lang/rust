@@ -1754,7 +1754,8 @@ impl @Liveness {
         // used by ExitNode would be arguments or fields in a ctor.
         // we give a slightly different error message in those cases.
         if lnk == ExitNode {
-            // XXX this seems like it should be reported in the borrow checker
+            // FIXME #4715: this seems like it should be reported in the
+            // borrow checker
             let vk = self.ir.var_kinds[*var];
             match vk {
               Arg(_, name, _) => {
