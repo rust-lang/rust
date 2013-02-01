@@ -2181,7 +2181,8 @@ pub fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
 
       ty_type | ty_opaque_closure_ptr(_)
       | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
-        cx.sess.bug(~"Asked to compute kind of fictitious type");
+          kind_copyable()
+        //cx.sess.bug(~"Asked to compute kind of fictitious type");
       }
     };
 
