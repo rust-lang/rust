@@ -28,9 +28,9 @@ use sort_pass;
 use util::NominalOp;
 use util;
 
-use core::oldcomm;
 use core::option;
 use core::vec;
+use core::pipes::*;
 use syntax::ast;
 
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
@@ -52,24 +52,26 @@ pub fn run(
         return doc;
     }
 
-    let (result_port, page_chan) = do util::spawn_conversation
-        |page_port, result_chan| {
-        oldcomm::send(result_chan, make_doc_from_pages(page_port));
+    let (result_port, result_chan) = stream();
+    let (page_port, page_chan) = stream();
+    let page_chan = SharedChan(page_chan);
+    do task::spawn {
+        result_chan.send(make_doc_from_pages(&page_port));
     };
 
     find_pages(doc, page_chan);
-    oldcomm::recv(result_port)
+    result_port.recv()
 }
 
-type PagePort = oldcomm::Port<Option<doc::Page>>;
-type PageChan = oldcomm::Chan<Option<doc::Page>>;
+type PagePort = Port<Option<doc::Page>>;
+type PageChan = SharedChan<Option<doc::Page>>;
 
 type NominalPageChan = NominalOp<PageChan>;
 
-fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
+fn make_doc_from_pages(page_port: &PagePort) -> doc::Doc {
     let mut pages = ~[];
     loop {
-        let val = oldcomm::recv(page_port);
+        let val = page_port.recv();
         if val.is_some() {
             pages += ~[option::unwrap(move val)];
         } else {
@@ -83,14 +85,15 @@ fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
 
 fn find_pages(doc: doc::Doc, page_chan: PageChan) {
     let fold = Fold {
+        ctxt: NominalOp { op: page_chan.clone() },
         fold_crate: fold_crate,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
-        .. fold::default_any_fold(NominalOp { op: page_chan })
+        .. fold::default_any_fold(NominalOp { op: page_chan.clone() })
     };
     (fold.fold_doc)(&fold, copy doc);
 
-    oldcomm::send(page_chan, None);
+    page_chan.send(None);
 }
 
 fn fold_crate(
@@ -105,7 +108,7 @@ fn fold_crate(
         .. copy doc
     });
 
-    oldcomm::send(fold.ctxt.op, Some(page));
+    fold.ctxt.op.send(Some(page));
 
     doc
 }
@@ -121,7 +124,7 @@ fn fold_mod(
 
         let doc = strip_mod(copy doc);
         let page = doc::ItemPage(doc::ModTag(doc));
-        oldcomm::send(fold.ctxt.op, Some(page));
+        fold.ctxt.op.send(Some(page));
     }
 
     doc
@@ -146,7 +149,7 @@ fn fold_nmod(
 ) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
     let page = doc::ItemPage(doc::NmodTag(copy doc));
-    oldcomm::send(fold.ctxt.op, Some(page));
+    fold.ctxt.op.send(Some(page));
     return doc;
 }
 
