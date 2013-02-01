@@ -331,7 +331,7 @@ fn should_write_full_path_to_mod() {
     assert str::contains(markdown, ~"# Module `a::b::c`");
 }
 
-fn write_oldcommon(
+fn write_common(
     ctxt: &Ctxt,
     desc: Option<~str>,
     sections: &[doc::Section]
@@ -380,7 +380,7 @@ fn write_mod_contents(
     ctxt: &Ctxt,
     doc: doc::ModDoc
 ) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
         write_index(ctxt, (&doc.index).get());
     }
@@ -483,7 +483,7 @@ fn should_write_index_for_foreign_mods() {
 }
 
 fn write_nmod(ctxt: &Ctxt, doc: doc::NmodDoc) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
         write_index(ctxt, (&doc.index).get());
     }
@@ -534,7 +534,7 @@ fn write_fnlike(
     sections: &[doc::Section]
 ) {
     write_sig(ctxt, sig);
-    write_oldcommon(ctxt, desc, sections);
+    write_common(ctxt, desc, sections);
 }
 
 fn write_sig(ctxt: &Ctxt, sig: Option<~str>) {
@@ -603,7 +603,7 @@ fn write_const(
     doc: doc::ConstDoc
 ) {
     write_sig(ctxt, copy doc.sig);
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -624,7 +624,7 @@ fn write_enum(
     ctxt: &Ctxt,
     doc: doc::EnumDoc
 ) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
 }
 
@@ -705,7 +705,7 @@ fn should_write_variant_list_with_signatures() {
 }
 
 fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -753,7 +753,7 @@ fn should_write_trait_method_signature() {
 }
 
 fn write_impl(ctxt: &Ctxt, doc: doc::ImplDoc) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -795,7 +795,7 @@ fn write_type(
     doc: doc::TyDoc
 ) {
     write_sig(ctxt, copy doc.sig);
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -822,7 +822,7 @@ fn write_struct(
     doc: doc::StructDoc
 ) {
     write_sig(ctxt, copy doc.sig);
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
