@@ -17,8 +17,7 @@ syn keyword   rustKeyword     for if impl let log
 syn keyword   rustKeyword     loop match mod move mut once priv pure
 syn match     rustKeyword     "\<pub\>"
 syn keyword   rustKeyword     ref return static
-syn match     rustKeyword     "\<unsafe\>" " Allows also matching unsafe::foo()
-syn keyword   rustKeyword     use while
+syn keyword   rustKeyword     unsafe use while
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
