@@ -540,7 +540,7 @@ fn purity_static_method_family(p: purity) -> char {
       unsafe_fn => 'U',
       pure_fn => 'P',
       impure_fn => 'F',
-      _ => fail ~"extern fn can't be static"
+      _ => die!(~"extern fn can't be static")
     }
 }
 
@@ -834,7 +834,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                                    true, item.id, *m, /*bad*/copy m.tps);
         }
       }
-      item_mac(*) => fail ~"item macros unimplemented"
+      item_mac(*) => die!(~"item macros unimplemented")
     }
 }
 
@@ -888,7 +888,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
               ast_map::node_item(_, pt) => {
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
               }
-              _ => fail ~"bad item"
+              _ => die!(~"bad item")
             }
         },
         visit_foreign_item: |ni, cx, v, copy ebml_w| {
@@ -899,7 +899,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                                              index, /*bad*/copy *pt, abi);
               }
               // case for separate item and foreign-item tables
-              _ => fail ~"bad foreign item"
+              _ => die!(~"bad foreign item")
             }
         }
         ,.. *visit::default_visitor()

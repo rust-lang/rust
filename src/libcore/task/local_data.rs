@@ -133,15 +133,15 @@ fn test_tls_modify() {
         fn my_key(_x: @~str) { }
         local_data_modify(my_key, |data| {
             match data {
-                Some(@ref val) => fail ~"unwelcome value: " + *val,
+                Some(@ref val) => die!(~"unwelcome value: " + *val),
                 None       => Some(@~"first data")
             }
         });
         local_data_modify(my_key, |data| {
             match data {
                 Some(@~"first data") => Some(@~"next data"),
-                Some(@ref val)           => fail ~"wrong value: " + *val,
-                None                 => fail ~"missing value"
+                Some(@ref val)           => die!(~"wrong value: " + *val),
+                None                 => die!(~"missing value")
             }
         });
         assert *(local_data_pop(my_key).get()) == ~"next data";
@@ -212,11 +212,11 @@ fn test_tls_cleanup_on_failure() {
                 local_data_set(str_key, @~"string data");
                 local_data_set(box_key, @@());
                 local_data_set(int_key, @42);
-                fail;
+                die!();
             }
         }
         // Not quite nondeterministic.
         local_data_set(int_key, @31337);
-        fail;
+        die!();
     }
 }

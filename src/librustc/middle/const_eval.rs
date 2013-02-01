@@ -244,7 +244,7 @@ impl const_val : cmp::Eq {
 fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
         Ok(ref r) => (/*bad*/copy *r),
-        Err(ref s) => fail (/*bad*/copy *s)
+        Err(ref s) => die!(/*bad*/copy *s)
     }
 }
 
@@ -470,7 +470,7 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    _ => fail ~"compare_const_vals: ill-typed comparison"
+    _ => die!(~"compare_const_vals: ill-typed comparison")
   }
 }
 

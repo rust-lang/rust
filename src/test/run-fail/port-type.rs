@@ -25,4 +25,4 @@ fn echo<T: Owned>(c: Chan<T>, oc: Chan<Chan<T>>) {
     send(c, move x);
 }
 
-fn main() { fail ~"meep"; }
+fn main() { die!(~"meep"); }

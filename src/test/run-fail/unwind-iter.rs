@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn x(it: fn(int)) {
-    fail;
+    die!();
     it(0);
 }
 

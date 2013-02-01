@@ -15,7 +15,7 @@ extern mod std;
 use oldcomm::Port;
 use oldcomm::recv;
 
-fn grandchild() { fail ~"grandchild dies"; }
+fn grandchild() { die!(~"grandchild dies"); }
 
 fn child() {
     let p = Port::<int>();

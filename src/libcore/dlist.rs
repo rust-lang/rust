@@ -48,18 +48,18 @@ priv impl<T> DListNode<T> {
         match self.next {
             Some(neighbour) => match neighbour.prev {
               Some(me) => if !managed::ptr_eq(self, me) {
-                  fail ~"Asymmetric next-link in dlist node."
+                  die!(~"Asymmetric next-link in dlist node.")
               },
-              None => fail ~"One-way next-link in dlist node."
+              None => die!(~"One-way next-link in dlist node.")
             },
             None => ()
         }
         match self.prev {
             Some(neighbour) => match neighbour.next {
               Some(me) => if !managed::ptr_eq(me, self) {
-                  fail ~"Asymmetric prev-link in dlist node."
+                  die!(~"Asymmetric prev-link in dlist node.")
               },
-              None => fail ~"One-way prev-link in dlist node."
+              None => die!(~"One-way prev-link in dlist node.")
             },
             None => ()
         }
@@ -76,7 +76,7 @@ impl<T> DListNode<T> {
     pure fn next_node(@self) -> @DListNode<T> {
         match self.next_link() {
             Some(nobe) => nobe,
-            None       => fail ~"This dlist node has no next neighbour."
+            None       => die!(~"This dlist node has no next neighbour.")
         }
     }
     /// Get the previous node in the list, if there is one.
@@ -88,7 +88,7 @@ impl<T> DListNode<T> {
     pure fn prev_node(@self) -> @DListNode<T> {
         match self.prev_link() {
             Some(nobe) => nobe,
-            None       => fail ~"This dlist node has no previous neighbour."
+            None       => die!(~"This dlist node has no previous neighbour.")
         }
     }
 }
@@ -135,21 +135,21 @@ priv impl<T> DList<T> {
         // These asserts could be stronger if we had node-root back-pointers,
         // but those wouldn't allow for O(1) append.
         if self.size == 0 {
-            fail ~"This dlist is empty; that node can't be on it."
+            die!(~"This dlist is empty; that node can't be on it.")
         }
-        if !nobe.linked { fail ~"That node isn't linked to any dlist." }
+        if !nobe.linked { die!(~"That node isn't linked to any dlist.") }
         if !((nobe.prev.is_some()
               || managed::ptr_eq(self.hd.expect(~"headless dlist?"),
                                  nobe)) &&
              (nobe.next.is_some()
               || managed::ptr_eq(self.tl.expect(~"tailless dlist?"),
                                  nobe))) {
-            fail ~"That node isn't on this dlist."
+            die!(~"That node isn't on this dlist.")
         }
     }
     fn make_mine(nobe: @DListNode<T>) {
         if nobe.prev.is_some() || nobe.next.is_some() || nobe.linked {
-            fail ~"Cannot insert node that's already on a dlist!"
+            die!(~"Cannot insert node that's already on a dlist!")
         }
         nobe.linked = true;
     }
@@ -313,14 +313,16 @@ impl<T> DList<T> {
     pure fn head_n(@self) -> @DListNode<T> {
         match self.hd {
             Some(nobe) => nobe,
-            None       => fail ~"Attempted to get the head of an empty dlist."
+            None       => die!(
+                ~"Attempted to get the head of an empty dlist.")
         }
     }
     /// Get the node at the list's tail, failing if empty. O(1).
     pure fn tail_n(@self) -> @DListNode<T> {
         match self.tl {
             Some(nobe) => nobe,
-            None       => fail ~"Attempted to get the tail of an empty dlist."
+            None       => die!(
+                ~"Attempted to get the tail of an empty dlist.")
         }
     }
 
@@ -333,7 +335,7 @@ impl<T> DList<T> {
      */
     fn append(@self, them: @DList<T>) {
         if managed::ptr_eq(self, them) {
-            fail ~"Cannot append a dlist to itself!"
+            die!(~"Cannot append a dlist to itself!")
         }
         if them.len() > 0 {
             self.link(self.tl, them.hd);
@@ -350,7 +352,7 @@ impl<T> DList<T> {
      */
     fn prepend(@self, them: @DList<T>) {
         if managed::ptr_eq(self, them) {
-            fail ~"Cannot prepend a dlist to itself!"
+            die!(~"Cannot prepend a dlist to itself!")
         }
         if them.len() > 0 {
             self.link(them.tl, self.hd);

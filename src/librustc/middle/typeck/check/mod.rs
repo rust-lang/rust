@@ -2107,17 +2107,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         instantiate_path(fcx, pth, tpt, expr.span, expr.id, region_lb);
       }
       ast::expr_mac(_) => tcx.sess.bug(~"unexpanded macro"),
-      ast::expr_fail(expr_opt) => {
-        bot = true;
-        match expr_opt {
-          None => {/* do nothing */ }
-          Some(e) => {
-            check_expr_has_type(
-                fcx, e, ty::mk_estr(tcx, ty::vstore_uniq));
-          }
-        }
-        fcx.write_bot(id);
-      }
       ast::expr_break(_) => { fcx.write_bot(id); bot = true; }
       ast::expr_again(_) => { fcx.write_bot(id); bot = true; }
       ast::expr_ret(expr_opt) => {
@@ -2270,7 +2259,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     capture::check_capture_clause(tcx, b.id, cap_clause);
                 }
                 // argh
-                _ => fail ~"expr_fn_block"
+                _ => die!(~"expr_fn_block")
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
@@ -2311,7 +2300,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
           // argh
-          _ => fail ~"expected fn ty"
+          _ => die!(~"expected fn ty")
         }
         fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }

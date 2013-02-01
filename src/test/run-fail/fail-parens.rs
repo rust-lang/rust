@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Fail statements without arguments need to be disambiguated in
+// Fail macros without arguments need to be disambiguated in
 // certain positions
 // error-pattern:oops
 
 fn bigfail() {
-    while (fail ~"oops") { if (fail) {
-        match (fail) { () => {
+    while (die!(~"oops")) { if (die!()) {
+        match (die!()) { () => {
         }
                      }
     }};

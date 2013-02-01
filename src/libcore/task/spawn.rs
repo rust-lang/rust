@@ -645,18 +645,18 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
     fn new_task_in_new_sched(opts: SchedOpts) -> *rust_task {
         unsafe {
             if opts.foreign_stack_size != None {
-                fail ~"foreign_stack_size scheduler option unimplemented";
+                die!(~"foreign_stack_size scheduler option unimplemented");
             }
 
             let num_threads = match opts.mode {
               SingleThreaded => 1u,
               ThreadPerCore => rt::rust_num_threads(),
               ThreadPerTask => {
-                fail ~"ThreadPerTask scheduling mode unimplemented"
+                die!(~"ThreadPerTask scheduling mode unimplemented")
               }
               ManualThreads(threads) => {
                 if threads == 0u {
-                    fail ~"can not create a scheduler with no threads";
+                    die!(~"can not create a scheduler with no threads");
                 }
                 threads
               }
@@ -692,7 +692,7 @@ fn test_spawn_raw_unsupervise() {
         .. default_task_opts()
     };
     do spawn_raw(move opts) {
-        fail;
+        die!();
     }
 }
 
@@ -722,7 +722,7 @@ fn test_spawn_raw_notify_failure() {
         .. default_task_opts()
     };
     do spawn_raw(move opts) {
-        fail;
+        die!();
     }
     assert notify_po.recv() == Failure;
 }

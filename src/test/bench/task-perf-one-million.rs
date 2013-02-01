@@ -33,7 +33,7 @@ fn calc(children: uint, parent_ch: oldcomm::Chan<msg>) {
           ready(child_ch) => {
             child_chs.push(child_ch);
           }
-          _ => fail ~"task-perf-one-million failed (port not ready)"
+          _ => die!(~"task-perf-one-million failed (port not ready)")
         }
     }
 
@@ -45,13 +45,13 @@ fn calc(children: uint, parent_ch: oldcomm::Chan<msg>) {
                 oldcomm::send(*child_ch, start);
             }
         }
-        _ => fail ~"task-perf-one-million failed (port not in start state)"
+        _ => die!(~"task-perf-one-million failed (port not in start state)")
     }
 
     for iter::repeat (children) {
         match oldcomm::recv(port) {
           done(child_sum) => { sum += child_sum; }
-          _ => fail ~"task-perf-one-million failed (port not done)"
+          _ => die!(~"task-perf-one-million failed (port not done)")
         }
     }
 
@@ -78,11 +78,11 @@ fn main() {
       ready(chan) => {
         oldcomm::send(chan, start);
       }
-      _ => fail ~"task-perf-one-million failed (port not ready)"
+      _ => die!(~"task-perf-one-million failed (port not ready)")
     }
     let sum = match oldcomm::recv(port) {
       done(sum) => { sum }
-      _ => fail ~"task-perf-one-million failed (port not done)"
+      _ => die!(~"task-perf-one-million failed (port not done)")
     };
     error!("How many tasks? %d tasks.", sum);
 }

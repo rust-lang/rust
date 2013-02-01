@@ -22,7 +22,7 @@ fn foo(s: @int) {
         log(debug, y); // ref up then down
 
       }
-      _ => { debug!("?"); fail; }
+      _ => { debug!("?"); die!(); }
     }
     log(debug, ::core::sys::refcount(s));
     assert (::core::sys::refcount(s) == count + 1u);

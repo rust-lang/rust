@@ -20,7 +20,7 @@ fn main() {
         let mush = food + cheese;
         let f = fn@() {
             let chew = mush + cheese;
-            fail ~"so yummy"
+            die!(~"so yummy")
         };
         f();
     });

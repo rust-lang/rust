@@ -32,7 +32,7 @@ fn complainer(c: oldcomm::Chan<bool>) -> complainer {
 
 fn f(c: oldcomm::Chan<bool>) {
     let _c = move complainer(c);
-    fail;
+    die!();
 }
 
 fn main() {

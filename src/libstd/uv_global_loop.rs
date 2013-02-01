@@ -190,10 +190,10 @@ mod test {
                                                            1u,
                                                            0u);
                         if start_status != 0 {
-                            fail ~"failure on ll::timer_start()";
+                            die!(~"failure on ll::timer_start()");
                         }
                     } else {
-                        fail ~"failure on ll::timer_init()";
+                        die!(~"failure on ll::timer_init()");
                     }
                 }
             };

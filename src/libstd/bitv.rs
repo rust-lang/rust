@@ -242,7 +242,7 @@ pub fn Bitv (nbits: uint, init: bool) -> Bitv {
 priv impl Bitv {
 
     fn die() -> ! {
-        fail ~"Tried to do operation on bit vectors with different sizes";
+        die!(~"Tried to do operation on bit vectors with different sizes");
     }
 
     #[inline(always)]

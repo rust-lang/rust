@@ -25,7 +25,7 @@ use syntax::ast::{expr_swap, expr_unary, neg, node_id, not, pat, pat_ident};
 use syntax::ast::{expr_vstore, expr_vec, expr_rec, expr_tup, expr_lit};
 use syntax::ast::{expr_cast, expr_if, expr_while, expr_loop, expr_fn};
 use syntax::ast::{expr_fn_block, expr_loop_body, expr_do_body, expr_block};
-use syntax::ast::{expr_unary_move, expr_fail, expr_break, expr_again};
+use syntax::ast::{expr_unary_move, expr_break, expr_again};
 use syntax::ast::{expr_ret, expr_log, expr_assert, expr_mac, expr_struct};
 use syntax::ast::{expr_repeat};
 use syntax::ast::{sty_uniq, sty_value, uniq};
@@ -238,7 +238,7 @@ fn compute_modes_for_expr(expr: @expr,
             expr_lit(*) | expr_cast(*) | expr_if(*) | expr_while(*) |
             expr_loop(*) | expr_fn(*) | expr_fn_block(*) |
             expr_loop_body(*) | expr_do_body(*) | expr_block(*) |
-            expr_unary_move(*) | expr_fail(*) | expr_break(*) |
+            expr_unary_move(*) | expr_break(*) |
             expr_again(*) | expr_ret(*) | expr_log(*) | expr_assert(*) |
             expr_mac(*) | expr_struct(*) | expr_repeat(*) => {
             visit::visit_expr(expr, cx, v)

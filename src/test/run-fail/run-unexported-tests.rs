@@ -20,5 +20,5 @@ mod m {
     fn exported() { }
 
     #[test]
-    fn unexported() { fail ~"runned an unexported test"; }
+    fn unexported() { die!(~"runned an unexported test"); }
 }

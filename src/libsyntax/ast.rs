@@ -40,7 +40,7 @@ impl<S: Encoder> ident: Encodable<S> {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
         } {
-            None => fail ~"encode: TLS interner not set up",
+            None => die!(~"encode: TLS interner not set up"),
             Some(intr) => intr
         };
 
@@ -53,7 +53,7 @@ impl<D: Decoder> ident: Decodable<D> {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
         } {
-            None => fail ~"decode: TLS interner not set up",
+            None => die!(~"decode: TLS interner not set up"),
             Some(intr) => intr
         };
 
@@ -724,7 +724,7 @@ enum expr_ {
     expr_cast(@expr, @Ty),
     expr_if(@expr, blk, Option<@expr>),
     expr_while(@expr, blk),
-    /* Conditionless loop (can be exited with break, cont, ret, or fail)
+    /* Conditionless loop (can be exited with break, cont, or ret)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
     expr_loop(blk, Option<ident>),
@@ -748,7 +748,6 @@ enum expr_ {
     expr_index(@expr, @expr),
     expr_path(@path),
     expr_addr_of(mutability, @expr),
-    expr_fail(Option<@expr>),
     expr_break(Option<ident>),
     expr_again(Option<ident>),
     expr_ret(Option<@expr>),

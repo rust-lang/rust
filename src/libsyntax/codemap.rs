@@ -356,7 +356,7 @@ pub impl CodeMap {
         for self.files.each |fm| { if fm.name == filename { return *fm; } }
         //XXjdm the following triggers a mismatched type bug
         //      (or expected function, found _|_)
-        fail; // ("asking for " + filename + " which we don't know about");
+        die!(); // ("asking for " + filename + " which we don't know about");
     }
 
 }
@@ -376,8 +376,8 @@ priv impl CodeMap {
             }
         }
         if (a >= len) {
-            fail fmt!("position %u does not resolve to a source location",
-                      pos.to_uint())
+            die!(fmt!("position %u does not resolve to a source location",
+                      pos.to_uint()))
         }
 
         return a;

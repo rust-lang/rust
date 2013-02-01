@@ -11,7 +11,7 @@
 // xfail-fast
 
 fn main() {
-    fail
+    die!()
 }
 
 #[main]

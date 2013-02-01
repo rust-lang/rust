@@ -22,7 +22,7 @@ impl<T> &cells<T> {
     fn get(idx: uint) -> &self/T {
         match self.vals[idx] {
           Some(ref v) => &v.value,
-          None => fail
+          None => die!()
         }
     }
 }

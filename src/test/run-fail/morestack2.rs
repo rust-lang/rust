@@ -28,7 +28,7 @@ fn getbig_call_c_and_fail(i: int) {
     } else {
         unsafe {
             rustrt::last_os_error();
-            fail;
+            die!();
         }
     }
 }

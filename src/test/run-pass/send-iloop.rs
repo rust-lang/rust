@@ -12,7 +12,7 @@
 extern mod std;
 
 fn die() {
-    fail;
+    die!();
 }
 
 fn iloop() {
