@@ -131,7 +131,7 @@ pub fn check_crate(tcx: ty::ctxt,
                         }
                     }
                 } else {
-                    // XXX: External crates.
+                    // FIXME #4732: External crates.
                 }
             }
             method_param(method_param {
@@ -195,7 +195,7 @@ pub fn check_crate(tcx: ty::ctxt,
                         }
                     }
                 } else {
-                    // XXX: External crates.
+                    // FIXME #4732: External crates.
                 }
             }
         }
