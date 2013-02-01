@@ -32,8 +32,8 @@ use core::u32;
 use core::u64;
 use core::uint;
 use core::vec;
-use std::map::{Map, HashMap};
-use std::map;
+use std::oldmap::{Map, HashMap};
+use std::oldmap;
 use std::oldsmallintmap::{Map, SmallIntMap};
 use std::oldsmallintmap;
 use syntax::ast_util::{path_to_ident};
@@ -233,7 +233,7 @@ pub fn get_lint_dict() -> lint_dict {
            default: warn}),
         */
     ];
-    map::hash_from_vec(v)
+    oldmap::hash_from_vec(v)
 }
 
 // This is a highly not-optimal set of data structure decisions.

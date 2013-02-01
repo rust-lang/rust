@@ -101,7 +101,7 @@ use core::dvec::DVec;
 use core::result;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};

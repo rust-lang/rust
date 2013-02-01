@@ -79,7 +79,7 @@ use str::{connect, split_str};
 use vec::pop;
 
 use std::list::{Cons, List, Nil};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use str_eq = str::eq;
 
 // Definition mapping

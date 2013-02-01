@@ -33,7 +33,7 @@ use middle::typeck;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::libc::c_uint;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
 use syntax::ast_util::local_def;
 use syntax::print::pprust::expr_to_str;

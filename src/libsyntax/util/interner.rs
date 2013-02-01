@@ -15,13 +15,13 @@
 use core::prelude::*;
 
 use core::dvec::DVec;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 
 pub type hash_interner<T> = {map: HashMap<T, uint>, vect: DVec<T>};
 
 pub fn mk<T:Eq IterBytes Hash Const Copy>() -> Interner<T> {
-    let m = map::HashMap::<T, uint>();
+    let m = oldmap::HashMap::<T, uint>();
     let hi: hash_interner<T> =
         {map: m, vect: DVec()};
     move ((move hi) as Interner::<T>)

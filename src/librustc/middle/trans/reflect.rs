@@ -24,7 +24,7 @@ use middle::trans::meth;
 use middle::trans::type_of::*;
 use util::ppaux::ty_to_str;
 
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
 

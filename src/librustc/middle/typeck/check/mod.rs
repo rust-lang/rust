@@ -115,8 +115,8 @@ use core::result;
 use core::str;
 use core::vec;
 use std::list::Nil;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use syntax::ast::{provided, required, ty_i};
 use syntax::ast;
 use syntax::ast_map;
@@ -209,9 +209,9 @@ pub fn blank_inherited(ccx: @crate_ctxt) -> @inherited {
     @inherited {
         infcx: infer::new_infer_ctxt(ccx.tcx),
         locals: HashMap(),
-        node_types: map::HashMap(),
-        node_type_substs: map::HashMap(),
-        adjustments: map::HashMap()
+        node_types: oldmap::HashMap(),
+        node_type_substs: oldmap::HashMap(),
+        adjustments: oldmap::HashMap()
     }
 }
 

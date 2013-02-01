@@ -136,7 +136,7 @@ pub mod lib {
 use result::{Ok, Err};
 use io::ReaderUtil;
 use std::getopts;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use getopts::{opt_present};
 use getopts::groups;
 use syntax::codemap;

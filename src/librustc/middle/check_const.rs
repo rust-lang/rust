@@ -18,7 +18,7 @@ use util::ppaux;
 
 use core::dvec::DVec;
 use core::option;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::codemap;
 use syntax::{visit, ast_util, ast_map};

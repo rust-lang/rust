@@ -14,7 +14,7 @@
 extern mod std;
 
 use core::io::{WriterUtil};
-use std::map::*;
+use std::oldmap::*;
 
 #[cfg(test)]
 fn check_strs(actual: &str, expected: &str) -> bool

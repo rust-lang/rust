@@ -32,7 +32,7 @@ use rustc::driver::session::{basic_options, options};
 use rustc::driver::session;
 use rustc::front;
 use rustc::metadata::filesearch;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::codemap;

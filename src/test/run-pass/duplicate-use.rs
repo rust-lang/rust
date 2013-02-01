@@ -11,7 +11,7 @@
 // xfail-test
 extern mod std;
 
-use list = std::map::chained;
+use list = std::oldmap::chained;
 use std::list;
 
 pub fn main() {

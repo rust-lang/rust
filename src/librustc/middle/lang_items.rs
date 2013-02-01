@@ -33,7 +33,7 @@ use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::{visit_crate, visit_item};
 
 use core::ptr;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use str_eq = str::eq;
 
 pub enum LangItem {

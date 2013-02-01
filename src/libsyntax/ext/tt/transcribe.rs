@@ -22,7 +22,7 @@ use parse::lexer::TokenAndSpan;
 use core::option;
 use core::vec;
 use std;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 enum tt_frame_up { /* to break a circularity */
     tt_frame_up(Option<tt_frame>)
@@ -44,7 +44,7 @@ pub type tt_reader = @{
     interner: @ident_interner,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
-    interpolations: std::map::HashMap<ident, @named_match>,
+    interpolations: std::oldmap::HashMap<ident, @named_match>,
     mut repeat_idx: ~[uint],
     mut repeat_len: ~[uint],
     /* cached: */
@@ -56,14 +56,14 @@ pub type tt_reader = @{
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
 pub fn new_tt_reader(sp_diag: span_handler, itr: @ident_interner,
-                     interp: Option<std::map::HashMap<ident,@named_match>>,
+                     interp: Option<std::oldmap::HashMap<ident,@named_match>>,
                      src: ~[ast::token_tree])
                   -> tt_reader {
     let r = @{sp_diag: sp_diag, interner: itr,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: None, up: tt_frame_up(option::None)},
               interpolations: match interp { /* just a convienience */
-                None => std::map::HashMap(),
+                None => std::oldmap::HashMap(),
                 Some(x) => x
               },
               mut repeat_idx: ~[],

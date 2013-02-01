@@ -23,7 +23,7 @@ use core::cmp;
 use core::option;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::sort;
 use syntax::ast::*;
 use syntax::ast_util::{variant_def_ids, unguarded_pat, walk_pat};

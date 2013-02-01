@@ -20,7 +20,7 @@ use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_util::walk_pat;
 use syntax::ast_util;

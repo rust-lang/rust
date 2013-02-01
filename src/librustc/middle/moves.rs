@@ -217,7 +217,7 @@ use util::ppaux;
 use util::common::indenter;
 
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;

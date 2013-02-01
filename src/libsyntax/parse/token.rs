@@ -21,7 +21,7 @@ use core::char;
 use core::cmp;
 use core::str;
 use core::task;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 #[auto_encode]
 #[auto_decode]

@@ -18,7 +18,7 @@ use middle::ty;
 use core::int;
 use core::option::*;
 use core::vec;
-use std::map::*;
+use std::oldmap::*;
 use syntax::codemap::span;
 use syntax::print::pprust::path_to_str;
 use syntax::{ast, ast_util, visit};

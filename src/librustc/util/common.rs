@@ -19,7 +19,7 @@ use syntax;
 use core::option;
 use core::str;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`

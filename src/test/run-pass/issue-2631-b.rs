@@ -15,8 +15,8 @@ extern mod req;
 extern mod std;
 
 use req::*;
-use std::map::*;
-use std::map::HashMap;
+use std::oldmap::*;
+use std::oldmap::HashMap;
 
 pub fn main() {
   let v = ~[@~"hi"];

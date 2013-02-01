@@ -22,7 +22,7 @@
 
 extern mod std;
 use io::WriterUtil;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 struct cmplx {
     re: f64,

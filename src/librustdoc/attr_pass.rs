@@ -31,7 +31,7 @@ use core::option;
 use core::vec;
 use syntax::ast;
 use syntax::ast_map;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::par;
 
 pub fn mk_pass() -> Pass {

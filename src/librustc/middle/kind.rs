@@ -24,7 +24,7 @@ use util::ppaux::{ty_to_str, tys_to_str};
 use core::option;
 use core::str;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::codemap::{span, spanned};
 use syntax::print::pprust::expr_to_str;

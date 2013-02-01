@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern mod std;
-use std::map;
+use std::oldmap;
 use std::treemap::TreeMap;
 use core::hashmap::linear::*;
 use core::io::WriterUtil;
@@ -35,7 +35,7 @@ fn timed(result: &mut float,
 fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
     {
-        let map = map::HashMap();
+        let map = oldmap::HashMap();
         do timed(&mut results.sequential_ints) {
             for uint::range(0, num_keys) |i| {
                 map.insert(i, i+1);
@@ -48,7 +48,7 @@ fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
     }
 
     {
-        let map = map::HashMap();
+        let map = oldmap::HashMap();
         do timed(&mut results.random_ints) {
             for uint::range(0, num_keys) |i| {
                 map.insert(rng.next() as uint, i);
@@ -57,7 +57,7 @@ fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
     }
 
     {
-        let map = map::HashMap();
+        let map = oldmap::HashMap();
         for uint::range(0, num_keys) |i| {
             map.insert(i, i);;
         }
@@ -72,7 +72,7 @@ fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
 fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
     {
-        let map = map::HashMap();
+        let map = oldmap::HashMap();
         do timed(&mut results.sequential_strings) {
             for uint::range(0, num_keys) |i| {
                 let s = uint::to_str(i, 10);
@@ -87,7 +87,7 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
     }
 
     {
-        let map = map::HashMap();
+        let map = oldmap::HashMap();
         do timed(&mut results.random_strings) {
             for uint::range(0, num_keys) |i| {
                 let s = uint::to_str(rng.next() as uint, 10);
@@ -97,7 +97,7 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
     }
 
     {
-        let map = map::HashMap();
+        let map = oldmap::HashMap();
         for uint::range(0, num_keys) |i| {
             map.insert(uint::to_str(i, 10), i);
         }
@@ -309,7 +309,7 @@ fn main() {
         let mut results = empty_results();
         old_int_benchmarks(rng, num_keys, &mut results);
         old_str_benchmarks(rng, num_keys, &mut results);
-        write_results("std::map::HashMap", &results);
+        write_results("std::oldmap::HashMap", &results);
     }
 
     {

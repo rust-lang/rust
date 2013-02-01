@@ -11,8 +11,8 @@
 // except according to those terms.
 
 extern mod std;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 
 pub fn main() {
     let buggy_map :HashMap<uint, &uint> = HashMap::<uint, &uint>();

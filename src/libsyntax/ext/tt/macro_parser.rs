@@ -26,7 +26,7 @@ use core::option;
 use core::str;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it

@@ -119,7 +119,7 @@ use core::ptr;
 use core::to_str;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;

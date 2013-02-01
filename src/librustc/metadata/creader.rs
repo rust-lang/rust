@@ -30,7 +30,7 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::visit;
 use syntax::{ast, ast_util};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
