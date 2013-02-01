@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use ast;
-use ast_util::spanned;
+use codemap::spanned;
 use codemap::BytePos;
 use parse::common::*; //resolve bug?
 use parse::token;

@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{span, FileName};
+use codemap::{span, FileName, spanned};
 
 use core::cast;
 use core::cmp;
@@ -20,10 +20,6 @@ use core::task;
 use core::to_bytes;
 use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
-
-#[auto_encode]
-#[auto_decode]
-pub struct spanned<T> { node: T, span: span }
 
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */

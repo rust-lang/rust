@@ -10,8 +10,7 @@
 
 use parser::Parser;
 use attr::parser_attr;
-use ast_util::mk_sp;
-use codemap::span;
+use codemap::{span, mk_sp};
 
 type ctx =
     @{sess: parse::parse_sess,
@@ -75,7 +74,7 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
         // XXX: Using a dummy span, but this code will go away soon
         let p0 = new_sub_parser_from_file(cx.sess, cx.cfg,
                                           modpath,
-                                          ast_util::dummy_sp());
+                                          codemap::dummy_sp());
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
         return (m0.view_items, m0.items, inner_attrs.inner);

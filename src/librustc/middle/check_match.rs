@@ -26,9 +26,8 @@ use core::vec;
 use std::map::HashMap;
 use std::sort;
 use syntax::ast::*;
-use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat, walk_pat};
-use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::ast_util::{variant_def_ids, unguarded_pat, walk_pat};
+use syntax::codemap::{span, dummy_sp, spanned};
 use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 
@@ -464,7 +463,7 @@ pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
 }
 
 pub fn wild() -> @pat {
-    @pat {id: 0, node: pat_wild, span: ast_util::dummy_sp()}
+    @pat {id: 0, node: pat_wild, span: dummy_sp()}
 }
 
 pub fn specialize(cx: @MatchCheckCtxt,

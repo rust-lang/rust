@@ -13,10 +13,11 @@ use core::prelude::*;
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use ast_util;
-use codemap::span;
+use codemap::{span, dummy_sp};
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
+use parse::lexer::TokenAndSpan;
 
 use core::option;
 use core::vec;
@@ -69,7 +70,7 @@ pub fn new_tt_reader(sp_diag: span_handler, itr: @ident_interner,
               mut repeat_len: ~[],
               /* dummy values, never read: */
               mut cur_tok: EOF,
-              mut cur_span: ast_util::dummy_sp()
+              mut cur_span: dummy_sp()
              };
     tt_next_token(r); /* get cur_tok and cur_span set up */
     return r;
@@ -149,8 +150,8 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
 }
 
 
-pub fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
-    let ret_val = { tok: r.cur_tok, sp: r.cur_span };
+pub fn tt_next_token(&&r: tt_reader) -> TokenAndSpan {
+    let ret_val = TokenAndSpan { tok: r.cur_tok, sp: r.cur_span };
     while r.cur.idx >= r.cur.readme.len() {
         /* done with this set; pop or repeat? */
         if ! r.cur.dotdotdoted
