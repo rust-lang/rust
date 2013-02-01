@@ -96,7 +96,7 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
 }
 
 pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
-    let doc_strs = do doc_metas(attrs).filter_map |meta| {
+    let doc_strs = do doc_metas(attrs).filter_mapped |meta| {
         attr::get_meta_item_value_str(*meta)
     };
     if doc_strs.is_empty() {

@@ -51,10 +51,6 @@
 //! * s - str (any flavor)
 //! * ? - arbitrary type (does not use the to_str trait)
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 // Transitional
 #[allow(structural_records)]; // Macros -- needs a snapshot
 

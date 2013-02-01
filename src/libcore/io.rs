@@ -14,9 +14,6 @@ Basic input/output
 
 */
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use result::Result;
 
 use cmp::Eq;

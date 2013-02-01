@@ -71,23 +71,6 @@ pub impl ty::t: LatticeValue {
     }
 }
 
-pub impl FnMeta: LatticeValue {
-    static fn sub(cf: &CombineFields,
-                  a: &FnMeta, b: &FnMeta) -> ures {
-        Sub(*cf).fn_metas(a, b).to_ures()
-    }
-
-    static fn lub(cf: &CombineFields,
-                  a: &FnMeta, b: &FnMeta) -> cres<FnMeta> {
-        Lub(*cf).fn_metas(a, b)
-    }
-
-    static fn glb(cf: &CombineFields,
-                  a: &FnMeta, b: &FnMeta) -> cres<FnMeta> {
-        Glb(*cf).fn_metas(a, b)
-    }
-}
-
 pub impl CombineFields {
     fn var_sub_var<T:Copy InferStr LatticeValue,
                    V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(

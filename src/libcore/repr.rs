@@ -14,9 +14,6 @@ More runtime type reflection
 
 */
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cast::transmute;
 use cast;
 use char;

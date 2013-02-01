@@ -21,7 +21,8 @@ use middle::ty::{mt, t, param_bound, param_ty};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region};
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
-use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
+use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_bare_fn, ty_closure};
+use middle::ty::{ty_trait, ty_int};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 use middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
 use middle::ty::{ty_type, ty_uniq, ty_uint, ty_infer};
@@ -30,7 +31,7 @@ use metadata::encoder;
 use syntax::codemap;
 use syntax::codemap::span;
 use syntax::print::pprust;
-use syntax::print::pprust::{path_to_str, proto_to_str, mode_to_str};
+use syntax::print::pprust::{path_to_str, mode_to_str};
 use syntax::{ast, ast_util};
 use syntax::ast_map;
 
@@ -252,17 +253,6 @@ pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     }
 }
 
-pub fn proto_ty_to_str(_cx: ctxt, proto: ast::Proto,
-                       followed_by_word: bool) -> &static/str {
-    match proto {
-        ast::ProtoBare if followed_by_word => "extern ",
-        ast::ProtoBare => "extern",
-        ast::ProtoBox => "@",
-        ast::ProtoBorrowed => "&",
-        ast::ProtoUniq => "~",
-    }
-}
-
 pub fn expr_repr(cx: ctxt, expr: @ast::expr) -> ~str {
     fmt!("expr(%d: %s)",
          expr.id,
@@ -306,69 +296,95 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         };
         fmt!("%s%s", modestr, ty_to_str(cx, ty))
     }
-    fn fn_to_str(cx: ctxt,
-                 proto: ast::Proto,
-                 region: ty::Region,
-                 purity: ast::purity,
-                 onceness: ast::Onceness,
-                 ident: Option<ast::ident>,
-                 inputs: &[arg],
-                 output: t) -> ~str {
-        let mut s;
+    fn bare_fn_to_str(cx: ctxt,
+                      purity: ast::purity,
+                      abi: ast::Abi,
+                      ident: Option<ast::ident>,
+                      sig: &ty::FnSig) -> ~str
+    {
+        let mut s = ~"extern ";
 
-        s = match purity {
-            ast::impure_fn => ~"",
-            _ => purity.to_str() + ~" "
-        };
-
-        s += match onceness {
-            ast::Many => ~"",
-            ast::Once => onceness.to_str() + ~" "
-        };
-
-        s += proto_ty_to_str(cx, proto, true);
-
-        match (proto, region) {
-            (ast::ProtoBox, ty::re_static) |
-            (ast::ProtoUniq, ty::re_static) |
-            (ast::ProtoBare, ty::re_static) => {
-            }
-
-            (_, region) => {
-                s += region_to_str_adorned(cx, ~"", region, ~"/");
-            }
+        match abi {
+            ast::RustAbi => {}
         }
 
-        s += ~"fn";
+        match purity {
+            ast::impure_fn => {}
+            _ => {
+                s.push_str(purity.to_str());
+                s.push_char(' ');
+            }
+        };
+
+        s.push_str("fn");
 
         match ident {
-          Some(i) => { s += ~" "; s += cx.sess.str_of(i); }
+          Some(i) => {
+              s.push_char(' ');
+              s.push_str(cx.sess.str_of(i));
+          }
           _ => { }
         }
-        s += ~"(";
-        let strs = inputs.map(|a| fn_input_to_str(cx, *a));
-        s += str::connect(strs, ~", ");
-        s += ~")";
-        if ty::get(output).sty != ty_nil {
-            s += ~" -> ";
-            if ty::type_is_bot(output) {
-                s += ~"!";
-            } else {
-                s += ty_to_str(cx, output);
-            }
-        }
+
+        push_sig_to_str(cx, &mut s, sig);
+
         return s;
     }
+    fn closure_to_str(cx: ctxt, cty: &ty::ClosureTy) -> ~str
+    {
+        let mut s = cty.sigil.to_str();
+
+        match (cty.sigil, cty.region) {
+            (ast::ManagedSigil, ty::re_static) |
+            (ast::OwnedSigil, ty::re_static) => {}
+
+            (_, region) => {
+                s.push_str(region_to_str_adorned(cx, "", region, "/"));
+            }
+        }
+
+        match cty.purity {
+            ast::impure_fn => {}
+            _ => {
+                s.push_str(cty.purity.to_str());
+                s.push_char(' ');
+            }
+        };
+
+        match cty.onceness {
+            ast::Many => {}
+            ast::Once => {
+                s.push_str(cty.onceness.to_str());
+                s.push_char(' ');
+            }
+        };
+
+        s.push_str("fn");
+
+        push_sig_to_str(cx, &mut s, &cty.sig);
+
+        return s;
+    }
+    fn push_sig_to_str(cx: ctxt, s: &mut ~str, sig: &ty::FnSig) {
+        s.push_char('(');
+        let strs = sig.inputs.map(|a| fn_input_to_str(cx, *a));
+        s.push_str(str::connect(strs, ", "));
+        s.push_char(')');
+        if ty::get(sig.output).sty != ty_nil {
+            s.push_str(" -> ");
+            if ty::type_is_bot(sig.output) {
+                s.push_char('!');
+            } else {
+                s.push_str(ty_to_str(cx, sig.output));
+            }
+        }
+    }
     fn method_to_str(cx: ctxt, m: method) -> ~str {
-        return fn_to_str(
-            cx,
-            m.fty.meta.proto,
-            m.fty.meta.region,
-            m.fty.meta.purity,
-            m.fty.meta.onceness,
-            Some(m.ident),
-            m.fty.sig.inputs,
-            m.fty.sig.output) + ~";";
+        bare_fn_to_str(cx,
+                       m.fty.purity,
+                       m.fty.abi,
+                       Some(m.ident),
+                       &m.fty.sig) + ~";"
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
         return cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, f.mt);
@@ -409,15 +425,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         let strs = elems.map(|elem| ty_to_str(cx, *elem));
         ~"(" + str::connect(strs, ~",") + ~")"
       }
-      ty_fn(ref f) => {
-        fn_to_str(cx,
-                  f.meta.proto,
-                  f.meta.region,
-                  f.meta.purity,
-                  f.meta.onceness,
-                  None,
-                  f.sig.inputs,
-                  f.sig.output)
+      ty_closure(ref f) => {
+          closure_to_str(cx, f)
+      }
+      ty_bare_fn(ref f) => {
+          bare_fn_to_str(cx, f.purity, f.abi, None, &f.sig)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
@@ -448,10 +460,9 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_estr(vs) => vstore_ty_to_str(cx, ~"str", vs),
       ty_opaque_box => ~"@?",
-      ty_opaque_closure_ptr(ast::ProtoBorrowed) => ~"closure&",
-      ty_opaque_closure_ptr(ast::ProtoBox) => ~"closure@",
-      ty_opaque_closure_ptr(ast::ProtoUniq) => ~"closure~",
-      ty_opaque_closure_ptr(ast::ProtoBare) => ~"closure"
+      ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"closure&",
+      ty_opaque_closure_ptr(ast::ManagedSigil) => ~"closure@",
+      ty_opaque_closure_ptr(ast::OwnedSigil) => ~"closure~",
     }
 }
 

@@ -150,11 +150,23 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
     }
 
     let fty = ty::node_id_to_type(cx.tcx, id);
-    match ty::ty_fn_proto(fty) {
-        ProtoUniq => b(check_for_uniq),
-        ProtoBox => b(check_for_box),
-        ProtoBare => b(check_for_bare),
-        ProtoBorrowed => b(check_for_block),
+    match ty::get(fty).sty {
+        ty::ty_closure(ty::ClosureTy {sigil: OwnedSigil, _}) => {
+            b(check_for_uniq)
+        }
+        ty::ty_closure(ty::ClosureTy {sigil: ManagedSigil, _}) => {
+            b(check_for_box)
+        }
+        ty::ty_closure(ty::ClosureTy {sigil: BorrowedSigil, _}) => {
+            b(check_for_block)
+        }
+        ty::ty_bare_fn(_) => {
+            b(check_for_bare)
+        }
+        ref s => {
+            cx.tcx.sess.bug(
+                fmt!("expect fn type in kind checker, not %?", s));
+        }
     }
 }
 
@@ -239,42 +251,6 @@ pub fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                        ty::expr_ty(cx.tcx, expr),
                        expr.span,
                        "explicit copy requires a copyable argument");
-        }
-        expr_rec(ref fields, def) | expr_struct(_, ref fields, def) => {
-            match def {
-                Some(ex) => {
-                    // All noncopyable fields must be overridden
-                    let t = ty::expr_ty(cx.tcx, ex);
-                    let ty_fields = match ty::get(t).sty {
-                        ty::ty_rec(ref f) => {
-                            copy *f
-                        }
-                        ty::ty_struct(did, ref substs) => {
-                            ty::struct_fields(cx.tcx, did, substs)
-                        }
-                        _ => {
-                            cx.tcx.sess.span_bug(
-                                ex.span,
-                                ~"bad base expr type in record")
-                        }
-                    };
-                    for ty_fields.each |tf| {
-                        // If this field would not be copied, ok.
-                        if fields.any(|f| f.node.ident == tf.ident) { loop; }
-
-                        // If this field is copyable, ok.
-                        let kind = ty::type_kind(cx.tcx, tf.mt.ty);
-                        if ty::kind_can_be_copied(kind) { loop; }
-
-                        cx.tcx.sess.span_err(
-                            e.span,
-                            fmt!("cannot copy field `%s` of base expression, \
-                                  which has a noncopyable type",
-                                 *cx.tcx.sess.intr().get(tf.ident)));
-                    }
-                }
-                _ => {}
-            }
         }
         expr_repeat(element, count_expr, _) => {
             let count = ty::eval_repeat_count(cx.tcx, count_expr, e.span);

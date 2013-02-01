@@ -36,7 +36,7 @@ pub use path::PosixPath;
 pub use path::WindowsPath;
 pub use pipes::{GenericChan, GenericPort};
 pub use ptr::Ptr;
-pub use str::{StrSlice, Trimmable};
+pub use str::{StrSlice, Trimmable, OwnedStr};
 pub use to_bytes::IterBytes;
 pub use to_str::ToStr;
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};

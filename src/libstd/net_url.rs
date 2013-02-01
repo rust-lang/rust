@@ -9,7 +9,8 @@
 // except according to those terms.
 
 //! Types/fns concerning URLs (see RFC 3986)
-#[forbid(deprecated_mode)];
+
+#[allow(deprecated_mode)];
 
 use core::cmp::Eq;
 use core::dvec::DVec;

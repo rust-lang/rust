@@ -233,7 +233,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
             relate_trait_tys(vcx, location_info, trait_ty, ty);
             if !allow_unsafe && !is_early {
                 for vec::each(*ty::trait_methods(tcx, did)) |m| {
-                    if ty::type_has_self(ty::mk_fn(tcx, /*bad*/copy m.fty)) {
+                    if ty::type_has_self(ty::mk_bare_fn(tcx, copy m.fty)) {
                         tcx.sess.span_err(
                             location_info.span,
                             ~"a boxed trait with self types may not be \

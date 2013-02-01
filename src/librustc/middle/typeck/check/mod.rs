@@ -81,7 +81,7 @@ use core::prelude::*;
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
-use middle::ty::{TyVid, Vid, FnTyBase, FnMeta, FnSig, VariantInfo_, field};
+use middle::ty::{TyVid, Vid, FnSig, VariantInfo_, field};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty::{re_bound, br_cap_avoid, substs, arg, param_ty};
 use middle::ty;
@@ -90,7 +90,6 @@ use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
 use middle::typeck::astconv;
 use middle::typeck::check::_match::pat_ctxt;
 use middle::typeck::check::method::TransformTypeNormally;
-use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_ty;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::crate_ctxt;
@@ -248,8 +247,9 @@ pub fn check_bare_fn(ccx: @crate_ctxt,
                      self_info: Option<self_info>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
     match ty::get(fty).sty {
-        ty::ty_fn(ref fn_ty) => {
-            check_fn(ccx, self_info, fn_ty, decl, body, Vanilla, None)
+        ty::ty_bare_fn(ref fn_ty) => {
+            check_fn(ccx, self_info, fn_ty.purity, None,
+                     &fn_ty.sig, decl, body, Vanilla, None)
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
                                  "check_bare_fn: function type expected")
@@ -258,12 +258,14 @@ pub fn check_bare_fn(ccx: @crate_ctxt,
 
 pub fn check_fn(ccx: @crate_ctxt,
                 self_info: Option<self_info>,
-                fn_ty: &ty::FnTy,
+                purity: ast::purity,
+                sigil: Option<ast::Sigil>,
+                fn_sig: &ty::FnSig,
                 decl: &ast::fn_decl,
                 body: ast::blk,
                 fn_kind: FnKind,
-                old_fcx: Option<@fn_ctxt>) {
-
+                old_fcx: Option<@fn_ctxt>)
+{
     let tcx = ccx.tcx;
     let indirect_ret = match fn_kind {
         ForLoop => true, _ => false
@@ -277,7 +279,7 @@ pub fn check_fn(ccx: @crate_ctxt,
     let {isr, self_info, fn_sig} = {
         let old_isr = option::map_default(&old_fcx, @Nil,
                                           |fcx| fcx.in_scope_regions);
-        replace_bound_regions_in_fn_sig(tcx, old_isr, self_info, &fn_ty.sig,
+        replace_bound_regions_in_fn_sig(tcx, old_isr, self_info, fn_sig,
                                         |br| ty::re_free(body.node.id, br))
     };
 
@@ -294,13 +296,10 @@ pub fn check_fn(ccx: @crate_ctxt,
     // in the case of function expressions, based on the outer context.
     let fcx: @fn_ctxt = {
         let (purity, inherited) = match old_fcx {
-            None => {
-                (fn_ty.meta.purity,
-                 blank_inherited(ccx))
-            }
+            None => (purity, blank_inherited(ccx)),
             Some(fcx) => {
-                (ty::determine_inherited_purity(fcx.purity, fn_ty.meta.purity,
-                                                fn_ty.meta.proto),
+                (ty::determine_inherited_purity(fcx.purity, purity,
+                                                sigil.get()),
                  fcx.inh)
             }
         };
@@ -1092,8 +1091,9 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         in_fty: ty::t,
         callee_expr: @ast::expr,
         args: ~[@ast::expr],
-        deref_args: DerefArgs) -> {fty: ty::t, bot: bool} {
-
+        sugar: ast::CallSugar,
+        deref_args: DerefArgs) -> (ty::t, bool)
+    {
         let tcx = fcx.ccx.tcx;
         let mut bot = false;
 
@@ -1103,62 +1103,72 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         debug!("check_call_inner: before universal quant., in_fty=%s",
                fcx.infcx().ty_to_str(in_fty));
 
-        let mut formal_tys;
+        let formal_tys;
 
         // This is subtle: we expect `fty` to be a function type, which
         // normally introduce a level of binding.  In this case, we want to
         // process the types bound by the function but not by any nested
         // functions.  Therefore, we match one level of structure.
-        let fty =
-            match structure_of(fcx, sp, in_fty) {
-              ty::ty_fn(ref fn_ty) => {
-                  let fn_ty =
-                    /*bad*/copy replace_bound_regions_in_fn_ty(tcx, @Nil,
-                      None, fn_ty, |_br| fcx.infcx().next_region_var(sp,
-                                                      call_expr_id)).fn_ty;
+        let ret_ty = match structure_of(fcx, sp, in_fty) {
+            ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
+            ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
+                let {fn_sig: sig, _} =
+                    replace_bound_regions_in_fn_sig(
+                        tcx, @Nil, None, sig,
+                        |_br| fcx.infcx().next_region_var(
+                            sp, call_expr_id));
 
-                  let supplied_arg_count = args.len();
+                let supplied_arg_count = args.len();
 
-                  bot |= ty::type_is_bot(fn_ty.sig.output);
+                bot |= ty::type_is_bot(sig.output);
 
-                  // Grab the argument types, supplying fresh type variables
-                  // if the wrong number of arguments were supplied
-                  let expected_arg_count = fn_ty.sig.inputs.len();
-                  formal_tys = if expected_arg_count == supplied_arg_count {
-                      fn_ty.sig.inputs.map(|a| a.ty)
-                  } else {
-                      tcx.sess.span_err(
-                          sp, fmt!("this function takes %u parameter%s but \
-                                    %u parameter%s supplied",
+                // Grab the argument types, supplying fresh type variables
+                // if the wrong number of arguments were supplied
+                let expected_arg_count = sig.inputs.len();
+                formal_tys = if expected_arg_count == supplied_arg_count {
+                    sig.inputs.map(|a| a.ty)
+                } else {
+                    let suffix = match sugar {
+                        ast::NoSugar => "",
+                        ast::DoSugar => " (including the closure passed by \
+                                         the `do` keyword)",
+                        ast::ForSugar => " (including the closure passed by \
+                                          the `for` keyword)"
+                    };
+                    let msg = fmt!("this function takes %u parameter%s but \
+                                    %u parameter%s supplied%s",
                                    expected_arg_count,
-                                   if expected_arg_count == 1 {
-                                       ~""
-                                   } else {
-                                       ~"s"
-                                   },
+                                   if expected_arg_count == 1 {""}
+                                   else {"s"},
                                    supplied_arg_count,
-                                   if supplied_arg_count == 1 {
-                                       ~" was"
-                                   } else {
-                                       ~"s were"
-                                   }));
-                      fcx.infcx().next_ty_vars(supplied_arg_count)
-                  };
-                  ty::mk_fn(tcx, fn_ty)
-              }
-              _ => {
-                  fcx.type_error_message(sp, |actual| {
-                      fmt!("expected function or foreign function but \
-                            found `%s`", actual) }, in_fty, None);
-                  // check each arg against "error", in order to set up
-                  // all the node type bindings
-                  formal_tys = args.map(|_x| ty::mk_err(tcx));
-                  ty::mk_err(tcx)
-              }
-            };
+                                   if supplied_arg_count == 1 {" was"}
+                                   else {"s were"},
+                                   suffix);
 
-        debug!("check_call_inner: after universal quant., fty=%s",
-               fcx.infcx().ty_to_str(fty));
+                    tcx.sess.span_err(sp, msg);
+
+                    vec::from_fn(expected_arg_count, |_| ty::mk_err(tcx))
+                };
+
+                sig.output
+            }
+
+            _ => {
+                fcx.type_error_message(sp, |actual| {
+                    fmt!("expected function or foreign function but \
+                          found `%s`", actual) }, in_fty, None);
+
+                // check each arg against "error", in order to set up
+                // all the node type bindings
+                formal_tys = args.map(|_x| ty::mk_err(tcx));
+                ty::mk_err(tcx)
+            }
+        };
+
+        debug!("check_call_inner: after universal quant., \
+                formal_tys=%? ret_ty=%s",
+               formal_tys.map(|t| fcx.infcx().ty_to_str(*t)),
+               fcx.infcx().ty_to_str(ret_ty));
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
@@ -1209,7 +1219,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
         }
 
-        {fty: fty, bot: bot}
+        (ret_ty, bot)
     }
 
     // A generic function for checking assignment expressions
@@ -1233,36 +1243,26 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
                             fn_ty: ty::t,
                             expr: @ast::expr,
                             +args: ~[@ast::expr],
-                            bot: bool)
-                         -> bool {
+                            bot: bool,
+                            sugar: ast::CallSugar) -> bool
+    {
         let mut bot = bot;
 
         // Call the generic checker.
-        let fty = {
-            let r = check_call_inner(fcx, sp, call_expr_id,
-                                     fn_ty, expr, args, DontDerefArgs);
-            bot |= r.bot;
-            r.fty
-        };
+        let (ret_ty, b) = check_call_inner(fcx, sp, call_expr_id,
+                                           fn_ty, expr, args, sugar,
+                                           DontDerefArgs);
+        bot |= b;
 
         // Pull the return type out of the type of the function.
-        match structure_of(fcx, sp, fty) {
-          ty::ty_fn(ref f) => {
-              fcx.write_ty(call_expr_id, f.sig.output);
-              return bot;
-          }
-          _ => {
-              fcx.write_ty(call_expr_id, ty::mk_err(fcx.ccx.tcx));
-              fcx.type_error_message(sp, |_actual| {
-                  ~"expected function"}, fty, None);
-              return bot;
-          }
-        }
+        fcx.write_ty(call_expr_id, ret_ty);
+        return bot;
     }
 
     // A generic function for doing all of the checking for call expressions
     fn check_call(fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id,
-                  f: @ast::expr, +args: ~[@ast::expr]) -> bool {
+                  f: @ast::expr, +args: ~[@ast::expr],
+                  sugar: ast::CallSugar) -> bool {
         // Index expressions need to be handled separately, to inform them
         // that they appear in call position.
         let mut bot = match /*bad*/copy f.node {
@@ -1278,7 +1278,8 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
                              fcx.expr_ty(f),
                              f,
                              args,
-                             bot)
+                             bot,
+                             sugar)
     }
 
     // Checks a method call.
@@ -1287,7 +1288,8 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
                          rcvr: @ast::expr,
                          method_name: ast::ident,
                          +args: ~[@ast::expr],
-                         tps: ~[@ast::Ty])
+                         tps: ~[@ast::Ty],
+                         sugar: ast::CallSugar)
                       -> bool {
         let bot = check_expr(fcx, rcvr);
         let expr_t = structurally_resolved_type(fcx,
@@ -1329,7 +1331,8 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
                              fcx.node_ty(expr.callee_id),
                              expr,
                              args,
-                             bot)
+                             bot,
+                             sugar)
     }
 
     // A generic function for checking for or for-each loops
@@ -1378,13 +1381,11 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
                              op_ex.callee_id, opname, self_t, ~[],
                              deref_args) {
           Some(ref origin) => {
-            let {fty: method_ty, bot: bot} = {
-                let method_ty = fcx.node_ty(op_ex.callee_id);
-                check_call_inner(fcx, op_ex.span, op_ex.id,
-                                 method_ty, op_ex, args, deref_args)
-            };
-            fcx.ccx.method_map.insert(op_ex.id, (*origin));
-            Some((ty::ty_fn_ret(method_ty), bot))
+              let method_ty = fcx.node_ty(op_ex.callee_id);
+              fcx.ccx.method_map.insert(op_ex.id, *origin);
+              Some(check_call_inner(fcx, op_ex.span, op_ex.id,
+                                    method_ty, op_ex, args,
+                                    ast::NoSugar, deref_args))
           }
           _ => None
         }
@@ -1472,13 +1473,14 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         // If the or operator is used it might be that the user forgot to
         // supply the do keyword.  Let's be more helpful in that situation.
         if op == ast::or {
-          match ty::get(lhs_resolved_t).sty {
-            ty::ty_fn(_) => {
-              tcx.sess.span_note(
-                  ex.span, ~"did you forget the `do` keyword for the call?");
+            match ty::get(lhs_resolved_t).sty {
+                ty::ty_bare_fn(_) | ty::ty_closure(_) => {
+                    tcx.sess.span_note(
+                        ex.span, ~"did you forget the `do` keyword \
+                                   for the call?");
+                }
+                _ => ()
             }
-            _ => ()
-          }
         }
 
         (lhs_resolved_t, false)
@@ -1523,7 +1525,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     fn check_expr_fn(fcx: @fn_ctxt,
                      expr: @ast::expr,
-                     ast_proto_opt: Option<ast::Proto>,
+                     ast_sigil_opt: Option<ast::Sigil>,
                      decl: &ast::fn_decl,
                      body: ast::blk,
                      fn_kind: FnKind,
@@ -1534,50 +1536,44 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         // avoid capture of bound regions in the expected type.  See
         // def'n of br_cap_avoid() for a more lengthy explanation of
         // what's going on here.
-        // Also try to pick up inferred purity and proto, defaulting
+        // Also try to pick up inferred purity and sigil, defaulting
         // to impure and block. Note that we only will use those for
         // block syntax lambdas; that is, lambdas without explicit
-        // protos.
+        // sigils.
         let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
         let (expected_tys,
              expected_purity,
-             expected_proto,
+             expected_sigil,
              expected_onceness) = {
             match expected_sty {
-                Some(ty::ty_fn(ref fn_ty)) => {
+                Some(ty::ty_closure(ref cenv)) => {
                     let id = expr.id;
-                    let {fn_ty: fn_ty, _} =
-                        replace_bound_regions_in_fn_ty(
-                            tcx, @Nil, None, fn_ty,
+                    let {fn_sig: sig, _} =
+                        replace_bound_regions_in_fn_sig(
+                            tcx, @Nil, None, &cenv.sig,
                             |br| ty::re_bound(ty::br_cap_avoid(id, @br)));
-                    (Some({inputs: /*bad*/copy fn_ty.sig.inputs,
-                           output: fn_ty.sig.output}),
-                     fn_ty.meta.purity,
-                     fn_ty.meta.proto,
-                     fn_ty.meta.onceness)
+                    (Some(sig), cenv.purity, cenv.sigil, cenv.onceness)
                 }
                 _ => {
-                    (None, ast::impure_fn, ast::ProtoBorrowed, ast::Many)
+                    (None, ast::impure_fn, ast::BorrowedSigil, ast::Many)
                 }
             }
         };
 
         // If the proto is specified, use that, otherwise select a
         // proto based on inference.
-        let (proto, purity) = match ast_proto_opt {
+        let (sigil, purity) = match ast_sigil_opt {
             Some(p) => (p, ast::impure_fn),
-            None => (expected_proto, expected_purity)
+            None => (expected_sigil, expected_purity)
         };
 
         // construct the function type
-        let mut fn_ty = astconv::ty_of_fn_decl(
+        let mut fn_ty = astconv::ty_of_closure(
             fcx, fcx,
-            proto, purity, expected_onceness,
-            /*bounds:*/ @~[], /*opt_region:*/ None,
-            *decl, expected_tys, expr.span);
+            sigil, purity, expected_onceness,
+            None, *decl, expected_tys, expr.span);
 
-        // XXX: Bad copy.
-        let fty = ty::mk_fn(tcx, copy fn_ty);
+        let fty = ty::mk_closure(tcx, copy fn_ty);
 
         debug!("check_expr_fn_with_unifier %s fty=%s",
                fcx.expr_to_str(expr),
@@ -1587,8 +1583,8 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         // We inherit the same self info as the enclosing scope,
         // since the function we're checking might capture `self`
-        check_fn(fcx.ccx, fcx.self_info, &fn_ty, decl, body,
-                 fn_kind, Some(fcx));
+        check_fn(fcx.ccx, fcx.self_info, fn_ty.purity, Some(fn_ty.sigil),
+                 &fn_ty.sig, decl, body, fn_kind, Some(fcx));
     }
 
 
@@ -1913,6 +1909,119 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         return bot;
     }
 
+    fn check_loop_body(fcx: @fn_ctxt,
+                       expr: @ast::expr,
+                       expected: Option<ty::t>,
+                       loop_body: @ast::expr)
+    {
+        // a loop body is the special argument to a `for` loop.  We know that
+        // there will be an expected type in this context because it can only
+        // appear in the context of a call, so we get the expected type of the
+        // parameter. The catch here is that we need to validate two things:
+        // 1. a closure that returns a bool is expected
+        // 2. the closure that was given returns unit
+        let tcx = fcx.tcx();
+        let mut err_happened = false;
+        let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
+        let inner_ty = match expected_sty {
+            Some(ty::ty_closure(ref fty)) => {
+                match fcx.mk_subty(false, expr.span,
+                                   fty.sig.output, ty::mk_bool(tcx)) {
+                    result::Ok(_) => {
+                        ty::mk_closure(tcx, ty::ClosureTy {
+                            sig: FnSig {output: ty::mk_nil(tcx),
+                                        ..copy fty.sig},
+                            ..copy *fty
+                        })
+                    }
+                    result::Err(_) => {
+                        fcx.type_error_message(
+                            expr.span,
+                            |actual| {
+                                let did_you_mean = {
+                                    if ty::type_is_nil(fty.sig.output) {
+                                        "\nDid you mean to use \
+                                             `do` instead of `for`?"
+                                     } else {
+                                         ""
+                                     }
+                                };
+                                fmt!("A `for` loop iterator should expect a \
+                                      closure that returns `bool`. This \
+                                      iterator expects a closure that \
+                                      returns `%s`.%s",
+                                     actual, did_you_mean)
+                            },
+                            fty.sig.output,
+                            None);
+                        err_happened = true;
+
+                        // Kind of a hack: create a function type with
+                        // the result replaced with ty_err, to
+                        // suppress derived errors.
+                        let t = ty::replace_closure_return_type(
+                            tcx, ty::mk_closure(tcx, copy *fty),
+                            ty::mk_err(tcx));
+                        fcx.write_ty(expr.id, ty::mk_err(tcx));
+                        t
+                    }
+                }
+            }
+            _ => {
+                match expected {
+                    Some(expected_t) => {
+                        fcx.type_error_message(
+                            expr.span,
+                            |actual| {
+                                fmt!("last argument in `for` call \
+                                      has non-closure type: %s",
+                                     actual)
+                            },
+                            expected_t, None);
+                        let err_ty = ty::mk_err(tcx);
+                        fcx.write_ty(expr.id, err_ty);
+                        err_happened = true;
+                        err_ty
+                    }
+                    None => fcx.tcx().sess.impossible_case(
+                        expr.span,
+                        ~"loop body must have an expected type")
+                }
+            }
+        };
+
+        match loop_body.node {
+            ast::expr_fn_block(ref decl, ref body) => {
+                // If an error occurred, we pretend this isn't a for
+                // loop, so as to assign types to all nodes while also
+                // propagating ty_err throughout so as to suppress
+                // derived errors. If we passed in ForLoop in the
+                // error case, we'd potentially emit a spurious error
+                // message because of the indirect_ret_ty.
+                let fn_kind = if err_happened {Vanilla} else {ForLoop};
+                check_expr_fn(fcx, loop_body, None,
+                              decl, *body, fn_kind, Some(inner_ty));
+                demand::suptype(fcx, loop_body.span,
+                                inner_ty, fcx.expr_ty(loop_body));
+            }
+            ref n => {
+                die!(fmt!(
+                    "check_loop_body expected expr_fn_block, not %?", n))
+            }
+        }
+
+        let block_ty = structurally_resolved_type(
+            fcx, expr.span, fcx.node_ty(loop_body.id));
+        if err_happened {
+            fcx.write_ty(expr.id, ty::mk_err(fcx.tcx()));
+        } else {
+            let loop_body_ty =
+                ty::replace_closure_return_type(
+                    tcx, block_ty, ty::mk_bool(tcx));
+            fcx.write_ty(expr.id, loop_body_ty);
+        }
+    }
+
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
     let mut bot = false;
@@ -2153,121 +2262,38 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_match(discrim, ref arms) => {
         bot = _match::check_match(fcx, expr, discrim, (/*bad*/copy *arms));
       }
-      ast::expr_fn(proto, ref decl, ref body, _) => {
-        check_expr_fn(fcx, expr, Some(proto),
+      ast::expr_fn(sigil, ref decl, ref body, _) => {
+        check_expr_fn(fcx, expr, Some(sigil),
                       decl, (*body), Vanilla, expected);
       }
       ast::expr_fn_block(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
                       decl, (*body), Vanilla, expected);
       }
-      ast::expr_loop_body(b) => {
-        // a loop body is the special argument to a `for` loop.  We know that
-        // there will be an expected type in this context because it can only
-        // appear in the context of a call, so we get the expected type of the
-        // parameter. The catch here is that we need to validate two things:
-        // 1. a closure that returns a bool is expected
-        // 2. the closure that was given returns unit
-        let mut err_happened = false;
-        let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
-        let inner_ty = match expected_sty {
-          Some(ty::ty_fn(ref fty)) => {
-            match fcx.mk_subty(false, expr.span,
-                               (*fty).sig.output, ty::mk_bool(tcx)) {
-              result::Ok(_) =>
-                  ty::mk_fn(tcx, FnTyBase {
-                      meta: (*fty).meta,
-                      sig: FnSig {output: ty::mk_nil(tcx),
-                                  ../*bad*/copy (*fty).sig}
-                  }),
-              result::Err(_) => {
-                   fcx.type_error_message(expr.span,
-                      |actual| {
-                          fmt!("A `for` loop iterator should expect a \
-                                closure that returns `bool`. This iterator \
-                                expects a closure that returns `%s`. %s",
-                               actual, if ty::type_is_nil((*fty).sig.output) {
-                                   "\nDid you mean to use `do` instead of \
-                                        `for`?" } else { "" } )
-                      },
-                      (*fty).sig.output, None);
-                err_happened = true;
-                // Kind of a hack: create a function type with the result
-                // replaced with ty_err, to suppress derived errors.
-                let t = ty::replace_fn_return_type(tcx, ty::mk_fn(tcx,
-                                                                  copy *fty),
-                                                   ty::mk_err(tcx));
-                fcx.write_ty(id, ty::mk_err(tcx));
-                t
-              }
-            }
-          }
-          _ =>
-              match expected {
-                  Some(expected_t) => {
-                      fcx.type_error_message(expr.span, |actual| {
-                          fmt!("a `loop` function's last \
-                                argument should be of function \
-                                type, not `%s`",
-                               actual)
-                      },
-                                             expected_t, None);
-                      let err_ty = ty::mk_err(tcx);
-                      fcx.write_ty(id, err_ty);
-                      err_happened = true;
-                      err_ty
-                  }
-                  None => fcx.tcx().sess.impossible_case(expr.span,
-                            ~"loop body must have an expected type")
-              }
-        };
-        match b.node {
-                ast::expr_fn_block(ref decl, ref body) => {
-                    // If an error occurred, we pretend this isn't a for
-                    // loop, so as to assign types to all nodes while also
-                    // propagating ty_err throughout so as to suppress
-                    // derived errors. If we passed in ForLoop in the
-                    // error case, we'd potentially emit a spurious error
-                    // message because of the indirect_ret_ty.
-                    let fn_kind = if err_happened { Vanilla }
-                                  else { ForLoop };
-                    check_expr_fn(fcx, b, None,
-                                  decl, *body, fn_kind, Some(inner_ty));
-                    demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
-                }
-                // argh
-                _ => die!(~"expr_fn_block")
-        }
-        let block_ty = structurally_resolved_type(
-            fcx, expr.span, fcx.node_ty(b.id));
-        if err_happened {
-            fcx.write_ty(expr.id, ty::mk_err(fcx.tcx()));
-        } else {
-            let loop_body_ty = ty::replace_fn_return_type(tcx, block_ty,
-                                                          ty::mk_bool(tcx));
-            fcx.write_ty(expr.id, loop_body_ty);
-        }
+      ast::expr_loop_body(loop_body) => {
+          check_loop_body(fcx, expr, expected, loop_body);
       }
       ast::expr_do_body(b) => {
         let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
         let inner_ty = match expected_sty {
-          Some(ty::ty_fn(ref fty)) => {
-              ty::mk_fn(tcx, (/*bad*/copy *fty))
-          }
-          _ => match expected {
-                  Some(expected_t) => {
-                      fcx.type_error_message(expr.span, |_actual| {
-                          ~"Non-function passed to a `do` \
-                            function as its last argument, or wrong number \
-                            of arguments passed to a `do` function"
-                      }, expected_t, None);
-                      let err_ty = ty::mk_err(tcx);
-                      fcx.write_ty(id, err_ty);
-                      err_ty
-                  }
-                  None => fcx.tcx().sess.impossible_case(expr.span,
-                              ~"do body must have expected type")
-              }
+            Some(ty::ty_closure(_)) => expected.get(),
+            _ => match expected {
+                Some(expected_t) => {
+                    fcx.type_error_message(expr.span, |actual| {
+                        fmt!("last argument in `do` call \
+                              has non-closure type: %s",
+                             actual)
+                    }, expected_t, None);
+                    let err_ty = ty::mk_err(tcx);
+                    fcx.write_ty(id, err_ty);
+                    err_ty
+                }
+                None => {
+                    fcx.tcx().sess.impossible_case(
+                        expr.span,
+                        ~"do body must have expected type")
+                }
+            }
         };
         match b.node {
           ast::expr_fn_block(ref decl, ref body) => {
@@ -2290,11 +2316,11 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
             };
         fcx.write_ty(id, typ);
       }
-      ast::expr_call(f, args, _) => {
-        bot = check_call(fcx, expr.span, expr.id, f, args);
+      ast::expr_call(f, args, sugar) => {
+        bot = check_call(fcx, expr.span, expr.id, f, args, sugar);
       }
-      ast::expr_method_call(rcvr, ident, tps, args, _) => {
-        bot = check_method_call(fcx, expr, rcvr, ident, args, tps);
+      ast::expr_method_call(rcvr, ident, tps, args, sugar) => {
+        bot = check_method_call(fcx, expr, rcvr, ident, args, tps, sugar);
       }
       ast::expr_cast(e, t) => {
         bot = check_expr(fcx, e);
@@ -3088,20 +3114,18 @@ pub fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
                  arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
       }
       ~"frame_address" => {
-        let fty = ty::mk_fn(ccx.tcx, FnTyBase {
-            meta: FnMeta {purity: ast::impure_fn,
-                          proto: ast::ProtoBorrowed,
-                          onceness: ast::Once,
-                          region: ty::re_bound(ty::br_anon(0)),
-                          bounds: @~[]},
-            sig: FnSig {
-                inputs: ~[arg {
-                    mode: ast::expl(ast::by_val),
-                    ty: ty::mk_imm_ptr(
-                        ccx.tcx,
-                        ty::mk_mach_uint(ccx.tcx, ast::ty_u8))
-                }],
-                output: ty::mk_nil(ccx.tcx)}
+        let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
+            purity: ast::impure_fn,
+            sigil: ast::BorrowedSigil,
+            onceness: ast::Once,
+            region: ty::re_bound(ty::br_anon(0)),
+            sig: ty::FnSig {
+                inputs: ~[arg {mode: ast::expl(ast::by_val),
+                               ty: ty::mk_imm_ptr(
+                                   ccx.tcx,
+                                   ty::mk_mach_uint(ccx.tcx, ast::ty_u8))}],
+                output: ty::mk_nil(ccx.tcx)
+            }
         });
         (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil(tcx))
       }
@@ -3324,12 +3348,9 @@ pub fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         return;
       }
     };
-    let fty = ty::mk_fn(tcx, FnTyBase {
-        meta: FnMeta {purity: ast::unsafe_fn,
-                      proto: ast::ProtoBare,
-                      onceness: ast::Many,
-                      region: ty::re_static,
-                      bounds: @~[]},
+    let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
+        purity: ast::unsafe_fn,
+        abi: ast::RustAbi,
         sig: FnSig {inputs: inputs,
                     output: output}
     });

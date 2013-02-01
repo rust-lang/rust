@@ -9,9 +9,6 @@
 // except according to those terms.
 
 #[doc(hidden)]; // FIXME #3538
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use libc::c_int;
 use libc::c_float;

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[forbid(deprecated_mode)];
 //! Unsafe debugging functions for inspecting values.
 
 use core::cast::reinterpret_cast;

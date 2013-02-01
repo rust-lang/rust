@@ -613,7 +613,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         let ccx = cx.ccx();
         let mut cx = cx;
         match ty::get(fn_ty).sty {
-          ty::ty_fn(ref fn_ty) => {
+          ty::ty_bare_fn(ref fn_ty) => {
             let mut j = 0u;
             let v_id = variant.id;
             for vec::each(fn_ty.sig.inputs) |a| {
@@ -777,10 +777,10 @@ pub fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
     -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did).to_managed(); // Sad
     match ty::get(t).sty {
-      ty::ty_fn(_) => {
+      ty::ty_bare_fn(_) | ty::ty_closure(_) => {
         let llty = type_of_fn_from_ty(ccx, t);
         return get_extern_fn(ccx.externs, ccx.llmod, name,
-                          lib::llvm::CCallConv, llty);
+                             lib::llvm::CCallConv, llty);
       }
       _ => {
         let llty = type_of(ccx, t);
@@ -1363,7 +1363,7 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<node_info>,
     DatumBlock {bcx: leave_block(bcx, scope_cx), datum: datum}
 }
 
-pub fn block_locals(b: ast::blk, it: fn(@ast::local)) {
+pub fn block_locals(b: &ast::blk, it: fn(@ast::local)) {
     for vec::each(b.node.stmts) |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
@@ -1727,8 +1727,8 @@ pub enum self_arg { impl_self(ty::t), impl_owned_self(ty::t), no_self, }
 // returned.
 pub fn trans_closure(ccx: @crate_ctxt,
                      +path: path,
-                     decl: ast::fn_decl,
-                     body: ast::blk,
+                     decl: &ast::fn_decl,
+                     body: &ast::blk,
                      llfndecl: ValueRef,
                      ty_self: self_arg,
                      +param_substs: Option<param_substs>,
@@ -1791,8 +1791,8 @@ pub fn trans_closure(ccx: @crate_ctxt,
 // function.
 pub fn trans_fn(ccx: @crate_ctxt,
                 +path: path,
-                decl: ast::fn_decl,
-                body: ast::blk,
+                decl: &ast::fn_decl,
+                body: &ast::blk,
                 llfndecl: ValueRef,
                 ty_self: self_arg,
                 +param_substs: Option<param_substs>,
@@ -1935,7 +1935,7 @@ pub fn trans_tuple_struct(ccx: @crate_ctxt,
 
 pub fn trans_struct_dtor(ccx: @crate_ctxt,
                          +path: path,
-                         body: ast::blk,
+                         body: &ast::blk,
                          dtor_id: ast::node_id,
                          +psubsts: Option<param_substs>,
                          hash_id: Option<mono_id>,
@@ -1966,8 +1966,9 @@ pub fn trans_struct_dtor(ccx: @crate_ctxt,
     ccx.monomorphized.insert(*h_id, lldecl);
   }
   /* Translate the dtor body */
-  trans_fn(ccx, path, ast_util::dtor_dec(),
-           body, lldecl, impl_self(class_ty), psubsts, dtor_id, None);
+  let decl = ast_util::dtor_dec();
+  trans_fn(ccx, path, &decl, body, lldecl,
+           impl_self(class_ty), psubsts, dtor_id, None);
   lldecl
 }
 
@@ -2013,20 +2014,19 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         _ => die!(~"trans_item"),
     };
     match /*bad*/copy item.node {
-      // XXX: Bad copies.
-      ast::item_fn(copy decl, purity, copy tps, ref body) => {
+      ast::item_fn(ref decl, purity, ref tps, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
                                      vec::append(
                                          /*bad*/copy *path,
                                          ~[path_name(item.ident)]),
-                                     decl, (*body), llfndecl, item.id);
+                                      decl, body, llfndecl, item.id);
         } else if tps.is_empty() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
                      vec::append(/*bad*/copy *path, ~[path_name(item.ident)]),
-                     decl, (*body), llfndecl, no_self, None, item.id, None);
+                     decl, body, llfndecl, no_self, None, item.id, None);
         } else {
             for vec::each((*body).node.stmts) |stmt| {
                 match stmt.node {
@@ -2078,7 +2078,7 @@ pub fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                         id: ast::node_id) {
     // Translate the destructor.
     do option::iter(&struct_def.dtor) |dtor| {
-        trans_struct_dtor(ccx, /*bad*/copy *path, dtor.node.body,
+        trans_struct_dtor(ccx, /*bad*/copy *path, &dtor.node.body,
                          dtor.node.id, None, None, local_def(id));
     };
 

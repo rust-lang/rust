@@ -10,7 +10,6 @@
 
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
-#[forbid(deprecated_mode)];
 #[forbid(non_camel_case_types)];
 
 //! json serialization

@@ -159,7 +159,7 @@ pub fn test_opts(config: config) -> test::TestOpts {
     }
 }
 
-pub fn make_tests(config: config) -> ~[test::TestDesc] {
+pub fn make_tests(config: config) -> ~[test::TestDescAndFn] {
     debug!("making tests from %s",
            config.src_base.to_str());
     let mut tests = ~[];
@@ -196,13 +196,14 @@ pub fn is_test(config: config, testfile: &Path) -> bool {
     return valid;
 }
 
-pub fn make_test(config: config, testfile: &Path) ->
-   test::TestDesc {
-    test::TestDesc {
-        name: make_test_name(config, testfile),
+pub fn make_test(config: config, testfile: &Path) -> test::TestDescAndFn {
+    test::TestDescAndFn {
+        desc: test::TestDesc {
+            name: make_test_name(config, testfile),
+            ignore: header::is_test_ignored(config, testfile),
+            should_fail: false
+        },
         testfn: make_test_closure(config, testfile),
-        ignore: header::is_test_ignored(config, testfile),
-        should_fail: false
     }
 }
 
