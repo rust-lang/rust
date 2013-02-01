@@ -812,8 +812,8 @@ fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
     do fields.map |field| {
         let (ident, mutbl) = match field.node.kind {
             ast::named_field(ident, mutbl, _) => (ident, mutbl),
-            _ => fail ~"[auto_encode] does not support \
-                        unnamed fields",
+            _ => die!(~"[auto_encode] does not support \
+                        unnamed fields")
         };
 
         field {
@@ -954,9 +954,9 @@ fn mk_enum_ser_body(
             ast::tuple_variant_kind(args) =>
                 ser_variant(cx, span, variant.node.name, v_idx, args),
             ast::struct_variant_kind(*) =>
-                fail ~"struct variants unimplemented",
+                die!(~"struct variants unimplemented"),
             ast::enum_variant_kind(*) =>
-                fail ~"enum variants unimplemented",
+                die!(~"enum variants unimplemented"),
         }
     };
 
@@ -1047,9 +1047,9 @@ fn mk_enum_deser_body(
                 }
             },
             ast::struct_variant_kind(*) =>
-                fail ~"struct variants unimplemented",
+                die!(~"struct variants unimplemented"),
             ast::enum_variant_kind(*) =>
-                fail ~"enum variants unimplemented",
+                die!(~"enum variants unimplemented")
         };
 
         let pat = @ast::pat {

@@ -697,7 +697,7 @@ fn test_spawn_raw_unsupervise() {
         .. default_task_opts()
     };
     do spawn_raw(move opts) {
-        fail;
+        die!();
     }
 }
 
@@ -727,7 +727,7 @@ fn test_spawn_raw_notify_failure() {
         .. default_task_opts()
     };
     do spawn_raw(move opts) {
-        fail;
+        die!();
     }
     assert notify_po.recv() == Failure;
 }

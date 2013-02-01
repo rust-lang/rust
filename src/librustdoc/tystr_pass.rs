@@ -79,7 +79,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
             Some(pprust::fun_to_str(*decl, ident, copy *tys,
                                     extract::interner()))
           }
-          _ => fail ~"get_fn_sig: fn_id not bound to a fn item"
+          _ => die!(~"get_fn_sig: fn_id not bound to a fn item")
         }
     }
 }
@@ -228,7 +228,7 @@ fn get_method_sig(
                     }
                   }
                 }
-                _ => fail ~"method not found"
+                _ => die!(~"method not found")
             }
           }
           ast_map::node_item(@ast::item {
@@ -245,10 +245,10 @@ fn get_method_sig(
                         extract::interner()
                     ))
                 }
-                None => fail ~"method not found"
+                None => die!(~"method not found")
             }
           }
-          _ => fail ~"get_method_sig: item ID not bound to trait or impl"
+          _ => die!(~"get_method_sig: item ID not bound to trait or impl")
         }
     }
 }
@@ -314,7 +314,7 @@ fn should_add_impl_self_ty() {
 
 #[test]
 fn should_add_impl_method_sigs() {
-    let doc = test::mk_doc(~"impl int { fn a<T>() -> int { fail } }");
+    let doc = test::mk_doc(~"impl int { fn a<T>() -> int { die!() } }");
     assert doc.cratemod().impls()[0].methods[0].sig
         == Some(~"fn a<T>() -> int");
 }
@@ -395,7 +395,7 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
             };
             ast::item_struct(def, tys)
         }
-        _ => fail ~"not a struct"
+        _ => die!(~"not a struct")
     };
 
     @ast::item {

@@ -184,7 +184,7 @@ pub mod rt {
                 Some(ast) => ast,
                 None => {
                     error!("Parse error with ```\n%s\n```", s);
-                    fail
+                    die!()
                 }
             }
         }
@@ -399,7 +399,7 @@ fn mk_token(cx: ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
                                   ~[mk_ident(cx, sp, ident)]);
         }
 
-        INTERPOLATED(_) => fail ~"quote! with interpolated token",
+        INTERPOLATED(_) => die!(~"quote! with interpolated token"),
 
         _ => ()
     }
@@ -437,7 +437,7 @@ fn mk_token(cx: ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
         DOLLAR => "DOLLAR",
         UNDERSCORE => "UNDERSCORE",
         EOF => "EOF",
-        _ => fail
+        _ => die!()
     };
     build::mk_path(cx, sp,
                    ids_ext(cx, ~[name.to_owned()]))
@@ -467,7 +467,7 @@ fn mk_tt(cx: ext_ctxt, sp: span, tt: &ast::token_tree)
         }
 
         ast::tt_delim(ref tts) => mk_tts(cx, sp, *tts),
-        ast::tt_seq(*) => fail ~"tt_seq in quote!",
+        ast::tt_seq(*) => die!(~"tt_seq in quote!"),
 
         ast::tt_nonterminal(sp, ident) => {
 

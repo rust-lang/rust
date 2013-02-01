@@ -40,13 +40,13 @@ pub impl parser::Parser: proto_parser {
         self.expect(token::COLON);
         let dir = match copy self.token {
           token::IDENT(n, _) => self.interner.get(n),
-          _ => fail
+          _ => die!()
         };
         self.bump();
         let dir = match dir {
           @~"send" => send,
           @~"recv" => recv,
-          _ => fail
+          _ => die!()
         };
 
         let typarms = if self.token == token::LT {

@@ -12,7 +12,7 @@
 
 fn f() {
     let a = @0;
-    fail;
+    die!();
 }
 
 fn g() {

@@ -286,7 +286,7 @@ impl SipState : io::Writer {
     }
 
     fn seek(&self, _x: int, _s: io::SeekStyle) {
-        fail;
+        die!();
     }
     fn tell(&self) -> uint {
         self.length

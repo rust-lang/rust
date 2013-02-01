@@ -66,7 +66,7 @@ pub pure fn stmt_id(s: stmt) -> node_id {
       stmt_decl(_, id) => id,
       stmt_expr(_, id) => id,
       stmt_semi(_, id) => id,
-      stmt_mac(*) => fail ~"attempted to analyze unexpanded stmt",
+      stmt_mac(*) => die!(~"attempted to analyze unexpanded stmt")
     }
 }
 
@@ -75,7 +75,7 @@ pub fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
       def_variant(enum_id, var_id) => {
         return {enm: enum_id, var: var_id}
       }
-      _ => fail ~"non-variant in variant_def_ids"
+      _ => die!(~"non-variant in variant_def_ids")
     }
 }
 
@@ -93,7 +93,7 @@ pub pure fn def_id_of_def(d: def) -> def_id {
         local_def(id)
       }
 
-      def_prim_ty(_) => fail
+      def_prim_ty(_) => die!()
     }
 }
 

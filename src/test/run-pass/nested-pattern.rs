@@ -16,7 +16,7 @@ enum t { foo(int, uint), bar(int, Option<int>), }
 
 fn nested(o: t) {
     match o {
-      bar(i, Some::<int>(_)) => { error!("wrong pattern matched"); fail; }
+      bar(i, Some::<int>(_)) => { error!("wrong pattern matched"); die!(); }
       _ => { error!("succeeded"); }
     }
 }

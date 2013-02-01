@@ -44,7 +44,7 @@ pub pure fn get<T: Copy, U>(res: &Result<T, U>) -> T {
     match *res {
       Ok(copy t) => t,
       Err(ref the_err) => unsafe {
-        fail fmt!("get called on error result: %?", *the_err)
+        die!(fmt!("get called on error result: %?", *the_err))
       }
     }
 }
@@ -61,7 +61,7 @@ pub pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
     match *res {
         Ok(ref t) => t,
         Err(ref the_err) => unsafe {
-            fail fmt!("get_ref called on error result: %?", *the_err)
+            die!(fmt!("get_ref called on error result: %?", *the_err))
         }
     }
 }
@@ -77,7 +77,7 @@ pub pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
 pub pure fn get_err<T, U: Copy>(res: &Result<T, U>) -> U {
     match *res {
       Err(copy u) => u,
-      Ok(_) => fail ~"get_err called on ok result"
+      Ok(_) => die!(~"get_err called on ok result")
     }
 }
 
@@ -382,7 +382,7 @@ pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
 pub pure fn unwrap<T, U>(res: Result<T, U>) -> T {
     match move res {
       Ok(move t) => move t,
-      Err(_) => fail ~"unwrap called on an err result"
+      Err(_) => die!(~"unwrap called on an err result")
     }
 }
 
@@ -391,7 +391,7 @@ pub pure fn unwrap<T, U>(res: Result<T, U>) -> T {
 pub pure fn unwrap_err<T, U>(res: Result<T, U>) -> U {
     match move res {
       Err(move u) => move u,
-      Ok(_) => fail ~"unwrap called on an ok result"
+      Ok(_) => die!(~"unwrap called on an ok result")
     }
 }
 

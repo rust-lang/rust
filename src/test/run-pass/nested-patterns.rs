@@ -16,7 +16,7 @@ struct C { mut c: int }
 fn main() {
     match A {a: 10, b: @20} {
         x@A {a, b: @20} => { assert x.a == 10; assert a == 10; }
-        A {b, _} => { fail; }
+        A {b, _} => { die!(); }
     }
     let x@B {b, _} = B {a: 10, b: C {mut c: 20}};
     x.b.c = 30;

@@ -14,6 +14,6 @@ fn main() {
     
     match BadChar {
         _ if true => BadChar,
-        BadChar | BadSyntax => fail ,
+        BadChar | BadSyntax => die!() ,
     };
 }

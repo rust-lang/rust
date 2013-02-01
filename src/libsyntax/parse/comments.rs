@@ -117,7 +117,7 @@ pub fn strip_doc_comment_decoration(comment: ~str) -> ~str {
         return str::connect(lines, ~"\n");
     }
 
-    fail ~"not a doc-comment: " + comment;
+    die!(~"not a doc-comment: " + comment);
 }
 
 fn read_to_eol(rdr: string_reader) -> ~str {
@@ -295,7 +295,7 @@ fn consume_comment(rdr: string_reader, code_to_the_left: bool,
         read_block_comment(rdr, code_to_the_left, comments);
     } else if rdr.curr == '#' && nextch(rdr) == '!' {
         read_shebang_comment(rdr, code_to_the_left, comments);
-    } else { fail; }
+    } else { die!(); }
     debug!("<<< consume comment");
 }
 

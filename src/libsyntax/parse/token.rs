@@ -209,7 +209,7 @@ pub fn to_str(in: @ident_interner, t: Token) -> ~str {
                       nt_block(*) => ~"block",
                       nt_stmt(*) => ~"statement",
                       nt_pat(*) => ~"pattern",
-                      nt_expr(*) => fail ~"should have been handled above",
+                      nt_expr(*) => die!(~"should have been handled above"),
                       nt_ty(*) => ~"type",
                       nt_ident(*) => ~"identifier",
                       nt_path(*) => ~"path",
@@ -262,7 +262,7 @@ pub fn flip_delimiter(t: token::Token) -> token::Token {
       token::RPAREN => token::LPAREN,
       token::RBRACE => token::LBRACE,
       token::RBRACKET => token::LBRACKET,
-      _ => fail
+      _ => die!()
     }
 }
 

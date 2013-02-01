@@ -71,7 +71,7 @@ fn take_my_order_please(
      * This function is full of fail
      */
 
-    fail;
+    die!();
 }
 
 mod fortress_of_solitude {

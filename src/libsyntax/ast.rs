@@ -40,7 +40,7 @@ pub impl<S: Encoder> ident: Encodable<S> {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
         } {
-            None => fail ~"encode: TLS interner not set up",
+            None => die!(~"encode: TLS interner not set up"),
             Some(intr) => intr
         };
 
@@ -53,7 +53,7 @@ pub impl<D: Decoder> ident: Decodable<D> {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
         } {
-            None => fail ~"decode: TLS interner not set up",
+            None => die!(~"decode: TLS interner not set up"),
             Some(intr) => intr
         };
 

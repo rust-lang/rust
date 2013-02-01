@@ -257,7 +257,7 @@ fn merge_method_attrs(
                  attr_parser::parse_desc(copy method.attrs))
             })
           }
-          _ => fail ~"unexpected item"
+          _ => die!(~"unexpected item")
         }
     };
 

@@ -312,7 +312,7 @@ fn expect_sentinel() -> bool { false }
 // heap and stack allocations requiring drop, and runs all
 // destructors.
 //
-// This should only be called from fail, as it will drop the roots
+// This should only be called from fail!, as it will drop the roots
 // which are *live* on the stack, rather than dropping those that are
 // dead.
 pub fn cleanup_stack_for_failure() {

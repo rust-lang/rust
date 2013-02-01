@@ -12,7 +12,7 @@
 
 fn goodfail() {
     task::yield();
-    fail ~"goodfail";
+    die!(~"goodfail");
 }
 
 fn main() {

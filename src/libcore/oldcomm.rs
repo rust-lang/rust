@@ -183,9 +183,9 @@ fn as_raw_port<T: Owned, U>(ch: Chan<T>, f: fn(*rust_port) -> U) -> U {
         let p = PortRef(rustrt::rust_port_take(*ch));
 
         if ptr::is_null(p.p) {
-            fail ~"unable to locate port for channel"
+            die!(~"unable to locate port for channel")
         } else if rustrt::get_task_id() != rustrt::rust_port_task(p.p) {
-            fail ~"unable to access unowned port"
+            die!(~"unable to access unowned port")
         }
 
         f(p.p)
@@ -298,7 +298,7 @@ pub fn select2<A: Owned, B: Owned>(p_a: Port<A>, p_b: Port<B>)
         } else if resport == (**p_b).po {
             either::Right(recv(p_b))
         } else {
-            fail ~"unexpected result from rust_port_select";
+            die!(~"unexpected result from rust_port_select");
         }
     }
 }
@@ -466,7 +466,7 @@ fn test_select2_stress() {
         match select2(po_a, po_b) {
           either::Left(~"a") => as_ += 1,
           either::Right(~"b") => bs += 1,
-          _ => fail ~"test_select_2_stress failed"
+          _ => die!(~"test_select_2_stress failed")
         }
     }
 
@@ -536,7 +536,7 @@ fn test_port_detach_fail() {
             let ch = po.chan();
 
             do task::spawn {
-                fail;
+                die!();
             }
 
             do task::spawn {

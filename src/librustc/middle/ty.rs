@@ -1568,7 +1568,7 @@ pub fn get_element_type(ty: t, i: uint) -> t {
     match /*bad*/copy get(ty).sty {
       ty_rec(flds) => return flds[i].mt.ty,
       ty_tup(ts) => return ts[i],
-      _ => fail ~"get_element_type called on invalid type"
+      _ => die!(~"get_element_type called on invalid type")
     }
 }
 
@@ -2823,28 +2823,28 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 pub fn ty_fn_args(fty: t) -> ~[arg] {
     match get(fty).sty {
       ty_fn(ref f) => /*bad*/copy f.sig.inputs,
-      _ => fail ~"ty_fn_args() called on non-fn type"
+      _ => die!(~"ty_fn_args() called on non-fn type")
     }
 }
 
 pub fn ty_fn_proto(fty: t) -> Proto {
     match get(fty).sty {
       ty_fn(ref f) => f.meta.proto,
-      _ => fail ~"ty_fn_proto() called on non-fn type"
+      _ => die!(~"ty_fn_proto() called on non-fn type")
     }
 }
 
 pub fn ty_fn_purity(fty: t) -> ast::purity {
     match get(fty).sty {
       ty_fn(ref f) => f.meta.purity,
-      _ => fail ~"ty_fn_purity() called on non-fn type"
+      _ => die!(~"ty_fn_purity() called on non-fn type")
     }
 }
 
 pub pure fn ty_fn_ret(fty: t) -> t {
     match get(fty).sty {
         ty_fn(ref f) => f.sig.output,
-        _ => fail ~"ty_fn_ret() called on non-fn type"
+        _ => die!(~"ty_fn_ret() called on non-fn type")
     }
 }
 
@@ -3239,7 +3239,7 @@ pub fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) => {
         return id;
       }
-      ast::stmt_mac(*) => fail ~"unexpanded macro in trans"
+      ast::stmt_mac(*) => die!(~"unexpanded macro in trans")
     }
 }
 
@@ -3263,7 +3263,7 @@ pub fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
     match vec::find(get_fields(rec_ty), |f| f.ident == id) {
       Some(f) => f,
       // Do we only call this when we know the field is legit?
-      None => fail (fmt!("get_field: ty doesn't have a field %s",
+      None => die!(fmt!("get_field: ty doesn't have a field %s",
                          tcx.sess.str_of(id)))
     }
 }
@@ -3272,7 +3272,7 @@ pub fn get_fields(rec_ty:t) -> ~[field] {
     match /*bad*/copy get(rec_ty).sty {
       ty_rec(fields) => fields,
       // Can we check at the caller?
-      _ => fail ~"get_fields: not a record type"
+      _ => die!(~"get_fields: not a record type")
     }
 }
 
@@ -3929,10 +3929,10 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                          }
                     }
                     ast::struct_variant_kind(_) => {
-                        fail ~"struct variant kinds unimpl in enum_variants"
+                        die!(~"struct variant kinds unimpl in enum_variants")
                     }
                     ast::enum_variant_kind(_) => {
-                        fail ~"enum variant kinds unimpl in enum_variants"
+                        die!(~"enum variant kinds unimpl in enum_variants")
                     }
                 }
             })
