@@ -527,7 +527,7 @@ fn purity_static_method_family(p: purity) -> char {
       unsafe_fn => 'U',
       pure_fn => 'P',
       impure_fn => 'F',
-      _ => fail ~"extern fn can't be static"
+      _ => die!(~"extern fn can't be static")
     }
 }
 
@@ -829,7 +829,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                                    true, item.id, *m, /*bad*/copy m.tps);
         }
       }
-      item_mac(*) => fail ~"item macros unimplemented"
+      item_mac(*) => die!(~"item macros unimplemented")
     }
 }
 

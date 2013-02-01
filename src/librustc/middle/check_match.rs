@@ -148,11 +148,11 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
           }
           ty::ty_enum(id, _) => {
               let vid = match (*ctor) { variant(id) => id,
-              _ => fail ~"check_exhaustive: non-variant ctor" };
+              _ => die!(~"check_exhaustive: non-variant ctor") };
             match vec::find(*ty::enum_variants(cx.tcx, id),
                                 |v| v.id == vid) {
                 Some(v) => Some(cx.tcx.sess.str_of(v.name)),
-              None => fail ~"check_exhaustive: bad variant in ctor"
+              None => die!(~"check_exhaustive: bad variant in ctor")
             }
           }
           ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
@@ -367,7 +367,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
                     return Some(variant(v.id));
                 }
             }
-            fail;
+            die!();
         } else { None }
       }
       ty::ty_nil => None,
@@ -378,7 +378,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
               None => (),
               Some(val(const_bool(true))) => true_found = true,
               Some(val(const_bool(false))) => false_found = true,
-              _ => fail ~"impossible case"
+              _ => die!(~"impossible case")
             }
         }
         if true_found && false_found { None }
@@ -446,10 +446,10 @@ pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match ctor { variant(id) => id,
-          _ => fail ~"impossible case" };
+          _ => die!(~"impossible case") };
         match vec::find(*ty::enum_variants(cx.tcx, eid), |v| v.id == id ) {
             Some(v) => v.args.len(),
-            None => fail ~"impossible case"
+            None => die!(~"impossible case")
         }
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
@@ -497,7 +497,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                     compare_const_vals((*c_hi), e_v) <= 0
                             }
                             single => true,
-                            _ => fail ~"type error"
+                            _ => die!(~"type error")
                         };
                         if match_ { Some(vec::tail(r)) } else { None }
                     }
@@ -530,7 +530,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
             pat_rec(ref flds, _) => {
                 let ty_flds = match /*bad*/copy ty::get(left_ty).sty {
                     ty::ty_rec(flds) => flds,
-                    _ => fail ~"bad type for pat_rec"
+                    _ => die!(~"bad type for pat_rec")
                 };
                 let args = vec::map(ty_flds, |ty_fld| {
                     match flds.find(|f| f.ident == ty_fld.ident) {
@@ -596,7 +596,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             compare_const_vals((*c_hi), e_v) <= 0
                     }
                     single => true,
-                    _ => fail ~"type error"
+                    _ => die!(~"type error")
                 };
                 if match_ { Some(vec::tail(r)) } else { None }
             }
@@ -606,7 +606,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     range(ref lo, ref hi) =>
                         ((/*bad*/copy *lo), (/*bad*/copy *hi)),
                     single => return Some(vec::tail(r)),
-                    _ => fail ~"type error"
+                    _ => die!(~"type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo),
                 v_hi = eval_const_expr(cx.tcx, hi);

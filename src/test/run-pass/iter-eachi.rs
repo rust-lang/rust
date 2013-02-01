@@ -16,7 +16,7 @@ fn main() {
     }
     assert c == 5u;
 
-    for None::<uint>.eachi |i, v| { fail; }
+    for None::<uint>.eachi |i, v| { die!(); }
 
     let mut c = 0u;
     for Some(1u).eachi |i, v| {

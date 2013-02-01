@@ -220,7 +220,7 @@ pub pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
         }
     } {
         Some(move val) => val,
-        None => fail ~"min called on empty iterator"
+        None => die!(~"min called on empty iterator")
     }
 }
 
@@ -235,7 +235,7 @@ pub pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
         }
     } {
         Some(move val) => val,
-        None => fail ~"max called on empty iterator"
+        None => die!(~"max called on empty iterator")
     }
 }
 

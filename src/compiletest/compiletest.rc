@@ -69,7 +69,7 @@ pub fn parse_config(args: ~[~str]) -> config {
     let matches =
         &match getopts::getopts(args_, opts) {
           Ok(m) => m,
-          Err(f) => fail getopts::fail_str(f)
+          Err(f) => die!(getopts::fail_str(f))
         };
 
     fn opt_path(m: &getopts::Matches, nm: ~str) -> Path {
@@ -131,7 +131,7 @@ pub fn str_mode(s: ~str) -> mode {
       ~"run-fail" => mode_run_fail,
       ~"run-pass" => mode_run_pass,
       ~"pretty" => mode_pretty,
-      _ => fail ~"invalid mode"
+      _ => die!(~"invalid mode")
     }
 }
 
@@ -148,7 +148,7 @@ pub fn run_tests(config: config) {
     let opts = test_opts(config);
     let tests = make_tests(config);
     let res = test::run_tests_console(&opts, tests);
-    if !res { fail ~"Some tests failed"; }
+    if !res { die!(~"Some tests failed"); }
 }
 
 pub fn test_opts(config: config) -> test::TestOpts {

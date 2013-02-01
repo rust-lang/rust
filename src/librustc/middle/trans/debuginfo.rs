@@ -268,7 +268,7 @@ fn create_block(cx: block) -> @metadata<block_md> {
     while cx.node_info.is_none() {
         match cx.parent {
           Some(b) => cx = b,
-          None => fail
+          None => die!()
         }
     }
     let sp = cx.node_info.get().span;
@@ -548,7 +548,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::Ty)
      * elsewhere, not be self-contained.
      */
 
-    fail;
+    die!();
     /*
     fn t_to_ty(cx: crate_ctxt, t: ty::t, span: span) -> @ast::ty {
         let ty = match ty::get(t).struct {
@@ -664,7 +664,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
         let name = match local.node.pat.node {
           ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
           // FIXME this should be handled (#2533)
-          _ => fail ~"no single variable name for local"
+          _ => die!(~"no single variable name for local")
         };
         let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
         let ty = node_id_type(bcx, local.node.id);

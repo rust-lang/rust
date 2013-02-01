@@ -150,10 +150,10 @@ pub fn crate_name_from_metas(+metas: ~[@ast::meta_item]) -> ~str {
           Some(ref n) => (/*bad*/copy *n),
           // FIXME (#2406): Probably want a warning here since the user
           // is using the wrong type of meta item.
-          _ => fail
+          _ => die!()
         }
       }
-      None => fail ~"expected to find the crate name"
+      None => die!(~"expected to find the crate name")
     }
 }
 

@@ -241,7 +241,7 @@ pub pure fn init<T: Copy>(v: &[const T]) -> ~[T] {
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
 pub pure fn last<T: Copy>(v: &[const T]) -> T {
-    if len(v) == 0u { fail ~"last_unsafe: empty vector" }
+    if len(v) == 0u { die!(~"last_unsafe: empty vector") }
     v[len(v) - 1u]
 }
 
@@ -568,7 +568,7 @@ pub fn consume_mut<T>(v: ~[mut T], f: fn(uint, v: T)) {
 pub fn pop<T>(v: &mut ~[T]) -> T {
     let ln = v.len();
     if ln == 0 {
-        fail ~"sorry, cannot vec::pop an empty vector"
+        die!(~"sorry, cannot vec::pop an empty vector")
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
@@ -589,7 +589,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
 pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
     let ln = v.len();
     if index >= ln {
-        fail fmt!("vec::swap_remove - index %u >= length %u", index, ln);
+        die!(fmt!("vec::swap_remove - index %u >= length %u", index, ln));
     }
     if index < ln - 1 {
         v[index] <-> v[ln - 1];
@@ -831,7 +831,7 @@ pub pure fn flat_map<T, U>(v: &[T], f: fn(t: &T) -> ~[U]) -> ~[U] {
 pub pure fn map2<T: Copy, U: Copy, V>(v0: &[T], v1: &[U],
                                   f: fn(t: &T, v: &U) -> V) -> ~[V] {
     let v0_len = len(v0);
-    if v0_len != len(v1) { fail; }
+    if v0_len != len(v1) { die!(); }
     let mut u: ~[V] = ~[];
     let mut i = 0u;
     while i < v0_len {
@@ -2859,7 +2859,7 @@ mod tests {
     #[test]
     fn test_each_empty() {
         for each::<int>(~[]) |_v| {
-            fail; // should never be executed
+            die!(); // should never be executed
         }
     }
 
@@ -2886,7 +2886,7 @@ mod tests {
     #[test]
     fn test_reach_empty() {
         for rev_each::<int>(~[]) |_v| {
-            fail; // should never execute
+            die!(); // should never execute
         }
     }
 
@@ -3388,7 +3388,7 @@ mod tests {
     #[should_fail]
     fn test_from_fn_fail() {
         do from_fn(100) |v| {
-            if v == 50 { fail }
+            if v == 50 { die!() }
             (~0, @0)
         };
     }
@@ -3402,7 +3402,7 @@ mod tests {
             push((~0, @0));
             push((~0, @0));
             push((~0, @0));
-            fail;
+            die!();
         };
     }
 
@@ -3415,7 +3415,7 @@ mod tests {
         let mut i = 0;
         do split(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
 
@@ -3432,7 +3432,7 @@ mod tests {
         let mut i = 0;
         do split(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
 
@@ -3449,7 +3449,7 @@ mod tests {
         let mut i = 0;
         do splitn(v, 100) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
 
@@ -3466,7 +3466,7 @@ mod tests {
         let mut i = 0;
         do split(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
 
@@ -3483,7 +3483,7 @@ mod tests {
         let mut i = 0;
         do rsplit(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
 
@@ -3500,7 +3500,7 @@ mod tests {
         let mut i = 0;
         do rsplit(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
 
@@ -3517,7 +3517,7 @@ mod tests {
         let mut i = 0;
         do rsplitn(v, 100) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
 
@@ -3534,7 +3534,7 @@ mod tests {
         let mut i = 0;
         do rsplitn(v, 100) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
 
@@ -3550,7 +3550,7 @@ mod tests {
         let mut i = 0;
         do consume(v) |_i, _elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
         };
@@ -3564,7 +3564,7 @@ mod tests {
         let mut i = 0;
         do consume_mut(v) |_i, _elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 1;
         };
@@ -3578,7 +3578,7 @@ mod tests {
         let mut v = ~[];
         do v.grow_fn(100) |i| {
             if i == 50 {
-                fail
+                die!()
             }
             (~0, @0)
         }
@@ -3592,7 +3592,7 @@ mod tests {
         let mut i = 0;
         do map(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3607,7 +3607,7 @@ mod tests {
         let mut i = 0;
         do map_consume(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3622,7 +3622,7 @@ mod tests {
         let mut i = 0;
         do mapi(v) |_i, _elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3637,7 +3637,7 @@ mod tests {
         let mut i = 0;
         do map(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3653,7 +3653,7 @@ mod tests {
         let mut i = 0;
         do map2(v, v) |_elt1, _elt2| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3669,7 +3669,7 @@ mod tests {
         let mut i = 0;
         do filter_map(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             Some((~0, @0))
@@ -3685,7 +3685,7 @@ mod tests {
         let mut i = 0;
         do v.filtered |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             true
@@ -3701,7 +3701,7 @@ mod tests {
         let mut i = 0;
         do foldl((~0, @0), v) |_a, _b| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             (~0, @0)
@@ -3717,7 +3717,7 @@ mod tests {
         let mut i = 0;
         do foldr(v, (~0, @0)) |_a, _b| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             (~0, @0)
@@ -3732,7 +3732,7 @@ mod tests {
         let mut i = 0;
         do any(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             false
@@ -3747,7 +3747,7 @@ mod tests {
         let mut i = 0;
         do any(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             false
@@ -3762,7 +3762,7 @@ mod tests {
         let mut i = 0;
         do all(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             true
@@ -3777,7 +3777,7 @@ mod tests {
         let mut i = 0;
         do alli(v) |_i, _elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             true
@@ -3792,7 +3792,7 @@ mod tests {
         let mut i = 0;
         do all2(v, v) |_elt1, _elt2| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             true
@@ -3808,7 +3808,7 @@ mod tests {
         let mut i = 0;
         do find(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             false
@@ -3823,7 +3823,7 @@ mod tests {
         let mut i = 0;
         do position(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             false
@@ -3838,7 +3838,7 @@ mod tests {
         let mut i = 0;
         do rposition(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             false
@@ -3853,7 +3853,7 @@ mod tests {
         let mut i = 0;
         do each(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             false
@@ -3868,7 +3868,7 @@ mod tests {
         let mut i = 0;
         do eachi(v) |_i, _elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
             false
@@ -3884,7 +3884,7 @@ mod tests {
         let mut i = 0;
         for each_permutation(v) |_elt| {
             if i == 2 {
-                fail
+                die!()
             }
             i += 0;
         }
@@ -3896,7 +3896,7 @@ mod tests {
     fn test_as_imm_buf_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do as_imm_buf(v) |_buf, _i| {
-            fail
+            die!()
         }
     }
 
@@ -3906,7 +3906,7 @@ mod tests {
     fn test_as_const_buf_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do as_const_buf(v) |_buf, _i| {
-            fail
+            die!()
         }
     }
 
@@ -3916,7 +3916,7 @@ mod tests {
     fn test_as_mut_buf_fail() {
         let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do as_mut_buf(v) |_buf, _i| {
-            fail
+            die!()
         }
     }
 

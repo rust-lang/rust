@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:explicit failure
+// error-pattern:fail
 fn getbig(i: int) {
     if i != 0 {
         getbig(i - 1);
     } else {
-        fail;
+        die!();
     }
 }
 

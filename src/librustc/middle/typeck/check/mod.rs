@@ -2247,7 +2247,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
                     demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
                 }
                 // argh
-                _ => fail ~"expr_fn_block"
+                _ => die!(~"expr_fn_block")
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
@@ -2287,7 +2287,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
           }
           // argh
-          _ => fail ~"expected fn ty"
+          _ => die!(~"expected fn ty")
         }
         fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }

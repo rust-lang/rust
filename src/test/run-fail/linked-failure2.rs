@@ -12,7 +12,7 @@
 
 // error-pattern:fail
 
-fn child() { fail; }
+fn child() { die!(); }
 
 fn main() {
     let (p, _c) = pipes::stream::<()>();

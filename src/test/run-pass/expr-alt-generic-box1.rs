@@ -15,7 +15,7 @@
 type compare<T> = fn@(@T, @T) -> bool;
 
 fn test_generic<T>(expected: @T, eq: compare<T>) {
-    let actual: @T = match true { true => { expected }, _ => fail };
+    let actual: @T = match true { true => { expected }, _ => die!() };
     assert (eq(expected, actual));
 }
 

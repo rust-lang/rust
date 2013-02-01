@@ -212,7 +212,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         match *c {
           white => { -1i64 }
           black(parent) => { parent }
-          _ => { fail ~"Found remaining gray nodes in BFS" }
+          _ => { die!(~"Found remaining gray nodes in BFS") }
         }
     }
 }
@@ -294,7 +294,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         match *c {
           white => { -1i64 }
           black(parent) => { parent }
-          _ => { fail ~"Found remaining gray nodes in BFS" }
+          _ => { die!(~"Found remaining gray nodes in BFS") }
         }
     }
 }

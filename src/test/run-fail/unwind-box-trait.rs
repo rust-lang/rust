@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn failfn() {
-    fail;
+    die!();
 }
 
 trait i {

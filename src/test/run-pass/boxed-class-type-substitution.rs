@@ -15,7 +15,7 @@ type Tree<T> = {
     mut parent: Option<T>,
 };
 
-fn empty<T>() -> Tree<T> { fail }
+fn empty<T>() -> Tree<T> { die!() }
 
 struct Box {
     tree: Tree<@Box>

@@ -390,7 +390,7 @@ pub impl<D: Decoder, T: Decodable<D>> Option<T>: Decodable<D> {
                   0 => None,
                   1 => Some(d.read_enum_variant_arg(
                       0u, || Decodable::decode(d))),
-                  _ => fail(fmt!("Bad variant for option: %u", i))
+                  _ => die!(fmt!("Bad variant for option: %u", i))
                 }
             }
         }

@@ -368,7 +368,7 @@ pub fn monitor(+f: fn~(diagnostic::emitter)) {
                 }
             }
             // Fail so the process returns a failure code
-            fail;
+            die!();
         }
     }
 }

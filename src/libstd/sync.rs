@@ -335,11 +335,11 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
                         blk: fn() -> U) -> U {
     match out_of_bounds {
         Some(0) =>
-            fail fmt!("%s with illegal ID %u - this lock has no condvars!",
-                      act, id),
+            die!(fmt!("%s with illegal ID %u - this lock has no condvars!",
+                      act, id)),
         Some(length) =>
-            fail fmt!("%s with illegal ID %u - ID must be less than %u",
-                      act, id, length),
+            die!(fmt!("%s with illegal ID %u - ID must be less than %u",
+                      act, id, length)),
         None => blk()
     }
 }
@@ -582,7 +582,7 @@ impl &RWlock {
     /// To be called inside of the write_downgrade block.
     fn downgrade(token: RWlockWriteMode/&a) -> RWlockReadMode/&a {
         if !ptr::ref_eq(self, token.lock) {
-            fail ~"Can't downgrade() with a different rwlock's write_mode!";
+            die!(~"Can't downgrade() with a different rwlock's write_mode!");
         }
         unsafe {
             do task::unkillable {
@@ -935,7 +935,7 @@ mod tests {
 
         let result: result::Result<(),()> = do task::try |move m2| {
             do m2.lock {
-                fail;
+                die!();
             }
         };
         assert result.is_err();
@@ -954,7 +954,7 @@ mod tests {
             do task::spawn |move p| { // linked
                 let _ = p.recv(); // wait for sibling to get in the mutex
                 task::yield();
-                fail;
+                die!();
             }
             do m2.lock_cond |cond| {
                 c.send(()); // tell sibling go ahead
@@ -996,7 +996,7 @@ mod tests {
             }
             do m2.lock { }
             c.send(move sibling_convos); // let parent wait on all children
-            fail;
+            die!();
         };
         assert result.is_err();
         // child task must have finished by the time try returns
@@ -1050,7 +1050,7 @@ mod tests {
             let _ = p.recv();
             do m.lock_cond |cond| {
                 if !cond.signal_on(0) {
-                    fail; // success; punt sibling awake.
+                    die!(); // success; punt sibling awake.
                 }
             }
         };
@@ -1290,7 +1290,7 @@ mod tests {
 
         let result: result::Result<(),()> = do task::try |move x2| {
             do lock_rwlock_in_mode(x2, mode1) {
-                fail;
+                die!();
             }
         };
         assert result.is_err();

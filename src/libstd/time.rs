@@ -1042,7 +1042,7 @@ mod tests {
             == Err(~"Invalid time");
 
         match strptime(~"Fri Feb 13 15:31:30 2009", format) {
-          Err(copy e) => fail e,
+          Err(copy e) => die!(e),
           Ok(ref tm) => {
             assert tm.tm_sec == 30_i32;
             assert tm.tm_min == 31_i32;
@@ -1062,7 +1062,7 @@ mod tests {
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
               Ok(ref tm) => tm.strftime(format) == str::from_slice(s),
-              Err(copy e) => fail e
+              Err(copy e) => die!(e)
             }
         }
 

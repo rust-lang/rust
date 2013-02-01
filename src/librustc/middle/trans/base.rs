@@ -1888,7 +1888,7 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
         // works. So we have to cast to the destination's view of the type.
         let llarg = match fcx.llargs.find(va.id) {
             Some(local_mem(x)) => x,
-            _ => fail ~"trans_enum_variant: how do we know this works?",
+            _ => die!(~"trans_enum_variant: how do we know this works?"),
         };
         let arg_ty = arg_tys[i].ty;
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
@@ -2024,7 +2024,7 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let path = match ccx.tcx.items.get(item.id) {
         ast_map::node_item(_, p) => p,
         // tjc: ?
-        _ => fail ~"trans_item",
+        _ => die!(~"trans_item"),
     };
     match /*bad*/copy item.node {
       // XXX: Bad copies.
@@ -2280,7 +2280,7 @@ pub fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
         /*bad*/copy *match ccx.tcx.items.get(i.id) {
             ast_map::node_item(_, p) => p,
                 // separate map for paths?
-            _ => fail ~"item_path"
+            _ => die!(~"item_path")
         },
         ~[path_name(i.ident)])
 }
@@ -2367,7 +2367,7 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 set_inline_hint_if_appr(/*bad*/copy i.attrs, llfn);
                 llfn
               }
-              _ => fail ~"get_item_val: weird result in table"
+              _ => die!(~"get_item_val: weird result in table")
             }
           }
           ast_map::node_trait_method(trait_method, _, pth) => {
@@ -2448,14 +2448,14 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                       ast::item_enum(_, _) => {
                         register_fn(ccx, (*v).span, pth, id, enm.attrs)
                       }
-                      _ => fail ~"node_variant, shouldn't happen"
+                      _ => die!(~"node_variant, shouldn't happen")
                     };
                 }
                 ast::struct_variant_kind(_) => {
-                    fail ~"struct variant kind unexpected in get_item_val"
+                    die!(~"struct variant kind unexpected in get_item_val")
                 }
                 ast::enum_variant_kind(_) => {
-                    fail ~"enum variant kind unexpected in get_item_val"
+                    die!(~"enum variant kind unexpected in get_item_val")
                 }
             }
             set_inline_hint(llfn);

@@ -33,7 +33,7 @@ mod inst {
             if !f(&nobe.data) { break; }
             // Check (weakly) that the user didn't do a remove.
             if self.size == 0 {
-                fail ~"The dlist became empty during iteration??"
+                die!(~"The dlist became empty during iteration??")
             }
             if !nobe.linked ||
                 (!((nobe.prev.is_some()
@@ -42,7 +42,7 @@ mod inst {
                    && (nobe.next.is_some()
                     || managed::ptr_eq(self.tl.expect(~"tailless dlist?"),
                                        nobe)))) {
-                fail ~"Removing a dlist node during iteration is forbidden!"
+                die!(~"Removing a dlist node during iteration is forbidden!")
             }
             link = nobe.next_link();
         }

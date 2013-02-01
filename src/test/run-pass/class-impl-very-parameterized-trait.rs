@@ -62,7 +62,7 @@ impl<T: Copy> cat<T> : StdMap<int, T> {
 
   pure fn get(+k:int) -> T { match self.find(k) {
       Some(v) => { v }
-      None    => { fail ~"epic fail"; }
+      None    => { die!(~"epic fail"); }
     }
   }
   pure fn find(+k:int) -> Option<T> { if k <= self.meows {

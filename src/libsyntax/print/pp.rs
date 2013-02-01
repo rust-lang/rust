@@ -532,7 +532,7 @@ pub impl printer {
           }
           EOF => {
             // EOF should never get here.
-            fail;
+            die!();
           }
         }
     }

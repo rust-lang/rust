@@ -77,7 +77,7 @@ fn main() {
         }
         // Grandparent group waits for middle group to be gone, then fails
         error!("Grandparent group wakes up and fails");
-        fail;
+        die!();
     };
     assert x.is_err();
 }

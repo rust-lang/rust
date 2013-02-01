@@ -23,7 +23,7 @@ fn main() {
                 x = X(Left((0,0))); //~ ERROR assigning to captured outer mutable variable
                 (*f)()
             },
-            _ => fail
+            _ => die!()
         }
     }
 }

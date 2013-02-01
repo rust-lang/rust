@@ -14,7 +14,7 @@ trait vec_monad<A> {
 
 impl<A> ~[A]: vec_monad<A> {
     fn bind<B>(f: fn(A) -> ~[B]) {
-        let mut r = fail;
+        let mut r = die!();
         for self.each |elt| { r += f(*elt); }
         //~^ WARNING unreachable expression
         //~^^ ERROR the type of this value must be known

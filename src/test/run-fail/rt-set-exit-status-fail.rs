@@ -16,5 +16,5 @@ fn main() {
     // normally. In this case we're going to fail, so instead of of
     // returning 50 the process will return the typical rt failure code.
     os::set_exit_status(50);
-    fail;
+    die!();
 }

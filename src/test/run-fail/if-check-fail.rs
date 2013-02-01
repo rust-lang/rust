@@ -19,7 +19,7 @@ fn foo(x: uint) {
     if even(x) {
         log(debug, x);
     } else {
-        fail ~"Number is odd";
+        die!(~"Number is odd");
     }
 }
 

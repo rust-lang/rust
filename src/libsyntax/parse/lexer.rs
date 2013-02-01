@@ -203,7 +203,7 @@ fn hex_digit_val(c: char) -> int {
     if in_range(c, '0', '9') { return (c as int) - ('0' as int); }
     if in_range(c, 'a', 'f') { return (c as int) - ('a' as int) + 10; }
     if in_range(c, 'A', 'F') { return (c as int) - ('A' as int) + 10; }
-    fail;
+    die!();
 }
 
 fn bin_digit_value(c: char) -> int { if c == '0' { return 0; } return 1; }

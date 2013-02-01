@@ -39,7 +39,7 @@ macro_rules! select_if (
                 let $next = move next;
                 move $e
               })+
-              _ => fail
+              _ => die!()
             }
         } else {
             select_if!(
@@ -57,7 +57,7 @@ macro_rules! select_if (
         $index:expr,
         $count:expr,
     } => {
-        fail
+        die!()
     }
 )
 
