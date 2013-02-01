@@ -1986,7 +1986,7 @@ pub fn trans_struct_dtor(ccx: @crate_ctxt,
 }
 
 pub fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
-                      id: ast::node_id, tps: ~[ast::ty_param], degen: bool,
+                      id: ast::node_id, degen: bool,
                       path: @ast_map::path, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
     for vec::each(enum_definition.variants) |variant| {
@@ -2003,14 +2003,13 @@ pub fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                 // Nothing to do.
             }
             ast::struct_variant_kind(struct_def) => {
-                trans_struct_def(ccx, struct_def, /*bad*/copy tps, path,
+                trans_struct_def(ccx, struct_def, path,
                                  variant.node.id);
             }
             ast::enum_variant_kind(ref enum_definition) => {
                 trans_enum_def(ccx,
                                *enum_definition,
                                id,
-                               /*bad*/copy tps,
                                degen,
                                path,
                                vi,
@@ -2062,11 +2061,11 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         trans_mod(ccx, m);
       }
       ast::item_enum(ref enum_definition, ref tps) => {
-        if tps.len() == 0u {
+        if tps.is_empty() {
             let degen = (*enum_definition).variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, (*enum_definition), item.id, /*bad*/copy *tps,
+            trans_enum_def(ccx, (*enum_definition), item.id,
                            degen, path, vi, &mut i);
         }
       }
@@ -2080,35 +2079,33 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
       ast::item_struct(struct_def, tps) => {
-        trans_struct_def(ccx, struct_def, tps, path, item.id);
+        if tps.is_empty() {
+            trans_struct_def(ccx, struct_def, path, item.id);
+        }
       }
       _ => {/* fall through */ }
     }
 }
 
 pub fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
-                        tps: ~[ast::ty_param], path: @ast_map::path,
+                        path: @ast_map::path,
                         id: ast::node_id) {
-    // If there are type parameters, the destructor and constructor will be
-    // monomorphized, so we don't translate them here.
-    if tps.len() == 0u {
-        // Translate the destructor.
-        do option::iter(&struct_def.dtor) |dtor| {
-            trans_struct_dtor(ccx, /*bad*/copy *path, dtor.node.body,
-                             dtor.node.id, None, None, local_def(id));
-        };
+    // Translate the destructor.
+    do option::iter(&struct_def.dtor) |dtor| {
+        trans_struct_dtor(ccx, /*bad*/copy *path, dtor.node.body,
+                         dtor.node.id, None, None, local_def(id));
+    };
 
-        // If this is a tuple-like struct, translate the constructor.
-        match struct_def.ctor_id {
-            // We only need to translate a constructor if there are fields;
-            // otherwise this is a unit-like struct.
-            Some(ctor_id) if struct_def.fields.len() > 0 => {
-                let llfndecl = get_item_val(ccx, ctor_id);
-                trans_tuple_struct(ccx, /*bad*/copy struct_def.fields,
-                                   ctor_id, None, llfndecl);
-            }
-            Some(_) | None => {}
+    // If this is a tuple-like struct, translate the constructor.
+    match struct_def.ctor_id {
+        // We only need to translate a constructor if there are fields;
+        // otherwise this is a unit-like struct.
+        Some(ctor_id) if struct_def.fields.len() > 0 => {
+            let llfndecl = get_item_val(ccx, ctor_id);
+            trans_tuple_struct(ccx, /*bad*/copy struct_def.fields,
+                               ctor_id, None, llfndecl);
         }
+        Some(_) | None => {}
     }
 }
 
