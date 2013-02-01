@@ -10,8 +10,7 @@
 
 // Earley-like parser for macros.
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
-use ast_util::mk_sp;
-use codemap::BytePos;
+use codemap::{BytePos, mk_sp};
 use codemap;
 use parse::common::*; //resolve bug?
 use parse::lexer::*; //resolve bug?
@@ -189,13 +188,13 @@ pub fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
     fn n_rec(p_s: parse_sess, m: matcher, res: ~[@named_match],
              ret_val: HashMap<ident, @named_match>) {
         match m {
-          ast::spanned {node: match_tok(_), _} => (),
-          ast::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
+          codemap::spanned {node: match_tok(_), _} => (),
+          codemap::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
             for (*more_ms).each() |next_m| {
                 n_rec(p_s, *next_m, res, ret_val)
             };
           }
-          ast::spanned {
+          codemap::spanned {
                 node: match_nonterminal(bind_name, _, idx), span: sp
           } => {
             if ret_val.contains_key(bind_name) {
@@ -239,7 +238,7 @@ pub fn parse(sess: parse_sess,
         let mut next_eis = ~[]; // or proceed normally
         let mut eof_eis = ~[];
 
-        let {tok: tok, sp: sp} = rdr.peek();
+        let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
 
         /* we append new items to this while we go */
         while cur_eis.len() > 0u { /* for each Earley Item */

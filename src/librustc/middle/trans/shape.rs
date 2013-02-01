@@ -28,7 +28,7 @@ use core::option::is_some;
 use core::vec;
 use std::map::HashMap;
 use syntax::ast;
-use syntax::ast_util::dummy_sp;
+use syntax::codemap::dummy_sp;
 use syntax::codemap::span;
 use syntax::util::interner;
 

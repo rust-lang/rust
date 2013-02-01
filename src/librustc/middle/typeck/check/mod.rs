@@ -117,13 +117,13 @@ use core::vec;
 use std::list::Nil;
 use std::map::HashMap;
 use std::map;
-use syntax::ast::{provided, required, spanned, ty_i};
+use syntax::ast::{provided, required, ty_i};
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{Private, Public, is_local, local_def, respan};
+use syntax::ast_util::{Private, Public, is_local, local_def};
 use syntax::ast_util::{visibility_to_privacy};
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::{span, spanned, respan};
 use syntax::codemap;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust;
@@ -528,7 +528,7 @@ pub fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                         def_id: local_def(id),
                         explicit_self:
                             spanned { node: ast::sty_by_ref,
-                                      span: ast_util::dummy_sp() } };
+                                      span: codemap::dummy_sp() } };
         // typecheck the dtor
         let dtor_dec = ast_util::dtor_dec();
         check_bare_fn(ccx, &dtor_dec,
@@ -1919,7 +1919,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
     match /*bad*/copy expr.node {
       ast::expr_vstore(ev, vst) => {
         let typ = match /*bad*/copy ev.node {
-          ast::expr_lit(@ast::spanned { node: ast::lit_str(s), _ }) => {
+          ast::expr_lit(@codemap::spanned { node: ast::lit_str(s), _ }) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, str::len(*s), vst);
             ty::mk_estr(tcx, tt)
           }
@@ -2608,7 +2608,7 @@ pub fn check_block_with_expected(fcx0: @fn_ctxt,
         for blk.node.stmts.each |s| {
             if bot && !warned &&
                 match s.node {
-                  ast::stmt_decl(@ast::spanned { node: ast::decl_local(_),
+                  ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_),
                                                  _}, _) |
                   ast::stmt_expr(_, _) | ast::stmt_semi(_, _) => {
                     true

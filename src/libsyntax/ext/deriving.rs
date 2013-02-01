@@ -18,12 +18,12 @@ use ast::{TraitTyParamBound, Ty, and, bind_by_ref, binop, deref, enum_def};
 use ast::{enum_variant_kind, expr, expr_match, ident, item, item_};
 use ast::{item_enum, item_impl, item_struct, m_imm, meta_item, method};
 use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
-use ast::{re_anon, spanned, stmt, struct_def, struct_variant_kind};
+use ast::{re_anon, stmt, struct_def, struct_variant_kind};
 use ast::{sty_by_ref, sty_region, tuple_variant_kind, ty_nil, ty_param};
 use ast::{ty_param_bound, ty_path, ty_rptr, unnamed_field, variant};
 use ext::base::ext_ctxt;
 use ext::build;
-use codemap::span;
+use codemap::{span, spanned};
 use parse::token::special_idents::clownshoes_extensions;
 
 use core::dvec;

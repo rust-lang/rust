@@ -142,7 +142,7 @@ use util::ppaux::ty_to_str;
 
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
-use syntax::ast::spanned;
+use syntax::codemap::spanned;
 
 // Destinations
 
@@ -552,7 +552,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_tup(ref args) => {
             return trans_tup(bcx, *args, dest);
         }
-        ast::expr_lit(@ast::spanned {node: ast::lit_str(s), _}) => {
+        ast::expr_lit(@codemap::spanned {node: ast::lit_str(s), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
         }
         ast::expr_vstore(contents, ast::expr_vstore_slice) |

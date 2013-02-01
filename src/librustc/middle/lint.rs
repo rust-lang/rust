@@ -39,6 +39,7 @@ use std::oldsmallintmap;
 use syntax::ast_util::{path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
+use syntax::codemap;
 use syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
 use syntax::{ast, ast_util, visit};
 
@@ -453,7 +454,7 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
                 match e.node {
                     ast::expr_while(cond, _) => {
                         match cond.node {
-                            ast::expr_lit(@ast::spanned {
+                            ast::expr_lit(@codemap::spanned {
                                 node: ast::lit_bool(true), _}) =>
                             {
                                 cx.sess.span_lint(

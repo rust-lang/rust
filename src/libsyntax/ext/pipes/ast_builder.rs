@@ -17,10 +17,11 @@ use core::prelude::*;
 
 use ast::{ident, node_id};
 use ast;
-use ast_util::{ident_to_path, respan, dummy_sp};
+use ast_util::{ident_to_path};
 use ast_util;
 use attr;
-use codemap::span;
+use codemap::{span, respan, dummy_sp};
+use codemap;
 use ext::base::{ext_ctxt, mk_ctxt};
 use ext::quote::rt::*;
 
@@ -310,7 +311,7 @@ pub impl ext_ctxt: ext_ctxt_ast_builder {
         // XXX: Total hack: import `core::kinds::Owned` to work around a
         // parser bug whereby `fn f<T: ::kinds::Owned>` doesn't parse.
         let vi = ast::view_item_import(~[
-            @ast::spanned {
+            @codemap::spanned {
                 node: ast::view_path_simple(
                     self.ident_of(~"Owned"),
                     path(
@@ -319,19 +320,19 @@ pub impl ext_ctxt: ext_ctxt_ast_builder {
                             self.ident_of(~"kinds"),
                             self.ident_of(~"Owned")
                         ],
-                        ast_util::dummy_sp()
+                        codemap::dummy_sp()
                     ),
                     ast::type_value_ns,
                     self.next_id()
                 ),
-                span: ast_util::dummy_sp()
+                span: codemap::dummy_sp()
             }
         ]);
         let vi = @ast::view_item {
             node: vi,
             attrs: ~[],
             vis: ast::private,
-            span: ast_util::dummy_sp()
+            span: codemap::dummy_sp()
         };
 
         self.item(
