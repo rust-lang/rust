@@ -30,7 +30,7 @@ use ops::Drop;
 
 type ShutdownMsg = ();
 
-// XXX: This could be a PortOne but I've experienced bugginess
+// FIXME #4729: This could be a PortOne but I've experienced bugginess
 // with oneshot pipes and try_send
 pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     let service = global_data_clone_create(global_data_key,

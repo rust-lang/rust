@@ -160,7 +160,7 @@ fn get_global_state() -> Exclusive<GlobalState> {
 
     const POISON: int = -1;
 
-    // XXX: Doing atomic_cxchg to initialize the global state
+    // FIXME #4728: Doing atomic_cxchg to initialize the global state
     // lazily, which wouldn't be necessary with a runtime written
     // in Rust
     let global_ptr = unsafe { rust_get_global_data_ptr() };
