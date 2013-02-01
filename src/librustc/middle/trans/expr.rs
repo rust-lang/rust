@@ -566,7 +566,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
         // XXX: Bad copy.
-        ast::expr_fn(proto, copy decl, ref body) => {
+        ast::expr_fn(proto, copy decl, ref body, _) => {
             // Don't use this function for anything real. Use the one in
             // astconv instead.
             return closure::trans_expr_fn(bcx, proto, decl,

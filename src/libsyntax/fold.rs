@@ -466,10 +466,11 @@ pub fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_match(fld.fold_expr(expr),
                      vec::map((*arms), |x| fld.fold_arm(*x)))
           }
-          expr_fn(proto, decl, ref body) => {
+          expr_fn(proto, decl, ref body, _) => {
             expr_fn(proto,
                     fold_fn_decl(decl, fld),
-                    fld.fold_block(*body))
+                    fld.fold_block(*body),
+                    @())
           }
           expr_fn_block(decl, ref body) => {
             expr_fn_block(fold_fn_decl(decl, fld),

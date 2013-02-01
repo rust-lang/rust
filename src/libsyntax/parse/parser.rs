@@ -1567,7 +1567,8 @@ pub impl Parser {
         let decl = self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
 
         let body = self.parse_block();
-        return self.mk_expr(lo, body.span.hi,expr_fn(proto, decl, body));
+        return self.mk_expr(lo, body.span.hi,
+                            expr_fn(proto, decl, body, @()));
     }
 
     // `|args| { ... }` like in `do` expressions

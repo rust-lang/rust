@@ -510,7 +510,7 @@ fn mk_test_wrapper(cx: test_ctxt,
     let wrapper_expr = ast::expr  {
         id: cx.sess.next_node_id(),
         callee_id: cx.sess.next_node_id(),
-        node: ast::expr_fn(ast::ProtoBare, wrapper_decl, wrapper_body),
+        node: ast::expr_fn(ast::ProtoBare, wrapper_decl, wrapper_body, @()),
         span: span
     };
 

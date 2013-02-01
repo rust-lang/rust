@@ -615,7 +615,7 @@ impl VisitContext {
                 self.use_expr(base, comp_mode, visitor);
             }
 
-            expr_fn(_, _, ref body) |
+            expr_fn(_, _, ref body, _) |
             expr_fn_block(_, ref body) => {
                 let cap_vars = self.compute_captures(expr.id);
                 self.move_maps.capture_map.insert(expr.id, cap_vars);

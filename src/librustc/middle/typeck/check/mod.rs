@@ -2164,7 +2164,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_match(discrim, ref arms) => {
         bot = _match::check_match(fcx, expr, discrim, (/*bad*/copy *arms));
       }
-      ast::expr_fn(proto, ref decl, ref body) => {
+      ast::expr_fn(proto, ref decl, ref body, _) => {
         check_expr_fn(fcx, expr, Some(proto),
                       decl, (*body), Vanilla, expected);
       }
