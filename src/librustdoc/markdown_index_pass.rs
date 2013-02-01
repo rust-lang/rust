@@ -274,11 +274,11 @@ mod test {
                 output_style: output_style,
                 .. config::default_config(&Path("whatever"))
             };
-            let doc = extract::from_srv(srv, ~"");
-            let doc = (attr_pass::mk_pass().f)(srv, doc);
-            let doc = (desc_to_brief_pass::mk_pass().f)(srv, doc);
-            let doc = (path_pass::mk_pass().f)(srv, doc);
-            run(srv, doc, config)
+            let doc = extract::from_srv(srv.clone(), ~"");
+            let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
+            let doc = (desc_to_brief_pass::mk_pass().f)(srv.clone(), doc);
+            let doc = (path_pass::mk_pass().f)(srv.clone(), doc);
+            run(srv.clone(), doc, config)
         }
     }
 }

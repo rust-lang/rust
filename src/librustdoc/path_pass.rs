@@ -35,7 +35,12 @@ struct Ctxt {
 }
 
 impl Ctxt: Clone {
-    fn clone(&self) -> Ctxt { copy *self }
+    fn clone(&self) -> Ctxt {
+        Ctxt {
+            srv: self.srv.clone(),
+            path: copy self.path
+        }
+    }
 }
 
 #[allow(non_implicitly_copyable_typarams)]
@@ -45,6 +50,7 @@ fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
         mut path: ~[]
     };
     let fold = Fold {
+        ctxt: ctxt.clone(),
         fold_item: fold_item,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
@@ -89,8 +95,8 @@ fn fold_nmod(fold: &fold::Fold<Ctxt>, doc: doc::NmodDoc) -> doc::NmodDoc {
 fn should_record_mod_paths() {
     let source = ~"mod a { mod b { mod c { } } mod d { mod e { } } }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, ~"");
-        let doc = run(srv, doc);
+        let doc = extract::from_srv(srv.clone(), ~"");
+        let doc = run(srv.clone(), doc);
         assert doc.cratemod().mods()[0].mods()[0].mods()[0].path()
             == ~[~"a", ~"b"];
         assert doc.cratemod().mods()[0].mods()[1].mods()[0].path()
@@ -102,8 +108,8 @@ fn should_record_mod_paths() {
 fn should_record_fn_paths() {
     let source = ~"mod a { fn b() { } }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, ~"");
-        let doc = run(srv, doc);
+        let doc = extract::from_srv(srv.clone(), ~"");
+        let doc = run(srv.clone(), doc);
         assert doc.cratemod().mods()[0].fns()[0].path() == ~[~"a"];
     }
 }
@@ -112,8 +118,8 @@ fn should_record_fn_paths() {
 fn should_record_foreign_mod_paths() {
     let source = ~"mod a { extern mod b { } }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, ~"");
-        let doc = run(srv, doc);
+        let doc = extract::from_srv(srv.clone(), ~"");
+        let doc = run(srv.clone(), doc);
         assert doc.cratemod().mods()[0].nmods()[0].path() == ~[~"a"];
     }
 }
@@ -122,8 +128,8 @@ fn should_record_foreign_mod_paths() {
 fn should_record_foreign_fn_paths() {
     let source = ~"extern mod a { fn b(); }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, ~"");
-        let doc = run(srv, doc);
+        let doc = extract::from_srv(srv.clone(), ~"");
+        let doc = run(srv.clone(), doc);
         assert doc.cratemod().nmods()[0].fns[0].path() == ~[~"a"];
     }
 }

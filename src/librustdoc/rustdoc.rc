@@ -94,14 +94,14 @@ fn run(config: Config) {
 
         // Just time how long it takes for the AST to become available
         do time(~"wait_ast") {
-            do astsrv::exec(srv) |_ctxt| { }
+            do astsrv::exec(srv.clone()) |_ctxt| { }
         };
 
         // Extract the initial doc tree from the AST. This contains
         // just names and node ids.
         let doc = time(~"extract", || {
             let default_name = copy source_file;
-            extract::from_srv(srv, default_name.to_str())
+            extract::from_srv(srv.clone(), default_name.to_str())
         });
 
         // Refine and publish the document

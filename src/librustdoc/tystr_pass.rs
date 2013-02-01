@@ -40,6 +40,7 @@ pub fn run(
     doc: doc::Doc
 ) -> doc::Doc {
     let fold = Fold {
+        ctxt: srv.clone(),
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
@@ -57,7 +58,7 @@ fn fold_fn(
     doc: doc::FnDoc
 ) -> doc::FnDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::SimpleItemDoc {
         sig: get_fn_sig(srv, doc.id()),
@@ -100,7 +101,7 @@ fn fold_const(
     fold: &fold::Fold<astsrv::Srv>,
     doc: doc::ConstDoc
 ) -> doc::ConstDoc {
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::SimpleItemDoc {
         sig: Some({
@@ -130,13 +131,13 @@ fn fold_enum(
     doc: doc::EnumDoc
 ) -> doc::EnumDoc {
     let doc_id = doc.id();
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::EnumDoc {
-        variants: do par::map(doc.variants) |variant| {
+        variants: do vec::map(doc.variants) |variant| {
             let sig = {
                 let variant = copy *variant;
-                do astsrv::exec(srv) |copy variant, ctxt| {
+                do astsrv::exec(srv.clone()) |copy variant, ctxt| {
                     match ctxt.ast_map.get(doc_id) {
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
@@ -174,7 +175,7 @@ fn fold_trait(
     doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     doc::TraitDoc {
-        methods: merge_methods(fold.ctxt, doc.id(), copy doc.methods),
+        methods: merge_methods(fold.ctxt.clone(), doc.id(), copy doc.methods),
         .. doc
     }
 }
@@ -184,9 +185,9 @@ fn merge_methods(
     item_id: doc::AstId,
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
-    do par::map(docs) |doc| {
+    do vec::map(docs) |doc| {
         doc::MethodDoc {
-            sig: get_method_sig(srv, item_id, copy doc.name),
+            sig: get_method_sig(srv.clone(), item_id, copy doc.name),
             .. copy *doc
         }
     }
@@ -265,7 +266,7 @@ fn fold_impl(
     doc: doc::ImplDoc
 ) -> doc::ImplDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     let (trait_types, self_ty) = {
         let doc = copy doc;
@@ -289,7 +290,7 @@ fn fold_impl(
     doc::ImplDoc {
         trait_types: trait_types,
         self_ty: self_ty,
-        methods: merge_methods(fold.ctxt, doc.id(), copy doc.methods),
+        methods: merge_methods(fold.ctxt.clone(), doc.id(), copy doc.methods),
         .. doc
     }
 }
@@ -324,7 +325,7 @@ fn fold_type(
     doc: doc::TyDoc
 ) -> doc::TyDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::SimpleItemDoc {
         sig: {
@@ -362,7 +363,7 @@ fn fold_struct(
     fold: &fold::Fold<astsrv::Srv>,
     doc: doc::StructDoc
 ) -> doc::StructDoc {
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::StructDoc {
         sig: {
@@ -434,8 +435,8 @@ pub mod test {
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
-            let doc = extract::from_srv(srv, ~"");
-            run(srv, doc)
+            let doc = extract::from_srv(srv.clone(), ~"");
+            run(srv.clone(), doc)
         }
     }
 }
