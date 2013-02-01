@@ -14,8 +14,7 @@ syn match     rustAssert      "\<assert\(\w\)*"
 syn keyword   rustKeyword     as break
 syn keyword   rustKeyword     copy do drop else extern fail
 syn keyword   rustKeyword     for if impl let log
-syn keyword   rustKeyword     loop match mod move once priv pure
-syn match     rustKeyword     "\<pub\>"
+syn keyword   rustKeyword     loop match mod move once priv pub pure
 syn keyword   rustKeyword     ref return static
 syn keyword   rustKeyword     unsafe use while
 " FIXME: Scoped impl's name is also fallen in this category
