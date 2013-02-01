@@ -3232,7 +3232,6 @@ fn expr_kind(tcx: ctxt,
         ast::expr_again(*) |
         ast::expr_ret(*) |
         ast::expr_log(*) |
-        ast::expr_fail(*) |
         ast::expr_assert(*) |
         ast::expr_while(*) |
         ast::expr_loop(*) |
