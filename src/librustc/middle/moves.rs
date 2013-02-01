@@ -573,7 +573,6 @@ impl VisitContext {
                 self.consume_block(blk, visitor);
             }
 
-            expr_fail(ref opt_expr) |
             expr_ret(ref opt_expr) => {
                 for opt_expr.each |expr| {
                     self.consume_expr(*expr, visitor);

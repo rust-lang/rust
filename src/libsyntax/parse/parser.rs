@@ -20,7 +20,7 @@ use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
 use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assert, expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
-use ast::{expr_fail, expr_field, expr_fn, expr_fn_block, expr_if, expr_index};
+use ast::{expr_field, expr_fn, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat};
 use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
@@ -1031,12 +1031,6 @@ pub impl Parser {
                 }
             }
             hi = self.span.hi;
-        } else if self.eat_keyword(~"fail") {
-            if can_begin_expr(self.token) {
-                let e = self.parse_expr();
-                hi = e.span.hi;
-                ex = expr_fail(Some(e));
-            } else { ex = expr_fail(None); }
         } else if self.eat_keyword(~"log") {
             self.expect(token::LPAREN);
             let lvl = self.parse_expr();

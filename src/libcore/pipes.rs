@@ -549,7 +549,7 @@ pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
             //unsafe { forget(p); }
             return true;
         }
-        Full => fail ~"duplicate send",
+        Full => die!(~"duplicate send"),
         Blocked => {
             debug!("waking up task for %?", p_);
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
