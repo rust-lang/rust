@@ -180,10 +180,8 @@ impl<A> DVec<A> {
             data <-> self.data;
             let data_ptr: *() = cast::reinterpret_cast(&data);
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
-            log(error, ~"a");
             self.data = move ~[move t];
             self.data.push_all_move(move data);
-            log(error, ~"b");
         }
     }
 
