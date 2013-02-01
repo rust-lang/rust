@@ -28,84 +28,6 @@ pub type Set<K> = HashMap<K, ()>;
 
 pub type HashMap<K, V> = chained::T<K, V>;
 
-pub trait StdMap<K:Eq IterBytes Hash Copy, V: Copy> {
-    /// Return the number of elements in the map
-    pure fn size() -> uint;
-
-    /**
-     * Add a value to the map.
-     *
-     * If the map already contains a value for the specified key then the
-     * original value is replaced.
-     *
-     * Returns true if the key did not already exist in the map
-     */
-    fn insert(key: K, value: V) -> bool;
-
-    /**
-     * Add a value to the map.
-     *
-     * If the map contains a value for the key, use the function
-     * to set a new value.
-     */
-    fn update_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool;
-
-    /**
-     * Add a value to the map.
-     *
-     * If the map contains a value for the key, use the function to
-     * set a new value.  (Like `update_with_key`, but with a
-     * function of only values.)
-     */
-    fn update(key: K, newval: V, ff: fn(V, V) -> V) -> bool;
-
-    /// Returns true if the map contains a value for the specified key
-    pure fn contains_key(key: K) -> bool;
-
-    /// Returns true if the map contains a value for the specified
-    /// key, taking the key by reference.
-    pure fn contains_key_ref(key: &K) -> bool;
-
-    /**
-     * Get the value for the specified key. Fails if the key does not exist in
-     * the map.
-     */
-    pure fn get(key: K) -> V;
-
-    /**
-     * Get the value for the specified key. If the key does not exist in
-     * the map then returns none.
-     */
-    pure fn find(key: K) -> Option<V>;
-
-    /**
-     * Remove and return a value from the map. Returns true if the
-     * key was present in the map, otherwise false.
-     */
-    fn remove(key: K) -> bool;
-
-    /// Clear the map, removing all key/value pairs.
-    fn clear();
-
-    /// Iterate over all the key/value pairs in the map by value
-    pure fn each(fn(key: K, value: V) -> bool);
-
-    /// Iterate over all the keys in the map by value
-    pure fn each_key(fn(key: K) -> bool);
-
-    /// Iterate over all the values in the map by value
-    pure fn each_value(fn(value: V) -> bool);
-
-    /// Iterate over all the key/value pairs in the map by reference
-    pure fn each_ref(fn(key: &K, value: &V) -> bool);
-
-    /// Iterate over all the keys in the map by reference
-    pure fn each_key_ref(fn(key: &K) -> bool);
-
-    /// Iterate over all the values in the map by reference
-    pure fn each_value_ref(fn(value: &V) -> bool);
-}
-
 pub mod util {
     pub struct Rational {
         // : int::positive(*.den);
@@ -124,7 +46,7 @@ pub mod util {
 // FIXME (#2344): package this up and export it as a datatype usable for
 // external code that doesn't want to pay the cost of a box.
 pub mod chained {
-    use map::{StdMap, util};
+    use map::util;
 
     use core::io;
     use core::ops;
@@ -239,7 +161,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: StdMap<K, V> {
+    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
         pure fn size() -> uint { self.count }
 
         pure fn contains_key(k: K) -> bool {
