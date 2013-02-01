@@ -286,7 +286,8 @@ use syntax::ast::{ret_style, purity};
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 use syntax::ast;
-use syntax::ast_util::dummy_sp;
+use syntax::codemap::dummy_sp;
+use syntax::codemap;
 use syntax::ast_util;
 use syntax::codemap::span;
 
@@ -389,7 +390,7 @@ pub fn can_mk_subty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
-            cx.sub(true, ast_util::dummy_sp()).tys(a, b)
+            cx.sub(true, codemap::dummy_sp()).tys(a, b)
         }
     }.to_ures()
 }
@@ -429,7 +430,7 @@ pub fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
-            let span = ast_util::dummy_sp();
+            let span = codemap::dummy_sp();
             Coerce(cx.combine_fields(true, span)).tys(a, b)
         }
     }.to_ures()

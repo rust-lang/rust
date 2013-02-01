@@ -108,7 +108,7 @@ use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::node_id_to_str;
-use syntax::ast_util::dummy_sp;
+use syntax::codemap::dummy_sp;
 use syntax::codemap::span;
 
 pub fn lookup(

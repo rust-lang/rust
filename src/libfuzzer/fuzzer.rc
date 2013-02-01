@@ -74,12 +74,12 @@ pub fn common_exprs() -> ~[ast::expr] {
             id: 0,
             callee_id: -1,
             node: e,
-            span: ast_util::dummy_sp(),
+            span: codemap::dummy_sp(),
         }
     }
 
     fn dsl(l: ast::lit_) -> ast::lit {
-        ast::spanned { node: l, span: ast_util::dummy_sp() }
+        codemap::spanned { node: l, span: codemap::dummy_sp() }
     }
 
     ~[dse(ast::expr_break(option::None)),

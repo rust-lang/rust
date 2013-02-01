@@ -21,8 +21,7 @@ use core::prelude::*;
 
 use ast::{expr, expr_lit, lit_nil};
 use ast;
-use ast_util::{respan};
-use codemap::span;
+use codemap::{span, respan};
 use parse::parser::Parser;
 use parse::token::Token;
 use parse::token;

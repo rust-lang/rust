@@ -13,7 +13,7 @@
 use core::prelude::*;
 
 use ast;
-use ast_util::{spanned, dummy_spanned};
+use codemap::{spanned, dummy_spanned};
 use attr;
 use codemap::BytePos;
 use diagnostic::span_handler;

@@ -1850,7 +1850,7 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
             ty: varg.ty,
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
-                ast_util::dummy_sp(),
+                codemap::dummy_sp(),
                 special_idents::arg),
             id: varg.id,
         }
@@ -1913,7 +1913,7 @@ pub fn trans_tuple_struct(ccx: @crate_ctxt,
             is_mutbl: false,
             ty: field.node.ty,
             pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
-                                        ast_util::dummy_sp(),
+                                        codemap::dummy_sp(),
                                         special_idents::arg),
             id: field.node.id
         }
@@ -2044,7 +2044,7 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         } else {
             for vec::each((*body).node.stmts) |stmt| {
                 match stmt.node {
-                  ast::stmt_decl(@ast::spanned { node: ast::decl_item(i),
+                  ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
                     trans_item(ccx, *i);
                   }
