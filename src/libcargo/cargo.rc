@@ -460,7 +460,7 @@ pub fn parse_source(name: ~str, j: &json::Json) -> @Source {
         json::Object(j) => {
             let mut url = match j.find(&~"url") {
                 Some(&json::String(u)) => copy u,
-                _ => fail ~"needed 'url' field in source"
+                _ => die!(~"needed 'url' field in source")
             };
             let method = match j.find(&~"method") {
                 Some(&json::String(u)) => copy u,

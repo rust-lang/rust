@@ -265,7 +265,8 @@ pub fn trans_method_callee(bcx: block,
                                mentry.explicit_self)
         }
         typeck::method_self(*) | typeck::method_super(*) => {
-            fail ~"method_self or method_super should have been handled above"
+            die!(~"method_self or method_super should have been handled \
+                above")
         }
     }
 }

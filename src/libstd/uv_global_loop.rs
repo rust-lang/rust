@@ -185,14 +185,12 @@ mod test {
                         let start_status = ll::timer_start(timer_ptr,
                                                            simple_timer_cb,
                                                            1u, 0u);
-                        if(start_status == 0i32) {
-                        }
-                        else {
-                            fail ~"failure on ll::timer_start()";
+                        if(start_status != 0i32) {
+                            die!(~"failure on ll::timer_start()");
                         }
                     }
                     else {
-                        fail ~"failure on ll::timer_init()";
+                        die!(~"failure on ll::timer_init()");
                     }
                 }
             };

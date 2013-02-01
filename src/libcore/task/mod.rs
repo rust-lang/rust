@@ -733,7 +733,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
         can_not_copy: None,
         .. b0
     };
-    do b1.spawn { fail; }
+    do b1.spawn { die!(); }
     po.recv(); // We should get punted awake
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -760,7 +760,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
 fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
     let (po, _ch) = stream::<()>();
     // Default options are to spawn linked & unsupervised.
-    do spawn { fail; }
+    do spawn { die!(); }
     po.recv(); // We should get punted awake
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]

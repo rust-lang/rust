@@ -1020,7 +1020,7 @@ impl<T:Owned,Tbuffer:Owned> SendPacketBuffered<T,Tbuffer> {
             //forget(packet);
             header
           },
-          None => fail ~"packet already consumed"
+          None => die!(~"packet already consumed")
         }
     }
 

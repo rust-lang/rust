@@ -112,7 +112,7 @@ fn fold_const(
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }
-                    _ => fail ~"fold_const: id not bound to a const item"
+                    _ => die!(~"fold_const: id not bound to a const item")
                 }
             }}),
         .. doc
@@ -149,7 +149,7 @@ fn fold_enum(
                             pprust::variant_to_str(
                                 ast_variant, extract::interner())
                         }
-                        _ => fail ~"enum variant not bound to an enum item"
+                        _ => die!(~"enum variant not bound to an enum item")
                     }
                 }
             };
@@ -281,7 +281,7 @@ fn fold_impl(
                      Some(pprust::ty_to_str(
                          self_ty, extract::interner())))
                 }
-                _ => fail ~"expected impl"
+                _ => die!(~"expected impl")
             }
         }
     };
@@ -344,7 +344,7 @@ fn fold_type(
                                               extract::interner())
                         ))
                     }
-                    _ => fail ~"expected type"
+                    _ => die!(~"expected type")
                 }
             }
         },
@@ -374,7 +374,7 @@ fn fold_struct(
                         Some(pprust::item_to_str(item,
                                                  extract::interner()))
                     }
-                    _ => fail ~"not an item"
+                    _ => die!(~"not an item")
                 }
             }
         },

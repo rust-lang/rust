@@ -2868,7 +2868,8 @@ pub fn ty_region(ty: t) -> Region {
       ty_rptr(r, _) => r,
       ty_evec(_, vstore_slice(r)) => r,
       ty_estr(vstore_slice(r)) => r,
-      ref s => fail fmt!("ty_region() invoked on in appropriate ty: %?", (*s))
+      ref s => die!(fmt!("ty_region() invoked on in appropriate ty: %?",
+          (*s)))
     }
 }
 
