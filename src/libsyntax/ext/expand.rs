@@ -296,6 +296,15 @@ pub fn core_macros() -> ~str {
         )
     )
 
+    macro_rules! fail(
+        ($msg: expr) => (
+            ::core::sys::begin_unwind($msg, file!().to_owned(), line!())
+        );
+        () => (
+            die!(~\"explicit failure\")
+        )
+    )
+
     macro_rules! fail_unless(
         ($cond:expr) => {
             if !$cond {

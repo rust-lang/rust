@@ -1393,13 +1393,6 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
         word(s.s, ~"]");
       }
       ast::expr_path(path) => print_path(s, path, true),
-      ast::expr_fail(maybe_fail_val) => {
-        word(s.s, ~"fail");
-        match maybe_fail_val {
-          Some(expr) => { word(s.s, ~" "); print_expr(s, expr); }
-          _ => ()
-        }
-      }
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);

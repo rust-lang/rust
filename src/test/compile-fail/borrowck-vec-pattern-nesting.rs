@@ -4,7 +4,7 @@ fn a() {
         [~ref _a] => {
             vec[0] = ~4; //~ ERROR prohibited due to outstanding loan
         }
-        _ => fail ~"foo"
+        _ => die!(~"foo")
     }
 }
 

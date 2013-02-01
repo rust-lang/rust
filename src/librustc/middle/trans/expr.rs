@@ -468,9 +468,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         ast::expr_ret(ex) => {
             return controlflow::trans_ret(bcx, ex);
         }
-        ast::expr_fail(why) => {
-            return controlflow::trans_fail_expr(bcx, Some(expr.span), why);
-        }
         ast::expr_log(_, lvl, a) => {
             return controlflow::trans_log(expr, lvl, bcx, a);
         }

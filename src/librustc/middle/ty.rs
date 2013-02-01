@@ -2859,7 +2859,7 @@ pub pure fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
         ty_evec(_, vstore) => vstore,
         ty_estr(vstore) => vstore,
-        ref s => fail fmt!("ty_vstore() called on invalid sty: %?", s)
+        ref s => die!(fmt!("ty_vstore() called on invalid sty: %?", s))
     }
 }
 
@@ -3205,7 +3205,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_again(*) |
         ast::expr_ret(*) |
         ast::expr_log(*) |
-        ast::expr_fail(*) |
         ast::expr_assert(*) |
         ast::expr_while(*) |
         ast::expr_loop(*) |

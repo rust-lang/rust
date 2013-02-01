@@ -485,7 +485,6 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         (v.visit_expr)(b, e, v);
       }
       expr_path(p) => visit_path(p, e, v),
-      expr_fail(eo) => visit_expr_opt(eo, e, v),
       expr_break(_) => (),
       expr_again(_) => (),
       expr_ret(eo) => visit_expr_opt(eo, e, v),
