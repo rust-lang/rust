@@ -84,9 +84,6 @@ pub fn common_exprs() -> ~[ast::expr] {
 
     ~[dse(ast::expr_break(option::None)),
      dse(ast::expr_again(option::None)),
-     dse(ast::expr_fail(option::None)),
-     dse(ast::expr_fail(option::Some(
-         @dse(ast::expr_lit(@dsl(ast::lit_str(@~"boo"))))))),
      dse(ast::expr_ret(option::None)),
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
@@ -117,11 +114,10 @@ pub pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_binary(*) | ast::expr_assign(*) |
           ast::expr_assign_op(*) => { false }
 
-          ast::expr_fail(option::None) |
           ast::expr_ret(option::None) => { false }
 
           // https://github.com/mozilla/rust/issues/953
-          ast::expr_fail(option::Some(_)) => { false }
+          //ast::expr_fail(option::Some(_)) => { false }
 
           // https://github.com/mozilla/rust/issues/928
           //ast::expr_cast(_, _) { false }

@@ -386,7 +386,7 @@ pub mod linear {
         pure fn get(&self, k: &K) -> &self/V {
             match self.find(k) {
                 Some(v) => v,
-                None => fail fmt!("No entry found for key: %?", k),
+                None => die!(fmt!("No entry found for key: %?", k)),
             }
         }
     }
