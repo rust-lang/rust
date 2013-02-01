@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     pub fn do_not_run_ignored_tests() {
-        fn f() { fail; }
+        fn f() { die!(); }
         let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
@@ -479,7 +479,7 @@ mod tests {
     #[test]
     #[ignore(cfg(windows))]
     pub fn test_should_fail() {
-        fn f() { fail; }
+        fn f() { die!(); }
         let desc = TestDesc {
             name: ~"whatever",
             testfn: f,

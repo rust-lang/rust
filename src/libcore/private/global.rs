@@ -269,7 +269,7 @@ fn test_modify() {
                         Some(~shared_mutable_state(10))
                     }
                 }
-                _ => fail
+                _ => die!()
             }
         }
 
@@ -280,7 +280,7 @@ fn test_modify() {
                     assert *v == 10;
                     None
                 },
-                _ => fail
+                _ => die!()
             }
         }
 
@@ -291,7 +291,7 @@ fn test_modify() {
                         Some(~shared_mutable_state(10))
                     }
                 }
-                _ => fail
+                _ => die!()
             }
         }
     }

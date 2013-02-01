@@ -886,7 +886,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                         encode_info_for_item(ecx, ebml_w, i,
                                              index, *pt);
                     }
-                    _ => fail ~"bad item"
+                    _ => die!(~"bad item")
                 }
             }
         },
@@ -901,7 +901,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                                                      abi);
                     }
                     // case for separate item and foreign-item tables
-                    _ => fail ~"bad foreign item"
+                    _ => die!(~"bad foreign item")
                 }
             }
         },
