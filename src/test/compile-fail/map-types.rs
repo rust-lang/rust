@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::map;
-use std::map::HashMap;
-use std::map::StdMap;
+use core::container::Map;
+use core::hashmap::linear::LinearMap;
 
 // Test that trait types printed in error msgs include the type arguments.
 
 fn main() {
-    let x: StdMap<~str,~str> = map::HashMap::<~str,~str>() as
-        StdMap::<~str,~str>;
-    let y: StdMap<uint,~str> = x;
-    //~^ ERROR mismatched types: expected `@std::map::StdMap<uint,~str>`
+    let x: Map<~str, ~str> = LinearMap::new::<~str, ~str>() as
+        Map::<~str, ~str>;
+    let y: Map<uint, ~str> = x;
+    //~^ ERROR mismatched types: expected `@core::container::Map/&<uint,~str>`
 }
