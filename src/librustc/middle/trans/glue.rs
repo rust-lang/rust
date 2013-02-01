@@ -571,9 +571,30 @@ pub fn decr_refcnt_maybe_free(bcx: block,
     }
 }
 
+pub fn copy_glue_should_never_be_called(bcx: block, t: ty::t) -> bool {
+    match ty::get(t).sty {
+        ty::ty_infer(*)
+        | ty::ty_type
+        | ty::ty_opaque_closure_ptr(*)
+        | ty::ty_opaque_box
+        | ty::ty_unboxed_vec(*)
+        | ty::ty_err => {
+            // Not sure under what scenarios these non-types get take glue
+            false
+        }
+        _ => !ty::type_is_copyable(bcx.tcx(), t)
+    }
+}
 
 pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_take_glue");
+
+    if copy_glue_should_never_be_called(bcx, t) {
+        controlflow::trans_fail(bcx, bcx.fcx.span,
+                                ~"calling take glue on non-copyable");
+        return;
+    }
+
     // NB: v is a *pointer* to type t here, not a direct value.
     let bcx = match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
