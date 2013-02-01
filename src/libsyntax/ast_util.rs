@@ -552,12 +552,9 @@ pub fn walk_pat(pat: @pat, it: fn(@pat)) {
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
-        pat_vec(elts, rest) => {
+        pat_vec(elts, _) => {
             for elts.each |p| {
                 walk_pat(*p, it)
-            }
-            do option::iter(&rest) |rest| {
-                walk_pat(*rest, it)
             }
         }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |

@@ -192,7 +192,7 @@ pub enum Opt {
     var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
     range(@ast::expr, @ast::expr),
     vec_len_eq(uint),
-    vec_len_ge(uint)
+    vec_len_ge(uint, /* rest */uint)
 }
 
 pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
@@ -237,7 +237,7 @@ pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
       }
       (var(a, _), var(b, _)) => a == b,
       (vec_len_eq(a), vec_len_eq(b)) => a == b,
-      (vec_len_ge(a), vec_len_ge(b)) => a == b,
+      (vec_len_ge(a, _), vec_len_ge(b, _)) => a == b,
       _ => false
     }
 }
@@ -275,7 +275,7 @@ pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
         vec_len_eq(n) => {
             return single_result(rslt(bcx, C_int(ccx, n as int)));
         }
-        vec_len_ge(n) => {
+        vec_len_ge(n, _) => {
             return lower_bound(rslt(bcx, C_int(ccx, n as int)));
         }
     }
@@ -566,15 +566,17 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
             }
             ast::pat_vec(elems, rest) => {
                 match rest {
-                    Some(_) => {
-                        if opt_eq(tcx, &vec_len_ge(elems.len()), opt) {
-                            Some(vec::append_one(elems, rest.get()))
+                    Some(i) => {
+                        let n = elems.len() - 1u;
+                        if opt_eq(tcx, &vec_len_ge(n, i), opt) {
+                            Some(copy elems)
                         } else {
                             None
                         }
                     }
                     None => {
-                        if opt_eq(tcx, &vec_len_eq(elems.len()), opt) {
+                        let n = elems.len();
+                        if opt_eq(tcx, &vec_len_eq(n), opt) {
                             Some(copy elems)
                         } else {
                             None
@@ -808,7 +810,7 @@ pub fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
             ast::pat_vec(elems, rest) => {
                 let opt = match rest {
                     None => vec_len_eq(elems.len()),
-                    Some(_) => vec_len_ge(elems.len())
+                    Some(i) => vec_len_ge(elems.len() - 1u, i)
                 };
                 add_to_set(ccx.tcx, &found, opt);
             }
@@ -853,8 +855,9 @@ pub fn extract_variant_args(bcx: block,
 pub fn extract_vec_elems(bcx: block,
                          pat_id: ast::node_id,
                          elem_count: uint,
-                         rest: bool,
-                         val: ValueRef)
+                         rest: Option<uint>,
+                         val: ValueRef,
+                         count: ValueRef)
                       -> {vals: ~[ValueRef], bcx: block} {
     let _icx = bcx.insn_ctxt("match::extract_vec_elems");
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
@@ -862,14 +865,27 @@ pub fn extract_vec_elems(bcx: block,
     let (base, len) = tvec::get_base_and_len(bcx, unboxed, vt.vec_ty);
 
     let mut elems = do vec::from_fn(elem_count) |i| {
-        GEPi(bcx, base, ~[i])
+        match rest {
+            None => GEPi(bcx, base, ~[i]),
+            Some(n) if i < n => GEPi(bcx, base, ~[i]),
+            Some(n) if i > n => {
+                InBoundsGEP(bcx, base, ~[
+                    Sub(bcx, count,
+                        C_int(bcx.ccx(), (elem_count - i) as int))])
+            }
+            _ => unsafe { llvm::LLVMGetUndef(vt.llunit_ty) }
+        }
     };
-    if rest {
+    if rest.is_some() {
+        let n = rest.get();
         let rest_offset = Mul(bcx, vt.llunit_size,
-            C_int(bcx.ccx(), elem_count as int)
+            C_int(bcx.ccx(), n as int)
         );
         let rest_begin = tvec::pointer_add(bcx, base, rest_offset);
-        let rest_len = Sub(bcx, len, rest_offset);
+        let rest_len_offset = Mul(bcx, vt.llunit_size,
+            C_int(bcx.ccx(), (elem_count - 1u) as int)
+        );
+        let rest_len = Sub(bcx, len, rest_len_offset);
         let rest_ty = ty::mk_evec(bcx.tcx(),
             ty::mt {ty: vt.unit_ty, mutbl: ast::m_imm},
             ty::vstore_slice(ty::re_static)
@@ -881,7 +897,7 @@ pub fn extract_vec_elems(bcx: block,
         Store(bcx, rest_len,
             GEPi(bcx, scratch.val, [0u, abi::slice_elt_len])
         );
-        elems.push(scratch.val);
+        elems[n] = scratch.val;
         scratch.add_clean(bcx);
     }
     return {vals: elems, bcx: bcx};
@@ -1380,7 +1396,7 @@ pub fn compile_submatch(bcx: block,
                 test_val = Load(bcx, val);
                 kind = compare;
             },
-            vec_len_eq(_) | vec_len_ge(_) => {
+            vec_len_eq(*) | vec_len_ge(*) => {
                 let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
                 let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
                 let (_, len) = tvec::get_base_and_len(
@@ -1523,12 +1539,17 @@ pub fn compile_submatch(bcx: block,
                 unpacked = /*bad*/copy args.vals;
                 opt_cx = args.bcx;
             }
-            vec_len_eq(n) | vec_len_ge(n) => {
-                let rest = match *opt {
-                    vec_len_ge(_) => true,
-                    _ => false
+            vec_len_eq(n) | vec_len_ge(n, _) => {
+                let n = match *opt {
+                    vec_len_ge(*) => n + 1u,
+                    _ => n
                 };
-                let args = extract_vec_elems(opt_cx, pat_id, n, rest, val);
+                let rest = match *opt {
+                    vec_len_ge(_, i) => Some(i),
+                    _ => None
+                };
+                let args = extract_vec_elems(opt_cx, pat_id, n, rest,
+                    val, test_val);
                 size = args.vals.len();
                 unpacked = /*bad*/copy args.vals;
                 opt_cx = args.bcx;

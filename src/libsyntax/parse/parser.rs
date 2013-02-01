@@ -1883,19 +1883,23 @@ pub impl Parser {
         };
     }
 
-    fn parse_pat_vec_elements(refutable: bool) -> (~[@pat], Option<@pat>) {
+    fn parse_pat_vec_elements(refutable: bool) -> (~[@pat], Option<uint>) {
         let mut elements = ~[];
         let mut rest = None;
         let mut first = true;
+        let mut before_rest = true;
 
         while self.token != token::RBRACKET {
             if first { first = false; }
             else { self.expect(token::COMMA); }
 
             let mut is_rest = false;
-            if self.token == token::DOTDOT {
-                self.bump();
-                is_rest = true;
+            if before_rest {
+                if self.token == token::DOTDOT {
+                    self.bump();
+                    is_rest = true;
+                    before_rest = false;
+                }
             }
 
             let subpat = self.parse_pat(refutable);
@@ -1907,8 +1911,7 @@ pub impl Parser {
                         span, ~"expected an identifier or `_`"
                     )
                 }
-                rest = Some(subpat);
-                break;
+                rest = Some(elements.len());
             }
 
             elements.push(subpat);

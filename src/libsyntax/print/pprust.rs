@@ -1655,11 +1655,13 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
       }
       ast::pat_vec(elts, rest) => {
         word(s.s, ~"[");
-        commasep(s, inconsistent, elts, |s, p| print_pat(s, p, refutable));
-        do option::iter(&rest) |rest| {
-            if vec::len(elts) != 0u { word_space(s, ~","); }
-            word(s.s, ~"..");
-            print_pat(s, *rest, refutable);
+        let mut count = 0;
+        do commasep(s, inconsistent, elts) |s, p| {
+            if Some(count) == rest {
+                word(s.s, ~"..");
+            }
+            print_pat(s, p, refutable);
+            count += 1;
         }
         word(s.s, ~"]");
       }

@@ -882,16 +882,17 @@ pub impl &mem_categorization_ctxt {
             self.cat_pattern(subcmt, subpat, op);
           }
 
-          ast::pat_vec(ref pats, opt_rest_pat) => {
-              for pats.each |pat| {
-                  let elt_cmt = self.cat_index(*pat, cmt);
-                  self.cat_pattern(elt_cmt, *pat, op);
-              }
-
-              for opt_rest_pat.each |rest_pat| {
-                  let rest_ty = self.tcx.ty(*rest_pat);
-                  let rest_cmt = self.cat_rvalue(*rest_pat, rest_ty);
-                  self.cat_pattern(rest_cmt, *rest_pat, op);
+          ast::pat_vec(ref pats, rest) => {
+              for pats.eachi |i, pat| {
+                  if Some(i) == rest {
+                      let rest_pat = pat;
+                      let rest_ty = self.tcx.ty(*rest_pat);
+                      let rest_cmt = self.cat_rvalue(*rest_pat, rest_ty);
+                      self.cat_pattern(rest_cmt, *rest_pat, op);
+                  } else {
+                      let elt_cmt = self.cat_index(*pat, cmt);
+                      self.cat_pattern(elt_cmt, *pat, op);
+                  }
               }
           }
 

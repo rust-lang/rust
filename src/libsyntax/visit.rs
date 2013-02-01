@@ -269,12 +269,9 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
         (v.visit_expr)(e2, e, v);
       }
       pat_wild => (),
-      pat_vec(elts, rest) => {
+      pat_vec(elts, _) => {
         for elts.each |elt| {
           (v.visit_pat)(*elt, e, v);
-        }
-        do option::iter(&rest) |rest| {
-          (v.visit_pat)(*rest, e, v);
         }
       }
     }

@@ -378,7 +378,7 @@ pub fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
           },
           pat_vec(elts, rest) => pat_vec(
             vec::map(elts, |x| fld.fold_pat(*x)),
-            option::map(&rest, |rest| fld.fold_pat(*rest))
+            rest
           )
         };
 }

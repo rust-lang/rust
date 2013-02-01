@@ -565,21 +565,17 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             );
           }
         };
-        for elts.each |elt| {
-            check_pat(pcx, *elt, elt_type.ty);
-        }
-        fcx.write_ty(pat.id, expected);
-
-        match rest {
-            Some(rest_pat) => {
-                let slice_ty = ty::mk_evec(tcx,
+        for elts.eachi |i, elt| {
+            let mut t = elt_type.ty;
+            if Some(i) == rest {
+                t = ty::mk_evec(tcx,
                     ty::mt {ty: elt_type.ty, mutbl: elt_type.mutbl},
                     ty::vstore_slice(region_var)
                 );
-                check_pat(pcx, rest_pat, slice_ty);
             }
-            None => ()
+            check_pat(pcx, *elt, t);
         }
+        fcx.write_ty(pat.id, expected);
       }
     }
 }

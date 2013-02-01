@@ -592,11 +592,11 @@ impl GatherLoanCtxt {
                 }
               }
 
-              ast::pat_vec(_, Some(rest_pat)) => {
+              ast::pat_vec(ref pats, Some(rest)) => {
                   // The `rest_pat` here creates a slice into the
                   // original vector.  This is effectively a borrow of
                   // the elements of the vector being matched.
-
+                  let rest_pat = pats[rest];
                   let rest_ty = self.tcx().ty(rest_pat);
                   let (rest_mutbl, rest_r) =
                       self.vec_slice_info(rest_pat, rest_ty);

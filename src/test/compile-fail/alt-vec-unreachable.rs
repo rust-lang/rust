@@ -1,3 +1,5 @@
+// xfail-test
+
 fn main() {
     let x: ~[(int, int)] = ~[];
     match x {
