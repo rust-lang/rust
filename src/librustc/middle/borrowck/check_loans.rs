@@ -221,18 +221,19 @@ impl check_loan_ctxt {
 
         let callee_ty = ty::node_id_to_type(tcx, callee_id);
         match ty::get(callee_ty).sty {
-          ty::ty_fn(ref fn_ty) => {
-            match fn_ty.meta.purity {
-              ast::pure_fn => return, // case (c) above
-              ast::impure_fn | ast::unsafe_fn | ast::extern_fn => {
-                self.report_purity_error(
-                    pc, callee_span,
-                    fmt!("access to %s function",
-                         fn_ty.meta.purity.to_str()));
-              }
+            ty::ty_bare_fn(ty::BareFnTy {purity: purity, _}) |
+            ty::ty_closure(ty::ClosureTy {purity: purity, _}) => {
+                match purity {
+                    ast::pure_fn => return, // case (c) above
+                    ast::impure_fn | ast::unsafe_fn | ast::extern_fn => {
+                        self.report_purity_error(
+                            pc, callee_span,
+                            fmt!("access to %s function",
+                                 purity.to_str()));
+                    }
+                }
             }
-          }
-          _ => return, // case (d) above
+            _ => return, // case (d) above
         }
     }
 
@@ -240,8 +241,11 @@ impl check_loan_ctxt {
     // The expression must be an expr_fn(*) or expr_fn_block(*)
     fn is_stack_closure(id: ast::node_id) -> bool {
         let fn_ty = ty::node_id_to_type(self.tcx(), id);
-        let proto = ty::ty_fn_proto(fn_ty);
-        return proto == ast::ProtoBorrowed;
+        match ty::get(fn_ty).sty {
+            ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
+                                          _}) => true,
+            _ => false
+        }
     }
 
     fn is_allowed_pure_arg(expr: @ast::expr) -> bool {
@@ -564,17 +568,27 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
 {
     let is_stack_closure = self.is_stack_closure(id);
     let fty = ty::node_id_to_type(self.tcx(), id);
-    let fty_proto = ty::ty_fn_proto(fty);
 
-    check_moves_from_captured_variables(self, id, fty_proto);
+    let declared_purity;
+    match fk {
+        visit::fk_item_fn(*) | visit::fk_method(*) |
+        visit::fk_dtor(*) => {
+            declared_purity = ty::ty_fn_purity(fty);
+        }
+
+        visit::fk_anon(*) | visit::fk_fn_block(*) => {
+            let fty_sigil = ty::ty_closure_sigil(fty);
+            check_moves_from_captured_variables(self, id, fty_sigil);
+            declared_purity = ty::determine_inherited_purity(
+                copy self.declared_purity, ty::ty_fn_purity(fty),
+                fty_sigil);
+        }
+    }
 
     debug!("purity on entry=%?", copy self.declared_purity);
     do save_and_restore(&mut(self.declared_purity)) {
         do save_and_restore(&mut(self.fn_args)) {
-            self.declared_purity = ty::determine_inherited_purity(
-                copy self.declared_purity,
-                ty::ty_fn_purity(fty),
-                fty_proto);
+            self.declared_purity = declared_purity;
 
             match fk {
                 visit::fk_anon(*) |
@@ -608,10 +622,10 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
 
     fn check_moves_from_captured_variables(&&self: check_loan_ctxt,
                                            id: ast::node_id,
-                                           fty_proto: ast::Proto)
+                                           fty_sigil: ast::Sigil)
     {
-        match fty_proto {
-            ast::ProtoBox | ast::ProtoUniq => {
+        match fty_sigil {
+            ast::ManagedSigil | ast::OwnedSigil => {
                 let cap_vars = self.bccx.capture_map.get(&id);
                 for cap_vars.each |cap_var| {
                     match cap_var.mode {
@@ -646,7 +660,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                 }
             }
 
-            ast::ProtoBorrowed | ast::ProtoBare => {}
+            ast::BorrowedSigil => {}
         }
     }
 }

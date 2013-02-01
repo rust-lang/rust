@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// NB: transitionary, de-mode-ing.
-// tjc: Re-forbid deprecated modes once a snapshot fixes the
-// function problem
-#[forbid(deprecated_pattern)];
-
 #[doc(hidden)];
 
 use cast;

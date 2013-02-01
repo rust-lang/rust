@@ -26,7 +26,7 @@ use middle::trans::shape;
 use middle::trans::type_of::type_of_fn_from_ty;
 use middle::trans::type_of;
 use middle::trans::type_use;
-use middle::ty::{FnTyBase, FnMeta, FnSig};
+use middle::ty::{FnSig};
 use middle::typeck;
 
 use core::option;
@@ -166,12 +166,12 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
     let lldecl = match map_node {
       ast_map::node_item(i@@ast::item {
                 // XXX: Bad copy.
-                node: ast::item_fn(copy decl, _, _, ref body),
+                node: ast::item_fn(ref decl, _, _, ref body),
                 _
             }, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy i.attrs, d);
-        trans_fn(ccx, pt, decl, *body, d, no_self, psubsts, fn_id.node, None);
+        trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node, None);
         d
       }
       ast_map::node_item(*) => {
@@ -224,7 +224,7 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
                 None      => ccx.sess.span_bug(dtor.span, ~"Bad self ty in \
                                                             dtor")
         };
-        trans_struct_dtor(ccx, /*bad*/copy *pt, dtor.node.body,
+        trans_struct_dtor(ccx, /*bad*/copy *pt, &dtor.node.body,
           dtor.node.id, psubsts, Some(hash_id), parent_id)
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
@@ -267,31 +267,34 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
 pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                                       ty: ty::t) -> Option<ty::t> {
     // FIXME[mono] could do this recursively. is that worthwhile? (#2529)
-    match ty::get(ty).sty {
+    return match ty::get(ty).sty {
         ty::ty_box(*) => {
             Some(ty::mk_opaque_box(tcx))
         }
-        ty::ty_fn(ref fty) => {
-            Some(ty::mk_fn(
+        ty::ty_bare_fn(_) => {
+            Some(ty::mk_bare_fn(
                 tcx,
-                FnTyBase {meta: FnMeta {purity: ast::impure_fn,
-                                        proto: fty.meta.proto,
-                                        onceness: ast::Many,
-                                        region: ty::re_static,
-                                        bounds: @~[]},
-                          sig: FnSig {inputs: ~[],
-                                      output: ty::mk_nil(tcx)}}))
+                ty::BareFnTy {
+                    purity: ast::impure_fn,
+                    abi: ast::RustAbi,
+                    sig: FnSig {inputs: ~[],
+                                output: ty::mk_nil(tcx)}}))
         }
-        ty::ty_trait(_, _, _) => {
-            Some(ty::mk_fn(
-                tcx,
-                FnTyBase {meta: FnMeta {purity: ast::impure_fn,
-                                        proto: ast::ProtoBox,
-                                        onceness: ast::Many,
-                                        region: ty::re_static,
-                                        bounds: @~[]},
-                          sig: FnSig {inputs: ~[],
-                                      output: ty::mk_nil(tcx)}}))
+        ty::ty_closure(ref fty) => {
+            Some(normalized_closure_ty(tcx, fty.sigil))
+        }
+        ty::ty_trait(_, _, ref vstore) => {
+            let sigil = match *vstore {
+                ty::vstore_uniq => ast::OwnedSigil,
+                ty::vstore_box => ast::ManagedSigil,
+                ty::vstore_slice(_) => ast::BorrowedSigil,
+                ty::vstore_fixed(*) => {
+                    tcx.sess.bug(fmt!("ty_trait with vstore_fixed"));
+                }
+            };
+
+            // Traits have the same runtime representation as closures.
+            Some(normalized_closure_ty(tcx, sigil))
         }
         ty::ty_ptr(_) => {
             Some(ty::mk_uint(tcx))
@@ -299,6 +302,20 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
         _ => {
             None
         }
+    };
+
+    fn normalized_closure_ty(tcx: ty::ctxt,
+                             sigil: ast::Sigil) -> ty::t
+    {
+        ty::mk_closure(
+            tcx,
+            ty::ClosureTy {
+                purity: ast::impure_fn,
+                sigil: sigil,
+                onceness: ast::Many,
+                region: ty::re_static,
+                sig: ty::FnSig {inputs: ~[],
+                                output: ty::mk_nil(tcx)}})
     }
 }
 

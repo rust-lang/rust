@@ -12,8 +12,6 @@
 //! trees. The only requirement for the types is that the key implements
 //! `Ord`, and that the `lt` method provides a total ordering.
 
-#[forbid(deprecated_mode)];
-
 use core::container::{Container, Mutable, Map, Set};
 use core::cmp::{Eq, Ord};
 use core::option::{Option, Some, None};

@@ -12,7 +12,6 @@
  * A simple map based on a vector for small integer keys. Space requirements
  * are O(highest integer key).
  */
-#[forbid(deprecated_mode)];
 
 use core::container::{Container, Mutable, Map, Set};
 use core::option::{Some, None};

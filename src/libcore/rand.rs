@@ -10,10 +10,6 @@
 
 //! Random number generation
 
-// NB: transitional, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use int;
 use prelude::*;
 use str;

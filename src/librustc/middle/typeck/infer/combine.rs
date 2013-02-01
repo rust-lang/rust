@@ -56,7 +56,7 @@
 
 use core::prelude::*;
 
-use middle::ty::{FloatVar, FnTyBase, FnMeta, FnSig, IntVar, TyVar};
+use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType, arg, substs};
 use middle::ty;
 use middle::typeck::infer::glb::Glb;
@@ -94,14 +94,17 @@ pub trait Combine {
     fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>>;
     fn substs(did: ast::def_id, as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs>;
-    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy>;
+    fn bare_fn_tys(a: &ty::BareFnTy,
+                   b: &ty::BareFnTy) -> cres<ty::BareFnTy>;
+    fn closure_tys(a: &ty::ClosureTy,
+                   b: &ty::ClosureTy) -> cres<ty::ClosureTy>;
     fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
-    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta>;
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg>;
-    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto>;
+    fn sigils(p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil>;
     fn purities(a: purity, b: purity) -> cres<purity>;
+    fn abis(a: ast::Abi, b: ast::Abi) -> cres<ast::Abi>;
     fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness>;
     fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
     fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
@@ -287,12 +290,12 @@ pub fn super_self_tys<C:Combine>(
     }
 }
 
-pub fn super_protos<C: Combine>(
-    self: &C, p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
+pub fn super_sigils<C: Combine>(
+    self: &C, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil> {
     if p1 == p2 {
         Ok(p1)
     } else {
-        Err(ty::terr_proto_mismatch(expected_found(self, p1, p2)))
+        Err(ty::terr_sigil_mismatch(expected_found(self, p1, p2)))
     }
 }
 
@@ -350,21 +353,45 @@ pub fn super_vstores<C:Combine>(
     }
 }
 
-pub fn super_fn_metas<C:Combine>(
-    self: &C, a_f: &ty::FnMeta, b_f: &ty::FnMeta) -> cres<ty::FnMeta> {
-    let p = if_ok!(self.protos(a_f.proto, b_f.proto));
+pub fn super_closure_tys<C:Combine>(
+    self: &C, a_f: &ty::ClosureTy, b_f: &ty::ClosureTy) -> cres<ty::ClosureTy>
+{
+    let p = if_ok!(self.sigils(a_f.sigil, b_f.sigil));
     let r = if_ok!(self.contraregions(a_f.region, b_f.region));
     let purity = if_ok!(self.purities(a_f.purity, b_f.purity));
     let onceness = if_ok!(self.oncenesses(a_f.onceness, b_f.onceness));
-    Ok(FnMeta {purity: purity,
-               proto: p,
-               onceness: onceness,
-               region: r,
-               bounds: a_f.bounds}) // XXX: This is wrong!
+    let sig = if_ok!(self.fn_sigs(&a_f.sig, &b_f.sig));
+    Ok(ty::ClosureTy {purity: purity,
+                      sigil: p,
+                      onceness: onceness,
+                      region: r,
+                      sig: sig})
+}
+
+pub fn super_abis<C:Combine>(
+    self: &C, a: ast::Abi, b: ast::Abi) -> cres<ast::Abi>
+{
+    if a == b {
+        Ok(a)
+    } else {
+        Err(ty::terr_abi_mismatch(expected_found(self, a, b)))
+    }
+}
+
+pub fn super_bare_fn_tys<C:Combine>(
+    self: &C, a_f: &ty::BareFnTy, b_f: &ty::BareFnTy) -> cres<ty::BareFnTy>
+{
+    let purity = if_ok!(self.purities(a_f.purity, b_f.purity));
+    let abi = if_ok!(self.abis(a_f.abi, b_f.abi));
+    let sig = if_ok!(self.fn_sigs(&a_f.sig, &b_f.sig));
+    Ok(ty::BareFnTy {purity: purity,
+                     abi: abi,
+                     sig: sig})
 }
 
 pub fn super_fn_sigs<C:Combine>(
-    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig> {
+    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig>
+{
     fn argvecs<C:Combine>(self: &C,
                           +a_args: ~[ty::arg],
                           +b_args: ~[ty::arg]) -> cres<~[ty::arg]>
@@ -382,13 +409,6 @@ pub fn super_fn_sigs<C:Combine>(
             Ok(FnSig {inputs: /*bad*/copy inputs, output: output})
         }
     }
-}
-
-pub fn super_fns<C:Combine>(
-    self: &C, a_f: &ty::FnTy, b_f: &ty::FnTy) -> cres<ty::FnTy> {
-    let m = if_ok!(self.fn_metas(&a_f.meta, &b_f.meta));
-    let s = if_ok!(self.fn_sigs(&a_f.sig, &b_f.sig));
-    Ok(FnTyBase {meta: m, sig: s})
 }
 
 pub fn super_tys<C:Combine>(
@@ -551,9 +571,15 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_fn(ref a_fty), ty::ty_fn(ref b_fty)) => {
-        do self.fns(a_fty, b_fty).chain |fty| {
-            Ok(ty::mk_fn(tcx, fty))
+      (ty::ty_bare_fn(ref a_fty), ty::ty_bare_fn(ref b_fty)) => {
+        do self.bare_fn_tys(a_fty, b_fty).chain |fty| {
+            Ok(ty::mk_bare_fn(tcx, fty))
+        }
+      }
+
+      (ty::ty_closure(ref a_fty), ty::ty_closure(ref b_fty)) => {
+        do self.closure_tys(a_fty, b_fty).chain |fty| {
+            Ok(ty::mk_closure(tcx, fty))
         }
       }
 

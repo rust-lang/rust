@@ -23,7 +23,7 @@ pub fn macros() {
     include!("macros.rs");
 }
 
-pub fn trans_block(bcx: block, b: ast::blk, dest: expr::Dest) -> block {
+pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     let _icx = bcx.insn_ctxt("trans_block");
     let mut bcx = bcx;
     do block_locals(b) |local| {
@@ -47,7 +47,7 @@ pub fn trans_block(bcx: block, b: ast::blk, dest: expr::Dest) -> block {
 
 pub fn trans_if(bcx: block,
             cond: @ast::expr,
-            thn: ast::blk,
+            thn: &ast::blk,
             els: Option<@ast::expr>,
             dest: expr::Dest)
          -> block {
@@ -82,10 +82,10 @@ pub fn trans_if(bcx: block,
         match elexpr.node {
           ast::expr_if(_, _, _) => {
             let elseif_blk = ast_util::block_from_expr(elexpr);
-            trans_block(else_bcx_in, elseif_blk, dest)
+            trans_block(else_bcx_in, &elseif_blk, dest)
           }
           ast::expr_block(ref blk) => {
-            trans_block(else_bcx_in, (*blk), dest)
+            trans_block(else_bcx_in, blk, dest)
           }
           // would be nice to have a constraint on ifs
           _ => bcx.tcx().sess.bug(~"strange alternative in if")
@@ -114,7 +114,7 @@ pub fn join_blocks(parent_bcx: block, in_cxs: ~[block]) -> block {
     return out;
 }
 
-pub fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk) -> block {
+pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::blk) -> block {
     let _icx = bcx.insn_ctxt("trans_while");
     let next_bcx = sub_block(bcx, ~"while next");
 
@@ -154,7 +154,7 @@ pub fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk) -> block {
 }
 
 pub fn trans_loop(bcx:block,
-                  body: ast::blk,
+                  body: &ast::blk,
                   opt_label: Option<ident>)
                -> block {
     let _icx = bcx.insn_ctxt("trans_loop");

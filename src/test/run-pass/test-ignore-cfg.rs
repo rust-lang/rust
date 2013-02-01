@@ -28,11 +28,11 @@ fn checktests() {
     // Pull the tests out of the secreturn test module
     let tests = __test::tests();
 
-    let shouldignore = option::get(
-        vec::find(tests, |t| t.name == ~"shouldignore" ));
-    assert shouldignore.ignore == true;
+    assert vec::any(
+        tests,
+        |t| t.desc.name == ~"shouldignore" && t.desc.ignore);
 
-    let shouldnotignore = option::get(
-        vec::find(tests, |t| t.name == ~"shouldnotignore" ));
-    assert shouldnotignore.ignore == false;
+    assert vec::any(
+        tests,
+        |t| t.desc.name == ~"shouldnotignore" && !t.desc.ignore);
 }

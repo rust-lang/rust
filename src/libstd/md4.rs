@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[forbid(deprecated_mode)];
-
 use core::str;
 use core::uint;
 use core::vec;

@@ -14,9 +14,6 @@ Higher level communication abstractions.
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-
 use core::pipes::{GenericChan, GenericSmartChan, GenericPort};
 use core::pipes::{Chan, Port, Selectable, Peekable};
 use core::pipes;

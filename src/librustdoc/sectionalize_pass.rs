@@ -57,7 +57,7 @@ fn fold_trait(fold: &fold::Fold<()>, doc: doc::TraitDoc) -> doc::TraitDoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     doc::TraitDoc {
-        methods: do par::map(doc.methods) |method| {
+        methods: do doc.methods.map |method| {
             let (desc, sections) = sectionalize(copy method.desc);
 
             doc::MethodDoc {
@@ -74,7 +74,7 @@ fn fold_impl(fold: &fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     doc::ImplDoc {
-        methods: do par::map(doc.methods) |method| {
+        methods: do doc.methods.map |method| {
             let (desc, sections) = sectionalize(copy method.desc);
 
             doc::MethodDoc {

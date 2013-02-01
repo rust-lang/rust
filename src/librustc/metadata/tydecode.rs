@@ -17,8 +17,6 @@
 use core::prelude::*;
 
 use middle::ty;
-use middle::ty::{FnTyBase, FnMeta, FnSig, arg, creader_cache_key, field};
-use middle::ty::{substs};
 
 use core::io;
 use core::str;
@@ -124,17 +122,12 @@ fn parse_path(st: @pstate) -> @ast::path {
     };
 }
 
-fn parse_ty_rust_fn(st: @pstate, conv: conv_did) -> ty::t {
-    return ty::mk_fn(st.tcx, parse_ty_fn(st, conv));
-}
-
-fn parse_proto(st: @pstate) -> ast::Proto {
+fn parse_sigil(st: @pstate) -> ast::Sigil {
     match next(st) {
-        '_' => ast::ProtoBare,
-        '@' => ast::ProtoBox,
-        '~' => ast::ProtoUniq,
-        '&' => ast::ProtoBorrowed,
-        _ => die!(~"parse_proto(): bad input")
+        '@' => ast::ManagedSigil,
+        '~' => ast::OwnedSigil,
+        '&' => ast::BorrowedSigil,
+        c => st.tcx.sess.bug(fmt!("parse_sigil(): bad input '%c'", c))
     }
 }
 
@@ -152,7 +145,7 @@ fn parse_vstore(st: @pstate) -> ty::vstore {
       '~' => ty::vstore_uniq,
       '@' => ty::vstore_box,
       '&' => ty::vstore_slice(parse_region(st)),
-      _ => die!(~"parse_vstore: bad input")
+      c => st.tcx.sess.bug(fmt!("parse_vstore(): bad input '%c'", c))
     }
 }
 
@@ -166,7 +159,7 @@ fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
     while peek(st) != ']' { params.push(parse_ty(st, conv)); }
     st.pos = st.pos + 1u;
 
-    return substs {
+    return ty::substs {
         self_r: self_r,
         self_ty: self_ty,
         tps: params
@@ -316,19 +309,24 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         return ty::mk_tup(st.tcx, params);
       }
       'f' => {
-        parse_ty_rust_fn(st, conv)
+        return ty::mk_closure(st.tcx, parse_closure_ty(st, conv));
+      }
+      'F' => {
+        return ty::mk_bare_fn(st.tcx, parse_bare_fn_ty(st, conv));
       }
       'Y' => return ty::mk_type(st.tcx),
       'C' => {
-        let proto = parse_proto(st);
-        return ty::mk_opaque_closure_ptr(st.tcx, proto);
+        let sigil = parse_sigil(st);
+        return ty::mk_opaque_closure_ptr(st.tcx, sigil);
       }
       '#' => {
         let pos = parse_hex(st);
         assert (next(st) == ':');
         let len = parse_hex(st);
         assert (next(st) == '#');
-        let key = creader_cache_key { cnum: st.crate, pos: pos, len: len };
+        let key = ty::creader_cache_key {cnum: st.crate,
+                                         pos: pos,
+                                         len: len };
         match st.tcx.rcache.find(&key) {
           Some(tt) => return tt,
           None => {
@@ -408,6 +406,13 @@ fn parse_purity(c: char) -> purity {
     }
 }
 
+fn parse_abi(c: char) -> Abi {
+    match c {
+      'r' => ast::RustAbi,
+      _ => die!(fmt!("parse_abi: bad ABI '%c'", c))
+    }
+}
+
 fn parse_onceness(c: char) -> ast::Onceness {
     match c {
         'o' => ast::Once,
@@ -430,12 +435,33 @@ fn parse_mode(st: @pstate) -> ast::mode {
     return m;
 }
 
-fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
-    let proto = parse_proto(st);
+fn parse_closure_ty(st: @pstate, conv: conv_did) -> ty::ClosureTy {
+    let sigil = parse_sigil(st);
     let purity = parse_purity(next(st));
     let onceness = parse_onceness(next(st));
     let region = parse_region(st);
-    let bounds = parse_bounds(st, conv);
+    let sig = parse_sig(st, conv);
+    ty::ClosureTy {
+        purity: purity,
+        sigil: sigil,
+        onceness: onceness,
+        region: region,
+        sig: sig
+    }
+}
+
+fn parse_bare_fn_ty(st: @pstate, conv: conv_did) -> ty::BareFnTy {
+    let purity = parse_purity(next(st));
+    let abi = parse_abi(next(st));
+    let sig = parse_sig(st, conv);
+    ty::BareFnTy {
+        purity: purity,
+        abi: abi,
+        sig: sig
+    }
+}
+
+fn parse_sig(st: @pstate, conv: conv_did) -> ty::FnSig {
     assert (next(st) == '[');
     let mut inputs: ~[ty::arg] = ~[];
     while peek(st) != ']' {
@@ -444,17 +470,8 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
     }
     st.pos += 1u; // eat the ']'
     let ret_ty = parse_ty(st, conv);
-    return FnTyBase {
-        meta: FnMeta {purity: purity,
-                      proto: proto,
-                      onceness: onceness,
-                      bounds: bounds,
-                      region: region},
-        sig: FnSig {inputs: inputs,
-                    output: ret_ty}
-    };
+    ty::FnSig {inputs: inputs, output: ret_ty}
 }
-
 
 // Rust metadata parsing
 pub fn parse_def_id(buf: &[u8]) -> ast::def_id {

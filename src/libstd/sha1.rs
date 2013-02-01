@@ -22,8 +22,6 @@
  * the `reset` method.
  */
 
-#[forbid(deprecated_mode)];
-
 use core::str;
 use core::uint;
 use core::vec;

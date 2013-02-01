@@ -15,8 +15,6 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
-#[forbid(deprecated_mode)];
-
 use getopts;
 use sort;
 use term;
@@ -51,20 +49,24 @@ pub type TestName = ~str;
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
 // to support isolation of tests into tasks.
-pub type TestFn = fn~();
+pub type TestFn = ~fn();
 
 // The definition of a single test. A test runner will run a list of
 // these.
 pub struct TestDesc {
     name: TestName,
-    testfn: TestFn,
     ignore: bool,
     should_fail: bool
 }
 
+pub struct TestDescAndFn {
+    desc: TestDesc,
+    testfn: TestFn,
+}
+
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs (generated at compile time).
-pub fn test_main(args: &[~str], tests: &[TestDesc]) {
+pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     let opts =
         match parse_opts(args) {
           either::Left(move o) => o,
@@ -124,7 +126,7 @@ struct ConsoleTestState {
 
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts,
-                     tests: &[TestDesc]) -> bool {
+                         tests: ~[TestDescAndFn]) -> bool {
 
     fn callback(event: &TestEvent, st: @ConsoleTestState) {
         debug!("callback(event=%?)", event);
@@ -247,17 +249,17 @@ fn print_failures(st: @ConsoleTestState) {
 
 #[test]
 fn should_sort_failures_before_printing_them() {
+    fn dummy() {}
+
     let s = do io::with_str_writer |wr| {
         let test_a = TestDesc {
             name: ~"a",
-            testfn: fn~() { },
             ignore: false,
             should_fail: false
         };
 
         let test_b = TestDesc {
             name: ~"b",
-            testfn: fn~() { },
             ignore: false,
             should_fail: false
         };
@@ -291,45 +293,44 @@ enum TestEvent {
 type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts,
-             tests: &[TestDesc],
+             tests: ~[TestDescAndFn],
              callback: fn@(e: TestEvent)) {
     let mut filtered_tests = filter_tests(opts, tests);
-    callback(TeFiltered(copy filtered_tests));
+
+    let filtered_descs = filtered_tests.map(|t| t.desc);
+    callback(TeFiltered(filtered_descs));
 
     // It's tempting to just spawn all the tests at once, but since we have
     // many tests that run in other processes we would be making a big mess.
     let concurrency = get_concurrency();
     debug!("using %u test tasks", concurrency);
 
-    let total = vec::len(filtered_tests);
-    let mut run_idx = 0;
-    let mut wait_idx = 0;
-    let mut done_idx = 0;
+    let mut remaining = filtered_tests;
+    vec::reverse(remaining);
+    let mut pending = 0;
 
     let (p, ch) = stream();
     let ch = SharedChan(ch);
 
-    while done_idx < total {
-        while wait_idx < concurrency && run_idx < total {
-            let test = copy filtered_tests[run_idx];
+    while pending > 0 || !remaining.is_empty() {
+        while pending < concurrency && !remaining.is_empty() {
+            let test = remaining.pop();
             if concurrency == 1 {
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
-                callback(TeWait(copy test));
+                callback(TeWait(test.desc));
             }
-            run_test(move test, ch.clone());
-            wait_idx += 1;
-            run_idx += 1;
+            run_test(test, ch.clone());
+            pending += 1;
         }
 
-        let (test, result) = p.recv();
+        let (desc, result) = p.recv();
         if concurrency != 1 {
-            callback(TeWait(copy test));
+            callback(TeWait(desc));
         }
-        callback(TeResult(move test, result));
-        wait_idx -= 1;
-        done_idx += 1;
+        callback(TeResult(desc, result));
+        pending -= 1;
     }
 }
 
@@ -349,10 +350,11 @@ fn get_concurrency() -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-pub fn filter_tests(opts: &TestOpts,
-                    tests: &[TestDesc])
-                 -> ~[TestDesc] {
-    let mut filtered = vec::slice(tests, 0, tests.len());
+pub fn filter_tests(
+    opts: &TestOpts,
+    tests: ~[TestDescAndFn]) -> ~[TestDescAndFn]
+{
+    let mut filtered = tests;
 
     // Remove tests that don't match the test filter
     filtered = if opts.filter.is_none() {
@@ -364,10 +366,10 @@ pub fn filter_tests(opts: &TestOpts,
           option::None => ~""
         };
 
-        fn filter_fn(test: &TestDesc, filter_str: &str) ->
-            Option<TestDesc> {
-            if str::contains(test.name, filter_str) {
-                return option::Some(copy *test);
+        fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
+            Option<TestDescAndFn> {
+            if str::contains(test.desc.name, filter_str) {
+                return option::Some(test);
             } else { return option::None; }
         }
 
@@ -378,26 +380,26 @@ pub fn filter_tests(opts: &TestOpts,
     filtered = if !opts.run_ignored {
         move filtered
     } else {
-        fn filter(test: &TestDesc) -> Option<TestDesc> {
-            if test.ignore {
-                return option::Some(TestDesc {
-                    name: test.name,
-                    testfn: copy test.testfn,
-                    ignore: false,
-                    should_fail: test.should_fail});
-            } else { return option::None; }
+        fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
+            if test.desc.ignore {
+                let TestDescAndFn {desc, testfn} = test;
+                Some(TestDescAndFn {
+                    desc: TestDesc {ignore: false, ..desc},
+                    testfn: testfn
+                })
+            } else {
+                None
+            }
         };
 
         vec::filter_map(filtered, |x| filter(x))
     };
 
     // Sort the tests alphabetically
-    filtered = {
-        pure fn lteq(t1: &TestDesc, t2: &TestDesc) -> bool {
-            str::le(t1.name, t2.name)
-        }
-        sort::merge_sort(filtered, lteq)
-    };
+    pure fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
+        str::le(t1.desc.name, t2.desc.name)
+    }
+    sort::quick_sort(filtered, lteq);
 
     move filtered
 }
@@ -407,37 +409,40 @@ struct TestFuture {
     wait: fn@() -> TestResult,
 }
 
-pub fn run_test(test: TestDesc, monitor_ch: SharedChan<MonitorMsg>) {
-    if test.ignore {
-        monitor_ch.send((copy test, TrIgnored));
+pub fn run_test(test: TestDescAndFn, monitor_ch: SharedChan<MonitorMsg>) {
+    let TestDescAndFn {desc, testfn} = test;
+
+    if desc.ignore {
+        monitor_ch.send((desc, TrIgnored));
         return;
     }
 
-    do task::spawn |move test| {
-        let testfn = copy test.testfn;
+    let testfn_cell = ::cell::Cell(testfn);
+    do task::spawn {
         let mut result_future = None; // task::future_result(builder);
         task::task().unlinked().future_result(|+r| {
             result_future = Some(move r);
-        }).spawn(move testfn);
+        }).spawn(testfn_cell.take());
         let task_result = option::unwrap(move result_future).recv();
-        let test_result = calc_result(&test, task_result == task::Success);
-        monitor_ch.send((copy test, test_result));
+        let test_result = calc_result(&desc, task_result == task::Success);
+        monitor_ch.send((desc, test_result));
     };
 }
 
-fn calc_result(test: &TestDesc, task_succeeded: bool) -> TestResult {
+fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
     if task_succeeded {
-        if test.should_fail { TrFailed }
+        if desc.should_fail { TrFailed }
         else { TrOk }
     } else {
-        if test.should_fail { TrOk }
+        if desc.should_fail { TrOk }
         else { TrFailed }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc};
+    use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
+               TestDesc, TestDescAndFn};
     use test::{TestOpts, run_test};
 
     use core::either;
@@ -448,11 +453,13 @@ mod tests {
     #[test]
     pub fn do_not_run_ignored_tests() {
         fn f() { die!(); }
-        let desc = TestDesc {
-            name: ~"whatever",
+        let desc = TestDescAndFn {
+            desc: TestDesc {
+                name: ~"whatever",
+                ignore: true,
+                should_fail: false
+            },
             testfn: f,
-            ignore: true,
-            should_fail: false
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -464,11 +471,13 @@ mod tests {
     #[test]
     pub fn ignored_tests_result_in_ignored() {
         fn f() { }
-        let desc = TestDesc {
-            name: ~"whatever",
+        let desc = TestDescAndFn {
+            desc: TestDesc {
+                name: ~"whatever",
+                ignore: true,
+                should_fail: false
+            },
             testfn: f,
-            ignore: true,
-            should_fail: false
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -481,11 +490,13 @@ mod tests {
     #[ignore(cfg(windows))]
     pub fn test_should_fail() {
         fn f() { die!(); }
-        let desc = TestDesc {
-            name: ~"whatever",
+        let desc = TestDescAndFn {
+            desc: TestDesc {
+                name: ~"whatever",
+                ignore: false,
+                should_fail: true
+            },
             testfn: f,
-            ignore: false,
-            should_fail: true
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -497,11 +508,13 @@ mod tests {
     #[test]
     pub fn test_should_fail_but_succeeds() {
         fn f() { }
-        let desc = TestDesc {
-            name: ~"whatever",
+        let desc = TestDescAndFn {
+            desc: TestDesc {
+                name: ~"whatever",
+                ignore: false,
+                should_fail: true
+            },
             testfn: f,
-            ignore: false,
-            should_fail: true
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -532,6 +545,8 @@ mod tests {
 
     #[test]
     pub fn filter_for_ignored_option() {
+        fn dummy() {}
+
         // When we run ignored tests the test filter should filter out all the
         // unignored tests and flip the ignore flag on the rest to false
 
@@ -542,24 +557,28 @@ mod tests {
         };
 
         let tests = ~[
-            TestDesc {
-                name: ~"1",
-                testfn: fn~() { },
-                ignore: true,
-                should_fail: false,
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: ~"1",
+                    ignore: true,
+                    should_fail: false,
+                },
+                testfn: dummy,
             },
-            TestDesc {
-                name: ~"2",
-                testfn: fn~() { },
-                ignore: false,
-                should_fail: false,
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: ~"2",
+                    ignore: false,
+                    should_fail: false
+                },
+                testfn: dummy,
             },
         ];
         let filtered = filter_tests(&opts, tests);
 
         assert (vec::len(filtered) == 1);
-        assert (filtered[0].name == ~"1");
-        assert (filtered[0].ignore == false);
+        assert (filtered[0].desc.name == ~"1");
+        assert (filtered[0].desc.ignore == false);
     }
 
     #[test]
@@ -579,12 +598,16 @@ mod tests {
              ~"test::sort_tests"];
         let tests =
         {
-            let testfn = fn~() { };
+            fn testfn() { }
             let mut tests = ~[];
             for vec::each(names) |name| {
-                let test = TestDesc {
-                    name: *name, testfn: copy testfn, ignore: false,
-                    should_fail: false};
+                let test = TestDescAndFn {
+                    desc: TestDesc {
+                        name: *name, ignore: false,
+                        should_fail: false
+                    },
+                    testfn: testfn,
+                };
                 tests.push(move test);
             }
             move tests
@@ -604,7 +627,7 @@ mod tests {
 
         for vec::each(pairs) |p| {
             match *p {
-                (ref a, ref b) => { assert (*a == b.name); }
+                (ref a, ref b) => { assert (*a == b.desc.name); }
             }
         }
     }

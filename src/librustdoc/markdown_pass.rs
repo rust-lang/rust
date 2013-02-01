@@ -43,14 +43,9 @@ use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
     let writer_factory = Cell(writer_factory);
-    let f = fn~(move writer_factory,
-                srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
-        run(srv, doc, writer_factory.take())
-    };
-
     Pass {
         name: ~"markdown",
-        f: move f
+        f: |srv, doc| run(srv, doc, writer_factory.take())
     }
 }
 

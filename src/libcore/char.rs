@@ -10,10 +10,6 @@
 
 //! Utilities for manipulating the char type
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use char;
 use cmp::Eq;
 use option::{None, Option, Some};

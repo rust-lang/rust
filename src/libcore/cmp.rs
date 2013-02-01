@@ -20,10 +20,6 @@ and `Eq` to overload the `==` and `!=` operators.
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 /**
 * Trait for values that can be compared for equality
 * and inequality.

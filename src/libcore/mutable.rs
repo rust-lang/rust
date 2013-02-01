@@ -18,8 +18,6 @@ dynamic checks: your program will fail if you attempt to perform
 mutation when the data structure should be immutable.
 
 */
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 
 use util::with;
 use cast::transmute_immut;
