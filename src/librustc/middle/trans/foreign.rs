@@ -500,7 +500,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
           if tp_sz != out_sz {
               let sp = match ccx.tcx.items.get(ref_id.get()) {
                   ast_map::node_expr(e) => e.span,
-                  _ => fail ~"reinterpret_cast or forget has non-expr arg"
+                  _ => die!(~"reinterpret_cast or forget has non-expr arg")
               };
               ccx.sess.span_fatal(
                   sp, fmt!("reinterpret_cast called on types \
@@ -934,7 +934,7 @@ fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
       None => match ccx.tcx.items.get(i.id) {
         ast_map::node_foreign_item(_, abi, _) => abi,
         // ??
-        _ => fail ~"abi_of_foreign_fn: not foreign"
+        _ => die!(~"abi_of_foreign_fn: not foreign")
       },
       Some(_) => match attr::foreign_abi(i.attrs) {
         either::Right(abi) => abi,

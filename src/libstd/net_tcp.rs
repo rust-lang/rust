@@ -874,7 +874,7 @@ impl TcpSocketBuf: io::Reader {
             if self.end_of_stream {
                 -1
             } else {
-                fail
+                die!()
             }
         } else {
             bytes[0] as int
@@ -1582,7 +1582,7 @@ pub mod test {
         };
         match actual_resp_result.get_err() {
           ConnectionRefused => (),
-          _ => fail ~"unknown error.. expected connection_refused"
+          _ => die!(~"unknown error.. expected connection_refused")
         }
     }
     pub fn impl_gl_tcp_ipv4_server_address_in_use() {
@@ -1631,8 +1631,8 @@ pub mod test {
             assert true;
           }
           _ => {
-            fail ~"expected address_in_use listen error,"+
-                ~"but got a different error varient. check logs.";
+            die!(~"expected address_in_use listen error,"+
+                ~"but got a different error varient. check logs.");
           }
         }
     }
@@ -1650,8 +1650,8 @@ pub mod test {
             assert true;
           }
           _ => {
-            fail ~"expected address_in_use listen error,"+
-                      ~"but got a different error varient. check logs.";
+            die!(~"expected address_in_use listen error,"+
+                      ~"but got a different error varient. check logs.");
           }
         }
     }
@@ -1838,14 +1838,14 @@ pub mod test {
         if result::is_err(&listen_result) {
             match result::get_err(&listen_result) {
               GenericListenErr(ref name, ref msg) => {
-                fail fmt!("SERVER: exited abnormally name %s msg %s",
-                                *name, *msg);
+                die!(fmt!("SERVER: exited abnormally name %s msg %s",
+                                *name, *msg));
               }
               AccessDenied => {
-                fail ~"SERVER: exited abnormally, got access denied..";
+                die!(~"SERVER: exited abnormally, got access denied..");
               }
               AddressInUse => {
-                fail ~"SERVER: exited abnormally, got address in use...";
+                die!(~"SERVER: exited abnormally, got address in use...");
               }
             }
         }
@@ -1865,15 +1865,15 @@ pub mod test {
                     kill_ch));
             },
             |new_conn, kill_ch| {
-                fail fmt!("SERVER: shouldn't be called.. %? %?",
-                           new_conn, kill_ch);
+                die!(fmt!("SERVER: shouldn't be called.. %? %?",
+                           new_conn, kill_ch));
         });
         // err check on listen_result
         if result::is_err(&listen_result) {
             result::get_err(&listen_result)
         }
         else {
-            fail ~"SERVER: did not fail as expected"
+            die!(~"SERVER: did not fail as expected")
         }
     }
 
@@ -1919,7 +1919,7 @@ pub mod test {
             log(debug, fmt!("tcp_write_single err name: %s msg: %s",
                 err_data.err_name, err_data.err_msg));
             // meh. torn on what to do here.
-            fail ~"tcp_write_single failed";
+            die!(~"tcp_write_single failed");
         }
     }
 }

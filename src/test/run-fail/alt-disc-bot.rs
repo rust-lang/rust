@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // error-pattern:quux
-fn f() -> ! { fail ~"quux" }
+fn f() -> ! { die!(~"quux") }
 fn g() -> int { match f() { true => { 1 } false => { 0 } } }
 fn main() { g(); }

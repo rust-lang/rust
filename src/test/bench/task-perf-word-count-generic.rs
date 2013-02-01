@@ -68,7 +68,7 @@ impl io::Reader: word_reader {
 fn file_word_reader(filename: ~str) -> word_reader {
     match io::file_reader(&Path(filename)) {
       result::Ok(f) => { f as word_reader }
-      result::Err(e) => { fail fmt!("%?", e) }
+      result::Err(e) => { die!(fmt!("%?", e)) }
     }
 }
 

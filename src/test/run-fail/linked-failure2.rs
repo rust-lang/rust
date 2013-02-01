@@ -16,7 +16,7 @@ use oldcomm::Chan;
 use oldcomm::Port;
 use oldcomm::recv;
 
-fn child() { fail; }
+fn child() { die!(); }
 
 fn main() {
     let p = Port::<int>();

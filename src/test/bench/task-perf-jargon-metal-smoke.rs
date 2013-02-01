@@ -46,6 +46,6 @@ fn main() {
     let (p,c) = pipes::stream();
     child_generation(uint::from_str(args[1]).get(), move c);
     if p.try_recv().is_none() {
-        fail ~"it happened when we slumbered";
+        die!(~"it happened when we slumbered");
     }
 }

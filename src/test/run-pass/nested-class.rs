@@ -24,7 +24,7 @@ fn main() {
         }
     }
 
-  //  fn b(x:int) -> int { fail; }
+  //  fn b(x:int) -> int { die!(); }
 
   let z = b(42);
   assert(z.i == 42);

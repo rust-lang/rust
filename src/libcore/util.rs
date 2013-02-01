@@ -100,7 +100,7 @@ fn choose_weighted_item(v: &[Item]) -> Item {
 
 */
 pub fn unreachable() -> ! {
-    fail ~"internal error: entered unreachable code";
+    die!(~"internal error: entered unreachable code");
 }
 
 mod tests {

@@ -1583,7 +1583,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
                            expr_to_str(expr, self.tcx.sess.intr()));
                 }
                 None => {
-                    fail ~"no mode for lval";
+                    die!(~"no mode for lval");
                 }
             }
         }

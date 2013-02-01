@@ -297,7 +297,7 @@ impl ReprVisitor : TyVisitor {
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_str() -> bool { fail; }
+    fn visit_str() -> bool { die!(); }
 
     fn visit_estr_box() -> bool {
         do self.get::<@str> |s| {
@@ -319,7 +319,7 @@ impl ReprVisitor : TyVisitor {
 
     // Type no longer exists, vestigial function.
     fn visit_estr_fixed(_n: uint, _sz: uint,
-                        _align: uint) -> bool { fail; }
+                        _align: uint) -> bool { die!(); }
 
     fn visit_box(mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write_char('@');
@@ -355,7 +355,7 @@ impl ReprVisitor : TyVisitor {
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_vec(_mtbl: uint, _inner: *TyDesc) -> bool { fail; }
+    fn visit_vec(_mtbl: uint, _inner: *TyDesc) -> bool { die!(); }
 
 
     fn visit_unboxed_vec(mtbl: uint, inner: *TyDesc) -> bool {
@@ -554,7 +554,7 @@ impl ReprVisitor : TyVisitor {
     }
 
     // Type no longer exists, vestigial function.
-    fn visit_constr(_inner: *TyDesc) -> bool { fail; }
+    fn visit_constr(_inner: *TyDesc) -> bool { die!(); }
 
     fn visit_closure_ptr(_ck: uint) -> bool { true }
 }

@@ -366,7 +366,7 @@ pub mod chained {
         pure fn get(k: K) -> V {
             let opt_v = self.find(k);
             if opt_v.is_none() {
-                fail fmt!("Key not found in table: %?", k);
+                die!(fmt!("Key not found in table: %?", k));
             }
             option::unwrap(move opt_v)
         }

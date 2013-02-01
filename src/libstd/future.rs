@@ -65,14 +65,14 @@ impl<A> Future<A> {
         unsafe {
             match self.state {
                 Forced(ref mut v) => { return cast::transmute(v); }
-                Evaluating => fail ~"Recursive forcing of future!",
+                Evaluating => die!(~"Recursive forcing of future!"),
                 Pending(_) => {}
             }
 
             let mut state = Evaluating;
             self.state <-> state;
             match move state {
-                Forced(_) | Evaluating => fail ~"Logic error.",
+                Forced(_) | Evaluating => die!(~"Logic error."),
                 Pending(move f) => {
                     self.state = Forced(move f());
                     self.get_ref()
@@ -195,7 +195,7 @@ pub mod test {
     #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
     pub fn test_futurefail() {
-        let f = spawn(|| fail);
+        let f = spawn(|| die!());
         let _x: ~str = f.get();
     }
 

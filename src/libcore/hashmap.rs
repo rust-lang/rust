@@ -168,7 +168,7 @@ pub mod linear {
         /// True if there was no previous entry with that key
         fn insert_internal(&mut self, hash: uint, k: K, v: V) -> bool {
             match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
-                TableFull => { fail ~"Internal logic error"; }
+                TableFull => { die!(~"Internal logic error"); }
                 FoundHole(idx) => {
                     debug!("insert fresh (%?->%?) at idx %?, hash %?",
                            k, v, idx, hash);
@@ -299,7 +299,7 @@ pub mod linear {
                             Some(&bkt.value)
                         }
                         None => {
-                            fail ~"LinearMap::find: internal logic error"
+                            die!(~"LinearMap::find: internal logic error")
                         }
                     }
                 }
@@ -384,7 +384,7 @@ pub mod linear {
         pure fn get(&self, k: &K) -> &self/V {
             match self.find(k) {
                 Some(v) => v,
-                None => fail fmt!("No entry found for key: %?", k),
+                None => die!(fmt!("No entry found for key: %?", k)),
             }
         }
     }
@@ -397,7 +397,7 @@ pub mod linear {
                     // failure case won't be necessary
                     match self.buckets[idx] {
                         Some(Bucket {value: copy value, _}) => {Some(value)}
-                        None => fail ~"LinearMap::find: internal logic error"
+                        None => die!(~"LinearMap::find: internal logic error")
                     }
                 }
                 TableFull | FoundHole(_) => {
@@ -584,7 +584,7 @@ pub mod test {
         assert m.find(&1).is_none();
         m.insert(1, 2);
         match m.find(&1) {
-            None => fail,
+            None => die!(),
             Some(v) => assert *v == 2
         }
     }

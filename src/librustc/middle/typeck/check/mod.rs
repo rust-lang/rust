@@ -2270,7 +2270,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     capture::check_capture_clause(tcx, b.id, cap_clause);
                 }
                 // argh
-                _ => fail ~"expr_fn_block"
+                _ => die!(~"expr_fn_block")
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
@@ -2311,7 +2311,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
           // argh
-          _ => fail ~"expected fn ty"
+          _ => die!(~"expected fn ty")
         }
         fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }

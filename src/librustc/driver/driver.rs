@@ -494,7 +494,7 @@ fn host_triple() -> ~str {
     return if ht != ~"" {
             ht
         } else {
-            fail ~"rustc built without CFG_HOST_TRIPLE"
+            die!(~"rustc built without CFG_HOST_TRIPLE")
         };
 }
 
@@ -833,7 +833,7 @@ fn build_output_filenames(input: input,
 
 fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
     emitter(None, msg, diagnostic::fatal);
-    fail;
+    die!();
 }
 
 fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
@@ -863,8 +863,8 @@ mod test {
         let matches =
             &match getopts(~[~"--test"], optgroups()) {
               Ok(copy m) => m,
-              Err(copy f) => fail ~"test_switch_implies_cfg_test: " +
-                             getopts::fail_str(f)
+              Err(copy f) => die!(~"test_switch_implies_cfg_test: " +
+                             getopts::fail_str(f))
             };
         let sessopts = build_session_options(
             ~"rustc", matches, diagnostic::emit);
@@ -881,8 +881,8 @@ mod test {
             &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(copy m) => m,
               Err(copy f) => {
-                fail ~"test_switch_implies_cfg_test_unless_cfg_test: " +
-                    getopts::fail_str(f);
+                die!(~"test_switch_implies_cfg_test_unless_cfg_test: " +
+                    getopts::fail_str(f));
               }
             };
         let sessopts = build_session_options(

@@ -16,7 +16,7 @@ use core::either::{Either, Left, Right};
                 *x = Right(1.0);
                 *z
             }
-            _ => fail
+            _ => die!()
         }
     }
 

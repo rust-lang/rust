@@ -52,7 +52,7 @@ macro_rules! follow (
             $(Some($message($($x,)* move next)) => {
                 let $next = move next;
                 move $e })+
-                _ => { fail }
+                _ => { die!() }
         }
     );
 
@@ -63,7 +63,7 @@ macro_rules! follow (
             $(Some($message(move next)) => {
                 let $next = move next;
                 move $e })+
-                _ => { fail }
+                _ => { die!() }
         }
     )
 )

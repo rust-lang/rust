@@ -16,8 +16,8 @@
  */
 fn foo() { //~ ERROR this open brace is not closed
   match Some(x) {
-      Some(y) { fail; }
-      None    { fail; }
+      Some(y) { die!(); }
+      None    { die!(); }
 }
 
 fn bar() {

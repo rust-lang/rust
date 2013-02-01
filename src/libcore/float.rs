@@ -516,7 +516,7 @@ pub fn test_from_str() {
    // note: NaN != NaN, hence this slightly complex test
    match from_str(~"NaN") {
        Some(f) => assert is_NaN(f),
-       None => fail
+       None => die!()
    }
 
    assert from_str(~"").is_none();

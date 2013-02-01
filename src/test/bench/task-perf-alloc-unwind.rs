@@ -67,7 +67,7 @@ fn r(l: @nillist) -> r {
 fn recurse_or_fail(depth: int, st: Option<st>) {
     if depth == 0 {
         debug!("unwinding %.4f", precise_time_s());
-        fail;
+        die!();
     } else {
         let depth = depth - 1;
 

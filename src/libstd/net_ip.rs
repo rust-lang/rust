@@ -64,14 +64,14 @@ pub fn format_addr(ip: &IpAddr) -> ~str {
       Ipv4(ref addr) =>  unsafe {
         let result = uv_ip4_name(addr);
         if result == ~"" {
-            fail ~"failed to convert inner sockaddr_in address to str"
+            die!(~"failed to convert inner sockaddr_in address to str")
         }
         result
       },
       Ipv6(ref addr) => unsafe {
         let result = uv_ip6_name(addr);
         if result == ~"" {
-            fail ~"failed to convert inner sockaddr_in address to str"
+            die!(~"failed to convert inner sockaddr_in address to str")
         }
         result
       }
@@ -182,7 +182,7 @@ pub mod v4 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(move addr) => move addr,
-          result::Err(ref err_data) => fail err_data.err_msg
+          result::Err(ref err_data) => die!(err_data.err_msg)
         }
     }
     // the simple, old style numberic representation of
@@ -277,7 +277,7 @@ pub mod v6 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(move addr) => move addr,
-          result::Err(copy err_data) => fail err_data.err_msg
+          result::Err(copy err_data) => die!(err_data.err_msg)
         }
     }
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
@@ -398,7 +398,7 @@ mod test {
             assert true;
           }
           result::Ok(ref addr) => {
-            fail fmt!("Expected failure, but got addr %?", addr);
+            die!(fmt!("Expected failure, but got addr %?", addr));
           }
         }
     }
@@ -411,7 +411,7 @@ mod test {
             assert true;
           }
           result::Ok(ref addr) => {
-            fail fmt!("Expected failure, but got addr %?", addr);
+            die!(fmt!("Expected failure, but got addr %?", addr));
           }
         }
     }
@@ -422,7 +422,7 @@ mod test {
         let iotask = uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
         if result::is_err(&ga_result) {
-            fail ~"got err result from net::ip::get_addr();"
+            die!(~"got err result from net::ip::get_addr();")
         }
         // note really sure how to realiably test/assert
         // this.. mostly just wanting to see it work, atm.
