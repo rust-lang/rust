@@ -192,6 +192,6 @@ impl OmNomNomy: TheShunnedHouse {
     }
 
     fn construct(&self) -> bool {
-        fail;
+        die!();
     }
 }
