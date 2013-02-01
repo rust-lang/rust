@@ -883,7 +883,8 @@ mod test {
             debug!("doc (trim): %?", doc);
             let doc = (trim_pass::mk_pass().f)(srv.clone(), doc);
             debug!("doc (sectionalize): %?", doc);
-            let doc = (markdown_index_pass::mk_pass(config).f)(srv.clone(), doc);
+            let doc = (markdown_index_pass::mk_pass(config).f)(
+                srv.clone(), doc);
             debug!("doc (index): %?", doc);
             (srv.clone(), doc)
         }
