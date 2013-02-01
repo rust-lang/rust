@@ -75,9 +75,9 @@ use core::libc::{c_uint, c_ulonglong};
 use core::option::{is_none, is_some};
 use core::option;
 use core::uint;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::oldsmallintmap;
-use std::{map, time, list};
+use std::{oldmap, time, list};
 use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::attr;
@@ -3016,7 +3016,7 @@ pub fn trans_crate(sess: session::Session,
               monomorphized: HashMap(),
               monomorphizing: HashMap(),
               type_use_cache: HashMap(),
-              vtables: map::HashMap(),
+              vtables: oldmap::HashMap(),
               const_cstr_cache: HashMap(),
               const_globals: HashMap(),
               const_values: HashMap(),

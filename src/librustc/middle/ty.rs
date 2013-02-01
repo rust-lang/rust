@@ -41,8 +41,8 @@ use core::result;
 use core::to_bytes;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
-use std::{map, oldsmallintmap};
+use std::oldmap::HashMap;
+use std::{oldmap, oldsmallintmap};
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
@@ -790,11 +790,11 @@ pub type node_type_table = @oldsmallintmap::SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
-    return map::HashMap();
+    return oldmap::HashMap();
 }
 
-pub fn new_ty_hash<V: Copy>() -> map::HashMap<t, V> {
-    map::HashMap()
+pub fn new_ty_hash<V: Copy>() -> oldmap::HashMap<t, V> {
+    oldmap::HashMap()
 }
 
 pub fn mk_ctxt(s: session::Session,
@@ -822,7 +822,7 @@ pub fn mk_ctxt(s: session::Session,
         }
     }
 
-    let interner = map::HashMap();
+    let interner = oldmap::HashMap();
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
                        lint::vecs_implicitly_copyable) == allow;
@@ -839,9 +839,9 @@ pub fn mk_ctxt(s: session::Session,
         region_map: region_map,
         region_paramd_items: region_paramd_items,
         node_types: @oldsmallintmap::mk(),
-        node_type_substs: map::HashMap(),
+        node_type_substs: oldmap::HashMap(),
         items: amap,
-        intrinsic_defs: map::HashMap(),
+        intrinsic_defs: oldmap::HashMap(),
         freevars: freevars,
         tcache: HashMap(),
         rcache: mk_rcache(),
@@ -1745,7 +1745,7 @@ pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
-                              tycache: map::HashMap<t, ()>,
+                              tycache: oldmap::HashMap<t, ()>,
                               encountered_box: bool) -> bool {
 
     // Prevent infinite recursion
@@ -2795,7 +2795,7 @@ impl sty : to_bytes::IterBytes {
 }
 
 pub fn br_hashmap<V:Copy>() -> HashMap<bound_region, V> {
-    map::HashMap()
+    oldmap::HashMap()
 }
 
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {

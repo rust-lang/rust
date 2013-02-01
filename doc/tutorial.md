@@ -1791,7 +1791,7 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-# use std::map::HashMap;
+# use std::oldmap::HashMap;
 type Set<T> = HashMap<T, ()>;
 
 struct Stack<T> {

@@ -20,7 +20,7 @@ use core::ptr;
 use core::str;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub type Opcode = u32;
 pub type Bool = c_uint;

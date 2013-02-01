@@ -17,7 +17,7 @@ use middle::trans::expr;
 use middle::trans::machine;
 use util::ppaux;
 
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 
 pub fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {

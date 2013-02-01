@@ -33,7 +33,7 @@ use util::ppaux::{expr_repr, region_to_str};
 use core::dvec;
 use core::hashmap::linear::LinearSet;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;

@@ -22,7 +22,7 @@ use middle::ty;
 use middle::typeck;
 
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;

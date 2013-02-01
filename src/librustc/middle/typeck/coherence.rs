@@ -63,7 +63,7 @@ use core::uint::range;
 use core::uint;
 use core::vec::{len, push};
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub struct UniversalQuantificationResult {
     monotype: t,

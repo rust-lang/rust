@@ -26,8 +26,8 @@ use util::ppaux::ty_to_str;
 use core::libc;
 use core::option;
 use core::sys;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use syntax::ast::Ty;
 use syntax::codemap::{span, CharPos};
 use syntax::parse::token::ident_interner;
@@ -111,7 +111,7 @@ pub type debug_ctxt = {
 };
 
 pub fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> debug_ctxt {
-    {llmetadata: map::HashMap(),
+    {llmetadata: oldmap::HashMap(),
      names: new_namegen(intr),
      crate_file: crate}
 }

@@ -164,7 +164,7 @@ use util::common::indenter;
 
 use core::dvec::DVec;
 use core::dvec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
 use syntax::ast_util::{dummy_sp, path_to_ident};

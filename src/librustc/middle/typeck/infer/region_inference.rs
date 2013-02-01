@@ -559,7 +559,7 @@ use core::uint;
 use core::vec;
 use result::Result;
 use result::{Ok, Err};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 use syntax::codemap::span;

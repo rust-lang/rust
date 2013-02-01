@@ -11,7 +11,7 @@
 // xfail-test
 
 extern mod std;
-use std::map::*;
+use std::oldmap::*;
 use vec::*;
 use dvec::{dvec, extensions};
 

@@ -36,7 +36,7 @@ use syntax::ast_map;
 
 use core::str;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub fn note_and_explain_region(cx: ctxt,
                                prefix: ~str,

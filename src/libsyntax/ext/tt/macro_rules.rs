@@ -26,7 +26,7 @@ use parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
 use print;
 
 use core::io;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                          arg: ~[ast::token_tree]) -> base::MacResult {

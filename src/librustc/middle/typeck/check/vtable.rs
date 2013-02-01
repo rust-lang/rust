@@ -28,7 +28,7 @@ use core::result;
 use core::uint;
 use core::vec;
 use result::{Result, Ok, Err};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;

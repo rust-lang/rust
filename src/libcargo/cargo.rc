@@ -53,8 +53,8 @@ use core::io::WriterUtil;
 use core::result::{Ok, Err};
 use core::hashmap::linear::LinearMap;
 use std::getopts::{optflag, optopt, opt_present};
-use std::map::HashMap;
-use std::{map, json, tempfile, term, sort, getopts};
+use std::oldmap::HashMap;
+use std::{oldmap, json, tempfile, term, sort, getopts};
 use syntax::codemap::span;
 use syntax::diagnostic::span_handler;
 use syntax::diagnostic;
@@ -110,9 +110,9 @@ pub struct Cargo {
     libdir: Path,
     workdir: Path,
     sourcedir: Path,
-    sources: map::HashMap<~str, @Source>,
+    sources: oldmap::HashMap<~str, @Source>,
     mut current_install: ~str,
-    dep_cache: map::HashMap<~str, bool>,
+    dep_cache: oldmap::HashMap<~str, bool>,
     opts: Options
 }
 
@@ -490,7 +490,7 @@ pub fn parse_source(name: ~str, j: &json::Json) -> @Source {
 }
 
 pub fn try_parse_sources(filename: &Path,
-                         sources: map::HashMap<~str, @Source>) {
+                         sources: oldmap::HashMap<~str, @Source>) {
     if !os::path_exists(filename)  { return; }
     let c = io::read_whole_file_str(filename);
     match json::from_str(c.get()) {

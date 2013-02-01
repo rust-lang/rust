@@ -30,7 +30,7 @@ use std::getopts::groups;
 use std::getopts::{opt_present};
 use std::getopts;
 use std::getopts;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::codemap::dummy_sp;
 use syntax::parse::parse_crate_from_source_str;
 use syntax::{ast, attr, parse};

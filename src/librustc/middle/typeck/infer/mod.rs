@@ -280,7 +280,7 @@ use core::result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
 use core::result;
 use core::vec;
 use std::list::Nil;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::oldsmallintmap;
 use syntax::ast::{ret_style, purity};
 use syntax::ast::{m_const, m_imm, m_mutbl};

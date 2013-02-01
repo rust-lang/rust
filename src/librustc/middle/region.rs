@@ -32,7 +32,7 @@ use core::dvec::DVec;
 use core::vec;
 use std::list;
 use std::list::list;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;
