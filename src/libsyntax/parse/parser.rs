@@ -1515,7 +1515,7 @@ pub impl Parser {
             token::EQ => {
                 self.bump();
                 let rhs = self.parse_expr();
-                self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs)) 
+                self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs))
           }
           token::BINOPEQ(op) => {
               self.bump();
@@ -1569,7 +1569,7 @@ pub impl Parser {
             hi = elexpr.span.hi;
         }
         let q = {cond: cond, then: thn, els: els, lo: lo, hi: hi};
-        f.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els))
+        self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els))
     }
 
     fn parse_fn_expr(proto: Proto) -> @expr {
@@ -1582,7 +1582,7 @@ pub impl Parser {
         let body = self.parse_block();
 
         self.mk_expr(lo, body.span.hi,
-                            expr_fn(proto, decl, body, capture_clause));
+                            expr_fn(proto, decl, body, @()))
     }
 
     // `|args| { ... }` like in `do` expressions
