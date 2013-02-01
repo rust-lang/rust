@@ -882,7 +882,7 @@ pub mod guarantor {
             }
             ast::pat_lit(*) => {}
             ast::pat_range(*) => {}
-            ast::pat_vec(ref ps, ref opt_tail_pat) => {
+            ast::pat_vec(ref ps, ref opt_rest_pat) => {
                 let vec_ty = rcx.resolve_node_type(pat.id);
                 if !ty::type_contains_err(vec_ty) {
                     let vstore = ty::ty_vstore(vec_ty);
@@ -894,7 +894,7 @@ pub mod guarantor {
 
                     link_ref_bindings_in_pats(rcx, ps, guarantor1);
 
-                    for opt_tail_pat.each |p| {
+                    for opt_rest_pat.each |p| {
                         link_ref_bindings_in_pat(rcx, *p, guarantor);
                     }
                 }

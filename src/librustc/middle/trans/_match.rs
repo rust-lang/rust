@@ -564,11 +564,11 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                     None
                 }
             }
-            ast::pat_vec(elems, tail) => {
-                match tail {
+            ast::pat_vec(elems, rest) => {
+                match rest {
                     Some(_) => {
                         if opt_eq(tcx, &vec_len_ge(elems.len()), opt) {
-                            Some(vec::append_one(elems, tail.get()))
+                            Some(vec::append_one(elems, rest.get()))
                         } else {
                             None
                         }
@@ -805,8 +805,8 @@ pub fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
             ast::pat_range(l1, l2) => {
                 add_to_set(ccx.tcx, &found, range(l1, l2));
             }
-            ast::pat_vec(elems, tail) => {
-                let opt = match tail {
+            ast::pat_vec(elems, rest) => {
+                let opt = match rest {
                     None => vec_len_eq(elems.len()),
                     Some(_) => vec_len_ge(elems.len())
                 };
@@ -853,7 +853,7 @@ pub fn extract_variant_args(bcx: block,
 pub fn extract_vec_elems(bcx: block,
                          pat_id: ast::node_id,
                          elem_count: uint,
-                         tail: bool,
+                         rest: bool,
                          val: ValueRef)
                       -> {vals: ~[ValueRef], bcx: block} {
     let _icx = bcx.insn_ctxt("match::extract_vec_elems");
@@ -864,21 +864,21 @@ pub fn extract_vec_elems(bcx: block,
     let mut elems = do vec::from_fn(elem_count) |i| {
         GEPi(bcx, base, ~[i])
     };
-    if tail {
-        let tail_offset = Mul(bcx, vt.llunit_size,
+    if rest {
+        let rest_offset = Mul(bcx, vt.llunit_size,
             C_int(bcx.ccx(), elem_count as int)
         );
-        let tail_begin = tvec::pointer_add(bcx, base, tail_offset);
-        let tail_len = Sub(bcx, len, tail_offset);
-        let tail_ty = ty::mk_evec(bcx.tcx(),
+        let rest_begin = tvec::pointer_add(bcx, base, rest_offset);
+        let rest_len = Sub(bcx, len, rest_offset);
+        let rest_ty = ty::mk_evec(bcx.tcx(),
             ty::mt {ty: vt.unit_ty, mutbl: ast::m_imm},
             ty::vstore_slice(ty::re_static)
         );
-        let scratch = scratch_datum(bcx, tail_ty, false);
-        Store(bcx, tail_begin,
+        let scratch = scratch_datum(bcx, rest_ty, false);
+        Store(bcx, rest_begin,
             GEPi(bcx, scratch.val, [0u, abi::slice_elt_base])
         );
-        Store(bcx, tail_len,
+        Store(bcx, rest_len,
             GEPi(bcx, scratch.val, [0u, abi::slice_elt_len])
         );
         elems.push(scratch.val);
@@ -1524,11 +1524,11 @@ pub fn compile_submatch(bcx: block,
                 opt_cx = args.bcx;
             }
             vec_len_eq(n) | vec_len_ge(n) => {
-                let tail = match *opt {
+                let rest = match *opt {
                     vec_len_ge(_) => true,
                     _ => false
                 };
-                let args = extract_vec_elems(opt_cx, pat_id, n, tail, val);
+                let args = extract_vec_elems(opt_cx, pat_id, n, rest, val);
                 size = args.vals.len();
                 unpacked = /*bad*/copy args.vals;
                 opt_cx = args.bcx;

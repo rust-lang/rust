@@ -1885,21 +1885,21 @@ pub impl Parser {
 
     fn parse_pat_vec_elements(refutable: bool) -> (~[@pat], Option<@pat>) {
         let mut elements = ~[];
-        let mut tail = None;
+        let mut rest = None;
         let mut first = true;
 
         while self.token != token::RBRACKET {
             if first { first = false; }
             else { self.expect(token::COMMA); }
 
-            let mut is_tail = false;
+            let mut is_rest = false;
             if self.token == token::DOTDOT {
                 self.bump();
-                is_tail = true;
+                is_rest = true;
             }
 
             let subpat = self.parse_pat(refutable);
-            if is_tail {
+            if is_rest {
                 match subpat {
                     @ast::pat { node: pat_wild, _ } => (),
                     @ast::pat { node: pat_ident(_, _, _), _ } => (),
@@ -1907,13 +1907,13 @@ pub impl Parser {
                         span, ~"expected an identifier or `_`"
                     )
                 }
-                tail = Some(subpat);
+                rest = Some(subpat);
                 break;
             }
 
             elements.push(subpat);
         }
-        return (elements, tail);
+        return (elements, rest);
     }
 
     fn parse_pat_fields(refutable: bool) -> (~[ast::field_pat], bool) {
@@ -2066,10 +2066,10 @@ pub impl Parser {
           }
           token::LBRACKET => {
             self.bump();
-            let (elements, tail) = self.parse_pat_vec_elements(refutable);
+            let (elements, rest) = self.parse_pat_vec_elements(refutable);
             hi = self.span.hi;
             self.expect(token::RBRACKET);
-            pat = ast::pat_vec(elements, tail);
+            pat = ast::pat_vec(elements, rest);
           }
           copy tok => {
             if !is_ident_or_path(tok)
