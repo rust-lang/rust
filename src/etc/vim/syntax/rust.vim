@@ -12,7 +12,7 @@ endif
 
 syn match     rustAssert      "\<assert\(\w\)*"
 syn keyword   rustKeyword     as break
-syn keyword   rustKeyword     const copy do drop else export extern fail
+syn keyword   rustKeyword     const copy do drop else extern fail
 syn keyword   rustKeyword     for if impl let log
 syn keyword   rustKeyword     loop match mod move mut once priv pure
 syn match     rustKeyword     "\<pub\>"
