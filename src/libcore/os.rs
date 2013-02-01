@@ -145,7 +145,7 @@ pub mod win32 {
 /*
 Accessing environment variables is not generally threadsafe.
 This uses a per-runtime lock to serialize access.
-XXX: It would probably be appropriate to make this a real global
+FIXME #4726: It would probably be appropriate to make this a real global
 */
 fn with_env_lock<T>(f: &fn() -> T) -> T {
     use private::global::global_data_clone_create;

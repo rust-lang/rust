@@ -31,7 +31,7 @@ pub trait Finally<T> {
 }
 
 impl<T> &fn() -> T: Finally<T> {
-    // XXX: Should not require a mode here
+    // FIXME #4518: Should not require a mode here
     fn finally(&self, +dtor: &fn()) -> T {
         let _d = Finallyalizer {
             dtor: dtor
@@ -88,7 +88,7 @@ fn test_retval() {
 
 #[test]
 fn test_compact() {
-    // XXX Should be able to use a fn item instead
+    // FIXME #4727: Should be able to use a fn item instead
     // of a closure for do_some_fallible_work,
     // but it's a type error.
     let do_some_fallible_work: &fn() = || { };
