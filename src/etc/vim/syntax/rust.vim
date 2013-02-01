@@ -12,15 +12,16 @@ endif
 
 syn match     rustAssert      "\<assert\(\w\)*"
 syn keyword   rustKeyword     as break
-syn keyword   rustKeyword     const copy do drop else extern fail
+syn keyword   rustKeyword     copy do drop else extern fail
 syn keyword   rustKeyword     for if impl let log
-syn keyword   rustKeyword     loop match mod move mut once priv pure
+syn keyword   rustKeyword     loop match mod move once priv pure
 syn match     rustKeyword     "\<pub\>"
 syn keyword   rustKeyword     ref return static
 syn keyword   rustKeyword     unsafe use while
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
+syn keyword   rustStorage     const mut
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
@@ -133,6 +134,7 @@ hi def link rustMacro         Macro
 hi def link rustType          Type
 hi def link rustTodo          Todo
 hi def link rustAttribute     PreProc
+hi def link rustStorage       StorageClass
 
 " Other Suggestions:
 " hi rustAssert ctermfg=yellow
