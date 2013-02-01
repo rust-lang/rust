@@ -83,6 +83,7 @@ pub mod map;
 pub mod priority_queue;
 pub mod rope;
 pub mod smallintmap;
+pub mod oldsmallintmap;
 pub mod sort;
 pub mod treemap;
 
