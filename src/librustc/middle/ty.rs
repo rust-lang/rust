@@ -2860,7 +2860,7 @@ pub pure fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
         ty_evec(_, vstore) => vstore,
         ty_estr(vstore) => vstore,
-        ref s => fail fmt!("ty_vstore() called on invalid sty: %?", s)
+        ref s => die!(fmt!("ty_vstore() called on invalid sty: %?", s))
     }
 }
 
@@ -2869,7 +2869,8 @@ pub fn ty_region(ty: t) -> Region {
       ty_rptr(r, _) => r,
       ty_evec(_, vstore_slice(r)) => r,
       ty_estr(vstore_slice(r)) => r,
-      ref s => fail fmt!("ty_region() invoked on in appropriate ty: %?", (*s))
+      ref s => die!(fmt!("ty_region() invoked on in appropriate ty: %?",
+          (*s)))
     }
 }
 
@@ -3205,7 +3206,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_again(*) |
         ast::expr_ret(*) |
         ast::expr_log(*) |
-        ast::expr_fail(*) |
         ast::expr_assert(*) |
         ast::expr_while(*) |
         ast::expr_loop(*) |

@@ -216,7 +216,7 @@ break
 const copy
 do drop
 else enum extern
-fail false fn for
+false fn for
 if impl
 let log loop
 match mod move mut
@@ -692,15 +692,15 @@ mod math {
     type complex = (f64, f64);
     fn sin(f: f64) -> f64 {
         ...
-# fail;
+# die!();
     }
     fn cos(f: f64) -> f64 {
         ...
-# fail;
+# die!();
     }
     fn tan(f: f64) -> f64 {
         ...
-# fail;
+# die!();
     }
 }
 ~~~~~~~~
@@ -992,13 +992,13 @@ output slot type would normally be. For example:
 ~~~~
 fn my_err(s: &str) -> ! {
     log(info, s);
-    fail;
+    die!();
 }
 ~~~~
 
 We call such functions "diverging" because they never return a value to the
 caller. Every control path in a diverging function must end with a
-[`fail`](#fail-expressions) or a call to another diverging function on every
+`fail!()` or a call to another diverging function on every
 control path. The `!` annotation does *not* denote a type. Rather, the result
 type of a diverging function is a special type called $\bot$ ("bottom") that
 unifies with any type. Rust has no syntax for $\bot$.
@@ -1010,7 +1010,7 @@ were declared without the `!` annotation, the following code would not
 typecheck:
 
 ~~~~
-# fn my_err(s: &str) -> ! { fail }
+# fn my_err(s: &str) -> ! { die!() }
 
 fn f(i: int) -> int {
    if i == 42 {
@@ -2294,9 +2294,9 @@ enum List<X> { Nil, Cons(X, @List<X>) }
 let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
-    Cons(_, @Nil) => fail ~"singleton list",
+    Cons(_, @Nil) => die!(~"singleton list"),
     Cons(*)       => return,
-    Nil           => fail ~"empty list"
+    Nil           => die!(~"empty list")
 }
 ~~~~
 
@@ -2333,7 +2333,7 @@ match x {
         return;
     }
     _ => {
-        fail;
+        die!();
     }
 }
 ~~~~
@@ -2421,22 +2421,9 @@ guard may refer to the variables bound within the pattern they follow.
 let message = match maybe_digit {
   Some(x) if x < 10 => process_digit(x),
   Some(x) => process_other(x),
-  None => fail
+  None => die!()
 };
 ~~~~
-
-
-### Fail expressions
-
-~~~~~~~~{.ebnf .gram}
-fail_expr : "fail" expr ? ;
-~~~~~~~~
-
-Evaluating a `fail` expression causes a task to enter the *failing* state. In
-the *failing* state, a task unwinds its stack, destroying all frames and
-running all destructors until it reaches its entry frame, at which point it
-halts execution in the *dead* state.
-
 
 ### Return expressions
 
@@ -3157,7 +3144,7 @@ unblock and transition back to *running*.
 
 A task may transition to the *failing* state at any time, due being
 killed by some external event or internally, from the evaluation of a
-`fail` expression. Once *failing*, a task unwinds its stack and
+`fail!()` macro. Once *failing*, a task unwinds its stack and
 transitions to the *dead* state. Unwinding the stack of a task is done by
 the task itself, on its own control stack. If a value with a destructor is
 freed during unwinding, the code for the destructor is run, also on the task's

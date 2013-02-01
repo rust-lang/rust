@@ -940,7 +940,7 @@ impl TcpSocketBuf: io::Reader {
               } else {
                   debug!("ERROR sock_buf as io::reader.read err %? %?",
                          err_data.err_name, err_data.err_msg);
-                  fail
+                  die!()
               }
           }
           else {

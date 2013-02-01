@@ -387,7 +387,7 @@ pub impl &mem_categorization_ctxt {
           ast::expr_assert(*) | ast::expr_ret(*) |
           ast::expr_loop_body(*) | ast::expr_do_body(*) |
           ast::expr_unary(*) | ast::expr_method_call(*) |
-          ast::expr_copy(*) | ast::expr_cast(*) | ast::expr_fail(*) |
+          ast::expr_copy(*) | ast::expr_cast(*) |
           ast::expr_vstore(*) | ast::expr_vec(*) | ast::expr_tup(*) |
           ast::expr_if(*) | ast::expr_log(*) |
           ast::expr_binary(*) | ast::expr_while(*) |

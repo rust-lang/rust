@@ -245,7 +245,7 @@ impl BigUint : Modulo<BigUint, BigUint> {
 }
 
 impl BigUint : Neg<BigUint> {
-    pure fn neg(&self) -> BigUint { fail }
+    pure fn neg(&self) -> BigUint { die!() }
 }
 
 impl BigUint : IntConvertible {
