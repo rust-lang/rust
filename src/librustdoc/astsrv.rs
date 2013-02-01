@@ -22,9 +22,10 @@ use core::prelude::*;
 use parse;
 use util;
 
-use core::pipes::stream;
+use core::pipes::{stream, Chan, SharedChan, Port};
 use core::oldcomm;
 use core::vec;
+use core::ops::Drop;
 use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session::Session;
@@ -55,11 +56,15 @@ enum Msg {
 }
 
 pub struct Srv {
-    ch: oldcomm::Chan<Msg>
+    ch: SharedChan<Msg>
 }
 
 impl Srv: Clone {
-    fn clone(&self) -> Srv { copy *self }
+    fn clone(&self) -> Srv {
+        Srv {
+            ch: self.ch.clone()
+        }
+    }
 }
 
 pub fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
@@ -72,18 +77,22 @@ pub fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
 
 fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
 
+    let (po, ch) = stream();
+
+    do task::spawn {
+        act(&po, copy source, copy parse);
+    }
+
     let srv_ = Srv {
-        ch: do util::spawn_listener |copy source, move parse, po| {
-            act(po, copy source, copy parse);
-        }
+        ch: SharedChan(ch)
     };
 
-    let res = owner(srv_);
-    oldcomm::send(srv_.ch, Exit);
+    let res = owner(srv_.clone());
+    srv_.ch.send(Exit);
     move res
 }
 
-fn act(po: oldcomm::Port<Msg>, source: ~str, parse: Parser) {
+fn act(po: &Port<Msg>, source: ~str, parse: Parser) {
     let sess = build_session();
 
     let ctxt = build_ctxt(
@@ -93,7 +102,7 @@ fn act(po: oldcomm::Port<Msg>, source: ~str, parse: Parser) {
 
     let mut keep_going = true;
     while keep_going {
-        match oldcomm::recv(po) {
+        match po.recv() {
           HandleRequest(f) => {
             f(ctxt);
           }
@@ -112,7 +121,7 @@ pub fn exec<T:Owned>(
     let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {
         ch.send(f(ctxt))
     });
-    oldcomm::send(srv.ch, move msg);
+    srv.ch.send(move msg);
     po.recv()
 }
 

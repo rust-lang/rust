@@ -193,11 +193,10 @@ pub fn default_any_fold_mod<T:Owned Clone>(
     fold: &Fold<T>,
     doc: doc::ModDoc
 ) -> doc::ModDoc {
-    let fold_copy = fold.clone();
     doc::ModDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        items: par::map(doc.items, |ItemTag, move fold_copy| {
-            fold_ItemTag(&fold_copy, copy *ItemTag)
+        items: vec::map(doc.items, |ItemTag| {
+            fold_ItemTag(fold, copy *ItemTag)
         }),
         .. doc
     }
@@ -220,11 +219,10 @@ pub fn default_par_fold_mod<T:Owned Clone>(
     fold: &Fold<T>,
     doc: doc::ModDoc
 ) -> doc::ModDoc {
-    let fold_copy = fold.clone();
     doc::ModDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        items: par::map(doc.items, |ItemTag, move fold_copy| {
-            fold_ItemTag(&fold_copy, copy *ItemTag)
+        items: vec::map(doc.items, |ItemTag| {
+            fold_ItemTag(fold, copy *ItemTag)
         }),
         .. doc
     }
@@ -234,11 +232,10 @@ pub fn default_any_fold_nmod<T:Owned Clone>(
     fold: &Fold<T>,
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
-    let fold_copy = fold.clone();
     doc::NmodDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        fns: par::map(doc.fns, |FnDoc, move fold_copy| {
-            (fold_copy.fold_fn)(&fold_copy, copy *FnDoc)
+        fns: vec::map(doc.fns, |FnDoc| {
+            (fold.fold_fn)(fold, copy *FnDoc)
         }),
         .. doc
     }
@@ -261,11 +258,10 @@ pub fn default_par_fold_nmod<T:Owned Clone>(
     fold: &Fold<T>,
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
-    let fold_copy = fold.clone();
     doc::NmodDoc {
         item: (fold.fold_item)(fold, copy doc.item),
-        fns: par::map(doc.fns, |FnDoc, move fold_copy| {
-            (fold_copy.fold_fn)(&fold_copy, copy *FnDoc)
+        fns: vec::map(doc.fns, |FnDoc| {
+            (fold.fold_fn)(fold, copy *FnDoc)
         }),
         .. doc
     }

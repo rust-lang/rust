@@ -46,6 +46,7 @@ pub fn run(
     doc: doc::Doc
 ) -> doc::Doc {
     let fold = Fold {
+        ctxt: srv.clone(),
         fold_crate: fold_crate,
         fold_item: fold_item,
         fold_enum: fold_enum,
@@ -61,7 +62,7 @@ fn fold_crate(
     doc: doc::CrateDoc
 ) -> doc::CrateDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
     let doc = fold::default_seq_fold_crate(fold, doc);
 
     let attrs = do astsrv::exec(srv) |ctxt| {
@@ -92,7 +93,7 @@ fn fold_item(
     doc: doc::ItemDoc
 ) -> doc::ItemDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
     let doc = fold::default_seq_fold_item(fold, doc);
 
     let desc = if doc.id == ast::crate_node_id {
@@ -159,16 +160,16 @@ fn fold_enum(
     doc: doc::EnumDoc
 ) -> doc::EnumDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
     let doc_id = doc.id();
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     doc::EnumDoc {
-        variants: do par::map(doc.variants) |variant| {
+        variants: do vec::map(doc.variants) |variant| {
             let variant = copy *variant;
             let desc = {
                 let variant = copy variant;
-                do astsrv::exec(srv) |ctxt| {
+                do astsrv::exec(srv.clone()) |ctxt| {
                     match ctxt.ast_map.get(doc_id) {
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
@@ -216,7 +217,7 @@ fn fold_trait(
     fold: &fold::Fold<astsrv::Srv>,
     doc: doc::TraitDoc
 ) -> doc::TraitDoc {
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     doc::TraitDoc {
@@ -293,7 +294,7 @@ fn fold_impl(
     fold: &fold::Fold<astsrv::Srv>,
     doc: doc::ImplDoc
 ) -> doc::ImplDoc {
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     doc::ImplDoc {
@@ -328,8 +329,8 @@ mod test {
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
-            let doc = extract::from_srv(srv, ~"");
-            run(srv, doc)
+            let doc = extract::from_srv(srv.clone(), ~"");
+            run(srv.clone(), doc)
         }
     }
 }

@@ -196,8 +196,8 @@ mod test {
         source: ~str
     ) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
-            let doc = extract::from_srv(srv, ~"");
-            run(srv, doc, output_style)
+            let doc = extract::from_srv(srv.clone(), ~"");
+            run(srv.clone(), doc, output_style)
         }
     }
 

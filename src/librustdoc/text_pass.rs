@@ -306,11 +306,11 @@ mod test {
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
-            let doc = extract::from_srv(srv, ~"");
-            let doc = (attr_pass::mk_pass().f)(srv, doc);
-            let doc = (desc_to_brief_pass::mk_pass().f)(srv, doc);
-            let doc = (sectionalize_pass::mk_pass().f)(srv, doc);
-            (mk_pass(~"", |s| str::trim(s) ).f)(srv, doc)
+            let doc = extract::from_srv(srv.clone(), ~"");
+            let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
+            let doc = (desc_to_brief_pass::mk_pass().f)(srv.clone(), doc);
+            let doc = (sectionalize_pass::mk_pass().f)(srv.clone(), doc);
+            (mk_pass(~"", |s| str::trim(s) ).f)(srv.clone(), doc)
         }
     }
 }
