@@ -1305,7 +1305,7 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, match_indent_unit);
       }
-      ast::expr_fn(proto, decl, ref body) => {
+      ast::expr_fn(proto, decl, ref body, _) => {
         // containing cbox, will be closed by print-block at }
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start

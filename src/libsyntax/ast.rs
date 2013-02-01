@@ -695,7 +695,10 @@ pub enum expr_ {
        (implicit) condition is always true. */
     expr_loop(blk, Option<ident>),
     expr_match(@expr, ~[arm]),
-    expr_fn(Proto, fn_decl, blk),
+
+    // FIXME(#4717) the @() is req'd on windows or else LLVM croaks
+    expr_fn(Proto, fn_decl, blk, @()),
+
     expr_fn_block(fn_decl, blk),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
     // easily type this (a function returning nil on the inside but bool on

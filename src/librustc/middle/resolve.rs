@@ -4820,7 +4820,7 @@ pub impl Resolver {
                 visit_expr(expr, (), visitor);
             }
 
-            expr_fn(_, ref fn_decl, ref block) |
+            expr_fn(_, ref fn_decl, ref block, _) |
             expr_fn_block(ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.node.id),
                                       Some(@/*bad*/copy *fn_decl),
