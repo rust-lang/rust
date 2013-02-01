@@ -298,38 +298,38 @@ pub pure fn struct_field_visibility(field: ast::struct_field) -> visibility {
 }
 
 pub trait inlined_item_utils {
-    fn ident() -> ident;
-    fn id() -> ast::node_id;
-    fn accept<E>(e: E, v: visit::vt<E>);
+    fn ident(&self) -> ident;
+    fn id(&self) -> ast::node_id;
+    fn accept<E>(&self, e: E, v: visit::vt<E>);
 }
 
 pub impl inlined_item: inlined_item_utils {
-    fn ident() -> ident {
-        match self {
-          ii_item(i) => /* FIXME (#2543) */ copy i.ident,
-          ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
-          ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
-          ii_dtor(_, nm, _, _) => /* FIXME (#2543) */ copy nm
+    fn ident(&self) -> ident {
+        match *self {
+            ii_item(i) => /* FIXME (#2543) */ copy i.ident,
+            ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
+            ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
+            ii_dtor(_, nm, _, _) => /* FIXME (#2543) */ copy nm
         }
     }
 
-    fn id() -> ast::node_id {
-        match self {
-          ii_item(i) => i.id,
-          ii_foreign(i) => i.id,
-          ii_method(_, m) => m.id,
-          ii_dtor(ref dtor, _, _, _) => (*dtor).node.id
+    fn id(&self) -> ast::node_id {
+        match *self {
+            ii_item(i) => i.id,
+            ii_foreign(i) => i.id,
+            ii_method(_, m) => m.id,
+            ii_dtor(ref dtor, _, _, _) => (*dtor).node.id
         }
     }
 
-    fn accept<E>(e: E, v: visit::vt<E>) {
-        match self {
-          ii_item(i) => (v.visit_item)(i, e, v),
-          ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
-          ii_method(_, m) => visit::visit_method_helper(m, e, v),
-          ii_dtor(ref dtor, _, tps, parent_id) => {
+    fn accept<E>(&self, e: E, v: visit::vt<E>) {
+        match *self {
+            ii_item(i) => (v.visit_item)(i, e, v),
+            ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
+            ii_method(_, m) => visit::visit_method_helper(m, e, v),
+            ii_dtor(ref dtor, _, tps, parent_id) => {
               visit::visit_struct_dtor_helper((*dtor), tps, parent_id, e, v);
-          }
+            }
         }
     }
 }
