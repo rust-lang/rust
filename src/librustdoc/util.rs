@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use core::oldcomm;
 use core::task;
 
 // Just a named container for our op, so it can have impls
