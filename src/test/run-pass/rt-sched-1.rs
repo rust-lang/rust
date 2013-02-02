@@ -10,7 +10,7 @@
 
 // Tests of the runtime's scheduler interface
 
-use core::pipes::*;
+use core::comm::*;
 
 type sched_id = int;
 type task_id = *libc::c_void;

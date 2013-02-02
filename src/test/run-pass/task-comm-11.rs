@@ -13,13 +13,13 @@
 
 extern mod std;
 
-fn start(c: pipes::Chan<pipes::Chan<int>>) {
-    let (p, ch) = pipes::stream();
+fn start(c: comm::Chan<comm::Chan<int>>) {
+    let (p, ch) = comm::stream();
     c.send(ch);
 }
 
 pub fn main() {
-    let (p, ch) = pipes::stream();
+    let (p, ch) = comm::stream();
     let child = task::spawn(|| start(ch) );
     let c = p.recv();
 }

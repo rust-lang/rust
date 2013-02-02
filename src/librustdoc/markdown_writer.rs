@@ -20,12 +20,12 @@ use core::io::ReaderUtil;
 use core::io;
 use core::libc;
 use core::os;
-use core::pipes;
+use core::comm;
 use core::result;
 use core::run;
 use core::str;
 use core::task;
-use core::pipes::*;
+use core::comm::*;
 use std::future;
 use syntax;
 
@@ -128,12 +128,12 @@ fn pandoc_writer(
         os::close(pipe_err.out);
         os::close(pipe_in.out);
 
-        let (stdout_po, stdout_ch) = pipes::stream();
+        let (stdout_po, stdout_ch) = comm::stream();
         do task::spawn_sched(task::SingleThreaded) || {
             stdout_ch.send(readclose(pipe_out.in));
         }
 
-        let (stderr_po, stderr_ch) = pipes::stream();
+        let (stderr_po, stderr_ch) = comm::stream();
         do task::spawn_sched(task::SingleThreaded) || {
             stderr_ch.send(readclose(pipe_err.in));
         }
@@ -296,7 +296,7 @@ pub fn future_writer_factory(
     let (markdown_po, markdown_ch) = stream();
     let markdown_ch = SharedChan(markdown_ch);
     let writer_factory = fn~(page: doc::Page) -> Writer {
-        let (writer_po, writer_ch) = pipes::stream();
+        let (writer_po, writer_ch) = comm::stream();
         let markdown_ch = markdown_ch.clone();
         do task::spawn || {
             let (writer, future) = future_writer();
@@ -311,7 +311,7 @@ pub fn future_writer_factory(
 }
 
 fn future_writer() -> (Writer, future::Future<~str>) {
-    let (port, chan) = pipes::stream();
+    let (port, chan) = comm::stream();
     let writer = fn~(instr: WriteInstr) {
         chan.send(copy instr);
     };

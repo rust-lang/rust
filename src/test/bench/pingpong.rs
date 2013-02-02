@@ -16,7 +16,7 @@
  
 extern mod std;
 
-use pipes::{spawn_service, recv};
+use core::pipes::{spawn_service, recv};
 use std::time::precise_time_s;
 
 proto! pingpong (
@@ -72,9 +72,9 @@ macro_rules! follow (
     )
 )
 
-fn switch<T:Owned,Tb:Owned,U>(+endp: pipes::RecvPacketBuffered<T, Tb>,
+fn switch<T:Owned,Tb:Owned,U>(+endp: core::pipes::RecvPacketBuffered<T, Tb>,
                       f: fn(+v: Option<T>) -> U) -> U {
-    f(pipes::try_recv(endp))
+    f(core::pipes::try_recv(endp))
 }
 
 // Here's the benchmark

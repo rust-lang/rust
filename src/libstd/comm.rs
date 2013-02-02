@@ -14,8 +14,8 @@ Higher level communication abstractions.
 
 */
 
-use core::pipes::{GenericChan, GenericSmartChan, GenericPort};
-use core::pipes::{Chan, Port, Selectable, Peekable};
+use core::comm::{GenericChan, GenericSmartChan, GenericPort};
+use core::comm::{Chan, Port, Selectable, Peekable};
 use core::pipes;
 use core::prelude::*;
 
@@ -63,8 +63,8 @@ impl<T:Owned,U:Owned> Selectable for DuplexStream<T, U> {
 pub fn DuplexStream<T:Owned,U:Owned>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
-    let (p1, c2) = pipes::stream();
-    let (p2, c1) = pipes::stream();
+    let (p1, c2) = comm::stream();
+    let (p2, c1) = comm::stream();
     (DuplexStream {
         chan: c1,
         port: p1

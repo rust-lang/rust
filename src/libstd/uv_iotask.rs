@@ -19,7 +19,7 @@ use ll = uv_ll;
 
 use core::libc::c_void;
 use core::libc;
-use core::pipes::{stream, Port, Chan, SharedChan};
+use core::comm::{stream, Port, Chan, SharedChan};
 use core::prelude::*;
 use core::ptr::addr_of;
 use core::task::TaskBuilder;

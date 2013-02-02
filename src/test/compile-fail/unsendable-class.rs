@@ -25,6 +25,6 @@ fn foo(i:int, j: @~str) -> foo {
 
 fn main() {
   let cat = ~"kitty";
-    let (_, ch) = pipes::stream(); //~ ERROR does not fulfill `Owned`
+    let (_, ch) = comm::stream(); //~ ERROR does not fulfill `Owned`
   ch.send(foo(42, @(cat))); //~ ERROR does not fulfill `Owned`
 }
