@@ -1586,7 +1586,7 @@ pub fn trans_match_inner(scope_cx: block,
                     // but during matching we need to store a *T as explained
                     // above
                     let is_move =
-                        scope_cx.ccx().maps.moves_map.contains_key(p_id);
+                        scope_cx.ccx().maps.moves_map.contains_key_ref(&p_id);
                     llmatch = alloca(bcx, T_ptr(llvariable_ty));
                     trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
                 }

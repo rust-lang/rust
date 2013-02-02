@@ -502,7 +502,7 @@ pub impl CoherenceChecker {
         }
 
         for ty::trait_methods(tcx, trait_did).each |method| {
-            if provided_method_idents.contains_key(method.ident) {
+            if provided_method_idents.contains_key_ref(&method.ident) {
                 if !f(method) {
                     break;
                 }
@@ -912,7 +912,7 @@ pub impl CoherenceChecker {
         let tcx = self.crate_context.tcx;
         let pmm = tcx.provided_methods;
 
-        if pmm.contains_key(trait_def_id) { return; }
+        if pmm.contains_key_ref(&trait_def_id) { return; }
 
         debug!("(adding default methods for trait) processing trait");
 

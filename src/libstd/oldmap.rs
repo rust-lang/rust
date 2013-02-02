@@ -164,10 +164,6 @@ pub mod chained {
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
         pure fn size() -> uint { self.count }
 
-        pure fn contains_key(k: K) -> bool {
-            self.contains_key_ref(&k)
-        }
-
         pure fn contains_key_ref(k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
@@ -638,9 +634,9 @@ mod tests {
     fn test_contains_key() {
         let key = ~"k";
         let map = HashMap::<~str, ~str>();
-        assert (!map.contains_key(key));
+        assert (!map.contains_key_ref(&key));
         map.insert(key, ~"val");
-        assert (map.contains_key(key));
+        assert (map.contains_key_ref(&key));
     }
 
     #[test]
@@ -658,10 +654,10 @@ mod tests {
         let map = HashMap::<~str, ~str>();
         map.insert(key, ~"val");
         assert (map.size() == 1);
-        assert (map.contains_key(key));
+        assert (map.contains_key_ref(&key));
         map.clear();
         assert (map.size() == 0);
-        assert (!map.contains_key(key));
+        assert (!map.contains_key_ref(&key));
     }
 
     #[test]
