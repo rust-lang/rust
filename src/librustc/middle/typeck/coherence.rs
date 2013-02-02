@@ -417,7 +417,7 @@ pub impl CoherenceChecker {
         let coherence_info = &self.crate_context.coherence_info;
         let extension_methods = &coherence_info.extension_methods;
 
-        for extension_methods.each_key |trait_id| {
+        for extension_methods.each_key_ref |&trait_id| {
             self.check_implementation_coherence_of(trait_id);
         }
     }
