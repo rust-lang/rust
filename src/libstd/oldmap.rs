@@ -316,10 +316,6 @@ pub mod chained {
             }
         }
 
-        pure fn each(blk: fn(key: K, value: V) -> bool) {
-            self.each_ref(|k, v| blk(*k, *v))
-        }
-
         pure fn each_ref(blk: fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }

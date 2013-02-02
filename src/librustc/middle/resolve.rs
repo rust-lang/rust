@@ -1913,7 +1913,7 @@ pub impl Resolver {
                self.module_to_str(module_));
         self.resolve_imports_for_module(module_);
 
-        for module_.children.each |_name, child_node| {
+        for module_.children.each_value_ref |&child_node| {
             match child_node.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -1924,7 +1924,7 @@ pub impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each |_block_id, child_module| {
+        for module_.anonymous_children.each_value_ref |&child_module| {
             self.resolve_imports_for_module_subtree(child_module);
         }
     }
@@ -2430,8 +2430,8 @@ pub impl Resolver {
         assert containing_module.glob_count == 0;
 
         // Add all resolved imports from the containing module.
-        for containing_module.import_resolutions.each
-                |ident, target_import_resolution| {
+        for containing_module.import_resolutions.each_ref
+                |&ident, &target_import_resolution| {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
@@ -2480,7 +2480,7 @@ pub impl Resolver {
         }
 
         // Add all children from the containing module.
-        for containing_module.children.each |ident, name_bindings| {
+        for containing_module.children.each_ref |&ident, &name_bindings| {
             let mut dest_import_resolution;
             match module_.import_resolutions.find(ident) {
                 None => {
@@ -3148,7 +3148,7 @@ pub impl Resolver {
         }
 
         // Descend into children and anonymous children.
-        for module_.children.each |_name, child_node| {
+        for module_.children.each_value_ref |&child_node| {
             match child_node.get_module_if_available() {
                 None => {
                     // Continue.
@@ -3159,7 +3159,7 @@ pub impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each |_name, module_| {
+        for module_.anonymous_children.each_value_ref |&module_| {
             self.report_unresolved_imports(module_);
         }
     }
@@ -3204,7 +3204,7 @@ pub impl Resolver {
 
         self.record_exports_for_module(module_);
 
-        for module_.children.each |_ident, child_name_bindings| {
+        for module_.children.each_value_ref |&child_name_bindings| {
             match child_name_bindings.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -3215,7 +3215,7 @@ pub impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each |_node_id, child_module| {
+        for module_.anonymous_children.each_value_ref |&child_module| {
             self.record_exports_for_module_subtree(child_module);
         }
     }
@@ -4068,7 +4068,7 @@ pub impl Resolver {
         for arm.pats.eachi() |i, p| {
             let map_i = self.binding_mode_map(*p);
 
-            for map_0.each |key, binding_0| {
+            for map_0.each_ref |&key, &binding_0| {
                 match map_i.find(key) {
                   None => {
                     self.session.span_err(
@@ -4089,7 +4089,7 @@ pub impl Resolver {
                 }
             }
 
-            for map_i.each |key, binding| {
+            for map_i.each_ref |&key, &binding| {
                 if !map_0.contains_key_ref(&key) {
                     self.session.span_err(
                         binding.span,
@@ -5001,7 +5001,7 @@ pub impl Resolver {
             }
 
             // Look for trait children.
-            for search_module.children.each |_name, child_name_bindings| {
+            for search_module.children.each_value_ref |&child_name_bindings| {
                 match child_name_bindings.def_for_namespace(TypeNS) {
                     Some(def) => {
                         match def {
@@ -5021,8 +5021,8 @@ pub impl Resolver {
             }
 
             // Look for imports.
-            for search_module.import_resolutions.each
-                    |_ident, import_resolution| {
+            for search_module.import_resolutions.each_value_ref
+                    |&import_resolution| {
 
                 match import_resolution.target_for_namespace(TypeNS) {
                     None => {
@@ -5184,7 +5184,7 @@ pub impl Resolver {
 
         self.check_for_unused_imports_in_module(module_);
 
-        for module_.children.each |_ident, child_name_bindings| {
+        for module_.children.each_value_ref |&child_name_bindings| {
             match (*child_name_bindings).get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -5196,13 +5196,13 @@ pub impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each |_node_id, child_module| {
+        for module_.anonymous_children.each_value_ref |&child_module| {
             self.check_for_unused_imports_in_module_subtree(child_module);
         }
     }
 
     fn check_for_unused_imports_in_module(module_: @Module) {
-        for module_.import_resolutions.each |_name, import_resolution| {
+        for module_.import_resolutions.each_value_ref |&import_resolution| {
             if !import_resolution.used {
                 match self.unused_import_lint_level {
                     warn => {
@@ -5261,12 +5261,12 @@ pub impl Resolver {
         debug!("Dump of module `%s`:", self.module_to_str(module_));
 
         debug!("Children:");
-        for module_.children.each |name, _child| {
+        for module_.children.each_key_ref |&name| {
             debug!("* %s", self.session.str_of(name));
         }
 
         debug!("Import resolutions:");
-        for module_.import_resolutions.each |name, import_resolution| {
+        for module_.import_resolutions.each_ref |&name, &import_resolution| {
             let mut value_repr;
             match (*import_resolution).target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }

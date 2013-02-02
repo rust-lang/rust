@@ -99,7 +99,7 @@ pub fn have_crate_data(cstore: CStore, cnum: ast::crate_num) -> bool {
 
 pub fn iter_crate_data(cstore: CStore,
                        i: fn(ast::crate_num, crate_metadata)) {
-    for p(cstore).metas.each |k,v| { i(k, v);};
+    for p(cstore).metas.each_ref |&k, &v| { i(k, v);};
 }
 
 pub fn add_used_crate_file(cstore: CStore, lib: &Path) {

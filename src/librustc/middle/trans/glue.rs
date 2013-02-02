@@ -757,7 +757,7 @@ pub fn emit_tydescs(ccx: @crate_ctxt) {
     let _icx = ccx.insn_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
-    for ccx.tydescs.each |_key, val| {
+    for ccx.tydescs.each_value_ref |&val| {
         let glue_fn_ty = T_ptr(T_generic_glue_fn(ccx));
         let ti = val;
 

@@ -833,7 +833,7 @@ pub fn rustc_sysroot() -> ~str {
     }
 }
 
-pub fn install_source(c: &Cargo, path: &Path) {
+pub fn install_source(c: &mut Cargo, path: &Path) {
     debug!("source: %s", path.to_str());
     os::change_dir(path);
 
@@ -872,7 +872,8 @@ pub fn install_source(c: &Cargo, path: &Path) {
     }
 }
 
-pub fn install_git(c: &Cargo, wd: &Path, url: ~str, reference: Option<~str>) {
+pub fn install_git(c: &mut Cargo, wd: &Path, url: ~str,
+                   reference: Option<~str>) {
     run::program_output(~"git", ~[~"clone", url, wd.to_str()]);
     if reference.is_some() {
         let r = reference.get();
@@ -883,7 +884,7 @@ pub fn install_git(c: &Cargo, wd: &Path, url: ~str, reference: Option<~str>) {
     install_source(c, wd);
 }
 
-pub fn install_curl(c: &Cargo, wd: &Path, url: ~str) {
+pub fn install_curl(c: &mut Cargo, wd: &Path, url: ~str) {
     let tarpath = wd.push("pkg.tar");
     let p = run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o",
                                          tarpath.to_str(), url]);
@@ -896,14 +897,14 @@ pub fn install_curl(c: &Cargo, wd: &Path, url: ~str) {
     install_source(c, wd);
 }
 
-pub fn install_file(c: &Cargo, wd: &Path, path: &Path) {
+pub fn install_file(c: &mut Cargo, wd: &Path, path: &Path) {
     run::program_output(~"tar", ~[~"-x", ~"--strip-components=1",
                                   ~"-C", wd.to_str(),
                                   ~"-f", path.to_str()]);
     install_source(c, wd);
 }
 
-pub fn install_package(c: &Cargo, src: ~str, wd: &Path, pkg: Package) {
+pub fn install_package(c: &mut Cargo, src: ~str, wd: &Path, pkg: Package) {
     let url = copy pkg.url;
     let method = match pkg.method {
         ~"git" => ~"git",
@@ -930,7 +931,7 @@ pub fn cargo_suggestion(c: &Cargo, fallback: fn()) {
     fallback();
 }
 
-pub fn install_uuid(c: &Cargo, wd: &Path, uuid: ~str) {
+pub fn install_uuid(c: &mut Cargo, wd: &Path, uuid: ~str) {
     let mut ps = ~[];
     for_each_package(c, |s, p| {
         if p.uuid == uuid {
@@ -954,7 +955,7 @@ pub fn install_uuid(c: &Cargo, wd: &Path, uuid: ~str) {
     }
 }
 
-pub fn install_named(c: &Cargo, wd: &Path, name: ~str) {
+pub fn install_named(c: &mut Cargo, wd: &Path, name: ~str) {
     let mut ps = ~[];
     for_each_package(c, |s, p| {
         if p.name == name {
@@ -978,7 +979,8 @@ pub fn install_named(c: &Cargo, wd: &Path, name: ~str) {
     }
 }
 
-pub fn install_uuid_specific(c: &Cargo, wd: &Path, src: ~str, uuid: ~str) {
+pub fn install_uuid_specific(c: &mut Cargo, wd: &Path, src: ~str,
+                             uuid: ~str) {
     match c.sources.find(src) {
         Some(s) => {
             for s.packages.each |p| {
@@ -993,7 +995,8 @@ pub fn install_uuid_specific(c: &Cargo, wd: &Path, src: ~str, uuid: ~str) {
     error(~"can't find package: " + src + ~"/" + uuid);
 }
 
-pub fn install_named_specific(c: &Cargo, wd: &Path, src: ~str, name: ~str) {
+pub fn install_named_specific(c: &mut Cargo, wd: &Path, src: ~str,
+                              name: ~str) {
     match c.sources.find(src) {
         Some(s) => {
             for s.packages.each |p| {
@@ -1060,7 +1063,7 @@ pub fn cmd_uninstall(c: &Cargo) {
     }
 }
 
-pub fn install_query(c: &Cargo, wd: &Path, target: ~str) {
+pub fn install_query(c: &mut Cargo, wd: &Path, target: ~str) {
     match c.dep_cache.find(target) {
         Some(inst) => {
             if inst {
@@ -1112,10 +1115,7 @@ pub fn install_query(c: &Cargo, wd: &Path, target: ~str) {
     // a bit of a hack. It should be cleaned up in the future.
 
     if target == c.current_install {
-        for c.dep_cache.each |k, _v| {
-            c.dep_cache.remove(k);
-        }
-
+        c.dep_cache.clear();
         c.current_install = ~"";
     }
 }
@@ -1128,7 +1128,7 @@ pub fn get_temp_workdir(c: &Cargo) -> Path {
     }
 }
 
-pub fn cmd_install(c: &Cargo) {
+pub fn cmd_install(c: &mut Cargo) {
     unsafe {
         let wd = get_temp_workdir(c);
 
@@ -1636,7 +1636,7 @@ pub fn dump_sources(c: &Cargo) {
         result::Ok(writer) => {
             let mut hash = ~LinearMap::new();
 
-            for c.sources.each |k, v| {
+            for c.sources.each_ref |&k, &v| {
                 let mut chash = ~LinearMap::new();
 
                 chash.insert(~"url", json::String(v.url));
@@ -1967,7 +1967,7 @@ pub fn main() {
 
     match o.free[1] {
         ~"init" => cmd_init(&c),
-        ~"install" => cmd_install(&c),
+        ~"install" => cmd_install(&mut c),
         ~"uninstall" => cmd_uninstall(&c),
         ~"list" => cmd_list(&c),
         ~"search" => cmd_search(&c),

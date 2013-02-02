@@ -833,7 +833,7 @@ pub fn determine_rp_in_crate(sess: Session,
 
     debug!("%s", {
         debug!("Region variance results:");
-        for cx.region_paramd_items.each |key, value| {
+        for cx.region_paramd_items.each_ref |&key, &value| {
             debug!("item %? (%s) is parameterized with variance %?",
                    key,
                    ast_map::node_id_to_str(ast_map, key,
