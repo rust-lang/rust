@@ -320,10 +320,6 @@ pub mod chained {
             self.each_ref(|k, v| blk(*k, *v))
         }
 
-        pure fn each_key(blk: fn(key: K) -> bool) {
-            self.each_key_ref(|p| blk(*p))
-        }
-
         pure fn each_ref(blk: fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }
@@ -407,7 +403,7 @@ pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, key: K) -> bool {
 /// Convert a set into a vector.
 pub pure fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
     do vec::build_sized(s.len()) |push| {
-        for s.each_key() |k| {
+        for s.each_key_ref() |&k| {
             push(k);
         }
     }

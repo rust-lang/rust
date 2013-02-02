@@ -730,7 +730,7 @@ pub fn configure(opts: Options) -> Cargo {
     need_dir(&c.libdir);
     need_dir(&c.bindir);
 
-    for sources.each_key |k| {
+    for sources.each_key_ref |&k| {
         let mut s = sources.get(k);
         load_source_packages(&c, s);
         sources.insert(k, s);
@@ -1155,7 +1155,7 @@ pub fn cmd_install(c: &Cargo) {
 }
 
 pub fn sync(c: &Cargo) {
-    for c.sources.each_key |k| {
+    for c.sources.each_key_ref |&k| {
         let mut s = c.sources.get(k);
         sync_one(c, s);
         c.sources.insert(k, s);
@@ -1686,7 +1686,7 @@ pub fn cmd_sources(c: &Cargo) {
 
     match action {
         ~"clear" => {
-          for c.sources.each_key |k| {
+          for c.sources.each_key_ref |&k| {
                 c.sources.remove(k);
             }
 
