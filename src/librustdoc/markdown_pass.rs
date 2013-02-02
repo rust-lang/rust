@@ -35,16 +35,17 @@ use trim_pass;
 use unindent_pass;
 
 use core::iter;
-use core::oldcomm;
 use core::str;
 use core::vec;
 use std::par;
+use std::cell::Cell;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
+    let writer_factory = Cell(writer_factory);
     let f = fn~(move writer_factory,
                 srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
-        run(srv, doc, copy writer_factory)
+        run(srv, doc, writer_factory.take())
     };
 
     Pass {
@@ -155,7 +156,7 @@ fn should_request_new_writer_for_each_page() {
     write_markdown(doc, move writer_factory);
     // We expect two pages to have been written
     for iter::repeat(2) {
-        oldcomm::recv(po);
+        po.recv();
     }
 }
 
@@ -186,7 +187,7 @@ fn should_write_title_for_each_page() {
     let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
     write_markdown(doc, move writer_factory);
     for iter::repeat(2) {
-        let (page, markdown) = oldcomm::recv(po);
+        let (page, markdown) = po.recv();
         match page {
           doc::CratePage(_) => {
             assert str::contains(markdown, ~"% Crate core");
@@ -331,7 +332,7 @@ fn should_write_full_path_to_mod() {
     assert str::contains(markdown, ~"# Module `a::b::c`");
 }
 
-fn write_oldcommon(
+fn write_common(
     ctxt: &Ctxt,
     desc: Option<~str>,
     sections: &[doc::Section]
@@ -380,7 +381,7 @@ fn write_mod_contents(
     ctxt: &Ctxt,
     doc: doc::ModDoc
 ) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
         write_index(ctxt, (&doc.index).get());
     }
@@ -483,7 +484,7 @@ fn should_write_index_for_foreign_mods() {
 }
 
 fn write_nmod(ctxt: &Ctxt, doc: doc::NmodDoc) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
         write_index(ctxt, (&doc.index).get());
     }
@@ -534,7 +535,7 @@ fn write_fnlike(
     sections: &[doc::Section]
 ) {
     write_sig(ctxt, sig);
-    write_oldcommon(ctxt, desc, sections);
+    write_common(ctxt, desc, sections);
 }
 
 fn write_sig(ctxt: &Ctxt, sig: Option<~str>) {
@@ -603,7 +604,7 @@ fn write_const(
     doc: doc::ConstDoc
 ) {
     write_sig(ctxt, copy doc.sig);
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -624,7 +625,7 @@ fn write_enum(
     ctxt: &Ctxt,
     doc: doc::EnumDoc
 ) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
 }
 
@@ -705,7 +706,7 @@ fn should_write_variant_list_with_signatures() {
 }
 
 fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -753,7 +754,7 @@ fn should_write_trait_method_signature() {
 }
 
 fn write_impl(ctxt: &Ctxt, doc: doc::ImplDoc) {
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
@@ -795,7 +796,7 @@ fn write_type(
     doc: doc::TyDoc
 ) {
     write_sig(ctxt, copy doc.sig);
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -822,7 +823,7 @@ fn write_struct(
     doc: doc::StructDoc
 ) {
     write_sig(ctxt, copy doc.sig);
-    write_oldcommon(ctxt, doc.desc(), doc.sections());
+    write_common(ctxt, doc.desc(), doc.sections());
 }
 
 #[test]
@@ -848,7 +849,6 @@ mod test {
     use tystr_pass;
     use unindent_pass;
 
-    use core::oldcomm;
     use core::path::Path;
     use core::str;
 
@@ -900,7 +900,7 @@ mod test {
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         write_markdown(doc, move writer_factory);
-        return oldcomm::recv(po).second();
+        return po.recv().second();
     }
 
     pub fn write_markdown_str_srv(
@@ -910,7 +910,7 @@ mod test {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         let pass = mk_pass(move writer_factory);
         (pass.f)(srv, doc);
-        return oldcomm::recv(po).second();
+        return po.recv().second();
     }
 
     #[test]
