@@ -144,7 +144,6 @@ pub mod hashmap;
 
 /* Tasks and communication */
 
-pub mod oldcomm;
 #[path = "task/mod.rs"]
 pub mod task;
 pub mod pipes;
