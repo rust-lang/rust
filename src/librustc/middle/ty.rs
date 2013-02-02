@@ -2799,7 +2799,7 @@ pub fn br_hashmap<V:Copy>() -> HashMap<bound_region, V> {
 }
 
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
-    //io::println(fmt!("%?/%?", id, cx.node_types.size()));
+    //io::println(fmt!("%?/%?", id, cx.node_types.len()));
     match oldsmallintmap::find(*cx.node_types, id as uint) {
        Some(t) => t,
        None => cx.sess.bug(
@@ -4359,7 +4359,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
         if f(trait_ty) {
             // Add all the supertraits to the hash map,
             // executing <f> on each of them
-            while i < supertrait_map.size() && !fin {
+            while i < supertrait_map.len() && !fin {
                 let init_trait_id = seen_def_ids[i];
                 i += 1;
                  // Add supertraits to supertrait_map

@@ -11,6 +11,7 @@
 //! A map type - **deprecated**, use `core::hashmap` instead
 #[forbid(deprecated_mode)];
 
+use core::container::{Container, Mutable, Map};
 use core::cmp::Eq;
 use core::hash::Hash;
 use core::io::WriterUtil;
@@ -161,9 +162,12 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
-        pure fn size() -> uint { self.count }
+    impl<K: Eq IterBytes Hash, V> T<K, V>: Container {
+        pure fn len(&self) -> uint { self.count }
+        pure fn is_empty(&self) -> bool { self.count == 0 }
+    }
 
+    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
         pure fn contains_key_ref(k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
@@ -404,7 +408,7 @@ pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, key: K) -> bool {
 
 /// Convert a set into a vector.
 pub pure fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
-    do vec::build_sized(s.size()) |push| {
+    do vec::build_sized(s.len()) |push| {
         for s.each_key() |k| {
             push(k);
         }
@@ -580,7 +584,7 @@ mod tests {
             debug!("inserting %u -> %u", i, i*i);
             i += 1u;
         }
-        assert (hm.size() == num_to_insert);
+        assert (hm.len() == num_to_insert);
         debug!("-----");
         debug!("removing evens");
         i = 0u;
@@ -589,7 +593,7 @@ mod tests {
             assert v;
             i += 2u;
         }
-        assert (hm.size() == num_to_insert / 2u);
+        assert (hm.len() == num_to_insert / 2u);
         debug!("-----");
         i = 1u;
         while i < num_to_insert {
@@ -611,7 +615,7 @@ mod tests {
             debug!("inserting %u -> %u", i, i*i);
             i += 2u;
         }
-        assert (hm.size() == num_to_insert);
+        assert (hm.len() == num_to_insert);
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
@@ -620,7 +624,7 @@ mod tests {
             i += 1u;
         }
         debug!("-----");
-        assert (hm.size() == num_to_insert);
+        assert (hm.len() == num_to_insert);
         i = 0u;
         while i < num_to_insert {
             debug!("get(%u) = %u", i, hm.get(i));
@@ -653,10 +657,10 @@ mod tests {
         let key = ~"k";
         let map = HashMap::<~str, ~str>();
         map.insert(key, ~"val");
-        assert (map.size() == 1);
+        assert (map.len() == 1);
         assert (map.contains_key_ref(&key));
         map.clear();
-        assert (map.size() == 0);
+        assert (map.len() == 0);
         assert (!map.contains_key_ref(&key));
     }
 
@@ -667,7 +671,7 @@ mod tests {
             (~"b", 2),
             (~"c", 3)
         ]);
-        assert map.size() == 3u;
+        assert map.len() == 3u;
         assert map.get(~"a") == 1;
         assert map.get(~"b") == 2;
         assert map.get(~"c") == 3;

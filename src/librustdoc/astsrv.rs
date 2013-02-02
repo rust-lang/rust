@@ -164,7 +164,7 @@ fn srv_should_build_ast_map() {
     let source = ~"fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
-            assert ctxt.ast_map.size() != 0u
+            assert !ctxt.ast_map.is_empty()
         };
     }
 }

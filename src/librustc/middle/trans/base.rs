@@ -2796,7 +2796,7 @@ pub fn decl_gc_metadata(ccx: @crate_ctxt, llmod_id: ~str) {
 
 pub fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
-    let maptype = T_array(elttype, ccx.module_data.size() + 1u);
+    let maptype = T_array(elttype, ccx.module_data.len() + 1);
     let map = str::as_c_str(~"_rust_mod_map", |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
