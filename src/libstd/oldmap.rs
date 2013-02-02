@@ -167,6 +167,13 @@ pub mod chained {
         pure fn is_empty(&self) -> bool { self.count == 0 }
     }
 
+    impl<K: Eq IterBytes Hash, V> T<K, V>: Mutable {
+        fn clear(&mut self) {
+            self.count = 0u;
+            self.chains = chains(initial_capacity);
+        }
+    }
+
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
         pure fn contains_key_ref(k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
@@ -307,11 +314,6 @@ pub mod chained {
                 true
               }
             }
-        }
-
-        fn clear() {
-            self.count = 0u;
-            self.chains = chains(initial_capacity);
         }
 
         pure fn each(blk: fn(key: K, value: V) -> bool) {
@@ -655,7 +657,7 @@ mod tests {
     #[test]
     fn test_clear() {
         let key = ~"k";
-        let map = HashMap::<~str, ~str>();
+        let mut map = HashMap::<~str, ~str>();
         map.insert(key, ~"val");
         assert (map.len() == 1);
         assert (map.contains_key_ref(&key));
