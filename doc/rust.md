@@ -844,7 +844,7 @@ mod quux {
         pub fn bar() { }
         pub fn baz() { }
     }
-    
+
     pub use quux::foo::*;
 }
 ~~~~
@@ -1242,7 +1242,7 @@ trait Num {
 impl float: Num {
     static pure fn from_int(n: int) -> float { n as float }
 }
-let x: float = Num::from_int(42);     
+let x: float = Num::from_int(42);
 ~~~~
 
 Traits may inherit from other traits. For example, in
@@ -1615,7 +1615,7 @@ The following are examples of structure expressions:
 ~~~~
 # struct Point { x: float, y: float }
 # struct TuplePoint(float, float);
-# mod game { pub struct User { name: &str, age: uint, mut score: uint } } 
+# mod game { pub struct User { name: &str, age: uint, mut score: uint } }
 # use game;
 Point {x: 10f, y: 20f};
 TuplePoint(10f, 20f);
@@ -2812,7 +2812,7 @@ trait Printable {
 }
 
 impl int: Printable {
-  fn to_str() -> ~str { int::to_str(self, 10) }
+  fn to_str() -> ~str { int::to_str(self) }
 }
 
 fn print(a: @Printable) {
