@@ -73,7 +73,7 @@ fn fold_item(
 }
 
 fn apply_to_sections(
-    +op: NominalOp<Op>,
+    op: NominalOp<Op>,
     sections: ~[doc::Section]
 ) -> ~[doc::Section] {
     par::map(sections, |section, copy op| doc::Section {
