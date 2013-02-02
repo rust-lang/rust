@@ -296,7 +296,7 @@ pub fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
       _ => {}
     };
 
-    if new_cx.root_exprs.contains_key(expr.id) {
+    if new_cx.root_exprs.contains_key_ref(&expr.id) {
         new_cx.parent = Some(expr.id);
     }
 

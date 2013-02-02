@@ -71,7 +71,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
                       }
                       if i == depth { // Made it to end of loop
                         let dnum = ast_util::def_id_of_def(def).node;
-                        if !seen.contains_key(dnum) {
+                        if !seen.contains_key_ref(&dnum) {
                             refs.push(@freevar_entry {
                                 def: def,
                                 span: expr.span,

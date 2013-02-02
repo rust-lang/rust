@@ -94,7 +94,7 @@ pub fn set_crate_data(cstore: CStore,
 }
 
 pub fn have_crate_data(cstore: CStore, cnum: ast::crate_num) -> bool {
-    return p(cstore).metas.contains_key(cnum);
+    return p(cstore).metas.contains_key_ref(&cnum);
 }
 
 pub fn iter_crate_data(cstore: CStore,

@@ -1706,7 +1706,7 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            if c.sources.contains_key(name) {
+            if c.sources.contains_key_ref(&name) {
                 error(fmt!("source already exists: %s", name));
             } else {
                 c.sources.insert(name, @Source {
@@ -1733,7 +1733,7 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            if c.sources.contains_key(name) {
+            if c.sources.contains_key_ref(&name) {
                 c.sources.remove(name);
                 info(fmt!("removed source: %s", name));
             } else {

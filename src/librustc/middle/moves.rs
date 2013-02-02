@@ -640,7 +640,7 @@ impl VisitContext {
                                arg_exprs: &[@expr],
                                visitor: vt<VisitContext>) -> bool
     {
-        if !self.method_map.contains_key(expr.id) {
+        if !self.method_map.contains_key_ref(&expr.id) {
             return false;
         }
 
@@ -771,7 +771,7 @@ impl VisitContext {
             for arm.pats.each |pat| {
                 let mut found = false;
                 do pat_bindings(self.tcx.def_map, *pat) |_, node_id, _, _| {
-                    if moves_map.contains_key(node_id) {
+                    if moves_map.contains_key_ref(&node_id) {
                         found = true;
                     }
                 }

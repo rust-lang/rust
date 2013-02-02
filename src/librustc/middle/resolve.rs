@@ -2211,7 +2211,7 @@ pub impl Resolver {
         }
 
         // We've successfully resolved the import. Write the results in.
-        assert module_.import_resolutions.contains_key(target);
+        assert module_.import_resolutions.contains_key_ref(&target);
         let import_resolution = module_.import_resolutions.get(target);
 
         match value_result {
@@ -2370,7 +2370,7 @@ pub impl Resolver {
         }
 
         // We've successfully resolved the import. Write the results in.
-        assert module_.import_resolutions.contains_key(target);
+        assert module_.import_resolutions.contains_key_ref(&target);
         let import_resolution = module_.import_resolutions.get(target);
 
         match module_result {
@@ -4090,7 +4090,7 @@ pub impl Resolver {
             }
 
             for map_i.each |key, binding| {
-                if !map_0.contains_key(key) {
+                if !map_0.contains_key_ref(&key) {
                     self.session.span_err(
                         binding.span,
                         fmt!("variable `%s` from pattern #%u is \
@@ -4319,7 +4319,8 @@ pub impl Resolver {
 
                             match bindings_list {
                                 Some(bindings_list)
-                                if !bindings_list.contains_key(ident) => {
+                                if !bindings_list.contains_key_ref(&ident)
+                                    => {
                                     let last_rib = (*self.value_ribs).last();
                                     last_rib.bindings.insert(ident,
                                                              dl_def(def));
@@ -4391,16 +4392,19 @@ pub impl Resolver {
                 pat_struct(path, _, _) => {
                     match self.resolve_path(path, TypeNS, false, visitor) {
                         Some(def_ty(class_id))
-                                if self.structs.contains_key(class_id) => {
+                                if self.structs.contains_key_ref(&class_id)
+                                     => {
                             let class_def = def_struct(class_id);
                             self.record_def(pattern.id, class_def);
                         }
                         Some(definition @ def_struct(class_id))
-                                if self.structs.contains_key(class_id) => {
+                                if self.structs.contains_key_ref(&class_id)
+                                     => {
                             self.record_def(pattern.id, definition);
                         }
                         Some(definition @ def_variant(_, variant_id))
-                                if self.structs.contains_key(variant_id) => {
+                                if self.structs.contains_key_ref(&variant_id)
+                                     => {
                             self.record_def(pattern.id, definition);
                         }
                         result => {
@@ -4848,12 +4852,12 @@ pub impl Resolver {
 
                 match self.resolve_path(path, TypeNS, false, visitor) {
                     Some(def_ty(class_id)) | Some(def_struct(class_id))
-                            if self.structs.contains_key(class_id) => {
+                            if self.structs.contains_key_ref(&class_id) => {
                         let class_def = def_struct(class_id);
                         self.record_def(expr.id, class_def);
                     }
                     Some(definition @ def_variant(_, class_id))
-                            if self.structs.contains_key(class_id) => {
+                            if self.structs.contains_key_ref(&class_id) => {
                         self.record_def(expr.id, definition);
                     }
                     _ => {
@@ -5073,7 +5077,7 @@ pub impl Resolver {
                self.session.str_of(name));
 
         match self.trait_info.find(trait_def_id) {
-            Some(trait_info) if trait_info.contains_key(name) => {
+            Some(trait_info) if trait_info.contains_key_ref(&name) => {
                 debug!("(adding trait info if containing method) found trait \
                         %d:%d for method '%s'",
                        trait_def_id.crate,
