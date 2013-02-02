@@ -15,8 +15,7 @@
    The kernel is primarily responsible for managing the lifetime of
    schedulers, which in turn run rust tasks. It provides a memory
    allocator and logging service for use by other runtime components,
-   it creates unique task and port ids and provides global access
-   to ports by id.
+   it creates unique task ids.
 
    The kernel runs until there are no live schedulers.
 
@@ -56,13 +55,11 @@ class rust_scheduler;
 class rust_sched_driver;
 class rust_sched_launcher_factory;
 struct rust_task_thread;
-class rust_port;
 
-// Scheduler, task, and port handles. These uniquely identify within a
+// Scheduler, task handles. These uniquely identify within a
 // single kernel instance the objects they represent.
 typedef intptr_t rust_sched_id;
 typedef intptr_t rust_task_id;
-typedef intptr_t rust_port_id;
 
 typedef std::map<rust_sched_id, rust_scheduler*> sched_map;
 
@@ -79,12 +76,6 @@ class rust_kernel {
 
     // The next task id
     rust_task_id max_task_id;
-
-    // Protects max_port_id and port_table
-    lock_and_signal port_lock;
-    // The next port id
-    rust_task_id max_port_id;
-    hash_map<rust_port_id, rust_port *> port_table;
 
     lock_and_signal rval_lock;
     int rval;
@@ -163,10 +154,6 @@ public:
 
     rust_task_id generate_task_id();
 
-    rust_port_id register_port(rust_port *port);
-    rust_port *get_port_by_id(rust_port_id id);
-    void release_port_id(rust_port_id tid);
-
     void set_exit_status(int code);
 
     rust_sched_id main_sched_id() { return main_scheduler; }
@@ -176,8 +163,6 @@ public:
     void unregister_task();
     void inc_weak_task_count();
     void dec_weak_task_count();
-
-    bool send_to_port(rust_port_id chan, void *sptr);
 
     void register_exit_function(spawn_fn runner, fn_env_pair *f);
 };

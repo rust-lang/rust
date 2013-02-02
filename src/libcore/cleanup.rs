@@ -88,7 +88,6 @@ struct Task {
     kernel: *Kernel,                    // 112
     name: *c_char,                      // 116
     list_index: i32,                    // 120
-    rendezvous_ptr: *uintptr_t,         // 124
     boxed_region: BoxedRegion           // 128
 }
 
@@ -107,7 +106,6 @@ struct Task {
     kernel: *Kernel,
     name: *c_char,
     list_index: i32,
-    rendezvous_ptr: *uintptr_t,
     boxed_region: BoxedRegion
 }
 

@@ -21,7 +21,6 @@
 
 #include "rust_task.h"
 #include "rust_env.h"
-#include "rust_port.h"
 #include "rust_globals.h"
 #include "rust_crate_map.h"
 
@@ -37,7 +36,6 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     kernel(sched_loop->kernel),
     name(name),
     list_index(-1),
-    rendezvous_ptr(0),
     boxed(sched_loop->kernel->env, &local_region),
     local_region(&sched_loop->local_region),
     unwinding(false),
