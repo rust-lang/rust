@@ -347,8 +347,6 @@ public:
     // Propagate failure to the entire rust runtime.
     void fail_sched_loop();
 
-    frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
-
     void *calloc(size_t size, const char *tag);
 
     // Use this function sparingly. Depending on the ref count is generally
