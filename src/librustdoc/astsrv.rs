@@ -23,7 +23,6 @@ use parse;
 use util;
 
 use core::pipes::{stream, Chan, SharedChan, Port};
-use core::oldcomm;
 use core::vec;
 use core::ops::Drop;
 use rustc::back::link;
