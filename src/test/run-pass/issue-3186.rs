@@ -12,4 +12,4 @@ enum y { x }
 
 enum x {}
 
-fn main() {}
+pub fn main() {}

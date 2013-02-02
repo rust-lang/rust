@@ -24,6 +24,6 @@ impl int : Cat {
     }
 }
 
-fn main() {
+pub fn main() {
     assert 5.meow();
 }

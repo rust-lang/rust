@@ -10,7 +10,7 @@
 
 // Issue #2482.
 
-fn main() {
+pub fn main() {
     let v1: ~[int] = ~[10, 20, 30,];
     let v2: ~[int] = ~[10, 20, 30];
     assert (v1[2] == v2[2]);

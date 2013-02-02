@@ -7,7 +7,7 @@ fn foo(cat: &mut Cat) {
     bar(&*cat);
 }
 
-fn main() {
+pub fn main() {
     let mut mimi = ~Cat;
     foo(mimi);
 }

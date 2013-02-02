@@ -49,7 +49,7 @@ mod test {
     }
 }
 
-fn main() {
+pub fn main() {
     let (client_, server_) = pingpong::init();
     let client_ = ~mut Some(move client_);
     let server_ = ~mut Some(move server_);

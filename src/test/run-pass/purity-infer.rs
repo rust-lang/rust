@@ -10,6 +10,6 @@
 
 
 fn something(f: pure fn()) { f(); }
-fn main() {
+pub fn main() {
     something(|| log(error, "hi!") );
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn main() {
+pub fn main() {
     let i: int =
         match Some::<int>(3) { None::<int> => { die!() } Some::<int>(_) => { 5 } };
     log(debug, i);

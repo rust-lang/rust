@@ -12,4 +12,4 @@
 // xfail-fast
 
 pub fn f() { }
-fn main() { return ::f(); }
+pub fn main() { return ::f(); }

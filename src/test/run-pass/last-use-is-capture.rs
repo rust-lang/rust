@@ -12,7 +12,7 @@
 
 struct A { a: ~int }
 
-fn main() {
+pub fn main() {
     fn invoke(f: fn@()) { f(); }
     let k = ~22;
     let _u = A {a: copy k};

@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-fn main() {
+pub fn main() {
     let mut x: u8 = 12u8;
     let y: u8 = 12u8;
     x = x + 1u8;

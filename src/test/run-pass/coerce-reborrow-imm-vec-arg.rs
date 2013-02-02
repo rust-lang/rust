@@ -16,4 +16,4 @@ fn sum_const(y: &[const int]) -> int {
     sum(y)
 }
 
-fn main() {}
+pub fn main() {}

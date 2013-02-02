@@ -18,4 +18,4 @@ extern mod bindgen {
     pub fn printf(++v: void);
 }
 
-fn main() { }
+pub fn main() { }

@@ -11,7 +11,7 @@
 // xfail-fast
 // xfail-test
 
-fn main() {
+pub fn main() {
     loop foo: {
         loop {
             break foo;

@@ -6,6 +6,6 @@ fn f() {
     let x: int = die!();
 }
 
-fn main() {
+pub fn main() {
 
 }

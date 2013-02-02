@@ -12,6 +12,6 @@
 
 const toplevel_mod: int = -1;
 
-fn main() {
+pub fn main() {
     assert toplevel_mod == -1;
 }

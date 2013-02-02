@@ -13,7 +13,7 @@
 struct A { a: int }
 struct V { v: int }
 
-fn main() {
+pub fn main() {
     let a = { let b = A {a: 3}; b };
     assert (a.a == 3);
     let c = { let d = V {v: 3}; d };

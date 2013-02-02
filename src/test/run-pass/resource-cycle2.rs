@@ -41,7 +41,7 @@ struct Node {
     r: r
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         let i1 = ~0xA;
         let i1p = cast::reinterpret_cast(&i1);

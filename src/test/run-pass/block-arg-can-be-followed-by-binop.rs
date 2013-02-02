@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let v = ~[-1f, 0f, 1f, 2f, 3f];
 
     // Trailing expressions don't require parentheses:

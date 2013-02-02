@@ -22,7 +22,7 @@ impl Bar : Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = ~Bar { x: 10 };
     let y = x as ~Foo;
     let z = copy y;

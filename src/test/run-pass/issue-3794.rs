@@ -31,7 +31,7 @@ fn print_s(s: &S) {
     s.print();
 }
 
-fn main() {
+pub fn main() {
     let s: @S = @S { s: 5 };
     print_s(s);
     let t: @T = s as @T;

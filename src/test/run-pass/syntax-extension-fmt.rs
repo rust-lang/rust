@@ -16,7 +16,7 @@ fn test(actual: ~str, expected: ~str) {
     assert (actual == expected);
 }
 
-fn main() {
+pub fn main() {
     test(fmt!("hello %d friends and %s things", 10, ~"formatted"),
          ~"hello 10 friends and formatted things");
 

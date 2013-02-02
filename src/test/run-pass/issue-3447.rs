@@ -24,7 +24,7 @@ impl<T> list<T>{
     }
 }
 
-fn main() {
+pub fn main() {
     let s = @"str";
     let ls = list {
         element: &s,

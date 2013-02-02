@@ -12,7 +12,7 @@
 
 extern mod std;
 
-fn main() {
+pub fn main() {
     let mut i = 10;
     while i > 0 { task::spawn({let i = i; || child(i)}); i = i - 1; }
     debug!("main thread exiting");

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-fn main() {
+pub fn main() {
     enum State { BadChar, BadSyntax }
     
     match BadChar {

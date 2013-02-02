@@ -36,4 +36,4 @@ mod dug {
 }
 
 
-fn main() { f1(); f2(); f4(); nameless_fear(); also_redstone(); }
+pub fn main() { f1(); f2(); f4(); nameless_fear(); also_redstone(); }

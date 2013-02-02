@@ -78,7 +78,7 @@ fn supervisor() {
     join(t);
 }
 
-fn main() {
+pub fn main() {
     join(joinable(supervisor));
 }
 

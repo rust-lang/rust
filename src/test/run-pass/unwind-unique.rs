@@ -16,6 +16,6 @@ fn f() {
     die!();
 }
 
-fn main() {
+pub fn main() {
     task::spawn_unlinked(f);
 }

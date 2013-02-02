@@ -10,7 +10,7 @@
 
 
 
-fn main() {
+pub fn main() {
     let c: char = 'x';
     let d: char = 'x';
     assert (c == 'x');

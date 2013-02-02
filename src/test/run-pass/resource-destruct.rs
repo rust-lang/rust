@@ -28,7 +28,7 @@ fn shrinky_pointer(i: @@mut int) -> shrinky_pointer {
     }
 }
 
-fn main() {
+pub fn main() {
     let my_total = @@mut 10;
     { let pt = move shrinky_pointer(my_total); assert (pt.look_at() == 10); }
     log(error, fmt!("my_total = %d", **my_total));

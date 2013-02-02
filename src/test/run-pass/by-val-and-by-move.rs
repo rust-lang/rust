@@ -20,7 +20,7 @@ fn it_takes_two(x: @int, -y: @int) -> int {
 fn free<T>(-_t: T) {
 }
 
-fn main() {
+pub fn main() {
     let z = @3;
     assert 3 == it_takes_two(z, z);
 }

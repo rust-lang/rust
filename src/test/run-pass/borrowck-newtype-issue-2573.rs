@@ -27,4 +27,4 @@ fn really_impure(++bar: baz) {
     bar.baz = 3;
 }
 
-fn main() {}
+pub fn main() {}

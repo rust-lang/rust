@@ -13,4 +13,4 @@
 #[forbid(non_camel_case_types)]
 type Foo_ = int;
 
-fn main() { }
+pub fn main() { }

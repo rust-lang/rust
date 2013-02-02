@@ -17,6 +17,6 @@ struct Foo {
     z: int
 }
 
-fn main() {}
+pub fn main() {}
 
 

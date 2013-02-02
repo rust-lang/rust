@@ -59,7 +59,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 
-fn main() {
+pub fn main() {
   let nyan = cat(0u, 2, ~"nyan");
   nyan.eat();
   assert(!nyan.eat());

@@ -20,7 +20,7 @@ fn apply<T>(produce: extern fn() -> T,
     consume(produce());
 }
 
-fn main() {
+pub fn main() {
     let produce: extern fn() -> int = mk;
     let consume: extern fn(&&v: int) = chk;
     apply::<int>(produce, consume);

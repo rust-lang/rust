@@ -27,7 +27,7 @@ class keys<K: Copy, V: Copy, M: Copy map<K,V>>
     fn eachi(blk: fn(uint, K) -> bool) { iter::eachi(self, blk) }
 }
 
-fn main() {
+pub fn main() {
     let m = int_hash();
     m.insert(1, 2);
     m.insert(3, 4);

@@ -32,4 +32,4 @@ fn test2() {
     assert (b == ~"ABCabcABC");
 }
 
-fn main() { test1(); test2(); }
+pub fn main() { test1(); test2(); }

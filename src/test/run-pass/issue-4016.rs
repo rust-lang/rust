@@ -24,4 +24,4 @@ fn exec<T: JD>() {
     die!()
 }
 
-fn main() {}
+pub fn main() {}

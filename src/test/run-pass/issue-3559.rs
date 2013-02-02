@@ -36,4 +36,4 @@ fn tester()
     assert check_strs(table.to_str(), ~"xxx");   // not sure what expected should be
 }
 
-fn main() {}
+pub fn main() {}

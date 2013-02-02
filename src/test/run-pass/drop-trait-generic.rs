@@ -18,7 +18,7 @@ impl<T> S<T> : ::core::ops::Drop {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = S { x: 1 };
 }
 

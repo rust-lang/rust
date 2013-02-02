@@ -16,4 +16,4 @@ pure fn each(self: PureCounter, blk: fn(v: &uint)) {
     blk(x);
 }
 
-fn main() {}
+pub fn main() {}

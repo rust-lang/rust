@@ -21,7 +21,7 @@ fn make(i: int) -> t {
     return b(s);
 }
 
-fn main() {
+pub fn main() {
     let mut i = 0;
 
 

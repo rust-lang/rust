@@ -78,7 +78,7 @@ fn get_v5_ref(a: &v/A, i: uint) -> &v/int {
     }
 }
 
-fn main() {
+pub fn main() {
     let a = A {value: B {v1: 22,
                          v2: [23, 24, 25],
                          v3: ~[26, 27, 28],

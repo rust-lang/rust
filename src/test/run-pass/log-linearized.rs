@@ -29,7 +29,7 @@ fn f<T,U>() {
     log(error, sim);
 }
 
-fn main() {
+pub fn main() {
     f::<int,int>();
 }
 

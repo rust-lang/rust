@@ -15,7 +15,7 @@ enum foo = X;
 
 struct X { x: uint, nxt: *foo }
 
-fn main() {
+pub fn main() {
     let x = foo(X {x: 0, nxt: ptr::null()});
 }
 

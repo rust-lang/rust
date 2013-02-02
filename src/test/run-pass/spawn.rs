@@ -13,7 +13,7 @@
 extern mod std;
 
 
-fn main() {
+pub fn main() {
     task::spawn(|| child(10) );
 }
 

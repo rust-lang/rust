@@ -16,6 +16,6 @@ trait Bar : Foo {
     fn bar();
 }
 
-fn main() {}
+pub fn main() {}
 
 

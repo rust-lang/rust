@@ -31,4 +31,4 @@ impl int: frobable {
     }
 }
 
-fn main() { }
+pub fn main() { }

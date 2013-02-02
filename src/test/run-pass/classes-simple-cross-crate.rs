@@ -13,7 +13,7 @@
 extern mod cci_class;
 use cci_class::kitties::*;
 
-fn main() {
+pub fn main() {
   let nyan : cat = cat(52u, 99);
   let kitty = cat(1000u, 2);
   assert(nyan.how_hungry == 99);

@@ -32,7 +32,7 @@ impl S: Reader {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = S { x: 1, y: 2 };
     let x = x as @Reader;
     x.read_bytes(0);

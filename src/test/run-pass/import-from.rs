@@ -17,4 +17,4 @@ mod spam {
     pub fn eggs() { }
 }
 
-fn main() { ham(); eggs(); }
+pub fn main() { ham(); eggs(); }

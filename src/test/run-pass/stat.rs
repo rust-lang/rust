@@ -14,7 +14,7 @@ extern mod std;
 use io::WriterUtil;
 use std::tempfile;
 
-fn main() {
+pub fn main() {
     let dir = option::unwrap(tempfile::mkdtemp(&Path("."), ""));
     let path = dir.with_filename("file");
 

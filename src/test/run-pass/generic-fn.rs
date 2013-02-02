@@ -16,7 +16,7 @@ fn id<T: Copy>(x: T) -> T { return x; }
 
 struct Triple {x: int, y: int, z: int}
 
-fn main() {
+pub fn main() {
     let mut x = 62;
     let mut y = 63;
     let a = 'a';

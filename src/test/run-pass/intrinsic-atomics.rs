@@ -27,7 +27,7 @@ extern mod rusti {
     pub fn atomic_xsub_rel(dst: &mut int, src: int) -> int;
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         let x = ~mut 1;
 

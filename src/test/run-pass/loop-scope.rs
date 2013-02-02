@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let x = ~[10, 20, 30];
     let mut sum = 0;
     for x.each |x| { sum += *x; }

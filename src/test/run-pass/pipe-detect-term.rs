@@ -28,7 +28,7 @@ proto! oneshot (
     }
 )
 
-fn main() {
+pub fn main() {
     let iotask = &uv::global_loop::get();
     
     pipes::spawn_service(oneshot::init, |p| { 

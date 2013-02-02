@@ -16,5 +16,5 @@ pure fn g() {
     do f { }
 }
 
-fn main() {
+pub fn main() {
 }

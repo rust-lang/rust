@@ -27,7 +27,7 @@ fn f<A:Owned Copy, B:Owned Copy>(a: A, b: B) -> fn@() -> (A, B) {
     fn@() -> (A, B) { (a, b) }
 }
 
-fn main() {
+pub fn main() {
     let x = 22_u8;
     let y = 44_u64;
     let z = f(~x, y);

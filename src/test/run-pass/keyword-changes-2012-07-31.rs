@@ -12,7 +12,7 @@
 // mod -> module
 // match -> match
 
-fn main() {
+pub fn main() {
 }
 
 mod foo {

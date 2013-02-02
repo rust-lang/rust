@@ -20,4 +20,4 @@ fn mk_raw_ty(st: sty, cname: Option<~str>) -> RawT {
     return RawT {struct_: st, cname: cname, hash: 0u};
 }
 
-fn main() { mk_raw_ty(ty_nil, None::<~str>); }
+pub fn main() { mk_raw_ty(ty_nil, None::<~str>); }

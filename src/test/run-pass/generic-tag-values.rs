@@ -16,7 +16,7 @@ enum noption<T> { some(T), }
 
 struct Pair { x: int, y: int }
 
-fn main() {
+pub fn main() {
     let nop: noption<int> = some::<int>(5);
     match nop { some::<int>(n) => { log(debug, n); assert (n == 5); } }
     let nop2: noption<Pair> = some(Pair{x: 17, y: 42});

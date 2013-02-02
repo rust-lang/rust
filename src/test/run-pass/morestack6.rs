@@ -53,7 +53,7 @@ fn runtest2(f: fn~(), frame_backoff: u32, last_stk: *u8) -> u32 {
     }
 }
 
-fn main() {
+pub fn main() {
     let fns = ~[
         calllink01,
         calllink02,

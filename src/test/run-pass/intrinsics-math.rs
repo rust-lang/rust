@@ -48,7 +48,7 @@ extern mod rusti {
     fn truncf64(x: f64) -> f64;
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         use rusti::*;
 

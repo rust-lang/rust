@@ -50,7 +50,7 @@ fn range(lo: uint, hi: uint, it: fn(uint)) {
     }
 }
 
-fn main() {
+pub fn main() {
     let range: fn@(fn&(uint)) = |a| range(0u, 1000u, a);
     let filt: fn@(fn&(&&v: uint)) = |a| filter(
         range,

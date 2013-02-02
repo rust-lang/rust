@@ -23,7 +23,7 @@ extern mod rustrt2 {
     pub fn last_os_error() -> ~str;
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         rustrt1::last_os_error();
         rustrt2::last_os_error();

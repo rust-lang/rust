@@ -17,7 +17,7 @@ fn f(p: point, x: int, y: int) {
     assert (b == y);
 }
 
-fn main() {
+pub fn main() {
     let p: point = (10, 20);
     let (a, b) = p;
     assert (a == 10);

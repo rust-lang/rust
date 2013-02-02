@@ -12,7 +12,7 @@ mod buildings {
     pub struct Tower { height: uint }
 }
 
-fn main() {
+pub fn main() {
     let sears = buildings::Tower { height: 1451 };
     let h: uint = match sears {
         buildings::Tower { height: h } => { h }

@@ -14,7 +14,7 @@ use pipes::{Port, Chan};
   This is about the simplest program that can successfully send a
   message.
  */
-fn main() {
+pub fn main() {
     let (po, ch) = pipes::stream();
     ch.send(42);
     let r = po.recv();

@@ -81,9 +81,9 @@ mod m {
 // Since the bogus configuration isn't defined main will just be
 // parsed, but nothing further will be done with it
 #[cfg(bogus)]
-fn main() { die!() }
+pub fn main() { die!() }
 
-fn main() {
+pub fn main() {
     // Exercise some of the configured items in ways that wouldn't be possible
     // if they had the bogus definition
     assert (b);

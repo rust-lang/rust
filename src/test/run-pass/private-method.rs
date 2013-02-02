@@ -32,7 +32,7 @@ fn cat(in_x : uint, in_y : int) -> cat {
     }
 }
 
-fn main() {
+pub fn main() {
   let nyan : cat = cat(52u, 99);
   nyan.play();
 }

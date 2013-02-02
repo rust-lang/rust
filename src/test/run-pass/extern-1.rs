@@ -11,5 +11,5 @@
 extern fn f() {
 }
 
-fn main() {
+pub fn main() {
 }

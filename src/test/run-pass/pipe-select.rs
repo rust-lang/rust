@@ -33,7 +33,7 @@ proto! stream (
     }
 )
 
-fn main() {
+pub fn main() {
     use oneshot::client::*;
     use stream::client::*;
 

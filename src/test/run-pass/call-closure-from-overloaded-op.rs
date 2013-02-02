@@ -10,7 +10,7 @@
 
 fn foo() -> int { 22 }
 
-fn main() {
+pub fn main() {
     let x = dvec::DVec::<@fn() -> int>();
     x.push(foo);
     assert (x[0])() == 22;

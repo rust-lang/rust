@@ -15,7 +15,7 @@ fn foo(s: &r/uint) -> bool {
     }
 }
 
-fn main() {
+pub fn main() {
     assert foo(&3);
     assert !foo(&4);
 }

@@ -20,4 +20,4 @@ fn kitten(cat: Option<cat>) -> kitten {
 
 type cat = @kitten;
 
-fn main() {}
+pub fn main() {}

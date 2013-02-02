@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let x = true;
     if x { let mut i = 10; while i > 0 { i -= 1; } }
     match x { true => { debug!("right"); } false => { debug!("wrong"); } }

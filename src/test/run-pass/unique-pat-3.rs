@@ -11,7 +11,7 @@
 
 enum bar { u(~int), w(int), }
 
-fn main() {
+pub fn main() {
     assert match u(~10) {
       u(a) => {
         log(error, a);

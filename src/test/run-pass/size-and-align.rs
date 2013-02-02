@@ -21,7 +21,7 @@ fn uhoh<T>(v: ~[clam<T>]) {
     }
 }
 
-fn main() {
+pub fn main() {
     let v: ~[clam<int>] = ~[b::<int>, b::<int>, a::<int>(42, 17)];
     uhoh::<int>(v);
 }

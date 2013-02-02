@@ -16,7 +16,7 @@ enum Foo {
 
 const X: Foo = Bar;
 
-fn main() {
+pub fn main() {
     match X {
         Bar => {}
         Baz | Boo => die!()

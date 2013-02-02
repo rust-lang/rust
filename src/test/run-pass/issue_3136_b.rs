@@ -12,5 +12,5 @@
 // aux-build:issue_3136_a.rc
 
 extern mod issue_3136_a;
-fn main() {}
+pub fn main() {}
 

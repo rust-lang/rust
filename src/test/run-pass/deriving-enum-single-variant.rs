@@ -5,4 +5,4 @@ pub enum Task {
     TaskHandle(task_id)
 }
 
-fn main() { }
+pub fn main() { }

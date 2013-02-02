@@ -19,6 +19,6 @@ macro_rules! foo {
     })
 }
 
-fn main() {
+pub fn main() {
     assert foo!(m::t) == 10;
 }

@@ -24,5 +24,5 @@ fn foo(name: ~str, samples_chan: Chan<Msg>) {
     };
 }
 
-fn main() {}
+pub fn main() {}
 

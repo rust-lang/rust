@@ -12,7 +12,7 @@
 // reachable for each numeric type, for each exported impl, with no imports
 // necessary. Testing the methods of the impls is done within the source
 // file for each numeric type.
-fn main() {
+pub fn main() {
 // ints
     // num
     assert 15i.add(&6) == 21;

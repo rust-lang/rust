@@ -31,7 +31,7 @@ fn test_fail_indirect() {
     task::try(|| g() );
 }
 
-fn main() {
+pub fn main() {
     test_break();
     test_cont();
     test_ret();

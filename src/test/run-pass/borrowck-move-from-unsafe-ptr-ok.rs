@@ -17,5 +17,5 @@ fn bar(x: *~int) -> ~int {
     }
 }
 
-fn main() {
+pub fn main() {
 }

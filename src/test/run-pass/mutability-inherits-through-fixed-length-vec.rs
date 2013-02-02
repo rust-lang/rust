@@ -20,7 +20,7 @@ fn test2() {
     for ints.each |i| { assert *i == 22; }
 }
 
-fn main() {
+pub fn main() {
     test1();
     test2();
 }

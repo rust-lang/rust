@@ -28,7 +28,7 @@ fn process(c: color) -> int {
     return x;
 }
 
-fn main() {
+pub fn main() {
     let gray: color = rgb(127, 127, 127);
     let clear: color = rgba(50, 150, 250, 0);
     let red: color = hsl(0, 255, 255);

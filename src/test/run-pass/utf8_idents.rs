@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let ε = 0.00001;
     let Π = 3.14;
     let लंच = Π * Π + 1.54;

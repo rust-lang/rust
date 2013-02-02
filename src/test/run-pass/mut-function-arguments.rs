@@ -20,7 +20,7 @@ fn g() {
 
 }
 
-fn main() {
+pub fn main() {
     let z = ~17;
     f(z);
     g();

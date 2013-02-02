@@ -110,7 +110,7 @@ fn test_chan() {
     assert (i == 10);
 }
 
-fn main() {
+pub fn main() {
     test_rec();
     test_vec();
     test_str();

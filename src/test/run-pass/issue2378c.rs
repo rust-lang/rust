@@ -18,7 +18,7 @@ use issue2378b;
 use issue2378a::{just, methods};
 use issue2378b::{methods};
 
-fn main() {
+pub fn main() {
     let x = {a: just(3), b: just(5)};
     assert x[0u] == (3, 5);
 }

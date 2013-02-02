@@ -24,7 +24,7 @@ fn with(bi: &r/boxed_int) {
     assert *get(bi) == 22;
 }
 
-fn main() {
+pub fn main() {
     let g = 22;
     let foo = boxed_int { f: &g };
     with(&foo);

@@ -12,4 +12,4 @@
 
 enum t { a, b(@int), }
 
-fn main() { let mut x = b(@10); x = a; }
+pub fn main() { let mut x = b(@10); x = a; }

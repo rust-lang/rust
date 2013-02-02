@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     enum t { t1(int), t2(int), }
 
     let x = ~t1(10);

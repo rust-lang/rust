@@ -26,6 +26,6 @@ fn parse_args() -> ~str {
     return ~""
 }
 
-fn main() {
+pub fn main() {
     io::println(parse_args());
 }

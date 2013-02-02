@@ -19,7 +19,7 @@ fn start(c: pipes::Chan<int>, start: int, number_of_messages: int) {
     while i < number_of_messages { c.send(start + i); i += 1; }
 }
 
-fn main() {
+pub fn main() {
     debug!("Check that we don't deadlock.");
     let (p, ch) = pipes::stream();
     task::try(|move ch| start(ch, 0, 10) );

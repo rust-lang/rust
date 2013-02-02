@@ -31,4 +31,4 @@ enum layout_data = {
     mut box: Option<@Box>
 };
 
-fn main() { }
+pub fn main() { }

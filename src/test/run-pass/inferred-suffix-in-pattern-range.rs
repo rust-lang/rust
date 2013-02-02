@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let x = 2;
     let x_message = match x {
       0 .. 1     => { ~"not many" }

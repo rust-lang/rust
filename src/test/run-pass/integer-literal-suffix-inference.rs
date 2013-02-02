@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     fn id_i8(n: i8) -> i8 { n }
     fn id_i16(n: i16) -> i16 { n }
     fn id_i32(n: i32) -> i32 { n }

@@ -29,7 +29,7 @@ fn foo(s: @int) {
     let _ = ::core::sys::refcount(s); // don't get bitten by last-use.
 }
 
-fn main() {
+pub fn main() {
     let s: @int = @0; // ref up
 
     let count = ::core::sys::refcount(s);

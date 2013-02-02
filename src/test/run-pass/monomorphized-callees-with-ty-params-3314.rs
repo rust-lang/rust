@@ -32,7 +32,7 @@ impl<A: Copy Serializable> F<A>: Serializable {
 impl io::Writer: Serializer {
 }
 
-fn main() {
+pub fn main() {
     do io::with_str_writer |wr| {
         let foo = F { a: 1 };
         foo.serialize(wr);

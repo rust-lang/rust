@@ -19,7 +19,7 @@ extern "stdcall" mod kernel32 {
 
 
 #[cfg(target_os = "win32")]
-fn main() {
+pub fn main() {
     unsafe {
         let expected = 1234u;
         kernel32::SetLastError(expected);
@@ -32,4 +32,4 @@ fn main() {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "freebsd")]
-fn main() { }
+pub fn main() { }

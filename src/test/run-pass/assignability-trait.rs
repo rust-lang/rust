@@ -38,7 +38,7 @@ fn length<A, T: iterable<A>>(x: T) -> uint {
     return len;
 }
 
-fn main() {
+pub fn main() {
     let x = ~[0,1,2,3];
     // Call a method
     for x.iterate() |y| { assert x[*y] == *y; }

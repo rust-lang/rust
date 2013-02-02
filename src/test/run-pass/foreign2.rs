@@ -27,4 +27,4 @@ extern mod libc {
 #[nolink]
 extern mod baz {}
 
-fn main() { }
+pub fn main() { }

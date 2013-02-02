@@ -38,7 +38,7 @@ fn variant_data_is_aligned<A,B>(amnt: uint, &&u: a_tag<A,B>) -> bool {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = mk_rec(22u64, 23u64);
     assert is_aligned(8u, x.tA);
     assert variant_data_is_aligned(8u, x.tA);

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[cfg(target_arch = "x86")]
-fn main() { }
+pub fn main() { }
 
 #[cfg(target_arch = "x86_64")]
-fn main() { }
+pub fn main() { }

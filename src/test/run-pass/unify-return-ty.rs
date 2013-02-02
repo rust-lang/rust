@@ -19,4 +19,4 @@ fn null<T>() -> *T {
     }
 }
 
-fn main() { null::<int>(); }
+pub fn main() { null::<int>(); }

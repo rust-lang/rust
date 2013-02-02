@@ -13,7 +13,7 @@ struct Foo {
     y: int
 }
 
-fn main() {
+pub fn main() {
     let f = |(x, _): (int, int)| io::println((x + 1).to_str());
     let g = |Foo { x: x, y: y }: Foo| io::println((x + 1).to_str());
     f((2, 3));

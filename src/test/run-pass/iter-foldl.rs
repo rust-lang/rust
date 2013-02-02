@@ -10,7 +10,7 @@
 
 fn add(x: &float, y: &uint) -> float { *x + ((*y) as float) }
 
-fn main() {
+pub fn main() {
     assert [1u, 3u].foldl(20f, add) == 24f;
     assert [].foldl(20f, add) == 20f;
     assert None.foldl(20f, add) == 20f;

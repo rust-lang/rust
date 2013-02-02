@@ -15,5 +15,5 @@ fn f() -> Option<Connection> {
     Some(mock_connection)
 }
 
-fn main() {
+pub fn main() {
 }

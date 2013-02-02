@@ -35,4 +35,4 @@ fn test_tag() {
     assert (rs == happy);
 }
 
-fn main() { test_rec(); test_tag(); }
+pub fn main() { test_rec(); test_tag(); }

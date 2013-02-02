@@ -1,4 +1,4 @@
-fn main() {
+pub fn main() {
     let mut count = 0;
     for 999_999.times() {
         count += 1;

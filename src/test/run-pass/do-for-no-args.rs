@@ -14,7 +14,7 @@ fn f(f: fn@() -> bool) { }
 
 fn d(f: fn@()) { }
 
-fn main() {
+pub fn main() {
     for f { }
     do d { }
 }

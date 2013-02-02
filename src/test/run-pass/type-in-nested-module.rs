@@ -18,4 +18,4 @@ mod a {
     }
 }
 
-fn main() { }
+pub fn main() { }

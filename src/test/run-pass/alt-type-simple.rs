@@ -8,7 +8,7 @@ fn altsimple(any x) {
   }
 }
 
-fn main() {
+pub fn main() {
   altsimple(5);
   altsimple("asdfasdfsDF");
 }

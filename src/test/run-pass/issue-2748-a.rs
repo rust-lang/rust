@@ -18,4 +18,4 @@ fn CMap(buf: &r/[u8]) -> CMap/&r {
     }
 }
 
-fn main() { }
+pub fn main() { }

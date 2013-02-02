@@ -13,7 +13,7 @@
 // -*- rust -*-
 extern mod std;
 
-fn main() {
+pub fn main() {
     let a: ~str = ~"this \
 is a test";
     let b: ~str =

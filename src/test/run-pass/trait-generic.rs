@@ -42,7 +42,7 @@ fn bar<U: to_str, T: map<U>>(x: T) -> ~[~str] {
     x.map(|_e| _e.to_str() )
 }
 
-fn main() {
+pub fn main() {
     assert foo(~[1]) == ~[~"hi"];
     assert bar::<int, ~[int]>(~[4, 5]) == ~[~"4", ~"5"];
     assert bar::<~str, ~[~str]>(~[~"x", ~"y"]) == ~[~"x", ~"y"];

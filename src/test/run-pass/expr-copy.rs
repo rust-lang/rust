@@ -17,7 +17,7 @@ fn f(arg: A) {
 
 struct A { mut a: int }
 
-fn main() {
+pub fn main() {
     let x = A {a: 10};
     f(x);
     assert x.a == 100;

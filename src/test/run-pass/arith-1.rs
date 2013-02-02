@@ -10,7 +10,7 @@
 
 
 
-fn main() {
+pub fn main() {
     let i32_a: int = 10;
     assert (i32_a == 10);
     assert (i32_a - 10 == 0);

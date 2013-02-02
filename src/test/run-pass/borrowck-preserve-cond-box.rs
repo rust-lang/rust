@@ -34,7 +34,7 @@ fn testfn(cond: bool) {
     assert *r == exp;
 }
 
-fn main() {
+pub fn main() {
     testfn(true);
     testfn(false);
 }

@@ -103,6 +103,6 @@ pub impl float: FloatExt {}
 
 fn test_float_ext<T:FloatExt>(n: T) { io::println(fmt!("%?", n < n)) }
 
-fn main() {
+pub fn main() {
     test_float_ext(1f32);
 }

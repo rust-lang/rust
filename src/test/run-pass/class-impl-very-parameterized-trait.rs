@@ -135,7 +135,7 @@ fn cat<T: Copy>(in_x : int, in_y : int, in_name: T) -> cat<T> {
     }
 }
 
-fn main() {
+pub fn main() {
   let nyan : cat<~str> = cat(0, 2, ~"nyan");
   for uint::range(1u, 5u) |_i| { nyan.speak(); }
   assert(nyan.find(1) == Some(~"nyan"));

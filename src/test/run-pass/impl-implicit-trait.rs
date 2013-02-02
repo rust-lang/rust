@@ -26,5 +26,5 @@ impl option__ {
     fn foo() -> bool { true }
 }
 
-fn main() {
+pub fn main() {
 }

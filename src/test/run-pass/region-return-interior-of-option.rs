@@ -15,7 +15,7 @@ fn get<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
-fn main() {
+pub fn main() {
     let mut x = Some(23);
 
     {

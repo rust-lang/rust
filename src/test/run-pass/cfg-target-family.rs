@@ -9,9 +9,9 @@
 // except according to those terms.
 
 #[cfg(target_family = "windows")]
-fn main() {
+pub fn main() {
 }
 
 #[cfg(target_family = "unix")]
-fn main() {
+pub fn main() {
 }

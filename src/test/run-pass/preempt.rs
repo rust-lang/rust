@@ -19,7 +19,7 @@ fn starve_main(alive: chan<int>) {
     loop { i += 1; }
 }
 
-fn main() {
+pub fn main() {
     let alive: port<int> = port();
     debug!("main started");
     let s: task = spawn starve_main(chan(alive));

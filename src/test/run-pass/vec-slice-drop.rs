@@ -25,7 +25,7 @@ fn foo(x: @mut int) -> foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = @mut 0;
     {
         let l = &[foo(x)];

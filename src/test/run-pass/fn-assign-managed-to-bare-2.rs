@@ -12,7 +12,7 @@ fn add(n: int) -> fn@(int) -> int {
     fn@(m: int) -> int { m + n }
 }
 
-fn main()
+pub fn main()
 {
     assert add(3)(4) == 7;
 

@@ -16,7 +16,7 @@ mod a {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = a::Bar;
 }
 

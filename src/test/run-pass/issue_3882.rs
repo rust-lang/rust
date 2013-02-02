@@ -14,4 +14,4 @@
 extern mod linenoise;
 use linenoise::issue_3882::*;
 
-fn main() {}
+pub fn main() {}

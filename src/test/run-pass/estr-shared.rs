@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // xfail-test
-fn main() {
+pub fn main() {
     let x : @str = @"hello";
 }

@@ -33,7 +33,7 @@ type ty = Spanned<ty_>;
 
 struct X { sp: Span, path: path }
 
-fn main() {
+pub fn main() {
     let sp: Span = Span {lo: 57451u, hi: 57542u, expanded_from: os_none};
     let t: @ty = @Spanned { data: 3u, span: sp };
     let p_: Path_ = Path_ { global: true, idents: ~[~"hi"], types: ~[t] };

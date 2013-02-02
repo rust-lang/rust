@@ -18,7 +18,7 @@ fn f() {
     *box = cons(box);
 }
 
-fn main() {
+pub fn main() {
     f();
 }
 

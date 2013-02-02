@@ -140,7 +140,7 @@ fn visit_ty<T>(v: TyVisitor) {
     visit_tydesc(get_tydesc::<T>(), v);
 }
 
-fn main() {
+pub fn main() {
     let v = my_visitor(@{mut types: ~[]});
     let vv = v as TyVisitor;
 

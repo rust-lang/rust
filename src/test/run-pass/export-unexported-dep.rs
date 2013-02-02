@@ -27,4 +27,4 @@ mod foo {
     pub fn g(v: t) { assert (v == t1); }
 }
 
-fn main() { foo::g(foo::f()); }
+pub fn main() { foo::g(foo::f()); }

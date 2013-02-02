@@ -20,6 +20,6 @@ fn bitv_test() -> bool {
     true
 }
 
-fn main() {
+pub fn main() {
     do iter::repeat(10000) || {bitv_test()};
 }

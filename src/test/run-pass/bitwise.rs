@@ -38,7 +38,7 @@ fn general() {
     assert (0b1010_1010 | 0b0101_0101 == 0xff);
 }
 
-fn main() {
+pub fn main() {
     general();
     target();
 }

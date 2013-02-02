@@ -34,7 +34,7 @@ extern mod rusti {
     fn bswap64(x: i64) -> i64;
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         use rusti::*;
 

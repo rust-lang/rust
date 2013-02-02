@@ -19,7 +19,7 @@ fn init(ar: &a.arena::Arena, str: str) -> &a.hold {
     new(*ar) s(str)
 }
 
-fn main(args: ~[str]) {
+pub fn main(args: ~[str]) {
     let ar = arena::Arena();
     let leak = init(&ar, args[0]);
     match *leak {

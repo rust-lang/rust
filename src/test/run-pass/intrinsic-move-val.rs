@@ -14,7 +14,7 @@ extern mod rusti {
     pub fn move_val<T>(dst: &mut T, -src: T);
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         let mut x = @1;
         let mut y = @2;

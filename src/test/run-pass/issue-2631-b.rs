@@ -18,7 +18,7 @@ use req::*;
 use std::map::*;
 use std::map::HashMap;
 
-fn main() {
+pub fn main() {
   let v = ~[@~"hi"];
   let m: req::header_map = HashMap();
   m.insert(~"METHOD", @dvec::from_vec(v));

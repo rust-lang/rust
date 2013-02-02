@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn main() {
+pub fn main() {
     let asdf_fdsa = ~"<.<";
     assert (concat_idents!(asd, f_f, dsa) == ~"<.<");
 

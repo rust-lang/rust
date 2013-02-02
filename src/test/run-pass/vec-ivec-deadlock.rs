@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let a = ~[1, 2, 3, 4, 5];
     let mut b = ~[copy a, copy a];
     b = b + b; // FIXME(#3387)---can't write b += b

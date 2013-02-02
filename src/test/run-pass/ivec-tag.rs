@@ -6,7 +6,7 @@ fn producer(c: &Chan<~[u8]>) {
           13u8]);
 }
 
-fn main() {
+pub fn main() {
     let (p, ch) = stream::<~[u8]>();
     let prod = task::spawn(|| producer(&ch) );
 

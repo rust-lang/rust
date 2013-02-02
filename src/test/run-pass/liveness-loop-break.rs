@@ -17,6 +17,6 @@ fn test() {
     debug!("%d", v);
 }
 
-fn main() {
+pub fn main() {
     test();
 }

@@ -29,7 +29,7 @@ fn f<T: D>(x: &T) {
     assert x.d() == 40;
 }
 
-fn main() {
+pub fn main() {
     let value = &S { bogus: () };
     f(value);
 }

@@ -15,7 +15,7 @@ enum Foo {
     Boo
 }
 
-fn main() {
+pub fn main() {
     let a = Bar;
     let b = Bar;
     assert a == b;

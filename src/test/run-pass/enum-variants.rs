@@ -3,7 +3,7 @@ enum Animal {
     Cat { name: ~str, weight: float }
 }
 
-fn main() {
+pub fn main() {
     let mut a: Animal = Dog(~"Cocoa", 37.2);
     a = Cat{ name: ~"Spotty", weight: 2.7 };
     // permuting the fields should work too

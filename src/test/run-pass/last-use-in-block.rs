@@ -23,4 +23,4 @@ fn apply<T>(s: ~str, f: fn(~str) -> T) -> T {
     g(s, |v| { let r = f(v); move r })
 }
 
-fn main() {}
+pub fn main() {}
