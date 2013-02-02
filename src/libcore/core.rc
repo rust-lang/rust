@@ -148,6 +148,7 @@ pub mod hashmap;
 
 #[path = "task/mod.rs"]
 pub mod task;
+pub mod comm;
 pub mod pipes;
 
 
@@ -255,6 +256,7 @@ pub mod core {
     pub use option;
     pub use kinds;
     pub use sys;
+    pub use pipes;
 }
 
 

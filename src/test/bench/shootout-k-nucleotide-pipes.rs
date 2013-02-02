@@ -18,7 +18,7 @@ use std::oldmap;
 use std::oldmap::HashMap;
 use std::sort;
 use io::ReaderUtil;
-use pipes::{stream, Port, Chan};
+use comm::{stream, Port, Chan};
 use cmp::Ord;
 
 // given a map, print a sorted version of it
@@ -97,8 +97,8 @@ fn windows_with_carry(bb: &[u8], nn: uint,
    return vec::slice(bb, len - (nn - 1u), len).to_vec();
 }
 
-fn make_sequence_processor(sz: uint, from_parent: pipes::Port<~[u8]>,
-                           to_parent: pipes::Chan<~str>) {
+fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
+                           to_parent: comm::Chan<~str>) {
 
    let freqs: HashMap<~[u8], uint> = oldmap::HashMap();
    let mut carry: ~[u8] = ~[];
@@ -159,7 +159,7 @@ fn main() {
 
         from_child.push(from_child_);
 
-        let (from_parent, to_child) = pipes::stream();
+        let (from_parent, to_child) = comm::stream();
 
         do task::spawn_with(from_parent) |from_parent| {
             make_sequence_processor(sz, from_parent, to_parent_);

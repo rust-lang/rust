@@ -30,7 +30,7 @@ use util;
 
 use core::option;
 use core::vec;
-use core::pipes::*;
+use core::comm::*;
 use syntax::ast;
 
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {

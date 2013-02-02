@@ -12,9 +12,7 @@
 #[legacy_modes];
 
 extern mod std;
-use pipes::Chan;
-use pipes::send;
-use pipes::recv;
+use core::comm::Chan;
 
 pub fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 
@@ -35,7 +33,7 @@ fn test00() {
 
     debug!("Creating tasks");
 
-    let po = pipes::PortSet();
+    let po = comm::PortSet();
 
     let mut i: int = 0;
 

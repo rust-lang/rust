@@ -49,8 +49,8 @@ block the scheduler thread, so will their pipes.
 
 // The basic send/recv interface FlatChan and PortChan will implement
 use core::io;
-use core::pipes::GenericChan;
-use core::pipes::GenericPort;
+use core::comm::GenericChan;
+use core::comm::GenericPort;
 use core::pipes;
 use core::prelude::*;
 use core::sys::size_of;
@@ -95,8 +95,8 @@ pub mod serial {
     use flatpipes::{FlatPort, FlatChan};
 
     use core::io::{Reader, Writer};
-    use core::pipes::{Port, Chan};
-    use core::pipes;
+    use core::comm::{Port, Chan};
+    use core::comm;
 
     pub type ReaderPort<T, R> = FlatPort<
         T, DeserializingUnflattener<DefaultDecoder, T>,
@@ -154,7 +154,7 @@ pub mod serial {
     pub fn pipe_stream<T: Encodable<DefaultEncoder> +
                           Decodable<DefaultDecoder>>(
                           ) -> (PipePort<T>, PipeChan<T>) {
-        let (port, chan) = pipes::stream();
+        let (port, chan) = comm::stream();
         return (pipe_port(port), pipe_chan(chan));
     }
 }
@@ -177,8 +177,8 @@ pub mod pod {
     use flatpipes::{FlatPort, FlatChan};
 
     use core::io::{Reader, Writer};
-    use core::pipes::{Port, Chan};
-    use core::pipes;
+    use core::comm::{Port, Chan};
+    use core::comm;
     use core::prelude::*;
 
     pub type ReaderPort<T, R> =
@@ -222,7 +222,7 @@ pub mod pod {
 
     /// Create a pair of `FlatChan` and `FlatPort`, backed by pipes
     pub fn pipe_stream<T:Copy + Owned>() -> (PipePort<T>, PipeChan<T>) {
-        let (port, chan) = pipes::stream();
+        let (port, chan) = comm::stream();
         return (pipe_port(port), pipe_chan(chan));
     }
 
@@ -507,7 +507,7 @@ pub mod bytepipes {
     use flatpipes::{ByteChan, BytePort};
 
     use core::io::{Writer, Reader, ReaderUtil};
-    use core::pipes::{Port, Chan};
+    use core::comm::{Port, Chan};
     use core::pipes;
     use core::prelude::*;
 
@@ -564,12 +564,12 @@ pub mod bytepipes {
     }
 
     pub struct PipeBytePort {
-        port: pipes::Port<~[u8]>,
+        port: comm::Port<~[u8]>,
         mut buf: ~[u8]
     }
 
     pub struct PipeByteChan {
-        chan: pipes::Chan<~[u8]>
+        chan: comm::Chan<~[u8]>
     }
 
     pub impl BytePort for PipeBytePort {
@@ -777,12 +777,12 @@ mod test {
         use uv;
 
         // Indicate to the client task that the server is listening
-        let (begin_connect_port, begin_connect_chan) = pipes::stream();
+        let (begin_connect_port, begin_connect_chan) = comm::stream();
         // The connection is sent from the server task to the receiver task
         // to handle the connection
-        let (accept_port, accept_chan) = pipes::stream();
+        let (accept_port, accept_chan) = comm::stream();
         // The main task will wait until the test is over to proceed
-        let (finish_port, finish_chan) = pipes::stream();
+        let (finish_port, finish_chan) = comm::stream();
 
         let addr0 = ip::v4::parse_addr("127.0.0.1");
 
@@ -803,7 +803,7 @@ mod test {
                 }) |new_conn, kill_ch| {
 
                 // Incoming connection. Send it to the receiver task to accept
-                let (res_port, res_chan) = pipes::stream();
+                let (res_port, res_chan) = comm::stream();
                 accept_chan.send((new_conn, res_chan));
                 // Wait until the connection is accepted
                 res_port.recv();
@@ -894,7 +894,7 @@ mod test {
 
         fn pipe_port_loader(bytes: ~[u8]
                            ) -> pod::PipePort<int> {
-            let (port, chan) = pipes::stream();
+            let (port, chan) = comm::stream();
             if !bytes.is_empty() {
                 chan.send(bytes);
             }

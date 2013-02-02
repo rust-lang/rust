@@ -12,13 +12,13 @@
 #[legacy_modes];
 
 pub fn main() {
-    let po = pipes::PortSet();
+    let po = comm::PortSet();
 
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
     while (i > 0) {
         log(debug, i);
-        let (p, ch) = pipes::stream();
+        let (p, ch) = comm::stream();
         po.add(p);
         task::spawn({let i = i; || child(i, ch)});
         i = i - 1;
@@ -37,7 +37,7 @@ pub fn main() {
     debug!("main thread exiting");
 }
 
-fn child(x: int, ch: pipes::Chan<int>) {
+fn child(x: int, ch: comm::Chan<int>) {
     log(debug, x);
     ch.send(x);
 }

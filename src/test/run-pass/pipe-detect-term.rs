@@ -20,7 +20,8 @@ extern mod std;
 use std::timer::sleep;
 use std::uv;
 
-use pipes::{try_recv, recv};
+use core::pipes;
+use core::pipes::{try_recv, recv};
 
 proto! oneshot (
     waiting:send {

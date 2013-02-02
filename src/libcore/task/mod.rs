@@ -40,7 +40,7 @@ use iter;
 use libc;
 use option;
 use result::Result;
-use pipes::{stream, Chan, GenericChan, GenericPort, Port, SharedChan};
+use comm::{stream, Chan, GenericChan, GenericPort, Port, SharedChan};
 use pipes;
 use prelude::*;
 use ptr;
@@ -1109,7 +1109,7 @@ fn test_unkillable() {
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable_nested() {
-    let (po, ch) = pipes::stream();
+    let (po, ch) = comm::stream();
 
     // We want to do this after failing
     do spawn_unlinked || {
@@ -1175,7 +1175,7 @@ fn test_child_doesnt_ref_parent() {
 
 #[test]
 fn test_sched_thread_per_core() {
-    let (port, chan) = pipes::stream();
+    let (port, chan) = comm::stream();
 
     do spawn_sched(ThreadPerCore) || {
         unsafe {
@@ -1191,7 +1191,7 @@ fn test_sched_thread_per_core() {
 
 #[test]
 fn test_spawn_thread_on_demand() {
-    let (port, chan) = pipes::stream();
+    let (port, chan) = comm::stream();
 
     do spawn_sched(ManualThreads(2)) || {
         unsafe {
@@ -1200,7 +1200,7 @@ fn test_spawn_thread_on_demand() {
             let running_threads = rt::rust_sched_current_nonlazy_threads();
             assert(running_threads as int == 1);
 
-            let (port2, chan2) = pipes::stream();
+            let (port2, chan2) = comm::stream();
 
             do spawn_sched(CurrentScheduler) || {
                 chan2.send(());

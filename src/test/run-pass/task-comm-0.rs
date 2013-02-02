@@ -13,8 +13,8 @@
 
 extern mod std;
 
-use pipes::Chan;
-use pipes::Port;
+use comm::Chan;
+use comm::Port;
 
 pub fn main() { test05(); }
 
@@ -28,7 +28,7 @@ fn test05_start(ch : Chan<int>) {
 }
 
 fn test05() {
-    let (po, ch) = pipes::stream();
+    let (po, ch) = comm::stream();
     task::spawn(|| test05_start(ch) );
     let mut value = po.recv();
     log(error, value);

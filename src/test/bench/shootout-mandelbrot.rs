@@ -108,7 +108,7 @@ impl io::Writer for Devnull {
     fn get_type(&self) -> io::WriterType { io::File }
 }
 
-fn writer(path: ~str, pport: pipes::Port<Line>, size: uint)
+fn writer(path: ~str, pport: comm::Port<Line>, size: uint)
 {
     let cout: io::Writer = match path {
         ~"" => {
@@ -172,8 +172,8 @@ fn main() {
     let size = if vec::len(args) < 2_u { 80_u }
     else { uint::from_str(args[1]).get() };
 
-    let (pport, pchan) = pipes::stream();
-    let pchan = pipes::SharedChan(pchan);
+    let (pport, pchan) = comm::stream();
+    let pchan = comm::SharedChan(pchan);
     for uint::range(0_u, size) |j| {
         let cchan = pchan.clone();
         do task::spawn { cchan.send(chanmb(j, size, depth)) };

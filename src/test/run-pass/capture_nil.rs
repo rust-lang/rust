@@ -24,7 +24,7 @@
 // course preferable, as the value itself is
 // irrelevant).
 
-use core::pipes::*;
+use core::comm::*;
 
 fn foo(&&x: ()) -> Port<()> {
     let (p, c) = stream::<()>();

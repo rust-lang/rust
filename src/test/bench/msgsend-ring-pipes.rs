@@ -20,7 +20,7 @@ extern mod std;
 use std::time;
 use std::future;
 
-use pipes::recv;
+use core::pipes::recv;
 
 proto! ring (
     num:send {
