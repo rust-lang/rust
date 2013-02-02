@@ -926,7 +926,7 @@ mod tests {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
 
-        log(debug, ~"s0=" + float::to_str(s0, 9u) + ~" sec");
+        log(debug, ~"s0=" + float::to_str_digits(s0, 9u) + ~" sec");
         assert s0 > 0.;
         let ns0 = (s0 * 1000000000.) as u64;
         log(debug, ~"ns0=" + u64::str(ns0) + ~" ns");

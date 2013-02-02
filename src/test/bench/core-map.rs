@@ -75,12 +75,12 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
         let map = map::HashMap();
         do timed(&mut results.sequential_strings) {
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(i, 10);
+                let s = uint::to_str(i);
                 map.insert(s, i);
             }
 
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(i, 10);
+                let s = uint::to_str(i);
                 assert map.get(s) == i;
             }
         }
@@ -90,7 +90,7 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
         let map = map::HashMap();
         do timed(&mut results.random_strings) {
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(rng.next() as uint, 10);
+                let s = uint::to_str(rng.next() as uint);
                 map.insert(s, i);
             }
         }
@@ -99,11 +99,11 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
     {
         let map = map::HashMap();
         for uint::range(0, num_keys) |i| {
-            map.insert(uint::to_str(i, 10), i);
+            map.insert(uint::to_str(i), i);
         }
         do timed(&mut results.delete_strings) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(uint::to_str(i, 10));
+                assert map.remove(uint::to_str(i));
             }
         }
     }
@@ -151,12 +151,12 @@ fn linear_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results)
         let mut map = LinearMap::new();
         do timed(&mut results.sequential_strings) {
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(i, 10);
+                let s = uint::to_str(i);
                 map.insert(s, i);
             }
 
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(i, 10);
+                let s = uint::to_str(i);
                 assert map.find(&s).unwrap() == &i;
             }
         }
@@ -166,7 +166,7 @@ fn linear_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results)
         let mut map = LinearMap::new();
         do timed(&mut results.random_strings) {
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(rng.next() as uint, 10);
+                let s = uint::to_str(rng.next() as uint);
                 map.insert(s, i);
             }
         }
@@ -175,11 +175,11 @@ fn linear_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results)
     {
         let mut map = LinearMap::new();
         for uint::range(0, num_keys) |i| {
-            map.insert(uint::to_str(i, 10), i);
+            map.insert(uint::to_str(i), i);
         }
         do timed(&mut results.delete_strings) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(&uint::to_str(i, 10));
+                assert map.remove(&uint::to_str(i));
             }
         }
     }
@@ -227,12 +227,12 @@ fn tree_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
         let mut map = TreeMap::new();
         do timed(&mut results.sequential_strings) {
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(i, 10);
+                let s = uint::to_str(i);
                 map.insert(s, i);
             }
 
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(i, 10);
+                let s = uint::to_str(i);
                 assert map.find(&s).unwrap() == &i;
             }
         }
@@ -242,7 +242,7 @@ fn tree_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
         let mut map = TreeMap::new();
         do timed(&mut results.random_strings) {
             for uint::range(0, num_keys) |i| {
-                let s = uint::to_str(rng.next() as uint, 10);
+                let s = uint::to_str(rng.next() as uint);
                 map.insert(s, i);
             }
         }
@@ -251,11 +251,11 @@ fn tree_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
     {
         let mut map = TreeMap::new();
         for uint::range(0, num_keys) |i| {
-            map.insert(uint::to_str(i, 10), i);
+            map.insert(uint::to_str(i), i);
         }
         do timed(&mut results.delete_strings) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(&uint::to_str(i, 10));
+                assert map.remove(&uint::to_str(i));
             }
         }
     }

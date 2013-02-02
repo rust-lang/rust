@@ -473,7 +473,7 @@ fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
         value = channel.recv();
-        channel.send(uint::to_str(value, 10));
+        channel.send(uint::to_str(value));
         if value == 0 { break; }
     }
 }
@@ -497,7 +497,7 @@ Here is the code for the parent task:
 #     let mut value: uint;
 #     loop {
 #         value = channel.recv();
-#         channel.send(uint::to_str(value, 10u));
+#         channel.send(uint::to_str(value));
 #         if value == 0u { break; }
 #     }
 # }
