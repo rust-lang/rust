@@ -922,7 +922,7 @@ pub fn install_package(c: &Cargo, src: ~str, wd: &Path, pkg: Package) {
 }
 
 pub fn cargo_suggestion(c: &Cargo, fallback: fn()) {
-    if c.sources.size() == 0u {
+    if c.sources.is_empty() {
         error(~"no sources defined - you may wish to run " +
               ~"`cargo init`");
         return;
@@ -1620,7 +1620,7 @@ pub fn dump_cache(c: &Cargo) {
 }
 
 pub fn dump_sources(c: &Cargo) {
-    if c.sources.size() < 1u {
+    if c.sources.is_empty() {
         return;
     }
 

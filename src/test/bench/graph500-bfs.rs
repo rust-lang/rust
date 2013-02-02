@@ -102,7 +102,7 @@ fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
     let keys = oldmap::HashMap::<node_id, ()>();
     let r = rand::Rng();
 
-    while keys.size() < n {
+    while keys.len() < n {
         let k = r.gen_uint_range(0u, graph.len());
 
         if graph[k].len() > 0u && vec::any(graph[k], |i| {

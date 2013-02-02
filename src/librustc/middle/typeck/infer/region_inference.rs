@@ -1226,7 +1226,7 @@ impl RegionVarBindings {
 
     fn construct_graph(&self) -> Graph {
         let num_vars = self.num_vars();
-        let num_edges = self.constraints.size();
+        let num_edges = self.constraints.len();
 
         let nodes = vec::from_fn(num_vars, |var_idx| {
             GraphNode {
