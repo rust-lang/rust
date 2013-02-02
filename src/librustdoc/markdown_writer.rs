@@ -19,7 +19,6 @@ use pass::Pass;
 use core::io::ReaderUtil;
 use core::io;
 use core::libc;
-use core::oldcomm;
 use core::os;
 use core::pipes;
 use core::result;
@@ -293,16 +292,17 @@ fn write_file(path: &Path, s: ~str) {
 }
 
 pub fn future_writer_factory(
-) -> (WriterFactory, oldcomm::Port<(doc::Page, ~str)>) {
-    let markdown_po = oldcomm::Port();
-    let markdown_ch = oldcomm::Chan(&markdown_po);
+) -> (WriterFactory, Port<(doc::Page, ~str)>) {
+    let (markdown_po, markdown_ch) = stream();
+    let markdown_ch = SharedChan(markdown_ch);
     let writer_factory = fn~(page: doc::Page) -> Writer {
         let (writer_po, writer_ch) = pipes::stream();
+        let markdown_ch = markdown_ch.clone();
         do task::spawn |move writer_ch| {
             let (writer, future) = future_writer();
             writer_ch.send(move writer);
             let s = future.get();
-            oldcomm::send(markdown_ch, (copy page, s));
+            markdown_ch.send((copy page, s));
         }
         writer_po.recv()
     };
