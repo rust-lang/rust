@@ -16,7 +16,7 @@ fn foo<T: Copy Const>(x: T) -> T { x }
 
 struct F { field: int }
 
-fn main() {
+pub fn main() {
     foo(1);
     foo(~"hi");
     foo(~[1, 2, 3]);

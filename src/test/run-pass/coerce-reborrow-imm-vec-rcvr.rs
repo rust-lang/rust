@@ -10,7 +10,7 @@ fn bip(v: &[uint]) -> ~[uint] {
     v.to_vec()
 }
 
-fn main() {
+pub fn main() {
     let mut the_vec = ~[1, 2, 3, 100];
     assert the_vec == foo(the_vec);
     assert the_vec == bar(the_vec);

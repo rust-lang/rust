@@ -33,7 +33,7 @@ fn Foo(x: int, y: int) -> Foo {
     Foo { x: x, y: y }
 }
 
-fn main() {
+pub fn main() {
     let foo = Foo(3, 20);
     io::println(fmt!("%d %d", foo.sum(), foo.product()));
 }

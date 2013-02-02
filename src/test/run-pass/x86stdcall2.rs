@@ -25,7 +25,7 @@ extern mod kernel32 {
 
 
 #[cfg(target_os = "win32")]
-fn main() {
+pub fn main() {
     let heap = unsafe { kernel32::GetProcessHeap() };
     let mem = unsafe { kernel32::HeapAlloc(heap, 0u32, 100u32) };
     assert mem != 0u;
@@ -36,4 +36,4 @@ fn main() {
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "freebsd")]
-fn main() { }
+pub fn main() { }

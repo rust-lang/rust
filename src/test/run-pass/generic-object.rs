@@ -22,7 +22,7 @@ impl S : Foo<int> {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = @S { x: 1 };
     let y = x as @Foo<int>;
     assert y.get() == 1;

@@ -23,7 +23,7 @@ fn noise(a: animal) -> Option<~str> {
     }
 }
 
-fn main() {
+pub fn main() {
     assert noise(cat(tabby)) == Some(~"meow");
     assert noise(dog(pug)) == Some(~"woof");
     assert noise(rabbit(~"Hilbert", upright)) == None;

@@ -30,7 +30,7 @@ fn supervisor() {
     task::try(supervised);
 }
 
-fn main() {
+pub fn main() {
     task::spawn_unlinked(supervisor)
 }
 

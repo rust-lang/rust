@@ -14,7 +14,7 @@ extern mod std;
 
 use std::getopts::*;
 
-fn main() {
+pub fn main() {
     let args = ~[];
     let opts = ~[optopt(~"b")];
 

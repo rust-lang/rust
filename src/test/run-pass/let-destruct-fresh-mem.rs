@@ -11,7 +11,7 @@
 struct X { x: int, y: @A }
 struct A { a: int }
 
-fn main() {
+pub fn main() {
     let u = X {x: 10, y: @A {a: 20}};
     let mut X {x: x, y: @A {a: a}} = u;
     x = 100;

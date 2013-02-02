@@ -15,6 +15,6 @@ fn test(cond: bool) {
     v = 2;
 }
 
-fn main() {
+pub fn main() {
 	// note: don't call test()... :)
 }

@@ -18,7 +18,7 @@ fn give_a_few_speeches(speaker: &mut SpeechMaker) {
     speaker.talk();
 }
 
-fn main() {
+pub fn main() {
     let mut lincoln = SpeechMaker {speeches: 22};
     give_a_few_speeches(&mut lincoln);
 }

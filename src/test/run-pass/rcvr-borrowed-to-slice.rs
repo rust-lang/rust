@@ -23,7 +23,7 @@ impl &[int]: sum {
 
 fn call_sum(x: &[int]) -> int { x.sum() }
 
-fn main() {
+pub fn main() {
     let x = ~[1, 2, 3];
     let y = call_sum(x);
     debug!("y==%d", y);

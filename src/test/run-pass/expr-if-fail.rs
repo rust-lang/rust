@@ -20,4 +20,4 @@ fn test_elseif_fail() {
     assert (x == 10);
 }
 
-fn main() { test_if_fail(); test_else_fail(); test_elseif_fail(); }
+pub fn main() { test_if_fail(); test_else_fail(); test_elseif_fail(); }

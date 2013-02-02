@@ -10,7 +10,7 @@
 
 
 
-fn main() {
+pub fn main() {
     assert (~"hello" < ~"hellr");
     assert (~"hello " > ~"hello");
     assert (~"hello" != ~"there");

@@ -16,7 +16,7 @@ use pipes::Chan;
 use pipes::send;
 use pipes::recv;
 
-fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
+pub fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 
 fn test00_start(ch: Chan<int>, message: int, count: int) {
     debug!("Starting test00_start");

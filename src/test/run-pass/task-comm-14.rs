@@ -11,7 +11,7 @@
 // xfail-fast
 #[legacy_modes];
 
-fn main() {
+pub fn main() {
     let po = pipes::PortSet();
 
     // Spawn 10 tasks each sending us back one int.

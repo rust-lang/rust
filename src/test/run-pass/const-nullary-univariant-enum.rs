@@ -14,7 +14,7 @@ enum Foo {
 
 const X: Foo = Bar;
 
-fn main() {
+pub fn main() {
     assert((X as uint) == 0xDEADBEE);
     assert((Y as uint) == 0xDEADBEE);
 }

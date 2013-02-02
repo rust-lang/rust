@@ -18,7 +18,7 @@ impl int : Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = 3 as @Foo;
     x.foo();
 }

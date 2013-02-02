@@ -24,7 +24,7 @@ fn test(f: int) -> test {
     }
 }
 
-fn main() {
+pub fn main() {
     let (p, c) = stream();
 
     do task::spawn() {

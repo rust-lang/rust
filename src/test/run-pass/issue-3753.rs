@@ -31,7 +31,7 @@ pub impl Shape {
     }
 }
 
-fn main(){
+pub fn main(){
     let s = Circle(Point { x: 1f, y: 2f }, 3f);
     io::println(fmt!("%f", s.area(s)));
 }

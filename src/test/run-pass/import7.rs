@@ -23,4 +23,4 @@ mod bar {
         pub mod zed {}
     }
 }
-fn main() { baz(); }
+pub fn main() { baz(); }

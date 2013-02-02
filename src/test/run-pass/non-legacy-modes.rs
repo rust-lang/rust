@@ -24,7 +24,7 @@ fn check_struct(x: X) {
     check_int(x.repr);
 }
 
-fn main() {
+pub fn main() {
     apply(22, check_int);
     apply(X {repr: 22}, check_struct);
 }

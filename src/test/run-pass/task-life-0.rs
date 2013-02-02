@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern mod std;
-fn main() {
+pub fn main() {
     task::spawn(|| child(~"Hello") );
 }
 

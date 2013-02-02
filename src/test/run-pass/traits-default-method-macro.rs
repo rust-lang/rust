@@ -23,7 +23,7 @@ enum Baz {
 impl Baz: Foo {
 }
 
-fn main() {
+pub fn main() {
     let q = Quux;
     assert q.bar() == ~"test";
 }

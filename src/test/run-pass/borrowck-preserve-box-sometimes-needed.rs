@@ -18,7 +18,7 @@ fn switcher(x: Option<@int>) {
     }
 }
 
-fn main() {
+pub fn main() {
     switcher(None);
     switcher(Some(@3));
 }

@@ -17,4 +17,4 @@ fn test_fn() {
     //assert (rs() == 10);
 }
 
-fn main() { test_fn(); }
+pub fn main() { test_fn(); }

@@ -14,7 +14,7 @@ extern mod rustrt {
     pub fn get_task_id() -> libc::intptr_t;
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         rustrt::get_task_id();
     }

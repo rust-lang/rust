@@ -20,7 +20,7 @@ fn fact(n: uint) -> uint {
     }
 }
 
-fn main() {
+pub fn main() {
     let result = fact(10u);
     debug!("result = %?", result);
     assert result == 3628800u;

@@ -14,7 +14,7 @@ extern fn f() {
 extern fn g() {
 }
 
-fn main() {
+pub fn main() {
     // extern functions are *u8 types
     let a: *u8 = f;
     let b: *u8 = f;

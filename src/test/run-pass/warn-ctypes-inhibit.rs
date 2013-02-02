@@ -17,5 +17,5 @@ extern mod libc {
     pub fn malloc(size: int) -> *u8;
 }
 
-fn main() {
+pub fn main() {
 }

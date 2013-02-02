@@ -10,7 +10,7 @@
 
 use core::pipes::*;
 
-fn main() {
+pub fn main() {
     let (p, ch) = stream::<uint>();
 
     let x = ~1;

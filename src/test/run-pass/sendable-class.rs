@@ -22,7 +22,7 @@ fn foo(i:int, j: char) -> foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let (_po, ch) = pipes::stream();
     ch.send(foo(42, 'c'));
 }

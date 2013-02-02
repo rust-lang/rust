@@ -18,6 +18,6 @@ fn get_x(x: &r/character) -> &r/int {
     return &x.pos.x;
 }
 
-fn main() {
+pub fn main() {
 }
 

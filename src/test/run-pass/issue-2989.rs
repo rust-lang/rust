@@ -33,7 +33,7 @@ fn to_bools(bitv: Storage) -> ~[bool] {
 
 struct Storage { storage: ~[u64] }
 
-fn main() {
+pub fn main() {
     let bools = ~[false, false, true, false, false, true, true, false];
     let bools2 = to_bools(Storage{storage: ~[0b01100100]});
 

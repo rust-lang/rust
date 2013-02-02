@@ -21,4 +21,4 @@ fn nested(o: t) {
     }
 }
 
-fn main() { nested(bar(1, None::<int>)); }
+pub fn main() { nested(bar(1, None::<int>)); }

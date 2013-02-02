@@ -12,4 +12,4 @@
 
 impl int: foo { fn foo() -> int { 10 } }
 trait foo { fn foo() -> int; }
-fn main() {}
+pub fn main() {}

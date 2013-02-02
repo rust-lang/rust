@@ -22,4 +22,4 @@ fn foo(x: uint) {
     }
 }
 
-fn main() { foo(2u); }
+pub fn main() { foo(2u); }

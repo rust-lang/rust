@@ -25,4 +25,4 @@ fn foo<A: Copy>(b: A) -> foo<A> {
     }
 }
 
-fn main() { }
+pub fn main() { }

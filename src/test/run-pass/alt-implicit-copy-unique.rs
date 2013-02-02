@@ -10,7 +10,7 @@
 
 struct Pair { mut a: ~int, mut b: ~int }
 
-fn main() {
+pub fn main() {
     let x = ~Pair {mut a: ~10, b: ~20};
     match x {
       ~Pair {a: ref mut a, b: ref b} => {

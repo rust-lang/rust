@@ -10,7 +10,7 @@
 
 extern mod std;
 
-fn main() {
+pub fn main() {
   let nan = float::NaN;
   assert(float::is_NaN(nan));
 

@@ -10,7 +10,7 @@
 
 
 
-fn main() {
+pub fn main() {
     if 1 == 2 {
         assert (false);
     } else if 2 == 3 {

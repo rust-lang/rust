@@ -19,7 +19,7 @@ fn iloop() {
     task::spawn(|| die() );
 }
 
-fn main() {
+pub fn main() {
     for uint::range(0u, 100u) |_i| {
         task::spawn_unlinked(|| iloop() );
     }

@@ -20,5 +20,5 @@ fn g() {
     }
 }
 
-fn main() {
+pub fn main() {
 }

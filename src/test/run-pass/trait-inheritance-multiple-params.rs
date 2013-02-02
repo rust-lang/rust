@@ -27,7 +27,7 @@ fn f<X: A, Y: B, Z: C>(x: &X, y: &Y, z: &Z) {
     assert z.c() == 30;
 }
 
-fn main() {
+pub fn main() {
     let s = &S { bogus: () };
     f(s, s, s);
 }

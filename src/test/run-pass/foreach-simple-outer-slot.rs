@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-fn main() {
+pub fn main() {
     let mut sum: int = 0;
     do first_ten |i| { debug!("main"); log(debug, i); sum = sum + i; }
     debug!("sum");

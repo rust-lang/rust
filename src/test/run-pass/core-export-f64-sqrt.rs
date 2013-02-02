@@ -10,7 +10,7 @@
 
 // Regression test that f64 exports things properly
 
-fn main() {
+pub fn main() {
 
     let digits: uint = 10 as uint;
 

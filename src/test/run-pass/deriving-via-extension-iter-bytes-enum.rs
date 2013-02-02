@@ -24,5 +24,5 @@ enum A {
     E
 }
 
-fn main(){}
+pub fn main(){}
 

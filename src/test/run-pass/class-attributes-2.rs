@@ -32,6 +32,6 @@ fn cat(name: ~str) -> cat {
     }
 }
 
-fn main() {
+pub fn main() {
   let _kitty = cat(~"Spotty");
 }

@@ -26,4 +26,4 @@ impl Box {
     }
 }
 
-fn main() {}
+pub fn main() {}

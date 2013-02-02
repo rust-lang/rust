@@ -14,7 +14,7 @@ enum Foo {
     Baz(float, float)
 }
 
-fn main() {
+pub fn main() {
     let a = Bar(1, 2);
     let b = Bar(1, 2);
     assert a == b;

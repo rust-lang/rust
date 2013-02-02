@@ -18,6 +18,6 @@ fn f(a: &E) {
     }
 }
 
-fn main() {
+pub fn main() {
     f(&C)
 }

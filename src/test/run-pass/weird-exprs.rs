@@ -75,7 +75,7 @@ fn angrydome() {
 
 fn evil_lincoln() { let evil = move debug!("lincoln"); }
 
-fn main() {
+pub fn main() {
     strange();
     funny();
     what();

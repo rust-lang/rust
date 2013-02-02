@@ -63,7 +63,7 @@ fn make_speak<C: noisy>(c: C) {
     c.speak();
 }
 
-fn main() {
+pub fn main() {
   let nyan = cat(0u, 2, ~"nyan");
   nyan.eat();
   assert(!nyan.eat());

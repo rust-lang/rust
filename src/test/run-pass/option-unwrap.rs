@@ -27,7 +27,7 @@ fn unwrap<T>(+o: Option<T>) -> T {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = @mut 1;
 
     {

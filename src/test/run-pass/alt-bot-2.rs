@@ -10,4 +10,4 @@
 
 // n.b. This was only ever failing with optimization disabled.
 fn a() -> int { match return 1 { 2 => 3, _ => die!() } }
-fn main() { a(); }
+pub fn main() { a(); }

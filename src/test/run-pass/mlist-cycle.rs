@@ -16,7 +16,7 @@ type cell = {mut c: @list};
 
 enum list { link(@cell), nil, }
 
-fn main() {
+pub fn main() {
     let first: @cell = @{mut c: @nil()};
     let second: @cell = @{mut c: @link(first)};
     first._0 = @link(second);

@@ -10,7 +10,7 @@
 
 // Issue #53
 
-fn main() {
+pub fn main() {
     match ~"test" { ~"not-test" => die!(), ~"test" => (), _ => die!() }
 
     enum t { tag1(~str), tag2, }

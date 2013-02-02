@@ -18,7 +18,7 @@ fn ff() -> fn@(int) -> int {
     return |x| x + 1;
 }
 
-fn main() {
+pub fn main() {
     assert f(10, |a| a) == 10;
     g(||());
     assert do f(10) |a| { a } == 10;

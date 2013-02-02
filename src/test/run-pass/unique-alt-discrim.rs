@@ -15,4 +15,4 @@ fn altsimple() {
       _ => { }
     }
 }
-fn main() { }
+pub fn main() { }

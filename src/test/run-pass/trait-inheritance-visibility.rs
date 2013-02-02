@@ -23,6 +23,6 @@ fn f<T: Quux>(x: &T) {
     assert x.f() == 10;
 }
 
-fn main() {
+pub fn main() {
     f(&0)
 }

@@ -14,7 +14,7 @@ extern mod std;
 use std::deque;
 use std::deque::Deque;
 
-fn main() {
+pub fn main() {
     let Q = deque::create();
     Q.add_back(10);
 }

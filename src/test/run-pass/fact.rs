@@ -31,7 +31,7 @@ fn f(x: int) -> int {
     }
 }
 
-fn main() {
+pub fn main() {
     assert (f(5) == 120);
     // debug!("all done");
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     assert [].contains(&22u) == false;
     assert [1u, 3u].contains(&22u) == false;
     assert [22u, 1u, 3u].contains(&22u) == true;

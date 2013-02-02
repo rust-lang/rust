@@ -12,4 +12,4 @@
 
 enum clam<T> { a(T), }
 
-fn main() { }
+pub fn main() { }

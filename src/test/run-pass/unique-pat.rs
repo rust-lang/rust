@@ -15,6 +15,6 @@ fn simple() {
     }
 }
 
-fn main() {
+pub fn main() {
     simple();
 }

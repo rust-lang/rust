@@ -15,6 +15,6 @@ fn forever() -> ! {
   loop{}
 }
 
-fn main() {
+pub fn main() {
   if (1 == 2) { forever(); }
 }

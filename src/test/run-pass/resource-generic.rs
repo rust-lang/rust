@@ -29,7 +29,7 @@ fn finish<T: Copy>(arg: Arg<T>) -> finish<T> {
     }
 }
 
-fn main() {
+pub fn main() {
     let box = @mut 10;
     fn dec_box(&&i: @mut int) { *i -= 1; }
 

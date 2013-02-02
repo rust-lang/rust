@@ -23,7 +23,7 @@ proto! oneshot (
     }
 )
 
-fn main() {
+pub fn main() {
     use oneshot::client::*;
 
     let c = pipes::spawn_service(oneshot::init, |p| { recv(move p); });

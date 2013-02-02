@@ -15,7 +15,7 @@
 extern mod cr5_1 (name = "crateresolve5", vers = "0.1");
 extern mod cr5_2 (name = "crateresolve5", vers = "0.2");
 
-fn main() {
+pub fn main() {
     // Structural types can be used between two versions of the same crate
     assert cr5_1::struct_nameval().name == cr5_2::struct_nameval().name;
     assert cr5_1::struct_nameval().val == cr5_2::struct_nameval().val;

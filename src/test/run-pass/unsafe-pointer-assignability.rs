@@ -14,7 +14,7 @@ fn f(x: *int) {
     }
 }
 
-fn main() {
+pub fn main() {
     f(&3);
 }
 

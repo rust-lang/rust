@@ -30,5 +30,5 @@ fn borrow_from_arg_val(++v: ~int) {
     borrow(v);
 }
 
-fn main() {
+pub fn main() {
 }

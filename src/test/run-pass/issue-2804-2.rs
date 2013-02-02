@@ -19,4 +19,4 @@ fn add_interfaces(managed_ip: ~str, device: std::map::HashMap<~str, int>)  {
      error!("%s, %?", managed_ip, device[~"interfaces"]);
 }
 
-fn main() {}
+pub fn main() {}

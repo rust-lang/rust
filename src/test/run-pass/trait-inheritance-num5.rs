@@ -20,6 +20,6 @@ fn num_eq_one<T:NumExt>() -> T {
     from_int(1)
 }
 
-fn main() {
+pub fn main() {
     num_eq_one::<int>(); // you need to actually use the function to trigger the ICE
 }

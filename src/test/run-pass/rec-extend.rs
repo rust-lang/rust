@@ -14,7 +14,7 @@
 // -*- rust -*-
 struct Point {x: int, y: int}
 
-fn main() {
+pub fn main() {
     let origin: Point = Point {x: 0, y: 0};
     let right: Point = Point {x: origin.x + 10,.. origin};
     let up: Point = Point {y: origin.y + 10,.. origin};

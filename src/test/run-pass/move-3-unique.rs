@@ -19,7 +19,7 @@ fn test(x: bool, foo: ~Triple) -> int {
     return y.y;
 }
 
-fn main() {
+pub fn main() {
     let x = ~Triple{x: 1, y: 2, z: 3};
     for uint::range(0u, 10000u) |_i| {
         assert (test(true, copy x) == 2);

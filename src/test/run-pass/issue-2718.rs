@@ -311,7 +311,7 @@ fn server(-chan: pingpong::server::ping) {
     log(error, ~"Sent pong");
 }
 
-fn main() {
+pub fn main() {
   /*
 //    Commented out because of option::get error
 

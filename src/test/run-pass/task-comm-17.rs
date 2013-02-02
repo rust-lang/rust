@@ -17,6 +17,6 @@ extern mod std;
 fn f() {
 }
 
-fn main() {
+pub fn main() {
     task::spawn(|| f() );
 }

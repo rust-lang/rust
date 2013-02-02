@@ -24,4 +24,4 @@ fn test_box() {
     test_generic::<bool>(@true, @false, compare_box);
 }
 
-fn main() { test_box(); }
+pub fn main() { test_box(); }

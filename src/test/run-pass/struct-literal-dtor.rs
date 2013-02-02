@@ -18,6 +18,6 @@ impl foo : Drop {
     }
 }
 
-fn main() {
+pub fn main() {
     let _z = foo { x: ~"Hello" };
 }

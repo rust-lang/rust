@@ -16,7 +16,7 @@ struct Point {x: int, y: int, mut z: int}
 
 fn f(p: &mut Point) { p.z = 13; }
 
-fn main() {
+pub fn main() {
     let mut x: Point = Point {x: 10, y: 11, mut z: 12};
     f(&mut x);
     assert (x.z == 13);

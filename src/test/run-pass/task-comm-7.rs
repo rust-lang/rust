@@ -13,7 +13,7 @@
 
 extern mod std;
 
-fn main() { test00(); }
+pub fn main() { test00(); }
 
 fn test00_start(c: pipes::Chan<int>, start: int, number_of_messages: int) {
     let mut i: int = 0;

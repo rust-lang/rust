@@ -1,7 +1,7 @@
 fn f<T:Eq + Ord>(_: T) {
 }
 
-fn main() {
+pub fn main() {
     f(3);
 }
 

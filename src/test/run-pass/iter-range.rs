@@ -16,7 +16,7 @@ fn range(a: int, b: int, it: fn(int)) {
     while i < b { it(i); i += 1; }
 }
 
-fn main() {
+pub fn main() {
     let mut sum: int = 0;
     range(0, 100, |x| sum += x );
     log(debug, sum);

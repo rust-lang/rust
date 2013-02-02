@@ -55,4 +55,4 @@ fn test_loop() {
     }
 }
 
-fn main() { test_heap_to_heap(); test_stack_to_heap(); test_loop(); }
+pub fn main() { test_heap_to_heap(); test_stack_to_heap(); test_loop(); }

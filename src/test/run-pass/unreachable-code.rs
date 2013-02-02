@@ -37,4 +37,4 @@ fn ret_guard() {
     }
 }
 
-fn main() {}
+pub fn main() {}

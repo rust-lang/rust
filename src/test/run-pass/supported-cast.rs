@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
   let f = 1 as *libc::FILE;
   log(debug, f as int);
   log(debug, f as uint);

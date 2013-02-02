@@ -121,7 +121,7 @@ fn test_class() {
   assert(q != r);
 }
 
-fn main() {
+pub fn main() {
     test_nil();
     test_bool();
     test_char();

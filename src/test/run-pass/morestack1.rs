@@ -14,6 +14,6 @@ fn getbig(i: int) {
     }
 }
 
-fn main() {
+pub fn main() {
     getbig(100000);
 }

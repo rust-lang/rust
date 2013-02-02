@@ -21,7 +21,7 @@ fn f(r: Rect, x: int, y: int, w: int, h: int) {
     assert (r.h == h);
 }
 
-fn main() {
+pub fn main() {
     let r: Rect = Rect {x: 10, y: 20, w: 100, h: 200};
     assert (r.x == 10);
     assert (r.y == 20);

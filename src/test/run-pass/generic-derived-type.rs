@@ -20,7 +20,7 @@ fn f<T: Copy>(t: T) -> Pair<T> {
     return g::<Pair<T>>(x);
 }
 
-fn main() {
+pub fn main() {
     let b = f::<int>(10);
     log(debug, b.a);
     log(debug, b.b);

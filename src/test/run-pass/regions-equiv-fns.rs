@@ -17,7 +17,7 @@ fn ok(a: &uint) {
     g(a);
 }
 
-fn main() {
+pub fn main() {
 }
 
 

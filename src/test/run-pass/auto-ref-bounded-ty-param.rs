@@ -32,7 +32,7 @@ impl Bar : Baz {
     }
 }
 
-fn main() {
+pub fn main() {
     let y = Bar { x: 42 };
     y.f();
 }

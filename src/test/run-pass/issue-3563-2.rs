@@ -19,4 +19,4 @@ trait Canvas {
 
 }
 
-fn main() {}
+pub fn main() {}

@@ -27,6 +27,6 @@ fn Font() -> Font {
     }
 }
 
-fn main() {
+pub fn main() {
     let _f = @Font();
 }

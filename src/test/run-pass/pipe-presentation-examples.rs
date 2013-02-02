@@ -173,4 +173,4 @@ fn draw_two_frames_bad2(+channel: double_buffer::client::acquire) {
     );
 }
 
-fn main() { }
+pub fn main() { }

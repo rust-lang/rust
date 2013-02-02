@@ -20,6 +20,6 @@ fn cat(in_name: ~str) -> cat {
     }
 }
 
-fn main() {
+pub fn main() {
   let nyan = cat(~"nyan");
 }

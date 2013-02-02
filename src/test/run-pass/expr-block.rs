@@ -25,4 +25,4 @@ fn test_filled_with_stuff() {
     assert (rs == 10);
 }
 
-fn main() { test_basic(); test_rec(); test_filled_with_stuff(); }
+pub fn main() { test_basic(); test_rec(); test_filled_with_stuff(); }

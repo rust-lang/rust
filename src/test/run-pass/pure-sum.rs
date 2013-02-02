@@ -48,5 +48,5 @@ pure fn sums_to_using_uniq_rec(v: ~[int], sum: int) -> bool {
     return *sum0.f == sum;
 }
 
-fn main() {
+pub fn main() {
 }

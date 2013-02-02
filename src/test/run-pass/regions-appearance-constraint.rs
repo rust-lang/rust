@@ -28,5 +28,5 @@ fn testfn(cond: bool) {
     assert *a == exp;
 }
 
-fn main() {
+pub fn main() {
 }

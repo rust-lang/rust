@@ -12,6 +12,6 @@ fn bare() {}
 
 fn likes_block(f: fn()) { f() }
 
-fn main() {
+pub fn main() {
     likes_block(bare);
 }

@@ -18,7 +18,7 @@ impl<T> ~[T]: Pushable<T> {
     }
 }
 
-fn main() {
+pub fn main() {
     let mut v = ~[1];
     v.push_val(2);
     v.push_val(3);

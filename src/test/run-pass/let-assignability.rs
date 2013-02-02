@@ -14,7 +14,7 @@ fn f() {
     io::println(b);
 }
 
-fn main() {
+pub fn main() {
     f();
 }
 

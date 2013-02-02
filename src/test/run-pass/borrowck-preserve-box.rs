@@ -17,7 +17,7 @@ fn borrow(x: &int, f: fn(x: &int)) {
     assert before == after;
 }
 
-fn main() {
+pub fn main() {
     let mut x = @3;
     do borrow(x) |b_x| {
         assert *b_x == 3;

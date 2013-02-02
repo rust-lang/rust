@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-fn main() {
+pub fn main() {
     die!()
 }
 

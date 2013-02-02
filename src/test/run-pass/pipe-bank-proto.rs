@@ -115,5 +115,5 @@ fn bank_client(+bank: bank::client::login) {
     }
 }
 
-fn main() {
+pub fn main() {
 }

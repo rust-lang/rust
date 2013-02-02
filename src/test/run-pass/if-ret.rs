@@ -10,4 +10,4 @@
 
 fn foo() { if (return) { } }
 
-fn main() { foo(); }
+pub fn main() { foo(); }

@@ -12,7 +12,7 @@
 
 use pipes::{Select2, Selectable};
 
-fn main() {
+pub fn main() {
     let (p,c) = pipes::stream();
     do task::try |move c| {
         let (p2,c2) = pipes::stream();

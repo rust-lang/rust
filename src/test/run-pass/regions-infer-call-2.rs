@@ -18,6 +18,6 @@ fn has_one(x: &a/int) -> int {
     do with |y| { takes_two(x, y) }
 }
 
-fn main() {
+pub fn main() {
     assert has_one(&2) == 22;
 }

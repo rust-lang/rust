@@ -26,7 +26,7 @@ impl color : cmp::Eq {
     pure fn ne(&self, other: &color) -> bool { !(*self).eq(other) }
 }
 
-fn main() {
+pub fn main() {
     test_color(red, 0xff0000, ~"red");
     test_color(green, 0x00ff00, ~"green");
     test_color(blue, 0x0000ff, ~"blue");

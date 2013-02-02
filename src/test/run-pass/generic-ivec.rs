@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn f<T>(v: @T) { }
-fn main() { f(@~[1, 2, 3, 4, 5]); }
+pub fn main() { f(@~[1, 2, 3, 4, 5]); }
 

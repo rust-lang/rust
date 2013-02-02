@@ -122,7 +122,7 @@ fn scratched_something<T: scratchy>(critter: T) -> bool {
   option::is_some(critter.scratch())
 }
 
-fn main() {
+pub fn main() {
   let nyan : cat  = cat(0u, 2, "nyan");
   annoy_neighbors(nyan as noisy);
   assert(nyan.meow_count() == 10u);

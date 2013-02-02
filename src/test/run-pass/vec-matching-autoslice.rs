@@ -1,4 +1,4 @@
-fn main() {
+pub fn main() {
     let x = @[1, 2, 3];
     match x {
         [2, .._] => ::core::util::unreachable(),

@@ -10,7 +10,7 @@ fn foo(speaker: &const SpeechMaker) -> uint {
     speaker.how_many() + 33
 }
 
-fn main() {
+pub fn main() {
     let mut lincoln = SpeechMaker {speeches: 22};
     assert foo(&const lincoln) == 55;
 }

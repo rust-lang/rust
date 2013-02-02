@@ -20,7 +20,7 @@ fn call_static_closure(cl: closure_box/&static) {
     (cl.cl)();
 }
 
-fn main() {
+pub fn main() {
     let cl_box = box_it(|| debug!("Hello, world!"));
     call_static_closure(move cl_box);
 }

@@ -53,7 +53,7 @@ impl Point : cmp::Eq {
     pure fn ne(&self, other: &Point) -> bool { !(*self).eq(other) }
 }
 
-fn main() {
+pub fn main() {
     let mut p = Point {x: 10, y: 20};
     p += Point {x: 101, y: 102};
     p = p - Point {x: 100, y: 100};

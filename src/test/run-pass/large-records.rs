@@ -41,4 +41,4 @@ fn f() {
          l: 0};
 }
 
-fn main() { f(); }
+pub fn main() { f(); }

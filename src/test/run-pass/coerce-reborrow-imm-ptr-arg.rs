@@ -14,4 +14,4 @@ fn negate_const(y: &const int) -> int {
     negate(y)
 }
 
-fn main() {}
+pub fn main() {}

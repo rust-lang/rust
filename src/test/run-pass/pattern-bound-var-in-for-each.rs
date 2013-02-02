@@ -25,4 +25,4 @@ fn foo(src: uint) {
     }
 }
 
-fn main() { foo(0u); }
+pub fn main() { foo(0u); }

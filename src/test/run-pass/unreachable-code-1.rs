@@ -18,5 +18,5 @@ fn call_id() {
 
 fn call_id_3() { id(return) && id(return); }
 
-fn main() {
+pub fn main() {
 }

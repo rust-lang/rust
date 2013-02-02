@@ -16,7 +16,7 @@ fn ret_plus_one() -> extern fn(fn() -> int) -> int {
   return plus_one;
 }
 
-fn main() {
+pub fn main() {
     let z = do (ret_plus_one()) || { 2 };
     assert z == 3;
 }

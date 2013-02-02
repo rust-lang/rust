@@ -28,7 +28,7 @@ fn test<T:Dot> (n:int, i:int, first:T, second:T) ->int {
     _ => {test (n-1, i+1, Cons {head:2*i+1, tail:first}, Cons{head:i*i, tail:second})}
   }
 }
-fn main() {
+pub fn main() {
   let n = test(1, 0, Nil, Nil);
   io::println(fmt!("%d", n));
 }

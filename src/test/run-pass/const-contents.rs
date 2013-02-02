@@ -17,7 +17,7 @@ const not : int = !0;
 const notb : bool = !true;
 const neg : int = -(1);
 
-fn main() {
+pub fn main() {
     assert(lsl == 4);
     assert(add == 3);
     assert(addf == 3.0f);

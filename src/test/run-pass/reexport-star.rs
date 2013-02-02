@@ -21,7 +21,7 @@ mod b {
     pub use a::*;
 }
 
-fn main() {
+pub fn main() {
     b::f();
     b::g();
 }

@@ -11,7 +11,7 @@
 
 use core::pipes::*;
 
-fn main() {
+pub fn main() {
     let (p, ch) = stream();
     let t = task::spawn(|| child(&ch) );
     let y = p.recv();

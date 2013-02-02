@@ -26,7 +26,7 @@ impl &str: MyIter {
     pure fn test_const(&const self) { assert *self == "test" }
 }
 
-fn main() {
+pub fn main() {
     // NB: Associativity of ~, etc. in this context is surprising. These must be parenthesized
 
     ([1]).test_imm();

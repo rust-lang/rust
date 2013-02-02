@@ -11,7 +11,7 @@
 // xfail-fast
 #[legacy_modes];
 
-fn main() { test05(); }
+pub fn main() { test05(); }
 
 struct Pair<A,B> { a: A, b: B }
 

@@ -9,7 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let mut result = None;
     task::task().future_result(|+r| { result = Some(move r); }).spawn(child);
     error!("1");

@@ -13,7 +13,7 @@
 extern mod std;
 use std::map::HashMap;
 
-fn main() {
+pub fn main() {
     io::println("Hello world!");
 }
 

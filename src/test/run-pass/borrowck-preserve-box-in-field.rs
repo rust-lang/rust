@@ -19,7 +19,7 @@ fn borrow(x: &int, f: fn(x: &int)) {
 
 struct F { f: ~int }
 
-fn main() {
+pub fn main() {
     let mut x = @F {f: ~3};
     do borrow(x.f) |b_x| {
         assert *b_x == 3;

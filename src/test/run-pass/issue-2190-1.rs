@@ -19,6 +19,6 @@ fn child_no(x: uint) -> fn~() {
     }
 }
 
-fn main() {
+pub fn main() {
     task::spawn(child_no(0));
 }

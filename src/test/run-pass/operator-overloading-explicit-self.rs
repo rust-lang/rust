@@ -18,7 +18,7 @@ impl S {
     }
 }
 
-fn main() {
+pub fn main() {
     let mut s = S { x: 1 };
     s += S { x: 2 };
     assert s.x == 3;

@@ -87,4 +87,4 @@ mod test {
     }
 }
 
-fn main() {}
+pub fn main() {}

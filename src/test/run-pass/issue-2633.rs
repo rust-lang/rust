@@ -25,7 +25,7 @@ fn nyan(kitty: cat, _kitty_info: KittyInfo) {
     (kitty.meow)();
 }
 
-fn main() {
+pub fn main() {
     let mut kitty = cat();
     nyan(copy kitty, KittyInfo {kitty: copy kitty});
 }

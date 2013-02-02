@@ -27,7 +27,7 @@ fn start(c: pipes::Chan<pipes::Chan<~str>>) {
     log(error, move b);
 }
 
-fn main() {
+pub fn main() {
     let (p, ch) = pipes::stream();
     let child = task::spawn(|move ch| start(ch) );
 

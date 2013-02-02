@@ -24,7 +24,7 @@ impl (): ty_ops {
     fn mk() -> uint { 22u }
 }
 
-fn main() {
+pub fn main() {
     let fn_env = fn@() -> uint {
         mk_nil(())
     };

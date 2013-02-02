@@ -19,4 +19,4 @@ fn greater_than_one<T:NumExt>(n: &T) -> bool {
     *n > from_int(1)
 }
 
-fn main() {}
+pub fn main() {}

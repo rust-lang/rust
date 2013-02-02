@@ -19,4 +19,4 @@ fn create_index<T>(index: ~[{a: T, b: uint}], hash_fn: extern fn(T) -> uint) {
     range(0u, 256u, |_i| { let bucket: ~[T] = ~[]; } )
 }
 
-fn main() { }
+pub fn main() { }

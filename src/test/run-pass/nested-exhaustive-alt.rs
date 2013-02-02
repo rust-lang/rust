@@ -10,7 +10,7 @@
 
 struct Foo { foo: bool, bar: Option<int>, baz: int }
 
-fn main() {
+pub fn main() {
     match @Foo{foo: true, bar: Some(10), baz: 20} {
       @Foo{foo: true, bar: Some(_), _} => {}
       @Foo{foo: false, bar: None, _} => {}

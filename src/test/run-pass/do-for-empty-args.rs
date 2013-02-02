@@ -14,7 +14,7 @@
 fn f(f: fn() -> bool) {
 }
 
-fn main() {
+pub fn main() {
     do f() || { true }
     do f() { true }
     do f || { true }

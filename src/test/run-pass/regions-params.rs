@@ -22,7 +22,7 @@ fn parameterized(x: &uint) -> uint {
     *z
 }
 
-fn main() {
+pub fn main() {
     let x = 3u;
     assert parameterized(&x) == 3u;
 }

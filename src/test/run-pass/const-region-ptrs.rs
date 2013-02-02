@@ -15,7 +15,7 @@ const x: &int = &10;
 
 const y: &Pair = &Pair {a: 15, b: x};
 
-fn main() {
+pub fn main() {
     io::println(fmt!("x = %?", *x));
     io::println(fmt!("y = {a: %?, b: %?}", y.a, *(y.b)));
     assert *x == 10;

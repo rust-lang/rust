@@ -18,7 +18,7 @@ impl Clam: get_chowder {
     fn get_chowder() -> &self/int { return self.chowder; }
 }
 
-fn main() {
+pub fn main() {
     let clam = Clam { chowder: &3 };
     log(debug, *clam.get_chowder());
     clam.get_chowder();

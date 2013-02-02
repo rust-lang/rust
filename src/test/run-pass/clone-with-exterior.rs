@@ -17,7 +17,7 @@ fn f(x : @{a:int, b:int}) {
     assert (x.b == 12);
 }
 
-fn main() {
+pub fn main() {
     let z : @{a:int, b:int} = @{ a : 10, b : 12};
     let p = task::_spawn(bind f(z));
     task::join_id(p);

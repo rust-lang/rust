@@ -29,7 +29,7 @@ impl X {
     }
 }
 
-fn main(){
+pub fn main(){
     let val = &X{
         err: example_err,
     };

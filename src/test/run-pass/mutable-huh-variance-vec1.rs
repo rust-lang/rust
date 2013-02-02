@@ -10,7 +10,7 @@
 
 // error-pattern: mismatched types
 
-fn main() {
+pub fn main() {
     let v = ~[~[0]];
 
     // This is ok because the outer vec is covariant with respect

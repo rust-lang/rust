@@ -65,7 +65,7 @@ impl thing {
 trait Nus { fn f(&self); }
 impl thing: Nus { fn f(&self) {} }
 
-fn main() {
+pub fn main() {
 
     let x = @thing(A {mut a: @10});
     assert x.foo() == 10;

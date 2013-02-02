@@ -18,7 +18,7 @@ fn len(v: ~[const int]) -> uint {
     return i;
 }
 
-fn main() {
+pub fn main() {
     let v0 = ~[1, 2, 3, 4, 5];
     log(debug, len(v0));
     let v1 = ~[mut 1, 2, 3, 4, 5];

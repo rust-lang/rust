@@ -13,7 +13,7 @@ struct F { mut f: ~[int] }
 fn impure(_v: &[int]) {
 }
 
-fn main() {
+pub fn main() {
     let x = F {f: ~[3]};
 
     match x {

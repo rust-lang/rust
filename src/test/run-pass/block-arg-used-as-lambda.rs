@@ -12,7 +12,7 @@ fn to_lambda(f: fn@(uint) -> uint) -> fn@(uint) -> uint {
     return f;
 }
 
-fn main() {
+pub fn main() {
     let x: fn@(uint) -> uint = to_lambda(|x| x * 2u );
     let y = to_lambda(x);
 

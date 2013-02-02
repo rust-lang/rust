@@ -20,6 +20,6 @@ impl E {
     }
 }
 
-fn main() {
+pub fn main() {
     C.method()
 }

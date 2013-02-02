@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-fn main() {
+pub fn main() {
     let a: ~str = ~"hello";
     let b: ~str = ~"world";
     let s: ~str = a + b;

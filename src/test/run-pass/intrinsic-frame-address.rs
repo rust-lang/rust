@@ -15,7 +15,7 @@ extern mod rusti {
     pub fn frame_address(f: &once fn(*u8));
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         do rusti::frame_address |addr| {
             assert addr.is_not_null();

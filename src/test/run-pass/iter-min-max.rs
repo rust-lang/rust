@@ -10,7 +10,7 @@
 
 fn is_even(&&x: uint) -> bool { (x % 2u) == 0u }
 
-fn main() {
+pub fn main() {
     assert [1u, 3u].min() == 1u;
     assert [3u, 1u].min() == 1u;
     assert Some(1u).min() == 1u;

@@ -204,7 +204,7 @@ fn test_shapes()
     assert check_strs(art.to_str(), "****\n*..*\n*.**\n****");
 }
 
-fn main() {
+pub fn main() {
     test_ascii_art_ctor();
     test_add_pt();
     test_shapes();

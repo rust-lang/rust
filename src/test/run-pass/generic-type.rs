@@ -12,7 +12,7 @@
 
 struct Pair<T> {x: T, y: T}
 
-fn main() {
+pub fn main() {
     let x: Pair<int> = Pair {x: 10, y: 12};
     assert (x.x == 10);
     assert (x.y == 12);

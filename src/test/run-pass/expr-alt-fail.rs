@@ -18,4 +18,4 @@ fn test_box() {
     assert (r[0] == 10);
 }
 
-fn main() { test_simple(); test_box(); }
+pub fn main() { test_simple(); test_box(); }

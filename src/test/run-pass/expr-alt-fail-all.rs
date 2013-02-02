@@ -13,7 +13,7 @@
 
 // When all branches of an match expression result in fail, the entire
 // match expression results in fail.
-fn main() {
+pub fn main() {
     let x =
         match true {
           true => { 10 }

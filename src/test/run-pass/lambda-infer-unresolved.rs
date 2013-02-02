@@ -14,7 +14,7 @@
 
 struct Refs { mut refs: ~[int], n: int }
 
-fn main() {
+pub fn main() {
     let e = @Refs{mut refs: ~[], n: 0};
     let f = fn@ () { log(error, e.n); };
     e.refs += ~[1];

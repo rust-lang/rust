@@ -78,4 +78,4 @@ fn add_interfaces(store: int, managed_ip: ~str, device: std::map::HashMap<~str, 
     }
 }
 
-fn main() {}
+pub fn main() {}

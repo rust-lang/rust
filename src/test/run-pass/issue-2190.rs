@@ -13,6 +13,6 @@ type t = {
     f: fn~()
 };
 
-fn main() {
+pub fn main() {
     let _t: t = { f: {||()} };
 }

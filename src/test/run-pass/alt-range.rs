@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     match 5u {
       1u..5u => {}
       _ => die!(~"should match range"),

@@ -19,4 +19,4 @@ mod foo {
     }
 }
 
-fn main() { baz(); quux(); }
+pub fn main() { baz(); quux(); }

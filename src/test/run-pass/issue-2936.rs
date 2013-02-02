@@ -32,7 +32,7 @@ fn cbar(x: int) -> cbar {
     }
 }
 
-fn main() {
+pub fn main() {
     let x: int = foo::<int, cbar>(cbar(5));
     assert x == 5;
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn thing(x: &r/[int]) -> &r/[int] { x }
-fn main() {
+pub fn main() {
     let x = &[1,2,3];
     let y = x;
     let z = thing(x);

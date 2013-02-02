@@ -16,4 +16,4 @@ mod m1 {
 
 fn bar(x: m1::foo) { match x { m1::foo1 => { } m1::foo2 => { } } }
 
-fn main() { }
+pub fn main() { }

@@ -28,7 +28,7 @@ impl FromThinAir: Deserializer {
     fn read_int() -> int { 22 }
 }
 
-fn main() {
+pub fn main() {
     let d = FromThinAir { dummy: () };
     let i: int = Deserializable::deserialize(&d);
     assert i == 22;

@@ -14,7 +14,7 @@ extern mod std;
 use std::arc;
 fn dispose(+_x: arc::ARC<bool>) unsafe { }
 
-fn main() {
+pub fn main() {
     let p = arc::arc(true);
     let x = Some(p);
     match move x {

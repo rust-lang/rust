@@ -10,7 +10,7 @@
 
 struct J { j: int }
 
-fn main() {
+pub fn main() {
     let i = ~J {
         j: 100
     };

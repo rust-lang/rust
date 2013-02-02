@@ -22,4 +22,4 @@ fn foo() {
     }
 }
 
-fn main() { foo(); }
+pub fn main() { foo(); }

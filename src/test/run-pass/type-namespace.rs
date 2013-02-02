@@ -12,4 +12,4 @@ struct A { a: int }
 
 fn a(a: A) -> int { return a.a; }
 
-fn main() { let x: A = A {a: 1}; assert (a(x) == 1); }
+pub fn main() { let x: A = A {a: 1}; assert (a(x) == 1); }

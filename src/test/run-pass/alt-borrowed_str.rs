@@ -33,7 +33,7 @@ fn g2(ref_1: &str, ref_2: &str) {
     }
 }
 
-fn main() {
+pub fn main() {
     f1(@"a");
     f1(~"b");
     f1(&"c");

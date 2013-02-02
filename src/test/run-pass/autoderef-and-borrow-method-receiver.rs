@@ -20,6 +20,6 @@ fn g(x: &mut Foo) {
     x.f();
 }
 
-fn main() {
+pub fn main() {
 }
 

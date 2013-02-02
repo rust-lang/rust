@@ -29,7 +29,7 @@ fn cat<U>(in_x : uint, in_y : int) -> cat<U> {
 }
 
 
-fn main() {
+pub fn main() {
   let _nyan : cat<int> = cat::<int>(52u, 99);
   //  let kitty = cat(1000u, 2);
 }

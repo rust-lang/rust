@@ -9,7 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let a: ~[int] = ~[1, 2, 3, 4, 5];
     let b: ~[int] = ~[6, 7, 8, 9, 0];
     let v: ~[int] = a + b;

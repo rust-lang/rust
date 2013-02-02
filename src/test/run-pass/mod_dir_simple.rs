@@ -15,6 +15,6 @@ mod mod_dir_simple {
     pub mod test;
 }
 
-fn main() {
+pub fn main() {
     assert mod_dir_simple::test::foo() == 10;
 }

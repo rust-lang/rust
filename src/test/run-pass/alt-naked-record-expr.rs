@@ -10,7 +10,7 @@
 
 struct X { x: int }
 
-fn main() {
+pub fn main() {
     let x = match 0 {
       _ => X {
         x: 0

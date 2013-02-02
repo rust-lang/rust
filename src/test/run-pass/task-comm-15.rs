@@ -22,7 +22,7 @@ fn start(c: pipes::Chan<int>, i0: int) {
     }
 }
 
-fn main() {
+pub fn main() {
     // Spawn a task that sends us back messages. The parent task
     // is likely to terminate before the child completes, so from
     // the child's point of view the receiver may die. We should

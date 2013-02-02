@@ -20,4 +20,4 @@ mod foo {
 mod bar {
     pub use zed::baz;
 }
-fn main() { baz(); }
+pub fn main() { baz(); }

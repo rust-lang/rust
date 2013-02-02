@@ -20,4 +20,4 @@ impl<A:Copy> BaseIter<A>: FlatMapToVec<A> {
    }
 }
 
-fn main() {}
+pub fn main() {}

@@ -11,7 +11,7 @@
 const FOO: int = 10;
 const BAR: int = 3;
 
-fn main() {
+pub fn main() {
     let x: int = 3;
     let y = match x {
         FOO => 1,

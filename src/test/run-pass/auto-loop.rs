@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let mut sum = 0;
     for vec::each(~[1, 2, 3, 4, 5]) |x| {
         sum += *x;

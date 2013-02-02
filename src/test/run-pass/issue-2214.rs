@@ -38,7 +38,7 @@ extern mod m {
 
 }
 
-fn main() {
+pub fn main() {
   let mut y: int = 5;
   let x: &mut int = &mut y;
   assert (lgamma(1.0 as c_double, x) == 0.0 as c_double);

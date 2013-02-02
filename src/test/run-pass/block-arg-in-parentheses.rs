@@ -27,7 +27,7 @@ fn w_ret(v: ~[int]) -> int {
     return do vec::foldl(0, v) |x,y| { x+*y } - 10;
 }
 
-fn main() {
+pub fn main() {
     assert w_semi(~[0, 1, 2, 3]) == -10;
     assert w_paren1(~[0, 1, 2, 3]) == -4;
     assert w_paren2(~[0, 1, 2, 3]) == -4;
