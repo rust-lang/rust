@@ -148,7 +148,7 @@ pub fn get_dep_hashes(cstore: CStore) -> ~[~str] {
     type crate_hash = {name: ~str, hash: ~str};
     let mut result = ~[];
 
-    for p(cstore).use_crate_map.each_value |cnum| {
+    for p(cstore).use_crate_map.each_value_ref |&cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", cdata.name, hash);

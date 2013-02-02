@@ -1085,7 +1085,7 @@ pub fn store_non_ref_bindings(bcx: block,
      */
 
     let mut bcx = bcx;
-    for data.bindings_map.each_value |binding_info| {
+    for data.bindings_map.each_value_ref |&binding_info| {
         match binding_info.trmode {
             TrByValue(is_move, lldest) => {
                 let llval = Load(bcx, binding_info.llmatch); // get a T*
@@ -1119,7 +1119,7 @@ pub fn insert_lllocals(bcx: block,
      * the `fcx.lllocals` map.  If add_cleans is true, then adds cleanups for
      * the bindings. */
 
-    for data.bindings_map.each_value |binding_info| {
+    for data.bindings_map.each_value_ref |&binding_info| {
         let llval = match binding_info.trmode {
             // By value bindings: use the stack slot that we
             // copied/moved the value into
@@ -1191,7 +1191,7 @@ pub fn compile_guard(bcx: block,
 
     fn drop_bindings(bcx: block, data: &ArmData) -> block {
         let mut bcx = bcx;
-        for data.bindings_map.each_value |binding_info| {
+        for data.bindings_map.each_value_ref |&binding_info| {
             match binding_info.trmode {
                 TrByValue(_, llval) => {
                     bcx = glue::drop_ty(bcx, llval, binding_info.ty);
