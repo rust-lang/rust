@@ -42,7 +42,7 @@ packages:
 Assuming you're on a relatively modern *nix system and have met the
 prerequisites, something along these lines should work.
 
-    $ wget http://static.rust-lang.org/dist/rust-0.5.tar.gz
+    $ curl -O http://static.rust-lang.org/dist/rust-0.5.tar.gz
     $ tar -xzf rust-0.5.tar.gz
     $ cd rust-0.5
     $ ./configure
