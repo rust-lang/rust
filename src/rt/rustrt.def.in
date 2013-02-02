@@ -60,10 +60,7 @@ task_clear_event_reject
 task_wait_event
 task_signal_event
 upcall_fail
-upcall_trace
 upcall_free
-upcall_validate_box
-upcall_log_type
 upcall_malloc
 upcall_rust_personality
 upcall_call_shim_on_c_stack
