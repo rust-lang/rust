@@ -18,7 +18,6 @@ use core::io::WriterUtil;
 use core::io;
 use core::ops;
 use core::to_str::ToStr;
-use core::mutable::Mut;
 use core::prelude::*;
 use core::to_bytes::IterBytes;
 use core::uint;
@@ -175,7 +174,7 @@ pub mod chained {
     }
 
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
-        pure fn contains_key_ref(k: &K) -> bool {
+        pure fn contains_key_ref(&self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
               NotFound => false,
@@ -227,7 +226,7 @@ pub mod chained {
             }
         }
 
-        pure fn find(k: K) -> Option<V> {
+        pure fn find(&self, k: K) -> Option<V> {
             unsafe {
                 match self.search_tbl(&k, k.hash_keyed(0,0) as uint) {
                   NotFound => None,
@@ -292,7 +291,7 @@ pub mod chained {
             return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 
-        pure fn get(k: K) -> V {
+        pure fn get(&self, k: K) -> V {
             let opt_v = self.find(k);
             if opt_v.is_none() {
                 die!(fmt!("Key not found in table: %?", k));
@@ -316,17 +315,17 @@ pub mod chained {
             }
         }
 
-        pure fn each_ref(blk: fn(key: &K, value: &V) -> bool) {
+        pure fn each_ref(&self, blk: fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }
             }
         }
 
-        pure fn each_key_ref(blk: fn(key: &K) -> bool) {
+        pure fn each_key_ref(&self, blk: fn(key: &K) -> bool) {
             self.each_ref(|k, _v| blk(k))
         }
 
-        pure fn each_value_ref(blk: fn(value: &V) -> bool) {
+        pure fn each_value_ref(&self, blk: fn(value: &V) -> bool) {
             self.each_ref(|_k, v| blk(v))
         }
     }
