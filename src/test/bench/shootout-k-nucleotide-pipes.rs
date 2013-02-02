@@ -49,10 +49,9 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
    let mut pairs = ~[];
 
    // map -> [(k,%)]
-   mm.each(fn&(key: ~[u8], val: uint) -> bool {
+   for mm.each_ref |&key, &val| {
       pairs.push((key, pct(val, total)));
-      return true;
-   });
+   }
 
    let pairs_sorted = sortKV(pairs);
 

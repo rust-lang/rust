@@ -400,7 +400,9 @@ pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
                     sess: sess});
 
     // Install defaults.
-    for cx.dict.each |_k, spec| { cx.set_level(spec.lint, spec.default); }
+    for cx.dict.each_value_ref |&spec| {
+        cx.set_level(spec.lint, spec.default);
+    }
 
     // Install command-line options, overriding defaults.
     for sess.opts.lint_opts.each |pair| {
