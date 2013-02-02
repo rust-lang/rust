@@ -342,12 +342,6 @@ void rust_task::fail_sched_loop() {
     sched_loop->fail();
 }
 
-frame_glue_fns*
-rust_task::get_frame_glue_fns(uintptr_t fp) {
-    fp -= sizeof(uintptr_t);
-    return *((frame_glue_fns**) fp);
-}
-
 void rust_task::assert_is_running()
 {
     scoped_lock with(lifecycle_lock);
