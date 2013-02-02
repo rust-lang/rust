@@ -157,16 +157,17 @@ LIBUV_DEPS := $$(wildcard \
               $$(S)src/libuv/*/*/*/*)
 endif
 
+ifdef CFG_WINDOWSY
+LIBUV_OS := 'OS=mingw'
+else
+LIBUV_OS :=
+endif
+
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
-        LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CFG_GCCISH_CROSS)$$(CC)" \
-		CXX="$$(CFG_GCCISH_CROSS)$$(CXX)" \
-		AR="$$(CFG_GCCISH_CROSS)$$(AR)" \
-		BUILDTYPE=Release \
-		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
-		V=$$(VERBOSE) FLOCK= 
+		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" $$(LIBUV_OS) \
+		V=$$(VERBOSE)
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
