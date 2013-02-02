@@ -26,6 +26,7 @@ use core::result;
 use core::run;
 use core::str;
 use core::task;
+use core::pipes::*;
 use std::future;
 use syntax;
 
@@ -168,12 +169,8 @@ fn readclose(fd: libc::c_int) -> ~str {
 }
 
 fn generic_writer(process: fn~(markdown: ~str)) -> Writer {
-    let (setup_po, setup_ch) = pipes::stream();
+    let (po, ch) = stream::<WriteInstr>();
     do task::spawn |move process, move setup_ch| {
-        let po: oldcomm::Port<WriteInstr> = oldcomm::Port();
-        let ch = oldcomm::Chan(&po);
-        setup_ch.send(ch);
-
         let mut markdown = ~"";
         let mut keep_going = true;
         while keep_going {
@@ -184,10 +181,8 @@ fn generic_writer(process: fn~(markdown: ~str)) -> Writer {
         }
         process(move markdown);
     };
-    let ch = setup_po.recv();
-
     fn~(instr: WriteInstr) {
-        oldcomm::send(ch, instr);
+        ch.send(instr);
     }
 }
 
