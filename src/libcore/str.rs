@@ -45,6 +45,8 @@ Section: Creating a string
  * # Failure
  *
  * Fails if invalid UTF-8
+ *
+ * FIXME(#4765) should return a Result instead of fail on invalid input.
  */
 pub pure fn from_bytes(vv: &[const u8]) -> ~str {
     assert is_utf8(vv);
