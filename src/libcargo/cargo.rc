@@ -748,7 +748,7 @@ pub fn configure(opts: Options) -> Cargo {
 }
 
 pub fn for_each_package(c: &Cargo, b: fn(s: @Source, p: &Package)) {
-    for c.sources.each_value |v| {
+    for c.sources.each_value_ref |&v| {
         for v.packages.each |p| {
             b(v, p);
         }
@@ -1569,7 +1569,7 @@ pub fn cmd_list(c: &Cargo) {
             }
         }
     } else {
-        for c.sources.each_value |v| {
+        for c.sources.each_value_ref |&v| {
             print_source(v);
         }
     }
@@ -1675,7 +1675,7 @@ pub fn copy_warn(srcfile: &Path, destfile: &Path) {
 
 pub fn cmd_sources(c: &Cargo) {
     if vec::len(c.opts.free) < 3u {
-        for c.sources.each_value |v| {
+        for c.sources.each_value_ref |&v| {
             info(fmt!("%s (%s) via %s",
                       v.name, v.url, v.method));
         }
