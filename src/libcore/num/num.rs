@@ -422,6 +422,12 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
                 buf = buf.slice(0, i + 1);
             }
         }
+    } // If exact and trailing '.', just cut that
+    else {
+        let max_i = buf.len() - 1;
+        if buf[max_i] == '.' as u8 {
+            buf = buf.slice(0, max_i);
+        }
     }
 
     (buf, false)
