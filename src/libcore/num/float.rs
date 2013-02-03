@@ -136,12 +136,34 @@ pub pure fn to_str_hex(num: float) -> ~str {
  *
  * * num - The float value
  * * radix - The base to use
+ *
+ * # Failure
+ *
+ * Fails if called on a special value like `inf`, `-inf` or `NaN` due to
+ * possible misinterpretation of the result at higher bases. If those values
+ * are expected, use `to_str_radix_special()` instead.
  */
 #[inline(always)]
 pub pure fn to_str_radix(num: float, radix: uint) -> ~str {
-    let (r, _) = num::to_str_common(
+    let (r, special) = num::to_str_common(
         &num, radix, true, true, num::SignNeg, num::DigAll);
+    if special { die!(~"number has a special value, \
+                      try to_str_radix_special() if those are expected") }
     r
+}
+
+/**
+ * Converts a float to a string in a given radix, and a flag indicating
+ * whether it's a special value
+ *
+ * # Arguments
+ *
+ * * num - The float value
+ * * radix - The base to use
+ */
+#[inline(always)]
+pub pure fn to_str_radix_special(num: float, radix: uint) -> (~str, bool) {
+    num::to_str_common(&num, radix, true, true, num::SignNeg, num::DigAll)
 }
 
 /**
