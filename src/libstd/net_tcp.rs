@@ -1560,7 +1560,10 @@ pub mod test {
         let cont_ch = SharedChan(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
-        do task::spawn_sched(task::ManualThreads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) |
+            copy server_ip,
+            copy expected_resp
+        | {
             let cont_ch = cont_ch.clone();
             let actual_req = run_tcp_test_server(
                 server_ip,
@@ -1598,10 +1601,13 @@ pub mod test {
         let cont_ch = SharedChan(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
-        do task::spawn_sched(task::ManualThreads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) |
+            copy server_ip,
+            copy expected_resp
+        | {
             let cont_ch = cont_ch.clone();
             run_tcp_test_server(
-                server_ip,
+                /*bad*/copy server_ip,
                 server_port,
                 expected_resp,
                 cont_ch.clone(),
@@ -1658,7 +1664,10 @@ pub mod test {
         let cont_ch = SharedChan(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
-        do task::spawn_sched(task::ManualThreads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) |
+            copy server_ip,
+            copy expected_resp
+        | {
             let cont_ch = cont_ch.clone();
             run_tcp_test_server(
                 server_ip,
@@ -1723,7 +1732,10 @@ pub mod test {
         let cont_ch = SharedChan(cont_ch);
         // server
         let iotask_clone = iotask.clone();
-        do task::spawn_sched(task::ManualThreads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) |
+            copy server_ip,
+            copy expected_resp
+        | {
             let cont_ch = cont_ch.clone();
             let actual_req = run_tcp_test_server(
                 server_ip,
@@ -1770,7 +1782,10 @@ pub mod test {
         let cont_ch = SharedChan(cont_ch);
         // server
         let hl_loop_clone = hl_loop.clone();
-        do task::spawn_sched(task::ManualThreads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) |
+            copy server_ip,
+            copy expected_resp
+        | {
             let cont_ch = cont_ch.clone();
             run_tcp_test_server(
                 server_ip,

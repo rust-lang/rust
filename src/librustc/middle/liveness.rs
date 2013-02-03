@@ -448,7 +448,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                 |_bm, arg_id, _x, path| {
             debug!("adding argument %d", arg_id);
-            let ident = ast_util::path_to_ident(path);
+            let ident = *ast_util::path_to_ident(path);
             (*fn_maps).add_variable(Arg(arg_id, ident, mode));
         }
     };
@@ -513,7 +513,7 @@ fn visit_local(local: @local, &&self: @IrMaps, vt: vt<@IrMaps>) {
     let def_map = self.tcx.def_map;
     do pat_util::pat_bindings(def_map, local.node.pat) |_bm, p_id, sp, path| {
         debug!("adding local variable %d", p_id);
-        let name = ast_util::path_to_ident(path);
+        let name = *ast_util::path_to_ident(path);
         self.add_live_node_for_node(p_id, VarDefNode(sp));
         let kind = match local.node.init {
           Some(_) => FromLetWithInitializer,
@@ -535,7 +535,7 @@ fn visit_arm(arm: arm, &&self: @IrMaps, vt: vt<@IrMaps>) {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
             debug!("adding local variable %d from match with bm %?",
                    p_id, bm);
-            let name = ast_util::path_to_ident(path);
+            let name = *ast_util::path_to_ident(path);
             self.add_live_node_for_node(p_id, VarDefNode(sp));
             self.add_variable(Local(LocalInfo {
                 id: p_id,

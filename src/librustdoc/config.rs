@@ -140,18 +140,18 @@ pub fn parse_config_(
     let args = args.tail();
     let opts = vec::unzip(opts()).first();
     match getopts::getopts(args, opts) {
-        result::Ok(matches) => {
+        Ok(matches) => {
             if matches.free.len() == 1 {
-                let input_crate = Path(vec::head(matches.free));
+                let input_crate = Path(*matches.free.head());
                 config_from_opts(&input_crate, &matches, move program_output)
             } else if matches.free.is_empty() {
-                result::Err(~"no crates specified")
+                Err(~"no crates specified")
             } else {
-                result::Err(~"multiple crates specified")
+                Err(~"multiple crates specified")
             }
         }
-        result::Err(f) => {
-            result::Err(getopts::fail_str(f))
+        Err(f) => {
+            Err(getopts::fail_str(f))
         }
     }
 }

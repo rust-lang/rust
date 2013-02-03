@@ -386,7 +386,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
 
-        let canon_id = pcx.map.get(&ast_util::path_to_ident(name));
+        let canon_id = pcx.map.get(ast_util::path_to_ident(name));
         if canon_id != pat.id {
             let ct = fcx.local_ty(pat.span, canon_id);
             demand::eqtype(fcx, pat.span, ct, typ);

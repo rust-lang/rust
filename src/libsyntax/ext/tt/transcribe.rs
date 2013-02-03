@@ -155,7 +155,7 @@ pub fn tt_next_token(&&r: tt_reader) -> TokenAndSpan {
     while r.cur.idx >= r.cur.readme.len() {
         /* done with this set; pop or repeat? */
         if ! r.cur.dotdotdoted
-            || r.repeat_idx.last() == r.repeat_len.last() - 1 {
+            || { *r.repeat_idx.last() == *r.repeat_len.last() - 1 } {
 
             match r.cur.up {
               tt_frame_up(None) => {

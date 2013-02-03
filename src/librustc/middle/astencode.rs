@@ -115,7 +115,7 @@ pub fn encode_inlined_item(ecx: @e::encode_ctxt,
 pub fn decode_inlined_item(cdata: cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
-                           +path: ast_map::path,
+                           path: ast_map::path,
                            par_doc: ebml::Doc)
                         -> Option<ast::inlined_item> {
     let dcx = @{cdata: cdata, tcx: tcx, maps: maps};
@@ -137,7 +137,7 @@ pub fn decode_inlined_item(cdata: cstore::crate_metadata,
                ast_map::path_to_str(path, tcx.sess.parse_sess.interner),
                tcx.sess.str_of(ii.ident()));
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
-                                  dcx.tcx.items, path, ii);
+                                  dcx.tcx.items, /*bad*/ copy path, ii);
         decode_side_tables(xcx, ast_doc);
         match ii {
           ast::ii_item(i) => {

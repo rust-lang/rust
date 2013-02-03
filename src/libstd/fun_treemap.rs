@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[forbid(deprecated_mode)];
+#[allow(vecs_implicitly_copyable)];
 
 /*!
  * A functional key,value store that works on anything.

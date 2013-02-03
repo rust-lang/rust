@@ -44,7 +44,7 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
             ccx.tcx, fn_id,
             |a,b,c,d| {
                 astencode::decode_inlined_item(a, b, ccx.maps,
-                                               /*bad*/ copy c, d)
+                                               /*bad*/vec::from_slice(c), d)
             }) {
 
           csearch::not_found => {

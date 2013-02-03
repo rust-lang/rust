@@ -1402,8 +1402,8 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
     };
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
-        do option::iter(&simple_name) |name| {
-            str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
+        do simple_name.iter |name| {
+            str::as_c_str(cx.ccx().sess.str_of(**name), |buf| {
                 unsafe {
                     llvm::LLVMSetValueName(val, buf)
                 }
@@ -2160,7 +2160,7 @@ pub fn register_fn_fuller(ccx: @crate_ctxt,
            ast_map::path_to_str(path, ccx.sess.parse_sess.interner));
 
     let ps = if attr::attrs_contains_name(attrs, "no_mangle") {
-        path_elt_to_str(path.last(), ccx.sess.parse_sess.interner)
+        path_elt_to_str(*path.last(), ccx.sess.parse_sess.interner)
     } else {
         mangle_exported_name(ccx, /*bad*/copy path, node_type)
     };

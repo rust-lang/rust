@@ -13,6 +13,7 @@
 //! `Ord`, and that the `lt` method provides a total ordering.
 
 #[forbid(deprecated_mode)];
+#[allow(vecs_implicitly_copyable)];
 
 use core::container::{Container, Mutable, Map, Set};
 use core::cmp::{Eq, Ord};
