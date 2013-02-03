@@ -43,11 +43,11 @@ pub trait One {
 }
 
 pub trait Round {
-    pure fn round(&self, mode: RoundMode) -> self;
+    pure fn round(&self, mode: RoundMode) -> Self;
 
-    pure fn floor(&self) -> self;
-    pure fn ceil(&self)  -> self;
-    pure fn fract(&self) -> self;
+    pure fn floor(&self) -> Self;
+    pure fn ceil(&self)  -> Self;
+    pure fn fract(&self) -> Self;
 }
 
 pub enum RoundMode {
@@ -62,7 +62,7 @@ pub trait ToStrRadix {
 }
 
 pub trait FromStrRadix {
-    static pub pure fn from_str_radix(str: &str, radix: uint) -> Option<self>;
+    static pub pure fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
 // Generic math functions:
@@ -135,7 +135,8 @@ pub pure fn is_neg_zero<T: Num One Zero Eq>(num: &T) -> bool {
  * - If code written to use this function doesn't care about it, it's
  *   probably assuming that `x^0` always equals `1`.
  */
-pub pure fn pow_with_uint<T: Num One Zero>(radix: uint, pow: uint) -> T {
+pub pure fn pow_with_uint<T: Num One Zero Copy>(radix: uint,
+                                                pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
 
@@ -220,11 +221,11 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
         num: &T, radix: uint, special: bool, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
     if radix as int <  2 {
-        fail fmt!("to_str_bytes_common: radix %? to low, \
-                   must lie in the range [2, 36]", radix);
+        die!(fmt!("to_str_bytes_common: radix %? to low, \
+                   must lie in the range [2, 36]", radix));
     } else if radix as int > 36 {
-        fail fmt!("to_str_bytes_common: radix %? to high, \
-                   must lie in the range [2, 36]", radix);
+        die!(fmt!("to_str_bytes_common: radix %? to high, \
+                   must lie in the range [2, 36]", radix));
     }
 
     let _0: T = Zero::zero();
@@ -499,20 +500,20 @@ pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
         ) -> Option<T> {
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
-          => fail fmt!("from_str_bytes_common: radix %? incompatible with \
-                        use of 'e' as decimal exponent", radix),
+          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+                        use of 'e' as decimal exponent", radix)),
         ExpBin if radix >= DIGIT_P_RADIX       // binary exponent 'p'
-          => fail fmt!("from_str_bytes_common: radix %? incompatible with \
-                        use of 'p' as binary exponent", radix),
+          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+                        use of 'p' as binary exponent", radix)),
         _ if special && radix >= DIGIT_I_RADIX // first digit of 'inf'
-          => fail fmt!("from_str_bytes_common: radix %? incompatible with \
-                        special values 'inf' and 'NaN'", radix),
+          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+                        special values 'inf' and 'NaN'", radix)),
         _ if radix as int < 2
-          => fail fmt!("from_str_bytes_common: radix %? to low, \
-                        must lie in the range [2, 36]", radix),
+          => die!(fmt!("from_str_bytes_common: radix %? to low, \
+                        must lie in the range [2, 36]", radix)),
         _ if radix as int > 36
-          => fail fmt!("from_str_bytes_common: radix %? to high, \
-                        must lie in the range [2, 36]", radix),
+          => die!(fmt!("from_str_bytes_common: radix %? to high, \
+                        must lie in the range [2, 36]", radix)),
         _ => ()
     }
 
