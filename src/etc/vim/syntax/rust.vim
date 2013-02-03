@@ -12,25 +12,24 @@ endif
 
 syn match     rustAssert      "\<assert\(\w\)*"
 syn keyword   rustKeyword     as break
-syn keyword   rustKeyword     const copy do drop else export extern fail
+syn keyword   rustKeyword     copy do drop else extern
 syn keyword   rustKeyword     for if impl let log
-syn keyword   rustKeyword     loop match mod move mut once priv pure
-syn match     rustKeyword     "\<pub\>"
+syn keyword   rustKeyword     loop match mod move once priv pub pure
 syn keyword   rustKeyword     ref return static
-syn match     rustKeyword     "\<unsafe\>" " Allows also matching unsafe::foo()
-syn keyword   rustKeyword     use while
+syn keyword   rustKeyword     unsafe use while
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
+syn keyword   rustStorage     const mut
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " Reserved words
-syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128
+syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128 be
 
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
-syn keyword   rustType        f64 i8 i16 i32 i64 str
+syn keyword   rustType        f64 i8 i16 i32 i64 str Self
 syn keyword   rustType        Option Either
 
 " Types from libc
@@ -134,6 +133,7 @@ hi def link rustMacro         Macro
 hi def link rustType          Type
 hi def link rustTodo          Todo
 hi def link rustAttribute     PreProc
+hi def link rustStorage       StorageClass
 
 " Other Suggestions:
 " hi rustAssert ctermfg=yellow
