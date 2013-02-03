@@ -477,11 +477,11 @@ pub fn test_from_str() {
    // note: -0 == 0, hence these slightly more complex tests
    match from_str(~"-0") {
        Some(v) if is_zero(v) => assert is_negative(v),
-       _ => fail
+       _ => die!()
    }
    match from_str(~"0") {
        Some(v) if is_zero(v) => assert is_positive(v),
-       _ => fail
+       _ => die!()
    }
 
    assert from_str(~"").is_none();
@@ -519,16 +519,16 @@ pub fn test_from_str_hex() {
    // note: NaN != NaN, hence this slightly complex test
    match from_str_hex(~"NaN") {
        Some(f) => assert is_NaN(f),
-       None => fail
+       None => die!()
    }
    // note: -0 == 0, hence these slightly more complex tests
    match from_str_hex(~"-0") {
        Some(v) if is_zero(v) => assert is_negative(v),
-       _ => fail
+       _ => die!()
    }
    match from_str_hex(~"0") {
        Some(v) if is_zero(v) => assert is_positive(v),
-       _ => fail
+       _ => die!()
    }
    assert from_str_hex(~"e") == Some(14.);
    assert from_str_hex(~"E") == Some(14.);
