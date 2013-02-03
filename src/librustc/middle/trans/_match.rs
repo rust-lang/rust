@@ -1198,7 +1198,7 @@ pub fn compile_guard(bcx: block,
                 }
                 TrByRef | TrByImplicitRef => {}
             }
-            bcx.fcx.lllocals.remove(binding_info.id);
+            bcx.fcx.lllocals.remove(&binding_info.id);
         }
         return bcx;
     }

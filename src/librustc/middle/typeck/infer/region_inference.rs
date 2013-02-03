@@ -712,11 +712,11 @@ pub impl RegionVarBindings {
                 assert self.var_spans.len() == *vid + 1;
                 self.var_spans.pop();
               }
-              AddConstraint(constraint) => {
+              AddConstraint(ref constraint) => {
                 self.constraints.remove(constraint);
               }
               AddCombination(map, ref regions) => {
-                map.remove((*regions));
+                map.remove(regions);
               }
             }
         }
