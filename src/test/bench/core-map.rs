@@ -64,7 +64,7 @@ fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
         do timed(&mut results.delete_ints) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(i);
+                assert map.remove(&i);
             }
         }
     }
@@ -103,7 +103,7 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
         }
         do timed(&mut results.delete_strings) {
             for uint::range(0, num_keys) |i| {
-                assert map.remove(uint::to_str(i, 10));
+                assert map.remove(&uint::to_str(i, 10));
             }
         }
     }

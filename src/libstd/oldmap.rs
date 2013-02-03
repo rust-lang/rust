@@ -299,8 +299,8 @@ pub mod chained {
             option::unwrap(move opt_v)
         }
 
-        fn remove(k: K) -> bool {
-            match self.search_tbl(&k, k.hash_keyed(0,0) as uint) {
+        fn remove(k: &K) -> bool {
+            match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
               NotFound => false,
               FoundFirst(idx, entry) => {
                 self.count -= 1u;
@@ -578,7 +578,7 @@ mod tests {
         debug!("removing evens");
         i = 0u;
         while i < num_to_insert {
-            let v = hm.remove(i);
+            let v = hm.remove(&i);
             assert v;
             i += 2u;
         }

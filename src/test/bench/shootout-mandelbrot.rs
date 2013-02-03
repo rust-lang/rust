@@ -138,7 +138,7 @@ fn writer(path: ~str, pport: pipes::Port<Line>, size: uint)
                     debug!("WS %u", prev);
                     cout.write(lines.get(prev));
                     done += 1_u;
-                    lines.remove(prev);
+                    lines.remove(&prev);
                     prev += 1_u;
                 }
                 else {

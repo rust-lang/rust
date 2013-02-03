@@ -1687,7 +1687,7 @@ pub fn cmd_sources(c: &Cargo) {
     match action {
         ~"clear" => {
           for c.sources.each_key_ref |&k| {
-                c.sources.remove(k);
+                c.sources.remove(&k);
             }
 
             info(~"cleared sources");
@@ -1734,7 +1734,7 @@ pub fn cmd_sources(c: &Cargo) {
             }
 
             if c.sources.contains_key_ref(&name) {
-                c.sources.remove(name);
+                c.sources.remove(&name);
                 info(fmt!("removed source: %s", name));
             } else {
                 error(fmt!("no such source: %s", name));
@@ -1825,7 +1825,7 @@ pub fn cmd_sources(c: &Cargo) {
 
             match c.sources.find(name) {
                 Some(source) => {
-                    c.sources.remove(name);
+                    c.sources.remove(&name);
                     c.sources.insert(newn, source);
                     info(fmt!("renamed source: %s to %s", name, newn));
                 }
