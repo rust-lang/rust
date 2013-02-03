@@ -13,8 +13,8 @@
 extern mod std;
 
 use std::time::precise_time_s;
-use std::map;
-use std::map::{Map, HashMap};
+use std::oldmap;
+use std::oldmap::{Map, HashMap};
 
 use io::{Reader, ReaderUtil};
 
@@ -75,12 +75,12 @@ fn read_line() {
 fn str_set() {
     let r = rand::Rng();
 
-    let s = map::HashMap();
+    let s = oldmap::HashMap();
 
     for int::range(0, 1000) |_i| {
-        map::set_add(s, r.gen_str(10));
+        oldmap::set_add(s, r.gen_str(10));
     }
-    
+
     let mut found = 0;
     for int::range(0, 1000) |_i| {
         match s.find(r.gen_str(10)) {
@@ -93,7 +93,7 @@ fn str_set() {
 fn vec_plus() {
     let r = rand::Rng();
 
-    let mut v = ~[]; 
+    let mut v = ~[];
     let mut i = 0;
     while i < 1500 {
         let rv = vec::from_elem(r.gen_uint_range(0, i + 1), i);

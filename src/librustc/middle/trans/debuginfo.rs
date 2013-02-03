@@ -26,8 +26,8 @@ use util::ppaux::ty_to_str;
 use core::libc;
 use core::option;
 use core::sys;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use syntax::ast::Ty;
 use syntax::codemap::{span, CharPos};
 use syntax::parse::token::ident_interner;
@@ -111,13 +111,13 @@ pub type debug_ctxt = {
 };
 
 pub fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> debug_ctxt {
-    {llmetadata: map::HashMap(),
+    {llmetadata: oldmap::HashMap(),
      names: new_namegen(intr),
      crate_file: crate}
 }
 
 fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
-    let existing = if cache.contains_key(mdtag) {
+    let existing = if cache.contains_key_ref(&mdtag) {
         cache.get(mdtag)
     } else {
         ~[]
@@ -176,7 +176,7 @@ fn cached_metadata<T: Copy>(cache: metadata_cache,
                             eq_fn: fn(md: T) -> bool)
                          -> Option<T> {
     unsafe {
-        if cache.contains_key(mdtag) {
+        if cache.contains_key_ref(&mdtag) {
             let items = cache.get(mdtag);
             for items.each |item| {
                 let md: T = md_from_metadata::<T>(*item);

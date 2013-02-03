@@ -36,9 +36,9 @@ use core::str;
 use core::to_bytes::IterBytes;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::serialize::Encodable;
-use std::{ebml, map};
+use std::{ebml, oldmap};
 use std;
 use syntax::ast::*;
 use syntax::ast;
@@ -52,7 +52,7 @@ use syntax;
 use writer = std::ebml::writer;
 
 // used by astencode:
-type abbrev_map = map::HashMap<ty::t, tyencode::ty_abbrev>;
+type abbrev_map = oldmap::HashMap<ty::t, tyencode::ty_abbrev>;
 
 pub type encode_inlined_item = fn@(ecx: @encode_ctxt,
                                    ebml_w: writer::Encoder,
@@ -99,7 +99,7 @@ pub enum encode_ctxt = {
 };
 
 pub fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
-    ecx.reachable.contains_key(id)
+    ecx.reachable.contains_key_ref(&id)
 }
 
 fn encode_name(ecx: @encode_ctxt, ebml_w: writer::Encoder, name: ident) {

@@ -101,7 +101,7 @@ use core::dvec::DVec;
 use core::result;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
@@ -1171,11 +1171,12 @@ pub impl LookupContext {
         match candidate.origin {
             method_static(method_id) | method_self(method_id, _)
                 | method_super(method_id, _) => {
-                bad = self.tcx().destructors.contains_key(method_id);
+                bad = self.tcx().destructors.contains_key_ref(&method_id);
             }
             method_param(method_param { trait_id: trait_id, _ }) |
             method_trait(trait_id, _, _) => {
-                bad = self.tcx().destructor_for_type.contains_key(trait_id);
+                bad = self.tcx().destructor_for_type.contains_key_ref(
+                    &trait_id);
             }
         }
 

@@ -20,7 +20,7 @@ use parse::{parser, token};
 
 use core::io;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 // new-style macro! tt code:
 //

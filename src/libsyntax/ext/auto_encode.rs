@@ -98,8 +98,8 @@ use ext::base::*;
 use parse;
 
 use core::vec;
-use std::map;
-use std::map::HashMap;
+use std::oldmap;
+use std::oldmap::HashMap;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

@@ -10,7 +10,7 @@
 
 // error-pattern: mismatched types
 extern mod std;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::bitv;
 
 type fn_info = {vars: HashMap<uint, var_info>};

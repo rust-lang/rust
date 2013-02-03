@@ -20,7 +20,7 @@ use parse::{parser, parse_expr_from_source_str, new_parser_from_tts};
 
 use core::option;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
                    e: expr_, s: span, fld: ast_fold,

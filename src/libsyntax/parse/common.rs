@@ -18,7 +18,7 @@ use parse::token;
 
 use core::option::{None, Option, Some};
 use core::option;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub type seq_sep = {
     sep: Option<token::Token>,

@@ -559,7 +559,7 @@ use core::uint;
 use core::vec;
 use result::Result;
 use result::{Ok, Err};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 use syntax::codemap::span;
@@ -712,11 +712,11 @@ pub impl RegionVarBindings {
                 assert self.var_spans.len() == *vid + 1;
                 self.var_spans.pop();
               }
-              AddConstraint(constraint) => {
+              AddConstraint(ref constraint) => {
                 self.constraints.remove(constraint);
               }
               AddCombination(map, ref regions) => {
-                map.remove((*regions));
+                map.remove(regions);
               }
             }
         }
@@ -1226,7 +1226,7 @@ impl RegionVarBindings {
 
     fn construct_graph(&self) -> Graph {
         let num_vars = self.num_vars();
-        let num_edges = self.constraints.size();
+        let num_edges = self.constraints.len();
 
         let nodes = vec::from_fn(num_vars, |var_idx| {
             GraphNode {

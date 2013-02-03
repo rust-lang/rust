@@ -115,8 +115,8 @@ use core::result;
 use core::str;
 use core::vec;
 use std::list::Nil;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use syntax::ast::{provided, required, ty_i};
 use syntax::ast;
 use syntax::ast_map;
@@ -209,9 +209,9 @@ pub fn blank_inherited(ccx: @crate_ctxt) -> @inherited {
     @inherited {
         infcx: infer::new_infer_ctxt(ccx.tcx),
         locals: HashMap(),
-        node_types: map::HashMap(),
-        node_type_substs: map::HashMap(),
-        adjustments: map::HashMap()
+        node_types: oldmap::HashMap(),
+        node_type_substs: oldmap::HashMap(),
+        adjustments: oldmap::HashMap()
     }
 }
 
@@ -3078,8 +3078,8 @@ pub fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       ~"visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
           let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
-          assert tcx.intrinsic_defs.contains_key(tydesc_name);
-          assert ccx.tcx.intrinsic_defs.contains_key(ty_visitor_name);
+          assert tcx.intrinsic_defs.contains_key_ref(&tydesc_name);
+          assert ccx.tcx.intrinsic_defs.contains_key_ref(&ty_visitor_name);
           let (_, tydesc_ty) = tcx.intrinsic_defs.get(tydesc_name);
           let (_, visitor_trait) = tcx.intrinsic_defs.get(ty_visitor_name);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
