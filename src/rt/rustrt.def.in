@@ -140,6 +140,11 @@ rust_uv_current_kernel_malloc
 rust_uv_current_kernel_free
 rust_uv_getaddrinfo
 rust_uv_freeaddrinfo
+rust_uv_idle_new
+rust_uv_idle_delete
+rust_uv_idle_init
+rust_uv_idle_start
+rust_uv_idle_stop
 rust_dbg_lock_create
 rust_dbg_lock_destroy
 rust_dbg_lock_lock
@@ -187,3 +192,5 @@ rust_get_global_data_ptr
 rust_inc_kernel_live_count
 rust_dec_kernel_live_count
 rust_get_exchange_count_ptr
+rust_get_sched_tls_key
+swap_registers
