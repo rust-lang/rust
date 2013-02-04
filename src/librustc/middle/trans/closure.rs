@@ -121,8 +121,8 @@ pub struct EnvValue {
 }
 
 pub impl EnvAction {
-    fn to_str() -> ~str {
-        match self {
+    fn to_str(&self) -> ~str {
+        match *self {
             EnvCopy => ~"EnvCopy",
             EnvMove => ~"EnvMove",
             EnvRef => ~"EnvRef"
