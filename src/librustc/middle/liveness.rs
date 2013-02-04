@@ -66,10 +66,10 @@
  * methods.  It effectively does a reverse walk of the AST; whenever we
  * reach a loop node, we iterate until a fixed point is reached.
  *
- * ## The `users` struct
+ * ## The `Users` struct
  *
  * At each live node `N`, we track three pieces of information for each
- * variable `V` (these are encapsulated in the `users` struct):
+ * variable `V` (these are encapsulated in the `Users` struct):
  *
  * - `reader`: the `LiveNode` ID of some node which will read the value
  *    that `V` holds on entry to `N`.  Formally: a node `M` such
@@ -214,8 +214,11 @@ pub fn check_crate(tcx: ty::ctxt,
     });
 
     let last_use_map = HashMap();
-    let initial_maps = @IrMaps(tcx, method_map, variable_moves_map,
-                               capture_map, last_use_map);
+    let initial_maps = @mut IrMaps(tcx,
+                                   method_map,
+                                   variable_moves_map,
+                                   capture_map,
+                                   last_use_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
     return last_use_map;
@@ -300,20 +303,21 @@ struct IrMaps {
     capture_map: moves::CaptureMap,
     last_use_map: last_use_map,
 
-    mut num_live_nodes: uint,
-    mut num_vars: uint,
+    num_live_nodes: uint,
+    num_vars: uint,
     live_node_map: HashMap<node_id, LiveNode>,
     variable_map: HashMap<node_id, Variable>,
     capture_info_map: HashMap<node_id, @~[CaptureInfo]>,
-    mut var_kinds: ~[VarKind],
-    mut lnks: ~[LiveNodeKind],
+    var_kinds: ~[VarKind],
+    lnks: ~[LiveNodeKind],
 }
 
 fn IrMaps(tcx: ty::ctxt,
           method_map: typeck::method_map,
           variable_moves_map: moves::VariableMovesMap,
           capture_map: moves::CaptureMap,
-          last_use_map: last_use_map) -> IrMaps {
+          last_use_map: last_use_map)
+       -> IrMaps {
     IrMaps {
         tcx: tcx,
         method_map: method_map,
@@ -331,7 +335,7 @@ fn IrMaps(tcx: ty::ctxt,
 }
 
 impl IrMaps {
-    fn add_live_node(lnk: LiveNodeKind) -> LiveNode {
+    fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
         let ln = LiveNode(self.num_live_nodes);
         self.lnks.push(lnk);
         self.num_live_nodes += 1;
@@ -342,14 +346,16 @@ impl IrMaps {
         ln
     }
 
-    fn add_live_node_for_node(node_id: node_id, lnk: LiveNodeKind) {
+    fn add_live_node_for_node(&mut self,
+                              node_id: node_id,
+                              lnk: LiveNodeKind) {
         let ln = self.add_live_node(lnk);
         self.live_node_map.insert(node_id, ln);
 
         debug!("%s is node %d", ln.to_str(), node_id);
     }
 
-    fn add_variable(vk: VarKind) -> Variable {
+    fn add_variable(&mut self, vk: VarKind) -> Variable {
         let v = Variable(self.num_vars);
         self.var_kinds.push(vk);
         self.num_vars += 1;
@@ -367,7 +373,7 @@ impl IrMaps {
         v
     }
 
-    fn variable(node_id: node_id, span: span) -> Variable {
+    fn variable(&mut self, node_id: node_id, span: span) -> Variable {
         match self.variable_map.find(&node_id) {
           Some(var) => var,
           None => {
@@ -377,7 +383,7 @@ impl IrMaps {
         }
     }
 
-    fn variable_name(var: Variable) -> ~str {
+    fn variable_name(&mut self, var: Variable) -> ~str {
         match copy self.var_kinds[*var] {
             Local(LocalInfo {ident: nm, _}) |
             Arg(_, nm, _) => self.tcx.sess.str_of(nm),
@@ -385,11 +391,11 @@ impl IrMaps {
         }
     }
 
-    fn set_captures(node_id: node_id, +cs: ~[CaptureInfo]) {
+    fn set_captures(&mut self, node_id: node_id, +cs: ~[CaptureInfo]) {
         self.capture_info_map.insert(node_id, @cs);
     }
 
-    fn captures(expr: @expr) -> @~[CaptureInfo] {
+    fn captures(&mut self, expr: @expr) -> @~[CaptureInfo] {
         match self.capture_info_map.find(&expr.id) {
           Some(caps) => caps,
           None => {
@@ -398,11 +404,11 @@ impl IrMaps {
         }
     }
 
-    fn lnk(ln: LiveNode) -> LiveNodeKind {
+    fn lnk(&mut self, ln: LiveNode) -> LiveNodeKind {
         self.lnks[*ln]
     }
 
-    fn add_last_use(expr_id: node_id, var: Variable) {
+    fn add_last_use(&mut self, expr_id: node_id, var: Variable) {
         let vk = self.var_kinds[*var];
         debug!("Node %d is a last use of variable %?", expr_id, vk);
         match vk {
@@ -429,17 +435,22 @@ impl IrMaps {
     }
 }
 
-fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
-            sp: span, id: node_id, &&self: @IrMaps, v: vt<@IrMaps>) {
+fn visit_fn(fk: visit::fn_kind,
+            decl: fn_decl,
+            body: blk,
+            sp: span,
+            id: node_id,
+            &&self: @mut IrMaps,
+            v: vt<@mut IrMaps>) {
     debug!("visit_fn: id=%d", id);
     let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let fn_maps = @IrMaps(self.tcx,
-                          self.method_map,
-                          self.variable_moves_map,
-                          self.capture_map,
-                          self.last_use_map);
+    let fn_maps = @mut IrMaps(self.tcx,
+                              self.method_map,
+                              self.variable_moves_map,
+                              self.capture_map,
+                              self.last_use_map);
 
     debug!("creating fn_maps: %x", ptr::addr_of(&(*fn_maps)) as uint);
 
@@ -449,7 +460,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
                 |_bm, arg_id, _x, path| {
             debug!("adding argument %d", arg_id);
             let ident = ast_util::path_to_ident(path);
-            (*fn_maps).add_variable(Arg(arg_id, ident, mode));
+            fn_maps.add_variable(Arg(arg_id, ident, mode));
         }
     };
 
@@ -486,10 +497,10 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     // - exit_ln represents the end of the fn, either by return or fail
     // - implicit_ret_var is a pseudo-variable that represents
     //   an implicit return
-    let specials = {
-        exit_ln: (*fn_maps).add_live_node(ExitNode),
-        fallthrough_ln: (*fn_maps).add_live_node(ExitNode),
-        no_ret_var: (*fn_maps).add_variable(ImplicitRet)
+    let specials = Specials {
+        exit_ln: fn_maps.add_live_node(ExitNode),
+        fallthrough_ln: fn_maps.add_live_node(ExitNode),
+        no_ret_var: fn_maps.add_variable(ImplicitRet)
     };
 
     // compute liveness
@@ -509,7 +520,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(local: @local, &&self: @IrMaps, vt: vt<@IrMaps>) {
+fn visit_local(local: @local, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     let def_map = self.tcx.def_map;
     do pat_util::pat_bindings(def_map, local.node.pat) |_bm, p_id, sp, path| {
         debug!("adding local variable %d", p_id);
@@ -529,7 +540,7 @@ fn visit_local(local: @local, &&self: @IrMaps, vt: vt<@IrMaps>) {
     visit::visit_local(local, self, vt);
 }
 
-fn visit_arm(arm: arm, &&self: @IrMaps, vt: vt<@IrMaps>) {
+fn visit_arm(arm: arm, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     let def_map = self.tcx.def_map;
     for arm.pats.each |pat| {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
@@ -548,7 +559,7 @@ fn visit_arm(arm: arm, &&self: @IrMaps, vt: vt<@IrMaps>) {
     visit::visit_arm(arm, self, vt);
 }
 
-fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
+fn visit_expr(expr: @expr, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       expr_path(_) => {
@@ -626,21 +637,25 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
-type users = {
+struct Users {
     reader: LiveNode,
     writer: LiveNode,
     used: bool
-};
-
-fn invalid_users() -> users {
-    {reader: invalid_node(), writer: invalid_node(), used: false}
 }
 
-type Specials = {
+fn invalid_users() -> Users {
+    Users {
+        reader: invalid_node(),
+        writer: invalid_node(),
+        used: false
+    }
+}
+
+struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,
     no_ret_var: Variable
-};
+}
 
 const ACC_READ: uint = 1u;
 const ACC_WRITE: uint = 2u;
@@ -650,10 +665,10 @@ type LiveNodeMap = HashMap<node_id, LiveNode>;
 
 struct Liveness {
     tcx: ty::ctxt,
-    ir: @IrMaps,
+    ir: @mut IrMaps,
     s: Specials,
     successors: ~[mut LiveNode],
-    users: ~[mut users],
+    users: ~[mut Users],
     // The list of node IDs for the nested loop scopes
     // we're in.
     loop_scope: DVec<node_id>,
@@ -664,7 +679,7 @@ struct Liveness {
     cont_ln: LiveNodeMap
 }
 
-fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
+fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
     Liveness {
         ir: ir,
         tcx: ir.tcx,

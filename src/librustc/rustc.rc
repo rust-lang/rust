@@ -209,7 +209,7 @@ pub fn describe_debug_flags() {
     }
 }
 
-pub fn run_compiler(args: &~[~str], demitter: diagnostic::emitter) {
+pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     // Don't display log spew by default. Can override with RUST_LOG.
     logging::console_off();
 
@@ -320,7 +320,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-pub fn monitor(+f: fn~(diagnostic::emitter)) {
+pub fn monitor(+f: fn~(diagnostic::Emitter)) {
     use core::pipes::*;
     use std::cell::Cell;
     let (p, ch) = stream();

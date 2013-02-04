@@ -232,7 +232,7 @@ struct ctxt_ {
     vecs_implicitly_copyable: bool,
     legacy_modes: bool,
     legacy_records: bool,
-    cstore: metadata::cstore::CStore,
+    cstore: @mut metadata::cstore::CStore,
     sess: session::Session,
     def_map: resolve::DefMap,
 

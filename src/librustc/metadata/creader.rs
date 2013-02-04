@@ -19,7 +19,6 @@ use metadata::decoder;
 use metadata::filesearch::FileSearch;
 use metadata::loader;
 
-use core::dvec::DVec;
 use core::either;
 use core::option;
 use core::vec;
@@ -36,19 +35,21 @@ use std::oldmap::HashMap;
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(diag: span_handler,
                    crate: ast::crate,
-                   cstore: cstore::CStore,
+                   cstore: @mut cstore::CStore,
                    filesearch: FileSearch,
                    os: loader::os,
-                   static: bool,
+                   statik: bool,
                    intr: @ident_interner) {
-    let e = @{diag: diag,
-              filesearch: filesearch,
-              cstore: cstore,
-              os: os,
-              static: static,
-              crate_cache: DVec(),
-              mut next_crate_num: 1,
-              intr: intr};
+    let e = @mut Env {
+        diag: diag,
+        filesearch: filesearch,
+        cstore: cstore,
+        os: os,
+        statik: statik,
+        crate_cache: @mut ~[],
+        next_crate_num: 1,
+        intr: intr
+    };
     let v =
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_view_item: |a| visit_view_item(e, a),
@@ -56,7 +57,7 @@ pub fn read_crates(diag: span_handler,
             .. *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), v);
     dump_crates(e.crate_cache);
-    warn_if_multiple_versions(e, diag, e.crate_cache.get());
+    warn_if_multiple_versions(e, diag, e.crate_cache);
 }
 
 type cache_entry = {
@@ -66,7 +67,7 @@ type cache_entry = {
     metas: @~[@ast::meta_item]
 };
 
-fn dump_crates(crate_cache: DVec<cache_entry>) {
+fn dump_crates(+crate_cache: @mut ~[cache_entry]) {
     debug!("resolved crates:");
     for crate_cache.each |entry| {
         debug!("cnum: %?", entry.cnum);
@@ -75,8 +76,9 @@ fn dump_crates(crate_cache: DVec<cache_entry>) {
     }
 }
 
-fn warn_if_multiple_versions(e: env, diag: span_handler,
-                             crate_cache: ~[cache_entry]) {
+fn warn_if_multiple_versions(e: @mut Env,
+                             diag: span_handler,
+                             crate_cache: @mut ~[cache_entry]) {
     use either::*;
 
     if crate_cache.len() != 0u {
@@ -108,20 +110,22 @@ fn warn_if_multiple_versions(e: env, diag: span_handler,
             }
         }
 
-        warn_if_multiple_versions(e, diag, non_matches);
+        warn_if_multiple_versions(e, diag, @mut non_matches);
     }
 }
 
-type env = @{diag: span_handler,
-             filesearch: FileSearch,
-             cstore: cstore::CStore,
-             os: loader::os,
-             static: bool,
-             crate_cache: DVec<cache_entry>,
-             mut next_crate_num: ast::crate_num,
-             intr: @ident_interner};
+struct Env {
+    diag: span_handler,
+    filesearch: FileSearch,
+    cstore: @mut cstore::CStore,
+    os: loader::os,
+    statik: bool,
+    crate_cache: @mut ~[cache_entry],
+    next_crate_num: ast::crate_num,
+    intr: @ident_interner
+}
 
-fn visit_view_item(e: env, i: @ast::view_item) {
+fn visit_view_item(e: @mut Env, i: @ast::view_item) {
     match /*bad*/copy i.node {
       ast::view_item_use(ident, meta_items, id) => {
         debug!("resolving use stmt. ident: %?, meta: %?", ident, meta_items);
@@ -132,7 +136,7 @@ fn visit_view_item(e: env, i: @ast::view_item) {
     }
 }
 
-fn visit_item(e: env, i: @ast::item) {
+fn visit_item(e: @mut Env, i: @ast::item) {
     match /*bad*/copy i.node {
       ast::item_foreign_mod(fm) => {
         match attr::foreign_abi(i.attrs) {
@@ -202,9 +206,8 @@ fn metas_with_ident(+ident: ~str, +metas: ~[@ast::meta_item])
     metas_with(ident, ~"name", metas)
 }
 
-fn existing_match(e: env, metas: ~[@ast::meta_item], hash: ~str) ->
-    Option<int> {
-
+fn existing_match(e: @mut Env, metas: ~[@ast::meta_item], hash: ~str)
+               -> Option<int> {
     for e.crate_cache.each |c| {
         if loader::metadata_matches(*c.metas, metas)
             && (hash.is_empty() || c.hash == hash) {
@@ -214,8 +217,12 @@ fn existing_match(e: env, metas: ~[@ast::meta_item], hash: ~str) ->
     return None;
 }
 
-fn resolve_crate(e: env, ident: ast::ident, +metas: ~[@ast::meta_item],
-                 +hash: ~str, span: span) -> ast::crate_num {
+fn resolve_crate(e: @mut Env,
+                 ident: ast::ident,
+                 +metas: ~[@ast::meta_item],
+                 +hash: ~str,
+                 span: span)
+              -> ast::crate_num {
     let metas = metas_with_ident(/*bad*/copy *e.intr.get(ident), metas);
 
     match existing_match(e, metas, hash) {
@@ -228,7 +235,7 @@ fn resolve_crate(e: env, ident: ast::ident, +metas: ~[@ast::meta_item],
             metas: metas,
             hash: hash,
             os: e.os,
-            static: e.static,
+            static: e.statik,
             intr: e.intr
         };
         let cinfo = loader::load_library_crate(load_ctxt);
@@ -270,7 +277,7 @@ fn resolve_crate(e: env, ident: ast::ident, +metas: ~[@ast::meta_item],
 }
 
 // Go through the crate metadata and load any crates that it references
-fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
+fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers

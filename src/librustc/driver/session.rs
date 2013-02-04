@@ -149,22 +149,22 @@ pub type options =
 
 pub type crate_metadata = {name: ~str, data: ~[u8]};
 
-pub type Session_ = {targ_cfg: @config,
-                     opts: @options,
-                     cstore: metadata::cstore::CStore,
-                     parse_sess: parse_sess,
-                     codemap: @codemap::CodeMap,
-                     // For a library crate, this is always none
-                     mut main_fn: Option<(node_id, codemap::span)>,
-                     span_diagnostic: diagnostic::span_handler,
-                     filesearch: filesearch::FileSearch,
-                     mut building_library: bool,
-                     working_dir: Path,
-                     lint_settings: lint::lint_settings};
-
-pub enum Session {
-    Session_(@Session_)
+pub struct Session_ {
+    targ_cfg: @config,
+    opts: @options,
+    cstore: @mut metadata::cstore::CStore,
+    parse_sess: parse_sess,
+    codemap: @codemap::CodeMap,
+    // For a library crate, this is always none
+    main_fn: @mut Option<(node_id, codemap::span)>,
+    span_diagnostic: diagnostic::span_handler,
+    filesearch: filesearch::FileSearch,
+    building_library: @mut bool,
+    working_dir: Path,
+    lint_settings: lint::lint_settings
 }
+
+pub type Session = @Session_;
 
 pub impl Session {
     fn span_fatal(sp: span, msg: ~str) -> ! {
@@ -303,7 +303,8 @@ pub fn expect<T: Copy>(sess: Session,
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
-pub fn building_library(req_crate_type: crate_type, crate: @ast::crate,
+pub fn building_library(req_crate_type: crate_type,
+                        crate: @ast::crate,
                         testing: bool) -> bool {
     match req_crate_type {
       bin_crate => false,

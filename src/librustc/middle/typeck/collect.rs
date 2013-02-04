@@ -36,13 +36,13 @@ use metadata::csearch;
 use middle::ty::{InstantiatedTraitRef, arg};
 use middle::ty::{substs, ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::astconv::{ast_conv, ty_of_arg};
+use middle::typeck::astconv::{AstConv, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
 use middle::typeck::astconv;
 use middle::typeck::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::rscope;
-use middle::typeck::{crate_ctxt, lookup_def_tcx, no_params, write_ty_to_tcx};
+use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::common::{indenter, pluralize};
 use util::ppaux;
 use util::ppaux::bound_to_str;
@@ -61,7 +61,7 @@ use syntax::codemap;
 use syntax::print::pprust::path_to_str;
 use syntax::visit;
 
-pub fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
+pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 
     // FIXME (#2592): hooking into the "intrinsic" root module is crude.
     // There ought to be a better approach. Attributes?
@@ -114,19 +114,18 @@ pub fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
         }));
 }
 
-pub impl @crate_ctxt {
-    fn to_ty<RS: region_scope Copy Durable>(
-        rs: RS, ast_ty: @ast::Ty) -> ty::t {
-
+pub impl @mut CrateCtxt {
+    fn to_ty<RS: region_scope Copy Durable>(rs: RS, ast_ty: @ast::Ty)
+                                         -> ty::t {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }
 
-pub impl @crate_ctxt: ast_conv {
-    fn tcx() -> ty::ctxt { self.tcx }
-    fn ccx() -> @crate_ctxt { self }
+pub impl CrateCtxt: AstConv {
+    fn tcx(@mut self) -> ty::ctxt { self.tcx }
+    fn ccx(@mut self) -> @mut CrateCtxt { self }
 
-    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+    fn get_item_ty(@mut self, id: ast::def_id) -> ty::ty_param_bounds_and_ty {
         if id.crate != ast::local_crate {
             csearch::get_type(self.tcx, id)
         } else {
@@ -145,18 +144,17 @@ pub impl @crate_ctxt: ast_conv {
         }
     }
 
-    fn ty_infer(span: span) -> ty::t {
+    fn ty_infer(@mut self, span: span) -> ty::t {
         self.tcx.sess.span_bug(span,
                                ~"found `ty_infer` in unexpected place");
     }
 }
 
-pub fn get_enum_variant_types(ccx: @crate_ctxt,
+pub fn get_enum_variant_types(ccx: @mut CrateCtxt,
                               enum_ty: ty::t,
                               variants: &[ast::variant],
-                              ty_params: &[ast::ty_param],
-                              rp: Option<ty::region_variance>)
-{
+                              +ty_params: ~[ast::ty_param],
+                              rp: Option<ty::region_variance>) {
     let tcx = ccx.tcx;
 
     // Create a set of parameter types shared among all the variants.
@@ -193,9 +191,11 @@ pub fn get_enum_variant_types(ccx: @crate_ctxt,
             }
 
             ast::enum_variant_kind(ref enum_definition) => {
-                get_enum_variant_types(ccx, enum_ty,
+                get_enum_variant_types(ccx,
+                                       enum_ty,
                                        enum_definition.variants,
-                                       ty_params, rp);
+                                       copy ty_params,
+                                       rp);
                 result_ty = None;
             }
         };
@@ -213,15 +213,17 @@ pub fn get_enum_variant_types(ccx: @crate_ctxt,
     }
 }
 
-pub fn ensure_trait_methods(ccx: @crate_ctxt,
+pub fn ensure_trait_methods(ccx: @mut CrateCtxt,
                             id: ast::node_id,
                             trait_ty: ty::t) {
-    fn store_methods<T>(ccx: @crate_ctxt, id: ast::node_id,
-                        stuff: ~[T], f: &fn(v: &T) -> ty::method) {
+    fn store_methods<T>(ccx: @mut CrateCtxt,
+                        id: ast::node_id,
+                        stuff: ~[T],
+                        f: &fn(v: &T) -> ty::method) {
         ty::store_trait_methods(ccx.tcx, id, @vec::map(stuff, f));
     }
 
-    fn make_static_method_ty(ccx: @crate_ctxt,
+    fn make_static_method_ty(ccx: @mut CrateCtxt,
                              am: ast::ty_method,
                              rp: Option<ty::region_variance>,
                              m: ty::method,
@@ -296,7 +298,7 @@ pub fn ensure_trait_methods(ccx: @crate_ctxt,
     }
 }
 
-pub fn ensure_supertraits(ccx: @crate_ctxt,
+pub fn ensure_supertraits(ccx: @mut CrateCtxt,
                           id: ast::node_id,
                           sp: codemap::span,
                           rp: Option<ty::region_variance>,
@@ -480,7 +482,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     }
 }
 
-pub fn check_methods_against_trait(ccx: @crate_ctxt,
+pub fn check_methods_against_trait(ccx: @mut CrateCtxt,
                                    tps: ~[ast::ty_param],
                                    rp: Option<ty::region_variance>,
                                    selfty: ty::t,
@@ -531,7 +533,7 @@ pub fn check_methods_against_trait(ccx: @crate_ctxt,
     }
 } // fn
 
-pub fn convert_field(ccx: @crate_ctxt,
+pub fn convert_field(ccx: @mut CrateCtxt,
                      rp: Option<ty::region_variance>,
                      bounds: @~[ty::param_bounds],
                      v: @ast::struct_field) {
@@ -551,7 +553,7 @@ pub struct ConvertedMethod {
     body_id: ast::node_id
 }
 
-pub fn convert_methods(ccx: @crate_ctxt,
+pub fn convert_methods(ccx: @mut CrateCtxt,
                        ms: ~[@ast::method],
                        rp: Option<ty::region_variance>,
                        rcvr_bounds: @~[ty::param_bounds])
@@ -576,7 +578,7 @@ pub fn convert_methods(ccx: @crate_ctxt,
     }
 }
 
-pub fn ensure_no_ty_param_bounds(ccx: @crate_ctxt,
+pub fn ensure_no_ty_param_bounds(ccx: @mut CrateCtxt,
                                  span: span,
                                  ty_params: &[ast::ty_param],
                                  thing: &static/str) {
@@ -590,7 +592,7 @@ pub fn ensure_no_ty_param_bounds(ccx: @crate_ctxt,
     }
 }
 
-pub fn convert(ccx: @crate_ctxt, it: @ast::item) {
+pub fn convert(ccx: @mut CrateCtxt, it: @ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.find(&it.id);
     debug!("convert: item %s with id %d rp %?",
@@ -602,8 +604,11 @@ pub fn convert(ccx: @crate_ctxt, it: @ast::item) {
         ensure_no_ty_param_bounds(ccx, it.span, *ty_params, "enumeration");
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
-        get_enum_variant_types(ccx, tpt.ty, enum_definition.variants,
-                               *ty_params, rp);
+        get_enum_variant_types(ccx,
+                               tpt.ty,
+                               enum_definition.variants,
+                               copy *ty_params,
+                               rp);
       }
       ast::item_impl(ref tps, trait_ref, selfty, ref ms) => {
         let i_bounds = ty_param_bounds(ccx, *tps);
@@ -659,7 +664,7 @@ pub fn convert(ccx: @crate_ctxt, it: @ast::item) {
     }
 }
 
-pub fn convert_struct(ccx: @crate_ctxt,
+pub fn convert_struct(ccx: @mut CrateCtxt,
                       rp: Option<ty::region_variance>,
                       struct_def: @ast::struct_def,
                       +tps: ~[ast::ty_param],
@@ -716,7 +721,7 @@ pub fn convert_struct(ccx: @crate_ctxt,
     }
 }
 
-pub fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
+pub fn convert_foreign(ccx: @mut CrateCtxt, i: @ast::foreign_item) {
     // As above, this call populates the type table with the converted
     // type of the foreign item. We simply write it into the node type
     // table.
@@ -725,7 +730,7 @@ pub fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
     ccx.tcx.tcache.insert(local_def(i.id), tpt);
 }
 
-pub fn ty_of_method(ccx: @crate_ctxt,
+pub fn ty_of_method(ccx: @mut CrateCtxt,
                     m: @ast::method,
                     rp: Option<ty::region_variance>) -> ty::method {
     {ident: m.ident,
@@ -737,7 +742,7 @@ pub fn ty_of_method(ccx: @crate_ctxt,
      def_id: local_def(m.id)}
 }
 
-pub fn ty_of_ty_method(self: @crate_ctxt,
+pub fn ty_of_ty_method(self: @mut CrateCtxt,
                        m: ast::ty_method,
                        rp: Option<ty::region_variance>,
                        id: ast::def_id) -> ty::method {
@@ -756,7 +761,7 @@ pub fn ty_of_ty_method(self: @crate_ctxt,
   it's bound to a valid trait type. Returns the def_id for the defining
   trait. Fails if the type is a type other than an trait type.
  */
-pub fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref,
+pub fn instantiate_trait_ref(ccx: @mut CrateCtxt, t: @ast::trait_ref,
                              rp: Option<ty::region_variance>)
     -> (ast::def_id, ty_param_substs_and_ty) {
 
@@ -780,9 +785,8 @@ pub fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref,
     }
 }
 
-pub fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
-    -> ty::ty_param_bounds_and_ty {
-
+pub fn ty_of_item(ccx: @mut CrateCtxt, it: @ast::item)
+               -> ty::ty_param_bounds_and_ty {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
     match tcx.tcache.find(&def_id) {
@@ -871,7 +875,7 @@ pub fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
     }
 }
 
-pub fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
+pub fn ty_of_foreign_item(ccx: @mut CrateCtxt, it: @ast::foreign_item)
     -> ty::ty_param_bounds_and_ty {
     match /*bad*/copy it.node {
       ast::foreign_item_fn(fn_decl, _, params) => {
@@ -892,7 +896,7 @@ pub fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
 // of a newtyped Ty or a region) to ty's notion of ty param bounds, which can
 // either be user-defined traits, or one of the four built-in traits (formerly
 // known as kinds): Const, Copy, Durable, and Send.
-pub fn compute_bounds(ccx: @crate_ctxt,
+pub fn compute_bounds(ccx: @mut CrateCtxt,
                       ast_bounds: @~[ast::ty_param_bound])
                    -> ty::param_bounds {
     @do vec::flat_map(*ast_bounds) |b| {
@@ -928,8 +932,9 @@ pub fn compute_bounds(ccx: @crate_ctxt,
     }
 }
 
-pub fn ty_param_bounds(ccx: @crate_ctxt,
-                       params: &[ast::ty_param]) -> @~[ty::param_bounds] {
+pub fn ty_param_bounds(ccx: @mut CrateCtxt,
+                       params: ~[ast::ty_param])
+                    -> @~[ty::param_bounds] {
     @do params.map |param| {
         match ccx.tcx.ty_param_bounds.find(&param.id) {
           Some(bs) => bs,
@@ -942,7 +947,7 @@ pub fn ty_param_bounds(ccx: @crate_ctxt,
     }
 }
 
-pub fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
+pub fn ty_of_foreign_fn_decl(ccx: @mut CrateCtxt,
                              decl: ast::fn_decl,
                              +ty_params: ~[ast::ty_param],
                              def_id: ast::def_id)
@@ -964,7 +969,7 @@ pub fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
     return tpt;
 }
 
-pub fn mk_ty_params(ccx: @crate_ctxt, atps: ~[ast::ty_param])
+pub fn mk_ty_params(ccx: @mut CrateCtxt, atps: ~[ast::ty_param])
     -> {bounds: @~[ty::param_bounds], params: ~[ty::t]} {
 
     let mut i = 0u;
@@ -977,7 +982,7 @@ pub fn mk_ty_params(ccx: @crate_ctxt, atps: ~[ast::ty_param])
      })}
 }
 
-pub fn mk_substs(ccx: @crate_ctxt,
+pub fn mk_substs(ccx: @mut CrateCtxt,
                  +atps: ~[ast::ty_param],
                  rp: Option<ty::region_variance>)
               -> {bounds: @~[ty::param_bounds], substs: ty::substs} {

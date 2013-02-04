@@ -14,7 +14,7 @@ use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::pat_util::{pat_is_variant_or_struct};
 use middle::ty;
 use middle::typeck::check::demand;
-use middle::typeck::check::{check_block, check_expr_has_type, fn_ctxt};
+use middle::typeck::check::{check_block, check_expr_has_type, FnCtxt};
 use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
@@ -27,7 +27,7 @@ use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust;
 
-pub fn check_match(fcx: @fn_ctxt,
+pub fn check_match(fcx: @mut FnCtxt,
                    expr: @ast::expr,
                    discrim: @ast::expr,
                    arms: ~[ast::arm]) -> bool {
@@ -69,7 +69,7 @@ pub fn check_match(fcx: @fn_ctxt,
 }
 
 pub struct pat_ctxt {
-    fcx: @fn_ctxt,
+    fcx: @mut FnCtxt,
     map: PatIdMap,
     match_region: ty::Region, // Region for the match as a whole
     block_region: ty::Region, // Region for the block of the arm

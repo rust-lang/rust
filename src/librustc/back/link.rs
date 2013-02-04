@@ -523,13 +523,13 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
     }
 
     fn warn_missing(sess: Session, name: &str, default: &str) {
-        if !sess.building_library { return; }
+        if !*sess.building_library { return; }
         sess.warn(fmt!("missing crate link meta `%s`, using `%s` as default",
                        name, default));
     }
 
     fn crate_meta_name(sess: Session, output: &Path, -opt_name: Option<@str>)
-        -> @str {
+                    -> @str {
         return match opt_name {
               Some(v) => v,
               None => {
@@ -730,7 +730,7 @@ pub fn link_binary(sess: Session,
         }
     }
 
-    let output = if sess.building_library {
+    let output = if *sess.building_library {
         let long_libname = output_dll_filename(sess.targ_cfg.os, lm);
         debug!("link_meta.name:  %s", lm.name);
         debug!("long_libname: %s", long_libname);
@@ -806,7 +806,7 @@ pub fn link_binary(sess: Session,
     let used_libs = cstore::get_used_libraries(cstore);
     for used_libs.each |l| { cc_args.push(~"-l" + *l); }
 
-    if sess.building_library {
+    if *sess.building_library {
         cc_args.push(lib_cmd);
 
         // On mac we need to tell the linker to let this library

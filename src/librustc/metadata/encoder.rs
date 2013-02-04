@@ -67,33 +67,33 @@ pub type encode_parms = {
     item_symbols: HashMap<ast::node_id, ~str>,
     discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
-    cstore: cstore::CStore,
+    cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item
 };
 
-type stats = {
-    mut inline_bytes: uint,
-    mut attr_bytes: uint,
-    mut dep_bytes: uint,
-    mut lang_item_bytes: uint,
-    mut item_bytes: uint,
-    mut index_bytes: uint,
-    mut zero_bytes: uint,
-    mut total_bytes: uint,
+struct Stats {
+    inline_bytes: uint,
+    attr_bytes: uint,
+    dep_bytes: uint,
+    lang_item_bytes: uint,
+    item_bytes: uint,
+    index_bytes: uint,
+    zero_bytes: uint,
+    total_bytes: uint,
 
-    mut n_inlines: uint
-};
+    n_inlines: uint
+}
 
 pub enum encode_ctxt = {
     diag: span_handler,
     tcx: ty::ctxt,
-    stats: stats,
+    stats: @mut Stats,
     reachable: HashMap<ast::node_id, ()>,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: HashMap<ast::node_id, ~str>,
     discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
-    cstore: cstore::CStore,
+    cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item,
     type_abbrevs: abbrev_map
 };
@@ -1067,12 +1067,11 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: &crate) -> ~[attribute] {
     return attrs;
 }
 
-fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: writer::Encoder,
-                     cstore: cstore::CStore) {
-
-    fn get_ordered_deps(ecx: @encode_ctxt, cstore: cstore::CStore)
-        -> ~[decoder::crate_dep] {
-
+fn encode_crate_deps(ecx: @encode_ctxt,
+                     ebml_w: writer::Encoder,
+                     cstore: @mut cstore::CStore) {
+    fn get_ordered_deps(ecx: @encode_ctxt, cstore: @mut cstore::CStore)
+                     -> ~[decoder::crate_dep] {
         type hashkv = @{key: crate_num, val: cstore::crate_metadata};
         type numdep = decoder::crate_dep;
 
@@ -1168,20 +1167,21 @@ pub const metadata_encoding_version : &[u8] = &[0x72, //'r' as u8,
 
 pub fn encode_metadata(parms: encode_parms, crate: &crate) -> ~[u8] {
     let wr = @io::BytesWriter();
-    let stats =
-        {mut inline_bytes: 0,
-         mut attr_bytes: 0,
-         mut dep_bytes: 0,
-         mut lang_item_bytes: 0,
-         mut item_bytes: 0,
-         mut index_bytes: 0,
-         mut zero_bytes: 0,
-         mut total_bytes: 0,
-         mut n_inlines: 0};
+    let mut stats = Stats {
+        inline_bytes: 0,
+        attr_bytes: 0,
+        dep_bytes: 0,
+        lang_item_bytes: 0,
+        item_bytes: 0,
+        index_bytes: 0,
+        zero_bytes: 0,
+        total_bytes: 0,
+        n_inlines: 0
+    };
     let ecx: @encode_ctxt = @encode_ctxt({
         diag: parms.diag,
         tcx: parms.tcx,
-        stats: move stats,
+        stats: @mut move stats,
         reachable: parms.reachable,
         reexports2: parms.reexports2,
         item_symbols: parms.item_symbols,
