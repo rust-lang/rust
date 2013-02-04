@@ -12,40 +12,37 @@
 
 /* Reexported core operators */
 
+pub use either::{Either, Left, Right};
 pub use kinds::{Const, Copy, Owned, Durable};
-pub use ops::{Drop};
 pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
+pub use ops::{Drop};
 pub use ops::{Shl, Shr, Index};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
 /* Reexported types and traits */
 
-pub use path::Path;
+pub use clone::Clone;
+pub use cmp::{Eq, Ord};
+pub use container::{Container, Mutable, Map, Set};
+pub use hash::Hash;
+pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
+pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
+pub use num::Num;
 pub use path::GenericPath;
-pub use path::WindowsPath;
+pub use path::Path;
 pub use path::PosixPath;
-
-pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
+pub use path::WindowsPath;
+pub use pipes::{GenericChan, GenericPort};
+pub use ptr::Ptr;
 pub use str::{StrSlice, Trimmable};
-pub use container::{Container, Mutable};
+pub use to_bytes::IterBytes;
+pub use to_str::ToStr;
+pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
 pub use vec::{CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector};
-pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
-pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
-pub use container::{Container, Mutable, Map, Set};
-pub use pipes::{GenericChan, GenericPort};
-
-pub use num::Num;
-pub use ptr::Ptr;
-pub use to_str::ToStr;
-pub use clone::Clone;
-
-pub use cmp::{Eq, Ord};
-pub use hash::Hash;
-pub use to_bytes::IterBytes;
 
 /* Reexported modules */
 
