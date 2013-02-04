@@ -49,9 +49,15 @@ First four arguments:
         anyhow.
 */	
 
+#if defined(__APPLE__) || defined(_WIN32)
+#define SWAP_REGISTERS _swap_registers
+#else
+#define SWAP_REGISTERS swap_registers
+#endif
+
 // swap_registers(registers_t *oregs, registers_t *regs)
-.globl swap_registers
-swap_registers:
+.globl SWAP_REGISTERS
+SWAP_REGISTERS:
         // n.b. when we enter, the return address is at the top of
         // the stack (i.e., 0(%RSP)) and the argument is in
         // RUSTRT_ARG0_S.  We
