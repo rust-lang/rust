@@ -21,6 +21,6 @@ pub fn main() {
     assert v.foo() == 1u;
     let v = ~[0];
     assert v.foo() == 1u;
-    let v = ~[mut 0];
+    let mut v = ~[0];
     assert v.foo() == 1u;
 }

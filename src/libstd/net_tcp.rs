@@ -863,7 +863,7 @@ impl TcpSocket {
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
 impl TcpSocketBuf: io::Reader {
-    fn read(&self, buf: &[mut u8], len: uint) -> uint {
+    fn read(&self, buf: &mut [u8], len: uint) -> uint {
         if len == 0 { return 0 }
         let mut count: uint = 0;
 
