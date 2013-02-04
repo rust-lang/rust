@@ -1795,7 +1795,7 @@ Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 type Set<T> = HashMap<T, ()>;
 
 struct Stack<T> {
-    elements: ~[mut T]
+    elements: ~[T]
 }
 
 enum Option<T> {

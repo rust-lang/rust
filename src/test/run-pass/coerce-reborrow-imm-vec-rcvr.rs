@@ -2,7 +2,7 @@ fn foo(v: &[const uint]) -> ~[uint] {
     v.to_vec()
 }
 
-fn bar(v: &[mut uint]) -> ~[uint] {
+fn bar(v: &mut [uint]) -> ~[uint] {
     v.to_vec()
 }
 

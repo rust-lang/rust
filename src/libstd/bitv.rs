@@ -106,10 +106,10 @@ impl SmallBitv {
 
 struct BigBitv {
     // only mut b/c of clone and lack of other constructor
-    mut storage: ~[mut uint]
+    mut storage: ~[uint]
 }
 
-fn BigBitv(storage: ~[mut uint]) -> BigBitv {
+fn BigBitv(storage: ~[uint]) -> BigBitv {
     BigBitv {storage: move storage}
 }
 
@@ -233,7 +233,7 @@ pub fn Bitv (nbits: uint, init: bool) -> Bitv {
         let nelems = nbits/uint_bits +
                      if nbits % uint_bits == 0 {0} else {1};
         let elem = if init {!0} else {0};
-        let s = cast_to_mut(from_elem(nelems, elem));
+        let s = from_elem(nelems, elem);
         Big(~BigBitv(move s))
     };
     Bitv {rep: move rep, nbits: nbits}
@@ -518,7 +518,7 @@ impl Bitv: Clone {
             Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
           }
           Big(ref b) => {
-            let st = cast_to_mut(from_elem(self.nbits / uint_bits + 1, 0));
+            let mut st = from_elem(self.nbits / uint_bits + 1, 0);
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
             Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: move st})}

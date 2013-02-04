@@ -156,7 +156,7 @@ fn readclose(fd: libc::c_int) -> ~str {
         let file = os::fdopen(fd);
         let reader = io::FILE_reader(file, false);
         let buf = io::with_bytes_writer(|writer| {
-            let mut bytes = [mut 0, ..4096];
+            let mut bytes = [0, ..4096];
             while !reader.eof() {
                 let nread = reader.read(bytes, bytes.len());
                 writer.write(bytes.view(0, nread));
