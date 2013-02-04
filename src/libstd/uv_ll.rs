@@ -34,12 +34,17 @@
 
 use core::libc::size_t;
 use core::libc;
+use core::libc::c_void;
 use core::prelude::*;
 use core::ptr::to_unsafe_ptr;
 use core::ptr;
 use core::str;
 use core::vec;
 use core::pipes::{stream, Chan, SharedChan, Port};
+
+pub type uv_loop_t = c_void;
+pub type uv_idle_t = c_void;
+pub type uv_idle_cb = *u8;
 
 // libuv struct mappings
 pub struct uv_ip4_addr {
@@ -668,6 +673,7 @@ pub mod uv_ll_struct_stubgen {
 
 #[nolink]
 extern mod rustrt {
+
     // libuv public API
     unsafe fn rust_uv_loop_new() -> *libc::c_void;
     unsafe fn rust_uv_loop_delete(lp: *libc::c_void);
@@ -675,6 +681,13 @@ extern mod rustrt {
     unsafe fn rust_uv_close(handle: *libc::c_void, cb: *u8);
     unsafe fn rust_uv_walk(loop_handle: *libc::c_void, cb: *u8,
                            arg: *libc::c_void);
+
+    unsafe fn rust_uv_idle_new() -> *uv_idle_t;
+    unsafe fn rust_uv_idle_delete(handle: *uv_idle_t);
+    unsafe fn rust_uv_idle_init(loop_handle: *uv_loop_t, handle: *uv_idle_t) -> libc::c_int;
+    unsafe fn rust_uv_idle_start(handle: *uv_idle_t, cb: uv_idle_cb) -> libc::c_int;
+    unsafe fn rust_uv_idle_stop(handle: *uv_idle_t) -> libc::c_int;
+
     unsafe fn rust_uv_async_send(handle: *uv_async_t);
     unsafe fn rust_uv_async_init(loop_handle: *libc::c_void,
                           async_handle: *uv_async_t,
@@ -826,6 +839,26 @@ pub unsafe fn close<T>(handle: *T, cb: *u8) {
 
 pub unsafe fn walk(loop_handle: *libc::c_void, cb: *u8, arg: *libc::c_void) {
     rustrt::rust_uv_walk(loop_handle, cb, arg);
+}
+
+pub unsafe fn idle_new() -> *uv_idle_t {
+    rustrt::rust_uv_idle_new()
+}
+
+pub unsafe fn idle_delete(handle: *uv_idle_t) {
+    rustrt::rust_uv_idle_delete(handle)
+}
+
+pub unsafe fn idle_init(loop_handle: *uv_loop_t, handle: *uv_idle_t) -> libc::c_int {
+    rustrt::rust_uv_idle_init(loop_handle, handle)
+}
+
+pub unsafe fn idle_start(handle: *uv_idle_t, cb: uv_idle_cb) -> libc::c_int {
+    rustrt::rust_uv_idle_start(handle, cb)
+}
+
+pub unsafe fn idle_stop(handle: *uv_idle_t) -> libc::c_int {
+    rustrt::rust_uv_idle_stop(handle)
 }
 
 pub unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
