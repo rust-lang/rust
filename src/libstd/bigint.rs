@@ -88,7 +88,7 @@ impl BigUint : Ord {
 }
 
 impl BigUint : ToStr {
-    pure fn to_str() -> ~str { self.to_str_radix(10) }
+    pure fn to_str(&self) -> ~str { self.to_str_radix(10) }
 }
 
 impl BigUint : from_str::FromStr {
@@ -605,7 +605,7 @@ impl BigInt : Ord {
 }
 
 impl BigInt : ToStr {
-    pure fn to_str() -> ~str { self.to_str_radix(10) }
+    pure fn to_str(&self) -> ~str { self.to_str_radix(10) }
 }
 
 impl BigInt : from_str::FromStr {

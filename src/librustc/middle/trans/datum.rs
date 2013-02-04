@@ -841,7 +841,7 @@ pub impl DatumBlock {
         self.bcx.tcx()
     }
 
-    fn to_str() -> ~str {
+    fn to_str(&self) -> ~str {
         self.datum.to_str(self.ccx())
     }
 }
