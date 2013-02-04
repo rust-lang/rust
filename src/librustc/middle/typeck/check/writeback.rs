@@ -28,7 +28,7 @@ use util::ppaux;
 
 use core::result::{Result, Ok, Err};
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
@@ -141,7 +141,7 @@ fn maybe_resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span,
                                     id: ast::node_id)
     -> Option<ty::t>
 {
-    if wbcx.fcx.inh.node_types.contains_key(id) {
+    if wbcx.fcx.inh.node_types.contains_key_ref(&id) {
         resolve_type_vars_for_node(wbcx, sp, id)
     } else {
         None

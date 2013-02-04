@@ -21,7 +21,7 @@ use core::char;
 use core::cmp;
 use core::str;
 use core::task;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 #[auto_encode]
 #[auto_decode]
@@ -454,13 +454,13 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
  */
 pub fn keyword_table() -> HashMap<~str, ()> {
     let keywords = HashMap();
-    for temporary_keyword_table().each_key |word| {
+    for temporary_keyword_table().each_key_ref |&word| {
         keywords.insert(word, ());
     }
-    for strict_keyword_table().each_key |word| {
+    for strict_keyword_table().each_key_ref |&word| {
         keywords.insert(word, ());
     }
-    for reserved_keyword_table().each_key |word| {
+    for reserved_keyword_table().each_key_ref |&word| {
         keywords.insert(word, ());
     }
     keywords

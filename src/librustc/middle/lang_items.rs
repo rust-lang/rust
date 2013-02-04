@@ -33,7 +33,7 @@ use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::{visit_crate, visit_item};
 
 use core::ptr;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use str_eq = str::eq;
 
 pub enum LangItem {
@@ -391,7 +391,7 @@ impl LanguageItemCollector {
     }
 
     fn check_completeness() {
-        for self.item_refs.each |key, item_ref| {
+        for self.item_refs.each_ref |&key, &item_ref| {
             match self.items.items[item_ref] {
                 None => {
                     self.session.err(fmt!("no item found for `%s`", key));

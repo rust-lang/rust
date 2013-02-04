@@ -14,7 +14,7 @@
 extern mod std;
 
 use core::dvec::*;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub type header_map = HashMap<~str, @DVec<@~str>>;
 

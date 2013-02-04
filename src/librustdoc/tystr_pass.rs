@@ -22,7 +22,7 @@ use fold;
 use pass::Pass;
 
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::par;
 use syntax::ast;
 use syntax::print::pprust;

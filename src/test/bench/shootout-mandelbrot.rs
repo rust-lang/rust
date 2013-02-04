@@ -22,7 +22,7 @@
 
 extern mod std;
 use io::WriterUtil;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 struct cmplx {
     re: f64,
@@ -134,11 +134,11 @@ fn writer(path: ~str, pport: pipes::Port<Line>, size: uint)
             done += 1_u;
             let mut prev = done;
             while prev <= i {
-                if lines.contains_key(prev) {
+                if lines.contains_key_ref(&prev) {
                     debug!("WS %u", prev);
                     cout.write(lines.get(prev));
                     done += 1_u;
-                    lines.remove(prev);
+                    lines.remove(&prev);
                     prev += 1_u;
                 }
                 else {

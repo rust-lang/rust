@@ -24,8 +24,8 @@ use core::either::Either;
 use core::either;
 use core::option;
 use core::vec;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use std;
 
 /* Constructors */
@@ -358,12 +358,12 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
 
 pub fn require_unique_names(diagnostic: span_handler,
                             metas: &[@ast::meta_item]) {
-    let map = map::HashMap();
+    let map = oldmap::HashMap();
     for metas.each |meta| {
         let name = get_meta_item_name(*meta);
 
         // FIXME: How do I silence the warnings? --pcw (#2619)
-        if map.contains_key(name) {
+        if map.contains_key_ref(&name) {
             diagnostic.span_fatal(meta.span,
                                   fmt!("duplicate meta item `%s`", name));
         }

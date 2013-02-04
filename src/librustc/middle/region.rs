@@ -32,7 +32,7 @@ use core::dvec::DVec;
 use core::vec;
 use std::list;
 use std::list::list;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;
@@ -296,7 +296,7 @@ pub fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
       _ => {}
     };
 
-    if new_cx.root_exprs.contains_key(expr.id) {
+    if new_cx.root_exprs.contains_key_ref(&expr.id) {
         new_cx.parent = Some(expr.id);
     }
 
@@ -833,7 +833,7 @@ pub fn determine_rp_in_crate(sess: Session,
 
     debug!("%s", {
         debug!("Region variance results:");
-        for cx.region_paramd_items.each |key, value| {
+        for cx.region_paramd_items.each_ref |&key, &value| {
             debug!("item %? (%s) is parameterized with variance %?",
                    key,
                    ast_map::node_id_to_str(ast_map, key,

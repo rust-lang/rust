@@ -241,7 +241,7 @@ use core::io;
 use core::result::{Result, Ok, Err};
 use std::list::{List, Cons, Nil};
 use std::list;
-use std::map::{HashMap, Set};
+use std::oldmap::{HashMap, Set};
 use syntax::ast::{mutability, m_mutbl, m_imm, m_const};
 use syntax::ast;
 use syntax::ast_map;

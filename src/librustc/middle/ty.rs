@@ -41,8 +41,8 @@ use core::result;
 use core::to_bytes;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
-use std::{map, oldsmallintmap};
+use std::oldmap::HashMap;
+use std::{oldmap, oldsmallintmap};
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
@@ -790,11 +790,11 @@ pub type node_type_table = @oldsmallintmap::SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
-    return map::HashMap();
+    return oldmap::HashMap();
 }
 
-pub fn new_ty_hash<V: Copy>() -> map::HashMap<t, V> {
-    map::HashMap()
+pub fn new_ty_hash<V: Copy>() -> oldmap::HashMap<t, V> {
+    oldmap::HashMap()
 }
 
 pub fn mk_ctxt(s: session::Session,
@@ -822,7 +822,7 @@ pub fn mk_ctxt(s: session::Session,
         }
     }
 
-    let interner = map::HashMap();
+    let interner = oldmap::HashMap();
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
                        lint::vecs_implicitly_copyable) == allow;
@@ -839,9 +839,9 @@ pub fn mk_ctxt(s: session::Session,
         region_map: region_map,
         region_paramd_items: region_paramd_items,
         node_types: @oldsmallintmap::mk(),
-        node_type_substs: map::HashMap(),
+        node_type_substs: oldmap::HashMap(),
         items: amap,
-        intrinsic_defs: map::HashMap(),
+        intrinsic_defs: oldmap::HashMap(),
         freevars: freevars,
         tcache: HashMap(),
         rcache: mk_rcache(),
@@ -1745,7 +1745,7 @@ pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
-                              tycache: map::HashMap<t, ()>,
+                              tycache: oldmap::HashMap<t, ()>,
                               encountered_box: bool) -> bool {
 
     // Prevent infinite recursion
@@ -2795,11 +2795,11 @@ impl sty : to_bytes::IterBytes {
 }
 
 pub fn br_hashmap<V:Copy>() -> HashMap<bound_region, V> {
-    map::HashMap()
+    oldmap::HashMap()
 }
 
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
-    //io::println(fmt!("%?/%?", id, cx.node_types.size()));
+    //io::println(fmt!("%?/%?", id, cx.node_types.len()));
     match oldsmallintmap::find(*cx.node_types, id as uint) {
        Some(t) => t,
        None => cx.sess.bug(
@@ -2817,7 +2817,7 @@ pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
 }
 
 fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
-    return cx.node_type_substs.contains_key(id);
+    return cx.node_type_substs.contains_key_ref(&id);
 }
 
 // Type accessors for substructures of types
@@ -3114,7 +3114,7 @@ pub enum ExprKind {
 pub fn expr_kind(tcx: ctxt,
                  method_map: typeck::method_map,
                  expr: @ast::expr) -> ExprKind {
-    if method_map.contains_key(expr.id) {
+    if method_map.contains_key_ref(&expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS.  However, assign_op (e.g., `x += y`) is an
         // exception, as its result is always unit.
@@ -4359,7 +4359,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
         if f(trait_ty) {
             // Add all the supertraits to the hash map,
             // executing <f> on each of them
-            while i < supertrait_map.size() && !fin {
+            while i < supertrait_map.len() && !fin {
                 let init_trait_id = seen_def_ids[i];
                 i += 1;
                  // Add supertraits to supertrait_map
@@ -4368,7 +4368,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
                     let super_t = supertrait.tpt.ty;
                     let d_id = ty_to_def_id(super_t).expect("supertrait \
                         should be a trait ty");
-                    if !supertrait_map.contains_key(d_id) {
+                    if !supertrait_map.contains_key_ref(&d_id) {
                         supertrait_map.insert(d_id, super_t);
                         trait_ty = super_t;
                         seen_def_ids.push(d_id);

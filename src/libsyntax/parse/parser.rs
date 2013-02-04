@@ -87,7 +87,7 @@ use core::either;
 use core::result::Result;
 use core::vec::push;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 #[deriving_eq]
 enum restriction {

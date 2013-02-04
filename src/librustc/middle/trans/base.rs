@@ -75,9 +75,9 @@ use core::libc::{c_uint, c_ulonglong};
 use core::option::{is_none, is_some};
 use core::option;
 use core::uint;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::oldsmallintmap;
-use std::{map, time, list};
+use std::{oldmap, time, list};
 use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::attr;
@@ -169,8 +169,7 @@ pub fn get_extern_fn(externs: HashMap<~str, ValueRef>,
                      +name: ~str,
                      cc: lib::llvm::CallConv,
                      ty: TypeRef) -> ValueRef {
-    // XXX: Bad copy.
-    if externs.contains_key(copy name) { return externs.get(name); }
+    if externs.contains_key_ref(&name) { return externs.get(name); }
     // XXX: Bad copy.
     let f = decl_fn(llmod, copy name, cc, ty);
     externs.insert(name, f);
@@ -180,8 +179,7 @@ pub fn get_extern_fn(externs: HashMap<~str, ValueRef>,
 pub fn get_extern_const(externs: HashMap<~str, ValueRef>, llmod: ModuleRef,
                         +name: ~str, ty: TypeRef) -> ValueRef {
     unsafe {
-        // XXX: Bad copy.
-        if externs.contains_key(copy name) { return externs.get(name); }
+        if externs.contains_key_ref(&name) { return externs.get(name); }
         let c = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(llmod, ty, buf)
         });
@@ -451,7 +449,7 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: @crate_ctxt, +sym: ~str) {
     // XXX: Bad copy.
-    if ccx.all_llvm_symbols.contains_key(copy sym) {
+    if ccx.all_llvm_symbols.contains_key_ref(&sym) {
         ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
     }
     ccx.all_llvm_symbols.insert(sym, ());
@@ -2485,7 +2483,7 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             ccx.sess.bug(~"get_item_val(): unexpected variant")
           }
         };
-        if !(exprt || ccx.reachable.contains_key(id)) {
+        if !(exprt || ccx.reachable.contains_key_ref(&id)) {
             lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
         }
         ccx.item_vals.insert(id, val);
@@ -2798,7 +2796,7 @@ pub fn decl_gc_metadata(ccx: @crate_ctxt, llmod_id: ~str) {
 
 pub fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
-    let maptype = T_array(elttype, ccx.module_data.size() + 1u);
+    let maptype = T_array(elttype, ccx.module_data.len() + 1);
     let map = str::as_c_str(~"_rust_mod_map", |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
@@ -2808,7 +2806,7 @@ pub fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
         lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     }
     let mut elts: ~[ValueRef] = ~[];
-    for ccx.module_data.each |key, val| {
+    for ccx.module_data.each_ref |&key, &val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, key)),
                             p2i(ccx, val)]);
         elts.push(elt);
@@ -3016,7 +3014,7 @@ pub fn trans_crate(sess: session::Session,
               monomorphized: HashMap(),
               monomorphizing: HashMap(),
               type_use_cache: HashMap(),
-              vtables: map::HashMap(),
+              vtables: oldmap::HashMap(),
               const_cstr_cache: HashMap(),
               const_globals: HashMap(),
               const_values: HashMap(),
@@ -3089,7 +3087,7 @@ pub fn trans_crate(sess: session::Session,
         }
 
         if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each |k, v| {
+            for ccx.stats.llvm_insns.each_ref |&k, &v| {
                 io::println(fmt!("%-7u %s", v, k));
             }
         }
