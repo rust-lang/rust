@@ -1,4 +1,5 @@
 // aux-build:impl_privacy_xc_2.rs
+// xfail-fast
 
 extern mod impl_privacy_xc_2;
 
