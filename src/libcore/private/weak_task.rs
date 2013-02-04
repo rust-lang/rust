@@ -119,7 +119,7 @@ fn run_weak_task_service(port: Port<ServiceMsg>) {
         }
     }
 
-    do shutdown_map.consume |_, shutdown_chan| {
+    do shutdown_map.consume |_, (_, shutdown_chan)| {
         // Weak task may have already exited
         shutdown_chan.send(());
     }
