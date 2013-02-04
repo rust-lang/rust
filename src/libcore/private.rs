@@ -486,7 +486,7 @@ pub mod tests {
         res.recv();
     }
 
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail] #[ignore(reason = "random red")]
     pub fn exclusive_unwrap_conflict() {
         let x = exclusive(~~"hello");
         let x2 = ~mut Some(x.clone());
