@@ -779,10 +779,19 @@ pub enum expr_ {
 #[auto_decode]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum token_tree {
+    // a single token
     tt_tok(span, ::parse::token::Token),
+    // a delimited sequence (the delimiters appear as the first
+    // and last elements of the vector)
     tt_delim(~[token_tree]),
-    // These only make sense for right-hand-sides of MBE macros
+    // These only make sense for right-hand-sides of MBE macros:
+
+    // a kleene-style repetition sequence with a span, a tt_forest,
+    // an optional separator (?), and a boolean where true indicates
+    // zero or more (*), and false indicates one or more (+).
     tt_seq(span, ~[token_tree], Option<::parse::token::Token>, bool),
+
+    // a syntactic variable that will be filled in by macro expansion.
     tt_nonterminal(span, ident)
 }
 

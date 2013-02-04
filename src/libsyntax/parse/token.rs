@@ -86,6 +86,7 @@ pub enum Token {
     LIT_STR(ast::ident),
 
     /* Name components */
+    // an identifier contains an "is_mod_name" boolean.
     IDENT(ast::ident, bool),
     UNDERSCORE,
     LIFETIME(ast::ident),
