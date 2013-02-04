@@ -649,14 +649,24 @@ pub impl @fn_ctxt {
 }
 
 pub impl @fn_ctxt: region_scope {
-    fn anon_region(span: span) -> Result<ty::Region, ~str> {
-        result::Ok(self.infcx().next_region_var_nb(span))
+    pure fn anon_region(span: span) -> Result<ty::Region, ~str> {
+        // XXX: Unsafe to work around purity
+        unsafe {
+            result::Ok(self.infcx().next_region_var_nb(span))
+        }
     }
-    fn self_region(_span: span) -> Result<ty::Region, ~str> {
-        self.search_in_scope_regions(ty::br_self)
+    pure fn self_region(_span: span) -> Result<ty::Region, ~str> {
+        // XXX: Unsafe to work around purity
+        unsafe {
+            self.search_in_scope_regions(ty::br_self)
+        }
     }
-    fn named_region(_span: span, id: ast::ident) -> Result<ty::Region, ~str> {
-        self.search_in_scope_regions(ty::br_named(id))
+    pure fn named_region(_span: span, id: ast::ident)
+                      -> Result<ty::Region, ~str> {
+        // XXX: Unsafe to work around purity
+        unsafe {
+            self.search_in_scope_regions(ty::br_named(id))
+        }
     }
 }
 
