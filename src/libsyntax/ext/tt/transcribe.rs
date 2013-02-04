@@ -201,23 +201,24 @@ pub fn tt_next_token(r: &tt_reader_) -> TokenAndSpan {
           }
           tt_seq(sp, ref tts, ref sep, zerok) => {
               match lockstep_iter_size(tt_seq(sp, (*tts), (*sep), zerok), r) {
-                  lis_unconstrained => {
-                      r.sp_diag.span_fatal(
-                          sp, /* blame macro writer */
-                          ~"attempted to repeat an expression containing no syntax \
-                            variables matched as repeating at this depth");
+                lis_unconstrained => {
+                  r.sp_diag.span_fatal(
+                    sp, /* blame macro writer */
+                      ~"attempted to repeat an expression \
+                        containing no syntax \
+                        variables matched as repeating at this depth");
                   }
                   lis_contradiction(ref msg) => {
                       /* FIXME #2887 blame macro invoker instead*/
                       r.sp_diag.span_fatal(sp, (*msg));
                   }
                   lis_constraint(len, _) => {
-                      if len == 0 {
-                          if !zerok {
-                              r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
-                              */
-                                                   ~"this must repeat at least \
-                                                     once");
+                    if len == 0 {
+                      if !zerok {
+                        r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
+                        */
+                                             ~"this must repeat at least \
+                                               once");
                           }
 
                     r.cur.idx += 1u;
