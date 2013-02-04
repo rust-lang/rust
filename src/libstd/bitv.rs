@@ -156,7 +156,7 @@ impl BigBitv {
      fn each_storage(op: fn(v: &mut uint) -> bool) {
         for uint::range(0, self.storage.len()) |i| {
             let mut w = self.storage[i];
-            let b = !op(&mut w);
+            let b = op(&mut w);
             self.storage[i] = w;
             if !b { break; }
         }
@@ -980,6 +980,24 @@ mod tests {
       assert b1[0];
       assert !b1[40];
       assert !b1[80];
+    }
+
+    #[test]
+    pub fn test_small_clear() {
+      let b = Bitv(14, true);
+      b.clear();
+      for b.ones |i| {
+          die!(fmt!("found 1 at %?", i));
+      }
+    }
+
+    #[test]
+    pub fn test_big_clear() {
+      let b = Bitv(140, true);
+      b.clear();
+      for b.ones |i| {
+          die!(fmt!("found 1 at %?", i));
+      }
     }
 }
 
