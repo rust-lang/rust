@@ -81,9 +81,9 @@ pub fn init(root: &Path) {
     let p = root.push("gpg");
     if !os::path_is_dir(&p) {
         os::make_dir(&p, 0x1c0i32);
-        let p = run::start_program(~"gpg", ~[~"--homedir",
-                                             p.to_str(),
-                                             ~"--import"]);
+        let mut p = run::start_program(~"gpg", ~[~"--homedir",
+                                                 p.to_str(),
+                                                 ~"--import"]);
         p.input().write_str(signing_key());
         let s = p.finish();
         if s != 0 {

@@ -39,6 +39,12 @@ pub pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     unsafe { ptr::addr_of(&(*a)) == ptr::addr_of(&(*b)) }
 }
 
+#[inline(always)]
+pub pure fn mut_ptr_eq<T>(a: @mut T, b: @mut T) -> bool {
+    //! Determine if two mutable shared boxes point to the same object
+    unsafe { ptr::addr_of(&(*a)) == ptr::addr_of(&(*b)) }
+}
+
 #[cfg(notest)]
 impl<T:Eq> @const T : Eq {
     #[inline(always)]

@@ -408,28 +408,24 @@ pub struct region_dep {
 
 pub type dep_map = HashMap<ast::node_id, @DVec<region_dep>>;
 
-pub type determine_rp_ctxt_ = {
+pub struct DetermineRpCtxt {
     sess: Session,
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
     region_paramd_items: region_paramd_items,
     dep_map: dep_map,
-    worklist: DVec<ast::node_id>,
+    worklist: ~[ast::node_id],
 
     // the innermost enclosing item id
-    mut item_id: ast::node_id,
+    item_id: ast::node_id,
 
     // true when we are within an item but not within a method.
     // see long discussion on region_is_relevant()
-    mut anon_implies_rp: bool,
+    anon_implies_rp: bool,
 
     // encodes the context of the current type; invariant if
     // mutable, covariant otherwise
-    mut ambient_variance: region_variance,
-};
-
-pub enum determine_rp_ctxt {
-    determine_rp_ctxt_(@determine_rp_ctxt_)
+    ambient_variance: region_variance,
 }
 
 pub fn join_variance(++variance1: region_variance,
@@ -465,15 +461,15 @@ pub fn add_variance(+ambient_variance: region_variance,
     }
 }
 
-pub impl determine_rp_ctxt {
-    fn add_variance(variance: region_variance) -> region_variance {
+pub impl DetermineRpCtxt {
+    fn add_variance(@mut self, variance: region_variance) -> region_variance {
         add_variance(self.ambient_variance, variance)
     }
 
     /// Records that item `id` is region-parameterized with the
     /// variance `variance`.  If `id` was already parameterized, then
     /// the new variance is joined with the old variance.
-    fn add_rp(id: ast::node_id, variance: region_variance) {
+    fn add_rp(@mut self, id: ast::node_id, variance: region_variance) {
         assert id != 0;
         let old_variance = self.region_paramd_items.find(&id);
         let joined_variance = match old_variance {
@@ -487,7 +483,8 @@ pub impl determine_rp_ctxt {
                joined_variance, old_variance, variance);
 
         if Some(joined_variance) != old_variance {
-            self.region_paramd_items.insert(id, joined_variance);
+            let region_paramd_items = self.region_paramd_items;
+            region_paramd_items.insert(id, joined_variance);
             self.worklist.push(id);
         }
     }
@@ -497,7 +494,7 @@ pub impl determine_rp_ctxt {
     /// `from`.  Put another way, it indicates that the current item
     /// contains a value of type `from`, so if `from` is
     /// region-parameterized, so is the current item.
-    fn add_dep(from: ast::node_id) {
+    fn add_dep(@mut self, from: ast::node_id) {
         debug!("add dependency from %d -> %d (%s -> %s) with variance %?",
                from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
@@ -509,7 +506,8 @@ pub impl determine_rp_ctxt {
             Some(vec) => vec,
             None => {
                 let vec = @DVec();
-                self.dep_map.insert(from, vec);
+                let dep_map = self.dep_map;
+                dep_map.insert(from, vec);
                 vec
             }
         };
@@ -552,7 +550,7 @@ pub impl determine_rp_ctxt {
     // case it is bound.  We handle this by setting a flag
     // (anon_implies_rp) to true when we enter an item and setting
     // that flag to false when we enter a method.
-    fn region_is_relevant(r: @ast::region) -> bool {
+    fn region_is_relevant(@mut self, r: @ast::region) -> bool {
         match r.node {
             ast::re_static => false,
             ast::re_anon => self.anon_implies_rp,
@@ -567,7 +565,9 @@ pub impl determine_rp_ctxt {
     //
     // If the region is explicitly specified, then we follows the
     // normal rules.
-    fn opt_region_is_relevant(opt_r: Option<@ast::region>) -> bool {
+    fn opt_region_is_relevant(@mut self,
+                              opt_r: Option<@ast::region>)
+                           -> bool {
         debug!("opt_region_is_relevant: %? (anon_implies_rp=%b)",
                opt_r, self.anon_implies_rp);
         match opt_r {
@@ -576,9 +576,10 @@ pub impl determine_rp_ctxt {
         }
     }
 
-    fn with(item_id: ast::node_id,
+    fn with(@mut self,
+            item_id: ast::node_id,
             anon_implies_rp: bool,
-            f: fn()) {
+            f: &fn()) {
         let old_item_id = self.item_id;
         let old_anon_implies_rp = self.anon_implies_rp;
         self.item_id = item_id;
@@ -590,7 +591,7 @@ pub impl determine_rp_ctxt {
         self.anon_implies_rp = old_anon_implies_rp;
     }
 
-    fn with_ambient_variance(variance: region_variance, f: fn()) {
+    fn with_ambient_variance(@mut self, variance: region_variance, f: &fn()) {
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.add_variance(variance);
         f();
@@ -599,8 +600,8 @@ pub impl determine_rp_ctxt {
 }
 
 pub fn determine_rp_in_item(item: @ast::item,
-                            &&cx: determine_rp_ctxt,
-                            visitor: visit::vt<determine_rp_ctxt>) {
+                            &&cx: @mut DetermineRpCtxt,
+                            visitor: visit::vt<@mut DetermineRpCtxt>) {
     do cx.with(item.id, true) {
         visit::visit_item(item, cx, visitor);
     }
@@ -609,10 +610,10 @@ pub fn determine_rp_in_item(item: @ast::item,
 pub fn determine_rp_in_fn(fk: visit::fn_kind,
                           decl: ast::fn_decl,
                           body: ast::blk,
-                          _sp: span,
-                          _id: ast::node_id,
-                          &&cx: determine_rp_ctxt,
-                          visitor: visit::vt<determine_rp_ctxt>) {
+                          _: span,
+                          _: ast::node_id,
+                          &&cx: @mut DetermineRpCtxt,
+                          visitor: visit::vt<@mut DetermineRpCtxt>) {
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.each |a| {
@@ -626,16 +627,16 @@ pub fn determine_rp_in_fn(fk: visit::fn_kind,
 }
 
 pub fn determine_rp_in_ty_method(ty_m: ast::ty_method,
-                                 &&cx: determine_rp_ctxt,
-                                 visitor: visit::vt<determine_rp_ctxt>) {
+                                 &&cx: @mut DetermineRpCtxt,
+                                 visitor: visit::vt<@mut DetermineRpCtxt>) {
     do cx.with(cx.item_id, false) {
         visit::visit_ty_method(ty_m, cx, visitor);
     }
 }
 
 pub fn determine_rp_in_ty(ty: @ast::Ty,
-                          &&cx: determine_rp_ctxt,
-                          visitor: visit::vt<determine_rp_ctxt>) {
+                          &&cx: @mut DetermineRpCtxt,
+                          visitor: visit::vt<@mut DetermineRpCtxt>) {
     // we are only interested in types that will require an item to
     // be region-parameterized.  if cx.item_id is zero, then this type
     // is not a member of a type defn nor is it a constitutent of an
@@ -647,10 +648,11 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     // respect to &r, because &r/ty can be used whereever a *smaller*
     // region is expected (and hence is a supertype of those
     // locations)
+    let sess = cx.sess;
     match ty.node {
         ast::ty_rptr(r, _) => {
             debug!("referenced rptr type %s",
-                   pprust::ty_to_str(ty, cx.sess.intr()));
+                   pprust::ty_to_str(ty, sess.intr()));
 
             if cx.region_is_relevant(r) {
                 cx.add_rp(cx.item_id, cx.add_variance(rv_contravariant))
@@ -659,7 +661,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
 
         ast::ty_closure(ref f) => {
             debug!("referenced fn type: %s",
-                   pprust::ty_to_str(ty, cx.sess.intr()));
+                   pprust::ty_to_str(ty, sess.intr()));
             match f.region {
                 Some(r) => {
                     if cx.region_is_relevant(r) {
@@ -692,12 +694,12 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
                     cx.add_dep(did.node);
                 }
             } else {
-                let cstore = cx.sess.cstore;
+                let cstore = sess.cstore;
                 match csearch::get_region_param(cstore, did) {
                   None => {}
                   Some(variance) => {
                     debug!("reference to external, rp'd type %s",
-                           pprust::ty_to_str(ty, cx.sess.intr()));
+                           pprust::ty_to_str(ty, sess.intr()));
                     if cx.opt_region_is_relevant(path.rp) {
                         cx.add_rp(cx.item_id, cx.add_variance(variance))
                     }
@@ -752,8 +754,9 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
       }
     }
 
-    fn visit_mt(mt: ast::mt, &&cx: determine_rp_ctxt,
-                visitor: visit::vt<determine_rp_ctxt>) {
+    fn visit_mt(mt: ast::mt,
+                &&cx: @mut DetermineRpCtxt,
+                visitor: visit::vt<@mut DetermineRpCtxt>) {
         // mutability is invariant
         if mt.mutbl == ast::m_mutbl {
             do cx.with_ambient_variance(rv_invariant) {
@@ -765,9 +768,10 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     }
 }
 
-pub fn determine_rp_in_struct_field(cm: @ast::struct_field,
-                                    &&cx: determine_rp_ctxt,
-                                    visitor: visit::vt<determine_rp_ctxt>) {
+pub fn determine_rp_in_struct_field(
+        cm: @ast::struct_field,
+        &&cx: @mut DetermineRpCtxt,
+        visitor: visit::vt<@mut DetermineRpCtxt>) {
     match cm.node.kind {
       ast::named_field(_, ast::struct_mutable, _) => {
         do cx.with_ambient_variance(rv_invariant) {
@@ -786,15 +790,17 @@ pub fn determine_rp_in_crate(sess: Session,
                              def_map: resolve::DefMap,
                              crate: @ast::crate)
                           -> region_paramd_items {
-    let cx = determine_rp_ctxt_(@{sess: sess,
-                                  ast_map: ast_map,
-                                  def_map: def_map,
-                                  region_paramd_items: HashMap(),
-                                  dep_map: HashMap(),
-                                  worklist: DVec(),
-                                  mut item_id: 0,
-                                  mut anon_implies_rp: false,
-                                  mut ambient_variance: rv_covariant});
+    let cx = @mut DetermineRpCtxt {
+        sess: sess,
+        ast_map: ast_map,
+        def_map: def_map,
+        region_paramd_items: HashMap(),
+        dep_map: HashMap(),
+        worklist: ~[],
+        item_id: 0,
+        anon_implies_rp: false,
+        ambient_variance: rv_covariant
+    };
 
     // Gather up the base set, worklist and dep_map
     let visitor = visit::mk_vt(@visit::Visitor {
@@ -833,7 +839,8 @@ pub fn determine_rp_in_crate(sess: Session,
 
     debug!("%s", {
         debug!("Region variance results:");
-        for cx.region_paramd_items.each_ref |&key, &value| {
+        let region_paramd_items = cx.region_paramd_items;
+        for region_paramd_items.each_ref |&key, &value| {
             debug!("item %? (%s) is parameterized with variance %?",
                    key,
                    ast_map::node_id_to_str(ast_map, key,

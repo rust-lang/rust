@@ -13,12 +13,12 @@ use core::prelude::*;
 use middle::resolve;
 use middle::ty::{param_ty, substs};
 use middle::ty;
-use middle::typeck::check::{fn_ctxt, impl_self_ty};
+use middle::typeck::check::{FnCtxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::infer::{fixup_err_to_str, InferCtxt};
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
-use middle::typeck::{crate_ctxt, vtable_origin, vtable_param, vtable_res};
+use middle::typeck::{CrateCtxt, vtable_origin, vtable_param, vtable_res};
 use middle::typeck::{vtable_static, vtable_trait};
 use util::common::indenter;
 use util::ppaux::tys_to_str;
@@ -63,8 +63,8 @@ pub struct LocationInfo {
 /// A vtable context includes an inference context, a crate context, and a
 /// callback function to call in case of type error.
 pub struct VtableContext {
-    ccx: @crate_ctxt,
-    infcx: @infer::InferCtxt
+    ccx: @mut CrateCtxt,
+    infcx: @mut infer::InferCtxt
 }
 
 pub impl VtableContext {
@@ -501,11 +501,13 @@ pub fn connect_trait_tps(vcx: &VtableContext,
     }
 }
 
-pub fn insert_vtables(ccx: @crate_ctxt, callee_id: ast::node_id,
+pub fn insert_vtables(ccx: @mut CrateCtxt,
+                      callee_id: ast::node_id,
                       vtables: vtable_res) {
     debug!("insert_vtables(callee_id=%d, vtables=%?)",
            callee_id, vtables.map(|v| v.to_str(ccx.tcx)));
-    ccx.vtable_map.insert(callee_id, vtables);
+    let vtable_map = ccx.vtable_map;
+    vtable_map.insert(callee_id, vtables);
 }
 
 pub fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
@@ -515,7 +517,9 @@ pub fn location_info_for_expr(expr: @ast::expr) -> LocationInfo {
     }
 }
 
-pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
+pub fn early_resolve_expr(ex: @ast::expr,
+                          &&fcx: @mut FnCtxt,
+                          is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id %? (early: %b): %s",
            ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
     let _indent = indenter();
@@ -540,7 +544,10 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),
                                            item_ty.bounds, substs, false,
                                            is_early);
-                if !is_early { cx.vtable_map.insert(ex.id, vtbls); }
+                if !is_early {
+                    let vtable_map = cx.vtable_map;
+                    vtable_map.insert(ex.id, vtbls);
+                }
             }
           }
           _ => ()
@@ -625,8 +632,10 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                                             // vtable (that is: "ex has vtable
                                             // <vtable>")
                                             if !is_early {
-                                                cx.vtable_map.insert(
-                                                    ex.id, @~[vtable]);
+                                                let vtable_map =
+                                                    cx.vtable_map;
+                                                vtable_map.insert(ex.id,
+                                                                  @~[vtable]);
                                             }
                                         }
                                         None => err = true
@@ -696,7 +705,10 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                     Map this expression to that vtable (that is: "ex has
                     vtable <vtable>")
                     */
-                    if !is_early { cx.vtable_map.insert(ex.id, @~[vtable]); }
+                    if !is_early {
+                        let vtable_map = cx.vtable_map;
+                        vtable_map.insert(ex.id, @~[vtable]);
+                    }
                     fcx.tcx().legacy_boxed_traits.insert(ex.id, ());
                 }
             }
@@ -709,19 +721,18 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
 }
 
 pub fn resolve_expr(ex: @ast::expr,
-                    &&fcx: @fn_ctxt,
-                    v: visit::vt<@fn_ctxt>) {
+                    &&fcx: @mut FnCtxt,
+                    v: visit::vt<@mut FnCtxt>) {
     early_resolve_expr(ex, fcx, false);
     visit::visit_expr(ex, fcx, v);
 }
 
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
-pub fn resolve_in_block(fcx: @fn_ctxt, bl: ast::blk) {
+pub fn resolve_in_block(fcx: @mut FnCtxt, bl: ast::blk) {
     visit::visit_block(bl, fcx, visit::mk_vt(@visit::Visitor {
         visit_expr: resolve_expr,
-        visit_item: fn@(_i: @ast::item, &&_e: @fn_ctxt,
-                        _v: visit::vt<@fn_ctxt>) {},
+        visit_item: |_,_,_| {},
         .. *visit::default_visitor()
     }));
 }

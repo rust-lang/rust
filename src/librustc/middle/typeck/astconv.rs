@@ -11,16 +11,16 @@
 /*!
  * Conversion from AST representation of types to the ty.rs
  * representation.  The main routine here is `ast_ty_to_ty()`: each use
- * is parameterized by an instance of `ast_conv` and a `region_scope`.
+ * is parameterized by an instance of `AstConv` and a `region_scope`.
  *
  * The parameterization of `ast_ty_to_ty()` is because it behaves
  * somewhat differently during the collect and check phases, particularly
  * with respect to looking up the types of top-level items.  In the
- * collect phase, the crate context is used as the `ast_conv` instance;
+ * collect phase, the crate context is used as the `AstConv` instance;
  * in this phase, the `get_item_ty()` function triggers a recursive call
  * to `ty_of_item()` (note that `ast_ty_to_ty()` will detect recursive
- * types and report an error).  In the check phase, when the @fn_ctxt is
- * used as the `ast_conv`, `get_item_ty()` just looks up the item type in
+ * types and report an error).  In the check phase, when the @FnCtxt is
+ * used as the `AstConv`, `get_item_ty()` just looks up the item type in
  * `tcx.tcache`.
  *
  * The `region_scope` trait controls how region references are
@@ -31,7 +31,7 @@
  * region, or `type_rscope`, which permits the self region if the type in
  * question is parameterized by a region.
  *
- * Unlike the `ast_conv` trait, the region scope can change as we descend
+ * Unlike the `AstConv` trait, the region scope can change as we descend
  * the type.  This is to accommodate the fact that (a) fn types are binding
  * scopes and (b) the default region may change.  To understand case (a),
  * consider something like:
@@ -58,12 +58,11 @@ use middle::pat_util::pat_id_map;
 use middle::ty::{arg, field, substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::check::fn_ctxt;
 use middle::typeck::collect;
 use middle::typeck::rscope::{anon_rscope, binding_rscope, empty_rscope};
 use middle::typeck::rscope::{in_anon_rscope, in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope};
-use middle::typeck::{crate_ctxt, write_substs_to_tcx, write_ty_to_tcx};
+use middle::typeck::{CrateCtxt, write_substs_to_tcx, write_ty_to_tcx};
 
 use core::result;
 use core::vec;
@@ -72,13 +71,13 @@ use syntax::codemap::span;
 use syntax::print::pprust::path_to_str;
 use util::common::indenter;
 
-pub trait ast_conv {
-    fn tcx() -> ty::ctxt;
-    fn ccx() -> @crate_ctxt;
-    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty;
+pub trait AstConv {
+    fn tcx(@mut self) -> ty::ctxt;
+    fn ccx(@mut self) -> @mut CrateCtxt;
+    fn get_item_ty(@mut self, id: ast::def_id) -> ty::ty_param_bounds_and_ty;
 
     // what type should we use when a type is omitted?
-    fn ty_infer(span: span) -> ty::t;
+    fn ty_infer(@mut self, span: span) -> ty::t;
 }
 
 pub fn get_region_reporting_err(tcx: ty::ctxt,
@@ -95,9 +94,12 @@ pub fn get_region_reporting_err(tcx: ty::ctxt,
     }
 }
 
-pub fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::Region {
-
+pub fn ast_region_to_region<AC: AstConv, RS: region_scope Copy Durable>(
+        self: @mut AC,
+        rscope: RS,
+        span: span,
+        a_r: @ast::region)
+     -> ty::Region {
     let res = match a_r.node {
         ast::re_static => Ok(ty::re_static),
         ast::re_anon => rscope.anon_region(span),
@@ -108,10 +110,12 @@ pub fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Durable>(
     get_region_reporting_err(self.tcx(), span, res)
 }
 
-pub fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS, did: ast::def_id,
-    path: @ast::path) -> ty_param_substs_and_ty {
-
+pub fn ast_path_to_substs_and_ty<AC: AstConv, RS: region_scope Copy Durable>(
+        self: @mut AC,
+        rscope: RS,
+        did: ast::def_id,
+        path: @ast::path)
+     -> ty_param_substs_and_ty {
     let tcx = self.tcx();
     let {bounds: decl_bounds, region_param: decl_rp, ty: decl_ty} =
         self.get_item_ty(did);
@@ -158,13 +162,13 @@ pub fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     {substs: substs, ty: ty}
 }
 
-pub fn ast_path_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC,
-    rscope: RS,
-    did: ast::def_id,
-    path: @ast::path,
-    path_id: ast::node_id) -> ty_param_substs_and_ty {
-
+pub fn ast_path_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
+        self: @mut AC,
+        rscope: RS,
+        did: ast::def_id,
+        path: @ast::path,
+        path_id: ast::node_id)
+     -> ty_param_substs_and_ty {
     // Look up the polytype of the item and then substitute the provided types
     // for any type/region parameters.
     let tcx = self.tcx();
@@ -181,11 +185,11 @@ pub const NO_TPS: uint = 2;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS, &&ast_ty: @ast::Ty) -> ty::t {
+pub fn ast_ty_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
+    self: @mut AC, rscope: RS, &&ast_ty: @ast::Ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC: ast_conv, RS: region_scope Copy Durable>(
-        self: AC, rscope: RS, mt: ast::mt) -> ty::mt {
+    fn ast_mt_to_mt<AC: AstConv, RS: region_scope Copy Durable>(
+        self: @mut AC, rscope: RS, mt: ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl}
     }
@@ -193,8 +197,8 @@ pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle function sigils and first-class trait types.
-    fn mk_pointer<AC: ast_conv, RS: region_scope Copy Durable>(
-        self: AC,
+    fn mk_pointer<AC: AstConv, RS: region_scope Copy Durable>(
+        self: @mut AC,
         rscope: RS,
         a_seq_ty: ast::mt,
         vst: ty::vstore,
@@ -409,10 +413,12 @@ pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     return typ;
 }
 
-pub fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS, a: ast::arg,
-    expected_ty: Option<ty::arg>) -> ty::arg {
-
+pub fn ty_of_arg<AC: AstConv, RS: region_scope Copy Durable>(
+        self: @mut AC,
+        rscope: RS,
+        a: ast::arg,
+        expected_ty: Option<ty::arg>)
+     -> ty::arg {
     let ty = match a.ty.node {
       ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
       ast::ty_infer => self.ty_infer(a.ty.span),
@@ -455,12 +461,13 @@ pub fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Durable>(
     arg {mode: mode, ty: ty}
 }
 
-pub fn ty_of_bare_fn<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS,
-    purity: ast::purity,
-    abi: ast::Abi,
-    decl: ast::fn_decl) -> ty::BareFnTy
-{
+pub fn ty_of_bare_fn<AC: AstConv, RS: region_scope Copy Durable>(
+        self: @mut AC,
+        rscope: RS,
+        purity: ast::purity,
+        abi: ast::Abi,
+        decl: ast::fn_decl)
+     -> ty::BareFnTy {
     debug!("ty_of_fn_decl");
 
     // new region names that appear inside of the fn decl are bound to
@@ -480,16 +487,17 @@ pub fn ty_of_bare_fn<AC: ast_conv, RS: region_scope Copy Durable>(
     }
 }
 
-pub fn ty_of_closure<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS,
-    sigil: ast::Sigil,
-    purity: ast::purity,
-    onceness: ast::Onceness,
-    opt_region: Option<@ast::region>,
-    decl: ast::fn_decl,
-    expected_tys: Option<ty::FnSig>,
-    span: span) -> ty::ClosureTy
-{
+pub fn ty_of_closure<AC: AstConv, RS: region_scope Copy Durable>(
+        self: @mut AC,
+        rscope: RS,
+        sigil: ast::Sigil,
+        purity: ast::purity,
+        onceness: ast::Onceness,
+        opt_region: Option<@ast::region>,
+        decl: ast::fn_decl,
+        expected_tys: Option<ty::FnSig>,
+        span: span)
+     -> ty::ClosureTy {
     debug!("ty_of_fn_decl");
     let _i = indenter();
 

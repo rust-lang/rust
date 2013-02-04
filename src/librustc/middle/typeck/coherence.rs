@@ -33,7 +33,7 @@ use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_kind_ext};
 use middle::ty::{type_is_ty_var};
 use middle::ty;
-use middle::typeck::crate_ctxt;
+use middle::typeck::CrateCtxt;
 use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::{InferCtxt, can_mk_subty};
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar};
@@ -71,7 +71,7 @@ pub struct UniversalQuantificationResult {
     bounds: @~[param_bounds]
 }
 
-pub fn get_base_type(inference_context: @InferCtxt,
+pub fn get_base_type(inference_context: @mut InferCtxt,
                      span: span,
                      original_type: t)
                   -> Option<t> {
@@ -119,7 +119,7 @@ pub fn get_base_type(inference_context: @InferCtxt,
 }
 
 // Returns the def ID of the base type, if there is one.
-pub fn get_base_type_def_id(inference_context: @InferCtxt,
+pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
                             span: span,
                             original_type: t)
                          -> Option<def_id> {
@@ -171,7 +171,7 @@ pub fn CoherenceInfo() -> CoherenceInfo {
     }
 }
 
-pub fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
+pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
     CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
@@ -182,8 +182,8 @@ pub fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
 }
 
 pub struct CoherenceChecker {
-    crate_context: @crate_ctxt,
-    inference_context: @InferCtxt,
+    crate_context: @mut CrateCtxt,
+    inference_context: @mut InferCtxt,
 
     // A mapping from implementations to the corresponding base type
     // definition ID.
@@ -415,7 +415,7 @@ pub impl CoherenceChecker {
     }
 
     fn check_implementation_coherence() {
-        let coherence_info = &self.crate_context.coherence_info;
+        let coherence_info = &mut self.crate_context.coherence_info;
         let extension_methods = &coherence_info.extension_methods;
 
         for extension_methods.each_key_ref |&trait_id| {
@@ -478,7 +478,7 @@ pub impl CoherenceChecker {
     fn iter_impls_of_trait(trait_def_id: def_id,
                            f: &fn(@Impl)) {
 
-        let coherence_info = &self.crate_context.coherence_info;
+        let coherence_info = &mut self.crate_context.coherence_info;
         let extension_methods = &coherence_info.extension_methods;
 
         match extension_methods.find(&trait_def_id) {
@@ -824,9 +824,8 @@ pub impl CoherenceChecker {
     // External crate handling
 
     fn add_impls_for_module(impls_seen: HashMap<def_id,()>,
-                            crate_store: CStore,
+                            crate_store: @mut CStore,
                             module_def_id: def_id) {
-
         let implementations = get_impls_for_mod(crate_store,
                                                 module_def_id,
                                                 None);
@@ -986,7 +985,7 @@ pub impl CoherenceChecker {
     //
 
     fn populate_destructor_table() {
-        let coherence_info = &self.crate_context.coherence_info;
+        let coherence_info = &mut self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
         let drop_trait = tcx.lang_items.drop_trait();
         let impls_opt = coherence_info.extension_methods.find(&drop_trait);
@@ -1035,8 +1034,8 @@ pub impl CoherenceChecker {
     }
 }
 
-pub fn check_coherence(crate_context: @crate_ctxt, crate: @crate) {
+pub fn check_coherence(crate_context: @mut CrateCtxt, crate: @crate) {
     let coherence_checker = @CoherenceChecker(crate_context);
-    (*coherence_checker).check_coherence(crate);
+    coherence_checker.check_coherence(crate);
 }
 

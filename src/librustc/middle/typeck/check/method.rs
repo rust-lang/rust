@@ -85,7 +85,7 @@ use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
 use middle::ty::*;
 use middle::ty;
-use middle::typeck::check::{fn_ctxt, impl_self_ty};
+use middle::typeck::check::{FnCtxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::check::vtable::VtableContext;
 use middle::typeck::check::vtable;
@@ -112,7 +112,7 @@ use syntax::codemap::dummy_sp;
 use syntax::codemap::span;
 
 pub fn lookup(
-    fcx: @fn_ctxt,
+    fcx: @mut FnCtxt,
 
     // In a call `a.b::<X, Y, ...>(...)`:
     expr: @ast::expr,        // The expression `a.b`.
@@ -143,7 +143,7 @@ pub fn lookup(
 }
 
 pub struct LookupContext {
-    fcx: @fn_ctxt,
+    fcx: @mut FnCtxt,
     expr: @ast::expr,
     self_expr: @ast::expr,
     callee_id: node_id,
@@ -1264,7 +1264,7 @@ pub impl LookupContext {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn infcx(&self) -> @infer::InferCtxt {
+    fn infcx(&self) -> @mut infer::InferCtxt {
         self.fcx.inh.infcx
     }
 

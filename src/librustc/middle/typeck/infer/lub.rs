@@ -37,7 +37,7 @@ pub impl Lub {
 }
 
 pub impl Lub: Combine {
-    fn infcx() -> @InferCtxt { self.infcx }
+    fn infcx() -> @mut InferCtxt { self.infcx }
     fn tag() -> ~str { ~"lub" }
     fn a_is_expected() -> bool { self.a_is_expected }
     fn span() -> span { self.span }
