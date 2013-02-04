@@ -20,5 +20,5 @@ pub type header_map = HashMap<~str, @DVec<@~str>>;
 
 // the unused ty param is necessary so this gets monomorphized
 pub fn request<T: Copy>(req: header_map) {
-  let _x = copy *(copy *req.get(~"METHOD"))[0u];
+  let _x = copy *(copy *req.get(&~"METHOD"))[0u];
 }

@@ -216,7 +216,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
     // Typecheck each field.
     let found_fields = HashMap();
     for fields.each |field| {
-        match field_map.find(field.ident) {
+        match field_map.find(&field.ident) {
             Some(index) => {
                 let class_field = class_fields[index];
                 let field_type = ty::lookup_field_type(tcx,
@@ -259,7 +259,7 @@ pub fn check_struct_pat(pcx: pat_ctxt, pat_id: ast::node_id, span: span,
     let class_fields = ty::lookup_struct_fields(tcx, class_id);
 
     // Check to ensure that the struct is the one specified.
-    match tcx.def_map.find(pat_id) {
+    match tcx.def_map.find(&pat_id) {
         Some(ast::def_struct(supplied_def_id))
                 if supplied_def_id == class_id => {
             // OK.
@@ -300,7 +300,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Find the variant that was specified.
-    match tcx.def_map.find(pat_id) {
+    match tcx.def_map.find(&pat_id) {
         Some(ast::def_variant(found_enum_id, variant_id))
                 if found_enum_id == enum_id => {
             // Get the struct fields from this struct-like enum variant.
@@ -360,7 +360,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fcx.write_ty(pat.id, b_ty);
       }
       ast::pat_ident(*) if pat_is_const(tcx.def_map, pat) => {
-        let const_did = ast_util::def_id_of_def(tcx.def_map.get(pat.id));
+        let const_did = ast_util::def_id_of_def(tcx.def_map.get(&pat.id));
         let const_tpt = ty::lookup_item_type(tcx, const_did);
         fcx.write_ty(pat.id, const_tpt.ty);
       }
@@ -386,7 +386,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
 
-        let canon_id = pcx.map.get(ast_util::path_to_ident(name));
+        let canon_id = pcx.map.get(&ast_util::path_to_ident(name));
         if canon_id != pat.id {
             let ct = fcx.local_ty(pat.span, canon_id);
             demand::eqtype(fcx, pat.span, ct, typ);
