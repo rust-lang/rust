@@ -115,7 +115,7 @@ pub fn scope_contains(region_map: region_map, superscope: ast::node_id,
                       subscope: ast::node_id) -> bool {
     let mut subscope = subscope;
     while superscope != subscope {
-        match region_map.find(subscope) {
+        match region_map.find(&subscope) {
             None => return false,
             Some(scope) => subscope = scope
         }
@@ -159,7 +159,7 @@ pub fn nearest_common_ancestor(region_map: region_map,
         let mut result = ~[scope];
         let mut scope = scope;
         loop {
-            match region_map.find(scope) {
+            match region_map.find(&scope) {
                 None => return result,
                 Some(superscope) => {
                     result.push(superscope);
@@ -237,7 +237,7 @@ pub fn resolve_arm(arm: ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
 pub fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
     match pat.node {
       ast::pat_ident(*) => {
-        let defn_opt = cx.def_map.find(pat.id);
+        let defn_opt = cx.def_map.find(&pat.id);
         match defn_opt {
           Some(ast::def_variant(_,_)) => {
             /* Nothing to do; this names a variant. */
@@ -475,7 +475,7 @@ pub impl determine_rp_ctxt {
     /// the new variance is joined with the old variance.
     fn add_rp(id: ast::node_id, variance: region_variance) {
         assert id != 0;
-        let old_variance = self.region_paramd_items.find(id);
+        let old_variance = self.region_paramd_items.find(&id);
         let joined_variance = match old_variance {
           None => variance,
           Some(v) => join_variance(v, variance)
@@ -505,7 +505,7 @@ pub impl determine_rp_ctxt {
                ast_map::node_id_to_str(self.ast_map, self.item_id,
                                        self.sess.parse_sess.interner),
                copy self.ambient_variance);
-        let vec = match self.dep_map.find(from) {
+        let vec = match self.dep_map.find(&from) {
             Some(vec) => vec,
             None => {
                 let vec = @DVec();
@@ -685,7 +685,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     // that as a direct dependency.
     match ty.node {
       ast::ty_path(path, id) => {
-        match cx.def_map.find(id) {
+        match cx.def_map.find(&id) {
           Some(ast::def_ty(did)) | Some(ast::def_struct(did)) => {
             if did.crate == ast::local_crate {
                 if cx.opt_region_is_relevant(path.rp) {
@@ -818,9 +818,9 @@ pub fn determine_rp_in_crate(sess: Session,
     // update the region-parameterization of D to reflect the result.
     while cx.worklist.len() != 0 {
         let c_id = cx.worklist.pop();
-        let c_variance = cx.region_paramd_items.get(c_id);
+        let c_variance = cx.region_paramd_items.get(&c_id);
         debug!("popped %d from worklist", c_id);
-        match cx.dep_map.find(c_id) {
+        match cx.dep_map.find(&c_id) {
           None => {}
           Some(deps) => {
             for deps.each |dep| {

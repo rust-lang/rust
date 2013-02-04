@@ -49,7 +49,7 @@ mod map_reduce {
         fn emit(im: oldmap::HashMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
                 val: ~str) {
             let mut c;
-            match im.find(copy key) {
+            match im.find(&key) {
               Some(_c) => { c = _c }
               None => {
                   let (pp, cc) = stream();
@@ -88,7 +88,7 @@ mod map_reduce {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
                 let mut c;
-                match reducers.find(str::from_bytes(k)) {
+                match reducers.find(&str::from_bytes(k)) {
                   Some(_c) => { c = _c; }
                   None => { c = 0; }
                 }

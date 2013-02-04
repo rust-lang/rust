@@ -368,7 +368,7 @@ impl IrMaps {
     }
 
     fn variable(node_id: node_id, span: span) -> Variable {
-        match self.variable_map.find(node_id) {
+        match self.variable_map.find(&node_id) {
           Some(var) => var,
           None => {
             self.tcx.sess.span_bug(
@@ -390,7 +390,7 @@ impl IrMaps {
     }
 
     fn captures(expr: @expr) -> @~[CaptureInfo] {
-        match self.capture_info_map.find(expr.id) {
+        match self.capture_info_map.find(&expr.id) {
           Some(caps) => caps,
           None => {
             self.tcx.sess.span_bug(expr.span, ~"no registered caps");
@@ -410,7 +410,7 @@ impl IrMaps {
           Local(LocalInfo {id: id, kind: FromLetNoInitializer, _}) |
           Local(LocalInfo {id: id, kind: FromLetWithInitializer, _}) |
           Local(LocalInfo {id: id, kind: FromMatch(_), _}) => {
-            let v = match self.last_use_map.find(expr_id) {
+            let v = match self.last_use_map.find(&expr_id) {
               Some(v) => v,
               None => {
                 let v = @DVec();
@@ -552,7 +552,7 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       expr_path(_) => {
-        let def = self.tcx.def_map.get(expr.id);
+        let def = self.tcx.def_map.get(&expr.id);
         debug!("expr %d: path that leads to %?", expr.id, def);
         if relevant_def(def).is_some() {
             self.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -569,7 +569,7 @@ fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
         // being the location that the variable is used.  This results
         // in better error messages than just pointing at the closure
         // construction site.
-        let cvs = self.capture_map.get(expr.id);
+        let cvs = self.capture_map.get(&expr.id);
         let mut call_caps = ~[];
         for cvs.each |cv| {
             match relevant_def(cv.def) {
@@ -685,7 +685,7 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
 
 impl Liveness {
     fn live_node(node_id: node_id, span: span) -> LiveNode {
-        match self.ir.live_node_map.find(node_id) {
+        match self.ir.live_node_map.find(&node_id) {
           Some(ln) => ln,
           None => {
             // This must be a mismatch between the ir_map construction
@@ -702,7 +702,7 @@ impl Liveness {
     fn variable_from_path(expr: @expr) -> Option<Variable> {
         match expr.node {
           expr_path(_) => {
-            let def = self.tcx.def_map.get(expr.id);
+            let def = self.tcx.def_map.get(&expr.id);
             relevant_def(def).map(
                 |rdef| self.variable(*rdef, expr.span)
             )
@@ -717,7 +717,7 @@ impl Liveness {
 
     fn variable_from_def_map(node_id: node_id,
                              span: span) -> Option<Variable> {
-        match self.tcx.def_map.find(node_id) {
+        match self.tcx.def_map.find(&node_id) {
           Some(def) => {
             relevant_def(def).map(
                 |rdef| self.variable(*rdef, span)
@@ -837,7 +837,7 @@ impl Liveness {
         match opt_label {
             Some(_) => // Refers to a labeled loop. Use the results of resolve
                       // to find with one
-                match self.tcx.def_map.find(id) {
+                match self.tcx.def_map.find(&id) {
                     Some(def_label(loop_id)) => loop_id,
                     _ => self.tcx.sess.span_bug(sp, ~"Label on break/loop \
                                                     doesn't refer to a loop")
@@ -1203,7 +1203,7 @@ impl Liveness {
               // Now that we know the label we're going to,
               // look it up in the break loop nodes table
 
-              match self.break_ln.find(sc) {
+              match self.break_ln.find(&sc) {
                   Some(b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
                                 ~"Break to unknown label")
@@ -1217,7 +1217,7 @@ impl Liveness {
               // Now that we know the label we're going to,
               // look it up in the continue loop nodes table
 
-              match self.cont_ln.find(sc) {
+              match self.cont_ln.find(&sc) {
                   Some(b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
                                 ~"Loop to unknown label")
@@ -1424,7 +1424,7 @@ impl Liveness {
     }
 
     fn access_path(expr: @expr, succ: LiveNode, acc: uint) -> LiveNode {
-        let def = self.tcx.def_map.get(expr.id);
+        let def = self.tcx.def_map.get(&expr.id);
         match relevant_def(def) {
           Some(nid) => {
             let ln = self.live_node(expr.id, expr.span);
@@ -1560,7 +1560,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
             let ln = self.live_node(expr.id, expr.span);
             self.consider_last_use(expr, ln, *var);
 
-            match self.ir.variable_moves_map.find(expr.id) {
+            match self.ir.variable_moves_map.find(&expr.id) {
                 None => {}
                 Some(entire_expr) => {
                     debug!("(checking expr) is a move: `%s`",
@@ -1689,7 +1689,7 @@ impl @Liveness {
     fn check_lvalue(expr: @expr, vt: vt<@Liveness>) {
         match expr.node {
           expr_path(_) => {
-            match self.tcx.def_map.get(expr.id) {
+            match self.tcx.def_map.get(&expr.id) {
               def_local(nid, false) => {
                 // Assignment to an immutable variable or argument:
                 // only legal if there is no later assignment.

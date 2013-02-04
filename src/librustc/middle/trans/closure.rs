@@ -419,7 +419,7 @@ pub fn trans_expr_fn(bcx: block,
 
     let Result {bcx: bcx, val: closure} = match proto {
         ast::ProtoBorrowed | ast::ProtoBox | ast::ProtoUniq => {
-            let cap_vars = ccx.maps.capture_map.get(user_id);
+            let cap_vars = ccx.maps.capture_map.get(&user_id);
             let ret_handle = match is_loop_body {Some(x) => x,
                                                  None => None};
             let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, proto,
