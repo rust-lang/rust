@@ -151,6 +151,23 @@ pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
 
 impl<T, U> Either<T, U> {
     #[inline(always)]
+    fn either<V>(&self, f_left: fn(&T) -> V, f_right: fn(&U) -> V) -> V {
+        either(f_left, f_right, self)
+    }
+
+    #[inline(always)]
+    fn flip(self) -> Either<U, T> { flip(self) }
+
+    #[inline(always)]
+    fn to_result(self) -> Result<U, T> { to_result(self) }
+
+    #[inline(always)]
+    fn is_left(&self) -> bool { is_left(self) }
+
+    #[inline(always)]
+    fn is_right(&self) -> bool { is_right(self) }
+
+    #[inline(always)]
     fn unwrap_left(self) -> T { unwrap_left(self) }
 
     #[inline(always)]
