@@ -1523,7 +1523,7 @@ pub fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
     let _icx = cx.insn_ctxt("alloca");
     if cx.unreachable {
         unsafe {
-            return llvm::LLVMGetUndef(t);
+            return llvm::LLVMGetUndef(T_ptr(t));
         }
     }
     let initcx = base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
@@ -1536,7 +1536,7 @@ pub fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt("arrayalloca");
     if cx.unreachable {
         unsafe {
-            return llvm::LLVMGetUndef(t);
+            return llvm::LLVMGetUndef(T_ptr(t));
         }
     }
     return ArrayAlloca(
