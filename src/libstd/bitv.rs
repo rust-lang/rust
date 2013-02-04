@@ -474,7 +474,7 @@ impl Bitv {
      * The resulting string has the same length as `self`, and each
      * character is either '0' or '1'.
      */
-     fn to_str() -> ~str {
+     fn to_str(&self) -> ~str {
        let mut rs = ~"";
        for self.each() |i| { if i { rs += ~"1"; } else { rs += ~"0"; } };
        rs
