@@ -923,8 +923,8 @@ pub enum trait_method {
 pub enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
 pub impl int_ty : ToStr {
-    pure fn to_str() -> ~str {
-        ::ast_util::int_ty_to_str(self)
+    pure fn to_str(&self) -> ~str {
+        ::ast_util::int_ty_to_str(*self)
     }
 }
 
@@ -959,8 +959,8 @@ pub impl int_ty : cmp::Eq {
 pub enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
 pub impl uint_ty : ToStr {
-    pure fn to_str() -> ~str {
-        ::ast_util::uint_ty_to_str(self)
+    pure fn to_str(&self) -> ~str {
+        ::ast_util::uint_ty_to_str(*self)
     }
 }
 
@@ -993,8 +993,8 @@ pub impl uint_ty : cmp::Eq {
 pub enum float_ty { ty_f, ty_f32, ty_f64, }
 
 pub impl float_ty : ToStr {
-    pure fn to_str() -> ~str {
-        ::ast_util::float_ty_to_str(self)
+    pure fn to_str(&self) -> ~str {
+        ::ast_util::float_ty_to_str(*self)
     }
 }
 
@@ -1096,8 +1096,8 @@ pub enum Onceness {
 }
 
 pub impl Onceness : ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
             Once => ~"once",
             Many => ~"many"
         }
@@ -1188,8 +1188,8 @@ pub enum purity {
 }
 
 pub impl purity : ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
             impure_fn => ~"impure",
             unsafe_fn => ~"unsafe",
             pure_fn => ~"pure",

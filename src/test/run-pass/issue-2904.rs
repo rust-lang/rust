@@ -28,8 +28,8 @@ enum square {
 }
 
 impl square: to_str::ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
           bot => { ~"R" }
           wall => { ~"#" }
           rock => { ~"*" }

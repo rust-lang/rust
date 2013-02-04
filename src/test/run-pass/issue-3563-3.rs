@@ -110,7 +110,7 @@ impl AsciiArt
 // Note that the %s fmt! specifier will not call this automatically.
 impl AsciiArt : ToStr
 {
-    pure fn to_str() -> ~str
+    pure fn to_str(&self) -> ~str
     {
         // Convert each line into a string.
         let lines = do self.lines.map |line| {str::from_chars(*line)};

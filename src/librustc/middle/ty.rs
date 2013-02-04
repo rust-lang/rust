@@ -667,7 +667,7 @@ pub impl TyVid: Vid {
 }
 
 pub impl TyVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("<V%u>", self.to_uint()) }
+    pure fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
 pub impl IntVid: Vid {
@@ -675,7 +675,7 @@ pub impl IntVid: Vid {
 }
 
 pub impl IntVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("<VI%u>", self.to_uint()) }
+    pure fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
 pub impl FloatVid: Vid {
@@ -683,7 +683,7 @@ pub impl FloatVid: Vid {
 }
 
 pub impl FloatVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("<VF%u>", self.to_uint()) }
+    pure fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
 pub impl RegionVid: Vid {
@@ -691,19 +691,19 @@ pub impl RegionVid: Vid {
 }
 
 pub impl RegionVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("%?", self) }
+    pure fn to_str(&self) -> ~str { fmt!("%?", self) }
 }
 
 pub impl FnSig : ToStr {
-    pure fn to_str() -> ~str {
+    pure fn to_str(&self) -> ~str {
         // grr, without tcx not much we can do.
         return ~"(...)";
     }
 }
 
 pub impl InferTy: ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
             TyVar(ref v) => v.to_str(),
             IntVar(ref v) => v.to_str(),
             FloatVar(ref v) => v.to_str()
@@ -712,8 +712,8 @@ pub impl InferTy: ToStr {
 }
 
 pub impl IntVarValue : ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
             IntType(ref v) => v.to_str(),
             UintType(ref v) => v.to_str(),
         }

@@ -718,8 +718,8 @@ pub pure fn to_str(url: &Url) -> ~str {
 }
 
 impl Url: to_str::ToStr {
-    pub pure fn to_str() -> ~str {
-        to_str(&self)
+    pub pure fn to_str(&self) -> ~str {
+        to_str(self)
     }
 }
 

@@ -1172,11 +1172,11 @@ impl <A: ToJson> Option<A>: ToJson {
 }
 
 impl Json: to_str::ToStr {
-    pure fn to_str() -> ~str { to_str(&self) }
+    pure fn to_str(&self) -> ~str { to_str(self) }
 }
 
 impl Error: to_str::ToStr {
-    pure fn to_str() -> ~str {
+    pure fn to_str(&self) -> ~str {
         fmt!("%u:%u: %s", self.line, self.col, *self.msg)
     }
 }

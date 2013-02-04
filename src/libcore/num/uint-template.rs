@@ -249,8 +249,8 @@ pub pure fn str(i: T) -> ~str { to_str(i) }
 
 impl T : ToStr {
     #[inline(always)]
-    pure fn to_str() -> ~str {
-        to_str(self)
+    pure fn to_str(&self) -> ~str {
+        to_str(*self)
     }
 }
 
