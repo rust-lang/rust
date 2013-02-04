@@ -206,7 +206,7 @@ pub pure fn to_str_digits(num: float, digits: uint) -> ~str {
 
 impl float: to_str::ToStr {
     #[inline(always)]
-    pure fn to_str() -> ~str { to_str_digits(self, 8) }
+    pure fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
 }
 
 impl float: num::ToStrRadix {
