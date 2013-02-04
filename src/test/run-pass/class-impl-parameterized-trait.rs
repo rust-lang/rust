@@ -12,7 +12,7 @@
 // xfail-fast
 
 extern mod std;
-use std::map::*;
+use std::oldmap::*;
 
 class cat : map<int, bool> {
   priv {

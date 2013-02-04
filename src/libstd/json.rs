@@ -1162,18 +1162,6 @@ impl <A: ToJson Copy> LinearMap<~str, A>: ToJson {
     }
 }
 
-/*
-impl <A: ToJson Copy> @std::map::HashMap<~str, A>: ToJson {
-    fn to_json() -> Json {
-        let mut d = LinearMap::new();
-        for self.each_ref |key, value| {
-            d.insert(copy *key, value.to_json());
-        }
-        Object(~d)
-    }
-}
-*/
-
 impl <A: ToJson> Option<A>: ToJson {
     fn to_json() -> Json {
         match self {

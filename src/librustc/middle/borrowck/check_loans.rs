@@ -35,7 +35,7 @@ use core::cmp;
 use core::dvec::DVec;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util;
@@ -665,7 +665,7 @@ fn check_loans_in_expr(expr: @ast::expr,
 
     self.check_for_conflicting_loans(expr.id);
 
-    if self.bccx.moves_map.contains_key(expr.id) {
+    if self.bccx.moves_map.contains_key_ref(&expr.id) {
         self.check_move_out_from_expr(expr);
     }
 
@@ -686,7 +686,7 @@ fn check_loans_in_expr(expr: @ast::expr,
       }
       ast::expr_index(_, rval) |
       ast::expr_binary(_, _, rval)
-      if self.bccx.method_map.contains_key(expr.id) => {
+      if self.bccx.method_map.contains_key_ref(&expr.id) => {
         self.check_call(expr,
                         None,
                         expr.callee_id,
@@ -694,7 +694,7 @@ fn check_loans_in_expr(expr: @ast::expr,
                         ~[rval]);
       }
       ast::expr_unary(*) | ast::expr_index(*)
-      if self.bccx.method_map.contains_key(expr.id) => {
+      if self.bccx.method_map.contains_key_ref(&expr.id) => {
         self.check_call(expr,
                         None,
                         expr.callee_id,

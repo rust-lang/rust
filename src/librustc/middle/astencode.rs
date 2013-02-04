@@ -31,7 +31,7 @@ use std::ebml::reader::get_doc;
 use std::ebml::reader;
 use std::ebml::writer::Encoder;
 use std::ebml;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::prettyprint;
 use std::serialize;
 use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers};

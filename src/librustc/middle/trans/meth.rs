@@ -33,7 +33,7 @@ use middle::typeck;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::libc::c_uint;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
 use syntax::ast_util::local_def;
 use syntax::print::pprust::expr_to_str;
@@ -871,7 +871,7 @@ pub fn trans_trait_cast(bcx: block,
     match vstore {
         ty::vstore_slice(*) | ty::vstore_box => {
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-            if bcx.tcx().legacy_boxed_traits.contains_key(id) {
+            if bcx.tcx().legacy_boxed_traits.contains_key_ref(&id) {
                 // Allocate an @ box and store the value into it
                 let {bcx: new_bcx, box: llbox, body: body} =
                     malloc_boxed(bcx, v_ty);

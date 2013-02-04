@@ -67,8 +67,8 @@ use core::result;
 use core::vec;
 use std::list::{List, Nil, Cons};
 use std::list;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use std::oldsmallintmap;
 use syntax::ast::{provided, required};
 use syntax::ast_map::node_id_to_str;
@@ -377,8 +377,8 @@ pub fn check_crate(tcx: ty::ctxt,
 
     let ccx = @crate_ctxt_(crate_ctxt__ {
         trait_map: trait_map,
-        method_map: map::HashMap(),
-        vtable_map: map::HashMap(),
+        method_map: oldmap::HashMap(),
+        vtable_map: oldmap::HashMap(),
         coherence_info: @coherence::CoherenceInfo(),
         tcx: tcx
     });

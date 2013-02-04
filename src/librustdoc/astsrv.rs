@@ -32,7 +32,7 @@ use rustc::driver::session::{basic_options, options};
 use rustc::driver::session;
 use rustc::front;
 use rustc::metadata::filesearch;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::codemap;
@@ -164,7 +164,7 @@ fn srv_should_build_ast_map() {
     let source = ~"fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
-            assert ctxt.ast_map.size() != 0u
+            assert !ctxt.ast_map.is_empty()
         };
     }
 }

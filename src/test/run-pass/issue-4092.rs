@@ -11,6 +11,6 @@
 extern mod std;
 
 pub fn main() {
-    let x = std::map::HashMap();
+    let x = std::oldmap::HashMap();
     x.insert((@"abc", 0), 0);
 }

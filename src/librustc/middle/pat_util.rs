@@ -18,7 +18,7 @@ use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::fold;
 use syntax::fold::*;
 use syntax::codemap::{span, respan};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub type PatIdMap = HashMap<ident, node_id>;
 

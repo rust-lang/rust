@@ -53,7 +53,7 @@ use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
 use core::vec;
-use std::map::{HashMap, Set};
+use std::oldmap::{HashMap, Set};
 use syntax::ast::ident;
 use syntax::ast_map::path;
 use syntax::codemap::span;

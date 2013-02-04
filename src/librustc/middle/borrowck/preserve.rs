@@ -375,7 +375,7 @@ impl PreserveCtxt {
                 // scope_id;`. Though that would potentially re-introduce
                 // the ICE. See #3511 for more details.
                 let scope_to_use = if
-                    self.bccx.stmt_map.contains_key(scope_id) {
+                    self.bccx.stmt_map.contains_key_ref(&scope_id) {
                     // Root it in its parent scope, b/c
                     // trans won't introduce a new scope for the
                     // stmt

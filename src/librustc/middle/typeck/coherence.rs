@@ -63,7 +63,7 @@ use core::uint::range;
 use core::uint;
 use core::vec::{len, push};
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub struct UniversalQuantificationResult {
     monotype: t,
@@ -417,7 +417,7 @@ pub impl CoherenceChecker {
         let coherence_info = &self.crate_context.coherence_info;
         let extension_methods = &coherence_info.extension_methods;
 
-        for extension_methods.each_key |trait_id| {
+        for extension_methods.each_key_ref |&trait_id| {
             self.check_implementation_coherence_of(trait_id);
         }
     }
@@ -502,7 +502,7 @@ pub impl CoherenceChecker {
         }
 
         for ty::trait_methods(tcx, trait_did).each |method| {
-            if provided_method_idents.contains_key(method.ident) {
+            if provided_method_idents.contains_key_ref(&method.ident) {
                 if !f(method) {
                     break;
                 }
@@ -912,7 +912,7 @@ pub impl CoherenceChecker {
         let tcx = self.crate_context.tcx;
         let pmm = tcx.provided_methods;
 
-        if pmm.contains_key(trait_def_id) { return; }
+        if pmm.contains_key_ref(&trait_def_id) { return; }
 
         debug!("(adding default methods for trait) processing trait");
 
