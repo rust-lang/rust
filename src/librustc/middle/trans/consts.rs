@@ -82,7 +82,7 @@ pub fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
 
 pub fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
     unsafe {
-        let v = match cx.const_globals.find(&(v as int)) {
+        let v = match cx.const_globals.find(v as int) {
             Some(v) => v,
             None => v
         };
@@ -127,7 +127,7 @@ pub fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
         cx.tcx.sess.bug(~"cross-crate constants");
     }
     if !cx.const_values.contains_key_ref(&def_id.node) {
-        match cx.tcx.items.get(&def_id.node) {
+        match cx.tcx.items.get(def_id.node) {
             ast_map::node_item(@ast::item {
                 node: ast::item_const(_, subexpr), _
             }, _) => {
@@ -136,7 +136,7 @@ pub fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
             _ => cx.tcx.sess.bug(~"expected a const to be an item")
         }
     }
-    cx.const_values.get(&def_id.node)
+    cx.const_values.get(def_id.node)
 }
 
 pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
@@ -402,7 +402,7 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           }
           ast::expr_path(pth) => {
             assert pth.types.len() == 0;
-            match cx.tcx.def_map.find(&e.id) {
+            match cx.tcx.def_map.find(e.id) {
                 Some(ast::def_fn(def_id, purity)) => {
                     assert ast_util::is_local(def_id);
                     let f = base::get_item_val(cx, def_id.node);
@@ -437,7 +437,7 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
             }
           }
           ast::expr_call(callee, args, _) => {
-            match cx.tcx.def_map.find(&callee.id) {
+            match cx.tcx.def_map.find(callee.id) {
                 Some(ast::def_struct(def_id)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let llty = type_of::type_of(cx, ety);
@@ -482,7 +482,7 @@ pub fn trans_const(ccx: @crate_ctxt, _e: @ast::expr, id: ast::node_id) {
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = ccx.const_values.get(&id);
+        let v = ccx.const_values.get(id);
         llvm::LLVMSetInitializer(g, v);
         llvm::LLVMSetGlobalConstant(g, True);
     }

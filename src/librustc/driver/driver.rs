@@ -538,7 +538,7 @@ pub fn build_session_options(+binary: ~str,
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
             let lint_name = str::replace(*lint_name, ~"-", ~"_");
-            match lint_dict.find(&lint_name) {
+            match lint_dict.find(/*bad*/ copy lint_name) {
               None => {
                 early_error(demitter, fmt!("unknown %s flag: %s",
                                            level_name, lint_name));

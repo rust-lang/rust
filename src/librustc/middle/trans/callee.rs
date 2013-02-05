@@ -70,7 +70,7 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
             return trans_def(bcx, bcx.def(expr.id), expr);
         }
         ast::expr_field(base, _, _) => {
-            match bcx.ccx().maps.method_map.find(&expr.id) {
+            match bcx.ccx().maps.method_map.find(expr.id) {
                 Some(ref origin) => { // An impl method
                     return meth::trans_method_callee(bcx, expr.id,
                                                      base, (*origin));
@@ -208,7 +208,7 @@ pub fn trans_fn_ref_with_vtables(
     // Modify the def_id if this is a default method; we want to be
     // monomorphizing the trait's code.
     let (def_id, opt_impl_did) =
-            match tcx.provided_method_sources.find(&def_id) {
+            match tcx.provided_method_sources.find(def_id) {
         None => (def_id, None),
         Some(source) => (source.method_id, Some(source.impl_id))
     };
@@ -234,7 +234,7 @@ pub fn trans_fn_ref_with_vtables(
     } else if def_id.crate == ast::local_crate {
         let map_node = session::expect(
             ccx.sess,
-            ccx.tcx.items.find(&def_id.node),
+            ccx.tcx.items.find(def_id.node),
             || fmt!("local item should be in ast map"));
 
         match map_node {
@@ -313,7 +313,7 @@ pub fn trans_method_call(in_cx: block,
         node_id_type(in_cx, call_ex.callee_id),
         expr_ty(in_cx, call_ex),
         |cx| {
-            match cx.ccx().maps.method_map.find(&call_ex.id) {
+            match cx.ccx().maps.method_map.find(call_ex.id) {
                 Some(ref origin) => {
                     meth::trans_method_callee(cx,
                                               call_ex.callee_id,

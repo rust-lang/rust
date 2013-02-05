@@ -109,7 +109,7 @@ impl PreserveCtxt {
                 // Maybe if we pass in the parent instead here,
                 // we can prevent the "scope not found" error
                 debug!("scope_region thing: %? ", cmt.id);
-                ty::re_scope(self.tcx().region_map.get(&cmt.id))
+                ty::re_scope(self.tcx().region_map.get(cmt.id))
             };
 
             self.compare_scope(cmt, scope_region)
@@ -129,14 +129,14 @@ impl PreserveCtxt {
                     cmt.span,
                     ~"preserve() called with local and !root_managed_data");
             }
-            let local_scope_id = self.tcx().region_map.get(&local_id);
+            let local_scope_id = self.tcx().region_map.get(local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_binding(local_id) => {
             // Bindings are these kind of weird implicit pointers (cc
             // #2329).  We require (in gather_loans) that they be
             // rooted in an immutable location.
-            let local_scope_id = self.tcx().region_map.get(&local_id);
+            let local_scope_id = self.tcx().region_map.get(local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_arg(local_id) => {
@@ -144,11 +144,11 @@ impl PreserveCtxt {
             // modes).  In that case, the caller guarantees stability
             // for at least the scope of the fn.  This is basically a
             // deref of a region ptr.
-            let local_scope_id = self.tcx().region_map.get(&local_id);
+            let local_scope_id = self.tcx().region_map.get(local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_self(local_id) => {
-            let local_scope_id = self.tcx().region_map.get(&local_id);
+            let local_scope_id = self.tcx().region_map.get(local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
           cat_comp(cmt_base, comp_field(*)) |

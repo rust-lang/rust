@@ -118,7 +118,7 @@ pub fn encode_def_id(ebml_w: writer::Encoder, id: def_id) {
 
 fn encode_region_param(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                        it: @ast::item) {
-    let opt_rp = ecx.tcx.region_paramd_items.find(&it.id);
+    let opt_rp = ecx.tcx.region_paramd_items.find(it.id);
     for opt_rp.each |rp| {
         do ebml_w.wr_tag(tag_region_param) {
             (*rp).encode(&ebml_w);
@@ -184,7 +184,7 @@ fn encode_ty_type_param_bounds(ebml_w: writer::Encoder, ecx: @encode_ctxt,
 fn encode_type_param_bounds(ebml_w: writer::Encoder, ecx: @encode_ctxt,
                             params: &[ty_param]) {
     let ty_param_bounds =
-        @params.map(|param| ecx.tcx.ty_param_bounds.get(&param.id));
+        @params.map(|param| ecx.tcx.ty_param_bounds.get(param.id));
     encode_ty_type_param_bounds(ebml_w, ecx, ty_param_bounds);
 }
 
@@ -224,7 +224,7 @@ fn encode_type(ecx: @encode_ctxt, ebml_w: writer::Encoder, typ: ty::t) {
 
 fn encode_symbol(ecx: @encode_ctxt, ebml_w: writer::Encoder, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    let sym = match ecx.item_symbols.find(&id) {
+    let sym = match ecx.item_symbols.find(id) {
       Some(ref x) => (/*bad*/copy *x),
       None => {
         ecx.diag.handler().bug(
@@ -238,7 +238,7 @@ fn encode_symbol(ecx: @encode_ctxt, ebml_w: writer::Encoder, id: node_id) {
 fn encode_discriminant(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                        id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    ebml_w.writer.write(str::to_bytes(ecx.discrim_symbols.get(&id)));
+    ebml_w.writer.write(str::to_bytes(ecx.discrim_symbols.get(id)));
     ebml_w.end_tag();
 }
 
@@ -349,7 +349,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: writer::Encoder,
 
     // Encode the reexports of this module.
     debug!("(encoding info for module) encoding reexports for %d", id);
-    match ecx.reexports2.find(&id) {
+    match ecx.reexports2.find(id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for %d", id);
             for (*exports).each |exp| {
@@ -813,7 +813,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
             encode_name(ecx, ebml_w, ty_m.ident);
             encode_family(ebml_w,
                           purity_static_method_family(ty_m.purity));
-            let polyty = ecx.tcx.tcache.get(&local_def(ty_m.id));
+            let polyty = ecx.tcx.tcache.get(local_def(ty_m.id));
             encode_ty_type_param_bounds(ebml_w, ecx, polyty.bounds);
             encode_type(ecx, ebml_w, polyty.ty);
             let mut m_path = vec::append(~[], path); // :-(
@@ -881,7 +881,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
             let ebml_w = copy ebml_w;
             |i, cx, v| {
                 visit::visit_item(i, cx, v);
-                match ecx.tcx.items.get(&i.id) {
+                match ecx.tcx.items.get(i.id) {
                     ast_map::node_item(_, pt) => {
                         encode_info_for_item(ecx, ebml_w, i,
                                              index, *pt);
@@ -894,7 +894,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
             let ebml_w = copy ebml_w;
             |ni, cx, v| {
                 visit::visit_foreign_item(ni, cx, v);
-                match ecx.tcx.items.get(&ni.id) {
+                match ecx.tcx.items.get(ni.id) {
                     ast_map::node_foreign_item(_, abi, pt) => {
                         encode_info_for_foreign_item(ecx, ebml_w, ni,
                                                      index, /*bad*/copy *pt,

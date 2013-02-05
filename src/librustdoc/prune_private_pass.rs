@@ -59,7 +59,7 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
     let id = doc.id;
 
     do astsrv::exec(srv) |ctxt| {
-        match ctxt.ast_map.get(&id) {
+        match ctxt.ast_map.get(id) {
             ast_map::node_item(item, _) => {
                 item.vis == ast::public
             }

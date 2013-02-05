@@ -211,7 +211,7 @@ pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
                 return ty::mk_evec(tcx, mt, vst);
             }
             ast::ty_path(path, id) if a_seq_ty.mutbl == ast::m_imm => {
-                match tcx.def_map.find(&id) {
+                match tcx.def_map.find(id) {
                     Some(ast::def_prim_ty(ast::ty_str)) => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         return ty::mk_estr(tcx, vst);
@@ -273,7 +273,7 @@ pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
 
     let tcx = self.tcx();
 
-    match tcx.ast_ty_to_ty_cache.find(&ast_ty) {
+    match tcx.ast_ty_to_ty_cache.find(ast_ty) {
       Some(ty::atttce_resolved(ty)) => return ty,
       Some(ty::atttce_unresolved) => {
         tcx.sess.span_fatal(ast_ty.span, ~"illegal recursive type; \
@@ -330,7 +330,7 @@ pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
         ty::mk_fn(tcx, fn_decl)
       }
       ast::ty_path(path, id) => {
-        let a_def = match tcx.def_map.find(&id) {
+        let a_def = match tcx.def_map.find(id) {
           None => tcx.sess.span_fatal(
               ast_ty.span, fmt!("unbound path %s",
                                 path_to_str(path, tcx.sess.intr()))),

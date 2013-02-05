@@ -194,7 +194,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
     match ty::get(ty).sty {
         ty::ty_param(param_ty {idx: n, def_id: did}) => {
             let mut n_bound = 0;
-            let bounds = tcx.ty_param_bounds.get(&did.node);
+            let bounds = tcx.ty_param_bounds.get(did.node);
             for ty::iter_bound_traits_and_supertraits(
                 tcx, bounds) |ity| {
                 debug!("checking bounds trait %?",
@@ -255,7 +255,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
 
             let mut impls_seen = HashMap();
 
-            match vcx.ccx.coherence_info.extension_methods.find(&trait_id) {
+            match vcx.ccx.coherence_info.extension_methods.find(trait_id) {
                 None => {
                     // Nothing found. Continue.
                 }
@@ -525,7 +525,7 @@ pub fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
       ast::expr_path(*) => {
         match fcx.opt_node_ty_substs(ex.id) {
           Some(ref substs) => {
-              let def = cx.tcx.def_map.get(&ex.id);
+              let def = cx.tcx.def_map.get(ex.id);
             let did = ast_util::def_id_of_def(def);
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             debug!("early resolve expr: def %? %?, %?, %?", ex.id, did, def,

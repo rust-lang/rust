@@ -308,7 +308,7 @@ pub fn trans_static_method_callee(bcx: block,
     };
 
     let mname = if method_id.crate == ast::local_crate {
-        match bcx.tcx().items.get(&method_id.node) {
+        match bcx.tcx().items.get(method_id.node) {
             ast_map::node_trait_method(trait_method, _, _) => {
                 ast_util::trait_method_to_ty_method(*trait_method).ident
             }
@@ -325,7 +325,7 @@ pub fn trans_static_method_callee(bcx: block,
             name=%s", method_id, callee_id, ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
-        bcx.fcx, ccx.maps.vtable_map.get(&callee_id));
+        bcx.fcx, ccx.maps.vtable_map.get(callee_id));
 
     match /*bad*/copy vtbls[bound_index] {
         typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
@@ -362,7 +362,7 @@ pub fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
 pub fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
                         name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match ccx.tcx.items.get(&impl_id.node) {
+        match ccx.tcx.items.get(impl_id.node) {
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms),
                 _
@@ -379,7 +379,7 @@ pub fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
 pub fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match ccx.tcx.items.get(&impl_id.node) {
+        match ccx.tcx.items.get(impl_id.node) {
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms), _
           }, _) => {
@@ -389,7 +389,7 @@ pub fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
               } else {
                   // Look for a default method
                   let pmm = ccx.tcx.provided_methods;
-                  match pmm.find(&impl_id) {
+                  match pmm.find(impl_id) {
                       Some(pmis) => {
                           for pmis.each |pmi| {
                               if pmi.method_info.ident == name {
@@ -414,10 +414,10 @@ pub fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
                              i_id: ast::def_id) -> uint {
     debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
     if m_id.crate == ast::local_crate {
-        match ccx.tcx.items.find(&m_id.node) {
+        match ccx.tcx.items.find(m_id.node) {
             Some(ast_map::node_method(m, _, _)) => m.tps.len(),
             None => {
-                match ccx.tcx.provided_method_sources.find(&m_id) {
+                match ccx.tcx.provided_method_sources.find(m_id) {
                     Some(source) => {
                         method_ty_param_count(
                             ccx, source.method_id, source.impl_id)
@@ -779,7 +779,7 @@ pub fn get_vtable(ccx: @crate_ctxt,
                -> ValueRef {
     // XXX: Bad copy.
     let hash_id = vtable_id(ccx, copy origin);
-    match ccx.vtables.find(&hash_id) {
+    match ccx.vtables.find(hash_id) {
       Some(val) => val,
       None => match origin {
         typeck::vtable_static(id, substs, sub_vtables) => {
@@ -916,7 +916,7 @@ pub fn trans_trait_cast(bcx: block,
     }
 
     // Store the vtable into the pair or triple.
-    let orig = /*bad*/copy ccx.maps.vtable_map.get(&id)[0];
+    let orig = /*bad*/copy ccx.maps.vtable_map.get(id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);
     Store(bcx, vtable, PointerCast(bcx,

@@ -405,7 +405,7 @@ pub fn check_fn(ccx: @crate_ctxt,
             assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
                    fcx.infcx().ty_to_str(
-                       fcx.inh.locals.get(&self_info.self_id)));
+                       fcx.inh.locals.get(self_info.self_id)));
         }
 
         // Add formal parameters.
@@ -438,7 +438,7 @@ pub fn check_fn(ccx: @crate_ctxt,
             debug!("Local variable %s is assigned type %s",
                    fcx.pat_to_str(local.node.pat),
                    fcx.infcx().ty_to_str(
-                       fcx.inh.locals.get(&local.node.id)));
+                       fcx.inh.locals.get(local.node.id)));
             visit::visit_local(local, e, v);
         };
 
@@ -451,7 +451,7 @@ pub fn check_fn(ccx: @crate_ctxt,
                 debug!("Pattern binding %s is assigned to %s",
                        tcx.sess.str_of(path.idents[0]),
                        fcx.infcx().ty_to_str(
-                           fcx.inh.locals.get(&p.id)));
+                           fcx.inh.locals.get(p.id)));
               }
               _ => {}
             }
@@ -501,7 +501,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
 
     for fields.each |p| {
         let (id, sp) = *p;
-        match field_names.find(&id) {
+        match field_names.find(id) {
           Some(orig_sp) => {
             tcx.sess.span_err(sp, fmt!("Duplicate field \
                                    name %s in record type declaration",
@@ -558,7 +558,7 @@ pub fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         check_bare_fn(ccx, decl, (*body), it.id, None);
       }
       ast::item_impl(_, _, ty, ms) => {
-        let rp = ccx.tcx.region_paramd_items.find(&it.id);
+        let rp = ccx.tcx.region_paramd_items.find(it.id);
         debug!("item_impl %s with id %d rp %?",
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
@@ -664,7 +664,7 @@ pub impl @fn_ctxt {
     fn tag() -> ~str { fmt!("%x", ptr::addr_of(&(*self)) as uint) }
 
     fn local_ty(span: span, nid: ast::node_id) -> ty::t {
-        match self.inh.locals.find(&nid) {
+        match self.inh.locals.find(nid) {
             Some(t) => t,
             None => {
                 self.tcx().sess.span_bug(
@@ -740,7 +740,7 @@ pub impl @fn_ctxt {
     }
 
     fn expr_ty(ex: @ast::expr) -> ty::t {
-        match self.inh.node_types.find(&ex.id) {
+        match self.inh.node_types.find(ex.id) {
             Some(t) => t,
             None => {
                 self.tcx().sess.bug(
@@ -750,7 +750,7 @@ pub impl @fn_ctxt {
         }
     }
     fn node_ty(id: ast::node_id) -> ty::t {
-        match self.inh.node_types.find(&id) {
+        match self.inh.node_types.find(id) {
             Some(t) => t,
             None => {
                 self.tcx().sess.bug(
@@ -763,7 +763,7 @@ pub impl @fn_ctxt {
         }
     }
     fn node_ty_substs(id: ast::node_id) -> ty::substs {
-        match self.inh.node_type_substs.find(&id) {
+        match self.inh.node_type_substs.find(id) {
             Some(ref ts) => (/*bad*/copy *ts),
             None => {
                 self.tcx().sess.bug(
@@ -776,7 +776,7 @@ pub impl @fn_ctxt {
         }
     }
     fn opt_node_ty_substs(id: ast::node_id) -> Option<ty::substs> {
-        self.inh.node_type_substs.find(&id)
+        self.inh.node_type_substs.find(id)
     }
 
 
@@ -1001,8 +1001,8 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let tcx = vcx.tcx();
 
     let {n_tps, region_param, raw_ty} = if did.crate == ast::local_crate {
-        let region_param = tcx.region_paramd_items.find(&did.node);
-        match tcx.items.find(&did.node) {
+        let region_param = tcx.region_paramd_items.find(did.node);
+        match tcx.items.find(did.node) {
           Some(ast_map::node_item(@ast::item {
                   node: ast::item_impl(ref ts, _, st, _),
                   _
@@ -1698,7 +1698,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         // Typecheck each field.
         for ast_fields.each |field| {
-            match class_field_map.find(&field.node.ident) {
+            match class_field_map.find(field.node.ident) {
                 None => {
                     tcx.sess.span_err(
                         field.span,
@@ -1734,7 +1734,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
                 let mut missing_fields = ~[];
                 for field_types.each |class_field| {
                     let name = class_field.ident;
-                    let (_, seen) = class_field_map.get(&name);
+                    let (_, seen) = class_field_map.get(name);
                     if !seen {
                         missing_fields.push(
                             ~"`" + tcx.sess.str_of(name) + ~"`");
@@ -1769,8 +1769,8 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         let type_parameter_count, region_parameterized, raw_type;
         if class_id.crate == ast::local_crate {
             region_parameterized =
-                tcx.region_paramd_items.find(&class_id.node);
-            match tcx.items.find(&class_id.node) {
+                tcx.region_paramd_items.find(class_id.node);
+            match tcx.items.find(class_id.node) {
                 Some(ast_map::node_item(@ast::item {
                         node: ast::item_struct(_, ref type_parameters),
                         _
@@ -1852,8 +1852,8 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
         let type_parameter_count, region_parameterized, raw_type;
         if enum_id.crate == ast::local_crate {
             region_parameterized =
-                tcx.region_paramd_items.find(&enum_id.node);
-            match tcx.items.find(&enum_id.node) {
+                tcx.region_paramd_items.find(enum_id.node);
+            match tcx.items.find(enum_id.node) {
                 Some(ast_map::node_item(@ast::item {
                         node: ast::item_enum(_, ref type_parameters),
                         _
@@ -2435,7 +2435,7 @@ pub fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_struct(path, ref fields, base_expr) => {
         // Resolve the path.
-        match tcx.def_map.find(&id) {
+        match tcx.def_map.find(id) {
             Some(ast::def_struct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          (/*bad*/copy *fields), base_expr);
@@ -2532,7 +2532,7 @@ pub fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
     }
 
     let region =
-        ty::re_scope(tcx.region_map.get(&local.node.id));
+        ty::re_scope(tcx.region_map.get(local.node.id));
     let pcx = pat_ctxt {
         fcx: fcx,
         map: pat_id_map(tcx.def_map, local.node.pat),
@@ -2633,7 +2633,7 @@ pub fn check_const(ccx: @crate_ctxt,
                    id: ast::node_id) {
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, rty, e.id);
-    let declty = fcx.ccx.tcx.tcache.get(&local_def(id)).ty;
+    let declty = fcx.ccx.tcx.tcache.get(local_def(id)).ty;
     check_const_with_ty(fcx, _sp, e, declty);
 }
 
@@ -2984,7 +2984,7 @@ pub fn may_break(cx: ty::ctxt, id: ast::node_id, b: ast::blk) -> bool {
     (block_query(b, |e| {
         match e.node {
             ast::expr_break(Some(_)) =>
-                match cx.def_map.find(&e.id) {
+                match cx.def_map.find(e.id) {
                     Some(ast::def_label(loop_id)) if id == loop_id => true,
                     _ => false,
                 },
@@ -3080,8 +3080,8 @@ pub fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
           let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
           assert tcx.intrinsic_defs.contains_key_ref(&tydesc_name);
           assert ccx.tcx.intrinsic_defs.contains_key_ref(&ty_visitor_name);
-          let (_, tydesc_ty) = tcx.intrinsic_defs.get(&tydesc_name);
-          let (_, visitor_trait) = tcx.intrinsic_defs.get(&ty_visitor_name);
+          let (_, tydesc_ty) = tcx.intrinsic_defs.get(tydesc_name);
+          let (_, visitor_trait) = tcx.intrinsic_defs.get(ty_visitor_name);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
                                                    mutbl: ast::m_imm});
           (0u, ~[arg(ast::by_val, td_ptr),

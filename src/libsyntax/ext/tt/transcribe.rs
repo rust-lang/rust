@@ -111,7 +111,7 @@ pure fn lookup_cur_matched_by_matched(r: tt_reader,
 }
 
 fn lookup_cur_matched(r: tt_reader, name: ident) -> @named_match {
-    lookup_cur_matched_by_matched(r, r.interpolations.get(&name))
+    lookup_cur_matched_by_matched(r, r.interpolations.get(name))
 }
 enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)

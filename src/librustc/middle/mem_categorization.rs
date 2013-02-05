@@ -308,7 +308,7 @@ pub struct mem_categorization_ctxt {
 
 pub impl &mem_categorization_ctxt {
     fn cat_expr(expr: @ast::expr) -> cmt {
-        match self.tcx.adjustments.find(&expr.id) {
+        match self.tcx.adjustments.find(expr.id) {
             None => {
                 // No adjustments.
                 self.cat_expr_unadjusted(expr)
@@ -375,7 +375,7 @@ pub impl &mem_categorization_ctxt {
           }
 
           ast::expr_path(_) => {
-            let def = self.tcx.def_map.get(&expr.id);
+            let def = self.tcx.def_map.get(expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -840,7 +840,7 @@ pub impl &mem_categorization_ctxt {
             // variant(*)
           }
           ast::pat_enum(_, Some(ref subpats)) => {
-            match self.tcx.def_map.find(&pat.id) {
+            match self.tcx.def_map.find(pat.id) {
                 Some(ast::def_variant(enum_did, _)) => {
                     // variant(x, y, z)
                     for subpats.each |subpat| {
@@ -1063,7 +1063,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
         }
       }
       ty::ty_enum(*) => {
-        match tcx.def_map.get(&node_id) {
+        match tcx.def_map.get(node_id) {
           ast::def_variant(_, variant_id) => {
             for ty::lookup_struct_fields(tcx, variant_id).each |fld| {
                 if fld.ident == f_name {

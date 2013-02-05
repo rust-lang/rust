@@ -1099,7 +1099,7 @@ pub fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
         return ast::def_id { crate: cdata.cnum, node: did.node };
     }
 
-    match cdata.cnum_map.find(&did.crate) {
+    match cdata.cnum_map.find(did.crate) {
       option::Some(n) => ast::def_id { crate: n, node: did.node },
       option::None => die!(~"didn't find a crate in the cnum_map")
     }
