@@ -41,7 +41,7 @@ let unwrapped_msg = match msg {
 
 */
 
-use cmp::Eq;
+use cmp::{Eq,Ord};
 use kinds::Copy;
 use option;
 use ptr;
@@ -54,6 +54,34 @@ use num::Zero;
 pub enum Option<T> {
     None,
     Some(T),
+}
+
+pub impl<T:Ord> Ord for Option<T> {
+    pure fn lt(&self, other: &Option<T>) -> bool {
+        match (self, other) {
+            (&None, &None) => false,
+            (&None, &Some(_)) => true,
+            (&Some(_), &None) => false,
+            (&Some(ref a), &Some(ref b)) => *a < *b
+        }
+    }
+
+    pure fn le(&self, other: &Option<T>) -> bool {
+        match (self, other) {
+            (&None, &None) => true,
+            (&None, &Some(_)) => true,
+            (&Some(_), &None) => false,
+            (&Some(ref a), &Some(ref b)) => *a <= *b
+        }
+    }
+
+    pure fn ge(&self, other: &Option<T>) -> bool {
+        ! (self < other)
+    }
+
+    pure fn gt(&self, other: &Option<T>) -> bool {
+        ! (self <= other)
+    }
 }
 
 #[inline(always)]
