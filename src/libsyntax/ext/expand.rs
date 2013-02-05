@@ -40,7 +40,7 @@ pub fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
                 /* using idents and token::special_idents would make the
                 the macro names be hygienic */
                 let extname = cx.parse_sess().interner.get(pth.idents[0]);
-                match exts.find(*extname) {
+                match exts.find(extname) {
                   None => {
                     cx.span_fatal(pth.span,
                                   fmt!("macro undefined: '%s'", *extname))
@@ -104,7 +104,7 @@ pub fn expand_mod_items(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
               ast::meta_name_value(ref n, _) => (*n),
               ast::meta_list(ref n, _) => (*n)
             };
-            match exts.find(mname) {
+            match exts.find(&mname) {
               None | Some(NormalTT(_)) | Some(ItemTT(*)) => items,
               Some(ItemDecorator(dec_fn)) => {
                   cx.bt_push(ExpandedFrom({call_site: attr.span,
@@ -161,7 +161,7 @@ pub fn expand_item_mac(exts: HashMap<~str, SyntaxExtension>,
     };
 
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
-    let expanded = match exts.find(*extname) {
+    let expanded = match exts.find(extname) {
         None => cx.span_fatal(pth.span,
                               fmt!("macro undefined: '%s!'", *extname)),
 
@@ -224,7 +224,7 @@ pub fn expand_stmt(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
 
     assert(vec::len(pth.idents) == 1u);
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
-    let (fully_expanded, sp) = match exts.find(*extname) {
+    let (fully_expanded, sp) = match exts.find(extname) {
         None =>
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extname)),
 

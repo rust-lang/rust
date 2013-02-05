@@ -44,7 +44,7 @@ pub trait Interner<T:Eq IterBytes Hash Const Copy> {
 
 pub impl <T:Eq IterBytes Hash Const Copy> hash_interner<T>: Interner<T> {
     fn intern(val: T) -> uint {
-        match self.map.find(val) {
+        match self.map.find(&val) {
           Some(idx) => return idx,
           None => {
             let new_idx = self.vect.len();

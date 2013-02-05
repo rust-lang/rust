@@ -70,7 +70,7 @@ pub fn count_insn(cx: block, category: &str) {
         i = 0u;
         while i < len {
             let e = /*bad*/copy v[i];
-            i = mm.get(/*bad*/ copy e);
+            i = mm.get(&e);
             s += ~"/";
             s += e;
             i += 1u;
@@ -79,7 +79,7 @@ pub fn count_insn(cx: block, category: &str) {
         s += ~"/";
         s += category;
 
-        let n = match h.find(/*bad*/ copy s) {
+        let n = match h.find(&s) {
           Some(n) => n,
           _ => 0u
         };

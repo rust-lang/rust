@@ -236,7 +236,8 @@ pub impl CoherenceChecker {
     }
 
     fn check_implementation(item: @item, associated_traits: ~[@trait_ref]) {
-        let self_type = self.crate_context.tcx.tcache.get(local_def(item.id));
+        let self_type = self.crate_context.tcx.tcache.get(
+            &local_def(item.id));
 
         // If there are no traits, then this implementation must have a
         // base type.
@@ -354,7 +355,7 @@ pub impl CoherenceChecker {
                 };
 
             let pmm = self.crate_context.tcx.provided_methods;
-            match pmm.find(local_def(impl_id)) {
+            match pmm.find(&local_def(impl_id)) {
                 Some(mis) => {
                     // If the trait already has an entry in the
                     // provided_methods_map, we just need to add this
@@ -382,7 +383,7 @@ pub impl CoherenceChecker {
     fn add_inherent_method(base_def_id: def_id, implementation: @Impl) {
         let implementation_list;
         match self.crate_context.coherence_info.inherent_methods
-                  .find(base_def_id) {
+                  .find(&base_def_id) {
             None => {
                 implementation_list = @DVec();
                 self.crate_context.coherence_info.inherent_methods
@@ -399,7 +400,7 @@ pub impl CoherenceChecker {
     fn add_trait_method(trait_id: def_id, implementation: @Impl) {
         let implementation_list;
         match self.crate_context.coherence_info.extension_methods
-                  .find(trait_id) {
+                  .find(&trait_id) {
             None => {
                 implementation_list = @DVec();
                 self.crate_context.coherence_info.extension_methods
@@ -462,7 +463,7 @@ pub impl CoherenceChecker {
         debug!("Adding impl %? of %? for %s",
                the_impl.did, trait_t,
                ty_to_str(self.crate_context.tcx, self_t));
-        match self.crate_context.tcx.trait_impls.find(trait_t) {
+        match self.crate_context.tcx.trait_impls.find(&trait_t) {
             None => {
                 let m = HashMap();
                 m.insert(self_t, the_impl);
@@ -480,7 +481,7 @@ pub impl CoherenceChecker {
         let coherence_info = &self.crate_context.coherence_info;
         let extension_methods = &coherence_info.extension_methods;
 
-        match extension_methods.find(trait_def_id) {
+        match extension_methods.find(&trait_def_id) {
             Some(impls) => {
                 for uint::range(0, impls.len()) |i| {
                     f(impls[i]);
@@ -612,7 +613,7 @@ pub impl CoherenceChecker {
 
     fn get_self_type_for_implementation(implementation: @Impl)
                                      -> ty_param_bounds_and_ty {
-        return self.crate_context.tcx.tcache.get(implementation.did);
+        return self.crate_context.tcx.tcache.get(&implementation.did);
     }
 
     // Privileged scope checking
@@ -627,7 +628,7 @@ pub impl CoherenceChecker {
                     item_impl(_, opt_trait, _, _) => {
                         let mut ok = false;
                         match self.base_type_def_ids.find(
-                            local_def(item.id)) {
+                            &local_def(item.id)) {
 
                             None => {
                                 // Nothing to do.
@@ -701,7 +702,7 @@ pub impl CoherenceChecker {
 
     fn trait_ref_to_trait_def_id(trait_ref: @trait_ref) -> def_id {
         let def_map = self.crate_context.tcx.def_map;
-        let trait_def = def_map.get(trait_ref.ref_id);
+        let trait_def = def_map.get(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
     }
@@ -774,7 +775,7 @@ pub impl CoherenceChecker {
 
                     match self.crate_context.tcx
                               .provided_methods
-                              .find(local_def(item.id)) {
+                              .find(&local_def(item.id)) {
                         None => {
                             debug!("(creating impl) trait with node_id `%d` \
                                     has no provided methods", trait_did.node);
@@ -808,7 +809,7 @@ pub impl CoherenceChecker {
 
     fn span_of_impl(implementation: @Impl) -> span {
         assert implementation.did.crate == local_crate;
-        match self.crate_context.tcx.items.find(implementation.did.node) {
+        match self.crate_context.tcx.items.find(&implementation.did.node) {
             Some(node_item(item, _)) => {
                 return item.span;
             }
@@ -836,7 +837,7 @@ pub impl CoherenceChecker {
 
             // Make sure we don't visit the same implementation
             // multiple times.
-            match impls_seen.find(implementation.did) {
+            match impls_seen.find(&implementation.did) {
                 None => {
                     // Good. Continue.
                     impls_seen.insert(implementation.did, ());
@@ -988,7 +989,7 @@ pub impl CoherenceChecker {
         let coherence_info = &self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
         let drop_trait = tcx.lang_items.drop_trait();
-        let impls_opt = coherence_info.extension_methods.find(drop_trait);
+        let impls_opt = coherence_info.extension_methods.find(&drop_trait);
 
         let impls;
         match impls_opt {
@@ -1013,7 +1014,7 @@ pub impl CoherenceChecker {
                 _ => {
                     // Destructors only work on nominal types.
                     if impl_info.did.crate == ast::local_crate {
-                        match tcx.items.find(impl_info.did.node) {
+                        match tcx.items.find(&impl_info.did.node) {
                             Some(ast_map::node_item(@ref item, _)) => {
                                 tcx.sess.span_err((*item).span,
                                                   ~"the Drop trait may only \
