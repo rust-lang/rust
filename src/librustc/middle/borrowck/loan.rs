@@ -129,7 +129,7 @@ impl LoanContext {
                 ~"rvalue with a non-none lp");
           }
           cat_local(local_id) | cat_arg(local_id) | cat_self(local_id) => {
-            let local_scope_id = self.tcx().region_map.get(local_id);
+            let local_scope_id = self.tcx().region_map.get(&local_id);
             self.issue_loan(cmt, ty::re_scope(local_scope_id), req_mutbl,
                             owns_lent_data)
           }
