@@ -490,11 +490,11 @@ pub fn FILERes(f: *libc::FILE) -> FILERes {
     }
 }
 
-pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
+pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
     if cleanup {
-        Wrapper { base: f, cleanup: FILERes(f) } as Reader
+        @Wrapper { base: f, cleanup: FILERes(f) } as @Reader
     } else {
-        f as Reader
+        @f as @Reader
     }
 }
 
@@ -502,13 +502,13 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
 // top-level functions that take a reader, or a set of default methods on
 // reader (which can then be called reader)
 
-pub fn stdin() -> Reader {
+pub fn stdin() -> @Reader {
     unsafe {
-        rustrt::rust_get_stdin() as Reader
+        rustrt::rust_get_stdin() as @Reader
     }
 }
 
-pub fn file_reader(path: &Path) -> Result<Reader, ~str> {
+pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
     unsafe {
         let f = os::as_c_charp(path.to_str(), |pathbuf| {
             os::as_c_charp("r", |modebuf|
@@ -555,11 +555,11 @@ impl BytesReader: Reader {
     fn tell(&self) -> uint { self.pos }
 }
 
-pub pure fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
-    f(BytesReader { bytes: bytes, pos: 0u } as Reader)
+pub pure fn with_bytes_reader<t>(bytes: &[u8], f: fn(@Reader) -> t) -> t {
+    f(@BytesReader { bytes: bytes, pos: 0u } as @Reader)
 }
 
-pub pure fn with_str_reader<T>(s: &str, f: fn(Reader) -> T) -> T {
+pub pure fn with_str_reader<T>(s: &str, f: fn(@Reader) -> T) -> T {
     str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
 }
 
