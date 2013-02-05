@@ -947,7 +947,7 @@ pub impl Resolver {
 
         // Add or reuse the child.
         let new_parent = ModuleReducedGraphParent(module_);
-        match module_.children.find(name) {
+        match module_.children.find(&name) {
             None => {
                 let child = @NameBindings();
                 module_.children.insert(name, child);
@@ -1558,7 +1558,7 @@ pub impl Resolver {
                         %s", final_ident);
                 let parent_link = self.get_parent_link(new_parent, ident);
 
-                match modules.find(def_id) {
+                match modules.find(&def_id) {
                   None => {
                     child_name_bindings.define_module(Public,
                                                       parent_link,
@@ -1582,7 +1582,8 @@ pub impl Resolver {
                         die!(~"can't happen");
                       }
                       ModuleParentLink(parent_module, ident) => {
-                        let name_bindings = parent_module.children.get(ident);
+                        let name_bindings = parent_module.children.get(
+                            &ident);
                         resolution.type_target =
                             Some(Target(parent_module, name_bindings));
                       }
@@ -1841,7 +1842,7 @@ pub impl Resolver {
                        self.idents_to_str(module_path.get()),
                        self.session.str_of(target));
 
-                match module_.import_resolutions.find(target) {
+                match module_.import_resolutions.find(&target) {
                     Some(resolution) => {
                         debug!("(building import directive) bumping \
                                 reference");
@@ -2112,7 +2113,7 @@ pub impl Resolver {
         let mut type_result = UnknownResult;
 
         // Search for direct children of the containing module.
-        match containing_module.children.find(source) {
+        match containing_module.children.find(&source) {
             None => {
                 // Continue.
             }
@@ -2148,7 +2149,7 @@ pub impl Resolver {
                 // Now search the exported imports within the containing
                 // module.
 
-                match containing_module.import_resolutions.find(source) {
+                match containing_module.import_resolutions.find(&source) {
                     None => {
                         // The containing module definitely doesn't have an
                         // exported import with the name in question. We can
@@ -2212,7 +2213,7 @@ pub impl Resolver {
 
         // We've successfully resolved the import. Write the results in.
         assert module_.import_resolutions.contains_key_ref(&target);
-        let import_resolution = module_.import_resolutions.get(target);
+        let import_resolution = module_.import_resolutions.get(&target);
 
         match value_result {
             BoundResult(target_module, name_bindings) => {
@@ -2297,7 +2298,7 @@ pub impl Resolver {
         let mut module_result = UnknownResult;
 
         // Search for direct children of the containing module.
-        match containing_module.children.find(source) {
+        match containing_module.children.find(&source) {
             None => {
                 // Continue.
             }
@@ -2327,7 +2328,7 @@ pub impl Resolver {
 
                 // Now search the exported imports within the containing
                 // module.
-                match containing_module.import_resolutions.find(source) {
+                match containing_module.import_resolutions.find(&source) {
                     None => {
                         // The containing module definitely doesn't have an
                         // exported import with the name in question. We can
@@ -2371,7 +2372,7 @@ pub impl Resolver {
 
         // We've successfully resolved the import. Write the results in.
         assert module_.import_resolutions.contains_key_ref(&target);
-        let import_resolution = module_.import_resolutions.get(target);
+        let import_resolution = module_.import_resolutions.get(&target);
 
         match module_result {
             BoundResult(target_module, name_bindings) => {
@@ -2439,7 +2440,7 @@ pub impl Resolver {
                    self.module_to_str(module_));
 
             // Here we merge two import resolutions.
-            match module_.import_resolutions.find(ident) {
+            match module_.import_resolutions.find(&ident) {
                 None => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
@@ -2482,7 +2483,7 @@ pub impl Resolver {
         // Add all children from the containing module.
         for containing_module.children.each_ref |&ident, &name_bindings| {
             let mut dest_import_resolution;
-            match module_.import_resolutions.find(ident) {
+            match module_.import_resolutions.find(&ident) {
                 None => {
                     // Create a new import resolution from this child.
                     dest_import_resolution = @ImportResolution(privacy, span);
@@ -2686,7 +2687,7 @@ pub impl Resolver {
         // The current module node is handled specially. First, check for
         // its immediate children.
 
-        match module_.children.find(name) {
+        match module_.children.find(&name) {
             Some(name_bindings)
                     if (*name_bindings).defined_in_namespace(namespace) => {
                 return Success(Target(module_, name_bindings));
@@ -2699,7 +2700,7 @@ pub impl Resolver {
         // adjacent import statements are processed as though they mutated the
         // current scope.
 
-        match module_.import_resolutions.find(name) {
+        match module_.import_resolutions.find(&name) {
             None => {
                 // Not found; continue.
             }
@@ -2923,7 +2924,7 @@ pub impl Resolver {
                self.module_to_str(module_));
 
         // First, check the direct children of the module.
-        match module_.children.find(name) {
+        match module_.children.find(&name) {
             Some(name_bindings)
                     if (*name_bindings).defined_in_namespace(namespace) => {
 
@@ -2944,7 +2945,7 @@ pub impl Resolver {
         }
 
         // Otherwise, we check the list of resolved imports.
-        match module_.import_resolutions.find(name) {
+        match module_.import_resolutions.find(&name) {
             Some(import_resolution) => {
                 if import_resolution.outstanding_references != 0 {
                     debug!("(resolving name in module) import unresolved; \
@@ -3114,7 +3115,7 @@ pub impl Resolver {
         }
 
         // Otherwise, proceed and write in the bindings.
-        match module_.import_resolutions.find(target_name) {
+        match module_.import_resolutions.find(&target_name) {
             None => {
                 die!(~"(resolving one-level renaming import) reduced graph \
                       construction or glob importing should have created the \
@@ -3328,7 +3329,7 @@ pub impl Resolver {
                 // Nothing to do.
             }
             Some(name) => {
-                match orig_module.children.find(name) {
+                match orig_module.children.find(&name) {
                     None => {
                         debug!("!!! (with scope) didn't find `%s` in `%s`",
                                self.session.str_of(name),
@@ -3405,7 +3406,7 @@ pub impl Resolver {
                   // If the def is a ty param, and came from the parent
                   // item, it's ok
                   match def {
-                    def_ty_param(did, _) if self.def_map.find(copy(did.node))
+                    def_ty_param(did, _) if self.def_map.find(&did.node)
                       == Some(def_typaram_binder(item_id)) => {
                       // ok
                     }
@@ -3477,7 +3478,7 @@ pub impl Resolver {
         while i != 0 {
             i -= 1;
             let rib = (*ribs).get_elt(i);
-            match rib.bindings.find(name) {
+            match rib.bindings.find(&name) {
                 Some(def_like) => {
                     return self.upvarify(ribs, i, def_like, span,
                                       allow_capturing_self);
@@ -4069,7 +4070,7 @@ pub impl Resolver {
             let map_i = self.binding_mode_map(*p);
 
             for map_0.each_ref |&key, &binding_0| {
-                match map_i.find(key) {
+                match map_i.find(&key) {
                   None => {
                     self.session.span_err(
                         p.span,
@@ -4126,7 +4127,7 @@ pub impl Resolver {
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
-        match self.current_module.anonymous_children.find(block.node.id) {
+        match self.current_module.anonymous_children.find(&block.node.id) {
             None => { /* Nothing to do. */ }
             Some(anonymous_module) => {
                 debug!("(resolving block) found anonymous module, moving \
@@ -4161,7 +4162,7 @@ pub impl Resolver {
 
                     match self.primitive_type_table
                             .primitive_types
-                            .find(name) {
+                            .find(&name) {
 
                         Some(primitive_type) => {
                             result_def =
@@ -4327,7 +4328,7 @@ pub impl Resolver {
                                     bindings_list.insert(ident, pat_id);
                                 }
                                 Some(b) => {
-                                  if b.find(ident) == Some(pat_id) {
+                                  if b.find(&ident) == Some(pat_id) {
                                       // Then this is a duplicate variable
                                       // in the same disjunct, which is an
                                       // error
@@ -4526,7 +4527,7 @@ pub impl Resolver {
                                          -> NameDefinition {
 
         // First, search children.
-        match containing_module.children.find(name) {
+        match containing_module.children.find(&name) {
             Some(child_name_bindings) => {
                 match (child_name_bindings.def_for_namespace(namespace),
                        child_name_bindings.privacy_for_namespace(namespace)) {
@@ -4549,7 +4550,7 @@ pub impl Resolver {
         }
 
         // Next, search import resolutions.
-        match containing_module.import_resolutions.find(name) {
+        match containing_module.import_resolutions.find(&name) {
             Some(import_resolution) if import_resolution.privacy == Public ||
                                        xray == Xray => {
                 match (*import_resolution).target_for_namespace(namespace) {
@@ -5076,7 +5077,7 @@ pub impl Resolver {
                trait_def_id.node,
                self.session.str_of(name));
 
-        match self.trait_info.find(trait_def_id) {
+        match self.trait_info.find(&trait_def_id) {
             Some(trait_info) if trait_info.contains_key_ref(&name) => {
                 debug!("(adding trait info if containing method) found trait \
                         %d:%d for method '%s'",

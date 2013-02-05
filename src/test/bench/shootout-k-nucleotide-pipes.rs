@@ -69,7 +69,7 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: HashMap<~[u8], uint>, key: ~str) -> uint {
-   match mm.find(str::to_bytes(str::to_lower(key))) {
+   match mm.find(&str::to_bytes(str::to_lower(key))) {
       option::None      => { return 0u; }
       option::Some(num) => { return num; }
    }

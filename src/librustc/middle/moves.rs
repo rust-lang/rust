@@ -409,7 +409,7 @@ impl VisitContext {
         // `expr_mode` refers to the post-adjustment value.  If one of
         // those adjustments is to take a reference, then it's only
         // reading the underlying expression, not moving it.
-        let comp_mode = match self.tcx.adjustments.find(expr.id) {
+        let comp_mode = match self.tcx.adjustments.find(&expr.id) {
             Some(adj) if adj.autoref.is_some() => Read,
             _ => expr_mode.component_mode(expr)
         };
@@ -713,7 +713,7 @@ impl VisitContext {
                     receiver_expr: @expr,
                     visitor: vt<VisitContext>)
     {
-        let callee_mode = match self.method_map.find(expr_id) {
+        let callee_mode = match self.method_map.find(&expr_id) {
             Some(ref method_map_entry) => {
                 match method_map_entry.explicit_self {
                     sty_by_ref => by_ref,
