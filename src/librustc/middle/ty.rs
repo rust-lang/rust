@@ -2435,7 +2435,7 @@ pub fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
 
 pub fn type_is_integral(ty: t) -> bool {
     match get(ty).sty {
-      ty_infer(IntVar(_)) | ty_int(_) | ty_uint(_) | ty_bool => true,
+      ty_infer(IntVar(_)) | ty_int(_) | ty_uint(_) => true,
       _ => false
     }
 }
