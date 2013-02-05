@@ -352,7 +352,7 @@ impl LanguageItemCollector {
             return;    // Didn't match.
         }
 
-        match self.item_refs.find(/*bad*/copy value) {
+        match self.item_refs.find(&value) {
             None => {
                 // Didn't match.
             }

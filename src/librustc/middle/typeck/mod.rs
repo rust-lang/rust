@@ -225,7 +225,7 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
 }
 
 pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
-    match tcx.def_map.find(id) {
+    match tcx.def_map.find(&id) {
       Some(x) => x,
       _ => {
         tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
@@ -325,7 +325,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).sty {
         ty::ty_fn(ref fn_ty) => {
-            match tcx.items.find(main_id) {
+            match tcx.items.find(&main_id) {
                 Some(ast_map::node_item(it,_)) => {
                     match it.node {
                         ast::item_fn(_, _, ref ps, _)
