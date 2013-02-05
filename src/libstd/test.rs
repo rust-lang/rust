@@ -92,7 +92,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
         };
 
     let filter =
-        if vec::len(matches.free) > 0u {
+        if vec::len(matches.free) > 0 {
             option::Some(matches.free[0])
         } else { option::None };
 
@@ -111,26 +111,27 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
 #[deriving_eq]
 pub enum TestResult { TrOk, TrFailed, TrIgnored, }
 
-type ConsoleTestState =
-    @{out: io::Writer,
-      log_out: Option<io::Writer>,
-      use_color: bool,
-      mut total: uint,
-      mut passed: uint,
-      mut failed: uint,
-      mut ignored: uint,
-      mut failures: ~[TestDesc]};
+struct ConsoleTestState {
+    out: io::Writer,
+    log_out: Option<io::Writer>,
+    use_color: bool,
+    mut total: uint,
+    mut passed: uint,
+    mut failed: uint,
+    mut ignored: uint,
+    mut failures: ~[TestDesc]
+}
 
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts,
                      tests: &[TestDesc]) -> bool {
 
-    fn callback(event: &TestEvent, st: ConsoleTestState) {
+    fn callback(event: &TestEvent, st: @ConsoleTestState) {
         debug!("callback(event=%?)", event);
         match *event {
           TeFiltered(ref filtered_tests) => {
             st.total = filtered_tests.len();
-            let noun = if st.total != 1u { ~"tests" } else { ~"test" };
+            let noun = if st.total != 1 { ~"tests" } else { ~"test" };
             st.out.write_line(fmt!("\nrunning %u %s", st.total, noun));
           }
           TeWait(ref test) => st.out.write_str(
@@ -142,18 +143,18 @@ pub fn run_tests_console(opts: &TestOpts,
             }
             match result {
               TrOk => {
-                st.passed += 1u;
+                st.passed += 1;
                 write_ok(st.out, st.use_color);
                 st.out.write_line(~"");
               }
               TrFailed => {
-                st.failed += 1u;
+                st.failed += 1;
                 write_failed(st.out, st.use_color);
                 st.out.write_line(~"");
                 st.failures.push(move test);
               }
               TrIgnored => {
-                st.ignored += 1u;
+                st.ignored += 1;
                 write_ignored(st.out, st.use_color);
                 st.out.write_line(~"");
               }
@@ -174,19 +175,19 @@ pub fn run_tests_console(opts: &TestOpts,
     };
 
     let st =
-        @{out: io::stdout(),
+        @ConsoleTestState{out: io::stdout(),
           log_out: log_out,
           use_color: use_color(),
-          mut total: 0u,
-          mut passed: 0u,
-          mut failed: 0u,
-          mut ignored: 0u,
+          mut total: 0,
+          mut passed: 0,
+          mut failed: 0,
+          mut ignored: 0,
           mut failures: ~[]};
 
     run_tests(opts, tests, |x| callback(&x, st));
 
     assert (st.passed + st.failed + st.ignored == st.total);
-    let success = st.failed == 0u;
+    let success = st.failed == 0;
 
     if !success {
         print_failures(st);
@@ -234,7 +235,7 @@ pub fn run_tests_console(opts: &TestOpts,
     }
 }
 
-fn print_failures(st: ConsoleTestState) {
+fn print_failures(st: @ConsoleTestState) {
     st.out.write_line(~"\nfailures:");
     let failures = copy st.failures;
     let failures = vec::map(failures, |test| test.name);
@@ -262,13 +263,13 @@ fn should_sort_failures_before_printing_them() {
         };
 
         let st =
-            @{out: wr,
+            @ConsoleTestState{out: wr,
               log_out: option::None,
               use_color: false,
-              mut total: 0u,
-              mut passed: 0u,
-              mut failed: 0u,
-              mut ignored: 0u,
+              mut total: 0,
+              mut passed: 0,
+              mut failed: 0,
+              mut ignored: 0,
               mut failures: ~[move test_b, move test_a]};
 
         print_failures(st);
@@ -279,7 +280,7 @@ fn should_sort_failures_before_printing_them() {
     assert apos < bpos;
 }
 
-fn use_color() -> bool { return get_concurrency() == 1u; }
+fn use_color() -> bool { return get_concurrency() == 1; }
 
 enum TestEvent {
     TeFiltered(~[TestDesc]),
@@ -334,7 +335,7 @@ fn run_tests(opts: &TestOpts,
 
 // Windows tends to dislike being overloaded with threads.
 #[cfg(windows)]
-const sched_overcommit : uint = 1u;
+const sched_overcommit : uint = 1;
 
 #[cfg(unix)]
 const sched_overcommit : uint = 4u;
@@ -342,7 +343,7 @@ const sched_overcommit : uint = 4u;
 fn get_concurrency() -> uint {
     unsafe {
         let threads = rustrt::rust_sched_threads() as uint;
-        if threads == 1u { 1u }
+        if threads == 1 { 1 }
         else { threads * sched_overcommit }
     }
 }
@@ -556,7 +557,7 @@ mod tests {
         ];
         let filtered = filter_tests(&opts, tests);
 
-        assert (vec::len(filtered) == 1u);
+        assert (vec::len(filtered) == 1);
         assert (filtered[0].name == ~"1");
         assert (filtered[0].ignore == false);
     }

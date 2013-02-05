@@ -84,22 +84,27 @@ pub mod reader {
         }
     }
 
-    fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
+    struct Res {
+        val: uint,
+        next: uint
+    }
+
+    fn vuint_at(data: &[u8], start: uint) -> Res {
         let a = data[start];
         if a & 0x80u8 != 0u8 {
-            return {val: (a & 0x7fu8) as uint, next: start + 1u};
+            return Res {val: (a & 0x7fu8) as uint, next: start + 1u};
         }
         if a & 0x40u8 != 0u8 {
-            return {val: ((a & 0x3fu8) as uint) << 8u |
+            return Res {val: ((a & 0x3fu8) as uint) << 8u |
                         (data[start + 1u] as uint),
                     next: start + 2u};
         } else if a & 0x20u8 != 0u8 {
-            return {val: ((a & 0x1fu8) as uint) << 16u |
+            return Res {val: ((a & 0x1fu8) as uint) << 16u |
                         (data[start + 1u] as uint) << 8u |
                         (data[start + 2u] as uint),
                     next: start + 3u};
         } else if a & 0x10u8 != 0u8 {
-            return {val: ((a & 0x0fu8) as uint) << 24u |
+            return Res {val: ((a & 0x0fu8) as uint) << 24u |
                         (data[start + 1u] as uint) << 16u |
                         (data[start + 2u] as uint) << 8u |
                         (data[start + 3u] as uint),
