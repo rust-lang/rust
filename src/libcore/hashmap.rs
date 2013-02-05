@@ -22,7 +22,6 @@ use to_bytes::IterBytes;
 /// Open addressing with linear probing.
 pub mod linear {
     use super::*;
-    use iter::BaseIter;
     use hash::Hash;
     use iter;
     use kinds::Copy;
@@ -367,26 +366,28 @@ pub mod linear {
             old_value
         }
 
-        fn consume(&mut self, f: fn(K, V)) {
-            let mut buckets = ~[];
-            self.buckets <-> buckets;
-            self.size = 0;
-
-            do vec::consume(buckets) |_, bucket| {
-                match bucket {
-                    None => {},
-                    Some(bucket) => {
-                        let Bucket{key: key, value: value, _} = bucket;
-                        f(key, value)
-                    }
-                }
-            }
-        }
-
         pure fn get(&self, k: &K) -> &self/V {
             match self.find(k) {
                 Some(v) => v,
                 None => die!(fmt!("No entry found for key: %?", k)),
+            }
+        }
+    }
+
+    impl<K, V> LinearMap<K, V>: iter::OwnedIter<(K, V)> {
+        fn consume(self, f: fn(uint, (K, V))) {
+            let LinearMap { buckets: buckets, _ } = self;
+            let mut i = 0;
+
+            do buckets.consume |_, bucket| {
+                match bucket {
+                    None => {},
+                    Some(bucket) => {
+                        let Bucket { key: key, value: value, _ } = bucket;
+                        f(i, (key, value));
+                        i += 1;
+                    }
+                }
             }
         }
     }
@@ -412,10 +413,17 @@ pub mod linear {
         priv map: LinearMap<T, ()>
     }
 
-    impl <T: Hash IterBytes Eq> LinearSet<T>: BaseIter<T> {
+    impl <T: Hash IterBytes Eq> LinearSet<T>: iter::BaseIter<T> {
         /// Visit all values in order
         pure fn each(&self, f: fn(&T) -> bool) { self.map.each_key(f) }
         pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+    }
+
+    impl <T> LinearSet<T>: iter::OwnedIter<T> {
+        fn consume(self, f: fn(uint, T)) {
+            let LinearSet { map: map } = self;
+            map.consume(|i, (key, ())| { f(i, key) })
+        }
     }
 
     impl <T: Hash IterBytes Eq> LinearSet<T>: Eq {
@@ -594,10 +602,9 @@ mod test_map {
         assert m.insert(1, 2);
         assert m.insert(2, 3);
         let mut m2 = LinearMap::new();
-        do m.consume |k, v| {
+        do m.consume |_, (k, v)| {
             m2.insert(k, v);
         }
-        assert m.len() == 0;
         assert m2.len() == 2;
         assert m2.get(&1) == &2;
         assert m2.get(&2) == &3;
