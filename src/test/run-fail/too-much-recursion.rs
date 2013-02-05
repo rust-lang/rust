@@ -10,6 +10,8 @@
 
 // error-pattern:ran out of stack
 
+// xfail-test
+
 // Test that the task fails after hiting the recursion limit
 
 fn main() {

@@ -128,6 +128,13 @@ pub fn build_configuration(sess: Session, +argv0: ~str, input: input) ->
     let user_cfg = append_configuration(
         user_cfg,
         if sess.opts.gc { ~"gc" } else { ~"nogc" });
+    let user_cfg = append_configuration(
+        user_cfg,
+        if sess.return_unwind() {
+            ~"return_unwind"
+        } else {
+            ~"throw_unwind"
+        });
     return vec::append(user_cfg, default_cfg);
 }
 

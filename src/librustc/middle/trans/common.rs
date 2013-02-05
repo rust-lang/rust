@@ -283,6 +283,11 @@ pub struct fn_ctxt_ {
     // allowing most any operation to be performed on them.)
     llloadenv: Option<BasicBlockRef>,
     llreturn: BasicBlockRef,
+
+    // An alloca holding the 'true' value we return normally; written to
+    // 'false' when we're returning failure.
+    llretcode: Option<ValueRef>,
+
     // The 'self' value currently in use in this function, if there
     // is one.
     //
@@ -917,15 +922,14 @@ pub fn T_generic_glue_fn(cx: @CrateContext) -> TypeRef {
     return t;
 }
 
-pub fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
+pub fn T_tydesc(sess: session::Session) -> TypeRef {
     let tydesc = T_named_struct(~"tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
     let glue_fn_ty =
         T_ptr(T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp,
-                    pvoid], T_void()));
-
-    let int_type = T_int(targ_cfg);
+                     pvoid], T_bool()));
+    let int_type = T_int(sess.targ_cfg);
     let elems =
         ~[int_type, int_type,
           glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,

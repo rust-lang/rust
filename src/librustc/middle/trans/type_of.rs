@@ -52,12 +52,11 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::arg],
         // ... then explicit args.
         atys.push_all(type_of_explicit_args(cx, inputs));
 
-        // return-unwind form returns a boolean: true=ok / false=fail.
-        if cx.sess.return_unwind() {
-            T_fn(atys, T_bool())
-        } else {
-            T_fn(atys, llvm::LLVMVoidType())
-        }
+        // Return a boolean: true=ok / false=fail.
+        // Note false=fail only _happens_ when we're not using
+        // dwarf or sjlj type unwinding. But it's always latent
+        // in the type of rust functions.
+        T_fn(atys, T_bool())
     }
 }
 
@@ -304,7 +303,7 @@ pub fn type_of_dtor(ccx: @CrateContext, self_ty: ty::t) -> TypeRef {
     unsafe {
         T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))), // output pointer
                T_ptr(type_of(ccx, self_ty))],            // self arg
-             llvm::LLVMVoidType())
+             T_bool())
     }
 }
 
@@ -318,6 +317,6 @@ pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
 pub fn type_of_glue_fn(ccx: @CrateContext, t: ty::t) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
     let llty = T_ptr(type_of(ccx, t));
-    return T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty],
-                T_void());
+    T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty],
+         T_bool())
 }

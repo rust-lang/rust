@@ -3195,6 +3195,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       }
       ~"needs_drop" => (1u, ~[], ty::mk_bool(tcx)),
 
+      ~"set_retcode_fail" => (0u, ~[], ty::mk_nil(tcx)),
+
       ~"atomic_cxchg"    | ~"atomic_cxchg_acq"| ~"atomic_cxchg_rel" => {
         (0u, ~[arg(ast::by_copy,
                    ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)),
