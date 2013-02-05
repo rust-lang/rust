@@ -876,7 +876,7 @@ fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 // and returns the box as cast to an unsafe ptr (see comments for t above).
 fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     let key = intern_key { sty: to_unsafe_ptr(&st), o_def_id: o_def_id };
-    match cx.interner.find(&key) {
+    match cx.interner.find(key) {
       Some(t) => unsafe { return cast::reinterpret_cast(&t); },
       _ => ()
     }
@@ -1142,7 +1142,7 @@ pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
 // Returns the narrowest lifetime enclosing the evaluation of the expression
 // with id `id`.
 pub fn encl_region(cx: ctxt, id: ast::node_id) -> ty::Region {
-    match cx.region_map.find(&id) {
+    match cx.region_map.find(id) {
       Some(encl_scope) => ty::re_scope(encl_scope),
       None => ty::re_static
     }
@@ -1653,7 +1653,7 @@ pub fn type_is_immediate(ty: t) -> bool {
 }
 
 pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
-    match cx.needs_drop_cache.find(&ty) {
+    match cx.needs_drop_cache.find(ty) {
       Some(result) => return result,
       None => {/* fall through */ }
     }
@@ -1732,7 +1732,7 @@ pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
 // that only contain scalars and shared boxes can avoid unwind
 // cleanups.
 pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
-    match cx.needs_unwind_cleanup_cache.find(&ty) {
+    match cx.needs_unwind_cleanup_cache.find(ty) {
       Some(result) => return result,
       None => ()
     }
@@ -1749,7 +1749,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
                               encountered_box: bool) -> bool {
 
     // Prevent infinite recursion
-    match tycache.find(&ty) {
+    match tycache.find(ty) {
       Some(_) => return false,
       None => { tycache.insert(ty, ()); }
     }
@@ -2011,7 +2011,7 @@ pub fn type_kind(cx: ctxt, ty: t) -> Kind {
 // If `allow_ty_var` is true, then this is a conservative assumption; we
 // assume that type variables *do* have all kinds.
 pub fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
-    match cx.kind_cache.find(&ty) {
+    match cx.kind_cache.find(ty) {
       Some(result) => return result,
       None => {/* fall through */ }
     }
@@ -2165,7 +2165,7 @@ pub fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
           // cross-crate inlining code to translate a def-id.
           assert p.def_id.crate == ast::local_crate;
 
-          param_bounds_to_kind(cx.ty_param_bounds.get(&p.def_id.node))
+          param_bounds_to_kind(cx.ty_param_bounds.get(p.def_id.node))
       }
 
       // self is a special type parameter that can only appear in traits; it
@@ -2810,7 +2810,7 @@ pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
 }
 
 pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
-    match cx.node_type_substs.find(&id) {
+    match cx.node_type_substs.find(id) {
       None => return ~[],
       Some(ts) => return ts
     }
@@ -2950,7 +2950,7 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
 
     let unadjusted_ty = expr_ty(cx, expr);
 
-    return match cx.adjustments.find(&expr.id) {
+    return match cx.adjustments.find(expr.id) {
         None => unadjusted_ty,
 
         Some(adj) => {
@@ -3054,7 +3054,7 @@ pub fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
 pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
                           id: ast::node_id)
     -> Option<@~[param_bounds]> {
-    do method_map.find(&id).map |method| {
+    do method_map.find(id).map |method| {
         match method.origin {
           typeck::method_static(did) => {
             // n.b.: When we encode impl methods, the bounds
@@ -3081,7 +3081,7 @@ pub fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
 }
 
 fn resolve_expr(tcx: ctxt, expr: @ast::expr) -> ast::def {
-    match tcx.def_map.find(&expr.id) {
+    match tcx.def_map.find(expr.id) {
         Some(def) => def,
         None => {
             tcx.sess.span_bug(expr.span, fmt!(
@@ -3335,7 +3335,7 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
 fn canon<T:Copy cmp::Eq>(tbl: HashMap<ast::node_id, ast::inferable<T>>,
                          +m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
-      ast::infer(id) => match tbl.find(&id) {
+      ast::infer(id) => match tbl.find(id) {
         None => m0,
         Some(ref m1) => {
             let cm1 = canon(tbl, (*m1));
@@ -3597,7 +3597,7 @@ pub fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 
 pub fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[ast::ident] {
     if is_local(id) {
-        match cx.items.find(&id.node) {
+        match cx.items.find(id.node) {
             Some(ast_map::node_item(@ast::item {
                         node: item_trait(_, _, ref ms),
                         _
@@ -3617,7 +3617,7 @@ pub fn trait_supertraits(cx: ctxt,
                          id: ast::def_id)
                       -> @~[InstantiatedTraitRef] {
     // Check the cache.
-    match cx.supertraits.find(&id) {
+    match cx.supertraits.find(id) {
         Some(instantiated_trait_info) => { return instantiated_trait_info; }
         None => {}  // Continue.
     }
@@ -3646,7 +3646,7 @@ pub fn trait_supertraits(cx: ctxt,
 }
 
 pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
-    match cx.trait_method_cache.find(&id) {
+    match cx.trait_method_cache.find(id) {
       // Local traits are supposed to have been added explicitly.
       Some(ms) => ms,
       _ => {
@@ -3680,7 +3680,7 @@ pub fn impl_traits(cx: ctxt, id: ast::def_id, vstore: vstore) -> ~[t] {
 
     if id.crate == ast::local_crate {
         debug!("(impl_traits) searching for trait impl %?", id);
-        match cx.items.find(&id.node) {
+        match cx.items.find(id.node) {
            Some(ast_map::node_item(@ast::item {
                         node: ast::item_impl(_, opt_trait, _, _),
                         _},
@@ -3716,7 +3716,7 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
         cx.sess.unimpl(~"constructor ID of cross-crate tuple structs");
     }
 
-    match cx.items.find(&struct_did.node) {
+    match cx.items.find(struct_did.node) {
         Some(ast_map::node_item(item, _)) => {
             match item.node {
                 ast::item_struct(struct_def, _) => {
@@ -3782,13 +3782,13 @@ impl DtorKind {
 /* If struct_id names a struct with a dtor, return Some(the dtor's id).
    Otherwise return none. */
 pub fn ty_dtor(cx: ctxt, struct_id: def_id) -> DtorKind {
-    match cx.destructor_for_type.find(&struct_id) {
+    match cx.destructor_for_type.find(struct_id) {
         Some(method_def_id) => return TraitDtor(method_def_id),
         None => {}  // Continue.
     }
 
     if is_local(struct_id) {
-       match cx.items.find(&struct_id.node) {
+       match cx.items.find(struct_id.node) {
            Some(ast_map::node_item(@ast::item {
                node: ast::item_struct(@ast::struct_def { dtor: Some(ref dtor),
                                                          _ },
@@ -3816,7 +3816,7 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
     if id.crate != ast::local_crate {
         csearch::get_item_path(cx, id)
     } else {
-        let node = cx.items.get(&id.node);
+        let node = cx.items.get(id.node);
         match node {
           ast_map::node_item(item, path) => {
             let item_elt = match item.node {
@@ -3880,7 +3880,7 @@ pub fn type_is_empty(cx: ctxt, t: t) -> bool {
 }
 
 pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
-    match cx.enum_var_cache.find(&id) {
+    match cx.enum_var_cache.find(id) {
       Some(variants) => return variants,
       _ => { /* fallthrough */ }
     }
@@ -3893,7 +3893,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
           call eval_const_expr, it should never get called twice for the same
           expr, since check_enum_variants also updates the enum_var_cache
          */
-        match cx.items.get(&id.node) {
+        match cx.items.get(id.node) {
           ast_map::node_item(@ast::item {
                     node: ast::item_enum(ref enum_definition, _),
                     _
@@ -3967,7 +3967,7 @@ pub fn enum_variant_with_id(cx: ctxt,
 pub fn lookup_item_type(cx: ctxt,
                         did: ast::def_id)
                      -> ty_param_bounds_and_ty {
-    match cx.tcache.find(&did) {
+    match cx.tcache.find(did) {
       Some(tpt) => {
         // The item is in this crate. The caller should have added it to the
         // type cache already
@@ -3993,7 +3993,7 @@ pub fn lookup_field_type(tcx: ctxt,
         node_id_to_type(tcx, id.node)
     }
     else {
-        match tcx.tcache.find(&id) {
+        match tcx.tcache.find(id) {
            Some(tpt) => tpt.ty,
            None => {
                let tpt = csearch::get_field_type(tcx, struct_id, id);
@@ -4009,7 +4009,7 @@ pub fn lookup_field_type(tcx: ctxt,
 // Fails if the id is not bound to a struct.
 pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
   if did.crate == ast::local_crate {
-    match cx.items.find(&did.node) {
+    match cx.items.find(did.node) {
        Some(ast_map::node_item(i,_)) => {
          match i.node {
             ast::item_struct(struct_def, _) => {
@@ -4214,7 +4214,7 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
         }
     }
 
-    match cx.normalized_cache.find(&t) {
+    match cx.normalized_cache.find(t) {
       Some(t) => return t,
       None => ()
     }
@@ -4397,8 +4397,8 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
 
 // Given a trait and a type, returns the impl of that type
 pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
-    match tcx.trait_impls.find(&trait_id) {
-        Some(ty_to_impl) => match ty_to_impl.find(&self_ty) {
+    match tcx.trait_impls.find(trait_id) {
+        Some(ty_to_impl) => match ty_to_impl.find(self_ty) {
             Some(the_impl) => the_impl.did,
             None => // try autoderef!
                 match deref(tcx, self_ty, false) {

@@ -55,7 +55,7 @@ fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t)
 fn resolve_method_map_entry(fcx: @fn_ctxt, sp: span, id: ast::node_id)
 {
     // Resolve any method map entry
-    match fcx.ccx.method_map.find(&id) {
+    match fcx.ccx.method_map.find(id) {
         None => {}
         Some(ref mme) => {
             for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
@@ -77,7 +77,7 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
     let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
 
     // Resolve any borrowings for the node with id `id`
-    match fcx.inh.adjustments.find(&id) {
+    match fcx.inh.adjustments.find(id) {
         None => (),
         Some(adj) => {
             let resolved_autoref = match adj.autoref {

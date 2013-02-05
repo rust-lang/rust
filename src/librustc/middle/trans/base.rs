@@ -169,7 +169,7 @@ pub fn get_extern_fn(externs: HashMap<~str, ValueRef>,
                      +name: ~str,
                      cc: lib::llvm::CallConv,
                      ty: TypeRef) -> ValueRef {
-    if externs.contains_key_ref(&name) { return externs.get(&name); }
+    if externs.contains_key_ref(&name) { return externs.get(name); }
     // XXX: Bad copy.
     let f = decl_fn(llmod, copy name, cc, ty);
     externs.insert(name, f);
@@ -179,7 +179,7 @@ pub fn get_extern_fn(externs: HashMap<~str, ValueRef>,
 pub fn get_extern_const(externs: HashMap<~str, ValueRef>, llmod: ModuleRef,
                         +name: ~str, ty: TypeRef) -> ValueRef {
     unsafe {
-        if externs.contains_key_ref(&name) { return externs.get(&name); }
+        if externs.contains_key_ref(&name) { return externs.get(name); }
         let c = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(llmod, ty, buf)
         });
@@ -372,7 +372,7 @@ pub fn get_tydesc_simple(ccx: @crate_ctxt, t: ty::t) -> ValueRef {
 }
 
 pub fn get_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
-    match ccx.tydescs.find(&t) {
+    match ccx.tydescs.find(t) {
       Some(inf) => inf,
       _ => {
         ccx.stats.n_static_tydescs += 1u;
@@ -807,7 +807,7 @@ pub fn get_discrim_val(cx: @crate_ctxt, span: span, enum_did: ast::def_id,
 pub fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
     unsafe {
         let _icx = ccx.insn_ctxt("lookup_discriminant");
-        match ccx.discrims.find(&vid) {
+        match ccx.discrims.find(vid) {
             None => {
                 // It's an external discriminant that we haven't seen yet.
                 assert (vid.crate != ast::local_crate);
@@ -1095,7 +1095,7 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
         }
     }
 
-    let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
+    let llptr = match bcx.fcx.lllocals.find(local.node.id) {
       Some(local_mem(v)) => v,
       _ => { bcx.tcx().sess.span_bug(local.span,
                         ~"init_local: Someone forgot to document why it's\
@@ -1437,7 +1437,7 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
       session::arch_x86 | session::arch_arm => ~"llvm.memcpy.p0i8.p0i8.i32",
       session::arch_x86_64 => ~"llvm.memcpy.p0i8.p0i8.i64"
     };
-    let memcpy = ccx.intrinsics.get(&key);
+    let memcpy = ccx.intrinsics.get(key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
     let size = IntCast(cx, n_bytes, ccx.int_type);
@@ -1484,7 +1484,7 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
         }
     }
 
-    let llintrinsicfn = ccx.intrinsics.get(&intrinsic_key);
+    let llintrinsicfn = ccx.intrinsics.get(intrinsic_key);
     let llptr = PointerCast(cx, llptr, T_ptr(T_i8()));
     let llzeroval = C_u8(0);
     let size = IntCast(cx, machine::llsize_of(ccx, llty), ccx.int_type);
@@ -1884,7 +1884,7 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
         // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
-        let llarg = match fcx.llargs.find(&va.id) {
+        let llarg = match fcx.llargs.find(va.id) {
             Some(local_mem(x)) => x,
             _ => die!(~"trans_enum_variant: how do we know this works?"),
         };
@@ -1930,7 +1930,7 @@ pub fn trans_tuple_struct(ccx: @crate_ctxt,
 
     for fields.eachi |i, field| {
         let lldestptr = GEPi(bcx, fcx.llretptr, [0, 0, i]);
-        let llarg = match fcx.llargs.get(&field.node.id) {
+        let llarg = match fcx.llargs.get(field.node.id) {
             local_mem(x) => x,
             _ => {
                 ccx.tcx.sess.bug(~"trans_tuple_struct: llarg wasn't \
@@ -2019,7 +2019,7 @@ pub fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
 
 pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
-    let path = match ccx.tcx.items.get(&item.id) {
+    let path = match ccx.tcx.items.get(item.id) {
         ast_map::node_item(_, p) => p,
         // tjc: ?
         _ => die!(~"trans_item"),
@@ -2275,7 +2275,7 @@ pub fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
 
 pub fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
     vec::append(
-        /*bad*/copy *match ccx.tcx.items.get(&i.id) {
+        /*bad*/copy *match ccx.tcx.items.get(i.id) {
             ast_map::node_item(_, p) => p,
                 // separate map for paths?
             _ => die!(~"item_path")
@@ -2291,7 +2291,7 @@ pub fn get_dtor_symbol(ccx: @crate_ctxt,
                        +substs: Option<param_substs>)
                     -> ~str {
   let t = ty::node_id_to_type(ccx.tcx, id);
-  match ccx.item_symbols.find(&id) {
+  match ccx.item_symbols.find(id) {
      Some(ref s) => (/*bad*/copy *s),
      None if substs.is_none() => {
        let s = mangle_exported_name(
@@ -2326,12 +2326,12 @@ pub fn get_dtor_symbol(ccx: @crate_ctxt,
 pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
     debug!("get_item_val(id=`%?`)", id);
     let tcx = ccx.tcx;
-    match ccx.item_vals.find(&id) {
+    match ccx.item_vals.find(id) {
       Some(v) => v,
       None => {
 
         let mut exprt = false;
-        let val = match ccx.tcx.items.get(&id) {
+        let val = match ccx.tcx.items.get(id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(/*bad*/copy *pth,
                                       ~[path_name(i.ident)]);
@@ -2770,7 +2770,7 @@ pub fn declare_dbg_intrinsics(llmod: ModuleRef,
 
 pub fn trap(bcx: block) {
     let v: ~[ValueRef] = ~[];
-    match bcx.ccx().intrinsics.find(&~"llvm.trap") {
+    match bcx.ccx().intrinsics.find(~"llvm.trap") {
       Some(x) => { Call(bcx, x, v); },
       _ => bcx.sess().bug(~"unbound llvm.trap in trap")
     }

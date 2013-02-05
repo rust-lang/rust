@@ -126,12 +126,12 @@ impl check_loan_ctxt {
         let region_map = self.tcx().region_map;
         let pure_map = self.req_maps.pure_map;
         loop {
-            match pure_map.find(&scope_id) {
+            match pure_map.find(scope_id) {
               None => (),
               Some(ref e) => return Some(pc_cmt((*e)))
             }
 
-            match region_map.find(&scope_id) {
+            match region_map.find(scope_id) {
               None => return default_purity,
               Some(next_scope_id) => scope_id = next_scope_id
             }
@@ -144,13 +144,13 @@ impl check_loan_ctxt {
         let req_loan_map = self.req_maps.req_loan_map;
 
         loop {
-            for req_loan_map.find(&scope_id).each |loans| {
+            for req_loan_map.find(scope_id).each |loans| {
                 for loans.each |loan| {
                     if !f(loan) { return; }
                 }
             }
 
-            match region_map.find(&scope_id) {
+            match region_map.find(scope_id) {
               None => return,
               Some(next_scope_id) => scope_id = next_scope_id,
             }
@@ -199,7 +199,7 @@ impl check_loan_ctxt {
           Some(expr) => {
             match expr.node {
               ast::expr_path(_) if pc == pc_pure_fn => {
-                let def = self.tcx().def_map.get(&expr.id);
+                let def = self.tcx().def_map.get(expr.id);
                 let did = ast_util::def_id_of_def(def);
                 let is_fn_arg =
                     did.crate == ast::local_crate &&
@@ -247,7 +247,7 @@ impl check_loan_ctxt {
     fn is_allowed_pure_arg(expr: @ast::expr) -> bool {
         return match expr.node {
           ast::expr_path(_) => {
-            let def = self.tcx().def_map.get(&expr.id);
+            let def = self.tcx().def_map.get(expr.id);
             let did = ast_util::def_id_of_def(def);
             did.crate == ast::local_crate &&
                 (*self.fn_args).contains(&(did.node))
@@ -262,14 +262,14 @@ impl check_loan_ctxt {
     fn check_for_conflicting_loans(scope_id: ast::node_id) {
         debug!("check_for_conflicting_loans(scope_id=%?)", scope_id);
 
-        let new_loans = match self.req_maps.req_loan_map.find(&scope_id) {
+        let new_loans = match self.req_maps.req_loan_map.find(scope_id) {
             None => return,
             Some(loans) => loans
         };
 
         debug!("new_loans has length %?", new_loans.len());
 
-        let par_scope_id = self.tcx().region_map.get(&scope_id);
+        let par_scope_id = self.tcx().region_map.get(scope_id);
         for self.walk_loans(par_scope_id) |old_loan| {
             debug!("old_loan=%?", self.bccx.loan_to_repr(old_loan));
 
@@ -325,7 +325,7 @@ impl check_loan_ctxt {
     fn check_assignment(at: assignment_type, ex: @ast::expr) {
         // We don't use cat_expr() here because we don't want to treat
         // auto-ref'd parameters in overloaded operators as rvalues.
-        let cmt = match self.bccx.tcx.adjustments.find(&ex.id) {
+        let cmt = match self.bccx.tcx.adjustments.find(ex.id) {
             None => self.bccx.cat_expr_unadjusted(ex),
             Some(adj) => self.bccx.cat_expr_autoderefd(ex, adj)
         };
@@ -612,7 +612,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
     {
         match fty_proto {
             ast::ProtoBox | ast::ProtoUniq => {
-                let cap_vars = self.bccx.capture_map.get(&id);
+                let cap_vars = self.bccx.capture_map.get(id);
                 for cap_vars.each |cap_var| {
                     match cap_var.mode {
                         moves::CapRef | moves::CapCopy => { loop; }

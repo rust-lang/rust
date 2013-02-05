@@ -126,7 +126,7 @@ pub fn check_expr(sess: Session,
                     e.span, ~"paths in constants may only refer to \
                               items without type parameters");
             }
-            match def_map.find(&e.id) {
+            match def_map.find(e.id) {
               Some(def_const(def_id)) |
                 Some(def_fn(def_id, _)) |
                 Some(def_variant(_, def_id)) |
@@ -151,7 +151,7 @@ pub fn check_expr(sess: Session,
             }
           }
           expr_call(callee, _, false) => {
-            match def_map.find(&callee.id) {
+            match def_map.find(callee.id) {
                 Some(def_struct(*)) => {}    // OK.
                 Some(def_variant(*)) => {}    // OK.
                 _ => {
@@ -247,9 +247,9 @@ pub fn check_item_recursion(sess: Session,
     fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {
         match e.node {
           expr_path(*) => {
-            match env.def_map.find(&e.id) {
+            match env.def_map.find(e.id) {
               Some(def_const(def_id)) => {
-                match env.ast_map.get(&def_id.node) {
+                match env.ast_map.get(def_id.node) {
                   ast_map::node_item(it, _) => {
                     (v.visit_item)(it, env, v);
                   }

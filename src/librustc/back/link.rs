@@ -596,7 +596,7 @@ pub fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
 }
 
 pub fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
-    match ccx.type_hashcodes.find(&t) {
+    match ccx.type_hashcodes.find(t) {
       Some(h) => h,
       None => {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);

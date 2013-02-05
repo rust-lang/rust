@@ -54,7 +54,7 @@ pub fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
 
 fn traverse_exports(cx: ctx, mod_id: node_id) -> bool {
     let mut found_export = false;
-    match cx.exp_map2.find(&mod_id) {
+    match cx.exp_map2.find(mod_id) {
       Some(ref exp2s) => {
         for (*exp2s).each |e2| {
             found_export = true;
@@ -68,7 +68,7 @@ fn traverse_exports(cx: ctx, mod_id: node_id) -> bool {
 
 fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { return; }
-    let n = match cx.tcx.items.find(&did.node) {
+    let n = match cx.tcx.items.find(did.node) {
         None => return, // This can happen for self, for example
         Some(ref n) => (/*bad*/copy *n)
     };
@@ -150,7 +150,7 @@ fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
 
     match ty.node {
       ty_path(p, p_id) => {
-        match cx.tcx.def_map.find(&p_id) {
+        match cx.tcx.def_map.find(p_id) {
           // Kind of a hack to check this here, but I'm not sure what else
           // to do
           Some(def_prim_ty(_)) => { /* do nothing */ }
@@ -169,7 +169,7 @@ fn traverse_inline_body(cx: ctx, body: blk) {
     fn traverse_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         match e.node {
           expr_path(_) => {
-            match cx.tcx.def_map.find(&e.id) {
+            match cx.tcx.def_map.find(e.id) {
                 Some(d) => {
                   traverse_def_id(cx, def_id_of_def(d));
                 }
@@ -179,7 +179,7 @@ fn traverse_inline_body(cx: ctx, body: blk) {
             }
           }
           expr_field(_, _, _) => {
-            match cx.method_map.find(&e.id) {
+            match cx.method_map.find(e.id) {
               Some(typeck::method_map_entry {
                   origin: typeck::method_static(did),
                   _
@@ -190,7 +190,7 @@ fn traverse_inline_body(cx: ctx, body: blk) {
             }
           }
           expr_method_call(*) => {
-            match cx.method_map.find(&e.id) {
+            match cx.method_map.find(e.id) {
               Some(typeck::method_map_entry {
                   origin: typeck::method_static(did),
                   _

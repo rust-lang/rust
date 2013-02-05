@@ -181,7 +181,7 @@ pub fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
 pub fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!("visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
-    for rcx.fcx.inh.adjustments.find(&expr.id).each |adjustment| {
+    for rcx.fcx.inh.adjustments.find(expr.id).each |adjustment| {
         for adjustment.autoref.each |autoref| {
             guarantor::for_autoref(rcx, expr, *adjustment, autoref);
         }
@@ -327,7 +327,7 @@ pub fn constrain_auto_ref(rcx: @rcx, expr: @ast::expr) {
 
     debug!("constrain_auto_ref(expr=%s)", rcx.fcx.expr_to_str(expr));
 
-    let adjustment = rcx.fcx.inh.adjustments.find(&expr.id);
+    let adjustment = rcx.fcx.inh.adjustments.find(expr.id);
     let region = match adjustment {
         Some(@ty::AutoAdjustment { autoref: Some(ref auto_ref), _ }) => {
             auto_ref.region
@@ -725,7 +725,7 @@ pub mod guarantor {
         let mut expr_ct = categorize_unadjusted(rcx, expr);
         debug!("before adjustments, cat=%?", expr_ct.cat);
 
-        for rcx.fcx.inh.adjustments.find(&expr.id).each |adjustment| {
+        for rcx.fcx.inh.adjustments.find(expr.id).each |adjustment| {
             debug!("adjustment=%?", adjustment);
 
             expr_ct = apply_autoderefs(

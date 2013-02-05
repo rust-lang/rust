@@ -185,7 +185,7 @@ fn drop_and_cancel_clean(bcx: block, dat: Datum) -> block {
 
 pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
     debug!("trans_to_datum(expr=%s)", bcx.expr_to_str(expr));
-    return match bcx.tcx().adjustments.find(&expr.id) {
+    return match bcx.tcx().adjustments.find(expr.id) {
         None => {
             trans_to_datum_unadjusted(bcx, expr)
         }
@@ -329,7 +329,7 @@ fn trans_lvalue(bcx: block, expr: @ast::expr) -> DatumBlock {
      * instead, but sometimes we call trans_lvalue() directly as a
      * means of asserting that a particular expression is an lvalue. */
 
-    return match bcx.tcx().adjustments.find(&expr.id) {
+    return match bcx.tcx().adjustments.find(expr.id) {
         None => trans_lvalue_unadjusted(bcx, expr),
         Some(_) => {
             bcx.sess().span_bug(
@@ -742,7 +742,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     // the lvalue in there, and then arrange for it to be cleaned up
     // at the end of the scope with id `scope_id`:
     let root_key = root_map_key { id: expr.id, derefs: 0u };
-    for bcx.ccx().maps.root_map.find(&root_key).each |&root_info| {
+    for bcx.ccx().maps.root_map.find(root_key).each |&root_info| {
         bcx = unrooted_datum.root(bcx, root_info);
     }
 
@@ -934,7 +934,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
         ast::def_upvar(nid, _, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
-            match bcx.fcx.llupvars.find(&nid) {
+            match bcx.fcx.llupvars.find(nid) {
                 Some(val) => {
                     Datum {
                         val: val,
@@ -987,7 +987,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
     fn take_local(bcx: block,
                   table: HashMap<ast::node_id, local_val>,
                   nid: ast::node_id) -> Datum {
-        let (v, mode) = match table.find(&nid) {
+        let (v, mode) = match table.find(nid) {
             Some(local_mem(v)) => (v, ByRef),
             Some(local_imm(v)) => (v, ByValue),
             None => {
@@ -1066,7 +1066,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                         ty_to_str(tcx, ty)));
                 }
                 Some(node_id) => {
-                    match tcx.def_map.get(&node_id) {
+                    match tcx.def_map.get(node_id) {
                         ast::def_variant(_, variant_id) => {
                             op(false, struct_mutable_fields(
                                 tcx, variant_id, substs))
@@ -1120,7 +1120,7 @@ fn trans_rec_or_struct(bcx: block,
     let tcx = bcx.tcx();
     let addr = match ty::get(ty).sty {
         ty::ty_enum(_, ref substs) => {
-            match tcx.def_map.get(&id) {
+            match tcx.def_map.get(id) {
                 ast::def_variant(enum_id, variant_id) => {
                     let variant_info = ty::enum_variant_with_id(
                         tcx, enum_id, variant_id);
@@ -1479,7 +1479,7 @@ fn trans_overloaded_op(bcx: block,
                        dest: Dest,
                        +autoref_arg: AutorefArg) -> block
 {
-    let origin = bcx.ccx().maps.method_map.get(&expr.id);
+    let origin = bcx.ccx().maps.method_map.get(expr.id);
     let fty = node_id_type(bcx, expr.callee_id);
     return callee::trans_call_inner(
         bcx, expr.info(), fty,
@@ -1636,7 +1636,7 @@ fn trans_assign_op(bcx: block,
     let dst_datum = unpack_datum!(bcx, trans_lvalue_unadjusted(bcx, dst));
 
     // A user-defined operator method
-    if bcx.ccx().maps.method_map.find(&expr.id).is_some() {
+    if bcx.ccx().maps.method_map.find(expr.id).is_some() {
         // FIXME(#2528) evaluates the receiver twice!!
         let scratch = scratch_datum(bcx, dst_datum.ty, false);
         let bcx = trans_overloaded_op(bcx, expr, dst, ~[src],

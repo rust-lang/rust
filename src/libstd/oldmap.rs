@@ -226,9 +226,9 @@ pub mod chained {
             }
         }
 
-        pure fn find(&self, k: &K) -> Option<V> {
+        pure fn find(&self, k: K) -> Option<V> {
             unsafe {
-                match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
+                match self.search_tbl(&k, k.hash_keyed(0,0) as uint) {
                   NotFound => None,
                   FoundFirst(_, entry) => Some(entry.value),
                   FoundAfter(_, entry) => Some(entry.value)
@@ -291,7 +291,7 @@ pub mod chained {
             return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 
-        pure fn get(&self, k: &K) -> V {
+        pure fn get(&self, k: K) -> V {
             let opt_v = self.find(k);
             if opt_v.is_none() {
                 die!(fmt!("Key not found in table: %?", k));
@@ -364,7 +364,7 @@ pub mod chained {
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
         pure fn index(&self, k: K) -> V {
             unsafe {
-                self.get(&k)
+                self.get(k)
             }
         }
     }
@@ -421,6 +421,7 @@ pub fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
 #[cfg(test)]
 mod tests {
     use core::option::None;
+    use core::option;
     use core::uint;
 
     use super::*;
@@ -436,13 +437,13 @@ mod tests {
         assert (hm_uu.insert(10u, 12u));
         assert (hm_uu.insert(11u, 13u));
         assert (hm_uu.insert(12u, 14u));
-        assert (hm_uu.get(&11) == 13u);
-        assert (hm_uu.get(&12) == 14u);
-        assert (hm_uu.get(&10) == 12u);
+        assert (hm_uu.get(11u) == 13u);
+        assert (hm_uu.get(12u) == 14u);
+        assert (hm_uu.get(10u) == 12u);
         assert (!hm_uu.insert(12u, 14u));
-        assert (hm_uu.get(&12) == 14u);
+        assert (hm_uu.get(12u) == 14u);
         assert (!hm_uu.insert(12u, 12u));
-        assert (hm_uu.get(&12) == 12u);
+        assert (hm_uu.get(12u) == 12u);
         let ten: ~str = ~"ten";
         let eleven: ~str = ~"eleven";
         let twelve: ~str = ~"twelve";
@@ -452,40 +453,40 @@ mod tests {
         assert (hm_su.insert(~"ten", 12u));
         assert (hm_su.insert(eleven, 13u));
         assert (hm_su.insert(~"twelve", 14u));
-        assert (hm_su.get(&eleven) == 13u);
-        assert (hm_su.get(&~"eleven") == 13u);
-        assert (hm_su.get(&~"twelve") == 14u);
-        assert (hm_su.get(&~"ten") == 12u);
+        assert (hm_su.get(eleven) == 13u);
+        assert (hm_su.get(~"eleven") == 13u);
+        assert (hm_su.get(~"twelve") == 14u);
+        assert (hm_su.get(~"ten") == 12u);
         assert (!hm_su.insert(~"twelve", 14u));
-        assert (hm_su.get(&~"twelve") == 14u);
+        assert (hm_su.get(~"twelve") == 14u);
         assert (!hm_su.insert(~"twelve", 12u));
-        assert (hm_su.get(&~"twelve") == 12u);
+        assert (hm_su.get(~"twelve") == 12u);
         debug!("uint -> str");
         let hm_us: HashMap<uint, ~str> =
             HashMap::<uint, ~str>();
         assert (hm_us.insert(10u, ~"twelve"));
         assert (hm_us.insert(11u, ~"thirteen"));
         assert (hm_us.insert(12u, ~"fourteen"));
-        assert hm_us.get(&11) == ~"thirteen";
-        assert hm_us.get(&12) == ~"fourteen";
-        assert hm_us.get(&10) == ~"twelve";
+        assert hm_us.get(11u) == ~"thirteen";
+        assert hm_us.get(12u) == ~"fourteen";
+        assert hm_us.get(10u) == ~"twelve";
         assert (!hm_us.insert(12u, ~"fourteen"));
-        assert hm_us.get(&12) == ~"fourteen";
+        assert hm_us.get(12u) == ~"fourteen";
         assert (!hm_us.insert(12u, ~"twelve"));
-        assert hm_us.get(&12) == ~"twelve";
+        assert hm_us.get(12u) == ~"twelve";
         debug!("str -> str");
         let hm_ss: HashMap<~str, ~str> =
             HashMap::<~str, ~str>();
         assert (hm_ss.insert(ten, ~"twelve"));
         assert (hm_ss.insert(eleven, ~"thirteen"));
         assert (hm_ss.insert(twelve, ~"fourteen"));
-        assert hm_ss.get(&~"eleven") == ~"thirteen";
-        assert hm_ss.get(&~"twelve") == ~"fourteen";
-        assert hm_ss.get(&~"ten") == ~"twelve";
+        assert hm_ss.get(~"eleven") == ~"thirteen";
+        assert hm_ss.get(~"twelve") == ~"fourteen";
+        assert hm_ss.get(~"ten") == ~"twelve";
         assert (!hm_ss.insert(~"twelve", ~"fourteen"));
-        assert hm_ss.get(&~"twelve") == ~"fourteen";
+        assert hm_ss.get(~"twelve") == ~"fourteen";
         assert (!hm_ss.insert(~"twelve", ~"twelve"));
-        assert hm_ss.get(&~"twelve") == ~"twelve";
+        assert hm_ss.get(~"twelve") == ~"twelve";
         debug!("*** finished test_simple");
     }
 
@@ -511,17 +512,17 @@ mod tests {
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
-            debug!("get(%u) = %u", i, hm_uu.get(&i));
-            assert (hm_uu.get(&i) == i * i);
+            debug!("get(%u) = %u", i, hm_uu.get(i));
+            assert (hm_uu.get(i) == i * i);
             i += 1u;
         }
         assert (hm_uu.insert(num_to_insert, 17u));
-        assert (hm_uu.get(&num_to_insert) == 17u);
+        assert (hm_uu.get(num_to_insert) == 17u);
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
-            debug!("get(%u) = %u", i, hm_uu.get(&i));
-            assert (hm_uu.get(&i) == i * i);
+            debug!("get(%u) = %u", i, hm_uu.get(i));
+            assert (hm_uu.get(i) == i * i);
             i += 1u;
         }
         debug!("str -> str");
@@ -541,22 +542,22 @@ mod tests {
         while i < num_to_insert {
             debug!("get(\"%s\") = \"%s\"",
                    uint::to_str_radix(i, 2u),
-                   hm_ss.get(&uint::to_str_radix(i, 2u)));
-            assert hm_ss.get(&uint::to_str_radix(i, 2u)) ==
+                   hm_ss.get(uint::to_str_radix(i, 2u)));
+            assert hm_ss.get(uint::to_str_radix(i, 2u)) ==
                              uint::to_str_radix(i * i, 2u);
             i += 1u;
         }
         assert (hm_ss.insert(uint::to_str_radix(num_to_insert, 2u),
                              uint::to_str_radix(17u, 2u)));
-        assert hm_ss.get(&uint::to_str_radix(num_to_insert, 2u)) ==
+        assert hm_ss.get(uint::to_str_radix(num_to_insert, 2u)) ==
             uint::to_str_radix(17u, 2u);
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
             debug!("get(\"%s\") = \"%s\"",
                    uint::to_str_radix(i, 2u),
-                   hm_ss.get(&uint::to_str_radix(i, 2u)));
-            assert hm_ss.get(&uint::to_str_radix(i, 2u)) ==
+                   hm_ss.get(uint::to_str_radix(i, 2u)));
+            assert hm_ss.get(uint::to_str_radix(i, 2u)) ==
                              uint::to_str_radix(i * i, 2u);
             i += 1u;
         }
@@ -588,15 +589,15 @@ mod tests {
         debug!("-----");
         i = 1u;
         while i < num_to_insert {
-            debug!("get(%u) = %u", i, hm.get(&i));
-            assert (hm.get(&i) == i * i);
+            debug!("get(%u) = %u", i, hm.get(i));
+            assert (hm.get(i) == i * i);
             i += 2u;
         }
         debug!("-----");
         i = 1u;
         while i < num_to_insert {
-            debug!("get(%u) = %u", i, hm.get(&i));
-            assert (hm.get(&i) == i * i);
+            debug!("get(%u) = %u", i, hm.get(i));
+            assert (hm.get(i) == i * i);
             i += 2u;
         }
         debug!("-----");
@@ -610,16 +611,16 @@ mod tests {
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
-            debug!("get(%u) = %u", i, hm.get(&i));
-            assert (hm.get(&i) == i * i);
+            debug!("get(%u) = %u", i, hm.get(i));
+            assert (hm.get(i) == i * i);
             i += 1u;
         }
         debug!("-----");
         assert (hm.len() == num_to_insert);
         i = 0u;
         while i < num_to_insert {
-            debug!("get(%u) = %u", i, hm.get(&i));
-            assert (hm.get(&i) == i * i);
+            debug!("get(%u) = %u", i, hm.get(i));
+            assert (hm.get(i) == i * i);
             i += 1u;
         }
         debug!("*** finished test_removal");
@@ -638,9 +639,9 @@ mod tests {
     fn test_find() {
         let key = ~"k";
         let map = HashMap::<~str, ~str>();
-        assert map.find(&key).is_none();
+        assert (option::is_none(&map.find(key)));
         map.insert(key, ~"val");
-        assert map.find(&key).get() == ~"val";
+        assert (option::get(map.find(key)) == ~"val");
     }
 
     #[test]
@@ -663,9 +664,9 @@ mod tests {
             (~"c", 3)
         ]);
         assert map.len() == 3u;
-        assert map.get(&~"a") == 1;
-        assert map.get(&~"b") == 2;
-        assert map.get(&~"c") == 3;
+        assert map.get(~"a") == 1;
+        assert map.get(~"b") == 2;
+        assert map.get(~"c") == 3;
     }
 
     #[test]
@@ -691,11 +692,11 @@ mod tests {
         map.update_with_key(~"cat",      2, addMoreToCount);
 
         // check the total counts
-        assert map.find(&~"cat").get() == 10;
-        assert map.find(&~"ferret").get() == 3;
-        assert map.find(&~"mongoose").get() == 1;
+        assert 10 == option::get(map.find(~"cat"));
+        assert  3 == option::get(map.find(~"ferret"));
+        assert  1 == option::get(map.find(~"mongoose"));
 
         // sadly, no mythical animals were counted!
-        assert map.find(&~"unicorn").is_none();
+        assert None == map.find(~"unicorn");
     }
 }

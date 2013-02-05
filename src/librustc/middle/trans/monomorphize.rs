@@ -69,7 +69,7 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
            real_substs.map(|s| ty_to_str(ccx.tcx, *s)),
            substs.map(|s| ty_to_str(ccx.tcx, *s)), hash_id);
 
-    match ccx.monomorphized.find(&hash_id) {
+    match ccx.monomorphized.find(hash_id) {
       Some(val) => {
         debug!("leaving monomorphic fn %s",
                ty::item_path_str(ccx.tcx, fn_id));
@@ -81,7 +81,7 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let mut llitem_ty = tpt.ty;
 
-    let map_node = session::expect(ccx.sess, ccx.tcx.items.find(&fn_id.node),
+    let map_node = session::expect(ccx.sess, ccx.tcx.items.find(fn_id.node),
      || fmt!("While monomorphizing %?, couldn't find it in the item map \
         (may have attempted to monomorphize an item defined in a different \
         crate?)", fn_id));
@@ -136,7 +136,7 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
 
     ccx.stats.n_monos += 1;
 
-    let depth = option::get_or_default(ccx.monomorphizing.find(&fn_id), 0u);
+    let depth = option::get_or_default(ccx.monomorphizing.find(fn_id), 0u);
     // Random cut-off -- code that needs to instantiate the same function
     // recursively more than ten times can probably safely be assumed to be
     // causing an infinite expansion.
