@@ -167,20 +167,6 @@ struct Database {
 }
 
 impl Database {
-    #[cfg(stage0)]
-    #[cfg(stage1)]
-    fn prepare(&mut self, fn_name: &str,
-               declared_inputs: &WorkMap) -> Option<(WorkMap, WorkMap, ~str)>
-    {
-        let k = json_encode(&(fn_name, declared_inputs));
-        let db_cache = copy self.db_cache;
-        match db_cache.find(&k) {
-            None => None,
-            Some(&v) => Some(json_decode(copy v))
-        }
-    }
-
-    #[cfg(stage2)]
     fn prepare(&mut self, fn_name: &str,
                declared_inputs: &WorkMap) -> Option<(WorkMap, WorkMap, ~str)>
     {
@@ -235,13 +221,6 @@ struct Exec {
     discovered_outputs: WorkMap
 }
 
-#[cfg(stage0)]
-struct Work<T:Owned> {
-    prep: @Mut<Prep>,
-    res: Option<Either<T,PortOne<(Exec,T)>>>
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 struct Work<T> {
     prep: @Mut<Prep>,
     res: Option<Either<T,PortOne<(Exec,T)>>>
