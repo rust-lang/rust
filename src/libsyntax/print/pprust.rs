@@ -23,7 +23,7 @@ use parse::classify::{stmt_ends_with_semi};
 use parse::token::ident_interner;
 use parse::{comments, lexer, token};
 use parse;
-use print::pp::{break_offset, word, printer, space, zerobreak, hardbreak};
+use print::pp::{break_offset, word, Printer, space, zerobreak, hardbreak};
 use print::pp::{breaks, consistent, inconsistent, eof};
 use print::pp;
 use print::pprust;
@@ -60,7 +60,7 @@ pub struct CurrentCommentAndLiteral {
 }
 
 pub struct ps {
-    s: pp::printer,
+    s: @mut pp::Printer,
     cm: Option<@CodeMap>,
     intr: @token::ident_interner,
     comments: Option<~[comments::cmnt]>,
