@@ -20,6 +20,11 @@ use core::util::*;              // shouldn't get errors for not using
 // Should only get one error instead of two errors here
 use core::option::{Some, None}; //~ ERROR unused import
 
+use core::io::ReaderUtil;       //~ ERROR unused import
+// Be sure that if we just bring some methods into scope that they're also
+// counted as being used.
+use core::io::WriterUtil;
+
 mod foo {
     pub struct Point{x: int, y: int}
     pub struct Square{p: Point, h: uint, w: uint}
@@ -37,4 +42,5 @@ fn main() {
     cal(foo::Point{x:3, y:9});
     let a = 3;
     ignore(a);
+    io::stdout().write_str(~"a");
 }
