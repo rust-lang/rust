@@ -263,9 +263,10 @@ fn mk_std(cx: test_ctxt) -> @ast::view_item {
     let vers = nospan(vers);
     let mi = ast::meta_name_value(~"vers", vers);
     let mi = nospan(mi);
-    let vi = ast::view_item_use(cx.sess.ident_of(~"std"),
-                                ~[@mi],
-                                cx.sess.next_node_id());
+    let vi = ast::view_item_extern_mod(
+                cx.sess.ident_of(~"std"),
+                ~[@mi],
+                cx.sess.next_node_id());
     let vi = ast::view_item {
         node: vi,
         attrs: ~[],
