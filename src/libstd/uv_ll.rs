@@ -1543,7 +1543,7 @@ pub mod test {
             let continue_async_handle_ptr =
                 ptr::addr_of(&continue_async_handle);
             let async_data =
-                { continue_chan: continue_chan };
+                async_handle_data { continue_chan: continue_chan };
             let async_data_ptr = ptr::addr_of(&async_data);
 
             let server_data = tcp_server_data {
