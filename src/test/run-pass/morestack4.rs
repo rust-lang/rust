@@ -61,7 +61,7 @@ fn getbig(i: Biggy) {
     }
 }
 
-fn main() {
+pub fn main() {
     getbig(Biggy {
         a00: 10000u64,
         a01: 10000u64,

@@ -14,8 +14,8 @@
 // -*- rust -*-
 fn two(it: fn(int)) { it(0); it(1); }
 
-fn main() {
-    let a: ~[mut int] = ~[mut -1, -1, -1, -1];
+pub fn main() {
+    let mut a: ~[int] = ~[-1, -1, -1, -1];
     let mut p: int = 0;
     do two |i| {
         do two |j| { a[p] = 10 * i + j; p += 1; }

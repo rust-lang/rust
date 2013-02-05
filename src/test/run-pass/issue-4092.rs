@@ -10,7 +10,7 @@
 
 extern mod std;
 
-fn main() {
-    let x = std::map::HashMap();
+pub fn main() {
+    let x = std::oldmap::HashMap();
     x.insert((@"abc", 0), 0);
 }

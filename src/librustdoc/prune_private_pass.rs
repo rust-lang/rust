@@ -31,6 +31,7 @@ pub fn mk_pass() -> Pass {
 
 pub fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
     let fold = Fold {
+        ctxt: srv.clone(),
         fold_mod: fold_mod,
         .. fold::default_any_fold(srv)
     };
@@ -45,7 +46,7 @@ fn fold_mod(
 
     doc::ModDoc {
         items: doc.items.filtered(|ItemTag| {
-            is_visible(fold.ctxt, ItemTag.item())
+            is_visible(fold.ctxt.clone(), ItemTag.item())
         }),
         .. doc
     }
@@ -82,8 +83,8 @@ pub mod test {
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
-            let doc = extract::from_srv(srv, ~"");
-            run(srv, doc)
+            let doc = extract::from_srv(srv.clone(), ~"");
+            run(srv.clone(), doc)
         }
     }
 }

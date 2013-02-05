@@ -28,7 +28,7 @@ fn count(n: uint) -> uint {
     }
 }
 
-fn main() {
+pub fn main() {
     let result = count(1000u);
     debug!("result = %?", result);
     assert result == 1000u;

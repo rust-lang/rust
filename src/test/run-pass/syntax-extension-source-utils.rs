@@ -17,7 +17,7 @@ pub mod m1 {
     }
 }
 
-fn main() {
+pub fn main() {
     assert(line!() == 21);
     assert(col!() == 11);
     assert(file!().to_owned().ends_with(~"syntax-extension-source-utils.rs"));

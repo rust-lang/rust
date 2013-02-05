@@ -22,7 +22,7 @@ use fold;
 use pass::Pass;
 
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::par;
 use syntax::ast;
 use syntax::print::pprust;
@@ -40,6 +40,7 @@ pub fn run(
     doc: doc::Doc
 ) -> doc::Doc {
     let fold = Fold {
+        ctxt: srv.clone(),
         fold_fn: fold_fn,
         fold_const: fold_const,
         fold_enum: fold_enum,
@@ -57,7 +58,7 @@ fn fold_fn(
     doc: doc::FnDoc
 ) -> doc::FnDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::SimpleItemDoc {
         sig: get_fn_sig(srv, doc.id()),
@@ -79,7 +80,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
             Some(pprust::fun_to_str(*decl, ident, copy *tys,
                                     extract::interner()))
           }
-          _ => fail ~"get_fn_sig: fn_id not bound to a fn item"
+          _ => die!(~"get_fn_sig: fn_id not bound to a fn item")
         }
     }
 }
@@ -100,7 +101,7 @@ fn fold_const(
     fold: &fold::Fold<astsrv::Srv>,
     doc: doc::ConstDoc
 ) -> doc::ConstDoc {
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::SimpleItemDoc {
         sig: Some({
@@ -112,7 +113,7 @@ fn fold_const(
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }
-                    _ => fail ~"fold_const: id not bound to a const item"
+                    _ => die!(~"fold_const: id not bound to a const item")
                 }
             }}),
         .. doc
@@ -130,13 +131,13 @@ fn fold_enum(
     doc: doc::EnumDoc
 ) -> doc::EnumDoc {
     let doc_id = doc.id();
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::EnumDoc {
-        variants: do par::map(doc.variants) |variant| {
+        variants: do vec::map(doc.variants) |variant| {
             let sig = {
                 let variant = copy *variant;
-                do astsrv::exec(srv) |copy variant, ctxt| {
+                do astsrv::exec(srv.clone()) |copy variant, ctxt| {
                     match ctxt.ast_map.get(doc_id) {
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
@@ -149,7 +150,7 @@ fn fold_enum(
                             pprust::variant_to_str(
                                 ast_variant, extract::interner())
                         }
-                        _ => fail ~"enum variant not bound to an enum item"
+                        _ => die!(~"enum variant not bound to an enum item")
                     }
                 }
             };
@@ -174,7 +175,7 @@ fn fold_trait(
     doc: doc::TraitDoc
 ) -> doc::TraitDoc {
     doc::TraitDoc {
-        methods: merge_methods(fold.ctxt, doc.id(), copy doc.methods),
+        methods: merge_methods(fold.ctxt.clone(), doc.id(), copy doc.methods),
         .. doc
     }
 }
@@ -184,9 +185,9 @@ fn merge_methods(
     item_id: doc::AstId,
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
-    do par::map(docs) |doc| {
+    do vec::map(docs) |doc| {
         doc::MethodDoc {
-            sig: get_method_sig(srv, item_id, copy doc.name),
+            sig: get_method_sig(srv.clone(), item_id, copy doc.name),
             .. copy *doc
         }
     }
@@ -228,7 +229,7 @@ fn get_method_sig(
                     }
                   }
                 }
-                _ => fail ~"method not found"
+                _ => die!(~"method not found")
             }
           }
           ast_map::node_item(@ast::item {
@@ -245,10 +246,10 @@ fn get_method_sig(
                         extract::interner()
                     ))
                 }
-                None => fail ~"method not found"
+                None => die!(~"method not found")
             }
           }
-          _ => fail ~"get_method_sig: item ID not bound to trait or impl"
+          _ => die!(~"get_method_sig: item ID not bound to trait or impl")
         }
     }
 }
@@ -265,7 +266,7 @@ fn fold_impl(
     doc: doc::ImplDoc
 ) -> doc::ImplDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     let (trait_types, self_ty) = {
         let doc = copy doc;
@@ -281,7 +282,7 @@ fn fold_impl(
                      Some(pprust::ty_to_str(
                          self_ty, extract::interner())))
                 }
-                _ => fail ~"expected impl"
+                _ => die!(~"expected impl")
             }
         }
     };
@@ -289,7 +290,7 @@ fn fold_impl(
     doc::ImplDoc {
         trait_types: trait_types,
         self_ty: self_ty,
-        methods: merge_methods(fold.ctxt, doc.id(), copy doc.methods),
+        methods: merge_methods(fold.ctxt.clone(), doc.id(), copy doc.methods),
         .. doc
     }
 }
@@ -314,7 +315,7 @@ fn should_add_impl_self_ty() {
 
 #[test]
 fn should_add_impl_method_sigs() {
-    let doc = test::mk_doc(~"impl int { fn a<T>() -> int { fail } }");
+    let doc = test::mk_doc(~"impl int { fn a<T>() -> int { die!() } }");
     assert doc.cratemod().impls()[0].methods[0].sig
         == Some(~"fn a<T>() -> int");
 }
@@ -324,7 +325,7 @@ fn fold_type(
     doc: doc::TyDoc
 ) -> doc::TyDoc {
 
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::SimpleItemDoc {
         sig: {
@@ -344,7 +345,7 @@ fn fold_type(
                                               extract::interner())
                         ))
                     }
-                    _ => fail ~"expected type"
+                    _ => die!(~"expected type")
                 }
             }
         },
@@ -362,7 +363,7 @@ fn fold_struct(
     fold: &fold::Fold<astsrv::Srv>,
     doc: doc::StructDoc
 ) -> doc::StructDoc {
-    let srv = fold.ctxt;
+    let srv = fold.ctxt.clone();
 
     doc::StructDoc {
         sig: {
@@ -374,7 +375,7 @@ fn fold_struct(
                         Some(pprust::item_to_str(item,
                                                  extract::interner()))
                     }
-                    _ => fail ~"not an item"
+                    _ => die!(~"not an item")
                 }
             }
         },
@@ -395,7 +396,7 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
             };
             ast::item_struct(def, tys)
         }
-        _ => fail ~"not a struct"
+        _ => die!(~"not a struct")
     };
 
     @ast::item {
@@ -434,8 +435,8 @@ pub mod test {
 
     pub fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
-            let doc = extract::from_srv(srv, ~"");
-            run(srv, doc)
+            let doc = extract::from_srv(srv.clone(), ~"");
+            run(srv.clone(), doc)
         }
     }
 }

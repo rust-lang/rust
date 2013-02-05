@@ -12,7 +12,7 @@ struct Foo;
 
 const X: Foo = Foo;
 
-fn main() {
+pub fn main() {
     match X {
         Foo => {}
     }

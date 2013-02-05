@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     // We should be able to type infer inside of fn@s.
     let f = fn@() { let i = 10; };
 }

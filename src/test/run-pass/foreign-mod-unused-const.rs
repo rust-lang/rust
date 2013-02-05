@@ -13,6 +13,6 @@ extern mod foo {
     pub const errno: int;
 }
 
-fn main() {
+pub fn main() {
 }
 

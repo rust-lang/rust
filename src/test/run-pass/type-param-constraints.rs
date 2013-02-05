@@ -29,7 +29,7 @@ fn r(i:int) -> r {
     }
 }
 
-fn main() {
+pub fn main() {
     p_foo(r(10));
     p_foo(@r(10));
 

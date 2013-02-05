@@ -15,5 +15,5 @@ fn test() {
     _v = 2; //~ WARNING: unreachable statement
 }
 
-fn main() {
+pub fn main() {
 }

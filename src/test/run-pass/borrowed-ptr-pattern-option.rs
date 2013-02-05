@@ -16,7 +16,7 @@ fn select(x: &r/Option<int>, y: &r/Option<int>) -> &r/Option<int> {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = None;
     let y = Some(3);
     assert select(&x, &y).get() == 3;

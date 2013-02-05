@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let a = 1;
     let a_neg: i8 = -a;
     log(error, a_neg);

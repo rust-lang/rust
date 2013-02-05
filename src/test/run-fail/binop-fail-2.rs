@@ -9,5 +9,5 @@
 // except according to those terms.
 
 // error-pattern:quux
-fn my_err(s: ~str) -> ! { log(error, s); fail ~"quux"; }
+fn my_err(s: ~str) -> ! { log(error, s); die!(~"quux"); }
 fn main() { 3u == my_err(~"bye"); }

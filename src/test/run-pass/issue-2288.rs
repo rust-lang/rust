@@ -30,7 +30,7 @@ fn f<A: Copy>(x: clam<A>, a: A) {
   x.chowder(a);
 }
 
-fn main() {
+pub fn main() {
 
   let c = foo(42);
   let d: clam<int> = c as clam::<int>;

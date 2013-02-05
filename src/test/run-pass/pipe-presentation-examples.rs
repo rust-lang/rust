@@ -39,7 +39,7 @@ macro_rules! select_if (
                 let $next = move next;
                 move $e
               })+
-              _ => fail
+              _ => die!()
             }
         } else {
             select_if!(
@@ -57,7 +57,7 @@ macro_rules! select_if (
         $index:expr,
         $count:expr,
     } => {
-        fail
+        die!()
     }
 )
 
@@ -173,4 +173,4 @@ fn draw_two_frames_bad2(+channel: double_buffer::client::acquire) {
     );
 }
 
-fn main() { }
+pub fn main() { }

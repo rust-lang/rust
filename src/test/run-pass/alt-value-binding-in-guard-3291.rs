@@ -16,7 +16,7 @@ fn foo(x: Option<~int>, b: bool) -> int {
     }
 }
 
-fn main() {
+pub fn main() {
     foo(Some(~22), true);
     foo(Some(~22), false);
     foo(None, true);

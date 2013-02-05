@@ -14,4 +14,4 @@ struct R<T> {mut v: ~[option<T>]}
 
 fn f<T>() -> ~[T] { return ~[]; }
 
-fn main() { let r: R<int> = R {mut v: ~[]}; r.v = f(); }
+pub fn main() { let r: R<int> = R {mut v: ~[]}; r.v = f(); }

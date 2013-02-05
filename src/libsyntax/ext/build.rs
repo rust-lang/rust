@@ -32,7 +32,7 @@ pub fn mk_expr(cx: ext_ctxt,
 }
 
 pub fn mk_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
-    let sp_lit = @ast::spanned { node: lit, span: sp };
+    let sp_lit = @codemap::spanned { node: lit, span: sp };
     mk_expr(cx, sp, ast::expr_lit(sp_lit))
 }
 pub fn mk_int(cx: ext_ctxt, sp: span, i: int) -> @ast::expr {
@@ -149,7 +149,7 @@ pub fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
 }
 pub fn mk_field(sp: span, f: &{ident: ast::ident, ex: @ast::expr})
              -> ast::field {
-    ast::spanned {
+    codemap::spanned {
         node: ast::field_ { mutbl: ast::m_imm, ident: f.ident, expr: f.ex },
         span: sp,
     }
@@ -188,7 +188,7 @@ pub fn mk_global_struct_e(cx: ext_ctxt,
 pub fn mk_glob_use(cx: ext_ctxt,
                    sp: span,
                    path: ~[ast::ident]) -> @ast::view_item {
-    let glob = @ast::spanned {
+    let glob = @codemap::spanned {
         node: ast::view_path_glob(mk_raw_path(sp, path), cx.next_id()),
         span: sp,
     };
@@ -209,7 +209,7 @@ pub fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
         span: sp,
     };
     let ty = @ast::Ty { id: cx.next_id(), node: ast::ty_infer, span: sp };
-    let local = @ast::spanned {
+    let local = @codemap::spanned {
         node: ast::local_ {
             is_mutbl: mutbl,
             ty: ty,
@@ -219,14 +219,14 @@ pub fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
         },
         span: sp,
     };
-    let decl = ast::spanned {node: ast::decl_local(~[local]), span: sp};
-    @ast::spanned { node: ast::stmt_decl(@decl, cx.next_id()), span: sp }
+    let decl = codemap::spanned {node: ast::decl_local(~[local]), span: sp};
+    @codemap::spanned { node: ast::stmt_decl(@decl, cx.next_id()), span: sp }
 }
 pub fn mk_block(cx: ext_ctxt, span: span,
                 view_items: ~[@ast::view_item],
                 stmts: ~[@ast::stmt],
                 expr: Option<@ast::expr>) -> @ast::expr {
-    let blk = ast::spanned {
+    let blk = codemap::spanned {
         node: ast::blk_ {
              view_items: view_items,
              stmts: stmts,
@@ -242,7 +242,7 @@ pub fn mk_block_(cx: ext_ctxt,
                  span: span,
                  +stmts: ~[@ast::stmt])
               -> ast::blk {
-    ast::spanned {
+    codemap::spanned {
         node: ast::blk_ {
             view_items: ~[],
             stmts: stmts,
@@ -257,7 +257,7 @@ pub fn mk_simple_block(cx: ext_ctxt,
                        span: span,
                        expr: @ast::expr)
                     -> ast::blk {
-    ast::spanned {
+    codemap::spanned {
         node: ast::blk_ {
             view_items: ~[],
             stmts: ~[],
@@ -307,13 +307,14 @@ pub fn mk_pat_struct(cx: ext_ctxt,
     mk_pat(cx, span, move pat)
 }
 pub fn mk_bool(cx: ext_ctxt, span: span, value: bool) -> @ast::expr {
-    let lit_expr = ast::expr_lit(@ast::spanned { node: ast::lit_bool(value),
-                                                 span: span });
+    let lit_expr = ast::expr_lit(@codemap::spanned {
+        node: ast::lit_bool(value),
+        span: span });
     build::mk_expr(cx, span, move lit_expr)
 }
 pub fn mk_stmt(cx: ext_ctxt, span: span, expr: @ast::expr) -> @ast::stmt {
     let stmt_ = ast::stmt_semi(expr, cx.next_id());
-    @ast::spanned { node: move stmt_, span: span }
+    @codemap::spanned { node: move stmt_, span: span }
 }
 pub fn mk_ty_path(cx: ext_ctxt,
                   span: span,

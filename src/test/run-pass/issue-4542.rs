@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-fn main() {
+pub fn main() {
     for os::args().each |arg| {
         match copy *arg {
             s => { }

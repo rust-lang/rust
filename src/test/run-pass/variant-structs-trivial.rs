@@ -13,4 +13,4 @@ enum Foo {
     Baz { y: int }
 }
 
-fn main() { }
+pub fn main() { }

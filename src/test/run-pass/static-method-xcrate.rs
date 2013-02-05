@@ -15,7 +15,7 @@ extern mod static_methods_crate;
 use static_methods_crate::read;
 use readMaybeRenamed = static_methods_crate::read::readMaybe;
 
-fn main() {
+pub fn main() {
     let result: int = read(~"5");
     assert result == 5;
     assert readMaybeRenamed(~"false") == Some(false);

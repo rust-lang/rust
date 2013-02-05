@@ -10,7 +10,7 @@
 
 struct Pair { x: int, y: int }
 
-fn main() {
+pub fn main() {
     let a =
         match 10 { x if x < 7 => { 1 } x if x < 11 => { 2 } 10 => { 3 } _ => { 4 } };
     assert (a == 2);

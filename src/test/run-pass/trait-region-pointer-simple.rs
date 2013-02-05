@@ -23,7 +23,7 @@ impl A : Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let a = A { x: 3 };
     let b = (&a) as &Foo;
     assert b.f() == 3;

@@ -54,7 +54,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 impl cat: ToStr {
-  pure fn to_str() -> ~str { copy self.name }
+  pure fn to_str(&self) -> ~str { copy self.name }
 }
 
 fn print_out<T: ToStr>(thing: T, expected: ~str) {
@@ -63,7 +63,7 @@ fn print_out<T: ToStr>(thing: T, expected: ~str) {
   assert(actual == expected);
 }
 
-fn main() {
+pub fn main() {
   let nyan : ToStr = cat(0u, 2, ~"nyan") as ToStr;
   print_out(nyan, ~"nyan");
 }

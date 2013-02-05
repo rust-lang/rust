@@ -14,7 +14,7 @@
 extern mod cci_impl_lib;
 use cci_impl_lib::uint_helpers;
 
-fn main() {
+pub fn main() {
     //let bt0 = sys::frame_address();
     //debug!("%?", bt0);
 

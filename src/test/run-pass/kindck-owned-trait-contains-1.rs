@@ -19,7 +19,7 @@ fn repeater<A:Copy>(v: @A) -> repeat<A> {
     v as repeat::<A> // No
 }
 
-fn main() {
+pub fn main() {
     let x = &3;
     let y = repeater(@x);
     assert *x == *(y.get());

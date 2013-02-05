@@ -10,7 +10,7 @@
 
 fn ignore<T>(_x: T) {}
 
-fn main() {
+pub fn main() {
     let f: fn@:Owned() = ||();
     ignore(f);
 }

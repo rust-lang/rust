@@ -30,13 +30,16 @@ use std;
 
 pub trait reader {
     fn is_eof() -> bool;
-    fn next_token() -> {tok: token::Token, sp: span};
+    fn next_token() -> TokenAndSpan;
     fn fatal(~str) -> !;
     fn span_diag() -> span_handler;
     pure fn interner() -> @token::ident_interner;
-    fn peek() -> {tok: token::Token, sp: span};
+    fn peek() -> TokenAndSpan;
     fn dup() -> reader;
 }
+
+#[deriving_eq]
+pub struct TokenAndSpan {tok: token::Token, sp: span}
 
 pub type string_reader = @{
     span_diagnostic: span_handler,
@@ -79,11 +82,14 @@ pub fn new_low_level_string_reader(span_diagnostic: span_handler,
               filemap: filemap, interner: itr,
               /* dummy values; not read */
               mut peek_tok: token::EOF,
-              mut peek_span: ast_util::dummy_sp()};
+              mut peek_span: codemap::dummy_sp()};
     bump(r);
     return r;
 }
 
+// duplicating the string reader is probably a bad idea, in
+// that using them will cause interleaved pushes of line
+// offsets to the underlying filemap...
 fn dup_string_reader(&&r: string_reader) -> string_reader {
     @{span_diagnostic: r.span_diagnostic, src: r.src,
       mut pos: r.pos,
@@ -95,8 +101,9 @@ fn dup_string_reader(&&r: string_reader) -> string_reader {
 
 impl string_reader: reader {
     fn is_eof() -> bool { is_eof(self) }
-    fn next_token() -> {tok: token::Token, sp: span} {
-        let ret_val = {tok: self.peek_tok, sp: self.peek_span};
+    // return the next token. EFFECT: advances the string_reader.
+    fn next_token() -> TokenAndSpan {
+        let ret_val = TokenAndSpan {tok: self.peek_tok, sp: self.peek_span};
         string_advance_token(self);
         return ret_val;
     }
@@ -105,15 +112,15 @@ impl string_reader: reader {
     }
     fn span_diag() -> span_handler { self.span_diagnostic }
     pure fn interner() -> @token::ident_interner { self.interner }
-    fn peek() -> {tok: token::Token, sp: span} {
-        {tok: self.peek_tok, sp: self.peek_span}
+    fn peek() -> TokenAndSpan {
+        TokenAndSpan {tok: self.peek_tok, sp: self.peek_span}
     }
     fn dup() -> reader { dup_string_reader(self) as reader }
 }
 
 pub impl tt_reader: reader {
     fn is_eof() -> bool { self.cur_tok == token::EOF }
-    fn next_token() -> {tok: token::Token, sp: span} {
+    fn next_token() -> TokenAndSpan {
         /* weird resolve bug: if the following `if`, or any of its
         statements are removed, we get resolution errors */
         if false {
@@ -127,27 +134,29 @@ pub impl tt_reader: reader {
     }
     fn span_diag() -> span_handler { self.sp_diag }
     pure fn interner() -> @token::ident_interner { self.interner }
-    fn peek() -> {tok: token::Token, sp: span} {
-        { tok: self.cur_tok, sp: self.cur_span }
+    fn peek() -> TokenAndSpan {
+        TokenAndSpan { tok: self.cur_tok, sp: self.cur_span }
     }
     fn dup() -> reader { dup_tt_reader(self) as reader }
 }
 
+// EFFECT: advance peek_tok and peek_span to refer to the next token.
 fn string_advance_token(&&r: string_reader) {
-    for consume_whitespace_and_comments(r).each |comment| {
-        r.peek_tok = comment.tok;
-        r.peek_span = comment.sp;
-        return;
+    match (consume_whitespace_and_comments(r)) {
+        Some(comment) => {
+            r.peek_tok = comment.tok;
+            r.peek_span = comment.sp;
+        },
+        None => {
+            if is_eof(r) {
+                r.peek_tok = token::EOF;
+            } else {
+                let start_bytepos = r.last_pos;
+                r.peek_tok = next_token_inner(r);
+                r.peek_span = codemap::mk_sp(start_bytepos, r.last_pos);
+            };
+        }
     }
-
-    if is_eof(r) {
-        r.peek_tok = token::EOF;
-    } else {
-        let start_bytepos = r.last_pos;
-        r.peek_tok = next_token_inner(r);
-        r.peek_span = ast_util::mk_sp(start_bytepos, r.last_pos);
-    };
-
 }
 
 fn byte_offset(rdr: string_reader) -> BytePos {
@@ -163,6 +172,8 @@ pub fn get_str_from(rdr: string_reader, start: BytePos) -> ~str {
     }
 }
 
+// EFFECT: advance the StringReader by one character. If a newline is
+// discovered, add it to the FileMap's list of line start offsets.
 pub fn bump(rdr: string_reader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr).to_uint();;
@@ -203,7 +214,7 @@ fn hex_digit_val(c: char) -> int {
     if in_range(c, '0', '9') { return (c as int) - ('0' as int); }
     if in_range(c, 'a', 'f') { return (c as int) - ('a' as int) + 10; }
     if in_range(c, 'A', 'F') { return (c as int) - ('A' as int) + 10; }
-    fail;
+    die!();
 }
 
 fn bin_digit_value(c: char) -> int { if c == '0' { return 0; } return 1; }
@@ -233,16 +244,19 @@ fn is_hex_digit(c: char) -> bool {
 
 fn is_bin_digit(c: char) -> bool { return c == '0' || c == '1'; }
 
-// might return a sugared-doc-attr
+// EFFECT: eats whitespace and comments.
+// returns a Some(sugared-doc-attr) if one exists, None otherwise.
 fn consume_whitespace_and_comments(rdr: string_reader)
-                                -> Option<{tok: token::Token, sp: span}> {
+    -> Option<TokenAndSpan> {
     while is_whitespace(rdr.curr) { bump(rdr); }
     return consume_any_line_comment(rdr);
 }
 
-// might return a sugared-doc-attr
+// PRECONDITION: rdr.curr is not whitespace
+// EFFECT: eats any kind of comment.
+// returns a Some(sugared-doc-attr) if one exists, None otherwise
 fn consume_any_line_comment(rdr: string_reader)
-                                -> Option<{tok: token::Token, sp: span}> {
+                                -> Option<TokenAndSpan> {
     if rdr.curr == '/' {
         match nextch(rdr) {
           '/' => {
@@ -256,9 +270,9 @@ fn consume_any_line_comment(rdr: string_reader)
                     str::push_char(&mut acc, rdr.curr);
                     bump(rdr);
                 }
-                return Some({
+                return Some(TokenAndSpan{
                     tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                    sp: ast_util::mk_sp(start_bpos, rdr.pos)
+                    sp: codemap::mk_sp(start_bpos, rdr.pos)
                 });
             } else {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
@@ -285,7 +299,7 @@ fn consume_any_line_comment(rdr: string_reader)
 
 // might return a sugared-doc-attr
 fn consume_block_comment(rdr: string_reader)
-                                -> Option<{tok: token::Token, sp: span}> {
+                                -> Option<TokenAndSpan> {
 
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
@@ -301,9 +315,9 @@ fn consume_block_comment(rdr: string_reader)
             acc += ~"*/";
             bump(rdr);
             bump(rdr);
-            return Some({
+            return Some(TokenAndSpan{
                 tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                sp: ast_util::mk_sp(start_bpos, rdr.pos)
+                sp: codemap::mk_sp(start_bpos, rdr.pos)
             });
         }
     } else {
@@ -403,7 +417,7 @@ fn scan_number(c: char, rdr: string_reader) -> token::Token {
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
-        let parsed = u64::from_str_radix(num_str, base as u64).get();
+        let parsed = u64::from_str_radix(num_str, base as uint).get();
         match tp {
           either::Left(t) => return token::LIT_INT(parsed as i64, t),
           either::Right(t) => return token::LIT_UINT(parsed, t)
@@ -457,7 +471,7 @@ fn scan_number(c: char, rdr: string_reader) -> token::Token {
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
-        let parsed = u64::from_str_radix(num_str, base as u64).get();
+        let parsed = u64::from_str_radix(num_str, base as uint).get();
 
         debug!("lexing %s as an unsuffixed integer literal",
                num_str);
@@ -702,6 +716,41 @@ fn consume_whitespace(rdr: string_reader) {
     while is_whitespace(rdr.curr) && !is_eof(rdr) { bump(rdr); }
 }
 
+#[cfg(test)]
+pub mod test {
+
+    use super::*;
+    use util::interner;
+    use diagnostic;
+    use util::testing::{check_equal, check_equal_ptr};
+    #[test] fn t1 () {
+        let teststr =
+            @~"/* my source file */
+fn main() { io::println(~\"zebra\"); }\n";
+        let cm = CodeMap::new();
+        let fm = cm.new_filemap(~"zebra.rs",teststr);
+        let ident_interner = token::mk_ident_interner(); // interner::mk();
+        let id = ident_interner.intern(@~"fn");
+        let span_handler =
+            diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
+        let string_reader = new_string_reader(span_handler,fm,ident_interner);
+        let tok1 = string_reader.next_token();
+        let tok2 = TokenAndSpan{
+            tok:token::IDENT(id, false),
+            sp:span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
+        check_equal (tok1,tok2);
+        // the 'main' id is already read:
+        check_equal (string_reader.last_pos,BytePos(28));
+        // read another token:
+        let tok3 = string_reader.next_token();
+        let tok4 = TokenAndSpan{
+            tok:token::IDENT(ident_interner.intern (@~"main"), false),
+            sp:span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
+        check_equal (tok3,tok4);
+        // the lparen is already read:
+        check_equal (string_reader.last_pos,BytePos(29))
+    }
+}
 
 //
 // Local Variables:

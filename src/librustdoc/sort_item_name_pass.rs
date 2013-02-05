@@ -28,8 +28,8 @@ pub fn mk_pass() -> Pass {
 fn test() {
     let source = ~"mod z { } fn y() { }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, ~"");
-        let doc = (mk_pass().f)(srv, doc);
+        let doc = extract::from_srv(srv.clone(), ~"");
+        let doc = (mk_pass().f)(srv.clone(), doc);
         assert doc.cratemod().items[0].name() == ~"y";
         assert doc.cratemod().items[1].name() == ~"z";
     }

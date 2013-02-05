@@ -10,22 +10,22 @@
 
 // Issue #53
 
-fn main() {
-    match ~"test" { ~"not-test" => fail, ~"test" => (), _ => fail }
+pub fn main() {
+    match ~"test" { ~"not-test" => die!(), ~"test" => (), _ => die!() }
 
     enum t { tag1(~str), tag2, }
 
 
     match tag1(~"test") {
-      tag2 => fail,
-      tag1(~"not-test") => fail,
+      tag2 => die!(),
+      tag1(~"not-test") => die!(),
       tag1(~"test") => (),
-      _ => fail
+      _ => die!()
     }
 
-    let x = match ~"a" { ~"a" => 1, ~"b" => 2, _ => fail };
+    let x = match ~"a" { ~"a" => 1, ~"b" => 2, _ => die!() };
     assert (x == 1);
 
-    match ~"a" { ~"a" => { } ~"b" => { }, _ => fail }
+    match ~"a" { ~"a" => { } ~"b" => { }, _ => die!() }
 
 }

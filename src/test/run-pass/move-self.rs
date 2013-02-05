@@ -12,7 +12,7 @@ impl S {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = S { x: ~"Hello!" };
     x.foo();
 }

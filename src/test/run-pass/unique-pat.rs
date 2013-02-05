@@ -11,10 +11,10 @@
 fn simple() {
     match ~true {
       ~true => { }
-      _ => { fail; }
+      _ => { die!(); }
     }
 }
 
-fn main() {
+pub fn main() {
     simple();
 }

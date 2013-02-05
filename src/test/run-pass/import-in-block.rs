@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     use vec::cast_to_mut;
     log(debug, vec::len(cast_to_mut(~[1, 2])));
     {

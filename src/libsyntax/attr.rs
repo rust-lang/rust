@@ -13,7 +13,7 @@
 use core::prelude::*;
 
 use ast;
-use ast_util::{spanned, dummy_spanned};
+use codemap::{spanned, dummy_spanned};
 use attr;
 use codemap::BytePos;
 use diagnostic::span_handler;
@@ -24,8 +24,8 @@ use core::either::Either;
 use core::either;
 use core::option;
 use core::vec;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use std;
 
 /* Constructors */
@@ -199,7 +199,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
             // FIXME (#607): Needs implementing
             // This involves probably sorting the list by name and
             // meta_item variant
-            fail ~"unimplemented meta_item variant"
+            die!(~"unimplemented meta_item variant")
           }
         }
 }
@@ -269,9 +269,9 @@ pub fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back
-    let v: ~[mut @ast::meta_item] = vec::cast_to_mut(items);
+    let mut v: ~[@ast::meta_item] = items;
     std::sort::quick_sort(v, lteq);
-    vec::cast_from_mut(move v)
+    move v
 }
 
 pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->
@@ -358,12 +358,12 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
 
 pub fn require_unique_names(diagnostic: span_handler,
                             metas: &[@ast::meta_item]) {
-    let map = map::HashMap();
+    let map = oldmap::HashMap();
     for metas.each |meta| {
         let name = get_meta_item_name(*meta);
 
         // FIXME: How do I silence the warnings? --pcw (#2619)
-        if map.contains_key(name) {
+        if map.contains_key_ref(&name) {
             diagnostic.span_fatal(meta.span,
                                   fmt!("duplicate meta item `%s`", name));
         }

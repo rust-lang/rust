@@ -13,4 +13,4 @@
 
 pure fn bad(a: int) -> int { return 37; } //~ ERROR Non-boolean return type
 
-fn main() { }
+pub fn main() { }

@@ -26,4 +26,4 @@ fn cat(done: extern fn(uint)) -> cat {
     }
 }
 
-fn main() {}
+pub fn main() {}

@@ -14,15 +14,15 @@
 #[legacy_modes];
 
 extern mod std;
-use std::map;
-use std::map::HashMap;
+use std::oldmap;
+use std::oldmap::HashMap;
 use std::sort;
 use io::ReaderUtil;
 use pipes::{stream, Port, Chan};
 use cmp::Ord;
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str { 
+fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
    fn pct(xx: uint, yy: uint) -> float {
       return (xx as float) * 100f / (yy as float);
    }
@@ -49,10 +49,9 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
    let mut pairs = ~[];
 
    // map -> [(k,%)]
-   mm.each(fn&(key: ~[u8], val: uint) -> bool {
+   for mm.each_ref |&key, &val| {
       pairs.push((key, pct(val, total)));
-      return true;
-   });
+   }
 
    let pairs_sorted = sortKV(pairs);
 
@@ -95,13 +94,13 @@ fn windows_with_carry(bb: &[u8], nn: uint,
       ii += 1u;
    }
 
-   return vec::slice(bb, len - (nn - 1u), len); 
+   return vec::slice(bb, len - (nn - 1u), len);
 }
 
 fn make_sequence_processor(sz: uint, from_parent: pipes::Port<~[u8]>,
                            to_parent: pipes::Chan<~str>) {
-   
-   let freqs: HashMap<~[u8], uint> = map::HashMap();
+
+   let freqs: HashMap<~[u8], uint> = oldmap::HashMap();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
 
@@ -118,7 +117,7 @@ fn make_sequence_processor(sz: uint, from_parent: pipes::Port<~[u8]>,
       });
    }
 
-   let buffer = match sz { 
+   let buffer = match sz {
        1u => { sort_and_fmt(freqs, total) }
        2u => { sort_and_fmt(freqs, total) }
        3u => { fmt!("%u\t%s", find(freqs, ~"GGT"), ~"GGT") }
@@ -165,11 +164,11 @@ fn main() {
         do task::spawn_with(move from_parent) |move to_parent_, from_parent| {
             make_sequence_processor(sz, from_parent, to_parent_);
         };
-        
+
         move to_child
     });
-         
-   
+
+
    // latch stores true after we've started
    // reading the sequence of interest
    let mut proc_mode = false;

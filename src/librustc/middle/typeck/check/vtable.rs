@@ -28,7 +28,7 @@ use core::result;
 use core::uint;
 use core::vec;
 use result::{Result, Ok, Err};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -148,7 +148,7 @@ pub fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
           ty::ty_trait(_, ref substs_f, _) => (/*bad*/copy *substs_f),
-          _ => fail ~"t_f should be a trait"
+          _ => die!(~"t_f should be a trait")
         }
     }
 }
@@ -268,7 +268,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
                         // im is one specific impl of trait_ty.
 
                         // First, ensure we haven't processed this impl yet.
-                        if impls_seen.contains_key(im.did) {
+                        if impls_seen.contains_key_ref(&im.did) {
                             loop;
                         }
                         impls_seen.insert(im.did, ());

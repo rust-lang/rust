@@ -44,7 +44,7 @@ impl Tree: to_str {
 
 fn foo<T: to_str>(x: T) -> ~str { x.to_str() }
 
-fn main() {
+pub fn main() {
     let t1 = Tree(@TreeR{mut left: None,
                     mut right: None,
                     val: 1 as to_str });

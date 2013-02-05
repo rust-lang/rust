@@ -10,7 +10,7 @@
 
 // error-pattern:fail
 
-fn f() -> @int { fail; }
+fn f() -> @int { die!(); }
 
 fn main() {
     let a: @int = f();

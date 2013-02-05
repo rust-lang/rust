@@ -11,7 +11,7 @@
 fn send<T: Owned>(ch: _chan<T>, -data: T) {
     log(debug, ch);
     log(debug, data);
-    fail;
+    die!();
 }
 
 enum _chan<T> = int;
@@ -23,4 +23,4 @@ fn test00_start(ch: _chan<~int>, message: ~int, _count: ~int) {
     log(debug, message); //~ ERROR use of moved value: `message`
 }
 
-fn main() { fail; }
+fn main() { die!(); }

@@ -10,8 +10,7 @@
 
 // Earley-like parser for macros.
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
-use ast_util::mk_sp;
-use codemap::BytePos;
+use codemap::{BytePos, mk_sp};
 use codemap;
 use parse::common::*; //resolve bug?
 use parse::lexer::*; //resolve bug?
@@ -27,7 +26,7 @@ use core::option;
 use core::str;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -125,7 +124,7 @@ pub type matcher_pos = ~{
 pub fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
     match &mpu {
       &matcher_pos_up(Some(ref mp)) => copy (*mp),
-      _ => fail
+      _ => die!()
     }
 }
 
@@ -189,16 +188,16 @@ pub fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
     fn n_rec(p_s: parse_sess, m: matcher, res: ~[@named_match],
              ret_val: HashMap<ident, @named_match>) {
         match m {
-          ast::spanned {node: match_tok(_), _} => (),
-          ast::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
+          codemap::spanned {node: match_tok(_), _} => (),
+          codemap::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
             for (*more_ms).each() |next_m| {
                 n_rec(p_s, *next_m, res, ret_val)
             };
           }
-          ast::spanned {
+          codemap::spanned {
                 node: match_nonterminal(bind_name, _, idx), span: sp
           } => {
-            if ret_val.contains_key(bind_name) {
+            if ret_val.contains_key_ref(&bind_name) {
                 p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
                                                *p_s.interner.get(bind_name))
             }
@@ -239,7 +238,7 @@ pub fn parse(sess: parse_sess,
         let mut next_eis = ~[]; // or proceed normally
         let mut eof_eis = ~[];
 
-        let {tok: tok, sp: sp} = rdr.peek();
+        let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
 
         /* we append new items to this while we go */
         while cur_eis.len() > 0u { /* for each Earley Item */
@@ -362,7 +361,7 @@ pub fn parse(sess: parse_sess,
                         fmt!("%s ('%s')", *sess.interner.get(name),
                              *sess.interner.get(bind))
                       }
-                      _ => fail
+                      _ => die!()
                     } }), ~" or ");
                 return error(sp, fmt!(
                     "Local ambiguity: multiple parsing options: \
@@ -387,7 +386,7 @@ pub fn parse(sess: parse_sess,
                         parse_nt(rust_parser, *sess.interner.get(name))));
                     ei.idx += 1u;
                   }
-                  _ => fail
+                  _ => die!()
                 }
                 cur_eis.push(move ei);
 

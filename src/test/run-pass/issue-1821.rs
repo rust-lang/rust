@@ -12,4 +12,4 @@
 enum t {
     foo(~[t])
 }
-fn main() {}
+pub fn main() {}

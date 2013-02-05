@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let v : &[(int,int)] = &[ (1, 2), (3, 4), (5, 6) ];
     for v.each |&(x, y)| {
         io::println(y.to_str());

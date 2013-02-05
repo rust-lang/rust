@@ -4,4 +4,4 @@ type t = (uint, uint);
 
  
 
-fn main() { }
+pub fn main() { }

@@ -12,7 +12,7 @@ struct S {
     z: f64
 }
 
-fn main() {
+pub fn main() {
     let x: f32 = 4.0;
     io::println(x.to_str());
     let y: float = 64.0;

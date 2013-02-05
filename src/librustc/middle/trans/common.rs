@@ -53,7 +53,7 @@ use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
 use core::vec;
-use std::map::{HashMap, Set};
+use std::oldmap::{HashMap, Set};
 use syntax::ast::ident;
 use syntax::ast_map::path;
 use syntax::codemap::span;
@@ -720,7 +720,7 @@ pub impl block {
     fn ty_to_str(t: ty::t) -> ~str {
         ty_to_str(self.tcx(), t)
     }
-    fn to_str() -> ~str {
+    fn to_str(&self) -> ~str {
         match self.node_info {
           Some(node_info) => {
             fmt!("[block %d]", node_info.id)

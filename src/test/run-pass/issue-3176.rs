@@ -12,14 +12,14 @@
 
 use pipes::{Select2, Selectable};
 
-fn main() {
+pub fn main() {
     let (p,c) = pipes::stream();
     do task::try |move c| {
         let (p2,c2) = pipes::stream();
         do task::spawn |move p2| {
             p2.recv();
             error!("sibling fails");
-            fail;
+            die!();
         }   
         let (p3,c3) = pipes::stream();
         c.send(move c3);

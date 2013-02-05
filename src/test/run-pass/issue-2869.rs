@@ -21,4 +21,4 @@ fn num_bindings(pat: pat) -> uint {
     }
 }
 
-fn main() {}
+pub fn main() {}

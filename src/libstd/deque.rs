@@ -58,7 +58,7 @@ pub fn create<T: Copy>() -> Deque<T> {
         move rv
     }
     fn get<T: Copy>(elts: &DVec<Cell<T>>, i: uint) -> T {
-        match (*elts).get_elt(i) { Some(move t) => t, _ => fail }
+        match (*elts).get_elt(i) { Some(move t) => t, _ => die!() }
     }
 
     struct Repr<T> {

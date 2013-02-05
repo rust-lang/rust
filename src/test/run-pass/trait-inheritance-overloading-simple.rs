@@ -27,7 +27,7 @@ fn f<T:MyNum>(x: T, y: T) -> bool {
 
 pure fn mi(v: int) -> MyInt { MyInt { val: v } }
 
-fn main() {
+pub fn main() {
     let (x, y, z) = (mi(3), mi(5), mi(3));
     assert x != y;
     assert x == z;

@@ -21,17 +21,17 @@ fn test_cont() { let mut i = 0; while i < 1 { i += 1; let x: @int = loop; } }
 fn test_ret() { let x: @int = return; }
 
 fn test_fail() {
-    fn f() { let x: @int = fail; }
+    fn f() { let x: @int = die!(); }
     task::try(|| f() );
 }
 
 fn test_fail_indirect() {
-    fn f() -> ! { fail; }
+    fn f() -> ! { die!(); }
     fn g() { let x: @int = f(); }
     task::try(|| g() );
 }
 
-fn main() {
+pub fn main() {
     test_break();
     test_cont();
     test_ret();

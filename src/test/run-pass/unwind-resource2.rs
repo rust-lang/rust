@@ -27,9 +27,9 @@ fn complainer(c: @int) -> complainer {
 
 fn f() {
     let c = move complainer(@0);
-    fail;
+    die!();
 }
 
-fn main() {
+pub fn main() {
     task::spawn_unlinked(f);
 }

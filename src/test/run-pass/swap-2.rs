@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn swap<T>(v: &[mut T], i: int, j: int) { v[i] <-> v[j]; }
+fn swap<T>(v: &mut [T], i: int, j: int) { v[i] <-> v[j]; }
 
-fn main() {
-    let a: ~[mut int] = ~[mut 0, 1, 2, 3, 4, 5, 6];
+pub fn main() {
+    let mut a: ~[int] = ~[0, 1, 2, 3, 4, 5, 6];
     swap(a, 2, 4);
     assert (a[2] == 4);
     assert (a[4] == 2);

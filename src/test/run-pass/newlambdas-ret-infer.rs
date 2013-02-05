@@ -15,5 +15,5 @@ fn shared() -> fn@() { return || (); }
 
 fn unique() -> fn~() { return || (); }
 
-fn main() {
+pub fn main() {
 }

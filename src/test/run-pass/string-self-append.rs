@@ -10,7 +10,7 @@
 
 extern mod std;
 
-fn main() {
+pub fn main() {
     // Make sure we properly handle repeated self-appends.
     let mut a: ~str = ~"A";
     let mut i = 20;

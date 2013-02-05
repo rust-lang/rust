@@ -17,13 +17,18 @@ use T = self::inst::T;
 use char;
 use cmp::{Eq, Ord};
 use cmp;
+use to_str::ToStr;
 use from_str::FromStr;
+use num::{ToStrRadix, FromStrRadix};
 use num;
 use num::Num::from_int;
 use prelude::*;
 use str;
 use uint;
 use vec;
+use i8;
+use i16;
+use i32;
 
 pub const bits : uint = inst::bits;
 pub const bytes : uint = (inst::bits / 8);
@@ -112,7 +117,7 @@ pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 pub pure fn range_step(start: T, stop: T, step: T, it: fn(T) -> bool) {
     let mut i = start;
     if step == 0 {
-        fail ~"range_step called with step == 0";
+        die!(~"range_step called with step == 0");
     } else if step > 0 { // ascending
         while i < stop {
             if !it(i) { break }
@@ -200,83 +205,112 @@ impl T: num::One {
     static pure fn one() -> T { 1 }
 }
 
-/**
- * Parse a buffer of bytes
- *
- * # Arguments
- *
- * * buf - A byte buffer
- * * radix - The base of the number
- */
-pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
-    if vec::len(buf) == 0u { return None; }
-    let mut i = vec::len(buf) - 1u;
-    let mut start = 0u;
-    let mut power = 1 as T;
+impl T: num::Round {
+    #[inline(always)]
+    pure fn round(&self, _: num::RoundMode) -> T { *self }
 
-    if buf[0] == ('-' as u8) {
-        power = -1 as T;
-        start = 1u;
-    }
-    let mut n = 0 as T;
-    loop {
-        match char::to_digit(buf[i] as char, radix) {
-          Some(d) => n += (d as T) * power,
-          None => return None
-        }
-        power *= radix as T;
-        if i <= start { return Some(n); }
-        i -= 1u;
-    };
+    #[inline(always)]
+    pure fn floor(&self) -> T { *self }
+    #[inline(always)]
+    pure fn ceil(&self) -> T { *self }
+    #[inline(always)]
+    pure fn fract(&self) -> T { 0 }
 }
 
-/// Parse a string to an int
+// String conversion functions and impl str -> num
+
+/// Parse a string as a number in base 10.
 #[inline(always)]
-pub pure fn from_str(s: &str) -> Option<T>
-{
-    parse_bytes(str::to_bytes(s), 10u)
+pub pure fn from_str(s: &str) -> Option<T> {
+    num::from_str_common(s, 10u, true, false, false,
+                         num::ExpNone, false)
+}
+
+/// Parse a string as a number in the given base.
+#[inline(always)]
+pub pure fn from_str_radix(s: &str, radix: uint) -> Option<T> {
+    num::from_str_common(s, radix, true, false, false,
+                         num::ExpNone, false)
+}
+
+/// Parse a byte slice as a number in the given base.
+#[inline(always)]
+pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
+    num::from_str_bytes_common(buf, radix, true, false, false,
+                               num::ExpNone, false)
 }
 
 impl T : FromStr {
     #[inline(always)]
-    static pure fn from_str(s: &str) -> Option<T> { from_str(s) }
-}
-
-/// Convert to a string in a given base
-#[inline(always)]
-pub pure fn to_str(n: T, radix: uint) -> ~str {
-    do to_str_bytes(n, radix) |slice| {
-        do vec::as_imm_buf(slice) |p, len| {
-            unsafe { str::raw::from_buf_len(p, len) }
-        }
+    static pure fn from_str(s: &str) -> Option<T> {
+        from_str(s)
     }
 }
 
+impl T : FromStrRadix {
+    #[inline(always)]
+    static pure fn from_str_radix(&self, s: &str, radix: uint) -> Option<T> {
+        from_str_radix(s, radix)
+    }
+}
+
+// String conversion functions and impl num -> str
+
+/// Convert to a string as a byte slice in a given base.
 #[inline(always)]
 pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
-    if n < 0 as T {
-        uint::to_str_bytes(true, -n as uint, radix, f)
-    } else {
-        uint::to_str_bytes(false, n as uint, radix, f)
+    let (buf, _) = num::to_str_bytes_common(&n, radix, false, false,
+                                            num::SignNeg, num::DigAll);
+    f(buf)
+}
+
+/// Convert to a string in base 10.
+#[inline(always)]
+pub pure fn to_str(num: T) -> ~str {
+    let (buf, _) = num::to_str_common(&num, 10u, false, false,
+                                      num::SignNeg, num::DigAll);
+    buf
+}
+
+/// Convert to a string in a given base.
+#[inline(always)]
+pub pure fn to_str_radix(num: T, radix: uint) -> ~str {
+    let (buf, _) = num::to_str_common(&num, radix, false, false,
+                                      num::SignNeg, num::DigAll);
+    buf
+}
+
+/// Convert to a string.
+/// *Deprecated*, use to_str() instead.
+#[inline(always)]
+pub pure fn str(i: T) -> ~str { to_str(i) }
+
+impl T : ToStr {
+    #[inline(always)]
+    pure fn to_str(&self) -> ~str {
+        to_str(*self)
     }
 }
 
-/// Convert to a string
-#[inline(always)]
-pub pure fn str(i: T) -> ~str { return to_str(i, 10u); }
+impl T : ToStrRadix {
+    #[inline(always)]
+    pure fn to_str_radix(&self, radix: uint) -> ~str {
+        to_str_radix(*self, radix)
+    }
+}
 
 #[test]
 fn test_from_str() {
     assert from_str(~"0") == Some(0 as T);
     assert from_str(~"3") == Some(3 as T);
     assert from_str(~"10") == Some(10 as T);
-    assert from_str(~"123456789") == Some(123456789 as T);
+    assert i32::from_str(~"123456789") == Some(123456789 as i32);
     assert from_str(~"00100") == Some(100 as T);
 
     assert from_str(~"-1") == Some(-1 as T);
     assert from_str(~"-3") == Some(-3 as T);
     assert from_str(~"-10") == Some(-10 as T);
-    assert from_str(~"-123456789") == Some(-123456789 as T);
+    assert i32::from_str(~"-123456789") == Some(-123456789 as i32);
     assert from_str(~"-00100") == Some(-100 as T);
 
     assert from_str(~" ").is_none();
@@ -289,18 +323,18 @@ fn test_parse_bytes() {
     assert parse_bytes(to_bytes(~"123"), 10u) == Some(123 as T);
     assert parse_bytes(to_bytes(~"1001"), 2u) == Some(9 as T);
     assert parse_bytes(to_bytes(~"123"), 8u) == Some(83 as T);
-    assert parse_bytes(to_bytes(~"123"), 16u) == Some(291 as T);
-    assert parse_bytes(to_bytes(~"ffff"), 16u) == Some(65535 as T);
-    assert parse_bytes(to_bytes(~"FFFF"), 16u) == Some(65535 as T);
+    assert i32::parse_bytes(to_bytes(~"123"), 16u) == Some(291 as i32);
+    assert i32::parse_bytes(to_bytes(~"ffff"), 16u) == Some(65535 as i32);
+    assert i32::parse_bytes(to_bytes(~"FFFF"), 16u) == Some(65535 as i32);
     assert parse_bytes(to_bytes(~"z"), 36u) == Some(35 as T);
     assert parse_bytes(to_bytes(~"Z"), 36u) == Some(35 as T);
 
     assert parse_bytes(to_bytes(~"-123"), 10u) == Some(-123 as T);
     assert parse_bytes(to_bytes(~"-1001"), 2u) == Some(-9 as T);
     assert parse_bytes(to_bytes(~"-123"), 8u) == Some(-83 as T);
-    assert parse_bytes(to_bytes(~"-123"), 16u) == Some(-291 as T);
-    assert parse_bytes(to_bytes(~"-ffff"), 16u) == Some(-65535 as T);
-    assert parse_bytes(to_bytes(~"-FFFF"), 16u) == Some(-65535 as T);
+    assert i32::parse_bytes(to_bytes(~"-123"), 16u) == Some(-291 as i32);
+    assert i32::parse_bytes(to_bytes(~"-ffff"), 16u) == Some(-65535 as i32);
+    assert i32::parse_bytes(to_bytes(~"-FFFF"), 16u) == Some(-65535 as i32);
     assert parse_bytes(to_bytes(~"-z"), 36u) == Some(-35 as T);
     assert parse_bytes(to_bytes(~"-Z"), 36u) == Some(-35 as T);
 
@@ -310,11 +344,74 @@ fn test_parse_bytes() {
 
 #[test]
 fn test_to_str() {
-    assert (to_str(0 as T, 10u) == ~"0");
-    assert (to_str(1 as T, 10u) == ~"1");
-    assert (to_str(-1 as T, 10u) == ~"-1");
-    assert (to_str(127 as T, 16u) == ~"7f");
-    assert (to_str(100 as T, 10u) == ~"100");
+    assert (to_str_radix(0 as T, 10u) == ~"0");
+    assert (to_str_radix(1 as T, 10u) == ~"1");
+    assert (to_str_radix(-1 as T, 10u) == ~"-1");
+    assert (to_str_radix(127 as T, 16u) == ~"7f");
+    assert (to_str_radix(100 as T, 10u) == ~"100");
+
+}
+
+#[test]
+fn test_int_to_str_overflow() {
+    let mut i8_val: i8 = 127_i8;
+    assert (i8::to_str(i8_val) == ~"127");
+
+    i8_val += 1 as i8;
+    assert (i8::to_str(i8_val) == ~"-128");
+
+    let mut i16_val: i16 = 32_767_i16;
+    assert (i16::to_str(i16_val) == ~"32767");
+
+    i16_val += 1 as i16;
+    assert (i16::to_str(i16_val) == ~"-32768");
+
+    let mut i32_val: i32 = 2_147_483_647_i32;
+    assert (i32::to_str(i32_val) == ~"2147483647");
+
+    i32_val += 1 as i32;
+    assert (i32::to_str(i32_val) == ~"-2147483648");
+
+    let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
+    assert (i64::to_str(i64_val) == ~"9223372036854775807");
+
+    i64_val += 1 as i64;
+    assert (i64::to_str(i64_val) == ~"-9223372036854775808");
+}
+
+#[test]
+fn test_int_from_str_overflow() {
+    let mut i8_val: i8 = 127_i8;
+    assert (i8::from_str(~"127") == Some(i8_val));
+    assert (i8::from_str(~"128").is_none());
+
+    i8_val += 1 as i8;
+    assert (i8::from_str(~"-128") == Some(i8_val));
+    assert (i8::from_str(~"-129").is_none());
+
+    let mut i16_val: i16 = 32_767_i16;
+    assert (i16::from_str(~"32767") == Some(i16_val));
+    assert (i16::from_str(~"32768").is_none());
+
+    i16_val += 1 as i16;
+    assert (i16::from_str(~"-32768") == Some(i16_val));
+    assert (i16::from_str(~"-32769").is_none());
+
+    let mut i32_val: i32 = 2_147_483_647_i32;
+    assert (i32::from_str(~"2147483647") == Some(i32_val));
+    assert (i32::from_str(~"2147483648").is_none());
+
+    i32_val += 1 as i32;
+    assert (i32::from_str(~"-2147483648") == Some(i32_val));
+    assert (i32::from_str(~"-2147483649").is_none());
+
+    let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
+    assert (i64::from_str(~"9223372036854775807") == Some(i64_val));
+    assert (i64::from_str(~"9223372036854775808").is_none());
+
+    i64_val += 1 as i64;
+    assert (i64::from_str(~"-9223372036854775808") == Some(i64_val));
+    assert (i64::from_str(~"-9223372036854775809").is_none());
 }
 
 #[test]
@@ -359,16 +456,16 @@ pub fn test_ranges() {
 
     // None of the `fail`s should execute.
     for range(10,0) |_i| {
-        fail ~"unreachable";
+        die!(~"unreachable");
     }
     for range_rev(0,10) |_i| {
-        fail ~"unreachable";
+        die!(~"unreachable");
     }
     for range_step(10,0,1) |_i| {
-        fail ~"unreachable";
+        die!(~"unreachable");
     }
     for range_step(0,10,-1) |_i| {
-        fail ~"unreachable";
+        die!(~"unreachable");
     }
 }
 

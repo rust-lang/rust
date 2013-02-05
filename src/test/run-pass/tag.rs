@@ -36,4 +36,4 @@ impl colour : cmp::Eq {
 
 fn f() { let x = red(1, 2); let y = green; assert (x != y); }
 
-fn main() { f(); }
+pub fn main() { f(); }

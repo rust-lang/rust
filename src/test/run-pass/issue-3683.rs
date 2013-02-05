@@ -23,6 +23,6 @@ impl int: Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     assert(3.b() == 5);
 }

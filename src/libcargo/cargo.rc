@@ -53,8 +53,8 @@ use core::io::WriterUtil;
 use core::result::{Ok, Err};
 use core::hashmap::linear::LinearMap;
 use std::getopts::{optflag, optopt, opt_present};
-use std::map::HashMap;
-use std::{map, json, tempfile, term, sort, getopts};
+use std::oldmap::HashMap;
+use std::{oldmap, json, tempfile, term, sort, getopts};
 use syntax::codemap::span;
 use syntax::diagnostic::span_handler;
 use syntax::diagnostic;
@@ -110,9 +110,9 @@ pub struct Cargo {
     libdir: Path,
     workdir: Path,
     sourcedir: Path,
-    sources: map::HashMap<~str, @Source>,
+    sources: oldmap::HashMap<~str, @Source>,
     mut current_install: ~str,
-    dep_cache: map::HashMap<~str, bool>,
+    dep_cache: oldmap::HashMap<~str, bool>,
     opts: Options
 }
 
@@ -286,7 +286,7 @@ pub fn load_link(mis: ~[@ast::meta_item]) -> (Option<~str>,
     let mut uuid = None;
     for mis.each |a| {
         match a.node {
-            ast::meta_name_value(v, ast::spanned { node: ast::lit_str(s),
+            ast::meta_name_value(v, codemap::spanned { node: ast::lit_str(s),
                                                    _ }) => {
                 match v {
                     ~"name" => name = Some(*s),
@@ -295,7 +295,7 @@ pub fn load_link(mis: ~[@ast::meta_item]) -> (Option<~str>,
                     _ => { }
                 }
             }
-            _ => fail ~"load_link: meta items must be name-values"
+            _ => die!(~"load_link: meta items must be name-values")
         }
     }
     (name, vers, uuid)
@@ -314,7 +314,7 @@ pub fn load_crate(filename: &Path) -> Option<Crate> {
 
     for c.node.attrs.each |a| {
         match a.node.value.node {
-            ast::meta_name_value(v, ast::spanned { node: ast::lit_str(_),
+            ast::meta_name_value(v, codemap::spanned { node: ast::lit_str(_),
                                                    _ }) => {
                 match v {
                     ~"desc" => desc = Some(v),
@@ -332,8 +332,8 @@ pub fn load_crate(filename: &Path) -> Option<Crate> {
                 }
             }
             _ => {
-                fail ~"crate attributes may not contain " +
-                     ~"meta_words";
+                die!(~"crate attributes may not contain " +
+                     ~"meta_words");
             }
         }
     }
@@ -435,7 +435,7 @@ pub fn rest(s: ~str, start: uint) -> ~str {
 pub fn need_dir(s: &Path) {
     if os::path_is_dir(s) { return; }
     if !os::make_dir(s, 493_i32 /* oct: 755 */) {
-        fail fmt!("can't make_dir %s", s.to_str());
+        die!(fmt!("can't make_dir %s", s.to_str()));
     }
 }
 
@@ -453,14 +453,14 @@ pub fn valid_pkg_name(s: &str) -> bool {
 
 pub fn parse_source(name: ~str, j: &json::Json) -> @Source {
     if !valid_pkg_name(name) {
-        fail fmt!("'%s' is an invalid source name", name);
+        die!(fmt!("'%s' is an invalid source name", name));
     }
 
     match *j {
         json::Object(j) => {
             let mut url = match j.find(&~"url") {
                 Some(&json::String(u)) => copy u,
-                _ => fail ~"needed 'url' field in source"
+                _ => die!(~"needed 'url' field in source")
             };
             let method = match j.find(&~"method") {
                 Some(&json::String(u)) => copy u,
@@ -485,12 +485,12 @@ pub fn parse_source(name: ~str, j: &json::Json) -> @Source {
                 mut keyfp: keyfp,
                 packages: DVec() };
         }
-        _ => fail ~"needed dict value in source"
+        _ => die!(~"needed dict value in source")
     };
 }
 
 pub fn try_parse_sources(filename: &Path,
-                         sources: map::HashMap<~str, @Source>) {
+                         sources: oldmap::HashMap<~str, @Source>) {
     if !os::path_exists(filename)  { return; }
     let c = io::read_whole_file_str(filename);
     match json::from_str(c.get()) {
@@ -500,8 +500,8 @@ pub fn try_parse_sources(filename: &Path,
                 debug!("source: %s", *k);
             }
         }
-        Ok(_) => fail ~"malformed sources.json",
-        Err(e) => fail fmt!("%s:%s", filename.to_str(), e.to_str())
+        Ok(_) => die!(~"malformed sources.json"),
+        Err(e) => die!(fmt!("%s:%s", filename.to_str(), e.to_str()))
     }
 }
 
@@ -662,7 +662,7 @@ pub fn build_cargo_options(argv: ~[~str]) -> Options {
     let matches = &match getopts::getopts(argv, opts()) {
         result::Ok(m) => m,
         result::Err(f) => {
-            fail fmt!("%s", getopts::fail_str(f));
+            die!(fmt!("%s", getopts::fail_str(f)));
         }
     };
 
@@ -675,10 +675,10 @@ pub fn build_cargo_options(argv: ~[~str]) -> Options {
     let is_install = len > 1u && matches.free[1] == ~"install";
     let is_uninstall = len > 1u && matches.free[1] == ~"uninstall";
 
-    if G && g { fail ~"-G and -g both provided"; }
+    if G && g { die!(~"-G and -g both provided"); }
 
     if !is_install && !is_uninstall && (g || G) {
-        fail ~"-g and -G are only valid for `install` and `uninstall|rm`";
+        die!(~"-g and -G are only valid for `install` and `uninstall|rm`");
     }
 
     let mode =
@@ -730,7 +730,7 @@ pub fn configure(opts: Options) -> Cargo {
     need_dir(&c.libdir);
     need_dir(&c.bindir);
 
-    for sources.each_key |k| {
+    for sources.each_key_ref |&k| {
         let mut s = sources.get(k);
         load_source_packages(&c, s);
         sources.insert(k, s);
@@ -748,7 +748,7 @@ pub fn configure(opts: Options) -> Cargo {
 }
 
 pub fn for_each_package(c: &Cargo, b: fn(s: @Source, p: &Package)) {
-    for c.sources.each_value |v| {
+    for c.sources.each_value_ref |&v| {
         for v.packages.each |p| {
             b(v, p);
         }
@@ -833,7 +833,7 @@ pub fn rustc_sysroot() -> ~str {
     }
 }
 
-pub fn install_source(c: &Cargo, path: &Path) {
+pub fn install_source(c: &mut Cargo, path: &Path) {
     debug!("source: %s", path.to_str());
     os::change_dir(path);
 
@@ -845,7 +845,7 @@ pub fn install_source(c: &Cargo, path: &Path) {
     }
 
     if vec::is_empty(cratefiles) {
-        fail ~"this doesn't look like a rust package (no .rc files)";
+        die!(~"this doesn't look like a rust package (no .rc files)");
     }
 
     for cratefiles.each |cf| {
@@ -872,7 +872,8 @@ pub fn install_source(c: &Cargo, path: &Path) {
     }
 }
 
-pub fn install_git(c: &Cargo, wd: &Path, url: ~str, reference: Option<~str>) {
+pub fn install_git(c: &mut Cargo, wd: &Path, url: ~str,
+                   reference: Option<~str>) {
     run::program_output(~"git", ~[~"clone", url, wd.to_str()]);
     if reference.is_some() {
         let r = reference.get();
@@ -883,12 +884,12 @@ pub fn install_git(c: &Cargo, wd: &Path, url: ~str, reference: Option<~str>) {
     install_source(c, wd);
 }
 
-pub fn install_curl(c: &Cargo, wd: &Path, url: ~str) {
+pub fn install_curl(c: &mut Cargo, wd: &Path, url: ~str) {
     let tarpath = wd.push("pkg.tar");
     let p = run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o",
                                          tarpath.to_str(), url]);
     if p.status != 0 {
-        fail fmt!("fetch of %s failed: %s", url, p.err);
+        die!(fmt!("fetch of %s failed: %s", url, p.err));
     }
     run::run_program(~"tar", ~[~"-x", ~"--strip-components=1",
                                ~"-C", wd.to_str(),
@@ -896,14 +897,14 @@ pub fn install_curl(c: &Cargo, wd: &Path, url: ~str) {
     install_source(c, wd);
 }
 
-pub fn install_file(c: &Cargo, wd: &Path, path: &Path) {
+pub fn install_file(c: &mut Cargo, wd: &Path, path: &Path) {
     run::program_output(~"tar", ~[~"-x", ~"--strip-components=1",
                                   ~"-C", wd.to_str(),
                                   ~"-f", path.to_str()]);
     install_source(c, wd);
 }
 
-pub fn install_package(c: &Cargo, src: ~str, wd: &Path, pkg: Package) {
+pub fn install_package(c: &mut Cargo, src: ~str, wd: &Path, pkg: Package) {
     let url = copy pkg.url;
     let method = match pkg.method {
         ~"git" => ~"git",
@@ -922,7 +923,7 @@ pub fn install_package(c: &Cargo, src: ~str, wd: &Path, pkg: Package) {
 }
 
 pub fn cargo_suggestion(c: &Cargo, fallback: fn()) {
-    if c.sources.size() == 0u {
+    if c.sources.is_empty() {
         error(~"no sources defined - you may wish to run " +
               ~"`cargo init`");
         return;
@@ -930,7 +931,7 @@ pub fn cargo_suggestion(c: &Cargo, fallback: fn()) {
     fallback();
 }
 
-pub fn install_uuid(c: &Cargo, wd: &Path, uuid: ~str) {
+pub fn install_uuid(c: &mut Cargo, wd: &Path, uuid: ~str) {
     let mut ps = ~[];
     for_each_package(c, |s, p| {
         if p.uuid == uuid {
@@ -954,7 +955,7 @@ pub fn install_uuid(c: &Cargo, wd: &Path, uuid: ~str) {
     }
 }
 
-pub fn install_named(c: &Cargo, wd: &Path, name: ~str) {
+pub fn install_named(c: &mut Cargo, wd: &Path, name: ~str) {
     let mut ps = ~[];
     for_each_package(c, |s, p| {
         if p.name == name {
@@ -978,7 +979,8 @@ pub fn install_named(c: &Cargo, wd: &Path, name: ~str) {
     }
 }
 
-pub fn install_uuid_specific(c: &Cargo, wd: &Path, src: ~str, uuid: ~str) {
+pub fn install_uuid_specific(c: &mut Cargo, wd: &Path, src: ~str,
+                             uuid: ~str) {
     match c.sources.find(src) {
         Some(s) => {
             for s.packages.each |p| {
@@ -993,7 +995,8 @@ pub fn install_uuid_specific(c: &Cargo, wd: &Path, src: ~str, uuid: ~str) {
     error(~"can't find package: " + src + ~"/" + uuid);
 }
 
-pub fn install_named_specific(c: &Cargo, wd: &Path, src: ~str, name: ~str) {
+pub fn install_named_specific(c: &mut Cargo, wd: &Path, src: ~str,
+                              name: ~str) {
     match c.sources.find(src) {
         Some(s) => {
             for s.packages.each |p| {
@@ -1060,7 +1063,7 @@ pub fn cmd_uninstall(c: &Cargo) {
     }
 }
 
-pub fn install_query(c: &Cargo, wd: &Path, target: ~str) {
+pub fn install_query(c: &mut Cargo, wd: &Path, target: ~str) {
     match c.dep_cache.find(target) {
         Some(inst) => {
             if inst {
@@ -1112,10 +1115,7 @@ pub fn install_query(c: &Cargo, wd: &Path, target: ~str) {
     // a bit of a hack. It should be cleaned up in the future.
 
     if target == c.current_install {
-        for c.dep_cache.each |k, _v| {
-            c.dep_cache.remove(k);
-        }
-
+        c.dep_cache.clear();
         c.current_install = ~"";
     }
 }
@@ -1123,12 +1123,12 @@ pub fn install_query(c: &Cargo, wd: &Path, target: ~str) {
 pub fn get_temp_workdir(c: &Cargo) -> Path {
     match tempfile::mkdtemp(&c.workdir, "cargo") {
       Some(wd) => wd,
-      None => fail fmt!("needed temp dir: %s",
-                        c.workdir.to_str())
+      None => die!(fmt!("needed temp dir: %s",
+                        c.workdir.to_str()))
     }
 }
 
-pub fn cmd_install(c: &Cargo) {
+pub fn cmd_install(c: &mut Cargo) {
     unsafe {
         let wd = get_temp_workdir(c);
 
@@ -1138,7 +1138,7 @@ pub fn cmd_install(c: &Cargo) {
                                                    wd.to_str()]);
 
             if status != 0 {
-                fail fmt!("could not copy directory: %s", cwd.to_str());
+                die!(fmt!("could not copy directory: %s", cwd.to_str()));
             }
 
             install_source(c, &wd);
@@ -1155,7 +1155,7 @@ pub fn cmd_install(c: &Cargo) {
 }
 
 pub fn sync(c: &Cargo) {
-    for c.sources.each_key |k| {
+    for c.sources.each_key_ref |&k| {
         let mut s = c.sources.get(k);
         sync_one(c, s);
         c.sources.insert(k, s);
@@ -1569,7 +1569,7 @@ pub fn cmd_list(c: &Cargo) {
             }
         }
     } else {
-        for c.sources.each_value |v| {
+        for c.sources.each_value_ref |&v| {
             print_source(v);
         }
     }
@@ -1620,7 +1620,7 @@ pub fn dump_cache(c: &Cargo) {
 }
 
 pub fn dump_sources(c: &Cargo) {
-    if c.sources.size() < 1u {
+    if c.sources.is_empty() {
         return;
     }
 
@@ -1636,7 +1636,7 @@ pub fn dump_sources(c: &Cargo) {
         result::Ok(writer) => {
             let mut hash = ~LinearMap::new();
 
-            for c.sources.each |k, v| {
+            for c.sources.each_ref |&k, &v| {
                 let mut chash = ~LinearMap::new();
 
                 chash.insert(~"url", json::String(v.url));
@@ -1675,7 +1675,7 @@ pub fn copy_warn(srcfile: &Path, destfile: &Path) {
 
 pub fn cmd_sources(c: &Cargo) {
     if vec::len(c.opts.free) < 3u {
-        for c.sources.each_value |v| {
+        for c.sources.each_value_ref |&v| {
             info(fmt!("%s (%s) via %s",
                       v.name, v.url, v.method));
         }
@@ -1686,8 +1686,8 @@ pub fn cmd_sources(c: &Cargo) {
 
     match action {
         ~"clear" => {
-          for c.sources.each_key |k| {
-                c.sources.remove(k);
+          for c.sources.each_key_ref |&k| {
+                c.sources.remove(&k);
             }
 
             info(~"cleared sources");
@@ -1706,7 +1706,7 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            if c.sources.contains_key(name) {
+            if c.sources.contains_key_ref(&name) {
                 error(fmt!("source already exists: %s", name));
             } else {
                 c.sources.insert(name, @Source {
@@ -1733,8 +1733,8 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            if c.sources.contains_key(name) {
-                c.sources.remove(name);
+            if c.sources.contains_key_ref(&name) {
+                c.sources.remove(&name);
                 info(fmt!("removed source: %s", name));
             } else {
                 error(fmt!("no such source: %s", name));
@@ -1825,7 +1825,7 @@ pub fn cmd_sources(c: &Cargo) {
 
             match c.sources.find(name) {
                 Some(source) => {
-                    c.sources.remove(name);
+                    c.sources.remove(&name);
                     c.sources.insert(newn, source);
                     info(fmt!("renamed source: %s to %s", name, newn));
                 }
@@ -1967,7 +1967,7 @@ pub fn main() {
 
     match o.free[1] {
         ~"init" => cmd_init(&c),
-        ~"install" => cmd_install(&c),
+        ~"install" => cmd_install(&mut c),
         ~"uninstall" => cmd_uninstall(&c),
         ~"list" => cmd_list(&c),
         ~"search" => cmd_search(&c),

@@ -20,7 +20,7 @@ impl Point : ToStr { //~ ERROR implements a method not defined in the trait
         Point { x: x, y: y }
     }
 
-    pure fn to_str() -> ~str {
+    pure fn to_str(&self) -> ~str {
         fmt!("(%f, %f)", self.x, self.y)
     }
 }

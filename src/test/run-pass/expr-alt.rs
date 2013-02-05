@@ -46,7 +46,7 @@ fn test_alt_as_block_result() {
     assert (rs);
 }
 
-fn main() {
+pub fn main() {
     test_basic();
     test_inferrence();
     test_alt_as_alt_head();

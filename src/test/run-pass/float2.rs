@@ -10,7 +10,7 @@
 
 
 
-fn main() {
+pub fn main() {
     let a = 1.5e6;
     let b = 1.5E6;
     let c = 1e6;

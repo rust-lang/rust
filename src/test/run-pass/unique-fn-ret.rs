@@ -12,6 +12,6 @@ fn f() -> ~int {
     ~100
 }
 
-fn main() {
+pub fn main() {
     assert f() == ~100;
 }

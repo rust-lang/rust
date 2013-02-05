@@ -29,7 +29,7 @@ fn empty_pointy() -> @Pointy {
     }
 }
 
-fn main()
+pub fn main()
 {
     let v = empty_pointy();
     v.a = p(v);

@@ -11,18 +11,18 @@
 // error-pattern:fail
 
 extern mod std;
-use std::map;
-use std::map::HashMap;
+use std::oldmap;
+use std::oldmap::HashMap;
 
 fn main() {
     let count = @mut 0u;
-    let map = map::HashMap();
+    let map = oldmap::HashMap();
     let mut arr = ~[];
     for uint::range(0u, 10u) |i| {
         arr += ~[@~"key stuff"];
         map.insert(copy arr, arr + ~[@~"value stuff"]);
         if arr.len() == 5 {
-            fail;
+            die!();
         }
     }
 }

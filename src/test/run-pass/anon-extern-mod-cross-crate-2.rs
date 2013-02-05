@@ -14,6 +14,6 @@ extern mod anonexternmod;
 
 use anonexternmod::*;
 
-fn main() {
+pub fn main() {
   last_os_error();
 }

@@ -74,19 +74,16 @@ pub fn common_exprs() -> ~[ast::expr] {
             id: 0,
             callee_id: -1,
             node: e,
-            span: ast_util::dummy_sp(),
+            span: codemap::dummy_sp(),
         }
     }
 
     fn dsl(l: ast::lit_) -> ast::lit {
-        ast::spanned { node: l, span: ast_util::dummy_sp() }
+        codemap::spanned { node: l, span: codemap::dummy_sp() }
     }
 
     ~[dse(ast::expr_break(option::None)),
      dse(ast::expr_again(option::None)),
-     dse(ast::expr_fail(option::None)),
-     dse(ast::expr_fail(option::Some(
-         @dse(ast::expr_lit(@dsl(ast::lit_str(@~"boo"))))))),
      dse(ast::expr_ret(option::None)),
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
@@ -117,11 +114,10 @@ pub pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_binary(*) | ast::expr_assign(*) |
           ast::expr_assign_op(*) => { false }
 
-          ast::expr_fail(option::None) |
           ast::expr_ret(option::None) => { false }
 
           // https://github.com/mozilla/rust/issues/953
-          ast::expr_fail(option::Some(_)) => { false }
+          //ast::expr_fail(option::Some(_)) => { false }
 
           // https://github.com/mozilla/rust/issues/928
           //ast::expr_cast(_, _) { false }
@@ -573,7 +569,7 @@ pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
         run::run_program(~"diff",
                          ~[~"-w", ~"-u", ~"round-trip-a.rs",
                           ~"round-trip-b.rs"]);
-        fail ~"Mismatch";
+        die!(~"Mismatch");
     }
 }
 

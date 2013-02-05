@@ -22,7 +22,7 @@ use core::cast;
 use core::libc;
 use core::str;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::codemap;
 
 pub fn terminate(cx: block, _: &str) {
@@ -33,7 +33,7 @@ pub fn terminate(cx: block, _: &str) {
 
 pub fn check_not_terminated(cx: block) {
     if cx.terminated {
-        fail ~"already terminated!";
+        die!(~"already terminated!");
     }
 }
 

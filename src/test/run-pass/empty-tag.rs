@@ -21,7 +21,7 @@ fn wrapper3(i: chan) {
     assert i == chan_t;
 }
 
-fn main() {
+pub fn main() {
     let wrapped = {||wrapper3(chan_t)};
     wrapped();
 }

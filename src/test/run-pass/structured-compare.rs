@@ -19,7 +19,7 @@ impl foo : cmp::Eq {
     pure fn ne(&self, other: &foo) -> bool { !(*self).eq(other) }
 }
 
-fn main() {
+pub fn main() {
     let a = (1, 2, 3);
     let b = (1, 2, 3);
     assert (a == b);

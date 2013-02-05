@@ -17,7 +17,7 @@
 
 extern mod crate_method_reexport_grrrrrrr2;
 
-fn main() {
+pub fn main() {
     use crate_method_reexport_grrrrrrr2::rust::add;
     use crate_method_reexport_grrrrrrr2::rust::cx;
     let x = @();

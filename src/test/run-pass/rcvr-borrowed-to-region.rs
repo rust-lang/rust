@@ -19,7 +19,7 @@ impl &int: get {
     }
 }
 
-fn main() {
+pub fn main() {
     /*
     let x = @mut 6;
     let y = x.get();

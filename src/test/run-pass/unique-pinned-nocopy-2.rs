@@ -24,7 +24,7 @@ fn r(i: @mut int) -> r {
     }
 }
 
-fn main() {
+pub fn main() {
     let i = @mut 0;
     {
         let j = ~r(i);

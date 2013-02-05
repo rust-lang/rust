@@ -54,21 +54,21 @@ fn get_v5(a: &v/A, i: uint) -> &v/int {
 fn get_v6_a(a: &v/A, i: uint) -> &v/int {
     match a.value.v6 {
         Some(ref v) => &v.f,
-        None => fail
+        None => die!()
     }
 }
 
 fn get_v6_b(a: &v/A, i: uint) -> &v/int {
     match *a {
         A { value: B { v6: Some(ref v), _ } } => &v.f,
-        _ => fail
+        _ => die!()
     }
 }
 
 fn get_v6_c(a: &v/A, i: uint) -> &v/int {
     match a {
         &A { value: B { v6: Some(ref v), _ } } => &v.f,
-        _ => fail
+        _ => die!()
     }
 }
 
@@ -78,7 +78,7 @@ fn get_v5_ref(a: &v/A, i: uint) -> &v/int {
     }
 }
 
-fn main() {
+pub fn main() {
     let a = A {value: B {v1: 22,
                          v2: [23, 24, 25],
                          v3: ~[26, 27, 28],

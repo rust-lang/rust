@@ -22,14 +22,14 @@ fn foo(s: @int) {
         log(debug, y); // ref up then down
 
       }
-      _ => { debug!("?"); fail; }
+      _ => { debug!("?"); die!(); }
     }
     log(debug, ::core::sys::refcount(s));
     assert (::core::sys::refcount(s) == count + 1u);
     let _ = ::core::sys::refcount(s); // don't get bitten by last-use.
 }
 
-fn main() {
+pub fn main() {
     let s: @int = @0; // ref up
 
     let count = ::core::sys::refcount(s);

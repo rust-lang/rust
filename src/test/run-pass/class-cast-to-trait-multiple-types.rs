@@ -83,7 +83,7 @@ fn annoy_neighbors<T: noisy>(critter: T) {
   for uint::range(0u, 10u) |i| { critter.speak(); }
 }
 
-fn main() {
+pub fn main() {
   let nyan : cat  = cat(0u, 2, ~"nyan");
   let whitefang : dog = dog();
   annoy_neighbors((copy nyan) as noisy);

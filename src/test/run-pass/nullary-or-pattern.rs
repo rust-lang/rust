@@ -14,7 +14,7 @@ fn or_alt(q: blah) -> int {
   match q { a | b => { 42 } }
 }
 
-fn main() {
+pub fn main() {
     assert (or_alt(a) == 42);
     assert (or_alt(b) == 42);
 }

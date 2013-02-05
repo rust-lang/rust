@@ -305,6 +305,6 @@ fn test_arena_destructors_fail() {
         // get freed too.
         do arena.alloc { @20 };
         // Now fail.
-        fail;
+        die!();
     };
 }

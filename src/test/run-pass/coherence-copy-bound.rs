@@ -9,5 +9,5 @@ struct S {
 
 impl S : X {}
 
-fn main(){}
+pub fn main(){}
 

@@ -36,7 +36,7 @@ use core::ptr;
 use core::run;
 use core::str;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::sha1::sha1;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
@@ -509,7 +509,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
               }
               ast::meta_list(_, _) => {
                 // FIXME (#607): Implement this
-                fail ~"unimplemented meta_item variant";
+                die!(~"unimplemented meta_item variant");
               }
             }
         }

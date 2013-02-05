@@ -101,14 +101,14 @@ use core::dvec::DVec;
 use core::result;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::node_id_to_str;
-use syntax::ast_util::dummy_sp;
+use syntax::codemap::dummy_sp;
 use syntax::codemap::span;
 
 pub fn lookup(
@@ -1171,11 +1171,12 @@ pub impl LookupContext {
         match candidate.origin {
             method_static(method_id) | method_self(method_id, _)
                 | method_super(method_id, _) => {
-                bad = self.tcx().destructors.contains_key(method_id);
+                bad = self.tcx().destructors.contains_key_ref(&method_id);
             }
             method_param(method_param { trait_id: trait_id, _ }) |
             method_trait(trait_id, _, _) => {
-                bad = self.tcx().destructor_for_type.contains_key(trait_id);
+                bad = self.tcx().destructor_for_type.contains_key_ref(
+                    &trait_id);
             }
         }
 
@@ -1233,7 +1234,7 @@ pub impl LookupContext {
         let span = if did.crate == ast::local_crate {
             match self.tcx().items.find(did.node) {
               Some(ast_map::node_method(m, _, _)) => m.span,
-              _ => fail fmt!("report_static_candidate: bad item %?", did)
+              _ => die!(fmt!("report_static_candidate: bad item %?", did))
             }
         } else {
             self.expr.span

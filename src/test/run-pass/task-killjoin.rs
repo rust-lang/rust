@@ -20,7 +20,7 @@ fn supervised() {
     // currently not needed because the supervisor runs first, but I can
     // imagine that changing.
     task::yield();
-    fail;
+    die!();
 }
 
 fn supervisor() {
@@ -30,7 +30,7 @@ fn supervisor() {
     task::try(supervised);
 }
 
-fn main() {
+pub fn main() {
     task::spawn_unlinked(supervisor)
 }
 

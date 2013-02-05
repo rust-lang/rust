@@ -20,7 +20,7 @@ fn f<T:Copy MyNum>(x: T, y: T) -> (T, T, T) {
 
 pure fn mi(v: int) -> MyInt { MyInt { val: v } }
 
-fn main() {
+pub fn main() {
     let (x, y) = (mi(3), mi(5));
     let (a, b, c) = f(x, y);
     assert a == mi(8);

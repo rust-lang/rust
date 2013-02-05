@@ -18,7 +18,7 @@ fn start(c: pipes::Chan<pipes::Chan<int>>) {
     c.send(move ch);
 }
 
-fn main() {
+pub fn main() {
     let (p, ch) = pipes::stream();
     let child = task::spawn(|move ch| start(ch) );
     let c = p.recv();

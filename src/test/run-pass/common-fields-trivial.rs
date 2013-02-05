@@ -18,7 +18,7 @@ enum Foo {
     Baz(int)
 }
 
-fn main() {
+pub fn main() {
     let x = Bar(3);
 }
 

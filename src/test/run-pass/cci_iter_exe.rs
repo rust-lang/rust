@@ -15,7 +15,7 @@
 
 extern mod cci_iter_lib;
 
-fn main() {
+pub fn main() {
     //let bt0 = sys::rusti::frame_address(1u32);
     //debug!("%?", bt0);
     do cci_iter_lib::iter(~[1, 2, 3]) |i| {

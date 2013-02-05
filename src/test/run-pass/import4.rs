@@ -17,4 +17,4 @@ mod zed {
     pub fn bar() { debug!("bar"); }
 }
 
-fn main() { let zed = 42; bar(); }
+pub fn main() { let zed = 42; bar(); }

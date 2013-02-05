@@ -18,7 +18,7 @@ type compare<T> = fn@(T, T) -> bool;
 fn test_generic<T: Copy>(expected: T, eq: compare<T>) {
     let actual: T = match true {
         true => copy expected,
-        _ => fail ~"wat"
+        _ => die!(~"wat")
     };
     assert (eq(expected, actual));
 }
@@ -28,4 +28,4 @@ fn test_vec() {
     test_generic::<~int>(~1, compare_box);
 }
 
-fn main() { test_vec(); }
+pub fn main() { test_vec(); }

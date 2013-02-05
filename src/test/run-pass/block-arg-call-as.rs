@@ -26,7 +26,7 @@ fn asAny( f : fn()->uint ) -> uint {
    return f();
 }
 
-fn main() {
+pub fn main() {
    let x = asSendfn(|| 22u);
    assert(x == 22u);
    let x = asLambda(|| 22u);

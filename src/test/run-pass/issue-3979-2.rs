@@ -23,5 +23,5 @@ trait C: B {
     }
 }
 
-fn main() {}
+pub fn main() {}
 

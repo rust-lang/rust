@@ -27,4 +27,4 @@ fn loop(n: int) {
     loop { }
 }
 
-fn main() { let t: task = spawn loop(5); join(t); }
+pub fn main() { let t: task = spawn loop(5); join(t); }

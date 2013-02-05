@@ -11,9 +11,8 @@
 use core::prelude::*;
 
 use ast;
-use ast_util::dummy_sp;
 use codemap;
-use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
+use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom, dummy_sp};
 use diagnostic::span_handler;
 use ext;
 use parse;
@@ -21,7 +20,7 @@ use parse::{parser, token};
 
 use core::io;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 // new-style macro! tt code:
 //

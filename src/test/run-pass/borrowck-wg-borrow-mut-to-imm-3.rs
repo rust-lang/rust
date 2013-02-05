@@ -10,7 +10,7 @@ impl Wizard {
     }
 }
 
-fn main() {
+pub fn main() {
     let mut harry = Wizard {
         spells: ~[ "expelliarmus", "expecto patronum", "incendio" ]
     };

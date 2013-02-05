@@ -10,7 +10,7 @@
 
 struct Foo { a: int, b: int }
 
-fn main() {
+pub fn main() {
     let ~Foo{a, b} = ~Foo{a: 100, b: 200};
     assert a + b == 300;
 }

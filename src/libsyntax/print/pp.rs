@@ -119,7 +119,7 @@ pub fn tok_str(++t: token) -> ~str {
     }
 }
 
-pub fn buf_str(toks: ~[mut token], szs: ~[mut int], left: uint, right: uint,
+pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
                lim: uint) -> ~str {
     let n = vec::len(toks);
     assert (n == vec::len(szs));
@@ -148,17 +148,17 @@ pub fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
     // fall behind.
     let n: uint = 3 * linewidth;
     debug!("mk_printer %u", linewidth);
-    let token: ~[mut token] = vec::cast_to_mut(vec::from_elem(n, EOF));
-    let size: ~[mut int] = vec::cast_to_mut(vec::from_elem(n, 0));
-    let scan_stack: ~[mut uint] = vec::cast_to_mut(vec::from_elem(n, 0u));
+    let mut token: ~[token] = vec::from_elem(n, EOF);
+    let mut size: ~[int] = vec::from_elem(n, 0);
+    let mut scan_stack: ~[uint] = vec::from_elem(n, 0u);
     printer_(@{out: out,
                buf_len: n,
                mut margin: linewidth as int,
                mut space: linewidth as int,
                mut left: 0,
                mut right: 0,
-               token: move token,
-               size: move size,
+               mut token: move token,
+               mut size: move size,
                mut left_total: 0,
                mut right_total: 0,
                mut scan_stack: move scan_stack,
@@ -254,8 +254,8 @@ pub type printer_ = {
     mut space: int, // number of spaces left on line
     mut left: uint, // index of left side of input stream
     mut right: uint, // index of right side of input stream
-    token: ~[mut token], // ring-buffr stream goes through
-    size: ~[mut int], // ring-buffer of calculated sizes
+    mut token: ~[token], // ring-buffr stream goes through
+    mut size: ~[int], // ring-buffer of calculated sizes
     mut left_total: int, // running size of stream "...left"
     mut right_total: int, // running size of stream "...right"
     // pseudo-stack, really a ring too. Holds the
@@ -264,7 +264,7 @@ pub type printer_ = {
     // BEGIN (if there is any) on top of it. Stuff is flushed off the
     // bottom as it becomes irrelevant due to the primary ring-buffer
     // advancing.
-    mut scan_stack: ~[mut uint],
+    mut scan_stack: ~[uint],
     mut scan_stack_empty: bool, // top==bottom disambiguator
     mut top: uint, // index of top of scan_stack
     mut bottom: uint, // index of bottom of scan_stack
@@ -532,7 +532,7 @@ pub impl printer {
           }
           EOF => {
             // EOF should never get here.
-            fail;
+            die!();
           }
         }
     }

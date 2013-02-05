@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let yen: char = '¥'; // 0xa5
     let c_cedilla: char = 'ç'; // 0xe7
     let thorn: char = 'þ'; // 0xfe

@@ -36,8 +36,8 @@ use core::str;
 use core::vec;
 use std::ebml::reader;
 use std::ebml;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use std::serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
@@ -45,6 +45,7 @@ use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+use syntax::codemap;
 
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
@@ -91,7 +92,7 @@ fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
 fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
     let items = reader::get_doc(reader::Doc(data), tag_items);
     match maybe_find_item(item_id, items) {
-       None => fail(fmt!("lookup_item: id not found: %d", item_id)),
+       None => die!(fmt!("lookup_item: id not found: %d", item_id)),
        Some(d) => d
     }
 }
@@ -149,7 +150,7 @@ fn item_family(item: ebml::Doc) -> Family {
       'g' => PublicField,
       'j' => PrivateField,
       'N' => InheritedField,
-       c => fail (fmt!("unexpected family char: %c", c))
+       c => die!(fmt!("unexpected family char: %c", c))
     }
 }
 
@@ -396,7 +397,7 @@ pub fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
     let mut found = None;
     let cls_items = match maybe_find_item(id, items) {
             Some(it) => it,
-            None     => fail (fmt!("struct_dtor: class id not found \
+            None     => die!(fmt!("struct_dtor: class id not found \
               when looking up dtor for %d", id))
     };
     for reader::tagged_docs(cls_items, tag_item_dtor) |doc| {
@@ -421,8 +422,8 @@ pub enum def_like {
 fn def_like_to_def(def_like: def_like) -> ast::def {
     match def_like {
         dl_def(def) => return def,
-        dl_impl(*) => fail ~"found impl in def_like_to_def",
-        dl_field => fail ~"found field in def_like_to_def"
+        dl_impl(*) => die!(~"found impl in def_like_to_def"),
+        dl_field => die!(~"found field in def_like_to_def")
     }
 }
 
@@ -625,7 +626,7 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
             'm' => { ast::m_mutbl }
             'c' => { ast::m_const }
             _ => {
-                fail fmt!("unknown mutability character: `%c`", ch as char)
+                die!(fmt!("unknown mutability character: `%c`", ch as char))
             }
         }
     }
@@ -642,7 +643,7 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
         '~' => { return ast::sty_uniq(get_mutability(string[1])); }
         '&' => { return ast::sty_region(get_mutability(string[1])); }
         _ => {
-            fail fmt!("unknown self type code: `%c`", self_ty_kind as char);
+            die!(fmt!("unknown self type code: `%c`", self_ty_kind as char));
         }
     }
 }
@@ -832,7 +833,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
                     StaticMethod => purity = ast::impure_fn,
                     UnsafeStaticMethod => purity = ast::unsafe_fn,
                     PureStaticMethod => purity = ast::pure_fn,
-                    _ => fail
+                    _ => die!()
                 }
 
                 static_impl_methods.push(StaticMethodInfo {
@@ -865,7 +866,7 @@ pure fn family_to_visibility(family: Family) -> ast::visibility {
       PublicField => ast::public,
       PrivateField => ast::private,
       InheritedField => ast::inherited,
-      _ => fail
+      _ => die!()
     }
 }
 
@@ -915,7 +916,7 @@ fn describe_def(items: ebml::Doc, id: ast::def_id) -> ~str {
     if id.crate != ast::local_crate { return ~"external"; }
     let it = match maybe_find_item(id.node, items) {
         Some(it) => it,
-        None => fail (fmt!("describe_def: item not found %?", id))
+        None => die!(fmt!("describe_def: item not found %?", id))
     };
     return item_family_to_str(item_family(it));
 }
@@ -981,13 +982,13 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             assert (vec::len(meta_items) == 1u);
             let meta_item = meta_items[0];
             attrs.push(
-                ast::spanned {
+                codemap::spanned {
                     node: ast::attribute_ {
                         style: ast::attr_outer,
                         value: /*bad*/copy *meta_item,
                         is_sugared_doc: false,
                     },
-                    span: ast_util::dummy_sp()
+                    span: codemap::dummy_sp()
                 });
         };
       }
@@ -1100,7 +1101,7 @@ pub fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
 
     match cdata.cnum_map.find(did.crate) {
       option::Some(n) => ast::def_id { crate: n, node: did.node },
-      option::None => fail ~"didn't find a crate in the cnum_map"
+      option::None => die!(~"didn't find a crate in the cnum_map")
     }
 }
 

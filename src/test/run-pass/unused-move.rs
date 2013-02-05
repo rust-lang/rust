@@ -12,7 +12,7 @@
 // Issue Name: Unused move causes a crash
 // Abstract: zero-fill to block after drop
 
-fn main()
+pub fn main()
 {
     let y = ~1;
     move y;

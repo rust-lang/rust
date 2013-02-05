@@ -100,7 +100,7 @@ pub fn of_str(str: @~str) -> Rope {
  */
 pub fn of_substr(str: @~str, byte_offset: uint, byte_len: uint) -> Rope {
     if byte_len == 0u { return node::Empty; }
-    if byte_offset + byte_len  > str::len(*str) { fail; }
+    if byte_offset + byte_len  > str::len(*str) { die!(); }
     return node::Content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -246,9 +246,9 @@ Section: Transforming ropes
 pub fn sub_chars(rope: Rope, char_offset: uint, char_len: uint) -> Rope {
     if char_len == 0u { return node::Empty; }
     match (rope) {
-      node::Empty => fail,
+      node::Empty => die!(),
       node::Content(node) => if char_len > node::char_len(node) {
-        fail
+        die!()
       } else {
         return node::Content(node::sub_chars(node, char_offset, char_len))
       }
@@ -271,9 +271,9 @@ pub fn sub_chars(rope: Rope, char_offset: uint, char_len: uint) -> Rope {
 pub fn sub_bytes(rope: Rope, byte_offset: uint, byte_len: uint) -> Rope {
     if byte_len == 0u { return node::Empty; }
     match (rope) {
-      node::Empty => fail,
+      node::Empty => die!(),
       node::Content(node) =>if byte_len > node::byte_len(node) {
-        fail
+        die!()
       } else {
         return node::Content(node::sub_bytes(node, byte_offset, byte_len))
       }
@@ -550,7 +550,7 @@ pub pure fn byte_len(rope: Rope) -> uint {
  */
 pub fn char_at(rope: Rope, pos: uint) -> char {
    match (rope) {
-      node::Empty => fail,
+      node::Empty => die!(),
       node::Content(x) => return node::char_at(x, pos)
    }
 }
@@ -788,7 +788,7 @@ pub mod node {
      * * forest - The forest. This vector is progressively rewritten during
      *            execution and should be discarded as meaningless afterwards.
      */
-    pub fn tree_from_forest_destructive(forest: &[mut @Node]) -> @Node {
+    pub fn tree_from_forest_destructive(forest: &mut [@Node]) -> @Node {
         let mut i;
         let mut len = vec::len(forest);
         while len > 1u {
@@ -1158,18 +1158,17 @@ pub mod node {
         use core::vec;
 
         pub struct T {
-            stack: ~[mut @Node],
+            mut stack: ~[@Node],
             mut stackpos: int,
         }
 
         pub fn empty() -> T {
-            let stack : ~[mut @Node] = ~[mut];
+            let mut stack : ~[@Node] = ~[];
             T { stack: stack, stackpos: -1 }
         }
 
         pub fn start(node: @Node) -> T {
-            let stack = vec::cast_to_mut(
-                vec::from_elem(height(node)+1u, node));
+            let stack = vec::from_elem(height(node)+1u, node);
             T {
                 stack: stack,
                 stackpos:  0,

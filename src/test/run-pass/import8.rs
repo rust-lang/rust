@@ -18,4 +18,4 @@ mod foo {
     pub fn x(y: int) { log(debug, y); }
 }
 
-fn main() { x(10); z(10); }
+pub fn main() { x(10); z(10); }

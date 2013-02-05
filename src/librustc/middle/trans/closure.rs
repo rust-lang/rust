@@ -28,7 +28,7 @@ use middle::trans::type_of::*;
 use util::ppaux::ty_to_str;
 
 use core::libc::c_uint;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
@@ -121,8 +121,8 @@ pub struct EnvValue {
 }
 
 pub impl EnvAction {
-    fn to_str() -> ~str {
-        match self {
+    fn to_str(&self) -> ~str {
+        match *self {
             EnvCopy => ~"EnvCopy",
             EnvMove => ~"EnvMove",
             EnvRef => ~"EnvRef"

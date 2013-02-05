@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-fn main() {
+pub fn main() {
   let s = shell!( uname -a );
   log(debug, s);
 }

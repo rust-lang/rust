@@ -10,7 +10,7 @@
 
 // exec-env:RUST_POISON_ON_FREE=1
 
-fn main() {
+pub fn main() {
     let x: @mut @Option<~int> = @mut @None;
     match x {
       @@Some(ref y) => {

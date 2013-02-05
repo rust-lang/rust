@@ -27,7 +27,7 @@ impl my_connection_factory: connection_factory<my_connection> {
     fn create() -> my_connection { () }
 }
 
-fn main() {
+pub fn main() {
     let factory = ();
     let connection = factory.create();
     let result = connection.read();

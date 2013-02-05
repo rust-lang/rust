@@ -20,4 +20,4 @@ mod bar {
     pub fn thing() { x(10); z(10); }
 }
 
-fn main() { bar::thing(); }
+pub fn main() { bar::thing(); }

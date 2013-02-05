@@ -6,7 +6,7 @@ fn f(x: &mut Option<int>) {
     g(&*x);
 }
 
-fn main() {
+pub fn main() {
     let mut x = ~Some(3);
     f(x);
 }

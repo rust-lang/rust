@@ -124,23 +124,6 @@ struct s_trace_args {
     size_t line;
 };
 
-extern "C" CDECL void
-upcall_s_trace(s_trace_args *args) {
-    rust_task *task = args->task;
-    LOG_UPCALL_ENTRY(task);
-    LOG(task, trace, "Trace %s:%d: %s",
-        args->file, args->line, args->msg);
-}
-
-extern "C" CDECL void
-upcall_trace(char const *msg,
-             char const *file,
-             size_t line) {
-    rust_task *task = rust_get_current_task();
-    s_trace_args args = {task,msg,file,line};
-    UPCALL_SWITCH_STACK(task, &args, upcall_s_trace);
-}
-
 /**********************************************************************
  * Allocate an object in the exchange heap
  */
@@ -302,17 +285,6 @@ rust_upcall_free(void* ptr) {
     upcall_free(ptr);
 }
 
-/**********************************************************************
- * Sanity checks on boxes, insert when debugging possible
- * use-after-free bugs.  See maybe_validate_box() in trans.rs.
- */
-
-extern "C" CDECL void
-upcall_validate_box(rust_opaque_box* ptr) {
-    // XXX: Remove after snapshot
-    abort();
-}
-
 /**********************************************************************/
 
 extern "C" _Unwind_Reason_Code
@@ -367,12 +339,6 @@ upcall_rust_personality(int version,
         upcall_s_rust_personality(&args);
     }
     return args.retval;
-}
-
-extern "C" void
-upcall_log_type(const type_desc *tydesc, uint8_t *data, uint32_t level) {
-    // XXX: Remove after snapshot
-    abort();
 }
 
 // NB: This needs to be blazing fast. Don't switch stacks

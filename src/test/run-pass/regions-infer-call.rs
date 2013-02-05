@@ -14,6 +14,6 @@ fn has_two(x: &a/int, y: &b/int) -> int {
     takes_two(x, y)
 }
 
-fn main() {
+pub fn main() {
     assert has_two(&20, &2) == 22;
 }

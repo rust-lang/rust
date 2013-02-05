@@ -55,7 +55,7 @@ fn test_372() {
 
 fn test_nil() { () }
 
-fn main() {
+pub fn main() {
     test_int();
     test_vec();
     test_generic();

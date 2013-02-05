@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { let x = (); match x { () => { } } }
+pub fn main() { let x = (); match x { () => { } } }

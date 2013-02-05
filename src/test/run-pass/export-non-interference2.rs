@@ -16,4 +16,4 @@ mod foo {
     pub fn x() { debug!("x"); }
 }
 
-fn main() { self::foo::bar::y(); }
+pub fn main() { self::foo::bar::y(); }

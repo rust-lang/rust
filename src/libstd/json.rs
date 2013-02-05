@@ -109,7 +109,7 @@ pub impl Encoder: serialize::Encoder {
     fn emit_f64(&self, v: f64) { self.emit_float(v as float); }
     fn emit_f32(&self, v: f32) { self.emit_float(v as float); }
     fn emit_float(&self, v: float) {
-        self.wr.write_str(float::to_str(v, 6u));
+        self.wr.write_str(float::to_str_digits(v, 6u));
     }
 
     fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
@@ -123,7 +123,7 @@ pub impl Encoder: serialize::Encoder {
     fn emit_managed(&self, f: fn()) { f() }
 
     fn emit_enum(&self, name: &str, f: fn()) {
-        if name != "option" { fail ~"only supports option enum" }
+        if name != "option" { die!(~"only supports option enum") }
         f()
     }
     fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: fn()) {
@@ -213,7 +213,7 @@ pub impl PrettyEncoder: serialize::Encoder {
     fn emit_f64(&self, v: f64) { self.emit_float(v as float); }
     fn emit_f32(&self, v: f32) { self.emit_float(v as float); }
     fn emit_float(&self, v: float) {
-        self.wr.write_str(float::to_str(v, 6u));
+        self.wr.write_str(float::to_str_digits(v, 6u));
     }
 
     fn emit_char(&self, v: char) { self.emit_borrowed_str(str::from_char(v)) }
@@ -227,7 +227,7 @@ pub impl PrettyEncoder: serialize::Encoder {
     fn emit_managed(&self, f: fn()) { f() }
 
     fn emit_enum(&self, name: &str, f: fn()) {
-        if name != "option" { fail ~"only supports option enum" }
+        if name != "option" { die!(~"only supports option enum") }
         f()
     }
     fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: fn()) {
@@ -743,7 +743,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_nil");
         match *self.pop() {
             Null => (),
-            _ => fail ~"not a null"
+            _ => die!(~"not a null")
         }
     }
 
@@ -763,7 +763,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_bool");
         match *self.pop() {
             Boolean(b) => b,
-            _ => fail ~"not a boolean"
+            _ => die!(~"not a boolean")
         }
     }
 
@@ -773,13 +773,13 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_float");
         match *self.pop() {
             Number(f) => f,
-            _ => fail ~"not a number"
+            _ => die!(~"not a number")
         }
     }
 
     fn read_char(&self) -> char {
         let v = str::chars(self.read_owned_str());
-        if v.len() != 1 { fail ~"string must have one character" }
+        if v.len() != 1 { die!(~"string must have one character") }
         v[0]
     }
 
@@ -787,7 +787,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_owned_str");
         match *self.pop() {
             String(ref s) => copy *s,
-            _ => fail ~"not a string"
+            _ => die!(~"not a string")
         }
     }
 
@@ -795,7 +795,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_managed_str");
         match *self.pop() {
             String(ref s) => s.to_managed(),
-            _ => fail ~"not a string"
+            _ => die!(~"not a string")
         }
     }
 
@@ -811,7 +811,7 @@ pub impl Decoder: serialize::Decoder {
 
     fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T {
         debug!("read_enum(%s)", name);
-        if name != ~"option" { fail ~"only supports the option enum" }
+        if name != ~"option" { die!(~"only supports the option enum") }
         f()
     }
 
@@ -826,7 +826,7 @@ pub impl Decoder: serialize::Decoder {
 
     fn read_enum_variant_arg<T>(&self, idx: uint, f: fn() -> T) -> T {
         debug!("read_enum_variant_arg(idx=%u)", idx);
-        if idx != 0 { fail ~"unknown index" }
+        if idx != 0 { die!(~"unknown index") }
         f()
     }
 
@@ -834,7 +834,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_owned_vec()");
         let len = match *self.peek() {
             List(list) => list.len(),
-            _ => fail ~"not a list",
+            _ => die!(~"not a list"),
         };
         let res = f(len);
         self.pop();
@@ -845,7 +845,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_owned_vec()");
         let len = match *self.peek() {
             List(ref list) => list.len(),
-            _ => fail ~"not a list",
+            _ => die!(~"not a list"),
         };
         let res = f(len);
         self.pop();
@@ -862,7 +862,7 @@ pub impl Decoder: serialize::Decoder {
                 self.stack.push(&list[idx]);
                 f()
             }
-            _ => fail ~"not a list",
+            _ => die!(~"not a list"),
         }
     }
 
@@ -889,20 +889,20 @@ pub impl Decoder: serialize::Decoder {
                 let obj: &self/~Object = obj;
 
                 match obj.find(&name.to_owned()) {
-                    None => fail fmt!("no such field: %s", name),
+                    None => die!(fmt!("no such field: %s", name)),
                     Some(json) => {
                         self.stack.push(json);
                         f()
                     }
                 }
             }
-            Number(_) => fail ~"num",
-            String(_) => fail ~"str",
-            Boolean(_) => fail ~"bool",
-            List(_) => fail fmt!("list: %?", top),
-            Null => fail ~"null",
+            Number(_) => die!(~"num"),
+            String(_) => die!(~"str"),
+            Boolean(_) => die!(~"bool"),
+            List(_) => die!(fmt!("list: %?", top)),
+            Null => die!(~"null"),
 
-            //_ => fail fmt!("not an object: %?", *top)
+            //_ => die!(fmt!("not an object: %?", *top))
         }
     }
 
@@ -922,7 +922,7 @@ pub impl Decoder: serialize::Decoder {
                 self.stack.push(&list[idx]);
                 f()
             }
-            _ => fail ~"not a list"
+            _ => die!(~"not a list")
         }
     }
 }
@@ -1162,18 +1162,6 @@ impl <A: ToJson Copy> LinearMap<~str, A>: ToJson {
     }
 }
 
-/*
-impl <A: ToJson Copy> @std::map::HashMap<~str, A>: ToJson {
-    fn to_json() -> Json {
-        let mut d = LinearMap::new();
-        for self.each_ref |key, value| {
-            d.insert(copy *key, value.to_json());
-        }
-        Object(~d)
-    }
-}
-*/
-
 impl <A: ToJson> Option<A>: ToJson {
     fn to_json() -> Json {
         match self {
@@ -1184,11 +1172,11 @@ impl <A: ToJson> Option<A>: ToJson {
 }
 
 impl Json: to_str::ToStr {
-    pure fn to_str() -> ~str { to_str(&self) }
+    pure fn to_str(&self) -> ~str { to_str(self) }
 }
 
 impl Error: to_str::ToStr {
-    pure fn to_str() -> ~str {
+    pure fn to_str(&self) -> ~str {
         fmt!("%u:%u: %s", self.line, self.col, *self.msg)
     }
 }

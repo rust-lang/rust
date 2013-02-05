@@ -53,9 +53,9 @@ pub mod pipes {
 
     #[abi = "rust-intrinsic"]
     mod rusti {
-      pub fn atomic_xchg(_dst: &mut int, _src: int) -> int { fail; }
-      pub fn atomic_xchg_acq(_dst: &mut int, _src: int) -> int { fail; }
-      pub fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { fail; }
+      pub fn atomic_xchg(_dst: &mut int, _src: int) -> int { die!(); }
+      pub fn atomic_xchg_acq(_dst: &mut int, _src: int) -> int { die!(); }
+      pub fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { die!(); }
     }
 
     // We should consider moving this to ::core::unsafe, although I
@@ -89,7 +89,7 @@ pub mod pipes {
             // The receiver will eventually clean this up.
             unsafe { forget(move p); }
           }
-          full => { fail ~"duplicate send" }
+          full => { die!(~"duplicate send") }
           blocked => {
 
             // The receiver will eventually clean this up.
@@ -132,7 +132,7 @@ pub mod pipes {
           }
           full => {
             // This is impossible
-            fail ~"you dun goofed"
+            die!(~"you dun goofed")
           }
           terminated => {
             // I have to clean up, use drop_glue
@@ -149,7 +149,7 @@ pub mod pipes {
           }
           blocked => {
             // this shouldn't happen.
-            fail ~"terminating a blocked packet"
+            die!(~"terminating a blocked packet")
           }
           terminated | full => {
             // I have to clean up, use drop_glue
@@ -269,7 +269,7 @@ pub mod pingpong {
         pub fn do_pong(-c: pong) -> (ping, ()) {
             let packet = ::pipes::recv(move c);
             if packet.is_none() {
-                fail ~"sender closed the connection"
+                die!(~"sender closed the connection")
             }
             (pingpong::liberate_pong(option::unwrap(move packet)), ())
         }
@@ -284,7 +284,7 @@ pub mod pingpong {
         pub fn do_ping(-c: ping) -> (pong, ()) {
             let packet = ::pipes::recv(move c);
             if packet.is_none() {
-                fail ~"sender closed the connection"
+                die!(~"sender closed the connection")
             }
             (pingpong::liberate_ping(option::unwrap(move packet)), ())
         }
@@ -311,7 +311,7 @@ fn server(-chan: pingpong::server::ping) {
     log(error, ~"Sent pong");
 }
 
-fn main() {
+pub fn main() {
   /*
 //    Commented out because of option::get error
 

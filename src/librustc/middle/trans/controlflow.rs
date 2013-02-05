@@ -183,8 +183,7 @@ pub fn trans_log(log_ex: @ast::expr,
     // XXX: Bad copy.
     let modname = path_str(ccx.sess, copy modpath);
 
-    // XXX: Bad copy.
-    let global = if ccx.module_data.contains_key(copy modname) {
+    let global = if ccx.module_data.contains_key_ref(&modname) {
         ccx.module_data.get(modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(

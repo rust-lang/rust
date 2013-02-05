@@ -60,5 +60,5 @@ fn test(+foo: foo::client::foo, +bar: bar::client::bar) {
     )
 }
 
-fn main() {
+pub fn main() {
 }

@@ -27,7 +27,7 @@ fn safe_head<T: Copy>(ls: @List<T>) -> T {
     return head(ls);
 }
 
-fn main() {
+pub fn main() {
     let mylist = @Cons(@1u, @Nil);
     assert (nonempty_list(mylist));
     assert (*safe_head(mylist) == 1u);

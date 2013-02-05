@@ -14,4 +14,4 @@ fn foo(x: maybe<int>) {
     match x { nothing => { error!("A"); } just(a) => { error!("B"); } }
 }
 
-fn main() { }
+pub fn main() { }

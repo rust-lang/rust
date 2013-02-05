@@ -54,7 +54,7 @@
  *
  */
 
-fn main() {
+pub fn main() {
 
   let num = 12;
 

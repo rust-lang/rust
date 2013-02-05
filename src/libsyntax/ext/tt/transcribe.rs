@@ -13,15 +13,16 @@ use core::prelude::*;
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use ast_util;
-use codemap::span;
+use codemap::{span, dummy_sp};
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
+use parse::lexer::TokenAndSpan;
 
 use core::option;
 use core::vec;
 use std;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 enum tt_frame_up { /* to break a circularity */
     tt_frame_up(Option<tt_frame>)
@@ -43,7 +44,7 @@ pub type tt_reader = @{
     interner: @ident_interner,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
-    interpolations: std::map::HashMap<ident, @named_match>,
+    interpolations: std::oldmap::HashMap<ident, @named_match>,
     mut repeat_idx: ~[uint],
     mut repeat_len: ~[uint],
     /* cached: */
@@ -55,21 +56,21 @@ pub type tt_reader = @{
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
 pub fn new_tt_reader(sp_diag: span_handler, itr: @ident_interner,
-                     interp: Option<std::map::HashMap<ident,@named_match>>,
+                     interp: Option<std::oldmap::HashMap<ident,@named_match>>,
                      src: ~[ast::token_tree])
                   -> tt_reader {
     let r = @{sp_diag: sp_diag, interner: itr,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: None, up: tt_frame_up(option::None)},
               interpolations: match interp { /* just a convienience */
-                None => std::map::HashMap(),
+                None => std::oldmap::HashMap(),
                 Some(x) => x
               },
               mut repeat_idx: ~[],
               mut repeat_len: ~[],
               /* dummy values, never read: */
               mut cur_tok: EOF,
-              mut cur_span: ast_util::dummy_sp()
+              mut cur_span: dummy_sp()
              };
     tt_next_token(r); /* get cur_tok and cur_span set up */
     return r;
@@ -149,8 +150,8 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
 }
 
 
-pub fn tt_next_token(&&r: tt_reader) -> {tok: Token, sp: span} {
-    let ret_val = { tok: r.cur_tok, sp: r.cur_span };
+pub fn tt_next_token(&&r: tt_reader) -> TokenAndSpan {
+    let ret_val = TokenAndSpan { tok: r.cur_tok, sp: r.cur_span };
     while r.cur.idx >= r.cur.readme.len() {
         /* done with this set; pop or repeat? */
         if ! r.cur.dotdotdoted

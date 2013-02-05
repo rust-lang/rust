@@ -12,5 +12,5 @@ impl S : MyTrait {
     }
 }
 
-fn main() {}
+pub fn main() {}
 

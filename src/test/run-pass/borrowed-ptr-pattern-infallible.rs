@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let (&x, &y, &z) = (&3, &'a', &@"No pets!");
     assert x == 3;
     assert y == 'a';

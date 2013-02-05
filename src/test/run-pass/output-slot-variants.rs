@@ -23,7 +23,7 @@ fn ret_ext_mem() -> Abox { return Abox {a: @10, b: @10}; }
 
 fn ret_ext_ext_mem() -> @Abox { return @Abox{a: @10, b: @10}; }
 
-fn main() {
+pub fn main() {
     let mut int_i: int;
     let mut ext_i: @int;
     let mut int_rec: A;

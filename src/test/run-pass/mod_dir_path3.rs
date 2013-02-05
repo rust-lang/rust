@@ -16,6 +16,6 @@ mod pancakes {
     pub mod test;
 }
 
-fn main() {
+pub fn main() {
     assert pancakes::test::foo() == 10;
 }

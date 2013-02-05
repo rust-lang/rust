@@ -4,7 +4,7 @@ struct Thingy {
 }
 
 impl ToStr for Thingy {
-    pure fn to_str() -> ~str {
+    pure fn to_str(&self) -> ~str {
         fmt!("{ x: %d, y: %d }", self.x, self.y)
     }
 }
@@ -14,12 +14,12 @@ struct PolymorphicThingy<T> {
 }
 
 impl<T:ToStr> ToStr for PolymorphicThingy<T> {
-    pure fn to_str() -> ~str {
+    pure fn to_str(&self) -> ~str {
         self.x.to_str()
     }
 }
 
-fn main() {
+pub fn main() {
     io::println(Thingy { x: 1, y: 2 }.to_str());
     io::println(PolymorphicThingy { x: Thingy { x: 1, y: 2 } }.to_str());
 }

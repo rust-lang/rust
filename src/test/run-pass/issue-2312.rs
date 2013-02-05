@@ -15,7 +15,7 @@ trait clam<A> { }
 enum foo = int;
 
 impl foo {
-    fn bar<B,C:clam<B>>(c: C) -> B { fail; }
+    fn bar<B,C:clam<B>>(c: C) -> B { die!(); }
 }
 
-fn main() { }
+pub fn main() { }

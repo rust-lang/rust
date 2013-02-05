@@ -64,7 +64,7 @@ fn noncopyable() {
     g(i, j);
 }
 
-fn main() {
+pub fn main() {
     sendable();
     copyable();
     noncopyable();

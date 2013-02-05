@@ -28,8 +28,8 @@ enum square {
 }
 
 impl square: to_str::ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
           bot => { ~"R" }
           wall => { ~"#" }
           rock => { ~"*" }
@@ -54,7 +54,7 @@ fn square_from_char(c: char) -> square {
       ' '  => { empty }
       _ => {
         error!("invalid square: %?", c);
-        fail
+        die!()
       }
     }
 }
@@ -87,4 +87,4 @@ mod test {
     }
 }
 
-fn main() {}
+pub fn main() {}

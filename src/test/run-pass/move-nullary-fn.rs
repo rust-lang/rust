@@ -15,6 +15,6 @@ fn f(-thing: fn@()) {
     f2(move thing);
 }
 
-fn main() {
+pub fn main() {
     f(fn@() {});
 }

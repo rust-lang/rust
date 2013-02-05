@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Issue #825: Should recheck the loop contition after continuing
-fn main() {
+pub fn main() {
     let mut i = 1;
     while i > 0 {
         assert (i > 0);

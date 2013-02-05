@@ -12,7 +12,7 @@
 
 struct Pair { x: int, y: int }
 
-fn main() {
+pub fn main() {
     // This just tests whether the vec leaks its members.
 
     let pvec: ~[@Pair] =

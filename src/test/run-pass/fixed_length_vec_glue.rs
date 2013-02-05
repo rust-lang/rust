@@ -10,7 +10,7 @@
 
 struct Struc { a: u8, b: [int * 3], c: int }
 
-fn main() {
+pub fn main() {
     let arr = [1,2,3];
     let struc = Struc {a: 13u8, b: arr, c: 42};
     let s = sys::log_str(&struc);

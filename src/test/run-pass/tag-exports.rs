@@ -19,7 +19,7 @@ mod alder {
     pub enum marshall { northrup, overton }
 }
 
-fn main() {
+pub fn main() {
   let _pettygrove: burnside = couch;
   let _quimby: everett = flanders;
   let _raleigh: irving = johnson;

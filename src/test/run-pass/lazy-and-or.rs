@@ -12,7 +12,7 @@
 
 fn incr(x: &mut int) -> bool { *x += 1; assert (false); return false; }
 
-fn main() {
+pub fn main() {
     let x = 1 == 2 || 3 == 3;
     assert (x);
     let mut y: int = 10;

@@ -30,5 +30,5 @@ pure fn foo() {
     debug!("test %b", a.g);
 }
 
-fn main() {
+pub fn main() {
 }

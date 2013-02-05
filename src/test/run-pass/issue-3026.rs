@@ -11,10 +11,10 @@
 // except according to those terms.
 
 extern mod std;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 
-fn main() {
+pub fn main() {
     let buggy_map :HashMap<uint, &uint> = HashMap::<uint, &uint>();
     let x = ~1;
     buggy_map.insert(42, &*x);

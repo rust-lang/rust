@@ -20,7 +20,7 @@ use core::io::WriterUtil;
 use core::io;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use syntax::print::pprust::*;
@@ -98,8 +98,8 @@ pub fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
             let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
             if abbrev_len < len {
                 // I.e. it's actually an abbreviation.
-                let s = ~"#" + uint::to_str(pos, 16u) + ~":" +
-                    uint::to_str(len, 16u) + ~"#";
+                let s = ~"#" + uint::to_str_radix(pos, 16u) + ~":" +
+                    uint::to_str_radix(len, 16u) + ~"#";
                 let a = {pos: pos, len: len, s: @s};
                 abbrevs.insert(t, a);
             }
@@ -321,7 +321,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
           debug!("~~~~ %s", ~"]");
           w.write_char(']');
       }
-      ty::ty_err => fail ~"Shouldn't encode error type"
+      ty::ty_err => die!(~"Shouldn't encode error type")
     }
 }
 

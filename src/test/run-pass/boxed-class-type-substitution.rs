@@ -15,7 +15,7 @@ type Tree<T> = {
     mut parent: Option<T>,
 };
 
-fn empty<T>() -> Tree<T> { fail }
+fn empty<T>() -> Tree<T> { die!() }
 
 struct Box {
     tree: Tree<@Box>
@@ -31,4 +31,4 @@ enum layout_data = {
     mut box: Option<@Box>
 };
 
-fn main() { }
+pub fn main() { }

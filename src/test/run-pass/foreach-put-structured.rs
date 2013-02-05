@@ -16,7 +16,7 @@ fn pairs(it: fn((int, int))) {
     while i < 10 { it((i, j)); i += 1; j += i; }
 }
 
-fn main() {
+pub fn main() {
     let mut i: int = 10;
     let mut j: int = 0;
     do pairs() |p| {

@@ -10,7 +10,7 @@
 
 extern mod std;
 
-fn main() {
+pub fn main() {
     let v =
         vec::map2(~[1, 2, 3, 4, 5],
                   ~[true, false, false, true, true],

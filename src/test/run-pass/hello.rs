@@ -10,6 +10,6 @@
 // except according to those terms.
 
 
-fn main() {
+pub fn main() {
     io::println("hello, world");
 }

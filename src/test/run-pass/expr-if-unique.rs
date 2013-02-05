@@ -19,4 +19,4 @@ fn test_box() {
     assert (*rs == 100);
 }
 
-fn main() { test_box(); }
+pub fn main() { test_box(); }

@@ -23,12 +23,11 @@ use core::cmp;
 use core::option;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::sort;
 use syntax::ast::*;
-use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat, walk_pat};
-use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::ast_util::{variant_def_ids, unguarded_pat, walk_pat};
+use syntax::codemap::{span, dummy_sp, spanned};
 use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 
@@ -60,7 +59,7 @@ pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
         return false;
     }
 
-    !cx.moves_map.contains_key(expr.id)
+    !cx.moves_map.contains_key_ref(&expr.id)
 }
 
 pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
@@ -148,11 +147,11 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
           }
           ty::ty_enum(id, _) => {
               let vid = match (*ctor) { variant(id) => id,
-              _ => fail ~"check_exhaustive: non-variant ctor" };
+              _ => die!(~"check_exhaustive: non-variant ctor") };
             match vec::find(*ty::enum_variants(cx.tcx, id),
                                 |v| v.id == vid) {
                 Some(v) => Some(cx.tcx.sess.str_of(v.name)),
-              None => fail ~"check_exhaustive: bad variant in ctor"
+              None => die!(~"check_exhaustive: bad variant in ctor")
             }
           }
           ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
@@ -367,7 +366,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
                     return Some(variant(v.id));
                 }
             }
-            fail;
+            die!();
         } else { None }
       }
       ty::ty_nil => None,
@@ -378,7 +377,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
               None => (),
               Some(val(const_bool(true))) => true_found = true,
               Some(val(const_bool(false))) => false_found = true,
-              _ => fail ~"impossible case"
+              _ => die!(~"impossible case")
             }
         }
         if true_found && false_found { None }
@@ -446,10 +445,10 @@ pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match ctor { variant(id) => id,
-          _ => fail ~"impossible case" };
+          _ => die!(~"impossible case") };
         match vec::find(*ty::enum_variants(cx.tcx, eid), |v| v.id == id ) {
             Some(v) => v.args.len(),
-            None => fail ~"impossible case"
+            None => die!(~"impossible case")
         }
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
@@ -464,7 +463,7 @@ pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
 }
 
 pub fn wild() -> @pat {
-    @pat {id: 0, node: pat_wild, span: ast_util::dummy_sp()}
+    @pat {id: 0, node: pat_wild, span: dummy_sp()}
 }
 
 pub fn specialize(cx: @MatchCheckCtxt,
@@ -497,7 +496,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                     compare_const_vals((*c_hi), e_v) <= 0
                             }
                             single => true,
-                            _ => fail ~"type error"
+                            _ => die!(~"type error")
                         };
                         if match_ { Some(vec::tail(r)) } else { None }
                     }
@@ -516,7 +515,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     }
                     def_variant(_, _) => None,
                     def_struct(*) => {
-                        // XXX: Is this right? --pcw
+                        // FIXME #4731: Is this right? --pcw
                         let new_args;
                         match args {
                             Some(args) => new_args = args,
@@ -530,7 +529,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
             pat_rec(ref flds, _) => {
                 let ty_flds = match /*bad*/copy ty::get(left_ty).sty {
                     ty::ty_rec(flds) => flds,
-                    _ => fail ~"bad type for pat_rec"
+                    _ => die!(~"bad type for pat_rec")
                 };
                 let args = vec::map(ty_flds, |ty_fld| {
                     match flds.find(|f| f.ident == ty_fld.ident) {
@@ -545,7 +544,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 match cx.tcx.def_map.get(pat_id) {
                     def_variant(_, variant_id) => {
                         if variant(variant_id) == ctor_id {
-                            // XXX: Is this right? --pcw
+                            // FIXME #4731: Is this right? --pcw
                             let args = flds.map(|ty_field| {
                                 match flds.find(|f|
                                                 f.ident == ty_field.ident) {
@@ -596,7 +595,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             compare_const_vals((*c_hi), e_v) <= 0
                     }
                     single => true,
-                    _ => fail ~"type error"
+                    _ => die!(~"type error")
                 };
                 if match_ { Some(vec::tail(r)) } else { None }
             }
@@ -606,7 +605,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     range(ref lo, ref hi) =>
                         ((/*bad*/copy *lo), (/*bad*/copy *hi)),
                     single => return Some(vec::tail(r)),
-                    _ => fail ~"type error"
+                    _ => die!(~"type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo),
                 v_hi = eval_const_expr(cx.tcx, hi);
@@ -735,7 +734,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                     by_ref_span = Some(span);
                 }
                 bind_infer => {
-                    if cx.moves_map.contains_key(id) {
+                    if cx.moves_map.contains_key_ref(&id) {
                         any_by_move = true;
                     }
                 }
@@ -775,7 +774,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
             if pat_is_binding(def_map, p) {
                 match p.node {
                     pat_ident(_, _, sub) => {
-                        if cx.moves_map.contains_key(p.id) {
+                        if cx.moves_map.contains_key_ref(&p.id) {
                             check_move(p, sub);
                         }
                     }
@@ -801,7 +800,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                                 behind_bad_pointer);
 
                         if behind_bad_pointer &&
-                            cx.moves_map.contains_key(pat.id)
+                            cx.moves_map.contains_key_ref(&pat.id)
                         {
                             cx.tcx.sess.span_err(
                                 pat.span,

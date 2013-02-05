@@ -17,12 +17,12 @@ macro_rules! overly_complicated (
           Some($pat) => {
             $res
           }
-          _ => { fail; }
+          _ => { die!(); }
         }
     })
 
 )
-fn main() {
+pub fn main() {
     assert overly_complicated!(f, x, Option<uint>, { return Some(x); },
                                Some(8u), Some(y), y) == 8u
 

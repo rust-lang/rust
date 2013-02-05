@@ -13,7 +13,7 @@
 extern mod socketlib;
 use socketlib::socket;
 
-fn main() {
+pub fn main() {
     let fd: libc::c_int = 1 as libc::c_int;
     let sock = @socket::socket_handle(fd);
 }

@@ -21,7 +21,7 @@ use core::char;
 use core::cmp;
 use core::str;
 use core::task;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 #[auto_encode]
 #[auto_decode]
@@ -209,7 +209,7 @@ pub fn to_str(in: @ident_interner, t: Token) -> ~str {
                       nt_block(*) => ~"block",
                       nt_stmt(*) => ~"statement",
                       nt_pat(*) => ~"pattern",
-                      nt_expr(*) => fail ~"should have been handled above",
+                      nt_expr(*) => die!(~"should have been handled above"),
                       nt_ty(*) => ~"type",
                       nt_ident(*) => ~"identifier",
                       nt_path(*) => ~"path",
@@ -262,7 +262,7 @@ pub fn flip_delimiter(t: token::Token) -> token::Token {
       token::RPAREN => token::LPAREN,
       token::RBRACE => token::LBRACE,
       token::RBRACKET => token::LBRACKET,
-      _ => fail
+      _ => die!()
     }
 }
 
@@ -454,13 +454,13 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
  */
 pub fn keyword_table() -> HashMap<~str, ()> {
     let keywords = HashMap();
-    for temporary_keyword_table().each_key |word| {
+    for temporary_keyword_table().each_key_ref |&word| {
         keywords.insert(word, ());
     }
-    for strict_keyword_table().each_key |word| {
+    for strict_keyword_table().each_key_ref |&word| {
         keywords.insert(word, ());
     }
-    for reserved_keyword_table().each_key |word| {
+    for reserved_keyword_table().each_key_ref |&word| {
         keywords.insert(word, ());
     }
     keywords
@@ -487,7 +487,7 @@ pub fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"const", ~"copy",
         ~"do", ~"drop",
         ~"else", ~"enum", ~"extern",
-        ~"fail", ~"false", ~"fn", ~"for",
+        ~"false", ~"fn", ~"for",
         ~"if", ~"impl",
         ~"let", ~"log", ~"loop",
         ~"match", ~"mod", ~"move", ~"mut",

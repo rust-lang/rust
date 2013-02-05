@@ -21,13 +21,13 @@ impl Kitty : Drop {
 }
 
 #[cfg(target_arch = "x86_64")]
-fn main() {
+pub fn main() {
     assert (sys::size_of::<Cat>() == 8 as uint);
     assert (sys::size_of::<Kitty>() == 16 as uint);
 }
 
 #[cfg(target_arch = "x86")]
-fn main() {
+pub fn main() {
     assert (sys::size_of::<Cat>() == 4 as uint);
     assert (sys::size_of::<Kitty>() == 8 as uint);
 }

@@ -33,7 +33,7 @@ pub fn run_passes(
         log(debug, fmt!("pass #%d", passno));
         passno += 1;
         do time(copy pass.name) {
-            (pass.f)(srv, copy doc)
+            (pass.f)(srv.clone(), copy doc)
         }
     }
 }
@@ -90,7 +90,7 @@ fn test_run_passes() {
                 f: pass2
             }
         ];
-        let doc = extract::from_srv(srv, ~"one");
+        let doc = extract::from_srv(srv.clone(), ~"one");
         let doc = run_passes(srv, doc, passes);
         assert doc.cratemod().name() == ~"onetwothree";
     }

@@ -12,7 +12,7 @@ enum Foo = u32;
 
 const X: Foo = Foo(17);
 
-fn main() {
+pub fn main() {
     assert(*X == 17);
     assert(*Y == 23);
 }

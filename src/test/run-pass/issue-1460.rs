@@ -9,6 +9,6 @@
 // except according to those terms.
 
 
-fn main() {
+pub fn main() {
     {|i| if 1 == i { }};
 }

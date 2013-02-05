@@ -83,7 +83,7 @@ fn test_box_rec() {
     assert *i == 1;
 }
 
-fn main() {
+pub fn main() {
     test_box();
     test_rec();
     test_tag();

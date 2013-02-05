@@ -32,7 +32,7 @@ fn f(x: &Foo) {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = Bar { x: 1, y: 2 };
     f(&x);
     let y = Baz { x: 1.0, y: 2.0 };

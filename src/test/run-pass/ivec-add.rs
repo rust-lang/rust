@@ -12,7 +12,7 @@ fn double<T: Copy>(a: T) -> ~[T] { return ~[a] + ~[a]; }
 
 fn double_int(a: int) -> ~[int] { return ~[a] + ~[a]; }
 
-fn main() {
+pub fn main() {
     let mut d = double(1);
     assert (d[0] == 1);
     assert (d[1] == 1);

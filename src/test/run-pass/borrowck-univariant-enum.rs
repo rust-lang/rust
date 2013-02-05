@@ -12,7 +12,7 @@ enum newtype {
     newtype(int)
 }
 
-fn main() {
+pub fn main() {
 
     // Test that borrowck treats enums with a single variant
     // specially.

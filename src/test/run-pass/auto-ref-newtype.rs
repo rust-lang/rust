@@ -17,7 +17,7 @@ impl Foo {
     fn len(&self) -> uint { **self }
 }
 
-fn main() {
+pub fn main() {
     let m = Foo(3);
     assert m.len() == 3;
 }

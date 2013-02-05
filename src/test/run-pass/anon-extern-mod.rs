@@ -14,7 +14,7 @@ extern {
     fn last_os_error() -> ~str;
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         let _ = last_os_error();
     }

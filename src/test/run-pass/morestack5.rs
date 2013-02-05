@@ -18,7 +18,7 @@ fn getbig(&&i: int) {
     }
 }
 
-fn main() {
+pub fn main() {
     let mut sz = 400u;
     while sz < 500u {
         task::try(|| getbig(200) );

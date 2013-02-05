@@ -9,9 +9,9 @@
 // except according to those terms.
 
 #[cfg(windows)]
-fn main() {
+pub fn main() {
 }
 
 #[cfg(unix)]
-fn main() {
+pub fn main() {
 }

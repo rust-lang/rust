@@ -58,7 +58,7 @@ use syntax::ast::{variant, view_item, view_item_import};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named, not};
 use syntax::ast::{unsafe_fn};
-use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
+use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
@@ -66,7 +66,7 @@ use syntax::attr::{attr_metas, contains_name, attrs_contains_name};
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{pat_to_str, path_to_str};
-use syntax::codemap::span;
+use syntax::codemap::{span, dummy_sp};
 use syntax::visit::{default_visitor, fk_method, mk_vt, Visitor, visit_block};
 use syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
 use syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
@@ -79,7 +79,7 @@ use str::{connect, split_str};
 use vec::pop;
 
 use std::list::{Cons, List, Nil};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use str_eq = str::eq;
 
 // Definition mapping
@@ -322,7 +322,7 @@ pub fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode)
         ForbidDuplicateModules | ForbidDuplicateTypes |
         ForbidDuplicateTypesAndValues => TypeNS,
         ForbidDuplicateValues => ValueNS,
-        OverwriteDuplicates => fail ~"OverwriteDuplicates has no namespace"
+        OverwriteDuplicates => die!(~"OverwriteDuplicates has no namespace")
     }
 }
 
@@ -604,8 +604,8 @@ pub impl NameBindings {
     fn get_module() -> @Module {
         match self.get_module_if_available() {
             None => {
-                fail ~"get_module called on a node with no module \
-                       definition!"
+                die!(~"get_module called on a node with no module \
+                       definition!")
             }
             Some(module_def) => module_def
         }
@@ -1212,7 +1212,7 @@ pub impl Resolver {
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
                         let def_id = local_def(item.id);
-                        name_bindings.define_module(privacy,
+                        name_bindings.define_module(Public,
                                                     parent_link,
                                                     Some(def_id),
                                                     TraitModuleKind,
@@ -1326,7 +1326,7 @@ pub impl Resolver {
             }
 
             item_mac(*) => {
-                fail ~"item macros unimplemented"
+                die!(~"item macros unimplemented")
             }
         }
     }
@@ -1579,7 +1579,7 @@ pub impl Resolver {
                     match existing_module.parent_link {
                       NoParentLink |
                       BlockParentLink(*) => {
-                        fail ~"can't happen";
+                        die!(~"can't happen");
                       }
                       ModuleParentLink(parent_module, ident) => {
                         let name_bindings = parent_module.children.get(ident);
@@ -1645,7 +1645,7 @@ pub impl Resolver {
           def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
           def_use(*) | def_upvar(*) | def_region(*) |
           def_typaram_binder(*) | def_label(*) | def_self_ty(*) => {
-            fail fmt!("didn't expect `%?`", def);
+            die!(fmt!("didn't expect `%?`", def));
           }
         }
     }
@@ -1913,7 +1913,7 @@ pub impl Resolver {
                self.module_to_str(module_));
         self.resolve_imports_for_module(module_);
 
-        for module_.children.each |_name, child_node| {
+        for module_.children.each_value_ref |&child_node| {
             match child_node.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -1924,7 +1924,7 @@ pub impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each |_block_id, child_module| {
+        for module_.anonymous_children.each_value_ref |&child_module| {
             self.resolve_imports_for_module_subtree(child_module);
         }
     }
@@ -2211,7 +2211,7 @@ pub impl Resolver {
         }
 
         // We've successfully resolved the import. Write the results in.
-        assert module_.import_resolutions.contains_key(target);
+        assert module_.import_resolutions.contains_key_ref(&target);
         let import_resolution = module_.import_resolutions.get(target);
 
         match value_result {
@@ -2221,7 +2221,7 @@ pub impl Resolver {
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
-                fail ~"value result should be known at this point";
+                die!(~"value result should be known at this point");
             }
         }
         match type_result {
@@ -2231,7 +2231,7 @@ pub impl Resolver {
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
-                fail ~"type result should be known at this point";
+                die!(~"type result should be known at this point");
             }
         }
 
@@ -2370,7 +2370,7 @@ pub impl Resolver {
         }
 
         // We've successfully resolved the import. Write the results in.
-        assert module_.import_resolutions.contains_key(target);
+        assert module_.import_resolutions.contains_key_ref(&target);
         let import_resolution = module_.import_resolutions.get(target);
 
         match module_result {
@@ -2384,7 +2384,7 @@ pub impl Resolver {
                         binding");
             }
             UnknownResult => {
-                fail ~"module result should be known at this point";
+                die!(~"module result should be known at this point");
             }
         }
 
@@ -2430,8 +2430,8 @@ pub impl Resolver {
         assert containing_module.glob_count == 0;
 
         // Add all resolved imports from the containing module.
-        for containing_module.import_resolutions.each
-                |ident, target_import_resolution| {
+        for containing_module.import_resolutions.each_ref
+                |&ident, &target_import_resolution| {
 
             debug!("(resolving glob import) writing module resolution \
                     %? into `%s`",
@@ -2480,7 +2480,7 @@ pub impl Resolver {
         }
 
         // Add all children from the containing module.
-        for containing_module.children.each |ident, name_bindings| {
+        for containing_module.children.each_ref |&ident, &name_bindings| {
             let mut dest_import_resolution;
             match module_.import_resolutions.find(ident) {
                 None => {
@@ -2996,7 +2996,7 @@ pub impl Resolver {
                 allowable_namespaces = namespaces;
             }
             GlobImport => {
-                fail ~"found `import *`, which is invalid";
+                die!(~"found `import *`, which is invalid");
             }
         }
 
@@ -3116,9 +3116,9 @@ pub impl Resolver {
         // Otherwise, proceed and write in the bindings.
         match module_.import_resolutions.find(target_name) {
             None => {
-                fail ~"(resolving one-level renaming import) reduced graph \
+                die!(~"(resolving one-level renaming import) reduced graph \
                       construction or glob importing should have created the \
-                      import resolution name by now";
+                      import resolution name by now");
             }
             Some(import_resolution) => {
                 debug!("(resolving one-level renaming import) writing module \
@@ -3148,7 +3148,7 @@ pub impl Resolver {
         }
 
         // Descend into children and anonymous children.
-        for module_.children.each |_name, child_node| {
+        for module_.children.each_value_ref |&child_node| {
             match child_node.get_module_if_available() {
                 None => {
                     // Continue.
@@ -3159,7 +3159,7 @@ pub impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each |_name, module_| {
+        for module_.anonymous_children.each_value_ref |&module_| {
             self.report_unresolved_imports(module_);
         }
     }
@@ -3204,7 +3204,7 @@ pub impl Resolver {
 
         self.record_exports_for_module(module_);
 
-        for module_.children.each |_ident, child_name_bindings| {
+        for module_.children.each_value_ref |&child_name_bindings| {
             match child_name_bindings.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -3215,7 +3215,7 @@ pub impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each |_node_id, child_module| {
+        for module_.anonymous_children.each_value_ref |&child_module| {
             self.record_exports_for_module_subtree(child_module);
         }
     }
@@ -3732,7 +3732,7 @@ pub impl Resolver {
             }
 
           item_mac(*) => {
-            fail ~"item macros unimplemented"
+            die!(~"item macros unimplemented")
           }
         }
 
@@ -4068,7 +4068,7 @@ pub impl Resolver {
         for arm.pats.eachi() |i, p| {
             let map_i = self.binding_mode_map(*p);
 
-            for map_0.each |key, binding_0| {
+            for map_0.each_ref |&key, &binding_0| {
                 match map_i.find(key) {
                   None => {
                     self.session.span_err(
@@ -4089,8 +4089,8 @@ pub impl Resolver {
                 }
             }
 
-            for map_i.each |key, binding| {
-                if !map_0.contains_key(key) {
+            for map_i.each_ref |&key, &binding| {
+                if !map_0.contains_key_ref(&key) {
                     self.session.span_err(
                         binding.span,
                         fmt!("variable `%s` from pattern #%u is \
@@ -4319,7 +4319,8 @@ pub impl Resolver {
 
                             match bindings_list {
                                 Some(bindings_list)
-                                if !bindings_list.contains_key(ident) => {
+                                if !bindings_list.contains_key_ref(&ident)
+                                    => {
                                     let last_rib = (*self.value_ribs).last();
                                     last_rib.bindings.insert(ident,
                                                              dl_def(def));
@@ -4391,16 +4392,19 @@ pub impl Resolver {
                 pat_struct(path, _, _) => {
                     match self.resolve_path(path, TypeNS, false, visitor) {
                         Some(def_ty(class_id))
-                                if self.structs.contains_key(class_id) => {
+                                if self.structs.contains_key_ref(&class_id)
+                                     => {
                             let class_def = def_struct(class_id);
                             self.record_def(pattern.id, class_def);
                         }
                         Some(definition @ def_struct(class_id))
-                                if self.structs.contains_key(class_id) => {
+                                if self.structs.contains_key_ref(&class_id)
+                                     => {
                             self.record_def(pattern.id, definition);
                         }
                         Some(definition @ def_variant(_, variant_id))
-                                if self.structs.contains_key(variant_id) => {
+                                if self.structs.contains_key_ref(&variant_id)
+                                     => {
                             self.record_def(pattern.id, definition);
                         }
                         result => {
@@ -4430,8 +4434,8 @@ pub impl Resolver {
             Success(target) => {
                 match target.bindings.value_def {
                     None => {
-                        fail ~"resolved name in the value namespace to a set \
-                              of name bindings with no def?!";
+                        die!(~"resolved name in the value namespace to a set \
+                              of name bindings with no def?!");
                     }
                     Some(def) => {
                         match def.def {
@@ -4450,7 +4454,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                fail ~"unexpected indeterminate result";
+                die!(~"unexpected indeterminate result");
             }
 
             Failed => {
@@ -4611,7 +4615,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                fail ~"indeterminate unexpected";
+                die!(~"indeterminate unexpected");
             }
 
             Success(resulting_module) => {
@@ -4658,7 +4662,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                fail ~"indeterminate unexpected";
+                die!(~"indeterminate unexpected");
             }
 
             Success(resulting_module) => {
@@ -4736,7 +4740,7 @@ pub impl Resolver {
                 }
             }
             Indeterminate => {
-                fail ~"unexpected indeterminate result";
+                die!(~"unexpected indeterminate result");
             }
             Failed => {
                 return None;
@@ -4848,12 +4852,12 @@ pub impl Resolver {
 
                 match self.resolve_path(path, TypeNS, false, visitor) {
                     Some(def_ty(class_id)) | Some(def_struct(class_id))
-                            if self.structs.contains_key(class_id) => {
+                            if self.structs.contains_key_ref(&class_id) => {
                         let class_def = def_struct(class_id);
                         self.record_def(expr.id, class_def);
                     }
                     Some(definition @ def_variant(_, class_id))
-                            if self.structs.contains_key(class_id) => {
+                            if self.structs.contains_key_ref(&class_id) => {
                         self.record_def(expr.id, definition);
                     }
                     _ => {
@@ -4997,7 +5001,7 @@ pub impl Resolver {
             }
 
             // Look for trait children.
-            for search_module.children.each |_name, child_name_bindings| {
+            for search_module.children.each_value_ref |&child_name_bindings| {
                 match child_name_bindings.def_for_namespace(TypeNS) {
                     Some(def) => {
                         match def {
@@ -5017,8 +5021,8 @@ pub impl Resolver {
             }
 
             // Look for imports.
-            for search_module.import_resolutions.each
-                    |_ident, import_resolution| {
+            for search_module.import_resolutions.each_value_ref
+                    |&import_resolution| {
 
                 match import_resolution.target_for_namespace(TypeNS) {
                     None => {
@@ -5073,7 +5077,7 @@ pub impl Resolver {
                self.session.str_of(name));
 
         match self.trait_info.find(trait_def_id) {
-            Some(trait_info) if trait_info.contains_key(name) => {
+            Some(trait_info) if trait_info.contains_key_ref(&name) => {
                 debug!("(adding trait info if containing method) found trait \
                         %d:%d for method '%s'",
                        trait_def_id.crate,
@@ -5180,7 +5184,7 @@ pub impl Resolver {
 
         self.check_for_unused_imports_in_module(module_);
 
-        for module_.children.each |_ident, child_name_bindings| {
+        for module_.children.each_value_ref |&child_name_bindings| {
             match (*child_name_bindings).get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -5192,13 +5196,13 @@ pub impl Resolver {
             }
         }
 
-        for module_.anonymous_children.each |_node_id, child_module| {
+        for module_.anonymous_children.each_value_ref |&child_module| {
             self.check_for_unused_imports_in_module_subtree(child_module);
         }
     }
 
     fn check_for_unused_imports_in_module(module_: @Module) {
-        for module_.import_resolutions.each |_name, import_resolution| {
+        for module_.import_resolutions.each_value_ref |&import_resolution| {
             if !import_resolution.used {
                 match self.unused_import_lint_level {
                     warn => {
@@ -5257,12 +5261,12 @@ pub impl Resolver {
         debug!("Dump of module `%s`:", self.module_to_str(module_));
 
         debug!("Children:");
-        for module_.children.each |name, _child| {
+        for module_.children.each_key_ref |&name| {
             debug!("* %s", self.session.str_of(name));
         }
 
         debug!("Import resolutions:");
-        for module_.import_resolutions.each |name, import_resolution| {
+        for module_.import_resolutions.each_ref |&name, &import_resolution| {
             let mut value_repr;
             match (*import_resolution).target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }

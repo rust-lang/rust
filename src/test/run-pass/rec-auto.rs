@@ -17,7 +17,7 @@
 
 struct X { foo: ~str, bar: ~str }
 
-fn main() {
+pub fn main() {
     let x = X {foo: ~"hello", bar: ~"world"};
     log(debug, copy x.foo);
     log(debug, copy x.bar);

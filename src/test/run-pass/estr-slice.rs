@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn main() {
+pub fn main() {
     let x = &"hello";
     let v = &"hello";
     let mut y : &str = &"there";

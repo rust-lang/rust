@@ -22,7 +22,7 @@ proto! oneshot (
     }
 )
 
-fn main() {
+pub fn main() {
     let (c, p) = oneshot::init();
 
     assert !pipes::peek(&p);

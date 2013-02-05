@@ -9,6 +9,6 @@
 // except according to those terms.
 
 #[warn(structural_records)];
-fn main() {
+pub fn main() {
     let _foo = {x:5};
 }

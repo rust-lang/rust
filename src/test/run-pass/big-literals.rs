@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     assert 0xffffffffu32 == (-1 as u32);
     assert 4294967295u32 == (-1 as u32);
     assert 0xffffffffffffffffu64 == (-1 as u64);

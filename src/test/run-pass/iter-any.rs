@@ -10,7 +10,7 @@
 
 fn is_even(x: &uint) -> bool { (*x % 2) == 0 }
 
-fn main() {
+pub fn main() {
     assert ![1u, 3u].any(is_even);
     assert [1u, 2u].any(is_even);
     assert ![].any(is_even);

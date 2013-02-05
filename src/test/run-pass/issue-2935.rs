@@ -20,7 +20,7 @@ impl t: it {
     fn f() { }
 }
 
-fn main() {
+pub fn main() {
   //    let x = ({a: 4i} as it);
   //   let y = @({a: 4i});
   //    let z = @({a: 4i} as it);

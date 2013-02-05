@@ -2,7 +2,7 @@ struct Foo {
     string: ~str
 }
 
-fn main() {
+pub fn main() {
     let x = [
         Foo { string: ~"foo" },
         Foo { string: ~"bar" },

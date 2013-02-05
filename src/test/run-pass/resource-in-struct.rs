@@ -34,7 +34,7 @@ enum option<T> { none, some(T), }
 
 fn sink(res: option<close_res>) { }
 
-fn main() {
+pub fn main() {
     let c = @mut true;
     sink(none);
     sink(some(close_res(c)));

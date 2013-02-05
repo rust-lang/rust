@@ -12,7 +12,7 @@
 
 extern mod std;
 use io::WriterUtil;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::json;
 
 enum object
@@ -60,7 +60,7 @@ fn add_interface(store: int, managed_ip: ~str, data: std::json::Json) -> (~str, 
     }
 }
 
-fn add_interfaces(store: int, managed_ip: ~str, device: std::map::HashMap<~str, std::json::Json>) -> ~[(~str, object)]
+fn add_interfaces(store: int, managed_ip: ~str, device: std::oldmap::HashMap<~str, std::json::Json>) -> ~[(~str, object)]
 {
     match device[~"interfaces"]
     {
@@ -78,4 +78,4 @@ fn add_interfaces(store: int, managed_ip: ~str, device: std::map::HashMap<~str, 
     }
 }
 
-fn main() {}
+pub fn main() {}

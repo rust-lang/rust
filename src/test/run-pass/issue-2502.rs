@@ -24,4 +24,4 @@ fn font(fontbuf: &r/~[u8]) -> font/&r {
     }
 }
 
-fn main() { }
+pub fn main() { }

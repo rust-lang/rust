@@ -13,7 +13,7 @@ use core::prelude::*;
 use ast::*;
 use ast;
 use ast_util;
-use codemap::{span, BytePos};
+use codemap::{span, BytePos, dummy_sp};
 use parse::token;
 use visit;
 
@@ -23,28 +23,6 @@ use core::option;
 use core::str;
 use core::to_bytes;
 use core::vec;
-
-pub pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
-    respan(mk_sp(lo, hi), move t)
-}
-
-pub pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
-    spanned {node: t, span: sp}
-}
-
-pub pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
-    respan(dummy_sp(), move t)
-}
-
-/* assuming that we're not in macro expansion */
-pub pure fn mk_sp(+lo: BytePos, +hi: BytePos) -> span {
-    span {lo: lo, hi: hi, expn_info: None}
-}
-
-// make this a const, once the compiler supports it
-pub pure fn dummy_sp() -> span { return mk_sp(BytePos(0), BytePos(0)); }
-
-
 
 pub pure fn path_name_i(idents: &[ident], intr: @token::ident_interner)
                      -> ~str {
@@ -66,7 +44,7 @@ pub pure fn stmt_id(s: stmt) -> node_id {
       stmt_decl(_, id) => id,
       stmt_expr(_, id) => id,
       stmt_semi(_, id) => id,
-      stmt_mac(*) => fail ~"attempted to analyze unexpanded stmt",
+      stmt_mac(*) => die!(~"attempted to analyze unexpanded stmt")
     }
 }
 
@@ -75,7 +53,7 @@ pub fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
       def_variant(enum_id, var_id) => {
         return {enm: enum_id, var: var_id}
       }
-      _ => fail ~"non-variant in variant_def_ids"
+      _ => die!(~"non-variant in variant_def_ids")
     }
 }
 
@@ -93,7 +71,7 @@ pub pure fn def_id_of_def(d: def) -> def_id {
         local_def(id)
       }
 
-      def_prim_ty(_) => fail
+      def_prim_ty(_) => die!()
     }
 }
 
@@ -320,38 +298,38 @@ pub pure fn struct_field_visibility(field: ast::struct_field) -> visibility {
 }
 
 pub trait inlined_item_utils {
-    fn ident() -> ident;
-    fn id() -> ast::node_id;
-    fn accept<E>(e: E, v: visit::vt<E>);
+    fn ident(&self) -> ident;
+    fn id(&self) -> ast::node_id;
+    fn accept<E>(&self, e: E, v: visit::vt<E>);
 }
 
 pub impl inlined_item: inlined_item_utils {
-    fn ident() -> ident {
-        match self {
-          ii_item(i) => /* FIXME (#2543) */ copy i.ident,
-          ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
-          ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
-          ii_dtor(_, nm, _, _) => /* FIXME (#2543) */ copy nm
+    fn ident(&self) -> ident {
+        match *self {
+            ii_item(i) => /* FIXME (#2543) */ copy i.ident,
+            ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
+            ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
+            ii_dtor(_, nm, _, _) => /* FIXME (#2543) */ copy nm
         }
     }
 
-    fn id() -> ast::node_id {
-        match self {
-          ii_item(i) => i.id,
-          ii_foreign(i) => i.id,
-          ii_method(_, m) => m.id,
-          ii_dtor(ref dtor, _, _, _) => (*dtor).node.id
+    fn id(&self) -> ast::node_id {
+        match *self {
+            ii_item(i) => i.id,
+            ii_foreign(i) => i.id,
+            ii_method(_, m) => m.id,
+            ii_dtor(ref dtor, _, _, _) => (*dtor).node.id
         }
     }
 
-    fn accept<E>(e: E, v: visit::vt<E>) {
-        match self {
-          ii_item(i) => (v.visit_item)(i, e, v),
-          ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
-          ii_method(_, m) => visit::visit_method_helper(m, e, v),
-          ii_dtor(ref dtor, _, tps, parent_id) => {
+    fn accept<E>(&self, e: E, v: visit::vt<E>) {
+        match *self {
+            ii_item(i) => (v.visit_item)(i, e, v),
+            ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
+            ii_method(_, m) => visit::visit_method_helper(m, e, v),
+            ii_dtor(ref dtor, _, tps, parent_id) => {
               visit::visit_struct_dtor_helper((*dtor), tps, parent_id, e, v);
-          }
+            }
         }
     }
 }

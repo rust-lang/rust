@@ -158,7 +158,7 @@ enum Quark<T> {
 #[auto_decode]
 enum CLike { A, B, C }
 
-fn main() {
+pub fn main() {
     let a = &Plus(@Minus(@Val(3u), @Val(10u)), @Plus(@Val(22u), @Val(5u)));
     test_prettyprint(a, &~"Plus(@Minus(@Val(3u), @Val(10u)), \
                            @Plus(@Val(22u), @Val(5u)))");

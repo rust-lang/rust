@@ -26,7 +26,7 @@ mod a {
 	}
 }
 
-fn main() {
+pub fn main() {
 	let x: int = a::Foo::foo();
 	let y: uint = a::Foo::foo();
 	assert x == 3;

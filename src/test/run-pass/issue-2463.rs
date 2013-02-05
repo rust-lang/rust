@@ -10,7 +10,7 @@
 
 struct Pair { f: int, g: int }
 
-fn main() {
+pub fn main() {
 
     let x = Pair {
         f: 0,

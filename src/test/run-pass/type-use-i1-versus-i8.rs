@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use io::ReaderUtil;
-fn main() {
+pub fn main() {
     let mut x: bool = false;
     // this line breaks it
     vec::rusti::move_val_init(&mut x, false);

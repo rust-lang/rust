@@ -53,7 +53,7 @@ fn test_if_as_block_result() {
     assert (rs);
 }
 
-fn main() {
+pub fn main() {
     test_if();
     test_else();
     test_elseif1();

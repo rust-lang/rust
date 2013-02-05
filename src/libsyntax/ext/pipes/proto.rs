@@ -34,8 +34,8 @@ pub impl direction : cmp::Eq {
 }
 
 pub impl direction: ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
           send => ~"Send",
           recv => ~"Recv"
         }

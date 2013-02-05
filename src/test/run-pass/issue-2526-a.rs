@@ -14,5 +14,5 @@
 extern mod issue_2526;
 use issue_2526::*;
 
-fn main() {}
+pub fn main() {}
 

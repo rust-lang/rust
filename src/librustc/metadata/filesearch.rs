@@ -108,7 +108,7 @@ fn make_target_lib_path(sysroot: &Path,
 fn get_or_default_sysroot() -> Path {
     match os::self_exe_path() {
       option::Some(ref p) => (*p).pop(),
-      option::None => fail ~"can't determine value for sysroot"
+      option::None => die!(~"can't determine value for sysroot")
     }
 }
 
@@ -176,7 +176,7 @@ fn get_cargo_lib_path_nearest() -> Result<Path, ~str> {
 pub fn libdir() -> ~str {
    let libdir = env!("CFG_LIBDIR");
    if str::is_empty(libdir) {
-      fail ~"rustc compiled without CFG_LIBDIR environment variable";
+      die!(~"rustc compiled without CFG_LIBDIR environment variable");
    }
    libdir
 }

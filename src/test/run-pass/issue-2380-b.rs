@@ -13,6 +13,6 @@
 
 extern mod a;
 
-fn main() {
+pub fn main() {
     a::f::<()>();
 }

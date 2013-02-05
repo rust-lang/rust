@@ -9,13 +9,13 @@
 // except according to those terms.
 
 fn test_simple() {
-    let r = match true { true => { true } false => { fail } };
+    let r = match true { true => { true } false => { die!() } };
     assert (r == true);
 }
 
 fn test_box() {
-    let r = match true { true => { ~[10] } false => { fail } };
+    let r = match true { true => { ~[10] } false => { die!() } };
     assert (r[0] == 10);
 }
 
-fn main() { test_simple(); test_box(); }
+pub fn main() { test_simple(); test_box(); }

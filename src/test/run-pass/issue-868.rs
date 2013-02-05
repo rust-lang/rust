@@ -10,7 +10,7 @@
 
 fn f<T>(g: fn() -> T) -> T { g() }
 
-fn main() {
+pub fn main() {
   let _x = f( | | { 10 });
     // used to be: cannot determine a type for this expression
     f(| | { });

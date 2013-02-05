@@ -10,7 +10,7 @@
 
 use pipes::send;
 
-fn main() { test00(); }
+pub fn main() { test00(); }
 
 fn test00() {
     let mut r: int = 0;

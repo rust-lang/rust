@@ -98,8 +98,8 @@ use ext::base::*;
 use parse;
 
 use core::vec;
-use std::map;
-use std::map::HashMap;
+use std::oldmap;
+use std::oldmap::HashMap;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -311,7 +311,7 @@ priv impl ext_ctxt {
     }
 
     fn stmt(expr: @ast::expr) -> @ast::stmt {
-        @ast::spanned { node: ast::stmt_semi(expr, self.next_id()),
+        @codemap::spanned { node: ast::stmt_semi(expr, self.next_id()),
                        span: expr.span }
     }
 
@@ -322,7 +322,7 @@ priv impl ext_ctxt {
                 self.expr(
                     span,
                     ast::expr_lit(
-                        @ast::spanned { node: ast::lit_str(s),
+                        @codemap::spanned { node: ast::lit_str(s),
                                         span: span})),
                 ast::expr_vstore_uniq))
     }
@@ -331,7 +331,7 @@ priv impl ext_ctxt {
         self.expr(
             span,
             ast::expr_lit(
-                @ast::spanned { node: ast::lit_uint(i as u64, ast::ty_u),
+                @codemap::spanned { node: ast::lit_uint(i as u64, ast::ty_u),
                                 span: span}))
     }
 
@@ -342,7 +342,7 @@ priv impl ext_ctxt {
     }
 
     fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
-        ast::spanned {
+        codemap::spanned {
             node: ast::blk_ {
                 view_items: ~[],
                 stmts: stmts,
@@ -355,7 +355,7 @@ priv impl ext_ctxt {
     }
 
     fn expr_blk(expr: @ast::expr) -> ast::blk {
-        ast::spanned {
+        codemap::spanned {
             node: ast::blk_ {
                 view_items: ~[],
                 stmts: ~[],
@@ -593,7 +593,7 @@ fn mk_ser_method(
         ident: cx.ident_of(~"encode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: ast::spanned { node: ast::sty_region(ast::m_imm),
+        self_ty: codemap::spanned { node: ast::sty_region(ast::m_imm),
                                 span: span },
         purity: ast::impure_fn,
         decl: ser_decl,
@@ -651,7 +651,7 @@ fn mk_deser_method(
         ident: cx.ident_of(~"decode"),
         attrs: ~[],
         tps: ~[],
-        self_ty: ast::spanned { node: ast::sty_static, span: span },
+        self_ty: codemap::spanned { node: ast::sty_static, span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
         body: deser_body,
@@ -762,7 +762,7 @@ fn mk_struct_deser_impl(
             ]
         );
 
-        ast::spanned {
+        codemap::spanned {
             node: ast::field_ {
                 mutbl: field.mutbl,
                 ident: field.ident,
@@ -812,8 +812,8 @@ fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
     do fields.map |field| {
         let (ident, mutbl) = match field.node.kind {
             ast::named_field(ident, mutbl, _) => (ident, mutbl),
-            _ => fail ~"[auto_encode] does not support \
-                        unnamed fields",
+            _ => die!(~"[auto_encode] does not support \
+                        unnamed fields")
         };
 
         field {
@@ -954,9 +954,9 @@ fn mk_enum_ser_body(
             ast::tuple_variant_kind(args) =>
                 ser_variant(cx, span, variant.node.name, v_idx, args),
             ast::struct_variant_kind(*) =>
-                fail ~"struct variants unimplemented",
+                die!(~"struct variants unimplemented"),
             ast::enum_variant_kind(*) =>
-                fail ~"enum variants unimplemented",
+                die!(~"enum variants unimplemented"),
         }
     };
 
@@ -1025,7 +1025,7 @@ fn mk_enum_deser_variant_nary(
 }
 
 fn mk_enum_deser_body(
-    cx: ext_ctxt,
+    ext_cx: ext_ctxt,
     span: span,
     name: ast::ident,
     variants: ~[ast::variant]
@@ -1035,11 +1035,11 @@ fn mk_enum_deser_body(
             ast::tuple_variant_kind(args) => {
                 if args.is_empty() {
                     // for a nullary variant v, do "v"
-                    cx.expr_path(span, ~[variant.node.name])
+                    ext_cx.expr_path(span, ~[variant.node.name])
                 } else {
                     // for an n-ary variant v, do "v(a_1, ..., a_n)"
                     mk_enum_deser_variant_nary(
-                        cx,
+                        ext_cx,
                         span,
                         variant.node.name,
                         args
@@ -1047,100 +1047,105 @@ fn mk_enum_deser_body(
                 }
             },
             ast::struct_variant_kind(*) =>
-                fail ~"struct variants unimplemented",
+                die!(~"struct variants unimplemented"),
             ast::enum_variant_kind(*) =>
-                fail ~"enum variants unimplemented",
+                die!(~"enum variants unimplemented")
         };
 
         let pat = @ast::pat {
-            id: cx.next_id(),
-            node: ast::pat_lit(cx.lit_uint(span, v_idx)),
+            id: ext_cx.next_id(),
+            node: ast::pat_lit(ext_cx.lit_uint(span, v_idx)),
             span: span,
         };
 
         ast::arm {
             pats: ~[pat],
             guard: None,
-            body: cx.expr_blk(body),
+            body: ext_cx.expr_blk(body),
         }
     };
 
+    let quoted_expr = quote_expr!(
+      ::core::sys::begin_unwind(~"explicit failure", ~"empty", 1);
+    ).node;
+
     let impossible_case = ast::arm {
         pats: ~[@ast::pat {
-            id: cx.next_id(),
+            id: ext_cx.next_id(),
             node: ast::pat_wild,
             span: span,
         }],
         guard: None,
 
         // FIXME(#3198): proper error message
-        body: cx.expr_blk(cx.expr(span, ast::expr_fail(None))),
+        body: ext_cx.expr_blk(ext_cx.expr(span, quoted_expr)),
     };
 
     arms.push(impossible_case);
 
     // ast for `|i| { match i { $(arms) } }`
-    let expr_lambda = cx.expr(
+    let expr_lambda = ext_cx.expr(
         span,
         ast::expr_fn_block(
             ast::fn_decl {
                 inputs: ~[ast::arg {
-                    mode: ast::infer(cx.next_id()),
+                    mode: ast::infer(ext_cx.next_id()),
                     is_mutbl: false,
                     ty: @ast::Ty {
-                        id: cx.next_id(),
+                        id: ext_cx.next_id(),
                         node: ast::ty_infer,
                         span: span
                     },
                     pat: @ast::pat {
-                        id: cx.next_id(),
+                        id: ext_cx.next_id(),
                         node: ast::pat_ident(
                             ast::bind_by_copy,
-                            ast_util::ident_to_path(span, cx.ident_of(~"i")),
+                            ast_util::ident_to_path(span,
+                                ext_cx.ident_of(~"i")),
                             None),
                         span: span,
                     },
-                    id: cx.next_id(),
+                    id: ext_cx.next_id(),
                 }],
                 output: @ast::Ty {
-                    id: cx.next_id(),
+                    id: ext_cx.next_id(),
                     node: ast::ty_infer,
                     span: span,
                 },
                 cf: ast::return_val,
             },
-            cx.expr_blk(
-                cx.expr(
+            ext_cx.expr_blk(
+                ext_cx.expr(
                     span,
-                    ast::expr_match(cx.expr_var(span, ~"i"), arms)
+                    ast::expr_match(ext_cx.expr_var(span, ~"i"), arms)
                 )
             )
         )
     );
 
     // ast for `__d.read_enum_variant($(expr_lambda))`
-    let expr_lambda = cx.lambda_expr(
-        cx.expr_call(
+    let expr_lambda = ext_cx.lambda_expr(
+        ext_cx.expr_call(
             span,
-            cx.expr_field(
+            ext_cx.expr_field(
                 span,
-                cx.expr_var(span, ~"__d"),
-                cx.ident_of(~"read_enum_variant")
+                ext_cx.expr_var(span, ~"__d"),
+                ext_cx.ident_of(~"read_enum_variant")
             ),
             ~[expr_lambda]
         )
     );
 
     // ast for `__d.read_enum($(e_name), $(expr_lambda))`
-    cx.expr_call(
+    ext_cx.expr_call(
         span,
-        cx.expr_field(
+        ext_cx.expr_field(
             span,
-            cx.expr_var(span, ~"__d"),
-            cx.ident_of(~"read_enum")
+            ext_cx.expr_var(span, ~"__d"),
+            ext_cx.ident_of(~"read_enum")
         ),
         ~[
-            cx.lit_str(span, @cx.str_of(name)),
+            ext_cx.lit_str(span, @ext_cx.str_of(name)),
             expr_lambda
         ]
     )

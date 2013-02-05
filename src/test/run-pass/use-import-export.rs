@@ -18,4 +18,4 @@ mod bar {
     pub fn y() -> int { return 1; }
 }
 
-fn main() { foo::x(); bar::y(); }
+pub fn main() { foo::x(); bar::y(); }

@@ -225,7 +225,7 @@ pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
             cast::forget(move ptr);
             // Also we have to free the (rejected) server endpoints.
             let _server: UnwrapProto = cast::transmute(move serverp);
-            fail ~"Another task is already unwrapping this ARC!";
+            die!(~"Another task is already unwrapping this ARC!");
         }
     }
 }
@@ -371,7 +371,7 @@ impl<T: Owned> Exclusive<T> {
         let rec = unsafe { get_shared_mutable_state(&self.x) };
         do rec.lock.lock {
             if rec.failed {
-                fail ~"Poisoned exclusive - another task failed inside!";
+                die!(~"Poisoned exclusive - another task failed inside!");
             }
             rec.failed = true;
             let result = f(&mut rec.data);
@@ -513,7 +513,7 @@ pub mod tests {
             let x2 = x.clone();
             do task::spawn {
                 for 10.times { task::yield(); } // try to let the unwrapper go
-                fail; // punt it awake from its deadlock
+                die!(); // punt it awake from its deadlock
             }
             let _z = unwrap_exclusive(move x);
             do x2.with |_hello| { }

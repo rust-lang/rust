@@ -14,7 +14,7 @@ fn box<T: Copy>(x: Box<T>) -> @Box<T> { return @x; }
 
 struct Box<T> {x: T, y: T, z: T}
 
-fn main() {
+pub fn main() {
     let x: @Box<int> = box::<int>(Box{x: 1, y: 2, z: 3});
     assert (x.y == 2);
 }

@@ -517,7 +517,7 @@ impl my_visitor: TyVisitor {
     }
     fn visit_int(&self) -> bool {
       do self.get::<int>() |i| {
-            self.vals += ~[int::to_str(i, 10u)];
+            self.vals += ~[int::to_str(i)];
       };
       true
     }
@@ -634,7 +634,7 @@ fn get_tydesc_for<T>(&&_t: T) -> *TyDesc {
 
 struct Triple { x: int, y: int, z: int }
 
-fn main() {
+pub fn main() {
     unsafe {
         let r = (1,2,3,true,false, Triple {x:5,y:4,z:3});
         let p = ptr::addr_of(&r) as *c_void;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     assert [1u, 3u].to_vec() == ~[1u, 3u];
     let e: ~[uint] = ~[];
     assert e.to_vec() == ~[];

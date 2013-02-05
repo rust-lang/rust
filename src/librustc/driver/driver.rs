@@ -35,7 +35,7 @@ use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
 use std::getopts::groups;
 use std::getopts::{opt_present};
 use std::getopts;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std;
 use syntax::ast;
 use syntax::ast_map;
@@ -382,21 +382,21 @@ pub fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
         match node {
           pprust::node_item(s, item) => {
             pp::space(s.s);
-            pprust::synth_comment(s, int::to_str(item.id, 10u));
+            pprust::synth_comment(s, int::to_str(item.id));
           }
           pprust::node_block(s, ref blk) => {
             pp::space(s.s);
             pprust::synth_comment(
-                s, ~"block " + int::to_str((*blk).node.id, 10u));
+                s, ~"block " + int::to_str((*blk).node.id));
           }
           pprust::node_expr(s, expr) => {
             pp::space(s.s);
-            pprust::synth_comment(s, int::to_str(expr.id, 10u));
+            pprust::synth_comment(s, int::to_str(expr.id));
             pprust::pclose(s);
           }
           pprust::node_pat(s, pat) => {
             pp::space(s.s);
-            pprust::synth_comment(s, ~"pat " + int::to_str(pat.id, 10u));
+            pprust::synth_comment(s, ~"pat " + int::to_str(pat.id));
           }
         }
     }
@@ -506,7 +506,7 @@ pub fn host_triple() -> ~str {
     return if ht != ~"" {
             ht
         } else {
-            fail ~"rustc built without CFG_HOST_TRIPLE"
+            die!(~"rustc built without CFG_HOST_TRIPLE")
         };
 }
 
@@ -846,7 +846,7 @@ pub fn build_output_filenames(input: input,
 
 pub fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
     emitter(None, msg, diagnostic::fatal);
-    fail;
+    die!();
 }
 
 pub fn list_metadata(sess: Session, path: &Path, out: io::Writer) {
@@ -874,8 +874,8 @@ pub mod test {
         let matches =
             &match getopts(~[~"--test"], optgroups()) {
               Ok(copy m) => m,
-              Err(copy f) => fail ~"test_switch_implies_cfg_test: " +
-                             getopts::fail_str(f)
+              Err(copy f) => die!(~"test_switch_implies_cfg_test: " +
+                             getopts::fail_str(f))
             };
         let sessopts = build_session_options(
             ~"rustc", matches, diagnostic::emit);
@@ -892,8 +892,8 @@ pub mod test {
             &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(copy m) => m,
               Err(copy f) => {
-                fail ~"test_switch_implies_cfg_test_unless_cfg_test: " +
-                    getopts::fail_str(f);
+                die!(~"test_switch_implies_cfg_test_unless_cfg_test: " +
+                    getopts::fail_str(f));
               }
             };
         let sessopts = build_session_options(

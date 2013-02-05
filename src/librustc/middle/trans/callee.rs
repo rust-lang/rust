@@ -383,7 +383,7 @@ pub fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
                     llfnty = T_ptr(struct_elt(llfnty, 0));
                     new_llval = PointerCast(callee.bcx, fn_data.llfn, llfnty);
                 }
-                _ => fail
+                _ => die!()
             }
             Callee { bcx: callee.bcx, data: Fn(FnData { llfn: new_llval }) }
         },
@@ -672,7 +672,8 @@ pub fn trans_arg_expr(bcx: block,
         // FIXME(#3548) use the adjustments table
         match autoref_arg {
             DoAutorefArg => {
-                assert !bcx.ccx().maps.moves_map.contains_key(arg_expr.id);
+                assert !bcx.ccx().maps.moves_map.contains_key_ref(
+                    &arg_expr.id);
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
@@ -682,16 +683,16 @@ pub fn trans_arg_expr(bcx: block,
                         // the explicit self code currently passes by-ref, it
                         // does not hold.
                         //
-                        //assert !bcx.ccx().maps.moves_map.contains_key(
-                        //    arg_expr.id);
+                        //assert !bcx.ccx().maps.moves_map.contains_key_ref(
+                        //    &arg_expr.id);
                         val = arg_datum.to_ref_llval(bcx);
                     }
 
                     ast::by_val => {
                         // NB: avoid running the take glue.
 
-                        assert !bcx.ccx().maps.moves_map.contains_key(
-                            arg_expr.id);
+                        assert !bcx.ccx().maps.moves_map.contains_key_ref(
+                            &arg_expr.id);
                         val = arg_datum.to_value_llval(bcx);
                     }
 

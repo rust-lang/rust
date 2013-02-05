@@ -25,7 +25,7 @@ fn choice<T: copy>(r : rand::rng, v : ~[T]) -> T {
 fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }
 
 // shuffle a vec in place
-fn shuffle<T>(r : rand::rng, &v : ~[mut T]) {
+fn shuffle<T>(r : rand::rng, &v : ~[T]) {
     let i = vec::len(v);
     while i >= 2u {
         // Loop invariant: elements with index >= i have been locked in place.
@@ -42,7 +42,7 @@ fn shuffled<T: copy>(r : rand::rng, v : ~[T]) -> ~[T] {
 }
 
 // sample from a population without replacement
-//fn sample<T>(r : rand::rng, pop : ~[T], k : uint) -> ~[T] { fail }
+//fn sample<T>(r : rand::rng, pop : ~[T], k : uint) -> ~[T] { die!() }
 
 // Two ways to make a weighted choice.
 // * weighted_choice is O(number of choices) time
@@ -86,7 +86,7 @@ fn main()
     log(error, choice(r, ~[10, 20, 30]));
     log(error, if unlikely(r, 5u) { "unlikely" } else { "likely" });
 
-    let a = ~[mut 1, 2, 3];
+    let mut a = ~[1, 2, 3];
     shuffle(r, a);
     log(error, a);
 

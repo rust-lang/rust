@@ -20,4 +20,4 @@ extern mod rustrt {
     pub use spam::{ham, eggs};
 }
 
-fn main() { rustrt::ham(); rustrt::eggs(); }
+pub fn main() { rustrt::ham(); rustrt::eggs(); }

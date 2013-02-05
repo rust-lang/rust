@@ -10,7 +10,7 @@
 
 
 
-fn main() {
+pub fn main() {
     let x = ~[1, 2, 3];
     let mut y = 0;
     for x.each |i| { log(debug, *i); y += *i; }

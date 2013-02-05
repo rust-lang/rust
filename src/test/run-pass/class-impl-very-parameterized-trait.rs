@@ -9,10 +9,8 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
-extern mod std;
-use std::map::*;
+use core::container::{Container, Mutable, Map};
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
@@ -28,121 +26,110 @@ impl cat_type : cmp::Eq {
 
 // ok: T should be in scope when resolving the trait ref for map
 struct cat<T> {
-  // Yes, you can have negative meows
-  priv mut meows : int,
+    // Yes, you can have negative meows
+    priv mut meows : int,
 
-  mut how_hungry : int,
-  name : T,
+    mut how_hungry : int,
+    name : T,
 }
 
-impl<T: Copy> cat<T> {
-  fn speak() { self.meow(); }
+impl<T> cat<T> {
+    fn speak(&mut self) { self.meow(); }
 
-  fn eat() -> bool {
-    if self.how_hungry > 0 {
-        error!("OM NOM NOM");
-        self.how_hungry -= 2;
-        return true;
-    }
-    else {
-        error!("Not hungry!");
-        return false;
-    }
-  }
-}
-
-impl<T: Copy> cat<T> : StdMap<int, T> {
-  pure fn size() -> uint { self.meows as uint }
-  fn insert(+k: int, +_v: T) -> bool {
-    self.meows += k;
-    true
-  }
-  pure fn contains_key(+k: int) -> bool { k <= self.meows }
-  pure fn contains_key_ref(k: &int) -> bool { self.contains_key(*k) }
-
-  pure fn get(+k:int) -> T { match self.find(k) {
-      Some(v) => { v }
-      None    => { fail ~"epic fail"; }
-    }
-  }
-  pure fn find(+k:int) -> Option<T> { if k <= self.meows {
-        Some(self.name)
-     }
-     else { None }
-  }
-
-  fn update_with_key(+key: int, +val: T, ff: fn(+k: int, +v0: T, +v1: T) -> T) -> bool {
-    match self.find(key) {
-      None            => return self.insert(key, val),
-      Some(copy orig) => return self.insert(key, ff(key, orig, val))
-    }
-  }
-
-  fn update(+key: int, +val: T, ff: fn(+v0: T, +v1: T) -> T) -> bool {
-    match self.find(key) {
-      None            => return self.insert(key, val),
-      Some(copy orig) => return self.insert(key, ff(orig, val))
-    }
-  }
-
-
-  fn remove(+k:int) -> bool {
-    match self.find(k) {
-      Some(x) => {
-        self.meows -= k; true
-      }
-      None => { false }
-    }
-  }
-
-  pure fn each(f: fn(+v: int, +v: T) -> bool) {
-    let mut n = int::abs(self.meows);
-    while n > 0 {
-        if !f(n, self.name) { break; }
-        n -= 1;
-    }
-  }
-
-  pure fn each_key(&&f: fn(+v: int) -> bool) {
-    for self.each |k, _v| { if !f(k) { break; } loop;};
-  }
-  pure fn each_value(&&f: fn(+v: T) -> bool) {
-    for self.each |_k, v| { if !f(v) { break; } loop;};
-  }
-
-  pure fn each_ref(f: fn(k: &int, v: &T) -> bool) {}
-  pure fn each_key_ref(f: fn(k: &int) -> bool) {}
-  pure fn each_value_ref(f: fn(k: &T) -> bool) {}
-
-  fn clear() { }
-}
-
-priv impl<T: Copy> cat<T> {
-    fn meow() {
-      self.meows += 1;
-      error!("Meow %d", self.meows);
-      if self.meows % 5 == 0 {
-          self.how_hungry += 1;
-      }
+    fn eat(&mut self) -> bool {
+        if self.how_hungry > 0 {
+            error!("OM NOM NOM");
+            self.how_hungry -= 2;
+            return true;
+        } else {
+            error!("Not hungry!");
+            return false;
+        }
     }
 }
 
-fn cat<T: Copy>(in_x : int, in_y : int, in_name: T) -> cat<T> {
-    cat {
-        meows: in_x,
-        how_hungry: in_y,
-        name: in_name
+impl<T> cat<T>: Container {
+    pure fn len(&self) -> uint { self.meows as uint }
+    pure fn is_empty(&self) -> bool { self.meows == 0 }
+}
+
+impl<T> cat<T>: Mutable {
+    fn clear(&mut self) {}
+}
+
+impl<T> cat<T>: Map<int, T> {
+    pure fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
+
+    pure fn each(&self, f: fn(v: &int, v: &T) -> bool) {
+        let mut n = int::abs(self.meows);
+        while n > 0 {
+            if !f(&n, &self.name) { break; }
+            n -= 1;
+        }
+    }
+
+    pure fn each_key(&self, f: fn(v: &int) -> bool) {
+        for self.each |k, _| { if !f(k) { break; } loop;};
+    }
+
+    pure fn each_value(&self, f: fn(v: &T) -> bool) {
+        for self.each |_, v| { if !f(v) { break; } loop;};
+    }
+
+    fn insert(&mut self, k: int, _: T) -> bool {
+        self.meows += k;
+        true
+    }
+
+    pure fn find(&self, k: &int) -> Option<&self/T> {
+        if *k <= self.meows {
+            Some(&self.name)
+        } else {
+            None
+        }
+    }
+
+    fn remove(&mut self, k: &int) -> bool {
+        match self.find(k) {
+          Some(_) => {
+              self.meows -= *k; true
+          }
+          None => { false }
+        }
+    }
+}
+
+impl<T> cat<T> {
+    pure fn get(&self, k: &int) -> &self/T {
+        match self.find(k) {
+          Some(v) => { v }
+          None    => { die!(~"epic fail"); }
+        }
+    }
+
+    static pure fn new(in_x: int, in_y: int, in_name: T) -> cat<T> {
+        cat{meows: in_x, how_hungry: in_y, name: in_name }
+    }
+}
+
+priv impl<T> cat<T> {
+    fn meow(&mut self) {
+        self.meows += 1;
+        error!("Meow %d", self.meows);
+        if self.meows % 5 == 0 {
+            self.how_hungry += 1;
+        }
     }
 }
 
 fn main() {
-  let nyan : cat<~str> = cat(0, 2, ~"nyan");
-  for uint::range(1u, 5u) |_i| { nyan.speak(); }
-  assert(nyan.find(1) == Some(~"nyan"));
-  assert(nyan.find(10) == None);
-  let spotty : cat<cat_type> = cat(2, 57, tuxedo);
-  for uint::range(0u, 6u) |_i| { spotty.speak(); }
-  assert(spotty.size() == 8u);
-  assert(spotty.contains_key(2));
-  assert(spotty.get(3) == tuxedo);
+    let mut nyan: cat<~str> = cat::new(0, 2, ~"nyan");
+    for uint::range(1, 5) |_| { nyan.speak(); }
+    assert(*nyan.find(&1).unwrap() == ~"nyan");
+    assert(nyan.find(&10) == None);
+    let mut spotty: cat<cat_type> = cat::new(2, 57, tuxedo);
+    for uint::range(0, 6) |_| { spotty.speak(); }
+    assert(spotty.len() == 8);
+    assert(spotty.contains_key(&2));
+    assert(spotty.get(&3) == &tuxedo);
 }

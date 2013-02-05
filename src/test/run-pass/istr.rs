@@ -60,7 +60,7 @@ fn test_append() {
     assert (s == ~"coffee&tea");
 }
 
-fn main() {
+pub fn main() {
     test_stack_assign();
     test_heap_lit();
     test_heap_assign();

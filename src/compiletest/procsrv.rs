@@ -71,7 +71,7 @@ pub fn run(lib_path: ~str,
         os::close(pipe_in.out);
         os::close(pipe_out.in);
         os::close(pipe_err.in);
-        fail;
+        die!();
     }
 
 
@@ -99,7 +99,7 @@ pub fn run(lib_path: ~str,
           (2, s) => {
             errs = s;
           }
-          _ => { fail }
+          _ => { die!() }
         };
         count -= 1;
     };

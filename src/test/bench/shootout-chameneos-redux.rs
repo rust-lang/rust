@@ -11,8 +11,8 @@
 // chameneos
 
 extern mod std;
-use std::map;
-use std::map::HashMap;
+use std::oldmap;
+use std::oldmap::HashMap;
 use std::sort;
 use std::cell::Cell;
 use core::pipes::*;
@@ -63,7 +63,7 @@ fn show_digit(nn: uint) -> ~str {
         7 => {~"seven"}
         8 => {~"eight"}
         9 => {~"nine"}
-        _ => {fail ~"expected digits from 0 to 9..."}
+        _ => {die!(~"expected digits from 0 to 9...")}
     }
 }
 

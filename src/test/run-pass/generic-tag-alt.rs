@@ -18,4 +18,4 @@ fn altfoo<T>(f: foo<T>) {
     assert (hit);
 }
 
-fn main() { altfoo::<int>(arm::<int>(10)); }
+pub fn main() { altfoo::<int>(arm::<int>(10)); }

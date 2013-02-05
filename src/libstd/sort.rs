@@ -64,7 +64,7 @@ pub pure fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
     }
 }
 
-fn part<T: Copy>(arr: &[mut T], left: uint,
+fn part<T: Copy>(arr: &mut [T], left: uint,
                 right: uint, pivot: uint, compare_func: Le<T>) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
@@ -81,7 +81,7 @@ fn part<T: Copy>(arr: &[mut T], left: uint,
     return storage_index;
 }
 
-fn qsort<T: Copy>(arr: &[mut T], left: uint,
+fn qsort<T: Copy>(arr: &mut [T], left: uint,
              right: uint, compare_func: Le<T>) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -100,12 +100,12 @@ fn qsort<T: Copy>(arr: &[mut T], left: uint,
  * Has worst case O(n^2) performance, average case O(n log n).
  * This is an unstable sort.
  */
-pub fn quick_sort<T: Copy>(arr: &[mut T], compare_func: Le<T>) {
+pub fn quick_sort<T: Copy>(arr: &mut [T], compare_func: Le<T>) {
     if len::<T>(arr) == 0u { return; }
     qsort::<T>(arr, 0u, len::<T>(arr) - 1u, compare_func);
 }
 
-fn qsort3<T: Copy Ord Eq>(arr: &[mut T], left: int, right: int) {
+fn qsort3<T: Copy Ord Eq>(arr: &mut [T], left: int, right: int) {
     if right <= left { return; }
     let v: T = arr[right];
     let mut i: int = left - 1;
@@ -162,7 +162,7 @@ fn qsort3<T: Copy Ord Eq>(arr: &[mut T], left: int, right: int) {
  *
  * This is an unstable sort.
  */
-pub fn quick_sort3<T: Copy Ord Eq>(arr: &[mut T]) {
+pub fn quick_sort3<T: Copy Ord Eq>(arr: &mut [T]) {
     if arr.len() <= 1 { return; }
     qsort3(arr, 0, (arr.len() - 1) as int);
 }
@@ -171,7 +171,7 @@ pub trait Sort {
     fn qsort(self);
 }
 
-impl<T: Copy Ord Eq> &[mut T] : Sort {
+impl<T: Copy Ord Eq> &mut [T] : Sort {
     fn qsort(self) { quick_sort3(self); }
 }
 
@@ -179,7 +179,7 @@ const MIN_MERGE: uint = 64;
 const MIN_GALLOP: uint = 7;
 const INITIAL_TMP_STORAGE: uint = 128;
 
-pub fn tim_sort<T: Copy Ord>(array: &[mut T]) {
+pub fn tim_sort<T: Copy Ord>(array: &mut [T]) {
     let size = array.len();
     if size < 2 {
         return;
@@ -218,7 +218,7 @@ pub fn tim_sort<T: Copy Ord>(array: &[mut T]) {
     ms.merge_force_collapse(array);
 }
 
-fn binarysort<T: Copy Ord>(array: &[mut T], start: uint) {
+fn binarysort<T: Copy Ord>(array: &mut [T], start: uint) {
     let size = array.len();
     let mut start = start;
     assert start <= size;
@@ -249,7 +249,7 @@ fn binarysort<T: Copy Ord>(array: &[mut T], start: uint) {
 }
 
 // Reverse the order of elements in a slice, in place
-fn reverse_slice<T>(v: &[mut T], start: uint, end:uint) {
+fn reverse_slice<T>(v: &mut [T], start: uint, end:uint) {
     let mut i = start;
     while i < end / 2 {
         util::swap(&mut v[i], &mut v[end - i - 1]);
@@ -268,7 +268,7 @@ pure fn min_run_length(n: uint) -> uint {
     return n + r;
 }
 
-fn count_run_ascending<T: Copy Ord>(array: &[mut T]) -> uint {
+fn count_run_ascending<T: Copy Ord>(array: &mut [T]) -> uint {
     let size = array.len();
     assert size > 0;
     if size == 1 { return 1; }
@@ -412,7 +412,7 @@ impl<T: Copy Ord> MergeState<T> {
         self.runs.push(tmp);
     }
 
-    fn merge_at(&self, n: uint, array: &[mut T]) {
+    fn merge_at(&self, n: uint, array: &mut [T]) {
         let mut size = self.runs.len();
         assert size >= 2;
         assert n == size-2 || n == size-3;
@@ -453,7 +453,7 @@ impl<T: Copy Ord> MergeState<T> {
         self.runs.pop();
     }
 
-    fn merge_lo(&self, array: &[mut T], base1: uint, len1: uint,
+    fn merge_lo(&self, array: &mut [T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
@@ -548,7 +548,7 @@ impl<T: Copy Ord> MergeState<T> {
             copy_vec(array, dest, array, c2, len2);
             array[dest+len2] <-> tmp[c1];
         } else if len1 == 0 {
-            fail ~"Comparison violates its contract!";
+            die!(~"Comparison violates its contract!");
         } else {
             assert len2 == 0;
             assert len1 > 1;
@@ -556,7 +556,7 @@ impl<T: Copy Ord> MergeState<T> {
         }
     }
 
-    fn merge_hi(&self, array: &[mut T], base1: uint, len1: uint,
+    fn merge_hi(&self, array: &mut [T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
@@ -666,7 +666,7 @@ impl<T: Copy Ord> MergeState<T> {
             copy_vec(array, dest+1, array, c1+1, len1);
             array[dest] <-> tmp[c2];
         } else if len2 == 0 {
-            fail ~"Comparison violates its contract!";
+            die!(~"Comparison violates its contract!");
         } else {
             assert len1 == 0;
             assert len2 != 0;
@@ -674,7 +674,7 @@ impl<T: Copy Ord> MergeState<T> {
         }
     }
 
-    fn merge_collapse(&self, array: &[mut T]) {
+    fn merge_collapse(&self, array: &mut [T]) {
         while self.runs.len() > 1 {
             let mut n = self.runs.len()-2;
             let chk = do self.runs.borrow |arr| {
@@ -692,7 +692,7 @@ impl<T: Copy Ord> MergeState<T> {
         }
     }
 
-    fn merge_force_collapse(&self, array: &[mut T]) {
+    fn merge_force_collapse(&self, array: &mut [T]) {
         while self.runs.len() > 1 {
             let mut n = self.runs.len()-2;
             if n > 0 {
@@ -708,7 +708,7 @@ impl<T: Copy Ord> MergeState<T> {
 }
 
 #[inline(always)]
-fn copy_vec<T: Copy>(dest: &[mut T], s1: uint,
+fn copy_vec<T: Copy>(dest: &mut [T], s1: uint,
                     from: &[const T], s2: uint, len: uint) {
     assert s1+len <= dest.len() && s2+len <= from.len();
 
@@ -726,7 +726,7 @@ mod test_qsort3 {
 
     use core::vec;
 
-    pub fn check_sort(v1: &[mut int], v2: &[mut int]) {
+    pub fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = vec::len::<int>(v1);
         quick_sort3::<int>(v1);
         let mut i = 0;
@@ -740,24 +740,24 @@ mod test_qsort3 {
     #[test]
     pub fn test() {
         {
-            let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
+            let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
+            let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
             check_sort(v1, v2);
         }
         {
-            let v1 = ~[mut 1, 1, 1];
-            let v2 = ~[mut 1, 1, 1];
+            let mut v1 = ~[1, 1, 1];
+            let mut v2 = ~[1, 1, 1];
             check_sort(v1, v2);
         }
         {
-            let v1: ~[mut int] = ~[mut];
-            let v2: ~[mut int] = ~[mut];
+            let mut v1: ~[int] = ~[];
+            let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let v1 = ~[mut 9]; let v2 = ~[mut 9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let mut v2 = ~[9]; check_sort(v1, v2); }
         {
-            let v1 = ~[mut 9, 3, 3, 3, 9];
-            let v2 = ~[mut 3, 3, 3, 9, 9];
+            let mut v1 = ~[9, 3, 3, 3, 9];
+            let mut v2 = ~[3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
     }
@@ -772,7 +772,7 @@ mod test_qsort {
     use core::int;
     use core::vec;
 
-    pub fn check_sort(v1: &[mut int], v2: &[mut int]) {
+    pub fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = vec::len::<int>(v1);
         pure fn leual(a: &int, b: &int) -> bool { *a <= *b }
         quick_sort::<int>(v1, leual);
@@ -787,24 +787,24 @@ mod test_qsort {
     #[test]
     pub fn test() {
         {
-            let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
+            let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
+            let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
             check_sort(v1, v2);
         }
         {
-            let v1 = ~[mut 1, 1, 1];
-            let v2 = ~[mut 1, 1, 1];
+            let mut v1 = ~[1, 1, 1];
+            let mut v2 = ~[1, 1, 1];
             check_sort(v1, v2);
         }
         {
-            let v1: ~[mut int] = ~[mut];
-            let v2: ~[mut int] = ~[mut];
+            let mut v1: ~[int] = ~[];
+            let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let v1 = ~[mut 9]; let v2 = ~[mut 9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let mut v2 = ~[9]; check_sort(v1, v2); }
         {
-            let v1 = ~[mut 9, 3, 3, 3, 9];
-            let v2 = ~[mut 3, 3, 3, 9, 9];
+            let mut v1 = ~[9, 3, 3, 3, 9];
+            let mut v2 = ~[3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
     }
@@ -812,13 +812,13 @@ mod test_qsort {
     // Regression test for #750
     #[test]
     pub fn test_simple() {
-        let names = ~[mut 2, 1, 3];
+        let mut names = ~[2, 1, 3];
 
         let expected = ~[1, 2, 3];
 
         do quick_sort(names) |x, y| { int::le(*x, *y) };
 
-        let immut_names = vec::cast_from_mut(move names);
+        let immut_names = move names;
 
         let pairs = vec::zip_slice(expected, immut_names);
         for vec::each(pairs) |p| {
@@ -870,7 +870,7 @@ mod tests {
     #[test]
     pub fn test_merge_sort_mutable() {
         pub pure fn le(a: &int, b: &int) -> bool { *a <= *b }
-        let v1 = ~[mut 3, 2, 1];
+        let mut v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
         assert v2 == ~[1, 2, 3];
     }
@@ -914,7 +914,7 @@ mod test_tim_sort {
         pure fn lt(&self, other: &CVal) -> bool {
             unsafe {
                 let rng = rand::Rng();
-                if rng.gen_float() > 0.995 { fail ~"It's happening!!!"; }
+                if rng.gen_float() > 0.995 { die!(~"It's happening!!!"); }
             }
             (*self).val < other.val
         }
@@ -923,7 +923,7 @@ mod test_tim_sort {
         pure fn ge(&self, other: &CVal) -> bool { (*self).val >= other.val }
     }
 
-    fn check_sort(v1: &[mut int], v2: &[mut int]) {
+    fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = vec::len::<int>(v1);
         tim_sort::<int>(v1);
         let mut i = 0u;
@@ -937,24 +937,24 @@ mod test_tim_sort {
     #[test]
     fn test() {
         {
-            let v1 = ~[mut 3, 7, 4, 5, 2, 9, 5, 8];
-            let v2 = ~[mut 2, 3, 4, 5, 5, 7, 8, 9];
+            let mut v1 = ~[3, 7, 4, 5, 2, 9, 5, 8];
+            let mut v2 = ~[2, 3, 4, 5, 5, 7, 8, 9];
             check_sort(v1, v2);
         }
         {
-            let v1 = ~[mut 1, 1, 1];
-            let v2 = ~[mut 1, 1, 1];
+            let mut v1 = ~[1, 1, 1];
+            let mut v2 = ~[1, 1, 1];
             check_sort(v1, v2);
         }
         {
-            let v1: ~[mut int] = ~[mut];
-            let v2: ~[mut int] = ~[mut];
+            let mut v1: ~[int] = ~[];
+            let mut v2: ~[int] = ~[];
             check_sort(v1, v2);
         }
-        { let v1 = ~[mut 9]; let v2 = ~[mut 9]; check_sort(v1, v2); }
+        { let mut v1 = ~[9]; let mut v2 = ~[9]; check_sort(v1, v2); }
         {
-            let v1 = ~[mut 9, 3, 3, 3, 9];
-            let v2 = ~[mut 3, 3, 3, 9, 9];
+            let mut v1 = ~[9, 3, 3, 3, 9];
+            let mut v2 = ~[3, 3, 3, 9, 9];
             check_sort(v1, v2);
         }
     }
@@ -970,7 +970,7 @@ mod test_tim_sort {
         };
 
         tim_sort(arr);
-        fail ~"Guarantee the fail";
+        die!(~"Guarantee the fail");
     }
 
     struct DVal { val: uint }
@@ -1019,12 +1019,12 @@ mod big_tests {
         tabulate_managed(low, high);
     }
 
-    fn multiplyVec<T: Copy>(arr: &[const T], num: uint) -> ~[mut T] {
+    fn multiplyVec<T: Copy>(arr: &[const T], num: uint) -> ~[T] {
         let size = arr.len();
         let res = do vec::from_fn(num) |i| {
             arr[i % size]
         };
-        vec::cast_to_mut(move res)
+        move res
     }
 
     fn makeRange(n: uint) -> ~[uint] {
@@ -1038,7 +1038,7 @@ mod big_tests {
         fn isSorted<T: Ord>(arr: &[const T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
-                    fail ~"Array not sorted";
+                    die!(~"Array not sorted");
                 }
             }
         }
@@ -1050,7 +1050,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 rng.gen_float()
             };
-            let arr = vec::cast_to_mut(move arr);
+            let mut arr = move arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1088,7 +1088,7 @@ mod big_tests {
             tim_sort(arr);
             isSorted(arr);
 
-            let arr = if n > 4 {
+            let mut arr = if n > 4 {
                 let part = vec::view(arr, 0, 4);
                 multiplyVec(part, n)
             } else { move arr };
@@ -1110,7 +1110,7 @@ mod big_tests {
         fn isSorted<T: Ord>(arr: &[const @T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
-                    fail ~"Array not sorted";
+                    die!(~"Array not sorted");
                 }
             }
         }
@@ -1122,7 +1122,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 @rng.gen_float()
             };
-            let arr = vec::cast_to_mut(move arr);
+            let mut arr = move arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1160,7 +1160,7 @@ mod big_tests {
             tim_sort(arr);
             isSorted(arr);
 
-            let arr = if n > 4 {
+            let mut arr = if n > 4 {
                 let part = vec::view(arr, 0, 4);
                 multiplyVec(part, n)
             } else { move arr };
@@ -1193,7 +1193,7 @@ mod big_tests {
                         task::local_data::local_data_set(self.key, @(y+1));
                     }
                 }
-                _ => fail ~"Expected key to work",
+                _ => die!(~"Expected key to work"),
             }
         }
     }

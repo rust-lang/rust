@@ -17,7 +17,6 @@
 #include "sync/timer.h"
 #include "sync/rust_thread.h"
 #include "rust_abi.h"
-#include "rust_port.h"
 
 #include <time.h>
 
@@ -694,86 +693,11 @@ rust_sched_threads() {
     return task->sched->max_number_of_threads();
 }
 
-extern "C" CDECL rust_port*
-rust_port_take(rust_port_id id) {
-    rust_task *task = rust_get_current_task();
-    return task->kernel->get_port_by_id(id);
-}
-
-extern "C" CDECL void
-rust_port_drop(rust_port *p) {
-    assert(p != NULL);
-    p->deref();
-}
-
-extern "C" CDECL rust_task_id
-rust_port_task(rust_port *p) {
-    assert(p != NULL);
-    return p->task->id;
-}
-
-extern "C" CDECL rust_port*
-new_port(size_t unit_sz) {
-    rust_task *task = rust_get_current_task();
-    LOG(task, comm, "new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
-        (uintptr_t) task, task->name, unit_sz);
-    // port starts with refcount == 1
-    return new (task->kernel, "rust_port") rust_port(task, unit_sz);
-}
-
-extern "C" CDECL void
-rust_port_begin_detach(rust_port *port, uintptr_t *yield) {
-    rust_task *task = rust_get_current_task();
-    LOG(task, comm, "rust_port_detach(0x%" PRIxPTR ")", (uintptr_t) port);
-    port->begin_detach(yield);
-}
-
-extern "C" CDECL void
-rust_port_end_detach(rust_port *port) {
-    port->end_detach();
-}
-
-extern "C" CDECL void
-del_port(rust_port *port) {
-    rust_task *task = rust_get_current_task();
-    LOG(task, comm, "del_port(0x%" PRIxPTR ")", (uintptr_t) port);
-    delete port;
-}
-
-extern "C" CDECL size_t
-rust_port_size(rust_port *port) {
-    return port->size();
-}
-
-extern "C" CDECL rust_port_id
-get_port_id(rust_port *port) {
-    return port->id;
-}
-
-extern "C" CDECL uintptr_t
-rust_port_id_send(rust_port_id target_port_id, void *sptr) {
-    rust_task *task = rust_get_current_task();
-    return (uintptr_t)task->kernel->send_to_port(target_port_id, sptr);
-}
-
 // This is called by an intrinsic on the Rust stack and must run
 // entirely in the red zone. Do not call on the C stack.
 extern "C" CDECL MUST_CHECK bool
 rust_task_yield(rust_task *task, bool *killed) {
     return task->yield();
-}
-
-extern "C" CDECL void
-port_recv(uintptr_t *dptr, rust_port *port, uintptr_t *yield) {
-    port->receive(dptr, yield);
-}
-
-extern "C" CDECL void
-rust_port_select(rust_port **dptr, rust_port **ports,
-                 size_t n_ports, uintptr_t *yield) {
-    rust_task *task = rust_get_current_task();
-    rust_port_selector *selector = task->get_port_selector();
-    selector->select(task, dptr, ports, n_ports, yield);
 }
 
 extern "C" CDECL void

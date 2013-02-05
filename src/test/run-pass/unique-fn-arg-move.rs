@@ -12,7 +12,7 @@ fn f(-i: ~int) {
     assert *i == 100;
 }
 
-fn main() {
+pub fn main() {
     let i = ~100;
     f(move i);
 }

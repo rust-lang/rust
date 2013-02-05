@@ -10,9 +10,9 @@
 
 // Regression test that f64 exports things properly
 
-fn main() {
+pub fn main() {
 
     let digits: uint = 10 as uint;
 
-    ::core::io::println(float::to_str(f64::sqrt(42.0f64) as float, digits));
+    ::core::io::println(float::to_str_digits(f64::sqrt(42.0f64) as float, digits));
 }

@@ -69,13 +69,13 @@ fn canttouchthis() -> uint {
 fn angrydome() {
     loop { if break { } }
     let mut i = 0;
-    loop { i += 1; if i == 1 { match (loop) { 1 => { }, _ => fail ~"wat" } }
+    loop { i += 1; if i == 1 { match (loop) { 1 => { }, _ => die!(~"wat") } }
       break; }
 }
 
 fn evil_lincoln() { let evil = move debug!("lincoln"); }
 
-fn main() {
+pub fn main() {
     strange();
     funny();
     what();

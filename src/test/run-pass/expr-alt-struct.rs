@@ -17,7 +17,7 @@
 struct R { i: int }
 
 fn test_rec() {
-    let rs = match true { true => R {i: 100}, _ => fail };
+    let rs = match true { true => R {i: 100}, _ => die!() };
     assert (rs.i == 100);
 }
 
@@ -35,4 +35,4 @@ fn test_tag() {
     assert (rs == happy);
 }
 
-fn main() { test_rec(); test_tag(); }
+pub fn main() { test_rec(); test_tag(); }

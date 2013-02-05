@@ -12,4 +12,4 @@
 
 type lteq<T> = extern fn(T) -> bool;
 
-fn main() { }
+pub fn main() { }

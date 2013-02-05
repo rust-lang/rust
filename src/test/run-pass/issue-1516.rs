@@ -9,5 +9,5 @@
 // except according to those terms.
 
 // xfail-test
-fn main() {  let early_error: fn@(str) -> !  = {|msg| fail }; }
+pub fn main() {  let early_error: fn@(str) -> !  = {|msg| die!() }; }
 

@@ -25,8 +25,8 @@ use core::cmp;
 use core::either;
 use core::str;
 use core::vec;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 use std;
 
 pub enum path_elt {
@@ -106,7 +106,7 @@ pub enum ast_node {
     node_struct_ctor(@struct_def, @item, @path),
 }
 
-pub type map = std::map::HashMap<node_id, ast_node>;
+pub type map = std::oldmap::HashMap<node_id, ast_node>;
 pub struct ctx {
     map: map,
     mut path: path,
@@ -134,7 +134,7 @@ pub fn mk_ast_map_visitor() -> vt {
 
 pub fn map_crate(diag: span_handler, c: crate) -> map {
     let cx = ctx {
-        map: std::map::HashMap(),
+        map: std::oldmap::HashMap(),
         mut path: ~[],
         mut local_id: 0u,
         diag: diag,
@@ -316,7 +316,7 @@ pub fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
                     cx.map.insert(ctor_id,
                                   node_struct_ctor(struct_def, item, p));
                 }
-                _ => fail ~"struct def parent wasn't an item"
+                _ => die!(~"struct def parent wasn't an item")
             }
         }
     }
@@ -400,7 +400,7 @@ pub fn node_item_query<Result>(items: map, id: node_id,
                            error_msg: ~str) -> Result {
     match items.find(id) {
         Some(node_item(it, _)) => query(it),
-        _ => fail(error_msg)
+        _ => die!(error_msg)
     }
 }
 

@@ -13,4 +13,4 @@
 /*
  * This is a multi-line oldcomment.
  */
-fn main() { }
+pub fn main() { }

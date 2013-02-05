@@ -17,7 +17,7 @@ fn test(x: bool, foo: @Triple) -> int {
     return y.y;
 }
 
-fn main() {
+pub fn main() {
     let x = @Triple {x: 1, y: 2, z: 3};
     assert (test(true, x) == 2);
     assert (test(true, x) == 2);

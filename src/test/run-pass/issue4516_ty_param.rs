@@ -20,6 +20,6 @@
 
 extern mod issue4516_ty_param_lib;
 use issue4516_ty_param_lib::to_closure;
-fn main() {
+pub fn main() {
     to_closure(22)();
 }

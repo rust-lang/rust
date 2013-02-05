@@ -13,7 +13,7 @@
 extern mod cci_class_6;
 use cci_class_6::kitties::*;
 
-fn main() {
+pub fn main() {
   let nyan : cat<char> = cat::<char>(52u, 99, ~['p']);
   let kitty = cat(1000u, 2, ~[~"tabby"]);
   assert(nyan.how_hungry == 99);

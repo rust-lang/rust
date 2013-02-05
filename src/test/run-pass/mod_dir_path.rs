@@ -16,6 +16,6 @@ mod mod_dir_simple {
     pub mod syrup;
 }
 
-fn main() {
+pub fn main() {
     assert mod_dir_simple::syrup::foo() == 10;
 }

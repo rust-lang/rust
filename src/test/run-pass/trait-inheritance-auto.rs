@@ -30,7 +30,7 @@ fn f<T: Quux>(a: &T) {
     assert a.h() == 30;
 }
 
-fn main() {
+pub fn main() {
     let a = &A { x: 3 };
     f(a);
 }

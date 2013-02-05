@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{span, FileName};
+use codemap::{span, FileName, spanned};
 
 use core::cast;
 use core::cmp;
@@ -20,10 +20,6 @@ use core::task;
 use core::to_bytes;
 use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
-
-#[auto_encode]
-#[auto_decode]
-pub struct spanned<T> { node: T, span: span }
 
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
@@ -40,7 +36,7 @@ pub impl<S: Encoder> ident: Encodable<S> {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
         } {
-            None => fail ~"encode: TLS interner not set up",
+            None => die!(~"encode: TLS interner not set up"),
             Some(intr) => intr
         };
 
@@ -53,7 +49,7 @@ pub impl<D: Decoder> ident: Decodable<D> {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
         } {
-            None => fail ~"decode: TLS interner not set up",
+            None => die!(~"decode: TLS interner not set up"),
             Some(intr) => intr
         };
 
@@ -690,7 +686,7 @@ pub enum expr_ {
     expr_cast(@expr, @Ty),
     expr_if(@expr, blk, Option<@expr>),
     expr_while(@expr, blk),
-    /* Conditionless loop (can be exited with break, cont, ret, or fail)
+    /* Conditionless loop (can be exited with break, cont, or ret)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
     expr_loop(blk, Option<ident>),
@@ -716,7 +712,6 @@ pub enum expr_ {
     expr_index(@expr, @expr),
     expr_path(@path),
     expr_addr_of(mutability, @expr),
-    expr_fail(Option<@expr>),
     expr_break(Option<ident>),
     expr_again(Option<ident>),
     expr_ret(Option<@expr>),
@@ -928,8 +923,8 @@ pub enum trait_method {
 pub enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
 pub impl int_ty : ToStr {
-    pure fn to_str() -> ~str {
-        ::ast_util::int_ty_to_str(self)
+    pure fn to_str(&self) -> ~str {
+        ::ast_util::int_ty_to_str(*self)
     }
 }
 
@@ -964,8 +959,8 @@ pub impl int_ty : cmp::Eq {
 pub enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
 pub impl uint_ty : ToStr {
-    pure fn to_str() -> ~str {
-        ::ast_util::uint_ty_to_str(self)
+    pure fn to_str(&self) -> ~str {
+        ::ast_util::uint_ty_to_str(*self)
     }
 }
 
@@ -998,8 +993,8 @@ pub impl uint_ty : cmp::Eq {
 pub enum float_ty { ty_f, ty_f32, ty_f64, }
 
 pub impl float_ty : ToStr {
-    pure fn to_str() -> ~str {
-        ::ast_util::float_ty_to_str(self)
+    pure fn to_str(&self) -> ~str {
+        ::ast_util::float_ty_to_str(*self)
     }
 }
 
@@ -1101,8 +1096,8 @@ pub enum Onceness {
 }
 
 pub impl Onceness : ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
             Once => ~"once",
             Many => ~"many"
         }
@@ -1193,8 +1188,8 @@ pub enum purity {
 }
 
 pub impl purity : ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
             impure_fn => ~"impure",
             unsafe_fn => ~"unsafe",
             pure_fn => ~"pure",

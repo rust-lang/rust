@@ -23,4 +23,4 @@ mod baz {
     pub use x = core::str;
 }
 
-fn main() { }
+pub fn main() { }

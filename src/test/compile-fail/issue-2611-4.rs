@@ -21,7 +21,7 @@ struct E {
 }
 
 impl E: A {
-  fn b<F:Copy Const, G>(_x: F) -> F { fail } //~ ERROR in method `b`, type parameter 0 has 2 bounds, but
+  fn b<F:Copy Const, G>(_x: F) -> F { die!() } //~ ERROR in method `b`, type parameter 0 has 2 bounds, but
 }
 
 fn main() {}

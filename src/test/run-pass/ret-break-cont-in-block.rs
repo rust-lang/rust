@@ -50,7 +50,7 @@ fn ret_deep() -> ~str {
     return ~"bye";
 }
 
-fn main() {
+pub fn main() {
     let mut last = 0;
     for vec::all(~[1, 2, 3, 4, 5, 6, 7]) |e| {
         last = *e;

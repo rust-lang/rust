@@ -54,7 +54,7 @@ fn print_out<T: to_str>(thing: T, expected: str) {
   assert(actual == expected);
 }
 
-fn main() {
+pub fn main() {
   let nyan : to_str  = cat(0u, 2, "nyan") as to_str;
   print_out(nyan, "nyan");
 }

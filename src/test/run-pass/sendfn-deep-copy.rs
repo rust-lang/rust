@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { test05(); }
+pub fn main() { test05(); }
 
 fn mk_counter<A:Copy>() -> fn~(A) -> (A,uint) {
     // The only reason that the counter is generic is so that it closes

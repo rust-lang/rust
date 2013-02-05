@@ -38,7 +38,7 @@ use core::uint;
 use core::vec;
 use std::list::{List, Cons, Nil};
 use std::list;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -147,7 +147,7 @@ pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                 ~"bswap16" | ~"bswap32" | ~"bswap64" => 0,
 
                 // would be cool to make these an enum instead of strings!
-                _ => fail ~"unknown intrinsic in type_use"
+                _ => die!(~"unknown intrinsic in type_use")
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
@@ -340,7 +340,7 @@ pub fn mark_for_expr(cx: ctx, e: @expr) {
       }
       expr_paren(e) => mark_for_expr(cx, e),
       expr_match(*) | expr_block(_) | expr_if(*) |
-      expr_while(*) | expr_fail(_) | expr_break(_) | expr_again(_) |
+      expr_while(*) | expr_break(_) | expr_again(_) |
       expr_unary(_, _) | expr_lit(_) | expr_assert(_) |
       expr_mac(_) | expr_addr_of(_, _) |
       expr_ret(_) | expr_loop(_, _) |

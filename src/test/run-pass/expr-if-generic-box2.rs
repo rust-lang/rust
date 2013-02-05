@@ -24,4 +24,4 @@ fn test_vec() {
     test_generic::<@int>(@1, @2, compare_box);
 }
 
-fn main() { test_vec(); }
+pub fn main() { test_vec(); }

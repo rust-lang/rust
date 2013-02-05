@@ -10,7 +10,7 @@
 
 struct Foo(int, int);
 
-fn main() {
+pub fn main() {
     let x = Foo(1, 2);
     match x {
         Foo(a, b) => {
