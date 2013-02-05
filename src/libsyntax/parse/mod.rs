@@ -15,7 +15,7 @@ use ast::node_id;
 use ast;
 use codemap::{span, CodeMap, FileMap, CharPos, BytePos};
 use codemap;
-use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
+use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
 use parse::attr::parser_attr;
 use parse::lexer::{reader, string_reader};
 use parse::parser::Parser;
@@ -54,7 +54,7 @@ pub type parse_sess = @{
     interner: @ident_interner,
 };
 
-pub fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
+pub fn new_parse_sess(demitter: Option<Emitter>) -> parse_sess {
     let cm = @CodeMap::new();
     return @{cm: cm,
              mut next_id: 1,

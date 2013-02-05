@@ -466,7 +466,7 @@ pub fn get_arch(triple: ~str) -> Option<session::arch> {
 }
 
 pub fn build_target_config(sopts: @session::options,
-                           demitter: diagnostic::emitter)
+                           demitter: diagnostic::Emitter)
                         -> @session::config {
     let os = match get_os(sopts.target_triple) {
       Some(os) => os,
@@ -512,7 +512,7 @@ pub fn host_triple() -> ~str {
 
 pub fn build_session_options(+binary: ~str,
                              matches: &getopts::Matches,
-                             demitter: diagnostic::emitter)
+                             demitter: diagnostic::Emitter)
                           -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
         session::lib_crate
@@ -651,7 +651,7 @@ pub fn build_session_options(+binary: ~str,
 }
 
 pub fn build_session(sopts: @session::options,
-                     demitter: diagnostic::emitter) -> Session {
+                     demitter: diagnostic::Emitter) -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
@@ -662,7 +662,7 @@ pub fn build_session(sopts: @session::options,
 
 pub fn build_session_(sopts: @session::options,
                       cm: @codemap::CodeMap,
-                      demitter: diagnostic::emitter,
+                      demitter: diagnostic::Emitter,
                       span_diagnostic_handler: diagnostic::span_handler)
                    -> Session {
     let target_cfg = build_target_config(sopts, demitter);
@@ -844,7 +844,7 @@ pub fn build_output_filenames(input: input,
              obj_filename: obj_path};
 }
 
-pub fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
+pub fn early_error(emitter: diagnostic::Emitter, msg: ~str) -> ! {
     emitter(None, msg, diagnostic::fatal);
     die!();
 }
