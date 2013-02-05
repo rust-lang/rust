@@ -5061,9 +5061,13 @@ pub impl Resolver {
                             Some(def) => {
                                 match def {
                                     def_ty(trait_def_id) => {
-                                        self.
+                                        let added = self.
                                         add_trait_info_if_containing_method(
                                         found_traits, trait_def_id, name);
+                                        if added {
+                                            import_resolution.state.used =
+                                                true;
+                                        }
                                     }
                                     _ => {
                                         // Continue.
@@ -5096,7 +5100,7 @@ pub impl Resolver {
 
     fn add_trait_info_if_containing_method(found_traits: @DVec<def_id>,
                                            trait_def_id: def_id,
-                                           name: ident) {
+                                           name: ident) -> bool {
 
         debug!("(adding trait info if containing method) trying trait %d:%d \
                 for method '%s'",
@@ -5112,9 +5116,10 @@ pub impl Resolver {
                        trait_def_id.node,
                        self.session.str_of(name));
                 (*found_traits).push(trait_def_id);
+                true
             }
             Some(_) | None => {
-                // Continue.
+                false
             }
         }
     }
