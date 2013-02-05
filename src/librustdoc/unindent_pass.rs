@@ -79,7 +79,7 @@ fn unindent(s: &str) -> ~str {
     };
 
     if !lines.is_empty() {
-        let unindented = ~[str::trim(vec::head(lines))]
+        let unindented = ~[str::trim(*lines.head())]
             + do par::map(vec::tail(lines)) |line| {
             if str::is_whitespace(*line) {
                 copy *line

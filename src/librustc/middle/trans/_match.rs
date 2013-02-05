@@ -377,7 +377,7 @@ pub fn expand_nested_bindings(bcx: block, m: &[@Match/&r],
                                 vec::view(br.pats, col + 1u, br.pats.len())));
 
                 let binding_info =
-                    br.data.bindings_map.get(&path_to_ident(path));
+                    br.data.bindings_map.get(path_to_ident(path));
 
                 Store(bcx, val, binding_info.llmatch);
                 @Match {pats: pats, data: br.data}
@@ -425,7 +425,7 @@ pub fn enter_match(bcx: block, dm: DefMap, m: &[@Match/&r],
                         if pat_is_binding(dm, self) {
                             let binding_info =
                                 br.data.bindings_map.get(
-                                    &path_to_ident(path));
+                                    path_to_ident(path));
                             Store(bcx, val, binding_info.llmatch);
                         }
                     }
@@ -1576,7 +1576,7 @@ pub fn trans_match_inner(scope_cx: block,
         // from the various alternatives.
         let bindings_map = HashMap();
         do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
-            let ident = path_to_ident(path);
+            let ident = *path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);
             let llvariable_ty = type_of::type_of(bcx.ccx(), variable_ty);
 

@@ -218,40 +218,39 @@ pub pure fn cast_from_mut<T>(v: ~[mut T]) -> ~[T] {
 // Accessors
 
 /// Returns the first element of a vector
-pub pure fn head<T: Copy>(v: &[const T]) -> T { v[0] }
+pub pure fn head<T>(v: &r/[T]) -> &r/T {
+    if v.len() == 0 { die!(~"last_unsafe: empty vector") }
+    &v[0]
+}
+
+/// Returns `Some(x)` where `x` is the first element of the slice `v`,
+/// or `None` if the vector is empty.
+pub pure fn head_opt<T>(v: &r/[T]) -> Option<&r/T> {
+    if v.len() == 0 { None } else { Some(&v[0]) }
+}
 
 /// Returns a vector containing all but the first element of a slice
-pub pure fn tail<T: Copy>(v: &[const T]) -> ~[T] {
-    return slice(v, 1u, len(v));
-}
+pub pure fn tail<T>(v: &r/[T]) -> &r/[T] { view(v, 1, v.len()) }
 
-/**
- * Returns a vector containing all but the first `n` \
- * elements of a slice
- */
-pub pure fn tailn<T: Copy>(v: &[const T], n: uint) -> ~[T] {
-    slice(v, n, len(v))
-}
+/// Returns a vector containing all but the first `n` * elements of a slice
+pub pure fn tailn<T>(v: &r/[T], n: uint) -> &r/[T] { view(v, n, v.len()) }
 
 /// Returns a vector containing all but the last element of a slice
-pub pure fn init<T: Copy>(v: &[const T]) -> ~[T] {
-    assert len(v) != 0u;
-    slice(v, 0u, len(v) - 1u)
-}
+pub pure fn init<T>(v: &r/[T]) -> &r/[T] { view(v, 0, v.len() - 1) }
+
+/// Returns a vector containing all but the last `n' elements of a slice
+pub pure fn initn<T>(v: &r/[T], n: uint) -> &r/[T] { view(v, 0, v.len() - n) }
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
-pub pure fn last<T: Copy>(v: &[const T]) -> T {
-    if len(v) == 0u { die!(~"last_unsafe: empty vector") }
-    v[len(v) - 1u]
+pub pure fn last<T>(v: &r/[T]) -> &r/T {
+    if v.len() == 0 { die!(~"last_unsafe: empty vector") }
+    &v[v.len() - 1]
 }
 
-/**
- * Returns `Some(x)` where `x` is the last element of the slice `v`,
- * or `none` if the vector is empty.
- */
-pub pure fn last_opt<T: Copy>(v: &[const T]) -> Option<T> {
-    if len(v) == 0u { return None; }
-    Some(v[len(v) - 1u])
+/// Returns `Some(x)` where `x` is the last element of the slice `v`, or
+/// `None` if the vector is empty.
+pub pure fn last_opt<T>(v: &r/[T]) -> Option<&r/T> {
+    if v.len() == 0 { None } else { Some(&v[v.len() - 1]) }
 }
 
 /// Returns a copy of the elements from [`start`..`end`) from `v`.
@@ -1655,40 +1654,28 @@ impl<T> &[const T]: Container {
 }
 
 pub trait CopyableVector<T> {
-    pure fn head(&self) -> T;
-    pure fn init(&self) -> ~[T];
-    pure fn last(&self) -> T;
     pure fn slice(&self, start: uint, end: uint) -> ~[T];
-    pure fn tail(&self) -> ~[T];
 }
 
 /// Extension methods for vectors
 impl<T: Copy> &[const T]: CopyableVector<T> {
-    /// Returns the first element of a vector
-    #[inline]
-    pure fn head(&self) -> T { head(*self) }
-
-    /// Returns all but the last elemnt of a vector
-    #[inline]
-    pure fn init(&self) -> ~[T] { init(*self) }
-
-    /// Returns the last element of a `v`, failing if the vector is empty.
-    #[inline]
-    pure fn last(&self) -> T { last(*self) }
-
     /// Returns a copy of the elements from [`start`..`end`) from `v`.
     #[inline]
     pure fn slice(&self, start: uint, end: uint) -> ~[T] {
         slice(*self, start, end)
     }
-
-    /// Returns all but the first element of a vector
-    #[inline]
-    pure fn tail(&self) -> ~[T] { tail(*self) }
 }
 
 pub trait ImmutableVector<T> {
     pure fn view(&self, start: uint, end: uint) -> &self/[T];
+    pure fn head(&self) -> &self/T;
+    pure fn head_opt(&self) -> Option<&self/T>;
+    pure fn tail(&self) -> &self/[T];
+    pure fn tailn(&self, n: uint) -> &self/[T];
+    pure fn init(&self) -> &self/[T];
+    pure fn initn(&self, n: uint) -> &self/[T];
+    pure fn last(&self) -> &self/T;
+    pure fn last_opt(&self) -> Option<&self/T>;
     pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U];
@@ -1705,6 +1692,38 @@ impl<T> &[T]: ImmutableVector<T> {
     pure fn view(&self, start: uint, end: uint) -> &self/[T] {
         view(*self, start, end)
     }
+
+    /// Returns the first element of a vector, failing if the vector is empty.
+    #[inline]
+    pure fn head(&self) -> &self/T { head(*self) }
+
+    /// Returns the first element of a vector
+    #[inline]
+    pure fn head_opt(&self) -> Option<&self/T> { head_opt(*self) }
+
+    /// Returns all but the first element of a vector
+    #[inline]
+    pure fn tail(&self) -> &self/[T] { tail(*self) }
+
+    /// Returns all but the first `n' elements of a vector
+    #[inline]
+    pure fn tailn(&self, n: uint) -> &self/[T] { tailn(*self, n) }
+
+    /// Returns all but the last elemnt of a vector
+    #[inline]
+    pure fn init(&self) -> &self/[T] { init(*self) }
+
+    /// Returns all but the last `n' elemnts of a vector
+    #[inline]
+    pure fn initn(&self, n: uint) -> &self/[T] { initn(*self, n) }
+
+    /// Returns the last element of a `v`, failing if the vector is empty.
+    #[inline]
+    pure fn last(&self) -> &self/T { last(*self) }
+
+    /// Returns the last element of a `v`, failing if the vector is empty.
+    #[inline]
+    pure fn last_opt(&self) -> Option<&self/T> { last_opt(*self) }
 
     /// Reduce a vector from right to left
     #[inline]
@@ -2527,27 +2546,117 @@ mod tests {
 
     #[test]
     fn test_head() {
-        let a = ~[11, 12];
-        assert (head(a) == 11);
+        let mut a = ~[11];
+        assert a.head() == &11;
+        a = ~[11, 12];
+        assert a.head() == &11;
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_head_empty() {
+        let a: ~[int] = ~[];
+        a.head();
+    }
+
+    #[test]
+    fn test_head_opt() {
+        let mut a = ~[];
+        assert a.head_opt() == None;
+        a = ~[11];
+        assert a.head_opt().unwrap() == &11;
+        a = ~[11, 12];
+        assert a.head_opt().unwrap() == &11;
     }
 
     #[test]
     fn test_tail() {
         let mut a = ~[11];
-        assert (tail(a) == ~[]);
-
+        assert a.tail() == &[];
         a = ~[11, 12];
-        assert (tail(a) == ~[12]);
+        assert a.tail() == &[12];
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_tail_empty() {
+        let a: ~[int] = ~[];
+        a.tail();
+    }
+
+    #[test]
+    fn test_tailn() {
+        let mut a = ~[11, 12, 13];
+        assert a.tailn(0) == &[11, 12, 13];
+        a = ~[11, 12, 13];
+        assert a.tailn(2) == &[13];
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_tailn_empty() {
+        let a: ~[int] = ~[];
+        a.tailn(2);
+    }
+
+    #[test]
+    fn test_init() {
+        let mut a = ~[11];
+        assert a.init() == &[];
+        a = ~[11, 12];
+        assert a.init() == &[11];
+    }
+
+    #[init]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_init_empty() {
+        let a: ~[int] = ~[];
+        a.init();
+    }
+
+    #[test]
+    fn test_initn() {
+        let mut a = ~[11, 12, 13];
+        assert a.initn(0) == &[11, 12, 13];
+        a = ~[11, 12, 13];
+        assert a.initn(2) == &[11];
+    }
+
+    #[init]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_initn_empty() {
+        let a: ~[int] = ~[];
+        a.initn(2);
     }
 
     #[test]
     fn test_last() {
-        let mut n = last_opt(~[]);
-        assert (n.is_none());
-        n = last_opt(~[1, 2, 3]);
-        assert (n == Some(3));
-        n = last_opt(~[1, 2, 3, 4, 5]);
-        assert (n == Some(5));
+        let mut a = ~[11];
+        assert a.last() == &11;
+        a = ~[11, 12];
+        assert a.last() == &12;
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_last_empty() {
+        let a: ~[int] = ~[];
+        a.last();
+    }
+
+    #[test]
+    fn test_last_opt() {
+        let mut a = ~[];
+        assert a.last_opt() == None;
+        a = ~[11];
+        assert a.last_opt().unwrap() == &11;
+        a = ~[11, 12];
+        assert a.last_opt().unwrap() == &12;
     }
 
     #[test]
@@ -3178,12 +3287,6 @@ mod tests {
     }
 
     #[test]
-    fn test_init() {
-        let v = init(~[1, 2, 3]);
-        assert v == ~[1, 2];
-    }
-
-    #[test]
     fn test_split() {
         fn f(x: &int) -> bool { *x == 3 }
 
@@ -3245,13 +3348,6 @@ mod tests {
                (~[1], ~[2, 3]);
         assert (~[1, 2, 3]).partitioned(|x: &int| *x < 0) ==
                (~[], ~[1, 2, 3]);
-    }
-
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(windows))]
-    fn test_init_empty() {
-        init::<int>(~[]);
     }
 
     #[test]

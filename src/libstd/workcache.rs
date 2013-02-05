@@ -176,7 +176,7 @@ impl Database {
         let db_cache = copy self.db_cache;
         match db_cache.find(&k) {
             None => None,
-            Some(&v) => Some(json_decode(copy v))
+            Some(ref v) => Some(json_decode(**v))
         }
     }
 
@@ -187,7 +187,7 @@ impl Database {
         let k = json_encode(&(fn_name, declared_inputs));
         match self.db_cache.find(&k) {
             None => None,
-            Some(&v) => Some(json_decode(copy v))
+            Some(ref v) => Some(json_decode(**v))
         }
     }
 

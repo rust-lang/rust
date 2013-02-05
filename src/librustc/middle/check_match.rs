@@ -75,7 +75,7 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
                                             arm.pats);
         }
 
-        check_arms(cx, (/*bad*/copy *arms));
+        check_arms(cx, *arms);
         /* Check for exhaustiveness */
          // Check for empty enum, because is_useful only works on inhabited
          // types.
@@ -108,12 +108,12 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
 }
 
 // Check for unreachable patterns
-pub fn check_arms(cx: @MatchCheckCtxt, arms: ~[arm]) {
+pub fn check_arms(cx: @MatchCheckCtxt, arms: &[arm]) {
     let mut seen = ~[];
     for arms.each |arm| {
         for arm.pats.each |pat| {
             let v = ~[*pat];
-            match is_useful(cx, copy seen, v) {
+            match is_useful(cx, &seen, v) {
               not_useful => {
                 cx.tcx.sess.span_err(pat.span, ~"unreachable pattern");
               }
@@ -133,7 +133,7 @@ pub fn raw_pat(p: @pat) -> @pat {
 
 pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
     assert(!pats.is_empty());
-    let ext = match is_useful(cx, vec::map(pats, |p| ~[*p]), ~[wild()]) {
+    let ext = match is_useful(cx, &pats.map(|p| ~[*p]), ~[wild()]) {
       not_useful => return, // This is good, wildcard pattern isn't reachable
       useful_ => None,
       useful(ty, ref ctor) => {
@@ -171,12 +171,12 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
     cx.tcx.sess.span_err(sp, msg);
 }
 
-pub type matrix = ~[~[@pat]];
+type matrix = ~[~[@pat]];
 
-pub enum useful { useful(ty::t, ctor), useful_, not_useful }
+enum useful { useful(ty::t, ctor), useful_, not_useful }
 
 #[deriving_eq]
-pub enum ctor {
+enum ctor {
     single,
     variant(def_id),
     val(const_val),
@@ -197,10 +197,10 @@ pub enum ctor {
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
+pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
     if m.len() == 0u { return useful_; }
     if m[0].len() == 0u { return not_useful; }
-    let real_pat = match vec::find(m, |r| r[0].id != 0) {
+    let real_pat = match m.find(|r| r[0].id != 0) {
       Some(r) => r[0], None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil(cx.tcx) }
@@ -255,8 +255,8 @@ pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
             }
           }
           Some(ref ctor) => {
-            match is_useful(cx, vec::filter_map(m, |r| default(cx, copy *r)),
-                            vec::tail(v)) {
+            match is_useful(cx, &m.filter_map(|r| default(cx, *r)),
+                            v.tail()) {
               useful_ => useful(left_ty, (/*bad*/copy *ctor)),
               ref u => (/*bad*/copy *u)
             }
@@ -271,16 +271,15 @@ pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
 }
 
 pub fn is_useful_specialized(cx: @MatchCheckCtxt,
-                             m: matrix,
-                             +v: &[@pat],
+                             m: &matrix,
+                             v: &[@pat],
                              +ctor: ctor,
                              arity: uint,
                              lty: ty::t)
                           -> useful {
-    let ms = vec::filter_map(m, |r| specialize(cx, *r,
-                                               ctor, arity, lty));
+    let ms = m.filter_map(|r| specialize(cx, *r, ctor, arity, lty));
     let could_be_useful = is_useful(
-        cx, ms, specialize(cx, v, ctor, arity, lty).get());
+        cx, &ms, specialize(cx, v, ctor, arity, lty).get());
     match could_be_useful {
       useful_ => useful(lty, ctor),
       ref u => (/*bad*/copy *u)
@@ -339,7 +338,7 @@ pub fn is_wild(cx: @MatchCheckCtxt, p: @pat) -> bool {
 }
 
 pub fn missing_ctor(cx: @MatchCheckCtxt,
-                    m: matrix,
+                    m: &matrix,
                     left_ty: ty::t)
                  -> Option<ctor> {
     match ty::get(left_ty).sty {
@@ -467,7 +466,7 @@ pub fn wild() -> @pat {
 }
 
 pub fn specialize(cx: @MatchCheckCtxt,
-                  +r: &[@pat],
+                  r: &[@pat],
                   ctor_id: ctor,
                   arity: uint,
                   left_ty: ty::t)
@@ -478,12 +477,13 @@ pub fn specialize(cx: @MatchCheckCtxt,
         pat{id: pat_id, node: n, span: pat_span} =>
             match n {
             pat_wild => Some(vec::append(vec::from_elem(arity, wild()),
-                                         vec::tail(r))),
+                                         vec::from_slice(r.tail()))),
             pat_ident(_, _, _) => {
                 match cx.tcx.def_map.find(&pat_id) {
                     Some(def_variant(_, id)) => {
-                        if variant(id) == ctor_id { Some(vec::tail(r)) }
-                        else { None }
+                        if variant(id) == ctor_id {
+                            Some(vec::from_slice(r.tail()))
+                        } else { None }
                     }
                     Some(def_const(did)) => {
                         let const_expr =
@@ -498,10 +498,12 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             single => true,
                             _ => die!(~"type error")
                         };
-                        if match_ { Some(vec::tail(r)) } else { None }
+                        if match_ {
+                            Some(vec::from_slice(r.tail()))
+                        } else { None }
                     }
                     _ => Some(vec::append(vec::from_elem(arity, wild()),
-                                          vec::tail(r)))
+                                          vec::from_slice(r.tail())))
                 }
             }
             pat_enum(_, args) => {
@@ -511,7 +513,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             Some(args) => args,
                             None => vec::from_elem(arity, wild())
                         };
-                        Some(vec::append(args, vec::tail(r)))
+                        Some(vec::append(args, vec::from_slice(r.tail())))
                     }
                     def_variant(_, _) => None,
                     def_struct(*) => {
@@ -521,7 +523,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             Some(args) => new_args = args,
                             None => new_args = vec::from_elem(arity, wild())
                         }
-                        Some(vec::append(new_args, vec::tail(r)))
+                        Some(vec::append(new_args, vec::from_slice(r.tail())))
                     }
                     _ => None
                 }
@@ -537,7 +539,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                         _ => wild()
                     }
                 });
-                Some(vec::append(args, vec::tail(r)))
+                Some(vec::append(args, vec::from_slice(r.tail())))
             }
             pat_struct(_, ref flds, _) => {
                 // Is this a struct or an enum variant?
@@ -552,7 +554,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                     _ => wild()
                                 }
                             });
-                            Some(vec::append(args, vec::tail(r)))
+                            Some(vec::append(args, vec::from_slice(r.tail())))
                         } else {
                             None
                         }
@@ -579,13 +581,15 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                 _ => wild()
                             }
                         });
-                        Some(vec::append(args, vec::tail(r)))
+                        Some(vec::append(args, vec::from_slice(r.tail())))
                     }
                 }
             }
-            pat_tup(args) => Some(vec::append(args, vec::tail(r))),
+            pat_tup(args) => {
+                Some(vec::append(args, vec::from_slice(r.tail())))
+            }
             pat_box(a) | pat_uniq(a) | pat_region(a) =>
-                Some(vec::append(~[a], vec::tail(r))),
+                Some(vec::append(~[a], vec::from_slice(r.tail()))),
             pat_lit(expr) => {
                 let e_v = eval_const_expr(cx.tcx, expr);
                 let match_ = match ctor_id {
@@ -597,21 +601,21 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     single => true,
                     _ => die!(~"type error")
                 };
-                if match_ { Some(vec::tail(r)) } else { None }
+                if match_ { Some(vec::from_slice(r.tail())) } else { None }
             }
             pat_range(lo, hi) => {
                 let (c_lo, c_hi) = match ctor_id {
                     val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
                     range(ref lo, ref hi) =>
                         ((/*bad*/copy *lo), (/*bad*/copy *hi)),
-                    single => return Some(vec::tail(r)),
+                    single => return Some(vec::from_slice(r.tail())),
                     _ => die!(~"type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo),
                 v_hi = eval_const_expr(cx.tcx, hi);
                 let match_ = compare_const_vals(c_lo, v_lo) >= 0 &&
                     compare_const_vals(c_hi, v_hi) <= 0;
-          if match_ { Some(vec::tail(r)) } else { None }
+          if match_ { Some(vec::from_slice(r.tail())) } else { None }
       }
             pat_vec(elems, tail) => {
                 match ctor_id {
@@ -622,10 +626,11 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                 vec::append(elems, vec::from_elem(
                                     arity - num_elements, wild()
                                 )),
-                                vec::tail(r)
+                                vec::from_slice(r.tail())
                             ))
                         } else if num_elements == arity {
-                            Some(vec::append(elems, vec::tail(r)))
+                            Some(vec::append(elems,
+                                             vec::from_slice(r.tail())))
                         } else {
                             None
                         }
@@ -637,8 +642,8 @@ pub fn specialize(cx: @MatchCheckCtxt,
     }
 }
 
-pub fn default(cx: @MatchCheckCtxt, r: ~[@pat]) -> Option<~[@pat]> {
-    if is_wild(cx, r[0]) { Some(vec::tail(r)) }
+pub fn default(cx: @MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
+    if is_wild(cx, r[0]) { Some(vec::from_slice(r.tail())) }
     else { None }
 }
 

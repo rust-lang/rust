@@ -213,7 +213,7 @@ pub fn attrs_contains_name(attrs: &[ast::attribute], name: &str) -> bool {
     !find_attrs_by_name(attrs, name).is_empty()
 }
 
-pub fn first_attr_value_str_by_name(attrs: ~[ast::attribute], name: ~str)
+pub fn first_attr_value_str_by_name(attrs: &[ast::attribute], name: ~str)
                                  -> Option<~str> {
 
     let mattrs = find_attrs_by_name(attrs, name);
@@ -223,14 +223,14 @@ pub fn first_attr_value_str_by_name(attrs: ~[ast::attribute], name: ~str)
     return option::None;
 }
 
-fn last_meta_item_by_name(items: ~[@ast::meta_item], name: ~str)
+fn last_meta_item_by_name(items: &[@ast::meta_item], name: ~str)
     -> Option<@ast::meta_item> {
 
     let items = attr::find_meta_items_by_name(items, name);
-    vec::last_opt(items)
+    items.last_opt().map(|item| **item)
 }
 
-pub fn last_meta_item_value_str_by_name(items: ~[@ast::meta_item], name: ~str)
+pub fn last_meta_item_value_str_by_name(items: &[@ast::meta_item], name: ~str)
                                      -> Option<~str> {
 
     match last_meta_item_by_name(items, name) {
@@ -242,7 +242,7 @@ pub fn last_meta_item_value_str_by_name(items: ~[@ast::meta_item], name: ~str)
     }
 }
 
-pub fn last_meta_item_list_by_name(items: ~[@ast::meta_item], name: ~str)
+pub fn last_meta_item_list_by_name(items: &[@ast::meta_item], name: ~str)
     -> Option<~[@ast::meta_item]> {
 
     match last_meta_item_by_name(items, name) {

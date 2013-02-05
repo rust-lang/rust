@@ -662,7 +662,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
         }
 
         let name = match local.node.pat.node {
-          ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
+          ast::pat_ident(_, pth, _) => *ast_util::path_to_ident(pth),
           // FIXME this should be handled (#2533)
           _ => die!(~"no single variable name for local")
         };
@@ -723,7 +723,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
                 // XXX: This is wrong; it should work for multiple bindings.
                 let mdnode = create_var(tg,
                                         context.node,
-                                        cx.sess.str_of(path.idents.last()),
+                                        cx.sess.str_of(*path.idents.last()),
                                         filemd.node,
                                         loc.line as int,
                                         tymd.node);

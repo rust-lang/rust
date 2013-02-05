@@ -719,7 +719,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         match ty.node {
             ast::ty_path(path, _) if path.idents.len() == 1 => {
                 encode_impl_type_basename(ecx, ebml_w,
-                                          ast_util::path_to_ident(path));
+                                          *ast_util::path_to_ident(path));
             }
             _ => {}
         }
