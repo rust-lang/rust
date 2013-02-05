@@ -22,7 +22,7 @@ fn iotask(cx: &ctx, ip: ~str) {
     assert (ip == ~"localhost");
 }
 
-fn main() {
+pub fn main() {
     let (p, ch) = stream::<int>();
     task::spawn(|| iotask(&ch, ~"localhost") );
 }

@@ -14,7 +14,7 @@
 extern mod std;
 
 use core::io::{WriterUtil};
-use std::map::*;
+use std::oldmap::*;
 
 #[cfg(test)]
 fn check_strs(actual: &str, expected: &str) -> bool
@@ -36,4 +36,4 @@ fn tester()
     assert check_strs(table.to_str(), ~"xxx");   // not sure what expected should be
 }
 
-fn main() {}
+pub fn main() {}

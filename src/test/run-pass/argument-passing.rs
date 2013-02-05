@@ -22,7 +22,7 @@ fn f1(a: X, b: &mut int, -c: int) -> int {
 
 fn f2(a: int, f: fn(int)) -> int { f(1); return a; }
 
-fn main() {
+pub fn main() {
     let mut a = X {mut x: 1}, b = 2, c = 3;
     assert (f1(a, &mut b, move c) == 6);
     assert (a.x == 0);

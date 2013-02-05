@@ -19,7 +19,7 @@ fn foo_func<A, B: thing<A>>(x: B) -> Option<A> { x.foo() }
 
 struct A { a: int }
 
-fn main() {
+pub fn main() {
 
     for iter::eachi(&(Some(A {a: 0}))) |i, a| { 
         debug!("%u %d", i, a.a);

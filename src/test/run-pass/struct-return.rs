@@ -55,7 +55,7 @@ fn test2() {
 fn test2() {
 }
 
-fn main() {
+pub fn main() {
     test1();
     test2();
 }

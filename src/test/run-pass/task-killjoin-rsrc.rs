@@ -69,7 +69,7 @@ fn supervised() {
     // runs first, but I can imagine that changing.
     error!("supervised task=%?", task::get_task);
     task::yield();
-    fail;
+    die!();
 }
 
 fn supervisor() {
@@ -78,7 +78,7 @@ fn supervisor() {
     join(t);
 }
 
-fn main() {
+pub fn main() {
     join(joinable(supervisor));
 }
 

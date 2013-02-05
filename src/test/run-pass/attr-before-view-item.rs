@@ -13,5 +13,5 @@
 #[foo = "bar"]
 extern mod std;
 
-fn main() {
+pub fn main() {
 }

@@ -6,6 +6,6 @@ fn good(a: &int) {
 fn called(f: fn(&int)) {
 }
 
-fn main() {
+pub fn main() {
 called(good);
 }

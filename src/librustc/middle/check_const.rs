@@ -18,8 +18,9 @@ use util::ppaux;
 
 use core::dvec::DVec;
 use core::option;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
+use syntax::codemap;
 use syntax::{visit, ast_util, ast_map};
 
 pub fn check_crate(sess: Session,
@@ -64,7 +65,10 @@ pub fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
         match e.node {
             expr_vstore(
-                @expr { node: expr_lit(@spanned { node: lit_str(_), _}), _ },
+                @expr { node: expr_lit(@codemap::spanned {
+                    node: lit_str(_),
+                    _}),
+                       _ },
                 expr_vstore_uniq
             ) => true,
             _ => false
@@ -96,9 +100,9 @@ pub fn check_expr(sess: Session,
                           ~"disallowed operator in constant expression");
             return;
           }
-          expr_lit(@spanned {node: lit_str(_), _}) => { }
+          expr_lit(@codemap::spanned {node: lit_str(_), _}) => { }
           expr_binary(_, _, _) | expr_unary(_, _) => {
-            if method_map.contains_key(e.id) {
+            if method_map.contains_key_ref(&e.id) {
                 sess.span_err(e.span, ~"user-defined operators are not \
                                        allowed in constant expressions");
             }
@@ -183,7 +187,7 @@ pub fn check_expr(sess: Session,
         }
     }
     match e.node {
-      expr_lit(@spanned {node: lit_int(v, t), _}) => {
+      expr_lit(@codemap::spanned {node: lit_int(v, t), _}) => {
         if t != ty_char {
             if (v as u64) > ast_util::int_ty_max(
                 if t == ty_i { sess.targ_cfg.int_type } else { t }) {
@@ -191,7 +195,7 @@ pub fn check_expr(sess: Session,
             }
         }
       }
-      expr_lit(@spanned {node: lit_uint(v, t), _}) => {
+      expr_lit(@codemap::spanned {node: lit_uint(v, t), _}) => {
         if v > ast_util::uint_ty_max(
             if t == ty_u { sess.targ_cfg.uint_type } else { t }) {
             sess.span_err(e.span, ~"literal out of range for its type");
@@ -249,7 +253,7 @@ pub fn check_item_recursion(sess: Session,
                   ast_map::node_item(it, _) => {
                     (v.visit_item)(it, env, v);
                   }
-                  _ => fail ~"const not bound to an item"
+                  _ => die!(~"const not bound to an item")
                 }
               }
               _ => ()

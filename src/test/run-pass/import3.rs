@@ -20,4 +20,4 @@ mod baz {
     }
 }
 
-fn main() { bar(); }
+pub fn main() { bar(); }

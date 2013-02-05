@@ -57,15 +57,12 @@ RUNTIME_CXXS_$(1) := \
               rt/rust_sched_reaper.cpp \
               rt/rust_task.cpp \
               rt/rust_stack.cpp \
-              rt/rust_port.cpp \
               rt/rust_upcall.cpp \
               rt/rust_uv.cpp \
               rt/rust_crate_map.cpp \
               rt/rust_log.cpp \
               rt/rust_gc_metadata.cpp \
-              rt/rust_port_selector.cpp \
               rt/rust_util.cpp \
-              rt/circular_buffer.cpp \
               rt/isaac/randport.cpp \
               rt/miniz.cpp \
               rt/rust_kernel.cpp \

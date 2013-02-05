@@ -24,7 +24,7 @@ impl uint: Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = @3u;
     assert x.foo() == ~"@3";
 }

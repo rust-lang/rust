@@ -16,6 +16,6 @@ fn what_to_str(x: what) -> ~str
     }
 }
 
-fn main()
+pub fn main()
 {
 }

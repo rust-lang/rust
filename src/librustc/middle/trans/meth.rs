@@ -33,7 +33,7 @@ use middle::typeck;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::libc::c_uint;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
 use syntax::ast_util::local_def;
 use syntax::print::pprust::expr_to_str;
@@ -253,7 +253,7 @@ pub fn trans_method_callee(bcx: block,
                                                trait_id, off, vtbl)
                 }
                 // how to get rid of this?
-                None => fail ~"trans_method_callee: missing param_substs"
+                None => die!(~"trans_method_callee: missing param_substs")
             }
         }
         typeck::method_trait(_, off, vstore) => {
@@ -265,7 +265,8 @@ pub fn trans_method_callee(bcx: block,
                                mentry.explicit_self)
         }
         typeck::method_self(*) | typeck::method_super(*) => {
-            fail ~"method_self or method_super should have been handled above"
+            die!(~"method_self or method_super should have been handled \
+                above")
         }
     }
 }
@@ -311,13 +312,13 @@ pub fn trans_static_method_callee(bcx: block,
             ast_map::node_trait_method(trait_method, _, _) => {
                 ast_util::trait_method_to_ty_method(*trait_method).ident
             }
-            _ => fail ~"callee is not a trait method"
+            _ => die!(~"callee is not a trait method")
         }
     } else {
         let path = csearch::get_item_path(bcx.tcx(), method_id);
         match path[path.len()-1] {
             path_name(s) => { s }
-            path_mod(_) => { fail ~"path doesn't have a name?" }
+            path_mod(_) => { die!(~"path doesn't have a name?") }
         }
     };
     debug!("trans_static_method_callee: method_id=%?, callee_id=%?, \
@@ -347,8 +348,8 @@ pub fn trans_static_method_callee(bcx: block,
             FnData {llfn: PointerCast(bcx, lval, llty)}
         }
         _ => {
-            fail ~"vtable_param left in monomorphized \
-                   function's vtable substs";
+            die!(~"vtable_param left in monomorphized \
+                   function's vtable substs");
         }
     }
 }
@@ -368,7 +369,7 @@ pub fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
             }, _) => {
             method_from_methods(/*bad*/copy *ms, name).get()
           }
-          _ => fail ~"method_with_name"
+          _ => die!(~"method_with_name")
         }
     } else {
         csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
@@ -396,13 +397,13 @@ pub fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
                                   return pmi.method_info.did;
                               }
                           }
-                          fail
+                          die!()
                       }
-                      None => fail
+                      None => die!()
                   }
               }
           }
-          _ => fail ~"method_with_name"
+          _ => die!(~"method_with_name")
         }
     } else {
         csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
@@ -421,14 +422,14 @@ pub fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
                         method_ty_param_count(
                             ccx, source.method_id, source.impl_id)
                     }
-                    None => fail
+                    None => die!()
                 }
             }
             Some(ast_map::node_trait_method(@ast::provided(@ref m), _, _))
                 => {
                 m.tps.len()
             }
-            copy e => fail fmt!("method_ty_param_count %?", e)
+            copy e => die!(fmt!("method_ty_param_count %?", e))
         }
     } else {
         csearch::get_type_param_count(ccx.sess.cstore, m_id) -
@@ -493,7 +494,8 @@ pub fn trans_monomorphized_callee(bcx: block,
                              mentry.explicit_self)
       }
       typeck::vtable_param(*) => {
-          fail ~"vtable_param left in monomorphized function's vtable substs";
+          die!(~"vtable_param left in monomorphized function's " +
+              "vtable substs");
       }
     };
 
@@ -768,7 +770,7 @@ pub fn vtable_id(ccx: @crate_ctxt,
             }
         }
         // can't this be checked at the callee?
-        _ => fail ~"vtable_id"
+        _ => die!(~"vtable_id")
     }
 }
 
@@ -783,7 +785,7 @@ pub fn get_vtable(ccx: @crate_ctxt,
         typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)
         }
-        _ => fail ~"get_vtable: expected a static origin"
+        _ => die!(~"get_vtable: expected a static origin")
       }
     }
 }
@@ -869,7 +871,7 @@ pub fn trans_trait_cast(bcx: block,
     match vstore {
         ty::vstore_slice(*) | ty::vstore_box => {
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-            if bcx.tcx().legacy_boxed_traits.contains_key(id) {
+            if bcx.tcx().legacy_boxed_traits.contains_key_ref(&id) {
                 // Allocate an @ box and store the value into it
                 let {bcx: new_bcx, box: llbox, body: body} =
                     malloc_boxed(bcx, v_ty);

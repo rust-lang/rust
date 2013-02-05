@@ -18,7 +18,7 @@ impl Foo : Drop {
     }
 }
 
-fn main() {
+pub fn main() {
     let x: Foo = Foo { x: 3 };
 }
 

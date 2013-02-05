@@ -23,11 +23,11 @@ impl dtor : Drop {
 fn unwrap<T>(+o: Option<T>) -> T {
     match move o {
       Some(move v) => move v,
-      None => fail
+      None => die!()
     }
 }
 
-fn main() {
+pub fn main() {
     let x = @mut 1;
 
     {

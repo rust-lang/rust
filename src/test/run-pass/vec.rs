@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-fn main() {
+pub fn main() {
     let v: ~[int] = ~[10, 20];
     assert (v[0] == 10);
     assert (v[1] == 20);

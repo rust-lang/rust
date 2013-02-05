@@ -21,8 +21,7 @@ use core::prelude::*;
 
 use ast::{expr, expr_lit, lit_nil};
 use ast;
-use ast_util::{respan};
-use codemap::span;
+use codemap::{span, respan};
 use parse::parser::Parser;
 use parse::token::Token;
 use parse::token;
@@ -138,7 +137,7 @@ pub impl Parser {
                    desc: &str) {
         self.span_err(sp, fmt!("obsolete syntax: %s", kind_str));
 
-        if !self.obsolete_set.contains_key(kind) {
+        if !self.obsolete_set.contains_key_ref(&kind) {
             self.sess.span_diagnostic.handler().note(fmt!("%s", desc));
             self.obsolete_set.insert(kind, ());
         }

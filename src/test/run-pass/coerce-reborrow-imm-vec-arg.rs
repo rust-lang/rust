@@ -4,7 +4,7 @@ pure fn sum(x: &[int]) -> int {
     return sum;
 }
 
-fn sum_mut(y: &[mut int]) -> int {
+fn sum_mut(y: &mut [int]) -> int {
     sum(y)
 }
 
@@ -16,4 +16,4 @@ fn sum_const(y: &[const int]) -> int {
     sum(y)
 }
 
-fn main() {}
+pub fn main() {}

@@ -25,7 +25,7 @@ mod b {
     pub fn f() { assert crateresolve3::g() == 20; }
 }
 
-fn main() {
+pub fn main() {
     a::f();
     b::f();
 }

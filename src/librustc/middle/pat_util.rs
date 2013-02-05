@@ -14,12 +14,11 @@ use middle::resolve;
 use middle::ty;
 
 use syntax::ast::*;
-use syntax::ast_util;
-use syntax::ast_util::{path_to_ident, respan, walk_pat};
+use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::fold;
 use syntax::fold::*;
-use syntax::codemap::span;
-use std::map::HashMap;
+use syntax::codemap::{span, respan};
+use std::oldmap::HashMap;
 
 pub type PatIdMap = HashMap<ident, node_id>;
 

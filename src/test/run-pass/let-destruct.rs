@@ -12,7 +12,7 @@ enum xx = int;
 
 struct X { x: xx, y: int }
 
-fn main() {
+pub fn main() {
     let @X {x: xx(x), y: y} = @X{x: xx(10), y: 20};
     assert (x + y == 30);
 }

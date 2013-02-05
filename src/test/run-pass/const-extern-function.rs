@@ -17,7 +17,7 @@ struct S {
     f: *u8
 }
 
-fn main() {
+pub fn main() {
     assert foopy == f;
     assert f == s.f;
 }

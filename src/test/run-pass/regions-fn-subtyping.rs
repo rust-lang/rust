@@ -29,5 +29,5 @@ fn ok_inferred(f: fn@(x: &uint)) {
     g = f;
 }
 
-fn main() {
+pub fn main() {
 }

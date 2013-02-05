@@ -16,4 +16,4 @@
 use c(name = "issue2196c");
 use c::t;
 
-fn main() { }
+pub fn main() { }

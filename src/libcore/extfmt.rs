@@ -342,7 +342,7 @@ pub mod ct {
     }
 
     #[cfg(test)]
-    fn die(s: &str) -> ! { fail s.to_owned() }
+    fn die(s: &str) -> ! { die!(s.to_owned()) }
 
     #[test]
     fn test_parse_count() {
@@ -557,7 +557,7 @@ pub mod rt {
     pub pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
-              CountImplied => (float::to_str, 6u)
+              CountImplied => (float::to_str_digits, 6u)
         };
         let mut s = unsafe { to_str(f, digits) };
         if 0.0 <= f {
@@ -590,7 +590,7 @@ pub mod rt {
         return if prec == 0u && num == 0u {
                 ~""
             } else {
-                let s = uint::to_str(num, radix);
+                let s = uint::to_str_radix(num, radix);
                 let len = str::char_len(s);
                 if len < prec {
                     let diff = prec - len;

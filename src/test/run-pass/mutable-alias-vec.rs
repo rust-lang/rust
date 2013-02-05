@@ -15,7 +15,7 @@ extern mod std;
 
 fn grow(v: &mut ~[int]) { *v += ~[1]; }
 
-fn main() {
+pub fn main() {
     let mut v: ~[int] = ~[];
     grow(&mut v);
     grow(&mut v);

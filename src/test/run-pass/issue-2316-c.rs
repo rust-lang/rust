@@ -15,6 +15,6 @@
 extern mod issue_2316_b;
 use issue_2316_b::cloth;
 
-fn main() {
+pub fn main() {
   let _c: cloth::fabric = cloth::calico;
 }

@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-fn main() {
+pub fn main() {
     let i: int = 'Q' as int;
     assert (i == 0x51);
     let u: u32 = i as u32;

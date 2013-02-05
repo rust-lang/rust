@@ -14,7 +14,7 @@ fn cmp(x: Option<an_int>, y: Option<int>) -> bool {
     x == y
 }
 
-fn main() {
+pub fn main() {
     assert !cmp(Some(3), None);
     assert !cmp(Some(3), Some(4));
     assert cmp(Some(3), Some(3));

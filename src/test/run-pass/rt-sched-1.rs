@@ -25,7 +25,7 @@ extern mod rustrt {
     pub fn start_task(id: task_id, f: closure);
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         let (po, ch) = stream();
         let parent_sched_id = rustrt::rust_get_sched_id();

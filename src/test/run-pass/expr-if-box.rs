@@ -24,4 +24,4 @@ fn test_str() {
     assert (rs == ~"happy");
 }
 
-fn main() { test_box(); test_str(); }
+pub fn main() { test_box(); test_str(); }

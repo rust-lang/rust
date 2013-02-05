@@ -10,7 +10,7 @@
 
 // xfail-pretty - token trees can't pretty print
 
-fn main() {
+pub fn main() {
 
     macro_rules! mylambda_tt(
         ($x:ident, $body:expr) => ({

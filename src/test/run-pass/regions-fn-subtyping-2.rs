@@ -24,7 +24,7 @@ fn has_same_region(f: fn(x: &a.int, g: fn(y: &a.int))) {
 fn wants_same_region(_f: fn(x: &b.int, g: fn(y: &b.int))) { 
 }
 
-fn main() {
+pub fn main() {
 }
 
 

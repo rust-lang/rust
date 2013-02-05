@@ -20,6 +20,6 @@ fn test1(x: @~int) {
     }
 }
 
-fn main() {
+pub fn main() {
     test1(@~22);
 }

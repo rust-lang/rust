@@ -13,10 +13,10 @@
 // Minimized version of issue-2804.rs. Both check that callee IDs don't
 // clobber the previous node ID in a macro expr
 extern mod std;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
-fn add_interfaces(managed_ip: ~str, device: std::map::HashMap<~str, int>)  {
+fn add_interfaces(managed_ip: ~str, device: std::oldmap::HashMap<~str, int>)  {
      error!("%s, %?", managed_ip, device[~"interfaces"]);
 }
 
-fn main() {}
+pub fn main() {}

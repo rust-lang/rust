@@ -21,7 +21,7 @@ impl aux::A : Bar {
     fn g() -> int { self.f() }
 }
 
-fn main() {
+pub fn main() {
     let a = &aux::A { x: 3 };
     assert a.g() == 10;
 }

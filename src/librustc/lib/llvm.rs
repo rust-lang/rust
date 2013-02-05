@@ -20,7 +20,7 @@ use core::ptr;
 use core::str;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -1451,7 +1451,7 @@ pub fn float_width(llt: TypeRef) -> uint {
               2 => 64u,
               3 => 80u,
               4 | 5 => 128u,
-              _ => fail ~"llvm_float_width called on a non-float type"
+              _ => die!(~"llvm_float_width called on a non-float type")
             };
     }
 }

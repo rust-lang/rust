@@ -116,7 +116,6 @@
 #include "rust_kernel.h"
 #include "boxed_region.h"
 #include "rust_stack.h"
-#include "rust_port_selector.h"
 #include "rust_type.h"
 #include "rust_sched_loop.h"
 
@@ -219,14 +218,6 @@ rust_task : public kernel_owned<rust_task>
     const char *const name;
     int32_t list_index;
 
-    // Rendezvous pointer for receiving data when blocked on a port. If we're
-    // trying to read data and no data is available on any incoming channel,
-    // we block on the port, and yield control to the scheduler. Since, we
-    // were not able to read anything, we remember the location where the
-    // result should go in the rendezvous_ptr, and let the sender write to
-    // that location before waking us up.
-    uintptr_t* rendezvous_ptr;
-
     boxed_region boxed;
     memory_region local_region;
 
@@ -270,8 +261,6 @@ private:
     uintptr_t next_c_sp;
     uintptr_t next_rust_sp;
 
-    rust_port_selector port_selector;
-
     // Called when the atomic refcount reaches zero
     void delete_this();
 
@@ -302,8 +291,6 @@ private:
                                char const *file,
                                size_t line);
 
-    friend class rust_port;
-    friend class rust_port_selector;
     bool block_inner(rust_cond *on, const char* name);
     void wakeup_inner(rust_cond *from);
     bool blocked_on(rust_cond *cond);
@@ -360,8 +347,6 @@ public:
     // Propagate failure to the entire rust runtime.
     void fail_sched_loop();
 
-    frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
-
     void *calloc(size_t size, const char *tag);
 
     // Use this function sparingly. Depending on the ref count is generally
@@ -380,8 +365,6 @@ public:
     void call_on_c_stack(void *args, void *fn_ptr);
     void call_on_rust_stack(void *args, void *fn_ptr);
     bool have_c_stack() { return c_stack != NULL; }
-
-    rust_port_selector *get_port_selector() { return &port_selector; }
 
     rust_task_state get_state() { return state; }
     rust_cond *get_cond() { return cond; }

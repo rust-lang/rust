@@ -21,7 +21,7 @@ struct X<T> {
     g: u8
 }
 
-fn main() {
+pub fn main() {
     let x: X<int> = X {
         a: 12345678,
         b: 9u8,

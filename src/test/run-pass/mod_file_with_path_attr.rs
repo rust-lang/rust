@@ -15,6 +15,6 @@
 #[path = "mod_file_aux.rs"]
 mod m;
 
-fn main() {
+pub fn main() {
     assert m::foo() == 10;
 }

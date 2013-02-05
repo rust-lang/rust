@@ -22,6 +22,6 @@ fn test() {
     even(v);
 }
 
-fn main() {
+pub fn main() {
     test();
 }

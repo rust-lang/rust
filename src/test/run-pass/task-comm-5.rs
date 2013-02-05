@@ -10,7 +10,7 @@
 
 extern mod std;
 
-fn main() { test00(); }
+pub fn main() { test00(); }
 
 fn test00() {
     let r: int = 0;

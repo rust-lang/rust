@@ -23,7 +23,7 @@ fn iter_ints(x: &Ints, f: fn(x: &int) -> bool) {
     uint::range(0, l, |i| f(&x.values[i]))
 }
 
-fn main() {
+pub fn main() {
     let mut ints = ~Ints {sum: ~0, values: ~[]};
     add_int(ints, 22);
     add_int(ints, 44);

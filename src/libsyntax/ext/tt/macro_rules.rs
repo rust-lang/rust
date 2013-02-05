@@ -13,8 +13,7 @@ use core::prelude::*;
 use ast::{ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
 use ast::{tt_delim};
 use ast;
-use ast_util::dummy_sp;
-use codemap::span;
+use codemap::{span, spanned, dummy_sp};
 use ext::base::{ext_ctxt, MacResult, MRAny, MRDef, MacroDef, NormalTT};
 use ext::base;
 use ext::tt::macro_parser::{error};
@@ -27,13 +26,13 @@ use parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
 use print;
 
 use core::io;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                          arg: ~[ast::token_tree]) -> base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        ast::spanned { node: m, span: dummy_sp() }
+        spanned { node: m, span: dummy_sp() }
     }
 
     let lhs_nm =  cx.parse_sess().interner.gensym(@~"lhs");

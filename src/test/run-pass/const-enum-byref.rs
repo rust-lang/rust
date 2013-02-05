@@ -14,10 +14,10 @@ const C: E = V;
 fn f(a: &E) {
     match *a {
         V => {}
-        VV(*) => fail
+        VV(*) => die!()
     }
 }
 
-fn main() {
+pub fn main() {
     f(&C)
 }

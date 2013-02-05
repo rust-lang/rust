@@ -67,13 +67,13 @@ use core::result;
 use core::vec;
 use std::list::{List, Nil, Cons};
 use std::list;
-use std::map::HashMap;
-use std::map;
-use std::smallintmap;
-use syntax::ast::{provided, required, spanned};
+use std::oldmap::HashMap;
+use std::oldmap;
+use std::oldsmallintmap;
+use syntax::ast::{provided, required};
 use syntax::ast_map::node_id_to_str;
-use syntax::ast_util::{local_def, respan, split_trait_methods};
-use syntax::codemap::span;
+use syntax::ast_util::{local_def, split_trait_methods};
+use syntax::codemap::{span, spanned, respan};
 use syntax::print::pprust::*;
 use syntax::visit;
 use syntax::{ast, ast_util, ast_map};
@@ -212,7 +212,7 @@ pub enum crate_ctxt {
 // Functions that write types into the node type table
 pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
     debug!("write_ty_to_tcx(%d, %s)", node_id, ppaux::ty_to_str(tcx, ty));
-    smallintmap::insert(*tcx.node_types, node_id as uint, ty);
+    oldsmallintmap::insert(*tcx.node_types, node_id as uint, ty);
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
                            node_id: ast::node_id,
@@ -377,8 +377,8 @@ pub fn check_crate(tcx: ty::ctxt,
 
     let ccx = @crate_ctxt_(crate_ctxt__ {
         trait_map: trait_map,
-        method_map: map::HashMap(),
-        vtable_map: map::HashMap(),
+        method_map: oldmap::HashMap(),
+        vtable_map: oldmap::HashMap(),
         coherence_info: @coherence::CoherenceInfo(),
         tcx: tcx
     });

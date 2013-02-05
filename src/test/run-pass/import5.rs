@@ -18,4 +18,4 @@ mod foo {
     }
 }
 
-fn main() { bar(); }
+pub fn main() { bar(); }

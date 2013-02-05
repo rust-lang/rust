@@ -18,6 +18,6 @@ unsafe fn g() {
     f();
 }
 
-fn main() {
+pub fn main() {
     return;
 }

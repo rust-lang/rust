@@ -45,7 +45,7 @@ impl ColorTree : Equal {
     }
 }
 
-fn main() {
+pub fn main() {
     assert cyan.isEq(cyan);
     assert magenta.isEq(magenta);
     assert !cyan.isEq(yellow);

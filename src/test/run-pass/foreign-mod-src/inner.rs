@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-fn main() {
+pub fn main() {
     let f = "Makefile";
     let s = rustrt.str_buf(f);
     let buf = libc.malloc(1024);

@@ -36,4 +36,4 @@ fn closure(f: fn()) { f() }
 
 fn setsockopt_bytes(_sock: int) { }
 
-fn main() {}
+pub fn main() {}

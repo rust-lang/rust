@@ -33,7 +33,7 @@ proto! stream (
     }
 )
 
-fn main() {
+pub fn main() {
     use oneshot::client::*;
     use stream::client::*;
 
@@ -94,7 +94,7 @@ fn test_select2() {
 
     match pipes::select2(move ap, move bp) {
       either::Left(*) => { }
-      either::Right(*) => { fail }
+      either::Right(*) => { die!() }
     }
 
     stream::client::send(move bc, ~"abc");
@@ -107,7 +107,7 @@ fn test_select2() {
     stream::client::send(move bc, ~"abc");
 
     match pipes::select2(move ap, move bp) {
-      either::Left(*) => { fail }
+      either::Left(*) => { die!() }
       either::Right(*) => { }
     }
 

@@ -9,6 +9,6 @@
 // except according to those terms.
 
 enum test { thing = -5 >> 1u }
-fn main() {
+pub fn main() {
     assert(thing as int == -3);
 }

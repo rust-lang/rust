@@ -85,7 +85,7 @@ pub fn sha1() -> Sha1 {
                 st.len_high += 1u32;
                 if st.len_high == 0u32 {
                     // FIXME: Need better failure mode (#2346)
-                    fail;
+                    die!();
                 }
             }
             if st.msg_block_idx == msg_block_len { process_msg_block(st); }
@@ -253,7 +253,7 @@ pub fn sha1() -> Sha1 {
             let rr = mk_result(&self);
             let mut s = ~"";
             for vec::each(rr) |b| {
-                s += uint::to_str(*b as uint, 16u);
+                s += uint::to_str_radix(*b as uint, 16u);
             }
             return s;
         }

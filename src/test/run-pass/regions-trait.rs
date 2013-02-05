@@ -26,7 +26,7 @@ fn get_v(gc: get_ctxt) -> uint {
     gc.get_ctxt().v
 }
 
-fn main() {
+pub fn main() {
     let ctxt = Ctxt { v: 22 };
     let hc = HasCtxt { c: &ctxt };
 

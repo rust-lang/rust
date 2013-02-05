@@ -16,4 +16,4 @@ mod foomod {
     pub fn foo<T>() { }
 }
 
-fn main() { foomod::foo::<int>(); foomod::foo::<int>(); }
+pub fn main() { foomod::foo::<int>(); foomod::foo::<int>(); }

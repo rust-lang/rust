@@ -22,6 +22,6 @@ fn f<T:Copy>(_x: T) {
 }
 
 #[deny(non_implicitly_copyable_typarams)]
-fn main() {
+pub fn main() {
     f(C(1u));
 }

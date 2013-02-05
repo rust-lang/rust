@@ -41,12 +41,13 @@ use core::result;
 use core::to_bytes;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
-use std::{map, smallintmap};
+use std::oldmap::HashMap;
+use std::{oldmap, oldsmallintmap};
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
 use syntax::codemap::span;
+use syntax::codemap;
 use syntax::print::pprust;
 use syntax::{ast, ast_map};
 use syntax;
@@ -666,7 +667,7 @@ pub impl TyVid: Vid {
 }
 
 pub impl TyVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("<V%u>", self.to_uint()) }
+    pure fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
 pub impl IntVid: Vid {
@@ -674,7 +675,7 @@ pub impl IntVid: Vid {
 }
 
 pub impl IntVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("<VI%u>", self.to_uint()) }
+    pure fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
 pub impl FloatVid: Vid {
@@ -682,7 +683,7 @@ pub impl FloatVid: Vid {
 }
 
 pub impl FloatVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("<VF%u>", self.to_uint()) }
+    pure fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
 pub impl RegionVid: Vid {
@@ -690,19 +691,19 @@ pub impl RegionVid: Vid {
 }
 
 pub impl RegionVid: ToStr {
-    pure fn to_str() -> ~str { fmt!("%?", self) }
+    pure fn to_str(&self) -> ~str { fmt!("%?", self) }
 }
 
 pub impl FnSig : ToStr {
-    pure fn to_str() -> ~str {
+    pure fn to_str(&self) -> ~str {
         // grr, without tcx not much we can do.
         return ~"(...)";
     }
 }
 
 pub impl InferTy: ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
             TyVar(ref v) => v.to_str(),
             IntVar(ref v) => v.to_str(),
             FloatVar(ref v) => v.to_str()
@@ -711,8 +712,8 @@ pub impl InferTy: ToStr {
 }
 
 pub impl IntVarValue : ToStr {
-    pure fn to_str() -> ~str {
-        match self {
+    pure fn to_str(&self) -> ~str {
+        match *self {
             IntType(ref v) => v.to_str(),
             UintType(ref v) => v.to_str(),
         }
@@ -785,15 +786,15 @@ type type_cache = HashMap<ast::def_id, ty_param_bounds_and_ty>;
 
 type constness_cache = HashMap<ast::def_id, const_eval::constness>;
 
-pub type node_type_table = @smallintmap::SmallIntMap<t>;
+pub type node_type_table = @oldsmallintmap::SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
-    return map::HashMap();
+    return oldmap::HashMap();
 }
 
-pub fn new_ty_hash<V: Copy>() -> map::HashMap<t, V> {
-    map::HashMap()
+pub fn new_ty_hash<V: Copy>() -> oldmap::HashMap<t, V> {
+    oldmap::HashMap()
 }
 
 pub fn mk_ctxt(s: session::Session,
@@ -821,7 +822,7 @@ pub fn mk_ctxt(s: session::Session,
         }
     }
 
-    let interner = map::HashMap();
+    let interner = oldmap::HashMap();
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
                        lint::vecs_implicitly_copyable) == allow;
@@ -837,10 +838,10 @@ pub fn mk_ctxt(s: session::Session,
         def_map: dm,
         region_map: region_map,
         region_paramd_items: region_paramd_items,
-        node_types: @smallintmap::mk(),
-        node_type_substs: map::HashMap(),
+        node_types: @oldsmallintmap::mk(),
+        node_type_substs: oldmap::HashMap(),
         items: amap,
-        intrinsic_defs: map::HashMap(),
+        intrinsic_defs: oldmap::HashMap(),
         freevars: freevars,
         tcache: HashMap(),
         rcache: mk_rcache(),
@@ -1568,7 +1569,7 @@ pub fn get_element_type(ty: t, i: uint) -> t {
     match /*bad*/copy get(ty).sty {
       ty_rec(flds) => return flds[i].mt.ty,
       ty_tup(ts) => return ts[i],
-      _ => fail ~"get_element_type called on invalid type"
+      _ => die!(~"get_element_type called on invalid type")
     }
 }
 
@@ -1744,7 +1745,7 @@ pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
-                              tycache: map::HashMap<t, ()>,
+                              tycache: oldmap::HashMap<t, ()>,
                               encountered_box: bool) -> bool {
 
     // Prevent infinite recursion
@@ -2794,12 +2795,12 @@ impl sty : to_bytes::IterBytes {
 }
 
 pub fn br_hashmap<V:Copy>() -> HashMap<bound_region, V> {
-    map::HashMap()
+    oldmap::HashMap()
 }
 
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
-    //io::println(fmt!("%?/%?", id, cx.node_types.size()));
-    match smallintmap::find(*cx.node_types, id as uint) {
+    //io::println(fmt!("%?/%?", id, cx.node_types.len()));
+    match oldsmallintmap::find(*cx.node_types, id as uint) {
        Some(t) => t,
        None => cx.sess.bug(
            fmt!("node_id_to_type: no type for node `%s`",
@@ -2816,35 +2817,35 @@ pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
 }
 
 fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
-    return cx.node_type_substs.contains_key(id);
+    return cx.node_type_substs.contains_key_ref(&id);
 }
 
 // Type accessors for substructures of types
 pub fn ty_fn_args(fty: t) -> ~[arg] {
     match get(fty).sty {
       ty_fn(ref f) => /*bad*/copy f.sig.inputs,
-      _ => fail ~"ty_fn_args() called on non-fn type"
+      _ => die!(~"ty_fn_args() called on non-fn type")
     }
 }
 
 pub fn ty_fn_proto(fty: t) -> Proto {
     match get(fty).sty {
       ty_fn(ref f) => f.meta.proto,
-      _ => fail ~"ty_fn_proto() called on non-fn type"
+      _ => die!(~"ty_fn_proto() called on non-fn type")
     }
 }
 
 pub fn ty_fn_purity(fty: t) -> ast::purity {
     match get(fty).sty {
       ty_fn(ref f) => f.meta.purity,
-      _ => fail ~"ty_fn_purity() called on non-fn type"
+      _ => die!(~"ty_fn_purity() called on non-fn type")
     }
 }
 
 pub pure fn ty_fn_ret(fty: t) -> t {
     match get(fty).sty {
         ty_fn(ref f) => f.sig.output,
-        _ => fail ~"ty_fn_ret() called on non-fn type"
+        _ => die!(~"ty_fn_ret() called on non-fn type")
     }
 }
 
@@ -2859,7 +2860,7 @@ pub pure fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
         ty_evec(_, vstore) => vstore,
         ty_estr(vstore) => vstore,
-        ref s => fail fmt!("ty_vstore() called on invalid sty: %?", s)
+        ref s => die!(fmt!("ty_vstore() called on invalid sty: %?", s))
     }
 }
 
@@ -2868,7 +2869,8 @@ pub fn ty_region(ty: t) -> Region {
       ty_rptr(r, _) => r,
       ty_evec(_, vstore_slice(r)) => r,
       ty_estr(vstore_slice(r)) => r,
-      ref s => fail fmt!("ty_region() invoked on in appropriate ty: %?", (*s))
+      ref s => die!(fmt!("ty_region() invoked on in appropriate ty: %?",
+          (*s)))
     }
 }
 
@@ -3112,7 +3114,7 @@ pub enum ExprKind {
 pub fn expr_kind(tcx: ctxt,
                  method_map: typeck::method_map,
                  expr: @ast::expr) -> ExprKind {
-    if method_map.contains_key(expr.id) {
+    if method_map.contains_key_ref(&expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS.  However, assign_op (e.g., `x += y`) is an
         // exception, as its result is always unit.
@@ -3166,7 +3168,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_block(*) |
         ast::expr_copy(*) |
         ast::expr_repeat(*) |
-        ast::expr_lit(@ast::spanned {node: lit_str(_), _}) |
+        ast::expr_lit(@codemap::spanned {node: lit_str(_), _}) |
         ast::expr_vstore(_, ast::expr_vstore_slice) |
         ast::expr_vstore(_, ast::expr_vstore_mut_slice) |
         ast::expr_vstore(_, ast::expr_vstore_fixed(_)) |
@@ -3175,7 +3177,7 @@ pub fn expr_kind(tcx: ctxt,
         }
 
         ast::expr_cast(*) => {
-            match smallintmap::find(*tcx.node_types, expr.id as uint) {
+            match oldsmallintmap::find(*tcx.node_types, expr.id as uint) {
                 Some(t) => {
                     if ty::type_is_immediate(t) {
                         RvalueDatumExpr
@@ -3204,7 +3206,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_again(*) |
         ast::expr_ret(*) |
         ast::expr_log(*) |
-        ast::expr_fail(*) |
         ast::expr_assert(*) |
         ast::expr_while(*) |
         ast::expr_loop(*) |
@@ -3239,7 +3240,7 @@ pub fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) => {
         return id;
       }
-      ast::stmt_mac(*) => fail ~"unexpanded macro in trans"
+      ast::stmt_mac(*) => die!(~"unexpanded macro in trans")
     }
 }
 
@@ -3263,7 +3264,7 @@ pub fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
     match vec::find(get_fields(rec_ty), |f| f.ident == id) {
       Some(f) => f,
       // Do we only call this when we know the field is legit?
-      None => fail (fmt!("get_field: ty doesn't have a field %s",
+      None => die!(fmt!("get_field: ty doesn't have a field %s",
                          tcx.sess.str_of(id)))
     }
 }
@@ -3272,7 +3273,7 @@ pub fn get_fields(rec_ty:t) -> ~[field] {
     match /*bad*/copy get(rec_ty).sty {
       ty_rec(fields) => fields,
       // Can we check at the caller?
-      _ => fail ~"get_fields: not a record type"
+      _ => die!(~"get_fields: not a record type")
     }
 }
 
@@ -3929,10 +3930,10 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                          }
                     }
                     ast::struct_variant_kind(_) => {
-                        fail ~"struct variant kinds unimpl in enum_variants"
+                        die!(~"struct variant kinds unimpl in enum_variants")
                     }
                     ast::enum_variant_kind(_) => {
-                        fail ~"enum variant kinds unimpl in enum_variants"
+                        die!(~"enum variant kinds unimpl in enum_variants")
                     }
                 }
             })
@@ -4358,7 +4359,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
         if f(trait_ty) {
             // Add all the supertraits to the hash map,
             // executing <f> on each of them
-            while i < supertrait_map.size() && !fin {
+            while i < supertrait_map.len() && !fin {
                 let init_trait_id = seen_def_ids[i];
                 i += 1;
                  // Add supertraits to supertrait_map
@@ -4367,7 +4368,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
                     let super_t = supertrait.tpt.ty;
                     let d_id = ty_to_def_id(super_t).expect("supertrait \
                         should be a trait ty");
-                    if !supertrait_map.contains_key(d_id) {
+                    if !supertrait_map.contains_key_ref(&d_id) {
                         supertrait_map.insert(d_id, super_t);
                         trait_ty = super_t;
                         seen_def_ids.push(d_id);

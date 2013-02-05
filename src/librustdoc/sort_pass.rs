@@ -69,8 +69,8 @@ fn test() {
 
     let source = ~"mod z { mod y { } fn x() { } } mod w { }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, ~"");
-        let doc = (mk_pass(~"", name_lteq).f)(srv, doc);
+        let doc = extract::from_srv(srv.clone(), ~"");
+        let doc = (mk_pass(~"", name_lteq).f)(srv.clone(), doc);
         assert doc.cratemod().mods()[0].name() == ~"w";
         assert doc.cratemod().mods()[1].items[0].name() == ~"x";
         assert doc.cratemod().mods()[1].items[1].name() == ~"y";
@@ -86,11 +86,11 @@ fn should_be_stable() {
 
     let source = ~"mod a { mod b { } } mod c { mod d { } }";
     do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv, ~"");
-        let doc = (mk_pass(~"", always_eq).f)(srv, doc);
+        let doc = extract::from_srv(srv.clone(), ~"");
+        let doc = (mk_pass(~"", always_eq).f)(srv.clone(), doc);
         assert doc.cratemod().mods()[0].items[0].name() == ~"b";
         assert doc.cratemod().mods()[1].items[0].name() == ~"d";
-        let doc = (mk_pass(~"", always_eq).f)(srv, doc);
+        let doc = (mk_pass(~"", always_eq).f)(srv.clone(), doc);
         assert doc.cratemod().mods()[0].items[0].name() == ~"b";
         assert doc.cratemod().mods()[1].items[0].name() == ~"d";
     }

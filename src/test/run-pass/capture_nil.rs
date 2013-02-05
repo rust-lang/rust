@@ -34,6 +34,6 @@ fn foo(&&x: ()) -> Port<()> {
     p
 }
 
-fn main() {
+pub fn main() {
     foo(()).recv()
 }

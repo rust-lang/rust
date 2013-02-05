@@ -23,6 +23,6 @@ fn foo(m: @meal, cond: bool) {
     }
 }
 
-fn main() {
+pub fn main() {
     foo(@for_here(hamburger), true)
 }

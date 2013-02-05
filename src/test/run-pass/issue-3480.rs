@@ -24,4 +24,4 @@ impl<K: Copy, V: Copy> IMap<K, V> : ImmutableMap<K, V>
     }
 }
 
-fn main() {}
+pub fn main() {}

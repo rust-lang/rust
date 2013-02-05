@@ -16,7 +16,7 @@ struct Point {x: int, y: int, mut z: int}
 
 fn f(p: @Point) { assert (p.z == 12); p.z = 13; assert (p.z == 13); }
 
-fn main() {
+pub fn main() {
     let a: Point = Point {x: 10, y: 11, mut z: 12};
     let b: @Point = @copy a;
     assert (b.z == 12);

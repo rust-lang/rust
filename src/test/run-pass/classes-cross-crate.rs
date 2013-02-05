@@ -13,7 +13,7 @@
 extern mod cci_class_4;
 use cci_class_4::kitties::*;
 
-fn main() {
+pub fn main() {
   let nyan = cat(0u, 2, ~"nyan");
   nyan.eat();
   assert(!nyan.eat());

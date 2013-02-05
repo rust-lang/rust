@@ -18,15 +18,15 @@
 
 extern mod std;
 
-use std::map;
-use std::map::HashMap;
+use std::oldmap;
+use std::oldmap::HashMap;
 use core::pipes::*;
 
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use std::map;
-    use std::map::HashMap;
+    use std::oldmap;
+    use std::oldmap::HashMap;
     use core::pipes::*;
 
     pub type putter = fn@(~str, ~str);
@@ -44,9 +44,9 @@ mod map_reduce {
     }
 
     fn map_task(ctrl: SharedChan<ctrl_proto>, input: ~str) {
-        let intermediates = map::HashMap();
+        let intermediates = oldmap::HashMap();
 
-        fn emit(im: map::HashMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
+        fn emit(im: oldmap::HashMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
                 val: ~str) {
             let mut c;
             match im.find(copy key) {
@@ -75,9 +75,9 @@ mod map_reduce {
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let mut reducers: map::HashMap<~str, int>;
+        let mut reducers: oldmap::HashMap<~str, int>;
 
-        reducers = map::HashMap();
+        reducers = oldmap::HashMap();
 
         start_mappers(ctrl_chan, copy inputs);
 
@@ -99,6 +99,6 @@ mod map_reduce {
     }
 }
 
-fn main() {
+pub fn main() {
     map_reduce::map_reduce(~[~"../src/test/run-pass/hashmap-memory.rs"]);
 }

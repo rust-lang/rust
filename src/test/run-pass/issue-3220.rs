@@ -21,7 +21,7 @@ fn thing() -> thing {
 }
 impl thing { fn f(self) {} }
 
-fn main() {
+pub fn main() {
     let z = thing();
     (move z).f();
 }

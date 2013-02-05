@@ -16,21 +16,21 @@ enum Foo {
 
 const X: Foo = Baz;
 
-fn main() {
+pub fn main() {
     match X {
         Baz => {}
-        _ => fail
+        _ => die!()
     }
     match Y {
         Bar(s) => assert(s == 2654435769),
-        _ => fail
+        _ => die!()
     }
     match Z {
         Quux(d,h) => {
             assert(d == 0x123456789abcdef0);
             assert(h == 0x1234);
         }
-        _ => fail
+        _ => die!()
     }
 }
 

@@ -29,7 +29,7 @@ impl<T: Copy> c1<T> {
 }
 
 
-fn main() {
+pub fn main() {
     c1::<int>(3).f1(4);
     c1::<int>(3).f2(4);
 }

@@ -422,10 +422,10 @@ pub fn print_type_ex(s: ps, &&ty: @ast::Ty, print_colons: bool) {
         word(s.s, ~"]");
       }
       ast::ty_mac(_) => {
-          fail ~"print_type doesn't know how to print a ty_mac";
+          die!(~"print_type doesn't know how to print a ty_mac");
       }
       ast::ty_infer => {
-          fail ~"print_type shouldn't see a ty_infer";
+          die!(~"print_type shouldn't see a ty_infer");
       }
 
     }
@@ -575,7 +575,7 @@ pub fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_mac(ast::spanned { node: ast::mac_invoc_tt(pth, ref tts),
+      ast::item_mac(codemap::spanned { node: ast::mac_invoc_tt(pth, ref tts),
                                    _}) => {
         print_visibility(s, item.vis);
         print_path(s, pth, false);
@@ -617,7 +617,7 @@ pub fn print_enum_def(s: ps, enum_definition: ast::enum_def,
         word_space(s, ~"=");
         match enum_definition.variants[0].node.kind {
             ast::tuple_variant_kind(args) => print_type(s, args[0].ty),
-            _ => fail ~"newtype syntax with struct?"
+            _ => die!(~"newtype syntax with struct?")
         }
         word(s.s, ~";");
         end(s);
@@ -686,7 +686,7 @@ pub fn print_struct(s: ps,
             }
 
             match field.node.kind {
-                ast::named_field(*) => fail ~"unexpected named field",
+                ast::named_field(*) => die!(~"unexpected named field"),
                 ast::unnamed_field => {
                     maybe_print_comment(s, field.span.lo);
                     print_type(s, field.node.ty);
@@ -709,7 +709,7 @@ pub fn print_struct(s: ps,
 
         for struct_def.fields.each |field| {
             match field.node.kind {
-                ast::unnamed_field => fail ~"unexpected unnamed field",
+                ast::unnamed_field => die!(~"unexpected unnamed field"),
                 ast::named_field(ident, mutability, visibility) => {
                     hardbreak_if_not_bol(s);
                     maybe_print_comment(s, field.span.lo);
@@ -995,7 +995,7 @@ pub fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
               }
               // BLEAH, constraints would be great here
               _ => {
-                  fail ~"print_if saw if with weird alternative";
+                  die!(~"print_if saw if with weird alternative");
               }
             }
           }
@@ -1296,7 +1296,7 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
                         }
                         end(s); // close enclosing cbox
                     }
-                    None => fail
+                    None => die!()
                 }
             } else {
                 // the block will close the pattern's ibox
@@ -1393,13 +1393,6 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
         word(s.s, ~"]");
       }
       ast::expr_path(path) => print_path(s, path, true),
-      ast::expr_fail(maybe_fail_val) => {
-        word(s.s, ~"fail");
-        match maybe_fail_val {
-          Some(expr) => { word(s.s, ~" "); print_expr(s, expr); }
-          _ => ()
-        }
-      }
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);
@@ -2013,24 +2006,24 @@ pub fn print_literal(s: ps, &&lit: @ast::lit) {
       ast::lit_int(i, t) => {
         if i < 0_i64 {
             word(s.s,
-                 ~"-" + u64::to_str(-i as u64, 10u)
+                 ~"-" + u64::to_str_radix(-i as u64, 10u)
                  + ast_util::int_ty_to_str(t));
         } else {
             word(s.s,
-                 u64::to_str(i as u64, 10u)
+                 u64::to_str_radix(i as u64, 10u)
                  + ast_util::int_ty_to_str(t));
         }
       }
       ast::lit_uint(u, t) => {
         word(s.s,
-             u64::to_str(u, 10u)
+             u64::to_str_radix(u, 10u)
              + ast_util::uint_ty_to_str(t));
       }
       ast::lit_int_unsuffixed(i) => {
         if i < 0_i64 {
-            word(s.s, ~"-" + u64::to_str(-i as u64, 10u));
+            word(s.s, ~"-" + u64::to_str_radix(-i as u64, 10u));
         } else {
-            word(s.s, u64::to_str(i as u64, 10u));
+            word(s.s, u64::to_str_radix(i as u64, 10u));
         }
       }
       ast::lit_float(f, t) => {
@@ -2241,10 +2234,11 @@ pub mod test {
     use parse;
     use super::*;
     //use util;
+    use util::testing::check_equal;
 
     fn string_check<T : Eq> (given : &T, expected: &T) {
         if !(given == expected) {
-            fail (fmt!("given %?, expected %?",given,expected));
+            die!(fmt!("given %?, expected %?",given,expected));
         }
     }
 
@@ -2257,11 +2251,11 @@ pub mod test {
             inputs: ~[],
             output: @ast::Ty {id: 0,
                               node: ast::ty_nil,
-                              span: ast_util::dummy_sp()},
+                              span: codemap::dummy_sp()},
             cf: ast::return_val
         };
-        assert fun_to_str(decl, abba_ident, ~[],mock_interner)
-            == ~"fn abba()";
+        check_equal (&fun_to_str(decl, abba_ident, ~[],mock_interner),
+                     &~"fn abba()");
     }
 
     #[test]
@@ -2269,7 +2263,7 @@ pub mod test {
         let mock_interner = parse::token::mk_fake_ident_interner();
         let ident = mock_interner.intern(@~"principal_skinner");
 
-        let var = ast_util::respan(ast_util::dummy_sp(), ast::variant_ {
+        let var = codemap::respan(codemap::dummy_sp(), ast::variant_ {
             name: ident,
             attrs: ~[],
             // making this up as I go.... ?
@@ -2280,7 +2274,7 @@ pub mod test {
         });
 
         let varstr = variant_to_str(var,mock_interner);
-        string_check(&varstr,&~"pub principal_skinner");
+        check_equal(&varstr,&~"pub principal_skinner");
     }
 }
 

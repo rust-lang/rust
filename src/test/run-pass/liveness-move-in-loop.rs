@@ -22,4 +22,4 @@ fn the_loop() {
     }
 }
 
-fn main() {}
+pub fn main() {}

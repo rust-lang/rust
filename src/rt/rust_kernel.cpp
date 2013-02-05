@@ -11,7 +11,6 @@
 
 
 #include "rust_kernel.h"
-#include "rust_port.h"
 #include "rust_util.h"
 #include "rust_scheduler.h"
 #include "rust_sched_launcher.h"
@@ -26,7 +25,6 @@ rust_kernel::rust_kernel(rust_env *env) :
     _region(env, true),
     _log(NULL),
     max_task_id(INIT_TASK_ID-1), // sync_add_and_fetch increments first
-    max_port_id(1),
     rval(0),
     max_sched_id(1),
     killed(false),
@@ -264,47 +262,6 @@ rust_kernel::generate_task_id() {
     return id;
 }
 
-rust_port_id
-rust_kernel::register_port(rust_port *port) {
-    uintptr_t new_live_ports;
-    rust_port_id new_port_id;
-    {
-        scoped_lock with(port_lock);
-        new_port_id = max_port_id++;
-        port_table.put(new_port_id, port);
-        new_live_ports = port_table.count();
-    }
-    assert(new_port_id != INTPTR_MAX && "Hit the maximum port id");
-    KLOG_("Registered port %" PRIdPTR, new_port_id);
-    KLOG_("Total outstanding ports: %d", new_live_ports);
-    return new_port_id;
-}
-
-void
-rust_kernel::release_port_id(rust_port_id id) {
-    KLOG_("Releasing port %" PRIdPTR, id);
-    uintptr_t new_live_ports;
-    {
-        scoped_lock with(port_lock);
-        port_table.remove(id);
-        new_live_ports = port_table.count();
-    }
-    KLOG_("Total outstanding ports: %d", new_live_ports);
-}
-
-rust_port *
-rust_kernel::get_port_by_id(rust_port_id id) {
-    assert(id != 0 && "invalid port id");
-    scoped_lock with(port_lock);
-    rust_port *port = NULL;
-    // get leaves port unchanged if not found.
-    port_table.get(id, &port);
-    if(port) {
-        port->ref();
-    }
-    return port;
-}
-
 #ifdef __WIN32__
 void
 rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
@@ -398,21 +355,6 @@ rust_kernel::begin_shutdown() {
 
     run_exit_functions();
     allow_scheduler_exit();
-}
-
-bool
-rust_kernel::send_to_port(rust_port_id chan, void *sptr) {
-    KLOG_("rust_port_id*_send port: 0x%" PRIxPTR, (uintptr_t) chan);
-
-    rust_port *port = get_port_by_id(chan);
-    if(port) {
-        port->send(sptr);
-        port->deref();
-        return true;
-    } else {
-        KLOG_("didn't get the port");
-        return false;
-    }
 }
 
 void

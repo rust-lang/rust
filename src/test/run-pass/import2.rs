@@ -17,4 +17,4 @@ mod zed {
     pub fn bar() { debug!("bar"); }
 }
 
-fn main() { bar(); }
+pub fn main() { bar(); }

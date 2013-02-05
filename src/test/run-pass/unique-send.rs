@@ -10,7 +10,7 @@
 
 use core::pipes::*;
 
-fn main() {
+pub fn main() {
     let (p, c) = stream();
     c.send(~100);
     let v = p.recv();

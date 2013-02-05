@@ -16,6 +16,6 @@ fn f() -> int {
     m::g()
 }
 
-fn main() {
+pub fn main() {
     assert f() == 720;
 }

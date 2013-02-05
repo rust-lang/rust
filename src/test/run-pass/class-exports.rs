@@ -33,6 +33,6 @@ mod kitty {
     }
 }
 
-fn main() {
+pub fn main() {
   assert(cat(~"Spreckles").get_name() == ~"Spreckles");
 }

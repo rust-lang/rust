@@ -14,7 +14,7 @@ struct Box<T> {c: @T}
 
 fn unbox<T: Copy>(b: Box<T>) -> T { return *b.c; }
 
-fn main() {
+pub fn main() {
     let foo: int = 17;
     let bfoo: Box<int> = Box {c: @foo};
     debug!("see what's in our box");

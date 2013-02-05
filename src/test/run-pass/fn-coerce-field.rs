@@ -12,7 +12,7 @@ struct r {
     field: fn@()
 }
 
-fn main() {
+pub fn main() {
     fn f() {}
     let i: r = r {field: f};
 }

@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn build() -> ~[int] {
-    fail;
+    die!();
 }
 
 struct Blk { node: ~[int] }

@@ -18,8 +18,8 @@ use core::os;
 use core::uint;
 use core::util;
 use core::vec;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 
 pure fn not_win32(os: session::os) -> bool {
   match os {
@@ -179,7 +179,7 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
     let install_prefix = env!("CFG_PREFIX");
 
     if install_prefix == ~"" {
-        fail ~"rustc compiled without CFG_PREFIX environment variable";
+        die!(~"rustc compiled without CFG_PREFIX environment variable");
     }
 
     let tlib = filesearch::relative_target_lib_path(target_triple);
@@ -187,7 +187,7 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
 }
 
 pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
-    let set = map::HashMap();
+    let set = oldmap::HashMap();
     let mut minimized = ~[];
     for rpaths.each |rpath| {
         let s = rpath.to_str();

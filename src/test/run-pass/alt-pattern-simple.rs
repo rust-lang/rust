@@ -12,4 +12,4 @@
 
 fn altsimple(f: int) { match f { x => () } }
 
-fn main() { }
+pub fn main() { }

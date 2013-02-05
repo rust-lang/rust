@@ -14,13 +14,13 @@ extern mod std;
 use io::WriterUtil;
 use std::tempfile;
 
-fn main() {
+pub fn main() {
     let dir = option::unwrap(tempfile::mkdtemp(&Path("."), ""));
     let path = dir.with_filename("file");
 
     {
         match io::file_writer(&path, [io::Create, io::Truncate]) {
-            Err(copy e) => fail e,
+            Err(copy e) => die!(e),
             Ok(f) => {
                 for uint::range(0, 1000) |_i| {
                     f.write_u8(0);

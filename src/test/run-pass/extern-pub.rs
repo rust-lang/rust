@@ -4,7 +4,7 @@ extern {
                                             ++n: libc::size_t);
 }
 
-fn main() {
+pub fn main() {
 }
 
 

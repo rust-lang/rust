@@ -18,7 +18,7 @@ impl uint: double {
 
 enum foo = uint;
 
-fn main() {
+pub fn main() {
     let x = foo(3u);
     assert x.double() == 6u;
 }

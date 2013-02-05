@@ -21,6 +21,6 @@ fn test1() {
     } == 10;
 }
 
-fn main() {
+pub fn main() {
     test1();
 }

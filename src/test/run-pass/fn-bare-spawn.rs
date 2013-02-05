@@ -18,6 +18,6 @@ fn f(+i: int) {
     assert i == 100;
 }
 
-fn main() {
+pub fn main() {
     spawn(100, f);
 }

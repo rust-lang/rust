@@ -35,7 +35,7 @@ fn foo(x: int) -> int {
     return 0;
 }
 
-fn main() {
+pub fn main() {
     let x: int = 2 + 2;
     log(debug, x);
     debug!("hello, world");

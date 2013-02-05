@@ -8,6 +8,6 @@ fn xyzzy(q: Q) -> uint {
 }
 
 
-fn main() {
+pub fn main() {
     assert xyzzy(R(Some(5))) == 0;
 }

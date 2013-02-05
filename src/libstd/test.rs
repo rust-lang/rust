@@ -68,9 +68,9 @@ pub fn test_main(args: &[~str], tests: &[TestDesc]) {
     let opts =
         match parse_opts(args) {
           either::Left(move o) => o,
-          either::Right(move m) => fail m
+          either::Right(move m) => die!(m)
         };
-    if !run_tests_console(&opts, tests) { fail ~"Some tests failed"; }
+    if !run_tests_console(&opts, tests) { die!(~"Some tests failed"); }
 }
 
 pub struct TestOpts {
@@ -167,7 +167,7 @@ pub fn run_tests_console(opts: &TestOpts,
                                             ~[io::Create, io::Truncate]) {
           result::Ok(w) => Some(w),
           result::Err(ref s) => {
-              fail(fmt!("can't open output file: %s", *s))
+              die!(fmt!("can't open output file: %s", *s))
           }
         },
         None => None
@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     pub fn do_not_run_ignored_tests() {
-        fn f() { fail; }
+        fn f() { die!(); }
         let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
@@ -479,7 +479,7 @@ mod tests {
     #[test]
     #[ignore(cfg(windows))]
     pub fn test_should_fail() {
-        fn f() { fail; }
+        fn f() { die!(); }
         let desc = TestDesc {
             name: ~"whatever",
             testfn: f,
@@ -514,7 +514,7 @@ mod tests {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
-          _ => fail ~"Malformed arg in first_free_arg_should_be_a_filter"
+          _ => die!(~"Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert ~"filter" == opts.filter.get();
     }
@@ -524,7 +524,7 @@ mod tests {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
-          _ => fail ~"Malformed arg in parse_ignored_flag"
+          _ => die!(~"Malformed arg in parse_ignored_flag")
         };
         assert (opts.run_ignored);
     }

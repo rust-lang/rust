@@ -19,9 +19,9 @@ An implementation of the Graph500 Breadth First Search problem in Rust.
 extern mod std;
 use std::arc;
 use std::time;
-use std::map;
-use std::map::Map;
-use std::map::HashMap;
+use std::oldmap;
+use std::oldmap::Map;
+use std::oldmap::HashMap;
 use std::deque;
 use std::deque::Deque;
 use std::par;
@@ -41,7 +41,7 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
         let A = 0.57;
         let B = 0.19;
         let C = 0.19;
- 
+
         if scale == 0u {
             (i, j)
         }
@@ -49,7 +49,7 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
             let i = i * 2i64;
             let j = j * 2i64;
             let scale = scale - 1u;
-            
+
             let x = r.gen_float();
 
             if x < A {
@@ -80,38 +80,38 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
 
 fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     let graph = do vec::from_fn(N) |_i| {
-        map::HashMap::<node_id, ()>()
+        oldmap::HashMap::<node_id, ()>()
     };
 
     do vec::each(edges) |e| {
         match *e {
             (i, j) => {
-                map::set_add(graph[i], j);
-                map::set_add(graph[j], i);
+                oldmap::set_add(graph[i], j);
+                oldmap::set_add(graph[j], i);
             }
         }
         true
     }
 
     do graph.map() |v| {
-        map::vec_from_set(*v)
+        oldmap::vec_from_set(*v)
     }
 }
 
 fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
-    let keys = map::HashMap::<node_id, ()>();
+    let keys = oldmap::HashMap::<node_id, ()>();
     let r = rand::Rng();
 
-    while keys.size() < n {
+    while keys.len() < n {
         let k = r.gen_uint_range(0u, graph.len());
 
         if graph[k].len() > 0u && vec::any(graph[k], |i| {
             *i != k as node_id
         }) {
-            map::set_add(keys, k as node_id);
+            oldmap::set_add(keys, k as node_id);
         }
     }
-    map::vec_from_set(keys)
+    oldmap::vec_from_set(keys)
 }
 
 /**
@@ -120,8 +120,8 @@ fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
  * Nodes that are unreachable have a parent of -1.
  */
 fn bfs(graph: graph, key: node_id) -> bfs_result {
-    let marks : ~[mut node_id] 
-        = vec::cast_to_mut(vec::from_elem(vec::len(graph), -1i64));
+    let mut marks : ~[node_id]
+        = vec::from_elem(vec::len(graph), -1i64);
 
     let Q = deque::create();
 
@@ -140,7 +140,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
         };
     }
 
-    vec::cast_from_mut(move marks)
+    move marks
 }
 
 /**
@@ -212,7 +212,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         match *c {
           white => { -1i64 }
           black(parent) => { parent }
-          _ => { fail ~"Found remaining gray nodes in BFS" }
+          _ => { die!(~"Found remaining gray nodes in BFS") }
         }
     }
 }
@@ -294,13 +294,13 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         match *c {
           white => { -1i64 }
           black(parent) => { parent }
-          _ => { fail ~"Found remaining gray nodes in BFS" }
+          _ => { die!(~"Found remaining gray nodes in BFS") }
         }
     }
 }
 
 /// Performs at least some of the validation in the Graph500 spec.
-fn validate(edges: ~[(node_id, node_id)], 
+fn validate(edges: ~[(node_id, node_id)],
             root: node_id, tree: bfs_result) -> bool {
     // There are 5 things to test. Below is code for each of them.
 
@@ -336,7 +336,7 @@ fn validate(edges: ~[(node_id, node_id)],
             path.len() as int
         }
     };
-    
+
     if !status { return status }
 
     // 2. Each tree edge connects vertices whose BFS levels differ by
@@ -366,7 +366,7 @@ fn validate(edges: ~[(node_id, node_id)],
         abs(level[u] - level[v]) <= 1
     };
 
-    if !status { return status }    
+    if !status { return status }
 
     // 4. The BFS tree spans an entire connected component's vertices.
 
@@ -388,7 +388,7 @@ fn validate(edges: ~[(node_id, node_id)],
         }
     };
 
-    if !status { return status }    
+    if !status { return status }
 
     // If we get through here, all the tests passed!
     true
@@ -440,44 +440,44 @@ fn main() {
             let start = time::precise_time_s();
             let bfs_tree = bfs(copy graph, *root);
             let stop = time::precise_time_s();
-            
+
             //total_seq += stop - start;
 
             io::stdout().write_line(
                 fmt!("Sequential BFS completed in %? seconds.",
                      stop - start));
-            
+
             if do_validate {
                 let start = time::precise_time_s();
                 assert(validate(copy edges, *root, bfs_tree));
                 let stop = time::precise_time_s();
-                
+
                 io::stdout().write_line(
                     fmt!("Validation completed in %? seconds.",
                          stop - start));
             }
-            
+
             let start = time::precise_time_s();
             let bfs_tree = bfs2(copy graph, *root);
             let stop = time::precise_time_s();
-            
+
             total_seq += stop - start;
-            
+
             io::stdout().write_line(
                 fmt!("Alternate Sequential BFS completed in %? seconds.",
                      stop - start));
-            
+
             if do_validate {
                 let start = time::precise_time_s();
                 assert(validate(copy edges, *root, bfs_tree));
                 let stop = time::precise_time_s();
-                
+
                 io::stdout().write_line(
                     fmt!("Validation completed in %? seconds.",
                          stop - start));
             }
         }
-        
+
         let start = time::precise_time_s();
         let bfs_tree = pbfs(graph_arc, *root);
         let stop = time::precise_time_s();
@@ -491,7 +491,7 @@ fn main() {
             let start = time::precise_time_s();
             assert(validate(copy edges, *root, bfs_tree));
             let stop = time::precise_time_s();
-            
+
             io::stdout().write_line(fmt!("Validation completed in %? seconds.",
                                          stop - start));
         }

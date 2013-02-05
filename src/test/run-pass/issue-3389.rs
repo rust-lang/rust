@@ -19,7 +19,7 @@ fn print_str_vector(vector: ~[~str]) {
     }
 }
 
-fn main() {
+pub fn main() {
     let node: trie_node = trie_node {
         content: ~[],
         children: ~[]

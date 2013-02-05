@@ -16,7 +16,7 @@ enum color {
     white = 0xFFFFFF,
 }
 
-fn main() {
+pub fn main() {
     let act = fmt!("%?", red);
     io::println(act);
     assert ~"red" == act;

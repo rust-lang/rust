@@ -22,7 +22,7 @@ impl S : Bar {
     }
 }
 
-fn main() {
+pub fn main() {
     let s = S { x: 1 };
     s.g();
 }

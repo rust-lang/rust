@@ -20,7 +20,7 @@ use parse::{parser, parse_expr_from_source_str, new_parser_from_tts};
 
 use core::option;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
                    e: expr_, s: span, fld: ast_fold,
@@ -154,7 +154,7 @@ pub fn expand_item_mac(exts: HashMap<~str, SyntaxExtension>,
                        fld: ast_fold) -> Option<@ast::item> {
 
     let (pth, tts) = match it.node {
-        item_mac(ast::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
+        item_mac(codemap::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
             (pth, (*tts))
         }
         _ => cx.span_bug(it.span, ~"invalid item macro invocation")
@@ -234,7 +234,7 @@ pub fn expand_stmt(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
                 {call_site: sp, callie: {name: *extname, span: exp_sp}}));
             let expanded = match exp(cx, mac.span, tts) {
                 MRExpr(e) =>
-                    @ast::spanned { node: stmt_expr(e, cx.next_id()),
+                    @codemap::spanned { node: stmt_expr(e, cx.next_id()),
                                     span: e.span},
                 MRAny(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
@@ -288,6 +288,15 @@ pub fn core_macros() -> ~str {
         log(::core::debug, fmt!( $($arg),+ )) ))
 
     macro_rules! die(
+        ($msg: expr) => (
+            ::core::sys::begin_unwind($msg, file!().to_owned(), line!())
+        );
+        () => (
+            die!(~\"explicit failure\")
+        )
+    )
+
+    macro_rules! fail(
         ($msg: expr) => (
             ::core::sys::begin_unwind($msg, file!().to_owned(), line!())
         );

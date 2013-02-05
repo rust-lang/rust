@@ -20,7 +20,7 @@ fn compare(x: &str, y: &str) -> bool
     }
 }
 
-fn main()
+pub fn main()
 {
     assert compare("foo", "foo");
     assert compare(@"foo", @"foo");

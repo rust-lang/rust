@@ -14,7 +14,7 @@ fn incd_if_even(x: &uint) -> Option<uint> {
     if (*x % 2u) == 0u {Some(*x + 1u)} else {None}
 }
 
-fn main() {
+pub fn main() {
     assert (~[1u, 3u]).flat_map_to_vec(repeat) == ~[1u, 1u, 3u, 3u];
     assert (~[]).flat_map_to_vec(repeat) == ~[];
     assert None.flat_map_to_vec(repeat) == ~[];

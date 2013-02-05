@@ -12,7 +12,7 @@
 
 
 // Unsigned integer operations
-fn main() {
+pub fn main() {
     assert (0u8 < 255u8);
     assert (0u8 <= 255u8);
     assert (255u8 > 0u8);

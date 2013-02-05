@@ -60,30 +60,33 @@ pub mod prelude;
 
 /* Primitive types */
 
-#[path = "int-template.rs"] #[merge = "int-template/int.rs"]
+#[path = "num/int-template.rs"] #[merge = "num/int-template/int.rs"]
 pub mod int;
-#[path = "int-template.rs"] #[merge = "int-template/i8.rs"]
+#[path = "num/int-template.rs"] #[merge = "num/int-template/i8.rs"]
 pub mod i8;
-#[path = "int-template.rs"] #[merge = "int-template/i16.rs"]
+#[path = "num/int-template.rs"] #[merge = "num/int-template/i16.rs"]
 pub mod i16;
-#[path = "int-template.rs"] #[merge = "int-template/i32.rs"]
+#[path = "num/int-template.rs"] #[merge = "num/int-template/i32.rs"]
 pub mod i32;
-#[path = "int-template.rs"] #[merge = "int-template/i64.rs"]
+#[path = "num/int-template.rs"] #[merge = "num/int-template/i64.rs"]
 pub mod i64;
-#[path = "uint-template.rs"] #[merge = "uint-template/uint.rs"]
+#[path = "num/uint-template.rs"] #[merge = "num/uint-template/uint.rs"]
 pub mod uint;
 
-#[path = "uint-template.rs"] #[merge = "uint-template/u8.rs"]
+#[path = "num/uint-template.rs"] #[merge = "num/uint-template/u8.rs"]
 pub mod u8;
-#[path = "uint-template.rs"] #[merge = "uint-template/u16.rs"]
+#[path = "num/uint-template.rs"] #[merge = "num/uint-template/u16.rs"]
 pub mod u16;
-#[path = "uint-template.rs"] #[merge = "uint-template/u32.rs"]
+#[path = "num/uint-template.rs"] #[merge = "num/uint-template/u32.rs"]
 pub mod u32;
-#[path = "uint-template.rs"] #[merge = "uint-template/u64.rs"]
+#[path = "num/uint-template.rs"] #[merge = "num/uint-template/u64.rs"]
 pub mod u64;
 
+#[path = "num/float.rs"]
 pub mod float;
+#[path = "num/f32.rs"]
 pub mod f32;
+#[path = "num/f64.rs"]
 pub mod f64;
 
 pub mod nil;
@@ -116,6 +119,7 @@ pub mod managed;
 /* Common traits */
 
 pub mod from_str;
+#[path = "num/num.rs"]
 pub mod num;
 pub mod iter;
 pub mod to_str;
@@ -144,7 +148,6 @@ pub mod hashmap;
 
 /* Tasks and communication */
 
-pub mod oldcomm;
 #[path = "task/mod.rs"]
 pub mod task;
 pub mod pipes;
@@ -233,6 +236,7 @@ pub mod private;
 /* For internal use, not exported */
 
 mod unicode;
+#[path = "num/cmath.rs"]
 mod cmath;
 mod stackwalk;
 
@@ -251,6 +255,7 @@ pub mod core {
     pub use condition;
     pub use option;
     pub use kinds;
+    pub use sys;
 }
 
 

@@ -62,7 +62,7 @@ macro_rules! follow (
           $(Some($message($($($x,)+)* next)) => {
             let $next = move_it!(next);
             $e })+
-          _ => { fail }
+          _ => { die!() }
         }
     );
 )
@@ -73,7 +73,7 @@ fn client_follow(+bank: bank::client::login) {
     let bank = client::login(move bank, ~"theincredibleholk", ~"1234");
     let bank = switch(move bank, follow! (
         ok -> connected { move connected }
-        invalid -> _next { fail ~"bank closed the connected" }
+        invalid -> _next { die!(~"bank closed the connected") }
     ));
 
     let bank = client::deposit(move bank, 100.00);
@@ -83,7 +83,7 @@ fn client_follow(+bank: bank::client::login) {
             io::println(~"Yay! I got money!");
         }
         insufficient_funds -> _next {
-            fail ~"someone stole my money"
+            die!(~"someone stole my money")
         }
     ));
 }
@@ -96,8 +96,8 @@ fn bank_client(+bank: bank::client::login) {
       Some(ok(connected)) => {
         move_it!(connected)
       }
-      Some(invalid(_)) => { fail ~"login unsuccessful" }
-      None => { fail ~"bank closed the connection" }
+      Some(invalid(_)) => { die!(~"login unsuccessful") }
+      None => { die!(~"bank closed the connection") }
     };
 
     let bank = client::deposit(move bank, 100.00);
@@ -107,13 +107,13 @@ fn bank_client(+bank: bank::client::login) {
         io::println(~"Yay! I got money!");
       }
       Some(insufficient_funds(_)) => {
-        fail ~"someone stole my money"
+        die!(~"someone stole my money")
       }
       None => {
-        fail ~"bank closed the connection"
+        die!(~"bank closed the connection")
       }
     }
 }
 
-fn main() {
+pub fn main() {
 }

@@ -36,9 +36,9 @@ use core::str;
 use core::to_bytes::IterBytes;
 use core::uint;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use std::serialize::Encodable;
-use std::{ebml, map};
+use std::{ebml, oldmap};
 use std;
 use syntax::ast::*;
 use syntax::ast;
@@ -52,7 +52,7 @@ use syntax;
 use writer = std::ebml::writer;
 
 // used by astencode:
-type abbrev_map = map::HashMap<ty::t, tyencode::ty_abbrev>;
+type abbrev_map = oldmap::HashMap<ty::t, tyencode::ty_abbrev>;
 
 pub type encode_inlined_item = fn@(ecx: @encode_ctxt,
                                    ebml_w: writer::Encoder,
@@ -99,7 +99,7 @@ pub enum encode_ctxt = {
 };
 
 pub fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
-    ecx.reachable.contains_key(id)
+    ecx.reachable.contains_key_ref(&id)
 }
 
 fn encode_name(ecx: @encode_ctxt, ebml_w: writer::Encoder, name: ident) {
@@ -245,7 +245,7 @@ fn encode_discriminant(ecx: @encode_ctxt, ebml_w: writer::Encoder,
 fn encode_disr_val(_ecx: @encode_ctxt, ebml_w: writer::Encoder,
                    disr_val: int) {
     ebml_w.start_tag(tag_disr_val);
-    ebml_w.writer.write(str::to_bytes(int::to_str(disr_val,10u)));
+    ebml_w.writer.write(str::to_bytes(int::to_str(disr_val)));
     ebml_w.end_tag();
 }
 
@@ -527,7 +527,7 @@ fn purity_static_method_family(p: purity) -> char {
       unsafe_fn => 'U',
       pure_fn => 'P',
       impure_fn => 'F',
-      _ => fail ~"extern fn can't be static"
+      _ => die!(~"extern fn can't be static")
     }
 }
 
@@ -547,8 +547,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
     let tcx = ecx.tcx;
     let must_write =
         match item.node {
-          item_enum(_, _) | item_impl(*)
-          | item_trait(*) | item_struct(*) => true,
+          item_enum(_, _) | item_impl(*) | item_trait(*) | item_struct(*) |
+          item_mod(*) | item_foreign_mod(*) => true,
           _ => false
         };
     if !must_write && !reachable(ecx, item.id) { return; }
@@ -829,7 +829,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                                    true, item.id, *m, /*bad*/copy m.tps);
         }
       }
-      item_mac(*) => fail ~"item macros unimplemented"
+      item_mac(*) => die!(~"item macros unimplemented")
     }
 }
 
@@ -886,7 +886,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                         encode_info_for_item(ecx, ebml_w, i,
                                              index, *pt);
                     }
-                    _ => fail ~"bad item"
+                    _ => die!(~"bad item")
                 }
             }
         },
@@ -901,7 +901,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                                                      abi);
                     }
                     // case for separate item and foreign-item tables
-                    _ => fail ~"bad foreign item"
+                    _ => die!(~"bad foreign item")
                 }
             }
         },

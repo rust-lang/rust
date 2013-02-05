@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A map type
+//! A map type - **deprecated**, use `core::hashmap` instead
 #[forbid(deprecated_mode)];
 
+use core::container::{Container, Mutable, Map};
 use core::cmp::Eq;
 use core::hash::Hash;
 use core::io::WriterUtil;
 use core::io;
 use core::ops;
 use core::to_str::ToStr;
-use core::mutable::Mut;
 use core::prelude::*;
 use core::to_bytes::IterBytes;
 use core::uint;
@@ -27,84 +27,6 @@ use core::vec;
 pub type Set<K> = HashMap<K, ()>;
 
 pub type HashMap<K, V> = chained::T<K, V>;
-
-pub trait StdMap<K:Eq IterBytes Hash Copy, V: Copy> {
-    /// Return the number of elements in the map
-    pure fn size() -> uint;
-
-    /**
-     * Add a value to the map.
-     *
-     * If the map already contains a value for the specified key then the
-     * original value is replaced.
-     *
-     * Returns true if the key did not already exist in the map
-     */
-    fn insert(key: K, value: V) -> bool;
-
-    /**
-     * Add a value to the map.
-     *
-     * If the map contains a value for the key, use the function
-     * to set a new value.
-     */
-    fn update_with_key(key: K, newval: V, ff: fn(K, V, V) -> V) -> bool;
-
-    /**
-     * Add a value to the map.
-     *
-     * If the map contains a value for the key, use the function to
-     * set a new value.  (Like `update_with_key`, but with a
-     * function of only values.)
-     */
-    fn update(key: K, newval: V, ff: fn(V, V) -> V) -> bool;
-
-    /// Returns true if the map contains a value for the specified key
-    pure fn contains_key(key: K) -> bool;
-
-    /// Returns true if the map contains a value for the specified
-    /// key, taking the key by reference.
-    pure fn contains_key_ref(key: &K) -> bool;
-
-    /**
-     * Get the value for the specified key. Fails if the key does not exist in
-     * the map.
-     */
-    pure fn get(key: K) -> V;
-
-    /**
-     * Get the value for the specified key. If the key does not exist in
-     * the map then returns none.
-     */
-    pure fn find(key: K) -> Option<V>;
-
-    /**
-     * Remove and return a value from the map. Returns true if the
-     * key was present in the map, otherwise false.
-     */
-    fn remove(key: K) -> bool;
-
-    /// Clear the map, removing all key/value pairs.
-    fn clear();
-
-    /// Iterate over all the key/value pairs in the map by value
-    pure fn each(fn(key: K, value: V) -> bool);
-
-    /// Iterate over all the keys in the map by value
-    pure fn each_key(fn(key: K) -> bool);
-
-    /// Iterate over all the values in the map by value
-    pure fn each_value(fn(value: V) -> bool);
-
-    /// Iterate over all the key/value pairs in the map by reference
-    pure fn each_ref(fn(key: &K, value: &V) -> bool);
-
-    /// Iterate over all the keys in the map by reference
-    pure fn each_key_ref(fn(key: &K) -> bool);
-
-    /// Iterate over all the values in the map by reference
-    pure fn each_value_ref(fn(value: &V) -> bool);
-}
 
 pub mod util {
     pub struct Rational {
@@ -124,7 +46,7 @@ pub mod util {
 // FIXME (#2344): package this up and export it as a datatype usable for
 // external code that doesn't want to pay the cost of a box.
 pub mod chained {
-    use map::{StdMap, util};
+    use super::util;
 
     use core::io;
     use core::ops;
@@ -144,7 +66,7 @@ pub mod chained {
 
     struct HashMap_<K, V> {
         mut count: uint,
-        mut chains: ~[mut Option<@Entry<K,V>>]
+        mut chains: ~[Option<@Entry<K,V>>]
     }
 
     pub type T<K, V> = @HashMap_<K, V>;
@@ -209,7 +131,7 @@ pub mod chained {
         fn rehash() {
             let n_old_chains = self.chains.len();
             let n_new_chains: uint = uint::next_power_of_two(n_old_chains+1u);
-            let new_chains = chains(n_new_chains);
+            let mut new_chains = chains(n_new_chains);
             for self.each_entry |entry| {
                 let idx = entry.hash % n_new_chains;
                 entry.next = new_chains[idx];
@@ -239,14 +161,20 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: StdMap<K, V> {
-        pure fn size() -> uint { self.count }
+    impl<K: Eq IterBytes Hash, V> T<K, V>: Container {
+        pure fn len(&self) -> uint { self.count }
+        pure fn is_empty(&self) -> bool { self.count == 0 }
+    }
 
-        pure fn contains_key(k: K) -> bool {
-            self.contains_key_ref(&k)
+    impl<K: Eq IterBytes Hash, V> T<K, V>: Mutable {
+        fn clear(&mut self) {
+            self.count = 0u;
+            self.chains = chains(initial_capacity);
         }
+    }
 
-        pure fn contains_key_ref(k: &K) -> bool {
+    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
+        pure fn contains_key_ref(&self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
               NotFound => false,
@@ -298,7 +226,7 @@ pub mod chained {
             }
         }
 
-        pure fn find(k: K) -> Option<V> {
+        pure fn find(&self, k: K) -> Option<V> {
             unsafe {
                 match self.search_tbl(&k, k.hash_keyed(0,0) as uint) {
                   NotFound => None,
@@ -363,16 +291,16 @@ pub mod chained {
             return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
         }
 
-        pure fn get(k: K) -> V {
+        pure fn get(&self, k: K) -> V {
             let opt_v = self.find(k);
             if opt_v.is_none() {
-                fail fmt!("Key not found in table: %?", k);
+                die!(fmt!("Key not found in table: %?", k));
             }
             option::unwrap(move opt_v)
         }
 
-        fn remove(k: K) -> bool {
-            match self.search_tbl(&k, k.hash_keyed(0,0) as uint) {
+        fn remove(k: &K) -> bool {
+            match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
               NotFound => false,
               FoundFirst(idx, entry) => {
                 self.count -= 1u;
@@ -387,34 +315,17 @@ pub mod chained {
             }
         }
 
-        fn clear() {
-            self.count = 0u;
-            self.chains = chains(initial_capacity);
-        }
-
-        pure fn each(blk: fn(key: K, value: V) -> bool) {
-            self.each_ref(|k, v| blk(*k, *v))
-        }
-
-        pure fn each_key(blk: fn(key: K) -> bool) {
-            self.each_key_ref(|p| blk(*p))
-        }
-
-        pure fn each_value(blk: fn(value: V) -> bool) {
-            self.each_value_ref(|p| blk(*p))
-        }
-
-        pure fn each_ref(blk: fn(key: &K, value: &V) -> bool) {
+        pure fn each_ref(&self, blk: fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }
             }
         }
 
-        pure fn each_key_ref(blk: fn(key: &K) -> bool) {
+        pure fn each_key_ref(&self, blk: fn(key: &K) -> bool) {
             self.each_ref(|k, _v| blk(k))
         }
 
-        pure fn each_value_ref(blk: fn(value: &V) -> bool) {
+        pure fn each_value_ref(&self, blk: fn(value: &V) -> bool) {
             self.each_ref(|_k, v| blk(v))
         }
     }
@@ -442,7 +353,7 @@ pub mod chained {
     }
 
     impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> T<K, V>: ToStr {
-        pure fn to_str() -> ~str {
+        pure fn to_str(&self) -> ~str {
             unsafe {
                 // Meh -- this should be safe
                 do io::with_str_writer |wr| { self.to_writer(wr) }
@@ -458,8 +369,8 @@ pub mod chained {
         }
     }
 
-    fn chains<K,V>(nchains: uint) -> ~[mut Option<@Entry<K,V>>] {
-        vec::cast_to_mut(vec::from_elem(nchains, None))
+    fn chains<K,V>(nchains: uint) -> ~[Option<@Entry<K,V>>] {
+        vec::from_elem(nchains, None)
     }
 
     pub fn mk<K:Eq IterBytes Hash, V: Copy>() -> T<K,V> {
@@ -486,8 +397,8 @@ pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, key: K) -> bool {
 
 /// Convert a set into a vector.
 pub pure fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
-    do vec::build_sized(s.size()) |push| {
-        for s.each_key() |k| {
+    do vec::build_sized(s.len()) |push| {
+        for s.each_key_ref() |&k| {
             push(k);
         }
     }
@@ -509,11 +420,11 @@ pub fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
 
 #[cfg(test)]
 mod tests {
-    use map;
-
     use core::option::None;
     use core::option;
     use core::uint;
+
+    use super::*;
 
     #[test]
     fn test_simple() {
@@ -521,8 +432,8 @@ mod tests {
         pure fn eq_uint(x: &uint, y: &uint) -> bool { *x == *y }
         pure fn uint_id(x: &uint) -> uint { *x }
         debug!("uint -> uint");
-        let hm_uu: map::HashMap<uint, uint> =
-            map::HashMap::<uint, uint>();
+        let hm_uu: HashMap<uint, uint> =
+            HashMap::<uint, uint>();
         assert (hm_uu.insert(10u, 12u));
         assert (hm_uu.insert(11u, 13u));
         assert (hm_uu.insert(12u, 14u));
@@ -537,8 +448,8 @@ mod tests {
         let eleven: ~str = ~"eleven";
         let twelve: ~str = ~"twelve";
         debug!("str -> uint");
-        let hm_su: map::HashMap<~str, uint> =
-            map::HashMap::<~str, uint>();
+        let hm_su: HashMap<~str, uint> =
+            HashMap::<~str, uint>();
         assert (hm_su.insert(~"ten", 12u));
         assert (hm_su.insert(eleven, 13u));
         assert (hm_su.insert(~"twelve", 14u));
@@ -551,8 +462,8 @@ mod tests {
         assert (!hm_su.insert(~"twelve", 12u));
         assert (hm_su.get(~"twelve") == 12u);
         debug!("uint -> str");
-        let hm_us: map::HashMap<uint, ~str> =
-            map::HashMap::<uint, ~str>();
+        let hm_us: HashMap<uint, ~str> =
+            HashMap::<uint, ~str>();
         assert (hm_us.insert(10u, ~"twelve"));
         assert (hm_us.insert(11u, ~"thirteen"));
         assert (hm_us.insert(12u, ~"fourteen"));
@@ -564,8 +475,8 @@ mod tests {
         assert (!hm_us.insert(12u, ~"twelve"));
         assert hm_us.get(12u) == ~"twelve";
         debug!("str -> str");
-        let hm_ss: map::HashMap<~str, ~str> =
-            map::HashMap::<~str, ~str>();
+        let hm_ss: HashMap<~str, ~str> =
+            HashMap::<~str, ~str>();
         assert (hm_ss.insert(ten, ~"twelve"));
         assert (hm_ss.insert(eleven, ~"thirteen"));
         assert (hm_ss.insert(twelve, ~"fourteen"));
@@ -590,8 +501,8 @@ mod tests {
         pure fn eq_uint(x: &uint, y: &uint) -> bool { *x == *y }
         pure fn uint_id(x: &uint) -> uint { *x }
         debug!("uint -> uint");
-        let hm_uu: map::HashMap<uint, uint> =
-            map::HashMap::<uint, uint>();
+        let hm_uu: HashMap<uint, uint> =
+            HashMap::<uint, uint>();
         let mut i: uint = 0u;
         while i < num_to_insert {
             assert (hm_uu.insert(i, i * i));
@@ -615,36 +526,39 @@ mod tests {
             i += 1u;
         }
         debug!("str -> str");
-        let hm_ss: map::HashMap<~str, ~str> =
-            map::HashMap::<~str, ~str>();
+        let hm_ss: HashMap<~str, ~str> =
+            HashMap::<~str, ~str>();
         i = 0u;
         while i < num_to_insert {
-            assert hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u));
+            assert hm_ss.insert(uint::to_str_radix(i, 2u),
+                                uint::to_str_radix(i * i, 2u));
             debug!("inserting \"%s\" -> \"%s\"",
-                   uint::to_str(i, 2u),
-                   uint::to_str(i*i, 2u));
+                   uint::to_str_radix(i, 2u),
+                   uint::to_str_radix(i*i, 2u));
             i += 1u;
         }
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
             debug!("get(\"%s\") = \"%s\"",
-                   uint::to_str(i, 2u),
-                   hm_ss.get(uint::to_str(i, 2u)));
-            assert hm_ss.get(uint::to_str(i, 2u)) == uint::to_str(i * i, 2u);
+                   uint::to_str_radix(i, 2u),
+                   hm_ss.get(uint::to_str_radix(i, 2u)));
+            assert hm_ss.get(uint::to_str_radix(i, 2u)) ==
+                             uint::to_str_radix(i * i, 2u);
             i += 1u;
         }
-        assert (hm_ss.insert(uint::to_str(num_to_insert, 2u),
-                             uint::to_str(17u, 2u)));
-        assert hm_ss.get(uint::to_str(num_to_insert, 2u)) ==
-            uint::to_str(17u, 2u);
+        assert (hm_ss.insert(uint::to_str_radix(num_to_insert, 2u),
+                             uint::to_str_radix(17u, 2u)));
+        assert hm_ss.get(uint::to_str_radix(num_to_insert, 2u)) ==
+            uint::to_str_radix(17u, 2u);
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
             debug!("get(\"%s\") = \"%s\"",
-                   uint::to_str(i, 2u),
-                   hm_ss.get(uint::to_str(i, 2u)));
-            assert hm_ss.get(uint::to_str(i, 2u)) == uint::to_str(i * i, 2u);
+                   uint::to_str_radix(i, 2u),
+                   hm_ss.get(uint::to_str_radix(i, 2u)));
+            assert hm_ss.get(uint::to_str_radix(i, 2u)) ==
+                             uint::to_str_radix(i * i, 2u);
             i += 1u;
         }
         debug!("*** finished test_growth");
@@ -654,24 +568,24 @@ mod tests {
     fn test_removal() {
         debug!("*** starting test_removal");
         let num_to_insert: uint = 64u;
-        let hm: map::HashMap<uint, uint> =
-            map::HashMap::<uint, uint>();
+        let hm: HashMap<uint, uint> =
+            HashMap::<uint, uint>();
         let mut i: uint = 0u;
         while i < num_to_insert {
             assert (hm.insert(i, i * i));
             debug!("inserting %u -> %u", i, i*i);
             i += 1u;
         }
-        assert (hm.size() == num_to_insert);
+        assert (hm.len() == num_to_insert);
         debug!("-----");
         debug!("removing evens");
         i = 0u;
         while i < num_to_insert {
-            let v = hm.remove(i);
+            let v = hm.remove(&i);
             assert v;
             i += 2u;
         }
-        assert (hm.size() == num_to_insert / 2u);
+        assert (hm.len() == num_to_insert / 2u);
         debug!("-----");
         i = 1u;
         while i < num_to_insert {
@@ -693,7 +607,7 @@ mod tests {
             debug!("inserting %u -> %u", i, i*i);
             i += 2u;
         }
-        assert (hm.size() == num_to_insert);
+        assert (hm.len() == num_to_insert);
         debug!("-----");
         i = 0u;
         while i < num_to_insert {
@@ -702,7 +616,7 @@ mod tests {
             i += 1u;
         }
         debug!("-----");
-        assert (hm.size() == num_to_insert);
+        assert (hm.len() == num_to_insert);
         i = 0u;
         while i < num_to_insert {
             debug!("get(%u) = %u", i, hm.get(i));
@@ -715,16 +629,16 @@ mod tests {
     #[test]
     fn test_contains_key() {
         let key = ~"k";
-        let map = map::HashMap::<~str, ~str>();
-        assert (!map.contains_key(key));
+        let map = HashMap::<~str, ~str>();
+        assert (!map.contains_key_ref(&key));
         map.insert(key, ~"val");
-        assert (map.contains_key(key));
+        assert (map.contains_key_ref(&key));
     }
 
     #[test]
     fn test_find() {
         let key = ~"k";
-        let map = map::HashMap::<~str, ~str>();
+        let map = HashMap::<~str, ~str>();
         assert (option::is_none(&map.find(key)));
         map.insert(key, ~"val");
         assert (option::get(map.find(key)) == ~"val");
@@ -733,23 +647,23 @@ mod tests {
     #[test]
     fn test_clear() {
         let key = ~"k";
-        let map = map::HashMap::<~str, ~str>();
+        let mut map = HashMap::<~str, ~str>();
         map.insert(key, ~"val");
-        assert (map.size() == 1);
-        assert (map.contains_key(key));
+        assert (map.len() == 1);
+        assert (map.contains_key_ref(&key));
         map.clear();
-        assert (map.size() == 0);
-        assert (!map.contains_key(key));
+        assert (map.len() == 0);
+        assert (!map.contains_key_ref(&key));
     }
 
     #[test]
     fn test_hash_from_vec() {
-        let map = map::hash_from_vec(~[
+        let map = hash_from_vec(~[
             (~"a", 1),
             (~"b", 2),
             (~"c", 3)
         ]);
-        assert map.size() == 3u;
+        assert map.len() == 3u;
         assert map.get(~"a") == 1;
         assert map.get(~"b") == 2;
         assert map.get(~"c") == 3;
@@ -757,7 +671,7 @@ mod tests {
 
     #[test]
     fn test_update_with_key() {
-        let map = map::HashMap::<~str, uint>();
+        let map = HashMap::<~str, uint>();
 
         // given a new key, initialize it with this new count, given
         // given an existing key, add more to its count

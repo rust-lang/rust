@@ -184,7 +184,7 @@ fn test_fn_inner() {
     #[inner_fn_attr];
 }
 
-fn main() { }
+pub fn main() { }
 
 //
 // Local Variables:

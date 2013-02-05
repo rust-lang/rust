@@ -75,9 +75,9 @@ use core::libc::{c_uint, c_ulonglong};
 use core::option::{is_none, is_some};
 use core::option;
 use core::uint;
-use std::map::HashMap;
-use std::smallintmap;
-use std::{map, time, list};
+use std::oldmap::HashMap;
+use std::oldsmallintmap;
+use std::{oldmap, time, list};
 use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::attr;
@@ -169,8 +169,7 @@ pub fn get_extern_fn(externs: HashMap<~str, ValueRef>,
                      +name: ~str,
                      cc: lib::llvm::CallConv,
                      ty: TypeRef) -> ValueRef {
-    // XXX: Bad copy.
-    if externs.contains_key(copy name) { return externs.get(name); }
+    if externs.contains_key_ref(&name) { return externs.get(name); }
     // XXX: Bad copy.
     let f = decl_fn(llmod, copy name, cc, ty);
     externs.insert(name, f);
@@ -180,8 +179,7 @@ pub fn get_extern_fn(externs: HashMap<~str, ValueRef>,
 pub fn get_extern_const(externs: HashMap<~str, ValueRef>, llmod: ModuleRef,
                         +name: ~str, ty: TypeRef) -> ValueRef {
     unsafe {
-        // XXX: Bad copy.
-        if externs.contains_key(copy name) { return externs.get(name); }
+        if externs.contains_key_ref(&name) { return externs.get(name); }
         let c = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(llmod, ty, buf)
         });
@@ -451,7 +449,7 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: @crate_ctxt, +sym: ~str) {
     // XXX: Bad copy.
-    if ccx.all_llvm_symbols.contains_key(copy sym) {
+    if ccx.all_llvm_symbols.contains_key_ref(&sym) {
         ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
     }
     ccx.all_llvm_symbols.insert(sym, ());
@@ -679,7 +677,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             let variant_cx =
                 sub_block(cx,
                                    ~"enum-iter-variant-" +
-                                       int::to_str(variant.disr_val, 10u));
+                                       int::to_str(variant.disr_val));
             AddCase(llswitch, C_int(ccx, variant.disr_val), variant_cx.llbb);
             let variant_cx =
                 iter_variant(variant_cx, llunion_a_ptr, *variant,
@@ -1850,7 +1848,7 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
             ty: varg.ty,
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
-                ast_util::dummy_sp(),
+                codemap::dummy_sp(),
                 special_idents::arg),
             id: varg.id,
         }
@@ -1888,7 +1886,7 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
         // works. So we have to cast to the destination's view of the type.
         let llarg = match fcx.llargs.find(va.id) {
             Some(local_mem(x)) => x,
-            _ => fail ~"trans_enum_variant: how do we know this works?",
+            _ => die!(~"trans_enum_variant: how do we know this works?"),
         };
         let arg_ty = arg_tys[i].ty;
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
@@ -1913,7 +1911,7 @@ pub fn trans_tuple_struct(ccx: @crate_ctxt,
             is_mutbl: false,
             ty: field.node.ty,
             pat: ast_util::ident_to_pat(ccx.tcx.sess.next_node_id(),
-                                        ast_util::dummy_sp(),
+                                        codemap::dummy_sp(),
                                         special_idents::arg),
             id: field.node.id
         }
@@ -2024,7 +2022,7 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let path = match ccx.tcx.items.get(item.id) {
         ast_map::node_item(_, p) => p,
         // tjc: ?
-        _ => fail ~"trans_item",
+        _ => die!(~"trans_item"),
     };
     match /*bad*/copy item.node {
       // XXX: Bad copies.
@@ -2044,7 +2042,7 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         } else {
             for vec::each((*body).node.stmts) |stmt| {
                 match stmt.node {
-                  ast::stmt_decl(@ast::spanned { node: ast::decl_item(i),
+                  ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
                     trans_item(ccx, *i);
                   }
@@ -2280,7 +2278,7 @@ pub fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
         /*bad*/copy *match ccx.tcx.items.get(i.id) {
             ast_map::node_item(_, p) => p,
                 // separate map for paths?
-            _ => fail ~"item_path"
+            _ => die!(~"item_path")
         },
         ~[path_name(i.ident)])
 }
@@ -2367,7 +2365,7 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 set_inline_hint_if_appr(/*bad*/copy i.attrs, llfn);
                 llfn
               }
-              _ => fail ~"get_item_val: weird result in table"
+              _ => die!(~"get_item_val: weird result in table")
             }
           }
           ast_map::node_trait_method(trait_method, _, pth) => {
@@ -2448,14 +2446,14 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                       ast::item_enum(_, _) => {
                         register_fn(ccx, (*v).span, pth, id, enm.attrs)
                       }
-                      _ => fail ~"node_variant, shouldn't happen"
+                      _ => die!(~"node_variant, shouldn't happen")
                     };
                 }
                 ast::struct_variant_kind(_) => {
-                    fail ~"struct variant kind unexpected in get_item_val"
+                    die!(~"struct variant kind unexpected in get_item_val")
                 }
                 ast::enum_variant_kind(_) => {
-                    fail ~"enum variant kind unexpected in get_item_val"
+                    die!(~"enum variant kind unexpected in get_item_val")
                 }
             }
             set_inline_hint(llfn);
@@ -2485,7 +2483,7 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             ccx.sess.bug(~"get_item_val(): unexpected variant")
           }
         };
-        if !(exprt || ccx.reachable.contains_key(id)) {
+        if !(exprt || ccx.reachable.contains_key_ref(&id)) {
             lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
         }
         ccx.item_vals.insert(id, val);
@@ -2798,7 +2796,7 @@ pub fn decl_gc_metadata(ccx: @crate_ctxt, llmod_id: ~str) {
 
 pub fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     let elttype = T_struct(~[ccx.int_type, ccx.int_type]);
-    let maptype = T_array(elttype, ccx.module_data.size() + 1u);
+    let maptype = T_array(elttype, ccx.module_data.len() + 1);
     let map = str::as_c_str(~"_rust_mod_map", |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
@@ -2808,7 +2806,7 @@ pub fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
         lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     }
     let mut elts: ~[ValueRef] = ~[];
-    for ccx.module_data.each |key, val| {
+    for ccx.module_data.each_ref |&key, &val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, key)),
                             p2i(ccx, val)]);
         elts.push(elt);
@@ -3016,7 +3014,7 @@ pub fn trans_crate(sess: session::Session,
               monomorphized: HashMap(),
               monomorphizing: HashMap(),
               type_use_cache: HashMap(),
-              vtables: map::HashMap(),
+              vtables: oldmap::HashMap(),
               const_cstr_cache: HashMap(),
               const_globals: HashMap(),
               const_values: HashMap(),
@@ -3089,7 +3087,7 @@ pub fn trans_crate(sess: session::Session,
         }
 
         if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each |k, v| {
+            for ccx.stats.llvm_insns.each_ref |&k, &v| {
                 io::println(fmt!("%-7u %s", v, k));
             }
         }

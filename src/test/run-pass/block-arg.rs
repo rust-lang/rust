@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Check usage and precedence of block arguments in expressions:
-fn main() {
+pub fn main() {
     let v = ~[-1f, 0f, 1f, 2f, 3f];
 
     // Statement form does not require parentheses:
@@ -35,14 +35,14 @@ fn main() {
         assert false;
     }
     match do vec::all(v) |e| { float::is_negative(*e) } {
-        true => { fail ~"incorrect answer."; }
+        true => { die!(~"incorrect answer."); }
         false => { }
     }
     match 3 {
       _ if do vec::any(v) |e| { float::is_negative(*e) } => {
       }
       _ => {
-        fail ~"wrong answer.";
+        die!(~"wrong answer.");
       }
     }
 

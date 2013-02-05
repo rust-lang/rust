@@ -13,4 +13,4 @@
 extern mod libc {
     pub fn printf(x: ());
 }
-fn main() { }
+pub fn main() { }

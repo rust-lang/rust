@@ -20,7 +20,7 @@ use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
 use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assert, expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
-use ast::{expr_fail, expr_field, expr_fn, expr_fn_block, expr_if, expr_index};
+use ast::{expr_field, expr_fn, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat};
 use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
@@ -55,15 +55,16 @@ use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::{visibility, vstore, vstore_box, vstore_fixed, vstore_slice};
 use ast::{vstore_uniq};
 use ast;
-use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
+use ast_util::{ident_to_path, operator_prec};
 use ast_util;
 use classify;
-use codemap::{span,FssNone, BytePos};
+use codemap::{span,FssNone, BytePos, spanned, respan, mk_sp};
 use codemap;
 use parse::attr::parser_attr;
 use parse::common::{seq_sep_none, token_to_str};
 use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::reader;
+use parse::lexer::TokenAndSpan;
 use parse::obsolete::{ObsoleteClassTraits, ObsoleteModeInFnType};
 use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
 use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
@@ -86,7 +87,7 @@ use core::either;
 use core::result::Result;
 use core::vec::push;
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 #[deriving_eq]
 enum restriction {
@@ -193,7 +194,7 @@ pub fn Parser(sess: parse_sess,
         token: tok0.tok,
         span: span0,
         last_span: span0,
-        buffer: [mut {tok: tok0.tok, sp: span0}, ..4],
+        mut buffer: [TokenAndSpan {tok: tok0.tok, sp: span0}, ..4],
         buffer_start: 0,
         buffer_end: 0,
         tokens_consumed: 0u,
@@ -213,7 +214,7 @@ pub struct Parser {
     mut token: token::Token,
     mut span: span,
     mut last_span: span,
-    mut buffer: [mut {tok: token::Token, sp: span} * 4],
+    mut buffer: [TokenAndSpan * 4],
     mut buffer_start: int,
     mut buffer_end: int,
     mut tokens_consumed: uint,
@@ -234,6 +235,7 @@ pub struct Parser {
 }
 
 pub impl Parser {
+    // advance the parser by one token
     fn bump() {
         self.last_span = self.span;
         let next = if self.buffer_start == self.buffer_end {
@@ -247,7 +249,8 @@ pub impl Parser {
         self.span = next.sp;
         self.tokens_consumed += 1u;
     }
-    fn swap(next: token::Token, +lo: BytePos, +hi: BytePos) {
+    // EFFECT: replace the current token and span with the given one
+    fn replace_token(next: token::Token, +lo: BytePos, +hi: BytePos) {
         self.token = next;
         self.span = mk_sp(lo, hi);
     }
@@ -800,7 +803,7 @@ pub impl Parser {
             self.bump();
             self.lit_from_token(tok)
         };
-        ast::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
+        codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
     fn parse_path_without_tps() -> @path {
@@ -875,7 +878,7 @@ pub impl Parser {
                 self.parse_seq_lt_gt(Some(token::COMMA),
                                      |p| p.parse_ty(false))
             } else {
-                ast::spanned {node: ~[], span: path.span}
+                codemap::spanned {node: ~[], span: path.span}
             }
         };
 
@@ -917,14 +920,14 @@ pub impl Parser {
         @expr {
             id: self.get_id(),
             callee_id: self.get_id(),
-            node: expr_mac(ast::spanned {node: m, span: mk_sp(lo, hi)}),
+            node: expr_mac(codemap::spanned {node: m, span: mk_sp(lo, hi)}),
             span: mk_sp(lo, hi),
         }
     }
 
     fn mk_lit_u32(i: u32) -> @expr {
         let span = self.span;
-        let lv_lit = @ast::spanned { node: lit_uint(i as u64, ty_u32),
+        let lv_lit = @codemap::spanned { node: lit_uint(i as u64, ty_u32),
                                      span: span };
 
         @expr {
@@ -1031,12 +1034,6 @@ pub impl Parser {
                 }
             }
             hi = self.span.hi;
-        } else if self.eat_keyword(~"fail") {
-            if can_begin_expr(self.token) {
-                let e = self.parse_expr();
-                hi = e.span.hi;
-                ex = expr_fail(Some(e));
-            } else { ex = expr_fail(None); }
         } else if self.eat_keyword(~"log") {
             self.expect(token::LPAREN);
             let lvl = self.parse_expr();
@@ -1404,7 +1401,7 @@ pub impl Parser {
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-evec
                 ex = match e.node {
-                  expr_vec(*) | expr_lit(@ast::spanned {
+                  expr_vec(*) | expr_lit(@codemap::spanned {
                     node: lit_str(_), span: _
                   })
                   if m == m_imm => {
@@ -1429,7 +1426,7 @@ pub impl Parser {
               expr_vec(*) if m == m_mutbl =>
                 expr_vstore(e, expr_vstore_mut_box),
               expr_vec(*) if m == m_imm => expr_vstore(e, expr_vstore_box),
-              expr_lit(@ast::spanned {
+              expr_lit(@codemap::spanned {
                   node: lit_str(_), span: _}) if m == m_imm =>
                 expr_vstore(e, expr_vstore_box),
               _ => expr_unary(box(m), e)
@@ -1442,7 +1439,7 @@ pub impl Parser {
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
-              expr_vec(*) | expr_lit(@ast::spanned {
+              expr_vec(*) | expr_lit(@codemap::spanned {
                 node: lit_str(_), span: _})
               if m == m_imm => expr_vstore(e, expr_vstore_uniq),
               _ => expr_unary(uniq(m), e)
@@ -1453,11 +1450,12 @@ pub impl Parser {
         return self.mk_expr(lo, hi, ex);
     }
 
-
+    // parse an expression of binops
     fn parse_binops() -> @expr {
-        return self.parse_more_binops(self.parse_prefix_expr(), 0);
+        self.parse_more_binops(self.parse_prefix_expr(), 0)
     }
 
+    // parse an expression of binops of at least min_prec precedence
     fn parse_more_binops(lhs: @expr, min_prec: uint) ->
         @expr {
         if self.expr_is_complete(lhs) { return lhs; }
@@ -1465,65 +1463,73 @@ pub impl Parser {
         if peeked == token::BINOP(token::OR) &&
             (self.restriction == RESTRICT_NO_BAR_OP ||
              self.restriction == RESTRICT_NO_BAR_OR_DOUBLEBAR_OP) {
-            return lhs;
-        }
-        if peeked == token::OROR &&
+            lhs
+        } else if peeked == token::OROR &&
             self.restriction == RESTRICT_NO_BAR_OR_DOUBLEBAR_OP {
-            return lhs;
-        }
-        let cur_opt   = token_to_binop(peeked);
-        match cur_opt {
-          Some(cur_op) => {
-            let cur_prec = operator_prec(cur_op);
-            if cur_prec > min_prec {
-                self.bump();
-                let expr = self.parse_prefix_expr();
-                let rhs = self.parse_more_binops(expr, cur_prec);
-                self.get_id(); // see ast_util::op_expr_callee_id
-                let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
-                                        expr_binary(cur_op, lhs, rhs));
-                return self.parse_more_binops(bin, min_prec);
+            lhs
+        } else {
+            let cur_opt = token_to_binop(peeked);
+            match cur_opt {
+                Some(cur_op) => {
+                    let cur_prec = operator_prec(cur_op);
+                    if cur_prec > min_prec {
+                        self.bump();
+                        let expr = self.parse_prefix_expr();
+                        let rhs = self.parse_more_binops(expr, cur_prec);
+                        self.get_id(); // see ast_util::op_expr_callee_id
+                        let bin = self.mk_expr(lhs.span.lo, rhs.span.hi,
+                                               expr_binary(cur_op, lhs, rhs));
+                        self.parse_more_binops(bin, min_prec)
+                    } else {
+                        lhs
+                    }
+                }
+                None => {
+                    if as_prec > min_prec && self.eat_keyword(~"as") {
+                        let rhs = self.parse_ty(true);
+                        let _as = self.mk_expr(lhs.span.lo,
+                                               rhs.span.hi,
+                                               expr_cast(lhs, rhs));
+                        self.parse_more_binops(_as, min_prec)
+                    } else {
+                        lhs
+                    }
+                }
             }
-          }
-          _ => ()
         }
-        if as_prec > min_prec && self.eat_keyword(~"as") {
-            let rhs = self.parse_ty(true);
-            let _as =
-                self.mk_expr(lhs.span.lo, rhs.span.hi, expr_cast(lhs, rhs));
-            return self.parse_more_binops(_as, min_prec);
-        }
-        return lhs;
     }
 
+    // parse an assignment expression....
+    // actually, this seems to be the main entry point for
+    // parsing an arbitrary expression.
     fn parse_assign_expr() -> @expr {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
         match copy self.token {
-          token::EQ => {
-            self.bump();
-            let rhs = self.parse_expr();
-            return self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs));
+            token::EQ => {
+                self.bump();
+                let rhs = self.parse_expr();
+                self.mk_expr(lo, rhs.span.hi, expr_assign(lhs, rhs))
           }
           token::BINOPEQ(op) => {
-            self.bump();
-            let rhs = self.parse_expr();
-            let mut aop;
-            match op {
-              token::PLUS => aop = add,
-              token::MINUS => aop = subtract,
-              token::STAR => aop = mul,
-              token::SLASH => aop = div,
-              token::PERCENT => aop = rem,
-              token::CARET => aop = bitxor,
-              token::AND => aop = bitand,
-              token::OR => aop = bitor,
-              token::SHL => aop = shl,
-              token::SHR => aop = shr
-            }
-            self.get_id(); // see ast_util::op_expr_callee_id
-            return self.mk_expr(lo, rhs.span.hi,
-                                expr_assign_op(aop, lhs, rhs));
+              self.bump();
+              let rhs = self.parse_expr();
+              let mut aop;
+              match op {
+                  token::PLUS => aop = add,
+                  token::MINUS => aop = subtract,
+                  token::STAR => aop = mul,
+                  token::SLASH => aop = div,
+                  token::PERCENT => aop = rem,
+                  token::CARET => aop = bitxor,
+                  token::AND => aop = bitand,
+                  token::OR => aop = bitor,
+                  token::SHL => aop = shl,
+                  token::SHR => aop = shr
+              }
+              self.get_id(); // see ast_util::op_expr_callee_id
+              self.mk_expr(lo, rhs.span.hi,
+                           expr_assign_op(aop, lhs, rhs))
           }
           token::LARROW => {
               self.obsolete(copy self.span, ObsoleteBinaryMove);
@@ -1531,17 +1537,18 @@ pub impl Parser {
               self.bump(); // <-
               self.bump(); // rhs
               self.bump(); // ;
-              return self.mk_expr(lo, self.span.hi,
-                                  expr_break(None));
+              self.mk_expr(lo, self.span.hi,
+                           expr_break(None))
           }
           token::DARROW => {
             self.bump();
             let rhs = self.parse_expr();
-            return self.mk_expr(lo, rhs.span.hi, expr_swap(lhs, rhs));
+            self.mk_expr(lo, rhs.span.hi, expr_swap(lhs, rhs))
           }
-          _ => {/* fall through */ }
+          _ => {
+              lhs
+          }
         }
-        return lhs;
     }
 
     fn parse_if_expr() -> @expr {
@@ -1556,7 +1563,7 @@ pub impl Parser {
             hi = elexpr.span.hi;
         }
         let q = {cond: cond, then: thn, els: els, lo: lo, hi: hi};
-        return self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els));
+        self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els))
     }
 
     fn parse_fn_expr(proto: Proto) -> @expr {
@@ -1567,8 +1574,9 @@ pub impl Parser {
         let decl = self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
 
         let body = self.parse_block();
-        return self.mk_expr(lo, body.span.hi,
-                            expr_fn(proto, decl, body, @()));
+
+        self.mk_expr(lo, body.span.hi,
+                            expr_fn(proto, decl, body, @()))
     }
 
     // `|args| { ... }` like in `do` expressions
@@ -1794,7 +1802,7 @@ pub impl Parser {
                 self.eat(token::COMMA);
             }
 
-            let blk = ast::spanned {
+            let blk = codemap::spanned {
                 node: ast::blk_ {
                     view_items: ~[],
                     stmts: ~[],
@@ -1812,10 +1820,12 @@ pub impl Parser {
         return self.mk_expr(lo, hi, expr_match(discriminant, arms));
     }
 
+    // parse an expression
     fn parse_expr() -> @expr {
         return self.parse_expr_res(UNRESTRICTED);
     }
 
+    // parse an expression, subject to the given restriction
     fn parse_expr_res(r: restriction) -> @expr {
         let old = self.restriction;
         self.restriction = r;
@@ -1943,7 +1953,9 @@ pub impl Parser {
             // HACK: parse @"..." as a literal of a vstore @str
             pat = match sub.node {
               pat_lit(e@@expr {
-                node: expr_lit(@ast::spanned {node: lit_str(_), span: _}), _
+                node: expr_lit(@codemap::spanned {
+                    node: lit_str(_),
+                    span: _}), _
               }) => {
                 let vst = @expr {
                     id: self.get_id(),
@@ -1963,7 +1975,9 @@ pub impl Parser {
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = match sub.node {
               pat_lit(e@@expr {
-                node: expr_lit(@ast::spanned {node: lit_str(_), span: _}), _
+                node: expr_lit(@codemap::spanned {
+                    node: lit_str(_),
+                    span: _}), _
               }) => {
                 let vst = @expr {
                     id: self.get_id(),
@@ -1985,7 +1999,7 @@ pub impl Parser {
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
                   pat_lit(e@@expr {
-                      node: expr_lit(@ast::spanned {
+                      node: expr_lit(@codemap::spanned {
                             node: lit_str(_), span: _}), _
                   }) => {
                       let vst = @expr {
@@ -2011,7 +2025,9 @@ pub impl Parser {
             if self.token == token::RPAREN {
                 hi = self.span.hi;
                 self.bump();
-                let lit = @ast::spanned {node: lit_nil, span: mk_sp(lo, hi)};
+                let lit = @codemap::spanned {
+                    node: lit_nil,
+                    span: mk_sp(lo, hi)};
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
                 pat = pat_lit(expr);
             } else {
@@ -2381,7 +2397,7 @@ pub impl Parser {
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(@ast::spanned {
+                                    stmts.push(@codemap::spanned {
                                         node: stmt_semi(e, stmt_id),
                                         .. *stmt});
                                 }
@@ -2406,7 +2422,7 @@ pub impl Parser {
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
-                                    stmts.push(@ast::spanned {
+                                    stmts.push(@codemap::spanned {
                                         node: stmt_mac((*m), true),
                                         .. *stmt});
                                 }
@@ -2500,7 +2516,7 @@ pub impl Parser {
                           _ => None
                         }
                       }
-                      _ => fail
+                      _ => die!()
                     };
 
                     match maybe_bound {
@@ -2940,7 +2956,7 @@ pub impl Parser {
 
         let actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            ast::spanned { node: ast::struct_dtor_ { id: self.get_id(),
+            codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
                                                      attrs: d_attrs,
                                                      self_id: self.get_id(),
                                                      body: d_body},
@@ -3445,7 +3461,7 @@ pub impl Parser {
         self.bump();
         let mut actual_dtor = do the_dtor.map |dtor| {
             let (d_body, d_attrs, d_s) = *dtor;
-            ast::spanned { node: ast::struct_dtor_ { id: self.get_id(),
+            codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
                                                      attrs: d_attrs,
                                                      self_id: self.get_id(),
                                                      body: d_body },
@@ -3737,7 +3753,7 @@ pub impl Parser {
               _ => self.fatal(~"expected open delimiter")
             };
             let m = ast::mac_invoc_tt(pth, tts);
-            let m: ast::mac = ast::spanned { node: m,
+            let m: ast::mac = codemap::spanned { node: m,
                                              span: mk_sp(self.span.lo,
                                                          self.span.hi) };
             let item_ = item_mac(m);
@@ -3892,7 +3908,7 @@ pub impl Parser {
             let metadata = self.parse_optional_meta();
             view_item_use(ident, metadata, self.get_id())
         } else {
-            fail;
+            die!();
         };
         self.expect(token::SEMI);
         @ast::view_item { node: node,

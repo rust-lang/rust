@@ -14,7 +14,7 @@ fn child(c: &SharedChan<~uint>, i: uint) {
     c.send(~i);
 }
 
-fn main() {
+pub fn main() {
     let (p, ch) = stream();
     let ch = SharedChan(ch);
     let n = 100u;

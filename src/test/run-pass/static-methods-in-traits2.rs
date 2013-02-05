@@ -14,6 +14,6 @@ pub impl float: NumConv {
     pure fn to_float(&self) -> float { *self }
 }
 
-fn main() {
+pub fn main() {
     let _: float = Number::from(0.0f);
 }

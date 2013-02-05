@@ -19,6 +19,6 @@ mod mod_dir_simple {
     pub mod load_another_mod;
 }
 
-fn main() {
+pub fn main() {
     assert mod_dir_simple::load_another_mod::test::foo() == 10;
 }

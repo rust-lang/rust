@@ -11,7 +11,7 @@
 // Testing shifts for various combinations of integers
 // Issue #1570
 
-fn main() {
+pub fn main() {
     test_misc();
     test_expr();
     test_const();

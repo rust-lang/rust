@@ -24,7 +24,7 @@ fn r(b: @mut int) -> r {
     }
 }
 
-fn main() {
+pub fn main() {
     let b = @mut 0;
     {
         let p = Some(r(b));

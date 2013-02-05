@@ -12,7 +12,7 @@
 use sys::rustrt::size_of;
 extern mod std;
 
-fn main() {
+pub fn main() {
     assert (size_of::<u8>() == 1 as uint);
     assert (size_of::<u32>() == 4 as uint);
     assert (size_of::<char>() == 4 as uint);

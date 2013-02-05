@@ -17,4 +17,4 @@ mod foo {
     pub fn f() -> t { return t1; }
 }
 
-fn main() { let v: foo::t = foo::f(); }
+pub fn main() { let v: foo::t = foo::f(); }

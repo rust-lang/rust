@@ -34,6 +34,8 @@ use num::Num::from_int;
 use option::{None, Option, Some};
 use str;
 use uint;
+use to_str;
+use from_str;
 
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;
@@ -95,7 +97,7 @@ pub mod consts {
     pub const ln_10: float = 2.30258509299404568401799145468436421;
 }
 
-/**
+/*
  * Section: String Conversions
  */
 
@@ -105,85 +107,63 @@ pub mod consts {
  * # Arguments
  *
  * * num - The float value
- * * digits - The number of significant digits
- * * exact - Whether to enforce the exact number of significant digits
  */
-pub pure fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
-    if is_NaN(num) { return ~"NaN"; }
-    if num == infinity { return ~"inf"; }
-    if num == neg_infinity { return ~"-inf"; }
+#[inline(always)]
+pub pure fn to_str(num: float) -> ~str {
+    let (r, _) = num::to_str_common(
+        &num, 10u, true, true, num::SignNeg, num::DigAll);
+    r
+}
 
-    let mut (num, sign) = if num < 0.0 { (-num, ~"-") } else { (num, ~"") };
+/**
+ * Converts a float to a string in hexadecimal format
+ *
+ * # Arguments
+ *
+ * * num - The float value
+ */
+#[inline(always)]
+pub pure fn to_str_hex(num: float) -> ~str {
+    let (r, _) = num::to_str_common(
+        &num, 16u, true, true, num::SignNeg, num::DigAll);
+    r
+}
 
-    // truncated integer
-    let trunc = num as uint;
+/**
+ * Converts a float to a string in a given radix
+ *
+ * # Arguments
+ *
+ * * num - The float value
+ * * radix - The base to use
+ *
+ * # Failure
+ *
+ * Fails if called on a special value like `inf`, `-inf` or `NaN` due to
+ * possible misinterpretation of the result at higher bases. If those values
+ * are expected, use `to_str_radix_special()` instead.
+ */
+#[inline(always)]
+pub pure fn to_str_radix(num: float, radix: uint) -> ~str {
+    let (r, special) = num::to_str_common(
+        &num, radix, true, true, num::SignNeg, num::DigAll);
+    if special { die!(~"number has a special value, \
+                      try to_str_radix_special() if those are expected") }
+    r
+}
 
-    // decimal remainder
-    let mut frac = num - (trunc as float);
-
-    // stack of digits
-    let mut fractionalParts = ~[];
-
-    // FIXME: (#2608)
-    // This used to return right away without rounding, as "~[-]num",
-    // but given epsilon like in f64.rs, I don't see how the comparison
-    // to epsilon did much when only used there.
-    //    if (frac < epsilon && !exact) || digits == 0u { return accum; }
-    //
-    // With something better, possibly weird results like this can be avoided:
-    //     assert "3.14158999999999988262" == my_to_str_exact(3.14159, 20u);
-
-    let mut ii = digits;
-    let mut epsilon_prime = 1.0 / pow_with_uint(10u, ii);
-
-    // while we still need digits
-    // build stack of digits
-    while ii > 0 && (frac >= epsilon_prime || exact) {
-        // store the next digit
-        frac *= 10.0;
-        let digit = frac as uint;
-        // Bleh: not really unsafe.
-        unsafe { fractionalParts.push(digit); }
-
-        // calculate the next frac
-        frac -= digit as float;
-        epsilon_prime *= 10.0;
-        ii -= 1u;
-    }
-
-    let mut acc;
-    let mut racc = ~"";
-    let mut carry = if frac * 10.0 as uint >= 5 { 1 } else { 0 };
-
-    // turn digits into string
-    // using stack of digits
-    while !fractionalParts.is_empty() {
-        // Bleh; shouldn't need to be unsafe
-        let mut adjusted_digit = carry + unsafe { fractionalParts.pop() };
-
-        if adjusted_digit == 10 {
-            carry = 1;
-            adjusted_digit %= 10
-        } else {
-            carry = 0;
-        };
-
-        racc = uint::str(adjusted_digit) + racc;
-    }
-
-    // pad decimals with trailing zeroes
-    while racc.len() < digits && exact {
-        racc += ~"0"
-    }
-
-    // combine ints and decimals
-    let mut ones = uint::str(trunc + carry);
-    if racc == ~"" {
-        acc = sign + ones;
-    } else {
-        acc = sign + ones + ~"." + racc;
-    }
-    move acc
+/**
+ * Converts a float to a string in a given radix, and a flag indicating
+ * whether it's a special value
+ *
+ * # Arguments
+ *
+ * * num - The float value
+ * * radix - The base to use
+ */
+#[inline(always)]
+pub pure fn to_str_radix_special(num: float, radix: uint) -> (~str, bool) {
+    num::to_str_common(&num, radix, true, true, num::SignNeg, num::DigAll)
 }
 
 /**
@@ -197,7 +177,9 @@ pub pure fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
  */
 #[inline(always)]
 pub pure fn to_str_exact(num: float, digits: uint) -> ~str {
-    to_str_common(num, digits, true)
+    let (r, _) = num::to_str_common(
+        &num, 10u, true, true, num::SignNeg, num::DigExact(digits));
+    r
 }
 
 #[test]
@@ -205,7 +187,6 @@ pub fn test_to_str_exact_do_decimal() {
     let s = to_str_exact(5.0, 4u);
     assert s == ~"5.0000";
 }
-
 
 /**
  * Converts a float to a string with a maximum number of
@@ -217,12 +198,27 @@ pub fn test_to_str_exact_do_decimal() {
  * * digits - The number of significant digits
  */
 #[inline(always)]
-pub pure fn to_str(num: float, digits: uint) -> ~str {
-    to_str_common(num, digits, false)
+pub pure fn to_str_digits(num: float, digits: uint) -> ~str {
+    let (r, _) = num::to_str_common(
+        &num, 10u, true, true, num::SignNeg, num::DigMax(digits));
+    r
+}
+
+impl float: to_str::ToStr {
+    #[inline(always)]
+    pure fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
+}
+
+impl float: num::ToStrRadix {
+    #[inline(always)]
+    pure fn to_str_radix(&self, radix: uint) -> ~str {
+        to_str_radix(*self, radix)
+    }
 }
 
 /**
- * Convert a string to a float
+ * Convert a string in base 10 to a float.
+ * Accepts a optional decimal exponent.
  *
  * This function accepts strings such as
  *
@@ -231,12 +227,44 @@ pub pure fn to_str(num: float, digits: uint) -> ~str {
  * * '-3.14'
  * * '2.5E10', or equivalently, '2.5e10'
  * * '2.5E-10'
- * * '', or, equivalently, '.' (understood as 0)
+ * * '.' (understood as 0)
  * * '5.'
  * * '.5', or, equivalently,  '0.5'
- * * 'inf', '-inf', 'NaN'
+ * * '+inf', 'inf', '-inf', 'NaN'
  *
- * Leading and trailing whitespace are ignored.
+ * Leading and trailing whitespace represent an error.
+ *
+ * # Arguments
+ *
+ * * num - A string
+ *
+ * # Return value
+ *
+ * `none` if the string did not represent a valid number.  Otherwise,
+ * `Some(n)` where `n` is the floating-point number represented by `num`.
+ */
+#[inline(always)]
+pub pure fn from_str(num: &str) -> Option<float> {
+    num::from_str_common(num, 10u, true, true, true, num::ExpDec, false)
+}
+
+/**
+ * Convert a string in base 16 to a float.
+ * Accepts a optional binary exponent.
+ *
+ * This function accepts strings such as
+ *
+ * * 'a4.fe'
+ * * '+a4.fe', equivalent to 'a4.fe'
+ * * '-a4.fe'
+ * * '2b.aP128', or equivalently, '2b.ap128'
+ * * '2b.aP-128'
+ * * '.' (understood as 0)
+ * * 'c.'
+ * * '.c', or, equivalently,  '0.c'
+ * * '+inf', 'inf', '-inf', 'NaN'
+ *
+ * Leading and trailing whitespace represent an error.
  *
  * # Arguments
  *
@@ -247,123 +275,45 @@ pub pure fn to_str(num: float, digits: uint) -> ~str {
  * `none` if the string did not represent a valid number.  Otherwise,
  * `Some(n)` where `n` is the floating-point number represented by `[num]`.
  */
-pub pure fn from_str(num: &str) -> Option<float> {
-   if num == "inf" {
-       return Some(infinity as float);
-   } else if num == "-inf" {
-       return Some(neg_infinity as float);
-   } else if num == "NaN" {
-       return Some(NaN as float);
-   }
+#[inline(always)]
+pub pure fn from_str_hex(num: &str) -> Option<float> {
+    num::from_str_common(num, 16u, true, true, true, num::ExpBin, false)
+}
 
-   let mut pos = 0u;               //Current byte position in the string.
-                                   //Used to walk the string in O(n).
-   let len = str::len(num);        //Length of the string, in bytes.
+/**
+ * Convert a string in an given base to a float.
+ *
+ * Due to possible conflicts, this function does **not** accept
+ * the special values `inf`, `-inf`, `+inf` and `NaN`, **nor**
+ * does it recognize exponents of any kind.
+ *
+ * Leading and trailing whitespace represent an error.
+ *
+ * # Arguments
+ *
+ * * num - A string
+ * * radix - The base to use. Must lie in the range [2 .. 36]
+ *
+ * # Return value
+ *
+ * `none` if the string did not represent a valid number. Otherwise,
+ * `Some(n)` where `n` is the floating-point number represented by `num`.
+ */
+#[inline(always)]
+pub pure fn from_str_radix(num: &str, radix: uint) -> Option<float> {
+    num::from_str_common(num, radix, true, true, false, num::ExpNone, false)
+}
 
-   if len == 0u { return None; }
-   let mut total = 0f;             //Accumulated result
-   let mut c     = 'z';            //Latest char.
+impl float: from_str::FromStr {
+    #[inline(always)]
+    static pure fn from_str(val: &str) -> Option<float> { from_str(val) }
+}
 
-   //The string must start with one of the following characters.
-   match str::char_at(num, 0u) {
-      '-' | '+' | '0' .. '9' | '.' => (),
-      _ => return None
-   }
-
-   //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
-   let mut neg = false;               //Sign of the result
-   match str::char_at(num, 0u) {
-      '-' => {
-          neg = true;
-          pos = 1u;
-      }
-      '+' => {
-          pos = 1u;
-      }
-      _ => ()
-   }
-
-   //Examine the following chars until '.', 'e', 'E'
-   while(pos < len) {
-       let char_range = str::char_range_at(num, pos);
-       c   = char_range.ch;
-       pos = char_range.next;
-       match c {
-         '0' .. '9' => {
-           total = total * 10f;
-           total += ((c as int) - ('0' as int)) as float;
-         }
-         '.' | 'e' | 'E' => break,
-         _ => return None
-       }
-   }
-
-   if c == '.' {//Examine decimal part
-      let mut decimal = 1f;
-      while(pos < len) {
-         let char_range = str::char_range_at(num, pos);
-         c = char_range.ch;
-         pos = char_range.next;
-         match c {
-            '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9'  => {
-                 decimal /= 10f;
-                 total += (((c as int) - ('0' as int)) as float)*decimal;
-             }
-             'e' | 'E' => break,
-             _ => return None
-         }
-      }
-   }
-
-   if (c == 'e') || (c == 'E') { //Examine exponent
-      let mut exponent = 0u;
-      let mut neg_exponent = false;
-      if(pos < len) {
-          let char_range = str::char_range_at(num, pos);
-          c   = char_range.ch;
-          match c  {
-             '+' => {
-                pos = char_range.next;
-             }
-             '-' => {
-                pos = char_range.next;
-                neg_exponent = true;
-             }
-             _ => ()
-          }
-          while(pos < len) {
-             let char_range = str::char_range_at(num, pos);
-             c = char_range.ch;
-             match c {
-                 '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9' => {
-                     exponent *= 10u;
-                     exponent += ((c as uint) - ('0' as uint));
-                 }
-                 _ => break
-             }
-             pos = char_range.next;
-          }
-          let multiplier = pow_with_uint(10u, exponent);
-              //Note: not ~[int::pow], otherwise, we'll quickly
-              //end up with a nice overflow
-          if neg_exponent {
-             total = total / multiplier;
-          } else {
-             total = total * multiplier;
-          }
-      } else {
-         return None;
-      }
-   }
-
-   if(pos < len) {
-     return None;
-   } else {
-     if(neg) {
-        total *= -1f;
-     }
-     return Some(total);
-   }
+impl float: num::FromStrRadix {
+    #[inline(always)]
+    static pure fn from_str_radix(val: &str, radix: uint) -> Option<float> {
+        from_str_radix(val, radix)
+    }
 }
 
 /**
@@ -488,9 +438,41 @@ impl float: num::One {
     static pure fn one() -> float { 1.0 }
 }
 
+impl float: num::Round {
+    #[inline(always)]
+    pure fn round(&self, mode: num::RoundMode) -> float {
+        match mode {
+            num::RoundDown
+                => f64::floor(*self as f64) as float,
+            num::RoundUp
+                => f64::ceil(*self as f64) as float,
+            num::RoundToZero   if is_negative(*self)
+                => f64::ceil(*self as f64) as float,
+            num::RoundToZero
+                => f64::floor(*self as f64) as float,
+            num::RoundFromZero if is_negative(*self)
+                => f64::floor(*self as f64) as float,
+            num::RoundFromZero
+                => f64::ceil(*self as f64) as float
+        }
+    }
+
+    #[inline(always)]
+    pure fn floor(&self) -> float { f64::floor(*self as f64) as float}
+    #[inline(always)]
+    pure fn ceil(&self) -> float { f64::ceil(*self as f64) as float}
+    #[inline(always)]
+    pure fn fract(&self) -> float {
+        if is_negative(*self) {
+            (*self) - (f64::ceil(*self as f64) as float)
+        } else {
+            (*self) - (f64::floor(*self as f64) as float)
+        }
+    }
+}
+
 #[test]
 pub fn test_from_str() {
-   assert from_str(~"3") == Some(3.);
    assert from_str(~"3") == Some(3.);
    assert from_str(~"3.14") == Some(3.14);
    assert from_str(~"+3.14") == Some(3.14);
@@ -504,19 +486,24 @@ pub fn test_from_str() {
    assert from_str(~"5.") == Some(5.);
    assert from_str(~".5") == Some(0.5);
    assert from_str(~"0.5") == Some(0.5);
-   assert from_str(~"0.5") == Some(0.5);
-   assert from_str(~"0.5") == Some(0.5);
-   assert from_str(~"-.5") == Some(-0.5);
    assert from_str(~"-.5") == Some(-0.5);
    assert from_str(~"-5") == Some(-5.);
-   assert from_str(~"-0") == Some(-0.);
-   assert from_str(~"0") == Some(0.);
    assert from_str(~"inf") == Some(infinity);
+   assert from_str(~"+inf") == Some(infinity);
    assert from_str(~"-inf") == Some(neg_infinity);
    // note: NaN != NaN, hence this slightly complex test
    match from_str(~"NaN") {
        Some(f) => assert is_NaN(f),
-       None => fail
+       None => die!()
+   }
+   // note: -0 == 0, hence these slightly more complex tests
+   match from_str(~"-0") {
+       Some(v) if is_zero(v) => assert is_negative(v),
+       _ => die!()
+   }
+   match from_str(~"0") {
+       Some(v) if is_zero(v) => assert is_positive(v),
+       _ => die!()
    }
 
    assert from_str(~"").is_none();
@@ -529,6 +516,89 @@ pub fn test_from_str() {
    assert from_str(~"1e1e1").is_none();
    assert from_str(~"1e1.1").is_none();
    assert from_str(~"1e1-1").is_none();
+}
+
+#[test]
+pub fn test_from_str_hex() {
+   assert from_str_hex(~"a4") == Some(164.);
+   assert from_str_hex(~"a4.fe") == Some(164.9921875);
+   assert from_str_hex(~"-a4.fe") == Some(-164.9921875);
+   assert from_str_hex(~"+a4.fe") == Some(164.9921875);
+   assert from_str_hex(~"ff0P4") == Some(0xff00 as float);
+   assert from_str_hex(~"ff0p4") == Some(0xff00 as float);
+   assert from_str_hex(~"ff0p-4") == Some(0xff as float);
+   assert from_str_hex(~".") == Some(0.);
+   assert from_str_hex(~".p1") == Some(0.);
+   assert from_str_hex(~".p-1") == Some(0.);
+   assert from_str_hex(~"f.") == Some(15.);
+   assert from_str_hex(~".f") == Some(0.9375);
+   assert from_str_hex(~"0.f") == Some(0.9375);
+   assert from_str_hex(~"-.f") == Some(-0.9375);
+   assert from_str_hex(~"-f") == Some(-15.);
+   assert from_str_hex(~"inf") == Some(infinity);
+   assert from_str_hex(~"+inf") == Some(infinity);
+   assert from_str_hex(~"-inf") == Some(neg_infinity);
+   // note: NaN != NaN, hence this slightly complex test
+   match from_str_hex(~"NaN") {
+       Some(f) => assert is_NaN(f),
+       None => die!()
+   }
+   // note: -0 == 0, hence these slightly more complex tests
+   match from_str_hex(~"-0") {
+       Some(v) if is_zero(v) => assert is_negative(v),
+       _ => die!()
+   }
+   match from_str_hex(~"0") {
+       Some(v) if is_zero(v) => assert is_positive(v),
+       _ => die!()
+   }
+   assert from_str_hex(~"e") == Some(14.);
+   assert from_str_hex(~"E") == Some(14.);
+   assert from_str_hex(~"E1") == Some(225.);
+   assert from_str_hex(~"1e1e1") == Some(123361.);
+   assert from_str_hex(~"1e1.1") == Some(481.0625);
+
+   assert from_str_hex(~"").is_none();
+   assert from_str_hex(~"x").is_none();
+   assert from_str_hex(~" ").is_none();
+   assert from_str_hex(~"   ").is_none();
+   assert from_str_hex(~"p").is_none();
+   assert from_str_hex(~"P").is_none();
+   assert from_str_hex(~"P1").is_none();
+   assert from_str_hex(~"1p1p1").is_none();
+   assert from_str_hex(~"1p1.1").is_none();
+   assert from_str_hex(~"1p1-1").is_none();
+}
+
+#[test]
+pub fn test_to_str_hex() {
+   assert to_str_hex(164.) == ~"a4";
+   assert to_str_hex(164.9921875) == ~"a4.fe";
+   assert to_str_hex(-164.9921875) == ~"-a4.fe";
+   assert to_str_hex(0xff00 as float) == ~"ff00";
+   assert to_str_hex(-(0xff00 as float)) == ~"-ff00";
+   assert to_str_hex(0.) == ~"0";
+   assert to_str_hex(15.) == ~"f";
+   assert to_str_hex(-15.) == ~"-f";
+   assert to_str_hex(0.9375) == ~"0.f";
+   assert to_str_hex(-0.9375) == ~"-0.f";
+   assert to_str_hex(infinity) == ~"inf";
+   assert to_str_hex(neg_infinity) == ~"-inf";
+   assert to_str_hex(NaN) == ~"NaN";
+   assert to_str_hex(0.) == ~"0";
+   assert to_str_hex(-0.) == ~"-0";
+}
+
+#[test]
+pub fn test_to_str_radix() {
+   assert to_str_radix(36., 36u) == ~"10";
+   assert to_str_radix(8.125, 2u) == ~"1000.001";
+}
+
+#[test]
+pub fn test_from_str_radix() {
+   assert from_str_radix(~"10", 36u) == Some(36.);
+   assert from_str_radix(~"1000.001", 2u) == Some(8.125);
 }
 
 #[test]
@@ -577,8 +647,8 @@ pub fn test_nonnegative() {
 
 #[test]
 pub fn test_to_str_inf() {
-    assert to_str(infinity, 10u) == ~"inf";
-    assert to_str(-infinity, 10u) == ~"-inf";
+    assert to_str_digits(infinity, 10u) == ~"inf";
+    assert to_str_digits(-infinity, 10u) == ~"-inf";
 }
 
 #[test]

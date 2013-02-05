@@ -13,7 +13,7 @@ cheaper to create than traditional threads, Rust can create hundreds of
 thousands of concurrent tasks on a typical 32-bit system.
 
 Tasks provide failure isolation and recovery. When an exception occurs in Rust
-code (as a result of an explicit call to `fail`, an assertion failure, or
+code (as a result of an explicit call to `fail!()`, an assertion failure, or
 another invalid operation), the runtime system destroys the entire
 task. Unlike in languages such as Java and C++, there is no way to `catch` an
 exception. Instead, tasks may monitor each other for failure.
@@ -296,9 +296,9 @@ let result = ports.foldl(0, |accum, port| *accum + port.recv() );
 
 # Handling task failure
 
-Rust has a built-in mechanism for raising exceptions. The `fail` construct
-(which can also be written with an error string as an argument: `fail
-~reason`) and the `assert` construct (which effectively calls `fail` if a
+Rust has a built-in mechanism for raising exceptions. The `fail!()` macro
+(which can also be written with an error string as an argument: `fail!(
+~reason)`) and the `assert` construct (which effectively calls `fail!()` if a
 boolean expression is false) are both ways to raise exceptions. When a task
 raises an exception the task unwinds its stack---running destructors and
 freeing memory along the way---and then exits. Unlike exceptions in C++,
@@ -313,7 +313,7 @@ of all tasks are intertwined: if one fails, so do all the others.
 # fn do_some_work() { loop { task::yield() } }
 # do task::try {
 // Create a child task that fails
-do spawn { fail }
+do spawn { die!() }
 
 // This will also fail because the task we spawned failed
 do_some_work();
@@ -337,7 +337,7 @@ let result: Result<int, ()> = do task::try {
     if some_condition() {
         calculate_result()
     } else {
-        fail ~"oops!";
+        die!(~"oops!");
     }
 };
 assert result.is_err();
@@ -354,7 +354,7 @@ an `Error` result.
 > ***Note:*** A failed task does not currently produce a useful error
 > value (`try` always returns `Err(())`). In the
 > future, it may be possible for tasks to intercept the value passed to
-> `fail`.
+> `fail!()`.
 
 TODO: Need discussion of `future_result` in order to make failure
 modes useful.
@@ -377,7 +377,7 @@ either task dies, it kills the other one.
 # do task::try {
 do task::spawn {
     do task::spawn {
-        fail;  // All three tasks will die.
+        die!();  // All three tasks will die.
     }
     sleep_forever();  // Will get woken up by force, then fail
 }
@@ -432,7 +432,7 @@ do task::spawn_supervised {
     // Intermediate task immediately exits
 }
 wait_for_a_while();
-fail;  // Will kill grandchild even if child has already exited
+die!();  // Will kill grandchild even if child has already exited
 # };
 ~~~
 
@@ -446,10 +446,10 @@ other at all, using `task::spawn_unlinked` for _isolated failure_.
 let (time1, time2) = (random(), random());
 do task::spawn_unlinked {
     sleep_for(time2);  // Won't get forced awake
-    fail;
+    die!();
 }
 sleep_for(time1);  // Won't get forced awake
-fail;
+die!();
 // It will take MAX(time1,time2) for the program to finish.
 # };
 ~~~
@@ -473,7 +473,7 @@ fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
         value = channel.recv();
-        channel.send(uint::to_str(value, 10));
+        channel.send(uint::to_str(value));
         if value == 0 { break; }
     }
 }
@@ -497,7 +497,7 @@ Here is the code for the parent task:
 #     let mut value: uint;
 #     loop {
 #         value = channel.recv();
-#         channel.send(uint::to_str(value, 10u));
+#         channel.send(uint::to_str(value));
 #         if value == 0u { break; }
 #     }
 # }

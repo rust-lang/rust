@@ -19,6 +19,6 @@ extern mod WHATGOESHERE {
     pub fn IDONTKNOW() -> u32;
 }
 
-fn main() {
+pub fn main() {
     assert IDONTKNOW() == 0x_BAD_DOOD_u32;
 }

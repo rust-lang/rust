@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let mut v = Some(22);
     match v {
       None => {}

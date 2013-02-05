@@ -12,4 +12,4 @@
 
 fn f() -> ~[int] { ~[] }
 
-fn main() { }
+pub fn main() { }

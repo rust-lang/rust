@@ -24,13 +24,13 @@ use core::either;
 use core::option;
 use core::vec;
 use syntax::attr;
-use syntax::codemap::span;
+use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::visit;
 use syntax::{ast, ast_util};
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
@@ -294,7 +294,7 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
             // This is a new one so we've got to load it
             // FIXME (#2404): Need better error reporting than just a bogus
             // span.
-            let fake_span = ast_util::dummy_sp();
+            let fake_span = dummy_sp();
             let local_cnum = resolve_crate(e, cname, cmetas,
                                            /*bad*/copy dep.hash, fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);

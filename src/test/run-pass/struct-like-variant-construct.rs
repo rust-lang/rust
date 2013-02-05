@@ -19,7 +19,7 @@ enum Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = Bar { a: 2, b: 3 };
 }
 

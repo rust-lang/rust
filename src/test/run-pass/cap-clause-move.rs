@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let x = ~1;
     let y = ptr::addr_of(&(*x)) as uint;
     let lam_move = fn@(move x) -> uint { ptr::addr_of(&(*x)) as uint };

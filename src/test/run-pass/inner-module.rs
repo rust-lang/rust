@@ -19,4 +19,4 @@ mod inner {
     pub fn hello() { inner2::hello(); }
 }
 
-fn main() { inner::hello(); inner::inner2::hello(); }
+pub fn main() { inner::hello(); inner::inner2::hello(); }

@@ -164,7 +164,7 @@ use util::common::indenter;
 
 use core::dvec::DVec;
 use core::dvec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
 use syntax::ast_util::{dummy_sp, path_to_ident};
@@ -209,8 +209,8 @@ pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
                         a_expr = e.get();
                     }
                     UnitLikeStructLit(_) => {
-                        fail ~"UnitLikeStructLit should have been handled \
-                               above"
+                        die!(~"UnitLikeStructLit should have been handled \
+                               above")
                     }
                 }
 
@@ -222,8 +222,8 @@ pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
                         b_expr = e.get();
                     }
                     UnitLikeStructLit(_) => {
-                        fail ~"UnitLikeStructLit should have been handled \
-                               above"
+                        die!(~"UnitLikeStructLit should have been handled \
+                               above")
                     }
                 }
 
@@ -1085,7 +1085,7 @@ pub fn store_non_ref_bindings(bcx: block,
      */
 
     let mut bcx = bcx;
-    for data.bindings_map.each_value |binding_info| {
+    for data.bindings_map.each_value_ref |&binding_info| {
         match binding_info.trmode {
             TrByValue(is_move, lldest) => {
                 let llval = Load(bcx, binding_info.llmatch); // get a T*
@@ -1119,7 +1119,7 @@ pub fn insert_lllocals(bcx: block,
      * the `fcx.lllocals` map.  If add_cleans is true, then adds cleanups for
      * the bindings. */
 
-    for data.bindings_map.each_value |binding_info| {
+    for data.bindings_map.each_value_ref |&binding_info| {
         let llval = match binding_info.trmode {
             // By value bindings: use the stack slot that we
             // copied/moved the value into
@@ -1191,14 +1191,14 @@ pub fn compile_guard(bcx: block,
 
     fn drop_bindings(bcx: block, data: &ArmData) -> block {
         let mut bcx = bcx;
-        for data.bindings_map.each_value |binding_info| {
+        for data.bindings_map.each_value_ref |&binding_info| {
             match binding_info.trmode {
                 TrByValue(_, llval) => {
                     bcx = glue::drop_ty(bcx, llval, binding_info.ty);
                 }
                 TrByRef | TrByImplicitRef => {}
             }
-            bcx.fcx.lllocals.remove(binding_info.id);
+            bcx.fcx.lllocals.remove(&binding_info.id);
         }
         return bcx;
     }
@@ -1586,7 +1586,7 @@ pub fn trans_match_inner(scope_cx: block,
                     // but during matching we need to store a *T as explained
                     // above
                     let is_move =
-                        scope_cx.ccx().maps.moves_map.contains_key(p_id);
+                        scope_cx.ccx().maps.moves_map.contains_key_ref(&p_id);
                     llmatch = alloca(bcx, T_ptr(llvariable_ty));
                     trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
                 }

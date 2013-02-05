@@ -38,7 +38,7 @@ mod base {
     }
 }
 
-fn main() {
+pub fn main() {
     let f: base::Foo = base::HasNew::new::<base::Foo, base::Foo>();
 	let b: base::Bar = base::HasNew::new::<base::Bar, base::Bar>();
 }

@@ -12,7 +12,7 @@
 
 // error-pattern:fail
 
-fn grandchild() { fail ~"grandchild dies"; }
+fn grandchild() { die!(~"grandchild dies"); }
 
 fn child() {
     let (p, _c) = pipes::stream::<int>();

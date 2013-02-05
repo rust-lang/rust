@@ -24,7 +24,7 @@ fn fact_(f: fn@(&&v: int) -> int, &&n: int) -> int {
     return if n == 0 { 1 } else { n * f(n - 1) };
 }
 
-fn main() {
+pub fn main() {
     let fact = fix(fact_);
     assert (fact(5) == 120);
     assert (fact(2) == 2);

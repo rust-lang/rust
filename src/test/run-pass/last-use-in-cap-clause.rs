@@ -18,6 +18,6 @@ fn foo() -> fn@() -> int {
     return fn@(move k) -> int { 22 };
 }
 
-fn main() {
+pub fn main() {
     assert foo()() == 22;
 }

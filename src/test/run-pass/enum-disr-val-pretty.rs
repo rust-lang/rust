@@ -12,7 +12,7 @@
 
 enum color { red = 1, green, blue, imaginary = -1, }
 
-fn main() {
+pub fn main() {
     test_color(red, 1, ~"red");
     test_color(green, 2, ~"green");
     test_color(blue, 3, ~"blue");

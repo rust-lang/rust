@@ -40,7 +40,7 @@ fn transform(x: Option<int>) -> Option<~str> {
     x.bind(|n| Some(n + 1) ).bind(|n| Some(int::str(n)) )
 }
 
-fn main() {
+pub fn main() {
     assert transform(Some(10)) == Some(~"11");
     assert transform(None) == None;
     assert (~[~"hi"])

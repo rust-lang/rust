@@ -25,6 +25,6 @@ fn f<T: B C>(x: &T) {
     assert x.c() == 30;
 }
 
-fn main() {
+pub fn main() {
     f(&S { bogus: () })
 }

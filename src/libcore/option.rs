@@ -78,7 +78,7 @@ pub pure fn get<T: Copy>(opt: Option<T>) -> T {
 
     match opt {
       Some(copy x) => return x,
-      None => fail ~"option::get none"
+      None => die!(~"option::get none")
     }
 }
 
@@ -100,7 +100,7 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
      */
     match *opt {
         Some(ref x) => x,
-        None => fail ~"option::get_ref none"
+        None => die!(~"option::get_ref none")
     }
 }
 
@@ -229,7 +229,7 @@ pub pure fn unwrap<T>(opt: Option<T>) -> T {
      */
     match move opt {
         Some(move x) => move x,
-        None => fail ~"option::unwrap none"
+        None => die!(~"option::unwrap none")
     }
 }
 
@@ -243,7 +243,7 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
 
     Fails if the value equals `None`.
      */
-    if opt.is_none() { fail ~"option::swap_unwrap none" }
+    if opt.is_none() { die!(~"option::swap_unwrap none") }
     unwrap(util::replace(opt, None))
 }
 
@@ -252,7 +252,7 @@ pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     match move opt {
         Some(move val) => val,
-        None => fail reason.to_owned(),
+        None => die!(reason.to_owned()),
     }
 }
 

@@ -16,5 +16,5 @@ fn f<T: Send>(t: T) {
     t.f();
 }
 
-fn main() {
+pub fn main() {
 }

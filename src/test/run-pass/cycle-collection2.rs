@@ -13,7 +13,7 @@ struct foo { mut z : fn@() }
 fn nop() { }
 fn nop_foo(_x : @foo) { }
 
-fn main() {
+pub fn main() {
     let w = @foo{ mut z: || nop() };
     let x : fn@() = || nop_foo(w);
     w.z = x;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let mut i = ~100;
     let mut j = ~200;
     i <-> j;

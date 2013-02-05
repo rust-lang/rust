@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { test00(); }
+pub fn main() { test00(); }
 
 fn start() { debug!("Started / Finished task."); }
 

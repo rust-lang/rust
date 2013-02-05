@@ -84,7 +84,7 @@ macro_rules! parse_node (
     ( []; [:$e:expr]; ) => ( $e );
 )
 
-fn main() {
+pub fn main() {
     let page = html! (
         <html>
             <head><title>This is the title.</title></head>

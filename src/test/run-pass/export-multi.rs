@@ -18,4 +18,4 @@ mod m {
     pub fn g() { }
 }
 
-fn main() { f(); g(); m::f(); m::g(); }
+pub fn main() { f(); g(); m::f(); m::g(); }

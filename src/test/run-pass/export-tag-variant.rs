@@ -12,4 +12,4 @@ mod foo {
     pub enum t { t1, }
 }
 
-fn main() { let v = foo::t1; }
+pub fn main() { let v = foo::t1; }

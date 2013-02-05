@@ -12,7 +12,7 @@
 
 
 // -*- rust -*-
-fn main() {
+pub fn main() {
     let mut x: int = 1;
     x *= 2;
     log(debug, x);

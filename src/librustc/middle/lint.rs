@@ -32,13 +32,14 @@ use core::u32;
 use core::u64;
 use core::uint;
 use core::vec;
-use std::map::{Map, HashMap};
-use std::map;
-use std::smallintmap::{Map, SmallIntMap};
-use std::smallintmap;
+use std::oldmap::{Map, HashMap};
+use std::oldmap;
+use std::oldsmallintmap::{Map, SmallIntMap};
+use std::oldsmallintmap;
 use syntax::ast_util::{path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
+use syntax::codemap;
 use syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
 use syntax::{ast, ast_util, visit};
 
@@ -232,7 +233,7 @@ pub fn get_lint_dict() -> lint_dict {
            default: warn}),
         */
     ];
-    map::hash_from_vec(v)
+    oldmap::hash_from_vec(v)
 }
 
 // This is a highly not-optimal set of data structure decisions.
@@ -248,7 +249,7 @@ pub type lint_settings = {
 };
 
 pub fn mk_lint_settings() -> lint_settings {
-    {default_settings: smallintmap::mk(),
+    {default_settings: oldsmallintmap::mk(),
      settings_map: HashMap()}
 }
 
@@ -273,7 +274,8 @@ pub fn get_lint_settings_level(settings: lint_settings,
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: lint_modes) -> lint_modes {
-    smallintmap::SmallIntMap_(@smallintmap::SmallIntMap_ { v: copy modes.v })
+    oldsmallintmap::SmallIntMap_(@oldsmallintmap::SmallIntMap_
+    {v: copy modes.v})
 }
 
 type ctxt_ = {dict: lint_dict,
@@ -393,12 +395,14 @@ fn build_settings_item(i: @ast::item, &&cx: ctxt, v: visit::vt<ctxt>) {
 
 pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
     let cx = ctxt_({dict: get_lint_dict(),
-                    curr: smallintmap::mk(),
+                    curr: oldsmallintmap::mk(),
                     is_default: true,
                     sess: sess});
 
     // Install defaults.
-    for cx.dict.each |_k, spec| { cx.set_level(spec.lint, spec.default); }
+    for cx.dict.each_value_ref |&spec| {
+        cx.set_level(spec.lint, spec.default);
+    }
 
     // Install command-line options, overriding defaults.
     for sess.opts.lint_opts.each |pair| {
@@ -452,7 +456,7 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
                 match e.node {
                     ast::expr_while(cond, _) => {
                         match cond.node {
-                            ast::expr_lit(@ast::spanned {
+                            ast::expr_lit(@codemap::spanned {
                                 node: ast::lit_bool(true), _}) =>
                             {
                                 cx.sess.span_lint(
@@ -481,7 +485,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
             ast::gt => v >= min,
             ast::ge => v > min,
             ast::eq | ast::ne => v >= min && v <= max,
-            _ => fail
+            _ => die!()
         }
     }
 
@@ -540,7 +544,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
                         ast::lit_int_unsuffixed(v) => v,
                         _ => return true
                     },
-                    _ => fail
+                    _ => die!()
                 };
                 is_valid(norm_binop, lit_val, min, max)
             }
@@ -553,7 +557,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
                         ast::lit_int_unsuffixed(v) => v as u64,
                         _ => return true
                     },
-                    _ => fail
+                    _ => die!()
                 };
                 is_valid(norm_binop, lit_val, min, max)
             }
@@ -954,7 +958,7 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                                        ty_to_str(tcx, arg_ty.ty),
                                        mode_to_str(arg_ast.mode));
                                 error!("%?",arg_ast.ty.node);
-                                fail
+                                die!()
                             }
                         };
                     }

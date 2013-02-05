@@ -136,7 +136,7 @@ pub mod lib {
 use result::{Ok, Err};
 use io::ReaderUtil;
 use std::getopts;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use getopts::{opt_present};
 use getopts::groups;
 use syntax::codemap;
@@ -177,7 +177,7 @@ Available lint options:
 
     let lint_dict = lint::get_lint_dict();
     let mut max_key = 0;
-    for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
+    for lint_dict.each_key_ref |&k| { max_key = uint::max(k.len(), max_key); }
     fn padded(max: uint, s: &str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
@@ -186,7 +186,7 @@ Available lint options:
                      padded(max_key, ~"name"), ~"default", ~"meaning"));
     io::println(fmt!("    %s  %7.7s  %s\n",
                      padded(max_key, ~"----"), ~"-------", ~"-------"));
-    for lint_dict.each |k, v| {
+    for lint_dict.each_ref |&k, &v| {
         let k = str::replace(k, ~"_", ~"-");
         io::println(fmt!("    %s  %7.7s  %s",
                          padded(max_key, k),
@@ -368,7 +368,7 @@ pub fn monitor(+f: fn~(diagnostic::emitter)) {
                 }
             }
             // Fail so the process returns a failure code
-            fail;
+            die!();
         }
     }
 }

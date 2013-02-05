@@ -10,7 +10,7 @@ fn foldl<T, U: Copy>(
     }
 }
 
-fn main() {
+pub fn main() {
     let x = [1, 2, 3, 4, 5];
     match x {
         [a, b, c, d, e, f] => {

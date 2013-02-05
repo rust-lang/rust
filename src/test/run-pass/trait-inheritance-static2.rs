@@ -32,7 +32,7 @@ impl S: NumExt { }
 
 fn greater_than_one<T:NumExt>() -> T { MyNum::from_int(1) }
 
-fn main() {
+pub fn main() {
     let v: S = greater_than_one();
     assert v.v == 1;
 }

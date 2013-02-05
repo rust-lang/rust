@@ -10,6 +10,6 @@
 
 fn f(f: fn&(int)) { f(10) }
 
-fn main() {
+pub fn main() {
     do f() |i| { assert i == 10 }
 }

@@ -18,7 +18,7 @@ macro_rules! myfn(
 
 myfn!(add, (a,b), { return a+b; } )
 
-fn main() {
+pub fn main() {
 
     macro_rules! mylet(
         ($x:ident, $val:expr) => (

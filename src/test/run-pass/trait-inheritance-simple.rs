@@ -24,7 +24,7 @@ fn gg<T:Bar>(a: &T) -> int {
     a.g()
 }
 
-fn main() {
+pub fn main() {
     let a = &A { x: 3 };
     assert ff(a) == 10;
     assert gg(a) == 20;

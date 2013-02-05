@@ -23,7 +23,7 @@ fn f(r: rect, x1: int, y1: int, x2: int, y2: int) {
     assert (snd(r).y == y2);
 }
 
-fn main() {
+pub fn main() {
     let r: rect = (Point {x: 10, y: 20}, Point {x: 11, y: 22});
     assert (fst(r).x == 10);
     assert (fst(r).y == 20);

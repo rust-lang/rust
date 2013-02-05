@@ -10,8 +10,8 @@
 
 // xfail-fast
 
-fn main() {
-    fail
+pub fn main() {
+    die!()
 }
 
 #[main]

@@ -19,7 +19,7 @@ fn eat_rec(_r: @~Rec) {}
 struct Rec { a: int, b: fn(Pair) -> int }
 struct Pair { x: int, y: int }
 
-fn main() {
+pub fn main() {
     eat_tup(~@(10, |a| a.x ));
     eat_rec(@~Rec{a: 10, b: |a| a.x });
 }

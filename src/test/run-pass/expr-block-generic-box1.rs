@@ -28,4 +28,4 @@ fn test_box() {
     test_generic::<bool>(@true, compare_box);
 }
 
-fn main() { test_box(); }
+pub fn main() { test_box(); }

@@ -13,9 +13,9 @@ extern mod std;
 
 fn f() {
     let a = @0;
-    fail;
+    die!();
 }
 
-fn main() {
+pub fn main() {
     task::spawn_unlinked(f);
 }

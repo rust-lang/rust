@@ -12,7 +12,7 @@
 // xfail-fast
 
 extern mod std;
-use std::map::*;
+use std::oldmap::*;
 
 class cat : map<int, bool> {
   priv {
@@ -73,7 +73,7 @@ class cat : map<int, bool> {
   fn clear() { }
 }
 
-fn main() {
+pub fn main() {
   let nyan : cat = cat(0, 2, "nyan");
   for uint::range(1u, 5u) |_i| { nyan.speak(); }
   // cat returns true if uint input is greater than

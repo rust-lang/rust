@@ -12,7 +12,7 @@ struct Triple<T> { x: T, y: T, z: T }
 
 fn box<T: Copy>(x: Triple<T>) -> ~Triple<T> { return ~x; }
 
-fn main() {
+pub fn main() {
     let x: ~Triple<int> = box::<int>(Triple{x: 1, y: 2, z: 3});
     assert (x.y == 2);
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     assert [].count(&22u) == 0u;
     assert [1u, 3u].count(&22u) == 0u;
     assert [22u, 1u, 3u].count(&22u) == 1u;

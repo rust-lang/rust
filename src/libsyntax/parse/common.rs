@@ -11,15 +11,14 @@
 use core::prelude::*;
 
 use ast;
-use ast_util::spanned;
-use codemap::BytePos;
+use codemap::{BytePos, spanned};
 use parse::lexer::reader;
 use parse::parser::Parser;
 use parse::token;
 
 use core::option::{None, Option, Some};
 use core::option;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
 pub type seq_sep = {
     sep: Option<token::Token>,
@@ -190,7 +189,9 @@ pub impl Parser {
         if self.token == token::GT {
             self.bump();
         } else if self.token == token::BINOP(token::SHR) {
-            self.swap(token::GT, self.span.lo + BytePos(1u), self.span.hi);
+            self.replace_token(token::GT,
+                               self.span.lo + BytePos(1u),
+                               self.span.hi);
         } else {
             let mut s: ~str = ~"expected `";
             s += token_to_str(self.reader, token::GT);
@@ -229,7 +230,7 @@ pub impl Parser {
     }
 
     fn parse_seq_lt_gt<T: Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> ast::spanned<~[T]> {
+                                f: fn(Parser) -> T) -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(token::LT);
         let result = self.parse_seq_to_before_gt::<T>(sep, f);
@@ -277,7 +278,7 @@ pub impl Parser {
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
     fn parse_seq<T: Copy>(bra: token::Token, ket: token::Token, sep: seq_sep,
-                          f: fn(Parser) -> T) -> ast::spanned<~[T]> {
+                          f: fn(Parser) -> T) -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(bra);
         let result = self.parse_seq_to_before_end::<T>(ket, sep, f);

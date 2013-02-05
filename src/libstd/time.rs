@@ -926,7 +926,7 @@ mod tests {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
 
-        log(debug, ~"s0=" + float::to_str(s0, 9u) + ~" sec");
+        log(debug, ~"s0=" + float::to_str_digits(s0, 9u) + ~" sec");
         assert s0 > 0.;
         let ns0 = (s0 * 1000000000.) as u64;
         log(debug, ~"ns0=" + u64::str(ns0) + ~" ns");
@@ -1042,7 +1042,7 @@ mod tests {
             == Err(~"Invalid time");
 
         match strptime(~"Fri Feb 13 15:31:30 2009", format) {
-          Err(copy e) => fail e,
+          Err(copy e) => die!(e),
           Ok(ref tm) => {
             assert tm.tm_sec == 30_i32;
             assert tm.tm_min == 31_i32;
@@ -1062,7 +1062,7 @@ mod tests {
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
               Ok(ref tm) => tm.strftime(format) == str::from_slice(s),
-              Err(copy e) => fail e
+              Err(copy e) => die!(e)
             }
         }
 

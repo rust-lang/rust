@@ -24,7 +24,7 @@ fn rendezvous() {
     error!("%?", streams[0]);
 }
 
-fn main() {
+pub fn main() {
     //os::getenv("FOO");
     rendezvous();
 }

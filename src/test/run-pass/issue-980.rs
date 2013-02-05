@@ -17,7 +17,7 @@ struct Pointy {
     mut x : maybe_pointy
 }
 
-fn main() {
+pub fn main() {
     let m = @Pointy { mut x : no_pointy };
     m.x = yes_pointy(m);
 }

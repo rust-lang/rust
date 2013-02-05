@@ -51,7 +51,7 @@ struct AsciiArt
     width: uint,
     height: uint,
     priv fill: char,
-    priv lines: ~[~[mut char]],
+    priv lines: ~[~[char]],
 
     // This struct can be quite large so we'll disable copying: developers need
     // to either pass these structs around via borrowed pointers or move them.
@@ -65,14 +65,14 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt
 {
     // Use an anonymous function to build a vector of vectors containing
     // blank characters for each position in our canvas.
-    let lines = do vec::build_sized(height)
+    let mut lines = do vec::build_sized(height)
         |push|
         {
             for height.times
             {
                 let mut line = ~[];   
                 vec::grow_set(&mut line, width-1, &'.', '.');
-                push(vec::cast_to_mut(line));
+                push(line);
             }
         };
 
@@ -84,7 +84,7 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt
 // Methods particular to the AsciiArt struct.
 impl AsciiArt
 {
-    fn add_pt(x: int, y: int)
+    fn add_pt(&mut self, x: int, y: int)
     {
         if x >= 0 && x < self.width as int
         {
@@ -99,7 +99,7 @@ impl AsciiArt
                 // element is:
                 // 1) potentially large
                 // 2) needs to be modified
-                let row = &self.lines[v];
+                let row = &mut self.lines[v];
                 row[h] = self.fill;
             }
         }
@@ -110,7 +110,7 @@ impl AsciiArt
 // Note that the %s fmt! specifier will not call this automatically.
 impl AsciiArt : ToStr
 {
-    pure fn to_str() -> ~str
+    pure fn to_str(&self) -> ~str
     {
         // Convert each line into a string.
         let lines = do self.lines.map |line| {str::from_chars(*line)};
@@ -125,12 +125,12 @@ impl AsciiArt : ToStr
 #[allow(default_methods)]
 trait Canvas
 {
-    fn add_point(shape: Point);
-    fn add_rect(shape: Rect);
+    fn add_point(&mut self, shape: Point);
+    fn add_rect(&mut self, shape: Rect);
 
     // Unlike interfaces traits support default implementations.
     // Got an ICE as soon as I added this method.
-    fn add_points(shapes: &[Point])
+    fn add_points(&mut self, shapes: &[Point])
     {
         for shapes.each |pt| {self.add_point(*pt)};
     }
@@ -141,12 +141,12 @@ trait Canvas
 // and code can use them polymorphically via the Canvas trait.
 impl AsciiArt : Canvas
 {
-    fn add_point(shape: Point)
+    fn add_point(&mut self, shape: Point)
     {
         self.add_pt(shape.x, shape.y);
     }
 
-    fn add_rect(shape: Rect)
+    fn add_rect(&mut self, shape: Rect)
     {
         // Add the top and bottom lines.
         for int::range(shape.top_left.x, shape.top_left.x + shape.size.width)
@@ -188,7 +188,7 @@ fn test_ascii_art_ctor()
 
 fn test_add_pt()
 {
-    let art = AsciiArt(3, 3, '*');
+    let mut art = AsciiArt(3, 3, '*');
     art.add_pt(0, 0);
     art.add_pt(0, -10);
     art.add_pt(1, 2);
@@ -198,13 +198,13 @@ fn test_add_pt()
 
 fn test_shapes()
 {
-    let art = AsciiArt(4, 4, '*');
+    let mut art = AsciiArt(4, 4, '*');
     art.add_rect(Rect {top_left: Point {x: 0, y: 0}, size: Size {width: 4, height: 4}});
     art.add_point(Point {x: 2, y: 2});
     assert check_strs(art.to_str(), "****\n*..*\n*.**\n****");
 }
 
-fn main() {
+pub fn main() {
     test_ascii_art_ctor();
     test_add_pt();
     test_shapes();

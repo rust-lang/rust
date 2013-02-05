@@ -611,7 +611,7 @@ impl *libc::FILE: Writer {
                 if nout != len as size_t {
                     error!("error writing buffer");
                     log(error, os::last_os_error());
-                    fail;
+                    die!();
                 }
             }
         }
@@ -661,7 +661,7 @@ impl fd_t: Writer {
                     if nout < 0 as ssize_t {
                         error!("error writing buffer");
                         log(error, os::last_os_error());
-                        fail;
+                        die!();
                     }
                     count += nout as uint;
                 }
@@ -670,11 +670,11 @@ impl fd_t: Writer {
     }
     fn seek(&self, _offset: int, _whence: SeekStyle) {
         error!("need 64-bit foreign calls for seek, sorry");
-        fail;
+        die!();
     }
     fn tell(&self) -> uint {
         error!("need 64-bit foreign calls for tell, sorry");
-        fail;
+        die!();
     }
     fn flush(&self) -> int { 0 }
     fn get_type(&self) -> WriterType {
@@ -910,7 +910,7 @@ impl<T: Writer> T : WriterUtil {
         int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
     }
     fn write_uint(&self, n: uint) {
-        uint::to_str_bytes(false, n, 10u, |bytes| self.write(bytes))
+        uint::to_str_bytes(n, 10u, |bytes| self.write(bytes))
     }
     fn write_le_uint(&self, n: uint) {
         u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
@@ -1279,7 +1279,7 @@ mod tests {
           result::Err(copy e) => {
             assert e == ~"error opening not a file";
           }
-          result::Ok(_) => fail
+          result::Ok(_) => die!()
         }
     }
 
@@ -1320,7 +1320,7 @@ mod tests {
           result::Err(copy e) => {
             assert str::starts_with(e, "error opening");
           }
-          result::Ok(_) => fail
+          result::Ok(_) => die!()
         }
     }
 
@@ -1330,7 +1330,7 @@ mod tests {
           result::Err(copy e) => {
             assert str::starts_with(e, "error opening");
           }
-          result::Ok(_) => fail
+          result::Ok(_) => die!()
         }
     }
 

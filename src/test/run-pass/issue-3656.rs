@@ -27,5 +27,5 @@ extern {
     pub fn malloc(++data: KEYGEN);
 }
 
-fn main() {
+pub fn main() {
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let x = [ @[true], ..512 ];
     let y = [ 0, ..1 ];
     error!("%?", x);

@@ -11,11 +11,10 @@
 // except according to those terms.
 
 extern mod std;
-use std::map;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
-fn main() {
-    let m = map::HashMap();
+pub fn main() {
+    let m = HashMap();
     m.insert(str::to_bytes(~"foo"), str::to_bytes(~"bar"));
     log(error, m);
 }

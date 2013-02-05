@@ -18,4 +18,4 @@ pub mod bar {
     pub fn x() { debug!("x"); }
 }
 
-fn main() { foo::x(); }
+pub fn main() { foo::x(); }

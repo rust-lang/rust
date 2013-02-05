@@ -54,7 +54,7 @@ impl<T> ~[T]: vec_utils<T> {
     }
 }
 
-fn main() {
+pub fn main() {
     assert 10u.plus() == 30;
     assert (~"hi").plus() == 200;
 

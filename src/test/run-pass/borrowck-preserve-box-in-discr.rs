@@ -12,7 +12,7 @@
 
 struct F { f: ~int }
 
-fn main() {
+pub fn main() {
     let mut x = @F {f: ~3};
     match x {
       @F {f: ref b_x} => {

@@ -69,7 +69,6 @@ pub use io;
 pub use iter;
 pub use libc;
 pub use num;
-pub use oldcomm;
 pub use ops;
 pub use option;
 pub use os;

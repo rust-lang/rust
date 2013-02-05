@@ -30,7 +30,7 @@ impl<T: to_str> ~[T]: to_str {
     }
 }
 
-fn main() {
+pub fn main() {
     assert 1.to_str() == ~"1";
     assert (~[2, 3, 4]).to_str() == ~"[2, 3, 4]";
 

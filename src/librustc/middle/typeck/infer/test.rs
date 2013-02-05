@@ -30,8 +30,8 @@ use std::getopts::groups;
 use std::getopts::{opt_present};
 use std::getopts;
 use std::getopts;
-use std::map::HashMap;
-use syntax::ast_util::dummy_sp;
+use std::oldmap::HashMap;
+use syntax::codemap::dummy_sp;
 use syntax::parse::parse_crate_from_source_str;
 use syntax::{ast, attr, parse};
 
@@ -102,7 +102,7 @@ impl Env {
         return match search_mod(self, &self.crate.node.module, 0, names) {
             Some(id) => id,
             None => {
-                fail fmt!("No item found: `%s`", str::connect(names, "::"));
+                die!(fmt!("No item found: `%s`", str::connect(names, "::")));
             }
         };
 
@@ -155,17 +155,17 @@ impl Env {
 
     fn assert_subtype(&self, a: ty::t, b: ty::t) {
         if !self.is_subtype(a, b) {
-            fail fmt!("%s is not a subtype of %s, but it should be",
+            die!(fmt!("%s is not a subtype of %s, but it should be",
                       self.ty_to_str(a),
-                      self.ty_to_str(b));
+                      self.ty_to_str(b)));
         }
     }
 
     fn assert_not_subtype(&self, a: ty::t, b: ty::t) {
         if self.is_subtype(a, b) {
-            fail fmt!("%s is a subtype of %s, but it shouldn't be",
+            die!(fmt!("%s is a subtype of %s, but it shouldn't be",
                       self.ty_to_str(a),
-                      self.ty_to_str(b));
+                      self.ty_to_str(b)));
         }
     }
 
@@ -240,7 +240,7 @@ impl Env {
     fn check_lub(&self, t1: ty::t, t2: ty::t, t_lub: ty::t) {
         match self.lub().tys(t1, t2) {
             Err(e) => {
-                fail fmt!("Unexpected error computing LUB: %?", e)
+                die!(fmt!("Unexpected error computing LUB: %?", e))
             }
             Ok(t) => {
                 self.assert_eq(t, t_lub);
@@ -262,7 +262,7 @@ impl Env {
                self.ty_to_str(t_glb));
         match self.glb().tys(t1, t2) {
             Err(e) => {
-                fail fmt!("Unexpected error computing LUB: %?", e)
+                die!(fmt!("Unexpected error computing LUB: %?", e))
             }
             Ok(t) => {
                 self.assert_eq(t, t_glb);
@@ -281,8 +281,8 @@ impl Env {
         match self.lub().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail fmt!("Unexpected success computing LUB: %?",
-                          self.ty_to_str(t))
+                die!(fmt!("Unexpected success computing LUB: %?",
+                          self.ty_to_str(t)))
             }
         }
     }
@@ -292,8 +292,8 @@ impl Env {
         match self.glb().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
-                fail fmt!("Unexpected success computing GLB: %?",
-                          self.ty_to_str(t))
+                die!(fmt!("Unexpected success computing GLB: %?",
+                          self.ty_to_str(t)))
             }
         }
     }

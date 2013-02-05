@@ -10,7 +10,7 @@
 
 
 
-fn main() {
+pub fn main() {
     let mut v = ~[1];
     v += ~[2];
     v += ~[3];

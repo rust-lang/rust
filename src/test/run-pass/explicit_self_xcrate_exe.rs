@@ -14,7 +14,7 @@
 extern mod explicit_self_xcrate;
 use explicit_self_xcrate::{Foo, Bar};
 
-fn main() {
+pub fn main() {
     let x = Bar { x: ~"hello" };
     x.f();
 }

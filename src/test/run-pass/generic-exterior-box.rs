@@ -14,7 +14,7 @@ struct Recbox<T> {x: @T}
 
 fn reclift<T: Copy>(t: T) -> Recbox<T> { return Recbox {x: @t}; }
 
-fn main() {
+pub fn main() {
     let foo: int = 17;
     let rbfoo: Recbox<int> = reclift::<int>(foo);
     assert (*rbfoo.x == foo);

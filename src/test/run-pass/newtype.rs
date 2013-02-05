@@ -14,7 +14,7 @@ struct Mytype {compute: extern fn(mytype) -> int, val: int}
 
 fn compute(i: mytype) -> int { return i.val + 20; }
 
-fn main() {
+pub fn main() {
     let myval = mytype(Mytype{compute: compute, val: 30});
     assert ((myval.compute)(myval) == 50);
 }

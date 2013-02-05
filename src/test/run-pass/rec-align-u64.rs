@@ -55,7 +55,7 @@ mod m {
     }
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         let x = Outer {c8: 22u8, t: Inner {c64: 44u64}};
 

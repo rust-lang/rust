@@ -12,7 +12,7 @@
 // The OS main scheduler should continue to be available and not terminate
 // while it is not in use.
 
-fn main() {
+pub fn main() {
     run(100);
 }
 

@@ -15,7 +15,7 @@ fn foo(s: &~str) -> bool {
     }
 }
 
-fn main() {
+pub fn main() {
     assert foo(&~"kitty");
     assert !foo(&~"gata");
 }

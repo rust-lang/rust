@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let act = sys::log_str(&~[1, 2, 3]);
     assert ~"~[1, 2, 3]" == act;
 

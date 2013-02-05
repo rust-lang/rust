@@ -12,7 +12,7 @@
 
 
 // This is a testcase for issue #94.
-fn main() {
+pub fn main() {
     let v: ~[int] = ~[0, 1, 2, 3, 4, 5];
     let s: ~str = ~"abcdef";
     assert (v[3u] == 3);

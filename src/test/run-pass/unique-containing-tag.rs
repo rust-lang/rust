@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     enum t { t1(int), t2(int), }
 
     let x = ~t1(10);
@@ -17,13 +17,13 @@ fn main() {
       t1(a) {
         assert a == 10;
       }
-      _ { fail; }
+      _ { die!(); }
     }*/
 
     /*alt x {
       ~t1(a) {
         assert a == 10;
       }
-      _ { fail; }
+      _ { die!(); }
     }*/
 }

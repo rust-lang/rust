@@ -11,11 +11,11 @@
 fn get<T>(opt: &r/Option<T>) -> &r/T {
     match *opt {
       Some(ref v) => v,
-      None => fail ~"none"
+      None => die!(~"none")
     }
 }
 
-fn main() {
+pub fn main() {
     let mut x = Some(23);
 
     {

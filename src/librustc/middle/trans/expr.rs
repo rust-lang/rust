@@ -142,7 +142,7 @@ use util::ppaux::ty_to_str;
 
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
-use syntax::ast::spanned;
+use syntax::codemap::spanned;
 
 // Destinations
 
@@ -265,7 +265,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 }
 
 pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
-    if bcx.tcx().adjustments.contains_key(expr.id) {
+    if bcx.tcx().adjustments.contains_key_ref(&expr.id) {
         // use trans_to_datum, which is mildly less efficient but
         // which will perform the adjustments:
         let datumblock = trans_to_datum(bcx, expr);
@@ -426,7 +426,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         }
         ast::expr_binary(op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
-            assert !bcx.ccx().maps.method_map.contains_key(expr.id);
+            assert !bcx.ccx().maps.method_map.contains_key_ref(&expr.id);
 
             return trans_binary(bcx, expr, op, lhs, rhs);
         }
@@ -467,9 +467,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         }
         ast::expr_ret(ex) => {
             return controlflow::trans_ret(bcx, ex);
-        }
-        ast::expr_fail(why) => {
-            return controlflow::trans_fail_expr(bcx, Some(expr.span), why);
         }
         ast::expr_log(_, lvl, a) => {
             return controlflow::trans_log(expr, lvl, bcx, a);
@@ -552,7 +549,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_tup(ref args) => {
             return trans_tup(bcx, *args, dest);
         }
-        ast::expr_lit(@ast::spanned {node: ast::lit_str(s), _}) => {
+        ast::expr_lit(@codemap::spanned {node: ast::lit_str(s), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
         }
         ast::expr_vstore(contents, ast::expr_vstore_slice) |
@@ -1246,7 +1243,7 @@ fn trans_unary_datum(bcx: block,
     assert op != ast::deref;
 
     // if overloaded, would be RvalueDpsExpr
-    assert !bcx.ccx().maps.method_map.contains_key(un_expr.id);
+    assert !bcx.ccx().maps.method_map.contains_key_ref(&un_expr.id);
 
     let un_ty = expr_ty(bcx, un_expr);
     let sub_ty = expr_ty(bcx, sub_expr);

@@ -35,4 +35,4 @@ fn test_rec() {
     test_generic::<Pair>(Pair {a: 1, b: 2}, compare_rec);
 }
 
-fn main() { test_bool(); test_rec(); }
+pub fn main() { test_bool(); test_rec(); }

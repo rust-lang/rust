@@ -30,7 +30,7 @@ fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {
     }
 }
 
-fn main() {
+pub fn main() {
   let nyan : cat<int> = cat::<int>(52u, 99, ~[9]);
   let kitty = cat(1000u, 2, ~[~"tabby"]);
   assert(nyan.how_hungry == 99);

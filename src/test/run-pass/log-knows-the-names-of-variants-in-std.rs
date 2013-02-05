@@ -22,7 +22,7 @@ fn check_log<T>(exp: ~str, v: T) {
     assert exp == fmt!("%?", v);
 }
 
-fn main() {
+pub fn main() {
     let x = list::from_vec(~[a(22u), b(~"hi")]);
     let exp = ~"@Cons(a(22), @Cons(b(~\"hi\"), @Nil))";
     let act = fmt!("%?", x);

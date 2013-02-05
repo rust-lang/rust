@@ -14,7 +14,7 @@ use ast;
 use codemap::{BytePos, CharPos, CodeMap, FileMap, Pos};
 use diagnostic;
 use parse::lexer::{is_whitespace, get_str_from, reader};
-use parse::lexer::{string_reader, bump, is_eof, nextch};
+use parse::lexer::{string_reader, bump, is_eof, nextch, TokenAndSpan};
 use parse::lexer;
 use parse::token;
 use parse;
@@ -117,7 +117,7 @@ pub fn strip_doc_comment_decoration(comment: ~str) -> ~str {
         return str::connect(lines, ~"\n");
     }
 
-    fail ~"not a doc-comment: " + comment;
+    die!(~"not a doc-comment: " + comment);
 }
 
 fn read_to_eol(rdr: string_reader) -> ~str {
@@ -295,7 +295,7 @@ fn consume_comment(rdr: string_reader, code_to_the_left: bool,
         read_block_comment(rdr, code_to_the_left, comments);
     } else if rdr.curr == '#' && nextch(rdr) == '!' {
         read_shebang_comment(rdr, code_to_the_left, comments);
-    } else { fail; }
+    } else { die!(); }
     debug!("<<< consume comment");
 }
 
@@ -334,7 +334,7 @@ pub fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
         let bstart = rdr.pos;
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
-        let {tok: tok, sp: sp} = rdr.peek();
+        let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(tok) {
             let s = get_str_from(rdr, bstart);
             literals.push({lit: s, pos: sp.lo});

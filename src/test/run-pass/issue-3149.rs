@@ -29,4 +29,4 @@ struct Matrix4<T> {
     m41: T, m42: T, m43: T, m44: T,
 }
 
-fn main() {}
+pub fn main() {}

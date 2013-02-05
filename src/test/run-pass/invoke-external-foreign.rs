@@ -17,6 +17,6 @@
 
 extern mod foreign_lib;
 
-fn main() {
+pub fn main() {
     let foo = foreign_lib::rustrt::last_os_error();
 }

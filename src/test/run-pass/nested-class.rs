@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
   
   struct b {
     i: int,
@@ -24,7 +24,7 @@ fn main() {
         }
     }
 
-  //  fn b(x:int) -> int { fail; }
+  //  fn b(x:int) -> int { die!(); }
 
   let z = b(42);
   assert(z.i == 42);

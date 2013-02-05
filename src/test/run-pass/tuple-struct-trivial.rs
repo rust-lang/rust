@@ -12,6 +12,6 @@
 
 struct Foo(int, int, int);
 
-fn main() {
+pub fn main() {
 }
 

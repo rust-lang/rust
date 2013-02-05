@@ -25,4 +25,4 @@ fn tester()
     assert loader(&path).is_ok();
 }
 
-fn main() {}
+pub fn main() {}

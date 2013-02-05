@@ -10,7 +10,7 @@
 
 fn test(-foo: @~[int]) { assert (foo[0] == 10); }
 
-fn main() {
+pub fn main() {
     let x = @~[10];
     // Test forgetting a local by move-in
     test(move x);

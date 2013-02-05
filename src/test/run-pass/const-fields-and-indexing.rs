@@ -25,7 +25,7 @@ const k : K = K {a: 10, b: 20, c: D {d: 30,
                                      e: 40}};
 const m : int = k.c.e;
 
-fn main() {
+pub fn main() {
     io::println(fmt!("%?", p));
     io::println(fmt!("%?", q));
     io::println(fmt!("%?", t));

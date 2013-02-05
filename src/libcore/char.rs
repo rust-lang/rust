@@ -119,6 +119,26 @@ pub pure fn is_digit(c: char) -> bool {
 }
 
 /**
+ * Checks if a character parses as a numeric digit in the given radix.
+ * Compared to `is_digit()`, this function only recognizes the ascii
+ * characters `0-9`, `a-z` and `A-Z`.
+ *
+ * Returns `true` if `c` is a valid digit under `radix`, and `false`
+ * otherwise.
+ *
+ * Fails if given a `radix` > 36.
+ *
+ * Note: This just wraps `to_digit()`.
+ */
+#[inline(always)]
+pub pure fn is_digit_radix(c: char, radix: uint) -> bool {
+    match to_digit(c, radix) {
+        Some(_) => true,
+        None    => false
+    }
+}
+
+/**
  * Convert a char to the corresponding digit.
  *
  * # Return value
@@ -127,9 +147,15 @@ pub pure fn is_digit(c: char) -> bool {
  * between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
  * 'b' or 'B', 11, etc. Returns none if the char does not
  * refer to a digit in the given radix.
+ *
+ * # Failure
+ * Fails if given a `radix` outside the range `[0..36]`.
  */
 #[inline]
 pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
+    if radix > 36 {
+        die!(fmt!("to_digit: radix %? is to high (maximum 36)", radix));
+    }
     let val = match c {
       '0' .. '9' => c as uint - ('0' as uint),
       'a' .. 'z' => c as uint + 10u - ('a' as uint),
@@ -138,6 +164,30 @@ pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
     };
     if val < radix { Some(val) }
     else { None }
+}
+
+/**
+ * Converts a number to the ascii character representing it.
+ *
+ * Returns `Some(char)` if `num` represents one digit under `radix`,
+ * using one character of `0-9` or `a-z`, or `None` if it doesn't.
+ *
+ * Fails if given an `radix` > 36.
+ */
+#[inline]
+pub pure fn from_digit(num: uint, radix: uint) -> Option<char> {
+    if radix > 36 {
+        die!(fmt!("from_digit: radix %? is to high (maximum 36)", num));
+    }
+    if num < radix {
+        if num < 10 {
+            Some(('0' as uint + num) as char)
+        } else {
+            Some(('a' as uint + num - 10u) as char)
+        }
+    } else {
+        None
+    }
 }
 
 /**
@@ -150,7 +200,7 @@ pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
  *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
  */
 pub pure fn escape_unicode(c: char) -> ~str {
-    let s = u32::to_str(c as u32, 16u);
+    let s = u32::to_str_radix(c as u32, 16u);
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
                     else if c <= '\uffff' { ('u', 4u) }
                     else { ('U', 8u) });

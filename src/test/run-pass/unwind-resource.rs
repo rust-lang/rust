@@ -34,10 +34,10 @@ fn complainer(c: SharedChan<bool>) -> complainer {
 
 fn f(c: SharedChan<bool>) {
     let _c = move complainer(c);
-    fail;
+    die!();
 }
 
-fn main() {
+pub fn main() {
     let (p, c) = stream();
     let c = SharedChan(c);
     task::spawn_unlinked(|| f(c.clone()) );

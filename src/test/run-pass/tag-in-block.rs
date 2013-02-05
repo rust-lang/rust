@@ -16,4 +16,4 @@ fn foo() {
     fn baz() { zed(nil); }
 }
 
-fn main() { }
+pub fn main() { }

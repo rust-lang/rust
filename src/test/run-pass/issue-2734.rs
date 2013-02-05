@@ -19,6 +19,6 @@ fn deadcode() {
     perform_hax(@~"deadcode");
 }
 
-fn main() {
+pub fn main() {
     let _ = perform_hax(@42);
 }

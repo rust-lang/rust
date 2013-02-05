@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     let _: ~int;
 }
 
 fn f(i: ~int) -> ~int {
-    fail;
+    die!();
 }

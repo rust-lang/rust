@@ -19,13 +19,13 @@ use pass::Pass;
 use core::io::ReaderUtil;
 use core::io;
 use core::libc;
-use core::oldcomm;
 use core::os;
 use core::pipes;
 use core::result;
 use core::run;
 use core::str;
 use core::task;
+use core::pipes::*;
 use std::future;
 use syntax;
 
@@ -145,7 +145,7 @@ fn pandoc_writer(
         if status != 0 {
             error!("pandoc-out: %s", stdout);
             error!("pandoc-err: %s", stderr);
-            fail ~"pandoc failed";
+            die!(~"pandoc failed");
         }
     }
 }
@@ -156,7 +156,7 @@ fn readclose(fd: libc::c_int) -> ~str {
         let file = os::fdopen(fd);
         let reader = io::FILE_reader(file, false);
         let buf = io::with_bytes_writer(|writer| {
-            let mut bytes = [mut 0, ..4096];
+            let mut bytes = [0, ..4096];
             while !reader.eof() {
                 let nread = reader.read(bytes, bytes.len());
                 writer.write(bytes.view(0, nread));
@@ -168,12 +168,8 @@ fn readclose(fd: libc::c_int) -> ~str {
 }
 
 fn generic_writer(process: fn~(markdown: ~str)) -> Writer {
-    let (setup_po, setup_ch) = pipes::stream();
+    let (po, ch) = stream::<WriteInstr>();
     do task::spawn |move process, move setup_ch| {
-        let po: oldcomm::Port<WriteInstr> = oldcomm::Port();
-        let ch = oldcomm::Chan(&po);
-        setup_ch.send(ch);
-
         let mut markdown = ~"";
         let mut keep_going = true;
         while keep_going {
@@ -184,10 +180,8 @@ fn generic_writer(process: fn~(markdown: ~str)) -> Writer {
         }
         process(move markdown);
     };
-    let ch = setup_po.recv();
-
     fn~(instr: WriteInstr) {
-        oldcomm::send(ch, instr);
+        ch.send(instr);
     }
 }
 
@@ -279,8 +273,8 @@ mod test {
 
     pub fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
-            let doc = extract::from_srv(srv, copy name);
-            let doc = (path_pass::mk_pass().f)(srv, doc);
+            let doc = extract::from_srv(srv.clone(), copy name);
+            let doc = (path_pass::mk_pass().f)(srv.clone(), doc);
             doc
         }
     }
@@ -293,21 +287,22 @@ fn write_file(path: &Path, s: ~str) {
       result::Ok(writer) => {
         writer.write_str(s);
       }
-      result::Err(e) => fail e
+      result::Err(e) => die!(e)
     }
 }
 
 pub fn future_writer_factory(
-) -> (WriterFactory, oldcomm::Port<(doc::Page, ~str)>) {
-    let markdown_po = oldcomm::Port();
-    let markdown_ch = oldcomm::Chan(&markdown_po);
+) -> (WriterFactory, Port<(doc::Page, ~str)>) {
+    let (markdown_po, markdown_ch) = stream();
+    let markdown_ch = SharedChan(markdown_ch);
     let writer_factory = fn~(page: doc::Page) -> Writer {
         let (writer_po, writer_ch) = pipes::stream();
+        let markdown_ch = markdown_ch.clone();
         do task::spawn |move writer_ch| {
             let (writer, future) = future_writer();
             writer_ch.send(move writer);
             let s = future.get();
-            oldcomm::send(markdown_ch, (copy page, s));
+            markdown_ch.send((copy page, s));
         }
         writer_po.recv()
     };

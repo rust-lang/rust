@@ -23,4 +23,4 @@ mod c {
     pub fn bar() { assert (a::foo() == 1); }
 }
 
-fn main() { c::bar(); }
+pub fn main() { c::bar(); }

@@ -17,5 +17,5 @@ pub mod foo {
     pub fn g() { assert (f() == 2); assert (::f() == 1); }
 }
 
-fn main() { return foo::g(); }
+pub fn main() { return foo::g(); }
 

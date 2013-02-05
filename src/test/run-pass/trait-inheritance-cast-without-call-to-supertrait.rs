@@ -31,7 +31,7 @@ impl A : Bar {
     fn g() -> int { 20 }
 }
 
-fn main() {
+pub fn main() {
     let a = &A { x: 3 };
     let afoo = a as &Foo;
     let abar = a as &Bar;

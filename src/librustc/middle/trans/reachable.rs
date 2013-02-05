@@ -22,7 +22,7 @@ use middle::ty;
 use middle::typeck;
 
 use core::vec;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
@@ -95,7 +95,7 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: _mod) {
 }
 
 fn traverse_public_item(cx: ctx, item: @item) {
-    if cx.rmap.contains_key(item.id) { return; }
+    if cx.rmap.contains_key_ref(&item.id) { return; }
     cx.rmap.insert(item.id, ());
     match /*bad*/copy item.node {
       item_mod(m) => traverse_public_mod(cx, item.id, m),
@@ -135,7 +135,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       }
       item_const(*) |
       item_enum(*) | item_trait(*) => (),
-      item_mac(*) => fail ~"item macros unimplemented"
+      item_mac(*) => die!(~"item macros unimplemented")
     }
 }
 
@@ -145,7 +145,7 @@ fn mk_ty_visitor() -> visit::vt<ctx> {
 }
 
 fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
-    if cx.rmap.contains_key(ty.id) { return; }
+    if cx.rmap.contains_key_ref(&ty.id) { return; }
     cx.rmap.insert(ty.id, ());
 
     match ty.node {
@@ -223,7 +223,7 @@ fn traverse_inline_body(cx: ctx, body: blk) {
 
 fn traverse_all_resources_and_impls(cx: ctx, crate_mod: _mod) {
     visit::visit_mod(
-        crate_mod, ast_util::dummy_sp(), 0, cx,
+        crate_mod, codemap::dummy_sp(), 0, cx,
         visit::mk_vt(@visit::Visitor {
             visit_expr: |_e, _cx, _v| { },
             visit_item: |i, cx, v| {

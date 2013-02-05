@@ -10,8 +10,8 @@
 
 //buggy.rs
 extern mod std;
-use std::map::HashMap;
-use std::map;
+use std::oldmap::HashMap;
+use std::oldmap;
 
 fn main() {
     let buggy_map :HashMap<uint, &uint> =

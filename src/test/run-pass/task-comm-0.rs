@@ -16,7 +16,7 @@ extern mod std;
 use pipes::Chan;
 use pipes::Port;
 
-fn main() { test05(); }
+pub fn main() { test05(); }
 
 fn test05_start(ch : Chan<int>) {
     ch.send(10);

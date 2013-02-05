@@ -104,7 +104,7 @@ pub mod reader {
                         (data[start + 2u] as uint) << 8u |
                         (data[start + 3u] as uint),
                     next: start + 4u};
-        } else { error!("vint too big"); fail; }
+        } else { error!("vint too big"); die!(); }
     }
 
     pub fn Doc(data: @~[u8]) -> Doc {
@@ -140,7 +140,7 @@ pub mod reader {
             Some(d) => d,
             None => {
                 error!("failed to find block with tag %u", tg);
-                fail;
+                die!();
             }
         }
     }
@@ -227,7 +227,8 @@ pub mod reader {
                     self.pos = r_doc.end;
                     let str = doc_as_str(r_doc);
                     if lbl != str {
-                        fail fmt!("Expected label %s but found %s", lbl, str);
+                        die!(fmt!("Expected label %s but found %s", lbl,
+                            str));
                     }
                 }
             }
@@ -236,7 +237,7 @@ pub mod reader {
         fn next_doc(exp_tag: EbmlEncoderTag) -> Doc {
             debug!(". next_doc(exp_tag=%?)", exp_tag);
             if self.pos >= self.parent.end {
-                fail ~"no more documents in current node!";
+                die!(~"no more documents in current node!");
             }
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 doc_at(self.parent.data, self.pos);
@@ -244,12 +245,12 @@ pub mod reader {
                    copy self.parent.start, copy self.parent.end,
                    copy self.pos, r_tag, r_doc.start, r_doc.end);
             if r_tag != (exp_tag as uint) {
-                fail fmt!("expected EBML doc with tag %? but found tag %?",
-                          exp_tag, r_tag);
+                die!(fmt!("expected EBML doc with tag %? but found tag %?",
+                          exp_tag, r_tag));
             }
             if r_doc.end > self.parent.end {
-                fail fmt!("invalid EBML, child extends to 0x%x, \
-                           parent to 0x%x", r_doc.end, self.parent.end);
+                die!(fmt!("invalid EBML, child extends to 0x%x, \
+                           parent to 0x%x", r_doc.end, self.parent.end));
             }
             self.pos = r_doc.end;
             r_doc
@@ -291,7 +292,7 @@ pub mod reader {
         fn read_uint(&self) -> uint {
             let v = doc_as_u64(self.next_doc(EsUint));
             if v > (::core::uint::max_value as u64) {
-                fail fmt!("uint %? too large for this architecture", v);
+                die!(fmt!("uint %? too large for this architecture", v));
             }
             v as uint
         }
@@ -303,7 +304,7 @@ pub mod reader {
         fn read_int(&self) -> int {
             let v = doc_as_u64(self.next_doc(EsInt)) as i64;
             if v > (int::max_value as i64) || v < (int::min_value as i64) {
-                fail fmt!("int %? out of range for this architecture", v);
+                die!(fmt!("int %? out of range for this architecture", v));
             }
             v as int
         }
@@ -311,14 +312,14 @@ pub mod reader {
         fn read_bool(&self) -> bool { doc_as_u8(self.next_doc(EsBool))
                                          as bool }
 
-        fn read_f64(&self) -> f64 { fail ~"read_f64()"; }
-        fn read_f32(&self) -> f32 { fail ~"read_f32()"; }
-        fn read_float(&self) -> float { fail ~"read_float()"; }
+        fn read_f64(&self) -> f64 { die!(~"read_f64()"); }
+        fn read_f32(&self) -> f32 { die!(~"read_f32()"); }
+        fn read_float(&self) -> float { die!(~"read_float()"); }
 
-        fn read_char(&self) -> char { fail ~"read_char()"; }
+        fn read_char(&self) -> char { die!(~"read_char()"); }
 
         fn read_owned_str(&self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
-        fn read_managed_str(&self) -> @str { fail ~"read_managed_str()"; }
+        fn read_managed_str(&self) -> @str { die!(~"read_managed_str()"); }
 
         // Compound types:
         fn read_owned<T>(&self, f: fn() -> T) -> T {
@@ -427,7 +428,7 @@ pub mod writer {
                             n as u8]),
             4u => w.write(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
                             (n >> 8_u) as u8, n as u8]),
-            _ => fail fmt!("vint to write too big: %?", n)
+            _ => die!(fmt!("vint to write too big: %?", n))
         };
     }
 
@@ -436,7 +437,7 @@ pub mod writer {
         if n < 0x4000_u { write_sized_vuint(w, n, 2u); return; }
         if n < 0x200000_u { write_sized_vuint(w, n, 3u); return; }
         if n < 0x10000000_u { write_sized_vuint(w, n, 4u); return; }
-        fail fmt!("vint to write too big: %?", n);
+        die!(fmt!("vint to write too big: %?", n));
     }
 
     pub fn Encoder(w: io::Writer) -> Encoder {
@@ -598,17 +599,17 @@ pub mod writer {
 
         // FIXME (#2742): implement these
         fn emit_f64(&self, _v: f64) {
-            fail ~"Unimplemented: serializing an f64";
+            die!(~"Unimplemented: serializing an f64");
         }
         fn emit_f32(&self, _v: f32) {
-            fail ~"Unimplemented: serializing an f32";
+            die!(~"Unimplemented: serializing an f32");
         }
         fn emit_float(&self, _v: float) {
-            fail ~"Unimplemented: serializing a float";
+            die!(~"Unimplemented: serializing a float");
         }
 
         fn emit_char(&self, _v: char) {
-            fail ~"Unimplemented: serializing a char";
+            die!(~"Unimplemented: serializing a char");
         }
 
         fn emit_borrowed_str(&self, v: &str) {

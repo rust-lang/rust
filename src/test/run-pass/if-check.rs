@@ -18,8 +18,8 @@ fn foo(x: uint) {
     if even(x) {
         log(debug, x);
     } else {
-        fail;
+        die!();
     }
 }
 
-fn main() { foo(2u); }
+pub fn main() { foo(2u); }

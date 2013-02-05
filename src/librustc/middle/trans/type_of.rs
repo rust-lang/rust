@@ -17,7 +17,7 @@ use middle::trans::expr;
 use middle::trans::machine;
 use util::ppaux;
 
-use std::map::HashMap;
+use std::oldmap::HashMap;
 use syntax::ast;
 
 pub fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
@@ -87,7 +87,7 @@ pub fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     debug!("type_of %?: %?", t, ty::get(t));
 
     // Check the cache.
-    if cx.lltypes.contains_key(t) { return cx.lltypes.get(t); }
+    if cx.lltypes.contains_key_ref(&t) { return cx.lltypes.get(t); }
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain

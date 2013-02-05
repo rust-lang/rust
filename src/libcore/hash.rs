@@ -286,7 +286,7 @@ impl SipState : io::Writer {
     }
 
     fn seek(&self, _x: int, _s: io::SeekStyle) {
-        fail;
+        die!();
     }
     fn tell(&self) -> uint {
         self.length
@@ -354,7 +354,7 @@ impl &SipState : Streaming {
         let r = self.result_bytes();
         let mut s = ~"";
         for vec::each(r) |b| {
-            s += uint::to_str(*b as uint, 16u);
+            s += uint::to_str_radix(*b as uint, 16u);
         }
         move s
     }
@@ -449,7 +449,7 @@ pub fn test_siphash() {
     fn to_hex_str(r:  &[u8 * 8]) -> ~str {
         let mut s = ~"";
         for vec::each(*r) |b| {
-            s += uint::to_str(*b as uint, 16u);
+            s += uint::to_str_radix(*b as uint, 16u);
         }
         move s
     }

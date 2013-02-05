@@ -14,171 +14,161 @@
  */
 #[forbid(deprecated_mode)];
 
-use map;
-use map::StdMap;
-
-use core::dvec::DVec;
-use core::ops;
+use core::container::{Container, Mutable, Map, Set};
 use core::option::{Some, None};
-use core::option;
 use core::prelude::*;
 
-// FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
-// requires this to be.
-struct SmallIntMap_<T> {
-    v: DVec<Option<T>>,
+pub struct SmallIntMap<T> {
+    priv v: ~[Option<T>],
 }
 
-pub enum SmallIntMap<T> {
-    SmallIntMap_(@SmallIntMap_<T>)
-}
-
-/// Create a smallintmap
-pub fn mk<T: Copy>() -> SmallIntMap<T> {
-    let v = DVec();
-    SmallIntMap_(@SmallIntMap_ { v: v } )
-}
-
-/**
- * Add a value to the map. If the map already contains a value for
- * the specified key then the original value is replaced.
- */
-#[inline(always)]
-pub fn insert<T: Copy>(self: SmallIntMap<T>, key: uint, val: T) {
-    //io::println(fmt!("%?", key));
-    self.v.grow_set_elt(key, &None, Some(val));
-}
-
-/**
- * Get the value for the specified key. If the key does not exist
- * in the map then returns none
- */
-pub pure fn find<T: Copy>(self: SmallIntMap<T>, key: uint) -> Option<T> {
-    if key < self.v.len() { return self.v.get_elt(key); }
-    return None::<T>;
-}
-
-/**
- * Get the value for the specified key
- *
- * # Failure
- *
- * If the key does not exist in the map
- */
-pub pure fn get<T: Copy>(self: SmallIntMap<T>, key: uint) -> T {
-    match find(self, key) {
-      None => {
-        error!("smallintmap::get(): key not present");
-        fail;
-      }
-      Some(move v) => return v
-    }
-}
-
-/// Returns true if the map contains a value for the specified key
-pub pure fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
-    return !find(self, key).is_none();
-}
-
-/// Implements the map::map interface for smallintmap
-impl<V: Copy> SmallIntMap<V>: map::StdMap<uint, V> {
-    pure fn size() -> uint {
-        let mut sz = 0u;
+impl<V> SmallIntMap<V>: Container {
+    /// Return the number of elements in the map
+    pure fn len(&self) -> uint {
+        let mut sz = 0;
         for self.v.each |item| {
-            match *item {
-              Some(_) => sz += 1u,
-              _ => ()
+            if item.is_some() {
+                sz += 1;
             }
         }
         sz
     }
-    #[inline(always)]
-    fn insert(key: uint, value: V) -> bool {
-        let exists = contains_key(self, key);
-        insert(self, key, value);
-        return !exists;
-    }
-    fn remove(key: uint) -> bool {
-        if key >= self.v.len() {
-            return false;
-        }
-        let old = self.v.get_elt(key);
-        self.v.set_elt(key, None);
-        old.is_some()
-    }
-    fn clear() {
-        self.v.set(~[]);
-    }
-    pure fn contains_key(key: uint) -> bool {
-        contains_key(self, key)
-    }
-    pure fn contains_key_ref(key: &uint) -> bool {
-        contains_key(self, *key)
-    }
-    pure fn get(key: uint) -> V { get(self, key) }
-    pure fn find(key: uint) -> Option<V> { find(self, key) }
 
-    fn update_with_key(key: uint, val: V, ff: fn(uint, V, V) -> V) -> bool {
-        match self.find(key) {
-            None            => return self.insert(key, val),
-            Some(copy orig) => return self.insert(key, ff(key, orig, val)),
-        }
+    /// Return true if the map contains no elements
+    pure fn is_empty(&self) -> bool { self.len() == 0 }
+}
+
+impl<V> SmallIntMap<V>: Mutable {
+    /// Clear the map, removing all key-value pairs.
+    fn clear(&mut self) { self.v.clear() }
+}
+
+impl<V> SmallIntMap<V>: Map<uint, V> {
+    /// Return true if the map contains a value for the specified key
+    pure fn contains_key(&self, key: &uint) -> bool {
+        self.find(key).is_some()
     }
 
-    fn update(key: uint, newval: V, ff: fn(V, V) -> V) -> bool {
-        return self.update_with_key(key, newval, |_k, v, v1| ff(v,v1));
-    }
-
-    pure fn each(it: fn(key: uint, value: V) -> bool) {
-        self.each_ref(|k, v| it(*k, *v))
-    }
-    pure fn each_key(it: fn(key: uint) -> bool) {
-        self.each_ref(|k, _v| it(*k))
-    }
-    pure fn each_value(it: fn(value: V) -> bool) {
-        self.each_ref(|_k, v| it(*v))
-    }
-    pure fn each_ref(it: fn(key: &uint, value: &V) -> bool) {
-        let mut idx = 0u, l = self.v.len();
-        while idx < l {
-            match self.v.get_elt(idx) {
-              Some(ref elt) => if !it(&idx, elt) { break },
+    /// Visit all key-value pairs
+    pure fn each(&self, it: fn(key: &uint, value: &V) -> bool) {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref elt) => if !it(&i, elt) { break },
               None => ()
             }
-            idx += 1u;
         }
     }
-    pure fn each_key_ref(blk: fn(key: &uint) -> bool) {
-        self.each_ref(|k, _v| blk(k))
+
+    /// Visit all keys
+    pure fn each_key(&self, blk: fn(key: &uint) -> bool) {
+        self.each(|k, _| blk(k))
     }
-    pure fn each_value_ref(blk: fn(value: &V) -> bool) {
-        self.each_ref(|_k, v| blk(v))
+
+    /// Visit all values
+    pure fn each_value(&self, blk: fn(value: &V) -> bool) {
+        self.each(|_, v| blk(v))
+    }
+
+    /// Return the value corresponding to the key in the map
+    pure fn find(&self, key: &uint) -> Option<&self/V> {
+        if *key < self.v.len() {
+            match self.v[*key] {
+              Some(ref value) => Some(value),
+              None => None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Insert a key-value pair into the map. An existing value for a
+    /// key is replaced by the new value. Return true if the key did
+    /// not already exist in the map.
+    fn insert(&mut self, key: uint, value: V) -> bool {
+        let exists = self.contains_key(&key);
+        let len = self.v.len();
+        if len <= key {
+            vec::grow_fn(&mut self.v, key - len + 1, |_| None);
+        }
+        self.v[key] = Some(value);
+        !exists
+    }
+
+    /// Remove a key-value pair from the map. Return true if the key
+    /// was present in the map, otherwise false.
+    fn remove(&mut self, key: &uint) -> bool {
+        if *key >= self.v.len() {
+            return false;
+        }
+        let removed = self.v[*key].is_some();
+        self.v[*key] = None;
+        removed
     }
 }
 
-impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
-    pure fn index(&self, key: uint) -> V {
-        unsafe {
-            get(*self, key)
-        }
+pub impl<V> SmallIntMap<V> {
+    /// Create an empty SmallIntMap
+    static pure fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+
+    pure fn get(&self, key: &uint) -> &self/V {
+        self.find(key).expect("key not present")
     }
 }
 
-/// Cast the given smallintmap to a map::map
-pub fn as_map<V: Copy>(s: SmallIntMap<V>) -> map::StdMap<uint, V> {
-    s as map::StdMap::<uint, V>
+pub impl<V: Copy> SmallIntMap<V> {
+    // FIXME: #4733, remove after the next snapshot
+    #[cfg(stage2)]
+    fn update_with_key(&mut self, key: uint, val: V,
+                       ff: fn(uint, V, V) -> V) -> bool {
+        match self.find(&key) {
+          None => self.insert(key, val),
+          Some(orig) => self.insert(key, ff(key, copy *orig, val)),
+        }
+    }
+
+    // FIXME: #4733, remove after the next snapshot
+    #[cfg(stage2)]
+    fn update(&mut self, key: uint, newval: V, ff: fn(V, V) -> V) -> bool {
+        self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use smallintmap::{mk, SmallIntMap};
+    use super::SmallIntMap;
 
-    use core::option::None;
-    use core::option;
+    #[test]
+    fn test_len() {
+        let mut map = SmallIntMap::new();
+        assert map.len() == 0;
+        assert map.is_empty();
+        assert map.insert(5, 20);
+        assert map.len() == 1;
+        assert !map.is_empty();
+        assert map.insert(11, 12);
+        assert map.len() == 2;
+        assert !map.is_empty();
+        assert map.insert(14, 22);
+        assert map.len() == 3;
+        assert !map.is_empty();
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut map = SmallIntMap::new();
+        assert map.insert(5, 20);
+        assert map.insert(11, 12);
+        assert map.insert(14, 22);
+        map.clear();
+        assert map.is_empty();
+        assert map.find(&5).is_none();
+        assert map.find(&11).is_none();
+        assert map.find(&14).is_none();
+    }
 
     #[test]
     fn test_insert_with_key() {
-        let map: SmallIntMap<uint> = mk();
+        let mut map = SmallIntMap::new();
 
         // given a new key, initialize it with this new count, given
         // given an existing key, add more to its count
@@ -198,11 +188,11 @@ mod tests {
         map.update_with_key(3, 2, addMoreToCount);
 
         // check the total counts
-        assert 10 == option::get(map.find(3));
-        assert  3 == option::get(map.find(5));
-        assert  1 == option::get(map.find(9));
+        assert map.find(&3).get() == &10;
+        assert map.find(&5).get() == &3;
+        assert map.find(&9).get() == &1;
 
         // sadly, no sevens were counted
-        assert None == map.find(7);
+        assert map.find(&7).is_none();
     }
 }

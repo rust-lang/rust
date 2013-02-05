@@ -12,10 +12,10 @@
 
 
 // -*- rust -*-
-fn my_err(s: ~str) -> ! { log(error, s); fail; }
+fn my_err(s: ~str) -> ! { log(error, s); die!(); }
 
 fn okay(i: uint) -> int {
     if i == 3u { my_err(~"I don't like three"); } else { return 42; }
 }
 
-fn main() { okay(4u); }
+pub fn main() { okay(4u); }

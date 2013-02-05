@@ -216,7 +216,7 @@ break
 const copy
 do drop
 else enum extern
-fail false fn for
+false fn for
 if impl
 let log loop
 match mod move mut
@@ -448,10 +448,10 @@ expression context, the final namespace qualifier is omitted.
 Two examples of paths with type arguments:
 
 ~~~~
-# use std::map;
+# use std::oldmap;
 # fn f() {
 # fn id<T:Copy>(t: T) -> T { t }
-type t = map::HashMap<int,~str>;  // Type arguments used in a type expression
+type t = oldmap::HashMap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);           // Type arguments used in a call expression
 # }
 ~~~~
@@ -692,15 +692,15 @@ mod math {
     type complex = (f64, f64);
     fn sin(f: f64) -> f64 {
         ...
-# fail;
+# die!();
     }
     fn cos(f: f64) -> f64 {
         ...
-# fail;
+# die!();
     }
     fn tan(f: f64) -> f64 {
         ...
-# fail;
+# die!();
     }
 }
 ~~~~~~~~
@@ -844,12 +844,15 @@ mod quux {
         pub fn bar() { }
         pub fn baz() { }
     }
-    
+
     pub use quux::foo::*;
 }
 ~~~~
 
 In this example, the module `quux` re-exports all of the public names defined in `foo`.
+
+Also note that the paths contained in `use` items are relative to the crate root; so, in the previous
+example, the use refers to `quux::foo::*`, and not simply to `foo::*`.
 
 ### Functions
 
@@ -989,13 +992,13 @@ output slot type would normally be. For example:
 ~~~~
 fn my_err(s: &str) -> ! {
     log(info, s);
-    fail;
+    die!();
 }
 ~~~~
 
 We call such functions "diverging" because they never return a value to the
 caller. Every control path in a diverging function must end with a
-[`fail`](#fail-expressions) or a call to another diverging function on every
+`fail!()` or a call to another diverging function on every
 control path. The `!` annotation does *not* denote a type. Rather, the result
 type of a diverging function is a special type called $\bot$ ("bottom") that
 unifies with any type. Rust has no syntax for $\bot$.
@@ -1007,7 +1010,7 @@ were declared without the `!` annotation, the following code would not
 typecheck:
 
 ~~~~
-# fn my_err(s: &str) -> ! { fail }
+# fn my_err(s: &str) -> ! { die!() }
 
 fn f(i: int) -> int {
    if i == 42 {
@@ -1239,7 +1242,7 @@ trait Num {
 impl float: Num {
     static pure fn from_int(n: int) -> float { n as float }
 }
-let x: float = Num::from_int(42);     
+let x: float = Num::from_int(42);
 ~~~~
 
 Traits may inherit from other traits. For example, in
@@ -1612,7 +1615,7 @@ The following are examples of structure expressions:
 ~~~~
 # struct Point { x: float, y: float }
 # struct TuplePoint(float, float);
-# mod game { pub struct User { name: &str, age: uint, mut score: uint } } 
+# mod game { pub struct User { name: &str, age: uint, mut score: uint } }
 # use game;
 Point {x: 10f, y: 20f};
 TuplePoint(10f, 20f);
@@ -1716,15 +1719,12 @@ vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
 
 A [_vector_](#vector-types) _expression_ is written by enclosing zero or
 more comma-separated expressions of uniform type in square brackets.
-The keyword `mut` can be written after the opening bracket to
-indicate that the elements of the resulting vector may be mutated.
-When no mutability is specified, the vector is immutable.
 
 ~~~~
 [1, 2, 3, 4];
 ["a", "b", "c", "d"];
 [0, ..128];             // vector with 128 zeros
-[mut 0u8, 0u8, 0u8, 0u8];
+[0u8, 0u8, 0u8, 0u8];
 ~~~~
 
 ### Index expressions
@@ -1746,7 +1746,6 @@ task in a _failing state_.
 # do task::spawn_unlinked {
 
 ([1, 2, 3, 4])[0];
-([mut 'x', 'y'])[1] = 'z';
 (["a", "b"])[10]; // fails
 
 # }
@@ -1909,8 +1908,8 @@ No allocation or destruction is entailed.
 An example of three different swap expressions:
 
 ~~~~~~~~
-# let mut x = &[mut 0];
-# let mut a = &[mut 0];
+# let mut x = &mut [0];
+# let mut a = &mut [0];
 # let i = 0;
 # let y = {mut z: 0};
 # let b = {mut c: 0};
@@ -2005,11 +2004,11 @@ the unary copy operator is typically only used to cause an argument to a functio
 An example of a copy expression:
 
 ~~~~
-fn mutate(vec: ~[mut int]) {
+fn mutate(mut vec: ~[int]) {
    vec[0] = 10;
 }
 
-let v = ~[mut 1,2,3];
+let v = ~[1,2,3];
 
 mutate(copy v);   // Pass a copy
 
@@ -2291,9 +2290,9 @@ enum List<X> { Nil, Cons(X, @List<X>) }
 let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
-    Cons(_, @Nil) => fail ~"singleton list",
+    Cons(_, @Nil) => die!(~"singleton list"),
     Cons(*)       => return,
-    Nil           => fail ~"empty list"
+    Nil           => die!(~"empty list")
 }
 ~~~~
 
@@ -2330,7 +2329,7 @@ match x {
         return;
     }
     _ => {
-        fail;
+        die!();
     }
 }
 ~~~~
@@ -2418,22 +2417,9 @@ guard may refer to the variables bound within the pattern they follow.
 let message = match maybe_digit {
   Some(x) if x < 10 => process_digit(x),
   Some(x) => process_other(x),
-  None => fail
+  None => die!()
 };
 ~~~~
-
-
-### Fail expressions
-
-~~~~~~~~{.ebnf .gram}
-fail_expr : "fail" expr ? ;
-~~~~~~~~
-
-Evaluating a `fail` expression causes a task to enter the *failing* state. In
-the *failing* state, a task unwinds its stack, destroying all frames and
-running all destructors until it reaches its entry frame, at which point it
-halts execution in the *dead* state.
-
 
 ### Return expressions
 
@@ -2822,7 +2808,7 @@ trait Printable {
 }
 
 impl int: Printable {
-  fn to_str() -> ~str { int::to_str(self, 10) }
+  fn to_str() -> ~str { int::to_str(self) }
 }
 
 fn print(a: @Printable) {
@@ -3154,7 +3140,7 @@ unblock and transition back to *running*.
 
 A task may transition to the *failing* state at any time, due being
 killed by some external event or internally, from the evaluation of a
-`fail` expression. Once *failing*, a task unwinds its stack and
+`fail!()` macro. Once *failing*, a task unwinds its stack and
 transitions to the *dead* state. Unwinding the stack of a task is done by
 the task itself, on its own control stack. If a value with a destructor is
 freed during unwinding, the code for the destructor is run, also on the task's

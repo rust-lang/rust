@@ -21,7 +21,7 @@ mod gravy {
     pub mod test;
 }
 
-fn main() {
+pub fn main() {
     assert biscuits::test::foo() == 10;
     assert gravy::test::foo() == 10;
 }

@@ -23,4 +23,4 @@ mod b {
     }
 }
 
-fn main() { }
+pub fn main() { }

@@ -81,9 +81,9 @@ mod m {
 // Since the bogus configuration isn't defined main will just be
 // parsed, but nothing further will be done with it
 #[cfg(bogus)]
-fn main() { fail }
+pub fn main() { die!() }
 
-fn main() {
+pub fn main() {
     // Exercise some of the configured items in ways that wouldn't be possible
     // if they had the bogus definition
     assert (b);
@@ -95,7 +95,7 @@ fn main() {
 
 fn test_in_fn_ctxt() {
     #[cfg(bogus)]
-    fn f() { fail }
+    fn f() { die!() }
     fn f() { }
     f();
 

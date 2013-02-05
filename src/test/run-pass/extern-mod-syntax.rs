@@ -11,9 +11,9 @@
 // except according to those terms.
 
 extern mod std;
-use std::map::HashMap;
+use std::oldmap::HashMap;
 
-fn main() {
+pub fn main() {
     io::println("Hello world!");
 }
 

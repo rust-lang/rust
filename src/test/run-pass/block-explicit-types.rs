@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
+pub fn main() {
     fn as_buf<T>(s: ~str, f: fn(~str) -> T) -> T { f(s) }
     as_buf(~"foo", |foo: ~str| -> () log(error, foo) );
 }

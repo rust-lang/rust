@@ -10,7 +10,7 @@
 
 
 
-fn main() {
+pub fn main() {
     let mut s = ~"a";
     s += ~"b";
     assert (s[0] == 'a' as u8);
