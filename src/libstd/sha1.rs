@@ -66,7 +66,7 @@ const k3: u32 = 0xCA62C1D6u32;
 
 /// Construct a `sha` object
 pub fn sha1() -> Sha1 {
-    type Sha1State =
+    struct Sha1State
         {h: ~[mut u32],
          mut len_low: u32,
          mut len_high: u32,
@@ -258,7 +258,7 @@ pub fn sha1() -> Sha1 {
             return s;
         }
     }
-    let st = {
+    let st = Sha1State {
         h: vec::cast_to_mut(vec::from_elem(digest_buf_len, 0u32)),
         mut len_low: 0u32,
         mut len_high: 0u32,
