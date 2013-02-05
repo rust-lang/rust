@@ -20,6 +20,8 @@
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
 
+#[legacy_records];
+
 extern mod core(vers = "0.6");
 extern mod std(vers = "0.6");
 extern mod rustc(vers = "0.6");
@@ -29,10 +31,11 @@ use core::*;
 use io::{ReaderUtil, WriterUtil};
 use std::{json, semver, getopts};
 use std::net::url;
-use send_map::linear::LinearMap;
+use hashmap::linear::LinearMap;
 use rustc::metadata::filesearch;
 use rustc::driver::{driver, session};
 use syntax::{ast, attr, codemap, diagnostic, parse, visit};
+use syntax::codemap::spanned;
 
 mod usage;
 mod util;
@@ -83,7 +86,7 @@ impl PackageScript {
 
             for mis.each |a| {
                 match a.node {
-                    ast::meta_name_value(v, ast::spanned {
+                    ast::meta_name_value(v, spanned {
                                                 node: ast::lit_str(s),
                                                 span: _}) => {
                         match v {
@@ -106,7 +109,7 @@ impl PackageScript {
 
             for mis.each |a| {
                 match a.node {
-                    ast::meta_name_value(v, ast::spanned {
+                    ast::meta_name_value(v, spanned {
                                                 node: ast::lit_str(s),
                                                 span: _}) => {
                         match v {
@@ -127,7 +130,7 @@ impl PackageScript {
 
             for mis.each |a| {
                 match a.node {
-                    ast::meta_name_value(v, ast::spanned {
+                    ast::meta_name_value(v, spanned {
                                                 node: ast::lit_str(s),
                                                 span: _}) => {
                         match v {
@@ -156,7 +159,7 @@ impl PackageScript {
                             let (u, t) = load_pkg_dep_attr(mis);
 
                             if u.is_none() {
-                                fail ~"pkg_dep attr without a url value";
+                                fail!(~"pkg_dep attr without a url value");
                             }
 
                             deps.push((u.get(), t));
@@ -165,7 +168,7 @@ impl PackageScript {
                             let f = load_pkg_crate_attr(mis);
 
                             if f.is_none() {
-                                fail ~"pkg_file attr without a file value";
+                                fail!(~"pkg_file attr without a file value");
                             }
 
                             crates.push(f.get());
@@ -222,7 +225,7 @@ impl PackageScript {
 
     // Build the bootstrap and run a command
     // FIXME (#4432): Use workcache to only compile the script when changed
-    fn run(cmd: ~str, test: bool) -> int {
+    fn run(&self, cmd: ~str, test: bool) -> int {
         let work_dir = self.work_dir();
         let input = self.input;
         let sess = self.sess;
@@ -238,12 +241,12 @@ impl PackageScript {
         run::run_program(exe.to_str(), ~[root.to_str(), cmd, test.to_str()])
     }
 
-    fn hash() -> ~str {
+    fn hash(&self) -> ~str {
         fmt!("%s-%s-%s", self.name, util::hash(self.id + self.vers.to_str()),
                          self.vers.to_str())
     }
 
-    fn work_dir() -> Path {
+    fn work_dir(&self) -> Path {
         util::root().push(~"work").push(self.hash())
     }
 }
@@ -255,7 +258,7 @@ struct Ctx {
 }
 
 impl Ctx {
-    fn run(cmd: ~str, args: ~[~str]) {
+    fn run(&self, cmd: ~str, args: ~[~str]) {
         let root = util::root();
 
         util::need_dir(&root);
@@ -333,11 +336,11 @@ impl Ctx {
 
                 self.unprefer(name.get(), vers);
             }
-            _ => fail ~"reached an unhandled command"
+            _ => fail!(~"reached an unhandled command")
         }
     }
 
-    fn do_cmd(cmd: ~str) -> bool {
+    fn do_cmd(&self, cmd: ~str) -> bool {
         match cmd {
             ~"build" | ~"test" => {
                 util::error(~"that command cannot be manually called");
@@ -367,7 +370,7 @@ impl Ctx {
         status == 0
     }
 
-    fn build(dir: &Path, verbose: bool, opt: bool,
+    fn build(&self, dir: &Path, verbose: bool, opt: bool,
              test: bool) -> Option<PackageScript> {
         let cwd = &os::getcwd();
         let script = match PackageScript::parse(dir) {
@@ -450,12 +453,12 @@ impl Ctx {
         Some(script)
     }
 
-    fn compile(crate: &Path, dir: &Path, flags: ~[~str],
+    fn compile(&self, crate: &Path, dir: &Path, flags: ~[~str],
                cfgs: ~[~str], opt: bool, test: bool) -> bool {
         util::compile_crate(None, crate, dir, flags, cfgs, opt, test)
     }
 
-    fn clean() -> bool {
+    fn clean(&self) -> bool {
         let script = match PackageScript::parse(&os::getcwd()) {
             result::Ok(script) => script,
             result::Err(err) => {
@@ -480,23 +483,24 @@ impl Ctx {
         true
     }
 
-    fn info() {
+    fn info(&self) {
         if self.json {
             match PackageScript::parse(&os::getcwd()) {
                 result::Ok(script) => {
-                    let mut map = ~LinearMap();
+                    let mut map = ~LinearMap::new();
 
                     map.insert(~"id", json::String(script.id));
                     map.insert(~"name", json::String(script.name));
                     map.insert(~"vers", json::String(script.vers.to_str()));
                     map.insert(~"deps", json::List(do script.deps.map |&dep| {
                         let (url, target) = dep;
-                        let mut inner = ~LinearMap();
+                        let mut inner = ~LinearMap::new();
 
                         inner.insert(~"url", json::String(url));
 
                         if !target.is_none() {
-                            inner.insert(~"target", json::String(target.get()));
+                            inner.insert(~"target",
+                                         json::String(target.get()));
                         }
 
                         json::Object(inner)
@@ -519,7 +523,12 @@ impl Ctx {
             util::note(fmt!("id: %s", script.id));
             util::note(fmt!("name: %s", script.name));
             util::note(fmt!("vers: %s", script.vers.to_str()));
-            util::note(fmt!("deps: %s", if script.deps.len() > 0 { ~"" } else { ~"none" }));
+            util::note(fmt!("deps: %s",
+                            if script.deps.len() > 0 {
+                                ~""
+                            } else {
+                                ~"none"
+                            }));
 
             for script.deps.each |&dep| {
                 let (url, target) = dep;
@@ -532,7 +541,8 @@ impl Ctx {
         }
     }
 
-    fn install(url: Option<~str>, target: Option<~str>, cache: bool) -> bool {
+    fn install(&self, url: Option<~str>,
+               target: Option<~str>, cache: bool) -> bool {
         let mut success;
         let mut dir;
 
@@ -608,7 +618,7 @@ impl Ctx {
         true
     }
 
-    fn fetch(dir: &Path, url: ~str, target: Option<~str>) -> bool {
+    fn fetch(&self, dir: &Path, url: ~str, target: Option<~str>) -> bool {
         let url = if str::find_str(url, "://").is_none() {
             ~"http://" + url }
         else { url };
@@ -641,7 +651,7 @@ impl Ctx {
         }
     }
 
-    fn fetch_curl(dir: &Path, url: ~str) -> bool {
+    fn fetch_curl(&self, dir: &Path, url: ~str) -> bool {
         util::note(fmt!("fetching from %s using curl", url));
 
         let tar = dir.dir_path().push(&dir.file_path().to_str() + ~".tar");
@@ -666,7 +676,7 @@ impl Ctx {
         true
     }
 
-    fn fetch_git(dir: &Path, url: ~str, target: Option<~str>) -> bool {
+    fn fetch_git(&self, dir: &Path, url: ~str, target: Option<~str>) -> bool {
         util::note(fmt!("fetching from %s using git", url));
 
         // Git can't clone into a non-empty directory
@@ -698,7 +708,7 @@ impl Ctx {
         true
     }
 
-    fn prefer(id: ~str, vers: Option<~str>) -> bool {
+    fn prefer(&self, id: ~str, vers: Option<~str>) -> bool {
         let package = match util::get_pkg(id, vers) {
             result::Ok(package) => package,
             result::Err(err) => {
@@ -735,7 +745,7 @@ impl Ctx {
         true
     }
 
-    fn test() -> bool {
+    fn test(&self) -> bool {
         let script = match self.build(&os::getcwd(), false, false, true) {
             Some(script) => script,
             None => {
@@ -773,7 +783,7 @@ impl Ctx {
         true
     }
 
-    fn uninstall(id: ~str, vers: Option<~str>) -> bool {
+    fn uninstall(&self, id: ~str, vers: Option<~str>) -> bool {
         let package = match util::get_pkg(id, vers) {
             result::Ok(package) => package,
             result::Err(err) => {
@@ -812,7 +822,7 @@ impl Ctx {
         true
     }
 
-    fn unprefer(id: ~str, vers: Option<~str>) -> bool {
+    fn unprefer(&self, id: ~str, vers: Option<~str>) -> bool {
         let package = match util::get_pkg(id, vers) {
             result::Ok(package) => package,
             result::Err(err) => {
@@ -904,7 +914,7 @@ pub fn main() {
     Ctx {
         cfgs: cfgs,
         json: json,
-        mut dep_cache: LinearMap()
+        mut dep_cache: LinearMap::new()
     }.run(cmd, args);
 }
 
@@ -942,31 +952,31 @@ pub fn run(listeners: ~[Listener]) {
 }
 
 pub impl Crate {
-    pub fn flag(flag: ~str) -> Crate {
+    pub fn flag(&self, flag: ~str) -> Crate {
         Crate {
             flags: vec::append(copy self.flags, ~[flag]),
-            .. copy self
+            .. copy *self
         }
     }
 
-    pub fn flags(flags: ~[~str]) -> Crate {
+    pub fn flags(&self, flags: ~[~str]) -> Crate {
         Crate {
             flags: vec::append(copy self.flags, flags),
-            .. copy self
+            .. copy *self
         }
     }
 
-    pub fn cfg(cfg: ~str) -> Crate {
+    pub fn cfg(&self, cfg: ~str) -> Crate {
         Crate {
             cfgs: vec::append(copy self.cfgs, ~[cfg]),
-            .. copy self
+            .. copy *self
         }
     }
 
-    pub fn cfgs(cfgs: ~[~str]) -> Crate {
+    pub fn cfgs(&self, cfgs: ~[~str]) -> Crate {
         Crate {
             cfgs: vec::append(copy self.cfgs, cfgs),
-            .. copy self
+            .. copy *self
         }
     }
 }

@@ -9,16 +9,19 @@
 // except according to those terms.
 
 use core::*;
-use send_map::linear::LinearMap;
+use hashmap::linear::LinearMap;
 use rustc::metadata::filesearch;
 use rustc::driver::{driver, session};
 use syntax::ast_util::*;
 use syntax::{ast, attr, codemap, diagnostic, fold, parse, visit};
-use codemap::span;
+use codemap::{span, dummy_sp, spanned};
 use std::semver;
 use std::{json, term, sort, getopts};
 use getopts::groups::getopts;
 use Listener;
+
+use syntax::ext::base::{mk_ctxt, ext_ctxt};
+use syntax::ext::build;
 
 pub struct Package {
     id: ~str,
@@ -30,7 +33,7 @@ pub struct Package {
 pub fn root() -> Path {
     match filesearch::get_rustpkg_root() {
         result::Ok(path) => path,
-        result::Err(err) => fail err
+        result::Err(err) => fail!(err)
     }
 }
 
@@ -59,23 +62,6 @@ pub fn parse_name(id: ~str) -> result::Result<~str, ~str> {
     result::Ok(parts.last())
 }
 
-fn mk_rustpkg_use(ctx: @ReadyCtx) -> @ast::view_item {
-    let vers = ast::lit_str(@~"0.6");
-    let vers = no_span(vers);
-    let mi = ast::meta_name_value(~"vers", vers);
-    let mi = no_span(mi);
-    let vi = ast::view_item_use(ctx.sess.ident_of(~"rustpkg"),
-                                ~[@mi],
-                                ctx.sess.next_node_id());
-
-    @ast::view_item {
-        node: vi,
-        attrs: ~[],
-        vis: ast::private,
-        span: dummy_sp()
-    }
-}
-
 struct ListenerFn {
     cmds: ~[~str],
     span: codemap::span,
@@ -85,11 +71,12 @@ struct ListenerFn {
 struct ReadyCtx {
     sess: session::Session,
     crate: @ast::crate,
+    ext_cx: ext_ctxt,
     mut path: ~[ast::ident],
     mut fns: ~[ListenerFn]
 }
 
-fn fold_mod(ctx: @ReadyCtx, m: ast::_mod,
+fn fold_mod(_ctx: @ReadyCtx, m: ast::_mod,
             fold: fold::ast_fold) -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
@@ -101,21 +88,11 @@ fn fold_mod(ctx: @ReadyCtx, m: ast::_mod,
     }
 
     fold::noop_fold_mod(ast::_mod {
-        view_items: vec::append_one(m.view_items, mk_rustpkg_use(ctx)),
         items: do vec::map(m.items) |item| {
             strip_main(*item)
-        }
+        },
+        .. m
     }, fold)
-}
-
-fn fold_crate(ctx: @ReadyCtx, crate: ast::crate_,
-              fold: fold::ast_fold) -> ast::crate_ {
-    let folded = fold::noop_fold_crate(crate, fold);
-
-    ast::crate_ {
-        module: add_pkg_module(ctx, /*bad*/copy folded.module),
-        .. folded
-    }
 }
 
 fn fold_item(ctx: @ReadyCtx, item: @ast::item,
@@ -156,315 +133,50 @@ fn fold_item(ctx: @ReadyCtx, item: @ast::item,
     res
 }
 
-fn mk_rustpkg_import(ctx: @ReadyCtx) -> @ast::view_item {
-    let path = @ast::path {
-        span: dummy_sp(),
-        global: false,
-        idents: ~[ctx.sess.ident_of(~"rustpkg")],
-        rp: None,
-        types: ~[]
-    };
-    let vp = @no_span(ast::view_path_simple(ctx.sess.ident_of(~"rustpkg"),
-                                            path, ast::type_value_ns,
-                                            ctx.sess.next_node_id()));
-
-    @ast::view_item {
-        node: ast::view_item_import(~[vp]),
-        attrs: ~[],
-        vis: ast::private,
-        span: dummy_sp()
-    }
-}
-
 fn add_pkg_module(ctx: @ReadyCtx, m: ast::_mod) -> ast::_mod {
-    let listeners = mk_listeners(ctx);
-    let main = mk_main(ctx);
-    let pkg_mod = @ast::_mod {
-        view_items: ~[mk_rustpkg_import(ctx)],
-        items: ~[main, listeners]
-    };
-    let resolve_unexported_attr =
-        attr::mk_attr(attr::mk_word_item(~"!resolve_unexported"));
-    let item_ = ast::item_mod(*pkg_mod);
-    let item = @ast::item {
-        ident: ctx.sess.ident_of(~"__pkg"),
-        attrs: ~[resolve_unexported_attr],
-        id: ctx.sess.next_node_id(),
-        node: item_,
-        vis: ast::public,
-        span: dummy_sp(),
-    };
-
-    ast::_mod {
-        items: vec::append_one(/*bad*/copy m.items, item),
-        .. m
-    }
-}
-
-fn no_span<T: Copy>(t: T) -> ast::spanned<T> {
-    ast::spanned {
-        node: t,
-        span: dummy_sp()
-    }
-}
-
-fn path_node(ids: ~[ast::ident]) -> @ast::path {
-    @ast::path {
-        span: dummy_sp(),
-        global: false,
-        idents: ids,
-        rp: None,
-        types: ~[]
-    }
-}
-
-fn path_node_global(ids: ~[ast::ident]) -> @ast::path {
-    @ast::path {
-        span: dummy_sp(),
-        global: true,
-        idents: ids,
-        rp: None,
-        types: ~[]
-    }
-}
-
-fn mk_listeners(ctx: @ReadyCtx) -> @ast::item {
-    let ret_ty = mk_listener_vec_ty(ctx);
-    let decl = ast::fn_decl {
-        inputs: ~[],
-        output: ret_ty,
-        cf: ast::return_val
-    };
     let listeners = mk_listener_vec(ctx);
-    let body_ = default_block(~[], option::Some(listeners),
-                              ctx.sess.next_node_id());
-    let body = no_span(body_);
-    let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
-
-    @ast::item {
-        ident: ctx.sess.ident_of(~"listeners"),
-        attrs: ~[],
-        id: ctx.sess.next_node_id(),
-        node: item_,
-        vis: ast::public,
-        span: dummy_sp(),
-    }
-}
-
-fn mk_path(ctx: @ReadyCtx, path: ~[ast::ident]) -> @ast::path {
-    path_node(~[ctx.sess.ident_of(~"rustpkg")] + path)
-}
-
-fn mk_listener_vec_ty(ctx: @ReadyCtx) -> @ast::Ty {
-    let listener_ty_path = mk_path(ctx, ~[ctx.sess.ident_of(~"Listener")]);
-    let listener_ty = ast::Ty {
-        id: ctx.sess.next_node_id(),
-        node: ast::ty_path(listener_ty_path,
-                           ctx.sess.next_node_id()),
-        span: dummy_sp()
-    };
-    let vec_mt = ast::mt {
-        ty: @listener_ty,
-        mutbl: ast::m_imm
-    };
-    let inner_ty = @ast::Ty {
-        id: ctx.sess.next_node_id(),
-        node: ast::ty_vec(vec_mt),
-        span: dummy_sp()
-    };
-
-    @ast::Ty {
-        id: ctx.sess.next_node_id(),
-        node: ast::ty_uniq(ast::mt {
-            ty: inner_ty,
-            mutbl: ast::m_imm
-        }),
-        span: dummy_sp()
+    let ext_cx = ctx.ext_cx;
+    let item = quote_item! (
+        mod __pkg {
+            extern mod rustpkg (vers="0.6");
+            const listeners : &[rustpkg::Listener] = $listeners;
+            #[main]
+            fn main() {
+                rustpkg::run(listeners);
+            }
+        }
+    );
+    ast::_mod {
+        items: vec::append_one(/*bad*/copy m.items, item.get()),
+        .. m
     }
 }
 
 fn mk_listener_vec(ctx: @ReadyCtx) -> @ast::expr {
     let fns = ctx.fns;
-
     let descs = do fns.map |listener| {
         mk_listener_rec(ctx, *listener)
     };
-    let inner_expr = @ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: ast::expr_vec(descs, ast::m_imm),
-        span: dummy_sp()
-    };
-
-    @ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: ast::expr_vstore(inner_expr, ast::expr_vstore_uniq),
-        span: dummy_sp()
-    }
+    build::mk_slice_vec_e(ctx.ext_cx, dummy_sp(), descs)
 }
 
 fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
+
     let span = listener.span;
-    let path = /*bad*/copy listener.path;
-    let descs = do listener.cmds.map |&cmd| {
-        let inner = @ast::expr {
-            id: ctx.sess.next_node_id(),
-            callee_id: ctx.sess.next_node_id(),
-            node: ast::expr_lit(@no_span(ast::lit_str(@cmd))),
-            span: span
-        };
+    let cmds = do listener.cmds.map |&cmd| {
+        build::mk_base_str(ctx.ext_cx, span, cmd)
+    };
 
-        @ast::expr {
-            id: ctx.sess.next_node_id(),
-            callee_id: ctx.sess.next_node_id(),
-            node: ast::expr_vstore(inner, ast::expr_vstore_uniq),
-            span: dummy_sp()
+    let cmds_expr = build::mk_slice_vec_e(ctx.ext_cx, span, cmds);
+    let cb_expr = build::mk_path(ctx.ext_cx, span, copy listener.path);
+    let ext_cx = ctx.ext_cx;
+
+    quote_expr!(
+        Listener {
+            cmds: $cmds_expr,
+            cb: $cb_expr
         }
-    };
-    let cmd_expr_inner = @ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: ast::expr_vec(descs, ast::m_imm),
-        span: dummy_sp()
-    };
-    let cmd_expr = ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: ast::expr_vstore(cmd_expr_inner, ast::expr_vstore_uniq),
-        span: dummy_sp()
-    };
-    let cmd_field = no_span(ast::field_ {
-        mutbl: ast::m_imm,
-        ident: ctx.sess.ident_of(~"cmds"),
-        expr: @cmd_expr,
-    });
-
-    let cb_path = path_node_global(path);
-    let cb_expr = ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: ast::expr_path(cb_path),
-        span: span
-    };
-    let cb_wrapper_expr = mk_fn_wrapper(ctx, cb_expr, span);
-    let cb_field = no_span(ast::field_ {
-        mutbl: ast::m_imm,
-        ident: ctx.sess.ident_of(~"cb"),
-        expr: cb_wrapper_expr
-    });
-
-    let listener_path = mk_path(ctx, ~[ctx.sess.ident_of(~"Listener")]);
-    let listener_rec_ = ast::expr_struct(listener_path,
-                                         ~[cmd_field, cb_field],
-                                         option::None);
-    @ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: listener_rec_,
-        span: span
-    }
-}
-
-fn mk_fn_wrapper(ctx: @ReadyCtx, fn_path_expr: ast::expr,
-                 span: span) -> @ast::expr {
-    let call_expr = ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: ast::expr_call(@fn_path_expr, ~[], false),
-        span: span
-    };
-    let call_stmt = no_span(ast::stmt_semi(@call_expr,
-                                           ctx.sess.next_node_id()));
-    let wrapper_decl = ast::fn_decl {
-        inputs: ~[],
-        output: @ast::Ty {
-            id: ctx.sess.next_node_id(),
-            node: ast::ty_nil, span: span
-        },
-        cf: ast::return_val
-    };
-    let wrapper_body = no_span(ast::blk_ {
-        view_items: ~[],
-        stmts: ~[@call_stmt],
-        expr: option::None,
-        id: ctx.sess.next_node_id(),
-        rules: ast::default_blk
-    });
-
-    @ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: ast::expr_fn(ast::ProtoBare, wrapper_decl,
-                           wrapper_body, @~[]),
-        span: span
-    }
-}
-
-fn mk_main(ctx: @ReadyCtx) -> @ast::item {
-    let ret_ty = ast::Ty {
-        id: ctx.sess.next_node_id(),
-        node: ast::ty_nil,
-        span: dummy_sp()
-    };
-    let decl = ast::fn_decl {
-        inputs: ~[],
-        output: @ret_ty,
-        cf: ast::return_val
-    };
-    let run_call_expr = mk_run_call(ctx);
-    let body_ = default_block(~[], option::Some(run_call_expr),
-                              ctx.sess.next_node_id());
-    let body = ast::spanned {
-        node: body_,
-        span: dummy_sp()
-    };
-    let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
-
-    @ast::item {
-        ident: ctx.sess.ident_of(~"main"),
-        attrs: ~[attr::mk_attr(attr::mk_word_item(~"main"))],
-        id: ctx.sess.next_node_id(),
-        node: item_,
-        vis: ast::public,
-        span: dummy_sp(),
-    }
-}
-
-fn mk_run_call(ctx: @ReadyCtx) -> @ast::expr {
-    let listener_path = path_node(~[ctx.sess.ident_of(~"listeners")]);
-    let listener_path_expr_ = ast::expr_path(listener_path);
-    let listener_path_expr = ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: listener_path_expr_,
-        span: dummy_sp()
-    };
-    let listener_call_expr_ = ast::expr_call(@listener_path_expr, ~[], false);
-    let listener_call_expr = ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: listener_call_expr_,
-        span: dummy_sp()
-    };
-    let rustpkg_run_path = mk_path(ctx, ~[ctx.sess.ident_of(~"run")]);
-
-    let rustpkg_run_path_expr_ = ast::expr_path(rustpkg_run_path);
-    let rustpkg_run_path_expr = ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: rustpkg_run_path_expr_,
-        span: dummy_sp()
-    };
-    let rustpkg_run_call_expr_ = ast::expr_call(@rustpkg_run_path_expr,
-                                               ~[@listener_call_expr],
-                                               false);
-    @ast::expr {
-        id: ctx.sess.next_node_id(),
-        callee_id: ctx.sess.next_node_id(),
-        node: rustpkg_run_call_expr_,
-        span: dummy_sp()
-    }
+    )
 }
 
 /// Generate/filter main function, add the list of commands, etc.
@@ -473,11 +185,12 @@ pub fn ready_crate(sess: session::Session,
     let ctx = @ReadyCtx {
         sess: sess,
         crate: crate,
+        ext_cx: mk_ctxt(sess.parse_sess, copy sess.opts.cfg),
         mut path: ~[],
         mut fns: ~[]
     };
     let precursor = @fold::AstFoldFns {
-        fold_crate: fold::wrap(|a, b| fold_crate(ctx, a, b)),
+        // fold_crate: fold::wrap(|a, b| fold_crate(ctx, a, b)),
         fold_item: |a, b| fold_item(ctx, a, b),
         fold_mod: |a, b| fold_mod(ctx, a, b),
         .. *fold::default_ast_fold()
@@ -497,7 +210,7 @@ pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
 
 pub fn need_dir(s: &Path) {
     if !os::path_is_dir(s) && !os::make_dir(s, 493_i32) {
-        fail fmt!("can't create dir: %s", s.to_str());
+        fail!(fmt!("can't create dir: %s", s.to_str()));
     }
 }
 
@@ -509,7 +222,9 @@ pub fn note(msg: ~str) {
         out.write_str(~"note: ");
         term::reset(out);
         out.write_line(msg);
-    } else { out.write_line(~"note: " + msg); }
+    } else {
+        out.write_line(~"note: " + msg);
+    }
 }
 
 pub fn warn(msg: ~str) {
@@ -520,7 +235,9 @@ pub fn warn(msg: ~str) {
         out.write_str(~"warning: ");
         term::reset(out);
         out.write_line(msg);
-    }else { out.write_line(~"warning: " + msg); }
+    } else {
+        out.write_line(~"warning: " + msg);
+    }
 }
 
 pub fn error(msg: ~str) {
@@ -531,8 +248,9 @@ pub fn error(msg: ~str) {
         out.write_str(~"error: ");
         term::reset(out);
         out.write_line(msg);
+    } else {
+        out.write_line(~"error: " + msg);
     }
-    else { out.write_line(~"error: " + msg); }
 }
 
 pub fn hash(data: ~str) -> ~str {
@@ -590,13 +308,13 @@ pub fn wait_for_lock(path: &Path) {
 
 fn _add_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
     for packages.each |&package| {
-        match package {
-            json::Object(map) => {
+        match &package {
+            &json::Object(ref map) => {
                 let mut has_id = false;
 
                 match map.get(&~"id") {
-                    json::String(str) => {
-                        if pkg.id == str {
+                    &json::String(ref str) => {
+                        if pkg.id == *str {
                             has_id = true;
                         }
                     }
@@ -604,9 +322,9 @@ fn _add_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
                 }
 
                 match map.get(&~"vers") {
-                    json::String(str) => {
-                        if has_id && pkg.vers.to_str() == str {
-                            return packages;
+                    &json::String(ref str) => {
+                        if has_id && pkg.vers.to_str() == *str {
+                            return copy packages;
                         }
                     }
                     _ => {}
@@ -616,7 +334,7 @@ fn _add_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
         }
     }
 
-    let mut map = ~LinearMap();
+    let mut map = ~LinearMap::new();
 
     map.insert(~"id", json::String(pkg.id));
     map.insert(~"vers", json::String(pkg.vers.to_str()));
@@ -631,13 +349,13 @@ fn _add_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
 }
 
 fn _rm_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
-    do packages.filter_map |&package| {
-        match package {
-            json::Object(map) => {
+    do packages.filter_mapped |&package| {
+        match &package {
+            &json::Object(ref map) => {
                 let mut has_id = false;
 
                 match map.get(&~"id") {
-                    json::String(str) => {
+                    &json::String(str) => {
                         if pkg.id == str {
                             has_id = true;
                         }
@@ -646,14 +364,17 @@ fn _rm_pkg(packages: ~[json::Json], pkg: &Package) -> ~[json::Json] {
                 }
 
                 match map.get(&~"vers") {
-                    json::String(str) => {
-                        if has_id && pkg.vers.to_str() == str { None }
-                        else { Some(package) }
+                    &json::String(ref str) => {
+                        if has_id && pkg.vers.to_str() == *str {
+                            None
+                        } else {
+                            Some(copy package)
+                        }
                     }
-                    _ => { Some(package) }
+                    _ => { Some(copy package) }
                 }
             }
-            _ => { Some(package) }
+            _ => { Some(copy package) }
         }
     }
 }
@@ -722,7 +443,7 @@ pub fn get_pkg(id: ~str,
         match package {
             json::Object(map) => {
                 let pid = match map.get(&~"id") {
-                    json::String(str) => str,
+                    &json::String(str) => str,
                     _ => loop
                 };
                 let pname = match parse_name(pid) {
@@ -734,12 +455,12 @@ pub fn get_pkg(id: ~str,
                     }
                 };
                 let pvers = match map.get(&~"vers") {
-                    json::String(str) => str,
+                    &json::String(str) => str,
                     _ => loop
                 };
                 if pid == id || pname == name {
                     let bins = match map.get(&~"bins") {
-                        json::List(list) => {
+                        &json::List(ref list) => {
                             do list.map |&bin| {
                                 match bin {
                                     json::String(str) => str,
@@ -750,7 +471,7 @@ pub fn get_pkg(id: ~str,
                         _ => ~[]
                     };
                     let libs = match map.get(&~"libs") {
-                        json::List(list) => {
+                        &json::List(ref list) => {
                             do list.map |&lib| {
                                 match lib {
                                     json::String(str) => str,
@@ -916,7 +637,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
 
         for mis.each |a| {
             match a.node {
-                ast::meta_name_value(v, ast::spanned {node: ast::lit_str(s),
+                ast::meta_name_value(v, spanned {node: ast::lit_str(s),
                                          span: _}) => {
                     match v {
                         ~"name" => name = Some(*s),
@@ -934,7 +655,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
 
     for crate.node.attrs.each |a| {
         match a.node.value.node {
-            ast::meta_name_value(v, ast::spanned {node: ast::lit_str(s),
+            ast::meta_name_value(v, spanned {node: ast::lit_str(s),
                                      span: _}) => {
                 match v {
                     ~"crate_type" => crate_type = Some(*s),
@@ -1051,11 +772,13 @@ pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
-pub fn link_exe(src: &Path, dest: &Path) -> bool unsafe {
-    do str::as_c_str(src.to_str()) |src_buf| {
-        do str::as_c_str(dest.to_str()) |dest_buf| {
-            libc::link(src_buf, dest_buf) == 0 as libc::c_int &&
-            libc::chmod(dest_buf, 755) == 0 as libc::c_int
+pub fn link_exe(src: &Path, dest: &Path) -> bool {
+    unsafe {
+        do str::as_c_str(src.to_str()) |src_buf| {
+            do str::as_c_str(dest.to_str()) |dest_buf| {
+                libc::link(src_buf, dest_buf) == 0 as libc::c_int &&
+                    libc::chmod(dest_buf, 755) == 0 as libc::c_int
+            }
         }
     }
 }

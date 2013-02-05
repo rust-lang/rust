@@ -19,169 +19,220 @@ use to_str::ToStr;
 use char;
 use core::cmp;
 
+#[deriving_eq]
+pub enum Identifier {
+    Numeric(uint),
+    AlphaNumeric(~str)
+}
+
+impl cmp::Ord for Identifier {
+    #[inline(always)]
+    pure fn lt(&self, other: &Identifier) -> bool {
+        match (self, other) {
+            (&Numeric(a), &Numeric(b)) => a < b,
+            (&Numeric(_), _) => true,
+            (&AlphaNumeric(ref a), &AlphaNumeric(ref b)) => *a < *b,
+            (&AlphaNumeric(_), _) => false
+        }
+    }
+    #[inline(always)]
+    pure fn le(&self, other: &Identifier) -> bool {
+        ! (other < self)
+    }
+    #[inline(always)]
+    pure fn gt(&self, other: &Identifier) -> bool {
+        other < self
+    }
+    #[inline(always)]
+    pure fn ge(&self, other: &Identifier) -> bool {
+        ! (self < other)
+    }
+}
+
+impl ToStr for Identifier {
+    #[inline(always)]
+    pure fn to_str(&self) -> ~str {
+        match self {
+            &Numeric(n) => n.to_str(),
+            &AlphaNumeric(ref s) => s.to_str()
+        }
+    }
+}
+
+
+#[deriving_eq]
 pub struct Version {
     major: uint,
     minor: uint,
     patch: uint,
-    tag: Option<~str>,
+    pre: ~[Identifier],
+    build: ~[Identifier],
 }
 
-impl Version: ToStr {
+impl ToStr for Version {
     #[inline(always)]
-    pure fn to_str() -> ~str {
-        let suffix = match copy self.tag {
-            Some(tag) => ~"-" + tag,
-            None => ~""
+    pure fn to_str(&self) -> ~str {
+        let s = fmt!("%u.%u.%u", self.major, self.minor, self.patch);
+        let s = if self.pre.is_empty() {
+            s
+        } else {
+            s + "-" + str::connect(self.pre.map(|i| i.to_str()), ".")
         };
-
-        fmt!("%u.%u.%u%s", self.major, self.minor, self.patch, suffix)
+        if self.build.is_empty() {
+            s
+        } else {
+            s + "+" + str::connect(self.build.map(|i| i.to_str()), ".")
+        }
     }
 }
 
-impl Version: cmp::Ord {
+impl cmp::Ord for Version {
     #[inline(always)]
     pure fn lt(&self, other: &Version) -> bool {
+
         self.major < other.major ||
-        self.minor < other.minor ||
-        self.patch < other.patch ||
-        (match self.tag {
-            Some(stag) => match other.tag {
-                Some(otag) => stag < otag,
-                None => true
-            },
-            None => false
-        })
+
+            (self.major == other.major &&
+             self.minor < other.minor) ||
+
+            (self.major == other.major &&
+             self.minor == other.minor &&
+             self.patch < other.patch) ||
+
+            (self.major == other.major &&
+             self.minor == other.minor &&
+             self.patch == other.patch &&
+             // NB: semver spec says 0.0.0-pre < 0.0.0
+             // but the version of ord defined for vec
+             // says that [] < [pre], so we alter it
+             // here.
+             (match (self.pre.len(), other.pre.len()) {
+                 (0, 0) => false,
+                 (0, _) => false,
+                 (_, 0) => true,
+                 (_, _) => self.pre < other.pre
+             })) ||
+
+            (self.major == other.major &&
+             self.minor == other.minor &&
+             self.patch == other.patch &&
+             self.pre == other.pre &&
+             self.build < other.build)
     }
+
     #[inline(always)]
     pure fn le(&self, other: &Version) -> bool {
-        self.major <= other.major ||
-        self.minor <= other.minor ||
-        self.patch <= other.patch ||
-        (match self.tag {
-            Some(stag) => match other.tag {
-                Some(otag) => stag <= otag,
-                None => true
-            },
-            None => false
-        })
+        ! (other < self)
     }
     #[inline(always)]
     pure fn gt(&self, other: &Version) -> bool {
-        self.major > other.major ||
-        self.minor > other.minor ||
-        self.patch > other.patch ||
-        (match self.tag {
-            Some(stag) => match other.tag {
-                Some(otag) => stag > otag,
-                None => false
-            },
-            None => true
-        })
+        other < self
     }
     #[inline(always)]
     pure fn ge(&self, other: &Version) -> bool {
-        self.major >= other.major ||
-        self.minor >= other.minor ||
-        self.patch >= other.patch ||
-        (match self.tag {
-            Some(stag) => match other.tag {
-                Some(otag) => stag >= otag,
-                None => false
-            },
-            None => true
-        })
+        ! (self < other)
     }
 }
 
-fn read_whitespace(rdr: io::Reader, ch: char) -> char {
-    let mut nch = ch;
-
-    while char::is_whitespace(nch) {
-        nch = rdr.read_char();
-    }
-
-    nch
+condition! {
+    bad_parse: () -> ();
 }
 
-fn parse_reader(rdr: io::Reader) -> Option<(Version, char)> {
-    fn read_digits(rdr: io::Reader, ch: char) -> Option<(uint, char)> {
-        let mut buf = ~"";
-        let mut nch = ch;
-
-        while nch != -1 as char {
-            match nch {
-              '0' .. '9' => buf += str::from_char(nch),
-              _ => break
-            }
-
-            nch = rdr.read_char();
-        }
-
-        do uint::from_str(buf).chain_ref |&i| {
-            Some((i, nch))
-        }
+fn take_nonempty_prefix(rdr: io::Reader,
+                        ch: char,
+                        pred: fn(char) -> bool) -> (~str, char) {
+    let mut buf = ~"";
+    let mut ch = ch;
+    while pred(ch) {
+        str::push_char(&mut buf, ch);
+        ch = rdr.read_char();
     }
-
-    fn read_tag(rdr: io::Reader) -> Option<(~str, char)> {
-        let mut ch = rdr.read_char();
-        let mut buf = ~"";
-
-        while ch != -1 as char {
-            match ch {
-                '0' .. '9' | 'A' .. 'Z' | 'a' .. 'z' | '-' => {
-                    buf += str::from_char(ch);
-                }
-                _ => break
-            }
-
-            ch = rdr.read_char();
-        }
-
-        if buf == ~"" { return None; }
-        else { Some((buf, ch)) }
+    if buf.is_empty() {
+        bad_parse::cond.raise(())
     }
+    debug!("extracted nonempty prefix: %s", buf);
+    (buf, ch)
+}
 
-    let ch = read_whitespace(rdr, rdr.read_char());
-    let (major, ch) = match read_digits(rdr, ch) {
-        None => return None,
-        Some(item) => item
-    };
+fn take_num(rdr: io::Reader, ch: char) -> (uint, char) {
+    let (s, ch) = take_nonempty_prefix(rdr, ch, char::is_digit);
+    match uint::from_str(s) {
+        None => { bad_parse::cond.raise(()); (0, ch) },
+        Some(i) => (i, ch)
+    }
+}
 
-    if ch != '.' { return None; }
-
-    let (minor, ch) = match read_digits(rdr, rdr.read_char()) {
-        None => return None,
-        Some(item) => item
-    };
-
-    if ch != '.' { return None; }
-
-    let (patch, ch) = match read_digits(rdr, rdr.read_char()) {
-        None => return None,
-        Some(item) => item
-    };
-    let (tag, ch) = if ch == '-' {
-        match read_tag(rdr) {
-            None => return None,
-            Some((tag, ch)) => (Some(tag), ch)
+fn take_ident(rdr: io::Reader, ch: char) -> (Identifier, char) {
+    let (s,ch) = take_nonempty_prefix(rdr, ch, char::is_alphanumeric);
+    if s.all(char::is_digit) {
+        match uint::from_str(s) {
+            None => { bad_parse::cond.raise(()); (Numeric(0), ch) },
+            Some(i) => (Numeric(i), ch)
         }
     } else {
-        (None, ch)
-    };
-
-    Some((Version { major: major, minor: minor, patch: patch, tag: tag },
-          ch))
+        (AlphaNumeric(s), ch)
+    }
 }
 
-pub fn parse(s: &str) -> Option<Version> {
-    do io::with_str_reader(s) |rdr| {
-        do parse_reader(rdr).chain_ref |&item| {
-            let (version, ch) = item;
+fn expect(ch: char, c: char) {
+    if ch != c {
+        bad_parse::cond.raise(())
+    }
+}
 
-            if read_whitespace(rdr, ch) != -1 as char {
+fn parse_reader(rdr: io::Reader) -> Version {
+
+    let (major, ch) = take_num(rdr, rdr.read_char());
+    expect(ch, '.');
+    let (minor, ch) = take_num(rdr, rdr.read_char());
+    expect(ch, '.');
+    let (patch, ch) = take_num(rdr, rdr.read_char());
+
+    let mut pre = ~[];
+    let mut build = ~[];
+
+    let mut ch = ch;
+    if ch == '-' {
+        loop {
+            let (id, c) = take_ident(rdr, rdr.read_char());
+            pre.push(id);
+            ch = c;
+            if ch != '.' { break; }
+        }
+    }
+
+    if ch == '+' {
+        loop {
+            let (id, c) = take_ident(rdr, rdr.read_char());
+            build.push(id);
+            ch = c;
+            if ch != '.' { break; }
+        }
+    }
+
+    Version {
+        major: major,
+        minor: minor,
+        patch: patch,
+        pre: pre,
+        build: build,
+    }
+}
+
+
+pub fn parse(s: &str) -> Option<Version> {
+    if ! str::is_ascii(s) {
+        return None;
+    }
+    let s = s.trim();
+    let mut bad = false;
+    do bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).in {
+        do io::with_str_reader(s) |rdr| {
+            let v = parse_reader(rdr);
+            if bad || v.to_str() != s {
                 None
             } else {
-                Some(version)
+                Some(v)
             }
         }
     }
@@ -204,26 +255,68 @@ fn test_parse() {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        tag: None,
+        pre: ~[],
+        build: ~[],
     });
     assert parse("  1.2.3  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        tag: None,
+        pre: ~[],
+        build: ~[],
     });
     assert parse("1.2.3-alpha1") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        tag: Some("alpha1")
+        pre: ~[AlphaNumeric(~"alpha1")],
+        build: ~[]
     });
     assert parse("  1.2.3-alpha1  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        tag: Some("alpha1")
+        pre: ~[AlphaNumeric(~"alpha1")],
+        build: ~[]
     });
+    assert parse("1.2.3+build5") == Some(Version {
+        major: 1u,
+        minor: 2u,
+        patch: 3u,
+        pre: ~[],
+        build: ~[AlphaNumeric(~"build5")]
+    });
+    assert parse("  1.2.3+build5  ") == Some(Version {
+        major: 1u,
+        minor: 2u,
+        patch: 3u,
+        pre: ~[],
+        build: ~[AlphaNumeric(~"build5")]
+    });
+    assert parse("1.2.3-alpha1+build5") == Some(Version {
+        major: 1u,
+        minor: 2u,
+        patch: 3u,
+        pre: ~[AlphaNumeric(~"alpha1")],
+        build: ~[AlphaNumeric(~"build5")]
+    });
+    assert parse("  1.2.3-alpha1+build5  ") == Some(Version {
+        major: 1u,
+        minor: 2u,
+        patch: 3u,
+        pre: ~[AlphaNumeric(~"alpha1")],
+        build: ~[AlphaNumeric(~"build5")]
+    });
+    assert parse("1.2.3-1.alpha1.9+build5.7.3aedf  ") == Some(Version {
+        major: 1u,
+        minor: 2u,
+        patch: 3u,
+        pre: ~[Numeric(1),AlphaNumeric(~"alpha1"),Numeric(9)],
+        build: ~[AlphaNumeric(~"build5"),
+                 Numeric(7),
+                 AlphaNumeric(~"3aedf")]
+    });
+
 }
 
 #[test]
@@ -245,9 +338,8 @@ fn test_lt() {
     assert parse("0.0.0")        < parse("1.2.3-alpha2");
     assert parse("1.0.0")        < parse("1.2.3-alpha2");
     assert parse("1.2.0")        < parse("1.2.3-alpha2");
-    assert parse("1.2.3")        < parse("1.2.3-alpha2");
+    assert parse("1.2.3-alpha1") < parse("1.2.3");
     assert parse("1.2.3-alpha1") < parse("1.2.3-alpha2");
-
     assert !(parse("1.2.3-alpha2") < parse("1.2.3-alpha2"));
 }
 
@@ -256,7 +348,6 @@ fn test_le() {
     assert parse("0.0.0")        <= parse("1.2.3-alpha2");
     assert parse("1.0.0")        <= parse("1.2.3-alpha2");
     assert parse("1.2.0")        <= parse("1.2.3-alpha2");
-    assert parse("1.2.3")        <= parse("1.2.3-alpha2");
     assert parse("1.2.3-alpha1") <= parse("1.2.3-alpha2");
     assert parse("1.2.3-alpha2") <= parse("1.2.3-alpha2");
 }
@@ -266,9 +357,8 @@ fn test_gt() {
     assert parse("1.2.3-alpha2") > parse("0.0.0");
     assert parse("1.2.3-alpha2") > parse("1.0.0");
     assert parse("1.2.3-alpha2") > parse("1.2.0");
-    assert parse("1.2.3-alpha2") > parse("1.2.3");
     assert parse("1.2.3-alpha2") > parse("1.2.3-alpha1");
-
+    assert parse("1.2.3")        > parse("1.2.3-alpha2");
     assert !(parse("1.2.3-alpha2") > parse("1.2.3-alpha2"));
 }
 
@@ -277,7 +367,29 @@ fn test_ge() {
     assert parse("1.2.3-alpha2") >= parse("0.0.0");
     assert parse("1.2.3-alpha2") >= parse("1.0.0");
     assert parse("1.2.3-alpha2") >= parse("1.2.0");
-    assert parse("1.2.3-alpha2") >= parse("1.2.3");
     assert parse("1.2.3-alpha2") >= parse("1.2.3-alpha1");
     assert parse("1.2.3-alpha2") >= parse("1.2.3-alpha2");
+}
+
+#[test]
+fn test_spec_order() {
+
+    let vs = ["1.0.0-alpha",
+              "1.0.0-alpha.1",
+              "1.0.0-beta.2",
+              "1.0.0-beta.11",
+              "1.0.0-rc.1",
+              "1.0.0-rc.1+build.1",
+              "1.0.0",
+              "1.0.0+0.3.7",
+              "1.3.7+build",
+              "1.3.7+build.2.b8f12d7",
+              "1.3.7+build.11.e0f985a"];
+    let mut i = 1;
+    while i < vs.len() {
+        let a = parse(vs[i-1]).get();
+        let b = parse(vs[i]).get();
+        assert a < b;
+        i += 1;
+    }
 }
