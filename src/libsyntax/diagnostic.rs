@@ -28,13 +28,13 @@ pub type emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
 
 
 pub trait span_handler {
-    fn span_fatal(sp: span, msg: &str) -> !;
-    fn span_err(sp: span, msg: &str);
-    fn span_warn(sp: span, msg: &str);
-    fn span_note(sp: span, msg: &str);
-    fn span_bug(sp: span, msg: &str) -> !;
-    fn span_unimpl(sp: span, msg: &str) -> !;
-    fn handler() -> handler;
+    fn span_fatal(@self, sp: span, msg: &str) -> !;
+    fn span_err(@self, sp: span, msg: &str);
+    fn span_warn(@self, sp: span, msg: &str);
+    fn span_note(@self, sp: span, msg: &str);
+    fn span_bug(@self, sp: span, msg: &str) -> !;
+    fn span_unimpl(@self, sp: span, msg: &str) -> !;
+    fn handler(@self) -> handler;
 }
 
 pub trait handler {
@@ -61,27 +61,27 @@ struct codemap_t {
 }
 
 impl codemap_t: span_handler {
-    fn span_fatal(sp: span, msg: &str) -> ! {
+    fn span_fatal(@self, sp: span, msg: &str) -> ! {
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
         die!();
     }
-    fn span_err(sp: span, msg: &str) {
+    fn span_err(@self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
-    fn span_warn(sp: span, msg: &str) {
+    fn span_warn(@self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, warning);
     }
-    fn span_note(sp: span, msg: &str) {
+    fn span_note(@self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, note);
     }
-    fn span_bug(sp: span, msg: &str) -> ! {
+    fn span_bug(@self, sp: span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    fn span_unimpl(sp: span, msg: &str) -> ! {
+    fn span_unimpl(@self, sp: span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    fn handler() -> handler {
+    fn handler(@self) -> handler {
         self.handler
     }
 }
@@ -132,7 +132,7 @@ pub fn ice_msg(msg: &str) -> ~str {
 
 pub fn mk_span_handler(handler: handler, cm: @codemap::CodeMap)
                     -> span_handler {
-    @codemap_t { handler: handler, cm: cm } as span_handler
+    @codemap_t { handler: handler, cm: cm } as @span_handler
 }
 
 pub fn mk_handler(emitter: Option<emitter>) -> handler {
