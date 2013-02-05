@@ -329,7 +329,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let len = parse_hex(st);
         assert (next(st) == '#');
         let key = creader_cache_key { cnum: st.crate, pos: pos, len: len };
-        match st.tcx.rcache.find(key) {
+        match st.tcx.rcache.find(&key) {
           Some(tt) => return tt,
           None => {
             let ps = @{pos: pos ,.. copy *st};

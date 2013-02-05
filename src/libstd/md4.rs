@@ -14,7 +14,14 @@ use core::str;
 use core::uint;
 use core::vec;
 
-pub pure fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
+struct Quad {
+    a: u32,
+    b: u32,
+    c: u32,
+    d: u32
+}
+
+pub pure fn md4(msg: &[u8]) -> Quad {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined
     // results.
@@ -95,11 +102,11 @@ pub pure fn md4(msg: &[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
         a += aa; b += bb; c += cc; d += dd;
         i += 64u;
     }
-    return {a: a, b: b, c: c, d: d};
+    return Quad {a: a, b: b, c: c, d: d};
 }
 
 pub pure fn md4_str(msg: &[u8]) -> ~str {
-    let {a, b, c, d} = md4(msg);
+    let Quad {a, b, c, d} = md4(msg);
     pure fn app(a: u32, b: u32, c: u32, d: u32, f: fn(u32)) {
         f(a); f(b); f(c); f(d);
     }
