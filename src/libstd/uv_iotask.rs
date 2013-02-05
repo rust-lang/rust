@@ -186,7 +186,7 @@ fn begin_teardown(data: *IoTaskLoopData) {
     }
 }
 extern fn tear_down_walk_cb(handle: *libc::c_void, arg: *libc::c_void) {
-    log(debug, ~"IN TEARDOWN WALK CB BOYEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+    log(debug, ~"IN TEARDOWN WALK CB");
     // pretty much, if we still have an active handle and it is *not*
     // the async handle that facilities global loop communication, we
     // want to barf out and fail
