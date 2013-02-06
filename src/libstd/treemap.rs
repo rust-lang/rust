@@ -963,7 +963,7 @@ mod test_treemap {
         let m = m;
         let mut iter = m.iter();
 
-        // FIXME: #4492 (ICE): iter.next() == Some((&x1, &y1))
+        // FIXME: #4492 (ICE): iter.get() == Some((&x1, &y1))
 
         map_next(&mut iter);
         assert iter.get().unwrap() == (&x1, &y1);
