@@ -33,11 +33,9 @@ mod inst {
             let nobe = option::get(link);
             assert nobe.linked;
 
-            // XXX: Call freeze directly to get through snapshotting.
-            unsafe {
-                rt::borrow_as_imm(cast::transmute(nobe));
-                if !f(cast::transmute(&mut nobe.data)) { break; }
-                rt::return_to_mut(cast::transmute(nobe));
+            {
+                let frozen_nobe = &*nobe;
+                if !f(&frozen_nobe.data) { break; }
             }
 
             // Check (weakly) that the user didn't do a remove.

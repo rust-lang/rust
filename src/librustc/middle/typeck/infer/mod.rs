@@ -328,7 +328,7 @@ pub struct InferCtxt {
     mut float_var_counter: uint,
 
     // For region variables.
-    region_vars: RegionVarBindings,
+    mut region_vars: RegionVarBindings,
 }
 
 pub enum fixup_err {
