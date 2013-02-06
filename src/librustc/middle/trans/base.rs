@@ -813,27 +813,6 @@ pub fn get_discrim_val(cx: @crate_ctxt, span: span, enum_did: ast::def_id,
     }
 }
 
-pub fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
-    unsafe {
-        let _icx = ccx.insn_ctxt("lookup_discriminant");
-        match ccx.discrims.find(&vid) {
-            None => {
-                // It's an external discriminant that we haven't seen yet.
-                assert (vid.crate != ast::local_crate);
-                let sym = csearch::get_symbol(ccx.sess.cstore, vid);
-                let gvar = str::as_c_str(sym, |buf| {
-                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
-                });
-                lib::llvm::SetLinkage(gvar, lib::llvm::ExternalLinkage);
-                llvm::LLVMSetGlobalConstant(gvar, True);
-                ccx.discrims.insert(vid, gvar);
-                return gvar;
-            }
-            Some(llval) => return llval,
-        }
-    }
-}
-
 pub fn invoke(bcx: block, llfn: ValueRef, +llargs: ~[ValueRef]) -> block {
     let _icx = bcx.insn_ctxt("invoke_");
     if bcx.unreachable { return bcx; }
