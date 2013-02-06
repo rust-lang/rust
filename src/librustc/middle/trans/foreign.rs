@@ -524,7 +524,8 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
         }
         ~"needs_drop" => {
             let tp_ty = substs.tys[0];
-            Store(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
+            Store(bcx,
+                  C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
                   fcx.llretptr);
         }
         ~"visit_tydesc" => {
@@ -574,7 +575,7 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
             let src_ptr = get_param(decl, first_real_arg + 1);
             let size = get_param(decl, first_real_arg + 2);
             let align = C_i32(1);
-            let volatile = C_bool(false);
+            let volatile = C_i1(false);
             let llfn = bcx.ccx().intrinsics.get(
                 &~"llvm.memmove.p0i8.p0i8.i32");
             Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
@@ -584,7 +585,7 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
             let src_ptr = get_param(decl, first_real_arg + 1);
             let size = get_param(decl, first_real_arg + 2);
             let align = C_i32(1);
-            let volatile = C_bool(false);
+            let volatile = C_i1(false);
             let llfn = bcx.ccx().intrinsics.get(
                 &~"llvm.memmove.p0i8.p0i8.i64");
             Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
@@ -769,49 +770,49 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
         }
         ~"ctlz8" => {
             let x = get_param(decl, first_real_arg);
-            let y = C_bool(false);
+            let y = C_i1(false);
             let ctlz = ccx.intrinsics.get(&~"llvm.ctlz.i8");
             Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr)
         }
         ~"ctlz16" => {
             let x = get_param(decl, first_real_arg);
-            let y = C_bool(false);
+            let y = C_i1(false);
             let ctlz = ccx.intrinsics.get(&~"llvm.ctlz.i16");
             Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr)
         }
         ~"ctlz32" => {
             let x = get_param(decl, first_real_arg);
-            let y = C_bool(false);
+            let y = C_i1(false);
             let ctlz = ccx.intrinsics.get(&~"llvm.ctlz.i32");
             Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr)
         }
         ~"ctlz64" => {
             let x = get_param(decl, first_real_arg);
-            let y = C_bool(false);
+            let y = C_i1(false);
             let ctlz = ccx.intrinsics.get(&~"llvm.ctlz.i64");
             Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr)
         }
         ~"cttz8" => {
             let x = get_param(decl, first_real_arg);
-            let y = C_bool(false);
+            let y = C_i1(false);
             let cttz = ccx.intrinsics.get(&~"llvm.cttz.i8");
             Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
         }
         ~"cttz16" => {
             let x = get_param(decl, first_real_arg);
-            let y = C_bool(false);
+            let y = C_i1(false);
             let cttz = ccx.intrinsics.get(&~"llvm.cttz.i16");
             Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
         }
         ~"cttz32" => {
             let x = get_param(decl, first_real_arg);
-            let y = C_bool(false);
+            let y = C_i1(false);
             let cttz = ccx.intrinsics.get(&~"llvm.cttz.i32");
             Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
         }
         ~"cttz64" => {
             let x = get_param(decl, first_real_arg);
-            let y = C_bool(false);
+            let y = C_i1(false);
             let cttz = ccx.intrinsics.get(&~"llvm.cttz.i64");
             Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr)
         }

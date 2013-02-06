@@ -438,7 +438,9 @@ pub fn trans_call_inner(
             let flag = alloca(bcx, T_bool());
             Store(bcx, C_bool(false), flag);
             Some(flag)
-        } else { None };
+        } else {
+            None
+        };
 
         let (llfn, llenv) = unsafe {
             match callee.data {
@@ -506,7 +508,8 @@ pub fn trans_call_inner(
         if ty::type_is_bot(ret_ty) {
             Unreachable(bcx);
         } else if ret_in_loop {
-            bcx = do with_cond(bcx, Load(bcx, ret_flag.get())) |bcx| {
+            let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
+            bcx = do with_cond(bcx, ret_flag_result) |bcx| {
                 do option::iter(&copy bcx.fcx.loop_ret) |lret| {
                     Store(bcx, C_bool(true), lret.flagptr);
                     Store(bcx, C_bool(false), bcx.fcx.llretptr);

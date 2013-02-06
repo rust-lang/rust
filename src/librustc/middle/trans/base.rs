@@ -494,8 +494,13 @@ pub fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: ~str) {
 // Used only for creating scalar comparison glue.
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
-pub fn compare_scalar_types(cx: block, lhs: ValueRef, rhs: ValueRef,
-                            t: ty::t, op: ast::binop) -> Result {
+// NB: This produces an i1, not a Rust bool (i8).
+pub fn compare_scalar_types(cx: block,
+                            lhs: ValueRef,
+                            rhs: ValueRef,
+                            t: ty::t,
+                            op: ast::binop)
+                         -> Result {
     let f = |a| compare_scalar_values(cx, lhs, rhs, a, op);
 
     match ty::get(t).sty {
@@ -521,8 +526,12 @@ pub fn compare_scalar_types(cx: block, lhs: ValueRef, rhs: ValueRef,
 
 
 // A helper function to do the actual comparison of scalar values.
-pub fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
-                             nt: scalar_type, op: ast::binop) -> ValueRef {
+pub fn compare_scalar_values(cx: block,
+                             lhs: ValueRef,
+                             rhs: ValueRef,
+                             nt: scalar_type,
+                             op: ast::binop)
+                          -> ValueRef {
     let _icx = cx.insn_ctxt("compare_scalar_values");
     fn die(cx: block) -> ! {
         cx.tcx().sess.bug(~"compare_scalar_values: must be a\
@@ -533,8 +542,8 @@ pub fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
         // We don't need to do actual comparisons for nil.
         // () == () holds but () < () does not.
         match op {
-          ast::eq | ast::le | ast::ge => return C_bool(true),
-          ast::ne | ast::lt | ast::gt => return C_bool(false),
+          ast::eq | ast::le | ast::ge => return C_i1(true),
+          ast::ne | ast::lt | ast::gt => return C_i1(false),
           // refinements would be nice
           _ => die(cx)
         }
@@ -1442,7 +1451,7 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(1i32);
-    let volatile = C_bool(false);
+    let volatile = C_i1(false);
     Call(cx, memcpy, ~[dst_ptr, src_ptr, size, align, volatile]);
 }
 
@@ -1489,7 +1498,7 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
     let llzeroval = C_u8(0);
     let size = IntCast(cx, machine::llsize_of(ccx, llty), ccx.int_type);
     let align = C_i32(1i32);
-    let volatile = C_bool(false);
+    let volatile = C_i1(false);
     Call(cx, llintrinsicfn, ~[llptr, llzeroval, size, align, volatile]);
 }
 
