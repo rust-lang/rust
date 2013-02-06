@@ -15,7 +15,7 @@ use core::f32;
 use core::f64;
 use core::float;
 
-const fuzzy_epsilon: float = 1.0e-6;
+pub const FUZZY_EPSILON: float = 1.0e-6;
 
 pub trait FuzzyEq {
     pure fn fuzzy_eq(&self, other: &Self) -> bool;
@@ -24,7 +24,7 @@ pub trait FuzzyEq {
 
 impl float: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &float) -> bool {
-        self.fuzzy_eq_eps(other, &fuzzy_epsilon)
+        self.fuzzy_eq_eps(other, &FUZZY_EPSILON)
     }
 
     pure fn fuzzy_eq_eps(&self, other: &float, epsilon: &float) -> bool {
@@ -34,7 +34,7 @@ impl float: FuzzyEq {
 
 impl f32: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &f32) -> bool {
-        self.fuzzy_eq_eps(other, &(fuzzy_epsilon as f32))
+        self.fuzzy_eq_eps(other, &(FUZZY_EPSILON as f32))
     }
 
     pure fn fuzzy_eq_eps(&self, other: &f32, epsilon: &f32) -> bool {
@@ -44,7 +44,7 @@ impl f32: FuzzyEq {
 
 impl f64: FuzzyEq {
     pure fn fuzzy_eq(&self, other: &f64) -> bool {
-        self.fuzzy_eq_eps(other, &(fuzzy_epsilon as f64))
+        self.fuzzy_eq_eps(other, &(FUZZY_EPSILON as f64))
     }
 
     pure fn fuzzy_eq_eps(&self, other: &f64, epsilon: &f64) -> bool {
