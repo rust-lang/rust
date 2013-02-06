@@ -142,7 +142,6 @@ impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
         loop {
             match *current {
               Some(ref r) => {
-                let r: &self/~TreeNode<K, V> = r; // FIXME: #3148
                 if *key < r.key {
                     current = &r.left;
                 } else if r.key < *key {
