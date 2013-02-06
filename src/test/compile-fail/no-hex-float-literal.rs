@@ -15,4 +15,3 @@ fn main() {
     0x567.89;
     0xDEAD.BEEFp-2f;
 }
-
