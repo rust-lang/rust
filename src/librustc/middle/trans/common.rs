@@ -216,7 +216,7 @@ pub struct crate_ctxt {
      task_type: TypeRef,
      opaque_vec_type: TypeRef,
      builder: BuilderRef_res,
-     shape_cx: shape::ctxt,
+     shape_cx: shape::Ctxt,
      crate_map: ValueRef,
      // Set when at least one function uses GC. Needed so that
      // decl_gc_metadata knows whether to link to the module metadata, which
