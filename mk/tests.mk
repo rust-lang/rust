@@ -62,6 +62,8 @@ ifeq ($(MAKECMDGOALS),perf)
   export RUST_BENCH
 endif
 
+TEST_LOG_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
+TEST_OK_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).ok
 
 ######################################################################
 # Main test targets
@@ -251,11 +253,14 @@ $(foreach host,$(CFG_TARGET_TRIPLES), \
    $(eval $(call TEST_RUNNER,$(stage),$(target),$(host))))))))
 
 define DEF_TEST_CRATE_RULES
-check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec:			\
+check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/test/$(4)test.stage$(1)-$(2)$$(X)
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
-	--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
+	--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
+	&& touch $$@
 endef
 
 $(foreach host,$(CFG_TARGET_TRIPLES), \
@@ -347,12 +352,12 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)"	\
         $$(CTEST_TESTARGS)
 
-CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $((RPASS_TESTS))
-CTEST_DEPS_rpass_full_$(1)-T-$(2)-H-$(3) = $((RPASS_FULL_TESTS)) $$(TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3))
-CTEST_DEPS_rfail_$(1)-T-$(2)-H-$(3) = $((RFAIL_TESTS))
-CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $((CFAIL_TESTS))
-CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $((BENCH_TESTS))
-CTEST_DEPS_perf_$(1)-T-$(2)-H-$(3) = $((PERF_TESTS))
+CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
+CTEST_DEPS_rpass_full_$(1)-T-$(2)-H-$(3) = $$(RPASS_FULL_TESTS) $$(TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3))
+CTEST_DEPS_rfail_$(1)-T-$(2)-H-$(3) = $$(RFAIL_TESTS)
+CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $$(CFAIL_TESTS)
+CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $$(BENCH_TESTS)
+CTEST_DEPS_perf_$(1)-T-$(2)-H-$(3) = $$(PERF_TESTS)
 
 endef
 
@@ -370,13 +375,16 @@ CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
         --mode $$(CTEST_MODE_$(4)) \
 	$$(CTEST_RUNTOOL_$(4))
 
-check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: \
+check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
 	@$$(call E, run $(4): $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
-		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
+		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
+                && touch $$@
 
 endef
 
@@ -408,13 +416,16 @@ PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4) :=			\
         --build-base $(3)/test/$$(PRETTY_DIRNAME_$(4))/ \
         --mode pretty
 
-check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec:	\
+check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(PRETTY_DEPS_$(4))
 	@$$(call E, run pretty-rpass: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
-		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
+		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
+                && touch $$@
 
 endef
 
@@ -432,13 +443,16 @@ DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
         --build-base $(3)/test/doc-$(4)/	\
         --mode run-pass
 
-check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec:       \
+check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
                 doc-$(4)-extract$(3)
 	@$$(call E, run doc-$(4): $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
                 $$(DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
-		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-doc-$(4).log
+		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),doc-$(4)) \
+                && touch $$@
 
 endef
 
