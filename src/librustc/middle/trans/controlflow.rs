@@ -62,6 +62,8 @@ pub fn trans_if(bcx: block,
 
     let then_bcx_in = scope_block(bcx, thn.info(), ~"then");
     let else_bcx_in = scope_block(bcx, els.info(), ~"else");
+
+    let cond_val = bool_to_i1(bcx, cond_val);
     CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
 
     debug!("then_bcx_in=%s, else_bcx_in=%s",
@@ -139,6 +141,7 @@ pub fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk) -> block {
     // compile the condition
     let Result {bcx: cond_bcx_out, val: cond_val} =
         expr::trans_to_datum(cond_bcx_in, cond).to_result();
+    let cond_val = bool_to_i1(cond_bcx_out, cond_val);
     let cond_bcx_out =
         trans_block_cleanups(cond_bcx_out, block_cleanups(cond_bcx_in));
     CondBr(cond_bcx_out, cond_val, body_bcx_in.llbb, next_bcx.llbb);
@@ -324,6 +327,7 @@ pub fn trans_check_expr(bcx: block,
             expr::trans_to_datum(bcx, pred_expr).to_result()
         }
     };
+    let val = bool_to_i1(bcx, val);
     do with_cond(bcx, Not(bcx, val)) |bcx| {
         trans_fail(bcx, Some(pred_expr.span), /*bad*/copy expr_str)
     }

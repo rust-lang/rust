@@ -1236,7 +1236,6 @@ fn trans_unary_datum(bcx: block,
                      un_expr: @ast::expr,
                      op: ast::unop,
                      sub_expr: @ast::expr) -> DatumBlock {
-
     let _icx = bcx.insn_ctxt("trans_unary_datum");
 
     // if deref, would be LvalueExpr
@@ -1251,7 +1250,21 @@ fn trans_unary_datum(bcx: block,
     return match op {
         ast::not => {
             let Result {bcx, val} = trans_to_datum(bcx, sub_expr).to_result();
-            immediate_rvalue_bcx(bcx, Not(bcx, val), un_ty)
+
+            // If this is a boolean type, we must not use the LLVM Not
+            // instruction, as that is a *bitwise* not and we want *logical*
+            // not on our 8-bit boolean values.
+            let llresult = match ty::get(un_ty).sty {
+                ty::ty_bool => {
+                    let llcond = ICmp(bcx,
+                                      lib::llvm::IntEQ,
+                                      val,
+                                      C_bool(false));
+                    Select(bcx, llcond, C_bool(true), C_bool(false))
+                }
+                _ => Not(bcx, val)
+            };
+            immediate_rvalue_bcx(bcx, llresult, un_ty)
         }
         ast::neg => {
             let Result {bcx, val} = trans_to_datum(bcx, sub_expr).to_result();
@@ -1308,8 +1321,8 @@ fn trans_eager_binop(bcx: block,
                      binop_ty: ty::t,
                      op: ast::binop,
                      lhs_datum: &Datum,
-                     rhs_datum: &Datum) -> DatumBlock
-{
+                     rhs_datum: &Datum)
+                  -> DatumBlock {
     let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("trans_eager_binop");
 
@@ -1388,7 +1401,7 @@ fn trans_eager_binop(bcx: block,
             }
             let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
             bcx = cmpr.bcx;
-            cmpr.val
+            ZExt(bcx, cmpr.val, T_i8())
         }
       }
       _ => {
@@ -1406,8 +1419,7 @@ fn trans_lazy_binop(bcx: block,
                     binop_expr: @ast::expr,
                     op: lazy_binop_ty,
                     a: @ast::expr,
-                    b: @ast::expr) -> DatumBlock
-{
+                    b: @ast::expr) -> DatumBlock {
     let _icx = bcx.insn_ctxt("trans_lazy_binop");
     let binop_ty = expr_ty(bcx, binop_expr);
     let mut bcx = bcx;
@@ -1425,10 +1437,12 @@ fn trans_lazy_binop(bcx: block,
     let join = base::sub_block(bcx, ~"join");
     let before_rhs = base::sub_block(bcx, ~"rhs");
 
+    let lhs_i1 = bool_to_i1(past_lhs, lhs);
     match op {
-      lazy_and => CondBr(past_lhs, lhs, before_rhs.llbb, join.llbb),
-      lazy_or => CondBr(past_lhs, lhs, join.llbb, before_rhs.llbb)
+      lazy_and => CondBr(past_lhs, lhs_i1, before_rhs.llbb, join.llbb),
+      lazy_or => CondBr(past_lhs, lhs_i1, join.llbb, before_rhs.llbb)
     }
+
     let Result {bcx: past_rhs, val: rhs} = {
         do base::with_scope_result(before_rhs, b.info(), ~"rhs") |bcx| {
             trans_to_datum(bcx, b).to_result()

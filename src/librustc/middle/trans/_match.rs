@@ -1028,6 +1028,8 @@ pub fn pick_col(m: &[@Match]) -> uint {
 pub enum branch_kind { no_branch, single, switch, compare, compare_vec_len, }
 
 // Compiles a comparison between two things.
+//
+// NB: This must produce an i1, not a Rust bool (i8).
 pub fn compare_values(cx: block,
                       lhs: ValueRef,
                       rhs: ValueRef,
@@ -1053,7 +1055,11 @@ pub fn compare_values(cx: block,
                                                           scratch_rhs],
                                                         expr::SaveIn(
                                                          scratch_result.val));
-            return scratch_result.to_result(bcx);
+            let result = scratch_result.to_result(bcx);
+            Result {
+                bcx: result.bcx,
+                val: bool_to_i1(result.bcx, result.val)
+            }
         }
         ty::ty_estr(_) => {
             let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
@@ -1063,7 +1069,11 @@ pub fn compare_values(cx: block,
                                                         ~[lhs, rhs],
                                                         expr::SaveIn(
                                                          scratch_result.val));
-            return scratch_result.to_result(bcx);
+            let result = scratch_result.to_result(bcx);
+            Result {
+                bcx: result.bcx,
+                val: bool_to_i1(result.bcx, result.val)
+            }
         }
         _ => {
             cx.tcx().sess.bug(~"only scalars and strings supported in \
@@ -1176,6 +1186,7 @@ pub fn compile_guard(bcx: block,
             expr::trans_to_datum(bcx, guard_expr).to_result()
         }
     });
+    let val = bool_to_i1(bcx, val);
 
     // Revoke the temp cleanups now that the guard successfully executed.
     for temp_cleanups.each |llval| {
