@@ -55,30 +55,35 @@ pub enum DefIdSource {
 }
 type conv_did = fn(source: DefIdSource, ast::def_id) -> ast::def_id;
 
-pub type pstate = {data: @~[u8], crate: int, mut pos: uint, tcx: ty::ctxt};
+pub struct PState {
+    data: @~[u8],
+    crate: int,
+    pos: uint,
+    tcx: ty::ctxt
+}
 
-fn peek(st: @pstate) -> char {
+fn peek(st: @mut PState) -> char {
     st.data[st.pos] as char
 }
 
-fn next(st: @pstate) -> char {
+fn next(st: @mut PState) -> char {
     let ch = st.data[st.pos] as char;
     st.pos = st.pos + 1u;
     return ch;
 }
 
-fn next_byte(st: @pstate) -> u8 {
+fn next_byte(st: @mut PState) -> u8 {
     let b = st.data[st.pos];
     st.pos = st.pos + 1u;
     return b;
 }
 
-pub fn parse_ident(st: @pstate, last: char) -> ast::ident {
+pub fn parse_ident(st: @mut PState, last: char) -> ast::ident {
     fn is_last(b: char, c: char) -> bool { return c == b; }
     return parse_ident_(st, |a| is_last(last, a) );
 }
 
-fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
+fn parse_ident_(st: @mut PState, is_last: fn@(char) -> bool) ->
    ast::ident {
     let mut rslt = ~"";
     while !is_last(peek(st)) {
@@ -88,8 +93,13 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
 }
 
 pub fn parse_state_from_data(data: @~[u8], crate_num: int,
-                         pos: uint, tcx: ty::ctxt) -> @pstate {
-    @{data: data, crate: crate_num, mut pos: pos, tcx: tcx}
+                             pos: uint, tcx: ty::ctxt) -> @mut PState {
+    @mut PState {
+        data: data,
+        crate: crate_num,
+        pos: pos,
+        tcx: tcx
+    }
 }
 
 pub fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
@@ -104,7 +114,7 @@ pub fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
     parse_arg(st, conv)
 }
 
-fn parse_path(st: @pstate) -> @ast::path {
+fn parse_path(st: @mut PState) -> @ast::path {
     let mut idents: ~[ast::ident] = ~[];
     fn is_last(c: char) -> bool { return c == '(' || c == ':'; }
     idents.push(parse_ident_(st, is_last));
@@ -124,11 +134,11 @@ fn parse_path(st: @pstate) -> @ast::path {
     };
 }
 
-fn parse_ty_rust_fn(st: @pstate, conv: conv_did) -> ty::t {
+fn parse_ty_rust_fn(st: @mut PState, conv: conv_did) -> ty::t {
     return ty::mk_fn(st.tcx, parse_ty_fn(st, conv));
 }
 
-fn parse_proto(st: @pstate) -> ast::Proto {
+fn parse_proto(st: @mut PState) -> ast::Proto {
     match next(st) {
         '_' => ast::ProtoBare,
         '@' => ast::ProtoBox,
@@ -138,7 +148,7 @@ fn parse_proto(st: @pstate) -> ast::Proto {
     }
 }
 
-fn parse_vstore(st: @pstate) -> ty::vstore {
+fn parse_vstore(st: @mut PState) -> ty::vstore {
     assert next(st) == '/';
 
     let c = peek(st);
@@ -156,7 +166,7 @@ fn parse_vstore(st: @pstate) -> ty::vstore {
     }
 }
 
-fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
+fn parse_substs(st: @mut PState, conv: conv_did) -> ty::substs {
     let self_r = parse_opt(st, || parse_region(st) );
 
     let self_ty = parse_opt(st, || parse_ty(st, conv) );
@@ -173,7 +183,7 @@ fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
     };
 }
 
-fn parse_bound_region(st: @pstate) -> ty::bound_region {
+fn parse_bound_region(st: @mut PState) -> ty::bound_region {
     match next(st) {
       's' => ty::br_self,
       'a' => {
@@ -191,7 +201,7 @@ fn parse_bound_region(st: @pstate) -> ty::bound_region {
     }
 }
 
-fn parse_region(st: @pstate) -> ty::Region {
+fn parse_region(st: @mut PState) -> ty::Region {
     match next(st) {
       'b' => {
         ty::re_bound(parse_bound_region(st))
@@ -216,7 +226,7 @@ fn parse_region(st: @pstate) -> ty::Region {
     }
 }
 
-fn parse_opt<T>(st: @pstate, f: fn() -> T) -> Option<T> {
+fn parse_opt<T>(st: @mut PState, f: fn() -> T) -> Option<T> {
     match next(st) {
       'n' => None,
       's' => Some(f()),
@@ -224,7 +234,7 @@ fn parse_opt<T>(st: @pstate, f: fn() -> T) -> Option<T> {
     }
 }
 
-fn parse_str(st: @pstate, term: char) -> ~str {
+fn parse_str(st: @mut PState, term: char) -> ~str {
     let mut result = ~"";
     while peek(st) != term {
         result += str::from_byte(next_byte(st));
@@ -233,7 +243,7 @@ fn parse_str(st: @pstate, term: char) -> ~str {
     return result;
 }
 
-fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
+fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
     match next(st) {
       'n' => return ty::mk_nil(st.tcx),
       'z' => return ty::mk_bot(st.tcx),
@@ -332,7 +342,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         match st.tcx.rcache.find(key) {
           Some(tt) => return tt,
           None => {
-            let ps = @{pos: pos ,.. copy *st};
+            let ps = @mut PState {pos: pos ,.. copy *st};
             let tt = parse_ty(ps, conv);
             st.tcx.rcache.insert(key, tt);
             return tt;
@@ -356,7 +366,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
     }
 }
 
-fn parse_mt(st: @pstate, conv: conv_did) -> ty::mt {
+fn parse_mt(st: @mut PState, conv: conv_did) -> ty::mt {
     let mut m;
     match peek(st) {
       'm' => { next(st); m = ast::m_mutbl; }
@@ -366,7 +376,7 @@ fn parse_mt(st: @pstate, conv: conv_did) -> ty::mt {
     ty::mt { ty: parse_ty(st, conv), mutbl: m }
 }
 
-fn parse_def(st: @pstate, source: DefIdSource,
+fn parse_def(st: @mut PState, source: DefIdSource,
              conv: conv_did) -> ast::def_id {
     let mut def = ~[];
     while peek(st) != '|' { def.push(next_byte(st)); }
@@ -374,7 +384,7 @@ fn parse_def(st: @pstate, source: DefIdSource,
     return conv(source, parse_def_id(def));
 }
 
-fn parse_int(st: @pstate) -> int {
+fn parse_int(st: @mut PState) -> int {
     let mut n = 0;
     loop {
         let cur = peek(st);
@@ -385,7 +395,7 @@ fn parse_int(st: @pstate) -> int {
     };
 }
 
-fn parse_hex(st: @pstate) -> uint {
+fn parse_hex(st: @mut PState) -> uint {
     let mut n = 0u;
     loop {
         let cur = peek(st);
@@ -416,11 +426,11 @@ fn parse_onceness(c: char) -> ast::Onceness {
     }
 }
 
-fn parse_arg(st: @pstate, conv: conv_did) -> ty::arg {
+fn parse_arg(st: @mut PState, conv: conv_did) -> ty::arg {
     ty::arg { mode: parse_mode(st), ty: parse_ty(st, conv) }
 }
 
-fn parse_mode(st: @pstate) -> ast::mode {
+fn parse_mode(st: @mut PState) -> ast::mode {
     let m = ast::expl(match next(st) {
         '+' => ast::by_copy,
         '=' => ast::by_ref,
@@ -430,7 +440,7 @@ fn parse_mode(st: @pstate) -> ast::mode {
     return m;
 }
 
-fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
+fn parse_ty_fn(st: @mut PState, conv: conv_did) -> ty::FnTy {
     let proto = parse_proto(st);
     let purity = parse_purity(next(st));
     let onceness = parse_onceness(next(st));
@@ -489,7 +499,7 @@ pub fn parse_bounds_data(data: @~[u8], start: uint,
     parse_bounds(st, conv)
 }
 
-fn parse_bounds(st: @pstate, conv: conv_did) -> @~[ty::param_bound] {
+fn parse_bounds(st: @mut PState, conv: conv_did) -> @~[ty::param_bound] {
     let mut bounds = ~[];
     loop {
         bounds.push(match next(st) {

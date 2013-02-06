@@ -62,18 +62,17 @@ impl BorrowckCtxt {
             cmt: cmt,
             scope_region: ty::Region,
             mutbl: ast::mutability) -> bckres<~[Loan]> {
-        let lc = LoanContext {
+        let mut lc = LoanContext {
             bccx: self,
             scope_region: scope_region,
             loans: ~[]
         };
         match lc.loan(cmt, mutbl, true) {
-          Err(ref e) => Err((*e)),
-          Ok(()) => {
-              let LoanContext {loans, _} = move lc;
-              Ok(loans)
-          }
+            Err(ref e) => return Err((*e)),
+            Ok(()) => {}
         }
+        // XXX: Workaround for borrow check bug.
+        Ok(copy lc.loans)
     }
 }
 
@@ -84,17 +83,16 @@ struct LoanContext {
     scope_region: ty::Region,
 
     // accumulated list of loans that will be required
-    mut loans: ~[Loan]
+    loans: ~[Loan]
 }
 
 impl LoanContext {
-    fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
+    fn tcx(&mut self) -> ty::ctxt { self.bccx.tcx }
 
-    fn loan(&self,
+    fn loan(&mut self,
             cmt: cmt,
             req_mutbl: ast::mutability,
-            owns_lent_data: bool) -> bckres<()>
-    {
+            owns_lent_data: bool) -> bckres<()> {
         /*!
          *
          * The main routine.
@@ -198,7 +196,7 @@ impl LoanContext {
     // A "stable component" is one where assigning the base of the
     // component cannot cause the component itself to change types.
     // Example: record fields.
-    fn loan_stable_comp(&self,
+    fn loan_stable_comp(&mut self,
                         cmt: cmt,
                         cmt_base: cmt,
                         req_mutbl: ast::mutability,
@@ -268,12 +266,11 @@ impl LoanContext {
     // An "unstable deref" means a deref of a ptr/comp where, if the
     // base of the deref is assigned to, pointers into the result of the
     // deref would be invalidated. Examples: interior of variants, uniques.
-    fn loan_unstable_deref(&self,
+    fn loan_unstable_deref(&mut self,
                            cmt: cmt,
                            cmt_base: cmt,
                            req_mutbl: ast::mutability,
-                           owns_lent_data: bool) -> bckres<()>
-    {
+                           owns_lent_data: bool) -> bckres<()> {
         // Variant components: the base must be immutable, because
         // if it is overwritten, the types of the embedded data
         // could change.
@@ -284,12 +281,11 @@ impl LoanContext {
         }
     }
 
-    fn issue_loan(&self,
+    fn issue_loan(&mut self,
                   cmt: cmt,
                   scope_ub: ty::Region,
                   req_mutbl: ast::mutability,
-                  owns_lent_data: bool) -> bckres<()>
-    {
+                  owns_lent_data: bool) -> bckres<()> {
         // Subtle: the `scope_ub` is the maximal lifetime of `cmt`.
         // Therefore, if `cmt` owns the data being lent, then the
         // scope of the loan must be less than `scope_ub`, or else the
@@ -301,8 +297,8 @@ impl LoanContext {
         // reborrowed.
 
         if !owns_lent_data ||
-            self.bccx.is_subregion_of(self.scope_region, scope_ub)
-        {
+            self.bccx.is_subregion_of(/*bad*/copy self.scope_region,
+                                      scope_ub) {
             match req_mutbl {
                 m_mutbl => {
                     // We do not allow non-mutable data to be loaned
@@ -340,3 +336,4 @@ impl LoanContext {
         }
     }
 }
+

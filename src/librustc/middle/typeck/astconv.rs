@@ -73,12 +73,12 @@ use syntax::print::pprust::path_to_str;
 use util::common::indent;
 
 pub trait ast_conv {
-    fn tcx() -> ty::ctxt;
-    fn ccx() -> @crate_ctxt;
-    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty;
+    fn tcx(@self) -> ty::ctxt;
+    fn ccx(@self) -> @crate_ctxt;
+    fn get_item_ty(@self, id: ast::def_id) -> ty::ty_param_bounds_and_ty;
 
     // what type should we use when a type is omitted?
-    fn ty_infer(span: span) -> ty::t;
+    fn ty_infer(@self, span: span) -> ty::t;
 }
 
 pub fn get_region_reporting_err(tcx: ty::ctxt,
@@ -96,7 +96,7 @@ pub fn get_region_reporting_err(tcx: ty::ctxt,
 }
 
 pub fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::Region {
+    self: @AC, rscope: RS, span: span, a_r: @ast::region) -> ty::Region {
 
     let res = match a_r.node {
         ast::re_static => Ok(ty::re_static),
@@ -109,7 +109,7 @@ pub fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Durable>(
 }
 
 pub fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS, did: ast::def_id,
+    self: @AC, rscope: RS, did: ast::def_id,
     path: @ast::path) -> ty_param_substs_and_ty {
 
     let tcx = self.tcx();
@@ -159,7 +159,7 @@ pub fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Durable>(
 }
 
 pub fn ast_path_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC,
+    self: @AC,
     rscope: RS,
     did: ast::def_id,
     path: @ast::path,
@@ -182,10 +182,10 @@ pub const NO_TPS: uint = 2;
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS, &&ast_ty: @ast::Ty) -> ty::t {
+    self: @AC, rscope: RS, &&ast_ty: @ast::Ty) -> ty::t {
 
     fn ast_mt_to_mt<AC: ast_conv, RS: region_scope Copy Durable>(
-        self: AC, rscope: RS, mt: ast::mt) -> ty::mt {
+        self: @AC, rscope: RS, mt: ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl}
     }
@@ -194,7 +194,7 @@ pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle function sigils and first-class trait types.
     fn mk_pointer<AC: ast_conv, RS: region_scope Copy Durable>(
-        self: AC,
+        self: @AC,
         rscope: RS,
         a_seq_ty: ast::mt,
         vst: ty::vstore,
@@ -407,7 +407,7 @@ pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
 }
 
 pub fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS, a: ast::arg,
+    self: @AC, rscope: RS, a: ast::arg,
     expected_ty: Option<ty::arg>) -> ty::arg {
 
     let ty = match a.ty.node {
@@ -456,7 +456,7 @@ pub type expected_tys = Option<{inputs: ~[ty::arg],
                                 output: ty::t}>;
 
 pub fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Durable>(
-    self: AC, rscope: RS,
+    self: @AC, rscope: RS,
     ast_proto: ast::Proto,
     purity: ast::purity,
     onceness: ast::Onceness,

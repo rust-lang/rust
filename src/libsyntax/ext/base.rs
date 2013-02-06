@@ -161,54 +161,56 @@ pub fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
 pub trait ext_ctxt {
-    fn codemap() -> @CodeMap;
-    fn parse_sess() -> parse::parse_sess;
-    fn cfg() -> ast::crate_cfg;
-    fn call_site() -> span;
-    fn print_backtrace();
-    fn backtrace() -> Option<@ExpnInfo>;
-    fn mod_push(mod_name: ast::ident);
-    fn mod_pop();
-    fn mod_path() -> ~[ast::ident];
-    fn bt_push(ei: codemap::ExpnInfo);
-    fn bt_pop();
-    fn span_fatal(sp: span, msg: &str) -> !;
-    fn span_err(sp: span, msg: &str);
-    fn span_warn(sp: span, msg: &str);
-    fn span_unimpl(sp: span, msg: &str) -> !;
-    fn span_bug(sp: span, msg: &str) -> !;
-    fn bug(msg: &str) -> !;
-    fn next_id() -> ast::node_id;
-    pure fn trace_macros() -> bool;
-    fn set_trace_macros(x: bool);
+    fn codemap(@mut self) -> @CodeMap;
+    fn parse_sess(@mut self) -> parse::parse_sess;
+    fn cfg(@mut self) -> ast::crate_cfg;
+    fn call_site(@mut self) -> span;
+    fn print_backtrace(@mut self);
+    fn backtrace(@mut self) -> Option<@ExpnInfo>;
+    fn mod_push(@mut self, mod_name: ast::ident);
+    fn mod_pop(@mut self);
+    fn mod_path(@mut self) -> ~[ast::ident];
+    fn bt_push(@mut self, ei: codemap::ExpnInfo);
+    fn bt_pop(@mut self);
+    fn span_fatal(@mut self, sp: span, msg: &str) -> !;
+    fn span_err(@mut self, sp: span, msg: &str);
+    fn span_warn(@mut self, sp: span, msg: &str);
+    fn span_unimpl(@mut self, sp: span, msg: &str) -> !;
+    fn span_bug(@mut self, sp: span, msg: &str) -> !;
+    fn bug(@mut self, msg: &str) -> !;
+    fn next_id(@mut self) -> ast::node_id;
+    pure fn trace_macros(@mut self) -> bool;
+    fn set_trace_macros(@mut self, x: bool);
     /* for unhygienic identifier transformation */
-    fn str_of(id: ast::ident) -> ~str;
-    fn ident_of(st: ~str) -> ast::ident;
+    fn str_of(@mut self, id: ast::ident) -> ~str;
+    fn ident_of(@mut self, st: ~str) -> ast::ident;
 }
 
 pub fn mk_ctxt(parse_sess: parse::parse_sess,
                cfg: ast::crate_cfg) -> ext_ctxt {
-    type ctxt_repr = {parse_sess: parse::parse_sess,
-                      cfg: ast::crate_cfg,
-                      mut backtrace: Option<@ExpnInfo>,
-                      mut mod_path: ~[ast::ident],
-                      mut trace_mac: bool};
-    impl ctxt_repr: ext_ctxt {
-        fn codemap() -> @CodeMap { self.parse_sess.cm }
-        fn parse_sess() -> parse::parse_sess { self.parse_sess }
-        fn cfg() -> ast::crate_cfg { self.cfg }
-        fn call_site() -> span {
+    struct CtxtRepr {
+        parse_sess: parse::parse_sess,
+        cfg: ast::crate_cfg,
+        backtrace: Option<@ExpnInfo>,
+        mod_path: ~[ast::ident],
+        trace_mac: bool
+    }
+    impl CtxtRepr: ext_ctxt {
+        fn codemap(@mut self) -> @CodeMap { self.parse_sess.cm }
+        fn parse_sess(@mut self) -> parse::parse_sess { self.parse_sess }
+        fn cfg(@mut self) -> ast::crate_cfg { self.cfg }
+        fn call_site(@mut self) -> span {
             match self.backtrace {
                 Some(@ExpandedFrom({call_site: cs, _})) => cs,
                 None => self.bug(~"missing top span")
             }
         }
-        fn print_backtrace() { }
-        fn backtrace() -> Option<@ExpnInfo> { self.backtrace }
-        fn mod_push(i: ast::ident) { self.mod_path.push(i); }
-        fn mod_pop() { self.mod_path.pop(); }
-        fn mod_path() -> ~[ast::ident] { return self.mod_path; }
-        fn bt_push(ei: codemap::ExpnInfo) {
+        fn print_backtrace(@mut self) { }
+        fn backtrace(@mut self) -> Option<@ExpnInfo> { self.backtrace }
+        fn mod_push(@mut self, i: ast::ident) { self.mod_path.push(i); }
+        fn mod_pop(@mut self) { self.mod_path.pop(); }
+        fn mod_path(@mut self) -> ~[ast::ident] { return self.mod_path; }
+        fn bt_push(@mut self, ei: codemap::ExpnInfo) {
             match ei {
               ExpandedFrom({call_site: cs, callie: ref callie}) => {
                 self.backtrace =
@@ -219,7 +221,7 @@ pub fn mk_ctxt(parse_sess: parse::parse_sess,
               }
             }
         }
-        fn bt_pop() {
+        fn bt_pop(@mut self) {
             match self.backtrace {
               Some(@ExpandedFrom({
                   call_site: span {expn_info: prev, _}, _
@@ -229,55 +231,55 @@ pub fn mk_ctxt(parse_sess: parse::parse_sess,
               _ => self.bug(~"tried to pop without a push")
             }
         }
-        fn span_fatal(sp: span, msg: &str) -> ! {
+        fn span_fatal(@mut self, sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_fatal(sp, msg);
         }
-        fn span_err(sp: span, msg: &str) {
+        fn span_err(@mut self, sp: span, msg: &str) {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_err(sp, msg);
         }
-        fn span_warn(sp: span, msg: &str) {
+        fn span_warn(@mut self, sp: span, msg: &str) {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_warn(sp, msg);
         }
-        fn span_unimpl(sp: span, msg: &str) -> ! {
+        fn span_unimpl(@mut self, sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
         }
-        fn span_bug(sp: span, msg: &str) -> ! {
+        fn span_bug(@mut self, sp: span, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.span_bug(sp, msg);
         }
-        fn bug(msg: &str) -> ! {
+        fn bug(@mut self, msg: &str) -> ! {
             self.print_backtrace();
             self.parse_sess.span_diagnostic.handler().bug(msg);
         }
-        fn next_id() -> ast::node_id {
+        fn next_id(@mut self) -> ast::node_id {
             return parse::next_node_id(self.parse_sess);
         }
-        pure fn trace_macros() -> bool {
+        pure fn trace_macros(@mut self) -> bool {
             self.trace_mac
         }
-        fn set_trace_macros(x: bool) {
+        fn set_trace_macros(@mut self, x: bool) {
             self.trace_mac = x
         }
 
-        fn str_of(id: ast::ident) -> ~str {
+        fn str_of(@mut self, id: ast::ident) -> ~str {
             *self.parse_sess.interner.get(id)
         }
-        fn ident_of(st: ~str) -> ast::ident {
+        fn ident_of(@mut self, st: ~str) -> ast::ident {
             self.parse_sess.interner.intern(@st)
         }
     }
-    let imp: ctxt_repr = {
+    let imp: @mut CtxtRepr = @mut CtxtRepr {
         parse_sess: parse_sess,
         cfg: cfg,
-        mut backtrace: None,
-        mut mod_path: ~[],
-        mut trace_mac: false
+        backtrace: None,
+        mod_path: ~[],
+        trace_mac: false
     };
-    move ((move imp) as ext_ctxt)
+    move ((move imp) as @ext_ctxt)
 }
 
 pub fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {

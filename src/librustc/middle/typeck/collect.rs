@@ -122,11 +122,11 @@ pub impl @crate_ctxt {
     }
 }
 
-pub impl @crate_ctxt: ast_conv {
-    fn tcx() -> ty::ctxt { self.tcx }
-    fn ccx() -> @crate_ctxt { self }
+pub impl crate_ctxt: ast_conv {
+    fn tcx(@self) -> ty::ctxt { self.tcx }
+    fn ccx(@self) -> @crate_ctxt { self }
 
-    fn get_item_ty(id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+    fn get_item_ty(@self, id: ast::def_id) -> ty::ty_param_bounds_and_ty {
         if id.crate != ast::local_crate {
             csearch::get_type(self.tcx, id)
         } else {
@@ -145,7 +145,7 @@ pub impl @crate_ctxt: ast_conv {
         }
     }
 
-    fn ty_infer(span: span) -> ty::t {
+    fn ty_infer(@self, span: span) -> ty::t {
         self.tcx.sess.span_bug(span,
                                ~"found `ty_infer` in unexpected place");
     }

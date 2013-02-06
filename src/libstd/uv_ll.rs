@@ -72,7 +72,7 @@ pub struct uv_handle_fields {
    loop_handle: *libc::c_void,
    type_: handle_type,
    close_cb: *u8,
-   mut data: *libc::c_void,
+   data: *libc::c_void,
 }
 
 // unix size: 8
@@ -240,10 +240,10 @@ pub struct uv_timer_t {
 
 // unix size: 16
 pub struct sockaddr_in {
-    mut sin_family: u16,
-    mut sin_port: u16,
-    mut sin_addr: u32, // in_addr: this is an opaque, per-platform struct
-    mut sin_zero: (u8, u8, u8, u8, u8, u8, u8, u8),
+    sin_family: u16,
+    sin_port: u16,
+    sin_addr: u32, // in_addr: this is an opaque, per-platform struct
+    sin_zero: (u8, u8, u8, u8, u8, u8, u8, u8),
 }
 
 // unix size: 28 .. FIXME #1645

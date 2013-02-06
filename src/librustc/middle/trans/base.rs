@@ -371,7 +371,7 @@ pub fn get_tydesc_simple(ccx: @crate_ctxt, t: ty::t) -> ValueRef {
     get_tydesc(ccx, t).tydesc
 }
 
-pub fn get_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
+pub fn get_tydesc(ccx: @crate_ctxt, t: ty::t) -> @mut tydesc_info {
     match ccx.tydescs.find(t) {
       Some(inf) => inf,
       _ => {
@@ -3028,18 +3028,19 @@ pub fn trans_crate(sess: session::Session,
               all_llvm_symbols: HashMap(),
               tcx: tcx,
               maps: maps,
-              stats:
-                  {mut n_static_tydescs: 0u,
-                   mut n_glues_created: 0u,
-                   mut n_null_glues: 0u,
-                   mut n_real_glues: 0u,
-                   mut n_fns: 0u,
-                   mut n_monos: 0u,
-                   mut n_inlines: 0u,
-                   mut n_closures: 0u,
-                   llvm_insn_ctxt: @mut ~[],
-                   llvm_insns: HashMap(),
-                   fn_times: @mut ~[]},
+              stats: @mut Stats {
+                n_static_tydescs: 0u,
+                n_glues_created: 0u,
+                n_null_glues: 0u,
+                n_real_glues: 0u,
+                n_fns: 0u,
+                n_monos: 0u,
+                n_inlines: 0u,
+                n_closures: 0u,
+                llvm_insn_ctxt: @mut ~[],
+                llvm_insns: HashMap(),
+                fn_times: @mut ~[]
+              },
               upcalls: upcall::declare_upcalls(targ_cfg, llmod),
               tydesc_type: tydesc_type,
               int_type: int_type,

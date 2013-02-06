@@ -9,14 +9,16 @@
 // except according to those terms.
 
 mod inst {
+    use cast;
     use dlist;
     use dlist::DList;
     use managed;
     use option::{Option, Some};
     use option;
+    use rt;
 
     #[allow(non_camel_case_types)]
-    pub type IMPL_T<A> = @DList<A>;
+    pub type IMPL_T<A> = @mut DList<A>;
 
     /**
     * Iterates through the current contents.
@@ -30,18 +32,25 @@ mod inst {
         while option::is_some(&link) {
             let nobe = option::get(link);
             assert nobe.linked;
-            if !f(&nobe.data) { break; }
+
+            // XXX: Call freeze directly to get through snapshotting.
+            unsafe {
+                rt::borrow_as_imm(cast::transmute(nobe));
+                if !f(cast::transmute(&mut nobe.data)) { break; }
+                rt::return_to_mut(cast::transmute(nobe));
+            }
+
             // Check (weakly) that the user didn't do a remove.
             if self.size == 0 {
                 die!(~"The dlist became empty during iteration??")
             }
             if !nobe.linked ||
                 (!((nobe.prev.is_some()
-                    || managed::ptr_eq(self.hd.expect(~"headless dlist?"),
-                                       nobe))
+                    || managed::mut_ptr_eq(self.hd.expect(~"headless dlist?"),
+                                           nobe))
                    && (nobe.next.is_some()
-                    || managed::ptr_eq(self.tl.expect(~"tailless dlist?"),
-                                       nobe)))) {
+                    || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
+                                           nobe)))) {
                 die!(~"Removing a dlist node during iteration is forbidden!")
             }
             link = nobe.next_link();
