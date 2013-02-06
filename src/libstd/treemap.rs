@@ -218,7 +218,7 @@ impl <K: Ord, V> TreeMapIterator<K, V> {
 
 /// Advance the iterator to the next node (in order). If this iterator
 /// is finished, does nothing.
-fn map_next<K: Ord, V>(iter: &mut TreeMapIterator/&a<K, V>) {
+pub fn map_next<K: Ord, V>(iter: &mut TreeMapIterator/&a<K, V>) {
     while !iter.stack.is_empty() || iter.node.is_some() {
         match *iter.node {
           Some(ref x) => {
@@ -530,7 +530,7 @@ impl <T: Ord> TreeSetIterator<T> {
 
 /// Advance the iterator to the next node (in order). If this iterator is
 /// finished, does nothing.
-fn set_next<T: Ord>(iter: &mut TreeSetIterator/&a<T>) {
+pub fn set_next<T: Ord>(iter: &mut TreeSetIterator/&a<T>) {
     map_next(&mut iter.iter);
 }
 
