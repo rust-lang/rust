@@ -204,7 +204,18 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               ast::box(_)  |
               ast::uniq(_) |
               ast::deref  => const_deref(cx, te),
-              ast::not    => llvm::LLVMConstNot(te),
+              ast::not    => {
+                match ty::get(ty).sty {
+                    ty::ty_bool => {
+                        // Somewhat questionable, but I believe this is
+                        // correct.
+                        let te = llvm::LLVMConstTrunc(te, T_i1());
+                        let te = llvm::LLVMConstNot(te);
+                        llvm::LLVMConstZExt(te, T_bool())
+                    }
+                    _ => llvm::LLVMConstNot(te),
+                }
+              }
               ast::neg    => {
                 if is_float { llvm::LLVMConstFNeg(te) }
                 else        { llvm::LLVMConstNeg(te) }
