@@ -627,7 +627,7 @@ pub impl Datum {
         //
         // (Note: root'd values are always boxes)
         let key = root_map_key { id: expr_id, derefs: derefs };
-        let bcx = match ccx.maps.root_map.find(key) {
+        let bcx = match ccx.maps.root_map.find(&key) {
             None => bcx,
             Some(root_info) => self.root(bcx, root_info)
         };
@@ -635,7 +635,7 @@ pub impl Datum {
         // Perform the write guard, if necessary.
         //
         // (Note: write-guarded values are always boxes)
-        let bcx = match ccx.maps.write_guard_map.find(key) {
+        let bcx = match ccx.maps.write_guard_map.find(&key) {
             None => bcx,
             Some(_) => self.perform_write_guard(bcx)
         };

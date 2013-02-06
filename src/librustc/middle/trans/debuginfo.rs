@@ -118,7 +118,7 @@ pub fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> debug_ctxt {
 
 fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
     let existing = if cache.contains_key_ref(&mdtag) {
-        cache.get(mdtag)
+        cache.get(&mdtag)
     } else {
         ~[]
     };
@@ -177,7 +177,7 @@ fn cached_metadata<T: Copy>(cache: metadata_cache,
                          -> Option<T> {
     unsafe {
         if cache.contains_key_ref(&mdtag) {
-            let items = cache.get(mdtag);
+            let items = cache.get(&mdtag);
             for items.each |item| {
                 let md: T = md_from_metadata::<T>(*item);
                 if eq_fn(md) {
@@ -289,7 +289,7 @@ fn create_block(cx: block) -> @metadata<block_md> {
         Some(bcx) => create_block(bcx).node
     };
     let file_node = create_file(cx.ccx(), fname);
-    let unique_id = match cache.find(LexicalBlockTag) {
+    let unique_id = match cache.find(&LexicalBlockTag) {
       option::Some(v) => vec::len(v) as int,
       option::None => 0
     };
@@ -679,14 +679,14 @@ pub fn create_local_var(bcx: block, local: @ast::local)
         let mdval = @{node: mdnode, data: {id: local.node.id}};
         update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
 
-        let llptr = match bcx.fcx.lllocals.find(local.node.id) {
+        let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
           option::Some(local_mem(v)) => v,
           option::Some(_) => {
             bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
                     something weird");
           }
           option::None => {
-            match bcx.fcx.lllocals.get(local.node.pat.id) {
+            match bcx.fcx.lllocals.get(&local.node.pat.id) {
               local_imm(v) => v,
               _ => bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
                                                          something weird")
@@ -694,7 +694,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
           }
         };
         let declargs = ~[llmdnode(~[llptr]), mdnode];
-        trans::build::Call(bcx, cx.intrinsics.get(~"llvm.dbg.declare"),
+        trans::build::Call(bcx, cx.intrinsics.get(&~"llvm.dbg.declare"),
                            declargs);
         return mdval;
     }
@@ -731,12 +731,12 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
                 let mdval = @{node: mdnode, data: {id: arg.id}};
                 update_cache(cache, tg, argument_metadata(mdval));
 
-                let llptr = match fcx.llargs.get(arg.id) {
+                let llptr = match fcx.llargs.get(&arg.id) {
                   local_mem(v) | local_imm(v) => v,
                 };
                 let declargs = ~[llmdnode(~[llptr]), mdnode];
                 trans::build::Call(bcx,
-                                   cx.intrinsics.get(~"llvm.dbg.declare"),
+                                   cx.intrinsics.get(&~"llvm.dbg.declare"),
                                    declargs);
                 return Some(mdval);
             }
@@ -774,7 +774,7 @@ pub fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let sp = fcx.span.get();
     log(debug, cx.sess.codemap.span_to_str(sp));
 
-    let (ident, ret_ty, id) = match cx.tcx.items.get(fcx.id) {
+    let (ident, ret_ty, id) = match cx.tcx.items.get(&fcx.id) {
       ast_map::node_item(item, _) => {
         match /*bad*/copy item.node {
           ast::item_fn(decl, _, _, _) => {

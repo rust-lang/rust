@@ -912,7 +912,7 @@ pub impl RegionVarBindings {
         -> cres<Region> {
 
         let vars = TwoRegions { a: a, b: b };
-        match combines.find(vars) {
+        match combines.find(&vars) {
           Some(c) => Ok(re_infer(ReVar(c))),
           None => {
             let c = self.new_region_var(span);

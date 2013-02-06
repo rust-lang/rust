@@ -67,7 +67,7 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
                             -> (~str, Option<span>) {
     return match region {
       re_scope(node_id) => {
-        match cx.items.find(node_id) {
+        match cx.items.find(&node_id) {
           Some(ast_map::node_block(ref blk)) => {
             explain_span(cx, "block", (*blk).span)
           }
@@ -105,7 +105,7 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
                     bound_region_to_str(cx, br))
         };
 
-        match cx.items.find(id) {
+        match cx.items.find(&id) {
           Some(ast_map::node_block(ref blk)) => {
             let (msg, opt_span) = explain_span(cx, "block", (*blk).span);
             (fmt!("%s %s", prefix, msg), opt_span)
@@ -154,7 +154,7 @@ pub fn bound_region_to_str_adorned(cx: ctxt, prefix: &str,
 }
 
 pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
-    match cx.items.find(node_id) {
+    match cx.items.find(&node_id) {
       Some(ast_map::node_block(ref blk)) => {
         fmt!("<block at %s>",
              cx.sess.codemap.span_to_str((*blk).span))
