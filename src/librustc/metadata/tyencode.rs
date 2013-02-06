@@ -56,7 +56,7 @@ fn cx_uses_abbrevs(cx: @ctxt) -> bool {
 pub fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
-        let result_str = match cx.tcx.short_names_cache.find(t) {
+        let result_str = match cx.tcx.short_names_cache.find(&t) {
             Some(s) => /*bad*/copy *s,
             None => {
                 let s = do io::with_str_writer |wr| {
@@ -69,7 +69,7 @@ pub fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
         w.write_str(result_str);
       }
       ac_use_abbrevs(abbrevs) => {
-        match abbrevs.find(t) {
+        match abbrevs.find(&t) {
           Some(a) => { w.write_str(*a.s); return; }
           None => {
             let pos = w.tell();

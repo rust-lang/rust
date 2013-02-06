@@ -731,7 +731,7 @@ pub fn configure(opts: Options) -> Cargo {
     need_dir(&c.bindir);
 
     for sources.each_key_ref |&k| {
-        let mut s = sources.get(k);
+        let mut s = sources.get(&k);
         load_source_packages(&c, s);
         sources.insert(k, s);
     }
@@ -981,7 +981,7 @@ pub fn install_named(c: &mut Cargo, wd: &Path, name: ~str) {
 
 pub fn install_uuid_specific(c: &mut Cargo, wd: &Path, src: ~str,
                              uuid: ~str) {
-    match c.sources.find(src) {
+    match c.sources.find(&src) {
         Some(s) => {
             for s.packages.each |p| {
                 if p.uuid == uuid {
@@ -997,7 +997,7 @@ pub fn install_uuid_specific(c: &mut Cargo, wd: &Path, src: ~str,
 
 pub fn install_named_specific(c: &mut Cargo, wd: &Path, src: ~str,
                               name: ~str) {
-    match c.sources.find(src) {
+    match c.sources.find(&src) {
         Some(s) => {
             for s.packages.each |p| {
                 if p.name == name {
@@ -1064,7 +1064,7 @@ pub fn cmd_uninstall(c: &Cargo) {
 }
 
 pub fn install_query(c: &mut Cargo, wd: &Path, target: ~str) {
-    match c.dep_cache.find(target) {
+    match c.dep_cache.find(&target) {
         Some(inst) => {
             if inst {
                 return;
@@ -1156,7 +1156,7 @@ pub fn cmd_install(c: &mut Cargo) {
 
 pub fn sync(c: &Cargo) {
     for c.sources.each_key_ref |&k| {
-        let mut s = c.sources.get(k);
+        let mut s = c.sources.get(&k);
         sync_one(c, s);
         c.sources.insert(k, s);
     }
@@ -1558,7 +1558,7 @@ pub fn cmd_list(c: &Cargo) {
             if !valid_pkg_name(*name) {
                 error(fmt!("'%s' is an invalid source name", *name));
             } else {
-                match c.sources.find(*name) {
+                match c.sources.find(name) {
                     Some(source) => {
                         print_source(source);
                     }
@@ -1754,7 +1754,7 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            match c.sources.find(name) {
+            match c.sources.find(&name) {
                 Some(source) => {
                     let old = copy source.url;
                     let method = assume_source_method(url);
@@ -1785,7 +1785,7 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            match c.sources.find(name) {
+            match c.sources.find(&name) {
                 Some(source) => {
                     let old = copy source.method;
 
@@ -1823,7 +1823,7 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            match c.sources.find(name) {
+            match c.sources.find(&name) {
                 Some(source) => {
                     c.sources.remove(&name);
                     c.sources.insert(newn, source);
