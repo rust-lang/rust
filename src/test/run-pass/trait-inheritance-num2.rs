@@ -94,7 +94,7 @@ pub impl i64: IntegerExt {}
 pub impl int: IntegerExt {}
 
 
-pub trait FloatExt: NumExt FuzzyEq {}
+pub trait FloatExt: NumExt FuzzyEq<Self> {}
 
 pub impl f32: FloatExt {}
 pub impl f64: FloatExt {}
