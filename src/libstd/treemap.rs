@@ -125,9 +125,6 @@ impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
         self.find(key).is_some()
     }
 
-    /// Visit all key-value pairs in order
-    pure fn each(&self, f: fn(&K, &V) -> bool) { each(&self.root, f) }
-
     /// Visit all keys in order
     pure fn each_key(&self, f: fn(&K) -> bool) { self.each(|k, _| f(k)) }
 
@@ -174,6 +171,9 @@ impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
 impl <K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
+
+    /// Visit all key-value pairs in order
+    pure fn each(&self, f: fn(&K, &V) -> bool) { each(&self.root, f) }
 
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, f: fn(&K, &V) -> bool) {

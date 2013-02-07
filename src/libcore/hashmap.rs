@@ -262,19 +262,6 @@ pub mod linear {
             }
         }
 
-        /// Visit all key-value pairs
-        pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
-            for self.buckets.each |slot| {
-                let mut broke = false;
-                do slot.iter |bucket| {
-                    if !blk(&bucket.key, &bucket.value) {
-                        broke = true; // FIXME(#3064) just write "break;"
-                    }
-                }
-                if broke { break; }
-            }
-        }
-
         /// Visit all keys
         pure fn each_key(&self, blk: fn(k: &K) -> bool) {
             self.each(|k, _| blk(k))
@@ -333,6 +320,19 @@ pub mod linear {
         /// Create an empty LinearMap
         static fn new() -> LinearMap<K, V> {
             linear_map_with_capacity(INITIAL_CAPACITY)
+        }
+
+        /// Visit all key-value pairs
+        pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
+            for self.buckets.each |slot| {
+                let mut broke = false;
+                do slot.iter |bucket| {
+                    if !blk(&bucket.key, &bucket.value) {
+                        broke = true; // FIXME(#3064) just write "break;"
+                    }
+                }
+                if broke { break; }
+            }
         }
 
         fn pop(&mut self, k: &K) -> Option<V> {
