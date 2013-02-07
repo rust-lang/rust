@@ -137,7 +137,7 @@ pub fn log_fn_time(ccx: @crate_ctxt, +name: ~str, start: time::Timespec,
     ccx.stats.fn_times.push({ident: name, time: elapsed});
 }
 
-pub fn decl_fn(llmod: ModuleRef, name: ~str, cc: lib::llvm::CallConv,
+pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
                llty: TypeRef) -> ValueRef {
     let llfn: ValueRef = str::as_c_str(name, |buf| {
         unsafe {
@@ -150,7 +150,7 @@ pub fn decl_fn(llmod: ModuleRef, name: ~str, cc: lib::llvm::CallConv,
     return llfn;
 }
 
-pub fn decl_cdecl_fn(llmod: ModuleRef, +name: ~str, llty: TypeRef)
+pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, llty: TypeRef)
                   -> ValueRef {
     return decl_fn(llmod, name, lib::llvm::CCallConv, llty);
 }
@@ -164,20 +164,19 @@ pub fn decl_internal_cdecl_fn(llmod: ModuleRef, +name: ~str, llty: TypeRef) ->
     return llfn;
 }
 
-pub fn get_extern_fn(externs: HashMap<~str, ValueRef>,
+pub fn get_extern_fn(externs: ExternMap,
                      llmod: ModuleRef,
-                     +name: ~str,
+                     name: @str,
                      cc: lib::llvm::CallConv,
                      ty: TypeRef) -> ValueRef {
     if externs.contains_key_ref(&name) { return externs.get(&name); }
-    // XXX: Bad copy.
-    let f = decl_fn(llmod, copy name, cc, ty);
+    let f = decl_fn(llmod, name, cc, ty);
     externs.insert(name, f);
     return f;
 }
 
-pub fn get_extern_const(externs: HashMap<~str, ValueRef>, llmod: ModuleRef,
-                        +name: ~str, ty: TypeRef) -> ValueRef {
+pub fn get_extern_const(externs: ExternMap, llmod: ModuleRef,
+                        name: @str, ty: TypeRef) -> ValueRef {
     unsafe {
         if externs.contains_key_ref(&name) { return externs.get(&name); }
         let c = str::as_c_str(name, |buf| {
@@ -189,9 +188,9 @@ pub fn get_extern_const(externs: HashMap<~str, ValueRef>, llmod: ModuleRef,
 }
 
     fn get_simple_extern_fn(cx: block,
-                            externs: HashMap<~str, ValueRef>,
+                            externs: ExternMap,
                             llmod: ModuleRef,
-                            +name: ~str,
+                            name: @str,
                             n_args: int) -> ValueRef {
     let _icx = cx.insn_ctxt("get_simple_extern_fn");
     let ccx = cx.fcx.ccx;
@@ -201,8 +200,8 @@ pub fn get_extern_const(externs: HashMap<~str, ValueRef>, llmod: ModuleRef,
     return get_extern_fn(externs, llmod, name, lib::llvm::CCallConv, t);
 }
 
-pub fn trans_foreign_call(cx: block, externs: HashMap<~str, ValueRef>,
-                          llmod: ModuleRef, +name: ~str, args: ~[ValueRef]) ->
+pub fn trans_foreign_call(cx: block, externs: ExternMap,
+                          llmod: ModuleRef, name: @str, args: ~[ValueRef]) ->
    ValueRef {
     let _icx = cx.insn_ctxt("trans_foreign_call");
     let n = args.len() as int;
@@ -474,6 +473,7 @@ pub fn get_res_dtor(ccx: @crate_ctxt, did: ast::def_id,
         let class_ty = ty::subst_tps(tcx, substs, None,
                           ty::lookup_item_type(tcx, parent_id).ty);
         let llty = type_of_dtor(ccx, class_ty);
+        let name = name.to_managed(); // :-(
         get_extern_fn(ccx.externs, ccx.llmod, name, lib::llvm::CCallConv,
                       llty)
     }
@@ -494,8 +494,13 @@ pub fn maybe_name_value(cx: @crate_ctxt, v: ValueRef, s: ~str) {
 // Used only for creating scalar comparison glue.
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
-pub fn compare_scalar_types(cx: block, lhs: ValueRef, rhs: ValueRef,
-                            t: ty::t, op: ast::binop) -> Result {
+// NB: This produces an i1, not a Rust bool (i8).
+pub fn compare_scalar_types(cx: block,
+                            lhs: ValueRef,
+                            rhs: ValueRef,
+                            t: ty::t,
+                            op: ast::binop)
+                         -> Result {
     let f = |a| compare_scalar_values(cx, lhs, rhs, a, op);
 
     match ty::get(t).sty {
@@ -521,8 +526,12 @@ pub fn compare_scalar_types(cx: block, lhs: ValueRef, rhs: ValueRef,
 
 
 // A helper function to do the actual comparison of scalar values.
-pub fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
-                             nt: scalar_type, op: ast::binop) -> ValueRef {
+pub fn compare_scalar_values(cx: block,
+                             lhs: ValueRef,
+                             rhs: ValueRef,
+                             nt: scalar_type,
+                             op: ast::binop)
+                          -> ValueRef {
     let _icx = cx.insn_ctxt("compare_scalar_values");
     fn die(cx: block) -> ! {
         cx.tcx().sess.bug(~"compare_scalar_values: must be a\
@@ -533,8 +542,8 @@ pub fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
         // We don't need to do actual comparisons for nil.
         // () == () holds but () < () does not.
         match op {
-          ast::eq | ast::le | ast::ge => return C_bool(true),
-          ast::ne | ast::lt | ast::gt => return C_bool(false),
+          ast::eq | ast::le | ast::ge => return C_i1(true),
+          ast::ne | ast::lt | ast::gt => return C_i1(false),
           // refinements would be nice
           _ => die(cx)
         }
@@ -766,7 +775,7 @@ pub fn null_env_ptr(bcx: block) -> ValueRef {
 
 pub fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
     -> ValueRef {
-    let name = csearch::get_symbol(ccx.sess.cstore, did);
+    let name = csearch::get_symbol(ccx.sess.cstore, did).to_managed(); // Sad
     match ty::get(t).sty {
       ty::ty_fn(_) => {
         let llty = type_of_fn_from_ty(ccx, t);
@@ -1442,7 +1451,7 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(1i32);
-    let volatile = C_bool(false);
+    let volatile = C_i1(false);
     Call(cx, memcpy, ~[dst_ptr, src_ptr, size, align, volatile]);
 }
 
@@ -1489,7 +1498,7 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
     let llzeroval = C_u8(0);
     let size = IntCast(cx, machine::llsize_of(ccx, llty), ccx.int_type);
     let align = C_i32(1i32);
-    let volatile = C_bool(false);
+    let volatile = C_i1(false);
     Call(cx, llintrinsicfn, ~[llptr, llzeroval, size, align, volatile]);
 }
 

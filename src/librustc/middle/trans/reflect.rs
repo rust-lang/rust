@@ -109,6 +109,7 @@ pub impl reflector {
                                                         ast::m_imm)),
             ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
         let result = scratch.to_value_llval(bcx);
+        let result = bool_to_i1(bcx, result);
         let next_bcx = sub_block(bcx, ~"next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);
         self.bcx = next_bcx

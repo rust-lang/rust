@@ -445,14 +445,19 @@ pub extern mod llvm {
                                            Count: c_uint,
                                            Packed: Bool) -> ValueRef;
 
-    pub unsafe fn LLVMConstString(Str: *c_char, Length: c_uint,
-                       DontNullTerminate: Bool) -> ValueRef;
-    pub unsafe fn LLVMConstArray(ElementTy: TypeRef, ConstantVals: *ValueRef,
-                      Length: c_uint) -> ValueRef;
+    pub unsafe fn LLVMConstString(Str: *c_char,
+                                  Length: c_uint,
+                                  DontNullTerminate: Bool)
+                               -> ValueRef;
+    pub unsafe fn LLVMConstArray(ElementTy: TypeRef,
+                                 ConstantVals: *ValueRef,
+                                 Length: c_uint)
+                              -> ValueRef;
     pub unsafe fn LLVMConstStruct(ConstantVals: *ValueRef,
-                       Count: c_uint, Packed: Bool) -> ValueRef;
+                                  Count: c_uint,
+                                  Packed: Bool) -> ValueRef;
     pub unsafe fn LLVMConstVector(ScalarConstantVals: *ValueRef,
-                       Size: c_uint) -> ValueRef;
+                                  Size: c_uint) -> ValueRef;
 
     /* Constant expressions */
     pub unsafe fn LLVMAlignOf(Ty: TypeRef) -> ValueRef;
@@ -463,8 +468,8 @@ pub extern mod llvm {
     pub unsafe fn LLVMConstFNeg(ConstantVal: ValueRef) -> ValueRef;
     pub unsafe fn LLVMConstNot(ConstantVal: ValueRef) -> ValueRef;
     pub unsafe fn LLVMConstAdd(LHSConstant: ValueRef,
-                           RHSConstant: ValueRef)
-                        -> ValueRef;
+                               RHSConstant: ValueRef)
+                            -> ValueRef;
     pub unsafe fn LLVMConstNSWAdd(LHSConstant: ValueRef,
                               RHSConstant: ValueRef)
                            -> ValueRef;
@@ -475,14 +480,14 @@ pub extern mod llvm {
                             RHSConstant: ValueRef)
                          -> ValueRef;
     pub unsafe fn LLVMConstSub(LHSConstant: ValueRef,
-                           RHSConstant: ValueRef)
-                        -> ValueRef;
+                               RHSConstant: ValueRef)
+                            -> ValueRef;
     pub unsafe fn LLVMConstNSWSub(LHSConstant: ValueRef,
-                              RHSConstant: ValueRef)
-                           -> ValueRef;
+                                  RHSConstant: ValueRef)
+                               -> ValueRef;
     pub unsafe fn LLVMConstNUWSub(LHSConstant: ValueRef,
-                              RHSConstant: ValueRef)
-                           -> ValueRef;
+                                  RHSConstant: ValueRef)
+                               -> ValueRef;
     pub unsafe fn LLVMConstFSub(LHSConstant: ValueRef,
                                 RHSConstant: ValueRef)
                              -> ValueRef;

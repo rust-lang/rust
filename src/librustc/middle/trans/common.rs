@@ -152,13 +152,15 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
+type ExternMap = HashMap<@str, ValueRef>;
+
 // Crate context.  Every crate we compile has one of these.
 pub struct crate_ctxt {
      sess: session::Session,
      llmod: ModuleRef,
      td: target_data,
      tn: type_names,
-     externs: HashMap<~str, ValueRef>,
+     externs: ExternMap,
      intrinsics: HashMap<~str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
@@ -759,7 +761,7 @@ pub fn T_f32() -> TypeRef { unsafe { return llvm::LLVMFloatType(); } }
 
 pub fn T_f64() -> TypeRef { unsafe { return llvm::LLVMDoubleType(); } }
 
-pub fn T_bool() -> TypeRef { return T_i1(); }
+pub fn T_bool() -> TypeRef { return T_i8(); }
 
 pub fn T_int(targ_cfg: @session::config) -> TypeRef {
     return match targ_cfg.arch {
@@ -1109,6 +1111,10 @@ pub fn C_bool(b: bool) -> ValueRef {
     C_integral(T_bool(), if b { 1u64 } else { 0u64 }, False)
 }
 
+pub fn C_i1(b: bool) -> ValueRef {
+    return C_integral(T_i1(), if b { 1 } else { 0 }, False);
+}
+
 pub fn C_i32(i: i32) -> ValueRef {
     return C_integral(T_i32(), i as u64, True);
 }
@@ -1433,6 +1439,11 @@ pub fn struct_dtor() -> [uint * 2] {
     //! The GEPi sequence to access the dtor of a struct.
 
     [0, 1]
+}
+
+// Casts a Rust bool value to an i1.
+pub fn bool_to_i1(bcx: block, llval: ValueRef) -> ValueRef {
+    build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(false))
 }
 
 //
