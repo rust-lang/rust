@@ -1160,8 +1160,7 @@ mod test {
     use core::io;
     use core::str;
     use std;
-    
-    
+
     #[auto_decode]
     #[auto_encode]
     struct Node {id: uint}
@@ -1171,9 +1170,11 @@ mod test {
         val.encode(~std::json::Encoder(bw as io::Writer));
         str::from_bytes(bw.bytes.data)
     }
-    
+
     #[test] fn encode_test () {
-        check_equal (to_json_str(Node{id:34} as Encodable::<std::json::Encoder>),~"{\"id\":34}");
+        check_equal (to_json_str(Node{id:34}
+                                 as Encodable::<std::json::Encoder>),
+                     ~"{\"id\":34}");
     }
 
     #[auto_encode]
@@ -1185,7 +1186,8 @@ mod test {
     #[test] fn json_enum_encode_test () {
         check_equal (to_json_str(Book(9) as Encodable::<std::json::Encoder>),
                      ~"[\"Book\",9]");
-        check_equal (to_json_str(Magazine(~"Paris Match") as Encodable::<std::json::Encoder>),
+        check_equal (to_json_str(Magazine(~"Paris Match")
+                                 as Encodable::<std::json::Encoder>),
                      ~"[\"Magazine\",\"Paris Match\"]");
     }
 }
