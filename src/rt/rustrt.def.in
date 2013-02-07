@@ -68,10 +68,6 @@ upcall_call_shim_on_rust_stack
 upcall_new_stack
 upcall_del_stack
 upcall_reset_stack_limit
-upcall_exchange_malloc
-upcall_exchange_free
-rust_upcall_exchange_free
-rust_upcall_exchange_malloc
 rust_upcall_fail
 rust_upcall_free
 rust_upcall_malloc
@@ -195,3 +191,4 @@ rust_register_exit_function
 rust_get_global_data_ptr
 rust_inc_weak_task_count
 rust_dec_weak_task_count
+rust_get_exchange_count_ptr
