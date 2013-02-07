@@ -556,24 +556,18 @@ impl <K: Ord, V> TreeNode<K, V> {
 
 pure fn each<K: Ord, V>(node: &r/Option<~TreeNode<K, V>>,
                         f: fn(&(&r/K, &r/V)) -> bool) {
-    match *node {
-      Some(ref x) => {
+    do node.map |x| {
         each(&x.left, f);
         if f(&(&x.key, &x.value)) { each(&x.right, f) }
-      }
-      None => ()
-    }
+    };
 }
 
 pure fn each_reverse<K: Ord, V>(node: &r/Option<~TreeNode<K, V>>,
                                 f: fn(&(&r/K, &r/V)) -> bool) {
-    match *node {
-      Some(ref x) => {
+    do node.map |x| {
         each_reverse(&x.right, f);
         if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }
-      }
-      None => ()
-    }
+    };
 }
 
 // Remove left horizontal link by rotating right
