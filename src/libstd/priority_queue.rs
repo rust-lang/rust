@@ -12,6 +12,7 @@
 
 use core::container::{Container, Mutable};
 use core::cmp::Ord;
+use core::iter::BaseIter;
 use core::prelude::*;
 use core::ptr::addr_of;
 use core::vec;
@@ -24,6 +25,14 @@ extern "C" mod rusti {
 
 pub struct PriorityQueue<T> {
     priv data: ~[T],
+}
+
+impl <T: Ord> PriorityQueue<T>: BaseIter<T> {
+    /// Visit all values in the underlying vector.
+    ///
+    /// The values are **not** visited in order.
+    pure fn each(&self, f: fn(&T) -> bool) { self.data.each(f) }
+    pure fn size_hint(&self) -> Option<uint> { self.data.size_hint() }
 }
 
 impl <T: Ord> PriorityQueue<T>: Container {
