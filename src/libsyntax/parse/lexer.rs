@@ -431,6 +431,13 @@ fn scan_number(c: char, rdr: string_reader) -> token::Token {
         let dec_part = scan_digits(rdr, 10u);
         num_str += ~"." + dec_part;
     }
+    if is_float {
+        match base {
+          16u => rdr.fatal(~"hexadecimal float literal is not supported"),
+          2u => rdr.fatal(~"binary float literal is not supported"),
+          _ => ()
+        }
+    }
     match scan_exponent(rdr) {
       Some(ref s) => {
         is_float = true;
