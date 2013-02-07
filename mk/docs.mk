@@ -45,7 +45,7 @@ doc/rust.html: rust.md doc/version_info.html doc/rust.css doc/manual.css
          --from=markdown --to=html \
          --css=rust.css \
          --css=manual.css \
-	 --include-before-body=doc/version_info.html \
+	     --include-before-body=doc/version_info.html \
          --output=$@
   endif
 
@@ -66,6 +66,7 @@ doc/rust.tex: rust.md doc/version.md
 	"$(CFG_PANDOC)" \
          --standalone --toc \
          --number-sections \
+	     --include-before-body=doc/version.md \
          --from=markdown --to=latex \
          --output=$@
 
@@ -199,16 +200,17 @@ ifdef CFG_DISABLE_DOCS
 endif
 
 
-doc/version.md: $(MKFILE_DEPS) rust.md
+doc/version.md: $(MKFILE_DEPS) $(wildcard $(S)doc/*.*)
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
 
-doc/version_info.html: version_info.html.template
+doc/version_info.html: version_info.html.template $(MKFILE_DEPS) \
+                       $(wildcard $(S)doc/*.*)
 	@$(call E, version-info: $@)
 	sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
                     $(CFG_VER_HASH) | head -c 8)/;\
 	            s/STAMP/$(CFG_VER_HASH)/;" $< >$@
 
-GENERATED += doc/version.md
+GENERATED += doc/version.md doc/version_info.html
 
 docs: $(DOCS)
