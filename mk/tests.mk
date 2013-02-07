@@ -22,6 +22,7 @@ CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
 BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
+DEBUGINFO_RS := $(wildcard $(S)src/test/debug-info/*.rs)
 
 # perf tests are the same as bench tests only they run under
 # a performance monitor.
@@ -34,6 +35,7 @@ CFAIL_TESTS := $(CFAIL_RC) $(CFAIL_RS)
 BENCH_TESTS := $(BENCH_RS)
 PERF_TESTS := $(PERF_RS)
 PRETTY_TESTS := $(PRETTY_RS)
+DEBUGINFO_TESTS := $(DEBUGINFO_RS)
 
 FT := run_pass_stage2
 FT_LIB := $(call CFG_LIB_NAME,$(FT))
@@ -99,7 +101,8 @@ cleantestlibs:
          -name '*.dSYM' -o    \
          -name '*.libaux' -o      \
          -name '*.out' -o     \
-         -name '*.err'        \
+         -name '*.err' -o     \
+         -name '*.debugger.script' \
          | xargs rm -rf
 
 check: cleantestlibs cleantmptestlogs tidy all check-stage2
@@ -243,6 +246,7 @@ check-stage$(1)-T-$(2)-H-$(3):     				\
 	check-stage$(1)-T-$(2)-H-$(3)-cfail			\
 	check-stage$(1)-T-$(2)-H-$(3)-bench			\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty        \
+	check-stage$(1)-T-$(2)-H-$(3)-debuginfo			\
     check-stage$(1)-T-$(2)-H-$(3)-rustdoc       \
     check-stage$(1)-T-$(2)-H-$(3)-rusti       \
     check-stage$(1)-T-$(2)-H-$(3)-cargo       \
@@ -307,6 +311,9 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-bench:			\
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty:				\
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy
+
+check-stage$(1)-T-$(2)-H-$(3)-debuginfo:			\
+	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-dummy
 
 check-stage$(1)-T-$(2)-H-$(3)-rustdoc:				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustdoc-dummy
@@ -528,6 +535,12 @@ PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3) :=			\
         --build-base $(3)/test/pretty/			\
         --mode pretty
 
+DEBUGINFO_ARGS$(1)-T-$(2)-H-$(3) :=			\
+		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3)) \
+	--src-base $$(S)src/test/debug-info/		\
+	--build-base $(3)/test/debug-info		\
+	--mode debug-info
+
 DOC_TUTORIAL_ARGS$(1)-T-$(2)-H-$(3) :=			\
 		$$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $(3)/test/doc-tutorial/		\
@@ -651,6 +664,14 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-dummy:	\
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
 		$$(PRETTY_PRETTY_ARGS$(1)-T-$(2)-H-$(3)) \
 		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty.log
+
+check-stage$(1)-T-$(2)-H-$(3)-debuginfo-dummy:		\
+		$$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(DEBUGINFO_TESTS)
+	@$$(call E, run debug-info: $$<)
+	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
+		$$(DEBUGINFO_ARGS$(1)-T-$(2)-H-$(3)) \
+		--logfile tmp/check-stage$(1)-T-$(2)-H-$(3)-debuginfo.log
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-tutorial-dummy:       \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
@@ -814,6 +835,9 @@ check-stage$(1)-H-$(2)-pretty-bench:				\
 check-stage$(1)-H-$(2)-pretty-pretty:				\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-pretty-pretty)
+check-stage$(1)-H-$(2)-debuginfo:				\
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-T-$$(target)-H-$(2)-debuginfo)
 check-stage$(1)-H-$(2)-rustdoc:					\
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-T-$$(target)-H-$(2)-rustdoc)
@@ -913,6 +937,9 @@ check-stage$(1)-H-all-pretty-bench: \
 check-stage$(1)-H-all-pretty-pretty: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-pretty-pretty)
+check-stage$(1)-H-all-debuginfo: \
+	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
+	 check-stage$(1)-H-$$(target)-debuginfo)
 check-stage$(1)-H-all-rustdoc: \
 	$$(foreach target,$$(CFG_TARGET_TRIPLES),	\
 	 check-stage$(1)-H-$$(target)-rustdoc)
@@ -953,6 +980,7 @@ check-stage$(1)-pretty-rpass-full: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-
 check-stage$(1)-pretty-rfail: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-rfail
 check-stage$(1)-pretty-bench: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-bench
 check-stage$(1)-pretty-pretty: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-pretty-pretty
+check-stage$(1)-debuginfo: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-debuginfo
 check-stage$(1)-rustdoc: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rustdoc
 check-stage$(1)-rusti: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-rusti
 check-stage$(1)-cargo: check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-cargo

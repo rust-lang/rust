@@ -619,6 +619,7 @@ do
     make_dir $h/test/bench
     make_dir $h/test/perf
     make_dir $h/test/pretty
+    make_dir $h/test/debug-info
     make_dir $h/test/doc-tutorial
     make_dir $h/test/doc-tutorial-ffi
     make_dir $h/test/doc-tutorial-macros
