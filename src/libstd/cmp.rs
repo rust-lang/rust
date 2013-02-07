@@ -14,16 +14,16 @@ use core::f32;
 use core::f64;
 use core::float;
 
-const fuzzy_epsilon: float = 1.0e-6;
+pub const FUZZY_EPSILON: float = 1.0e-6;
 
-pub trait FuzzyEq {
+pub trait FuzzyEq<Eps> {
     pure fn fuzzy_eq(&self, other: &Self) -> bool;
-    pure fn fuzzy_eq_eps(&self, other: &Self, epsilon: &Self) -> bool;
+    pure fn fuzzy_eq_eps(&self, other: &Self, epsilon: &Eps) -> bool;
 }
 
-impl float: FuzzyEq {
+impl float: FuzzyEq<float> {
     pure fn fuzzy_eq(&self, other: &float) -> bool {
-        self.fuzzy_eq_eps(other, &fuzzy_epsilon)
+        self.fuzzy_eq_eps(other, &FUZZY_EPSILON)
     }
 
     pure fn fuzzy_eq_eps(&self, other: &float, epsilon: &float) -> bool {
@@ -31,9 +31,9 @@ impl float: FuzzyEq {
     }
 }
 
-impl f32: FuzzyEq {
+impl f32: FuzzyEq<f32> {
     pure fn fuzzy_eq(&self, other: &f32) -> bool {
-        self.fuzzy_eq_eps(other, &(fuzzy_epsilon as f32))
+        self.fuzzy_eq_eps(other, &(FUZZY_EPSILON as f32))
     }
 
     pure fn fuzzy_eq_eps(&self, other: &f32, epsilon: &f32) -> bool {
@@ -41,9 +41,9 @@ impl f32: FuzzyEq {
     }
 }
 
-impl f64: FuzzyEq {
+impl f64: FuzzyEq<f64> {
     pure fn fuzzy_eq(&self, other: &f64) -> bool {
-        self.fuzzy_eq_eps(other, &(fuzzy_epsilon as f64))
+        self.fuzzy_eq_eps(other, &(FUZZY_EPSILON as f64))
     }
 
     pure fn fuzzy_eq_eps(&self, other: &f64, epsilon: &f64) -> bool {
@@ -62,4 +62,41 @@ fn test_fuzzy_equals() {
 fn test_fuzzy_eq_eps() {
     assert (&1.2f).fuzzy_eq_eps(&0.9, &0.5);
     assert !(&1.5f).fuzzy_eq_eps(&0.9, &0.5);
+}
+
+#[test]
+mod test_complex{
+    use cmp::*;
+
+    struct Complex { r: float, i: float }
+
+    impl Complex: FuzzyEq<float> {
+        pure fn fuzzy_eq(&self, other: &Complex) -> bool {
+            self.fuzzy_eq_eps(other, &FUZZY_EPSILON)
+        }
+
+        pure fn fuzzy_eq_eps(&self, other: &Complex,
+                             epsilon: &float) -> bool {
+            self.r.fuzzy_eq_eps(&other.r, epsilon) &&
+            self.i.fuzzy_eq_eps(&other.i, epsilon)
+        }
+    }
+
+    #[test]
+    fn test_fuzzy_equals() {
+        let a = Complex {r: 0.9, i: 0.9};
+        let b = Complex {r: 0.9, i: 0.9};
+
+        assert (a.fuzzy_eq(&b));
+    }
+
+    #[test]
+    fn test_fuzzy_eq_eps() {
+        let other = Complex {r: 0.9, i: 0.9};
+
+        assert (&Complex {r: 0.9, i: 1.2}).fuzzy_eq_eps(&other, &0.5);
+        assert (&Complex {r: 1.2, i: 0.9}).fuzzy_eq_eps(&other, &0.5);
+        assert !(&Complex {r: 0.9, i: 1.5}).fuzzy_eq_eps(&other, &0.5);
+        assert !(&Complex {r: 1.5, i: 0.9}).fuzzy_eq_eps(&other, &0.5);
+    }
 }
