@@ -696,15 +696,15 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
             return fn_data_to_datum(bcx, impl_did, fn_data, lldest);
         }
         ast::def_variant(tid, vid) => {
-            if ty::enum_variant_with_id(ccx.tcx, tid, vid).args.len() > 0u {
+            let variant_info = ty::enum_variant_with_id(ccx.tcx, tid, vid);
+            if variant_info.args.len() > 0u {
                 // N-ary variant.
                 let fn_data = callee::trans_fn_ref(bcx, vid, ref_expr.id);
                 return fn_data_to_datum(bcx, vid, fn_data, lldest);
             } else {
                 // Nullary variant.
                 let lldiscrimptr = GEPi(bcx, lldest, [0u, 0u]);
-                let lldiscrim_gv = base::lookup_discriminant(ccx, vid);
-                let lldiscrim = Load(bcx, lldiscrim_gv);
+                let lldiscrim = C_int(bcx.ccx(), variant_info.disr_val);
                 Store(bcx, lldiscrim, lldiscrimptr);
                 return bcx;
             }
