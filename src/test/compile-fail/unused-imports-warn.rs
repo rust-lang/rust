@@ -8,23 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:unused import
-// compile-flags:-W unused-imports
+// compile-flags: -D unused-imports
+
 use cal = bar::c::cc;
 
+use core::either::Right;        //~ ERROR unused import
+
+use core::util::*;              // shouldn't get errors for not using
+                                // everything imported
+
+// Should only get one error instead of two errors here
+use core::option::{Some, None}; //~ ERROR unused import
+
+use core::io::ReaderUtil;       //~ ERROR unused import
+// Be sure that if we just bring some methods into scope that they're also
+// counted as being used.
+use core::io::WriterUtil;
+
 mod foo {
-    pub type point = {x: int, y: int};
-    pub type square = {p: point, h: uint, w: uint};
+    pub struct Point{x: int, y: int}
+    pub struct Square{p: Point, h: uint, w: uint}
 }
 
 mod bar {
     pub mod c {
-        use foo::point;
-        use foo::square;
-        pub fn cc(p: point) -> str { return 2 * (p.x + p.y); }
+        use foo::Point;
+        use foo::Square; //~ ERROR unused import
+        pub fn cc(p: Point) -> int { return 2 * (p.x + p.y); }
     }
 }
 
 fn main() {
-    cal({x:3, y:9});
+    cal(foo::Point{x:3, y:9});
+    let a = 3;
+    ignore(a);
+    io::stdout().write_str(~"a");
 }
