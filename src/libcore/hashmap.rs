@@ -49,9 +49,8 @@ pub mod linear {
         buckets: ~[Option<Bucket<K, V>>],
     }
 
-    // FIXME(#3148) -- we could rewrite FoundEntry
-    // to have type Option<&Bucket<K, V>> which would be nifty
-    // However, that won't work until #3148 is fixed
+    // We could rewrite FoundEntry to have type Option<&Bucket<K, V>>
+    // which would be nifty
     enum SearchResult {
         FoundEntry(uint), FoundHole(uint), TableFull
     }
@@ -296,8 +295,6 @@ pub mod linear {
                 FoundEntry(idx) => {
                     match self.buckets[idx] {
                         Some(ref bkt) => {
-                            // FIXME(#3148)---should be inferred
-                            let bkt: &self/Bucket<K, V> = bkt;
                             Some(&bkt.value)
                         }
                         None => {

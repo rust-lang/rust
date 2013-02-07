@@ -77,7 +77,7 @@ fn lli64(val: int) -> ValueRef {
     C_i64(val as i64)
 }
 fn lli1(bval: bool) -> ValueRef {
-    C_bool(bval)
+    C_i1(bval)
 }
 fn llmdnode(elems: ~[ValueRef]) -> ValueRef {
     unsafe {
