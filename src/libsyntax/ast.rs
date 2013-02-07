@@ -783,6 +783,7 @@ pub impl float_ty : to_bytes::IterBytes {
 // NB Eq method appears below.
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct Ty {
     id: node_id,
     node: ty_,
@@ -855,6 +856,7 @@ pub struct TyClosure {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct TyBareFn {
     purity: purity,
     abi: Abi,
@@ -883,17 +885,6 @@ pub enum ty_ {
     // specified. This should only appear at the "top level" of a type and not
     // nested in one.
     ty_infer,
-}
-
-// Equality and byte-iter (hashing) can be quite approximate for AST types.
-// since we only care about this for normalizing them to "real" types.
-pub impl Ty : cmp::Eq {
-    pure fn eq(&self, other: &Ty) -> bool {
-        ptr::addr_of(&(*self)) == ptr::addr_of(&(*other))
-    }
-    pure fn ne(&self, other: &Ty) -> bool {
-        ptr::addr_of(&(*self)) != ptr::addr_of(&(*other))
-    }
 }
 
 pub impl Ty : to_bytes::IterBytes {
