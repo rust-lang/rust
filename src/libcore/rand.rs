@@ -23,6 +23,102 @@ use uint;
 use util;
 use vec;
 
+/// A type that can be randomly generated using an RNG
+pub trait Rand {
+    static fn rand(rng: rand::Rng) -> Self;
+}
+
+impl int: Rand {
+    static fn rand(rng: rand::Rng) -> int {
+        rng.gen_int()
+    }
+}
+
+impl i8: Rand {
+    static fn rand(rng: rand::Rng) -> i8 {
+        rng.gen_i8()
+    }
+}
+
+impl i16: Rand {
+    static fn rand(rng: rand::Rng) -> i16 {
+        rng.gen_i16()
+    }
+}
+
+impl i32: Rand {
+    static fn rand(rng: rand::Rng) -> i32 {
+        rng.gen_i32()
+    }
+}
+
+impl i64: Rand {
+    static fn rand(rng: rand::Rng) -> i64 {
+        rng.gen_i64()
+    }
+}
+
+impl u8: Rand {
+    static fn rand(rng: rand::Rng) -> u8 {
+        rng.gen_u8()
+    }
+}
+
+impl u16: Rand {
+    static fn rand(rng: rand::Rng) -> u16 {
+        rng.gen_u16()
+    }
+}
+
+impl u32: Rand {
+    static fn rand(rng: rand::Rng) -> u32 {
+        rng.gen_u32()
+    }
+}
+
+impl u64: Rand {
+    static fn rand(rng: rand::Rng) -> u64 {
+        rng.gen_u64()
+    }
+}
+
+impl float: Rand {
+    static fn rand(rng: rand::Rng) -> float {
+        rng.gen_float()
+    }
+}
+
+impl f32: Rand {
+    static fn rand(rng: rand::Rng) -> f32 {
+        rng.gen_f32()
+    }
+}
+
+impl f64: Rand {
+    static fn rand(rng: rand::Rng) -> f64 {
+        rng.gen_f64()
+    }
+}
+
+impl char: Rand {
+    static fn rand(rng: rand::Rng) -> char {
+        rng.gen_char()
+    }
+}
+
+impl bool: Rand {
+    static fn rand(rng: rand::Rng) -> bool {
+        rng.gen_bool()
+    }
+}
+
+impl<T: Rand> Option<T>: Rand {
+    static fn rand(rng: rand::Rng) -> Option<T> {
+        if rng.gen_bool() { Some(Rand::rand(rng)) }
+        else { None }
+    }
+}
+
 #[allow(non_camel_case_types)] // runtime type
 enum rctx {}
 
@@ -49,6 +145,10 @@ pub struct Weighted<T> {
 
 /// Extension methods for random number generators
 impl Rng {
+    /// Return a random value for a Rand type
+    fn gen<T: Rand>() -> T {
+        Rand::rand(self)
+    }
 
     /// Return a random int
     fn gen_int() -> int {
