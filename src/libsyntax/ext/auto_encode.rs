@@ -23,23 +23,23 @@ For example, a type like:
 
 would generate two implementations like:
 
-    impl<S: Encoder> node_id: Encodable<S> {
-        fn encode(s: &S) {
-            do s.emit_struct("Node", 1) {
-                s.emit_field("id", 0, || s.emit_uint(self))
-            }
+impl<S: std::serialize::Encoder> Node: Encodable<S> {
+    fn encode(&self, s: &S) {
+        do s.emit_struct("Node", 1) {
+            s.emit_field("id", 0, || s.emit_uint(self.id))
         }
     }
+}
 
-    impl<D: Decoder> node_id: Decodable {
-        static fn decode(d: &D) -> Node {
-            do d.read_struct("Node", 1) {
-                Node {
-                    id: d.read_field(~"x", 0, || decode(d))
-                }
+impl<D: Decoder> node_id: Decodable {
+    static fn decode(d: &D) -> Node {
+        do d.read_struct("Node", 1) {
+            Node {
+                id: d.read_field(~"x", 0, || decode(d))
             }
         }
     }
+}
 
 Other interesting scenarios are whe the item has type parameters or
 references other non-built-in types.  A type definition like:
@@ -1149,4 +1149,43 @@ fn mk_enum_deser_body(
             expr_lambda
         ]
     )
+}
+
+
+#[cfg(test)]
+mod test {
+    use std::serialize::Encodable;
+    use core::dvec::*;
+    use util::testing::*;
+    use core::io;
+    use core::str;
+    use std;
+    
+    
+    #[auto_decode]
+    #[auto_encode]
+    struct Node {id: uint}
+
+    fn to_json_str (val: Encodable<std::json::Encoder>) -> ~str{
+        let bw = @io::BytesWriter {bytes: DVec(), pos: 0};
+        val.encode(~std::json::Encoder(bw as io::Writer));
+        str::from_bytes(bw.bytes.data)
+    }
+    
+    #[test] fn encode_test () {
+        check_equal (to_json_str(Node{id:34} as Encodable::<std::json::Encoder>),~"{\"id\":34}");
+    }
+
+    #[auto_encode]
+    enum written {
+        Book(int),
+        Magazine(~str)
+    }
+
+    #[test] fn json_enum_encode_test () {
+        check_equal (to_json_str(Book(9) as Encodable::<std::json::Encoder>),
+                     ~"[\"Book\",9]");
+        check_equal (to_json_str(Magazine(~"Paris Match") as Encodable::<std::json::Encoder>),
+                     ~"[\"Magazine\",\"Paris Match\"]");
+    }
 }
