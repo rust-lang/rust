@@ -152,13 +152,15 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
+type ExternMap = HashMap<@str, ValueRef>;
+
 // Crate context.  Every crate we compile has one of these.
 pub struct crate_ctxt {
      sess: session::Session,
      llmod: ModuleRef,
      td: target_data,
      tn: type_names,
-     externs: HashMap<~str, ValueRef>,
+     externs: ExternMap,
      intrinsics: HashMap<~str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
