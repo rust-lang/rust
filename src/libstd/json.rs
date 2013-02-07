@@ -121,21 +121,21 @@ pub impl Encoder: serialize::Encoder {
     fn emit_owned(&self, f: fn()) { f() }
     fn emit_managed(&self, f: fn()) { f() }
 
-    fn emit_enum(&self, name: &str, f: fn()) {
+    fn emit_enum(&self, _name: &str, f: fn()) {
         f()
     }
-    
-    fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: fn()) {
+
+    fn emit_enum_variant(&self, name: &str, _id: uint, _cnt: uint, f: fn()) {
         // emitting enums as arrays where the first
         // element provides the enum variant name
         self.wr.write_char('[');
-        self.wr.write_str(escape_str(_name));
+        self.wr.write_str(escape_str(name));
         self.wr.write_char(',');
         f();
         self.wr.write_char(']');
     }
-    fn emit_enum_variant_arg(&self, _idx: uint, f: fn()) {
-        if _idx != 0 {self.wr.write_char(',');}
+    fn emit_enum_variant_arg(&self, idx: uint, f: fn()) {
+        if idx != 0 {self.wr.write_char(',');}
         f();
     }
 
