@@ -48,16 +48,6 @@ impl<V> SmallIntMap<V>: Map<uint, V> {
         self.find(key).is_some()
     }
 
-    /// Visit all key-value pairs
-    pure fn each(&self, it: fn(key: &uint, value: &V) -> bool) {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref elt) => if !it(&i, elt) { break },
-              None => ()
-            }
-        }
-    }
-
     /// Visit all keys
     pure fn each_key(&self, blk: fn(key: &uint) -> bool) {
         self.each(|k, _| blk(k))
@@ -108,6 +98,16 @@ impl<V> SmallIntMap<V>: Map<uint, V> {
 pub impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     static pure fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+
+    /// Visit all key-value pairs
+    pure fn each(&self, it: fn(key: &uint, value: &V) -> bool) {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref elt) => if !it(&i, elt) { break },
+              None => ()
+            }
+        }
+    }
 
     pure fn get(&self, key: &uint) -> &self/V {
         self.find(key).expect("key not present")

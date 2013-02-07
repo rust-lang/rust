@@ -11,6 +11,7 @@
 // xfail-fast
 
 use core::container::{Container, Mutable, Map};
+use core::iter::BaseIter;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
@@ -48,6 +49,18 @@ impl<T> cat<T> {
     }
 }
 
+impl<T> cat<T>: BaseIter<(int, &T)> {
+    pure fn each(&self, f: fn(&(int, &self/T)) -> bool) {
+        let mut n = int::abs(self.meows);
+        while n > 0 {
+            if !f(&(n, &self.name)) { break; }
+            n -= 1;
+        }
+    }
+
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
 impl<T> cat<T>: Container {
     pure fn len(&self) -> uint { self.meows as uint }
     pure fn is_empty(&self) -> bool { self.meows == 0 }
@@ -60,20 +73,12 @@ impl<T> cat<T>: Mutable {
 impl<T> cat<T>: Map<int, T> {
     pure fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
-    pure fn each(&self, f: fn(v: &int, v: &T) -> bool) {
-        let mut n = int::abs(self.meows);
-        while n > 0 {
-            if !f(&n, &self.name) { break; }
-            n -= 1;
-        }
-    }
-
     pure fn each_key(&self, f: fn(v: &int) -> bool) {
-        for self.each |k, _| { if !f(k) { break; } loop;};
+        for self.each |&(k, _)| { if !f(&k) { break; } loop;};
     }
 
     pure fn each_value(&self, f: fn(v: &T) -> bool) {
-        for self.each |_, v| { if !f(v) { break; } loop;};
+        for self.each |&(_, v)| { if !f(v) { break; } loop;};
     }
 
     fn insert(&mut self, k: int, _: T) -> bool {

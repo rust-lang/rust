@@ -29,9 +29,6 @@ pub trait Map<K, V>: Mutable {
     /// Return true if the map contains a value for the specified key
     pure fn contains_key(&self, key: &K) -> bool;
 
-    /// Visit all key-value pairs
-    pure fn each(&self, f: fn(&K, &V) -> bool);
-
     /// Visit all keys
     pure fn each_key(&self, f: fn(&K) -> bool);
 
