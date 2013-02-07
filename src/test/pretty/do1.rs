@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-exact
+// pp-exact
 
-fn f(f: fn@(int)) { f(10) }
+fn f(f: @fn(int)) { f(10) }
 
-fn main() {
-    do f |i| { assert i == 10 }
-}
+fn main() { do f |i| { assert i == 10 } }
