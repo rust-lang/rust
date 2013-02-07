@@ -172,7 +172,8 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
 
     if field == abi::tydesc_field_free_glue {
         match ty::get(t).sty {
-          ty::ty_fn(*) |
+          ty::ty_bare_fn(*) |
+          ty::ty_closure(*) |
           ty::ty_box(*) |
           ty::ty_opaque_box |
           ty::ty_uniq(*) |
@@ -419,8 +420,8 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
                        tvec::expand_boxed_vec_ty(bcx.tcx(), t));
         return;
       }
-      ty::ty_fn(_) => {
-        closure::make_fn_glue(bcx, v, t, free_ty)
+      ty::ty_closure(_) => {
+        closure::make_closure_glue(bcx, v, t, free_ty)
       }
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_free_glue(bcx, ck, v)
@@ -528,8 +529,8 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
           }
         }
       }
-      ty::ty_fn(_) => {
-        closure::make_fn_glue(bcx, v0, t, drop_ty)
+      ty::ty_closure(_) => {
+        closure::make_closure_glue(bcx, v0, t, drop_ty)
       }
       ty::ty_trait(_, _, ty::vstore_box) => {
         let llbox = Load(bcx, GEPi(bcx, v0, [0u, 1u]));
@@ -594,8 +595,8 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       | ty::ty_estr(ty::vstore_slice(_)) => {
         bcx
       }
-      ty::ty_fn(_) => {
-        closure::make_fn_glue(bcx, v, t, take_ty)
+      ty::ty_closure(_) => {
+        closure::make_closure_glue(bcx, v, t, take_ty)
       }
       ty::ty_trait(_, _, ty::vstore_box) => {
         let llbox = Load(bcx, GEPi(bcx, v, [0u, 1u]));

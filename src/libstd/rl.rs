@@ -64,7 +64,7 @@ pub unsafe fn read(prompt: ~str) -> Option<~str> {
     }
 }
 
-pub type CompletionCb = fn~(~str, fn(~str));
+pub type CompletionCb = @fn(~str, fn(~str));
 
 fn complete_key(_v: @CompletionCb) {}
 
@@ -75,7 +75,7 @@ pub unsafe fn complete(cb: CompletionCb) {
 
         extern fn callback(line: *c_char, completions: *()) {
             unsafe {
-                let cb = copy *task::local_data::local_data_get(complete_key)
+                let cb = *task::local_data::local_data_get(complete_key)
                     .get();
 
                 do cb(str::raw::from_c_str(line)) |suggestion| {

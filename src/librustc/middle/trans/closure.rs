@@ -160,7 +160,7 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
     return cdata_ty;
 }
 
-pub fn allocate_cbox(bcx: block, proto: ast::Proto, cdata_ty: ty::t)
+pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
                   -> Result {
     let _icx = bcx.insn_ctxt("closure::allocate_cbox");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
@@ -176,22 +176,18 @@ pub fn allocate_cbox(bcx: block, proto: ast::Proto, cdata_ty: ty::t)
     }
 
     // Allocate and initialize the box:
-    match proto {
-        ast::ProtoBox => {
+    match sigil {
+        ast::ManagedSigil => {
             malloc_raw(bcx, cdata_ty, heap_shared)
         }
-        ast::ProtoUniq => {
+        ast::OwnedSigil => {
             malloc_raw(bcx, cdata_ty, heap_exchange)
         }
-        ast::ProtoBorrowed => {
+        ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
             let llbox = base::alloc_ty(bcx, cbox_ty);
             nuke_ref_count(bcx, llbox);
             rslt(bcx, llbox)
-        }
-        ast::ProtoBare => {
-            let cdata_llty = type_of(bcx.ccx(), cdata_ty);
-            rslt(bcx, C_null(cdata_llty))
         }
     }
 }
@@ -208,7 +204,7 @@ pub type closure_result = {
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 pub fn store_environment(bcx: block,
                          bound_values: ~[EnvValue],
-                         proto: ast::Proto) -> closure_result {
+                         sigil: ast::Sigil) -> closure_result {
     let _icx = bcx.insn_ctxt("closure::store_environment");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -217,7 +213,7 @@ pub fn store_environment(bcx: block,
     let cdata_ty = mk_closure_tys(tcx, copy bound_values);
 
     // allocate closure in the heap
-    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, proto, cdata_ty);
+    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
     let mut temp_cleanups = ~[];
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
@@ -265,7 +261,7 @@ pub fn store_environment(bcx: block,
 // collects the upvars and packages them up for store_environment.
 pub fn build_closure(bcx0: block,
                      cap_vars: &[moves::CaptureVar],
-                     proto: ast::Proto,
+                     sigil: ast::Sigil,
                      include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
@@ -279,7 +275,7 @@ pub fn build_closure(bcx0: block,
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
             moves::CapRef => {
-                assert proto == ast::ProtoBorrowed;
+                assert sigil == ast::BorrowedSigil;
                 env_vals.push(EnvValue {action: EnvRef,
                                         datum: datum});
             }
@@ -316,7 +312,7 @@ pub fn build_closure(bcx0: block,
                                 datum: ret_datum});
     }
 
-    return store_environment(bcx, env_vals, proto);
+    return store_environment(bcx, env_vals, sigil);
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -326,7 +322,7 @@ pub fn load_environment(fcx: fn_ctxt,
                         cdata_ty: ty::t,
                         cap_vars: &[moves::CaptureVar],
                         load_ret_handle: bool,
-                        proto: ast::Proto) {
+                        sigil: ast::Sigil) {
     let _icx = fcx.insn_ctxt("closure::load_environment");
 
     let llloadenv = match fcx.llloadenv {
@@ -352,9 +348,9 @@ pub fn load_environment(fcx: fn_ctxt,
     let mut i = 0u;
     for cap_vars.each |cap_var| {
         let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
-        match proto {
-            ast::ProtoBorrowed => { upvarptr = Load(bcx, upvarptr); }
-            ast::ProtoBox | ast::ProtoUniq | ast::ProtoBare => {}
+        match sigil {
+            ast::BorrowedSigil => { upvarptr = Load(bcx, upvarptr); }
+            ast::ManagedSigil | ast::OwnedSigil => {}
         }
         let def_id = ast_util::def_id_of_def(cap_var.def);
         fcx.llupvars.insert(def_id.node, upvarptr);
@@ -369,9 +365,9 @@ pub fn load_environment(fcx: fn_ctxt,
 }
 
 pub fn trans_expr_fn(bcx: block,
-                     proto: ast::Proto,
-                     +decl: ast::fn_decl,
-                     +body: ast::blk,
+                     sigil: ast::Sigil,
+                     decl: &ast::fn_decl,
+                     body: &ast::blk,
                      outer_id: ast::node_id,
                      user_id: ast::node_id,
                      is_loop_body: Option<Option<ValueRef>>,
@@ -381,7 +377,7 @@ pub fn trans_expr_fn(bcx: block,
      *
      * Translates the body of a closure expression.
      *
-     * - `proto`
+     * - `sigil`
      * - `decl`
      * - `body`
      * - `outer_id`: The id of the closure expression with the correct
@@ -417,18 +413,18 @@ pub fn trans_expr_fn(bcx: block,
                                                  ~"expr_fn");
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let Result {bcx: bcx, val: closure} = match proto {
-        ast::ProtoBorrowed | ast::ProtoBox | ast::ProtoUniq => {
+    let Result {bcx: bcx, val: closure} = match sigil {
+        ast::BorrowedSigil | ast::ManagedSigil | ast::OwnedSigil => {
             let cap_vars = ccx.maps.capture_map.get(&user_id);
             let ret_handle = match is_loop_body {Some(x) => x,
                                                  None => None};
-            let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, proto,
+            let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, sigil,
                                                        ret_handle);
             trans_closure(ccx, sub_path, decl,
                           body, llfn, no_self,
                           /*bad*/ copy bcx.fcx.param_substs, user_id, None,
                           |fcx| load_environment(fcx, cdata_ty, cap_vars,
-                                                 ret_handle.is_some(), proto),
+                                                 ret_handle.is_some(), sigil),
                           |bcx| {
                               if is_loop_body.is_some() {
                                   Store(bcx, C_bool(true), bcx.fcx.llretptr);
@@ -436,34 +432,30 @@ pub fn trans_expr_fn(bcx: block,
                           });
             rslt(bcx, llbox)
         }
-        ast::ProtoBare => {
-            trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,
-                          user_id, None, |_fcx| { }, |_bcx| { });
-            rslt(bcx, C_null(T_opaque_box_ptr(ccx)))
-        }
     };
     fill_fn_pair(bcx, dest_addr, llfn, closure);
 
     return bcx;
 }
 
-pub fn make_fn_glue(cx: block,
-                    v: ValueRef,
-                    t: ty::t,
-                    glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block)
-                 -> block {
-    let _icx = cx.insn_ctxt("closure::make_fn_glue");
+pub fn make_closure_glue(
+    cx: block,
+    v: ValueRef,
+    t: ty::t,
+    glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block) -> block
+{
+    let _icx = cx.insn_ctxt("closure::make_closure_glue");
     let bcx = cx;
     let tcx = cx.tcx();
 
-    let proto = ty::ty_fn_proto(t);
-    match proto {
-        ast::ProtoBare | ast::ProtoBorrowed => bcx,
-        ast::ProtoUniq | ast::ProtoBox => {
+    let sigil = ty::ty_closure_sigil(t);
+    match sigil {
+        ast::BorrowedSigil => bcx,
+        ast::OwnedSigil | ast::ManagedSigil => {
             let box_cell_v = GEPi(cx, v, [0u, abi::fn_field_box]);
             let box_ptr_v = Load(cx, box_cell_v);
             do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
-                let closure_ty = ty::mk_opaque_closure_ptr(tcx, proto);
+                let closure_ty = ty::mk_opaque_closure_ptr(tcx, sigil);
                 glue_fn(bcx, box_cell_v, closure_ty)
             }
         }
@@ -472,20 +464,20 @@ pub fn make_fn_glue(cx: block,
 
 pub fn make_opaque_cbox_take_glue(
     bcx: block,
-    proto: ast::Proto,
+    sigil: ast::Sigil,
     cboxptr: ValueRef)     // ptr to ptr to the opaque closure
     -> block {
     // Easy cases:
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_take_glue");
-    match proto {
-        ast::ProtoBare | ast::ProtoBorrowed => {
+    match sigil {
+        ast::BorrowedSigil => {
             return bcx;
         }
-        ast::ProtoBox => {
+        ast::ManagedSigil => {
             glue::incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr));
             return bcx;
         }
-        ast::ProtoUniq => {
+        ast::OwnedSigil => {
             /* hard case: fallthrough to code below */
         }
     }
@@ -531,36 +523,36 @@ pub fn make_opaque_cbox_take_glue(
 
 pub fn make_opaque_cbox_drop_glue(
     bcx: block,
-    proto: ast::Proto,
+    sigil: ast::Sigil,
     cboxptr: ValueRef)     // ptr to the opaque closure
     -> block {
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_drop_glue");
-    match proto {
-        ast::ProtoBare | ast::ProtoBorrowed => bcx,
-        ast::ProtoBox => {
+    match sigil {
+        ast::BorrowedSigil => bcx,
+        ast::ManagedSigil => {
             glue::decr_refcnt_maybe_free(
                 bcx, Load(bcx, cboxptr),
-                ty::mk_opaque_closure_ptr(bcx.tcx(), proto))
+                ty::mk_opaque_closure_ptr(bcx.tcx(), sigil))
         }
-        ast::ProtoUniq => {
+        ast::OwnedSigil => {
             glue::free_ty(
                 bcx, cboxptr,
-                ty::mk_opaque_closure_ptr(bcx.tcx(), proto))
+                ty::mk_opaque_closure_ptr(bcx.tcx(), sigil))
         }
     }
 }
 
 pub fn make_opaque_cbox_free_glue(
     bcx: block,
-    proto: ast::Proto,
+    sigil: ast::Sigil,
     cbox: ValueRef)     // ptr to ptr to the opaque closure
     -> block {
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_free_glue");
-    match proto {
-        ast::ProtoBare | ast::ProtoBorrowed => {
+    match sigil {
+        ast::BorrowedSigil => {
             return bcx;
         }
-        ast::ProtoBox | ast::ProtoUniq => {
+        ast::ManagedSigil | ast::OwnedSigil => {
             /* hard cases: fallthrough to code below */
         }
     }
@@ -580,10 +572,10 @@ pub fn make_opaque_cbox_free_glue(
                                     abi::tydesc_field_drop_glue, None);
 
         // Free the ty descr (if necc) and the box itself
-        match proto {
-            ast::ProtoBox => glue::trans_free(bcx, cbox),
-            ast::ProtoUniq => glue::trans_unique_free(bcx, cbox),
-            ast::ProtoBare | ast::ProtoBorrowed => {
+        match sigil {
+            ast::ManagedSigil => glue::trans_free(bcx, cbox),
+            ast::OwnedSigil => glue::trans_unique_free(bcx, cbox),
+            ast::BorrowedSigil => {
                 bcx.sess().bug(~"impossible")
             }
         }

@@ -10,7 +10,10 @@
 
 use core::prelude::*;
 
-use ast::{ProtoBox, ProtoUniq, RegionTyParamBound, TraitTyParamBound};
+use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil, RustAbi};
+use ast::{CallSugar, NoSugar, DoSugar, ForSugar};
+use ast::{TyBareFn, TyClosure};
+use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, pure_fn, purity, re_static};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
@@ -27,7 +30,7 @@ use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_fixed, expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
-use ast::{expr_vstore_uniq, TyFn, Onceness, Once, Many};
+use ast::{expr_vstore_uniq, TyClosure, TyBareFn, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_const, foreign_item_fn, foreign_mod};
 use ast::{ident, impure_fn, infer, inherited, item, item_, item_const};
 use ast::{item_const, item_enum, item_fn, item_foreign_mod, item_impl};
@@ -38,15 +41,16 @@ use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mode, module_ns, mt, mul, mutability};
 use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
 use ast::{pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct};
-use ast::{pat_tup, pat_uniq, pat_wild, path, private, Proto, ProtoBare};
-use ast::{ProtoBorrowed, re_self, re_anon, re_named, region, rem, required};
+use ast::{pat_tup, pat_uniq, pat_wild, path, private};
+use ast::{re_self, re_anon, re_named, region, rem, required};
 use ast::{ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl};
 use ast::{stmt_expr, stmt_semi, stmt_mac, struct_def, struct_field};
 use ast::{struct_immutable, struct_mutable, struct_variant_kind, subtract};
 use ast::{sty_box, sty_by_ref, sty_region, sty_static, sty_uniq, sty_value};
 use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
-use ast::{ty_field, ty_fixed_length_vec, ty_fn, ty_infer, ty_mac, ty_method};
+use ast::{ty_field, ty_fixed_length_vec, ty_closure, ty_bare_fn};
+use ast::{ty_infer, ty_mac, ty_method};
 use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, type_value_ns, uniq};
 use ast::{unnamed_field, unsafe_blk, unsafe_fn, variant, view_item};
@@ -293,25 +297,49 @@ pub impl Parser {
 
     pure fn id_to_str(id: ident) -> @~str { self.sess.interner.get(id) }
 
-    fn token_is_fn_keyword(+tok: token::Token) -> bool {
+    fn token_is_closure_keyword(+tok: token::Token) -> bool {
         self.token_is_keyword(~"pure", tok) ||
             self.token_is_keyword(~"unsafe", tok) ||
             self.token_is_keyword(~"once", tok) ||
-            self.token_is_keyword(~"fn", tok) ||
-            self.token_is_keyword(~"extern", tok)
+            self.token_is_keyword(~"fn", tok)
     }
 
-    fn parse_ty_fn(pre_proto: Option<ast::Proto>,
-                       pre_region_name: Option<ident>) -> ty_
+    fn parse_ty_bare_fn() -> ty_
     {
         /*
 
-        (&|~|@) [r/] [pure|unsafe] [once] fn [:K] (S) -> T
-        ^~~~~~^ ^~~^ ^~~~~~~~~~~~^ ^~~~~^    ^~~^ ^~^    ^
-           |     |     |             |        |    |     |
-           |     |     |             |        |    |   Return type
-           |     |     |             |        |  Argument types
-           |     |     |             |    Environment bounds
+        extern "ABI" [pure|unsafe] fn (S) -> T
+               ^~~~^ ^~~~~~~~~~~~^    ^~^    ^
+                 |     |               |     |
+                 |     |               |   Return type
+                 |     |             Argument types
+                 |     |
+                 |     |
+                 |   Purity
+                ABI
+
+        */
+
+        let purity = self.parse_purity();
+        self.expect_keyword(~"fn");
+        return ty_bare_fn(@TyBareFn {
+            abi: RustAbi,
+            purity: purity,
+            decl: self.parse_ty_fn_decl()
+        });
+    }
+
+    fn parse_ty_closure(pre_sigil: Option<ast::Sigil>,
+                        pre_region_name: Option<ident>) -> ty_
+    {
+        /*
+
+        (&|~|@) [r/] [pure|unsafe] [once] fn (S) -> T
+        ^~~~~~^ ^~~^ ^~~~~~~~~~~~^ ^~~~~^    ^~^    ^
+           |     |     |             |        |     |
+           |     |     |             |        |   Return type
+           |     |     |             |      Argument types
+           |     |     |             |
            |     |     |          Once-ness (a.k.a., affine)
            |     |   Purity
            | Lifetime bound
@@ -322,22 +350,13 @@ pub impl Parser {
         // At this point, the allocation type and lifetime bound have been
         // parsed.
 
-        let purity = parse_purity(&self);
+        let purity = self.parse_purity();
         let onceness = parse_onceness(&self);
+        self.expect_keyword(~"fn");
+        let post_sigil = self.parse_fn_ty_sigil();
 
-        let bounds, post_proto;
-        if self.eat_keyword(~"extern") {
-            self.expect_keyword(~"fn");
-            post_proto = Some(ast::ProtoBare);
-            bounds = @~[];
-        } else {
-            self.expect_keyword(~"fn");
-            post_proto = self.parse_fn_ty_proto();
-            bounds = self.parse_optional_ty_param_bounds();
-        };
-
-        let proto = match (pre_proto, post_proto) {
-            (None, None) => ast::ProtoBorrowed,
+        let sigil = match (pre_sigil, post_sigil) {
+            (None, None) => BorrowedSigil,
             (Some(p), None) | (None, Some(p)) => p,
             (Some(_), Some(_)) => {
                 self.fatal(~"cannot combine prefix and postfix \
@@ -352,30 +371,28 @@ pub impl Parser {
             None
         };
 
-        return ty_fn(@TyFn {
-            proto: proto,
+        return ty_closure(@TyClosure {
+            sigil: sigil,
             region: region,
             purity: purity,
             onceness: onceness,
-            bounds: bounds,
             decl: self.parse_ty_fn_decl()
         });
-
-        fn parse_purity(self: &Parser) -> purity {
-            if self.eat_keyword(~"pure") {
-                return pure_fn;
-            } else if self.eat_keyword(~"unsafe") {
-                return unsafe_fn;
-            } else {
-                return impure_fn;
-            }
-        }
 
         fn parse_onceness(self: &Parser) -> Onceness {
             if self.eat_keyword(~"once") {Once} else {Many}
         }
     }
 
+    fn parse_purity() -> purity {
+        if self.eat_keyword(~"pure") {
+            return pure_fn;
+        } else if self.eat_keyword(~"unsafe") {
+            return unsafe_fn;
+        } else {
+            return impure_fn;
+        }
+    }
 
     fn parse_ty_fn_decl() -> fn_decl {
         let inputs = do self.parse_unspanned_seq(
@@ -560,10 +577,10 @@ pub impl Parser {
             }
         } else if self.token == token::AT {
             self.bump();
-            self.parse_box_or_uniq_pointee(ast::ProtoBox, ty_box)
+            self.parse_box_or_uniq_pointee(ManagedSigil, ty_box)
         } else if self.token == token::TILDE {
             self.bump();
-            self.parse_box_or_uniq_pointee(ast::ProtoUniq, ty_uniq)
+            self.parse_box_or_uniq_pointee(OwnedSigil, ty_uniq)
         } else if self.token == token::BINOP(token::STAR) {
             self.bump();
             ty_ptr(self.parse_mt())
@@ -590,8 +607,10 @@ pub impl Parser {
         } else if self.token == token::BINOP(token::AND) {
             self.bump();
             self.parse_borrowed_pointee()
-        } else if self.token_is_fn_keyword(self.token) {
-            self.parse_ty_fn(None, None)
+        } else if self.eat_keyword(~"extern") {
+            self.parse_ty_bare_fn()
+        } else if self.token_is_closure_keyword(self.token) {
+            self.parse_ty_closure(None, None)
         } else if self.token == token::MOD_SEP
             || is_ident_or_path(self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
@@ -603,19 +622,19 @@ pub impl Parser {
     }
 
     fn parse_box_or_uniq_pointee(
-        proto: ast::Proto,
+        sigil: ast::Sigil,
         ctor: &fn(+v: mt) -> ty_) -> ty_
     {
         // @foo/fn() or @fn() are parsed directly as fn types:
         match copy self.token {
             token::IDENT(rname, _) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) &&
-                    self.token_is_fn_keyword(self.look_ahead(2u))
+                    self.token_is_closure_keyword(self.look_ahead(2u))
                 {
                     self.bump(); self.bump();
-                    return self.parse_ty_fn(Some(proto), Some(rname));
-                } else if self.token_is_fn_keyword(self.token) {
-                    return self.parse_ty_fn(Some(proto), None);
+                    return self.parse_ty_closure(Some(sigil), Some(rname));
+                } else if self.token_is_closure_keyword(self.token) {
+                    return self.parse_ty_closure(Some(sigil), None);
                 }
             }
             _ => {}
@@ -643,8 +662,8 @@ pub impl Parser {
             _ => { None }
         };
 
-        if self.token_is_fn_keyword(self.token) {
-            return self.parse_ty_fn(Some(ProtoBorrowed), rname);
+        if self.token_is_closure_keyword(self.token) {
+            return self.parse_ty_closure(Some(BorrowedSigil), rname);
         }
 
         let r = self.region_from_name(rname);
@@ -981,9 +1000,11 @@ pub impl Parser {
         } else if self.eat_keyword(~"if") {
             return self.parse_if_expr();
         } else if self.eat_keyword(~"for") {
-            return self.parse_sugary_call_expr(~"for", expr_loop_body);
+            return self.parse_sugary_call_expr(~"for", ForSugar,
+                                               expr_loop_body);
         } else if self.eat_keyword(~"do") {
-            return self.parse_sugary_call_expr(~"do", expr_do_body);
+            return self.parse_sugary_call_expr(~"do", DoSugar,
+                                               expr_do_body);
         } else if self.eat_keyword(~"while") {
             return self.parse_while_expr();
         } else if self.eat_keyword(~"loop") {
@@ -991,14 +1012,14 @@ pub impl Parser {
         } else if self.eat_keyword(~"match") {
             return self.parse_match_expr();
         } else if self.eat_keyword(~"fn") {
-            let opt_proto = self.parse_fn_ty_proto();
-            let proto = match opt_proto {
-                None | Some(ast::ProtoBare) => {
+            let opt_sigil = self.parse_fn_ty_sigil();
+            let sigil = match opt_sigil {
+                None => {
                     self.fatal(~"fn expr are deprecated, use fn@")
                 }
                 Some(p) => { p }
             };
-            return self.parse_fn_expr(proto);
+            return self.parse_fn_expr(sigil);
         } else if self.eat_keyword(~"unsafe") {
             return self.parse_block_expr(lo, unsafe_blk);
         } else if self.token == token::LBRACKET {
@@ -1176,7 +1197,7 @@ pub impl Parser {
                                 |p| p.parse_expr());
                             hi = self.span.hi;
 
-                            let nd = expr_method_call(e, i, tys, es, false);
+                            let nd = expr_method_call(e, i, tys, es, NoSugar);
                             e = self.mk_expr(lo, hi, move nd);
                         }
                         _ => {
@@ -1198,7 +1219,7 @@ pub impl Parser {
                     |p| p.parse_expr());
                 hi = self.span.hi;
 
-                let nd = expr_call(e, es, false);
+                let nd = expr_call(e, es, NoSugar);
                 e = self.mk_expr(lo, hi, nd);
               }
 
@@ -1566,7 +1587,7 @@ pub impl Parser {
         self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els))
     }
 
-    fn parse_fn_expr(proto: Proto) -> @expr {
+    fn parse_fn_expr(sigil: Sigil) -> @expr {
         let lo = self.last_span.lo;
 
         // if we want to allow fn expression argument types to be inferred in
@@ -1576,7 +1597,7 @@ pub impl Parser {
         let body = self.parse_block();
 
         self.mk_expr(lo, body.span.hi,
-                            expr_fn(proto, decl, body, @()))
+                     expr_fn(sigil, decl, body, @()))
     }
 
     // `|args| { ... }` like in `do` expressions
@@ -1641,6 +1662,7 @@ pub impl Parser {
     }
 
     fn parse_sugary_call_expr(keyword: ~str,
+                              sugar: CallSugar,
                               ctor: fn(+v: @expr) -> expr_) -> @expr {
         let lo = self.last_span;
         // Parse the callee `foo` in
@@ -1654,27 +1676,27 @@ pub impl Parser {
         // them as the lambda arguments
         let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
         match e.node {
-            expr_call(f, args, false) => {
+            expr_call(f, args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 let args = vec::append(args, ~[last_arg]);
-                self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, true))
+                self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, sugar))
             }
-            expr_method_call(f, i, tps, args, false) => {
+            expr_method_call(f, i, tps, args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 let args = vec::append(args, ~[last_arg]);
                 self.mk_expr(lo.lo, block.span.hi,
-                             expr_method_call(f, i, tps, args, true))
+                             expr_method_call(f, i, tps, args, sugar))
             }
             expr_field(f, i, tps) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 self.mk_expr(lo.lo, block.span.hi,
-                             expr_method_call(f, i, tps, ~[last_arg], true))
+                             expr_method_call(f, i, tps, ~[last_arg], sugar))
             }
             expr_path(*) | expr_call(*) | expr_method_call(*) |
                 expr_paren(*) => {
@@ -1682,7 +1704,7 @@ pub impl Parser {
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 self.mk_expr(lo.lo, last_arg.span.hi,
-                             expr_call(e, ~[last_arg], true))
+                             expr_call(e, ~[last_arg], sugar))
             }
             _ => {
                 // There may be other types of expressions that can
@@ -3592,19 +3614,19 @@ pub impl Parser {
         (id, item_enum(enum_definition, ty_params), None)
     }
 
-    fn parse_fn_ty_proto() -> Option<Proto> {
+    fn parse_fn_ty_sigil() -> Option<Sigil> {
         match self.token {
             token::AT => {
                 self.bump();
-                Some(ProtoBox)
+                Some(ManagedSigil)
             }
             token::TILDE => {
                 self.bump();
-                Some(ProtoUniq)
+                Some(OwnedSigil)
             }
             token::BINOP(token::AND) => {
                 self.bump();
-                Some(ProtoBorrowed)
+                Some(BorrowedSigil)
             }
             _ => {
                 None

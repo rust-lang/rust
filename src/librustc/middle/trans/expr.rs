@@ -475,10 +475,10 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             return controlflow::trans_check_expr(bcx, expr, a, ~"Assertion");
         }
         ast::expr_while(cond, ref body) => {
-            return controlflow::trans_while(bcx, cond, (*body));
+            return controlflow::trans_while(bcx, cond, body);
         }
         ast::expr_loop(ref body, opt_label) => {
-            return controlflow::trans_loop(bcx, (*body), opt_label);
+            return controlflow::trans_loop(bcx, body, opt_label);
         }
         ast::expr_assign(dst, src) => {
             let src_datum = unpack_datum!(
@@ -530,7 +530,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                                             bcx.def(expr.id), dest);
         }
         ast::expr_if(cond, ref thn, els) => {
-            return controlflow::trans_if(bcx, cond, *thn, els, dest);
+            return controlflow::trans_if(bcx, cond, thn, els, dest);
         }
         ast::expr_match(discr, ref arms) => {
             return _match::trans_match(bcx, expr, discr, /*bad*/copy *arms,
@@ -539,7 +539,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_block(ref blk) => {
             return do base::with_scope(bcx, blk.info(),
                                        ~"block-expr body") |bcx| {
-                controlflow::trans_block(bcx, (*blk), dest)
+                controlflow::trans_block(bcx, blk, dest)
             };
         }
         ast::expr_rec(ref fields, base) |
@@ -562,58 +562,31 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_vec(*) | ast::expr_repeat(*) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
-        // XXX: Bad copy.
-        ast::expr_fn(proto, copy decl, ref body, _) => {
-            // Don't use this function for anything real. Use the one in
-            // astconv instead.
-            return closure::trans_expr_fn(bcx, proto, decl,
-                                          /*bad*/copy *body,
+        ast::expr_fn(_, ref decl, ref body, _) |
+        ast::expr_fn_block(ref decl, ref body) => {
+            let expr_ty = expr_ty(bcx, expr);
+            let sigil = ty::ty_closure_sigil(expr_ty);
+            debug!("translating fn_block %s with type %s",
+                   expr_to_str(expr, tcx.sess.intr()),
+                   ty_to_str(tcx, expr_ty));
+            return closure::trans_expr_fn(bcx, sigil, decl, body,
                                           expr.id, expr.id,
                                           None, dest);
         }
-        ast::expr_fn_block(ref decl, ref body) => {
-            let expr_ty = expr_ty(bcx, expr);
-            match ty::get(expr_ty).sty {
-                ty::ty_fn(ref fn_ty) => {
-                    debug!("translating fn_block %s with type %s",
-                           expr_to_str(expr, tcx.sess.intr()),
-                           ty_to_str(tcx, expr_ty));
-                    return closure::trans_expr_fn(
-                        bcx, fn_ty.meta.proto, /*bad*/copy *decl,
-                        /*bad*/copy *body, expr.id, expr.id,
-                        None, dest);
-                }
-                _ => {
-                    bcx.sess().impossible_case(
-                        expr.span, "fn_block has body with a non-fn type");
-                }
-            }
-        }
         ast::expr_loop_body(blk) => {
-            match ty::get(expr_ty(bcx, expr)).sty {
-                ty::ty_fn(ref fn_ty) => {
-                    match blk.node {
-                        ast::expr_fn_block(copy decl, ref body) => {
-                            return closure::trans_expr_fn(
-                                bcx,
-                                fn_ty.meta.proto,
-                                decl,
-                                /*bad*/copy *body,
-                                expr.id,
-                                blk.id,
-                                Some(None),
-                                dest);
-                        }
-                        _ => {
-                            bcx.sess().impossible_case(
-                                expr.span,
-                                "loop_body has the wrong kind of contents")
-                        }
-                    }
+            let expr_ty = expr_ty(bcx, expr);
+            let sigil = ty::ty_closure_sigil(expr_ty);
+            match blk.node {
+                ast::expr_fn_block(ref decl, ref body) => {
+                    return closure::trans_expr_fn(bcx, sigil,
+                                                  decl, body,
+                                                  expr.id, blk.id,
+                                                  Some(None), dest);
                 }
                 _ => {
                     bcx.sess().impossible_case(
-                        expr.span, "loop_body has body with a non-fn type")
+                        expr.span,
+                        "loop_body has the wrong kind of contents")
                 }
             }
         }

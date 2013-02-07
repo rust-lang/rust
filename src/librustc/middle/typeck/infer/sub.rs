@@ -212,20 +212,26 @@ pub impl Sub: Combine {
 
     // Traits please (FIXME: #2794):
 
-    fn protos(p1: ast::Proto, p2: ast::Proto) -> cres<ast::Proto> {
-        super_protos(&self, p1, p2)
+    fn sigils(p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil> {
+        super_sigils(&self, p1, p2)
+    }
+
+    fn abis(p1: ast::Abi, p2: ast::Abi) -> cres<ast::Abi> {
+        super_abis(&self, p1, p2)
     }
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(&self, a, b)
     }
 
-    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
-        super_fns(&self, a, b)
+    fn bare_fn_tys(a: &ty::BareFnTy,
+                   b: &ty::BareFnTy) -> cres<ty::BareFnTy> {
+        super_bare_fn_tys(&self, a, b)
     }
 
-    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
-        super_fn_metas(&self, a, b)
+    fn closure_tys(a: &ty::ClosureTy,
+                   b: &ty::ClosureTy) -> cres<ty::ClosureTy> {
+        super_closure_tys(&self, a, b)
     }
 
     fn vstores(vk: ty::terr_vstore_kind,

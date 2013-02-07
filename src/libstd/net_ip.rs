@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
-#[forbid(deprecated_mode)];
 
 use core::libc;
 use core::prelude::*;

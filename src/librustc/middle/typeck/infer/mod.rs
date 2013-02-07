@@ -242,9 +242,6 @@ section on "Type Combining" below for details.
 
 */
 
-#[warn(deprecated_mode)];
-#[warn(deprecated_pattern)];
-
 use core::prelude::*;
 
 pub use middle::ty::IntVarValue;
@@ -257,7 +254,6 @@ pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
 pub use middle::typeck::infer::resolve::{resolve_rvar};
 
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
-use middle::ty::{mk_fn, type_is_bot};
 use middle::ty::{ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
 use middle::ty;
 use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};

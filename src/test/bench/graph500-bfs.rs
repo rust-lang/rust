@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[legacy_modes];
+#[allow(deprecated_mode)];
 
 /*!
 
@@ -247,8 +248,13 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         }
     }
 
+    fn is_gray_factory() -> ~fn(c: &color) -> bool {
+        let r: ~fn(c: &color) -> bool = is_gray;
+        r
+    }
+
     let mut i = 0;
-    while par::any(colors, is_gray) {
+    while par::any(colors, is_gray_factory) {
         // Do the BFS.
         log(info, fmt!("PBFS iteration %?", i));
         i += 1;
@@ -257,14 +263,13 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         let color = arc::ARC(move colors);
 
         let color_vec = arc::get(&color); // FIXME #3387 requires this temp
-        colors = do par::mapi_factory(*color_vec) {
+        colors = do par::mapi(*color_vec) {
             let colors = arc::clone(&color);
             let graph = arc::clone(&graph);
-            fn~(move graph, move colors, +i: uint, +c: color) -> color {
-                let c : color = c;
+            fn~(+i: uint, +c: &color) -> color {
                 let colors = arc::get(&colors);
                 let graph = arc::get(&graph);
-                match c {
+                match *c {
                   white => {
                     let i = i as node_id;
 
@@ -290,11 +295,13 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
     }
 
     // Convert the results.
-    do par::map(colors) |c| {
-        match *c {
-          white => { -1i64 }
-          black(parent) => { parent }
-          _ => { die!(~"Found remaining gray nodes in BFS") }
+    do par::map(colors) {
+        fn~(c: &color) -> i64 {
+            match *c {
+                white => { -1i64 }
+                black(parent) => { parent }
+                _ => { die!(~"Found remaining gray nodes in BFS") }
+            }
         }
     }
 }
@@ -377,14 +384,15 @@ fn validate(edges: ~[(node_id, node_id)],
 
     log(info, ~"Verifying tree and graph edges...");
 
-    let edges = copy edges;
-    let status = do par::alli(tree) |u, v| {
-        let u = u as node_id;
-        if *v == -1i64 || u == root {
-            true
-        }
-        else {
-            edges.contains(&(u, *v)) || edges.contains(&(*v, u))
+    let status = do par::alli(tree) {
+        let edges = copy edges;
+        fn~(+u: uint, v: &i64) -> bool {
+            let u = u as node_id;
+            if *v == -1i64 || u == root {
+                true
+            } else {
+                edges.contains(&(u, *v)) || edges.contains(&(*v, u))
+            }
         }
     };
 

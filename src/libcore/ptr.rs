@@ -10,9 +10,6 @@
 
 //! Unsafe pointer utility functions
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cast;
 use cmp::{Eq, Ord};
 use libc;

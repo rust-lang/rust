@@ -146,63 +146,55 @@ pub enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
 // pointer adjustment).
 pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).sty {
-      ty::ty_uniq(*) |
-      ty::ty_evec(_, ty::vstore_uniq) |
-      ty::ty_estr(ty::vstore_uniq) => {
-        Some(deref_ptr(uniq_ptr))
-      }
+        ty::ty_uniq(*) |
+        ty::ty_evec(_, ty::vstore_uniq) |
+        ty::ty_estr(ty::vstore_uniq) |
+        ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, _}) => {
+            Some(deref_ptr(uniq_ptr))
+        }
 
-      ty::ty_fn(ref f) if (*f).meta.proto == ast::ProtoUniq => {
-        Some(deref_ptr(uniq_ptr))
-      }
+        ty::ty_rptr(r, mt) |
+        ty::ty_evec(mt, ty::vstore_slice(r)) => {
+            Some(deref_ptr(region_ptr(mt.mutbl, r)))
+        }
 
-      ty::ty_rptr(r, mt) |
-      ty::ty_evec(mt, ty::vstore_slice(r)) => {
-        Some(deref_ptr(region_ptr(mt.mutbl, r)))
-      }
+        ty::ty_estr(ty::vstore_slice(r)) |
+        ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
+                                      region: r, _}) => {
+            Some(deref_ptr(region_ptr(ast::m_imm, r)))
+        }
 
-      ty::ty_estr(ty::vstore_slice(r)) => {
-        Some(deref_ptr(region_ptr(ast::m_imm, r)))
-      }
+        ty::ty_box(mt) |
+        ty::ty_evec(mt, ty::vstore_box) => {
+            Some(deref_ptr(gc_ptr(mt.mutbl)))
+        }
 
-      ty::ty_fn(ref f) if (*f).meta.proto == ast::ProtoBorrowed => {
-        Some(deref_ptr(region_ptr(ast::m_imm, (*f).meta.region)))
-      }
+        ty::ty_estr(ty::vstore_box) |
+        ty::ty_closure(ty::ClosureTy {sigil: ast::ManagedSigil, _}) => {
+            Some(deref_ptr(gc_ptr(ast::m_imm)))
+        }
 
-      ty::ty_box(mt) |
-      ty::ty_evec(mt, ty::vstore_box) => {
-        Some(deref_ptr(gc_ptr(mt.mutbl)))
-      }
+        ty::ty_ptr(*) => {
+            Some(deref_ptr(unsafe_ptr))
+        }
 
-      ty::ty_estr(ty::vstore_box) => {
-        Some(deref_ptr(gc_ptr(ast::m_imm)))
-      }
+        ty::ty_enum(did, _) => {
+            Some(deref_comp(comp_variant(did)))
+        }
 
-      ty::ty_fn(ref f) if (*f).meta.proto == ast::ProtoBox => {
-        Some(deref_ptr(gc_ptr(ast::m_imm)))
-      }
+        ty::ty_struct(_, _) => {
+            Some(deref_comp(comp_anon_field))
+        }
 
-      ty::ty_ptr(*) => {
-        Some(deref_ptr(unsafe_ptr))
-      }
+        ty::ty_evec(mt, ty::vstore_fixed(_)) => {
+            Some(deref_comp(comp_index(t, mt.mutbl)))
+        }
 
-      ty::ty_enum(did, _) => {
-        Some(deref_comp(comp_variant(did)))
-      }
+        ty::ty_estr(ty::vstore_fixed(_)) => {
+            Some(deref_comp(comp_index(t, m_imm)))
+        }
 
-      ty::ty_struct(_, _) => {
-        Some(deref_comp(comp_anon_field))
-      }
-
-      ty::ty_evec(mt, ty::vstore_fixed(_)) => {
-        Some(deref_comp(comp_index(t, mt.mutbl)))
-      }
-
-      ty::ty_estr(ty::vstore_fixed(_)) => {
-        Some(deref_comp(comp_index(t, m_imm)))
-      }
-
-      _ => None
+        _ => None
     }
 }
 
@@ -473,9 +465,9 @@ pub impl &mem_categorization_ctxt {
 
           ast::def_upvar(_, inner, fn_node_id, _) => {
             let ty = ty::node_id_to_type(self.tcx, fn_node_id);
-            let proto = ty::ty_fn_proto(ty);
-            match proto {
-                ast::ProtoBorrowed => {
+            let sigil = ty::ty_closure_sigil(ty);
+            match sigil {
+                ast::BorrowedSigil => {
                     let upcmt = self.cat_def(id, span, expr_ty, *inner);
                     @cmt_ {
                         id:id,
@@ -486,7 +478,7 @@ pub impl &mem_categorization_ctxt {
                         ty:upcmt.ty
                     }
                 }
-                ast::ProtoUniq | ast::ProtoBox => {
+                ast::OwnedSigil | ast::ManagedSigil => {
                     // FIXME #2152 allow mutation of moved upvars
                     @cmt_ {
                         id:id,
@@ -496,11 +488,6 @@ pub impl &mem_categorization_ctxt {
                         mutbl:m_imm,
                         ty:expr_ty
                     }
-                }
-                ast::ProtoBare => {
-                    self.tcx.sess.span_bug(
-                        span,
-                        fmt!("Upvar in a bare closure?"));
                 }
             }
           }

@@ -10,8 +10,6 @@
 
 //! Vectors
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 #[warn(non_camel_case_types)];
 
 use container::{Container, Mutable};
@@ -841,14 +839,37 @@ pub pure fn map2<T: Copy, U: Copy, V>(v0: &[T], v1: &[U],
     u
 }
 
-/**
- * Apply a function to each element of a vector and return the results
- *
- * If function `f` returns `none` then that element is excluded from
- * the resulting vector.
- */
-pub pure fn filter_map<T, U: Copy>(v: &[T], f: fn(t: &T) -> Option<U>)
-    -> ~[U] {
+pub fn filter_map<T, U>(
+    v: ~[T],
+    f: fn(t: T) -> Option<U>) -> ~[U]
+{
+    /*!
+     *
+     * Apply a function to each element of a vector and return the results.
+     * Consumes the input vector.  If function `f` returns `None` then that
+     * element is excluded from the resulting vector.
+     */
+
+    let mut result = ~[];
+    do consume(v) |_, elem| {
+        match f(elem) {
+            None => {}
+            Some(result_elem) => { result.push(result_elem); }
+        }
+    }
+    result
+}
+
+pub pure fn filter_mapped<T, U: Copy>(
+    v: &[T],
+    f: fn(t: &T) -> Option<U>) -> ~[U]
+{
+    /*!
+     *
+     * Like `filter_map()`, but operates on a borrowed slice
+     * and does not consume the input.
+     */
+
     let mut result = ~[];
     for each(v) |elem| {
         match f(elem) {
@@ -1695,7 +1716,7 @@ pub trait ImmutableVector<T> {
     fn map_r<U>(&self, f: fn(x: &T) -> U) -> ~[U];
     pure fn alli(&self, f: fn(uint, t: &T) -> bool) -> bool;
     pure fn flat_map<U>(&self, f: fn(t: &T) -> ~[U]) -> ~[U];
-    pure fn filter_map<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U];
+    pure fn filter_mapped<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U];
 }
 
 /// Extension methods for vectors
@@ -1758,8 +1779,8 @@ impl<T> &[T]: ImmutableVector<T> {
      * the resulting vector.
      */
     #[inline]
-    pure fn filter_map<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U] {
-        filter_map(*self, f)
+    pure fn filter_mapped<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U] {
+        filter_mapped(*self, f)
     }
 }
 
@@ -2439,8 +2460,12 @@ mod tests {
 
     pure fn is_equal(x: &uint, y:&uint) -> bool { return *x == *y; }
 
-    fn square_if_odd(n: &uint) -> Option<uint> {
+    fn square_if_odd_r(n: &uint) -> Option<uint> {
         return if *n % 2u == 1u { Some(*n * *n) } else { None };
+    }
+
+    fn square_if_odd_v(n: uint) -> Option<uint> {
+        return if n % 2u == 1u { Some(n * n) } else { None };
     }
 
     fn add(x: uint, y: &uint) -> uint { return x + *y; }
@@ -2775,17 +2800,17 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_map() {
+    fn test_filter_mapped() {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
-        let mut w = filter_map(v, square_if_odd);
+        let mut w = filter_mapped(v, square_if_odd_r);
         assert (len(w) == 2u);
         assert (w[0] == 1u);
         assert (w[1] == 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
-        w = filter_map(v, square_if_odd);
+        w = filter_mapped(v, square_if_odd_r);
         assert (len(w) == 3u);
         assert (w[0] == 1u);
         assert (w[1] == 9u);
@@ -2804,7 +2829,46 @@ mod tests {
         let all_odd2: ~[int] = ~[];
         let mix: ~[int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
-        assert (filter_map(all_even, halve) == map(all_even, halve_for_sure));
+        assert (filter_mapped(all_even, halve) ==
+                map(all_even, halve_for_sure));
+        assert (filter_mapped(all_odd1, halve) == ~[]);
+        assert (filter_mapped(all_odd2, halve) == ~[]);
+        assert (filter_mapped(mix, halve) == mix_dest);
+    }
+
+    #[test]
+    fn test_filter_map() {
+        // Test on-stack filter-map.
+        let mut v = ~[1u, 2u, 3u];
+        let mut w = filter_map(v, square_if_odd_v);
+        assert (len(w) == 2u);
+        assert (w[0] == 1u);
+        assert (w[1] == 9u);
+
+        // Test on-heap filter-map.
+        v = ~[1u, 2u, 3u, 4u, 5u];
+        w = filter_map(v, square_if_odd_v);
+        assert (len(w) == 3u);
+        assert (w[0] == 1u);
+        assert (w[1] == 9u);
+        assert (w[2] == 25u);
+
+        fn halve(i: int) -> Option<int> {
+            if i % 2 == 0 {
+                return option::Some::<int>(i / 2);
+            } else {
+                return option::None::<int>;
+            }
+        }
+        fn halve_for_sure(i: &int) -> int { return *i / 2; }
+        let all_even: ~[int] = ~[0, 2, 8, 6];
+        let all_even0: ~[int] = copy all_even;
+        let all_odd1: ~[int] = ~[1, 7, 3];
+        let all_odd2: ~[int] = ~[];
+        let mix: ~[int] = ~[9, 2, 6, 7, 1, 0, 0, 3];
+        let mix_dest: ~[int] = ~[1, 3, 0, 0];
+        assert (filter_map(all_even, halve) ==
+                map(all_even0, halve_for_sure));
         assert (filter_map(all_odd1, halve) == ~[]);
         assert (filter_map(all_odd2, halve) == ~[]);
         assert (filter_map(mix, halve) == mix_dest);
@@ -3664,10 +3728,10 @@ mod tests {
     #[ignore(windows)]
     #[should_fail]
     #[allow(non_implicitly_copyable_typarams)]
-    fn test_filter_map_fail() {
+    fn test_filter_mapped_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
-        do filter_map(v) |_elt| {
+        do filter_mapped(v) |_elt| {
             if i == 2 {
                 die!()
             }

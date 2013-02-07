@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! A standard linked list
-#[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
 use core::option;

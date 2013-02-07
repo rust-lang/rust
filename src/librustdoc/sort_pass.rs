@@ -23,16 +23,14 @@ use util::NominalOp;
 
 use std::sort;
 
-pub type ItemLtEqOp = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
+pub type ItemLtEqOp = @pure fn(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
 type ItemLtEq = NominalOp<ItemLtEqOp>;
 
 pub fn mk_pass(name: ~str, lteq: ItemLtEqOp) -> Pass {
     Pass {
         name: copy name,
-        f: fn~(move lteq, srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
-            run(srv, doc, NominalOp { op: copy lteq })
-        }
+        f: |srv, doc| run(srv, doc, NominalOp { op: lteq })
     }
 }
 

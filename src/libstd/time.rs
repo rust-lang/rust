@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[forbid(deprecated_mode)];
-
 use core::cmp::{Eq, Ord};
 use core::int;
 use core::libc::{c_char, c_int, c_long, size_t, time_t};

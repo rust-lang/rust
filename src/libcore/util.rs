@@ -14,10 +14,6 @@ Miscellaneous helpers for common patterns.
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cmp::Eq;
 use prelude::*;
 

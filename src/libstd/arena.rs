@@ -32,8 +32,6 @@
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
 
-#[forbid(deprecated_mode)];
-
 use arena;
 use list;
 use list::{List, Cons, Nil};

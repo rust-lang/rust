@@ -536,9 +536,6 @@ more convincing in the future.
 
 */
 
-#[warn(deprecated_mode)];
-#[warn(deprecated_pattern)];
-
 use core::prelude::*;
 
 use middle::region::is_subregion_of;

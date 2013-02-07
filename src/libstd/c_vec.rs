@@ -35,7 +35,6 @@
  * great care must be taken to ensure that a reference to the c_vec::t is
  * still held if needed.
  */
-#[forbid(deprecated_mode)];
 
 use core::libc;
 use core::option;

@@ -288,8 +288,13 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
         }
         w.write_char(']');
       }
-      ty::ty_fn(ref f) => {
-        enc_ty_fn(w, cx, (*f));
+      ty::ty_closure(ref f) => {
+        w.write_char('f');
+        enc_closure_ty(w, cx, f);
+      }
+      ty::ty_bare_fn(ref f) => {
+        w.write_char('F');
+        enc_bare_fn_ty(w, cx, f);
       }
       ty::ty_infer(_) => {
         cx.diag.handler().bug(~"Cannot encode inference variable types");
@@ -306,7 +311,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
       ty::ty_type => w.write_char('Y'),
       ty::ty_opaque_closure_ptr(p) => {
           w.write_str(&"C&");
-          enc_proto(w, p);
+          enc_sigil(w, p);
       }
       ty::ty_opaque_box => w.write_char('B'),
       ty::ty_struct(def, ref substs) => {
@@ -325,13 +330,11 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
     }
 }
 
-fn enc_proto(w: io::Writer, proto: Proto) {
-    w.write_str(&"f");
-    match proto {
-        ProtoBare => w.write_str(&"_"),
-        ProtoBox => w.write_str(&"@"),
-        ProtoUniq => w.write_str(&"~"),
-        ProtoBorrowed => w.write_str(&"&"),
+fn enc_sigil(w: io::Writer, sigil: Sigil) {
+    match sigil {
+        ManagedSigil => w.write_str("@"),
+        OwnedSigil => w.write_str("~"),
+        BorrowedSigil => w.write_str("&"),
     }
 }
 
@@ -357,6 +360,12 @@ fn enc_purity(w: io::Writer, p: purity) {
     }
 }
 
+fn enc_abi(w: io::Writer, a: Abi) {
+    match a {
+        RustAbi => w.write_char('r'),
+    }
+}
+
 fn enc_onceness(w: io::Writer, o: Onceness) {
     match o {
         Once => w.write_char('o'),
@@ -364,18 +373,27 @@ fn enc_onceness(w: io::Writer, o: Onceness) {
     }
 }
 
-fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
-    enc_proto(w, ft.meta.proto);
-    enc_purity(w, ft.meta.purity);
-    enc_onceness(w, ft.meta.onceness);
-    enc_region(w, cx, ft.meta.region);
-    enc_bounds(w, cx, ft.meta.bounds);
+fn enc_bare_fn_ty(w: io::Writer, cx: @ctxt, ft: &ty::BareFnTy) {
+    enc_purity(w, ft.purity);
+    enc_abi(w, ft.abi);
+    enc_fn_sig(w, cx, &ft.sig);
+}
+
+fn enc_closure_ty(w: io::Writer, cx: @ctxt, ft: &ty::ClosureTy) {
+    enc_sigil(w, ft.sigil);
+    enc_purity(w, ft.purity);
+    enc_onceness(w, ft.onceness);
+    enc_region(w, cx, ft.region);
+    enc_fn_sig(w, cx, &ft.sig);
+}
+
+fn enc_fn_sig(w: io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     w.write_char('[');
-    for ft.sig.inputs.each |arg| {
+    for fsig.inputs.each |arg| {
         enc_arg(w, cx, *arg);
     }
     w.write_char(']');
-    enc_ty(w, cx, ft.sig.output);
+    enc_ty(w, cx, fsig.output);
 }
 
 pub fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {

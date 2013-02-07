@@ -10,10 +10,6 @@
 
 //! Sendable hash maps.
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use container::{Container, Mutable, Map, Set};
 use cmp::Eq;
 use hash::Hash;

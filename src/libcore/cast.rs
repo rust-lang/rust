@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unsafe operations
-#[forbid(deprecated_mode)]
-
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     fn forget<T>(-x: T);

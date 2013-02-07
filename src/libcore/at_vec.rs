@@ -10,10 +10,6 @@
 
 //! Managed vectors
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cast::transmute;
 use kinds::Copy;
 use iter;
