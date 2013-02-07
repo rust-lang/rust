@@ -45,11 +45,12 @@
 #include <map>
 #include <vector>
 
-#include "memory_region.h"
+#include "rust_exchange_alloc.h"
 #include "rust_log.h"
 #include "rust_sched_reaper.h"
 #include "rust_type.h"
 #include "util/hash_map.h"
+#include "sync/lock_and_signal.h"
 
 class rust_scheduler;
 class rust_sched_driver;
@@ -71,7 +72,7 @@ struct exit_functions {
 };
 
 class rust_kernel {
-    memory_region _region;
+    rust_exchange_alloc exchange_alloc;
     rust_log _log;
 
     // The next task id
@@ -135,7 +136,7 @@ public:
     void *calloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
-    memory_region *region() { return &_region; }
+    rust_exchange_alloc *region() { return &exchange_alloc; }
 
     void fail();
 

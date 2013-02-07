@@ -53,6 +53,8 @@ check_stack_canary(stk_seg *stk) {
     assert(stk->canary == canary_value && "Somebody killed the canary");
 }
 
+// XXX: Duplication here between the local and exchange heap constructors
+
 stk_seg *
 create_stack(memory_region *region, size_t sz) {
     size_t total_sz = sizeof(stk_seg) + sz;
@@ -68,4 +70,21 @@ void
 destroy_stack(memory_region *region, stk_seg *stk) {
     deregister_valgrind_stack(stk);
     region->free(stk);
+}
+
+stk_seg *
+create_exchange_stack(rust_exchange_alloc *exchange, size_t sz) {
+    size_t total_sz = sizeof(stk_seg) + sz;
+    stk_seg *stk = (stk_seg *)exchange->malloc(total_sz, false);
+    memset(stk, 0, sizeof(stk_seg));
+    stk->end = (uintptr_t) &stk->data[sz];
+    add_stack_canary(stk);
+    register_valgrind_stack(stk);
+    return stk;
+}
+
+void
+destroy_exchange_stack(rust_exchange_alloc *exchange, stk_seg *stk) {
+    deregister_valgrind_stack(stk);
+    exchange->free(stk);
 }

@@ -260,7 +260,7 @@ rust_sched_loop::run_single_turn() {
 
         assert(!extra_c_stack);
         if (cached_c_stack) {
-            destroy_stack(kernel->region(), cached_c_stack);
+            destroy_exchange_stack(kernel->region(), cached_c_stack);
             cached_c_stack = NULL;
         }
 
@@ -389,14 +389,15 @@ void
 rust_sched_loop::prepare_c_stack(rust_task *task) {
     assert(!extra_c_stack);
     if (!cached_c_stack && !task->have_c_stack()) {
-        cached_c_stack = create_stack(kernel->region(), C_STACK_SIZE);
+        cached_c_stack = create_exchange_stack(kernel->region(),
+                                               C_STACK_SIZE);
     }
 }
 
 void
 rust_sched_loop::unprepare_c_stack() {
     if (extra_c_stack) {
-        destroy_stack(kernel->region(), extra_c_stack);
+        destroy_exchange_stack(kernel->region(), extra_c_stack);
         extra_c_stack = NULL;
     }
 }
