@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-exact
+// pp-exact
 
 // actually this doesn't quite look how I want it to, but I can't
 // get the prettyprinter to indent the long expr
@@ -18,8 +18,8 @@ fn main() {
     let y =
         match x {
           Some(_) =>
-          ~"some" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very" +
-              ~"very" + ~"very" + ~"very" + ~"long" + ~"string",
+          ~"some" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very"
+              + ~"very" + ~"very" + ~"long" + ~"string",
           None => ~"none"
         };
     assert y == ~"some(_)";
