@@ -130,12 +130,11 @@ pub impl Encoder: serialize::Encoder {
         // element provides the enum variant name
         self.wr.write_char('[');
         self.wr.write_str(escape_str(name));
-        self.wr.write_char(',');
         f();
         self.wr.write_char(']');
     }
     fn emit_enum_variant_arg(&self, idx: uint, f: fn()) {
-        if idx != 0 {self.wr.write_char(',');}
+        self.wr.write_char(',');
         f();
     }
 
