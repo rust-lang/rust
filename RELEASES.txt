@@ -1,3 +1,9 @@
+Version 0.6 (?)
+---------------------------
+
+   * Libraries
+     * `core::send_map` renamed to `core::hashmap`
+
 Version 0.5 (December 2012)
 ---------------------------
 
