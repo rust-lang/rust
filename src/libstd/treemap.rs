@@ -103,6 +103,14 @@ impl <K: Ord, V> TreeMap<K, V>: Ord {
     }
 }
 
+impl <K: Ord, V> TreeMap<K, V>: iter::BaseIter<(&K, &V)> {
+    /// Visit all key-value pairs in order
+    pure fn each(&self, f: fn(&(&self/K, &self/V)) -> bool) {
+        each(&self.root, f)
+    }
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
 impl <K: Ord, V> TreeMap<K, V>: Container {
     /// Return the number of elements in the map
     pure fn len(&self) -> uint { self.length }
@@ -126,10 +134,10 @@ impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
     }
 
     /// Visit all keys in order
-    pure fn each_key(&self, f: fn(&K) -> bool) { self.each(|k, _| f(k)) }
+    pure fn each_key(&self, f: fn(&K) -> bool) { self.each(|&(k, _)| f(k)) }
 
     /// Visit all values in order
-    pure fn each_value(&self, f: fn(&V) -> bool) { self.each(|_, v| f(v)) }
+    pure fn each_value(&self, f: fn(&V) -> bool) { self.each(|&(_, v)| f(v)) }
 
     /// Return the value corresponding to the key in the map
     pure fn find(&self, key: &K) -> Option<&self/V> {
@@ -172,22 +180,19 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Visit all key-value pairs in order
-    pure fn each(&self, f: fn(&K, &V) -> bool) { each(&self.root, f) }
-
     /// Visit all key-value pairs in reverse order
-    pure fn each_reverse(&self, f: fn(&K, &V) -> bool) {
+    pure fn each_reverse(&self, f: fn(&(&self/K, &self/V)) -> bool) {
         each_reverse(&self.root, f);
     }
 
     /// Visit all keys in reverse order
     pure fn each_key_reverse(&self, f: fn(&K) -> bool) {
-        self.each_reverse(|k, _| f(k))
+        self.each_reverse(|&(k, _)| f(k))
     }
 
     /// Visit all values in reverse order
     pure fn each_value_reverse(&self, f: fn(&V) -> bool) {
-        self.each_reverse(|_, v| f(v))
+        self.each_reverse(|&(_, v)| f(v))
     }
 
     /// Get a lazy iterator over the key-value pairs in the map.
@@ -549,20 +554,26 @@ impl <K: Ord, V> TreeNode<K, V> {
     }
 }
 
-pure fn each<K: Ord, V>(node: &Option<~TreeNode<K, V>>,
-                        f: fn(&K, &V) -> bool) {
-    do node.map |x| {
+pure fn each<K: Ord, V>(node: &r/Option<~TreeNode<K, V>>,
+                        f: fn(&(&r/K, &r/V)) -> bool) {
+    match *node {
+      Some(ref x) => {
         each(&x.left, f);
-        if f(&x.key, &x.value) { each(&x.right, f) }
-    };
+        if f(&(&x.key, &x.value)) { each(&x.right, f) }
+      }
+      None => ()
+    }
 }
 
-pure fn each_reverse<K: Ord, V>(node: &Option<~TreeNode<K, V>>,
-                                f: fn(&K, &V) -> bool) {
-    do node.map |x| {
+pure fn each_reverse<K: Ord, V>(node: &r/Option<~TreeNode<K, V>>,
+                                f: fn(&(&r/K, &r/V)) -> bool) {
+    match *node {
+      Some(ref x) => {
         each_reverse(&x.right, f);
-        if f(&x.key, &x.value) { each_reverse(&x.left, f) }
-    };
+        if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }
+      }
+      None => ()
+    }
 }
 
 // Remove left horizontal link by rotating right
