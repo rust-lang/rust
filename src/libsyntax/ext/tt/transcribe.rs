@@ -39,7 +39,8 @@ type tt_frame = @{
     up: tt_frame_up,
 };
 
-pub type tt_reader = @{
+pub type tt_reader = @tt_reader_;
+pub type tt_reader_ = {
     sp_diag: span_handler,
     interner: @ident_interner,
     mut cur: tt_frame,
@@ -87,7 +88,7 @@ pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
      }
 }
 
-pub pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
+pub pure fn dup_tt_reader(r: &tt_reader_) -> tt_reader {
     @{sp_diag: r.sp_diag, interner: r.interner,
       mut cur: dup_tt_frame(r.cur),
       interpolations: r.interpolations,
@@ -96,7 +97,7 @@ pub pure fn dup_tt_reader(&&r: tt_reader) -> tt_reader {
 }
 
 
-pure fn lookup_cur_matched_by_matched(r: tt_reader,
+pure fn lookup_cur_matched_by_matched(r: &tt_reader_,
                                       start: @named_match) -> @named_match {
     pure fn red(+ad: @named_match, idx: &uint) -> @named_match {
         match *ad {
@@ -110,15 +111,15 @@ pure fn lookup_cur_matched_by_matched(r: tt_reader,
     vec::foldl(start, r.repeat_idx, red)
 }
 
-fn lookup_cur_matched(r: tt_reader, name: ident) -> @named_match {
+fn lookup_cur_matched(r: &tt_reader_, name: ident) -> @named_match {
     lookup_cur_matched_by_matched(r, r.interpolations.get(&name))
 }
 enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
 }
 
-fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
-    fn lis_merge(lhs: lis, rhs: lis, r: tt_reader) -> lis {
+fn lockstep_iter_size(t: token_tree, r: &tt_reader_) -> lis {
+    fn lis_merge(lhs: lis, rhs: lis, r: &tt_reader_) -> lis {
         match lhs {
           lis_unconstrained => rhs,
           lis_contradiction(_) => lhs,
@@ -150,7 +151,7 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
 }
 
 
-pub fn tt_next_token(&&r: tt_reader) -> TokenAndSpan {
+pub fn tt_next_token(r: &tt_reader_) -> TokenAndSpan {
     let ret_val = TokenAndSpan { tok: r.cur_tok, sp: r.cur_span };
     while r.cur.idx >= r.cur.readme.len() {
         /* done with this set; pop or repeat? */
@@ -199,25 +200,26 @@ pub fn tt_next_token(&&r: tt_reader) -> TokenAndSpan {
             return ret_val;
           }
           tt_seq(sp, ref tts, ref sep, zerok) => {
-            match lockstep_iter_size(tt_seq(sp, (*tts), (*sep), zerok), r) {
-              lis_unconstrained => {
-                r.sp_diag.span_fatal(
+              match lockstep_iter_size(tt_seq(sp, (*tts), (*sep), zerok), r) {
+                lis_unconstrained => {
+                  r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
-                    ~"attempted to repeat an expression containing no syntax \
-                     variables matched as repeating at this depth");
-              }
-              lis_contradiction(ref msg) => {
-                /* FIXME #2887 blame macro invoker instead*/
-                r.sp_diag.span_fatal(sp, (*msg));
-              }
-              lis_constraint(len, _) => {
-                if len == 0 {
-                    if !zerok {
+                      ~"attempted to repeat an expression \
+                        containing no syntax \
+                        variables matched as repeating at this depth");
+                  }
+                  lis_contradiction(ref msg) => {
+                      /* FIXME #2887 blame macro invoker instead*/
+                      r.sp_diag.span_fatal(sp, (*msg));
+                  }
+                  lis_constraint(len, _) => {
+                    if len == 0 {
+                      if !zerok {
                         r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
-                                                  */
+                        */
                                              ~"this must repeat at least \
-                                              once");
-                    }
+                                               once");
+                          }
 
                     r.cur.idx += 1u;
                     return tt_next_token(r);
