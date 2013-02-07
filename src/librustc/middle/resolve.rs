@@ -392,17 +392,19 @@ pub struct ImportResolution {
     /// The type that this `use` directive names, if there is one.
     mut type_target: Option<Target>,
 
-    mut used: bool,
+    /// There exists one state per import statement
+    state: @mut ImportState,
 }
 
-pub fn ImportResolution(privacy: Privacy, span: span) -> ImportResolution {
+pub fn ImportResolution(privacy: Privacy, span: span,
+                        state: @mut ImportState) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
         span: span,
         outstanding_references: 0,
         value_target: None,
         type_target: None,
-        used: false
+        state: state,
     }
 }
 
@@ -413,6 +415,15 @@ pub impl ImportResolution {
             ValueNS     => return copy self.value_target
         }
     }
+}
+
+pub struct ImportState {
+    used: bool,
+    warned: bool
+}
+
+pub fn ImportState() -> ImportState {
+    ImportState{ used: false, warned: false }
 }
 
 /// The link from a module up to its nearest parent node.
@@ -1415,6 +1426,7 @@ pub impl Resolver {
 
                     // Build up the import directives.
                     let module_ = self.get_module_from_parent(parent);
+                    let state = @mut ImportState();
                     match view_path.node {
                         view_path_simple(binding, full_path, ns, _) => {
                             let ns = match ns {
@@ -1430,7 +1442,8 @@ pub impl Resolver {
                                                         module_,
                                                         module_path,
                                                         subclass,
-                                                        view_path.span);
+                                                        view_path.span,
+                                                        state);
                         }
                         view_path_list(_, ref source_idents, _) => {
                             for (*source_idents).each |source_ident| {
@@ -1442,7 +1455,8 @@ pub impl Resolver {
                                                             module_,
                                                             module_path,
                                                             subclass,
-                                                            view_path.span);
+                                                            view_path.span,
+                                                            state);
                             }
                         }
                         view_path_glob(_, _) => {
@@ -1450,7 +1464,8 @@ pub impl Resolver {
                                                         module_,
                                                         module_path,
                                                         @GlobImport,
-                                                        view_path.span);
+                                                        view_path.span,
+                                                        state);
                         }
                     }
                 }
@@ -1573,7 +1588,8 @@ pub impl Resolver {
                     // avoid creating cycles in the
                     // module graph.
 
-                    let resolution = @ImportResolution(Public, dummy_sp());
+                    let resolution = @ImportResolution(Public, dummy_sp(),
+                                                       @mut ImportState());
                     resolution.outstanding_references = 0;
 
                     match existing_module.parent_link {
@@ -1826,7 +1842,8 @@ pub impl Resolver {
                               module_: @Module,
                               module_path: @DVec<ident>,
                               subclass: @ImportDirectiveSubclass,
-                              span: span) {
+                              span: span,
+                              state: @mut ImportState) {
         let directive = @ImportDirective(privacy, module_path,
                                          subclass, span);
         module_.imports.push(directive);
@@ -1850,7 +1867,14 @@ pub impl Resolver {
                     }
                     None => {
                         debug!("(building import directive) creating new");
-                        let resolution = @ImportResolution(privacy, span);
+                        let resolution = @ImportResolution(privacy, span,
+                                                           state);
+                        let name = self.idents_to_str(module_path.get());
+                        // Don't warn about unused intrinsics because they're
+                        // automatically appended to all files
+                        if name == ~"intrinsic::rusti" {
+                            resolution.state.warned = true;
+                        }
                         resolution.outstanding_references = 1;
                         module_.import_resolutions.insert(target, resolution);
                     }
@@ -2183,7 +2207,7 @@ pub impl Resolver {
                                     return UnboundResult;
                                 }
                                 Some(target) => {
-                                    import_resolution.used = true;
+                                    import_resolution.state.used = true;
                                     return BoundResult(target.target_module,
                                                     target.bindings);
                                 }
@@ -2352,7 +2376,7 @@ pub impl Resolver {
                                     module_result = UnboundResult;
                                 }
                                 Some(target) => {
-                                    import_resolution.used = true;
+                                    import_resolution.state.used = true;
                                     module_result = BoundResult
                                         (target.target_module,
                                          target.bindings);
@@ -2419,6 +2443,7 @@ pub impl Resolver {
         // everything it can to the list of import resolutions of the module
         // node.
         debug!("(resolving glob import) resolving %? glob import", privacy);
+        let state = @mut ImportState();
 
         // We must bail out if the node has unresolved imports of any kind
         // (including globs).
@@ -2445,7 +2470,8 @@ pub impl Resolver {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
                         @ImportResolution(privacy,
-                                          target_import_resolution.span);
+                                          target_import_resolution.span,
+                                          state);
                     new_import_resolution.value_target =
                         copy target_import_resolution.value_target;
                     new_import_resolution.type_target =
@@ -2486,7 +2512,8 @@ pub impl Resolver {
             match module_.import_resolutions.find(&ident) {
                 None => {
                     // Create a new import resolution from this child.
-                    dest_import_resolution = @ImportResolution(privacy, span);
+                    dest_import_resolution = @ImportResolution(privacy, span,
+                                                               state);
                     module_.import_resolutions.insert
                         (ident, dest_import_resolution);
                 }
@@ -2713,7 +2740,7 @@ pub impl Resolver {
                                namespace);
                     }
                     Some(target) => {
-                        import_resolution.used = true;
+                        import_resolution.state.used = true;
                         return Success(copy target);
                     }
                 }
@@ -2962,7 +2989,7 @@ pub impl Resolver {
                     Some(target) => {
                         debug!("(resolving name in module) resolved to \
                                 import");
-                        import_resolution.used = true;
+                        import_resolution.state.used = true;
                         return Success(copy target);
                     }
                 }
@@ -4560,7 +4587,7 @@ pub impl Resolver {
                                     namespace)) {
                             (Some(def), Some(Public)) => {
                                 // Found it.
-                                import_resolution.used = true;
+                                import_resolution.state.used = true;
                                 return ImportNameDefinition(def);
                             }
                             (Some(_), _) | (None, _) => {
@@ -5034,9 +5061,13 @@ pub impl Resolver {
                             Some(def) => {
                                 match def {
                                     def_ty(trait_def_id) => {
-                                        self.
+                                        let added = self.
                                         add_trait_info_if_containing_method(
                                         found_traits, trait_def_id, name);
+                                        if added {
+                                            import_resolution.state.used =
+                                                true;
+                                        }
                                     }
                                     _ => {
                                         // Continue.
@@ -5069,7 +5100,7 @@ pub impl Resolver {
 
     fn add_trait_info_if_containing_method(found_traits: @DVec<def_id>,
                                            trait_def_id: def_id,
-                                           name: ident) {
+                                           name: ident) -> bool {
 
         debug!("(adding trait info if containing method) trying trait %d:%d \
                 for method '%s'",
@@ -5085,9 +5116,10 @@ pub impl Resolver {
                        trait_def_id.node,
                        self.session.str_of(name));
                 (*found_traits).push(trait_def_id);
+                true
             }
             Some(_) | None => {
-                // Continue.
+                false
             }
         }
     }
@@ -5204,7 +5236,13 @@ pub impl Resolver {
 
     fn check_for_unused_imports_in_module(module_: @Module) {
         for module_.import_resolutions.each_value_ref |&import_resolution| {
-            if !import_resolution.used {
+            // Ignore dummy spans for things like automatically injected
+            // imports for the prelude, and also don't warn about the same
+            // import statement being unused more than once.
+            if !import_resolution.state.used &&
+                    !import_resolution.state.warned &&
+                    import_resolution.span != dummy_sp() {
+                import_resolution.state.warned = true;
                 match self.unused_import_lint_level {
                     warn => {
                         self.session.span_warn(import_resolution.span,
