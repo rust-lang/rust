@@ -75,11 +75,11 @@ pub const count_type_sizes: uint = 1 << 14;
 pub const meta_stats: uint = 1 << 15;
 pub const no_opt: uint = 1 << 16;
 pub const no_monomorphic_collapse: uint = 1 << 17;
-const gc: uint = 1 << 18;
-const jit: uint = 1 << 19;
-const debug_info: uint = 1 << 20;
-const extra_debug_info: uint = 1 << 21;
-const static: uint = 1 << 22;
+pub const gc: uint = 1 << 18;
+pub const jit: uint = 1 << 19;
+pub const debug_info: uint = 1 << 20;
+pub const extra_debug_info: uint = 1 << 21;
+pub const static: uint = 1 << 22;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
