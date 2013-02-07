@@ -69,7 +69,7 @@ use core::prelude::*;
 use middle::ty::{TyVar, AutoPtr, AutoBorrowVec, AutoBorrowFn};
 use middle::ty::{AutoAdjustment, AutoRef};
 use middle::ty::{vstore_slice, vstore_box, vstore_uniq, vstore_fixed};
-use middle::ty::{FnMeta, FnTyBase, mt};
+use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type};
 use middle::typeck::infer::combine::CombineFields;
@@ -117,7 +117,7 @@ impl Coerce {
                 };
             }
 
-            ty::ty_fn(ref b_f) if b_f.meta.proto == ast::ProtoBorrowed => {
+            ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil, _}) => {
                 return do self.unpack_actual_value(a) |sty_a| {
                     self.coerce_borrowed_fn(a, sty_a, b)
                 };
@@ -134,7 +134,7 @@ impl Coerce {
 
         do self.unpack_actual_value(a) |sty_a| {
             match *sty_a {
-                ty::ty_fn(ref a_f) if a_f.meta.proto == ast::ProtoBare => {
+                ty::ty_bare_fn(ref a_f) => {
                     // Bare functions are coercable to any closure type.
                     //
                     // FIXME(#3320) this should go away and be
@@ -289,9 +289,9 @@ impl Coerce {
                b.inf_str(self.infcx));
 
         let fn_ty = match *sty_a {
-            ty::ty_fn(ref f) if f.meta.proto == ast::ProtoBox => {f}
-            ty::ty_fn(ref f) if f.meta.proto == ast::ProtoUniq => {f}
-            ty::ty_fn(ref f) if f.meta.proto == ast::ProtoBare => {
+            ty::ty_closure(ref f) if f.sigil == ast::ManagedSigil => copy *f,
+            ty::ty_closure(ref f) if f.sigil == ast::OwnedSigil => copy *f,
+            ty::ty_bare_fn(ref f) => {
                 return self.coerce_from_bare_fn(a, f, b);
             }
             _ => {
@@ -300,12 +300,13 @@ impl Coerce {
         };
 
         let r_borrow = self.infcx.next_region_var_nb(self.span);
-        let meta = FnMeta {proto: ast::ProtoBorrowed,
-                           region: r_borrow,
-                           ..fn_ty.meta};
-        let a_borrowed = ty::mk_fn(self.infcx.tcx,
-                                   FnTyBase {meta: meta,
-                                             sig: copy fn_ty.sig});
+        let a_borrowed = ty::mk_closure(
+            self.infcx.tcx,
+            ty::ClosureTy {
+                sigil: ast::BorrowedSigil,
+                region: r_borrow,
+                ..fn_ty
+            });
 
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoAdjustment {
@@ -320,7 +321,7 @@ impl Coerce {
 
     fn coerce_from_bare_fn(&self,
                            a: ty::t,
-                           fn_ty_a: &ty::FnTy,
+                           fn_ty_a: &ty::BareFnTy,
                            b: ty::t) -> CoerceResult
     {
         do self.unpack_actual_value(b) |sty_b| {
@@ -330,7 +331,7 @@ impl Coerce {
 
     fn coerce_from_bare_fn_post_unpack(&self,
                                        a: ty::t,
-                                       fn_ty_a: &ty::FnTy,
+                                       fn_ty_a: &ty::BareFnTy,
                                        b: ty::t,
                                        sty_b: &ty::sty) -> CoerceResult
     {
@@ -338,18 +339,18 @@ impl Coerce {
                a.inf_str(self.infcx), b.inf_str(self.infcx));
 
         let fn_ty_b = match *sty_b {
-            ty::ty_fn(ref f) if f.meta.proto != ast::ProtoBare => {f}
+            ty::ty_closure(ref f) => {copy *f}
             _ => {
                 return self.subtype(a, b);
             }
         };
 
-            // for now, bare fn and closures have the same
-            // representation
-        let a_adapted = ty::mk_fn(self.infcx.tcx,
-                                  FnTyBase {meta: copy fn_ty_b.meta,
-                                            sig: copy fn_ty_a.sig});
-        self.subtype(a_adapted, b)
+        // for now, bare fn and closures have the same
+        // representation
+        let a_closure = ty::mk_closure(
+            self.infcx.tcx,
+            ty::ClosureTy {sig: copy fn_ty_a.sig, ..fn_ty_b});
+        self.subtype(a_closure, b)
     }
 
     fn coerce_unsafe_ptr(&self,

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[forbid(deprecated_mode)];
-
 use core::ops;
 use core::prelude::*;
 use core::uint;

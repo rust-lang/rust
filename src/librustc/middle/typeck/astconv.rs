@@ -55,7 +55,7 @@
 use core::prelude::*;
 
 use middle::pat_util::pat_id_map;
-use middle::ty::{FnTyBase, FnMeta, FnSig, arg, field, substs};
+use middle::ty::{arg, field, substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::check::fn_ctxt;
@@ -70,7 +70,7 @@ use core::vec;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust::path_to_str;
-use util::common::indent;
+use util::common::indenter;
 
 pub trait ast_conv {
     fn tcx() -> ty::ctxt;
@@ -321,13 +321,16 @@ pub fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Durable>(
         };
         ty::mk_rec(tcx, flds)
       }
-      ast::ty_fn(f) => {
-        let bounds = collect::compute_bounds(self.ccx(), f.bounds);
-        let fn_decl = ty_of_fn_decl(self, rscope, f.proto,
-                                    f.purity, f.onceness,
-                                    bounds, f.region, f.decl, None,
-                                    ast_ty.span);
-        ty::mk_fn(tcx, fn_decl)
+      ast::ty_bare_fn(bf) => {
+          ty::mk_bare_fn(tcx, ty_of_bare_fn(self, rscope, bf.purity,
+                                            bf.abi, bf.decl))
+      }
+      ast::ty_closure(f) => {
+          let fn_decl = ty_of_closure(self, rscope, f.sigil,
+                                      f.purity, f.onceness,
+                                      f.region, f.decl, None,
+                                      ast_ty.span);
+          ty::mk_closure(tcx, fn_decl)
       }
       ast::ty_path(path, id) => {
         let a_def = match tcx.def_map.find(&id) {
@@ -452,71 +455,92 @@ pub fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Durable>(
     arg {mode: mode, ty: ty}
 }
 
-pub type expected_tys = Option<{inputs: ~[ty::arg],
-                                output: ty::t}>;
-
-pub fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Durable>(
+pub fn ty_of_bare_fn<AC: ast_conv, RS: region_scope Copy Durable>(
     self: AC, rscope: RS,
-    ast_proto: ast::Proto,
+    purity: ast::purity,
+    abi: ast::Abi,
+    decl: ast::fn_decl) -> ty::BareFnTy
+{
+    debug!("ty_of_fn_decl");
+
+    // new region names that appear inside of the fn decl are bound to
+    // that function type
+    let rb = in_binding_rscope(rscope);
+
+    let input_tys = decl.inputs.map(|a| ty_of_arg(self, rb, *a, None));
+    let output_ty = match decl.output.node {
+        ast::ty_infer => self.ty_infer(decl.output.span),
+        _ => ast_ty_to_ty(self, rb, decl.output)
+    };
+
+    ty::BareFnTy {
+        purity: purity,
+        abi: abi,
+        sig: ty::FnSig {inputs: input_tys, output: output_ty}
+    }
+}
+
+pub fn ty_of_closure<AC: ast_conv, RS: region_scope Copy Durable>(
+    self: AC, rscope: RS,
+    sigil: ast::Sigil,
     purity: ast::purity,
     onceness: ast::Onceness,
-    bounds: @~[ty::param_bound],
     opt_region: Option<@ast::region>,
     decl: ast::fn_decl,
-    expected_tys: expected_tys,
-    span: span) -> ty::FnTy {
+    expected_tys: Option<ty::FnSig>,
+    span: span) -> ty::ClosureTy
+{
     debug!("ty_of_fn_decl");
-    do indent {
-        // resolve the function bound region in the original region
-        // scope `rscope`, not the scope of the function parameters
-        let bound_region = match opt_region {
-            Some(region) => {
-                ast_region_to_region(self, rscope, span, region)
-            }
-            None => {
-                match ast_proto {
-                    ast::ProtoBare | ast::ProtoUniq | ast::ProtoBox => {
-                        // @fn(), ~fn() default to static as the bound
-                        // on their upvars:
-                        ty::re_static
-                    }
-                    ast::ProtoBorrowed => {
-                        // &fn() defaults to an anonymous region:
-                        let r_result = rscope.anon_region(span);
-                        get_region_reporting_err(self.tcx(), span, r_result)
-                    }
+    let _i = indenter();
+
+    // resolve the function bound region in the original region
+    // scope `rscope`, not the scope of the function parameters
+    let bound_region = match opt_region {
+        Some(region) => {
+            ast_region_to_region(self, rscope, span, region)
+        }
+        None => {
+            match sigil {
+                ast::OwnedSigil | ast::ManagedSigil => {
+                    // @fn(), ~fn() default to static as the bound
+                    // on their upvars:
+                    ty::re_static
+                }
+                ast::BorrowedSigil => {
+                    // &fn() defaults to an anonymous region:
+                    let r_result = rscope.anon_region(span);
+                    get_region_reporting_err(self.tcx(), span, r_result)
                 }
             }
-        };
-
-        // new region names that appear inside of the fn decl are bound to
-        // that function type
-        let rb = in_binding_rscope(rscope);
-
-        let input_tys = do decl.inputs.mapi |i, a| {
-            let expected_arg_ty = do expected_tys.chain_ref |e| {
-                // no guarantee that the correct number of expected args
-                // were supplied
-                if i < e.inputs.len() {Some(e.inputs[i])} else {None}
-            };
-            ty_of_arg(self, rb, *a, expected_arg_ty)
-        };
-
-        let expected_ret_ty = expected_tys.map(|e| e.output);
-        let output_ty = match decl.output.node {
-          ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.get(),
-          ast::ty_infer => self.ty_infer(decl.output.span),
-          _ => ast_ty_to_ty(self, rb, decl.output)
-        };
-
-        FnTyBase {
-            meta: FnMeta {purity: purity,
-                          proto: ast_proto,
-                          onceness: onceness,
-                          region: bound_region,
-                          bounds: bounds},
-            sig: FnSig {inputs: input_tys,
-                        output: output_ty}
         }
+    };
+
+    // new region names that appear inside of the fn decl are bound to
+    // that function type
+    let rb = in_binding_rscope(rscope);
+
+    let input_tys = do decl.inputs.mapi |i, a| {
+        let expected_arg_ty = do expected_tys.chain_ref |e| {
+            // no guarantee that the correct number of expected args
+            // were supplied
+            if i < e.inputs.len() {Some(e.inputs[i])} else {None}
+        };
+        ty_of_arg(self, rb, *a, expected_arg_ty)
+    };
+
+    let expected_ret_ty = expected_tys.map(|e| e.output);
+    let output_ty = match decl.output.node {
+        ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.get(),
+        ast::ty_infer => self.ty_infer(decl.output.span),
+        _ => ast_ty_to_ty(self, rb, decl.output)
+    };
+
+    ty::ClosureTy {
+        purity: purity,
+        sigil: sigil,
+        onceness: onceness,
+        region: bound_region,
+        sig: ty::FnSig {inputs: input_tys,
+                        output: output_ty}
     }
 }

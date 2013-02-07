@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! Sorting methods
-#[forbid(deprecated_mode)];
 
 use core::cmp::{Eq, Ord};
 use core::dvec::DVec;
@@ -64,14 +63,13 @@ pub pure fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
     }
 }
 
-fn part<T: Copy>(arr: &mut [T], left: uint,
-                right: uint, pivot: uint, compare_func: Le<T>) -> uint {
-    let pivot_value = arr[pivot];
+fn part<T>(arr: &mut [T], left: uint,
+           right: uint, pivot: uint, compare_func: Le<T>) -> uint {
     arr[pivot] <-> arr[right];
     let mut storage_index: uint = left;
     let mut i: uint = left;
     while i < right {
-        if compare_func(&arr[i], &pivot_value) {
+        if compare_func(&arr[i], &arr[right]) {
             arr[i] <-> arr[storage_index];
             storage_index += 1;
         }
@@ -81,8 +79,8 @@ fn part<T: Copy>(arr: &mut [T], left: uint,
     return storage_index;
 }
 
-fn qsort<T: Copy>(arr: &mut [T], left: uint,
-             right: uint, compare_func: Le<T>) {
+fn qsort<T>(arr: &mut [T], left: uint,
+            right: uint, compare_func: Le<T>) {
     if right > left {
         let pivot = (left + right) / 2u;
         let new_pivot = part::<T>(arr, left, right, pivot, compare_func);
@@ -100,7 +98,7 @@ fn qsort<T: Copy>(arr: &mut [T], left: uint,
  * Has worst case O(n^2) performance, average case O(n log n).
  * This is an unstable sort.
  */
-pub fn quick_sort<T: Copy>(arr: &mut [T], compare_func: Le<T>) {
+pub fn quick_sort<T>(arr: &mut [T], compare_func: Le<T>) {
     if len::<T>(arr) == 0u { return; }
     qsort::<T>(arr, 0u, len::<T>(arr) - 1u, compare_func);
 }

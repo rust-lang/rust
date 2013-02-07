@@ -657,7 +657,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
             }
         }
 
-        ast::ty_fn(f) => {
+        ast::ty_closure(ref f) => {
             debug!("referenced fn type: %s",
                    pprust::ty_to_str(ty, cx.sess.intr()));
             match f.region {
@@ -668,7 +668,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
                     }
                 }
                 None => {
-                    if f.proto == ast::ProtoBorrowed && cx.anon_implies_rp {
+                    if f.sigil == ast::BorrowedSigil && cx.anon_implies_rp {
                         cx.add_rp(cx.item_id,
                                   cx.add_variance(rv_contravariant));
                     }
@@ -732,18 +732,18 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
         }
       }
 
-      ast::ty_fn(f) => {
+      ast::ty_closure(@ast::TyClosure {decl: ref decl, _}) |
+      ast::ty_bare_fn(@ast::TyBareFn {decl: ref decl, _}) => {
         // fn() binds the & region, so do not consider &T types that
         // appear *inside* a fn() type to affect the enclosing item:
         do cx.with(cx.item_id, false) {
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
-                for f.decl.inputs.each |a| {
+                for decl.inputs.each |a| {
                     (visitor.visit_ty)(a.ty, cx, visitor);
                 }
             }
-            visit::visit_ty_param_bounds(f.bounds, cx, visitor);
-            (visitor.visit_ty)(f.decl.output, cx, visitor);
+            (visitor.visit_ty)(decl.output, cx, visitor);
         }
       }
 

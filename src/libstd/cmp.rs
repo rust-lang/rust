@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[forbid(deprecated_mode)];
 //! Additional general-purpose comparison functionality.
 
 use core::f32;

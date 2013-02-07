@@ -897,9 +897,10 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
 fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                              span: span, id: ast::node_id) {
     match ty::get(fn_ty).sty {
-        ty::ty_fn(ref fn_ty) => {
+        ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) |
+        ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) => {
             let mut counter = 0;
-            for vec::each2(fn_ty.sig.inputs, decl.inputs) |arg_ty, arg_ast| {
+            for vec::each2(sig.inputs, decl.inputs) |arg_ty, arg_ast| {
                 counter += 1;
                 debug!("arg %d, ty=%s, mode=%s",
                        counter,
@@ -938,13 +939,14 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                 }
 
                 match ty::get(arg_ty.ty).sty {
-                    ty::ty_fn(*) => {
+                    ty::ty_closure(*) | ty::ty_bare_fn(*) => {
                         let span = arg_ast.ty.span;
                         // Recurse to check fn-type argument
                         match arg_ast.ty.node {
-                            ast::ty_fn(f) => {
+                            ast::ty_closure(@ast::TyClosure{decl: ref d, _}) |
+                            ast::ty_bare_fn(@ast::TyBareFn{decl: ref d, _})=>{
                                 check_fn_deprecated_modes(tcx, arg_ty.ty,
-                                                          f.decl, span, id);
+                                                          *d, span, id);
                             }
                             ast::ty_path(*) => {
                                 // This is probably a typedef, so we can't
@@ -976,10 +978,11 @@ fn check_item_deprecated_modes(tcx: ty::ctxt, it: @ast::item) {
     match it.node {
         ast::item_ty(ty, _) => {
             match ty.node {
-                ast::ty_fn(f) => {
+                ast::ty_closure(@ast::TyClosure {decl: ref decl, _}) |
+                ast::ty_bare_fn(@ast::TyBareFn {decl: ref decl, _}) => {
                     let fn_ty = ty::node_id_to_type(tcx, it.id);
                     check_fn_deprecated_modes(
-                        tcx, fn_ty, f.decl, ty.span, it.id)
+                        tcx, fn_ty, *decl, ty.span, it.id)
                 }
                 _ => ()
             }

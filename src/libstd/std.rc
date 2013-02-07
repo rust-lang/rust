@@ -28,10 +28,6 @@ not required in or otherwise suitable for the core library.
 
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
-// XXX this is set to allow because there are two methods in encoding
-// that can't be silenced otherwise. Most every module is set to forbid
-#[allow(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 #[allow(deprecated_self)];
 
 #[no_core];

@@ -154,7 +154,7 @@ pub fn find_attrs_by_name(attrs: &[ast::attribute], name: &str) ->
             option::None
         }
     };
-    return vec::filter_map(attrs, filter);
+    return vec::filter_mapped(attrs, filter);
 }
 
 /// Search a list of meta items and return only those with a specific name
@@ -277,9 +277,9 @@ pub fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
 pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->
    ~[@ast::meta_item] {
 
-    return vec::filter_map(items, |item| {
+    return vec::filter_mapped(items, |item| {
         if get_meta_item_name(*item) != name {
-            option::Some(/* FIXME (#2543) */ copy *item)
+            option::Some(*item)
         } else {
             option::None
         }

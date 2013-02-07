@@ -14,7 +14,6 @@
  * The I/O task runs in its own single-threaded scheduler.  By using the
  * `interact` function you can execute code in a uv callback.
  */
-#[forbid(deprecated_mode)];
 
 use ll = uv_ll;
 

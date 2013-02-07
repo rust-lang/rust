@@ -14,10 +14,6 @@ Simple compression
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use libc;
 use libc::{c_void, size_t, c_int};
 use ptr;

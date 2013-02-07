@@ -150,7 +150,7 @@ pub fn check_expr(sess: Session,
               }
             }
           }
-          expr_call(callee, _, false) => {
+          expr_call(callee, _, NoSugar) => {
             match def_map.find(&callee.id) {
                 Some(def_struct(*)) => {}    // OK.
                 Some(def_variant(*)) => {}    // OK.

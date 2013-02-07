@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
 /**
  * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
  * between tasks.

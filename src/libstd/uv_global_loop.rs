@@ -10,8 +10,6 @@
 
 //! A process-wide libuv event loop for library use.
 
-#[forbid(deprecated_mode)];
-
 use ll = uv_ll;
 use iotask = uv_iotask;
 use get_gl = get;

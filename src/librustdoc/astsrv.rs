@@ -21,6 +21,7 @@ use core::prelude::*;
 
 use parse;
 use util;
+use std::cell::Cell;
 
 use core::pipes::{stream, Chan, SharedChan, Port};
 use core::vec;
@@ -78,8 +79,10 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
 
     let (po, ch) = stream();
 
+    let source = Cell(source);
+    let parse = Cell(parse);
     do task::spawn {
-        act(&po, copy source, copy parse);
+        act(&po, source.take(), parse.take());
     }
 
     let srv_ = Srv {

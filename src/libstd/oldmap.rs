@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! A map type - **deprecated**, use `core::hashmap` instead
-#[forbid(deprecated_mode)];
 
 use core::container::{Container, Mutable, Map};
 use core::cmp::Eq;

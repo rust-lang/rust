@@ -32,7 +32,7 @@ use core::prelude::*;
 use middle::freevars::get_freevars;
 use middle::pat_util::{pat_bindings, pat_is_binding};
 use middle::ty::{encl_region, re_scope};
-use middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
+use middle::ty::{vstore_box, vstore_fixed, vstore_slice};
 use middle::ty::{vstore_uniq};
 use middle::ty;
 use middle::typeck::check::fn_ctxt;
@@ -42,7 +42,7 @@ use middle::typeck::infer::{resolve_type};
 use util::ppaux::{note_and_explain_region, ty_to_str};
 
 use core::result;
-use syntax::ast::{ProtoBare, ProtoBox, ProtoUniq, ProtoBorrowed};
+use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
 use syntax::codemap::span;
@@ -59,10 +59,9 @@ pub fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
         def_self(node_id, _) | def_binding(node_id, _) =>
             return encl_region(tcx, node_id),
         def_upvar(_, subdef, closure_id, body_id) => {
-            match ty_fn_proto(fcx.node_ty(closure_id)) {
-                ProtoBare => tcx.sess.bug(~"ProtoBare with upvars?!"),
-                ProtoBorrowed => encl_region_of_def(fcx, *subdef),
-                ProtoBox | ProtoUniq => re_scope(body_id)
+            match ty::ty_closure_sigil(fcx.node_ty(closure_id)) {
+                BorrowedSigil => encl_region_of_def(fcx, *subdef),
+                ManagedSigil | OwnedSigil => re_scope(body_id)
             }
         }
         _ => {
@@ -278,11 +277,9 @@ pub fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
         ast::expr_fn(*) | ast::expr_fn_block(*) => {
             let function_type = rcx.resolve_node_type(expr.id);
             match ty::get(function_type).sty {
-                ty::ty_fn(ref fn_ty) => {
-                    if fn_ty.meta.proto == ast::ProtoBorrowed {
-                        constrain_free_variables(
-                            rcx, fn_ty.meta.region, expr);
-                    }
+                ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
+                                              region: region, _}) => {
+                    constrain_free_variables(rcx, region, expr);
                 }
                 _ => ()
             }

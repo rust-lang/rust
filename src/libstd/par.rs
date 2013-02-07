@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[forbid(deprecated_mode)];
-
 use core::cast;
 use core::prelude::*;
 use core::ptr;
@@ -38,7 +36,7 @@ const min_granularity : uint = 1024u;
  */
 fn map_slices<A: Copy Owned, B: Copy Owned>(
     xs: &[A],
-    f: fn() -> fn~(uint, v: &[A]) -> B)
+    f: &fn() -> ~fn(uint, v: &[A]) -> B)
     -> ~[B] {
 
     let len = xs.len();
@@ -93,9 +91,9 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
 
 /// A parallel version of map.
 pub fn map<A: Copy Owned, B: Copy Owned>(
-    xs: &[A], f: fn~(&A) -> B) -> ~[B] {
+    xs: &[A], fn_factory: &fn() -> ~fn(&A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
-        let f = copy f;
+        let f = fn_factory();
         fn~(_base: uint, slice : &[A]) -> ~[B] {
             vec::map(slice, |x| f(x))
         }
@@ -103,10 +101,12 @@ pub fn map<A: Copy Owned, B: Copy Owned>(
 }
 
 /// A parallel version of mapi.
-pub fn mapi<A: Copy Owned, B: Copy Owned>(xs: &[A],
-                                    f: fn~(uint, &A) -> B) -> ~[B] {
+pub fn mapi<A: Copy Owned, B: Copy Owned>(
+    xs: &[A],
+    fn_factory: &fn() -> ~fn(uint, &A) -> B) -> ~[B]
+{
     let slices = map_slices(xs, || {
-        let f = copy f;
+        let f = fn_factory();
         fn~(base: uint, slice : &[A], copy f) -> ~[B] {
             vec::mapi(slice, |i, x| {
                 f(i + base, x)
@@ -119,32 +119,13 @@ pub fn mapi<A: Copy Owned, B: Copy Owned>(xs: &[A],
     r
 }
 
-/**
- * A parallel version of mapi.
- *
- * In this case, f is a function that creates functions to run over the
- * inner elements. This is to skirt the need for copy constructors.
- */
-pub fn mapi_factory<A: Copy Owned, B: Copy Owned>(
-    xs: &[A], f: fn() -> fn~(uint, A) -> B) -> ~[B] {
-    let slices = map_slices(xs, || {
-        let f = f();
-        fn~(base: uint, slice : &[A], move f) -> ~[B] {
-            vec::mapi(slice, |i, x| {
-                f(i + base, *x)
-            })
-        }
-    });
-    let r = vec::concat(slices);
-    log(info, (r.len(), xs.len()));
-    assert(r.len() == xs.len());
-    r
-}
-
 /// Returns true if the function holds for all elements in the vector.
-pub fn alli<A: Copy Owned>(xs: &[A], f: fn~(uint, &A) -> bool) -> bool {
+pub fn alli<A: Copy Owned>(
+    xs: &[A],
+    fn_factory: &fn() -> ~fn(uint, &A) -> bool) -> bool
+{
     do vec::all(map_slices(xs, || {
-        let f = copy f;
+        let f = fn_factory();
         fn~(base: uint, slice : &[A], copy f) -> bool {
             vec::alli(slice, |i, x| {
                 f(i + base, x)
@@ -154,9 +135,11 @@ pub fn alli<A: Copy Owned>(xs: &[A], f: fn~(uint, &A) -> bool) -> bool {
 }
 
 /// Returns true if the function holds for any elements in the vector.
-pub fn any<A: Copy Owned>(xs: &[A], f: fn~(&A) -> bool) -> bool {
+pub fn any<A: Copy Owned>(
+    xs: &[A],
+    fn_factory: &fn() -> ~fn(&A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
-        let f = copy f;
+        let f = fn_factory();
         fn~(_base : uint, slice: &[A], copy f) -> bool {
             vec::any(slice, |x| f(x))
         }

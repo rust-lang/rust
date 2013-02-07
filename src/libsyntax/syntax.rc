@@ -22,7 +22,6 @@
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
 #[allow(deprecated_mode)];
-#[warn(deprecated_pattern)];
 #[allow(deprecated_self)];
 
 #[no_core];

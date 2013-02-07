@@ -23,17 +23,17 @@ use util::NominalOp;
 use std::par;
 use std::cell::Cell;
 
-pub fn mk_pass(name: ~str, op: fn~(&str) -> ~str) -> Pass {
+pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
     let op = Cell(op);
     Pass {
         name: copy name,
-        f: fn~(move op, srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
+        f: |srv: astsrv::Srv, doc: doc::Doc| -> doc::Doc {
             run(srv, doc, op.take())
         }
     }
 }
 
-type Op = fn~(&str) -> ~str;
+type Op = @fn(&str) -> ~str;
 
 #[allow(non_implicitly_copyable_typarams)]
 fn run(
@@ -76,7 +76,7 @@ fn apply_to_sections(
     op: NominalOp<Op>,
     sections: ~[doc::Section]
 ) -> ~[doc::Section] {
-    par::map(sections, |section, copy op| doc::Section {
+    sections.map(|section, copy op| doc::Section {
         header: (op.op)(copy section.header),
         body: (op.op)(copy section.body)
     })
@@ -89,7 +89,7 @@ fn fold_enum(
     let fold_copy = copy *fold;
 
     doc::EnumDoc {
-        variants: do par::map(doc.variants) |variant, copy fold_copy| {
+        variants: do doc.variants.map |variant, copy fold_copy| {
             doc::VariantDoc {
                 desc: maybe_apply_op(copy fold_copy.ctxt, &variant.desc),
                 .. copy *variant
@@ -116,7 +116,7 @@ fn apply_to_methods(
     docs: ~[doc::MethodDoc]
 ) -> ~[doc::MethodDoc] {
     let op = copy op;
-    do par::map(docs) |doc| {
+    do docs.map |doc| {
         doc::MethodDoc {
             brief: maybe_apply_op(copy op, &doc.brief),
             desc: maybe_apply_op(copy op, &doc.desc),

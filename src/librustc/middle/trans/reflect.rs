@@ -86,9 +86,8 @@ pub impl reflector {
             tcx.sess.ident_of(~"visit_" + ty_name),
             *self.visitor_methods).expect(fmt!("Couldn't find visit method \
                                                 for %s", ty_name));
-        let mth_ty = ty::mk_fn(
-            tcx,
-            /*bad*/copy self.visitor_methods[mth_idx].fty);
+        let mth_ty =
+            ty::mk_bare_fn(tcx, copy self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
         debug!("passing %u args:", vec::len(args));
         let bcx = self.bcx;
@@ -211,39 +210,33 @@ pub impl reflector {
             }
           }
 
-          // FIXME (#2594): fetch constants out of intrinsic:: for the
-          // numbers.
-          ty::ty_fn(ref fty) => {
-            let pureval = match fty.meta.purity {
-              ast::pure_fn => 0u,
-              ast::unsafe_fn => 1u,
-              ast::impure_fn => 2u,
-              ast::extern_fn => 3u
-            };
-            let protoval = ast_proto_constant(fty.meta.proto);
+          // FIXME (#2594): fetch constants out of intrinsic
+          // FIXME (#4809): visitor should break out bare fns from other fns
+          ty::ty_closure(ref fty) => {
+            let pureval = ast_purity_constant(fty.purity);
+            let sigilval = ast_sigil_constant(fty.sigil);
             let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
             let extra = ~[self.c_uint(pureval),
-                          self.c_uint(protoval),
+                          self.c_uint(sigilval),
                           self.c_uint(vec::len(fty.sig.inputs)),
                           self.c_uint(retval)];
             self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
-            for fty.sig.inputs.eachi |i, arg| {
-                let modeval = match arg.mode {
-                  ast::infer(_) => 0u,
-                  ast::expl(e) => match e {
-                    ast::by_ref => 1u,
-                    ast::by_val => 2u,
-                    ast::by_copy => 5u
-                  }
-                };
-                self.visit(~"fn_input",
-                           ~[self.c_uint(i),
-                             self.c_uint(modeval),
-                             self.c_tydesc(arg.ty)]);
-            }
-            self.visit(~"fn_output",
-                       ~[self.c_uint(retval),
-                         self.c_tydesc(fty.sig.output)]);
+            self.visit_sig(retval, &fty.sig);
+            self.visit(~"leave_fn", extra);
+          }
+
+          // FIXME (#2594): fetch constants out of intrinsic:: for the
+          // numbers.
+          ty::ty_bare_fn(ref fty) => {
+            let pureval = ast_purity_constant(fty.purity);
+            let sigilval = 0u;
+            let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
+            let extra = ~[self.c_uint(pureval),
+                          self.c_uint(sigilval),
+                          self.c_uint(vec::len(fty.sig.inputs)),
+                          self.c_uint(retval)];
+            self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
+            self.visit_sig(retval, &fty.sig);
             self.visit(~"leave_fn", extra);
           }
 
@@ -302,10 +295,30 @@ pub impl reflector {
           ty::ty_type => self.leaf(~"type"),
           ty::ty_opaque_box => self.leaf(~"opaque_box"),
           ty::ty_opaque_closure_ptr(ck) => {
-            let ckval = ast_proto_constant(ck);
+            let ckval = ast_sigil_constant(ck);
             self.visit(~"closure_ptr", ~[self.c_uint(ckval)])
           }
         }
+    }
+
+    fn visit_sig(&self, retval: uint, sig: &ty::FnSig) {
+        for sig.inputs.eachi |i, arg| {
+            let modeval = match arg.mode {
+                ast::infer(_) => 0u,
+                ast::expl(e) => match e {
+                    ast::by_ref => 1u,
+                    ast::by_val => 2u,
+                    ast::by_copy => 5u
+                }
+            };
+            self.visit(~"fn_input",
+                       ~[self.c_uint(i),
+                         self.c_uint(modeval),
+                         self.c_tydesc(arg.ty)]);
+        }
+        self.visit(~"fn_output",
+                   ~[self.c_uint(retval),
+                     self.c_tydesc(sig.output)]);
     }
 }
 
@@ -332,12 +345,20 @@ pub fn emit_calls_to_trait_visit_ty(bcx: block,
     return final;
 }
 
-pub fn ast_proto_constant(proto: ast::Proto) -> uint {
-    match proto {
-        ast::ProtoBare => 0u,
-        ast::ProtoUniq => 2u,
-        ast::ProtoBox => 3u,
-        ast::ProtoBorrowed => 4u,
+pub fn ast_sigil_constant(sigil: ast::Sigil) -> uint {
+    match sigil {
+        ast::OwnedSigil => 2u,
+        ast::ManagedSigil => 3u,
+        ast::BorrowedSigil => 4u,
+    }
+}
+
+pub fn ast_purity_constant(purity: ast::purity) -> uint {
+    match purity {
+        ast::pure_fn => 0u,
+        ast::unsafe_fn => 1u,
+        ast::impure_fn => 2u,
+        ast::extern_fn => 3u
     }
 }
 
