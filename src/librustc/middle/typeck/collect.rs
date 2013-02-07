@@ -33,10 +33,10 @@ are represented as `ty_param()` instances.
 use core::prelude::*;
 
 use metadata::csearch;
-use middle::ty::{FnMeta, FnSig, FnTyBase, InstantiatedTraitRef, arg};
+use middle::ty::{InstantiatedTraitRef, arg};
 use middle::ty::{substs, ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::astconv::{ast_conv, ty_of_fn_decl, ty_of_arg};
+use middle::typeck::astconv::{ast_conv, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
 use middle::typeck::astconv;
 use middle::typeck::infer;
@@ -153,9 +153,10 @@ pub impl @crate_ctxt: ast_conv {
 
 pub fn get_enum_variant_types(ccx: @crate_ctxt,
                               enum_ty: ty::t,
-                              variants: ~[ast::variant],
-                              ty_params: ~[ast::ty_param],
-                              rp: Option<ty::region_variance>) {
+                              variants: &[ast::variant],
+                              ty_params: &[ast::ty_param],
+                              rp: Option<ty::region_variance>)
+{
     let tcx = ccx.tcx;
 
     // Create a set of parameter types shared among all the variants.
@@ -166,58 +167,35 @@ pub fn get_enum_variant_types(ccx: @crate_ctxt,
         match variant.node.kind {
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
                 let rs = type_rscope(rp);
-                let args = args.map(|va| {
-                    let arg_ty = ccx.to_ty(rs, va.ty);
-                    arg { mode: ast::expl(ast::by_copy), ty: arg_ty }
-                });
-                result_ty = Some(ty::mk_fn(tcx, FnTyBase {
-                    meta: FnMeta {purity: ast::pure_fn,
-                                  proto: ast::ProtoBare,
-                                  onceness: ast::Many,
-                                  bounds: @~[],
-                                  region: ty::re_static},
-                    sig: FnSig {inputs: args,
-                                output: enum_ty}
-                }));
+                let input_tys = args.map(|va| ccx.to_ty(rs, va.ty));
+                result_ty = Some(ty::mk_ctor_fn(tcx, input_tys, enum_ty));
             }
+
             ast::tuple_variant_kind(_) => {
                 result_ty = Some(enum_ty);
             }
+
             ast::struct_variant_kind(struct_def) => {
-                // XXX: Merge with computation of the the same value below?
-                let tpt = {
-                    bounds: ty_param_bounds(ccx, /*bad*/copy ty_params),
-                    region_param: rp,
-                    ty: enum_ty
-                };
-                convert_struct(
-                    ccx,
-                    rp,
-                    struct_def,
-                    /*bad*/copy ty_params,
-                    tpt,
-                    variant.node.id);
-                // Compute the ctor arg types from the struct fields
-                let struct_fields = do struct_def.fields.map |struct_field| {
-                    arg {
-                        mode: ast::expl(ast::by_val),
-                        ty: ty::node_id_to_type(ccx.tcx, struct_field.node.id)
-                    }
-                };
-                result_ty = Some(ty::mk_fn(tcx, FnTyBase {
-                    meta: FnMeta {purity: ast::pure_fn,
-                                  proto: ast::ProtoBare,
-                                  onceness: ast::Many,
-                                  bounds: @~[],
-                                  region: ty::re_static},
-                    sig: FnSig {inputs: struct_fields, output: enum_ty }}));
+                let tpt = {bounds: ty_param_bounds(ccx, ty_params),
+                           region_param: rp,
+                           ty: enum_ty};
+
+                convert_struct(ccx,
+                               rp,
+                               struct_def,
+                               ty_params.to_vec(),
+                               tpt,
+                               variant.node.id);
+
+                let input_tys = struct_def.fields.map(
+                    |f| ty::node_id_to_type(ccx.tcx, f.node.id));
+                result_ty = Some(ty::mk_ctor_fn(tcx, input_tys, enum_ty));
             }
+
             ast::enum_variant_kind(ref enum_definition) => {
-                get_enum_variant_types(ccx,
-                                       enum_ty,
-                                       /*bad*/copy enum_definition.variants,
-                                       /*bad*/copy ty_params,
-                                       rp);
+                get_enum_variant_types(ccx, enum_ty,
+                                       enum_definition.variants,
+                                       ty_params, rp);
                 result_ty = None;
             }
         };
@@ -225,11 +203,9 @@ pub fn get_enum_variant_types(ccx: @crate_ctxt,
         match result_ty {
             None => {}
             Some(result_ty) => {
-                let tpt = {
-                    bounds: ty_param_bounds(ccx, /*bad*/copy ty_params),
-                    region_param: rp,
-                    ty: result_ty
-                };
+                let tpt = {bounds: ty_param_bounds(ccx, ty_params),
+                           region_param: rp,
+                           ty: result_ty};
                 tcx.tcache.insert(local_def(variant.node.id), tpt);
                 write_ty_to_tcx(tcx, variant.node.id, result_ty);
             }
@@ -279,7 +255,7 @@ pub fn ensure_trait_methods(ccx: @crate_ctxt,
         };
         let ty = ty::subst(ccx.tcx,
                            &substs,
-                           ty::mk_fn(ccx.tcx, /*bad*/copy m.fty));
+                           ty::mk_bare_fn(ccx.tcx, copy m.fty));
         let bounds = @(*trait_bounds + ~[@~[ty::bound_trait(trait_ty)]]
                        + *m.tps);
         ccx.tcx.tcache.insert(local_def(am.id),
@@ -305,7 +281,7 @@ pub fn ensure_trait_methods(ccx: @crate_ctxt,
                 ast::provided(method) => def_id = local_def(method.id)
             }
 
-            let trait_bounds = ty_param_bounds(ccx, copy *params);
+            let trait_bounds = ty_param_bounds(ccx, *params);
             let ty_m = trait_method_to_ty_method(*m);
             let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd, def_id);
             if ty_m.self_ty.node == ast::sty_static {
@@ -458,7 +434,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     //   that correspond to the parameters we will find on the impl
     // - replace self region with a fresh, dummy region
     let impl_fty = {
-        let impl_fty = ty::mk_fn(tcx, /*bad*/copy impl_m.fty);
+        let impl_fty = ty::mk_bare_fn(tcx, copy impl_m.fty);
         debug!("impl_fty (pre-subst): %s", ppaux::ty_to_str(tcx, impl_fty));
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
@@ -476,7 +452,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             self_ty: Some(self_ty),
             tps: vec::append(trait_tps, dummy_tps)
         };
-        let trait_fty = ty::mk_fn(tcx, /*bad*/copy trait_m.fty);
+        let trait_fty = ty::mk_bare_fn(tcx, copy trait_m.fty);
         debug!("trait_fty (pre-subst): %s", ppaux::ty_to_str(tcx, trait_fty));
         ty::subst(tcx, &substs, trait_fty)
     };
@@ -583,9 +559,9 @@ pub fn convert_methods(ccx: @crate_ctxt,
 
     let tcx = ccx.tcx;
     do vec::map(ms) |m| {
-        let bounds = ty_param_bounds(ccx, /*bad*/copy m.tps);
+        let bounds = ty_param_bounds(ccx, m.tps);
         let mty = ty_of_method(ccx, *m, rp);
-        let fty = ty::mk_fn(tcx, /*bad*/copy mty.fty);
+        let fty = ty::mk_bare_fn(tcx, copy mty.fty);
         tcx.tcache.insert(
             local_def(m.id),
 
@@ -626,13 +602,11 @@ pub fn convert(ccx: @crate_ctxt, it: @ast::item) {
         ensure_no_ty_param_bounds(ccx, it.span, *ty_params, "enumeration");
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
-        get_enum_variant_types(ccx,
-                               tpt.ty,
-                               /*bad*/copy (*enum_definition).variants,
-                               /*bad*/copy *ty_params, rp);
+        get_enum_variant_types(ccx, tpt.ty, enum_definition.variants,
+                               *ty_params, rp);
       }
       ast::item_impl(ref tps, trait_ref, selfty, ref ms) => {
-        let i_bounds = ty_param_bounds(ccx, /*bad*/copy *tps);
+        let i_bounds = ty_param_bounds(ccx, *tps);
         let selfty = ccx.to_ty(type_rscope(rp), selfty);
         write_ty_to_tcx(tcx, it.id, selfty);
         tcx.tcache.insert(local_def(it.id),
@@ -695,13 +669,12 @@ pub fn convert_struct(ccx: @crate_ctxt,
 
     do option::iter(&struct_def.dtor) |dtor| {
         // Write the dtor type
-        let t_dtor = ty::mk_fn(
+        let t_dtor = ty::mk_bare_fn(
             tcx,
-            ty_of_fn_decl(
-                ccx, type_rscope(rp), ast::ProtoBare,
-                ast::impure_fn, ast::Many,
-                /*bounds:*/ @~[], /*opt_region:*/ None,
-                ast_util::dtor_dec(), None, dtor.span));
+            astconv::ty_of_bare_fn(
+                ccx, type_rscope(rp),
+                ast::impure_fn, ast::RustAbi,
+                ast_util::dtor_dec()));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
                           {bounds: tpt.bounds,
@@ -727,25 +700,11 @@ pub fn convert_struct(ccx: @crate_ctxt,
                 tcx.tcache.insert(local_def(ctor_id), tpt);
             } else if struct_def.fields[0].node.kind == ast::unnamed_field {
                 // Tuple-like.
-                let ctor_fn_ty = ty::mk_fn(tcx, FnTyBase {
-                    meta: FnMeta {
-                        purity: ast::pure_fn,
-                        proto: ast::ProtoBare,
-                        onceness: ast::Many,
-                        bounds: @~[],
-                        region: ty::re_static
-                    },
-                    sig: FnSig {
-                        inputs: do struct_def.fields.map |field| {
-                            arg {
-                                mode: ast::expl(ast::by_copy),
-                                ty: ccx.tcx.tcache.get
-                                        (&local_def(field.node.id)).ty
-                            }
-                        },
-                        output: selfty
-                    }
-                });
+                let inputs =
+                    struct_def.fields.map(
+                        |field| ccx.tcx.tcache.get(
+                            &local_def(field.node.id)).ty);
+                let ctor_fn_ty = ty::mk_ctor_fn(tcx, inputs, selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
                 tcx.tcache.insert(local_def(ctor_id), {
                     bounds: tpt.bounds,
@@ -770,11 +729,9 @@ pub fn ty_of_method(ccx: @crate_ctxt,
                     m: @ast::method,
                     rp: Option<ty::region_variance>) -> ty::method {
     {ident: m.ident,
-     tps: ty_param_bounds(ccx, /*bad*/copy m.tps),
-     fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::ProtoBare,
-                        m.purity, ast::Many,
-                        /*bounds:*/ @~[], /*opt_region:*/ None,
-                        m.decl, None, m.span),
+     tps: ty_param_bounds(ccx, m.tps),
+     fty: astconv::ty_of_bare_fn(ccx, type_rscope(rp), m.purity,
+                                 ast::RustAbi, m.decl),
      self_ty: m.self_ty.node,
      vis: m.vis,
      def_id: local_def(m.id)}
@@ -785,11 +742,9 @@ pub fn ty_of_ty_method(self: @crate_ctxt,
                        rp: Option<ty::region_variance>,
                        id: ast::def_id) -> ty::method {
     {ident: m.ident,
-     tps: ty_param_bounds(self, /*bad*/copy m.tps),
-     fty: ty_of_fn_decl(self, type_rscope(rp), ast::ProtoBare,
-                        m.purity, ast::Many,
-                        /*bounds:*/ @~[], /*opt_region:*/ None,
-                        m.decl, None, m.span),
+     tps: ty_param_bounds(self, m.tps),
+     fty: astconv::ty_of_bare_fn(self, type_rscope(rp), m.purity,
+                                 ast::RustAbi, m.decl),
      // assume public, because this is only invoked on trait methods
      self_ty: m.self_ty.node,
      vis: ast::public,
@@ -844,13 +799,11 @@ pub fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       }
       ast::item_fn(decl, purity, tps, _) => {
         let bounds = ty_param_bounds(ccx, tps);
-        let tofd = ty_of_fn_decl(ccx, empty_rscope,
-                                 ast::ProtoBare, purity, ast::Many,
-                                 /*bounds:*/ @~[], /*opt_region:*/ None,
-                                 decl, None, it.span);
+        let tofd = astconv::ty_of_bare_fn(ccx, empty_rscope, purity,
+                                          ast::RustAbi, decl);
         let tpt = {bounds: bounds,
                    region_param: None,
-                   ty: ty::mk_fn(ccx.tcx, tofd)};
+                   ty: ty::mk_bare_fn(ccx.tcx, tofd)};
         debug!("type of %s (id %d) is %s",
                tcx.sess.str_of(it.ident),
                it.id,
@@ -976,7 +929,7 @@ pub fn compute_bounds(ccx: @crate_ctxt,
 }
 
 pub fn ty_param_bounds(ccx: @crate_ctxt,
-                       params: ~[ast::ty_param]) -> @~[ty::param_bounds] {
+                       params: &[ast::ty_param]) -> @~[ty::param_bounds] {
     @do params.map |param| {
         match ccx.tcx.ty_param_bounds.find(&param.id) {
           Some(bs) => bs,
@@ -999,15 +952,13 @@ pub fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
     let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, rb, *a, None) );
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
-    let t_fn = ty::mk_fn(ccx.tcx, FnTyBase {
-        meta: FnMeta {purity: ast::unsafe_fn,
-                      onceness: ast::Many,
-                      proto: ast::ProtoBare,
-                      bounds: @~[],
-                      region: ty::re_static},
-        sig: FnSig {inputs: input_tys,
-                    output: output_ty}
-    });
+    let t_fn = ty::mk_bare_fn(
+        ccx.tcx,
+        ty::BareFnTy {
+            abi: ast::RustAbi,
+            purity: ast::unsafe_fn,
+            sig: ty::FnSig {inputs: input_tys, output: output_ty}
+        });
     let tpt = {bounds: bounds, region_param: None, ty: t_fn};
     ccx.tcx.tcache.insert(def_id, tpt);
     return tpt;
@@ -1017,8 +968,7 @@ pub fn mk_ty_params(ccx: @crate_ctxt, atps: ~[ast::ty_param])
     -> {bounds: @~[ty::param_bounds], params: ~[ty::t]} {
 
     let mut i = 0u;
-    // XXX: Bad copy.
-    let bounds = ty_param_bounds(ccx, copy atps);
+    let bounds = ty_param_bounds(ccx, atps);
     {bounds: bounds,
      params: vec::map(atps, |atp| {
          let t = ty::mk_param(ccx.tcx, i, local_def(atp.id));

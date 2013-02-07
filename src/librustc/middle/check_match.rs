@@ -100,7 +100,7 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
           }
           _ => { /* We assume only enum types can be uninhabited */ }
        }
-       let arms = vec::concat(vec::filter_map((*arms), unguarded_pat));
+       let arms = vec::concat(arms.filter_mapped(unguarded_pat));
        check_exhaustive(cx, ex.span, arms);
      }
      _ => ()
@@ -255,7 +255,8 @@ pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
             }
           }
           Some(ref ctor) => {
-            match is_useful(cx, vec::filter_map(m, |r| default(cx, copy *r)),
+            match is_useful(cx,
+                            vec::filter_map(m, |r| default(cx, r)),
                             vec::tail(v)) {
               useful_ => useful(left_ty, (/*bad*/copy *ctor)),
               ref u => (/*bad*/copy *u)
@@ -277,8 +278,7 @@ pub fn is_useful_specialized(cx: @MatchCheckCtxt,
                              arity: uint,
                              lty: ty::t)
                           -> useful {
-    let ms = vec::filter_map(m, |r| specialize(cx, *r,
-                                               ctor, arity, lty));
+    let ms = m.filter_mapped(|r| specialize(cx, *r, ctor, arity, lty));
     let could_be_useful = is_useful(
         cx, ms, specialize(cx, v, ctor, arity, lty).get());
     match could_be_useful {
@@ -387,9 +387,9 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
 
         // Find the lengths and tails of all vector patterns.
-        let vec_pat_lens = do m.filter_map |r| {
-            match /*bad*/copy r[0].node {
-                pat_vec(elems, tail) => {
+        let vec_pat_lens = do m.filter_mapped |r| {
+            match r[0].node {
+                pat_vec(ref elems, ref tail) => {
                     Some((elems.len(), tail.is_some()))
                 }
                 _ => None

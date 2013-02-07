@@ -34,8 +34,11 @@ pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) |
           ty::ty_evec(_, ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_box) |
           ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |
-          ty::ty_ptr(_) | ty::ty_rptr(_,_) => nilptr(tcx),
-          ty::ty_fn(_) => ty::mk_tup(tcx, ~[nilptr(tcx), nilptr(tcx)]),
+          ty::ty_ptr(_) | ty::ty_rptr(*) => nilptr(tcx),
+
+          ty::ty_bare_fn(*) | // FIXME(#4804) Bare fn repr
+          ty::ty_closure(*) => ty::mk_tup(tcx, ~[nilptr(tcx), nilptr(tcx)]),
+
           ty::ty_evec(_, ty::vstore_slice(_)) |
           ty::ty_estr(ty::vstore_slice(_)) => {
             ty::mk_tup(tcx, ~[nilptr(tcx), ty::mk_int(tcx)])

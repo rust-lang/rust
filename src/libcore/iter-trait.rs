@@ -12,9 +12,6 @@
 // workaround our lack of traits and lack of macros.  See core.{rc,rs} for
 // how this file is used.
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cmp::{Eq, Ord};
 use iter::BaseIter;
 use iter;

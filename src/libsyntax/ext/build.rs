@@ -103,7 +103,7 @@ pub fn mk_addr_of(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
 }
 pub fn mk_call_(cx: ext_ctxt, sp: span, fn_expr: @ast::expr,
                 args: ~[@ast::expr]) -> @ast::expr {
-    mk_expr(cx, sp, ast::expr_call(fn_expr, args, false))
+    mk_expr(cx, sp, ast::expr_call(fn_expr, args, ast::NoSugar))
 }
 pub fn mk_call(cx: ext_ctxt, sp: span, fn_path: ~[ast::ident],
                args: ~[@ast::expr]) -> @ast::expr {

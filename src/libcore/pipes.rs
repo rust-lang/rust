@@ -82,11 +82,6 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-// NB: transitionary, de-mode-ing.
-// tjc: allowing deprecated modes due to function issue,
-// re-forbid after snapshot
-#[forbid(deprecated_pattern)];
-
 // Transitional -- needs snapshot
 #[allow(structural_records)];
 

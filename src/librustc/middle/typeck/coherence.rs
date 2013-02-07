@@ -26,10 +26,10 @@ use middle::resolve::{Impl, MethodInfo};
 use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
 use middle::ty::{kind_can_be_copied, lookup_item_type, param_bounds, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
-use middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_infer, ty_int, ty_nil};
+use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rec, ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
-use middle::ty::{ty_type, ty_uint, ty_uniq};
+use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_kind_ext};
 use middle::ty::{type_is_ty_var};
 use middle::ty;
@@ -108,7 +108,7 @@ pub fn get_base_type(inference_context: @InferCtxt,
 
         ty_nil | ty_bot | ty_bool | ty_int(*) | ty_uint(*) | ty_float(*) |
         ty_estr(*) | ty_evec(*) | ty_rec(*) |
-        ty_fn(*) | ty_tup(*) | ty_infer(*) |
+        ty_bare_fn(*) | ty_closure(*) | ty_tup(*) | ty_infer(*) |
         ty_param(*) | ty_self | ty_type | ty_opaque_box |
         ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) | ty_err => {
             debug!("(getting base type) no base type; found %?",

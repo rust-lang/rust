@@ -627,18 +627,17 @@ pub fn trans_arg_expr(bcx: block,
         Some(_) => {
             match arg_expr.node {
                 ast::expr_loop_body(
-                    // XXX: Bad copy.
-                    blk@@ast::expr {
-                        node: ast::expr_fn_block(copy decl, ref body),
+                    blk @ @ast::expr {
+                        node: ast::expr_fn_block(ref decl, ref body),
                         _
                     }) =>
                 {
                     let scratch_ty = expr_ty(bcx, arg_expr);
                     let scratch = alloc_ty(bcx, scratch_ty);
                     let arg_ty = expr_ty(bcx, arg_expr);
-                    let proto = ty::ty_fn_proto(arg_ty);
+                    let sigil = ty::ty_closure_sigil(arg_ty);
                     let bcx = closure::trans_expr_fn(
-                        bcx, proto, decl, /*bad*/copy *body, arg_expr.id,
+                        bcx, sigil, decl, body, arg_expr.id,
                         blk.id, Some(ret_flag), expr::SaveIn(scratch));
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,

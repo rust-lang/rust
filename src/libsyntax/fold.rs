@@ -536,13 +536,18 @@ pub fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_rptr(region, mt) => ty_rptr(region, fold_mt(mt, fld)),
       ty_rec(ref fields) =>
         ty_rec(vec::map((*fields), |f| fold_field(*f, fld))),
-      ty_fn(f) =>
-        ty_fn(@TyFn {
-            proto: f.proto,
+      ty_closure(f) =>
+        ty_closure(@TyClosure {
+            sigil: f.sigil,
             purity: f.purity,
             region: f.region,
             onceness: f.onceness,
-            bounds: @vec::map(*f.bounds, |x| fold_ty_param_bound(*x, fld)),
+            decl: fold_fn_decl(f.decl, fld)
+        }),
+      ty_bare_fn(f) =>
+        ty_bare_fn(@TyBareFn {
+            purity: f.purity,
+            abi: f.abi,
             decl: fold_fn_decl(f.decl, fld)
         }),
       ty_tup(tys) => ty_tup(vec::map(tys, |ty| fld.fold_ty(*ty))),
@@ -557,7 +562,7 @@ pub fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
 pub fn noop_fold_mod(m: _mod, fld: ast_fold) -> _mod {
     ast::_mod {
         view_items: vec::map(m.view_items, |x| fld.fold_view_item(*x)),
-        items: vec::filter_map(m.items, |x| fld.fold_item(*x)),
+        items: vec::filter_mapped(m.items, |x| fld.fold_item(*x)),
     }
 }
 

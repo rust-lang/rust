@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[warn(deprecated_pattern)];
-
 use core::prelude::*;
 
 use driver::session;
@@ -27,7 +25,7 @@ use middle;
 use session::Session;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{region_to_str, explain_region, vstore_to_str};
-use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
+use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::cast;
 use core::cmp;
@@ -73,7 +71,7 @@ pub type param_bounds = @~[param_bound];
 pub type method = {
     ident: ast::ident,
     tps: @~[param_bounds],
-    fty: FnTy,
+    fty: BareFnTy,
     self_ty: ast::self_ty_,
     vis: ast::visibility,
     def_id: ast::def_id
@@ -344,22 +342,20 @@ pub pure fn type_contains_err(t: t) -> bool {
 pub pure fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
 pub pure fn type_id(t: t) -> uint { get(t).id }
 
-/**
- * Meta information about a closure.
- *
- * - `purity` is the function's effect (pure, impure, unsafe).
- * - `proto` is the protocol (fn@, fn~, etc).
- * - `onceness` indicates whether the function can be called one time or many
- *   times.
- * - `region` is the region bound on the function's upvars (often &static).
- * - `bounds` is the parameter bounds on the function's upvars. */
 #[deriving_eq]
-pub struct FnMeta {
+pub struct BareFnTy {
     purity: ast::purity,
-    proto: ast::Proto,
+    abi: Abi,
+    sig: FnSig
+}
+
+#[deriving_eq]
+pub struct ClosureTy {
+    purity: ast::purity,
+    sigil: ast::Sigil,
     onceness: ast::Onceness,
     region: Region,
-    bounds: @~[param_bound]
+    sig: FnSig
 }
 
 /**
@@ -374,24 +370,18 @@ pub struct FnSig {
     output: t
 }
 
-/**
- * Function type: combines the meta information and the
- * type signature.  This particular type is parameterized
- * by the meta information because, in some cases, the
- * meta information is inferred. */
-#[deriving_eq]
-pub struct FnTyBase<M> {
-    meta: M,        // Either FnMeta or FnVid
-    sig: FnSig      // Types of arguments/return type
-}
-
-impl<M: to_bytes::IterBytes> FnTyBase<M> : to_bytes::IterBytes {
+impl BareFnTy : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.meta, &self.sig, lsb0, f)
+        to_bytes::iter_bytes_3(&self.purity, &self.abi, &self.sig, lsb0, f)
     }
 }
 
-pub type FnTy = FnTyBase<FnMeta>;
+impl ClosureTy : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_5(&self.purity, &self.sigil, &self.onceness,
+                               &self.region, &self.sig, lsb0, f)
+    }
+}
 
 #[deriving_eq]
 pub struct param_ty {
@@ -491,6 +481,7 @@ pub struct substs {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
+#[deriving_eq]
 pub enum sty {
     ty_nil,
     ty_bot,
@@ -506,7 +497,8 @@ pub enum sty {
     ty_ptr(mt),
     ty_rptr(Region, mt),
     ty_rec(~[field]),
-    ty_fn(FnTy),
+    ty_bare_fn(BareFnTy),
+    ty_closure(ClosureTy),
     ty_trait(def_id, substs, vstore),
     ty_struct(def_id, substs),
     ty_tup(~[t]),
@@ -522,7 +514,7 @@ pub enum sty {
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_opaque_closure_ptr(ast::Proto), // ptr to env for fn, fn@, fn~
+    ty_opaque_closure_ptr(Sigil), // ptr to env for fn, fn@, fn~
     ty_unboxed_vec(mt),
 }
 
@@ -546,8 +538,9 @@ pub enum type_err {
     terr_mismatch,
     terr_purity_mismatch(expected_found<purity>),
     terr_onceness_mismatch(expected_found<Onceness>),
+    terr_abi_mismatch(expected_found<ast::Abi>),
     terr_mutability,
-    terr_proto_mismatch(expected_found<ast::Proto>),
+    terr_sigil_mismatch(expected_found<ast::Sigil>),
     terr_box_mutability,
     terr_ptr_mutability,
     terr_ref_mutability,
@@ -744,6 +737,15 @@ pub impl RegionVid : to_bytes::IterBytes {
     }
 }
 
+pub fn kind_to_param_bounds(kind: Kind) -> param_bounds {
+    let mut bounds = ~[];
+    if kind_can_be_copied(kind) { bounds.push(bound_copy); }
+    if kind_can_be_sent(kind) { bounds.push(bound_owned); }
+    else if kind_is_durable(kind) { bounds.push(bound_durable); }
+    if kind_is_const(kind) { bounds.push(bound_const); }
+    return @bounds;
+}
+
 pub fn param_bounds_to_kind(bounds: param_bounds) -> Kind {
     let mut kind = kind_noncopyable();
     for vec::each(*bounds) |bound| {
@@ -925,8 +927,12 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
       &ty_rec(ref flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
       &ty_tup(ref ts) => for ts.each |tt| { flags |= get(*tt).flags; },
-      &ty_fn(ref f) => {
-        flags |= rflags(f.meta.region);
+      &ty_bare_fn(ref f) => {
+        for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
+        flags |= get(f.sig.output).flags;
+      }
+      &ty_closure(ref f) => {
+        flags |= rflags(f.region);
         for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
         flags |= get(f.sig.output).flags;
       }
@@ -1044,8 +1050,25 @@ pub fn mk_rec(cx: ctxt, +fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
 
 pub fn mk_tup(cx: ctxt, +ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 
-// take a copy because we want to own the various vectors inside
-pub fn mk_fn(cx: ctxt, +fty: FnTy) -> t { mk_t(cx, ty_fn(fty)) }
+pub fn mk_closure(cx: ctxt, +fty: ClosureTy) -> t {
+    mk_t(cx, ty_closure(fty))
+}
+
+pub fn mk_bare_fn(cx: ctxt, +fty: BareFnTy) -> t {
+    mk_t(cx, ty_bare_fn(fty))
+}
+
+pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
+    let input_args = input_tys.map(|t| arg {mode: ast::expl(ast::by_copy),
+                                            ty: *t});
+    mk_bare_fn(cx,
+               BareFnTy {
+                   purity: ast::pure_fn,
+                   abi: ast::RustAbi,
+                   sig: FnSig {inputs: input_args,
+                               output: output}})
+}
+
 
 pub fn mk_trait(cx: ctxt, did: ast::def_id, +substs: substs, vstore: vstore)
          -> t {
@@ -1074,8 +1097,8 @@ pub fn mk_param(cx: ctxt, n: uint, k: def_id) -> t {
 
 pub fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
 
-pub fn mk_opaque_closure_ptr(cx: ctxt, proto: ast::Proto) -> t {
-    mk_t(cx, ty_opaque_closure_ptr(proto))
+pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
+    mk_t(cx, ty_opaque_closure_ptr(sigil))
 }
 
 pub fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
@@ -1097,13 +1120,11 @@ pub pure fn mach_sty(cfg: @session::config, t: t) -> sty {
 pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
         // FIXME(#2202) --- We retain by-ref for fn& things to workaround a
         // memory leak that otherwise results when @fn is upcast to &fn.
-    if type_is_fn(ty) {
-        match ty_fn_proto(ty) {
-            ast::ProtoBorrowed => {
-                return ast::by_ref;
-            }
-            _ => {}
+    match ty::get(ty).sty {
+        ty::ty_closure(ClosureTy {sigil: ast::BorrowedSigil, _}) => {
+            return ast::by_ref;
         }
+        _ => {}
     }
     return if tcx.legacy_modes {
         if type_is_borrowed(ty) {
@@ -1118,13 +1139,6 @@ pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
     } else {
         ast::by_copy
     };
-
-    fn type_is_fn(ty: t) -> bool {
-        match get(ty).sty {
-            ty_fn(*) => true,
-            _ => false
-        }
-    }
 
     fn type_is_borrowed(ty: t) -> bool {
         match ty::get(ty).sty {
@@ -1171,7 +1185,11 @@ pub fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
         for fields.each |fl| { maybe_walk_ty(fl.mt.ty, f); }
       }
       ty_tup(ts) => { for ts.each |tt| { maybe_walk_ty(*tt, f); } }
-      ty_fn(ref ft) => {
+      ty_bare_fn(ref ft) => {
+        for ft.sig.inputs.each |a| { maybe_walk_ty(a.ty, f); }
+        maybe_walk_ty(ft.sig.output, f);
+      }
+      ty_closure(ref ft) => {
         for ft.sig.inputs.each |a| { maybe_walk_ty(a.ty, f); }
         maybe_walk_ty(ft.sig.output, f);
       }
@@ -1235,9 +1253,13 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
             let new_ts = vec::map(ts, |tt| fldop(*tt));
             ty_tup(new_ts)
         }
-        ty_fn(ref f) => {
+        ty_bare_fn(ref f) => {
             let sig = fold_sig(&f.sig, fldop);
-            ty_fn(FnTyBase {meta: f.meta, sig: sig})
+            ty_bare_fn(BareFnTy {sig: sig, abi: f.abi, purity: f.purity})
+        }
+        ty_closure(ref f) => {
+            let sig = fold_sig(&f.sig, fldop);
+            ty_closure(ClosureTy {sig: sig, ..copy *f})
         }
         ty_rptr(r, tm) => {
             ty_rptr(r, mt {ty: fldop(tm.ty), mutbl: tm.mutbl})
@@ -1318,38 +1340,18 @@ pub fn fold_regions_and_ty(
       ty_trait(def_id, ref substs, vst) => {
         ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
       }
-      ty_fn(ref f) => {
-          ty::mk_fn(cx, FnTyBase {meta: FnMeta {region: fldr(f.meta.region),
-                                                ..f.meta},
-                                  sig: fold_sig(&f.sig, fldfnt)})
+      ty_bare_fn(ref f) => {
+          ty::mk_bare_fn(cx, BareFnTy {sig: fold_sig(&f.sig, fldfnt),
+                                       ..copy *f})
+      }
+      ty_closure(ref f) => {
+          ty::mk_closure(cx, ClosureTy {region: fldr(f.region),
+                                        sig: fold_sig(&f.sig, fldfnt),
+                                        ..copy *f})
       }
       ref sty => {
         fold_sty_to_ty(cx, sty, |t| fldt(t))
       }
-    }
-}
-
-/* A little utility: it often happens that I have a `fn_ty`,
- * but I want to use some function like `fold_regions_and_ty()`
- * that is defined over all types.  This utility converts to
- * a full type and back.  It's not the best way to do this (somewhat
- * inefficient to do the conversion), it would be better to refactor
- * all this folding business.  However, I've been waiting on that
- * until trait support is improved. */
-pub fn apply_op_on_t_to_ty_fn(
-    cx: ctxt,
-    f: &FnTy,
-    t_op: fn(t) -> t) -> FnTy
-{
-    let t0 = ty::mk_fn(cx, /*bad*/copy *f);
-    let t1 = t_op(t0);
-    match ty::get(t1).sty {
-        ty::ty_fn(copy f) => {
-            move f
-        }
-        _ => {
-            cx.sess.bug(~"`t_op` did not return a function type");
-        }
     }
 }
 
@@ -1370,41 +1372,6 @@ pub fn fold_regions(
             |t| do_fold(cx, t, in_fn, fldr))
     }
     do_fold(cx, ty, false, fldr)
-}
-
-pub fn fold_region(cx: ctxt, t0: t, fldop: fn(Region, bool) -> Region) -> t {
-    fn do_fold(cx: ctxt, t0: t, under_r: bool,
-               fldop: fn(Region, bool) -> Region) -> t {
-        let tb = get(t0);
-        if !tbox_has_flag(tb, has_regions) { return t0; }
-        match tb.sty {
-          ty_rptr(r, mt {ty: t1, mutbl: m}) => {
-            let m_r = fldop(r, under_r);
-            let m_t1 = do_fold(cx, t1, true, fldop);
-            ty::mk_rptr(cx, m_r, mt {ty: m_t1, mutbl: m})
-          }
-          ty_estr(vstore_slice(r)) => {
-            let m_r = fldop(r, under_r);
-            ty::mk_estr(cx, vstore_slice(m_r))
-          }
-          ty_evec(mt {ty: t1, mutbl: m}, vstore_slice(r)) => {
-            let m_r = fldop(r, under_r);
-            let m_t1 = do_fold(cx, t1, true, fldop);
-            ty::mk_evec(cx, mt {ty: m_t1, mutbl: m}, vstore_slice(m_r))
-          }
-          ty_fn(_) => {
-            // do not recurse into functions, which introduce fresh bindings
-            t0
-          }
-          ref sty => {
-            do fold_sty_to_ty(cx, sty) |t| {
-                do_fold(cx, t, under_r, fldop)
-            }
-          }
-      }
-    }
-
-    do_fold(cx, t0, false, fldop)
 }
 
 // Substitute *only* type parameters.  Used in trans where regions are erased.
@@ -1529,7 +1496,9 @@ pub fn type_is_bool(ty: t) -> bool { get(ty).sty == ty_bool }
 
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
-      ty_rec(_) | ty_struct(*) | ty_tup(_) | ty_enum(*) | ty_fn(_) |
+      ty_rec(_) | ty_struct(*) | ty_tup(_) | ty_enum(*) |
+      ty_closure(_) |
+      ty_bare_fn(_) | // FIXME(#4804) Bare fn repr
       ty_trait(*) |
       ty_evec(_, vstore_fixed(_)) | ty_estr(vstore_fixed(_)) |
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_))
@@ -1715,10 +1684,11 @@ pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
         }
         accum
       }
-      ty_fn(ref fty) => {
-        match fty.meta.proto {
-          ast::ProtoBare | ast::ProtoBorrowed => false,
-          ast::ProtoBox | ast::ProtoUniq => true,
+      ty_bare_fn(*) => false,
+      ty_closure(ref fty) => {
+        match fty.sigil {
+          ast::BorrowedSigil => false,
+          ast::ManagedSigil | ast::OwnedSigil => true,
         }
       }
     };
@@ -1813,7 +1783,7 @@ pub enum Kind { kind_(u32) }
 const KIND_MASK_COPY         : u32 = 0b000000000000000000000000001_u32;
 
 /// no shared box, borrowed ptr (must imply DURABLE)
-const KIND_MASK_OWNED         : u32 = 0b000000000000000000000000010_u32;
+const KIND_MASK_OWNED        : u32 = 0b000000000000000000000000010_u32;
 
 /// is durable (no borrowed ptrs)
 const KIND_MASK_DURABLE      : u32 = 0b000000000000000000000000100_u32;
@@ -1942,20 +1912,25 @@ pub pure fn kind_is_durable(k: Kind) -> bool {
     *k & KIND_MASK_DURABLE == KIND_MASK_DURABLE
 }
 
-pub fn meta_kind(p: FnMeta) -> Kind {
-    match p.proto { // XXX consider the kind bounds!
-        ast::ProtoBare => {
-            kind_safe_for_default_mode_send() | kind_const() | kind_durable()
-        }
-        ast::ProtoBorrowed => {
-            kind_noncopyable() | kind_(KIND_MASK_DEFAULT_MODE)
-        }
-        ast::ProtoBox => {
-            kind_safe_for_default_mode() | kind_durable()
-        }
-        ast::ProtoUniq => {
-            kind_owned_copy() | kind_durable()
-        }
+pure fn kind_is_const(k: Kind) -> bool {
+    *k & KIND_MASK_CONST == KIND_MASK_CONST
+}
+
+fn closure_kind(cty: &ClosureTy) -> Kind {
+    let kind = match cty.sigil {
+        ast::BorrowedSigil => kind_implicitly_copyable(),
+        ast::ManagedSigil => kind_implicitly_copyable(),
+        ast::OwnedSigil => kind_owned_only() | kind_durable(),
+    };
+
+    let kind = match cty.region {
+        re_static => kind | kind_durable(),
+        _ => kind - kind_owned_only() - kind_durable()
+    };
+
+    match cty.onceness {
+        ast::Once => kind - kind_implicitly_copyable(),
+        ast::Many => kind
     }
 }
 
@@ -2022,7 +1997,7 @@ pub fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
     let mut result = match /*bad*/copy get(ty).sty {
       // Scalar and unique types are sendable, constant, and owned
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_ptr(_) => {
+      ty_bare_fn(_) | ty_ptr(_) => {
         kind_safe_for_default_mode_send() | kind_const() | kind_durable()
       }
 
@@ -2035,8 +2010,9 @@ pub fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
         }
       }
 
-      // functions depend on the protocol
-      ty_fn(ref f) => meta_kind(f.meta),
+      ty_closure(ref c) => {
+          closure_kind(c)
+      }
 
       // Those with refcounts raise noncopyable to copyable,
       // lower sendable to copyable. Therefore just set result to copyable.
@@ -2215,7 +2191,8 @@ fn type_size(cx: ctxt, ty: t) -> uint {
 
       ty_evec(_, vstore_slice(_)) |
       ty_estr(vstore_slice(_)) |
-      ty_fn(_) => {
+      ty_bare_fn(*) |
+      ty_closure(*) => {
         2
       }
 
@@ -2297,7 +2274,8 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_uint(_) |
           ty_float(_) |
           ty_estr(_) |
-          ty_fn(_) |
+          ty_bare_fn(_) |
+          ty_closure(_) |
           ty_infer(_) |
           ty_err |
           ty_param(_) |
@@ -2472,9 +2450,9 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
     match /*bad*/copy get(ty).sty {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type | ty_ptr(_) => result = true,
+      ty_type | ty_ptr(_) | ty_bare_fn(_) => result = true,
       // Boxed types
-      ty_box(_) | ty_uniq(_) | ty_fn(_) |
+      ty_box(_) | ty_uniq(_) | ty_closure(_) |
       ty_estr(vstore_uniq) | ty_estr(vstore_box) |
       ty_evec(_, vstore_uniq) | ty_evec(_, vstore_box) |
       ty_trait(_, _, _) | ty_rptr(_,_) | ty_opaque_box => result = false,
@@ -2700,14 +2678,9 @@ impl arg : to_bytes::IterBytes {
     }
 }
 
-impl FnMeta : to_bytes::IterBytes {
+impl Kind : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_5(&self.purity,
-                               &self.proto,
-                               &self.onceness,
-                               &self.region,
-                               &self.bounds,
-                               lsb0, f);
+        (**self).iter_bytes(lsb0, f)
     }
 }
 
@@ -2755,7 +2728,7 @@ impl sty : to_bytes::IterBytes {
           ty_rec(ref fs) =>
           to_bytes::iter_bytes_2(&11u8, fs, lsb0, f),
 
-          ty_fn(ref ft) =>
+          ty_bare_fn(ref ft) =>
           to_bytes::iter_bytes_2(&12u8, ft, lsb0, f),
 
           ty_self => 13u8.iter_bytes(lsb0, f),
@@ -2789,7 +2762,10 @@ impl sty : to_bytes::IterBytes {
           ty_rptr(ref r, ref mt) =>
           to_bytes::iter_bytes_3(&24u8, r, mt, lsb0, f),
 
-          ty_err => 25u8.iter_bytes(lsb0, f)
+          ty_err => 25u8.iter_bytes(lsb0, f),
+
+          ty_closure(ref ct) =>
+          to_bytes::iter_bytes_2(&26u8, ct, lsb0, f),
         }
     }
 }
@@ -2823,36 +2799,48 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 // Type accessors for substructures of types
 pub fn ty_fn_args(fty: t) -> ~[arg] {
     match get(fty).sty {
-      ty_fn(ref f) => /*bad*/copy f.sig.inputs,
-      _ => die!(~"ty_fn_args() called on non-fn type")
+        ty_bare_fn(ref f) => copy f.sig.inputs,
+        ty_closure(ref f) => copy f.sig.inputs,
+        ref s => {
+            die!(fmt!("ty_fn_args() called on non-fn type: %?", s))
+        }
     }
 }
 
-pub fn ty_fn_proto(fty: t) -> Proto {
+pub fn ty_closure_sigil(fty: t) -> Sigil {
     match get(fty).sty {
-      ty_fn(ref f) => f.meta.proto,
-      _ => die!(~"ty_fn_proto() called on non-fn type")
+        ty_closure(ref f) => f.sigil,
+        ref s => {
+            die!(fmt!("ty_closure_sigil() called on non-closure type: %?", s))
+        }
     }
 }
 
 pub fn ty_fn_purity(fty: t) -> ast::purity {
     match get(fty).sty {
-      ty_fn(ref f) => f.meta.purity,
-      _ => die!(~"ty_fn_purity() called on non-fn type")
+        ty_bare_fn(ref f) => f.purity,
+        ty_closure(ref f) => f.purity,
+        ref s => {
+            die!(fmt!("ty_fn_purity() called on non-fn type: %?", s))
+        }
     }
 }
 
 pub pure fn ty_fn_ret(fty: t) -> t {
     match get(fty).sty {
-        ty_fn(ref f) => f.sig.output,
-        _ => die!(~"ty_fn_ret() called on non-fn type")
+        ty_bare_fn(ref f) => f.sig.output,
+        ty_closure(ref f) => f.sig.output,
+        ref s => {
+            die!(fmt!("ty_fn_ret() called on non-fn type: %?", s))
+        }
     }
 }
 
 fn is_fn_ty(fty: t) -> bool {
     match get(fty).sty {
-      ty_fn(_) => true,
-      _ => false
+        ty_bare_fn(_) => true,
+        ty_closure(_) => true,
+        _ => false
     }
 }
 
@@ -2874,17 +2862,17 @@ pub fn ty_region(ty: t) -> Region {
     }
 }
 
-pub fn replace_fn_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
+pub fn replace_closure_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
     /*!
      *
      * Returns a new function type based on `fn_type` but returning a value of
      * type `ret_type` instead. */
 
     match ty::get(fn_type).sty {
-        ty::ty_fn(ref fty) => {
-            ty::mk_fn(tcx, FnTyBase {
-                meta: fty.meta,
-                sig: FnSig {output: ret_type, ..copy fty.sig}
+        ty::ty_closure(ref fty) => {
+            ty::mk_closure(tcx, ClosureTy {
+                sig: FnSig {output: ret_type, ..copy fty.sig},
+                ..copy *fty
             })
         }
         _ => {
@@ -2898,12 +2886,6 @@ pub fn replace_fn_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
 // Returns a vec of all the input and output types of fty.
 pub fn tys_in_fn_sig(sig: &FnSig) -> ~[t] {
     vec::append_one(sig.inputs.map(|a| a.ty), sig.output)
-}
-
-// Just checks whether it's a fn that returns bool,
-// not its purity.
-pub fn is_pred_ty(fty: t) -> bool {
-    is_fn_ty(fty) && type_is_bool(ty_fn_ret(fty))
 }
 
 // Type accessors for AST nodes
@@ -3023,11 +3005,12 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
     fn borrow_fn(cx: ctxt, expr: @ast::expr,
                  autoref: &AutoRef, ty: ty::t) -> ty::t {
         match get(ty).sty {
-            ty_fn(ref fty) => {
-                ty::mk_fn(cx, FnTyBase {meta: FnMeta {proto: ProtoBorrowed,
-                                                      region: autoref.region,
-                                                      ..copy fty.meta},
-                                        sig: copy fty.sig})
+            ty_closure(ref fty) => {
+                ty::mk_closure(cx, ClosureTy {
+                    sigil: BorrowedSigil,
+                    region: autoref.region,
+                    ..copy *fty
+                })
             }
 
             ref s => {
@@ -3417,7 +3400,8 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_ptr(_) => ~"*-ptr",
       ty_rptr(_, _) => ~"&-ptr",
       ty_rec(_) => ~"record",
-      ty_fn(_) => ~"fn",
+      ty_bare_fn(_) => ~"extern fn",
+      ty_closure(_) => ~"fn",
       ty_trait(id, _, _) => fmt!("trait %s", item_path_str(cx, id)),
       ty_struct(id, _) => fmt!("struct %s", item_path_str(cx, id)),
       ty_tup(_) => ~"tuple",
@@ -3455,14 +3439,18 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
             fmt!("expected %s fn but found %s fn",
                  values.expected.to_str(), values.found.to_str())
         }
+        terr_abi_mismatch(values) => {
+            fmt!("expected %s fn but found %s fn",
+                 values.expected.to_str(), values.found.to_str())
+        }
         terr_onceness_mismatch(values) => {
             fmt!("expected %s fn but found %s fn",
                  values.expected.to_str(), values.found.to_str())
         }
-        terr_proto_mismatch(values) => {
+        terr_sigil_mismatch(values) => {
             fmt!("expected %s closure, found %s closure",
-                 proto_ty_to_str(cx, values.expected, false),
-                 proto_ty_to_str(cx, values.found, false))
+                 values.expected.to_str(),
+                 values.found.to_str())
         }
         terr_mutability => ~"values differ in mutability",
         terr_box_mutability => ~"boxed values differ in mutability",
@@ -4232,13 +4220,10 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
             // This type has a region. Get rid of it
             mk_rptr(cx, re_static, normalize_mt(cx, mt)),
 
-        ty_fn(ref fn_ty) => {
-            mk_fn(cx, FnTyBase {
-                meta: FnMeta {
-                    region: ty::re_static,
-                    ..fn_ty.meta
-                },
-                sig: /*bad*/copy fn_ty.sig
+        ty_closure(ref closure_ty) => {
+            mk_closure(cx, ClosureTy {
+                region: ty::re_static,
+                ..copy *closure_ty
             })
         }
 
@@ -4310,13 +4295,13 @@ pub fn eval_repeat_count(tcx: ctxt,
 // Determine what purity to check a nested function under
 pub pure fn determine_inherited_purity(parent_purity: ast::purity,
                                        child_purity: ast::purity,
-                                       child_proto: ast::Proto)
+                                       child_sigil: ast::Sigil)
                                     -> ast::purity {
     // If the closure is a stack closure and hasn't had some non-standard
     // purity inferred for it, then check it under its parent's purity.
     // Otherwise, use its own
-    match child_proto {
-        ast::ProtoBorrowed if child_purity == ast::impure_fn => parent_purity,
+    match child_sigil {
+        ast::BorrowedSigil if child_purity == ast::impure_fn => parent_purity,
         _ => child_purity
     }
 }
@@ -4524,171 +4509,6 @@ impl bound_region : cmp::Eq {
         }
     }
     pure fn ne(&self, other: &bound_region) -> bool { !(*self).eq(other) }
-}
-
-impl sty : cmp::Eq {
-    pure fn eq(&self, other: &sty) -> bool {
-        match (/*bad*/copy *self) {
-            ty_nil => {
-                match (*other) {
-                    ty_nil => true,
-                    _ => false
-                }
-            }
-            ty_bot => {
-                match (*other) {
-                    ty_bot => true,
-                    _ => false
-                }
-            }
-            ty_bool => {
-                match (*other) {
-                    ty_bool => true,
-                    _ => false
-                }
-            }
-            ty_int(e0a) => {
-                match (*other) {
-                    ty_int(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_uint(e0a) => {
-                match (*other) {
-                    ty_uint(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_float(e0a) => {
-                match (*other) {
-                    ty_float(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_estr(e0a) => {
-                match (*other) {
-                    ty_estr(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_enum(e0a, ref e1a) => {
-                match (*other) {
-                    ty_enum(e0b, ref e1b) => e0a == e0b && (*e1a) == (*e1b),
-                    _ => false
-                }
-            }
-            ty_box(e0a) => {
-                match (*other) {
-                    ty_box(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_uniq(e0a) => {
-                match (*other) {
-                    ty_uniq(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_evec(e0a, e1a) => {
-                match (*other) {
-                    ty_evec(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            ty_ptr(e0a) => {
-                match (*other) {
-                    ty_ptr(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_rptr(e0a, e1a) => {
-                match (*other) {
-                    ty_rptr(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            ty_rec(e0a) => {
-                match (/*bad*/copy *other) {
-                    ty_rec(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_fn(ref e0a) => {
-                match (*other) {
-                    ty_fn(ref e0b) => (*e0a) == (*e0b),
-                    _ => false
-                }
-            }
-            ty_trait(e0a, ref e1a, e2a) => {
-                match (*other) {
-                    ty_trait(e0b, ref e1b, e2b) =>
-                        e0a == e0b && (*e1a) == (*e1b) && e2a == e2b,
-                    _ => false
-                }
-            }
-            ty_struct(e0a, ref e1a) => {
-                match (*other) {
-                    ty_struct(e0b, ref e1b) => e0a == e0b && (*e1a) == (*e1b),
-                    _ => false
-                }
-            }
-            ty_tup(e0a) => {
-                match (/*bad*/copy *other) {
-                    ty_tup(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_infer(ref e0a) => {
-                match (*other) {
-                    ty_infer(ref e0b) => *e0a == *e0b,
-                    _ => false
-                }
-            }
-            ty_err => {
-                match (*other) {
-                    ty_err => true,
-                    _ => false
-                }
-            }
-            ty_param(e0a) => {
-                match (*other) {
-                    ty_param(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_self => {
-                match (*other) {
-                    ty_self => true,
-                    _ => false
-                }
-            }
-            ty_type => {
-                match (*other) {
-                    ty_type => true,
-                    _ => false
-                }
-            }
-            ty_opaque_box => {
-                match (*other) {
-                    ty_opaque_box => true,
-                    _ => false
-                }
-            }
-            ty_opaque_closure_ptr(e0a) => {
-                match (*other) {
-                    ty_opaque_closure_ptr(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_unboxed_vec(e0a) => {
-                match (*other) {
-                    ty_unboxed_vec(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &sty) -> bool { !(*self).eq(other) }
 }
 
 impl param_bound : cmp::Eq {

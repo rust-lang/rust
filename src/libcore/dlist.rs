@@ -18,10 +18,6 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use kinds::Copy;
 use managed;
 use option::{None, Option, Some};

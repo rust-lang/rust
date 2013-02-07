@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: Non-function passed to a `do` function as its last argument, or wrong number of arguments passed to a `do` function
 fn main() {
     let needlesArr: ~[char] = ~['a', 'f'];
     do vec::foldr(needlesArr) |x, y| {
+        //~^ ERROR 2 parameters were supplied (including the closure passed by the `do` keyword)
+        //~^^ ERROR Unconstrained region variable #2
+        //
+        // this last error is, um, non-ideal.
     }
-// for some reason if I use the new error syntax for the two error messages this generates,
-// the test runner gets confused -- tjc
 }
 

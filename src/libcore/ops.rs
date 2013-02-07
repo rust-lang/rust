@@ -10,9 +10,6 @@
 
 // Core operators
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 #[lang="drop"]
 pub trait Drop {
     fn finalize(&self);  // FIXME(#4332): Rename to "drop"? --pcwalton

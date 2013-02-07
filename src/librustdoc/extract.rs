@@ -92,7 +92,7 @@ fn moddoc_from_mod(
 ) -> doc::ModDoc {
     doc::ModDoc {
         item: itemdoc,
-        items: do vec::filter_map(module_.items) |item| {
+        items: do vec::filter_mapped(module_.items) |item| {
             let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
             match copy item.node {
               ast::item_mod(m) => {

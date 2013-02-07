@@ -10,8 +10,6 @@
 
 //! Temporary files and directories
 
-#[forbid(deprecated_mode)];
-
 use core::os;
 use core::prelude::*;
 use core::rand;

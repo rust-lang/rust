@@ -28,9 +28,7 @@ use std::par;
 pub fn mk_pass(config: config::Config) -> Pass {
     Pass {
         name: ~"markdown_index",
-        f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
-            run(srv, doc, copy config)
-        }
+        f: |srv, doc| run(srv, doc, copy config)
     }
 }
 
@@ -78,7 +76,7 @@ fn build_mod_index(
     config: config::Config
 ) -> doc::Index {
     doc::Index {
-        entries: par::map(doc.items, |doc| {
+        entries: doc.items.map(|doc| {
             item_to_entry(copy *doc, copy config)
         })
     }
@@ -89,7 +87,7 @@ fn build_nmod_index(
     config: config::Config
 ) -> doc::Index {
     doc::Index {
-        entries: par::map(doc.fns, |doc| {
+        entries: doc.fns.map(|doc| {
             item_to_entry(doc::FnTag(copy *doc), copy config)
         })
     }

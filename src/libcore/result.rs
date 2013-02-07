@@ -12,9 +12,6 @@
 
 // NB: transitionary, de-mode-ing.
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cmp;
 use cmp::Eq;
 use either;

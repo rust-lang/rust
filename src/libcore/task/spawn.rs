@@ -71,7 +71,6 @@
  ****************************************************************************/
 
 #[doc(hidden)]; // FIXME #3538
-#[warn(deprecated_mode)];
 
 use cast;
 use container::Map;

@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use middle::ty::{FnMeta, FnTyBase, FnSig, Vid};
+use middle::ty::{FnSig, Vid};
 use middle::ty::{IntVarValue, IntType, UintType};
 use middle::ty;
 use middle::typeck::infer::{Bound, Bounds};
@@ -34,23 +34,11 @@ pub impl ty::t : InferStr {
     }
 }
 
-pub impl FnMeta : InferStr {
-    fn inf_str(&self, _cx: &InferCtxt) -> ~str {
-        fmt!("%?", *self)
-    }
-}
-
 pub impl FnSig : InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("(%s) -> %s",
              str::connect(self.inputs.map(|a| a.ty.inf_str(cx)), ", "),
              self.output.inf_str(cx))
-    }
-}
-
-pub impl<M:InferStr> FnTyBase<M> : InferStr {
-    fn inf_str(&self, cx: &InferCtxt) -> ~str {
-        fmt!("%s%s", self.meta.inf_str(cx), self.sig.inf_str(cx))
     }
 }
 

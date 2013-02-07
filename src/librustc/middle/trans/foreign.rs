@@ -31,7 +31,7 @@ use middle::trans::machine;
 use middle::trans::shape;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
-use middle::ty::{FnTyBase, FnMeta, FnSig, arg};
+use middle::ty::{FnSig, arg};
 use util::ppaux::ty_to_str;
 
 use core::libc::c_uint;
@@ -66,10 +66,8 @@ type c_stack_tys = {
 fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
                        id: ast::node_id) -> (~[TypeRef], TypeRef, ty::t) {
     match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
-        ty::ty_fn(ref fn_ty) => {
-            let llargtys = type_of_explicit_args(
-                ccx,
-                fn_ty.sig.inputs);
+        ty::ty_bare_fn(ref fn_ty) => {
+            let llargtys = type_of_explicit_args(ccx, fn_ty.sig.inputs);
             let llretty = type_of::type_of(ccx, fn_ty.sig.output);
             (llargtys, llretty, fn_ty.sig.output)
         }
@@ -541,12 +539,11 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
             let star_u8 = ty::mk_imm_ptr(
                 bcx.tcx(),
                 ty::mk_mach_uint(bcx.tcx(), ast::ty_u8));
-            let fty = ty::mk_fn(bcx.tcx(), FnTyBase {
-                meta: FnMeta {purity: ast::impure_fn,
-                              proto: ast::ProtoBorrowed,
-                              onceness: ast::Many,
-                              region: ty::re_bound(ty::br_anon(0)),
-                              bounds: @~[]},
+            let fty = ty::mk_closure(bcx.tcx(), ty::ClosureTy {
+                purity: ast::impure_fn,
+                sigil: ast::BorrowedSigil,
+                onceness: ast::Many,
+                region: ty::re_bound(ty::br_anon(0)),
                 sig: FnSig {inputs: ~[arg {mode: ast::expl(ast::by_copy),
                                            ty: star_u8}],
                             output: ty::mk_nil(bcx.tcx())}
@@ -843,14 +840,14 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
 
 pub fn trans_foreign_fn(ccx: @crate_ctxt,
                         +path: ast_map::path,
-                        decl: ast::fn_decl,
-                        body: ast::blk,
+                        decl: &ast::fn_decl,
+                        body: &ast::blk,
                         llwrapfn: ValueRef,
                         id: ast::node_id) {
     let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @crate_ctxt, +path: ast_map::path,
-                     decl: ast::fn_decl, body: ast::blk,
+                     decl: &ast::fn_decl, body: &ast::blk,
                      id: ast::node_id) -> ValueRef {
         let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);

@@ -404,9 +404,15 @@ pub fn print_type_ex(s: ps, &&ty: @ast::Ty, print_colons: bool) {
         commasep(s, inconsistent, elts, print_type);
         pclose(s);
       }
-      ast::ty_fn(f) => {
-        print_ty_fn(s, Some(f.proto), f.region, f.purity,
-                    f.onceness, f.bounds, f.decl, None, None, None);
+      ast::ty_bare_fn(f) => {
+          print_ty_fn(s, Some(f.abi), None, None,
+                      f.purity, ast::Many, f.decl, None,
+                      None, None);
+      }
+      ast::ty_closure(f) => {
+          print_ty_fn(s, None, Some(f.sigil), f.region,
+                      f.purity, f.onceness, f.decl, None,
+                      None, None);
       }
       ast::ty_path(path, _) => print_path(s, path, print_colons),
       ast::ty_fixed_length_vec(mt, v) => {
@@ -806,8 +812,8 @@ pub fn print_ty_method(s: ps, m: ast::ty_method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
-    print_ty_fn(s, None, None, m.purity, ast::Many,
-                @~[], m.decl, Some(m.ident), Some(m.tps),
+    print_ty_fn(s, None, None, None, m.purity, ast::Many,
+                m.decl, Some(m.ident), Some(m.tps),
                 Some(m.self_ty.node));
     word(s.s, ~";");
 }
@@ -1046,32 +1052,32 @@ pub fn print_expr_vstore(s: ps, t: ast::expr_vstore) {
 }
 
 pub fn print_call_pre(s: ps,
-                      has_block: bool,
+                      sugar: ast::CallSugar,
                       base_args: &mut ~[@ast::expr])
                    -> Option<@ast::expr> {
-    if has_block {
-        let blk_arg = base_args.pop();
-        match blk_arg.node {
-          ast::expr_loop_body(_) => { head(s, ~"for"); }
-          ast::expr_do_body(_) => { head(s, ~"do"); }
-          _ => {}
+    match sugar {
+        ast::DoSugar => {
+            head(s, ~"do");
+            Some(base_args.pop())
         }
-        Some(blk_arg)
-    } else {
-        None
+        ast::ForSugar => {
+            head(s, ~"for");
+            Some(base_args.pop())
+        }
+        ast::NoSugar => None
     }
 }
 
 pub fn print_call_post(s: ps,
-                       has_block: bool,
+                       sugar: ast::CallSugar,
                        blk: &Option<@ast::expr>,
                        base_args: &mut ~[@ast::expr]) {
-    if !has_block || !base_args.is_empty() {
+    if sugar == ast::NoSugar || !base_args.is_empty() {
         popen(s);
         commasep_exprs(s, inconsistent, *base_args);
         pclose(s);
     }
-    if has_block {
+    if sugar != ast::NoSugar {
         nbsp(s);
         match blk.get().node {
           // need to handle closures specifically
@@ -1181,15 +1187,15 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
         commasep_exprs(s, inconsistent, exprs);
         pclose(s);
       }
-      ast::expr_call(func, args, has_block) => {
+      ast::expr_call(func, args, sugar) => {
         let mut base_args = copy args;
-        let blk = print_call_pre(s, has_block, &mut base_args);
+        let blk = print_call_pre(s, sugar, &mut base_args);
         print_expr(s, func);
-        print_call_post(s, has_block, &blk, &mut base_args);
+        print_call_post(s, sugar, &blk, &mut base_args);
       }
-      ast::expr_method_call(func, ident, tys, args, has_block) => {
+      ast::expr_method_call(func, ident, tys, args, sugar) => {
         let mut base_args = copy args;
-        let blk = print_call_pre(s, has_block, &mut base_args);
+        let blk = print_call_pre(s, sugar, &mut base_args);
         print_expr(s, func);
         word(s.s, ~".");
         print_ident(s, ident);
@@ -1198,7 +1204,7 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
             commasep(s, inconsistent, tys, print_type);
             word(s.s, ~">");
         }
-        print_call_post(s, has_block, &blk, &mut base_args);
+        print_call_post(s, sugar, &blk, &mut base_args);
       }
       ast::expr_binary(op, lhs, rhs) => {
         print_expr(s, lhs);
@@ -1305,13 +1311,13 @@ pub fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, match_indent_unit);
       }
-      ast::expr_fn(proto, decl, ref body, _) => {
+      ast::expr_fn(sigil, decl, ref body, _) => {
         // containing cbox, will be closed by print-block at }
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         print_fn_header_info(s, None, None, ast::Many,
-                             Some(proto), ast::inherited);
+                             Some(sigil), ast::inherited);
         print_fn_args_and_ret(s, decl, None);
         space(s.s);
         print_block(s, (*body));
@@ -1900,33 +1906,32 @@ pub fn print_arg(s: ps, input: ast::arg) {
 }
 
 pub fn print_ty_fn(s: ps,
-                   opt_proto: Option<ast::Proto>,
+                   opt_abi: Option<ast::Abi>,
+                   opt_sigil: Option<ast::Sigil>,
                    opt_region: Option<@ast::region>,
                    purity: ast::purity,
                    onceness: ast::Onceness,
-                   bounds: @~[ast::ty_param_bound],
                    decl: ast::fn_decl, id: Option<ast::ident>,
                    tps: Option<~[ast::ty_param]>,
                    opt_self_ty: Option<ast::self_ty_>) {
     ibox(s, indent_unit);
 
     // Duplicates the logic in `print_fn_header_info()`.  This is because that
-    // function prints the proto in the wrong place.  That should be fixed.
+    // function prints the sigil in the wrong place.  That should be fixed.
     print_self_ty_if_static(s, opt_self_ty);
-    print_opt_proto(s, opt_proto);
+    print_opt_abi(s, opt_abi);
+    print_opt_sigil(s, opt_sigil);
     for opt_region.each |r| { print_region(s, ~"", *r, ~"/"); }
     print_purity(s, purity);
     print_onceness(s, onceness);
     word(s.s, ~"fn");
-    print_bounds(s, bounds);
     match id { Some(id) => { word(s.s, ~" "); print_ident(s, id); } _ => () }
     match tps { Some(tps) => print_type_params(s, tps), _ => () }
     zerobreak(s.s);
 
     popen(s);
-    // It is unfortunate to duplicate the commasep logic, but we
-    // we want the self type, the args, and the capture clauses all
-    // in the same box.
+    // It is unfortunate to duplicate the commasep logic, but we we want the
+    // self type and the args all in the same box.
     box(s, 0u, inconsistent);
     let mut first = true;
     for opt_self_ty.each |self_ty| {
@@ -2157,12 +2162,18 @@ pub fn print_opt_purity(s: ps, opt_purity: Option<ast::purity>) {
     }
 }
 
-pub fn print_opt_proto(s: ps, opt_proto: Option<ast::Proto>) {
-    match opt_proto {
-        Some(ast::ProtoBare) => { word(s.s, ~"extern "); }
-        Some(ast::ProtoBorrowed) => { word(s.s, ~"&"); }
-        Some(ast::ProtoUniq) => { word(s.s, ~"~"); }
-        Some(ast::ProtoBox) => { word(s.s, ~"@"); }
+pub fn print_opt_abi(s: ps, opt_abi: Option<ast::Abi>) {
+    match opt_abi {
+        Some(ast::RustAbi) => { word_nbsp(s, ~"extern"); }
+        None => {}
+    };
+}
+
+pub fn print_opt_sigil(s: ps, opt_sigil: Option<ast::Sigil>) {
+    match opt_sigil {
+        Some(ast::BorrowedSigil) => { word(s.s, ~"&"); }
+        Some(ast::OwnedSigil) => { word(s.s, ~"~"); }
+        Some(ast::ManagedSigil) => { word(s.s, ~"@"); }
         None => {}
     };
 }
@@ -2171,20 +2182,20 @@ pub fn print_fn_header_info(s: ps,
                             opt_sty: Option<ast::self_ty_>,
                             opt_purity: Option<ast::purity>,
                             onceness: ast::Onceness,
-                            opt_proto: Option<ast::Proto>,
+                            opt_sigil: Option<ast::Sigil>,
                             vis: ast::visibility) {
     print_self_ty_if_static(s, opt_sty);
     word(s.s, visibility_qualified(vis, ~""));
     print_opt_purity(s, opt_purity);
     print_onceness(s, onceness);
     word(s.s, ~"fn");
-    print_opt_proto(s, opt_proto);
+    print_opt_sigil(s, opt_sigil);
 }
 
-pub fn opt_proto_to_str(opt_p: Option<ast::Proto>) -> ~str {
+pub fn opt_sigil_to_str(opt_p: Option<ast::Sigil>) -> ~str {
     match opt_p {
       None => ~"fn",
-      Some(p) => proto_to_str(p)
+      Some(p) => fmt!("fn%s", p.to_str())
     }
 }
 
@@ -2216,15 +2227,6 @@ pub fn print_onceness(s: ps, o: ast::Onceness) {
         ast::Once => { word_nbsp(s, ~"once"); }
         ast::Many => {}
     }
-}
-
-pub fn proto_to_str(p: ast::Proto) -> ~str {
-    return match p {
-      ast::ProtoBare => ~"extern fn",
-      ast::ProtoBorrowed => ~"fn&",
-      ast::ProtoUniq => ~"fn~",
-      ast::ProtoBox => ~"fn@"
-    };
 }
 
 #[cfg(test)]

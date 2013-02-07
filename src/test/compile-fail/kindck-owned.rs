@@ -24,6 +24,6 @@ fn main() {
     copy2(@&x); //~ ERROR missing `&static`
 
     copy2(fn@() {});
-    copy2(fn~() {}); //~ WARNING instantiating copy type parameter with a not implicitly copyable type
-    copy2(fn&() {}); //~ ERROR missing `copy &static`
+    copy2(fn~() {}); //~ ERROR missing `copy`
+    copy2(fn&() {}); //~ ERROR missing `&static`
 }

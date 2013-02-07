@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! A deque. Untested as of yet. Likely buggy
-#[forbid(deprecated_mode)];
 #[forbid(non_camel_case_types)];
 
 use core::cmp::Eq;

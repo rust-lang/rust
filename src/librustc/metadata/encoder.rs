@@ -768,8 +768,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                 encode_name(ecx, ebml_w, mty.ident);
                 encode_type_param_bounds(ebml_w, ecx,
                                          (*ty_m).tps);
-                encode_type(ecx, ebml_w, ty::mk_fn(tcx, /*bad*/copy mty.fty));
-                encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
+                encode_type(ecx, ebml_w,
+                            ty::mk_bare_fn(tcx, copy mty.fty));
+                encode_family(ebml_w, purity_fn_family(mty.fty.purity));
                 encode_self_type(ebml_w, mty.self_ty);
                 encode_method_sort(ebml_w, 'r');
                 ebml_w.end_tag();
@@ -781,8 +782,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                 encode_def_id(ebml_w, local_def(m.id));
                 encode_name(ecx, ebml_w, mty.ident);
                 encode_type_param_bounds(ebml_w, ecx, m.tps);
-                encode_type(ecx, ebml_w, ty::mk_fn(tcx, /*bad*/copy mty.fty));
-                encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
+                encode_type(ecx, ebml_w,
+                            ty::mk_bare_fn(tcx, copy mty.fty));
+                encode_family(ebml_w, purity_fn_family(mty.fty.purity));
                 encode_self_type(ebml_w, mty.self_ty);
                 encode_method_sort(ebml_w, 'p');
                 ebml_w.end_tag();
