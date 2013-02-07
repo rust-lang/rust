@@ -122,9 +122,15 @@ pub impl Encoder: serialize::Encoder {
     fn emit_managed(&self, f: fn()) { f() }
 
     fn emit_enum(&self, name: &str, f: fn()) {
-        if name != "option" { die!(~"only supports option enum") }
-        f()
+        // emitting enums as arrays where the first
+        // element provides the enum variant name
+        self.wr.write_char('[');
+        self.wr.write_str(name);
+        self.wr.write_char(',');
+        f();
+        self.wr.write_char(']');
     }
+    
     fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: fn()) {
         if id == 0 {
             self.emit_nil();
