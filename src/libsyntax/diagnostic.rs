@@ -231,7 +231,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     let mut elided = false;
     let mut display_lines = /* FIXME (#2543) */ copy lines.lines;
     if vec::len(display_lines) > max_lines {
-        display_lines = vec::slice(display_lines, 0u, max_lines);
+        display_lines = vec::slice(display_lines, 0u, max_lines).to_vec();
         elided = true;
     }
     // Print the offending lines
