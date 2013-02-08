@@ -133,7 +133,8 @@ pub impl Encoder: serialize::Encoder {
         f();
         self.wr.write_char(']');
     }
-    fn emit_enum_variant_arg(&self, idx: uint, f: fn()) {
+
+    fn emit_enum_variant_arg(&self, _idx: uint, f: fn()) {
         self.wr.write_char(',');
         f();
     }
@@ -1182,6 +1183,8 @@ mod tests {
 
     use core::result;
     use core::hashmap::linear::LinearMap;
+    use core::cmp;
+
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~LinearMap::new();
@@ -1247,6 +1250,43 @@ mod tests {
         // printed in a different order.
         let b = result::unwrap(from_str(to_str(&a)));
         assert a == b;
+    }
+
+    // two fns copied from libsyntax/util/testing.rs.
+    // Should they be in their own crate?
+    pub pure fn check_equal_ptr<T : cmp::Eq> (given : &T, expected: &T) {
+        if !((given == expected) && (expected == given )) {
+            die!(fmt!("given %?, expected %?",given,expected));
+        }
+    }
+
+    pub pure fn check_equal<T : cmp::Eq> (given : T, expected: T) {
+        if !((given == expected) && (expected == given )) {
+            die!(fmt!("given %?, expected %?",given,expected));
+        }
+    }
+
+    // testing both auto_encode's calling patterns
+    // and json... not sure where to put these tests.
+    #[test]
+    fn test_write_enum () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"animal") {
+            do encoder.emit_enum_variant (~"frog",37,1242) {
+                // name of frog:
+                do encoder.emit_enum_variant_arg (0) {
+                    encoder.emit_owned_str(~"Henry")
+                }
+                // mass of frog in grams:
+                do encoder.emit_enum_variant_arg (1) {
+                    encoder.emit_int(349);
+                }
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"[\"frog\",\"Henry\",349]");
     }
 
     #[test]
