@@ -351,7 +351,7 @@ fn run_line(repl: &mut Repl, in: io::Reader, out: io::Writer, line: ~str)
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
-                    vec::slice(split, 1, len)
+                    vec::slice(split, 1, len).to_vec()
                 } else { ~[] };
 
                 match run_cmd(repl, in, out, cmd, args) {

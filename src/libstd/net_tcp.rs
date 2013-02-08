@@ -971,7 +971,8 @@ impl io::Writer for TcpSocketBuf {
             let w_result = write_common_impl(socket_data_ptr,
                                             vec::slice(data,
                                                        0,
-                                                       vec::len(data)));
+                                                       vec::len(data)
+                                                      ).to_vec());
             if w_result.is_err() {
                 let err_data = w_result.get_err();
                 log(debug,
