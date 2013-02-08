@@ -51,9 +51,6 @@
 //! * s - str (any flavor)
 //! * ? - arbitrary type (does not use the to_str trait)
 
-// Transitional
-#[allow(structural_records)]; // Macros -- needs a snapshot
-
 /*
 Syntax Extension: fmt
 
@@ -619,11 +616,11 @@ pub mod rt {
             let padstr = str::from_chars(vec::from_elem(diff, padchar));
             return s + padstr;
         }
-        let {might_zero_pad, signed} = match mode {
-          PadNozero => {might_zero_pad:false, signed:false},
-          PadSigned => {might_zero_pad:true,  signed:true },
-          PadFloat => {might_zero_pad:true,  signed:true},
-          PadUnsigned => {might_zero_pad:true,  signed:false}
+        let (might_zero_pad, signed) = match mode {
+          PadNozero   => (false, true),
+          PadSigned   => (true, true),
+          PadFloat    => (true, true),
+          PadUnsigned => (true, false)
         };
         pure fn have_precision(cv: Conv) -> bool {
             return match cv.precision { CountImplied => false, _ => true };

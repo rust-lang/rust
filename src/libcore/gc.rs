@@ -35,9 +35,6 @@ with destructors.
 
 */
 
-// Transitional
-#[allow(structural_records)];
-
 use cast;
 use container::{Container, Mutable, Map, Set};
 use io;
@@ -172,12 +169,14 @@ unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
     return begin <= frame && frame <= end;
 }
 
+struct Segment { segment: *StackSegment, boundary: bool }
+
 // Find and return the segment containing the given frame pointer. At
 // stack segment boundaries, returns true for boundary, so that the
 // caller can do any special handling to identify where the correct
 // return address is in the stack frame.
 unsafe fn find_segment_for_frame(fp: *Word, segment: *StackSegment)
-    -> {segment: *StackSegment, boundary: bool} {
+    -> Segment {
     // Check if frame is in either current frame or previous frame.
     let in_segment = is_frame_in_segment(fp, segment);
     let in_prev_segment = ptr::is_not_null((*segment).prev) &&
@@ -191,16 +190,16 @@ unsafe fn find_segment_for_frame(fp: *Word, segment: *StackSegment)
             is_frame_in_segment(fp, (*segment).next) {
             segment = (*segment).next;
         }
-        return {segment: segment, boundary: false};
+        return Segment {segment: segment, boundary: false};
     }
 
     // If frame is in previous frame, then we're at a boundary.
     if !in_segment && in_prev_segment {
-        return {segment: (*segment).prev, boundary: true};
+        return Segment {segment: (*segment).prev, boundary: true};
     }
 
     // Otherwise, we're somewhere on the inside of the frame.
-    return {segment: segment, boundary: false};
+    return Segment {segment: segment, boundary: false};
 }
 
 type Memory = uint;
@@ -224,7 +223,7 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     for stackwalk::walk_stack |frame| {
         unsafe {
             let pc = last_ret;
-            let {segment: next_segment, boundary: boundary} =
+            let Segment {segment: next_segment, boundary: boundary} =
                 find_segment_for_frame(frame.fp, segment);
             segment = next_segment;
             // Each stack segment is bounded by a morestack frame. The
