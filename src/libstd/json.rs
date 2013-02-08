@@ -126,16 +126,42 @@ pub impl Encoder: serialize::Encoder {
     }
 
     fn emit_enum_variant(&self, name: &str, _id: uint, _cnt: uint, f: fn()) {
-        // emitting enums as arrays where the first
-        // element provides the enum variant name
-        self.wr.write_char('[');
-        self.wr.write_str(escape_str(name));
-        f();
-        self.wr.write_char(']');
+        // encoding of enums is special-cased for Option. Specifically:
+        // Some(34) => 34
+        // None => null
+
+        // other enums are encoded as vectors:
+        // Kangaroo(34,"William") => ["Kangaroo",[34,"William"]]
+        
+        // the default expansion for enums is more verbose than I'd like;
+        // specifically, the inner pair of brackets seems superfluous,
+        // BUT the design of the enumeration framework and the requirements
+        // of the special-case for Option mean that a first argument must
+        // be encoded "naked"--with no commas--and that the option name
+        // can't be followed by just a comma, because there might not
+        // be any elements in the tuple.
+        
+        // FIXME : this would be more precise and less frightening
+        // with fully-qualified option names. To get that information,
+        // we'd have to change the expansion of auto-encode to pass those along.
+
+        if (name == ~"Some") {
+            f();
+        } else if (name == ~"None") {
+            self.wr.write_str(~"null");
+        } else {
+            self.wr.write_char('[');
+            self.wr.write_str(escape_str(name));
+            self.wr.write_char(',');
+            self.wr.write_char('[');
+            f();
+            self.wr.write_char(']');
+            self.wr.write_char(']');
+        }
     }
 
-    fn emit_enum_variant_arg(&self, _idx: uint, f: fn()) {
-        self.wr.write_char(',');
+    fn emit_enum_variant_arg(&self, idx: uint, f: fn()) {
+        if (idx != 0) {self.wr.write_char(',');}
         f();
     }
 
@@ -1286,7 +1312,36 @@ mod tests {
             }
         }
         check_equal(str::from_bytes(bw.bytes.data),
-                    ~"[\"frog\",\"Henry\",349]");
+                    ~"[\"frog\",[\"Henry\",349]]");
+    }
+
+    #[test]
+    fn test_write_some () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"Option") {
+            do encoder.emit_enum_variant (~"Some",37,1242) {
+                do encoder.emit_enum_variant_arg (0) {
+                    encoder.emit_owned_str(~"jodhpurs")
+                }
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"\"jodhpurs\"");
+    }
+
+    #[test]
+    fn test_write_none () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"Option") {
+            do encoder.emit_enum_variant (~"None",37,1242) {
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"null");
     }
 
     #[test]
