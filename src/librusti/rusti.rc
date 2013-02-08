@@ -64,7 +64,7 @@ enum CmdAction {
 
 /// A utility function that hands off a pretty printer to a callback.
 fn with_pp(intr: @token::ident_interner,
-           cb: fn(pprust::ps, io::Writer)) -> ~str {
+           cb: fn(@pprust::ps, io::Writer)) -> ~str {
     do io::with_str_writer |writer| {
         let pp = pprust::rust_printer(writer, intr);
 
@@ -203,7 +203,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         };
         let input = driver::file_input(src_path);
         let sess = driver::build_session(options, diagnostic::emit);
-        sess.building_library = true;
+        *sess.building_library = true;
         let cfg = driver::build_configuration(sess, binary, input);
         let outputs = driver::build_output_filenames(
             input, &None, &None, sess);

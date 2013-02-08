@@ -11,6 +11,7 @@
 #[allow(structural_records)];
 
 //! Process spawning
+use cast;
 use io;
 use io::ReaderUtil;
 use libc;
@@ -36,28 +37,28 @@ extern mod rustrt {
 /// A value representing a child process
 pub trait Program {
     /// Returns the process id of the program
-    fn get_id() -> pid_t;
+    fn get_id(&mut self) -> pid_t;
 
     /// Returns an io::writer that can be used to write to stdin
-    fn input() -> io::Writer;
+    fn input(&mut self) -> io::Writer;
 
     /// Returns an io::reader that can be used to read from stdout
-    fn output() -> io::Reader;
+    fn output(&mut self) -> io::Reader;
 
     /// Returns an io::reader that can be used to read from stderr
-    fn err() -> io::Reader;
+    fn err(&mut self) -> io::Reader;
 
     /// Closes the handle to the child processes standard input
-    fn close_input();
+    fn close_input(&mut self);
 
     /**
      * Waits for the child process to terminate. Closes the handle
      * to stdin if necessary.
      */
-    fn finish() -> int;
+    fn finish(&mut self) -> int;
 
     /// Closes open handles
-    fn destroy();
+    fn destroy(&mut self);
 }
 
 
@@ -219,13 +220,13 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
 
     struct ProgRepr {
         pid: pid_t,
-        mut in_fd: c_int,
+        in_fd: c_int,
         out_file: *libc::FILE,
         err_file: *libc::FILE,
-        mut finished: bool,
+        finished: bool,
     }
 
-    fn close_repr_input(r: &ProgRepr) {
+    fn close_repr_input(r: &mut ProgRepr) {
         let invalid_fd = -1i32;
         if r.in_fd != invalid_fd {
             unsafe {
@@ -234,22 +235,27 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
             r.in_fd = invalid_fd;
         }
     }
-    fn finish_repr(r: &ProgRepr) -> int {
+    fn finish_repr(r: &mut ProgRepr) -> int {
         if r.finished { return 0; }
         r.finished = true;
-        close_repr_input(r);
+        close_repr_input(&mut *r);
         return waitpid(r.pid);
     }
-    fn destroy_repr(r: &ProgRepr) {
+    fn destroy_repr(r: &mut ProgRepr) {
         unsafe {
-            finish_repr(r);
+            finish_repr(&mut *r);
             libc::fclose(r.out_file);
             libc::fclose(r.err_file);
         }
     }
     struct ProgRes {
         r: ProgRepr,
-        drop { destroy_repr(&self.r); }
+        drop {
+            unsafe {
+                // XXX: This is bad.
+                destroy_repr(cast::transmute(&self.r));
+            }
+        }
     }
 
     fn ProgRes(r: ProgRepr) -> ProgRes {
@@ -259,21 +265,21 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
     }
 
     impl ProgRes: Program {
-        fn get_id() -> pid_t { return self.r.pid; }
-        fn input() -> io::Writer {
+        fn get_id(&mut self) -> pid_t { return self.r.pid; }
+        fn input(&mut self) -> io::Writer {
             io::fd_writer(self.r.in_fd, false)
         }
-        fn output() -> io::Reader {
+        fn output(&mut self) -> io::Reader {
             io::FILE_reader(self.r.out_file, false)
         }
-        fn err() -> io::Reader {
+        fn err(&mut self) -> io::Reader {
             io::FILE_reader(self.r.err_file, false)
         }
-        fn close_input() { close_repr_input(&self.r); }
-        fn finish() -> int { finish_repr(&self.r) }
-        fn destroy() { destroy_repr(&self.r); }
+        fn close_input(&mut self) { close_repr_input(&mut self.r); }
+        fn finish(&mut self) -> int { finish_repr(&mut self.r) }
+        fn destroy(&mut self) { destroy_repr(&mut self.r); }
     }
-    let repr = ProgRepr {
+    let mut repr = ProgRepr {
         pid: pid,
         in_fd: pipe_input.out,
         out_file: os::fdopen(pipe_output.in),

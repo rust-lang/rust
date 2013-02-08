@@ -34,7 +34,11 @@ use syntax::util::interner;
 
 use ty_ctxt = middle::ty::ctxt;
 
-pub type ctxt = {mut next_tag_id: u16, pad: u16, pad2: u32};
+pub struct Ctxt {
+    next_tag_id: u16,
+    pad: u16,
+    pad2: u32
+}
 
 pub fn mk_global(ccx: @crate_ctxt,
                  name: ~str,
@@ -57,14 +61,18 @@ pub fn mk_global(ccx: @crate_ctxt,
     }
 }
 
-pub fn mk_ctxt(llmod: ModuleRef) -> ctxt {
+pub fn mk_ctxt(llmod: ModuleRef) -> Ctxt {
     unsafe {
         let llshapetablesty = trans::common::T_named_struct(~"shapes");
         let _llshapetables = str::as_c_str(~"shapes", |buf| {
             llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
         });
 
-        return {mut next_tag_id: 0u16, pad: 0u16, pad2: 0u32};
+        return Ctxt {
+            next_tag_id: 0u16,
+            pad: 0u16,
+            pad2: 0u32
+        };
     }
 }
 

@@ -23,83 +23,86 @@ use core::dvec::DVec;
 
 use std::term;
 
-pub type emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
+pub type Emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
                    msg: &str, lvl: level);
 
 
 pub trait span_handler {
-    fn span_fatal(sp: span, msg: &str) -> !;
-    fn span_err(sp: span, msg: &str);
-    fn span_warn(sp: span, msg: &str);
-    fn span_note(sp: span, msg: &str);
-    fn span_bug(sp: span, msg: &str) -> !;
-    fn span_unimpl(sp: span, msg: &str) -> !;
-    fn handler() -> handler;
+    fn span_fatal(@mut self, sp: span, msg: &str) -> !;
+    fn span_err(@mut self, sp: span, msg: &str);
+    fn span_warn(@mut self, sp: span, msg: &str);
+    fn span_note(@mut self, sp: span, msg: &str);
+    fn span_bug(@mut self, sp: span, msg: &str) -> !;
+    fn span_unimpl(@mut self, sp: span, msg: &str) -> !;
+    fn handler(@mut self) -> handler;
 }
 
 pub trait handler {
-    fn fatal(msg: &str) -> !;
-    fn err(msg: &str);
-    fn bump_err_count();
-    fn has_errors() -> bool;
-    fn abort_if_errors();
-    fn warn(msg: &str);
-    fn note(msg: &str);
-    fn bug(msg: &str) -> !;
-    fn unimpl(msg: &str) -> !;
-    fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level);
+    fn fatal(@mut self, msg: &str) -> !;
+    fn err(@mut self, msg: &str);
+    fn bump_err_count(@mut self);
+    fn has_errors(@mut self) -> bool;
+    fn abort_if_errors(@mut self);
+    fn warn(@mut self, msg: &str);
+    fn note(@mut self, msg: &str);
+    fn bug(@mut self, msg: &str) -> !;
+    fn unimpl(@mut self, msg: &str) -> !;
+    fn emit(@mut self,
+            cmsp: Option<(@codemap::CodeMap, span)>,
+            msg: &str,
+            lvl: level);
 }
 
-struct handler_t {
-    mut err_count: uint,
-    emit: emitter,
+struct HandlerT {
+    err_count: uint,
+    emit: Emitter,
 }
 
-struct codemap_t {
+struct CodemapT {
     handler: handler,
     cm: @codemap::CodeMap,
 }
 
-impl codemap_t: span_handler {
-    fn span_fatal(sp: span, msg: &str) -> ! {
+impl CodemapT: span_handler {
+    fn span_fatal(@mut self, sp: span, msg: &str) -> ! {
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
         die!();
     }
-    fn span_err(sp: span, msg: &str) {
+    fn span_err(@mut self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
-    fn span_warn(sp: span, msg: &str) {
+    fn span_warn(@mut self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, warning);
     }
-    fn span_note(sp: span, msg: &str) {
+    fn span_note(@mut self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, note);
     }
-    fn span_bug(sp: span, msg: &str) -> ! {
+    fn span_bug(@mut self, sp: span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    fn span_unimpl(sp: span, msg: &str) -> ! {
+    fn span_unimpl(@mut self, sp: span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    fn handler() -> handler {
+    fn handler(@mut self) -> handler {
         self.handler
     }
 }
 
-impl handler_t: handler {
-    fn fatal(msg: &str) -> ! {
+impl HandlerT: handler {
+    fn fatal(@mut self, msg: &str) -> ! {
         (self.emit)(None, msg, fatal);
         die!();
     }
-    fn err(msg: &str) {
+    fn err(@mut self, msg: &str) {
         (self.emit)(None, msg, error);
         self.bump_err_count();
     }
-    fn bump_err_count() {
+    fn bump_err_count(@mut self) {
         self.err_count += 1u;
     }
-    fn has_errors() -> bool { self.err_count > 0u }
-    fn abort_if_errors() {
+    fn has_errors(@mut self) -> bool { self.err_count > 0u }
+    fn abort_if_errors(@mut self) {
         let s;
         match self.err_count {
           0u => return,
@@ -111,17 +114,22 @@ impl handler_t: handler {
         }
         self.fatal(s);
     }
-    fn warn(msg: &str) {
+    fn warn(@mut self, msg: &str) {
         (self.emit)(None, msg, warning);
     }
-    fn note(msg: &str) {
+    fn note(@mut self, msg: &str) {
         (self.emit)(None, msg, note);
     }
-    fn bug(msg: &str) -> ! {
+    fn bug(@mut self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
     }
-    fn unimpl(msg: &str) -> ! { self.bug(~"unimplemented " + msg); }
-    fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
+    fn unimpl(@mut self, msg: &str) -> ! {
+        self.bug(~"unimplemented " + msg);
+    }
+    fn emit(@mut self,
+            cmsp: Option<(@codemap::CodeMap, span)>,
+            msg: &str,
+            lvl: level) {
         (self.emit)(cmsp, msg, lvl);
     }
 }
@@ -132,25 +140,22 @@ pub fn ice_msg(msg: &str) -> ~str {
 
 pub fn mk_span_handler(handler: handler, cm: @codemap::CodeMap)
                     -> span_handler {
-    @codemap_t { handler: handler, cm: cm } as span_handler
+    @mut CodemapT { handler: handler, cm: cm } as @span_handler
 }
 
-pub fn mk_handler(emitter: Option<emitter>) -> handler {
-
-    let emit = match emitter {
-      Some(e) => e,
-      None => {
-        let f = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
-                    msg: &str, t: level) {
-            emit(cmsp, msg, t);
-        };
-        f
-      }
+pub fn mk_handler(emitter: Option<Emitter>) -> @handler {
+    let emit: Emitter = match emitter {
+        Some(e) => e,
+        None => {
+            let emit: Emitter = |cmsp, msg, t| emit(cmsp, msg, t);
+            emit
+        }
     };
 
-    @handler_t { mut err_count: 0, emit: emit } as handler
+    @mut HandlerT { mut err_count: 0, emit: emit } as @handler
 }
 
+#[deriving_eq]
 pub enum level {
     fatal,
     error,
@@ -158,28 +163,21 @@ pub enum level {
     note,
 }
 
-impl level : cmp::Eq {
-    pure fn eq(&self, other: &level) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &level) -> bool { !(*self).eq(other) }
-}
-
 fn diagnosticstr(lvl: level) -> ~str {
     match lvl {
-      fatal => ~"error",
-      error => ~"error",
-      warning => ~"warning",
-      note => ~"note"
+        fatal => ~"error",
+        error => ~"error",
+        warning => ~"warning",
+        note => ~"note"
     }
 }
 
 fn diagnosticcolor(lvl: level) -> u8 {
     match lvl {
-      fatal => term::color_bright_red,
-      error => term::color_bright_red,
-      warning => term::color_bright_yellow,
-      note => term::color_bright_green
+        fatal => term::color_bright_red,
+        error => term::color_bright_red,
+        warning => term::color_bright_yellow,
+        note => term::color_bright_green
     }
 }
 
@@ -223,9 +221,9 @@ pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
     }
 }
 
-fn highlight_lines(cm: @codemap::CodeMap, sp: span,
+fn highlight_lines(cm: @codemap::CodeMap,
+                   sp: span,
                    lines: @codemap::FileLines) {
-
     let fm = lines.file;
 
     // arbitrarily only print up to six lines of the error

@@ -33,7 +33,7 @@ pub fn macros() {
 pub enum Sub = CombineFields;  // "subtype", "subregion" etc
 
 pub impl Sub: Combine {
-    fn infcx() -> @InferCtxt { self.infcx }
+    fn infcx() -> @mut InferCtxt { self.infcx }
     fn tag() -> ~str { ~"sub" }
     fn a_is_expected() -> bool { self.a_is_expected }
     fn span() -> span { self.span }

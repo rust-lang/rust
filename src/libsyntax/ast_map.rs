@@ -107,15 +107,17 @@ pub enum ast_node {
 }
 
 pub type map = std::oldmap::HashMap<node_id, ast_node>;
-pub struct ctx {
-    map: map,
-    mut path: path,
-    mut local_id: uint,
+
+pub struct Ctx {
+    map: @map,
+    path: path,
+    local_id: uint,
     diag: span_handler,
 }
-pub type vt = visit::vt<ctx>;
 
-pub fn extend(cx: ctx, +elt: ident) -> @path {
+pub type vt = visit::vt<@mut Ctx>;
+
+pub fn extend(cx: @mut Ctx, +elt: ident) -> @path {
     @(vec::append(cx.path, ~[path_name(elt)]))
 }
 
@@ -133,31 +135,33 @@ pub fn mk_ast_map_visitor() -> vt {
 }
 
 pub fn map_crate(diag: span_handler, c: crate) -> map {
-    let cx = ctx {
-        map: std::oldmap::HashMap(),
-        mut path: ~[],
-        mut local_id: 0u,
+    let cx = @mut Ctx {
+        map: @std::oldmap::HashMap(),
+        path: ~[],
+        local_id: 0u,
         diag: diag,
     };
     visit::visit_crate(c, cx, mk_ast_map_visitor());
-    cx.map
+    *cx.map
 }
 
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
 pub fn map_decoded_item(diag: span_handler,
-                        map: map, path: path, ii: inlined_item) {
+                        map: map,
+                        path: path,
+                        ii: inlined_item) {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.  (In particular, I think these ids are only used in
     // alias analysis, which we will not be running on the inlined items, and
     // even if we did I think it only needs an ordering between local
     // variables that are simultaneously in scope).
-    let cx = ctx {
-        map: map,
-        mut path: path,
-        mut local_id: 0,
+    let cx = @mut Ctx {
+        map: @map,
+        path: path,
+        local_id: 0,
         diag: diag,
     };
     let v = mk_ast_map_visitor();
@@ -181,7 +185,7 @@ pub fn map_decoded_item(diag: span_handler,
 }
 
 pub fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
-              sp: codemap::span, id: node_id, cx: ctx, v: vt) {
+              sp: codemap::span, id: node_id, &&cx: @mut Ctx, v: vt) {
     for decl.inputs.each |a| {
         cx.map.insert(a.id,
                       node_arg(/* FIXME (#2543) */
@@ -208,12 +212,12 @@ pub fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
 
-pub fn map_block(b: blk, cx: ctx, v: vt) {
+pub fn map_block(b: blk, &&cx: @mut Ctx, v: vt) {
     cx.map.insert(b.node.id, node_block(/* FIXME (#2543) */ copy b));
     visit::visit_block(b, cx, v);
 }
 
-pub fn number_pat(cx: ctx, pat: @pat) {
+pub fn number_pat(cx: @mut Ctx, pat: @pat) {
     do ast_util::walk_pat(pat) |p| {
         match p.node {
           pat_ident(*) => {
@@ -225,24 +229,24 @@ pub fn number_pat(cx: ctx, pat: @pat) {
     };
 }
 
-pub fn map_local(loc: @local, cx: ctx, v: vt) {
+pub fn map_local(loc: @local, &&cx: @mut Ctx, v: vt) {
     number_pat(cx, loc.node.pat);
     visit::visit_local(loc, cx, v);
 }
 
-pub fn map_arm(arm: arm, cx: ctx, v: vt) {
+pub fn map_arm(arm: arm, &&cx: @mut Ctx, v: vt) {
     number_pat(cx, arm.pats[0]);
     visit::visit_arm(arm, cx, v);
 }
 
 pub fn map_method(impl_did: def_id, impl_path: @path,
-                  m: @method, cx: ctx) {
+                  m: @method, &&cx: @mut Ctx) {
     cx.map.insert(m.id, node_method(m, impl_did, impl_path));
     cx.map.insert(m.self_id, node_local(cx.local_id));
     cx.local_id += 1u;
 }
 
-pub fn map_item(i: @item, cx: ctx, v: vt) {
+pub fn map_item(i: @item, &&cx: @mut Ctx, v: vt) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     match i.node {
@@ -305,7 +309,7 @@ pub fn map_item(i: @item, cx: ctx, v: vt) {
 }
 
 pub fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
-                      ident: ast::ident, cx: ctx, _v: vt) {
+                      ident: ast::ident, cx: @mut Ctx, _v: vt) {
     let p = extend(cx, ident);
     // If this is a tuple-like struct, register the constructor.
     match struct_def.ctor_id {
@@ -322,12 +326,12 @@ pub fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
     }
 }
 
-pub fn map_expr(ex: @expr, cx: ctx, v: vt) {
+pub fn map_expr(ex: @expr, &&cx: @mut Ctx, v: vt) {
     cx.map.insert(ex.id, node_expr(ex));
     visit::visit_expr(ex, cx, v);
 }
 
-pub fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
+pub fn map_stmt(stmt: @stmt, &&cx: @mut Ctx, v: vt) {
     cx.map.insert(stmt_id(*stmt), node_stmt(stmt));
     visit::visit_stmt(stmt, cx, v);
 }

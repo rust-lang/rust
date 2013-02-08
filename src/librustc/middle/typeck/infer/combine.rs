@@ -78,7 +78,7 @@ pub fn macros() {
 }
 
 pub trait Combine {
-    fn infcx() -> @InferCtxt;
+    fn infcx() -> @mut InferCtxt;
     fn tag() -> ~str;
     fn a_is_expected() -> bool;
     fn span() -> span;
@@ -113,7 +113,7 @@ pub trait Combine {
 }
 
 pub struct CombineFields {
-    infcx: @InferCtxt,
+    infcx: @mut InferCtxt,
     a_is_expected: bool,
     span: span,
 }

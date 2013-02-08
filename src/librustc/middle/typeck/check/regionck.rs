@@ -35,7 +35,7 @@ use middle::ty::{encl_region, re_scope};
 use middle::ty::{vstore_box, vstore_fixed, vstore_slice};
 use middle::ty::{vstore_uniq};
 use middle::ty;
-use middle::typeck::check::fn_ctxt;
+use middle::typeck::check::FnCtxt;
 use middle::typeck::check::lookup_def;
 use middle::typeck::infer::{fres, resolve_and_force_all_but_regions};
 use middle::typeck::infer::{resolve_type};
@@ -49,10 +49,14 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 
-pub enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
-pub type rvt = visit::vt<@rcx>;
+pub struct Rcx {
+    fcx: @mut FnCtxt,
+    errors_reported: uint
+}
 
-pub fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
+pub type rvt = visit::vt<@mut Rcx>;
+
+pub fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
         def_local(node_id, _) | def_arg(node_id, _, _) |
@@ -71,8 +75,8 @@ pub fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::Region {
     }
 }
 
-pub impl @rcx {
-    fn resolve_type(unresolved_ty: ty::t) -> ty::t {
+pub impl Rcx {
+    fn resolve_type(@mut self, unresolved_ty: ty::t) -> ty::t {
         /*!
          * Try to resolve the type for the given node, returning
          * t_err if an error results.  Note that we never care
@@ -109,23 +113,22 @@ pub impl @rcx {
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_node_type(id: ast::node_id) -> ty::t {
+    fn resolve_node_type(@mut self, id: ast::node_id) -> ty::t {
         self.resolve_type(self.fcx.node_ty(id))
     }
 }
 
-pub fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
-    let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
+pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
+    let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
     let v = regionck_visitor();
-    (v.visit_expr)(e, @(move rcx), v);
+    (v.visit_expr)(e, rcx, v);
     fcx.infcx().resolve_regions();
 }
 
-pub fn regionck_fn(fcx: @fn_ctxt,
-                   blk: ast::blk) {
-    let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
+pub fn regionck_fn(fcx: @mut FnCtxt, blk: ast::blk) {
+    let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
     let v = regionck_visitor();
-    (v.visit_block)(blk, @(move rcx), v);
+    (v.visit_block)(blk, rcx, v);
     fcx.infcx().resolve_regions();
 }
 
@@ -138,11 +141,11 @@ pub fn regionck_visitor() -> rvt {
                                   .. *visit::default_visitor()})
 }
 
-pub fn visit_item(_item: @ast::item, &&_rcx: @rcx, _v: rvt) {
+pub fn visit_item(_item: @ast::item, &&_rcx: @mut Rcx, _v: rvt) {
     // Ignore items
 }
 
-pub fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
+pub fn visit_local(l: @ast::local, &&rcx: @mut Rcx, v: rvt) {
     // Check to make sure that the regions in all local variables are
     // within scope.
     //
@@ -173,11 +176,11 @@ pub fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
     }
 }
 
-pub fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
+pub fn visit_block(b: ast::blk, &&rcx: @mut Rcx, v: rvt) {
     visit::visit_block(b, rcx, v);
 }
 
-pub fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
+pub fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
     debug!("visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
     for rcx.fcx.inh.adjustments.find(&expr.id).each |adjustment| {
@@ -292,11 +295,11 @@ pub fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     visit::visit_expr(expr, rcx, v);
 }
 
-pub fn visit_stmt(s: @ast::stmt, &&rcx: @rcx, v: rvt) {
+pub fn visit_stmt(s: @ast::stmt, &&rcx: @mut Rcx, v: rvt) {
     visit::visit_stmt(s, rcx, v);
 }
 
-pub fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
+pub fn visit_node(id: ast::node_id, span: span, rcx: @mut Rcx) -> bool {
     /*!
      *
      * checks the type of the node `id` and reports an error if it
@@ -315,7 +318,7 @@ pub fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     constrain_regions_in_type_of_node(rcx, id, encl_region, span)
 }
 
-pub fn constrain_auto_ref(rcx: @rcx, expr: @ast::expr) {
+pub fn constrain_auto_ref(rcx: @mut Rcx, expr: @ast::expr) {
     /*!
      *
      * If `expr` is auto-ref'd (e.g., as part of a borrow), then this
@@ -360,7 +363,7 @@ pub fn constrain_auto_ref(rcx: @rcx, expr: @ast::expr) {
 }
 
 pub fn constrain_free_variables(
-    rcx: @rcx,
+    rcx: @mut Rcx,
     region: ty::Region,
     expr: @ast::expr) {
     /*!
@@ -396,7 +399,7 @@ pub fn constrain_free_variables(
 }
 
 pub fn constrain_regions_in_type_of_node(
-    rcx: @rcx,
+    rcx: @mut Rcx,
     id: ast::node_id,
     encl_region: ty::Region,
     span: span) -> bool {
@@ -413,7 +416,7 @@ pub fn constrain_regions_in_type_of_node(
 }
 
 pub fn constrain_regions_in_type(
-    rcx: @rcx,
+    rcx: @mut Rcx,
     encl_region: ty::Region,
     span: span,
     ty: ty::t) -> bool {
@@ -434,7 +437,7 @@ pub fn constrain_regions_in_type(
         |t| ty::type_has_regions(t));
     return (e == rcx.errors_reported);
 
-    fn constrain_region(rcx: @rcx,
+    fn constrain_region(rcx: @mut Rcx,
                         encl_region: ty::Region,
                         span: span,
                         region: ty::Region) {
@@ -521,13 +524,13 @@ pub mod guarantor {
      */
 
     use core::prelude::*;
-    use middle::typeck::check::regionck::{rcx, infallibly_mk_subr};
+    use middle::typeck::check::regionck::{Rcx, infallibly_mk_subr};
     use middle::ty;
     use syntax::ast;
     use syntax::codemap::span;
     use util::ppaux::{ty_to_str};
 
-    pub fn for_addr_of(rcx: @rcx, expr: @ast::expr, base: @ast::expr) {
+    pub fn for_addr_of(rcx: @mut Rcx, expr: @ast::expr, base: @ast::expr) {
         /*!
          *
          * Computes the guarantor for an expression `&base` and then
@@ -542,7 +545,7 @@ pub mod guarantor {
         link(rcx, expr.span, expr.id, guarantor);
     }
 
-    pub fn for_match(rcx: @rcx, discr: @ast::expr, arms: &[ast::arm]) {
+    pub fn for_match(rcx: @mut Rcx, discr: @ast::expr, arms: &[ast::arm]) {
         /*!
          *
          * Computes the guarantors for any ref bindings in a match and
@@ -558,11 +561,10 @@ pub mod guarantor {
         }
     }
 
-    pub fn for_autoref(rcx: @rcx,
+    pub fn for_autoref(rcx: @mut Rcx,
                        expr: @ast::expr,
                        adjustment: &ty::AutoAdjustment,
-                       autoref: &ty::AutoRef)
-    {
+                       autoref: &ty::AutoRef) {
         /*!
          *
          * Computes the guarantor for an expression that has an
@@ -583,11 +585,10 @@ pub mod guarantor {
     }
 
     fn link(
-        rcx: @rcx,
+        rcx: @mut Rcx,
         span: span,
         id: ast::node_id,
-        guarantor: Option<ty::Region>)
-    {
+        guarantor: Option<ty::Region>) {
         /*!
          *
          * Links the lifetime of the borrowed pointer resulting from a borrow
@@ -640,7 +641,7 @@ pub mod guarantor {
         ty: ty::t
     }
 
-    fn guarantor(rcx: @rcx, expr: @ast::expr) -> Option<ty::Region> {
+    fn guarantor(rcx: @mut Rcx, expr: @ast::expr) -> Option<ty::Region> {
         /*!
          *
          * Computes the guarantor of `expr`, or None if `expr` is
@@ -715,7 +716,7 @@ pub mod guarantor {
         }
     }
 
-    fn categorize(rcx: @rcx, expr: @ast::expr) -> ExprCategorization {
+    fn categorize(rcx: @mut Rcx, expr: @ast::expr) -> ExprCategorization {
         debug!("categorize(expr=%s)", rcx.fcx.expr_to_str(expr));
         let _i = ::util::common::indenter();
 
@@ -741,8 +742,9 @@ pub mod guarantor {
         return expr_ct.cat;
     }
 
-    fn categorize_unadjusted(rcx: @rcx,
-                             expr: @ast::expr) -> ExprCategorizationType {
+    fn categorize_unadjusted(rcx: @mut Rcx,
+                             expr: @ast::expr)
+                          -> ExprCategorizationType {
         debug!("categorize_unadjusted(expr=%s)", rcx.fcx.expr_to_str(expr));
         let _i = ::util::common::indenter();
 
@@ -765,11 +767,11 @@ pub mod guarantor {
     }
 
     fn apply_autoderefs(
-        +rcx: @rcx,
+        +rcx: @mut Rcx,
         +expr: @ast::expr,
         +autoderefs: uint,
-        +ct: ExprCategorizationType) -> ExprCategorizationType
-    {
+        +ct: ExprCategorizationType)
+     -> ExprCategorizationType {
         let mut ct = ct;
         let tcx = rcx.fcx.ccx.tcx;
         for uint::range(0, autoderefs) |_| {
@@ -824,10 +826,9 @@ pub mod guarantor {
     }
 
     fn link_ref_bindings_in_pat(
-        rcx: @rcx,
+        rcx: @mut Rcx,
         pat: @ast::pat,
-        guarantor: Option<ty::Region>)
-    {
+        guarantor: Option<ty::Region>) {
         /*!
          *
          * Descends through the pattern, tracking the guarantor
@@ -901,10 +902,9 @@ pub mod guarantor {
         }
     }
 
-    fn link_ref_bindings_in_pats(rcx: @rcx,
+    fn link_ref_bindings_in_pats(rcx: @mut Rcx,
                                  pats: &~[@ast::pat],
-                                 guarantor: Option<ty::Region>)
-    {
+                                 guarantor: Option<ty::Region>) {
         for pats.each |pat| {
             link_ref_bindings_in_pat(rcx, *pat, guarantor);
         }
@@ -912,11 +912,11 @@ pub mod guarantor {
 
 }
 
-pub fn infallibly_mk_subr(rcx: @rcx,
+pub fn infallibly_mk_subr(rcx: @mut Rcx,
                           a_is_expected: bool,
-                         span: span,
-                         a: ty::Region,
-                         b: ty::Region) {
+                          span: span,
+                          a: ty::Region,
+                          b: ty::Region) {
     /*!
      *
      * Constrains `a` to be a subregion of `b`.  In many cases, we

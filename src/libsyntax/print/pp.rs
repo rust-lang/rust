@@ -32,7 +32,7 @@ use core::vec;
  * I am implementing this algorithm because it comes with 20 pages of
  * documentation explaining its theory, and because it addresses the set of
  * concerns I've seen other pretty-printers fall down on. Weirdly. Even though
- * it's 32 years old and not written in Haskell. What can I say?
+ * it's 32 years old. What can I say?
  *
  * Despite some redundancies and quirks in the way it's implemented in that
  * paper, I've opted to keep the implementation here as similar as I can,
@@ -69,19 +69,8 @@ use core::vec;
  * line (which it can't) and so naturally place the content on its own line to
  * avoid combining it with other lines and making matters even worse.
  */
+#[deriving_eq]
 pub enum breaks { consistent, inconsistent, }
-
-pub impl breaks : cmp::Eq {
-    pure fn eq(&self, other: &breaks) -> bool {
-        match ((*self), (*other)) {
-            (consistent, consistent) => true,
-            (inconsistent, inconsistent) => true,
-            (consistent, _) => false,
-            (inconsistent, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &breaks) -> bool { !(*self).eq(other) }
-}
 
 pub type break_t = {offset: int, blank_space: int};
 
@@ -96,11 +85,11 @@ pub enum token {
 }
 
 pub impl token {
-    fn is_eof() -> bool {
-        match self { EOF => true, _ => false }
+    fn is_eof(&self) -> bool {
+        match *self { EOF => true, _ => false }
     }
-    fn is_hardbreak_tok() -> bool {
-        match self {
+    fn is_hardbreak_tok(&self) -> bool {
+        match *self {
             BREAK({offset: 0, blank_space: bs }) if bs == size_infinity =>
                 true,
             _ =>
@@ -111,11 +100,11 @@ pub impl token {
 
 pub fn tok_str(++t: token) -> ~str {
     match t {
-      STRING(s, len) => return fmt!("STR(%s,%d)", *s, len),
-      BREAK(_) => return ~"BREAK",
-      BEGIN(_) => return ~"BEGIN",
-      END => return ~"END",
-      EOF => return ~"EOF"
+        STRING(s, len) => return fmt!("STR(%s,%d)", *s, len),
+        BREAK(_) => return ~"BREAK",
+        BEGIN(_) => return ~"BEGIN",
+        END => return ~"END",
+        EOF => return ~"EOF"
     }
 }
 
@@ -143,7 +132,7 @@ pub type print_stack_elt = {offset: int, pbreak: print_stack_break};
 
 pub const size_infinity: int = 0xffff;
 
-pub fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
+pub fn mk_printer(out: @io::Writer, linewidth: uint) -> @mut Printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
     let n: uint = 3 * linewidth;
@@ -151,22 +140,24 @@ pub fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
     let mut token: ~[token] = vec::from_elem(n, EOF);
     let mut size: ~[int] = vec::from_elem(n, 0);
     let mut scan_stack: ~[uint] = vec::from_elem(n, 0u);
-    printer_(@{out: out,
-               buf_len: n,
-               mut margin: linewidth as int,
-               mut space: linewidth as int,
-               mut left: 0,
-               mut right: 0,
-               mut token: move token,
-               mut size: move size,
-               mut left_total: 0,
-               mut right_total: 0,
-               mut scan_stack: move scan_stack,
-               mut scan_stack_empty: true,
-               mut top: 0,
-               mut bottom: 0,
-               print_stack: DVec(),
-               mut pending_indentation: 0 })
+    @mut Printer {
+        out: @out,
+        buf_len: n,
+        margin: linewidth as int,
+        space: linewidth as int,
+        left: 0,
+        right: 0,
+        token: move token,
+        size: move size,
+        left_total: 0,
+        right_total: 0,
+        scan_stack: move scan_stack,
+        scan_stack_empty: true,
+        top: 0,
+        bottom: 0,
+        print_stack: @mut ~[],
+        pending_indentation: 0
+    }
 }
 
 
@@ -247,42 +238,38 @@ pub fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
  * the method called 'pretty_print', and the 'PRINT' process is the method
  * called 'print'.
  */
-pub type printer_ = {
-    out: io::Writer,
+pub struct Printer {
+    out: @@io::Writer,
     buf_len: uint,
-    mut margin: int, // width of lines we're constrained to
-    mut space: int, // number of spaces left on line
-    mut left: uint, // index of left side of input stream
-    mut right: uint, // index of right side of input stream
-    mut token: ~[token], // ring-buffr stream goes through
-    mut size: ~[int], // ring-buffer of calculated sizes
-    mut left_total: int, // running size of stream "...left"
-    mut right_total: int, // running size of stream "...right"
+    margin: int, // width of lines we're constrained to
+    space: int, // number of spaces left on line
+    left: uint, // index of left side of input stream
+    right: uint, // index of right side of input stream
+    token: ~[token], // ring-buffr stream goes through
+    size: ~[int], // ring-buffer of calculated sizes
+    left_total: int, // running size of stream "...left"
+    right_total: int, // running size of stream "...right"
     // pseudo-stack, really a ring too. Holds the
     // primary-ring-buffers index of the BEGIN that started the
     // current block, possibly with the most recent BREAK after that
     // BEGIN (if there is any) on top of it. Stuff is flushed off the
     // bottom as it becomes irrelevant due to the primary ring-buffer
     // advancing.
-    mut scan_stack: ~[uint],
-    mut scan_stack_empty: bool, // top==bottom disambiguator
-    mut top: uint, // index of top of scan_stack
-    mut bottom: uint, // index of bottom of scan_stack
+    scan_stack: ~[uint],
+    scan_stack_empty: bool, // top==bottom disambiguator
+    top: uint, // index of top of scan_stack
+    bottom: uint, // index of bottom of scan_stack
     // stack of blocks-in-progress being flushed by print
-    print_stack: DVec<print_stack_elt>,
+    print_stack: @mut ~[print_stack_elt],
     // buffered indentation to avoid writing trailing whitespace
-    mut pending_indentation: int,
-};
-
-pub enum printer {
-    printer_(@printer_)
+    pending_indentation: int,
 }
 
-pub impl printer {
-    fn last_token() -> token { self.token[self.right] }
+pub impl Printer {
+    fn last_token(&mut self) -> token { self.token[self.right] }
     // be very careful with this!
-    fn replace_last_token(t: token) { self.token[self.right] = t; }
-    fn pretty_print(t: token) {
+    fn replace_last_token(&mut self, t: token) { self.token[self.right] = t; }
+    fn pretty_print(&mut self, t: token) {
         debug!("pp ~[%u,%u]", self.left, self.right);
         match t {
           EOF => {
@@ -350,7 +337,7 @@ pub impl printer {
           }
         }
     }
-    fn check_stream() {
+    fn check_stream(&mut self) {
         debug!("check_stream ~[%u, %u] with left_total=%d, right_total=%d",
                self.left, self.right, self.left_total, self.right_total);
         if self.right_total - self.left_total > self.space {
@@ -366,7 +353,7 @@ pub impl printer {
             if self.left != self.right { self.check_stream(); }
         }
     }
-    fn scan_push(x: uint) {
+    fn scan_push(&mut self, x: uint) {
         debug!("scan_push %u", x);
         if self.scan_stack_empty {
             self.scan_stack_empty = false;
@@ -377,7 +364,7 @@ pub impl printer {
         }
         self.scan_stack[self.top] = x;
     }
-    fn scan_pop() -> uint {
+    fn scan_pop(&mut self) -> uint {
         assert (!self.scan_stack_empty);
         let x = self.scan_stack[self.top];
         if self.top == self.bottom {
@@ -385,11 +372,11 @@ pub impl printer {
         } else { self.top += self.buf_len - 1u; self.top %= self.buf_len; }
         return x;
     }
-    fn scan_top() -> uint {
+    fn scan_top(&mut self) -> uint {
         assert (!self.scan_stack_empty);
         return self.scan_stack[self.top];
     }
-    fn scan_pop_bottom() -> uint {
+    fn scan_pop_bottom(&mut self) -> uint {
         assert (!self.scan_stack_empty);
         let x = self.scan_stack[self.bottom];
         if self.top == self.bottom {
@@ -397,12 +384,12 @@ pub impl printer {
         } else { self.bottom += 1u; self.bottom %= self.buf_len; }
         return x;
     }
-    fn advance_right() {
+    fn advance_right(&mut self) {
         self.right += 1u;
         self.right %= self.buf_len;
         assert (self.right != self.left);
     }
-    fn advance_left(++x: token, L: int) {
+    fn advance_left(&mut self, ++x: token, L: int) {
         debug!("advnce_left ~[%u,%u], sizeof(%u)=%d", self.left, self.right,
                self.left, L);
         if L >= 0 {
@@ -420,7 +407,7 @@ pub impl printer {
             }
         }
     }
-    fn check_stack(k: int) {
+    fn check_stack(&mut self, k: int) {
         if !self.scan_stack_empty {
             let x = self.scan_top();
             match copy self.token[x] {
@@ -443,17 +430,17 @@ pub impl printer {
             }
         }
     }
-    fn print_newline(amount: int) {
+    fn print_newline(&mut self, amount: int) {
         debug!("NEWLINE %d", amount);
-        self.out.write_str(~"\n");
+        (*self.out).write_str(~"\n");
         self.pending_indentation = 0;
         self.indent(amount);
     }
-    fn indent(amount: int) {
+    fn indent(&mut self, amount: int) {
         debug!("INDENT %d", amount);
         self.pending_indentation += amount;
     }
-    fn get_top() -> print_stack_elt {
+    fn get_top(&mut self) -> print_stack_elt {
         let n = self.print_stack.len();
         if n != 0u {
             self.print_stack[n - 1u]
@@ -461,14 +448,14 @@ pub impl printer {
             {offset: 0, pbreak: broken(inconsistent)}
         }
     }
-    fn print_str(s: ~str) {
+    fn print_str(&mut self, s: ~str) {
         while self.pending_indentation > 0 {
-            self.out.write_str(~" ");
+            (*self.out).write_str(~" ");
             self.pending_indentation -= 1;
         }
-        self.out.write_str(s);
+        (*self.out).write_str(s);
     }
-    fn print(x: token, L: int) {
+    fn print(&mut self, x: token, L: int) {
         debug!("print %s %d (remaining line space=%d)", tok_str(x), L,
                self.space);
         log(debug, buf_str(copy self.token,
@@ -539,39 +526,41 @@ pub impl printer {
 }
 
 // Convenience functions to talk to the printer.
-pub fn box(p: printer, indent: uint, b: breaks) {
+pub fn box(p: @mut Printer, indent: uint, b: breaks) {
     p.pretty_print(BEGIN({offset: indent as int, breaks: b}));
 }
 
-pub fn ibox(p: printer, indent: uint) { box(p, indent, inconsistent); }
+pub fn ibox(p: @mut Printer, indent: uint) { box(p, indent, inconsistent); }
 
-pub fn cbox(p: printer, indent: uint) { box(p, indent, consistent); }
+pub fn cbox(p: @mut Printer, indent: uint) { box(p, indent, consistent); }
 
-pub fn break_offset(p: printer, n: uint, off: int) {
+pub fn break_offset(p: @mut Printer, n: uint, off: int) {
     p.pretty_print(BREAK({offset: off, blank_space: n as int}));
 }
 
-pub fn end(p: printer) { p.pretty_print(END); }
+pub fn end(p: @mut Printer) { p.pretty_print(END); }
 
-pub fn eof(p: printer) { p.pretty_print(EOF); }
+pub fn eof(p: @mut Printer) { p.pretty_print(EOF); }
 
-pub fn word(p: printer, wrd: ~str) {
+pub fn word(p: @mut Printer, wrd: ~str) {
     p.pretty_print(STRING(@wrd, str::len(wrd) as int));
 }
 
-pub fn huge_word(p: printer, wrd: ~str) {
+pub fn huge_word(p: @mut Printer, wrd: ~str) {
     p.pretty_print(STRING(@wrd, size_infinity));
 }
 
-pub fn zero_word(p: printer, wrd: ~str) { p.pretty_print(STRING(@wrd, 0)); }
+pub fn zero_word(p: @mut Printer, wrd: ~str) {
+    p.pretty_print(STRING(@wrd, 0));
+}
 
-pub fn spaces(p: printer, n: uint) { break_offset(p, n, 0); }
+pub fn spaces(p: @mut Printer, n: uint) { break_offset(p, n, 0); }
 
-pub fn zerobreak(p: printer) { spaces(p, 0u); }
+pub fn zerobreak(p: @mut Printer) { spaces(p, 0u); }
 
-pub fn space(p: printer) { spaces(p, 1u); }
+pub fn space(p: @mut Printer) { spaces(p, 1u); }
 
-pub fn hardbreak(p: printer) { spaces(p, size_infinity as uint); }
+pub fn hardbreak(p: @mut Printer) { spaces(p, size_infinity as uint); }
 
 pub fn hardbreak_tok_offset(off: int) -> token {
     return BREAK({offset: off, blank_space: size_infinity});

@@ -143,7 +143,7 @@ pub fn free_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
 }
 
 pub fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
-                                   static_ti: @tydesc_info) {
+                                   static_ti: @mut tydesc_info) {
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
@@ -204,7 +204,7 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     return t;
 }
 
-pub pure fn cast_glue(ccx: @crate_ctxt, ti: @tydesc_info, v: ValueRef)
+pub pure fn cast_glue(ccx: @crate_ctxt, ti: @mut tydesc_info, v: ValueRef)
                    -> ValueRef {
     unsafe {
         let llfnty = type_of_glue_fn(ccx, ti.ty);
@@ -214,7 +214,7 @@ pub pure fn cast_glue(ccx: @crate_ctxt, ti: @tydesc_info, v: ValueRef)
 
 pub fn lazily_emit_simplified_tydesc_glue(ccx: @crate_ctxt,
                                           field: uint,
-                                          ti: @tydesc_info) -> bool {
+                                          ti: @mut tydesc_info) -> bool {
     let _icx = ccx.insn_ctxt("lazily_emit_simplified_tydesc_glue");
     let simpl = simplified_glue_type(ccx.tcx, field, ti.ty);
     if simpl != ti.ty {
@@ -241,7 +241,7 @@ pub fn lazily_emit_simplified_tydesc_glue(ccx: @crate_ctxt,
 
 pub fn lazily_emit_tydesc_glue(ccx: @crate_ctxt,
                                field: uint,
-                               ti: @tydesc_info) {
+                               ti: @mut tydesc_info) {
     let _icx = ccx.insn_ctxt("lazily_emit_tydesc_glue");
     let llfnty = type_of_glue_fn(ccx, ti.ty);
 
@@ -305,8 +305,11 @@ pub fn lazily_emit_tydesc_glue(ccx: @crate_ctxt,
 }
 
 // See [Note-arg-mode]
-pub fn call_tydesc_glue_full(++bcx: block, v: ValueRef, tydesc: ValueRef,
-                             field: uint, static_ti: Option<@tydesc_info>) {
+pub fn call_tydesc_glue_full(++bcx: block,
+                             v: ValueRef,
+                             tydesc: ValueRef,
+                             field: uint,
+                             static_ti: Option<@mut tydesc_info>) {
     let _icx = bcx.insn_ctxt("call_tydesc_glue_full");
     let ccx = bcx.ccx();
     // NB: Don't short-circuit even if this block is unreachable because
@@ -647,7 +650,7 @@ pub fn declare_tydesc_addrspace(ccx: @crate_ctxt, t: ty::t) -> addrspace {
 }
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-pub fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
+pub fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @mut tydesc_info {
     let _icx = ccx.insn_ctxt("declare_tydesc");
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
@@ -678,16 +681,17 @@ pub fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
         }
     });
-    let inf =
-        @{ty: t,
-          tydesc: gvar,
-          size: llsize,
-          align: llalign,
-          addrspace: addrspace,
-          mut take_glue: None,
-          mut drop_glue: None,
-          mut free_glue: None,
-          mut visit_glue: None};
+    let inf = @mut tydesc_info {
+        ty: t,
+        tydesc: gvar,
+        size: llsize,
+        align: llalign,
+        addrspace: addrspace,
+        take_glue: None,
+        drop_glue: None,
+        free_glue: None,
+        visit_glue: None
+    };
     log(debug, ~"--- declare_tydesc " + ppaux::ty_to_str(ccx.tcx, t));
     return inf;
 }
