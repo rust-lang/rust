@@ -29,6 +29,7 @@ macro_rules! interner_key (
         (-3 as uint, 0u)))
 )
 
+#[deriving_eq]
 pub struct ident { repr: uint }
 
 pub impl<S: Encoder> ident: Encodable<S> {
@@ -55,11 +56,6 @@ pub impl<D: Decoder> ident: Decodable<D> {
 
         (*intr).intern(@d.read_owned_str())
     }
-}
-
-pub impl ident: cmp::Eq {
-    pure fn eq(&self, other: &ident) -> bool { (*self).repr == other.repr }
-    pure fn ne(&self, other: &ident) -> bool { !(*self).eq(other) }
 }
 
 pub impl ident: to_bytes::IterBytes {
