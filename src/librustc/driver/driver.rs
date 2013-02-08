@@ -521,9 +521,6 @@ pub fn build_session_options(+binary: ~str,
     } else {
         session::unknown_crate
     };
-    let static = opt_present(matches, ~"static");
-    let gc = opt_present(matches, ~"gc");
-
     let parse_only = opt_present(matches, ~"parse-only");
     let no_trans = opt_present(matches, ~"no-trans");
 
@@ -570,7 +567,6 @@ pub fn build_session_options(+binary: ~str,
         }
     }
 
-    let jit = opt_present(matches, ~"jit");
     let output_type =
         if parse_only || no_trans {
             link::output_type_none
@@ -584,8 +580,6 @@ pub fn build_session_options(+binary: ~str,
         } else if opt_present(matches, ~"emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let extra_debuginfo = opt_present(matches, ~"xg");
-    let debuginfo = opt_present(matches, ~"g") || extra_debuginfo;
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
     let sysroot_opt = sysroot_opt.map(|m| Path(*m));
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
@@ -616,6 +610,12 @@ pub fn build_session_options(+binary: ~str,
             }
         } else { No }
     };
+    let gc = debugging_opts & session::gc != 0;
+    let jit = debugging_opts & session::jit != 0;
+    let extra_debuginfo = debugging_opts & session::extra_debug_info != 0;
+    let debuginfo = debugging_opts & session::debug_info != 0 ||
+        extra_debuginfo;
+    let static = debugging_opts & session::static != 0;
     let target =
         match target_opt {
             None => host_triple(),
@@ -714,14 +714,11 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           environment", ~"SPEC"),
   optflag(~"",  ~"emit-llvm",
                         ~"Produce an LLVM bitcode file"),
-  optflag(~"g", ~"",    ~"Produce debug info (experimental)"),
-  optflag(~"",  ~"gc",  ~"Garbage collect shared data (experimental)"),
   optflag(~"h", ~"help",~"Display this message"),
   optmulti(~"L", ~"",   ~"Add a directory to the library search path",
                               ~"PATH"),
   optflag(~"",  ~"lib", ~"Compile a library crate"),
   optflag(~"",  ~"ls",  ~"List the symbols defined by a library crate"),
-  optflag(~"",  ~"jit", ~"Execute using JIT (experimental)"),
   optflag(~"", ~"no-trans",
                         ~"Run all passes except translation; no output"),
   optflag(~"O", ~"",    ~"Equivalent to --opt-level=2"),
@@ -741,13 +738,9 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           or identified (fully parenthesized,
                           AST nodes and blocks with IDs)", ~"TYPE"),
   optflag(~"S", ~"",    ~"Compile only; do not assemble or link"),
-  optflag(~"", ~"xg",   ~"Extra debugging info (experimental)"),
   optflag(~"", ~"save-temps",
                         ~"Write intermediate files (.bc, .opt.bc, .o)
                           in addition to normal output"),
-  optflag(~"", ~"static",
-                        ~"Use or produce static libraries or binaries
-                         (experimental)"),
   optopt(~"", ~"sysroot",
                         ~"Override the system root", ~"PATH"),
   optflag(~"", ~"test", ~"Build a test harness"),
