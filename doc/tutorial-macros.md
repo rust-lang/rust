@@ -281,7 +281,7 @@ pattern we want is clear:
 However, it's not possible to directly expand to nested match statements. But
 there is a solution.
 
-## The recusive approach to macro writing
+## The recursive approach to macro writing
 
 A macro may accept multiple different input grammars. The first one to
 successfully match the actual argument to a macro invocation is the one that
