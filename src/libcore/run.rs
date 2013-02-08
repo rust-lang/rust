@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(structural_records)];
-
 //! Process spawning
 use cast;
 use io;
@@ -301,6 +299,8 @@ fn read_all(rd: io::Reader) -> ~str {
     str::from_bytes(buf)
 }
 
+pub struct ProgramOutput {status: int, out: ~str, err: ~str}
+
 /**
  * Spawns a process, waits for it to exit, and returns the exit code, and
  * contents of stdout and stderr.
@@ -315,8 +315,7 @@ fn read_all(rd: io::Reader) -> ~str {
  * A record, {status: int, out: str, err: str} containing the exit code,
  * the contents of stdout and the contents of stderr.
  */
-pub fn program_output(prog: &str, args: &[~str]) ->
-   {status: int, out: ~str, err: ~str} {
+pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
     unsafe {
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
@@ -371,7 +370,9 @@ pub fn program_output(prog: &str, args: &[~str]) ->
             };
             count -= 1;
         };
-        return {status: status, out: move outs, err: move errs};
+        return ProgramOutput {status: status,
+                              out: move outs,
+                              err: move errs};
     }
 }
 

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(structural_records)];
-
 /*!
  * Higher-level interfaces to libc::* functions and operating system services.
  *
@@ -318,33 +316,37 @@ pub fn waitpid(pid: pid_t) -> c_int {
 }
 
 
+pub struct Pipe { mut in: c_int, mut out: c_int }
+
 #[cfg(unix)]
-pub fn pipe() -> {in: c_int, out: c_int} {
+pub fn pipe() -> Pipe {
     unsafe {
-        let mut fds = {in: 0 as c_int, out: 0 as c_int};
+        let mut fds = Pipe {mut in: 0 as c_int,
+                        mut out: 0 as c_int };
         assert (libc::pipe(ptr::mut_addr_of(&(fds.in))) == (0 as c_int));
-        return {in: fds.in, out: fds.out};
+        return Pipe {in: fds.in, out: fds.out};
     }
 }
 
 
 
 #[cfg(windows)]
-pub fn pipe() -> {in: c_int, out: c_int} {
+pub fn pipe() -> Pipe {
     unsafe {
         // Windows pipes work subtly differently than unix pipes, and their
         // inheritance has to be handled in a different way that I do not
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
         // first, as in rust_run_program.
-        let mut fds = { in: 0 as c_int, out: 0 as c_int };
+        let mut fds = Pipe { mut in: 0 as c_int,
+                    mut out: 0 as c_int };
         let res = libc::pipe(ptr::mut_addr_of(&(fds.in)),
                              1024 as c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
         assert (res == 0 as c_int);
         assert (fds.in != -1 as c_int && fds.in != 0 as c_int);
         assert (fds.out != -1 as c_int && fds.in != 0 as c_int);
-        return {in: fds.in, out: fds.out};
+        return Pipe {in: fds.in, out: fds.out};
     }
 }
 

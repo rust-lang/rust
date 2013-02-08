@@ -12,7 +12,7 @@ use core::os;
 use core::path::Path;
 use core::run;
 
-pub fn gpgv(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {
+pub fn gpgv(args: ~[~str]) -> run::ProgramOutput {
     return run::program_output(~"gpgv", args);
 }
 
