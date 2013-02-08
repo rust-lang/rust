@@ -367,16 +367,16 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
     return mdval;
 }
 
-type struct_ctxt = {
+struct StructCtxt {
     file: ValueRef,
     name: ~str,
     line: int,
-    mut members: ~[ValueRef],
-    mut total_size: int,
+    members: ~[ValueRef],
+    total_size: int,
     align: int
-};
+}
 
-fn finish_structure(cx: @struct_ctxt) -> ValueRef {
+fn finish_structure(cx: @mut StructCtxt) -> ValueRef {
     return create_composite_type(StructureTypeTag,
                                  /*bad*/copy cx.name,
                                  cx.file,
@@ -389,14 +389,15 @@ fn finish_structure(cx: @struct_ctxt) -> ValueRef {
 }
 
 fn create_structure(file: @metadata<file_md>, +name: ~str, line: int)
-    -> @struct_ctxt {
-    let cx = @{file: file.node,
-               name: name,
-               line: line,
-               mut members: ~[],
-               mut total_size: 0,
-               align: 64 //XXX different alignment per arch?
-              };
+                 -> @mut StructCtxt {
+    let cx = @mut StructCtxt {
+        file: file.node,
+        name: name,
+        line: line,
+        members: ~[],
+        total_size: 0,
+        align: 64 //XXX different alignment per arch?
+    };
     return cx;
 }
 
@@ -416,7 +417,11 @@ fn create_derived_type(type_tag: int, file: ValueRef, +name: ~str, line: int,
     return llmdnode(lldata);
 }
 
-fn add_member(cx: @struct_ctxt, +name: ~str, line: int, size: int, align: int,
+fn add_member(cx: @mut StructCtxt,
+              +name: ~str,
+              line: int,
+              size: int,
+              align: int,
               ty: ValueRef) {
     cx.members.push(create_derived_type(MemberTag, cx.file, name, line,
                                        size * 8, align * 8, cx.total_size,

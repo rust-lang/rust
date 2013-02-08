@@ -199,7 +199,7 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
                          || parse_input(sess, copy cfg, input) );
     if upto == cu_parse { return {crate: crate, tcx: None}; }
 
-    sess.building_library = session::building_library(
+    *sess.building_library = session::building_library(
         sess.opts.crate_type, crate, sess.opts.test);
 
     crate = time(time_passes, ~"configuration", ||
@@ -335,7 +335,7 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
 
     let stop_after_codegen =
         sess.opts.output_type != link::output_type_exe ||
-        (sess.opts.static && sess.building_library)    ||
+        (sess.opts.static && *sess.building_library)   ||
         sess.opts.jit;
 
     if stop_after_codegen { return {crate: crate, tcx: None}; }
@@ -466,7 +466,7 @@ pub fn get_arch(triple: ~str) -> Option<session::arch> {
 }
 
 pub fn build_target_config(sopts: @session::options,
-                           demitter: diagnostic::emitter)
+                           demitter: diagnostic::Emitter)
                         -> @session::config {
     let os = match get_os(sopts.target_triple) {
       Some(os) => os,
@@ -512,7 +512,7 @@ pub fn host_triple() -> ~str {
 
 pub fn build_session_options(+binary: ~str,
                              matches: &getopts::Matches,
-                             demitter: diagnostic::emitter)
+                             demitter: diagnostic::Emitter)
                           -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
         session::lib_crate
@@ -651,7 +651,7 @@ pub fn build_session_options(+binary: ~str,
 }
 
 pub fn build_session(sopts: @session::options,
-                     demitter: diagnostic::emitter) -> Session {
+                     demitter: diagnostic::Emitter) -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
@@ -662,30 +662,32 @@ pub fn build_session(sopts: @session::options,
 
 pub fn build_session_(sopts: @session::options,
                       cm: @codemap::CodeMap,
-                      demitter: diagnostic::emitter,
+                      demitter: diagnostic::Emitter,
                       span_diagnostic_handler: diagnostic::span_handler)
                    -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
-    let cstore = cstore::mk_cstore(p_s.interner);
+    let cstore = @mut cstore::mk_cstore(p_s.interner);
     let filesearch = filesearch::mk_filesearch(
         sopts.maybe_sysroot,
         sopts.target_triple,
         /*bad*/copy sopts.addl_lib_search_paths);
     let lint_settings = lint::mk_lint_settings();
-    Session_(@{targ_cfg: target_cfg,
-               opts: sopts,
-               cstore: cstore,
-               parse_sess: p_s,
-               codemap: cm,
-               // For a library crate, this is always none
-               mut main_fn: None,
-               span_diagnostic: span_diagnostic_handler,
-               filesearch: filesearch,
-               mut building_library: false,
-               working_dir: os::getcwd(),
-               lint_settings: lint_settings})
+    @Session_ {
+        targ_cfg: target_cfg,
+        opts: sopts,
+        cstore: cstore,
+        parse_sess: p_s,
+        codemap: cm,
+        // For a library crate, this is always none
+        main_fn: @mut None,
+        span_diagnostic: span_diagnostic_handler,
+        filesearch: filesearch,
+        building_library: @mut false,
+        working_dir: os::getcwd(),
+        lint_settings: lint_settings
+    }
 }
 
 pub fn parse_pretty(sess: Session, &&name: ~str) -> pp_mode {
@@ -780,7 +782,7 @@ pub fn build_output_filenames(input: input,
     let sopts = sess.opts;
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
-            sopts.static && sess.building_library;
+            sopts.static && *sess.building_library;
 
 
     let obj_suffix =
@@ -811,7 +813,7 @@ pub fn build_output_filenames(input: input,
           str_input(_) => ~"rust_out"
         };
 
-        if sess.building_library {
+        if *sess.building_library {
             out_path = dirpath.push(os::dll_filename(stem));
             obj_path = dirpath.push(stem).with_filetype(obj_suffix);
         } else {
@@ -828,7 +830,7 @@ pub fn build_output_filenames(input: input,
             (*out_file).with_filetype(obj_suffix)
         };
 
-        if sess.building_library {
+        if *sess.building_library {
             // FIXME (#2401): We might want to warn here; we're actually not
             // going to respect the user's choice of library name when it
             // comes time to link, we'll be linking to
@@ -844,7 +846,7 @@ pub fn build_output_filenames(input: input,
              obj_filename: obj_path};
 }
 
-pub fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
+pub fn early_error(emitter: diagnostic::Emitter, msg: ~str) -> ! {
     emitter(None, msg, diagnostic::fatal);
     die!();
 }

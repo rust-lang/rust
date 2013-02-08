@@ -370,7 +370,7 @@ pub fn get_tydesc_simple(ccx: @crate_ctxt, t: ty::t) -> ValueRef {
     get_tydesc(ccx, t).tydesc
 }
 
-pub fn get_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
+pub fn get_tydesc(ccx: @crate_ctxt, t: ty::t) -> @mut tydesc_info {
     match ccx.tydescs.find(&t) {
       Some(inf) => inf,
       _ => {
@@ -2159,15 +2159,15 @@ pub fn register_fn_fuller(ccx: @crate_ctxt,
 
     // FIXME #4404 android JNI hacks
     let is_main = is_main_fn(&ccx.sess, node_id) &&
-                     (!ccx.sess.building_library ||
-                      (ccx.sess.building_library &&
+                     (!*ccx.sess.building_library ||
+                      (*ccx.sess.building_library &&
                        ccx.sess.targ_cfg.os == session::os_android));
     if is_main { create_main_wrapper(ccx, sp, llfn); }
     llfn
 }
 
 pub fn is_main_fn(sess: &Session, node_id: ast::node_id) -> bool {
-    match sess.main_fn {
+    match *sess.main_fn {
         Some((main_id, _)) => node_id == main_id,
         None => false
     }
@@ -2210,7 +2210,7 @@ pub fn create_main_wrapper(ccx: @crate_ctxt, _sp: span, main_llfn: ValueRef) {
         let llfty = T_fn(~[ccx.int_type, ccx.int_type], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
-        let llfn = if ccx.sess.building_library {
+        let llfn = if *ccx.sess.building_library {
             decl_cdecl_fn(ccx.llmod, ~"amain", llfty)
         } else {
             decl_cdecl_fn(ccx.llmod, main_name(), llfty)
@@ -2230,14 +2230,20 @@ pub fn create_main_wrapper(ccx: @crate_ctxt, _sp: span, main_llfn: ValueRef) {
         let start = decl_cdecl_fn(ccx.llmod, ~"rust_start", start_ty);
 
         let args = unsafe {
-            if ccx.sess.building_library {
-                ~[rust_main,
-                  llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                  llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                  crate_map]
+            if *ccx.sess.building_library {
+                ~[
+                    rust_main,
+                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
+                    llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
+                    crate_map
+                ]
             } else {
-                ~[rust_main, llvm::LLVMGetParam(llfn, 0 as c_uint),
-                  llvm::LLVMGetParam(llfn, 1 as c_uint), crate_map]
+                ~[
+                    rust_main,
+                    llvm::LLVMGetParam(llfn, 0 as c_uint),
+                    llvm::LLVMGetParam(llfn, 1 as c_uint),
+                    crate_map
+                ]
             }
         };
 
@@ -2815,10 +2821,12 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: link_meta,
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
-    let mapname = if sess.building_library {
+    let mapname = if *sess.building_library {
         mapmeta.name.to_owned() + ~"_" + mapmeta.vers.to_owned() + ~"_"
             + mapmeta.extras_hash.to_owned()
-    } else { ~"toplevel" };
+    } else {
+        ~"toplevel"
+    };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
     let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype]);
@@ -2891,7 +2899,7 @@ pub fn crate_ctxt_to_encode_parms(cx: @crate_ctxt) -> encoder::encode_parms {
 }
 
 pub fn write_metadata(cx: @crate_ctxt, crate: &ast::crate) {
-    if !cx.sess.building_library { return; }
+    if !*cx.sess.building_library { return; }
     let encode_parms = crate_ctxt_to_encode_parms(cx);
     let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
     let llconst = C_struct(~[llmeta]);
@@ -3016,18 +3024,19 @@ pub fn trans_crate(sess: session::Session,
               all_llvm_symbols: HashMap(),
               tcx: tcx,
               maps: maps,
-              stats:
-                  {mut n_static_tydescs: 0u,
-                   mut n_glues_created: 0u,
-                   mut n_null_glues: 0u,
-                   mut n_real_glues: 0u,
-                   mut n_fns: 0u,
-                   mut n_monos: 0u,
-                   mut n_inlines: 0u,
-                   mut n_closures: 0u,
-                   llvm_insn_ctxt: @mut ~[],
-                   llvm_insns: HashMap(),
-                   fn_times: @mut ~[]},
+              stats: @mut Stats {
+                n_static_tydescs: 0u,
+                n_glues_created: 0u,
+                n_null_glues: 0u,
+                n_real_glues: 0u,
+                n_fns: 0u,
+                n_monos: 0u,
+                n_inlines: 0u,
+                n_closures: 0u,
+                llvm_insn_ctxt: @mut ~[],
+                llvm_insns: HashMap(),
+                fn_times: @mut ~[]
+              },
               upcalls: upcall::declare_upcalls(targ_cfg, llmod),
               tydesc_type: tydesc_type,
               int_type: int_type,

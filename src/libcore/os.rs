@@ -321,8 +321,7 @@ pub fn waitpid(pid: pid_t) -> c_int {
 #[cfg(unix)]
 pub fn pipe() -> {in: c_int, out: c_int} {
     unsafe {
-        let fds = {mut in: 0 as c_int,
-                   mut out: 0 as c_int };
+        let mut fds = {in: 0 as c_int, out: 0 as c_int};
         assert (libc::pipe(ptr::mut_addr_of(&(fds.in))) == (0 as c_int));
         return {in: fds.in, out: fds.out};
     }
@@ -338,8 +337,7 @@ pub fn pipe() -> {in: c_int, out: c_int} {
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
         // first, as in rust_run_program.
-        let fds = { mut in: 0 as c_int,
-                    mut out: 0 as c_int };
+        let mut fds = { in: 0 as c_int, out: 0 as c_int };
         let res = libc::pipe(ptr::mut_addr_of(&(fds.in)),
                              1024 as c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);

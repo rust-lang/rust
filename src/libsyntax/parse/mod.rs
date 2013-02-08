@@ -15,9 +15,9 @@ use ast::node_id;
 use ast;
 use codemap::{span, CodeMap, FileMap, CharPos, BytePos};
 use codemap;
-use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
+use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
 use parse::attr::parser_attr;
-use parse::lexer::{reader, string_reader};
+use parse::lexer::{reader, StringReader};
 use parse::parser::Parser;
 use parse::token::{ident_interner, mk_ident_interner};
 use util::interner;
@@ -54,7 +54,7 @@ pub type parse_sess = @{
     interner: @ident_interner,
 };
 
-pub fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
+pub fn new_parse_sess(demitter: Option<Emitter>) -> parse_sess {
     let cm = @CodeMap::new();
     return @{cm: cm,
              mut next_id: 1,
@@ -166,18 +166,22 @@ pub fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                               +name: ~str, +ss: codemap::FileSubstr,
                               source: @~str) -> Parser {
     let filemap = sess.cm.new_filemap_w_substr(name, ss, source);
-    let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
+    let srdr = lexer::new_string_reader(sess.span_diagnostic,
+                                        filemap,
                                         sess.interner);
     return Parser(sess, cfg, srdr as reader);
 }
 
-pub fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
-                        path: &Path) -> Result<Parser, ~str> {
+pub fn new_parser_from_file(sess: parse_sess,
+                            cfg: ast::crate_cfg,
+                            path: &Path)
+                         -> Result<Parser, ~str> {
     match io::read_whole_file_str(path) {
       result::Ok(move src) => {
 
           let filemap = sess.cm.new_filemap(path.to_str(), @move src);
-          let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
+          let srdr = lexer::new_string_reader(sess.span_diagnostic,
+                                              filemap,
                                               sess.interner);
 
           Ok(Parser(sess, cfg, srdr as reader))
