@@ -27,6 +27,10 @@ pub trait BaseIter<A> {
     pure fn size_hint(&self) -> Option<uint>;
 }
 
+pub trait ReverseIter<A>: BaseIter<A> {
+    pure fn each_reverse(&self, blk: fn(&A) -> bool);
+}
+
 pub trait ExtendedIter<A> {
     pure fn eachi(&self, blk: fn(uint, v: &A) -> bool);
     pure fn all(&self, blk: fn(&A) -> bool) -> bool;
