@@ -102,7 +102,7 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
 }
 
 #[inline(always)]
-pub pure fn map<T, U>(opt: &Option<T>, f: fn(x: &T) -> U) -> Option<U> {
+pub pure fn map<T, U>(opt: &r/Option<T>, f: fn(x: &r/T) -> U) -> Option<U> {
     //! Maps a `some` value by reference from one type to another
 
     match *opt { Some(ref x) => Some(f(x)), None => None }
@@ -193,8 +193,8 @@ pub pure fn get_or_default<T: Copy>(opt: Option<T>, def: T) -> T {
 }
 
 #[inline(always)]
-pub pure fn map_default<T, U>(opt: &Option<T>, def: U,
-                              f: fn(x: &T) -> U) -> U {
+pub pure fn map_default<T, U>(opt: &r/Option<T>, def: U,
+                              f: fn(&r/T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
     match *opt { None => move def, Some(ref t) => f(t) }
@@ -273,7 +273,7 @@ impl<T> Option<T> {
 
     /// Maps a `some` value from one type to another by reference
     #[inline(always)]
-    pure fn map<U>(&self, f: fn(x: &T) -> U) -> Option<U> { map(self, f) }
+    pure fn map<U>(&self, f: fn(&self/T) -> U) -> Option<U> { map(self, f) }
 
     /// As `map`, but consumes the option and gives `f` ownership to avoid
     /// copying.
@@ -284,7 +284,7 @@ impl<T> Option<T> {
 
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
-    pure fn map_default<U>(&self, def: U, f: fn(x: &T) -> U) -> U {
+    pure fn map_default<U>(&self, def: U, f: fn(&self/T) -> U) -> U {
         map_default(self, move def, f)
     }
 

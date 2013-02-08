@@ -14,11 +14,38 @@
  */
 
 use core::container::{Container, Mutable, Map, Set};
+use core::iter::{BaseIter, ReverseIter};
 use core::option::{Some, None};
 use core::prelude::*;
 
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
+}
+
+impl<V> SmallIntMap<V>: BaseIter<(uint, &V)> {
+    /// Visit all key-value pairs in order
+    pure fn each(&self, it: fn(&(uint, &self/V)) -> bool) {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref elt) => if !it(&(i, elt)) { break },
+              None => ()
+            }
+        }
+    }
+
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+impl<V> SmallIntMap<V>: ReverseIter<(uint, &V)> {
+    /// Visit all key-value pairs in reverse order
+    pure fn each_reverse(&self, it: fn(&(uint, &self/V)) -> bool) {
+        for uint::range_rev(self.v.len(), 0) |i| {
+            match self.v[i - 1] {
+              Some(ref elt) => if !it(&(i - 1, elt)) { break },
+              None => ()
+            }
+        }
+    }
 }
 
 impl<V> SmallIntMap<V>: Container {
@@ -48,24 +75,14 @@ impl<V> SmallIntMap<V>: Map<uint, V> {
         self.find(key).is_some()
     }
 
-    /// Visit all key-value pairs
-    pure fn each(&self, it: fn(key: &uint, value: &V) -> bool) {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref elt) => if !it(&i, elt) { break },
-              None => ()
-            }
-        }
-    }
-
-    /// Visit all keys
+    /// Visit all keys in order
     pure fn each_key(&self, blk: fn(key: &uint) -> bool) {
-        self.each(|k, _| blk(k))
+        self.each(|&(k, _)| blk(&k))
     }
 
-    /// Visit all values
+    /// Visit all values in order
     pure fn each_value(&self, blk: fn(value: &V) -> bool) {
-        self.each(|_, v| blk(v))
+        self.each(|&(_, v)| blk(v))
     }
 
     /// Return the value corresponding to the key in the map

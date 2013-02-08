@@ -302,7 +302,7 @@ pub impl<S: serialize::Encoder> Json: serialize::Encodable<S> {
             Object(ref v) => {
                 do s.emit_rec || {
                     let mut idx = 0;
-                    for v.each |key, value| {
+                    for v.each |&(key, value)| {
                         do s.emit_field(*key, idx) {
                             value.encode(s);
                         }
@@ -936,7 +936,7 @@ impl Json : Eq {
                     &Object(ref d1) => {
                         if d0.len() == d1.len() {
                             let mut equal = true;
-                            for d0.each |k, v0| {
+                            for d0.each |&(k, v0)| {
                                 match d1.find(k) {
                                     Some(v1) if v0 == v1 => { },
                                     _ => { equal = false; break }
@@ -1000,12 +1000,12 @@ impl Json : Ord {
                             let mut d1_flat = ~[];
 
                             // FIXME #4430: this is horribly inefficient...
-                            for d0.each |k, v| {
+                            for d0.each |&(k, v)| {
                                  d0_flat.push((@copy *k, @copy *v));
                             }
                             d0_flat.qsort();
 
-                            for d1.each |k, v| {
+                            for d1.each |&(k, v)| {
                                 d1_flat.push((@copy *k, @copy *v));
                             }
                             d1_flat.qsort();
@@ -1146,7 +1146,7 @@ impl <A: ToJson> ~[A]: ToJson {
 impl <A: ToJson Copy> LinearMap<~str, A>: ToJson {
     fn to_json() -> Json {
         let mut d = LinearMap::new();
-        for self.each() |key, value| {
+        for self.each |&(key, value)| {
             d.insert(copy *key, value.to_json());
         }
         Object(~d)

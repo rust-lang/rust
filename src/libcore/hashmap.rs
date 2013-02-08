@@ -235,6 +235,23 @@ pub mod linear {
         }
     }
 
+    impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: BaseIter<(&K, &V)> {
+        /// Visit all key-value pairs
+        pure fn each(&self, blk: fn(&(&self/K, &self/V)) -> bool) {
+            for uint::range(0, self.buckets.len()) |i| {
+                let mut broke = false;
+                do self.buckets[i].map |bucket| {
+                    if !blk(&(&bucket.key, &bucket.value)) {
+                        broke = true; // FIXME(#3064) just write "break;"
+                    }
+                };
+                if broke { break; }
+            }
+        }
+        pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+    }
+
+
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Container {
         /// Return the number of elements in the map
         pure fn len(&self) -> uint { self.size }
@@ -262,27 +279,14 @@ pub mod linear {
             }
         }
 
-        /// Visit all key-value pairs
-        pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
-            for self.buckets.each |slot| {
-                let mut broke = false;
-                do slot.iter |bucket| {
-                    if !blk(&bucket.key, &bucket.value) {
-                        broke = true; // FIXME(#3064) just write "break;"
-                    }
-                }
-                if broke { break; }
-            }
-        }
-
         /// Visit all keys
         pure fn each_key(&self, blk: fn(k: &K) -> bool) {
-            self.each(|k, _| blk(k))
+            self.each(|&(k, _)| blk(k))
         }
 
         /// Visit all values
         pure fn each_value(&self, blk: fn(v: &V) -> bool) {
-            self.each(|_, v| blk(v))
+            self.each(|&(_, v)| blk(v))
         }
 
         /// Return the value corresponding to the key in the map
@@ -388,7 +392,7 @@ pub mod linear {
         pure fn eq(&self, other: &LinearMap<K, V>) -> bool {
             if self.len() != other.len() { return false; }
 
-            for self.each |key, value| {
+            for self.each |&(key, value)| {
                 match other.find(key) {
                     None => return false,
                     Some(v) => if value != v { return false },
@@ -603,7 +607,7 @@ mod test_map {
             assert m.insert(i, i*2);
         }
         let mut observed = 0;
-        for m.each |k, v| {
+        for m.each |&(k, v)| {
             assert *v == *k * 2;
             observed |= (1 << *k);
         }
