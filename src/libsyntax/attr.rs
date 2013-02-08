@@ -363,7 +363,7 @@ pub fn require_unique_names(diagnostic: span_handler,
         let name = get_meta_item_name(*meta);
 
         // FIXME: How do I silence the warnings? --pcw (#2619)
-        if map.contains_key_ref(&name) {
+        if map.contains_key(&name) {
             diagnostic.span_fatal(meta.span,
                                   fmt!("duplicate meta item `%s`", name));
         }

@@ -96,7 +96,7 @@ pub impl Parser {
 
     // A sanity check that the word we are asking for is a known keyword
     fn require_keyword(word: ~str) {
-        if !self.keywords.contains_key_ref(&word) {
+        if !self.keywords.contains_key(&word) {
             self.bug(fmt!("unknown keyword: %s", word));
         }
     }
@@ -120,7 +120,7 @@ pub impl Parser {
     fn is_any_keyword(tok: token::Token) -> bool {
         match tok {
           token::IDENT(sid, false) => {
-            self.keywords.contains_key_ref(self.id_to_str(sid))
+            self.keywords.contains_key(self.id_to_str(sid))
           }
           _ => false
         }
@@ -146,7 +146,7 @@ pub impl Parser {
     }
 
     fn is_strict_keyword(word: ~str) -> bool {
-        self.strict_keywords.contains_key_ref(&word)
+        self.strict_keywords.contains_key(&word)
     }
 
     fn check_strict_keywords() {
@@ -166,7 +166,7 @@ pub impl Parser {
     }
 
     fn is_reserved_keyword(word: ~str) -> bool {
-        self.reserved_keywords.contains_key_ref(&word)
+        self.reserved_keywords.contains_key(&word)
     }
 
     fn check_reserved_keywords() {

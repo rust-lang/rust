@@ -384,7 +384,7 @@ pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
     let ty_visitor_name = special_idents::ty_visitor;
-    assert bcx.ccx().tcx.intrinsic_defs.contains_key_ref(&ty_visitor_name);
+    assert bcx.ccx().tcx.intrinsic_defs.contains_key(&ty_visitor_name);
     let (trait_id, ty) = bcx.ccx().tcx.intrinsic_defs.get(&ty_visitor_name);
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
     bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, trait_id);
@@ -762,7 +762,7 @@ pub fn emit_tydescs(ccx: @crate_ctxt) {
     let _icx = ccx.insn_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
-    for ccx.tydescs.each_value_ref |&val| {
+    for ccx.tydescs.each_value |&val| {
         let glue_fn_ty = T_ptr(T_generic_glue_fn(ccx));
         let ti = val;
 

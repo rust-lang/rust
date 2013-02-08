@@ -102,7 +102,7 @@ pub fn check_expr(sess: Session,
           }
           expr_lit(@codemap::spanned {node: lit_str(_), _}) => { }
           expr_binary(_, _, _) | expr_unary(_, _) => {
-            if method_map.contains_key_ref(&e.id) {
+            if method_map.contains_key(&e.id) {
                 sess.span_err(e.span, ~"user-defined operators are not \
                                        allowed in constant expressions");
             }

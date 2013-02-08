@@ -173,7 +173,7 @@ pub mod chained {
     }
 
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
-        pure fn contains_key_ref(&self, k: &K) -> bool {
+        pure fn contains_key(&self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
               NotFound => false,
@@ -314,18 +314,18 @@ pub mod chained {
             }
         }
 
-        pure fn each_ref(&self, blk: fn(key: &K, value: &V) -> bool) {
+        pure fn each(&self, blk: fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }
             }
         }
 
-        pure fn each_key_ref(&self, blk: fn(key: &K) -> bool) {
-            self.each_ref(|k, _v| blk(k))
+        pure fn each_key(&self, blk: fn(key: &K) -> bool) {
+            self.each(|k, _v| blk(k))
         }
 
-        pure fn each_value_ref(&self, blk: fn(value: &V) -> bool) {
-            self.each_ref(|_k, v| blk(v))
+        pure fn each_value(&self, blk: fn(value: &V) -> bool) {
+            self.each(|_k, v| blk(v))
         }
     }
 
@@ -397,7 +397,7 @@ pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, key: K) -> bool {
 /// Convert a set into a vector.
 pub pure fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
     do vec::build_sized(s.len()) |push| {
-        for s.each_key_ref() |&k| {
+        for s.each_key() |&k| {
             push(k);
         }
     }
@@ -628,9 +628,9 @@ mod tests {
     fn test_contains_key() {
         let key = ~"k";
         let map = HashMap::<~str, ~str>();
-        assert (!map.contains_key_ref(&key));
+        assert (!map.contains_key(&key));
         map.insert(key, ~"val");
-        assert (map.contains_key_ref(&key));
+        assert (map.contains_key(&key));
     }
 
     #[test]
@@ -648,10 +648,10 @@ mod tests {
         let mut map = HashMap::<~str, ~str>();
         map.insert(key, ~"val");
         assert (map.len() == 1);
-        assert (map.contains_key_ref(&key));
+        assert (map.contains_key(&key));
         map.clear();
         assert (map.len() == 0);
-        assert (!map.contains_key_ref(&key));
+        assert (!map.contains_key(&key));
     }
 
     #[test]

@@ -1172,12 +1172,11 @@ pub impl LookupContext {
         match candidate.origin {
             method_static(method_id) | method_self(method_id, _)
                 | method_super(method_id, _) => {
-                bad = self.tcx().destructors.contains_key_ref(&method_id);
+                bad = self.tcx().destructors.contains_key(&method_id);
             }
             method_param(method_param { trait_id: trait_id, _ }) |
             method_trait(trait_id, _, _) => {
-                bad = self.tcx().destructor_for_type.contains_key_ref(
-                    &trait_id);
+                bad = self.tcx().destructor_for_type.contains_key(&trait_id);
             }
         }
 
