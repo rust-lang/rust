@@ -21,7 +21,7 @@ use core::prelude::*;
 
 use middle::moves;
 use middle::borrowck::{Loan, bckerr, BorrowckCtxt, inherent_mutability};
-use middle::borrowck::{req_maps, root_map_key, save_and_restore};
+use middle::borrowck::{req_maps, root_map_key, save_and_restore_managed};
 use middle::borrowck::{MoveError, MoveOk, MoveFromIllegalCmt};
 use middle::borrowck::{MoveWhileBorrowed};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
@@ -43,15 +43,15 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::visit;
 
-enum check_loan_ctxt = @{
+struct CheckLoanCtxt {
     bccx: @BorrowckCtxt,
     req_maps: req_maps,
 
     reported: HashMap<ast::node_id, ()>,
 
-    mut declared_purity: ast::purity,
-    mut fn_args: @~[ast::node_id]
-};
+    declared_purity: @mut ast::purity,
+    fn_args: @mut @~[ast::node_id]
+}
 
 // if we are enforcing purity, why are we doing so?
 #[deriving_eq]
@@ -66,13 +66,15 @@ enum purity_cause {
 }
 
 pub fn check_loans(bccx: @BorrowckCtxt,
-               req_maps: req_maps,
-               crate: @ast::crate) {
-    let clcx = check_loan_ctxt(@{bccx: bccx,
-                                 req_maps: req_maps,
-                                 reported: HashMap(),
-                                 mut declared_purity: ast::impure_fn,
-                                 mut fn_args: @~[]});
+                   req_maps: req_maps,
+                   crate: @ast::crate) {
+    let clcx = @mut CheckLoanCtxt {
+        bccx: bccx,
+        req_maps: req_maps,
+        reported: HashMap(),
+        declared_purity: @mut ast::impure_fn,
+        fn_args: @mut @~[]
+    };
     let vt = visit::mk_vt(@visit::Visitor {visit_expr: check_loans_in_expr,
                                            visit_local: check_loans_in_local,
                                            visit_block: check_loans_in_block,
@@ -104,11 +106,11 @@ impl assignment_type {
     }
 }
 
-impl check_loan_ctxt {
-    fn tcx() -> ty::ctxt { self.bccx.tcx }
+impl CheckLoanCtxt {
+    fn tcx(@mut self) -> ty::ctxt { self.bccx.tcx }
 
-    fn purity(scope_id: ast::node_id) -> Option<purity_cause> {
-        let default_purity = match self.declared_purity {
+    fn purity(@mut self, scope_id: ast::node_id) -> Option<purity_cause> {
+        let default_purity = match *self.declared_purity {
           // an unsafe declaration overrides all
           ast::unsafe_fn => return None,
 
@@ -138,7 +140,9 @@ impl check_loan_ctxt {
         }
     }
 
-    fn walk_loans(scope_id: ast::node_id, f: fn(v: &Loan) -> bool) {
+    fn walk_loans(@mut self,
+                  scope_id: ast::node_id,
+                  f: &fn(v: &Loan) -> bool) {
         let mut scope_id = scope_id;
         let region_map = self.tcx().region_map;
         let req_loan_map = self.req_maps.req_loan_map;
@@ -157,9 +161,10 @@ impl check_loan_ctxt {
         }
     }
 
-    fn walk_loans_of(scope_id: ast::node_id,
+    fn walk_loans_of(@mut self,
+                     scope_id: ast::node_id,
                      lp: @loan_path,
-                     f: fn(v: &Loan) -> bool) {
+                     f: &fn(v: &Loan) -> bool) {
         for self.walk_loans(scope_id) |loan| {
             if loan.lp == lp {
                 if !f(loan) { return; }
@@ -173,7 +178,8 @@ impl check_loan_ctxt {
     // note: we take opt_expr and expr_id separately because for
     // overloaded operators the callee has an id but no expr.
     // annoying.
-    fn check_pure_callee_or_arg(pc: purity_cause,
+    fn check_pure_callee_or_arg(@mut self,
+                                pc: purity_cause,
                                 opt_expr: Option<@ast::expr>,
                                 callee_id: ast::node_id,
                                 callee_span: span) {
@@ -239,7 +245,7 @@ impl check_loan_ctxt {
 
     // True if the expression with the given `id` is a stack closure.
     // The expression must be an expr_fn(*) or expr_fn_block(*)
-    fn is_stack_closure(id: ast::node_id) -> bool {
+    fn is_stack_closure(@mut self, id: ast::node_id) -> bool {
         let fn_ty = ty::node_id_to_type(self.tcx(), id);
         match ty::get(fn_ty).sty {
             ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
@@ -248,7 +254,7 @@ impl check_loan_ctxt {
         }
     }
 
-    fn is_allowed_pure_arg(expr: @ast::expr) -> bool {
+    fn is_allowed_pure_arg(@mut self, expr: @ast::expr) -> bool {
         return match expr.node {
           ast::expr_path(_) => {
             let def = self.tcx().def_map.get(&expr.id);
@@ -263,7 +269,7 @@ impl check_loan_ctxt {
         };
     }
 
-    fn check_for_conflicting_loans(scope_id: ast::node_id) {
+    fn check_for_conflicting_loans(@mut self, scope_id: ast::node_id) {
         debug!("check_for_conflicting_loans(scope_id=%?)", scope_id);
 
         let new_loans = match self.req_maps.req_loan_map.find(&scope_id) {
@@ -292,7 +298,7 @@ impl check_loan_ctxt {
         }
     }
 
-    fn report_error_if_loans_conflict(&self,
+    fn report_error_if_loans_conflict(@mut self,
                                       old_loan: &Loan,
                                       new_loan: &Loan) {
         if old_loan.lp != new_loan.lp {
@@ -319,14 +325,14 @@ impl check_loan_ctxt {
         }
     }
 
-    fn is_local_variable(cmt: cmt) -> bool {
+    fn is_local_variable(@mut self, cmt: cmt) -> bool {
         match cmt.cat {
           cat_local(_) => true,
           _ => false
         }
     }
 
-    fn check_assignment(at: assignment_type, ex: @ast::expr) {
+    fn check_assignment(@mut self, at: assignment_type, ex: @ast::expr) {
         // We don't use cat_expr() here because we don't want to treat
         // auto-ref'd parameters in overloaded operators as rvalues.
         let cmt = match self.bccx.tcx.adjustments.find(&ex.id) {
@@ -393,7 +399,7 @@ impl check_loan_ctxt {
         self.add_write_guards_if_necessary(cmt);
     }
 
-    fn add_write_guards_if_necessary(cmt: cmt) {
+    fn add_write_guards_if_necessary(@mut self, cmt: cmt) {
         match cmt.cat {
             cat_deref(base, deref_count, ptr_kind) => {
                 self.add_write_guards_if_necessary(base);
@@ -416,12 +422,11 @@ impl check_loan_ctxt {
         }
     }
 
-    fn check_for_loan_conflicting_with_assignment(
-        at: assignment_type,
-        ex: @ast::expr,
-        cmt: cmt,
-        lp: @loan_path) {
-
+    fn check_for_loan_conflicting_with_assignment(@mut self,
+                                                  at: assignment_type,
+                                                  ex: @ast::expr,
+                                                  cmt: cmt,
+                                                  lp: @loan_path) {
         for self.walk_loans_of(ex.id, lp) |loan| {
             match loan.mutbl {
               m_const => { /*ok*/ }
@@ -455,7 +460,7 @@ impl check_loan_ctxt {
         }
     }
 
-    fn report_purity_error(pc: purity_cause, sp: span, msg: ~str) {
+    fn report_purity_error(@mut self, pc: purity_cause, sp: span, msg: ~str) {
         match pc {
           pc_pure_fn => {
             self.tcx().sess.span_err(
@@ -463,7 +468,8 @@ impl check_loan_ctxt {
                 fmt!("%s prohibited in pure context", msg));
           }
           pc_cmt(ref e) => {
-            if self.reported.insert((*e).cmt.id, ()) {
+            let reported = self.reported;
+            if reported.insert((*e).cmt.id, ()) {
                 self.tcx().sess.span_err(
                     (*e).cmt.span,
                     fmt!("illegal borrow unless pure: %s",
@@ -477,7 +483,7 @@ impl check_loan_ctxt {
         }
     }
 
-    fn check_move_out_from_expr(ex: @ast::expr) {
+    fn check_move_out_from_expr(@mut self, ex: @ast::expr) {
         match ex.node {
             ast::expr_paren(*) => {
                 /* In the case of an expr_paren(), the expression inside
@@ -510,7 +516,7 @@ impl check_loan_ctxt {
         }
     }
 
-    fn analyze_move_out_from_cmt(cmt: cmt) -> MoveError {
+    fn analyze_move_out_from_cmt(@mut self, cmt: cmt) -> MoveError {
         debug!("check_move_out_from_cmt(cmt=%s)",
                self.bccx.cmt_to_repr(cmt));
 
@@ -543,7 +549,8 @@ impl check_loan_ctxt {
         return MoveOk;
     }
 
-    fn check_call(expr: @ast::expr,
+    fn check_call(@mut self,
+                  expr: @ast::expr,
                   callee: Option<@ast::expr>,
                   callee_id: ast::node_id,
                   callee_span: span,
@@ -562,10 +569,13 @@ impl check_loan_ctxt {
     }
 }
 
-fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
-                     sp: span, id: ast::node_id, &&self: check_loan_ctxt,
-                     visitor: visit::vt<check_loan_ctxt>)
-{
+fn check_loans_in_fn(fk: visit::fn_kind,
+                     decl: ast::fn_decl,
+                     body: ast::blk,
+                     sp: span,
+                     id: ast::node_id,
+                     &&self: @mut CheckLoanCtxt,
+                     visitor: visit::vt<@mut CheckLoanCtxt>) {
     let is_stack_closure = self.is_stack_closure(id);
     let fty = ty::node_id_to_type(self.tcx(), id);
 
@@ -580,15 +590,16 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
             let fty_sigil = ty::ty_closure_sigil(fty);
             check_moves_from_captured_variables(self, id, fty_sigil);
             declared_purity = ty::determine_inherited_purity(
-                copy self.declared_purity, ty::ty_fn_purity(fty),
+                *self.declared_purity,
+                ty::ty_fn_purity(fty),
                 fty_sigil);
         }
     }
 
     debug!("purity on entry=%?", copy self.declared_purity);
-    do save_and_restore(&mut(self.declared_purity)) {
-        do save_and_restore(&mut(self.fn_args)) {
-            self.declared_purity = declared_purity;
+    do save_and_restore_managed(self.declared_purity) {
+        do save_and_restore_managed(self.fn_args) {
+            *self.declared_purity = declared_purity;
 
             match fk {
                 visit::fk_anon(*) |
@@ -611,7 +622,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                             _ => {} // Ignore this argument.
                         }
                     }
-                    self.fn_args = @move fn_args;
+                    *self.fn_args = @move fn_args;
                 }
             }
 
@@ -620,10 +631,9 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
     }
     debug!("purity on exit=%?", copy self.declared_purity);
 
-    fn check_moves_from_captured_variables(&&self: check_loan_ctxt,
+    fn check_moves_from_captured_variables(self: @mut CheckLoanCtxt,
                                            id: ast::node_id,
-                                           fty_sigil: ast::Sigil)
-    {
+                                           fty_sigil: ast::Sigil) {
         match fty_sigil {
             ast::ManagedSigil | ast::OwnedSigil => {
                 let cap_vars = self.bccx.capture_map.get(&id);
@@ -666,14 +676,14 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
 }
 
 fn check_loans_in_local(local: @ast::local,
-                        &&self: check_loan_ctxt,
-                        vt: visit::vt<check_loan_ctxt>) {
+                        &&self: @mut CheckLoanCtxt,
+                        vt: visit::vt<@mut CheckLoanCtxt>) {
     visit::visit_local(local, self, vt);
 }
 
 fn check_loans_in_expr(expr: @ast::expr,
-                       &&self: check_loan_ctxt,
-                       vt: visit::vt<check_loan_ctxt>) {
+                       &&self: @mut CheckLoanCtxt,
+                       vt: visit::vt<@mut CheckLoanCtxt>) {
     debug!("check_loans_in_expr(expr=%?/%s)",
            expr.id, pprust::expr_to_str(expr, self.tcx().sess.intr()));
 
@@ -734,16 +744,16 @@ fn check_loans_in_expr(expr: @ast::expr,
 }
 
 fn check_loans_in_block(blk: ast::blk,
-                        &&self: check_loan_ctxt,
-                        vt: visit::vt<check_loan_ctxt>) {
-    do save_and_restore(&mut(self.declared_purity)) {
+                        &&self: @mut CheckLoanCtxt,
+                        vt: visit::vt<@mut CheckLoanCtxt>) {
+    do save_and_restore_managed(self.declared_purity) {
         self.check_for_conflicting_loans(blk.node.id);
 
         match blk.node.rules {
           ast::default_blk => {
           }
           ast::unsafe_blk => {
-            self.declared_purity = ast::unsafe_fn;
+            *self.declared_purity = ast::unsafe_fn;
           }
         }
 

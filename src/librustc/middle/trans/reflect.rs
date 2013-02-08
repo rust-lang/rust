@@ -28,25 +28,24 @@ use std::oldmap::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
 
-pub enum reflector = {
+pub struct Reflector {
     visitor_val: ValueRef,
     visitor_methods: @~[ty::method],
     final_bcx: block,
     tydesc_ty: TypeRef,
-    mut bcx: block
-};
+    bcx: block
+}
 
-pub impl reflector {
-
-    fn c_uint(u: uint) -> ValueRef {
+pub impl Reflector {
+    fn c_uint(&mut self, u: uint) -> ValueRef {
         C_uint(self.bcx.ccx(), u)
     }
 
-    fn c_int(i: int) -> ValueRef {
+    fn c_int(&mut self, i: int) -> ValueRef {
         C_int(self.bcx.ccx(), i)
     }
 
-    fn c_slice(+s: ~str) -> ValueRef {
+    fn c_slice(&mut self, +s: ~str) -> ValueRef {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;
@@ -60,7 +59,7 @@ pub impl reflector {
         scratch.val
     }
 
-    fn c_size_and_align(t: ty::t) -> ~[ValueRef] {
+    fn c_size_and_align(&mut self, t: ty::t) -> ~[ValueRef] {
         let tr = type_of::type_of(self.bcx.ccx(), t);
         let s = machine::llsize_of_real(self.bcx.ccx(), tr);
         let a = machine::llalign_of_min(self.bcx.ccx(), tr);
@@ -68,19 +67,19 @@ pub impl reflector {
              self.c_uint(a)];
     }
 
-    fn c_tydesc(t: ty::t) -> ValueRef {
+    fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
         glue::lazily_emit_all_tydesc_glue(bcx.ccx(), static_ti);
         PointerCast(bcx, static_ti.tydesc, T_ptr(self.tydesc_ty))
     }
 
-    fn c_mt(mt: ty::mt) -> ~[ValueRef] {
+    fn c_mt(&mut self, mt: ty::mt) -> ~[ValueRef] {
         ~[self.c_uint(mt.mutbl as uint),
           self.c_tydesc(mt.ty)]
     }
 
-    fn visit(ty_name: ~str, args: ~[ValueRef]) {
+    fn visit(&mut self, ty_name: ~str, args: ~[ValueRef]) {
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
@@ -114,15 +113,18 @@ pub impl reflector {
         self.bcx = next_bcx
     }
 
-    fn bracketed(bracket_name: ~str, +extra: ~[ValueRef],
-                 inner: fn()) {
+    fn bracketed(&mut self,
+                 bracket_name: ~str,
+                 +extra: ~[ValueRef],
+                 inner: &fn()) {
         // XXX: Bad copy.
         self.visit(~"enter_" + bracket_name, copy extra);
         inner();
         self.visit(~"leave_" + bracket_name, extra);
     }
 
-    fn vstore_name_and_extra(t: ty::t,
+    fn vstore_name_and_extra(&mut self,
+                             t: ty::t,
                              vstore: ty::vstore,
                              f: fn(+s: ~str,+v: ~[ValueRef])) {
         match vstore {
@@ -137,13 +139,12 @@ pub impl reflector {
         }
     }
 
-    fn leaf(+name: ~str) {
+    fn leaf(&mut self, +name: ~str) {
         self.visit(name, ~[]);
     }
 
     // Entrypoint
-    fn visit_ty(t: ty::t) {
-
+    fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
         debug!("reflect::visit_ty %s",
                ty_to_str(bcx.ccx().tcx, t));
@@ -301,7 +302,7 @@ pub impl reflector {
         }
     }
 
-    fn visit_sig(&self, retval: uint, sig: &ty::FnSig) {
+    fn visit_sig(&mut self, retval: uint, sig: &ty::FnSig) {
         for sig.inputs.eachi |i, arg| {
             let modeval = match arg.mode {
                 ast::infer(_) => 0u,
@@ -333,13 +334,13 @@ pub fn emit_calls_to_trait_visit_ty(bcx: block,
     assert bcx.ccx().tcx.intrinsic_defs.contains_key_ref(&tydesc);
     let (_, tydesc_ty) = bcx.ccx().tcx.intrinsic_defs.get(&tydesc);
     let tydesc_ty = type_of::type_of(bcx.ccx(), tydesc_ty);
-    let r = reflector({
+    let mut r = Reflector {
         visitor_val: visitor_val,
         visitor_methods: ty::trait_methods(bcx.tcx(), visitor_trait_id),
         final_bcx: final,
         tydesc_ty: tydesc_ty,
-        mut bcx: bcx
-    });
+        bcx: bcx
+    };
     r.visit_ty(t);
     Br(r.bcx, final.llbb);
     return final;

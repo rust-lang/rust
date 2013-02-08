@@ -87,16 +87,17 @@ pub fn new_addrspace_gen() -> addrspace_gen {
     return fn@() -> addrspace { *i += 1; *i };
 }
 
-pub type tydesc_info =
-    {ty: ty::t,
-     tydesc: ValueRef,
-     size: ValueRef,
-     align: ValueRef,
-     addrspace: addrspace,
-     mut take_glue: Option<ValueRef>,
-     mut drop_glue: Option<ValueRef>,
-     mut free_glue: Option<ValueRef>,
-     mut visit_glue: Option<ValueRef>};
+pub struct tydesc_info {
+    ty: ty::t,
+    tydesc: ValueRef,
+    size: ValueRef,
+    align: ValueRef,
+    addrspace: addrspace,
+    take_glue: Option<ValueRef>,
+    drop_glue: Option<ValueRef>,
+    free_glue: Option<ValueRef>,
+    visit_glue: Option<ValueRef>
+}
 
 /*
  * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -124,18 +125,19 @@ pub type tydesc_info =
  *
  */
 
-pub type stats =
-    {mut n_static_tydescs: uint,
-     mut n_glues_created: uint,
-     mut n_null_glues: uint,
-     mut n_real_glues: uint,
-     mut n_fns: uint,
-     mut n_monos: uint,
-     mut n_inlines: uint,
-     mut n_closures: uint,
-     llvm_insn_ctxt: @mut ~[~str],
-     llvm_insns: HashMap<~str, uint>,
-     fn_times: @mut ~[{ident: ~str, time: int}]};
+pub struct Stats {
+    n_static_tydescs: uint,
+    n_glues_created: uint,
+    n_null_glues: uint,
+    n_real_glues: uint,
+    n_fns: uint,
+    n_monos: uint,
+    n_inlines: uint,
+    n_closures: uint,
+    llvm_insn_ctxt: @mut ~[~str],
+    llvm_insns: HashMap<~str, uint>,
+    fn_times: @mut ~[{ident: ~str, time: int}]
+}
 
 pub struct BuilderRef_res {
     B: BuilderRef,
@@ -170,7 +172,7 @@ pub struct crate_ctxt {
      enum_sizes: HashMap<ty::t, uint>,
      discrims: HashMap<ast::def_id, ValueRef>,
      discrim_symbols: HashMap<ast::node_id, ~str>,
-     tydescs: HashMap<ty::t, @tydesc_info>,
+     tydescs: HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
      mut finished_tydescs: bool,
@@ -208,7 +210,7 @@ pub struct crate_ctxt {
      all_llvm_symbols: Set<~str>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
-     stats: stats,
+     stats: @mut Stats,
      upcalls: @upcall::upcalls,
      tydesc_type: TypeRef,
      int_type: TypeRef,
@@ -216,7 +218,7 @@ pub struct crate_ctxt {
      task_type: TypeRef,
      opaque_vec_type: TypeRef,
      builder: BuilderRef_res,
-     shape_cx: shape::ctxt,
+     shape_cx: shape::Ctxt,
      crate_map: ValueRef,
      // Set when at least one function uses GC. Needed so that
      // decl_gc_metadata knows whether to link to the module metadata, which

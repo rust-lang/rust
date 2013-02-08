@@ -145,7 +145,7 @@ pub enum NamespaceResult {
     UnboundResult,
     /// Means that resolve has determined that the name is bound in the Module
     /// argument, and specified by the NameBindings argument.
-    BoundResult(@Module, @NameBindings)
+    BoundResult(@Module, @mut NameBindings)
 }
 
 pub impl NamespaceResult {
@@ -364,10 +364,10 @@ pub fn ImportDirective(privacy: Privacy,
 /// The item that an import resolves to.
 pub struct Target {
     target_module: @Module,
-    bindings: @NameBindings,
+    bindings: @mut NameBindings,
 }
 
-pub fn Target(target_module: @Module, bindings: @NameBindings) -> Target {
+pub fn Target(target_module: @Module, bindings: @mut NameBindings) -> Target {
     Target {
         target_module: target_module,
         bindings: bindings
@@ -385,18 +385,19 @@ pub struct ImportResolution {
     // zero, outside modules can count on the targets being correct. Before
     // then, all bets are off; future imports could override this name.
 
-    mut outstanding_references: uint,
+    outstanding_references: uint,
 
     /// The value that this `use` directive names, if there is one.
-    mut value_target: Option<Target>,
+    value_target: Option<Target>,
     /// The type that this `use` directive names, if there is one.
-    mut type_target: Option<Target>,
+    type_target: Option<Target>,
 
     /// There exists one state per import statement
     state: @mut ImportState,
 }
 
-pub fn ImportResolution(privacy: Privacy, span: span,
+pub fn ImportResolution(privacy: Privacy,
+                        +span: span,
                         state: @mut ImportState) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
@@ -447,7 +448,7 @@ pub struct Module {
     mut def_id: Option<def_id>,
     kind: ModuleKind,
 
-    children: HashMap<ident,@NameBindings>,
+    children: HashMap<ident,@mut NameBindings>,
     imports: DVec<@ImportDirective>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
@@ -476,7 +477,7 @@ pub struct Module {
     exported_names: HashMap<ident,node_id>,
 
     // The status of resolving each import in this module.
-    import_resolutions: HashMap<ident,@ImportResolution>,
+    import_resolutions: HashMap<ident,@mut ImportResolution>,
 
     // The number of unresolved globs that this module exports.
     mut glob_count: uint,
@@ -521,9 +522,9 @@ pub fn unused_import_lint_level(session: Session) -> level {
 
 // Records a possibly-private type definition.
 pub struct TypeNsDef {
-    mut privacy: Privacy,
-    mut module_def: Option<@Module>,
-    mut type_def: Option<def>
+    privacy: Privacy,
+    module_def: Option<@Module>,
+    type_def: Option<def>
 }
 
 // Records a possibly-private value definition.
@@ -535,18 +536,19 @@ pub struct ValueNsDef {
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
 pub struct NameBindings {
-    mut type_def: Option<TypeNsDef>,    //< Meaning in type namespace.
-    mut value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
+    type_def: Option<TypeNsDef>,    //< Meaning in type namespace.
+    value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
 
     // For error reporting
     // FIXME (#3783): Merge me into TypeNsDef and ValueNsDef.
-    mut type_span: Option<span>,
-    mut value_span: Option<span>,
+    type_span: Option<span>,
+    value_span: Option<span>,
 }
 
 pub impl NameBindings {
     /// Creates a new module in this set of name bindings.
-    fn define_module(privacy: Privacy,
+    fn define_module(@mut self,
+                     privacy: Privacy,
                      parent_link: ParentLink,
                      def_id: Option<def_id>,
                      kind: ModuleKind,
@@ -573,7 +575,7 @@ pub impl NameBindings {
     }
 
     /// Records a type definition.
-    fn define_type(privacy: Privacy, def: def, sp: span) {
+    fn define_type(@mut self, privacy: Privacy, def: def, sp: span) {
         // Merges the type with the existing type def or creates a new one.
         match self.type_def {
             None => {
@@ -595,7 +597,7 @@ pub impl NameBindings {
     }
 
     /// Records a value definition.
-    fn define_value(privacy: Privacy, def: def, sp: span) {
+    fn define_value(@mut self, privacy: Privacy, def: def, sp: span) {
         self.value_def = Some(ValueNsDef { privacy: privacy, def: def });
         self.value_span = Some(sp);
     }
@@ -612,7 +614,7 @@ pub impl NameBindings {
      * Returns the module node. Fails if this node does not have a module
      * definition.
      */
-    fn get_module() -> @Module {
+    fn get_module(@mut self) -> @Module {
         match self.get_module_if_available() {
             None => {
                 die!(~"get_module called on a node with no module \
@@ -750,15 +752,15 @@ pub fn Resolver(session: Session,
                 lang_items: LanguageItems,
                 crate: @crate)
              -> Resolver {
-    let graph_root = @NameBindings();
+    let graph_root = @mut NameBindings();
 
-    (*graph_root).define_module(Public,
-                                NoParentLink,
-                                Some(def_id { crate: 0, node: 0 }),
-                                NormalModuleKind,
-                                crate.span);
+    graph_root.define_module(Public,
+                             NoParentLink,
+                             Some(def_id { crate: 0, node: 0 }),
+                             NormalModuleKind,
+                             crate.span);
 
-    let current_module = (*graph_root).get_module();
+    let current_module = graph_root.get_module();
 
     let self = Resolver {
         session: session,
@@ -814,7 +816,7 @@ pub struct Resolver {
 
     intr: @ident_interner,
 
-    graph_root: @NameBindings,
+    graph_root: @mut NameBindings,
 
     unused_import_lint_level: level,
 
@@ -894,7 +896,7 @@ pub impl Resolver {
     /// Constructs the reduced graph for the entire crate.
     fn build_reduced_graph(this: @Resolver) {
         let initial_parent =
-            ModuleReducedGraphParent((*self.graph_root).get_module());
+            ModuleReducedGraphParent(self.graph_root.get_module());
         visit_crate(*self.crate, initial_parent, mk_vt(@Visitor {
             visit_item: |item, context, visitor|
                 (*this).build_reduced_graph_for_item(item, context, visitor),
@@ -943,7 +945,7 @@ pub impl Resolver {
                  duplicate_checking_mode: DuplicateCheckingMode,
                  // For printing errors
                  sp: span)
-              -> (@NameBindings, ReducedGraphParent) {
+              -> (@mut NameBindings, ReducedGraphParent) {
 
         // If this is the immediate descendant of a module, then we add the
         // child name directly. Otherwise, we create or reuse an anonymous
@@ -960,7 +962,7 @@ pub impl Resolver {
         let new_parent = ModuleReducedGraphParent(module_);
         match module_.children.find(&name) {
             None => {
-                let child = @NameBindings();
+                let child = @mut NameBindings();
                 module_.children.insert(name, child);
                 return (child, new_parent);
             }
@@ -1080,14 +1082,14 @@ pub impl Resolver {
 
                 let parent_link = self.get_parent_link(new_parent, ident);
                 let def_id = def_id { crate: 0, node: item.id };
-                (*name_bindings).define_module(privacy,
-                                               parent_link,
-                                               Some(def_id),
-                                               NormalModuleKind,
-                                               sp);
+                name_bindings.define_module(privacy,
+                                            parent_link,
+                                            Some(def_id),
+                                            NormalModuleKind,
+                                            sp);
 
                 let new_parent =
-                    ModuleReducedGraphParent((*name_bindings).get_module());
+                    ModuleReducedGraphParent(name_bindings.get_module());
 
                 visit_mod(module_, sp, item.id, new_parent, visitor);
             }
@@ -1102,11 +1104,11 @@ pub impl Resolver {
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
                         let def_id = def_id { crate: 0, node: item.id };
-                        (*name_bindings).define_module(privacy,
-                                                       parent_link,
-                                                       Some(def_id),
-                                                       ExternModuleKind,
-                                                       sp);
+                        name_bindings.define_module(privacy,
+                                                    parent_link,
+                                                    Some(def_id),
+                                                    ExternModuleKind,
+                                                    sp);
 
                         ModuleReducedGraphParent(name_bindings.get_module())
                     }
@@ -1124,7 +1126,7 @@ pub impl Resolver {
                 let (name_bindings, _) =
                     self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
-                (*name_bindings).define_value
+                name_bindings.define_value
                     (privacy, def_const(local_def(item.id)), sp);
             }
             item_fn(_, purity, _, _) => {
@@ -1132,7 +1134,7 @@ pub impl Resolver {
                 self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
                 let def = def_fn(local_def(item.id), purity);
-                (*name_bindings).define_value(privacy, def, sp);
+                name_bindings.define_value(privacy, def, sp);
                 visit_item(item, new_parent, visitor);
             }
 
@@ -1141,7 +1143,7 @@ pub impl Resolver {
                 let (name_bindings, _) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
-                (*name_bindings).define_type
+                name_bindings.define_type
                     (privacy, def_ty(local_def(item.id)), sp);
             }
 
@@ -1149,7 +1151,7 @@ pub impl Resolver {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
-                (*name_bindings).define_type
+                name_bindings.define_type
                     (privacy, def_ty(local_def(item.id)), sp);
 
                 for (*enum_definition).variants.each |variant| {
@@ -1329,10 +1331,7 @@ pub impl Resolver {
                 let def_id = local_def(item.id);
                 self.trait_info.insert(def_id, method_names);
 
-                (*name_bindings).define_type
-                    (privacy,
-                     def_ty(def_id),
-                     sp);
+                name_bindings.define_type(privacy, def_ty(def_id), sp);
                 visit_item(item, new_parent, visitor);
             }
 
@@ -1363,22 +1362,22 @@ pub impl Resolver {
 
         match variant.node.kind {
             tuple_variant_kind(_) => {
-                (*child).define_value(privacy,
-                                      def_variant(item_id,
-                                                  local_def(variant.node.id)),
-                                      variant.span);
+                child.define_value(privacy,
+                                   def_variant(item_id,
+                                               local_def(variant.node.id)),
+                                   variant.span);
             }
             struct_variant_kind(_) => {
-                (*child).define_type(privacy,
-                                     def_variant(item_id,
-                                                 local_def(variant.node.id)),
-                                     variant.span);
+                child.define_type(privacy,
+                                  def_variant(item_id,
+                                              local_def(variant.node.id)),
+                                  variant.span);
                 self.structs.insert(local_def(variant.node.id), ());
             }
             enum_variant_kind(ref enum_definition) => {
-                (*child).define_type(privacy,
-                                     def_ty(local_def(variant.node.id)),
-                                     variant.span);
+                child.define_type(privacy,
+                                  def_ty(local_def(variant.node.id)),
+                                  variant.span);
                 for (*enum_definition).variants.each |variant| {
                     self.build_reduced_graph_for_variant(*variant, item_id,
                                                          parent_privacy,
@@ -1488,7 +1487,7 @@ pub impl Resolver {
                                                           NormalModuleKind,
                                                           view_item.span);
                         self.build_reduced_graph_for_external_crate
-                            ((*child_name_bindings).get_module());
+                            (child_name_bindings.get_module());
                     }
                     None => {
                         /* Ignore. */
@@ -1512,7 +1511,7 @@ pub impl Resolver {
         match /*bad*/copy foreign_item.node {
             foreign_item_fn(_, _, type_parameters) => {
                 let def = def_fn(local_def(foreign_item.id), unsafe_fn);
-                (*name_bindings).define_value(Public, def, foreign_item.span);
+                name_bindings.define_value(Public, def, foreign_item.span);
 
                 do self.with_type_parameter_rib
                         (HasTypeParameters(&type_parameters, foreign_item.id,
@@ -1522,7 +1521,7 @@ pub impl Resolver {
             }
             foreign_item_const(*) => {
                 let def = def_const(local_def(foreign_item.id));
-                (*name_bindings).define_value(Public, def, foreign_item.span);
+                name_bindings.define_value(Public, def, foreign_item.span);
 
                 visit_foreign_item(foreign_item, new_parent, visitor);
             }
@@ -1554,10 +1553,12 @@ pub impl Resolver {
         visit_block(block, new_parent, visitor);
     }
 
-    fn handle_external_def(def: def, modules: HashMap<def_id, @Module>,
-                           child_name_bindings: @NameBindings,
+    fn handle_external_def(def: def,
+                           modules: HashMap<def_id, @Module>,
+                           child_name_bindings: @mut NameBindings,
                            final_ident: ~str,
-                           ident: ident, new_parent: ReducedGraphParent) {
+                           ident: ident,
+                           new_parent: ReducedGraphParent) {
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
             match copy child_name_bindings.type_def {
@@ -1588,8 +1589,10 @@ pub impl Resolver {
                     // avoid creating cycles in the
                     // module graph.
 
-                    let resolution = @ImportResolution(Public, dummy_sp(),
-                                                       @mut ImportState());
+                    let resolution =
+                        @mut ImportResolution(Public,
+                                              dummy_sp(),
+                                              @mut ImportState());
                     resolution.outstanding_references = 0;
 
                     match existing_module.parent_link {
@@ -1618,7 +1621,7 @@ pub impl Resolver {
           def_variant(*) => {
             debug!("(building reduced graph for external \
                     crate) building value %s", final_ident);
-            (*child_name_bindings).define_value(Public, def, dummy_sp());
+            child_name_bindings.define_value(Public, def, dummy_sp());
           }
           def_ty(def_id) => {
             debug!("(building reduced graph for external \
@@ -1729,7 +1732,7 @@ pub impl Resolver {
                     _ => {} // Fall through.
                 }
 
-                current_module = (*child_name_bindings).get_module();
+                current_module = child_name_bindings.get_module();
             }
 
             match def_like {
@@ -1867,8 +1870,9 @@ pub impl Resolver {
                     }
                     None => {
                         debug!("(building import directive) creating new");
-                        let resolution = @ImportResolution(privacy, span,
-                                                           state);
+                        let resolution = @mut ImportResolution(privacy,
+                                                               span,
+                                                               state);
                         let name = self.idents_to_str(module_path.get());
                         // Don't warn about unused intrinsics because they're
                         // automatically appended to all files
@@ -1910,7 +1914,7 @@ pub impl Resolver {
             debug!("(resolving imports) iteration %u, %u imports left",
                    i, self.unresolved_imports);
 
-            let module_root = (*self.graph_root).get_module();
+            let module_root = self.graph_root.get_module();
             self.resolve_imports_for_module_subtree(module_root);
 
             if self.unresolved_imports == 0 {
@@ -2191,7 +2195,8 @@ pub impl Resolver {
                             if import_resolution.outstanding_references
                                 == 0 => {
 
-                        fn get_binding(import_resolution: @ImportResolution,
+                        fn get_binding(import_resolution:
+                                          @mut ImportResolution,
                                        namespace: Namespace)
                                     -> NamespaceResult {
 
@@ -2469,9 +2474,9 @@ pub impl Resolver {
                 None => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
-                        @ImportResolution(privacy,
-                                          target_import_resolution.span,
-                                          state);
+                        @mut ImportResolution(privacy,
+                                              target_import_resolution.span,
+                                              state);
                     new_import_resolution.value_target =
                         copy target_import_resolution.value_target;
                     new_import_resolution.type_target =
@@ -2512,8 +2517,9 @@ pub impl Resolver {
             match module_.import_resolutions.find(&ident) {
                 None => {
                     // Create a new import resolution from this child.
-                    dest_import_resolution = @ImportResolution(privacy, span,
-                                                               state);
+                    dest_import_resolution = @mut ImportResolution(privacy,
+                                                                   span,
+                                                                   state);
                     module_.import_resolutions.insert
                         (ident, dest_import_resolution);
                 }
@@ -3202,7 +3208,7 @@ pub impl Resolver {
     // processing.
 
     fn record_exports() {
-        let root_module = (*self.graph_root).get_module();
+        let root_module = self.graph_root.get_module();
         self.record_exports_for_module_subtree(root_module);
     }
 
@@ -3265,7 +3271,7 @@ pub impl Resolver {
 
     fn add_exports_of_namebindings(exports2: &mut ~[Export2],
                                    ident: ident,
-                                   namebindings: @NameBindings,
+                                   namebindings: @mut NameBindings,
                                    ns: Namespace,
                                    reexport: bool) {
         match (namebindings.def_for_namespace(ns),
@@ -3721,7 +3727,7 @@ pub impl Resolver {
                 // If this is the main function, we must record it in the
                 // session.
                 // FIXME #4404 android JNI hacks
-                if !self.session.building_library ||
+                if !*self.session.building_library ||
                     self.session.targ_cfg.os == session::os_android {
 
                     if self.attr_main_fn.is_none() &&
@@ -4673,7 +4679,7 @@ pub impl Resolver {
 
         let module_path_idents = self.intern_module_part_of_path(path);
 
-        let root_module = (*self.graph_root).get_module();
+        let root_module = self.graph_root.get_module();
 
         let mut containing_module;
         match self.resolve_module_path_from_root(root_module,
@@ -5172,10 +5178,10 @@ pub impl Resolver {
                         ~"multiple 'main' functions");
                     i += 1;
                 }
-                self.session.main_fn = self.main_fns[0];
+                *self.session.main_fn = self.main_fns[0];
             }
         } else {
-            self.session.main_fn = self.attr_main_fn;
+            *self.session.main_fn = self.attr_main_fn;
         }
     }
 
@@ -5191,7 +5197,7 @@ pub impl Resolver {
             return;
         }
 
-        let root_module = (*self.graph_root).get_module();
+        let root_module = self.graph_root.get_module();
         self.check_for_unused_imports_in_module_subtree(root_module);
     }
 
@@ -5245,15 +5251,15 @@ pub impl Resolver {
                 import_resolution.state.warned = true;
                 match self.unused_import_lint_level {
                     warn => {
-                        self.session.span_warn(import_resolution.span,
+                        self.session.span_warn(copy import_resolution.span,
                                                ~"unused import");
                     }
                     deny | forbid => {
-                      self.session.span_err(import_resolution.span,
+                      self.session.span_err(copy import_resolution.span,
                                             ~"unused import");
                     }
                     allow => {
-                      self.session.span_bug(import_resolution.span,
+                      self.session.span_bug(copy import_resolution.span,
                                             ~"shouldn't be here if lint \
                                               is allowed");
                     }

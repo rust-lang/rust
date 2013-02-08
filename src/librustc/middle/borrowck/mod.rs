@@ -262,19 +262,23 @@ pub fn check_crate(
     capture_map: moves::CaptureMap,
     crate: @ast::crate) -> (root_map, mutbl_map, write_guard_map)
 {
-    let bccx = @BorrowckCtxt   {tcx: tcx,
-                                method_map: method_map,
-                                moves_map: moves_map,
-                                capture_map: capture_map,
-                                root_map: root_map(),
-                                mutbl_map: HashMap(),
-                                write_guard_map: HashMap(),
-                                stmt_map: HashMap(),
-                                mut loaned_paths_same: 0,
-                                mut loaned_paths_imm: 0,
-                                mut stable_paths: 0,
-                                mut req_pure_paths: 0,
-                                mut guaranteed_paths: 0};
+    let bccx = @BorrowckCtxt {
+        tcx: tcx,
+        method_map: method_map,
+        moves_map: moves_map,
+        capture_map: capture_map,
+        root_map: root_map(),
+        mutbl_map: HashMap(),
+        write_guard_map: HashMap(),
+        stmt_map: HashMap(),
+        stats: @mut BorrowStats {
+            loaned_paths_same: 0,
+            loaned_paths_imm: 0,
+            stable_paths: 0,
+            req_pure_paths: 0,
+            guaranteed_paths: 0,
+        }
+    };
 
     let req_maps = gather_loans::gather_loans(bccx, crate);
     check_loans::check_loans(bccx, req_maps, crate);
@@ -282,22 +286,22 @@ pub fn check_crate(
     if tcx.sess.borrowck_stats() {
         io::println(~"--- borrowck stats ---");
         io::println(fmt!("paths requiring guarantees: %u",
-                        bccx.guaranteed_paths));
+                        bccx.stats.guaranteed_paths));
         io::println(fmt!("paths requiring loans     : %s",
-                         make_stat(bccx, bccx.loaned_paths_same)));
+                         make_stat(bccx, bccx.stats.loaned_paths_same)));
         io::println(fmt!("paths requiring imm loans : %s",
-                         make_stat(bccx, bccx.loaned_paths_imm)));
+                         make_stat(bccx, bccx.stats.loaned_paths_imm)));
         io::println(fmt!("stable paths              : %s",
-                         make_stat(bccx, bccx.stable_paths)));
+                         make_stat(bccx, bccx.stats.stable_paths)));
         io::println(fmt!("paths requiring purity    : %s",
-                         make_stat(bccx, bccx.req_pure_paths)));
+                         make_stat(bccx, bccx.stats.req_pure_paths)));
     }
 
     return (bccx.root_map, bccx.mutbl_map, bccx.write_guard_map);
 
     fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> ~str {
         let stat_f = stat as float;
-        let total = bccx.guaranteed_paths as float;
+        let total = bccx.stats.guaranteed_paths as float;
         fmt!("%u (%.0f%%)", stat  , stat_f * 100f / total)
     }
 }
@@ -316,11 +320,15 @@ pub struct BorrowckCtxt {
     stmt_map: stmt_set,
 
     // Statistics:
-    mut loaned_paths_same: uint,
-    mut loaned_paths_imm: uint,
-    mut stable_paths: uint,
-    mut req_pure_paths: uint,
-    mut guaranteed_paths: uint
+    stats: @mut BorrowStats
+}
+
+pub struct BorrowStats {
+    loaned_paths_same: uint,
+    loaned_paths_imm: uint,
+    stable_paths: uint,
+    req_pure_paths: uint,
+    guaranteed_paths: uint
 }
 
 pub struct RootInfo {
@@ -397,7 +405,15 @@ pub type req_maps = {
 };
 
 pub fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T,
-                                  f: fn() -> U) -> U {
+                                  f: &fn() -> U) -> U {
+    let old_save_and_restore_t = *save_and_restore_t;
+    let u = f();
+    *save_and_restore_t = old_save_and_restore_t;
+    move u
+}
+
+pub fn save_and_restore_managed<T:Copy,U>(save_and_restore_t: @mut T,
+                                          f: &fn() -> U) -> U {
     let old_save_and_restore_t = *save_and_restore_t;
     let u = f();
     *save_and_restore_t = old_save_and_restore_t;

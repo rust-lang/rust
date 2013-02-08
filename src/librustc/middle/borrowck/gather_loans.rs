@@ -68,19 +68,22 @@ use syntax::visit;
 /// No good.  Instead what will happen is that `root_ub` will be set to the
 /// body of the while loop and we will refuse to root the pointer `&*x`
 /// because it would have to be rooted for a region greater than `root_ub`.
-enum gather_loan_ctxt = @{bccx: @BorrowckCtxt,
-                          req_maps: req_maps,
-                          mut item_ub: ast::node_id,
-                          mut root_ub: ast::node_id,
-                          mut ignore_adjustments: LinearSet<ast::node_id>};
+struct GatherLoanCtxt {
+    bccx: @BorrowckCtxt,
+    req_maps: req_maps,
+    item_ub: ast::node_id,
+    root_ub: ast::node_id,
+    ignore_adjustments: LinearSet<ast::node_id>
+}
 
 pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> req_maps {
-    let glcx = gather_loan_ctxt(@{bccx: bccx,
-                                  req_maps: {req_loan_map: HashMap(),
-                                             pure_map: HashMap()},
-                                  mut item_ub: 0,
-                                  mut root_ub: 0,
-                                  mut ignore_adjustments: LinearSet::new()});
+    let glcx = @mut GatherLoanCtxt {
+        bccx: bccx,
+        req_maps: {req_loan_map: HashMap(), pure_map: HashMap()},
+        item_ub: 0,
+        root_ub: 0,
+        ignore_adjustments: LinearSet::new()
+    };
     let v = visit::mk_vt(@visit::Visitor {visit_expr: req_loans_in_expr,
                                           visit_fn: req_loans_in_fn,
                                           visit_stmt: add_stmt_to_map,
@@ -94,8 +97,8 @@ fn req_loans_in_fn(fk: visit::fn_kind,
                    body: ast::blk,
                    sp: span,
                    id: ast::node_id,
-                   &&self: gather_loan_ctxt,
-                   v: visit::vt<gather_loan_ctxt>) {
+                   &&self: @mut GatherLoanCtxt,
+                   v: visit::vt<@mut GatherLoanCtxt>) {
     // see explanation attached to the `root_ub` field:
     let old_item_id = self.item_ub;
     let old_root_ub = self.root_ub;
@@ -115,8 +118,8 @@ fn req_loans_in_fn(fk: visit::fn_kind,
 }
 
 fn req_loans_in_expr(ex: @ast::expr,
-                     &&self: gather_loan_ctxt,
-                     vt: visit::vt<gather_loan_ctxt>) {
+                     &&self: @mut GatherLoanCtxt,
+                     vt: visit::vt<@mut GatherLoanCtxt>) {
     let bccx = self.bccx;
     let tcx = bccx.tcx;
     let old_root_ub = self.root_ub;
@@ -283,10 +286,10 @@ fn req_loans_in_expr(ex: @ast::expr,
     self.root_ub = old_root_ub;
 }
 
-impl gather_loan_ctxt {
-    fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
+impl GatherLoanCtxt {
+    fn tcx(@mut self) -> ty::ctxt { self.bccx.tcx }
 
-    fn guarantee_adjustments(&self,
+    fn guarantee_adjustments(@mut self,
                              expr: @ast::expr,
                              adjustment: &ty::AutoAdjustment) {
         debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
@@ -334,12 +337,12 @@ impl gather_loan_ctxt {
     // out loans, which will be added to the `req_loan_map`.  This can
     // also entail "rooting" GC'd pointers, which means ensuring
     // dynamically that they are not freed.
-    fn guarantee_valid(&self,
+    fn guarantee_valid(@mut self,
                        cmt: cmt,
                        req_mutbl: ast::mutability,
                        scope_r: ty::Region) {
 
-        self.bccx.guaranteed_paths += 1;
+        self.bccx.stats.guaranteed_paths += 1;
 
         debug!("guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
                self.bccx.cmt_to_repr(cmt),
@@ -391,7 +394,7 @@ impl gather_loan_ctxt {
                     // we were able guarantee the validity of the ptr,
                     // perhaps by rooting or because it is immutably
                     // rooted.  good.
-                    self.bccx.stable_paths += 1;
+                    self.bccx.stats.stable_paths += 1;
                 }
                 Ok(PcIfPure(ref e)) => {
                     debug!("result of preserve: %?", PcIfPure((*e)));
@@ -403,8 +406,9 @@ impl gather_loan_ctxt {
                             // if the scope is some block/expr in the
                             // fn, then just require that this scope
                             // be pure
-                            self.req_maps.pure_map.insert(pure_id, (*e));
-                            self.bccx.req_pure_paths += 1;
+                            let pure_map = self.req_maps.pure_map;
+                            pure_map.insert(pure_id, *e);
+                            self.bccx.stats.req_pure_paths += 1;
 
                             debug!("requiring purity for scope %?",
                                    scope_r);
@@ -441,9 +445,10 @@ impl gather_loan_ctxt {
     // has type `@mut{f:int}`, this check might fail because `&x.f`
     // reqires an immutable pointer, but `f` lives in (aliased)
     // mutable memory.
-    fn check_mutbl(&self,
+    fn check_mutbl(@mut self,
                    req_mutbl: ast::mutability,
-                   cmt: cmt) -> bckres<PreserveCondition> {
+                   cmt: cmt)
+                -> bckres<PreserveCondition> {
         debug!("check_mutbl(req_mutbl=%?, cmt.mutbl=%?)",
                req_mutbl, cmt.mutbl);
 
@@ -469,7 +474,7 @@ impl gather_loan_ctxt {
         }
     }
 
-    fn add_loans(&self,
+    fn add_loans(@mut self,
                  cmt: cmt,
                  req_mutbl: ast::mutability,
                  scope_r: ty::Region,
@@ -522,7 +527,7 @@ impl gather_loan_ctxt {
         self.add_loans_to_scope_id(scope_id, move loans);
 
         if req_mutbl == m_imm && cmt.mutbl != m_imm {
-            self.bccx.loaned_paths_imm += 1;
+            self.bccx.stats.loaned_paths_imm += 1;
 
             if self.tcx().sess.borrowck_note_loan() {
                 self.bccx.span_note(
@@ -530,11 +535,13 @@ impl gather_loan_ctxt {
                     fmt!("immutable loan required"));
             }
         } else {
-            self.bccx.loaned_paths_same += 1;
+            self.bccx.stats.loaned_paths_same += 1;
         }
     }
 
-    fn add_loans_to_scope_id(&self, scope_id: ast::node_id, +loans: ~[Loan]) {
+    fn add_loans_to_scope_id(@mut self,
+                             scope_id: ast::node_id,
+                             +loans: ~[Loan]) {
         debug!("adding %u loans to scope_id %?", loans.len(), scope_id);
         match self.req_maps.req_loan_map.find(&scope_id) {
             Some(req_loans) => {
@@ -542,12 +549,13 @@ impl gather_loan_ctxt {
             }
             None => {
                 let dvec = @dvec::from_vec(move loans);
-                self.req_maps.req_loan_map.insert(scope_id, dvec);
+                let req_loan_map = self.req_maps.req_loan_map;
+                req_loan_map.insert(scope_id, dvec);
             }
         }
     }
 
-    fn gather_pat(&self,
+    fn gather_pat(@mut self,
                   discr_cmt: cmt,
                   root_pat: @ast::pat,
                   arm_id: ast::node_id,
@@ -602,10 +610,9 @@ impl gather_loan_ctxt {
         }
     }
 
-    fn vec_slice_info(&self,
+    fn vec_slice_info(@mut self,
                       pat: @ast::pat,
-                      tail_ty: ty::t) -> (ast::mutability, ty::Region)
-    {
+                      tail_ty: ty::t) -> (ast::mutability, ty::Region) {
         /*!
          *
          * In a pattern like [a, b, ..c], normally `c` has slice type,
@@ -631,11 +638,11 @@ impl gather_loan_ctxt {
         }
     }
 
-    fn pat_is_variant_or_struct(&self, pat: @ast::pat) -> bool {
+    fn pat_is_variant_or_struct(@mut self, pat: @ast::pat) -> bool {
         pat_util::pat_is_variant_or_struct(self.bccx.tcx.def_map, pat)
     }
 
-    fn pat_is_binding(&self, pat: @ast::pat) -> bool {
+    fn pat_is_binding(@mut self, pat: @ast::pat) -> bool {
         pat_util::pat_is_binding(self.bccx.tcx.def_map, pat)
     }
 }
@@ -643,8 +650,8 @@ impl gather_loan_ctxt {
 // Setting up info that preserve needs.
 // This is just the most convenient place to do it.
 fn add_stmt_to_map(stmt: @ast::stmt,
-                   &&self: gather_loan_ctxt,
-                   vt: visit::vt<gather_loan_ctxt>) {
+                   &&self: @mut GatherLoanCtxt,
+                   vt: visit::vt<@mut GatherLoanCtxt>) {
     match stmt.node {
         ast::stmt_expr(_, id) | ast::stmt_semi(_, id) => {
             self.bccx.stmt_map.insert(id, ());
@@ -653,3 +660,4 @@ fn add_stmt_to_map(stmt: @ast::stmt,
     }
     visit::visit_stmt(stmt, self, vt);
 }
+

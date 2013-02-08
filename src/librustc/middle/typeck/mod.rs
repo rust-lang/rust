@@ -196,17 +196,13 @@ pub impl vtable_origin {
 
 pub type vtable_map = HashMap<ast::node_id, vtable_res>;
 
-struct crate_ctxt__ {
+pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
     method_map: method_map,
     vtable_map: vtable_map,
     coherence_info: @coherence::CoherenceInfo,
     tcx: ty::ctxt
-}
-
-pub enum crate_ctxt {
-    crate_ctxt_(crate_ctxt__)
 }
 
 // Functions that write types into the node type table
@@ -233,7 +229,7 @@ pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     }
 }
 
-pub fn lookup_def_ccx(ccx: @crate_ctxt, sp: span, id: ast::node_id)
+pub fn lookup_def_ccx(ccx: @mut CrateCtxt, sp: span, id: ast::node_id)
                    -> ast::def {
     lookup_def_tcx(ccx.tcx, sp, id)
 }
@@ -244,7 +240,7 @@ pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
 
 pub fn require_same_types(
     tcx: ty::ctxt,
-    maybe_infcx: Option<@infer::InferCtxt>,
+    maybe_infcx: Option<@mut infer::InferCtxt>,
     t1_is_expected: bool,
     span: span,
     t1: ty::t,
@@ -317,10 +313,9 @@ fn arg_is_argv_ty(tcx: ty::ctxt, a: ty::arg) -> bool {
     }
 }
 
-fn check_main_fn_ty(ccx: @crate_ctxt,
+fn check_main_fn_ty(ccx: @mut CrateCtxt,
                     main_id: ast::node_id,
                     main_span: span) {
-
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).sty {
@@ -360,10 +355,10 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     }
 }
 
-fn check_for_main_fn(ccx: @crate_ctxt) {
+fn check_for_main_fn(ccx: @mut CrateCtxt) {
     let tcx = ccx.tcx;
-    if !tcx.sess.building_library {
-        match copy tcx.sess.main_fn {
+    if !*tcx.sess.building_library {
+        match *tcx.sess.main_fn {
           Some((id, sp)) => check_main_fn_ty(ccx, id, sp),
           None => tcx.sess.err(~"main function not found")
         }
@@ -374,14 +369,13 @@ pub fn check_crate(tcx: ty::ctxt,
                    trait_map: resolve::TraitMap,
                    crate: @ast::crate)
                 -> (method_map, vtable_map) {
-
-    let ccx = @crate_ctxt_(crate_ctxt__ {
+    let ccx = @mut CrateCtxt {
         trait_map: trait_map,
         method_map: oldmap::HashMap(),
         vtable_map: oldmap::HashMap(),
         coherence_info: @coherence::CoherenceInfo(),
         tcx: tcx
-    });
+    };
     collect::collect_item_types(ccx, crate);
     coherence::check_coherence(ccx, crate);
 

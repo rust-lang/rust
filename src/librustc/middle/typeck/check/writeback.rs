@@ -17,7 +17,7 @@ use core::prelude::*;
 use middle::pat_util;
 use middle::ty::arg;
 use middle::ty;
-use middle::typeck::check::{fn_ctxt, self_info};
+use middle::typeck::check::{FnCtxt, self_info};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
 use middle::typeck::infer;
@@ -34,8 +34,8 @@ use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 
-fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t)
-    -> Option<ty::t> {
+fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: span, typ: ty::t)
+                          -> Option<ty::t> {
     if !ty::type_needs_infer(typ) { return Some(typ); }
     match resolve_type(fcx.infcx(), typ, resolve_all | force_all) {
         Ok(new_type) => return Some(new_type),
@@ -52,28 +52,28 @@ fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t)
     }
 }
 
-fn resolve_method_map_entry(fcx: @fn_ctxt, sp: span, id: ast::node_id)
-{
+fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     // Resolve any method map entry
     match fcx.ccx.method_map.find(&id) {
         None => {}
         Some(ref mme) => {
             for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
-                fcx.ccx.method_map.insert(
-                    id,
-                    method_map_entry {
-                        self_arg: arg {mode: mme.self_arg.mode, ty: *t},
-                        .. *mme
-                    }
-                );
+                let method_map = fcx.ccx.method_map;
+                method_map.insert(id,
+                                  method_map_entry {
+                                    self_arg: arg {
+                                        mode: mme.self_arg.mode,
+                                        ty: *t
+                                    },
+                                    .. *mme
+                                  });
             }
         }
     }
 }
 
-fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
-    -> Option<ty::t>
-{
+fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
+                           -> Option<ty::t> {
     let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
 
     // Resolve any borrowings for the node with id `id`
@@ -137,10 +137,10 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
     }
 }
 
-fn maybe_resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span,
+fn maybe_resolve_type_vars_for_node(wbcx: @mut WbCtxt,
+                                    sp: span,
                                     id: ast::node_id)
-    -> Option<ty::t>
-{
+                                 -> Option<ty::t> {
     if wbcx.fcx.inh.node_types.contains_key_ref(&id) {
         resolve_type_vars_for_node(wbcx, sp, id)
     } else {
@@ -148,18 +148,22 @@ fn maybe_resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span,
     }
 }
 
-type wb_ctxt =
-    // As soon as we hit an error we have to stop resolving
-    // the entire function
-    {fcx: @fn_ctxt, mut success: bool};
-type wb_vt = visit::vt<wb_ctxt>;
+struct WbCtxt {
+    fcx: @mut FnCtxt,
 
-fn visit_stmt(s: @ast::stmt, wbcx: wb_ctxt, v: wb_vt) {
+    // As soon as we hit an error we have to stop resolving
+    // the entire function.
+    success: bool,
+}
+
+type wb_vt = visit::vt<@mut WbCtxt>;
+
+fn visit_stmt(s: @ast::stmt, &&wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
     visit::visit_stmt(s, wbcx, v);
 }
-fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
+fn visit_expr(e: @ast::expr, &&wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, e.span, e.id);
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
@@ -196,12 +200,12 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     }
     visit::visit_expr(e, wbcx, v);
 }
-fn visit_block(b: ast::blk, wbcx: wb_ctxt, v: wb_vt) {
+fn visit_block(b: ast::blk, &&wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, b.span, b.node.id);
     visit::visit_block(b, wbcx, v);
 }
-fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
+fn visit_pat(p: @ast::pat, &&wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, p.span, p.id);
     debug!("Type for pattern binding %s (id %d) resolved to %s",
@@ -211,7 +215,7 @@ fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
                                    p.id)));
     visit::visit_pat(p, wbcx, v);
 }
-fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
+fn visit_local(l: @ast::local, &&wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     let var_ty = wbcx.fcx.local_ty(l.span, l.node.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
@@ -233,11 +237,11 @@ fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     }
     visit::visit_local(l, wbcx, v);
 }
-fn visit_item(_item: @ast::item, _wbcx: wb_ctxt, _v: wb_vt) {
+fn visit_item(_item: @ast::item, &&_wbcx: @mut WbCtxt, _v: wb_vt) {
     // Ignore items
 }
 
-fn mk_visitor() -> visit::vt<wb_ctxt> {
+fn mk_visitor() -> visit::vt<@mut WbCtxt> {
     visit::mk_vt(@visit::Visitor {visit_item: visit_item,
                                   visit_stmt: visit_stmt,
                                   visit_expr: visit_expr,
@@ -247,18 +251,18 @@ fn mk_visitor() -> visit::vt<wb_ctxt> {
                                   .. *visit::default_visitor()})
 }
 
-pub fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
-    let wbcx = {fcx: fcx, mut success: true};
+pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::expr) -> bool {
+    let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
     (visit.visit_expr)(e, wbcx, visit);
     return wbcx.success;
 }
 
-pub fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
+pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                decl: &ast::fn_decl,
                                blk: ast::blk,
                                self_info: Option<self_info>) -> bool {
-    let wbcx = {fcx: fcx, mut success: true};
+    let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
     (visit.visit_block)(blk, wbcx, visit);
     for self_info.each |self_info| {

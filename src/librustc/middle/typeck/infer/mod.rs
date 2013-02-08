@@ -313,15 +313,15 @@ pub struct InferCtxt {
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
     ty_var_bindings: ValsAndBindings<ty::TyVid, Bounds<ty::t>>,
-    mut ty_var_counter: uint,
+    ty_var_counter: uint,
 
     // Map from integral variable to the kind of integer it represents
     int_var_bindings: ValsAndBindings<ty::IntVid, Option<IntVarValue>>,
-    mut int_var_counter: uint,
+    int_var_counter: uint,
 
     // Map from floating variable to the kind of float it represents
     float_var_bindings: ValsAndBindings<ty::FloatVid, Option<ast::float_ty>>,
-    mut float_var_counter: uint,
+    float_var_counter: uint,
 
     // For region variables.
     region_vars: RegionVarBindings,
@@ -351,12 +351,12 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
 fn new_ValsAndBindings<V:Copy, T:Copy>() -> ValsAndBindings<V, T> {
     ValsAndBindings {
         vals: oldsmallintmap::mk(),
-        mut bindings: ~[]
+        bindings: ~[]
     }
 }
 
-pub fn new_infer_ctxt(tcx: ty::ctxt) -> @InferCtxt {
-    @InferCtxt {
+pub fn new_infer_ctxt(tcx: ty::ctxt) -> @mut InferCtxt {
+    @mut InferCtxt {
         tcx: tcx,
 
         ty_var_bindings: new_ValsAndBindings(),
@@ -372,8 +372,12 @@ pub fn new_infer_ctxt(tcx: ty::ctxt) -> @InferCtxt {
     }
 }
 
-pub fn mk_subty(cx: @InferCtxt, a_is_expected: bool, span: span,
-                a: ty::t, b: ty::t) -> ures {
+pub fn mk_subty(cx: @mut InferCtxt,
+                a_is_expected: bool,
+                span: span,
+                a: ty::t,
+                b: ty::t)
+             -> ures {
     debug!("mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -382,7 +386,7 @@ pub fn mk_subty(cx: @InferCtxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-pub fn can_mk_subty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
+pub fn can_mk_subty(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
@@ -391,8 +395,12 @@ pub fn can_mk_subty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
     }.to_ures()
 }
 
-pub fn mk_subr(cx: @InferCtxt, a_is_expected: bool, span: span,
-               a: ty::Region, b: ty::Region) -> ures {
+pub fn mk_subr(cx: @mut InferCtxt,
+               a_is_expected: bool,
+               span: span,
+               a: ty::Region,
+               b: ty::Region)
+            -> ures {
     debug!("mk_subr(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -401,8 +409,12 @@ pub fn mk_subr(cx: @InferCtxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-pub fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
-               a: ty::t, b: ty::t) -> ures {
+pub fn mk_eqty(cx: @mut InferCtxt,
+               a_is_expected: bool,
+               span: span,
+               a: ty::t,
+               b: ty::t)
+            -> ures {
     debug!("mk_eqty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -412,8 +424,12 @@ pub fn mk_eqty(cx: @InferCtxt, a_is_expected: bool, span: span,
     }.to_ures()
 }
 
-pub fn mk_coercety(cx: @InferCtxt, a_is_expected: bool, span: span,
-                   a: ty::t, b: ty::t) -> CoerceResult {
+pub fn mk_coercety(cx: @mut InferCtxt,
+                   a_is_expected: bool,
+                   span: span,
+                   a: ty::t,
+                   b: ty::t)
+                -> CoerceResult {
     debug!("mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
@@ -422,7 +438,7 @@ pub fn mk_coercety(cx: @InferCtxt, a_is_expected: bool, span: span,
     }
 }
 
-pub fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
+pub fn can_mk_coercety(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
@@ -433,17 +449,22 @@ pub fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
 }
 
 // See comment on the type `resolve_state` below
-pub fn resolve_type(cx: @InferCtxt, a: ty::t, modes: uint) -> fres<ty::t> {
-    resolver(cx, modes).resolve_type_chk(a)
+pub fn resolve_type(cx: @mut InferCtxt,
+                    a: ty::t,
+                    modes: uint)
+                 -> fres<ty::t> {
+    let mut resolver = resolver(cx, modes);
+    resolver.resolve_type_chk(a)
 }
 
-pub fn resolve_region(cx: @InferCtxt, r: ty::Region, modes: uint)
+pub fn resolve_region(cx: @mut InferCtxt, r: ty::Region, modes: uint)
                    -> fres<ty::Region> {
-    resolver(cx, modes).resolve_region_chk(r)
+    let mut resolver = resolver(cx, modes);
+    resolver.resolve_region_chk(r)
 }
 
 /*
-fn resolve_borrowings(cx: @InferCtxt) {
+fn resolve_borrowings(cx: @mut InferCtxt) {
     for cx.borrowings.each |item| {
         match resolve_region(cx, item.scope, resolve_all|force_all) {
           Ok(region) => {
@@ -510,7 +531,7 @@ pub fn uok() -> ures {
 }
 
 fn rollback_to<V:Copy Vid, T:Copy>(
-    vb: &ValsAndBindings<V, T>,
+    vb: &mut ValsAndBindings<V, T>,
     len: uint)
 {
     while vb.bindings.len() != len {
@@ -526,7 +547,7 @@ struct Snapshot {
     region_vars_snapshot: uint,
 }
 
-impl @InferCtxt {
+impl @mut InferCtxt {
     fn combine_fields(a_is_expected: bool,
                       span: span) -> CombineFields {
         CombineFields {infcx: self,
@@ -557,11 +578,11 @@ impl @InferCtxt {
 
     fn rollback_to(snapshot: &Snapshot) {
         debug!("rollback!");
-        rollback_to(&self.ty_var_bindings, snapshot.ty_var_bindings_len);
+        rollback_to(&mut self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
-        rollback_to(&self.int_var_bindings,
+        rollback_to(&mut self.int_var_bindings,
                     snapshot.int_var_bindings_len);
-        rollback_to(&self.float_var_bindings,
+        rollback_to(&mut self.float_var_bindings,
                     snapshot.float_var_bindings_len);
 
         self.region_vars.rollback_to(snapshot.region_vars_snapshot);
@@ -609,21 +630,21 @@ impl @InferCtxt {
 }
 
 fn next_simple_var<V: Copy,T: Copy>(
-    +counter: &mut uint,
-    +bindings: &ValsAndBindings<V,Option<T>>) -> uint
-{
+        +counter: &mut uint,
+        +bindings: &mut ValsAndBindings<V,Option<T>>)
+     -> uint {
     let id = *counter;
     *counter += 1;
     bindings.vals.insert(id, Root(None, 0));
     return id;
 }
 
-impl @InferCtxt {
+impl @mut InferCtxt {
     fn next_ty_var_id() -> TyVid {
         let id = self.ty_var_counter;
         self.ty_var_counter += 1;
-        self.ty_var_bindings.vals.insert(id,
-                                         Root({lb: None, ub: None}, 0u));
+        let vals = self.ty_var_bindings.vals;
+        vals.insert(id, Root({lb: None, ub: None}, 0u));
         return TyVid(id);
     }
 
@@ -637,7 +658,7 @@ impl @InferCtxt {
 
     fn next_int_var_id() -> IntVid {
         IntVid(next_simple_var(&mut self.int_var_counter,
-                               &self.int_var_bindings))
+                               &mut self.int_var_bindings))
     }
 
     fn next_int_var() -> ty::t {
@@ -646,7 +667,7 @@ impl @InferCtxt {
 
     fn next_float_var_id() -> FloatVid {
         FloatVid(next_simple_var(&mut self.float_var_counter,
-                                 &self.float_var_bindings))
+                                 &mut self.float_var_bindings))
     }
 
     fn next_float_var() -> ty::t {
@@ -726,9 +747,9 @@ impl @InferCtxt {
     }
 
     fn replace_bound_regions_with_fresh_regions(
-        &self, span: span,
-        fsig: &ty::FnSig) -> (ty::FnSig, isr_alist)
-    {
+            span: span,
+            fsig: &ty::FnSig)
+         -> (ty::FnSig, isr_alist) {
         let {fn_sig: fn_sig, isr: isr, _} =
             replace_bound_regions_in_fn_sig(self.tcx, @Nil, None, fsig, |br| {
                 // N.B.: The name of the bound region doesn't have anything to
