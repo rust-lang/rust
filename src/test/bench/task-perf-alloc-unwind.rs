@@ -56,7 +56,7 @@ struct r {
   _l: @nillist,
 }
 
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {}
 }
 

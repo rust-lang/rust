@@ -18,9 +18,9 @@ pub trait NumExt: MyEq MyNum { }
 
 struct S { v: int }
 
-impl S: MyEq { }
+impl MyEq for S { }
 
-impl S: MyNum {
+impl MyNum for S {
     static fn from_int(i: int) -> S {
         S {
             v: i
@@ -28,7 +28,7 @@ impl S: MyNum {
     }
 }
 
-impl S: NumExt { }
+impl NumExt for S { }
 
 fn greater_than_one<T:NumExt>() -> T { MyNum::from_int(1) }
 

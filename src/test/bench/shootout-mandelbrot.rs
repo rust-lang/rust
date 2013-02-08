@@ -29,7 +29,7 @@ struct cmplx {
     im: f64
 }
 
-impl cmplx : ops::Mul<cmplx,cmplx> {
+impl ops::Mul<cmplx,cmplx> for cmplx {
     pure fn mul(&self, x: &cmplx) -> cmplx {
         cmplx {
             re: self.re*(*x).re - self.im*(*x).im,
@@ -38,7 +38,7 @@ impl cmplx : ops::Mul<cmplx,cmplx> {
     }
 }
 
-impl cmplx : ops::Add<cmplx,cmplx> {
+impl ops::Add<cmplx,cmplx> for cmplx {
     pure fn add(&self, x: &cmplx) -> cmplx {
         cmplx {
             re: self.re + (*x).re,
@@ -98,7 +98,7 @@ fn chanmb(i: uint, size: uint) -> Line
 
 struct Devnull();
 
-impl Devnull: io::Writer {
+impl io::Writer for Devnull {
     fn write(&self, _b: &[const u8]) {}
     fn seek(&self, _i: int, _s: io::SeekStyle) {}
     fn tell(&self) -> uint {0_u}

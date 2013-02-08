@@ -17,7 +17,7 @@ struct r {
 
 struct Box { x: r }
 
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {
         *(self.i) = *(self.i) + 1;
     }

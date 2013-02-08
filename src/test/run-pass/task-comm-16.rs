@@ -56,7 +56,7 @@ enum t {
     tag3(int, u8, char)
 }
 
-impl t : cmp::Eq {
+impl cmp::Eq for t {
     pure fn eq(&self, other: &t) -> bool {
         match *self {
             tag1 => {

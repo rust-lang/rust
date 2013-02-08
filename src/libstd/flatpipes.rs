@@ -303,7 +303,7 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
     }
 }
 
-impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C>: GenericChan<T> {
+impl<T,F:Flattener<T>,C:ByteChan> GenericChan<T> for FlatChan<T, F, C> {
     fn send(val: T) {
         self.byte_chan.send(CONTINUE.to_vec());
         let bytes = self.flattener.flatten(move val);
@@ -474,7 +474,7 @@ pub mod flatteners {
         static fn from_writer(w: Writer) -> Self;
     }
 
-    impl json::Decoder: FromReader {
+    impl FromReader for json::Decoder {
         static fn from_reader(r: Reader) -> json::Decoder {
             match json::from_reader(r) {
                 Ok(move json) => {
@@ -485,13 +485,13 @@ pub mod flatteners {
         }
     }
 
-    impl json::Encoder: FromWriter {
+    impl FromWriter for json::Encoder {
         static fn from_writer(w: Writer) -> json::Encoder {
             json::Encoder(move w)
         }
     }
 
-    impl ebml::reader::Decoder: FromReader {
+    impl FromReader for ebml::reader::Decoder {
         static fn from_reader(r: Reader) -> ebml::reader::Decoder {
             let buf = @r.read_whole_stream();
             let doc = ebml::reader::Doc(buf);
@@ -499,7 +499,7 @@ pub mod flatteners {
         }
     }
 
-    impl ebml::writer::Encoder: FromWriter {
+    impl FromWriter for ebml::writer::Encoder {
         static fn from_writer(w: Writer) -> ebml::writer::Encoder {
             ebml::writer::Encoder(move w)
         }

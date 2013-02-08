@@ -14,7 +14,7 @@ struct test {
   f: int,
 }
 
-impl test : Drop {
+impl Drop for test {
     fn finalize(&self) {}
 }
 

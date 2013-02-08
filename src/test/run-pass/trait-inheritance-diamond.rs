@@ -17,10 +17,10 @@ trait D: B C { fn d(&self) -> int; }
 
 struct S { bogus: () }
 
-impl S: A { fn a(&self) -> int { 10 } }
-impl S: B { fn b(&self) -> int { 20 } }
-impl S: C { fn c(&self) -> int { 30 } }
-impl S: D { fn d(&self) -> int { 40 } }
+impl A for S { fn a(&self) -> int { 10 } }
+impl B for S { fn b(&self) -> int { 20 } }
+impl C for S { fn c(&self) -> int { 30 } }
+impl D for S { fn d(&self) -> int { 40 } }
 
 fn f<T: D>(x: &T) {
     assert x.a() == 10;

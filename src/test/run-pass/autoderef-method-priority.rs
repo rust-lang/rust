@@ -12,11 +12,11 @@ trait double {
     fn double() -> uint;
 }
 
-impl uint: double {
+impl double for uint {
     fn double() -> uint { self }
 }
 
-impl @uint: double {
+impl double for @uint {
     fn double() -> uint { *self * 2u }
 }
 

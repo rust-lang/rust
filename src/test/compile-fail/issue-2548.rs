@@ -16,7 +16,7 @@ struct foo {
 
 }
 
-impl foo : Drop {
+impl Drop for foo {
     fn finalize(&self) {
         io::println("Goodbye, World!");
         *self.x += 1;

@@ -109,7 +109,7 @@ pub struct creader_cache_key {
 
 type creader_cache = HashMap<creader_cache_key, t>;
 
-impl creader_cache_key : to_bytes::IterBytes {
+impl to_bytes::IterBytes for creader_cache_key {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
     }
@@ -123,7 +123,7 @@ struct intern_key {
 // NB: Do not replace this with #[deriving_eq]. The automatically-derived
 // implementation will not recurse through sty and you will get stack
 // exhaustion.
-impl intern_key : cmp::Eq {
+impl cmp::Eq for intern_key {
     pure fn eq(&self, other: &intern_key) -> bool {
         unsafe {
             *self.sty == *other.sty && self.o_def_id == other.o_def_id
@@ -134,7 +134,7 @@ impl intern_key : cmp::Eq {
     }
 }
 
-impl intern_key : to_bytes::IterBytes {
+impl to_bytes::IterBytes for intern_key {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         unsafe {
             to_bytes::iter_bytes_2(&*self.sty, &self.o_def_id, lsb0, f);
@@ -153,7 +153,7 @@ pub type opt_region_variance = Option<region_variance>;
 #[auto_decode]
 pub enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
 
-impl region_variance : cmp::Eq {
+impl cmp::Eq for region_variance {
     pure fn eq(&self, other: &region_variance) -> bool {
         match ((*self), (*other)) {
             (rv_covariant, rv_covariant) => true,
@@ -370,13 +370,13 @@ pub struct FnSig {
     output: t
 }
 
-impl BareFnTy : to_bytes::IterBytes {
+impl to_bytes::IterBytes for BareFnTy {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.purity, &self.abi, &self.sig, lsb0, f)
     }
 }
 
-impl ClosureTy : to_bytes::IterBytes {
+impl to_bytes::IterBytes for ClosureTy {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_5(&self.purity, &self.sigil, &self.onceness,
                                &self.region, &self.sig, lsb0, f)
@@ -389,7 +389,7 @@ pub struct param_ty {
     def_id: def_id
 }
 
-impl param_ty : to_bytes::IterBytes {
+impl to_bytes::IterBytes for param_ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.idx, &self.def_id, lsb0, f)
     }
@@ -595,7 +595,7 @@ pub enum InferTy {
     FloatVar(FloatVid)
 }
 
-impl InferTy : to_bytes::IterBytes {
+impl to_bytes::IterBytes for InferTy {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
@@ -612,7 +612,7 @@ pub enum InferRegion {
     ReSkolemized(uint, bound_region)
 }
 
-impl InferRegion : to_bytes::IterBytes {
+impl to_bytes::IterBytes for InferRegion {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
             ReVar(ref rv) => to_bytes::iter_bytes_2(&0u8, rv, lsb0, f),
@@ -621,7 +621,7 @@ impl InferRegion : to_bytes::IterBytes {
     }
 }
 
-impl InferRegion : cmp::Eq {
+impl cmp::Eq for InferRegion {
     pure fn eq(&self, other: &InferRegion) -> bool {
         match ((*self), *other) {
             (ReVar(rva), ReVar(rvb)) => {
@@ -638,7 +638,7 @@ impl InferRegion : cmp::Eq {
     }
 }
 
-impl param_bound : to_bytes::IterBytes {
+impl to_bytes::IterBytes for param_bound {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           bound_copy => 0u8.iter_bytes(lsb0, f),
@@ -1865,7 +1865,7 @@ fn remove_copyable(k: Kind) -> Kind {
     k - kind_(KIND_MASK_COPY | KIND_MASK_DEFAULT_MODE)
 }
 
-impl Kind : ops::BitAnd<Kind,Kind> {
+impl ops::BitAnd<Kind,Kind> for Kind {
     pure fn bitand(&self, other: &Kind) -> Kind {
         unsafe {
             lower_kind(*self, *other)
@@ -1873,7 +1873,7 @@ impl Kind : ops::BitAnd<Kind,Kind> {
     }
 }
 
-impl Kind : ops::BitOr<Kind,Kind> {
+impl ops::BitOr<Kind,Kind> for Kind {
     pure fn bitor(&self, other: &Kind) -> Kind {
         unsafe {
             raise_kind(*self, *other)
@@ -1881,7 +1881,7 @@ impl Kind : ops::BitOr<Kind,Kind> {
     }
 }
 
-impl Kind : ops::Sub<Kind,Kind> {
+impl ops::Sub<Kind,Kind> for Kind {
     pure fn sub(&self, other: &Kind) -> Kind {
         unsafe {
             kind_(**self & !**other)
@@ -2594,7 +2594,7 @@ pub fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
     }
 }
 
-impl bound_region : to_bytes::IterBytes {
+impl to_bytes::IterBytes for bound_region {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           ty::br_self => 0u8.iter_bytes(lsb0, f),
@@ -2614,7 +2614,7 @@ impl bound_region : to_bytes::IterBytes {
     }
 }
 
-impl Region : to_bytes::IterBytes {
+impl to_bytes::IterBytes for Region {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           re_bound(ref br) =>
@@ -2634,7 +2634,7 @@ impl Region : to_bytes::IterBytes {
     }
 }
 
-impl vstore : to_bytes::IterBytes {
+impl to_bytes::IterBytes for vstore {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           vstore_fixed(ref u) =>
@@ -2649,7 +2649,7 @@ impl vstore : to_bytes::IterBytes {
     }
 }
 
-impl substs : to_bytes::IterBytes {
+impl to_bytes::IterBytes for substs {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_3(&self.self_r,
                                  &self.self_ty,
@@ -2657,34 +2657,34 @@ impl substs : to_bytes::IterBytes {
     }
 }
 
-impl mt : to_bytes::IterBytes {
+impl to_bytes::IterBytes for mt {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ty,
                                  &self.mutbl, lsb0, f)
     }
 }
 
-impl field : to_bytes::IterBytes {
+impl to_bytes::IterBytes for field {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ident,
                                  &self.mt, lsb0, f)
     }
 }
 
-impl arg : to_bytes::IterBytes {
+impl to_bytes::IterBytes for arg {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.mode,
                                &self.ty, lsb0, f)
     }
 }
 
-impl Kind : to_bytes::IterBytes {
+impl to_bytes::IterBytes for Kind {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-impl FnSig : to_bytes::IterBytes {
+impl to_bytes::IterBytes for FnSig {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.inputs,
                                &self.output,
@@ -2692,7 +2692,7 @@ impl FnSig : to_bytes::IterBytes {
     }
 }
 
-impl sty : to_bytes::IterBytes {
+impl to_bytes::IterBytes for sty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           ty_nil => 0u8.iter_bytes(lsb0, f),
@@ -4396,14 +4396,14 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
     }
 }
 
-impl mt : cmp::Eq {
+impl cmp::Eq for mt {
     pure fn eq(&self, other: &mt) -> bool {
         (*self).ty == (*other).ty && (*self).mutbl == (*other).mutbl
     }
     pure fn ne(&self, other: &mt) -> bool { !(*self).eq(other) }
 }
 
-impl vstore : cmp::Eq {
+impl cmp::Eq for vstore {
     pure fn eq(&self, other: &vstore) -> bool {
         match (*self) {
             vstore_fixed(e0a) => {
@@ -4435,7 +4435,7 @@ impl vstore : cmp::Eq {
     pure fn ne(&self, other: &vstore) -> bool { !(*self).eq(other) }
 }
 
-impl Region : cmp::Eq {
+impl cmp::Eq for Region {
     pure fn eq(&self, other: &Region) -> bool {
         match (*self) {
             re_bound(e0a) => {
@@ -4473,7 +4473,7 @@ impl Region : cmp::Eq {
     pure fn ne(&self, other: &Region) -> bool { !(*self).eq(other) }
 }
 
-impl bound_region : cmp::Eq {
+impl cmp::Eq for bound_region {
     pure fn eq(&self, other: &bound_region) -> bool {
         match (*self) {
             br_self => {
@@ -4511,7 +4511,7 @@ impl bound_region : cmp::Eq {
     pure fn ne(&self, other: &bound_region) -> bool { !(*self).eq(other) }
 }
 
-impl param_bound : cmp::Eq {
+impl cmp::Eq for param_bound {
     pure fn eq(&self, other: &param_bound) -> bool {
         match (*self) {
             bound_copy => {
@@ -4549,7 +4549,7 @@ impl param_bound : cmp::Eq {
     pure fn ne(&self, other: &param_bound) -> bool { !self.eq(other) }
 }
 
-impl Kind : cmp::Eq {
+impl cmp::Eq for Kind {
     pure fn eq(&self, other: &Kind) -> bool { *(*self) == *(*other) }
     pure fn ne(&self, other: &Kind) -> bool { *(*self) != *(*other) }
 }

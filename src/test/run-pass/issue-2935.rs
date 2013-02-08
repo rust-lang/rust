@@ -16,7 +16,7 @@ trait it {
     fn f();
 }
 
-impl t: it {
+impl it for t {
     fn f() { }
 }
 

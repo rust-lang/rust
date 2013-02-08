@@ -129,7 +129,7 @@ mod test_methods {
         bar: uint
     }
 
-    impl Foo: Fooable {
+    impl Fooable for Foo {
         #[cfg(bogus)]
         static fn what() { }
 

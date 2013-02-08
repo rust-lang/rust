@@ -12,7 +12,7 @@ struct defer {
     x: &[&str],
 }
 
-impl defer : Drop {
+impl Drop for defer {
     fn finalize(&self) {
         error!("%?", self.x);
     }

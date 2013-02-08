@@ -11,7 +11,7 @@
 
 struct foo { a: int, b: int, c: int }
 
-impl foo : cmp::Eq {
+impl cmp::Eq for foo {
     pure fn eq(&self, other: &foo) -> bool {
         (*self).a == (*other).a &&
         (*self).b == (*other).b &&

@@ -34,7 +34,7 @@ struct Ctxt {
     mut path: ~[~str]
 }
 
-impl Ctxt: Clone {
+impl Clone for Ctxt {
     fn clone(&self) -> Ctxt {
         Ctxt {
             srv: self.srv.clone(),

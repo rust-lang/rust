@@ -516,14 +516,14 @@ pub fn reserved_keyword_table() -> HashMap<~str, ()> {
     words
 }
 
-impl binop : cmp::Eq {
+impl cmp::Eq for binop {
     pure fn eq(&self, other: &binop) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
     pure fn ne(&self, other: &binop) -> bool { !(*self).eq(other) }
 }
 
-impl Token : cmp::Eq {
+impl cmp::Eq for Token {
     pure fn eq(&self, other: &Token) -> bool {
         match (*self) {
             EQ => {

@@ -19,7 +19,7 @@ enum color {
     orange = 8 >> 1
 }
 
-impl color : cmp::Eq {
+impl cmp::Eq for color {
     pure fn eq(&self, other: &color) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

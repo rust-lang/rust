@@ -167,7 +167,7 @@ type SemRelease = SemReleaseGeneric<()>;
 type SemAndSignalRelease = SemReleaseGeneric<~[Waitqueue]>;
 struct SemReleaseGeneric<Q> { sem: &Sem<Q> }
 
-impl<Q: Owned> SemReleaseGeneric<Q> : Drop {
+impl<Q: Owned> Drop for SemReleaseGeneric<Q> {
     fn finalize(&self) {
         self.sem.release();
     }
@@ -189,7 +189,7 @@ fn SemAndSignalRelease(sem: &r/Sem<~[Waitqueue]>)
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
 pub struct Condvar { priv sem: &Sem<~[Waitqueue]> }
 
-impl Condvar : Drop { fn finalize(&self) {} }
+impl Drop for Condvar { fn finalize(&self) {} }
 
 impl &Condvar {
     /**
@@ -260,7 +260,7 @@ impl &Condvar {
             sem: &Sem<~[Waitqueue]>,
         }
 
-        impl SemAndSignalReacquire : Drop {
+        impl Drop for SemAndSignalReacquire {
             fn finalize(&self) {
                 unsafe {
                     // Needs to succeed, instead of itself dying.
@@ -362,7 +362,7 @@ pub fn semaphore(count: int) -> Semaphore {
     Semaphore { sem: new_sem(count, ()) }
 }
 
-impl Semaphore: Clone {
+impl Clone for Semaphore {
     /// Create a new handle to the semaphore.
     fn clone(&self) -> Semaphore {
         Semaphore { sem: Sem((*self.sem).clone()) }
@@ -412,7 +412,7 @@ pub fn mutex_with_condvars(num_condvars: uint) -> Mutex {
     Mutex { sem: new_sem_and_signal(1, num_condvars) }
 }
 
-impl Mutex: Clone {
+impl Clone for Mutex {
     /// Create a new handle to the mutex.
     fn clone(&self) -> Mutex { Mutex { sem: Sem((*self.sem).clone()) } }
 }
@@ -610,7 +610,7 @@ struct RWlockReleaseRead {
     lock: &RWlock,
 }
 
-impl RWlockReleaseRead : Drop {
+impl Drop for RWlockReleaseRead {
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
@@ -644,7 +644,7 @@ struct RWlockReleaseDowngrade {
     lock: &RWlock,
 }
 
-impl RWlockReleaseDowngrade : Drop {
+impl Drop for RWlockReleaseDowngrade {
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
@@ -682,10 +682,10 @@ fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
 
 /// The "write permission" token used for rwlock.write_downgrade().
 pub struct RWlockWriteMode { priv lock: &RWlock }
-impl RWlockWriteMode : Drop { fn finalize(&self) {} }
+impl Drop for RWlockWriteMode { fn finalize(&self) {} }
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWlockReadMode  { priv lock: &RWlock }
-impl RWlockReadMode : Drop { fn finalize(&self) {} }
+impl Drop for RWlockReadMode { fn finalize(&self) {} }
 
 impl &RWlockWriteMode {
     /// Access the pre-downgrade rwlock in write mode.
@@ -1007,7 +1007,7 @@ mod tests {
             c: pipes::Chan<()>,
         }
 
-        impl SendOnFailure : Drop {
+        impl Drop for SendOnFailure {
             fn finalize(&self) {
                 self.c.send(());
             }

@@ -761,7 +761,7 @@ pure fn gt(a: &str, b: &str) -> bool {
 }
 
 #[cfg(notest)]
-impl &str : Eq {
+impl Eq for &str {
     #[inline(always)]
     pure fn eq(&self, other: & &self/str) -> bool {
         eq_slice((*self), (*other))
@@ -771,7 +771,7 @@ impl &str : Eq {
 }
 
 #[cfg(notest)]
-impl ~str : Eq {
+impl Eq for ~str {
     #[inline(always)]
     pure fn eq(&self, other: &~str) -> bool {
         eq_slice((*self), (*other))
@@ -781,7 +781,7 @@ impl ~str : Eq {
 }
 
 #[cfg(notest)]
-impl @str : Eq {
+impl Eq for @str {
     #[inline(always)]
     pure fn eq(&self, other: &@str) -> bool {
         eq_slice((*self), (*other))
@@ -791,7 +791,7 @@ impl @str : Eq {
 }
 
 #[cfg(notest)]
-impl ~str : Ord {
+impl Ord for ~str {
     #[inline(always)]
     pure fn lt(&self, other: &~str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -803,7 +803,7 @@ impl ~str : Ord {
 }
 
 #[cfg(notest)]
-impl &str : Ord {
+impl Ord for &str {
     #[inline(always)]
     pure fn lt(&self, other: & &self/str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -815,7 +815,7 @@ impl &str : Ord {
 }
 
 #[cfg(notest)]
-impl @str : Ord {
+impl Ord for @str {
     #[inline(always)]
     pure fn lt(&self, other: &@str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -2122,7 +2122,7 @@ pub trait Trimmable {
 }
 
 /// Extension methods for strings
-impl ~str: Trimmable {
+impl Trimmable for ~str {
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
     pure fn trim() -> ~str { trim(self) }
@@ -2139,7 +2139,7 @@ pub mod traits {
     use ops::Add;
     use str::append;
 
-    impl ~str : Add<&str,~str> {
+    impl Add<&str,~str> for ~str {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/str) -> ~str {
             append(copy *self, (*rhs))
@@ -2183,7 +2183,7 @@ pub trait StrSlice {
 }
 
 /// Extension methods for strings
-impl &str: StrSlice {
+impl StrSlice for &str {
     /**
      * Return true if a predicate matches all characters or if the string
      * contains no characters

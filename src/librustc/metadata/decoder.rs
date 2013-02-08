@@ -120,7 +120,7 @@ enum Family {
     InheritedField         // N
 }
 
-impl Family : cmp::Eq {
+impl cmp::Eq for Family {
     pure fn eq(&self, other: &Family) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

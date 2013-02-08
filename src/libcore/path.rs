@@ -363,7 +363,7 @@ impl Path {
     }
 }
 
-impl PosixPath : ToStr {
+impl ToStr for PosixPath {
     pure fn to_str(&self) -> ~str {
         let mut s = ~"";
         if self.is_absolute {
@@ -375,7 +375,7 @@ impl PosixPath : ToStr {
 
 // FIXME (#3227): when default methods in traits are working, de-duplicate
 // PosixPath and WindowsPath, most of their methods are common.
-impl PosixPath : GenericPath {
+impl GenericPath for PosixPath {
 
     static pure fn from_str(s: &str) -> PosixPath {
         let mut components = str::split_nonempty(s, |c| c == '/');
@@ -526,7 +526,7 @@ impl PosixPath : GenericPath {
 }
 
 
-impl WindowsPath : ToStr {
+impl ToStr for WindowsPath {
     pure fn to_str(&self) -> ~str {
         let mut s = ~"";
         match self.host {
@@ -545,7 +545,7 @@ impl WindowsPath : ToStr {
 }
 
 
-impl WindowsPath : GenericPath {
+impl GenericPath for WindowsPath {
 
     static pure fn from_str(s: &str) -> WindowsPath {
         let host;

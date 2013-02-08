@@ -13,7 +13,7 @@ struct Thing {
     x: int
 }
 
-impl Thing/*: Mul<int, Thing>*/ { //~ ERROR Look ma, no Mul!
+impl Mul<int, Thing>*/ for Thing/* { //~ ERROR Look ma, no Mul!
     pure fn mul(c: &int) -> Thing {
         Thing {x: self.x * *c}
     }

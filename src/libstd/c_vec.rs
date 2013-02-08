@@ -56,7 +56,7 @@ struct DtorRes {
   dtor: Option<fn@()>,
 }
 
-impl DtorRes : Drop {
+impl Drop for DtorRes {
     fn finalize(&self) {
         match self.dtor {
           option::None => (),

@@ -17,7 +17,7 @@ trait Equal {
 
 enum Color { cyan, magenta, yellow, black }
 
-impl Color : Equal {
+impl Equal for Color {
     static fn isEq(a: Color, b: Color) -> bool {
         match (a, b) {
           (cyan, cyan)       => { true  }
@@ -34,7 +34,7 @@ enum ColorTree {
     branch(@ColorTree, @ColorTree)
 }
 
-impl ColorTree : Equal {
+impl Equal for ColorTree {
     static fn isEq(a: ColorTree, b: ColorTree) -> bool {
         match (a, b) {
           (leaf(x), leaf(y)) => { Equal::isEq(x, y) }

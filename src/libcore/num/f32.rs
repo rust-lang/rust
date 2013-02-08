@@ -251,7 +251,7 @@ pub pure fn logarithm(n: f32, b: f32) -> f32 {
 }
 
 #[cfg(notest)]
-impl f32 : cmp::Eq {
+impl cmp::Eq for f32 {
     #[inline(always)]
     pure fn eq(&self, other: &f32) -> bool { (*self) == (*other) }
     #[inline(always)]
@@ -259,7 +259,7 @@ impl f32 : cmp::Eq {
 }
 
 #[cfg(notest)]
-impl f32 : cmp::Ord {
+impl cmp::Ord for f32 {
     #[inline(always)]
     pure fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
     #[inline(always)]
@@ -270,7 +270,7 @@ impl f32 : cmp::Ord {
     pure fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
 }
 
-impl f32: num::Num {
+impl num::Num for f32 {
     #[inline(always)]
     pure fn add(&self, other: &f32) -> f32 { return *self + *other; }
     #[inline(always)]
@@ -290,12 +290,12 @@ impl f32: num::Num {
     static pure fn from_int(n: int) -> f32 { return n as f32;    }
 }
 
-impl f32: num::Zero {
+impl num::Zero for f32 {
     #[inline(always)]
     static pure fn zero() -> f32 { 0.0 }
 }
 
-impl f32: num::One {
+impl num::One for f32 {
     #[inline(always)]
     static pure fn one() -> f32 { 1.0 }
 }
@@ -305,7 +305,7 @@ pub extern {
     fn floorf32(val: f32) -> f32;
 }
 
-impl f32: num::Round {
+impl num::Round for f32 {
     #[inline(always)]
     pure fn round(&self, mode: num::RoundMode) -> f32 {
         match mode {
@@ -433,12 +433,12 @@ pub pure fn to_str_digits(num: f32, dig: uint) -> ~str {
     r
 }
 
-impl f32: to_str::ToStr {
+impl to_str::ToStr for f32 {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
 }
 
-impl f32: num::ToStrRadix {
+impl num::ToStrRadix for f32 {
     #[inline(always)]
     pure fn to_str_radix(&self, rdx: uint) -> ~str {
         to_str_radix(*self, rdx)
@@ -533,12 +533,12 @@ pub pure fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
     num::from_str_common(num, rdx, true, true, false, num::ExpNone, false)
 }
 
-impl f32: from_str::FromStr {
+impl from_str::FromStr for f32 {
     #[inline(always)]
     static pure fn from_str(val: &str) -> Option<f32> { from_str(val) }
 }
 
-impl f32: num::FromStrRadix {
+impl num::FromStrRadix for f32 {
     #[inline(always)]
     static pure fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
         from_str_radix(val, rdx)

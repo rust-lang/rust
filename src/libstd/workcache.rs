@@ -104,7 +104,7 @@ struct WorkKey {
     name: ~str
 }
 
-impl WorkKey: to_bytes::IterBytes {
+impl to_bytes::IterBytes for WorkKey {
     #[inline(always)]
     pure fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         let mut flag = true;
@@ -114,7 +114,7 @@ impl WorkKey: to_bytes::IterBytes {
     }
 }
 
-impl WorkKey: cmp::Ord {
+impl cmp::Ord for WorkKey {
     pure fn lt(&self, other: &WorkKey) -> bool {
         self.kind < other.kind ||
             (self.kind == other.kind &&
@@ -285,7 +285,7 @@ trait TPrep {
         Decodable<json::Decoder>>(&self, blk: ~fn(&Exec) -> T) -> Work<T>;
 }
 
-impl @Mut<Prep> : TPrep {
+impl TPrep for @Mut<Prep> {
     fn declare_input(&self, kind:&str, name:&str, val:&str) {
         do self.borrow_mut |p| {
             p.declared_inputs.insert(WorkKey::new(kind, name),

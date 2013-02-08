@@ -36,7 +36,7 @@ struct and_then_get_big_again {
   x:int,
 }
 
-impl and_then_get_big_again : Drop {
+impl Drop for and_then_get_big_again {
     fn finalize(&self) {
         fn getbig(i: int) {
             if i != 0 {

@@ -108,7 +108,7 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
     }
 }
 
-impl StringReader: reader {
+impl reader for StringReader {
     fn is_eof(@mut self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(@mut self) -> TokenAndSpan {

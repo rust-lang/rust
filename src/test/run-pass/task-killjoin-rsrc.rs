@@ -19,7 +19,7 @@ struct notify {
     ch: Chan<bool>, v: @mut bool,
 }
 
-impl notify : Drop {
+impl Drop for notify {
     fn finalize(&self) {
         error!("notify: task=%? v=%x unwinding=%b b=%b",
                task::get_task(),

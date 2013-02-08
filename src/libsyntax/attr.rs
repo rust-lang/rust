@@ -327,7 +327,7 @@ pub enum inline_attr {
     ia_never,
 }
 
-impl inline_attr : cmp::Eq {
+impl cmp::Eq for inline_attr {
     pure fn eq(&self, other: &inline_attr) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

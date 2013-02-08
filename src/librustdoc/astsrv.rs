@@ -59,7 +59,7 @@ pub struct Srv {
     ch: SharedChan<Msg>
 }
 
-impl Srv: Clone {
+impl Clone for Srv {
     fn clone(&self) -> Srv {
         Srv {
             ch: self.ch.clone()

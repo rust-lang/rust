@@ -12,7 +12,7 @@ trait Mumbo {
     fn jumbo(&self, x: @uint) -> uint;
 }
 
-impl uint: Mumbo {
+impl Mumbo for uint {
     // Note: this method def is ok, it is more accepting and
     // less effecting than the trait method:
     pure fn jumbo(&self, x: @const uint) -> uint { *self + *x }

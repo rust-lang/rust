@@ -20,13 +20,13 @@ trait Baz {
     fn g(&self);
 }
 
-impl<T:Baz> T : Foo {
+impl<T:Baz> Foo for T {
     fn f(&self) {
         self.g();
     }
 }
 
-impl Bar : Baz {
+impl Baz for Bar {
     fn g(&self) {
         io::println(self.x.to_str());
     }

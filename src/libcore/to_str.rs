@@ -22,28 +22,28 @@ pub trait ToStr {
     pure fn to_str(&self) -> ~str;
 }
 
-impl bool: ToStr {
+impl ToStr for bool {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ::bool::to_str(*self) }
 }
-impl (): ToStr {
+impl ToStr for () {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ~"()" }
 }
-impl ~str: ToStr {
+impl ToStr for ~str {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { copy *self }
 }
-impl &str: ToStr {
+impl ToStr for &str {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
 }
-impl @str: ToStr {
+impl ToStr for @str {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
 }
 
-impl<A: ToStr, B: ToStr> (A, B): ToStr {
+impl<A: ToStr, B: ToStr> ToStr for (A, B) {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         // FIXME(#4760): this causes an llvm assertion
@@ -55,7 +55,7 @@ impl<A: ToStr, B: ToStr> (A, B): ToStr {
         }
     }
 }
-impl<A: ToStr, B: ToStr, C: ToStr> (A, B, C): ToStr {
+impl<A: ToStr, B: ToStr, C: ToStr> ToStr for (A, B, C) {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         // FIXME(#4760): this causes an llvm assertion
@@ -72,7 +72,7 @@ impl<A: ToStr, B: ToStr, C: ToStr> (A, B, C): ToStr {
     }
 }
 
-impl<A: ToStr> ~[A]: ToStr {
+impl<A: ToStr> ToStr for ~[A] {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         unsafe {
@@ -92,11 +92,11 @@ impl<A: ToStr> ~[A]: ToStr {
     }
 }
 
-impl<A: ToStr> @A: ToStr {
+impl<A: ToStr> ToStr for @A {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ~"@" + (**self).to_str() }
 }
-impl<A: ToStr> ~A: ToStr {
+impl<A: ToStr> ToStr for ~A {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ~"~" + (**self).to_str() }
 }

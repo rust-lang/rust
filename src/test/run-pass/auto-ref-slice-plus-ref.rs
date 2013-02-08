@@ -16,12 +16,12 @@ trait MyIter {
     pure fn test_const(&const self);
 }
 
-impl &[int]: MyIter {
+impl MyIter for &[int] {
     pure fn test_imm(&self) { assert self[0] == 1 }
     pure fn test_const(&const self) { assert self[0] == 1 }
 }
 
-impl &str: MyIter {
+impl MyIter for &str {
     pure fn test_imm(&self) { assert *self == "test" }
     pure fn test_const(&const self) { assert *self == "test" }
 }

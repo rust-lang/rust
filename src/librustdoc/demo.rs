@@ -187,7 +187,7 @@ trait TheShunnedHouse {
 }
 
 /// Whatever
-impl OmNomNomy: TheShunnedHouse {
+impl TheShunnedHouse for OmNomNomy {
     fn dingy_house(&self, _unkempt_yard: int) {
     }
 
