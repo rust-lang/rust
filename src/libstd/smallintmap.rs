@@ -14,7 +14,7 @@
  */
 
 use core::container::{Container, Mutable, Map, Set};
-use core::iter::BaseIter;
+use core::iter::{BaseIter, ReverseIter};
 use core::option::{Some, None};
 use core::prelude::*;
 
@@ -34,6 +34,18 @@ impl<V> SmallIntMap<V>: BaseIter<(uint, &V)> {
     }
 
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+impl<V> SmallIntMap<V>: ReverseIter<(uint, &V)> {
+    /// Visit all key-value pairs in reverse order
+    pure fn each_reverse(&self, it: fn(&(uint, &self/V)) -> bool) {
+        for uint::range_rev(self.v.len(), 0) |i| {
+            match self.v[i - 1] {
+              Some(ref elt) => if !it(&(i - 1, elt)) { break },
+              None => ()
+            }
+        }
+    }
 }
 
 impl<V> SmallIntMap<V>: Container {
