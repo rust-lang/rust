@@ -14,6 +14,7 @@
 
 use core::container::{Container, Mutable, Map, Set};
 use core::cmp::{Eq, Ord};
+use core::iter::{BaseIter, ReverseIter};
 use core::option::{Option, Some, None};
 use core::prelude::*;
 
@@ -103,12 +104,19 @@ impl <K: Ord, V> TreeMap<K, V>: Ord {
     }
 }
 
-impl <K: Ord, V> TreeMap<K, V>: iter::BaseIter<(&K, &V)> {
+impl <K: Ord, V> TreeMap<K, V>: BaseIter<(&K, &V)> {
     /// Visit all key-value pairs in order
     pure fn each(&self, f: fn(&(&self/K, &self/V)) -> bool) {
         each(&self.root, f)
     }
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+impl <K: Ord, V> TreeMap<K, V>: ReverseIter<(&K, &V)> {
+    /// Visit all key-value pairs in reverse order
+    pure fn each_reverse(&self, f: fn(&(&self/K, &self/V)) -> bool) {
+        each_reverse(&self.root, f);
+    }
 }
 
 impl <K: Ord, V> TreeMap<K, V>: Container {
@@ -180,11 +188,6 @@ impl <K: Ord, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Visit all key-value pairs in reverse order
-    pure fn each_reverse(&self, f: fn(&(&self/K, &self/V)) -> bool) {
-        each_reverse(&self.root, f);
-    }
-
     /// Visit all keys in reverse order
     pure fn each_key_reverse(&self, f: fn(&K) -> bool) {
         self.each_reverse(|&(k, _)| f(k))
@@ -243,10 +246,17 @@ pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }
 
-impl <T: Ord> TreeSet<T>: iter::BaseIter<T> {
+impl <T: Ord> TreeSet<T>: BaseIter<T> {
     /// Visit all values in order
     pure fn each(&self, f: fn(&T) -> bool) { self.map.each_key(f) }
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+impl <T: Ord> TreeSet<T>: ReverseIter<T> {
+    /// Visit all values in reverse order
+    pure fn each_reverse(&self, f: fn(&T) -> bool) {
+        self.map.each_key_reverse(f)
+    }
 }
 
 impl <T: Eq Ord> TreeSet<T>: Eq {
@@ -503,11 +513,6 @@ impl <T: Ord> TreeSet<T>: Set<T> {
 impl <T: Ord> TreeSet<T> {
     /// Create an empty TreeSet
     static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
-
-    /// Visit all values in reverse order
-    pure fn each_reverse(&self, f: fn(&T) -> bool) {
-        self.map.each_key_reverse(f)
-    }
 
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
