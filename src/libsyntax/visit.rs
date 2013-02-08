@@ -30,10 +30,10 @@ use core::vec;
 pub enum vt<E> { mk_vt(visitor<E>), }
 
 pub enum fn_kind {
-    fk_item_fn(ident, ~[ty_param], purity), //< an item declared with fn()
-    fk_method(ident, ~[ty_param], @method),
-    fk_anon(Proto),    //< an anonymous function like fn@(...)
-    fk_fn_block,       //< a block {||...}
+    fk_item_fn(ident, ~[ty_param], purity), // fn foo()
+    fk_method(ident, ~[ty_param], @method), // fn foo(&self)
+    fk_anon(ast::Sigil),                    // fn@(x, y) { ... }
+    fk_fn_block,                            // |x, y| ...
     fk_dtor(~[ty_param], ~[attribute], node_id /* self id */,
             def_id /* parent class id */) // class destructor
 
@@ -217,9 +217,12 @@ pub fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
       ty_tup(ts) => for ts.each |tt| {
         (v.visit_ty)(*tt, e, v);
       },
-      ty_fn(f) => {
+      ty_closure(f) => {
         for f.decl.inputs.each |a| { (v.visit_ty)(a.ty, e, v); }
-        visit_ty_param_bounds(f.bounds, e, v);
+        (v.visit_ty)(f.decl.output, e, v);
+      }
+      ty_bare_fn(f) => {
+        for f.decl.inputs.each |a| { (v.visit_ty)(a.ty, e, v); }
         (v.visit_ty)(f.decl.output, e, v);
       }
       ty_path(p, _) => visit_path(p, e, v),

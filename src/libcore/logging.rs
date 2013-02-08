@@ -10,10 +10,6 @@
 
 //! Logging
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cast::transmute;
 use io;
 use libc;

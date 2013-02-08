@@ -12,7 +12,6 @@
 
 use core::prelude::*;
 
-use middle::ty::{FnTyBase};
 use middle::ty;
 use middle::typeck::check::self_info;
 use middle::typeck::isr_alist;
@@ -26,22 +25,6 @@ use syntax::codemap;
 use syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
-
-pub fn replace_bound_regions_in_fn_ty(
-    tcx: ty::ctxt,
-    isr: isr_alist,
-    self_info: Option<self_info>,
-    fn_ty: &ty::FnTy,
-    mapf: fn(ty::bound_region) -> ty::Region) ->
-    {isr: isr_alist, self_info: Option<self_info>, fn_ty: ty::FnTy} {
-    let {isr, self_info, fn_sig} =
-        replace_bound_regions_in_fn_sig(
-            tcx, isr, self_info, &fn_ty.sig, mapf);
-    {isr: isr,
-     self_info: self_info,
-     fn_ty: FnTyBase {meta: fn_ty.meta,
-                      sig: fn_sig}}
-}
 
 pub fn replace_bound_regions_in_fn_sig(
     tcx: ty::ctxt,

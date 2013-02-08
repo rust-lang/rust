@@ -126,12 +126,12 @@ impl check_loan_ctxt {
         let region_map = self.tcx().region_map;
         let pure_map = self.req_maps.pure_map;
         loop {
-            match pure_map.find(scope_id) {
+            match pure_map.find(&scope_id) {
               None => (),
               Some(ref e) => return Some(pc_cmt((*e)))
             }
 
-            match region_map.find(scope_id) {
+            match region_map.find(&scope_id) {
               None => return default_purity,
               Some(next_scope_id) => scope_id = next_scope_id
             }
@@ -144,13 +144,13 @@ impl check_loan_ctxt {
         let req_loan_map = self.req_maps.req_loan_map;
 
         loop {
-            for req_loan_map.find(scope_id).each |loans| {
+            for req_loan_map.find(&scope_id).each |loans| {
                 for loans.each |loan| {
                     if !f(loan) { return; }
                 }
             }
 
-            match region_map.find(scope_id) {
+            match region_map.find(&scope_id) {
               None => return,
               Some(next_scope_id) => scope_id = next_scope_id,
             }
@@ -199,7 +199,7 @@ impl check_loan_ctxt {
           Some(expr) => {
             match expr.node {
               ast::expr_path(_) if pc == pc_pure_fn => {
-                let def = self.tcx().def_map.get(expr.id);
+                let def = self.tcx().def_map.get(&expr.id);
                 let did = ast_util::def_id_of_def(def);
                 let is_fn_arg =
                     did.crate == ast::local_crate &&
@@ -221,18 +221,19 @@ impl check_loan_ctxt {
 
         let callee_ty = ty::node_id_to_type(tcx, callee_id);
         match ty::get(callee_ty).sty {
-          ty::ty_fn(ref fn_ty) => {
-            match fn_ty.meta.purity {
-              ast::pure_fn => return, // case (c) above
-              ast::impure_fn | ast::unsafe_fn | ast::extern_fn => {
-                self.report_purity_error(
-                    pc, callee_span,
-                    fmt!("access to %s function",
-                         fn_ty.meta.purity.to_str()));
-              }
+            ty::ty_bare_fn(ty::BareFnTy {purity: purity, _}) |
+            ty::ty_closure(ty::ClosureTy {purity: purity, _}) => {
+                match purity {
+                    ast::pure_fn => return, // case (c) above
+                    ast::impure_fn | ast::unsafe_fn | ast::extern_fn => {
+                        self.report_purity_error(
+                            pc, callee_span,
+                            fmt!("access to %s function",
+                                 purity.to_str()));
+                    }
+                }
             }
-          }
-          _ => return, // case (d) above
+            _ => return, // case (d) above
         }
     }
 
@@ -240,14 +241,17 @@ impl check_loan_ctxt {
     // The expression must be an expr_fn(*) or expr_fn_block(*)
     fn is_stack_closure(id: ast::node_id) -> bool {
         let fn_ty = ty::node_id_to_type(self.tcx(), id);
-        let proto = ty::ty_fn_proto(fn_ty);
-        return proto == ast::ProtoBorrowed;
+        match ty::get(fn_ty).sty {
+            ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
+                                          _}) => true,
+            _ => false
+        }
     }
 
     fn is_allowed_pure_arg(expr: @ast::expr) -> bool {
         return match expr.node {
           ast::expr_path(_) => {
-            let def = self.tcx().def_map.get(expr.id);
+            let def = self.tcx().def_map.get(&expr.id);
             let did = ast_util::def_id_of_def(def);
             did.crate == ast::local_crate &&
                 (*self.fn_args).contains(&(did.node))
@@ -262,14 +266,14 @@ impl check_loan_ctxt {
     fn check_for_conflicting_loans(scope_id: ast::node_id) {
         debug!("check_for_conflicting_loans(scope_id=%?)", scope_id);
 
-        let new_loans = match self.req_maps.req_loan_map.find(scope_id) {
+        let new_loans = match self.req_maps.req_loan_map.find(&scope_id) {
             None => return,
             Some(loans) => loans
         };
 
         debug!("new_loans has length %?", new_loans.len());
 
-        let par_scope_id = self.tcx().region_map.get(scope_id);
+        let par_scope_id = self.tcx().region_map.get(&scope_id);
         for self.walk_loans(par_scope_id) |old_loan| {
             debug!("old_loan=%?", self.bccx.loan_to_repr(old_loan));
 
@@ -325,7 +329,7 @@ impl check_loan_ctxt {
     fn check_assignment(at: assignment_type, ex: @ast::expr) {
         // We don't use cat_expr() here because we don't want to treat
         // auto-ref'd parameters in overloaded operators as rvalues.
-        let cmt = match self.bccx.tcx.adjustments.find(ex.id) {
+        let cmt = match self.bccx.tcx.adjustments.find(&ex.id) {
             None => self.bccx.cat_expr_unadjusted(ex),
             Some(adj) => self.bccx.cat_expr_autoderefd(ex, adj)
         };
@@ -564,17 +568,27 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
 {
     let is_stack_closure = self.is_stack_closure(id);
     let fty = ty::node_id_to_type(self.tcx(), id);
-    let fty_proto = ty::ty_fn_proto(fty);
 
-    check_moves_from_captured_variables(self, id, fty_proto);
+    let declared_purity;
+    match fk {
+        visit::fk_item_fn(*) | visit::fk_method(*) |
+        visit::fk_dtor(*) => {
+            declared_purity = ty::ty_fn_purity(fty);
+        }
+
+        visit::fk_anon(*) | visit::fk_fn_block(*) => {
+            let fty_sigil = ty::ty_closure_sigil(fty);
+            check_moves_from_captured_variables(self, id, fty_sigil);
+            declared_purity = ty::determine_inherited_purity(
+                copy self.declared_purity, ty::ty_fn_purity(fty),
+                fty_sigil);
+        }
+    }
 
     debug!("purity on entry=%?", copy self.declared_purity);
     do save_and_restore(&mut(self.declared_purity)) {
         do save_and_restore(&mut(self.fn_args)) {
-            self.declared_purity = ty::determine_inherited_purity(
-                copy self.declared_purity,
-                ty::ty_fn_purity(fty),
-                fty_proto);
+            self.declared_purity = declared_purity;
 
             match fk {
                 visit::fk_anon(*) |
@@ -608,11 +622,11 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
 
     fn check_moves_from_captured_variables(&&self: check_loan_ctxt,
                                            id: ast::node_id,
-                                           fty_proto: ast::Proto)
+                                           fty_sigil: ast::Sigil)
     {
-        match fty_proto {
-            ast::ProtoBox | ast::ProtoUniq => {
-                let cap_vars = self.bccx.capture_map.get(id);
+        match fty_sigil {
+            ast::ManagedSigil | ast::OwnedSigil => {
+                let cap_vars = self.bccx.capture_map.get(&id);
                 for cap_vars.each |cap_var| {
                     match cap_var.mode {
                         moves::CapRef | moves::CapCopy => { loop; }
@@ -646,7 +660,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                 }
             }
 
-            ast::ProtoBorrowed | ast::ProtoBare => {}
+            ast::BorrowedSigil => {}
         }
     }
 }

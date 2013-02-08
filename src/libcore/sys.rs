@@ -10,10 +10,6 @@
 
 //! Misc low level stuff
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cast;
 use cmp::{Eq, Ord};
 use gc;

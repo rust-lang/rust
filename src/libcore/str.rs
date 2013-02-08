@@ -17,9 +17,6 @@
  * some heavy-duty uses, try std::rope.
  */
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use at_vec;
 use cast;
 use char;
@@ -2312,6 +2309,21 @@ impl &str: StrSlice {
 
     #[inline]
     pure fn char_at(i: uint) -> char { char_at(self, i) }
+}
+
+pub trait OwnedStr {
+    fn push_str(&mut self, v: &str);
+    fn push_char(&mut self, c: char);
+}
+
+pub impl ~str : OwnedStr {
+    fn push_str(&mut self, v: &str) {
+        push_str(self, v);
+    }
+
+    fn push_char(&mut self, c: char) {
+        push_char(self, c);
+    }
 }
 
 #[cfg(test)]

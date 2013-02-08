@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn to_lambda1(f: fn@(uint) -> uint) -> fn@(uint) -> uint {
-    return f;
-}
-
-fn to_lambda2(b: fn(uint) -> uint) -> fn@(uint) -> uint {
-    return to_lambda1(|x| b(x)); //~ ERROR illegal move from argument `b`
-}
+// error-pattern:binary float literal is not supported
 
 fn main() {
+    0b101010f;
+    0b101.010;
+    0b101p4f;
 }

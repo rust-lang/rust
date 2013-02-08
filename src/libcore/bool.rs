@@ -9,10 +9,6 @@
 // except according to those terms.
 
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 //! Boolean logic
 
 use bool;

@@ -10,9 +10,6 @@
 
 //! Container traits
 
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use option::Option;
 
 pub trait Container {

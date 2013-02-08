@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn ignore<T>(_x: T) {}
+// error-pattern:hexadecimal float literal is not supported
 
-pub fn main() {
-    let f: fn@:Owned() = ||();
-    ignore(f);
+fn main() {
+    0xABC.Df;
+    0x567.89;
+    0xDEAD.BEEFp-2f;
 }
-

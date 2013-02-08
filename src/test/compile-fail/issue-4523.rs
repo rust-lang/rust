@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x = 3;
-    fn blah(_a: extern fn()) {}
-    blah(|| {
-        log(debug, x); //~ ERROR attempted dynamic environment capture
-    });
+fn foopy() {}
+
+const f: fn() = foopy; //~ ERROR mismatched types: expected `&static/fn()`
+
+fn main () {
+    f();
 }

@@ -409,7 +409,7 @@ impl VisitContext {
         // `expr_mode` refers to the post-adjustment value.  If one of
         // those adjustments is to take a reference, then it's only
         // reading the underlying expression, not moving it.
-        let comp_mode = match self.tcx.adjustments.find(expr.id) {
+        let comp_mode = match self.tcx.adjustments.find(&expr.id) {
             Some(adj) if adj.autoref.is_some() => Read,
             _ => expr_mode.component_mode(expr)
         };
@@ -474,7 +474,35 @@ impl VisitContext {
                 }
 
                 for opt_with.each |with_expr| {
-                    self.consume_expr(*with_expr, visitor);
+                    // If there are any fields whose type is move-by-default,
+                    // then `with` is consumed, otherwise it is only read
+                    let with_ty = ty::expr_ty(self.tcx, *with_expr);
+                    let with_fields = match ty::get(with_ty).sty {
+                        ty::ty_rec(ref f) => copy *f,
+                        ty::ty_struct(did, ref substs) => {
+                            ty::struct_fields(self.tcx, did, substs)
+                        }
+                        ref r => {
+                           self.tcx.sess.span_bug(
+                                with_expr.span,
+                                fmt!("bad base expr type in record: %?", r))
+                        }
+                    };
+
+                    // The `with` expr must be consumed if it contains
+                    // any fields which (1) were not explicitly
+                    // specified and (2) have a type that
+                    // moves-by-default:
+                    let consume_with = with_fields.any(|tf| {
+                        !fields.any(|f| f.node.ident == tf.ident) &&
+                            ty::type_implicitly_moves(self.tcx, tf.mt.ty)
+                    });
+
+                    if consume_with {
+                        self.consume_expr(*with_expr, visitor);
+                    } else {
+                        self.use_expr(*with_expr, Read, visitor);
+                    }
                 }
             }
 
@@ -713,7 +741,7 @@ impl VisitContext {
                     receiver_expr: @expr,
                     visitor: vt<VisitContext>)
     {
-        let callee_mode = match self.method_map.find(expr_id) {
+        let callee_mode = match self.method_map.find(&expr_id) {
             Some(ref method_map_entry) => {
                 match method_map_entry.explicit_self {
                     sty_by_ref => by_ref,
@@ -786,9 +814,9 @@ impl VisitContext {
         let _indenter = indenter();
 
         let fn_ty = ty::node_id_to_type(self.tcx, fn_expr_id);
-        let proto = ty::ty_fn_proto(fn_ty);
+        let sigil = ty::ty_closure_sigil(fn_ty);
         let freevars = freevars::get_freevars(self.tcx, fn_expr_id);
-        if proto == ProtoBorrowed {
+        if sigil == BorrowedSigil {
             // &fn() captures everything by ref
             at_vec::from_fn(freevars.len(), |i| {
                 let fvar = &freevars[i];

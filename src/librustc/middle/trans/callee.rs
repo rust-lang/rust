@@ -70,7 +70,7 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
             return trans_def(bcx, bcx.def(expr.id), expr);
         }
         ast::expr_field(base, _, _) => {
-            match bcx.ccx().maps.method_map.find(expr.id) {
+            match bcx.ccx().maps.method_map.find(&expr.id) {
                 Some(ref origin) => { // An impl method
                     return meth::trans_method_callee(bcx, expr.id,
                                                      base, (*origin));
@@ -208,7 +208,7 @@ pub fn trans_fn_ref_with_vtables(
     // Modify the def_id if this is a default method; we want to be
     // monomorphizing the trait's code.
     let (def_id, opt_impl_did) =
-            match tcx.provided_method_sources.find(def_id) {
+            match tcx.provided_method_sources.find(&def_id) {
         None => (def_id, None),
         Some(source) => (source.method_id, Some(source.impl_id))
     };
@@ -234,7 +234,7 @@ pub fn trans_fn_ref_with_vtables(
     } else if def_id.crate == ast::local_crate {
         let map_node = session::expect(
             ccx.sess,
-            ccx.tcx.items.find(def_id.node),
+            ccx.tcx.items.find(&def_id.node),
             || fmt!("local item should be in ast map"));
 
         match map_node {
@@ -313,7 +313,7 @@ pub fn trans_method_call(in_cx: block,
         node_id_type(in_cx, call_ex.callee_id),
         expr_ty(in_cx, call_ex),
         |cx| {
-            match cx.ccx().maps.method_map.find(call_ex.id) {
+            match cx.ccx().maps.method_map.find(&call_ex.id) {
                 Some(ref origin) => {
                     meth::trans_method_callee(cx,
                                               call_ex.callee_id,
@@ -438,7 +438,9 @@ pub fn trans_call_inner(
             let flag = alloca(bcx, T_bool());
             Store(bcx, C_bool(false), flag);
             Some(flag)
-        } else { None };
+        } else {
+            None
+        };
 
         let (llfn, llenv) = unsafe {
             match callee.data {
@@ -506,7 +508,8 @@ pub fn trans_call_inner(
         if ty::type_is_bot(ret_ty) {
             Unreachable(bcx);
         } else if ret_in_loop {
-            bcx = do with_cond(bcx, Load(bcx, ret_flag.get())) |bcx| {
+            let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
+            bcx = do with_cond(bcx, ret_flag_result) |bcx| {
                 do option::iter(&copy bcx.fcx.loop_ret) |lret| {
                     Store(bcx, C_bool(true), lret.flagptr);
                     Store(bcx, C_bool(false), bcx.fcx.llretptr);
@@ -624,18 +627,17 @@ pub fn trans_arg_expr(bcx: block,
         Some(_) => {
             match arg_expr.node {
                 ast::expr_loop_body(
-                    // XXX: Bad copy.
-                    blk@@ast::expr {
-                        node: ast::expr_fn_block(copy decl, ref body),
+                    blk @ @ast::expr {
+                        node: ast::expr_fn_block(ref decl, ref body),
                         _
                     }) =>
                 {
                     let scratch_ty = expr_ty(bcx, arg_expr);
                     let scratch = alloc_ty(bcx, scratch_ty);
                     let arg_ty = expr_ty(bcx, arg_expr);
-                    let proto = ty::ty_fn_proto(arg_ty);
+                    let sigil = ty::ty_closure_sigil(arg_ty);
                     let bcx = closure::trans_expr_fn(
-                        bcx, proto, decl, /*bad*/copy *body, arg_expr.id,
+                        bcx, sigil, decl, body, arg_expr.id,
                         blk.id, Some(ret_flag), expr::SaveIn(scratch));
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,

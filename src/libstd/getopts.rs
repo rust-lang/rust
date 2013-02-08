@@ -74,7 +74,6 @@
  *        do_work(input, output);
  *    }
  */
-#[forbid(deprecated_mode)];
 
 use core::cmp::Eq;
 use core::prelude::*;

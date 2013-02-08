@@ -15,6 +15,10 @@ extern mod std;
 use std::list::{List, Cons, Nil};
 use std::time::precise_time_s;
 
+enum UniqueList {
+    ULNil, ULCons(~UniqueList)
+}
+
 fn main() {
     let (repeat, depth) = if os::getenv(~"RUST_BENCH").is_some() {
         (50, 1000)
@@ -43,7 +47,6 @@ struct State {
     box: @nillist,
     unique: ~nillist,
     fn_box: fn@() -> @nillist,
-    fn_unique: fn~() -> ~nillist,
     tuple: (@nillist, ~nillist),
     vec: ~[@nillist],
     res: r
@@ -76,7 +79,6 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
                 box: @Nil,
                 unique: ~Nil,
                 fn_box: fn@() -> @nillist { @Nil::<()> },
-                fn_unique: fn~() -> ~nillist { ~Nil::<()> },
                 tuple: (@Nil, ~Nil),
                 vec: ~[@Nil],
                 res: r(@Nil)
@@ -84,14 +86,11 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
           }
           Some(st) => {
             let fn_box = st.fn_box;
-            let fn_unique = copy st.fn_unique;
 
             State {
                 box: @Cons((), st.box),
                 unique: ~Cons((), @*st.unique),
                 fn_box: fn@() -> @nillist { @Cons((), fn_box()) },
-                fn_unique: fn~(move fn_unique) -> ~nillist
-                    { ~Cons((), @*fn_unique()) },
                 tuple: (@Cons((), st.tuple.first()),
                         ~Cons((), @*st.tuple.second())),
                 vec: st.vec + ~[@Cons((), st.vec.last())],

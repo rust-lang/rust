@@ -53,7 +53,7 @@ pub type ctx = {ccx: @crate_ctxt, uses: ~[mut type_uses]};
 
 pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     -> ~[type_uses] {
-    match ccx.type_use_cache.find(fn_id) {
+    match ccx.type_use_cache.find(&fn_id) {
       Some(uses) => return uses,
       None => ()
     }
@@ -69,8 +69,9 @@ pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 
     let cx = {ccx: ccx, uses: vec::cast_to_mut(vec::from_elem(n_tps, 0u))};
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
-        ty::ty_fn(ref fn_ty) => {
-            for vec::each(fn_ty.sig.inputs) |arg| {
+        ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
+        ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
+            for vec::each(sig.inputs) |arg| {
                 match ty::resolved_mode(ccx.tcx, arg.mode) {
                     by_val | by_copy => {
                         type_needs(cx, use_repr, arg.ty);
@@ -87,7 +88,7 @@ pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         ccx.type_use_cache.insert(fn_id, copy uses);
         return uses;
     }
-    let map_node = match ccx.tcx.items.find(fn_id_loc.node) {
+    let map_node = match ccx.tcx.items.find(&fn_id_loc.node) {
         Some(ref x) => (/*bad*/copy *x),
         None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
                                      fn_id_loc))
@@ -197,8 +198,12 @@ pub fn type_needs_inner(cx: ctx,
                  it, we depend on the drop glue for T (we have to write the
                  right tydesc into the result)
                  */
-              ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
-               | ty::ty_trait(_, _, _) => false,
+                ty::ty_closure(*) |
+                ty::ty_bare_fn(*) |
+                ty::ty_ptr(_) |
+                ty::ty_rptr(_, _) |
+                ty::ty_trait(_, _, _) => false,
+
               ty::ty_enum(did, ref substs) => {
                 if option::is_none(&list::find(enums_seen, |id| *id == did)) {
                     let seen = @Cons(did, enums_seen);
@@ -226,10 +231,10 @@ pub fn node_type_needs(cx: ctx, use_: uint, id: node_id) {
 }
 
 pub fn mark_for_method_call(cx: ctx, e_id: node_id, callee_id: node_id) {
-    do option::iter(&cx.ccx.maps.method_map.find(e_id)) |mth| {
+    do option::iter(&cx.ccx.maps.method_map.find(&e_id)) |mth| {
         match mth.origin {
           typeck::method_static(did) => {
-            do cx.ccx.tcx.node_type_substs.find(callee_id).iter |ts| {
+            do cx.ccx.tcx.node_type_substs.find(&callee_id).iter |ts| {
                 let type_uses = type_uses_for(cx.ccx, did, ts.len());
                 for vec::each2(type_uses, *ts) |uses, subst| {
                     type_needs(cx, *uses, *subst)
@@ -278,8 +283,8 @@ pub fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_path(_) => {
-        do cx.ccx.tcx.node_type_substs.find(e.id).iter |ts| {
-            let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(e.id));
+        do cx.ccx.tcx.node_type_substs.find(&e.id).iter |ts| {
+            let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
             for vec::each2(uses_for_ts, *ts) |uses, subst| {
                 type_needs(cx, *uses, *subst)
@@ -287,15 +292,15 @@ pub fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_fn(*) | expr_fn_block(*) => {
-        match ty::ty_fn_proto(ty::expr_ty(cx.ccx.tcx, e)) {
-          ast::ProtoBare | ast::ProtoUniq => {}
-          ast::ProtoBox | ast::ProtoBorrowed => {
-            for vec::each(*freevars::get_freevars(cx.ccx.tcx, e.id)) |fv| {
-                let node_id = ast_util::def_id_of_def(fv.def).node;
-                node_type_needs(cx, use_repr, node_id);
-            }
+          match ty::ty_closure_sigil(ty::expr_ty(cx.ccx.tcx, e)) {
+              ast::OwnedSigil => {}
+              ast::BorrowedSigil | ast::ManagedSigil => {
+                  for freevars::get_freevars(cx.ccx.tcx, e.id).each |fv| {
+                      let node_id = ast_util::def_id_of_def(fv.def).node;
+                      node_type_needs(cx, use_repr, node_id);
+                  }
+              }
           }
-        }
       }
       expr_assign(val, _) | expr_swap(val, _) | expr_assign_op(_, val, _) |
       expr_ret(Some(val)) => {

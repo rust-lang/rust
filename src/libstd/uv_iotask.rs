@@ -14,7 +14,6 @@
  * The I/O task runs in its own single-threaded scheduler.  By using the
  * `interact` function you can execute code in a uv callback.
  */
-#[forbid(deprecated_mode)];
 
 use ll = uv_ll;
 
@@ -27,19 +26,17 @@ use core::task::TaskBuilder;
 use core::task;
 
 /// Used to abstract-away direct interaction with a libuv loop.
-pub enum IoTask {
-    IoTask_({
-        async_handle: *ll::uv_async_t,
-        op_chan: SharedChan<IoTaskMsg>
-    })
+pub struct IoTask {
+    async_handle: *ll::uv_async_t,
+    op_chan: SharedChan<IoTaskMsg>
 }
 
 impl IoTask: Clone {
     fn clone(&self) -> IoTask {
-        IoTask_({
+        IoTask{
             async_handle: self.async_handle,
             op_chan: self.op_chan.clone()
-        })
+        }
     }
 }
 
@@ -131,10 +128,10 @@ fn run_loop(iotask_ch: &Chan<IoTask>) {
 
         // Send out a handle through which folks can talk to us
         // while we dwell in the I/O loop
-        let iotask = IoTask_({
+        let iotask = IoTask{
             async_handle: async_handle,
             op_chan: SharedChan(msg_ch)
-        });
+        };
         iotask_ch.send(iotask);
 
         log(debug, ~"about to run uv loop");

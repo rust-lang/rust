@@ -586,10 +586,8 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                                 item, tcx, cdata);
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
-          ty::ty_fn(ref f) => (*f).sig.inputs.map(|a| a.ty),
-
-          // Nullary enum variant.
-          _ => ~[],
+          ty::ty_bare_fn(ref f) => f.sig.inputs.map(|a| a.ty),
+          _ => ~[], // Nullary enum variant.
         };
         match variant_disr_val(item) {
           Some(val) => { disr_val = val; }
@@ -705,11 +703,12 @@ pub fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
         let ty = doc_type(mth, tcx, cdata);
         let def_id = item_def_id(mth, cdata);
         let fty = match ty::get(ty).sty {
-          ty::ty_fn(ref f) => (/*bad*/copy *f),
-          _ => {
-            tcx.diag.handler().bug(
-                ~"get_trait_methods: id has non-function type");
-        } };
+            ty::ty_bare_fn(ref f) => copy *f,
+            _ => {
+                tcx.diag.handler().bug(
+                    ~"get_trait_methods: id has non-function type");
+            }
+        };
         let self_ty = get_self_ty(mth);
         result.push({ident: name, tps: bounds, fty: fty, self_ty: self_ty,
                      vis: ast::public, def_id: def_id});
@@ -734,14 +733,13 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
         let name = item_name(intr, mth);
         let ty = doc_type(mth, tcx, cdata);
 
-        let fty;
-        match ty::get(ty).sty {
-            ty::ty_fn(ref f) => fty = (/*bad*/copy *f),
+        let fty = match ty::get(ty).sty {
+            ty::ty_bare_fn(ref f) => copy *f,
             _ => {
                 tcx.diag.handler().bug(~"get_provided_trait_methods(): id \
                                          has non-function type");
             }
-        }
+        };
 
         let self_ty = get_self_ty(mth);
         let ty_method = {ident: name, tps: bounds, fty: fty, self_ty: self_ty,
@@ -1099,7 +1097,7 @@ pub fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
         return ast::def_id { crate: cdata.cnum, node: did.node };
     }
 
-    match cdata.cnum_map.find(did.crate) {
+    match cdata.cnum_map.find(&did.crate) {
       option::Some(n) => ast::def_id { crate: n, node: did.node },
       option::None => die!(~"didn't find a crate in the cnum_map")
     }

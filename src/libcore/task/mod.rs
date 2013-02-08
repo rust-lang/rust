@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// NB: transitionary, de-mode-ing.
-// tjc: Deprecated modes allowed because of function arg issue
-// in task::spawn. Re-forbid after snapshot.
-#[forbid(deprecated_pattern)];
-
 /*!
  * Task management.
  *

@@ -100,7 +100,7 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
           }
           _ => { /* We assume only enum types can be uninhabited */ }
        }
-       let arms = vec::concat(vec::filter_map((*arms), unguarded_pat));
+       let arms = vec::concat(arms.filter_mapped(unguarded_pat));
        check_exhaustive(cx, ex.span, arms);
      }
      _ => ()
@@ -255,7 +255,8 @@ pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
             }
           }
           Some(ref ctor) => {
-            match is_useful(cx, vec::filter_map(m, |r| default(cx, copy *r)),
+            match is_useful(cx,
+                            vec::filter_map(m, |r| default(cx, r)),
                             vec::tail(v)) {
               useful_ => useful(left_ty, (/*bad*/copy *ctor)),
               ref u => (/*bad*/copy *u)
@@ -277,8 +278,7 @@ pub fn is_useful_specialized(cx: @MatchCheckCtxt,
                              arity: uint,
                              lty: ty::t)
                           -> useful {
-    let ms = vec::filter_map(m, |r| specialize(cx, *r,
-                                               ctor, arity, lty));
+    let ms = m.filter_mapped(|r| specialize(cx, *r, ctor, arity, lty));
     let could_be_useful = is_useful(
         cx, ms, specialize(cx, v, ctor, arity, lty).get());
     match could_be_useful {
@@ -292,7 +292,7 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
     match /*bad*/copy pat.node {
       pat_wild => { None }
       pat_ident(_, _, _) | pat_enum(_, _) => {
-        match cx.tcx.def_map.find(pat.id) {
+        match cx.tcx.def_map.find(&pat.id) {
           Some(def_variant(_, id)) => Some(variant(id)),
           Some(def_const(did)) => {
             let const_expr = lookup_const_by_id(cx.tcx, did).get();
@@ -306,7 +306,7 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
         Some(range(eval_const_expr(cx.tcx, lo), eval_const_expr(cx.tcx, hi)))
       }
       pat_struct(*) => {
-        match cx.tcx.def_map.find(pat.id) {
+        match cx.tcx.def_map.find(&pat.id) {
           Some(def_variant(_, id)) => Some(variant(id)),
           _ => Some(single)
         }
@@ -329,7 +329,7 @@ pub fn is_wild(cx: @MatchCheckCtxt, p: @pat) -> bool {
     match pat.node {
       pat_wild => { true }
       pat_ident(_, _, _) => {
-        match cx.tcx.def_map.find(pat.id) {
+        match cx.tcx.def_map.find(&pat.id) {
           Some(def_variant(_, _)) | Some(def_const(*)) => { false }
           _ => { true }
         }
@@ -387,9 +387,9 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
 
         // Find the lengths and tails of all vector patterns.
-        let vec_pat_lens = do m.filter_map |r| {
-            match /*bad*/copy r[0].node {
-                pat_vec(elems, tail) => {
+        let vec_pat_lens = do m.filter_mapped |r| {
+            match r[0].node {
+                pat_vec(ref elems, ref tail) => {
                     Some((elems.len(), tail.is_some()))
                 }
                 _ => None
@@ -480,7 +480,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
             pat_wild => Some(vec::append(vec::from_elem(arity, wild()),
                                          vec::tail(r))),
             pat_ident(_, _, _) => {
-                match cx.tcx.def_map.find(pat_id) {
+                match cx.tcx.def_map.find(&pat_id) {
                     Some(def_variant(_, id)) => {
                         if variant(id) == ctor_id { Some(vec::tail(r)) }
                         else { None }
@@ -505,7 +505,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 }
             }
             pat_enum(_, args) => {
-                match cx.tcx.def_map.get(pat_id) {
+                match cx.tcx.def_map.get(&pat_id) {
                     def_variant(_, id) if variant(id) == ctor_id => {
                         let args = match args {
                             Some(args) => args,
@@ -541,7 +541,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
             }
             pat_struct(_, ref flds, _) => {
                 // Is this a struct or an enum variant?
-                match cx.tcx.def_map.get(pat_id) {
+                match cx.tcx.def_map.get(&pat_id) {
                     def_variant(_, variant_id) => {
                         if variant(variant_id) == ctor_id {
                             // FIXME #4731: Is this right? --pcw
@@ -678,7 +678,7 @@ pub fn check_fn(cx: @MatchCheckCtxt,
 }
 
 pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
-    match cx.tcx.def_map.find(pat.id) {
+    match cx.tcx.def_map.find(&pat.id) {
       Some(def_variant(enum_id, _)) => {
         if vec::len(*ty::enum_variants(cx.tcx, enum_id)) != 1u {
             return true;

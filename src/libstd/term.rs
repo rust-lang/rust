@@ -9,7 +9,6 @@
 // except according to those terms.
 
 //! Simple ANSI color library
-#[forbid(deprecated_mode)];
 
 use core::i32;
 use core::io;

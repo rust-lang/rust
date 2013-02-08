@@ -126,7 +126,7 @@ fn req_loans_in_expr(ex: @ast::expr,
 
     // If this expression is borrowed, have to ensure it remains valid:
     if !self.ignore_adjustments.contains(&ex.id) {
-        for tcx.adjustments.find(ex.id).each |adjustments| {
+        for tcx.adjustments.find(&ex.id).each |adjustments| {
             self.guarantee_adjustments(ex, *adjustments);
         }
     }
@@ -172,7 +172,7 @@ fn req_loans_in_expr(ex: @ast::expr,
             }
         }
 
-        match self.bccx.method_map.find(ex.id) {
+        match self.bccx.method_map.find(&ex.id) {
             Some(ref method_map_entry) => {
                 match (*method_map_entry).explicit_self {
                     ast::sty_by_ref => {
@@ -250,7 +250,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         // (if used like `a.b(...)`), the call where it's an argument
         // (if used like `x(a.b)`), or the block (if used like `let x
         // = a.b`).
-        let scope_r = ty::re_scope(self.tcx().region_map.get(ex.id));
+        let scope_r = ty::re_scope(self.tcx().region_map.get(&ex.id));
         let rcvr_cmt = self.bccx.cat_expr(rcvr);
         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
         visit::visit_expr(ex, self, vt);
@@ -536,7 +536,7 @@ impl gather_loan_ctxt {
 
     fn add_loans_to_scope_id(&self, scope_id: ast::node_id, +loans: ~[Loan]) {
         debug!("adding %u loans to scope_id %?", loans.len(), scope_id);
-        match self.req_maps.req_loan_map.find(scope_id) {
+        match self.req_maps.req_loan_map.find(&scope_id) {
             Some(req_loans) => {
                 req_loans.push_all(loans);
             }

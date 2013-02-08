@@ -35,9 +35,6 @@ with destructors.
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
 // Transitional
 #[allow(structural_records)];
 
