@@ -382,6 +382,7 @@ pub extern mod llvm {
     pub unsafe fn LLVMGetUsedValue(U: UseRef) -> ValueRef;
 
     /* Operations on Users */
+    pub unsafe fn LLVMGetNumOperands(Val: ValueRef) -> c_int;
     pub unsafe fn LLVMGetOperand(Val: ValueRef, Index: c_uint) -> ValueRef;
     pub unsafe fn LLVMSetOperand(Val: ValueRef, Index: c_uint, Op: ValueRef);
 

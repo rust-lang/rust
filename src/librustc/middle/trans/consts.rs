@@ -73,9 +73,15 @@ pub fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
         let vec_ty = ty::expr_ty(cx.tcx, e);
         let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
         let llunitty = type_of::type_of(cx, unit_ty);
-        let v = C_array(llunitty, es.map(|e| const_expr(cx, *e)));
         let unit_sz = machine::llsize_of(cx, llunitty);
         let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
+        let vs = es.map(|e| const_expr(cx, *e));
+        // If the vector contains enums, an LLVM array won't work.
+        let v = if vs.any(|vi| val_ty(*vi) != llunitty) {
+            C_struct(vs)
+        } else {
+            C_array(llunitty, vs)
+        };
         return (v, sz, llunitty);
     }
 }
@@ -279,15 +285,17 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               // call. Despite that being "a const", it's not the kind of
               // const you can ask for the integer-value of, evidently. This
               // might be an LLVM bug, not sure. In any case, to work around
-              // this we drop down to the array-type level here and just ask
-              // how long the array-type itself is, ignoring the length we
-              // pulled out of the slice. This in turn only works because we
-              // picked out the original globalvar via const_deref and so can
-              // recover the array-size of the underlying array, and all this
-              // will hold together exactly as long as we _don't_ support
-              // const sub-slices (that is, slices that represent something
-              // other than a whole array).  At that point we'll have more and
-              // uglier work to do here, but for now this should work.
+              // this we obtain the initializer and count how many elements it
+              // has, ignoring the length we pulled out of the slice. (Note
+              // that the initializer might be a struct rather than an array,
+              // if enums are involved.) This only works because we picked out
+              // the original globalvar via const_deref and so can recover the
+              // array-size of the underlying array (or the element count of
+              // the underlying struct), and all this will hold together
+              // exactly as long as we _don't_ support const sub-slices (that
+              // is, slices that represent something other than a whole
+              // array).  At that point we'll have more and uglier work to do
+              // here, but for now this should work.
               //
               // In the future, what we should be doing here is the
               // moral equivalent of:
@@ -299,7 +307,7 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
               // not want to consider sizeof() a constant expression
               // we can get the value (as a number) out of.
 
-              let len = llvm::LLVMGetArrayLength(val_ty(arr)) as u64;
+              let len = llvm::LLVMGetNumOperands(arr) as u64;
               let len = match ty::get(bt).sty {
                   ty::ty_estr(*) => {assert len > 0; len - 1},
                   _ => len
@@ -346,10 +354,8 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           }
           ast::expr_addr_of(ast::m_imm, sub) => {
             let cv = const_expr(cx, sub);
-            let subty = ty::expr_ty(cx.tcx, sub),
-            llty = type_of::type_of(cx, subty);
             let gv = do str::as_c_str("const") |name| {
-                llvm::LLVMAddGlobal(cx.llmod, llty, name)
+                llvm::LLVMAddGlobal(cx.llmod, val_ty(cv), name)
             };
             llvm::LLVMSetInitializer(gv, cv);
             llvm::LLVMSetGlobalConstant(gv, True);
@@ -377,8 +383,7 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                       }
                   })
               };
-              let llty = type_of::type_of(cx, ety);
-              C_named_struct(llty, [C_struct(cs)])
+              C_struct([C_struct(cs)])
           }
           ast::expr_vec(es, ast::m_imm) => {
             let (v, _, _) = const_vec(cx, e, es);
@@ -434,7 +439,13 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                     let lldiscrim = base::get_discrim_val(cx, e.span,
                                                           enum_did,
                                                           variant_did);
-                    C_struct(~[lldiscrim])
+                    // However, we still have to pad it out to the
+                    // size of the full enum; see the expr_call case,
+                    // below.
+                    let ety = ty::expr_ty(cx.tcx, e);
+                    let size = machine::static_size_of_enum(cx, ety);
+                    let padding = C_null(T_array(T_i8(), size));
+                    C_struct(~[lldiscrim, padding])
                 }
                 Some(ast::def_struct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
@@ -450,14 +461,12 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           ast::expr_call(callee, args, _) => {
             match cx.tcx.def_map.find(&callee.id) {
                 Some(ast::def_struct(def_id)) => {
-                    let ety = ty::expr_ty(cx.tcx, e);
-                    let llty = type_of::type_of(cx, ety);
                     let llstructbody =
                         C_struct(args.map(|a| const_expr(cx, *a)));
                     if ty::ty_dtor(cx.tcx, def_id).is_present() {
-                        C_named_struct(llty, ~[ llstructbody, C_u8(0) ])
+                        C_struct(~[ llstructbody, C_u8(0) ])
                     } else {
-                        C_named_struct(llty, ~[ llstructbody ])
+                        C_struct(~[ llstructbody ])
                     }
                 }
             Some(ast::def_variant(tid, vid)) => {
@@ -470,7 +479,20 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
 
                 // FIXME (#1645): enum body alignment is generaly wrong.
                 if !degen {
-                    C_packed_struct(~[discrim, c_args])
+                    // Pad out the data to the size of its type_of;
+                    // this is necessary if the enum is contained
+                    // within an aggregate (tuple, struct, vector) so
+                    // that the next element is at the right offset.
+                    let actual_size =
+                        machine::llsize_of_real(cx, llvm::LLVMTypeOf(c_args));
+                    let padding =
+                        C_null(T_array(T_i8(), size - actual_size));
+                    // A packed_struct has an alignment of 1; thus,
+                    // wrapping one around c_args will misalign it the
+                    // same way we normally misalign enum bodies
+                    // without affecting its internal alignment or
+                    // changing the alignment of the enum.
+                    C_struct(~[discrim, C_packed_struct(~[c_args]), padding])
                 } else if size == 0 {
                     C_struct(~[discrim])
                 } else {
