@@ -16,7 +16,7 @@ trait TraitB {
     fn gimme_an_a<A: TraitA>(a: A) -> int;
 }
 
-impl int: TraitB {
+impl TraitB for int {
     fn gimme_an_a<A: TraitA>(a: A) -> int {
         a.method_a() + self
     }

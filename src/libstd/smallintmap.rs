@@ -21,7 +21,7 @@ pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
 }
 
-impl<V> SmallIntMap<V>: Container {
+impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
     pure fn len(&self) -> uint {
         let mut sz = 0;
@@ -37,12 +37,12 @@ impl<V> SmallIntMap<V>: Container {
     pure fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
-impl<V> SmallIntMap<V>: Mutable {
+impl<V> Mutable for SmallIntMap<V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) { self.v.clear() }
 }
 
-impl<V> SmallIntMap<V>: Map<uint, V> {
+impl<V> Map<uint, V> for SmallIntMap<V> {
     /// Return true if the map contains a value for the specified key
     pure fn contains_key(&self, key: &uint) -> bool {
         self.find(key).is_some()

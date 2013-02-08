@@ -46,7 +46,7 @@ impl cat {
   }
 }
 
-impl cat : noisy {
+impl noisy for cat {
   fn speak() { self.meow(); }
 }
 

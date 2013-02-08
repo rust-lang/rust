@@ -16,7 +16,7 @@ struct A {
     x: int
 }
 
-impl int : MyEq {
+impl MyEq for int {
     pure fn eq(&self, other: &int) -> bool { *self == *other }
 }
 

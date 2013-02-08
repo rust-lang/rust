@@ -17,7 +17,7 @@ trait foo {
     fn foo();
 }
 
-impl ~str: foo {
+impl foo for ~str {
     fn foo() {}
 }
 

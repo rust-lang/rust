@@ -62,7 +62,7 @@ struct r {
     x: (),
 }
 
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {}
 }
 

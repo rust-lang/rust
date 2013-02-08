@@ -16,7 +16,7 @@ struct S {
     x: int
 }
 
-impl S : Foo {
+impl Foo for S {
     fn f(&self) {
         assert self.x == 3;
     }

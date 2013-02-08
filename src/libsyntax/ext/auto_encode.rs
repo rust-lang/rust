@@ -23,7 +23,7 @@ For example, a type like:
 
 would generate two implementations like:
 
-    impl<S: Encoder> node_id: Encodable<S> {
+    impl<S: Encoder> Encodable<S> for node_id {
         fn encode(s: &S) {
             do s.emit_struct("Node", 1) {
                 s.emit_field("id", 0, || s.emit_uint(self))
@@ -31,7 +31,7 @@ would generate two implementations like:
         }
     }
 
-    impl<D: Decoder> node_id: Decodable {
+    impl<D: Decoder> Decodable for node_id {
         static fn decode(d: &D) -> Node {
             do d.read_struct("Node", 1) {
                 Node {

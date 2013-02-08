@@ -34,7 +34,7 @@ trait fake_ext_ctxt {
 
 type fake_session = parse::parse_sess;
 
-impl fake_session: fake_ext_ctxt {
+impl fake_ext_ctxt for fake_session {
     fn cfg() -> ast::crate_cfg { ~[] }
     fn parse_sess() -> parse::parse_sess { self }
     fn call_site() -> span {

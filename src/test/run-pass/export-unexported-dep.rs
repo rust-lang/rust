@@ -15,7 +15,7 @@ mod foo {
     // not exported
     enum t { t1, t2, }
 
-    impl t : cmp::Eq {
+    impl cmp::Eq for t {
         pure fn eq(&self, other: &t) -> bool {
             ((*self) as uint) == ((*other) as uint)
         }

@@ -16,7 +16,7 @@ trait MyNum : Add<Self,Self> { }
 
 struct MyInt { val: int }
 
-impl MyInt : Add<MyInt, MyInt> {
+impl Add<MyInt, MyInt> for MyInt {
     pure fn add(other: &MyInt) -> MyInt { mi(self.val + other.val) }
 }
 

@@ -46,7 +46,7 @@ trait EscapedCharWriter {
     fn write_escaped_char(ch: char);
 }
 
-impl Writer : EscapedCharWriter {
+impl EscapedCharWriter for Writer {
     fn write_escaped_char(ch: char) {
         match ch {
             '\t' => self.write_str("\\t"),
@@ -71,64 +71,64 @@ trait Repr {
     fn write_repr(writer: @Writer);
 }
 
-impl () : Repr {
+impl Repr for () {
     fn write_repr(writer: @Writer) { writer.write_str("()"); }
 }
 
-impl bool : Repr {
+impl Repr for bool {
     fn write_repr(writer: @Writer) {
         writer.write_str(if self { "true" } else { "false" })
     }
 }
 
-impl int : Repr {
+impl Repr for int {
     fn write_repr(writer: @Writer) { writer.write_int(self); }
 }
-impl i8 : Repr {
+impl Repr for i8 {
     fn write_repr(writer: @Writer) { writer.write_int(self as int); }
 }
-impl i16 : Repr {
+impl Repr for i16 {
     fn write_repr(writer: @Writer) { writer.write_int(self as int); }
 }
-impl i32 : Repr {
+impl Repr for i32 {
     fn write_repr(writer: @Writer) { writer.write_int(self as int); }
 }
-impl i64 : Repr {
+impl Repr for i64 {
     // FIXME #4424: This can lose precision.
     fn write_repr(writer: @Writer) { writer.write_int(self as int); }
 }
 
-impl uint : Repr {
+impl Repr for uint {
     fn write_repr(writer: @Writer) { writer.write_uint(self); }
 }
-impl u8 : Repr {
+impl Repr for u8 {
     fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
 }
-impl u16 : Repr {
+impl Repr for u16 {
     fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
 }
-impl u32 : Repr {
+impl Repr for u32 {
     fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
 }
-impl u64 : Repr {
+impl Repr for u64 {
     // FIXME #4424: This can lose precision.
     fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
 }
 
-impl float : Repr {
+impl Repr for float {
     // FIXME #4423: This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
-impl f32 : Repr {
+impl Repr for f32 {
     // FIXME #4423 This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
-impl f64 : Repr {
+impl Repr for f64 {
     // FIXME #4423: This mallocs.
     fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
 }
 
-impl char : Repr {
+impl Repr for char {
     fn write_repr(writer: @Writer) { writer.write_char(self); }
 }
 
@@ -154,7 +154,7 @@ pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
                   writer: writer }
 }
 
-impl ReprVisitor : MovePtr {
+impl MovePtr for ReprVisitor {
     #[inline(always)]
     fn move_ptr(adjustment: fn(*c_void) -> *c_void) {
         self.ptr = adjustment(self.ptr);
@@ -262,7 +262,7 @@ impl ReprVisitor {
 
 }
 
-impl ReprVisitor : TyVisitor {
+impl TyVisitor for ReprVisitor {
     fn visit_bot(&self) -> bool {
         self.writer.write_str("!");
         true

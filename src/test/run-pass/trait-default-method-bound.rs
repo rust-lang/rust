@@ -14,7 +14,7 @@ trait A {
     fn g() -> int { 10 }
 }
 
-impl int: A { }
+impl A for int { }
 
 fn f<T: A>(i: T) {
     assert i.g() == 10;

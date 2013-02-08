@@ -20,7 +20,7 @@ struct cbar {
     x: int,
 }
 
-impl cbar : bar<int> {
+impl bar<int> for cbar {
     fn get_bar() -> int {
         self.x
     }

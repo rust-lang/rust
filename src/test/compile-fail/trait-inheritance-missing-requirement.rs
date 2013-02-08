@@ -24,7 +24,7 @@ struct A {
 }
 
 // Can't implement Bar without an impl of Foo
-impl A : Bar {
+impl Bar for A {
     fn g() { }
 }
 

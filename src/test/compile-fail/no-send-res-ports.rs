@@ -15,7 +15,7 @@ fn main() {
       _x: Port<()>,
     }
 
-    impl foo : Drop {
+    impl Drop for foo {
         fn finalize(&self) {}
     }
 

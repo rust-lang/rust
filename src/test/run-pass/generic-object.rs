@@ -16,7 +16,7 @@ struct S {
     x: int
 }
 
-impl S : Foo<int> {
+impl Foo<int> for S {
     fn get() -> int {
         self.x
     }

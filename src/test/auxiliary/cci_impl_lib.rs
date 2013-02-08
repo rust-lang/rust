@@ -14,7 +14,7 @@ trait uint_helpers {
     fn to(v: uint, f: fn(uint));
 }
 
-impl uint: uint_helpers {
+impl uint_helpers for uint {
     #[inline]
     fn to(v: uint, f: fn(uint)) {
         let mut i = self;

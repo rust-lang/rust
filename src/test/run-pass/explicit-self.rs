@@ -63,7 +63,7 @@ impl thing {
 }
 
 trait Nus { fn f(&self); }
-impl thing: Nus { fn f(&self) {} }
+impl Nus for thing { fn f(&self) {} }
 
 pub fn main() {
 

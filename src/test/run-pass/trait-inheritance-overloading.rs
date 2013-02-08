@@ -14,19 +14,19 @@ trait MyNum : Add<Self,Self> Sub<Self,Self> Mul<Self,Self> Eq { }
 
 struct MyInt { val: int }
 
-impl MyInt : Add<MyInt, MyInt> {
+impl Add<MyInt, MyInt> for MyInt {
     pure fn add(&self, other: &MyInt) -> MyInt { mi(self.val + other.val) }
 }
 
-impl MyInt : Sub<MyInt, MyInt> {
+impl Sub<MyInt, MyInt> for MyInt {
     pure fn sub(&self, other: &MyInt) -> MyInt { mi(self.val - other.val) }
 }
 
-impl MyInt : Mul<MyInt, MyInt> {
+impl Mul<MyInt, MyInt> for MyInt {
     pure fn mul(&self, other: &MyInt) -> MyInt { mi(self.val * other.val) }
 }
 
-impl MyInt : Eq {
+impl Eq for MyInt {
     pure fn eq(&self, other: &MyInt) -> bool { self.val == other.val }
     pure fn ne(&self, other: &MyInt) -> bool { !self.eq(other) }
 }

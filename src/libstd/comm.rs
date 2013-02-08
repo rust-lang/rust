@@ -25,19 +25,19 @@ pub struct DuplexStream<T, U> {
     priv port: Port<U>,
 }
 
-impl<T: Owned, U: Owned> DuplexStream<T, U> : GenericChan<T> {
+impl<T: Owned, U: Owned> GenericChan<T> for DuplexStream<T, U> {
     fn send(x: T) {
         self.chan.send(move x)
     }
 }
 
-impl<T: Owned, U: Owned> DuplexStream<T, U> : GenericSmartChan<T> {
+impl<T: Owned, U: Owned> GenericSmartChan<T> for DuplexStream<T, U> {
     fn try_send(x: T) -> bool {
         self.chan.try_send(move x)
     }
 }
 
-impl<T: Owned, U: Owned> DuplexStream<T, U> : GenericPort<U> {
+impl<T: Owned, U: Owned> GenericPort<U> for DuplexStream<T, U> {
     fn recv() -> U {
         self.port.recv()
     }
@@ -47,13 +47,13 @@ impl<T: Owned, U: Owned> DuplexStream<T, U> : GenericPort<U> {
     }
 }
 
-impl<T: Owned, U: Owned> DuplexStream<T, U> : Peekable<U> {
+impl<T: Owned, U: Owned> Peekable<U> for DuplexStream<T, U> {
     pure fn peek() -> bool {
         self.port.peek()
     }
 }
 
-impl<T: Owned, U: Owned> DuplexStream<T, U> : Selectable {
+impl<T: Owned, U: Owned> Selectable for DuplexStream<T, U> {
     pure fn header() -> *pipes::PacketHeader {
         self.port.header()
     }

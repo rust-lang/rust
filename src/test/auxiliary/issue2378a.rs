@@ -10,7 +10,7 @@
 
 enum maybe<T> { just(T), nothing }
 
-impl methods<T:copy> for maybe<T> {
+impl copy> for maybe<T> for methods<T {
     fn ~[](idx: uint) -> T {
         match self {
           just(t) { t }

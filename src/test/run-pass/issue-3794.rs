@@ -17,7 +17,7 @@ struct S {
     s: int,
 }
 
-impl S: T {
+impl T for S {
     fn print(&self) {
         io::println(fmt!("%?", self));
     }

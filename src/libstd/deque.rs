@@ -67,7 +67,7 @@ pub fn create<T: Copy>() -> Deque<T> {
         elts: DVec<Cell<T>>,
     }
 
-    impl <T: Copy> Repr<T>: Deque<T> {
+    impl<T: Copy> Deque<T> for Repr<T> {
         fn size() -> uint { return self.nelts; }
         fn add_front(t: T) {
             let oldlo: uint = self.lo;

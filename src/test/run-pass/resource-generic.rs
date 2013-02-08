@@ -17,7 +17,7 @@ struct finish<T> {
   arg: Arg<T>
 }
 
-impl<T: Copy> finish<T> : Drop {
+impl<T: Copy> Drop for finish<T> {
     fn finalize(&self) {
         (self.arg.fin)(self.arg.val);
     }

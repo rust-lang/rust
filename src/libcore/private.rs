@@ -291,7 +291,7 @@ pub unsafe fn clone_shared_mutable_state<T: Owned>(rc: &SharedMutableState<T>)
     ArcDestruct((*rc).data)
 }
 
-impl<T: Owned> SharedMutableState<T>: Clone {
+impl<T: Owned> Clone for SharedMutableState<T> {
     fn clone(&self) -> SharedMutableState<T> {
         unsafe {
             clone_shared_mutable_state(self)
@@ -360,7 +360,7 @@ pub fn exclusive<T:Owned >(user_data: T) -> Exclusive<T> {
     Exclusive { x: unsafe { shared_mutable_state(move data) } }
 }
 
-impl<T: Owned> Exclusive<T>: Clone {
+impl<T: Owned> Clone for Exclusive<T> {
     // Duplicate an exclusive ARC, as std::arc::clone.
     fn clone(&self) -> Exclusive<T> {
         Exclusive { x: unsafe { clone_shared_mutable_state(&self.x) } }

@@ -12,7 +12,7 @@ struct S<T> {
     x: T
 }
 
-impl<T> S<T> : ::core::ops::Drop {
+impl<T> ::core::ops::Drop for S<T> {
     fn finalize(&self) {
         io::println("bye");
     }

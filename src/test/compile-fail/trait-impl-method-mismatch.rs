@@ -14,7 +14,7 @@ trait Mumbo {
     fn jbmbo(&self) -> @uint;
 }
 
-impl uint: Mumbo {
+impl Mumbo for uint {
     // Cannot have a larger effect than the trait:
     fn jumbo(&self, x: @uint) { *self + *x; }
     //~^ ERROR expected pure fn but found impure fn

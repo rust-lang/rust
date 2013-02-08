@@ -15,6 +15,6 @@ extern mod a;
 
 use a::to_strz;
 
-impl bool: to_strz {
+impl to_strz for bool {
     fn to_strz() -> ~str { fmt!("%b", self) }
 }

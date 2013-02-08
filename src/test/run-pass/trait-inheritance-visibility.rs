@@ -11,11 +11,11 @@
 mod traits {
     pub trait Foo { fn f() -> int; }
 
-    impl int: Foo { fn f() -> int { 10 } }
+    impl Foo for int { fn f() -> int { 10 } }
 }
 
 trait Quux: traits::Foo { }
-impl<T: traits::Foo> T: Quux { }
+impl<T: traits::Foo> Quux for T { }
 
 // Foo is not in scope but because Quux is we can still access
 // Foo's methods on a Quux bound typaram

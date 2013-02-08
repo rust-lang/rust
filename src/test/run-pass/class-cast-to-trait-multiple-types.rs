@@ -33,7 +33,7 @@ impl dog {
     }
 }
 
-impl dog : noisy {
+impl noisy for dog {
   fn speak() -> int { self.bark() }
 }
 
@@ -51,7 +51,7 @@ struct cat {
   name : ~str,
 }
 
-impl cat : noisy {
+impl noisy for cat {
   fn speak() -> int { self.meow() as int }
 }
 

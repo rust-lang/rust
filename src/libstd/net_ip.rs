@@ -193,7 +193,7 @@ pub mod v4 {
         unsafe fn as_u32() -> u32;
     }
 
-    impl Ipv4Rep: AsUnsafeU32 {
+    impl AsUnsafeU32 for Ipv4Rep {
         // this is pretty dastardly, i know
         unsafe fn as_u32() -> u32 {
             *((ptr::addr_of(&self)) as *u32)

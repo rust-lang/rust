@@ -13,7 +13,7 @@ struct socket {
 
 }
 
-impl socket : Drop {
+impl Drop for socket {
     fn finalize(&self) {}
 }
 

@@ -13,7 +13,7 @@ pub trait ReaderUtil {
     fn read_bytes(&self, len: uint);
 }
 
-impl<T: Reader> T : ReaderUtil {
+impl<T: Reader> ReaderUtil for T {
 
     fn read_bytes(&self, len: uint) {
         let mut count = self.read(&mut [0], len);
@@ -26,7 +26,7 @@ struct S {
     y: int
 }
 
-impl S: Reader {
+impl Reader for S {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         0
     }

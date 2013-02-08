@@ -17,7 +17,7 @@ struct complainer {
   c: SharedChan<bool>,
 }
 
-impl complainer : Drop {
+impl Drop for complainer {
     fn finalize(&self) {
         error!("About to send!");
         self.c.send(true);

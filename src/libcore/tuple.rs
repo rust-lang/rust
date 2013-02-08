@@ -20,7 +20,7 @@ pub trait CopyableTuple<T, U> {
     pure fn swap() -> (U, T);
 }
 
-impl<T: Copy, U: Copy> (T, U): CopyableTuple<T, U> {
+impl<T: Copy, U: Copy> CopyableTuple<T, U> for (T, U) {
 
     /// Return the first element of self
     #[inline(always)]
@@ -50,7 +50,7 @@ pub trait ImmutableTuple<T, U> {
     pure fn second_ref(&self) -> &self/U;
 }
 
-impl<T, U> (T, U): ImmutableTuple<T, U> {
+impl<T, U> ImmutableTuple<T, U> for (T, U) {
     #[inline(always)]
     pure fn first_ref(&self) -> &self/T {
         match *self {
@@ -70,7 +70,7 @@ pub trait ExtendedTupleOps<A,B> {
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C];
 }
 
-impl<A: Copy, B: Copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
+impl<A: Copy, B: Copy> ExtendedTupleOps<A,B> for (&[A], &[B]) {
     #[inline(always)]
     fn zip(&self) -> ~[(A, B)] {
         match *self {
@@ -90,7 +90,7 @@ impl<A: Copy, B: Copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
     }
 }
 
-impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
+impl<A: Copy, B: Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
 
     #[inline(always)]
     fn zip(&self) -> ~[(A, B)] {
@@ -112,7 +112,7 @@ impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
 }
 
 #[cfg(notest)]
-impl<A: Eq, B: Eq> (A, B) : Eq {
+impl<A: Eq, B: Eq> Eq for (A, B) {
     #[inline(always)]
     pure fn eq(&self, other: &(A, B)) -> bool {
         match (*self) {
@@ -128,7 +128,7 @@ impl<A: Eq, B: Eq> (A, B) : Eq {
 }
 
 #[cfg(notest)]
-impl<A: Ord, B: Ord> (A, B) : Ord {
+impl<A: Ord, B: Ord> Ord for (A, B) {
     #[inline(always)]
     pure fn lt(&self, other: &(A, B)) -> bool {
         match (*self) {
@@ -153,7 +153,7 @@ impl<A: Ord, B: Ord> (A, B) : Ord {
 }
 
 #[cfg(notest)]
-impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
+impl<A: Eq, B: Eq, C: Eq> Eq for (A, B, C) {
     #[inline(always)]
     pure fn eq(&self, other: &(A, B, C)) -> bool {
         match (*self) {
@@ -170,7 +170,7 @@ impl<A: Eq, B: Eq, C: Eq> (A, B, C) : Eq {
 }
 
 #[cfg(notest)]
-impl<A: Ord, B: Ord, C: Ord> (A, B, C) : Ord {
+impl<A: Ord, B: Ord, C: Ord> Ord for (A, B, C) {
     #[inline(always)]
     pure fn lt(&self, other: &(A, B, C)) -> bool {
         match (*self) {

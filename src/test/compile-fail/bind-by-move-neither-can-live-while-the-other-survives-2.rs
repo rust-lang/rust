@@ -10,7 +10,7 @@
 
 struct X { x: (), }
 
-impl X : Drop {
+impl Drop for X {
     fn finalize(&self) {
         error!("destructor runs");
     }

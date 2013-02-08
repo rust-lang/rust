@@ -12,7 +12,7 @@
 trait thing<A> {
     fn foo() -> Option<A>;
 }
-impl<A> int: thing<A> {
+impl<A> thing<A> for int {
     fn foo() -> Option<A> { None }
 }
 fn foo_func<A, B: thing<A>>(x: B) -> Option<A> { x.foo() }

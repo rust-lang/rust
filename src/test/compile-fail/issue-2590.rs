@@ -18,7 +18,7 @@ trait parse {
     fn parse() -> ~[int];
 }
 
-impl parser: parse {
+impl parse for parser {
     fn parse() -> ~[int] {
         dvec::unwrap(self.tokens) //~ ERROR moving out of immutable field
     }

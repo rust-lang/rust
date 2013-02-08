@@ -26,7 +26,7 @@ pub struct PriorityQueue<T> {
     priv data: ~[T],
 }
 
-impl <T: Ord> PriorityQueue<T>: Container {
+impl<T: Ord> Container for PriorityQueue<T> {
     /// Returns the length of the queue
     pure fn len(&self) -> uint { self.data.len() }
 
@@ -34,7 +34,7 @@ impl <T: Ord> PriorityQueue<T>: Container {
     pure fn is_empty(&self) -> bool { self.data.is_empty() }
 }
 
-impl <T: Ord> PriorityQueue<T>: Mutable {
+impl<T: Ord> Mutable for PriorityQueue<T> {
     /// Drop all items from the queue
     fn clear(&mut self) { self.data.truncate(0) }
 }

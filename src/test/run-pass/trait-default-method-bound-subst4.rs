@@ -14,7 +14,7 @@ trait A<T> {
     fn g(x: uint) -> uint { move x }
 }
 
-impl<T> int: A<T> { }
+impl<T> A<T> for int { }
 
 fn f<T, V: A<T>>(i: V, j: uint) -> uint {
     i.g(move j)

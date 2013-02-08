@@ -26,9 +26,9 @@ use rt::rust_task;
 type rust_task = libc::c_void;
 
 pub trait LocalData { }
-impl<T: Durable> @T: LocalData { }
+impl<T: Durable> LocalData for @T { }
 
-impl LocalData: Eq {
+impl Eq for LocalData {
     pure fn eq(&self, other: &@LocalData) -> bool {
         unsafe {
             let ptr_a: (uint, uint) = cast::reinterpret_cast(&(*self));

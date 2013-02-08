@@ -141,12 +141,12 @@ pub type last_use_map = HashMap<node_id, @DVec<node_id>>;
 enum Variable = uint;
 enum LiveNode = uint;
 
-impl Variable : cmp::Eq {
+impl cmp::Eq for Variable {
     pure fn eq(&self, other: &Variable) -> bool { *(*self) == *(*other) }
     pure fn ne(&self, other: &Variable) -> bool { *(*self) != *(*other) }
 }
 
-impl LiveNode : cmp::Eq {
+impl cmp::Eq for LiveNode {
     pure fn eq(&self, other: &LiveNode) -> bool { *(*self) == *(*other) }
     pure fn ne(&self, other: &LiveNode) -> bool { *(*self) != *(*other) }
 }
@@ -158,7 +158,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-impl LiveNodeKind : cmp::Eq {
+impl cmp::Eq for LiveNodeKind {
     pure fn eq(&self, other: &LiveNodeKind) -> bool {
         match (*self) {
             FreeVarNode(e0a) => {
@@ -224,11 +224,11 @@ pub fn check_crate(tcx: ty::ctxt,
     return last_use_map;
 }
 
-impl LiveNode: to_str::ToStr {
+impl to_str::ToStr for LiveNode {
     pure fn to_str(&self) -> ~str { fmt!("ln(%u)", **self) }
 }
 
-impl Variable: to_str::ToStr {
+impl to_str::ToStr for Variable {
     pure fn to_str(&self) -> ~str { fmt!("v(%u)", **self) }
 }
 

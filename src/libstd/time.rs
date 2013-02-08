@@ -54,14 +54,14 @@ impl Timespec {
     }
 }
 
-impl Timespec : Eq {
+impl Eq for Timespec {
     pure fn eq(&self, other: &Timespec) -> bool {
         self.sec == other.sec && self.nsec == other.nsec
     }
     pure fn ne(&self, other: &Timespec) -> bool { !self.eq(other) }
 }
 
-impl Timespec : Ord {
+impl Ord for Timespec {
     pure fn lt(&self, other: &Timespec) -> bool {
         self.sec < other.sec ||
             (self.sec == other.sec && self.nsec < other.nsec)
@@ -129,7 +129,7 @@ pub struct Tm {
     tm_nsec: i32, // nanoseconds
 }
 
-impl Tm : Eq {
+impl Eq for Tm {
     pure fn eq(&self, other: &Tm) -> bool {
         self.tm_sec == (*other).tm_sec &&
         self.tm_min == (*other).tm_min &&

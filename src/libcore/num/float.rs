@@ -200,12 +200,12 @@ pub pure fn to_str_digits(num: float, digits: uint) -> ~str {
     r
 }
 
-impl float: to_str::ToStr {
+impl to_str::ToStr for float {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
 }
 
-impl float: num::ToStrRadix {
+impl num::ToStrRadix for float {
     #[inline(always)]
     pure fn to_str_radix(&self, radix: uint) -> ~str {
         to_str_radix(*self, radix)
@@ -300,12 +300,12 @@ pub pure fn from_str_radix(num: &str, radix: uint) -> Option<float> {
     num::from_str_common(num, radix, true, true, false, num::ExpNone, false)
 }
 
-impl float: from_str::FromStr {
+impl from_str::FromStr for float {
     #[inline(always)]
     static pure fn from_str(val: &str) -> Option<float> { from_str(val) }
 }
 
-impl float: num::FromStrRadix {
+impl num::FromStrRadix for float {
     #[inline(always)]
     static pure fn from_str_radix(val: &str, radix: uint) -> Option<float> {
         from_str_radix(val, radix)
@@ -391,20 +391,20 @@ pub pure fn tan(x: float) -> float {
 }
 
 #[cfg(notest)]
-impl float : Eq {
+impl Eq for float {
     pure fn eq(&self, other: &float) -> bool { (*self) == (*other) }
     pure fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
 #[cfg(notest)]
-impl float : Ord {
+impl Ord for float {
     pure fn lt(&self, other: &float) -> bool { (*self) < (*other) }
     pure fn le(&self, other: &float) -> bool { (*self) <= (*other) }
     pure fn ge(&self, other: &float) -> bool { (*self) >= (*other) }
     pure fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
-impl float: num::Num {
+impl num::Num for float {
     #[inline(always)]
     pub pure fn add(&self, other: &float) -> float { return *self + *other; }
     #[inline(always)]
@@ -424,17 +424,17 @@ impl float: num::Num {
     static pure fn from_int(&self, n: int) -> float { return n as float;  }
 }
 
-impl float: num::Zero {
+impl num::Zero for float {
     #[inline(always)]
     static pure fn zero() -> float { 0.0 }
 }
 
-impl float: num::One {
+impl num::One for float {
     #[inline(always)]
     static pure fn one() -> float { 1.0 }
 }
 
-impl float: num::Round {
+impl num::Round for float {
     #[inline(always)]
     pure fn round(&self, mode: num::RoundMode) -> float {
         match mode {

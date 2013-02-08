@@ -16,7 +16,7 @@ struct Kitty {
     x: int,
 }
 
-impl Kitty : Drop {
+impl Drop for Kitty {
     fn finalize(&self) {}
 }
 

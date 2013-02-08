@@ -20,13 +20,13 @@ trait MyNum : Add<Self,Self> { }
 
 struct MyInt { val: int }
 
-impl MyInt : Panda<MyInt> {
+impl Panda<MyInt> for MyInt {
     fn chomp(bamboo: &MyInt) -> MyInt {
         mi(self.val + bamboo.val)
     }
 }
 
-impl MyInt : Add<MyInt, MyInt> {
+impl Add<MyInt, MyInt> for MyInt {
     fn add(other: &MyInt) -> MyInt { self.chomp(other) }
 }
 

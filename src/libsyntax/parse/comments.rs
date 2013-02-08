@@ -34,7 +34,7 @@ pub enum cmnt_style {
     blank_line, // Just a manual blank line "\n\n", for layout
 }
 
-impl cmnt_style : cmp::Eq {
+impl cmp::Eq for cmnt_style {
     pure fn eq(&self, other: &cmnt_style) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

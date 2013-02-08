@@ -12,7 +12,7 @@ struct cat {
   name: ~str,
 }
 
-impl cat : Drop {
+impl Drop for cat {
     #[cat_dropper]
     /**
        Actually, cats don't always land on their feet when you drop them.

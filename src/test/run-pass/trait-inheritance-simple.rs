@@ -13,8 +13,8 @@ trait Bar : Foo { fn g() -> int; }
 
 struct A { x: int }
 
-impl A : Foo { fn f() -> int { 10 } }
-impl A : Bar { fn g() -> int { 20 } }
+impl Foo for A { fn f() -> int { 10 } }
+impl Bar for A { fn g() -> int { 20 } }
 
 fn ff<T:Foo>(a: &T) -> int {
     a.f()

@@ -72,7 +72,7 @@ impl<V: TyVisitor MovePtr> MovePtrAdaptor<V> {
 }
 
 /// Abstract type-directed pointer-movement using the MovePtr trait
-impl<V: TyVisitor MovePtr> MovePtrAdaptor<V>: TyVisitor {
+impl<V: TyVisitor MovePtr> TyVisitor for MovePtrAdaptor<V> {
     fn visit_bot(&self) -> bool {
         self.align_to::<()>();
         if ! self.inner.visit_bot() { return false; }

@@ -16,7 +16,7 @@ struct r {
 
 fn r(i:int) -> r { r { i: i } }
 
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {}
 }
 

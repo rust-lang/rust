@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait hax { } 
-impl <A> A: hax { } 
+impl<A> hax for A { } 
 
 fn perform_hax<T: &static>(x: @T) -> hax {
     x as hax 

@@ -20,7 +20,7 @@ trait to_str_2 {
 // I use an impl here because it will cause
 // the compiler to attempt autoderef and then
 // try to resolve the method.
-impl t: to_str_2 {
+impl to_str_2 for t {
     fn to_str() -> ~str { ~"t" }
 }
 
