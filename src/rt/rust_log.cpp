@@ -245,13 +245,12 @@ void update_crate_map(const cratemap* map, log_directive* dirs,
     iter_crate_map(map, update_entry, &args);
 }
 
+void print_mod_name(const mod_entry* mod, void *cooke) {
+    printf(" %s\n", mod->name);
+}
+
 void print_crate_log_map(const cratemap* map) {
-    for (const mod_entry* cur = map->entries(); cur->name; cur++) {
-        printf("  %s\n", cur->name);
-    }
-    for (cratemap::iterator i = map->begin(), e = map->end(); i != e; ++i) {
-        print_crate_log_map(*i);
-    }
+    iter_crate_map(map, print_mod_name, NULL);
 }
 
 // These are pseudo-modules used to control logging in the runtime.
