@@ -495,7 +495,7 @@ pub fn try_parse_sources(filename: &Path,
     let c = io::read_whole_file_str(filename);
     match json::from_str(c.get()) {
         Ok(json::Object(j)) => {
-            for j.each |k, v| {
+            for j.each |&(k, v)| {
                 sources.insert(copy *k, parse_source(*k, v));
                 debug!("source: %s", *k);
             }
