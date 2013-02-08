@@ -20,6 +20,6 @@ impl C : Drop {
 
 fn main() {
     let c = C{ x: 2};
-    let d = copy c; //~ ERROR copying a noncopyable value
+    let d = copy c; //~ ERROR copying a value of non-copyable type `C`
     error!("%?", d.x);
 }

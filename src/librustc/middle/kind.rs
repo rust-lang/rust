@@ -15,7 +15,6 @@ use middle::freevars;
 use middle::lint::{non_implicitly_copyable_typarams, implicit_copies};
 use middle::liveness;
 use middle::pat_util;
-use middle::ty::{Kind, kind_copyable, kind_noncopyable, kind_const};
 use middle::ty;
 use middle::typeck;
 use middle;
@@ -61,26 +60,6 @@ use syntax::{visit, ast_util};
 
 pub const try_adding: &str = "Try adding a move";
 
-pub fn kind_to_str(k: Kind) -> ~str {
-    let mut kinds = ~[];
-
-    if ty::kind_lteq(kind_const(), k) {
-        kinds.push(~"const");
-    }
-
-    if ty::kind_can_be_copied(k) {
-        kinds.push(~"copy");
-    }
-
-    if ty::kind_can_be_sent(k) {
-        kinds.push(~"owned");
-    } else if ty::kind_is_durable(k) {
-        kinds.push(~"&static");
-    }
-
-    str::connect(kinds, ~" ")
-}
-
 pub type rval_map = HashMap<node_id, ()>;
 
 pub type ctx = {
@@ -119,11 +98,11 @@ type check_fn = fn@(ctx, @freevar_entry);
 // closure.
 fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
     fn check_for_uniq(cx: ctx, fv: @freevar_entry) {
-        // all captured data must be sendable, regardless of whether it is
-        // moved in or copied in.  Note that send implies owned.
+        // all captured data must be owned, regardless of whether it is
+        // moved in or copied in.
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
-        if !check_send(cx, var_t, fv.span) { return; }
+        if !check_owned(cx, var_t, fv.span) { return; }
 
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
@@ -281,29 +260,53 @@ fn check_ty(aty: @Ty, cx: ctx, v: visit::vt<ctx>) {
     visit::visit_ty(aty, cx, v);
 }
 
-pub fn check_bounds(cx: ctx, id: node_id, sp: span,
-                    ty: ty::t, bounds: ty::param_bounds) {
-    let kind = ty::type_kind(cx.tcx, ty);
-    let p_kind = ty::param_bounds_to_kind(bounds);
-    if !ty::kind_lteq(p_kind, kind) {
-        // If the only reason the kind check fails is because the
-        // argument type isn't implicitly copyable, consult the warning
-        // settings to figure out what to do.
-        let implicit = ty::kind_implicitly_copyable() - ty::kind_copyable();
-        if ty::kind_lteq(p_kind, kind | implicit) {
-            cx.tcx.sess.span_lint(
-                non_implicitly_copyable_typarams,
-                id, cx.current_item, sp,
-                ~"instantiating copy type parameter with a \
-                 not implicitly copyable type");
-        } else {
-            cx.tcx.sess.span_err(
-                sp,
-                ~"instantiating a type parameter with an incompatible type " +
-                ~"(needs `" + kind_to_str(p_kind) +
-                ~"`, got `" + kind_to_str(kind) +
-                ~"`, missing `" + kind_to_str(p_kind - kind) + ~"`)");
+pub fn check_bounds(cx: ctx,
+                    _type_parameter_id: node_id,
+                    sp: span,
+                    ty: ty::t,
+                    bounds: ty::param_bounds)
+{
+    let kind = ty::type_contents(cx.tcx, ty);
+    let mut missing = ~[];
+    for bounds.each |bound| {
+        match *bound {
+            ty::bound_trait(_) => {
+                /* Not our job, checking in typeck */
+            }
+
+            ty::bound_copy => {
+                if !kind.is_copy(cx.tcx) {
+                    missing.push("Copy");
+                }
+            }
+
+            ty::bound_durable => {
+                if !kind.is_durable(cx.tcx) {
+                    missing.push("&static");
+                }
+            }
+
+            ty::bound_owned => {
+                if !kind.is_owned(cx.tcx) {
+                    missing.push("Owned");
+                }
+            }
+
+            ty::bound_const => {
+                if !kind.is_const(cx.tcx) {
+                    missing.push("Const");
+                }
+            }
         }
+    }
+
+    if !missing.is_empty() {
+        cx.tcx.sess.span_err(
+            sp,
+            fmt!("instantiating a type parameter with an incompatible type \
+                  `%s`, which does not fulfill `%s`",
+                 ty_to_str(cx.tcx, ty),
+                 str::connect_slices(missing, " ")));
     }
 }
 
@@ -342,16 +345,22 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
 }
 
 fn check_copy(cx: ctx, ty: ty::t, sp: span, reason: &str) {
-    let k = ty::type_kind(cx.tcx, ty);
-    if !ty::kind_can_be_copied(k) {
-        cx.tcx.sess.span_err(sp, ~"copying a noncopyable value");
+    debug!("type_contents(%s)=%s",
+           ty_to_str(cx.tcx, ty),
+           ty::type_contents(cx.tcx, ty).to_str());
+    if !ty::type_is_copyable(cx.tcx, ty) {
+        cx.tcx.sess.span_err(
+            sp, fmt!("copying a value of non-copyable type `%s`",
+                     ty_to_str(cx.tcx, ty)));
         cx.tcx.sess.span_note(sp, fmt!("%s", reason));
     }
 }
 
-pub fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
-    if !ty::kind_can_be_sent(ty::type_kind(cx.tcx, ty)) {
-        cx.tcx.sess.span_err(sp, ~"not a sendable value");
+pub fn check_owned(cx: ctx, ty: ty::t, sp: span) -> bool {
+    if !ty::type_is_owned(cx.tcx, ty) {
+        cx.tcx.sess.span_err(
+            sp, fmt!("value has non-owned type `%s`",
+                     ty_to_str(cx.tcx, ty)));
         false
     } else {
         true
@@ -360,7 +369,7 @@ pub fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
 
 // note: also used from middle::typeck::regionck!
 pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
-    if !ty::kind_is_durable(ty::type_kind(tcx, ty)) {
+    if !ty::type_is_durable(tcx, ty) {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
@@ -403,8 +412,8 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 pub fn check_cast_for_escaping_regions(
     cx: ctx,
     source: @expr,
-    target: @expr) {
-
+    target: @expr)
+{
     // Determine what type we are casting to; if it is not an trait, then no
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
@@ -450,13 +459,9 @@ pub fn check_kind_bounds_of_cast(cx: ctx, source: @expr, target: @expr) {
     match ty::get(target_ty).sty {
         ty::ty_trait(_, _, ty::vstore_uniq) => {
             let source_ty = ty::expr_ty(cx.tcx, source);
-            let source_kind = ty::type_kind(cx.tcx, source_ty);
-            if !ty::kind_can_be_copied(source_kind) {
-                cx.tcx.sess.span_err(target.span,
-                    ~"uniquely-owned trait objects must be copyable");
-            }
-            if !ty::kind_can_be_sent(source_kind) {
-                cx.tcx.sess.span_err(target.span,
+            if !ty::type_is_owned(cx.tcx, source_ty) {
+                cx.tcx.sess.span_err(
+                    target.span,
                     ~"uniquely-owned trait objects must be sendable");
             }
         }

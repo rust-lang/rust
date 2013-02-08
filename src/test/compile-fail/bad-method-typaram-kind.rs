@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn foo<T>() {
-    1u.bar::<T>(); //~ ERROR: missing `copy`
+    1u.bar::<T>(); //~ ERROR: does not fulfill `Copy`
 }
 
 trait bar {

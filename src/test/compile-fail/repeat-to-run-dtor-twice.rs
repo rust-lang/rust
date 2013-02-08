@@ -24,6 +24,6 @@ impl Foo : Drop {
 
 fn main() {
     let a = Foo { x: 3 };
-    let _ = [ a, ..5 ];     //~ ERROR copying a noncopyable value
+    let _ = [ a, ..5 ];     //~ ERROR copying a value of non-copyable type
 }
 

@@ -832,7 +832,7 @@ pub impl Decoder: serialize::Decoder {
     fn read_owned_vec<T>(&self, f: fn(uint) -> T) -> T {
         debug!("read_owned_vec()");
         let len = match *self.peek() {
-            List(list) => list.len(),
+            List(ref list) => list.len(),
             _ => die!(~"not a list"),
         };
         let res = f(len);

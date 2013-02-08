@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait Foo {
-    fn f();
+    fn f(&self);
 }
 
 struct Bar {
@@ -21,14 +21,14 @@ impl Bar : Drop {
 }
 
 impl Bar : Foo {
-    fn f() {
+    fn f(&self) {
         io::println("hi");
     }
 }
 
 fn main() {
     let x = ~Bar { x: 10 };
-    let y = (move x) as ~Foo;   //~ ERROR uniquely-owned trait objects must be copyable
-    let _z = copy y;
+    let y: ~Foo = x as ~Foo;
+    let _z = copy y; //~ ERROR copying a value of non-copyable type
 }
 

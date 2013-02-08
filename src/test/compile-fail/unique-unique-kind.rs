@@ -13,5 +13,5 @@ fn f<T: Owned>(_i: T) {
 
 fn main() {
     let i = ~@100;
-    f(move i); //~ ERROR missing `owned`
+    f(move i); //~ ERROR does not fulfill `Owned`
 }

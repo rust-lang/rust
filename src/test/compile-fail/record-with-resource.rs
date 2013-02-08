@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: copying a noncopyable value
-
 struct my_resource {
   x: int,
 }
@@ -29,7 +27,7 @@ fn my_resource(x: int) -> my_resource {
 fn main() {
     {
         let a = {x: 0, y: my_resource(20)};
-        let b = {x: 2,.. copy a};
+        let b = {x: 2,.. copy a}; //~ ERROR copying a value of non-copyable type
         log(error, (a, b));
     }
 }

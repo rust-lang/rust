@@ -374,7 +374,7 @@ impl VisitContext {
          * not implicitly copyable.
          */
 
-        let result = if ty::type_implicitly_moves(self.tcx, ty) {
+        let result = if ty::type_moves_by_default(self.tcx, ty) {
             MoveInWhole
         } else {
             Read
@@ -495,7 +495,7 @@ impl VisitContext {
                     // moves-by-default:
                     let consume_with = with_fields.any(|tf| {
                         !fields.any(|f| f.node.ident == tf.ident) &&
-                            ty::type_implicitly_moves(self.tcx, tf.mt.ty)
+                            ty::type_moves_by_default(self.tcx, tf.mt.ty)
                     });
 
                     if consume_with {
@@ -830,7 +830,7 @@ impl VisitContext {
                 let fvar_ty = ty::node_id_to_type(self.tcx, fvar_def_id);
                 debug!("fvar_def_id=%? fvar_ty=%s",
                        fvar_def_id, ppaux::ty_to_str(self.tcx, fvar_ty));
-                let mode = if ty::type_implicitly_moves(self.tcx, fvar_ty) {
+                let mode = if ty::type_moves_by_default(self.tcx, fvar_ty) {
                     CapMove
                 } else {
                     CapCopy
