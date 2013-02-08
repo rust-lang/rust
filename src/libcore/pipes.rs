@@ -82,8 +82,7 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-// Transitional -- needs snapshot
-#[allow(structural_records)];
+#[allow(structural_records)]; // Macros -- needs another snapshot
 
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
