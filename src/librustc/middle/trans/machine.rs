@@ -126,17 +126,16 @@ pub fn llbitsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
     }
 }
 
-// Returns the "default" size of t, which is calculated by casting null to a
-// *T and then doing gep(1) on it and measuring the result. Really, look in
-// the LLVM sources. It does that. So this is likely similar to the ABI size
-// (i.e. including alignment-padding), but goodness knows which alignment it
-// winds up using. Probably the ABI one? Not recommended.
+/// Returns the size of the type as an LLVM constant integer value.
 pub fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
-    unsafe {
-        return llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t),
-                                      cx.int_type,
-                                      False);
-    }
+    // Once upon a time, this called LLVMSizeOf, which does a
+    // getelementptr(1) on a null pointer and casts to an int, in
+    // order to obtain the type size as a value without requiring the
+    // target data layout.  But we have the target data layout, so
+    // there's no need for that contrivance.  The instruction
+    // selection DAG generator would flatten that GEP(1) node into a
+    // constant of the type's alloc size, so let's save it some work.
+    return C_uint(cx, llsize_of_alloc(cx, t));
 }
 
 // Returns the "default" size of t (see above), or 1 if the size would
