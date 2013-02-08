@@ -14,11 +14,26 @@
  */
 
 use core::container::{Container, Mutable, Map, Set};
+use core::iter::BaseIter;
 use core::option::{Some, None};
 use core::prelude::*;
 
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
+}
+
+impl<V> SmallIntMap<V>: BaseIter<(uint, &V)> {
+    /// Visit all key-value pairs in order
+    pure fn each(&self, it: fn(&(uint, &self/V)) -> bool) {
+        for uint::range(0, self.v.len()) |i| {
+            match self.v[i] {
+              Some(ref elt) => if !it(&(i, elt)) { break },
+              None => ()
+            }
+        }
+    }
+
+    pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<V> SmallIntMap<V>: Container {
@@ -48,14 +63,14 @@ impl<V> SmallIntMap<V>: Map<uint, V> {
         self.find(key).is_some()
     }
 
-    /// Visit all keys
+    /// Visit all keys in order
     pure fn each_key(&self, blk: fn(key: &uint) -> bool) {
-        self.each(|k, _| blk(k))
+        self.each(|&(k, _)| blk(&k))
     }
 
-    /// Visit all values
+    /// Visit all values in order
     pure fn each_value(&self, blk: fn(value: &V) -> bool) {
-        self.each(|_, v| blk(v))
+        self.each(|&(_, v)| blk(v))
     }
 
     /// Return the value corresponding to the key in the map
@@ -98,16 +113,6 @@ impl<V> SmallIntMap<V>: Map<uint, V> {
 pub impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     static pure fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
-
-    /// Visit all key-value pairs
-    pure fn each(&self, it: fn(key: &uint, value: &V) -> bool) {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref elt) => if !it(&i, elt) { break },
-              None => ()
-            }
-        }
-    }
 
     pure fn get(&self, key: &uint) -> &self/V {
         self.find(key).expect("key not present")
