@@ -392,7 +392,7 @@ priv impl ext_ctxt {
         expr: @ast::expr,
         args: ~[@ast::expr]
     ) -> @ast::expr {
-        self.expr(span, ast::expr_call(expr, args, false))
+        self.expr(span, ast::expr_call(expr, args, ast::NoSugar))
     }
 
     fn lambda_expr(expr: @ast::expr) -> @ast::expr {

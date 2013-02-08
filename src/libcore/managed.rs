@@ -10,10 +10,6 @@
 
 //! Operations on managed box types
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cast::transmute;
 use cmp::{Eq, Ord};
 use managed::raw::BoxRepr;

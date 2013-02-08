@@ -10,10 +10,6 @@
 
 //! Operations on unique pointer types
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cmp::{Eq, Ord};
 
 #[cfg(notest)]

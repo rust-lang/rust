@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// NB: transitionary, de-mode-ing.
-// tjc: Re-forbid deprecated modes once a snapshot fixes the
-// function problem
-#[forbid(deprecated_pattern)];
-
 #[doc(hidden)];
 
 use cast;
@@ -486,7 +481,7 @@ pub mod tests {
         res.recv();
     }
 
-    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[test] #[should_fail] #[ignore(reason = "random red")]
     pub fn exclusive_unwrap_conflict() {
         let x = exclusive(~~"hello");
         let x2 = ~mut Some(x.clone());

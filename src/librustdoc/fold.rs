@@ -55,23 +55,23 @@ impl<T: Clone> Fold<T>: Clone {
     }
 }
 
-type FoldDoc<T> = fn~(fold: &Fold<T>, doc: doc::Doc) -> doc::Doc;
-type FoldCrate<T> = fn~(fold: &Fold<T>, doc: doc::CrateDoc) -> doc::CrateDoc;
-type FoldItem<T> = fn~(fold: &Fold<T>, doc: doc::ItemDoc) -> doc::ItemDoc;
-type FoldMod<T> = fn~(fold: &Fold<T>, doc: doc::ModDoc) -> doc::ModDoc;
-type FoldNmod<T> = fn~(fold: &Fold<T>, doc: doc::NmodDoc) -> doc::NmodDoc;
-type FoldFn<T> = fn~(fold: &Fold<T>, doc: doc::FnDoc) -> doc::FnDoc;
-type FoldConst<T> = fn~(fold: &Fold<T>, doc: doc::ConstDoc) -> doc::ConstDoc;
-type FoldEnum<T> = fn~(fold: &Fold<T>, doc: doc::EnumDoc) -> doc::EnumDoc;
-type FoldTrait<T> = fn~(fold: &Fold<T>, doc: doc::TraitDoc) -> doc::TraitDoc;
-type FoldImpl<T> = fn~(fold: &Fold<T>, doc: doc::ImplDoc) -> doc::ImplDoc;
-type FoldType<T> = fn~(fold: &Fold<T>, doc: doc::TyDoc) -> doc::TyDoc;
-type FoldStruct<T> = fn~(fold: &Fold<T>,
+type FoldDoc<T> = @fn(fold: &Fold<T>, doc: doc::Doc) -> doc::Doc;
+type FoldCrate<T> = @fn(fold: &Fold<T>, doc: doc::CrateDoc) -> doc::CrateDoc;
+type FoldItem<T> = @fn(fold: &Fold<T>, doc: doc::ItemDoc) -> doc::ItemDoc;
+type FoldMod<T> = @fn(fold: &Fold<T>, doc: doc::ModDoc) -> doc::ModDoc;
+type FoldNmod<T> = @fn(fold: &Fold<T>, doc: doc::NmodDoc) -> doc::NmodDoc;
+type FoldFn<T> = @fn(fold: &Fold<T>, doc: doc::FnDoc) -> doc::FnDoc;
+type FoldConst<T> = @fn(fold: &Fold<T>, doc: doc::ConstDoc) -> doc::ConstDoc;
+type FoldEnum<T> = @fn(fold: &Fold<T>, doc: doc::EnumDoc) -> doc::EnumDoc;
+type FoldTrait<T> = @fn(fold: &Fold<T>, doc: doc::TraitDoc) -> doc::TraitDoc;
+type FoldImpl<T> = @fn(fold: &Fold<T>, doc: doc::ImplDoc) -> doc::ImplDoc;
+type FoldType<T> = @fn(fold: &Fold<T>, doc: doc::TyDoc) -> doc::TyDoc;
+type FoldStruct<T> = @fn(fold: &Fold<T>,
                          doc: doc::StructDoc) -> doc::StructDoc;
 
 // This exists because fn types don't infer correctly as record
 // initializers, but they do as function arguments
-fn mk_fold<T:Clone>(
+fn mk_fold<T>(
     ctxt: T,
     fold_doc: FoldDoc<T>,
     fold_crate: FoldCrate<T>,
@@ -103,7 +103,7 @@ fn mk_fold<T:Clone>(
     }
 }
 
-pub fn default_any_fold<T:Owned Clone>(ctxt: T) -> Fold<T> {
+pub fn default_any_fold<T: Clone>(ctxt: T) -> Fold<T> {
     mk_fold(
         move ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -121,7 +121,7 @@ pub fn default_any_fold<T:Owned Clone>(ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_seq_fold<T:Clone>(ctxt: T) -> Fold<T> {
+pub fn default_seq_fold<T: Clone>(ctxt: T) -> Fold<T> {
     mk_fold(
         move ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -139,7 +139,7 @@ pub fn default_seq_fold<T:Clone>(ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_par_fold<T:Owned Clone>(ctxt: T) -> Fold<T> {
+pub fn default_par_fold<T: Clone>(ctxt: T) -> Fold<T> {
     mk_fold(
         move ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -189,7 +189,7 @@ pub fn default_seq_fold_item<T>(
     doc
 }
 
-pub fn default_any_fold_mod<T:Owned Clone>(
+pub fn default_any_fold_mod<T:Clone>(
     fold: &Fold<T>,
     doc: doc::ModDoc
 ) -> doc::ModDoc {
@@ -215,7 +215,7 @@ pub fn default_seq_fold_mod<T>(
     }
 }
 
-pub fn default_par_fold_mod<T:Owned Clone>(
+pub fn default_par_fold_mod<T:Clone>(
     fold: &Fold<T>,
     doc: doc::ModDoc
 ) -> doc::ModDoc {
@@ -228,7 +228,7 @@ pub fn default_par_fold_mod<T:Owned Clone>(
     }
 }
 
-pub fn default_any_fold_nmod<T:Owned Clone>(
+pub fn default_any_fold_nmod<T:Clone>(
     fold: &Fold<T>,
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {
@@ -254,7 +254,7 @@ pub fn default_seq_fold_nmod<T>(
     }
 }
 
-pub fn default_par_fold_nmod<T:Owned Clone>(
+pub fn default_par_fold_nmod<T:Clone>(
     fold: &Fold<T>,
     doc: doc::NmodDoc
 ) -> doc::NmodDoc {

@@ -323,14 +323,15 @@ pub impl LookupContext {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
-        let opt_applicable_traits = self.fcx.ccx.trait_map.find(self.expr.id);
+        let opt_applicable_traits = self.fcx.ccx.trait_map.find(
+            &self.expr.id);
         for opt_applicable_traits.each |applicable_traits| {
             for applicable_traits.each |trait_did| {
                 let coherence_info = self.fcx.ccx.coherence_info;
 
                 // Look for explicit implementations.
                 let opt_impl_infos =
-                    coherence_info.extension_methods.find(*trait_did);
+                    coherence_info.extension_methods.find(trait_did);
                 for opt_impl_infos.each |impl_infos| {
                     for impl_infos.each |impl_info| {
                         self.push_candidates_from_impl(
@@ -339,7 +340,7 @@ pub impl LookupContext {
                 }
 
                 // Look for default methods.
-                match self.tcx().provided_methods.find(*trait_did) {
+                match self.tcx().provided_methods.find(trait_did) {
                     Some(methods) => {
                         self.push_candidates_from_provided_methods(
                             &self.extension_candidates, self_ty, *trait_did,
@@ -360,7 +361,7 @@ pub impl LookupContext {
 
         let tcx = self.tcx();
         let mut next_bound_idx = 0; // count only trait bounds
-        let bounds = tcx.ty_param_bounds.get(param_ty.def_id.node);
+        let bounds = tcx.ty_param_bounds.get(&param_ty.def_id.node);
 
         for vec::each(*bounds) |bound| {
             let bound_trait_ty = match *bound {
@@ -607,7 +608,7 @@ pub impl LookupContext {
 
     fn push_inherent_impl_candidates_for_type(did: def_id) {
         let opt_impl_infos =
-            self.fcx.ccx.coherence_info.inherent_methods.find(did);
+            self.fcx.ccx.coherence_info.inherent_methods.find(&did);
         for opt_impl_infos.each |impl_infos| {
             for impl_infos.each |impl_info| {
                 self.push_candidates_from_impl(
@@ -882,7 +883,7 @@ pub impl LookupContext {
                     })
             }
 
-            ty_trait(*) | ty_fn(*) => {
+            ty_trait(*) | ty_closure(*) => {
                 // NDM---eventually these should be some variant of autoref
                 None
             }
@@ -905,14 +906,14 @@ pub impl LookupContext {
 
         let tcx = self.tcx();
         match ty::get(self_ty).sty {
-            ty_box(*) | ty_uniq(*) | ty_rptr(*) |
+            ty_bare_fn(*) | ty_box(*) | ty_uniq(*) | ty_rptr(*) |
             ty_infer(IntVar(_)) |
             ty_infer(FloatVar(_)) |
             ty_self | ty_param(*) | ty_nil | ty_bot | ty_bool |
             ty_int(*) | ty_uint(*) |
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_rec(*) |
             ty_struct(*) | ty_tup(*) | ty_estr(*) | ty_evec(*) |
-            ty_trait(*) | ty_fn(*) => {
+            ty_trait(*) | ty_closure(*) => {
                 self.search_for_some_kind_of_autorefd_method(
                     AutoPtr, autoderefs, [m_const, m_imm, m_mutbl],
                     |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:self_ty, mutbl:m}))
@@ -1211,7 +1212,7 @@ pub impl LookupContext {
                                 trait_did: def_id,
                                 method_num: uint) -> ty::t {
             let trait_methods = ty::trait_methods(tcx, trait_did);
-            ty::mk_fn(tcx, /*bad*/copy trait_methods[method_num].fty)
+            ty::mk_bare_fn(tcx, copy trait_methods[method_num].fty)
         }
     }
 
@@ -1232,7 +1233,7 @@ pub impl LookupContext {
 
     fn report_static_candidate(&self, idx: uint, did: def_id) {
         let span = if did.crate == ast::local_crate {
-            match self.tcx().items.find(did.node) {
+            match self.tcx().items.find(&did.node) {
               Some(ast_map::node_method(m, _, _)) => m.span,
               _ => die!(fmt!("report_static_candidate: bad item %?", did))
             }

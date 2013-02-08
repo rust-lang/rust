@@ -536,9 +536,6 @@ more convincing in the future.
 
 */
 
-#[warn(deprecated_mode)];
-#[warn(deprecated_pattern)];
-
 use core::prelude::*;
 
 use middle::region::is_subregion_of;
@@ -912,7 +909,7 @@ pub impl RegionVarBindings {
         -> cres<Region> {
 
         let vars = TwoRegions { a: a, b: b };
-        match combines.find(vars) {
+        match combines.find(&vars) {
           Some(c) => Ok(re_infer(ReVar(c))),
           None => {
             let c = self.new_region_var(span);

@@ -31,7 +31,7 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
                                 translate: bool)
     -> ast::def_id {
     let _icx = ccx.insn_ctxt("maybe_instantiate_inline");
-    match ccx.external.find(fn_id) {
+    match ccx.external.find(&fn_id) {
       Some(Some(node_id)) => {
         // Already inline
         debug!("maybe_instantiate_inline(%s): already inline as node id %d",
@@ -108,8 +108,8 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
                 };
                 trans_fn(ccx,
                          path,
-                         mth.decl,
-                         mth.body,
+                         &mth.decl,
+                         &mth.body,
                          llfn,
                          self_kind,
                          None,

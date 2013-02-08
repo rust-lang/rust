@@ -42,7 +42,7 @@ fn old_int_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
             }
 
             for uint::range(0, num_keys) |i| {
-                assert map.get(i) == i+1;
+                assert map.get(&i) == i+1;
             }
         }
     }
@@ -81,7 +81,7 @@ fn old_str_benchmarks(rng: @rand::Rng, num_keys: uint, results: &mut Results) {
 
             for uint::range(0, num_keys) |i| {
                 let s = uint::to_str(i);
-                assert map.get(s) == i;
+                assert map.get(&s) == i;
             }
         }
     }

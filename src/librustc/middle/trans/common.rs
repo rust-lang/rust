@@ -152,13 +152,15 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
+type ExternMap = HashMap<@str, ValueRef>;
+
 // Crate context.  Every crate we compile has one of these.
 pub struct crate_ctxt {
      sess: session::Session,
      llmod: ModuleRef,
      td: target_data,
      tn: type_names,
-     externs: HashMap<~str, ValueRef>,
+     externs: ExternMap,
      intrinsics: HashMap<~str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
@@ -700,7 +702,7 @@ pub impl block {
     }
 
     fn def(nid: ast::node_id) -> ast::def {
-        match self.tcx().def_map.find(nid) {
+        match self.tcx().def_map.find(&nid) {
             Some(v) => v,
             None => {
                 self.tcx().sess.bug(fmt!(
@@ -759,7 +761,7 @@ pub fn T_f32() -> TypeRef { unsafe { return llvm::LLVMFloatType(); } }
 
 pub fn T_f64() -> TypeRef { unsafe { return llvm::LLVMDoubleType(); } }
 
-pub fn T_bool() -> TypeRef { return T_i1(); }
+pub fn T_bool() -> TypeRef { return T_i8(); }
 
 pub fn T_int(targ_cfg: @session::config) -> TypeRef {
     return match targ_cfg.arch {
@@ -1109,6 +1111,10 @@ pub fn C_bool(b: bool) -> ValueRef {
     C_integral(T_bool(), if b { 1u64 } else { 0u64 }, False)
 }
 
+pub fn C_i1(b: bool) -> ValueRef {
+    return C_integral(T_i1(), if b { 1 } else { 0 }, False);
+}
+
 pub fn C_i32(i: i32) -> ValueRef {
     return C_integral(T_i32(), i as u64, True);
 }
@@ -1134,7 +1140,7 @@ pub fn C_u8(i: uint) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: @crate_ctxt, +s: ~str) -> ValueRef {
     unsafe {
-        match cx.const_cstr_cache.find(/*bad*/copy s) {
+        match cx.const_cstr_cache.find(&s) {
           Some(llval) => return llval,
           None => ()
         }
@@ -1356,7 +1362,7 @@ pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
 
 pub fn node_vtables(bcx: block, id: ast::node_id)
                  -> Option<typeck::vtable_res> {
-    let raw_vtables = bcx.ccx().maps.vtable_map.find(id);
+    let raw_vtables = bcx.ccx().maps.vtable_map.find(&id);
     raw_vtables.map(
         |vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
 }
@@ -1433,6 +1439,11 @@ pub fn struct_dtor() -> [uint * 2] {
     //! The GEPi sequence to access the dtor of a struct.
 
     [0, 1]
+}
+
+// Casts a Rust bool value to an i1.
+pub fn bool_to_i1(bcx: block, llval: ValueRef) -> ValueRef {
+    build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(false))
 }
 
 //

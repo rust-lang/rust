@@ -29,11 +29,11 @@ fn calllink08() { unsafe { rustrt::get_task_id(); } }
 fn calllink09() { unsafe { rustrt::rust_sched_threads(); } }
 fn calllink10() { unsafe { rustrt::rust_get_task(); } }
 
-fn runtest(f: fn~(), frame_backoff: u32) {
+fn runtest(f: extern fn(), frame_backoff: u32) {
     runtest2(f, frame_backoff, 0 as *u8);
 }
 
-fn runtest2(f: fn~(), frame_backoff: u32, last_stk: *u8) -> u32 {
+fn runtest2(f: extern fn(), frame_backoff: u32, last_stk: *u8) -> u32 {
     unsafe {
         let curr_stk = rustrt::debug_get_stk_seg();
         if (last_stk != curr_stk && last_stk != 0 as *u8) {
@@ -67,6 +67,6 @@ pub fn main() {
         let f = *f;
         let sz = rng.next() % 256u32 + 256u32;
         let frame_backoff = rng.next() % 10u32 + 1u32;
-        task::try(|move f| runtest(f, frame_backoff) );
+        task::try(|| runtest(f, frame_backoff) );
     }
 }

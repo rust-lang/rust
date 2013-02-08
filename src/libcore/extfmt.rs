@@ -51,10 +51,6 @@
 //! * s - str (any flavor)
 //! * ? - arbitrary type (does not use the to_str trait)
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 // Transitional
 #[allow(structural_records)]; // Macros -- needs a snapshot
 
@@ -499,12 +495,6 @@ pub mod rt {
 
     pub enum Ty { TyDefault, TyBits, TyHexUpper, TyHexLower, TyOctal, }
 
-    #[cfg(stage0)]
-    pub type Conv = {flags: u32, width: Count, precision: Count, ty: Ty};
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     pub struct Conv {
         flags: u32,
         width: Count,

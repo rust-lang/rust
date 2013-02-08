@@ -14,10 +14,6 @@ Cross-platform file path handling
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-#[forbid(deprecated_pattern)];
-
 use cmp::Eq;
 use libc;
 use option::{None, Option, Some};

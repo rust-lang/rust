@@ -399,16 +399,46 @@ pub impl mutability : cmp::Eq {
 #[auto_encode]
 #[auto_decode]
 #[deriving_eq]
-pub enum Proto {
-    ProtoBare,     // bare functions (deprecated)
-    ProtoUniq,     // ~fn
-    ProtoBox,      // @fn
-    ProtoBorrowed, // &fn
+pub enum Abi {
+    RustAbi
 }
 
-pub impl Proto : to_bytes::IterBytes {
+pub impl Abi : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        (*self as uint).iter_bytes(lsb0, f);
+        (*self as uint).iter_bytes(lsb0, f)
+    }
+}
+
+pub impl Abi : ToStr {
+    pure fn to_str(&self) -> ~str {
+        match *self {
+            RustAbi => ~"\"rust\""
+        }
+    }
+}
+
+#[auto_encode]
+#[auto_decode]
+#[deriving_eq]
+pub enum Sigil {
+    BorrowedSigil,
+    OwnedSigil,
+    ManagedSigil
+}
+
+pub impl Sigil : to_bytes::IterBytes {
+    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f)
+    }
+}
+
+pub impl Sigil : ToStr {
+    pure fn to_str(&self) -> ~str {
+        match *self {
+            BorrowedSigil => ~"&",
+            OwnedSigil => ~"~",
+            ManagedSigil => ~"@"
+         }
     }
 }
 
@@ -432,13 +462,6 @@ pub enum expr_vstore {
     expr_vstore_mut_box,               // @mut [1,2,3,4]
     expr_vstore_slice,                 // &[1,2,3,4]
     expr_vstore_mut_slice,             // &mut [1,2,3,4]
-}
-
-pub pure fn is_blockish(p: Proto) -> bool {
-    match p {
-        ProtoBorrowed => true,
-        ProtoBare | ProtoUniq | ProtoBox => false
-    }
 }
 
 #[auto_encode]
@@ -673,12 +696,21 @@ pub enum log_level { error, debug, log_other }
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
+pub enum CallSugar {
+    NoSugar,
+    DoSugar,
+    ForSugar
+}
+
+#[auto_encode]
+#[auto_decode]
 pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_rec(~[field], Option<@expr>),
-    expr_call(@expr, ~[@expr], bool), // True iff last argument is a block
-    expr_method_call(@expr, ident, ~[@Ty], ~[@expr], bool), // Ditto
+    expr_call(@expr, ~[@expr], CallSugar),
+    expr_method_call(@expr, ident, ~[@Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
     expr_binary(binop, @expr, @expr),
     expr_unary(unop, @expr),
@@ -693,7 +725,7 @@ pub enum expr_ {
     expr_match(@expr, ~[arm]),
 
     // FIXME(#4717) the @() is req'd on windows or else LLVM croaks
-    expr_fn(Proto, fn_decl, blk, @()),
+    expr_fn(Sigil, fn_decl, blk, @()),
 
     expr_fn_block(fn_decl, blk),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
@@ -1112,12 +1144,19 @@ pub impl Onceness : to_bytes::IterBytes {
 
 #[auto_encode]
 #[auto_decode]
-pub struct TyFn {
-    proto: Proto,
+pub struct TyClosure {
+    sigil: Sigil,
     region: Option<@region>,
     purity: purity,
     onceness: Onceness,
-    bounds: @~[ty_param_bound],
+    decl: fn_decl
+}
+
+#[auto_encode]
+#[auto_decode]
+pub struct TyBareFn {
+    purity: purity,
+    abi: Abi,
     decl: fn_decl
 }
 
@@ -1133,7 +1172,8 @@ pub enum ty_ {
     ty_ptr(mt),
     ty_rptr(@region, mt),
     ty_rec(~[ty_field]),
-    ty_fn(@TyFn),
+    ty_closure(@TyClosure),
+    ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),
     ty_path(@path, node_id),
     ty_mac(mac),

@@ -10,7 +10,6 @@
 
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
-#[forbid(deprecated_mode)];
 #[forbid(non_camel_case_types)];
 
 //! json serialization
@@ -856,9 +855,6 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_vec_elt(idx=%u)", idx);
         match *self.peek() {
             List(ref list) => {
-                // FIXME(#3148)---should be inferred
-                let list: &self/~[Json] = list;
-
                 self.stack.push(&list[idx]);
                 f()
             }
@@ -885,9 +881,6 @@ pub impl Decoder: serialize::Decoder {
         let top = self.peek();
         match *top {
             Object(ref obj) => {
-                // FIXME(#3148) This hint should not be necessary.
-                let obj: &self/~Object = obj;
-
                 match obj.find(&name.to_owned()) {
                     None => die!(fmt!("no such field: %s", name)),
                     Some(json) => {
@@ -917,8 +910,6 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_tup_elt(idx=%u)", idx);
         match *self.peek() {
             List(ref list) => {
-                // FIXME(#3148)---should be inferred
-                let list: &self/~[Json] = list;
                 self.stack.push(&list[idx]);
                 f()
             }

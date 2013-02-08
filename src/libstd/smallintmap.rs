@@ -12,7 +12,6 @@
  * A simple map based on a vector for small integer keys. Space requirements
  * are O(highest integer key).
  */
-#[forbid(deprecated_mode)];
 
 use core::container::{Container, Mutable, Map, Set};
 use core::option::{Some, None};
@@ -116,8 +115,6 @@ pub impl<V> SmallIntMap<V> {
 }
 
 pub impl<V: Copy> SmallIntMap<V> {
-    // FIXME: #4733, remove after the next snapshot
-    #[cfg(stage2)]
     fn update_with_key(&mut self, key: uint, val: V,
                        ff: fn(uint, V, V) -> V) -> bool {
         match self.find(&key) {
@@ -126,8 +123,6 @@ pub impl<V: Copy> SmallIntMap<V> {
         }
     }
 
-    // FIXME: #4733, remove after the next snapshot
-    #[cfg(stage2)]
     fn update(&mut self, key: uint, newval: V, ff: fn(V, V) -> V) -> bool {
         self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
     }

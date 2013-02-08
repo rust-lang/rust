@@ -14,22 +14,12 @@ Higher level communication abstractions.
 
 */
 
-// NB: transitionary, de-mode-ing.
-#[forbid(deprecated_mode)];
-
 use core::pipes::{GenericChan, GenericSmartChan, GenericPort};
 use core::pipes::{Chan, Port, Selectable, Peekable};
 use core::pipes;
 use core::prelude::*;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
-#[cfg(stage0)]
-pub struct DuplexStream<T:Owned, U:Owned> {
-    priv chan: Chan<T>,
-    priv port: Port<U>,
-}
-#[cfg(stage1)]
-#[cfg(stage2)]
 pub struct DuplexStream<T, U> {
     priv chan: Chan<T>,
     priv port: Port<U>,

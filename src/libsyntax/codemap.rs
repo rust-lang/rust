@@ -76,7 +76,7 @@ pub impl BytePos: Sub<BytePos, BytePos> {
 }
 
 pub impl BytePos: to_bytes::IterBytes {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(&self, +lsb0: bool, &&f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
@@ -99,7 +99,7 @@ pub impl CharPos: cmp::Ord {
 }
 
 pub impl CharPos: to_bytes::IterBytes {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(&self, +lsb0: bool, &&f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }

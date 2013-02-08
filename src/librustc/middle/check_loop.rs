@@ -39,8 +39,8 @@ pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
                 (v.visit_block)((*b), {in_loop: false, can_ret: false}, v);
               }
               expr_loop_body(@expr {node: expr_fn_block(_, ref b), _}) => {
-                let proto = ty::ty_fn_proto(ty::expr_ty(tcx, e));
-                let blk = (proto == ProtoBorrowed);
+                let sigil = ty::ty_closure_sigil(ty::expr_ty(tcx, e));
+                let blk = (sigil == BorrowedSigil);
                 (v.visit_block)((*b), {in_loop: true, can_ret: blk}, v);
               }
               expr_break(_) => {

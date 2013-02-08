@@ -74,7 +74,7 @@ pub fn mk_cstore(intr: @ident_interner) -> CStore {
 
 pub fn get_crate_data(cstore: CStore, cnum: ast::crate_num)
                    -> crate_metadata {
-    return p(cstore).metas.get(cnum);
+    return p(cstore).metas.get(&cnum);
 }
 
 pub fn get_crate_hash(cstore: CStore, cnum: ast::crate_num) -> ~str {
@@ -139,7 +139,7 @@ pub fn add_use_stmt_cnum(cstore: CStore, use_id: ast::node_id,
 
 pub fn find_use_stmt_cnum(cstore: CStore,
                           use_id: ast::node_id) -> Option<ast::crate_num> {
-    p(cstore).use_crate_map.find(use_id)
+    p(cstore).use_crate_map.find(&use_id)
 }
 
 // returns hashes of crates directly used by this crate. Hashes are

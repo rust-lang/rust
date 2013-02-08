@@ -33,8 +33,6 @@
  * * access to a character by index is logarithmic (linear in strings);
  */
 
-#[forbid(deprecated_mode)];
-
 use core::cast;
 use core::char;
 use core::option;
