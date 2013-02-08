@@ -127,13 +127,13 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
         }
     }
 
-    fn all_mem(cls: &[mut x86_64_reg_class]) {
+    fn all_mem(cls: &mut [x86_64_reg_class]) {
         for uint::range(0, cls.len()) |i| {
             cls[i] = memory_class;
         }
     }
 
-    fn unify(cls: &[mut x86_64_reg_class],
+    fn unify(cls: &mut [x86_64_reg_class],
              i: uint,
              newv: x86_64_reg_class) {
         if cls[i] == newv {
@@ -159,7 +159,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn classify_struct(tys: &[TypeRef],
-                       cls: &[mut x86_64_reg_class], i: uint,
+                       cls: &mut [x86_64_reg_class], i: uint,
                        off: uint) {
         let mut field_off = off;
         for vec::each(tys) |ty| {
@@ -170,7 +170,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn classify(ty: TypeRef,
-                cls: &[mut x86_64_reg_class], ix: uint,
+                cls: &mut [x86_64_reg_class], ix: uint,
                 off: uint) {
         unsafe {
             let t_align = ty_align(ty);
@@ -220,7 +220,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
         }
     }
 
-    fn fixup(ty: TypeRef, cls: &[mut x86_64_reg_class]) {
+    fn fixup(ty: TypeRef, cls: &mut [x86_64_reg_class]) {
         unsafe {
             let mut i = 0u;
             let llty = llvm::LLVMGetTypeKind(ty) as int;
