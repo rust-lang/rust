@@ -198,7 +198,7 @@ else
 endif
   CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
-  CFG_LIBUV_LINK_FLAGS=-lWs2_32
+  CFG_LIBUV_LINK_FLAGS=-lWs2_32 -lpsapi -liphlpapi
 
   ifndef CFG_ENABLE_MINGW_CROSS
     CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
