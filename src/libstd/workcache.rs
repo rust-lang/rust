@@ -142,7 +142,7 @@ type WorkMap = LinearMap<WorkKey, ~str>;
 pub impl<S: Encoder> WorkMap: Encodable<S> {
     fn encode(&self, s: &S) {
         let d = dvec::DVec();
-        for self.each |k, v| {
+        for self.each |&(k, v)| {
             d.push((copy *k, copy *v))
         }
         let mut v = d.get();
@@ -155,7 +155,7 @@ pub impl<D: Decoder> WorkMap: Decodable<D> {
     static fn decode(&self, d: &D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
         let mut w = LinearMap::new();
-        for v.each |&(k,v)| {
+        for v.each |&(k, v)| {
             w.insert(copy k, copy v);
         }
         w
@@ -312,7 +312,7 @@ impl @Mut<Prep> : TPrep {
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
-        for map.each |k,v| {
+        for map.each |&(k, v)| {
             if ! self.is_fresh(cat, k.kind, k.name, *v) {
                 return false;
             }
