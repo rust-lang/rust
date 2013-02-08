@@ -764,7 +764,7 @@ mod test_treemap {
             let &(k, v) = x;
             assert map.find(&k).unwrap() == &v
         }
-        for map.each |map_k, map_v| {
+        for map.each |&(map_k, map_v)| {
             let mut found = false;
             for ctrl.each |x| {
                 let &(ctrl_k, ctrl_v) = x;
@@ -878,7 +878,7 @@ mod test_treemap {
         assert m.insert(1, 2);
 
         let mut n = 0;
-        for m.each |k, v| {
+        for m.each |&(k, v)| {
             assert *k == n;
             assert *v == n * 2;
             n += 1;
@@ -896,7 +896,7 @@ mod test_treemap {
         assert m.insert(1, 2);
 
         let mut n = 4;
-        for m.each_reverse |k, v| {
+        for m.each_reverse |&(k, v)| {
             assert *k == n;
             assert *v == n * 2;
             n -= 1;
