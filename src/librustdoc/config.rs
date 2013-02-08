@@ -14,6 +14,7 @@ use core::cmp;
 use core::os;
 use core::result;
 use core::run;
+use core::run::ProgramOutput;
 use core::vec;
 use core::result::Result;
 use std::getopts;
@@ -104,29 +105,18 @@ pub fn default_config(input_crate: &Path) -> Config {
     }
 }
 
-struct ProcOut {
-    status: int,
-    out: ~str,
-    err: ~str
-}
+type Process = fn~((&str), (&[~str])) -> ProgramOutput;
 
-type ProgramOutput = fn~((&str), (&[~str])) -> ProcOut;
-
-pub fn mock_program_output(_prog: &str, _args: &[~str]) -> ProcOut {
-    ProcOut {
+pub fn mock_program_output(_prog: &str, _args: &[~str]) -> ProgramOutput {
+    ProgramOutput {
         status: 0,
         out: ~"",
         err: ~""
     }
 }
 
-pub fn program_output(prog: &str, args: &[~str]) -> ProcOut {
-    let {status, out, err} = run::program_output(prog, args);
-    ProcOut {
-        status: status,
-        out: out,
-        err: err
-    }
+pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
+    run::program_output(prog, args)
 }
 
 pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
@@ -135,7 +125,7 @@ pub fn parse_config(args: &[~str]) -> Result<Config, ~str> {
 
 pub fn parse_config_(
     args: &[~str],
-    program_output: ProgramOutput
+    program_output: Process
 ) -> Result<Config, ~str> {
     let args = args.tail();
     let opts = vec::unzip(opts()).first();
@@ -159,7 +149,7 @@ pub fn parse_config_(
 fn config_from_opts(
     input_crate: &Path,
     matches: &getopts::Matches,
-    program_output: ProgramOutput
+    program_output: Process
 ) -> Result<Config, ~str> {
 
     let config = default_config(input_crate);
@@ -235,7 +225,7 @@ fn parse_output_style(output_style: &str) -> Result<OutputStyle, ~str> {
 fn maybe_find_pandoc(
     config: &Config,
     maybe_pandoc_cmd: Option<~str>,
-    program_output: ProgramOutput
+    program_output: Process
 ) -> Result<Option<~str>, ~str> {
     if config.output_format != PandocHtml {
         return result::Ok(maybe_pandoc_cmd);
@@ -272,8 +262,9 @@ fn should_find_pandoc() {
         output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
-    let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> ProcOut {
-        ProcOut {
+    let mock_program_output = fn~(_prog: &str, _args: &[~str])
+        -> ProgramOutput {
+        ProgramOutput {
             status: 0, out: ~"pandoc 1.8.2.1", err: ~""
         }
     };
@@ -287,8 +278,9 @@ fn should_error_with_no_pandoc() {
         output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
-    let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> ProcOut {
-        ProcOut {
+    let mock_program_output = fn~(_prog: &str, _args: &[~str])
+        -> ProgramOutput {
+        ProgramOutput {
             status: 1, out: ~"", err: ~""
         }
     };
