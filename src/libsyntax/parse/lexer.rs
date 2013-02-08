@@ -501,18 +501,26 @@ fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
     return accum_int as char;
 }
 
+fn ident_start(c: char) -> bool {
+    (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || c == '_'
+        || (c > 'z' && char::is_XID_start(c))
+}
+
+fn ident_continue(c: char) -> bool {
+    (c >= 'a' && c <= 'z')
+        || (c >= 'A' && c <= 'Z')
+        || (c >= '0' && c <= '9')
+        || c == '_'
+        || (c > 'z' && char::is_XID_continue(c))
+}
+
 fn next_token_inner(rdr: @mut StringReader) -> token::Token {
     let mut accum_str = ~"";
     let mut c = rdr.curr;
-    if (c >= 'a' && c <= 'z')
-        || (c >= 'A' && c <= 'Z')
-        || c == '_'
-        || (c > 'z' && char::is_XID_start(c)) {
-        while (c >= 'a' && c <= 'z')
-            || (c >= 'A' && c <= 'Z')
-            || (c >= '0' && c <= '9')
-            || c == '_'
-            || (c > 'z' && char::is_XID_continue(c)) {
+    if ident_start(c) {
+        while ident_continue(c) {
             str::push_char(&mut accum_str, c);
             bump(rdr);
             c = rdr.curr;
@@ -617,10 +625,26 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
         }
       }
       '\'' => {
+        // Either a character constant 'a' OR a lifetime name 'abc
         bump(rdr);
         let mut c2 = rdr.curr;
         bump(rdr);
+
+        // If the character is an ident start not followed by another single
+        // quote, then this is a lifetime name:
+        if ident_start(c2) && rdr.curr != '\'' {
+            let mut lifetime_name = ~"";
+            lifetime_name.push_char(c2);
+            while ident_continue(rdr.curr) {
+                lifetime_name.push_char(rdr.curr);
+                bump(rdr);
+            }
+            return token::LIFETIME(rdr.interner.intern(@lifetime_name));
+        }
+
+        // Otherwise it is a character constant:
         if c2 == '\\' {
+            // '\X' for some X must be a character constant:
             let escaped = rdr.curr;
             bump(rdr);
             match escaped {
@@ -730,17 +754,29 @@ pub mod test {
     use util::interner;
     use diagnostic;
     use util::testing::{check_equal, check_equal_ptr};
-    #[tetst] fn t1 () {
-        let teststr =
-            @~"/* my source file */
-fn main() { io::println(~\"zebra\"); }\n";
+
+    struct Env {
+        interner: @token::ident_interner,
+        string_reader: @mut StringReader
+    }
+
+    fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"zebra.rs",teststr);
+        let fm = cm.new_filemap(~"zebra.rs", @teststr);
         let ident_interner = token::mk_ident_interner(); // interner::mk();
-        let id = ident_interner.intern(@~"fn");
         let span_handler =
             diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
-        let string_reader = new_string_reader(span_handler,fm,ident_interner);
+        Env {
+            interner: ident_interner,
+            string_reader: new_string_reader(span_handler,fm,ident_interner)
+        }
+    }
+
+    #[test] fn t1 () {
+        let Env {interner: ident_interner, string_reader} =
+            setup(~"/* my source file */ \
+                    fn main() { io::println(~\"zebra\"); }\n");
+        let id = ident_interner.intern(@~"fn");
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
             tok:token::IDENT(id, false),
@@ -756,6 +792,35 @@ fn main() { io::println(~\"zebra\"); }\n";
         check_equal (tok3,tok4);
         // the lparen is already read:
         check_equal (string_reader.last_pos,BytePos(29))
+    }
+
+    #[test] fn character_a() {
+        let env = setup(~"'a'");
+        let TokenAndSpan {tok, sp: _} =
+            env.string_reader.next_token();
+        assert tok == token::LIT_INT('a' as i64, ast::ty_char);
+    }
+
+    #[test] fn character_space() {
+        let env = setup(~"' '");
+        let TokenAndSpan {tok, sp: _} =
+            env.string_reader.next_token();
+        assert tok == token::LIT_INT(' ' as i64, ast::ty_char);
+    }
+
+    #[test] fn character_escaped() {
+        let env = setup(~"'\n'");
+        let TokenAndSpan {tok, sp: _} =
+            env.string_reader.next_token();
+        assert tok == token::LIT_INT('\n' as i64, ast::ty_char);
+    }
+
+    #[test] fn lifetime_name() {
+        let env = setup(~"'abc");
+        let TokenAndSpan {tok, sp: _} =
+            env.string_reader.next_token();
+        let id = env.interner.intern(@~"abc");
+        assert tok == token::LIFETIME(id);
     }
 }
 

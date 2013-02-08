@@ -88,6 +88,7 @@ pub enum Token {
     /* Name components */
     IDENT(ast::ident, bool),
     UNDERSCORE,
+    LIFETIME(ast::ident),
 
     /* For interpolation */
     INTERPOLATED(nonterminal),
@@ -193,7 +194,7 @@ pub fn to_str(in: @ident_interner, t: Token) -> ~str {
 
       /* Name components */
       IDENT(s, _) => *in.get(s),
-
+      LIFETIME(s) => fmt!("'%s", *in.get(s)),
       UNDERSCORE => ~"_",
 
       /* Other */
@@ -757,6 +758,12 @@ impl Token : cmp::Eq {
             IDENT(e0a, e1a) => {
                 match (*other) {
                     IDENT(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            LIFETIME(e0a) => {
+                match (*other) {
+                    LIFETIME(e0b) => e0a == e0b,
                     _ => false
                 }
             }
