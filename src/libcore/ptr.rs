@@ -187,18 +187,7 @@ pub trait Ptr<T> {
     pure fn offset(count: uint) -> Self;
 }
 
-#[cfg(stage0)]
-unsafe fn memmove32(dst: *mut u8, src: *const u8, count: u32) {
-    libc::memmove(dst as *c_void, src as *c_void, count as size_t);
-}
-#[cfg(stage0)]
-unsafe fn memmove64(dst: *mut u8, src: *const u8, count: u64) {
-    libc::memmove(dst as *c_void, src as *c_void, count as size_t);
-}
-
 #[abi="rust-intrinsic"]
-#[cfg(stage1)]
-#[cfg(stage2)]
 pub extern {
     fn memmove32(dst: *mut u8, src: *u8, size: u32);
     fn memmove64(dst: *mut u8, src: *u8, size: u64);
