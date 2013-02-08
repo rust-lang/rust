@@ -484,8 +484,8 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
             });
         for cleanup_pos.each |i| {
             scope_info.cleanups =
-                vec::append(vec::slice(scope_info.cleanups, 0u, *i),
-                            vec::view(scope_info.cleanups,
+                vec::append(vec::slice(scope_info.cleanups, 0u, *i).to_vec(),
+                            vec::slice(scope_info.cleanups,
                                       *i + 1u,
                                       scope_info.cleanups.len()));
             scope_clean_changed(scope_info);

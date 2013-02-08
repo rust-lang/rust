@@ -372,9 +372,10 @@ pub fn expand_nested_bindings(bcx: block, m: &[@Match/&r],
         match br.pats[col].node {
             ast::pat_ident(_, path, Some(inner)) => {
                 let pats = vec::append(
-                    vec::slice(br.pats, 0u, col),
+                    vec::slice(br.pats, 0u, col).to_vec(),
                     vec::append(~[inner],
-                                vec::view(br.pats, col + 1u, br.pats.len())));
+                                vec::slice(br.pats, col + 1u,
+                                           br.pats.len())));
 
                 let binding_info =
                     br.data.bindings_map.get(&path_to_ident(path));
@@ -416,8 +417,8 @@ pub fn enter_match(bcx: block, dm: DefMap, m: &[@Match/&r],
             Some(sub) => {
                 let pats =
                     vec::append(
-                        vec::append(sub, vec::view(br.pats, 0u, col)),
-                        vec::view(br.pats, col + 1u, br.pats.len()));
+                        vec::append(sub, vec::slice(br.pats, 0u, col)),
+                        vec::slice(br.pats, col + 1u, br.pats.len()));
 
                 let self = br.pats[col];
                 match self.node {
@@ -1242,7 +1243,7 @@ pub fn compile_submatch(bcx: block,
         match data.arm.guard {
             Some(guard_expr) => {
                 bcx = compile_guard(bcx, guard_expr, m[0].data,
-                                    vec::view(m, 1, m.len()),
+                                    vec::slice(m, 1, m.len()),
                                     vals, chk);
             }
             _ => ()
@@ -1261,8 +1262,8 @@ pub fn compile_submatch(bcx: block,
         }
     };
 
-    let vals_left = vec::append(vec::slice(vals, 0u, col),
-                                vec::view(vals, col + 1u, vals.len()));
+    let vals_left = vec::append(vec::slice(vals, 0u, col).to_vec(),
+                                vec::slice(vals, col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
     for vec::each(m) |br| {
