@@ -26,6 +26,7 @@ use session::Session;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{region_to_str, explain_region, vstore_to_str};
 use util::ppaux::{ty_to_str, tys_to_str};
+use util::common::{indenter};
 
 use core::cast;
 use core::cmp;
@@ -39,6 +40,7 @@ use core::result;
 use core::to_bytes;
 use core::uint;
 use core::vec;
+use core::hashmap::linear::LinearMap;
 use std::oldmap::HashMap;
 use std::{oldmap, oldsmallintmap};
 use syntax::ast::*;
@@ -259,7 +261,7 @@ struct ctxt_ {
     short_names_cache: HashMap<t, @~str>,
     needs_drop_cache: HashMap<t, bool>,
     needs_unwind_cleanup_cache: HashMap<t, bool>,
-    kind_cache: HashMap<t, Kind>,
+    mut tc_cache: LinearMap<uint, TypeContents>,
     ast_ty_to_ty_cache: HashMap<@ast::Ty, ast_ty_to_ty_cache_entry>,
     enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
     trait_method_cache: HashMap<def_id, @~[method]>,
@@ -737,37 +739,6 @@ pub impl RegionVid : to_bytes::IterBytes {
     }
 }
 
-pub fn kind_to_param_bounds(kind: Kind) -> param_bounds {
-    let mut bounds = ~[];
-    if kind_can_be_copied(kind) { bounds.push(bound_copy); }
-    if kind_can_be_sent(kind) { bounds.push(bound_owned); }
-    else if kind_is_durable(kind) { bounds.push(bound_durable); }
-    if kind_is_const(kind) { bounds.push(bound_const); }
-    return @bounds;
-}
-
-pub fn param_bounds_to_kind(bounds: param_bounds) -> Kind {
-    let mut kind = kind_noncopyable();
-    for vec::each(*bounds) |bound| {
-        match *bound {
-          bound_copy => {
-            kind = raise_kind(kind, kind_implicitly_copyable());
-          }
-          bound_durable => {
-            kind = raise_kind(kind, kind_durable());
-          }
-          bound_owned => {
-            kind = raise_kind(kind, kind_owned_only() | kind_durable());
-          }
-          bound_const => {
-            kind = raise_kind(kind, kind_const());
-          }
-          bound_trait(_) => ()
-        }
-    }
-    kind
-}
-
 /// A polytype.
 ///
 /// - `bounds`: The list of bounds for each type parameter.  The length of the
@@ -851,7 +822,7 @@ pub fn mk_ctxt(s: session::Session,
         short_names_cache: new_ty_hash(),
         needs_drop_cache: new_ty_hash(),
         needs_unwind_cleanup_cache: new_ty_hash(),
-        kind_cache: new_ty_hash(),
+        tc_cache: LinearMap::new(),
         ast_ty_to_ty_cache: HashMap(),
         enum_var_cache: HashMap(),
         trait_method_cache: HashMap(),
@@ -1507,10 +1478,6 @@ pub fn type_is_structural(ty: t) -> bool {
     }
 }
 
-pub fn type_is_copyable(cx: ctxt, ty: t) -> bool {
-    return kind_can_be_copied(type_kind(cx, ty));
-}
-
 pub fn type_is_sequence(ty: t) -> bool {
     match get(ty).sty {
       ty_estr(_) | ty_evec(_, _) => true,
@@ -1777,467 +1744,491 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
     return needs_unwind_cleanup;
 }
 
-pub enum Kind { kind_(u32) }
-
-/// can be copied (implicitly or explicitly)
-const KIND_MASK_COPY         : u32 = 0b000000000000000000000000001_u32;
-
-/// no shared box, borrowed ptr (must imply DURABLE)
-const KIND_MASK_OWNED        : u32 = 0b000000000000000000000000010_u32;
-
-/// is durable (no borrowed ptrs)
-const KIND_MASK_DURABLE      : u32 = 0b000000000000000000000000100_u32;
-
-/// is deeply immutable
-const KIND_MASK_CONST        : u32 = 0b000000000000000000000001000_u32;
-
-/// can be implicitly copied (must imply COPY)
-const KIND_MASK_IMPLICIT     : u32 = 0b000000000000000000000010000_u32;
-
-/// safe for default mode (subset of KIND_MASK_IMPLICIT)
-const KIND_MASK_DEFAULT_MODE : u32 = 0b000000000000000000000100000_u32;
-
-pub fn kind_noncopyable() -> Kind {
-    kind_(0u32)
+/**
+ * Type contents is how the type checker reasons about kinds.
+ * They track what kinds of things are found within a type.  You can
+ * think of them as kind of an "anti-kind".  They track the kinds of values
+ * and thinks that are contained in types.  Having a larger contents for
+ * a type tends to rule that type *out* from various kinds.  For example,
+ * a type that contains a borrowed pointer is not sendable.
+ *
+ * The reason we compute type contents and not kinds is that it is
+ * easier for me (nmatsakis) to think about what is contained within
+ * a type than to think about what is *not* contained within a type.
+ */
+pub struct TypeContents {
+    bits: u32
 }
 
-pub fn kind_copyable() -> Kind {
-    kind_(KIND_MASK_COPY)
-}
+pub impl TypeContents {
+    fn intersects(&self, tc: TypeContents) -> bool {
+        (self.bits & tc.bits) != 0
+    }
 
-pub fn kind_implicitly_copyable() -> Kind {
-    kind_(KIND_MASK_IMPLICIT | KIND_MASK_COPY)
-}
+    fn is_copy(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::noncopyable(cx))
+    }
 
-fn kind_safe_for_default_mode() -> Kind {
-    // similar to implicit copy, but always includes vectors and strings
-    kind_(KIND_MASK_DEFAULT_MODE | KIND_MASK_IMPLICIT | KIND_MASK_COPY)
-}
+    static fn noncopyable(_cx: ctxt) -> TypeContents {
+        TC_DTOR + TC_BORROWED_MUT + TC_ONCE_CLOSURE + TC_OWNED_CLOSURE +
+            TC_EMPTY_ENUM
+    }
 
-fn kind_implicitly_sendable() -> Kind {
-    kind_(KIND_MASK_IMPLICIT | KIND_MASK_COPY | KIND_MASK_OWNED)
-}
+    fn is_durable(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::nondurable(cx))
+    }
 
-fn kind_safe_for_default_mode_send() -> Kind {
-    // similar to implicit copy, but always includes vectors and strings
-    kind_(KIND_MASK_DEFAULT_MODE | KIND_MASK_IMPLICIT |
-          KIND_MASK_COPY | KIND_MASK_OWNED)
-}
+    static fn nondurable(_cx: ctxt) -> TypeContents {
+        TC_BORROWED_POINTER
+    }
 
+    fn is_owned(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::nonowned(cx))
+    }
 
-fn kind_owned_copy() -> Kind {
-    kind_(KIND_MASK_COPY | KIND_MASK_OWNED)
-}
+    static fn nonowned(_cx: ctxt) -> TypeContents {
+        TC_MANAGED + TC_BORROWED_POINTER
+    }
 
-fn kind_owned_only() -> Kind {
-    kind_(KIND_MASK_OWNED)
-}
+    fn is_const(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::nonconst(cx))
+    }
 
-pub fn kind_const() -> Kind {
-    kind_(KIND_MASK_CONST)
-}
+    static fn nonconst(_cx: ctxt) -> TypeContents {
+        TC_MUTABLE
+    }
 
-fn kind_durable() -> Kind {
-    kind_(KIND_MASK_DURABLE)
-}
+    fn moves_by_default(&self, cx: ctxt) -> bool {
+        self.intersects(TypeContents::nonimplicitly_copyable(cx))
+    }
 
-fn kind_top() -> Kind {
-    kind_(0xffffffffu32)
-}
+    static fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
+        let base = TypeContents::noncopyable(cx) + TC_OWNED_POINTER;
+        if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_SLICE}
+    }
 
-fn remove_const(k: Kind) -> Kind {
-    k - kind_const()
-}
+    fn is_safe_for_default_mode(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::nondefault_mode(cx))
+    }
 
-fn remove_implicit(k: Kind) -> Kind {
-    k - kind_(KIND_MASK_IMPLICIT | KIND_MASK_DEFAULT_MODE)
-}
-
-fn remove_owned(k: Kind) -> Kind {
-    k - kind_(KIND_MASK_OWNED)
-}
-
-fn remove_durable_owned(k: Kind) -> Kind {
-    k - kind_(KIND_MASK_DURABLE) - kind_(KIND_MASK_OWNED)
-}
-
-fn remove_copyable(k: Kind) -> Kind {
-    k - kind_(KIND_MASK_COPY | KIND_MASK_DEFAULT_MODE)
-}
-
-impl Kind : ops::BitAnd<Kind,Kind> {
-    pure fn bitand(&self, other: &Kind) -> Kind {
-        unsafe {
-            lower_kind(*self, *other)
-        }
+    static fn nondefault_mode(cx: ctxt) -> TypeContents {
+        let tc = TypeContents::nonimplicitly_copyable(cx);
+        tc + TC_BIG + TC_OWNED_SLICE // disregard cx.vecs_implicitly_copyable
     }
 }
 
-impl Kind : ops::BitOr<Kind,Kind> {
-    pure fn bitor(&self, other: &Kind) -> Kind {
-        unsafe {
-            raise_kind(*self, *other)
-        }
+impl TypeContents : ops::Add<TypeContents,TypeContents> {
+    pure fn add(&self, other: &TypeContents) -> TypeContents {
+        TypeContents {bits: self.bits | other.bits}
     }
 }
 
-impl Kind : ops::Sub<Kind,Kind> {
-    pure fn sub(&self, other: &Kind) -> Kind {
-        unsafe {
-            kind_(**self & !**other)
-        }
+impl TypeContents : ops::Sub<TypeContents,TypeContents> {
+    pure fn sub(&self, other: &TypeContents) -> TypeContents {
+        TypeContents {bits: self.bits & !other.bits}
     }
 }
 
-// Using these query functions is preferable to direct comparison or matching
-// against the kind constants, as we may modify the kind hierarchy in the
-// future.
-pub pure fn kind_can_be_implicitly_copied(k: Kind) -> bool {
-    *k & KIND_MASK_IMPLICIT == KIND_MASK_IMPLICIT
-}
-
-pub pure fn kind_is_safe_for_default_mode(k: Kind) -> bool {
-    *k & KIND_MASK_DEFAULT_MODE == KIND_MASK_DEFAULT_MODE
-}
-
-pub pure fn kind_can_be_copied(k: Kind) -> bool {
-    *k & KIND_MASK_COPY == KIND_MASK_COPY
-}
-
-pub pure fn kind_can_be_sent(k: Kind) -> bool {
-    *k & KIND_MASK_OWNED == KIND_MASK_OWNED
-}
-
-pub pure fn kind_is_durable(k: Kind) -> bool {
-    *k & KIND_MASK_DURABLE == KIND_MASK_DURABLE
-}
-
-pure fn kind_is_const(k: Kind) -> bool {
-    *k & KIND_MASK_CONST == KIND_MASK_CONST
-}
-
-fn closure_kind(cty: &ClosureTy) -> Kind {
-    let kind = match cty.sigil {
-        ast::BorrowedSigil => kind_implicitly_copyable(),
-        ast::ManagedSigil => kind_implicitly_copyable(),
-        ast::OwnedSigil => kind_owned_only() | kind_durable(),
-    };
-
-    let kind = match cty.region {
-        re_static => kind | kind_durable(),
-        _ => kind - kind_owned_only() - kind_durable()
-    };
-
-    match cty.onceness {
-        ast::Once => kind - kind_implicitly_copyable(),
-        ast::Many => kind
+impl TypeContents : ToStr {
+    pure fn to_str(&self) -> ~str {
+        fmt!("TypeContents(%s)", u32::to_str_radix(self.bits, 2))
     }
 }
 
-pub fn kind_lteq(a: Kind, b: Kind) -> bool {
-    *a & *b == *a
+/// Constant for a type containing nothing of interest.
+const TC_NONE: TypeContents =             TypeContents{bits:0b0000_00000000};
+
+/// Contains a borrowed value with a lifetime other than static
+const TC_BORROWED_POINTER: TypeContents = TypeContents{bits:0b0000_00000001};
+
+/// Contains an owned pointer (~T) but not slice of some kind
+const TC_OWNED_POINTER: TypeContents =    TypeContents{bits:0b000000000010};
+
+/// Contains an owned slice
+const TC_OWNED_SLICE: TypeContents =      TypeContents{bits:0b000000000100};
+
+/// Contains a ~fn() or a ~Trait, which is non-copyable.
+const TC_OWNED_CLOSURE: TypeContents =    TypeContents{bits:0b000000001000};
+
+/// Type with a destructor
+const TC_DTOR: TypeContents =             TypeContents{bits:0b000000010000};
+
+/// Contains a managed value
+const TC_MANAGED: TypeContents =          TypeContents{bits:0b000000100000};
+
+/// &mut with any region
+const TC_BORROWED_MUT: TypeContents =     TypeContents{bits:0b000001000000};
+
+/// Mutable content, whether owned or by ref
+const TC_MUTABLE: TypeContents =          TypeContents{bits:0b000010000000};
+
+/// Mutable content, whether owned or by ref
+const TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits:0b000100000000};
+
+/// Something we estimate to be "big"
+const TC_BIG: TypeContents =              TypeContents{bits:0b001000000000};
+
+/// An enum with no variants.
+const TC_EMPTY_ENUM: TypeContents =       TypeContents{bits:0b010000000000};
+
+/// All possible contents.
+const TC_ALL: TypeContents =              TypeContents{bits:0b011111111111};
+
+pub fn type_is_copyable(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).is_copy(cx)
 }
 
-fn lower_kind(a: Kind, b: Kind) -> Kind {
-    kind_(*a & *b)
+pub fn type_is_durable(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).is_durable(cx)
 }
 
-fn raise_kind(a: Kind, b: Kind) -> Kind {
-    kind_(*a | *b)
+pub fn type_is_owned(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).is_owned(cx)
 }
 
-#[test]
-fn test_kinds() {
-    // The kind "lattice" is defined by the subset operation on the
-    // set of permitted operations.
-    assert kind_lteq(kind_owned_copy(), kind_owned_copy());
-    assert kind_lteq(kind_copyable(), kind_owned_copy());
-    assert kind_lteq(kind_copyable(), kind_copyable());
-    assert kind_lteq(kind_noncopyable(), kind_owned_copy());
-    assert kind_lteq(kind_noncopyable(), kind_copyable());
-    assert kind_lteq(kind_noncopyable(), kind_noncopyable());
-    assert kind_lteq(kind_copyable(), kind_implicitly_copyable());
-    assert kind_lteq(kind_copyable(), kind_implicitly_sendable());
-    assert kind_lteq(kind_owned_copy(), kind_implicitly_sendable());
-    assert !kind_lteq(kind_owned_copy(), kind_implicitly_copyable());
-    assert !kind_lteq(kind_copyable(), kind_owned_only());
+pub fn type_is_const(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).is_const(cx)
 }
 
-// Return the most permissive kind that a composite object containing a field
-// with the given mutability can have.
-// This is used to prevent objects containing mutable state from being
-// implicitly copied and to compute whether things have const kind.
-fn mutability_kind(m: mutability) -> Kind {
-    match (m) {
-      m_mutbl => remove_const(remove_implicit(kind_top())),
-      m_const => remove_implicit(kind_top()),
-      m_imm => kind_top()
+pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
+    let ty_id = type_id(ty);
+    match cx.tc_cache.find(&ty_id) {
+        Some(tc) => { return *tc; }
+        None => {}
     }
-}
 
-fn mutable_type_kind(cx: ctxt, ty: mt) -> Kind {
-    lower_kind(mutability_kind(ty.mutbl), type_kind(cx, ty.ty))
-}
+    let mut cache = LinearMap::new();
+    let result = tc_ty(cx, ty, &mut cache);
+    cx.tc_cache.insert(ty_id, result);
+    return result;
 
-pub fn type_kind(cx: ctxt, ty: t) -> Kind {
-    type_kind_ext(cx, ty, false)
-}
-
-// If `allow_ty_var` is true, then this is a conservative assumption; we
-// assume that type variables *do* have all kinds.
-pub fn type_kind_ext(cx: ctxt, ty: t, allow_ty_var: bool) -> Kind {
-    match cx.kind_cache.find(&ty) {
-      Some(result) => return result,
-      None => {/* fall through */ }
-    }
-
-    // Insert a default in case we loop back on self recursively.
-    cx.kind_cache.insert(ty, kind_top());
-
-    let mut result = match /*bad*/copy get(ty).sty {
-      // Scalar and unique types are sendable, constant, and owned
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_bare_fn(_) | ty_ptr(_) => {
-        kind_safe_for_default_mode_send() | kind_const() | kind_durable()
-      }
-
-      // Implicit copyability of strs is configurable
-      ty_estr(vstore_uniq) => {
-        if cx.vecs_implicitly_copyable {
-            kind_implicitly_sendable() | kind_const() | kind_durable()
-        } else {
-            kind_owned_copy() | kind_const() | kind_durable()
+    fn tc_ty(cx: ctxt,
+             ty: t,
+             cache: &mut LinearMap<uint, TypeContents>) -> TypeContents
+    {
+        // Subtle: Note that we are *not* using cx.tc_cache here but rather a
+        // private cache for this walk.  This is needed in the case of cyclic
+        // types like:
+        //
+        //     struct List { next: ~Option<List>, ... }
+        //
+        // When computing the type contents of such a type, we wind up deeply
+        // recursing as we go.  So when we encounter the recursive reference
+        // to List, we temporarily use TC_NONE as its contents.  Later we'll
+        // patch up the cache with the correct value, once we've computed it
+        // (this is basically a co-inductive process, if that helps).  So in
+        // the end we'll compute TC_OWNED_POINTER, in this case.
+        //
+        // The problem is, as we are doing the computation, we will also
+        // compute an *intermediate* contents for, e.g., Option<List> of
+        // TC_NONE.  This is ok during the computation of List itself, but if
+        // we stored this intermediate value into cx.tc_cache, then later
+        // requests for the contents of Option<List> would also yield TC_NONE
+        // which is incorrect.  This value was computed based on the crutch
+        // value for the type contents of list.  The correct value is
+        // TC_OWNED_POINTER.  This manifested as issue #4821.
+        let ty_id = type_id(ty);
+        match cache.find(&ty_id) {
+            Some(tc) => { return *tc; }
+            None => {}
         }
-      }
+        cache.insert(ty_id, TC_NONE);
 
-      ty_closure(ref c) => {
-          closure_kind(c)
-      }
+        debug!("computing contents of %s", ty_to_str(cx, ty));
+        let _i = indenter();
 
-      // Those with refcounts raise noncopyable to copyable,
-      // lower sendable to copyable. Therefore just set result to copyable.
-      ty_box(tm) => {
-        remove_owned(mutable_type_kind(cx, tm) | kind_safe_for_default_mode())
-      }
+        let mut result = match get(ty).sty {
+            // Scalar and unique types are sendable, constant, and owned
+            ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+            ty_bare_fn(_) | ty_ptr(_) => {
+                TC_NONE
+            }
 
-      // XXX: This is wrong for ~Trait and &Trait!
-      ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_durable(),
+            ty_estr(vstore_uniq) => {
+                TC_OWNED_SLICE
+            }
 
-      // Static region pointers are copyable and sendable, but not owned
-      ty_rptr(re_static, mt) =>
-      kind_safe_for_default_mode() | mutable_type_kind(cx, mt),
+            ty_closure(ref c) => {
+                closure_contents(c)
+            }
 
-      ty_rptr(_, mt) => {
-        if mt.mutbl == ast::m_mutbl {
-            // Mutable region pointers are noncopyable
-            kind_noncopyable()
-        } else {
-            // General region pointers are copyable but NOT owned nor sendable
-            kind_safe_for_default_mode()
-        }
-      }
+            ty_box(mt) => {
+                TC_MANAGED + nonowned(tc_mt(cx, mt, cache))
+            }
 
-      // Unique boxes and vecs have the kind of their contained type,
-      // but unique boxes can't be implicitly copyable.
-      ty_uniq(tm) => remove_implicit(mutable_type_kind(cx, tm)),
+            ty_trait(_, _, vstore_uniq) => {
+                TC_OWNED_CLOSURE
+            }
 
-      // Implicit copyability of vecs is configurable
-      ty_evec(tm, vstore_uniq) => {
-          if cx.vecs_implicitly_copyable {
-              mutable_type_kind(cx, tm)
-          } else {
-              remove_implicit(mutable_type_kind(cx, tm))
-          }
-      }
+            ty_trait(_, _, vstore_box) => {
+                TC_MANAGED
+            }
 
-      // Slices, refcounted evecs are copyable; uniques depend on the their
-      // contained type, but aren't implicitly copyable.  Fixed vectors have
-      // the kind of the element they contain, taking mutability into account.
-      ty_evec(tm, vstore_box) => {
-        remove_owned(kind_safe_for_default_mode() | mutable_type_kind(cx, tm))
-      }
-      ty_evec(tm, vstore_slice(re_static)) => {
-        kind_safe_for_default_mode() | mutable_type_kind(cx, tm)
-      }
-      ty_evec(tm, vstore_slice(_)) => {
-        remove_durable_owned(kind_safe_for_default_mode() |
-                           mutable_type_kind(cx, tm))
-      }
-      ty_evec(tm, vstore_fixed(_)) => {
-        mutable_type_kind(cx, tm)
-      }
+            ty_trait(_, _, vstore_slice(r)) => {
+                borrowed_contents(r, m_imm)
+            }
 
-      // All estrs are copyable; uniques and interiors are sendable.
-      ty_estr(vstore_box) => {
-        kind_safe_for_default_mode() | kind_const() | kind_durable()
-      }
-      ty_estr(vstore_slice(re_static)) => {
-        kind_safe_for_default_mode() | kind_owned_copy() | kind_const()
-      }
-      ty_estr(vstore_slice(_)) => {
-        kind_safe_for_default_mode() | kind_const()
-      }
-      ty_estr(vstore_fixed(_)) => {
-        kind_safe_for_default_mode_send() | kind_const() | kind_durable()
-      }
+            ty_rptr(r, mt) => {
+                borrowed_contents(r, mt.mutbl) +
+                    nonowned(tc_mt(cx, mt, cache))
+            }
 
-      // Records lower to the lowest of their members.
-      ty_rec(flds) => {
-        let mut lowest = kind_top();
-        for flds.each |f| {
-            lowest = lower_kind(lowest, mutable_type_kind(cx, f.mt));
-        }
-        lowest
-      }
+            ty_uniq(mt) => {
+                TC_OWNED_POINTER + tc_mt(cx, mt, cache)
+            }
 
-      ty_struct(did, ref substs) => {
-        // Structs are sendable if all their fields are sendable,
-        // likewise for copyable...
-        // also factor out this code, copied from the records case
-        let mut lowest = kind_top();
-        let flds = struct_fields(cx, did, substs);
-        for flds.each |f| {
-            lowest = lower_kind(lowest, mutable_type_kind(cx, f.mt));
-        }
-        // ...but structs with dtors are never copyable (they can be
-        // sendable)
-        if ty::has_dtor(cx, did) {
-           lowest = remove_copyable(lowest);
-        }
-        lowest
-      }
+            ty_evec(mt, vstore_uniq) => {
+                TC_OWNED_SLICE + tc_mt(cx, mt, cache)
+            }
 
-      // Tuples lower to the lowest of their members.
-      ty_tup(tys) => {
-        let mut lowest = kind_top();
-        for tys.each |ty| { lowest = lower_kind(lowest, type_kind(cx, *ty)); }
-        lowest
-      }
+            ty_evec(mt, vstore_box) => {
+                TC_MANAGED + nonowned(tc_mt(cx, mt, cache))
+            }
 
-      // Enums lower to the lowest of their variants.
-      ty_enum(did, ref substs) => {
-        let mut lowest = kind_top();
-        let variants = enum_variants(cx, did);
-        if variants.is_empty() {
-            lowest = kind_owned_only() | kind_durable();
-        } else {
-            for variants.each |variant| {
-                for variant.args.each |aty| {
-                    // Perform any type parameter substitutions.
-                    let arg_ty = subst(cx, substs, *aty);
-                    lowest = lower_kind(lowest, type_kind(cx, arg_ty));
-                    if lowest == kind_noncopyable() { break; }
+            ty_evec(mt, vstore_slice(r)) => {
+                borrowed_contents(r, mt.mutbl) +
+                    nonowned(tc_mt(cx, mt, cache))
+            }
+
+            ty_evec(mt, vstore_fixed(_)) => {
+                tc_mt(cx, mt, cache)
+            }
+
+            ty_estr(vstore_box) => {
+                TC_MANAGED
+            }
+
+            ty_estr(vstore_slice(r)) => {
+                borrowed_contents(r, m_imm)
+            }
+
+            ty_estr(vstore_fixed(_)) => {
+                TC_NONE
+            }
+
+            ty_rec(ref flds) => {
+                flds.foldl(
+                    TC_NONE,
+                    |tc, f| tc + tc_mt(cx, f.mt, cache))
+            }
+
+            ty_struct(did, ref substs) => {
+                let flds = struct_fields(cx, did, substs);
+                let flds_tc = flds.foldl(
+                    TC_NONE,
+                    |tc, f| tc + tc_mt(cx, f.mt, cache));
+                if ty::has_dtor(cx, did) {
+                    flds_tc + TC_DTOR
+                } else {
+                    flds_tc
                 }
             }
-        }
-        lowest
-      }
 
-      ty_param(p) => {
-          // We only ever ask for the kind of types that are defined in the
-          // current crate; therefore, the only type parameters that could be
-          // in scope are those defined in the current crate.  If this
-          // assertion failures, it is likely because of a failure in the
-          // cross-crate inlining code to translate a def-id.
-          assert p.def_id.crate == ast::local_crate;
+            ty_tup(ref tys) => {
+                tys.foldl(TC_NONE, |tc, ty| *tc + tc_ty(cx, *ty, cache))
+            }
 
-          param_bounds_to_kind(cx.ty_param_bounds.get(&p.def_id.node))
-      }
+            ty_enum(did, ref substs) => {
+                let variants = substd_enum_variants(cx, did, substs);
+                if variants.is_empty() {
+                    // we somewhat arbitrary declare that empty enums
+                    // are non-copyable
+                    TC_EMPTY_ENUM
+                } else {
+                    variants.foldl(TC_NONE, |tc, variant| {
+                        variant.args.foldl(
+                            *tc,
+                            |tc, arg_ty| *tc + tc_ty(cx, *arg_ty, cache))
+                    })
+                }
+            }
 
-      // self is a special type parameter that can only appear in traits; it
-      // is never bounded in any way, hence it has the bottom kind.
-      ty_self => kind_noncopyable(),
+            ty_param(p) => {
+                // We only ever ask for the kind of types that are defined in
+                // the current crate; therefore, the only type parameters that
+                // could be in scope are those defined in the current crate.
+                // If this assertion failures, it is likely because of a
+                // failure in the cross-crate inlining code to translate a
+                // def-id.
+                assert p.def_id.crate == ast::local_crate;
 
-      ty_infer(_) => {
-        if allow_ty_var {
-            kind_top()
-        } else {
-            cx.sess.bug(~"Asked to compute kind of a type variable")
-        }
-      }
+                param_bounds_to_contents(
+                    cx, cx.ty_param_bounds.get(&p.def_id.node))
+            }
 
-      ty_type | ty_opaque_closure_ptr(_)
-      | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
-        cx.sess.bug(~"Asked to compute kind of fictitious type");
-      }
-    };
+            ty_self => {
+                // Currently, self is not bounded, so we must assume the
+                // worst.  But in the future we should examine the super
+                // traits.
+                //
+                // FIXME(#4678)---self should just be a ty param
+                TC_ALL
+            }
 
-    // arbitrary threshold to prevent by-value copying of big records
-    if kind_is_safe_for_default_mode(result) {
+            ty_infer(_) => {
+                // This occurs during coherence, but shouldn't occur at other
+                // times.
+                TC_ALL
+            }
+
+            ty_trait(_, _, vstore_fixed(_)) |
+            ty_type |
+            ty_opaque_closure_ptr(_) |
+            ty_opaque_box |
+            ty_unboxed_vec(_) |
+            ty_err => {
+                cx.sess.bug(~"Asked to compute contents of fictitious type");
+            }
+        };
+
         if type_size(cx, ty) > 4 {
-            result = result - kind_(KIND_MASK_DEFAULT_MODE);
+            result = result + TC_BIG;
+        }
+
+        debug!("result = %s", result.to_str());
+
+        cache.insert(ty_id, result);
+        return result;
+    }
+
+    fn tc_mt(cx: ctxt,
+             mt: mt,
+             cache: &mut LinearMap<uint, TypeContents>) -> TypeContents
+    {
+        let mc = if mt.mutbl == m_mutbl {TC_MUTABLE} else {TC_NONE};
+        mc + tc_ty(cx, mt.ty, cache)
+    }
+
+    fn borrowed_contents(region: ty::Region,
+                         mutbl: ast::mutability) -> TypeContents
+    {
+        let mc = if mutbl == m_mutbl {
+            TC_MUTABLE + TC_BORROWED_MUT
+        } else {
+            TC_NONE
+        };
+        let rc = if region != ty::re_static {
+            TC_BORROWED_POINTER
+        } else {
+            TC_NONE
+        };
+        mc + rc
+    }
+
+    fn nonowned(pointee: TypeContents) -> TypeContents {
+        /*!
+         *
+         * Given a non-owning pointer to some type `T` with
+         * contents `pointee` (like `@T` or
+         * `&T`), returns the relevant bits that
+         * apply to the owner of the pointer.
+         */
+
+        let mask = TC_MUTABLE.bits | TC_BORROWED_POINTER.bits;
+        TypeContents {bits: pointee.bits & mask}
+    }
+
+    fn closure_contents(cty: &ClosureTy) -> TypeContents {
+        let st = match cty.sigil {
+            ast::BorrowedSigil => TC_BORROWED_POINTER,
+            ast::ManagedSigil => TC_MANAGED,
+            ast::OwnedSigil => TC_OWNED_CLOSURE
+        };
+        let rt = borrowed_contents(cty.region, m_imm);
+        let ot = match cty.onceness {
+            ast::Once => TC_ONCE_CLOSURE,
+            ast::Many => TC_NONE
+        };
+        st + rt + ot
+    }
+
+    fn param_bounds_to_contents(cx: ctxt,
+                                bounds: param_bounds) -> TypeContents
+    {
+        debug!("param_bounds_to_contents()");
+        let _i = indenter();
+
+        let r = bounds.foldl(TC_ALL, |tc, bound| {
+            debug!("tc = %s, bound = %?", tc.to_str(), bound);
+            match *bound {
+                bound_copy => tc - TypeContents::nonimplicitly_copyable(cx),
+                bound_durable => tc - TypeContents::nondurable(cx),
+                bound_owned => tc - TypeContents::nonowned(cx),
+                bound_const => tc - TypeContents::nonconst(cx),
+                bound_trait(_) => *tc
+            }
+        });
+
+        debug!("result = %s", r.to_str());
+        return r;
+    }
+
+    /// gives a rough estimate of how much space it takes to represent
+    /// an instance of `ty`.  Used for the mode transition.
+    fn type_size(cx: ctxt, ty: t) -> uint {
+        match /*bad*/copy get(ty).sty {
+          ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+          ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
+          ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
+          ty_evec(_, vstore_box) | ty_estr(vstore_box) => {
+            1
+          }
+
+          ty_evec(_, vstore_slice(_)) |
+          ty_estr(vstore_slice(_)) |
+          ty_bare_fn(*) |
+          ty_closure(*) => {
+            2
+          }
+
+          ty_evec(t, vstore_fixed(n)) => {
+            type_size(cx, t.ty) * n
+          }
+
+          ty_estr(vstore_fixed(n)) => {
+            n
+          }
+
+          ty_rec(flds) => {
+            flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
+          }
+
+          ty_struct(did, ref substs) => {
+            let flds = struct_fields(cx, did, substs);
+            flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
+          }
+
+          ty_tup(tys) => {
+            tys.foldl(0, |s, t| *s + type_size(cx, *t))
+          }
+
+          ty_enum(did, ref substs) => {
+            let variants = substd_enum_variants(cx, did, substs);
+            variants.foldl( // find max size of any variant
+                0,
+                |m, v| uint::max(
+                    *m,
+                    // find size of this variant:
+                    v.args.foldl(0, |s, a| *s + type_size(cx, *a))))
+          }
+
+          ty_param(_) | ty_self => {
+            1
+          }
+
+          ty_infer(_) => {
+            cx.sess.bug(~"Asked to compute kind of a type variable");
+          }
+          ty_type | ty_opaque_closure_ptr(_)
+          | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
+            cx.sess.bug(~"Asked to compute kind of fictitious type");
+          }
         }
     }
-
-    cx.kind_cache.insert(ty, result);
-    return result;
 }
 
-pub fn type_implicitly_moves(cx: ctxt, ty: t) -> bool {
-    let kind = type_kind(cx, ty);
-    !(kind_can_be_copied(kind) && kind_can_be_implicitly_copied(kind))
-}
-
-/// gives a rough estimate of how much space it takes to represent
-/// an instance of `ty`.  Used for the mode transition.
-fn type_size(cx: ctxt, ty: t) -> uint {
-    match /*bad*/copy get(ty).sty {
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
-      ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
-      ty_evec(_, vstore_box) | ty_estr(vstore_box) => {
-        1
-      }
-
-      ty_evec(_, vstore_slice(_)) |
-      ty_estr(vstore_slice(_)) |
-      ty_bare_fn(*) |
-      ty_closure(*) => {
-        2
-      }
-
-      ty_evec(t, vstore_fixed(n)) => {
-        type_size(cx, t.ty) * n
-      }
-
-      ty_estr(vstore_fixed(n)) => {
-        n
-      }
-
-      ty_rec(flds) => {
-        flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
-      }
-
-      ty_struct(did, ref substs) => {
-        let flds = struct_fields(cx, did, substs);
-        flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
-      }
-
-      ty_tup(tys) => {
-        tys.foldl(0, |s, t| *s + type_size(cx, *t))
-      }
-
-      ty_enum(did, ref substs) => {
-        let variants = substd_enum_variants(cx, did, substs);
-        variants.foldl( // find max size of any variant
-            0,
-            |m, v| uint::max(*m,
-                             // find size of this variant:
-                             v.args.foldl(0, |s, a| *s + type_size(cx, *a))))
-      }
-
-      ty_param(_) | ty_self => {
-        1
-      }
-
-      ty_infer(_) => {
-        cx.sess.bug(~"Asked to compute kind of a type variable");
-      }
-      ty_type | ty_opaque_closure_ptr(_)
-      | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
-        cx.sess.bug(~"Asked to compute kind of fictitious type");
-      }
-    }
+pub fn type_moves_by_default(cx: ctxt, ty: t) -> bool {
+    type_contents(cx, ty).moves_by_default(cx)
 }
 
 // True if instantiating an instance of `r_ty` requires an instance of `r_ty`.
@@ -2675,12 +2666,6 @@ impl arg : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.mode,
                                &self.ty, lsb0, f)
-    }
-}
-
-impl Kind : to_bytes::IterBytes {
-    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
-        (**self).iter_bytes(lsb0, f)
     }
 }
 
@@ -4548,12 +4533,6 @@ impl param_bound : cmp::Eq {
     }
     pure fn ne(&self, other: &param_bound) -> bool { !self.eq(other) }
 }
-
-impl Kind : cmp::Eq {
-    pure fn eq(&self, other: &Kind) -> bool { *(*self) == *(*other) }
-    pure fn ne(&self, other: &Kind) -> bool { *(*self) != *(*other) }
-}
-
 
 // Local Variables:
 // mode: rust

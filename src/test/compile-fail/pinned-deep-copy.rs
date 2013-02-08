@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: copying a noncopyable value
-
 struct r {
   i: @mut int,
 }
@@ -31,7 +29,7 @@ fn main() {
     {
         // Can't do this copy
         let x = ~~~{y: r(i)};
-        let z = copy x;
+        let _z = copy x; //~ ERROR copying a value of non-copyable type
         log(debug, x);
     }
     log(error, *i);
