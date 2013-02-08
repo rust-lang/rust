@@ -75,6 +75,11 @@ pub const count_type_sizes: uint = 1 << 14;
 pub const meta_stats: uint = 1 << 15;
 pub const no_opt: uint = 1 << 16;
 pub const no_monomorphic_collapse: uint = 1 << 17;
+pub const gc: uint = 1 << 18;
+pub const jit: uint = 1 << 19;
+pub const debug_info: uint = 1 << 20;
+pub const extra_debug_info: uint = 1 << 21;
+pub const static: uint = 1 << 22;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -102,6 +107,13 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-opt", ~"do not optimize, even if -O is passed", no_opt),
      (~"no-monomorphic-collapse", ~"do not collapse template instantiations",
       no_monomorphic_collapse),
+     (~"gc", ~"Garbage collect shared data (experimental)", gc),
+     (~"jit", ~"Execute using JIT (experimental)", jit),
+     (~"extra-debug-info", ~"Extra debugging info (experimental)",
+      extra_debug_info),
+     (~"debug-info", ~"Produce debug info (experimental)", debug_info),
+     (~"static", ~"Use or produce static libraries or binaries " +
+      "(experimental)", static)
     ]
 }
 
