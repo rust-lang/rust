@@ -197,7 +197,7 @@ pub fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
           codemap::spanned {
                 node: match_nonterminal(bind_name, _, idx), span: sp
           } => {
-            if ret_val.contains_key_ref(&bind_name) {
+            if ret_val.contains_key(&bind_name) {
                 p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
                                                *p_s.interner.get(bind_name))
             }

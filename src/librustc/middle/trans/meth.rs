@@ -871,7 +871,7 @@ pub fn trans_trait_cast(bcx: block,
     match vstore {
         ty::vstore_slice(*) | ty::vstore_box => {
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-            if bcx.tcx().legacy_boxed_traits.contains_key_ref(&id) {
+            if bcx.tcx().legacy_boxed_traits.contains_key(&id) {
                 // Allocate an @ box and store the value into it
                 let {bcx: new_bcx, box: llbox, body: body} =
                     malloc_boxed(bcx, v_ty);

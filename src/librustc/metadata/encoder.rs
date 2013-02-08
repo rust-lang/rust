@@ -99,7 +99,7 @@ pub enum encode_ctxt = {
 };
 
 pub fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
-    ecx.reachable.contains_key_ref(&id)
+    ecx.reachable.contains_key(&id)
 }
 
 fn encode_name(ecx: @encode_ctxt, ebml_w: writer::Encoder, name: ident) {

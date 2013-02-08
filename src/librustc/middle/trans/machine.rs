@@ -180,7 +180,7 @@ pub fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 
 // Computes the size of the data part of an enum.
 pub fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
-    if cx.enum_sizes.contains_key_ref(&t) { return cx.enum_sizes.get(&t); }
+    if cx.enum_sizes.contains_key(&t) { return cx.enum_sizes.get(&t); }
     match ty::get(t).sty {
       ty::ty_enum(tid, ref substs) => {
         // Compute max(variant sizes).

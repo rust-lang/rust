@@ -239,7 +239,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
     // Report an error if not all the fields were specified.
     if !etc {
         for class_fields.eachi |i, field| {
-            if found_fields.contains_key_ref(&i) {
+            if found_fields.contains_key(&i) {
                 loop;
             }
             tcx.sess.span_err(span,

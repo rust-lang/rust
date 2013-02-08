@@ -59,7 +59,7 @@ pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
         return false;
     }
 
-    !cx.moves_map.contains_key_ref(&expr.id)
+    !cx.moves_map.contains_key(&expr.id)
 }
 
 pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
@@ -734,7 +734,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                     by_ref_span = Some(span);
                 }
                 bind_infer => {
-                    if cx.moves_map.contains_key_ref(&id) {
+                    if cx.moves_map.contains_key(&id) {
                         any_by_move = true;
                     }
                 }
@@ -774,7 +774,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
             if pat_is_binding(def_map, p) {
                 match p.node {
                     pat_ident(_, _, sub) => {
-                        if cx.moves_map.contains_key_ref(&p.id) {
+                        if cx.moves_map.contains_key(&p.id) {
                             check_move(p, sub);
                         }
                     }
@@ -800,7 +800,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                                 behind_bad_pointer);
 
                         if behind_bad_pointer &&
-                            cx.moves_map.contains_key_ref(&pat.id)
+                            cx.moves_map.contains_key(&pat.id)
                         {
                             cx.tcx.sess.span_err(
                                 pat.span,

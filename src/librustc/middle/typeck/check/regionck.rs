@@ -213,7 +213,7 @@ pub fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
             // `constrain_auto_ref()` on all exprs.  But that causes a
             // lot of spurious errors because of how the region
             // hierarchy is setup.
-            if rcx.fcx.ccx.method_map.contains_key_ref(&callee.id) {
+            if rcx.fcx.ccx.method_map.contains_key(&callee.id) {
                 match callee.node {
                     ast::expr_field(base, _, _) => {
                         constrain_auto_ref(rcx, base);
@@ -749,7 +749,7 @@ pub mod guarantor {
         let _i = ::util::common::indenter();
 
         let guarantor = {
-            if rcx.fcx.ccx.method_map.contains_key_ref(&expr.id) {
+            if rcx.fcx.ccx.method_map.contains_key(&expr.id) {
                 None
             } else {
                 guarantor(rcx, expr)

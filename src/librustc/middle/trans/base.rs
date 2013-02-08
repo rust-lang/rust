@@ -169,7 +169,7 @@ pub fn get_extern_fn(externs: ExternMap,
                      name: @str,
                      cc: lib::llvm::CallConv,
                      ty: TypeRef) -> ValueRef {
-    if externs.contains_key_ref(&name) { return externs.get(&name); }
+    if externs.contains_key(&name) { return externs.get(&name); }
     let f = decl_fn(llmod, name, cc, ty);
     externs.insert(name, f);
     return f;
@@ -178,7 +178,7 @@ pub fn get_extern_fn(externs: ExternMap,
 pub fn get_extern_const(externs: ExternMap, llmod: ModuleRef,
                         name: @str, ty: TypeRef) -> ValueRef {
     unsafe {
-        if externs.contains_key_ref(&name) { return externs.get(&name); }
+        if externs.contains_key(&name) { return externs.get(&name); }
         let c = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(llmod, ty, buf)
         });
@@ -448,7 +448,7 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: @crate_ctxt, +sym: ~str) {
     // XXX: Bad copy.
-    if ccx.all_llvm_symbols.contains_key_ref(&sym) {
+    if ccx.all_llvm_symbols.contains_key(&sym) {
         ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
     }
     ccx.all_llvm_symbols.insert(sym, ());
@@ -2477,7 +2477,7 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             ccx.sess.bug(~"get_item_val(): unexpected variant")
           }
         };
-        if !(exprt || ccx.reachable.contains_key_ref(&id)) {
+        if !(exprt || ccx.reachable.contains_key(&id)) {
             lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
         }
         ccx.item_vals.insert(id, val);
@@ -2800,7 +2800,7 @@ pub fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
         lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     }
     let mut elts: ~[ValueRef] = ~[];
-    for ccx.module_data.each_ref |&key, &val| {
+    for ccx.module_data.each |&key, &val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, key)),
                             p2i(ccx, val)]);
         elts.push(elt);
@@ -3084,7 +3084,7 @@ pub fn trans_crate(sess: session::Session,
         }
 
         if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each_ref |&k, &v| {
+            for ccx.stats.llvm_insns.each |&k, &v| {
                 io::println(fmt!("%-7u %s", v, k));
             }
         }
