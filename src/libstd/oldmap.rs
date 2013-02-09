@@ -76,7 +76,7 @@ pub mod chained {
         FoundAfter(@Entry<K,V>, @Entry<K,V>)
     }
 
-    priv impl<K:Eq IterBytes Hash, V: Copy> T<K, V> {
+    priv impl<K:Eq IterBytes Hash, V> T<K, V> {
         pure fn search_rem(k: &K, h: uint, idx: uint,
                            e_root: @Entry<K,V>) -> SearchResult<K,V> {
             let mut e0 = e_root;
@@ -172,7 +172,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
+    impl<K: Eq IterBytes Hash, V> T<K, V> {
         pure fn contains_key(&self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
@@ -225,6 +225,38 @@ pub mod chained {
             }
         }
 
+        fn remove(k: &K) -> bool {
+            match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
+              NotFound => false,
+              FoundFirst(idx, entry) => {
+                self.count -= 1u;
+                self.chains[idx] = entry.next;
+                true
+              }
+              FoundAfter(eprev, entry) => {
+                self.count -= 1u;
+                eprev.next = entry.next;
+                true
+              }
+            }
+        }
+
+        pure fn each(&self, blk: fn(key: &K, value: &V) -> bool) {
+            for self.each_entry |entry| {
+                if !blk(&entry.key, &entry.value) { break; }
+            }
+        }
+
+        pure fn each_key(&self, blk: fn(key: &K) -> bool) {
+            self.each(|k, _v| blk(k))
+        }
+
+        pure fn each_value(&self, blk: fn(value: &V) -> bool) {
+            self.each(|_k, v| blk(v))
+        }
+    }
+
+    impl<K: Eq IterBytes Hash Copy, V: Copy> T<K, V> {
         pure fn find(&self, k: &K) -> Option<V> {
             unsafe {
                 match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
@@ -296,36 +328,6 @@ pub mod chained {
                 die!(fmt!("Key not found in table: %?", k));
             }
             option::unwrap(move opt_v)
-        }
-
-        fn remove(k: &K) -> bool {
-            match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
-              NotFound => false,
-              FoundFirst(idx, entry) => {
-                self.count -= 1u;
-                self.chains[idx] = entry.next;
-                true
-              }
-              FoundAfter(eprev, entry) => {
-                self.count -= 1u;
-                eprev.next = entry.next;
-                true
-              }
-            }
-        }
-
-        pure fn each(&self, blk: fn(key: &K, value: &V) -> bool) {
-            for self.each_entry |entry| {
-                if !blk(&entry.key, &entry.value) { break; }
-            }
-        }
-
-        pure fn each_key(&self, blk: fn(key: &K) -> bool) {
-            self.each(|k, _v| blk(k))
-        }
-
-        pure fn each_value(&self, blk: fn(value: &V) -> bool) {
-            self.each(|_k, v| blk(v))
         }
     }
 
