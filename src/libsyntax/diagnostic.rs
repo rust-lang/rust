@@ -250,7 +250,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         io::stderr().write_str(out);
     }
 
-
+    // FIXME (#3260)
     // If there's one line at fault we can easily point to the problem
     if vec::len(lines.lines) == 1u {
         let lo = cm.lookup_char_pos(sp.lo);
