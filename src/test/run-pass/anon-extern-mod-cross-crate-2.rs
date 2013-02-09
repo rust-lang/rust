@@ -15,5 +15,7 @@ extern mod anonexternmod;
 use anonexternmod::*;
 
 pub fn main() {
-  LLVMGetLastError();
+    unsafe {
+      LLVMGetLastError();
+    }
 }
