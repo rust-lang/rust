@@ -250,7 +250,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         io::stderr().write_str(out);
     }
 
-
+    // FIXME (#3260)
     // If there's one line at fault we can easily point to the problem
     if vec::len(lines.lines) == 1u {
         let lo = cm.lookup_char_pos(sp.lo);
@@ -263,14 +263,26 @@ fn highlight_lines(cm: @codemap::CodeMap,
         // indent past |name:## | and the 0-offset column location
         let mut left = str::len(fm.name) + digits + lo.col.to_uint() + 3u;
         let mut s = ~"";
-        while left > 0u { str::push_char(&mut s, ' '); left -= 1u; }
-
+        // Skip is the number of characters we need to skip because they are
+        // part of the 'filename:line ' part of the previous line.
+        let skip = str::len(fm.name) + digits + 3u;
+        for skip.times() {
+            s += ~" ";
+        }
+        let orig = fm.get_line(lines.lines[0] as int);
+        for uint::range(0u,left-skip) |pos| {
+            let curChar = (orig[pos] as char);
+            s += match curChar { // Whenever a tab occurs on the previous
+                '\t' => "\t",    // line, we insert one on the error-point-
+                _ => " "         // -squigly-line as well (instead of a
+            };                   // space). This way the squigly-line will
+        }                        // usually appear in the correct position.
         s += ~"^";
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
-            let mut width = hi.col.to_uint() - lo.col.to_uint() - 1u;
-            while width > 0u { str::push_char(&mut s, '~'); width -= 1u; }
+            let num_squiglies = hi.col.to_uint()-lo.col.to_uint()-1u;
+            for num_squiglies.times() { s += ~"~"; }
         }
         io::stderr().write_str(s + ~"\n");
     }
