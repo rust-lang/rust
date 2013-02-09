@@ -123,7 +123,7 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
         cur_thread = (thread_no + 1) % max_num_threads;
     }
     KLOG(kernel, kern, "Creating task %s, on thread %d.", name, thread_no);
-    kernel->register_task();
+    kernel->inc_live_count();
     rust_sched_launcher *thread = threads[thread_no];
     return thread->get_loop()->create_task(spawner, name);
 }
@@ -138,7 +138,7 @@ rust_scheduler::release_task() {
             need_exit = true;
         }
     }
-    kernel->unregister_task();
+    kernel->dec_live_count();
     if (need_exit) {
         exit();
     }
