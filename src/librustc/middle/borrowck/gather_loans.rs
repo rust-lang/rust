@@ -460,7 +460,7 @@ impl GatherLoanCtxt {
             if req_mutbl == m_imm {
                 // if this is an @mut box, then it's generally OK to borrow as
                 // &imm; this will result in a write guard
-                if cmt.cat.is_mutable_box() {
+                if cmt.cat.derefs_through_mutable_box() {
                     Ok(PcOk)
                 } else {
                     // you can treat mutable things as imm if you are pure

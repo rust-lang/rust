@@ -191,6 +191,8 @@ impl PreserveCtxt {
             // live, so we must root the pointer (i.e., inc the ref
             // count) for the duration of the loan.
             debug!("base.mutbl = %?", self.bccx.mut_to_str(base.mutbl));
+            debug!("derefs through mutable box? %?",
+                   cmt.cat.derefs_through_mutable_box());
             if cmt.cat.derefs_through_mutable_box() {
                 self.attempt_root(cmt, base, derefs)
             } else if base.mutbl == m_imm {
