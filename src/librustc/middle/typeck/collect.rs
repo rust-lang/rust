@@ -304,7 +304,7 @@ pub fn ensure_supertraits(ccx: @mut CrateCtxt,
                           rp: Option<ty::region_variance>,
                           trait_refs: &[@ast::trait_ref]) {
     let tcx = ccx.tcx;
-    if tcx.supertraits.contains_key_ref(&local_def(id)) { return; }
+    if tcx.supertraits.contains_key(&local_def(id)) { return; }
 
     let instantiated = dvec::DVec();
     for trait_refs.each |trait_ref| {

@@ -3208,8 +3208,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
           let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
-          assert tcx.intrinsic_defs.contains_key_ref(&tydesc_name);
-          assert ccx.tcx.intrinsic_defs.contains_key_ref(&ty_visitor_name);
+          assert tcx.intrinsic_defs.contains_key(&tydesc_name);
+          assert ccx.tcx.intrinsic_defs.contains_key(&ty_visitor_name);
           let (_, tydesc_ty) = tcx.intrinsic_defs.get(&tydesc_name);
           let (_, visitor_trait) = tcx.intrinsic_defs.get(&ty_visitor_name);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,
