@@ -160,10 +160,8 @@ public:
     rust_sched_id main_sched_id() { return main_scheduler; }
     rust_sched_id osmain_sched_id() { return osmain_scheduler; }
 
-    void register_task();
-    void unregister_task();
-    void inc_weak_task_count();
-    void dec_weak_task_count();
+    void inc_live_count();
+    void dec_live_count();
 
     void register_exit_function(spawn_fn runner, fn_env_pair *f);
 };

@@ -291,10 +291,18 @@ rust_kernel::set_exit_status(int code) {
 }
 
 void
-rust_kernel::register_task() {
-    KLOG_("Registering task");
+rust_kernel::inc_live_count() {
     uintptr_t new_non_weak_tasks = sync::increment(non_weak_tasks);
     KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
+}
+
+void
+rust_kernel::dec_live_count() {
+    uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
+    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
+    if (new_non_weak_tasks == 0) {
+        begin_shutdown();
+    }
 }
 
 void
@@ -313,31 +321,6 @@ rust_kernel::allow_scheduler_exit() {
         get_scheduler_by_id_nolock(osmain_scheduler);
     assert(osmain_sched != NULL);
     osmain_sched->allow_exit();
-}
-
-void
-rust_kernel::unregister_task() {
-    KLOG_("Unregistering task");
-    uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
-    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
-    if (new_non_weak_tasks == 0) {
-        begin_shutdown();
-    }
-}
-
-void
-rust_kernel::inc_weak_task_count() {
-    uintptr_t new_non_weak_tasks = sync::decrement(non_weak_tasks);
-    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
-    if (new_non_weak_tasks == 0) {
-        begin_shutdown();
-    }
-}
-
-void
-rust_kernel::dec_weak_task_count() {
-    uintptr_t new_non_weak_tasks = sync::increment(non_weak_tasks);
-    KLOG_("New non-weak tasks %" PRIdPTR, new_non_weak_tasks);
 }
 
 void
