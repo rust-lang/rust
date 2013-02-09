@@ -121,15 +121,15 @@ pure fn lookup_cur_matched_by_matched(r: @mut TtReader,
     vec::foldl(start, r.repeat_idx, red)
 }
 
-fn lookup_cur_matched(r: &TtReader, name: ident) -> @named_match {
+fn lookup_cur_matched(r: @mut TtReader, name: ident) -> @named_match {
     lookup_cur_matched_by_matched(r, r.interpolations.get(&name))
 }
 enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
 }
 
-fn lockstep_iter_size(t: token_tree, r: &TtReader) -> lis {
-    fn lis_merge(lhs: lis, rhs: lis, r: &TtReader) -> lis {
+fn lockstep_iter_size(t: token_tree, r: @mut TtReader) -> lis {
+    fn lis_merge(lhs: lis, rhs: lis, r: @mut TtReader) -> lis {
         match lhs {
           lis_unconstrained => rhs,
           lis_contradiction(_) => lhs,
