@@ -43,9 +43,10 @@ pub trait UnifyVid<T> {
 }
 
 pub impl InferCtxt {
-    fn get<T:Copy, V:Copy Eq Vid UnifyVid<T>>(&mut self,
-                                              +vid: V)
-                                           -> Node<V, T> {
+    fn get<T:Copy, V:Copy+Eq+Vid+UnifyVid<T>>(
+        &mut self,
+        +vid: V) -> Node<V, T>
+    {
         /*!
          *
          * Find the root node for `vid`. This uses the standard
@@ -53,27 +54,38 @@ pub impl InferCtxt {
          * http://en.wikipedia.org/wiki/Disjoint-set_data_structure
          */
 
+        let tcx = self.tcx;
         let vb = UnifyVid::appropriate_vals_and_bindings(self);
-        let vid_u = vid.to_uint();
-        match vb.vals.find(vid_u) {
-          None => {
-            self.tcx.sess.bug(fmt!("failed lookup of vid `%u`", vid_u));
-          }
-          Some(ref var_val) => {
-            match (*var_val) {
-              Redirect(vid) => {
-                let node: Node<V,T> = self.get(vid);
-                if node.root != vid {
-                    // Path compression
-                    vb.vals.insert(vid.to_uint(), Redirect(node.root));
+        return helper(tcx, vb, vid);
+
+        fn helper<T:Copy, V:Copy+Eq+Vid>(
+            tcx: ty::ctxt,
+            vb: &mut ValsAndBindings<V,T>,
+            vid: V) -> Node<V, T>
+        {
+            let vid_u = vid.to_uint();
+            match vb.vals.find(vid_u) {
+                None => {
+                    tcx.sess.bug(fmt!(
+                        "failed lookup of vid `%u`", vid_u));
                 }
-                node
-              }
-              Root(ref pt, rk) => {
-                Node {root: vid, possible_types: *pt, rank: rk}
-              }
+                Some(ref var_val) => {
+                    match *var_val {
+                        Redirect(vid) => {
+                            let node: Node<V,T> = helper(tcx, vb, vid);
+                            if node.root != vid {
+                                // Path compression
+                                vb.vals.insert(vid.to_uint(),
+                                               Redirect(node.root));
+                            }
+                            node
+                        }
+                        Root(ref pt, rk) => {
+                            Node {root: vid, possible_types: *pt, rank: rk}
+                        }
+                    }
+                }
             }
-          }
         }
     }
 
@@ -86,21 +98,22 @@ pub impl InferCtxt {
          * Sets the value for `vid` to `new_v`.  `vid` MUST be a root node!
          */
 
-        let vb = UnifyVid::appropriate_vals_and_bindings(self);
-        let old_v = vb.vals.get(vid.to_uint());
-        vb.bindings.push((vid, old_v));
-        vb.vals.insert(vid.to_uint(), new_v);
+        debug!("Updating variable %s to %s",
+               vid.to_str(), new_v.inf_str(self));
 
-        debug!("Updating variable %s from %s to %s",
-               vid.to_str(), old_v.inf_str(self), new_v.inf_str(self));
+        { // FIXME(#4903)---borrow checker is not flow sensitive
+            let vb = UnifyVid::appropriate_vals_and_bindings(self);
+            let old_v = vb.vals.get(vid.to_uint());
+            vb.bindings.push((vid, old_v));
+            vb.vals.insert(vid.to_uint(), new_v);
+        }
     }
 
-    fn unify<T:Copy InferStr, V:Copy Vid ToStr UnifyVid<T>, R>(
-            &mut self,
-            node_a: &Node<V, T>,
-            node_b: &Node<V, T>,
-            op: &fn(new_root: V, new_rank: uint) -> R
-    ) -> R {
+    fn unify<T:Copy InferStr, V:Copy Vid ToStr UnifyVid<T>>(
+        &mut self,
+        node_a: &Node<V, T>,
+        node_b: &Node<V, T>) -> (V, uint)
+    {
         // Rank optimization: if you don't know what it is, check
         // out <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>
 
@@ -113,17 +126,17 @@ pub impl InferCtxt {
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
             self.set(node_b.root, Redirect(node_a.root));
-            op(node_a.root, node_a.rank)
+            (node_a.root, node_a.rank)
         } else if node_a.rank < node_b.rank {
             // b has greater rank, so a should redirect to b.
             self.set(node_a.root, Redirect(node_b.root));
-            op(node_b.root, node_b.rank)
+            (node_b.root, node_b.rank)
         } else {
             // If equal, redirect one to the other and increment the
             // other's rank.
             assert node_a.rank == node_b.rank;
             self.set(node_b.root, Redirect(node_a.root));
-            op(node_a.root, node_a.rank + 1)
+            (node_a.root, node_a.rank + 1)
         }
     }
 
@@ -183,9 +196,8 @@ pub impl InferCtxt {
             }
         };
 
-        self.unify(&node_a, &node_b, |new_root, new_rank| {
-            self.set(new_root, Root(combined, new_rank));
-        });
+        let (new_root, new_rank) = self.unify(&node_a, &node_b);
+        self.set(new_root, Root(combined, new_rank));
         return uok();
     }
 
