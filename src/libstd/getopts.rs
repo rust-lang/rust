@@ -31,7 +31,7 @@
  * file name following -o, and accepts both -h and --help as optional flags.
  * extern mod std;
  * use std::getopts::*;
- * 
+ *
  *    fn do_work(in: &str, out: Option<~str>) {
  *      io::println(in);
  *      io::println(match out {
@@ -39,18 +39,18 @@
  *        None => ~"No Output"
  *      });
  *    }
- *    
+ *
  *    fn print_usage(program: &str, _opts: &[std::getopts::Opt]) {
  *      io::println(fmt!("Usage: %s [options]", program));
  *      io::println("-o\t\tOutput");
  *      io::println("-h --help\tUsage");
  *    }
- *   
+ *
  *    fn main() {
  *        let args = os::args();
- *   
+ *
  *        let program = copy args[0];
- *    
+ *
  *        let opts = ~[
  *            optopt("o"),
  *            optflag("h"),
