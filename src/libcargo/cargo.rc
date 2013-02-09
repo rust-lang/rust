@@ -730,7 +730,7 @@ pub fn configure(opts: Options) -> Cargo {
     need_dir(&c.libdir);
     need_dir(&c.bindir);
 
-    for sources.each_key_ref |&k| {
+    for sources.each_key |&k| {
         let mut s = sources.get(&k);
         load_source_packages(&c, s);
         sources.insert(k, s);
@@ -748,7 +748,7 @@ pub fn configure(opts: Options) -> Cargo {
 }
 
 pub fn for_each_package(c: &Cargo, b: fn(s: @Source, p: &Package)) {
-    for c.sources.each_value_ref |&v| {
+    for c.sources.each_value |&v| {
         for v.packages.each |p| {
             b(v, p);
         }
@@ -1155,7 +1155,7 @@ pub fn cmd_install(c: &mut Cargo) {
 }
 
 pub fn sync(c: &Cargo) {
-    for c.sources.each_key_ref |&k| {
+    for c.sources.each_key |&k| {
         let mut s = c.sources.get(&k);
         sync_one(c, s);
         c.sources.insert(k, s);
@@ -1569,7 +1569,7 @@ pub fn cmd_list(c: &Cargo) {
             }
         }
     } else {
-        for c.sources.each_value_ref |&v| {
+        for c.sources.each_value |&v| {
             print_source(v);
         }
     }
@@ -1636,7 +1636,7 @@ pub fn dump_sources(c: &Cargo) {
         result::Ok(writer) => {
             let mut hash = ~LinearMap::new();
 
-            for c.sources.each_ref |&k, &v| {
+            for c.sources.each |&k, &v| {
                 let mut chash = ~LinearMap::new();
 
                 chash.insert(~"url", json::String(v.url));
@@ -1675,7 +1675,7 @@ pub fn copy_warn(srcfile: &Path, destfile: &Path) {
 
 pub fn cmd_sources(c: &Cargo) {
     if vec::len(c.opts.free) < 3u {
-        for c.sources.each_value_ref |&v| {
+        for c.sources.each_value |&v| {
             info(fmt!("%s (%s) via %s",
                       v.name, v.url, v.method));
         }
@@ -1686,7 +1686,7 @@ pub fn cmd_sources(c: &Cargo) {
 
     match action {
         ~"clear" => {
-          for c.sources.each_key_ref |&k| {
+          for c.sources.each_key |&k| {
                 c.sources.remove(&k);
             }
 
@@ -1706,7 +1706,7 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            if c.sources.contains_key_ref(&name) {
+            if c.sources.contains_key(&name) {
                 error(fmt!("source already exists: %s", name));
             } else {
                 c.sources.insert(name, @Source {
@@ -1733,7 +1733,7 @@ pub fn cmd_sources(c: &Cargo) {
                 return;
             }
 
-            if c.sources.contains_key_ref(&name) {
+            if c.sources.contains_key(&name) {
                 c.sources.remove(&name);
                 info(fmt!("removed source: %s", name));
             } else {

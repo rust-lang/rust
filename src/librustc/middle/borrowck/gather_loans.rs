@@ -207,7 +207,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       ast::expr_binary(_, rcvr, _) |
       ast::expr_unary(_, rcvr) |
       ast::expr_assign_op(_, rcvr, _)
-      if self.bccx.method_map.contains_key_ref(&ex.id) => {
+      if self.bccx.method_map.contains_key(&ex.id) => {
         // Receivers in method calls are always passed by ref.
         //
         // Here, in an overloaded operator, the call is this expression,
@@ -244,7 +244,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       // }
 
       ast::expr_field(rcvr, _, _)
-      if self.bccx.method_map.contains_key_ref(&ex.id) => {
+      if self.bccx.method_map.contains_key(&ex.id) => {
         // Receivers in method calls are always passed by ref.
         //
         // Here, the field a.b is in fact a closure.  Eventually, this

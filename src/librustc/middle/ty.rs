@@ -2778,7 +2778,7 @@ pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
 }
 
 fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
-    return cx.node_type_substs.contains_key_ref(&id);
+    cx.node_type_substs.contains_key(&id)
 }
 
 // Type accessors for substructures of types
@@ -3082,7 +3082,7 @@ pub enum ExprKind {
 pub fn expr_kind(tcx: ctxt,
                  method_map: typeck::method_map,
                  expr: @ast::expr) -> ExprKind {
-    if method_map.contains_key_ref(&expr.id) {
+    if method_map.contains_key(&expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS.  However, assign_op (e.g., `x += y`) is an
         // exception, as its result is always unit.
@@ -4338,7 +4338,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
                     let super_t = supertrait.tpt.ty;
                     let d_id = ty_to_def_id(super_t).expect("supertrait \
                         should be a trait ty");
-                    if !supertrait_map.contains_key_ref(&d_id) {
+                    if !supertrait_map.contains_key(&d_id) {
                         supertrait_map.insert(d_id, super_t);
                         trait_ty = super_t;
                         seen_def_ids.push(d_id);
