@@ -90,15 +90,13 @@ pub mod chained {
                   }
                   Some(e1) => {
                     comp += 1u;
-                    unsafe {
-                        if e1.hash == h && e1.key == *k {
-                            debug!("search_tbl: present, comp %u, \
-                                    hash %u, idx %u",
-                                   comp, h, idx);
-                            return FoundAfter(e0, e1);
-                        } else {
-                            e0 = e1;
-                        }
+                    if e1.hash == h && e1.key == *k {
+                        debug!(
+                            "search_tbl: present, comp %u, hash %u, idx %u",
+                            comp, h, idx);
+                        return FoundAfter(e0, e1);
+                    } else {
+                        e0 = e1;
                     }
                   }
                 }
@@ -114,14 +112,12 @@ pub mod chained {
                 return NotFound;
               }
               Some(e) => {
-                unsafe {
-                    if e.hash == h && e.key == *k {
-                        debug!("search_tbl: present, comp %u, hash %u, \
-                                idx %u", 1u, h, idx);
-                        return FoundFirst(idx, e);
-                    } else {
-                        return self.search_rem(k, h, idx, e);
-                    }
+                if e.hash == h && e.key == *k {
+                    debug!("search_tbl: present, comp %u, hash %u, \
+                           idx %u", 1u, h, idx);
+                    return FoundFirst(idx, e);
+                } else {
+                    return self.search_rem(k, h, idx, e);
                 }
               }
             }
@@ -258,12 +254,10 @@ pub mod chained {
 
     impl<K: Eq IterBytes Hash Copy, V: Copy> T<K, V> {
         pure fn find(&self, k: &K) -> Option<V> {
-            unsafe {
-                match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
-                  NotFound => None,
-                  FoundFirst(_, entry) => Some(entry.value),
-                  FoundAfter(_, entry) => Some(entry.value)
-                }
+            match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
+              NotFound => None,
+              FoundFirst(_, entry) => Some(entry.value),
+              FoundAfter(_, entry) => Some(entry.value)
             }
         }
 
@@ -364,9 +358,7 @@ pub mod chained {
 
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
         pure fn index(&self, k: K) -> V {
-            unsafe {
-                self.get(&k)
-            }
+            self.get(&k)
         }
     }
 
