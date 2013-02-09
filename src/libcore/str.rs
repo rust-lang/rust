@@ -220,6 +220,16 @@ pub pure fn connect(v: &[~str], sep: &str) -> ~str {
     s
 }
 
+/// Concatenate a vector of strings, placing a given separator between each
+pub pure fn connect_slices(v: &[&str], sep: &str) -> ~str {
+    let mut s = ~"", first = true;
+    for vec::each(v) |ss| {
+        if first { first = false; } else { unsafe { push_str(&mut s, sep); } }
+        unsafe { push_str(&mut s, *ss) };
+    }
+    s
+}
+
 /// Given a string, make a new string with repeated copies of it
 pub pure fn repeat(ss: &str, nn: uint) -> ~str {
     let mut acc = ~"";
@@ -2665,6 +2675,17 @@ mod tests {
         let v: ~[~str] = ~[];
         t(v, ~" ", ~"");
         t(~[~"hi"], ~" ", ~"hi");
+    }
+
+    #[test]
+    fn test_connect_slices() {
+        fn t(v: &[&str], sep: &str, s: &str) {
+            assert connect_slices(v, sep) == s.to_str();
+        }
+        t(["you", "know", "I'm", "no", "good"],
+          " ", "you know I'm no good");
+        t([], " ", "");
+        t(["hi"], " ", "hi");
     }
 
     #[test]

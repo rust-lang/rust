@@ -457,7 +457,7 @@ pub fn parse_source(name: ~str, j: &json::Json) -> @Source {
     }
 
     match *j {
-        json::Object(j) => {
+        json::Object(ref j) => {
             let mut url = match j.find(&~"url") {
                 Some(&json::String(u)) => copy u,
                 _ => die!(~"needed 'url' field in source")
@@ -563,7 +563,7 @@ pub fn load_one_source_package(src: @Source, p: &json::Object) {
 
     let mut tags = ~[];
     match p.find(&~"tags") {
-        Some(&json::List(js)) => {
+        Some(&json::List(ref js)) => {
           for js.each |j| {
                 match *j {
                     json::String(ref j) => tags.grow(1u, j),
@@ -635,11 +635,11 @@ pub fn load_source_packages(c: &Cargo, src: @Source) {
     if !os::path_exists(&pkgfile) { return; }
     let pkgstr = io::read_whole_file_str(&pkgfile);
     match json::from_str(pkgstr.get()) {
-        Ok(json::List(js)) => {
+        Ok(json::List(ref js)) => {
           for js.each |j| {
                 match *j {
-                    json::Object(p) => {
-                        load_one_source_package(src, p);
+                    json::Object(ref p) => {
+                        load_one_source_package(src, *p);
                     }
                     _ => {
                         warn(~"malformed source json: " + src.name +

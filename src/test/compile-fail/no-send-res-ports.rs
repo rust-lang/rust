@@ -29,7 +29,7 @@ fn main() {
 
     do task::spawn {
         let mut y = None;
-        *x <-> y; //~ ERROR not a sendable value
+        *x <-> y; //~ ERROR value has non-owned type
         log(error, y);
     }
 }

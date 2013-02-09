@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: copying a noncopyable value
-
 // Test that a class with a non-copyable field can't be
 // copied
 struct bar {
@@ -38,4 +36,8 @@ fn foo(i:int) -> foo {
     }
 }
 
-fn main() { let x = move foo(10); let y = copy x; log(error, x); }
+fn main() {
+    let x = move foo(10);
+    let _y = copy x; //~ ERROR copying a value of non-copyable type
+    log(error, x);
+}

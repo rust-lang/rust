@@ -11,7 +11,7 @@
 fn main() {
     let x = Some(private::exclusive(false));
     match x {
-        Some(copy z) => { //~ ERROR copying a noncopyable value
+        Some(copy z) => { //~ ERROR copying a value of non-copyable type
             do z.with |b| { assert !*b; }
         }
         None => die!()
