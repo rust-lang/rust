@@ -18,12 +18,12 @@ fn copy2<T: Copy &static>(t: T) -> fn@() -> T {
 
 fn main() {
     let x = &3;
-    copy2(&x); //~ ERROR missing `&static`
+    copy2(&x); //~ ERROR does not fulfill `&static`
 
     copy2(@3);
-    copy2(@&x); //~ ERROR missing `&static`
+    copy2(@&x); //~ ERROR does not fulfill `&static`
 
     copy2(fn@() {});
-    copy2(fn~() {}); //~ ERROR missing `copy`
-    copy2(fn&() {}); //~ ERROR missing `&static`
+    copy2(fn~() {}); //~ ERROR does not fulfill `Copy`
+    copy2(fn&() {}); //~ ERROR does not fulfill `&static`
 }

@@ -26,8 +26,6 @@ pub fn main() {
     let x = ~S { x: 3 };
     let y = x as ~Foo;
     y.f();
-    y.f();
-    y.f();
 }
 
 

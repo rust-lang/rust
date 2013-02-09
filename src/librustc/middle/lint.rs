@@ -925,8 +925,8 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
 
                     ast::infer(_) => {
                         if tcx.legacy_modes {
-                            let kind = ty::type_kind(tcx, arg_ty.ty);
-                            if !ty::kind_is_safe_for_default_mode(kind) {
+                            let kind = ty::type_contents(tcx, arg_ty.ty);
+                            if !kind.is_safe_for_default_mode(tcx) {
                                 tcx.sess.span_lint(
                                     deprecated_mode, id, id,
                                     span,

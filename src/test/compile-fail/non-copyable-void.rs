@@ -13,6 +13,6 @@ fn main() {
     let y : *libc::c_void = x as *libc::c_void;
     unsafe {
         let _z = copy *y;
-        //~^ ERROR copying a noncopyable value
+        //~^ ERROR copying a value of non-copyable type
     }
 }
