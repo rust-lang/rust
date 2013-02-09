@@ -42,14 +42,14 @@ fn r2(x:@mut int) -> r2 {
 
 fn main() {
     foo({f: 3});
-    foo({mut f: 3}); //~ ERROR missing `const`
+    foo({mut f: 3}); //~ ERROR does not fulfill `Const`
     foo(~[1]);
-    foo(~[mut 1]); //~ ERROR missing `const`
+    foo(~[mut 1]); //~ ERROR does not fulfill `Const`
     foo(~1);
-    foo(~mut 1); //~ ERROR missing `const`
+    foo(~mut 1); //~ ERROR does not fulfill `Const`
     foo(@1);
-    foo(@mut 1); //~ ERROR missing `const`
+    foo(@mut 1); //~ ERROR does not fulfill `Const`
     foo(r(1)); // this is okay now.
-    foo(r2(@mut 1)); //~ ERROR missing `const`
-    foo({f: {mut f: 1}}); //~ ERROR missing `const`
+    foo(r2(@mut 1)); //~ ERROR does not fulfill `Const`
+    foo({f: {mut f: 1}}); //~ ERROR does not fulfill `Const`
 }

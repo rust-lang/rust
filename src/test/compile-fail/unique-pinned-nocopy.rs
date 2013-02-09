@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: copying a noncopyable value
-
 struct r {
   b:bool,
 }
@@ -20,6 +18,6 @@ impl r : Drop {
 
 fn main() {
     let i = move ~r { b: true };
-    let j = copy i;
+    let _j = copy i; //~ ERROR copying a value of non-copyable type
     log(debug, i);
 }

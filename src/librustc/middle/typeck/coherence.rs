@@ -24,13 +24,13 @@ use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
 use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
-use middle::ty::{kind_can_be_copied, lookup_item_type, param_bounds, subst};
+use middle::ty::{lookup_item_type, param_bounds, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rec, ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
-use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_kind_ext};
+use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec};
 use middle::ty::{type_is_ty_var};
 use middle::ty;
 use middle::typeck::CrateCtxt;
@@ -578,11 +578,10 @@ pub impl CoherenceChecker {
                                 for bounds.each |bound| {
                                     match *bound {
                                         bound_copy => {
-                                            let kind = type_kind_ext(
+                                            if !ty::type_is_copyable(
                                                 self.inference_context.tcx,
-                                                resolved_ty,
-                                                true);
-                                            if !kind_can_be_copied(kind) {
+                                                resolved_ty)
+                                            {
                                                 might_unify = false;
                                                 break;
                                             }

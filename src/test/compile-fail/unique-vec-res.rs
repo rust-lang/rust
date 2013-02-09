@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: copying a noncopyable value
-
 struct r {
   i: @mut int,
 }
@@ -20,7 +18,7 @@ impl r : Drop {
     }
 }
 
-fn f<T>(+i: ~[T], +j: ~[T]) {
+fn f<T>(+_i: ~[T], +_j: ~[T]) {
 }
 
 fn main() {
@@ -29,6 +27,8 @@ fn main() {
     let r1 = move ~[~r { i: i1 }];
     let r2 = move ~[~r { i: i2 }];
     f(copy r1, copy r2);
+    //~^ ERROR copying a value of non-copyable type
+    //~^^ ERROR copying a value of non-copyable type
     log(debug, (r2, *i1));
     log(debug, (r1, *i2));
 }
