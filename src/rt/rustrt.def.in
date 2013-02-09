@@ -154,7 +154,6 @@ rust_dbg_call
 rust_dbg_do_nothing
 rust_dbg_breakpoint
 rust_osmain_sched_id
-rust_compare_and_swap_ptr
 rust_task_inhibit_kill
 rust_task_allow_kill
 rust_task_inhibit_yield
