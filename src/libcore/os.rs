@@ -62,8 +62,11 @@ extern mod rustrt {
     unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
     unsafe fn rust_list_files2(&&path: ~str) -> ~[~str];
     unsafe fn rust_process_wait(handle: c_int) -> c_int;
-    unsafe fn last_os_error() -> ~str;
     unsafe fn rust_set_exit_status(code: libc::intptr_t);
+}
+
+extern mod rustllvm {
+    unsafe fn LLVMGetLastError() -> *libc::c_char;
 }
 
 pub const tmpbuf_sz : uint = 1000u;
@@ -767,9 +770,12 @@ pub fn remove_file(p: &Path) -> bool {
 }
 
 /// Get a string representing the platform-dependent last error
-pub fn last_os_error() -> ~str {
+pub fn last_error() -> ~str {
     unsafe {
-        rustrt::last_os_error()
+        let e = rustllvm::LLVMGetLastError();
+        let err_str = str::raw::from_c_str(e);
+        libc::free(e as *libc::c_void);
+        err_str
     }
 }
 
@@ -1000,8 +1006,8 @@ mod tests {
     use vec;
 
     #[test]
-    pub fn last_os_error() {
-        log(debug, os::last_os_error());
+    pub fn last_error() {
+        log(debug, os::last_error());
     }
 
     #[test]

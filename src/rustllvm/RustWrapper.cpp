@@ -30,6 +30,7 @@
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Support/Errno.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/SourceMgr.h"
@@ -70,6 +71,13 @@ LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
 
 extern "C" const char *LLVMRustGetLastError(void) {
   return LLVMRustError;
+}
+
+extern "C" const char *LLVMGetLastError(void) {
+    std::string e = StrError();
+    char *err = (char *) malloc(e.length() + 1);
+    std::strcpy(err, e.c_str());
+    return err;
 }
 
 extern "C" void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);

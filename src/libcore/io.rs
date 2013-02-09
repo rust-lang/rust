@@ -607,7 +607,7 @@ impl *libc::FILE: Writer {
                                         *self);
                 if nout != len as size_t {
                     error!("error writing buffer");
-                    log(error, os::last_os_error());
+                    log(error, os::last_error());
                     die!();
                 }
             }
@@ -657,7 +657,7 @@ impl fd_t: Writer {
                     let nout = libc::write(*self, vb, len as size_t);
                     if nout < 0 as ssize_t {
                         error!("error writing buffer");
-                        log(error, os::last_os_error());
+                        log(error, os::last_error());
                         die!();
                     }
                     count += nout as uint;
@@ -731,7 +731,7 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
     };
     if fd < (0 as c_int) {
         result::Err(fmt!("error opening %s: %s", path.to_str(),
-                         os::last_os_error()))
+                         os::last_error()))
     } else {
         result::Ok(fd_writer(fd, true))
     }
