@@ -103,7 +103,8 @@ cleantestlibs:
          -name '*.dSYM' -o    \
          -name '*.libaux' -o      \
          -name '*.out' -o     \
-         -name '*.err'        \
+         -name '*.err' -o     \
+	 -name '*.debugger.script' \
          | xargs rm -rf
 
 
@@ -284,6 +285,7 @@ CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
 BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
+DEBUGINFO_RS := $(wildcard $(S)src/test/pretty/*.rs)
 
 # perf tests are the same as bench tests only they run under
 # a performance monitor.
@@ -296,6 +298,7 @@ CFAIL_TESTS := $(CFAIL_RC) $(CFAIL_RS)
 BENCH_TESTS := $(BENCH_RS)
 PERF_TESTS := $(PERF_RS)
 PRETTY_TESTS := $(PRETTY_RS)
+DEBUGINFO_TESTS := $(DEBUGINFO_RS)
 
 CTEST_SRC_BASE_rpass = run-pass
 CTEST_BUILD_BASE_rpass = run-pass
@@ -326,6 +329,11 @@ CTEST_SRC_BASE_perf = bench
 CTEST_BUILD_BASE_perf = perf
 CTEST_MODE_perf = run-pass
 CTEST_RUNTOOL_perf = $(CTEST_PERF_RUNTOOL)
+
+CTEST_SRC_BASE_debuginfo = debug-info
+CTEST_BUILD_BASE_debuginfo = debug-info
+CTEST_MODE_debuginfo = debug-info
+CTEST_RUNTOOL_debuginfo = $(CTEST_RUNTOOL)
 
 define DEF_CTEST_VARS
 
@@ -358,6 +366,7 @@ CTEST_DEPS_rfail_$(1)-T-$(2)-H-$(3) = $$(RFAIL_TESTS)
 CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $$(CFAIL_TESTS)
 CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $$(BENCH_TESTS)
 CTEST_DEPS_perf_$(1)-T-$(2)-H-$(3) = $$(PERF_TESTS)
+CTEST_DEPS_debuginfo_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_TESTS)
 
 endef
 
@@ -388,7 +397,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 
 endef
 
-CTEST_NAMES = rpass rpass-full rfail cfail bench perf
+CTEST_NAMES = rpass rpass-full rfail cfail bench perf debuginfo
 
 $(foreach host,$(CFG_TARGET_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
@@ -496,6 +505,7 @@ TEST_GROUPS = \
 	cfail \
 	bench \
 	perf \
+	debuginfo \
 	doc \
 	$(foreach docname,$(DOC_TEST_NAMES),$(docname)) \
 	pretty \
