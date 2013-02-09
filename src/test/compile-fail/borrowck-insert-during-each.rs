@@ -8,20 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::hashmap::linear::LinearSet;
+
 struct Foo {
-    x: uint
+  n: LinearSet<int>,
 }
 
-struct Bar {
-    foo: Foo
+impl Foo {
+  fn foo(&mut self, fun: fn(&int)) {
+    for self.n.each |f| {
+      fun(f);
+    }
+  }
+}
+
+fn bar(f: &mut Foo) {
+  do f.foo |a| { //~ NOTE prior loan as mutable granted here
+    f.n.insert(*a); //~ ERROR conflicts with prior loan
+  }
 }
 
 fn main() {
-    let mut b = Bar { foo: Foo { x: 3 } };
-    let p = &b; //~ NOTE prior loan as immutable granted here
-    let q = &mut b.foo.x; //~ ERROR loan of mutable local variable as mutable conflicts with prior loan
-    let r = &p.foo.x;
-    io::println(fmt!("*r = %u", *r));
-    *q += 1;
-    io::println(fmt!("*r = %u", *r));
+  let mut f = Foo { n: LinearSet::new() };
+  bar(&mut f);
 }

@@ -305,22 +305,31 @@ impl CheckLoanCtxt {
             return;
         }
 
-        match (old_loan.mutbl, new_loan.mutbl) {
-            (m_const, _) | (_, m_const) | (m_imm, m_imm) => {
-                /*ok*/
+        match (old_loan.kind, new_loan.kind) {
+            (PartialFreeze, PartialTake) | (PartialTake, PartialFreeze) |
+            (TotalFreeze, PartialFreeze) | (PartialFreeze, TotalFreeze) |
+            (Immobile, _) | (_, Immobile) |
+            (PartialFreeze, PartialFreeze) |
+            (PartialTake, PartialTake) |
+            (TotalFreeze, TotalFreeze) => {
+                /* ok */
             }
 
-            (m_mutbl, m_mutbl) | (m_mutbl, m_imm) | (m_imm, m_mutbl) => {
+            (PartialTake, TotalFreeze) | (TotalFreeze, PartialTake) |
+            (TotalTake, TotalFreeze) | (TotalFreeze, TotalTake) |
+            (TotalTake, PartialFreeze) | (PartialFreeze, TotalTake) |
+            (TotalTake, PartialTake) | (PartialTake, TotalTake) |
+            (TotalTake, TotalTake) => {
                 self.bccx.span_err(
                     new_loan.cmt.span,
                     fmt!("loan of %s as %s \
                           conflicts with prior loan",
                          self.bccx.cmt_to_str(new_loan.cmt),
-                         self.bccx.mut_to_str(new_loan.mutbl)));
+                         self.bccx.loan_kind_to_str(new_loan.kind)));
                 self.bccx.span_note(
                     old_loan.cmt.span,
                     fmt!("prior loan as %s granted here",
-                         self.bccx.mut_to_str(old_loan.mutbl)));
+                         self.bccx.loan_kind_to_str(old_loan.kind)));
             }
         }
     }
@@ -348,13 +357,13 @@ impl CheckLoanCtxt {
             // are only assigned once
         } else {
             match cmt.mutbl {
-              m_mutbl => { /*ok*/ }
-              m_const | m_imm => {
-                self.bccx.span_err(
-                    ex.span,
-                    at.ing_form(self.bccx.cmt_to_str(cmt)));
-                return;
-              }
+                McDeclared | McInherited => { /*ok*/ }
+                McReadOnly | McImmutable => {
+                    self.bccx.span_err(
+                        ex.span,
+                        at.ing_form(self.bccx.cmt_to_str(cmt)));
+                    return;
+                }
             }
         }
 
@@ -428,19 +437,20 @@ impl CheckLoanCtxt {
                                                   cmt: cmt,
                                                   lp: @loan_path) {
         for self.walk_loans_of(ex.id, lp) |loan| {
-            match loan.mutbl {
-              m_const => { /*ok*/ }
-              m_mutbl | m_imm => {
-                self.bccx.span_err(
-                    ex.span,
-                    fmt!("%s prohibited due to outstanding loan",
-                         at.ing_form(self.bccx.cmt_to_str(cmt))));
-                self.bccx.span_note(
-                    loan.cmt.span,
-                    fmt!("loan of %s granted here",
-                         self.bccx.cmt_to_str(loan.cmt)));
-                return;
-              }
+            match loan.kind {
+                Immobile => { /* ok */ }
+                TotalFreeze | PartialFreeze |
+                TotalTake | PartialTake => {
+                    self.bccx.span_err(
+                        ex.span,
+                        fmt!("%s prohibited due to outstanding loan",
+                             at.ing_form(self.bccx.cmt_to_str(cmt))));
+                    self.bccx.span_note(
+                        loan.cmt.span,
+                        fmt!("loan of %s granted here",
+                             self.bccx.cmt_to_str(loan.cmt)));
+                    return;
+                }
             }
         }
 

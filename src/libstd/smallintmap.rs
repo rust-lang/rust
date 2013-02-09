@@ -134,10 +134,11 @@ pub impl<V> SmallIntMap<V> {
 pub impl<V: Copy> SmallIntMap<V> {
     fn update_with_key(&mut self, key: uint, val: V,
                        ff: fn(uint, V, V) -> V) -> bool {
-        match self.find(&key) {
-          None => self.insert(key, val),
-          Some(orig) => self.insert(key, ff(key, copy *orig, val)),
-        }
+        let new_val = match self.find(&key) {
+            None => val,
+            Some(orig) => ff(key, *orig, val)
+        };
+        self.insert(key, new_val)
     }
 
     fn update(&mut self, key: uint, newval: V, ff: fn(V, V) -> V) -> bool {

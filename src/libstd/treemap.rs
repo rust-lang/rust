@@ -673,45 +673,45 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
             }
         };
 
-        if this {
-            *node = None;
-            return true;
-        }
+        if !this {
+            let left_level = save.left.map_default(0, |x| x.level);
+            let right_level = save.right.map_default(0, |x| x.level);
 
-        let left_level = save.left.map_default(0, |x| x.level);
-        let right_level = save.right.map_default(0, |x| x.level);
+            // re-balance, if necessary
+            if left_level < save.level - 1 || right_level < save.level - 1 {
+                save.level -= 1;
 
-        // re-balance, if necessary
-        if left_level < save.level - 1 || right_level < save.level - 1 {
-            save.level -= 1;
-
-            if right_level > save.level {
-                do save.right.mutate |mut x| { x.level = save.level; x }
-            }
-
-            skew(save);
-
-            match save.right {
-              Some(ref mut right) => {
-                skew(right);
-                match right.right {
-                  Some(ref mut x) => { skew(x) },
-                  None => ()
+                if right_level > save.level {
+                    do save.right.mutate |mut x| { x.level = save.level; x }
                 }
-              }
-              None => ()
+
+                skew(save);
+
+                match save.right {
+                    Some(ref mut right) => {
+                        skew(right);
+                        match right.right {
+                            Some(ref mut x) => { skew(x) },
+                            None => ()
+                        }
+                    }
+                    None => ()
+                }
+
+                split(save);
+                match save.right {
+                    Some(ref mut x) => { split(x) },
+                    None => ()
+                }
             }
 
-            split(save);
-            match save.right {
-              Some(ref mut x) => { split(x) },
-              None => ()
-            }
+            return removed;
         }
-
-        removed
       }
     }
+
+    *node = None;
+    return true;
 }
 
 #[cfg(test)]

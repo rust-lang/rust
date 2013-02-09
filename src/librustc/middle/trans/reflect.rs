@@ -116,26 +116,26 @@ pub impl Reflector {
     fn bracketed(&mut self,
                  bracket_name: ~str,
                  +extra: ~[ValueRef],
-                 inner: &fn()) {
+                 inner: &fn(&mut Reflector)) {
         // XXX: Bad copy.
         self.visit(~"enter_" + bracket_name, copy extra);
-        inner();
+        inner(self);
         self.visit(~"leave_" + bracket_name, extra);
     }
 
     fn vstore_name_and_extra(&mut self,
                              t: ty::t,
-                             vstore: ty::vstore,
-                             f: fn(+s: ~str,+v: ~[ValueRef])) {
+                             vstore: ty::vstore) -> (~str, ~[ValueRef])
+    {
         match vstore {
-          ty::vstore_fixed(n) => {
-            let extra = vec::append(~[self.c_uint(n)],
-                                    self.c_size_and_align(t));
-            f(~"fixed", extra)
-          }
-          ty::vstore_slice(_) => f(~"slice", ~[]),
-          ty::vstore_uniq => f(~"uniq", ~[]),
-          ty::vstore_box => f(~"box", ~[])
+            ty::vstore_fixed(n) => {
+                let extra = vec::append(~[self.c_uint(n)],
+                                        self.c_size_and_align(t));
+                (~"fixed", extra)
+            }
+            ty::vstore_slice(_) => (~"slice", ~[]),
+            ty::vstore_uniq => (~"uniq", ~[]),
+            ty::vstore_box => (~"box", ~[])
         }
     }
 
@@ -168,47 +168,60 @@ pub impl Reflector {
           ty::ty_float(ast::ty_f32) => self.leaf(~"f32"),
           ty::ty_float(ast::ty_f64) => self.leaf(~"f64"),
 
-          ty::ty_unboxed_vec(mt) => self.visit(~"vec", self.c_mt(mt)),
+          ty::ty_unboxed_vec(mt) => {
+              let values = self.c_mt(mt);
+              self.visit(~"vec", values)
+          }
+
           ty::ty_estr(vst) => {
-            do self.vstore_name_and_extra(t, vst) |name, extra| {
-                self.visit(~"estr_" + name, extra)
-            }
+              let (name, extra) = self.vstore_name_and_extra(t, vst);
+              self.visit(~"estr_" + name, extra)
           }
           ty::ty_evec(mt, vst) => {
-            do self.vstore_name_and_extra(t, vst) |name, extra| {
-                self.visit(~"evec_" + name, extra +
-                           self.c_mt(mt))
-            }
+              let (name, extra) = self.vstore_name_and_extra(t, vst);
+              let extra = extra + self.c_mt(mt);
+              self.visit(~"evec_" + name, extra)
           }
-          ty::ty_box(mt) => self.visit(~"box", self.c_mt(mt)),
-          ty::ty_uniq(mt) => self.visit(~"uniq", self.c_mt(mt)),
-          ty::ty_ptr(mt) => self.visit(~"ptr", self.c_mt(mt)),
-          ty::ty_rptr(_, mt) => self.visit(~"rptr", self.c_mt(mt)),
+          ty::ty_box(mt) => {
+              let extra = self.c_mt(mt);
+              self.visit(~"box", extra)
+          }
+          ty::ty_uniq(mt) => {
+              let extra = self.c_mt(mt);
+              self.visit(~"uniq", extra)
+          }
+          ty::ty_ptr(mt) => {
+              let extra = self.c_mt(mt);
+              self.visit(~"ptr", extra)
+          }
+          ty::ty_rptr(_, mt) => {
+              let extra = self.c_mt(mt);
+              self.visit(~"rptr", extra)
+          }
 
           ty::ty_rec(fields) => {
-            do self.bracketed(~"rec",
-                              ~[self.c_uint(vec::len(fields))]
-                              + self.c_size_and_align(t)) {
+              let extra = ~[self.c_uint(vec::len(fields))]
+                  + self.c_size_and_align(t);
+              do self.bracketed(~"rec", extra) |this| {
                 for fields.eachi |i, field| {
-                    self.visit(~"rec_field",
-                               ~[self.c_uint(i),
-                                 self.c_slice(
-                                     bcx.ccx().sess.str_of(field.ident))]
-                               + self.c_mt(field.mt));
+                    let extra = ~[this.c_uint(i),
+                                  this.c_slice(
+                                      bcx.ccx().sess.str_of(field.ident))]
+                        + this.c_mt(field.mt);
+                    this.visit(~"rec_field", extra);
                 }
             }
           }
 
           ty::ty_tup(tys) => {
-            do self.bracketed(~"tup",
-                              ~[self.c_uint(vec::len(tys))]
-                              + self.c_size_and_align(t)) {
-                for tys.eachi |i, t| {
-                    self.visit(~"tup_field",
-                               ~[self.c_uint(i),
-                                 self.c_tydesc(*t)]);
-                }
-            }
+              let extra = ~[self.c_uint(vec::len(tys))]
+                  + self.c_size_and_align(t);
+              do self.bracketed(~"tup", extra) |this| {
+                  for tys.eachi |i, t| {
+                      let extra = ~[this.c_uint(i), this.c_tydesc(*t)];
+                      this.visit(~"tup_field", extra);
+                  }
+              }
           }
 
           // FIXME (#2594): fetch constants out of intrinsic
@@ -242,20 +255,21 @@ pub impl Reflector {
           }
 
           ty::ty_struct(did, ref substs) => {
-            let bcx = self.bcx;
-            let tcx = bcx.ccx().tcx;
-            let fields = ty::struct_fields(tcx, did, substs);
+              let bcx = self.bcx;
+              let tcx = bcx.ccx().tcx;
+              let fields = ty::struct_fields(tcx, did, substs);
 
-            do self.bracketed(~"class", ~[self.c_uint(fields.len())]
-                              + self.c_size_and_align(t)) {
-                for fields.eachi |i, field| {
-                    self.visit(~"class_field",
-                               ~[self.c_uint(i),
-                                 self.c_slice(
-                                     bcx.ccx().sess.str_of(field.ident))]
-                               + self.c_mt(field.mt));
-                }
-            }
+              let extra = ~[self.c_uint(fields.len())]
+                  + self.c_size_and_align(t);
+              do self.bracketed(~"class", extra) |this| {
+                  for fields.eachi |i, field| {
+                      let extra = ~[this.c_uint(i),
+                                    this.c_slice(
+                                        bcx.ccx().sess.str_of(field.ident))]
+                          + this.c_mt(field.mt);
+                      this.visit(~"class_field", extra);
+                  }
+              }
           }
 
           // FIXME (#2595): visiting all the variants in turn is probably
@@ -267,20 +281,20 @@ pub impl Reflector {
             let tcx = bcx.ccx().tcx;
             let variants = ty::substd_enum_variants(tcx, did, substs);
 
-            do self.bracketed(~"enum",
-                              ~[self.c_uint(vec::len(variants))]
-                              + self.c_size_and_align(t)) {
+            let extra = ~[self.c_uint(vec::len(variants))]
+                + self.c_size_and_align(t);
+            do self.bracketed(~"enum", extra) |this| {
                 for variants.eachi |i, v| {
-                    do self.bracketed(~"enum_variant",
-                                      ~[self.c_uint(i),
-                                        self.c_int(v.disr_val),
-                                        self.c_uint(vec::len(v.args)),
-                                        self.c_slice(
-                                            bcx.ccx().sess.str_of(v.name))]) {
+                    let extra1 = ~[this.c_uint(i),
+                                   this.c_int(v.disr_val),
+                                   this.c_uint(vec::len(v.args)),
+                                   this.c_slice(
+                                       bcx.ccx().sess.str_of(v.name))];
+                    do this.bracketed(~"enum_variant", extra1) |this| {
                         for v.args.eachi |j, a| {
-                            self.visit(~"enum_variant_field",
-                                       ~[self.c_uint(j),
-                                         self.c_tydesc(*a)]);
+                            let extra = ~[this.c_uint(j),
+                                          this.c_tydesc(*a)];
+                            this.visit(~"enum_variant_field", extra);
                         }
                     }
                 }
@@ -291,13 +305,17 @@ pub impl Reflector {
           ty::ty_trait(_, _, _) => self.leaf(~"trait"),
           ty::ty_infer(_) => self.leaf(~"infer"),
           ty::ty_err => self.leaf(~"err"),
-          ty::ty_param(p) => self.visit(~"param", ~[self.c_uint(p.idx)]),
+          ty::ty_param(p) => {
+              let extra = ~[self.c_uint(p.idx)];
+              self.visit(~"param", extra)
+          }
           ty::ty_self => self.leaf(~"self"),
           ty::ty_type => self.leaf(~"type"),
           ty::ty_opaque_box => self.leaf(~"opaque_box"),
           ty::ty_opaque_closure_ptr(ck) => {
-            let ckval = ast_sigil_constant(ck);
-            self.visit(~"closure_ptr", ~[self.c_uint(ckval)])
+              let ckval = ast_sigil_constant(ck);
+              let extra = ~[self.c_uint(ckval)];
+              self.visit(~"closure_ptr", extra)
           }
         }
     }
@@ -312,14 +330,14 @@ pub impl Reflector {
                     ast::by_copy => 5u
                 }
             };
-            self.visit(~"fn_input",
-                       ~[self.c_uint(i),
+            let extra = ~[self.c_uint(i),
                          self.c_uint(modeval),
-                         self.c_tydesc(arg.ty)]);
+                         self.c_tydesc(arg.ty)];
+            self.visit(~"fn_input", extra);
         }
-        self.visit(~"fn_output",
-                   ~[self.c_uint(retval),
-                     self.c_tydesc(sig.output)]);
+        let extra = ~[self.c_uint(retval),
+                      self.c_tydesc(sig.output)];
+        self.visit(~"fn_output", extra);
     }
 }
 
