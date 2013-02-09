@@ -132,7 +132,7 @@ pub impl Encoder: serialize::Encoder {
 
         // other enums are encoded as vectors:
         // Kangaroo(34,"William") => ["Kangaroo",[34,"William"]]
-        
+
         // the default expansion for enums is more verbose than I'd like;
         // specifically, the inner pair of brackets seems superfluous,
         // BUT the design of the enumeration framework and the requirements
@@ -140,10 +140,11 @@ pub impl Encoder: serialize::Encoder {
         // be encoded "naked"--with no commas--and that the option name
         // can't be followed by just a comma, because there might not
         // be any elements in the tuple.
-        
-        // FIXME : this would be more precise and less frightening
+
+        // this would be more precise and less frightening
         // with fully-qualified option names. To get that information,
-        // we'd have to change the expansion of auto-encode to pass those along.
+        // we'd have to change the expansion of auto-encode to pass
+        // those along.
 
         if (name == ~"Some") {
             f();
@@ -170,6 +171,7 @@ pub impl Encoder: serialize::Encoder {
         f();
         self.wr.write_char(']');
     }
+
     fn emit_owned_vec(&self, len: uint, f: fn()) {
         self.emit_borrowed_vec(len, f)
     }
