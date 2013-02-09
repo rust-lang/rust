@@ -76,7 +76,7 @@ pub mod chained {
         FoundAfter(@Entry<K,V>, @Entry<K,V>)
     }
 
-    priv impl<K:Eq IterBytes Hash, V: Copy> T<K, V> {
+    priv impl<K:Eq IterBytes Hash, V> T<K, V> {
         pure fn search_rem(k: &K, h: uint, idx: uint,
                            e_root: @Entry<K,V>) -> SearchResult<K,V> {
             let mut e0 = e_root;
@@ -90,15 +90,13 @@ pub mod chained {
                   }
                   Some(e1) => {
                     comp += 1u;
-                    unsafe {
-                        if e1.hash == h && e1.key == *k {
-                            debug!("search_tbl: present, comp %u, \
-                                    hash %u, idx %u",
-                                   comp, h, idx);
-                            return FoundAfter(e0, e1);
-                        } else {
-                            e0 = e1;
-                        }
+                    if e1.hash == h && e1.key == *k {
+                        debug!(
+                            "search_tbl: present, comp %u, hash %u, idx %u",
+                            comp, h, idx);
+                        return FoundAfter(e0, e1);
+                    } else {
+                        e0 = e1;
                     }
                   }
                 }
@@ -114,14 +112,12 @@ pub mod chained {
                 return NotFound;
               }
               Some(e) => {
-                unsafe {
-                    if e.hash == h && e.key == *k {
-                        debug!("search_tbl: present, comp %u, hash %u, \
-                                idx %u", 1u, h, idx);
-                        return FoundFirst(idx, e);
-                    } else {
-                        return self.search_rem(k, h, idx, e);
-                    }
+                if e.hash == h && e.key == *k {
+                    debug!("search_tbl: present, comp %u, hash %u, \
+                           idx %u", 1u, h, idx);
+                    return FoundFirst(idx, e);
+                } else {
+                    return self.search_rem(k, h, idx, e);
                 }
               }
             }
@@ -172,8 +168,8 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V> {
-        pure fn contains_key_ref(&self, k: &K) -> bool {
+    impl<K: Eq IterBytes Hash, V> T<K, V> {
+        pure fn contains_key(&self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
               NotFound => false,
@@ -225,13 +221,43 @@ pub mod chained {
             }
         }
 
+        fn remove(k: &K) -> bool {
+            match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
+              NotFound => false,
+              FoundFirst(idx, entry) => {
+                self.count -= 1u;
+                self.chains[idx] = entry.next;
+                true
+              }
+              FoundAfter(eprev, entry) => {
+                self.count -= 1u;
+                eprev.next = entry.next;
+                true
+              }
+            }
+        }
+
+        pure fn each(&self, blk: fn(key: &K, value: &V) -> bool) {
+            for self.each_entry |entry| {
+                if !blk(&entry.key, &entry.value) { break; }
+            }
+        }
+
+        pure fn each_key(&self, blk: fn(key: &K) -> bool) {
+            self.each(|k, _v| blk(k))
+        }
+
+        pure fn each_value(&self, blk: fn(value: &V) -> bool) {
+            self.each(|_k, v| blk(v))
+        }
+    }
+
+    impl<K: Eq IterBytes Hash Copy, V: Copy> T<K, V> {
         pure fn find(&self, k: &K) -> Option<V> {
-            unsafe {
-                match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
-                  NotFound => None,
-                  FoundFirst(_, entry) => Some(entry.value),
-                  FoundAfter(_, entry) => Some(entry.value)
-                }
+            match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
+              NotFound => None,
+              FoundFirst(_, entry) => Some(entry.value),
+              FoundAfter(_, entry) => Some(entry.value)
             }
         }
 
@@ -297,36 +323,6 @@ pub mod chained {
             }
             option::unwrap(move opt_v)
         }
-
-        fn remove(k: &K) -> bool {
-            match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
-              NotFound => false,
-              FoundFirst(idx, entry) => {
-                self.count -= 1u;
-                self.chains[idx] = entry.next;
-                true
-              }
-              FoundAfter(eprev, entry) => {
-                self.count -= 1u;
-                eprev.next = entry.next;
-                true
-              }
-            }
-        }
-
-        pure fn each_ref(&self, blk: fn(key: &K, value: &V) -> bool) {
-            for self.each_entry |entry| {
-                if !blk(&entry.key, &entry.value) { break; }
-            }
-        }
-
-        pure fn each_key_ref(&self, blk: fn(key: &K) -> bool) {
-            self.each_ref(|k, _v| blk(k))
-        }
-
-        pure fn each_value_ref(&self, blk: fn(value: &V) -> bool) {
-            self.each_ref(|_k, v| blk(v))
-        }
     }
 
     impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> T<K, V> {
@@ -362,9 +358,7 @@ pub mod chained {
 
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
         pure fn index(&self, k: K) -> V {
-            unsafe {
-                self.get(&k)
-            }
+            self.get(&k)
         }
     }
 
@@ -397,7 +391,7 @@ pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, key: K) -> bool {
 /// Convert a set into a vector.
 pub pure fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
     do vec::build_sized(s.len()) |push| {
-        for s.each_key_ref() |&k| {
+        for s.each_key() |&k| {
             push(k);
         }
     }
@@ -628,9 +622,9 @@ mod tests {
     fn test_contains_key() {
         let key = ~"k";
         let map = HashMap::<~str, ~str>();
-        assert (!map.contains_key_ref(&key));
+        assert (!map.contains_key(&key));
         map.insert(key, ~"val");
-        assert (map.contains_key_ref(&key));
+        assert (map.contains_key(&key));
     }
 
     #[test]
@@ -648,10 +642,10 @@ mod tests {
         let mut map = HashMap::<~str, ~str>();
         map.insert(key, ~"val");
         assert (map.len() == 1);
-        assert (map.contains_key_ref(&key));
+        assert (map.contains_key(&key));
         map.clear();
         assert (map.len() == 0);
-        assert (!map.contains_key_ref(&key));
+        assert (!map.contains_key(&key));
     }
 
     #[test]

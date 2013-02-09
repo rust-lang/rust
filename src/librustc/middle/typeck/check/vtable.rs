@@ -268,7 +268,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
                         // im is one specific impl of trait_ty.
 
                         // First, ensure we haven't processed this impl yet.
-                        if impls_seen.contains_key_ref(&im.did) {
+                        if impls_seen.contains_key(&im.did) {
                             loop;
                         }
                         impls_seen.insert(im.did, ());

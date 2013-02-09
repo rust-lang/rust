@@ -134,7 +134,7 @@ fn writer(path: ~str, pport: pipes::Port<Line>, size: uint)
             done += 1_u;
             let mut prev = done;
             while prev <= i {
-                if lines.contains_key_ref(&prev) {
+                if lines.contains_key(&prev) {
                     debug!("WS %u", prev);
                     cout.write(lines.get(&prev));
                     done += 1_u;

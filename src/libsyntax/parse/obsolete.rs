@@ -137,7 +137,7 @@ pub impl Parser {
                    desc: &str) {
         self.span_err(sp, fmt!("obsolete syntax: %s", kind_str));
 
-        if !self.obsolete_set.contains_key_ref(&kind) {
+        if !self.obsolete_set.contains_key(&kind) {
             self.sess.span_diagnostic.handler().note(fmt!("%s", desc));
             self.obsolete_set.insert(kind, ());
         }

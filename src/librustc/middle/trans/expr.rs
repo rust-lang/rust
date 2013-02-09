@@ -265,7 +265,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 }
 
 pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
-    if bcx.tcx().adjustments.contains_key_ref(&expr.id) {
+    if bcx.tcx().adjustments.contains_key(&expr.id) {
         // use trans_to_datum, which is mildly less efficient but
         // which will perform the adjustments:
         let datumblock = trans_to_datum(bcx, expr);
@@ -426,7 +426,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         }
         ast::expr_binary(op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
-            assert !bcx.ccx().maps.method_map.contains_key_ref(&expr.id);
+            assert !bcx.ccx().maps.method_map.contains_key(&expr.id);
 
             return trans_binary(bcx, expr, op, lhs, rhs);
         }
@@ -1215,7 +1215,7 @@ fn trans_unary_datum(bcx: block,
     assert op != ast::deref;
 
     // if overloaded, would be RvalueDpsExpr
-    assert !bcx.ccx().maps.method_map.contains_key_ref(&un_expr.id);
+    assert !bcx.ccx().maps.method_map.contains_key(&un_expr.id);
 
     let un_ty = expr_ty(bcx, un_expr);
     let sub_ty = expr_ty(bcx, sub_expr);
