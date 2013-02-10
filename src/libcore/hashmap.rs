@@ -518,7 +518,7 @@ mod test_map {
     use uint;
 
     #[test]
-    pub fn inserts() {
+    pub fn test_insert() {
         let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
@@ -527,7 +527,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn overwrite() {
+    pub fn test_insert_overwrite() {
         let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert *m.get(&1) == 2;
@@ -536,7 +536,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn conflicts() {
+    pub fn test_insert_conflicts() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
@@ -547,7 +547,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn conflict_remove() {
+    pub fn test_conflict_remove() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
@@ -558,7 +558,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn empty() {
+    pub fn test_is_empty() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert !m.is_empty();
@@ -567,7 +567,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn pops() {
+    pub fn test_pop() {
         let mut m = LinearMap::new();
         m.insert(1, 2);
         assert m.pop(&1) == Some(2);
@@ -575,7 +575,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn swaps() {
+    pub fn test_swap() {
         let mut m = LinearMap::new();
         assert m.swap(1, 2) == None;
         assert m.swap(1, 3) == Some(2);
@@ -583,7 +583,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn consumes() {
+    pub fn test_consume() {
         let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert m.insert(2, 3);
@@ -598,7 +598,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn iterate() {
+    pub fn test_iterate() {
         let mut m = linear::linear_map_with_capacity(4);
         for uint::range(0, 32) |i| {
             assert m.insert(i, i*2);
@@ -612,7 +612,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn find() {
+    pub fn test_find() {
         let mut m = LinearMap::new();
         assert m.find(&1).is_none();
         m.insert(1, 2);
