@@ -29,48 +29,50 @@
  * The following example shows simple command line parsing for an application
  * that requires an input file to be specified, accepts an optional output
  * file name following -o, and accepts both -h and --help as optional flags.
+ * extern mod std;
+ * use std::getopts::*;
  *
- *     use std;
- *     import std::getopts::{optopt,optflag,getopts,opt_present,opt_maybe_str,
- *         fail_str};
+ *    fn do_work(in: &str, out: Option<~str>) {
+ *      io::println(in);
+ *      io::println(match out {
+ *        Some(move x) => x,
+ *        None => ~"No Output"
+ *      });
+ *    }
  *
- *     fn do_work(in: str, out: Option<str>) {
- *         // ...
- *     }
+ *    fn print_usage(program: &str, _opts: &[std::getopts::Opt]) {
+ *      io::println(fmt!("Usage: %s [options]", program));
+ *      io::println("-o\t\tOutput");
+ *      io::println("-h --help\tUsage");
+ *    }
  *
- *     fn print_usage(program: str) {
- *         io::println("Usage: " + program + " [options]");
- *         io::println("-o\t\tOutput");
- *         io::println("-h --help\tUsage");
- *     }
+ *    fn main() {
+ *        let args = os::args();
  *
- *     fn main(args: ~[str]) {
- *         check !args.is_empty()
+ *        let program = copy args[0];
  *
- *         let program : str = vec::head(args);
- *
- *         let opts = ~[
- *             optopt("o"),
- *             optflag("h"),
- *             optflag("help")
- *         ];
- *         let matches = match getopts(vec::tail(args), opts) {
- *             result::ok(m) { m }
- *             result::err(f) { die!(fail_str(f)) }
- *         };
- *         if opt_present(matches, "h") || opt_present(matches, "help") {
- *             print_usage(program);
- *             return;
- *         }
- *         let output = opt_maybe_str(matches, "o");
- *         let input = if !matches.free.is_empty() {
- *             matches.free[0]
- *         } else {
- *             print_usage(program);
- *             return;
- *         };
- *         do_work(input, output);
- *     }
+ *        let opts = ~[
+ *            optopt("o"),
+ *            optflag("h"),
+ *            optflag("help")
+ *        ];
+ *        let matches = match getopts(vec::tail(args), opts) {
+ *            result::Ok(m) => { m }
+ *            result::Err(f) => { fail fail_str(f) }
+ *        };
+ *        if opt_present(&matches, "h") || opt_present(&matches, "help") {
+ *            print_usage(program, opts);
+ *            return;
+ *        }
+ *        let output = opt_maybe_str(&matches, "o");
+ *        let input: &str = if !matches.free.is_empty() {
+ *            matches.free[0]
+ *        } else {
+ *            print_usage(program, opts);
+ *            return;
+ *        };
+ *        do_work(input, output);
+ *    }
  */
 
 use core::cmp::Eq;
