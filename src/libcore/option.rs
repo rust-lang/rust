@@ -201,7 +201,7 @@ pub pure fn map_default<T, U>(opt: &r/Option<T>, def: U,
 }
 
 #[inline(always)]
-pub pure fn iter<T>(opt: &Option<T>, f: fn(x: &T)) {
+pub pure fn iter<T>(opt: &r/Option<T>, f: fn(x: &r/T)) {
     //! Performs an operation on the contained value by reference
     match *opt { None => (), Some(ref t) => f(t) }
 }
@@ -313,7 +313,7 @@ impl<T> Option<T> {
 
     /// Performs an operation on the contained value by reference
     #[inline(always)]
-    pure fn iter(&self, f: fn(x: &T)) { iter(self, f) }
+    pure fn iter(&self, f: fn(x: &self/T)) { iter(self, f) }
 
     /**
     Gets an immutable reference to the value inside an option.
