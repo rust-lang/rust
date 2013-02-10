@@ -155,6 +155,14 @@ pub mod linear {
             }
         }
 
+        #[inline(always)]
+        pure fn value_for_bucket(&self, idx: uint) -> &self/V {
+            match self.buckets[idx] {
+                Some(ref bkt) => &bkt.value,
+                None => die!(~"LinearMap::find: internal logic error"),
+            }
+        }
+
         /// Inserts the key value pair into the buckets.
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
@@ -289,19 +297,8 @@ pub mod linear {
         /// Return the value corresponding to the key in the map
         pure fn find(&self, k: &K) -> Option<&self/V> {
             match self.bucket_for_key(k) {
-                FoundEntry(idx) => {
-                    match self.buckets[idx] {
-                        Some(ref bkt) => {
-                            Some(&bkt.value)
-                        }
-                        None => {
-                            die!(~"LinearMap::find: internal logic error")
-                        }
-                    }
-                }
-                TableFull | FoundHole(_) => {
-                    None
-                }
+                FoundEntry(idx) => Some(self.value_for_bucket(idx)),
+                TableFull | FoundHole(_) => None,
             }
         }
 
@@ -359,6 +356,63 @@ pub mod linear {
             self.insert_internal(hash, k, v);
 
             old_value
+        }
+
+        /// Return the value corresponding to the key in the map, or insert
+        /// and return the value if it doesn't exist.
+        fn find_or_insert(&mut self, k: K, v: V) -> &self/V {
+            if self.size >= self.resize_at {
+                // n.b.: We could also do this after searching, so
+                // that we do not resize if this call to insert is
+                // simply going to update a key in place.  My sense
+                // though is that it's worse to have to search through
+                // buckets to find the right spot twice than to just
+                // resize in this corner case.
+                self.expand();
+            }
+
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
+            let idx = match self.bucket_for_key_with_hash(hash, &k) {
+                TableFull => die!(~"Internal logic error"),
+                FoundEntry(idx) => idx,
+                FoundHole(idx) => {
+                    self.buckets[idx] = Some(Bucket{hash: hash, key: k,
+                                         value: v});
+                    self.size += 1;
+                    idx
+                },
+            };
+
+            self.value_for_bucket(idx)
+        }
+
+        /// Return the value corresponding to the key in the map, or create,
+        /// insert, and return a new value if it doesn't exist.
+        fn find_or_insert_with(&mut self, k: K, f: fn(&K) -> V) -> &self/V {
+            if self.size >= self.resize_at {
+                // n.b.: We could also do this after searching, so
+                // that we do not resize if this call to insert is
+                // simply going to update a key in place.  My sense
+                // though is that it's worse to have to search through
+                // buckets to find the right spot twice than to just
+                // resize in this corner case.
+                self.expand();
+            }
+
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
+            let idx = match self.bucket_for_key_with_hash(hash, &k) {
+                TableFull => die!(~"Internal logic error"),
+                FoundEntry(idx) => idx,
+                FoundHole(idx) => {
+                    let v = f(&k);
+                    self.buckets[idx] = Some(Bucket{hash: hash, key: k,
+                                         value: v});
+                    self.size += 1;
+                    idx
+                },
+            };
+
+            self.value_for_bucket(idx)
         }
 
         fn consume(&mut self, f: fn(K, V)) {
@@ -580,6 +634,20 @@ mod test_map {
         assert m.swap(1, 2) == None;
         assert m.swap(1, 3) == Some(2);
         assert m.swap(1, 4) == Some(3);
+    }
+
+    #[test]
+    pub fn test_find_or_insert() {
+        let mut m = LinearMap::new::<int, int>();
+        assert m.find_or_insert(1, 2) == &2;
+        assert m.find_or_insert(1, 3) == &2;
+    }
+
+    #[test]
+    pub fn test_find_or_insert_with() {
+        let mut m = LinearMap::new::<int, int>();
+        assert m.find_or_insert_with(1, |_| 2) == &2;
+        assert m.find_or_insert_with(1, |_| 3) == &2;
     }
 
     #[test]
