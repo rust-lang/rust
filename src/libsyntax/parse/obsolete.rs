@@ -39,7 +39,6 @@ pub enum ObsoleteSyntax {
     ObsoleteFieldTerminator,
     ObsoleteStructCtor,
     ObsoleteWith,
-    ObsoleteClassMethod,
     ObsoleteClassTraits,
     ObsoletePrivSection,
     ObsoleteModeInFnType,
@@ -84,10 +83,6 @@ pub impl Parser {
                 "with",
                 "record update is done with `..`, e.g. \
                  `MyStruct { foo: bar, .. baz }`"
-            ),
-            ObsoleteClassMethod => (
-                "class method",
-                "methods should be defined inside impls"
             ),
             ObsoleteClassTraits => (
                 "class traits",
