@@ -91,7 +91,19 @@ pub struct uv_stream_t {
 }
 
 // 64bit unix size: 216
-#[cfg(unix)]
+#[cfg(target_os="macos")]
+pub struct uv_tcp_t {
+    fields: uv_handle_fields,
+    a00: *u8, a01: *u8, a02: *u8, a03: *u8,
+    a04: *u8, a05: *u8, a06: *u8, a07: *u8,
+    a08: *u8, a09: *u8, a10: *u8, a11: *u8,
+    a12: *u8, a13: *u8, a14: *u8, a15: *u8,
+    a16: *u8, a17: *u8, a18: *u8, a19: *u8,
+    a20: *u8, a21: *u8, a22: *u8, a23: *u8
+}
+#[cfg(target_os="linux")]
+#[cfg(target_os="freebsd")]
+#[cfg(target_os="android")]
 pub struct uv_tcp_t {
     fields: uv_handle_fields,
     a00: *u8, a01: *u8, a02: *u8, a03: *u8,
@@ -352,7 +364,6 @@ pub mod uv_ll_struct_stubgen {
         return gen_stub_os();
         #[cfg(target_os = "linux")]
         #[cfg(target_os = "android")]
-        #[cfg(target_os = "macos")]
         #[cfg(target_os = "freebsd")]
         pub fn gen_stub_os() -> uv_tcp_t {
             return gen_stub_arch();
@@ -425,6 +436,28 @@ pub mod uv_ll_struct_stubgen {
                 a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
                 a23: 0 as *u8,
                 a24: 0 as *u8, a25: 0 as *u8,
+            }
+        }
+        #[cfg(target_os = "macos")]
+        pub fn gen_stub_os() -> uv_tcp_t {
+            uv_tcp_t {
+                fields: uv_handle_fields {
+                    loop_handle: ptr::null(), type_: 0u32,
+                    close_cb: ptr::null(),
+                    data: ptr::null(),
+                },
+                a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
+                a03: 0 as *u8,
+                a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
+                a07: 0 as *u8,
+                a08: 0 as *u8, a09: 0 as *u8, a10: 0 as *u8,
+                a11: 0 as *u8,
+                a12: 0 as *u8, a13: 0 as *u8, a14: 0 as *u8,
+                a15: 0 as *u8,
+                a16: 0 as *u8, a17: 0 as *u8, a18: 0 as *u8,
+                a19: 0 as *u8,
+                a20: 0 as *u8, a21: 0 as *u8, a22: 0 as *u8,
+                a23: 0 as *u8,
             }
         }
     }
