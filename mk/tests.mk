@@ -285,7 +285,7 @@ CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
 BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
-DEBUGINFO_RS := $(wildcard $(S)src/test/pretty/*.rs)
+DEBUGINFO_RS := $(wildcard $(S)src/test/debug-info/*.rs)
 
 # perf tests are the same as bench tests only they run under
 # a performance monitor.
