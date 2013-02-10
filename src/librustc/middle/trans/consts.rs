@@ -407,6 +407,10 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                     // variant or we wouldn't have gotten here -- the constant
                     // checker forbids paths that don't map to C-like enum
                     // variants.
+                    if ty::enum_is_univariant(cx.tcx, enum_did) {
+                        // Univariants have no discriminant field.
+                        C_struct(~[])
+                    } else {
                     let lldiscrim = base::get_discrim_val(cx, e.span,
                                                           enum_did,
                                                           variant_did);
@@ -417,6 +421,7 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                     let size = machine::static_size_of_enum(cx, ety);
                     let padding = C_null(T_array(T_i8(), size));
                     C_struct(~[lldiscrim, padding])
+                }
                 }
                 Some(ast::def_struct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
@@ -442,14 +447,14 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                 }
             Some(ast::def_variant(tid, vid)) => {
                 let ety = ty::expr_ty(cx.tcx, e);
-                let degen = ty::enum_is_univariant(cx.tcx, tid);
+                let univar = ty::enum_is_univariant(cx.tcx, tid);
                 let size = machine::static_size_of_enum(cx, ety);
 
                 let discrim = base::get_discrim_val(cx, e.span, tid, vid);
                 let c_args = C_struct(args.map(|a| const_expr(cx, *a)));
 
                 // FIXME (#1645): enum body alignment is generaly wrong.
-                if !degen {
+                if !univar {
                     // Pad out the data to the size of its type_of;
                     // this is necessary if the enum is contained
                     // within an aggregate (tuple, struct, vector) so
@@ -464,8 +469,6 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                     // without affecting its internal alignment or
                     // changing the alignment of the enum.
                     C_struct(~[discrim, C_packed_struct(~[c_args]), padding])
-                } else if size == 0 {
-                    C_struct(~[discrim])
                 } else {
                     C_struct(~[c_args])
                 }
