@@ -171,6 +171,7 @@ check-stage$(1)-T-$(2)-H-$(3)-exec:     				\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec			\
         check-stage$(1)-T-$(2)-H-$(3)-crates-exec                      \
 	check-stage$(1)-T-$(2)-H-$(3)-bench-exec			\
+	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
 
@@ -335,6 +336,10 @@ CTEST_BUILD_BASE_debuginfo = debug-info
 CTEST_MODE_debuginfo = debug-info
 CTEST_RUNTOOL_debuginfo = $(CTEST_RUNTOOL)
 
+ifeq ($(CFG_GDB),)
+CTEST_DISABLE_debuginfo = "no gdb found"
+endif
+
 define DEF_CTEST_VARS
 
 # All the per-stage build rules you might want to call from the
@@ -357,7 +362,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X)			\
         --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
-        --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)"	\
+       --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)"	\
         $$(CTEST_TESTARGS)
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
@@ -386,6 +391,8 @@ CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
 
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
+ifeq ($$(CTEST_DISABLE_$(4)),)
+
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
@@ -394,6 +401,17 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
                 && touch $$@
+
+else
+
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
+                $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
+	@$$(call E, run $(4): $$<)
+	@$$(call E, warning: tests disabled: $$(CTEST_DISABLE_$(4)))
+	touch $$@
+
+endif
 
 endef
 
