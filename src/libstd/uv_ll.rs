@@ -42,6 +42,7 @@ use core::str;
 use core::vec;
 use core::pipes::{stream, Chan, SharedChan, Port};
 
+pub type uv_handle_t = c_void;
 pub type uv_loop_t = c_void;
 pub type uv_idle_t = c_void;
 pub type uv_idle_cb = *u8;

@@ -376,16 +376,7 @@ current_kernel_malloc_alloc_cb(uv_handle_t* handle,
 
 extern "C" void
 rust_uv_buf_init(uv_buf_t* out_buf, char* base, size_t len) {
-    rust_task* task = rust_get_current_task();
-    LOG(task, stdlib,"rust_uv_buf_init: base: %lu" \
-        "len: %lu",
-        (unsigned long int)base,
-        (unsigned long int)len);
     *out_buf = uv_buf_init(base, len);
-    LOG(task, stdlib, "rust_uv_buf_init: after: "
-        "result->base: %" PRIxPTR " len: %" PRIxPTR,
-           (unsigned long int)(*out_buf).base,
-           (unsigned long int)(*out_buf).len);
 }
 
 extern "C" uv_loop_t*
@@ -481,18 +472,11 @@ rust_uv_free_base_of_buf(uv_buf_t buf) {
 
 extern "C" struct sockaddr_in
 rust_uv_ip4_addr(const char* ip, int port) {
-    rust_task* task = rust_get_current_task();
-    LOG(task, stdlib, "before creating addr_ptr.. ip %s" \
-        " port %d\n", ip, port);
     struct sockaddr_in addr = uv_ip4_addr(ip, port);
-    LOG(task, stdlib, "after creating .. port: %d", addr.sin_port);
     return addr;
 }
 extern "C" struct sockaddr_in6
 rust_uv_ip6_addr(const char* ip, int port) {
-    rust_task* task = rust_get_current_task();
-    LOG(task, stdlib, "before creating addr_ptr.. ip %s" \
-        " port %d\n", ip, port);
     return uv_ip6_addr(ip, port);
 }
 extern "C" int
