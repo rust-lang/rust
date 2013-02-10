@@ -46,6 +46,7 @@ ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_GCCISH_CFLAGS_x86_64 += -m64
   CFG_GCCISH_LINK_FLAGS_x86_64 += -m64
   CFG_UNIXY := 1
+  CFG_FBSD := 1
   CFG_LDENV := LD_LIBRARY_PATH
   CFG_DEF_SUFFIX := .bsd.def
   CFG_INSTALL_NAME =
@@ -147,6 +148,9 @@ ifdef CFG_UNIXY
   CFG_RUN_TARG=$(call CFG_RUN,,$(2))
   CFG_RUN_TEST=$(call CFG_RUN,,$(CFG_VALGRIND) $(1))
   CFG_LIBUV_LINK_FLAGS=-lpthread
+  ifdef CFG_FBSD
+    CFG_LIBUV_LINK_FLAGS=-lpthread -lkvm
+  endif
 
   ifdef CFG_ENABLE_MINGW_CROSS
     CFG_WINDOWSY := 1
@@ -198,7 +202,7 @@ else
 endif
   CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
-  CFG_LIBUV_LINK_FLAGS=-lWs2_32
+  CFG_LIBUV_LINK_FLAGS=-lWs2_32 -lpsapi -liphlpapi
 
   ifndef CFG_ENABLE_MINGW_CROSS
     CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
