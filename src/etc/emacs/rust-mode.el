@@ -7,6 +7,7 @@
 
 (require 'cm-mode)
 (require 'cc-mode)
+(eval-when-compile (require 'cl))
 
 (defun rust-electric-brace (arg)
   (interactive "*P")
