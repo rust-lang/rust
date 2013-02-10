@@ -141,7 +141,7 @@ pub impl Encoder: serialize::Encoder {
         // can't be followed by just a comma, because there might not
         // be any elements in the tuple.
 
-        // this would be more precise and less frightening
+        // FIXME #4872: this would be more precise and less frightening
         // with fully-qualified option names. To get that information,
         // we'd have to change the expansion of auto-encode to pass
         // those along.
