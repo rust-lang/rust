@@ -72,7 +72,7 @@ use parse::lexer::TokenAndSpan;
 use parse::obsolete::{ObsoleteClassTraits, ObsoleteModeInFnType};
 use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
 use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
-use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith, ObsoleteClassMethod};
+use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock};
 use parse::prec::{as_prec, token_to_binop};
@@ -3002,52 +3002,29 @@ pub impl Parser {
     }
 
     fn parse_single_class_item(vis: visibility) -> @struct_field {
-        let obsolete_let = self.eat_obsolete_ident("let");
-        if obsolete_let { self.obsolete(copy self.last_span, ObsoleteLet) }
-
-        let parse_obsolete_method =
-            !((obsolete_let || self.is_keyword(~"mut") ||
-               !self.is_any_keyword(copy self.token))
-              && !self.token_is_pound_or_doc_comment(copy self.token));
-
-        if !parse_obsolete_method {
-            let a_var = self.parse_instance_var(vis);
-            match self.token {
-              token::SEMI => {
-                self.obsolete(copy self.span, ObsoleteFieldTerminator);
-                self.bump();
-              }
-              token::COMMA => {
-                self.bump();
-              }
-              token::RBRACE => {}
-              _ => {
-                self.span_fatal(copy self.span,
-                                fmt!("expected `;`, `,`, or '}' but \
-                                      found `%s`",
-                                     token_to_str(self.reader,
-                                                  self.token)));
-              }
-            }
-            a_var
-        } else {
-            self.obsolete(copy self.span, ObsoleteClassMethod);
-            self.parse_method();
-            // bogus value
-            @spanned(
-                self.span.lo,
-                self.span.hi,
-                ast::struct_field_ {
-                    kind: unnamed_field,
-                    id: self.get_id(),
-                    ty: @ast::Ty {
-                        id: self.get_id(),
-                        node: ty_nil,
-                        span: copy self.span,
-                    }
-                }
-            )
+        if self.eat_obsolete_ident("let") {
+            self.obsolete(copy self.last_span, ObsoleteLet);
         }
+
+        let a_var = self.parse_instance_var(vis);
+        match self.token {
+          token::SEMI => {
+            self.obsolete(copy self.span, ObsoleteFieldTerminator);
+            self.bump();
+          }
+          token::COMMA => {
+            self.bump();
+          }
+          token::RBRACE => {}
+          _ => {
+            self.span_fatal(copy self.span,
+                            fmt!("expected `;`, `,`, or '}' but \
+                                  found `%s`",
+                                 token_to_str(self.reader,
+                                              self.token)));
+          }
+        }
+        a_var
     }
 
     fn parse_dtor(attrs: ~[attribute]) -> class_contents {
@@ -3062,6 +3039,8 @@ pub impl Parser {
             return members(~[]);
         }
 
+        let attrs = self.parse_outer_attributes();
+
         if self.eat_keyword(~"priv") {
             return members(~[self.parse_single_class_item(private)])
         }
@@ -3069,8 +3048,6 @@ pub impl Parser {
         if self.eat_keyword(~"pub") {
            return members(~[self.parse_single_class_item(public)]);
         }
-
-        let attrs = self.parse_outer_attributes();
 
         if self.try_parse_obsolete_struct_ctor() {
             return members(~[]);
