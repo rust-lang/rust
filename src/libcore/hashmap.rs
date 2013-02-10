@@ -108,19 +108,17 @@ pub mod linear {
         }
 
         #[inline(always)]
-        pure fn bucket_for_key(&self, buckets: &[Option<Bucket<K, V>>],
-                               k: &K) -> SearchResult {
+        pure fn bucket_for_key(&self, k: &K) -> SearchResult {
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
-            self.bucket_for_key_with_hash(buckets, hash, k)
+            self.bucket_for_key_with_hash(hash, k)
         }
 
         #[inline(always)]
         pure fn bucket_for_key_with_hash(&self,
-                                         buckets: &[Option<Bucket<K, V>>],
                                          hash: uint,
                                          k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
-                match buckets[i] {
+                match self.buckets[i] {
                     Some(ref bkt) => if bkt.hash == hash && *k == bkt.key {
                         return FoundEntry(i);
                     },
@@ -161,7 +159,7 @@ pub mod linear {
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
         fn insert_internal(&mut self, hash: uint, k: K, v: V) -> bool {
-            match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
+            match self.bucket_for_key_with_hash(hash, &k) {
                 TableFull => { die!(~"Internal logic error"); }
                 FoundHole(idx) => {
                     debug!("insert fresh (%?->%?) at idx %?, hash %?",
@@ -196,8 +194,7 @@ pub mod linear {
             //
             // I found this explanation elucidating:
             // http://www.maths.lse.ac.uk/Courses/MA407/del-hash.pdf
-            let mut idx = match self.bucket_for_key_with_hash(self.buckets,
-                                                              hash, k) {
+            let mut idx = match self.bucket_for_key_with_hash(hash, k) {
                 TableFull | FoundHole(_) => return None,
                 FoundEntry(idx) => idx
             };
@@ -273,7 +270,7 @@ pub mod linear {
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Map<K, V> {
         /// Return true if the map contains a value for the specified key
         pure fn contains_key(&self, k: &K) -> bool {
-            match self.bucket_for_key(self.buckets, k) {
+            match self.bucket_for_key(k) {
                 FoundEntry(_) => {true}
                 TableFull | FoundHole(_) => {false}
             }
@@ -291,7 +288,7 @@ pub mod linear {
 
         /// Return the value corresponding to the key in the map
         pure fn find(&self, k: &K) -> Option<&self/V> {
-            match self.bucket_for_key(self.buckets, k) {
+            match self.bucket_for_key(k) {
                 FoundEntry(idx) => {
                     match self.buckets[idx] {
                         Some(ref bkt) => {
