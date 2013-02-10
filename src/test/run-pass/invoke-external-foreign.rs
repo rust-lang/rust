@@ -18,5 +18,7 @@
 extern mod foreign_lib;
 
 pub fn main() {
-    let foo = foreign_lib::rustrt::last_os_error();
+    unsafe {
+        let _foo = foreign_lib::rustllvm::LLVMGetLastError();
+    }
 }

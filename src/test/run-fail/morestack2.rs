@@ -17,16 +17,13 @@
 
 extern mod std;
 
-extern mod rustrt {
-    pub fn last_os_error() -> ~str;
-}
 
 fn getbig_call_c_and_fail(i: int) {
     if i != 0 {
         getbig_call_c_and_fail(i - 1);
     } else {
         unsafe {
-            rustrt::last_os_error();
+            core::os::last_error();
             die!();
         }
     }

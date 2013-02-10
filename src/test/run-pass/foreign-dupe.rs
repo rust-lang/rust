@@ -12,20 +12,20 @@
 // calling pin_task and that's having wierd side-effects.
 
 #[abi = "cdecl"]
-#[link_name = "rustrt"]
-extern mod rustrt1 {
-    pub fn last_os_error() -> ~str;
+#[link_name = "rustllvm"]
+extern mod rustllvm1 {
+    pub unsafe fn LLVMGetLastError() -> *libc::c_char;
 }
 
 #[abi = "cdecl"]
-#[link_name = "rustrt"]
-extern mod rustrt2 {
-    pub fn last_os_error() -> ~str;
+#[link_name = "rustllvm"]
+extern mod rustllvm2 {
+    pub unsafe fn LLVMGetLastError() -> *libc::c_char;
 }
 
 pub fn main() {
     unsafe {
-        rustrt1::last_os_error();
-        rustrt2::last_os_error();
+        rustllvm1::LLVMGetLastError();
+        rustllvm2::LLVMGetLastError();
     }
 }

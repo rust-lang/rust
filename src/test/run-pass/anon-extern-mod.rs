@@ -9,13 +9,13 @@
 // except according to those terms.
 
 #[abi = "cdecl"]
-#[link_name = "rustrt"]
+#[link_name = "rustllvm"]
 extern {
-    fn last_os_error() -> ~str;
+    unsafe fn LLVMGetLastError() -> *libc::c_char;
 }
 
 pub fn main() {
     unsafe {
-        let _ = last_os_error();
+        let _ = LLVMGetLastError();
     }
 }

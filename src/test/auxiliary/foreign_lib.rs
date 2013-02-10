@@ -10,6 +10,6 @@
 
 #[link(name="foreign_lib", vers="0.0")];
 
-pub extern mod rustrt {
-    pub fn last_os_error() -> ~str;
+pub extern mod rustllvm {
+    pub unsafe fn LLVMGetLastError() -> *core::libc::c_char;
 }

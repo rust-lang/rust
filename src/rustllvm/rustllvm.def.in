@@ -577,3 +577,4 @@ LLVMX86MMXTypeInContext
 LLVMConstNamedStruct
 LLVMStructCreateNamed
 LLVMStructSetBody
+LLVMGetLastError

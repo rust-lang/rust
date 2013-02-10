@@ -9,11 +9,11 @@
 // except according to those terms.
 
 #[abi = "cdecl"];
-#[link_name = "rustrt"];
+#[link_name = "rustllvm"];
 #[link(name = "anonexternmod",
        vers = "0.1")];
 
 #[crate_type = "lib"];
 extern {
-  fn last_os_error() -> ~str;
+  unsafe fn LLVMGetLastError() -> *core::libc::c_char;
 }
