@@ -629,7 +629,7 @@ pub impl mem_categorization_ctxt {
                 self.tcx.sess.span_bug(
                     node.span(),
                     fmt!("Cannot find field `%s` in type `%s`",
-                         self.tcx.sess.str_of(f_name),
+                         *self.tcx.sess.str_of(f_name),
                          ty_to_str(self.tcx, base_cmt.ty)));
             }
         };
@@ -995,7 +995,7 @@ pub impl mem_categorization_ctxt {
                  self.ptr_sigil(ptr), derefs)
           }
           cat_comp(cmt, comp) => {
-            fmt!("%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp))
+            fmt!("%s.%s", self.cat_to_repr(cmt.cat), *self.comp_to_repr(comp))
           }
           cat_discr(cmt, _) => self.cat_to_repr(cmt.cat)
         }
@@ -1018,13 +1018,13 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn comp_to_repr(&self, comp: comp_kind) -> ~str {
+    fn comp_to_repr(&self, comp: comp_kind) -> @~str {
         match comp {
           comp_field(fld, _) => self.tcx.sess.str_of(fld),
-          comp_index(*) => ~"[]",
-          comp_tuple => ~"()",
-          comp_anon_field => ~"<anonymous field>",
-          comp_variant(_) => ~"<enum>"
+          comp_index(*) => @~"[]",
+          comp_tuple => @~"()",
+          comp_anon_field => @~"<anonymous field>",
+          comp_variant(_) => @~"<enum>"
         }
     }
 
@@ -1043,7 +1043,7 @@ pub impl mem_categorization_ctxt {
           }
           lp_comp(lp, comp) => {
             fmt!("%s.%s", self.lp_to_str(lp),
-                 self.comp_to_repr(comp))
+                 *self.comp_to_repr(comp))
           }
         }
     }

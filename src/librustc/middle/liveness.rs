@@ -383,11 +383,11 @@ impl IrMaps {
         }
     }
 
-    fn variable_name(&mut self, var: Variable) -> ~str {
+    fn variable_name(&mut self, var: Variable) -> @~str {
         match copy self.var_kinds[*var] {
             Local(LocalInfo {ident: nm, _}) |
             Arg(_, nm, _) => self.tcx.sess.str_of(nm),
-            ImplicitRet => ~"<implicit-ret>"
+            ImplicitRet => @~"<implicit-ret>"
         }
     }
 
@@ -1777,7 +1777,7 @@ impl @Liveness {
                 self.tcx.sess.span_err(
                     move_expr.span,
                     fmt!("illegal move from argument `%s`, which is not \
-                          copy or move mode", self.tcx.sess.str_of(name)));
+                          copy or move mode", *self.tcx.sess.str_of(name)));
                 return;
               }
               Local(*) | ImplicitRet => {
@@ -1798,7 +1798,7 @@ impl @Liveness {
                     move_expr.span,
                     fmt!("`%s` moved into closure environment here \
                           because its type is moved by default",
-                         name));
+                         *name));
             }
             expr_path(*) => {
                 self.report_illegal_read(
@@ -1838,7 +1838,7 @@ impl @Liveness {
             move_expr.span,
             fmt!("%s`%s` moved here because %s has type %s, \
                   which is moved by default (use `copy` to override)",
-                 expr_descr, name, pronoun,
+                 expr_descr, *name, pronoun,
                  ty_to_str(self.tcx, move_expr_ty)));
     }
 
@@ -1858,12 +1858,12 @@ impl @Liveness {
           FreeVarNode(span) => {
             self.tcx.sess.span_err(
                 span,
-                fmt!("capture of %s: `%s`", msg, name));
+                fmt!("capture of %s: `%s`", msg, *name));
           }
           ExprNode(span) => {
             self.tcx.sess.span_err(
                 span,
-                fmt!("use of %s: `%s`", msg, name));
+                fmt!("use of %s: `%s`", msg, *name));
           }
           ExitNode | VarDefNode(_) => {
             self.tcx.sess.span_bug(
@@ -1873,9 +1873,9 @@ impl @Liveness {
         }
     }
 
-    fn should_warn(var: Variable) -> Option<~str> {
+    fn should_warn(var: Variable) -> Option<@~str> {
         let name = self.ir.variable_name(var);
-        if name[0] == ('_' as u8) {None} else {Some(name)}
+        if name[0] == ('_' as u8) { None } else { Some(name) }
     }
 
     fn warn_about_unused_args(decl: fn_decl, entry_ln: LiveNode) {
@@ -1913,11 +1913,11 @@ impl @Liveness {
                     // FIXME(#3266)--make liveness warnings lintable
                     self.tcx.sess.span_warn(
                         sp, fmt!("variable `%s` is assigned to, \
-                                  but never used", *name));
+                                  but never used", **name));
                 } else {
                     // FIXME(#3266)--make liveness warnings lintable
                     self.tcx.sess.span_warn(
-                        sp, fmt!("unused variable: `%s`", *name));
+                        sp, fmt!("unused variable: `%s`", **name));
                 }
             }
             return true;
@@ -1931,7 +1931,7 @@ impl @Liveness {
                 // FIXME(#3266)--make liveness warnings lintable
                 self.tcx.sess.span_warn(
                     sp,
-                    fmt!("value assigned to `%s` is never read", *name));
+                    fmt!("value assigned to `%s` is never read", **name));
             }
         }
     }

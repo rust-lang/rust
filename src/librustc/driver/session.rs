@@ -253,8 +253,8 @@ pub impl Session {
         self.debugging_opt(no_monomorphic_collapse)
     }
 
-    fn str_of(id: ast::ident) -> ~str {
-        /*bad*/copy *self.parse_sess.interner.get(id)
+    fn str_of(id: ast::ident) -> @~str {
+        self.parse_sess.interner.get(id)
     }
     fn ident_of(+st: ~str) -> ast::ident {
         self.parse_sess.interner.intern(@st)

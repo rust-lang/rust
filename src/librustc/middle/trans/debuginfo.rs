@@ -60,12 +60,12 @@ const DW_ATE_signed_char: int = 0x06;
 const DW_ATE_unsigned: int = 0x07;
 const DW_ATE_unsigned_char: int = 0x08;
 
-fn llstr(s: ~str) -> ValueRef {
-    str::as_c_str(s, |sbuf| {
+fn llstr(s: &str) -> ValueRef {
+    do str::as_c_str(s) |sbuf| {
         unsafe {
-            llvm::LLVMMDString(sbuf, str::len(s) as libc::c_uint)
+            llvm::LLVMMDString(sbuf, s.len() as libc::c_uint)
         }
-    })
+    }
 }
 fn lltag(lltag: int) -> ValueRef {
     lli32(LLVMDebugVersion | lltag)
@@ -79,10 +79,9 @@ fn lli64(val: int) -> ValueRef {
 fn lli1(bval: bool) -> ValueRef {
     C_i1(bval)
 }
-fn llmdnode(elems: ~[ValueRef]) -> ValueRef {
+fn llmdnode(elems: &[ValueRef]) -> ValueRef {
     unsafe {
-        llvm::LLVMMDNode(vec::raw::to_ptr(elems),
-                         vec::len(elems) as libc::c_uint)
+        llvm::LLVMMDNode(vec::raw::to_ptr(elems), elems.len() as libc::c_uint)
     }
 }
 fn llunused() -> ValueRef {
@@ -205,7 +204,7 @@ fn create_compile_unit(cx: @crate_ctxt) -> @metadata<compile_unit_md> {
         let unit_metadata = ~[lltag(tg),
                              llunused(),
                              lli32(DW_LANG_RUST),
-                             llstr(copy crate_name),
+                             llstr(crate_name),
                              llstr(work_dir),
                              llstr(env!("CFG_VERSION")),
                              lli1(true), // deprecated: main compile unit
@@ -369,7 +368,7 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
 
 struct StructCtxt {
     file: ValueRef,
-    name: ~str,
+    name: @~str,
     line: int,
     members: ~[ValueRef],
     total_size: int,
@@ -378,17 +377,17 @@ struct StructCtxt {
 
 fn finish_structure(cx: @mut StructCtxt) -> ValueRef {
     return create_composite_type(StructureTypeTag,
-                                 /*bad*/copy cx.name,
+                                 *cx.name,
                                  cx.file,
                                  cx.line,
                                  cx.total_size,
                                  cx.align,
                                  0,
-                                 option::None,
-                                 option::Some(/*bad*/copy cx.members));
+                                 None,
+                                 Some(/*bad*/copy cx.members));
 }
 
-fn create_structure(file: @metadata<file_md>, +name: ~str, line: int)
+fn create_structure(file: @metadata<file_md>, name: @~str, line: int)
                  -> @mut StructCtxt {
     let cx = @mut StructCtxt {
         file: file.node,
@@ -401,7 +400,7 @@ fn create_structure(file: @metadata<file_md>, +name: ~str, line: int)
     return cx;
 }
 
-fn create_derived_type(type_tag: int, file: ValueRef, +name: ~str, line: int,
+fn create_derived_type(type_tag: int, file: ValueRef, name: &str, line: int,
                        size: int, align: int, offset: int, ty: ValueRef)
     -> ValueRef {
     let lldata = ~[lltag(type_tag),
@@ -418,14 +417,14 @@ fn create_derived_type(type_tag: int, file: ValueRef, +name: ~str, line: int,
 }
 
 fn add_member(cx: @mut StructCtxt,
-              +name: ~str,
+              name: &str,
               line: int,
               size: int,
               align: int,
               ty: ValueRef) {
     cx.members.push(create_derived_type(MemberTag, cx.file, name, line,
-                                       size * 8, align * 8, cx.total_size,
-                                       ty));
+                                        size * 8, align * 8, cx.total_size,
+                                        ty));
     cx.total_size += size * 8;
 }
 
@@ -443,7 +442,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: ~[ast::ty_field],
         let field_t = ty::get_field(cx.tcx, t, field.node.ident).mt.ty;
         let ty_md = create_ty(cx, field_t, field.node.mt.ty);
         let (size, align) = size_and_align_of(cx, field_t);
-        add_member(scx, cx.sess.str_of(field.node.ident),
+        add_member(scx, *cx.sess.str_of(field.node.ident),
                    line_from_span(cx.sess.codemap, field.span) as int,
                    size as int, align as int, ty_md.node);
     }
@@ -466,7 +465,8 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     //let cu_node = create_compile_unit_metadata(cx, fname);
     let uint_t = ty::mk_uint(cx.tcx);
     let refcount_type = create_basic_type(cx, uint_t, span);
-    let scx = create_structure(file_node, ty_to_str(cx.tcx, outer), 0);
+    let scx = create_structure(file_node,
+                               @/*bad*/ copy ty_to_str(cx.tcx, outer), 0);
     add_member(scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, refcount_type.node);
     add_member(scx, ~"boxed", 0, 8, //XXX member_size_and_align(??)
@@ -479,7 +479,7 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     return mdval;
 }
 
-fn create_composite_type(type_tag: int, +name: ~str, file: ValueRef,
+fn create_composite_type(type_tag: int, name: &str, file: ValueRef,
                          line: int, size: int, align: int, offset: int,
                          derived: Option<ValueRef>,
                          +members: Option<~[ValueRef]>)
@@ -515,7 +515,8 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     let fname = filename_from_span(cx, vec_ty_span);
     let file_node = create_file(cx, fname);
     let elem_ty_md = create_ty(cx, elem_t, elem_ty);
-    let scx = create_structure(file_node, ty_to_str(cx.tcx, vec_t), 0);
+    let scx = create_structure(file_node,
+                               @/*bad*/ copy ty_to_str(cx.tcx, vec_t), 0);
     let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx), vec_ty_span);
     add_member(scx, ~"fill", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
@@ -525,8 +526,8 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
     let data_ptr = create_composite_type(ArrayTypeTag, ~"", file_node.node, 0,
                                          arr_size, arr_align, 0,
-                                         option::Some(elem_ty_md.node),
-                                         option::Some(~[subrange]));
+                                         Some(elem_ty_md.node),
+                                         Some(~[subrange]));
     add_member(scx, ~"data", 0, 0, // clang says the size should be 0
                sys::min_align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
@@ -641,7 +642,7 @@ fn filename_from_span(cx: @crate_ctxt, sp: codemap::span) -> ~str {
     /*bad*/copy cx.sess.codemap.lookup_char_pos(sp.lo).file.name
 }
 
-fn create_var(type_tag: int, context: ValueRef, +name: ~str, file: ValueRef,
+fn create_var(type_tag: int, context: ValueRef, name: &str, file: ValueRef,
               line: int, ret_ty: ValueRef) -> ValueRef {
     let lldata = ~[lltag(type_tag),
                   context,
@@ -679,7 +680,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
             None => create_function(bcx.fcx).node,
             Some(_) => create_block(bcx).node
         };
-        let mdnode = create_var(tg, context, cx.sess.str_of(name),
+        let mdnode = create_var(tg, context, *cx.sess.str_of(name),
                                 filemd.node, loc.line as int, tymd.node);
         let mdval = @{node: mdnode, data: {id: local.node.id}};
         update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
@@ -728,7 +729,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
                 // XXX: This is wrong; it should work for multiple bindings.
                 let mdnode = create_var(tg,
                                         context.node,
-                                        cx.sess.str_of(path.idents.last()),
+                                        *cx.sess.str_of(path.idents.last()),
                                         filemd.node,
                                         loc.line as int,
                                         tymd.node);
@@ -839,9 +840,9 @@ pub fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let fn_metadata = ~[lltag(SubprogramTag),
                        llunused(),
                        file_node,
-                       llstr(cx.sess.str_of(ident)),
+                       llstr(*cx.sess.str_of(ident)),
                         //XXX fully-qualified C++ name:
-                       llstr(cx.sess.str_of(ident)),
+                       llstr(*cx.sess.str_of(ident)),
                        llstr(~""), //XXX MIPS name?????
                        file_node,
                        lli32(loc.line as int),

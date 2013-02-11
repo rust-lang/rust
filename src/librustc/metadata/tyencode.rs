@@ -175,7 +175,7 @@ fn enc_bound_region(w: io::Writer, cx: @ctxt, br: ty::bound_region) {
       }
       ty::br_named(s) => {
         w.write_char('[');
-        w.write_str(cx.tcx.sess.str_of(s));
+        w.write_str(*cx.tcx.sess.str_of(s));
         w.write_char(']')
       }
       ty::br_cap_avoid(id, br) => {
@@ -282,7 +282,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
       ty::ty_rec(fields) => {
         w.write_str(&"R[");
         for fields.each |field| {
-            w.write_str(cx.tcx.sess.str_of(field.ident));
+            w.write_str(*cx.tcx.sess.str_of(field.ident));
             w.write_char('=');
             enc_mt(w, cx, field.mt);
         }
