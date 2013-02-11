@@ -12,6 +12,7 @@
 #include "rust_globals.h"
 #include "rust_sched_driver.h"
 #include "rust_sched_loop.h"
+#include "rust_util.h"
 
 rust_sched_driver::rust_sched_driver(rust_sched_loop *sched_loop)
     : sched_loop(sched_loop),
@@ -51,6 +52,13 @@ rust_sched_driver::start_main_loop() {
 
         if (state == sched_loop_state_block) {
             scoped_lock with(lock);
+            if (!signalled) {
+                // Release the lock while do idle work to avoid blocking the
+                // signalling thread. Check signalled again after idle work.
+                lock.unlock();
+                sched_loop->idle();
+                lock.lock();
+            }
             if (!signalled) {
                 DLOG(sched_loop, dom, "blocking scheduler");
                 lock.wait();

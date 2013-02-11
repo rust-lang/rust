@@ -32,6 +32,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched, int id, bool killed) :
     dead_task(NULL),
     killed(killed),
     pump_signal(NULL),
+    idle_randcnt(RANDSIZ),
     kernel(sched->kernel),
     sched(sched),
     log_lvl(log_debug),
@@ -150,10 +151,15 @@ rust_sched_loop::release_task(rust_task *task) {
 rust_task *
 rust_sched_loop::schedule_task() {
     lock.must_have_lock();
-    if (running_tasks.length() > 0) {
+    size_t tasks = running_tasks.length();
+    if (tasks == 1) {
+        // Don't consume RNG entropy if we only have one runnable task.
+        return running_tasks[0];
+    }
+    if (tasks > 0) {
         size_t k = isaac_rand(&rctx);
         size_t i = k % running_tasks.length();
-        return (rust_task *)running_tasks[i];
+        return running_tasks[i];
     }
     return NULL;
 }
@@ -267,6 +273,18 @@ rust_sched_loop::run_single_turn() {
         sched->release_task_thread();
         return sched_loop_state_exit;
     }
+}
+
+void
+rust_sched_loop::idle() {
+    // Reseed task_rng if we have drained its entropy pool, i.e. randcnt
+    // rolled over from 0 to RANDSIZ. This check is just an approximation
+    // because randcnt could, in theory, rollover multiple times before
+    // this idle function gets a chance to check.
+    if (rctx.randcnt > idle_randcnt && kernel->env->rust_seed == NULL) {
+        isaac_reseed(kernel, &rctx);
+    }
+    idle_randcnt = rctx.randcnt;
 }
 
 rust_task *
