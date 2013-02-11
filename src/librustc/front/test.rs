@@ -111,7 +111,7 @@ fn fold_mod(cx: @mut TestCtxt,
     fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
         if !*cx.sess.building_library {
             @ast::item{attrs: item.attrs.filtered(|attr| {
-                               attr::get_attr_name(*attr) != ~"main"
+                               attr::get_attr_name(attr) != ~"main"
                            }),.. copy *item}
         } else { item }
     }
