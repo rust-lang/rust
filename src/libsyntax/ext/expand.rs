@@ -13,6 +13,7 @@ use core::prelude::*;
 use ast::{crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{tt_delim, tt_tok, item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast;
+use attr;
 use codemap::{span, ExpandedFrom};
 use ext::base::*;
 use fold::*;
@@ -99,11 +100,8 @@ pub fn expand_mod_items(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
     // the item into a new set of items.
     let new_items = do vec::flat_map(module_.items) |item| {
         do vec::foldr(item.attrs, ~[*item]) |attr, items| {
-            let mname = match attr.node.value.node {
-              ast::meta_word(ref n) => (*n),
-              ast::meta_name_value(ref n, _) => (*n),
-              ast::meta_list(ref n, _) => (*n)
-            };
+            let mname = attr::get_attr_name(attr);
+
             match exts.find(&mname) {
               None | Some(NormalTT(_)) | Some(ItemTT(*)) => items,
               Some(ItemDecorator(dec_fn)) => {
