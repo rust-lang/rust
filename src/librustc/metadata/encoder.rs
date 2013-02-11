@@ -1124,7 +1124,7 @@ fn encode_crate_deps(ecx: @encode_ctxt,
         type numdep = decoder::crate_dep;
 
         // Pull the cnums and name,vers,hash out of cstore
-        let mut deps: ~[numdep] = ~[];
+        let mut deps = ~[];
         do cstore::iter_crate_data(cstore) |key, val| {
             let dep = {cnum: key,
                        name: ecx.tcx.sess.ident_of(/*bad*/copy val.name),
@@ -1134,10 +1134,7 @@ fn encode_crate_deps(ecx: @encode_ctxt,
         };
 
         // Sort by cnum
-        pure fn lteq(kv1: &numdep, kv2: &numdep) -> bool {
-            kv1.cnum <= kv2.cnum
-        }
-        std::sort::quick_sort(deps, lteq);
+        std::sort::quick_sort(deps, |kv1, kv2| kv1.cnum <= kv2.cnum);
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
@@ -1147,7 +1144,7 @@ fn encode_crate_deps(ecx: @encode_ctxt,
         }
 
         // mut -> immutable hack for vec::map
-        return vec::slice(deps, 0u, vec::len(deps)).to_vec();
+        deps.slice(0, deps.len())
     }
 
     // We're just going to write a list of crate 'name-hash-version's, with

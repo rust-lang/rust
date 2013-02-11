@@ -62,7 +62,7 @@ pub fn anon_src() -> ~str { ~"<anon>" }
 
 pub fn source_name(input: input) -> ~str {
     match input {
-      file_input(ref ifile) => (*ifile).to_str(),
+      file_input(ref ifile) => ifile.to_str(),
       str_input(_) => anon_src()
     }
 }
@@ -112,9 +112,9 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
 pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
                          -> ast::crate_cfg {
     if attr::contains_name(cfg, name) {
-        return cfg;
+        cfg
     } else {
-        return vec::append_one(cfg, attr::mk_word_item(name));
+        vec::append_one(cfg, attr::mk_word_item(name))
     }
 }
 

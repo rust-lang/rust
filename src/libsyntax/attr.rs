@@ -267,7 +267,7 @@ pub fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back
-    let mut v: ~[@ast::meta_item] = items;
+    let mut v = items;
     std::sort::quick_sort(v, lteq);
 
     // There doesn't seem to be a more optimal way to do this
@@ -371,7 +371,7 @@ pub fn require_unique_names(diagnostic: span_handler,
         let name = get_meta_item_name(*meta);
 
         // FIXME: How do I silence the warnings? --pcw (#2619)
-        if !set.insert(name) {
+        if !set.insert(copy name) {
             diagnostic.span_fatal(meta.span,
                                   fmt!("duplicate meta item `%s`", name));
         }
