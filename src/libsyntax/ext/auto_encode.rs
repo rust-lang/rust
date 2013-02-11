@@ -114,7 +114,7 @@ pub fn expand_auto_encode(
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
     fn is_auto_encode(a: &ast::attribute) -> bool {
-        attr::get_attr_name(*a) == ~"auto_encode"
+        attr::get_attr_name(a) == ~"auto_encode"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
@@ -169,7 +169,7 @@ pub fn expand_auto_decode(
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
     fn is_auto_decode(a: &ast::attribute) -> bool {
-        attr::get_attr_name(*a) == ~"auto_decode"
+        attr::get_attr_name(a) == ~"auto_decode"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {

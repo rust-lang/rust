@@ -1097,7 +1097,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: &crate) -> ~[attribute] {
     let mut found_link_attr = false;
     for crate.node.attrs.each |attr| {
         attrs.push(
-            if attr::get_attr_name(*attr) != ~"link" {
+            if attr::get_attr_name(attr) != ~"link" {
                 /*bad*/copy *attr
             } else {
                 match /*bad*/copy attr.node.value.node {
