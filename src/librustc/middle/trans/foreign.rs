@@ -49,7 +49,7 @@ fn abi_info(arch: session::arch) -> cabi::ABIInfo {
 
 pub fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> @~str {
     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
-        None => @ccx.sess.str_of(i.ident),
+        None => ccx.sess.str_of(i.ident),
         Some(ln) => ln,
     }
 }
@@ -334,13 +334,13 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
                        +path: ast_map::path,
                        substs: @param_substs,
                        ref_id: Option<ast::node_id>) {
-    debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
+    debug!("trans_intrinsic(item.ident=%s)", *ccx.sess.str_of(item.ident));
 
     // XXX: Bad copy.
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, None,
                                Some(copy substs), Some(item.span));
     let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
-    match ccx.sess.str_of(item.ident) {
+    match *ccx.sess.str_of(item.ident) {
         ~"atomic_cxchg" => {
             let old = AtomicCmpXchg(bcx,
                                     get_param(decl, first_real_arg),

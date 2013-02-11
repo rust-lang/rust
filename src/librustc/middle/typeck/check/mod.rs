@@ -450,7 +450,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
                 assign(p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
-                       tcx.sess.str_of(path.idents[0]),
+                       *tcx.sess.str_of(path.idents[0]),
                        fcx.infcx().ty_to_str(
                            fcx.inh.locals.get(&p.id)));
               }
@@ -508,7 +508,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
           Some(orig_sp) => {
             tcx.sess.span_err(sp, fmt!("Duplicate field \
                                    name %s in record type declaration",
-                                        tcx.sess.str_of(id)));
+                                        *tcx.sess.str_of(id)));
             tcx.sess.span_note(orig_sp, ~"First declaration of \
                                           this field occurred here");
             break;
@@ -565,7 +565,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_impl(_, _, ty, ms) => {
         let rp = ccx.tcx.region_paramd_items.find(&it.id);
         debug!("item_impl %s with id %d rp %?",
-               ccx.tcx.sess.str_of(it.ident), it.id, rp);
+               *ccx.tcx.sess.str_of(it.ident), it.id, rp);
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| {
             check_method(ccx, *m, self_ty, local_def(it.id));
@@ -1370,7 +1370,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                       fmt!("type `%s` does not implement any method in scope \
                             named `%s`",
                            actual,
-                           fcx.ccx.tcx.sess.str_of(method_name))
+                           *fcx.ccx.tcx.sess.str_of(method_name))
                   },
                   expr_t,
                   None);
@@ -1752,7 +1752,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                   |actual| {
                       fmt!("attempted access of field `%s` on type `%s`, but \
                             no field or method with that name was found",
-                           tcx.sess.str_of(field), actual)
+                           *tcx.sess.str_of(field), actual)
                   },
                   expr_t, None);
                 // Add error type for the result
@@ -1790,13 +1790,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     tcx.sess.span_err(
                         field.span,
                         fmt!("structure has no field named `%s`",
-                             tcx.sess.str_of(field.node.ident)));
+                             *tcx.sess.str_of(field.node.ident)));
                 }
                 Some((_, true)) => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("field `%s` specified more than once",
-                             tcx.sess.str_of(field.node.ident)));
+                             *tcx.sess.str_of(field.node.ident)));
                 }
                 Some((field_id, false)) => {
                     let expected_field_type =
@@ -1824,7 +1824,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     let (_, seen) = class_field_map.get(&name);
                     if !seen {
                         missing_fields.push(
-                            ~"`" + tcx.sess.str_of(name) + ~"`");
+                            ~"`" + *tcx.sess.str_of(name) + ~"`");
                     }
                 }
 
@@ -2543,7 +2543,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 if !found {
                     tcx.sess.span_err(f.span,
                                         ~"unknown field in record update: " +
-                                        tcx.sess.str_of(f.node.ident));
+                                        *tcx.sess.str_of(f.node.ident));
                     fcx.write_ty(id, ty::mk_err(tcx));
                     return true;
                 }
@@ -3151,7 +3151,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
         if !*b {
             ccx.tcx.sess.span_err(
                 span, fmt!("type parameter `%s` is unused",
-                           ccx.tcx.sess.str_of(tps[i].ident)));
+                           *ccx.tcx.sess.str_of(tps[i].ident)));
         }
     }
 }
@@ -3164,7 +3164,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
         arg {mode: ast::expl(m), ty: ty}
     }
     let tcx = ccx.tcx;
-    let (n_tps, inputs, output) = match ccx.tcx.sess.str_of(it.ident) {
+    let (n_tps, inputs, output) = match *ccx.tcx.sess.str_of(it.ident) {
       ~"size_of" |
       ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint(ccx.tcx)),
       ~"init" => (1u, ~[], param(ccx, 0u)),

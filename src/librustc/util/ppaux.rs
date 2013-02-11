@@ -145,7 +145,8 @@ pub fn bound_region_to_str_adorned(cx: ctxt, prefix: &str,
     if cx.sess.verbose() { return fmt!("%s%?%s", prefix, br, sep); }
 
     match br {
-      br_named(id)         => fmt!("%s%s%s", prefix, cx.sess.str_of(id), sep),
+      br_named(id)         => fmt!("%s%s%s", prefix, *cx.sess.str_of(id),
+                                   sep),
       br_self              => fmt!("%sself%s", prefix, sep),
       br_anon(_)           => prefix.to_str(),
       br_fresh(_)          => prefix.to_str(),
@@ -321,7 +322,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         match ident {
           Some(i) => {
               s.push_char(' ');
-              s.push_str(cx.sess.str_of(i));
+              s.push_str(*cx.sess.str_of(i));
           }
           _ => { }
         }
@@ -387,7 +388,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                        &m.fty.sig) + ~";"
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
-        return cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, f.mt);
+        return *cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, f.mt);
     }
 
     // if there is an id, print that instead of the structural type:

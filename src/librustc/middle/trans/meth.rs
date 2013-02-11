@@ -322,7 +322,7 @@ pub fn trans_static_method_callee(bcx: block,
         }
     };
     debug!("trans_static_method_callee: method_id=%?, callee_id=%?, \
-            name=%s", method_id, callee_id, ccx.sess.str_of(mname));
+            name=%s", method_id, callee_id, *ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get(&callee_id));
@@ -794,10 +794,10 @@ pub fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
     unsafe {
         let _icx = ccx.insn_ctxt("impl::make_vtable");
         let tbl = C_struct(ptrs);
-        let vt_gvar =
-                str::as_c_str(ccx.sess.str_of((ccx.names)(~"vtable")), |buf| {
+        let vtable = ccx.sess.str_of((ccx.names)(~"vtable"));
+        let vt_gvar = do str::as_c_str(*vtable) |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
-        });
+        };
         llvm::LLVMSetInitializer(vt_gvar, tbl);
         llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
         lib::llvm::SetLinkage(vt_gvar, lib::llvm::InternalLinkage);
@@ -825,11 +825,11 @@ pub fn make_impl_vtable(ccx: @crate_ctxt,
                                 ty::mk_bare_fn(tcx, copy im.fty));
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
-                   tcx.sess.str_of(im.ident));
+                   *tcx.sess.str_of(im.ident));
             C_null(T_ptr(T_nil()))
         } else {
             debug!("(making impl vtable) adding method to vtable: %s",
-                   tcx.sess.str_of(im.ident));
+                   *tcx.sess.str_of(im.ident));
             let mut m_id = method_with_name(ccx, impl_id, im.ident);
             if has_tps {
                 // If the method is in another crate, need to make an inlined

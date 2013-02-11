@@ -263,7 +263,7 @@ pub fn trans_lit_str(bcx: block,
             unsafe {
                 let bytes = str_lit.len() + 1; // count null-terminator too
                 let llbytes = C_uint(bcx.ccx(), bytes);
-                let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *str_lit);
+                let llcstr = C_cstr(bcx.ccx(), str_lit);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr,
                                                         T_ptr(T_i8()));
                 Store(bcx,
@@ -299,7 +299,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                 ast::expr_lit(@codemap::spanned {
                     node: ast::lit_str(s), _
                 }) => {
-                    let llptrval = C_cstr(bcx.ccx(), copy *s);
+                    let llptrval = C_cstr(bcx.ccx(), s);
                     let llptrval = PointerCast(bcx, llptrval, T_ptr(T_i8()));
                     let llsizeval = C_uint(bcx.ccx(), s.len());
                     let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
@@ -362,7 +362,7 @@ pub fn write_content(bcx: block,
                 SaveIn(lldest) => {
                     let bytes = s.len() + 1; // copy null-terminator too
                     let llbytes = C_uint(bcx.ccx(), bytes);
-                    let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *s);
+                    let llcstr = C_cstr(bcx.ccx(), s);
                     base::call_memcpy(bcx, lldest, llcstr, llbytes);
                     return bcx;
                 }

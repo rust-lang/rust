@@ -655,7 +655,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 
     for ss.each |s| {
         match *s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(sess.str_of(s));
+          let sani = sanitize(*sess.str_of(s));
           n += fmt!("%u%s", str::len(sani), sani);
         } }
     }

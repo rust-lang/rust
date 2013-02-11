@@ -104,13 +104,13 @@ pub fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
 }
 
 fn encode_name(ecx: @encode_ctxt, ebml_w: writer::Encoder, name: ident) {
-    ebml_w.wr_tagged_str(tag_paths_data_name, ecx.tcx.sess.str_of(name));
+    ebml_w.wr_tagged_str(tag_paths_data_name, *ecx.tcx.sess.str_of(name));
 }
 
 fn encode_impl_type_basename(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                              name: ident) {
     ebml_w.wr_tagged_str(tag_item_impl_type_basename,
-                         ecx.tcx.sess.str_of(name));
+                         *ecx.tcx.sess.str_of(name));
 }
 
 pub fn encode_def_id(ebml_w: writer::Encoder, id: def_id) {
@@ -305,7 +305,7 @@ fn encode_path(ecx: @encode_ctxt, ebml_w: writer::Encoder,
           ast_map::path_name(name) => (tag_path_elt_name, name)
         };
 
-        ebml_w.wr_tagged_str(tag, ecx.tcx.sess.str_of(name));
+        ebml_w.wr_tagged_str(tag, *ecx.tcx.sess.str_of(name));
     }
 
     do ebml_w.wr_tag(tag_path) {
@@ -333,7 +333,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                 let (ident, did) = (item.ident, item.id);
                 debug!("(encoding info for module) ... encoding impl %s \
                         (%?/%?)",
-                        ecx.tcx.sess.str_of(ident),
+                        *ecx.tcx.sess.str_of(ident),
                         did,
                         ast_map::node_id_to_str(ecx.tcx.items, did, ecx.tcx
                                                 .sess.parse_sess.interner));
@@ -353,15 +353,15 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: writer::Encoder,
     match ecx.reexports2.find(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for %d", id);
-            for (*exports).each |exp| {
+            for exports.each |exp| {
                 debug!("(encoding info for module) reexport '%s' for %d",
-                       exp.name, id);
+                       *exp.name, id);
                 ebml_w.start_tag(tag_items_data_item_reexport);
                 ebml_w.start_tag(tag_items_data_item_reexport_def_id);
                 ebml_w.wr_str(def_to_str(exp.def_id));
                 ebml_w.end_tag();
                 ebml_w.start_tag(tag_items_data_item_reexport_name);
-                ebml_w.wr_str(exp.name);
+                ebml_w.wr_str(*exp.name);
                 ebml_w.end_tag();
                 ebml_w.end_tag();
             }
@@ -447,7 +447,7 @@ fn encode_info_for_struct(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         global_index.push({val: id, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing %s %d",
-               tcx.sess.str_of(nm), id);
+               *tcx.sess.str_of(nm), id);
         encode_visibility(ebml_w, vis);
         encode_name(ecx, ebml_w, nm);
         encode_path(ecx, ebml_w, path, ast_map::path_name(nm));
@@ -470,7 +470,7 @@ fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         encode_type_param_bounds(ebml_w, ecx, tps);
         let its_ty = node_id_to_type(ecx.tcx, id);
         debug!("fn name = %s ty = %s its node id = %d",
-               ecx.tcx.sess.str_of(ident),
+               *ecx.tcx.sess.str_of(ident),
                ty_to_str(ecx.tcx, its_ty), id);
         encode_type(ecx, ebml_w, its_ty);
         encode_path(ecx, ebml_w, path, ast_map::path_name(ident));
@@ -515,7 +515,7 @@ fn encode_info_for_method(ecx: @encode_ctxt,
                           m: @method,
                           +all_tps: ~[ty_param]) {
     debug!("encode_info_for_method: %d %s %u", m.id,
-           ecx.tcx.sess.str_of(m.ident), all_tps.len());
+           *ecx.tcx.sess.str_of(m.ident), all_tps.len());
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(m.id));
     match m.self_ty.node {
@@ -678,7 +678,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                                ebml_w,
                                dtor.node.id,
                                ecx.tcx.sess.ident_of(
-                                   ecx.tcx.sess.str_of(item.ident) +
+                                   *ecx.tcx.sess.str_of(item.ident) +
                                    ~"_dtor"),
                                path,
                                if tps.len() > 0u {
@@ -1186,7 +1186,7 @@ fn encode_crate_dep(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                     dep: decoder::crate_dep) {
     ebml_w.start_tag(tag_crate_dep);
     ebml_w.start_tag(tag_crate_dep_name);
-    ebml_w.writer.write(str::to_bytes(ecx.tcx.sess.str_of(dep.name)));
+    ebml_w.writer.write(str::to_bytes(*ecx.tcx.sess.str_of(dep.name)));
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_vers);
     ebml_w.writer.write(str::to_bytes(*dep.vers));
