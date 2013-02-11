@@ -554,15 +554,17 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
             print_type_params(s, tps);
             space(s.s);
         }
-        print_type(s, ty);
 
         match opt_trait {
             Some(t) => {
-                word_space(s, ~":");
                 print_path(s, t.path, false);
+                space(s.s);
+                word_space(s, ~"for");
             }
             None => ()
         };
+
+        print_type(s, ty);
         space(s.s);
 
         if methods.len() == 0 {
