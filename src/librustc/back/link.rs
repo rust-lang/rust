@@ -487,12 +487,12 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
                               -cmh_items: ~[@ast::meta_item],
                               dep_hashes: ~[~str]) -> @str {
-        fn len_and_str(s: ~str) -> ~str {
-            return fmt!("%u_%s", str::len(s), s);
+        fn len_and_str(s: &str) -> ~str {
+            fmt!("%u_%s", s.len(), s)
         }
 
         fn len_and_str_lit(l: ast::lit) -> ~str {
-            return len_and_str(pprust::lit_to_str(@l));
+            len_and_str(pprust::lit_to_str(@l))
         }
 
         let cmh_items = attr::sort_meta_items(cmh_items);
@@ -615,7 +615,7 @@ pub fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
-pub fn sanitize(s: ~str) -> ~str {
+pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
     for str::chars_each(s) |c| {
         match c {
@@ -629,10 +629,10 @@ pub fn sanitize(s: ~str) -> ~str {
           'a' .. 'z'
           | 'A' .. 'Z'
           | '0' .. '9'
-          | '_' => str::push_char(&mut result, c),
+          | '_' => result.push_char(c),
           _ => {
             if c > 'z' && char::is_XID_continue(c) {
-                str::push_char(&mut result, c);
+                result.push_char(c);
             }
           }
         }
