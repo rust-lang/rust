@@ -600,29 +600,28 @@ fn split<K: Ord, V>(node: &mut ~TreeNode<K, V>) {
 
 fn insert<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: K,
                      value: V) -> bool {
-    if node.is_none() {
-        *node = Some(~TreeNode::new(key, value));
-        true
-    } else {
-        let mut save = node.swap_unwrap();
+    match *node {
+      Some(ref mut save) => {
         if key < save.key {
             let inserted = insert(&mut save.left, key, value);
-            skew(&mut save);
-            split(&mut save);
-            *node = Some(save); // re-balance, if necessary
+            skew(save);
+            split(save);
             inserted
         } else if save.key < key {
             let inserted = insert(&mut save.right, key, value);
-            skew(&mut save);
-            split(&mut save);
-            *node = Some(save); // re-balance, if necessary
+            skew(save);
+            split(save);
             inserted
         } else {
             save.key = key;
             save.value = value;
-            *node = Some(save);
             false
         }
+      }
+      None => {
+       *node = Some(~TreeNode::new(key, value));
+        true
+      }
     }
 }
 
