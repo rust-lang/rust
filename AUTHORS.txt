@@ -114,6 +114,7 @@ Michael Arntzenius <daekharel@gmail.com>
 Michael Bebenita <mbebenita@mozilla.com>
 Michael Neumann <mneumann@ntecs.de>
 Michael Sullivan <sully@msully.net>
+Mikko Perttunen <cyndis@kapsi.fi>
 Nick Desaulniers <ndesaulniers@mozilla.com>
 Niko Matsakis <niko@alum.mit.edu>
 Or Brostovski <tohava@gmail.com>
