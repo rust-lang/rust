@@ -631,7 +631,7 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
         // *could* be done without recursion, but it won't borrow check
         do child.mutate |mut child| {
             if child.right.is_some() {
-                heir_swap(&mut *node, &mut child.right);
+                heir_swap(node, &mut child.right);
             } else {
                 node.key <-> child.key;
                 node.value <-> child.value;
