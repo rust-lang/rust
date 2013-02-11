@@ -14,7 +14,7 @@ use cast;
 use iter;
 use libc;
 use option;
-use pipes;
+use pipes::{GenericChan, GenericPort};
 use prelude::*;
 use ptr;
 use result;
