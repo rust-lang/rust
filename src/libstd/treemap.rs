@@ -576,29 +576,25 @@ pure fn each_reverse<K: Ord, V>(node: &r/Option<~TreeNode<K, V>>,
 }
 
 // Remove left horizontal link by rotating right
-fn skew<K: Ord, V>(mut node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
+fn skew<K: Ord, V>(node: &mut ~TreeNode<K, V>) {
     if node.left.map_default(false, |x| x.level == node.level) {
         let mut save = node.left.swap_unwrap();
         node.left <-> save.right; // save.right now None
-        save.right = Some(node);
-        save
-    } else {
-        node // nothing to do
+        *node <-> save;
+        node.right = Some(save);
     }
 }
 
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
-fn split<K: Ord, V>(mut node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
+fn split<K: Ord, V>(node: &mut ~TreeNode<K, V>) {
     if node.right.map_default(false,
       |x| x.right.map_default(false, |y| y.level == node.level)) {
         let mut save = node.right.swap_unwrap();
         node.right <-> save.left; // save.left now None
-        save.left = Some(node);
         save.level += 1;
-        save
-    } else {
-        node // nothing to do
+        *node <-> save;
+        node.left = Some(save);
     }
 }
 
@@ -611,11 +607,15 @@ fn insert<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: K,
         let mut save = node.swap_unwrap();
         if key < save.key {
             let inserted = insert(&mut save.left, key, value);
-            *node = Some(split(skew(save))); // re-balance, if necessary
+            skew(&mut save);
+            split(&mut save);
+            *node = Some(save); // re-balance, if necessary
             inserted
         } else if save.key < key {
             let inserted = insert(&mut save.right, key, value);
-            *node = Some(split(skew(save))); // re-balance, if necessary
+            skew(&mut save);
+            split(&mut save);
+            *node = Some(save); // re-balance, if necessary
             inserted
         } else {
             save.key = key;
@@ -684,15 +684,24 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
                 do save.right.mutate |mut x| { x.level = save.level; x }
             }
 
-            save = skew(save);
+            skew(&mut save);
 
-            do save.right.mutate |mut right| {
-                right = skew(right);
-                right.right.mutate(skew);
-                right
+            match save.right {
+              Some(ref mut right) => {
+                skew(right);
+                match right.right {
+                  Some(ref mut x) => { skew(x) },
+                  None => ()
+                }
+              }
+              None => ()
             }
-            save = split(save);
-            save.right.mutate(split);
+
+            split(&mut save);
+            match save.right {
+              Some(ref mut x) => { split(x) },
+              None => ()
+            }
         }
 
         *node = Some(save);
