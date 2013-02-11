@@ -32,8 +32,8 @@ lib/      - bindings to LLVM
 The files concerned purely with syntax -- that is, the AST, parser,
 pretty-printer, lexer, macro expander, and utilities for traversing
 ASTs -- are in a separate crate called "syntax", whose files are in
-./../libsyntax if the parent directory of front/, middle/, back/, and
-so on is . .
+./../libsyntax, where . is the current directory (that is, the parent
+directory of front/, middle/, back/, and so on).
 
 The entry-point for the compiler is main() in driver/rustc.rs, and
 this file sequences the various parts together.
