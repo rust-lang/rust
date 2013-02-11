@@ -19,7 +19,7 @@ trait frobable {
 }
 
 #[int_frobable]
-impl int: frobable {
+impl frobable for int {
     #[frob_attr1]
     fn frob() {
         #[frob_attr2];
