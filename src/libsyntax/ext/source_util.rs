@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use codemap;
-use codemap::{FileMap, Loc, Pos, span};
+use codemap::{FileMap, Loc, Pos, ExpandedFrom, span};
 use ext::base::*;
 use ext::base;
 use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_base_str};
@@ -21,20 +21,39 @@ use core::result;
 use core::str;
 use core::vec;
 
+fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
+    let ExpandedFrom({call_site, _}) = *expn_info;
+    match call_site.expn_info {
+        Some(next_expn_info) => {
+            let ExpandedFrom({callie: {name, _}, _}) = *next_expn_info;
+            // Don't recurse into file using "include!"
+            if name == ~"include" { return expn_info; }
+
+            topmost_expn_info(next_expn_info)
+        },
+        None => expn_info
+    }
+}
+
 /* line!(): expands to the current line number */
 pub fn expand_line(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "line!");
-    let loc = cx.codemap().lookup_char_pos(sp.lo);
-    base::MRExpr(mk_uint(cx, sp, loc.line))
+
+    let topmost = topmost_expn_info(cx.backtrace().get());
+    let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
+
+    base::MRExpr(mk_uint(cx, topmost.call_site, loc.line))
 }
 
 /* col!(): expands to the current column number */
 pub fn expand_col(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "col!");
-    let loc = cx.codemap().lookup_char_pos(sp.lo);
-    base::MRExpr(mk_uint(cx, sp, loc.col.to_uint()))
+
+    let topmost = topmost_expn_info(cx.backtrace().get());
+    let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
+    base::MRExpr(mk_uint(cx, topmost.call_site, loc.col.to_uint()))
 }
 
 /* file!(): expands to the current filename */
@@ -43,9 +62,11 @@ pub fn expand_col(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
 pub fn expand_file(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "file!");
+
+    let topmost = topmost_expn_info(cx.backtrace().get());
     let Loc { file: @FileMap { name: filename, _ }, _ } =
-        cx.codemap().lookup_char_pos(sp.lo);
-    base::MRExpr(mk_base_str(cx, sp, filename))
+        cx.codemap().lookup_char_pos(topmost.call_site.lo);
+    base::MRExpr(mk_base_str(cx, topmost.call_site, filename))
 }
 
 pub fn expand_stringify(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
