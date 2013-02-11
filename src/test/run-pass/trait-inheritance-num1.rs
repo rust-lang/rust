@@ -11,12 +11,12 @@
 // Using the real Num from core
 
 use cmp::Ord;
-use num::Num::from_int;
+use num::NumCast::from;
 
-pub trait NumExt: Num Ord { }
+pub trait NumExt: Num NumCast Ord { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
-    *n > from_int(1)
+    *n > from(1)
 }
 
 pub fn main() {}

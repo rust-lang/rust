@@ -24,9 +24,6 @@ pub trait Num {
     pure fn div(&self, other: &Self) -> Self;
     pure fn modulo(&self, other: &Self) -> Self;
     pure fn neg(&self) -> Self;
-
-    pure fn to_int(&self) -> int;
-    static pure fn from_int(n: int) -> Self;
 }
 
 pub trait IntConvertible {
@@ -48,6 +45,44 @@ pub trait Round {
     pure fn floor(&self) -> Self;
     pure fn ceil(&self)  -> Self;
     pure fn fract(&self) -> Self;
+}
+
+/**
+ * Cast a number the the enclosing type
+ *
+ * # Example
+ *
+ * ~~~
+ * let twenty: f32 = num::cast(0x14);
+ * assert twenty == 20f32;
+ * ~~~
+ */
+#[inline(always)]
+pub pure fn cast<T:NumCast, U:NumCast>(n: T) -> U {
+    NumCast::from(n)
+}
+
+/**
+ * An interface for generic numeric type casts
+ */
+pub trait NumCast {
+    static pure fn from<T:NumCast>(n: T) -> Self;
+
+    pure fn to_u8(&self) -> u8;
+    pure fn to_u16(&self) -> u16;
+    pure fn to_u32(&self) -> u32;
+    pure fn to_u64(&self) -> u64;
+    pure fn to_uint(&self) -> uint;
+
+    pure fn to_i8(&self) -> i8;
+    pure fn to_i16(&self) -> i16;
+    pure fn to_i32(&self) -> i32;
+    pure fn to_i64(&self) -> i64;
+    pure fn to_int(&self) -> int;
+
+    pure fn to_f32(&self) -> f32;
+    pure fn to_f64(&self) -> f64;
+    pure fn to_float(&self) -> float;
 }
 
 pub enum RoundMode {
@@ -135,8 +170,8 @@ pub pure fn is_neg_zero<T: Num One Zero Eq>(num: &T) -> bool {
  * - If code written to use this function doesn't care about it, it's
  *   probably assuming that `x^0` always equals `1`.
  */
-pub pure fn pow_with_uint<T: Num One Zero Copy>(radix: uint,
-                                                pow: uint) -> T {
+pub pure fn pow_with_uint<T: Num NumCast One Zero Copy>(radix: uint,
+                                                        pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
 
@@ -144,7 +179,7 @@ pub pure fn pow_with_uint<T: Num One Zero Copy>(radix: uint,
     if radix == 0u { return _0; }
     let mut my_pow     = pow;
     let mut total      = _1;
-    let mut multiplier = Num::from_int(radix as int);
+    let mut multiplier = cast(radix as int);
     while (my_pow > 0u) {
         if my_pow % 2u == 1u {
             total *= multiplier;
@@ -217,7 +252,7 @@ pub enum SignFormat {
  * those special values, and `special` is `false`, because then the
  * algorithm just does normal calculations on them.
  */
-pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
+pub pure fn to_str_bytes_common<T: Num NumCast Zero One Eq Ord Round Copy>(
         num: &T, radix: uint, special: bool, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
     if radix as int <  2 {
@@ -250,7 +285,7 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
     let neg = *num < _0 || (negative_zero && *num == _0
                             && special && is_neg_zero(num));
     let mut buf: ~[u8] = ~[];
-    let radix_gen      = Num::from_int::<T>(radix as int);
+    let radix_gen: T   = cast(radix as int);
 
     let mut deccum;
 
@@ -439,7 +474,7 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
  * `to_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn to_str_common<T: Num Zero One Eq Ord Round Copy>(
+pub pure fn to_str_common<T: Num NumCast Zero One Eq Ord Round Copy>(
         num: &T, radix: uint, special: bool, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
     let (bytes, special) = to_str_bytes_common(num, radix, special,
@@ -494,7 +529,7 @@ priv const DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Could accept option to allow ignoring underscores, allowing for numbers
  *   formated like `FF_AE_FF_FF`.
  */
-pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
+pub pure fn from_str_bytes_common<T: Num NumCast Zero One Ord Copy>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {
@@ -519,7 +554,7 @@ pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
 
     let _0: T = Zero::zero();
     let _1: T = One::one();
-    let radix_gen: T = Num::from_int(radix as int);
+    let radix_gen: T = cast(radix as int);
 
     let len = buf.len();
 
@@ -570,9 +605,9 @@ pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
 
                 // add/subtract current digit depending on sign
                 if accum_positive {
-                    accum += Num::from_int(digit as int);
+                    accum += cast(digit as int);
                 } else {
-                    accum -= Num::from_int(digit as int);
+                    accum -= cast(digit as int);
                 }
 
                 // Detect overflow by comparing to last value
@@ -609,11 +644,13 @@ pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
                     // Decrease power one order of magnitude
                     power /= radix_gen;
 
+                    let digit_t: T = cast(digit);
+
                     // add/subtract current digit depending on sign
                     if accum_positive {
-                        accum += Num::from_int::<T>(digit as int) * power;
+                        accum += digit_t * power;
                     } else {
-                        accum -= Num::from_int::<T>(digit as int) * power;
+                        accum -= digit_t * power;
                     }
 
                     // Detect overflow by comparing to last value
@@ -679,7 +716,7 @@ pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn from_str_common<T: Num Zero One Ord Copy>(
+pub pure fn from_str_common<T: Num NumCast Zero One Ord Copy>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {

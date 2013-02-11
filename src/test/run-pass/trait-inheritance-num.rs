@@ -11,16 +11,16 @@
 // except according to those terms.
 
 use cmp::{Eq, Ord};
-use num::Num::from_int;
+use num::NumCast::from;
 
 extern mod std;
 use std::cmp::FuzzyEq;
 
-pub trait NumExt: Num Eq Ord {}
+pub trait NumExt: Num NumCast Eq Ord {}
 
 pub trait FloatExt: NumExt FuzzyEq<Self> {}
 
-fn greater_than_one<T:NumExt>(n: &T) -> bool { *n > from_int(1) }
-fn greater_than_one_float<T:FloatExt>(n: &T) -> bool { *n > from_int(1) }
+fn greater_than_one<T:NumExt>(n: &T) -> bool { *n > from(1) }
+fn greater_than_one_float<T:FloatExt>(n: &T) -> bool { *n > from(1) }
 
 pub fn main() {}
