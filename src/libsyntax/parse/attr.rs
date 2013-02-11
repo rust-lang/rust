@@ -18,6 +18,7 @@ use parse::token;
 
 use core::either::{Either, Left, Right};
 
+// a parser that can parse attributes.
 pub trait parser_attr {
     fn parse_outer_attributes() -> ~[ast::attribute];
     fn parse_attribute(style: ast::attr_style) -> ast::attribute;
@@ -81,6 +82,9 @@ impl parser_attr for Parser {
     // attribute of the next item (since we can't know whether the attribute
     // is an inner attribute of the containing item or an outer attribute of
     // the first contained item until we see the semi).
+
+    // you can make the 'next' field an Option, but the result is going to be
+    // more useful as a vector.
     fn parse_inner_attrs_and_next() ->
         (~[ast::attribute], ~[ast::attribute]) {
         let mut inner_attrs: ~[ast::attribute] = ~[];

@@ -110,6 +110,7 @@ type arg_or_capture_item = Either<arg, ()>;
 type item_info = (ident, item_, Option<~[attribute]>);
 
 pub enum item_or_view_item {
+    // indicates a failure to parse any kind of item:
     iovi_none,
     iovi_item(@item),
     iovi_foreign_item(@foreign_item),
@@ -2666,7 +2667,8 @@ pub impl Parser {
                           _ => None
                         }
                       }
-                      _ => fail!()
+                      _ => self.bug(
+                          ~"is_ident() said this would be an identifier")
                     };
 
                     match maybe_bound {
@@ -3204,9 +3206,12 @@ pub impl Parser {
         self.eat_keyword(~"static")
     }
 
+    // given a termination token and a vector of already-parsed
+    // attributes (of length 0 or 1), parse all of the items in a module
     fn parse_mod_items(term: token::Token,
                        +first_item_attrs: ~[attribute]) -> _mod {
-        // Shouldn't be any view items since we've already parsed an item attr
+        // parse all of the items up to closing or an attribute.
+        // view items are legal here.
         let ParsedItemsAndViewItems {
             attrs_remaining: attrs_remaining,
             view_items: view_items,
@@ -3217,6 +3222,9 @@ pub impl Parser {
                                             true);
         let mut items: ~[@item] = starting_items;
 
+        // looks like this code depends on the invariant that
+        // outer attributes can't occur on view items (or macros
+        // invocations?)
         let mut first = true;
         while self.token != term {
             let mut attrs = self.parse_outer_attributes();
@@ -3751,6 +3759,8 @@ pub impl Parser {
         }
     }
 
+    // parse one of the items or view items allowed by the
+    // flags; on failure, return iovi_none.
     fn parse_item_or_view_item(+attrs: ~[attribute], items_allowed: bool,
                                foreign_items_allowed: bool,
                                macros_allowed: bool)
@@ -3770,14 +3780,17 @@ pub impl Parser {
         }
 
         if items_allowed && self.eat_keyword(~"const") {
+            // CONST ITEM
             let (ident, item_, extra_attrs) = self.parse_item_const();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if foreign_items_allowed && self.is_keyword(~"const") {
+            // FOREIGN CONST ITEM
             let item = self.parse_item_foreign_const(visibility, attrs);
             return iovi_foreign_item(item);
         } else if items_allowed &&
+            // FUNCTION ITEM (not sure about lookahead condition...)
             self.is_keyword(~"fn") &&
             !self.fn_expr_lookahead(self.look_ahead(1u)) {
             self.bump();
@@ -3786,6 +3799,7 @@ pub impl Parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"pure") {
+            // PURE FUNCTION ITEM
             self.expect_keyword(~"fn");
             let (ident, item_, extra_attrs) = self.parse_item_fn(pure_fn);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
@@ -3794,10 +3808,12 @@ pub impl Parser {
         } else if foreign_items_allowed &&
             (self.is_keyword(~"fn") || self.is_keyword(~"pure") ||
              self.is_keyword(~"unsafe")) {
+            // FOREIGN FUNCTION ITEM (no items allowed)
                 let item = self.parse_item_foreign_fn(attrs);
                 return iovi_foreign_item(item);
         } else if items_allowed && self.is_keyword(~"unsafe")
             && self.look_ahead(1u) != token::LBRACE {
+            // UNSAFE FUNCTION ITEM (where items are allowed)
             self.bump();
             self.expect_keyword(~"fn");
             let (ident, item_, extra_attrs) = self.parse_item_fn(unsafe_fn);
@@ -3806,6 +3822,7 @@ pub impl Parser {
                                           maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"extern") {
             if items_allowed && self.eat_keyword(~"fn") {
+                // EXTERN FUNCTION ITEM
                 let (ident, item_, extra_attrs) =
                     self.parse_item_fn(extern_fn);
                 return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
@@ -3813,39 +3830,47 @@ pub impl Parser {
                                               maybe_append(attrs,
                                                            extra_attrs)));
             }
+            // EXTERN MODULE ITEM
             return self.parse_item_foreign_mod(lo, visibility, attrs,
                                                items_allowed);
         } else if items_allowed && self.eat_keyword(~"mod") {
+            // MODULE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"type") {
+            // TYPE ITEM
             let (ident, item_, extra_attrs) = self.parse_item_type();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"enum") {
+            // ENUM ITEM
             let (ident, item_, extra_attrs) = self.parse_item_enum();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"trait") {
+            // TRAIT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_trait();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"impl") {
+            // IMPL ITEM
             let (ident, item_, extra_attrs) = self.parse_item_impl();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"struct") {
+            // STRUCT ITEM
             let (ident, item_, extra_attrs) = self.parse_item_struct();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"use") {
+            // USE ITEM
             let view_item = self.parse_use();
             self.expect(token::SEMI);
             return iovi_view_item(@ast::view_item {
@@ -3859,6 +3884,7 @@ pub impl Parser {
                 && (is_plain_ident(self.look_ahead(2))
                     || self.look_ahead(2) == token::LPAREN
                     || self.look_ahead(2) == token::LBRACE) {
+            // MACRO INVOCATION ITEM
             if attrs.len() > 0 {
                 self.fatal(~"attrs on macros are not yet supported");
             }
@@ -3875,6 +3901,7 @@ pub impl Parser {
             } else {
                 token::special_idents::invalid // no special identifier
             };
+            // eat a matched-delimiter token tree:
             let tts = match self.token {
               token::LPAREN | token::LBRACE => {
                 let ket = token::flip_delimiter(copy self.token);
@@ -3884,6 +3911,7 @@ pub impl Parser {
               }
               _ => self.fatal(~"expected open delimiter")
             };
+            // single-variant-enum... :
             let m = ast::mac_invoc_tt(pth, tts);
             let m: ast::mac = codemap::spanned { node: m,
                                              span: mk_sp(self.span.lo,
@@ -3892,6 +3920,7 @@ pub impl Parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, id, item_,
                                           visibility, attrs));
         } else {
+            // FAILURE TO PARSE ITEM
             if visibility != inherited {
                 let mut s = ~"unmatched visibility `";
                 s += if visibility == public { ~"pub" } else { ~"priv" };
@@ -4030,6 +4059,7 @@ pub impl Parser {
                 self.token_is_keyword(~"mod", next_tok))
     }
 
+    // parse a view item.
     fn parse_view_item(+attrs: ~[attribute], vis: visibility) -> @view_item {
         let lo = self.span.lo;
         let node = if self.eat_keyword(~"use") {
@@ -4040,7 +4070,7 @@ pub impl Parser {
             let metadata = self.parse_optional_meta();
             view_item_extern_mod(ident, metadata, self.get_id())
         } else {
-            fail!();
+            self.bug(~"expected view item");
         };
         self.expect(token::SEMI);
         @ast::view_item { node: node,
@@ -4049,6 +4079,8 @@ pub impl Parser {
                           span: mk_sp(lo, self.last_span.hi) }
     }
 
+    // Parses a sequence of items. Stops when it finds program
+    // text that can't be parsed as an item
     fn parse_items_and_view_items(+first_item_attrs: ~[attribute],
                                   mode: view_item_parse_mode,
                                   macros_allowed: bool)
@@ -4114,8 +4146,11 @@ pub impl Parser {
     // Parses a source module as a crate
     fn parse_crate_mod(_cfg: crate_cfg) -> @crate {
         let lo = self.span.lo;
+        // parse the crate's inner attrs, maybe (oops) one
+        // of the attrs of an item:
         let (inner, next) = self.parse_inner_attrs_and_next();
         let first_item_outer_attrs = next;
+        // parse the items inside the crate:
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
         @spanned(lo, self.span.lo,
                  ast::crate_ { module: m,

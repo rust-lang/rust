@@ -1294,8 +1294,6 @@ mod tests {
         }
     }
 
-    // testing both auto_encode's calling patterns
-    // and json... not sure where to put these tests.
     #[test]
     fn test_write_enum () {
         let bw = @io::BytesWriter();
