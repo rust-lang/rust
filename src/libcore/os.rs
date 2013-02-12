@@ -808,7 +808,7 @@ pub fn errno() -> uint {
     }
 
     unsafe {
-        GetLastError() as uint;
+        GetLastError() as uint
     }
 }
 
@@ -852,15 +852,45 @@ pub fn last_os_error() -> ~str {
             if err < 0 {
                 die!(~"strerror_r failure");
             }
-            
+
             str::raw::from_c_str(&buf[0])
         }
     }
 
     #[cfg(windows)]
     fn strerror() -> ~str {
+        use libc::types::os::arch::extra::DWORD;
+        use libc::types::os::arch::extra::LPSTR;
+        use libc::types::os::arch::extra::LPVOID;
+
+        #[link_name = "kernel32"]
+        #[abi = "stdcall"]
+        extern {
+            unsafe fn FormatMessageA(flags: DWORD, lpSrc: LPVOID,
+                                     msgId: DWORD, langId: DWORD,
+                                     buf: LPSTR, nsize: DWORD,
+                                     args: *c_void) -> DWORD;
+        }
+
+        const FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
+        const FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
+
+        let mut buf = [0 as c_char, ..TMPBUF_SZ];
+
+        // This value is calculated from the macro
+        // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
+        let langId = 0x0800 as DWORD;
+        let err = errno() as DWORD;
         unsafe {
-            rustrt::last_os_error()
+            let res = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |
+                                     FORMAT_MESSAGE_IGNORE_INSERTS,
+                                     ptr::mut_null(), err, langId,
+                                     &mut buf[0], TMPBUF_SZ as DWORD, ptr::null());
+            if res == 0 {
+                die!(fmt!("[%?] FormatMessage failure", errno()));
+            }
+
+            str::raw::from_c_str(&buf[0])
         }
     }
 
