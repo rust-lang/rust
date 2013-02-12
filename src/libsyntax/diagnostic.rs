@@ -35,26 +35,27 @@ type emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
 
 
 trait span_handler {
-    fn span_fatal(sp: span, msg: &str) -> !;
-    fn span_err(sp: span, msg: &str);
-    fn span_warn(sp: span, msg: &str);
-    fn span_note(sp: span, msg: &str);
-    fn span_bug(sp: span, msg: &str) -> !;
-    fn span_unimpl(sp: span, msg: &str) -> !;
-    fn handler() -> handler;
+    fn span_fatal(&self, sp: span, msg: &str) -> !;
+    fn span_err(&self, sp: span, msg: &str);
+    fn span_warn(&self, sp: span, msg: &str);
+    fn span_note(&self, sp: span, msg: &str);
+    fn span_bug(&self, sp: span, msg: &str) -> !;
+    fn span_unimpl(&self, sp: span, msg: &str) -> !;
+    fn handler(&self) -> handler;
 }
 
 trait handler {
-    fn fatal(msg: &str) -> !;
-    fn err(msg: &str);
-    fn bump_err_count();
-    fn has_errors() -> bool;
-    fn abort_if_errors();
-    fn warn(msg: &str);
-    fn note(msg: &str);
-    fn bug(msg: &str) -> !;
-    fn unimpl(msg: &str) -> !;
-    fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level);
+    fn fatal(&self, msg: &str) -> !;
+    fn err(&self, msg: &str);
+    fn bump_err_count(&self);
+    fn has_errors(&self) -> bool;
+    fn abort_if_errors(&self);
+    fn warn(&self, msg: &str);
+    fn note(&self, msg: &str);
+    fn bug(&self, msg: &str) -> !;
+    fn unimpl(&self, msg: &str) -> !;
+    fn emit(&self, cmsp: Option<(@codemap::CodeMap, span)>,
+            msg: &str, lvl: level);
 }
 
 struct handler_t {
@@ -68,45 +69,45 @@ struct codemap_t {
 }
 
 impl codemap_t: span_handler {
-    fn span_fatal(sp: span, msg: &str) -> ! {
+    fn span_fatal(&self, sp: span, msg: &str) -> ! {
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
         fail;
     }
-    fn span_err(sp: span, msg: &str) {
+    fn span_err(&self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
-    fn span_warn(sp: span, msg: &str) {
+    fn span_warn(&self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, warning);
     }
-    fn span_note(sp: span, msg: &str) {
+    fn span_note(&self, sp: span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, note);
     }
-    fn span_bug(sp: span, msg: &str) -> ! {
+    fn span_bug(&self, sp: span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    fn span_unimpl(sp: span, msg: &str) -> ! {
+    fn span_unimpl(&self, sp: span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    fn handler() -> handler {
+    fn handler(&self) -> handler {
         self.handler
     }
 }
 
 impl handler_t: handler {
-    fn fatal(msg: &str) -> ! {
+    fn fatal(&self, msg: &str) -> ! {
         (self.emit)(None, msg, fatal);
         fail;
     }
-    fn err(msg: &str) {
+    fn err(&self, msg: &str) {
         (self.emit)(None, msg, error);
         self.bump_err_count();
     }
-    fn bump_err_count() {
+    fn bump_err_count(&self) {
         self.err_count += 1u;
     }
-    fn has_errors() -> bool { self.err_count > 0u }
-    fn abort_if_errors() {
+    fn has_errors(&self) -> bool { self.err_count > 0u }
+    fn abort_if_errors(&self) {
         let s;
         match self.err_count {
           0u => return,
@@ -118,17 +119,18 @@ impl handler_t: handler {
         }
         self.fatal(s);
     }
-    fn warn(msg: &str) {
+    fn warn(&self, msg: &str) {
         (self.emit)(None, msg, warning);
     }
-    fn note(msg: &str) {
+    fn note(&self, msg: &str) {
         (self.emit)(None, msg, note);
     }
-    fn bug(msg: &str) -> ! {
+    fn bug(&self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
     }
-    fn unimpl(msg: &str) -> ! { self.bug(~"unimplemented " + msg); }
-    fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
+    fn unimpl(&self, msg: &str) -> ! { self.bug(~"unimplemented " + msg); }
+    fn emit(&self, cmsp: Option<(@codemap::CodeMap, span)>,
+            msg: &str, lvl: level) {
         (self.emit)(cmsp, msg, lvl);
     }
 }

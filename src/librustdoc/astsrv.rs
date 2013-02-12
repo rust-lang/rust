@@ -160,18 +160,18 @@ fn build_error_handlers(
     };
 
     impl DiagnosticHandler: diagnostic::handler {
-        fn fatal(msg: &str) -> ! { self.inner.fatal(msg) }
-        fn err(msg: &str) { self.inner.err(msg) }
-        fn bump_err_count() {
+        fn fatal(&self, msg: &str) -> ! { self.inner.fatal(msg) }
+        fn err(&self, msg: &str) { self.inner.err(msg) }
+        fn bump_err_count(&self) {
             self.inner.bump_err_count();
         }
-        fn has_errors() -> bool { self.inner.has_errors() }
-        fn abort_if_errors() { self.inner.abort_if_errors() }
-        fn warn(msg: &str) { self.inner.warn(msg) }
-        fn note(msg: &str) { self.inner.note(msg) }
-        fn bug(msg: &str) -> ! { self.inner.bug(msg) }
-        fn unimpl(msg: &str) -> ! { self.inner.unimpl(msg) }
-        fn emit(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
+        fn has_errors(&self) -> bool { self.inner.has_errors() }
+        fn abort_if_errors(&self) { self.inner.abort_if_errors() }
+        fn warn(&self, msg: &str) { self.inner.warn(msg) }
+        fn note(&self, msg: &str) { self.inner.note(msg) }
+        fn bug(&self, msg: &str) -> ! { self.inner.bug(msg) }
+        fn unimpl(&self, msg: &str) -> ! { self.inner.unimpl(msg) }
+        fn emit(&self, cmsp: Option<(@codemap::CodeMap, codemap::span)>,
                 msg: &str, lvl: diagnostic::level) {
             self.inner.emit(cmsp, msg, lvl)
         }
