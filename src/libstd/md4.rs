@@ -52,7 +52,7 @@ pub pure fn md4(msg: &[u8]) -> Quad {
 
     let mut i = 0u;
     let e = vec::len(msg);
-    let x = vec::cast_to_mut(vec::from_elem(16u, 0u32));
+    let mut x = vec::from_elem(16u, 0u32);
     while i < e {
         let aa = a, bb = b, cc = c, dd = d;
 
