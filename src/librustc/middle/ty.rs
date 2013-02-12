@@ -1505,7 +1505,7 @@ pub fn get_element_type(ty: t, i: uint) -> t {
     match /*bad*/copy get(ty).sty {
       ty_rec(flds) => return flds[i].mt.ty,
       ty_tup(ts) => return ts[i],
-      _ => die!(~"get_element_type called on invalid type")
+      _ => fail!(~"get_element_type called on invalid type")
     }
 }
 
@@ -2787,7 +2787,7 @@ pub fn ty_fn_args(fty: t) -> ~[arg] {
         ty_bare_fn(ref f) => copy f.sig.inputs,
         ty_closure(ref f) => copy f.sig.inputs,
         ref s => {
-            die!(fmt!("ty_fn_args() called on non-fn type: %?", s))
+            fail!(fmt!("ty_fn_args() called on non-fn type: %?", s))
         }
     }
 }
@@ -2796,7 +2796,8 @@ pub fn ty_closure_sigil(fty: t) -> Sigil {
     match get(fty).sty {
         ty_closure(ref f) => f.sigil,
         ref s => {
-            die!(fmt!("ty_closure_sigil() called on non-closure type: %?", s))
+            fail!(fmt!("ty_closure_sigil() called on non-closure type: %?",
+                       s))
         }
     }
 }
@@ -2806,7 +2807,7 @@ pub fn ty_fn_purity(fty: t) -> ast::purity {
         ty_bare_fn(ref f) => f.purity,
         ty_closure(ref f) => f.purity,
         ref s => {
-            die!(fmt!("ty_fn_purity() called on non-fn type: %?", s))
+            fail!(fmt!("ty_fn_purity() called on non-fn type: %?", s))
         }
     }
 }
@@ -2816,7 +2817,7 @@ pub pure fn ty_fn_ret(fty: t) -> t {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
         ref s => {
-            die!(fmt!("ty_fn_ret() called on non-fn type: %?", s))
+            fail!(fmt!("ty_fn_ret() called on non-fn type: %?", s))
         }
     }
 }
@@ -2833,7 +2834,7 @@ pub pure fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
         ty_evec(_, vstore) => vstore,
         ty_estr(vstore) => vstore,
-        ref s => die!(fmt!("ty_vstore() called on invalid sty: %?", s))
+        ref s => fail!(fmt!("ty_vstore() called on invalid sty: %?", s))
     }
 }
 
@@ -2842,7 +2843,7 @@ pub fn ty_region(ty: t) -> Region {
       ty_rptr(r, _) => r,
       ty_evec(_, vstore_slice(r)) => r,
       ty_estr(vstore_slice(r)) => r,
-      ref s => die!(fmt!("ty_region() invoked on in appropriate ty: %?",
+      ref s => fail!(fmt!("ty_region() invoked on in appropriate ty: %?",
           (*s)))
     }
 }
@@ -3208,7 +3209,7 @@ pub fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) => {
         return id;
       }
-      ast::stmt_mac(*) => die!(~"unexpanded macro in trans")
+      ast::stmt_mac(*) => fail!(~"unexpanded macro in trans")
     }
 }
 
@@ -3232,7 +3233,7 @@ pub fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
     match vec::find(get_fields(rec_ty), |f| f.ident == id) {
       Some(f) => f,
       // Do we only call this when we know the field is legit?
-      None => die!(fmt!("get_field: ty doesn't have a field %s",
+      None => fail!(fmt!("get_field: ty doesn't have a field %s",
                          tcx.sess.str_of(id)))
     }
 }
@@ -3241,7 +3242,7 @@ pub fn get_fields(rec_ty:t) -> ~[field] {
     match /*bad*/copy get(rec_ty).sty {
       ty_rec(fields) => fields,
       // Can we check at the caller?
-      _ => die!(~"get_fields: not a record type")
+      _ => fail!(~"get_fields: not a record type")
     }
 }
 
@@ -3903,10 +3904,10 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                          }
                     }
                     ast::struct_variant_kind(_) => {
-                        die!(~"struct variant kinds unimpl in enum_variants")
+                        fail!(~"struct variant kinds unimpl in enum_variants")
                     }
                     ast::enum_variant_kind(_) => {
-                        die!(~"enum variant kinds unimpl in enum_variants")
+                        fail!(~"enum variant kinds unimpl in enum_variants")
                     }
                 }
             })

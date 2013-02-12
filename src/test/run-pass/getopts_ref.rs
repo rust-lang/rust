@@ -21,7 +21,7 @@ pub fn main() {
     match getopts(args, opts) {
         result::Ok(ref m)  =>
             assert !opt_present(m, "b"),
-        result::Err(ref f) => die!(fail_str(copy *f))
+        result::Err(ref f) => fail!(fail_str(copy *f))
     };
 
 }

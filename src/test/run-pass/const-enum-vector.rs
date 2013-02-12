@@ -14,10 +14,10 @@ const C: [E * 3] = [V0, V1(0xDEADBEE), V0];
 fn main() {
     match C[1] {
         V1(n) => assert(n == 0xDEADBEE),
-        _ => die!()
+        _ => fail!()
     }
     match C[2] { 
         V0 => (),
-        _ => die!()
+        _ => fail!()
     }
 }

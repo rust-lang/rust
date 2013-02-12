@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn baz() -> ! { die!(); }
+fn baz() -> ! { fail!(); }
 
 fn foo() {
     match Some::<int>(5) {

@@ -15,7 +15,7 @@ extern mod std;
 // We don't want to see any invalid reads
 fn main() {
     fn f() {
-        die!();
+        fail!();
     }
     task::spawn(|| f() );
 }

@@ -13,7 +13,7 @@ extern mod std;
 
 fn f() {
     let a = ~0;
-    die!();
+    fail!();
 }
 
 pub fn main() {

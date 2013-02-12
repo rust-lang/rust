@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn f(a: @int) {
-    die!();
+    fail!();
 }
 
 fn main() {

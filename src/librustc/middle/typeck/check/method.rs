@@ -1234,7 +1234,7 @@ pub impl LookupContext {
         let span = if did.crate == ast::local_crate {
             match self.tcx().items.find(&did.node) {
               Some(ast_map::node_method(m, _, _)) => m.span,
-              _ => die!(fmt!("report_static_candidate: bad item %?", did))
+              _ => fail!(fmt!("report_static_candidate: bad item %?", did))
             }
         } else {
             self.expr.span

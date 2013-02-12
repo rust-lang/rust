@@ -54,21 +54,21 @@ fn get_v5(a: &v/A, i: uint) -> &v/int {
 fn get_v6_a(a: &v/A, i: uint) -> &v/int {
     match a.value.v6 {
         Some(ref v) => &v.f,
-        None => die!()
+        None => fail!()
     }
 }
 
 fn get_v6_b(a: &v/A, i: uint) -> &v/int {
     match *a {
         A { value: B { v6: Some(ref v), _ } } => &v.f,
-        _ => die!()
+        _ => fail!()
     }
 }
 
 fn get_v6_c(a: &v/A, i: uint) -> &v/int {
     match a {
         &A { value: B { v6: Some(ref v), _ } } => &v.f,
-        _ => die!()
+        _ => fail!()
     }
 }
 
