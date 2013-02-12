@@ -10,15 +10,15 @@
 
 enum yes0<'lt> {
     // This will eventually be legal (and in fact the only way):
-    x3(&'lt uint) //~ ERROR named regions other than `self` are not allowed as part of a type declaration
+    X3(&'lt uint) //~ ERROR named regions other than `self` are not allowed as part of a type declaration
 }
 
 enum yes1 {
-    x4(&'self uint)
+    X4(&'self uint)
 }
 
 enum yes2 {
-    x5(&'foo uint) //~ ERROR named regions other than `self` are not allowed as part of a type declaration
+    X5(&'foo uint) //~ ERROR named regions other than `self` are not allowed as part of a type declaration
 }
 
 fn main() {}
