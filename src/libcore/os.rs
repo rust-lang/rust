@@ -831,7 +831,7 @@ pub fn last_os_error() -> ~str {
 
         // GNU libc provides a non-compliant version of strerror_r by default
         // and requires macros to instead use the POSIX compliant variant.
-        // So instead we just use __xpg_strerror_r which is always POSIX compliant
+        // So we just use __xpg_strerror_r which is always POSIX compliant
         #[cfg(target_os = "linux")]
         fn strerror_r(errnum: c_int, buf: *c_char, buflen: size_t) -> c_int {
             #[nolink]
@@ -884,7 +884,8 @@ pub fn last_os_error() -> ~str {
             let res = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |
                                      FORMAT_MESSAGE_IGNORE_INSERTS,
                                      ptr::mut_null(), err, langId,
-                                     &mut buf[0], TMPBUF_SZ as DWORD, ptr::null());
+                                     &mut buf[0], TMPBUF_SZ as DWORD,
+                                     ptr::null());
             if res == 0 {
                 die!(fmt!("[%?] FormatMessage failure", errno()));
             }
