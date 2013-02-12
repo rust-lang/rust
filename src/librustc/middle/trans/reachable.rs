@@ -122,9 +122,6 @@ fn traverse_public_item(cx: ctx, item: @item) {
         }
       }
       item_struct(struct_def, tps) => {
-        for struct_def.ctor_id.each |&ctor_id| {
-            cx.rmap.insert(ctor_id, ());
-        }
         do option::iter(&struct_def.dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());
             if tps.len() > 0u || attr::find_inline_attr(dtor.node.attrs)

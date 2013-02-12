@@ -13,8 +13,7 @@ use core::prelude::*;
 use driver::session;
 use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
-use metadata::csearch::{get_static_methods_if_impl, get_struct_fields};
-use metadata::csearch::{get_type_name_if_impl};
+use metadata::csearch::{get_static_methods_if_impl, get_type_name_if_impl};
 use metadata::cstore::find_use_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
@@ -1660,14 +1659,6 @@ pub impl Resolver {
                     crate) building type %s",
                    final_ident);
             child_name_bindings.define_type(Public, def, dummy_sp());
-
-            // Define the struct constructor if this is a tuple-like struct.
-            let fields = get_struct_fields(self.session.cstore, def_id);
-            if fields.len() != 0 &&
-                    fields[0].ident == special_idents::unnamed_field {
-                child_name_bindings.define_value(Public, def, dummy_sp());
-            }
-
             self.structs.insert(def_id, ());
           }
           def_self(*) | def_arg(*) | def_local(*) |
@@ -1754,12 +1745,10 @@ pub impl Resolver {
                                        OverwriteDuplicates,
                                        dummy_sp());
 
-                    self.handle_external_def(def,
-                                             modules,
+                    self.handle_external_def(def, modules,
                                              child_name_bindings,
                                              self.session.str_of(final_ident),
-                                             final_ident,
-                                             new_parent);
+                                             final_ident, new_parent);
                 }
                 dl_impl(def) => {
                     // We only process static methods of impls here.
