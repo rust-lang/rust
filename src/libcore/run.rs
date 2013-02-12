@@ -14,7 +14,7 @@ use io;
 use io::ReaderUtil;
 use libc;
 use libc::{pid_t, c_void, c_int};
-use pipes::{stream, SharedChan};
+use pipes::{stream, SharedChan, GenericChan, GenericPort};
 use option::{Some, None};
 use os;
 use prelude::*;
