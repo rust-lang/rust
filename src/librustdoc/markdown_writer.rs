@@ -145,7 +145,7 @@ fn pandoc_writer(
         if status != 0 {
             error!("pandoc-out: %s", stdout);
             error!("pandoc-err: %s", stderr);
-            die!(~"pandoc failed");
+            fail!(~"pandoc failed");
         }
     }
 }
@@ -287,7 +287,7 @@ fn write_file(path: &Path, s: ~str) {
       result::Ok(writer) => {
         writer.write_str(s);
       }
-      result::Err(e) => die!(e)
+      result::Err(e) => fail!(e)
     }
 }
 

@@ -335,7 +335,7 @@ pub mod ct {
     }
 
     #[cfg(test)]
-    fn die(s: &str) -> ! { die!(s.to_owned()) }
+    fn die(s: &str) -> ! { fail!(s.to_owned()) }
 
     #[test]
     fn test_parse_count() {

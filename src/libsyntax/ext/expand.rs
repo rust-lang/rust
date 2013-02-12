@@ -292,7 +292,7 @@ pub fn core_macros() -> ~str {
             ::core::sys::begin_unwind($msg, file!().to_owned(), line!())
         );
         () => (
-            die!(~\"explicit failure\")
+            fail!(~\"explicit failure\")
         )
     )
 
@@ -301,14 +301,14 @@ pub fn core_macros() -> ~str {
             ::core::sys::begin_unwind($msg, file!().to_owned(), line!())
         );
         () => (
-            die!(~\"explicit failure\")
+            fail!(~\"explicit failure\")
         )
     )
 
     macro_rules! fail_unless(
         ($cond:expr) => {
             if !$cond {
-                die!(~\"assertion failed: \" + stringify!($cond))
+                fail!(~\"assertion failed: \" + stringify!($cond))
             }
         }
     )

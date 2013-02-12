@@ -13,7 +13,7 @@
 // unrelated errors.
 
 fn foo(a: int, b: int, c: int, d:int) {
-  die!();
+  fail!();
 }
 
 fn main() {

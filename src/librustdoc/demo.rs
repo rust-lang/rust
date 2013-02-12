@@ -71,7 +71,7 @@ fn take_my_order_please(
      * This function is full of fail
      */
 
-    die!();
+    fail!();
 }
 
 mod fortress_of_solitude {
@@ -192,6 +192,6 @@ impl OmNomNomy: TheShunnedHouse {
     }
 
     fn construct(&self) -> bool {
-        die!();
+        fail!();
     }
 }

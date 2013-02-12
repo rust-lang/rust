@@ -80,7 +80,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
             Some(pprust::fun_to_str(*decl, ident, copy *tys,
                                     extract::interner()))
           }
-          _ => die!(~"get_fn_sig: fn_id not bound to a fn item")
+          _ => fail!(~"get_fn_sig: fn_id not bound to a fn item")
         }
     }
 }
@@ -113,7 +113,7 @@ fn fold_const(
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }
-                    _ => die!(~"fold_const: id not bound to a const item")
+                    _ => fail!(~"fold_const: id not bound to a const item")
                 }
             }}),
         .. doc
@@ -150,7 +150,7 @@ fn fold_enum(
                             pprust::variant_to_str(
                                 ast_variant, extract::interner())
                         }
-                        _ => die!(~"enum variant not bound to an enum item")
+                        _ => fail!(~"enum variant not bound to an enum item")
                     }
                 }
             };
@@ -229,7 +229,7 @@ fn get_method_sig(
                     }
                   }
                 }
-                _ => die!(~"method not found")
+                _ => fail!(~"method not found")
             }
           }
           ast_map::node_item(@ast::item {
@@ -246,10 +246,10 @@ fn get_method_sig(
                         extract::interner()
                     ))
                 }
-                None => die!(~"method not found")
+                None => fail!(~"method not found")
             }
           }
-          _ => die!(~"get_method_sig: item ID not bound to trait or impl")
+          _ => fail!(~"get_method_sig: item ID not bound to trait or impl")
         }
     }
 }
@@ -282,7 +282,7 @@ fn fold_impl(
                      Some(pprust::ty_to_str(
                          self_ty, extract::interner())))
                 }
-                _ => die!(~"expected impl")
+                _ => fail!(~"expected impl")
             }
         }
     };
@@ -315,7 +315,7 @@ fn should_add_impl_self_ty() {
 
 #[test]
 fn should_add_impl_method_sigs() {
-    let doc = test::mk_doc(~"impl int { fn a<T>() -> int { die!() } }");
+    let doc = test::mk_doc(~"impl int { fn a<T>() -> int { fail!() } }");
     assert doc.cratemod().impls()[0].methods[0].sig
         == Some(~"fn a<T>() -> int");
 }
@@ -345,7 +345,7 @@ fn fold_type(
                                               extract::interner())
                         ))
                     }
-                    _ => die!(~"expected type")
+                    _ => fail!(~"expected type")
                 }
             }
         },
@@ -375,7 +375,7 @@ fn fold_struct(
                         Some(pprust::item_to_str(item,
                                                  extract::interner()))
                     }
-                    _ => die!(~"not an item")
+                    _ => fail!(~"not an item")
                 }
             }
         },
@@ -396,7 +396,7 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
             };
             ast::item_struct(def, tys)
         }
-        _ => die!(~"not a struct")
+        _ => fail!(~"not a struct")
     };
 
     @ast::item {

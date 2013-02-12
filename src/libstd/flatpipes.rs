@@ -262,7 +262,7 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
     fn recv() -> T {
         match self.try_recv() {
             Some(move val) => move val,
-            None => die!(~"port is closed")
+            None => fail!(~"port is closed")
         }
     }
     fn try_recv() -> Option<T> {
@@ -298,7 +298,7 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
             }
         }
         else {
-            die!(~"flatpipe: unrecognized command");
+            fail!(~"flatpipe: unrecognized command");
         }
     }
 }
@@ -480,7 +480,7 @@ pub mod flatteners {
                 Ok(move json) => {
                     json::Decoder(move json)
                 }
-                Err(e) => die!(fmt!("flatpipe: can't parse json: %?", e))
+                Err(e) => fail!(fmt!("flatpipe: can't parse json: %?", e))
             }
         }
     }

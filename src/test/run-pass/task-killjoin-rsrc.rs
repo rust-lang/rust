@@ -69,7 +69,7 @@ fn supervised() {
     // runs first, but I can imagine that changing.
     error!("supervised task=%?", task::get_task);
     task::yield();
-    die!();
+    fail!();
 }
 
 fn supervisor() {

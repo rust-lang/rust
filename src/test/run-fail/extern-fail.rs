@@ -37,7 +37,7 @@ fn main() {
         do task::spawn {
             let result = count(5u);
             debug!("result = %?", result);
-            die!();
+            fail!();
         };
     }
 }

@@ -94,7 +94,7 @@ fn test_select2() {
 
     match pipes::select2(move ap, move bp) {
       either::Left(*) => { }
-      either::Right(*) => { die!() }
+      either::Right(*) => { fail!() }
     }
 
     stream::client::send(move bc, ~"abc");
@@ -107,7 +107,7 @@ fn test_select2() {
     stream::client::send(move bc, ~"abc");
 
     match pipes::select2(move ap, move bp) {
-      either::Left(*) => { die!() }
+      either::Left(*) => { fail!() }
       either::Right(*) => { }
     }
 

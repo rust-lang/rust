@@ -87,7 +87,7 @@ priv impl<A> DVec<A> {
         unsafe {
             let data: *() = cast::reinterpret_cast(&self.data);
             if data.is_null() {
-                die!(~"Recursive use of dvec");
+                fail!(~"Recursive use of dvec");
             }
         }
     }
@@ -98,7 +98,7 @@ priv impl<A> DVec<A> {
             let mut data = cast::reinterpret_cast(&null::<()>());
             data <-> self.data;
             let data_ptr: *() = cast::reinterpret_cast(&data);
-            if data_ptr.is_null() { die!(~"Recursive use of dvec"); }
+            if data_ptr.is_null() { fail!(~"Recursive use of dvec"); }
             return f(move data);
         }
     }
@@ -175,7 +175,7 @@ impl<A> DVec<A> {
             let mut data = cast::reinterpret_cast(&null::<()>());
             data <-> self.data;
             let data_ptr: *() = cast::reinterpret_cast(&data);
-            if data_ptr.is_null() { die!(~"Recursive use of dvec"); }
+            if data_ptr.is_null() { fail!(~"Recursive use of dvec"); }
             self.data = move ~[move t];
             self.data.push_all_move(move data);
         }
@@ -325,7 +325,7 @@ impl<A: Copy> DVec<A> {
 
         let length = self.len();
         if length == 0 {
-            die!(~"attempt to retrieve the last element of an empty vector");
+            fail!(~"attempt to retrieve the last element of an empty vector");
         }
 
         return self.data[length - 1];

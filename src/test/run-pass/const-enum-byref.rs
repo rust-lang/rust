@@ -14,7 +14,7 @@ const C: E = V;
 fn f(a: &E) {
     match *a {
         V => {}
-        VV(*) => die!()
+        VV(*) => fail!()
     }
 }
 

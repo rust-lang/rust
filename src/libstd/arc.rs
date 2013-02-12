@@ -224,7 +224,7 @@ pub fn unwrap_mutex_arc<T: Owned>(arc: MutexARC<T>) -> T {
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let MutexARCInner { failed: failed, data: data, _ } = move inner;
     if failed {
-        die!(~"Can't unwrap poisoned MutexARC - another task failed inside!")
+        fail!(~"Can't unwrap poisoned MutexARC - another task failed inside!")
     }
     move data
 }
@@ -235,9 +235,9 @@ pub fn unwrap_mutex_arc<T: Owned>(arc: MutexARC<T>) -> T {
 fn check_poison(is_mutex: bool, failed: bool) {
     if failed {
         if is_mutex {
-            die!(~"Poisoned MutexARC - another task failed inside!");
+            fail!(~"Poisoned MutexARC - another task failed inside!");
         } else {
-            die!(~"Poisoned rw_arc - another task failed inside!");
+            fail!(~"Poisoned rw_arc - another task failed inside!");
         }
     }
 }
@@ -423,7 +423,7 @@ pub fn unwrap_rw_arc<T: Const Owned>(arc: RWARC<T>) -> T {
     let inner = unsafe { unwrap_shared_mutable_state(move x) };
     let RWARCInner { failed: failed, data: data, _ } = move inner;
     if failed {
-        die!(~"Can't unwrap poisoned RWARC - another task failed inside!")
+        fail!(~"Can't unwrap poisoned RWARC - another task failed inside!")
     }
     move data
 }

@@ -1333,7 +1333,7 @@ mod tests {
           assert (libc::fclose(ostream) == (0u as c_int));
           let rs = os::copy_file(&in, &out);
           if (!os::path_exists(&in)) {
-            die!(fmt!("%s doesn't exist", in.to_str()));
+            fail!(fmt!("%s doesn't exist", in.to_str()));
           }
           assert(rs);
           let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);
