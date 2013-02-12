@@ -1905,13 +1905,8 @@ pub fn trans_tuple_struct(ccx: @crate_ctxt,
         }
     };
 
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               ~[],
-                               llfndecl,
-                               ctor_id,
-                               None,
-                               param_substs,
-                               None);
+    let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, ctor_id, None,
+                               param_substs, None);
 
     // XXX: Bad copy.
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, copy fn_args);
