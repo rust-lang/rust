@@ -41,12 +41,12 @@ pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     let task = get_task_id();
     // Expect the weak task service to be alive
     assert service.try_send(RegisterWeakTask(task, shutdown_chan));
-    unsafe { rust_inc_weak_task_count(); }
+    unsafe { rust_dec_kernel_live_count(); }
     do fn&() {
         let shutdown_port = swap_unwrap(&mut *shutdown_port);
         f(shutdown_port)
     }.finally || {
-        unsafe { rust_dec_weak_task_count(); }
+        unsafe { rust_inc_kernel_live_count(); }
         // Service my have already exited
         service.send(UnregisterWeakTask(task));
     }
@@ -79,11 +79,11 @@ fn create_global_service() -> ~WeakTaskService {
             let port = swap_unwrap(&mut *port);
             // The weak task service is itself a weak task
             debug!("weakening the weak service task");
-            unsafe { rust_inc_weak_task_count(); }
+            unsafe { rust_dec_kernel_live_count(); }
             run_weak_task_service(port);
         }.finally {
             debug!("unweakening the weak service task");
-            unsafe { rust_dec_weak_task_count(); }
+            unsafe { rust_inc_kernel_live_count(); }
         }
     }
 
@@ -127,8 +127,8 @@ fn run_weak_task_service(port: Port<ServiceMsg>) {
 }
 
 extern {
-    unsafe fn rust_inc_weak_task_count();
-    unsafe fn rust_dec_weak_task_count();
+    unsafe fn rust_inc_kernel_live_count();
+    unsafe fn rust_dec_kernel_live_count();
 }
 
 #[test]

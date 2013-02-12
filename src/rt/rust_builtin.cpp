@@ -939,15 +939,15 @@ rust_get_global_data_ptr() {
 }
 
 extern "C" void
-rust_inc_weak_task_count() {
+rust_inc_kernel_live_count() {
     rust_task *task = rust_get_current_task();
-    task->kernel->inc_weak_task_count();
+    task->kernel->inc_live_count();
 }
 
 extern "C" void
-rust_dec_weak_task_count() {
+rust_dec_kernel_live_count() {
     rust_task *task = rust_get_current_task();
-    task->kernel->dec_weak_task_count();
+    task->kernel->dec_live_count();
 }
 
 //
