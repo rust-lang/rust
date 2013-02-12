@@ -42,7 +42,7 @@ use std::serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::diagnostic::span_handler;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token::{ident_interner, special_idents};
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::codemap;
@@ -231,7 +231,9 @@ pub fn item_type(item_id: ast::def_id, item: ebml::Doc,
     let t = doc_type(item, tcx, cdata);
     if family_names_type(item_family(item)) {
         ty::mk_with_id(tcx, t, item_id)
-    } else { t }
+    } else {
+        t
+    }
 }
 
 fn item_impl_traits(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ~[ty::t] {
@@ -661,11 +663,12 @@ fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
     rslt
 }
 
-pub fn get_impls_for_mod(intr: @ident_interner, cdata: cmd,
-                         m_id: ast::node_id, name: Option<ast::ident>,
-                         get_cdata: fn(ast::crate_num) -> cmd)
+pub fn get_impls_for_mod(intr: @ident_interner,
+                         cdata: cmd,
+                         m_id: ast::node_id,
+                         name: Option<ast::ident>,
+                         get_cdata: &fn(ast::crate_num) -> cmd)
                       -> @~[@_impl] {
-
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];
@@ -886,6 +889,15 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
                 mutability: mt,
             });
         }
+    }
+    for reader::tagged_docs(item, tag_item_unnamed_field) |an_item| {
+        let did = item_def_id(an_item, cdata);
+        result.push(ty::field_ty {
+            ident: special_idents::unnamed_field,
+            id: did,
+            vis: ast::inherited,
+            mutability: ast::struct_immutable,
+        });
     }
     result
 }

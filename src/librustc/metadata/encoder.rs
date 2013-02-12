@@ -46,6 +46,7 @@ use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::diagnostic::span_handler;
+use syntax::parse::token::special_idents;
 use syntax::print::pprust;
 use syntax::{ast_util, visit};
 use syntax;
@@ -328,7 +329,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: writer::Encoder,
     // Encode info about all the module children.
     for md.items.each |item| {
         match item.node {
-            item_impl(*) | item_struct(*) => {
+            item_impl(*) => {
                 let (ident, did) = (item.ident, item.id);
                 debug!("(encoding info for module) ... encoding impl %s \
                         (%?/%?)",
@@ -432,25 +433,28 @@ fn encode_info_for_struct(ecx: @encode_ctxt, ebml_w: writer::Encoder,
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
     for fields.each |field| {
-        match field.node.kind {
-            named_field(nm, mt, vis) => {
-                let id = field.node.id;
-                index.push({val: id, pos: ebml_w.writer.tell()});
-                global_index.push({val: id,
-                                    pos: ebml_w.writer.tell()});
-                ebml_w.start_tag(tag_items_data_item);
-                debug!("encode_info_for_struct: doing %s %d",
-                       tcx.sess.str_of(nm), id);
-                encode_visibility(ebml_w, vis);
-                encode_name(ecx, ebml_w, nm);
-                encode_path(ecx, ebml_w, path, ast_map::path_name(nm));
-                encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
-                encode_mutability(ebml_w, mt);
-                encode_def_id(ebml_w, local_def(id));
-                ebml_w.end_tag();
-            }
-            unnamed_field => {}
-        }
+        let (nm, mt, vis) = match field.node.kind {
+            named_field(nm, mt, vis) => (nm, mt, vis),
+            unnamed_field => (
+                special_idents::unnamed_field,
+                struct_immutable,
+                inherited
+            )
+        };
+
+        let id = field.node.id;
+        index.push({val: id, pos: ebml_w.writer.tell()});
+        global_index.push({val: id, pos: ebml_w.writer.tell()});
+        ebml_w.start_tag(tag_items_data_item);
+        debug!("encode_info_for_struct: doing %s %d",
+               tcx.sess.str_of(nm), id);
+        encode_visibility(ebml_w, vis);
+        encode_name(ecx, ebml_w, nm);
+        encode_path(ecx, ebml_w, path, ast_map::path_name(nm));
+        encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
+        encode_mutability(ebml_w, mt);
+        encode_def_id(ebml_w, local_def(id));
+        ebml_w.end_tag();
     }
     /*bad*/copy *index
 }
@@ -673,7 +677,24 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'S');
         encode_type_param_bounds(ebml_w, ecx, tps);
-        encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
+
+        // If this is a tuple- or enum-like struct, encode the type of the
+        // constructor. Otherwise, encode the type of the struct.
+        if struct_def.fields.len() > 0 &&
+                struct_def.fields[0].node.kind == ast::unnamed_field {
+            // Tuple- or enum-like struct.
+            let ctor_id = match struct_def.ctor_id {
+                Some(ctor_id) => ctor_id,
+                None => ecx.tcx.sess.bug(~"struct def didn't have ctor id"),
+            };
+            encode_type(ecx, ebml_w, node_id_to_type(tcx, ctor_id));
+
+            // Also encode the symbol.
+            encode_symbol(ecx, ebml_w, ctor_id);
+        } else {
+            encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
+        }
+
         encode_name(ecx, ebml_w, item.ident);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
@@ -697,7 +718,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: writer::Encoder,
                    encode_def_id(ebml_w, local_def(f.node.id));
                    ebml_w.end_tag();
                 }
-                unnamed_field => {}
+                unnamed_field => {
+                    ebml_w.start_tag(tag_item_unnamed_field);
+                    encode_def_id(ebml_w, local_def(f.node.id));
+                    ebml_w.end_tag();
+                }
             }
         }
 
