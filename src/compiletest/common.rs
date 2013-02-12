@@ -1,5 +1,5 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
+// Copyright 2012-2013 The Rust Project Developers. See the
+// COPYRIGHT file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -18,6 +18,7 @@ pub enum mode {
     mode_run_fail,
     mode_run_pass,
     mode_pretty,
+    mode_debug_info,
 }
 
 pub type config = {
