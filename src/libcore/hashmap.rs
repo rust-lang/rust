@@ -108,19 +108,17 @@ pub mod linear {
         }
 
         #[inline(always)]
-        pure fn bucket_for_key(&self, buckets: &[Option<Bucket<K, V>>],
-                               k: &K) -> SearchResult {
+        pure fn bucket_for_key(&self, k: &K) -> SearchResult {
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
-            self.bucket_for_key_with_hash(buckets, hash, k)
+            self.bucket_for_key_with_hash(hash, k)
         }
 
         #[inline(always)]
         pure fn bucket_for_key_with_hash(&self,
-                                         buckets: &[Option<Bucket<K, V>>],
                                          hash: uint,
                                          k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
-                match buckets[i] {
+                match self.buckets[i] {
                     Some(ref bkt) => if bkt.hash == hash && *k == bkt.key {
                         return FoundEntry(i);
                     },
@@ -157,11 +155,19 @@ pub mod linear {
             }
         }
 
+        #[inline(always)]
+        pure fn value_for_bucket(&self, idx: uint) -> &self/V {
+            match self.buckets[idx] {
+                Some(ref bkt) => &bkt.value,
+                None => die!(~"LinearMap::find: internal logic error"),
+            }
+        }
+
         /// Inserts the key value pair into the buckets.
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
         fn insert_internal(&mut self, hash: uint, k: K, v: V) -> bool {
-            match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
+            match self.bucket_for_key_with_hash(hash, &k) {
                 TableFull => { die!(~"Internal logic error"); }
                 FoundHole(idx) => {
                     debug!("insert fresh (%?->%?) at idx %?, hash %?",
@@ -196,8 +202,7 @@ pub mod linear {
             //
             // I found this explanation elucidating:
             // http://www.maths.lse.ac.uk/Courses/MA407/del-hash.pdf
-            let mut idx = match self.bucket_for_key_with_hash(self.buckets,
-                                                              hash, k) {
+            let mut idx = match self.bucket_for_key_with_hash(hash, k) {
                 TableFull | FoundHole(_) => return None,
                 FoundEntry(idx) => idx
             };
@@ -273,7 +278,7 @@ pub mod linear {
     impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Map<K, V> {
         /// Return true if the map contains a value for the specified key
         pure fn contains_key(&self, k: &K) -> bool {
-            match self.bucket_for_key(self.buckets, k) {
+            match self.bucket_for_key(k) {
                 FoundEntry(_) => {true}
                 TableFull | FoundHole(_) => {false}
             }
@@ -291,20 +296,9 @@ pub mod linear {
 
         /// Return the value corresponding to the key in the map
         pure fn find(&self, k: &K) -> Option<&self/V> {
-            match self.bucket_for_key(self.buckets, k) {
-                FoundEntry(idx) => {
-                    match self.buckets[idx] {
-                        Some(ref bkt) => {
-                            Some(&bkt.value)
-                        }
-                        None => {
-                            die!(~"LinearMap::find: internal logic error")
-                        }
-                    }
-                }
-                TableFull | FoundHole(_) => {
-                    None
-                }
+            match self.bucket_for_key(k) {
+                FoundEntry(idx) => Some(self.value_for_bucket(idx)),
+                TableFull | FoundHole(_) => None,
             }
         }
 
@@ -362,6 +356,63 @@ pub mod linear {
             self.insert_internal(hash, k, v);
 
             old_value
+        }
+
+        /// Return the value corresponding to the key in the map, or insert
+        /// and return the value if it doesn't exist.
+        fn find_or_insert(&mut self, k: K, v: V) -> &self/V {
+            if self.size >= self.resize_at {
+                // n.b.: We could also do this after searching, so
+                // that we do not resize if this call to insert is
+                // simply going to update a key in place.  My sense
+                // though is that it's worse to have to search through
+                // buckets to find the right spot twice than to just
+                // resize in this corner case.
+                self.expand();
+            }
+
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
+            let idx = match self.bucket_for_key_with_hash(hash, &k) {
+                TableFull => die!(~"Internal logic error"),
+                FoundEntry(idx) => idx,
+                FoundHole(idx) => {
+                    self.buckets[idx] = Some(Bucket{hash: hash, key: k,
+                                         value: v});
+                    self.size += 1;
+                    idx
+                },
+            };
+
+            self.value_for_bucket(idx)
+        }
+
+        /// Return the value corresponding to the key in the map, or create,
+        /// insert, and return a new value if it doesn't exist.
+        fn find_or_insert_with(&mut self, k: K, f: fn(&K) -> V) -> &self/V {
+            if self.size >= self.resize_at {
+                // n.b.: We could also do this after searching, so
+                // that we do not resize if this call to insert is
+                // simply going to update a key in place.  My sense
+                // though is that it's worse to have to search through
+                // buckets to find the right spot twice than to just
+                // resize in this corner case.
+                self.expand();
+            }
+
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
+            let idx = match self.bucket_for_key_with_hash(hash, &k) {
+                TableFull => die!(~"Internal logic error"),
+                FoundEntry(idx) => idx,
+                FoundHole(idx) => {
+                    let v = f(&k);
+                    self.buckets[idx] = Some(Bucket{hash: hash, key: k,
+                                         value: v});
+                    self.size += 1;
+                    idx
+                },
+            };
+
+            self.value_for_bucket(idx)
         }
 
         fn consume(&mut self, f: fn(K, V)) {
@@ -521,7 +572,7 @@ mod test_map {
     use uint;
 
     #[test]
-    pub fn inserts() {
+    pub fn test_insert() {
         let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
@@ -530,7 +581,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn overwrite() {
+    pub fn test_insert_overwrite() {
         let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert *m.get(&1) == 2;
@@ -539,7 +590,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn conflicts() {
+    pub fn test_insert_conflicts() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
@@ -550,7 +601,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn conflict_remove() {
+    pub fn test_conflict_remove() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
@@ -561,7 +612,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn empty() {
+    pub fn test_is_empty() {
         let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert !m.is_empty();
@@ -570,7 +621,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn pops() {
+    pub fn test_pop() {
         let mut m = LinearMap::new();
         m.insert(1, 2);
         assert m.pop(&1) == Some(2);
@@ -578,7 +629,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn swaps() {
+    pub fn test_swap() {
         let mut m = LinearMap::new();
         assert m.swap(1, 2) == None;
         assert m.swap(1, 3) == Some(2);
@@ -586,7 +637,21 @@ mod test_map {
     }
 
     #[test]
-    pub fn consumes() {
+    pub fn test_find_or_insert() {
+        let mut m = LinearMap::new::<int, int>();
+        assert m.find_or_insert(1, 2) == &2;
+        assert m.find_or_insert(1, 3) == &2;
+    }
+
+    #[test]
+    pub fn test_find_or_insert_with() {
+        let mut m = LinearMap::new::<int, int>();
+        assert m.find_or_insert_with(1, |_| 2) == &2;
+        assert m.find_or_insert_with(1, |_| 3) == &2;
+    }
+
+    #[test]
+    pub fn test_consume() {
         let mut m = LinearMap::new();
         assert m.insert(1, 2);
         assert m.insert(2, 3);
@@ -601,7 +666,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn iterate() {
+    pub fn test_iterate() {
         let mut m = linear::linear_map_with_capacity(4);
         for uint::range(0, 32) |i| {
             assert m.insert(i, i*2);
@@ -615,7 +680,7 @@ mod test_map {
     }
 
     #[test]
-    pub fn find() {
+    pub fn test_find() {
         let mut m = LinearMap::new();
         assert m.find(&1).is_none();
         m.insert(1, 2);
