@@ -178,10 +178,10 @@ fn run(repl: Repl, input: ~str) -> Repl {
         ast::expr_call(_, exprs, _) => {
             match exprs[0].node {
                 ast::expr_block(blk) => @blk,
-                _ => die!()
+                _ => fail!()
             }
         }
-        _ => die!()
+        _ => fail!()
     };
     debug!("recording input into repl history");
     record(repl, blk, sess.parse_sess.interner)
@@ -320,7 +320,7 @@ fn run_cmd(repl: &mut Repl, _in: io::Reader, _out: io::Writer,
             let mut end_multiline = false;
             while (!end_multiline) {
                 match get_line(~"rusti| ") {
-                    None => die!(~"unterminated multiline command :{ .. :}"),
+                    None => fail!(~"unterminated multiline command :{ .. :}"),
                     Some(line) => {
                         if str::trim(line) == ~":}" {
                             end_multiline = true;

@@ -35,14 +35,14 @@ pub fn main() {
         assert false;
     }
     match do vec::all(v) |e| { float::is_negative(*e) } {
-        true => { die!(~"incorrect answer."); }
+        true => { fail!(~"incorrect answer."); }
         false => { }
     }
     match 3 {
       _ if do vec::any(v) |e| { float::is_negative(*e) } => {
       }
       _ => {
-        die!(~"wrong answer.");
+        fail!(~"wrong answer.");
       }
     }
 

@@ -42,7 +42,7 @@ fn shuffled<T: copy>(r : rand::rng, v : ~[T]) -> ~[T] {
 }
 
 // sample from a population without replacement
-//fn sample<T>(r : rand::rng, pop : ~[T], k : uint) -> ~[T] { die!() }
+//fn sample<T>(r : rand::rng, pop : ~[T], k : uint) -> ~[T] { fail!() }
 
 // Two ways to make a weighted choice.
 // * weighted_choice is O(number of choices) time

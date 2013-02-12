@@ -204,7 +204,7 @@ pub fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         };
         if vec::len(*ts) != vec::len(*bounds) {
             // Fail earlier to make debugging easier
-            die!(fmt!("internal error: in kind::check_expr, length \
+            fail!(fmt!("internal error: in kind::check_expr, length \
                        mismatch between actual and declared bounds: actual = \
                         %s (%u tys), declared = %? (%u tys)",
                       tys_to_str(cx.tcx, *ts), ts.len(),

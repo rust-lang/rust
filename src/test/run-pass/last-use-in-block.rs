@@ -15,7 +15,7 @@ fn lp<T>(s: ~str, f: fn(~str) -> T) -> T {
         let r = f(s);
         return (move r);
     }
-    die!();
+    fail!();
 }
 
 fn apply<T>(s: ~str, f: fn(~str) -> T) -> T {

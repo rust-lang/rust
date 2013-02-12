@@ -2538,7 +2538,7 @@ pub impl Parser {
                           _ => None
                         }
                       }
-                      _ => die!()
+                      _ => fail!()
                     };
 
                     match maybe_bound {
@@ -3907,7 +3907,7 @@ pub impl Parser {
             let metadata = self.parse_optional_meta();
             view_item_use(ident, metadata, self.get_id())
         } else {
-            die!();
+            fail!();
         };
         self.expect(token::SEMI);
         @ast::view_item { node: node,

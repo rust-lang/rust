@@ -323,7 +323,7 @@ pub fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode)
         ForbidDuplicateModules | ForbidDuplicateTypes |
         ForbidDuplicateTypesAndValues => TypeNS,
         ForbidDuplicateValues => ValueNS,
-        OverwriteDuplicates => die!(~"OverwriteDuplicates has no namespace")
+        OverwriteDuplicates => fail!(~"OverwriteDuplicates has no namespace")
     }
 }
 
@@ -618,7 +618,7 @@ pub impl NameBindings {
     fn get_module(@mut self) -> @Module {
         match self.get_module_if_available() {
             None => {
-                die!(~"get_module called on a node with no module \
+                fail!(~"get_module called on a node with no module \
                        definition!")
             }
             Some(module_def) => module_def
@@ -1337,7 +1337,7 @@ pub impl Resolver {
             }
 
             item_mac(*) => {
-                die!(~"item macros unimplemented")
+                fail!(~"item macros unimplemented")
             }
         }
     }
@@ -1599,7 +1599,7 @@ pub impl Resolver {
                     match existing_module.parent_link {
                       NoParentLink |
                       BlockParentLink(*) => {
-                        die!(~"can't happen");
+                        fail!(~"can't happen");
                       }
                       ModuleParentLink(parent_module, ident) => {
                         let name_bindings = parent_module.children.get(
@@ -1666,7 +1666,7 @@ pub impl Resolver {
           def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
           def_use(*) | def_upvar(*) | def_region(*) |
           def_typaram_binder(*) | def_label(*) | def_self_ty(*) => {
-            die!(fmt!("didn't expect `%?`", def));
+            fail!(fmt!("didn't expect `%?`", def));
           }
         }
     }
@@ -2254,7 +2254,7 @@ pub impl Resolver {
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
-                die!(~"value result should be known at this point");
+                fail!(~"value result should be known at this point");
             }
         }
         match type_result {
@@ -2264,7 +2264,7 @@ pub impl Resolver {
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
-                die!(~"type result should be known at this point");
+                fail!(~"type result should be known at this point");
             }
         }
 
@@ -2417,7 +2417,7 @@ pub impl Resolver {
                         binding");
             }
             UnknownResult => {
-                die!(~"module result should be known at this point");
+                fail!(~"module result should be known at this point");
             }
         }
 
@@ -3033,7 +3033,7 @@ pub impl Resolver {
                 allowable_namespaces = namespaces;
             }
             GlobImport => {
-                die!(~"found `import *`, which is invalid");
+                fail!(~"found `import *`, which is invalid");
             }
         }
 
@@ -3153,7 +3153,7 @@ pub impl Resolver {
         // Otherwise, proceed and write in the bindings.
         match module_.import_resolutions.find(&target_name) {
             None => {
-                die!(~"(resolving one-level renaming import) reduced graph \
+                fail!(~"(resolving one-level renaming import) reduced graph \
                       construction or glob importing should have created the \
                       import resolution name by now");
             }
@@ -3769,7 +3769,7 @@ pub impl Resolver {
             }
 
           item_mac(*) => {
-            die!(~"item macros unimplemented")
+            fail!(~"item macros unimplemented")
           }
         }
 
@@ -4471,8 +4471,8 @@ pub impl Resolver {
             Success(target) => {
                 match target.bindings.value_def {
                     None => {
-                        die!(~"resolved name in the value namespace to a set \
-                              of name bindings with no def?!");
+                        fail!(~"resolved name in the value namespace to a \
+                              set of name bindings with no def?!");
                     }
                     Some(def) => {
                         match def.def {
@@ -4491,7 +4491,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                die!(~"unexpected indeterminate result");
+                fail!(~"unexpected indeterminate result");
             }
 
             Failed => {
@@ -4652,7 +4652,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                die!(~"indeterminate unexpected");
+                fail!(~"indeterminate unexpected");
             }
 
             Success(resulting_module) => {
@@ -4699,7 +4699,7 @@ pub impl Resolver {
             }
 
             Indeterminate => {
-                die!(~"indeterminate unexpected");
+                fail!(~"indeterminate unexpected");
             }
 
             Success(resulting_module) => {
@@ -4777,7 +4777,7 @@ pub impl Resolver {
                 }
             }
             Indeterminate => {
-                die!(~"unexpected indeterminate result");
+                fail!(~"unexpected indeterminate result");
             }
             Failed => {
                 return None;

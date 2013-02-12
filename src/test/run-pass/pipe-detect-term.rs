@@ -33,7 +33,7 @@ pub fn main() {
     
     pipes::spawn_service(oneshot::init, |p| { 
         match try_recv(move p) {
-          Some(*) => { die!() }
+          Some(*) => { fail!() }
           None => { }
         }
     });
@@ -48,7 +48,7 @@ fn failtest() {
     let (c, p) = oneshot::init();
 
     do task::spawn_with(move c) |_c| { 
-        die!();
+        fail!();
     }
 
     error!("%?", recv(move p));

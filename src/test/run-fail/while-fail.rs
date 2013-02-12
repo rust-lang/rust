@@ -10,5 +10,5 @@
 
 // error-pattern:giraffe
 fn main() {
-    die!({ while true { die!(~"giraffe")}; ~"clandestine" });
+    fail!({ while true { fail!(~"giraffe")}; ~"clandestine" });
 }

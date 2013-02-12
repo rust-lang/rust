@@ -12,7 +12,7 @@
 fn id(x: bool) -> bool { x }
 
 fn call_id() {
-    let c = move die!();
+    let c = move fail!();
     id(c); //~ WARNING unreachable statement
 }
 

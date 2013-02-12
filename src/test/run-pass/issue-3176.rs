@@ -19,7 +19,7 @@ pub fn main() {
         do task::spawn |move p2| {
             p2.recv();
             error!("sibling fails");
-            die!();
+            fail!();
         }   
         let (p3,c3) = pipes::stream();
         c.send(move c3);

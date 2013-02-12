@@ -295,7 +295,7 @@ pub fn load_link(mis: ~[@ast::meta_item]) -> (Option<~str>,
                     _ => { }
                 }
             }
-            _ => die!(~"load_link: meta items must be name-values")
+            _ => fail!(~"load_link: meta items must be name-values")
         }
     }
     (name, vers, uuid)
@@ -332,7 +332,7 @@ pub fn load_crate(filename: &Path) -> Option<Crate> {
                 }
             }
             _ => {
-                die!(~"crate attributes may not contain " +
+                fail!(~"crate attributes may not contain " +
                      ~"meta_words");
             }
         }
@@ -435,7 +435,7 @@ pub fn rest(s: ~str, start: uint) -> ~str {
 pub fn need_dir(s: &Path) {
     if os::path_is_dir(s) { return; }
     if !os::make_dir(s, 493_i32 /* oct: 755 */) {
-        die!(fmt!("can't make_dir %s", s.to_str()));
+        fail!(fmt!("can't make_dir %s", s.to_str()));
     }
 }
 
@@ -453,14 +453,14 @@ pub fn valid_pkg_name(s: &str) -> bool {
 
 pub fn parse_source(name: ~str, j: &json::Json) -> @Source {
     if !valid_pkg_name(name) {
-        die!(fmt!("'%s' is an invalid source name", name));
+        fail!(fmt!("'%s' is an invalid source name", name));
     }
 
     match *j {
         json::Object(ref j) => {
             let mut url = match j.find(&~"url") {
                 Some(&json::String(u)) => copy u,
-                _ => die!(~"needed 'url' field in source")
+                _ => fail!(~"needed 'url' field in source")
             };
             let method = match j.find(&~"method") {
                 Some(&json::String(u)) => copy u,
@@ -485,7 +485,7 @@ pub fn parse_source(name: ~str, j: &json::Json) -> @Source {
                 mut keyfp: keyfp,
                 packages: DVec() };
         }
-        _ => die!(~"needed dict value in source")
+        _ => fail!(~"needed dict value in source")
     };
 }
 
@@ -500,8 +500,8 @@ pub fn try_parse_sources(filename: &Path,
                 debug!("source: %s", *k);
             }
         }
-        Ok(_) => die!(~"malformed sources.json"),
-        Err(e) => die!(fmt!("%s:%s", filename.to_str(), e.to_str()))
+        Ok(_) => fail!(~"malformed sources.json"),
+        Err(e) => fail!(fmt!("%s:%s", filename.to_str(), e.to_str()))
     }
 }
 
@@ -662,7 +662,7 @@ pub fn build_cargo_options(argv: ~[~str]) -> Options {
     let matches = &match getopts::getopts(argv, opts()) {
         result::Ok(m) => m,
         result::Err(f) => {
-            die!(fmt!("%s", getopts::fail_str(f)));
+            fail!(fmt!("%s", getopts::fail_str(f)));
         }
     };
 
@@ -675,10 +675,10 @@ pub fn build_cargo_options(argv: ~[~str]) -> Options {
     let is_install = len > 1u && matches.free[1] == ~"install";
     let is_uninstall = len > 1u && matches.free[1] == ~"uninstall";
 
-    if G && g { die!(~"-G and -g both provided"); }
+    if G && g { fail!(~"-G and -g both provided"); }
 
     if !is_install && !is_uninstall && (g || G) {
-        die!(~"-g and -G are only valid for `install` and `uninstall|rm`");
+        fail!(~"-g and -G are only valid for `install` and `uninstall|rm`");
     }
 
     let mode =
@@ -845,7 +845,7 @@ pub fn install_source(c: &mut Cargo, path: &Path) {
     }
 
     if vec::is_empty(cratefiles) {
-        die!(~"this doesn't look like a rust package (no .rc files)");
+        fail!(~"this doesn't look like a rust package (no .rc files)");
     }
 
     for cratefiles.each |cf| {
@@ -889,7 +889,7 @@ pub fn install_curl(c: &mut Cargo, wd: &Path, url: ~str) {
     let p = run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o",
                                          tarpath.to_str(), url]);
     if p.status != 0 {
-        die!(fmt!("fetch of %s failed: %s", url, p.err));
+        fail!(fmt!("fetch of %s failed: %s", url, p.err));
     }
     run::run_program(~"tar", ~[~"-x", ~"--strip-components=1",
                                ~"-C", wd.to_str(),
@@ -1123,7 +1123,7 @@ pub fn install_query(c: &mut Cargo, wd: &Path, target: ~str) {
 pub fn get_temp_workdir(c: &Cargo) -> Path {
     match tempfile::mkdtemp(&c.workdir, "cargo") {
       Some(wd) => wd,
-      None => die!(fmt!("needed temp dir: %s",
+      None => fail!(fmt!("needed temp dir: %s",
                         c.workdir.to_str()))
     }
 }
@@ -1138,7 +1138,7 @@ pub fn cmd_install(c: &mut Cargo) {
                                                    wd.to_str()]);
 
             if status != 0 {
-                die!(fmt!("could not copy directory: %s", cwd.to_str()));
+                fail!(fmt!("could not copy directory: %s", cwd.to_str()));
             }
 
             install_source(c, &wd);

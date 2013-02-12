@@ -326,7 +326,7 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
 
         let killed = rustrt::task_wait_event(this, &mut event);
         if killed && !task::failing() {
-            die!(~"killed")
+            fail!(~"killed")
         }
         event
     }
@@ -402,7 +402,7 @@ pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
             //unsafe { forget(p); }
             return true;
         }
-        Full => die!(~"duplicate send"),
+        Full => fail!(~"duplicate send"),
         Blocked => {
             debug!("waking up task for %?", p_);
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
@@ -520,7 +520,7 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
             debug!("woke up, p.state = %?", copy p.header.state);
           }
           Blocked => if first {
-            die!(~"blocking on already blocked packet")
+            fail!(~"blocking on already blocked packet")
           },
           Full => {
             let mut payload = None;
@@ -556,7 +556,7 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
 pub pure fn peek<T: Owned, Tb: Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     match unsafe {(*p.header()).state} {
       Empty | Terminated => false,
-      Blocked => die!(~"peeking on blocked packet"),
+      Blocked => fail!(~"peeking on blocked packet"),
       Full => true
     }
 }
@@ -589,7 +589,7 @@ fn sender_terminate<T: Owned>(p: *Packet<T>) {
       }
       Full => {
         // This is impossible
-        die!(~"you dun goofed")
+        fail!(~"you dun goofed")
       }
       Terminated => {
         assert p.header.blocked_task.is_null();
@@ -652,7 +652,7 @@ fn wait_many<T: Selectable>(pkts: &[T]) -> uint {
                 (*p).state = old;
                 break;
               }
-              Blocked => die!(~"blocking on blocked packet"),
+              Blocked => fail!(~"blocking on blocked packet"),
               Empty => ()
             }
         }
@@ -725,7 +725,7 @@ pub fn select2<A: Owned, Ab: Owned, B: Owned, Bb: Owned>(
     match i {
       0 => Left((try_recv(move a), move b)),
       1 => Right((move a, try_recv(move b))),
-      _ => die!(~"select2 return an invalid packet")
+      _ => fail!(~"select2 return an invalid packet")
     }
 }
 
@@ -749,7 +749,7 @@ pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
     match wait_many([a.header(), b.header()]) {
       0 => Left(()),
       1 => Right(()),
-      _ => die!(~"wait returned unexpected index")
+      _ => fail!(~"wait returned unexpected index")
     }
 }
 
@@ -827,7 +827,7 @@ impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
             //forget(packet);
             header
           },
-          None => die!(~"packet already consumed")
+          None => fail!(~"packet already consumed")
         }
     }
 
@@ -893,7 +893,7 @@ impl<T: Owned, Tbuffer: Owned> RecvPacketBuffered<T, Tbuffer> : Selectable {
             //forget(packet);
             header
           },
-          None => die!(~"packet already consumed")
+          None => fail!(~"packet already consumed")
         }
     }
 }
@@ -1089,7 +1089,7 @@ impl<T: Owned> Port<T>: Peekable<T> {
             endp <-> self.endp;
             let peek = match &endp {
               &Some(ref endp) => pipes::peek(endp),
-              &None => die!(~"peeking empty stream")
+              &None => fail!(~"peeking empty stream")
             };
             self.endp <-> endp;
             peek
@@ -1102,7 +1102,7 @@ impl<T: Owned> Port<T>: Selectable {
         unsafe {
             match self.endp {
               Some(ref endp) => endp.header(),
-              None => die!(~"peeking empty stream")
+              None => fail!(~"peeking empty stream")
             }
         }
     }
@@ -1319,7 +1319,7 @@ pub mod test {
         c1.send(~"abc");
 
         match (move p1, move p2).select() {
-          Right(_) => die!(),
+          Right(_) => fail!(),
           _ => ()
         }
 
