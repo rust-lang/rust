@@ -15,7 +15,7 @@ impl E {
     fn method(&self) {
         match *self {
             V => {}
-            VV(*) => die!()
+            VV(*) => fail!()
         }
     }
 }

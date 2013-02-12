@@ -13,5 +13,5 @@ pub fn main() {
 }
 
 fn f(i: ~int) -> ~int {
-    die!();
+    fail!();
 }

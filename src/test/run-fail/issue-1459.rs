@@ -10,5 +10,5 @@
 
 // error-pattern:roflcopter
 fn main() {
-    log (die!(~"roflcopter"), 2);
+    log (fail!(~"roflcopter"), 2);
 }

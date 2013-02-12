@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn fold_local() -> @~[int]{
-    die!();
+    fail!();
 }
 
 fn main() {

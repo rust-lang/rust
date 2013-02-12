@@ -98,7 +98,7 @@ pub fn of_str(str: @~str) -> Rope {
  */
 pub fn of_substr(str: @~str, byte_offset: uint, byte_len: uint) -> Rope {
     if byte_len == 0u { return node::Empty; }
-    if byte_offset + byte_len  > str::len(*str) { die!(); }
+    if byte_offset + byte_len  > str::len(*str) { fail!(); }
     return node::Content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -244,9 +244,9 @@ Section: Transforming ropes
 pub fn sub_chars(rope: Rope, char_offset: uint, char_len: uint) -> Rope {
     if char_len == 0u { return node::Empty; }
     match (rope) {
-      node::Empty => die!(),
+      node::Empty => fail!(),
       node::Content(node) => if char_len > node::char_len(node) {
-        die!()
+        fail!()
       } else {
         return node::Content(node::sub_chars(node, char_offset, char_len))
       }
@@ -269,9 +269,9 @@ pub fn sub_chars(rope: Rope, char_offset: uint, char_len: uint) -> Rope {
 pub fn sub_bytes(rope: Rope, byte_offset: uint, byte_len: uint) -> Rope {
     if byte_len == 0u { return node::Empty; }
     match (rope) {
-      node::Empty => die!(),
+      node::Empty => fail!(),
       node::Content(node) =>if byte_len > node::byte_len(node) {
-        die!()
+        fail!()
       } else {
         return node::Content(node::sub_bytes(node, byte_offset, byte_len))
       }
@@ -548,7 +548,7 @@ pub pure fn byte_len(rope: Rope) -> uint {
  */
 pub fn char_at(rope: Rope, pos: uint) -> char {
    match (rope) {
-      node::Empty => die!(),
+      node::Empty => fail!(),
       node::Content(x) => return node::char_at(x, pos)
    }
 }

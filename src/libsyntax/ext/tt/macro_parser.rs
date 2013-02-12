@@ -124,7 +124,7 @@ pub type matcher_pos = ~{
 pub fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
     match &mpu {
       &matcher_pos_up(Some(ref mp)) => copy (*mp),
-      _ => die!()
+      _ => fail!()
     }
 }
 
@@ -361,7 +361,7 @@ pub fn parse(sess: parse_sess,
                         fmt!("%s ('%s')", *sess.interner.get(name),
                              *sess.interner.get(bind))
                       }
-                      _ => die!()
+                      _ => fail!()
                     } }), ~" or ");
                 return error(sp, fmt!(
                     "Local ambiguity: multiple parsing options: \
@@ -386,7 +386,7 @@ pub fn parse(sess: parse_sess,
                         parse_nt(rust_parser, *sess.interner.get(name))));
                     ei.idx += 1u;
                   }
-                  _ => die!()
+                  _ => fail!()
                 }
                 cur_eis.push(move ei);
 

@@ -22,7 +22,7 @@ fn main() {
         arr += ~[@~"key stuff"];
         map.insert(copy arr, arr + ~[@~"value stuff"]);
         if arr.len() == 5 {
-            die!();
+            fail!();
         }
     }
 }

@@ -383,7 +383,7 @@ pub fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
                     llfnty = T_ptr(struct_elt(llfnty, 0));
                     new_llval = PointerCast(callee.bcx, fn_data.llfn, llfnty);
                 }
-                _ => die!()
+                _ => fail!()
             }
             Callee { bcx: callee.bcx, data: Fn(FnData { llfn: new_llval }) }
         },

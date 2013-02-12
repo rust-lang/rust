@@ -19,18 +19,18 @@ const X: Foo = Baz;
 pub fn main() {
     match X {
         Baz => {}
-        _ => die!()
+        _ => fail!()
     }
     match Y {
         Bar(s) => assert(s == 2654435769),
-        _ => die!()
+        _ => fail!()
     }
     match Z {
         Quux(d,h) => {
             assert(d == 0x123456789abcdef0);
             assert(h == 0x1234);
         }
-        _ => die!()
+        _ => fail!()
     }
 }
 

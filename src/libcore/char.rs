@@ -150,7 +150,7 @@ pub pure fn is_digit_radix(c: char, radix: uint) -> bool {
 #[inline]
 pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
     if radix > 36 {
-        die!(fmt!("to_digit: radix %? is to high (maximum 36)", radix));
+        fail!(fmt!("to_digit: radix %? is to high (maximum 36)", radix));
     }
     let val = match c {
       '0' .. '9' => c as uint - ('0' as uint),
@@ -173,7 +173,7 @@ pub pure fn to_digit(c: char, radix: uint) -> Option<uint> {
 #[inline]
 pub pure fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
-        die!(fmt!("from_digit: radix %? is to high (maximum 36)", num));
+        fail!(fmt!("from_digit: radix %? is to high (maximum 36)", num));
     }
     if num < radix {
         if num < 10 {

@@ -18,7 +18,7 @@ fn foo(x: uint) {
     if even(x) {
         log(debug, x);
     } else {
-        die!();
+        fail!();
     }
 }
 

@@ -132,7 +132,8 @@ pub pure fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
     //! Retrieves the value in the left branch. Fails if the either is Right.
 
     match move eith {
-        Left(move x) => move x, Right(_) => die!(~"either::unwrap_left Right")
+        Left(move x) => move x,
+        Right(_) => fail!(~"either::unwrap_left Right")
     }
 }
 
@@ -141,7 +142,8 @@ pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     //! Retrieves the value in the right branch. Fails if the either is Left.
 
     match move eith {
-        Right(move x) => move x, Left(_) => die!(~"either::unwrap_right Left")
+        Right(move x) => move x,
+        Left(_) => fail!(~"either::unwrap_right Left")
     }
 }
 

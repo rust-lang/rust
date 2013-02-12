@@ -19,6 +19,6 @@ pub fn main() {
     let x = Some(p);
     match move x {
         Some(move z) => { dispose(z); },
-        None => die!()
+        None => fail!()
     }
 }

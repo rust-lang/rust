@@ -113,7 +113,7 @@ fn run_weak_task_service(port: Port<ServiceMsg>) {
                         // nobody will receive this
                         shutdown_chan.send(());
                     }
-                    None => die!()
+                    None => fail!()
                 }
             }
             Shutdown => break
@@ -196,7 +196,7 @@ fn test_select_stream_and_oneshot() {
             do weaken_task |signal| {
                 match select2i(&port, &signal) {
                     Left(*) => (),
-                    Right(*) => die!()
+                    Right(*) => fail!()
                 }
             }
         }

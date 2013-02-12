@@ -11,6 +11,6 @@
 
 
 pub fn main() {
-    let i: int = if false { die!() } else { 5 };
+    let i: int = if false { fail!() } else { 5 };
     log(debug, i);
 }

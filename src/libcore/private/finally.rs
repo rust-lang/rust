@@ -93,7 +93,7 @@ fn test_fail() {
     let mut i = 0;
     do (|| {
         i = 10;
-        die!();
+        fail!();
     }).finally {
         assert failing();
         assert i == 10;

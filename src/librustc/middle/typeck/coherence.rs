@@ -135,7 +135,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
                     return Some(def_id);
                 }
                 _ => {
-                    die!(~"get_base_type() returned a type that wasn't an \
+                    fail!(~"get_base_type() returned a type that wasn't an \
                            enum, class, or trait");
                 }
             }

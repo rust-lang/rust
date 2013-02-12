@@ -209,7 +209,7 @@ pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
                         a_expr = e.get();
                     }
                     UnitLikeStructLit(_) => {
-                        die!(~"UnitLikeStructLit should have been handled \
+                        fail!(~"UnitLikeStructLit should have been handled \
                                above")
                     }
                 }
@@ -222,7 +222,7 @@ pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
                         b_expr = e.get();
                     }
                     UnitLikeStructLit(_) => {
-                        die!(~"UnitLikeStructLit should have been handled \
+                        fail!(~"UnitLikeStructLit should have been handled \
                                above")
                     }
                 }

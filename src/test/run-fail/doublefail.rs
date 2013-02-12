@@ -10,6 +10,6 @@
 
 //error-pattern:One
 fn main() {
-    die!(~"One");
-    die!(~"Two");
+    fail!(~"One");
+    fail!(~"Two");
 }

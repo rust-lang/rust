@@ -16,7 +16,7 @@
 extern mod core;
 
 fn last<T>(v: ~[const &T]) -> core::Option<T> {
-    die!();
+    fail!();
 }
 
 fn main() {

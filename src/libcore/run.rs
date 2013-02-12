@@ -180,7 +180,7 @@ fn with_dirp<T>(d: &Option<~str>,
 pub fn run_program(prog: &str, args: &[~str]) -> int {
     let pid = spawn_process(prog, args, &None, &None,
                             0i32, 0i32, 0i32);
-    if pid == -1 as pid_t { die!(); }
+    if pid == -1 as pid_t { fail!(); }
     return waitpid(pid);
 }
 
@@ -210,7 +210,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
                       pipe_err.out);
 
     unsafe {
-        if pid == -1 as pid_t { die!(); }
+        if pid == -1 as pid_t { fail!(); }
         libc::close(pipe_input.in);
         libc::close(pipe_output.out);
         libc::close(pipe_err.out);
@@ -330,7 +330,7 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
             os::close(pipe_in.out);
             os::close(pipe_out.in);
             os::close(pipe_err.in);
-            die!();
+            fail!();
         }
 
         os::close(pipe_in.out);
@@ -364,7 +364,7 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
                     errs = move s;
                 }
                 (n, _) => {
-                    die!(fmt!("program_output received an unexpected file \
+                    fail!(fmt!("program_output received an unexpected file \
                                number: %u", n));
                 }
             };
@@ -478,7 +478,7 @@ mod tests {
         os::close(pipe_out.out);
         os::close(pipe_err.out);
 
-        if pid == -1i32 { die!(); }
+        if pid == -1i32 { fail!(); }
         let expected = ~"test";
         writeclose(pipe_in.out, copy expected);
         let actual = readclose(pipe_out.in);

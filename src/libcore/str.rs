@@ -3023,7 +3023,7 @@ mod tests {
     #[should_fail]
     fn test_as_bytes_fail() {
         // Don't double free
-        as_bytes::<()>(&~"", |_bytes| die!() );
+        as_bytes::<()>(&~"", |_bytes| fail!() );
     }
 
     #[test]
@@ -3123,12 +3123,12 @@ mod tests {
               0 => assert ch == 'x',
               1 => assert ch == '\u03c0',
               2 => assert ch == 'y',
-              _ => die!(~"test_chars_each failed")
+              _ => fail!(~"test_chars_each failed")
             }
             i += 1;
         }
 
-        chars_each(~"", |_ch| die!() ); // should not fail
+        chars_each(~"", |_ch| fail!() ); // should not fail
     }
 
     #[test]
@@ -3140,7 +3140,7 @@ mod tests {
               0 => assert bb == 'x' as u8,
               1 => assert bb == 'y' as u8,
               2 => assert bb == 'z' as u8,
-              _ => die!(~"test_bytes_each failed")
+              _ => fail!(~"test_bytes_each failed")
             }
             i += 1;
         }
@@ -3202,7 +3202,7 @@ mod tests {
             ii += 1;
         }
 
-        words_each(~"", |_x| die!()); // should not fail
+        words_each(~"", |_x| fail!()); // should not fail
     }
 
     #[test]
