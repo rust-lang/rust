@@ -166,8 +166,9 @@ pub fn get_item_attrs(cstore: @mut cstore::CStore,
     decoder::get_item_attrs(cdata, def_id.node, f)
 }
 
-pub fn get_struct_fields(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::field_ty] {
-    let cstore = tcx.cstore;
+pub fn get_struct_fields(cstore: @mut cstore::CStore,
+                         def: ast::def_id)
+                      -> ~[ty::field_ty] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::get_struct_fields(cstore.intr, cdata, def.node)
 }
