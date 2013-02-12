@@ -73,6 +73,8 @@ private:
     bool killed;
 
     rust_signal *pump_signal;
+    randctx rctx;
+    uint32_t idle_randcnt;
 
     void prepare_c_stack(rust_task *task);
     void unprepare_c_stack();
@@ -102,7 +104,6 @@ public:
     size_t min_stack_size;
     memory_region local_region;
 
-    randctx rctx;
     const char *const name; // Used for debugging
 
     // Only a pointer to 'name' is kept, so it must live as long as this
@@ -119,6 +120,7 @@ public:
 
     void on_pump_loop(rust_signal *signal);
     rust_sched_loop_state run_single_turn();
+    void idle();
 
     void log_state();
 
