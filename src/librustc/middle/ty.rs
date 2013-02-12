@@ -4012,7 +4012,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
     }
         }
   else {
-        return csearch::get_struct_fields(cx, did);
+        return csearch::get_struct_fields(cx.sess.cstore, did);
     }
 }
 
