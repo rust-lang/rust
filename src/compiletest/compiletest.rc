@@ -41,6 +41,7 @@ use common::mode_run_pass;
 use common::mode_run_fail;
 use common::mode_compile_fail;
 use common::mode_pretty;
+use common::mode_debug_info;
 use common::mode;
 use util::logv;
 
@@ -131,6 +132,7 @@ pub fn str_mode(s: ~str) -> mode {
       ~"run-fail" => mode_run_fail,
       ~"run-pass" => mode_run_pass,
       ~"pretty" => mode_pretty,
+      ~"debug-info" => mode_debug_info,
       _ => die!(~"invalid mode")
     }
 }
@@ -140,7 +142,8 @@ pub fn mode_str(mode: mode) -> ~str {
       mode_compile_fail => ~"compile-fail",
       mode_run_fail => ~"run-fail",
       mode_run_pass => ~"run-pass",
-      mode_pretty => ~"pretty"
+      mode_pretty => ~"pretty",
+      mode_debug_info => ~"debug-info",
     }
 }
 

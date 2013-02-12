@@ -1,5 +1,5 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
+// Copyright 2012-2013 The Rust Project Developers. See the
+// COPYRIGHT file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -39,11 +39,13 @@ pub fn run(config: config, testfile: ~str) {
     let testfile = Path(testfile);
     debug!("running %s", testfile.to_str());
     let props = load_props(&testfile);
+    debug!("loaded props");
     match config.mode {
       mode_compile_fail => run_cfail_test(config, props, &testfile),
       mode_run_fail => run_rfail_test(config, props, &testfile),
       mode_run_pass => run_rpass_test(config, props, &testfile),
-      mode_pretty => run_pretty_test(config, props, &testfile)
+      mode_pretty => run_pretty_test(config, props, &testfile),
+      mode_debug_info => run_debuginfo_test(config, props, &testfile)
     }
 }
 
@@ -221,6 +223,55 @@ actual:\n\
                          aux_output_dir_name(config, testfile).to_str()];
         args += split_maybe_args(config.rustcflags);
         return ProcArgs {prog: prog.to_str(), args: args};
+    }
+}
+
+fn run_debuginfo_test(config: config, props: TestProps, testfile: &Path) {
+    // compile test file (it shoud have 'compile-flags:-g' in the header)
+    let mut ProcRes = compile_test(config, props, testfile);
+    if ProcRes.status != 0 {
+        fatal_ProcRes(~"compilation failed!", ProcRes);
+    }
+
+    // write debugger script
+    let script_str = str::append(str::connect(props.debugger_cmds, "\n"),
+                                 ~"\nquit\n");
+    debug!("script_str = %s", script_str);
+    dump_output_file(config, testfile, script_str, ~"debugger.script");
+
+    // run debugger script with gdb
+    #[cfg(windows)]
+    fn debugger() -> ~str { ~"gdb.exe" }
+    #[cfg(unix)]
+    fn debugger() -> ~str { ~"gdb" }
+    let debugger_script = make_out_name(config, testfile, ~"debugger.script");
+    let debugger_opts = ~[~"-quiet", ~"-batch", ~"-nx",
+                          ~"-command=" + debugger_script.to_str(),
+                          make_exe_name(config, testfile).to_str()];
+    let ProcArgs = ProcArgs {prog: debugger(), args: debugger_opts};
+    ProcRes = compose_and_run(config, testfile, ProcArgs, ~[], ~"", None);
+    if ProcRes.status != 0 {
+        fatal(~"gdb failed to execute");
+    }
+
+    let num_check_lines = vec::len(props.check_lines);
+    if num_check_lines > 0 {
+        // check if each line in props.check_lines appears in the
+        // output (in order)
+        let mut i = 0u;
+        for str::lines(ProcRes.stdout).each |line| {
+            if props.check_lines[i].trim() == line.trim() {
+                i += 1u;
+            }
+            if i == num_check_lines {
+                // all lines checked
+                break;
+            }
+        }
+        if i != num_check_lines {
+            fatal(fmt!("line not found in debugger output: %s",
+                       props.check_lines[i]));
+        }
     }
 }
 

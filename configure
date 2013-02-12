@@ -394,6 +394,7 @@ probe CFG_PDFLATEX         pdflatex
 probe CFG_XETEX            xetex
 probe CFG_LUATEX           luatex
 probe CFG_NODE             nodejs node
+probe CFG_GDB              gdb
 if [ "$CFG_OSTYPE" = "unknown-linux-gnu" ]
 then
     probe CFG_PAXCTL           paxctl /sbin/paxctl
@@ -619,6 +620,7 @@ do
     make_dir $h/test/bench
     make_dir $h/test/perf
     make_dir $h/test/pretty
+    make_dir $h/test/debug-info
     make_dir $h/test/doc-tutorial
     make_dir $h/test/doc-tutorial-ffi
     make_dir $h/test/doc-tutorial-macros
