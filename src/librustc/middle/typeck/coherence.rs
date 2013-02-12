@@ -828,7 +828,7 @@ pub impl CoherenceChecker {
         let implementations = get_impls_for_mod(crate_store,
                                                 module_def_id,
                                                 None);
-        for (*implementations).each |implementation| {
+        for implementations.each |implementation| {
             debug!("coherence: adding impl from external crate: %s",
                    ty::item_path_str(self.crate_context.tcx,
                                      implementation.did));
