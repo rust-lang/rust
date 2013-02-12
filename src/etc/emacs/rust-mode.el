@@ -101,14 +101,7 @@
            (rust-push-context st 'string (current-column) t)
            (setf (rust-state-tokenize st) 'rust-token-string)
            (rust-token-string st))
-      (def ?\' (forward-char)
-           (setf rust-tcat 'atom)
-           (let ((is-escape (eq (char-after) ?\\))
-                 (start (point)))
-             (if (not (rust-eat-until-unescaped ?\'))
-                 'font-lock-warning-face
-               (if (or is-escape (= (point) (+ start 2)))
-                   'font-lock-string-face 'font-lock-warning-face))))
+      (def ?\' (rust-single-quote))
       (def ?/ (forward-char)
            (case (char-after)
              (?/ (end-of-line) 'font-lock-comment-face)
@@ -149,6 +142,23 @@
            (skip-chars-forward rust-operator-chars)
            (setf rust-tcat 'op) nil)
       table)))
+
+(defun rust-single-quote ()
+  (forward-char)
+  (setf rust-tcat 'atom)
+  ; Is this a lifetime?
+  (if (or (looking-at "[a-zA-Z_]$")
+          (looking-at "[a-zA-Z_][^']"))
+      ; If what we see is 'abc, use font-lock-type-face:
+      (progn (rust-eat-re "[a-zA-Z_][a-zA-Z_0-9]*")
+             'font-lock-type-face)
+    ; Otherwise, handle as a character constant:
+    (let ((is-escape (eq (char-after) ?\\))
+          (start (point)))
+      (if (not (rust-eat-until-unescaped ?\'))
+          'font-lock-warning-face
+        (if (or is-escape (= (point) (+ start 2)))
+            'font-lock-string-face 'font-lock-warning-face)))))
 
 (defun rust-token-base (st)
   (funcall (char-table-range rust-char-table (char-after)) st))
