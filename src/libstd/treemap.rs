@@ -576,63 +576,62 @@ pure fn each_reverse<K: Ord, V>(node: &r/Option<~TreeNode<K, V>>,
 }
 
 // Remove left horizontal link by rotating right
-fn skew<K: Ord, V>(mut node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
+fn skew<K: Ord, V>(node: &mut ~TreeNode<K, V>) {
     if node.left.map_default(false, |x| x.level == node.level) {
         let mut save = node.left.swap_unwrap();
         node.left <-> save.right; // save.right now None
-        save.right = Some(node);
-        save
-    } else {
-        node // nothing to do
+        *node <-> save;
+        node.right = Some(save);
     }
 }
 
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
-fn split<K: Ord, V>(mut node: ~TreeNode<K, V>) -> ~TreeNode<K, V> {
+fn split<K: Ord, V>(node: &mut ~TreeNode<K, V>) {
     if node.right.map_default(false,
       |x| x.right.map_default(false, |y| y.level == node.level)) {
         let mut save = node.right.swap_unwrap();
         node.right <-> save.left; // save.left now None
-        save.left = Some(node);
         save.level += 1;
-        save
-    } else {
-        node // nothing to do
+        *node <-> save;
+        node.left = Some(save);
     }
 }
 
 fn insert<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: K,
                      value: V) -> bool {
-    if node.is_none() {
-        *node = Some(~TreeNode::new(key, value));
-        true
-    } else {
-        let mut save = node.swap_unwrap();
+    match *node {
+      Some(ref mut save) => {
         if key < save.key {
             let inserted = insert(&mut save.left, key, value);
-            *node = Some(split(skew(save))); // re-balance, if necessary
+            skew(save);
+            split(save);
             inserted
         } else if save.key < key {
             let inserted = insert(&mut save.right, key, value);
-            *node = Some(split(skew(save))); // re-balance, if necessary
+            skew(save);
+            split(save);
             inserted
         } else {
             save.key = key;
             save.value = value;
-            *node = Some(save);
             false
         }
+      }
+      None => {
+       *node = Some(~TreeNode::new(key, value));
+        true
+      }
     }
 }
 
 fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
-    fn heir_swap<K: Ord, V>(node: &mut TreeNode<K, V>,
+    fn heir_swap<K: Ord, V>(node: &mut ~TreeNode<K, V>,
                             child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
         do child.mutate |mut child| {
             if child.right.is_some() {
-                heir_swap(&mut *node, &mut child.right);
+                heir_swap(node, &mut child.right);
             } else {
                 node.key <-> child.key;
                 node.value <-> child.value;
@@ -641,15 +640,15 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
         }
     }
 
-    if node.is_none() {
+    match *node {
+      None => {
         return false // bottom of tree
-    } else {
-        let mut save = node.swap_unwrap();
-
-        let removed = if save.key < *key {
-            remove(&mut save.right, key)
+      }
+      Some(ref mut save) => {
+        let (removed, this) = if save.key < *key {
+            (remove(&mut save.right, key), false)
         } else if *key < save.key {
-            remove(&mut save.left, key)
+            (remove(&mut save.left, key), false)
         } else {
             if save.left.is_some() {
                 if save.right.is_some() {
@@ -663,15 +662,21 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
                     save.left = Some(left);
                     remove(&mut save.left, key);
                 } else {
-                    save = save.left.swap_unwrap();
+                    *save = save.left.swap_unwrap();
                 }
+                (true, false)
             } else if save.right.is_some() {
-                save = save.right.swap_unwrap();
+                *save = save.right.swap_unwrap();
+                (true, false)
             } else {
-                return true // leaf
+                (true, true)
             }
-            true
         };
+
+        if this {
+            *node = None;
+            return true;
+        }
 
         let left_level = save.left.map_default(0, |x| x.level);
         let right_level = save.right.map_default(0, |x| x.level);
@@ -684,19 +689,28 @@ fn remove<K: Ord, V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
                 do save.right.mutate |mut x| { x.level = save.level; x }
             }
 
-            save = skew(save);
+            skew(save);
 
-            do save.right.mutate |mut right| {
-                right = skew(right);
-                right.right.mutate(skew);
-                right
+            match save.right {
+              Some(ref mut right) => {
+                skew(right);
+                match right.right {
+                  Some(ref mut x) => { skew(x) },
+                  None => ()
+                }
+              }
+              None => ()
             }
-            save = split(save);
-            save.right.mutate(split);
+
+            split(save);
+            match save.right {
+              Some(ref mut x) => { split(x) },
+              None => ()
+            }
         }
 
-        *node = Some(save);
         removed
+      }
     }
 }
 
