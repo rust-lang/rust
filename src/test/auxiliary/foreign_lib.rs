@@ -11,5 +11,5 @@
 #[link(name="foreign_lib", vers="0.0")];
 
 pub extern mod rustrt {
-    pub fn last_os_error() -> ~str;
+    pub fn rust_get_argc() -> libc::c_int;
 }

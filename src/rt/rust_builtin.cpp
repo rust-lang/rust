@@ -52,50 +52,6 @@ timegm(struct tm *tm)
 }
 #endif
 
-
-extern "C" CDECL rust_str*
-last_os_error() {
-    rust_task *task = rust_get_current_task();
-
-    LOG(task, task, "last_os_error()");
-
-#if defined(__WIN32__)
-    LPTSTR buf;
-    DWORD err = GetLastError();
-    DWORD res = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                              FORMAT_MESSAGE_FROM_SYSTEM |
-                              FORMAT_MESSAGE_IGNORE_INSERTS,
-                              NULL, err,
-                              MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                              (LPTSTR) &buf, 0, NULL);
-    if (!res) {
-        task->fail();
-        return NULL;
-    }
-#elif defined(_GNU_SOURCE) && !defined(__ANDROID__)
-    char cbuf[BUF_BYTES];
-    char *buf = strerror_r(errno, cbuf, sizeof(cbuf));
-    if (!buf) {
-        task->fail();
-        return NULL;
-    }
-#else
-    char buf[BUF_BYTES];
-    int err = strerror_r(errno, buf, sizeof(buf));
-    if (err) {
-        task->fail();
-        return NULL;
-    }
-#endif
-
-    rust_str * st = make_str(task->kernel, buf, strlen(buf),
-                             "last_os_error");
-#ifdef __WIN32__
-    LocalFree((HLOCAL)buf);
-#endif
-    return st;
-}
-
 extern "C" CDECL rust_str *
 rust_getcwd() {
     rust_task *task = rust_get_current_task();

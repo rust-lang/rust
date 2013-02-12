@@ -15,5 +15,5 @@
 
 #[crate_type = "lib"];
 extern {
-  fn last_os_error() -> ~str;
+  fn rust_get_argc() -> libc::c_int;
 }

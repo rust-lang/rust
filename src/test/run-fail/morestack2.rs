@@ -18,7 +18,7 @@
 extern mod std;
 
 extern mod rustrt {
-    pub fn last_os_error() -> ~str;
+    pub fn rust_get_argc() -> libc::c_int;
 }
 
 fn getbig_call_c_and_fail(i: int) {
@@ -26,7 +26,7 @@ fn getbig_call_c_and_fail(i: int) {
         getbig_call_c_and_fail(i - 1);
     } else {
         unsafe {
-            rustrt::last_os_error();
+            rustrt::rust_get_argc();
             die!();
         }
     }
