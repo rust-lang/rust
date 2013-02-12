@@ -11,11 +11,11 @@
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 extern {
-    fn last_os_error() -> ~str;
+    fn rust_get_argc() -> libc::c_int;
 }
 
 pub fn main() {
     unsafe {
-        let _ = last_os_error();
+        let _ = rust_get_argc();
     }
 }
