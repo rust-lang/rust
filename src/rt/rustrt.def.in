@@ -14,7 +14,6 @@ rust_gmtime
 rust_localtime
 rust_timegm
 rust_mktime
-last_os_error
 new_task
 precise_time_ns
 rand_free
