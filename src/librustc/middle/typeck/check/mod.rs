@@ -3131,7 +3131,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
 
     // make a vector of booleans initially false, set to true when used
     if tps.len() == 0u { return; }
-    let tps_used = vec::cast_to_mut(vec::from_elem(tps.len(), false));
+    let mut tps_used = vec::from_elem(tps.len(), false);
 
     ty::walk_regions_and_ty(
         ccx.tcx, ty,

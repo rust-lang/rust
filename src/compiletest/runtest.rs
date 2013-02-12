@@ -322,8 +322,8 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
                          ProcRes: ProcRes) {
 
     // true if we found the error in question
-    let found_flags = vec::cast_to_mut(vec::from_elem(
-        vec::len(expected_errors), false));
+    let mut found_flags = vec::from_elem(
+        vec::len(expected_errors), false);
 
     if ProcRes.status == 0 {
         fatal(~"process did not return an error status");
