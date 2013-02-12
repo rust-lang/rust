@@ -307,12 +307,12 @@ pub impl Parser {
     {
         /*
 
-        extern "ABI" [pure|unsafe] fn (S) -> T
-               ^~~~^ ^~~~~~~~~~~~^    ^~^    ^
-                 |     |               |     |
-                 |     |               |   Return type
-                 |     |             Argument types
-                 |     |
+        extern "ABI" [pure|unsafe] fn <'lt> (S) -> T
+               ^~~~^ ^~~~~~~~~~~~^    ^~~~^ ^~^    ^
+                 |     |                |    |     |
+                 |     |                |    |   Return type
+                 |     |                |  Argument types
+                 |     |            Lifetimes
                  |     |
                  |   Purity
                 ABI
@@ -333,12 +333,12 @@ pub impl Parser {
     {
         /*
 
-        (&|~|@) [r/] [pure|unsafe] [once] fn (S) -> T
-        ^~~~~~^ ^~~^ ^~~~~~~~~~~~^ ^~~~~^    ^~^    ^
-           |     |     |             |        |     |
-           |     |     |             |        |   Return type
-           |     |     |             |      Argument types
-           |     |     |             |
+        (&|~|@) [r/] [pure|unsafe] [once] fn <'lt> (S) -> T
+        ^~~~~~^ ^~~^ ^~~~~~~~~~~~^ ^~~~~^    ^~~~^ ^~^    ^
+           |     |     |             |         |    |     |
+           |     |     |             |         |    |   Return type
+           |     |     |             |         |  Argument types
+           |     |     |             |     Lifetimes
            |     |     |          Once-ness (a.k.a., affine)
            |     |   Purity
            | Lifetime bound
@@ -394,12 +394,24 @@ pub impl Parser {
     }
 
     fn parse_ty_fn_decl() -> fn_decl {
-        let inputs = do self.parse_unspanned_seq(
-            token::LPAREN, token::RPAREN,
-            seq_sep_trailing_disallowed(token::COMMA)) |p| {
+        /*
 
-            p.parse_arg_general(false)
-        };
+        (fn) <'lt> (S) -> T
+             ^~~~^ ^~^    ^
+               |    |     |
+               |    |   Return type
+               |  Argument types
+           Lifetimes
+
+        */
+        if self.eat(token::LT) {
+            let _lifetimes = self.parse_lifetimes();
+            self.expect(token::GT);
+        }
+        let inputs = self.parse_unspanned_seq(
+            token::LPAREN, token::RPAREN,
+            seq_sep_trailing_disallowed(token::COMMA),
+            |p| p.parse_arg_general(false));
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ast::fn_decl { inputs: inputs, output: ret_ty, cf: ret_style }
     }
