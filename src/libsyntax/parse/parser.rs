@@ -624,8 +624,13 @@ pub impl Parser {
         sigil: ast::Sigil,
         ctor: &fn(+v: mt) -> ty_) -> ty_
     {
-        // @foo/fn() or @fn() are parsed directly as fn types:
+        // @'foo fn() or @foo/fn() or @fn() are parsed directly as fn types:
         match copy self.token {
+            token::LIFETIME(rname) => {
+                self.bump();
+                return self.parse_ty_closure(Some(sigil), Some(rname));
+            }
+
             token::IDENT(rname, _) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) &&
                     self.token_is_closure_keyword(self.look_ahead(2u))
@@ -648,8 +653,13 @@ pub impl Parser {
     }
 
     fn parse_borrowed_pointee() -> ty_ {
-        // look for `&foo/` and interpret `foo` as the region name:
-        let rname = match copy self.token {
+        // look for `&'lt` or `&foo/` and interpret `foo` as the region name:
+        let rname = match self.token {
+            token::LIFETIME(sid) => {
+                self.bump();
+                Some(sid)
+            }
+
             token::IDENT(sid, _) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) {
                     self.bump(); self.bump();
@@ -658,6 +668,7 @@ pub impl Parser {
                     None
                 }
             }
+
             _ => { None }
         };
 
@@ -890,20 +901,93 @@ pub impl Parser {
             }
         };
 
-        // Parse any type parameters which may appear:
+        // Parse any lifetime or type parameters which may appear:
         let tps = {
-            if self.token == token::LT {
-                self.parse_seq_lt_gt(Some(token::COMMA),
-                                     |p| p.parse_ty(false))
+            if !self.eat(token::LT) {
+                ~[]
             } else {
-                codemap::spanned {node: ~[], span: path.span}
+                // First consume lifetimes.
+                let _lifetimes = self.parse_lifetimes();
+                let result = self.parse_seq_to_gt(
+                    Some(token::COMMA),
+                    |p| p.parse_ty(false));
+                result
             }
         };
 
-        @ast::path { span: mk_sp(lo, tps.span.hi),
+        let hi = self.span.lo;
+
+        @ast::path { span: mk_sp(lo, hi),
                      rp: rp,
-                     types: tps.node,
+                     types: tps,
                      .. *path }
+    }
+
+    fn parse_opt_lifetime() -> Option<ast::Lifetime> {
+        /*!
+         *
+         * Parses 0 or 1 lifetime.
+         */
+
+        match self.token {
+            token::LIFETIME(_) => {
+                Some(self.parse_lifetime())
+            }
+            _ => {
+                None
+            }
+        }
+    }
+
+    fn parse_lifetime() -> ast::Lifetime {
+        /*!
+         *
+         * Parses a single lifetime.
+         */
+
+        match self.token {
+            token::LIFETIME(i) => {
+                self.bump();
+                return ast::Lifetime {
+                    id: self.get_id(),
+                    span: self.span,
+                    ident: i
+                };
+            }
+            _ => {
+                self.fatal(fmt!("Expected a lifetime name"));
+            }
+        }
+    }
+
+    fn parse_lifetimes() -> ~[ast::Lifetime] {
+        /*!
+         *
+         * Parses zero or more comma separated lifetimes.
+         * Expects each lifetime to be followed by either
+         * a comma or `>`.  Used when parsing type parameter
+         * lists, where we expect something like `<'a, 'b, T>`.
+         */
+
+        let mut res = ~[];
+        loop {
+            match self.token {
+                token::LIFETIME(_) => {
+                    res.push(self.parse_lifetime());
+                }
+                _ => {
+                    return res;
+                }
+            }
+
+            match self.token {
+                token::COMMA => { self.bump();}
+                token::GT => { return res; }
+                _ => {
+                    self.fatal(~"expected `,` or `>` after lifetime name");
+                }
+            }
+        }
     }
 
     fn parse_mutability() -> mutability {
@@ -1424,6 +1508,7 @@ pub impl Parser {
               }
               token::AND => {
                 self.bump();
+                let _lt = self.parse_opt_lifetime();
                 let m = self.parse_mutability();
                 let e = self.parse_prefix_expr();
                 hi = e.span.hi;
@@ -2574,7 +2659,10 @@ pub impl Parser {
 
     fn parse_ty_params() -> ~[ty_param] {
         if self.eat(token::LT) {
-            self.parse_seq_to_gt(Some(token::COMMA), |p| p.parse_ty_param())
+            let _lifetimes = self.parse_lifetimes();
+            self.parse_seq_to_gt(
+                Some(token::COMMA),
+                |p| p.parse_ty_param())
         } else { ~[] }
     }
 

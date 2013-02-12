@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Clam { chowder: &int }
+struct Clam<'self> {
+    chowder: &'self int
+}
 
 trait get_chowder {
     fn get_chowder() -> &self/int;
