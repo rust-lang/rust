@@ -1189,87 +1189,88 @@ mod test {
             self.add_to_log (CallToOther)
         }
     }
-    
+
     pub impl Encoder for TestEncoder {
         fn emit_nil(&self) { self.add_to_log(CallToEmitNil) }
-        
+
         fn emit_uint(&self, +v: uint) {self.add_to_log(CallToEmitUint(v)); }
         fn emit_u64(&self, +_v: u64) { self.add_unknown_to_log(); }
-    fn emit_u32(&self, +_v: u32) { self.add_unknown_to_log(); }
-    fn emit_u16(&self, +_v: u16) { self.add_unknown_to_log(); }
-    fn emit_u8(&self, +_v: u8)   { self.add_unknown_to_log(); }
+        fn emit_u32(&self, +_v: u32) { self.add_unknown_to_log(); }
+        fn emit_u16(&self, +_v: u16) { self.add_unknown_to_log(); }
+        fn emit_u8(&self, +_v: u8)   { self.add_unknown_to_log(); }
 
-    fn emit_int(&self, +_v: int) { self.add_unknown_to_log(); }
-    fn emit_i64(&self, +_v: i64) { self.add_unknown_to_log(); }
-    fn emit_i32(&self, +_v: i32) { self.add_unknown_to_log(); }
-    fn emit_i16(&self, +_v: i16) { self.add_unknown_to_log(); }
-    fn emit_i8(&self, +_v: i8)   { self.add_unknown_to_log(); }
+        fn emit_int(&self, +_v: int) { self.add_unknown_to_log(); }
+        fn emit_i64(&self, +_v: i64) { self.add_unknown_to_log(); }
+        fn emit_i32(&self, +_v: i32) { self.add_unknown_to_log(); }
+        fn emit_i16(&self, +_v: i16) { self.add_unknown_to_log(); }
+        fn emit_i8(&self, +_v: i8)   { self.add_unknown_to_log(); }
 
-    fn emit_bool(&self, +_v: bool) { self.add_unknown_to_log(); }
+        fn emit_bool(&self, +_v: bool) { self.add_unknown_to_log(); }
 
-    fn emit_f64(&self, +_v: f64) { self.add_unknown_to_log(); }
-    fn emit_f32(&self, +_v: f32) { self.add_unknown_to_log(); }
-    fn emit_float(&self, +_v: float) { self.add_unknown_to_log(); }
+        fn emit_f64(&self, +_v: f64) { self.add_unknown_to_log(); }
+        fn emit_f32(&self, +_v: f32) { self.add_unknown_to_log(); }
+        fn emit_float(&self, +_v: float) { self.add_unknown_to_log(); }
 
-    fn emit_char(&self, +_v: char) { self.add_unknown_to_log(); }
+        fn emit_char(&self, +_v: char) { self.add_unknown_to_log(); }
 
-    fn emit_borrowed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
-    fn emit_owned_str(&self, +_v: &str) { self.add_unknown_to_log(); }
-    fn emit_managed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
+        fn emit_borrowed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
+        fn emit_owned_str(&self, +_v: &str) { self.add_unknown_to_log(); }
+        fn emit_managed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
 
-    fn emit_borrowed(&self, f: fn()) { self.add_unknown_to_log(); f() }
-    fn emit_owned(&self, f: fn()) { self.add_unknown_to_log(); f() }
-    fn emit_managed(&self, f: fn()) { self.add_unknown_to_log(); f() }
+        fn emit_borrowed(&self, f: fn()) { self.add_unknown_to_log(); f() }
+        fn emit_owned(&self, f: fn()) { self.add_unknown_to_log(); f() }
+        fn emit_managed(&self, f: fn()) { self.add_unknown_to_log(); f() }
 
-    fn emit_enum(&self, name: &str, f: fn()) {
-        self.add_to_log(CallToEmitEnum(name.to_str())); f(); }
+        fn emit_enum(&self, name: &str, f: fn()) {
+            self.add_to_log(CallToEmitEnum(name.to_str())); f(); }
 
-    fn emit_enum_variant(&self, name: &str, +id: uint, +cnt: uint, f: fn()) {
-        self.add_to_log(CallToEmitEnumVariant (name.to_str(),id,cnt)); f();
+        fn emit_enum_variant(&self, name: &str, +id: uint,
+                             +cnt: uint, f: fn()) {
+            self.add_to_log(CallToEmitEnumVariant (name.to_str(),id,cnt));
+            f();
+        }
+
+        fn emit_enum_variant_arg(&self, +idx: uint, f: fn()) {
+            self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
+        }
+
+        fn emit_borrowed_vec(&self, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
+        fn emit_owned_vec(&self, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_managed_vec(&self, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_vec_elt(&self, +_idx: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
+        fn emit_rec(&self, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_struct(&self, _name: &str, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_field(&self, _name: &str, +_idx: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
+        fn emit_tup(&self, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_tup_elt(&self, +_idx: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
     }
 
-    fn emit_enum_variant_arg(&self, +idx: uint, f: fn()) {
-        self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
-    }
 
-    fn emit_borrowed_vec(&self, +_len: uint, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-
-    fn emit_owned_vec(&self, +_len: uint, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-    fn emit_managed_vec(&self, +_len: uint, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-    fn emit_vec_elt(&self, +_idx: uint, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-
-    fn emit_rec(&self, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-    fn emit_struct(&self, _name: &str, +_len: uint, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-    fn emit_field(&self, _name: &str, +_idx: uint, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-        
-    fn emit_tup(&self, +_len: uint, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-    fn emit_tup_elt(&self, +_idx: uint, f: fn()) {
-        self.add_unknown_to_log(); f();
-    }
-}
-
-    
     #[auto_decode]
     #[auto_encode]
     struct Node {id: uint}
 
-    
     fn to_call_log (val: Encodable<TestEncoder>) -> ~[call] {
         let mut te = TestEncoder {call_log: ~[]};
         val.encode(&te);
