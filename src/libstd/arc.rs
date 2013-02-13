@@ -184,25 +184,30 @@ impl<T: Owned> &MutexARC<T> {
      */
     #[inline(always)]
     unsafe fn access<U>(blk: fn(x: &mut T) -> U) -> U {
-        let state = unsafe { get_shared_mutable_state(&self.x) };
-        // Borrowck would complain about this if the function were not already
-        // unsafe. See borrow_rwlock, far below.
-        do (&state.lock).lock {
-            check_poison(true, state.failed);
-            let _z = PoisonOnFail(&mut state.failed);
-            blk(&mut state.data)
+        unsafe {
+            let state = get_shared_mutable_state(&self.x);
+            // Borrowck would complain about this if the function were
+            // not already unsafe. See borrow_rwlock, far below.
+            do (&(*state).lock).lock {
+                check_poison(true, (*state).failed);
+                let _z = PoisonOnFail(&mut (*state).failed);
+                blk(&mut (*state).data)
+            }
         }
     }
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline(always)]
     unsafe fn access_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
-        let state = unsafe { get_shared_mutable_state(&self.x) };
-        do (&state.lock).lock_cond |cond| {
-            check_poison(true, state.failed);
-            let _z = PoisonOnFail(&mut state.failed);
-            blk(&mut state.data,
-                &Condvar { is_mutex: true, failed: &mut state.failed,
-                           cond: cond })
+        unsafe {
+            let state = get_shared_mutable_state(&self.x);
+            do (&(*state).lock).lock_cond |cond| {
+                check_poison(true, (*state).failed);
+                let _z = PoisonOnFail(&mut (*state).failed);
+                blk(&mut (*state).data,
+                    &Condvar {is_mutex: true,
+                              failed: &mut (*state).failed,
+                              cond: cond })
+            }
         }
     }
 }
@@ -285,8 +290,10 @@ pub fn RWARC<T: Const Owned>(user_data: T) -> RWARC<T> {
  * Create a reader/writer ARC with the supplied data and a specified number
  * of condvars (as sync::rwlock_with_condvars).
  */
-pub fn rw_arc_with_condvars<T: Const Owned>(user_data: T,
-                                       num_condvars: uint) -> RWARC<T> {
+pub fn rw_arc_with_condvars<T: Const Owned>(
+    user_data: T,
+    num_condvars: uint) -> RWARC<T>
+{
     let data =
         RWARCInner { lock: rwlock_with_condvars(num_condvars),
                      failed: false, data: move user_data };
@@ -315,23 +322,28 @@ impl<T: Const Owned> &RWARC<T> {
      */
     #[inline(always)]
     fn write<U>(blk: fn(x: &mut T) -> U) -> U {
-        let state = unsafe { get_shared_mutable_state(&self.x) };
-        do borrow_rwlock(state).write {
-            check_poison(false, state.failed);
-            let _z = PoisonOnFail(&mut state.failed);
-            blk(&mut state.data)
+        unsafe {
+            let state = get_shared_mutable_state(&self.x);
+            do (*borrow_rwlock(state)).write {
+                check_poison(false, (*state).failed);
+                let _z = PoisonOnFail(&mut (*state).failed);
+                blk(&mut (*state).data)
+            }
         }
     }
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline(always)]
     fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
-        let state = unsafe { get_shared_mutable_state(&self.x) };
-        do borrow_rwlock(state).write_cond |cond| {
-            check_poison(false, state.failed);
-            let _z = PoisonOnFail(&mut state.failed);
-            blk(&mut state.data,
-                &Condvar { is_mutex: false, failed: &mut state.failed,
-                           cond: cond })
+        unsafe {
+            let state = get_shared_mutable_state(&self.x);
+            do (*borrow_rwlock(state)).write_cond |cond| {
+                check_poison(false, (*state).failed);
+                let _z = PoisonOnFail(&mut (*state).failed);
+                blk(&mut (*state).data,
+                    &Condvar {is_mutex: false,
+                              failed: &mut (*state).failed,
+                              cond: cond})
+            }
         }
     }
     /**
@@ -369,11 +381,14 @@ impl<T: Const Owned> &RWARC<T> {
      * ~~~
      */
     fn write_downgrade<U>(blk: fn(v: RWWriteMode<T>) -> U) -> U {
-        let state = unsafe { get_shared_mutable_state(&self.x) };
-        do borrow_rwlock(state).write_downgrade |write_mode| {
-            check_poison(false, state.failed);
-            blk(RWWriteMode((&mut state.data, move write_mode,
-                              PoisonOnFail(&mut state.failed))))
+        unsafe {
+            let state = get_shared_mutable_state(&self.x);
+            do (*borrow_rwlock(state)).write_downgrade |write_mode| {
+                check_poison(false, (*state).failed);
+                blk(RWWriteMode((&mut (*state).data,
+                                 move write_mode,
+                                 PoisonOnFail(&mut (*state).failed))))
+            }
         }
     }
 
@@ -417,8 +432,8 @@ pub fn unwrap_rw_arc<T: Const Owned>(arc: RWARC<T>) -> T {
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
-fn borrow_rwlock<T: Const Owned>(state: &r/mut RWARCInner<T>) -> &r/RWlock {
-    unsafe { cast::transmute(&mut state.lock) }
+fn borrow_rwlock<T: Const Owned>(state: *const RWARCInner<T>) -> *RWlock {
+    unsafe { cast::transmute(&const (*state).lock) }
 }
 
 // FIXME (#3154) ice with struct/&<T> prevents these from being structs.

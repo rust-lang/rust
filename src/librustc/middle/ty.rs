@@ -1938,7 +1938,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         }
         cache.insert(ty_id, TC_NONE);
 
-        debug!("computing contents of %s", ty_to_str(cx, ty));
         let _i = indenter();
 
         let mut result = match get(ty).sty {
@@ -2088,8 +2087,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         if type_size(cx, ty) > 4 {
             result = result + TC_BIG;
         }
-
-        debug!("result = %s", result.to_str());
 
         cache.insert(ty_id, result);
         return result;

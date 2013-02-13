@@ -20,7 +20,10 @@ use core::prelude::*;
 
 use middle::borrowck::preserve::{PreserveCondition, PcOk, PcIfPure};
 use middle::borrowck::{Loan, bckerr, bckres, BorrowckCtxt, err_mutbl};
+use middle::borrowck::{LoanKind, TotalFreeze, PartialFreeze,
+                       TotalTake, PartialTake, Immobile};
 use middle::borrowck::{req_maps};
+use middle::borrowck::loan;
 use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
 use middle::mem_categorization::{mem_categorization_ctxt};
 use middle::mem_categorization::{opt_deref_kind};
@@ -340,13 +343,22 @@ impl GatherLoanCtxt {
     fn guarantee_valid(@mut self,
                        cmt: cmt,
                        req_mutbl: ast::mutability,
-                       scope_r: ty::Region) {
+                       scope_r: ty::Region)
+    {
+
+        let loan_kind = match req_mutbl {
+            m_mutbl => TotalTake,
+            m_imm => TotalFreeze,
+            m_const => Immobile
+        };
 
         self.bccx.stats.guaranteed_paths += 1;
 
-        debug!("guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
+        debug!("guarantee_valid(cmt=%s, req_mutbl=%?, \
+                loan_kind=%?, scope_r=%s)",
                self.bccx.cmt_to_repr(cmt),
-               self.bccx.mut_to_str(req_mutbl),
+               req_mutbl,
+               loan_kind,
                region_to_str(self.tcx(), scope_r));
         let _i = indenter();
 
@@ -362,10 +374,10 @@ impl GatherLoanCtxt {
           // it within that scope, the loan will be detected and an
           // error will be reported.
           Some(_) => {
-              match self.bccx.loan(cmt, scope_r, req_mutbl) {
+              match loan::loan(self.bccx, cmt, scope_r, loan_kind) {
                   Err(ref e) => { self.bccx.report((*e)); }
                   Ok(move loans) => {
-                      self.add_loans(cmt, req_mutbl, scope_r, move loans);
+                      self.add_loans(cmt, loan_kind, scope_r, move loans);
                   }
               }
           }
@@ -378,7 +390,7 @@ impl GatherLoanCtxt {
           // pointer is desired, that is ok as long as we are pure)
           None => {
             let result: bckres<PreserveCondition> = {
-                do self.check_mutbl(req_mutbl, cmt).chain |pc1| {
+                do self.check_mutbl(loan_kind, cmt).chain |pc1| {
                     do self.bccx.preserve(cmt, scope_r,
                                           self.item_ub,
                                           self.root_ub).chain |pc2| {
@@ -446,37 +458,41 @@ impl GatherLoanCtxt {
     // reqires an immutable pointer, but `f` lives in (aliased)
     // mutable memory.
     fn check_mutbl(@mut self,
-                   req_mutbl: ast::mutability,
+                   loan_kind: LoanKind,
                    cmt: cmt)
                 -> bckres<PreserveCondition> {
-        debug!("check_mutbl(req_mutbl=%?, cmt.mutbl=%?)",
-               req_mutbl, cmt.mutbl);
+        debug!("check_mutbl(loan_kind=%?, cmt.mutbl=%?)",
+               loan_kind, cmt.mutbl);
 
-        if req_mutbl == m_const || req_mutbl == cmt.mutbl {
-            debug!("required is const or they are the same");
-            Ok(PcOk)
-        } else {
-            let e = bckerr { cmt: cmt, code: err_mutbl(req_mutbl) };
-            if req_mutbl == m_imm {
-                // if this is an @mut box, then it's generally OK to borrow as
-                // &imm; this will result in a write guard
-                if cmt.cat.is_mutable_box() {
+        match loan_kind {
+            Immobile => Ok(PcOk),
+
+            TotalTake | PartialTake => {
+                if cmt.mutbl.is_mutable() {
                     Ok(PcOk)
                 } else {
-                    // you can treat mutable things as imm if you are pure
-                    debug!("imm required, must be pure");
+                    Err(bckerr { cmt: cmt, code: err_mutbl(loan_kind) })
+                }
+            }
 
+            TotalFreeze | PartialFreeze => {
+                if cmt.mutbl.is_immutable() {
+                    Ok(PcOk)
+                } else if cmt.cat.is_mutable_box() {
+                    Ok(PcOk)
+                } else {
+                    // Eventually:
+                    let e = bckerr {cmt: cmt,
+                                    code: err_mutbl(loan_kind)};
                     Ok(PcIfPure(e))
                 }
-            } else {
-                Err(e)
             }
         }
     }
 
     fn add_loans(@mut self,
                  cmt: cmt,
-                 req_mutbl: ast::mutability,
+                 loan_kind: LoanKind,
                  scope_r: ty::Region,
                  +loans: ~[Loan]) {
         if loans.len() == 0 {
@@ -526,7 +542,7 @@ impl GatherLoanCtxt {
 
         self.add_loans_to_scope_id(scope_id, move loans);
 
-        if req_mutbl == m_imm && cmt.mutbl != m_imm {
+        if loan_kind.is_freeze() && !cmt.mutbl.is_immutable() {
             self.bccx.stats.loaned_paths_imm += 1;
 
             if self.tcx().sess.borrowck_note_loan() {
@@ -542,7 +558,9 @@ impl GatherLoanCtxt {
     fn add_loans_to_scope_id(@mut self,
                              scope_id: ast::node_id,
                              +loans: ~[Loan]) {
-        debug!("adding %u loans to scope_id %?", loans.len(), scope_id);
+        debug!("adding %u loans to scope_id %?: %s",
+               loans.len(), scope_id,
+               str::connect(loans.map(|l| self.bccx.loan_to_repr(l)), ", "));
         match self.req_maps.req_loan_map.find(&scope_id) {
             Some(req_loans) => {
                 req_loans.push_all(loans);
