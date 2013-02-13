@@ -15,7 +15,7 @@ extern mod rustrt {
     pub fn debug_get_stk_seg() -> *u8;
 
     pub fn rust_get_sched_id() -> libc::intptr_t;
-    pub fn last_os_error() -> ~str;
+    pub fn rust_get_argc() -> libc::c_int;
     pub fn rust_getcwd() -> ~str;
     pub fn get_task_id() -> libc::intptr_t;
     pub fn rust_sched_threads();
@@ -23,7 +23,7 @@ extern mod rustrt {
 }
 
 fn calllink01() { unsafe { rustrt::rust_get_sched_id(); } }
-fn calllink02() { unsafe { rustrt::last_os_error(); } }
+fn calllink02() { unsafe { rustrt::rust_get_argc(); } }
 fn calllink03() { unsafe { rustrt::rust_getcwd(); } }
 fn calllink08() { unsafe { rustrt::get_task_id(); } }
 fn calllink09() { unsafe { rustrt::rust_sched_threads(); } }
