@@ -52,7 +52,7 @@ impl &[f64] : Stats {
 
     fn median(self) -> f64 {
         assert self.len() != 0;
-        let tmp = vec::to_mut(vec::from_slice(self));
+        let tmp = vec::cast_to_mut(vec::from_slice(self));
         sort::tim_sort(tmp);
         if tmp.len() & 1 == 0 {
             let m = tmp.len() / 2;

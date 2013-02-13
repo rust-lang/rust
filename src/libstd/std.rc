@@ -115,6 +115,7 @@ pub mod serialize;
 #[doc(hidden)] // FIXME #3538
 mod std {
     pub use serialize;
+    pub use test;
 }
 
 // Local Variables:
