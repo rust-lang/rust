@@ -190,10 +190,10 @@ impl PreserveCtxt {
             // otherwise we have no guarantee the pointer will stay
             // live, so we must root the pointer (i.e., inc the ref
             // count) for the duration of the loan.
-            debug!("base.mutbl = %?", self.bccx.mut_to_str(base.mutbl));
+            debug!("base.mutbl = %?", base.mutbl);
             if cmt.cat.derefs_through_mutable_box() {
                 self.attempt_root(cmt, base, derefs)
-            } else if base.mutbl == m_imm {
+            } else if base.mutbl.is_immutable() {
                 let non_rooting_ctxt = PreserveCtxt {
                     root_managed_data: false,
                     ..*self
@@ -293,14 +293,11 @@ impl PreserveCtxt {
           // the base is preserved, but if we are not mutable then
           // purity is required
           Ok(PcOk) => {
-            match cmt_base.mutbl {
-              m_mutbl | m_const => {
-                Ok(PcIfPure(bckerr {cmt:cmt, code:code}))
+              if !cmt_base.mutbl.is_immutable() {
+                  Ok(PcIfPure(bckerr {cmt:cmt, code:code}))
+              } else {
+                  Ok(PcOk)
               }
-              m_imm => {
-                Ok(PcOk)
-              }
-            }
           }
 
           // the base requires purity too, that's fine

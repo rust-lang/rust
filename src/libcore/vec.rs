@@ -623,13 +623,15 @@ unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
 
 #[inline(never)]
 fn push_slow<T>(v: &mut ~[T], initval: T) {
-    reserve_at_least(&mut *v, v.len() + 1u);
+    let new_len = v.len() + 1;
+    reserve_at_least(&mut *v, new_len);
     unsafe { push_fast(v, initval) }
 }
 
 #[inline(always)]
 pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
-    reserve(&mut *v, v.len() + rhs.len());
+    let new_len = v.len() + rhs.len();
+    reserve(&mut *v, new_len);
 
     for uint::range(0u, rhs.len()) |i| {
         push(&mut *v, unsafe { raw::get(rhs, i) })
@@ -638,7 +640,8 @@ pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
 
 #[inline(always)]
 pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
-    reserve(&mut *v, v.len() + rhs.len());
+    let new_len = v.len() + rhs.len();
+    reserve(&mut *v, new_len);
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
@@ -663,9 +666,9 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
                 let mut dropped = rusti::init();
                 dropped <-> *ptr::mut_offset(p, i);
             }
-            raw::set_len(&mut *v, newlen);
         }
     }
+    unsafe { raw::set_len(&mut *v, newlen); }
 }
 
 /**
@@ -740,7 +743,8 @@ pub pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
  * * initval - The value for the new elements
  */
 pub fn grow<T: Copy>(v: &mut ~[T], n: uint, initval: &T) {
-    reserve_at_least(&mut *v, v.len() + n);
+    let new_len = v.len() + n;
+    reserve_at_least(&mut *v, new_len);
     let mut i: uint = 0u;
 
     while i < n {
@@ -763,7 +767,8 @@ pub fn grow<T: Copy>(v: &mut ~[T], n: uint, initval: &T) {
  *             value
  */
 pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: iter::InitOp<T>) {
-    reserve_at_least(&mut *v, v.len() + n);
+    let new_len = v.len() + n;
+    reserve_at_least(&mut *v, new_len);
     let mut i: uint = 0u;
     while i < n {
         v.push(op(i));

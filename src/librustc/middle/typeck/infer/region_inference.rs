@@ -832,7 +832,7 @@ pub impl RegionVarBindings {
           (re_infer(ReVar(*)), _) | (_, re_infer(ReVar(*))) => {
             self.combine_vars(
                 self.lubs, a, b, span,
-                |old_r, new_r| self.make_subregion(span, old_r, new_r))
+                |this, old_r, new_r| this.make_subregion(span, old_r, new_r))
           }
 
           _ => {
@@ -859,7 +859,7 @@ pub impl RegionVarBindings {
           (re_infer(ReVar(*)), _) | (_, re_infer(ReVar(*))) => {
             self.combine_vars(
                 self.glbs, a, b, span,
-                |old_r, new_r| self.make_subregion(span, new_r, old_r))
+                |this, old_r, new_r| this.make_subregion(span, new_r, old_r))
           }
 
           _ => {
@@ -915,7 +915,9 @@ pub impl RegionVarBindings {
                     a: Region,
                     b: Region,
                     span: span,
-                    relate: &fn(old_r: Region, new_r: Region) -> cres<()>)
+                    relate: &fn(self: &mut RegionVarBindings,
+                                old_r: Region,
+                                new_r: Region) -> cres<()>)
                  -> cres<Region> {
         let vars = TwoRegions { a: a, b: b };
         match combines.find(&vars) {
@@ -926,8 +928,8 @@ pub impl RegionVarBindings {
             if self.in_snapshot() {
                 self.undo_log.push(AddCombination(combines, vars));
             }
-            do relate(a, re_infer(ReVar(c))).then {
-                do relate(b, re_infer(ReVar(c))).then {
+            do relate(self, a, re_infer(ReVar(c))).then {
+                do relate(self, b, re_infer(ReVar(c))).then {
                     debug!("combine_vars() c=%?", c);
                     Ok(re_infer(ReVar(c)))
                 }
@@ -1035,7 +1037,8 @@ pub impl RegionVarBindings {
     */
     fn resolve_regions(&mut self) {
         debug!("RegionVarBindings: resolve_regions()");
-        self.values.put_back(self.infer_variable_values());
+        let v = self.infer_variable_values();
+        self.values.put_back(v);
     }
 }
 
@@ -1220,7 +1223,7 @@ impl RegionVarBindings {
         let mut graph = self.construct_graph();
         self.expansion(&mut graph);
         self.contraction(&mut graph);
-        self.extract_values_and_report_conflicts(&mut graph)
+        self.extract_values_and_report_conflicts(&graph)
     }
 
     fn construct_graph(&mut self) -> Graph {
@@ -1257,14 +1260,14 @@ impl RegionVarBindings {
 
         for uint::range(0, num_edges) |edge_idx| {
             match graph.edges[edge_idx].constraint {
-              ConstrainVarSubVar(copy a_id, copy b_id) => {
+              ConstrainVarSubVar(a_id, b_id) => {
                 insert_edge(&mut graph, a_id, Outgoing, edge_idx);
                 insert_edge(&mut graph, b_id, Incoming, edge_idx);
               }
-              ConstrainRegSubVar(_, copy b_id) => {
+              ConstrainRegSubVar(_, b_id) => {
                 insert_edge(&mut graph, b_id, Incoming, edge_idx);
               }
-              ConstrainVarSubReg(copy a_id, _) => {
+              ConstrainVarSubReg(a_id, _) => {
                 insert_edge(&mut graph, a_id, Outgoing, edge_idx);
               }
             }
@@ -1285,17 +1288,17 @@ impl RegionVarBindings {
     }
 
     fn expansion(&mut self, graph: &mut Graph) {
-        do self.iterate_until_fixed_point(~"Expansion", graph) |edge| {
+        do iterate_until_fixed_point(~"Expansion", graph) |nodes, edge| {
             match edge.constraint {
-              ConstrainRegSubVar(copy a_region, copy b_vid) => {
-                let b_node = &mut graph.nodes[*b_vid];
+              ConstrainRegSubVar(a_region, b_vid) => {
+                let b_node = &mut nodes[*b_vid];
                 self.expand_node(a_region, b_vid, b_node)
               }
-              ConstrainVarSubVar(copy a_vid, copy b_vid) => {
-                match graph.nodes[*a_vid].value {
+              ConstrainVarSubVar(a_vid, b_vid) => {
+                match nodes[*a_vid].value {
                   NoValue | ErrorValue => false,
-                  Value(copy a_region) => {
-                    let b_node = &mut graph.nodes[*b_vid];
+                  Value(a_region) => {
+                    let b_node = &mut nodes[*b_vid];
                     self.expand_node(a_region, b_vid, b_node)
                   }
                 }
@@ -1325,7 +1328,7 @@ impl RegionVarBindings {
             return true;
           }
 
-          Value(copy cur_region) => {
+          Value(cur_region) => {
             let lub = self.lub_concrete_regions(a_region, cur_region);
             if lub == cur_region {
                 return false;
@@ -1345,23 +1348,23 @@ impl RegionVarBindings {
     }
 
     fn contraction(&mut self, graph: &mut Graph) {
-        do self.iterate_until_fixed_point(~"Contraction", graph) |edge| {
+        do iterate_until_fixed_point(~"Contraction", graph) |nodes, edge| {
             match edge.constraint {
               ConstrainRegSubVar(*) => {
                 // This is an expansion constraint.  Ignore.
                 false
               }
-              ConstrainVarSubVar(copy a_vid, copy b_vid) => {
-                match graph.nodes[*b_vid].value {
+              ConstrainVarSubVar(a_vid, b_vid) => {
+                match nodes[*b_vid].value {
                   NoValue | ErrorValue => false,
-                  Value(copy b_region) => {
-                    let a_node = &mut graph.nodes[*a_vid];
+                  Value(b_region) => {
+                    let a_node = &mut nodes[*a_vid];
                     self.contract_node(a_vid, a_node, b_region)
                   }
                 }
               }
-              ConstrainVarSubReg(copy a_vid, copy b_region) => {
-                let a_node = &mut graph.nodes[*a_vid];
+              ConstrainVarSubReg(a_vid, b_region) => {
+                let a_node = &mut nodes[*a_vid];
                 self.contract_node(a_vid, a_node, b_region)
               }
             }
@@ -1387,7 +1390,7 @@ impl RegionVarBindings {
                 false // no change
             }
 
-            Value(copy a_region) => {
+            Value(a_region) => {
                 match a_node.classification {
                     Expanding => {
                         check_node(self, a_vid, a_node, a_region, b_region)
@@ -1438,29 +1441,10 @@ impl RegionVarBindings {
         }
     }
 
-    fn iterate_until_fixed_point(&mut self,
-                                 tag: ~str,
-                                 graph: &mut Graph,
-                                 body: &fn(edge: &GraphEdge) -> bool) {
-        let mut iteration = 0;
-        let mut changed = true;
-        let num_edges = graph.edges.len();
-        while changed {
-            changed = false;
-            iteration += 1;
-            debug!("---- %s Iteration #%u", tag, iteration);
-            for uint::range(0, num_edges) |edge_idx| {
-                changed |= body(&graph.edges[edge_idx]);
-                debug!(" >> Change after edge #%?: %?",
-                       edge_idx, graph.edges[edge_idx]);
-            }
-        }
-        debug!("---- %s Complete after %u iteration(s)", tag, iteration);
-    }
-
-    fn extract_values_and_report_conflicts(&mut self,
-                                           graph: &mut Graph)
-                                        -> ~[GraphNodeValue] {
+    fn extract_values_and_report_conflicts(
+        &mut self,
+        graph: &Graph) -> ~[GraphNodeValue]
+    {
         let dup_map = TwoRegionsMap();
         graph.nodes.mapi(|idx, node| {
             match node.value {
@@ -1525,7 +1509,7 @@ impl RegionVarBindings {
     }
 
     fn report_error_for_expanding_node(&mut self,
-                                       graph: &mut Graph,
+                                       graph: &Graph,
                                        dup_map: TwoRegionsMap,
                                        node_idx: RegionVid) {
         // Errors in expanding nodes result from a lower-bound that is
@@ -1578,7 +1562,7 @@ impl RegionVarBindings {
     }
 
     fn report_error_for_contracting_node(&mut self,
-                                         graph: &mut Graph,
+                                         graph: &Graph,
                                          dup_map: TwoRegionsMap,
                                          node_idx: RegionVid) {
         // Errors in contracting nodes result from two upper-bounds
@@ -1632,7 +1616,7 @@ impl RegionVarBindings {
     }
 
     fn collect_concrete_regions(&mut self,
-                                graph: &mut Graph,
+                                graph: &Graph,
                                 orig_node_idx: RegionVid,
                                 dir: Direction)
                              -> ~[SpannedRegion] {
@@ -1676,7 +1660,7 @@ impl RegionVarBindings {
     }
 
     fn each_edge(&mut self,
-                 graph: &mut Graph,
+                 graph: &Graph,
                  node_idx: RegionVid,
                  dir: Direction,
                  op: fn(edge: &GraphEdge) -> bool) {
@@ -1690,3 +1674,25 @@ impl RegionVarBindings {
         }
     }
 }
+
+fn iterate_until_fixed_point(
+    tag: ~str,
+    graph: &mut Graph,
+    body: &fn(nodes: &mut [GraphNode], edge: &GraphEdge) -> bool)
+{
+    let mut iteration = 0;
+    let mut changed = true;
+    let num_edges = graph.edges.len();
+    while changed {
+        changed = false;
+        iteration += 1;
+        debug!("---- %s Iteration #%u", tag, iteration);
+        for uint::range(0, num_edges) |edge_idx| {
+            changed |= body(graph.nodes, &graph.edges[edge_idx]);
+            debug!(" >> Change after edge #%?: %?",
+                   edge_idx, graph.edges[edge_idx]);
+        }
+    }
+    debug!("---- %s Complete after %u iteration(s)", tag, iteration);
+}
+

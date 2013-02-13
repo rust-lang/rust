@@ -2071,17 +2071,19 @@ pub mod raw {
 
     /// Appends a byte to a string. (Not UTF-8 safe).
     pub unsafe fn push_byte(s: &mut ~str, b: u8) {
-        reserve_at_least(&mut *s, s.len() + 1);
+        let new_len = s.len() + 1;
+        reserve_at_least(&mut *s, new_len);
         do as_buf(*s) |buf, len| {
             let buf: *mut u8 = ::cast::reinterpret_cast(&buf);
             *ptr::mut_offset(buf, len) = b;
         }
-        set_len(&mut *s, s.len() + 1);
+        set_len(&mut *s, new_len);
     }
 
     /// Appends a vector of bytes to a string. (Not UTF-8 safe).
     unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
-        reserve_at_least(&mut *s, s.len() + bytes.len());
+        let new_len = s.len() + bytes.len();
+        reserve_at_least(&mut *s, new_len);
         for vec::each(bytes) |byte| { push_byte(&mut *s, *byte); }
     }
 
