@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp::{Eq, Ord};
-use num::NumCast::from;
+// xfail-test
+// compile-flags:-g
+// debugger:break 20
+// debugger:run
+// debugger:print x
+// check:$1 = 42
 
-pub trait NumExt: Eq Num NumCast {}
-
-pub impl f32: NumExt {}
-pub impl int: NumExt {}
-
-fn num_eq_one<T:NumExt>() -> T {
-    from(1)
-}
-
-pub fn main() {
-    num_eq_one::<int>(); // you need to actually use the function to trigger the ICE
+fn main() {
+    let x = 42;
+    debug!("The answer is %d", x);
 }

@@ -8,18 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp::{Eq, Ord};
-use num::NumCast::from;
-
-pub trait NumExt: Eq Num NumCast {}
-
-pub impl f32: NumExt {}
-pub impl int: NumExt {}
-
-fn num_eq_one<T:NumExt>() -> T {
-    from(1)
+pub struct Scheduler {
+    /// The event loop used to drive the scheduler and perform I/O
+    priv event_loop: ~int
 }
 
-pub fn main() {
-    num_eq_one::<int>(); // you need to actually use the function to trigger the ICE
-}
+pub fn main() { }

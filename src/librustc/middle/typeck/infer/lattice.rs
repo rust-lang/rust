@@ -118,11 +118,10 @@ pub impl CombineFields {
         // A remains a subtype of B.  Actually, there are other options,
         // but that's the route we choose to take.
 
-        self.infcx.unify(&node_a, &node_b, |new_root, new_rank| {
-            self.set_var_to_merged_bounds(new_root,
-                                          &a_bounds, &b_bounds,
-                                          new_rank)
-        })
+        let (new_root, new_rank) = self.infcx.unify(&node_a, &node_b);
+        self.set_var_to_merged_bounds(new_root,
+                                      &a_bounds, &b_bounds,
+                                      new_rank)
     }
 
     /// make variable a subtype of T

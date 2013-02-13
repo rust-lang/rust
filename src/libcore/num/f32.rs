@@ -14,6 +14,7 @@ use cmath;
 use cmp;
 use libc::{c_float, c_int};
 use num;
+use num::NumCast;
 use option::Option;
 use from_str;
 use to_str;
@@ -283,11 +284,6 @@ impl f32: num::Num {
     pure fn modulo(&self, other: &f32) -> f32 { return *self % *other; }
     #[inline(always)]
     pure fn neg(&self)                -> f32 { return -*self;        }
-
-    #[inline(always)]
-    pure fn to_int(&self)         -> int { return *self as int; }
-    #[inline(always)]
-    static pure fn from_int(n: int) -> f32 { return n as f32;    }
 }
 
 impl f32: num::Zero {
@@ -298,6 +294,30 @@ impl f32: num::Zero {
 impl f32: num::One {
     #[inline(always)]
     static pure fn one() -> f32 { 1.0 }
+}
+
+pub impl f32: NumCast {
+    /**
+     * Cast `n` to an `f32`
+     */
+    #[inline(always)]
+    static pure fn from<N:NumCast>(n: N) -> f32 { n.to_f32() }
+
+    #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
+    #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }
+    #[inline(always)] pure fn to_u32(&self)   -> u32   { *self as u32   }
+    #[inline(always)] pure fn to_u64(&self)   -> u64   { *self as u64   }
+    #[inline(always)] pure fn to_uint(&self)  -> uint  { *self as uint  }
+
+    #[inline(always)] pure fn to_i8(&self)    -> i8    { *self as i8    }
+    #[inline(always)] pure fn to_i16(&self)   -> i16   { *self as i16   }
+    #[inline(always)] pure fn to_i32(&self)   -> i32   { *self as i32   }
+    #[inline(always)] pure fn to_i64(&self)   -> i64   { *self as i64   }
+    #[inline(always)] pure fn to_int(&self)   -> int   { *self as int   }
+
+    #[inline(always)] pure fn to_f32(&self)   -> f32   { *self          }
+    #[inline(always)] pure fn to_f64(&self)   -> f64   { *self as f64   }
+    #[inline(always)] pure fn to_float(&self) -> float { *self as float }
 }
 
 #[abi="rust-intrinsic"]
@@ -543,6 +563,63 @@ impl f32: num::FromStrRadix {
     static pure fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
         from_str_radix(val, rdx)
     }
+}
+
+#[test]
+pub fn test_num() {
+    let ten: f32 = num::cast(10);
+    let two: f32 = num::cast(2);
+
+    assert (ten.add(&two)    == num::cast(12));
+    assert (ten.sub(&two)    == num::cast(8));
+    assert (ten.mul(&two)    == num::cast(20));
+    assert (ten.div(&two)    == num::cast(5));
+    assert (ten.modulo(&two) == num::cast(0));
+}
+
+#[test]
+fn test_numcast() {
+    assert (20u     == 20f32.to_uint());
+    assert (20u8    == 20f32.to_u8());
+    assert (20u16   == 20f32.to_u16());
+    assert (20u32   == 20f32.to_u32());
+    assert (20u64   == 20f32.to_u64());
+    assert (20i     == 20f32.to_int());
+    assert (20i8    == 20f32.to_i8());
+    assert (20i16   == 20f32.to_i16());
+    assert (20i32   == 20f32.to_i32());
+    assert (20i64   == 20f32.to_i64());
+    assert (20f     == 20f32.to_float());
+    assert (20f32   == 20f32.to_f32());
+    assert (20f64   == 20f32.to_f64());
+
+    assert (20f32 == NumCast::from(20u));
+    assert (20f32 == NumCast::from(20u8));
+    assert (20f32 == NumCast::from(20u16));
+    assert (20f32 == NumCast::from(20u32));
+    assert (20f32 == NumCast::from(20u64));
+    assert (20f32 == NumCast::from(20i));
+    assert (20f32 == NumCast::from(20i8));
+    assert (20f32 == NumCast::from(20i16));
+    assert (20f32 == NumCast::from(20i32));
+    assert (20f32 == NumCast::from(20i64));
+    assert (20f32 == NumCast::from(20f));
+    assert (20f32 == NumCast::from(20f32));
+    assert (20f32 == NumCast::from(20f64));
+
+    assert (20f32 == num::cast(20u));
+    assert (20f32 == num::cast(20u8));
+    assert (20f32 == num::cast(20u16));
+    assert (20f32 == num::cast(20u32));
+    assert (20f32 == num::cast(20u64));
+    assert (20f32 == num::cast(20i));
+    assert (20f32 == num::cast(20i8));
+    assert (20f32 == num::cast(20i16));
+    assert (20f32 == num::cast(20i32));
+    assert (20f32 == num::cast(20i64));
+    assert (20f32 == num::cast(20f));
+    assert (20f32 == num::cast(20f32));
+    assert (20f32 == num::cast(20f64));
 }
 
 //

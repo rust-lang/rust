@@ -29,6 +29,7 @@ Benjamin Peterson <benjamin@python.org>
 Bilal Husain <bilal@bilalhusain.com>
 Bill Fallon <bill.fallon@robos.li>
 Brendan Eich <brendan@mozilla.org>
+Brendan Zabarauskas <bjzaba@yahoo.com.au>
 Brian Anderson <banderson@mozilla.com>
 Brian J. Burg <burg@cs.washington.edu>
 Brian Leibig <brian.leibig@gmail.com>
@@ -80,6 +81,7 @@ Jeff Muizelaar <jmuizelaar@mozilla.com>
 Jeff Olson <olson.jeffery@gmail.com>
 Jeffrey Yasskin <jyasskin@gmail.com>
 Jens Nockert <jens@nockert.se>
+Jesse Jones <jesse9jones@gmail.com>
 Jesse Ruderman <jruderman@gmail.com>
 Jim Blandy <jimb@red-bean.com>
 Jimmy Lu <jimmy.lu.2011@gmail.com>
@@ -105,6 +107,7 @@ Mahmut Bulut <mahmutbulut0@gmail.com>
 Margaret Meyerhofer <mmeyerho@andrew.cmu.edu>
 Marijn Haverbeke <marijnh@gmail.com>
 Mark Lacey <641@rudkx.com>
+Mark Vian <mrv.caseus@gmail.com>
 Martin DeMello <martindemello@gmail.com>
 Marvin Löbel <loebel.marvin@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
@@ -114,6 +117,7 @@ Michael Arntzenius <daekharel@gmail.com>
 Michael Bebenita <mbebenita@mozilla.com>
 Michael Neumann <mneumann@ntecs.de>
 Michael Sullivan <sully@msully.net>
+Mikko Perttunen <cyndis@kapsi.fi>
 Nick Desaulniers <ndesaulniers@mozilla.com>
 Niko Matsakis <niko@alum.mit.edu>
 Or Brostovski <tohava@gmail.com>
@@ -148,6 +152,7 @@ Tim Taubert <tim@timtaubert.de>
 Tom Lee <github@tomlee.co>
 Tomoki Aonuma <uasi@99cm.org>
 Tony Young <tony@rfw.name>
+Trinick <slicksilver555@mac.com>
 Tycho Sci <tychosci@gmail.com>
 Tyler Bindon <martica@martica.org>
 Viktor Dahl <pazaconyoman@gmail.com>

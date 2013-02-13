@@ -18,8 +18,7 @@ use core::os;
 use core::uint;
 use core::util;
 use core::vec;
-use std::oldmap::HashMap;
-use std::oldmap;
+use core::hashmap::linear::LinearSet;
 
 pure fn not_win32(os: session::os) -> bool {
   match os {
@@ -187,16 +186,14 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
 }
 
 pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
-    let set = oldmap::HashMap();
+    let mut set = LinearSet::new();
     let mut minimized = ~[];
     for rpaths.each |rpath| {
-        let s = rpath.to_str();
-        if !set.contains_key_ref(&s) {
-            minimized.push(/*bad*/copy *rpath);
-            set.insert(s, ());
+        if set.insert(rpath.to_str()) {
+            minimized.push(copy *rpath);
         }
     }
-    return minimized;
+    minimized
 }
 
 #[cfg(unix)]

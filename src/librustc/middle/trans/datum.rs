@@ -223,7 +223,7 @@ pub impl Datum {
          * `id` is located in the move table, but copies otherwise.
          */
 
-        if bcx.ccx().maps.moves_map.contains_key_ref(&id) {
+        if bcx.ccx().maps.moves_map.contains_key(&id) {
             self.move_to(bcx, action, dst)
         } else {
             self.copy_to(bcx, action, dst)

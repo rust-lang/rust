@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use middle::astencode;
-use middle::trans::base::{get_insn_ctxt};
+use middle::trans::base::{ForceInternal, get_insn_ctxt, internalize_item};
 use middle::trans::base::{impl_owned_self, impl_self, no_self};
 use middle::trans::base::{trans_item, get_item_val, self_arg, trans_fn};
 use middle::trans::common::*;
@@ -54,7 +54,7 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
           csearch::found(ast::ii_item(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
             ccx.stats.n_inlines += 1;
-            if translate { trans_item(ccx, *item); }
+            if translate { trans_item(ccx, *item, ForceInternal); }
             local_def(item.id)
           }
           csearch::found(ast::ii_foreign(item)) => {
@@ -64,9 +64,10 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
           csearch::found_parent(parent_id, ast::ii_item(item)) => {
             ccx.external.insert(parent_id, Some(item.id));
             let mut my_id = 0;
+            let vs_here;
             match item.node {
               ast::item_enum(_, _) => {
-                let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
+                vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
                 let vs_there = ty::enum_variants(ccx.tcx, parent_id);
                 for vec::each2(*vs_here, *vs_there) |here, there| {
                     if there.id == fn_id { my_id = here.id.node; }
@@ -76,7 +77,7 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
               _ => ccx.sess.bug(~"maybe_instantiate_inline: item has a \
                     non-enum parent")
             }
-            if translate { trans_item(ccx, *item); }
+            if translate { trans_item(ccx, *item, ForceInternal); }
             local_def(my_id)
           }
           csearch::found_parent(_, _) => {
@@ -90,6 +91,7 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
                 ty::lookup_item_type(ccx.tcx, impl_did);
             if translate && (*impl_bnds).len() + mth.tps.len() == 0u {
                 let llfn = get_item_val(ccx, mth.id);
+                internalize_item(llfn);
                 let path = vec::append(
                     ty::item_path(ccx.tcx, impl_did),
                     ~[path_name(mth.ident)]);
@@ -119,7 +121,7 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
             local_def(mth.id)
           }
           csearch::found(ast::ii_dtor(ref dtor, _, _, _)) => {
-              ccx.external.insert(fn_id, Some((*dtor).node.id));
+              ccx.external.insert(fn_id, Some(dtor.node.id));
               local_def((*dtor).node.id)
           }
         }

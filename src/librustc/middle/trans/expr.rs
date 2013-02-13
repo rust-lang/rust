@@ -265,7 +265,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 }
 
 pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
-    if bcx.tcx().adjustments.contains_key_ref(&expr.id) {
+    if bcx.tcx().adjustments.contains_key(&expr.id) {
         // use trans_to_datum, which is mildly less efficient but
         // which will perform the adjustments:
         let datumblock = trans_to_datum(bcx, expr);
@@ -426,7 +426,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         }
         ast::expr_binary(op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
-            assert !bcx.ccx().maps.method_map.contains_key_ref(&expr.id);
+            assert !bcx.ccx().maps.method_map.contains_key(&expr.id);
 
             return trans_binary(bcx, expr, op, lhs, rhs);
         }
@@ -674,11 +674,14 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
                 // N-ary variant.
                 let fn_data = callee::trans_fn_ref(bcx, vid, ref_expr.id);
                 return fn_data_to_datum(bcx, vid, fn_data, lldest);
-            } else {
+            } else if !ty::enum_is_univariant(ccx.tcx, tid) {
                 // Nullary variant.
                 let lldiscrimptr = GEPi(bcx, lldest, [0u, 0u]);
                 let lldiscrim = C_int(bcx.ccx(), variant_info.disr_val);
                 Store(bcx, lldiscrim, lldiscrimptr);
+                return bcx;
+            } else {
+                // Nullary univariant.
                 return bcx;
             }
         }
@@ -1215,7 +1218,7 @@ fn trans_unary_datum(bcx: block,
     assert op != ast::deref;
 
     // if overloaded, would be RvalueDpsExpr
-    assert !bcx.ccx().maps.method_map.contains_key_ref(&un_expr.id);
+    assert !bcx.ccx().maps.method_map.contains_key(&un_expr.id);
 
     let un_ty = expr_ty(bcx, un_expr);
     let sub_ty = expr_ty(bcx, sub_expr);
@@ -1591,10 +1594,22 @@ fn trans_imm_cast(bcx: block, expr: @ast::expr,
             {in: cast_enum, out: cast_integral} |
             {in: cast_enum, out: cast_float} => {
                 let bcx = bcx;
-                let llenumty = T_opaque_enum_ptr(ccx);
-                let av_enum = PointerCast(bcx, llexpr, llenumty);
-                let lldiscrim_a_ptr = GEPi(bcx, av_enum, [0u, 0u]);
-                let lldiscrim_a = Load(bcx, lldiscrim_a_ptr);
+                let in_tid = match ty::get(t_in).sty {
+                    ty::ty_enum(did, _) => did,
+                    _ => ccx.sess.bug(~"enum cast source is not enum")
+                };
+                let variants = ty::enum_variants(ccx.tcx, in_tid);
+                let lldiscrim_a = if variants.len() == 1 {
+                    // Univariants don't have a discriminant field,
+                    // because there's only one value it could have:
+                    C_integral(T_enum_discrim(ccx),
+                               variants[0].disr_val as u64, True)
+                } else {
+                    let llenumty = T_opaque_enum_ptr(ccx);
+                    let av_enum = PointerCast(bcx, llexpr, llenumty);
+                    let lldiscrim_a_ptr = GEPi(bcx, av_enum, [0u, 0u]);
+                    Load(bcx, lldiscrim_a_ptr)
+                };
                 match k_out {
                     cast_integral => int_cast(bcx, ll_t_out,
                                               val_ty(lldiscrim_a),

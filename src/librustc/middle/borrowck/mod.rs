@@ -368,7 +368,7 @@ pub enum bckerr_code {
     err_mut_uniq,
     err_mut_variant,
     err_root_not_permitted,
-    err_mutbl(ast::mutability),
+    err_mutbl(LoanKind),
     err_out_of_root_scope(ty::Region, ty::Region), // superscope, subscope
     err_out_of_scope(ty::Region, ty::Region) // superscope, subscope
 }
@@ -390,8 +390,19 @@ pub enum MoveError {
 // shorthand for something that fails with `bckerr` or succeeds with `T`
 pub type bckres<T> = Result<T, bckerr>;
 
+#[deriving_eq]
+pub enum LoanKind {
+    TotalFreeze,   // Entire path is frozen   (borrowed as &T)
+    PartialFreeze, // Some subpath is frozen  (borrowed as &T)
+    TotalTake,     // Entire path is "taken"  (borrowed as &mut T)
+    PartialTake,   // Some subpath is "taken" (borrowed as &mut T)
+    Immobile       // Path cannot be moved    (borrowed as &const T)
+}
+
 /// a complete record of a loan that was granted
-pub struct Loan {lp: @loan_path, cmt: cmt, mutbl: ast::mutability}
+pub struct Loan {lp: @loan_path,
+                 cmt: cmt,
+                 kind: LoanKind}
 
 /// maps computed by `gather_loans` that are then used by `check_loans`
 ///
@@ -418,6 +429,22 @@ pub fn save_and_restore_managed<T:Copy,U>(save_and_restore_t: @mut T,
     let u = f();
     *save_and_restore_t = old_save_and_restore_t;
     move u
+}
+
+impl LoanKind {
+    fn is_freeze(&self) -> bool {
+        match *self {
+            TotalFreeze | PartialFreeze => true,
+            _ => false
+        }
+    }
+
+    fn is_take(&self) -> bool {
+        match *self {
+            TotalTake | PartialTake => true,
+            _ => false
+        }
+    }
 }
 
 /// Creates and returns a new root_map
@@ -520,9 +547,9 @@ pub impl BorrowckCtxt {
 
     fn bckerr_to_str(&self, err: bckerr) -> ~str {
         match err.code {
-            err_mutbl(req) => {
+            err_mutbl(lk) => {
                 fmt!("creating %s alias to %s",
-                     self.mut_to_str(req),
+                     self.loan_kind_to_str(lk),
                      self.cmt_to_str(err.cmt))
             }
             err_mut_uniq => {
@@ -599,9 +626,17 @@ pub impl BorrowckCtxt {
         mc.mut_to_str(mutbl)
     }
 
+    fn loan_kind_to_str(&self, lk: LoanKind) -> ~str {
+        match lk {
+            TotalFreeze | PartialFreeze => ~"immutable",
+            TotalTake | PartialTake => ~"mutable",
+            Immobile => ~"read-only"
+        }
+    }
+
     fn loan_to_repr(&self, loan: &Loan) -> ~str {
-        fmt!("Loan(lp=%?, cmt=%s, mutbl=%?)",
-             loan.lp, self.cmt_to_repr(loan.cmt), loan.mutbl)
+        fmt!("Loan(lp=%?, cmt=%s, kind=%?)",
+             loan.lp, self.cmt_to_repr(loan.cmt), loan.kind)
     }
 }
 

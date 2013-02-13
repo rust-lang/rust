@@ -1,5 +1,5 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
+// Copyright 2012-2013 The Rust Project Developers. See the
+// COPYRIGHT file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
@@ -28,7 +28,11 @@ pub struct TestProps {
     // Modules from aux directory that should be compiled
     aux_builds: ~[~str],
     // Environment settings to use during execution
-    exec_env: ~[(~str,~str)]
+    exec_env: ~[(~str,~str)],
+    // Commands to be given to the debugger, when testing debug info
+    debugger_cmds: ~[~str],
+    // Lines to check if they appear in the expected debugger output
+    check_lines: ~[~str],
 }
 
 // Load any test directives embedded in the file
@@ -38,6 +42,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut exec_env = ~[];
     let mut compile_flags = None;
     let mut pp_exact = None;
+    let mut debugger_cmds = ~[];
+    let mut check_lines = ~[];
     for iter_header(testfile) |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -59,13 +65,25 @@ pub fn load_props(testfile: &Path) -> TestProps {
         do parse_exec_env(ln).iter |ee| {
             exec_env.push(*ee);
         }
+
+        match parse_debugger_cmd(ln) {
+            Some(dc) => debugger_cmds.push(dc),
+            None => ()
+        };
+
+        match parse_check_line(ln) {
+            Some(cl) => check_lines.push(cl),
+            None => ()
+        };
     };
     return TestProps {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
         pp_exact: pp_exact,
         aux_builds: aux_builds,
-        exec_env: exec_env
+        exec_env: exec_env,
+        debugger_cmds: debugger_cmds,
+        check_lines: check_lines
     };
 }
 
@@ -110,6 +128,14 @@ fn parse_aux_build(line: ~str) -> Option<~str> {
 
 fn parse_compile_flags(line: ~str) -> Option<~str> {
     parse_name_value_directive(line, ~"compile-flags")
+}
+
+fn parse_debugger_cmd(line: ~str) -> Option<~str> {
+    parse_name_value_directive(line, ~"debugger")
+}
+
+fn parse_check_line(line: ~str) -> Option<~str> {
+    parse_name_value_directive(line, ~"check")
 }
 
 fn parse_exec_env(line: ~str) -> Option<(~str, ~str)> {

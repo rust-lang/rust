@@ -81,7 +81,8 @@ impl <T: Ord> PriorityQueue<T> {
     /// Push an item onto the queue
     fn push(&mut self, item: T) {
         self.data.push(item);
-        self.siftup(0, self.len() - 1);
+        let new_len = self.len() - 1;
+        self.siftup(0, new_len);
     }
 
     /// Optimized version of a push followed by a pop
@@ -179,7 +180,8 @@ impl <T: Ord> PriorityQueue<T> {
     }
 
     priv fn siftdown(&mut self, pos: uint) {
-        self.siftdown_range(pos, self.len());
+        let len = self.len();
+        self.siftdown_range(pos, len);
     }
 }
 
