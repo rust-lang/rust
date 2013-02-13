@@ -152,6 +152,8 @@ pub type crate_cfg = ~[@meta_item];
 
 pub type crate = spanned<crate_>;
 
+#[auto_encode]
+#[auto_decode]
 #[deriving_eq]
 pub struct crate_ {
     module: _mod,
@@ -1281,7 +1283,34 @@ pub enum inlined_item {
     ii_dtor(struct_dtor, ident, ~[ty_param], def_id /* parent id */)
 }
 
+#[cfg(test)]
+mod test {
+    use std;
+    use codemap::*;
+    use super::*;
 
+    //are asts encodable?
+
+    // it looks like this *will* be a compiler bug, after
+    // I get deriving_eq for crates into incoming :)
+    /*
+    #[test] fn check_asts_encodable() {
+        let bogus_span = span {lo:BytePos(10),
+                               hi:BytePos(20),
+                               expn_info:None};
+        let _e : crate =
+            spanned{
+            node: crate_{
+                module: _mod {view_items: ~[], items: ~[]},
+                attrs: ~[],
+                config: ~[]
+            },
+            span: bogus_span};
+        // doesn't matter which encoder we use....
+        let _f = (_e as std::serialize::Encodable::<std::json::Encoder>);
+    }
+    */
+}
 //
 // Local Variables:
 // mode: rust
