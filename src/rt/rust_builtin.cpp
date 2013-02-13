@@ -241,13 +241,12 @@ debug_opaque(type_desc *t, uint8_t *front) {
     rust_task *task = rust_get_current_task();
     LOG(task, stdlib, "debug_opaque");
     debug_tydesc_helper(t);
+    // Account for alignment. `front` may not indeed be the
+    // front byte of the passed-in argument
+    if (((uintptr_t)front % t->align) != 0) {
+        front = (uint8_t *)align_to((uintptr_t)front, (size_t)t->align);
+    }
     for (uintptr_t i = 0; i < t->size; ++front, ++i) {
-
-        // Account for alignment. `front` may not indeed be the
-        // front byte of the passed-in argument
-        if (((uintptr_t)front % t->align) != 0)
-            front = (uint8_t *)align_to((uintptr_t)front, (size_t)t->align);
-
         LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, *front);
     }
 }
