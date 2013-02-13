@@ -455,7 +455,7 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
-        let tmp = vec::cast_to_mut(vec::slice(array, base1, base1+len1));
+        let mut tmp = vec::slice(array, base1, base1+len1);
 
         let mut c1 = 0;
         let mut c2 = base2;
@@ -558,7 +558,7 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
-        let tmp = vec::cast_to_mut(vec::slice(array, base2, base2+len2));
+        let mut tmp = vec::slice(array, base2, base2+len2);
 
         let mut c1 = base1 + len1 - 1;
         let mut c2 = len2 - 1;

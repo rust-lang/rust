@@ -779,7 +779,7 @@ pub impl LookupContext {
         /*!
          *
          * In the event that we are invoking a method with a receiver
-         * of a linear borrowed type like `&mut T` or `&[mut T]`,
+         * of a linear borrowed type like `&mut T` or `&mut [T]`,
          * we will "reborrow" the receiver implicitly.  For example, if
          * you have a call `r.inc()` and where `r` has type `&mut T`,
          * then we treat that like `(&mut *r).inc()`.  This avoids
