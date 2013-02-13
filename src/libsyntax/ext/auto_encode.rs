@@ -23,23 +23,23 @@ For example, a type like:
 
 would generate two implementations like:
 
-    impl<S: Encoder> node_id: Encodable<S> {
-        fn encode(s: &S) {
-            do s.emit_struct("Node", 1) {
-                s.emit_field("id", 0, || s.emit_uint(self))
-            }
+impl<S: std::serialize::Encoder> Node: Encodable<S> {
+    fn encode(&self, s: &S) {
+        do s.emit_struct("Node", 1) {
+            s.emit_field("id", 0, || s.emit_uint(self.id))
         }
     }
+}
 
-    impl<D: Decoder> node_id: Decodable {
-        static fn decode(d: &D) -> Node {
-            do d.read_struct("Node", 1) {
-                Node {
-                    id: d.read_field(~"x", 0, || decode(d))
-                }
+impl<D: Decoder> node_id: Decodable {
+    static fn decode(d: &D) -> Node {
+        do d.read_struct("Node", 1) {
+            Node {
+                id: d.read_field(~"x", 0, || decode(d))
             }
         }
     }
+}
 
 Other interesting scenarios are whe the item has type parameters or
 references other non-built-in types.  A type definition like:
@@ -1149,4 +1149,155 @@ fn mk_enum_deser_body(
             expr_lambda
         ]
     )
+}
+
+
+#[cfg(test)]
+mod test {
+    use std::serialize::Encodable;
+    use std::serialize::Encoder;
+    use core::dvec::*;
+    use util::testing::*;
+    use core::io;
+    use core::str;
+    use core::option::Option;
+    use core::option::Some;
+    use core::option::None;
+    use std;
+
+    // just adding the ones I want to test, for now:
+    #[deriving_eq]
+    pub enum call {
+        CallToEmitEnum(~str),
+        CallToEmitEnumVariant(~str, uint, uint),
+        CallToEmitEnumVariantArg(uint),
+        CallToEmitUint(uint),
+        CallToEmitNil,
+        // all of the ones I was too lazy to handle:
+        CallToOther
+    }
+    // using a mutable field rather than changing the
+    // type of self in every method of every encoder everywhere.
+    pub struct TestEncoder {mut call_log : ~[call]}
+
+    pub impl TestEncoder {
+        // these self's should be &mut self's, as well....
+        fn add_to_log (&self, c : call) {
+            self.call_log.push(copy c);
+        }
+        fn add_unknown_to_log (&self) {
+            self.add_to_log (CallToOther)
+        }
+    }
+
+    pub impl Encoder for TestEncoder {
+        fn emit_nil(&self) { self.add_to_log(CallToEmitNil) }
+
+        fn emit_uint(&self, +v: uint) {self.add_to_log(CallToEmitUint(v)); }
+        fn emit_u64(&self, +_v: u64) { self.add_unknown_to_log(); }
+        fn emit_u32(&self, +_v: u32) { self.add_unknown_to_log(); }
+        fn emit_u16(&self, +_v: u16) { self.add_unknown_to_log(); }
+        fn emit_u8(&self, +_v: u8)   { self.add_unknown_to_log(); }
+
+        fn emit_int(&self, +_v: int) { self.add_unknown_to_log(); }
+        fn emit_i64(&self, +_v: i64) { self.add_unknown_to_log(); }
+        fn emit_i32(&self, +_v: i32) { self.add_unknown_to_log(); }
+        fn emit_i16(&self, +_v: i16) { self.add_unknown_to_log(); }
+        fn emit_i8(&self, +_v: i8)   { self.add_unknown_to_log(); }
+
+        fn emit_bool(&self, +_v: bool) { self.add_unknown_to_log(); }
+
+        fn emit_f64(&self, +_v: f64) { self.add_unknown_to_log(); }
+        fn emit_f32(&self, +_v: f32) { self.add_unknown_to_log(); }
+        fn emit_float(&self, +_v: float) { self.add_unknown_to_log(); }
+
+        fn emit_char(&self, +_v: char) { self.add_unknown_to_log(); }
+
+        fn emit_borrowed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
+        fn emit_owned_str(&self, +_v: &str) { self.add_unknown_to_log(); }
+        fn emit_managed_str(&self, +_v: &str) { self.add_unknown_to_log(); }
+
+        fn emit_borrowed(&self, f: fn()) { self.add_unknown_to_log(); f() }
+        fn emit_owned(&self, f: fn()) { self.add_unknown_to_log(); f() }
+        fn emit_managed(&self, f: fn()) { self.add_unknown_to_log(); f() }
+
+        fn emit_enum(&self, name: &str, f: fn()) {
+            self.add_to_log(CallToEmitEnum(name.to_str())); f(); }
+
+        fn emit_enum_variant(&self, name: &str, +id: uint,
+                             +cnt: uint, f: fn()) {
+            self.add_to_log(CallToEmitEnumVariant (name.to_str(),id,cnt));
+            f();
+        }
+
+        fn emit_enum_variant_arg(&self, +idx: uint, f: fn()) {
+            self.add_to_log(CallToEmitEnumVariantArg (idx)); f();
+        }
+
+        fn emit_borrowed_vec(&self, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
+        fn emit_owned_vec(&self, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_managed_vec(&self, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_vec_elt(&self, +_idx: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
+        fn emit_rec(&self, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_struct(&self, _name: &str, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_field(&self, _name: &str, +_idx: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+
+        fn emit_tup(&self, +_len: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+        fn emit_tup_elt(&self, +_idx: uint, f: fn()) {
+            self.add_unknown_to_log(); f();
+        }
+    }
+
+
+    #[auto_decode]
+    #[auto_encode]
+    struct Node {id: uint}
+
+    fn to_call_log (val: Encodable<TestEncoder>) -> ~[call] {
+        let mut te = TestEncoder {call_log: ~[]};
+        val.encode(&te);
+        te.call_log
+    }
+/*
+    #[test] fn encode_test () {
+        check_equal (to_call_log(Node{id:34}
+                                 as Encodable::<std::json::Encoder>),
+                     ~[CallToEnum (~"Node"),
+                       CallToEnumVariant]);
+    }
+*/
+    #[auto_encode]
+    enum Written {
+        Book(uint,uint),
+        Magazine(~str)
+    }
+
+    #[test] fn encode_enum_test () {
+        check_equal (to_call_log(Book(34,44)
+                                 as Encodable::<TestEncoder>),
+                     ~[CallToEmitEnum (~"Written"),
+                       CallToEmitEnumVariant (~"Book",0,2),
+                       CallToEmitEnumVariantArg (0),
+                       CallToEmitUint (34),
+                       CallToEmitEnumVariantArg (1),
+                       CallToEmitUint (44)]);
+        }
 }
