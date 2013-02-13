@@ -242,13 +242,13 @@ fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
 }
 
 fn digest<T:Encodable<json::Encoder>>(t: &T) -> ~str {
-    let sha = sha1::sha1();
+    let mut sha = sha1::sha1();
     sha.input_str(json_encode(t));
     sha.result_str()
 }
 
 fn digest_file(path: &Path) -> ~str {
-    let sha = sha1::sha1();
+    let mut sha = sha1::sha1();
     let s = io::read_whole_file_str(path);
     sha.input_str(*s.get_ref());
     sha.result_str()

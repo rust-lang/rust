@@ -79,7 +79,7 @@ pub fn as_c_charp<T>(s: &str, f: fn(*c_char) -> T) -> T {
 
 pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     -> Option<~str> {
-    let buf = vec::cast_to_mut(vec::from_elem(TMPBUF_SZ, 0u8 as c_char));
+    let mut buf = vec::from_elem(TMPBUF_SZ, 0u8 as c_char);
     do vec::as_mut_buf(buf) |b, sz| {
         if f(b, sz as size_t) {
             unsafe {
@@ -108,7 +108,7 @@ pub mod win32 {
             let mut res = None;
             let mut done = false;
             while !done {
-                let buf = vec::cast_to_mut(vec::from_elem(n as uint, 0u16));
+                let mut buf = vec::from_elem(n as uint, 0u16);
                 do vec::as_mut_buf(buf) |b, _sz| {
                     let k : DWORD = f(b, TMPBUF_SZ as DWORD);
                     if k == (0 as DWORD) {
@@ -1325,7 +1325,7 @@ mod tests {
           };
           assert (ostream as uint != 0u);
           let s = ~"hello";
-          let mut buf = vec::cast_to_mut(str::to_bytes(s) + ~[0 as u8]);
+          let mut buf = str::to_bytes(s) + ~[0 as u8];
           do vec::as_mut_buf(buf) |b, _len| {
               assert (libc::fwrite(b as *c_void, 1u as size_t,
                                    (str::len(s) + 1u) as size_t, ostream)
