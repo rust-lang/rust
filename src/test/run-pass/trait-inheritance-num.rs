@@ -16,7 +16,7 @@ use num::NumCast::from;
 extern mod std;
 use std::cmp::FuzzyEq;
 
-pub trait NumExt: Num NumCast Eq Ord {}
+pub trait NumExt: NumCast Eq Ord {}
 
 pub trait FloatExt: NumExt FuzzyEq<Self> {}
 

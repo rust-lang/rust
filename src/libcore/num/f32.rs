@@ -13,8 +13,9 @@
 use cmath;
 use cmp;
 use libc::{c_float, c_int};
-use num;
 use num::NumCast;
+use num;
+use ops;
 use option::Option;
 use from_str;
 use to_str;
@@ -271,21 +272,6 @@ impl f32 : cmp::Ord {
     pure fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
 }
 
-impl f32: num::Num {
-    #[inline(always)]
-    pure fn add(&self, other: &f32) -> f32 { return *self + *other; }
-    #[inline(always)]
-    pure fn sub(&self, other: &f32) -> f32 { return *self - *other; }
-    #[inline(always)]
-    pure fn mul(&self, other: &f32) -> f32 { return *self * *other; }
-    #[inline(always)]
-    pure fn div(&self, other: &f32) -> f32 { return *self / *other; }
-    #[inline(always)]
-    pure fn modulo(&self, other: &f32) -> f32 { return *self % *other; }
-    #[inline(always)]
-    pure fn neg(&self)                -> f32 { return -*self;        }
-}
-
 impl f32: num::Zero {
     #[inline(always)]
     static pure fn zero() -> f32 { 0.0 }
@@ -318,6 +304,31 @@ pub impl f32: NumCast {
     #[inline(always)] pure fn to_f32(&self)   -> f32   { *self          }
     #[inline(always)] pure fn to_f64(&self)   -> f64   { *self as f64   }
     #[inline(always)] pure fn to_float(&self) -> float { *self as float }
+}
+
+#[cfg(notest)]
+impl ops::Add<f32,f32> for f32 {
+    pure fn add(&self, other: &f32) -> f32 { *self + *other }
+}
+#[cfg(notest)]
+impl ops::Sub<f32,f32> for f32 {
+    pure fn sub(&self, other: &f32) -> f32 { *self - *other }
+}
+#[cfg(notest)]
+impl ops::Mul<f32,f32> for f32 {
+    pure fn mul(&self, other: &f32) -> f32 { *self * *other }
+}
+#[cfg(notest)]
+impl ops::Div<f32,f32> for f32 {
+    pure fn div(&self, other: &f32) -> f32 { *self / *other }
+}
+#[cfg(notest)]
+impl ops::Modulo<f32,f32> for f32 {
+    pure fn modulo(&self, other: &f32) -> f32 { *self % *other }
+}
+#[cfg(notest)]
+impl ops::Neg<f32> for f32 {
+    pure fn neg(&self) -> f32 { -*self }
 }
 
 #[abi="rust-intrinsic"]

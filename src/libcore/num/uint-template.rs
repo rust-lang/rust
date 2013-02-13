@@ -130,21 +130,6 @@ impl T : Eq {
     pure fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
 }
 
-impl T: num::Num {
-    #[inline(always)]
-    pure fn add(&self, other: &T)    -> T { return *self + *other; }
-    #[inline(always)]
-    pure fn sub(&self, other: &T)    -> T { return *self - *other; }
-    #[inline(always)]
-    pure fn mul(&self, other: &T)    -> T { return *self * *other; }
-    #[inline(always)]
-    pure fn div(&self, other: &T)    -> T { return *self / *other; }
-    #[inline(always)]
-    pure fn modulo(&self, other: &T) -> T { return *self % *other; }
-    #[inline(always)]
-    pure fn neg(&self)              -> T { return -*self;        }
-}
-
 impl T: num::Zero {
     #[inline(always)]
     static pure fn zero() -> T { 0 }
@@ -165,6 +150,31 @@ impl T: num::Round {
     pure fn ceil(&self) -> T { *self }
     #[inline(always)]
     pure fn fract(&self) -> T { 0 }
+}
+
+#[cfg(notest)]
+impl ops::Add<T,T> for T {
+    pure fn add(&self, other: &T) -> T { *self + *other }
+}
+#[cfg(notest)]
+impl ops::Sub<T,T> for T {
+    pure fn sub(&self, other: &T) -> T { *self - *other }
+}
+#[cfg(notest)]
+impl ops::Mul<T,T> for T {
+    pure fn mul(&self, other: &T) -> T { *self * *other }
+}
+#[cfg(notest)]
+impl ops::Div<T,T> for T {
+    pure fn div(&self, other: &T) -> T { *self / *other }
+}
+#[cfg(notest)]
+impl ops::Modulo<T,T> for T {
+    pure fn modulo(&self, other: &T) -> T { *self % *other }
+}
+#[cfg(notest)]
+impl ops::Neg<T> for T {
+    pure fn neg(&self) -> T { -*self }
 }
 
 // String conversion functions and impl str -> num
