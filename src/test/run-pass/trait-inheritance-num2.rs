@@ -13,7 +13,7 @@
 // A more complex example of numeric extensions
 
 use cmp::{Eq, Ord};
-use num::Num::from_int;
+use num::NumCast::from;
 
 extern mod std;
 use std::cmp::FuzzyEq;
@@ -38,7 +38,7 @@ pub impl f64: TypeExt {}
 pub impl float: TypeExt {}
 
 
-pub trait NumExt: TypeExt Eq Ord Num {}
+pub trait NumExt: TypeExt Eq Ord Num NumCast {}
 
 pub impl u8: NumExt {}
 pub impl u16: NumExt {}

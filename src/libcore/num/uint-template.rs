@@ -146,11 +146,6 @@ impl T: num::Num {
     pure fn modulo(&self, other: &T) -> T { return *self % *other; }
     #[inline(always)]
     pure fn neg(&self)              -> T { return -*self;        }
-
-    #[inline(always)]
-    pure fn to_int(&self)         -> int { return *self as int; }
-    #[inline(always)]
-    static pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
 impl T: num::Zero {
@@ -407,6 +402,18 @@ pub fn test_ranges() {
     for range_step(0,1,-10) |_i| {
         die!(~"unreachable");
     }
+}
+
+#[test]
+pub fn test_num() {
+    let ten: T = num::cast(10);
+    let two: T = num::cast(2);
+
+    assert (ten.add(&two)    == num::cast(12));
+    assert (ten.sub(&two)    == num::cast(8));
+    assert (ten.mul(&two)    == num::cast(20));
+    assert (ten.div(&two)    == num::cast(5));
+    assert (ten.modulo(&two) == num::cast(0));
 }
 
 #[test]
