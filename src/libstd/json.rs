@@ -121,19 +121,49 @@ pub impl Encoder: serialize::Encoder {
     fn emit_owned(&self, f: fn()) { f() }
     fn emit_managed(&self, f: fn()) { f() }
 
-    fn emit_enum(&self, name: &str, f: fn()) {
-        if name != "option" { die!(~"only supports option enum") }
+    fn emit_enum(&self, _name: &str, f: fn()) {
         f()
     }
-    fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: fn()) {
-        if id == 0 {
-            self.emit_nil();
+
+    fn emit_enum_variant(&self, name: &str, _id: uint, _cnt: uint, f: fn()) {
+        // encoding of enums is special-cased for Option. Specifically:
+        // Some(34) => 34
+        // None => null
+
+        // other enums are encoded as vectors:
+        // Kangaroo(34,"William") => ["Kangaroo",[34,"William"]]
+
+        // the default expansion for enums is more verbose than I'd like;
+        // specifically, the inner pair of brackets seems superfluous,
+        // BUT the design of the enumeration framework and the requirements
+        // of the special-case for Option mean that a first argument must
+        // be encoded "naked"--with no commas--and that the option name
+        // can't be followed by just a comma, because there might not
+        // be any elements in the tuple.
+
+        // FIXME #4872: this would be more precise and less frightening
+        // with fully-qualified option names. To get that information,
+        // we'd have to change the expansion of auto-encode to pass
+        // those along.
+
+        if (name == ~"Some") {
+            f();
+        } else if (name == ~"None") {
+            self.wr.write_str(~"null");
         } else {
-            f()
+            self.wr.write_char('[');
+            self.wr.write_str(escape_str(name));
+            self.wr.write_char(',');
+            self.wr.write_char('[');
+            f();
+            self.wr.write_char(']');
+            self.wr.write_char(']');
         }
     }
-    fn emit_enum_variant_arg(&self, _idx: uint, f: fn()) {
-        f()
+
+    fn emit_enum_variant_arg(&self, idx: uint, f: fn()) {
+        if (idx != 0) {self.wr.write_char(',');}
+        f();
     }
 
     fn emit_borrowed_vec(&self, _len: uint, f: fn()) {
@@ -141,6 +171,7 @@ pub impl Encoder: serialize::Encoder {
         f();
         self.wr.write_char(']');
     }
+
     fn emit_owned_vec(&self, len: uint, f: fn()) {
         self.emit_borrowed_vec(len, f)
     }
@@ -1180,6 +1211,8 @@ mod tests {
 
     use core::result;
     use core::hashmap::linear::LinearMap;
+    use core::cmp;
+
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~LinearMap::new();
@@ -1245,6 +1278,72 @@ mod tests {
         // printed in a different order.
         let b = result::unwrap(from_str(to_str(&a)));
         assert a == b;
+    }
+
+    // two fns copied from libsyntax/util/testing.rs.
+    // Should they be in their own crate?
+    pub pure fn check_equal_ptr<T : cmp::Eq> (given : &T, expected: &T) {
+        if !((given == expected) && (expected == given )) {
+            die!(fmt!("given %?, expected %?",given,expected));
+        }
+    }
+
+    pub pure fn check_equal<T : cmp::Eq> (given : T, expected: T) {
+        if !((given == expected) && (expected == given )) {
+            die!(fmt!("given %?, expected %?",given,expected));
+        }
+    }
+
+    // testing both auto_encode's calling patterns
+    // and json... not sure where to put these tests.
+    #[test]
+    fn test_write_enum () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"animal") {
+            do encoder.emit_enum_variant (~"frog",37,1242) {
+                // name of frog:
+                do encoder.emit_enum_variant_arg (0) {
+                    encoder.emit_owned_str(~"Henry")
+                }
+                // mass of frog in grams:
+                do encoder.emit_enum_variant_arg (1) {
+                    encoder.emit_int(349);
+                }
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"[\"frog\",[\"Henry\",349]]");
+    }
+
+    #[test]
+    fn test_write_some () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"Option") {
+            do encoder.emit_enum_variant (~"Some",37,1242) {
+                do encoder.emit_enum_variant_arg (0) {
+                    encoder.emit_owned_str(~"jodhpurs")
+                }
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"\"jodhpurs\"");
+    }
+
+    #[test]
+    fn test_write_none () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"Option") {
+            do encoder.emit_enum_variant (~"None",37,1242) {
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"null");
     }
 
     #[test]
