@@ -561,7 +561,7 @@ pub fn combine_impl_and_methods_origins(bcx: block,
     let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
     let {bounds: r_m_bounds, _} = ty::lookup_item_type(tcx, mth_did);
     let n_r_m_tps = r_m_bounds.len(); // rcvr + method tps
-    let m_boundss = vec::view(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
+    let m_boundss = vec::slice(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
 
     // Flatten out to find the number of vtables the method expects.
     let m_vtables = ty::count_traits_and_supertraits(tcx, m_boundss);

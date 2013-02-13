@@ -570,7 +570,8 @@ fn make_run_args(config: config, _props: TestProps, testfile: &Path) ->
         };
 
     let args = toolargs + ~[make_exe_name(config, testfile).to_str()];
-    return ProcArgs {prog: args[0], args: vec::slice(args, 1, args.len())};
+    return ProcArgs {prog: args[0],
+                     args: vec::slice(args, 1, args.len()).to_vec()};
 }
 
 fn split_maybe_args(argstr: Option<~str>) -> ~[~str] {
