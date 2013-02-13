@@ -174,7 +174,7 @@ pub fn concat(v: ~[Rope]) -> Rope {
     //Copy `v` into a mut vector
     let mut len = vec::len(v);
     if len == 0u { return node::Empty; }
-    let ropes = vec::cast_to_mut(vec::from_elem(len, v[0]));
+    let mut ropes = vec::from_elem(len, v[0]);
     for uint::range(1u, len) |i| {
        ropes[i] = v[i];
     }
@@ -719,7 +719,7 @@ pub mod node {
             //Firstly, split `str` in slices of hint_max_leaf_char_len
             let mut leaves = uint::div_ceil(char_len, hint_max_leaf_char_len);
             //Number of leaves
-            let nodes  = vec::cast_to_mut(vec::from_elem(leaves, candidate));
+            let mut nodes  = vec::from_elem(leaves, candidate);
 
             let mut i = 0u;
             let mut offset = byte_start;
@@ -832,7 +832,7 @@ pub mod node {
 
     pub fn serialize_node(node: @Node) -> ~str {
         unsafe {
-            let mut buf = vec::cast_to_mut(vec::from_elem(byte_len(node), 0));
+            let mut buf = vec::from_elem(byte_len(node), 0);
             let mut offset = 0u;//Current position in the buffer
             let it = leaf_iterator::start(node);
             loop {

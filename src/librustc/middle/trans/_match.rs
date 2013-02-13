@@ -1002,7 +1002,7 @@ pub fn pick_col(m: &[@Match]) -> uint {
           _ => 0u
         }
     }
-    let scores = vec::cast_to_mut(vec::from_elem(m[0].pats.len(), 0u));
+    let mut scores = vec::from_elem(m[0].pats.len(), 0u);
     for vec::each(m) |br| {
         let mut i = 0u;
         for vec::each(br.pats) |p| { scores[i] += score(*p); i += 1u; }
