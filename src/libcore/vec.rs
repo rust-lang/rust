@@ -1445,6 +1445,46 @@ pub fn reverse<T>(v: &mut [T]) {
     }
 }
 
+/**
+ * Reverse part of a vector in place.
+ *
+ * Reverse the elements in the vector between `start` and `end - 1`.
+ *
+ * # Arguments
+ *
+ * * `v` - The mutable vector to be modified
+ *
+ * * `start` - Index of the first element of the slice
+ *
+ * * `end` - Index one past the final element to be reversed.
+ *
+ * # Example
+ *
+ * Assume a mutable vector `v` contains `[1,2,3,4,5]`. After the call:
+ *
+ * ~~~
+ *
+ * reverse_part(v, 1, 4);
+ *
+ * ~~~
+ *
+ * `v` now contains `[1,4,3,2,5]`.
+ *
+ * # Safety note
+ *
+ * Behavior is undefined if `start` or `end` do not represent valid
+ * positions in `v`.
+ */
+pub fn reverse_part<T>(v: &mut [T], start: uint, end : uint) {
+    let mut i = start;
+    let mut j = end - 1;
+    while i < j {
+        v[i] <-> v[j];
+        i += 1;
+        j -= 1;
+    }
+}
+
 /// Returns a vector with the order of elements reversed
 pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
@@ -1739,29 +1779,73 @@ pub fn each2_mut<U, T>(v1: &mut [U], v2: &mut [T], f: &fn(u: &mut U, t: &mut T) 
  *
  * The total number of permutations produced is `len(v)!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
+ *
+ * See [Algorithms to generate
+ * permutations](http://en.wikipedia.org/wiki/Permutation).
+ *
+ *  # Arguments
+ *
+ *  * `values` - A vector of values from which the permutations are
+ *  chosen
+ *
+ *  * `fun` - The function to iterate over the combinations
  */
 #[cfg(not(stage0))]
-pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) -> bool {
-    let ln = len(v);
-    if ln <= 1 {
-        put(v);
-    } else {
-        // This does not seem like the most efficient implementation.  You
-        // could make far fewer copies if you put your mind to it.
-        let mut i = 0u;
-        while i < ln {
-            let elt = v[i];
-            let mut rest = slice(v, 0u, i).to_vec();
-            rest.push_all(const_slice(v, i+1u, ln));
-            for each_permutation(rest) |permutation| {
-                if !put(append(~[elt], permutation)) {
-                    return false;
-                }
-            }
-            i += 1u;
+pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) {
+    let length = values.len();
+    let mut permutation = vec::from_fn(length, |i| values[i]);
+    if length <= 1 {
+        fun(permutation);
+        return;
+    }
+    let mut indices = vec::from_fn(length, |i| i);
+    loop {
+        if !fun(permutation) { return; }
+        // find largest k such that indices[k] < indices[k+1]
+        // if no such k exists, all permutations have been generated
+        let mut k = length - 2;
+        while k > 0 && indices[k] >= indices[k+1] {
+            k -= 1;
+        }
+        if k == 0 && indices[0] > indices[1] { return; }
+        // find largest l such that indices[k] < indices[l]
+        // k+1 is guaranteed to be such
+        let mut l = length - 1;
+        while indices[k] >= indices[l] {
+            l -= 1;
+        }
+        // swap indices[k] and indices[l]; sort indices[k+1..]
+        // (they're just reversed)
+        indices[k] <-> indices[l];
+        unsafe {
+            reverse_part(indices, k+1, length);
+        }
+        // fixup permutation based on indices
+        for uint::range(k, length) |i| {
+            permutation[i] = values[indices[i]];
         }
     }
     return true;
+}
+
+/**
+ * Iterate over all permutations of vector `values`.
+ *
+ * This is an alternative to each_permutation that uses references to
+ * avoid copying the elements of the values vector.
+ *
+ * To avoid copying, the iterator will be passed a reference to a vector
+ * containing references to the elements in the original `values` vector.
+ *
+ * # Arguments
+ *
+ * * `values` - A vector of values from which the permutations are chosen
+ *
+ * * `fun` - The function to iterate over the permutations
+ */
+#[cfg(not(stage0))]
+pub fn each_permutation_ref<T>(values : &'v[T], fun : &fn(perm : &[&'v T]) -> bool) {
+    each_permutation(vec::from_fn(values.len(), |i| &values[i]), fun);
 }
 
 /**
@@ -4728,6 +4812,97 @@ mod tests {
             assert_eq!(x, ys[i]);
             i += 1;
         }
+    }
+
+    fn dup<T:Copy>(values : &[&T]) -> ~[T] {
+        from_fn(values.len(), |i| *values[i])
+    }
+
+    #[test]
+    fn test_reverse_part() {
+        let mut values = [1,2,3,4,5];
+        reverse_part(values,1,4);
+        assert values == [1,4,3,2,5];
+    }
+
+    #[test]
+    fn test_permutations0() {
+        let values = [];
+        let mut v : ~[~[int]] = ~[];
+        for each_permutation(values) |p| {
+            v.push(vec::from_slice(p));
+        }
+        assert v == ~[~[]];
+    }
+
+    #[test]
+    fn test_permutations0_ref() {
+        let values = [];
+        let mut v : ~[~[int]] = ~[];
+        for each_permutation_ref(values) |p| {
+            v.push(dup(p));
+        }
+        assert v == ~[~[]];
+    }
+
+    #[test]
+    fn test_permutations1() {
+        let values = [1];
+        let mut v : ~[~[int]] = ~[];
+        for each_permutation(values) |p| {
+            v.push(vec::from_slice(p));
+        }
+        assert v == ~[~[1]];
+    }
+
+    #[test]
+    fn test_permutations1_ref() {
+        let values = [1];
+        let mut v : ~[~[int]] = ~[];
+        for each_permutation_ref(values) |p| {
+            v.push(dup(p));
+        }
+        assert v == ~[~[1]];
+    }
+
+    #[test]
+    fn test_permutations2() {
+        let values = [1,2];
+        let mut v : ~[~[int]] = ~[];
+        for each_permutation(values) |p| {
+            v.push(vec::from_slice(p));
+        }
+        assert v == ~[~[1,2],~[2,1]];
+    }
+
+    #[test]
+    fn test_permutations2_ref() {
+        let values = [1,2];
+        let mut v : ~[~[int]] = ~[];
+        for each_permutation_ref(values) |p| {
+            v.push(dup(p));
+        }
+        assert v == ~[~[1,2],~[2,1]];
+    }
+
+    #[test]
+    fn test_permutations3() {
+        let values = [1,2,3];
+        let mut v : ~[~[int]] = ~[];
+        for each_permutation(values) |p| {
+            v.push(vec::from_slice(p));
+        }
+        assert v == ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]];
+    }
+
+    #[test]
+    fn test_permutations3_ref() {
+        let values = [1,2,3];
+        let mut v : ~[~[int]] = ~[];
+        for each_permutation_ref(values) |p| {
+            v.push(dup(p));
+        }
+        assert v == ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]];
     }
 
     #[test]
