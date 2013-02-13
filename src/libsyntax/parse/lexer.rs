@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -253,6 +253,10 @@ fn consume_whitespace_and_comments(rdr: @mut StringReader)
     return consume_any_line_comment(rdr);
 }
 
+pub pure fn is_line_non_doc_comment(s: &str) -> bool {
+    s.trim_right().all(|ch| ch == '/')
+}
+
 // PRECONDITION: rdr.curr is not whitespace
 // EFFECT: eats any kind of comment.
 // returns a Some(sugared-doc-attr) if one exists, None otherwise
@@ -271,15 +275,18 @@ fn consume_any_line_comment(rdr: @mut StringReader)
                     str::push_char(&mut acc, rdr.curr);
                     bump(rdr);
                 }
-                return Some(TokenAndSpan{
-                    tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                    sp: codemap::mk_sp(start_bpos, rdr.pos)
-                });
+                // but comments with only "/"s are not
+                if !is_line_non_doc_comment(acc) {
+                    return Some(TokenAndSpan{
+                        tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
+                        sp: codemap::mk_sp(start_bpos, rdr.pos)
+                    });
+                }
             } else {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
-                // Restart whitespace munch.
-                return consume_whitespace_and_comments(rdr);
             }
+            // Restart whitespace munch.
+            return consume_whitespace_and_comments(rdr);
           }
           '*' => { bump(rdr); bump(rdr); return consume_block_comment(rdr); }
           _ => ()
@@ -296,6 +303,11 @@ fn consume_any_line_comment(rdr: @mut StringReader)
         }
     }
     return None;
+}
+
+pub pure fn is_block_non_doc_comment(s: &str) -> bool {
+    assert s.len() >= 1u;
+    str::all_between(s, 1u, s.len() - 1u, |ch| ch == '*')
 }
 
 // might return a sugared-doc-attr
@@ -315,10 +327,13 @@ fn consume_block_comment(rdr: @mut StringReader)
             acc += ~"*/";
             bump(rdr);
             bump(rdr);
-            return Some(TokenAndSpan{
-                tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
-                sp: codemap::mk_sp(start_bpos, rdr.pos)
-            });
+            // but comments with only "*"s between two "/"s are not
+            if !is_block_non_doc_comment(acc) {
+                return Some(TokenAndSpan{
+                    tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
+                    sp: codemap::mk_sp(start_bpos, rdr.pos)
+                });
+            }
         }
     } else {
         loop {
