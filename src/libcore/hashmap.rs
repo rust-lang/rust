@@ -383,7 +383,9 @@ pub mod linear {
                 },
             };
 
-            self.value_for_bucket(idx)
+            unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
+                ::cast::transmute_region(self.value_for_bucket(idx))
+            }
         }
 
         /// Return the value corresponding to the key in the map, or create,
@@ -412,7 +414,9 @@ pub mod linear {
                 },
             };
 
-            self.value_for_bucket(idx)
+            unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
+                ::cast::transmute_region(self.value_for_bucket(idx))
+            }
         }
 
         fn consume(&mut self, f: fn(K, V)) {

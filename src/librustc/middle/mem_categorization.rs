@@ -108,6 +108,14 @@ pub enum special_kind {
     sk_heap_upvar
 }
 
+#[deriving_eq]
+pub enum MutabilityCategory {
+    McImmutable, // Immutable.
+    McReadOnly,  // Read-only (`const`)
+    McDeclared,  // Directly declared as mutable.
+    McInherited  // Inherited from the fact that owner is mutable.
+}
+
 // a complete categorization of a value indicating where it originated
 // and how it is located, as well as the mutability of the memory in
 // which the value is stored.
@@ -115,12 +123,12 @@ pub enum special_kind {
 // note: cmt stands for "categorized mutable type".
 #[deriving_eq]
 pub struct cmt_ {
-    id: ast::node_id,        // id of expr/pat producing this value
-    span: span,              // span of same expr/pat
-    cat: categorization,     // categorization of expr
-    lp: Option<@loan_path>,  // loan path for expr, if any
-    mutbl: ast::mutability,  // mutability of expr as lvalue
-    ty: ty::t                // type of the expr
+    id: ast::node_id,          // id of expr/pat producing this value
+    span: span,                // span of same expr/pat
+    cat: categorization,       // categorization of expr
+    lp: Option<@loan_path>,    // loan path for expr, if any
+    mutbl: MutabilityCategory, // mutability of expr as lvalue
+    ty: ty::t                  // type of the expr
 }
 
 pub type cmt = @cmt_;
@@ -298,8 +306,55 @@ pub struct mem_categorization_ctxt {
     method_map: typeck::method_map,
 }
 
-pub impl &mem_categorization_ctxt {
-    fn cat_expr(expr: @ast::expr) -> cmt {
+impl ToStr for MutabilityCategory {
+    pure fn to_str(&self) -> ~str {
+        fmt!("%?", *self)
+    }
+}
+
+impl MutabilityCategory {
+    static fn from_mutbl(m: ast::mutability) -> MutabilityCategory {
+        match m {
+            m_imm => McImmutable,
+            m_const => McReadOnly,
+            m_mutbl => McDeclared
+        }
+    }
+
+    fn inherit(&self) -> MutabilityCategory {
+        match *self {
+            McImmutable => McImmutable,
+            McReadOnly => McReadOnly,
+            McDeclared => McInherited,
+            McInherited => McInherited
+        }
+    }
+
+    fn is_mutable(&self) -> bool {
+        match *self {
+            McImmutable | McReadOnly => false,
+            McDeclared | McInherited => true
+        }
+    }
+
+    fn is_immutable(&self) -> bool {
+        match *self {
+            McImmutable => true,
+            McReadOnly | McDeclared | McInherited => false
+        }
+    }
+
+    fn to_user_str(&self) -> ~str {
+        match *self {
+            McDeclared | McInherited => ~"mutable",
+            McImmutable => ~"immutable",
+            McReadOnly => ~"const"
+        }
+    }
+}
+
+pub impl mem_categorization_ctxt {
+    fn cat_expr(&self, expr: @ast::expr) -> cmt {
         match self.tcx.adjustments.find(&expr.id) {
             None => {
                 // No adjustments.
@@ -323,7 +378,8 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn cat_expr_autoderefd(expr: @ast::expr,
+    fn cat_expr_autoderefd(&self,
+                           expr: @ast::expr,
                            adjustment: &ty::AutoAdjustment) -> cmt {
         let mut cmt = self.cat_expr_unadjusted(expr);
         for uint::range(1, adjustment.autoderefs+1) |deref| {
@@ -332,7 +388,7 @@ pub impl &mem_categorization_ctxt {
         return cmt;
     }
 
-    fn cat_expr_unadjusted(expr: @ast::expr) -> cmt {
+    fn cat_expr_unadjusted(&self, expr: @ast::expr) -> cmt {
         debug!("cat_expr: id=%d expr=%s",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -392,7 +448,8 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn cat_def(id: ast::node_id,
+    fn cat_def(&self,
+               id: ast::node_id,
                span: span,
                expr_ty: ty::t,
                def: ast::def) -> cmt {
@@ -409,7 +466,7 @@ pub impl &mem_categorization_ctxt {
                 span:span,
                 cat:cat_special(sk_static_item),
                 lp:None,
-                mutbl:m_imm,
+                mutbl: McImmutable,
                 ty:expr_ty
             }
           }
@@ -420,7 +477,7 @@ pub impl &mem_categorization_ctxt {
 
             // m: mutability of the argument
             // lp: loan path, must be none for aliasable things
-            let m = if mutbl {m_mutbl} else {m_imm};
+            let m = if mutbl {McDeclared} else {McImmutable};
             let lp = match ty::resolved_mode(self.tcx, mode) {
                 ast::by_copy => Some(@lp_arg(vid)),
                 ast::by_ref => None,
@@ -438,7 +495,7 @@ pub impl &mem_categorization_ctxt {
                 span:span,
                 cat:cat_arg(vid),
                 lp:lp,
-                mutbl:m,
+                mutbl: m,
                 ty:expr_ty
             }
           }
@@ -458,7 +515,7 @@ pub impl &mem_categorization_ctxt {
                 span:span,
                 cat:cat,
                 lp:loan_path,
-                mutbl:m_imm,
+                mutbl: McImmutable,
                 ty:expr_ty
             }
           }
@@ -485,7 +542,7 @@ pub impl &mem_categorization_ctxt {
                         span:span,
                         cat:cat_special(sk_heap_upvar),
                         lp:None,
-                        mutbl:m_imm,
+                        mutbl:McImmutable,
                         ty:expr_ty
                     }
                 }
@@ -493,7 +550,7 @@ pub impl &mem_categorization_ctxt {
           }
 
           ast::def_local(vid, mutbl) => {
-            let m = if mutbl {m_mutbl} else {m_imm};
+            let m = if mutbl {McDeclared} else {McImmutable};
             @cmt_ {
                 id:id,
                 span:span,
@@ -511,14 +568,15 @@ pub impl &mem_categorization_ctxt {
                 span:span,
                 cat:cat_local(vid),
                 lp:Some(@lp_local(vid)),
-                mutbl:m_imm,
+                mutbl:McImmutable,
                 ty:expr_ty
             }
           }
         }
     }
 
-    fn cat_variant<N: ast_node>(arg: N,
+    fn cat_variant<N: ast_node>(&self,
+                                arg: N,
                                 enum_did: ast::def_id,
                                 cmt: cmt) -> cmt {
         @cmt_ {
@@ -526,18 +584,18 @@ pub impl &mem_categorization_ctxt {
             span: arg.span(),
             cat: cat_comp(cmt, comp_variant(enum_did)),
             lp: cmt.lp.map(|l| @lp_comp(*l, comp_variant(enum_did)) ),
-            mutbl: cmt.mutbl, // imm iff in an immutable context
+            mutbl: cmt.mutbl.inherit(),
             ty: self.tcx.ty(arg)
         }
     }
 
-    fn cat_rvalue<N: ast_node>(elt: N, expr_ty: ty::t) -> cmt {
+    fn cat_rvalue<N: ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
         @cmt_ {
             id:elt.id(),
             span:elt.span(),
             cat:cat_rvalue,
             lp:None,
-            mutbl:m_imm,
+            mutbl:McImmutable,
             ty:expr_ty
         }
     }
@@ -546,17 +604,21 @@ pub impl &mem_categorization_ctxt {
     /// component is inherited from the base it is a part of. For
     /// example, a record field is mutable if it is declared mutable
     /// or if the container is mutable.
-    fn inherited_mutability(base_m: ast::mutability,
-                          comp_m: ast::mutability) -> ast::mutability {
+    fn inherited_mutability(&self,
+                            base_m: MutabilityCategory,
+                            comp_m: ast::mutability) -> MutabilityCategory
+    {
         match comp_m {
-          m_imm => {base_m}  // imm: as mutable as the container
-          m_mutbl | m_const => {comp_m}
+            m_imm => base_m.inherit(),
+            m_const => McReadOnly,
+            m_mutbl => McDeclared
         }
     }
 
     /// The `field_id` parameter is the ID of the enclosing expression or
     /// pattern. It is used to determine which variant of an enum is in use.
-    fn cat_field<N:ast_node>(node: N,
+    fn cat_field<N:ast_node>(&self,
+                             node: N,
                              base_cmt: cmt,
                              f_name: ast::ident,
                              field_id: ast::node_id) -> cmt {
@@ -584,7 +646,8 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn cat_deref_fn<N:ast_node>(node: N,
+    fn cat_deref_fn<N:ast_node>(&self,
+                                node: N,
                                 base_cmt: cmt,
                                 deref_cnt: uint) -> cmt
     {
@@ -594,11 +657,13 @@ pub impl &mem_categorization_ctxt {
         // know what type lies at the other end, so we just call it
         // `()` (the empty tuple).
 
-        let mt = ty::mt {ty: ty::mk_tup(self.tcx, ~[]), mutbl: m_imm};
+        let mt = ty::mt {ty: ty::mk_tup(self.tcx, ~[]),
+                         mutbl: m_imm};
         return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
     }
 
-    fn cat_deref<N:ast_node>(node: N,
+    fn cat_deref<N:ast_node>(&self,
+                             node: N,
                              base_cmt: cmt,
                              deref_cnt: uint) -> cmt
     {
@@ -615,7 +680,8 @@ pub impl &mem_categorization_ctxt {
         return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
     }
 
-    fn cat_deref_common<N:ast_node>(node: N,
+    fn cat_deref_common<N:ast_node>(&self,
+                                    node: N,
                                     base_cmt: cmt,
                                     deref_cnt: uint,
                                     mt: ty::mt) -> cmt
@@ -644,7 +710,7 @@ pub impl &mem_categorization_ctxt {
                         self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
                     }
                     gc_ptr(*) | region_ptr(_, _) | unsafe_ptr => {
-                        mt.mutbl
+                        MutabilityCategory::from_mutbl(mt.mutbl)
                     }
                 };
 
@@ -673,7 +739,9 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn cat_index<N: ast_node>(elt: N, base_cmt: cmt) -> cmt {
+    fn cat_index<N: ast_node>(&self,
+                              elt: N,
+                              base_cmt: cmt) -> cmt {
         let mt = match ty::index(self.tcx, base_cmt.ty) {
           Some(mt) => mt,
           None => {
@@ -700,7 +768,7 @@ pub impl &mem_categorization_ctxt {
                 self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
               }
               gc_ptr(_) | region_ptr(_, _) | unsafe_ptr => {
-                mt.mutbl
+                MutabilityCategory::from_mutbl(mt.mutbl)
               }
             };
 
@@ -714,21 +782,21 @@ pub impl &mem_categorization_ctxt {
                 ty:mt.ty
             };
 
-            comp(elt, deref_cmt, base_cmt.ty, m, mt.ty)
+            comp(elt, deref_cmt, base_cmt.ty, m, mt)
           }
 
           deref_comp(_) => {
             // fixed-length vectors have no deref
             let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
-            comp(elt, base_cmt, base_cmt.ty, m, mt.ty)
+            comp(elt, base_cmt, base_cmt.ty, m, mt)
           }
         };
 
         fn comp<N: ast_node>(elt: N, of_cmt: cmt,
-                             vect: ty::t, mutbl: ast::mutability,
-                             ty: ty::t) -> cmt
+                             vect: ty::t, mutbl: MutabilityCategory,
+                             mt: ty::mt) -> cmt
         {
-            let comp = comp_index(vect, mutbl);
+            let comp = comp_index(vect, mt.mutbl);
             let index_lp = of_cmt.lp.map(|lp| @lp_comp(*lp, comp) );
             @cmt_ {
                 id:elt.id(),
@@ -736,46 +804,55 @@ pub impl &mem_categorization_ctxt {
                 cat:cat_comp(of_cmt, comp),
                 lp:index_lp,
                 mutbl:mutbl,
-                ty:ty
+                ty:mt.ty
             }
         }
     }
 
-    fn cat_tuple_elt<N: ast_node>(elt: N, cmt: cmt) -> cmt {
+    fn cat_tuple_elt<N: ast_node>(&self,
+                                  elt: N,
+                                  cmt: cmt) -> cmt {
         @cmt_ {
             id: elt.id(),
             span: elt.span(),
             cat: cat_comp(cmt, comp_tuple),
             lp: cmt.lp.map(|l| @lp_comp(*l, comp_tuple) ),
-            mutbl: cmt.mutbl, // imm iff in an immutable context
+            mutbl: cmt.mutbl.inherit(),
             ty: self.tcx.ty(elt)
         }
     }
 
-    fn cat_anon_struct_field<N: ast_node>(elt: N, cmt: cmt) -> cmt {
+    fn cat_anon_struct_field<N: ast_node>(&self,
+                                          elt: N,
+                                          cmt: cmt) -> cmt {
         @cmt_ {
             id: elt.id(),
             span: elt.span(),
             cat: cat_comp(cmt, comp_anon_field),
             lp: cmt.lp.map(|l| @lp_comp(*l, comp_anon_field)),
-            mutbl: cmt.mutbl, // imm iff in an immutable context
+            mutbl: cmt.mutbl.inherit(),
             ty: self.tcx.ty(elt)
         }
     }
 
-    fn cat_method_ref(expr: @ast::expr, expr_ty: ty::t) -> cmt {
+    fn cat_method_ref(&self,
+                      expr: @ast::expr,
+                      expr_ty: ty::t) -> cmt {
         @cmt_ {
             id:expr.id,
             span:expr.span,
             cat:cat_special(sk_method),
             lp:None,
-            mutbl:m_imm,
+            mutbl:McImmutable,
             ty:expr_ty
         }
     }
 
-    fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
-
+    fn cat_pattern(&self,
+                   cmt: cmt,
+                   pat: @ast::pat,
+                   op: fn(cmt, @ast::pat))
+    {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
         //
@@ -901,7 +978,7 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn cat_to_repr(cat: categorization) -> ~str {
+    fn cat_to_repr(&self, cat: categorization) -> ~str {
         match cat {
           cat_special(sk_method) => ~"method",
           cat_special(sk_static_item) => ~"static_item",
@@ -924,7 +1001,7 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn mut_to_str(mutbl: ast::mutability) -> ~str {
+    fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
         match mutbl {
           m_mutbl => ~"mutable",
           m_const => ~"const",
@@ -932,7 +1009,7 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn ptr_sigil(ptr: ptr_kind) -> ~str {
+    fn ptr_sigil(&self, ptr: ptr_kind) -> ~str {
         match ptr {
           uniq_ptr => ~"~",
           gc_ptr(_) => ~"@",
@@ -941,7 +1018,7 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn comp_to_repr(comp: comp_kind) -> ~str {
+    fn comp_to_repr(&self, comp: comp_kind) -> ~str {
         match comp {
           comp_field(fld, _) => self.tcx.sess.str_of(fld),
           comp_index(*) => ~"[]",
@@ -951,7 +1028,7 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn lp_to_str(lp: @loan_path) -> ~str {
+    fn lp_to_str(&self, lp: @loan_path) -> ~str {
         match *lp {
           lp_local(node_id) => {
             fmt!("local(%d)", node_id)
@@ -971,17 +1048,17 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn cmt_to_repr(cmt: cmt) -> ~str {
-        fmt!("{%s id:%d m:%s lp:%s ty:%s}",
+    fn cmt_to_repr(&self, cmt: cmt) -> ~str {
+        fmt!("{%s id:%d m:%? lp:%s ty:%s}",
              self.cat_to_repr(cmt.cat),
              cmt.id,
-             self.mut_to_str(cmt.mutbl),
+             cmt.mutbl,
              cmt.lp.map_default(~"none", |p| self.lp_to_str(*p) ),
              ty_to_str(self.tcx, cmt.ty))
     }
 
-    fn cmt_to_str(cmt: cmt) -> ~str {
-        let mut_str = self.mut_to_str(cmt.mutbl);
+    fn cmt_to_str(&self, cmt: cmt) -> ~str {
+        let mut_str = cmt.mutbl.to_user_str();
         match cmt.cat {
           cat_special(sk_method) => ~"method",
           cat_special(sk_static_item) => ~"static item",
@@ -1016,7 +1093,7 @@ pub impl &mem_categorization_ctxt {
         }
     }
 
-    fn region_to_str(r: ty::Region) -> ~str {
+    fn region_to_str(&self, r: ty::Region) -> ~str {
         region_to_str(self.tcx, r)
     }
 }
