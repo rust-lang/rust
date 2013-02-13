@@ -21,18 +21,21 @@ use core::option;
 use core::vec;
 use syntax::ast_util::*;
 use syntax::attr;
-use syntax::codemap::{dummy_sp, span};
+use syntax::codemap::{dummy_sp, span, ExpandedFrom};
 use syntax::codemap;
 use syntax::fold;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::attr::attrs_contains_name;
 
+use syntax::ext::base::{mk_ctxt, ext_ctxt};
+
 type node_id_gen = fn@() -> ast::node_id;
 
 type test = {
     span: span,
     path: ~[ast::ident],
+    bench: bool,
     ignore: bool,
     should_fail: bool
 };
@@ -41,6 +44,7 @@ struct TestCtxt {
     sess: session::Session,
     crate: @ast::crate,
     path: ~[ast::ident],
+      ext_cx: ext_ctxt,
     testfns: ~[test]
 }
 
@@ -68,9 +72,14 @@ fn generate_test_harness(sess: session::Session,
     let cx: @mut TestCtxt = @mut TestCtxt {
         sess: sess,
         crate: crate,
+        ext_cx: mk_ctxt(sess.parse_sess, copy sess.opts.cfg),
         path: ~[],
         testfns: ~[]
     };
+
+    cx.ext_cx.bt_push(ExpandedFrom({call_site: dummy_sp(),
+                                    callie: {name: ~"test",
+                                             span: None}}));
 
     let precursor = @fold::AstFoldFns {
         fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
@@ -79,6 +88,7 @@ fn generate_test_harness(sess: session::Session,
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
+    cx.ext_cx.bt_pop();
     return res;
 }
 
@@ -86,7 +96,8 @@ fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     do config::strip_items(crate) |attrs| {
-        !attr::contains_name(attr::attr_metas(attrs), ~"test")
+        !attr::contains_name(attr::attr_metas(attrs), ~"test") &&
+        !attr::contains_name(attr::attr_metas(attrs), ~"bench")
     }
 }
 
@@ -132,7 +143,7 @@ fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: fold::ast_fold)
     debug!("current path: %s",
            ast_util::path_name_i(cx.path, cx.sess.parse_sess.interner));
 
-    if is_test_fn(i) {
+    if is_test_fn(i) || is_bench_fn(i) {
         match i.node {
           ast::item_fn(_, purity, _, _) if purity == ast::unsafe_fn => {
             let sess = cx.sess;
@@ -143,10 +154,12 @@ fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: fold::ast_fold)
           _ => {
             debug!("this is a test function");
             let test = {span: i.span,
-                        path: /*bad*/copy cx.path, ignore: is_ignored(cx, i),
+                        path: /*bad*/copy cx.path,
+                        bench: is_bench_fn(i),
+                        ignore: is_ignored(cx, i),
                         should_fail: should_fail(i)};
             cx.testfns.push(test);
-            debug!("have %u test functions", cx.testfns.len());
+            debug!("have %u test/bench functions", cx.testfns.len());
           }
         }
     }
@@ -176,6 +189,31 @@ fn is_test_fn(i: @ast::item) -> bool {
     return has_test_attr && has_test_signature(i);
 }
 
+fn is_bench_fn(i: @ast::item) -> bool {
+    let has_bench_attr =
+        vec::len(attr::find_attrs_by_name(i.attrs, ~"bench")) > 0u;
+
+    fn has_test_signature(i: @ast::item) -> bool {
+        match /*bad*/copy i.node {
+            ast::item_fn(decl, _, tps, _) => {
+                let input_cnt = vec::len(decl.inputs);
+                let no_output = match decl.output.node {
+                    ast::ty_nil => true,
+                    _ => false
+                };
+                let tparm_cnt = vec::len(tps);
+                // NB: inadequate check, but we're running
+                // well before resolve, can't get too deep.
+                input_cnt == 1u
+                    && no_output && tparm_cnt == 0u
+            }
+          _ => false
+        }
+    }
+
+    return has_bench_attr && has_test_signature(i);
+}
+
 fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
     let ignoreattrs = attr::find_attrs_by_name(i.attrs, "ignore");
     let ignoreitems = attr::attr_metas(ignoreattrs);
@@ -194,7 +232,7 @@ fn should_fail(i: @ast::item) -> bool {
     vec::len(attr::find_attrs_by_name(i.attrs, ~"should_fail")) > 0u
 }
 
-fn add_test_module(cx: @mut TestCtxt, +m: ast::_mod) -> ast::_mod {
+fn add_test_module(cx: &TestCtxt, +m: ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
     ast::_mod {
         items: vec::append_one(/*bad*/copy m.items, testmod),
@@ -207,47 +245,84 @@ fn add_test_module(cx: @mut TestCtxt, +m: ast::_mod) -> ast::_mod {
 We're going to be building a module that looks more or less like:
 
 mod __test {
-  fn main(args: ~[str]) -> int {
-    std::test::test_main(args, tests())
+  #[!resolve_unexported]
+  extern mod std (name = "std", vers = "...");
+  fn main() {
+    #[main];
+    std::test::test_main_static(::os::args(), tests)
   }
 
-  fn tests() -> ~[std::test::test_desc] {
+  const tests : &static/[std::test::TestDescAndFn] = &[
     ... the list of tests in the crate ...
-  }
+  ];
 }
 
 */
 
-fn mk_test_module(cx: @mut TestCtxt) -> @ast::item {
+fn mk_std(cx: &TestCtxt) -> @ast::view_item {
+    let vers = ast::lit_str(@~"0.6");
+    let vers = nospan(vers);
+    let mi = ast::meta_name_value(~"vers", vers);
+    let mi = nospan(mi);
+    let id_std = cx.sess.ident_of(~"std");
+    let vi = if is_std(cx) {
+        ast::view_item_import(
+            ~[@nospan(ast::view_path_simple(id_std,
+                                            path_node(~[id_std]),
+                                            ast::type_value_ns,
+                                            cx.sess.next_node_id()))])
+    } else {
+        ast::view_item_use(id_std, ~[@mi],
+                           cx.sess.next_node_id())
+    };
+    let vi = ast::view_item {
+        node: vi,
+        attrs: ~[],
+        vis: ast::private,
+        span: dummy_sp()
+    };
+    return @vi;
+}
+
+fn mk_test_module(cx: &TestCtxt) -> @ast::item {
+
     // Link to std
-    let std = mk_std(cx);
-    let view_items = if is_std(cx) { ~[] } else { ~[std] };
-    // A function that generates a vector of test descriptors to feed to the
-    // test runner
-    let testsfn = mk_tests(cx);
+    let view_items = ~[mk_std(cx)];
+
+    // A constant vector of test descriptors.
+    let tests = mk_tests(cx);
+
     // The synthesized main function which will call the console test runner
     // with our list of tests
-    let mainfn = mk_main(cx);
+    let ext_cx = cx.ext_cx;
+    let mainfn = (quote_item!(
+        pub fn main() {
+            #[main];
+            std::test::test_main_static(::os::args(), tests);
+        }
+    )).get();
+
     let testmod = ast::_mod {
         view_items: view_items,
-        items: ~[mainfn, testsfn],
+        items: ~[mainfn, tests],
     };
     let item_ = ast::item_mod(testmod);
+
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_attr =
         attr::mk_attr(attr::mk_word_item(~"!resolve_unexported"));
-    let sess = cx.sess;
+
     let item = ast::item {
-        ident: sess.ident_of(~"__test"),
+        ident: cx.sess.ident_of(~"__test"),
         attrs: ~[resolve_unexported_attr],
-        id: sess.next_node_id(),
+        id: cx.sess.next_node_id(),
         node: item_,
         vis: ast::public,
         span: dummy_sp(),
-    };
+     };
 
     debug!("Synthetic test module:\n%s\n",
-           pprust::item_to_str(@copy item, sess.intr()));
+           pprust::item_to_str(@copy item, cx.sess.intr()));
 
     return @item;
 }
@@ -258,10 +333,10 @@ fn nospan<T: Copy>(t: T) -> codemap::spanned<T> {
 
 fn path_node(+ids: ~[ast::ident]) -> @ast::path {
     @ast::path { span: dummy_sp(),
-                 global: false,
-                 idents: ids,
-                 rp: None,
-                 types: ~[] }
+                global: false,
+                idents: ids,
+                rp: None,
+                types: ~[] }
 }
 
 fn path_node_global(+ids: ~[ast::ident]) -> @ast::path {
@@ -272,56 +347,22 @@ fn path_node_global(+ids: ~[ast::ident]) -> @ast::path {
                  types: ~[] }
 }
 
-fn mk_std(cx: @mut TestCtxt) -> @ast::view_item {
-    let vers = ast::lit_str(@~"0.6");
-    let vers = nospan(vers);
-    let mi = ast::meta_name_value(~"vers", vers);
-    let mi = nospan(mi);
-    let sess = cx.sess;
-    let vi = ast::view_item_use(sess.ident_of(~"std"),
-                                ~[@mi],
-                                sess.next_node_id());
-    let vi = ast::view_item {
-        node: vi,
-        attrs: ~[],
-        vis: ast::private,
-        span: dummy_sp()
-    };
 
-    return @vi;
-}
+fn mk_tests(cx: &TestCtxt) -> @ast::item {
 
-fn mk_tests(cx: @mut TestCtxt) -> @ast::item {
-    let ret_ty = mk_test_desc_and_fn_vec_ty(cx);
-
-    let decl = ast::fn_decl {
-        inputs: ~[],
-        output: ret_ty,
-        cf: ast::return_val,
-    };
+    let ext_cx = cx.ext_cx;
 
     // The vector of test_descs for this crate
-    let test_descs = mk_test_desc_and_fn_vec(cx);
+    let test_descs = mk_test_descs(cx);
 
-    let sess = cx.sess;
-    let body_: ast::blk_ = default_block(~[],
-                                         option::Some(test_descs),
-                                         sess.next_node_id());
-    let body = nospan(body_);
-
-    let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
-    let item = ast::item {
-        ident: sess.ident_of(~"tests"),
-        attrs: ~[],
-        id: sess.next_node_id(),
-        node: item_,
-        vis: ast::public,
-        span: dummy_sp(),
-    };
-    return @item;
+    (quote_item!(
+        pub const tests : &static/[self::std::test::TestDescAndFn] =
+            $test_descs
+        ;
+    )).get()
 }
 
-fn is_std(cx: @mut TestCtxt) -> bool {
+fn is_std(cx: &TestCtxt) -> bool {
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, ~"name") {
@@ -332,55 +373,11 @@ fn is_std(cx: @mut TestCtxt) -> bool {
     return is_std;
 }
 
-fn mk_path(cx: @mut TestCtxt, +path: ~[ast::ident]) -> @ast::path {
-    // For tests that are inside of std we don't want to prefix
-    // the paths with std::
-    let sess = cx.sess;
-    if is_std(cx) {
-        path_node_global(path)
-    } else {
-        path_node(~[ sess.ident_of(~"self"), sess.ident_of(~"std") ] + path)
-    }
-}
-
-// The ast::Ty of ~[std::test::test_desc]
-fn mk_test_desc_and_fn_vec_ty(cx: @mut TestCtxt) -> @ast::Ty {
-    let sess = cx.sess;
-    let test_desc_and_fn_ty_path = mk_path(cx, ~[
-        sess.ident_of(~"test"),
-        sess.ident_of(~"TestDescAndFn")
-    ]);
-
-    let test_desc_and_fn_ty = ast::Ty {
-        id: sess.next_node_id(),
-        node: ast::ty_path(test_desc_and_fn_ty_path, sess.next_node_id()),
-        span: dummy_sp(),
-    };
-
-    let vec_mt = ast::mt {ty: @test_desc_and_fn_ty,
-                          mutbl: ast::m_imm};
-
-    let inner_ty = @ast::Ty {
-        id: sess.next_node_id(),
-        node: ast::ty_vec(vec_mt),
-        span: dummy_sp(),
-    };
-
-    @ast::Ty {
-        id: sess.next_node_id(),
-        node: ast::ty_uniq(ast::mt { ty: inner_ty, mutbl: ast::m_imm }),
-        span: dummy_sp(),
-    }
-}
-
-fn mk_test_desc_and_fn_vec(cx: @mut TestCtxt) -> @ast::expr {
+fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
-    {
-        let testfns = &mut cx.testfns;
-        for testfns.each |test| {
-            descs.push(mk_test_desc_and_fn_rec(cx, *test));
-        }
+    for cx.testfns.each |test| {
+        descs.push(mk_test_desc_and_fn_rec(cx, *test));
     }
 
     let sess = cx.sess;
@@ -394,223 +391,70 @@ fn mk_test_desc_and_fn_vec(cx: @mut TestCtxt) -> @ast::expr {
     @ast::expr {
         id: sess.next_node_id(),
         callee_id: sess.next_node_id(),
-        node: ast::expr_vstore(inner_expr, ast::expr_vstore_uniq),
+        node: ast::expr_vstore(inner_expr, ast::expr_vstore_slice),
         span: dummy_sp(),
     }
 }
 
-fn mk_test_desc_and_fn_rec(cx: @mut TestCtxt, test: test) -> @ast::expr {
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: test) -> @ast::expr {
     let span = test.span;
     let path = /*bad*/copy test.path;
 
-    let sess = cx.sess;
-    debug!("encoding %s",
-           ast_util::path_name_i(path, sess.parse_sess.interner));
+    let ext_cx = cx.ext_cx;
+
+    debug!("encoding %s", ast_util::path_name_i(path,
+                                                cx.sess.parse_sess.interner));
 
     let name_lit: ast::lit =
         nospan(ast::lit_str(@ast_util::path_name_i(
             path,
-            sess.parse_sess.interner)));
+            cx.sess.parse_sess.interner)));
 
-    let name_expr_inner = @ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_lit(@name_lit),
-        span: span,
+    let name_expr = @ast::expr {
+          id: cx.sess.next_node_id(),
+          callee_id: cx.sess.next_node_id(),
+          node: ast::expr_lit(@name_lit),
+          span: span
     };
-
-    let name_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_vstore(name_expr_inner, ast::expr_vstore_uniq),
-        span: dummy_sp(),
-    };
-
-    let name_field = nospan(ast::field_ {
-        mutbl: ast::m_imm,
-        ident: sess.ident_of(~"name"),
-        expr: @name_expr,
-    });
-
-    let ignore_lit: ast::lit = nospan(ast::lit_bool(test.ignore));
-
-    let ignore_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_lit(@ignore_lit),
-        span: span,
-    };
-
-    let ignore_field = nospan(ast::field_ {
-        mutbl: ast::m_imm,
-        ident: sess.ident_of(~"ignore"),
-        expr: @ignore_expr,
-    });
-
-    let fail_lit: ast::lit = nospan(ast::lit_bool(test.should_fail));
-
-    let fail_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_lit(@fail_lit),
-        span: span,
-    };
-
-    let fail_field = nospan(ast::field_ {
-        mutbl: ast::m_imm,
-        ident: sess.ident_of(~"should_fail"),
-        expr: @fail_expr,
-    });
-
-    let test_desc_path =
-        mk_path(cx, ~[ sess.ident_of(~"test"), sess.ident_of(~"TestDesc") ]);
-
-    let desc_rec_ = ast::expr_struct(
-        test_desc_path,
-        ~[name_field, ignore_field, fail_field],
-        option::None
-    );
-
-    let desc_rec = @ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: desc_rec_,
-        span: span,
-    };
-
-    let desc_field = nospan(ast::field_ {
-        mutbl: ast::m_imm,
-        ident: sess.ident_of(~"desc"),
-        expr: desc_rec
-    });
 
     let fn_path = path_node_global(path);
 
     let fn_expr = @ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
+        id: cx.sess.next_node_id(),
+        callee_id: cx.sess.next_node_id(),
         node: ast::expr_path(fn_path),
         span: span,
     };
 
-    let fn_field = nospan(ast::field_ {
-        mutbl: ast::m_imm,
-        ident: sess.ident_of(~"testfn"),
-        expr: fn_expr,
-    });
-
-    let test_desc_and_fn_path =
-        mk_path(cx, ~[sess.ident_of(~"test"),
-                      sess.ident_of(~"TestDescAndFn")]);
-
-    let desc_and_fn_rec = @ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_struct(test_desc_and_fn_path,
-                               ~[fn_field, desc_field],
-                               option::None),
-        span: span,
+    let t_expr = if test.bench {
+        quote_expr!( self::std::test::StaticBenchFn($fn_expr) )
+    } else {
+        quote_expr!( self::std::test::StaticTestFn($fn_expr) )
     };
 
-    return desc_and_fn_rec;
-}
-
-fn mk_main(cx: @mut TestCtxt) -> @ast::item {
-    let sess = cx.sess;
-    let ret_ty = ast::Ty {
-        id: sess.next_node_id(),
-        node: ast::ty_nil,
-        span: dummy_sp(),
+    let ignore_expr = if test.ignore {
+        quote_expr!( true )
+    } else {
+        quote_expr!( false )
     };
 
-    let decl = ast::fn_decl {
-        inputs: ~[],
-        output: @ret_ty,
-        cf: ast::return_val,
+    let fail_expr = if test.should_fail {
+        quote_expr!( true )
+    } else {
+        quote_expr!( false )
     };
 
-    let test_main_call_expr = mk_test_main_call(cx);
-
-    let body_: ast::blk_ =
-        default_block(~[],
-                      option::Some(test_main_call_expr),
-                      sess.next_node_id());
-    let body = codemap::spanned { node: body_, span: dummy_sp() };
-
-    let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
-    let item = ast::item {
-        ident: sess.ident_of(~"main"),
-        attrs: ~[attr::mk_attr(attr::mk_word_item(~"main"))],
-        id: sess.next_node_id(),
-        node: item_,
-        vis: ast::public,
-        span: dummy_sp(),
-    };
-    return @item;
-}
-
-fn mk_test_main_call(cx: @mut TestCtxt) -> @ast::expr {
-    // Call os::args to generate the vector of test_descs
-    let sess = cx.sess;
-    let args_path = path_node_global(~[
-        sess.ident_of(~"os"),
-        sess.ident_of(~"args")
-    ]);
-
-    let args_path_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_path(args_path),
-        span: dummy_sp(),
-    };
-
-    let args_call_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_call(@args_path_expr, ~[], ast::NoSugar),
-        span: dummy_sp(),
-    };
-
-    // Call __test::test to generate the vector of test_descs
-    let test_path = path_node(~[ sess.ident_of(~"tests") ]);
-
-    let test_path_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_path(test_path),
-        span: dummy_sp(),
-    };
-
-    let test_call_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_call(@test_path_expr, ~[], ast::NoSugar),
-        span: dummy_sp(),
-    };
-
-    // Call std::test::test_main
-    let test_main_path = mk_path(cx, ~[
-        sess.ident_of(~"test"),
-        sess.ident_of(~"test_main")
-    ]);
-
-    let test_main_path_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_path(test_main_path),
-        span: dummy_sp(),
-    };
-
-    let test_main_call_expr = ast::expr {
-        id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
-        node: ast::expr_call(@test_main_path_expr,
-                             ~[@args_call_expr, @test_call_expr],
-                             ast::NoSugar),
-        span: dummy_sp(),
-    };
-
-    return @test_main_call_expr;
+    let e = quote_expr!(
+        self::std::test::TestDescAndFn {
+            desc: self::std::test::TestDesc {
+                name: self::std::test::StaticTestName($name_expr),
+                ignore: $ignore_expr,
+                should_fail: $fail_expr
+            },
+            testfn: $t_expr,
+        }
+    );
+    e
 }
 
 // Local Variables:

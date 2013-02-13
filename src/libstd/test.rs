@@ -20,6 +20,8 @@ use sort;
 use term;
 
 use core::cmp::Eq;
+
+use core::to_str::ToStr;
 use core::either::Either;
 use core::either;
 use core::io::WriterUtil;
@@ -43,13 +45,62 @@ extern mod rustrt {
 // paths; i.e. it should be a series of identifiers seperated by double
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
-pub type TestName = ~str;
+
+#[cfg(stage0)]
+pub enum TestName {
+    // Stage0 doesn't understand sendable &static/str yet
+    StaticTestName(&static/[u8]),
+    DynTestName(~str)
+}
+
+#[cfg(stage0)]
+impl ToStr for TestName {
+    pure fn to_str(&self) -> ~str {
+        match self {
+            &StaticTestName(s) => str::from_bytes(s),
+            &DynTestName(s) => s.to_str()
+        }
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+pub enum TestName {
+    StaticTestName(&static/str),
+    DynTestName(~str)
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+impl ToStr for TestName {
+    pure fn to_str(&self) -> ~str {
+        match self {
+            &StaticTestName(s) => s.to_str(),
+            &DynTestName(s) => s.to_str()
+        }
+    }
+}
 
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function fails then the test fails. We
 // may need to come up with a more clever definition of test in order
 // to support isolation of tests into tasks.
-pub type TestFn = ~fn();
+pub enum TestFn {
+    StaticTestFn(extern fn()),
+    StaticBenchFn(extern fn(&mut BenchHarness)),
+    DynTestFn(~fn()),
+    DynBenchFn(~fn(&mut BenchHarness))
+}
+
+// Structure passed to BenchFns
+pub struct BenchHarness {
+    iterations: u64,
+    ns_start: u64,
+    ns_end: u64,
+    bytes: u64
+}
 
 // The definition of a single test. A test runner will run a list of
 // these.
@@ -65,7 +116,7 @@ pub struct TestDescAndFn {
 }
 
 // The default console test runner. It accepts the command line
-// arguments and a vector of test_descs (generated at compile time).
+// arguments and a vector of test_descs.
 pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     let opts =
         match parse_opts(args) {
@@ -75,10 +126,38 @@ pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     if !run_tests_console(&opts, tests) { die!(~"Some tests failed"); }
 }
 
+// A variant optimized for invocation with a static test vector.
+// This will fail (intentionally) when fed any dynamic tests, because
+// it is copying the static values out into a dynamic vector and cannot
+// copy dynamic values. It is doing this because from this point on
+// a ~[TestDescAndFn] is used in order to effect ownership-transfer
+// semantics into parallel test runners, which in turn requires a ~[]
+// rather than a &[].
+pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
+    let owned_tests = do tests.map |t| {
+        match t.testfn {
+            StaticTestFn(f) =>
+            TestDescAndFn { testfn: StaticTestFn(f), desc: copy t.desc },
+
+            StaticBenchFn(f) =>
+            TestDescAndFn { testfn: StaticBenchFn(f), desc: copy t.desc },
+
+            _ => {
+                die! (~"non-static tests passed to test::test_main_static");
+            }
+        }
+    };
+    test_main(args, owned_tests)
+}
+
 pub struct TestOpts {
     filter: Option<~str>,
     run_ignored: bool,
-    logfile: Option<~str>,
+    run_tests: bool,
+    run_benchmarks: bool,
+    save_results: Option<Path>,
+    compare_results: Option<Path>,
+    logfile: Option<Path>
 }
 
 type OptRes = Either<TestOpts, ~str>;
@@ -86,7 +165,12 @@ type OptRes = Either<TestOpts, ~str>;
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[~str]) -> OptRes {
     let args_ = vec::tail(args);
-    let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
+    let opts = ~[getopts::optflag(~"ignored"),
+                 getopts::optflag(~"test"),
+                 getopts::optflag(~"bench"),
+                 getopts::optopt(~"save"),
+                 getopts::optopt(~"diff"),
+                 getopts::optopt(~"logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
           Ok(move m) => m,
@@ -99,19 +183,41 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
         } else { option::None };
 
     let run_ignored = getopts::opt_present(&matches, ~"ignored");
+
     let logfile = getopts::opt_maybe_str(&matches, ~"logfile");
+    let logfile = logfile.map(|s| Path(*s));
+
+    let run_benchmarks = getopts::opt_present(&matches, ~"bench");
+    let run_tests = ! run_benchmarks ||
+        getopts::opt_present(&matches, ~"test");
+
+    let save_results = getopts::opt_maybe_str(&matches, ~"save");
+    let save_results = save_results.map(|s| Path(*s));
+
+    let compare_results = getopts::opt_maybe_str(&matches, ~"diff");
+    let compare_results = compare_results.map(|s| Path(*s));
 
     let test_opts = TestOpts {
         filter: filter,
         run_ignored: run_ignored,
-        logfile: logfile,
+        run_tests: run_tests,
+        run_benchmarks: run_benchmarks,
+        save_results: save_results,
+        compare_results: compare_results,
+        logfile: logfile
     };
 
     either::Left(test_opts)
 }
 
 #[deriving_eq]
-pub enum TestResult { TrOk, TrFailed, TrIgnored, }
+pub struct BenchSamples {
+    ns_iter_samples: ~[f64],
+    mb_s: uint
+}
+
+#[deriving_eq]
+pub enum TestResult { TrOk, TrFailed, TrIgnored, TrBench(BenchSamples) }
 
 struct ConsoleTestState {
     out: io::Writer,
@@ -121,6 +227,7 @@ struct ConsoleTestState {
     mut passed: uint,
     mut failed: uint,
     mut ignored: uint,
+    mut benchmarked: uint,
     mut failures: ~[TestDesc]
 }
 
@@ -137,7 +244,7 @@ pub fn run_tests_console(opts: &TestOpts,
             st.out.write_line(fmt!("\nrunning %u %s", st.total, noun));
           }
           TeWait(ref test) => st.out.write_str(
-              fmt!("test %s ... ", test.name)),
+              fmt!("test %s ... ", test.name.to_str())),
           TeResult(copy test, result) => {
             match st.log_out {
                 Some(f) => write_log(f, result, &test),
@@ -160,14 +267,21 @@ pub fn run_tests_console(opts: &TestOpts,
                 write_ignored(st.out, st.use_color);
                 st.out.write_line(~"");
               }
+              TrBench(bs) => {
+                st.benchmarked += 1u;
+                write_bench(st.out, st.use_color);
+                st.out.write_line(fmt!(": %s",
+                                       fmt_bench_samples(&bs)));
+              }
             }
           }
         }
     }
 
     let log_out = match opts.logfile {
-        Some(ref path) => match io::file_writer(&Path(*path),
-                                            ~[io::Create, io::Truncate]) {
+        Some(ref path) => match io::file_writer(path,
+                                                ~[io::Create,
+                                                  io::Truncate]) {
           result::Ok(w) => Some(w),
           result::Err(ref s) => {
               die!(fmt!("can't open output file: %s", *s))
@@ -176,20 +290,23 @@ pub fn run_tests_console(opts: &TestOpts,
         None => None
     };
 
-    let st =
-        @ConsoleTestState{out: io::stdout(),
-          log_out: log_out,
-          use_color: use_color(),
-          mut total: 0,
-          mut passed: 0,
-          mut failed: 0,
-          mut ignored: 0,
-          mut failures: ~[]};
+    let st = @ConsoleTestState {
+        out: io::stdout(),
+        log_out: log_out,
+        use_color: use_color(),
+        mut total: 0u,
+        mut passed: 0u,
+        mut failed: 0u,
+        mut ignored: 0u,
+        mut benchmarked: 0u,
+        mut failures: ~[]
+    };
 
     run_tests(opts, tests, |x| callback(&x, st));
 
-    assert (st.passed + st.failed + st.ignored == st.total);
-    let success = st.failed == 0;
+    assert (st.passed + st.failed +
+            st.ignored + st.benchmarked == st.total);
+    let success = st.failed == 0u;
 
     if !success {
         print_failures(st);
@@ -199,19 +316,36 @@ pub fn run_tests_console(opts: &TestOpts,
     if success {
         // There's no parallelism at this point so it's safe to use color
         write_ok(st.out, true);
-    } else { write_failed(st.out, true); }
-    st.out.write_str(fmt!(". %u passed; %u failed; %u ignored\n\n", st.passed,
-                          st.failed, st.ignored));
+    } else {
+        write_failed(st.out, true);
+    }
+    st.out.write_str(fmt!(". %u passed; %u failed; %u ignored\n\n",
+                          st.passed, st.failed, st.ignored));
 
     return success;
+
+    fn fmt_bench_samples(bs: &BenchSamples) -> ~str {
+        use stats::Stats;
+        if bs.mb_s != 0 {
+            fmt!("%u ns/iter (+/- %u) = %u MB/s",
+                 bs.ns_iter_samples.median() as uint,
+                 3 * (bs.ns_iter_samples.median_abs_dev() as uint),
+                 bs.mb_s)
+        } else {
+            fmt!("%u ns/iter (+/- %u)",
+                 bs.ns_iter_samples.median() as uint,
+                 3 * (bs.ns_iter_samples.median_abs_dev() as uint))
+        }
+    }
 
     fn write_log(out: io::Writer, result: TestResult, test: &TestDesc) {
         out.write_line(fmt!("%s %s",
                     match result {
                         TrOk => ~"ok",
                         TrFailed => ~"failed",
-                        TrIgnored => ~"ignored"
-                    }, test.name));
+                        TrIgnored => ~"ignored",
+                        TrBench(ref bs) => fmt_bench_samples(bs)
+                    }, test.name.to_str()));
     }
 
     fn write_ok(out: io::Writer, use_color: bool) {
@@ -224,6 +358,10 @@ pub fn run_tests_console(opts: &TestOpts,
 
     fn write_ignored(out: io::Writer, use_color: bool) {
         write_pretty(out, ~"ignored", term::color_yellow, use_color);
+    }
+
+    fn write_bench(out: io::Writer, use_color: bool) {
+        write_pretty(out, ~"bench", term::color_cyan, use_color);
     }
 
     fn write_pretty(out: io::Writer, word: &str, color: u8, use_color: bool) {
@@ -239,11 +377,10 @@ pub fn run_tests_console(opts: &TestOpts,
 
 fn print_failures(st: @ConsoleTestState) {
     st.out.write_line(~"\nfailures:");
-    let failures = copy st.failures;
-    let failures = vec::map(failures, |test| test.name);
-    let failures = do sort::merge_sort(failures) |x, y| { str::le(*x, *y) };
+    let failures = vec::cast_to_mut(st.failures.map(|t| t.name.to_str()));
+    sort::tim_sort(failures);
     for vec::each(failures) |name| {
-        st.out.write_line(fmt!("    %s", *name));
+        st.out.write_line(fmt!("    %s", name.to_str()));
     }
 }
 
@@ -253,26 +390,28 @@ fn should_sort_failures_before_printing_them() {
 
     let s = do io::with_str_writer |wr| {
         let test_a = TestDesc {
-            name: ~"a",
+            name: StaticTestName("a"),
             ignore: false,
             should_fail: false
         };
 
         let test_b = TestDesc {
-            name: ~"b",
+            name: StaticTestName("b"),
             ignore: false,
             should_fail: false
         };
 
-        let st =
-            @ConsoleTestState{out: wr,
-              log_out: option::None,
-              use_color: false,
-              mut total: 0,
-              mut passed: 0,
-              mut failed: 0,
-              mut ignored: 0,
-              mut failures: ~[move test_b, move test_a]};
+        let st = @ConsoleTestState {
+            out: wr,
+            log_out: option::None,
+            use_color: false,
+            mut total: 0u,
+            mut passed: 0u,
+            mut failed: 0u,
+            mut ignored: 0u,
+            mut benchmarked: 0u,
+            mut failures: ~[move test_b, move test_a]
+        };
 
         print_failures(st);
     };
@@ -300,6 +439,15 @@ fn run_tests(opts: &TestOpts,
     let filtered_descs = filtered_tests.map(|t| t.desc);
     callback(TeFiltered(filtered_descs));
 
+    let mut (filtered_tests,
+             filtered_benchs) =
+        do vec::partition(filtered_tests) |e| {
+        match e.testfn {
+            StaticTestFn(_) | DynTestFn(_) => true,
+            StaticBenchFn(_) | DynBenchFn(_) => false
+        }
+    };
+
     // It's tempting to just spawn all the tests at once, but since we have
     // many tests that run in other processes we would be making a big mess.
     let concurrency = get_concurrency();
@@ -321,7 +469,7 @@ fn run_tests(opts: &TestOpts,
                 // that hang forever.
                 callback(TeWait(test.desc));
             }
-            run_test(test, ch.clone());
+            run_test(!opts.run_tests, test, ch.clone());
             pending += 1;
         }
 
@@ -331,6 +479,14 @@ fn run_tests(opts: &TestOpts,
         }
         callback(TeResult(desc, result));
         pending -= 1;
+    }
+
+    // All benchmarks run at the end, in serial.
+    do vec::consume(filtered_benchs) |_, b| {
+        callback(TeWait(copy b.desc));
+        run_test(!opts.run_benchmarks, b, ch.clone());
+        let (test, result) = p.recv();
+        callback(TeResult(move test, result));
     }
 }
 
@@ -368,7 +524,7 @@ pub fn filter_tests(
 
         fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
             Option<TestDescAndFn> {
-            if str::contains(test.desc.name, filter_str) {
+            if str::contains(test.desc.name.to_str(), filter_str) {
                 return option::Some(test);
             } else { return option::None; }
         }
@@ -391,13 +547,12 @@ pub fn filter_tests(
                 None
             }
         };
-
         vec::filter_map(filtered, |x| filter(x))
     };
 
     // Sort the tests alphabetically
     pure fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
-        str::le(t1.desc.name, t2.desc.name)
+        str::le(t1.desc.name.to_str(), t2.desc.name.to_str())
     }
     sort::quick_sort(filtered, lteq);
 
@@ -409,24 +564,47 @@ struct TestFuture {
     wait: fn@() -> TestResult,
 }
 
-pub fn run_test(test: TestDescAndFn, monitor_ch: SharedChan<MonitorMsg>) {
+pub fn run_test(force_ignore: bool,
+                test: TestDescAndFn,
+                monitor_ch: SharedChan<MonitorMsg>) {
+
     let TestDescAndFn {desc, testfn} = test;
 
-    if desc.ignore {
+    if force_ignore || desc.ignore {
         monitor_ch.send((desc, TrIgnored));
         return;
     }
 
-    let testfn_cell = ::cell::Cell(testfn);
-    do task::spawn {
-        let mut result_future = None; // task::future_result(builder);
-        task::task().unlinked().future_result(|+r| {
-            result_future = Some(move r);
-        }).spawn(testfn_cell.take());
-        let task_result = option::unwrap(move result_future).recv();
-        let test_result = calc_result(&desc, task_result == task::Success);
-        monitor_ch.send((desc, test_result));
-    };
+    fn run_test_inner(desc: TestDesc,
+                      monitor_ch: SharedChan<MonitorMsg>,
+                      testfn: ~fn()) {
+        let testfn_cell = ::cell::Cell(testfn);
+        do task::spawn {
+            let mut result_future = None; // task::future_result(builder);
+            task::task().unlinked().future_result(|+r| {
+                result_future = Some(move r);
+            }).spawn(testfn_cell.take());
+            let task_result = option::unwrap(move result_future).recv();
+            let test_result = calc_result(&desc,
+                                          task_result == task::Success);
+            monitor_ch.send((desc, test_result));
+        }
+    }
+
+    match testfn {
+        DynBenchFn(benchfn) => {
+            let bs = ::test::bench::benchmark(benchfn);
+            monitor_ch.send((desc, TrBench(bs)));
+            return;
+        }
+        StaticBenchFn(benchfn) => {
+            let bs = ::test::bench::benchmark(benchfn);
+            monitor_ch.send((desc, TrBench(bs)));
+            return;
+        }
+        DynTestFn(f) => run_test_inner(desc, monitor_ch, f),
+        StaticTestFn(f) => run_test_inner(desc, monitor_ch, || f())
+    }
 }
 
 fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
@@ -439,10 +617,180 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
     }
 }
 
+pub mod bench {
+
+    use rand;
+    use u64;
+    use vec;
+    use time::precise_time_ns;
+    use test::{BenchHarness, BenchSamples};
+    use stats::Stats;
+    use num;
+    use rand;
+
+    pub impl BenchHarness {
+
+        /// Callback for benchmark functions to run in their body.
+        pub fn iter(&mut self, inner:&fn()) {
+            self.ns_start = precise_time_ns();
+            let k = self.iterations;
+            for u64::range(0, k) |_| {
+                inner();
+            }
+            self.ns_end = precise_time_ns();
+        }
+
+        fn ns_elapsed(&mut self) -> u64 {
+            if self.ns_start == 0 || self.ns_end == 0 {
+                0
+            } else {
+                self.ns_end - self.ns_start
+            }
+        }
+
+        fn ns_per_iter(&mut self) -> u64 {
+            if self.iterations == 0 {
+                0
+            } else {
+                self.ns_elapsed() / self.iterations
+            }
+        }
+
+        fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
+            self.iterations = n;
+            debug!("running benchmark for %u iterations",
+                   n as uint);
+            f(self);
+        }
+
+        // This is the Go benchmark algorithm. It produces a single
+        // datapoint and always tries to run for 1s.
+        pub fn go_bench(&mut self, f: &fn(&mut BenchHarness)) {
+
+            // Rounds a number down to the nearest power of 10.
+            fn round_down_10(n: u64) -> u64 {
+                let mut n = n;
+                let mut res = 1;
+                while n > 10 {
+                    n = n / 10;
+                    res *= 10;
+                }
+                res
+            }
+
+            // Rounds x up to a number of the form [1eX, 2eX, 5eX].
+            fn round_up(n: u64) -> u64 {
+                let base = round_down_10(n);
+                if n < (2 * base) {
+                    2 * base
+                } else if n < (5 * base) {
+                    5 * base
+                } else {
+                    10 * base
+                }
+            }
+
+            // Initial bench run to get ballpark figure.
+            let mut n = 1_u64;
+            self.bench_n(n, f);
+
+            while n < 1_000_000_000 &&
+                self.ns_elapsed() < 1_000_000_000 {
+                let last = n;
+
+                // Try to estimate iter count for 1s falling back to 1bn
+                // iterations if first run took < 1ns.
+                if self.ns_per_iter() == 0 {
+                    n = 1_000_000_000;
+                } else {
+                    n = 1_000_000_000 / self.ns_per_iter();
+                }
+
+                n = u64::max(u64::min(n+n/2, 100*last), last+1);
+                n = round_up(n);
+                self.bench_n(n, f);
+            }
+        }
+
+        // This is a more statistics-driven benchmark algorithm.
+        // It stops as quickly as 50ms, so long as the statistical
+        // properties are satisfactory. If those properties are
+        // not met, it may run as long as the Go algorithm.
+        pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> ~[f64] {
+
+            let rng = rand::Rng();
+            let mut magnitude = 10;
+            let mut prev_madp = 0.0;
+
+            loop {
+
+                let n_samples = rng.gen_uint_range(50, 60);
+                let n_iter = rng.gen_uint_range(magnitude,
+                                                magnitude * 2);
+
+                let samples = do vec::from_fn(n_samples) |_| {
+                    self.bench_n(n_iter as u64, f);
+                    self.ns_per_iter() as f64
+                };
+
+                // Eliminate outliers
+                let med = samples.median();
+                let mad = samples.median_abs_dev();
+                let samples = do vec::filter(samples) |f| {
+                    num::abs(*f - med) <= 3.0 * mad
+                };
+
+                debug!("%u samples, median %f, MAD=%f, %u survived filter",
+                       n_samples, med as float, mad as float,
+                       samples.len());
+
+                if samples.len() != 0 {
+                    // If we have _any_ cluster of signal...
+                    let curr_madp = samples.median_abs_dev_pct();
+                    if self.ns_elapsed() > 1_000_000 &&
+                        (curr_madp < 1.0 ||
+                         num::abs(curr_madp - prev_madp) < 0.1) {
+                        return samples;
+                    }
+                    prev_madp = curr_madp;
+
+                    if n_iter > 20_000_000 ||
+                        self.ns_elapsed() > 20_000_000 {
+                        return samples;
+                    }
+                }
+
+                magnitude *= 2;
+            }
+        }
+    }
+
+    pub fn benchmark(f: &fn(&mut BenchHarness)) -> BenchSamples {
+
+        let mut bs = BenchHarness {
+            iterations: 0,
+            ns_start: 0,
+            ns_end: 0,
+            bytes: 0
+        };
+
+        let ns_iter_samples = bs.auto_bench(f);
+
+        let iter_s = 1_000_000_000 / (ns_iter_samples.median() as u64);
+        let mb_s = (bs.bytes * iter_s) / 1_000_000;
+
+        BenchSamples {
+            ns_iter_samples: ns_iter_samples,
+            mb_s: mb_s as uint
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
-               TestDesc, TestDescAndFn};
+               TestDesc, TestDescAndFn,
+               StaticTestName, DynTestName, DynTestFn};
     use test::{TestOpts, run_test};
 
     use core::either;
@@ -455,15 +803,15 @@ mod tests {
         fn f() { die!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
-                name: ~"whatever",
+                name: StaticTestName("whatever"),
                 ignore: true,
                 should_fail: false
             },
-            testfn: f,
+            testfn: DynTestFn(fn~() { f()}),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
-        run_test(desc, ch);
+        run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert res != TrOk;
     }
@@ -473,15 +821,15 @@ mod tests {
         fn f() { }
         let desc = TestDescAndFn {
             desc: TestDesc {
-                name: ~"whatever",
+                name: StaticTestName("whatever"),
                 ignore: true,
                 should_fail: false
             },
-            testfn: f,
+            testfn: DynTestFn(fn~() { f()}),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
-        run_test(desc, ch);
+        run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert res == TrIgnored;
     }
@@ -492,15 +840,15 @@ mod tests {
         fn f() { die!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
-                name: ~"whatever",
+                name: StaticTestName("whatever"),
                 ignore: false,
                 should_fail: true
             },
-            testfn: f,
+            testfn: DynTestFn(fn~() { f() }),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
-        run_test(desc, ch);
+        run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert res == TrOk;
     }
@@ -510,15 +858,15 @@ mod tests {
         fn f() { }
         let desc = TestDescAndFn {
             desc: TestDesc {
-                name: ~"whatever",
+                name: StaticTestName("whatever"),
                 ignore: false,
                 should_fail: true
             },
-            testfn: f,
+            testfn: DynTestFn(fn~() { f() }),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
-        run_test(desc, ch);
+        run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert res == TrFailed;
     }
@@ -554,30 +902,34 @@ mod tests {
             filter: option::None,
             run_ignored: true,
             logfile: option::None,
+            run_tests: true,
+            run_benchmarks: false,
+            save_results: option::None,
+            compare_results: option::None
         };
 
         let tests = ~[
             TestDescAndFn {
                 desc: TestDesc {
-                    name: ~"1",
+                    name: StaticTestName("1"),
                     ignore: true,
                     should_fail: false,
                 },
-                testfn: dummy,
+                testfn: DynTestFn(fn~() { }),
             },
             TestDescAndFn {
                 desc: TestDesc {
-                    name: ~"2",
+                    name: StaticTestName("2"),
                     ignore: false,
                     should_fail: false
                 },
-                testfn: dummy,
+                testfn: DynTestFn(fn~() { }),
             },
         ];
         let filtered = filter_tests(&opts, tests);
 
         assert (vec::len(filtered) == 1);
-        assert (filtered[0].desc.name == ~"1");
+        assert (filtered[0].desc.name.to_str() == ~"1");
         assert (filtered[0].desc.ignore == false);
     }
 
@@ -587,6 +939,10 @@ mod tests {
             filter: option::None,
             run_ignored: false,
             logfile: option::None,
+            run_tests: true,
+            run_benchmarks: false,
+            save_results: option::None,
+            compare_results: option::None
         };
 
         let names =
@@ -603,10 +959,11 @@ mod tests {
             for vec::each(names) |name| {
                 let test = TestDescAndFn {
                     desc: TestDesc {
-                        name: *name, ignore: false,
+                        name: DynTestName(*name),
+                        ignore: false,
                         should_fail: false
                     },
-                    testfn: testfn,
+                    testfn: DynTestFn(copy testfn),
                 };
                 tests.push(move test);
             }
@@ -627,7 +984,7 @@ mod tests {
 
         for vec::each(pairs) |p| {
             match *p {
-                (ref a, ref b) => { assert (*a == b.desc.name); }
+                (ref a, ref b) => { assert (*a == b.desc.name.to_str()); }
             }
         }
     }

@@ -33,7 +33,7 @@ mod errors;
 use std::getopts;
 use std::test;
 
-use core::result;
+use core::{result, either};
 use result::{Ok, Err};
 
 use common::config;
@@ -158,7 +158,11 @@ pub fn test_opts(config: config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter,
         run_ignored: config.run_ignored,
-        logfile: config.logfile.map(|s| s.to_str()),
+        logfile: copy config.logfile,
+        run_tests: true,
+        run_benchmarks: false,
+        save_results: option::None,
+        compare_results: option::None
     }
 }
 
@@ -210,13 +214,15 @@ pub fn make_test(config: config, testfile: &Path) -> test::TestDescAndFn {
     }
 }
 
-pub fn make_test_name(config: config, testfile: &Path) -> ~str {
-    fmt!("[%s] %s", mode_str(config.mode), testfile.to_str())
+pub fn make_test_name(config: config, testfile: &Path) -> test::TestName {
+    test::DynTestName(fmt!("[%s] %s",
+                           mode_str(config.mode),
+                           testfile.to_str()))
 }
 
 pub fn make_test_closure(config: config, testfile: &Path) -> test::TestFn {
     let testfile = testfile.to_str();
-    fn~() { runtest::run(config, testfile) }
+    test::DynTestFn(fn~() { runtest::run(config, testfile) })
 }
 
 // Local Variables:

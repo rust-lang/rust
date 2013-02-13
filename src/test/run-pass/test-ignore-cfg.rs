@@ -26,13 +26,13 @@ fn shouldnotignore() {
 #[test]
 fn checktests() {
     // Pull the tests out of the secreturn test module
-    let tests = __test::tests();
+    let tests = __test::tests;
 
     assert vec::any(
         tests,
-        |t| t.desc.name == ~"shouldignore" && t.desc.ignore);
+        |t| t.desc.name.to_str() == ~"shouldignore" && t.desc.ignore);
 
     assert vec::any(
         tests,
-        |t| t.desc.name == ~"shouldnotignore" && !t.desc.ignore);
+        |t| t.desc.name.to_str() == ~"shouldnotignore" && !t.desc.ignore);
 }
