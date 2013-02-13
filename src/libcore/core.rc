@@ -199,7 +199,7 @@ pub use vec::{OwnedVector, OwnedCopyableVector};
 pub use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
 pub use iter::{CopyableOrderedIter, CopyableNonstrictIter, Times};
 
-pub use num::Num;
+pub use num::{Num, NumCast};
 pub use ptr::Ptr;
 pub use to_str::ToStr;
 pub use clone::Clone;

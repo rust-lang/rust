@@ -17,7 +17,6 @@ use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num;
-use num::Num::from_int;
 use prelude::*;
 use str;
 use uint;
@@ -184,11 +183,6 @@ impl T: num::Num {
     pure fn modulo(&self, other: &T) -> T { return *self % *other; }
     #[inline(always)]
     pure fn neg(&self)              -> T { return -*self;        }
-
-    #[inline(always)]
-    pure fn to_int(&self)         -> int { return *self as int; }
-    #[inline(always)]
-    static pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
 impl T: num::Zero {
@@ -411,22 +405,15 @@ fn test_int_from_str_overflow() {
 }
 
 #[test]
-fn test_interfaces() {
-    fn test<U:num::Num cmp::Eq>(ten: U) {
-        assert (ten.to_int() == 10);
+pub fn test_num() {
+    let ten: T = num::cast(10);
+    let two: T = num::cast(2);
 
-        let two: U = from_int(2);
-        assert (two.to_int() == 2);
-
-        assert (ten.add(&two) == from_int(12));
-        assert (ten.sub(&two) == from_int(8));
-        assert (ten.mul(&two) == from_int(20));
-        assert (ten.div(&two) == from_int(5));
-        assert (ten.modulo(&two) == from_int(0));
-        assert (ten.neg() == from_int(-10));
-    }
-
-    test(10 as T);
+    assert (ten.add(&two)    == num::cast(12));
+    assert (ten.sub(&two)    == num::cast(8));
+    assert (ten.mul(&two)    == num::cast(20));
+    assert (ten.div(&two)    == num::cast(5));
+    assert (ten.modulo(&two) == num::cast(0));
 }
 
 #[test]
