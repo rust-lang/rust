@@ -29,6 +29,7 @@ Benjamin Peterson <benjamin@python.org>
 Bilal Husain <bilal@bilalhusain.com>
 Bill Fallon <bill.fallon@robos.li>
 Brendan Eich <brendan@mozilla.org>
+Brendan Zabarauskas <bjzaba@yahoo.com.au>
 Brian Anderson <banderson@mozilla.com>
 Brian J. Burg <burg@cs.washington.edu>
 Brian Leibig <brian.leibig@gmail.com>
