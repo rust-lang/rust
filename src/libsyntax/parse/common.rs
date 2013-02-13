@@ -217,7 +217,6 @@ pub impl Parser {
         let mut first = true;
         let mut v = ~[];
         while self.token != token::GT
-            // wait... isn't this going to eat a whole '>>' ?
             && self.token != token::BINOP(token::SHR) {
             match sep {
               Some(ref t) => {

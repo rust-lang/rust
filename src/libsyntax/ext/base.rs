@@ -59,7 +59,7 @@ pub enum MacResult {
     MRExpr(@ast::expr),
     MRItem(@ast::item),
     MRAny(fn@()-> @ast::expr, fn@()-> Option<@ast::item>, fn@()->@ast::stmt),
-    MRDef(MacroDef),
+    MRDef(MacroDef)
 }
 
 pub enum SyntaxExtension {

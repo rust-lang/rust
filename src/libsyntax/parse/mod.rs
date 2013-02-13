@@ -244,8 +244,17 @@ mod test {
             ~[],
             new_parse_sess(None));
         check_equal(to_json_str(tts as Encodable::<std::json::Encoder>),
-                    //[["tt_tok",["IDENT","fn"]]]
-                    ~"abc"
+                    ~"[[\"tt_tok\",[,[\"IDENT\",[\"fn\",false]]]],\
+                      [\"tt_tok\",[,[\"IDENT\",[\"foo\",false]]]],\
+                      [\"tt_delim\",[[[\"tt_tok\",[,[\"LPAREN\",[]]]],\
+                      [\"tt_tok\",[,[\"IDENT\",[\"x\",false]]]],\
+                      [\"tt_tok\",[,[\"COLON\",[]]]],\
+                      [\"tt_tok\",[,[\"IDENT\",[\"int\",false]]]],\
+                      [\"tt_tok\",[,[\"RPAREN\",[]]]]]]],\
+                      [\"tt_delim\",[[[\"tt_tok\",[,[\"LBRACE\",[]]]],\
+                      [\"tt_tok\",[,[\"IDENT\",[\"x\",false]]]],\
+                      [\"tt_tok\",[,[\"SEMI\",[]]]],\
+                      [\"tt_tok\",[,[\"RBRACE\",[]]]]]]]]"
                    );
         let ast1 = new_parser_from_tts(new_parse_sess(None),~[],tts)
             .parse_item(~[]);
