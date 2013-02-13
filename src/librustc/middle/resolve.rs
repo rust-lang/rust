@@ -13,7 +13,8 @@ use core::prelude::*;
 use driver::session;
 use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
-use metadata::csearch::{get_static_methods_if_impl, get_type_name_if_impl};
+use metadata::csearch::{get_static_methods_if_impl, get_struct_fields};
+use metadata::csearch::{get_type_name_if_impl};
 use metadata::cstore::find_use_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
@@ -1745,10 +1746,12 @@ pub impl Resolver {
                                        OverwriteDuplicates,
                                        dummy_sp());
 
-                    self.handle_external_def(def, modules,
+                    self.handle_external_def(def,
+                                             modules,
                                              child_name_bindings,
                                              self.session.str_of(final_ident),
-                                             final_ident, new_parent);
+                                             final_ident,
+                                             new_parent);
                 }
                 dl_impl(def) => {
                     // We only process static methods of impls here.
