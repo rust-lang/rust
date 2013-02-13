@@ -50,15 +50,23 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-pub fn trans_impl(ccx: @crate_ctxt, +path: path, name: ast::ident,
-                  methods: ~[@ast::method], tps: ~[ast::ty_param],
-                  self_ty: Option<ty::t>, id: ast::node_id) {
+pub fn trans_impl(ccx: @crate_ctxt,
+                  +path: path,
+                  name: ast::ident,
+                  methods: ~[@ast::method],
+                  tps: ~[ast::ty_param],
+                  self_ty: Option<ty::t>,
+                  id: ast::node_id,
+                  force_internal: ForceInternalFlag) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { return; }
     let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) |method| {
         if method.tps.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
+            if force_internal == ForceInternal {
+                internalize_item(llfn);
+            }
             let path = vec::append_one(/*bad*/copy sub_path,
                                        path_name(method.ident));
 
