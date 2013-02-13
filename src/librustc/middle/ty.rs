@@ -1932,6 +1932,10 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             Some(tc) => { return *tc; }
             None => {}
         }
+        match cx.tc_cache.find(&ty_id) {    // Must check both caches!
+            Some(tc) => { return *tc; }
+            None => {}
+        }
         cache.insert(ty_id, TC_NONE);
 
         debug!("computing contents of %s", ty_to_str(cx, ty));
