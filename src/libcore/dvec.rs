@@ -229,7 +229,7 @@ impl<A> DVec<A> {
 
 impl<A: Copy> DVec<A> {
     /**
-     * Append all elements of a vector to the end of the list.
+     * Append all elements of a vector to the end of the list
      *
      * Equivalent to `append_iter()` but potentially more efficient.
      */
