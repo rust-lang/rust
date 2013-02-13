@@ -109,9 +109,10 @@ pub mod win32 {
             let mut res = None;
             let mut done = false;
             while !done {
+                let mut k: DWORD = 0;
                 let buf = vec::cast_to_mut(vec::from_elem(n as uint, 0u16));
                 do vec::as_mut_buf(buf) |b, _sz| {
-                    let k : DWORD = f(b, tmpbuf_sz as DWORD);
+                    k = f(b, tmpbuf_sz as DWORD);
                     if k == (0 as DWORD) {
                         done = true;
                     } else if (k == n &&
@@ -119,10 +120,12 @@ pub mod win32 {
                                libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
                         n *= (2 as DWORD);
                     } else {
-                        let sub = vec::slice(buf, 0u, k as uint);
-                        res = option::Some(str::from_utf16(sub));
                         done = true;
                     }
+                }
+                if k != 0 && done {
+                    let sub = vec::slice(buf, 0u, k as uint);
+                    res = option::Some(str::from_utf16(sub));
                 }
             }
             return res;
