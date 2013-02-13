@@ -62,11 +62,10 @@ extern mod rustrt {
     unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
     unsafe fn rust_list_files2(&&path: ~str) -> ~[~str];
     unsafe fn rust_process_wait(handle: c_int) -> c_int;
-    unsafe fn last_os_error() -> ~str;
     unsafe fn rust_set_exit_status(code: libc::intptr_t);
 }
 
-pub const tmpbuf_sz : uint = 1000u;
+pub const TMPBUF_SZ : uint = 1000u;
 
 pub fn getcwd() -> Path {
     unsafe {
@@ -80,7 +79,7 @@ pub fn as_c_charp<T>(s: &str, f: fn(*c_char) -> T) -> T {
 
 pub fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     -> Option<~str> {
-    let buf = vec::cast_to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
+    let buf = vec::cast_to_mut(vec::from_elem(TMPBUF_SZ, 0u8 as c_char));
     do vec::as_mut_buf(buf) |b, sz| {
         if f(b, sz as size_t) {
             unsafe {
@@ -99,19 +98,19 @@ pub mod win32 {
     use str;
     use option::{None, Option};
     use option;
-    use os::tmpbuf_sz;
+    use os::TMPBUF_SZ;
     use libc::types::os::arch::extra::DWORD;
 
     pub fn fill_utf16_buf_and_decode(f: fn(*mut u16, DWORD) -> DWORD)
         -> Option<~str> {
         unsafe {
-            let mut n = tmpbuf_sz as DWORD;
+            let mut n = TMPBUF_SZ as DWORD;
             let mut res = None;
             let mut done = false;
             while !done {
                 let buf = vec::cast_to_mut(vec::from_elem(n as uint, 0u16));
                 do vec::as_mut_buf(buf) |b, _sz| {
-                    let k : DWORD = f(b, tmpbuf_sz as DWORD);
+                    let k : DWORD = f(b, TMPBUF_SZ as DWORD);
                     if k == (0 as DWORD) {
                         done = true;
                     } else if (k == n &&
@@ -387,11 +386,11 @@ pub fn self_exe_path() -> Option<Path> {
         unsafe {
             use libc::funcs::posix01::unistd::readlink;
 
-            let mut path_str = str::with_capacity(tmpbuf_sz);
+            let mut path_str = str::with_capacity(TMPBUF_SZ);
             let len = do str::as_c_str(path_str) |buf| {
                 let buf = buf as *mut c_char;
                 do as_c_charp("/proc/self/exe") |proc_self_buf| {
-                    readlink(proc_self_buf, buf, tmpbuf_sz as size_t)
+                    readlink(proc_self_buf, buf, TMPBUF_SZ as size_t)
                 }
             };
             if len == -1 {
@@ -766,11 +765,136 @@ pub fn remove_file(p: &Path) -> bool {
     }
 }
 
+#[cfg(unix)]
+pub fn errno() -> int {
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    fn errno_location() -> *c_int {
+        #[nolink]
+        extern {
+            unsafe fn __error() -> *c_int;
+        }
+        unsafe {
+            __error()
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
+    fn errno_location() -> *c_int {
+        #[nolink]
+        extern {
+            unsafe fn __errno_location() -> *c_int;
+        }
+        unsafe {
+            __errno_location()
+        }
+    }
+
+    unsafe {
+        (*errno_location()) as int
+    }
+}
+
+#[cfg(windows)]
+pub fn errno() -> uint {
+    use libc::types::os::arch::extra::DWORD;
+
+    #[link_name = "kernel32"]
+    #[abi = "stdcall"]
+    extern {
+        unsafe fn GetLastError() -> DWORD;
+    }
+
+    unsafe {
+        GetLastError() as uint
+    }
+}
+
 /// Get a string representing the platform-dependent last error
 pub fn last_os_error() -> ~str {
-    unsafe {
-        rustrt::last_os_error()
+    #[cfg(unix)]
+    fn strerror() -> ~str {
+        #[cfg(target_os = "macos")]
+        #[cfg(target_os = "android")]
+        #[cfg(target_os = "freebsd")]
+        fn strerror_r(errnum: c_int, buf: *c_char, buflen: size_t) -> c_int {
+            #[nolink]
+            extern {
+                unsafe fn strerror_r(errnum: c_int, buf: *c_char,
+                                     buflen: size_t) -> c_int;
+            }
+            unsafe {
+                strerror_r(errnum, buf, buflen)
+            }
+        }
+
+        // GNU libc provides a non-compliant version of strerror_r by default
+        // and requires macros to instead use the POSIX compliant variant.
+        // So we just use __xpg_strerror_r which is always POSIX compliant
+        #[cfg(target_os = "linux")]
+        fn strerror_r(errnum: c_int, buf: *c_char, buflen: size_t) -> c_int {
+            #[nolink]
+            extern {
+                unsafe fn __xpg_strerror_r(errnum: c_int, buf: *c_char,
+                                           buflen: size_t) -> c_int;
+            }
+            unsafe {
+                __xpg_strerror_r(errnum, buf, buflen)
+            }
+        }
+
+        let mut buf = [0 as c_char, ..TMPBUF_SZ];
+        unsafe {
+            let err = strerror_r(errno() as c_int, &buf[0],
+                                 TMPBUF_SZ as size_t);
+            if err < 0 {
+                die!(~"strerror_r failure");
+            }
+
+            str::raw::from_c_str(&buf[0])
+        }
     }
+
+    #[cfg(windows)]
+    fn strerror() -> ~str {
+        use libc::types::os::arch::extra::DWORD;
+        use libc::types::os::arch::extra::LPSTR;
+        use libc::types::os::arch::extra::LPVOID;
+
+        #[link_name = "kernel32"]
+        #[abi = "stdcall"]
+        extern {
+            unsafe fn FormatMessageA(flags: DWORD, lpSrc: LPVOID,
+                                     msgId: DWORD, langId: DWORD,
+                                     buf: LPSTR, nsize: DWORD,
+                                     args: *c_void) -> DWORD;
+        }
+
+        const FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
+        const FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
+
+        let mut buf = [0 as c_char, ..TMPBUF_SZ];
+
+        // This value is calculated from the macro
+        // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
+        let langId = 0x0800 as DWORD;
+        let err = errno() as DWORD;
+        unsafe {
+            let res = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM |
+                                     FORMAT_MESSAGE_IGNORE_INSERTS,
+                                     ptr::mut_null(), err, langId,
+                                     &mut buf[0], TMPBUF_SZ as DWORD,
+                                     ptr::null());
+            if res == 0 {
+                die!(fmt!("[%?] FormatMessage failure", errno()));
+            }
+
+            str::raw::from_c_str(&buf[0])
+        }
+    }
+
+    strerror()
 }
 
 /**
