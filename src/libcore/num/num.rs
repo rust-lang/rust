@@ -39,6 +39,10 @@ pub trait One {
     static pure fn one() -> Self;
 }
 
+pub pure fn abs<T: Ord Num Zero>(v: T) -> T {
+    if v < Zero::zero() { v.neg() } else { v }
+}
+
 pub trait Round {
     pure fn round(&self, mode: RoundMode) -> Self;
 

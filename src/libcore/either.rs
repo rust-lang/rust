@@ -145,7 +145,7 @@ pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     }
 }
 
-impl<T, U> Either<T, U> {
+pub impl<T, U> Either<T, U> {
     #[inline(always)]
     fn either<V>(&self, f_left: fn(&T) -> V, f_right: fn(&U) -> V) -> V {
         either(f_left, f_right, self)

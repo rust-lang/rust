@@ -127,15 +127,15 @@ pub fn check_expr(sess: Session,
                               items without type parameters");
             }
             match def_map.find(&e.id) {
-              Some(def_const(def_id)) |
-                Some(def_fn(def_id, _)) |
-                Some(def_variant(_, def_id)) |
-                Some(def_struct(def_id)) => {
+                Some(def_variant(_, _)) |
+                Some(def_struct(_)) => { }
+
+                Some(def_const(def_id)) |
+                Some(def_fn(def_id, _)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \
-                                 crate-local constants, functions, or \
-                                 structs");
+                                 crate-local constants or functions");
                 }
               }
               Some(def) => {
