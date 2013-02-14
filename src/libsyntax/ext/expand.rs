@@ -23,7 +23,7 @@ use core::option;
 use core::vec;
 use std::oldmap::HashMap;
 
-pub fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
+pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
                    e: expr_, s: span, fld: ast_fold,
                    orig: fn@(expr_, span, ast_fold) -> (expr_, span))
                 -> (expr_, span) {
@@ -88,7 +88,7 @@ pub fn expand_expr(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
 //
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
-pub fn expand_mod_items(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
+pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
                         module_: ast::_mod, fld: ast_fold,
                         orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
                      -> ast::_mod {
@@ -121,7 +121,7 @@ pub fn expand_mod_items(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
 
 
 // When we enter a module, record it, for the sake of `module!`
-pub fn expand_item(exts: HashMap<~str, SyntaxExtension>,
+pub fn expand_item(exts: SyntaxExtensions,
                    cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                    orig: fn@(&&v: @ast::item, ast_fold) -> Option<@ast::item>)
                 -> Option<@ast::item> {
@@ -147,7 +147,7 @@ pub fn expand_item(exts: HashMap<~str, SyntaxExtension>,
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-pub fn expand_item_mac(exts: HashMap<~str, SyntaxExtension>,
+pub fn expand_item_mac(exts: SyntaxExtensions,
                        cx: ext_ctxt, &&it: @ast::item,
                        fld: ast_fold) -> Option<@ast::item> {
 
@@ -206,7 +206,7 @@ pub fn expand_item_mac(exts: HashMap<~str, SyntaxExtension>,
     return maybe_it;
 }
 
-pub fn expand_stmt(exts: HashMap<~str, SyntaxExtension>, cx: ext_ctxt,
+pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
                    && s: stmt_, sp: span, fld: ast_fold,
                    orig: fn@(&&s: stmt_, span, ast_fold) -> (stmt_, span))
                 -> (stmt_, span) {

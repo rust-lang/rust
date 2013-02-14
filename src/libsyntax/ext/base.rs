@@ -75,9 +75,11 @@ pub enum SyntaxExtension {
     ItemTT(SyntaxExpanderTTItem),
 }
 
+type SyntaxExtensions = HashMap<~str, SyntaxExtension>;
+
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
-pub fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
+pub fn syntax_expander_table() -> SyntaxExtensions {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> SyntaxExtension {
         NormalTT(SyntaxExpanderTT{expander: f, span: None})
