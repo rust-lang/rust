@@ -86,13 +86,13 @@ pub fn set_crate_data(cstore: @mut CStore,
 }
 
 pub fn have_crate_data(cstore: @mut CStore, cnum: ast::crate_num) -> bool {
-    return cstore.metas.contains_key_ref(&cnum);
+    cstore.metas.contains_key(&cnum)
 }
 
 pub fn iter_crate_data(cstore: @mut CStore,
                        i: fn(ast::crate_num, crate_metadata)) {
     let metas = cstore.metas;
-    for metas.each_ref |&k, &v| {
+    for metas.each |&k, &v| {
         i(k, v);
     }
 }
@@ -148,7 +148,7 @@ pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
     let mut result = ~[];
 
     let use_crate_map = cstore.use_crate_map;
-    for use_crate_map.each_value_ref |&cnum| {
+    for use_crate_map.each_value |&cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", cdata.name, hash);

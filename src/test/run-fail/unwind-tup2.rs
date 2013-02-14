@@ -15,7 +15,7 @@ fn fold_local() -> @~[int]{
 }
 
 fn fold_remote() -> @~[int]{
-    die!();
+    fail!();
 }
 
 fn main() {

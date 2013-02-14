@@ -121,11 +121,6 @@ rust_uv_loop_delete(uv_loop_t* loop) {
     uv_loop_delete(loop);
 }
 
-extern "C" int
-rust_uv_loop_refcount(uv_loop_t* loop) {
-    return uv_loop_refcount(loop);
-}
-
 extern "C" void
 rust_uv_loop_set_data(uv_loop_t* loop, void* data) {
     loop->data = data;
@@ -151,12 +146,17 @@ rust_uv_stop_op_cb(uv_handle_t* op_handle) {
 
 extern "C" void
 rust_uv_run(uv_loop_t* loop) {
-    uv_run(loop);
+    uv_run(loop, UV_RUN_DEFAULT);
 }
 
 extern "C" void
 rust_uv_close(uv_handle_t* handle, uv_close_cb cb) {
     uv_close(handle, cb);
+}
+
+extern "C" void
+rust_uv_walk(uv_loop_t* loop, uv_walk_cb cb, void* arg) {
+    uv_walk(loop, cb, arg);
 }
 
 extern "C" void

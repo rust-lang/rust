@@ -37,6 +37,6 @@ fn main() {
         ~Element(ed) => match ed.kind {
             ~HTMLImageElement(d) if d.image.is_some() => { true }
         },
-        _ => die!(~"WAT") //~ ERROR wat
+        _ => fail!(~"WAT") //~ ERROR wat
     };
 }

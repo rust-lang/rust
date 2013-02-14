@@ -93,7 +93,7 @@ pub pure fn len<T>(ls: @List<T>) -> uint {
 pub pure fn tail<T: Copy>(ls: @List<T>) -> @List<T> {
     match *ls {
         Cons(_, tl) => return tl,
-        Nil => die!(~"list empty")
+        Nil => fail!(~"list empty")
     }
 }
 
@@ -102,7 +102,7 @@ pub pure fn head<T: Copy>(ls: @List<T>) -> T {
     match *ls {
       Cons(copy hd, _) => hd,
       // makes me sad
-      _ => die!(~"head invoked on empty list")
+      _ => fail!(~"head invoked on empty list")
     }
 }
 

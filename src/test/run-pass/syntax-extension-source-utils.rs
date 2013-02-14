@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -17,9 +17,12 @@ pub mod m1 {
     }
 }
 
+macro_rules! indirect_line( () => ( line!() ) )
+
 pub fn main() {
-    assert(line!() == 21);
+    assert(line!() == 23);
     assert(col!() == 11);
+    assert(indirect_line!() == 25);
     assert(file!().to_owned().ends_with(~"syntax-extension-source-utils.rs"));
     assert(stringify!((2*3) + 5).to_owned() == ~"( 2 * 3 ) + 5");
     assert(include!("syntax-extension-source-utils-files/includeme.fragment").to_owned()

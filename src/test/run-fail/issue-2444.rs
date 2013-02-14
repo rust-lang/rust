@@ -15,7 +15,7 @@ use std::arc;
 
 enum e<T> { e(arc::ARC<T>) }
 
-fn foo() -> e<int> {die!();}
+fn foo() -> e<int> {fail!();}
 
 fn main() {
    let f = foo();

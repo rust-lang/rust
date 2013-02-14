@@ -56,7 +56,7 @@ pub trait Reader {
     /// Read up to len bytes (or EOF) and put them into bytes (which
     /// must be at least len bytes long). Return number of bytes read.
     // FIXME (#2982): This should probably return an error.
-    fn read(&self, bytes: &[mut u8], len: uint) -> uint;
+    fn read(&self, bytes: &mut [u8], len: uint) -> uint;
 
     /// Read a single byte, returning a negative value for EOF or read error.
     fn read_byte(&self) -> int;
@@ -416,7 +416,7 @@ fn convert_whence(whence: SeekStyle) -> i32 {
 }
 
 impl *libc::FILE: Reader {
-    fn read(&self, bytes: &[mut u8], len: uint) -> uint {
+    fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         unsafe {
             do vec::as_mut_buf(bytes) |buf_p, buf_len| {
                 assert buf_len >= len;
@@ -461,7 +461,7 @@ struct Wrapper<T, C> {
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
 impl<R: Reader, C> Wrapper<R, C>: Reader {
-    fn read(&self, bytes: &[mut u8], len: uint) -> uint {
+    fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         self.base.read(bytes, len)
     }
     fn read_byte(&self) -> int { self.base.read_byte() }
@@ -528,7 +528,7 @@ pub struct BytesReader {
 }
 
 impl BytesReader: Reader {
-    fn read(&self, bytes: &[mut u8], len: uint) -> uint {
+    fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - self.pos);
 
         let view = vec::view(self.bytes, self.pos, self.bytes.len());
@@ -608,7 +608,7 @@ impl *libc::FILE: Writer {
                 if nout != len as size_t {
                     error!("error writing buffer");
                     log(error, os::last_os_error());
-                    die!();
+                    fail!();
                 }
             }
         }
@@ -658,7 +658,7 @@ impl fd_t: Writer {
                     if nout < 0 as ssize_t {
                         error!("error writing buffer");
                         log(error, os::last_os_error());
-                        die!();
+                        fail!();
                     }
                     count += nout as uint;
                 }
@@ -667,11 +667,11 @@ impl fd_t: Writer {
     }
     fn seek(&self, _offset: int, _whence: SeekStyle) {
         error!("need 64-bit foreign calls for seek, sorry");
-        die!();
+        fail!();
     }
     fn tell(&self) -> uint {
         error!("need 64-bit foreign calls for tell, sorry");
-        die!();
+        fail!();
     }
     fn flush(&self) -> int { 0 }
     fn get_type(&self) -> WriterType {
@@ -1276,7 +1276,7 @@ mod tests {
           result::Err(copy e) => {
             assert e == ~"error opening not a file";
           }
-          result::Ok(_) => die!()
+          result::Ok(_) => fail!()
         }
     }
 
@@ -1317,7 +1317,7 @@ mod tests {
           result::Err(copy e) => {
             assert str::starts_with(e, "error opening");
           }
-          result::Ok(_) => die!()
+          result::Ok(_) => fail!()
         }
     }
 
@@ -1327,7 +1327,7 @@ mod tests {
           result::Err(copy e) => {
             assert str::starts_with(e, "error opening");
           }
-          result::Ok(_) => die!()
+          result::Ok(_) => fail!()
         }
     }
 

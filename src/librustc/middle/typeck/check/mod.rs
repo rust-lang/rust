@@ -2097,7 +2097,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 inner_ty, fcx.expr_ty(loop_body));
             }
             ref n => {
-                die!(fmt!(
+                fail!(fmt!(
                     "check_loop_body expected expr_fn_block, not %?", n))
             }
         }
@@ -2394,7 +2394,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
           }
           // argh
-          _ => die!(~"expected fn ty")
+          _ => fail!(~"expected fn ty")
         }
         fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }
@@ -3131,7 +3131,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
 
     // make a vector of booleans initially false, set to true when used
     if tps.len() == 0u { return; }
-    let tps_used = vec::cast_to_mut(vec::from_elem(tps.len(), false));
+    let mut tps_used = vec::from_elem(tps.len(), false);
 
     ty::walk_regions_and_ty(
         ccx.tcx, ty,
@@ -3208,8 +3208,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
           let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
-          assert tcx.intrinsic_defs.contains_key_ref(&tydesc_name);
-          assert ccx.tcx.intrinsic_defs.contains_key_ref(&ty_visitor_name);
+          assert tcx.intrinsic_defs.contains_key(&tydesc_name);
+          assert ccx.tcx.intrinsic_defs.contains_key(&ty_visitor_name);
           let (_, tydesc_ty) = tcx.intrinsic_defs.get(&tydesc_name);
           let (_, visitor_trait) = tcx.intrinsic_defs.get(&ty_visitor_name);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,

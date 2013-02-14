@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Using the real Num from core
-
 use cmp::Ord;
-use num::Num::from_int;
+use num::NumCast::from;
 
-pub trait NumExt: Num Ord { }
+pub trait NumExt: NumCast Ord { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
-    *n > from_int(1)
+    *n > from(1)
 }
 
 pub fn main() {}

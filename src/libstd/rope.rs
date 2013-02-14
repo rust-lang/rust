@@ -98,7 +98,7 @@ pub fn of_str(str: @~str) -> Rope {
  */
 pub fn of_substr(str: @~str, byte_offset: uint, byte_len: uint) -> Rope {
     if byte_len == 0u { return node::Empty; }
-    if byte_offset + byte_len  > str::len(*str) { die!(); }
+    if byte_offset + byte_len  > str::len(*str) { fail!(); }
     return node::Content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -174,7 +174,7 @@ pub fn concat(v: ~[Rope]) -> Rope {
     //Copy `v` into a mut vector
     let mut len = vec::len(v);
     if len == 0u { return node::Empty; }
-    let ropes = vec::cast_to_mut(vec::from_elem(len, v[0]));
+    let mut ropes = vec::from_elem(len, v[0]);
     for uint::range(1u, len) |i| {
        ropes[i] = v[i];
     }
@@ -244,9 +244,9 @@ Section: Transforming ropes
 pub fn sub_chars(rope: Rope, char_offset: uint, char_len: uint) -> Rope {
     if char_len == 0u { return node::Empty; }
     match (rope) {
-      node::Empty => die!(),
+      node::Empty => fail!(),
       node::Content(node) => if char_len > node::char_len(node) {
-        die!()
+        fail!()
       } else {
         return node::Content(node::sub_chars(node, char_offset, char_len))
       }
@@ -269,9 +269,9 @@ pub fn sub_chars(rope: Rope, char_offset: uint, char_len: uint) -> Rope {
 pub fn sub_bytes(rope: Rope, byte_offset: uint, byte_len: uint) -> Rope {
     if byte_len == 0u { return node::Empty; }
     match (rope) {
-      node::Empty => die!(),
+      node::Empty => fail!(),
       node::Content(node) =>if byte_len > node::byte_len(node) {
-        die!()
+        fail!()
       } else {
         return node::Content(node::sub_bytes(node, byte_offset, byte_len))
       }
@@ -548,7 +548,7 @@ pub pure fn byte_len(rope: Rope) -> uint {
  */
 pub fn char_at(rope: Rope, pos: uint) -> char {
    match (rope) {
-      node::Empty => die!(),
+      node::Empty => fail!(),
       node::Content(x) => return node::char_at(x, pos)
    }
 }
@@ -719,7 +719,7 @@ pub mod node {
             //Firstly, split `str` in slices of hint_max_leaf_char_len
             let mut leaves = uint::div_ceil(char_len, hint_max_leaf_char_len);
             //Number of leaves
-            let nodes  = vec::cast_to_mut(vec::from_elem(leaves, candidate));
+            let mut nodes  = vec::from_elem(leaves, candidate);
 
             let mut i = 0u;
             let mut offset = byte_start;
@@ -832,7 +832,7 @@ pub mod node {
 
     pub fn serialize_node(node: @Node) -> ~str {
         unsafe {
-            let mut buf = vec::cast_to_mut(vec::from_elem(byte_len(node), 0));
+            let mut buf = vec::from_elem(byte_len(node), 0);
             let mut offset = 0u;//Current position in the buffer
             let it = leaf_iterator::start(node);
             loop {

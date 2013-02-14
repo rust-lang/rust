@@ -262,7 +262,7 @@ struct ctxt_ {
     needs_drop_cache: HashMap<t, bool>,
     needs_unwind_cleanup_cache: HashMap<t, bool>,
     mut tc_cache: LinearMap<uint, TypeContents>,
-    ast_ty_to_ty_cache: HashMap<@ast::Ty, ast_ty_to_ty_cache_entry>,
+    ast_ty_to_ty_cache: HashMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
     trait_method_cache: HashMap<def_id, @~[method]>,
     ty_param_bounds: HashMap<ast::node_id, param_bounds>,
@@ -1505,7 +1505,7 @@ pub fn get_element_type(ty: t, i: uint) -> t {
     match /*bad*/copy get(ty).sty {
       ty_rec(flds) => return flds[i].mt.ty,
       ty_tup(ts) => return ts[i],
-      _ => die!(~"get_element_type called on invalid type")
+      _ => fail!(~"get_element_type called on invalid type")
     }
 }
 
@@ -1932,9 +1932,12 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             Some(tc) => { return *tc; }
             None => {}
         }
+        match cx.tc_cache.find(&ty_id) {    // Must check both caches!
+            Some(tc) => { return *tc; }
+            None => {}
+        }
         cache.insert(ty_id, TC_NONE);
 
-        debug!("computing contents of %s", ty_to_str(cx, ty));
         let _i = indenter();
 
         let mut result = match get(ty).sty {
@@ -2084,8 +2087,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         if type_size(cx, ty) > 4 {
             result = result + TC_BIG;
         }
-
-        debug!("result = %s", result.to_str());
 
         cache.insert(ty_id, result);
         return result;
@@ -2778,7 +2779,7 @@ pub fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
 }
 
 fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
-    return cx.node_type_substs.contains_key_ref(&id);
+    cx.node_type_substs.contains_key(&id)
 }
 
 // Type accessors for substructures of types
@@ -2787,7 +2788,7 @@ pub fn ty_fn_args(fty: t) -> ~[arg] {
         ty_bare_fn(ref f) => copy f.sig.inputs,
         ty_closure(ref f) => copy f.sig.inputs,
         ref s => {
-            die!(fmt!("ty_fn_args() called on non-fn type: %?", s))
+            fail!(fmt!("ty_fn_args() called on non-fn type: %?", s))
         }
     }
 }
@@ -2796,7 +2797,8 @@ pub fn ty_closure_sigil(fty: t) -> Sigil {
     match get(fty).sty {
         ty_closure(ref f) => f.sigil,
         ref s => {
-            die!(fmt!("ty_closure_sigil() called on non-closure type: %?", s))
+            fail!(fmt!("ty_closure_sigil() called on non-closure type: %?",
+                       s))
         }
     }
 }
@@ -2806,7 +2808,7 @@ pub fn ty_fn_purity(fty: t) -> ast::purity {
         ty_bare_fn(ref f) => f.purity,
         ty_closure(ref f) => f.purity,
         ref s => {
-            die!(fmt!("ty_fn_purity() called on non-fn type: %?", s))
+            fail!(fmt!("ty_fn_purity() called on non-fn type: %?", s))
         }
     }
 }
@@ -2816,7 +2818,7 @@ pub pure fn ty_fn_ret(fty: t) -> t {
         ty_bare_fn(ref f) => f.sig.output,
         ty_closure(ref f) => f.sig.output,
         ref s => {
-            die!(fmt!("ty_fn_ret() called on non-fn type: %?", s))
+            fail!(fmt!("ty_fn_ret() called on non-fn type: %?", s))
         }
     }
 }
@@ -2833,7 +2835,7 @@ pub pure fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
         ty_evec(_, vstore) => vstore,
         ty_estr(vstore) => vstore,
-        ref s => die!(fmt!("ty_vstore() called on invalid sty: %?", s))
+        ref s => fail!(fmt!("ty_vstore() called on invalid sty: %?", s))
     }
 }
 
@@ -2842,7 +2844,7 @@ pub fn ty_region(ty: t) -> Region {
       ty_rptr(r, _) => r,
       ty_evec(_, vstore_slice(r)) => r,
       ty_estr(vstore_slice(r)) => r,
-      ref s => die!(fmt!("ty_region() invoked on in appropriate ty: %?",
+      ref s => fail!(fmt!("ty_region() invoked on in appropriate ty: %?",
           (*s)))
     }
 }
@@ -3082,7 +3084,7 @@ pub enum ExprKind {
 pub fn expr_kind(tcx: ctxt,
                  method_map: typeck::method_map,
                  expr: @ast::expr) -> ExprKind {
-    if method_map.contains_key_ref(&expr.id) {
+    if method_map.contains_key(&expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS.  However, assign_op (e.g., `x += y`) is an
         // exception, as its result is always unit.
@@ -3208,7 +3210,7 @@ pub fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) => {
         return id;
       }
-      ast::stmt_mac(*) => die!(~"unexpanded macro in trans")
+      ast::stmt_mac(*) => fail!(~"unexpanded macro in trans")
     }
 }
 
@@ -3232,7 +3234,7 @@ pub fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
     match vec::find(get_fields(rec_ty), |f| f.ident == id) {
       Some(f) => f,
       // Do we only call this when we know the field is legit?
-      None => die!(fmt!("get_field: ty doesn't have a field %s",
+      None => fail!(fmt!("get_field: ty doesn't have a field %s",
                          tcx.sess.str_of(id)))
     }
 }
@@ -3241,7 +3243,7 @@ pub fn get_fields(rec_ty:t) -> ~[field] {
     match /*bad*/copy get(rec_ty).sty {
       ty_rec(fields) => fields,
       // Can we check at the caller?
-      _ => die!(~"get_fields: not a record type")
+      _ => fail!(~"get_fields: not a record type")
     }
 }
 
@@ -3903,10 +3905,10 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                          }
                     }
                     ast::struct_variant_kind(_) => {
-                        die!(~"struct variant kinds unimpl in enum_variants")
+                        fail!(~"struct variant kinds unimpl in enum_variants")
                     }
                     ast::enum_variant_kind(_) => {
-                        die!(~"enum variant kinds unimpl in enum_variants")
+                        fail!(~"enum variant kinds unimpl in enum_variants")
                     }
                 }
             })
@@ -4011,7 +4013,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
     }
         }
   else {
-        return csearch::get_struct_fields(cx, did);
+        return csearch::get_struct_fields(cx.sess.cstore, did);
     }
 }
 
@@ -4338,7 +4340,7 @@ pub fn iter_bound_traits_and_supertraits(tcx: ctxt,
                     let super_t = supertrait.tpt.ty;
                     let d_id = ty_to_def_id(super_t).expect("supertrait \
                         should be a trait ty");
-                    if !supertrait_map.contains_key_ref(&d_id) {
+                    if !supertrait_map.contains_key(&d_id) {
                         supertrait_map.insert(d_id, super_t);
                         trait_ty = super_t;
                         seen_def_ids.push(d_id);

@@ -34,5 +34,5 @@ fn main() {
     do task::spawn {
       let i = r(5);
     };
-    die!();
+    fail!();
 }

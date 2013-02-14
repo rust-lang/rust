@@ -95,7 +95,7 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: _mod) {
 }
 
 fn traverse_public_item(cx: ctx, item: @item) {
-    if cx.rmap.contains_key_ref(&item.id) { return; }
+    if cx.rmap.contains_key(&item.id) { return; }
     cx.rmap.insert(item.id, ());
     match /*bad*/copy item.node {
       item_mod(m) => traverse_public_mod(cx, item.id, m),
@@ -122,6 +122,9 @@ fn traverse_public_item(cx: ctx, item: @item) {
         }
       }
       item_struct(struct_def, tps) => {
+        for struct_def.ctor_id.each |&ctor_id| {
+            cx.rmap.insert(ctor_id, ());
+        }
         do option::iter(&struct_def.dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());
             if tps.len() > 0u || attr::find_inline_attr(dtor.node.attrs)
@@ -135,7 +138,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       }
       item_const(*) |
       item_enum(*) | item_trait(*) => (),
-      item_mac(*) => die!(~"item macros unimplemented")
+      item_mac(*) => fail!(~"item macros unimplemented")
     }
 }
 
@@ -145,7 +148,7 @@ fn mk_ty_visitor() -> visit::vt<ctx> {
 }
 
 fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
-    if cx.rmap.contains_key_ref(&ty.id) { return; }
+    if cx.rmap.contains_key(&ty.id) { return; }
     cx.rmap.insert(ty.id, ());
 
     match ty.node {

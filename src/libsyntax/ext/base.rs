@@ -44,8 +44,8 @@ pub struct SyntaxExpanderTT {
     span: Option<span>
 }
 
-pub type SyntaxExpanderTTFun = fn@(ext_ctxt, span, ~[ast::token_tree])
-                                -> MacResult;
+pub type SyntaxExpanderTTFun
+    = fn@(ext_ctxt, span, ~[ast::token_tree]) -> MacResult;
 
 pub struct SyntaxExpanderTTItem {
     expander: SyntaxExpanderTTItemFun,
@@ -78,9 +78,11 @@ pub enum SyntaxExtension {
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
 pub fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
+    // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> SyntaxExtension {
         NormalTT(SyntaxExpanderTT{expander: f, span: None})
     }
+    // utility function to simplify creating ItemTT syntax extensions
     fn builtin_item_tt(f: SyntaxExpanderTTItemFun) -> SyntaxExtension {
         ItemTT(SyntaxExpanderTTItem{expander: f, span: None})
     }
@@ -112,8 +114,8 @@ pub fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
                                 ext::deriving::expand_deriving_iter_bytes));
 
     // Quasi-quoting expanders
-    syntax_expanders.insert(
-        ~"quote_tokens", builtin_normal_tt(ext::quote::expand_quote_tokens));
+    syntax_expanders.insert(~"quote_tokens",
+                       builtin_normal_tt(ext::quote::expand_quote_tokens));
     syntax_expanders.insert(~"quote_expr",
                             builtin_normal_tt(ext::quote::expand_quote_expr));
     syntax_expanders.insert(~"quote_ty",

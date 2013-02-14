@@ -20,7 +20,7 @@ fn supervised() {
     // currently not needed because the supervisor runs first, but I can
     // imagine that changing.
     task::yield();
-    die!();
+    fail!();
 }
 
 fn supervisor() {

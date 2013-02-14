@@ -779,7 +779,7 @@ pub impl LookupContext {
         /*!
          *
          * In the event that we are invoking a method with a receiver
-         * of a linear borrowed type like `&mut T` or `&[mut T]`,
+         * of a linear borrowed type like `&mut T` or `&mut [T]`,
          * we will "reborrow" the receiver implicitly.  For example, if
          * you have a call `r.inc()` and where `r` has type `&mut T`,
          * then we treat that like `(&mut *r).inc()`.  This avoids
@@ -1172,12 +1172,11 @@ pub impl LookupContext {
         match candidate.origin {
             method_static(method_id) | method_self(method_id, _)
                 | method_super(method_id, _) => {
-                bad = self.tcx().destructors.contains_key_ref(&method_id);
+                bad = self.tcx().destructors.contains_key(&method_id);
             }
             method_param(method_param { trait_id: trait_id, _ }) |
             method_trait(trait_id, _, _) => {
-                bad = self.tcx().destructor_for_type.contains_key_ref(
-                    &trait_id);
+                bad = self.tcx().destructor_for_type.contains_key(&trait_id);
             }
         }
 
@@ -1235,7 +1234,7 @@ pub impl LookupContext {
         let span = if did.crate == ast::local_crate {
             match self.tcx().items.find(&did.node) {
               Some(ast_map::node_method(m, _, _)) => m.span,
-              _ => die!(fmt!("report_static_candidate: bad item %?", did))
+              _ => fail!(fmt!("report_static_candidate: bad item %?", did))
             }
         } else {
             self.expr.span

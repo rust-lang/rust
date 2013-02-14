@@ -119,7 +119,7 @@ fn parse_item_attrs<T:Owned>(
         let attrs = match ctxt.ast_map.get(&id) {
           ast_map::node_item(item, _) => copy item.attrs,
           ast_map::node_foreign_item(item, _, _) => copy item.attrs,
-          _ => die!(~"parse_item_attrs: not an item")
+          _ => fail!(~"parse_item_attrs: not an item")
         };
         parse_attrs(attrs)
     }
@@ -183,7 +183,7 @@ fn fold_enum(
                                 copy ast_variant.node.attrs)
                         }
                         _ => {
-                            die!(fmt!("Enum variant %s has id that's \
+                            fail!(fmt!("Enum variant %s has id that's \
                                        not bound to an enum item",
                                       variant.name))
                         }
@@ -258,7 +258,7 @@ fn merge_method_attrs(
                  attr_parser::parse_desc(copy method.attrs))
             })
           }
-          _ => die!(~"unexpected item")
+          _ => fail!(~"unexpected item")
         }
     };
 

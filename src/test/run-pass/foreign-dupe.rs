@@ -14,18 +14,18 @@
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 extern mod rustrt1 {
-    pub fn last_os_error() -> ~str;
+    pub fn rust_get_argc() -> libc::c_int;
 }
 
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
 extern mod rustrt2 {
-    pub fn last_os_error() -> ~str;
+    pub fn rust_get_argc() -> libc::c_int;
 }
 
 pub fn main() {
     unsafe {
-        rustrt1::last_os_error();
-        rustrt2::last_os_error();
+        rustrt1::rust_get_argc();
+        rustrt2::rust_get_argc();
     }
 }

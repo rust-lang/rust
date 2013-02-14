@@ -26,7 +26,7 @@ fn siphash(k0 : u64) -> siphash {
            //~^ ERROR unresolved name: k0
         }
     }
-    die!();
+    fail!();
 }
 
 fn main() {}
