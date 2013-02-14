@@ -159,7 +159,7 @@ pub mod linear {
         pure fn value_for_bucket(&self, idx: uint) -> &self/V {
             match self.buckets[idx] {
                 Some(ref bkt) => &bkt.value,
-                None => die!(~"LinearMap::find: internal logic error"),
+                None => fail!(~"LinearMap::find: internal logic error"),
             }
         }
 
@@ -373,7 +373,7 @@ pub mod linear {
 
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             let idx = match self.bucket_for_key_with_hash(hash, &k) {
-                TableFull => die!(~"Internal logic error"),
+                TableFull => fail!(~"Internal logic error"),
                 FoundEntry(idx) => idx,
                 FoundHole(idx) => {
                     self.buckets[idx] = Some(Bucket{hash: hash, key: k,
@@ -403,7 +403,7 @@ pub mod linear {
 
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             let idx = match self.bucket_for_key_with_hash(hash, &k) {
-                TableFull => die!(~"Internal logic error"),
+                TableFull => fail!(~"Internal logic error"),
                 FoundEntry(idx) => idx,
                 FoundHole(idx) => {
                     let v = f(&k);
