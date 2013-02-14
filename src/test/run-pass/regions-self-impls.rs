@@ -12,12 +12,12 @@ struct Clam<'self> {
     chowder: &'self int
 }
 
-trait get_chowder {
-    fn get_chowder() -> &self/int;
+trait get_chowder<'self> {
+    fn get_chowder() -> &'self int;
 }
 
-impl get_chowder for Clam {
-    fn get_chowder() -> &self/int { return self.chowder; }
+impl<'self> get_chowder<'self> for Clam<'self> {
+    fn get_chowder() -> &'self int { return self.chowder; }
 }
 
 pub fn main() {
