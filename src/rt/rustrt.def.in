@@ -29,7 +29,6 @@ rust_new_task_in_sched
 rust_num_threads
 rust_path_is_dir
 rust_path_exists
-rust_getcwd
 rust_get_stdin
 rust_get_stdout
 rust_get_stderr
@@ -43,7 +42,6 @@ rust_sched_current_nonlazy_threads
 rust_sched_threads
 rust_set_exit_status
 rust_start
-rust_getcwd
 rust_env_pairs
 rust_task_yield
 rust_task_is_unwinding
