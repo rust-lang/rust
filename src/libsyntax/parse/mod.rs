@@ -227,12 +227,11 @@ mod test {
     use super::*;
     use std::serialize::Encodable;
     use std;
-    use core::dvec;
     use core::str;
     use util::testing::*;
 
     #[test] fn to_json_str (val: Encodable<std::json::Encoder>) -> ~str {
-        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bw = @io::BytesWriter();
         val.encode(~std::json::Encoder(bw as io::Writer));
         str::from_bytes(bw.bytes.data)
     }

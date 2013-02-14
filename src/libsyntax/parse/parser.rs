@@ -84,8 +84,6 @@ use print::pprust::expr_to_str;
 use util::interner::Interner;
 
 use core::cmp;
-use core::dvec::DVec;
-use core::dvec;
 use core::either::{Either, Left, Right};
 use core::either;
 use core::result::Result;
@@ -1323,11 +1321,11 @@ pub impl Parser {
     }
 
     fn parse_all_token_trees() -> ~[token_tree] {
-        let tts = DVec();
+        let mut tts = ~[];
         while self.token != token::EOF {
             tts.push(self.parse_token_tree());
         }
-        tts.get()
+        tts
     }
 
     fn parse_matchers() -> ~[matcher] {
@@ -3954,7 +3952,7 @@ pub impl Parser {
             VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED => false
         };
 
-        let (view_items, items, foreign_items) = (DVec(), DVec(), DVec());
+        let mut (view_items, items, foreign_items) = (~[], ~[], ~[]);
         loop {
             match self.parse_item_or_view_item(attrs, items_allowed,
                                                foreign_items_allowed,
@@ -3986,9 +3984,9 @@ pub impl Parser {
         }
 
         {attrs_remaining: attrs,
-         view_items: dvec::unwrap(move view_items),
-         items: dvec::unwrap(move items),
-         foreign_items: dvec::unwrap(move foreign_items)}
+         view_items: view_items,
+         items: items,
+         foreign_items: foreign_items}
     }
 
     // Parses a source module as a crate
