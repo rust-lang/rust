@@ -150,10 +150,10 @@ rust_sched_loop::release_task(rust_task *task) {
 rust_task *
 rust_sched_loop::schedule_task() {
     lock.must_have_lock();
-    if (running_tasks.length() > 0) {
-        size_t k = rng_gen_u32(kernel, &rng);
-        size_t i = k % running_tasks.length();
-        return (rust_task *)running_tasks[i];
+    size_t tasks = running_tasks.length();
+    if (tasks > 0) {
+        size_t i = (tasks > 1) ? (rng_gen_u32(kernel, &rng) % tasks) : 0;
+        return running_tasks[i];
     }
     return NULL;
 }
