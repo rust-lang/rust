@@ -12,7 +12,7 @@
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 enum my_visitor = @{ mut types: ~[str] };
 
-impl my_visitor: TyVisitor {
+impl TyVisitor for my_visitor {
     fn visit_bot() -> bool {
         self.types += ~["bot"];
         error!("visited bot type");

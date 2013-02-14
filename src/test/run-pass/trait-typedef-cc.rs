@@ -18,7 +18,7 @@ struct S {
     name: int
 }
 
-impl S: Foo {
+impl Foo for S {
     fn bar() { }
 }
 

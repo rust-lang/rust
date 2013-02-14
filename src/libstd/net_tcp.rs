@@ -51,7 +51,7 @@ pub struct TcpSocket {
   socket_data: @TcpSocketData,
 }
 
-impl TcpSocket : Drop {
+impl Drop for TcpSocket {
     fn finalize(&self) {
         unsafe {
             tear_down_socket_data(self.socket_data)
@@ -863,7 +863,7 @@ impl TcpSocket {
 }
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
-impl TcpSocketBuf: io::Reader {
+impl io::Reader for TcpSocketBuf {
     fn read(&self, buf: &mut [u8], len: uint) -> uint {
         if len == 0 { return 0 }
         let mut count: uint = 0;
@@ -963,7 +963,7 @@ impl TcpSocketBuf: io::Reader {
 }
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
-impl TcpSocketBuf: io::Writer {
+impl io::Writer for TcpSocketBuf {
     pub fn write(&self, data: &[const u8]) {
         unsafe {
             let socket_data_ptr =
@@ -1264,7 +1264,7 @@ trait ToTcpErr {
     fn to_tcp_err() -> TcpErrData;
 }
 
-impl uv::ll::uv_err_data: ToTcpErr {
+impl ToTcpErr for uv::ll::uv_err_data {
     fn to_tcp_err() -> TcpErrData {
         TcpErrData { err_name: self.err_name, err_msg: self.err_msg }
     }

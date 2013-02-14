@@ -15,7 +15,7 @@ trait foo {
     fn foo(i: &self/int) -> int;
 }
 
-impl<T:Copy> T: foo {
+impl<T:Copy> foo for T {
     fn foo(i: &self/int) -> int {*i}
 }
 

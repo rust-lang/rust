@@ -16,7 +16,7 @@ trait frob {
     fn frob();
 }
 
-impl foo: frob {
+impl frob for foo {
     fn frob() {
         really_impure(self.bar);
     }

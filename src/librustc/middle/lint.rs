@@ -106,7 +106,7 @@ pub enum level {
     allow, warn, deny, forbid
 }
 
-impl level : cmp::Eq {
+impl cmp::Eq for level {
     pure fn eq(&self, other: &level) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

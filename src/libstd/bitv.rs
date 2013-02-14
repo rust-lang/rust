@@ -507,7 +507,7 @@ impl Bitv {
 
 }
 
-impl Bitv: Clone {
+impl Clone for Bitv {
     /// Makes a copy of a bitvector
     #[inline(always)]
     fn clone(&self) -> Bitv {
@@ -568,7 +568,7 @@ pure fn difference(w0: uint, w1: uint) -> uint { return w0 & !w1; }
 
 pure fn right(_w0: uint, w1: uint) -> uint { return w1; }
 
-impl Bitv: ops::Index<uint,bool> {
+impl ops::Index<uint,bool> for Bitv {
     pure fn index(&self, i: uint) -> bool {
         self.get(i)
     }

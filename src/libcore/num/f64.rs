@@ -278,7 +278,7 @@ pub pure fn logarithm(n: f64, b: f64) -> f64 {
 }
 
 #[cfg(notest)]
-impl f64 : cmp::Eq {
+impl cmp::Eq for f64 {
     #[inline(always)]
     pure fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
     #[inline(always)]
@@ -286,7 +286,7 @@ impl f64 : cmp::Eq {
 }
 
 #[cfg(notest)]
-impl f64 : cmp::Ord {
+impl cmp::Ord for f64 {
     #[inline(always)]
     pure fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
     #[inline(always)]
@@ -321,12 +321,12 @@ pub impl f64: NumCast {
     #[inline(always)] pure fn to_float(&self) -> float { *self as float }
 }
 
-impl f64: num::Zero {
+impl num::Zero for f64 {
     #[inline(always)]
     static pure fn zero() -> f64 { 0.0 }
 }
 
-impl f64: num::One {
+impl num::One for f64 {
     #[inline(always)]
     static pure fn one() -> f64 { 1.0 }
 }
@@ -361,7 +361,7 @@ pub extern {
     fn floorf64(val: f64) -> f64;
 }
 
-impl f64: num::Round {
+impl num::Round for f64 {
     #[inline(always)]
     pure fn round(&self, mode: num::RoundMode) -> f64 {
         match mode {
@@ -489,12 +489,12 @@ pub pure fn to_str_digits(num: f64, dig: uint) -> ~str {
     r
 }
 
-impl f64: to_str::ToStr {
+impl to_str::ToStr for f64 {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
 }
 
-impl f64: num::ToStrRadix {
+impl num::ToStrRadix for f64 {
     #[inline(always)]
     pure fn to_str_radix(&self, rdx: uint) -> ~str {
         to_str_radix(*self, rdx)
@@ -589,12 +589,12 @@ pub pure fn from_str_radix(num: &str, rdx: uint) -> Option<f64> {
     num::from_str_common(num, rdx, true, true, false, num::ExpNone, false)
 }
 
-impl f64: from_str::FromStr {
+impl from_str::FromStr for f64 {
     #[inline(always)]
     static pure fn from_str(val: &str) -> Option<f64> { from_str(val) }
 }
 
-impl f64: num::FromStrRadix {
+impl num::FromStrRadix for f64 {
     #[inline(always)]
     static pure fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
         from_str_radix(val, rdx)

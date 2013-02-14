@@ -23,7 +23,7 @@ struct E {
  f: int
 }
 
-impl E: A {
+impl A for E {
   fn b<F:Copy, G>(_x: F) -> F { fail!() } //~ ERROR in method `b`, type parameter 0 has 1 bound, but
 }
 

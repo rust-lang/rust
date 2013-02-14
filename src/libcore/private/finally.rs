@@ -39,7 +39,7 @@ pub trait Finally<T> {
 }
 
 #[cfg(stage0)]
-impl<T> &fn() -> T: Finally<T> {
+impl<T> Finally<T> for &fn() -> T {
     // FIXME #4518: Should not require a mode here
     fn finally(&self, +dtor: &fn()) -> T {
         let _d = Finallyalizer {
@@ -53,7 +53,7 @@ impl<T> &fn() -> T: Finally<T> {
 #[cfg(stage1)]
 #[cfg(stage2)]
 #[cfg(stage3)]
-impl<T> &fn() -> T: Finally<T> {
+impl<T> Finally<T> for &fn() -> T {
     fn finally(&self, dtor: &fn()) -> T {
         let _d = Finallyalizer {
             dtor: dtor
@@ -67,7 +67,7 @@ struct Finallyalizer {
     dtor: &fn()
 }
 
-impl Finallyalizer: Drop {
+impl Drop for Finallyalizer {
     fn finalize(&self) {
         (self.dtor)();
     }

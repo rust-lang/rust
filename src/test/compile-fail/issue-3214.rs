@@ -14,7 +14,7 @@ fn foo<T>() {
         //~^ ERROR use of undeclared type name
     }
 
-    impl<T> foo<T> : Drop {
+    impl<T> Drop for foo<T> {
         fn finalize(&self) {}
     }
 }

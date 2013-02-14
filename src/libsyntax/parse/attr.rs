@@ -30,7 +30,7 @@ pub trait parser_attr {
     fn parse_optional_meta() -> ~[@ast::meta_item];
 }
 
-impl Parser: parser_attr {
+impl parser_attr for Parser {
 
     // Parse attributes that appear before an item
     fn parse_outer_attributes() -> ~[ast::attribute] {

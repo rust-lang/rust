@@ -18,7 +18,7 @@ struct close_res {
 
 }
 
-impl close_res : Drop {
+impl Drop for close_res {
     fn finalize(&self) {
         *(self.i) = false;
     }

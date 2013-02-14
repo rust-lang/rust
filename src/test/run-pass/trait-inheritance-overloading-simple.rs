@@ -14,7 +14,7 @@ trait MyNum : Eq { }
 
 struct MyInt { val: int }
 
-impl MyInt : Eq {
+impl Eq for MyInt {
     pure fn eq(&self, other: &MyInt) -> bool { self.val == other.val }
     pure fn ne(&self, other: &MyInt) -> bool { !self.eq(other) }
 }

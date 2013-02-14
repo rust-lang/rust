@@ -84,7 +84,7 @@ struct Guard<T, U> {
     cond: &Condition<T, U>
 }
 
-impl<T, U> Guard<T, U> : Drop {
+impl<T, U> Drop for Guard<T, U> {
     fn finalize(&self) {
         unsafe {
             debug!("Guard: popping handler from TLS");

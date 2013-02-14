@@ -240,7 +240,7 @@ pub mod linear {
         }
     }
 
-    impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: BaseIter<(&K, &V)> {
+    impl<K: Hash IterBytes Eq, V> BaseIter<(&K, &V)> for LinearMap<K, V> {
         /// Visit all key-value pairs
         pure fn each(&self, blk: fn(&(&self/K, &self/V)) -> bool) {
             for uint::range(0, self.buckets.len()) |i| {
@@ -257,7 +257,7 @@ pub mod linear {
     }
 
 
-    impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Container {
+    impl<K: Hash IterBytes Eq, V> Container for LinearMap<K, V> {
         /// Return the number of elements in the map
         pure fn len(&self) -> uint { self.size }
 
@@ -265,7 +265,7 @@ pub mod linear {
         pure fn is_empty(&self) -> bool { self.len() == 0 }
     }
 
-    impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Mutable {
+    impl<K: Hash IterBytes Eq, V> Mutable for LinearMap<K, V> {
         /// Clear the map, removing all key-value pairs.
         fn clear(&mut self) {
             for uint::range(0, self.buckets.len()) |idx| {
@@ -275,7 +275,7 @@ pub mod linear {
         }
     }
 
-    impl <K: Hash IterBytes Eq, V> LinearMap<K, V>: Map<K, V> {
+    impl<K: Hash IterBytes Eq, V> Map<K, V> for LinearMap<K, V> {
         /// Return true if the map contains a value for the specified key
         pure fn contains_key(&self, k: &K) -> bool {
             match self.bucket_for_key(k) {
@@ -443,7 +443,7 @@ pub mod linear {
         }
     }
 
-    impl<K: Hash IterBytes Eq, V: Eq> LinearMap<K, V>: Eq {
+    impl<K: Hash IterBytes Eq, V: Eq> Eq for LinearMap<K, V> {
         pure fn eq(&self, other: &LinearMap<K, V>) -> bool {
             if self.len() != other.len() { return false; }
 
@@ -464,13 +464,13 @@ pub mod linear {
         priv map: LinearMap<T, ()>
     }
 
-    impl <T: Hash IterBytes Eq> LinearSet<T>: BaseIter<T> {
+    impl<T: Hash IterBytes Eq> BaseIter<T> for LinearSet<T> {
         /// Visit all values in order
         pure fn each(&self, f: fn(&T) -> bool) { self.map.each_key(f) }
         pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
     }
 
-    impl <T: Hash IterBytes Eq> LinearSet<T>: Eq {
+    impl<T: Hash IterBytes Eq> Eq for LinearSet<T> {
         pure fn eq(&self, other: &LinearSet<T>) -> bool {
             self.map == other.map
         }
@@ -479,7 +479,7 @@ pub mod linear {
         }
     }
 
-    impl <T: Hash IterBytes Eq> LinearSet<T>: Container {
+    impl<T: Hash IterBytes Eq> Container for LinearSet<T> {
         /// Return the number of elements in the set
         pure fn len(&self) -> uint { self.map.len() }
 
@@ -487,12 +487,12 @@ pub mod linear {
         pure fn is_empty(&self) -> bool { self.map.is_empty() }
     }
 
-    impl <T: Hash IterBytes Eq> LinearSet<T>: Mutable {
+    impl<T: Hash IterBytes Eq> Mutable for LinearSet<T> {
         /// Clear the set, removing all values.
         fn clear(&mut self) { self.map.clear() }
     }
 
-    impl <T: Hash IterBytes Eq> LinearSet<T>: Set<T> {
+    impl<T: Hash IterBytes Eq> Set<T> for LinearSet<T> {
         /// Return true if the set contains a value
         pure fn contains(&self, value: &T) -> bool {
             self.map.contains_key(value)

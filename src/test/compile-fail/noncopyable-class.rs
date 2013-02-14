@@ -14,7 +14,7 @@ struct bar {
   x: int,
 }
 
-impl bar : Drop {
+impl Drop for bar {
     fn finalize(&self) {}
 }
 

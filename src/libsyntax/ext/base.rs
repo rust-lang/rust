@@ -197,7 +197,7 @@ pub fn mk_ctxt(parse_sess: parse::parse_sess,
         mod_path: ~[ast::ident],
         trace_mac: bool
     }
-    impl CtxtRepr: ext_ctxt {
+    impl ext_ctxt for CtxtRepr {
         fn codemap(@mut self) -> @CodeMap { self.parse_sess.cm }
         fn parse_sess(@mut self) -> parse::parse_sess { self.parse_sess }
         fn cfg(@mut self) -> ast::crate_cfg { self.cfg }

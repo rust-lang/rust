@@ -6,7 +6,7 @@ pub struct Fish {
 
 mod unexported {
     use super::Fish;
-    impl Fish : Eq {
+    impl Eq for Fish {
         pure fn eq(&self, _: &Fish) -> bool { true }
         pure fn ne(&self, _: &Fish) -> bool { false }
     }

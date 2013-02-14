@@ -17,7 +17,7 @@ trait Bar : aux::Foo {
     fn g() -> int;
 }
 
-impl aux::A : Bar {
+impl Bar for aux::A {
     fn g() -> int { self.f() }
 }
 

@@ -22,7 +22,7 @@ pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
 }
 
-impl<V> SmallIntMap<V>: BaseIter<(uint, &V)> {
+impl<V> BaseIter<(uint, &V)> for SmallIntMap<V> {
     /// Visit all key-value pairs in order
     pure fn each(&self, it: fn(&(uint, &self/V)) -> bool) {
         for uint::range(0, self.v.len()) |i| {
@@ -36,7 +36,7 @@ impl<V> SmallIntMap<V>: BaseIter<(uint, &V)> {
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<V> SmallIntMap<V>: ReverseIter<(uint, &V)> {
+impl<V> ReverseIter<(uint, &V)> for SmallIntMap<V> {
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, it: fn(&(uint, &self/V)) -> bool) {
         for uint::range_rev(self.v.len(), 0) |i| {
@@ -48,7 +48,7 @@ impl<V> SmallIntMap<V>: ReverseIter<(uint, &V)> {
     }
 }
 
-impl<V> SmallIntMap<V>: Container {
+impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
     pure fn len(&self) -> uint {
         let mut sz = 0;
@@ -64,12 +64,12 @@ impl<V> SmallIntMap<V>: Container {
     pure fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
-impl<V> SmallIntMap<V>: Mutable {
+impl<V> Mutable for SmallIntMap<V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) { self.v.clear() }
 }
 
-impl<V> SmallIntMap<V>: Map<uint, V> {
+impl<V> Map<uint, V> for SmallIntMap<V> {
     /// Return true if the map contains a value for the specified key
     pure fn contains_key(&self, key: &uint) -> bool {
         self.find(key).is_some()

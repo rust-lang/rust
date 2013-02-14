@@ -13,7 +13,7 @@ trait foo {
     static fn bar();
 }
 
-impl int: foo {
+impl foo for int {
     fn bar() {} //~ ERROR method `bar` is declared as static in its trait, but not in its impl
 }
 

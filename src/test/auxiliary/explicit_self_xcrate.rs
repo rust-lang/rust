@@ -17,7 +17,7 @@ pub struct Bar {
     x: ~str
 }
 
-impl Bar : Foo {
+impl Foo for Bar {
     #[inline(always)]
     fn f(&self) {
         io::println((*self).x);

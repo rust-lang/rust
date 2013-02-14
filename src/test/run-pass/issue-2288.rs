@@ -15,7 +15,7 @@ struct foo<A> {
   x: A,
 }
 
-impl<A: Copy> foo<A> : clam<A> {
+impl<A: Copy> clam<A> for foo<A> {
   fn chowder(y: A) {
   }
 }

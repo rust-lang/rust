@@ -520,7 +520,7 @@ pub fn reserved_keyword_table() -> HashMap<~str, ()> {
 }
 
 
-impl Token : cmp::Eq {
+impl cmp::Eq for Token {
     pure fn eq(&self, other: &Token) -> bool {
         match (*self) {
             EQ => {

@@ -8,7 +8,7 @@ mod a {
         x: int
     }
 
-    impl S : T {
+    impl T for S {
         fn f() {    //~ ERROR this method form is deprecated
         }
     }

@@ -20,14 +20,14 @@ use option::Option;
 
 use self::inst::{IMPL_T, EACH, SIZE_HINT};
 
-impl<A> IMPL_T<A>: iter::BaseIter<A> {
+impl<A> iter::BaseIter<A> for IMPL_T<A> {
     #[inline(always)]
     pure fn each(&self, blk: fn(v: &A) -> bool) { EACH(self, blk) }
     #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { SIZE_HINT(self) }
 }
 
-impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
+impl<A> iter::ExtendedIter<A> for IMPL_T<A> {
     #[inline(always)]
     pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
@@ -60,14 +60,14 @@ impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
 
 }
 
-impl<A: Eq> IMPL_T<A>: iter::EqIter<A> {
+impl<A: Eq> iter::EqIter<A> for IMPL_T<A> {
     #[inline(always)]
     pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     #[inline(always)]
     pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
-impl<A: Copy> IMPL_T<A>: iter::CopyableIter<A> {
+impl<A: Copy> iter::CopyableIter<A> for IMPL_T<A> {
     #[inline(always)]
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
@@ -80,7 +80,7 @@ impl<A: Copy> IMPL_T<A>: iter::CopyableIter<A> {
     }
 }
 
-impl<A: Copy Ord> IMPL_T<A>: iter::CopyableOrderedIter<A> {
+impl<A: Copy Ord> iter::CopyableOrderedIter<A> for IMPL_T<A> {
     #[inline(always)]
     pure fn min(&self) -> A { iter::min(self) }
     #[inline(always)]

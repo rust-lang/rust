@@ -43,7 +43,7 @@ pub trait WriterUtils {
     fn write_done(&self);
 }
 
-impl Writer: WriterUtils {
+impl WriterUtils for Writer {
     fn write_str(&self, str: ~str) {
         (*self)(Write(str));
     }

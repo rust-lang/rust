@@ -12,7 +12,7 @@ trait add {
     fn plus(++x: Self) -> Self;
 }
 
-impl int: add {
+impl add for int {
     fn plus(++x: int) -> int { self + x }
 }
 

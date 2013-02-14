@@ -39,7 +39,7 @@ pub struct TreeMap<K, V> {
     priv length: uint
 }
 
-impl <K: Eq Ord, V: Eq> TreeMap<K, V>: Eq {
+impl<K: Eq Ord, V: Eq> Eq for TreeMap<K, V> {
     pure fn eq(&self, other: &TreeMap<K, V>) -> bool {
         if self.len() != other.len() {
             false
@@ -85,7 +85,7 @@ pure fn lt<K: Ord, V>(a: &TreeMap<K, V>, b: &TreeMap<K, V>) -> bool {
     return a_len < b_len;
 }
 
-impl <K: Ord, V> TreeMap<K, V>: Ord {
+impl<K: Ord, V> Ord for TreeMap<K, V> {
     #[inline(always)]
     pure fn lt(&self, other: &TreeMap<K, V>) -> bool {
         lt(self, other)
@@ -104,7 +104,7 @@ impl <K: Ord, V> TreeMap<K, V>: Ord {
     }
 }
 
-impl <K: Ord, V> TreeMap<K, V>: BaseIter<(&K, &V)> {
+impl<K: Ord, V> BaseIter<(&K, &V)> for TreeMap<K, V> {
     /// Visit all key-value pairs in order
     pure fn each(&self, f: fn(&(&self/K, &self/V)) -> bool) {
         each(&self.root, f)
@@ -112,14 +112,14 @@ impl <K: Ord, V> TreeMap<K, V>: BaseIter<(&K, &V)> {
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl <K: Ord, V> TreeMap<K, V>: ReverseIter<(&K, &V)> {
+impl<K: Ord, V> ReverseIter<(&K, &V)> for TreeMap<K, V> {
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, f: fn(&(&self/K, &self/V)) -> bool) {
         each_reverse(&self.root, f);
     }
 }
 
-impl <K: Ord, V> TreeMap<K, V>: Container {
+impl<K: Ord, V> Container for TreeMap<K, V> {
     /// Return the number of elements in the map
     pure fn len(&self) -> uint { self.length }
 
@@ -127,7 +127,7 @@ impl <K: Ord, V> TreeMap<K, V>: Container {
     pure fn is_empty(&self) -> bool { self.root.is_none() }
 }
 
-impl <K: Ord, V> TreeMap<K, V>: Mutable {
+impl<K: Ord, V> Mutable for TreeMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
         self.root = None;
@@ -135,7 +135,7 @@ impl <K: Ord, V> TreeMap<K, V>: Mutable {
     }
 }
 
-impl <K: Ord, V> TreeMap<K, V>: Map<K, V> {
+impl<K: Ord, V> Map<K, V> for TreeMap<K, V> {
     /// Return true if the map contains a value for the specified key
     pure fn contains_key(&self, key: &K) -> bool {
         self.find(key).is_some()
@@ -246,25 +246,25 @@ pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }
 
-impl <T: Ord> TreeSet<T>: BaseIter<T> {
+impl<T: Ord> BaseIter<T> for TreeSet<T> {
     /// Visit all values in order
     pure fn each(&self, f: fn(&T) -> bool) { self.map.each_key(f) }
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl <T: Ord> TreeSet<T>: ReverseIter<T> {
+impl<T: Ord> ReverseIter<T> for TreeSet<T> {
     /// Visit all values in reverse order
     pure fn each_reverse(&self, f: fn(&T) -> bool) {
         self.map.each_key_reverse(f)
     }
 }
 
-impl <T: Eq Ord> TreeSet<T>: Eq {
+impl<T: Eq Ord> Eq for TreeSet<T> {
     pure fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
-impl <T: Ord> TreeSet<T>: Ord {
+impl<T: Ord> Ord for TreeSet<T> {
     #[inline(always)]
     pure fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
     #[inline(always)]
@@ -275,7 +275,7 @@ impl <T: Ord> TreeSet<T>: Ord {
     pure fn gt(&self, other: &TreeSet<T>) -> bool { self.map > other.map }
 }
 
-impl <T: Ord> TreeSet<T>: Container {
+impl<T: Ord> Container for TreeSet<T> {
     /// Return the number of elements in the set
     pure fn len(&self) -> uint { self.map.len() }
 
@@ -283,12 +283,12 @@ impl <T: Ord> TreeSet<T>: Container {
     pure fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
-impl <T: Ord> TreeSet<T>: Mutable {
+impl<T: Ord> Mutable for TreeSet<T> {
     /// Clear the set, removing all values.
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl <T: Ord> TreeSet<T>: Set<T> {
+impl<T: Ord> Set<T> for TreeSet<T> {
     /// Return true if the set contains a value
     pure fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)

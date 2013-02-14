@@ -165,7 +165,7 @@ impl Dest {
     }
 }
 
-impl Dest : cmp::Eq {
+impl cmp::Eq for Dest {
     pure fn eq(&self, other: &Dest) -> bool {
         match ((*self), (*other)) {
             (SaveIn(e0a), SaveIn(e0b)) => e0a == e0b,
@@ -1516,7 +1516,7 @@ pub enum cast_kind {
     cast_other,
 }
 
-impl cast_kind : cmp::Eq {
+impl cmp::Eq for cast_kind {
     pure fn eq(&self, other: &cast_kind) -> bool {
         match ((*self), (*other)) {
             (cast_pointer, cast_pointer) => true,

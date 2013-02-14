@@ -14,7 +14,7 @@ trait methods {
     fn to_bytes() -> ~[u8];
 }
 
-impl (): methods {
+impl methods for () {
     fn to_bytes() -> ~[u8] {
         vec::from_elem(0, 0)
     }

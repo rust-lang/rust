@@ -24,91 +24,91 @@ pub trait Rand {
     static fn rand(rng: rand::Rng) -> Self;
 }
 
-impl int: Rand {
+impl Rand for int {
     static fn rand(rng: rand::Rng) -> int {
         rng.gen_int()
     }
 }
 
-impl i8: Rand {
+impl Rand for i8 {
     static fn rand(rng: rand::Rng) -> i8 {
         rng.gen_i8()
     }
 }
 
-impl i16: Rand {
+impl Rand for i16 {
     static fn rand(rng: rand::Rng) -> i16 {
         rng.gen_i16()
     }
 }
 
-impl i32: Rand {
+impl Rand for i32 {
     static fn rand(rng: rand::Rng) -> i32 {
         rng.gen_i32()
     }
 }
 
-impl i64: Rand {
+impl Rand for i64 {
     static fn rand(rng: rand::Rng) -> i64 {
         rng.gen_i64()
     }
 }
 
-impl u8: Rand {
+impl Rand for u8 {
     static fn rand(rng: rand::Rng) -> u8 {
         rng.gen_u8()
     }
 }
 
-impl u16: Rand {
+impl Rand for u16 {
     static fn rand(rng: rand::Rng) -> u16 {
         rng.gen_u16()
     }
 }
 
-impl u32: Rand {
+impl Rand for u32 {
     static fn rand(rng: rand::Rng) -> u32 {
         rng.gen_u32()
     }
 }
 
-impl u64: Rand {
+impl Rand for u64 {
     static fn rand(rng: rand::Rng) -> u64 {
         rng.gen_u64()
     }
 }
 
-impl float: Rand {
+impl Rand for float {
     static fn rand(rng: rand::Rng) -> float {
         rng.gen_float()
     }
 }
 
-impl f32: Rand {
+impl Rand for f32 {
     static fn rand(rng: rand::Rng) -> f32 {
         rng.gen_f32()
     }
 }
 
-impl f64: Rand {
+impl Rand for f64 {
     static fn rand(rng: rand::Rng) -> f64 {
         rng.gen_f64()
     }
 }
 
-impl char: Rand {
+impl Rand for char {
     static fn rand(rng: rand::Rng) -> char {
         rng.gen_char()
     }
 }
 
-impl bool: Rand {
+impl Rand for bool {
     static fn rand(rng: rand::Rng) -> bool {
         rng.gen_bool()
     }
 }
 
-impl<T: Rand> Option<T>: Rand {
+impl<T: Rand> Rand for Option<T> {
     static fn rand(rng: rand::Rng) -> Option<T> {
         if rng.gen_bool() { Some(Rand::rand(rng)) }
         else { None }
@@ -377,7 +377,7 @@ fn RandRes(c: *rctx) -> RandRes {
     }
 }
 
-impl @RandRes: Rng {
+impl Rng for @RandRes {
     fn next() -> u32 {
         unsafe {
             return rustrt::rand_next((*self).c);
@@ -418,7 +418,7 @@ struct XorShiftState {
     mut w: u32,
 }
 
-impl XorShiftState: Rng {
+impl Rng for XorShiftState {
     fn next() -> u32 {
         let x = self.x;
         let mut t = x ^ (x << 11);

@@ -74,7 +74,7 @@ pub mod reader {
 
     // ebml reading
 
-    impl Doc: ops::Index<uint,Doc> {
+    impl ops::Index<uint,Doc> for Doc {
         pure fn index(&self, tag: uint) -> Doc {
             unsafe {
                 get_doc(*self, tag)
@@ -285,7 +285,7 @@ pub mod reader {
         }
     }
 
-    impl Decoder: serialize::Decoder {
+    impl serialize::Decoder for Decoder {
         fn read_nil(&self) -> () { () }
 
         fn read_u64(&self) -> u64 { doc_as_u64(self.next_doc(EsU64)) }
@@ -577,7 +577,7 @@ pub mod writer {
         }
     }
 
-    impl Encoder: ::serialize::Encoder {
+    impl ::serialize::Encoder for Encoder {
         fn emit_nil(&self) {}
 
         fn emit_uint(&self, v: uint) {

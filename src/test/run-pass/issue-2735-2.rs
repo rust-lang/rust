@@ -13,7 +13,7 @@ struct defer {
     b: &mut bool,
 }
 
-impl defer : Drop {
+impl Drop for defer {
     fn finalize(&self) {
         *(self.b) = true;
     }
