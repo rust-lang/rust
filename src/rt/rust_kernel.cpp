@@ -80,11 +80,6 @@ rust_kernel::malloc(size_t size, const char *tag) {
 }
 
 void *
-rust_kernel::calloc(size_t size, const char *tag) {
-    return exchange_alloc.calloc(size);
-}
-
-void *
 rust_kernel::realloc(void *mem, size_t size) {
     return exchange_alloc.realloc(mem, size);
 }

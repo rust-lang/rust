@@ -133,7 +133,6 @@ public:
     void fatal(char const *fmt, ...);
 
     void *malloc(size_t size, const char *tag);
-    void *calloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
     rust_exchange_alloc *region() { return &exchange_alloc; }
