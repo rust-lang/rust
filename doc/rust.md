@@ -202,13 +202,7 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 ### Keywords
 
-The keywords in [crate files](#crate-files) are the following strings:
-
-~~~~~~~~ {.keyword}
-mod priv pub use
-~~~~~~~~
-
-The keywords in [source files](#source-files) are the following strings:
+The keywords are the following strings:
 
 ~~~~~~~~ {.keyword}
 as assert

@@ -262,7 +262,7 @@ struct ctxt_ {
     needs_drop_cache: HashMap<t, bool>,
     needs_unwind_cleanup_cache: HashMap<t, bool>,
     mut tc_cache: LinearMap<uint, TypeContents>,
-    ast_ty_to_ty_cache: HashMap<@ast::Ty, ast_ty_to_ty_cache_entry>,
+    ast_ty_to_ty_cache: HashMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
     trait_method_cache: HashMap<def_id, @~[method]>,
     ty_param_bounds: HashMap<ast::node_id, param_bounds>,

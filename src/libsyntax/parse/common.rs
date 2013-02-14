@@ -20,6 +20,8 @@ use core::option::{None, Option, Some};
 use core::option;
 use std::oldmap::HashMap;
 
+// seq_sep : a sequence separator (token)
+// and whether a trailing separator is allowed.
 pub type seq_sep = {
     sep: Option<token::Token>,
     trailing_sep_allowed: bool
@@ -51,6 +53,8 @@ pub impl Parser {
                    + token_to_str(self.reader, self.token) + ~"`");
     }
 
+    // expect and consume the token t. Signal an error if
+    // the next token is not t.
     fn expect(t: token::Token) {
         if self.token == t {
             self.bump();
@@ -88,6 +92,8 @@ pub impl Parser {
         return self.parse_ident();
     }
 
+    // consume token 'tok' if it exists. Returns true if the given
+    // token was present, false otherwise.
     fn eat(tok: token::Token) -> bool {
         return if self.token == tok { self.bump(); true } else { false };
     }
@@ -185,6 +191,8 @@ pub impl Parser {
         }
     }
 
+    // expect and consume a GT. if a >> is seen, replace it
+    // with a single > and continue.
     fn expect_gt() {
         if self.token == token::GT {
             self.bump();
@@ -202,6 +210,8 @@ pub impl Parser {
         }
     }
 
+    // parse a sequence bracketed by '<' and '>', stopping
+    // before the '>'.
     fn parse_seq_to_before_gt<T: Copy>(sep: Option<token::Token>,
                                        f: fn(Parser) -> T) -> ~[T] {
         let mut first = true;
@@ -211,7 +221,7 @@ pub impl Parser {
             match sep {
               Some(ref t) => {
                 if first { first = false; }
-                else { self.expect((*t)); }
+                else { self.expect(*t); }
               }
               _ => ()
             }
@@ -229,6 +239,7 @@ pub impl Parser {
         return v;
     }
 
+    // parse a sequence bracketed by '<' and '>'
     fn parse_seq_lt_gt<T: Copy>(sep: Option<token::Token>,
                                 f: fn(Parser) -> T) -> spanned<~[T]> {
         let lo = self.span.lo;
@@ -239,6 +250,9 @@ pub impl Parser {
         return spanned(lo, hi, result);
     }
 
+    // parse a sequence, including the closing delimiter. The function
+    // f must consume tokens until reaching the next separator or
+    // closing bracket.
     fn parse_seq_to_end<T: Copy>(ket: token::Token, sep: seq_sep,
                                  f: fn(Parser) -> T) -> ~[T] {
         let val = self.parse_seq_to_before_end(ket, sep, f);
@@ -246,7 +260,9 @@ pub impl Parser {
         return val;
     }
 
-
+    // parse a sequence, not including the closing delimiter. The function
+    // f must consume tokens until reaching the next separator or
+    // closing bracket.
     fn parse_seq_to_before_end<T: Copy>(ket: token::Token, sep: seq_sep,
                                         f: fn(Parser) -> T) -> ~[T] {
         let mut first: bool = true;
@@ -255,7 +271,7 @@ pub impl Parser {
             match sep.sep {
               Some(ref t) => {
                 if first { first = false; }
-                else { self.expect((*t)); }
+                else { self.expect(*t); }
               }
               _ => ()
             }
@@ -265,6 +281,9 @@ pub impl Parser {
         return v;
     }
 
+    // parse a sequence, including the closing delimiter. The function
+    // f must consume tokens until reaching the next separator or
+    // closing bracket.
     fn parse_unspanned_seq<T: Copy>(bra: token::Token,
                                     ket: token::Token,
                                     sep: seq_sep,
