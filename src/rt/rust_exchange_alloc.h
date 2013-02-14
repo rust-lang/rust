@@ -17,7 +17,6 @@
 class rust_exchange_alloc {
  public:
     void *malloc(size_t size);
-    void *calloc(size_t size);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
 };

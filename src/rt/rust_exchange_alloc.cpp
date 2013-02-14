@@ -28,11 +28,6 @@ rust_exchange_alloc::malloc(size_t size) {
 }
 
 void *
-rust_exchange_alloc::calloc(size_t size) {
-  return this->malloc(size);
-}
-
-void *
 rust_exchange_alloc::realloc(void *ptr, size_t size) {
   void *new_ptr = ::realloc(ptr, size);
   assert(new_ptr);
