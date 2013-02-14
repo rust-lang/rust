@@ -12,7 +12,7 @@
 
 
 // error-pattern:explicit failure
-fn f() -> ! { die!() }
+fn f() -> ! { fail!() }
 
 fn g() -> int { let x = match true { true => { f() } false => { 10 } }; return x; }
 

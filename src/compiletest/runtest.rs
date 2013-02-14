@@ -202,7 +202,7 @@ actual:\n\
 \n",
                      expected, actual);
             io::stdout().write_str(msg);
-            die!();
+            fail!();
         }
     }
 
@@ -518,7 +518,7 @@ fn compose_and_run_compiler(
 fn ensure_dir(path: &Path) {
     if os::path_is_dir(path) { return; }
     if !os::make_dir(path, 0x1c0i32) {
-        die!(fmt!("can't make dir %s", path.to_str()));
+        fail!(fmt!("can't make dir %s", path.to_str()));
     }
 }
 
@@ -668,7 +668,7 @@ fn maybe_dump_to_stdout(config: config, out: ~str, err: ~str) {
 
 fn error(err: ~str) { io::stdout().write_line(fmt!("\nerror: %s", err)); }
 
-fn fatal(err: ~str) -> ! { error(err); die!(); }
+fn fatal(err: ~str) -> ! { error(err); fail!(); }
 
 fn fatal_ProcRes(err: ~str, ProcRes: ProcRes) -> ! {
     let msg =
@@ -686,5 +686,5 @@ stderr:\n\
 \n",
              err, ProcRes.cmdline, ProcRes.stdout, ProcRes.stderr);
     io::stdout().write_str(msg);
-    die!();
+    fail!();
 }

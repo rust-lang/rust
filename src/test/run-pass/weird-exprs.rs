@@ -69,7 +69,7 @@ fn canttouchthis() -> uint {
 fn angrydome() {
     loop { if break { } }
     let mut i = 0;
-    loop { i += 1; if i == 1 { match (loop) { 1 => { }, _ => die!(~"wat") } }
+    loop { i += 1; if i == 1 { match (loop) { 1 => { }, _ => fail!(~"wat") } }
       break; }
 }
 

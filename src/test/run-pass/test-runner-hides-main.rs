@@ -15,4 +15,4 @@ extern mod std;
 
 // Building as a test runner means that a synthetic main will be run,
 // not ours
-pub fn main() { die!(); }
+pub fn main() { fail!(); }

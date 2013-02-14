@@ -198,7 +198,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
             // FIXME (#607): Needs implementing
             // This involves probably sorting the list by name and
             // meta_item variant
-            die!(~"unimplemented meta_item variant")
+            fail!(~"unimplemented meta_item variant")
           }
         }
 }

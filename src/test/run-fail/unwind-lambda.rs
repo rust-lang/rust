@@ -21,7 +21,7 @@ fn main() {
         let cheese = copy cheese;
         let f = fn@() {
             let chew = mush + cheese;
-            die!(~"so yummy")
+            fail!(~"so yummy")
         };
         f();
     });

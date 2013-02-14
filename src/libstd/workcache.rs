@@ -382,7 +382,7 @@ fn unwrap<T:Owned
     ww.res <-> s;
 
     match move s {
-        None => die!(),
+        None => fail!(),
         Some(Left(move v)) => move v,
         Some(Right(move port)) => {
 

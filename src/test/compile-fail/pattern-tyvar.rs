@@ -21,7 +21,7 @@ fn foo(t: bar) {
       t1(_, Some::<int>(x)) => {
         log(debug, x);
       }
-      _ => { die!(); }
+      _ => { fail!(); }
     }
 }
 

@@ -14,7 +14,7 @@ impl methods<T:copy> for maybe<T> {
     fn ~[](idx: uint) -> T {
         match self {
           just(t) { t }
-          nothing { die!(); }
+          nothing { fail!(); }
         }
     }
 }

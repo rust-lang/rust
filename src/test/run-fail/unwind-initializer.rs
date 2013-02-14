@@ -12,6 +12,6 @@
 
 fn main() {
     let a: @int = {
-        die!();
+        fail!();
     };
 }

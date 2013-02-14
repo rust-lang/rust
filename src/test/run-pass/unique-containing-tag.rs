@@ -17,13 +17,13 @@ pub fn main() {
       t1(a) {
         assert a == 10;
       }
-      _ { die!(); }
+      _ { fail!(); }
     }*/
 
     /*alt x {
       ~t1(a) {
         assert a == 10;
       }
-      _ { die!(); }
+      _ { fail!(); }
     }*/
 }

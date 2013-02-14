@@ -54,7 +54,7 @@ fn square_from_char(c: char) -> square {
       ' '  => { empty }
       _ => {
         error!("invalid square: %?", c);
-        die!()
+        fail!()
       }
     }
 }

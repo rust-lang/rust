@@ -83,7 +83,7 @@ pub fn sha1() -> Sha1 {
                 st.len_high += 1u32;
                 if st.len_high == 0u32 {
                     // FIXME: Need better failure mode (#2346)
-                    die!();
+                    fail!();
                 }
             }
             if st.msg_block_idx == msg_block_len { process_msg_block(st); }

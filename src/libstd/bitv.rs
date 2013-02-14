@@ -240,7 +240,7 @@ pub fn Bitv (nbits: uint, init: bool) -> Bitv {
 priv impl Bitv {
 
     fn die() -> ! {
-        die!(~"Tried to do operation on bit vectors with different sizes");
+        fail!(~"Tried to do operation on bit vectors with different sizes");
     }
 
     #[inline(always)]
@@ -985,7 +985,7 @@ mod tests {
       let b = Bitv(14, true);
       b.clear();
       for b.ones |i| {
-          die!(fmt!("found 1 at %?", i));
+          fail!(fmt!("found 1 at %?", i));
       }
     }
 
@@ -994,7 +994,7 @@ mod tests {
       let b = Bitv(140, true);
       b.clear();
       for b.ones |i| {
-          die!(fmt!("found 1 at %?", i));
+          fail!(fmt!("found 1 at %?", i));
       }
     }
 }

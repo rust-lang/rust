@@ -108,7 +108,7 @@ impl<T> cat<T> {
     pure fn get(&self, k: &int) -> &self/T {
         match self.find(k) {
           Some(v) => { v }
-          None    => { die!(~"epic fail"); }
+          None    => { fail!(~"epic fail"); }
         }
     }
 

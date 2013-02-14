@@ -16,5 +16,5 @@ extern mod xx {
 
 fn main() {
   // let it fail to verify warning message
-  die!()
+  fail!()
 }
