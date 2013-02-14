@@ -1284,13 +1284,13 @@ mod tests {
     // Should they be in their own crate?
     pub pure fn check_equal_ptr<T : cmp::Eq> (given : &T, expected: &T) {
         if !((given == expected) && (expected == given )) {
-            die!(fmt!("given %?, expected %?",given,expected));
+            fail!(fmt!("given %?, expected %?",given,expected));
         }
     }
 
     pub pure fn check_equal<T : cmp::Eq> (given : T, expected: T) {
         if !((given == expected) && (expected == given )) {
-            die!(fmt!("given %?, expected %?",given,expected));
+            fail!(fmt!("given %?, expected %?",given,expected));
         }
     }
 

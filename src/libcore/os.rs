@@ -849,7 +849,7 @@ pub fn last_os_error() -> ~str {
             let err = strerror_r(errno() as c_int, &buf[0],
                                  TMPBUF_SZ as size_t);
             if err < 0 {
-                die!(~"strerror_r failure");
+                fail!(~"strerror_r failure");
             }
 
             str::raw::from_c_str(&buf[0])
@@ -887,7 +887,7 @@ pub fn last_os_error() -> ~str {
                                      &mut buf[0], TMPBUF_SZ as DWORD,
                                      ptr::null());
             if res == 0 {
-                die!(fmt!("[%?] FormatMessage failure", errno()));
+                fail!(fmt!("[%?] FormatMessage failure", errno()));
             }
 
             str::raw::from_c_str(&buf[0])

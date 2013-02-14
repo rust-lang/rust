@@ -143,7 +143,7 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
             TestDescAndFn { testfn: StaticBenchFn(f), desc: copy t.desc },
 
             _ => {
-                die! (~"non-static tests passed to test::test_main_static");
+                fail!(~"non-static tests passed to test::test_main_static");
             }
         }
     };
