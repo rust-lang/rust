@@ -13,6 +13,7 @@
 
 #include "rust_globals.h"
 #include "rust_log.h"
+#include "rust_rng.h"
 #include "rust_stack.h"
 #include "rust_signal.h"
 #include "context.h"

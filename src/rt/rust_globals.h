@@ -37,7 +37,6 @@
 #include <math.h>
 #include <assert.h>
 
-#include "rand.h"
 #include "uthash.h"
 
 #if defined(__WIN32__)
