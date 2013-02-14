@@ -17,19 +17,19 @@ trait Serializable {
     fn serialize<S: Serializer>(s: S);
 }
 
-impl int: Serializable {
+impl Serializable for int {
     fn serialize<S: Serializer>(_s: S) { }
 }
 
 struct F<A> { a: A }
 
-impl<A: Copy Serializable> F<A>: Serializable {
+impl<A: Copy Serializable> Serializable for F<A> {
     fn serialize<S: Serializer>(s: S) {
         self.a.serialize(move s);
     }
 }
 
-impl io::Writer: Serializer {
+impl Serializer for io::Writer {
 }
 
 pub fn main() {

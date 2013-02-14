@@ -15,7 +15,7 @@ struct Font {
 
 }
 
-impl Font : Drop {
+impl Drop for Font {
     fn finalize(&self) {}
 }
 

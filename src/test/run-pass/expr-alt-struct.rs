@@ -23,7 +23,7 @@ fn test_rec() {
 
 enum mood { happy, sad, }
 
-impl mood : cmp::Eq {
+impl cmp::Eq for mood {
     pure fn eq(&self, other: &mood) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

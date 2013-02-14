@@ -98,7 +98,7 @@ fn p(x: int, y: int) -> p {
     }
 }
 
-impl p : cmp::Eq {
+impl cmp::Eq for p {
     pure fn eq(&self, other: &p) -> bool {
         (*self).x == (*other).x && (*self).y == (*other).y
     }

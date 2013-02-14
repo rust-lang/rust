@@ -17,13 +17,13 @@ pub trait read {
     static fn readMaybe(s: ~str) -> Option<Self>;
 }
 
-impl int: read {
+impl read for int {
     static fn readMaybe(s: ~str) -> Option<int> {
         int::from_str(s)
     }
 }
 
-impl bool: read {
+impl read for bool {
     static fn readMaybe(s: ~str) -> Option<bool> {
         match s {
           ~"true" => Some(true),

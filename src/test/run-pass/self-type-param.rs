@@ -6,7 +6,7 @@ struct S {
     x: int
 }
 
-impl S : MyTrait {
+impl MyTrait for S {
     fn f(&self) -> S {
         S { x: 3 }
     }

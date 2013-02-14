@@ -59,7 +59,7 @@ enum Expr {
     Minus(@Expr, @Expr)
 }
 
-impl Expr : cmp::Eq {
+impl cmp::Eq for Expr {
     pure fn eq(&self, other: &Expr) -> bool {
         match *self {
             Val(e0a) => {
@@ -85,21 +85,21 @@ impl Expr : cmp::Eq {
     pure fn ne(&self, other: &Expr) -> bool { !(*self).eq(other) }
 }
 
-impl AnEnum : cmp::Eq {
+impl cmp::Eq for AnEnum {
     pure fn eq(&self, other: &AnEnum) -> bool {
         (*self).v == other.v
     }
     pure fn ne(&self, other: &AnEnum) -> bool { !(*self).eq(other) }
 }
 
-impl Point : cmp::Eq {
+impl cmp::Eq for Point {
     pure fn eq(&self, other: &Point) -> bool {
         self.x == other.x && self.y == other.y
     }
     pure fn ne(&self, other: &Point) -> bool { !(*self).eq(other) }
 }
 
-impl<T:cmp::Eq> Quark<T> : cmp::Eq {
+impl<T:cmp::Eq> cmp::Eq for Quark<T> {
     pure fn eq(&self, other: &Quark<T>) -> bool {
         match *self {
             Top(ref q) => {
@@ -119,7 +119,7 @@ impl<T:cmp::Eq> Quark<T> : cmp::Eq {
     pure fn ne(&self, other: &Quark<T>) -> bool { !(*self).eq(other) }
 }
 
-impl CLike : cmp::Eq {
+impl cmp::Eq for CLike {
     pure fn eq(&self, other: &CLike) -> bool {
         (*self) as int == *other as int
     }

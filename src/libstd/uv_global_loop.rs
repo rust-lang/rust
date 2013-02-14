@@ -51,7 +51,7 @@ fn get_monitor_task_gl() -> IoTask {
 
     struct GlobalIoTask(IoTask);
 
-    impl GlobalIoTask: Clone {
+    impl Clone for GlobalIoTask {
         fn clone(&self) -> GlobalIoTask {
             GlobalIoTask((**self).clone())
         }

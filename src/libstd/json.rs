@@ -949,7 +949,7 @@ pub impl Decoder: serialize::Decoder {
     }
 }
 
-impl Json : Eq {
+impl Eq for Json {
     pure fn eq(&self, other: &Json) -> bool {
         match (self) {
             &Number(f0) =>
@@ -987,7 +987,7 @@ impl Json : Eq {
 }
 
 /// Test if two json values are less than one another
-impl Json : Ord {
+impl Ord for Json {
     pure fn lt(&self, other: &Json) -> bool {
         match (*self) {
             Number(f0) => {
@@ -1063,7 +1063,7 @@ impl Json : Ord {
     pure fn gt(&self, other: &Json) -> bool { (*other).lt(&(*self))  }
 }
 
-impl Error : Eq {
+impl Eq for Error {
     pure fn eq(&self, other: &Error) -> bool {
         (*self).line == other.line &&
         (*self).col == other.col &&
@@ -1074,83 +1074,83 @@ impl Error : Eq {
 
 trait ToJson { fn to_json() -> Json; }
 
-impl Json: ToJson {
+impl ToJson for Json {
     fn to_json() -> Json { copy self }
 }
 
-impl @Json: ToJson {
+impl ToJson for @Json {
     fn to_json() -> Json { (*self).to_json() }
 }
 
-impl int: ToJson {
+impl ToJson for int {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl i8: ToJson {
+impl ToJson for i8 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl i16: ToJson {
+impl ToJson for i16 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl i32: ToJson {
+impl ToJson for i32 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl i64: ToJson {
+impl ToJson for i64 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl uint: ToJson {
+impl ToJson for uint {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl u8: ToJson {
+impl ToJson for u8 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl u16: ToJson {
+impl ToJson for u16 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl u32: ToJson {
+impl ToJson for u32 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl u64: ToJson {
+impl ToJson for u64 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl float: ToJson {
+impl ToJson for float {
     fn to_json() -> Json { Number(self) }
 }
 
-impl f32: ToJson {
+impl ToJson for f32 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl f64: ToJson {
+impl ToJson for f64 {
     fn to_json() -> Json { Number(self as float) }
 }
 
-impl (): ToJson {
+impl ToJson for () {
     fn to_json() -> Json { Null }
 }
 
-impl bool: ToJson {
+impl ToJson for bool {
     fn to_json() -> Json { Boolean(self) }
 }
 
-impl ~str: ToJson {
+impl ToJson for ~str {
     fn to_json() -> Json { String(copy self) }
 }
 
-impl @~str: ToJson {
+impl ToJson for @~str {
     fn to_json() -> Json { String(copy *self) }
 }
 
-impl <A: ToJson, B: ToJson> (A, B): ToJson {
+impl<A: ToJson, B: ToJson> ToJson for (A, B) {
     fn to_json() -> Json {
         match self {
           (ref a, ref b) => {
@@ -1160,7 +1160,7 @@ impl <A: ToJson, B: ToJson> (A, B): ToJson {
     }
 }
 
-impl <A: ToJson, B: ToJson, C: ToJson> (A, B, C): ToJson {
+impl<A: ToJson, B: ToJson, C: ToJson> ToJson for (A, B, C) {
     fn to_json() -> Json {
         match self {
           (ref a, ref b, ref c) => {
@@ -1170,11 +1170,11 @@ impl <A: ToJson, B: ToJson, C: ToJson> (A, B, C): ToJson {
     }
 }
 
-impl <A: ToJson> ~[A]: ToJson {
+impl<A: ToJson> ToJson for ~[A] {
     fn to_json() -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl <A: ToJson Copy> LinearMap<~str, A>: ToJson {
+impl<A: ToJson Copy> ToJson for LinearMap<~str, A> {
     fn to_json() -> Json {
         let mut d = LinearMap::new();
         for self.each |&(key, value)| {
@@ -1184,7 +1184,7 @@ impl <A: ToJson Copy> LinearMap<~str, A>: ToJson {
     }
 }
 
-impl <A: ToJson> Option<A>: ToJson {
+impl<A: ToJson> ToJson for Option<A> {
     fn to_json() -> Json {
         match self {
           None => Null,
@@ -1193,11 +1193,11 @@ impl <A: ToJson> Option<A>: ToJson {
     }
 }
 
-impl Json: to_str::ToStr {
+impl to_str::ToStr for Json {
     pure fn to_str(&self) -> ~str { to_str(self) }
 }
 
-impl Error: to_str::ToStr {
+impl to_str::ToStr for Error {
     pure fn to_str(&self) -> ~str {
         fmt!("%u:%u: %s", self.line, self.col, *self.msg)
     }

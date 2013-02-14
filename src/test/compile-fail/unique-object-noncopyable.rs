@@ -16,11 +16,11 @@ struct Bar {
     x: int,
 }
 
-impl Bar : Drop {
+impl Drop for Bar {
     fn finalize(&self) {}
 }
 
-impl Bar : Foo {
+impl Foo for Bar {
     fn f(&self) {
         io::println("hi");
     }

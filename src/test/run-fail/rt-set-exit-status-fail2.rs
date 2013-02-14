@@ -17,7 +17,7 @@ struct r {
 // Setting the exit status after the runtime has already
 // failed has no effect and the process exits with the
 // runtime's exit code
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {
         os::set_exit_status(50);
     }

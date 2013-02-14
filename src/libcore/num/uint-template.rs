@@ -111,7 +111,7 @@ pub pure fn compl(i: T) -> T {
 }
 
 #[cfg(notest)]
-impl T : Ord {
+impl Ord for T {
     #[inline(always)]
     pure fn lt(&self, other: &T) -> bool { (*self) < (*other) }
     #[inline(always)]
@@ -123,24 +123,24 @@ impl T : Ord {
 }
 
 #[cfg(notest)]
-impl T : Eq {
+impl Eq for T {
     #[inline(always)]
     pure fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
     #[inline(always)]
     pure fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
 }
 
-impl T: num::Zero {
+impl num::Zero for T {
     #[inline(always)]
     static pure fn zero() -> T { 0 }
 }
 
-impl T: num::One {
+impl num::One for T {
     #[inline(always)]
     static pure fn one() -> T { 1 }
 }
 
-impl T: num::Round {
+impl num::Round for T {
     #[inline(always)]
     pure fn round(&self, _: num::RoundMode) -> T { *self }
 
@@ -200,14 +200,14 @@ pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
                                num::ExpNone, false)
 }
 
-impl T : FromStr {
+impl FromStr for T {
     #[inline(always)]
     static pure fn from_str(s: &str) -> Option<T> {
         from_str(s)
     }
 }
 
-impl T : FromStrRadix {
+impl FromStrRadix for T {
     #[inline(always)]
     static pure fn from_str_radix(&self, s: &str, radix: uint) -> Option<T> {
         from_str_radix(s, radix)
@@ -245,14 +245,14 @@ pub pure fn to_str_radix(num: T, radix: uint) -> ~str {
 #[inline(always)]
 pub pure fn str(i: T) -> ~str { to_str(i) }
 
-impl T : ToStr {
+impl ToStr for T {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         to_str(*self)
     }
 }
 
-impl T : ToStrRadix {
+impl ToStrRadix for T {
     #[inline(always)]
     pure fn to_str_radix(&self, radix: uint) -> ~str {
         to_str_radix(*self, radix)

@@ -15,7 +15,7 @@ use issue_3979_traits::*;
 
 struct Point { mut x: int, mut y: int }
 
-impl Point: Positioned {
+impl Positioned for Point {
     fn SetX(&self, x: int) {
         self.x = x;
     }

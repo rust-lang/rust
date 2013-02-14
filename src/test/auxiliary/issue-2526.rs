@@ -19,7 +19,7 @@ struct arc_destruct<T> {
   _data: int,
 }
 
-impl<T:Const> arc_destruct<T> : Drop {
+impl<T:Const> Drop for arc_destruct<T> {
     fn finalize(&self) {}
 }
 
@@ -43,7 +43,7 @@ struct context_res {
     ctx : int,
 }
 
-impl context_res : Drop {
+impl Drop for context_res {
     fn finalize(&self) {}
 }
 

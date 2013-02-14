@@ -10,7 +10,7 @@
 
 struct thing { x: int, }
 
-impl thing : Drop {
+impl Drop for thing {
     fn finalize(&self) {}
 }
 

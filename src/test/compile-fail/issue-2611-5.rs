@@ -20,7 +20,7 @@ struct E {
  f: int
 }
 
-impl E: A {
+impl A for E {
   // n.b. The error message is awful -- see #3404
   fn b<F:Copy, G>(_x: G) -> G { fail!() } //~ ERROR method `b` has an incompatible type
 }

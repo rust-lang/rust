@@ -53,7 +53,7 @@ pub mod rt {
         pub fn to_tokens(_cx: ext_ctxt) -> ~[token_tree];
     }
 
-    impl ~[token_tree]: ToTokens {
+    impl ToTokens for ~[token_tree] {
         pub fn to_tokens(_cx: ext_ctxt) -> ~[token_tree] {
             copy self
         }
@@ -78,43 +78,43 @@ pub mod rt {
         pub fn to_source(cx: ext_ctxt) -> ~str;
     }
 
-    impl ast::ident: ToSource {
+    impl ToSource for ast::ident {
         fn to_source(cx: ext_ctxt) -> ~str {
             copy *cx.parse_sess().interner.get(self)
         }
     }
 
-    impl @ast::item: ToSource {
+    impl ToSource for @ast::item {
         fn to_source(cx: ext_ctxt) -> ~str {
             item_to_str(self, cx.parse_sess().interner)
         }
     }
 
-    impl ~[@ast::item]: ToSource {
+    impl ToSource for ~[@ast::item] {
         fn to_source(cx: ext_ctxt) -> ~str {
             str::connect(self.map(|i| i.to_source(cx)), ~"\n\n")
         }
     }
 
-    impl @ast::Ty: ToSource {
+    impl ToSource for @ast::Ty {
         fn to_source(cx: ext_ctxt) -> ~str {
             ty_to_str(self, cx.parse_sess().interner)
         }
     }
 
-    impl ~[@ast::Ty]: ToSource {
+    impl ToSource for ~[@ast::Ty] {
         fn to_source(cx: ext_ctxt) -> ~str {
             str::connect(self.map(|i| i.to_source(cx)), ~", ")
         }
     }
 
-    impl ~[ast::ty_param]: ToSource {
+    impl ToSource for ~[ast::ty_param] {
         fn to_source(cx: ext_ctxt) -> ~str {
             pprust::typarams_to_str(self, cx.parse_sess().interner)
         }
     }
 
-    impl @ast::expr: ToSource {
+    impl ToSource for @ast::expr {
         fn to_source(cx: ext_ctxt) -> ~str {
             pprust::expr_to_str(self, cx.parse_sess().interner)
         }
@@ -122,43 +122,43 @@ pub mod rt {
 
     // Alas ... we write these out instead. All redundant.
 
-    impl ast::ident: ToTokens {
+    impl ToTokens for ast::ident {
         fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
-    impl @ast::item: ToTokens {
+    impl ToTokens for @ast::item {
         fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
-    impl ~[@ast::item]: ToTokens {
+    impl ToTokens for ~[@ast::item] {
         fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
-    impl @ast::Ty: ToTokens {
+    impl ToTokens for @ast::Ty {
         fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
-    impl ~[@ast::Ty]: ToTokens {
+    impl ToTokens for ~[@ast::Ty] {
         fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
-    impl ~[ast::ty_param]: ToTokens {
+    impl ToTokens for ~[ast::ty_param] {
         fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
-    impl @ast::expr: ToTokens {
+    impl ToTokens for @ast::expr {
         fn to_tokens(cx: ext_ctxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
@@ -171,7 +171,7 @@ pub mod rt {
         fn parse_tts(s: ~str) -> ~[ast::token_tree];
     }
 
-    impl ext_ctxt: ExtParseUtils {
+    impl ExtParseUtils for ext_ctxt {
 
         fn parse_item(s: ~str) -> @ast::item {
             let res = parse::parse_item_from_source_str(

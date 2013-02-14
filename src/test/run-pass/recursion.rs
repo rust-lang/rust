@@ -12,10 +12,10 @@
 enum Nil {Nil}
 struct Cons<T> {head:int, tail:T}
 trait Dot {fn dot(other:self) -> int;}
-impl Nil:Dot {
+impl Dot for Nil {
   fn dot(_:Nil) -> int {0}
 }
-impl<T:Dot> Cons<T>:Dot {
+impl<T:Dot> Dot for Cons<T> {
   fn dot(other:Cons<T>) -> int {
     self.head * other.head + self.tail.dot(other.tail)
   }

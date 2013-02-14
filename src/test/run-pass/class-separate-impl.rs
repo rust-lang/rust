@@ -53,7 +53,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
     }
 }
 
-impl cat: ToStr {
+impl ToStr for cat {
   pure fn to_str(&self) -> ~str { copy self.name }
 }
 

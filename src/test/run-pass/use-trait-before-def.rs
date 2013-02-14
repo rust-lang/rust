@@ -10,6 +10,6 @@
 
 // Issue #1761
 
-impl int: foo { fn foo() -> int { 10 } }
+impl foo for int { fn foo() -> int { 10 } }
 trait foo { fn foo() -> int; }
 pub fn main() {}

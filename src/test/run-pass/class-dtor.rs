@@ -13,7 +13,7 @@ struct cat {
   meows : uint,
 }
 
-impl cat : Drop {
+impl Drop for cat {
     fn finalize(&self) {
         (self.done)(self.meows);
     }

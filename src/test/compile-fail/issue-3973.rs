@@ -15,7 +15,7 @@ struct Point {
     mut y: float,
 }
 
-impl Point : ToStr { //~ ERROR implements a method not defined in the trait
+impl ToStr for Point { //~ ERROR implements a method not defined in the trait
     static fn new(x: float, y: float) -> Point {
         Point { x: x, y: y }
     }

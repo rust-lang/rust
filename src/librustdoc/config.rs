@@ -28,7 +28,7 @@ pub enum OutputFormat {
     pub PandocHtml
 }
 
-impl OutputFormat : cmp::Eq {
+impl cmp::Eq for OutputFormat {
     pure fn eq(&self, other: &OutputFormat) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
@@ -43,7 +43,7 @@ pub enum OutputStyle {
     pub DocPerMod
 }
 
-impl OutputStyle : cmp::Eq {
+impl cmp::Eq for OutputStyle {
     pure fn eq(&self, other: &OutputStyle) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }

@@ -12,7 +12,7 @@ struct my_resource {
   x: int,
 }
 
-impl my_resource : Drop {
+impl Drop for my_resource {
     fn finalize(&self) {
         log(error, self.x);
     }

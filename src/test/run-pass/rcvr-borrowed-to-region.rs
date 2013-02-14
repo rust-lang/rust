@@ -13,7 +13,7 @@ trait get {
 }
 
 // Note: impl on a slice
-impl &int: get {
+impl get for &int {
     fn get() -> int {
         return *self;
     }

@@ -59,7 +59,7 @@ pub trait HashUtil {
     pure fn hash() -> u64;
 }
 
-impl <A: Hash> A: HashUtil {
+impl<A: Hash> HashUtil for A {
     #[inline(always)]
     pure fn hash() -> u64 { self.hash_keyed(0,0) }
 }
@@ -74,7 +74,7 @@ pub trait Streaming {
     fn reset();
 }
 
-impl <A: IterBytes> A: Hash {
+impl<A: IterBytes> Hash for A {
     #[inline(always)]
     pure fn hash_keyed(k0: u64, k1: u64) -> u64 {
         unsafe {
@@ -187,7 +187,7 @@ fn SipState(key0: u64, key1: u64) -> SipState {
 }
 
 
-impl SipState : io::Writer {
+impl io::Writer for SipState {
 
     // Methods for io::writer
     #[inline(always)]
@@ -295,7 +295,7 @@ impl SipState : io::Writer {
     }
 }
 
-impl &SipState : Streaming {
+impl Streaming for &SipState {
 
     #[inline(always)]
     fn input(buf: &[const u8]) {

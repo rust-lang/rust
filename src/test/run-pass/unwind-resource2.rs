@@ -15,7 +15,7 @@ struct complainer {
   c: @int,
 }
 
-impl complainer : Drop {
+impl Drop for complainer {
     fn finalize(&self) {}
 }
 

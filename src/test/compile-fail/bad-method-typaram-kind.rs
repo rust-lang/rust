@@ -16,7 +16,7 @@ trait bar {
     fn bar<T:Copy>();
 }
 
-impl uint: bar {
+impl bar for uint {
     fn bar<T:Copy>() {
     }
 }

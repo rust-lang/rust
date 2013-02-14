@@ -74,7 +74,7 @@ pub fn all_values(blk: fn(v: bool)) {
 pub pure fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
 #[cfg(notest)]
-impl bool : cmp::Eq {
+impl cmp::Eq for bool {
     pure fn eq(&self, other: &bool) -> bool { (*self) == (*other) }
     pure fn ne(&self, other: &bool) -> bool { (*self) != (*other) }
 }

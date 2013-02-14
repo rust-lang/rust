@@ -194,7 +194,7 @@ pub extern {
 }
 
 /// Extension methods for immutable pointers
-impl<T> *T: Ptr<T> {
+impl<T> Ptr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
     pure fn is_null() -> bool { is_null(self) }
@@ -209,7 +209,7 @@ impl<T> *T: Ptr<T> {
 }
 
 /// Extension methods for mutable pointers
-impl<T> *mut T: Ptr<T> {
+impl<T> Ptr<T> for *mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
     pure fn is_null() -> bool { is_null(self) }
@@ -225,7 +225,7 @@ impl<T> *mut T: Ptr<T> {
 
 // Equality for pointers
 #[cfg(notest)]
-impl<T> *const T : Eq {
+impl<T> Eq for *const T {
     #[inline(always)]
     pure fn eq(&self, other: &*const T) -> bool {
         unsafe {
@@ -240,7 +240,7 @@ impl<T> *const T : Eq {
 
 // Comparison for pointers
 #[cfg(notest)]
-impl<T> *const T : Ord {
+impl<T> Ord for *const T {
     #[inline(always)]
     pure fn lt(&self, other: &*const T) -> bool {
         unsafe {
@@ -277,7 +277,7 @@ impl<T> *const T : Ord {
 
 // Equality for region pointers
 #[cfg(notest)]
-impl<T:Eq> &const T : Eq {
+impl<T:Eq> Eq for &const T {
     #[inline(always)]
     pure fn eq(&self, other: & &self/const T) -> bool {
         return *(*self) == *(*other);
@@ -290,7 +290,7 @@ impl<T:Eq> &const T : Eq {
 
 // Comparison for region pointers
 #[cfg(notest)]
-impl<T:Ord> &const T : Ord {
+impl<T:Ord> Ord for &const T {
     #[inline(always)]
     pure fn lt(&self, other: & &self/const T) -> bool {
         *(*self) < *(*other)

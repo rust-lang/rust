@@ -9,8 +9,8 @@
 // except according to those terms.
 
 trait bar { fn dup() -> Self; fn blah<X>(); }
-impl int: bar { fn dup() -> int { self } fn blah<X>() {} }
-impl uint: bar { fn dup() -> uint { self } fn blah<X>() {} }
+impl bar for int { fn dup() -> int { self } fn blah<X>() {} }
+impl bar for uint { fn dup() -> uint { self } fn blah<X>() {} }
 
 fn main() {
     10i.dup::<int>(); //~ ERROR does not take type parameters

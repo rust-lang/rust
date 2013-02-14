@@ -117,7 +117,7 @@ pub fn unwrap<T: Const Owned>(rc: ARC<T>) -> T {
     unsafe { unwrap_shared_mutable_state(move x) }
 }
 
-impl<T: Const Owned> ARC<T>: Clone {
+impl<T: Const Owned> Clone for ARC<T> {
     fn clone(&self) -> ARC<T> {
         clone(self)
     }
@@ -148,7 +148,7 @@ pub fn mutex_arc_with_condvars<T: Owned>(user_data: T,
     MutexARC { x: unsafe { shared_mutable_state(move data) } }
 }
 
-impl<T: Owned> MutexARC<T>: Clone {
+impl<T: Owned> Clone for MutexARC<T> {
     /// Duplicate a mutex-protected ARC, as arc::clone.
     fn clone(&self) -> MutexARC<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
@@ -247,7 +247,7 @@ struct PoisonOnFail {
     failed: *mut bool,
 }
 
-impl PoisonOnFail : Drop {
+impl Drop for PoisonOnFail {
     fn finalize(&self) {
         unsafe {
             /* assert !*self.failed;

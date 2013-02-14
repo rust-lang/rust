@@ -16,7 +16,7 @@ struct Bar {
     x: int
 }
 
-impl Bar : Foo {
+impl Foo for Bar {
     fn f(&self) -> int {
         self.x
     }

@@ -23,7 +23,7 @@ trait set_foo_foo {
     fn set_foo(f: foo);
 }
 
-impl with_foo: set_foo_foo {
+impl set_foo_foo for with_foo {
     fn set_foo(f: foo) {
         self.f = f; //~ ERROR mismatched types: expected `@foo/&self` but found `@foo/&`
     }
@@ -41,7 +41,7 @@ trait set_foo_bar {
     fn set_foo(f: bar);
 }
 
-impl with_bar: set_foo_bar {
+impl set_foo_bar for with_bar {
     fn set_foo(f: bar) {
         self.f = f;
     }

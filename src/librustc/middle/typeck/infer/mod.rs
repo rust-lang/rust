@@ -490,7 +490,7 @@ trait then {
         -> Result<T,ty::type_err>;
 }
 
-impl ures: then {
+impl then for ures {
     fn then<T:Copy>(f: fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err> {
         self.chain(|_i| f())
@@ -501,7 +501,7 @@ trait ToUres {
     fn to_ures() -> ures;
 }
 
-impl<T> cres<T>: ToUres {
+impl<T> ToUres for cres<T> {
     fn to_ures() -> ures {
         match self {
           Ok(ref _v) => Ok(()),
@@ -514,7 +514,7 @@ trait CresCompare<T> {
     fn compare(t: T, f: fn() -> ty::type_err) -> cres<T>;
 }
 
-impl<T:Copy Eq> cres<T>: CresCompare<T> {
+impl<T:Copy Eq> CresCompare<T> for cres<T> {
     fn compare(t: T, f: fn() -> ty::type_err) -> cres<T> {
         do self.chain |s| {
             if s == t {
