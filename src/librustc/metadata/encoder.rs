@@ -1017,19 +1017,19 @@ fn write_int(writer: io::Writer, &&n: int) {
 
 fn encode_meta_item(ebml_w: writer::Encoder, mi: meta_item) {
     match mi.node {
-      meta_word(ref name) => {
+      meta_word(name) => {
         ebml_w.start_tag(tag_meta_item_word);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(str::to_bytes((*name)));
+        ebml_w.writer.write(str::to_bytes(*name));
         ebml_w.end_tag();
         ebml_w.end_tag();
       }
-      meta_name_value(ref name, value) => {
+      meta_name_value(name, value) => {
         match value.node {
           lit_str(value) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
-            ebml_w.writer.write(str::to_bytes((*name)));
+            ebml_w.writer.write(str::to_bytes(*name));
             ebml_w.end_tag();
             ebml_w.start_tag(tag_meta_item_value);
             ebml_w.writer.write(str::to_bytes(*value));
@@ -1039,10 +1039,10 @@ fn encode_meta_item(ebml_w: writer::Encoder, mi: meta_item) {
           _ => {/* FIXME (#623): encode other variants */ }
         }
       }
-      meta_list(ref name, ref items) => {
+      meta_list(name, ref items) => {
         ebml_w.start_tag(tag_meta_item_list);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(str::to_bytes((*name)));
+        ebml_w.writer.write(str::to_bytes(*name));
         ebml_w.end_tag();
         for items.each |inner_item| {
             encode_meta_item(ebml_w, **inner_item);
@@ -1127,7 +1127,7 @@ fn encode_crate_deps(ecx: @encode_ctxt,
         let mut deps = ~[];
         do cstore::iter_crate_data(cstore) |key, val| {
             let dep = {cnum: key,
-                       name: ecx.tcx.sess.ident_of(/*bad*/copy val.name),
+                       name: ecx.tcx.sess.ident_of(/*bad*/ copy val.name),
                        vers: decoder::get_crate_vers(val.data),
                        hash: decoder::get_crate_hash(val.data)};
             deps.push(dep);

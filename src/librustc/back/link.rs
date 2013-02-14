@@ -499,15 +499,15 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 
         fn hash(symbol_hasher: &hash::State, m: &@ast::meta_item) {
             match m.node {
-              ast::meta_name_value(ref key, value) => {
-                symbol_hasher.write_str(len_and_str((*key)));
+              ast::meta_name_value(key, value) => {
+                symbol_hasher.write_str(len_and_str(*key));
                 symbol_hasher.write_str(len_and_str_lit(value));
               }
-              ast::meta_word(ref name) => {
-                symbol_hasher.write_str(len_and_str((*name)));
+              ast::meta_word(name) => {
+                symbol_hasher.write_str(len_and_str(*name));
               }
-              ast::meta_list(ref name, ref mis) => {
-                symbol_hasher.write_str(len_and_str((*name)));
+              ast::meta_list(name, ref mis) => {
+                symbol_hasher.write_str(len_and_str(*name));
                 for mis.each |m_| {
                     hash(symbol_hasher, m_);
                 }

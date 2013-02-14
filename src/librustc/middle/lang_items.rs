@@ -321,7 +321,7 @@ impl LanguageItemCollector {
                 match literal.node {
                     lit_str(value) => {
                         self.match_and_collect_item(item_def_id,
-                                                    (/*bad*/copy *key),
+                                                    (/*bad*/copy **key),
                                                     /*bad*/copy *value);
                     }
                     _ => {} // Skip.

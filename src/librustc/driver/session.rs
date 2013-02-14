@@ -346,7 +346,7 @@ pub mod test {
             style: ast::attr_outer,
             value: codemap::respan(codemap::dummy_sp(),
                 ast::meta_name_value(
-                    ~"crate_type",
+                    @~"crate_type",
                     codemap::respan(codemap::dummy_sp(),
                                      ast::lit_str(@t)))),
             is_sugared_doc: false

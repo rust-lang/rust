@@ -126,23 +126,23 @@ impl parser_attr for Parser {
 
     fn parse_meta_item() -> @ast::meta_item {
         let lo = self.span.lo;
-        let name = *self.id_to_str(self.parse_ident());
+        let name = self.id_to_str(self.parse_ident());
         match self.token {
-          token::EQ => {
-            self.bump();
-            let lit = self.parse_lit();
-            let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_name_value(name, lit));
-          }
-          token::LPAREN => {
-            let inner_items = self.parse_meta_seq();
-            let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_list(name, inner_items));
-          }
-          _ => {
-            let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_word(name));
-          }
+            token::EQ => {
+                self.bump();
+                let lit = self.parse_lit();
+                let mut hi = self.span.hi;
+                @spanned(lo, hi, ast::meta_name_value(name, lit))
+            }
+            token::LPAREN => {
+                let inner_items = self.parse_meta_seq();
+                let mut hi = self.span.hi;
+                @spanned(lo, hi, ast::meta_list(name, inner_items))
+            }
+            _ => {
+                let mut hi = self.span.hi;
+                @spanned(lo, hi, ast::meta_word(name))
+            }
         }
     }
 

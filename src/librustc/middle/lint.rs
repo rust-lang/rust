@@ -346,13 +346,13 @@ impl ctxt {
 
         for triples.each |pair| {
             let (meta, level, lintname) = /*bad*/copy *pair;
-            match self.dict.find(&lintname) {
+            match self.dict.find(&*lintname) {
               None => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
                     meta.span,
                     fmt!("unknown `%s` attribute: `%s`",
-                         level_to_str(level), lintname));
+                         level_to_str(level), *lintname));
               }
               Some(lint) => {
 
@@ -363,7 +363,7 @@ impl ctxt {
                         meta.span,
                         fmt!("%s(%s) overruled by outer forbid(%s)",
                              level_to_str(level),
-                             lintname, lintname));
+                             *lintname, *lintname));
                 }
 
                 // we do multiple unneeded copies of the
