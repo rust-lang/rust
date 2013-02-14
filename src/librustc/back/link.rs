@@ -509,7 +509,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
               }
               ast::meta_list(_, _) => {
                 // FIXME (#607): Implement this
-                die!(~"unimplemented meta_item variant");
+                fail!(~"unimplemented meta_item variant");
               }
             }
         }

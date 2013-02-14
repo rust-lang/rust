@@ -87,7 +87,7 @@ pub fn init(root: &Path) {
         p.input().write_str(signing_key());
         let s = p.finish();
         if s != 0 {
-            die!(~"pgp init failed");
+            fail!(~"pgp init failed");
         }
     }
 }
@@ -98,7 +98,7 @@ pub fn add(root: &Path, key: &Path) {
         run::program_output(~"gpg", ~[~"--homedir", path.to_str(),
                                       ~"--import", key.to_str()]);
     if p.status != 0 {
-        die!(~"pgp add failed: " + p.out);
+        fail!(~"pgp add failed: " + p.out);
     }
 }
 

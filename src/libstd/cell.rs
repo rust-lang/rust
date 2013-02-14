@@ -32,7 +32,7 @@ impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
     fn take() -> T {
         if self.is_empty() {
-            die!(~"attempt to take an empty cell");
+            fail!(~"attempt to take an empty cell");
         }
 
         let mut value = None;
@@ -43,7 +43,7 @@ impl<T> Cell<T> {
     /// Returns the value, failing if the cell is full.
     fn put_back(value: T) {
         if !self.is_empty() {
-            die!(~"attempt to put a value back into a full cell");
+            fail!(~"attempt to put a value back into a full cell");
         }
         self.value = Some(move value);
     }

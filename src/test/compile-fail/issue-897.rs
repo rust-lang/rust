@@ -10,6 +10,6 @@
 
 fn f() -> ! {
     return 42i; //~ ERROR expected `!` but found `int`
-    die!(); //~ WARNING unreachable statement
+    fail!(); //~ WARNING unreachable statement
 }
 fn main() { }

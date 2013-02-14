@@ -76,7 +76,7 @@ pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 pub pure fn range_step(start: T, stop: T, step: T_SIGNED, it: fn(T) -> bool) {
     let mut i = start;
     if step == 0 {
-        die!(~"range_step called with step == 0");
+        fail!(~"range_step called with step == 0");
     }
     if step >= 0 {
         while i < stop {
@@ -388,16 +388,16 @@ pub fn test_ranges() {
 
     // None of the `fail`s should execute.
     for range(0,0) |_i| {
-        die!(~"unreachable");
+        fail!(~"unreachable");
     }
     for range_rev(0,0) |_i| {
-        die!(~"unreachable");
+        fail!(~"unreachable");
     }
     for range_step(10,0,1) |_i| {
-        die!(~"unreachable");
+        fail!(~"unreachable");
     }
     for range_step(0,1,-10) |_i| {
-        die!(~"unreachable");
+        fail!(~"unreachable");
     }
 }
 

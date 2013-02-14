@@ -2,7 +2,7 @@ fn a() -> &[int] {
     let vec = [1, 2, 3, 4];
     let tail = match vec { //~ ERROR illegal borrow
         [_a, ..tail] => tail,
-        _ => die!(~"foo")
+        _ => fail!(~"foo")
     };
     move tail
 }

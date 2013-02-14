@@ -1,7 +1,7 @@
 // error-pattern:test
 
 pure fn f() {
-    die!(~"test");
+    fail!(~"test");
 }
 
 fn main() {

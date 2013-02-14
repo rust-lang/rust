@@ -15,7 +15,7 @@ struct foo<A> {
 
 impl<A: Copy> foo<A> {
    fn bar<B,C:clam<A>>(c: C) -> B {
-     die!();
+     fail!();
    }
 }
 

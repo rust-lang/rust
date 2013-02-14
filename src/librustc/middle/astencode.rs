@@ -304,7 +304,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
                                              span: _}, _) => true,
               ast::stmt_decl(@codemap::spanned { node: ast::decl_item(_),
                                              span: _}, _) => false,
-              ast::stmt_mac(*) => die!(~"unexpanded macro in astencode")
+              ast::stmt_mac(*) => fail!(~"unexpanded macro in astencode")
             }
         };
         let blk_sans_items = ast::blk_ {
@@ -717,7 +717,7 @@ impl reader::Decoder: vtable_decoder_helpers {
                     )
                   }
                   // hard to avoid - user input
-                  _ => die!(~"bad enum variant")
+                  _ => fail!(~"bad enum variant")
                 }
             }
         }
@@ -1288,6 +1288,6 @@ fn test_simplification() {
         assert pprust::item_to_str(item_out, ext_cx.parse_sess().interner)
             == pprust::item_to_str(item_exp, ext_cx.parse_sess().interner);
       }
-      _ => die!()
+      _ => fail!()
     }
 }

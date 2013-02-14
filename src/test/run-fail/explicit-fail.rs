@@ -12,4 +12,4 @@
 
 
 // error-pattern:explicit
-fn main() { die!(); }
+fn main() { fail!(); }
