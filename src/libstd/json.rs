@@ -1298,7 +1298,7 @@ mod tests {
     // and json... not sure where to put these tests.
     #[test]
     fn test_write_enum () {
-        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bw = @io::BytesWriter();
         let bww : @io::Writer = (bw as @io::Writer);
         let encoder = (@Encoder(bww) as @serialize::Encoder);
         do encoder.emit_enum(~"animal") {
@@ -1319,7 +1319,7 @@ mod tests {
 
     #[test]
     fn test_write_some () {
-        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bw = @io::BytesWriter();
         let bww : @io::Writer = (bw as @io::Writer);
         let encoder = (@Encoder(bww) as @serialize::Encoder);
         do encoder.emit_enum(~"Option") {
@@ -1335,7 +1335,7 @@ mod tests {
 
     #[test]
     fn test_write_none () {
-        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bw = @io::BytesWriter();
         let bww : @io::Writer = (bw as @io::Writer);
         let encoder = (@Encoder(bww) as @serialize::Encoder);
         do encoder.emit_enum(~"Option") {
