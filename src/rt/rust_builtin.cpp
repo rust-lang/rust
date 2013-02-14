@@ -173,7 +173,8 @@ rand_new_seeded2(rust_vec_box** seed) {
 
 extern "C" CDECL uint32_t
 rand_next(rust_rng *rng) {
-    return rng_gen_u32(rng);
+    rust_task *task = rust_get_current_task();
+    return rng_gen_u32(task->kernel, rng);
 }
 
 extern "C" CDECL void

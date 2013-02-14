@@ -20,11 +20,12 @@ struct rust_vec_box;
 
 struct rust_rng {
     randctx rctx;
+    bool reseedable;
 };
 
 void rng_gen_seed(rust_kernel* kernel, uint8_t* dest, size_t size);
 void rng_init(rust_kernel *kernel, rust_rng *rng, rust_vec_box* user_seed);
-uint32_t rng_gen_u32(rust_rng *rng);
+uint32_t rng_gen_u32(rust_kernel *kernel, rust_rng *rng);
 
 //
 // Local Variables:
