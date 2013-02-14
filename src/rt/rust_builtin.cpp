@@ -241,32 +241,26 @@ debug_opaque(type_desc *t, uint8_t *front) {
     rust_task *task = rust_get_current_task();
     LOG(task, stdlib, "debug_opaque");
     debug_tydesc_helper(t);
-    // FIXME (#2667) may want to actually account for alignment.
-    // `front` may not indeed be the front byte of the passed-in
-    // argument.
+    // Account for alignment. `front` may not indeed be the
+    // front byte of the passed-in argument
+    if (((uintptr_t)front % t->align) != 0) {
+        front = (uint8_t *)align_to((uintptr_t)front, (size_t)t->align);
+    }
     for (uintptr_t i = 0; i < t->size; ++front, ++i) {
         LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, *front);
     }
 }
 
-// FIXME (#2667) this no longer reflects the actual structure of boxes!
-struct rust_box {
-    RUST_REFCOUNTED(rust_box)
-
-    // FIXME (#2667) `data` could be aligned differently from the actual
-    // box body data
-    uint8_t data[];
-};
-
 extern "C" CDECL void
-debug_box(type_desc *t, rust_box *box) {
+debug_box(type_desc *t, rust_opaque_box *box) {
     rust_task *task = rust_get_current_task();
     LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
     debug_tydesc_helper(t);
     LOG(task, stdlib, "  refcount %" PRIdPTR,
         box->ref_count - 1);  // -1 because we ref'ed for this call
+    uint8_t *data = (uint8_t *)box_body(box);
     for (uintptr_t i = 0; i < t->size; ++i) {
-        LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, box->data[i]);
+        LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, data[i]);
     }
 }
 
@@ -288,20 +282,15 @@ debug_tag(type_desc *t, rust_tag *tag) {
             tag->variant[i]);
 }
 
-struct rust_fn {
-    uintptr_t *thunk;
-    rust_box *closure;
-};
-
 extern "C" CDECL void
-debug_fn(type_desc *t, rust_fn *fn) {
+debug_fn(type_desc *t, fn_env_pair *fn) {
     rust_task *task = rust_get_current_task();
     LOG(task, stdlib, "debug_fn");
     debug_tydesc_helper(t);
-    LOG(task, stdlib, "  thunk at 0x%" PRIxPTR, fn->thunk);
-    LOG(task, stdlib, "  closure at 0x%" PRIxPTR, fn->closure);
-    if (fn->closure) {
-        LOG(task, stdlib, "    refcount %" PRIdPTR, fn->closure->ref_count);
+    LOG(task, stdlib, " fn at 0x%" PRIxPTR, fn->f);
+    LOG(task, stdlib, "  env at 0x%" PRIxPTR, fn->env);
+    if (fn->env) {
+        LOG(task, stdlib, "    refcount %" PRIdPTR, fn->env->ref_count);
     }
 }
 
@@ -388,11 +377,6 @@ rust_path_exists(char *path) {
 extern "C" CDECL FILE* rust_get_stdin() {return stdin;}
 extern "C" CDECL FILE* rust_get_stdout() {return stdout;}
 extern "C" CDECL FILE* rust_get_stderr() {return stderr;}
-
-extern "C" CDECL int
-rust_ptr_eq(type_desc *t, rust_box *a, rust_box *b) {
-    return a == b;
-}
 
 #if defined(__WIN32__)
 extern "C" CDECL void
