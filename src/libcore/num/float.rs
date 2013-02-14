@@ -25,8 +25,9 @@ use m_float = f64;
 use cmp::{Eq, Ord};
 use cmp;
 use f64;
-use num;
 use num::NumCast;
+use num;
+use ops;
 use option::{None, Option, Some};
 use str;
 use uint;
@@ -404,21 +405,6 @@ impl float : Ord {
     pure fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
-impl float: num::Num {
-    #[inline(always)]
-    pub pure fn add(&self, other: &float) -> float { return *self + *other; }
-    #[inline(always)]
-    pub pure fn sub(&self, other: &float) -> float { return *self - *other; }
-    #[inline(always)]
-    pub pure fn mul(&self, other: &float) -> float { return *self * *other; }
-    #[inline(always)]
-    pub pure fn div(&self, other: &float) -> float { return *self / *other; }
-    #[inline(always)]
-    pure fn modulo(&self, other: &float) -> float { return *self % *other; }
-    #[inline(always)]
-    pure fn neg(&self)                  -> float { return -*self;        }
-}
-
 impl float: num::Zero {
     #[inline(always)]
     static pure fn zero() -> float { 0.0 }
@@ -484,6 +470,31 @@ impl float: num::Round {
             (*self) - (f64::floor(*self as f64) as float)
         }
     }
+}
+
+#[cfg(notest)]
+impl ops::Add<float,float> for float {
+    pure fn add(&self, other: &float) -> float { *self + *other }
+}
+#[cfg(notest)]
+impl ops::Sub<float,float> for float {
+    pure fn sub(&self, other: &float) -> float { *self - *other }
+}
+#[cfg(notest)]
+impl ops::Mul<float,float> for float {
+    pure fn mul(&self, other: &float) -> float { *self * *other }
+}
+#[cfg(notest)]
+impl ops::Div<float,float> for float {
+    pure fn div(&self, other: &float) -> float { *self / *other }
+}
+#[cfg(notest)]
+impl ops::Modulo<float,float> for float {
+    pure fn modulo(&self, other: &float) -> float { *self % *other }
+}
+#[cfg(notest)]
+impl ops::Neg<float> for float {
+    pure fn neg(&self) -> float { -*self }
 }
 
 #[test]
