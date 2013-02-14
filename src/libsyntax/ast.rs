@@ -69,6 +69,7 @@ pub type fn_ident = Option<ident>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct path {
     span: span,
     global: bool,
@@ -83,16 +84,10 @@ pub type node_id = int;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct def_id {
     crate: crate_num,
     node: node_id,
-}
-
-pub impl def_id : cmp::Eq {
-    pure fn eq(&self, other: &def_id) -> bool {
-        (*self).crate == (*other).crate && (*self).node == (*other).node
-    }
-    pure fn ne(&self, other: &def_id) -> bool { !(*self).eq(other) }
 }
 
 pub const local_crate: crate_num = 0;
@@ -100,6 +95,7 @@ pub const crate_node_id: node_id = 0;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 // The AST represents all type param bounds as types.
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
@@ -111,6 +107,7 @@ pub enum ty_param_bound {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct ty_param {
     ident: ident,
     id: node_id,
@@ -119,6 +116,7 @@ pub struct ty_param {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum def {
     def_fn(def_id, purity),
     def_static_method(/* method */ def_id,
@@ -147,136 +145,6 @@ pub enum def {
     def_label(node_id)
 }
 
-pub impl def : cmp::Eq {
-    pure fn eq(&self, other: &def) -> bool {
-        match (*self) {
-            def_fn(e0a, e1a) => {
-                match (*other) {
-                    def_fn(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_static_method(e0a, e1a, e2a) => {
-                match (*other) {
-                    def_static_method(e0b, e1b, e2b) =>
-                    e0a == e0b && e1a == e1b && e2a == e2b,
-                    _ => false
-                }
-            }
-            def_self(e0a, e1a) => {
-                match (*other) {
-                    def_self(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_self_ty(e0a) => {
-                match (*other) {
-                    def_self_ty(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_mod(e0a) => {
-                match (*other) {
-                    def_mod(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_foreign_mod(e0a) => {
-                match (*other) {
-                    def_foreign_mod(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_const(e0a) => {
-                match (*other) {
-                    def_const(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_arg(e0a, e1a, e2a) => {
-                match (*other) {
-                    def_arg(e0b, e1b, e2b) =>
-                        e0a == e0b && e1a == e1b && e2a == e2b,
-                    _ => false
-                }
-            }
-            def_local(e0a, e1a) => {
-                match (*other) {
-                    def_local(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_variant(e0a, e1a) => {
-                match (*other) {
-                    def_variant(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_ty(e0a) => {
-                match (*other) {
-                    def_ty(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_prim_ty(e0a) => {
-                match (*other) {
-                    def_prim_ty(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_ty_param(e0a, e1a) => {
-                match (*other) {
-                    def_ty_param(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_binding(e0a, e1a) => {
-                match (*other) {
-                    def_binding(e0b, e1b) => e0a == e0b && e1a == e1b,
-                    _ => false
-                }
-            }
-            def_use(e0a) => {
-                match (*other) {
-                    def_use(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_upvar(e0a, e1a, e2a, e3a) => {
-                match (*other) {
-                    def_upvar(e0b, e1b, e2b, e3b) =>
-                        e0a == e0b && e1a == e1b && e2a == e2b && e3a == e3b,
-                    _ => false
-                }
-            }
-            def_struct(e0a) => {
-                match (*other) {
-                    def_struct(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_typaram_binder(e0a) => {
-                match (*other) {
-                    def_typaram_binder(e1a) => e0a == e1a,
-                    _ => false
-                }
-            }
-            def_region(e0a) => {
-                match (*other) {
-                    def_region(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            def_label(e0a) => {
-                match (*other) {
-                    def_label(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &def) -> bool { !(*self).eq(other) }
-}
 
 // The set of meta_items that define the compilation environment of the crate,
 // used to drive conditional compilation
@@ -284,6 +152,9 @@ pub type crate_cfg = ~[@meta_item];
 
 pub type crate = spanned<crate_>;
 
+#[auto_encode]
+#[auto_decode]
+#[deriving_eq]
 pub struct crate_ {
     module: _mod,
     attrs: ~[attribute],
@@ -294,6 +165,7 @@ pub type meta_item = spanned<meta_item_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum meta_item_ {
     meta_word(~str),
     meta_list(~str, ~[@meta_item]),
@@ -304,6 +176,7 @@ pub type blk = spanned<blk_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct blk_ {
     view_items: ~[@view_item],
     stmts: ~[@stmt],
@@ -314,6 +187,7 @@ pub struct blk_ {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct pat {
     id: node_id,
     node: pat_,
@@ -322,6 +196,7 @@ pub struct pat {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct field_pat {
     ident: ident,
     pat: @pat,
@@ -352,6 +227,7 @@ pub impl binding_mode : to_bytes::IterBytes {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum pat_ {
     pat_wild,
     // A pat_ident may either be a new bound variable,
@@ -377,19 +253,13 @@ pub enum pat_ {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum mutability { m_mutbl, m_imm, m_const, }
 
 pub impl mutability : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
-}
-
-pub impl mutability : cmp::Eq {
-    pure fn eq(&self, other: &mutability) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &mutability) -> bool { !(*self).eq(other) }
 }
 
 #[auto_encode]
@@ -440,6 +310,7 @@ pub impl Sigil : ToStr {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum vstore {
     // FIXME (#3469): Change uint to @expr (actually only constant exprs)
     vstore_fixed(Option<uint>),   // [1,2,3,4]
@@ -450,6 +321,7 @@ pub enum vstore {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum expr_vstore {
     // FIXME (#3469): Change uint to @expr (actually only constant exprs)
     expr_vstore_fixed(Option<uint>),   // [1,2,3,4]
@@ -462,6 +334,7 @@ pub enum expr_vstore {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum binop {
     add,
     subtract,
@@ -483,15 +356,9 @@ pub enum binop {
     gt,
 }
 
-pub impl binop : cmp::Eq {
-    pure fn eq(&self, other: &binop) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &binop) -> bool { !(*self).eq(other) }
-}
-
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum unop {
     box(mutability),
     uniq(mutability),
@@ -500,50 +367,11 @@ pub enum unop {
     neg
 }
 
-pub impl unop : cmp::Eq {
-    pure fn eq(&self, other: &unop) -> bool {
-        match (*self) {
-            box(e0a) => {
-                match (*other) {
-                    box(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            uniq(e0a) => {
-                match (*other) {
-                    uniq(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            deref => {
-                match (*other) {
-                    deref => true,
-                    _ => false
-                }
-            }
-            not => {
-                match (*other) {
-                    not => true,
-                    _ => false
-                }
-            }
-            neg => {
-                match (*other) {
-                    neg => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &unop) -> bool {
-        !(*self).eq(other)
-    }
-}
-
 // Generally, after typeck you can get the inferred value
 // using ty::resolved_T(...).
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum inferable<T> {
     expl(T),
     infer(node_id)
@@ -561,43 +389,16 @@ pub impl<T: to_bytes::IterBytes> inferable<T> : to_bytes::IterBytes {
     }
 }
 
-pub impl<T:cmp::Eq> inferable<T> : cmp::Eq {
-    pure fn eq(&self, other: &inferable<T>) -> bool {
-        match (*self) {
-            expl(ref e0a) => {
-                match (*other) {
-                    expl(ref e0b) => (*e0a) == (*e0b),
-                    _ => false
-                }
-            }
-            infer(e0a) => {
-                match (*other) {
-                    infer(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &inferable<T>) -> bool { !(*self).eq(other) }
-}
-
 // "resolved" mode: the real modes.
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum rmode { by_ref, by_val, by_copy }
 
 pub impl rmode : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
-}
-
-
-pub impl rmode : cmp::Eq {
-    pure fn eq(&self, other: &rmode) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &rmode) -> bool { !(*self).eq(other) }
 }
 
 // inferable mode.
@@ -607,6 +408,7 @@ pub type stmt = spanned<stmt_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum stmt_ {
     stmt_decl(@decl, node_id),
 
@@ -624,6 +426,7 @@ pub enum stmt_ {
 // a refinement on pat.
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct local_ {
     is_mutbl: bool,
     ty: @Ty,
@@ -638,10 +441,12 @@ pub type decl = spanned<decl_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum decl_ { decl_local(~[@local]), decl_item(@item), }
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct arm {
     pats: ~[@pat],
     guard: Option<@expr>,
@@ -650,6 +455,7 @@ pub struct arm {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct field_ {
     mutbl: mutability,
     ident: ident,
@@ -660,22 +466,12 @@ pub type field = spanned<field_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum blk_check_mode { default_blk, unsafe_blk, }
-
-pub impl blk_check_mode : cmp::Eq {
-    pure fn eq(&self, other: &blk_check_mode) -> bool {
-        match ((*self), (*other)) {
-            (default_blk, default_blk) => true,
-            (unsafe_blk, unsafe_blk) => true,
-            (default_blk, _) => false,
-            (unsafe_blk, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &blk_check_mode) -> bool { !(*self).eq(other) }
-}
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct expr {
     id: node_id,
     // Extra node ID is only used for index, assign_op, unary, binary, method
@@ -687,6 +483,7 @@ pub struct expr {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum log_level { error, debug, log_other }
 // 0 = error, 1 = debug, 2 = log_other
 
@@ -701,6 +498,7 @@ pub enum CallSugar {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
@@ -777,12 +575,22 @@ pub enum expr_ {
 //
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum token_tree {
+    // a single token
     tt_tok(span, ::parse::token::Token),
+    // a delimited sequence (the delimiters appear as the first
+    // and last elements of the vector)
     tt_delim(~[token_tree]),
-    // These only make sense for right-hand-sides of MBE macros
+    // These only make sense for right-hand-sides of MBE macros:
+
+    // a kleene-style repetition sequence with a span, a tt_forest,
+    // an optional separator (?), and a boolean where true indicates
+    // zero or more (*), and false indicates one or more (+).
     tt_seq(span, ~[token_tree], Option<::parse::token::Token>, bool),
+
+    // a syntactic variable that will be filled in by macro expansion.
     tt_nonterminal(span, ident)
 }
 
@@ -842,6 +650,7 @@ pub type matcher = spanned<matcher_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum matcher_ {
     // match one token
     match_tok(::parse::token::Token),
@@ -856,6 +665,7 @@ pub type mac = spanned<mac_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum mac_ {
     mac_invoc_tt(@path,~[token_tree]),   // new macro-invocation
 }
@@ -864,6 +674,7 @@ pub type lit = spanned<lit_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum lit_ {
     lit_str(@~str),
     lit_int(i64, int_ty),
@@ -875,40 +686,11 @@ pub enum lit_ {
     lit_bool(bool),
 }
 
-pub impl lit_: cmp::Eq {
-    pure fn eq(&self, other: &lit_) -> bool {
-        match ((*self), *other) {
-            (lit_str(a), lit_str(b)) => a == b,
-            (lit_int(val_a, ty_a), lit_int(val_b, ty_b)) => {
-                val_a == val_b && ty_a == ty_b
-            }
-            (lit_uint(val_a, ty_a), lit_uint(val_b, ty_b)) => {
-                val_a == val_b && ty_a == ty_b
-            }
-            (lit_int_unsuffixed(a), lit_int_unsuffixed(b)) => a == b,
-            (lit_float(val_a, ty_a), lit_float(val_b, ty_b)) => {
-                val_a == val_b && ty_a == ty_b
-            }
-            (lit_float_unsuffixed(a), lit_float_unsuffixed(b)) => a == b,
-            (lit_nil, lit_nil) => true,
-            (lit_bool(a), lit_bool(b)) => a == b,
-            (lit_str(_), _) => false,
-            (lit_int(*), _) => false,
-            (lit_uint(*), _) => false,
-            (lit_int_unsuffixed(*), _) => false,
-            (lit_float(*), _) => false,
-            (lit_float_unsuffixed(*), _) => false,
-            (lit_nil, _) => false,
-            (lit_bool(_), _) => false
-        }
-    }
-    pure fn ne(&self, other: &lit_) -> bool { !(*self).eq(other) }
-}
-
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct mt {
     ty: @Ty,
     mutbl: mutability,
@@ -916,6 +698,7 @@ pub struct mt {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct ty_field_ {
     ident: ident,
     mt: mt,
@@ -925,6 +708,7 @@ pub type ty_field = spanned<ty_field_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct ty_method {
     ident: ident,
     attrs: ~[attribute],
@@ -938,6 +722,7 @@ pub struct ty_method {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 // A trait method is either required (meaning it doesn't have an
 // implementation, just a signature) or provided (meaning it has a default
 // implementation).
@@ -948,6 +733,7 @@ pub enum trait_method {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
 pub impl int_ty : ToStr {
@@ -962,28 +748,9 @@ pub impl int_ty : to_bytes::IterBytes {
     }
 }
 
-pub impl int_ty : cmp::Eq {
-    pure fn eq(&self, other: &int_ty) -> bool {
-        match ((*self), (*other)) {
-            (ty_i, ty_i) => true,
-            (ty_char, ty_char) => true,
-            (ty_i8, ty_i8) => true,
-            (ty_i16, ty_i16) => true,
-            (ty_i32, ty_i32) => true,
-            (ty_i64, ty_i64) => true,
-            (ty_i, _) => false,
-            (ty_char, _) => false,
-            (ty_i8, _) => false,
-            (ty_i16, _) => false,
-            (ty_i32, _) => false,
-            (ty_i64, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &int_ty) -> bool { !(*self).eq(other) }
-}
-
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
 pub impl uint_ty : ToStr {
@@ -998,26 +765,9 @@ pub impl uint_ty : to_bytes::IterBytes {
     }
 }
 
-pub impl uint_ty : cmp::Eq {
-    pure fn eq(&self, other: &uint_ty) -> bool {
-        match ((*self), (*other)) {
-            (ty_u, ty_u) => true,
-            (ty_u8, ty_u8) => true,
-            (ty_u16, ty_u16) => true,
-            (ty_u32, ty_u32) => true,
-            (ty_u64, ty_u64) => true,
-            (ty_u, _) => false,
-            (ty_u8, _) => false,
-            (ty_u16, _) => false,
-            (ty_u32, _) => false,
-            (ty_u64, _) => false
-        }
-    }
-    pure fn ne(&self, other: &uint_ty) -> bool { !(*self).eq(other) }
-}
-
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum float_ty { ty_f, ty_f32, ty_f64, }
 
 pub impl float_ty : ToStr {
@@ -1032,18 +782,10 @@ pub impl float_ty : to_bytes::IterBytes {
     }
 }
 
-pub impl float_ty : cmp::Eq {
-    pure fn eq(&self, other: &float_ty) -> bool {
-        match ((*self), (*other)) {
-            (ty_f, ty_f) | (ty_f32, ty_f32) | (ty_f64, ty_f64) => true,
-            (ty_f, _) | (ty_f32, _) | (ty_f64, _) => false
-        }
-    }
-    pure fn ne(&self, other: &float_ty) -> bool { !(*self).eq(other) }
-}
-
+// NB Eq method appears below.
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct Ty {
     id: node_id,
     node: ty_,
@@ -1053,6 +795,7 @@ pub struct Ty {
 // Not represented directly in the AST, referred to by name through a ty_path.
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum prim_ty {
     ty_int(int_ty),
     ty_uint(uint_ty),
@@ -1061,46 +804,9 @@ pub enum prim_ty {
     ty_bool,
 }
 
-pub impl prim_ty : cmp::Eq {
-    pure fn eq(&self, other: &prim_ty) -> bool {
-        match (*self) {
-            ty_int(e0a) => {
-                match (*other) {
-                    ty_int(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_uint(e0a) => {
-                match (*other) {
-                    ty_uint(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_float(e0a) => {
-                match (*other) {
-                    ty_float(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_str => {
-                match (*other) {
-                    ty_str => true,
-                    _ => false
-                }
-            }
-            ty_bool => {
-                match (*other) {
-                    ty_bool => true,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &prim_ty) -> bool { !(*self).eq(other) }
-}
-
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct region {
     id: node_id,
     node: region_,
@@ -1108,6 +814,7 @@ pub struct region {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum region_ {
     re_anon,
     re_static,
@@ -1140,6 +847,7 @@ pub impl Onceness : to_bytes::IterBytes {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct TyClosure {
     sigil: Sigil,
     region: Option<@region>,
@@ -1150,6 +858,7 @@ pub struct TyClosure {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct TyBareFn {
     purity: purity,
     abi: Abi,
@@ -1158,6 +867,7 @@ pub struct TyBareFn {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
@@ -1179,17 +889,6 @@ pub enum ty_ {
     ty_infer,
 }
 
-// Equality and byte-iter (hashing) can be quite approximate for AST types.
-// since we only care about this for normalizing them to "real" types.
-pub impl Ty : cmp::Eq {
-    pure fn eq(&self, other: &Ty) -> bool {
-        ptr::addr_of(&(*self)) == ptr::addr_of(&(*other))
-    }
-    pure fn ne(&self, other: &Ty) -> bool {
-        ptr::addr_of(&(*self)) != ptr::addr_of(&(*other))
-    }
-}
-
 pub impl Ty : to_bytes::IterBytes {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
@@ -1198,6 +897,7 @@ pub impl Ty : to_bytes::IterBytes {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct arg {
     mode: mode,
     is_mutbl: bool,
@@ -1208,6 +908,7 @@ pub struct arg {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct fn_decl {
     inputs: ~[arg],
     output: @Ty,
@@ -1216,6 +917,7 @@ pub struct fn_decl {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum purity {
     pure_fn, // declared with "pure fn"
     unsafe_fn, // declared with "unsafe fn"
@@ -1240,15 +942,9 @@ pub impl purity : to_bytes::IterBytes {
     }
 }
 
-pub impl purity : cmp::Eq {
-    pure fn eq(&self, other: &purity) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &purity) -> bool { !(*self).eq(other) }
-}
-
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum ret_style {
     noreturn, // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
@@ -1261,20 +957,9 @@ pub impl ret_style : to_bytes::IterBytes {
     }
 }
 
-pub impl ret_style : cmp::Eq {
-    pure fn eq(&self, other: &ret_style) -> bool {
-        match ((*self), (*other)) {
-            (noreturn, noreturn) => true,
-            (return_val, return_val) => true,
-            (noreturn, _) => false,
-            (return_val, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &ret_style) -> bool { !(*self).eq(other) }
-}
-
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum self_ty_ {
     sty_static,                         // no self: static method
     sty_by_ref,                         // old by-reference self: ``
@@ -1284,54 +969,11 @@ pub enum self_ty_ {
     sty_uniq(mutability)                // by-unique-pointer self: `~self`
 }
 
-pub impl self_ty_ : cmp::Eq {
-    pure fn eq(&self, other: &self_ty_) -> bool {
-        match (*self) {
-            sty_static => {
-                match (*other) {
-                    sty_static => true,
-                    _ => false
-                }
-            }
-            sty_by_ref => {
-                match (*other) {
-                    sty_by_ref => true,
-                    _ => false
-                }
-            }
-            sty_value => {
-                match (*other) {
-                    sty_value => true,
-                    _ => false
-                }
-            }
-            sty_region(e0a) => {
-                match (*other) {
-                    sty_region(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            sty_box(e0a) => {
-                match (*other) {
-                    sty_box(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            sty_uniq(e0a) => {
-                match (*other) {
-                    sty_uniq(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &self_ty_) -> bool { !(*self).eq(other) }
-}
-
 pub type self_ty = spanned<self_ty_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct method {
     ident: ident,
     attrs: ~[attribute],
@@ -1348,6 +990,7 @@ pub struct method {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct _mod {
     view_items: ~[@view_item],
     items: ~[@item],
@@ -1355,6 +998,7 @@ pub struct _mod {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum foreign_abi {
     foreign_abi_rust_intrinsic,
     foreign_abi_cdecl,
@@ -1364,31 +1008,12 @@ pub enum foreign_abi {
 // Foreign mods can be named or anonymous
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum foreign_mod_sort { named, anonymous }
-
-pub impl foreign_mod_sort : cmp::Eq {
-    pure fn eq(&self, other: &foreign_mod_sort) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &foreign_mod_sort) -> bool { !(*self).eq(other) }
-}
-
-pub impl foreign_abi : cmp::Eq {
-    pure fn eq(&self, other: &foreign_abi) -> bool {
-        match ((*self), (*other)) {
-            (foreign_abi_rust_intrinsic, foreign_abi_rust_intrinsic) => true,
-            (foreign_abi_cdecl, foreign_abi_cdecl) => true,
-            (foreign_abi_stdcall, foreign_abi_stdcall) => true,
-            (foreign_abi_rust_intrinsic, _) => false,
-            (foreign_abi_cdecl, _) => false,
-            (foreign_abi_stdcall, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &foreign_abi) -> bool { !(*self).eq(other) }
-}
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct foreign_mod {
     sort: foreign_mod_sort,
     abi: ident,
@@ -1398,6 +1023,7 @@ pub struct foreign_mod {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct variant_arg {
     ty: @Ty,
     id: node_id,
@@ -1405,6 +1031,7 @@ pub struct variant_arg {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum variant_kind {
     tuple_variant_kind(~[variant_arg]),
     struct_variant_kind(@struct_def),
@@ -1413,6 +1040,7 @@ pub enum variant_kind {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct enum_def_ {
     variants: ~[variant],
     common: Option<@struct_def>,
@@ -1420,10 +1048,12 @@ pub struct enum_def_ {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum enum_def = enum_def_;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct variant_ {
     name: ident,
     attrs: ~[attribute],
@@ -1437,6 +1067,7 @@ pub type variant = spanned<variant_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct path_list_ident_ {
     name: ident,
     id: node_id,
@@ -1446,19 +1077,14 @@ pub type path_list_ident = spanned<path_list_ident_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum namespace { module_ns, type_value_ns }
-
-pub impl namespace : cmp::Eq {
-    pure fn eq(&self, other: &namespace) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &namespace) -> bool { !(*self).eq(other) }
-}
 
 pub type view_path = spanned<view_path_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum view_path_ {
 
     // quux = foo::bar::baz
@@ -1477,6 +1103,7 @@ pub enum view_path_ {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct view_item {
     node: view_item_,
     attrs: ~[attribute],
@@ -1486,6 +1113,7 @@ pub struct view_item {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum view_item_ {
     view_item_use(ident, ~[@meta_item], node_id),
     view_item_import(~[@view_path]),
@@ -1499,18 +1127,13 @@ pub type attribute = spanned<attribute_>;
 // distinguished for pretty-printing.
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum attr_style { attr_outer, attr_inner, }
-
-pub impl attr_style : cmp::Eq {
-    pure fn eq(&self, other: &attr_style) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &attr_style) -> bool { !(*self).eq(other) }
-}
 
 // doc-comments are promoted to attributes that have is_sugared_doc = true
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct attribute_ {
     style: attr_style,
     value: meta_item,
@@ -1526,6 +1149,7 @@ pub struct attribute_ {
  */
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct trait_ref {
     path: @path,
     ref_id: node_id,
@@ -1533,24 +1157,12 @@ pub struct trait_ref {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum visibility { public, private, inherited }
-
-pub impl visibility : cmp::Eq {
-    pure fn eq(&self, other: &visibility) -> bool {
-        match ((*self), (*other)) {
-            (public, public) => true,
-            (private, private) => true,
-            (inherited, inherited) => true,
-            (public, _) => false,
-            (private, _) => false,
-            (inherited, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &visibility) -> bool { !(*self).eq(other) }
-}
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
@@ -1561,40 +1173,15 @@ pub type struct_field = spanned<struct_field_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum struct_field_kind {
     named_field(ident, struct_mutability, visibility),
     unnamed_field   // element of a tuple-like struct
 }
 
-pub impl struct_field_kind : cmp::Eq {
-    pure fn eq(&self, other: &struct_field_kind) -> bool {
-        match (*self) {
-            named_field(ident_a, struct_mutability_a, visibility_a) => {
-                match *other {
-                    named_field(ident_b, struct_mutability_b, visibility_b)
-                            => {
-                        ident_a == ident_b &&
-                        struct_mutability_a == struct_mutability_b &&
-                        visibility_a == visibility_b
-                    }
-                    unnamed_field => false
-                }
-            }
-            unnamed_field => {
-                match *other {
-                    named_field(*) => false,
-                    unnamed_field => true
-                }
-            }
-        }
-    }
-    pure fn ne(&self, other: &struct_field_kind) -> bool {
-        !(*self).eq(other)
-    }
-}
-
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct struct_def {
     fields: ~[@struct_field], /* fields */
     /* (not including ctor or dtor) */
@@ -1611,6 +1198,7 @@ pub struct struct_def {
  */
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct item {
     ident: ident,
     attrs: ~[attribute],
@@ -1622,6 +1210,7 @@ pub struct item {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum item_ {
     item_const(@Ty, @expr),
     item_fn(fn_decl, purity, ~[ty_param], blk),
@@ -1632,14 +1221,15 @@ pub enum item_ {
     item_struct(@struct_def, ~[ty_param]),
     item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
     item_impl(~[ty_param],
-              Option<@trait_ref>, /* (optional) trait this impl implements */
-              @Ty, /* self */
+              Option<@trait_ref>, // (optional) trait this impl implements
+              @Ty, // self
               ~[@method]),
     item_mac(mac),
 }
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum struct_mutability { struct_mutable, struct_immutable }
 
 pub impl struct_mutability : to_bytes::IterBytes {
@@ -1648,24 +1238,11 @@ pub impl struct_mutability : to_bytes::IterBytes {
     }
 }
 
-pub impl struct_mutability : cmp::Eq {
-    pure fn eq(&self, other: &struct_mutability) -> bool {
-        match ((*self), (*other)) {
-            (struct_mutable, struct_mutable) => true,
-            (struct_immutable, struct_immutable) => true,
-            (struct_mutable, _) => false,
-            (struct_immutable, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &struct_mutability) -> bool {
-        !(*self).eq(other)
-    }
-}
-
 pub type struct_dtor = spanned<struct_dtor_>;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct struct_dtor_ {
     id: node_id,
     attrs: ~[attribute],
@@ -1675,6 +1252,7 @@ pub struct struct_dtor_ {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct foreign_item {
     ident: ident,
     attrs: ~[attribute],
@@ -1686,6 +1264,7 @@ pub struct foreign_item {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum foreign_item_ {
     foreign_item_fn(fn_decl, purity, ~[ty_param]),
     foreign_item_const(@Ty)
@@ -1696,6 +1275,7 @@ pub enum foreign_item_ {
 // that we trans.
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
@@ -1703,7 +1283,34 @@ pub enum inlined_item {
     ii_dtor(struct_dtor, ident, ~[ty_param], def_id /* parent id */)
 }
 
+#[cfg(test)]
+mod test {
+    use std;
+    use codemap::*;
+    use super::*;
 
+    //are asts encodable?
+
+    // it looks like this *will* be a compiler bug, after
+    // I get deriving_eq for crates into incoming :)
+    /*
+    #[test] fn check_asts_encodable() {
+        let bogus_span = span {lo:BytePos(10),
+                               hi:BytePos(20),
+                               expn_info:None};
+        let _e : crate =
+            spanned{
+            node: crate_{
+                module: _mod {view_items: ~[], items: ~[]},
+                attrs: ~[],
+                config: ~[]
+            },
+            span: bogus_span};
+        // doesn't matter which encoder we use....
+        let _f = (_e as std::serialize::Encodable::<std::json::Encoder>);
+    }
+    */
+}
 //
 // Local Variables:
 // mode: rust
