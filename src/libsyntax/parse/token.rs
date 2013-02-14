@@ -25,6 +25,7 @@ use std::oldmap::HashMap;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum binop {
     PLUS,
     MINUS,
@@ -86,6 +87,7 @@ pub enum Token {
     LIT_STR(ast::ident),
 
     /* Name components */
+    // an identifier contains an "is_mod_name" boolean.
     IDENT(ast::ident, bool),
     UNDERSCORE,
     LIFETIME(ast::ident),
@@ -517,12 +519,6 @@ pub fn reserved_keyword_table() -> HashMap<~str, ()> {
     words
 }
 
-impl binop : cmp::Eq {
-    pure fn eq(&self, other: &binop) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &binop) -> bool { !(*self).eq(other) }
-}
 
 impl Token : cmp::Eq {
     pure fn eq(&self, other: &Token) -> bool {

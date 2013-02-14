@@ -277,7 +277,7 @@ pub fn ast_ty_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
 
     let tcx = self.tcx();
 
-    match tcx.ast_ty_to_ty_cache.find(&ast_ty) {
+    match tcx.ast_ty_to_ty_cache.find(&ast_ty.id) {
       Some(ty::atttce_resolved(ty)) => return ty,
       Some(ty::atttce_unresolved) => {
         tcx.sess.span_fatal(ast_ty.span, ~"illegal recursive type; \
@@ -287,7 +287,7 @@ pub fn ast_ty_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
       None => { /* go on */ }
     }
 
-    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
+    tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_unresolved);
     let typ = match /*bad*/copy ast_ty.node {
       ast::ty_nil => ty::mk_nil(tcx),
       ast::ty_bot => ty::mk_bot(tcx),
@@ -409,7 +409,7 @@ pub fn ast_ty_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
       }
     };
 
-    tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
+    tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_resolved(typ));
     return typ;
 }
 

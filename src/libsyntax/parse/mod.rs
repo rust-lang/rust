@@ -183,7 +183,6 @@ pub fn new_parser_from_file(sess: parse_sess,
           let srdr = lexer::new_string_reader(sess.span_diagnostic,
                                               filemap,
                                               sess.interner);
-
           Ok(Parser(sess, cfg, srdr as reader))
 
       }
@@ -222,3 +221,58 @@ pub fn new_parser_from_tts(sess: parse_sess, cfg: ast::crate_cfg,
     return Parser(sess, cfg, trdr as reader)
 }
 
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::serialize::Encodable;
+    use std;
+    use core::dvec;
+    use core::str;
+    use util::testing::*;
+
+    #[test] fn to_json_str (val: Encodable<std::json::Encoder>) -> ~str {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        val.encode(~std::json::Encoder(bw as io::Writer));
+        str::from_bytes(bw.bytes.data)
+    }
+
+    #[test] fn alltts () {
+        let tts = parse_tts_from_source_str(
+            ~"bogofile",
+            @~"fn foo (x : int) { x; }",
+            ~[],
+            new_parse_sess(None));
+        check_equal(to_json_str(tts as Encodable::<std::json::Encoder>),
+                    ~"[[\"tt_tok\",[,[\"IDENT\",[\"fn\",false]]]],\
+                      [\"tt_tok\",[,[\"IDENT\",[\"foo\",false]]]],\
+                      [\"tt_delim\",[[[\"tt_tok\",[,[\"LPAREN\",[]]]],\
+                      [\"tt_tok\",[,[\"IDENT\",[\"x\",false]]]],\
+                      [\"tt_tok\",[,[\"COLON\",[]]]],\
+                      [\"tt_tok\",[,[\"IDENT\",[\"int\",false]]]],\
+                      [\"tt_tok\",[,[\"RPAREN\",[]]]]]]],\
+                      [\"tt_delim\",[[[\"tt_tok\",[,[\"LBRACE\",[]]]],\
+                      [\"tt_tok\",[,[\"IDENT\",[\"x\",false]]]],\
+                      [\"tt_tok\",[,[\"SEMI\",[]]]],\
+                      [\"tt_tok\",[,[\"RBRACE\",[]]]]]]]]"
+                   );
+        let ast1 = new_parser_from_tts(new_parse_sess(None),~[],tts)
+            .parse_item(~[]);
+        let ast2 = parse_item_from_source_str(
+            ~"bogofile",
+            @~"fn foo (x : int) { x; }",
+            ~[],~[],
+            new_parse_sess(None));
+        check_equal(ast1,ast2);
+    }
+}
+
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// End:
+//
