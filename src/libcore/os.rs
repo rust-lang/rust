@@ -68,10 +68,17 @@ pub mod rustrt {
 }
 
 pub const TMPBUF_SZ : uint = 1000u;
+const BUF_BYTES : uint = 2048u;
 
 pub fn getcwd() -> Path {
+    let buf = [0 as libc::c_char, ..BUF_BYTES];
     unsafe {
-        Path(rustrt::rust_getcwd())
+        if(0 as *libc::c_char == libc::getcwd(
+            &buf[0],
+            BUF_BYTES as libc::size_t)) {
+            fail!();
+        }
+        Path(str::raw::from_c_str(&buf[0]))
     }
 }
 
