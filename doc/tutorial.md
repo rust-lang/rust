@@ -1909,7 +1909,7 @@ struct TimeBomb {
     explosivity: uint
 }
 
-impl TimeBomb : Drop {
+impl Drop for TimeBomb {
     fn finalize(&self) {
         for iter::repeat(self.explosivity) {
             io::println("blam!");
@@ -1943,11 +1943,11 @@ and `&str`.
 
 ~~~~
 # trait Printable { fn print(&self); }
-impl int: Printable {
+impl Printable for int {
     fn print(&self) { io::println(fmt!("%d", *self)) }
 }
 
-impl &str: Printable {
+impl Printable for &str {
     fn print(&self) { io::println(*self) }
 }
 
@@ -1966,7 +1966,7 @@ trait Seq<T> {
     fn iter(&self, b: fn(v: &T));
 }
 
-impl<T> ~[T]: Seq<T> {
+impl<T> Seq<T> for ~[T] {
     fn len(&self) -> uint { vec::len(*self) }
     fn iter(&self, b: fn(v: &T)) {
         for vec::each(*self) |elt| { b(elt); }
@@ -1978,7 +1978,7 @@ The implementation has to explicitly declare the type parameter that
 it binds, `T`, before using it to specify its trait type. Rust
 requires this declaration because the `impl` could also, for example,
 specify an implementation of `Seq<int>`. The trait type (appearing
-after the colon in the `impl`) *refers* to a type, rather than
+between `impl` and `for`) *refers* to a type, rather than
 defining one.
 
 The type parameters bound by a trait are in scope in each of the
@@ -2000,7 +2000,7 @@ trait Eq {
 }
 
 // In an impl, `self` refers just to the value of the receiver
-impl int: Eq {
+impl Eq for int {
     fn equals(&self, other: &int) -> bool { *other == *self }
 }
 ~~~~
@@ -2021,10 +2021,10 @@ trait Shape { static fn new(area: float) -> Self; }
 struct Circle { radius: float }
 struct Square { length: float }
 
-impl Circle: Shape {
+impl Shape for Circle {
     static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
 }
-impl Square: Shape {
+impl Shape for Square {
     static fn new(area: float) -> Square { Square { length: sqrt(area) } }
 }
 
@@ -2084,7 +2084,7 @@ However, consider this function:
 
 ~~~~
 # type Circle = int; type Rectangle = int;
-# impl int: Drawable { fn draw(&self) {} }
+# impl Drawable for int { fn draw(&self) {} }
 # fn new_circle() -> int { 1 }
 trait Drawable { fn draw(&self); }
 
@@ -2120,9 +2120,8 @@ value to an object:
 # fn new_rectangle() -> Rectangle { true }
 # fn draw_all(shapes: &[@Drawable]) {}
 
-impl Circle: Drawable { fn draw(&self) { ... } }
-
-impl Rectangle: Drawable { fn draw(&self) { ... } }
+impl Drawable for Circle { fn draw(&self) { ... } }
+impl Drawable for Rectangle { fn draw(&self) { ... } }
 
 let c: @Circle = @new_circle();
 let r: @Rectangle = @new_rectangle();
@@ -2140,7 +2139,7 @@ for example, an `@Circle` may not be cast to an `~Drawable`.
 ~~~
 # type Circle = int; type Rectangle = int;
 # trait Drawable { fn draw(&self); }
-# impl int: Drawable { fn draw(&self) {} }
+# impl Drawable for int { fn draw(&self) {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
 // A managed object
@@ -2180,10 +2179,10 @@ Now, we can implement `Circle` on a type only if we also implement `Shape`.
 # use float::sqrt;
 # fn square(x: float) -> float { x * x }
 struct CircleStruct { center: Point, radius: float }
-impl CircleStruct: Circle {
+impl Circle for CircleStruct {
     fn radius(&self) -> float { sqrt(self.area() / pi) }
 }
-impl CircleStruct: Shape {
+impl Shape for CircleStruct {
     fn area(&self) -> float { pi * square(self.radius) }
 }   
 ~~~~
@@ -2215,8 +2214,8 @@ Likewise, supertrait methods may also be called on trait objects.
 # use float::sqrt;
 # struct Point { x: float, y: float }
 # struct CircleStruct { center: Point, radius: float }
-# impl CircleStruct: Circle { fn radius(&self) -> float { sqrt(self.area() / pi) } }
-# impl CircleStruct: Shape { fn area(&self) -> float { pi * square(self.radius) } }
+# impl Circle for CircleStruct { fn radius(&self) -> float { sqrt(self.area() / pi) } }
+# impl Shape for CircleStruct { fn area(&self) -> float { pi * square(self.radius) } }
 
 let concrete = @CircleStruct{center:Point{x:3f,y:4f},radius:5f};
 let mycircle: Circle = concrete as @Circle;

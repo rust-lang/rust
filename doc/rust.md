@@ -1209,7 +1209,7 @@ to pointers to the trait name, used as a type.
 
 ~~~~
 # trait Shape { }
-# impl int: Shape { }
+# impl Shape for int { }
 # let mycircle = 0;
 
 let myshape: Shape = @mycircle as @Shape;
@@ -1233,7 +1233,7 @@ For example:
 trait Num {
     static pure fn from_int(n: int) -> Self;
 }
-impl float: Num {
+impl Num for float {
     static pure fn from_int(n: int) -> float { n as float }
 }
 let x: float = Num::from_int(42);
@@ -1269,8 +1269,8 @@ Likewise, supertrait methods may also be called on trait objects.
 ~~~ {.xfail-test}
 # trait Shape { fn area() -> float; }
 # trait Circle : Shape { fn radius() -> float; }
-# impl int: Shape { fn area() -> float { 0.0 } }
-# impl int: Circle { fn radius() -> float { 0.0 } }
+# impl Shape for int { fn area() -> float { 0.0 } }
+# impl Circle for int { fn radius() -> float { 0.0 } }
 # let mycircle = 0;
 
 let mycircle: Circle = @mycircle as @Circle;
@@ -1292,7 +1292,7 @@ Implementations are defined with the keyword `impl`.
 
 type Circle = {radius: float, center: Point};
 
-impl Circle: Shape {
+impl Shape for Circle {
     fn draw(s: Surface) { do_draw_circle(s, self); }
     fn bounding_box() -> BoundingBox {
         let r = self.radius;
@@ -1303,9 +1303,9 @@ impl Circle: Shape {
 ~~~~
 
 It is possible to define an implementation without referring to a trait.
-The methods in such an implementation can only be used statically
-(as direct calls on the values of the type that the implementation targets).
-In such an implementation, the type after the colon is omitted.
+The methods in such an implementation can only be used
+as direct calls on the values of the type that the implementation targets.
+In such an implementation, the trait type and `for` after `impl` are omitted.
 Such implementations are limited to nominal types (enums, structs),
 and the implementation must appear in the same module or a sub-module as the `self` type.
 
@@ -1320,10 +1320,10 @@ Implementation parameters are written after after the `impl` keyword.
 ~~~~
 # trait Seq<T> { }
 
-impl<T> ~[T]: Seq<T> {
+impl<T> Seq<T> for ~[T] {
    ...
 }
-impl u32: Seq<bool> {
+impl Seq<bool> for u32 {
    /* Treat the integer as a sequence of bits */
 }
 ~~~~
@@ -2801,7 +2801,7 @@ trait Printable {
   fn to_str() -> ~str;
 }
 
-impl int: Printable {
+impl Printable for int {
   fn to_str() -> ~str { int::to_str(self) }
 }
 
@@ -2844,7 +2844,7 @@ trait Printable {
   fn make_string() -> ~str;
 }
 
-impl ~str: Printable {
+impl Printable for ~str {
   fn make_string() -> ~str { copy self }
 }
 ~~~~~~~~
