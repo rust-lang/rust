@@ -23,7 +23,7 @@ trait Movable<S, T>: Positioned<T> {
 
 struct Point { mut x: int, mut y: int }
 
-impl Point: Positioned<int> {
+impl Positioned<int> for Point {
     fn SetX(&self, x: int) {
         self.x = x;
     }

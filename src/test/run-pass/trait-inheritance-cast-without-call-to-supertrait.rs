@@ -23,11 +23,11 @@ struct A {
     x: int
 }
 
-impl A : Foo {
+impl Foo for A {
     fn f() -> int { 10 }
 }
 
-impl A : Bar {
+impl Bar for A {
     fn g() -> int { 20 }
 }
 

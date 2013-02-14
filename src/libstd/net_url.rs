@@ -668,7 +668,7 @@ pub pure fn from_str(rawurl: &str) -> Result<Url, ~str> {
     Ok(Url::new(scheme, userinfo, host, port, path, query, fragment))
 }
 
-impl Url: FromStr {
+impl FromStr for Url {
     static pure fn from_str(s: &str) -> Option<Url> {
         match from_str(s) {
             Ok(move url) => Some(url),
@@ -718,13 +718,13 @@ pub pure fn to_str(url: &Url) -> ~str {
     fmt!("%s:%s%s%s%s", url.scheme, authority, url.path, query, fragment)
 }
 
-impl Url: to_str::ToStr {
+impl to_str::ToStr for Url {
     pub pure fn to_str(&self) -> ~str {
         to_str(self)
     }
 }
 
-impl Url: to_bytes::IterBytes {
+impl to_bytes::IterBytes for Url {
     pure fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.to_str().iter_bytes(lsb0, f)
     }

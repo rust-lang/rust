@@ -15,7 +15,7 @@ use core::iter::BaseIter;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
-impl cat_type : cmp::Eq {
+impl cmp::Eq for cat_type {
     pure fn eq(&self, other: &cat_type) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
@@ -49,7 +49,7 @@ impl<T> cat<T> {
     }
 }
 
-impl<T> cat<T>: BaseIter<(int, &T)> {
+impl<T> BaseIter<(int, &T)> for cat<T> {
     pure fn each(&self, f: fn(&(int, &self/T)) -> bool) {
         let mut n = int::abs(self.meows);
         while n > 0 {
@@ -61,16 +61,16 @@ impl<T> cat<T>: BaseIter<(int, &T)> {
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<T> cat<T>: Container {
+impl<T> Container for cat<T> {
     pure fn len(&self) -> uint { self.meows as uint }
     pure fn is_empty(&self) -> bool { self.meows == 0 }
 }
 
-impl<T> cat<T>: Mutable {
+impl<T> Mutable for cat<T> {
     fn clear(&mut self) {}
 }
 
-impl<T> cat<T>: Map<int, T> {
+impl<T> Map<int, T> for cat<T> {
     pure fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
     pure fn each_key(&self, f: fn(v: &int) -> bool) {

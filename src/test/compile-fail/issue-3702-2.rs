@@ -13,7 +13,7 @@ trait Add {
     fn add_dynamic(&self, other: &Add) -> int;
 }
 
-impl int: Add {
+impl Add for int {
     fn to_int(&self) -> int { *self }
     fn add_dynamic(&self, other: &Add) -> int {
         self.to_int() + other.to_int() //~ ERROR multiple applicable methods in scope

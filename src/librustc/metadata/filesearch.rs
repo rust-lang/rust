@@ -41,7 +41,7 @@ pub fn mk_filesearch(maybe_sysroot: Option<Path>,
     type filesearch_impl = {sysroot: Path,
                             addl_lib_search_paths: ~[Path],
                             target_triple: ~str};
-    impl filesearch_impl: FileSearch {
+    impl FileSearch for filesearch_impl {
         fn sysroot() -> Path { /*bad*/copy self.sysroot }
         fn lib_search_paths() -> ~[Path] {
             let mut paths = /*bad*/copy self.addl_lib_search_paths;

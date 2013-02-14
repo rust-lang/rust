@@ -20,7 +20,7 @@ enum Baz {
     Quux
 }
 
-impl Baz: Foo {
+impl Foo for Baz {
 }
 
 pub fn main() {

@@ -1559,7 +1559,7 @@ pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
 }
 
 #[cfg(notest)]
-impl<T: Eq> &[T] : Eq {
+impl<T: Eq> Eq for &[T] {
     #[inline(always)]
     pure fn eq(&self, other: & &self/[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
@@ -1568,7 +1568,7 @@ impl<T: Eq> &[T] : Eq {
 
 
 #[cfg(notest)]
-impl<T: Eq> ~[T] : Eq {
+impl<T: Eq> Eq for ~[T] {
     #[inline(always)]
     pure fn eq(&self, other: &~[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
@@ -1576,7 +1576,7 @@ impl<T: Eq> ~[T] : Eq {
 }
 
 #[cfg(notest)]
-impl<T: Eq> @[T] : Eq {
+impl<T: Eq> Eq for @[T] {
     #[inline(always)]
     pure fn eq(&self, other: &@[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
@@ -1605,7 +1605,7 @@ pure fn ge<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
 pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
 #[cfg(notest)]
-impl<T: Ord> &[T] : Ord {
+impl<T: Ord> Ord for &[T] {
     #[inline(always)]
     pure fn lt(&self, other: & &self/[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -1617,7 +1617,7 @@ impl<T: Ord> &[T] : Ord {
 }
 
 #[cfg(notest)]
-impl<T: Ord> ~[T] : Ord {
+impl<T: Ord> Ord for ~[T] {
     #[inline(always)]
     pure fn lt(&self, other: &~[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -1629,7 +1629,7 @@ impl<T: Ord> ~[T] : Ord {
 }
 
 #[cfg(notest)]
-impl<T: Ord> @[T] : Ord {
+impl<T: Ord> Ord for @[T] {
     #[inline(always)]
     pure fn lt(&self, other: &@[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -1646,7 +1646,7 @@ pub mod traits {
     use ops::Add;
     use vec::append;
 
-    impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
+    impl<T: Copy> Add<&[const T],~[T]> for ~[T] {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
             append(copy *self, (*rhs))
@@ -1654,7 +1654,7 @@ pub mod traits {
     }
 }
 
-impl<T> &[const T]: Container {
+impl<T> Container for &[const T] {
     /// Returns true if a vector contains no elements
     #[inline]
     pure fn is_empty(&self) -> bool { is_empty(*self) }
@@ -1673,7 +1673,7 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T: Copy> &[const T]: CopyableVector<T> {
+impl<T: Copy> CopyableVector<T> for &[const T] {
     /// Returns the first element of a vector
     #[inline]
     pure fn head(&self) -> T { head(*self) }
@@ -1709,7 +1709,7 @@ pub trait ImmutableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T> &[T]: ImmutableVector<T> {
+impl<T> ImmutableVector<T> for &[T] {
     /// Return a slice that points into another slice.
     #[inline]
     pure fn view(&self, start: uint, end: uint) -> &self/[T] {
@@ -1780,7 +1780,7 @@ pub trait ImmutableEqVector<T: Eq> {
     pure fn rposition_elem(&self, t: &T) -> Option<uint>;
 }
 
-impl<T: Eq> &[T]: ImmutableEqVector<T> {
+impl<T: Eq> ImmutableEqVector<T> for &[T] {
     /**
      * Find the first index matching some predicate
      *
@@ -1825,7 +1825,7 @@ pub trait ImmutableCopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
+impl<T: Copy> ImmutableCopyableVector<T> for &[T] {
     /**
      * Construct a new vector from the elements of a vector for which some
      * predicate holds.
@@ -1876,7 +1876,7 @@ pub trait OwnedVector<T> {
     fn partition(self, f: pure fn(&T) -> bool) -> (~[T], ~[T]);
 }
 
-impl<T> ~[T]: OwnedVector<T> {
+impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn push(&mut self, t: T) {
         push(self, t);
@@ -1947,7 +1947,7 @@ impl<T> ~[T]: OwnedVector<T> {
     }
 }
 
-impl<T> ~[T]: Mutable {
+impl<T> Mutable for ~[T] {
     /// Clear the vector, removing all values.
     fn clear(&mut self) { self.truncate(0) }
 }
@@ -1959,7 +1959,7 @@ pub trait OwnedCopyableVector<T: Copy> {
     fn grow_set(&mut self, index: uint, initval: &T, val: T);
 }
 
-impl<T: Copy> ~[T]: OwnedCopyableVector<T> {
+impl<T: Copy> OwnedCopyableVector<T> for ~[T] {
     #[inline]
     fn push_all(&mut self, rhs: &[const T]) {
         push_all(self, rhs);
@@ -1985,7 +1985,7 @@ trait OwnedEqVector<T: Eq> {
     fn dedup(&mut self);
 }
 
-impl<T: Eq> ~[T]: OwnedEqVector<T> {
+impl<T: Eq> OwnedEqVector<T> for ~[T] {
     #[inline]
     fn dedup(&mut self) {
         dedup(self)
@@ -2218,7 +2218,7 @@ pub mod bytes {
 // This cannot be used with iter-trait.rs because of the region pointer
 // required in the slice.
 
-impl<A> &[A]: iter::BaseIter<A> {
+impl<A> iter::BaseIter<A> for &[A] {
     pub pure fn each(&self, blk: fn(v: &A) -> bool) {
         // FIXME(#2263)---should be able to call each(self, blk)
         for each(*self) |e| {
@@ -2231,7 +2231,7 @@ impl<A> &[A]: iter::BaseIter<A> {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A> ~[A]: iter::BaseIter<A> {
+impl<A> iter::BaseIter<A> for ~[A] {
     pub pure fn each(&self, blk: fn(v: &A) -> bool) {
         // FIXME(#2263)---should be able to call each(self, blk)
         for each(*self) |e| {
@@ -2244,7 +2244,7 @@ impl<A> ~[A]: iter::BaseIter<A> {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A> @[A]: iter::BaseIter<A> {
+impl<A> iter::BaseIter<A> for @[A] {
     pub pure fn each(&self, blk: fn(v: &A) -> bool) {
         // FIXME(#2263)---should be able to call each(self, blk)
         for each(*self) |e| {
@@ -2256,7 +2256,7 @@ impl<A> @[A]: iter::BaseIter<A> {
     pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
 }
 
-impl<A> &[A]: iter::ExtendedIter<A> {
+impl<A> iter::ExtendedIter<A> for &[A] {
     pub pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
@@ -2282,7 +2282,7 @@ impl<A> &[A]: iter::ExtendedIter<A> {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A> ~[A]: iter::ExtendedIter<A> {
+impl<A> iter::ExtendedIter<A> for ~[A] {
     pub pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
@@ -2308,7 +2308,7 @@ impl<A> ~[A]: iter::ExtendedIter<A> {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A> @[A]: iter::ExtendedIter<A> {
+impl<A> iter::ExtendedIter<A> for @[A] {
     pub pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
@@ -2333,24 +2333,24 @@ impl<A> @[A]: iter::ExtendedIter<A> {
     }
 }
 
-impl<A: Eq> &[A]: iter::EqIter<A> {
+impl<A: Eq> iter::EqIter<A> for &[A] {
     pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Eq> ~[A]: iter::EqIter<A> {
+impl<A: Eq> iter::EqIter<A> for ~[A] {
     pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Eq> @[A]: iter::EqIter<A> {
+impl<A: Eq> iter::EqIter<A> for @[A] {
     pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
-impl<A: Copy> &[A]: iter::CopyableIter<A> {
+impl<A: Copy> iter::CopyableIter<A> for &[A] {
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2361,7 +2361,7 @@ impl<A: Copy> &[A]: iter::CopyableIter<A> {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Copy> ~[A]: iter::CopyableIter<A> {
+impl<A: Copy> iter::CopyableIter<A> for ~[A] {
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2372,7 +2372,7 @@ impl<A: Copy> ~[A]: iter::CopyableIter<A> {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Copy> @[A]: iter::CopyableIter<A> {
+impl<A: Copy> iter::CopyableIter<A> for @[A] {
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2382,24 +2382,24 @@ impl<A: Copy> @[A]: iter::CopyableIter<A> {
     }
 }
 
-impl<A: Copy Ord> &[A]: iter::CopyableOrderedIter<A> {
+impl<A: Copy Ord> iter::CopyableOrderedIter<A> for &[A] {
     pure fn min(&self) -> A { iter::min(self) }
     pure fn max(&self) -> A { iter::max(self) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Copy Ord> ~[A]: iter::CopyableOrderedIter<A> {
+impl<A: Copy Ord> iter::CopyableOrderedIter<A> for ~[A] {
     pure fn min(&self) -> A { iter::min(self) }
     pure fn max(&self) -> A { iter::max(self) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Copy Ord> @[A]: iter::CopyableOrderedIter<A> {
+impl<A: Copy Ord> iter::CopyableOrderedIter<A> for @[A] {
     pure fn min(&self) -> A { iter::min(self) }
     pure fn max(&self) -> A { iter::max(self) }
 }
 
-impl<A:Copy> &[A] : iter::CopyableNonstrictIter<A> {
+impl<A:Copy> iter::CopyableNonstrictIter<A> for &[A] {
     pure fn each_val(&const self, f: fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {
@@ -2410,7 +2410,7 @@ impl<A:Copy> &[A] : iter::CopyableNonstrictIter<A> {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Copy> ~[A] : iter::CopyableNonstrictIter<A> {
+impl<A:Copy> iter::CopyableNonstrictIter<A> for ~[A] {
     pure fn each_val(&const self, f: fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {
@@ -2421,7 +2421,7 @@ impl<A:Copy> ~[A] : iter::CopyableNonstrictIter<A> {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A:Copy> @[A] : iter::CopyableNonstrictIter<A> {
+impl<A:Copy> iter::CopyableNonstrictIter<A> for @[A] {
     pure fn each_val(&const self, f: fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {

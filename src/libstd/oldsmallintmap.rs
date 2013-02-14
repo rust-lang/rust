@@ -78,7 +78,7 @@ pub pure fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
     return !find(self, key).is_none();
 }
 
-impl<V> SmallIntMap<V>: Container {
+impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
     pure fn len(&self) -> uint {
         let mut sz = 0u;
@@ -95,7 +95,7 @@ impl<V> SmallIntMap<V>: Container {
     pure fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
-impl<V> SmallIntMap<V>: Mutable {
+impl<V> Mutable for SmallIntMap<V> {
     fn clear(&mut self) { self.v.set(~[]) }
 }
 
@@ -162,7 +162,7 @@ impl<V: Copy> SmallIntMap<V> {
     }
 }
 
-impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
+impl<V: Copy> ops::Index<uint, V> for SmallIntMap<V> {
     pure fn index(&self, key: uint) -> V {
         unsafe {
             get(*self, key)

@@ -15,6 +15,6 @@ trait to_strz {
     fn to_strz() -> ~str;
 }
 
-impl ~str: to_strz {
+impl to_strz for ~str {
     fn to_strz() -> ~str { copy self }
 }

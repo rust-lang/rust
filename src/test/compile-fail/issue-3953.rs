@@ -21,7 +21,7 @@ enum Lol = int;
 
 pub impl Lol: Hahaha { }
 
-impl Lol: Eq {
+impl Eq for Lol {
     pure fn eq(&self, other: &Lol) -> bool { **self != **other }
     pure fn ne(&self, other: &Lol) -> bool { **self == **other }
 }

@@ -146,7 +146,7 @@ struct GlobalState {
     map: LinearMap<uint, (*c_void, ~fn())>
 }
 
-impl GlobalState: Drop {
+impl Drop for GlobalState {
     fn finalize(&self) {
         for self.map.each_value |v| {
             match v {

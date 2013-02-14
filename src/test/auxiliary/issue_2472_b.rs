@@ -19,6 +19,6 @@ trait T {
     fn bar();
 }
 
-impl S: T {
+impl T for S {
     fn bar() { }
 }

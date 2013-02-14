@@ -12,7 +12,7 @@
 
 enum foo = ~uint;
 
-impl foo : Add<foo, foo> {
+impl Add<foo, foo> for foo {
     pure fn add(f: &foo) -> foo {
         foo(~(**self + **(*f)))
     }

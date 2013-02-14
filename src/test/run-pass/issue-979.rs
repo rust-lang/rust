@@ -12,7 +12,7 @@ struct r {
   b: @mut int,
 }
 
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {
         *(self.b) += 1;
     }

@@ -19,11 +19,11 @@ trait connection_factory<C: connection> {
 type my_connection = ();
 type my_connection_factory = ();
 
-impl (): connection {
+impl connection for () {
     fn read() -> int { 43 }
 }
 
-impl my_connection_factory: connection_factory<my_connection> {
+impl connection_factory<my_connection> for my_connection_factory {
     fn create() -> my_connection { () }
 }
 

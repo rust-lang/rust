@@ -43,7 +43,7 @@ trait Ord < Eq {
 }
 
 // pronounced "impl of Ord for int" -- not sold on this yet
-impl int : Ord {
+impl Ord for int {
     fn lt(a: &int) -> bool {
         self < (*a)
     }

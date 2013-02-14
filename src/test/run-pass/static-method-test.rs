@@ -21,13 +21,13 @@ fn andand<T: bool_like Copy>(x1: T, x2: T) -> T {
     bool_like::select(x1, x2, x1)
 }
 
-impl bool: bool_like {
+impl bool_like for bool {
     static fn select<A>(&&b: bool, +x1: A, +x2: A) -> A {
         if b { move x1 } else { move x2 }
     }
 }
 
-impl int: bool_like {
+impl bool_like for int {
     static fn select<A>(&&b: int, +x1: A, +x2: A) -> A {
         if b != 0 { move x1 } else { move x2 }
     }
@@ -40,14 +40,14 @@ trait buildable<A> {
 }
 
 
-impl<A> @[A]: buildable<A> {
+impl<A> buildable<A> for @[A] {
     #[inline(always)]
      static pure fn build_sized(size: uint,
                                 builder: fn(push: pure fn(+v: A))) -> @[A] {
          at_vec::build_sized(size, builder)
      }
 }
-impl<A> ~[A]: buildable<A> {
+impl<A> buildable<A> for ~[A] {
     #[inline(always)]
      static pure fn build_sized(size: uint,
                                 builder: fn(push: pure fn(+v: A))) -> ~[A] {

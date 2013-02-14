@@ -84,7 +84,7 @@ pub enum TaskResult {
     Failure,
 }
 
-impl TaskResult : Eq {
+impl Eq for TaskResult {
     pure fn eq(&self, other: &TaskResult) -> bool {
         match ((*self), (*other)) {
             (Success, Success) | (Failure, Failure) => true,

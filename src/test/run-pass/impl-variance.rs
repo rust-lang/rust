@@ -12,7 +12,7 @@ trait foo {
     fn foo() -> uint;
 }
 
-impl<T> ~[const T]: foo {
+impl<T> foo for ~[const T] {
     fn foo() -> uint { vec::len(self) }
 }
 

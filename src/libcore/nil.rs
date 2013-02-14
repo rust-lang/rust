@@ -17,7 +17,7 @@ Functions for the unit type.
 use cmp::{Eq, Ord};
 
 #[cfg(notest)]
-impl () : Eq {
+impl Eq for () {
     #[inline(always)]
     pure fn eq(&self, _other: &()) -> bool { true }
     #[inline(always)]
@@ -25,7 +25,7 @@ impl () : Eq {
 }
 
 #[cfg(notest)]
-impl () : Ord {
+impl Ord for () {
     #[inline(always)]
     pure fn lt(&self, _other: &()) -> bool { false }
     #[inline(always)]

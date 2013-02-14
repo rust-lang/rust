@@ -14,8 +14,8 @@ pub trait Baz { fn h() -> int; }
 
 pub struct A { x: int }
 
-impl A : Foo { fn f() -> int { 10 } }
-impl A : Bar { fn g() -> int { 20 } }
-impl A : Baz { fn h() -> int { 30 } }
+impl Foo for A { fn f() -> int { 10 } }
+impl Bar for A { fn g() -> int { 20 } }
+impl Baz for A { fn h() -> int { 30 } }
 
 

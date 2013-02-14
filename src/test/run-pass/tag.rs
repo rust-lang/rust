@@ -14,7 +14,7 @@
 // -*- rust -*-
 enum colour { red(int, int), green, }
 
-impl colour : cmp::Eq {
+impl cmp::Eq for colour {
     pure fn eq(&self, other: &colour) -> bool {
         match *self {
             red(a0, b0) => {

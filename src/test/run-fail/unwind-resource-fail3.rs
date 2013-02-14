@@ -17,7 +17,7 @@ struct faily_box {
  
 fn faily_box(i: @int) -> faily_box { faily_box { i: i } }
 
-impl faily_box : Drop {
+impl Drop for faily_box {
     fn finalize(&self) {
         fail!(~"quux");
     }

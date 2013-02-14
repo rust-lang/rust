@@ -262,7 +262,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
         }
     }
 
-    impl ProgRes: Program {
+    impl Program for ProgRes {
         fn get_id(&mut self) -> pid_t { return self.r.pid; }
         fn input(&mut self) -> io::Writer {
             io::fd_writer(self.r.in_fd, false)

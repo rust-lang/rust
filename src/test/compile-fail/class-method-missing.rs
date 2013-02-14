@@ -17,7 +17,7 @@ struct cat {
   meows: uint,
 }
 
-impl cat : animal {
+impl animal for cat {
 }
 
 fn cat(in_x : uint) -> cat {

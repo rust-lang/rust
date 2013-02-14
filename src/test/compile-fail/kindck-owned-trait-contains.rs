@@ -10,7 +10,7 @@
 
 trait repeat<A> { fn get() -> A; }
 
-impl<A:Copy> @A: repeat<A> {
+impl<A:Copy> repeat<A> for @A {
     fn get() -> A { *self }
 }
 

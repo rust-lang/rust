@@ -81,7 +81,7 @@ pub struct Arena {
     priv mut chunks: @List<Chunk>,
 }
 
-impl Arena : Drop {
+impl Drop for Arena {
     fn finalize(&self) {
         unsafe {
             destroy_chunk(&self.head);

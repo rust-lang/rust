@@ -22,7 +22,7 @@ struct A {
     x: int
 }
 
-impl A : Foo {
+impl Foo for A {
     fn g() {
         io::println("Goodbye!");
     }

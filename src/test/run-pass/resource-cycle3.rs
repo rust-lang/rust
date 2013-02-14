@@ -24,7 +24,7 @@ struct R {
   x: *int,
 }
 
-impl R : Drop {
+impl Drop for R {
     fn finalize(&self) {
         unsafe {
             let _v2: ~int = cast::reinterpret_cast(&self.v.c);

@@ -31,7 +31,7 @@ pub struct IoTask {
     op_chan: SharedChan<IoTaskMsg>
 }
 
-impl IoTask: Clone {
+impl Clone for IoTask {
     fn clone(&self) -> IoTask {
         IoTask{
             async_handle: self.async_handle,

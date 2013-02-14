@@ -12,7 +12,7 @@ trait vec_monad<A> {
     fn bind<B>(f: fn(A) -> ~[B]);
 }
 
-impl<A> ~[A]: vec_monad<A> {
+impl<A> vec_monad<A> for ~[A] {
     fn bind<B>(f: fn(A) -> ~[B]) {
         let mut r = fail!();
         for self.each |elt| { r += f(*elt); }

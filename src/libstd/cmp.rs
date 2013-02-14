@@ -21,7 +21,7 @@ pub trait FuzzyEq<Eps> {
     pure fn fuzzy_eq_eps(&self, other: &Self, epsilon: &Eps) -> bool;
 }
 
-impl float: FuzzyEq<float> {
+impl FuzzyEq<float> for float {
     pure fn fuzzy_eq(&self, other: &float) -> bool {
         self.fuzzy_eq_eps(other, &FUZZY_EPSILON)
     }
@@ -31,7 +31,7 @@ impl float: FuzzyEq<float> {
     }
 }
 
-impl f32: FuzzyEq<f32> {
+impl FuzzyEq<f32> for f32 {
     pure fn fuzzy_eq(&self, other: &f32) -> bool {
         self.fuzzy_eq_eps(other, &(FUZZY_EPSILON as f32))
     }
@@ -41,7 +41,7 @@ impl f32: FuzzyEq<f32> {
     }
 }
 
-impl f64: FuzzyEq<f64> {
+impl FuzzyEq<f64> for f64 {
     pure fn fuzzy_eq(&self, other: &f64) -> bool {
         self.fuzzy_eq_eps(other, &(FUZZY_EPSILON as f64))
     }
@@ -70,7 +70,7 @@ mod test_complex{
 
     struct Complex { r: float, i: float }
 
-    impl Complex: FuzzyEq<float> {
+    impl FuzzyEq<float> for Complex {
         pure fn fuzzy_eq(&self, other: &Complex) -> bool {
             self.fuzzy_eq_eps(other, &FUZZY_EPSILON)
         }

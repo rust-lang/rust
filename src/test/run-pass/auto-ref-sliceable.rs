@@ -12,7 +12,7 @@ trait Pushable<T> {
     fn push_val(&mut self, +t: T);
 }
 
-impl<T> ~[T]: Pushable<T> {
+impl<T> Pushable<T> for ~[T] {
     fn push_val(&mut self, +t: T) {
         self.push(move t);
     }

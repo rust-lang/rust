@@ -568,7 +568,7 @@ enum Constraint {
     ConstrainVarSubReg(RegionVid, Region)
 }
 
-impl Constraint : cmp::Eq {
+impl cmp::Eq for Constraint {
     pure fn eq(&self, other: &Constraint) -> bool {
         match ((*self), (*other)) {
             (ConstrainVarSubVar(v0a, v1a), ConstrainVarSubVar(v0b, v1b)) => {
@@ -588,7 +588,7 @@ impl Constraint : cmp::Eq {
     pure fn ne(&self, other: &Constraint) -> bool { !(*self).eq(other) }
 }
 
-impl Constraint : to_bytes::IterBytes {
+impl to_bytes::IterBytes for Constraint {
    pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           ConstrainVarSubVar(ref v0, ref v1) =>
@@ -608,14 +608,14 @@ struct TwoRegions {
     b: Region,
 }
 
-impl TwoRegions : cmp::Eq {
+impl cmp::Eq for TwoRegions {
     pure fn eq(&self, other: &TwoRegions) -> bool {
         (*self).a == (*other).a && (*self).b == (*other).b
     }
     pure fn ne(&self, other: &TwoRegions) -> bool { !(*self).eq(other) }
 }
 
-impl TwoRegions : to_bytes::IterBytes {
+impl to_bytes::IterBytes for TwoRegions {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.a, &self.b, lsb0, f)
     }

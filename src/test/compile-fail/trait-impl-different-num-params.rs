@@ -11,7 +11,7 @@
 trait foo {
     fn bar(x: uint) -> Self;
 }
-impl int: foo {
+impl foo for int {
     fn bar() -> int {
         //~^ ERROR method `bar` has 0 parameters but the trait has 1
         self

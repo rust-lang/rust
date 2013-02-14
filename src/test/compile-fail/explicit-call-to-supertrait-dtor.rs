@@ -16,13 +16,13 @@ trait Bar : Drop {
     fn blah();
 }
 
-impl Foo : Drop {
+impl Drop for Foo {
     fn finalize(&self) {
         io::println("kaboom");
     }
 }
 
-impl Foo : Bar {
+impl Bar for Foo {
     fn blah() {
         self.finalize();    //~ ERROR explicit call to destructor
     }

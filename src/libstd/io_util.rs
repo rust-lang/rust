@@ -42,7 +42,7 @@ pub impl BufReader {
     }
 }
 
-impl BufReader: Reader {
+impl Reader for BufReader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         self.as_bytes_reader(|r| r.read(bytes, len) )
     }

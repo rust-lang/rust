@@ -12,7 +12,7 @@ struct r {
   b:bool,
 }
 
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {}
 }
 

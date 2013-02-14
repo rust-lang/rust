@@ -59,7 +59,7 @@ impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V> {
 
 }
 
-impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V>: TyVisitor {
+impl<V: TyVisitor movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
 
     fn visit_bot(&self) -> bool {
         self.align_to::<()>();
@@ -498,14 +498,14 @@ impl my_visitor {
 
 struct Inner<V> { inner: V }
 
-impl my_visitor: movable_ptr {
+impl movable_ptr for my_visitor {
     fn move_ptr(adjustment: fn(*c_void) -> *c_void) {
         self.ptr1 = adjustment(self.ptr1);
         self.ptr2 = adjustment(self.ptr2);
     }
 }
 
-impl my_visitor: TyVisitor {
+impl TyVisitor for my_visitor {
 
     fn visit_bot(&self) -> bool { true }
     fn visit_nil(&self) -> bool { true }

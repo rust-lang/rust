@@ -12,11 +12,11 @@ trait foo {
     fn foo() -> int;
 }
 
-impl ~[uint]: foo {
+impl foo for ~[uint] {
     fn foo() -> int {1} //~ NOTE candidate #1 is `__extensions__::foo`
 }
 
-impl ~[int]: foo {
+impl foo for ~[int] {
     fn foo() -> int {2} //~ NOTE candidate #2 is `__extensions__::foo`
 }
 

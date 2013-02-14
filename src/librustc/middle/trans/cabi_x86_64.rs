@@ -32,7 +32,7 @@ enum x86_64_reg_class {
     memory_class
 }
 
-impl x86_64_reg_class : cmp::Eq {
+impl cmp::Eq for x86_64_reg_class {
     pure fn eq(&self, other: &x86_64_reg_class) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
@@ -402,7 +402,7 @@ fn x86_64_tys(atys: &[TypeRef],
 
 enum X86_64_ABIInfo { X86_64_ABIInfo }
 
-impl X86_64_ABIInfo: ABIInfo {
+impl ABIInfo for X86_64_ABIInfo {
     fn compute_info(&self,
                     atys: &[TypeRef],
                     rty: TypeRef,

@@ -20,11 +20,11 @@ trait to_str {
     fn to_str() -> ~str;
 }
 
-impl int: to_str {
+impl to_str for int {
     fn to_str() -> ~str { int::str(self) }
 }
 
-impl<T: to_str> ~[T]: to_str {
+impl<T: to_str> to_str for ~[T] {
     fn to_str() -> ~str {
         ~"[" + str::connect(vec::map(self, |e| e.to_str() ), ~", ") + ~"]"
     }
