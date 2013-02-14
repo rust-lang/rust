@@ -52,25 +52,6 @@ timegm(struct tm *tm)
 }
 #endif
 
-extern "C" CDECL rust_str *
-rust_getcwd() {
-    rust_task *task = rust_get_current_task();
-    LOG(task, task, "rust_getcwd()");
-
-    char cbuf[BUF_BYTES];
-
-#if defined(__WIN32__)
-    if (!_getcwd(cbuf, sizeof(cbuf))) {
-#else
-        if (!getcwd(cbuf, sizeof(cbuf))) {
-#endif
-        task->fail();
-        return NULL;
-    }
-
-    return make_str(task->kernel, cbuf, strlen(cbuf), "rust_str(getcwd)");
-}
-
 #if defined(__WIN32__)
 extern "C" CDECL rust_vec_box *
 rust_env_pairs() {
