@@ -151,7 +151,7 @@ rust_task *
 rust_sched_loop::schedule_task() {
     lock.must_have_lock();
     if (running_tasks.length() > 0) {
-        size_t k = rng_gen_u32(&rng);
+        size_t k = rng_gen_u32(kernel, &rng);
         size_t i = k % running_tasks.length();
         return (rust_task *)running_tasks[i];
     }

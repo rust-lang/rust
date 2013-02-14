@@ -73,11 +73,35 @@ isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec_box* user_seed) {
 void
 rng_init(rust_kernel* kernel, rust_rng* rng, rust_vec_box* user_seed) {
     isaac_init(kernel, &rng->rctx, user_seed);
+    rng->reseedable = !user_seed && !kernel->env->rust_seed;
+}
+
+static void
+rng_maybe_reseed(rust_kernel* kernel, rust_rng* rng) {
+    // If this RNG has generated more than 32KB of random data and was not
+    // seeded by the user or RUST_SEED, then we should reseed now.
+    const size_t RESEED_THRESHOLD = 32 * 1024;
+    size_t bytes_generated = rng->rctx.randc * sizeof(ub4);
+    if (bytes_generated < RESEED_THRESHOLD || !rng->reseedable) {
+        return;
+    }
+
+    uint32_t new_seed[RANDSIZ];
+    rng_gen_seed(kernel, (uint8_t*) new_seed, RANDSIZ * sizeof(uint32_t));
+
+    // Stir new seed into PRNG's entropy pool.
+    for (size_t i = 0; i < RANDSIZ; i++) {
+        rng->rctx.randrsl[i] ^= new_seed[i];
+    }
+
+    randinit(&rng->rctx, 1);
 }
 
 uint32_t
-rng_gen_u32(rust_rng* rng) {
-    return isaac_rand(&rng->rctx);
+rng_gen_u32(rust_kernel* kernel, rust_rng* rng) {
+    uint32_t x = isaac_rand(&rng->rctx);
+    rng_maybe_reseed(kernel, rng);
+    return x;
 }
 
 //
