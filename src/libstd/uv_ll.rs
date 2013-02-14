@@ -1253,7 +1253,7 @@ pub mod test {
                       as *request_wrapper;
                 let buf_base = get_base_from_buf(buf);
                 let buf_len = get_len_from_buf(buf);
-                let bytes = vec::from_buf(buf_base, buf_len as uint);
+                let bytes = vec::from_buf(buf_base, nread as uint);
                 let read_chan = (*client_data).read_chan.clone();
                 let msg_from_server = str::from_bytes(bytes);
                 read_chan.send(msg_from_server);
@@ -1445,7 +1445,7 @@ pub mod test {
                                 buf_base as uint,
                                 buf_len as uint,
                                 nread));
-                let bytes = vec::from_buf(buf_base, buf_len);
+                let bytes = vec::from_buf(buf_base, nread as uint);
                 let request_str = str::from_bytes(bytes);
 
                 let client_data = get_data_for_uv_handle(
@@ -1453,7 +1453,7 @@ pub mod test {
 
                 let server_kill_msg = (*client_data).server_kill_msg;
                 let write_req = (*client_data).server_write_req;
-                if (str::contains(request_str, server_kill_msg)) {
+                if str::contains(request_str, server_kill_msg) {
                     log(debug, ~"SERVER: client req contains kill_msg!");
                     log(debug, ~"SERVER: sending response to client");
                     read_stop(client_stream_ptr);
