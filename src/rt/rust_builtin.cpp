@@ -171,7 +171,7 @@ rand_new_seeded2(rust_vec_box** seed) {
     return rand_new_seeded(*seed);
 }
 
-extern "C" CDECL size_t
+extern "C" CDECL uint32_t
 rand_next(randctx *rctx) {
     return isaac_rand(rctx);
 }
