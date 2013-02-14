@@ -18,8 +18,13 @@ struct rust_vec_box;
 
 // Initialization helpers for ISAAC RNG
 
-void isaac_seed(rust_kernel* kernel, uint8_t* dest, size_t size);
-void isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec_box* user_seed);
+struct rust_rng {
+    randctx rctx;
+};
+
+void rng_gen_seed(rust_kernel* kernel, uint8_t* dest, size_t size);
+void rng_init(rust_kernel *kernel, rust_rng *rng, rust_vec_box* user_seed);
+uint32_t rng_gen_u32(rust_rng *rng);
 
 //
 // Local Variables:

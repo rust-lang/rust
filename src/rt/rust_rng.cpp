@@ -15,7 +15,7 @@
 // Initialization helpers for ISAAC RNG
 
 void
-isaac_seed(rust_kernel* kernel, uint8_t* dest, size_t size) {
+rng_gen_seed(rust_kernel* kernel, uint8_t* dest, size_t size) {
 #ifdef __WIN32__
     HCRYPTPROV hProv;
     kernel->win32_require
@@ -47,7 +47,7 @@ isaac_seed(rust_kernel* kernel, uint8_t* dest, size_t size) {
 #endif
 }
 
-void
+static void
 isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec_box* user_seed) {
     memset(rctx, 0, sizeof(randctx));
 
@@ -64,10 +64,20 @@ isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec_box* user_seed) {
             seed = (seed + 0x7ed55d16) + (seed << 12);
         }
     } else {
-        isaac_seed(kernel, (uint8_t*) &rctx->randrsl, sizeof(rctx->randrsl));
+        rng_gen_seed(kernel, (uint8_t*)&rctx->randrsl, sizeof(rctx->randrsl));
     }
 
     randinit(rctx, 1);
+}
+
+void
+rng_init(rust_kernel* kernel, rust_rng* rng, rust_vec_box* user_seed) {
+    isaac_init(kernel, &rng->rctx, user_seed);
+}
+
+uint32_t
+rng_gen_u32(rust_rng* rng) {
+    return isaac_rand(&rng->rctx);
 }
 
 //
