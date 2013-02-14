@@ -382,6 +382,15 @@ pub fn get_tydesc(ccx: @crate_ctxt, t: ty::t) -> @mut tydesc_info {
     }
 }
 
+pub fn set_optimize_for_size(f: ValueRef) {
+    unsafe {
+        llvm::LLVMAddFunctionAttr(f,
+                                  lib::llvm::OptimizeForSizeAttribute
+                                  as c_ulonglong,
+                                  0u as c_ulonglong);
+    }
+}
+
 pub fn set_no_inline(f: ValueRef) {
     unsafe {
         llvm::LLVMAddFunctionAttr(f,
@@ -440,7 +449,7 @@ pub fn set_custom_stack_growth_fn(f: ValueRef) {
 
 pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
     if ty::type_is_structural(t) {
-        set_no_inline(f);
+        set_optimize_for_size(f);
     } else { set_always_inline(f); }
 }
 
