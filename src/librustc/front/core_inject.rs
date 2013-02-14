@@ -51,7 +51,7 @@ fn inject_libcore_ref(sess: Session,
                     spanned(ast::attribute_ {
                         style: ast::attr_inner,
                         value: spanned(ast::meta_name_value(
-                            ~"vers",
+                            @~"vers",
                             spanned(ast::lit_str(@CORE_VERSION.to_str()))
                         )),
                         is_sugared_doc: false

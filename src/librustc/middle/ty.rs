@@ -783,11 +783,11 @@ pub fn mk_ctxt(s: session::Session,
     let mut legacy_records = false;
     for crate.node.attrs.each |attribute| {
         match attribute.node.value.node {
-            ast::meta_word(ref w) if (*w) == ~"legacy_modes" => {
+            ast::meta_word(w) if *w == ~"legacy_modes" => {
                 legacy_modes = true;
                 if legacy_records { break; }
             }
-            ast::meta_word(ref w) if (*w) == ~"legacy_records" => {
+            ast::meta_word(w) if *w == ~"legacy_records" => {
                 legacy_records = true;
                 if legacy_modes { break; }
             }

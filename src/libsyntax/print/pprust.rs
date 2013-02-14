@@ -1816,13 +1816,13 @@ pub fn print_type_params(s: @ps, &&params: ~[ast::ty_param]) {
 pub fn print_meta_item(s: @ps, &&item: @ast::meta_item) {
     ibox(s, indent_unit);
     match item.node {
-      ast::meta_word(ref name) => word(s.s, *name),
-      ast::meta_name_value(ref name, value) => {
+      ast::meta_word(name) => word(s.s, *name),
+      ast::meta_name_value(name, value) => {
         word_space(s, *name);
         word_space(s, ~"=");
         print_literal(s, @value);
       }
-      ast::meta_list(ref name, ref items) => {
+      ast::meta_list(name, ref items) => {
         word(s.s, *name);
         popen(s);
         commasep(

@@ -37,16 +37,16 @@ pub fn mk_name_value_item_str(name: @~str, value: @~str)
 
 pub fn mk_name_value_item(name: @~str, +value: ast::lit)
         -> @ast::meta_item {
-    @dummy_spanned(ast::meta_name_value(/*bad*/ copy *name, value))
+    @dummy_spanned(ast::meta_name_value(name, value))
 }
 
 pub fn mk_list_item(name: @~str, +items: ~[@ast::meta_item]) ->
    @ast::meta_item {
-    @dummy_spanned(ast::meta_list(/*bad*/ copy *name, items))
+    @dummy_spanned(ast::meta_list(name, items))
 }
 
 pub fn mk_word_item(name: @~str) -> @ast::meta_item {
-    @dummy_spanned(ast::meta_word(/*bad*/ copy *name))
+    @dummy_spanned(ast::meta_word(name))
 }
 
 pub fn mk_attr(item: @ast::meta_item) -> ast::attribute {
@@ -60,7 +60,7 @@ pub fn mk_sugared_doc_attr(text: ~str,
     let lit = spanned(lo, hi, ast::lit_str(@text));
     let attr = ast::attribute_ {
         style: doc_comment_style(text),
-        value: spanned(lo, hi, ast::meta_name_value(~"doc", lit)),
+        value: spanned(lo, hi, ast::meta_name_value(@~"doc", lit)),
         is_sugared_doc: true
     };
     spanned(lo, hi, attr)
@@ -96,9 +96,9 @@ pub pure fn get_attr_name(attr: &ast::attribute) -> @~str {
 
 pub pure fn get_meta_item_name(meta: @ast::meta_item) -> @~str {
     match meta.node {
-        ast::meta_word(ref n) => @/*bad*/ copy *n,
-        ast::meta_name_value(ref n, _) => @/*bad*/ copy *n,
-        ast::meta_list(ref n, _) => @/*bad*/ copy *n,
+        ast::meta_word(n) => n,
+        ast::meta_name_value(n, _) => n,
+        ast::meta_list(n, _) => n,
     }
 }
 
@@ -343,8 +343,8 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline(always)]
     do vec::foldl(ia_none, attrs) |ia,attr| {
         match attr.node.value.node {
-          ast::meta_word(~"inline") => ia_hint,
-          ast::meta_list(~"inline", items) => {
+          ast::meta_word(@~"inline") => ia_hint,
+          ast::meta_list(@~"inline", items) => {
             if !vec::is_empty(find_meta_items_by_name(items, ~"always")) {
                 ia_always
             } else if !vec::is_empty(
