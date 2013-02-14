@@ -17,6 +17,6 @@ pub struct NominalOp<T> {
     op: T
 }
 
-impl<T: Copy> NominalOp<T>: Clone {
+impl<T: Copy> Clone for NominalOp<T> {
     fn clone(&self) -> NominalOp<T> { copy *self }
 }

@@ -179,7 +179,7 @@ pub impl FnType {
 
 enum LLVM_ABIInfo { LLVM_ABIInfo }
 
-impl LLVM_ABIInfo: ABIInfo {
+impl ABIInfo for LLVM_ABIInfo {
     fn compute_info(&self,
                     atys: &[TypeRef],
                     rty: TypeRef,

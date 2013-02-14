@@ -169,7 +169,7 @@ pub trait Sort {
     fn qsort(self);
 }
 
-impl<T: Copy Ord Eq> &mut [T] : Sort {
+impl<T: Copy Ord Eq> Sort for &mut [T] {
     fn qsort(self) { quick_sort3(self); }
 }
 
@@ -908,7 +908,7 @@ mod test_tim_sort {
         val: float,
     }
 
-    impl CVal: Ord {
+    impl Ord for CVal {
         pure fn lt(&self, other: &CVal) -> bool {
             unsafe {
                 let rng = rand::Rng();
@@ -973,7 +973,7 @@ mod test_tim_sort {
 
     struct DVal { val: uint }
 
-    impl DVal: Ord {
+    impl Ord for DVal {
         pure fn lt(&self, _x: &DVal) -> bool { true }
         pure fn le(&self, _x: &DVal) -> bool { true }
         pure fn gt(&self, _x: &DVal) -> bool { true }
@@ -1182,7 +1182,7 @@ mod big_tests {
 
     }
 
-    impl LVal : Drop {
+    impl Drop for LVal {
         fn finalize(&self) {
             let x = unsafe { task::local_data::local_data_get(self.key) };
             match x {
@@ -1196,7 +1196,7 @@ mod big_tests {
         }
     }
 
-    impl LVal: Ord {
+    impl Ord for LVal {
         pure fn lt(&self, other: &a/LVal/&self) -> bool {
             (*self).val < other.val
         }

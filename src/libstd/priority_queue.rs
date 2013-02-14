@@ -27,7 +27,7 @@ pub struct PriorityQueue<T> {
     priv data: ~[T],
 }
 
-impl <T: Ord> PriorityQueue<T>: BaseIter<T> {
+impl<T: Ord> BaseIter<T> for PriorityQueue<T> {
     /// Visit all values in the underlying vector.
     ///
     /// The values are **not** visited in order.
@@ -35,7 +35,7 @@ impl <T: Ord> PriorityQueue<T>: BaseIter<T> {
     pure fn size_hint(&self) -> Option<uint> { self.data.size_hint() }
 }
 
-impl <T: Ord> PriorityQueue<T>: Container {
+impl<T: Ord> Container for PriorityQueue<T> {
     /// Returns the length of the queue
     pure fn len(&self) -> uint { self.data.len() }
 
@@ -43,7 +43,7 @@ impl <T: Ord> PriorityQueue<T>: Container {
     pure fn is_empty(&self) -> bool { self.data.is_empty() }
 }
 
-impl <T: Ord> PriorityQueue<T>: Mutable {
+impl<T: Ord> Mutable for PriorityQueue<T> {
     /// Drop all items from the queue
     fn clear(&mut self) { self.data.truncate(0) }
 }

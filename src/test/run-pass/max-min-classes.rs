@@ -23,7 +23,7 @@ impl Foo {
     }
 }
 
-impl Foo : Product {
+impl Product for Foo {
     fn product() -> int {
         self.x * self.y
     }

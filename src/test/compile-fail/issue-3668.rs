@@ -13,7 +13,7 @@ trait PTrait {
    fn getChildOption() -> Option<@P>;
 }
 
-impl P: PTrait {
+impl PTrait for P {
    fn getChildOption() -> Option<@P> {
        const childVal: @P = self.child.get(); //~ ERROR attempt to use a non-constant value in a constant
        fail!();

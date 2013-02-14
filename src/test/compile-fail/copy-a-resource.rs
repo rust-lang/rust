@@ -12,7 +12,7 @@ struct foo {
   i: int,
 }
 
-impl foo : Drop {
+impl Drop for foo {
     fn finalize(&self) {}
 }
 

@@ -10,13 +10,13 @@ struct S {
     x: int
 }
 
-impl S : Foo<S> {
+impl Foo<S> for S {
     fn f(&self, x: &S) {
         io::println(x.x.to_str());
     }
 }
 
-impl S : Bar {
+impl Bar for S {
     fn g(&self) {
         self.f(self);
     }

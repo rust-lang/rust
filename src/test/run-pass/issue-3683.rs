@@ -17,7 +17,7 @@ trait Foo {
     }
 }
 
-impl int: Foo {
+impl Foo for int {
     fn a() -> int {
         3
     }

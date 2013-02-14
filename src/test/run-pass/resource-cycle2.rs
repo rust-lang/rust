@@ -20,7 +20,7 @@ struct r {
   v: U,
 }
 
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {
         unsafe {
             let v2: ~int = cast::reinterpret_cast(&self.v.c);

@@ -12,7 +12,7 @@ struct C {
     x: int,
 }
 
-impl C : Drop {
+impl Drop for C {
     fn finalize(&self) {
         error!("dropping: %?", self.x);
     }

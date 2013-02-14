@@ -12,13 +12,13 @@ trait Foo {
     fn foo(&self) -> ~str;
 }
 
-impl<T: Foo> @T: Foo {
+impl<T: Foo> Foo for @T {
     fn foo(&self) -> ~str {
         fmt!("@%s", (**self).foo())
     }
 }
 
-impl uint: Foo {
+impl Foo for uint {
     fn foo(&self) -> ~str {
         fmt!("%u", *self)
     }

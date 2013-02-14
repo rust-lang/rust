@@ -12,7 +12,7 @@ trait Foo {
     fn foo();
 }
 
-impl int : Foo {
+impl Foo for int {
     fn foo() {
         io::println("Hello world!");
     }

@@ -16,7 +16,7 @@ trait Deserializable<D: Deserializer> {
     static fn deserialize(d: &D) -> Self;
 }
 
-impl<D: Deserializer> int: Deserializable<D> {
+impl<D: Deserializer> Deserializable<D> for int {
     static fn deserialize(d: &D) -> int {
         return d.read_int();
     }
@@ -24,7 +24,7 @@ impl<D: Deserializer> int: Deserializable<D> {
 
 struct FromThinAir { dummy: () }
 
-impl FromThinAir: Deserializer {
+impl Deserializer for FromThinAir {
     fn read_int() -> int { 22 }
 }
 

@@ -16,37 +16,37 @@ struct Point {
     y: int
 }
 
-impl Point : ops::Add<Point,Point> {
+impl ops::Add<Point,Point> for Point {
     pure fn add(&self, other: &Point) -> Point {
         Point {x: self.x + (*other).x, y: self.y + (*other).y}
     }
 }
 
-impl Point : ops::Sub<Point,Point> {
+impl ops::Sub<Point,Point> for Point {
     pure fn sub(&self, other: &Point) -> Point {
         Point {x: self.x - (*other).x, y: self.y - (*other).y}
     }
 }
 
-impl Point : ops::Neg<Point> {
+impl ops::Neg<Point> for Point {
     pure fn neg(&self) -> Point {
         Point {x: -self.x, y: -self.y}
     }
 }
 
-impl Point : ops::Not<Point> {
+impl ops::Not<Point> for Point {
     pure fn not(&self) -> Point {
         Point {x: !self.x, y: !self.y }
     }
 }
 
-impl Point : ops::Index<bool,int> {
+impl ops::Index<bool,int> for Point {
     pure fn index(&self, +x: bool) -> int {
         if x { self.x } else { self.y }
     }
 }
 
-impl Point : cmp::Eq {
+impl cmp::Eq for Point {
     pure fn eq(&self, other: &Point) -> bool {
         (*self).x == (*other).x && (*self).y == (*other).y
     }

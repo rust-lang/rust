@@ -279,7 +279,7 @@ trait get_and_find_region {
     fn find(br: ty::bound_region) -> Option<ty::Region>;
 }
 
-impl isr_alist: get_and_find_region {
+impl get_and_find_region for isr_alist {
     fn get(br: ty::bound_region) -> ty::Region {
         self.find(br).get()
     }

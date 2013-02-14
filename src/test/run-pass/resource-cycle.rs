@@ -14,7 +14,7 @@ struct r {
   v: *int,
 }
 
-impl r : Drop {
+impl Drop for r {
     fn finalize(&self) {
         unsafe {
             debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",

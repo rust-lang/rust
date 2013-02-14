@@ -16,7 +16,7 @@ struct A {
     x: int
 }
 
-impl A : Foo {
+impl Foo for A {
     fn f() -> int {
         io::println(~"Today's number is " + self.x.to_str());
         return self.x;

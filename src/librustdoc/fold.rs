@@ -35,7 +35,7 @@ pub struct Fold<T> {
     fold_struct: FoldStruct<T>
 }
 
-impl<T: Clone> Fold<T>: Clone {
+impl<T: Clone> Clone for Fold<T> {
     fn clone(&self) -> Fold<T> {
         Fold {
             ctxt: self.ctxt.clone(),

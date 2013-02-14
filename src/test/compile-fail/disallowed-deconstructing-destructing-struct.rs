@@ -12,7 +12,7 @@ struct X {
     x: ~str,
 }
 
-impl X : Drop {
+impl Drop for X {
     fn finalize(&self) {
         error!("value: %s", self.x);
     }

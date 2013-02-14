@@ -13,13 +13,13 @@ mod a {
 		static pub fn foo() -> Self;
 	}
 
-	impl int : Foo {
+	impl Foo for int {
 		static pub fn foo() -> int {
 			3
 		}
 	}
 	
-	impl uint : Foo {
+	impl Foo for uint {
 		static pub fn foo() -> uint {
 			5u
 		}

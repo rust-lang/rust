@@ -46,7 +46,7 @@ pub pure fn mut_ptr_eq<T>(a: @mut T, b: @mut T) -> bool {
 }
 
 #[cfg(notest)]
-impl<T:Eq> @const T : Eq {
+impl<T:Eq> Eq for @const T {
     #[inline(always)]
     pure fn eq(&self, other: &@const T) -> bool { *(*self) == *(*other) }
     #[inline(always)]
@@ -54,7 +54,7 @@ impl<T:Eq> @const T : Eq {
 }
 
 #[cfg(notest)]
-impl<T:Ord> @const T : Ord {
+impl<T:Ord> Ord for @const T {
     #[inline(always)]
     pure fn lt(&self, other: &@const T) -> bool { *(*self) < *(*other) }
     #[inline(always)]

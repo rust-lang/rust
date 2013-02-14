@@ -112,7 +112,7 @@ enum State {
     Terminated
 }
 
-impl State : Eq {
+impl Eq for State {
     pure fn eq(&self, other: &State) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
@@ -207,7 +207,7 @@ pub trait HasBuffer {
     fn set_buffer(b: *libc::c_void);
 }
 
-impl<T: Owned> Packet<T>: HasBuffer {
+impl<T: Owned> HasBuffer for Packet<T> {
     fn set_buffer(b: *libc::c_void) {
         self.header.buffer = b;
     }
@@ -561,7 +561,7 @@ pub pure fn peek<T: Owned, Tb: Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     }
 }
 
-impl<T: Owned, Tb: Owned> RecvPacketBuffered<T, Tb>: Peekable<T> {
+impl<T: Owned, Tb: Owned> Peekable<T> for RecvPacketBuffered<T, Tb> {
     pure fn peek() -> bool {
         peek(&self)
     }
@@ -734,7 +734,7 @@ trait Selectable {
     pure fn header() -> *PacketHeader;
 }
 
-impl *PacketHeader: Selectable {
+impl Selectable for *PacketHeader {
     pure fn header() -> *PacketHeader { self }
 }
 
@@ -783,7 +783,7 @@ pub struct SendPacketBuffered<T, Tbuffer> {
     mut buffer: Option<BufferResource<Tbuffer>>,
 }
 
-impl<T:Owned,Tbuffer:Owned> SendPacketBuffered<T,Tbuffer> : ::ops::Drop {
+impl<T:Owned,Tbuffer:Owned> ::ops::Drop for SendPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {
         //    debug!("drop send %?", option::get(self.p));
@@ -852,7 +852,7 @@ pub struct RecvPacketBuffered<T, Tbuffer> {
     mut buffer: Option<BufferResource<Tbuffer>>,
 }
 
-impl<T:Owned, Tbuffer:Owned> RecvPacketBuffered<T,Tbuffer> : ::ops::Drop {
+impl<T:Owned, Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {
         //    debug!("drop recv %?", option::get(self.p));
@@ -884,7 +884,7 @@ impl<T: Owned, Tbuffer: Owned> RecvPacketBuffered<T, Tbuffer> {
     }
 }
 
-impl<T: Owned, Tbuffer: Owned> RecvPacketBuffered<T, Tbuffer> : Selectable {
+impl<T: Owned, Tbuffer: Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
     pure fn header() -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
@@ -1036,7 +1036,7 @@ pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
     (Port_(Port_ { endp: Some(s) }), Chan_(Chan_{ endp: Some(c) }))
 }
 
-impl<T: Owned> Chan<T>: GenericChan<T> {
+impl<T: Owned> GenericChan<T> for Chan<T> {
     fn send(x: T) {
         let mut endp = None;
         endp <-> self.endp;
@@ -1045,7 +1045,7 @@ impl<T: Owned> Chan<T>: GenericChan<T> {
     }
 }
 
-impl<T: Owned> Chan<T>: GenericSmartChan<T> {
+impl<T: Owned> GenericSmartChan<T> for Chan<T> {
 
     fn try_send(x: T) -> bool {
         let mut endp = None;
@@ -1060,7 +1060,7 @@ impl<T: Owned> Chan<T>: GenericSmartChan<T> {
     }
 }
 
-impl<T: Owned> Port<T>: GenericPort<T> {
+impl<T: Owned> GenericPort<T> for Port<T> {
     fn recv() -> T {
         let mut endp = None;
         endp <-> self.endp;
@@ -1082,7 +1082,7 @@ impl<T: Owned> Port<T>: GenericPort<T> {
     }
 }
 
-impl<T: Owned> Port<T>: Peekable<T> {
+impl<T: Owned> Peekable<T> for Port<T> {
     pure fn peek() -> bool {
         unsafe {
             let mut endp = None;
@@ -1097,7 +1097,7 @@ impl<T: Owned> Port<T>: Peekable<T> {
     }
 }
 
-impl<T: Owned> Port<T>: Selectable {
+impl<T: Owned> Selectable for Port<T> {
     pure fn header() -> *PacketHeader {
         unsafe {
             match self.endp {
@@ -1132,7 +1132,7 @@ impl<T: Owned> PortSet<T> {
     }
 }
 
-impl<T: Owned> PortSet<T> : GenericPort<T> {
+impl<T: Owned> GenericPort<T> for PortSet<T> {
 
     fn try_recv() -> Option<T> {
         let mut result = None;
@@ -1162,7 +1162,7 @@ impl<T: Owned> PortSet<T> : GenericPort<T> {
 
 }
 
-impl<T: Owned> PortSet<T> : Peekable<T> {
+impl<T: Owned> Peekable<T> for PortSet<T> {
     pure fn peek() -> bool {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
@@ -1176,7 +1176,7 @@ impl<T: Owned> PortSet<T> : Peekable<T> {
 /// A channel that can be shared between many senders.
 pub type SharedChan<T> = private::Exclusive<Chan<T>>;
 
-impl<T: Owned> SharedChan<T>: GenericChan<T> {
+impl<T: Owned> GenericChan<T> for SharedChan<T> {
     fn send(x: T) {
         let mut xx = Some(move x);
         do self.with_imm |chan| {
@@ -1187,7 +1187,7 @@ impl<T: Owned> SharedChan<T>: GenericChan<T> {
     }
 }
 
-impl<T: Owned> SharedChan<T>: GenericSmartChan<T> {
+impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(x: T) -> bool {
         let mut xx = Some(move x);
         do self.with_imm |chan| {

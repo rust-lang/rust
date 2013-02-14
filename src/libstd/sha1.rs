@@ -228,7 +228,7 @@ pub fn sha1() -> Sha1 {
         process_msg_block(st);
     }
 
-    impl Sha1State: Sha1 {
+    impl Sha1 for Sha1State {
         fn reset(&mut self) {
             assert (vec::len(self.h) == digest_buf_len);
             self.len_low = 0u32;

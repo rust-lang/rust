@@ -156,12 +156,12 @@ pub mod chained {
         }
     }
 
-    impl<K: Eq IterBytes Hash, V> T<K, V>: Container {
+    impl<K: Eq IterBytes Hash, V> Container for T<K, V> {
         pure fn len(&self) -> uint { self.count }
         pure fn is_empty(&self) -> bool { self.count == 0 }
     }
 
-    impl<K: Eq IterBytes Hash, V> T<K, V>: Mutable {
+    impl<K: Eq IterBytes Hash, V> Mutable for T<K, V> {
         fn clear(&mut self) {
             self.count = 0u;
             self.chains = chains(initial_capacity);
@@ -347,7 +347,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> T<K, V>: ToStr {
+    impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> ToStr for T<K, V> {
         pure fn to_str(&self) -> ~str {
             unsafe {
                 // Meh -- this should be safe
@@ -356,7 +356,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
+    impl<K:Eq IterBytes Hash Copy, V: Copy> ops::Index<K, V> for T<K, V> {
         pure fn index(&self, k: K) -> V {
             self.get(&k)
         }

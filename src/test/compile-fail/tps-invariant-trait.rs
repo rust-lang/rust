@@ -17,7 +17,7 @@ enum box_impl<T> = {
     mut f: T
 };
 
-impl<T:Copy> box_impl<T>: box_trait<T> {
+impl<T:Copy> box_trait<T> for box_impl<T> {
     fn get() -> T { return self.f; }
     fn set(t: T) { self.f = t; }
 }

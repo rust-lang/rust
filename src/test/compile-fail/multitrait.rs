@@ -12,7 +12,7 @@ struct S {
  y: int
 }
 
-impl S: Cmp, ToStr { //~ ERROR: expected `{` but found `,`
+impl Cmp, ToStr for S { //~ ERROR: expected `{` but found `,`
   fn eq(&&other: S) { false }
   fn to_str(&self) -> ~str { ~"hi" }
 }

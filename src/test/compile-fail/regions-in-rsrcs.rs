@@ -12,7 +12,7 @@ struct yes0 {
   x: &uint,
 }
 
-impl yes0 : Drop {
+impl Drop for yes0 {
     fn finalize(&self) {}
 }
 
@@ -20,7 +20,7 @@ struct yes1 {
   x: &self/uint,
 }
 
-impl yes1 : Drop {
+impl Drop for yes1 {
     fn finalize(&self) {}
 }
 
@@ -28,7 +28,7 @@ struct yes2 {
   x: &foo/uint, //~ ERROR named regions other than `self` are not allowed as part of a type declaration
 }
 
-impl yes2 : Drop {
+impl Drop for yes2 {
     fn finalize(&self) {}
 }
 

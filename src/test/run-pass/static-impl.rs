@@ -30,7 +30,7 @@ trait uint_utils {
     fn multi(f: fn(uint));
 }
 
-impl uint: uint_utils {
+impl uint_utils for uint {
     fn str() -> ~str { uint::str(self) }
     fn multi(f: fn(uint)) {
         let mut c = 0u;
@@ -44,7 +44,7 @@ trait vec_utils<T> {
     fn map_<U: Copy>(f: fn(T) -> U) -> ~[U];
 }
 
-impl<T> ~[T]: vec_utils<T> {
+impl<T> vec_utils<T> for ~[T] {
     fn length_() -> uint { vec::len(self) }
     fn iter_(f: fn(T)) { for self.each |x| { f(*x); } }
     fn map_<U: Copy>(f: fn(T) -> U) -> ~[U] {

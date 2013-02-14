@@ -284,7 +284,7 @@ pub trait PageUtils {
     fn types(&self) -> ~[TyDoc];
 }
 
-impl ~[Page]: PageUtils {
+impl PageUtils for ~[Page] {
 
     fn mods(&self) -> ~[ModDoc] {
         do vec::filter_mapped(*self) |page| {
@@ -363,7 +363,7 @@ pub trait Item {
     pure fn item(&self) -> ItemDoc;
 }
 
-impl ItemTag: Item {
+impl Item for ItemTag {
     pure fn item(&self) -> ItemDoc {
         match self {
           &doc::ModTag(ref doc) => copy doc.item,
@@ -379,31 +379,31 @@ impl ItemTag: Item {
     }
 }
 
-impl SimpleItemDoc: Item {
+impl Item for SimpleItemDoc {
     pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
-impl ModDoc: Item {
+impl Item for ModDoc {
     pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
-impl NmodDoc: Item {
+impl Item for NmodDoc {
     pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
-impl EnumDoc: Item {
+impl Item for EnumDoc {
     pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
-impl TraitDoc: Item {
+impl Item for TraitDoc {
     pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
-impl ImplDoc: Item {
+impl Item for ImplDoc {
     pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
-impl StructDoc: Item {
+impl Item for StructDoc {
     pure fn item(&self) -> ItemDoc { copy self.item }
 }
 
@@ -416,7 +416,7 @@ pub trait ItemUtils {
     pure fn sections(&self) -> ~[Section];
 }
 
-impl<A:Item> A: ItemUtils {
+impl<A:Item> ItemUtils for A {
     pure fn id(&self) -> AstId {
         self.item().id
     }
