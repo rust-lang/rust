@@ -18,12 +18,9 @@
 uintptr_t exchange_count = 0;
 
 void *
-rust_exchange_alloc::malloc(size_t size, bool zero) {
+rust_exchange_alloc::malloc(size_t size) {
   void *value = ::malloc(size);
   assert(value);
-  if (zero) {
-    memset(value, 0, size);
-  }
 
   sync::increment(exchange_count);
 
