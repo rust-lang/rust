@@ -121,9 +121,9 @@ pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     let opts =
         match parse_opts(args) {
           either::Left(move o) => o,
-          either::Right(move m) => die!(m)
+          either::Right(move m) => fail!(m)
         };
-    if !run_tests_console(&opts, tests) { die!(~"Some tests failed"); }
+    if !run_tests_console(&opts, tests) { fail!(~"Some tests failed"); }
 }
 
 // A variant optimized for invocation with a static test vector.
@@ -284,7 +284,7 @@ pub fn run_tests_console(opts: &TestOpts,
                                                   io::Truncate]) {
           result::Ok(w) => Some(w),
           result::Err(ref s) => {
-              die!(fmt!("can't open output file: %s", *s))
+              fail!(fmt!("can't open output file: %s", *s))
           }
         },
         None => None
@@ -800,7 +800,7 @@ mod tests {
 
     #[test]
     pub fn do_not_run_ignored_tests() {
-        fn f() { die!(); }
+        fn f() { fail!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
@@ -837,7 +837,7 @@ mod tests {
     #[test]
     #[ignore(cfg(windows))]
     pub fn test_should_fail() {
-        fn f() { die!(); }
+        fn f() { fail!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
@@ -876,7 +876,7 @@ mod tests {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
-          _ => die!(~"Malformed arg in first_free_arg_should_be_a_filter")
+          _ => fail!(~"Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert ~"filter" == opts.filter.get();
     }
@@ -886,7 +886,7 @@ mod tests {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
-          _ => die!(~"Malformed arg in parse_ignored_flag")
+          _ => fail!(~"Malformed arg in parse_ignored_flag")
         };
         assert (opts.run_ignored);
     }

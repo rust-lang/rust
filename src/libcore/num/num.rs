@@ -260,10 +260,10 @@ pub pure fn to_str_bytes_common<T: Num NumCast Zero One Eq Ord Round Copy>(
         num: &T, radix: uint, special: bool, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
     if radix as int <  2 {
-        die!(fmt!("to_str_bytes_common: radix %? to low, \
+        fail!(fmt!("to_str_bytes_common: radix %? to low, \
                    must lie in the range [2, 36]", radix));
     } else if radix as int > 36 {
-        die!(fmt!("to_str_bytes_common: radix %? to high, \
+        fail!(fmt!("to_str_bytes_common: radix %? to high, \
                    must lie in the range [2, 36]", radix));
     }
 
@@ -539,19 +539,19 @@ pub pure fn from_str_bytes_common<T: Num NumCast Zero One Ord Copy>(
         ) -> Option<T> {
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
-          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+          => fail!(fmt!("from_str_bytes_common: radix %? incompatible with \
                         use of 'e' as decimal exponent", radix)),
         ExpBin if radix >= DIGIT_P_RADIX       // binary exponent 'p'
-          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+          => fail!(fmt!("from_str_bytes_common: radix %? incompatible with \
                         use of 'p' as binary exponent", radix)),
         _ if special && radix >= DIGIT_I_RADIX // first digit of 'inf'
-          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+          => fail!(fmt!("from_str_bytes_common: radix %? incompatible with \
                         special values 'inf' and 'NaN'", radix)),
         _ if radix as int < 2
-          => die!(fmt!("from_str_bytes_common: radix %? to low, \
+          => fail!(fmt!("from_str_bytes_common: radix %? to low, \
                         must lie in the range [2, 36]", radix)),
         _ if radix as int > 36
-          => die!(fmt!("from_str_bytes_common: radix %? to high, \
+          => fail!(fmt!("from_str_bytes_common: radix %? to high, \
                         must lie in the range [2, 36]", radix)),
         _ => ()
     }

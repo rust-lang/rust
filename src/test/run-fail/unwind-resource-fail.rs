@@ -12,7 +12,7 @@
 
 struct r {
     i: int,
-    drop { die!(~"squirrel") }
+    drop { fail!(~"squirrel") }
 }
 
 fn r(i: int) -> r { r { i: i } }

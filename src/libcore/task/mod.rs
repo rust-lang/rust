@@ -213,7 +213,7 @@ pub fn task() -> TaskBuilder {
 priv impl TaskBuilder {
     fn consume() -> TaskBuilder {
         if self.consumed {
-            die!(~"Cannot copy a task_builder"); // Fake move mode on self
+            fail!(~"Cannot copy a task_builder"); // Fake move mode on self
         }
         self.consumed = true;
         let notify_chan = replace(&mut self.opts.notify_chan, None);
@@ -309,7 +309,7 @@ impl TaskBuilder {
         // sending out messages.
 
         if self.opts.notify_chan.is_some() {
-            die!(~"Can't set multiple future_results for one task!");
+            fail!(~"Can't set multiple future_results for one task!");
         }
 
         // Construct the future and give it to the caller.
@@ -543,7 +543,7 @@ pub fn yield() {
         let task_ = rt::rust_get_task();
         let killed = rt::rust_task_yield(task_);
         if killed && !failing() {
-            die!(~"killed");
+            fail!(~"killed");
         }
     }
 }
@@ -689,24 +689,24 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
             for iter::repeat(16) { task::yield(); }
             ch.send(()); // If killed first, grandparent hangs.
         }
-        die!(); // Shouldn't kill either (grand)parent or (grand)child.
+        fail!(); // Shouldn't kill either (grand)parent or (grand)child.
     }
     po.recv();
 }
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
-    do spawn_unlinked { die!(); }
+    do spawn_unlinked { fail!(); }
 }
 #[test] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
-    do spawn_supervised { die!(); }
+    do spawn_supervised { fail!(); }
     // Give child a chance to fail-but-not-kill-us.
     for iter::repeat(16) { task::yield(); }
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_fail_down() {
     do spawn_supervised { loop { task::yield(); } }
-    die!(); // Shouldn't leave a child hanging around.
+    fail!(); // Shouldn't leave a child hanging around.
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -728,7 +728,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
         can_not_copy: None,
         .. b0
     };
-    do b1.spawn { die!(); }
+    do b1.spawn { fail!(); }
     po.recv(); // We should get punted awake
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -749,26 +749,26 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
         .. b0
     };
     do b1.spawn { loop { task::yield(); } }
-    die!(); // *both* mechanisms would be wrong if this didn't kill the child
+    fail!(); // *both* mechanisms would be wrong if this didn't kill the child
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_up() { // child fails; parent fails
     let (po, _ch) = stream::<()>();
     // Default options are to spawn linked & unsupervised.
-    do spawn { die!(); }
+    do spawn { fail!(); }
     po.recv(); // We should get punted awake
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
     // Default options are to spawn linked & unsupervised.
     do spawn { loop { task::yield(); } }
-    die!();
+    fail!();
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
     // Make sure the above test is the same as this one.
     do task().linked().spawn { loop { task::yield(); } }
-    die!();
+    fail!();
 }
 
 // A couple bonus linked failure tests - testing for failure propagation even
@@ -783,7 +783,7 @@ fn test_spawn_failure_propagate_grandchild() {
         }
     }
     for iter::repeat(16) { task::yield(); }
-    die!();
+    fail!();
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -795,7 +795,7 @@ fn test_spawn_failure_propagate_secondborn() {
         }
     }
     for iter::repeat(16) { task::yield(); }
-    die!();
+    fail!();
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -807,7 +807,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
         }
     }
     for iter::repeat(16) { task::yield(); }
-    die!();
+    fail!();
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -819,7 +819,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
         }
     }
     for iter::repeat(16) { task::yield(); }
-    die!();
+    fail!();
 }
 
 #[test]
@@ -863,7 +863,7 @@ fn test_future_result() {
     result = None;
     do task().future_result(|+r|
         { result = Some(move r); }).unlinked().spawn {
-        die!();
+        fail!();
     }
     assert option::unwrap(move result).recv() == Failure;
 }
@@ -879,7 +879,7 @@ fn test_try_success() {
         ~"Success!"
     } {
         result::Ok(~"Success!") => (),
-        _ => die!()
+        _ => fail!()
     }
 }
 
@@ -887,10 +887,10 @@ fn test_try_success() {
 #[ignore(cfg(windows))]
 fn test_try_fail() {
     match do try {
-        die!()
+        fail!()
     } {
         result::Err(()) => (),
-        result::Ok(()) => die!()
+        result::Ok(()) => fail!()
     }
 }
 
@@ -1090,7 +1090,7 @@ fn test_unkillable() {
         yield();
         // We want to fail after the unkillable task
         // blocks on recv
-        die!();
+        fail!();
     }
 
     unsafe {
@@ -1125,7 +1125,7 @@ fn test_unkillable_nested() {
         yield();
         // We want to fail after the unkillable task
         // blocks on recv
-        die!();
+        fail!();
     }
 
     unsafe {

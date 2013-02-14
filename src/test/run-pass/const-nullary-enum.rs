@@ -19,11 +19,11 @@ const X: Foo = Bar;
 pub fn main() {
     match X {
         Bar => {}
-        Baz | Boo => die!()
+        Baz | Boo => fail!()
     }
     match Y {
         Baz => {}
-        Bar | Boo => die!()
+        Bar | Boo => fail!()
     }
 }
 

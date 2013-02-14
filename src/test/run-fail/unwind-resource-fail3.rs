@@ -19,7 +19,7 @@ fn faily_box(i: @int) -> faily_box { faily_box { i: i } }
 
 impl faily_box : Drop {
     fn finalize(&self) {
-        die!(~"quux");
+        fail!(~"quux");
     }
 }
 

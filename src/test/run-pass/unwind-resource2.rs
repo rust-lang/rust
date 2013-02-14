@@ -27,7 +27,7 @@ fn complainer(c: @int) -> complainer {
 
 fn f() {
     let c = move complainer(@0);
-    die!();
+    fail!();
 }
 
 pub fn main() {

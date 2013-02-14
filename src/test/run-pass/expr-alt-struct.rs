@@ -17,7 +17,7 @@
 struct R { i: int }
 
 fn test_rec() {
-    let rs = match true { true => R {i: 100}, _ => die!() };
+    let rs = match true { true => R {i: 100}, _ => fail!() };
     assert (rs.i == 100);
 }
 

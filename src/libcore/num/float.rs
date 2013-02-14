@@ -143,7 +143,7 @@ pub pure fn to_str_hex(num: float) -> ~str {
 pub pure fn to_str_radix(num: float, radix: uint) -> ~str {
     let (r, special) = num::to_str_common(
         &num, radix, true, true, num::SignNeg, num::DigAll);
-    if special { die!(~"number has a special value, \
+    if special { fail!(~"number has a special value, \
                       try to_str_radix_special() if those are expected") }
     r
 }
@@ -509,16 +509,16 @@ pub fn test_from_str() {
    // note: NaN != NaN, hence this slightly complex test
    match from_str(~"NaN") {
        Some(f) => assert is_NaN(f),
-       None => die!()
+       None => fail!()
    }
    // note: -0 == 0, hence these slightly more complex tests
    match from_str(~"-0") {
        Some(v) if is_zero(v) => assert is_negative(v),
-       _ => die!()
+       _ => fail!()
    }
    match from_str(~"0") {
        Some(v) if is_zero(v) => assert is_positive(v),
-       _ => die!()
+       _ => fail!()
    }
 
    assert from_str(~"").is_none();
@@ -556,16 +556,16 @@ pub fn test_from_str_hex() {
    // note: NaN != NaN, hence this slightly complex test
    match from_str_hex(~"NaN") {
        Some(f) => assert is_NaN(f),
-       None => die!()
+       None => fail!()
    }
    // note: -0 == 0, hence these slightly more complex tests
    match from_str_hex(~"-0") {
        Some(v) if is_zero(v) => assert is_negative(v),
-       _ => die!()
+       _ => fail!()
    }
    match from_str_hex(~"0") {
        Some(v) if is_zero(v) => assert is_positive(v),
-       _ => die!()
+       _ => fail!()
    }
    assert from_str_hex(~"e") == Some(14.);
    assert from_str_hex(~"E") == Some(14.);

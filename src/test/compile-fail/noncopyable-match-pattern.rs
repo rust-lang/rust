@@ -14,6 +14,6 @@ fn main() {
         Some(copy z) => { //~ ERROR copying a value of non-copyable type
             do z.with |b| { assert !*b; }
         }
-        None => die!()
+        None => fail!()
     }
 }

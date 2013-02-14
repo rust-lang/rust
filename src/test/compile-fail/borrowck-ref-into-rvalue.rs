@@ -14,7 +14,7 @@ fn main() {
         Some(ref m) => {
             msg = m;
         },  
-        None => { die!() }
+        None => { fail!() }
     }   
     io::println(*msg);
 }

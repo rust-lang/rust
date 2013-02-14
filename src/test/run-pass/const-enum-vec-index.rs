@@ -16,10 +16,10 @@ const C1: E = C[1];
 fn main() {
     match C0 { 
         V0 => (),
-        _ => die!()
+        _ => fail!()
     }
     match C1 {
         V1(n) => assert(n == 0xDEADBEE),
-        _ => die!()
+        _ => fail!()
     }
 }

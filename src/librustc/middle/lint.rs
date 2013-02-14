@@ -485,7 +485,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
             ast::gt => v >= min,
             ast::ge => v > min,
             ast::eq | ast::ne => v >= min && v <= max,
-            _ => die!()
+            _ => fail!()
         }
     }
 
@@ -544,7 +544,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
                         ast::lit_int_unsuffixed(v) => v,
                         _ => return true
                     },
-                    _ => die!()
+                    _ => fail!()
                 };
                 is_valid(norm_binop, lit_val, min, max)
             }
@@ -557,7 +557,7 @@ fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
                         ast::lit_int_unsuffixed(v) => v as u64,
                         _ => return true
                     },
-                    _ => die!()
+                    _ => fail!()
                 };
                 is_valid(norm_binop, lit_val, min, max)
             }
@@ -960,7 +960,7 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                                        ty_to_str(tcx, arg_ty.ty),
                                        mode_to_str(arg_ast.mode));
                                 error!("%?",arg_ast.ty.node);
-                                die!()
+                                fail!()
                             }
                         };
                     }

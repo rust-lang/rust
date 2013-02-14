@@ -402,7 +402,7 @@ pub pure fn to_str_hex(num: f32) -> ~str {
 pub pure fn to_str_radix(num: f32, rdx: uint) -> ~str {
     let (r, special) = num::to_str_common(
         &num, rdx, true, true, num::SignNeg, num::DigAll);
-    if special { die!(~"number has a special value, \
+    if special { fail!(~"number has a special value, \
                       try to_str_radix_special() if those are expected") }
     r
 }

@@ -118,7 +118,7 @@ pub fn solve_grid(g: grid_t) {
             ptr = ptr + 1u;
         } else {
             // no: redo this field aft recoloring pred; unless there is none
-            if ptr == 0u { die!(~"No solution found for this sudoku"); }
+            if ptr == 0u { fail!(~"No solution found for this sudoku"); }
             ptr = ptr - 1u;
         }
     }

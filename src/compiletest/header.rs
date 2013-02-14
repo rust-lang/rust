@@ -145,7 +145,7 @@ fn parse_exec_env(line: ~str) -> Option<(~str, ~str)> {
         match strs.len() {
           1u => (strs[0], ~""),
           2u => (strs[0], strs[1]),
-          n => die!(fmt!("Expected 1 or 2 strings, not %u", n))
+          n => fail!(fmt!("Expected 1 or 2 strings, not %u", n))
         }
     }
 }

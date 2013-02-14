@@ -9,4 +9,4 @@
 // except according to those terms.
 
 // error-pattern:expected `~str` but found `~[int]`
-fn main() { die!(~[0i]); }
+fn main() { fail!(~[0i]); }

@@ -63,7 +63,7 @@ impl &[u8]: ToBase64 {
                 str::push_char(&mut s, chars[(n >> 6u) & 63u]);
                 str::push_char(&mut s, '=');
               }
-              _ => die!(~"Algebra is broken, please alert the math police")
+              _ => fail!(~"Algebra is broken, please alert the math police")
             }
         }
         s
@@ -82,7 +82,7 @@ pub trait FromBase64 {
 
 impl ~[u8]: FromBase64 {
     pure fn from_base64() -> ~[u8] {
-        if self.len() % 4u != 0u { die!(~"invalid base64 length"); }
+        if self.len() % 4u != 0u { fail!(~"invalid base64 length"); }
 
         let len = self.len();
         let mut padding = 0u;
@@ -124,10 +124,10 @@ impl ~[u8]: FromBase64 {
                             r.push(((n >> 10u) & 0xFFu) as u8);
                             return copy r;
                           }
-                          _ => die!(~"invalid base64 padding")
+                          _ => fail!(~"invalid base64 padding")
                         }
                     } else {
-                        die!(~"invalid base64 character");
+                        fail!(~"invalid base64 character");
                     }
 
                     i += 1u;
