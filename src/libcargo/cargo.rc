@@ -1553,7 +1553,7 @@ pub fn cmd_list(c: &Cargo) {
     sync(c);
 
     if vec::len(c.opts.free) >= 3u {
-        let v = vec::view(c.opts.free, 2u, vec::len(c.opts.free));
+        let v = vec::slice(c.opts.free, 2u, vec::len(c.opts.free));
         for vec::each(v) |name| {
             if !valid_pkg_name(*name) {
                 error(fmt!("'%s' is an invalid source name", *name));

@@ -177,10 +177,12 @@ pub mod reader {
         }
     }
 
-    pub fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start,
-                                                        d.end) }
+    pub fn doc_data(d: Doc) -> ~[u8] {
+        vec::slice::<u8>(*d.data, d.start, d.end).to_vec()
+    }
+
     pub fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
-        f(vec::view(*d.data, d.start, d.end))
+        f(vec::slice(*d.data, d.start, d.end))
     }
 
     pub fn doc_as_str(d: Doc) -> ~str { str::from_bytes(doc_data(d)) }
