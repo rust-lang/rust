@@ -1,9 +1,9 @@
-.TH RUSTC "1" "October 2012" "rustc 0.4" "User Commands"
+.TH RUSTC "1" "February 2013" "rustc 0.6" "User Commands"
 .SH NAME
 rustc \- rust compiler
 .SH SYNOPSIS
 .B rustc
-[\fIoptions\fR] \fI<input>\fR
+[\fIOPTIONS\fR] \fIINPUT\fR
 
 .SH DESCRIPTION
 This program is a compiler for the Rust language, available at
@@ -18,88 +18,134 @@ Compile an executable crate (default)
 \fB\-c\fR
 Compile and assemble, but do not link
 .TP
-\fB\-\-cfg\fR <cfgspec>
+\fB\-\-cfg\fR SPEC
 Configure the compilation environment
 .TP
 \fB\-\-emit\-llvm\fR
 Produce an LLVM bitcode file
 .TP
-\fB\-g\fR
-Produce debug info (experimental)
-.TP
-\fB\-\-gc\fR
-Garbage collect shared data (experimental/temporary)
-.TP
-\fB\-h\fR \fB\-\-help\fR
+\fB\-h\fR, \fB\-\-help\fR
 Display this message
 .TP
-\fB\-L\fR <path>
+\fB\-L\fR PATH
 Add a directory to the library search path
 .TP
 \fB\-\-lib\fR
 Compile a library crate
 .TP
 \fB\-\-ls\fR
-List the symbols defined by a compiled library crate
-.TP
-\fB\-\-jit\fR
-Execute using JIT (experimental)
+List the symbols defined by a library crate
 .TP
 \fB\-\-no\-trans\fR
 Run all passes except translation; no output
 .TP
 \fB\-O\fR
-Equivalent to \fB\-\-opt\-level\fR=\fI2\fR
+Equivalent to \fI\-\-opt\-level=2\fR
 .TP
-\fB\-o\fR <filename>
+\fB\-o\fR FILENAME
 Write output to <filename>
 .TP
-\fB\-\-opt\-level\fR <lvl>
-Optimize with possible levels 0\-3
+\fB\-\-opt\-level\fR LEVEL
+Optimize with possible levels 0-3
 .TP
-\fB\-\-out\-dir\fR <dir>
-Write output to compiler\-chosen filename in <dir>
+\fB\-\-out\-dir\fR DIR
+Write output to compiler-chosen filename in <dir>
 .TP
 \fB\-\-parse\-only\fR
 Parse only; do not compile, assemble, or link
 .TP
-\fB\-\-pretty\fR [type]
-Pretty\-print the input instead of compiling;
-valid types are: normal (un\-annotated source),
-expanded (crates expanded), typed (crates expanded,
-with type annotations), or identified (fully
-parenthesized, AST nodes and blocks with IDs)
+\fB\-\-pretty\fR [TYPE]
+Pretty-print the input instead of compiling; valid types are: normal
+(un-annotated source), expanded (crates expanded), typed (crates
+expanded, with type annotations), or identified (fully parenthesized,
+AST nodes and blocks with IDs)
 .TP
 \fB\-S\fR
 Compile only; do not assemble or link
 .TP
 \fB\-\-save\-temps\fR
-Write intermediate files (.bc, .opt.bc, .o)
-in addition to normal output
+Write intermediate files (.bc, .opt.bc, .o) in addition to normal output
 .TP
-\fB\-\-static\fR
-Use or produce static libraries or binaries
-(experimental)
-.TP
-\fB\-\-sysroot\fR <path>
+\fB\-\-sysroot\fR PATH
 Override the system root
 .TP
 \fB\-\-test\fR
 Build a test harness
 .TP
-\fB\-\-target\fR <triple>
-Target cpu\-manufacturer\-kernel[\-os] to compile for
-(default: host triple)
-(see http://sources.redhat.com/autobook/autobook/
-autobook_17.html for detail)
+\fB\-\-target\fR TRIPLE
+Target triple cpu-manufacturer-kernel[-os] to compile for (see
+http://sources.redhat.com/autobook/autobook/autobook_17.html
+for detail)
 .TP
-\fB\-W help\fR
+\fB\-W\fR help
 Print 'lint' options and default settings
 .TP
-\fB\-Z help\fR
-Print internal options for debugging rustc
+\fB\-W\fR OPT, \fB\-\-warn\fR OPT
+Set lint warnings
 .TP
-\fB\-v\fR \fB\-\-version\fR
+\fB\-A\fR OPT, \fB\-\-allow\fR OPT
+Set lint allowed
+.TP
+\fB\-D\fR OPT, \fB\-\-deny\fR OPT
+Set lint denied
+.TP
+\fB\-F\fR OPT, \fB\-\-forbid\fR OPT
+Set lint forbidden
+.TP
+\fB\-Z\fR FLAG
+Set internal debugging options. Use "-Z help" to print available options.
+
+Available debug flags are:
+.RS
+.IP \[bu]
+\fBverbose\fR - in general, enable more debug printouts
+.IP \[bu]
+\fBtime\-passes\fR - measure time of each rustc pass
+.IP \[bu]
+\fBcount\-llvm\-insns\fR - count where LLVM instrs originate
+.IP \[bu]
+\fBtime\-llvm\-passes\fR - measure time of each LLVM pass
+.IP \[bu]
+\fBtrans\-stats\fR - gather trans statistics
+.IP \[bu]
+\fBno\-asm\-comments\fR - omit comments when using \fI\-S\fR
+.IP \[bu]
+\fBno\-verify\fR - skip LLVM verification
+.IP \[bu]
+\fBtrace\fR - emit trace logs
+.IP \[bu]
+\fBcoherence\fR - perform coherence checking
+.IP \[bu]
+\fBborrowck\-stats\fR - gather borrowck statistics
+.IP \[bu]
+\fBborrowck\-note\-pure\fR - note where purity is req'd
+.IP \[bu]
+\fBborrowck\-note\-loan\fR - note where loans are req'd
+.IP \[bu]
+\fBno\-landing\-pads\fR - omit landing pads for unwinding
+.IP \[bu]
+\fBdebug\-llvm\fR - enable debug output from LLVM
+.IP \[bu]
+\fBcount\-type\-sizes\fR - count the sizes of aggregate types
+.IP \[bu]
+\fBmeta\-stats\fR - gather metadata statistics
+.IP \[bu]
+\fBno\-opt\fR - do not optimize, even if \fI\-O\fR is passed
+.IP \[bu]
+\fBno\-monomorphic\-collapse\fR - do not collapse template instantiations
+.IP \[bu]
+\fBgc\fR - Garbage collect shared data (experimental)
+.IP \[bu]
+\fBjit\fR - Execute using JIT (experimental)
+.IP \[bu]
+\fBextra\-debug\-info\fR - Extra debugging info (experimental)
+.IP \[bu]
+\fBdebug\-info\fR - Produce debug info (experimental)
+.IP \[bu]
+\fBstatic\fR - Use or produce static libraries or binaries (experimental)
+.RE
+.TP
+\fB\-v\fR, \fB\-\-version\fR
 Print version info and exit
 
 .SH "EXAMPLES"
@@ -111,6 +157,10 @@ To build a library from a source file:
 
 To build either with a crate (.rc) file:
     $ rustc hello.rc
+
+To build an executable with debug info (experimental):
+    $ rustc -Z debug-info -o hello hello.rs
+
 
 .SH "BUGS"
 See <\fBhttps://github.com/mozilla/rust/issues\fR> for issues.
