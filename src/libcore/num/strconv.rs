@@ -16,9 +16,9 @@ use str;
 use kinds::Copy;
 use vec;
 use num::{NumCast, Zero, One, cast, pow_with_uint};
-use num::{Round, RoundToZero,
+/*use num::{Round, RoundToZero,
           is_NaN, is_infinity, is_neg_infinity, is_neg_zero,
-          infinity, neg_infinity, NaN};
+          infinity, neg_infinity, NaN};*/
 use float;
 use f32;
 use f64;
@@ -42,59 +42,61 @@ pub enum SignFormat {
 }
 
 pub trait NumStrConv {
-    static fn has_NaN()      -> bool;
-    static fn has_inf()      -> bool;
-    static fn has_neg_inf()  -> bool;
-    static fn has_neg_zero() -> bool;
+    static pure fn has_NaN()      -> bool;
+    static pure fn has_inf()      -> bool;
+    static pure fn has_neg_inf()  -> bool;
+    static pure fn has_neg_zero() -> bool;
 
-    static fn NaN()      -> Option<Self>;
-    static fn inf()      -> Option<Self>;
-    static fn neg_inf()  -> Option<Self>;
-    static fn neg_zero() -> Option<Self>;
+    static pure fn NaN()      -> Option<Self>;
+    static pure fn inf()      -> Option<Self>;
+    static pure fn neg_inf()  -> Option<Self>;
+    static pure fn neg_zero() -> Option<Self>;
 
-    fn is_NaN(&self)      -> bool;
-    fn is_inf(&self)      -> bool;
-    fn is_neg_inf(&self)  -> bool;
-    fn is_neg_zero(&self) -> bool;
+    pure fn is_NaN(&self)      -> bool;
+    pure fn is_inf(&self)      -> bool;
+    pure fn is_neg_inf(&self)  -> bool;
+    pure fn is_neg_zero(&self) -> bool;
 
-    fn round_to_zero(&self) -> Self;
-    fn split_at_dot(&self) -> (Self, Self);
+    pure fn round_to_zero(&self)   -> Self;
+    pure fn fractional_part(&self) -> Self;
 
 }
 
 macro_rules! impl_NumStrConv_Floating (
     ($t:ty) => (
         impl NumStrConv for $t {
-            static fn has_NaN()      -> bool { true }
-            static fn has_inf()      -> bool { true }
-            static fn has_neg_inf()  -> bool { true }
-            static fn has_neg_zero() -> bool { true }
+            static pure fn has_NaN()      -> bool { true }
+            static pure fn has_inf()      -> bool { true }
+            static pure fn has_neg_inf()  -> bool { true }
+            static pure fn has_neg_zero() -> bool { true }
 
-            static fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
-            static fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
-            static fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
-            static fn neg_zero() -> Option<$t> { Some(-0.0      ) }
+            static pure fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
+            static pure fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
+            static pure fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
+            static pure fn neg_zero() -> Option<$t> { Some(-0.0      ) }
 
-            fn is_NaN(&self)      -> bool { *self != *self }
-            fn is_inf(&self)      -> bool {
+            pure fn is_NaN(&self)      -> bool { *self != *self }
+
+            pure fn is_inf(&self)      -> bool {
                 *self == NumStrConv::inf().unwrap()
             }
-            fn is_neg_inf(&self)  -> bool {
+
+            pure fn is_neg_inf(&self)  -> bool {
                 *self == NumStrConv::neg_inf().unwrap()
             }
-            fn is_neg_zero(&self) -> bool {
+
+            pure fn is_neg_zero(&self) -> bool {
                 *self == 0.0 && (1.0 / *self).is_neg_inf()
             }
 
-            fn round_to_zero(&self) -> $t {
+            pure fn round_to_zero(&self) -> $t {
                 ( if *self < 0.0 { f64::ceil(*self as f64)  }
                   else           { f64::floor(*self as f64) }
                 ) as $t
             }
 
-            fn split_at_dot(&self) -> ($t, $t) {
-                let r = self.round_to_zero();
-                (r, *self - r)
+            pure fn fractional_part(&self) -> $t {
+                *self - self.round_to_zero()
             }
         }
     )
@@ -103,24 +105,23 @@ macro_rules! impl_NumStrConv_Floating (
 macro_rules! impl_NumStrConv_Integer (
     ($t:ty) => (
         impl NumStrConv for $t {
-            static fn has_NaN()      -> bool { false }
-            static fn has_inf()      -> bool { false }
-            static fn has_neg_inf()  -> bool { false }
-            static fn has_neg_zero() -> bool { false }
+            static pure fn has_NaN()      -> bool { false }
+            static pure fn has_inf()      -> bool { false }
+            static pure fn has_neg_inf()  -> bool { false }
+            static pure fn has_neg_zero() -> bool { false }
 
-            static fn NaN()      -> Option<$t> { None }
-            static fn inf()      -> Option<$t> { None }
-            static fn neg_inf()  -> Option<$t> { None }
-            static fn neg_zero() -> Option<$t> { None }
+            static pure fn NaN()      -> Option<$t> { None }
+            static pure fn inf()      -> Option<$t> { None }
+            static pure fn neg_inf()  -> Option<$t> { None }
+            static pure fn neg_zero() -> Option<$t> { None }
 
-            fn is_NaN(&self)      -> bool { false }
-            fn is_inf(&self)      -> bool { false }
-            fn is_neg_inf(&self)  -> bool { false }
-            fn is_neg_zero(&self) -> bool { false }
+            pure fn is_NaN(&self)      -> bool { false }
+            pure fn is_inf(&self)      -> bool { false }
+            pure fn is_neg_inf(&self)  -> bool { false }
+            pure fn is_neg_zero(&self) -> bool { false }
 
-            fn round_to_zero(&self) -> $t { *self }
-
-            fn split_at_dot(&self) -> ($t, $t) { (*self, 0) }
+            pure fn round_to_zero(&self)   -> $t { *self }
+            pure fn fractional_part(&self) -> $t {     0 }
         }
     )
 )
@@ -142,6 +143,8 @@ impl_NumStrConv_Integer!(u16)
 impl_NumStrConv_Integer!(u32)
 impl_NumStrConv_Integer!(u64)
 
+// NOTE: inline the methods
+
 /**
  * Converts a number to its string representation as a byte vector.
  * This is meant to be a common base implementation for all numeric string
@@ -151,10 +154,6 @@ impl_NumStrConv_Integer!(u64)
  * - `num`           - The number to convert. Accepts any number that
  *                     implements the numeric traits.
  * - `radix`         - Base to use. Accepts only the values 2-36.
- * - `special`       - Whether to attempt to compare to special values like
- *                     `inf` or `NaN`. Also needed to detect negative 0.
- *                     Can fail if it doesn't match `num`s type
- *                     (see safety note).
  * - `negative_zero` - Whether to treat the special value `-0` as
  *                     `-0` or as `+0`.
  * - `sign`          - How to emit the sign. Options are:
@@ -176,19 +175,10 @@ impl_NumStrConv_Integer!(u64)
  *
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
- * - Fails on wrong value for `special` (see safety note).
- *
- * # Safety note
- * The function detects the special values `inf`, `-inf` and `NaN` by
- * dynamically comparing `num` to `1 / 0`, `-1 / 0` and `0 / 0`
- * (each of type T) if `special` is `true`. This will fail on integer types
- * with a 'divide by zero'. Likewise, it will fail if `num` **is** one of
- * those special values, and `special` is `false`, because then the
- * algorithm just does normal calculations on them.
  */
-pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
+pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+Div<T,T>+
                                   Neg<T>+Modulo<T,T>+Mul<T,T>>(
-        num: &T, radix: uint, special: bool, negative_zero: bool,
+        num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
     if radix as int <  2 {
         fail!(fmt!("to_str_bytes_common: radix %? to low, \
@@ -201,24 +191,25 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
     let _0: T = Zero::zero();
     let _1: T = One::one();
 
-    if special {
-        if is_NaN(num) {
-            return (str::to_bytes("NaN"), true);
-        } else if is_infinity(num){
-            return match sign {
-                SignAll => (str::to_bytes("+inf"), true),
-                _       => (str::to_bytes("inf"), true)
-            }
-        } else if is_neg_infinity(num) {
-            return match sign {
-                SignNone => (str::to_bytes("inf"), true),
-                _        => (str::to_bytes("-inf"), true),
-            }
+    if NumStrConv::has_NaN::<T>() && num.is_NaN() {
+        return (str::to_bytes("NaN"), true);
+    }
+    if NumStrConv::has_inf::<T>() && num.is_inf(){
+        return match sign {
+            SignAll => (str::to_bytes("+inf"), true),
+            _       => (str::to_bytes("inf"), true)
+        }
+    }
+    if NumStrConv::has_neg_inf::<T>() && num.is_neg_inf() {
+        return match sign {
+            SignNone => (str::to_bytes("inf"), true),
+            _        => (str::to_bytes("-inf"), true),
         }
     }
 
-    let neg = *num < _0 || (negative_zero && *num == _0
-                            && special && is_neg_zero(num));
+    let neg = *num < _0 || (negative_zero
+                            && NumStrConv::has_neg_zero::<T>()
+                            && num.is_neg_zero());
     let mut buf: ~[u8] = ~[];
     let radix_gen: T   = cast(radix as int);
 
@@ -226,7 +217,7 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
 
     // First emit the non-fractional part, looping at least once to make
     // sure at least a `0` gets emitted.
-    deccum = num.round(RoundToZero);
+    deccum = num.round_to_zero();
     loop {
         // Calculate the absolute value of each digit instead of only
         // doing it once for the whole number because a
@@ -243,7 +234,7 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
 
         // Decrease the deccumulator one digit at a time
         deccum /= radix_gen;
-        deccum = deccum.round(RoundToZero);
+        deccum = deccum.round_to_zero();
 
         unsafe { // FIXME: Pureness workaround (#4568)
             buf.push(char::from_digit(current_digit.to_int() as uint, radix)
@@ -286,7 +277,7 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
     let start_fractional_digits = buf.len();
 
     // Now emit the fractional part, if any
-    deccum = num.fract();
+    deccum = num.fractional_part();
     if deccum != _0 || (limit_digits && exact && digit_count > 0) {
         unsafe { // FIXME: Pureness workaround (#4568)
             buf.push('.' as u8);
@@ -309,7 +300,7 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
 
             // Calculate the absolute value of each digit.
             // See note in first loop.
-            let current_digit_signed = deccum.round(RoundToZero);
+            let current_digit_signed = deccum.round_to_zero();
             let current_digit = if current_digit_signed < _0 {
                 -current_digit_signed
             } else {
@@ -322,7 +313,7 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
             }
 
             // Decrease the deccumulator one fractional digit at a time
-            deccum = deccum.fract();
+            deccum = deccum.fractional_part();
             dig += 1u;
         }
 
@@ -409,11 +400,11 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
  * `to_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn to_str_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+Neg<T>
+pub pure fn to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+Div<T,T>+Neg<T>
                             +Modulo<T,T>+Mul<T,T>>(
-        num: &T, radix: uint, special: bool, negative_zero: bool,
+        num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
-    let (bytes, special) = to_str_bytes_common(num, radix, special,
+    let (bytes, special) = to_str_bytes_common(num, radix,
                                negative_zero, sign, digits);
     (str::from_bytes(bytes), special)
 }
@@ -466,7 +457,7 @@ priv const DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  *   formated like `FF_AE_FF_FF`.
  */
 pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
-                                    Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>>(
+                                    Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {
@@ -503,17 +494,18 @@ pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
         }
     }
 
+    // XXX: Bytevector constant from str
     if special {
         if buf == str::to_bytes("inf") || buf == str::to_bytes("+inf") {
-            return Some(infinity());
+            return NumStrConv::inf();
         } else if buf == str::to_bytes("-inf") {
             if negative {
-                return Some(neg_infinity());
+                return NumStrConv::neg_inf();
             } else {
                 return None;
             }
         } else if buf == str::to_bytes("NaN") {
-            return Some(NaN());
+            return NumStrConv::NaN();
         }
     }
 
@@ -654,7 +646,7 @@ pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
  */
 #[inline(always)]
 pub pure fn from_str_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+Mul<T,T>+
-                              Sub<T,T>+Neg<T>+Add<T,T>>(
+                              Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {
