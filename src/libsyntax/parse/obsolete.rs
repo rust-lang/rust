@@ -45,10 +45,11 @@ pub enum ObsoleteSyntax {
     ObsoleteMoveInit,
     ObsoleteBinaryMove,
     ObsoleteUnsafeBlock,
-    ObsoleteUnenforcedBound
+    ObsoleteUnenforcedBound,
+    ObsoleteImplSyntax
 }
 
-pub impl ObsoleteSyntax: to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for ObsoleteSyntax {
     #[inline(always)]
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
@@ -115,6 +116,10 @@ pub impl Parser {
                 "unenforced type parameter bound",
                 "use trait bounds on the functions that take the type as \
                  arguments, not on the types themselves"
+            ),
+            ObsoleteImplSyntax => (
+                "colon-separated impl syntax",
+                "write `impl Trait for Type`"
             )
         };
 

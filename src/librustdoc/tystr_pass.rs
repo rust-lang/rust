@@ -297,7 +297,7 @@ fn fold_impl(
 
 #[test]
 fn should_add_impl_trait_types() {
-    let doc = test::mk_doc(~"impl int: j { fn a<T>() { } }");
+    let doc = test::mk_doc(~"impl j for int { fn a<T>() { } }");
     assert doc.cratemod().impls()[0].trait_types[0] == ~"j";
 }
 

@@ -28,13 +28,13 @@ pub trait InferStr {
     fn inf_str(&self, cx: &InferCtxt) -> ~str;
 }
 
-pub impl ty::t : InferStr {
+pub impl InferStr for ty::t {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         ty_to_str(cx.tcx, *self)
     }
 }
 
-pub impl FnSig : InferStr {
+pub impl InferStr for FnSig {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("(%s) -> %s",
              str::connect(self.inputs.map(|a| a.ty.inf_str(cx)), ", "),
@@ -42,19 +42,19 @@ pub impl FnSig : InferStr {
     }
 }
 
-pub impl ty::mt : InferStr {
+pub impl InferStr for ty::mt {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         mt_to_str(cx.tcx, *self)
     }
 }
 
-pub impl ty::Region : InferStr {
+pub impl InferStr for ty::Region {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         fmt!("%?", *self)
     }
 }
 
-pub impl<V:InferStr> Bound<V> : InferStr {
+pub impl<V:InferStr> InferStr for Bound<V> {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         match *self {
           Some(ref v) => v.inf_str(cx),
@@ -63,7 +63,7 @@ pub impl<V:InferStr> Bound<V> : InferStr {
     }
 }
 
-pub impl<T:InferStr> Bounds<T> : InferStr {
+pub impl<T:InferStr> InferStr for Bounds<T> {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("{%s <: %s}",
              self.lb.inf_str(cx),
@@ -71,7 +71,7 @@ pub impl<T:InferStr> Bounds<T> : InferStr {
     }
 }
 
-pub impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
+pub impl<V:Vid ToStr, T:InferStr> InferStr for VarValue<V, T> {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         match *self {
           Redirect(ref vid) => fmt!("Redirect(%s)", vid.to_str()),
@@ -81,13 +81,13 @@ pub impl<V:Vid ToStr, T:InferStr> VarValue<V, T> : InferStr {
     }
 }
 
-pub impl IntVarValue : InferStr {
+pub impl InferStr for IntVarValue {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         self.to_str()
     }
 }
 
-pub impl ast::float_ty : InferStr {
+pub impl InferStr for ast::float_ty {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         self.to_str()
     }

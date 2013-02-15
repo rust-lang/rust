@@ -175,19 +175,13 @@ pub fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
     rv
 }
 
+#[deriving_eq]
 pub enum compile_upto {
     cu_parse,
     cu_expand,
     cu_typeck,
     cu_no_trans,
     cu_everything,
-}
-
-pub impl compile_upto : cmp::Eq {
-    pure fn eq(&self, other: &compile_upto) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &compile_upto) -> bool { !(*self).eq(other) }
 }
 
 pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,

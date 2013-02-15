@@ -82,7 +82,7 @@ pub fn Encoder(wr: io::Writer) -> Encoder {
     Encoder { wr: wr }
 }
 
-pub impl Encoder: serialize::Encoder {
+pub impl serialize::Encoder for Encoder {
     fn emit_nil(&self) { self.wr.write_str("null") }
 
     fn emit_uint(&self, v: uint) { self.emit_float(v as float); }
@@ -217,7 +217,7 @@ pub fn PrettyEncoder(wr: io::Writer) -> PrettyEncoder {
     PrettyEncoder { wr: wr, indent: 0 }
 }
 
-pub impl PrettyEncoder: serialize::Encoder {
+pub impl serialize::Encoder for PrettyEncoder {
     fn emit_nil(&self) { self.wr.write_str("null") }
 
     fn emit_uint(&self, v: uint) { self.emit_float(v as float); }
@@ -323,7 +323,7 @@ pub impl PrettyEncoder: serialize::Encoder {
     }
 }
 
-pub impl<S: serialize::Encoder> Json: serialize::Encodable<S> {
+pub impl<S: serialize::Encoder> serialize::Encodable<S> for Json {
     fn encode(&self, s: &S) {
         match *self {
             Number(v) => v.encode(s),
@@ -768,7 +768,7 @@ priv impl Decoder {
     }
 }
 
-pub impl Decoder: serialize::Decoder {
+pub impl serialize::Decoder for Decoder {
     fn read_nil(&self) -> () {
         debug!("read_nil");
         match *self.pop() {
