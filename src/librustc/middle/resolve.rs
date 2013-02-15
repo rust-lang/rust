@@ -96,8 +96,8 @@ pub type BindingMap = HashMap<ident,binding_info>;
 
 // Implementation resolution
 //
-// XXX: This kind of duplicates information kept in ty::method. Maybe it
-// should go away.
+// FIXME #4946: This kind of duplicates information kept in
+// ty::method. Maybe it should go away.
 
 pub type MethodInfo = {
     did: def_id,
@@ -268,8 +268,8 @@ pub enum MethodSort {
 // allows it to reference private names. Currently, this is used for the test
 // runner.
 //
-// XXX: The X-ray flag is kind of questionable in the first place. It might
-// be better to introduce an expr_xray_path instead.
+// FIXME #4947: The X-ray flag is kind of questionable in the first
+// place. It might be better to introduce an expr_xray_path instead.
 
 #[deriving_eq]
 pub enum XrayFlag {
@@ -469,14 +469,6 @@ pub struct Module {
 
     anonymous_children: HashMap<node_id,@Module>,
 
-    // XXX: This is about to be reworked so that exports are on individual
-    // items, not names.
-    //
-    // The ident is the name of the exported item, while the node ID is the
-    // ID of the export path.
-
-    exported_names: HashMap<ident,node_id>,
-
     // The status of resolving each import in this module.
     import_resolutions: HashMap<ident,@mut ImportResolution>,
 
@@ -498,7 +490,6 @@ pub fn Module(parent_link: ParentLink,
         children: HashMap(),
         imports: DVec(),
         anonymous_children: HashMap(),
-        exported_names: HashMap(),
         import_resolutions: HashMap(),
         glob_count: 0,
         resolved_import_count: 0
@@ -831,7 +822,7 @@ pub struct Resolver {
     mut current_module: @Module,
 
     // The current set of local scopes, for values.
-    // XXX: Reuse ribs to avoid allocation.
+    // FIXME #4948: Reuse ribs to avoid allocation.
     value_ribs: @DVec<@Rib>,
 
     // The current set of local scopes, for types.
@@ -2137,8 +2128,9 @@ pub impl Resolver {
 
         // We need to resolve both namespaces for this to succeed.
         //
-        // XXX: See if there's some way of handling namespaces in a more
-        // generic way. We have two of them; it seems worth doing...
+        // FIXME #4949: See if there's some way of handling namespaces in
+        // a more generic way. We have two of them; it seems worth
+        // doing...
 
         let mut value_result = UnknownResult;
         let mut type_result = UnknownResult;
@@ -3206,8 +3198,8 @@ pub impl Resolver {
     // This pass simply determines what all "export" keywords refer to and
     // writes the results into the export map.
     //
-    // XXX: This pass will be removed once exports change to per-item. Then
-    // this operation can simply be performed as part of item (or import)
+    // FIXME #4953 This pass will be removed once exports change to per-item.
+    // Then this operation can simply be performed as part of item (or import)
     // processing.
 
     fn record_exports() {
@@ -3507,8 +3499,8 @@ pub impl Resolver {
                    allow_capturing_self: AllowCapturingSelfFlag)
                 -> Option<def_like> {
 
-        // XXX: This should not use a while loop.
-        // XXX: Try caching?
+        // FIXME #4950: This should not use a while loop.
+        // FIXME #4950: Try caching?
 
         let mut i = (*ribs).len();
         while i != 0 {
@@ -3649,7 +3641,7 @@ pub impl Resolver {
                         // Create a new rib for the method-specific type
                         // parameters.
                         //
-                        // XXX: Do we need a node ID here?
+                        // FIXME #4951: Do we need a node ID here?
 
                         match *method {
                           required(ref ty_m) => {
@@ -4555,7 +4547,7 @@ pub impl Resolver {
                                                                 namespace);
     }
 
-    // XXX: Merge me with resolve_name_in_module?
+    // FIXME #4952: Merge me with resolve_name_in_module?
     fn resolve_definition_of_name_in_module(containing_module: @Module,
                                             name: ident,
                                             namespace: Namespace,
@@ -4873,20 +4865,6 @@ pub impl Resolver {
 
             expr_struct(path, _, _) => {
                 // Resolve the path to the structure it goes to.
-                //
-                // XXX: We might want to support explicit type parameters in
-                // the path, in which case this gets a little more
-                // complicated:
-                //
-                // 1. Should we go through the ast_path_to_ty() path, which
-                //    handles typedefs and the like?
-                //
-                // 2. If so, should programmers be able to write this?
-                //
-                //    class Foo<A> { ... }
-                //    type Bar<A> = Foo<A>;
-                //    let bar = Bar { ... } // no type parameters
-
                 match self.resolve_path(path, TypeNS, false, visitor) {
                     Some(def_ty(class_id)) | Some(def_struct(class_id))
                             if self.structs.contains_key(&class_id) => {
@@ -5320,7 +5298,7 @@ pub impl Resolver {
                 None => { value_repr = ~""; }
                 Some(_) => {
                     value_repr = ~" value:?";
-                    // XXX
+                    // FIXME #4954
                 }
             }
 
@@ -5329,7 +5307,7 @@ pub impl Resolver {
                 None => { type_repr = ~""; }
                 Some(_) => {
                     type_repr = ~" type:?";
-                    // XXX
+                    // FIXME #4954
                 }
             }
 
