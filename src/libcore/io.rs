@@ -246,7 +246,7 @@ impl<T: Reader> ReaderUtil for T {
             // over-read by reading 1-byte per char needed
             nbread = if ncreq > nbreq { ncreq } else { nbreq };
             if nbread > 0 {
-                bytes = vec::slice(bytes, offset, bytes.len());
+                bytes = vec::slice(bytes, offset, bytes.len()).to_vec();
             }
         }
         chars
@@ -531,7 +531,7 @@ impl Reader for BytesReader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - self.pos);
 
-        let view = vec::view(self.bytes, self.pos, self.bytes.len());
+        let view = vec::slice(self.bytes, self.pos, self.bytes.len());
         vec::bytes::copy_memory(bytes, view, count);
 
         self.pos += count;
@@ -1008,7 +1008,7 @@ impl Writer for BytesWriter {
             unsafe { vec::raw::set_len(&mut bytes, count); }
 
             {
-                let view = vec::mut_view(bytes, self.pos, count);
+                let view = vec::mut_slice(bytes, self.pos, count);
                 vec::bytes::copy_memory(view, v, v_len);
             }
 

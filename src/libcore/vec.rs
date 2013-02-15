@@ -220,7 +220,7 @@ pub pure fn head<T: Copy>(v: &[const T]) -> T { v[0] }
 
 /// Returns a vector containing all but the first element of a slice
 pub pure fn tail<T: Copy>(v: &[const T]) -> ~[T] {
-    return slice(v, 1u, len(v));
+    slice(v, 1u, len(v)).to_vec()
 }
 
 /**
@@ -228,13 +228,13 @@ pub pure fn tail<T: Copy>(v: &[const T]) -> ~[T] {
  * elements of a slice
  */
 pub pure fn tailn<T: Copy>(v: &[const T], n: uint) -> ~[T] {
-    slice(v, n, len(v))
+    slice(v, n, len(v)).to_vec()
 }
 
 /// Returns a vector containing all but the last element of a slice
 pub pure fn init<T: Copy>(v: &[const T]) -> ~[T] {
     assert len(v) != 0u;
-    slice(v, 0u, len(v) - 1u)
+    slice(v, 0u, len(v) - 1u).to_vec()
 }
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
@@ -252,20 +252,9 @@ pub pure fn last_opt<T: Copy>(v: &[const T]) -> Option<T> {
     Some(v[len(v) - 1u])
 }
 
-/// Returns a copy of the elements from [`start`..`end`) from `v`.
-pub pure fn slice<T: Copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
-    assert (start <= end);
-    assert (end <= len(v));
-    let mut result = ~[];
-    unsafe {
-        for uint::range(start, end) |i| { result.push(v[i]) }
-    }
-    result
-}
-
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub pure fn view<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
+pub pure fn slice<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
     assert (start <= end);
     assert (end <= len(v));
     do as_imm_buf(v) |p, _len| {
@@ -279,7 +268,9 @@ pub pure fn view<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub pure fn mut_view<T>(v: &r/[mut T], start: uint, end: uint) -> &r/[mut T] {
+pub pure fn mut_slice<T>(v: &r/[mut T], start: uint,
+                         end: uint) -> &r/[mut T] {
+
     assert (start <= end);
     assert (end <= len(v));
     do as_mut_buf(v) |p, _len| {
@@ -293,7 +284,7 @@ pub pure fn mut_view<T>(v: &r/[mut T], start: uint, end: uint) -> &r/[mut T] {
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub pure fn const_view<T>(v: &r/[const T], start: uint,
+pub pure fn const_slice<T>(v: &r/[const T], start: uint,
                       end: uint) -> &r/[const T] {
     assert (start <= end);
     assert (end <= len(v));
@@ -319,12 +310,12 @@ pub fn split<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
         match position_between(v, start, ln, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, start, i));
+                result.push(slice(v, start, i).to_vec());
                 start = i + 1u;
             }
         }
     }
-    result.push(slice(v, start, ln));
+    result.push(slice(v, start, ln).to_vec());
     result
 }
 
@@ -343,14 +334,14 @@ pub fn splitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
         match position_between(v, start, ln, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, start, i));
+                result.push(slice(v, start, i).to_vec());
                 // Make sure to skip the separator.
                 start = i + 1u;
                 count -= 1u;
             }
         }
     }
-    result.push(slice(v, start, ln));
+    result.push(slice(v, start, ln).to_vec());
     result
 }
 
@@ -368,12 +359,12 @@ pub fn rsplit<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
         match rposition_between(v, 0, end, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, i + 1, end));
+                result.push(slice(v, i + 1, end).to_vec());
                 end = i;
             }
         }
     }
-    result.push(slice(v, 0u, end));
+    result.push(slice(v, 0u, end).to_vec());
     reverse(result);
     return result;
 }
@@ -393,14 +384,14 @@ pub fn rsplitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
         match rposition_between(v, 0u, end, f) {
             None => break,
             Some(i) => {
-                result.push(slice(v, i + 1u, end));
+                result.push(slice(v, i + 1u, end).to_vec());
                 // Make sure to skip the separator.
                 end = i;
                 count -= 1u;
             }
         }
     }
-    result.push(slice(v, 0u, end));
+    result.push(slice(v, 0u, end).to_vec());
     reverse(result);
     result
 }
@@ -478,15 +469,15 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         // popped. For the moment it unsafely exists at both the head and last
         // positions
         {
-            let first_slice = view(*v, 0, 1);
-            let last_slice = view(*v, next_ln, ln);
+            let first_slice = slice(*v, 0, 1);
+            let last_slice = slice(*v, next_ln, ln);
             raw::copy_memory(::cast::transmute(last_slice), first_slice, 1);
         }
 
         // Memcopy everything to the left one element
         {
-            let init_slice = view(*v, 0, next_ln);
-            let tail_slice = view(*v, 1, ln);
+            let init_slice = slice(*v, 0, next_ln);
+            let tail_slice = slice(*v, 1, ln);
             raw::copy_memory(::cast::transmute(init_slice),
                              tail_slice,
                              next_ln);
@@ -1464,9 +1455,9 @@ pure fn each_permutation<T: Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
         let mut i = 0u;
         while i < ln {
             let elt = v[i];
-            let mut rest = slice(v, 0u, i);
+            let mut rest = slice(v, 0u, i).to_vec();
             unsafe {
-                rest.push_all(const_view(v, i+1u, ln));
+                rest.push_all(const_slice(v, i+1u, ln));
                 for each_permutation(rest) |permutation| {
                     if !put(append(~[elt], permutation)) {
                         return;
@@ -1485,7 +1476,7 @@ pub pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
         let len = vec::len(xx);
         if ii+nn <= len {
             unsafe {
-                ww.push(vec::slice(xx, ii, ii+nn));
+                ww.push(slice(xx, ii, ii+nn).to_vec());
             }
         }
     }
@@ -1689,7 +1680,7 @@ impl<T: Copy> CopyableVector<T> for &[const T] {
     /// Returns a copy of the elements from [`start`..`end`) from `v`.
     #[inline]
     pure fn slice(&self, start: uint, end: uint) -> ~[T] {
-        slice(*self, start, end)
+        slice(*self, start, end).to_vec()
     }
 
     /// Returns all but the first element of a vector
@@ -1713,7 +1704,7 @@ impl<T> ImmutableVector<T> for &[T] {
     /// Return a slice that points into another slice.
     #[inline]
     pure fn view(&self, start: uint, end: uint) -> &self/[T] {
-        view(*self, start, end)
+        slice(*self, start, end)
     }
 
     /// Reduce a vector from right to left
@@ -2566,42 +2557,45 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        // Test on-stack -> on-stack slice.
-        let mut v = slice(~[1, 2, 3], 1u, 3u);
-        assert (len(v) == 2u);
-        assert (v[0] == 2);
-        assert (v[1] == 3);
+        // Test fixed length vector.
+        let vec_fixed = [1, 2, 3, 4];
+        let v_a = slice(vec_fixed, 1u, len(vec_fixed)).to_vec();
+        assert (len(v_a) == 3u);
+        assert (v_a[0] == 2);
+        assert (v_a[1] == 3);
+        assert (v_a[2] == 4);
 
-        // Test on-heap -> on-stack slice.
-        v = slice(~[1, 2, 3, 4, 5], 0u, 3u);
-        assert (len(v) == 3u);
-        assert (v[0] == 1);
-        assert (v[1] == 2);
-        assert (v[2] == 3);
+        // Test on stack.
+        let vec_stack = &[1, 2, 3];
+        let v_b = slice(vec_stack, 1u, 3u).to_vec();
+        assert (len(v_b) == 2u);
+        assert (v_b[0] == 2);
+        assert (v_b[1] == 3);
 
-        // Test on-heap -> on-heap slice.
-        v = slice(~[1, 2, 3, 4, 5, 6], 1u, 6u);
-        assert (len(v) == 5u);
-        assert (v[0] == 2);
-        assert (v[1] == 3);
-        assert (v[2] == 4);
-        assert (v[3] == 5);
-        assert (v[4] == 6);
+        // Test on managed heap.
+        let vec_managed = @[1, 2, 3, 4, 5];
+        let v_c = slice(vec_managed, 0u, 3u).to_vec();
+        assert (len(v_c) == 3u);
+        assert (v_c[0] == 1);
+        assert (v_c[1] == 2);
+        assert (v_c[2] == 3);
+
+        // Test on exchange heap.
+        let vec_unique = ~[1, 2, 3, 4, 5, 6];
+        let v_d = slice(vec_unique, 1u, 6u).to_vec();
+        assert (len(v_d) == 5u);
+        assert (v_d[0] == 2);
+        assert (v_d[1] == 3);
+        assert (v_d[2] == 4);
+        assert (v_d[3] == 5);
+        assert (v_d[4] == 6);
     }
 
     #[test]
     fn test_pop() {
-        // Test on-stack pop.
-        let mut v = ~[1, 2, 3];
-        let mut e = v.pop();
-        assert (len(v) == 2u);
-        assert (v[0] == 1);
-        assert (v[1] == 2);
-        assert (e == 3);
-
         // Test on-heap pop.
-        v = ~[1, 2, 3, 4, 5];
-        e = v.pop();
+        let mut v = ~[1, 2, 3, 4, 5];
+        let e = v.pop();
         assert (len(v) == 4u);
         assert (v[0] == 1);
         assert (v[1] == 2);
