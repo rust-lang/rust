@@ -686,15 +686,15 @@ mod math {
     type complex = (f64, f64);
     fn sin(f: f64) -> f64 {
         ...
-# die!();
+# fail!();
     }
     fn cos(f: f64) -> f64 {
         ...
-# die!();
+# fail!();
     }
     fn tan(f: f64) -> f64 {
         ...
-# die!();
+# fail!();
     }
 }
 ~~~~~~~~
@@ -986,7 +986,7 @@ output slot type would normally be. For example:
 ~~~~
 fn my_err(s: &str) -> ! {
     log(info, s);
-    die!();
+    fail!();
 }
 ~~~~
 
@@ -1004,7 +1004,7 @@ were declared without the `!` annotation, the following code would not
 typecheck:
 
 ~~~~
-# fn my_err(s: &str) -> ! { die!() }
+# fn my_err(s: &str) -> ! { fail!() }
 
 fn f(i: int) -> int {
    if i == 42 {
@@ -2284,9 +2284,9 @@ enum List<X> { Nil, Cons(X, @List<X>) }
 let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
-    Cons(_, @Nil) => die!(~"singleton list"),
+    Cons(_, @Nil) => fail!(~"singleton list"),
     Cons(*)       => return,
-    Nil           => die!(~"empty list")
+    Nil           => fail!(~"empty list")
 }
 ~~~~
 
@@ -2323,7 +2323,7 @@ match x {
         return;
     }
     _ => {
-        die!();
+        fail!();
     }
 }
 ~~~~
@@ -2411,7 +2411,7 @@ guard may refer to the variables bound within the pattern they follow.
 let message = match maybe_digit {
   Some(x) if x < 10 => process_digit(x),
   Some(x) => process_other(x),
-  None => die!()
+  None => fail!()
 };
 ~~~~
 

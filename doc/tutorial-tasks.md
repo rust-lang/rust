@@ -313,7 +313,7 @@ of all tasks are intertwined: if one fails, so do all the others.
 # fn do_some_work() { loop { task::yield() } }
 # do task::try {
 // Create a child task that fails
-do spawn { die!() }
+do spawn { fail!() }
 
 // This will also fail because the task we spawned failed
 do_some_work();
@@ -337,7 +337,7 @@ let result: Result<int, ()> = do task::try {
     if some_condition() {
         calculate_result()
     } else {
-        die!(~"oops!");
+        fail!(~"oops!");
     }
 };
 assert result.is_err();
@@ -370,14 +370,14 @@ proceed). Hence, you will need different _linked failure modes_.
 ## Failure modes
 
 By default, task failure is _bidirectionally linked_, which means that if
-either task dies, it kills the other one.
+either task fails, it kills the other one.
 
 ~~~
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 do task::spawn {
     do task::spawn {
-        die!();  // All three tasks will die.
+        fail!();  // All three tasks will fail.
     }
     sleep_forever();  // Will get woken up by force, then fail
 }
@@ -386,7 +386,7 @@ sleep_forever();  // Will get woken up by force, then fail
 ~~~
 
 If you want parent tasks to be able to kill their children, but do not want a
-parent to die automatically if one of its child task dies, you can call
+parent to fail automatically if one of its child task fails, you can call
 `task::spawn_supervised` for _unidirectionally linked_ failure. The
 function `task::try`, which we saw previously, uses `spawn_supervised`
 internally, with additional logic to wait for the child task to finish
@@ -432,7 +432,7 @@ do task::spawn_supervised {
     // Intermediate task immediately exits
 }
 wait_for_a_while();
-die!();  // Will kill grandchild even if child has already exited
+fail!();  // Will kill grandchild even if child has already exited
 # };
 ~~~
 
@@ -446,10 +446,10 @@ other at all, using `task::spawn_unlinked` for _isolated failure_.
 let (time1, time2) = (random(), random());
 do task::spawn_unlinked {
     sleep_for(time2);  // Won't get forced awake
-    die!();
+    fail!();
 }
 sleep_for(time1);  // Won't get forced awake
-die!();
+fail!();
 // It will take MAX(time1,time2) for the program to finish.
 # };
 ~~~
