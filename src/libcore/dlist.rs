@@ -493,7 +493,7 @@ impl<T: Copy> DList<T> {
                 v[index] = *data;
             }
         }
-        move v
+        v
     }
 }
 

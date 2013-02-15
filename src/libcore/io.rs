@@ -178,7 +178,7 @@ impl<T: Reader> ReaderUtil for T {
         let count = self.read(bytes, len);
 
         unsafe { vec::raw::set_len(&mut bytes, count); }
-        move bytes
+        bytes
     }
 
     fn read_line(&self) -> ~str {
@@ -249,7 +249,7 @@ impl<T: Reader> ReaderUtil for T {
                 bytes = vec::slice(bytes, offset, bytes.len());
             }
         }
-        move chars
+        chars
     }
 
     fn read_char(&self) -> char {
@@ -273,7 +273,7 @@ impl<T: Reader> ReaderUtil for T {
     fn read_whole_stream(&self) -> ~[u8] {
         let mut bytes: ~[u8] = ~[];
         while !self.eof() { bytes.push_all(self.read_bytes(2048u)); }
-        move bytes
+        bytes
     }
 
     fn each_byte(&self, it: fn(int) -> bool) {
@@ -999,7 +999,7 @@ pub struct BytesWriter {
 impl Writer for BytesWriter {
     fn write(&self, v: &[const u8]) {
         do self.bytes.swap |bytes| {
-            let mut bytes = move bytes;
+            let mut bytes = bytes;
             let v_len = v.len();
             let bytes_len = bytes.len();
 
@@ -1014,7 +1014,7 @@ impl Writer for BytesWriter {
 
             self.pos += v_len;
 
-            move bytes
+            bytes
         }
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
@@ -1035,7 +1035,7 @@ pub pure fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as Writer);
     // FIXME (#3758): This should not be needed.
-    unsafe { wr.bytes.check_out(|bytes| move bytes) }
+    unsafe { wr.bytes.check_out(|bytes| bytes) }
 }
 
 pub pure fn with_str_writer(f: fn(Writer)) -> ~str {
@@ -1048,7 +1048,7 @@ pub pure fn with_str_writer(f: fn(Writer)) -> ~str {
     }
     assert str::is_utf8(v);
 
-    unsafe { move ::cast::transmute(move v) }
+    unsafe { ::cast::transmute(v) }
 }
 
 // Utility functions
@@ -1126,7 +1126,7 @@ pub mod fsync {
 
     pub fn Res<t: Copy>(arg: Arg<t>) -> Res<t>{
         Res {
-            arg: move arg
+            arg: arg
         }
     }
 

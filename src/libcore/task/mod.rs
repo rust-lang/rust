@@ -203,7 +203,7 @@ pub struct TaskBuilder {
 pub fn task() -> TaskBuilder {
     TaskBuilder {
         opts: default_task_opts(),
-        gen_body: |body| move body, // Identity function
+        gen_body: |body| body, // Identity function
         can_not_copy: None,
         mut consumed: false,
     }
@@ -315,7 +315,7 @@ impl TaskBuilder {
         // Construct the future and give it to the caller.
         let (notify_pipe_po, notify_pipe_ch) = stream::<TaskResult>();
 
-        blk(move notify_pipe_po);
+        blk(notify_pipe_po);
 
         // Reconfigure self to use a notify channel.
         TaskBuilder {
@@ -336,7 +336,7 @@ impl TaskBuilder {
             opts: TaskOpts {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                notify_chan: move notify_chan,
+                notify_chan: notify_chan,
                 sched: SchedOpts { mode: mode, foreign_stack_size: None}
             },
             can_not_copy: None,
@@ -366,11 +366,7 @@ impl TaskBuilder {
                 notify_chan: notify_chan,
                 sched: self.opts.sched
             },
-            // tjc: I think this is the line that gets miscompiled
-            // w/ last-use off, if we leave out the move prev_gen_body?
-            // that makes no sense, though...
-            gen_body: |move prev_gen_body,
-                       body| { wrapper(prev_gen_body(move body)) },
+            gen_body: |body| { wrapper(prev_gen_body(body)) },
             can_not_copy: None,
             .. self.consume()
         }
@@ -397,12 +393,12 @@ impl TaskBuilder {
             notify_chan: notify_chan,
             sched: x.opts.sched
         };
-        spawn::spawn_raw(move opts, (x.gen_body)(move f));
+        spawn::spawn_raw(opts, (x.gen_body)(f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
     fn spawn_with<A: Owned>(arg: A, f: fn~(v: A)) {
-        let arg = ~mut Some(move arg);
-        do self.spawn |move arg, move f| {
+        let arg = ~mut Some(arg);
+        do self.spawn || {
             f(option::swap_unwrap(arg))
         }
     }
@@ -425,12 +421,12 @@ impl TaskBuilder {
         let mut result = None;
 
         let fr_task_builder = self.future_result(|+r| {
-            result = Some(move r);
+            result = Some(r);
         });
-        do fr_task_builder.spawn |move f, move ch| {
+        do fr_task_builder.spawn || {
             ch.send(f());
         }
-        match option::unwrap(move result).recv() {
+        match option::unwrap(result).recv() {
             Success => result::Ok(po.recv()),
             Failure => result::Err(())
         }
@@ -471,7 +467,7 @@ pub fn spawn(f: fn~()) {
      * This function is equivalent to `task().spawn(f)`.
      */
 
-    task().spawn(move f)
+    task().spawn(f)
 }
 
 pub fn spawn_unlinked(f: fn~()) {
@@ -480,7 +476,7 @@ pub fn spawn_unlinked(f: fn~()) {
      * task or the child task fails, the other will not be killed.
      */
 
-    task().unlinked().spawn(move f)
+    task().unlinked().spawn(f)
 }
 
 pub fn spawn_supervised(f: fn~()) {
@@ -489,7 +485,7 @@ pub fn spawn_supervised(f: fn~()) {
      * task or the child task fails, the other will not be killed.
      */
 
-    task().supervised().spawn(move f)
+    task().supervised().spawn(f)
 }
 
 pub fn spawn_with<A:Owned>(arg: A, f: fn~(v: A)) {
@@ -503,7 +499,7 @@ pub fn spawn_with<A:Owned>(arg: A, f: fn~(v: A)) {
      * This function is equivalent to `task().spawn_with(arg, f)`.
      */
 
-    task().spawn_with(move arg, move f)
+    task().spawn_with(arg, f)
 }
 
 pub fn spawn_sched(mode: SchedMode, f: fn~()) {
@@ -519,7 +515,7 @@ pub fn spawn_sched(mode: SchedMode, f: fn~()) {
      * greater than zero.
      */
 
-    task().sched_mode(mode).spawn(move f)
+    task().sched_mode(mode).spawn(f)
 }
 
 pub fn try<T:Owned>(f: fn~() -> T) -> Result<T,()> {
@@ -530,7 +526,7 @@ pub fn try<T:Owned>(f: fn~() -> T) -> Result<T,()> {
      * This is equivalent to task().supervised().try.
      */
 
-    task().supervised().try(move f)
+    task().supervised().try(f)
 }
 
 
@@ -719,12 +715,12 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
         let mut opts = default_task_opts();
         opts.linked = true;
         opts.supervised = true;
-        move opts
+        opts
     };
 
     let b0 = task();
     let b1 = TaskBuilder {
-        opts: move opts,
+        opts: opts,
         can_not_copy: None,
         .. b0
     };
@@ -739,12 +735,12 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
         let mut opts = default_task_opts();
         opts.linked = true;
         opts.supervised = true;
-        move opts
+        opts
     };
 
     let b0 = task();
     let b1 = TaskBuilder {
-        opts: move opts,
+        opts: opts,
         can_not_copy: None,
         .. b0
     };
@@ -843,7 +839,7 @@ fn test_add_wrapper() {
     let ch = Wrapper { f: Some(ch) };
     let b1 = do b0.add_wrapper |body| {
         let ch = Wrapper { f: Some(ch.f.swap_unwrap()) };
-        fn~(move body) {
+        fn~() {
             let ch = ch.f.swap_unwrap();
             body();
             ch.send(());
@@ -857,15 +853,15 @@ fn test_add_wrapper() {
 #[ignore(cfg(windows))]
 fn test_future_result() {
     let mut result = None;
-    do task().future_result(|+r| { result = Some(move r); }).spawn { }
-    assert option::unwrap(move result).recv() == Success;
+    do task().future_result(|+r| { result = Some(r); }).spawn { }
+    assert option::unwrap(result).recv() == Success;
 
     result = None;
     do task().future_result(|+r|
-        { result = Some(move r); }).unlinked().spawn {
+        { result = Some(r); }).unlinked().spawn {
         fail!();
     }
-    assert option::unwrap(move result).recv() == Failure;
+    assert option::unwrap(result).recv() == Failure;
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -1024,7 +1020,7 @@ fn avoid_copying_the_body(spawnfn: fn(v: fn~())) {
     let x = ~1;
     let x_in_parent = ptr::addr_of(&(*x)) as uint;
 
-    do spawnfn |move x| {
+    do spawnfn || {
         let x_in_child = ptr::addr_of(&(*x)) as uint;
         ch.send(x_in_child);
     }
@@ -1041,7 +1037,7 @@ fn test_avoid_copying_the_body_spawn() {
 #[test]
 fn test_avoid_copying_the_body_task_spawn() {
     do avoid_copying_the_body |f| {
-        do task().spawn |move f| {
+        do task().spawn || {
             f();
         }
     }
@@ -1050,7 +1046,7 @@ fn test_avoid_copying_the_body_task_spawn() {
 #[test]
 fn test_avoid_copying_the_body_try() {
     do avoid_copying_the_body |f| {
-        do try |move f| {
+        do try || {
             f()
         };
     }
@@ -1059,7 +1055,7 @@ fn test_avoid_copying_the_body_try() {
 #[test]
 fn test_avoid_copying_the_body_unlinked() {
     do avoid_copying_the_body |f| {
-        do spawn_unlinked |move f| {
+        do spawn_unlinked || {
             f();
         }
     }
@@ -1096,12 +1092,12 @@ fn test_unkillable() {
     unsafe {
         do unkillable {
             let p = ~0;
-            let pp: *uint = cast::transmute(move p);
+            let pp: *uint = cast::transmute(p);
 
             // If we are killed here then the box will leak
             po.recv();
 
-            let _p: ~int = cast::transmute(move pp);
+            let _p: ~int = cast::transmute(pp);
         }
     }
 
@@ -1116,7 +1112,7 @@ fn test_unkillable_nested() {
     let (po, ch) = pipes::stream();
 
     // We want to do this after failing
-    do spawn_unlinked |move ch| {
+    do spawn_unlinked || {
         for iter::repeat(10) { yield() }
         ch.send(());
     }
@@ -1132,12 +1128,12 @@ fn test_unkillable_nested() {
         do unkillable {
             do unkillable {} // Here's the difference from the previous test.
             let p = ~0;
-            let pp: *uint = cast::transmute(move p);
+            let pp: *uint = cast::transmute(p);
 
             // If we are killed here then the box will leak
             po.recv();
 
-            let _p: ~int = cast::transmute(move pp);
+            let _p: ~int = cast::transmute(pp);
         }
     }
 
@@ -1181,7 +1177,7 @@ fn test_child_doesnt_ref_parent() {
 fn test_sched_thread_per_core() {
     let (port, chan) = pipes::stream();
 
-    do spawn_sched(ThreadPerCore) |move chan| {
+    do spawn_sched(ThreadPerCore) || {
         unsafe {
             let cores = rt::rust_num_threads();
             let reported_threads = rt::rust_sched_threads();
@@ -1197,7 +1193,7 @@ fn test_sched_thread_per_core() {
 fn test_spawn_thread_on_demand() {
     let (port, chan) = pipes::stream();
 
-    do spawn_sched(ManualThreads(2)) |move chan| {
+    do spawn_sched(ManualThreads(2)) || {
         unsafe {
             let max_threads = rt::rust_sched_threads();
             assert(max_threads as int == 2);
@@ -1206,7 +1202,7 @@ fn test_spawn_thread_on_demand() {
 
             let (port2, chan2) = pipes::stream();
 
-            do spawn_sched(CurrentScheduler) |move chan2| {
+            do spawn_sched(CurrentScheduler) || {
                 chan2.send(());
             }
 

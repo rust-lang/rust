@@ -258,7 +258,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
 
     fn ProgRes(r: ProgRepr) -> ProgRes {
         ProgRes {
-            r: move r
+            r: r
         }
     }
 
@@ -344,11 +344,11 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
         let ch_clone = ch.clone();
         do task::spawn_sched(task::SingleThreaded) {
             let errput = readclose(pipe_err.in);
-            ch.send((2, move errput));
+            ch.send((2, errput));
         };
         do task::spawn_sched(task::SingleThreaded) {
             let output = readclose(pipe_out.in);
-            ch_clone.send((1, move output));
+            ch_clone.send((1, output));
         };
         let status = run::waitpid(pid);
         let mut errs = ~"";
@@ -358,10 +358,10 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
             let stream = p.recv();
             match stream {
                 (1, copy s) => {
-                    outs = move s;
+                    outs = s;
                 }
                 (2, copy s) => {
-                    errs = move s;
+                    errs = s;
                 }
                 (n, _) => {
                     fail!(fmt!("program_output received an unexpected file \
@@ -371,8 +371,8 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
             count -= 1;
         };
         return ProgramOutput {status: status,
-                              out: move outs,
-                              err: move errs};
+                              out: outs,
+                              err: errs};
     }
 }
 

@@ -245,7 +245,7 @@ impl Path {
                 let mut st = stat::arch::default_stat();
                 let r = libc::stat(buf, &mut st);
 
-                if r == 0 { Some(move st) } else { None }
+                if r == 0 { Some(st) } else { None }
             }
         }
     }
@@ -257,7 +257,7 @@ impl Path {
                 let mut st = stat::arch::default_stat();
                 let r = libc::lstat(buf, &mut st);
 
-                if r == 0 { Some(move st) } else { None }
+                if r == 0 { Some(st) } else { None }
             }
         }
     }
@@ -381,7 +381,7 @@ impl GenericPath for PosixPath {
         let mut components = str::split_nonempty(s, |c| c == '/');
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         return PosixPath { is_absolute: is_absolute,
-                           components: move components }
+                           components: components }
     }
 
     pure fn dirname() -> ~str {
@@ -390,7 +390,7 @@ impl GenericPath for PosixPath {
             if s.len() == 0 {
                 ~"."
             } else {
-                move s
+                s
             }
         }
     }
@@ -430,7 +430,7 @@ impl GenericPath for PosixPath {
         let dpath = PosixPath(d);
         match self.filename() {
           Some(ref f) => dpath.push(*f),
-          None => move dpath
+          None => dpath
         }
     }
 
@@ -477,7 +477,7 @@ impl GenericPath for PosixPath {
           Some(ref f) => ~[copy *f]
         };
         return PosixPath { is_absolute: false,
-                           components: move cs }
+                           components: cs }
     }
 
     pure fn push_rel(other: &PosixPath) -> PosixPath {
@@ -491,17 +491,17 @@ impl GenericPath for PosixPath {
             let mut ss = str::split_nonempty(
                 *e,
                 |c| windows::is_sep(c as u8));
-            unsafe { v.push_all_move(move ss); }
+            unsafe { v.push_all_move(ss); }
         }
         PosixPath { is_absolute: self.is_absolute,
-                    components: move v }
+                    components: v }
     }
 
     pure fn push(s: &str) -> PosixPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
-        unsafe { v.push_all_move(move ss); }
-        PosixPath { components: move v, ..copy self }
+        unsafe { v.push_all_move(ss); }
+        PosixPath { components: v, ..copy self }
     }
 
     pure fn pop() -> PosixPath {
@@ -511,7 +511,7 @@ impl GenericPath for PosixPath {
         }
         return PosixPath {
             is_absolute: self.is_absolute,
-            components: move cs
+            components: cs
         }
                           //..self }
     }
@@ -577,10 +577,10 @@ impl GenericPath for WindowsPath {
         let mut components =
             str::split_nonempty(rest, |c| windows::is_sep(c as u8));
         let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0]));
-        return WindowsPath { host: move host,
-                             device: move device,
+        return WindowsPath { host: host,
+                             device: device,
                              is_absolute: is_absolute,
-                             components: move components }
+                             components: components }
     }
 
     pure fn dirname() -> ~str {
@@ -589,7 +589,7 @@ impl GenericPath for WindowsPath {
             if s.len() == 0 {
                 ~"."
             } else {
-                move s
+                s
             }
         }
     }
@@ -629,7 +629,7 @@ impl GenericPath for WindowsPath {
         let dpath = WindowsPath(d);
         match self.filename() {
           Some(ref f) => dpath.push(*f),
-          None => move dpath
+          None => dpath
         }
     }
 
@@ -677,7 +677,7 @@ impl GenericPath for WindowsPath {
         return WindowsPath { host: None,
                              device: None,
                              is_absolute: false,
-                             components: move cs }
+                             components: cs }
     }
 
     pure fn push_rel(other: &WindowsPath) -> WindowsPath {
@@ -691,22 +691,22 @@ impl GenericPath for WindowsPath {
             let mut ss = str::split_nonempty(
                 *e,
                 |c| windows::is_sep(c as u8));
-            unsafe { v.push_all_move(move ss); }
+            unsafe { v.push_all_move(ss); }
         }
         // tedious, but as-is, we can't use ..self
         return WindowsPath {
             host: copy self.host,
             device: copy self.device,
             is_absolute: self.is_absolute,
-            components: move v
+            components: v
         }
     }
 
     pure fn push(s: &str) -> WindowsPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
-        unsafe { v.push_all_move(move ss); }
-        return WindowsPath { components: move v, ..copy self }
+        unsafe { v.push_all_move(ss); }
+        return WindowsPath { components: v, ..copy self }
     }
 
     pure fn pop() -> WindowsPath {
@@ -718,7 +718,7 @@ impl GenericPath for WindowsPath {
             host: copy self.host,
             device: copy self.device,
             is_absolute: self.is_absolute,
-            components: move cs
+            components: cs
         }
     }
 
@@ -748,7 +748,7 @@ pub pure fn normalize(components: &[~str]) -> ~[~str] {
             }
         }
     }
-    move cs
+    cs
 }
 
 // Various windows helpers, and tests for the impl.
@@ -771,7 +771,7 @@ pub mod windows {
                 if s[i] == '\\' as u8 {
                     let pre = s.slice(2, i);
                     let rest = s.slice(i, s.len());
-                    return Some((move pre, move rest));
+                    return Some((pre, rest));
                 }
                 i += 1;
             }
@@ -789,7 +789,7 @@ pub mod windows {
                 } else {
                     s.slice(2, s.len())
                 };
-                return Some((s.slice(0,1), move rest));
+                return Some((s.slice(0,1), rest));
             }
             None
         }
