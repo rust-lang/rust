@@ -177,7 +177,7 @@ pub fn make_tests(config: config) -> ~[test::TestDescAndFn] {
             tests.push(make_test(config, file))
         }
     }
-    move tests
+    tests
 }
 
 pub fn is_test(config: config, testfile: &Path) -> bool {
