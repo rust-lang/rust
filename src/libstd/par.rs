@@ -58,7 +58,7 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
             do vec::as_imm_buf(xs) |p, _len| {
                 let f = f();
                 let base = base;
-                let f = do future_spawn() |move f| {
+                let f = do future_spawn() || {
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base),
@@ -72,7 +72,7 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
                         f(base, slice)
                     }
                 };
-                futures.push(move f);
+                futures.push(f);
             };
             base += items_per_task;
         }

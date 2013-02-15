@@ -132,7 +132,7 @@ pub mod chained {
                 entry.next = new_chains[idx];
                 new_chains[idx] = Some(entry);
             }
-            self.chains = move new_chains;
+            self.chains = new_chains;
         }
 
         pure fn each_entry(blk: fn(@Entry<K,V>) -> bool) {
@@ -321,7 +321,7 @@ pub mod chained {
             if opt_v.is_none() {
                 fail!(fmt!("Key not found in table: %?", k));
             }
-            option::unwrap(move opt_v)
+            option::unwrap(opt_v)
         }
     }
 

@@ -40,7 +40,7 @@ struct Waitqueue { head: pipes::Port<SignalEnd>,
 
 fn new_waitqueue() -> Waitqueue {
     let (block_head, block_tail) = pipes::stream();
-    Waitqueue { head: move block_head, tail: move block_tail }
+    Waitqueue { head: block_head, tail: block_tail }
 }
 
 // Signals one live task from the queue.
@@ -86,7 +86,7 @@ enum Sem<Q> = Exclusive<SemInner<Q>>;
 #[doc(hidden)]
 fn new_sem<Q: Owned>(count: int, q: Q) -> Sem<Q> {
     Sem(exclusive(SemInner {
-        mut count: count, waiters: new_waitqueue(), blocked: move q }))
+        mut count: count, waiters: new_waitqueue(), blocked: q }))
 }
 #[doc(hidden)]
 fn new_sem_and_signal(count: int, num_condvars: uint)
@@ -109,9 +109,9 @@ impl<Q: Owned> &Sem<Q> {
                     // Create waiter nobe.
                     let (WaitEnd, SignalEnd) = pipes::oneshot();
                     // Tell outer scope we need to block.
-                    waiter_nobe = Some(move WaitEnd);
+                    waiter_nobe = Some(WaitEnd);
                     // Enqueue ourself.
-                    state.waiters.tail.send(move SignalEnd);
+                    state.waiters.tail.send(SignalEnd);
                 }
             }
         }
@@ -119,7 +119,7 @@ impl<Q: Owned> &Sem<Q> {
         /* for 1000.times { task::yield(); } */
         // Need to wait outside the exclusive.
         if waiter_nobe.is_some() {
-            let _ = pipes::recv_one(option::unwrap(move waiter_nobe));
+            let _ = pipes::recv_one(option::unwrap(waiter_nobe));
         }
     }
     fn release() {
@@ -215,8 +215,8 @@ impl &Condvar {
     fn wait_on(condvar_id: uint) {
         // Create waiter nobe.
         let (WaitEnd, SignalEnd) = pipes::oneshot();
-        let mut WaitEnd   = Some(move WaitEnd);
-        let mut SignalEnd = Some(move SignalEnd);
+        let mut WaitEnd   = Some(WaitEnd);
+        let mut SignalEnd = Some(SignalEnd);
         let mut reacquire = None;
         let mut out_of_bounds = None;
         unsafe {
@@ -231,7 +231,7 @@ impl &Condvar {
                         }
                         // Enqueue ourself to be woken up by a signaller.
                         let SignalEnd = option::swap_unwrap(&mut SignalEnd);
-                        state.blocked[condvar_id].tail.send(move SignalEnd);
+                        state.blocked[condvar_id].tail.send(SignalEnd);
                     } else {
                         out_of_bounds = Some(vec::len(state.blocked));
                     }
@@ -737,7 +737,7 @@ mod tests {
     pub fn test_sem_as_mutex() {
         let s = ~semaphore(1);
         let s2 = ~s.clone();
-        do task::spawn |move s2| {
+        do task::spawn || {
             do s2.access {
                 for 5.times { task::yield(); }
             }
@@ -752,7 +752,7 @@ mod tests {
         let (p,c) = pipes::stream();
         let s = ~semaphore(0);
         let s2 = ~s.clone();
-        do task::spawn |move s2, move c| {
+        do task::spawn || {
             s2.acquire();
             c.send(());
         }
@@ -764,7 +764,7 @@ mod tests {
         let (p,c) = pipes::stream();
         let s = ~semaphore(0);
         let s2 = ~s.clone();
-        do task::spawn |move s2, move p| {
+        do task::spawn || {
             for 5.times { task::yield(); }
             s2.release();
             let _ = p.recv();
@@ -780,7 +780,7 @@ mod tests {
         let s2 = ~s.clone();
         let (p1,c1) = pipes::stream();
         let (p2,c2) = pipes::stream();
-        do task::spawn |move s2, move c1, move p2| {
+        do task::spawn || {
             do s2.access {
                 let _ = p2.recv();
                 c1.send(());
@@ -799,10 +799,10 @@ mod tests {
             let s = ~semaphore(1);
             let s2 = ~s.clone();
             let (p,c) = pipes::stream();
-            let child_data = ~mut Some((move s2, move c));
+            let child_data = ~mut Some((s2, c));
             do s.access {
                 let (s2,c) = option::swap_unwrap(child_data);
-                do task::spawn |move c, move s2| {
+                do task::spawn || {
                     c.send(());
                     do s2.access { }
                     c.send(());
@@ -825,7 +825,7 @@ mod tests {
         let m2 = ~m.clone();
         let mut sharedstate = ~0;
         let ptr = ptr::addr_of(&(*sharedstate));
-        do task::spawn |move m2, move c| {
+        do task::spawn || {
             let sharedstate: &mut int =
                 unsafe { cast::reinterpret_cast(&ptr) };
             access_shared(sharedstate, m2, 10);
@@ -854,7 +854,7 @@ mod tests {
         // Child wakes up parent
         do m.lock_cond |cond| {
             let m2 = ~m.clone();
-            do task::spawn |move m2| {
+            do task::spawn || {
                 do m2.lock_cond |cond| {
                     let woken = cond.signal();
                     assert woken;
@@ -865,7 +865,7 @@ mod tests {
         // Parent wakes up child
         let (port,chan) = pipes::stream();
         let m3 = ~m.clone();
-        do task::spawn |move chan, move m3| {
+        do task::spawn || {
             do m3.lock_cond |cond| {
                 chan.send(());
                 cond.wait();
@@ -887,8 +887,8 @@ mod tests {
         for num_waiters.times {
             let mi = ~m.clone();
             let (port, chan) = pipes::stream();
-            ports.push(move port);
-            do task::spawn |move chan, move mi| {
+            ports.push(port);
+            do task::spawn || {
                 do mi.lock_cond |cond| {
                     chan.send(());
                     cond.wait();
@@ -918,7 +918,7 @@ mod tests {
     pub fn test_mutex_cond_no_waiter() {
         let m = ~Mutex();
         let m2 = ~m.clone();
-        do task::try |move m| {
+        do task::try || {
             do m.lock_cond |_x| { }
         };
         do m2.lock_cond |cond| {
@@ -931,7 +931,7 @@ mod tests {
         let m = ~Mutex();
         let m2 = ~m.clone();
 
-        let result: result::Result<(),()> = do task::try |move m2| {
+        let result: result::Result<(),()> = do task::try || {
             do m2.lock {
                 fail!();
             }
@@ -947,9 +947,9 @@ mod tests {
         let m = ~Mutex();
         let m2 = ~m.clone();
 
-        let result: result::Result<(),()> = do task::try |move m2| {
+        let result: result::Result<(),()> = do task::try || {
             let (p,c) = pipes::stream();
-            do task::spawn |move p| { // linked
+            do task::spawn || { // linked
                 let _ = p.recv(); // wait for sibling to get in the mutex
                 task::yield();
                 fail!();
@@ -972,19 +972,19 @@ mod tests {
         let m2 = ~m.clone();
         let (p,c) = pipes::stream();
 
-        let result: result::Result<(),()> = do task::try |move c, move m2| {
+        let result: result::Result<(),()> = do task::try || {
             let mut sibling_convos = ~[];
             for 2.times {
                 let (p,c) = pipes::stream();
-                let c = ~mut Some(move c);
-                sibling_convos.push(move p);
+                let c = ~mut Some(c);
+                sibling_convos.push(p);
                 let mi = ~m2.clone();
                 // spawn sibling task
-                do task::spawn |move mi, move c| { // linked
+                do task::spawn || { // linked
                     do mi.lock_cond |cond| {
                         let c = option::swap_unwrap(c);
                         c.send(()); // tell sibling to go ahead
-                        let _z = SendOnFailure(move c);
+                        let _z = SendOnFailure(c);
                         cond.wait(); // block forever
                     }
                 }
@@ -993,7 +993,7 @@ mod tests {
                 let _ = p.recv(); // wait for sibling to get in the mutex
             }
             do m2.lock { }
-            c.send(move sibling_convos); // let parent wait on all children
+            c.send(sibling_convos); // let parent wait on all children
             fail!();
         };
         assert result.is_err();
@@ -1015,7 +1015,7 @@ mod tests {
 
         fn SendOnFailure(c: pipes::Chan<()>) -> SendOnFailure {
             SendOnFailure {
-                c: move c
+                c: c
             }
         }
     }
@@ -1025,7 +1025,7 @@ mod tests {
         let m = ~Mutex();
         do m.lock_cond |cond| {
             let m2 = ~m.clone();
-            do task::spawn |move m2| {
+            do task::spawn || {
                 do m2.lock_cond |cond| {
                     cond.signal_on(0);
                 }
@@ -1039,7 +1039,7 @@ mod tests {
             let m = ~mutex_with_condvars(2);
             let m2 = ~m.clone();
             let (p,c) = pipes::stream();
-            do task::spawn |move m2, move c| {
+            do task::spawn || {
                 do m2.lock_cond |cond| {
                     c.send(());
                     cond.wait_on(1);
@@ -1088,7 +1088,7 @@ mod tests {
                 },
             DowngradeRead =>
                 do x.write_downgrade |mode| {
-                    let mode = x.downgrade(move mode);
+                    let mode = x.downgrade(mode);
                     (&mode).read(blk);
                 },
         }
@@ -1103,7 +1103,7 @@ mod tests {
         let x2 = ~x.clone();
         let mut sharedstate = ~0;
         let ptr = ptr::addr_of(&(*sharedstate));
-        do task::spawn |move c, move x2| {
+        do task::spawn || {
             let sharedstate: &mut int =
                 unsafe { cast::reinterpret_cast(&ptr) };
             access_shared(sharedstate, x2, mode1, 10);
@@ -1148,7 +1148,7 @@ mod tests {
         let x2 = ~x.clone();
         let (p1,c1) = pipes::stream();
         let (p2,c2) = pipes::stream();
-        do task::spawn |move c1, move x2, move p2| {
+        do task::spawn || {
             if !make_mode2_go_first {
                 let _ = p2.recv(); // parent sends to us once it locks, or ...
             }
@@ -1185,10 +1185,10 @@ mod tests {
         // Tests that downgrade can unlock the lock in both modes
         let x = ~RWlock();
         do lock_rwlock_in_mode(x, Downgrade) { }
-        test_rwlock_handshake(move x, Read, Read, false);
+        test_rwlock_handshake(x, Read, Read, false);
         let y = ~RWlock();
         do lock_rwlock_in_mode(y, DowngradeRead) { }
-        test_rwlock_exclusion(move y, Write, Write);
+        test_rwlock_exclusion(y, Write, Write);
     }
     #[test]
     pub fn test_rwlock_read_recursive() {
@@ -1203,7 +1203,7 @@ mod tests {
         // Child wakes up parent
         do x.write_cond |cond| {
             let x2 = ~x.clone();
-            do task::spawn |move x2| {
+            do task::spawn || {
                 do x2.write_cond |cond| {
                     let woken = cond.signal();
                     assert woken;
@@ -1214,7 +1214,7 @@ mod tests {
         // Parent wakes up child
         let (port,chan) = pipes::stream();
         let x3 = ~x.clone();
-        do task::spawn |move x3, move chan| {
+        do task::spawn || {
             do x3.write_cond |cond| {
                 chan.send(());
                 cond.wait();
@@ -1250,8 +1250,8 @@ mod tests {
         for num_waiters.times {
             let xi = ~x.clone();
             let (port, chan) = pipes::stream();
-            ports.push(move port);
-            do task::spawn |move chan, move xi| {
+            ports.push(port);
+            do task::spawn || {
                 do lock_cond(xi, dg1) |cond| {
                     chan.send(());
                     cond.wait();
@@ -1286,7 +1286,7 @@ mod tests {
         let x = ~RWlock();
         let x2 = ~x.clone();
 
-        let result: result::Result<(),()> = do task::try |move x2| {
+        let result: result::Result<(),()> = do task::try || {
             do lock_rwlock_in_mode(x2, mode1) {
                 fail!();
             }
@@ -1332,7 +1332,7 @@ mod tests {
         let x = ~RWlock();
         let y = ~RWlock();
         do x.write_downgrade |xwrite| {
-            let mut xopt = Some(move xwrite);
+            let mut xopt = Some(xwrite);
             do y.write_downgrade |_ywrite| {
                 y.downgrade(option::swap_unwrap(&mut xopt));
                 error!("oops, y.downgrade(x) should have failed!");

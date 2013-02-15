@@ -27,13 +27,13 @@ pub struct DuplexStream<T, U> {
 
 impl<T: Owned, U: Owned> GenericChan<T> for DuplexStream<T, U> {
     fn send(x: T) {
-        self.chan.send(move x)
+        self.chan.send(x)
     }
 }
 
 impl<T: Owned, U: Owned> GenericSmartChan<T> for DuplexStream<T, U> {
     fn try_send(x: T) -> bool {
-        self.chan.try_send(move x)
+        self.chan.try_send(x)
     }
 }
 
@@ -66,12 +66,12 @@ pub fn DuplexStream<T: Owned, U: Owned>()
     let (p1, c2) = pipes::stream();
     let (p2, c1) = pipes::stream();
     (DuplexStream {
-        chan: move c1,
-        port: move p1
+        chan: c1,
+        port: p1
     },
      DuplexStream {
-         chan: move c2,
-         port: move p2
+         chan: c2,
+         port: p2
      })
 }
 

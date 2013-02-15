@@ -98,7 +98,7 @@ fn get_monitor_task_gl() -> IoTask {
 
 fn spawn_loop() -> IoTask {
     let builder = do task().add_wrapper |task_body| {
-        fn~(move task_body) {
+        fn~() {
             // The I/O loop task also needs to be weak so it doesn't keep
             // the runtime alive
             unsafe {
@@ -116,7 +116,7 @@ fn spawn_loop() -> IoTask {
         }
     };
     let builder = builder.unlinked();
-    spawn_iotask(move builder)
+    spawn_iotask(builder)
 }
 
 #[cfg(test)]
