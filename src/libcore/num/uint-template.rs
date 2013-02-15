@@ -141,18 +141,6 @@ impl num::One for T {
     static pure fn one() -> T { 1 }
 }
 
-impl num::Round for T {
-    #[inline(always)]
-    pure fn round(&self, _: num::RoundMode) -> T { *self }
-
-    #[inline(always)]
-    pure fn floor(&self) -> T { *self }
-    #[inline(always)]
-    pure fn ceil(&self) -> T { *self }
-    #[inline(always)]
-    pure fn fract(&self) -> T { 0 }
-}
-
 #[cfg(notest)]
 impl ops::Add<T,T> for T {
     pure fn add(&self, other: &T) -> T { *self + *other }
