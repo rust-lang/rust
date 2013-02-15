@@ -256,7 +256,7 @@ impl FromStrRadix for T {
 /// Convert to a string as a byte slice in a given base.
 #[inline(always)]
 pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
-    let (buf, _) = strconv::to_str_bytes_common(&n, radix, false, false,
+    let (buf, _) = strconv::to_str_bytes_common(&n, radix, false,
                             strconv::SignNeg, strconv::DigAll);
     f(buf)
 }
@@ -264,7 +264,7 @@ pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
 /// Convert to a string in base 10.
 #[inline(always)]
 pub pure fn to_str(num: T) -> ~str {
-    let (buf, _) = strconv::to_str_common(&num, 10u, false, false,
+    let (buf, _) = strconv::to_str_common(&num, 10u, false,
                                       strconv::SignNeg, strconv::DigAll);
     buf
 }
@@ -272,7 +272,7 @@ pub pure fn to_str(num: T) -> ~str {
 /// Convert to a string in a given base.
 #[inline(always)]
 pub pure fn to_str_radix(num: T, radix: uint) -> ~str {
-    let (buf, _) = strconv::to_str_common(&num, radix, false, false,
+    let (buf, _) = strconv::to_str_common(&num, radix, false,
                                       strconv::SignNeg, strconv::DigAll);
     buf
 }

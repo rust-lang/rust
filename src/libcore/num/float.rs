@@ -109,7 +109,7 @@ pub mod consts {
 #[inline(always)]
 pub pure fn to_str(num: float) -> ~str {
     let (r, _) = strconv::to_str_common(
-        &num, 10u, true, true, strconv::SignNeg, strconv::DigAll);
+        &num, 10u, true, strconv::SignNeg, strconv::DigAll);
     r
 }
 
@@ -123,7 +123,7 @@ pub pure fn to_str(num: float) -> ~str {
 #[inline(always)]
 pub pure fn to_str_hex(num: float) -> ~str {
     let (r, _) = strconv::to_str_common(
-        &num, 16u, true, true, strconv::SignNeg, strconv::DigAll);
+        &num, 16u, true, strconv::SignNeg, strconv::DigAll);
     r
 }
 
@@ -144,7 +144,7 @@ pub pure fn to_str_hex(num: float) -> ~str {
 #[inline(always)]
 pub pure fn to_str_radix(num: float, radix: uint) -> ~str {
     let (r, special) = strconv::to_str_common(
-        &num, radix, true, true, strconv::SignNeg, strconv::DigAll);
+        &num, radix, true, strconv::SignNeg, strconv::DigAll);
     if special { fail!(~"number has a special value, \
                       try to_str_radix_special() if those are expected") }
     r
@@ -161,7 +161,7 @@ pub pure fn to_str_radix(num: float, radix: uint) -> ~str {
  */
 #[inline(always)]
 pub pure fn to_str_radix_special(num: float, radix: uint) -> (~str, bool) {
-    strconv::to_str_common(&num, radix, true, true,
+    strconv::to_str_common(&num, radix, true,
                            strconv::SignNeg, strconv::DigAll)
 }
 
@@ -177,7 +177,7 @@ pub pure fn to_str_radix_special(num: float, radix: uint) -> (~str, bool) {
 #[inline(always)]
 pub pure fn to_str_exact(num: float, digits: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
-        &num, 10u, true, true, strconv::SignNeg, strconv::DigExact(digits));
+        &num, 10u, true, strconv::SignNeg, strconv::DigExact(digits));
     r
 }
 
@@ -199,7 +199,7 @@ pub fn test_to_str_exact_do_decimal() {
 #[inline(always)]
 pub pure fn to_str_digits(num: float, digits: uint) -> ~str {
     let (r, _) = strconv::to_str_common(
-        &num, 10u, true, true, strconv::SignNeg, strconv::DigMax(digits));
+        &num, 10u, true, strconv::SignNeg, strconv::DigMax(digits));
     r
 }
 
