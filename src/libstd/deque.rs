@@ -41,7 +41,7 @@ pub fn create<T: Copy>() -> Deque<T> {
       */
     fn grow<T: Copy>(nelts: uint, lo: uint, elts: ~[Cell<T>])
       -> ~[Cell<T>] {
-        let mut elts = move elts;
+        let mut elts = elts;
         assert (nelts == vec::len(elts));
         let mut rv = ~[];
 
@@ -54,10 +54,10 @@ pub fn create<T: Copy>() -> Deque<T> {
             i += 1u;
         }
 
-        move rv
+        rv
     }
     fn get<T: Copy>(elts: &DVec<Cell<T>>, i: uint) -> T {
-        match (*elts).get_elt(i) { Some(move t) => t, _ => fail!() }
+        match (*elts).get_elt(i) { Some(t) => t, _ => fail!() }
     }
 
     struct Repr<T> {
@@ -75,7 +75,7 @@ pub fn create<T: Copy>() -> Deque<T> {
                 self.lo = self.elts.len() - 1u;
             } else { self.lo -= 1u; }
             if self.lo == self.hi {
-                self.elts.swap(|v| grow(self.nelts, oldlo, move v));
+                self.elts.swap(|v| grow(self.nelts, oldlo, v));
                 self.lo = self.elts.len() - 1u;
                 self.hi = self.nelts;
             }
@@ -84,7 +84,7 @@ pub fn create<T: Copy>() -> Deque<T> {
         }
         fn add_back(t: T) {
             if self.lo == self.hi && self.nelts != 0u {
-                self.elts.swap(|v| grow(self.nelts, self.lo, move v));
+                self.elts.swap(|v| grow(self.nelts, self.lo, v));
                 self.lo = 0u;
                 self.hi = self.nelts;
             }

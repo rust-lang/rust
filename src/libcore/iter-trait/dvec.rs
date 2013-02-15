@@ -25,7 +25,7 @@ mod inst {
         unsafe {
             do self.swap |v| {
                 v.each(f);
-                move v
+                v
             }
         }
     }

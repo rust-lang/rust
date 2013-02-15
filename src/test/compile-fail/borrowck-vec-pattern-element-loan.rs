@@ -4,7 +4,7 @@ fn a() -> &[int] {
         [_a, ..tail] => tail,
         _ => fail!(~"foo")
     };
-    move tail
+    tail
 }
 
 fn main() {

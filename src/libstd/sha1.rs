@@ -265,7 +265,7 @@ pub fn sha1() -> Sha1 {
          computed: false,
          work_buf: @mut vec::from_elem(work_buf_len, 0u32)
     };
-    let mut sh = (move st) as Sha1;
+    let mut sh = (st) as Sha1;
     sh.reset();
     return sh;
 }

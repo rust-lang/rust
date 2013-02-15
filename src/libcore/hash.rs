@@ -183,7 +183,7 @@ fn SipState(key0: u64, key1: u64) -> SipState {
         mut ntail : 0u,
     };
     (&state).reset();
-    move state
+    state
 }
 
 
@@ -352,7 +352,7 @@ impl Streaming for &SipState {
         for vec::each(r) |b| {
             s += uint::to_str_radix(*b as uint, 16u);
         }
-        move s
+        s
     }
 
     #[inline(always)]
@@ -447,7 +447,7 @@ pub fn test_siphash() {
         for vec::each(*r) |b| {
             s += uint::to_str_radix(*b as uint, 16u);
         }
-        move s
+        s
     }
 
     while t < 64 {

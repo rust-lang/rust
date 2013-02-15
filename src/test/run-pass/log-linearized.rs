@@ -21,7 +21,7 @@ struct V<T> { v: ~[option<T>] }
 
 fn mk<T>() -> @Smallintmap<T> {
     let mut v: ~[option<T>] = ~[];
-    return @Smallintmap {mut v: move v};
+    return @Smallintmap {mut v: v};
 }
 
 fn f<T,U>() {

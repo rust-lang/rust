@@ -156,7 +156,7 @@ pub mod jit {
                     code: entry,
                     env: ptr::null()
                 };
-                let func: fn(++argv: ~[~str]) = cast::transmute(move closure);
+                let func: fn(++argv: ~[~str]) = cast::transmute(closure);
 
                 func(~[/*bad*/copy sess.opts.binary]);
             }
@@ -559,11 +559,11 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 
     let {name: opt_name, vers: opt_vers,
          cmh_items: cmh_items} = provided_link_metas(sess, c);
-    let name = crate_meta_name(sess, output, move opt_name);
-    let vers = crate_meta_vers(sess, move opt_vers);
+    let name = crate_meta_name(sess, output, opt_name);
+    let vers = crate_meta_vers(sess, opt_vers);
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
-        crate_meta_extras_hash(symbol_hasher, move cmh_items,
+        crate_meta_extras_hash(symbol_hasher, cmh_items,
                                dep_hashes);
 
     return {name: name, vers: vers, extras_hash: extras_hash};

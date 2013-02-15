@@ -229,12 +229,12 @@ pub mod raw {
         (**repr).unboxed.fill += sys::size_of::<T>();
         let p = addr_of(&((**repr).unboxed.data));
         let p = ptr::offset(p, fill) as *mut T;
-        rusti::move_val_init(&mut(*p), move initval);
+        rusti::move_val_init(&mut(*p), initval);
     }
 
     pub unsafe fn push_slow<T>(v: &mut @[const T], initval: T) {
         reserve_at_least(&mut *v, v.len() + 1u);
-        push_fast(v, move initval);
+        push_fast(v, initval);
     }
 
     /**

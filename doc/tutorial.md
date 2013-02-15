@@ -1260,7 +1260,7 @@ Moving it into a mutable slot makes the elements assignable.
 let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
 
 // Put the vector into a mutable slot
-let mut mutable_crayons = move crayons;
+let mut mutable_crayons = crayons;
 
 // Now it's mutable to the bone
 mutable_crayons[0] = Apricot;

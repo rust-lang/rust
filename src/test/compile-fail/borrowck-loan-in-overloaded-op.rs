@@ -20,6 +20,6 @@ impl Add<foo, foo> for foo {
 
 fn main() {
     let x = foo(~3);
-    let _y = x + move x;
+    let _y = x + x;
     //~^ ERROR moving out of immutable local variable prohibited due to outstanding loan
 }

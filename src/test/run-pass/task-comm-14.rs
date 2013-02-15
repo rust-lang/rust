@@ -19,8 +19,8 @@ pub fn main() {
     while (i > 0) {
         log(debug, i);
         let (p, ch) = pipes::stream();
-        po.add(move p);
-        task::spawn({let i = i; |move ch| child(i, ch)});
+        po.add(p);
+        task::spawn({let i = i; || child(i, ch)});
         i = i - 1;
     }
 

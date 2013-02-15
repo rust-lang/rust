@@ -752,10 +752,10 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
             def_id: did
         };
 
-        vec::push(&mut result, move provided_trait_method_info);
+        vec::push(&mut result, provided_trait_method_info);
     }
 
-    return move result;
+    return result;
 }
 
 /// Returns the supertraits of the given trait.
@@ -766,7 +766,7 @@ pub fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     for reader::tagged_docs(item_doc, tag_impl_trait) |trait_doc| {
         results.push(doc_type(trait_doc, tcx, cdata));
     }
-    return dvec::unwrap(move results);
+    return dvec::unwrap(results);
 }
 
 // If the item in question is a trait, returns its set of methods and
@@ -847,7 +847,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
         }
     }
 
-    return Some(dvec::unwrap(move static_impl_methods));
+    return Some(dvec::unwrap(static_impl_methods));
 }
 
 pub fn get_item_attrs(cdata: cmd,

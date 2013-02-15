@@ -93,7 +93,7 @@ use uint;
 use util;
 
 macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = move *ptr::addr_of(&($x)); move y } )
+    { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
 )
 
 type TaskSet = LinearSet<*rust_task>;
@@ -195,10 +195,10 @@ fn each_ancestor(list:        &mut AncestorList,
         if coalesce_this.is_some() {
             // Needed coalesce. Our next ancestor becomes our old
             // ancestor's next ancestor. ("next = old_next->next;")
-            *list = move option::unwrap(move coalesce_this);
+            *list = option::unwrap(coalesce_this);
         } else {
             // No coalesce; restore from tmp. ("next = old_next;")
-            *list = move tmp_list;
+            *list = tmp_list;
         }
         return early_break;
     }
@@ -279,7 +279,7 @@ fn each_ancestor(list:        &mut AncestorList,
                     // Swap the list out here; the caller replaces us with it.
                     let rest = util::replace(&mut nobe.ancestors,
                                              AncestorList(None));
-                    (Some(move rest), need_unwind)
+                    (Some(rest), need_unwind)
                 } else {
                     (None, need_unwind)
                 }
@@ -292,8 +292,8 @@ fn each_ancestor(list:        &mut AncestorList,
             // If this trips, more likely the problem is 'blk' failed inside.
             let tmp_arc = option::swap_unwrap(&mut *parent_group);
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
-            *parent_group = move Some(move tmp_arc);
-            move result
+            *parent_group = Some(tmp_arc);
+            result
         }
     }
 }
@@ -337,15 +337,15 @@ struct TCB {
 fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
        is_main: bool, notifier: Option<AutoNotify>) -> TCB {
 
-    let notifier = move notifier;
+    let notifier = notifier;
     notifier.iter(|x| { x.failed = false; });
 
     TCB {
         me: me,
-        tasks: move tasks,
-        ancestors: move ancestors,
+        tasks: tasks,
+        ancestors: ancestors,
         is_main: is_main,
-        notifier: move notifier
+        notifier: notifier
     }
 }
 
@@ -360,7 +360,7 @@ struct AutoNotify {
 
 fn AutoNotify(chan: Chan<TaskResult>) -> AutoNotify {
     AutoNotify {
-        notify_chan: move chan,
+        notify_chan: chan,
         failed: true // Un-set above when taskgroup successfully made.
     }
 }
@@ -370,10 +370,10 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
     let newstate = util::replace(&mut *state, None);
     // If 'None', the group was failing. Can't enlist.
     if newstate.is_some() {
-        let group = option::unwrap(move newstate);
+        let group = option::unwrap(newstate);
         taskset_insert(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
-        *state = Some(move group);
+        *state = Some(group);
         true
     } else {
         false
@@ -386,10 +386,10 @@ fn leave_taskgroup(state: TaskGroupInner, me: *rust_task,
     let newstate = util::replace(&mut *state, None);
     // If 'None', already failing and we've already gotten a kill signal.
     if newstate.is_some() {
-        let group = option::unwrap(move newstate);
+        let group = option::unwrap(newstate);
         taskset_remove(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
-        *state = Some(move group);
+        *state = Some(group);
     }
 }
 
@@ -410,7 +410,7 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
         // That's ok; only one task needs to do the dirty work. (Might also
         // see 'None' if Somebody already failed and we got a kill signal.)
         if newstate.is_some() {
-            let group = option::unwrap(move newstate);
+            let group = option::unwrap(newstate);
             for taskset_each(&group.members) |sibling| {
                 // Skip self - killing ourself won't do much good.
                 if sibling != me {
@@ -457,7 +457,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 }));
                 // Main task/group has no ancestors, no notifier, etc.
                 let group =
-                    @TCB(spawner, move tasks, AncestorList(None), true, None);
+                    @TCB(spawner, tasks, AncestorList(None), true, None);
                 local_set(spawner, taskgroup_key!(), group);
                 group
             }
@@ -472,7 +472,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // Child's ancestors are spawner's ancestors.
             let a = share_ancestors(&mut spawner_group.ancestors);
             // Propagate main-ness.
-            (move g, move a, spawner_group.is_main)
+            (g, a, spawner_group.is_main)
         } else {
             // Child is in a separate group from spawner.
             let g = private::exclusive(Some(TaskGroupData {
@@ -504,7 +504,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 // Child has no ancestors.
                 AncestorList(None)
             };
-            (move g, move a, false)
+            (g, a, false)
         };
     }
 
@@ -515,10 +515,10 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         //    None               { ancestor_list(None) }
         let tmp = util::replace(&mut **ancestors, None);
         if tmp.is_some() {
-            let ancestor_arc = option::unwrap(move tmp);
+            let ancestor_arc = option::unwrap(tmp);
             let result = ancestor_arc.clone();
-            **ancestors = move Some(move ancestor_arc);
-            AncestorList(Some(move result))
+            **ancestors = Some(ancestor_arc);
+            AncestorList(Some(result))
         } else {
             AncestorList(None)
         }
@@ -530,7 +530,7 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
         gen_child_taskgroup(opts.linked, opts.supervised);
 
     unsafe {
-        let child_data = ~mut Some((move child_tg, move ancestors, move f));
+        let child_data = ~mut Some((child_tg, ancestors, f));
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
@@ -548,8 +548,8 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
                 Some(option::swap_unwrap(&mut opts.notify_chan))
             };
 
-            let child_wrapper = make_child_wrapper(new_task, move child_tg,
-                  move ancestors, is_main, move notify_chan, move f);
+            let child_wrapper = make_child_wrapper(new_task, child_tg,
+                  ancestors, is_main, notify_chan, f);
 
             let closure = cast::transmute(&child_wrapper);
 
@@ -557,7 +557,7 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
             // closure. (Reordering them wouldn't help - then getting killed
             // between them would leak.)
             rt::start_task(new_task, closure);
-            cast::forget(move child_wrapper);
+            cast::forget(child_wrapper);
         }
     }
 
@@ -571,8 +571,8 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
                           ancestors: AncestorList, is_main: bool,
                           notify_chan: Option<Chan<TaskResult>>,
                           f: fn~()) -> fn~() {
-        let child_data = ~mut Some((move child_arc, move ancestors));
-        return fn~(move notify_chan, move child_data, move f) {
+        let child_data = ~mut Some((child_arc, ancestors));
+        return fn~() {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let mut (child_arc, ancestors) = option::swap_unwrap(child_data);
             // Child task runs this code.
@@ -584,14 +584,14 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
             let notifier = match notify_chan {
                 Some(ref notify_chan_value) => {
                     let moved_ncv = move_it!(*notify_chan_value);
-                    Some(AutoNotify(move moved_ncv))
+                    Some(AutoNotify(moved_ncv))
                 }
                 _ => None
             };
 
             if enlist_many(child, &child_arc, &mut ancestors) {
-                let group = @TCB(child, move child_arc, move ancestors,
-                                 is_main, move notifier);
+                let group = @TCB(child, child_arc, ancestors,
+                                 is_main, notifier);
                 unsafe {
                     local_set(child, taskgroup_key!(), group);
                 }
@@ -694,7 +694,7 @@ fn test_spawn_raw_unsupervise() {
         notify_chan: None,
         .. default_task_opts()
     };
-    do spawn_raw(move opts) {
+    do spawn_raw(opts) {
         fail!();
     }
 }
@@ -708,7 +708,7 @@ fn test_spawn_raw_notify_success() {
         notify_chan: Some(notify_ch),
         .. default_task_opts()
     };
-    do spawn_raw(move opts) {
+    do spawn_raw(opts) {
     }
     assert notify_po.recv() == Success;
 }
@@ -724,7 +724,7 @@ fn test_spawn_raw_notify_failure() {
         notify_chan: Some(notify_ch),
         .. default_task_opts()
     };
-    do spawn_raw(move opts) {
+    do spawn_raw(opts) {
         fail!();
     }
     assert notify_po.recv() == Failure;

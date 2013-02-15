@@ -29,7 +29,7 @@ fn test05_start(ch : Chan<int>) {
 
 fn test05() {
     let (po, ch) = pipes::stream();
-    task::spawn(|move ch| test05_start(ch) );
+    task::spawn(|| test05_start(ch) );
     let mut value = po.recv();
     log(error, value);
     value = po.recv();

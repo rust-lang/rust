@@ -171,7 +171,7 @@ pub fn env() -> ~[(~str,~str)] {
                 assert vec::len(vs) == 2u;
                 pairs.push((copy vs[0], copy vs[1]));
             }
-            move pairs
+            pairs
         }
     }
 }
@@ -482,7 +482,7 @@ pub fn tmpdir() -> Path {
 
     fn getenv_nonempty(v: &str) -> Option<Path> {
         match getenv(v) {
-            Some(move x) =>
+            Some(x) =>
                 if str::is_empty(x) {
                     None
                 } else {
@@ -915,7 +915,7 @@ unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
     for uint::range(0, argc as uint) |i| {
         vec::push(&mut args, str::raw::from_c_str(*argv.offset(i)));
     }
-    move args
+    args
 }
 
 /**
@@ -1137,7 +1137,7 @@ mod tests {
         let rng: rand::Rng = rand::Rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert getenv(n).is_none();
-        move n
+        n
     }
 
     #[test]
@@ -1171,7 +1171,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n, s);
         log(debug, copy s);
-        assert getenv(n) == option::Some(move s);
+        assert getenv(n) == option::Some(s);
     }
 
     #[test]
@@ -1197,7 +1197,7 @@ mod tests {
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
-            assert v2.is_none() || v2 == option::Some(move v);
+            assert v2.is_none() || v2 == option::Some(v);
         }
     }
 
@@ -1210,7 +1210,7 @@ mod tests {
         assert !vec::contains(e, &(copy n, ~"VALUE"));
 
         e = env();
-        assert vec::contains(e, &(move n, ~"VALUE"));
+        assert vec::contains(e, &(n, ~"VALUE"));
     }
 
     #[test]

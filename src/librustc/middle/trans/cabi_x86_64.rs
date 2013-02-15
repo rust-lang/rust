@@ -274,11 +274,11 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     if words > 4 {
         all_mem(cls);
         let cls = cls;
-        return move cls;
+        return cls;
     }
     classify(ty, cls, 0, 0);
     fixup(ty, cls);
-    return move cls;
+    return cls;
 }
 
 fn llreg_ty(cls: &[x86_64_reg_class]) -> TypeRef {

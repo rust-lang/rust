@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn main() {
-    let i = move ~100;
+    let i = ~100;
     assert *i == 100;
 }

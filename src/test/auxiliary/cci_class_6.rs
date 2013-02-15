@@ -27,7 +27,7 @@ pub mod kitties {
         cat {
             meows: in_x,
             how_hungry: in_y,
-            info: move in_info
+            info: in_info
         }
     }
 }

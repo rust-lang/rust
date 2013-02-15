@@ -1252,7 +1252,6 @@ pub mod test {
                     get_data_for_uv_handle(stream as *libc::c_void)
                       as *request_wrapper;
                 let buf_base = get_base_from_buf(buf);
-                let buf_len = get_len_from_buf(buf);
                 let bytes = vec::from_buf(buf_base, nread as uint);
                 let read_chan = (*client_data).read_chan.clone();
                 let msg_from_server = str::from_bytes(bytes);

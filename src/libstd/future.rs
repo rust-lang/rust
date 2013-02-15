@@ -71,10 +71,10 @@ impl<A> Future<A> {
 
             let mut state = Evaluating;
             self.state <-> state;
-            match move state {
+            match state {
                 Forced(_) | Evaluating => fail!(~"Logic error."),
-                Pending(move f) => {
-                    self.state = Forced(move f());
+                Pending(f) => {
+                    self.state = Forced(f());
                     self.get_ref()
                 }
             }
@@ -90,7 +90,7 @@ pub fn from_value<A>(val: A) -> Future<A> {
      * not block.
      */
 
-    Future {state: Forced(move val)}
+    Future {state: Forced(val)}
 }
 
 pub fn from_port<A:Owned>(port: PortOne<A>) ->
@@ -102,13 +102,13 @@ pub fn from_port<A:Owned>(port: PortOne<A>) ->
      * waiting for the result to be received on the port.
      */
 
-    let port = ~mut Some(move port);
-    do from_fn |move port| {
+    let port = ~mut Some(port);
+    do from_fn || {
         let mut port_ = None;
         port_ <-> *port;
-        let port = option::unwrap(move port_);
-        match recv(move port) {
-            oneshot::send(move data) => move data
+        let port = option::unwrap(port_);
+        match recv(port) {
+            oneshot::send(data) => data
         }
     }
 }
@@ -122,7 +122,7 @@ pub fn from_fn<A>(f: ~fn() -> A) -> Future<A> {
      * function. It is not spawned into another task.
      */
 
-    Future {state: Pending(move f)}
+    Future {state: Pending(f)}
 }
 
 pub fn spawn<A:Owned>(blk: fn~() -> A) -> Future<A> {
@@ -135,13 +135,13 @@ pub fn spawn<A:Owned>(blk: fn~() -> A) -> Future<A> {
 
     let (chan, port) = oneshot::init();
 
-    let chan = ~mut Some(move chan);
-    do task::spawn |move blk, move chan| {
+    let chan = ~mut Some(chan);
+    do task::spawn || {
         let chan = option::swap_unwrap(&mut *chan);
-        send_one(move chan, blk());
+        send_one(chan, blk());
     }
 
-    return from_port(move port);
+    return from_port(port);
 }
 
 #[allow(non_implicitly_copyable_typarams)]
@@ -162,8 +162,8 @@ pub mod test {
     #[test]
     pub fn test_from_port() {
         let (ch, po) = oneshot::init();
-        send_one(move ch, ~"whale");
-        let f = from_port(move po);
+        send_one(ch, ~"whale");
+        let f = from_port(po);
         assert f.get() == ~"whale";
     }
 
@@ -203,7 +203,7 @@ pub mod test {
     pub fn test_sendable_future() {
         let expected = ~"schlorf";
         let f = do spawn |copy expected| { copy expected };
-        do task::spawn |move f, move expected| {
+        do task::spawn || {
             let actual = f.get();
             assert actual == expected;
         }

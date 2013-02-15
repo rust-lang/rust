@@ -34,10 +34,10 @@ macro_rules! select_if (
         ], )*
     } => {
         if $index == $count {
-            match move pipes::try_recv(move $port) {
-              $(Some($message($($(move $x,)+)* move next)) => {
-                let $next = move next;
-                move $e
+            match pipes::try_recv($port) {
+              $(Some($message($($($x,)+)* next)) => {
+                let $next = next;
+                $e
               })+
               _ => fail!()
             }
@@ -105,33 +105,33 @@ fn render(_buffer: &Buffer) {
 }
 
 fn draw_frame(+channel: double_buffer::client::acquire) {
-    let channel = request(move channel);
+    let channel = request(channel);
     select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(move channel, move buffer)
+                release(channel, buffer)
             }
         }
     );
 }
 
 fn draw_two_frames(+channel: double_buffer::client::acquire) {
-    let channel = request(move channel);
+    let channel = request(channel);
     let channel = select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(move channel, move buffer)
+                release(channel, buffer)
             }
         }
     );
-    let channel = request(move channel);
+    let channel = request(channel);
     select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(move channel, move buffer)
+                release(channel, buffer)
             }
         }
     );
@@ -152,7 +152,7 @@ fn draw_two_frames_bad1(+channel: double_buffer::client::acquire) {
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(channel, move buffer)
+                release(channel, buffer)
             }
         }
     );
@@ -165,9 +165,9 @@ fn draw_two_frames_bad2(+channel: double_buffer::client::acquire) {
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(channel, move buffer);
+                release(channel, buffer);
                 render(&buffer);
-                release(channel, move buffer);
+                release(channel, buffer);
             }
         }
     );

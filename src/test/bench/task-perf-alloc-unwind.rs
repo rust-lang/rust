@@ -99,6 +99,6 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
           }
         };
 
-        recurse_or_fail(depth, Some(move st));
+        recurse_or_fail(depth, Some(st));
     }
 }

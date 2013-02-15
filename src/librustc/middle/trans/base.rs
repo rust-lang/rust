@@ -1174,7 +1174,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
         });
         let bcx = mk_block(llbb,
                            parent,
-                           move kind,
+                           kind,
                            is_lpad,
                            opt_node_info,
                            cx);

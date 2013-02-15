@@ -593,7 +593,7 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: move kind,
+        kind: kind,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
@@ -607,7 +607,7 @@ pub enum block = @block_;
 pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
             is_lpad: bool, node_info: Option<node_info>, fcx: fn_ctxt)
     -> block {
-    block(@block_(llbb, parent, move kind, is_lpad, node_info, fcx))
+    block(@block_(llbb, parent, kind, is_lpad, node_info, fcx))
 }
 
 // First two args are retptr, env

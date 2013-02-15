@@ -120,8 +120,8 @@ pub struct TestDescAndFn {
 pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
     let opts =
         match parse_opts(args) {
-          either::Left(move o) => o,
-          either::Right(move m) => fail!(m)
+          either::Left(o) => o,
+          either::Right(m) => fail!(m)
         };
     if !run_tests_console(&opts, tests) { fail!(~"Some tests failed"); }
 }
@@ -173,8 +173,8 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
                  getopts::optopt(~"logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
-          Ok(move m) => m,
-          Err(move f) => return either::Right(getopts::fail_str(f))
+          Ok(m) => m,
+          Err(f) => return either::Right(getopts::fail_str(f))
         };
 
     let filter =
@@ -260,7 +260,7 @@ pub fn run_tests_console(opts: &TestOpts,
                 st.failed += 1;
                 write_failed(st.out, st.use_color);
                 st.out.write_line(~"");
-                st.failures.push(move test);
+                st.failures.push(test);
               }
               TrIgnored => {
                 st.ignored += 1;
@@ -410,7 +410,7 @@ fn should_sort_failures_before_printing_them() {
             mut failed: 0u,
             mut ignored: 0u,
             mut benchmarked: 0u,
-            mut failures: ~[move test_b, move test_a]
+            mut failures: ~[test_b, test_a]
         };
 
         print_failures(st);
@@ -486,7 +486,7 @@ fn run_tests(opts: &TestOpts,
         callback(TeWait(copy b.desc));
         run_test(!opts.run_benchmarks, b, ch.clone());
         let (test, result) = p.recv();
-        callback(TeResult(move test, result));
+        callback(TeResult(test, result));
     }
 }
 
@@ -514,7 +514,7 @@ pub fn filter_tests(
 
     // Remove tests that don't match the test filter
     filtered = if opts.filter.is_none() {
-        move filtered
+        filtered
     } else {
         let filter_str =
             match opts.filter {
@@ -534,7 +534,7 @@ pub fn filter_tests(
 
     // Maybe pull out the ignored test and unignore them
     filtered = if !opts.run_ignored {
-        move filtered
+        filtered
     } else {
         fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
             if test.desc.ignore {
@@ -556,7 +556,7 @@ pub fn filter_tests(
     }
     sort::quick_sort(filtered, lteq);
 
-    move filtered
+    filtered
 }
 
 struct TestFuture {
@@ -582,9 +582,9 @@ pub fn run_test(force_ignore: bool,
         do task::spawn {
             let mut result_future = None; // task::future_result(builder);
             task::task().unlinked().future_result(|+r| {
-                result_future = Some(move r);
+                result_future = Some(r);
             }).spawn(testfn_cell.take());
-            let task_result = option::unwrap(move result_future).recv();
+            let task_result = option::unwrap(result_future).recv();
             let test_result = calc_result(&desc,
                                           task_result == task::Success);
             monitor_ch.send((desc, test_result));
@@ -965,9 +965,9 @@ mod tests {
                     },
                     testfn: DynTestFn(copy testfn),
                 };
-                tests.push(move test);
+                tests.push(test);
             }
-            move tests
+            tests
         };
         let filtered = filter_tests(&opts, tests);
 
@@ -980,7 +980,7 @@ mod tests {
               ~"test::parse_ignored_flag",
               ~"test::sort_tests"];
 
-        let pairs = vec::zip(expected, move filtered);
+        let pairs = vec::zip(expected, filtered);
 
         for vec::each(pairs) |p| {
             match *p {

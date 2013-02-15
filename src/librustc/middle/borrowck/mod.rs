@@ -420,7 +420,7 @@ pub fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T,
     let old_save_and_restore_t = *save_and_restore_t;
     let u = f();
     *save_and_restore_t = old_save_and_restore_t;
-    move u
+    u
 }
 
 pub fn save_and_restore_managed<T:Copy,U>(save_and_restore_t: @mut T,
@@ -428,7 +428,7 @@ pub fn save_and_restore_managed<T:Copy,U>(save_and_restore_t: @mut T,
     let old_save_and_restore_t = *save_and_restore_t;
     let u = f();
     *save_and_restore_t = old_save_and_restore_t;
-    move u
+    u
 }
 
 impl LoanKind {

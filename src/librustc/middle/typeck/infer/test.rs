@@ -69,7 +69,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
         cfg, parse_sess);
 
     let tcx = ty::mk_ctxt(sess, dm, amap, freevars, region_map,
-                          region_paramd_items, move lang_items, crate);
+                          region_paramd_items, lang_items, crate);
 
     let infcx = infer::new_infer_ctxt(tcx);
 
@@ -192,7 +192,7 @@ impl Env {
                           onceness: ast::Many,
                           region: ty::re_static,
                           bounds: @~[]},
-            sig: FnSig {inputs: move inputs,
+            sig: FnSig {inputs: inputs,
                         output: output_ty}
         })
     }

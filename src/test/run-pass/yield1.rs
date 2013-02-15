@@ -11,10 +11,10 @@
 
 pub fn main() {
     let mut result = None;
-    task::task().future_result(|+r| { result = Some(move r); }).spawn(child);
+    task::task().future_result(|+r| { result = Some(r); }).spawn(child);
     error!("1");
     task::yield();
-    option::unwrap(move result).recv();
+    option::unwrap(result).recv();
 }
 
 fn child() { error!("2"); }

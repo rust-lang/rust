@@ -797,7 +797,7 @@ pub fn Resolver(session: Session,
         intr: session.intr()
     };
 
-    move self
+    self
 }
 
 /// The main resolver class.
@@ -3255,7 +3255,7 @@ pub impl Resolver {
         self.add_exports_for_module(&mut exports2, module_);
         match copy module_.def_id {
             Some(def_id) => {
-                self.export_map2.insert(def_id.node, move exports2);
+                self.export_map2.insert(def_id.node, exports2);
                 debug!("(computing exports) writing exports for %d (some)",
                        def_id.node);
             }

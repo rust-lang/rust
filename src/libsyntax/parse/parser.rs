@@ -190,8 +190,8 @@ pub fn Parser(sess: parse_sess
     let interner = rdr.interner();
 
     Parser {
-        reader: move rdr,
-        interner: move interner,
+        reader: rdr,
+        interner: interner,
         sess: sess,
         cfg: cfg,
         token: tok0.tok,
@@ -712,7 +712,7 @@ pub impl Parser {
     fn parse_capture_item_or(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
         -> arg_or_capture_item
     {
-        if self.eat_keyword(~"move") || self.eat_keyword(~"copy") {
+        if self.eat_keyword(~"copy") {
             // XXX outdated syntax now that moves-based-on-type has gone in
             self.parse_ident();
             either::Right(())
@@ -1083,9 +1083,6 @@ pub impl Parser {
             let e = self.parse_expr();
             ex = expr_copy(e);
             hi = e.span.hi;
-        } else if self.eat_keyword(~"move") {
-            // XXX move keyword is no longer important, remove after snapshot
-            return self.parse_expr();
         } else if self.token == token::MOD_SEP ||
             is_ident(self.token) && !self.is_keyword(~"true") &&
             !self.is_keyword(~"false") {
@@ -1197,7 +1194,7 @@ pub impl Parser {
                             hi = self.span.hi;
 
                             let nd = expr_method_call(e, i, tys, es, NoSugar);
-                            e = self.mk_expr(lo, hi, move nd);
+                            e = self.mk_expr(lo, hi, nd);
                         }
                         _ => {
                             e = self.mk_expr(lo, hi, expr_field(e, i, tys));
@@ -2099,10 +2096,6 @@ pub impl Parser {
             } else if self.eat_keyword(~"copy") {
                 pat = self.parse_pat_ident(refutable, bind_by_copy);
             } else {
-                if self.eat_keyword(~"move") {
-                    /* XXX---remove move keyword */
-                }
-
                 // XXX---refutable match bindings should work same as let
                 let binding_mode =
                     if refutable {bind_infer} else {bind_by_copy};
@@ -2372,7 +2365,7 @@ pub impl Parser {
             self.obsolete(copy self.span, ObsoleteUnsafeBlock);
         }
         self.expect(token::LBRACE);
-        let {inner: move inner, next: move next} =
+        let {inner: inner, next: next} =
             maybe_parse_inner_attrs_and_next(self, parse_attrs);
         return (inner, self.parse_block_tail_(lo, default_blk, next));
     }
@@ -2397,8 +2390,8 @@ pub impl Parser {
         let mut stmts = ~[];
         let mut expr = None;
 
-        let {attrs_remaining: move attrs_remaining,
-             view_items: move view_items,
+        let {attrs_remaining: attrs_remaining,
+             view_items: view_items,
              items: items, _} =
             self.parse_items_and_view_items(first_item_attrs,
                                             IMPORTS_AND_ITEMS_ALLOWED, false);
@@ -2570,7 +2563,7 @@ pub impl Parser {
                 }
             }
         }
-        return @move bounds;
+        return @bounds;
     }
 
     fn parse_ty_param() -> ty_param {
@@ -3083,13 +3076,13 @@ pub impl Parser {
     fn parse_mod_items(term: token::Token,
                        +first_item_attrs: ~[attribute]) -> _mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining: move attrs_remaining,
-             view_items: move view_items,
+        let {attrs_remaining: attrs_remaining,
+             view_items: view_items,
              items: starting_items, _} =
             self.parse_items_and_view_items(first_item_attrs,
                                             VIEW_ITEMS_AND_ITEMS_ALLOWED,
                                             true);
-        let mut items: ~[@item] = move starting_items;
+        let mut items: ~[@item] = starting_items;
 
         let mut first = true;
         while self.token != term {
@@ -3140,7 +3133,7 @@ pub impl Parser {
             self.bump();
             // This mod is in an external file. Let's go get it!
             let (m, attrs) = self.eval_src_mod(id, outer_attrs, id_span);
-            (id, m, Some(move attrs))
+            (id, m, Some(attrs))
         } else {
             self.push_mod_path(id, outer_attrs);
             self.expect(token::LBRACE);
@@ -3300,9 +3293,9 @@ pub impl Parser {
     fn parse_foreign_item(+attrs: ~[attribute]) -> @foreign_item {
         let vis = self.parse_visibility();
         if self.is_keyword(~"const") {
-            self.parse_item_foreign_const(vis, move attrs)
+            self.parse_item_foreign_const(vis, attrs)
         } else {
-            self.parse_item_foreign_fn( move attrs)
+            self.parse_item_foreign_fn(attrs)
         }
     }
 
@@ -3311,15 +3304,15 @@ pub impl Parser {
                                +first_item_attrs: ~[attribute])
                             -> foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining: move attrs_remaining,
-             view_items: move view_items,
+        let {attrs_remaining: attrs_remaining,
+             view_items: view_items,
              items: _,
-             foreign_items: move foreign_items} =
+             foreign_items: foreign_items} =
             self.parse_items_and_view_items(first_item_attrs,
                                          VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
                                             true);
 
-        let mut items: ~[@foreign_item] = move foreign_items;
+        let mut items: ~[@foreign_item] = foreign_items;
         let mut initial_attrs = attrs_remaining;
         while self.token != token::RBRACE {
             let attrs = vec::append(initial_attrs,
@@ -3329,7 +3322,7 @@ pub impl Parser {
         }
         ast::foreign_mod {
             sort: sort,
-            abi: move abi,
+            abi: abi,
             view_items: view_items,
             items: items
         }
@@ -3382,14 +3375,14 @@ pub impl Parser {
         // extern mod { ... }
         if items_allowed && self.eat(token::LBRACE) {
             let abi;
-            match move abi_opt {
-                Some(move found_abi) => abi = move found_abi,
+            match abi_opt {
+                Some(found_abi) => abi = found_abi,
                 None => abi = special_idents::c_abi,
             }
 
             let extra_attrs = self.parse_inner_attrs_and_next();
             let m = self.parse_foreign_mod_items(sort,
-                                                 move abi,
+                                                 abi,
                                                  extra_attrs.next);
             self.expect(token::RBRACE);
 
@@ -3513,7 +3506,7 @@ pub impl Parser {
                 ident = self.parse_ident();
                 self.expect(token::LBRACE);
                 let nested_enum_def = self.parse_enum_def(ty_params);
-                kind = enum_variant_kind(move nested_enum_def);
+                kind = enum_variant_kind(nested_enum_def);
                 needs_comma = false;
             } else {
                 ident = self.parse_value_ident();
