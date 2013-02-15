@@ -1075,11 +1075,11 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: &crate) -> ~[attribute] {
         assert !ecx.link_meta.vers.is_empty();
 
         let name_item =
-            attr::mk_name_value_item_str(~"name",
-                                         ecx.link_meta.name.to_owned());
+            attr::mk_name_value_item_str(@~"name",
+                                         @ecx.link_meta.name.to_owned());
         let vers_item =
-            attr::mk_name_value_item_str(~"vers",
-                                         ecx.link_meta.vers.to_owned());
+            attr::mk_name_value_item_str(@~"vers",
+                                         @ecx.link_meta.vers.to_owned());
 
         let other_items =
             {
@@ -1088,7 +1088,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: &crate) -> ~[attribute] {
             };
 
         let meta_items = vec::append(~[name_item, vers_item], other_items);
-        let link_item = attr::mk_list_item(~"link", meta_items);
+        let link_item = attr::mk_list_item(@~"link", meta_items);
 
         return attr::mk_attr(link_item);
     }
@@ -1097,7 +1097,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: &crate) -> ~[attribute] {
     let mut found_link_attr = false;
     for crate.node.attrs.each |attr| {
         attrs.push(
-            if attr::get_attr_name(attr) != ~"link" {
+            if *attr::get_attr_name(attr) != ~"link" {
                 /*bad*/copy *attr
             } else {
                 match /*bad*/copy attr.node.value.node {

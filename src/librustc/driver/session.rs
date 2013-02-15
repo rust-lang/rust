@@ -310,7 +310,7 @@ pub fn building_library(req_crate_type: crate_type,
             match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 ~"crate_type") {
-              option::Some(~"lib") => true,
+              Some(@~"lib") => true,
               _ => false
             }
         }

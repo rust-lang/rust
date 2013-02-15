@@ -962,7 +962,7 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
     for reader::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(reader::doc_data(nd));
-        items.push(attr::mk_word_item(n));
+        items.push(attr::mk_word_item(@n));
     };
     for reader::tagged_docs(md, tag_meta_item_name_value) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
@@ -971,13 +971,13 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
         let v = str::from_bytes(reader::doc_data(vd));
         // FIXME (#623): Should be able to decode meta_name_value variants,
         // but currently the encoder just drops them
-        items.push(attr::mk_name_value_item_str(n, v));
+        items.push(attr::mk_name_value_item_str(@n, @v));
     };
     for reader::tagged_docs(md, tag_meta_item_list) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(reader::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
-        items.push(attr::mk_list_item(n, subitems));
+        items.push(attr::mk_list_item(@n, subitems));
     };
     return items;
 }
@@ -1073,7 +1073,7 @@ pub fn get_crate_vers(data: @~[u8]) -> ~str {
     let attrs = decoder::get_crate_attributes(data);
     return match attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), ~"vers") {
-      Some(ref ver) => (/*bad*/copy *ver),
+      Some(ref ver) => (/*bad*/copy **ver),
       None => ~"0.0"
     };
 }

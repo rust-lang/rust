@@ -466,14 +466,14 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if attr::get_meta_item_name(*meta) == ~"name" {
+            if *attr::get_meta_item_name(*meta) == ~"name" {
                 match attr::get_meta_item_value_str(*meta) {
                   // Changing attr would avoid the need for the copy
                   // here
                   Some(v) => { name = Some(v.to_managed()); }
                   None => cmh_items.push(*meta)
                 }
-            } else if attr::get_meta_item_name(*meta) == ~"vers" {
+            } else if *attr::get_meta_item_name(*meta) == ~"vers" {
                 match attr::get_meta_item_value_str(*meta) {
                   Some(v) => { vers = Some(v.to_managed()); }
                   None => cmh_items.push(*meta)

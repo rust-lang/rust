@@ -102,11 +102,11 @@ pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
         do vec::foldr(item.attrs, ~[*item]) |attr, items| {
             let mname = attr::get_attr_name(attr);
 
-            match exts.find(&mname) {
+            match exts.find(&*mname) {
               None | Some(NormalTT(_)) | Some(ItemTT(*)) => items,
               Some(ItemDecorator(dec_fn)) => {
                   cx.bt_push(ExpandedFrom({call_site: attr.span,
-                                           callie: {name: copy mname,
+                                           callie: {name: /*bad*/ copy *mname,
                                                     span: None}}));
                   let r = dec_fn(cx, attr.span, attr.node.value, items);
                   cx.bt_pop();

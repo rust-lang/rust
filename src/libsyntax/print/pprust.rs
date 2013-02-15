@@ -897,7 +897,7 @@ pub fn print_attribute(s: @ps, attr: ast::attribute) {
     if attr.node.is_sugared_doc {
         let meta = attr::attr_meta(attr);
         let comment = attr::get_meta_item_value_str(meta).get();
-        word(s.s, comment);
+        word(s.s, *comment);
     } else {
         word(s.s, ~"#[");
         print_meta_item(s, @attr.node.value);
@@ -1816,14 +1816,14 @@ pub fn print_type_params(s: @ps, &&params: ~[ast::ty_param]) {
 pub fn print_meta_item(s: @ps, &&item: @ast::meta_item) {
     ibox(s, indent_unit);
     match item.node {
-      ast::meta_word(ref name) => word(s.s, (*name)),
+      ast::meta_word(ref name) => word(s.s, *name),
       ast::meta_name_value(ref name, value) => {
-        word_space(s, (*name));
+        word_space(s, *name);
         word_space(s, ~"=");
         print_literal(s, @value);
       }
       ast::meta_list(ref name, ref items) => {
-        word(s.s, (*name));
+        word(s.s, *name);
         popen(s);
         commasep(
             s,
