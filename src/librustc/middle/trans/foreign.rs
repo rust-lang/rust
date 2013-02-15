@@ -50,7 +50,7 @@ fn abi_info(arch: session::arch) -> cabi::ABIInfo {
 pub fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> ~str {
     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
         None => ccx.sess.str_of(i.ident),
-        option::Some(ref ln) => (/*bad*/copy *ln)
+        option::Some(ref ln) => (/*bad*/copy **ln)
     }
 }
 

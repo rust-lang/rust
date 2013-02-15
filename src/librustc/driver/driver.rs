@@ -97,16 +97,16 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
     };
 
     return ~[ // Target bindings.
-         attr::mk_word_item(str::from_slice(os::FAMILY)),
-         mk(~"target_os", tos),
-         mk(~"target_family", str::from_slice(os::FAMILY)),
-         mk(~"target_arch", arch),
-         mk(~"target_endian", end),
-         mk(~"target_word_size", wordsz),
-         mk(~"target_libc", libc),
+         attr::mk_word_item(@str::from_slice(os::FAMILY)),
+         mk(@~"target_os", @tos),
+         mk(@~"target_family", @str::from_slice(os::FAMILY)),
+         mk(@~"target_arch", @arch),
+         mk(@~"target_endian", @end),
+         mk(@~"target_word_size", @wordsz),
+         mk(@~"target_libc", @libc),
          // Build bindings.
-         mk(~"build_compiler", argv0),
-         mk(~"build_input", source_name(input))];
+         mk(@~"build_compiler", @argv0),
+         mk(@~"build_input", @source_name(input))];
 }
 
 pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
@@ -114,7 +114,7 @@ pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
     if attr::contains_name(cfg, name) {
         cfg
     } else {
-        vec::append_one(cfg, attr::mk_word_item(name))
+        vec::append_one(cfg, attr::mk_word_item(@name))
     }
 }
 
@@ -142,7 +142,7 @@ pub fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // meta_word variant.
     let mut words = ~[];
     for cfgspecs.each |s| {
-        words.push(attr::mk_word_item(/*bad*/copy *s));
+        words.push(attr::mk_word_item(@/*bad*/copy *s));
     }
     return words;
 }

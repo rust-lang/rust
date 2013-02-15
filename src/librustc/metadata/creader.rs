@@ -105,7 +105,7 @@ fn warn_if_multiple_versions(e: @mut Env,
                 diag.span_note(match_.span, ~"used here");
                 let attrs = ~[
                     attr::mk_attr(attr::mk_list_item(
-                        ~"link", /*bad*/copy *match_.metas))
+                        @~"link", /*bad*/copy *match_.metas))
                 ];
                 loader::note_linkage_attrs(e.intr, diag, attrs);
             }
@@ -133,7 +133,7 @@ fn visit_crate(e: @mut Env, c: ast::crate) {
     for link_args.each |a| {
         match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
           Some(ref linkarg) => {
-            cstore::add_used_link_args(cstore, (/*bad*/copy *linkarg));
+            cstore::add_used_link_args(cstore, **linkarg);
           }
           None => {/* fallthrough */ }
         }
@@ -173,21 +173,22 @@ fn visit_item(e: @mut Env, i: @ast::item) {
                match attr::first_attr_value_str_by_name(i.attrs,
                                                         ~"link_name") {
                  Some(ref nn) => {
-                   if (*nn) == ~"" {
+                   if **nn == ~"" {
                       e.diag.span_fatal(
                           i.span,
                           ~"empty #[link_name] not allowed; use #[nolink].");
                    }
                    (/*bad*/copy *nn)
                  }
-                None => /*bad*/copy *e.intr.get(i.ident)
+                None => @/*bad*/copy *e.intr.get(i.ident)
             };
             if attr::find_attrs_by_name(i.attrs, ~"nolink").is_empty() {
                 already_added =
-                    !cstore::add_used_library(cstore, copy foreign_name);
+                    !cstore::add_used_library(cstore,
+                                              /*bad*/ copy *foreign_name);
             }
             if !link_args.is_empty() && already_added {
-                e.diag.span_fatal(i.span, ~"library '" + foreign_name +
+                e.diag.span_fatal(i.span, ~"library '" + *foreign_name +
                            ~"' already added: can't specify link_args.");
             }
           }
@@ -197,7 +198,7 @@ fn visit_item(e: @mut Env, i: @ast::item) {
         for link_args.each |a| {
             match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
               Some(ref linkarg) => {
-                cstore::add_used_link_args(cstore, *linkarg);
+                cstore::add_used_link_args(cstore, /*bad*/copy **linkarg);
               }
               None => {/* fallthrough */ }
             }
@@ -211,7 +212,7 @@ fn metas_with(+ident: ~str, +key: ~str, +metas: ~[@ast::meta_item])
     -> ~[@ast::meta_item] {
     let name_items = attr::find_meta_items_by_name(metas, key);
     if name_items.is_empty() {
-        vec::append_one(metas, attr::mk_name_value_item_str(key, ident))
+        vec::append_one(metas, attr::mk_name_value_item_str(@key, @ident))
     } else {
         metas
     }
@@ -276,9 +277,9 @@ fn resolve_crate(e: @mut Env,
             match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
                                                          ~"name") {
               option::Some(ref v) => (/*bad*/copy *v),
-              option::None => /*bad*/copy *e.intr.get(ident)
+              option::None => @/*bad*/copy *e.intr.get(ident)
             };
-        let cmeta = @{name: cname, data: cdata,
+        let cmeta = @{name: /*bad*/copy *cname, data: cdata,
                       cnum_map: cnum_map, cnum: cnum};
 
         let cstore = e.cstore;

@@ -81,7 +81,7 @@ fn fold_mod(_ctx: @ReadyCtx, m: ast::_mod,
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
             attrs: do item.attrs.filtered |attr| {
-                attr::get_attr_name(*attr) != ~"main"
+                *attr::get_attr_name(attr) != ~"main"
             },
             .. copy *item
         }
@@ -609,7 +609,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
     let mut crate_cfg = options.cfg;
 
     for cfgs.each |&cfg| {
-        crate_cfg.push(attr::mk_word_item(cfg));
+        crate_cfg.push(attr::mk_word_item(@cfg));
     }
 
     let options = @{
