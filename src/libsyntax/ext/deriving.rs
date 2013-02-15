@@ -16,15 +16,19 @@ use core::prelude::*;
 use ast;
 use ast::{TraitTyParamBound, Ty, and, bind_by_ref, binop, deref, enum_def};
 use ast::{enum_variant_kind, expr, expr_match, ident, item, item_};
-use ast::{item_enum, item_impl, item_struct, m_imm, meta_item, method};
+use ast::{item_enum, item_impl, item_struct, Generics};
+use ast::{m_imm, meta_item, method};
 use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
 use ast::{re_anon, stmt, struct_def, struct_variant_kind};
-use ast::{sty_by_ref, sty_region, tuple_variant_kind, ty_nil, ty_param};
-use ast::{ty_param_bound, ty_path, ty_rptr, unnamed_field, variant};
+use ast::{sty_by_ref, sty_region, tuple_variant_kind, ty_nil, TyParam};
+use ast::{TyParamBound, ty_path, ty_rptr, unnamed_field, variant};
 use ext::base::ext_ctxt;
 use ext::build;
 use codemap::{span, spanned};
 use parse::token::special_idents::clownshoes_extensions;
+use ast_util;
+use opt_vec;
+use opt_vec::OptVec;
 
 use core::dvec;
 use core::uint;
@@ -47,13 +51,13 @@ type ExpandDerivingStructDefFn = &fn(ext_ctxt,
                                      span,
                                      x: &struct_def,
                                      ident,
-                                     +y: ~[ty_param])
+                                     y: &Generics)
                                   -> @item;
 type ExpandDerivingEnumDefFn = &fn(ext_ctxt,
                                    span,
                                    x: &enum_def,
                                    ident,
-                                   +y: ~[ty_param])
+                                   y: &Generics)
                                 -> @item;
 
 pub fn expand_deriving_eq(cx: ext_ctxt,
@@ -90,19 +94,19 @@ fn expand_deriving(cx: ext_ctxt,
     for in_items.each |item| {
         result.push(copy *item);
         match item.node {
-            item_struct(struct_def, copy ty_params) => {
+            item_struct(struct_def, ref generics) => {
                 result.push(expand_deriving_struct_def(cx,
                                                        span,
                                                        struct_def,
                                                        item.ident,
-                                                       ty_params));
+                                                       generics));
             }
-            item_enum(ref enum_definition, copy ty_params) => {
+            item_enum(ref enum_definition, ref generics) => {
                 result.push(expand_deriving_enum_def(cx,
                                                      span,
                                                      enum_definition,
                                                      item.ident,
-                                                     ty_params));
+                                                     generics));
             }
             _ => ()
         }
@@ -127,14 +131,14 @@ fn create_eq_method(cx: ext_ctxt,
                     span: span,
                     method_ident: ident,
                     type_ident: ident,
-                    ty_params: &[ty_param],
+                    generics: &Generics,
                     body: @expr)
                  -> @method {
     // Create the type of the `other` parameter.
     let arg_path_type = create_self_type_with_params(cx,
                                                      span,
                                                      type_ident,
-                                                     ty_params);
+                                                     generics);
     let arg_region = @ast::region { id: cx.next_id(), node: re_anon };
     let arg_type = ty_rptr(
         arg_region,
@@ -171,7 +175,7 @@ fn create_eq_method(cx: ext_ctxt,
     @ast::method {
         ident: method_ident,
         attrs: ~[],
-        tps: ~[],
+        generics: ast_util::empty_generics(),
         self_ty: self_ty,
         purity: pure_fn,
         decl: fn_decl,
@@ -186,11 +190,11 @@ fn create_eq_method(cx: ext_ctxt,
 fn create_self_type_with_params(cx: ext_ctxt,
                                 span: span,
                                 type_ident: ident,
-                                ty_params: &[ty_param])
+                                generics: &Generics)
                              -> @Ty {
     // Create the type parameters on the `self` path.
     let self_ty_params = dvec::DVec();
-    for ty_params.each |ty_param| {
+    for generics.ty_params.each |ty_param| {
         let self_ty_param = build::mk_simple_ty_path(cx,
                                                      span,
                                                      ty_param.ident);
@@ -209,21 +213,34 @@ fn create_self_type_with_params(cx: ext_ctxt,
 fn create_derived_impl(cx: ext_ctxt,
                        span: span,
                        type_ident: ident,
-                       +ty_params: ~[ty_param],
+                       generics: &Generics,
                        methods: &[@method],
                        trait_path: &[ident])
                     -> @item {
+    /*!
+     *
+     * Given that we are deriving a trait `Tr` for a type `T<'a, ...,
+     * 'z, A, ..., Z>`, creates an impl like:
+     *
+     *      impl<'a, ..., 'z, A:Tr, ..., Z: Tr> Tr for T<A, ..., Z> { ... }
+     *
+     * FIXME(#5090): Remove code duplication between this and the
+     * code in auto_encode.rs
+     */
+
+    // Copy the lifetimes
+    let impl_lifetimes = generics.lifetimes.map(|l| {
+        build::mk_lifetime(cx, l.span, l.ident)
+    });
+
     // Create the type parameters.
-    let impl_ty_params = dvec::DVec();
-    for ty_params.each |ty_param| {
+    let impl_ty_params = generics.ty_params.map(|ty_param| {
         let bound = build::mk_ty_path_global(cx,
                                              span,
                                              trait_path.map(|x| *x));
-        let bounds = @~[ TraitTyParamBound(bound) ];
-        let impl_ty_param = build::mk_ty_param(cx, ty_param.ident, bounds);
-        impl_ty_params.push(impl_ty_param);
-    }
-    let impl_ty_params = dvec::unwrap(impl_ty_params);
+        let bounds = @opt_vec::with(TraitTyParamBound(bound));
+        build::mk_ty_param(cx, ty_param.ident, bounds)
+    });
 
     // Create the reference to the trait.
     let trait_path = ast::path {
@@ -244,10 +261,11 @@ fn create_derived_impl(cx: ext_ctxt,
     let self_type = create_self_type_with_params(cx,
                                                  span,
                                                  type_ident,
-                                                 ty_params);
+                                                 generics);
 
     // Create the impl item.
-    let impl_item = item_impl(impl_ty_params,
+    let impl_item = item_impl(Generics {lifetimes: impl_lifetimes,
+                                        ty_params: impl_ty_params},
                               Some(trait_ref),
                               self_type,
                               methods.map(|x| *x));
@@ -257,7 +275,7 @@ fn create_derived_impl(cx: ext_ctxt,
 fn create_derived_eq_impl(cx: ext_ctxt,
                           span: span,
                           type_ident: ident,
-                          +ty_params: ~[ty_param],
+                          generics: &Generics,
                           eq_method: @method,
                           ne_method: @method)
                        -> @item {
@@ -267,13 +285,13 @@ fn create_derived_eq_impl(cx: ext_ctxt,
         cx.ident_of(~"cmp"),
         cx.ident_of(~"Eq")
     ];
-    create_derived_impl(cx, span, type_ident, ty_params, methods, trait_path)
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path)
 }
 
 fn create_derived_iter_bytes_impl(cx: ext_ctxt,
                                   span: span,
                                   type_ident: ident,
-                                  +ty_params: ~[ty_param],
+                                  generics: &Generics,
                                   method: @method)
                                -> @item {
     let methods = [ method ];
@@ -282,7 +300,7 @@ fn create_derived_iter_bytes_impl(cx: ext_ctxt,
         cx.ident_of(~"to_bytes"),
         cx.ident_of(~"IterBytes")
     ];
-    create_derived_impl(cx, span, type_ident, ty_params, methods, trait_path)
+    create_derived_impl(cx, span, type_ident, generics, methods, trait_path)
 }
 
 // Creates a method from the given set of statements conforming to the
@@ -322,7 +340,7 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     @ast::method {
         ident: method_ident,
         attrs: ~[],
-        tps: ~[],
+        generics: ast_util::empty_generics(),
         self_ty: self_ty,
         purity: pure_fn,
         decl: fn_decl,
@@ -484,7 +502,7 @@ fn expand_deriving_eq_struct_def(cx: ext_ctxt,
                                  span: span,
                                  struct_def: &struct_def,
                                  type_ident: ident,
-                                 +ty_params: ~[ty_param])
+                                 generics: &Generics)
                               -> @item {
     // Create the methods.
     let eq_ident = cx.ident_of(~"eq");
@@ -510,21 +528,21 @@ fn expand_deriving_eq_struct_def(cx: ext_ctxt,
                                      struct_def,
                                      eq_ident,
                                      type_ident,
-                                     ty_params,
+                                     generics,
                                      Conjunction);
     let ne_method = derive_struct_fn(cx,
                                      span,
                                      struct_def,
                                      ne_ident,
                                      type_ident,
-                                     ty_params,
+                                     generics,
                                      Disjunction);
 
     // Create the implementation.
     return create_derived_eq_impl(cx,
                                   span,
                                   type_ident,
-                                  ty_params,
+                                  generics,
                                   eq_method,
                                   ne_method);
 }
@@ -533,7 +551,7 @@ fn expand_deriving_eq_enum_def(cx: ext_ctxt,
                                span: span,
                                enum_definition: &enum_def,
                                type_ident: ident,
-                               +ty_params: ~[ty_param])
+                               generics: &Generics)
                             -> @item {
     // Create the methods.
     let eq_ident = cx.ident_of(~"eq");
@@ -543,21 +561,21 @@ fn expand_deriving_eq_enum_def(cx: ext_ctxt,
                                                    enum_definition,
                                                    eq_ident,
                                                    type_ident,
-                                                   ty_params,
+                                                   generics,
                                                    Conjunction);
     let ne_method = expand_deriving_eq_enum_method(cx,
                                                    span,
                                                    enum_definition,
                                                    ne_ident,
                                                    type_ident,
-                                                   ty_params,
+                                                   generics,
                                                    Disjunction);
 
     // Create the implementation.
     return create_derived_eq_impl(cx,
                                   span,
                                   type_ident,
-                                  ty_params,
+                                  generics,
                                   eq_method,
                                   ne_method);
 }
@@ -566,7 +584,7 @@ fn expand_deriving_iter_bytes_struct_def(cx: ext_ctxt,
                                          span: span,
                                          struct_def: &struct_def,
                                          type_ident: ident,
-                                         +ty_params: ~[ty_param])
+                                         generics: &Generics)
                                       -> @item {
     // Create the method.
     let method = expand_deriving_iter_bytes_struct_method(cx,
@@ -577,7 +595,7 @@ fn expand_deriving_iter_bytes_struct_def(cx: ext_ctxt,
     return create_derived_iter_bytes_impl(cx,
                                           span,
                                           type_ident,
-                                          ty_params,
+                                          generics,
                                           method);
 }
 
@@ -585,7 +603,7 @@ fn expand_deriving_iter_bytes_enum_def(cx: ext_ctxt,
                                        span: span,
                                        enum_definition: &enum_def,
                                        type_ident: ident,
-                                       +ty_params: ~[ty_param])
+                                       generics: &Generics)
                                     -> @item {
     // Create the method.
     let method = expand_deriving_iter_bytes_enum_method(cx,
@@ -596,7 +614,7 @@ fn expand_deriving_iter_bytes_enum_def(cx: ext_ctxt,
     return create_derived_iter_bytes_impl(cx,
                                           span,
                                           type_ident,
-                                          ty_params,
+                                          generics,
                                           method);
 }
 
@@ -605,7 +623,7 @@ fn expand_deriving_eq_struct_method(cx: ext_ctxt,
                                     struct_def: &struct_def,
                                     method_ident: ident,
                                     type_ident: ident,
-                                    ty_params: &[ty_param],
+                                    generics: &Generics,
                                     junction: Junction)
                                  -> @method {
     let self_ident = cx.ident_of(~"self");
@@ -652,7 +670,7 @@ fn expand_deriving_eq_struct_method(cx: ext_ctxt,
                             span,
                             method_ident,
                             type_ident,
-                            ty_params,
+                            generics,
                             body);
 }
 
@@ -696,7 +714,7 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
                                   enum_definition: &enum_def,
                                   method_ident: ident,
                                   type_ident: ident,
-                                  ty_params: &[ty_param],
+                                  generics: &Generics,
                                   junction: Junction)
                                -> @method {
     let self_ident = cx.ident_of(~"self");
@@ -823,7 +841,7 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
                             span,
                             method_ident,
                             type_ident,
-                            ty_params,
+                            generics,
                             self_match_expr);
 }
 
@@ -832,7 +850,7 @@ fn expand_deriving_eq_struct_tuple_method(cx: ext_ctxt,
                                           struct_def: &struct_def,
                                           method_ident: ident,
                                           type_ident: ident,
-                                          ty_params: &[ty_param],
+                                          generics: &Generics,
                                           junction: Junction)
                                         -> @method {
     let self_str = ~"self";
@@ -883,7 +901,7 @@ fn expand_deriving_eq_struct_tuple_method(cx: ext_ctxt,
     let self_match_expr = build::mk_expr(cx, span, self_match_expr);
 
     create_eq_method(cx, span, method_ident,
-        type_ident, ty_params, self_match_expr)
+        type_ident, generics, self_match_expr)
 }
 
 fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,

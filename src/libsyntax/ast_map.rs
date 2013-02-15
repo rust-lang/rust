@@ -101,7 +101,7 @@ pub enum ast_node {
     node_arg(arg, uint),
     node_local(uint),
     // Destructor for a struct
-    node_dtor(~[ty_param], @struct_dtor, def_id, @path),
+    node_dtor(Generics, @struct_dtor, def_id, @path),
     node_block(blk),
     node_struct_ctor(@struct_def, @item, @path),
 }

@@ -200,14 +200,14 @@ fn is_bench_fn(i: @ast::item) -> bool {
         vec::len(attr::find_attrs_by_name(i.attrs, ~"bench")) > 0u;
 
     fn has_test_signature(i: @ast::item) -> bool {
-        match /*bad*/copy i.node {
-            ast::item_fn(decl, _, tps, _) => {
+        match i.node {
+            ast::item_fn(ref decl, _, ref generics, _) => {
                 let input_cnt = vec::len(decl.inputs);
                 let no_output = match decl.output.node {
                     ast::ty_nil => true,
                     _ => false
                 };
-                let tparm_cnt = vec::len(tps);
+                let tparm_cnt = generics.ty_params.len();
                 // NB: inadequate check, but we're running
                 // well before resolve, can't get too deep.
                 input_cnt == 1u

@@ -2103,9 +2103,9 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, _, _, ms) => {
-        meth::trans_impl(ccx, /*bad*/copy *path, item.ident, ms, tps, None,
-                         item.id);
+      ast::item_impl(ref generics, _, _, ref ms) => {
+        meth::trans_impl(ccx, /*bad*/copy *path, item.ident, *ms,
+                         generics, None, item.id);
       }
       ast::item_mod(m) => {
         trans_mod(ccx, m);
