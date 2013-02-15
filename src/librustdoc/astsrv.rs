@@ -91,7 +91,7 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
 
     let res = owner(srv_.clone());
     srv_.ch.send(Exit);
-    move res
+    res
 }
 
 fn act(po: &Port<Msg>, source: ~str, parse: Parser) {
@@ -120,10 +120,10 @@ pub fn exec<T:Owned>(
     f: fn~(ctxt: Ctxt) -> T
 ) -> T {
     let (po, ch) = stream();
-    let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {
+    let msg = HandleRequest(fn~(ctxt: Ctxt) {
         ch.send(f(ctxt))
     });
-    srv.ch.send(move msg);
+    srv.ch.send(msg);
     po.recv()
 }
 

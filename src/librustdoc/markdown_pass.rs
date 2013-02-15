@@ -74,7 +74,7 @@ fn run(
         ~"mods last", mods_last
     ).f)(srv, copy doc);
 
-    write_markdown(sorted_doc, move writer_factory);
+    write_markdown(sorted_doc, writer_factory);
 
     return doc;
 }
@@ -148,7 +148,7 @@ fn should_request_new_writer_for_each_page() {
     let (srv, doc) = test::create_doc_srv(~"mod a { }");
     // Split the document up into pages
     let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
-    write_markdown(doc, move writer_factory);
+    write_markdown(doc, writer_factory);
     // We expect two pages to have been written
     for iter::repeat(2) {
         po.recv();
@@ -180,7 +180,7 @@ fn should_write_title_for_each_page() {
     let (srv, doc) = test::create_doc_srv(
         ~"#[link(name = \"core\")]; mod a { }");
     let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
-    write_markdown(doc, move writer_factory);
+    write_markdown(doc, writer_factory);
     for iter::repeat(2) {
         let (page, markdown) = po.recv();
         match page {
@@ -894,7 +894,7 @@ mod test {
         doc: doc::Doc
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
-        write_markdown(doc, move writer_factory);
+        write_markdown(doc, writer_factory);
         return po.recv().second();
     }
 
@@ -903,7 +903,7 @@ mod test {
         doc: doc::Doc
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
-        let pass = mk_pass(move writer_factory);
+        let pass = mk_pass(writer_factory);
         (pass.f)(srv, doc);
         return po.recv().second();
     }

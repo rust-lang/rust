@@ -42,14 +42,14 @@ fn run(
     op: Op
 ) -> doc::Doc {
     let op = NominalOp {
-        op: move op
+        op: op
     };
     let fold = Fold {
         fold_item: fold_item,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
-        .. fold::default_any_fold(move op)
+        .. fold::default_any_fold(op)
     };
     (fold.fold_doc)(&fold, doc)
 }
