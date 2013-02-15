@@ -151,7 +151,7 @@ pub fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
         p.reader.fatal(~"expected end-of-string");
     }
     p.abort_if_errors();
-    move r
+    r
 }
 
 pub fn next_node_id(sess: parse_sess) -> node_id {
@@ -177,16 +177,16 @@ pub fn new_parser_from_file(sess: parse_sess,
                             path: &Path)
                          -> Result<Parser, ~str> {
     match io::read_whole_file_str(path) {
-      result::Ok(move src) => {
+      result::Ok(src) => {
 
-          let filemap = sess.cm.new_filemap(path.to_str(), @move src);
+          let filemap = sess.cm.new_filemap(path.to_str(), @src);
           let srdr = lexer::new_string_reader(sess.span_diagnostic,
                                               filemap,
                                               sess.interner);
           Ok(Parser(sess, cfg, srdr as reader))
 
       }
-      result::Err(move e) => Err(move e)
+      result::Err(e) => Err(e)
     }
 }
 
@@ -195,8 +195,8 @@ pub fn new_parser_from_file(sess: parse_sess,
 pub fn new_crate_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
                               path: &Path) -> Parser {
     match new_parser_from_file(sess, cfg, path) {
-        Ok(move parser) => move parser,
-        Err(move e) => {
+        Ok(parser) => parser,
+        Err(e) => {
             sess.span_diagnostic.handler().fatal(e)
         }
     }
@@ -207,8 +207,8 @@ pub fn new_crate_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
 pub fn new_sub_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
                             path: &Path, sp: span) -> Parser {
     match new_parser_from_file(sess, cfg, path) {
-        Ok(move parser) => move parser,
-        Err(move e) => {
+        Ok(parser) => parser,
+        Err(e) => {
             sess.span_diagnostic.span_fatal(sp, e)
         }
     }
