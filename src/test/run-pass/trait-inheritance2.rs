@@ -19,7 +19,7 @@ struct A { x: int }
 impl Foo for A { fn f() -> int { 10 } }
 impl Bar for A { fn g() -> int { 20 } }
 impl Baz for A { fn h() -> int { 30 } }
-impl A : Quux;
+impl Quux for A;
 
 fn f<T: Quux Foo Bar Baz>(a: &T) {
     assert a.f() == 10;

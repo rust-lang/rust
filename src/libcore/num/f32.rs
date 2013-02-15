@@ -282,7 +282,7 @@ impl num::One for f32 {
     static pure fn one() -> f32 { 1.0 }
 }
 
-pub impl f32: NumCast {
+pub impl NumCast for f32 {
     /**
      * Cast `n` to an `f32`
      */

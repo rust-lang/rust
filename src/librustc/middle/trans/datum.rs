@@ -104,6 +104,7 @@ use core::uint;
 use core::vec;
 use syntax::parse::token::special_idents;
 
+#[deriving_eq]
 pub enum CopyAction {
     INIT,
     DROP_EXISTING
@@ -150,14 +151,14 @@ pub impl DatumMode {
     }
 }
 
-pub impl DatumMode: cmp::Eq {
+pub impl cmp::Eq for DatumMode {
     pure fn eq(&self, other: &DatumMode) -> bool {
         (*self) as uint == (*other as uint)
     }
     pure fn ne(&self, other: &DatumMode) -> bool { !(*self).eq(other) }
 }
 
-pub impl DatumMode: to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for DatumMode {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
@@ -846,14 +847,3 @@ pub impl DatumBlock {
     }
 }
 
-pub impl CopyAction : cmp::Eq {
-    pure fn eq(&self, other: &CopyAction) -> bool {
-        match ((*self), (*other)) {
-            (INIT, INIT) => true,
-            (DROP_EXISTING, DROP_EXISTING) => true,
-            (INIT, _) => false,
-            (DROP_EXISTING, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &CopyAction) -> bool { !(*self).eq(other) }
-}

@@ -31,7 +31,7 @@ impl Eq for MyInt {
     pure fn ne(&self, other: &MyInt) -> bool { !self.eq(other) }
 }
 
-impl MyInt : MyNum;
+impl MyNum for MyInt;
 
 fn f<T:Copy MyNum>(x: T, y: T) -> (T, T, T) {
     return (x + y, x - y, x * y);

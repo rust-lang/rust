@@ -57,7 +57,7 @@ pub trait LatticeValue {
 
 pub type LatticeOp<T> = &fn(cf: &CombineFields, a: &T, b: &T) -> cres<T>;
 
-pub impl ty::t: LatticeValue {
+pub impl LatticeValue for ty::t {
     static fn sub(cf: &CombineFields, a: &ty::t, b: &ty::t) -> ures {
         Sub(*cf).tys(*a, *b).to_ures()
     }
@@ -301,7 +301,7 @@ pub trait TyLatticeDir {
     fn ty_bot(t: ty::t) -> cres<ty::t>;
 }
 
-pub impl Lub: LatticeDir {
+pub impl LatticeDir for Lub {
     fn combine_fields() -> CombineFields { *self }
     fn bnd<T:Copy>(b: &Bounds<T>) -> Option<T> { b.ub }
     fn with_bnd<T:Copy>(b: &Bounds<T>, +t: T) -> Bounds<T> {
@@ -309,13 +309,13 @@ pub impl Lub: LatticeDir {
     }
 }
 
-pub impl Lub: TyLatticeDir {
+pub impl TyLatticeDir for Lub {
     fn ty_bot(t: ty::t) -> cres<ty::t> {
         Ok(t)
     }
 }
 
-pub impl Glb: LatticeDir {
+pub impl LatticeDir for Glb {
     fn combine_fields() -> CombineFields { *self }
     fn bnd<T:Copy>(b: &Bounds<T>) -> Option<T> { b.lb }
     fn with_bnd<T:Copy>(b: &Bounds<T>, +t: T) -> Bounds<T> {
@@ -323,7 +323,7 @@ pub impl Glb: LatticeDir {
     }
 }
 
-pub impl Glb: TyLatticeDir {
+pub impl TyLatticeDir for Glb {
     fn ty_bot(_t: ty::t) -> cres<ty::t> {
         Ok(ty::mk_bot(self.infcx.tcx))
     }

@@ -121,7 +121,7 @@ pub impl @mut CrateCtxt {
     }
 }
 
-pub impl CrateCtxt: AstConv {
+pub impl AstConv for CrateCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.tcx }
     fn ccx(@mut self) -> @mut CrateCtxt { self }
 

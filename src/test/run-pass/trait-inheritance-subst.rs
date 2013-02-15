@@ -20,7 +20,7 @@ impl Add<MyInt, MyInt> for MyInt {
     pure fn add(other: &MyInt) -> MyInt { mi(self.val + other.val) }
 }
 
-impl MyInt : MyNum;
+impl MyNum for MyInt;
 
 fn f<T:MyNum>(x: T, y: T) -> T {
     return x.add(&y);

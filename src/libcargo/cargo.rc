@@ -71,7 +71,7 @@ pub struct Package {
     versions: ~[(~str, ~str)]
 }
 
-pub impl Package : cmp::Ord {
+pub impl cmp::Ord for Package {
     pure fn lt(&self, other: &Package) -> bool {
         if (*self).name.lt(&(*other).name) { return true; }
         if (*other).name.lt(&(*self).name) { return false; }

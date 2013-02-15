@@ -26,7 +26,7 @@ mod inst {
     pub pure fn is_ascii(x: T) -> bool { return 0 as T == x & 128 as T; }
 }
 
-pub impl u8: NumCast {
+pub impl NumCast for u8 {
     /**
      * Cast `n` to a `u8`
      */

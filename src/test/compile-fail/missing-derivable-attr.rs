@@ -20,7 +20,7 @@ impl MyEq for int {
     pure fn eq(&self, other: &int) -> bool { *self == *other }
 }
 
-impl A : MyEq;  //~ ERROR missing method
+impl MyEq for A;  //~ ERROR missing method
 
 fn main() {
 }

@@ -19,7 +19,7 @@ impl Eq for MyInt {
     pure fn ne(&self, other: &MyInt) -> bool { !self.eq(other) }
 }
 
-impl MyInt : MyNum;
+impl MyNum for MyInt;
 
 fn f<T:MyNum>(x: T, y: T) -> bool {
     return x == y;

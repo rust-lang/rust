@@ -81,7 +81,7 @@ pub struct Buffer {
 
 }
 
-pub impl Buffer : Drop {
+pub impl Drop for Buffer {
     fn finalize(&self) {}
 }
 

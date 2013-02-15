@@ -29,23 +29,11 @@ use syntax::parse::parse_sess;
 use syntax::{ast, codemap};
 use syntax;
 
+#[deriving_eq]
 pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
 
-pub impl os : cmp::Eq {
-    pure fn eq(&self, other: &os) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &os) -> bool { !(*self).eq(other) }
-}
-
+#[deriving_eq]
 pub enum arch { arch_x86, arch_x86_64, arch_arm, }
-
-pub impl arch : cmp::Eq {
-    pure fn eq(&self, other: &arch) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &arch) -> bool { !(*self).eq(other) }
-}
 
 pub enum crate_type { bin_crate, lib_crate, unknown_crate, }
 
@@ -117,18 +105,12 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ]
 }
 
+#[deriving_eq]
 pub enum OptLevel {
     No, // -O0
     Less, // -O1
     Default, // -O2
     Aggressive // -O3
-}
-
-pub impl OptLevel : cmp::Eq {
-    pure fn eq(&self, other: &OptLevel) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &OptLevel) -> bool { !(*self).eq(other) }
 }
 
 pub type options =

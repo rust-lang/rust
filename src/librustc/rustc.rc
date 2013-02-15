@@ -296,16 +296,10 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
     compile_input(sess, cfg, input, &odir, &ofile);
 }
 
+#[deriving_eq]
 pub enum monitor_msg {
     fatal,
     done,
-}
-
-pub impl monitor_msg : cmp::Eq {
-    pure fn eq(&self, other: &monitor_msg) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &monitor_msg) -> bool { !(*self).eq(other) }
 }
 
 /*

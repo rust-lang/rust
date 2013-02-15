@@ -170,7 +170,7 @@ impl IterBytes for char {
 pub mod x32 {
     use to_bytes::{Cb, IterBytes};
 
-    pub impl uint: IterBytes {
+    pub impl IterBytes for uint {
         #[inline(always)]
         pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
             (*self as u32).iter_bytes(lsb0, f)
@@ -182,7 +182,7 @@ pub mod x32 {
 pub mod x64 {
     use to_bytes::{Cb, IterBytes};
 
-    pub impl uint: IterBytes {
+    pub impl IterBytes for uint {
         #[inline(always)]
         pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
             (*self as u64).iter_bytes(lsb0, f)

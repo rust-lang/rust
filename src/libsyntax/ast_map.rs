@@ -34,7 +34,7 @@ pub enum path_elt {
     path_name(ident)
 }
 
-pub impl path_elt : cmp::Eq {
+pub impl cmp::Eq for path_elt {
     pure fn eq(&self, other: &path_elt) -> bool {
         match (*self) {
             path_mod(e0a) => {
