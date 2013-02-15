@@ -744,7 +744,7 @@ pub fn configure(opts: Options) -> Cargo {
              ~" or package manager to get it to work correctly");
     }
 
-    move c
+    c
 }
 
 pub fn for_each_package(c: &Cargo, b: fn(s: @Source, p: &Package)) {
@@ -1655,10 +1655,10 @@ pub fn dump_sources(c: &Cargo) {
                     _ => ()
                 }
 
-                hash.insert(copy k, json::Object(move chash));
+                hash.insert(copy k, json::Object(chash));
             }
 
-            json::to_writer(writer, &json::Object(move hash))
+            json::to_writer(writer, &json::Object(hash))
         }
         result::Err(e) => {
             error(fmt!("could not dump sources: %s", e));
