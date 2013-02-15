@@ -16,7 +16,6 @@ use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sort;
 
 use core::cmp;
-use core::dvec;
 use core::either::{Either, Left, Right};
 use core::io;
 use core::option;
@@ -141,13 +140,12 @@ type WorkMap = LinearMap<WorkKey, ~str>;
 
 pub impl<S: Encoder> WorkMap: Encodable<S> {
     fn encode(&self, s: &S) {
-        let d = dvec::DVec();
+        let mut d = ~[];
         for self.each |&(k, v)| {
             d.push((copy *k, copy *v))
         }
-        let mut v = d.get();
-        sort::tim_sort(v);
-        v.encode(s)
+        sort::tim_sort(d);
+        d.encode(s)
     }
 }
 
