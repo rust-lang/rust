@@ -135,7 +135,7 @@ rand_seed() {
     rust_vec *v = (rust_vec *) task->kernel->malloc(vec_size<uint8_t>(size),
                                             "rand_seed");
     v->fill = v->alloc = size;
-    isaac_seed(task->kernel, (uint8_t*) &v->data, size);
+    rng_gen_seed(task->kernel, (uint8_t*) &v->data, size);
     return v;
 }
 
@@ -143,27 +143,27 @@ extern "C" CDECL void *
 rand_new() {
     rust_task *task = rust_get_current_task();
     rust_sched_loop *thread = task->sched_loop;
-    randctx *rctx = (randctx *) task->malloc(sizeof(randctx), "rand_new");
-    if (!rctx) {
+    rust_rng *rng = (rust_rng *) task->malloc(sizeof(rust_rng), "rand_new");
+    if (!rng) {
         task->fail();
         return NULL;
     }
-    isaac_init(thread->kernel, rctx, NULL);
-    return rctx;
+    rng_init(thread->kernel, rng, NULL);
+    return rng;
 }
 
 extern "C" CDECL void *
 rand_new_seeded(rust_vec_box* seed) {
     rust_task *task = rust_get_current_task();
     rust_sched_loop *thread = task->sched_loop;
-    randctx *rctx = (randctx *) task->malloc(sizeof(randctx),
-                                             "rand_new_seeded");
-    if (!rctx) {
+    rust_rng *rng = (rust_rng *) task->malloc(sizeof(rust_rng),
+                                              "rand_new_seeded");
+    if (!rng) {
         task->fail();
         return NULL;
     }
-    isaac_init(thread->kernel, rctx, seed);
-    return rctx;
+    rng_init(thread->kernel, rng, seed);
+    return rng;
 }
 
 extern "C" CDECL void *
@@ -171,15 +171,16 @@ rand_new_seeded2(rust_vec_box** seed) {
     return rand_new_seeded(*seed);
 }
 
-extern "C" CDECL size_t
-rand_next(randctx *rctx) {
-    return isaac_rand(rctx);
+extern "C" CDECL uint32_t
+rand_next(rust_rng *rng) {
+    rust_task *task = rust_get_current_task();
+    return rng_gen_u32(task->kernel, rng);
 }
 
 extern "C" CDECL void
-rand_free(randctx *rctx) {
+rand_free(rust_rng *rng) {
     rust_task *task = rust_get_current_task();
-    task->free(rctx);
+    task->free(rng);
 }
 
 
