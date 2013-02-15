@@ -36,34 +36,47 @@ pub enum SignFormat {
     SignAll
 }
 
-pub trait NumStrConv {
-    static pure fn has_NaN()      -> bool;
-    static pure fn has_inf()      -> bool;
-    static pure fn has_neg_inf()  -> bool;
-    static pure fn has_neg_zero() -> bool;
+#[inline(always)]
+pure fn is_NaN<T:Eq>(num: &T) -> bool {
+    *num != *num
+}
 
+#[inline(always)]
+pure fn is_inf<T:Eq+NumStrConv>(num: &T) -> bool {
+    match NumStrConv::inf() {
+        None    => false,
+        Some(n) => *num == n
+    }
+}
+
+#[inline(always)]
+pure fn is_neg_inf<T:Eq+NumStrConv>(num: &T) -> bool {
+    match NumStrConv::neg_inf() {
+        None    => false,
+        Some(n) => *num == n
+    }
+}
+
+#[inline(always)]
+pure fn is_neg_zero<T:Eq+One+Zero+NumStrConv+Div<T,T>>(num: &T) -> bool {
+    let _0: T = Zero::zero();
+    let _1: T = One::one();
+
+    *num == _0 && is_neg_inf(&(_1 / *num))
+}
+
+pub trait NumStrConv {
     static pure fn NaN()      -> Option<Self>;
     static pure fn inf()      -> Option<Self>;
     static pure fn neg_inf()  -> Option<Self>;
     static pure fn neg_zero() -> Option<Self>;
 
-    pure fn is_NaN(&self)      -> bool;
-    pure fn is_inf(&self)      -> bool;
-    pure fn is_neg_inf(&self)  -> bool;
-    pure fn is_neg_zero(&self) -> bool;
-
     pure fn round_to_zero(&self)   -> Self;
     pure fn fractional_part(&self) -> Self;
-
 }
 
 macro_rules! impl_NumStrConv_Floating (($t:ty) => (
     impl NumStrConv for $t {
-        #[inline(always)] static pure fn has_NaN()      -> bool { true }
-        #[inline(always)] static pure fn has_inf()      -> bool { true }
-        #[inline(always)] static pure fn has_neg_inf()  -> bool { true }
-        #[inline(always)] static pure fn has_neg_zero() -> bool { true }
-
         #[inline(always)]
         static pure fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
         #[inline(always)]
@@ -73,27 +86,10 @@ macro_rules! impl_NumStrConv_Floating (($t:ty) => (
         #[inline(always)]
         static pure fn neg_zero() -> Option<$t> { Some(-0.0      ) }
 
-        #[inline(always)] pure fn is_NaN(&self) -> bool { *self != *self }
-
-        #[inline(always)]
-        pure fn is_inf(&self)      -> bool {
-            *self == NumStrConv::inf().unwrap()
-        }
-
-        #[inline(always)]
-        pure fn is_neg_inf(&self)  -> bool {
-            *self == NumStrConv::neg_inf().unwrap()
-        }
-
-        #[inline(always)]
-        pure fn is_neg_zero(&self) -> bool {
-            *self == 0.0 && (1.0 / *self).is_neg_inf()
-        }
-
         #[inline(always)]
         pure fn round_to_zero(&self) -> $t {
             ( if *self < 0.0 { f64::ceil(*self as f64)  }
-                else           { f64::floor(*self as f64) }
+              else           { f64::floor(*self as f64) }
             ) as $t
         }
 
@@ -106,20 +102,10 @@ macro_rules! impl_NumStrConv_Floating (($t:ty) => (
 
 macro_rules! impl_NumStrConv_Integer (($t:ty) => (
     impl NumStrConv for $t {
-        #[inline(always)] static pure fn has_NaN()      -> bool { false }
-        #[inline(always)] static pure fn has_inf()      -> bool { false }
-        #[inline(always)] static pure fn has_neg_inf()  -> bool { false }
-        #[inline(always)] static pure fn has_neg_zero() -> bool { false }
-
         #[inline(always)] static pure fn NaN()      -> Option<$t> { None }
         #[inline(always)] static pure fn inf()      -> Option<$t> { None }
         #[inline(always)] static pure fn neg_inf()  -> Option<$t> { None }
         #[inline(always)] static pure fn neg_zero() -> Option<$t> { None }
-
-        #[inline(always)] pure fn is_NaN(&self)      -> bool { false }
-        #[inline(always)] pure fn is_inf(&self)      -> bool { false }
-        #[inline(always)] pure fn is_neg_inf(&self)  -> bool { false }
-        #[inline(always)] pure fn is_neg_zero(&self) -> bool { false }
 
         #[inline(always)] pure fn round_to_zero(&self)   -> $t { *self }
         #[inline(always)] pure fn fractional_part(&self) -> $t {     0 }
@@ -190,25 +176,23 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
     let _0: T = Zero::zero();
     let _1: T = One::one();
 
-    if NumStrConv::has_NaN::<T>() && num.is_NaN() {
+    if is_NaN(num) {
         return (str::to_bytes("NaN"), true);
     }
-    if NumStrConv::has_inf::<T>() && num.is_inf(){
+    else if is_inf(num){
         return match sign {
             SignAll => (str::to_bytes("+inf"), true),
             _       => (str::to_bytes("inf"), true)
         }
     }
-    if NumStrConv::has_neg_inf::<T>() && num.is_neg_inf() {
+    else if is_neg_inf(num) {
         return match sign {
             SignNone => (str::to_bytes("inf"), true),
             _        => (str::to_bytes("-inf"), true),
         }
     }
 
-    let neg = *num < _0 || (negative_zero
-                            && NumStrConv::has_neg_zero::<T>()
-                            && num.is_neg_zero());
+    let neg = *num < _0 || (negative_zero && is_neg_zero(num));
     let mut buf: ~[u8] = ~[];
     let radix_gen: T   = cast(radix as int);
 
