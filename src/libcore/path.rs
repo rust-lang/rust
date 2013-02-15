@@ -243,7 +243,7 @@ impl Path {
         unsafe {
              do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
-                let r = libc::stat(buf, ptr::mut_addr_of(&st));
+                let r = libc::stat(buf, &mut st);
 
                 if r == 0 { Some(move st) } else { None }
             }
@@ -255,7 +255,7 @@ impl Path {
         unsafe {
             do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
-                let r = libc::lstat(buf, ptr::mut_addr_of(&st));
+                let r = libc::lstat(buf, &mut st);
 
                 if r == 0 { Some(move st) } else { None }
             }

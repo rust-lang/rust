@@ -13,8 +13,8 @@
 extern mod std;
 
 fn main() {
-    let a = ~[0];
-    let v: *mut ~[int] = ptr::mut_addr_of(&a);
+    let mut a = ~[0];
+    let v: *mut ~[int] = &mut a;
 
     fn f(&&v: *mut ~[const int]) {
         unsafe {
