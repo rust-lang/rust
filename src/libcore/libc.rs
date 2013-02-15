@@ -534,6 +534,7 @@ pub mod types {
 
                 pub type LPCWSTR = *WCHAR;
                 pub type LPCSTR = *CHAR;
+                pub type LPTCH = *CHAR;
 
                 pub type LPWSTR = *mut WCHAR;
                 pub type LPSTR = *mut CHAR;
@@ -1594,7 +1595,7 @@ pub mod funcs {
 
         pub mod kernel32 {
             use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
-            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR};
+            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPTCH};
             use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES};
 
             #[abi = "stdcall"]
@@ -1605,6 +1606,8 @@ pub mod funcs {
                                                -> DWORD;
                 unsafe fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
                                                -> BOOL;
+                unsafe fn GetEnvironmentStringsA() -> LPTCH;
+                unsafe fn FreeEnvironmentStringsA(env_ptr: LPTCH) -> BOOL;
 
                 unsafe fn GetModuleFileNameW(hModule: HMODULE,
                                              lpFilename: LPWSTR,
