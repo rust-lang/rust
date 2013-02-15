@@ -213,7 +213,7 @@ else enum extern
 false fn for
 if impl
 let log loop
-match mod move mut
+match mod mut
 priv pub pure
 ref return
 self static struct super

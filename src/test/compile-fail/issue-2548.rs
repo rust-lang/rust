@@ -34,7 +34,7 @@ fn main() {
         let mut res = foo(x);
 
         let mut v = ~[];
-        v = move ~[(move res)] + v; //~ instantiating a type parameter with an incompatible type `foo`, which does not fulfill `Copy`
+        v = ~[(res)] + v; //~ instantiating a type parameter with an incompatible type `foo`, which does not fulfill `Copy`
         assert (v.len() == 2);
     }
 

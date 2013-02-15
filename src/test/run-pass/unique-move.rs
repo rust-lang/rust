@@ -11,6 +11,6 @@
 pub fn main() {
     let i = ~100;
     let mut j;
-    j = move i;
+    j = i;
     assert *j == 100;
 }

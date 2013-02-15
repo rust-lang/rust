@@ -33,7 +33,7 @@ fn complainer(c: SharedChan<bool>) -> complainer {
 }
 
 fn f(c: SharedChan<bool>) {
-    let _c = move complainer(c);
+    let _c = complainer(c);
     fail!();
 }
 

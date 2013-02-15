@@ -27,7 +27,7 @@ fn collect_dvec(num: uint) -> ~[uint] {
     for uint::range(0u, num) |i| {
         result.push(i);
     }
-    return dvec::unwrap(move result);
+    return dvec::unwrap(result);
 }
 
 fn main() {

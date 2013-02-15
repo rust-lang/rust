@@ -11,7 +11,7 @@
 // This is what the signature to spawn should look like with bare functions
 
 fn spawn<T: Owned>(val: T, f: extern fn(T)) {
-    f(move val);
+    f(val);
 }
 
 fn f(+i: int) {

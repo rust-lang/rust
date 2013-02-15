@@ -33,6 +33,6 @@ pub fn main() {
     let box = @mut 10;
     fn dec_box(&&i: @mut int) { *i -= 1; }
 
-    { let _i = move finish(Arg{val: box, fin: dec_box}); }
+    { let _i = finish(Arg{val: box, fin: dec_box}); }
     assert (*box == 9);
 }

@@ -15,9 +15,9 @@ struct Triple { a: int, b: int, c: int }
 
 fn test(foo: @Triple) -> @Triple {
     let foo = foo;
-    let bar = move foo;
-    let baz = move bar;
-    let quux = move baz;
+    let bar = foo;
+    let baz = bar;
+    let quux = baz;
     return quux;
 }
 

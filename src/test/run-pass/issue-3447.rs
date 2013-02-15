@@ -20,7 +20,7 @@ impl<T> list<T>{
             next: option::None
         };
 
-        self.next = Some(@(move newList));
+        self.next = Some(@(newList));
     }
 }
 

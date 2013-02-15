@@ -431,7 +431,7 @@ fn example5c(x: @S) -> int {
         let y = &v.g;
         ...
     }
-    x.f = move v;          // Replace x.f
+    x.f = v;          // Replace x.f
     ...
 # return 0;
 }

@@ -13,7 +13,7 @@ struct closure_box {
 }
 
 fn box_it(+x: &r/fn()) -> closure_box/&r {
-    closure_box {cl: move x}
+    closure_box {cl: x}
 }
 
 pub fn main() {

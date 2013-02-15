@@ -26,10 +26,10 @@ proto! oneshot (
 pub fn main() {
     use oneshot::client::*;
 
-    let c = pipes::spawn_service(oneshot::init, |p| { recv(move p); });
+    let c = pipes::spawn_service(oneshot::init, |p| { recv(p); });
 
     let iotask = &uv::global_loop::get();
     sleep(iotask, 500);
     
-    signal(move c);
+    signal(c);
 }
