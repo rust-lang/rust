@@ -171,19 +171,67 @@ fn with_env_lock<T>(f: &fn() -> T) -> T {
 }
 
 pub fn env() -> ~[(~str,~str)] {
-    extern {
-        unsafe fn rust_env_pairs() -> ~[~str];
-    }
-
     unsafe {
-        do with_env_lock {
+        #[cfg(windows)]
+        unsafe fn get_env_pairs() -> ~[~str] {
+            use libc::types::os::arch::extra::LPTCH;
+            use libc::funcs::extra::kernel32::{
+                GetEnvironmentStringsA,
+                FreeEnvironmentStringsA
+            };
+            let ch = GetEnvironmentStringsA();
+            if (ch as uint == 0) {
+                fail!(fmt!("os::env() failure getting env string from OS: %s",
+                           os::last_os_error()));
+            }
+            let mut curr_ptr: uint = ch as uint;
+            let mut result = ~[];
+            while(*(curr_ptr as *libc::c_char) != 0 as libc::c_char) {
+                let env_pair = str::raw::from_c_str(
+                    curr_ptr as *libc::c_char);
+                result.push(env_pair);
+                curr_ptr +=
+                    libc::strlen(curr_ptr as *libc::c_char) as uint
+                    + 1;
+            }
+            FreeEnvironmentStringsA(ch);
+            result
+        }
+        #[cfg(unix)]
+        unsafe fn get_env_pairs() -> ~[~str] {
+            extern mod rustrt {
+                unsafe fn rust_env_pairs() -> **libc::c_char;
+            }
+            let environ = rustrt::rust_env_pairs();
+            if (environ as uint == 0) {
+                fail!(fmt!("os::env() failure getting env string from OS: %s",
+                           os::last_os_error()));
+            }
+            let mut result = ~[];
+            ptr::array_each(environ, |e| {
+                let env_pair = str::raw::from_c_str(e);
+                log(debug, fmt!("get_env_pairs: %s",
+                                env_pair));
+                result.push(env_pair);
+            });
+            result
+        }
+
+        fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
-            for vec::each(rust_env_pairs()) |p| {
-                let vs = str::splitn_char(*p, '=', 1u);
-                fail_unless!(vec::len(vs) == 2u);
+            for input.each |p| {
+                let vs = str::splitn_char(*p, '=', 1);
+                log(debug,
+                    fmt!("splitting: len: %u",
+                    vs.len()));
+                assert vs.len() == 2;
                 pairs.push((copy vs[0], copy vs[1]));
             }
             pairs
+        }
+        do with_env_lock {
+            let unparsed_environ = get_env_pairs();
+            env_convert(unparsed_environ)
         }
     }
 }
