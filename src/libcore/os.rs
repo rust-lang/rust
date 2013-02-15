@@ -404,8 +404,9 @@ pub fn self_exe_path() -> Option<Path> {
     fn load_self() -> Option<~str> {
         unsafe {
             do fill_charp_buf() |buf, sz| {
+                let mut sz = sz as u32;
                 libc::funcs::extra::_NSGetExecutablePath(
-                    buf, &mut (sz as u32)) == (0 as c_int)
+                    buf, &mut sz) == (0 as c_int)
             }
         }
     }
