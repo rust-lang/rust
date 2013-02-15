@@ -16,11 +16,6 @@ use str;
 use kinds::Copy;
 use vec;
 use num::{NumCast, Zero, One, cast, pow_with_uint};
-/*use num::{Round, RoundToZero,
-          is_NaN, is_infinity, is_neg_infinity, is_neg_zero,
-          infinity, neg_infinity, NaN};*/
-use float;
-use f32;
 use f64;
 
 pub enum ExponentFormat {
