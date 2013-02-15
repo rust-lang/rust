@@ -41,7 +41,7 @@ pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
                 /* using idents and token::special_idents would make the
                 the macro names be hygienic */
                 let extname = cx.parse_sess().interner.get(pth.idents[0]);
-                match exts.find(extname) {
+                match exts.find(&extname) {
                   None => {
                     cx.span_fatal(pth.span,
                                   fmt!("macro undefined: '%s'", *extname))
@@ -102,7 +102,7 @@ pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
         do vec::foldr(item.attrs, ~[*item]) |attr, items| {
             let mname = attr::get_attr_name(attr);
 
-            match exts.find(&*mname) {
+            match exts.find(&mname) {
               None | Some(NormalTT(_)) | Some(ItemTT(*)) => items,
               Some(ItemDecorator(dec_fn)) => {
                   cx.bt_push(ExpandedFrom({call_site: attr.span,
@@ -159,7 +159,7 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
     };
 
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
-    let expanded = match exts.find(extname) {
+    let expanded = match exts.find(&extname) {
         None => cx.span_fatal(pth.span,
                               fmt!("macro undefined: '%s!'", *extname)),
 
@@ -198,7 +198,7 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
         MRAny(_, item_maker, _) =>
             option::chain(item_maker(), |i| {fld.fold_item(i)}),
         MRDef(ref mdef) => {
-            exts.insert((*mdef).name, (*mdef).ext);
+            exts.insert(@/*bad*/ copy mdef.name, (*mdef).ext);
             None
         }
     };
@@ -222,7 +222,7 @@ pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
 
     assert(vec::len(pth.idents) == 1u);
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
-    let (fully_expanded, sp) = match exts.find(extname) {
+    let (fully_expanded, sp) = match exts.find(&extname) {
         None =>
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extname)),
 
