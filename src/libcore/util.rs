@@ -19,7 +19,7 @@ use prelude::*;
 
 /// The identity function.
 #[inline(always)]
-pub pure fn id<T>(x: T) -> T { move x }
+pub pure fn id<T>(x: T) -> T { x }
 
 /// Ignores a value.
 #[inline(always)]
@@ -37,10 +37,10 @@ pub fn with<T: Copy, R>(
     // we wouldn't need to copy...
 
     let old_value = *ptr;
-    *ptr = move new_value;
+    *ptr = new_value;
     let result = op();
-    *ptr = move old_value;
-    return move result;
+    *ptr = old_value;
+    return result;
 }
 
 /**
@@ -58,9 +58,9 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  */
 #[inline(always)]
 pub fn replace<T>(dest: &mut T, src: T) -> T {
-    let mut tmp = move src;
+    let mut tmp = src;
     swap(dest, &mut tmp);
-    move tmp
+    tmp
 }
 
 /// A non-copyable dummy type.
@@ -109,7 +109,7 @@ mod tests {
         let x = ~[(5, false)];
         //FIXME #3387 assert x.eq(id(copy x));
         let y = copy x;
-        assert x.eq(&id(move y));
+        assert x.eq(&id(y));
     }
     #[test]
     pub fn test_swap() {
