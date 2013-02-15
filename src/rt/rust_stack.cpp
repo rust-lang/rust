@@ -58,7 +58,7 @@ check_stack_canary(stk_seg *stk) {
 stk_seg *
 create_stack(memory_region *region, size_t sz) {
     size_t total_sz = sizeof(stk_seg) + sz;
-    stk_seg *stk = (stk_seg *)region->malloc(total_sz, "stack", false);
+    stk_seg *stk = (stk_seg *)region->malloc(total_sz, "stack");
     memset(stk, 0, sizeof(stk_seg));
     stk->end = (uintptr_t) &stk->data[sz];
     add_stack_canary(stk);
@@ -75,7 +75,7 @@ destroy_stack(memory_region *region, stk_seg *stk) {
 stk_seg *
 create_exchange_stack(rust_exchange_alloc *exchange, size_t sz) {
     size_t total_sz = sizeof(stk_seg) + sz;
-    stk_seg *stk = (stk_seg *)exchange->malloc(total_sz, false);
+    stk_seg *stk = (stk_seg *)exchange->malloc(total_sz);
     memset(stk, 0, sizeof(stk_seg));
     stk->end = (uintptr_t) &stk->data[sz];
     add_stack_canary(stk);
