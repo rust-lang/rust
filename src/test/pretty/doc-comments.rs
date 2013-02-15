@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -19,6 +19,14 @@ fn b() {
     //! some single line inner-docs
 }
 
+//////////////////////////////////
+// some single-line non-doc comment preceded by a separator
+
+//////////////////////////////////           
+/// some single-line outer-docs preceded by a separator
+/// (and trailing whitespaces)
+fn c() { }
+
 /*
  * some multi-line non-doc comment
  */
@@ -26,17 +34,28 @@ fn b() {
 /**
  * some multi-line outer-docs
  */
-fn c() { }
+fn d() { }
 
-fn d() {
+fn e() {
     /*!
      * some multi-line inner-docs
      */
 }
 
-#[doc = "unsugared outer doc-comments work also"]
-fn e() { }
+/********************************/
+/*
+ * some multi-line non-doc comment preceded by a separator
+ */
 
-fn f() {
+/********************************/
+/**
+ * some multi-line outer-docs preceded by a separator
+ */
+fn f() { }
+
+#[doc = "unsugared outer doc-comments work also"]
+fn g() { }
+
+fn h() {
     #[doc = "as do inner ones"];
 }
