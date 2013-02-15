@@ -281,7 +281,7 @@ pub fn mk_ctxt(parse_sess: parse::parse_sess,
         mod_path: ~[],
         trace_mac: false
     };
-    move ((move imp) as @ext_ctxt)
+    ((imp) as @ext_ctxt)
 }
 
 pub fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {

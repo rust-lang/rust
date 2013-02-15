@@ -115,7 +115,7 @@ fn parse_item_attrs<T:Owned>(
     srv: astsrv::Srv,
     id: doc::AstId,
     parse_attrs: fn~(a: ~[ast::attribute]) -> T) -> T {
-    do astsrv::exec(srv) |move parse_attrs, ctxt| {
+    do astsrv::exec(srv) |ctxt| {
         let attrs = match ctxt.ast_map.get(&id) {
           ast_map::node_item(item, _) => copy item.attrs,
           ast_map::node_foreign_item(item, _, _) => copy item.attrs,

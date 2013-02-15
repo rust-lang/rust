@@ -42,7 +42,7 @@ impl<A> iter::ExtendedIter<A> for IMPL_T<A> {
     }
     #[inline(always)]
     pure fn foldl<B>(&self, b0: B, blk: fn(&B, &A) -> B) -> B {
-        iter::foldl(self, move b0, blk)
+        iter::foldl(self, b0, blk)
     }
     #[inline(always)]
     pure fn position(&self, f: fn(&A) -> bool) -> Option<uint> {

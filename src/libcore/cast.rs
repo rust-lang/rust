@@ -29,7 +29,7 @@ pub unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
  * reinterpret_cast on pointer types.
  */
 #[inline(always)]
-pub unsafe fn forget<T>(thing: T) { rusti::forget(move thing); }
+pub unsafe fn forget<T>(thing: T) { rusti::forget(thing); }
 
 /**
  * Force-increment the reference count on a shared box. If used
@@ -37,7 +37,7 @@ pub unsafe fn forget<T>(thing: T) { rusti::forget(move thing); }
  * and/or reinterpret_cast when such calls would otherwise scramble a box's
  * reference count
  */
-pub unsafe fn bump_box_refcount<T>(t: @T) { forget(move t); }
+pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
 
 /**
  * Transform a value of one type into a value of another type.
@@ -50,23 +50,23 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(move t); }
 #[inline(always)]
 pub unsafe fn transmute<L, G>(thing: L) -> G {
     let newthing: G = reinterpret_cast(&thing);
-    forget(move thing);
-    move newthing
+    forget(thing);
+    newthing
 }
 
 /// Coerce an immutable reference to be mutable.
 #[inline(always)]
-pub unsafe fn transmute_mut<T>(ptr: &a/T) -> &a/mut T { transmute(move ptr) }
+pub unsafe fn transmute_mut<T>(ptr: &a/T) -> &a/mut T { transmute(ptr) }
 
 /// Coerce a mutable reference to be immutable.
 #[inline(always)]
 pub unsafe fn transmute_immut<T>(ptr: &a/mut T) -> &a/T {
-    transmute(move ptr)
+    transmute(ptr)
 }
 
 /// Coerce a borrowed pointer to have an arbitrary associated region.
 #[inline(always)]
-pub unsafe fn transmute_region<T>(ptr: &a/T) -> &b/T { transmute(move ptr) }
+pub unsafe fn transmute_region<T>(ptr: &a/T) -> &b/T { transmute(ptr) }
 
 /// Coerce an immutable reference to be mutable.
 #[inline(always)]
@@ -83,7 +83,7 @@ pub unsafe fn transmute_immut_unsafe<T>(ptr: *const T) -> *T {
 /// Coerce a borrowed mutable pointer to have an arbitrary associated region.
 #[inline(always)]
 pub unsafe fn transmute_mut_region<T>(ptr: &a/mut T) -> &b/mut T {
-    transmute(move ptr)
+    transmute(ptr)
 }
 
 /// Transforms lifetime of the second pointer to match the first.
@@ -132,9 +132,9 @@ pub mod tests {
         use managed::raw::BoxRepr;
         unsafe {
             let x = @100u8;
-            let x: *BoxRepr = transmute(move x);
+            let x: *BoxRepr = transmute(x);
             assert (*x).data == 100;
-            let _x: @int = transmute(move x);
+            let _x: @int = transmute(x);
         }
     }
 

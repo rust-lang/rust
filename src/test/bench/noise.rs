@@ -35,8 +35,8 @@ fn Noise2DContext() -> ~Noise2DContext {
     r.shuffle_mut(permutations);
 
     ~Noise2DContext{
-        rgradients: move rgradients,
-        permutations: move permutations,
+        rgradients: rgradients,
+        permutations: permutations,
     }
 }
 

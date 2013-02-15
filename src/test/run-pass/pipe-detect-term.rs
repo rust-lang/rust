@@ -32,7 +32,7 @@ pub fn main() {
     let iotask = &uv::global_loop::get();
     
     pipes::spawn_service(oneshot::init, |p| { 
-        match try_recv(move p) {
+        match try_recv(p) {
           Some(*) => { fail!() }
           None => { }
         }
@@ -47,11 +47,11 @@ pub fn main() {
 fn failtest() {
     let (c, p) = oneshot::init();
 
-    do task::spawn_with(move c) |_c| { 
+    do task::spawn_with(c) |_c| { 
         fail!();
     }
 
-    error!("%?", recv(move p));
+    error!("%?", recv(p));
     // make sure we get killed if we missed it in the receive.
     loop { task::yield() }
 }

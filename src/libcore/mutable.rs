@@ -32,15 +32,15 @@ struct Data<T> {
 pub type Mut<T> = Data<T>;
 
 pub fn Mut<T>(t: T) -> Mut<T> {
-    Data {value: move t, mode: ReadOnly}
+    Data {value: t, mode: ReadOnly}
 }
 
 pub fn unwrap<T>(m: Mut<T>) -> T {
     // Borrowck should prevent us from calling unwrap while the value
     // is in use, as that would be a move from a borrowed value.
     assert (m.mode as uint) == (ReadOnly as uint);
-    let Data {value: move value, mode: _} = move m;
-    move value
+    let Data {value: value, mode: _} = m;
+    value
 }
 
 impl<T> Data<T> {

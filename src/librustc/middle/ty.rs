@@ -320,7 +320,7 @@ pub pure fn get(t: t) -> t_box {
     unsafe {
         let t2 = cast::reinterpret_cast::<t, t_box>(&t);
         let t3 = t2;
-        cast::forget(move t2);
+        cast::forget(t2);
         t3
     }
 }
@@ -830,7 +830,7 @@ pub fn mk_ctxt(s: session::Session,
         inferred_modes: HashMap(),
         adjustments: HashMap(),
         normalized_cache: new_ty_hash(),
-        lang_items: move lang_items,
+        lang_items: lang_items,
         legacy_boxed_traits: HashMap(),
         provided_methods: HashMap(),
         provided_method_sources: HashMap(),
@@ -909,10 +909,10 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
     }
 
-    let t = @{sty: move st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
+    let t = @{sty: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
 
     let key = intern_key {sty: to_unsafe_ptr(&t.sty), o_def_id: o_def_id};
-    cx.interner.insert(move key, t);
+    cx.interner.insert(key, t);
 
     cx.next_id += 1u;
     unsafe { cast::reinterpret_cast(&t) }
@@ -1178,7 +1178,7 @@ pub fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
     };
 
     FnSig {
-        inputs: move args,
+        inputs: args,
         output: fldop(sig.output)
     }
 }
@@ -3110,7 +3110,7 @@ pub fn expr_kind(tcx: ctxt,
                 ast::def_local(*) |
                 ast::def_self(*) => LvalueExpr,
 
-                move def => {
+                def => {
                     tcx.sess.span_bug(expr.span, fmt!(
                         "Uncategorized def for expr %?: %?",
                         expr.id, def));
@@ -3617,7 +3617,7 @@ pub fn trait_supertraits(cx: ctxt,
     }
 
     // Unwrap and return the result.
-    return @dvec::unwrap(move result);
+    return @dvec::unwrap(result);
 }
 
 pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {

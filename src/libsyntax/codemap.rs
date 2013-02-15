@@ -152,7 +152,7 @@ pub impl<D: Decoder> span: Decodable<D> {
 }
 
 pub pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
-    respan(mk_sp(lo, hi), move t)
+    respan(mk_sp(lo, hi), t)
 }
 
 pub pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
@@ -160,7 +160,7 @@ pub pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
 }
 
 pub pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
-    respan(dummy_sp(), move t)
+    respan(dummy_sp(), t)
 }
 
 /* assuming that we're not in macro expansion */

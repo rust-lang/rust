@@ -1481,7 +1481,7 @@ pub fn struct_element_types(struct_ty: TypeRef) -> ~[TypeRef] {
             llvm::LLVMGetStructElementTypes(
                 struct_ty, ptr::to_mut_unsafe_ptr(&mut buf[0]));
         }
-        return move buf;
+        return buf;
     }
 }
 

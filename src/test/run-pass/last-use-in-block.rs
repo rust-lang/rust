@@ -13,14 +13,14 @@
 fn lp<T>(s: ~str, f: fn(~str) -> T) -> T {
     while false {
         let r = f(s);
-        return (move r);
+        return (r);
     }
     fail!();
 }
 
 fn apply<T>(s: ~str, f: fn(~str) -> T) -> T {
     fn g<T>(s: ~str, f: fn(~str) -> T) -> T {f(s)}
-    g(s, |v| { let r = f(v); move r })
+    g(s, |v| { let r = f(v); r })
 }
 
 pub fn main() {}

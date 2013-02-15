@@ -73,7 +73,7 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
         cast::bump_box_refcount(map);
         map
     } else {
-        let map = cast::transmute(move map_ptr);
+        let map = cast::transmute(map_ptr);
         cast::bump_box_refcount(map);
         map
     }
@@ -119,7 +119,7 @@ unsafe fn local_get_helper<T: Durable>(
         // overwriting the local_data_box we need to give an extra reference.
         // We must also give an extra reference when not removing.
         let (index, data_ptr) = *result;
-        let data: @T = cast::transmute(move data_ptr);
+        let data: @T = cast::transmute(data_ptr);
         cast::bump_box_refcount(data);
         if do_pop {
             (*map).set_elt(index, None);
@@ -182,6 +182,6 @@ pub unsafe fn local_modify<T: Durable>(
     // Could be more efficient by doing the lookup work, but this is easy.
     let newdata = modify_fn(local_pop(task, key));
     if newdata.is_some() {
-        local_set(task, key, option::unwrap(move newdata));
+        local_set(task, key, option::unwrap(newdata));
     }
 }

@@ -632,7 +632,7 @@ fn check_loans_in_fn(fk: visit::fn_kind,
                             _ => {} // Ignore this argument.
                         }
                     }
-                    *self.fn_args = @move fn_args;
+                    *self.fn_args = @fn_args;
                 }
             }
 

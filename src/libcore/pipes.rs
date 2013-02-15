@@ -101,7 +101,7 @@ use vec;
 const SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = move *ptr::addr_of(&($x)); move y } )
+    { $x:expr } => ( unsafe { let y = *ptr::addr_of(&($x)); y } )
 )
 
 #[doc(hidden)]
@@ -233,7 +233,7 @@ fn unibuffer<T>() -> ~Buffer<Packet<T>> {
     unsafe {
         b.data.header.buffer = reinterpret_cast(&b);
     }
-    move b
+    b
 }
 
 #[doc(hidden)]
@@ -241,7 +241,7 @@ pub fn packet<T>() -> *Packet<T> {
     let b = unibuffer();
     let p = ptr::addr_of(&(b.data));
     // We'll take over memory management from here.
-    unsafe { forget(move b) }
+    unsafe { forget(b) }
     p
 }
 
@@ -252,7 +252,7 @@ pub fn entangle_buffer<T: Owned, Tstart: Owned>(
     -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>)
 {
     let p = init(unsafe { reinterpret_cast(&buffer) }, &buffer.data);
-    unsafe { forget(move buffer) }
+    unsafe { forget(buffer) }
     (SendPacketBuffered(p), RecvPacketBuffered(p))
 }
 
@@ -295,7 +295,7 @@ pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
     // It might be worth making both acquire and release versions of
     // this.
     unsafe {
-        transmute(rusti::atomic_xchg(transmute(move dst), src as int))
+        transmute(rusti::atomic_xchg(transmute(dst), src as int))
     }
 }
 
@@ -335,14 +335,14 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
 #[doc(hidden)]
 fn swap_state_acq(dst: &mut State, src: State) -> State {
     unsafe {
-        transmute(rusti::atomic_xchg_acq(transmute(move dst), src as int))
+        transmute(rusti::atomic_xchg_acq(transmute(dst), src as int))
     }
 }
 
 #[doc(hidden)]
 fn swap_state_rel(dst: &mut State, src: State) -> State {
     unsafe {
-        transmute(rusti::atomic_xchg_rel(transmute(move dst), src as int))
+        transmute(rusti::atomic_xchg_rel(transmute(dst), src as int))
     }
 }
 
@@ -368,7 +368,7 @@ struct BufferResource<T> {
                 // go go gadget drop glue
             }
             else {
-                forget(move b)
+                forget(b)
             }
         }
     }
@@ -381,7 +381,7 @@ fn BufferResource<T>(b: ~Buffer<T>) -> BufferResource<T> {
 
     BufferResource {
         // tjc: ????
-        buffer: move b
+        buffer: b
     }
 }
 
@@ -392,7 +392,7 @@ pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
     let p = unsafe { &*p_ };
     assert ptr::addr_of(&(p.header)) == header;
     assert p.payload.is_none();
-    p.payload = move Some(move payload);
+    p.payload = Some(payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
     match old_state {
         Empty => {
@@ -434,7 +434,7 @@ Fails if the sender closes the connection.
 */
 pub fn recv<T: Owned, Tbuffer: Owned>(
     p: RecvPacketBuffered<T, Tbuffer>) -> T {
-    try_recv(move p).expect("connection closed")
+    try_recv(p).expect("connection closed")
 }
 
 /** Attempts to receive a message from a pipe.
@@ -474,7 +474,7 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
         let mut payload = None;
         payload <-> p.payload;
         p.header.state = Empty;
-        return Some(option::unwrap(move payload))
+        return Some(option::unwrap(payload))
       },
       Terminated => return None,
       _ => {}
@@ -532,7 +532,7 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
                 }
             }
             p.header.state = Empty;
-            return Some(option::unwrap(move payload))
+            return Some(option::unwrap(payload))
           }
           Terminated => {
             // This assert detects when we've accidentally unsafely
@@ -723,8 +723,8 @@ pub fn select2<A: Owned, Ab: Owned, B: Owned, Bb: Owned>(
     let i = wait_many([a.header(), b.header()]);
 
     match i {
-      0 => Left((try_recv(move a), move b)),
-      1 => Right((move a, try_recv(move b))),
+      0 => Left((try_recv(a), b)),
+      1 => Right((a, try_recv(b))),
       _ => fail!(~"select2 return an invalid packet")
     }
 }
@@ -761,10 +761,10 @@ pub fn select<T: Owned, Tb: Owned>(endpoints: ~[RecvPacketBuffered<T, Tb>])
     -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
-    let mut remaining = move endpoints;
+    let mut remaining = endpoints;
     let port = remaining.swap_remove(ready);
-    let result = try_recv(move port);
-    (ready, move result, move remaining)
+    let result = try_recv(port);
+    (ready, result, remaining)
 }
 
 /** The sending end of a pipe. It can be used to send exactly one
@@ -791,7 +791,7 @@ impl<T:Owned,Tbuffer:Owned> ::ops::Drop for SendPacketBuffered<T,Tbuffer> {
         if self.p != None {
             let mut p = None;
             p <-> self.p;
-            sender_terminate(option::unwrap(move p))
+            sender_terminate(option::unwrap(p))
         }
         //unsafe { error!("send_drop: %?",
         //                if self.buffer == none {
@@ -816,7 +816,7 @@ impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
-        option::unwrap(move p)
+        option::unwrap(p)
     }
 
     pure fn header() -> *PacketHeader {
@@ -835,7 +835,7 @@ impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         //error!("send reuse_buffer");
         let mut tmp = None;
         tmp <-> self.buffer;
-        option::unwrap(move tmp)
+        option::unwrap(tmp)
     }
 }
 
@@ -860,7 +860,7 @@ impl<T:Owned, Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
         if self.p != None {
             let mut p = None;
             p <-> self.p;
-            receiver_terminate(option::unwrap(move p))
+            receiver_terminate(option::unwrap(p))
         }
         //unsafe { error!("recv_drop: %?",
         //                if self.buffer == none {
@@ -873,14 +873,14 @@ impl<T: Owned, Tbuffer: Owned> RecvPacketBuffered<T, Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
-        option::unwrap(move p)
+        option::unwrap(p)
     }
 
     fn reuse_buffer() -> BufferResource<Tbuffer> {
         //error!("recv reuse_buffer");
         let mut tmp = None;
         tmp <-> self.buffer;
-        option::unwrap(move tmp)
+        option::unwrap(tmp)
     }
 }
 
@@ -933,14 +933,14 @@ pub fn spawn_service<T: Owned, Tb: Owned>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut Some(move server);
-    do task::spawn |move service, move server| {
+    let server = ~mut Some(server);
+    do task::spawn || {
         let mut server_ = None;
         server_ <-> *server;
-        service(option::unwrap(move server_))
+        service(option::unwrap(server_))
     }
 
-    move client
+    client
 }
 
 /** Like `spawn_service_recv`, but for protocols that start in the
@@ -957,14 +957,14 @@ pub fn spawn_service_recv<T: Owned, Tb: Owned>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut Some(move server);
-    do task::spawn |move service, move server| {
+    let server = ~mut Some(server);
+    do task::spawn || {
         let mut server_ = None;
         server_ <-> *server;
-        service(option::unwrap(move server_))
+        service(option::unwrap(server_))
     }
 
-    move client
+    client
 }
 
 // Streams - Make pipes a little easier in general.
@@ -1041,7 +1041,7 @@ impl<T: Owned> GenericChan<T> for Chan<T> {
         let mut endp = None;
         endp <-> self.endp;
         self.endp = Some(
-            streamp::client::data(unwrap(move endp), move x))
+            streamp::client::data(unwrap(endp), x))
     }
 }
 
@@ -1050,9 +1050,9 @@ impl<T: Owned> GenericSmartChan<T> for Chan<T> {
     fn try_send(x: T) -> bool {
         let mut endp = None;
         endp <-> self.endp;
-        match move streamp::client::try_data(unwrap(move endp), move x) {
-            Some(move next) => {
-                self.endp = Some(move next);
+        match streamp::client::try_data(unwrap(endp), x) {
+            Some(next) => {
+                self.endp = Some(next);
                 true
             }
             None => false
@@ -1064,18 +1064,18 @@ impl<T: Owned> GenericPort<T> for Port<T> {
     fn recv() -> T {
         let mut endp = None;
         endp <-> self.endp;
-        let streamp::data(x, endp) = pipes::recv(unwrap(move endp));
-        self.endp = Some(move endp);
-        move x
+        let streamp::data(x, endp) = pipes::recv(unwrap(endp));
+        self.endp = Some(endp);
+        x
     }
 
     fn try_recv() -> Option<T> {
         let mut endp = None;
         endp <-> self.endp;
-        match move pipes::try_recv(unwrap(move endp)) {
-          Some(streamp::data(move x, move endp)) => {
-            self.endp = Some(move endp);
-            Some(move x)
+        match pipes::try_recv(unwrap(endp)) {
+          Some(streamp::data(x, endp)) => {
+            self.endp = Some(endp);
+            Some(x)
           }
           None => None
         }
@@ -1122,13 +1122,13 @@ pub fn PortSet<T: Owned>() -> PortSet<T>{
 impl<T: Owned> PortSet<T> {
 
     fn add(port: pipes::Port<T>) {
-        self.ports.push(move port)
+        self.ports.push(port)
     }
 
     fn chan() -> Chan<T> {
         let (po, ch) = stream();
-        self.add(move po);
-        move ch
+        self.add(po);
+        ch
     }
 }
 
@@ -1142,9 +1142,9 @@ impl<T: Owned> GenericPort<T> for PortSet<T> {
         ports <-> self.ports;
         while result.is_none() && ports.len() > 0 {
             let i = wait_many(ports);
-            match move ports[i].try_recv() {
-                Some(move m) => {
-                  result = Some(move m);
+            match ports[i].try_recv() {
+                Some(m) => {
+                  result = Some(m);
                 }
                 None => {
                     // Remove this port.
@@ -1153,7 +1153,7 @@ impl<T: Owned> GenericPort<T> for PortSet<T> {
             }
         }
         ports <-> self.ports;
-        move result
+        result
     }
 
     fn recv() -> T {
@@ -1178,29 +1178,29 @@ pub type SharedChan<T> = private::Exclusive<Chan<T>>;
 
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
     fn send(x: T) {
-        let mut xx = Some(move x);
+        let mut xx = Some(x);
         do self.with_imm |chan| {
             let mut x = None;
             x <-> xx;
-            chan.send(option::unwrap(move x))
+            chan.send(option::unwrap(x))
         }
     }
 }
 
 impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(x: T) -> bool {
-        let mut xx = Some(move x);
+        let mut xx = Some(x);
         do self.with_imm |chan| {
             let mut x = None;
             x <-> xx;
-            chan.try_send(option::unwrap(move x))
+            chan.try_send(option::unwrap(x))
         }
     }
 }
 
 /// Converts a `chan` into a `shared_chan`.
 pub fn SharedChan<T:Owned>(c: Chan<T>) -> SharedChan<T> {
-    private::exclusive(move c)
+    private::exclusive(c)
 }
 
 /// Receive a message from one of two endpoints.
@@ -1267,24 +1267,24 @@ impl<T: Owned> ChanOne<T> {
  * closed.
  */
 pub fn recv_one<T: Owned>(port: PortOne<T>) -> T {
-    let oneshot::send(message) = recv(move port);
-    move message
+    let oneshot::send(message) = recv(port);
+    message
 }
 
 /// Receive a message from a oneshot pipe unless the connection was closed.
 pub fn try_recv_one<T: Owned> (port: PortOne<T>) -> Option<T> {
-    let message = try_recv(move port);
+    let message = try_recv(port);
 
     if message.is_none() { None }
     else {
-        let oneshot::send(message) = option::unwrap(move message);
-        Some(move message)
+        let oneshot::send(message) = option::unwrap(message);
+        Some(message)
     }
 }
 
 /// Send a message on a oneshot pipe, failing if the connection was closed.
 pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
-    oneshot::client::send(move chan, move data);
+    oneshot::client::send(chan, data);
 }
 
 /**
@@ -1293,7 +1293,7 @@ pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
  */
 pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T)
         -> bool {
-    oneshot::client::try_send(move chan, move data).is_some()
+    oneshot::client::try_send(chan, data).is_some()
 }
 
 pub mod rt {
@@ -1301,7 +1301,7 @@ pub mod rt {
 
     // These are used to hide the option constructors from the
     // compiler because their names are changing
-    pub fn make_some<T>(val: T) -> Option<T> { Some(move val) }
+    pub fn make_some<T>(val: T) -> Option<T> { Some(val) }
     pub fn make_none<T>() -> Option<T> { None }
 }
 
@@ -1318,7 +1318,7 @@ pub mod test {
 
         c1.send(~"abc");
 
-        match (move p1, move p2).select() {
+        match (p1, p2).select() {
           Right(_) => fail!(),
           _ => ()
         }
@@ -1330,9 +1330,9 @@ pub mod test {
     pub fn test_oneshot() {
         let (c, p) = oneshot::init();
 
-        oneshot::client::send(move c, ());
+        oneshot::client::send(c, ());
 
-        recv_one(move p)
+        recv_one(p)
     }
 
     #[test]
@@ -1341,7 +1341,7 @@ pub mod test {
 
         {
             // Destroy the channel
-            let _chan = move chan;
+            let _chan = chan;
         }
 
         assert !port.peek();

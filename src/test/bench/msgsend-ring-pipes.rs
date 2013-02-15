@@ -29,15 +29,15 @@ proto! ring (
 )
 
 macro_rules! move_out (
-    ($x:expr) => { unsafe { let y = move *ptr::addr_of(&$x); move y } }
+    ($x:expr) => { unsafe { let y = *ptr::addr_of(&$x); y } }
 )
 
 fn thread_ring(i: uint,
                count: uint,
                +num_chan: ring::client::num,
                +num_port: ring::server::num) {
-    let mut num_chan = move Some(move num_chan);
-    let mut num_port = move Some(move num_port);
+    let mut num_chan = Some(num_chan);
+    let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
     for uint::range(0, count) |j| {
         //error!("task %?, iter %?", i, j);
@@ -45,9 +45,9 @@ fn thread_ring(i: uint,
         let mut num_port2 = None;
         num_chan2 <-> num_chan;
         num_port2 <-> num_port;
-        num_chan = Some(ring::client::num(option::unwrap(move num_chan2), i * j));
-        let port = option::unwrap(move num_port2);
-        match recv(move port) {
+        num_chan = Some(ring::client::num(option::unwrap(num_chan2), i * j));
+        let port = option::unwrap(num_port2);
+        match recv(port) {
           ring::num(_n, p) => {
             //log(error, _n);
             num_port = Some(move_out!(p));
@@ -70,7 +70,7 @@ fn main() {
     let msg_per_task = uint::from_str(args[2]).get();
 
     let (num_chan, num_port) = ring::init();
-    let mut num_chan = Some(move num_chan);
+    let mut num_chan = Some(num_chan);
 
     let start = time::precise_time_s();
 
@@ -82,23 +82,22 @@ fn main() {
         let (new_chan, num_port) = ring::init();
         let num_chan2 = ~mut None;
         *num_chan2 <-> num_chan;
-        let num_port = ~mut Some(move num_port);
-        let new_future = do future::spawn
-            |move num_chan2, move num_port| {
+        let num_port = ~mut Some(num_port);
+        let new_future = do future::spawn || {
             let mut num_chan = None;
             num_chan <-> *num_chan2;
             let mut num_port1 = None;
             num_port1 <-> *num_port;
             thread_ring(i, msg_per_task,
-                        option::unwrap(move num_chan),
-                        option::unwrap(move num_port1))
+                        option::unwrap(num_chan),
+                        option::unwrap(num_port1))
         };
-        futures.push(move new_future);
-        num_chan = Some(move new_chan);
+        futures.push(new_future);
+        num_chan = Some(new_chan);
     };
 
     // do our iteration
-    thread_ring(0, msg_per_task, option::unwrap(move num_chan), move num_port);
+    thread_ring(0, msg_per_task, option::unwrap(num_chan), num_port);
 
     // synchronize
     for futures.each |f| { f.get() };

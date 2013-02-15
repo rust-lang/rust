@@ -141,7 +141,7 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
         };
     }
 
-    move marks
+    marks
 }
 
 /**
@@ -260,7 +260,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         i += 1;
         let old_len = colors.len();
 
-        let color = arc::ARC(move colors);
+        let color = arc::ARC(colors);
 
         let color_vec = arc::get(&color); // FIXME #3387 requires this temp
         colors = do par::mapi(*color_vec) {

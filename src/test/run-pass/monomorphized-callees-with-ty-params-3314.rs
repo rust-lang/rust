@@ -25,7 +25,7 @@ struct F<A> { a: A }
 
 impl<A: Copy Serializable> Serializable for F<A> {
     fn serialize<S: Serializer>(s: S) {
-        self.a.serialize(move s);
+        self.a.serialize(s);
     }
 }
 

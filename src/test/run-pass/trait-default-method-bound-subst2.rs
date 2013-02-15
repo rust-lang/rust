@@ -11,13 +11,13 @@
 // xfail-test
 
 trait A<T> {
-    fn g(x: T) -> T { move x }
+    fn g(x: T) -> T { x }
 }
 
 impl A<int> for int { }
 
 fn f<T, V: A<T>>(i: V, j: T) -> T {
-    i.g(move j)
+    i.g(j)
 }
 
 fn main () {

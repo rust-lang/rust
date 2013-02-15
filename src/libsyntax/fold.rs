@@ -252,7 +252,7 @@ pub fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
               };
             item_trait(fold_ty_params(tps, fld),
                        vec::map(traits, |p| fold_trait_ref(*p, fld)),
-                       move methods)
+                       methods)
           }
       item_mac(ref m) => {
         // FIXME #2888: we might actually want to do something here.

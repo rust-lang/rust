@@ -553,7 +553,7 @@ pub impl CoherenceChecker {
 
         UniversalQuantificationResult {
             monotype: monotype,
-            type_variables: move type_parameters,
+            type_variables: type_parameters,
             bounds: polytype.bounds
         }
     }

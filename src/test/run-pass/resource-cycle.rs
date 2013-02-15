@@ -45,10 +45,10 @@ pub fn main() {
     unsafe {
         let i1 = ~0;
         let i1p = cast::reinterpret_cast(&i1);
-        cast::forget(move i1);
+        cast::forget(i1);
         let i2 = ~0;
         let i2p = cast::reinterpret_cast(&i2);
-        cast::forget(move i2);
+        cast::forget(i2);
 
         let x1 = @t(Node{
             mut next: None,
@@ -56,7 +56,7 @@ pub fn main() {
               let rs = r(i1p);
               debug!("r = %x",
                      cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&rs)));
-              move rs }
+              rs }
         });
         
         debug!("x1 = %x, x1.r = %x",
@@ -69,7 +69,7 @@ pub fn main() {
               let rs = r(i2p);
               debug!("r2 = %x",
                      cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&rs)));
-              move rs
+              rs
                 }
         });
         

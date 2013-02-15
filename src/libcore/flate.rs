@@ -50,7 +50,7 @@ pub fn deflate_bytes(bytes: &[const u8]) -> ~[u8] {
             let out = vec::raw::from_buf_raw(res as *u8,
                                             outsz as uint);
             libc::free(res);
-            move out
+            out
         }
     }
 }
@@ -68,7 +68,7 @@ pub fn inflate_bytes(bytes: &[const u8]) -> ~[u8] {
             let out = vec::raw::from_buf_raw(res as *u8,
                                             outsz as uint);
             libc::free(res);
-            move out
+            out
         }
     }
 }
