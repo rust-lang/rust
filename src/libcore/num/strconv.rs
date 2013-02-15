@@ -15,7 +15,13 @@ use char;
 use str;
 use kinds::Copy;
 use vec;
-use num::*;
+use num::{NumCast, Zero, One, cast, pow_with_uint};
+use num::{Round, RoundToZero,
+          is_NaN, is_infinity, is_neg_infinity, is_neg_zero,
+          infinity, neg_infinity, NaN};
+use float;
+use f32;
+use f64;
 
 pub enum ExponentFormat {
     ExpNone,
@@ -34,6 +40,107 @@ pub enum SignFormat {
     SignNeg,
     SignAll
 }
+
+pub trait NumStrConv {
+    static fn has_NaN()      -> bool;
+    static fn has_inf()      -> bool;
+    static fn has_neg_inf()  -> bool;
+    static fn has_neg_zero() -> bool;
+
+    static fn NaN()      -> Option<Self>;
+    static fn inf()      -> Option<Self>;
+    static fn neg_inf()  -> Option<Self>;
+    static fn neg_zero() -> Option<Self>;
+
+    fn is_NaN(&self)      -> bool;
+    fn is_inf(&self)      -> bool;
+    fn is_neg_inf(&self)  -> bool;
+    fn is_neg_zero(&self) -> bool;
+
+    fn round_to_zero(&self) -> Self;
+    fn split_at_dot(&self) -> (Self, Self);
+
+}
+
+macro_rules! impl_NumStrConv_Floating (
+    ($t:ty) => (
+        impl NumStrConv for $t {
+            static fn has_NaN()      -> bool { true }
+            static fn has_inf()      -> bool { true }
+            static fn has_neg_inf()  -> bool { true }
+            static fn has_neg_zero() -> bool { true }
+
+            static fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
+            static fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
+            static fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
+            static fn neg_zero() -> Option<$t> { Some(-0.0      ) }
+
+            fn is_NaN(&self)      -> bool { *self != *self }
+            fn is_inf(&self)      -> bool {
+                *self == NumStrConv::inf().unwrap()
+            }
+            fn is_neg_inf(&self)  -> bool {
+                *self == NumStrConv::neg_inf().unwrap()
+            }
+            fn is_neg_zero(&self) -> bool {
+                *self == 0.0 && (1.0 / *self).is_neg_inf()
+            }
+
+            fn round_to_zero(&self) -> $t {
+                ( if *self < 0.0 { f64::ceil(*self as f64)  }
+                  else           { f64::floor(*self as f64) }
+                ) as $t
+            }
+
+            fn split_at_dot(&self) -> ($t, $t) {
+                let r = self.round_to_zero();
+                (r, *self - r)
+            }
+        }
+    )
+)
+
+macro_rules! impl_NumStrConv_Integer (
+    ($t:ty) => (
+        impl NumStrConv for $t {
+            static fn has_NaN()      -> bool { false }
+            static fn has_inf()      -> bool { false }
+            static fn has_neg_inf()  -> bool { false }
+            static fn has_neg_zero() -> bool { false }
+
+            static fn NaN()      -> Option<$t> { None }
+            static fn inf()      -> Option<$t> { None }
+            static fn neg_inf()  -> Option<$t> { None }
+            static fn neg_zero() -> Option<$t> { None }
+
+            fn is_NaN(&self)      -> bool { false }
+            fn is_inf(&self)      -> bool { false }
+            fn is_neg_inf(&self)  -> bool { false }
+            fn is_neg_zero(&self) -> bool { false }
+
+            fn round_to_zero(&self) -> $t { *self }
+
+            fn split_at_dot(&self) -> ($t, $t) { (*self, 0) }
+        }
+    )
+)
+
+// XXX: Replace by two generic impls for traits 'Integral' and 'Floating'
+impl_NumStrConv_Floating!(float)
+impl_NumStrConv_Floating!(f32)
+impl_NumStrConv_Floating!(f64)
+
+impl_NumStrConv_Integer!(int)
+impl_NumStrConv_Integer!(i8)
+impl_NumStrConv_Integer!(i16)
+impl_NumStrConv_Integer!(i32)
+impl_NumStrConv_Integer!(i64)
+
+impl_NumStrConv_Integer!(uint)
+impl_NumStrConv_Integer!(u8)
+impl_NumStrConv_Integer!(u16)
+impl_NumStrConv_Integer!(u32)
+impl_NumStrConv_Integer!(u64)
 
 /**
  * Converts a number to its string representation as a byte vector.
