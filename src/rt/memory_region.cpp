@@ -121,8 +121,10 @@ memory_region::realloc(void *mem, size_t orig_size) {
 }
 
 void *
-memory_region::malloc(size_t size, const char *tag, bool zero) {
+memory_region::malloc(size_t size, const char *tag) {
+#   if RUSTRT_TRACK_ALLOCATIONS >= 1
     size_t old_size = size;
+#   endif
     size += HEADER_SIZE;
     alloc_header *mem = (alloc_header *)::malloc(size);
     if (mem == NULL) {
@@ -143,16 +145,7 @@ memory_region::malloc(size_t size, const char *tag, bool zero) {
     void *data = get_data(mem);
     claim_alloc(data);
 
-    if(zero) {
-        memset(data, 0, old_size);
-    }
-
     return data;
-}
-
-void *
-memory_region::calloc(size_t size, const char *tag) {
-    return malloc(size, tag, true);
 }
 
 memory_region::~memory_region() {

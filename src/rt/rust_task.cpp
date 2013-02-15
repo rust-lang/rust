@@ -450,11 +450,6 @@ rust_task::backtrace() {
 #endif
 }
 
-void *
-rust_task::calloc(size_t size, const char *tag) {
-    return local_region.calloc(size, tag);
-}
-
 size_t
 rust_task::get_next_stack_size(size_t min, size_t current, size_t requested) {
     LOG(this, mem, "calculating new stack size for 0x%" PRIxPTR, this);
