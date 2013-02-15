@@ -17,6 +17,7 @@ use cmp;
 use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
+use num::strconv;
 use num;
 use option::{None, Option, Some};
 use prelude::*;
@@ -182,22 +183,22 @@ impl ops::Neg<T> for T {
 /// Parse a string as a number in base 10.
 #[inline(always)]
 pub pure fn from_str(s: &str) -> Option<T> {
-    num::from_str_common(s, 10u, false, false, false,
-                         num::ExpNone, false)
+    strconv::from_str_common(s, 10u, false, false, false,
+                             strconv::ExpNone, false)
 }
 
 /// Parse a string as a number in the given base.
 #[inline(always)]
 pub pure fn from_str_radix(s: &str, radix: uint) -> Option<T> {
-    num::from_str_common(s, radix, false, false, false,
-                         num::ExpNone, false)
+    strconv::from_str_common(s, radix, false, false, false,
+                             strconv::ExpNone, false)
 }
 
 /// Parse a byte slice as a number in the given base.
 #[inline(always)]
 pub pure fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
-    num::from_str_bytes_common(buf, radix, false, false, false,
-                               num::ExpNone, false)
+    strconv::from_str_bytes_common(buf, radix, false, false, false,
+                                   strconv::ExpNone, false)
 }
 
 impl FromStr for T {
@@ -219,24 +220,24 @@ impl FromStrRadix for T {
 /// Convert to a string as a byte slice in a given base.
 #[inline(always)]
 pub pure fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
-    let (buf, _) = num::to_str_bytes_common(&n, radix, false, false,
-                                            num::SignNeg, num::DigAll);
+    let (buf, _) = strconv::to_str_bytes_common(&n, radix, false, false,
+                            strconv::SignNeg, strconv::DigAll);
     f(buf)
 }
 
 /// Convert to a string in base 10.
 #[inline(always)]
 pub pure fn to_str(num: T) -> ~str {
-    let (buf, _) = num::to_str_common(&num, 10u, false, false,
-                                      num::SignNeg, num::DigAll);
+    let (buf, _) = strconv::to_str_common(&num, 10u, false, false,
+                            strconv::SignNeg, strconv::DigAll);
     buf
 }
 
 /// Convert to a string in a given base.
 #[inline(always)]
 pub pure fn to_str_radix(num: T, radix: uint) -> ~str {
-    let (buf, _) = num::to_str_common(&num, radix, false, false,
-                                      num::SignNeg, num::DigAll);
+    let (buf, _) = strconv::to_str_common(&num, radix, false, false,
+                            strconv::SignNeg, strconv::DigAll);
     buf
 }
 
