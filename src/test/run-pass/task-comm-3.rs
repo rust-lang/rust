@@ -44,10 +44,10 @@ fn test00() {
     while i < number_of_tasks {
         let ch = po.chan();
         task::task().future_result(|+r| {
-            results.push(move r);
+            results.push(r);
         }).spawn({
             let i = i;
-            |move ch| test00_start(ch, i, number_of_messages)
+            || test00_start(ch, i, number_of_messages)
         });
         i = i + 1;
     }

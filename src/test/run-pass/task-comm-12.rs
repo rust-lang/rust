@@ -17,7 +17,7 @@ fn start(&&task_number: int) { debug!("Started / Finished task."); }
 fn test00() {
     let i: int = 0;
     let mut result = None;
-    do task::task().future_result(|+r| { result = Some(move r); }).spawn {
+    do task::task().future_result(|+r| { result = Some(r); }).spawn {
         start(i)
     }
 
@@ -29,7 +29,7 @@ fn test00() {
     }
 
     // Try joining tasks that have already finished.
-    option::unwrap(move result).recv();
+    option::unwrap(result).recv();
 
     debug!("Joined task.");
 }

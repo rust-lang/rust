@@ -161,7 +161,7 @@ use pipes::{stream, Port, Chan};
 
 let (port, chan): (Port<int>, Chan<int>) = stream();
 
-do spawn |move chan| {
+do spawn || {
     let result = some_expensive_computation();
     chan.send(result);
 }
@@ -192,7 +192,7 @@ spawns the child task.
 # use pipes::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 # let (port, chan) = stream();
-do spawn |move chan| {
+do spawn || {
     let result = some_expensive_computation();
     chan.send(result);
 }
@@ -229,7 +229,7 @@ following program is ill-typed:
 # fn some_expensive_computation() -> int { 42 }
 let (port, chan) = stream();
 
-do spawn |move chan| {
+do spawn {
     chan.send(some_expensive_computation());
 }
 
@@ -248,12 +248,12 @@ Instead we can use a `SharedChan`, a type that allows a single
 use pipes::{stream, SharedChan};
 
 let (port, chan) = stream();
-let chan = SharedChan(move chan);
+let chan = SharedChan(chan);
 
 for uint::range(0, 3) |init_val| {
     // Create a new channel handle to distribute to the child task
     let child_chan = chan.clone();
-    do spawn |move child_chan| {
+    do spawn {
         child_chan.send(some_expensive_computation(init_val));
     }
 }
@@ -283,10 +283,10 @@ might look like the example below.
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
     let (port, chan) = stream();
-    do spawn |move chan| {
+    do spawn {
         chan.send(some_expensive_computation(init_val));
     }
-    move port
+    port
 };
 
 // Wait on each port, accumulating the results
@@ -398,13 +398,13 @@ before returning. Hence:
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
-do spawn |move receiver| {  // Bidirectionally linked
+do spawn {  // Bidirectionally linked
     // Wait for the supervised child task to exist.
     let message = receiver.recv();
     // Kill both it and the parent task.
     assert message != 42;
 }
-do try |move sender| {  // Unidirectionally linked
+do try {  // Unidirectionally linked
     sender.send(42);
     sleep_forever();  // Will get woken up by force
 }
@@ -505,7 +505,7 @@ Here is the code for the parent task:
 
 let (from_child, to_child) = DuplexStream();
 
-do spawn |move to_child| {
+do spawn {
     stringifier(&to_child);
 };
 

@@ -17,5 +17,5 @@ struct S<T: Const> {
 
 fn main() {
     let a1  = ~S{ s: true, cant_nest: () };
-    let _a2 = ~S{ s: move a1, cant_nest: () };
+    let _a2 = ~S{ s: a1, cant_nest: () };
 }

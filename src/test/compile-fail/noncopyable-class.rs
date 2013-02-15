@@ -37,7 +37,7 @@ fn foo(i:int) -> foo {
 }
 
 fn main() {
-    let x = move foo(10);
+    let x = foo(10);
     let _y = copy x; //~ ERROR copying a value of non-copyable type
     log(error, x);
 }

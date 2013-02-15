@@ -172,7 +172,7 @@ fn main() {
     let pchan = pipes::SharedChan(pchan);
     for uint::range(0_u, size) |j| {
         let cchan = pchan.clone();
-        do task::spawn |move cchan| { cchan.send(chanmb(j, size)) };
+        do task::spawn || { cchan.send(chanmb(j, size)) };
     };
     writer(path, pport, size);
 }

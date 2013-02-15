@@ -12,15 +12,15 @@
 
 pub fn main() {
     let (p,c) = pipes::stream();
-    do task::try |move c| {
+    do task::try || {
         let (p2,c2) = pipes::stream();
-        do task::spawn |move p2| {
+        do task::spawn || {
             p2.recv();
             error!("sibling fails");
             fail!();
         }   
         let (p3,c3) = pipes::stream();
-        c.send(move c3);
+        c.send(c3);
         c2.send(());
         error!("child blocks");
         p3.recv();

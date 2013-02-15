@@ -18,7 +18,7 @@ pub fn main() {
     unsafe {
         let mut x = @1;
         let mut y = @2;
-        rusti::move_val(&mut y, move x);
+        rusti::move_val(&mut y, x);
         assert *y == 1;
     }
 }

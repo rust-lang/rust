@@ -41,24 +41,24 @@ pub fn main() {
     
     let c = pipes::spawn_service(stream::init, |p| { 
         error!("waiting for pipes");
-        let stream::send(x, p) = recv(move p);
+        let stream::send(x, p) = recv(p);
         error!("got pipes");
         let (left, right) : (oneshot::server::waiting,
                              oneshot::server::waiting)
-            = move x;
+            = x;
         error!("selecting");
-        let (i, _, _) = select(~[move left, move right]);
+        let (i, _, _) = select(~[left, right]);
         error!("selected");
         assert i == 0;
 
         error!("waiting for pipes");
-        let stream::send(x, _) = recv(move p);
+        let stream::send(x, _) = recv(p);
         error!("got pipes");
         let (left, right) : (oneshot::server::waiting,
                              oneshot::server::waiting)
-            = move x;
+            = x;
         error!("selecting");
-        let (i, m, _) = select(~[move left, move right]);
+        let (i, m, _) = select(~[left, right]);
         error!("selected %?", i);
         if m.is_some() {
             assert i == 1;
@@ -68,20 +68,20 @@ pub fn main() {
     let (c1, p1) = oneshot::init();
     let (_c2, p2) = oneshot::init();
 
-    let c = send(move c, (move p1, move p2));
+    let c = send(c, (p1, p2));
     
     sleep(iotask, 100);
 
-    signal(move c1);
+    signal(c1);
 
     let (_c1, p1) = oneshot::init();
     let (c2, p2) = oneshot::init();
 
-    send(move c, (move p1, move p2));
+    send(c, (p1, p2));
 
     sleep(iotask, 100);
 
-    signal(move c2);
+    signal(c2);
 
     test_select2();
 }
@@ -90,26 +90,26 @@ fn test_select2() {
     let (ac, ap) = stream::init();
     let (bc, bp) = stream::init();
 
-    stream::client::send(move ac, 42);
+    stream::client::send(ac, 42);
 
-    match pipes::select2(move ap, move bp) {
+    match pipes::select2(ap, bp) {
       either::Left(*) => { }
       either::Right(*) => { fail!() }
     }
 
-    stream::client::send(move bc, ~"abc");
+    stream::client::send(bc, ~"abc");
 
     error!("done with first select2");
 
     let (ac, ap) = stream::init();
     let (bc, bp) = stream::init();
 
-    stream::client::send(move bc, ~"abc");
+    stream::client::send(bc, ~"abc");
 
-    match pipes::select2(move ap, move bp) {
+    match pipes::select2(ap, bp) {
       either::Left(*) => { fail!() }
       either::Right(*) => { }
     }
 
-    stream::client::send(move ac, 42);
+    stream::client::send(ac, 42);
 }

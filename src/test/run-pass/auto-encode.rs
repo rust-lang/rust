@@ -46,7 +46,7 @@ fn test_ebml<A:
         let ebml_w = &EBWriter::Encoder(wr);
         a1.encode(ebml_w)
     };
-    let d = EBReader::Doc(@move bytes);
+    let d = EBReader::Doc(@bytes);
     let a2: A = Decodable::decode(&EBReader::Decoder(d));
     assert *a1 == a2;
 }

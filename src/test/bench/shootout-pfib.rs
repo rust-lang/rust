@@ -43,15 +43,15 @@ fn fib(n: int) -> int {
         } else {
             let p = pipes::PortSet();
             let ch = p.chan();
-            task::spawn(|move ch| pfib(ch, n - 1) );
+            task::spawn(|| pfib(ch, n - 1) );
             let ch = p.chan();
-            task::spawn(|move ch| pfib(ch, n - 2) );
+            task::spawn(|| pfib(ch, n - 2) );
             c.send(p.recv() + p.recv());
         }
     }
 
     let (p, ch) = pipes::stream();
-    let _t = task::spawn(|move ch| pfib(ch, n) );
+    let _t = task::spawn(|| pfib(ch, n) );
     p.recv()
 }
 
@@ -86,7 +86,7 @@ fn stress(num_tasks: int) {
     let mut results = ~[];
     for range(0, num_tasks) |i| {
         do task::task().future_result(|+r| {
-            results.push(move r);
+            results.push(r);
         }).spawn {
             stress_task(i);
         }

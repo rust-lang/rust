@@ -14,5 +14,5 @@ fn f(-i: ~int) {
 
 pub fn main() {
     let i = ~100;
-    f(move i);
+    f(i);
 }

@@ -1229,7 +1229,7 @@ pub fn encode_metadata(parms: encode_parms, crate: &crate) -> ~[u8] {
     let ecx: @encode_ctxt = @encode_ctxt({
         diag: parms.diag,
         tcx: parms.tcx,
-        stats: @mut move stats,
+        stats: @mut stats,
         reachable: parms.reachable,
         reexports2: parms.reexports2,
         item_symbols: parms.item_symbols,
