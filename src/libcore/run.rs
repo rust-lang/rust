@@ -250,7 +250,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
         r: ProgRepr,
         drop {
             unsafe {
-                // XXX: This is bad.
+                // FIXME #4943: This is bad.
                 destroy_repr(cast::transmute(&self.r));
             }
         }
