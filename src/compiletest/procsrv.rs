@@ -78,12 +78,12 @@ pub fn run(lib_path: ~str,
     writeclose(pipe_in.out, input);
     let p = pipes::PortSet();
     let ch = p.chan();
-    do task::spawn_sched(task::SingleThreaded) |move ch| {
+    do task::spawn_sched(task::SingleThreaded) || {
         let errput = readclose(pipe_err.in);
         ch.send((2, errput));
     }
     let ch = p.chan();
-    do task::spawn_sched(task::SingleThreaded) |move ch| {
+    do task::spawn_sched(task::SingleThreaded) || {
         let output = readclose(pipe_out.in);
         ch.send((1, output));
     }
