@@ -16,7 +16,6 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
-use core::dvec::DVec;
 use core::option;
 use std::oldmap::HashMap;
 use syntax::ast::*;
@@ -212,20 +211,20 @@ pub fn check_item_recursion(sess: Session,
                             ast_map: ast_map::map,
                             def_map: resolve::DefMap,
                             it: @item) {
-    type env = {
+    struct env {
         root_it: @item,
         sess: Session,
         ast_map: ast_map::map,
         def_map: resolve::DefMap,
-        idstack: @DVec<node_id>,
-    };
+        idstack: @mut ~[node_id]
+    }
 
-    let env = {
+    let env = env {
         root_it: it,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: @DVec()
+        idstack: @mut ~[]
     };
 
     let visitor = visit::mk_vt(@visit::Visitor {
@@ -236,12 +235,12 @@ pub fn check_item_recursion(sess: Session,
     (visitor.visit_item)(it, env, visitor);
 
     fn visit_item(it: @item, &&env: env, v: visit::vt<env>) {
-        if (*env.idstack).contains(&(it.id)) {
+        if env.idstack.contains(&(it.id)) {
             env.sess.span_fatal(env.root_it.span, ~"recursive constant");
         }
-        (*env.idstack).push(it.id);
+        env.idstack.push(it.id);
         visit::visit_item(it, env, v);
-        (*env.idstack).pop();
+        env.idstack.pop();
     }
 
     fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {
