@@ -170,7 +170,7 @@ pub fn at_utc(clock: Timespec) -> Tm {
         let mut Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
         rustrt::rust_gmtime(sec, nsec, tm);
-        move tm
+        tm
     }
 }
 
@@ -185,7 +185,7 @@ pub fn at(clock: Timespec) -> Tm {
         let mut Timespec { sec, nsec } = clock;
         let mut tm = empty_tm();
         rustrt::rust_localtime(sec, nsec, tm);
-        move tm
+        tm
     }
 }
 
@@ -205,7 +205,7 @@ pub pure fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 pub pure fn strftime(format: &str, tm: &Tm) -> ~str {
     // unsafe only because do_strftime is annoying to make pure
     // (it does IO with a str_reader)
-    move unsafe { do_strftime(format, tm) }
+    unsafe { do_strftime(format, tm) }
 }
 
 impl Tm {
@@ -240,7 +240,7 @@ impl Tm {
 
     /// Formats the time according to the format string.
     pure fn strftime(&self, format: &str) -> ~str {
-        move strftime(format, self)
+        strftime(format, self)
     }
 
     /**
@@ -689,7 +689,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 '%' => {
                     match parse_type(s, pos, rdr.read_char(), &mut tm) {
                         Ok(next) => pos = next,
-                        Err(move e) => { result = Err(move e); break; }
+                        Err(e) => { result = Err(e); break; }
                     }
                 },
                 c => {
@@ -714,7 +714,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm_zone: copy tm.tm_zone,
                 tm_nsec: tm.tm_nsec,
             })
-        } else { move result }
+        } else { result }
     }
 }
 
@@ -882,7 +882,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
         }
     }
 
-    move buf
+    buf
 }
 
 #[cfg(test)]

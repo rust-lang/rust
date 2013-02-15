@@ -69,7 +69,7 @@ pub pure fn get<T: Copy>(self: SmallIntMap<T>, key: uint) -> T {
         error!("smallintmap::get(): key not present");
         fail!();
       }
-      Some(move v) => return v
+      Some(v) => return v
     }
 }
 

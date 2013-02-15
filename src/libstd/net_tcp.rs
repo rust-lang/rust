@@ -177,7 +177,7 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
         // we can send into the interact cb to be handled in libuv..
         debug!("stream_handle_ptr outside interact %?",
                         stream_handle_ptr);
-        do iotask::interact(iotask) |move input_ip, loop_ptr| {
+        do iotask::interact(iotask) |loop_ptr| {
             unsafe {
                 debug!("in interact cb for tcp client connect..");
                 debug!("stream_handle_ptr in interact %?",
@@ -629,10 +629,10 @@ pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
               new_connect_cb: fn~(TcpNewConnection,
                                   SharedChan<Option<TcpErrData>>))
     -> result::Result<(), TcpListenErrData> {
-    do listen_common(move host_ip, port, backlog, iotask,
-                     move on_establish_cb)
+    do listen_common(host_ip, port, backlog, iotask,
+                     on_establish_cb)
         // on_connect_cb
-        |move new_connect_cb, handle| {
+        |handle| {
         unsafe {
             let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
                 as *TcpListenFcData;
@@ -659,7 +659,7 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
             server_stream_ptr: server_stream_ptr,
             stream_closed_ch: stream_closed_ch,
             kill_ch: kill_ch.clone(),
-            on_connect_cb: move on_connect_cb,
+            on_connect_cb: on_connect_cb,
             iotask: iotask.clone(),
             ipv6: match &host_ip {
                 &ip::Ipv4(_) => { false }
@@ -678,7 +678,7 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
         // tcp::connect (because the iotask::interact cb isn't
         // nested within a core::comm::listen block)
         let loc_ip = copy(host_ip);
-        do iotask::interact(iotask) |move loc_ip, loop_ptr| {
+        do iotask::interact(iotask) |loop_ptr| {
             unsafe {
                 match uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
                     0i32 => {
@@ -815,7 +815,7 @@ fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
  */
 pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
     TcpSocketBuf(@TcpBufferedSocketData {
-        sock: move sock, mut buf: ~[], buf_off: 0
+        sock: sock, mut buf: ~[], buf_off: 0
     })
 }
 
@@ -851,12 +851,12 @@ impl TcpSocket {
                 let addr = uv::ll::ip6_addr("", 0);
                 uv::ll::tcp_getpeername6(self.socket_data.stream_handle_ptr,
                                          ptr::addr_of(&addr));
-                ip::Ipv6(move addr)
+                ip::Ipv6(addr)
             } else {
                 let addr = uv::ll::ip4_addr("", 0);
                 uv::ll::tcp_getpeername(self.socket_data.stream_handle_ptr,
                                         ptr::addr_of(&addr));
-                ip::Ipv4(move addr)
+                ip::Ipv4(addr)
             }
         }
     }
@@ -1047,7 +1047,7 @@ fn read_common_impl(socket_data: *TcpSocketData, timeout_msecs: uint)
                 Some(result::get(&rs_result).recv())
             };
             log(debug, ~"tcp::read after recv_timeout");
-            match move read_result {
+            match read_result {
                 None => {
                     log(debug, ~"tcp::read: timed out..");
                     let err_data = TcpErrData {
@@ -1057,7 +1057,7 @@ fn read_common_impl(socket_data: *TcpSocketData, timeout_msecs: uint)
                     read_stop_common_impl(socket_data);
                     result::Err(err_data)
                 }
-                Some(move data_result) => {
+                Some(data_result) => {
                     log(debug, ~"tcp::read got data");
                     read_stop_common_impl(socket_data);
                     data_result
@@ -1091,7 +1091,7 @@ fn read_stop_common_impl(socket_data: *TcpSocketData) ->
             }
         }
         match stop_po.recv() {
-            Some(move err_data) => Err(err_data),
+            Some(err_data) => Err(err_data),
             None => Ok(())
         }
     }
@@ -1183,7 +1183,7 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
         // aftermath, so we don't have to sit here blocking.
         match result_po.recv() {
             TcpWriteSuccess => Ok(()),
-            TcpWriteError(move err_data) => Err(err_data)
+            TcpWriteError(err_data) => Err(err_data)
         }
     }
 }
@@ -1613,10 +1613,10 @@ pub mod test {
         debug!("server started, firing up client..");
         let server_ip_addr = ip::v4::parse_addr(server_ip);
         let iotask = uv::global_loop::get();
-        let connect_result = connect(move server_ip_addr, server_port,
+        let connect_result = connect(server_ip_addr, server_port,
                                      &iotask);
 
-        let sock = result::unwrap(move connect_result);
+        let sock = result::unwrap(connect_result);
 
         debug!("testing peer address");
         // This is what we are actually testing!
@@ -1784,11 +1784,11 @@ pub mod test {
         // client
         debug!("server started, firing up client..");
         let server_addr = ip::v4::parse_addr(server_ip);
-        let conn_result = connect(move server_addr, server_port, hl_loop);
+        let conn_result = connect(server_addr, server_port, hl_loop);
         if result::is_err(&conn_result) {
             assert false;
         }
-        let sock_buf = @socket_buf(result::unwrap(move conn_result));
+        let sock_buf = @socket_buf(result::unwrap(conn_result));
         buf_write(sock_buf, expected_req);
 
         let buf_reader = sock_buf as Reader;
@@ -1819,7 +1819,7 @@ pub mod test {
         let (server_po, server_ch) = stream::<~str>();
         let server_ch = SharedChan(server_ch);
         let server_ip_addr = ip::v4::parse_addr(server_ip);
-        let listen_result = listen(move server_ip_addr, server_port, 128,
+        let listen_result = listen(server_ip_addr, server_port, 128,
                                    iotask,
             // on_establish_cb -- called when listener is set up
             |kill_ch| {
@@ -1849,15 +1849,15 @@ pub mod test {
                     else {
                         debug!("SERVER/WORKER: send on cont ch");
                         cont_ch.send(());
-                        let sock = result::unwrap(move accept_result);
+                        let sock = result::unwrap(accept_result);
                         let peer_addr = sock.get_peer_addr();
                         debug!("SERVER: successfully accepted \
                                 connection from %s:%u",
                                  ip::format_addr(&peer_addr),
                                  ip::get_port(&peer_addr));
                         let received_req_bytes = read(&sock, 0u);
-                        match move received_req_bytes {
-                          result::Ok(move data) => {
+                        match received_req_bytes {
+                          result::Ok(data) => {
                             debug!("SERVER: got REQ str::from_bytes..");
                             debug!("SERVER: REQ data len: %?",
                                             vec::len(data));
@@ -1868,7 +1868,7 @@ pub mod test {
                             debug!("SERVER: after write.. die");
                             kill_ch.send(None);
                           }
-                          result::Err(move err_data) => {
+                          result::Err(err_data) => {
                             debug!("SERVER: error recvd: %s %s",
                                 err_data.err_name, err_data.err_msg);
                             kill_ch.send(Some(err_data));
@@ -1904,7 +1904,7 @@ pub mod test {
     fn run_tcp_test_server_fail(server_ip: &str, server_port: uint,
                                 iotask: &IoTask) -> TcpListenErrData {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
-        let listen_result = listen(move server_ip_addr, server_port, 128,
+        let listen_result = listen(server_ip_addr, server_port, 128,
                                    iotask,
             // on_establish_cb -- called when listener is set up
             |kill_ch| {
@@ -1929,7 +1929,7 @@ pub mod test {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
 
         debug!("CLIENT: starting..");
-        let connect_result = connect(move server_ip_addr, server_port,
+        let connect_result = connect(server_ip_addr, server_port,
                                      iotask);
         if result::is_err(&connect_result) {
             debug!("CLIENT: failed to connect");
@@ -1937,7 +1937,7 @@ pub mod test {
             Err(err_data)
         }
         else {
-            let sock = result::unwrap(move connect_result);
+            let sock = result::unwrap(connect_result);
             let resp_bytes = str::to_bytes(resp);
             tcp_write_single(&sock, resp_bytes);
             let read_result = sock.read(0u);

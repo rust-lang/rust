@@ -235,7 +235,7 @@ fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
 fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
     do io::with_str_reader(s) |rdr| {
         let j = result::unwrap(json::from_reader(rdr));
-        Decodable::decode(&json::Decoder(move j))
+        Decodable::decode(&json::Decoder(j))
     }
 }
 
@@ -323,20 +323,20 @@ impl TPrep for @Mut<Prep> {
         Decodable<json::Decoder>>(&self,
                                   blk: ~fn(&Exec) -> T) -> Work<T> {
 
-        let mut bo = Some(move blk);
+        let mut bo = Some(blk);
 
         do self.borrow_imm |p| {
             let cached = do p.ctxt.db.borrow_mut |db| {
                 db.prepare(p.fn_name, &p.declared_inputs)
             };
 
-            match move cached {
+            match cached {
                 Some((ref disc_in, ref disc_out, ref res))
                 if self.all_fresh("declared input",
                                   &p.declared_inputs) &&
                 self.all_fresh("discovered input", disc_in) &&
                 self.all_fresh("discovered output", disc_out) => {
-                    Work::new(*self, move Left(json_decode(*res)))
+                    Work::new(*self, Left(json_decode(*res)))
                 }
 
                 _ => {
@@ -344,16 +344,16 @@ impl TPrep for @Mut<Prep> {
                     let mut blk = None;
                     blk <-> bo;
                     let blk = blk.unwrap();
-                    let chan = ~mut Some(move chan);
-                    do task::spawn |move blk, move chan| {
+                    let chan = ~mut Some(chan);
+                    do task::spawn || {
                         let exe = Exec{discovered_inputs: LinearMap::new(),
                                        discovered_outputs: LinearMap::new()};
                         let chan = option::swap_unwrap(&mut *chan);
                         let v = blk(&exe);
-                        send_one(move chan, (move exe, move v));
+                        send_one(chan, (exe, v));
                     }
 
-                    Work::new(*self, move Right(move port))
+                    Work::new(*self, Right(port))
                 }
             }
         }
@@ -365,7 +365,7 @@ impl<T:Owned
        Decodable<json::Decoder>>
     Work<T> {
     static fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
-        move Work { prep: p, res: Some(move e) }
+        Work { prep: p, res: Some(e) }
     }
 }
 
@@ -374,18 +374,18 @@ fn unwrap<T:Owned
             Encodable<json::Encoder>
             Decodable<json::Decoder>>(w: Work<T>) -> T {
 
-    let mut ww = move w;
+    let mut ww = w;
     let mut s = None;
 
     ww.res <-> s;
 
-    match move s {
+    match s {
         None => fail!(),
-        Some(Left(move v)) => move v,
-        Some(Right(move port)) => {
+        Some(Left(v)) => v,
+        Some(Right(port)) => {
 
-            let (exe, v) = match recv(move port) {
-                oneshot::send(move data) => move data
+            let (exe, v) = match recv(port) {
+                oneshot::send(data) => data
             };
 
             let s = json_encode(&v);
@@ -399,7 +399,7 @@ fn unwrap<T:Owned
                              s);
                 }
             }
-            move v
+            v
         }
     }
 }
@@ -425,9 +425,9 @@ fn test() {
         do prep.exec |_exe| {
             let out = Path("foo.o");
             run::run_program("gcc", [~"foo.c", ~"-o", out.to_str()]);
-            move out.to_str()
+            out.to_str()
         }
     };
-    let s = unwrap(move w);
+    let s = unwrap(w);
     io::println(s);
 }

@@ -181,7 +181,7 @@ pub mod v4 {
      */
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
-          result::Ok(move addr) => move addr,
+          result::Ok(addr) => addr,
           result::Err(ref err_data) => fail!(err_data.err_msg)
         }
     }
@@ -276,7 +276,7 @@ pub mod v6 {
      */
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
-          result::Ok(move addr) => move addr,
+          result::Ok(addr) => addr,
           result::Err(copy err_data) => fail!(err_data.err_msg)
         }
     }
@@ -331,7 +331,7 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                             result::Err(GetAddrUnknownError));
                         break;
                     };
-                    out_vec.push(move new_ip_addr);
+                    out_vec.push(new_ip_addr);
 
                     let next_addr = ll::get_next_addrinfo(curr_addr);
                     if next_addr == ptr::null::<addrinfo>() as *addrinfo {
@@ -345,7 +345,7 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                 }
                 log(debug, fmt!("successful process addrinfo result, len: %?",
                                 vec::len(out_vec)));
-                output_ch.send(result::Ok(move out_vec));
+                output_ch.send(result::Ok(out_vec));
             }
             else {
                 log(debug, ~"addrinfo pointer is NULL");
@@ -427,7 +427,7 @@ mod test {
         }
         // note really sure how to realiably test/assert
         // this.. mostly just wanting to see it work, atm.
-        let results = result::unwrap(move ga_result);
+        let results = result::unwrap(ga_result);
         log(debug, fmt!("test_get_addr: Number of results for %s: %?",
                         localhost_name, vec::len(results)));
         for vec::each(results) |r| {

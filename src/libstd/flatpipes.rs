@@ -28,7 +28,7 @@ This example sends boxed integers across tasks using serialization.
 ~~~
 let (port, chan) = serial::pipe_stream();
 
-do task::spawn |move chan| {
+do task::spawn || {
     for int::range(0, 10) |i| {
         chan.send(@i)
     }
@@ -114,8 +114,8 @@ pub mod serial {
         let unflat: DeserializingUnflattener<DefaultDecoder, T> =
             DeserializingUnflattener::new(
                 deserialize_buffer::<DefaultDecoder, T>);
-        let byte_port = ReaderBytePort::new(move reader);
-        FlatPort::new(move unflat, move byte_port)
+        let byte_port = ReaderBytePort::new(reader);
+        FlatPort::new(unflat, byte_port)
     }
 
     /// Create a `FlatChan` from a `Writer`
@@ -124,8 +124,8 @@ pub mod serial {
         let flat: SerializingFlattener<DefaultEncoder, T> =
             SerializingFlattener::new(
                 serialize_value::<DefaultEncoder, T>);
-        let byte_chan = WriterByteChan::new(move writer);
-        FlatChan::new(move flat, move byte_chan)
+        let byte_chan = WriterByteChan::new(writer);
+        FlatChan::new(flat, byte_chan)
     }
 
     /// Create a `FlatPort` from a `Port<~[u8]>`
@@ -135,8 +135,8 @@ pub mod serial {
         let unflat: DeserializingUnflattener<DefaultDecoder, T> =
             DeserializingUnflattener::new(
                 deserialize_buffer::<DefaultDecoder, T>);
-        let byte_port = PipeBytePort::new(move port);
-        FlatPort::new(move unflat, move byte_port)
+        let byte_port = PipeBytePort::new(port);
+        FlatPort::new(unflat, byte_port)
     }
 
     /// Create a `FlatChan` from a `Chan<~[u8]>`
@@ -146,8 +146,8 @@ pub mod serial {
         let flat: SerializingFlattener<DefaultEncoder, T> =
             SerializingFlattener::new(
                 serialize_value::<DefaultEncoder, T>);
-        let byte_chan = PipeByteChan::new(move chan);
-        FlatChan::new(move flat, move byte_chan)
+        let byte_chan = PipeByteChan::new(chan);
+        FlatChan::new(flat, byte_chan)
     }
 
     /// Create a pair of `FlatChan` and `FlatPort`, backed by pipes
@@ -155,7 +155,7 @@ pub mod serial {
                           Decodable<DefaultDecoder>>(
                           ) -> (PipePort<T>, PipeChan<T>) {
         let (port, chan) = pipes::stream();
-        return (pipe_port(move port), pipe_chan(move chan));
+        return (pipe_port(port), pipe_chan(chan));
     }
 }
 
@@ -193,8 +193,8 @@ pub mod pod {
         reader: R
     ) -> ReaderPort<T, R> {
         let unflat: PodUnflattener<T> = PodUnflattener::new();
-        let byte_port = ReaderBytePort::new(move reader);
-        FlatPort::new(move unflat, move byte_port)
+        let byte_port = ReaderBytePort::new(reader);
+        FlatPort::new(unflat, byte_port)
     }
 
     /// Create a `FlatChan` from a `Writer`
@@ -202,28 +202,28 @@ pub mod pod {
         writer: W
     ) -> WriterChan<T, W> {
         let flat: PodFlattener<T> = PodFlattener::new();
-        let byte_chan = WriterByteChan::new(move writer);
-        FlatChan::new(move flat, move byte_chan)
+        let byte_chan = WriterByteChan::new(writer);
+        FlatChan::new(flat, byte_chan)
     }
 
     /// Create a `FlatPort` from a `Port<~[u8]>`
     pub fn pipe_port<T: Copy Owned>(port: Port<~[u8]>) -> PipePort<T> {
         let unflat: PodUnflattener<T> = PodUnflattener::new();
-        let byte_port = PipeBytePort::new(move port);
-        FlatPort::new(move unflat, move byte_port)
+        let byte_port = PipeBytePort::new(port);
+        FlatPort::new(unflat, byte_port)
     }
 
     /// Create a `FlatChan` from a `Chan<~[u8]>`
     pub fn pipe_chan<T: Copy Owned>(chan: Chan<~[u8]>) -> PipeChan<T> {
         let flat: PodFlattener<T> = PodFlattener::new();
-        let byte_chan = PipeByteChan::new(move chan);
-        FlatChan::new(move flat, move byte_chan)
+        let byte_chan = PipeByteChan::new(chan);
+        FlatChan::new(flat, byte_chan)
     }
 
     /// Create a pair of `FlatChan` and `FlatPort`, backed by pipes
     pub fn pipe_stream<T: Copy Owned>() -> (PipePort<T>, PipeChan<T>) {
         let (port, chan) = pipes::stream();
-        return (pipe_port(move port), pipe_chan(move chan));
+        return (pipe_port(port), pipe_chan(chan));
     }
 
 }
@@ -261,13 +261,13 @@ const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
 pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
     fn recv() -> T {
         match self.try_recv() {
-            Some(move val) => move val,
+            Some(val) => val,
             None => fail!(~"port is closed")
         }
     }
     fn try_recv() -> Option<T> {
         let command = match self.byte_port.try_recv(CONTINUE.len()) {
-            Some(move c) => move c,
+            Some(c) => c,
             None => {
                 warn!("flatpipe: broken pipe");
                 return None;
@@ -288,8 +288,8 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
             let msg_len = msg_len as uint;
 
             match self.byte_port.try_recv(msg_len) {
-                Some(move bytes) => {
-                    Some(self.unflattener.unflatten(move bytes))
+                Some(bytes) => {
+                    Some(self.unflattener.unflatten(bytes))
                 }
                 None => {
                     warn!("flatpipe: broken pipe");
@@ -306,20 +306,20 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
 impl<T,F:Flattener<T>,C:ByteChan> GenericChan<T> for FlatChan<T, F, C> {
     fn send(val: T) {
         self.byte_chan.send(CONTINUE.to_vec());
-        let bytes = self.flattener.flatten(move val);
+        let bytes = self.flattener.flatten(val);
         let len = bytes.len() as u64;
         do io::u64_to_be_bytes(len, size_of::<u64>()) |len_bytes| {
             self.byte_chan.send(len_bytes.to_vec());
         }
-        self.byte_chan.send(move bytes);
+        self.byte_chan.send(bytes);
     }
 }
 
 pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
     static fn new(u: U, p: P) -> FlatPort<T, U, P> {
         FlatPort {
-            unflattener: move u,
-            byte_port: move p
+            unflattener: u,
+            byte_port: p
         }
     }
 }
@@ -327,8 +327,8 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
 pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
     static fn new(f: F, c: C) -> FlatChan<T, F, C> {
         FlatChan {
-            flattener: move f,
-            byte_chan: move c
+            flattener: f,
+            byte_chan: c
         }
     }
 }
@@ -426,7 +426,7 @@ pub mod flatteners {
         static fn new(deserialize_buffer: DeserializeBuffer<T>
                      ) -> DeserializingUnflattener<D, T> {
             DeserializingUnflattener {
-                deserialize_buffer: move deserialize_buffer
+                deserialize_buffer: deserialize_buffer
             }
         }
     }
@@ -437,7 +437,7 @@ pub mod flatteners {
         static fn new(serialize_value: SerializeValue<T>
                      ) -> SerializingFlattener<S, T> {
             SerializingFlattener {
-                serialize_value: move serialize_value
+                serialize_value: serialize_value
             }
         }
     }
@@ -450,7 +450,7 @@ pub mod flatteners {
     pub fn deserialize_buffer<D: Decoder FromReader,
                           T: Decodable<D>>(buf: &[u8]) -> T {
         let buf = vec::from_slice(buf);
-        let buf_reader = @BufReader::new(move buf);
+        let buf_reader = @BufReader::new(buf);
         let reader = buf_reader as @Reader;
         let deser: D = FromReader::from_reader(reader);
         Decodable::decode(&deser)
@@ -462,8 +462,8 @@ pub mod flatteners {
         let writer = bytes_writer as @Writer;
         let ser = FromWriter::from_writer(writer);
         val.encode(&ser);
-        let bytes = bytes_writer.bytes.check_out(|bytes| move bytes);
-        return move bytes;
+        let bytes = bytes_writer.bytes.check_out(|bytes| bytes);
+        return bytes;
     }
 
     pub trait FromReader {
@@ -477,8 +477,8 @@ pub mod flatteners {
     impl FromReader for json::Decoder {
         static fn from_reader(r: Reader) -> json::Decoder {
             match json::from_reader(r) {
-                Ok(move json) => {
-                    json::Decoder(move json)
+                Ok(json) => {
+                    json::Decoder(json)
                 }
                 Err(e) => fail!(fmt!("flatpipe: can't parse json: %?", e))
             }
@@ -487,7 +487,7 @@ pub mod flatteners {
 
     impl FromWriter for json::Encoder {
         static fn from_writer(w: Writer) -> json::Encoder {
-            json::Encoder(move w)
+            json::Encoder(w)
         }
     }
 
@@ -495,13 +495,13 @@ pub mod flatteners {
         static fn from_reader(r: Reader) -> ebml::reader::Decoder {
             let buf = @r.read_whole_stream();
             let doc = ebml::reader::Doc(buf);
-            ebml::reader::Decoder(move doc)
+            ebml::reader::Decoder(doc)
         }
     }
 
     impl FromWriter for ebml::writer::Encoder {
         static fn from_writer(w: Writer) -> ebml::writer::Encoder {
-            ebml::writer::Encoder(move w)
+            ebml::writer::Encoder(w)
         }
     }
 
@@ -537,7 +537,7 @@ pub mod bytepipes {
             }
 
             if left == 0 {
-                return Some(move bytes);
+                return Some(bytes);
             } else {
                 warn!("flatpipe: dropped %? broken bytes", left);
                 return None;
@@ -554,7 +554,7 @@ pub mod bytepipes {
     pub impl<R: Reader> ReaderBytePort<R> {
         static fn new(r: R) -> ReaderBytePort<R> {
             ReaderBytePort {
-                reader: move r
+                reader: r
             }
         }
     }
@@ -562,7 +562,7 @@ pub mod bytepipes {
     pub impl<W: Writer> WriterByteChan<W> {
         static fn new(w: W) -> WriterByteChan<W> {
             WriterByteChan {
-                writer: move w
+                writer: w
             }
         }
     }
@@ -587,17 +587,17 @@ pub mod bytepipes {
                 let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
                 assert count > bytes.len();
                 match self.try_recv(count - bytes.len()) {
-                    Some(move rest) => {
+                    Some(rest) => {
                         bytes.push_all(rest);
-                        return Some(move bytes);
+                        return Some(bytes);
                     }
                     None => return None
                 }
             } else if self.buf.is_empty() {
                 match self.port.try_recv() {
-                    Some(move buf) => {
+                    Some(buf) => {
                         assert !buf.is_empty();
-                        self.buf = move buf;
+                        self.buf = buf;
                         return self.try_recv(count);
                     }
                     None => return None
@@ -610,14 +610,14 @@ pub mod bytepipes {
 
     pub impl PipeByteChan: ByteChan {
         fn send(&self, val: ~[u8]) {
-            self.chan.send(move val)
+            self.chan.send(val)
         }
     }
 
     pub impl PipeBytePort {
         static fn new(p: Port<~[u8]>) -> PipeBytePort {
             PipeBytePort {
-                port: move p,
+                port: p,
                 buf: ~[]
             }
         }
@@ -626,7 +626,7 @@ pub mod bytepipes {
     pub impl PipeByteChan {
         static fn new(c: Chan<~[u8]>) -> PipeByteChan {
             PipeByteChan {
-                chan: move c
+                chan: c
             }
         }
     }
@@ -661,14 +661,14 @@ mod test {
     #[test]
     fn test_serializing_memory_stream() {
         let writer = BytesWriter();
-        let chan = serial::writer_chan(move writer);
+        let chan = serial::writer_chan(writer);
 
         chan.send(10);
 
         let bytes = chan.byte_chan.writer.bytes.get();
 
-        let reader = BufReader::new(move bytes);
-        let port = serial::reader_port(move reader);
+        let reader = BufReader::new(bytes);
+        let port = serial::reader_port(reader);
 
         let res: int = port.recv();
         assert res == 10i;
@@ -678,7 +678,7 @@ mod test {
     fn test_serializing_pipes() {
         let (port, chan) = serial::pipe_stream();
 
-        do task::spawn |move chan| {
+        do task::spawn || {
             for int::range(0, 10) |i| {
                 chan.send(i)
             }
@@ -693,7 +693,7 @@ mod test {
     fn test_serializing_boxes() {
         let (port, chan) = serial::pipe_stream();
 
-        do task::spawn |move chan| {
+        do task::spawn || {
             for int::range(0, 10) |i| {
                 chan.send(@i)
             }
@@ -707,14 +707,14 @@ mod test {
     #[test]
     fn test_pod_memory_stream() {
         let writer = BytesWriter();
-        let chan = pod::writer_chan(move writer);
+        let chan = pod::writer_chan(writer);
 
         chan.send(10);
 
         let bytes = chan.byte_chan.writer.bytes.get();
 
-        let reader = BufReader::new(move bytes);
-        let port = pod::reader_port(move reader);
+        let reader = BufReader::new(bytes);
+        let port = pod::reader_port(reader);
 
         let res: int = port.recv();
         assert res == 10;
@@ -724,7 +724,7 @@ mod test {
     fn test_pod_pipes() {
         let (port, chan) = pod::pipe_stream();
 
-        do task::spawn |move chan| {
+        do task::spawn || {
             for int::range(0, 10) |i| {
                 chan.send(i)
             }
@@ -741,11 +741,11 @@ mod test {
     fn test_pod_tcp_stream() {
         fn reader_port(buf: TcpSocketBuf
                       ) -> pod::ReaderPort<int, TcpSocketBuf> {
-            pod::reader_port(move buf)
+            pod::reader_port(buf)
         }
         fn writer_chan(buf: TcpSocketBuf
                       ) -> pod::WriterChan<int, TcpSocketBuf> {
-            pod::writer_chan(move buf)
+            pod::writer_chan(buf)
         }
         test_some_tcp_stream(reader_port, writer_chan, 9666);
     }
@@ -755,11 +755,11 @@ mod test {
     fn test_serializing_tcp_stream() {
         fn reader_port(buf: TcpSocketBuf
                       ) -> serial::ReaderPort<int, TcpSocketBuf> {
-            serial::reader_port(move buf)
+            serial::reader_port(buf)
         }
         fn writer_chan(buf: TcpSocketBuf
                       ) -> serial::WriterChan<int, TcpSocketBuf> {
-            serial::writer_chan(move buf)
+            serial::writer_chan(buf)
         }
         test_some_tcp_stream(reader_port, writer_chan, 9667);
     }
@@ -790,27 +790,25 @@ mod test {
 
         let addr0 = ip::v4::parse_addr("127.0.0.1");
 
-        let begin_connect_chan = Cell(move begin_connect_chan);
-        let accept_chan = Cell(move accept_chan);
+        let begin_connect_chan = Cell(begin_connect_chan);
+        let accept_chan = Cell(accept_chan);
 
         // The server task
         let addr = copy addr0;
-        do task::spawn |move begin_connect_chan,
-                        move accept_chan| {
+        do task::spawn || {
             let iotask = &uv::global_loop::get();
             let begin_connect_chan = begin_connect_chan.take();
             let accept_chan = accept_chan.take();
             let listen_res = do tcp::listen(
-                copy addr, port, 128, iotask,
-                |move begin_connect_chan, _kill_ch| {
+                copy addr, port, 128, iotask, |_kill_ch| {
                     // Tell the sender to initiate the connection
                     debug!("listening");
                     begin_connect_chan.send(())
-                }) |move accept_chan, new_conn, kill_ch| {
+                }) |new_conn, kill_ch| {
 
                 // Incoming connection. Send it to the receiver task to accept
                 let (res_port, res_chan) = pipes::stream();
-                accept_chan.send((move new_conn, move res_chan));
+                accept_chan.send((new_conn, res_chan));
                 // Wait until the connection is accepted
                 res_port.recv();
 
@@ -823,8 +821,7 @@ mod test {
 
         // Client task
         let addr = copy addr0;
-        do task::spawn |move begin_connect_port,
-                        move writer_chan| {
+        do task::spawn || {
 
             // Wait for the server to start listening
             begin_connect_port.recv();
@@ -833,11 +830,11 @@ mod test {
             let iotask = &uv::global_loop::get();
             let connect_result = tcp::connect(copy addr, port, iotask);
             assert connect_result.is_ok();
-            let sock = result::unwrap(move connect_result);
-            let socket_buf: tcp::TcpSocketBuf = tcp::socket_buf(move sock);
+            let sock = result::unwrap(connect_result);
+            let socket_buf: tcp::TcpSocketBuf = tcp::socket_buf(sock);
 
             // TcpSocketBuf is a Writer!
-            let chan = writer_chan(move socket_buf);
+            let chan = writer_chan(socket_buf);
 
             for int::range(0, 10) |i| {
                 debug!("sending %?", i);
@@ -846,9 +843,7 @@ mod test {
         }
 
         // Reciever task
-        do task::spawn |move accept_port, move finish_chan,
-                        move reader_port| {
-
+        do task::spawn || {
             // Wait for a connection
             let (conn, res_chan) = accept_port.recv();
 
@@ -856,13 +851,13 @@ mod test {
             let accept_result = tcp::accept(conn);
             debug!("accepted");
             assert accept_result.is_ok();
-            let sock = result::unwrap(move accept_result);
+            let sock = result::unwrap(accept_result);
             res_chan.send(());
 
-            let socket_buf: tcp::TcpSocketBuf = tcp::socket_buf(move sock);
+            let socket_buf: tcp::TcpSocketBuf = tcp::socket_buf(sock);
 
             // TcpSocketBuf is a Reader!
-            let port = reader_port(move socket_buf);
+            let port = reader_port(socket_buf);
 
             for int::range(0, 10) |i| {
                 let j = port.recv();
@@ -897,22 +892,22 @@ mod test {
 
         fn reader_port_loader(bytes: ~[u8]
                              ) -> pod::ReaderPort<int, BufReader> {
-            let reader = BufReader::new(move bytes);
-            pod::reader_port(move reader)
+            let reader = BufReader::new(bytes);
+            pod::reader_port(reader)
         }
 
         fn pipe_port_loader(bytes: ~[u8]
                            ) -> pod::PipePort<int> {
             let (port, chan) = pipes::stream();
             if !bytes.is_empty() {
-                chan.send(move bytes);
+                chan.send(bytes);
             }
-            pod::pipe_port(move port)
+            pod::pipe_port(port)
         }
 
         fn test_try_recv_none1<P: BytePort>(loader: PortLoader<P>) {
             let bytes = ~[];
-            let port = loader(move bytes);
+            let port = loader(bytes);
             let res: Option<int> = port.try_recv();
             assert res.is_none();
         }
@@ -929,7 +924,7 @@ mod test {
         fn test_try_recv_none2<P: BytePort>(loader: PortLoader<P>) {
             // The control word in the protocol is interrupted
             let bytes = ~[0];
-            let port = loader(move bytes);
+            let port = loader(bytes);
             let res: Option<int> = port.try_recv();
             assert res.is_none();
         }
@@ -947,7 +942,7 @@ mod test {
             const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
             // The control word is followed by garbage
             let bytes = CONTINUE.to_vec() + ~[0];
-            let port = loader(move bytes);
+            let port = loader(bytes);
             let res: Option<int> = port.try_recv();
             assert res.is_none();
         }
@@ -962,7 +957,7 @@ mod test {
         }
 
         fn test_try_recv_none4<P: BytePort>(+loader: PortLoader<P>) {
-            assert do task::try |move loader| {
+            assert do task::try || {
                 const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
                 // The control word is followed by a valid length,
                 // then undeserializable garbage
@@ -972,7 +967,7 @@ mod test {
                 };
                 let bytes = CONTINUE.to_vec() + len_bytes + ~[0, 0, 0, 0];
 
-                let port = loader(move bytes);
+                let port = loader(bytes);
 
                 let _res: Option<int> = port.try_recv();
             }.is_err();

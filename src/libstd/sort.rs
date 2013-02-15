@@ -59,7 +59,7 @@ pub pure fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
         }
         rs.push_all(vec::slice(a, a_ix, a_len));
         rs.push_all(vec::slice(b, b_ix, b_len));
-        move rs
+        rs
     }
 }
 
@@ -241,7 +241,7 @@ fn binarysort<T: Copy Ord>(array: &mut [T], start: uint) {
         let mut n = start-left;
 
         copy_vec(array, left+1, array, left, n);
-        array[left] = move pivot;
+        array[left] = pivot;
         start += 1;
     }
 }
@@ -816,7 +816,7 @@ mod test_qsort {
 
         do quick_sort(names) |x, y| { int::le(*x, *y) };
 
-        let immut_names = move names;
+        let immut_names = names;
 
         let pairs = vec::zip_slice(expected, immut_names);
         for vec::each(pairs) |p| {
@@ -1022,14 +1022,14 @@ mod big_tests {
         let res = do vec::from_fn(num) |i| {
             arr[i % size]
         };
-        move res
+        res
     }
 
     fn makeRange(n: uint) -> ~[uint] {
         let one = do vec::from_fn(n) |i| { i };
         let mut two = copy one;
         vec::reverse(two);
-        vec::append(move two, one)
+        vec::append(two, one)
     }
 
     fn tabulate_unique(lo: uint, hi: uint) {
@@ -1048,7 +1048,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 rng.gen_float()
             };
-            let mut arr = move arr;
+            let mut arr = arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1089,7 +1089,7 @@ mod big_tests {
             let mut arr = if n > 4 {
                 let part = vec::view(arr, 0, 4);
                 multiplyVec(part, n)
-            } else { move arr };
+            } else { arr };
             tim_sort(arr); // ~sort
             isSorted(arr);
 
@@ -1120,7 +1120,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 @rng.gen_float()
             };
-            let mut arr = move arr;
+            let mut arr = arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1161,7 +1161,7 @@ mod big_tests {
             let mut arr = if n > 4 {
                 let part = vec::view(arr, 0, 4);
                 multiplyVec(part, n)
-            } else { move arr };
+            } else { arr };
             tim_sort(arr); // ~sort
             isSorted(arr);
 
