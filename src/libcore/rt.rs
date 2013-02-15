@@ -62,7 +62,7 @@ pub unsafe fn rt_fail_borrowed() {
     }
 }
 
-// XXX: Make these signatures agree with exchange_alloc's signatures
+// FIXME #4942: Make these signatures agree with exchange_alloc's signatures
 #[rt(exchange_malloc)]
 #[lang="exchange_malloc"]
 pub unsafe fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
