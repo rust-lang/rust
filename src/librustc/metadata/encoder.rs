@@ -49,6 +49,8 @@ use syntax::diagnostic::span_handler;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust;
 use syntax::{ast_util, visit};
+use syntax::opt_vec::OptVec;
+use syntax::opt_vec;
 use syntax;
 use writer = std::ebml::writer;
 
@@ -187,10 +189,11 @@ fn encode_ty_type_param_bounds(ebml_w: writer::Encoder, ecx: @EncodeContext,
     }
 }
 
-fn encode_type_param_bounds(ebml_w: writer::Encoder, ecx: @EncodeContext,
-                            params: &[ty_param]) {
+fn encode_type_param_bounds(ebml_w: writer::Encoder,
+                            ecx: @EncodeContext,
+                            params: &OptVec<TyParam>) {
     let ty_param_bounds =
-        @params.map(|param| ecx.tcx.ty_param_bounds.get(&param.id));
+        @params.map_to_vec(|param| ecx.tcx.ty_param_bounds.get(&param.id));
     encode_ty_type_param_bounds(ebml_w, ecx, ty_param_bounds);
 }
 
@@ -265,7 +268,7 @@ fn encode_enum_variant_info(ecx: @EncodeContext, ebml_w: writer::Encoder,
                             id: node_id, variants: &[variant],
                             path: &[ast_map::path_elt],
                             index: @mut ~[entry<int>],
-                            ty_params: &[ty_param]) {
+                            generics: &ast::Generics) {
     let mut disr_val = 0;
     let mut i = 0;
     let vi = ty::enum_variants(ecx.tcx,
@@ -281,7 +284,7 @@ fn encode_enum_variant_info(ecx: @EncodeContext, ebml_w: writer::Encoder,
                     node_id_to_type(ecx.tcx, variant.node.id));
         match variant.node.kind {
             ast::tuple_variant_kind(ref args)
-                    if args.len() > 0 && ty_params.len() == 0 => {
+                    if args.len() > 0 && generics.ty_params.len() == 0 => {
                 encode_symbol(ecx, ebml_w, variant.node.id);
             }
             ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) |
@@ -292,7 +295,7 @@ fn encode_enum_variant_info(ecx: @EncodeContext, ebml_w: writer::Encoder,
             encode_disr_val(ecx, ebml_w, vi[i].disr_val);
             disr_val = vi[i].disr_val;
         }
-        encode_type_param_bounds(ebml_w, ecx, ty_params);
+        encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_path(ecx, ebml_w, path,
                     ast_map::path_name(variant.node.name));
         ebml_w.end_tag();
@@ -465,14 +468,18 @@ fn encode_info_for_struct(ecx: @EncodeContext, ebml_w: writer::Encoder,
 }
 
 // This is for encoding info for ctors and dtors
-fn encode_info_for_ctor(ecx: @EncodeContext, ebml_w: writer::Encoder,
-                        id: node_id, ident: ident, path: &[ast_map::path_elt],
-                        item: Option<inlined_item>, tps: &[ty_param]) {
+fn encode_info_for_ctor(ecx: @EncodeContext,
+                        ebml_w: writer::Encoder,
+                        id: node_id,
+                        ident: ident,
+                        path: &[ast_map::path_elt],
+                        item: Option<inlined_item>,
+                        generics: &ast::Generics) {
         ebml_w.start_tag(tag_items_data_item);
         encode_name(ecx, ebml_w, ident);
         encode_def_id(ebml_w, local_def(id));
         encode_family(ebml_w, purity_fn_family(ast::impure_fn));
-        encode_type_param_bounds(ebml_w, ecx, tps);
+        encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         let its_ty = node_id_to_type(ecx.tcx, id);
         debug!("fn name = %s ty = %s its node id = %d",
                *ecx.tcx.sess.str_of(ident),
@@ -518,9 +525,12 @@ fn encode_info_for_method(ecx: @EncodeContext,
                           should_inline: bool,
                           parent_id: node_id,
                           m: @method,
-                          +all_tps: ~[ty_param]) {
-    debug!("encode_info_for_method: %d %s %u", m.id,
-           *ecx.tcx.sess.str_of(m.ident), all_tps.len());
+                          owner_generics: &ast::Generics,
+                          method_generics: &ast::Generics) {
+    debug!("encode_info_for_method: %d %s %u %u", m.id,
+           *ecx.tcx.sess.str_of(m.ident),
+           owner_generics.ty_params.len(),
+           method_generics.ty_params.len());
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(m.id));
     match m.self_ty.node {
@@ -529,8 +539,13 @@ fn encode_info_for_method(ecx: @EncodeContext,
         }
         _ => encode_family(ebml_w, purity_fn_family(m.purity))
     }
-    let len = all_tps.len();
-    encode_type_param_bounds(ebml_w, ecx, all_tps);
+
+    let mut combined_ty_params = opt_vec::Empty;
+    combined_ty_params.push_all(&owner_generics.ty_params);
+    combined_ty_params.push_all(&method_generics.ty_params);
+    let len = combined_ty_params.len();
+    encode_type_param_bounds(ebml_w, ecx, &combined_ty_params);
+
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, m.id));
     encode_name(ecx, ebml_w, m.ident);
     encode_path(ecx, ebml_w, impl_path, ast_map::path_name(m.ident));
@@ -604,13 +619,13 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
-      item_fn(_, purity, tps, _) => {
+      item_fn(_, purity, ref generics, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, purity_fn_family(purity));
-        let tps_len = tps.len();
-        encode_type_param_bounds(ebml_w, ecx, tps);
+        let tps_len = generics.ty_params.len();
+        encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_attributes(ebml_w, item.attrs);
@@ -634,24 +649,24 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
-      item_ty(_, tps) => {
+      item_ty(_, ref generics) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'y');
-        encode_type_param_bounds(ebml_w, ecx, tps);
+        encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
         ebml_w.end_tag();
       }
-      item_enum(ref enum_definition, ref tps) => {
+      item_enum(ref enum_definition, ref generics) => {
         add_to_index();
         do ebml_w.wr_tag(tag_items_data_item) {
             encode_def_id(ebml_w, local_def(item.id));
             encode_family(ebml_w, 't');
-            encode_type_param_bounds(ebml_w, ecx, *tps);
+            encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
             encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
             encode_name(ecx, ebml_w, item.ident);
             for (*enum_definition).variants.each |v| {
@@ -667,9 +682,9 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                                  (*enum_definition).variants,
                                  path,
                                  index,
-                                 *tps);
+                                 generics);
       }
-      item_struct(struct_def, tps) => {
+      item_struct(struct_def, ref generics) => {
         /* First, encode the fields
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
@@ -686,24 +701,25 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                                    *ecx.tcx.sess.str_of(item.ident) +
                                    ~"_dtor"),
                                path,
-                               if tps.len() > 0u {
+                               if generics.ty_params.len() > 0u {
                                    Some(ii_dtor(copy *dtor,
                                                 item.ident,
-                                                copy tps,
+                                                copy *generics,
                                                 local_def(item.id))) }
                                else {
                                    None
                                },
-                               tps);
+                               generics);
         }
 
         /* Index the class*/
         add_to_index();
+
         /* Now, make an item for the class itself */
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'S');
-        encode_type_param_bounds(ebml_w, ecx, tps);
+        encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
 
         // If this is a tuple- or enum-like struct, encode the type of the
@@ -759,13 +775,13 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
       }
-      item_impl(tps, opt_trait, ty, methods) => {
+      item_impl(ref generics, opt_trait, ty, ref methods) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'i');
         encode_region_param(ecx, ebml_w, item);
-        encode_type_param_bounds(ebml_w, ecx, tps);
+        encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
@@ -797,10 +813,10 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
             encode_info_for_method(ecx, ebml_w, impl_path,
                                    should_inline(m.attrs),
                                    item.id, *m,
-                                   vec::append(/*bad*/copy tps, m.tps));
+                                   generics, &m.generics);
         }
       }
-      item_trait(ref tps, ref traits, ref ms) => {
+      item_trait(ref generics, ref traits, ref ms) => {
         let provided_methods = dvec::DVec();
 
         add_to_index();
@@ -808,7 +824,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         encode_def_id(ebml_w, local_def(item.id));
         encode_family(ebml_w, 'I');
         encode_region_param(ecx, ebml_w, item);
-        encode_type_param_bounds(ebml_w, ecx, *tps);
+        encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
@@ -820,7 +836,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                 encode_def_id(ebml_w, local_def((*ty_m).id));
                 encode_name(ecx, ebml_w, mty.ident);
                 encode_type_param_bounds(ebml_w, ecx,
-                                         (*ty_m).tps);
+                                         &ty_m.generics.ty_params);
                 encode_type(ecx, ebml_w,
                             ty::mk_bare_fn(tcx, copy mty.fty));
                 encode_family(ebml_w, purity_fn_family(mty.fty.purity));
@@ -834,7 +850,8 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
                 ebml_w.start_tag(tag_item_trait_method);
                 encode_def_id(ebml_w, local_def(m.id));
                 encode_name(ecx, ebml_w, mty.ident);
-                encode_type_param_bounds(ebml_w, ecx, m.tps);
+                encode_type_param_bounds(ebml_w, ecx,
+                                         &m.generics.ty_params);
                 encode_type(ecx, ebml_w,
                             ty::mk_bare_fn(tcx, copy mty.fty));
                 encode_family(ebml_w, purity_fn_family(mty.fty.purity));
@@ -880,8 +897,14 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         // Finally, output all the provided methods as items.
         for provided_methods.each |m| {
             index.push(entry { val: m.id, pos: ebml_w.writer.tell() });
+
+            // We do not concatenate the generics of the owning impl and that
+            // of provided methods.  I am not sure why this is. -ndm
+            let owner_generics = ast_util::empty_generics();
+
             encode_info_for_method(ecx, ebml_w, /*bad*/copy path,
-                                   true, item.id, *m, /*bad*/copy m.tps);
+                                   true, item.id, *m,
+                                   &owner_generics, &m.generics);
         }
       }
       item_mac(*) => fail!(~"item macros unimplemented")
@@ -898,11 +921,11 @@ fn encode_info_for_foreign_item(ecx: @EncodeContext,
     index.push(entry { val: nitem.id, pos: ebml_w.writer.tell() });
 
     ebml_w.start_tag(tag_items_data_item);
-    match /*bad*/copy nitem.node {
-      foreign_item_fn(_, purity, tps) => {
+    match nitem.node {
+      foreign_item_fn(_, purity, ref generics) => {
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, purity_fn_family(purity));
-        encode_type_param_bounds(ebml_w, ecx, tps);
+        encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         if abi == foreign_abi_rust_intrinsic {
             (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_foreign(nitem));

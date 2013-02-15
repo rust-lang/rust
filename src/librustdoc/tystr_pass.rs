@@ -77,7 +77,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
             ident: ident,
             node: ast::foreign_item_fn(ref decl, _, ref tys), _
           }, _, _) => {
-            Some(pprust::fun_to_str(*decl, ident, copy *tys,
+            Some(pprust::fun_to_str(*decl, ident, tys,
                                     extract::interner()))
           }
           _ => fail!(~"get_fn_sig: fn_id not bound to a fn item")
@@ -215,7 +215,7 @@ fn get_method_sig(
                       Some(pprust::fun_to_str(
                           ty_m.decl,
                           ty_m.ident,
-                          copy ty_m.tps,
+                          &ty_m.generics,
                           extract::interner()
                       ))
                     }
@@ -223,7 +223,7 @@ fn get_method_sig(
                       Some(pprust::fun_to_str(
                           m.decl,
                           m.ident,
-                          copy m.tps,
+                          &m.generics,
                           extract::interner()
                       ))
                     }
@@ -242,7 +242,7 @@ fn get_method_sig(
                     Some(pprust::fun_to_str(
                         method.decl,
                         method.ident,
-                        copy method.tps,
+                        &method.generics,
                         extract::interner()
                     ))
                 }
@@ -339,7 +339,7 @@ fn fold_type(
                         Some(fmt!(
                             "type %s%s = %s",
                             to_str(ident),
-                            pprust::typarams_to_str(*params,
+                            pprust::generics_to_str(params,
                                                     extract::interner()),
                             pprust::ty_to_str(ty,
                                               extract::interner())

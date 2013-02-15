@@ -20,6 +20,9 @@ use core::option::{None, Option, Some};
 use core::option;
 use std::oldmap::HashMap;
 
+use opt_vec;
+use opt_vec::OptVec;
+
 // SeqSep : a sequence separator (token)
 // and whether a trailing separator is allowed.
 pub struct SeqSep {
@@ -221,10 +224,10 @@ pub impl Parser {
 
     // parse a sequence bracketed by '<' and '>', stopping
     // before the '>'.
-    fn parse_seq_to_before_gt<T:Copy>(sep: Option<token::Token>,
-                                       f: fn(Parser) -> T) -> ~[T] {
+    fn parse_seq_to_before_gt<T: Copy>(sep: Option<token::Token>,
+                                       f: fn(Parser) -> T) -> OptVec<T> {
         let mut first = true;
-        let mut v = ~[];
+        let mut v = opt_vec::Empty;
         while *self.token != token::GT
             && *self.token != token::BINOP(token::SHR) {
             match sep {
@@ -236,27 +239,14 @@ pub impl Parser {
             }
             v.push(f(self));
         }
-
         return v;
     }
 
-    fn parse_seq_to_gt<T:Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> ~[T] {
+    fn parse_seq_to_gt<T: Copy>(sep: Option<token::Token>,
+                                f: fn(Parser) -> T) -> OptVec<T> {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
-
         return v;
-    }
-
-    // parse a sequence bracketed by '<' and '>'
-    fn parse_seq_lt_gt<T:Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> spanned<~[T]> {
-        let lo = self.span.lo;
-        self.expect(token::LT);
-        let result = self.parse_seq_to_before_gt::<T>(sep, f);
-        let hi = self.span.hi;
-        self.expect_gt();
-        return spanned(lo, hi, result);
     }
 
     // parse a sequence, including the closing delimiter. The function

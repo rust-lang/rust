@@ -621,7 +621,8 @@ pub fn determine_rp_in_fn(fk: visit::fn_kind,
             }
         }
         (visitor.visit_ty)(decl.output, cx, visitor);
-        (visitor.visit_ty_params)(visit::tps_of_fn(fk), cx, visitor);
+        let generics = visit::generics_of_fn(fk);
+        (visitor.visit_generics)(&generics, cx, visitor);
         (visitor.visit_block)(body, cx, visitor);
     }
 }
