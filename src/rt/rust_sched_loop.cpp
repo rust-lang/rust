@@ -41,7 +41,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched, int id, bool killed) :
     name("main")
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
-    isaac_init(kernel, &rctx, NULL);
+    rng_init(kernel, &rng, NULL);
 
     if (!tls_initialized)
         init_tls();
@@ -150,10 +150,10 @@ rust_sched_loop::release_task(rust_task *task) {
 rust_task *
 rust_sched_loop::schedule_task() {
     lock.must_have_lock();
-    if (running_tasks.length() > 0) {
-        size_t k = isaac_rand(&rctx);
-        size_t i = k % running_tasks.length();
-        return (rust_task *)running_tasks[i];
+    size_t tasks = running_tasks.length();
+    if (tasks > 0) {
+        size_t i = (tasks > 1) ? (rng_gen_u32(kernel, &rng) % tasks) : 0;
+        return running_tasks[i];
     }
     return NULL;
 }
