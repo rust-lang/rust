@@ -62,71 +62,77 @@ pub trait NumStrConv {
 
 }
 
-macro_rules! impl_NumStrConv_Floating (
-    ($t:ty) => (
-        impl NumStrConv for $t {
-            static pure fn has_NaN()      -> bool { true }
-            static pure fn has_inf()      -> bool { true }
-            static pure fn has_neg_inf()  -> bool { true }
-            static pure fn has_neg_zero() -> bool { true }
+macro_rules! impl_NumStrConv_Floating (($t:ty) => (
+    impl NumStrConv for $t {
+        #[inline(always)] static pure fn has_NaN()      -> bool { true }
+        #[inline(always)] static pure fn has_inf()      -> bool { true }
+        #[inline(always)] static pure fn has_neg_inf()  -> bool { true }
+        #[inline(always)] static pure fn has_neg_zero() -> bool { true }
 
-            static pure fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
-            static pure fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
-            static pure fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
-            static pure fn neg_zero() -> Option<$t> { Some(-0.0      ) }
+        #[inline(always)]
+        static pure fn NaN()      -> Option<$t> { Some( 0.0 / 0.0) }
+        #[inline(always)]
+        static pure fn inf()      -> Option<$t> { Some( 1.0 / 0.0) }
+        #[inline(always)]
+        static pure fn neg_inf()  -> Option<$t> { Some(-1.0 / 0.0) }
+        #[inline(always)]
+        static pure fn neg_zero() -> Option<$t> { Some(-0.0      ) }
 
-            pure fn is_NaN(&self)      -> bool { *self != *self }
+        #[inline(always)] pure fn is_NaN(&self) -> bool { *self != *self }
 
-            pure fn is_inf(&self)      -> bool {
-                *self == NumStrConv::inf().unwrap()
-            }
-
-            pure fn is_neg_inf(&self)  -> bool {
-                *self == NumStrConv::neg_inf().unwrap()
-            }
-
-            pure fn is_neg_zero(&self) -> bool {
-                *self == 0.0 && (1.0 / *self).is_neg_inf()
-            }
-
-            pure fn round_to_zero(&self) -> $t {
-                ( if *self < 0.0 { f64::ceil(*self as f64)  }
-                  else           { f64::floor(*self as f64) }
-                ) as $t
-            }
-
-            pure fn fractional_part(&self) -> $t {
-                *self - self.round_to_zero()
-            }
+        #[inline(always)]
+        pure fn is_inf(&self)      -> bool {
+            *self == NumStrConv::inf().unwrap()
         }
-    )
-)
 
-macro_rules! impl_NumStrConv_Integer (
-    ($t:ty) => (
-        impl NumStrConv for $t {
-            static pure fn has_NaN()      -> bool { false }
-            static pure fn has_inf()      -> bool { false }
-            static pure fn has_neg_inf()  -> bool { false }
-            static pure fn has_neg_zero() -> bool { false }
-
-            static pure fn NaN()      -> Option<$t> { None }
-            static pure fn inf()      -> Option<$t> { None }
-            static pure fn neg_inf()  -> Option<$t> { None }
-            static pure fn neg_zero() -> Option<$t> { None }
-
-            pure fn is_NaN(&self)      -> bool { false }
-            pure fn is_inf(&self)      -> bool { false }
-            pure fn is_neg_inf(&self)  -> bool { false }
-            pure fn is_neg_zero(&self) -> bool { false }
-
-            pure fn round_to_zero(&self)   -> $t { *self }
-            pure fn fractional_part(&self) -> $t {     0 }
+        #[inline(always)]
+        pure fn is_neg_inf(&self)  -> bool {
+            *self == NumStrConv::neg_inf().unwrap()
         }
-    )
-)
 
-// XXX: Replace by two generic impls for traits 'Integral' and 'Floating'
+        #[inline(always)]
+        pure fn is_neg_zero(&self) -> bool {
+            *self == 0.0 && (1.0 / *self).is_neg_inf()
+        }
+
+        #[inline(always)]
+        pure fn round_to_zero(&self) -> $t {
+            ( if *self < 0.0 { f64::ceil(*self as f64)  }
+                else           { f64::floor(*self as f64) }
+            ) as $t
+        }
+
+        #[inline(always)]
+        pure fn fractional_part(&self) -> $t {
+            *self - self.round_to_zero()
+        }
+    }
+))
+
+macro_rules! impl_NumStrConv_Integer (($t:ty) => (
+    impl NumStrConv for $t {
+        #[inline(always)] static pure fn has_NaN()      -> bool { false }
+        #[inline(always)] static pure fn has_inf()      -> bool { false }
+        #[inline(always)] static pure fn has_neg_inf()  -> bool { false }
+        #[inline(always)] static pure fn has_neg_zero() -> bool { false }
+
+        #[inline(always)] static pure fn NaN()      -> Option<$t> { None }
+        #[inline(always)] static pure fn inf()      -> Option<$t> { None }
+        #[inline(always)] static pure fn neg_inf()  -> Option<$t> { None }
+        #[inline(always)] static pure fn neg_zero() -> Option<$t> { None }
+
+        #[inline(always)] pure fn is_NaN(&self)      -> bool { false }
+        #[inline(always)] pure fn is_inf(&self)      -> bool { false }
+        #[inline(always)] pure fn is_neg_inf(&self)  -> bool { false }
+        #[inline(always)] pure fn is_neg_zero(&self) -> bool { false }
+
+        #[inline(always)] pure fn round_to_zero(&self)   -> $t { *self }
+        #[inline(always)] pure fn fractional_part(&self) -> $t {     0 }
+    }
+))
+
+// FIXME: #4955
+// Replace by two generic impls for traits 'Integral' and 'Floating'
 impl_NumStrConv_Floating!(float)
 impl_NumStrConv_Floating!(f32)
 impl_NumStrConv_Floating!(f64)
@@ -142,8 +148,6 @@ impl_NumStrConv_Integer!(u8)
 impl_NumStrConv_Integer!(u16)
 impl_NumStrConv_Integer!(u32)
 impl_NumStrConv_Integer!(u64)
-
-// NOTE: inline the methods
 
 /**
  * Converts a number to its string representation as a byte vector.
@@ -176,8 +180,8 @@ impl_NumStrConv_Integer!(u64)
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  */
-pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+Div<T,T>+
-                                  Neg<T>+Modulo<T,T>+Mul<T,T>>(
+pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
+                                  Div<T,T>+Neg<T>+Modulo<T,T>+Mul<T,T>>(
         num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
     if radix as int <  2 {
@@ -400,8 +404,8 @@ pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+Div<T,
  * `to_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+Div<T,T>+Neg<T>
-                            +Modulo<T,T>+Mul<T,T>>(
+pub pure fn to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
+                            Div<T,T>+Neg<T>+Modulo<T,T>+Mul<T,T>>(
         num: &T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
     let (bytes, special) = to_str_bytes_common(num, radix,
@@ -457,7 +461,8 @@ priv const DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  *   formated like `FF_AE_FF_FF`.
  */
 pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
-                                    Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+NumStrConv>(
+                                    Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>+
+                                    NumStrConv>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {
