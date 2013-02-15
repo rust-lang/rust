@@ -2110,7 +2110,7 @@ pub mod raw {
         let v: **vec::raw::VecRepr = cast::transmute(v);
         let repr: *vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;
-        let null = ptr::mut_offset(ptr::mut_addr_of(&((*repr).unboxed.data)),
+        let null = ptr::mut_offset(cast::transmute(&((*repr).unboxed.data)),
                                    new_len);
         *null = 0u8;
     }
