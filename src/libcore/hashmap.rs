@@ -76,10 +76,8 @@ pub mod linear {
     priv impl<K: Hash IterBytes Eq, V> LinearMap<K, V> {
         #[inline(always)]
         pure fn to_bucket(&self, h: uint) -> uint {
-            // FIXME(#3041) borrow a more sophisticated technique here from
-            // Gecko, for example borrowing from Knuth, as Eich so
-            // colorfully argues for here:
-            // https://bugzilla.mozilla.org/show_bug.cgi?id=743107#c22
+            // A good hash function with entropy spread over all of the
+            // bits is assumed. SipHash is more than good enough.
             h % self.buckets.len()
         }
 
