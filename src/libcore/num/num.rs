@@ -44,6 +44,13 @@ pub trait Round {
     pure fn fract(&self) -> Self;
 }
 
+pub enum RoundMode {
+    RoundDown,
+    RoundUp,
+    RoundToZero,
+    RoundFromZero
+}
+
 /**
  * Cast a number the the enclosing type
  *
@@ -82,13 +89,6 @@ pub trait NumCast {
     pure fn to_float(&self) -> float;
 }
 
-pub enum RoundMode {
-    RoundDown,
-    RoundUp,
-    RoundToZero,
-    RoundFromZero
-}
-
 pub trait ToStrRadix {
     pub pure fn to_str_radix(&self, radix: uint) -> ~str;
 }
@@ -98,62 +98,6 @@ pub trait FromStrRadix {
 }
 
 // Generic math functions:
-
-/// Dynamically calculates the value `inf` (`1/0`).
-/// Can fail on integer types.
-#[inline(always)]
-pub pure fn infinity<T:One+Zero+Div<T,T>>() -> T {
-    let _0: T = Zero::zero();
-    let _1: T = One::one();
-    _1 / _0
-}
-
-/// Dynamically calculates the value `-inf` (`-1/0`).
-/// Can fail on integer types.
-#[inline(always)]
-pub pure fn neg_infinity<T:One+Zero+Div<T,T>+Neg<T>>() -> T {
-    let _0: T = Zero::zero();
-    let _1: T = One::one();
-    - _1 / _0
-}
-
-/// Dynamically calculates the value `NaN` (`0/0`).
-/// Can fail on integer types.
-#[inline(always)]
-pub pure fn NaN<T:Zero+Div<T,T>>() -> T {
-    let _0: T = Zero::zero();
-    _0 / _0
-}
-
-/// Returns `true` if `num` has the value `inf` (`1/0`).
-/// Can fail on integer types.
-#[inline(always)]
-pub pure fn is_infinity<T:One+Zero+Eq+Div<T,T>>(num: &T) -> bool {
-    (*num) == (infinity::<T>())
-}
-
-/// Returns `true` if `num` has the value `-inf` (`-1/0`).
-/// Can fail on integer types.
-#[inline(always)]
-pub pure fn is_neg_infinity<T:One+Zero+Eq+Div<T,T>+Neg<T>>(num: &T)
-                                                            -> bool {
-    (*num) == (neg_infinity::<T>())
-}
-
-/// Returns `true` if `num` has the value `NaN` (is not equal to itself).
-#[inline(always)]
-pub pure fn is_NaN<T:Eq>(num: &T) -> bool {
-    (*num) != (*num)
-}
-
-/// Returns `true` if `num` has the value `-0` (`1/num == -1/0`).
-/// Can fail on integer types.
-#[inline(always)]
-pub pure fn is_neg_zero<T:One+Zero+Eq+Div<T,T>+Neg<T>>(num: &T) -> bool {
-    let _1: T = One::one();
-    let _0: T = Zero::zero();
-    *num == _0 && is_neg_infinity(&(_1 / *num))
-}
 
 /**
  * Calculates a power to a given radix, optimized for uint `pow` and `radix`.
