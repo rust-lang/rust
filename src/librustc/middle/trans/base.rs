@@ -108,7 +108,7 @@ pub trait get_insn_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper;
 }
 
-pub impl @crate_ctxt: get_insn_ctxt {
+pub impl get_insn_ctxt for @crate_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper {
         debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
@@ -118,13 +118,13 @@ pub impl @crate_ctxt: get_insn_ctxt {
     }
 }
 
-pub impl block: get_insn_ctxt {
+pub impl get_insn_ctxt for block {
     fn insn_ctxt(s: &str) -> icx_popper {
         self.ccx().insn_ctxt(s)
     }
 }
 
-pub impl fn_ctxt: get_insn_ctxt {
+pub impl get_insn_ctxt for fn_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper {
         self.ccx.insn_ctxt(s)
     }

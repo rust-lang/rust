@@ -173,7 +173,7 @@ pub mod traits {
     use kinds::Copy;
     use ops::Add;
 
-    pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
+    pub impl<T: Copy> Add<&[const T],@[T]> for @[T] {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> @[T] {
             append(*self, (*rhs))

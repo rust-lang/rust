@@ -23,8 +23,7 @@ extern mod std;
 use io::WriterUtil;
 
 // Represents a position on a canvas.
-struct Point
-{
+struct Point {
     x: int,
     y: int,
 }
@@ -108,8 +107,7 @@ impl AsciiArt
 
 // Allows AsciiArt to be converted to a string using the libcore ToStr trait.
 // Note that the %s fmt! specifier will not call this automatically.
-impl AsciiArt : ToStr
-{
+impl ToStr for AsciiArt {
     pure fn to_str(&self) -> ~str
     {
         // Convert each line into a string.
@@ -139,8 +137,7 @@ trait Canvas
 // Here we provide an implementation of the Canvas methods for AsciiArt.
 // Other implementations could also be provided (e.g. for PDF or Apple's Quartz)
 // and code can use them polymorphically via the Canvas trait.
-impl AsciiArt : Canvas
-{
+impl Canvas for AsciiArt {
     fn add_point(&mut self, shape: Point)
     {
         self.add_pt(shape.x, shape.y);

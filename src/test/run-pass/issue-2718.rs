@@ -20,18 +20,12 @@ pub mod pipes {
         mut payload: Option<T>
     }
 
+    #[deriving_eq]
     pub enum state {
         empty,
         full,
         blocked,
         terminated
-    }
-
-    pub impl state : cmp::Eq {
-        pure fn eq(&self, other: &state) -> bool {
-            ((*self) as uint) == ((*other) as uint)
-        }
-        pure fn ne(&self, other: &state) -> bool { !(*self).eq(other) }
     }
 
     pub type packet<T> = {
@@ -161,7 +155,7 @@ pub mod pipes {
         mut p: Option<*packet<T>>,
     }
 
-    pub impl<T: Owned> send_packet<T> : Drop {
+    pub impl<T: Owned> Drop for send_packet<T> {
         fn finalize(&self) {
             if self.p != None {
                 let mut p = None;
@@ -189,7 +183,7 @@ pub mod pipes {
         mut p: Option<*packet<T>>,
     }
 
-    pub impl<T: Owned> recv_packet<T> : Drop {
+    pub impl<T: Owned> Drop for recv_packet<T> {
         fn finalize(&self) {
             if self.p != None {
                 let mut p = None;

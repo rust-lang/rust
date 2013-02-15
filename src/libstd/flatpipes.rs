@@ -258,7 +258,7 @@ pub trait ByteChan {
 
 const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
 
-pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P>: GenericPort<T> {
+pub impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
     fn recv() -> T {
         match self.try_recv() {
             Some(val) => val,
@@ -358,7 +358,7 @@ pub mod flatteners {
         bogus: ()
     }
 
-    pub impl<T: Copy Owned> PodUnflattener<T>: Unflattener<T> {
+    pub impl<T: Copy Owned> Unflattener<T> for PodUnflattener<T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             assert size_of::<T>() != 0;
             assert size_of::<T>() == buf.len();
@@ -368,7 +368,7 @@ pub mod flatteners {
         }
     }
 
-    pub impl<T: Copy Owned> PodFlattener<T>: Flattener<T> {
+    pub impl<T: Copy Owned> Flattener<T> for PodFlattener<T> {
         fn flatten(&self, val: T) -> ~[u8] {
             assert size_of::<T>() != 0;
             let val: *T = ptr::to_unsafe_ptr(&val);
@@ -406,36 +406,32 @@ pub mod flatteners {
         serialize_value: SerializeValue<T>
     }
 
-    pub impl<D: Decoder, T: Decodable<D>>
-        DeserializingUnflattener<D, T>: Unflattener<T> {
+    pub impl<D: Decoder, T: Decodable<D>> Unflattener<T>
+            for DeserializingUnflattener<D, T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             (self.deserialize_buffer)(buf)
         }
     }
 
-    pub impl<S: Encoder, T: Encodable<S>>
-        SerializingFlattener<S, T>: Flattener<T> {
+    pub impl<S: Encoder, T: Encodable<S>> Flattener<T>
+            for SerializingFlattener<S, T> {
         fn flatten(&self, val: T) -> ~[u8] {
             (self.serialize_value)(&val)
         }
     }
 
-    pub impl<D: Decoder, T: Decodable<D>>
-        DeserializingUnflattener<D, T> {
-
-        static fn new(deserialize_buffer: DeserializeBuffer<T>
-                     ) -> DeserializingUnflattener<D, T> {
+    pub impl<D: Decoder, T: Decodable<D>> DeserializingUnflattener<D, T> {
+        static fn new(deserialize_buffer: DeserializeBuffer<T>)
+                   -> DeserializingUnflattener<D, T> {
             DeserializingUnflattener {
                 deserialize_buffer: deserialize_buffer
             }
         }
     }
 
-    pub impl<S: Encoder, T: Encodable<S>>
-        SerializingFlattener<S, T> {
-
-        static fn new(serialize_value: SerializeValue<T>
-                     ) -> SerializingFlattener<S, T> {
+    pub impl<S: Encoder, T: Encodable<S>> SerializingFlattener<S, T> {
+        static fn new(serialize_value: SerializeValue<T>)
+                   -> SerializingFlattener<S, T> {
             SerializingFlattener {
                 serialize_value: serialize_value
             }
@@ -523,7 +519,7 @@ pub mod bytepipes {
         writer: W
     }
 
-    pub impl<R: Reader> ReaderBytePort<R>: BytePort {
+    pub impl<R: Reader> BytePort for ReaderBytePort<R> {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             let mut left = count;
             let mut bytes = ~[];
@@ -545,7 +541,7 @@ pub mod bytepipes {
         }
     }
 
-    pub impl<W: Writer> WriterByteChan<W>: ByteChan {
+    pub impl<W: Writer> ByteChan for WriterByteChan<W> {
         fn send(&self, val: ~[u8]) {
             self.writer.write(val);
         }
@@ -576,7 +572,7 @@ pub mod bytepipes {
         chan: pipes::Chan<~[u8]>
     }
 
-    pub impl PipeBytePort: BytePort {
+    pub impl BytePort for PipeBytePort {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             if self.buf.len() >= count {
                 let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
@@ -608,7 +604,7 @@ pub mod bytepipes {
         }
     }
 
-    pub impl PipeByteChan: ByteChan {
+    pub impl ByteChan for PipeByteChan {
         fn send(&self, val: ~[u8]) {
             self.chan.send(val)
         }

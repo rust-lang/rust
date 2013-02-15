@@ -59,7 +59,7 @@ pub struct Config {
     pandoc_cmd: Option<~str>
 }
 
-pub impl Config: Clone {
+pub impl Clone for Config {
     fn clone(&self) -> Config { copy *self }
 }
 

@@ -45,7 +45,7 @@ pub trait gen_init {
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr;
 }
 
-pub impl message: gen_send {
+pub impl gen_send for message {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
         match self {
@@ -201,7 +201,7 @@ pub impl message: gen_send {
     }
 }
 
-pub impl state: to_type_decls {
+pub impl to_type_decls for state {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
         debug!("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
@@ -305,8 +305,7 @@ pub impl state: to_type_decls {
     }
 }
 
-pub impl protocol: gen_init {
-
+pub impl gen_init for protocol {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
 

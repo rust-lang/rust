@@ -36,7 +36,7 @@ pub impl Lub {
     fn ty_bot(b: ty::t) -> cres<ty::t> { self.bot_ty(b) } // commutative
 }
 
-pub impl Lub: Combine {
+pub impl Combine for Lub {
     fn infcx() -> @mut InferCtxt { self.infcx }
     fn tag() -> ~str { ~"lub" }
     fn a_is_expected() -> bool { self.a_is_expected }

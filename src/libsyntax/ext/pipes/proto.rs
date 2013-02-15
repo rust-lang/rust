@@ -21,7 +21,7 @@ use core::to_str::ToStr;
 
 pub enum direction { send, recv }
 
-pub impl direction : cmp::Eq {
+pub impl cmp::Eq for direction {
     pure fn eq(&self, other: &direction) -> bool {
         match ((*self), (*other)) {
             (send, send) => true,
@@ -33,7 +33,7 @@ pub impl direction : cmp::Eq {
     pure fn ne(&self, other: &direction) -> bool { !(*self).eq(other) }
 }
 
-pub impl direction: ToStr {
+pub impl ToStr for direction {
     pure fn to_str(&self) -> ~str {
         match *self {
           send => ~"Send",
@@ -156,7 +156,6 @@ pub struct protocol_ {
 }
 
 pub impl protocol_ {
-
     /// Get a state.
     fn get_state(name: ~str) -> state {
         self.states.find(|i| i.name == name).get()

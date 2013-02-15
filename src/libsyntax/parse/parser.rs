@@ -74,7 +74,7 @@ use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
 use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
 use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
-use parse::obsolete::{ObsoleteUnsafeBlock};
+use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -2829,16 +2829,11 @@ pub impl Parser {
         // XXX: clownshoes
         let ident = special_idents::clownshoes_extensions;
 
-        // Parse the type. (If this is `impl trait for type`, however, this
-        // actually parses the trait.)
+        // Parse the trait.
         let mut ty = self.parse_ty(false);
 
         // Parse traits, if necessary.
-        let opt_trait = if self.token == token::COLON {
-            // Old-style trait.
-            self.bump();
-            Some(self.parse_trait_ref())
-        } else if self.eat_keyword(~"for") {
+        let opt_trait = if self.eat_keyword(~"for") {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
                 ty_path(path, node_id) => {
@@ -2855,6 +2850,9 @@ pub impl Parser {
 
             ty = self.parse_ty(false);
             opt_trait_ref
+        } else if self.eat(token::COLON) {
+            self.obsolete(copy self.span, ObsoleteImplSyntax);
+            Some(self.parse_trait_ref())
         } else {
             None
         };

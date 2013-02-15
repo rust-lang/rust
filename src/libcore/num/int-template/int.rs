@@ -58,7 +58,7 @@ mod inst {
     }
 }
 
-pub impl int: NumCast {
+pub impl NumCast for int {
     /**
      * Cast `n` to a `int`
      */

@@ -761,7 +761,7 @@ fn should_write_impl_header() {
 
 #[test]
 fn should_write_impl_header_with_trait() {
-    let markdown = test::render(~"impl int: j { fn a() { } }");
+    let markdown = test::render(~"impl j for int { fn a() { } }");
     assert str::contains(markdown, ~"## Implementation of `j` for `int`");
 }
 
