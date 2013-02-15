@@ -23,5 +23,5 @@ impl thing { fn f(self) {} }
 
 pub fn main() {
     let z = thing();
-    (move z).f();
+    (z).f();
 }

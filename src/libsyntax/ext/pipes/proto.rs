@@ -207,7 +207,7 @@ pub impl protocol {
             span: self.span,
             dir: dir,
             ty_params: ty_params,
-            messages: move messages,
+            messages: messages,
             proto: self
         });
 

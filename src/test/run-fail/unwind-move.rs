@@ -15,5 +15,5 @@ fn f(-_a: @int) {
 
 fn main() {
     let a = @0;
-    f(move a);
+    f(a);
 }

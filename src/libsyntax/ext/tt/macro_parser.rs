@@ -279,7 +279,7 @@ pub fn parse(sess: parse_sess,
                         }
 
                         new_pos.idx += 1;
-                        cur_eis.push(move new_pos);
+                        cur_eis.push(new_pos);
                     }
 
                     // can we go around again?
@@ -288,19 +288,19 @@ pub fn parse(sess: parse_sess,
                     match copy ei.sep {
                       Some(ref t) if idx == len => { // we need a separator
                         if tok == (*t) { //pass the separator
-                            let ei_t = move ei;
+                            let ei_t = ei;
                             ei_t.idx += 1;
-                            next_eis.push(move ei_t);
+                            next_eis.push(ei_t);
                         }
                       }
                       _ => { // we don't need a separator
-                        let ei_t = move ei;
+                        let ei_t = ei;
                         ei_t.idx = 0;
-                        cur_eis.push(move ei_t);
+                        cur_eis.push(ei_t);
                       }
                     }
                 } else {
-                    eof_eis.push(move ei);
+                    eof_eis.push(ei);
                 }
             } else {
                 match copy ei.elts[idx].node {
@@ -315,26 +315,26 @@ pub fn parse(sess: parse_sess,
                             new_ei.matches[idx].push(@matched_seq(~[], sp));
                         }
 
-                        cur_eis.push(move new_ei);
+                        cur_eis.push(new_ei);
                     }
 
                     let matches = vec::map(ei.matches, // fresh, same size:
                                            |_m| DVec::<@named_match>());
-                    let ei_t = move ei;
+                    let ei_t = ei;
                     cur_eis.push(~{
                         elts: (*matchers), sep: (*sep), mut idx: 0u,
-                        mut up: matcher_pos_up(Some(move ei_t)),
-                        matches: move matches,
+                        mut up: matcher_pos_up(Some(ei_t)),
+                        matches: matches,
                         match_lo: match_idx_lo, match_hi: match_idx_hi,
                         sp_lo: sp.lo
                     });
                   }
-                  match_nonterminal(_,_,_) => { bb_eis.push(move ei) }
+                  match_nonterminal(_,_,_) => { bb_eis.push(ei) }
                   match_tok(ref t) => {
-                    let ei_t = move ei;
+                    let ei_t = ei;
                     if (*t) == tok {
                         ei_t.idx += 1;
-                        next_eis.push(move ei_t);
+                        next_eis.push(ei_t);
                     }
                   }
                 }
@@ -388,7 +388,7 @@ pub fn parse(sess: parse_sess,
                   }
                   _ => fail!()
                 }
-                cur_eis.push(move ei);
+                cur_eis.push(ei);
 
                 for rust_parser.tokens_consumed.times() || {
                     rdr.next_token();

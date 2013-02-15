@@ -71,7 +71,7 @@ fn complete_key(_v: @CompletionCb) {}
 /// Bind to the main completion callback
 pub unsafe fn complete(cb: CompletionCb) {
     unsafe {
-        task::local_data::local_data_set(complete_key, @(move cb));
+        task::local_data::local_data_set(complete_key, @(cb));
 
         extern fn callback(line: *c_char, completions: *()) {
             unsafe {

@@ -17,7 +17,7 @@ impl Drop for r {
 }
 
 fn main() {
-    let i = move ~r { b: true };
+    let i = ~r { b: true };
     let _j = copy i; //~ ERROR copying a value of non-copyable type
     log(debug, i);
 }

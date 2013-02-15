@@ -614,7 +614,7 @@ unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
     (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
     let p = addr_of(&((**repr).unboxed.data));
     let p = ptr::offset(p, fill) as *mut T;
-    rusti::move_val_init(&mut(*p), move initval);
+    rusti::move_val_init(&mut(*p), initval);
 }
 
 #[inline(never)]

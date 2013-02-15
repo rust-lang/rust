@@ -13,7 +13,7 @@ struct closure_box {
 }
 
 fn box_it(+x: &r/fn()) -> closure_box/&r {
-    closure_box {cl: move x}
+    closure_box {cl: x}
 }
 
 fn call_static_closure(cl: closure_box/&static) {
@@ -22,5 +22,5 @@ fn call_static_closure(cl: closure_box/&static) {
 
 pub fn main() {
     let cl_box = box_it(|| debug!("Hello, world!"));
-    call_static_closure(move cl_box);
+    call_static_closure(cl_box);
 }

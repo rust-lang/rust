@@ -21,8 +21,8 @@ impl Drop for dtor {
 }
 
 fn unwrap<T>(+o: Option<T>) -> T {
-    match move o {
-      Some(move v) => move v,
+    match o {
+      Some(v) => v,
       None => fail!()
     }
 }
@@ -32,7 +32,7 @@ pub fn main() {
 
     {
         let b = Some(dtor { x:x });
-        let c = unwrap(move b);
+        let c = unwrap(b);
     }
 
     assert *x == 0;

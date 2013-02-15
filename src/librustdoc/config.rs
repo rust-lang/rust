@@ -133,7 +133,7 @@ pub fn parse_config_(
         result::Ok(matches) => {
             if matches.free.len() == 1 {
                 let input_crate = Path(vec::head(matches.free));
-                config_from_opts(&input_crate, &matches, move program_output)
+                config_from_opts(&input_crate, &matches, program_output)
             } else if matches.free.is_empty() {
                 result::Err(~"no crates specified")
             } else {
@@ -191,11 +191,11 @@ fn config_from_opts(
             }
         }
     };
-    let program_output = Cell(move program_output);
+    let program_output = Cell(program_output);
     let result = do result::chain(result) |config| {
         let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(
-            &config, pandoc_cmd, move program_output.take());
+            &config, pandoc_cmd, program_output.take());
         do result::chain(pandoc_cmd) |pandoc_cmd| {
             result::Ok(Config {
                 pandoc_cmd: pandoc_cmd,
@@ -268,7 +268,7 @@ fn should_find_pandoc() {
             status: 0, out: ~"pandoc 1.8.2.1", err: ~""
         }
     };
-    let result = maybe_find_pandoc(&config, None, move mock_program_output);
+    let result = maybe_find_pandoc(&config, None, mock_program_output);
     assert result == result::Ok(Some(~"pandoc"));
 }
 
@@ -284,7 +284,7 @@ fn should_error_with_no_pandoc() {
             status: 1, out: ~"", err: ~""
         }
     };
-    let result = maybe_find_pandoc(&config, None, move mock_program_output);
+    let result = maybe_find_pandoc(&config, None, mock_program_output);
     assert result == result::Err(~"couldn't find pandoc");
 }
 

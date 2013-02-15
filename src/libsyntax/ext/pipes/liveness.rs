@@ -53,7 +53,7 @@ pub fn analyze(proto: protocol, _cx: ext_ctxt) {
         for state.reachable |s| {
             bv.set(s.id, true);
         }
-        move bv
+        bv
     };
 
     let mut i = 0;

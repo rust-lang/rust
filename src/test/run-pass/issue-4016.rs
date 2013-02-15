@@ -20,7 +20,7 @@ trait JD : Deserializable<json::Deserializer> { }
 
 fn exec<T: JD>() {
     let doc = result::unwrap(json::from_str(""));
-    let _v: T = deserialize(&json::Deserializer(move doc));
+    let _v: T = deserialize(&json::Deserializer(doc));
     fail!()
 }
 

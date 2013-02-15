@@ -259,7 +259,7 @@ pub mod reader {
             r_doc
         }
 
-        fn push_doc<T>(d: Doc, f: fn() -> T) -> T{
+        fn push_doc<T>(d: Doc, f: fn() -> T) -> T {
             let old_parent = self.parent;
             let old_pos = self.pos;
             self.parent = d;
@@ -267,7 +267,7 @@ pub mod reader {
             let r = f();
             self.parent = old_parent;
             self.pos = old_pos;
-            move r
+            r
         }
 
         fn _next_uint(exp_tag: EbmlEncoderTag) -> uint {

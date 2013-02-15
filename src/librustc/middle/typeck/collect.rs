@@ -320,7 +320,7 @@ pub fn ensure_supertraits(ccx: @mut CrateCtxt,
         instantiated.push(InstantiatedTraitRef { def_id: did, tpt: tpt });
     }
     tcx.supertraits.insert(local_def(id),
-                               @dvec::unwrap(move instantiated));
+                               @dvec::unwrap(instantiated));
 }
 
 /**

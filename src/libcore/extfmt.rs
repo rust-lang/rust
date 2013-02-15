@@ -510,7 +510,7 @@ pub mod rt {
                 unsafe { str::unshift_char(&mut s, ' ') };
             }
         }
-        return unsafe { pad(cv, move s, PadSigned) };
+        return unsafe { pad(cv, s, PadSigned) };
     }
     pub pure fn conv_uint(cv: Conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
@@ -522,7 +522,7 @@ pub mod rt {
               TyBits => uint_to_str_prec(u, 2, prec),
               TyOctal => uint_to_str_prec(u, 8, prec)
             };
-        return unsafe { pad(cv, move rs, PadUnsigned) };
+        return unsafe { pad(cv, rs, PadUnsigned) };
     }
     pub pure fn conv_bool(cv: Conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
@@ -532,7 +532,7 @@ pub mod rt {
     }
     pub pure fn conv_char(cv: Conv, c: char) -> ~str {
         let mut s = str::from_char(c);
-        return unsafe { pad(cv, move s, PadNozero) };
+        return unsafe { pad(cv, s, PadNozero) };
     }
     pub pure fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
@@ -545,7 +545,7 @@ pub mod rt {
             s.to_owned()
           }
         };
-        return unsafe { pad(cv, move unpadded, PadNozero) };
+        return unsafe { pad(cv, unpadded, PadNozero) };
     }
     pub pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
@@ -560,7 +560,7 @@ pub mod rt {
                 s = ~" " + s;
             }
         }
-        return unsafe { pad(cv, move s, PadFloat) };
+        return unsafe { pad(cv, s, PadFloat) };
     }
     pub pure fn conv_poly<T>(cv: Conv, v: &T) -> ~str {
         let s = sys::log_str(v);
@@ -589,7 +589,7 @@ pub mod rt {
                     let diff = prec - len;
                     let pad = str::from_chars(vec::from_elem(diff, '0'));
                     pad + s
-                } else { move s }
+                } else { s }
             };
     }
     pub pure fn get_int_precision(cv: Conv) -> uint {
@@ -603,13 +603,13 @@ pub mod rt {
     pub enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
 
     pub fn pad(cv: Conv, s: ~str, mode: PadMode) -> ~str {
-        let mut s = move s; // sadtimes
+        let mut s = s; // sadtimes
         let uwidth : uint = match cv.width {
-          CountImplied => return (move s),
+          CountImplied => return (s),
           CountIs(width) => { width as uint }
         };
         let strlen = str::char_len(s);
-        if uwidth <= strlen { return (move s); }
+        if uwidth <= strlen { return (s); }
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {

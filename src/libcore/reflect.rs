@@ -42,7 +42,7 @@ pub struct MovePtrAdaptor<V> {
     inner: V
 }
 pub fn MovePtrAdaptor<V: TyVisitor MovePtr>(v: V) -> MovePtrAdaptor<V> {
-    MovePtrAdaptor { inner: move v }
+    MovePtrAdaptor { inner: v }
 }
 
 impl<V: TyVisitor MovePtr> MovePtrAdaptor<V> {

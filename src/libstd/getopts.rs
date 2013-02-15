@@ -35,7 +35,7 @@
  *    fn do_work(in: &str, out: Option<~str>) {
  *      io::println(in);
  *      io::println(match out {
- *        Some(move x) => x,
+ *        Some(x) => x,
  *        None => ~"No Output"
  *      });
  *    }
@@ -339,7 +339,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
             i += 1;
         }
         return Ok(Matches {opts: vec::from_slice(opts),
-                   vals: move vals,
+                   vals: vals,
                    free: free});
     }
 }
@@ -1178,7 +1178,7 @@ mod tests {
         let args = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
         let opts = ~[optopt(~"e"), optopt(~"encrypt")];
         let matches = &match getopts(args, opts) {
-          result::Ok(move m) => m,
+          result::Ok(m) => m,
           result::Err(_) => fail!()
         };
         assert opts_present(matches, ~[~"e"]);
@@ -1199,7 +1199,7 @@ mod tests {
         let args = ~[~"-Lfoo", ~"-M."];
         let opts = ~[optmulti(~"L"), optmulti(~"M")];
         let matches = &match getopts(args, opts) {
-          result::Ok(move m) => m,
+          result::Ok(m) => m,
           result::Err(_) => fail!()
         };
         assert opts_present(matches, ~[~"L"]);

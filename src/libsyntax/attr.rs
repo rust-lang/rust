@@ -270,7 +270,7 @@ pub fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
     // This is sort of stupid here, converting to a vec of mutables and back
     let mut v: ~[@ast::meta_item] = items;
     std::sort::quick_sort(v, lteq);
-    move v
+    v
 }
 
 pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->

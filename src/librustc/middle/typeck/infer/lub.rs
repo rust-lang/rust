@@ -144,7 +144,7 @@ pub impl Lub: Combine {
                 &sig0,
                 |r, _in_fn| generalize_region(&self, snapshot, new_vars,
                                               a_isr, r));
-        return Ok(move sig1);
+        return Ok(sig1);
 
         fn generalize_region(self: &Lub,
                              snapshot: uint,

@@ -376,8 +376,8 @@ impl GatherLoanCtxt {
           Some(_) => {
               match loan::loan(self.bccx, cmt, scope_r, loan_kind) {
                   Err(ref e) => { self.bccx.report((*e)); }
-                  Ok(move loans) => {
-                      self.add_loans(cmt, loan_kind, scope_r, move loans);
+                  Ok(loans) => {
+                      self.add_loans(cmt, loan_kind, scope_r, loans);
                   }
               }
           }
@@ -540,7 +540,7 @@ impl GatherLoanCtxt {
             }
         };
 
-        self.add_loans_to_scope_id(scope_id, move loans);
+        self.add_loans_to_scope_id(scope_id, loans);
 
         if loan_kind.is_freeze() && !cmt.mutbl.is_immutable() {
             self.bccx.stats.loaned_paths_imm += 1;
@@ -566,7 +566,7 @@ impl GatherLoanCtxt {
                 req_loans.push_all(loans);
             }
             None => {
-                let dvec = @dvec::from_vec(move loans);
+                let dvec = @dvec::from_vec(loans);
                 let req_loan_map = self.req_maps.req_loan_map;
                 req_loan_map.insert(scope_id, dvec);
             }

@@ -24,7 +24,7 @@ pub fn mk<T:Eq IterBytes Hash Const Copy>() -> Interner<T> {
     let m = oldmap::HashMap::<T, uint>();
     let hi: hash_interner<T> =
         {map: m, vect: DVec()};
-    move ((move hi) as Interner::<T>)
+    ((hi) as Interner::<T>)
 }
 
 pub fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: &[T]) -> Interner<T> {

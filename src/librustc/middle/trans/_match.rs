@@ -559,7 +559,7 @@ pub fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
                                 Some(fp) => reordered_patterns.push(fp.pat)
                             }
                     }
-                    Some(dvec::unwrap(move reordered_patterns))
+                    Some(dvec::unwrap(reordered_patterns))
                 } else {
                     None
                 }
@@ -815,7 +815,7 @@ pub fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
             _ => {}
         }
     }
-    return dvec::unwrap(move found);
+    return dvec::unwrap(found);
 }
 
 pub fn extract_variant_args(bcx: block,
@@ -1657,7 +1657,7 @@ pub fn trans_match_inner(scope_cx: block,
         arm_cxs.push(bcx);
     }
 
-    bcx = controlflow::join_blocks(scope_cx, dvec::unwrap(move arm_cxs));
+    bcx = controlflow::join_blocks(scope_cx, dvec::unwrap(arm_cxs));
     return bcx;
 
     fn mk_fail(bcx: block, sp: span, +msg: ~str,
