@@ -53,44 +53,17 @@ timegm(struct tm *tm)
 #endif
 
 #if defined(__WIN32__)
-extern "C" CDECL rust_vec_box *
+extern "C" CDECL char**
 rust_env_pairs() {
-    rust_task *task = rust_get_current_task();
-    size_t envc = 0;
-    LPTCH ch = GetEnvironmentStringsA();
-    LPTCH c;
-    for (c = ch; *c; c += strlen(c) + 1) {
-        ++envc;
-    }
-    c = ch;
-    rust_vec_box *v = (rust_vec_box *)
-        task->kernel->malloc(vec_size<rust_vec_box*>(envc),
-                       "str vec interior");
-    v->body.fill = v->body.alloc = sizeof(rust_vec*) * envc;
-    for (size_t i = 0; i < envc; ++i) {
-        size_t n = strlen(c);
-        rust_str *str = make_str(task->kernel, c, n, "str");
-        ((rust_str**)&v->body.data)[i] = str;
-        c += n + 1;
-    }
-    if (ch) {
-        FreeEnvironmentStrings(ch);
-    }
-    return v;
+    return 0;
 }
 #else
-extern "C" CDECL rust_vec_box *
+extern "C" CDECL char**
 rust_env_pairs() {
-    rust_task *task = rust_get_current_task();
 #ifdef __APPLE__
     char **environ = *_NSGetEnviron();
 #endif
-    char **e = environ;
-    size_t envc = 0;
-    while (*e) {
-        ++envc; ++e;
-    }
-    return make_str_vec(task->kernel, envc, environ);
+    return environ;
 }
 #endif
 
