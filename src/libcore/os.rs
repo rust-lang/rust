@@ -306,10 +306,9 @@ pub fn waitpid(pid: pid_t) -> c_int {
 pub fn waitpid(pid: pid_t) -> c_int {
     unsafe {
         use libc::funcs::posix01::wait::*;
-        let status = 0 as c_int;
+        let mut status = 0 as c_int;
 
-        assert (waitpid(pid, ptr::mut_addr_of(&status),
-                        0 as c_int) != (-1 as c_int));
+        assert (waitpid(pid, &mut status, 0 as c_int) != (-1 as c_int));
         return status;
     }
 }
@@ -322,7 +321,7 @@ pub fn pipe() -> Pipe {
     unsafe {
         let mut fds = Pipe {mut in: 0 as c_int,
                         mut out: 0 as c_int };
-        assert (libc::pipe(ptr::mut_addr_of(&(fds.in))) == (0 as c_int));
+        assert (libc::pipe(&mut fds.in) == (0 as c_int));
         return Pipe {in: fds.in, out: fds.out};
     }
 }
@@ -339,8 +338,7 @@ pub fn pipe() -> Pipe {
         // first, as in rust_run_program.
         let mut fds = Pipe { mut in: 0 as c_int,
                     mut out: 0 as c_int };
-        let res = libc::pipe(ptr::mut_addr_of(&(fds.in)),
-                             1024 as c_uint,
+        let res = libc::pipe(&mut fds.in, 1024 as c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
         assert (res == 0 as c_int);
         assert (fds.in != -1 as c_int && fds.in != 0 as c_int);
@@ -374,8 +372,8 @@ pub fn self_exe_path() -> Option<Path> {
                            KERN_PROC as c_int,
                            KERN_PROC_PATHNAME as c_int, -1 as c_int];
                 sysctl(vec::raw::to_ptr(mib), vec::len(mib) as c_uint,
-                       buf as *mut c_void, ptr::mut_addr_of(&sz),
-                       ptr::null(), 0u as size_t) == (0 as c_int)
+                       buf, &mut sz, ptr::null(),
+                       0u as size_t) == (0 as c_int)
             }
         }
     }
@@ -406,8 +404,9 @@ pub fn self_exe_path() -> Option<Path> {
     fn load_self() -> Option<~str> {
         unsafe {
             do fill_charp_buf() |buf, sz| {
+                let mut sz = sz as u32;
                 libc::funcs::extra::_NSGetExecutablePath(
-                    buf, ptr::mut_addr_of(&(sz as u32))) == (0 as c_int)
+                    buf, &mut sz) == (0 as c_int)
             }
         }
     }

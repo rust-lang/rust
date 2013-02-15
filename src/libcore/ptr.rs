@@ -44,14 +44,6 @@ extern mod rusti {
 #[inline(always)]
 pub pure fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
 
-/// Get an unsafe mut pointer to a value
-#[inline(always)]
-pub pure fn mut_addr_of<T>(val: &T) -> *mut T {
-    unsafe {
-        cast::reinterpret_cast(&rusti::addr_of(*val))
-    }
-}
-
 /// Calculate the offset from a pointer
 #[inline(always)]
 pub pure fn offset<T>(ptr: *T, count: uint) -> *T {
@@ -313,8 +305,8 @@ impl<T:Ord> Ord for &const T {
 pub fn test() {
     unsafe {
         struct Pair {mut fst: int, mut snd: int};
-        let p = Pair {mut fst: 10, mut snd: 20};
-        let pptr: *mut Pair = mut_addr_of(&p);
+        let mut p = Pair {mut fst: 10, mut snd: 20};
+        let pptr: *mut Pair = &mut p;
         let iptr: *mut int = cast::reinterpret_cast(&pptr);
         assert (*iptr == 10);;
         *iptr = 30;
