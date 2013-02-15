@@ -121,9 +121,9 @@ pub struct CombineFields {
 pub fn expected_found<C:Combine,T>(
         self: &C, +a: T, +b: T) -> ty::expected_found<T> {
     if self.a_is_expected() {
-        ty::expected_found {expected: move a, found: move b}
+        ty::expected_found {expected: a, found: b}
     } else {
-        ty::expected_found {expected: move b, found: move a}
+        ty::expected_found {expected: b, found: a}
     }
 }
 

@@ -172,7 +172,7 @@ pub fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
     let end = std::time::precise_time_s();
     io::stdout().write_str(fmt!("time: %3.3f s\t%s\n",
                                 end - start, what));
-    move rv
+    rv
 }
 
 pub enum compile_upto {
@@ -257,7 +257,7 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     let (llmod, link_meta) = {
 
         let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                                region_map, rp_set, move lang_items, crate);
+                                region_map, rp_set, lang_items, crate);
 
         let (method_map, vtable_map) =
             time(time_passes, ~"typechecking", ||

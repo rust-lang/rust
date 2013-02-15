@@ -870,7 +870,7 @@ pub impl FnCtxt {
         self.region_lb = lb;
         let v = f();
         self.region_lb = old_region_lb;
-        move v
+        v
     }
 
     fn region_var_if_parameterized(@mut self,
