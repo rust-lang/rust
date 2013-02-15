@@ -51,6 +51,7 @@ pub mod linear {
         FoundEntry(uint), FoundHole(uint), TableFull
     }
 
+    #[inline(always)]
     pure fn resize_at(capacity: uint) -> uint {
         ((capacity as float) * 3. / 4.) as uint
     }
@@ -76,10 +77,8 @@ pub mod linear {
     priv impl<K: Hash IterBytes Eq, V> LinearMap<K, V> {
         #[inline(always)]
         pure fn to_bucket(&self, h: uint) -> uint {
-            // FIXME(#3041) borrow a more sophisticated technique here from
-            // Gecko, for example borrowing from Knuth, as Eich so
-            // colorfully argues for here:
-            // https://bugzilla.mozilla.org/show_bug.cgi?id=743107#c22
+            // A good hash function with entropy spread over all of the
+            // bits is assumed. SipHash is more than good enough.
             h % self.buckets.len()
         }
 
@@ -128,12 +127,19 @@ pub mod linear {
             TableFull
         }
 
-        /// Expands the capacity of the array and re-inserts each
-        /// of the existing buckets.
+        /// Expand the capacity of the array to the next power of two
+        /// and re-insert each of the existing buckets.
+        #[inline(always)]
         fn expand(&mut self) {
+            let new_capacity = self.buckets.len() * 2;
+            self.resize(new_capacity);
+        }
+
+        /// Expands the capacity of the array and re-insert each of the
+        /// existing buckets.
+        fn resize(&mut self, new_capacity: uint) {
             let old_capacity = self.buckets.len();
-            let new_capacity = old_capacity * 2;
-            self.resize_at = ((new_capacity as float) * 3.0 / 4.0) as uint;
+            self.resize_at = resize_at(new_capacity);
 
             let mut old_buckets = vec::from_fn(new_capacity, |_| None);
             self.buckets <-> old_buckets;
@@ -331,6 +337,14 @@ pub mod linear {
         /// Create an empty LinearMap
         static fn new() -> LinearMap<K, V> {
             linear_map_with_capacity(INITIAL_CAPACITY)
+        }
+
+        /// Reserve space for at least `n` elements in the hash table.
+        fn reserve_at_least(&mut self, n: uint) {
+            if n > self.buckets.len() {
+                let buckets = n * 4 / 3 + 1;
+                self.resize(uint::next_power_of_two(buckets));
+            }
         }
 
         fn pop(&mut self, k: &K) -> Option<V> {
@@ -564,6 +578,11 @@ pub mod linear {
     pub impl <T: Hash IterBytes Eq> LinearSet<T> {
         /// Create an empty LinearSet
         static fn new() -> LinearSet<T> { LinearSet{map: LinearMap::new()} }
+
+        /// Reserve space for at least `n` elements in the hash table.
+        fn reserve_at_least(&mut self, n: uint) {
+            self.map.reserve_at_least(n)
+        }
     }
 }
 
