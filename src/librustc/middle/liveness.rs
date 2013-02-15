@@ -1520,7 +1520,7 @@ impl Liveness {
         self.cont_ln.insert(loop_node_id, cont_ln);
         let r = f();
         self.loop_scope.pop();
-        move r
+        r
     }
 }
 

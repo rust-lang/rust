@@ -186,7 +186,7 @@ pub impl Glb: Combine {
                                               new_vars, a_isr, a_vars, b_vars,
                                               r));
         debug!("sig1 = %s", sig1.inf_str(self.infcx));
-        return Ok(move sig1);
+        return Ok(sig1);
 
         fn generalize_region(self: &Glb,
                              snapshot: uint,

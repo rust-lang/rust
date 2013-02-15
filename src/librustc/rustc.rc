@@ -326,7 +326,7 @@ pub fn monitor(+f: fn~(diagnostic::Emitter)) {
     let (p, ch) = stream();
     let ch = SharedChan(ch);
     let ch_capture = ch.clone();
-    match do task::try |move f| {
+    match do task::try || {
         let ch = ch_capture.clone();
         let ch_capture = ch.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
@@ -375,7 +375,7 @@ pub fn monitor(+f: fn~(diagnostic::Emitter)) {
 
 pub fn main() {
     let args = os::args();
-    do monitor |move args, demitter| {
+    do monitor |demitter| {
         run_compiler(&args, demitter);
     }
 }

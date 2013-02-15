@@ -228,7 +228,7 @@ fn get_metadata_section(os: os,
                            csz - vlen);
                     do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
                         let inflated = flate::inflate_bytes(bytes);
-                        found = move Some(@(move inflated));
+                        found = Some(@(inflated));
                     }
                     if found != None {
                         return found;
