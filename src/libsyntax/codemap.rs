@@ -130,6 +130,7 @@ pub struct span {
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub struct spanned<T> { node: T, span: span }
 
 pub impl span : cmp::Eq {
@@ -401,7 +402,7 @@ pub impl CodeMap {
         for self.files.each |fm| { if fm.name == filename { return *fm; } }
         //XXjdm the following triggers a mismatched type bug
         //      (or expected function, found _|_)
-        die!(); // ("asking for " + filename + " which we don't know about");
+        fail!(); // ("asking for " + filename + " which we don't know about");
     }
 
 }
@@ -421,7 +422,7 @@ priv impl CodeMap {
             }
         }
         if (a >= len) {
-            die!(fmt!("position %u does not resolve to a source location",
+            fail!(fmt!("position %u does not resolve to a source location",
                       pos.to_uint()))
         }
 

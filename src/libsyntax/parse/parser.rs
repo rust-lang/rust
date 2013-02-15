@@ -72,7 +72,7 @@ use parse::lexer::TokenAndSpan;
 use parse::obsolete::{ObsoleteClassTraits, ObsoleteModeInFnType};
 use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
 use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
-use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith, ObsoleteClassMethod};
+use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock};
 use parse::prec::{as_prec, token_to_binop};
@@ -182,7 +182,8 @@ pure fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
 
 /* ident is handled by common.rs */
 
-pub fn Parser(sess: parse_sess,
+pub fn Parser(sess: parse_sess
+              ,
               cfg: ast::crate_cfg,
               +rdr: reader) -> Parser {
 
@@ -1238,6 +1239,8 @@ pub impl Parser {
         return e;
     }
 
+    // parse an optional separator followed by a kleene-style
+    // repetition token (+ or *).
     fn parse_sep_and_zerok() -> (Option<token::Token>, bool) {
         if self.token == token::BINOP(token::STAR)
             || self.token == token::BINOP(token::PLUS) {
@@ -1258,19 +1261,17 @@ pub impl Parser {
         }
     }
 
+    // parse a single token tree from the input.
     fn parse_token_tree() -> token_tree {
         maybe_whole!(deref self, nt_tt);
 
-        fn parse_tt_tok(p: Parser, delim_ok: bool) -> token_tree {
+        fn parse_non_delim_tt_tok(p: Parser) -> token_tree {
             maybe_whole!(deref p, nt_tt);
             match p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
-              if !delim_ok => {
+              => {
                 p.fatal(~"incorrect close delimiter: `"
                            + token_to_str(p.reader, p.token) + ~"`");
-              }
-              token::EOF => {
-                p.fatal(~"file ended in the middle of a macro invocation");
               }
               /* we ought to allow different depths of unquotation */
               token::DOLLAR if p.quote_depth > 0u => {
@@ -1282,32 +1283,43 @@ pub impl Parser {
                                           seq_sep_none(),
                                           |p| p.parse_token_tree());
                     let (s, z) = p.parse_sep_and_zerok();
-                    return tt_seq(mk_sp(sp.lo ,p.span.hi), seq.node, s, z);
+                    tt_seq(mk_sp(sp.lo ,p.span.hi), seq.node, s, z)
                 } else {
-                    return tt_nonterminal(sp, p.parse_ident());
+                    tt_nonterminal(sp, p.parse_ident())
                 }
               }
-              _ => { /* ok */ }
+              _ => {
+                  parse_any_tt_tok(p)
+              }
             }
-            let res = tt_tok(p.span, p.token);
-            p.bump();
-            return res;
         }
 
-        return match self.token {
+        // turn the next token into a tt_tok:
+        fn parse_any_tt_tok(p: Parser) -> token_tree{
+            let res = tt_tok(p.span, p.token);
+            p.bump();
+            res
+        }
+
+        match self.token {
+          token::EOF => {
+                self.fatal(~"file ended in the middle of a macro invocation");
+          }
           token::LPAREN | token::LBRACE | token::LBRACKET => {
               // tjc: ??????
             let ket = token::flip_delimiter(copy self.token);
             tt_delim(vec::append(
-                ~[parse_tt_tok(self, true)],
+                // the open delimiter:
+                ~[parse_any_tt_tok(self)],
                 vec::append(
                     self.parse_seq_to_before_end(
                         ket, seq_sep_none(),
                         |p| p.parse_token_tree()),
-                    ~[parse_tt_tok(self, true)])))
+                    // the close delimiter:
+                    ~[parse_any_tt_tok(self)])))
           }
-          _ => parse_tt_tok(self, false)
-        };
+          _ => parse_non_delim_tt_tok(self)
+        }
     }
 
     fn parse_all_token_trees() -> ~[token_tree] {
@@ -2538,7 +2550,7 @@ pub impl Parser {
                           _ => None
                         }
                       }
-                      _ => die!()
+                      _ => fail!()
                     };
 
                     match maybe_bound {
@@ -3002,52 +3014,29 @@ pub impl Parser {
     }
 
     fn parse_single_class_item(vis: visibility) -> @struct_field {
-        let obsolete_let = self.eat_obsolete_ident("let");
-        if obsolete_let { self.obsolete(copy self.last_span, ObsoleteLet) }
-
-        let parse_obsolete_method =
-            !((obsolete_let || self.is_keyword(~"mut") ||
-               !self.is_any_keyword(copy self.token))
-              && !self.token_is_pound_or_doc_comment(copy self.token));
-
-        if !parse_obsolete_method {
-            let a_var = self.parse_instance_var(vis);
-            match self.token {
-              token::SEMI => {
-                self.obsolete(copy self.span, ObsoleteFieldTerminator);
-                self.bump();
-              }
-              token::COMMA => {
-                self.bump();
-              }
-              token::RBRACE => {}
-              _ => {
-                self.span_fatal(copy self.span,
-                                fmt!("expected `;`, `,`, or '}' but \
-                                      found `%s`",
-                                     token_to_str(self.reader,
-                                                  self.token)));
-              }
-            }
-            a_var
-        } else {
-            self.obsolete(copy self.span, ObsoleteClassMethod);
-            self.parse_method();
-            // bogus value
-            @spanned(
-                self.span.lo,
-                self.span.hi,
-                ast::struct_field_ {
-                    kind: unnamed_field,
-                    id: self.get_id(),
-                    ty: @ast::Ty {
-                        id: self.get_id(),
-                        node: ty_nil,
-                        span: copy self.span,
-                    }
-                }
-            )
+        if self.eat_obsolete_ident("let") {
+            self.obsolete(copy self.last_span, ObsoleteLet);
         }
+
+        let a_var = self.parse_instance_var(vis);
+        match self.token {
+          token::SEMI => {
+            self.obsolete(copy self.span, ObsoleteFieldTerminator);
+            self.bump();
+          }
+          token::COMMA => {
+            self.bump();
+          }
+          token::RBRACE => {}
+          _ => {
+            self.span_fatal(copy self.span,
+                            fmt!("expected `;`, `,`, or '}' but \
+                                  found `%s`",
+                                 token_to_str(self.reader,
+                                              self.token)));
+          }
+        }
+        a_var
     }
 
     fn parse_dtor(attrs: ~[attribute]) -> class_contents {
@@ -3062,6 +3051,8 @@ pub impl Parser {
             return members(~[]);
         }
 
+        let attrs = self.parse_outer_attributes();
+
         if self.eat_keyword(~"priv") {
             return members(~[self.parse_single_class_item(private)])
         }
@@ -3069,8 +3060,6 @@ pub impl Parser {
         if self.eat_keyword(~"pub") {
            return members(~[self.parse_single_class_item(public)]);
         }
-
-        let attrs = self.parse_outer_attributes();
 
         if self.try_parse_obsolete_struct_ctor() {
             return members(~[]);
@@ -3930,7 +3919,7 @@ pub impl Parser {
             let metadata = self.parse_optional_meta();
             view_item_use(ident, metadata, self.get_id())
         } else {
-            die!();
+            fail!();
         };
         self.expect(token::SEMI);
         @ast::view_item { node: node,
@@ -4021,6 +4010,7 @@ pub impl Parser {
         }
     }
 }
+
 
 //
 // Local Variables:

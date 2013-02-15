@@ -14,7 +14,7 @@ use cast;
 use iter;
 use libc;
 use option;
-use pipes;
+use pipes::{GenericChan, GenericPort};
 use prelude::*;
 use ptr;
 use result;
@@ -233,7 +233,7 @@ pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
             cast::forget(move ptr);
             // Also we have to free the (rejected) server endpoints.
             let _server: UnwrapProto = cast::transmute(move serverp);
-            die!(~"Another task is already unwrapping this ARC!");
+            fail!(~"Another task is already unwrapping this ARC!");
         }
     }
 }
@@ -256,15 +256,15 @@ pub unsafe fn shared_mutable_state<T: Owned>(data: T) ->
 }
 
 #[inline(always)]
-pub unsafe fn get_shared_mutable_state<T: Owned>(rc: &a/SharedMutableState<T>)
-        -> &a/mut T {
+pub unsafe fn get_shared_mutable_state<T: Owned>(
+    rc: *SharedMutableState<T>) -> *mut T
+{
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
         assert ptr.count > 0;
-        // Cast us back into the correct region
-        let r = cast::transmute_region(option::get_ref(&ptr.data));
+        let r = cast::transmute(option::get_ref(&ptr.data));
         cast::forget(move ptr);
-        return cast::transmute_mut(r);
+        return r;
     }
 }
 #[inline(always)]
@@ -376,15 +376,18 @@ impl<T: Owned> Exclusive<T> {
     // the exclusive. Supporting that is a work in progress.
     #[inline(always)]
     unsafe fn with<U>(f: fn(x: &mut T) -> U) -> U {
-        let rec = unsafe { get_shared_mutable_state(&self.x) };
-        do rec.lock.lock {
-            if rec.failed {
-                die!(~"Poisoned exclusive - another task failed inside!");
+        unsafe {
+            let rec = get_shared_mutable_state(&self.x);
+            do (*rec).lock.lock {
+                if (*rec).failed {
+                    fail!(
+                        ~"Poisoned exclusive - another task failed inside!");
+                }
+                (*rec).failed = true;
+                let result = f(&mut (*rec).data);
+                (*rec).failed = false;
+                move result
             }
-            rec.failed = true;
-            let result = f(&mut rec.data);
-            rec.failed = false;
-            move result
         }
     }
 
@@ -521,7 +524,7 @@ pub mod tests {
             let x2 = x.clone();
             do task::spawn {
                 for 10.times { task::yield(); } // try to let the unwrapper go
-                die!(); // punt it awake from its deadlock
+                fail!(); // punt it awake from its deadlock
             }
             let _z = unwrap_exclusive(move x);
             do x2.with |_hello| { }

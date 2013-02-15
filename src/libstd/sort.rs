@@ -455,7 +455,7 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
-        let tmp = vec::cast_to_mut(vec::slice(array, base1, base1+len1));
+        let mut tmp = vec::slice(array, base1, base1+len1);
 
         let mut c1 = 0;
         let mut c2 = base2;
@@ -546,7 +546,7 @@ impl<T: Copy Ord> MergeState<T> {
             copy_vec(array, dest, array, c2, len2);
             array[dest+len2] <-> tmp[c1];
         } else if len1 == 0 {
-            die!(~"Comparison violates its contract!");
+            fail!(~"Comparison violates its contract!");
         } else {
             assert len2 == 0;
             assert len1 > 1;
@@ -558,7 +558,7 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
-        let tmp = vec::cast_to_mut(vec::slice(array, base2, base2+len2));
+        let mut tmp = vec::slice(array, base2, base2+len2);
 
         let mut c1 = base1 + len1 - 1;
         let mut c2 = len2 - 1;
@@ -664,7 +664,7 @@ impl<T: Copy Ord> MergeState<T> {
             copy_vec(array, dest+1, array, c1+1, len1);
             array[dest] <-> tmp[c2];
         } else if len2 == 0 {
-            die!(~"Comparison violates its contract!");
+            fail!(~"Comparison violates its contract!");
         } else {
             assert len1 == 0;
             assert len2 != 0;
@@ -912,7 +912,7 @@ mod test_tim_sort {
         pure fn lt(&self, other: &CVal) -> bool {
             unsafe {
                 let rng = rand::Rng();
-                if rng.gen_float() > 0.995 { die!(~"It's happening!!!"); }
+                if rng.gen_float() > 0.995 { fail!(~"It's happening!!!"); }
             }
             (*self).val < other.val
         }
@@ -968,7 +968,7 @@ mod test_tim_sort {
         };
 
         tim_sort(arr);
-        die!(~"Guarantee the fail");
+        fail!(~"Guarantee the fail");
     }
 
     struct DVal { val: uint }
@@ -1036,7 +1036,7 @@ mod big_tests {
         fn isSorted<T: Ord>(arr: &[const T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
-                    die!(~"Array not sorted");
+                    fail!(~"Array not sorted");
                 }
             }
         }
@@ -1108,7 +1108,7 @@ mod big_tests {
         fn isSorted<T: Ord>(arr: &[const @T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
-                    die!(~"Array not sorted");
+                    fail!(~"Array not sorted");
                 }
             }
         }
@@ -1191,7 +1191,7 @@ mod big_tests {
                         task::local_data::local_data_set(self.key, @(y+1));
                     }
                 }
-                _ => die!(~"Expected key to work"),
+                _ => fail!(~"Expected key to work"),
             }
         }
     }

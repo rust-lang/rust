@@ -12,7 +12,7 @@
 
 fn a() { }
 
-fn b() { die!(); }
+fn b() { fail!(); }
 
 fn main() {
     let x = ~[0];

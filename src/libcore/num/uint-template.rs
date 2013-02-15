@@ -27,16 +27,13 @@ use u8;
 use u16;
 use u32;
 
+pub use cmp::{min, max};
+
 pub const bits : uint = inst::bits;
 pub const bytes : uint = (inst::bits / 8);
 
 pub const min_value: T = 0 as T;
 pub const max_value: T = 0 as T - 1 as T;
-
-#[inline(always)]
-pub pure fn min(x: T, y: T) -> T { if x < y { x } else { y } }
-#[inline(always)]
-pub pure fn max(x: T, y: T) -> T { if x > y { x } else { y } }
 
 #[inline(always)]
 pub pure fn add(x: T, y: T) -> T { x + y }
@@ -79,7 +76,7 @@ pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
 pub pure fn range_step(start: T, stop: T, step: T_SIGNED, it: fn(T) -> bool) {
     let mut i = start;
     if step == 0 {
-        die!(~"range_step called with step == 0");
+        fail!(~"range_step called with step == 0");
     }
     if step >= 0 {
         while i < stop {
@@ -133,26 +130,6 @@ impl T : Eq {
     pure fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
 }
 
-impl T: num::Num {
-    #[inline(always)]
-    pure fn add(&self, other: &T)    -> T { return *self + *other; }
-    #[inline(always)]
-    pure fn sub(&self, other: &T)    -> T { return *self - *other; }
-    #[inline(always)]
-    pure fn mul(&self, other: &T)    -> T { return *self * *other; }
-    #[inline(always)]
-    pure fn div(&self, other: &T)    -> T { return *self / *other; }
-    #[inline(always)]
-    pure fn modulo(&self, other: &T) -> T { return *self % *other; }
-    #[inline(always)]
-    pure fn neg(&self)              -> T { return -*self;        }
-
-    #[inline(always)]
-    pure fn to_int(&self)         -> int { return *self as int; }
-    #[inline(always)]
-    static pure fn from_int(n: int) -> T   { return n as T;      }
-}
-
 impl T: num::Zero {
     #[inline(always)]
     static pure fn zero() -> T { 0 }
@@ -173,6 +150,31 @@ impl T: num::Round {
     pure fn ceil(&self) -> T { *self }
     #[inline(always)]
     pure fn fract(&self) -> T { 0 }
+}
+
+#[cfg(notest)]
+impl ops::Add<T,T> for T {
+    pure fn add(&self, other: &T) -> T { *self + *other }
+}
+#[cfg(notest)]
+impl ops::Sub<T,T> for T {
+    pure fn sub(&self, other: &T) -> T { *self - *other }
+}
+#[cfg(notest)]
+impl ops::Mul<T,T> for T {
+    pure fn mul(&self, other: &T) -> T { *self * *other }
+}
+#[cfg(notest)]
+impl ops::Div<T,T> for T {
+    pure fn div(&self, other: &T) -> T { *self / *other }
+}
+#[cfg(notest)]
+impl ops::Modulo<T,T> for T {
+    pure fn modulo(&self, other: &T) -> T { *self % *other }
+}
+#[cfg(notest)]
+impl ops::Neg<T> for T {
+    pure fn neg(&self) -> T { -*self }
 }
 
 // String conversion functions and impl str -> num
@@ -396,17 +398,29 @@ pub fn test_ranges() {
 
     // None of the `fail`s should execute.
     for range(0,0) |_i| {
-        die!(~"unreachable");
+        fail!(~"unreachable");
     }
     for range_rev(0,0) |_i| {
-        die!(~"unreachable");
+        fail!(~"unreachable");
     }
     for range_step(10,0,1) |_i| {
-        die!(~"unreachable");
+        fail!(~"unreachable");
     }
     for range_step(0,1,-10) |_i| {
-        die!(~"unreachable");
+        fail!(~"unreachable");
     }
+}
+
+#[test]
+pub fn test_num() {
+    let ten: T = num::cast(10);
+    let two: T = num::cast(2);
+
+    assert (ten.add(&two)    == num::cast(12));
+    assert (ten.sub(&two)    == num::cast(8));
+    assert (ten.mul(&two)    == num::cast(20));
+    assert (ten.div(&two)    == num::cast(5));
+    assert (ten.modulo(&two) == num::cast(0));
 }
 
 #[test]

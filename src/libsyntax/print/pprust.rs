@@ -440,10 +440,10 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
         word(s.s, ~"]");
       }
       ast::ty_mac(_) => {
-          die!(~"print_type doesn't know how to print a ty_mac");
+          fail!(~"print_type doesn't know how to print a ty_mac");
       }
       ast::ty_infer => {
-          die!(~"print_type shouldn't see a ty_infer");
+          fail!(~"print_type shouldn't see a ty_infer");
       }
 
     }
@@ -554,15 +554,17 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
             print_type_params(s, tps);
             space(s.s);
         }
-        print_type(s, ty);
 
         match opt_trait {
             Some(t) => {
-                word_space(s, ~":");
                 print_path(s, t.path, false);
+                space(s.s);
+                word_space(s, ~"for");
             }
             None => ()
         };
+
+        print_type(s, ty);
         space(s.s);
 
         if methods.len() == 0 {
@@ -635,7 +637,7 @@ pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
         word_space(s, ~"=");
         match enum_definition.variants[0].node.kind {
             ast::tuple_variant_kind(args) => print_type(s, args[0].ty),
-            _ => die!(~"newtype syntax with struct?")
+            _ => fail!(~"newtype syntax with struct?")
         }
         word(s.s, ~";");
         end(s);
@@ -704,7 +706,7 @@ pub fn print_struct(s: @ps,
             }
 
             match field.node.kind {
-                ast::named_field(*) => die!(~"unexpected named field"),
+                ast::named_field(*) => fail!(~"unexpected named field"),
                 ast::unnamed_field => {
                     maybe_print_comment(s, field.span.lo);
                     print_type(s, field.node.ty);
@@ -727,7 +729,7 @@ pub fn print_struct(s: @ps,
 
         for struct_def.fields.each |field| {
             match field.node.kind {
-                ast::unnamed_field => die!(~"unexpected unnamed field"),
+                ast::unnamed_field => fail!(~"unexpected unnamed field"),
                 ast::named_field(ident, mutability, visibility) => {
                     hardbreak_if_not_bol(s);
                     maybe_print_comment(s, field.span.lo);
@@ -1013,7 +1015,7 @@ pub fn print_if(s: @ps, test: @ast::expr, blk: ast::blk,
               }
               // BLEAH, constraints would be great here
               _ => {
-                  die!(~"print_if saw if with weird alternative");
+                  fail!(~"print_if saw if with weird alternative");
               }
             }
           }
@@ -1314,7 +1316,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                         }
                         end(s); // close enclosing cbox
                     }
-                    None => die!()
+                    None => fail!()
                 }
             } else {
                 // the block will close the pattern's ibox
@@ -2255,7 +2257,7 @@ pub mod test {
 
     fn string_check<T : Eq> (given : &T, expected: &T) {
         if !(given == expected) {
-            die!(fmt!("given %?, expected %?",given,expected));
+            fail!(fmt!("given %?, expected %?",given,expected));
         }
     }
 

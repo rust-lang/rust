@@ -29,14 +29,6 @@ struct s {
     //~^ ERROR obsolete syntax: struct constructor
 }
 
-struct ss {
-    fn foo() { }
-    //~^ ERROR obsolete syntax: class method
-    #[whatever]
-    fn foo() { }
-    //~^ ERROR obsolete syntax: class method
-}
-
 struct q : r {
     //~^ ERROR obsolete syntax: class traits
 }

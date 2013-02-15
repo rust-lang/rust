@@ -13,7 +13,7 @@
 
 struct r {
     i: int,
-    drop { die!(~"wombat") }
+    drop { fail!(~"wombat") }
 }
 
 fn r(i: int) -> r { r { i: i } }
@@ -21,5 +21,5 @@ fn r(i: int) -> r { r { i: i } }
 fn main() {
     @0;
     let r = move r(0);
-    die!();
+    fail!();
 }

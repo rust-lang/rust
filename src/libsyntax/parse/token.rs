@@ -25,6 +25,7 @@ use std::oldmap::HashMap;
 
 #[auto_encode]
 #[auto_decode]
+#[deriving_eq]
 pub enum binop {
     PLUS,
     MINUS,
@@ -86,6 +87,7 @@ pub enum Token {
     LIT_STR(ast::ident),
 
     /* Name components */
+    // an identifier contains an "is_mod_name" boolean.
     IDENT(ast::ident, bool),
     UNDERSCORE,
     LIFETIME(ast::ident),
@@ -210,7 +212,7 @@ pub fn to_str(in: @ident_interner, t: Token) -> ~str {
                       nt_block(*) => ~"block",
                       nt_stmt(*) => ~"statement",
                       nt_pat(*) => ~"pattern",
-                      nt_expr(*) => die!(~"should have been handled above"),
+                      nt_expr(*) => fail!(~"should have been handled above"),
                       nt_ty(*) => ~"type",
                       nt_ident(*) => ~"identifier",
                       nt_path(*) => ~"path",
@@ -263,7 +265,7 @@ pub fn flip_delimiter(t: token::Token) -> token::Token {
       token::RPAREN => token::LPAREN,
       token::RBRACE => token::LBRACE,
       token::RBRACKET => token::LBRACKET,
-      _ => die!()
+      _ => fail!()
     }
 }
 
@@ -455,13 +457,13 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
  */
 pub fn keyword_table() -> HashMap<~str, ()> {
     let keywords = HashMap();
-    for temporary_keyword_table().each_key_ref |&word| {
+    for temporary_keyword_table().each_key |&word| {
         keywords.insert(word, ());
     }
-    for strict_keyword_table().each_key_ref |&word| {
+    for strict_keyword_table().each_key |&word| {
         keywords.insert(word, ());
     }
-    for reserved_keyword_table().each_key_ref |&word| {
+    for reserved_keyword_table().each_key |&word| {
         keywords.insert(word, ());
     }
     keywords
@@ -517,12 +519,6 @@ pub fn reserved_keyword_table() -> HashMap<~str, ()> {
     words
 }
 
-impl binop : cmp::Eq {
-    pure fn eq(&self, other: &binop) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &binop) -> bool { !(*self).eq(other) }
-}
 
 impl Token : cmp::Eq {
     pure fn eq(&self, other: &Token) -> bool {

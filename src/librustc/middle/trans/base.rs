@@ -169,7 +169,7 @@ pub fn get_extern_fn(externs: ExternMap,
                      name: @str,
                      cc: lib::llvm::CallConv,
                      ty: TypeRef) -> ValueRef {
-    if externs.contains_key_ref(&name) { return externs.get(&name); }
+    if externs.contains_key(&name) { return externs.get(&name); }
     let f = decl_fn(llmod, name, cc, ty);
     externs.insert(name, f);
     return f;
@@ -178,7 +178,7 @@ pub fn get_extern_fn(externs: ExternMap,
 pub fn get_extern_const(externs: ExternMap, llmod: ModuleRef,
                         name: @str, ty: TypeRef) -> ValueRef {
     unsafe {
-        if externs.contains_key_ref(&name) { return externs.get(&name); }
+        if externs.contains_key(&name) { return externs.get(&name); }
         let c = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(llmod, ty, buf)
         });
@@ -448,7 +448,7 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: @crate_ctxt, +sym: ~str) {
     // XXX: Bad copy.
-    if ccx.all_llvm_symbols.contains_key_ref(&sym) {
+    if ccx.all_llvm_symbols.contains_key(&sym) {
         ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
     }
     ccx.all_llvm_symbols.insert(sym, ());
@@ -1874,7 +1874,7 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
         // works. So we have to cast to the destination's view of the type.
         let llarg = match fcx.llargs.find(&va.id) {
             Some(local_mem(x)) => x,
-            _ => die!(~"trans_enum_variant: how do we know this works?"),
+            _ => fail!(~"trans_enum_variant: how do we know this works?"),
         };
         let arg_ty = arg_tys[i].ty;
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
@@ -1905,8 +1905,13 @@ pub fn trans_tuple_struct(ccx: @crate_ctxt,
         }
     };
 
-    let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, ctor_id, None,
-                               param_substs, None);
+    let fcx = new_fn_ctxt_w_id(ccx,
+                               ~[],
+                               llfndecl,
+                               ctor_id,
+                               None,
+                               param_substs,
+                               None);
 
     // XXX: Bad copy.
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, copy fn_args);
@@ -2011,7 +2016,7 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let path = match ccx.tcx.items.get(&item.id) {
         ast_map::node_item(_, p) => p,
         // tjc: ?
-        _ => die!(~"trans_item"),
+        _ => fail!(~"trans_item"),
     };
     match /*bad*/copy item.node {
       ast::item_fn(ref decl, purity, ref tps, ref body) => {
@@ -2272,7 +2277,7 @@ pub fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
         /*bad*/copy *match ccx.tcx.items.get(&i.id) {
             ast_map::node_item(_, p) => p,
                 // separate map for paths?
-            _ => die!(~"item_path")
+            _ => fail!(~"item_path")
         },
         ~[path_name(i.ident)])
 }
@@ -2359,7 +2364,7 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 set_inline_hint_if_appr(/*bad*/copy i.attrs, llfn);
                 llfn
               }
-              _ => die!(~"get_item_val: weird result in table")
+              _ => fail!(~"get_item_val: weird result in table")
             }
           }
           ast_map::node_trait_method(trait_method, _, pth) => {
@@ -2440,14 +2445,14 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                       ast::item_enum(_, _) => {
                         register_fn(ccx, (*v).span, pth, id, enm.attrs)
                       }
-                      _ => die!(~"node_variant, shouldn't happen")
+                      _ => fail!(~"node_variant, shouldn't happen")
                     };
                 }
                 ast::struct_variant_kind(_) => {
-                    die!(~"struct variant kind unexpected in get_item_val")
+                    fail!(~"struct variant kind unexpected in get_item_val")
                 }
                 ast::enum_variant_kind(_) => {
-                    die!(~"enum variant kind unexpected in get_item_val")
+                    fail!(~"enum variant kind unexpected in get_item_val")
                 }
             }
             set_inline_hint(llfn);
@@ -2477,7 +2482,7 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             ccx.sess.bug(~"get_item_val(): unexpected variant")
           }
         };
-        if !(exprt || ccx.reachable.contains_key_ref(&id)) {
+        if !(exprt || ccx.reachable.contains_key(&id)) {
             lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
         }
         ccx.item_vals.insert(id, val);
@@ -2800,7 +2805,7 @@ pub fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
         lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     }
     let mut elts: ~[ValueRef] = ~[];
-    for ccx.module_data.each_ref |&key, &val| {
+    for ccx.module_data.each |&key, &val| {
         let elt = C_struct(~[p2i(ccx, C_cstr(ccx, key)),
                             p2i(ccx, val)]);
         elts.push(elt);
@@ -3084,7 +3089,7 @@ pub fn trans_crate(sess: session::Session,
         }
 
         if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each_ref |&k, &v| {
+            for ccx.stats.llvm_insns.each |&k, &v| {
                 io::println(fmt!("%-7u %s", v, k));
             }
         }

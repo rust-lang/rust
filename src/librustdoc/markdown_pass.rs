@@ -539,7 +539,7 @@ fn write_sig(ctxt: &Ctxt, sig: Option<~str>) {
         ctxt.w.write_line(code_block_indent(sig));
         ctxt.w.write_line(~"");
       }
-      None => die!(~"unimplemented")
+      None => fail!(~"unimplemented")
     }
 }
 

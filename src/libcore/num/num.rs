@@ -10,24 +10,12 @@
 
 //! An interface for numeric types
 use core::cmp::{Ord, Eq};
+use ops::{Add, Div, Modulo, Mul, Neg, Sub};
 use option::{None, Option, Some};
 use char;
 use str;
 use kinds::Copy;
 use vec;
-
-pub trait Num {
-    // FIXME: Trait composition. (#2616)
-    pure fn add(&self, other: &Self) -> Self;
-    pure fn sub(&self, other: &Self) -> Self;
-    pure fn mul(&self, other: &Self) -> Self;
-    pure fn div(&self, other: &Self) -> Self;
-    pure fn modulo(&self, other: &Self) -> Self;
-    pure fn neg(&self) -> Self;
-
-    pure fn to_int(&self) -> int;
-    static pure fn from_int(n: int) -> Self;
-}
 
 pub trait IntConvertible {
     pure fn to_int(&self) -> int;
@@ -42,12 +30,54 @@ pub trait One {
     static pure fn one() -> Self;
 }
 
+pub pure fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
+    if v < Zero::zero() { v.neg() } else { v }
+}
+
 pub trait Round {
     pure fn round(&self, mode: RoundMode) -> Self;
 
     pure fn floor(&self) -> Self;
     pure fn ceil(&self)  -> Self;
     pure fn fract(&self) -> Self;
+}
+
+/**
+ * Cast a number the the enclosing type
+ *
+ * # Example
+ *
+ * ~~~
+ * let twenty: f32 = num::cast(0x14);
+ * assert twenty == 20f32;
+ * ~~~
+ */
+#[inline(always)]
+pub pure fn cast<T:NumCast, U:NumCast>(n: T) -> U {
+    NumCast::from(n)
+}
+
+/**
+ * An interface for generic numeric type casts
+ */
+pub trait NumCast {
+    static pure fn from<T:NumCast>(n: T) -> Self;
+
+    pure fn to_u8(&self) -> u8;
+    pure fn to_u16(&self) -> u16;
+    pure fn to_u32(&self) -> u32;
+    pure fn to_u64(&self) -> u64;
+    pure fn to_uint(&self) -> uint;
+
+    pure fn to_i8(&self) -> i8;
+    pure fn to_i16(&self) -> i16;
+    pure fn to_i32(&self) -> i32;
+    pure fn to_i64(&self) -> i64;
+    pure fn to_int(&self) -> int;
+
+    pure fn to_f32(&self) -> f32;
+    pure fn to_f64(&self) -> f64;
+    pure fn to_float(&self) -> float;
 }
 
 pub enum RoundMode {
@@ -70,7 +100,7 @@ pub trait FromStrRadix {
 /// Dynamically calculates the value `inf` (`1/0`).
 /// Can fail on integer types.
 #[inline(always)]
-pub pure fn infinity<T: Num One Zero>() -> T {
+pub pure fn infinity<T:One+Zero+Div<T,T>>() -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
     _1 / _0
@@ -79,7 +109,7 @@ pub pure fn infinity<T: Num One Zero>() -> T {
 /// Dynamically calculates the value `-inf` (`-1/0`).
 /// Can fail on integer types.
 #[inline(always)]
-pub pure fn neg_infinity<T: Num One Zero>() -> T {
+pub pure fn neg_infinity<T:One+Zero+Div<T,T>+Neg<T>>() -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
     - _1 / _0
@@ -88,7 +118,7 @@ pub pure fn neg_infinity<T: Num One Zero>() -> T {
 /// Dynamically calculates the value `NaN` (`0/0`).
 /// Can fail on integer types.
 #[inline(always)]
-pub pure fn NaN<T: Num Zero>() -> T {
+pub pure fn NaN<T:Zero+Div<T,T>>() -> T {
     let _0: T = Zero::zero();
     _0 / _0
 }
@@ -96,27 +126,28 @@ pub pure fn NaN<T: Num Zero>() -> T {
 /// Returns `true` if `num` has the value `inf` (`1/0`).
 /// Can fail on integer types.
 #[inline(always)]
-pub pure fn is_infinity<T: Num One Zero Eq>(num: &T) -> bool {
+pub pure fn is_infinity<T:One+Zero+Eq+Div<T,T>>(num: &T) -> bool {
     (*num) == (infinity::<T>())
 }
 
 /// Returns `true` if `num` has the value `-inf` (`-1/0`).
 /// Can fail on integer types.
 #[inline(always)]
-pub pure fn is_neg_infinity<T: Num One Zero Eq>(num: &T) -> bool {
+pub pure fn is_neg_infinity<T:One+Zero+Eq+Div<T,T>+Neg<T>>(num: &T)
+                                                            -> bool {
     (*num) == (neg_infinity::<T>())
 }
 
 /// Returns `true` if `num` has the value `NaN` (is not equal to itself).
 #[inline(always)]
-pub pure fn is_NaN<T: Num Eq>(num: &T) -> bool {
+pub pure fn is_NaN<T:Eq>(num: &T) -> bool {
     (*num) != (*num)
 }
 
 /// Returns `true` if `num` has the value `-0` (`1/num == -1/0`).
 /// Can fail on integer types.
 #[inline(always)]
-pub pure fn is_neg_zero<T: Num One Zero Eq>(num: &T) -> bool {
+pub pure fn is_neg_zero<T:One+Zero+Eq+Div<T,T>+Neg<T>>(num: &T) -> bool {
     let _1: T = One::one();
     let _0: T = Zero::zero();
     *num == _0 && is_neg_infinity(&(_1 / *num))
@@ -135,8 +166,8 @@ pub pure fn is_neg_zero<T: Num One Zero Eq>(num: &T) -> bool {
  * - If code written to use this function doesn't care about it, it's
  *   probably assuming that `x^0` always equals `1`.
  */
-pub pure fn pow_with_uint<T: Num One Zero Copy>(radix: uint,
-                                                pow: uint) -> T {
+pub pure fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
+    radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
 
@@ -144,7 +175,7 @@ pub pure fn pow_with_uint<T: Num One Zero Copy>(radix: uint,
     if radix == 0u { return _0; }
     let mut my_pow     = pow;
     let mut total      = _1;
-    let mut multiplier = Num::from_int(radix as int);
+    let mut multiplier = cast(radix as int);
     while (my_pow > 0u) {
         if my_pow % 2u == 1u {
             total *= multiplier;
@@ -217,14 +248,15 @@ pub enum SignFormat {
  * those special values, and `special` is `false`, because then the
  * algorithm just does normal calculations on them.
  */
-pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
+pub pure fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+
+                                  Neg<T>+Modulo<T,T>+Mul<T,T>>(
         num: &T, radix: uint, special: bool, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
     if radix as int <  2 {
-        die!(fmt!("to_str_bytes_common: radix %? to low, \
+        fail!(fmt!("to_str_bytes_common: radix %? to low, \
                    must lie in the range [2, 36]", radix));
     } else if radix as int > 36 {
-        die!(fmt!("to_str_bytes_common: radix %? to high, \
+        fail!(fmt!("to_str_bytes_common: radix %? to high, \
                    must lie in the range [2, 36]", radix));
     }
 
@@ -250,7 +282,7 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
     let neg = *num < _0 || (negative_zero && *num == _0
                             && special && is_neg_zero(num));
     let mut buf: ~[u8] = ~[];
-    let radix_gen      = Num::from_int::<T>(radix as int);
+    let radix_gen: T   = cast(radix as int);
 
     let mut deccum;
 
@@ -439,7 +471,8 @@ pub pure fn to_str_bytes_common<T: Num Zero One Eq Ord Round Copy>(
  * `to_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn to_str_common<T: Num Zero One Eq Ord Round Copy>(
+pub pure fn to_str_common<T:NumCast+Zero+One+Eq+Ord+Round+Copy+Div<T,T>+Neg<T>
+                            +Modulo<T,T>+Mul<T,T>>(
         num: &T, radix: uint, special: bool, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
     let (bytes, special) = to_str_bytes_common(num, radix, special,
@@ -494,32 +527,33 @@ priv const DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  * - Could accept option to allow ignoring underscores, allowing for numbers
  *   formated like `FF_AE_FF_FF`.
  */
-pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
+pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
+                                    Mul<T,T>+Sub<T,T>+Neg<T>+Add<T,T>>(
         buf: &[u8], radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
-          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+          => fail!(fmt!("from_str_bytes_common: radix %? incompatible with \
                         use of 'e' as decimal exponent", radix)),
         ExpBin if radix >= DIGIT_P_RADIX       // binary exponent 'p'
-          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+          => fail!(fmt!("from_str_bytes_common: radix %? incompatible with \
                         use of 'p' as binary exponent", radix)),
         _ if special && radix >= DIGIT_I_RADIX // first digit of 'inf'
-          => die!(fmt!("from_str_bytes_common: radix %? incompatible with \
+          => fail!(fmt!("from_str_bytes_common: radix %? incompatible with \
                         special values 'inf' and 'NaN'", radix)),
         _ if radix as int < 2
-          => die!(fmt!("from_str_bytes_common: radix %? to low, \
+          => fail!(fmt!("from_str_bytes_common: radix %? to low, \
                         must lie in the range [2, 36]", radix)),
         _ if radix as int > 36
-          => die!(fmt!("from_str_bytes_common: radix %? to high, \
+          => fail!(fmt!("from_str_bytes_common: radix %? to high, \
                         must lie in the range [2, 36]", radix)),
         _ => ()
     }
 
     let _0: T = Zero::zero();
     let _1: T = One::one();
-    let radix_gen: T = Num::from_int(radix as int);
+    let radix_gen: T = cast(radix as int);
 
     let len = buf.len();
 
@@ -570,9 +604,9 @@ pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
 
                 // add/subtract current digit depending on sign
                 if accum_positive {
-                    accum += Num::from_int(digit as int);
+                    accum += cast(digit as int);
                 } else {
-                    accum -= Num::from_int(digit as int);
+                    accum -= cast(digit as int);
                 }
 
                 // Detect overflow by comparing to last value
@@ -609,11 +643,13 @@ pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
                     // Decrease power one order of magnitude
                     power /= radix_gen;
 
+                    let digit_t: T = cast(digit);
+
                     // add/subtract current digit depending on sign
                     if accum_positive {
-                        accum += Num::from_int::<T>(digit as int) * power;
+                        accum += digit_t * power;
                     } else {
-                        accum -= Num::from_int::<T>(digit as int) * power;
+                        accum -= digit_t * power;
                     }
 
                     // Detect overflow by comparing to last value
@@ -679,7 +715,8 @@ pub pure fn from_str_bytes_common<T: Num Zero One Ord Copy>(
  * `from_str_bytes_common()`, for details see there.
  */
 #[inline(always)]
-pub pure fn from_str_common<T: Num Zero One Ord Copy>(
+pub pure fn from_str_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+Mul<T,T>+
+                              Sub<T,T>+Neg<T>+Add<T,T>>(
         buf: &str, radix: uint, negative: bool, fractional: bool,
         special: bool, exponent: ExponentFormat, empty_zero: bool
         ) -> Option<T> {

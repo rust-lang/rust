@@ -239,7 +239,7 @@ pub pure fn init<T: Copy>(v: &[const T]) -> ~[T] {
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
 pub pure fn last<T: Copy>(v: &[const T]) -> T {
-    if len(v) == 0u { die!(~"last_unsafe: empty vector") }
+    if len(v) == 0u { fail!(~"last_unsafe: empty vector") }
     v[len(v) - 1u]
 }
 
@@ -558,15 +558,11 @@ pub fn consume<T>(mut v: ~[T], f: fn(uint, v: T)) {
     }
 }
 
-pub fn consume_mut<T>(v: ~[mut T], f: fn(uint, v: T)) {
-    consume(vec::cast_from_mut(v), f)
-}
-
 /// Remove the last element from a vector and return it
 pub fn pop<T>(v: &mut ~[T]) -> T {
     let ln = v.len();
     if ln == 0 {
-        die!(~"sorry, cannot vec::pop an empty vector")
+        fail!(~"sorry, cannot vec::pop an empty vector")
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
@@ -587,7 +583,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
 pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
     let ln = v.len();
     if index >= ln {
-        die!(fmt!("vec::swap_remove - index %u >= length %u", index, ln));
+        fail!(fmt!("vec::swap_remove - index %u >= length %u", index, ln));
     }
     if index < ln - 1 {
         v[index] <-> v[ln - 1];
@@ -623,13 +619,15 @@ unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
 
 #[inline(never)]
 fn push_slow<T>(v: &mut ~[T], initval: T) {
-    reserve_at_least(&mut *v, v.len() + 1u);
+    let new_len = v.len() + 1;
+    reserve_at_least(&mut *v, new_len);
     unsafe { push_fast(v, initval) }
 }
 
 #[inline(always)]
 pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
-    reserve(&mut *v, v.len() + rhs.len());
+    let new_len = v.len() + rhs.len();
+    reserve(&mut *v, new_len);
 
     for uint::range(0u, rhs.len()) |i| {
         push(&mut *v, unsafe { raw::get(rhs, i) })
@@ -638,7 +636,8 @@ pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
 
 #[inline(always)]
 pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
-    reserve(&mut *v, v.len() + rhs.len());
+    let new_len = v.len() + rhs.len();
+    reserve(&mut *v, new_len);
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
@@ -663,9 +662,9 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
                 let mut dropped = rusti::init();
                 dropped <-> *ptr::mut_offset(p, i);
             }
-            raw::set_len(&mut *v, newlen);
         }
     }
+    unsafe { raw::set_len(&mut *v, newlen); }
 }
 
 /**
@@ -725,11 +724,6 @@ pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
     v
 }
 
-#[inline(always)]
-pub pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
-    cast_to_mut(append(cast_from_mut(lhs), rhs))
-}
-
 /**
  * Expands a vector in place, initializing the new elements to a given value
  *
@@ -740,7 +734,8 @@ pub pure fn append_mut<T: Copy>(lhs: ~[mut T], rhs: &[const T]) -> ~[mut T] {
  * * initval - The value for the new elements
  */
 pub fn grow<T: Copy>(v: &mut ~[T], n: uint, initval: &T) {
-    reserve_at_least(&mut *v, v.len() + n);
+    let new_len = v.len() + n;
+    reserve_at_least(&mut *v, new_len);
     let mut i: uint = 0u;
 
     while i < n {
@@ -763,7 +758,8 @@ pub fn grow<T: Copy>(v: &mut ~[T], n: uint, initval: &T) {
  *             value
  */
 pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: iter::InitOp<T>) {
-    reserve_at_least(&mut *v, v.len() + n);
+    let new_len = v.len() + n;
+    reserve_at_least(&mut *v, new_len);
     let mut i: uint = 0u;
     while i < n {
         v.push(op(i));
@@ -829,7 +825,7 @@ pub pure fn flat_map<T, U>(v: &[T], f: fn(t: &T) -> ~[U]) -> ~[U] {
 pub pure fn map2<T: Copy, U: Copy, V>(v0: &[T], v1: &[U],
                                   f: fn(t: &T, v: &U) -> V) -> ~[V] {
     let v0_len = len(v0);
-    if v0_len != len(v1) { die!(); }
+    if v0_len != len(v1) { fail!(); }
     let mut u: ~[V] = ~[];
     let mut i = 0u;
     while i < v0_len {
@@ -1280,12 +1276,12 @@ pub pure fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
  * * a - The index of the first element
  * * b - The index of the second element
  */
-pub fn swap<T>(v: &[mut T], a: uint, b: uint) {
+pub fn swap<T>(v: &mut [T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
 /// Reverse the order of elements in a vector, in place
-pub fn reverse<T>(v: &[mut T]) {
+pub fn reverse<T>(v: &mut [T]) {
     let mut i: uint = 0;
     let ln = len::<T>(v);
     while i < ln / 2 { v[i] <-> v[ln - i - 1]; i += 1; }
@@ -1366,7 +1362,7 @@ pub pure fn each<T>(v: &r/[T], f: fn(&r/T) -> bool) {
 /// a vector with mutable contents and you would like
 /// to mutate the contents as you iterate.
 #[inline(always)]
-pub fn each_mut<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
+pub fn each_mut<T>(v: &mut [T], f: fn(elem: &mut T) -> bool) {
     let mut i = 0;
     let n = v.len();
     while i < n {
@@ -1536,7 +1532,7 @@ pub pure fn as_const_buf<T,U>(s: &[const T],
 
 /// Similar to `as_imm_buf` but passing a `*mut T`
 #[inline(always)]
-pub pure fn as_mut_buf<T,U>(s: &[mut T],
+pub pure fn as_mut_buf<T,U>(s: &mut [T],
                         f: fn(*mut T, uint) -> U) -> U {
 
     unsafe {
@@ -1648,19 +1644,12 @@ impl<T: Ord> @[T] : Ord {
 pub mod traits {
     use kinds::Copy;
     use ops::Add;
-    use vec::{append, append_mut};
+    use vec::append;
 
     impl<T: Copy> ~[T] : Add<&[const T],~[T]> {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
             append(copy *self, (*rhs))
-        }
-    }
-
-    impl<T: Copy> ~[mut T] : Add<&[const T],~[mut T]> {
-        #[inline(always)]
-        pure fn add(&self, rhs: & &self/[const T]) -> ~[mut T] {
-            append_mut(copy *self, (*rhs))
         }
     }
 }
@@ -2083,7 +2072,7 @@ pub mod raw {
 
     /** see `to_ptr()` */
     #[inline(always)]
-    pub unsafe fn to_mut_ptr<T>(v: &[mut T]) -> *mut T {
+    pub unsafe fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
         let repr: **SliceRepr = ::cast::transmute(&v);
         return ::cast::reinterpret_cast(&addr_of(&((**repr).data)));
     }
@@ -2116,7 +2105,7 @@ pub mod raw {
      * is newly allocated.
      */
     #[inline(always)]
-    pub unsafe fn init_elem<T>(v: &[mut T], i: uint, val: T) {
+    pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
         let mut box = Some(val);
         do as_mut_buf(v) |p, _len| {
             let mut box2 = None;
@@ -2150,7 +2139,7 @@ pub mod raw {
       * may overlap.
       */
     #[inline(always)]
-    pub unsafe fn copy_memory<T>(dst: &[mut T], src: &[const T],
+    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[const T],
                                  count: uint) {
         assert dst.len() >= count;
         assert src.len() >= count;
@@ -2217,7 +2206,7 @@ pub mod bytes {
       * may overlap.
       */
     #[inline(always)]
-    pub fn copy_memory(dst: &[mut u8], src: &[const u8], count: uint) {
+    pub fn copy_memory(dst: &mut [u8], src: &[const u8], count: uint) {
         // Bound checks are done at vec::raw::copy_memory.
         unsafe { vec::raw::copy_memory(dst, src, count) }
     }
@@ -2923,7 +2912,7 @@ mod tests {
     #[test]
     fn test_each_empty() {
         for each::<int>(~[]) |_v| {
-            die!(); // should never be executed
+            fail!(); // should never be executed
         }
     }
 
@@ -2950,7 +2939,7 @@ mod tests {
     #[test]
     fn test_reach_empty() {
         for rev_each::<int>(~[]) |_v| {
-            die!(); // should never execute
+            fail!(); // should never execute
         }
     }
 
@@ -3215,7 +3204,7 @@ mod tests {
 
     #[test]
     fn reverse_and_reversed() {
-        let v: ~[mut int] = ~[mut 10, 20];
+        let mut v: ~[int] = ~[10, 20];
         assert (v[0] == 10);
         assert (v[1] == 20);
         reverse(v);
@@ -3230,13 +3219,13 @@ mod tests {
 
         let v4 = reversed::<int>(~[]);
         assert (v4 == ~[]);
-        let v3: ~[mut int] = ~[mut];
+        let mut v3: ~[int] = ~[];
         reverse::<int>(v3);
     }
 
     #[test]
     fn reversed_mut() {
-        let v2 = reversed::<int>(~[mut 10, 20]);
+        let mut v2 = reversed::<int>(~[10, 20]);
         assert (v2[0] == 20);
         assert (v2[1] == 10);
     }
@@ -3452,7 +3441,7 @@ mod tests {
     #[should_fail]
     fn test_from_fn_fail() {
         do from_fn(100) |v| {
-            if v == 50 { die!() }
+            if v == 50 { fail!() }
             (~0, @0)
         };
     }
@@ -3466,7 +3455,7 @@ mod tests {
             push((~0, @0));
             push((~0, @0));
             push((~0, @0));
-            die!();
+            fail!();
         };
     }
 
@@ -3479,7 +3468,7 @@ mod tests {
         let mut i = 0;
         do split(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
 
@@ -3496,7 +3485,7 @@ mod tests {
         let mut i = 0;
         do split(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
 
@@ -3513,7 +3502,7 @@ mod tests {
         let mut i = 0;
         do splitn(v, 100) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
 
@@ -3530,7 +3519,7 @@ mod tests {
         let mut i = 0;
         do split(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
 
@@ -3547,7 +3536,7 @@ mod tests {
         let mut i = 0;
         do rsplit(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
 
@@ -3564,7 +3553,7 @@ mod tests {
         let mut i = 0;
         do rsplit(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
 
@@ -3581,7 +3570,7 @@ mod tests {
         let mut i = 0;
         do rsplitn(v, 100) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
 
@@ -3598,7 +3587,7 @@ mod tests {
         let mut i = 0;
         do rsplitn(v, 100) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
 
@@ -3614,21 +3603,7 @@ mod tests {
         let mut i = 0;
         do consume(v) |_i, _elt| {
             if i == 2 {
-                die!()
-            }
-            i += 1;
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_consume_mut_fail() {
-        let v = ~[mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do consume_mut(v) |_i, _elt| {
-            if i == 2 {
-                die!()
+                fail!()
             }
             i += 1;
         };
@@ -3642,7 +3617,7 @@ mod tests {
         let mut v = ~[];
         do v.grow_fn(100) |i| {
             if i == 50 {
-                die!()
+                fail!()
             }
             (~0, @0)
         }
@@ -3652,11 +3627,11 @@ mod tests {
     #[ignore(windows)]
     #[should_fail]
     fn test_map_fail() {
-        let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do map(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3671,7 +3646,7 @@ mod tests {
         let mut i = 0;
         do map_consume(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3686,7 +3661,7 @@ mod tests {
         let mut i = 0;
         do mapi(v) |_i, _elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3701,7 +3676,7 @@ mod tests {
         let mut i = 0;
         do map(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3717,7 +3692,7 @@ mod tests {
         let mut i = 0;
         do map2(v, v) |_elt1, _elt2| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             ~[(~0, @0)]
@@ -3733,7 +3708,7 @@ mod tests {
         let mut i = 0;
         do filter_mapped(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             Some((~0, @0))
@@ -3749,7 +3724,7 @@ mod tests {
         let mut i = 0;
         do v.filtered |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             true
@@ -3765,7 +3740,7 @@ mod tests {
         let mut i = 0;
         do foldl((~0, @0), v) |_a, _b| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             (~0, @0)
@@ -3781,7 +3756,7 @@ mod tests {
         let mut i = 0;
         do foldr(v, (~0, @0)) |_a, _b| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             (~0, @0)
@@ -3796,7 +3771,7 @@ mod tests {
         let mut i = 0;
         do any(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             false
@@ -3811,7 +3786,7 @@ mod tests {
         let mut i = 0;
         do any(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             false
@@ -3826,7 +3801,7 @@ mod tests {
         let mut i = 0;
         do all(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             true
@@ -3841,7 +3816,7 @@ mod tests {
         let mut i = 0;
         do alli(v) |_i, _elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             true
@@ -3856,7 +3831,7 @@ mod tests {
         let mut i = 0;
         do all2(v, v) |_elt1, _elt2| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             true
@@ -3872,7 +3847,7 @@ mod tests {
         let mut i = 0;
         do find(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             false
@@ -3887,7 +3862,7 @@ mod tests {
         let mut i = 0;
         do position(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             false
@@ -3902,7 +3877,7 @@ mod tests {
         let mut i = 0;
         do rposition(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             false
@@ -3917,7 +3892,7 @@ mod tests {
         let mut i = 0;
         do each(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             false
@@ -3932,7 +3907,7 @@ mod tests {
         let mut i = 0;
         do eachi(v) |_i, _elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
             false
@@ -3948,7 +3923,7 @@ mod tests {
         let mut i = 0;
         for each_permutation(v) |_elt| {
             if i == 2 {
-                die!()
+                fail!()
             }
             i += 0;
         }
@@ -3960,7 +3935,7 @@ mod tests {
     fn test_as_imm_buf_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do as_imm_buf(v) |_buf, _i| {
-            die!()
+            fail!()
         }
     }
 
@@ -3970,7 +3945,7 @@ mod tests {
     fn test_as_const_buf_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do as_const_buf(v) |_buf, _i| {
-            die!()
+            fail!()
         }
     }
 
@@ -3978,9 +3953,9 @@ mod tests {
     #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_mut_buf_fail() {
-        let v = [mut (~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         do as_mut_buf(v) |_buf, _i| {
-            die!()
+            fail!()
         }
     }
 
@@ -3989,7 +3964,7 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_copy_memory_oob() {
         unsafe {
-            let a = [mut 1, 2, 3, 4];
+            let mut a = [1, 2, 3, 4];
             let b = [1, 2, 3, 4, 5];
             raw::copy_memory(a, b, 5);
         }

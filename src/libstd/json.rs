@@ -121,19 +121,49 @@ pub impl Encoder: serialize::Encoder {
     fn emit_owned(&self, f: fn()) { f() }
     fn emit_managed(&self, f: fn()) { f() }
 
-    fn emit_enum(&self, name: &str, f: fn()) {
-        if name != "option" { die!(~"only supports option enum") }
+    fn emit_enum(&self, _name: &str, f: fn()) {
         f()
     }
-    fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: fn()) {
-        if id == 0 {
-            self.emit_nil();
+
+    fn emit_enum_variant(&self, name: &str, _id: uint, _cnt: uint, f: fn()) {
+        // encoding of enums is special-cased for Option. Specifically:
+        // Some(34) => 34
+        // None => null
+
+        // other enums are encoded as vectors:
+        // Kangaroo(34,"William") => ["Kangaroo",[34,"William"]]
+
+        // the default expansion for enums is more verbose than I'd like;
+        // specifically, the inner pair of brackets seems superfluous,
+        // BUT the design of the enumeration framework and the requirements
+        // of the special-case for Option mean that a first argument must
+        // be encoded "naked"--with no commas--and that the option name
+        // can't be followed by just a comma, because there might not
+        // be any elements in the tuple.
+
+        // FIXME #4872: this would be more precise and less frightening
+        // with fully-qualified option names. To get that information,
+        // we'd have to change the expansion of auto-encode to pass
+        // those along.
+
+        if (name == ~"Some") {
+            f();
+        } else if (name == ~"None") {
+            self.wr.write_str(~"null");
         } else {
-            f()
+            self.wr.write_char('[');
+            self.wr.write_str(escape_str(name));
+            self.wr.write_char(',');
+            self.wr.write_char('[');
+            f();
+            self.wr.write_char(']');
+            self.wr.write_char(']');
         }
     }
-    fn emit_enum_variant_arg(&self, _idx: uint, f: fn()) {
-        f()
+
+    fn emit_enum_variant_arg(&self, idx: uint, f: fn()) {
+        if (idx != 0) {self.wr.write_char(',');}
+        f();
     }
 
     fn emit_borrowed_vec(&self, _len: uint, f: fn()) {
@@ -141,6 +171,7 @@ pub impl Encoder: serialize::Encoder {
         f();
         self.wr.write_char(']');
     }
+
     fn emit_owned_vec(&self, len: uint, f: fn()) {
         self.emit_borrowed_vec(len, f)
     }
@@ -226,7 +257,7 @@ pub impl PrettyEncoder: serialize::Encoder {
     fn emit_managed(&self, f: fn()) { f() }
 
     fn emit_enum(&self, name: &str, f: fn()) {
-        if name != "option" { die!(~"only supports option enum") }
+        if name != "option" { fail!(~"only supports option enum") }
         f()
     }
     fn emit_enum_variant(&self, _name: &str, id: uint, _cnt: uint, f: fn()) {
@@ -742,7 +773,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_nil");
         match *self.pop() {
             Null => (),
-            _ => die!(~"not a null")
+            _ => fail!(~"not a null")
         }
     }
 
@@ -762,7 +793,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_bool");
         match *self.pop() {
             Boolean(b) => b,
-            _ => die!(~"not a boolean")
+            _ => fail!(~"not a boolean")
         }
     }
 
@@ -772,13 +803,13 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_float");
         match *self.pop() {
             Number(f) => f,
-            _ => die!(~"not a number")
+            _ => fail!(~"not a number")
         }
     }
 
     fn read_char(&self) -> char {
         let v = str::chars(self.read_owned_str());
-        if v.len() != 1 { die!(~"string must have one character") }
+        if v.len() != 1 { fail!(~"string must have one character") }
         v[0]
     }
 
@@ -786,7 +817,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_owned_str");
         match *self.pop() {
             String(ref s) => copy *s,
-            _ => die!(~"not a string")
+            _ => fail!(~"not a string")
         }
     }
 
@@ -794,7 +825,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_managed_str");
         match *self.pop() {
             String(ref s) => s.to_managed(),
-            _ => die!(~"not a string")
+            _ => fail!(~"not a string")
         }
     }
 
@@ -810,7 +841,7 @@ pub impl Decoder: serialize::Decoder {
 
     fn read_enum<T>(&self, name: &str, f: fn() -> T) -> T {
         debug!("read_enum(%s)", name);
-        if name != ~"option" { die!(~"only supports the option enum") }
+        if name != ~"option" { fail!(~"only supports the option enum") }
         f()
     }
 
@@ -825,7 +856,7 @@ pub impl Decoder: serialize::Decoder {
 
     fn read_enum_variant_arg<T>(&self, idx: uint, f: fn() -> T) -> T {
         debug!("read_enum_variant_arg(idx=%u)", idx);
-        if idx != 0 { die!(~"unknown index") }
+        if idx != 0 { fail!(~"unknown index") }
         f()
     }
 
@@ -833,7 +864,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_owned_vec()");
         let len = match *self.peek() {
             List(ref list) => list.len(),
-            _ => die!(~"not a list"),
+            _ => fail!(~"not a list"),
         };
         let res = f(len);
         self.pop();
@@ -844,7 +875,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_owned_vec()");
         let len = match *self.peek() {
             List(ref list) => list.len(),
-            _ => die!(~"not a list"),
+            _ => fail!(~"not a list"),
         };
         let res = f(len);
         self.pop();
@@ -858,7 +889,7 @@ pub impl Decoder: serialize::Decoder {
                 self.stack.push(&list[idx]);
                 f()
             }
-            _ => die!(~"not a list"),
+            _ => fail!(~"not a list"),
         }
     }
 
@@ -882,20 +913,20 @@ pub impl Decoder: serialize::Decoder {
         match *top {
             Object(ref obj) => {
                 match obj.find(&name.to_owned()) {
-                    None => die!(fmt!("no such field: %s", name)),
+                    None => fail!(fmt!("no such field: %s", name)),
                     Some(json) => {
                         self.stack.push(json);
                         f()
                     }
                 }
             }
-            Number(_) => die!(~"num"),
-            String(_) => die!(~"str"),
-            Boolean(_) => die!(~"bool"),
-            List(_) => die!(fmt!("list: %?", top)),
-            Null => die!(~"null"),
+            Number(_) => fail!(~"num"),
+            String(_) => fail!(~"str"),
+            Boolean(_) => fail!(~"bool"),
+            List(_) => fail!(fmt!("list: %?", top)),
+            Null => fail!(~"null"),
 
-            //_ => die!(fmt!("not an object: %?", *top))
+            //_ => fail!(fmt!("not an object: %?", *top))
         }
     }
 
@@ -913,7 +944,7 @@ pub impl Decoder: serialize::Decoder {
                 self.stack.push(&list[idx]);
                 f()
             }
-            _ => die!(~"not a list")
+            _ => fail!(~"not a list")
         }
     }
 }
@@ -1180,6 +1211,8 @@ mod tests {
 
     use core::result;
     use core::hashmap::linear::LinearMap;
+    use core::cmp;
+
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
         let mut d = ~LinearMap::new();
@@ -1245,6 +1278,72 @@ mod tests {
         // printed in a different order.
         let b = result::unwrap(from_str(to_str(&a)));
         assert a == b;
+    }
+
+    // two fns copied from libsyntax/util/testing.rs.
+    // Should they be in their own crate?
+    pub pure fn check_equal_ptr<T : cmp::Eq> (given : &T, expected: &T) {
+        if !((given == expected) && (expected == given )) {
+            die!(fmt!("given %?, expected %?",given,expected));
+        }
+    }
+
+    pub pure fn check_equal<T : cmp::Eq> (given : T, expected: T) {
+        if !((given == expected) && (expected == given )) {
+            die!(fmt!("given %?, expected %?",given,expected));
+        }
+    }
+
+    // testing both auto_encode's calling patterns
+    // and json... not sure where to put these tests.
+    #[test]
+    fn test_write_enum () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"animal") {
+            do encoder.emit_enum_variant (~"frog",37,1242) {
+                // name of frog:
+                do encoder.emit_enum_variant_arg (0) {
+                    encoder.emit_owned_str(~"Henry")
+                }
+                // mass of frog in grams:
+                do encoder.emit_enum_variant_arg (1) {
+                    encoder.emit_int(349);
+                }
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"[\"frog\",[\"Henry\",349]]");
+    }
+
+    #[test]
+    fn test_write_some () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"Option") {
+            do encoder.emit_enum_variant (~"Some",37,1242) {
+                do encoder.emit_enum_variant_arg (0) {
+                    encoder.emit_owned_str(~"jodhpurs")
+                }
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"\"jodhpurs\"");
+    }
+
+    #[test]
+    fn test_write_none () {
+        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bww : @io::Writer = (bw as @io::Writer);
+        let encoder = (@Encoder(bww) as @serialize::Encoder);
+        do encoder.emit_enum(~"Option") {
+            do encoder.emit_enum_variant (~"None",37,1242) {
+            }
+        }
+        check_equal(str::from_bytes(bw.bytes.data),
+                    ~"null");
     }
 
     #[test]

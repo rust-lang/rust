@@ -1,9 +1,9 @@
-// Just testing that die!() type checks in statement or expr
+// Just testing that fail!() type checks in statement or expr
 
 fn f() {
-    die!();
+    fail!();
 
-    let x: int = die!();
+    let x: int = fail!();
 }
 
 pub fn main() {

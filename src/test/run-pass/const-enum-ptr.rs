@@ -14,6 +14,6 @@ const C: &static/E = &V0;
 fn main() {
     match *C {
         V0 => (),
-        _ => die!()
+        _ => fail!()
     }
 }

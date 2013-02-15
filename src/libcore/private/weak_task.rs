@@ -22,7 +22,8 @@ use option::{Some, None, swap_unwrap};
 use private::at_exit::at_exit;
 use private::global::global_data_clone_create;
 use private::finally::Finally;
-use pipes::{Port, Chan, SharedChan, GenericSmartChan, stream};
+use pipes::{Port, Chan, SharedChan, GenericChan, GenericPort,
+            GenericSmartChan, stream};
 use task::{Task, task, spawn};
 use task::rt::{task_id, get_task_id};
 use hashmap::linear::LinearMap;
@@ -40,12 +41,12 @@ pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     let task = get_task_id();
     // Expect the weak task service to be alive
     assert service.try_send(RegisterWeakTask(task, shutdown_chan));
-    unsafe { rust_inc_weak_task_count(); }
+    unsafe { rust_dec_kernel_live_count(); }
     do fn&() {
         let shutdown_port = swap_unwrap(&mut *shutdown_port);
         f(shutdown_port)
     }.finally || {
-        unsafe { rust_dec_weak_task_count(); }
+        unsafe { rust_inc_kernel_live_count(); }
         // Service my have already exited
         service.send(UnregisterWeakTask(task));
     }
@@ -78,11 +79,11 @@ fn create_global_service() -> ~WeakTaskService {
             let port = swap_unwrap(&mut *port);
             // The weak task service is itself a weak task
             debug!("weakening the weak service task");
-            unsafe { rust_inc_weak_task_count(); }
+            unsafe { rust_dec_kernel_live_count(); }
             run_weak_task_service(port);
         }.finally {
             debug!("unweakening the weak service task");
-            unsafe { rust_dec_weak_task_count(); }
+            unsafe { rust_inc_kernel_live_count(); }
         }
     }
 
@@ -112,7 +113,7 @@ fn run_weak_task_service(port: Port<ServiceMsg>) {
                         // nobody will receive this
                         shutdown_chan.send(());
                     }
-                    None => die!()
+                    None => fail!()
                 }
             }
             Shutdown => break
@@ -126,8 +127,8 @@ fn run_weak_task_service(port: Port<ServiceMsg>) {
 }
 
 extern {
-    unsafe fn rust_inc_weak_task_count();
-    unsafe fn rust_dec_weak_task_count();
+    unsafe fn rust_inc_kernel_live_count();
+    unsafe fn rust_dec_kernel_live_count();
 }
 
 #[test]
@@ -195,7 +196,7 @@ fn test_select_stream_and_oneshot() {
             do weaken_task |signal| {
                 match select2i(&port, &signal) {
                     Left(*) => (),
-                    Right(*) => die!()
+                    Right(*) => fail!()
                 }
             }
         }

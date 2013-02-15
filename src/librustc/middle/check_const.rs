@@ -102,7 +102,7 @@ pub fn check_expr(sess: Session,
           }
           expr_lit(@codemap::spanned {node: lit_str(_), _}) => { }
           expr_binary(_, _, _) | expr_unary(_, _) => {
-            if method_map.contains_key_ref(&e.id) {
+            if method_map.contains_key(&e.id) {
                 sess.span_err(e.span, ~"user-defined operators are not \
                                        allowed in constant expressions");
             }
@@ -127,15 +127,15 @@ pub fn check_expr(sess: Session,
                               items without type parameters");
             }
             match def_map.find(&e.id) {
-              Some(def_const(def_id)) |
-                Some(def_fn(def_id, _)) |
-                Some(def_variant(_, def_id)) |
-                Some(def_struct(def_id)) => {
+                Some(def_variant(_, _)) |
+                Some(def_struct(_)) => { }
+
+                Some(def_const(def_id)) |
+                Some(def_fn(def_id, _)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \
-                                 crate-local constants, functions, or \
-                                 structs");
+                                 crate-local constants or functions");
                 }
               }
               Some(def) => {
@@ -253,7 +253,7 @@ pub fn check_item_recursion(sess: Session,
                   ast_map::node_item(it, _) => {
                     (v.visit_item)(it, env, v);
                   }
-                  _ => die!(~"const not bound to an item")
+                  _ => fail!(~"const not bound to an item")
                 }
               }
               _ => ()

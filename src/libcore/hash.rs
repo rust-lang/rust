@@ -165,7 +165,7 @@ struct SipState {
     mut v1: u64,
     mut v2: u64,
     mut v3: u64,
-    tail: [mut u8 * 8], // unprocessed bytes
+    mut tail: [u8 * 8], // unprocessed bytes
     mut ntail: uint,  // how many bytes in tail are valid
 }
 
@@ -179,7 +179,7 @@ fn SipState(key0: u64, key1: u64) -> SipState {
         mut v1 : 0u64,
         mut v2 : 0u64,
         mut v3 : 0u64,
-        tail : [mut 0u8,0,0,0,0,0,0,0],
+        mut tail : [0u8,0,0,0,0,0,0,0],
         mut ntail : 0u,
     };
     (&state).reset();
@@ -282,7 +282,7 @@ impl SipState : io::Writer {
     }
 
     fn seek(&self, _x: int, _s: io::SeekStyle) {
-        die!();
+        fail!();
     }
     fn tell(&self) -> uint {
         self.length

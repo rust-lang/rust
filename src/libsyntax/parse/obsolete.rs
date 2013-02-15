@@ -39,7 +39,6 @@ pub enum ObsoleteSyntax {
     ObsoleteFieldTerminator,
     ObsoleteStructCtor,
     ObsoleteWith,
-    ObsoleteClassMethod,
     ObsoleteClassTraits,
     ObsoletePrivSection,
     ObsoleteModeInFnType,
@@ -84,10 +83,6 @@ pub impl Parser {
                 "with",
                 "record update is done with `..`, e.g. \
                  `MyStruct { foo: bar, .. baz }`"
-            ),
-            ObsoleteClassMethod => (
-                "class method",
-                "methods should be defined inside impls"
             ),
             ObsoleteClassTraits => (
                 "class traits",
@@ -137,7 +132,7 @@ pub impl Parser {
                    desc: &str) {
         self.span_err(sp, fmt!("obsolete syntax: %s", kind_str));
 
-        if !self.obsolete_set.contains_key_ref(&kind) {
+        if !self.obsolete_set.contains_key(&kind) {
             self.sess.span_diagnostic.handler().note(fmt!("%s", desc));
             self.obsolete_set.insert(kind, ());
         }

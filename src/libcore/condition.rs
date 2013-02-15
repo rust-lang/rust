@@ -37,7 +37,7 @@ impl<T, U> Condition<T, U> {
 
     fn raise(t: T) -> U {
         let msg = fmt!("Unhandled condition: %s: %?", self.name, t);
-        self.raise_default(t, || die!(copy msg))
+        self.raise_default(t, || fail!(copy msg))
     }
 
     fn raise_default(t: T, default: &fn() -> U) -> U {

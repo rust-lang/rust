@@ -75,7 +75,7 @@ pub pure fn get<T: Copy>(opt: Option<T>) -> T {
 
     match opt {
       Some(copy x) => return x,
-      None => die!(~"option::get none")
+      None => fail!(~"option::get none")
     }
 }
 
@@ -97,7 +97,7 @@ pub pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
      */
     match *opt {
         Some(ref x) => x,
-        None => die!(~"option::get_ref none")
+        None => fail!(~"option::get_ref none")
     }
 }
 
@@ -201,7 +201,7 @@ pub pure fn map_default<T, U>(opt: &r/Option<T>, def: U,
 }
 
 #[inline(always)]
-pub pure fn iter<T>(opt: &Option<T>, f: fn(x: &T)) {
+pub pure fn iter<T>(opt: &r/Option<T>, f: fn(x: &r/T)) {
     //! Performs an operation on the contained value by reference
     match *opt { None => (), Some(ref t) => f(t) }
 }
@@ -226,7 +226,7 @@ pub pure fn unwrap<T>(opt: Option<T>) -> T {
      */
     match move opt {
         Some(move x) => move x,
-        None => die!(~"option::unwrap none")
+        None => fail!(~"option::unwrap none")
     }
 }
 
@@ -240,7 +240,7 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
 
     Fails if the value equals `None`.
      */
-    if opt.is_none() { die!(~"option::swap_unwrap none") }
+    if opt.is_none() { fail!(~"option::swap_unwrap none") }
     unwrap(util::replace(opt, None))
 }
 
@@ -249,7 +249,7 @@ pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     match move opt {
         Some(move val) => val,
-        None => die!(reason.to_owned()),
+        None => fail!(reason.to_owned()),
     }
 }
 
@@ -313,7 +313,7 @@ impl<T> Option<T> {
 
     /// Performs an operation on the contained value by reference
     #[inline(always)]
-    pure fn iter(&self, f: fn(x: &T)) { iter(self, f) }
+    pure fn iter(&self, f: fn(x: &self/T)) { iter(self, f) }
 
     /**
     Gets an immutable reference to the value inside an option.

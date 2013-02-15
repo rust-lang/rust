@@ -93,7 +93,7 @@ pub fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     debug!("type_of %?: %?", t, ty::get(t));
 
     // Check the cache.
-    if cx.lltypes.contains_key_ref(&t) { return cx.lltypes.get(&t); }
+    if cx.lltypes.contains_key(&t) { return cx.lltypes.get(&t); }
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
@@ -242,13 +242,10 @@ pub fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
     debug!("type_of_enum %?: %?", t, ty::get(t));
 
     let lltys = {
-        let degen = ty::enum_is_univariant(cx.tcx, did);
+        let univar = ty::enum_is_univariant(cx.tcx, did);
         let size = machine::static_size_of_enum(cx, t);
-        if !degen {
+        if !univar {
             ~[T_enum_discrim(cx), T_array(T_i8(), size)]
-        }
-        else if size == 0u {
-            ~[T_enum_discrim(cx)]
         }
         else {
             ~[T_array(T_i8(), size)]

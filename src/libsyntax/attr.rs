@@ -24,8 +24,7 @@ use core::either::Either;
 use core::either;
 use core::option;
 use core::vec;
-use std::oldmap::HashMap;
-use std::oldmap;
+use core::hashmap::linear::LinearSet;
 use std;
 
 /* Constructors */
@@ -199,7 +198,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
             // FIXME (#607): Needs implementing
             // This involves probably sorting the list by name and
             // meta_item variant
-            die!(~"unimplemented meta_item variant")
+            fail!(~"unimplemented meta_item variant")
           }
         }
 }
@@ -358,16 +357,15 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
 
 pub fn require_unique_names(diagnostic: span_handler,
                             metas: &[@ast::meta_item]) {
-    let map = oldmap::HashMap();
+    let mut set = LinearSet::new();
     for metas.each |meta| {
         let name = get_meta_item_name(*meta);
 
         // FIXME: How do I silence the warnings? --pcw (#2619)
-        if map.contains_key_ref(&name) {
+        if !set.insert(name) {
             diagnostic.span_fatal(meta.span,
                                   fmt!("duplicate meta item `%s`", name));
         }
-        map.insert(name, ());
     }
 }
 

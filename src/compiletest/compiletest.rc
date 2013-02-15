@@ -33,7 +33,7 @@ mod errors;
 use std::getopts;
 use std::test;
 
-use core::result;
+use core::{result, either};
 use result::{Ok, Err};
 
 use common::config;
@@ -41,6 +41,7 @@ use common::mode_run_pass;
 use common::mode_run_fail;
 use common::mode_compile_fail;
 use common::mode_pretty;
+use common::mode_debug_info;
 use common::mode;
 use util::logv;
 
@@ -69,7 +70,7 @@ pub fn parse_config(args: ~[~str]) -> config {
     let matches =
         &match getopts::getopts(args_, opts) {
           Ok(m) => m,
-          Err(f) => die!(getopts::fail_str(f))
+          Err(f) => fail!(getopts::fail_str(f))
         };
 
     fn opt_path(m: &getopts::Matches, nm: ~str) -> Path {
@@ -131,7 +132,8 @@ pub fn str_mode(s: ~str) -> mode {
       ~"run-fail" => mode_run_fail,
       ~"run-pass" => mode_run_pass,
       ~"pretty" => mode_pretty,
-      _ => die!(~"invalid mode")
+      ~"debug-info" => mode_debug_info,
+      _ => fail!(~"invalid mode")
     }
 }
 
@@ -140,7 +142,8 @@ pub fn mode_str(mode: mode) -> ~str {
       mode_compile_fail => ~"compile-fail",
       mode_run_fail => ~"run-fail",
       mode_run_pass => ~"run-pass",
-      mode_pretty => ~"pretty"
+      mode_pretty => ~"pretty",
+      mode_debug_info => ~"debug-info",
     }
 }
 
@@ -148,14 +151,18 @@ pub fn run_tests(config: config) {
     let opts = test_opts(config);
     let tests = make_tests(config);
     let res = test::run_tests_console(&opts, tests);
-    if !res { die!(~"Some tests failed"); }
+    if !res { fail!(~"Some tests failed"); }
 }
 
 pub fn test_opts(config: config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter,
         run_ignored: config.run_ignored,
-        logfile: config.logfile.map(|s| s.to_str()),
+        logfile: copy config.logfile,
+        run_tests: true,
+        run_benchmarks: false,
+        save_results: option::None,
+        compare_results: option::None
     }
 }
 
@@ -207,13 +214,15 @@ pub fn make_test(config: config, testfile: &Path) -> test::TestDescAndFn {
     }
 }
 
-pub fn make_test_name(config: config, testfile: &Path) -> ~str {
-    fmt!("[%s] %s", mode_str(config.mode), testfile.to_str())
+pub fn make_test_name(config: config, testfile: &Path) -> test::TestName {
+    test::DynTestName(fmt!("[%s] %s",
+                           mode_str(config.mode),
+                           testfile.to_str()))
 }
 
 pub fn make_test_closure(config: config, testfile: &Path) -> test::TestFn {
     let testfile = testfile.to_str();
-    fn~() { runtest::run(config, testfile) }
+    test::DynTestFn(fn~() { runtest::run(config, testfile) })
 }
 
 // Local Variables:

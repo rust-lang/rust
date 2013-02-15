@@ -12,7 +12,7 @@
 // Tests that a function with a ! annotation always actually fails
 
 fn bad_bang(i: uint) -> ! {
-    if i < 0u { } else { die!(); }
+    if i < 0u { } else { fail!(); }
     //~^ ERROR expected `!` but found `()`
 }
 

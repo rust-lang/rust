@@ -24,7 +24,7 @@ struct E {
 }
 
 impl E: A {
-  fn b<F:Copy, G>(_x: F) -> F { die!() } //~ ERROR in method `b`, type parameter 0 has 1 bound, but
+  fn b<F:Copy, G>(_x: F) -> F { fail!() } //~ ERROR in method `b`, type parameter 0 has 1 bound, but
 }
 
 fn main() {}

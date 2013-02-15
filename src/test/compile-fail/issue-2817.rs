@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn uuid() -> uint { die!(); }
+fn uuid() -> uint { fail!(); }
 
-fn from_str(s: ~str) -> uint { die!(); }
-fn to_str(u: uint) -> ~str { die!(); }
-fn uuid_random() -> uint { die!(); }
+fn from_str(s: ~str) -> uint { fail!(); }
+fn to_str(u: uint) -> ~str { fail!(); }
+fn uuid_random() -> uint { fail!(); }
 
 fn main() {
     do uint::range(0, 100000) |_i| { //~ ERROR Do-block body must return bool, but

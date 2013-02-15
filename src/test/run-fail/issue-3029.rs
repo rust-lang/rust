@@ -11,7 +11,7 @@
 // error-pattern:so long
 fn main() {
     let x = ~[], y = ~[3];
-    die!(~"so long");
+    fail!(~"so long");
     x += y;
     ~"good" + ~"bye";
 }

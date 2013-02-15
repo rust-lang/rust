@@ -25,8 +25,9 @@ use m_float = f64;
 use cmp::{Eq, Ord};
 use cmp;
 use f64;
+use num::NumCast;
 use num;
-use num::Num::from_int;
+use ops;
 use option::{None, Option, Some};
 use str;
 use uint;
@@ -143,7 +144,7 @@ pub pure fn to_str_hex(num: float) -> ~str {
 pub pure fn to_str_radix(num: float, radix: uint) -> ~str {
     let (r, special) = num::to_str_common(
         &num, radix, true, true, num::SignNeg, num::DigAll);
-    if special { die!(~"number has a special value, \
+    if special { fail!(~"number has a special value, \
                       try to_str_radix_special() if those are expected") }
     r
 }
@@ -404,26 +405,6 @@ impl float : Ord {
     pure fn gt(&self, other: &float) -> bool { (*self) > (*other) }
 }
 
-impl float: num::Num {
-    #[inline(always)]
-    pub pure fn add(&self, other: &float) -> float { return *self + *other; }
-    #[inline(always)]
-    pub pure fn sub(&self, other: &float) -> float { return *self - *other; }
-    #[inline(always)]
-    pub pure fn mul(&self, other: &float) -> float { return *self * *other; }
-    #[inline(always)]
-    pub pure fn div(&self, other: &float) -> float { return *self / *other; }
-    #[inline(always)]
-    pure fn modulo(&self, other: &float) -> float { return *self % *other; }
-    #[inline(always)]
-    pure fn neg(&self)                  -> float { return -*self;        }
-
-    #[inline(always)]
-    pure fn to_int(&self)         -> int   { return *self as int; }
-    #[inline(always)]
-    static pure fn from_int(&self, n: int) -> float { return n as float;  }
-}
-
 impl float: num::Zero {
     #[inline(always)]
     static pure fn zero() -> float { 0.0 }
@@ -432,6 +413,30 @@ impl float: num::Zero {
 impl float: num::One {
     #[inline(always)]
     static pure fn one() -> float { 1.0 }
+}
+
+pub impl float: NumCast {
+    /**
+     * Cast `n` to a `float`
+     */
+    #[inline(always)]
+    static pure fn from<N:NumCast>(n: N) -> float { n.to_float() }
+
+    #[inline(always)] pure fn to_u8(&self)    -> u8    { *self as u8    }
+    #[inline(always)] pure fn to_u16(&self)   -> u16   { *self as u16   }
+    #[inline(always)] pure fn to_u32(&self)   -> u32   { *self as u32   }
+    #[inline(always)] pure fn to_u64(&self)   -> u64   { *self as u64   }
+    #[inline(always)] pure fn to_uint(&self)  -> uint  { *self as uint  }
+
+    #[inline(always)] pure fn to_i8(&self)    -> i8    { *self as i8    }
+    #[inline(always)] pure fn to_i16(&self)   -> i16   { *self as i16   }
+    #[inline(always)] pure fn to_i32(&self)   -> i32   { *self as i32   }
+    #[inline(always)] pure fn to_i64(&self)   -> i64   { *self as i64   }
+    #[inline(always)] pure fn to_int(&self)   -> int   { *self as int   }
+
+    #[inline(always)] pure fn to_f32(&self)   -> f32   { *self as f32   }
+    #[inline(always)] pure fn to_f64(&self)   -> f64   { *self as f64   }
+    #[inline(always)] pure fn to_float(&self) -> float { *self          }
 }
 
 impl float: num::Round {
@@ -467,6 +472,31 @@ impl float: num::Round {
     }
 }
 
+#[cfg(notest)]
+impl ops::Add<float,float> for float {
+    pure fn add(&self, other: &float) -> float { *self + *other }
+}
+#[cfg(notest)]
+impl ops::Sub<float,float> for float {
+    pure fn sub(&self, other: &float) -> float { *self - *other }
+}
+#[cfg(notest)]
+impl ops::Mul<float,float> for float {
+    pure fn mul(&self, other: &float) -> float { *self * *other }
+}
+#[cfg(notest)]
+impl ops::Div<float,float> for float {
+    pure fn div(&self, other: &float) -> float { *self / *other }
+}
+#[cfg(notest)]
+impl ops::Modulo<float,float> for float {
+    pure fn modulo(&self, other: &float) -> float { *self % *other }
+}
+#[cfg(notest)]
+impl ops::Neg<float> for float {
+    pure fn neg(&self) -> float { -*self }
+}
+
 #[test]
 pub fn test_from_str() {
    assert from_str(~"3") == Some(3.);
@@ -490,16 +520,16 @@ pub fn test_from_str() {
    // note: NaN != NaN, hence this slightly complex test
    match from_str(~"NaN") {
        Some(f) => assert is_NaN(f),
-       None => die!()
+       None => fail!()
    }
    // note: -0 == 0, hence these slightly more complex tests
    match from_str(~"-0") {
        Some(v) if is_zero(v) => assert is_negative(v),
-       _ => die!()
+       _ => fail!()
    }
    match from_str(~"0") {
        Some(v) if is_zero(v) => assert is_positive(v),
-       _ => die!()
+       _ => fail!()
    }
 
    assert from_str(~"").is_none();
@@ -537,16 +567,16 @@ pub fn test_from_str_hex() {
    // note: NaN != NaN, hence this slightly complex test
    match from_str_hex(~"NaN") {
        Some(f) => assert is_NaN(f),
-       None => die!()
+       None => fail!()
    }
    // note: -0 == 0, hence these slightly more complex tests
    match from_str_hex(~"-0") {
        Some(v) if is_zero(v) => assert is_negative(v),
-       _ => die!()
+       _ => fail!()
    }
    match from_str_hex(~"0") {
        Some(v) if is_zero(v) => assert is_positive(v),
-       _ => die!()
+       _ => fail!()
    }
    assert from_str_hex(~"e") == Some(14.);
    assert from_str_hex(~"E") == Some(14.);
@@ -657,21 +687,60 @@ pub fn test_round() {
 }
 
 #[test]
-pub fn test_traits() {
-    fn test<U:num::Num cmp::Eq>(ten: &U) {
-        assert (ten.to_int() == 10);
+pub fn test_num() {
+    let ten: float = num::cast(10);
+    let two: float = num::cast(2);
 
-        let two: U = from_int(2);
-        assert (two.to_int() == 2);
+    assert (ten.add(&two)    == num::cast(12));
+    assert (ten.sub(&two)    == num::cast(8));
+    assert (ten.mul(&two)    == num::cast(20));
+    assert (ten.div(&two)    == num::cast(5));
+    assert (ten.modulo(&two) == num::cast(0));
+}
 
-        assert (ten.add(&two) == from_int(12));
-        assert (ten.sub(&two) == from_int(8));
-        assert (ten.mul(&two) == from_int(20));
-        assert (ten.div(&two) == from_int(5));
-        assert (ten.modulo(&two) == from_int(0));
-    }
+#[test]
+fn test_numcast() {
+    assert (20u   == 20f.to_uint());
+    assert (20u8  == 20f.to_u8());
+    assert (20u16 == 20f.to_u16());
+    assert (20u32 == 20f.to_u32());
+    assert (20u64 == 20f.to_u64());
+    assert (20i   == 20f.to_int());
+    assert (20i8  == 20f.to_i8());
+    assert (20i16 == 20f.to_i16());
+    assert (20i32 == 20f.to_i32());
+    assert (20i64 == 20f.to_i64());
+    assert (20f   == 20f.to_float());
+    assert (20f32 == 20f.to_f32());
+    assert (20f64 == 20f.to_f64());
 
-    test(&10.0);
+    assert (20f == NumCast::from(20u));
+    assert (20f == NumCast::from(20u8));
+    assert (20f == NumCast::from(20u16));
+    assert (20f == NumCast::from(20u32));
+    assert (20f == NumCast::from(20u64));
+    assert (20f == NumCast::from(20i));
+    assert (20f == NumCast::from(20i8));
+    assert (20f == NumCast::from(20i16));
+    assert (20f == NumCast::from(20i32));
+    assert (20f == NumCast::from(20i64));
+    assert (20f == NumCast::from(20f));
+    assert (20f == NumCast::from(20f32));
+    assert (20f == NumCast::from(20f64));
+
+    assert (20f == num::cast(20u));
+    assert (20f == num::cast(20u8));
+    assert (20f == num::cast(20u16));
+    assert (20f == num::cast(20u32));
+    assert (20f == num::cast(20u64));
+    assert (20f == num::cast(20i));
+    assert (20f == num::cast(20i8));
+    assert (20f == num::cast(20i16));
+    assert (20f == num::cast(20i32));
+    assert (20f == num::cast(20i64));
+    assert (20f == num::cast(20f));
+    assert (20f == num::cast(20f32));
+    assert (20f == num::cast(20f64));
 }
 
 

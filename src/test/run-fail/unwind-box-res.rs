@@ -11,7 +11,7 @@
 // error-pattern:fail
 
 fn failfn() {
-    die!();
+    fail!();
 }
 
 struct r {

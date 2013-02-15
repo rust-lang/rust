@@ -9,4 +9,4 @@
 // except according to those terms.
 
 // error-pattern: fail
-fn main() { ~die!(); }
+fn main() { ~fail!(); }

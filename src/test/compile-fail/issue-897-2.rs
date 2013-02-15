@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn g() -> ! { die!(); }
+fn g() -> ! { fail!(); }
 fn f() -> ! {
     return 42i; //~ ERROR expected `!` but found `int`
     g(); //~ WARNING unreachable statement

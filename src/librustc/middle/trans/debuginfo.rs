@@ -117,7 +117,7 @@ pub fn mk_ctxt(+crate: ~str, intr: @ident_interner) -> debug_ctxt {
 }
 
 fn update_cache(cache: metadata_cache, mdtag: int, val: debug_metadata) {
-    let existing = if cache.contains_key_ref(&mdtag) {
+    let existing = if cache.contains_key(&mdtag) {
         cache.get(&mdtag)
     } else {
         ~[]
@@ -176,7 +176,7 @@ fn cached_metadata<T: Copy>(cache: metadata_cache,
                             eq_fn: fn(md: T) -> bool)
                          -> Option<T> {
     unsafe {
-        if cache.contains_key_ref(&mdtag) {
+        if cache.contains_key(&mdtag) {
             let items = cache.get(&mdtag);
             for items.each |item| {
                 let md: T = md_from_metadata::<T>(*item);
@@ -268,7 +268,7 @@ fn create_block(cx: block) -> @metadata<block_md> {
     while cx.node_info.is_none() {
         match cx.parent {
           Some(b) => cx = b,
-          None => die!()
+          None => fail!()
         }
     }
     let sp = cx.node_info.get().span;
@@ -553,7 +553,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::Ty)
      * elsewhere, not be self-contained.
      */
 
-    die!();
+    fail!();
     /*
     fn t_to_ty(cx: crate_ctxt, t: ty::t, span: span) -> @ast::ty {
         let ty = match ty::get(t).struct {
@@ -669,7 +669,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
         let name = match local.node.pat.node {
           ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
           // FIXME this should be handled (#2533)
-          _ => die!(~"no single variable name for local")
+          _ => fail!(~"no single variable name for local")
         };
         let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
         let ty = node_id_type(bcx, local.node.id);
