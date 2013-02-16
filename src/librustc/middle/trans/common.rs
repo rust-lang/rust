@@ -202,6 +202,7 @@ pub struct crate_ctxt {
      const_values: HashMap<ast::node_id, ValueRef>,
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, TypeRef>,
+     llsizingtypes: HashMap<ty::t, TypeRef>,
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
