@@ -19,21 +19,6 @@ extern struct type_desc str_body_tydesc;
 
 // Inline fn used regularly elsewhere.
 
-static inline size_t
-next_power_of_two(size_t s)
-{
-    size_t tmp = s - 1;
-    tmp |= tmp >> 1;
-    tmp |= tmp >> 2;
-    tmp |= tmp >> 4;
-    tmp |= tmp >> 8;
-    tmp |= tmp >> 16;
-#ifdef _LP64
-    tmp |= tmp >> 32;
-#endif
-    return tmp + 1;
-}
-
 // Rounds |size| to the nearest |alignment|. Invariant: |alignment| is a power
 // of two.
 template<typename T>
@@ -89,10 +74,6 @@ inline void reserve_vec_exact(rust_task* task, rust_vec_box** vpp,
             ->realloc(*vpp, size + sizeof(rust_vec_box));
         (*vpp)->body.alloc = size;
     }
-}
-
-inline void reserve_vec(rust_task* task, rust_vec_box** vpp, size_t size) {
-    reserve_vec_exact(task, vpp, next_power_of_two(size));
 }
 
 typedef rust_vec_box rust_str;
