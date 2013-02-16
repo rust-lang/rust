@@ -1127,7 +1127,7 @@ fn encode_crate_deps(ecx: @encode_ctxt,
         let mut deps = ~[];
         do cstore::iter_crate_data(cstore) |key, val| {
             let dep = {cnum: key,
-                       name: ecx.tcx.sess.ident_of(/*bad*/ copy val.name),
+                       name: ecx.tcx.sess.ident_of(/*bad*/ copy *val.name),
                        vers: decoder::get_crate_vers(val.data),
                        hash: decoder::get_crate_hash(val.data)};
             deps.push(dep);
@@ -1189,10 +1189,10 @@ fn encode_crate_dep(ecx: @encode_ctxt, ebml_w: writer::Encoder,
     ebml_w.writer.write(str::to_bytes(ecx.tcx.sess.str_of(dep.name)));
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_vers);
-    ebml_w.writer.write(str::to_bytes(dep.vers));
+    ebml_w.writer.write(str::to_bytes(*dep.vers));
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_hash);
-    ebml_w.writer.write(str::to_bytes(dep.hash));
+    ebml_w.writer.write(str::to_bytes(*dep.hash));
     ebml_w.end_tag();
     ebml_w.end_tag();
 }

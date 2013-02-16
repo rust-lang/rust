@@ -33,7 +33,7 @@ use syntax::parse::token::ident_interner;
 // own crate numbers.
 pub type cnum_map = oldmap::HashMap<ast::crate_num, ast::crate_num>;
 
-pub type crate_metadata = @{name: ~str,
+pub type crate_metadata = @{name: @~str,
                             data: @~[u8],
                             cnum_map: cnum_map,
                             cnum: ast::crate_num};
@@ -68,12 +68,12 @@ pub fn get_crate_data(cstore: @mut CStore, cnum: ast::crate_num)
     return cstore.metas.get(&cnum);
 }
 
-pub fn get_crate_hash(cstore: @mut CStore, cnum: ast::crate_num) -> ~str {
+pub fn get_crate_hash(cstore: @mut CStore, cnum: ast::crate_num) -> @~str {
     let cdata = get_crate_data(cstore, cnum);
     decoder::get_crate_hash(cdata.data)
 }
 
-pub fn get_crate_vers(cstore: @mut CStore, cnum: ast::crate_num) -> ~str {
+pub fn get_crate_vers(cstore: @mut CStore, cnum: ast::crate_num) -> @~str {
     let cdata = get_crate_data(cstore, cnum);
     decoder::get_crate_vers(cdata.data)
 }
@@ -107,11 +107,11 @@ pub fn get_used_crate_files(cstore: @mut CStore) -> ~[Path] {
     return /*bad*/copy cstore.used_crate_files;
 }
 
-pub fn add_used_library(cstore: @mut CStore, +lib: ~str) -> bool {
-    assert lib != ~"";
+pub fn add_used_library(cstore: @mut CStore, lib: @~str) -> bool {
+    assert *lib != ~"";
 
-    if cstore.used_libraries.contains(&lib) { return false; }
-    cstore.used_libraries.push(lib);
+    if cstore.used_libraries.contains(&*lib) { return false; }
+    cstore.used_libraries.push(/*bad*/ copy *lib);
     true
 }
 
@@ -151,7 +151,7 @@ pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
     for extern_mod_crate_map.each_value |&cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
-        debug!("Add hash[%s]: %s", cdata.name, hash);
+        debug!("Add hash[%s]: %s", *cdata.name, *hash);
         result.push({name: /*bad*/copy cdata.name, hash: hash});
     }
 
@@ -159,10 +159,10 @@ pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
 
     debug!("sorted:");
     for sorted.each |x| {
-        debug!("  hash[%s]: %s", x.name, x.hash);
+        debug!("  hash[%s]: %s", *x.name, *x.hash);
     }
 
-    sorted.map(|ch| /*bad*/copy ch.hash)
+    sorted.map(|ch| /*bad*/copy *ch.hash)
 }
 
 // Local Variables:

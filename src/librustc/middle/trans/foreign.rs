@@ -47,10 +47,10 @@ fn abi_info(arch: session::arch) -> cabi::ABIInfo {
     }
 }
 
-pub fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> ~str {
+pub fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> @~str {
     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
-        None => ccx.sess.str_of(i.ident),
-        Some(ref ln) => /*bad*/copy **ln,
+        None => @ccx.sess.str_of(i.ident),
+        Some(ln) => ln,
     }
 }
 
@@ -228,18 +228,18 @@ pub fn trans_foreign_mod(ccx: @crate_ctxt,
         }
 
         let lname = link_name(ccx, foreign_item);
-        let llbasefn = base_fn(ccx, copy lname, tys, cc);
+        let llbasefn = base_fn(ccx, *lname, tys, cc);
         // Name the shim function
         let shim_name = lname + ~"__c_stack_shim";
         return build_shim_fn_(ccx, shim_name, llbasefn, tys, cc,
                            build_args, build_ret);
     }
 
-    fn base_fn(ccx: @crate_ctxt, +lname: ~str, tys: @c_stack_tys,
+    fn base_fn(ccx: @crate_ctxt, lname: &str, tys: @c_stack_tys,
                cc: lib::llvm::CallConv) -> ValueRef {
         // Declare the "prototype" for the base function F:
         do tys.fn_ty.decl_fn |fnty| {
-            decl_fn(ccx.llmod, /*bad*/copy lname, cc, fnty)
+            decl_fn(ccx.llmod, lname, cc, fnty)
         }
     }
 
@@ -250,7 +250,7 @@ pub fn trans_foreign_mod(ccx: @crate_ctxt,
                        cc: lib::llvm::CallConv) {
         let fcx = new_fn_ctxt(ccx, ~[], decl, None);
         let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
-        let llbasefn = base_fn(ccx, link_name(ccx, item), tys, cc);
+        let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
         let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
