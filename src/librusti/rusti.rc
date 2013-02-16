@@ -368,7 +368,7 @@ fn run_line(repl: &mut Repl, in: io::Reader, out: io::Writer, line: ~str)
     }
 
     let r = *repl;
-    let result = do task::try |copy r| {
+    let result = do task::try {
         run(r, line)
     };
 
