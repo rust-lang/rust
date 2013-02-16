@@ -14,6 +14,7 @@ use cmath;
 use cmp;
 use libc::{c_float, c_int};
 use num::NumCast;
+use num::strconv;
 use num;
 use ops;
 use option::Option;
@@ -376,8 +377,8 @@ impl num::Round for f32 {
  */
 #[inline(always)]
 pub pure fn to_str(num: f32) -> ~str {
-    let (r, _) = num::to_str_common(
-        &num, 10u, true, true, num::SignNeg, num::DigAll);
+    let (r, _) = strconv::to_str_common(
+        &num, 10u, true, strconv::SignNeg, strconv::DigAll);
     r
 }
 
@@ -390,8 +391,8 @@ pub pure fn to_str(num: f32) -> ~str {
  */
 #[inline(always)]
 pub pure fn to_str_hex(num: f32) -> ~str {
-    let (r, _) = num::to_str_common(
-        &num, 16u, true, true, num::SignNeg, num::DigAll);
+    let (r, _) = strconv::to_str_common(
+        &num, 16u, true, strconv::SignNeg, strconv::DigAll);
     r
 }
 
@@ -411,8 +412,8 @@ pub pure fn to_str_hex(num: f32) -> ~str {
  */
 #[inline(always)]
 pub pure fn to_str_radix(num: f32, rdx: uint) -> ~str {
-    let (r, special) = num::to_str_common(
-        &num, rdx, true, true, num::SignNeg, num::DigAll);
+    let (r, special) = strconv::to_str_common(
+        &num, rdx, true, strconv::SignNeg, strconv::DigAll);
     if special { fail!(~"number has a special value, \
                       try to_str_radix_special() if those are expected") }
     r
@@ -429,7 +430,8 @@ pub pure fn to_str_radix(num: f32, rdx: uint) -> ~str {
  */
 #[inline(always)]
 pub pure fn to_str_radix_special(num: f32, rdx: uint) -> (~str, bool) {
-    num::to_str_common(&num, rdx, true, true, num::SignNeg, num::DigAll)
+    strconv::to_str_common(&num, rdx, true,
+                           strconv::SignNeg, strconv::DigAll)
 }
 
 /**
@@ -443,8 +445,8 @@ pub pure fn to_str_radix_special(num: f32, rdx: uint) -> (~str, bool) {
  */
 #[inline(always)]
 pub pure fn to_str_exact(num: f32, dig: uint) -> ~str {
-    let (r, _) = num::to_str_common(
-        &num, 10u, true, true, num::SignNeg, num::DigExact(dig));
+    let (r, _) = strconv::to_str_common(
+        &num, 10u, true, strconv::SignNeg, strconv::DigExact(dig));
     r
 }
 
@@ -459,8 +461,8 @@ pub pure fn to_str_exact(num: f32, dig: uint) -> ~str {
  */
 #[inline(always)]
 pub pure fn to_str_digits(num: f32, dig: uint) -> ~str {
-    let (r, _) = num::to_str_common(
-        &num, 10u, true, true, num::SignNeg, num::DigMax(dig));
+    let (r, _) = strconv::to_str_common(
+        &num, 10u, true, strconv::SignNeg, strconv::DigMax(dig));
     r
 }
 
@@ -505,7 +507,8 @@ impl num::ToStrRadix for f32 {
  */
 #[inline(always)]
 pub pure fn from_str(num: &str) -> Option<f32> {
-    num::from_str_common(num, 10u, true, true, true, num::ExpDec, false)
+    strconv::from_str_common(num, 10u, true, true, true,
+                             strconv::ExpDec, false)
 }
 
 /**
@@ -537,7 +540,8 @@ pub pure fn from_str(num: &str) -> Option<f32> {
  */
 #[inline(always)]
 pub pure fn from_str_hex(num: &str) -> Option<f32> {
-    num::from_str_common(num, 16u, true, true, true, num::ExpBin, false)
+    strconv::from_str_common(num, 16u, true, true, true,
+                             strconv::ExpBin, false)
 }
 
 /**
@@ -561,7 +565,8 @@ pub pure fn from_str_hex(num: &str) -> Option<f32> {
  */
 #[inline(always)]
 pub pure fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
-    num::from_str_common(num, rdx, true, true, false, num::ExpNone, false)
+    strconv::from_str_common(num, rdx, true, true, false,
+                             strconv::ExpNone, false)
 }
 
 impl from_str::FromStr for f32 {
