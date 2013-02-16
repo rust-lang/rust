@@ -1,0 +1,1038 @@
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+// rustpkg - a purely function package manager and build system
+
+#[link(name = "rustpkg",
+       vers = "0.6",
+       uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
+       url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
+
+#[crate_type = "lib"];
+#[no_core];
+#[allow(vecs_implicitly_copyable,
+        non_implicitly_copyable_typarams)];
+
+#[legacy_records];
+
+extern mod core(vers = "0.6");
+extern mod std(vers = "0.6");
+extern mod rustc(vers = "0.6");
+extern mod syntax(vers = "0.6");
+
+use core::*;
+use io::{ReaderUtil, WriterUtil};
+use std::{json, semver, getopts};
+use std::net::url;
+use hashmap::linear::LinearMap;
+use rustc::metadata::filesearch;
+use rustc::driver::{driver, session};
+use syntax::{ast, attr, codemap, diagnostic, parse, visit};
+use syntax::codemap::spanned;
+
+mod usage;
+mod util;
+
+use util::Package;
+
+struct PackageScript {
+    id: ~str,
+    name: ~str,
+    vers: semver::Version,
+    crates: ~[~str],
+    deps: ~[(~str, Option<~str>)],
+    input: driver::input,
+    sess: session::Session,
+    cfg: ast::crate_cfg,
+    crate: @ast::crate,
+    custom: bool
+}
+
+impl PackageScript {
+    static fn parse(parent: &Path) -> Result<PackageScript, ~str> {
+        let script = parent.push(~"pkg.rs");
+
+        if !os::path_exists(&script) {
+            return result::Err(~"no pkg.rs file");
+        }
+
+        let binary = os::args()[0];
+        let options: @session::options = @{
+            binary: binary,
+            crate_type: session::bin_crate,
+            .. *session::basic_options()
+        };
+        let input = driver::file_input(script);
+        let sess = driver::build_session(options, diagnostic::emit);
+        let cfg = driver::build_configuration(sess, binary, input);
+        let {crate, _} = driver::compile_upto(sess, cfg, input,
+                                              driver::cu_parse, None);
+        let mut id = None;
+        let mut vers = None;
+        let mut crates = ~[];
+        let mut deps = ~[];
+
+        fn load_pkg_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
+                                                      Option<~str>) {
+            let mut id = None;
+            let mut vers = None;
+
+            for mis.each |a| {
+                match a.node {
+                    ast::meta_name_value(v, spanned {
+                                                node: ast::lit_str(s),
+                                                span: _}) => {
+                        match v {
+                            ~"id" => id = Some(*s),
+                            ~"vers" => vers = Some(*s),
+                            _ => ()
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            (id, vers)
+        }
+
+        fn load_pkg_dep_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
+                                                          Option<~str>) {
+            let mut url = None;
+            let mut target = None;
+
+            for mis.each |a| {
+                match a.node {
+                    ast::meta_name_value(v, spanned {
+                                                node: ast::lit_str(s),
+                                                span: _}) => {
+                        match v {
+                            ~"url" => url = Some(*s),
+                            ~"target" => target = Some(*s),
+                            _ => ()
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            (url, target)
+        }
+
+        fn load_pkg_crate_attr(mis: ~[@ast::meta_item]) -> Option<~str> {
+            let mut file = None;
+
+            for mis.each |a| {
+                match a.node {
+                    ast::meta_name_value(v, spanned {
+                                                node: ast::lit_str(s),
+                                                span: _}) => {
+                        match v {
+                            ~"file" => file = Some(*s),
+                            _ => ()
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            file
+        }
+
+        for crate.node.attrs.each |a| {
+            match a.node.value.node {
+                ast::meta_list(v, mis) => {
+                    match v {
+                        ~"pkg" => {
+                            let (i, v) = load_pkg_attr(mis);
+
+                            id = i;
+                            vers = v;
+                        }
+                        ~"pkg_dep" => {
+                            let (u, t) = load_pkg_dep_attr(mis);
+
+                            if u.is_none() {
+                                fail!(~"pkg_dep attr without a url value");
+                            }
+
+                            deps.push((u.get(), t));
+                        }
+                        ~"pkg_crate" => {
+                            let f = load_pkg_crate_attr(mis);
+
+                            if f.is_none() {
+                                fail!(~"pkg_file attr without a file value");
+                            }
+
+                            crates.push(f.get());
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let mut custom = false;
+
+        // If we hit a function, we assume they want to use
+        // the build API.
+        for crate.node.module.items.each |i| {
+            match i.node {
+                ast::item_fn(_, _, _, _) => {
+                    custom = true;
+
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        if id.is_none() || vers.is_none() {
+            return result::Err(~"pkg attr without (id, vers) values");
+        }
+
+        let id = id.get();
+        let name = match util::parse_name(id) {
+            result::Ok(name) => name,
+            result::Err(err) => return result::Err(err)
+        };
+        let vers = match util::parse_vers(vers.get()) {
+            result::Ok(vers) => vers,
+            result::Err(err) => return result::Err(err)
+        };
+
+        result::Ok(PackageScript {
+            id: id,
+            name: name,
+            vers: vers,
+            crates: crates,
+            deps: deps,
+            input: input,
+            sess: sess,
+            cfg: cfg,
+            crate: crate,
+            custom: custom
+        })
+    }
+
+    // Build the bootstrap and run a command
+    // FIXME (#4432): Use workcache to only compile the script when changed
+    fn run(&self, cmd: ~str, test: bool) -> int {
+        let work_dir = self.work_dir();
+        let input = self.input;
+        let sess = self.sess;
+        let cfg = self.cfg;
+        let crate = util::ready_crate(sess, self.crate);
+        let outputs = driver::build_output_filenames(input, &Some(work_dir),
+                                                     &None, sess);
+        let exe = work_dir.push(~"pkg" + util::exe_suffix());
+        let root = filesearch::get_rustpkg_sysroot().get().pop().pop();
+
+        driver::compile_rest(sess, cfg, driver::cu_parse,
+                             Some(outputs), Some(crate));
+        run::run_program(exe.to_str(), ~[root.to_str(), cmd, test.to_str()])
+    }
+
+    fn hash(&self) -> ~str {
+        fmt!("%s-%s-%s", self.name, util::hash(self.id + self.vers.to_str()),
+                         self.vers.to_str())
+    }
+
+    fn work_dir(&self) -> Path {
+        util::root().push(~"work").push(self.hash())
+    }
+}
+
+struct Ctx {
+    cfgs: ~[~str],
+    json: bool,
+    mut dep_cache: LinearMap<~str, bool>
+}
+
+impl Ctx {
+    fn run(&self, cmd: ~str, args: ~[~str]) {
+        let root = util::root();
+
+        util::need_dir(&root);
+        util::need_dir(&root.push(~"work"));
+        util::need_dir(&root.push(~"lib"));
+        util::need_dir(&root.push(~"bin"));
+        util::need_dir(&root.push(~"tmp"));
+
+        fn sep_name_vers(in: ~str) -> (Option<~str>, Option<~str>) {
+            let mut name = None;
+            let mut vers = None;
+            let parts = str::split_char(in, '@');
+
+            if parts.len() >= 1 {
+                name = Some(parts[0]);
+
+                if parts.len() >= 2 {
+                    vers = Some(parts[1]);
+                }
+            }
+
+            (name, vers)
+        }
+
+        match cmd {
+            ~"build" => {
+                self.build(&os::getcwd(), true, false, false);
+            }
+            ~"clean" => {
+                self.clean();
+            }
+            ~"do" => {
+                if args.len() < 1 {
+                    return usage::do_cmd();
+                }
+
+                self.do_cmd(args[0]);
+            }
+            ~"info" => {
+                self.info();
+            }
+            ~"install" => {
+                self.install(if args.len() >= 1 { Some(args[0]) }
+                             else { None },
+                             if args.len() >= 2 { Some(args[1]) }
+                             else { None }, false);
+            }
+            ~"prefer" => {
+                if args.len() < 1 {
+                    return usage::uninstall();
+                }
+
+                let (name, vers) = sep_name_vers(args[0]);
+
+                self.prefer(name.get(), vers);
+            }
+            ~"test" => {
+                self.test();
+            }
+            ~"uninstall" => {
+                if args.len() < 1 {
+                    return usage::uninstall();
+                }
+
+                let (name, vers) = sep_name_vers(args[0]);
+
+                self.uninstall(name.get(), vers);
+            }
+            ~"unprefer" => {
+                if args.len() < 1 {
+                    return usage::uninstall();
+                }
+
+                let (name, vers) = sep_name_vers(args[0]);
+
+                self.unprefer(name.get(), vers);
+            }
+            _ => fail!(~"reached an unhandled command")
+        }
+    }
+
+    fn do_cmd(&self, cmd: ~str) -> bool {
+        match cmd {
+            ~"build" | ~"test" => {
+                util::error(~"that command cannot be manually called");
+
+                return false;
+            }
+            _ => {}
+        }
+
+        let cwd = &os::getcwd();
+        let script = match PackageScript::parse(cwd) {
+            result::Ok(script) => script,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+        let status = script.run(cmd, false);
+
+        if status == 42 {
+            util::error(~"no fns are listening for that cmd");
+
+            return false;
+        }
+
+        status == 0
+    }
+
+    fn build(&self, dir: &Path, verbose: bool, opt: bool,
+             test: bool) -> Option<PackageScript> {
+        let cwd = &os::getcwd();
+        let script = match PackageScript::parse(dir) {
+            result::Ok(script) => script,
+            result::Err(err) => {
+                util::error(err);
+
+                return None;
+            }
+        };
+        let work_dir = script.work_dir();
+        let mut success = true;
+
+        util::need_dir(&work_dir);
+
+        if script.deps.len() >= 1 {
+            util::note(~"installing dependencies");
+
+            for script.deps.each |&dep| {
+                let (url, target) = dep;
+
+                success = self.install(Some(url), target, true);
+
+                if !success { break; }
+            }
+
+
+            if !success {
+                util::error(
+                    fmt!("building %s v%s failed: a dep wasn't installed",
+                         script.name, script.vers.to_str()));
+
+                return None;
+            }
+
+            util::note(~"installed dependencies");
+        }
+
+        // Build imperative crates
+        os::change_dir(dir);
+
+        if script.custom {
+            let status = script.run(~"build", test);
+
+            if status != 0 && status != 42 {
+                util::error(
+                    fmt!("building %s v%s failed: custom logic failed (%d)",
+                         script.name, script.vers.to_str(), status));
+
+                return None;
+            }
+        }
+
+        os::change_dir(cwd);
+
+        for script.crates.each |&crate| {
+            let crate = &dir.push_rel(&Path(crate)).normalize();
+
+            util::note(fmt!("compiling %s", crate.to_str()));
+
+            success = self.compile(crate, &work_dir, ~[],
+                                   ~[], opt, test);
+
+            if !success { break; }
+        }
+
+        if !success {
+            util::error(
+                fmt!("building %s v%s failed: a crate failed to compile",
+                     script.name, script.vers.to_str()));
+
+            return None;
+        }
+
+        if verbose {
+            util::note(fmt!("built %s v%s", script.name,
+                            script.vers.to_str()));
+        }
+
+        Some(script)
+    }
+
+    fn compile(&self, crate: &Path, dir: &Path, flags: ~[~str],
+               cfgs: ~[~str], opt: bool, test: bool) -> bool {
+        util::compile_crate(None, crate, dir, flags, cfgs, opt, test)
+    }
+
+    fn clean(&self) -> bool {
+        let script = match PackageScript::parse(&os::getcwd()) {
+            result::Ok(script) => script,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+        let dir = script.work_dir();
+
+        util::note(fmt!("cleaning %s v%s (%s)", script.name,
+                        script.vers.to_str(), script.id));
+
+        if os::path_exists(&dir) {
+            util::remove_dir_r(&dir);
+            util::note(fmt!("removed %s", dir.to_str()));
+        }
+
+        util::note(fmt!("cleaned %s v%s", script.name,
+                                          script.vers.to_str()));
+
+        true
+    }
+
+    fn info(&self) {
+        if self.json {
+            match PackageScript::parse(&os::getcwd()) {
+                result::Ok(script) => {
+                    let mut map = ~LinearMap::new();
+
+                    map.insert(~"id", json::String(script.id));
+                    map.insert(~"name", json::String(script.name));
+                    map.insert(~"vers", json::String(script.vers.to_str()));
+                    map.insert(~"deps", json::List(do script.deps.map |&dep| {
+                        let (url, target) = dep;
+                        let mut inner = ~LinearMap::new();
+
+                        inner.insert(~"url", json::String(url));
+
+                        if !target.is_none() {
+                            inner.insert(~"target",
+                                         json::String(target.get()));
+                        }
+
+                        json::Object(inner)
+                    }));
+
+                    io::println(json::to_pretty_str(&json::Object(map)));
+                }
+                result::Err(_) => io::println(~"{}")
+            }
+        } else {
+            let script = match PackageScript::parse(&os::getcwd()) {
+                result::Ok(script) => script,
+                result::Err(err) => {
+                    util::error(err);
+
+                    return;
+                }
+            };
+
+            util::note(fmt!("id: %s", script.id));
+            util::note(fmt!("name: %s", script.name));
+            util::note(fmt!("vers: %s", script.vers.to_str()));
+            util::note(fmt!("deps: %s",
+                            if script.deps.len() > 0 {
+                                ~""
+                            } else {
+                                ~"none"
+                            }));
+
+            for script.deps.each |&dep| {
+                let (url, target) = dep;
+
+                util::note(fmt!("  <%s> (%s)", url, match target {
+                    Some(target) => target,
+                    None => ~""
+                }));
+            }
+        }
+    }
+
+    fn install(&self, url: Option<~str>,
+               target: Option<~str>, cache: bool) -> bool {
+        let mut success;
+        let mut dir;
+
+        if url.is_none() {
+            util::note(~"installing from the cwd");
+
+            dir = os::getcwd();
+        } else {
+            let url = url.get();
+            let hash = util::hash(if !target.is_none() { url + target.get() }
+                                  else { url });
+
+            if self.dep_cache.contains_key(&hash) {
+                util::warn(~"already installed dep this run");
+
+                return true;
+            }
+
+            self.dep_cache.insert(hash, true);
+
+            dir = util::root().push(~"tmp").push(hash);
+
+            if cache && os::path_exists(&dir) {
+                return true;
+            }
+
+            success = self.fetch(&dir, url, target);
+
+            if !success {
+                return false;
+            }
+        }
+
+        let script = match self.build(&dir, false, true, false) {
+            Some(script) => script,
+            None => {
+                return false;
+            }
+        };
+        let work_dir = script.work_dir();
+        let from_bin_dir = work_dir.push(~"bin");
+        let from_lib_dir = work_dir.push(~"lib");
+        let to_bin_dir = util::root().push(~"bin");
+        let to_lib_dir = util::root().push(~"lib");
+        let mut bins = ~[];
+        let mut libs = ~[];
+
+        for os::walk_dir(&from_bin_dir) |bin| {
+            let to = to_bin_dir.push_rel(&bin.file_path());
+
+            os::copy_file(bin, &to);
+            bins.push(to.to_str());
+        }
+
+        for os::walk_dir(&from_lib_dir) |lib| {
+            let to = to_lib_dir.push_rel(&lib.file_path());
+
+            os::copy_file(lib, &to);
+            libs.push(to.to_str());
+        }
+
+        let package = Package {
+            id: script.id,
+            vers: script.vers,
+            bins: bins,
+            libs: libs
+        };
+
+        util::note(fmt!("installed %s v%s", script.name,
+                                            script.vers.to_str()));
+        util::add_pkg(&package);
+
+        true
+    }
+
+    fn fetch(&self, dir: &Path, url: ~str, target: Option<~str>) -> bool {
+        let url = if str::find_str(url, "://").is_none() {
+            ~"http://" + url }
+        else { url };
+        let url = match url::from_str(url) {
+            result::Ok(url) => url,
+            result::Err(err) => {
+                util::error(fmt!("failed parsing %s", err.to_lower()));
+
+                return false;
+            }
+        };
+        let str = url.to_str();
+
+        match Path(url.path).filetype() {
+            Some(ext) => {
+                if ext == ~".git" {
+                    return self.fetch_git(dir, str, target);
+                }
+            }
+            None => {}
+        }
+
+        match url.scheme {
+            ~"git" => self.fetch_git(dir, str, target),
+            ~"http" | ~"ftp" | ~"file" => self.fetch_curl(dir, str),
+            _ => {
+                util::warn(~"unknown url scheme to fetch, using curl");
+                self.fetch_curl(dir, str)
+            }
+        }
+    }
+
+    fn fetch_curl(&self, dir: &Path, url: ~str) -> bool {
+        util::note(fmt!("fetching from %s using curl", url));
+
+        let tar = dir.dir_path().push(&dir.file_path().to_str() + ~".tar");
+
+        if run::program_output(~"curl", ~[~"-f", ~"-s",
+                                          ~"-o", tar.to_str(),
+                                          url]).status != 0 {
+            util::error(~"fetching failed: downloading using curl failed");
+
+            return false;
+        }
+
+        if run::program_output(~"tar", ~[~"-x", ~"--strip-components=1",
+                                         ~"-C", dir.to_str(), ~"-f",
+                                         tar.to_str()]).status != 0 {
+            util::error(~"fetching failed: extracting using tar failed" +
+                        ~"(is it a valid tar archive?)");
+
+            return false;
+        }
+
+        true
+    }
+
+    fn fetch_git(&self, dir: &Path, url: ~str, target: Option<~str>) -> bool {
+        util::note(fmt!("fetching from %s using git", url));
+
+        // Git can't clone into a non-empty directory
+        util::remove_dir_r(dir);
+
+        if run::program_output(~"git", ~[~"clone", url,
+                                         dir.to_str()]).status != 0 {
+            util::error(~"fetching failed: can't clone repository");
+
+            return false;
+        }
+
+        if !target.is_none() {
+            let mut success = true;
+
+            do util::temp_change_dir(dir) {
+                success = run::program_output(~"git",
+                                              ~[~"checkout",
+                                                target.get()]).status != 0
+            }
+
+            if !success {
+                util::error(~"fetching failed: can't checkout target");
+
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn prefer(&self, id: ~str, vers: Option<~str>) -> bool {
+        let package = match util::get_pkg(id, vers) {
+            result::Ok(package) => package,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+        let name = match util::parse_name(package.id) {
+            result::Ok(name) => name,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+
+        util::note(fmt!("preferring %s v%s (%s)", name, package.vers.to_str(),
+                                                  package.id));
+
+        let bin_dir = util::root().push(~"bin");
+
+        for package.bins.each |&bin| {
+            let path = Path(bin);
+            let name = str::split_char(path.file_path().to_str(), '-')[0];
+            let out = bin_dir.push(name);
+
+            util::link_exe(&path, &out);
+            util::note(fmt!("linked %s", out.to_str()));
+        }
+
+        util::note(fmt!("preferred %s v%s", name, package.vers.to_str()));
+
+        true
+    }
+
+    fn test(&self) -> bool {
+        let script = match self.build(&os::getcwd(), false, false, true) {
+            Some(script) => script,
+            None => {
+                return false;
+            }
+        };
+        let work_dir = script.work_dir();
+        let test_dir = work_dir.push(~"test");
+
+        for os::walk_dir(&test_dir) |test| {
+            util::note(fmt!("running %s", test.to_str()));
+
+            let status = run::run_program(test.to_str(), ~[]);
+
+            if status != 0 {
+                os::set_exit_status(status);
+            }
+        }
+
+        // Run custom test listener
+        if script.custom {
+            let status = script.run(~"test", false);
+
+            if status != 0 && status != 42 {
+                util::error(
+                    fmt!("testing %s v%s failed: custom logic failed (%d)",
+                         script.name, script.vers.to_str(), status));
+
+                os::set_exit_status(status);
+            }
+        }
+
+        util::note(fmt!("tested %s v%s", script.name, script.vers.to_str()));
+
+        true
+    }
+
+    fn uninstall(&self, id: ~str, vers: Option<~str>) -> bool {
+        let package = match util::get_pkg(id, vers) {
+            result::Ok(package) => package,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+        let name = match util::parse_name(package.id) {
+            result::Ok(name) => name,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+
+        util::note(fmt!("uninstalling %s v%s (%s)", name,
+                        package.vers.to_str(), package.id));
+
+        for vec::append(package.bins, package.libs).each |&file| {
+            let path = Path(file);
+
+            if os::path_exists(&path) {
+                if os::remove_file(&path) {
+                    util::note(fmt!("removed %s", path.to_str()));
+                } else {
+                    util::error(fmt!("could not remove %s", path.to_str()));
+                }
+            }
+        }
+
+        util::note(fmt!("uninstalled %s v%s", name, package.vers.to_str()));
+        util::remove_pkg(&package);
+
+        true
+    }
+
+    fn unprefer(&self, id: ~str, vers: Option<~str>) -> bool {
+        let package = match util::get_pkg(id, vers) {
+            result::Ok(package) => package,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+        let name = match util::parse_name(package.id) {
+            result::Ok(name) => name,
+            result::Err(err) => {
+                util::error(err);
+
+                return false;
+            }
+        };
+
+        util::note(fmt!("unpreferring %s v%s (%s)", name,
+                        package.vers.to_str(), package.id));
+
+        let bin_dir = util::root().push(~"bin");
+
+        for package.bins.each |&bin| {
+            let path = Path(bin);
+            let name = str::split_char(path.file_path().to_str(), '-')[0];
+            let out = bin_dir.push(name);
+
+            if os::path_exists(&out) {
+                if os::remove_file(&out) {
+                    util::note(fmt!("unlinked %s", out.to_str()));
+                } else {
+                    util::error(fmt!("could not unlink %s", out.to_str()));
+                }
+            }
+        }
+
+        util::note(fmt!("unpreferred %s v%s", name, package.vers.to_str()));
+
+        true
+    }
+}
+
+pub fn main() {
+    let args = os::args();
+    let opts = ~[getopts::optflag(~"h"), getopts::optflag(~"help"),
+                 getopts::optflag(~"j"), getopts::optflag(~"json"),
+                 getopts::optmulti(~"c"), getopts::optmulti(~"cfg")];
+    let matches = &match getopts::getopts(args, opts) {
+        result::Ok(m) => m,
+        result::Err(f) => {
+            util::error(fmt!("%s", getopts::fail_str(f)));
+
+            return;
+        }
+    };
+    let help = getopts::opt_present(matches, ~"h") ||
+               getopts::opt_present(matches, ~"help");
+    let json = getopts::opt_present(matches, ~"j") ||
+               getopts::opt_present(matches, ~"json");
+    let cfgs = vec::append(getopts::opt_strs(matches, ~"cfg"),
+                           getopts::opt_strs(matches, ~"c"));
+    let mut args = copy matches.free;
+
+    args.shift();
+
+    if (args.len() < 1) {
+        return usage::general();
+    }
+
+    let cmd = args.shift();
+
+    if !util::is_cmd(cmd) {
+        return usage::general();
+    } else if help {
+        return match cmd {
+            ~"build" => usage::build(),
+            ~"clean" => usage::clean(),
+            ~"do" => usage::do_cmd(),
+            ~"info" => usage::info(),
+            ~"install" => usage::install(),
+            ~"prefer" => usage::prefer(),
+            ~"test" => usage::test(),
+            ~"uninstall" => usage::uninstall(),
+            ~"unprefer" => usage::unprefer(),
+            _ => usage::general()
+        };
+    }
+
+    Ctx {
+        cfgs: cfgs,
+        json: json,
+        mut dep_cache: LinearMap::new()
+    }.run(cmd, args);
+}
+
+/// A crate is a unit of Rust code to be compiled into a binary or library
+pub struct Crate {
+    file: ~str,
+    flags: ~[~str],
+    cfgs: ~[~str]
+}
+
+pub struct Listener {
+    cmds: ~[~str],
+    cb: fn~()
+}
+
+pub fn run(listeners: ~[Listener]) {
+    let rcmd = os::args()[2];
+    let mut found = false;
+
+    for listeners.each |listener| {
+        for listener.cmds.each |&cmd| {
+            if cmd == rcmd {
+                (listener.cb)();
+
+                found = true;
+
+                break;
+            }
+        }
+    }
+
+    if !found {
+        os::set_exit_status(42);
+    }
+}
+
+pub impl Crate {
+    pub fn flag(&self, flag: ~str) -> Crate {
+        Crate {
+            flags: vec::append(copy self.flags, ~[flag]),
+            .. copy *self
+        }
+    }
+
+    pub fn flags(&self, flags: ~[~str]) -> Crate {
+        Crate {
+            flags: vec::append(copy self.flags, flags),
+            .. copy *self
+        }
+    }
+
+    pub fn cfg(&self, cfg: ~str) -> Crate {
+        Crate {
+            cfgs: vec::append(copy self.cfgs, ~[cfg]),
+            .. copy *self
+        }
+    }
+
+    pub fn cfgs(&self, cfgs: ~[~str]) -> Crate {
+        Crate {
+            cfgs: vec::append(copy self.cfgs, cfgs),
+            .. copy *self
+        }
+    }
+}
+
+/// Create a crate target from a source file
+pub fn Crate(file: ~str) -> Crate {
+    Crate {
+        file: file,
+        flags: ~[],
+        cfgs: ~[]
+    }
+}
+
+/**
+ * Get the working directory of the package script.
+ * Assumes that the package script has been compiled
+ * in is the working directory.
+ */
+pub fn work_dir() -> Path {
+    os::self_exe_path().get()
+}
+
+/**
+ * Get the source directory of the package (i.e.
+ * where the crates are located). Assumes
+ * that the cwd is changed to it before
+ * running this executable.
+ */
+pub fn src_dir() -> Path {
+    os::getcwd()
+}
+
+/// Build a set of crates, should be called once
+pub fn build(crates: ~[Crate]) -> bool {
+    let args = os::args();
+    let dir = src_dir();
+    let work_dir = work_dir();
+    let mut success = true;
+    let sysroot = Path(args[1]);
+    let test = args[3] == ~"true";
+
+    for crates.each |&crate| {
+        let path = &dir.push_rel(&Path(crate.file)).normalize();
+
+        util::note(fmt!("compiling %s", path.to_str()));
+
+        success = util::compile_crate(Some(sysroot), path, &work_dir,
+                                      crate.flags, crate.cfgs,
+                                      false, test);
+
+        if !success { break; }
+    }
+
+    if !success {
+        os::set_exit_status(101);
+    }
+
+    success
+}
