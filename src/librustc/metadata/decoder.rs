@@ -1066,16 +1066,17 @@ fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: io::Writer) {
 pub fn get_crate_hash(data: @~[u8]) -> ~str {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
-    return str::from_bytes(reader::doc_data(hashdoc));
+    str::from_bytes(reader::doc_data(hashdoc))
 }
 
 pub fn get_crate_vers(data: @~[u8]) -> ~str {
     let attrs = decoder::get_crate_attributes(data);
-    return match attr::last_meta_item_value_str_by_name(
-        attr::find_linkage_metas(attrs), ~"vers") {
-      Some(ref ver) => (/*bad*/copy **ver),
-      None => ~"0.0"
-    };
+    let linkage_attrs = attr::find_linkage_metas(attrs);
+
+    match attr::last_meta_item_value_str_by_name(linkage_attrs, ~"vers") {
+        Some(ref ver) => /*bad*/copy **ver,
+        None => ~"0.0"
+    }
 }
 
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
