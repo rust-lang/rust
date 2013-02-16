@@ -28,6 +28,15 @@ impl<T> Container for Deque<T> {
     pure fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
+impl<T> Mutable for Deque<T> {
+    fn clear(&mut self) {
+        for vec::each_mut(self.elts) |x| { *x = None }
+        self.nelts = 0;
+        self.lo = 0;
+        self.hi = 0;
+    }
+}
+
 impl<T: Copy> Deque<T> {
     static pure fn new() -> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
