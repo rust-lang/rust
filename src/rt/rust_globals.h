@@ -37,8 +37,6 @@
 #include <math.h>
 #include <assert.h>
 
-#include "uthash.h"
-
 #if defined(__WIN32__)
 extern "C" {
 #include <windows.h>
