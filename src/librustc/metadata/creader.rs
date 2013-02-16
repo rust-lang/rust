@@ -55,6 +55,7 @@ pub fn read_crates(diag: span_handler,
             visit_view_item: |a| visit_view_item(e, a),
             visit_item: |a| visit_item(e, a),
             .. *visit::default_simple_visitor()});
+    visit_crate(e, crate);
     visit::visit_crate(crate, (), v);
     dump_crates(e.crate_cache);
     warn_if_multiple_versions(e, diag, e.crate_cache);
@@ -123,6 +124,20 @@ struct Env {
     crate_cache: @mut ~[cache_entry],
     next_crate_num: ast::crate_num,
     intr: @ident_interner
+}
+
+fn visit_crate(e: @mut Env, c: ast::crate) {
+    let cstore = e.cstore;
+    let link_args = attr::find_attrs_by_name(c.node.attrs, "link_args");
+
+    for link_args.each |a| {
+        match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
+          Some(ref linkarg) => {
+            cstore::add_used_link_args(cstore, (/*bad*/copy *linkarg));
+          }
+          None => {/* fallthrough */ }
+        }
+    }
 }
 
 fn visit_view_item(e: @mut Env, i: @ast::view_item) {
