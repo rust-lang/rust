@@ -11,10 +11,9 @@
 // except according to those terms.
 
 extern mod std;
-use std::deque;
 use std::deque::Deque;
 
 pub fn main() {
-    let Q = deque::create();
-    Q.add_back(10);
+    let mut q = Deque::new();
+    q.add_back(10);
 }
