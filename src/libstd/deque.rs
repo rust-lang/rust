@@ -73,7 +73,7 @@ impl<T: Copy> Deque<T> {
         self.elts[self.lo] = None;
         self.lo = (self.lo + 1u) % self.elts.len();
         self.nelts -= 1u;
-        return t;
+        t
     }
 
     fn pop_back(&mut self) -> T {
@@ -83,16 +83,16 @@ impl<T: Copy> Deque<T> {
         let t: T = get(self.elts, self.hi);
         self.elts[self.hi] = None;
         self.nelts -= 1u;
-        return t;
+        t
     }
 
-    fn peek_front(&self) -> T { return get(self.elts, self.lo); }
+    fn peek_front(&self) -> T { get(self.elts, self.lo) }
 
-    fn peek_back(&self) -> T { return get(self.elts, self.hi - 1u); }
+    fn peek_back(&self) -> T { get(self.elts, self.hi - 1u) }
 
     fn get(&self, i: int) -> T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
-        return get(self.elts, idx);
+        get(self.elts, idx)
     }
 }
 
