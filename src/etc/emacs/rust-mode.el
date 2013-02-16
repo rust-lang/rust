@@ -7,7 +7,6 @@
 
 (require 'cm-mode)
 (require 'cc-mode)
-(eval-when-compile (require 'cl))
 
 (defun rust-electric-brace (arg)
   (interactive "*P")
@@ -16,6 +15,12 @@
              (not (member (get-text-property (point) 'face)
                           '(font-lock-comment-face font-lock-string-face))))
     (cm-indent)))
+
+(defcustom rust-capitalized-idents-are-types t
+  "If non-nil, capitalized identifiers will be treated as types for the purposes of font-lock mode"
+  :type 'boolean
+  :require 'rust-mode
+  :group 'rust-mode)
 
 (defvar rust-indent-unit 4)
 (defvar rust-syntax-table (let ((table (make-syntax-table)))
@@ -101,14 +106,7 @@
            (rust-push-context st 'string (current-column) t)
            (setf (rust-state-tokenize st) 'rust-token-string)
            (rust-token-string st))
-      (def ?\' (forward-char)
-           (setf rust-tcat 'atom)
-           (let ((is-escape (eq (char-after) ?\\))
-                 (start (point)))
-             (if (not (rust-eat-until-unescaped ?\'))
-                 'font-lock-warning-face
-               (if (or is-escape (= (point) (+ start 2)))
-                   'font-lock-string-face 'font-lock-warning-face))))
+      (def ?\' (rust-single-quote))
       (def ?/ (forward-char)
            (case (char-after)
              (?/ (end-of-line) 'font-lock-comment-face)
@@ -122,12 +120,7 @@
                  ((rust-eat-re "[a-z_]+") (setf rust-tcat 'macro)))
            'font-lock-preprocessor-face)
       (def ((?a . ?z) (?A . ?Z) ?_)
-           (rust-eat-re "[a-zA-Z_][a-zA-Z0-9_]*")
-           (setf rust-tcat 'ident)
-           (if (and (eq (char-after) ?:) (eq (char-after (+ (point) 1)) ?:)
-                    (not (eq (char-after (+ (point) 2)) ?:)))
-               (progn (forward-char 2) 'font-lock-builtin-face)
-             (match-string 0)))
+           (rust-token-identifier))
       (def ((?0 . ?9))
            (rust-eat-re "0x[0-9a-fA-F_]+\\|0b[01_]+\\|[0-9_]+\\(\\.[0-9_]+\\)?\\(e[+\\-]?[0-9_]+\\)?")
            (setf rust-tcat 'atom)
@@ -149,6 +142,31 @@
            (skip-chars-forward rust-operator-chars)
            (setf rust-tcat 'op) nil)
       table)))
+
+(defun rust-token-identifier ()
+  (rust-eat-re "[a-zA-Z_][a-zA-Z0-9_]*")
+  (setf rust-tcat 'ident)
+  (if (and (eq (char-after) ?:) (eq (char-after (+ (point) 1)) ?:)
+           (not (eq (char-after (+ (point) 2)) ?:)))
+      (progn (forward-char 2) 'font-lock-builtin-face)
+    (match-string 0)))
+
+(defun rust-single-quote ()
+  (forward-char)
+  (setf rust-tcat 'atom)
+  ; Is this a lifetime?
+  (if (or (looking-at "[a-zA-Z_]$")
+          (looking-at "[a-zA-Z_][^']"))
+      ; If what we see is 'abc, use font-lock-builtin-face:
+      (progn (rust-eat-re "[a-zA-Z_][a-zA-Z_0-9]*")
+             'font-lock-builtin-face)
+    ; Otherwise, handle as a character constant:
+    (let ((is-escape (eq (char-after) ?\\))
+          (start (point)))
+      (if (not (rust-eat-until-unescaped ?\'))
+          'font-lock-warning-face
+        (if (or is-escape (= (point) (+ start 2)))
+            'font-lock-string-face 'font-lock-warning-face)))))
 
 (defun rust-token-base (st)
   (funcall (char-table-range rust-char-table (char-after)) st))
@@ -190,6 +208,10 @@
   (dolist (cx (rust-state-context st))
     (when (eq (rust-context-type cx) ?\}) (return (rust-context-info cx)))))
 
+(defun rust-is-capitalized (string)
+  (let ((case-fold-search nil))
+    (string-match-p "[A-Z]" string)))
+
 (defun rust-token (st)
   (let ((cx (car (rust-state-context st))))
     (when (bolp)
@@ -206,6 +228,8 @@
         (setf tok (cond ((eq tok-id 'atom) 'font-lock-constant-face)
                         (tok-id 'font-lock-keyword-face)
                         ((equal (rust-state-last-token st) 'def) 'font-lock-function-name-face)
+                        ((and rust-capitalized-idents-are-types
+                              (rust-is-capitalized tok)) 'font-lock-type-face)
                         (t nil))))
       (when rust-tcat
         (when (eq (rust-context-align cx) 'unset)
