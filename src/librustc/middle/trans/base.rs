@@ -2859,9 +2859,9 @@ pub fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     let cstore = ccx.sess.cstore;
     while cstore::have_crate_data(cstore, i) {
         let cdata = cstore::get_crate_data(cstore, i);
-        let nm = ~"_rust_crate_map_" + cdata.name +
-            ~"_" + cstore::get_crate_vers(cstore, i) +
-            ~"_" + cstore::get_crate_hash(cstore, i);
+        let nm = ~"_rust_crate_map_" + *cdata.name +
+            ~"_" + *cstore::get_crate_vers(cstore, i) +
+            ~"_" + *cstore::get_crate_hash(cstore, i);
         let cr = str::as_c_str(nm, |buf| {
             unsafe {
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
