@@ -11,8 +11,8 @@
 #[no_core];
 extern mod core(vers = "0.6");
 
-#[cfg(cargo)]
-extern mod this(name = "cargo", vers = "0.6");
+#[cfg(rustpkg)]
+extern mod this(name = "rustpkg", vers = "0.6");
 
 #[cfg(fuzzer)]
 extern mod this(name = "fuzzer", vers = "0.6");
