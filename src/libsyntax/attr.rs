@@ -192,13 +192,15 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
             }
             _ => false
           },
-          ast::meta_list(*) => {
-
-            // ~[Fixme-sorting]
-            // FIXME (#607): Needs implementing
-            // This involves probably sorting the list by name and
-            // meta_item variant
-            fail!(~"unimplemented meta_item variant")
+          ast::meta_list(ref na, misa) => match b.node {
+            ast::meta_list(ref nb, misb) => {
+                if na != nb { return false; }
+                for misa.each |&mi| {
+                    if !contains(misb, mi) { return false; }
+                }
+                true
+            }
+            _ => false
           }
         }
 }
@@ -253,8 +255,6 @@ pub fn last_meta_item_list_by_name(items: ~[@ast::meta_item], name: ~str)
 
 /* Higher-level applications */
 
-// FIXME (#607): This needs to sort by meta_item variant in addition to
-// the item name (See [Fixme-sorting])
 pub fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
     pure fn lteq(ma: &@ast::meta_item, mb: &@ast::meta_item) -> bool {
         pure fn key(m: &ast::meta_item) -> ~str {
@@ -270,7 +270,17 @@ pub fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
     // This is sort of stupid here, converting to a vec of mutables and back
     let mut v: ~[@ast::meta_item] = items;
     std::sort::quick_sort(v, lteq);
-    v
+
+    // There doesn't seem to be a more optimal way to do this
+    do v.map |&m| {
+        match m.node {
+          ast::meta_list(n, mis) => @spanned {
+              node: ast::meta_list(n, sort_meta_items(mis)),
+              .. *m
+          },
+          _ => m
+        }
+    }
 }
 
 pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->
