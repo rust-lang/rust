@@ -834,26 +834,23 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
         let ident = cx.sess.str_of(ident);
         assert !ident.is_empty();
-        let ident = ident_without_trailing_underscores(ident);
+        let ident = ident_without_trailing_underscores(*ident);
         let ident = ident_without_leading_underscores(ident);
         char::is_uppercase(str::char_at(ident, 0)) &&
             !ident.contains_char('_')
     }
 
-    fn ident_without_trailing_underscores(+ident: ~str) -> ~str {
+    fn ident_without_trailing_underscores(ident: &r/str) -> &r/str {
         match str::rfind(ident, |c| c != '_') {
-            Some(idx) => (ident).slice(0, idx + 1),
-            None => { ident } // all underscores
+            Some(idx) => str::view(ident, 0, idx + 1),
+            None => ident, // all underscores
         }
     }
 
-    fn ident_without_leading_underscores(+ident: ~str) -> ~str {
+    fn ident_without_leading_underscores(ident: &r/str) -> &r/str {
         match str::find(ident, |c| c != '_') {
-          Some(idx) => ident.slice(idx, ident.len()),
-          None => {
-            // all underscores
-            ident
-          }
+            Some(idx) => str::view(ident, idx, ident.len()),
+            None => ident // all underscores
         }
     }
 
