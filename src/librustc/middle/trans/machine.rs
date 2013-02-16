@@ -13,60 +13,8 @@
 
 use middle::trans::common::*;
 use middle::trans::type_of;
-use middle::ty::field;
 use middle::ty;
-
-use syntax::parse::token::special_idents;
-
-// Creates a simpler, size-equivalent type. The resulting type is guaranteed
-// to have (a) the same size as the type that was passed in; (b) to be non-
-// recursive. This is done by replacing all boxes in a type with boxed unit
-// types.
-// This should reduce all pointers to some simple pointer type, to
-// ensure that we don't recurse endlessly when computing the size of a
-// nominal type that has pointers to itself in it.
-pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
-    fn nilptr(tcx: ty::ctxt) -> ty::t {
-        ty::mk_ptr(tcx, ty::mt {ty: ty::mk_nil(tcx), mutbl: ast::m_imm})
-    }
-    fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
-        match ty::get(typ).sty {
-          ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) |
-          ty::ty_evec(_, ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_box) |
-          ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |
-          ty::ty_ptr(_) | ty::ty_rptr(*) => nilptr(tcx),
-
-          ty::ty_bare_fn(*) | // FIXME(#4804) Bare fn repr
-          ty::ty_closure(*) => ty::mk_tup(tcx, ~[nilptr(tcx), nilptr(tcx)]),
-
-          ty::ty_evec(_, ty::vstore_slice(_)) |
-          ty::ty_estr(ty::vstore_slice(_)) => {
-            ty::mk_tup(tcx, ~[nilptr(tcx), ty::mk_int(tcx)])
-          }
-          // Reduce a class type to a record type in which all the fields are
-          // simplified
-          ty::ty_struct(did, ref substs) => {
-            let simpl_fields = (if ty::ty_dtor(tcx, did).is_present() {
-                // remember the drop flag
-                  ~[field {
-                    ident: special_idents::dtor,
-                    mt: ty::mt {ty: ty::mk_u8(tcx), mutbl: ast::m_mutbl}
-                   }] }
-                else { ~[] }) +
-                do ty::lookup_struct_fields(tcx, did).map |f| {
-                 let t = ty::lookup_field_type(tcx, did, f.id, substs);
-                 field {
-                    ident: f.ident,
-                    mt: ty::mt {ty: simplify_type(tcx, t), mutbl: ast::m_const
-                 }}
-            };
-            ty::mk_rec(tcx, simpl_fields)
-          }
-          _ => typ
-        }
-    }
-    ty::fold_ty(tcx, typ, |t| simplifier(tcx, t))
-}
+use util::ppaux::ty_to_str;
 
 // ______________________________________________________________________
 // compute sizeof / alignof
@@ -180,27 +128,40 @@ pub fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 
 // Computes the size of the data part of an enum.
 pub fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
-    if cx.enum_sizes.contains_key(&t) { return cx.enum_sizes.get(&t); }
+    if cx.enum_sizes.contains_key(&t) {
+        return cx.enum_sizes.get(&t);
+    }
+
+    debug!("static_size_of_enum %s", ty_to_str(cx.tcx, t));
+
     match ty::get(t).sty {
-      ty::ty_enum(tid, ref substs) => {
-        // Compute max(variant sizes).
-        let mut max_size = 0u;
-        let variants = ty::enum_variants(cx.tcx, tid);
-        for vec::each(*variants) |variant| {
-            let tup_ty = simplify_type(
-                cx.tcx,
-                ty::mk_tup(cx.tcx, /*bad*/copy variant.args));
-            // Perform any type parameter substitutions.
-            let tup_ty = ty::subst(cx.tcx, substs, tup_ty);
-            // Here we possibly do a recursive call.
-            let this_size =
-                llsize_of_real(cx, type_of::type_of(cx, tup_ty));
-            if max_size < this_size { max_size = this_size; }
+        ty::ty_enum(tid, ref substs) => {
+            // Compute max(variant sizes).
+            let mut max_size = 0;
+            let variants = ty::enum_variants(cx.tcx, tid);
+            for variants.each |variant| {
+                if variant.args.len() == 0 {
+                    loop;
+                }
+
+                let lltypes = variant.args.map(|&variant_arg| {
+                    let substituted = ty::subst(cx.tcx, substs, variant_arg);
+                    type_of::sizing_type_of(cx, substituted)
+                });
+
+                debug!("static_size_of_enum: variant %s type %s",
+                       cx.tcx.sess.str_of(variant.name),
+                       ty_str(cx.tn, T_struct(lltypes)));
+
+                let this_size = llsize_of_real(cx, T_struct(lltypes));
+                if max_size < this_size {
+                    max_size = this_size;
+                }
+            }
+            cx.enum_sizes.insert(t, max_size);
+            return max_size;
         }
-        cx.enum_sizes.insert(t, max_size);
-        return max_size;
-      }
-      _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
+        _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
     }
 }
 
