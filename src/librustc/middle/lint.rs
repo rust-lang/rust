@@ -866,18 +866,18 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     }
 
     match it.node {
-      ast::item_ty(*) | ast::item_struct(*) |
-      ast::item_trait(*) => {
-        check_case(cx, it.ident, it.id, it.id, it.span)
-      }
-      ast::item_enum(ref enum_definition, _) => {
-        check_case(cx, it.ident, it.id, it.id, it.span);
-        for enum_definition.variants.each |variant| {
-            check_case(cx, variant.node.name,
-                       variant.node.id, it.id, variant.span);
+        ast::item_ty(*) | ast::item_struct(*) |
+        ast::item_trait(*) => {
+            check_case(cx, it.ident, it.id, it.id, it.span)
         }
-      }
-      _ => ()
+        ast::item_enum(ref enum_definition, _) => {
+            check_case(cx, it.ident, it.id, it.id, it.span);
+            for enum_definition.variants.each |variant| {
+                check_case(cx, variant.node.name,
+                           variant.node.id, it.id, variant.span);
+            }
+        }
+        _ => ()
     }
 }
 
