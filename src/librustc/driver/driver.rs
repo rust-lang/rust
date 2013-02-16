@@ -88,10 +88,12 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
 
     let mk = attr::mk_name_value_item_str;
 
-    let (arch,wordsz) = match sess.targ_cfg.arch {
-      session::arch_x86 => (~"x86",~"32"),
-      session::arch_x86_64 => (~"x86_64",~"64"),
-      session::arch_arm => (~"arm",~"32")
+    // ARM is bi-endian, however using NDK seems to default
+    // to little-endian unless a flag is provided.
+    let (end,arch,wordsz) = match sess.targ_cfg.arch {
+      session::arch_x86 => (~"little",~"x86",~"32"),
+      session::arch_x86_64 => (~"little",~"x86_64",~"64"),
+      session::arch_arm => (~"little",~"arm",~"32")
     };
 
     return ~[ // Target bindings.
@@ -99,6 +101,7 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
          mk(~"target_os", tos),
          mk(~"target_family", str::from_slice(os::FAMILY)),
          mk(~"target_arch", arch),
+         mk(~"target_endian", end),
          mk(~"target_word_size", wordsz),
          mk(~"target_libc", libc),
          // Build bindings.
