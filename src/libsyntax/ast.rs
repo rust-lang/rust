@@ -67,6 +67,12 @@ pub impl to_bytes::IterBytes for ident {
 // Functions may or may not have names.
 pub type fn_ident = Option<ident>;
 
+pub struct Lifetime {
+    id: node_id,
+    span: span,
+    ident: ident
+}
+
 #[auto_encode]
 #[auto_decode]
 #[deriving_eq]
