@@ -49,7 +49,6 @@
 #include "rust_log.h"
 #include "rust_sched_reaper.h"
 #include "rust_type.h"
-#include "util/hash_map.h"
 #include "sync/lock_and_signal.h"
 
 class rust_scheduler;
