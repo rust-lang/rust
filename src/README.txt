@@ -29,7 +29,7 @@ test/auxiliary     - Dependencies of tests
 
 compiletest/       The test runner
 
-libcargo/          The package manager
+librustpkg/        The package manager and build system
 
 librusti/          The JIT REPL
 
