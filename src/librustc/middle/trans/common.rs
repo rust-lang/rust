@@ -1141,15 +1141,15 @@ pub fn C_u8(i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: @crate_ctxt, +s: ~str) -> ValueRef {
+pub fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
     unsafe {
         match cx.const_cstr_cache.find(&s) {
-          Some(llval) => return llval,
-          None => ()
+            Some(llval) => return llval,
+            None => ()
         }
 
         let sc = do str::as_c_str(s) |buf| {
-            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+            llvm::LLVMConstString(buf, s.len() as c_uint, False)
         };
         let g =
             str::as_c_str(fmt!("str%u", (cx.names)(~"str").repr),
