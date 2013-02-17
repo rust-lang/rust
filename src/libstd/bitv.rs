@@ -16,25 +16,25 @@ use core::vec;
 
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
-    bits: u32
+    bits: uint
 }
 
 /// a mask that has a 1 for each defined bit in a small_bitv, assuming n bits
 #[inline(always)]
-fn small_mask(nbits: uint) -> u32 {
+fn small_mask(nbits: uint) -> uint {
     (1 << nbits) - 1
 }
 
 impl SmallBitv {
-    static fn new(bits: u32) -> SmallBitv {
+    static fn new(bits: uint) -> SmallBitv {
         SmallBitv {bits: bits}
     }
 
     #[inline(always)]
-    fn bits_op(&mut self, right_bits: u32, nbits: uint,
-               f: fn(u32, u32) -> u32) -> bool {
+    fn bits_op(&mut self, right_bits: uint, nbits: uint,
+               f: fn(uint, uint) -> uint) -> bool {
         let mask = small_mask(nbits);
-        let old_b: u32 = self.bits;
+        let old_b: uint = self.bits;
         let new_b = f(old_b, right_bits);
         self.bits = new_b;
         mask & old_b != mask & new_b
@@ -71,7 +71,7 @@ impl SmallBitv {
             self.bits |= 1<<i;
         }
         else {
-            self.bits &= !(1<<i as u32);
+            self.bits &= !(1<<i as uint);
         }
     }
 
@@ -259,7 +259,7 @@ priv impl Bitv {
 
 impl Bitv {
     static fn new(nbits: uint, init: bool) -> Bitv {
-        let rep = if nbits <= 32 {
+        let rep = if nbits <= uint::bits {
             Small(~SmallBitv::new(if init {!0} else {0}))
         }
         else {
