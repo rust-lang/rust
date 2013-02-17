@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::ReaderUtil;
 pub fn main() {
     let mut x: bool = false;
     // this line breaks it
     vec::rusti::move_val_init(&mut x, false);
-
-    let input = io::stdin();
-    let line = input.read_line(); // use core's io again
-
-    io::println(fmt!("got %?", line));
 }
