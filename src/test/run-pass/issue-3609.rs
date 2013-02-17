@@ -12,7 +12,6 @@ enum Msg
 
 fn foo(name: ~str, samples_chan: Chan<Msg>) {
     do task::spawn
-    |copy name|
     {
         let callback: SamplesFn =
             |buffer|

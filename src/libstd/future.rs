@@ -202,7 +202,7 @@ pub mod test {
     #[test]
     pub fn test_sendable_future() {
         let expected = ~"schlorf";
-        let f = do spawn |copy expected| { copy expected };
+        let f = do spawn { copy expected };
         do task::spawn || {
             let actual = f.get();
             assert actual == expected;
