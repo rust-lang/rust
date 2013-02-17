@@ -137,7 +137,7 @@ fn fold_enum(
         variants: do vec::map(doc.variants) |variant| {
             let sig = {
                 let variant = copy *variant;
-                do astsrv::exec(srv.clone()) |copy variant, ctxt| {
+                do astsrv::exec(srv.clone()) |ctxt| {
                     match ctxt.ast_map.get(&doc_id) {
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
@@ -198,7 +198,7 @@ fn get_method_sig(
     item_id: doc::AstId,
     method_name: ~str
 ) -> Option<~str> {
-    do astsrv::exec(srv) |copy method_name, ctxt| {
+    do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(&item_id) {
           ast_map::node_item(@ast::item {
             node: ast::item_trait(_, _, ref methods), _
