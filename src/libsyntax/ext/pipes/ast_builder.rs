@@ -88,6 +88,12 @@ pub trait ext_ctxt_ast_builder {
                       +ty_params: ~[ast::ty_param]) -> @ast::item;
     fn item_enum(name: ident, span: span,
                  +enum_definition: ast::enum_def) -> @ast::item;
+    fn item_struct_poly(name: ident, span: span,
+                        struct_def: ast::struct_def,
+                        ty_params: ~[ast::ty_param]) -> @ast::item;
+    fn item_struct(name: ident, span: span,
+                   struct_def: ast::struct_def) -> @ast::item;
+    fn struct_expr(path: @ast::path, fields: ~[ast::field]) -> @ast::expr;
     fn variant(name: ident, span: span, +tys: ~[@ast::Ty]) -> ast::variant;
     fn item_mod(name: ident, span: span, +items: ~[@ast::item]) -> @ast::item;
     fn ty_path_ast_builder(path: @ast::path) -> @ast::Ty;
@@ -99,9 +105,7 @@ pub trait ext_ctxt_ast_builder {
     fn ty_vars(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty];
     fn ty_vars_global(+ty_params: ~[ast::ty_param]) -> ~[@ast::Ty];
     fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field;
-    fn ty_rec(+v: ~[ast::ty_field]) -> @ast::Ty;
     fn field_imm(name: ident, e: @ast::expr) -> ast::field;
-    fn rec(+v: ~[ast::field]) -> @ast::expr;
     fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk;
     fn stmt_let(ident: ident, e: @ast::expr) -> @ast::stmt;
     fn stmt_expr(e: @ast::expr) -> @ast::stmt;
@@ -147,29 +151,12 @@ pub impl ext_ctxt_ast_builder for ext_ctxt {
         }
     }
 
-    fn rec(+fields: ~[ast::field]) -> @ast::expr {
-        @expr {
-            id: self.next_id(),
-            callee_id: self.next_id(),
-            node: ast::expr_rec(fields, None),
-            span: dummy_sp(),
-        }
-    }
-
     fn ty_field_imm(name: ident, ty: @ast::Ty) -> ast::ty_field {
         spanned {
             node: ast::ty_field_ {
                 ident: name,
                 mt: ast::mt { ty: ty, mutbl: ast::m_imm },
             },
-            span: dummy_sp(),
-        }
-    }
-
-    fn ty_rec(+fields: ~[ast::ty_field]) -> @ast::Ty {
-        @ast::Ty {
-            id: self.next_id(),
-            node: ast::ty_rec(fields),
             span: dummy_sp(),
         }
     }
@@ -286,6 +273,26 @@ pub impl ext_ctxt_ast_builder for ext_ctxt {
         self.item_enum_poly(name, span, enum_definition, ~[])
     }
 
+    fn item_struct(name: ident, span: span,
+                   struct_def: ast::struct_def) -> @ast::item {
+        self.item_struct_poly(name, span, struct_def, ~[])
+    }
+
+    fn item_struct_poly(name: ident, span: span,
+                        struct_def: ast::struct_def,
+                        ty_params: ~[ast::ty_param]) -> @ast::item {
+        self.item(name, span, ast::item_struct(@struct_def, ty_params))
+    }
+
+    fn struct_expr(path: @ast::path, fields: ~[ast::field]) -> @ast::expr {
+        @ast::expr {
+            id: self.next_id(),
+            callee_id: self.next_id(),
+            node: ast::expr_struct(path, fields, None),
+            span: dummy_sp()
+        }
+    }
+
     fn variant(name: ident,
                span: span,
                +tys: ~[@ast::Ty]) -> ast::variant {
@@ -300,7 +307,8 @@ pub impl ext_ctxt_ast_builder for ext_ctxt {
                 kind: ast::tuple_variant_kind(args),
                 id: self.next_id(),
                 disr_expr: None,
-                vis: ast::public},
+                vis: ast::public
+            },
             span: span,
         }
     }
