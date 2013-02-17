@@ -345,7 +345,9 @@ pub impl gen_init for protocol {
     }
 
     fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
-        ext_cx.rec(self.states.map_to_vec(|s| {
+        ext_cx.struct_expr(path(~[ext_cx.ident_of(~"__Buffer")],
+                                dummy_sp()),
+                      self.states.map_to_vec(|s| {
             let fty = s.to_ty(ext_cx);
             ext_cx.field_imm(ext_cx.ident_of(s.name),
                              quote_expr!(
@@ -409,13 +411,27 @@ pub impl gen_init for protocol {
             let ty = s.to_ty(cx);
             let fty = quote_ty!( ::pipes::Packet<$ty> );
 
-            cx.ty_field_imm(cx.ident_of(s.name), fty)
+            @spanned {
+                node: ast::struct_field_ {
+                    kind: ast::named_field(
+                            cx.ident_of(s.name),
+                            ast::struct_immutable,
+                            ast::inherited),
+                    id: cx.next_id(),
+                    ty: fty
+                },
+                span: dummy_sp()
+            }
         };
 
-        cx.item_ty_poly(
+        cx.item_struct_poly(
             cx.ident_of(~"__Buffer"),
             dummy_sp(),
-            cx.ty_rec(fields),
+            ast::struct_def {
+                fields: fields,
+                dtor: None,
+                ctor_id: None
+            },
             cx.strip_bounds(params))
     }
 

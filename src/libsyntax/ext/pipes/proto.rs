@@ -19,19 +19,8 @@ use core::cmp;
 use core::dvec::DVec;
 use core::to_str::ToStr;
 
+#[deriving_eq]
 pub enum direction { send, recv }
-
-pub impl cmp::Eq for direction {
-    pure fn eq(&self, other: &direction) -> bool {
-        match ((*self), (*other)) {
-            (send, send) => true,
-            (recv, recv) => true,
-            (send, _) => false,
-            (recv, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &direction) -> bool { !(*self).eq(other) }
-}
 
 pub impl ToStr for direction {
     pure fn to_str(&self) -> ~str {
@@ -82,36 +71,36 @@ pub impl message {
     }
 }
 
-pub enum state {
-    state_(@{
-        id: uint,
-        name: ~str,
-        ident: ast::ident,
-        span: span,
-        dir: direction,
-        ty_params: ~[ast::ty_param],
-        messages: DVec<message>,
-        proto: protocol,
-    }),
+pub type state = @state_;
+
+pub struct state_ {
+    id: uint,
+    name: ~str,
+    ident: ast::ident,
+    span: span,
+    dir: direction,
+    ty_params: ~[ast::ty_param],
+    messages: DVec<message>,
+    proto: protocol
 }
 
-pub impl state {
-    fn add_message(name: ~str, span: span,
+pub impl state_ {
+    fn add_message(@self, name: ~str, span: span,
                    +data: ~[@ast::Ty], next: Option<next_state>) {
         self.messages.push(message(name, span, data, self,
                                    next));
     }
 
-    fn filename() -> ~str {
-        (*self).proto.filename()
+    fn filename(&self) -> ~str {
+        self.proto.filename()
     }
 
-    fn data_name() -> ast::ident {
+    fn data_name(&self) -> ast::ident {
         self.ident
     }
 
     /// Returns the type that is used for the messages.
-    fn to_ty(cx: ext_ctxt) -> @ast::Ty {
+    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
                 cx.ty_vars(self.ty_params)))
@@ -119,7 +108,7 @@ pub impl state {
 
     /// Iterate over the states that can be reached in one message
     /// from this state.
-    fn reachable(f: fn(state) -> bool) {
+    fn reachable(&self, f: fn(state) -> bool) {
         for self.messages.each |m| {
             match *m {
               message(_, _, _, _, Some(next_state { state: ref id, _ })) => {
@@ -199,7 +188,7 @@ pub impl protocol {
                       +ty_params: ~[ast::ty_param]) -> state {
         let messages = DVec();
 
-        let state = state_(@{
+        let state = @state_ {
             id: self.states.len(),
             name: name,
             ident: ident,
@@ -208,7 +197,7 @@ pub impl protocol {
             ty_params: ty_params,
             messages: messages,
             proto: self
-        });
+        };
 
         self.states.push(state);
         state
