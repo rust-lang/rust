@@ -105,7 +105,6 @@ enum restriction {
 enum class_contents { dtor_decl(blk, ~[attribute], codemap::span),
                       members(~[@struct_field]) }
 
-type arg_or_capture_item = Either<arg, ()>;
 type item_info = (ident, item_, Option<~[attribute]>);
 
 pub enum item_or_view_item {
@@ -435,7 +434,7 @@ pub impl Parser {
             let (self_ty, d) = do self.parse_fn_decl_with_self() |p| {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
-                either::Left(p.parse_arg_general(false))
+                p.parse_arg_general(false)
             };
             // XXX: Wrong. Shouldn't allow both static and self_ty
             let self_ty = if is_static { static_sty } else { self_ty };
@@ -732,16 +731,8 @@ pub impl Parser {
         }
     }
 
-    fn parse_capture_item_or(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
-        -> arg_or_capture_item
-    {
-        if self.eat_keyword(~"copy") {
-            // XXX outdated syntax now that moves-based-on-type has gone in
-            self.parse_ident();
-            either::Right(())
-        } else {
-            parse_arg_fn(self)
-        }
+    fn parse_arg() -> ast::arg {
+        self.parse_arg_general(true)
     }
 
     // This version of parse arg doesn't necessarily require
@@ -768,35 +759,26 @@ pub impl Parser {
                   ty: t, pat: pat, id: self.get_id() }
     }
 
-    fn parse_arg() -> arg_or_capture_item {
-        either::Left(self.parse_arg_general(true))
-    }
 
-    fn parse_arg_or_capture_item() -> arg_or_capture_item {
-        self.parse_capture_item_or(|p| p.parse_arg())
-    }
-
-    fn parse_fn_block_arg() -> arg_or_capture_item {
-        do self.parse_capture_item_or |p| {
-            let m = p.parse_arg_mode();
-            let is_mutbl = self.eat_keyword(~"mut");
-            let pat = p.parse_pat(false);
-            let t = if p.eat(token::COLON) {
-                p.parse_ty(false)
-            } else {
-                @Ty {
-                    id: p.get_id(),
-                    node: ty_infer,
-                    span: mk_sp(p.span.lo, p.span.hi),
-                }
-            };
-            either::Left(ast::arg {
-                mode: m,
-                is_mutbl: is_mutbl,
-                ty: t,
-                pat: pat,
-                id: p.get_id()
-            })
+    fn parse_fn_block_arg() -> ast::arg {
+        let m = self.parse_arg_mode();
+        let is_mutbl = self.eat_keyword(~"mut");
+        let pat = self.parse_pat(false);
+        let t = if self.eat(token::COLON) {
+            self.parse_ty(false)
+        } else {
+            @Ty {
+                id: self.get_id(),
+                node: ty_infer,
+                span: mk_sp(self.span.lo, self.span.hi),
+            }
+        };
+        ast::arg {
+            mode: m,
+            is_mutbl: is_mutbl,
+            ty: t,
+            pat: pat,
+            id: self.get_id()
         }
     }
 
@@ -1696,7 +1678,7 @@ pub impl Parser {
 
         // if we want to allow fn expression argument types to be inferred in
         // the future, just have to change parse_arg to parse_fn_block_arg.
-        let decl = self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
+        let decl = self.parse_fn_decl(|p| p.parse_arg());
 
         let body = self.parse_block();
 
@@ -2678,19 +2660,17 @@ pub impl Parser {
         } else { ~[] }
     }
 
-    fn parse_fn_decl(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
+    fn parse_fn_decl(parse_arg_fn: fn(Parser) -> ast::arg)
         -> fn_decl
     {
-        let args_or_capture_items: ~[arg_or_capture_item] =
+        let args: ~[ast::arg] =
             self.parse_unspanned_seq(
                 token::LPAREN, token::RPAREN,
                 seq_sep_trailing_disallowed(token::COMMA), parse_arg_fn);
 
-        let inputs = either::lefts(args_or_capture_items);
-
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ast::fn_decl {
-            inputs: inputs,
+            inputs: args,
             output: ret_ty,
             cf: ret_style,
         }
@@ -2713,7 +2693,7 @@ pub impl Parser {
     }
 
     fn parse_fn_decl_with_self(parse_arg_fn:
-                               fn(Parser) -> arg_or_capture_item)
+                               fn(Parser) -> ast::arg)
                             -> (self_ty, fn_decl) {
 
         fn maybe_parse_self_ty(cnstr: fn(+v: mutability) -> ast::self_ty_,
@@ -2758,19 +2738,19 @@ pub impl Parser {
         };
 
         // If we parsed a self type, expect a comma before the argument list.
-        let args_or_capture_items;
+        let args;
         if self_ty != sty_by_ref {
             match copy self.token {
                 token::COMMA => {
                     self.bump();
                     let sep = seq_sep_trailing_disallowed(token::COMMA);
-                    args_or_capture_items =
+                    args =
                         self.parse_seq_to_before_end(token::RPAREN,
                                                      sep,
                                                      parse_arg_fn);
                 }
                 token::RPAREN => {
-                    args_or_capture_items = ~[];
+                    args = ~[];
                 }
                 _ => {
                     self.fatal(~"expected `,` or `)`, found `" +
@@ -2779,7 +2759,7 @@ pub impl Parser {
             }
         } else {
             let sep = seq_sep_trailing_disallowed(token::COMMA);
-            args_or_capture_items =
+            args =
                 self.parse_seq_to_before_end(token::RPAREN,
                                              sep,
                                              parse_arg_fn);
@@ -2789,11 +2769,10 @@ pub impl Parser {
 
         let hi = self.span.hi;
 
-        let inputs = either::lefts(args_or_capture_items);
         let (ret_style, ret_ty) = self.parse_ret_ty();
 
         let fn_decl = ast::fn_decl {
-            inputs: inputs,
+            inputs: args,
             output: ret_ty,
             cf: ret_style
         };
@@ -2802,7 +2781,7 @@ pub impl Parser {
     }
 
     fn parse_fn_block_decl() -> fn_decl {
-        let inputs_captures = {
+        let args = {
             if self.eat(token::OROR) {
                 ~[]
             } else {
@@ -2819,7 +2798,7 @@ pub impl Parser {
         };
 
         ast::fn_decl {
-            inputs: either::lefts(inputs_captures),
+            inputs: args,
             output: output,
             cf: return_val,
         }
