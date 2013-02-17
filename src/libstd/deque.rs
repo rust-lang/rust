@@ -46,6 +46,11 @@ impl<T> Deque<T> {
     fn peek_front(&self) -> &self/T { get(self.elts, self.lo) }
     fn peek_back(&self) -> &self/T { get(self.elts, self.hi - 1u) }
 
+    fn get(&self, i: int) -> &self/T {
+        let idx = (self.lo + (i as uint)) % self.elts.len();
+        get(self.elts, idx)
+    }
+
     fn pop_front(&mut self) -> T {
         let mut result = self.elts[self.lo].swap_unwrap();
         self.lo = (self.lo + 1u) % self.elts.len();
@@ -88,11 +93,6 @@ impl<T: Copy> Deque<T> {
         self.elts[self.hi] = Some(t);
         self.hi = (self.hi + 1u) % self.elts.len();
         self.nelts += 1u;
-    }
-
-    fn get(&self, i: int) -> T {
-        let idx = (self.lo + (i as uint)) % self.elts.len();
-        *get(self.elts, idx)
     }
 }
 
@@ -161,10 +161,10 @@ mod tests {
         log(debug, d.get(1));
         log(debug, d.get(2));
         log(debug, d.get(3));
-        assert d.get(0) == 1;
-        assert d.get(1) == 2;
-        assert d.get(2) == 3;
-        assert d.get(3) == 4;
+        assert *d.get(0) == 1;
+        assert *d.get(1) == 2;
+        assert *d.get(2) == 3;
+        assert *d.get(3) == 4;
     }
 
     #[test]
@@ -197,10 +197,10 @@ mod tests {
         assert deq.len() == 3;
         deq.add_front(a);
         assert deq.len() == 4;
-        assert deq.get(0) == a;
-        assert deq.get(1) == b;
-        assert deq.get(2) == c;
-        assert deq.get(3) == d;
+        assert *deq.get(0) == a;
+        assert *deq.get(1) == b;
+        assert *deq.get(2) == c;
+        assert *deq.get(3) == d;
     }
 
     fn test_parameterized<T: Copy Eq Durable>(a: T, b: T, c: T, d: T) {
@@ -227,10 +227,10 @@ mod tests {
         assert deq.len() == 3;
         deq.add_front(a);
         assert deq.len() == 4;
-        assert deq.get(0) == a;
-        assert deq.get(1) == b;
-        assert deq.get(2) == c;
-        assert deq.get(3) == d;
+        assert *deq.get(0) == a;
+        assert *deq.get(1) == b;
+        assert *deq.get(2) == c;
+        assert *deq.get(3) == d;
     }
 
     #[deriving_eq]
