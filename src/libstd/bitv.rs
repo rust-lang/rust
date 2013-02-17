@@ -164,22 +164,22 @@ impl BigBitv {
 
     #[inline(always)]
     fn union(&mut self, b: &BigBitv, nbits: uint) -> bool {
-        self.process(b, nbits, lor)
+        self.process(b, nbits, |w1, w2| w1 | w2)
     }
 
     #[inline(always)]
     fn intersect(&mut self, b: &BigBitv, nbits: uint) -> bool {
-        self.process(b, nbits, land)
+        self.process(b, nbits, |w1, w2| w1 & w2)
     }
 
     #[inline(always)]
     fn become(&mut self, b: &BigBitv, nbits: uint) -> bool {
-        self.process(b, nbits, right)
+        self.process(b, nbits, |_, w| w)
     }
 
     #[inline(always)]
     fn difference(&mut self, b: &BigBitv, nbits: uint) -> bool {
-        self.process(b, nbits, difference)
+        self.process(b, nbits, |w1, w2| w1 & !w2)
     }
 
     #[inline(always)]
@@ -556,13 +556,9 @@ pub fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
     bitv
 }
 
-pure fn lor(w0: uint, w1: uint) -> uint { return w0 | w1; }
 
-pure fn land(w0: uint, w1: uint) -> uint { return w0 & w1; }
 
-pure fn difference(w0: uint, w1: uint) -> uint { return w0 & !w1; }
 
-pure fn right(_w0: uint, w1: uint) -> uint { return w1; }
 
 impl ops::Index<uint,bool> for Bitv {
     pure fn index(&self, i: uint) -> bool {
