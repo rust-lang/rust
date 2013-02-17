@@ -1865,6 +1865,7 @@ pub trait OwnedVector<T> {
     fn consume(self, f: fn(uint, v: T));
     fn filter(self, f: fn(t: &T) -> bool) -> ~[T];
     fn partition(self, f: pure fn(&T) -> bool) -> (~[T], ~[T]);
+    fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>);
 }
 
 impl<T> OwnedVector<T> for ~[T] {
@@ -1936,6 +1937,11 @@ impl<T> OwnedVector<T> for ~[T] {
     fn partition(self, f: fn(&T) -> bool) -> (~[T], ~[T]) {
         partition(self, f)
     }
+
+    #[inline]
+    fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>) {
+        grow_fn(self, n, op);
+    }
 }
 
 impl<T> Mutable for ~[T] {
@@ -1946,7 +1952,6 @@ impl<T> Mutable for ~[T] {
 pub trait OwnedCopyableVector<T: Copy> {
     fn push_all(&mut self, rhs: &[const T]);
     fn grow(&mut self, n: uint, initval: &T);
-    fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>);
     fn grow_set(&mut self, index: uint, initval: &T, val: T);
 }
 
@@ -1959,11 +1964,6 @@ impl<T: Copy> OwnedCopyableVector<T> for ~[T] {
     #[inline]
     fn grow(&mut self, n: uint, initval: &T) {
         grow(self, n, initval);
-    }
-
-    #[inline]
-    fn grow_fn(&mut self, n: uint, op: iter::InitOp<T>) {
-        grow_fn(self, n, op);
     }
 
     #[inline]
