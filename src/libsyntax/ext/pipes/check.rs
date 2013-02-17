@@ -54,27 +54,27 @@ pub impl proto::visitor<(), (), ()> for ext_ctxt {
     fn visit_message(&self, name: ~str, _span: span, _tys: &[@ast::Ty],
                      this: state, next: Option<next_state>) {
         match next {
-          Some(next_state { state: ref next, tys: next_tys }) => {
+          Some(ref next_state) => {
             let proto = this.proto;
-            if !proto.has_state((*next)) {
+            if !proto.has_state(next_state.state) {
                 // This should be a span fatal, but then we need to
                 // track span information.
                 self.span_err(
-                    proto.get_state((*next)).span,
+                    proto.get_state(next_state.state).span,
                     fmt!("message %s steps to undefined state, %s",
-                         name, (*next)));
+                         name, next_state.state));
             }
             else {
-                let next = proto.get_state((*next));
+                let next = proto.get_state(next_state.state);
 
-                if next.ty_params.len() != next_tys.len() {
+                if next.ty_params.len() != next_state.tys.len() {
                     self.span_err(
                         next.span, // use a real span
                         fmt!("message %s target (%s) \
                               needs %u type parameters, but got %u",
                              name, next.name,
                              next.ty_params.len(),
-                             next_tys.len()));
+                             next_state.tys.len()));
                 }
             }
           }
