@@ -33,7 +33,8 @@ pub trait gen_send {
 
 pub trait to_type_decls {
     fn to_type_decls(&self, cx: ext_ctxt) -> ~[@ast::item];
-    fn to_endpoint_decls(&self, cx: ext_ctxt, dir: direction) -> ~[@ast::item];
+    fn to_endpoint_decls(&self, cx: ext_ctxt,
+                         dir: direction) -> ~[@ast::item];
 }
 
 pub trait gen_init {
@@ -253,7 +254,8 @@ pub impl to_type_decls for state {
         ]
     }
 
-    fn to_endpoint_decls(&self, cx: ext_ctxt, dir: direction) -> ~[@ast::item] {
+    fn to_endpoint_decls(&self, cx: ext_ctxt,
+                         dir: direction) -> ~[@ast::item] {
         debug!("pipec: to_endpoint_decls");
         let dir = match dir {
           send => (*self).dir,
