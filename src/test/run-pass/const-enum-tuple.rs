@@ -11,7 +11,7 @@
 enum E { V16(u16), V32(u32) }
 const C: (E, u16, u16) = (V16(0xDEAD), 0x600D, 0xBAD);
 
-fn main() {
+pub fn main() {
     let (_, n, _) = C;
     assert n != 0xBAD;
     assert n == 0x600D;
