@@ -13,6 +13,6 @@ fn foo(_x: @uint) {}
 fn main() {
     let x = @3u;
     let _ = fn~() { foo(x); }; //~ ERROR value has non-owned type `@uint`
-    let _ = fn~(copy x) { foo(x); }; //~ ERROR value has non-owned type `@uint`
+    let _ = fn~() { foo(x); }; //~ ERROR value has non-owned type `@uint`
     let _ = fn~() { foo(x); }; //~ ERROR value has non-owned type `@uint`
 }

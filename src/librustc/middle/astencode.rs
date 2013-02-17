@@ -821,7 +821,7 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
         let ebml_w = copy ebml_w;
         ast_util::visit_ids_for_inlined_item(
             ii,
-            fn@(id: ast::node_id, copy ebml_w) {
+            fn@(id: ast::node_id) {
                 // Note: this will cause a copy of ebml_w, which is bad as
                 // it has mut fields.  But I believe it's harmless since
                 // we generate balanced EBML.
