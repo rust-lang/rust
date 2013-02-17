@@ -93,9 +93,12 @@ pub trait ext_ctxt_ast_builder {
                         ty_params: ~[ast::ty_param]) -> @ast::item;
     fn item_struct(&self, name: ident, span: span,
                    struct_def: ast::struct_def) -> @ast::item;
-    fn struct_expr(&self, path: @ast::path, fields: ~[ast::field]) -> @ast::expr;
-    fn variant(&self, name: ident, span: span, +tys: ~[@ast::Ty]) -> ast::variant;
-    fn item_mod(&self, name: ident, span: span, +items: ~[@ast::item]) -> @ast::item;
+    fn struct_expr(&self, path: @ast::path,
+                   fields: ~[ast::field]) -> @ast::expr;
+    fn variant(&self, name: ident, span: span,
+               +tys: ~[@ast::Ty]) -> ast::variant;
+    fn item_mod(&self, name: ident, span: span,
+                +items: ~[@ast::item]) -> @ast::item;
     fn ty_path_ast_builder(&self, path: @ast::path) -> @ast::Ty;
     fn item_ty_poly(&self, name: ident,
                     span: span,
@@ -282,7 +285,8 @@ pub impl ext_ctxt_ast_builder for ext_ctxt {
         self.item(name, span, ast::item_struct(@struct_def, ty_params))
     }
 
-    fn struct_expr(&self, path: @ast::path, fields: ~[ast::field]) -> @ast::expr {
+    fn struct_expr(&self, path: @ast::path,
+                   fields: ~[ast::field]) -> @ast::expr {
         @ast::expr {
             id: self.next_id(),
             callee_id: self.next_id(),
