@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,178 +8,158 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A deque. Untested as of yet. Likely buggy
-#[forbid(non_camel_case_types)];
-
+use core::container::{Container, Mutable};
 use core::cmp::Eq;
-use core::dvec::DVec;
-use core::dvec;
 use core::prelude::*;
 use core::uint;
 use core::vec;
 
-pub trait Deque<T> {
-    fn size() -> uint;
-    fn add_front(v: T);
-    fn add_back(v: T);
-    fn pop_front() -> T;
-    fn pop_back() -> T;
-    fn peek_front() -> T;
-    fn peek_back() -> T;
-    fn get(int) -> T;
+const initial_capacity: uint = 32u; // 2^5
+
+pub struct Deque<T> {
+    priv nelts: uint,
+    priv lo: uint,
+    priv hi: uint,
+    priv elts: ~[Option<T>]
 }
 
-// FIXME (#2343) eventually, a proper datatype plus an exported impl would
-// be preferrable.
-pub fn create<T: Copy>() -> Deque<T> {
-    type Cell<T> = Option<T>;
+impl<T> Container for Deque<T> {
+    pure fn len(&self) -> uint { self.nelts }
+    pure fn is_empty(&self) -> bool { self.len() == 0 }
+}
 
-    let initial_capacity: uint = 32u; // 2^5
-     /**
-      * Grow is only called on full elts, so nelts is also len(elts), unlike
-      * elsewhere.
-      */
-    fn grow<T: Copy>(nelts: uint, lo: uint, elts: ~[Cell<T>])
-      -> ~[Cell<T>] {
-        let mut elts = elts;
-        assert (nelts == vec::len(elts));
-        let mut rv = ~[];
-
-        let mut i = 0u;
-        let nalloc = uint::next_power_of_two(nelts + 1u);
-        while i < nalloc {
-            if i < nelts {
-                rv.push(elts[(lo + i) % nelts]);
-            } else { rv.push(None); }
-            i += 1u;
-        }
-
-        rv
+impl<T> Mutable for Deque<T> {
+    fn clear(&mut self) {
+        for vec::each_mut(self.elts) |x| { *x = None }
+        self.nelts = 0;
+        self.lo = 0;
+        self.hi = 0;
     }
-    fn get<T: Copy>(elts: &DVec<Cell<T>>, i: uint) -> T {
-        match (*elts).get_elt(i) { Some(t) => t, _ => fail!() }
+}
+
+impl<T> Deque<T> {
+    static pure fn new() -> Deque<T> {
+        Deque{nelts: 0, lo: 0, hi: 0,
+              elts: vec::from_fn(initial_capacity, |_| None)}
     }
 
-    struct Repr<T> {
-        mut nelts: uint,
-        mut lo: uint,
-        mut hi: uint,
-        elts: DVec<Cell<T>>,
+    fn peek_front(&self) -> &self/T { get(self.elts, self.lo) }
+    fn peek_back(&self) -> &self/T { get(self.elts, self.hi - 1u) }
+
+    fn get(&self, i: int) -> &self/T {
+        let idx = (self.lo + (i as uint)) % self.elts.len();
+        get(self.elts, idx)
     }
 
-    impl<T: Copy> Deque<T> for Repr<T> {
-        fn size() -> uint { return self.nelts; }
-        fn add_front(t: T) {
-            let oldlo: uint = self.lo;
-            if self.lo == 0u {
-                self.lo = self.elts.len() - 1u;
-            } else { self.lo -= 1u; }
-            if self.lo == self.hi {
-                self.elts.swap(|v| grow(self.nelts, oldlo, v));
-                self.lo = self.elts.len() - 1u;
-                self.hi = self.nelts;
-            }
-            self.elts.set_elt(self.lo, Some(t));
-            self.nelts += 1u;
-        }
-        fn add_back(t: T) {
-            if self.lo == self.hi && self.nelts != 0u {
-                self.elts.swap(|v| grow(self.nelts, self.lo, v));
-                self.lo = 0u;
-                self.hi = self.nelts;
-            }
-            self.elts.set_elt(self.hi, Some(t));
-            self.hi = (self.hi + 1u) % self.elts.len();
-            self.nelts += 1u;
-        }
-        /**
-         * We actually release (turn to none()) the T we're popping so
-         * that we don't keep anyone's refcount up unexpectedly.
-         */
-        fn pop_front() -> T {
-            let t: T = get(&self.elts, self.lo);
-            self.elts.set_elt(self.lo, None);
-            self.lo = (self.lo + 1u) % self.elts.len();
-            self.nelts -= 1u;
-            return t;
-        }
-        fn pop_back() -> T {
-            if self.hi == 0u {
-                self.hi = self.elts.len() - 1u;
-            } else { self.hi -= 1u; }
-            let t: T = get(&self.elts, self.hi);
-            self.elts.set_elt(self.hi, None);
-            self.nelts -= 1u;
-            return t;
-        }
-        fn peek_front() -> T { return get(&self.elts, self.lo); }
-        fn peek_back() -> T { return get(&self.elts, self.hi - 1u); }
-        fn get(i: int) -> T {
-            let idx = (self.lo + (i as uint)) % self.elts.len();
-            return get(&self.elts, idx);
-        }
+    fn pop_front(&mut self) -> T {
+        let mut result = self.elts[self.lo].swap_unwrap();
+        self.lo = (self.lo + 1u) % self.elts.len();
+        self.nelts -= 1u;
+        result
     }
 
-    let repr: Repr<T> = Repr {
-        nelts: 0u,
-        lo: 0u,
-        hi: 0u,
-        elts: dvec::from_vec(vec::from_elem(initial_capacity, None)),
-    };
+    fn pop_back(&mut self) -> T {
+        if self.hi == 0u {
+            self.hi = self.elts.len() - 1u;
+        } else { self.hi -= 1u; }
+        let mut result = self.elts[self.hi].swap_unwrap();
+        self.elts[self.hi] = None;
+        self.nelts -= 1u;
+        result
+    }
 
-    repr as Deque::<T>
+    fn add_front(&mut self, t: T) {
+        let oldlo = self.lo;
+        if self.lo == 0u {
+            self.lo = self.elts.len() - 1u;
+        } else { self.lo -= 1u; }
+        if self.lo == self.hi {
+            self.elts = grow(self.nelts, oldlo, self.elts);
+            self.lo = self.elts.len() - 1u;
+            self.hi = self.nelts;
+        }
+        self.elts[self.lo] = Some(t);
+        self.nelts += 1u;
+    }
+
+    fn add_back(&mut self, t: T) {
+        if self.lo == self.hi && self.nelts != 0u {
+            self.elts = grow(self.nelts, self.lo, self.elts);
+            self.lo = 0u;
+            self.hi = self.nelts;
+        }
+        self.elts[self.hi] = Some(t);
+        self.hi = (self.hi + 1u) % self.elts.len();
+        self.nelts += 1u;
+    }
+}
+
+/// Grow is only called on full elts, so nelts is also len(elts), unlike
+/// elsewhere.
+fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
+    assert nelts == elts.len();
+    let mut rv = ~[];
+
+    do vec::grow_fn(&mut rv, nelts + 1) |i| {
+        let mut element = None;
+        element <-> elts[(lo + i) % nelts];
+        element
+    }
+
+    rv
+}
+
+fn get<T>(elts: &r/[Option<T>], i: uint) -> &r/T {
+    match elts[i] { Some(ref t) => t, _ => fail!() }
 }
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
-
-    use deque::*;
-    use deque;
+    use super::*;
 
     #[test]
     fn test_simple() {
-        let d: deque::Deque<int> = deque::create::<int>();
-        assert (d.size() == 0u);
+        let mut d = Deque::new();
+        assert d.len() == 0u;
         d.add_front(17);
         d.add_front(42);
         d.add_back(137);
-        assert (d.size() == 3u);
+        assert d.len() == 3u;
         d.add_back(137);
-        assert (d.size() == 4u);
+        assert d.len() == 4u;
         log(debug, d.peek_front());
-        assert (d.peek_front() == 42);
+        assert *d.peek_front() == 42;
         log(debug, d.peek_back());
-        assert (d.peek_back() == 137);
+        assert *d.peek_back() == 137;
         let mut i: int = d.pop_front();
         log(debug, i);
-        assert (i == 42);
+        assert i == 42;
         i = d.pop_back();
         log(debug, i);
-        assert (i == 137);
+        assert i == 137;
         i = d.pop_back();
         log(debug, i);
-        assert (i == 137);
+        assert i == 137;
         i = d.pop_back();
         log(debug, i);
-        assert (i == 17);
-        assert (d.size() == 0u);
+        assert i == 17;
+        assert d.len() == 0u;
         d.add_back(3);
-        assert (d.size() == 1u);
+        assert d.len() == 1u;
         d.add_front(2);
-        assert (d.size() == 2u);
+        assert d.len() == 2u;
         d.add_back(4);
-        assert (d.size() == 3u);
+        assert d.len() == 3u;
         d.add_front(1);
-        assert (d.size() == 4u);
+        assert d.len() == 4u;
         log(debug, d.get(0));
         log(debug, d.get(1));
         log(debug, d.get(2));
         log(debug, d.get(3));
-        assert (d.get(0) == 1);
-        assert (d.get(1) == 2);
-        assert (d.get(2) == 3);
-        assert (d.get(3) == 4);
+        assert *d.get(0) == 1;
+        assert *d.get(1) == 2;
+        assert *d.get(2) == 3;
+        assert *d.get(3) == 4;
     }
 
     #[test]
@@ -189,63 +169,63 @@ mod tests {
         let c: @int = @64;
         let d: @int = @175;
 
-        let deq: deque::Deque<@int> = deque::create::<@int>();
-        assert (deq.size() == 0u);
+        let mut deq = Deque::new();
+        assert deq.len() == 0;
         deq.add_front(a);
         deq.add_front(b);
         deq.add_back(c);
-        assert (deq.size() == 3u);
+        assert deq.len() == 3;
         deq.add_back(d);
-        assert (deq.size() == 4u);
-        assert (deq.peek_front() == b);
-        assert (deq.peek_back() == d);
-        assert (deq.pop_front() == b);
-        assert (deq.pop_back() == d);
-        assert (deq.pop_back() == c);
-        assert (deq.pop_back() == a);
-        assert (deq.size() == 0u);
-        deq.add_back(c);
-        assert (deq.size() == 1u);
-        deq.add_front(b);
-        assert (deq.size() == 2u);
-        deq.add_back(d);
-        assert (deq.size() == 3u);
-        deq.add_front(a);
-        assert (deq.size() == 4u);
-        assert (deq.get(0) == a);
-        assert (deq.get(1) == b);
-        assert (deq.get(2) == c);
-        assert (deq.get(3) == d);
-    }
-
-    fn test_parameterized<T: Copy Eq Durable>(a: T, b: T, c: T, d: T) {
-        let deq: deque::Deque<T> = deque::create::<T>();
-        assert (deq.size() == 0u);
-        deq.add_front(a);
-        deq.add_front(b);
-        deq.add_back(c);
-        assert (deq.size() == 3u);
-        deq.add_back(d);
-        assert (deq.size() == 4u);
-        assert deq.peek_front() == b;
-        assert deq.peek_back() == d;
+        assert deq.len() == 4;
+        assert *deq.peek_front() == b;
+        assert *deq.peek_back() == d;
         assert deq.pop_front() == b;
         assert deq.pop_back() == d;
         assert deq.pop_back() == c;
         assert deq.pop_back() == a;
-        assert (deq.size() == 0u);
+        assert deq.len() == 0;
         deq.add_back(c);
-        assert (deq.size() == 1u);
+        assert deq.len() == 1;
         deq.add_front(b);
-        assert (deq.size() == 2u);
+        assert deq.len() == 2;
         deq.add_back(d);
-        assert (deq.size() == 3u);
+        assert deq.len() == 3;
         deq.add_front(a);
-        assert (deq.size() == 4u);
-        assert deq.get(0) == a;
-        assert deq.get(1) == b;
-        assert deq.get(2) == c;
-        assert deq.get(3) == d;
+        assert deq.len() == 4;
+        assert *deq.get(0) == a;
+        assert *deq.get(1) == b;
+        assert *deq.get(2) == c;
+        assert *deq.get(3) == d;
+    }
+
+    fn test_parameterized<T: Copy Eq Durable>(a: T, b: T, c: T, d: T) {
+        let mut deq = Deque::new();
+        assert deq.len() == 0;
+        deq.add_front(a);
+        deq.add_front(b);
+        deq.add_back(c);
+        assert deq.len() == 3;
+        deq.add_back(d);
+        assert deq.len() == 4;
+        assert *deq.peek_front() == b;
+        assert *deq.peek_back() == d;
+        assert deq.pop_front() == b;
+        assert deq.pop_back() == d;
+        assert deq.pop_back() == c;
+        assert deq.pop_back() == a;
+        assert deq.len() == 0;
+        deq.add_back(c);
+        assert deq.len() == 1;
+        deq.add_front(b);
+        assert deq.len() == 2;
+        deq.add_back(d);
+        assert deq.len() == 3;
+        deq.add_front(a);
+        assert deq.len() == 4;
+        assert *deq.get(0) == a;
+        assert *deq.get(1) == b;
+        assert *deq.get(2) == c;
+        assert *deq.get(3) == d;
     }
 
     #[deriving_eq]
