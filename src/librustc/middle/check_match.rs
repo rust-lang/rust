@@ -315,8 +315,8 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
       pat_region(*) => {
         Some(single)
       }
-      pat_vec(elems, tail) => {
-        match tail {
+      pat_vec(elems, rest) => {
+        match rest {
           Some(_) => None,
           None => Some(vec(elems.len()))
         }
@@ -386,22 +386,22 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       }
       ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
 
-        // Find the lengths and tails of all vector patterns.
+        // Find the lengths and rests of all vector patterns.
         let vec_pat_lens = do m.filter_mapped |r| {
             match r[0].node {
-                pat_vec(ref elems, ref tail) => {
-                    Some((elems.len(), tail.is_some()))
+                pat_vec(ref elems, ref rest) => {
+                    Some((elems.len(), rest.is_some()))
                 }
                 _ => None
             }
         };
 
         // Sort them by length such that for patterns of the same length,
-        // those with a destructured tail come first.
+        // those with a destructured rest come first.
         let mut sorted_vec_lens = sort::merge_sort(vec_pat_lens,
-            |&(len1, tail1), &(len2, tail2)| {
+            |&(len1, rest1), &(len2, rest2)| {
                 if len1 == len2 {
-                    tail1 > tail2
+                    rest1 > rest2
                 } else {
                     len1 <= len2
                 }
@@ -409,24 +409,24 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
         );
         vec::dedup(&mut sorted_vec_lens);
 
-        let mut found_tail = false;
+        let mut found_rest = false;
         let mut next = 0;
         let mut missing = None;
-        for sorted_vec_lens.each |&(length, tail)| {
+        for sorted_vec_lens.each |&(length, rest)| {
             if length != next {
                 missing = Some(next);
                 break;
             }
-            if tail {
-                found_tail = true;
+            if rest {
+                found_rest = true;
                 break;
             }
             next += 1;
         }
 
         // We found patterns of all lengths within <0, next), yet there was no
-        // pattern with a tail - therefore, we report vec(next) as missing.
-        if !found_tail {
+        // pattern with a rest - therefore, we report vec(next) as missing.
+        if !found_rest {
             missing = Some(next);
         }
         match missing {
@@ -613,11 +613,11 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     compare_const_vals(c_hi, v_hi) <= 0;
           if match_ { Some(vec::tail(r)) } else { None }
       }
-            pat_vec(elems, tail) => {
+            pat_vec(elems, rest) => {
                 match ctor_id {
                     vec(_) => {
                         let num_elements = elems.len();
-                        if num_elements < arity && tail.is_some() {
+                        if num_elements < arity && rest.is_some() {
                             Some(vec::append(
                                 vec::append(elems, vec::from_elem(
                                     arity - num_elements, wild()

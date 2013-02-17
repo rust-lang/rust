@@ -1,3 +1,5 @@
+// xfail-test
+
 fn a() {
     let mut vec = [~1, ~2, ~3];
     match vec {

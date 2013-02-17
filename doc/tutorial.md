@@ -1228,7 +1228,7 @@ match crayons[0] {
 
 A vector can be destructured using pattern matching:
 
-~~~~
+~~~~ {.xfail-test}
 let numbers: [int * 3] = [1, 2, 3];
 let score = match numbers {
     [] => 0,

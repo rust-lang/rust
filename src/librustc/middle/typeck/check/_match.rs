@@ -536,7 +536,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
       }
-      ast::pat_vec(elts, tail) => {
+      ast::pat_vec(elts, rest) => {
         let default_region_var =
             fcx.infcx().next_region_var_with_lb(
                 pat.span, pcx.block_region
@@ -565,21 +565,17 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             );
           }
         };
-        for elts.each |elt| {
-            check_pat(pcx, *elt, elt_type.ty);
-        }
-        fcx.write_ty(pat.id, expected);
-
-        match tail {
-            Some(tail_pat) => {
-                let slice_ty = ty::mk_evec(tcx,
+        for elts.eachi |i, elt| {
+            let mut t = elt_type.ty;
+            if Some(i) == rest {
+                t = ty::mk_evec(tcx,
                     ty::mt {ty: elt_type.ty, mutbl: elt_type.mutbl},
                     ty::vstore_slice(region_var)
                 );
-                check_pat(pcx, tail_pat, slice_ty);
             }
-            None => ()
+            check_pat(pcx, *elt, t);
         }
+        fcx.write_ty(pat.id, expected);
       }
     }
 }

@@ -610,17 +610,17 @@ impl GatherLoanCtxt {
                 }
               }
 
-              ast::pat_vec(_, Some(tail_pat)) => {
-                  // The `tail_pat` here creates a slice into the
+              ast::pat_vec(ref pats, Some(rest)) => {
+                  // The `rest_pat` here creates a slice into the
                   // original vector.  This is effectively a borrow of
                   // the elements of the vector being matched.
-
-                  let tail_ty = self.tcx().ty(tail_pat);
-                  let (tail_mutbl, tail_r) =
-                      self.vec_slice_info(tail_pat, tail_ty);
+                  let rest_pat = pats[rest];
+                  let rest_ty = self.tcx().ty(rest_pat);
+                  let (rest_mutbl, rest_r) =
+                      self.vec_slice_info(rest_pat, rest_ty);
                   let mcx = self.bccx.mc_ctxt();
-                  let cmt_index = mcx.cat_index(tail_pat, cmt);
-                  self.guarantee_valid(cmt_index, tail_mutbl, tail_r);
+                  let cmt_index = mcx.cat_index(rest_pat, cmt);
+                  self.guarantee_valid(cmt_index, rest_mutbl, rest_r);
               }
 
               _ => {}
@@ -630,7 +630,7 @@ impl GatherLoanCtxt {
 
     fn vec_slice_info(@mut self,
                       pat: @ast::pat,
-                      tail_ty: ty::t) -> (ast::mutability, ty::Region) {
+                      rest_ty: ty::t) -> (ast::mutability, ty::Region) {
         /*!
          *
          * In a pattern like [a, b, ..c], normally `c` has slice type,
@@ -639,9 +639,9 @@ impl GatherLoanCtxt {
          * to recurse through rptrs.
          */
 
-        match ty::get(tail_ty).sty {
-            ty::ty_evec(tail_mt, ty::vstore_slice(tail_r)) => {
-                (tail_mt.mutbl, tail_r)
+        match ty::get(rest_ty).sty {
+            ty::ty_evec(rest_mt, ty::vstore_slice(rest_r)) => {
+                (rest_mt.mutbl, rest_r)
             }
 
             ty::ty_rptr(_, ref mt) => {
@@ -651,7 +651,7 @@ impl GatherLoanCtxt {
             _ => {
                 self.tcx().sess.span_bug(
                     pat.span,
-                    fmt!("Type of tail pattern is not a slice"));
+                    fmt!("Type of rest pattern is not a slice"));
             }
         }
     }
