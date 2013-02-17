@@ -76,7 +76,7 @@ fn apply_to_sections(
     op: NominalOp<Op>,
     sections: ~[doc::Section]
 ) -> ~[doc::Section] {
-    sections.map(|section, copy op| doc::Section {
+    sections.map(|section| doc::Section {
         header: (op.op)(copy section.header),
         body: (op.op)(copy section.body)
     })
@@ -89,7 +89,7 @@ fn fold_enum(
     let fold_copy = copy *fold;
 
     doc::EnumDoc {
-        variants: do doc.variants.map |variant, copy fold_copy| {
+        variants: do doc.variants.map |variant| {
             doc::VariantDoc {
                 desc: maybe_apply_op(copy fold_copy.ctxt, &variant.desc),
                 .. copy *variant
