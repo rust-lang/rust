@@ -209,7 +209,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
 
 pub fn contains_name(metas: &[@ast::meta_item], name: &str) -> bool {
     let matches = find_meta_items_by_name(metas, name);
-    return vec::len(matches) > 0u;
+    matches.len() > 0u
 }
 
 pub fn attrs_contains_name(attrs: &[ast::attribute], name: &str) -> bool {
@@ -227,14 +227,14 @@ pub fn first_attr_value_str_by_name(attrs: ~[ast::attribute], name: &str)
     }
 }
 
-fn last_meta_item_by_name(items: ~[@ast::meta_item], name: &str)
+fn last_meta_item_by_name(items: &[@ast::meta_item], name: &str)
     -> Option<@ast::meta_item> {
 
     let items = attr::find_meta_items_by_name(items, name);
     vec::last_opt(items)
 }
 
-pub fn last_meta_item_value_str_by_name(items: ~[@ast::meta_item], name: &str)
+pub fn last_meta_item_value_str_by_name(items: &[@ast::meta_item], name: &str)
                                      -> Option<@~str> {
 
     match last_meta_item_by_name(items, name) {

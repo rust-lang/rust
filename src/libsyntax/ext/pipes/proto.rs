@@ -120,11 +120,11 @@ pub impl state_ {
 
 pub type protocol = @mut protocol_;
 
-pub fn protocol(name: ~str, +span: span) -> protocol {
+pub fn protocol(+name: ~str, +span: span) -> protocol {
     @mut protocol_(name, span)
 }
 
-pub fn protocol_(name: ~str, span: span) -> protocol_ {
+pub fn protocol_(+name: ~str, span: span) -> protocol_ {
     protocol_ {
         name: name,
         span: span,
@@ -174,7 +174,7 @@ pub impl protocol_ {
 }
 
 pub impl protocol {
-    fn add_state_poly(&self, name: ~str, ident: ast::ident, dir: direction,
+    fn add_state_poly(&self, +name: ~str, ident: ast::ident, dir: direction,
                       +ty_params: ~[ast::ty_param]) -> state {
         let messages = @mut ~[];
 

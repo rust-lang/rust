@@ -58,8 +58,7 @@ pub impl gen_send for message {
             let next = this.proto.get_state(next_state.state);
             assert next_state.tys.len() == next.ty_params.len();
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
-
-            let args_ast = (arg_names, *tys).map(|n, t| cx.arg(*n, *t));
+            let args_ast = vec::map2(arg_names, *tys, |n, t| cx.arg(*n, *t));
 
             let pipe_ty = cx.ty_path_ast_builder(
                 path(~[this.data_name()], span)
@@ -137,7 +136,7 @@ pub impl gen_send for message {
                 debug!("pipec: no next state");
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
-                let args_ast = do (arg_names, *tys).map |n, t| {
+                let args_ast = do vec::map2(arg_names, *tys) |n, t| {
                     cx.arg(cx.ident_of(*n), *t)
                 };
 
