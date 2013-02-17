@@ -112,8 +112,8 @@ struct BigBitv {
  */
 #[inline(always)]
 fn big_mask(nbits: uint, elem: uint) -> uint {
-    let rmd = nbits % uint_bits;
-    let nelems = nbits/uint_bits + if rmd == 0 {0} else {1};
+    let rmd = nbits % uint::bits;
+    let nelems = nbits/uint::bits + if rmd == 0 {0} else {1};
 
     if elem < nelems - 1 || rmd == 0 {
         !0
@@ -184,16 +184,16 @@ impl BigBitv {
 
     #[inline(always)]
     pure fn get(&self, i: uint) -> bool {
-        let w = i / uint_bits;
-        let b = i % uint_bits;
+        let w = i / uint::bits;
+        let b = i % uint::bits;
         let x = 1 & self.storage[w] >> b;
         x == 1
     }
 
     #[inline(always)]
     fn set(&mut self, i: uint, x: bool) {
-        let w = i / uint_bits;
-        let b = i % uint_bits;
+        let w = i / uint::bits;
+        let b = i % uint::bits;
         let flag = 1 << b;
         self.storage[w] = if x { self.storage[w] | flag }
                           else { self.storage[w] & !flag };
@@ -263,8 +263,8 @@ impl Bitv {
             Small(~SmallBitv::new(if init {!0} else {0}))
         }
         else {
-            let nelems = nbits/uint_bits +
-                         if nbits % uint_bits == 0 {0} else {1};
+            let nelems = nbits/uint::bits +
+                         if nbits % uint::bits == 0 {0} else {1};
             let elem = if init {!0} else {0};
             let s = from_elem(nelems, elem);
             Big(~BigBitv::new(s))
@@ -514,7 +514,7 @@ impl Clone for Bitv {
             Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
           }
           Big(ref b) => {
-            let mut st = from_elem(self.nbits / uint_bits + 1, 0);
+            let mut st = from_elem(self.nbits / uint::bits + 1, 0);
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
             Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: st})}
@@ -555,8 +555,6 @@ pub fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
     }
     bitv
 }
-
-const uint_bits: uint = 32u + (1u << 32u >> 27u);
 
 pure fn lor(w0: uint, w1: uint) -> uint { return w0 | w1; }
 
