@@ -566,29 +566,30 @@ pub type simple_visitor = @SimpleVisitor;
 pub fn simple_ignore_ty(_t: @Ty) {}
 
 pub fn default_simple_visitor() -> @SimpleVisitor {
-    return @SimpleVisitor {visit_mod: |_m: _mod, _sp: span, _id: node_id| { },
-          visit_view_item: |_vi: @view_item| { },
-          visit_foreign_item: |_ni: @foreign_item| { },
-          visit_item: |_i: @item| { },
-          visit_local: |_l: @local| { },
-          visit_block: |_b: ast::blk| { },
-          visit_stmt: |_s: @stmt| { },
-          visit_arm: |_a: arm| { },
-          visit_pat: |_p: @pat| { },
-          visit_decl: |_d: @decl| { },
-          visit_expr: |_e: @expr| { },
-          visit_expr_post: |_e: @expr| { },
-          visit_ty: simple_ignore_ty,
-          visit_ty_params: fn@(_ps: ~[ty_param]) {},
-          visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
-                        _id: node_id) { },
-          visit_ty_method: fn@(_m: ty_method) { },
-          visit_trait_method: fn@(_m: trait_method) { },
-          visit_struct_def: fn@(_sd: @struct_def, _nm: ident,
-                                _tps: ~[ty_param], _id: node_id) { },
-          visit_struct_field: fn@(_f: @struct_field) { },
-          visit_struct_method: fn@(_m: @method) { }
-         };
+    @SimpleVisitor {
+        visit_mod: |_m, _sp, _id| { },
+        visit_view_item: |_vi| { },
+        visit_foreign_item: |_ni| { },
+        visit_item: |_i| { },
+        visit_local: |_l| { },
+        visit_block: |_b| { },
+        visit_stmt: |_s| { },
+        visit_arm: |_a| { },
+        visit_pat: |_p| { },
+        visit_decl: |_d| { },
+        visit_expr: |_e| { },
+        visit_expr_post: |_e| { },
+        visit_ty: simple_ignore_ty,
+        visit_ty_params: fn@(_ps: ~[ty_param]) { },
+        visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
+                      _id: node_id) { },
+        visit_ty_method: fn@(_m: ty_method) { },
+        visit_trait_method: fn@(_m: trait_method) { },
+        visit_struct_def: fn@(_sd: @struct_def, _nm: ident,
+                              _tps: ~[ty_param], _id: node_id) { },
+        visit_struct_field: fn@(_f: @struct_field) { },
+        visit_struct_method: fn@(_m: @method) { }
+    }
 }
 
 pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
