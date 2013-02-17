@@ -12,6 +12,6 @@ enum E = u32;
 struct S { a: u8, b: E }
 const C: S = S { a: 0xA5, b: E(0xDEADBEEF) };
 
-fn main() {
+pub fn main() {
     assert C.b == 0xDEADBEEF;
 }
