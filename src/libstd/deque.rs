@@ -98,17 +98,14 @@ impl<T: Copy> Deque<T> {
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
-fn grow<T: Copy>(nelts: uint, lo: uint, elts: &[Option<T>]) -> ~[Option<T>] {
+fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
     assert nelts == elts.len();
     let mut rv = ~[];
 
-    let mut i = 0u;
-    let nalloc = uint::next_power_of_two(nelts + 1u);
-    while i < nalloc {
-        if i < nelts {
-            rv.push(elts[(lo + i) % nelts]);
-        } else { rv.push(None); }
-        i += 1u;
+    do vec::grow_fn(&mut rv, nelts + 1) |i| {
+        let mut element = None;
+        element <-> elts[(lo + i) % nelts];
+        element
     }
 
     rv
