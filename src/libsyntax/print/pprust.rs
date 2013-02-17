@@ -1199,6 +1199,9 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
       ast::expr_tup(exprs) => {
         popen(s);
         commasep_exprs(s, inconsistent, exprs);
+        if exprs.len() == 1 {
+            word(s.s, ~",");
+        }
         pclose(s);
       }
       ast::expr_call(func, args, sugar) => {
@@ -1634,6 +1637,9 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
       ast::pat_tup(elts) => {
         popen(s);
         commasep(s, inconsistent, elts, |s, p| print_pat(s, p, refutable));
+        if elts.len() == 1 {
+            word(s.s, ~",");
+        }
         pclose(s);
       }
       ast::pat_box(inner) => {
