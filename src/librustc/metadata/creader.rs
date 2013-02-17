@@ -196,7 +196,7 @@ fn visit_item(e: @mut Env, i: @ast::item) {
         for link_args.each |a| {
             match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
               Some(ref linkarg) => {
-                cstore::add_used_link_args(cstore, (/*bad*/copy *linkarg));
+                cstore::add_used_link_args(cstore, *linkarg);
               }
               None => {/* fallthrough */ }
             }
