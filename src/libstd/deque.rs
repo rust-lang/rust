@@ -42,11 +42,14 @@ impl<T> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
               elts: vec::from_fn(initial_capacity, |_| None)}
     }
+
+    fn peek_front(&self) -> &self/T { get(self.elts, self.lo) }
+    fn peek_back(&self) -> &self/T { get(self.elts, self.hi - 1u) }
 }
 
 impl<T: Copy> Deque<T> {
     fn add_front(&mut self, t: T) {
-        let oldlo: uint = self.lo;
+        let oldlo = self.lo;
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
         } else { self.lo -= 1u; }
@@ -88,10 +91,6 @@ impl<T: Copy> Deque<T> {
         t
     }
 
-    fn peek_front(&self) -> T { *get(self.elts, self.lo) }
-
-    fn peek_back(&self) -> T { *get(self.elts, self.hi - 1u) }
-
     fn get(&self, i: int) -> T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
         *get(self.elts, idx)
@@ -122,52 +121,51 @@ fn get<T>(elts: &r/[Option<T>], i: uint) -> &r/T {
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
     use super::*;
 
     #[test]
     fn test_simple() {
         let mut d = Deque::new();
-        assert (d.len() == 0u);
+        assert d.len() == 0u;
         d.add_front(17);
         d.add_front(42);
         d.add_back(137);
-        assert (d.len() == 3u);
+        assert d.len() == 3u;
         d.add_back(137);
-        assert (d.len() == 4u);
+        assert d.len() == 4u;
         log(debug, d.peek_front());
-        assert (d.peek_front() == 42);
+        assert *d.peek_front() == 42;
         log(debug, d.peek_back());
-        assert (d.peek_back() == 137);
+        assert *d.peek_back() == 137;
         let mut i: int = d.pop_front();
         log(debug, i);
-        assert (i == 42);
+        assert i == 42;
         i = d.pop_back();
         log(debug, i);
-        assert (i == 137);
+        assert i == 137;
         i = d.pop_back();
         log(debug, i);
-        assert (i == 137);
+        assert i == 137;
         i = d.pop_back();
         log(debug, i);
-        assert (i == 17);
-        assert (d.len() == 0u);
+        assert i == 17;
+        assert d.len() == 0u;
         d.add_back(3);
-        assert (d.len() == 1u);
+        assert d.len() == 1u;
         d.add_front(2);
-        assert (d.len() == 2u);
+        assert d.len() == 2u;
         d.add_back(4);
-        assert (d.len() == 3u);
+        assert d.len() == 3u;
         d.add_front(1);
-        assert (d.len() == 4u);
+        assert d.len() == 4u;
         log(debug, d.get(0));
         log(debug, d.get(1));
         log(debug, d.get(2));
         log(debug, d.get(3));
-        assert (d.get(0) == 1);
-        assert (d.get(1) == 2);
-        assert (d.get(2) == 3);
-        assert (d.get(3) == 4);
+        assert d.get(0) == 1;
+        assert d.get(1) == 2;
+        assert d.get(2) == 3;
+        assert d.get(3) == 4;
     }
 
     #[test]
@@ -178,58 +176,58 @@ mod tests {
         let d: @int = @175;
 
         let mut deq = Deque::new();
-        assert (deq.len() == 0u);
+        assert deq.len() == 0;
         deq.add_front(a);
         deq.add_front(b);
         deq.add_back(c);
-        assert (deq.len() == 3u);
+        assert deq.len() == 3;
         deq.add_back(d);
-        assert (deq.len() == 4u);
-        assert (deq.peek_front() == b);
-        assert (deq.peek_back() == d);
-        assert (deq.pop_front() == b);
-        assert (deq.pop_back() == d);
-        assert (deq.pop_back() == c);
-        assert (deq.pop_back() == a);
-        assert (deq.len() == 0u);
-        deq.add_back(c);
-        assert (deq.len() == 1u);
-        deq.add_front(b);
-        assert (deq.len() == 2u);
-        deq.add_back(d);
-        assert (deq.len() == 3u);
-        deq.add_front(a);
-        assert (deq.len() == 4u);
-        assert (deq.get(0) == a);
-        assert (deq.get(1) == b);
-        assert (deq.get(2) == c);
-        assert (deq.get(3) == d);
-    }
-
-    fn test_parameterized<T: Copy Eq Durable>(a: T, b: T, c: T, d: T) {
-        let mut deq = Deque::new();
-        assert (deq.len() == 0u);
-        deq.add_front(a);
-        deq.add_front(b);
-        deq.add_back(c);
-        assert (deq.len() == 3u);
-        deq.add_back(d);
-        assert (deq.len() == 4u);
-        assert deq.peek_front() == b;
-        assert deq.peek_back() == d;
+        assert deq.len() == 4;
+        assert *deq.peek_front() == b;
+        assert *deq.peek_back() == d;
         assert deq.pop_front() == b;
         assert deq.pop_back() == d;
         assert deq.pop_back() == c;
         assert deq.pop_back() == a;
-        assert (deq.len() == 0u);
+        assert deq.len() == 0;
         deq.add_back(c);
-        assert (deq.len() == 1u);
+        assert deq.len() == 1;
         deq.add_front(b);
-        assert (deq.len() == 2u);
+        assert deq.len() == 2;
         deq.add_back(d);
-        assert (deq.len() == 3u);
+        assert deq.len() == 3;
         deq.add_front(a);
-        assert (deq.len() == 4u);
+        assert deq.len() == 4;
+        assert deq.get(0) == a;
+        assert deq.get(1) == b;
+        assert deq.get(2) == c;
+        assert deq.get(3) == d;
+    }
+
+    fn test_parameterized<T: Copy Eq Durable>(a: T, b: T, c: T, d: T) {
+        let mut deq = Deque::new();
+        assert deq.len() == 0;
+        deq.add_front(a);
+        deq.add_front(b);
+        deq.add_back(c);
+        assert deq.len() == 3;
+        deq.add_back(d);
+        assert deq.len() == 4;
+        assert *deq.peek_front() == b;
+        assert *deq.peek_back() == d;
+        assert deq.pop_front() == b;
+        assert deq.pop_back() == d;
+        assert deq.pop_back() == c;
+        assert deq.pop_back() == a;
+        assert deq.len() == 0;
+        deq.add_back(c);
+        assert deq.len() == 1;
+        deq.add_front(b);
+        assert deq.len() == 2;
+        deq.add_back(d);
+        assert deq.len() == 3;
+        deq.add_front(a);
+        assert deq.len() == 4;
         assert deq.get(0) == a;
         assert deq.get(1) == b;
         assert deq.get(2) == c;
