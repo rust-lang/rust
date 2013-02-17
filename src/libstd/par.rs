@@ -107,7 +107,7 @@ pub fn mapi<A: Copy Owned, B: Copy Owned>(
 {
     let slices = map_slices(xs, || {
         let f = fn_factory();
-        fn~(base: uint, slice : &[A], copy f) -> ~[B] {
+        fn~(base: uint, slice : &[A]) -> ~[B] {
             vec::mapi(slice, |i, x| {
                 f(i + base, x)
             })
@@ -126,7 +126,7 @@ pub fn alli<A: Copy Owned>(
 {
     do vec::all(map_slices(xs, || {
         let f = fn_factory();
-        fn~(base: uint, slice : &[A], copy f) -> bool {
+        fn~(base: uint, slice : &[A]) -> bool {
             vec::alli(slice, |i, x| {
                 f(i + base, x)
             })
@@ -140,7 +140,7 @@ pub fn any<A: Copy Owned>(
     fn_factory: &fn() -> ~fn(&A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         let f = fn_factory();
-        fn~(_base : uint, slice: &[A], copy f) -> bool {
+        fn~(_base : uint, slice: &[A]) -> bool {
             vec::any(slice, |x| f(x))
         }
     })) |x| { *x }
