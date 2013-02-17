@@ -45,6 +45,23 @@ impl<T> Deque<T> {
 
     fn peek_front(&self) -> &self/T { get(self.elts, self.lo) }
     fn peek_back(&self) -> &self/T { get(self.elts, self.hi - 1u) }
+
+    fn pop_front(&mut self) -> T {
+        let mut result = self.elts[self.lo].swap_unwrap();
+        self.lo = (self.lo + 1u) % self.elts.len();
+        self.nelts -= 1u;
+        result
+    }
+
+    fn pop_back(&mut self) -> T {
+        if self.hi == 0u {
+            self.hi = self.elts.len() - 1u;
+        } else { self.hi -= 1u; }
+        let mut result = self.elts[self.hi].swap_unwrap();
+        self.elts[self.hi] = None;
+        self.nelts -= 1u;
+        result
+    }
 }
 
 impl<T: Copy> Deque<T> {
@@ -71,24 +88,6 @@ impl<T: Copy> Deque<T> {
         self.elts[self.hi] = Some(t);
         self.hi = (self.hi + 1u) % self.elts.len();
         self.nelts += 1u;
-    }
-
-    fn pop_front(&mut self) -> T {
-        let t = { *get(self.elts, self.lo) };
-        self.elts[self.lo] = None;
-        self.lo = (self.lo + 1u) % self.elts.len();
-        self.nelts -= 1u;
-        t
-    }
-
-    fn pop_back(&mut self) -> T {
-        if self.hi == 0u {
-            self.hi = self.elts.len() - 1u;
-        } else { self.hi -= 1u; }
-        let t = { *get(self.elts, self.hi) };
-        self.elts[self.hi] = None;
-        self.nelts -= 1u;
-        t
     }
 
     fn get(&self, i: int) -> T {
