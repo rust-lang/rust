@@ -67,9 +67,7 @@ impl<T> Deque<T> {
         self.nelts -= 1u;
         result
     }
-}
 
-impl<T: Copy> Deque<T> {
     fn add_front(&mut self, t: T) {
         let oldlo = self.lo;
         if self.lo == 0u {
