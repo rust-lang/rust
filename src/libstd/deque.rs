@@ -71,7 +71,7 @@ impl<T: Copy> Deque<T> {
     }
 
     fn pop_front(&mut self) -> T {
-        let t: T = get(self.elts, self.lo);
+        let t = { *get(self.elts, self.lo) };
         self.elts[self.lo] = None;
         self.lo = (self.lo + 1u) % self.elts.len();
         self.nelts -= 1u;
@@ -82,19 +82,19 @@ impl<T: Copy> Deque<T> {
         if self.hi == 0u {
             self.hi = self.elts.len() - 1u;
         } else { self.hi -= 1u; }
-        let t: T = get(self.elts, self.hi);
+        let t = { *get(self.elts, self.hi) };
         self.elts[self.hi] = None;
         self.nelts -= 1u;
         t
     }
 
-    fn peek_front(&self) -> T { get(self.elts, self.lo) }
+    fn peek_front(&self) -> T { *get(self.elts, self.lo) }
 
-    fn peek_back(&self) -> T { get(self.elts, self.hi - 1u) }
+    fn peek_back(&self) -> T { *get(self.elts, self.hi - 1u) }
 
     fn get(&self, i: int) -> T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
-        get(self.elts, idx)
+        *get(self.elts, idx)
     }
 }
 
@@ -116,8 +116,8 @@ fn grow<T: Copy>(nelts: uint, lo: uint, elts: &[Option<T>]) -> ~[Option<T>] {
     rv
 }
 
-fn get<T: Copy>(elts: &[Option<T>], i: uint) -> T {
-    match elts[i] { Some(t) => t, _ => fail!() }
+fn get<T>(elts: &r/[Option<T>], i: uint) -> &r/T {
+    match elts[i] { Some(ref t) => t, _ => fail!() }
 }
 
 #[cfg(test)]
