@@ -38,10 +38,10 @@ use ext::pipes::proto::{state, protocol, next_state};
 use ext::pipes::proto;
 
 pub impl proto::visitor<(), (), ()> for ext_ctxt {
-    fn visit_proto(_proto: protocol,
+    fn visit_proto(&self, _proto: protocol,
                    _states: &[()]) { }
 
-    fn visit_state(state: state, _m: &[()]) {
+    fn visit_state(&self, state: state, _m: &[()]) {
         if state.messages.len() == 0 {
             self.span_warn(
                 state.span, // use a real span!
@@ -51,7 +51,7 @@ pub impl proto::visitor<(), (), ()> for ext_ctxt {
         }
     }
 
-    fn visit_message(name: ~str, _span: span, _tys: &[@ast::Ty],
+    fn visit_message(&self, name: ~str, _span: span, _tys: &[@ast::Ty],
                      this: state, next: Option<next_state>) {
         match next {
           Some(next_state { state: ref next, tys: next_tys }) => {
