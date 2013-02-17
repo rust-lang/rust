@@ -193,7 +193,7 @@ pub fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         cx.local_id += 1u;
     }
     match fk {
-        visit::fk_dtor(tps, ref attrs, self_id, parent_id) => {
+        visit::fk_dtor(ref tps, ref attrs, self_id, parent_id) => {
             let dt = @spanned {
                 node: ast::struct_dtor_ {
                     id: id,
@@ -203,7 +203,7 @@ pub fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
                 },
                 span: sp,
             };
-            cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
+            cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy *tps, dt,
                                         parent_id,
                                         @/* FIXME (#2543) */ copy cx.path));
       }
@@ -286,7 +286,7 @@ pub fn map_item(i: @item, &&cx: @mut Ctx, v: vt) {
         map_struct_def(struct_def, node_item(i, item_path), i.ident, cx,
                        v);
       }
-      item_trait(_, traits, ref methods) => {
+      item_trait(_, ref traits, ref methods) => {
         for traits.each |p| {
             cx.map.insert(p.ref_id, node_item(i, item_path));
         }

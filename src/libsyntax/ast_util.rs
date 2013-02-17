@@ -327,8 +327,8 @@ pub impl inlined_item_utils for inlined_item {
             ii_item(i) => (v.visit_item)(i, e, v),
             ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
             ii_method(_, m) => visit::visit_method_helper(m, e, v),
-            ii_dtor(ref dtor, _, tps, parent_id) => {
-              visit::visit_struct_dtor_helper((*dtor), tps, parent_id, e, v);
+            ii_dtor(/*bad*/ copy dtor, _, /*bad*/ copy tps, parent_id) => {
+                visit::visit_struct_dtor_helper(dtor, tps, parent_id, e, v);
             }
         }
     }
