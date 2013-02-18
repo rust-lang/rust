@@ -100,7 +100,7 @@ fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
     assert nelts == elts.len();
     let mut rv = ~[];
 
-    do vec::grow_fn(&mut rv, nelts + 1) |i| {
+    do rv.grow_fn(nelts + 1) |i| {
         let mut element = None;
         element <-> elts[(lo + i) % nelts];
         element
