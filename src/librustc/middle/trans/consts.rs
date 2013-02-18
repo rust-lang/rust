@@ -103,20 +103,6 @@ pub fn const_deref(cx: @CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(cx: @CrateContext, v: ValueRef, us: &[c_uint])
-                  -> ValueRef {
-    unsafe {
-        let r = do vec::as_imm_buf(us) |p, len| {
-            llvm::LLVMConstExtractValue(v, p, len as c_uint)
-        };
-
-        debug!("const_get_elt(v=%s, us=%?, r=%s)",
-               val_str(cx.tn, v), us, val_str(cx.tn, r));
-
-        return r;
-    }
-}
-
 pub fn const_autoderef(cx: @CrateContext, ty: ty::t, v: ValueRef)
     -> (ty::t, ValueRef) {
     let mut t1 = ty;
