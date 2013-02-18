@@ -27,28 +27,29 @@ use core::to_str::ToStr;
 use core::vec;
 
 pub trait gen_send {
-    fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item;
-    fn to_ty(cx: ext_ctxt) -> @ast::Ty;
+    fn gen_send(&self, cx: ext_ctxt, try: bool) -> @ast::item;
+    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty;
 }
 
 pub trait to_type_decls {
-    fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item];
-    fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item];
+    fn to_type_decls(&self, cx: ext_ctxt) -> ~[@ast::item];
+    fn to_endpoint_decls(&self, cx: ext_ctxt,
+                         dir: direction) -> ~[@ast::item];
 }
 
 pub trait gen_init {
-    fn gen_init(cx: ext_ctxt) -> @ast::item;
-    fn compile(cx: ext_ctxt) -> @ast::item;
-    fn buffer_ty_path(cx: ext_ctxt) -> @ast::Ty;
-    fn gen_buffer_type(cx: ext_ctxt) -> @ast::item;
-    fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr;
-    fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr;
+    fn gen_init(&self, cx: ext_ctxt) -> @ast::item;
+    fn compile(&self, cx: ext_ctxt) -> @ast::item;
+    fn buffer_ty_path(&self, cx: ext_ctxt) -> @ast::Ty;
+    fn gen_buffer_type(&self, cx: ext_ctxt) -> @ast::item;
+    fn gen_buffer_init(&self, ext_cx: ext_ctxt) -> @ast::expr;
+    fn gen_init_bounded(&self, ext_cx: ext_ctxt) -> @ast::expr;
 }
 
 pub impl gen_send for message {
-    fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item {
+    fn gen_send(&self, cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
-        match self {
+        match *self {
           message(ref _id, span, tys, this,
                   Some(next_state {state: ref next, tys: next_tys})) => {
             debug!("pipec: next state exists");
@@ -195,14 +196,14 @@ pub impl gen_send for message {
           }
         }
 
-    fn to_ty(cx: ext_ctxt) -> @ast::Ty {
+    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder(path(~[cx.ident_of(self.name())], self.span())
           .add_tys(cx.ty_vars_global(self.get_params())))
     }
 }
 
 pub impl to_type_decls for state {
-    fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
+    fn to_type_decls(&self, cx: ext_ctxt) -> ~[@ast::item] {
         debug!("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
         // state is called ping. This will generate both `ping` and
@@ -253,7 +254,8 @@ pub impl to_type_decls for state {
         ]
     }
 
-    fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {
+    fn to_endpoint_decls(&self, cx: ext_ctxt,
+                         dir: direction) -> ~[@ast::item] {
         debug!("pipec: to_endpoint_decls");
         let dir = match dir {
           send => (*self).dir,
@@ -306,7 +308,7 @@ pub impl to_type_decls for state {
 }
 
 pub impl gen_init for protocol {
-    fn gen_init(cx: ext_ctxt) -> @ast::item {
+    fn gen_init(&self, cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
 
         debug!("gen_init");
@@ -344,8 +346,10 @@ pub impl gen_init for protocol {
                            body.to_source(cx)))
     }
 
-    fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
-        ext_cx.rec(self.states.map_to_vec(|s| {
+    fn gen_buffer_init(&self, ext_cx: ext_ctxt) -> @ast::expr {
+        ext_cx.struct_expr(path(~[ext_cx.ident_of(~"__Buffer")],
+                                dummy_sp()),
+                      self.states.map_to_vec(|s| {
             let fty = s.to_ty(ext_cx);
             ext_cx.field_imm(ext_cx.ident_of(s.name),
                              quote_expr!(
@@ -354,7 +358,7 @@ pub impl gen_init for protocol {
         }))
     }
 
-    fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
+    fn gen_init_bounded(&self, ext_cx: ext_ctxt) -> @ast::expr {
         debug!("gen_init_bounded");
         let buffer_fields = self.gen_buffer_init(ext_cx);
         let buffer = quote_expr!(~::pipes::Buffer {
@@ -380,7 +384,7 @@ pub impl gen_init for protocol {
         })
     }
 
-    fn buffer_ty_path(cx: ext_ctxt) -> @ast::Ty {
+    fn buffer_ty_path(&self, cx: ext_ctxt) -> @ast::Ty {
         let mut params: ~[ast::ty_param] = ~[];
         for (copy self.states).each |s| {
             for s.ty_params.each |tp| {
@@ -396,7 +400,7 @@ pub impl gen_init for protocol {
                                .add_tys(cx.ty_vars_global(params)))
     }
 
-    fn gen_buffer_type(cx: ext_ctxt) -> @ast::item {
+    fn gen_buffer_type(&self, cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
         let mut params: ~[ast::ty_param] = ~[];
         let fields = do (copy self.states).map_to_vec |s| {
@@ -409,17 +413,31 @@ pub impl gen_init for protocol {
             let ty = s.to_ty(cx);
             let fty = quote_ty!( ::pipes::Packet<$ty> );
 
-            cx.ty_field_imm(cx.ident_of(s.name), fty)
+            @spanned {
+                node: ast::struct_field_ {
+                    kind: ast::named_field(
+                            cx.ident_of(s.name),
+                            ast::struct_immutable,
+                            ast::inherited),
+                    id: cx.next_id(),
+                    ty: fty
+                },
+                span: dummy_sp()
+            }
         };
 
-        cx.item_ty_poly(
+        cx.item_struct_poly(
             cx.ident_of(~"__Buffer"),
             dummy_sp(),
-            cx.ty_rec(fields),
+            ast::struct_def {
+                fields: fields,
+                dtor: None,
+                ctor_id: None
+            },
             cx.strip_bounds(params))
     }
 
-    fn compile(cx: ext_ctxt) -> @ast::item {
+    fn compile(&self, cx: ext_ctxt) -> @ast::item {
         let mut items = ~[self.gen_init(cx)];
         let mut client_states = ~[];
         let mut server_states = ~[];
