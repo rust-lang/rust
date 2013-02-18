@@ -40,22 +40,22 @@ pub type crate_metadata = @{name: ~str,
 
 pub struct CStore {
     priv metas: oldmap::HashMap<ast::crate_num, crate_metadata>,
-    priv use_crate_map: use_crate_map,
+    priv extern_mod_crate_map: extern_mod_crate_map,
     priv used_crate_files: ~[Path],
     priv used_libraries: ~[~str],
     priv used_link_args: ~[~str],
     intr: @ident_interner
 }
 
-// Map from node_id's of local use statements to crate numbers
-type use_crate_map = oldmap::HashMap<ast::node_id, ast::crate_num>;
+// Map from node_id's of local extern mod statements to crate numbers
+type extern_mod_crate_map = oldmap::HashMap<ast::node_id, ast::crate_num>;
 
 pub fn mk_cstore(intr: @ident_interner) -> CStore {
     let meta_cache = oldmap::HashMap();
     let crate_map = oldmap::HashMap();
     return CStore {
         metas: meta_cache,
-        use_crate_map: crate_map,
+        extern_mod_crate_map: crate_map,
         used_crate_files: ~[],
         used_libraries: ~[],
         used_link_args: ~[],
@@ -127,18 +127,18 @@ pub fn get_used_link_args(cstore: @mut CStore) -> ~[~str] {
     return /*bad*/copy cstore.used_link_args;
 }
 
-pub fn add_use_stmt_cnum(cstore: @mut CStore,
-                         use_id: ast::node_id,
-                         cnum: ast::crate_num) {
-    let use_crate_map = cstore.use_crate_map;
-    use_crate_map.insert(use_id, cnum);
+pub fn add_extern_mod_stmt_cnum(cstore: @mut CStore,
+                                emod_id: ast::node_id,
+                                cnum: ast::crate_num) {
+    let extern_mod_crate_map = cstore.extern_mod_crate_map;
+    extern_mod_crate_map.insert(emod_id, cnum);
 }
 
-pub fn find_use_stmt_cnum(cstore: @mut CStore,
-                          use_id: ast::node_id)
+pub fn find_extern_mod_stmt_cnum(cstore: @mut CStore,
+                                 emod_id: ast::node_id)
                        -> Option<ast::crate_num> {
-    let use_crate_map = cstore.use_crate_map;
-    use_crate_map.find(&use_id)
+    let extern_mod_crate_map = cstore.extern_mod_crate_map;
+    extern_mod_crate_map.find(&emod_id)
 }
 
 // returns hashes of crates directly used by this crate. Hashes are
@@ -147,8 +147,8 @@ pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
     type crate_hash = {name: ~str, hash: ~str};
     let mut result = ~[];
 
-    let use_crate_map = cstore.use_crate_map;
-    for use_crate_map.each_value |&cnum| {
+    let extern_mod_crate_map = cstore.extern_mod_crate_map;
+    for extern_mod_crate_map.each_value |&cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", cdata.name, hash);
