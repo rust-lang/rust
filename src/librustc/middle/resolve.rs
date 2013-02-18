@@ -1463,7 +1463,8 @@ pub impl Resolver {
             }
 
             view_item_extern_mod(name, _, node_id) => {
-                match find_extern_mod_stmt_cnum(self.session.cstore, node_id) {
+                match find_extern_mod_stmt_cnum(self.session.cstore,
+                                                node_id) {
                     Some(crate_id) => {
                         let (child_name_bindings, new_parent) =
                             self.add_child(name, parent, ForbidDuplicateTypes,
