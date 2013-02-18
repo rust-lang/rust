@@ -524,7 +524,8 @@ pub impl Datum {
         if bcx.sess().trace() {
             trans_trace(
                 bcx, None,
-                fmt!("preserving until end of scope %d", root_info.scope));
+                fmt!("preserving until end of scope %d",
+                     root_info.scope));
         }
 
         let scratch = scratch_datum(bcx, self.ty, true);

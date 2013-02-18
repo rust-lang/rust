@@ -834,7 +834,7 @@ pub fn add_span_comment(bcx: block, sp: span, text: ~str) {
     }
 }
 
-pub fn add_comment(bcx: block, text: ~str) {
+pub fn add_comment(bcx: block, text: &str) {
     unsafe {
         let ccx = bcx.ccx();
         if !ccx.sess.no_asm_comments() {

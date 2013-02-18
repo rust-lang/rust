@@ -66,7 +66,7 @@ pub fn trans_impl(ccx: @crate_ctxt, +path: path, name: ast::ident,
             match self_ty {
                 None => param_substs_opt = None,
                 Some(self_ty) => {
-                    param_substs_opt = Some(param_substs {
+                    param_substs_opt = Some(@param_substs {
                         tys: ~[],
                         vtables: None,
                         bounds: @~[],
@@ -99,7 +99,7 @@ Translates a (possibly monomorphized) method body.
 pub fn trans_method(ccx: @crate_ctxt,
                     +path: path,
                     method: &ast::method,
-                    +param_substs: Option<param_substs>,
+                    param_substs: Option<@param_substs>,
                     base_self_ty: Option<ty::t>,
                     llfn: ValueRef,
                     impl_id: ast::def_id) {
@@ -118,7 +118,7 @@ pub fn trans_method(ccx: @crate_ctxt,
         }
         let self_ty = match param_substs {
             None => self_ty,
-            Some(param_substs {tys: ref tys, _}) => {
+            Some(@param_substs {tys: ref tys, _}) => {
                 ty::subst_tps(ccx.tcx, *tys, None, self_ty)
             }
         };
@@ -247,7 +247,7 @@ pub fn trans_method_callee(bcx: block,
             bound_num: b
         }) => {
             match bcx.fcx.param_substs {
-                Some(ref substs) => {
+                Some(substs) => {
                     let vtbl = find_vtable(bcx.tcx(), substs, p, b);
                     trans_monomorphized_callee(bcx, callee_id, self, mentry,
                                                trait_id, off, vtbl)
