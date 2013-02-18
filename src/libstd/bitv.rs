@@ -869,12 +869,16 @@ priv impl BitvSet {
 #[cfg(test)]
 mod tests {
     use core::prelude::*;
+    use std::test::BenchHarness;
 
     use bitv::*;
     use bitv;
 
     use core::uint;
     use core::vec;
+    use core::rand;
+
+    const bench_bits : uint = 1 << 14;
 
     #[test]
     pub fn test_to_str() {
@@ -1418,6 +1422,94 @@ mod tests {
         assert a.insert(1000);
         assert a.remove(&1000);
         assert a.capacity() == uint::bits;
+    }
+
+    fn rng() -> rand::Rng {
+        let seed = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+        rand::seeded_rng(&seed)
+    }
+
+    #[bench]
+    pub fn bench_uint_small(b: &mut BenchHarness) {
+        let r = rng();
+        let mut bitv = 0 as uint;
+        do b.iter {
+            bitv |= (1 << ((r.next() as uint) % uint::bits));
+        }
+    }
+
+    #[bench]
+    pub fn bench_small_bitv_small(b: &mut BenchHarness) {
+        let r = rng();
+        let mut bitv = SmallBitv::new(uint::bits);
+        do b.iter {
+            bitv.set((r.next() as uint) % uint::bits, true);
+        }
+    }
+
+    #[bench]
+    pub fn bench_big_bitv_small(b: &mut BenchHarness) {
+        let r = rng();
+        let mut bitv = BigBitv::new(~[0]);
+        do b.iter {
+            bitv.set((r.next() as uint) % uint::bits, true);
+        }
+    }
+
+    #[bench]
+    pub fn bench_big_bitv_big(b: &mut BenchHarness) {
+        let r = rng();
+        let mut storage = ~[];
+        storage.grow(bench_bits / uint::bits, &0);
+        let mut bitv = BigBitv::new(storage);
+        do b.iter {
+            bitv.set((r.next() as uint) % bench_bits, true);
+        }
+    }
+
+    #[bench]
+    pub fn bench_bitv_big(b: &mut BenchHarness) {
+        let r = rng();
+        let mut bitv = Bitv::new(bench_bits, false);
+        do b.iter {
+            bitv.set((r.next() as uint) % bench_bits, true);
+        }
+    }
+
+    #[bench]
+    pub fn bench_bitv_small(b: &mut BenchHarness) {
+        let r = rng();
+        let mut bitv = Bitv::new(uint::bits, false);
+        do b.iter {
+            bitv.set((r.next() as uint) % uint::bits, true);
+        }
+    }
+
+    #[bench]
+    pub fn bench_bitv_set_small(b: &mut BenchHarness) {
+        let r = rng();
+        let mut bitv = BitvSet::new();
+        do b.iter {
+            bitv.insert((r.next() as uint) % uint::bits);
+        }
+    }
+
+    #[bench]
+    pub fn bench_bitv_set_big(b: &mut BenchHarness) {
+        let r = rng();
+        let mut bitv = BitvSet::new();
+        do b.iter {
+            bitv.insert((r.next() as uint) % bench_bits);
+        }
+    }
+
+    #[bench]
+    pub fn bench_bitv_big_union(b: &mut BenchHarness) {
+        let mut b1 = Bitv::new(bench_bits, false);
+        let mut b2 = Bitv::new(bench_bits, false);
+        do b.iter {
+            b1.union(&b2);
+        }
     }
 }
 
