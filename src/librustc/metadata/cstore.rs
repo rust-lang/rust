@@ -119,7 +119,7 @@ pub fn get_used_libraries(cstore: @mut CStore) -> ~[~str] {
     return /*bad*/copy cstore.used_libraries;
 }
 
-pub fn add_used_link_args(cstore: @mut CStore, args: ~str) {
+pub fn add_used_link_args(cstore: @mut CStore, args: &str) {
     cstore.used_link_args.push_all(str::split_char(args, ' '));
 }
 
