@@ -44,7 +44,7 @@ use util::ppaux::{expr_repr, ty_to_str};
 
 use core::cast;
 use core::hash;
-use core::libc::c_uint;
+use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::ptr;
 use core::str;
 use core::to_bytes;
@@ -1087,6 +1087,12 @@ pub fn C_null(t: TypeRef) -> ValueRef {
     }
 }
 
+pub fn C_undef(t: TypeRef) -> ValueRef {
+    unsafe {
+        return llvm::LLVMGetUndef(t);
+    }
+}
+
 pub fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
     unsafe {
         return llvm::LLVMConstInt(t, u, sign_extend);
@@ -1251,6 +1257,38 @@ pub fn C_shape(ccx: @CrateContext, +bytes: ~[u8]) -> ValueRef {
 pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
     unsafe {
         llvm::LLVMGetParam(fndecl, param as c_uint)
+    }
+}
+
+pub fn const_get_elt(cx: @CrateContext, v: ValueRef, us: &[c_uint])
+                  -> ValueRef {
+    unsafe {
+        let r = do vec::as_imm_buf(us) |p, len| {
+            llvm::LLVMConstExtractValue(v, p, len as c_uint)
+        };
+
+        debug!("const_get_elt(v=%s, us=%?, r=%s)",
+               val_str(cx.tn, v), us, val_str(cx.tn, r));
+
+        return r;
+    }
+}
+
+pub fn const_to_int(v: ValueRef) -> c_longlong {
+    unsafe {
+        llvm::LLVMConstIntGetSExtValue(v)
+    }
+}
+
+pub fn const_to_uint(v: ValueRef) -> c_ulonglong {
+    unsafe {
+        llvm::LLVMConstIntGetZExtValue(v)
+    }
+}
+
+pub fn is_undef(val: ValueRef) -> bool {
+    unsafe {
+        llvm::LLVMIsUndef(val) != False
     }
 }
 

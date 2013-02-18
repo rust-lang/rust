@@ -65,6 +65,7 @@ pub mod middle {
         pub mod type_use;
         pub mod reachable;
         pub mod machine;
+        pub mod adt;
     }
     pub mod ty;
     pub mod resolve;
