@@ -64,6 +64,8 @@ pub trait GenericPath {
     pure fn push_many((&[~str])) -> Self;
     pure fn pop() -> Self;
 
+    pure fn unsafe_join((&Self)) -> Self;
+
     pure fn normalize() -> Self;
 }
 
@@ -485,6 +487,15 @@ impl GenericPath for PosixPath {
         self.push_many(other.components)
     }
 
+    pure fn unsafe_join(other: &PosixPath) -> PosixPath {
+        if other.is_absolute {
+            PosixPath { is_absolute: true,
+                        components: copy other.components }
+        } else {
+            self.push_rel(other)
+        }
+    }
+
     pure fn push_many(cs: &[~str]) -> PosixPath {
         let mut v = copy self.components;
         for cs.each |e| {
@@ -683,6 +694,25 @@ impl GenericPath for WindowsPath {
     pure fn push_rel(other: &WindowsPath) -> WindowsPath {
         assert !other.is_absolute;
         self.push_many(other.components)
+    }
+
+    pure fn unsafe_join(other: &WindowsPath) -> WindowsPath {
+        if !other.is_absolute {
+            self.push_rel(other)
+        } else {
+            WindowsPath {
+                host: match other.host {
+                    None => copy self.host,
+                    Some(copy x) => Some(x)
+                },
+                device: match other.device {
+                    None => copy self.device,
+                    Some(copy x) => Some(x)
+                },
+                is_absolute: true,
+                components: copy other.components
+            }
+        }
     }
 
     pure fn push_many(cs: &[~str]) -> WindowsPath {
