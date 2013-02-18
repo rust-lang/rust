@@ -14,7 +14,7 @@
 ######################################################################
 
 # The names of crates that must be tested
-TEST_CRATES = core std syntax rustc rustdoc rusti rustpkg
+TEST_CRATES = core std syntax rustc rustdoc rusti rust rustpkg
 
 # Markdown files under doc/ that should have their code extracted and run
 DOC_TEST_NAMES = tutorial tutorial-ffi tutorial-macros tutorial-borrowed-ptr tutorial-tasks rust
@@ -237,6 +237,12 @@ $(3)/test/rustpkgtest.stage$(1)-$(2)$$(X):					\
 
 $(3)/test/rustitest.stage$(1)-$(2)$$(X):					\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)		\
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+
+$(3)/test/rusttest.stage$(1)-$(2)$$(X):					\
+		$$(RUST_LIB) $$(RUST_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
