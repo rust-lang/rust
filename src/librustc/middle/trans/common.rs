@@ -311,7 +311,7 @@ pub struct fn_ctxt_ {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    param_substs: Option<param_substs>,
+    param_substs: Option<@param_substs>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -1395,7 +1395,7 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, +vt: typeck::vtable_origin)
         }
         typeck::vtable_param(n_param, n_bound) => {
             match fcx.param_substs {
-                Some(ref substs) => {
+                Some(substs) => {
                     find_vtable(tcx, substs, n_param, n_bound)
                 }
                 _ => {
