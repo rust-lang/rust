@@ -134,6 +134,7 @@ CFG_LIBFUZZER :=$(call CFG_LIB_NAME,fuzzer)
 CFG_LIBRUSTPKG :=$(call CFG_LIB_NAME,rustpkg)
 CFG_LIBRUSTDOC :=$(call CFG_LIB_NAME,rustdoc)
 CFG_LIBRUSTI :=$(call CFG_LIB_NAME,rusti)
+CFG_LIBRUST :=$(call CFG_LIB_NAME,rust)
 
 STDLIB_GLOB :=$(call CFG_LIB_GLOB,std)
 CORELIB_GLOB :=$(call CFG_LIB_GLOB,core)
@@ -143,6 +144,7 @@ LIBFUZZER_GLOB :=$(call CFG_LIB_GLOB,fuzzer)
 LIBRUSTPKG_GLOB :=$(call CFG_LIB_GLOB,rustpkg)
 LIBRUSTDOC_GLOB :=$(call CFG_LIB_GLOB,rustdoc)
 LIBRUSTI_GLOB :=$(call CFG_LIB_GLOB,rusti)
+LIBRUST_GLOB :=$(call CFG_LIB_GLOB,rust)
 STDLIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,std)
 CORELIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,core)
 LIBRUSTC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustc)
@@ -151,6 +153,7 @@ LIBFUZZER_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,fuzzer)
 LIBRUSTPKG_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustpkg)
 LIBRUSTDOC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustdoc)
 LIBRUSTI_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rusti)
+LIBRUST_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rust)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
@@ -374,10 +377,12 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustpkg$$(X) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X) \
 	$$(HBIN$(1)_H_$(3))/rusti$$(X) \
+	$$(HBIN$(1)_H_$(3))/rust$$(X) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBFUZZER) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTPKG) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTDOC) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTI) \
+	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUST) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)  \
@@ -385,7 +390,8 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBFUZZER) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTPKG) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTDOC) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI)
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUST)
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed

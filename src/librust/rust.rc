@@ -1,0 +1,235 @@
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+// rust - central access to other rust tools
+// XXX: Make commands run and test emit proper file endings on winds
+// XXX: Make run only accept source that emits an executable
+
+#[link(name = "rust",
+       vers = "0.6",
+       uuid = "4a24da33-5cc8-4037-9352-2cbe9bd9d27c",
+       url = "https://github.com/mozilla/rust/tree/master/src/rust")];
+
+#[crate_type = "lib"];
+
+extern mod core(vers = "0.6");
+
+use core::run;
+
+enum ValidUsage {
+    Valid, Invalid
+}
+
+impl ValidUsage {
+    fn is_valid(&self) -> bool { match *self {
+        Valid   => true,
+        Invalid => false
+    }}
+}
+
+enum Action {
+    Exec(&str),
+    Call(&fn(args: &[~str]) -> ValidUsage)
+}
+
+enum UsageSource {
+    UsgExec(&str),
+    UsgStr(&str)
+}
+
+struct Command {
+    cmd: &str,
+    action: Action,
+    usage_line: &str,
+    usage_full: UsageSource
+}
+
+const commands: &[Command] = &[
+    Command{
+        cmd: "build",
+        action: Exec("rustc"),
+        usage_line: "compile rust source files",
+        usage_full: UsgExec("rustc --help")
+    },
+    Command{
+        cmd: "run",
+        action: Call(cmd_run),
+        usage_line: "build a executable, and run it",
+        usage_full: UsgStr(
+            "The run command is an shortcut for the command line \n\
+             \"rustc <filename> -o <filestem>~ && ./<filestem>~\".\
+            \n\nUsage:\trust run <filename>"
+        )
+    },
+    Command{
+        cmd: "test",
+        action: Call(cmd_test),
+        usage_line: "build a test executable, and run it",
+        usage_full: UsgStr(
+            "The test command is an shortcut for the command line \n\
+            \"rustc --test <filename> -o <filestem>test~ && \
+            ./<filestem>test~\"\n\nUsage:\trust test <filename>"
+        )
+    },
+    Command{
+        cmd: "doc",
+        action: Exec("rustdoc"),
+        usage_line: "generate documentation from doc comments",
+        usage_full: UsgExec("rustdoc --help")
+    },
+    Command{
+        cmd: "pkg",
+        action: Exec("rustpkg"),
+        usage_line: "download, build, install rust packages",
+        usage_full: UsgExec("rustpkg --help")
+    },
+    Command{
+        cmd: "sketch",
+        action: Exec("rusti"),
+        usage_line: "run a rust interpreter",
+        usage_full: UsgStr("\nUsage:\trusti")
+    },
+    Command{
+        cmd: "help",
+        action: Call(cmd_help),
+        usage_line: "show detailed usage of a command",
+        usage_full: UsgStr(
+            "The help command displays the usage text of another command.\n\
+            The text is either build in, or provided by the corresponding \
+            program.\n\nUsage:\trust help <command>"
+        )
+    }
+];
+
+fn find_cmd(command_string: &str) -> Option<Command> {
+    do commands.find |command| {
+        command.cmd == command_string
+    }
+}
+
+fn cmd_help(args: &[~str]) -> ValidUsage {
+    fn print_usage(command_string: ~str) -> ValidUsage {
+        match find_cmd(command_string) {
+            Some(command) => {
+                match command.action {
+                    Exec(s) => io::println(fmt!(
+                        "The %s command is an alias for the %s program.",
+                        command.cmd, s)),
+                    _       => ()
+                }
+                match command.usage_full {
+                    UsgStr(msg)          => io::println(fmt!("%s\n", msg)),
+                    UsgExec(commandline) => {
+                        let words = str::words(commandline);
+                        let (prog, args) = (words.head(), words.tail());
+                        run::run_program(prog, args);
+                    }
+                }
+                Valid
+            },
+            None => Invalid
+        }
+    }
+
+    match args {
+        [command_string] => print_usage(command_string),
+        _                => Invalid
+    }
+}
+
+fn cmd_test(args: &[~str]) -> ValidUsage {
+    match args {
+        [filename] => {
+            let test_exec = Path(filename).filestem().unwrap() + "test~";
+            if run::run_program("rustc", [
+                ~"--test",
+                filename.to_owned(),
+                ~"-o",
+                test_exec.to_owned()
+            ]) == 0 {
+                run::run_program(~"./" + test_exec, []);
+            }
+            Valid
+        }
+        _          => Invalid
+    }
+}
+
+fn cmd_run(args: &[~str]) -> ValidUsage {
+    match args {
+        [filename] => {
+            let exec = Path(filename).filestem().unwrap() + "~";
+            if run::run_program("rustc", [
+                filename.to_owned(),
+                ~"-o",
+                exec.to_owned()
+            ]) == 0 {
+                run::run_program(~"./"+exec, []);
+            }
+            Valid
+        }
+        _          => Invalid
+    }
+}
+
+fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
+    match command.action {
+        Call(f) => f(args),
+        Exec(commandline) => {
+            let words = str::words(commandline);
+            let (prog, prog_args) = (words.head(), words.tail());
+            let exitstatus = run::run_program(prog, prog_args + args);
+            os::set_exit_status(exitstatus);
+            Valid
+        }
+    }
+}
+
+fn usage() {
+    const indent: uint = 8;
+
+    io::print(
+        "The rust tool is a convenience for managing rust source code.\n\
+        It acts as a shortcut for programs of the rust tool chain.\n\
+        \n\
+        Usage:\trust <command> [arguments]\n\
+        \n\
+        The commands are:\n\
+        \n"
+    );
+
+    for commands.each |command| {
+        let padding = str::repeat(" ", indent - command.cmd.len());
+        io::println(fmt!("    %s%s%s",
+                         command.cmd, padding, command.usage_line));
+    }
+
+    io::print(
+        "\n\
+        Use \"rust help <command>\" for more information about a command.\n\
+        \n"
+    );
+
+}
+
+fn main() {
+    let args = os::args().tail();
+
+    if !args.is_empty() {
+        for commands.each |command| {
+            if command.cmd == args.head() {
+                let result = do_command(command, args.tail());
+                if result.is_valid() { return; }
+            }
+        }
+    }
+
+    usage();
+}
