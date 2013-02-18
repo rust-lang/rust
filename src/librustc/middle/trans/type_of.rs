@@ -328,11 +328,20 @@ pub fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 pub fn enum_body_types(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
                     -> ~[TypeRef] {
     let univar = ty::enum_is_univariant(cx.tcx, did);
-    let size = machine::static_size_of_enum(cx, t);
     if !univar {
+        let size = machine::static_size_of_enum(cx, t);
         ~[T_enum_discrim(cx), T_array(T_i8(), size)]
-    } else {
-        ~[T_array(T_i8(), size)]
+    }
+    else {
+        // Use the actual fields, so we get the alignment right.
+        match ty::get(t).sty {
+            ty::ty_enum(_, ref substs) => {
+                do ty::enum_variants(cx.tcx, did)[0].args.map |&field_ty| {
+                    sizing_type_of(cx, ty::subst(cx.tcx, substs, field_ty))
+                }
+            }
+            _ => cx.sess.bug(~"enum is not an enum")
+        }
     }
 }
 
