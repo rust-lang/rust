@@ -260,9 +260,9 @@ pub fn public_methods(ms: ~[@method]) -> ~[@method] {
 
 // extract a ty_method from a trait_method. if the trait_method is
 // a default, pull out the useful fields to make a ty_method
-pub fn trait_method_to_ty_method(method: trait_method) -> ty_method {
-    match method {
-        required(ref m) => (*m),
+pub fn trait_method_to_ty_method(method: &trait_method) -> ty_method {
+    match *method {
+        required(ref m) => copy *m,
         provided(ref m) => {
             ty_method {
                 ident: m.ident,
@@ -278,7 +278,7 @@ pub fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     }
 }
 
-pub fn split_trait_methods(trait_methods: ~[trait_method])
+pub fn split_trait_methods(trait_methods: &[trait_method])
     -> (~[ty_method], ~[@method]) {
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
@@ -425,7 +425,7 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(l.node.id);
         },
 
-        visit_block: fn@(b: blk) {
+        visit_block: fn@(b: &blk) {
             vfn(b.node.id);
         },
 
@@ -433,7 +433,7 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(ast_util::stmt_id(*s));
         },
 
-        visit_arm: fn@(_a: arm) { },
+        visit_arm: fn@(_a: &arm) { },
 
         visit_pat: fn@(p: @pat) {
             vfn(p.id)
@@ -463,8 +463,8 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             }
         },
 
-        visit_fn: fn@(fk: &visit::fn_kind, d: ast::fn_decl,
-                      _b: ast::blk, _sp: span, id: ast::node_id) {
+        visit_fn: fn@(fk: &visit::fn_kind, d: &ast::fn_decl,
+                      _b: &ast::blk, _sp: span, id: ast::node_id) {
             vfn(id);
 
             match *fk {
@@ -491,10 +491,10 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             }
         },
 
-        visit_ty_method: fn@(_ty_m: ty_method) {
+        visit_ty_method: fn@(_ty_m: &ty_method) {
         },
 
-        visit_trait_method: fn@(_ty_m: trait_method) {
+        visit_trait_method: fn@(_ty_m: &trait_method) {
         },
 
         visit_struct_def: fn@(_sd: @struct_def, _id: ident, _tps: &[ty_param],

@@ -221,7 +221,7 @@ pub fn record_parent(cx: ctxt, child_id: ast::node_id) {
     }
 }
 
-pub fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_block(blk: &ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Record the parent of this block.
     record_parent(cx, blk.node.id);
 
@@ -230,7 +230,7 @@ pub fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_block(blk, new_cx, visitor);
 }
 
-pub fn resolve_arm(arm: ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
+pub fn resolve_arm(arm: &ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_arm(arm, cx, visitor);
 }
 
@@ -317,8 +317,8 @@ pub fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
 }
 
 pub fn resolve_fn(fk: &visit::fn_kind,
-                  decl: ast::fn_decl,
-                  body: ast::blk,
+                  decl: &ast::fn_decl,
+                  body: &ast::blk,
                   sp: span,
                   id: ast::node_id,
                   cx: ctxt,
@@ -608,8 +608,8 @@ pub fn determine_rp_in_item(item: @ast::item,
 }
 
 pub fn determine_rp_in_fn(fk: &visit::fn_kind,
-                          decl: ast::fn_decl,
-                          body: ast::blk,
+                          decl: &ast::fn_decl,
+                          body: &ast::blk,
                           _: span,
                           _: ast::node_id,
                           &&cx: @mut DetermineRpCtxt,
@@ -626,7 +626,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
     }
 }
 
-pub fn determine_rp_in_ty_method(ty_m: ast::ty_method,
+pub fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
                                  &&cx: @mut DetermineRpCtxt,
                                  visitor: visit::vt<@mut DetermineRpCtxt>) {
     do cx.with(cx.item_id, false) {

@@ -1027,7 +1027,7 @@ pub impl Resolver {
         }
     }
 
-    fn block_needs_anonymous_module(@mut self, block: blk) -> bool {
+    fn block_needs_anonymous_module(@mut self, block: &blk) -> bool {
         // If the block has view items, we need an anonymous module.
         if block.node.view_items.len() > 0 {
             return true;
@@ -1276,7 +1276,7 @@ pub impl Resolver {
                 // methods, so check that first.
                 let mut has_static_methods = false;
                 for (*methods).each |method| {
-                    let ty_m = trait_method_to_ty_method(*method);
+                    let ty_m = trait_method_to_ty_method(method);
                     match ty_m.self_ty.node {
                         sty_static => {
                             has_static_methods = true;
@@ -1304,7 +1304,7 @@ pub impl Resolver {
                 // Add the names of all the methods to the trait info.
                 let method_names = @HashMap();
                 for (*methods).each |method| {
-                    let ty_m = trait_method_to_ty_method(*method);
+                    let ty_m = trait_method_to_ty_method(method);
 
                     let ident = ty_m.ident;
                     // Add it to the trait info if not static,
@@ -1534,7 +1534,7 @@ pub impl Resolver {
     }
 
     fn build_reduced_graph_for_block(@mut self,
-                                     block: blk,
+                                     block: &blk,
                                      parent: ReducedGraphParent,
                                      &&visitor: vt<ReducedGraphParent>) {
         let mut new_parent;
@@ -3788,7 +3788,7 @@ pub impl Resolver {
                                          item.id,
                                          0,
                                          OpaqueFunctionRibKind),
-                                      (*block),
+                                      block,
                                       NoSelfBinding,
                                       visitor);
             }
@@ -3866,7 +3866,7 @@ pub impl Resolver {
                         rib_kind: RibKind,
                         optional_declaration: Option<@fn_decl>,
                         type_parameters: TypeParameters,
-                        block: blk,
+                        block: &blk,
                         self_binding: SelfBinding,
                         visitor: ResolveVisitor) {
         // Create a value rib for the function.
@@ -3982,7 +3982,7 @@ pub impl Resolver {
                     self.resolve_function(NormalRibKind,
                                           None,
                                           NoTypeParameters,
-                                          (*destructor).node.body,
+                                          &destructor.node.body,
                                           HasSelfBinding
                                             ((*destructor).node.self_id,
                                              true),
@@ -4015,7 +4015,7 @@ pub impl Resolver {
         self.resolve_function(rib_kind,
                               Some(@/*bad*/copy method.decl),
                               type_parameters,
-                              method.body,
+                              &method.body,
                               self_binding,
                               visitor);
     }
@@ -4140,7 +4140,7 @@ pub impl Resolver {
         return result;
     }
 
-    fn check_consistent_bindings(@mut self, arm: arm) {
+    fn check_consistent_bindings(@mut self, arm: &arm) {
         if arm.pats.len() == 0 { return; }
         let map_0 = self.binding_mode_map(arm.pats[0]);
         for arm.pats.eachi() |i, p| {
@@ -4179,7 +4179,7 @@ pub impl Resolver {
         }
     }
 
-    fn resolve_arm(@mut self, arm: arm, visitor: ResolveVisitor) {
+    fn resolve_arm(@mut self, arm: &arm, visitor: ResolveVisitor) {
         (*self.value_ribs).push(@Rib(NormalRibKind));
 
         let bindings_list = HashMap();
@@ -4193,12 +4193,12 @@ pub impl Resolver {
         self.check_consistent_bindings(arm);
 
         visit_expr_opt(arm.guard, (), visitor);
-        self.resolve_block(arm.body, visitor);
+        self.resolve_block(&arm.body, visitor);
 
         (*self.value_ribs).pop();
     }
 
-    fn resolve_block(@mut self, block: blk, visitor: ResolveVisitor) {
+    fn resolve_block(@mut self, block: &blk, visitor: ResolveVisitor) {
         debug!("(resolving block) entering block");
         (*self.value_ribs).push(@Rib(NormalRibKind));
 
@@ -4910,7 +4910,7 @@ pub impl Resolver {
                 self.resolve_function(FunctionRibKind(expr.id, block.node.id),
                                       Some(@/*bad*/copy *fn_decl),
                                       NoTypeParameters,
-                                      (*block),
+                                      block,
                                       NoSelfBinding,
                                       visitor);
             }

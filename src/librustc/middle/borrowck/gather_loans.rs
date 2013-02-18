@@ -96,8 +96,8 @@ pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
 }
 
 fn req_loans_in_fn(fk: &visit::fn_kind,
-                   decl: ast::fn_decl,
-                   body: ast::blk,
+                   decl: &ast::fn_decl,
+                   body: &ast::blk,
                    sp: span,
                    id: ast::node_id,
                    &&self: @mut GatherLoanCtxt,
@@ -269,13 +269,13 @@ fn req_loans_in_expr(ex: @ast::expr,
         (vt.visit_expr)(cond, self, vt);
 
         // during body, can only root for the body
-        self.root_ub = (*body).node.id;
-        (vt.visit_block)((*body), self, vt);
+        self.root_ub = body.node.id;
+        (vt.visit_block)(body, self, vt);
       }
 
       // see explanation attached to the `root_ub` field:
       ast::expr_loop(ref body, _) => {
-        self.root_ub = (*body).node.id;
+        self.root_ub = body.node.id;
         visit::visit_expr(ex, self, vt);
       }
 

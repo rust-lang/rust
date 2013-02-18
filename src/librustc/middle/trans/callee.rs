@@ -390,7 +390,7 @@ pub fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
         ArgVals(args), dest, DontAutorefArg);
 }
 
-pub fn body_contains_ret(body: ast::blk) -> bool {
+pub fn body_contains_ret(body: &ast::blk) -> bool {
     let cx = @mut false;
     visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
         visit_item: |_i, _cx, _v| { },
@@ -424,7 +424,7 @@ pub fn trans_call_inner(
               ast::expr_loop_body(@ast::expr {
                 node: ast::expr_fn_block(_, ref body),
                 _
-              }) =>  body_contains_ret((*body)),
+              }) =>  body_contains_ret(body),
               _ => false
             }
           }

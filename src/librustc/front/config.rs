@@ -45,7 +45,7 @@ pub fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
           .. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
-    let res = @fold.fold_crate(*crate);
+    let res = @fold.fold_crate(&*crate);
     return res;
 }
 
@@ -63,7 +63,7 @@ fn filter_view_item(cx: @Context, &&view_item: @ast::view_item
     }
 }
 
-fn fold_mod(cx: @Context, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
+fn fold_mod(cx: @Context, m: &ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     let filtered_items =
         m.items.filter_mapped(|a| filter_item(cx, *a));
     let filtered_view_items =
@@ -83,7 +83,7 @@ fn filter_foreign_item(cx: @Context, &&item: @ast::foreign_item) ->
 
 fn fold_foreign_mod(
     cx: @Context,
-    nm: ast::foreign_mod,
+    nm: &ast::foreign_mod,
     fld: fold::ast_fold
 ) -> ast::foreign_mod {
     let filtered_items =
@@ -98,21 +98,21 @@ fn fold_foreign_mod(
     }
 }
 
-fn fold_item_underscore(cx: @Context, +item: ast::item_,
+fn fold_item_underscore(cx: @Context, item: &ast::item_,
                         fld: fold::ast_fold) -> ast::item_ {
-    let item = match item {
-        ast::item_impl(a, b, c, methods) => {
+    let item = match *item {
+        ast::item_impl(ref a, b, c, ref methods) => {
             let methods = methods.filtered(|m| method_in_cfg(cx, *m) );
-            ast::item_impl(a, b, c, methods)
+            ast::item_impl(/*bad*/ copy *a, b, c, methods)
         }
         ast::item_trait(ref a, ref b, ref methods) => {
             let methods = methods.filtered(|m| trait_method_in_cfg(cx, m) );
             ast::item_trait(/*bad*/copy *a, /*bad*/copy *b, methods)
         }
-        item => item
+        ref item => /*bad*/ copy *item
     };
 
-    fold::noop_fold_item_underscore(item, fld)
+    fold::noop_fold_item_underscore(&item, fld)
 }
 
 fn filter_stmt(cx: @Context, &&stmt: @ast::stmt) ->
@@ -134,7 +134,7 @@ fn filter_stmt(cx: @Context, &&stmt: @ast::stmt) ->
 
 fn fold_block(
     cx: @Context,
-    b: ast::blk_,
+    b: &ast::blk_,
     fld: fold::ast_fold
 ) -> ast::blk_ {
     let filtered_stmts =

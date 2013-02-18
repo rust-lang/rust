@@ -24,63 +24,71 @@ use core::vec;
 use std::oldmap::HashMap;
 
 pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
-                   e: expr_, s: span, fld: ast_fold,
-                   orig: fn@(expr_, span, ast_fold) -> (expr_, span))
+                   e: &expr_, s: span, fld: ast_fold,
+                   orig: fn@(&expr_, span, ast_fold) -> (expr_, span))
                 -> (expr_, span) {
-    return match e {
-      // expr_mac should really be expr_ext or something; it's the
-      // entry-point for all syntax extensions.
-          expr_mac(ref mac) => {
-
+    match *e {
+        // expr_mac should really be expr_ext or something; it's the
+        // entry-point for all syntax extensions.
+        expr_mac(ref mac) => {
             match (*mac).node {
-
-              // Token-tree macros, these will be the only case when we're
-              // finished transitioning.
-              mac_invoc_tt(pth, ref tts) => {
-                assert (vec::len(pth.idents) == 1u);
-                /* using idents and token::special_idents would make the
-                the macro names be hygienic */
-                let extname = cx.parse_sess().interner.get(pth.idents[0]);
-                match exts.find(&extname) {
-                  None => {
-                    cx.span_fatal(pth.span,
-                                  fmt!("macro undefined: '%s'", *extname))
-                  }
-                  Some(NormalTT(SyntaxExpanderTT{expander: exp,
-                                                 span: exp_sp})) => {
-                    cx.bt_push(ExpandedFrom(CallInfo{
-                        call_site: s,
-                        callee: NameAndSpan {
-                            name: *extname, span: exp_sp
+                // Token-tree macros, these will be the only case when we're
+                // finished transitioning.
+                mac_invoc_tt(pth, ref tts) => {
+                    assert (vec::len(pth.idents) == 1u);
+                    /* using idents and token::special_idents would make the
+                    the macro names be hygienic */
+                    let extname = cx.parse_sess().interner.get(pth.idents[0]);
+                    match exts.find(&extname) {
+                        None => {
+                            cx.span_fatal(
+                                pth.span,
+                                fmt!("macro undefined: '%s'", *extname))
                         }
-                    }));
+                        Some(NormalTT(SyntaxExpanderTT{
+                            expander: exp,
+                            span: exp_sp
+                        })) => {
+                            cx.bt_push(ExpandedFrom(CallInfo {
+                                call_site: s,
+                                callee: NameAndSpan {
+                                    name: *extname,
+                                    span: exp_sp,
+                                },
+                            }));
 
-                    let expanded = match exp(cx, (*mac).span, (*tts)) {
-                      MRExpr(e) => e,
-                      MRAny(expr_maker,_,_) => expr_maker(),
-                      _ => cx.span_fatal(
-                          pth.span, fmt!("non-expr macro in expr pos: %s",
-                                         *extname))
-                    };
+                            let expanded = match exp(cx, mac.span, *tts) {
+                                MRExpr(e) => e,
+                                MRAny(expr_maker,_,_) => expr_maker(),
+                                _ => {
+                                    cx.span_fatal(
+                                        pth.span,
+                                        fmt!(
+                                            "non-expr macro in expr pos: %s",
+                                            *extname
+                                        )
+                                    )
+                                }
+                            };
 
-                    //keep going, outside-in
-                    let fully_expanded = fld.fold_expr(expanded).node;
-                    cx.bt_pop();
+                            //keep going, outside-in
+                            let fully_expanded = fld.fold_expr(expanded).node;
+                            cx.bt_pop();
 
-                    (fully_expanded, s)
-                  }
-                  _ => {
-                    cx.span_fatal(pth.span,
-                                  fmt!("'%s' is not a tt-style macro",
-                                       *extname))
-                  }
-
+                            (fully_expanded, s)
+                        }
+                        _ => {
+                            cx.span_fatal(
+                                pth.span,
+                                fmt!("'%s' is not a tt-style macro", *extname)
+                            )
+                        }
+                    }
                 }
-              }
             }
-          }
-          _ => orig(e, s, fld)
-        };
+        }
+        _ => orig(e, s, fld)
+    }
 }
 
 // This is a secondary mechanism for invoking syntax extensions on items:
@@ -93,8 +101,8 @@ pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
 pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
-                        module_: ast::_mod, fld: ast_fold,
-                        orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
+                        module_: &ast::_mod, fld: ast_fold,
+                        orig: fn@(&ast::_mod, ast_fold) -> ast::_mod)
                      -> ast::_mod {
     // Fold the contents first:
     let module_ = orig(module_, fld);
@@ -130,8 +138,8 @@ pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
 
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(exts: SyntaxExtensions,
-                   cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
-                   orig: fn@(&&v: @ast::item, ast_fold) -> Option<@ast::item>)
+                   cx: ext_ctxt, it: @ast::item, fld: ast_fold,
+                   orig: fn@(@ast::item, ast_fold) -> Option<@ast::item>)
                 -> Option<@ast::item> {
     let is_mod = match it.node {
       ast::item_mod(_) | ast::item_foreign_mod(_) => true,
@@ -223,13 +231,13 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
 }
 
 pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
-                   && s: stmt_, sp: span, fld: ast_fold,
-                   orig: fn@(&&s: stmt_, span, ast_fold) -> (stmt_, span))
+                   s: &stmt_, sp: span, fld: ast_fold,
+                   orig: fn@(s: &stmt_, span, ast_fold) -> (stmt_, span))
                 -> (stmt_, span) {
 
-    let (mac, pth, tts, semi) = match s {
+    let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
-            match (*mac).node {
+            match mac.node {
                 mac_invoc_tt(pth, ref tts) => ((*mac), pth, (*tts), semi)
             }
         }
@@ -361,8 +369,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // as it registers all the core macros as expanders.
     f.fold_expr(cm);
 
-    let res = @f.fold_crate(*c);
-    return res;
+    @f.fold_crate(&*c)
 }
 // Local Variables:
 // mode: rust

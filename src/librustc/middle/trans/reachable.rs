@@ -109,7 +109,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       item_fn(_, _, ref tps, ref blk) => {
         if tps.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
-            traverse_inline_body(cx, (*blk));
+            traverse_inline_body(cx, blk);
         }
       }
       item_impl(tps, _, _, ms) => {
@@ -117,7 +117,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             if tps.len() > 0u || m.tps.len() > 0u ||
                attr::find_inline_attr(m.attrs) != attr::ia_none {
                 cx.rmap.insert(m.id, ());
-                traverse_inline_body(cx, m.body);
+                traverse_inline_body(cx, &m.body);
             }
         }
       }
@@ -129,7 +129,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             cx.rmap.insert(dtor.node.id, ());
             if tps.len() > 0u || attr::find_inline_attr(dtor.node.attrs)
                      != attr::ia_none {
-                traverse_inline_body(cx, dtor.node.body);
+                traverse_inline_body(cx, &dtor.node.body);
             }
         }
       }
@@ -168,7 +168,7 @@ fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
     }
 }
 
-fn traverse_inline_body(cx: ctx, body: blk) {
+fn traverse_inline_body(cx: ctx, body: &blk) {
     fn traverse_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         match e.node {
           expr_path(_) => {
@@ -217,7 +217,7 @@ fn traverse_inline_body(cx: ctx, body: blk) {
     fn traverse_item(i: @item, cx: ctx, _v: visit::vt<ctx>) {
       traverse_public_item(cx, i);
     }
-     visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
+    visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
         visit_expr: traverse_expr,
         visit_item: traverse_item,
          ..*visit::default_visitor()
