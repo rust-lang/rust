@@ -183,28 +183,28 @@ pub fn contains(haystack: &[@ast::meta_item],
 }
 
 fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
-    return match a.node {
-          ast::meta_word(ref na) => match b.node {
+    match a.node {
+        ast::meta_word(ref na) => match b.node {
             ast::meta_word(ref nb) => (*na) == (*nb),
             _ => false
-          },
-          ast::meta_name_value(ref na, va) => match b.node {
+        },
+        ast::meta_name_value(ref na, va) => match b.node {
             ast::meta_name_value(ref nb, vb) => {
                 (*na) == (*nb) && va.node == vb.node
             }
             _ => false
-          },
-          ast::meta_list(ref na, misa) => match b.node {
-            ast::meta_list(ref nb, misb) => {
+        },
+        ast::meta_list(ref na, ref misa) => match b.node {
+            ast::meta_list(ref nb, ref misb) => {
                 if na != nb { return false; }
-                for misa.each |&mi| {
-                    if !contains(misb, mi) { return false; }
+                for misa.each |mi| {
+                    if !misb.contains(mi) { return false; }
                 }
                 true
             }
             _ => false
-          }
         }
+    }
 }
 
 pub fn contains_name(metas: &[@ast::meta_item], name: &str) -> bool {
@@ -260,21 +260,23 @@ pub fn last_meta_item_list_by_name(items: ~[@ast::meta_item], name: &str)
 
 /* Higher-level applications */
 
-pub fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
+pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
     // This is sort of stupid here, converting to a vec of mutables and back
-    let mut v = items;
+    let mut v = vec::from_slice(items);
     do std::sort::quick_sort(v) |ma, mb| {
         get_meta_item_name(*ma) <= get_meta_item_name(*mb)
     }
 
     // There doesn't seem to be a more optimal way to do this
-    do v.map |&m| {
+    do v.map |m| {
         match m.node {
-          ast::meta_list(n, mis) => @spanned {
-              node: ast::meta_list(n, sort_meta_items(mis)),
-              .. *m
-          },
-          _ => m
+            ast::meta_list(n, ref mis) => {
+                @spanned {
+                    node: ast::meta_list(n, sort_meta_items(*mis)),
+                    .. /*bad*/ copy **m
+                }
+            }
+            _ => /*bad*/ copy *m
         }
     }
 }

@@ -38,8 +38,8 @@ use core::u64;
 use core::vec;
 
 // The @ps is stored here to prevent recursive type.
-pub enum ann_node {
-    node_block(@ps, ast::blk),
+pub enum ann_node/& {
+    node_block(@ps, &ast::blk),
     node_item(@ps, @ast::item),
     node_expr(@ps, @ast::expr),
     node_pat(@ps, @ast::pat),
@@ -183,7 +183,7 @@ pub fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
     }
 }
 
-pub fn block_to_str(blk: ast::blk, intr: @ident_interner) -> ~str {
+pub fn block_to_str(blk: &ast::blk, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         // containing cbox, will be closed by print-block at }
@@ -510,7 +510,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
             item.vis
         );
         word(s.s, ~" ");
-        print_block_with_attrs(s, (*body), item.attrs);
+        print_block_with_attrs(s, body, item.attrs);
       }
       ast::item_mod(_mod) => {
         head(s, visibility_qualified(item.vis, ~"mod"));
@@ -607,8 +607,8 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         }
         word(s.s, ~" ");
         bopen(s);
-        for (*methods).each |meth| {
-            print_trait_method(s, *meth);
+        for methods.each |meth| {
+            print_trait_method(s, meth);
         }
         bclose(s, item.span);
       }
@@ -741,7 +741,7 @@ pub fn print_struct(s: @ps,
           maybe_print_comment(s, dtor.span.lo);
           print_outer_attributes(s, dtor.node.attrs);
           head(s, ~"drop");
-          print_block(s, dtor.node.body);
+          print_block(s, &dtor.node.body);
         }
 
         for struct_def.fields.each |field| {
@@ -839,7 +839,7 @@ pub fn print_variant(s: @ps, v: ast::variant) {
     }
 }
 
-pub fn print_ty_method(s: @ps, m: ast::ty_method) {
+pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
@@ -849,10 +849,10 @@ pub fn print_ty_method(s: @ps, m: ast::ty_method) {
     word(s.s, ~";");
 }
 
-pub fn print_trait_method(s: @ps, m: ast::trait_method) {
-    match m {
-      required(ref ty_m) => print_ty_method(s, (*ty_m)),
-      provided(m)    => print_method(s, m)
+pub fn print_trait_method(s: @ps, m: &ast::trait_method) {
+    match *m {
+        required(ref ty_m) => print_ty_method(s, ty_m),
+        provided(m) => print_method(s, m)
     }
 }
 
@@ -864,7 +864,7 @@ pub fn print_method(s: @ps, meth: @ast::method) {
              meth.ident, meth.tps, Some(meth.self_ty.node),
              meth.vis);
     word(s.s, ~" ");
-    print_block_with_attrs(s, meth.body, meth.attrs);
+    print_block_with_attrs(s, &meth.body, meth.attrs);
 }
 
 pub fn print_outer_attributes(s: @ps, attrs: ~[ast::attribute]) {
@@ -935,22 +935,22 @@ pub fn print_stmt(s: @ps, st: ast::stmt) {
     maybe_print_trailing_comment(s, st.span, None);
 }
 
-pub fn print_block(s: @ps, blk: ast::blk) {
+pub fn print_block(s: @ps, blk: &ast::blk) {
     print_possibly_embedded_block(s, blk, block_normal, indent_unit);
 }
 
-pub fn print_block_unclosed(s: @ps, blk: ast::blk) {
+pub fn print_block_unclosed(s: @ps, blk: &ast::blk) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, ~[],
                                  false);
 }
 
-pub fn print_block_unclosed_indent(s: @ps, blk: ast::blk, indented: uint) {
+pub fn print_block_unclosed_indent(s: @ps, blk: &ast::blk, indented: uint) {
     print_possibly_embedded_block_(s, blk, block_normal, indented, ~[],
                                    false);
 }
 
 pub fn print_block_with_attrs(s: @ps,
-                              blk: ast::blk,
+                              blk: &ast::blk,
                               attrs: ~[ast::attribute]) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs,
                                   true);
@@ -959,7 +959,7 @@ pub fn print_block_with_attrs(s: @ps,
 pub enum embed_type { block_block_fn, block_normal, }
 
 pub fn print_possibly_embedded_block(s: @ps,
-                                     blk: ast::blk,
+                                     blk: &ast::blk,
                                      embedded: embed_type,
                                      indented: uint) {
     print_possibly_embedded_block_(
@@ -967,7 +967,7 @@ pub fn print_possibly_embedded_block(s: @ps,
 }
 
 pub fn print_possibly_embedded_block_(s: @ps,
-                                      blk: ast::blk,
+                                      blk: &ast::blk,
                                       embedded: embed_type,
                                       indented: uint,
                                       attrs: ~[ast::attribute],
@@ -1002,7 +1002,7 @@ pub fn print_possibly_embedded_block_(s: @ps,
     (s.ann.post)(ann_node);
 }
 
-pub fn print_if(s: @ps, test: @ast::expr, blk: ast::blk,
+pub fn print_if(s: @ps, test: @ast::expr, blk: &ast::blk,
                 elseopt: Option<@ast::expr>, chk: bool) {
     head(s, ~"if");
     if chk { word_nbsp(s, ~"check"); }
@@ -1020,7 +1020,7 @@ pub fn print_if(s: @ps, test: @ast::expr, blk: ast::blk,
                 word(s.s, ~" else if ");
                 print_expr(s, i);
                 space(s.s);
-                print_block(s, (*t));
+                print_block(s, t);
                 do_else(s, e);
               }
               // "final else"
@@ -1028,7 +1028,7 @@ pub fn print_if(s: @ps, test: @ast::expr, blk: ast::blk,
                 cbox(s, indent_unit - 1u);
                 ibox(s, 0u);
                 word(s.s, ~" else ");
-                print_block(s, (*b));
+                print_block(s, b);
               }
               // BLEAH, constraints would be great here
               _ => {
@@ -1263,13 +1263,13 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_type_ex(s, ty, true);
       }
       ast::expr_if(test, ref blk, elseopt) => {
-        print_if(s, test, (*blk), elseopt, false);
+        print_if(s, test, blk, elseopt, false);
       }
       ast::expr_while(test, ref blk) => {
         head(s, ~"while");
         print_expr(s, test);
         space(s.s);
-        print_block(s, (*blk));
+        print_block(s, blk);
       }
       ast::expr_loop(ref blk, opt_ident) => {
         head(s, ~"loop");
@@ -1278,7 +1278,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
             print_ident(s, *ident);
             word_space(s, ~":");
         });
-        print_block(s, (*blk));
+        print_block(s, blk);
       }
       ast::expr_match(expr, ref arms) => {
         cbox(s, match_indent_unit);
@@ -1323,7 +1323,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                             ast::expr_block(ref blk) => {
                                 // the block will close the pattern's ibox
                                 print_block_unclosed_indent(
-                                    s, (*blk), match_indent_unit);
+                                    s, blk, match_indent_unit);
                             }
                             _ => {
                                 end(s); // close the ibox for the pattern
@@ -1340,7 +1340,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                 }
             } else {
                 // the block will close the pattern's ibox
-                print_block_unclosed_indent(s, arm.body, match_indent_unit);
+                print_block_unclosed_indent(s, &arm.body, match_indent_unit);
             }
         }
         bclose_(s, expr.span, match_indent_unit);
@@ -1354,7 +1354,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                              Some(sigil), ast::inherited);
         print_fn_args_and_ret(s, /* FIXME (#2543) */ copy *decl, None);
         space(s.s);
-        print_block(s, (*body));
+        print_block(s, body);
       }
       ast::expr_fn_block(ref decl, ref body) => {
         // in do/for blocks we don't want to show an empty
@@ -1365,16 +1365,16 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         print_fn_block_args(s, /* FIXME (#2543) */ copy *decl);
         space(s.s);
         // }
-        assert (*body).node.stmts.is_empty();
-        assert (*body).node.expr.is_some();
+        assert body.node.stmts.is_empty();
+        assert body.node.expr.is_some();
         // we extract the block, so as not to create another set of boxes
-        match (*body).node.expr.get().node {
+        match body.node.expr.get().node {
             ast::expr_block(ref blk) => {
-                print_block_unclosed(s, (*blk));
+                print_block_unclosed(s, blk);
             }
             _ => {
                 // this is a bare expression
-                print_expr(s, (*body).node.expr.get());
+                print_expr(s, body.node.expr.get());
                 end(s); // need to close a box
             }
         }
@@ -1394,7 +1394,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         cbox(s, indent_unit);
         // head-box, will be closed by print-block after {
         ibox(s, 0u);
-        print_block(s, (*blk));
+        print_block(s, blk);
       }
       ast::expr_copy(e) => { word_space(s, ~"copy"); print_expr(s, e); }
       ast::expr_assign(lhs, rhs) => {

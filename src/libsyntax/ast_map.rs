@@ -186,8 +186,8 @@ pub fn map_decoded_item(diag: span_handler,
 
 pub fn map_fn(
     fk: &visit::fn_kind,
-    decl: fn_decl,
-    body: blk,
+    decl: &fn_decl,
+    body: &blk,
     sp: codemap::span,
     id: node_id,
     &&cx: @mut Ctx,
@@ -205,7 +205,7 @@ pub fn map_fn(
                     id: id,
                     attrs: /* FIXME (#2543) */ vec::from_slice(*attrs),
                     self_id: self_id,
-                    body: /* FIXME (#2543) */ copy body,
+                    body: /* FIXME (#2543) */ copy *body,
                 },
                 span: sp,
             };
@@ -222,8 +222,8 @@ pub fn map_fn(
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
 
-pub fn map_block(b: blk, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
-    cx.map.insert(b.node.id, node_block(/* FIXME (#2543) */ copy b));
+pub fn map_block(b: &blk, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+    cx.map.insert(b.node.id, node_block(/* FIXME (#2543) */ copy *b));
     visit::visit_block(b, cx, v);
 }
 
@@ -244,7 +244,7 @@ pub fn map_local(loc: @local, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     visit::visit_local(loc, cx, v);
 }
 
-pub fn map_arm(arm: arm, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_arm(arm: &arm, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     number_pat(cx, arm.pats[0]);
     visit::visit_arm(arm, cx, v);
 }
@@ -308,7 +308,7 @@ pub fn map_item(i: @item, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
                 cx.map.insert(p.ref_id, node_item(i, item_path));
             }
             for methods.each |tm| {
-                let id = ast_util::trait_method_to_ty_method(*tm).id;
+                let id = ast_util::trait_method_to_ty_method(tm).id;
                 let d_id = ast_util::local_def(i.id);
                 cx.map.insert(id, node_trait_method(@*tm, d_id, item_path));
             }
@@ -387,14 +387,14 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      Some(node_trait_method(tm, _, path)) => {
-        let m = ast_util::trait_method_to_ty_method(*tm);
+      Some(node_trait_method(ref tm, _, path)) => {
+        let m = ast_util::trait_method_to_ty_method(&**tm);
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
       Some(node_variant(ref variant, _, path)) => {
         fmt!("variant %s in %s (id=%?)",
-             *itr.get((*variant).node.name), path_to_str(*path, itr), id)
+             *itr.get(variant.node.name), path_to_str(*path, itr), id)
       }
       Some(node_expr(expr)) => {
         fmt!("expr %s (id=%?)", pprust::expr_to_str(expr, itr), id)

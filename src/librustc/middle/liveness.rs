@@ -436,8 +436,8 @@ impl IrMaps {
 }
 
 fn visit_fn(fk: &visit::fn_kind,
-            decl: fn_decl,
-            body: blk,
+            decl: &fn_decl,
+            body: &blk,
             sp: span,
             id: node_id,
             &&self: @mut IrMaps,
@@ -540,7 +540,7 @@ fn visit_local(local: @local, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     visit::visit_local(local, self, vt);
 }
 
-fn visit_arm(arm: arm, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
+fn visit_arm(arm: &arm, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
     let def_map = self.tcx.def_map;
     for arm.pats.each |pat| {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
@@ -979,7 +979,7 @@ impl Liveness {
 
     // _______________________________________________________________________
 
-    fn compute(&self, decl: fn_decl, body: blk) -> LiveNode {
+    fn compute(&self, decl: &fn_decl, body: &blk) -> LiveNode {
         // if there is a `break` or `again` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
@@ -1004,7 +1004,7 @@ impl Liveness {
         entry_ln
     }
 
-    fn propagate_through_fn_block(&self, decl: fn_decl, blk: blk)
+    fn propagate_through_fn_block(&self, decl: &fn_decl, blk: &blk)
                                  -> LiveNode {
         // inputs passed by & mode should be considered live on exit:
         for decl.inputs.each |arg| {
@@ -1038,7 +1038,7 @@ impl Liveness {
         self.propagate_through_block(blk, self.s.fallthrough_ln)
     }
 
-    fn propagate_through_block(&self, blk: blk, succ: LiveNode) -> LiveNode {
+    fn propagate_through_block(&self, blk: &blk, succ: LiveNode) -> LiveNode {
         let succ = self.propagate_through_opt_expr(blk.node.expr, succ);
         do blk.node.stmts.foldr(succ) |stmt, succ| {
             self.propagate_through_stmt(*stmt, succ)
@@ -1134,7 +1134,7 @@ impl Liveness {
               The next-node for a break is the successor of the entire
               loop. The next-node for a continue is the top of this loop.
               */
-              self.with_loop_nodes((*blk).node.id, succ,
+              self.with_loop_nodes(blk.node.id, succ,
                   self.live_node(expr.id, expr.span), || {
 
                  // the construction of a closure itself is not important,
@@ -1164,7 +1164,7 @@ impl Liveness {
             //   (  succ  )
             //
             let else_ln = self.propagate_through_opt_expr(els, succ);
-            let then_ln = self.propagate_through_block((*then), succ);
+            let then_ln = self.propagate_through_block(then, succ);
             let ln = self.live_node(expr.id, expr.span);
             self.init_from_succ(ln, else_ln);
             self.merge_from_succ(ln, then_ln, false);
@@ -1172,13 +1172,13 @@ impl Liveness {
           }
 
           expr_while(cond, ref blk) => {
-            self.propagate_through_loop(expr, Some(cond), (*blk), succ)
+            self.propagate_through_loop(expr, Some(cond), blk, succ)
           }
 
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
           expr_loop(ref blk, _) => {
-            self.propagate_through_loop(expr, None, (*blk), succ)
+            self.propagate_through_loop(expr, None, blk, succ)
           }
 
           expr_match(e, ref arms) => {
@@ -1199,9 +1199,9 @@ impl Liveness {
             let ln = self.live_node(expr.id, expr.span);
             self.init_empty(ln, succ);
             let mut first_merge = true;
-            for (*arms).each |arm| {
+            for arms.each |arm| {
                 let body_succ =
-                    self.propagate_through_block(arm.body, succ);
+                    self.propagate_through_block(&arm.body, succ);
                 let guard_succ =
                     self.propagate_through_opt_expr(arm.guard, body_succ);
                 let arm_succ =
@@ -1362,7 +1362,7 @@ impl Liveness {
           }
 
           expr_block(ref blk) => {
-            self.propagate_through_block((*blk), succ)
+            self.propagate_through_block(blk, succ)
           }
 
           expr_mac(*) => {
@@ -1463,7 +1463,7 @@ impl Liveness {
 
     fn propagate_through_loop(&self, expr: @expr,
                               cond: Option<@expr>,
-                              body: blk,
+                              body: &blk,
                               succ: LiveNode) -> LiveNode {
 
         /*
@@ -1568,7 +1568,7 @@ fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
     visit::visit_local(local, self, vt);
 }
 
-fn check_arm(arm: arm, &&self: @Liveness, vt: vt<@Liveness>) {
+fn check_arm(arm: &arm, &&self: @Liveness, vt: vt<@Liveness>) {
     do self.arm_pats_bindings(arm.pats) |ln, var, sp| {
         self.warn_about_unused(sp, ln, var);
     }
@@ -1639,8 +1639,8 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
     }
 }
 
-fn check_fn(_fk: &visit::fn_kind, _decl: fn_decl,
-            _body: blk, _sp: span, _id: node_id,
+fn check_fn(_fk: &visit::fn_kind, _decl: &fn_decl,
+            _body: &blk, _sp: span, _id: node_id,
             &&_self: @Liveness, _v: vt<@Liveness>) {
     // do not check contents of nested fns
 }
@@ -1885,7 +1885,7 @@ impl @Liveness {
         if name[0] == ('_' as u8) { None } else { Some(name) }
     }
 
-    fn warn_about_unused_args(&self, decl: fn_decl, entry_ln: LiveNode) {
+    fn warn_about_unused_args(&self, decl: &fn_decl, entry_ln: LiveNode) {
         for decl.inputs.each |arg| {
             do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
                     |_bm, p_id, sp, _n| {

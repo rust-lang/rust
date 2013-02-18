@@ -580,8 +580,8 @@ impl CheckLoanCtxt {
 }
 
 fn check_loans_in_fn(fk: &visit::fn_kind,
-                     decl: ast::fn_decl,
-                     body: ast::blk,
+                     decl: &ast::fn_decl,
+                     body: &ast::blk,
                      sp: span,
                      id: ast::node_id,
                      &&self: @mut CheckLoanCtxt,
@@ -753,7 +753,7 @@ fn check_loans_in_expr(expr: @ast::expr,
     visit::visit_expr(expr, self, vt);
 }
 
-fn check_loans_in_block(blk: ast::blk,
+fn check_loans_in_block(blk: &ast::blk,
                         &&self: @mut CheckLoanCtxt,
                         vt: visit::vt<@mut CheckLoanCtxt>) {
     do save_and_restore_managed(self.declared_purity) {

@@ -228,7 +228,7 @@ pub fn ensure_trait_methods(ccx: @mut CrateCtxt,
     }
 
     fn make_static_method_ty(ccx: @mut CrateCtxt,
-                             am: ast::ty_method,
+                             am: &ast::ty_method,
                              rp: Option<ty::region_variance>,
                              m: ty::method,
                              // Take this as an argument b/c we may check
@@ -289,10 +289,11 @@ pub fn ensure_trait_methods(ccx: @mut CrateCtxt,
             }
 
             let trait_bounds = ty_param_bounds(ccx, *params);
-            let ty_m = trait_method_to_ty_method(*m);
-            let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd, def_id);
+            let ty_m = trait_method_to_ty_method(m);
+            let method_ty = ty_of_ty_method(ccx, &ty_m, region_paramd,
+                                            def_id);
             if ty_m.self_ty.node == ast::sty_static {
-                make_static_method_ty(ccx, ty_m, region_paramd,
+                make_static_method_ty(ccx, &ty_m, region_paramd,
                                       method_ty, trait_ty,
                                       trait_bounds);
             }
@@ -689,7 +690,7 @@ pub fn convert_struct(ccx: @mut CrateCtxt,
             astconv::ty_of_bare_fn(
                 ccx, type_rscope(rp),
                 ast::impure_fn, ast::RustAbi,
-                ast_util::dtor_dec()));
+                &ast_util::dtor_dec()));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
                           ty_param_bounds_and_ty {
@@ -748,7 +749,7 @@ pub fn ty_of_method(ccx: @mut CrateCtxt,
         ident: m.ident,
         tps: ty_param_bounds(ccx, m.tps),
         fty: astconv::ty_of_bare_fn(ccx, type_rscope(rp), m.purity,
-                                    ast::RustAbi, m.decl),
+                                    ast::RustAbi, &m.decl),
         self_ty: m.self_ty.node,
         vis: m.vis,
         def_id: local_def(m.id)
@@ -756,14 +757,14 @@ pub fn ty_of_method(ccx: @mut CrateCtxt,
 }
 
 pub fn ty_of_ty_method(self: @mut CrateCtxt,
-                       m: ast::ty_method,
+                       m: &ast::ty_method,
                        rp: Option<ty::region_variance>,
                        id: ast::def_id) -> ty::method {
     ty::method {
         ident: m.ident,
         tps: ty_param_bounds(self, m.tps),
         fty: astconv::ty_of_bare_fn(self, type_rscope(rp), m.purity,
-                                    ast::RustAbi, m.decl),
+                                    ast::RustAbi, &m.decl),
         // assume public, because this is only invoked on trait methods
         self_ty: m.self_ty.node,
         vis: ast::public,
@@ -819,7 +820,7 @@ pub fn ty_of_item(ccx: @mut CrateCtxt, it: @ast::item)
       ast::item_fn(decl, purity, tps, _) => {
         let bounds = ty_param_bounds(ccx, tps);
         let tofd = astconv::ty_of_bare_fn(ccx, empty_rscope, purity,
-                                          ast::RustAbi, decl);
+                                          ast::RustAbi, &decl);
         let tpt = ty_param_bounds_and_ty {
             bounds: bounds,
             region_param: None,
@@ -903,17 +904,17 @@ pub fn ty_of_item(ccx: @mut CrateCtxt, it: @ast::item)
 pub fn ty_of_foreign_item(ccx: @mut CrateCtxt, it: @ast::foreign_item)
     -> ty::ty_param_bounds_and_ty {
     match /*bad*/copy it.node {
-      ast::foreign_item_fn(fn_decl, _, params) => {
-        return ty_of_foreign_fn_decl(ccx, fn_decl, params, local_def(it.id));
-      }
-      ast::foreign_item_const(t) => {
-        let rb = in_binding_rscope(empty_rscope);
-        return ty::ty_param_bounds_and_ty {
-            bounds: @~[],
-            region_param: None,
-            ty: ast_ty_to_ty(ccx, rb, t)
-        };
-      }
+        ast::foreign_item_fn(ref fn_decl, _, ref params) => {
+            ty_of_foreign_fn_decl(ccx, fn_decl, *params, local_def(it.id))
+        }
+        ast::foreign_item_const(t) => {
+            let rb = in_binding_rscope(empty_rscope);
+            ty::ty_param_bounds_and_ty {
+                bounds: @~[],
+                region_param: None,
+                ty: ast_ty_to_ty(ccx, rb, t)
+            }
+        }
     }
 }
 
@@ -958,7 +959,7 @@ pub fn compute_bounds(ccx: @mut CrateCtxt,
 }
 
 pub fn ty_param_bounds(ccx: @mut CrateCtxt,
-                       params: ~[ast::ty_param])
+                       params: &[ast::ty_param])
                     -> @~[ty::param_bounds] {
     @do params.map |param| {
         match ccx.tcx.ty_param_bounds.find(&param.id) {
@@ -973,8 +974,8 @@ pub fn ty_param_bounds(ccx: @mut CrateCtxt,
 }
 
 pub fn ty_of_foreign_fn_decl(ccx: @mut CrateCtxt,
-                             decl: ast::fn_decl,
-                             +ty_params: ~[ast::ty_param],
+                             decl: &ast::fn_decl,
+                             ty_params: &[ast::ty_param],
                              def_id: ast::def_id)
                           -> ty::ty_param_bounds_and_ty {
     let bounds = ty_param_bounds(ccx, ty_params);
