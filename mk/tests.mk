@@ -14,7 +14,7 @@
 ######################################################################
 
 # The names of crates that must be tested
-TEST_CRATES = core std syntax rustc rustdoc rusti rustpkg
+TEST_CRATES = core std syntax rustc rustdoc rusti rust rustpkg
 
 # Markdown files under doc/ that should have their code extracted and run
 DOC_TEST_NAMES = tutorial tutorial-ffi tutorial-macros tutorial-borrowed-ptr tutorial-tasks rust
@@ -237,6 +237,12 @@ $(3)/test/rustpkgtest.stage$(1)-$(2)$$(X):					\
 
 $(3)/test/rustitest.stage$(1)-$(2)$$(X):					\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)		\
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+
+$(3)/test/rusttest.stage$(1)-$(2)$$(X):					\
+		$$(RUST_LIB) $$(RUST_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
@@ -464,20 +470,20 @@ $(foreach host,$(CFG_TARGET_TRIPLES), \
 
 define DEF_RUN_DOC_TEST
 
-DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
+DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-doc-$(4) := \
         $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $(3)/test/doc-$(4)/	\
         --build-base $(3)/test/doc-$(4)/	\
         --mode run-pass
 
-check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
 
-$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
                 doc-$(4)-extract$(3)
 	@$$(call E, run doc-$(4): $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-                $$(DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
+                $$(DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-doc-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),doc-$(4)) \
                 && touch $$@
 
