@@ -469,7 +469,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         // Don't descend into fns and items
-        fn visit_fn(_fk: visit::fn_kind, _decl: ast::fn_decl,
+        fn visit_fn(_fk: &visit::fn_kind, _decl: ast::fn_decl,
                     _body: ast::blk, _sp: span,
                     _id: ast::node_id, &&_t: (), _v: visit::vt<()>) {
         }

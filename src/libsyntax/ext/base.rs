@@ -46,7 +46,7 @@ pub struct SyntaxExpanderTT {
 }
 
 pub type SyntaxExpanderTTFun
-    = fn@(ext_ctxt, span, ~[ast::token_tree]) -> MacResult;
+    = fn@(ext_ctxt, span, &[ast::token_tree]) -> MacResult;
 
 pub struct SyntaxExpanderTTItem {
     expander: SyntaxExpanderTTItemFun,
@@ -333,11 +333,11 @@ pub fn get_single_str_from_tts(cx: ext_ctxt,
     }
 }
 
-pub fn get_exprs_from_tts(cx: ext_ctxt, tts: ~[ast::token_tree])
+pub fn get_exprs_from_tts(cx: ext_ctxt, tts: &[ast::token_tree])
                        -> ~[@ast::expr] {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
-                                       tts);
+                                       vec::from_slice(tts));
     let mut es = ~[];
     while *p.token != token::EOF {
         if es.len() != 0 {

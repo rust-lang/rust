@@ -579,7 +579,7 @@ impl CheckLoanCtxt {
     }
 }
 
-fn check_loans_in_fn(fk: visit::fn_kind,
+fn check_loans_in_fn(fk: &visit::fn_kind,
                      decl: ast::fn_decl,
                      body: ast::blk,
                      sp: span,
@@ -590,7 +590,7 @@ fn check_loans_in_fn(fk: visit::fn_kind,
     let fty = ty::node_id_to_type(self.tcx(), id);
 
     let declared_purity;
-    match fk {
+    match *fk {
         visit::fk_item_fn(*) | visit::fk_method(*) |
         visit::fk_dtor(*) => {
             declared_purity = ty::ty_fn_purity(fty);
@@ -611,7 +611,7 @@ fn check_loans_in_fn(fk: visit::fn_kind,
         do save_and_restore_managed(self.fn_args) {
             *self.declared_purity = declared_purity;
 
-            match fk {
+            match *fk {
                 visit::fk_anon(*) |
                 visit::fk_fn_block(*) if is_stack_closure => {
                     // inherits the fn_args from enclosing ctxt

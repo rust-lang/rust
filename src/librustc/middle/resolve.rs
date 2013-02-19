@@ -1079,7 +1079,7 @@ pub impl Resolver {
         let privacy = visibility_to_privacy(item.vis);
 
         match /*bad*/copy item.node {
-            item_mod(module_) => {
+            item_mod(ref module_) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateModules, sp);
 
@@ -3725,7 +3725,7 @@ pub impl Resolver {
                                    visitor);
             }
 
-            item_mod(module_) => {
+            item_mod(ref module_) => {
                 do self.with_scope(Some(item.ident)) {
                     self.resolve_module(module_, item.span, item.ident,
                                         item.id, visitor);
@@ -4098,7 +4098,7 @@ pub impl Resolver {
     }
 
     fn resolve_module(@mut self,
-                      module_: _mod,
+                      module_: &_mod,
                       span: span,
                       _name: ident,
                       id: node_id,

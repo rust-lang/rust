@@ -54,7 +54,7 @@ fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
 }
 
 /* line!(): expands to the current line number */
-pub fn expand_line(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_line(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "line!");
 
@@ -65,7 +65,7 @@ pub fn expand_line(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
 }
 
 /* col!(): expands to the current column number */
-pub fn expand_col(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_col(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "col!");
 
@@ -77,7 +77,7 @@ pub fn expand_col(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
 /* file!(): expands to the current filename */
 /* The filemap (`loc.file`) contains a bunch more information we could spit
  * out if we wanted. */
-pub fn expand_file(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_file(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "file!");
 
@@ -87,13 +87,13 @@ pub fn expand_file(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     base::MRExpr(mk_base_str(cx, topmost.call_site, filename))
 }
 
-pub fn expand_stringify(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_stringify(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let s = pprust::tts_to_str(tts, cx.parse_sess().interner);
     base::MRExpr(mk_base_str(cx, sp, s))
 }
 
-pub fn expand_mod(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_mod(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "module_path!");
     base::MRExpr(mk_base_str(cx, sp,
@@ -101,7 +101,7 @@ pub fn expand_mod(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
                                   |x| cx.str_of(*x)), ~"::")))
 }
 
-pub fn expand_include(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_include(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include!");
     let p = parse::new_sub_parser_from_file(
@@ -110,7 +110,7 @@ pub fn expand_include(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     base::MRExpr(p.parse_expr())
 }
 
-pub fn expand_include_str(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_include_str(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
     let res = io::read_whole_file_str(&res_rel_file(cx, sp, &Path(file)));
@@ -124,7 +124,7 @@ pub fn expand_include_str(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     base::MRExpr(mk_base_str(cx, sp, result::unwrap(res)))
 }
 
-pub fn expand_include_bin(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_include_bin(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
     match io::read_whole_file(&res_rel_file(cx, sp, &Path(file))) {

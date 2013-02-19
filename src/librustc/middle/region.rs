@@ -316,14 +316,14 @@ pub fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     visit::visit_item(item, new_cx, visitor);
 }
 
-pub fn resolve_fn(fk: visit::fn_kind,
+pub fn resolve_fn(fk: &visit::fn_kind,
                   decl: ast::fn_decl,
                   body: ast::blk,
                   sp: span,
                   id: ast::node_id,
                   cx: ctxt,
                   visitor: visit::vt<ctxt>) {
-    let fn_cx = match fk {
+    let fn_cx = match *fk {
         visit::fk_item_fn(*) | visit::fk_method(*) |
         visit::fk_dtor(*) => {
             // Top-level functions are a root scope.
@@ -337,7 +337,7 @@ pub fn resolve_fn(fk: visit::fn_kind,
     };
 
     // Record the ID of `self`.
-    match fk {
+    match *fk {
         visit::fk_method(_, _, method) => {
             cx.region_map.insert(method.self_id, body.node.id);
         }
@@ -607,7 +607,7 @@ pub fn determine_rp_in_item(item: @ast::item,
     }
 }
 
-pub fn determine_rp_in_fn(fk: visit::fn_kind,
+pub fn determine_rp_in_fn(fk: &visit::fn_kind,
                           decl: ast::fn_decl,
                           body: ast::blk,
                           _: span,

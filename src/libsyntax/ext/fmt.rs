@@ -25,9 +25,9 @@ use ext::base;
 use ext::build::*;
 use private::extfmt::ct::*;
 
-pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
-    let args = get_exprs_from_tts(cx, copy tts);
+    let args = get_exprs_from_tts(cx, tts);
     if args.len() == 0 {
         cx.span_fatal(sp, "fmt! takes at least 1 argument.");
     }

@@ -30,17 +30,21 @@ use core::vec;
 pub enum vt<E> { mk_vt(visitor<E>), }
 
 pub enum fn_kind {
-    fk_item_fn(ident, ~[ty_param], purity), // fn foo()
-    fk_method(ident, ~[ty_param], @method), // fn foo(&self)
+    fk_item_fn(ident, &[ty_param], purity), // fn foo()
+    fk_method(ident, &[ty_param], &method), // fn foo(&self)
     fk_anon(ast::Sigil),                    // fn@(x, y) { ... }
     fk_fn_block,                            // |x, y| ...
-    fk_dtor(~[ty_param], ~[attribute], node_id /* self id */,
-            def_id /* parent class id */) // class destructor
+    fk_dtor( // class destructor
+        &[ty_param],
+        &[attribute],
+        node_id /* self id */,
+        def_id /* parent class id */
+    )
 
 }
 
-pub fn name_of_fn(fk: fn_kind) -> ident {
-    match fk {
+pub fn name_of_fn(fk: &fn_kind) -> ident {
+    match *fk {
       fk_item_fn(name, _, _) | fk_method(name, _, _) => {
           /* FIXME (#2543) */ copy name
       }
@@ -49,18 +53,16 @@ pub fn name_of_fn(fk: fn_kind) -> ident {
     }
 }
 
-pub fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
-    match fk {
+pub fn tps_of_fn(fk: &fn_kind) -> ~[ty_param] {
+    match *fk {
         fk_item_fn(_, tps, _) | fk_method(_, tps, _) |
-        fk_dtor(tps, _, _, _) => {
-            /* FIXME (#2543) */ copy tps
-        }
+        fk_dtor(tps, _, _, _) => /* FIXME (#2543) */ vec::from_slice(tps),
         fk_anon(*) | fk_fn_block(*) => ~[]
     }
 }
 
 pub struct Visitor<E> {
-    visit_mod: fn@(_mod, span, node_id, E, vt<E>),
+    visit_mod: fn@(&_mod, span, node_id, E, vt<E>),
     visit_view_item: fn@(@view_item, E, vt<E>),
     visit_foreign_item: fn@(@foreign_item, E, vt<E>),
     visit_item: fn@(@item, E, vt<E>),
@@ -73,11 +75,11 @@ pub struct Visitor<E> {
     visit_expr: fn@(@expr, E, vt<E>),
     visit_expr_post: fn@(@expr, E, vt<E>),
     visit_ty: fn@(@Ty, E, vt<E>),
-    visit_ty_params: fn@(~[ty_param], E, vt<E>),
-    visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
+    visit_ty_params: fn@(&[ty_param], E, vt<E>),
+    visit_fn: fn@(&fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
     visit_ty_method: fn@(ty_method, E, vt<E>),
     visit_trait_method: fn@(trait_method, E, vt<E>),
-    visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id, E,
+    visit_struct_def: fn@(@struct_def, ident, &[ty_param], node_id, E,
                           vt<E>),
     visit_struct_field: fn@(@struct_field, E, vt<E>),
     visit_struct_method: fn@(@method, E, vt<E>)
@@ -112,10 +114,10 @@ pub fn default_visitor<E>() -> visitor<E> {
 }
 
 pub fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
-    (v.visit_mod)(c.node.module, c.span, crate_node_id, e, v);
+    (v.visit_mod)(&c.node.module, c.span, crate_node_id, e, v);
 }
 
-pub fn visit_mod<E>(m: _mod, _sp: span, _id: node_id, e: E, v: vt<E>) {
+pub fn visit_mod<E>(m: &_mod, _sp: span, _id: node_id, e: E, v: vt<E>) {
     for m.view_items.each |vi| { (v.visit_view_item)(*vi, e, v); }
     for m.items.each |i| { (v.visit_item)(*i, e, v); }
 }
@@ -133,65 +135,65 @@ pub fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
 
 pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     match i.node {
-      item_const(t, ex) => {
-        (v.visit_ty)(t, e, v);
-        (v.visit_expr)(ex, e, v);
-      }
-      item_fn(ref decl, purity, ref tp, ref body) => {
-        (v.visit_fn)(
-            fk_item_fn(
-                /* FIXME (#2543) */ copy i.ident,
-                /* FIXME (#2543) */ copy *tp,
-                purity
-            ),
-            /* FIXME (#2543) */ copy *decl,
-            (*body),
-            i.span,
-            i.id,
-            e,
-            v
-        );
-      }
-      item_mod(m) => (v.visit_mod)(m, i.span, i.id, e, v),
-      item_foreign_mod(nm) => {
-        for nm.view_items.each |vi| { (v.visit_view_item)(*vi, e, v); }
-        for nm.items.each |ni| { (v.visit_foreign_item)(*ni, e, v); }
-      }
-      item_ty(t, tps) => {
-        (v.visit_ty)(t, e, v);
-        (v.visit_ty_params)(tps, e, v);
-      }
-      item_enum(ref enum_definition, ref tps) => {
-        (v.visit_ty_params)(/* FIXME (#2543) */ copy *tps, e, v);
-        visit_enum_def(
-            *enum_definition,
-            /* FIXME (#2543) */ copy *tps,
-            e,
-            v
-        );
-      }
-      item_impl(tps, traits, ty, methods) => {
-        (v.visit_ty_params)(tps, e, v);
-        for traits.each |p| {
-            visit_path(p.path, e, v);
+        item_const(t, ex) => {
+            (v.visit_ty)(t, e, v);
+            (v.visit_expr)(ex, e, v);
         }
-        (v.visit_ty)(ty, e, v);
-        for methods.each |m| {
-            visit_method_helper(*m, e, v)
+        item_fn(ref decl, purity, ref tps, ref body) => {
+            (v.visit_fn)(
+                &fk_item_fn(
+                    /* FIXME (#2543) */ copy i.ident,
+                    *tps,
+                    purity
+                ),
+                /* FIXME (#2543) */ copy *decl,
+                *body,
+                i.span,
+                i.id,
+                e,
+                v
+            );
         }
-      }
-      item_struct(struct_def, tps) => {
-        (v.visit_ty_params)(tps, e, v);
-        (v.visit_struct_def)(struct_def, i.ident, tps, i.id, e, v);
-      }
-      item_trait(ref tps, ref traits, ref methods) => {
-        (v.visit_ty_params)(/* FIXME (#2543) */ copy *tps, e, v);
-        for traits.each |p| { visit_path(p.path, e, v); }
-        for (*methods).each |m| {
-            (v.visit_trait_method)(*m, e, v);
+        item_mod(ref m) => (v.visit_mod)(m, i.span, i.id, e, v),
+        item_foreign_mod(ref nm) => {
+            for nm.view_items.each |vi| { (v.visit_view_item)(*vi, e, v); }
+            for nm.items.each |ni| { (v.visit_foreign_item)(*ni, e, v); }
         }
-      }
-      item_mac(ref m) => visit_mac((*m), e, v)
+        item_ty(t, ref tps) => {
+            (v.visit_ty)(t, e, v);
+            (v.visit_ty_params)(*tps, e, v);
+        }
+        item_enum(ref enum_definition, ref tps) => {
+            (v.visit_ty_params)(*tps, e, v);
+            visit_enum_def(
+                *enum_definition,
+                /* FIXME (#2543) */ copy *tps,
+                e,
+                v
+            );
+        }
+        item_impl(ref tps, ref traits, ty, ref methods) => {
+            (v.visit_ty_params)(*tps, e, v);
+            for traits.each |p| {
+                visit_path(p.path, e, v);
+            }
+            (v.visit_ty)(ty, e, v);
+            for methods.each |m| {
+                visit_method_helper(*m, e, v)
+            }
+        }
+        item_struct(struct_def, ref tps) => {
+            (v.visit_ty_params)(*tps, e, v);
+            (v.visit_struct_def)(struct_def, i.ident, *tps, i.id, e, v);
+        }
+        item_trait(ref tps, ref traits, ref methods) => {
+            (v.visit_ty_params)(*tps, e, v);
+            for traits.each |p| { visit_path(p.path, e, v); }
+            for (*methods).each |m| {
+                (v.visit_trait_method)(*m, e, v);
+            }
+        }
+        item_mac(ref m) => visit_mac((*m), e, v)
     }
 }
 
@@ -296,13 +298,13 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
 
 pub fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     match ni.node {
-      foreign_item_fn(fd, _, tps) => {
-        (v.visit_ty_params)(tps, e, v);
-        visit_fn_decl(fd, e, v);
-      }
-      foreign_item_const(t) => {
-        (v.visit_ty)(t, e, v);
-      }
+        foreign_item_fn(fd, _, ref tps) => {
+            (v.visit_ty_params)(*tps, e, v);
+            visit_fn_decl(fd, e, v);
+        }
+        foreign_item_const(t) => {
+            (v.visit_ty)(t, e, v);
+        }
     }
 }
 
@@ -315,7 +317,7 @@ pub fn visit_ty_param_bounds<E>(bounds: @~[ty_param_bound], e: E, v: vt<E>) {
     }
 }
 
-pub fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
+pub fn visit_ty_params<E>(tps: &[ty_param], e: E, v: vt<E>) {
     for tps.each |tp| {
         visit_ty_param_bounds(tp.bounds, e, v);
     }
@@ -333,21 +335,42 @@ pub fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
 // visit_fn() and check for fk_method().  I named this visit_method_helper()
 // because it is not a default impl of any method, though I doubt that really
 // clarifies anything. - Niko
-pub fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
-    (v.visit_fn)(fk_method(/* FIXME (#2543) */ copy m.ident,
-                         /* FIXME (#2543) */ copy m.tps, m),
-               m.decl, m.body, m.span, m.id, e, v);
+pub fn visit_method_helper<E>(m: &method, e: E, v: vt<E>) {
+    (v.visit_fn)(
+        &fk_method(
+            /* FIXME (#2543) */ copy m.ident,
+            m.tps,
+            m
+        ),
+        m.decl,
+        m.body,
+        m.span,
+        m.id,
+        e,
+        v
+    );
 }
 
-pub fn visit_struct_dtor_helper<E>(dtor: struct_dtor, tps: ~[ty_param],
+pub fn visit_struct_dtor_helper<E>(dtor: struct_dtor, tps: &[ty_param],
                                    parent_id: def_id, e: E, v: vt<E>) {
-    (v.visit_fn)(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.attrs,
-                       dtor.node.self_id, parent_id), ast_util::dtor_dec(),
-               dtor.node.body, dtor.span, dtor.node.id, e, v)
+    (v.visit_fn)(
+        &fk_dtor(
+            tps,
+            dtor.node.attrs,
+            dtor.node.self_id,
+            parent_id
+        ),
+        ast_util::dtor_dec(),
+        dtor.node.body,
+        dtor.span,
+        dtor.node.id,
+        e,
+        v
+    )
 
 }
 
-pub fn visit_fn<E>(fk: fn_kind, decl: fn_decl, body: blk, _sp: span,
+pub fn visit_fn<E>(fk: &fn_kind, decl: fn_decl, body: blk, _sp: span,
                    _id: node_id, e: E, v: vt<E>) {
     visit_fn_decl(decl, e, v);
     (v.visit_ty_params)(tps_of_fn(fk), e, v);
@@ -367,13 +390,13 @@ pub fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
     }
 }
 
-pub fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: ~[ty_param],
+pub fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: &[ty_param],
                            id: node_id, e: E, v: vt<E>) {
     for sd.fields.each |f| {
         (v.visit_struct_field)(*f, e, v);
     }
-    do option::iter(&sd.dtor) |dtor| {
-      visit_struct_dtor_helper(*dtor, tps, ast_util::local_def(id), e, v)
+    do sd.dtor.iter |dtor| {
+        visit_struct_dtor_helper(*dtor, tps, ast_util::local_def(id), e, v)
     };
 }
 
@@ -476,7 +499,7 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_fn(proto, ref decl, ref body, _) => {
         (v.visit_fn)(
-            fk_anon(proto),
+            &fk_anon(proto),
             /* FIXME (#2543) */ copy *decl,
             *body,
             ex.span,
@@ -487,7 +510,7 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_fn_block(ref decl, ref body) => {
         (v.visit_fn)(
-            fk_fn_block,
+            &fk_fn_block,
             /* FIXME (#2543) */ copy *decl,
             *body,
             ex.span,
@@ -539,7 +562,7 @@ pub fn visit_arm<E>(a: arm, e: E, v: vt<E>) {
 // calls the given functions on the nodes.
 
 pub struct SimpleVisitor {
-    visit_mod: fn@(_mod, span, node_id),
+    visit_mod: fn@(&_mod, span, node_id),
     visit_view_item: fn@(@view_item),
     visit_foreign_item: fn@(@foreign_item),
     visit_item: fn@(@item),
@@ -552,11 +575,11 @@ pub struct SimpleVisitor {
     visit_expr: fn@(@expr),
     visit_expr_post: fn@(@expr),
     visit_ty: fn@(@Ty),
-    visit_ty_params: fn@(~[ty_param]),
-    visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
+    visit_ty_params: fn@(&[ty_param]),
+    visit_fn: fn@(&fn_kind, fn_decl, blk, span, node_id),
     visit_ty_method: fn@(ty_method),
     visit_trait_method: fn@(trait_method),
-    visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id),
+    visit_struct_def: fn@(@struct_def, ident, &[ty_param], node_id),
     visit_struct_field: fn@(@struct_field),
     visit_struct_method: fn@(@method)
 }
@@ -580,21 +603,27 @@ pub fn default_simple_visitor() -> @SimpleVisitor {
         visit_expr: |_e| { },
         visit_expr_post: |_e| { },
         visit_ty: simple_ignore_ty,
-        visit_ty_params: fn@(_ps: ~[ty_param]) { },
-        visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
+        visit_ty_params: fn@(_ps: &[ty_param]) { },
+        visit_fn: fn@(_fk: &fn_kind, _d: fn_decl, _b: blk, _sp: span,
                       _id: node_id) { },
         visit_ty_method: fn@(_m: ty_method) { },
         visit_trait_method: fn@(_m: trait_method) { },
         visit_struct_def: fn@(_sd: @struct_def, _nm: ident,
-                              _tps: ~[ty_param], _id: node_id) { },
+                              _tps: &[ty_param], _id: node_id) { },
         visit_struct_field: fn@(_f: @struct_field) { },
         visit_struct_method: fn@(_m: @method) { }
     }
 }
 
 pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
-    fn v_mod(f: fn@(_mod, span, node_id), m: _mod, sp: span, id: node_id,
-             &&e: (), v: vt<()>) {
+    fn v_mod(
+        f: fn@(&_mod, span, node_id),
+        m: &_mod,
+        sp: span,
+        id: node_id,
+        &&e: (),
+        v: vt<()>
+    ) {
         f(m, sp, id);
         visit_mod(m, sp, id, e, v);
     }
@@ -655,20 +684,21 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(m);
         visit_trait_method(m, e, v);
     }
-    fn v_struct_def(f: fn@(@struct_def, ident, ~[ty_param], node_id),
-                    sd: @struct_def, nm: ident, tps: ~[ty_param], id: node_id,
+    fn v_struct_def(f: fn@(@struct_def, ident, &[ty_param], node_id),
+                    sd: @struct_def, nm: ident, tps: &[ty_param], id: node_id,
                     &&e: (), v: vt<()>) {
         f(sd, nm, tps, id);
         visit_struct_def(sd, nm, tps, id, e, v);
     }
-    fn v_ty_params(f: fn@(~[ty_param]),
-                   ps: ~[ty_param],
-                   &&e: (), v: vt<()>) {
+    fn v_ty_params(f: fn@(&[ty_param]),
+                   ps: &[ty_param],
+                   &&e: (),
+                   v: vt<()>) {
         f(ps);
         visit_ty_params(ps, e, v);
     }
-    fn v_fn(f: fn@(fn_kind, fn_decl, blk, span, node_id),
-            fk: fn_kind, decl: fn_decl, body: blk, sp: span,
+    fn v_fn(f: fn@(&fn_kind, fn_decl, blk, span, node_id),
+            fk: &fn_kind, decl: fn_decl, body: blk, sp: span,
             id: node_id, &&e: (), v: vt<()>) {
         f(fk, decl, body, sp, id);
         visit_fn(fk, decl, body, sp, id, e, v);
@@ -700,12 +730,9 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         visit_expr_post: |a,b,c| v_expr_post(v.visit_expr_post,
                                              a, b, c),
         visit_ty: visit_ty,
-        visit_ty_params: |a,b,c|
-            v_ty_params(v.visit_ty_params, a, b, c),
-        visit_fn: |a,b,c,d,e,f,g|
-            v_fn(v.visit_fn, a, b, c, d, e, f, g),
-        visit_ty_method: |a,b,c|
-            v_ty_method(v.visit_ty_method, a, b, c),
+        visit_ty_params: |a,b,c| v_ty_params(v.visit_ty_params, a, b, c),
+        visit_fn: |a,b,c,d,e,f,g| v_fn(v.visit_fn, a, b, c, d, e, f, g),
+        visit_ty_method: |a,b,c| v_ty_method(v.visit_ty_method, a, b, c),
         visit_trait_method: |a,b,c|
             v_trait_method(v.visit_trait_method, a, b, c),
         visit_struct_def: |a,b,c,d,e,f|
