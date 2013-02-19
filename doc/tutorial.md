@@ -162,17 +162,14 @@ running them manually is a perfectly valid way to test your code,
 for smaller projects, prototypes, or if you're a beginner, it might be
 more convenient to use the `rust` tool.
 
-You use it by calling it with one of the supported commands, followed by
-arguments for that command. For example `rust build foo.rs` calls the
-`build` command with the argument `foo.rs`.
+The `rust` tool provides central access to the other rust tools,
+as well as handy shortcuts for directly running source files.
+For example, if you have a file `foo.rs` in your current directory,
+`rust run foo.rs` would attempt to compile it and, if successful,
+directly run the resulting binary.
 
-The commands are:
-  - `build`, `doc`, `pkg` and `sketch`, which simply forward all arguments
-     to the included programs `rustc`, `rustdoc`, `rustpkg` and `rusti`.
-  - `run` and `test`, which both accept one source file and, using `rustc`,
-    produce either a normal or a test executable in the current working
-    directory and run it.
-  - `help`, which prints out the usage text of one of the commands.
+To get a list of all available commands, simply call `rust` without any
+argument.
 
 ## Editing Rust code
 
