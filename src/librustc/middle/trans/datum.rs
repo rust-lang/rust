@@ -396,7 +396,7 @@ pub impl Datum {
         }
     }
 
-    fn to_str(ccx: &crate_ctxt) -> ~str {
+    fn to_str(ccx: &CrateContext) -> ~str {
         fmt!("Datum { val=%s, ty=%s, mode=%?, source=%? }",
              val_str(ccx.tn, self.val),
              ty_to_str(ccx.tcx, self.ty),
@@ -841,7 +841,7 @@ pub impl DatumBlock {
         rslt(self.bcx, self.datum.to_appropriate_llval(self.bcx))
     }
 
-    fn ccx() -> @crate_ctxt {
+    fn ccx() -> @CrateContext {
         self.bcx.ccx()
     }
 

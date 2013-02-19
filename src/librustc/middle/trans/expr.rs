@@ -157,7 +157,7 @@ pub enum Dest {
 }
 
 impl Dest {
-    fn to_str(ccx: @crate_ctxt) -> ~str {
+    fn to_str(ccx: @CrateContext) -> ~str {
         match self {
             SaveIn(v) => fmt!("SaveIn(%s)", val_str(ccx.tn, v)),
             Ignore => ~"Ignore"
@@ -1290,7 +1290,7 @@ fn trans_unary_datum(bcx: block,
                         contents_ty: ty::t,
                         heap: heap) -> DatumBlock {
         let _icx = bcx.insn_ctxt("trans_boxed_expr");
-        let {bcx, box: bx, body} =
+        let base::MallocResult { bcx, box: bx, body } =
             base::malloc_general(bcx, contents_ty, heap);
         add_clean_free(bcx, bx, heap);
         let bcx = trans_into(bcx, contents, SaveIn(body));
@@ -1583,34 +1583,34 @@ fn trans_imm_cast(bcx: block, expr: @ast::expr,
     let s_in = k_in == cast_integral && ty::type_is_signed(t_in);
 
     let newval =
-        match {in: k_in, out: k_out} {
-            {in: cast_integral, out: cast_integral} => {
+        match (k_in, k_out) {
+            (cast_integral, cast_integral) => {
                 int_cast(bcx, ll_t_out, ll_t_in, llexpr, s_in)
             }
-            {in: cast_float, out: cast_float} => {
+            (cast_float, cast_float) => {
                 float_cast(bcx, ll_t_out, ll_t_in, llexpr)
             }
-            {in: cast_integral, out: cast_float} => {
+            (cast_integral, cast_float) => {
                 if s_in {
                     SIToFP(bcx, llexpr, ll_t_out)
                 } else { UIToFP(bcx, llexpr, ll_t_out) }
             }
-            {in: cast_float, out: cast_integral} => {
+            (cast_float, cast_integral) => {
                 if ty::type_is_signed(t_out) {
                     FPToSI(bcx, llexpr, ll_t_out)
                 } else { FPToUI(bcx, llexpr, ll_t_out) }
             }
-            {in: cast_integral, out: cast_pointer} => {
+            (cast_integral, cast_pointer) => {
                 IntToPtr(bcx, llexpr, ll_t_out)
             }
-            {in: cast_pointer, out: cast_integral} => {
+            (cast_pointer, cast_integral) => {
                 PtrToInt(bcx, llexpr, ll_t_out)
             }
-            {in: cast_pointer, out: cast_pointer} => {
+            (cast_pointer, cast_pointer) => {
                 PointerCast(bcx, llexpr, ll_t_out)
             }
-            {in: cast_enum, out: cast_integral} |
-            {in: cast_enum, out: cast_float} => {
+            (cast_enum, cast_integral) |
+            (cast_enum, cast_float) => {
                 let bcx = bcx;
                 let in_tid = match ty::get(t_in).sty {
                     ty::ty_enum(did, _) => did,

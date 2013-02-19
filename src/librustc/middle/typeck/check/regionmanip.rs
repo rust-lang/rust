@@ -13,7 +13,7 @@
 use core::prelude::*;
 
 use middle::ty;
-use middle::typeck::check::self_info;
+use middle::typeck::check::SelfInfo;
 use middle::typeck::isr_alist;
 use util::common::indenter;
 use util::ppaux::region_to_str;
@@ -29,19 +29,20 @@ use syntax::print::pprust::{expr_to_str};
 pub fn replace_bound_regions_in_fn_sig(
     tcx: ty::ctxt,
     isr: isr_alist,
-    self_info: Option<self_info>,
+    self_info: Option<SelfInfo>,
     fn_sig: &ty::FnSig,
     mapf: fn(ty::bound_region) -> ty::Region) ->
-    {isr: isr_alist, self_info: Option<self_info>, fn_sig: ty::FnSig} {
+    (isr_alist, Option<SelfInfo>, ty::FnSig) {
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
     let self_ty = self_info.map(|s| s.self_ty);
-    let rebuild_self_info = |t| self_info.map(|s| {self_ty: t, ..*s});
+    let rebuild_self_info = |t| self_info.map(|s| SelfInfo{self_ty: t, ..*s});
 
     let mut all_tys = ty::tys_in_fn_sig(fn_sig);
 
     match self_info {
-      Some({explicit_self: codemap::spanned { node: ast::sty_region(m),
+      Some(SelfInfo {
+            explicit_self: codemap::spanned { node: ast::sty_region(m),
                                           _}, _}) => {
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,
@@ -76,14 +77,12 @@ pub fn replace_bound_regions_in_fn_sig(
            ppaux::fn_sig_to_str(tcx, &new_fn_sig));
 
     // Glue updated self_ty back together with its original def_id.
-    let new_self_info: Option<self_info> = match t_self {
+    let new_self_info: Option<SelfInfo> = match t_self {
       None    => None,
       Some(t) => rebuild_self_info(t)
     };
 
-    return {isr: isr,
-            self_info: new_self_info,
-            fn_sig: new_fn_sig};
+    return (isr, new_self_info, new_fn_sig);
 
     // Takes `isr`, a (possibly empty) mapping from in-scope region
     // names ("isr"s) to their corresponding regions; `tys`, a list of

@@ -13,7 +13,7 @@
 
 use core::prelude::*;
 
-use cmd = metadata::cstore::crate_metadata;
+use metadata::cstore::crate_metadata;
 use dvec::DVec;
 use hash::{Hash, HashUtil};
 use io::WriterUtil;
@@ -24,7 +24,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
 use metadata::tydecode::{parse_ident};
-use middle::ty;
+use middle::{ty, resolve};
 use util::ppaux::ty_to_str;
 
 use core::cmp;
@@ -46,6 +46,8 @@ use syntax::parse::token::{ident_interner, special_idents};
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::codemap;
+
+type cmd = @crate_metadata;
 
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
@@ -98,6 +100,7 @@ fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
     }
 }
 
+#[deriving_eq]
 enum Family {
     Const,                 // c
     Fn,                    // f
@@ -119,13 +122,6 @@ enum Family {
     PublicField,           // g
     PrivateField,          // j
     InheritedField         // N
-}
-
-impl cmp::Eq for Family {
-    pure fn eq(&self, other: &Family) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Family) -> bool { !(*self).eq(other) }
 }
 
 fn item_family(item: ebml::Doc) -> Family {
@@ -360,9 +356,11 @@ pub fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         item_ty_param_bounds(item, tcx, cdata)
     } else { @~[] };
     let rp = item_ty_region_param(item);
-    return {bounds: tp_bounds,
-            region_param: rp,
-            ty: t};
+    ty::ty_param_bounds_and_ty {
+        bounds: tp_bounds,
+        region_param: rp,
+        ty: t
+    }
 }
 
 pub fn get_region_param(cdata: cmd, id: ast::node_id)
@@ -544,7 +542,7 @@ pub fn get_item_path(intr: @ident_interner, cdata: cmd, id: ast::node_id)
 }
 
 pub type decode_inlined_item = fn(
-    cdata: cstore::crate_metadata,
+    cdata: @cstore::crate_metadata,
     tcx: ty::ctxt,
     path: ast_map::path,
     par_doc: ebml::Doc) -> Option<ast::inlined_item>;
@@ -606,20 +604,6 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     return infos;
 }
 
-// NB: These types are duplicated in resolve.rs
-pub type method_info = {
-    did: ast::def_id,
-    n_tps: uint,
-    ident: ast::ident,
-    self_type: ast::self_ty_
-};
-
-pub type _impl = {
-    did: ast::def_id,
-    ident: ast::ident,
-    methods: ~[@method_info]
-};
-
 fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
     fn get_mutability(ch: u8) -> ast::mutability {
         match ch as char {
@@ -650,16 +634,17 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
 }
 
 fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
-                     base_tps: uint) -> ~[@method_info] {
+                     base_tps: uint) -> ~[@resolve::MethodInfo] {
     let mut rslt = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |doc| {
         let m_did = reader::with_doc_data(doc, |d| parse_def_id(d));
         let mth_item = lookup_item(m_did.node, cdata.data);
         let self_ty = get_self_ty(mth_item);
-        rslt.push(@{did: translate_def_id(cdata, m_did),
-                   n_tps: item_ty_param_count(mth_item) - base_tps,
-                   ident: item_name(intr, mth_item),
-                   self_type: self_ty});
+        rslt.push(@resolve::MethodInfo {
+                    did: translate_def_id(cdata, m_did),
+                    n_tps: item_ty_param_count(mth_item) - base_tps,
+                    ident: item_name(intr, mth_item),
+                    self_type: self_ty});
     }
     rslt
 }
@@ -669,7 +654,7 @@ pub fn get_impls_for_mod(intr: @ident_interner,
                          m_id: ast::node_id,
                          name: Option<ast::ident>,
                          get_cdata: &fn(ast::crate_num) -> cmd)
-                      -> @~[@_impl] {
+                      -> @~[@resolve::Impl] {
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];
@@ -686,7 +671,7 @@ pub fn get_impls_for_mod(intr: @ident_interner,
         let nm = item_name(intr, item);
         if match name { Some(n) => { n == nm } None => { true } } {
            let base_tps = item_ty_param_count(item);
-           result.push(@{
+           result.push(@resolve::Impl {
                 did: local_did, ident: nm,
                 methods: item_impl_methods(intr, impl_cdata, item, base_tps)
             });
@@ -714,8 +699,14 @@ pub fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
             }
         };
         let self_ty = get_self_ty(mth);
-        result.push({ident: name, tps: bounds, fty: fty, self_ty: self_ty,
-                     vis: ast::public, def_id: def_id});
+        result.push(ty::method {
+            ident: name,
+            tps: bounds,
+            fty: fty,
+            self_ty: self_ty,
+            vis: ast::public,
+            def_id: def_id
+        });
     }
     debug!("get_trait_methods: }");
     @result
@@ -746,8 +737,14 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
         };
 
         let self_ty = get_self_ty(mth);
-        let ty_method = {ident: name, tps: bounds, fty: fty, self_ty: self_ty,
-                         vis: ast::public, def_id: did};
+        let ty_method = ty::method {
+            ident: name,
+            tps: bounds,
+            fty: fty,
+            self_ty: self_ty,
+            vis: ast::public,
+            def_id: did
+        };
         let provided_trait_method_info = ProvidedTraitMethodInfo {
             ty: ty_method,
             def_id: did
@@ -915,12 +912,13 @@ fn family_names_type(fam: Family) -> bool {
     match fam { Type | Mod | Trait => true, _ => false }
 }
 
-fn read_path(d: ebml::Doc) -> {path: ~str, pos: uint} {
+fn read_path(d: ebml::Doc) -> (~str, uint) {
     let desc = reader::doc_data(d);
     let pos = io::u64_from_be_bytes(desc, 0u, 4u) as uint;
     let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
     let path = str::from_bytes(pathbytes);
-    return {path: path, pos: pos};
+
+    (path, pos)
 }
 
 fn describe_def(items: ebml::Doc, id: ast::def_id) -> ~str {
@@ -1030,8 +1028,12 @@ pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
     return get_attributes(reader::Doc(data));
 }
 
-pub type crate_dep = {cnum: ast::crate_num, name: ast::ident,
-                      vers: @~str, hash: @~str};
+pub struct crate_dep {
+    cnum: ast::crate_num,
+    name: ast::ident,
+    vers: @~str,
+    hash: @~str
+}
 
 pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     let mut deps: ~[crate_dep] = ~[];
@@ -1042,7 +1044,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
         str::from_bytes(reader::doc_data(reader::get_doc(doc, tag_)))
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
-        deps.push({cnum: crate_num,
+        deps.push(crate_dep {cnum: crate_num,
                   name: intr.intern(@docstr(depdoc, tag_crate_dep_name)),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
                   hash: @docstr(depdoc, tag_crate_dep_hash)});
