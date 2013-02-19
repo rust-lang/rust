@@ -41,7 +41,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched, int id, bool killed) :
     name("main")
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
-    rng_init(kernel, &rng, NULL);
+    rng_init(kernel, &rng, NULL, 0);
 
     if (!tls_initialized)
         init_tls();
