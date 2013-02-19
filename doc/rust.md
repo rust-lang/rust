@@ -1117,6 +1117,7 @@ a = Cat{ name: ~"Spotty", weight: 2.7 };
 
 In this example, `Cat` is a _struct-like enum variant_,
 whereas `Dog` is simply called an enum variant.
+
 ### Constants
 
 ~~~~~~~~ {.ebnf .gram}
