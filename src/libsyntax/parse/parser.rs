@@ -576,12 +576,21 @@ pub impl Parser {
                 self.bump();
                 ty_nil
             } else {
+                // (t) is a parenthesized ty
+                // (t,) is the type of a tuple with only one field,
+                // of type t
                 let mut ts = ~[self.parse_ty(false)];
+                let mut one_tuple = false;
                 while self.token == token::COMMA {
                     self.bump();
-                    ts.push(self.parse_ty(false));
+                    if self.token != token::RPAREN {
+                        ts.push(self.parse_ty(false));
+                    }
+                    else {
+                        one_tuple = true;
+                    }
                 }
-                let t = if vec::len(ts) == 1u { ts[0].node }
+                let t = if ts.len() == 1 && !one_tuple { ts[0].node }
                 else { ty_tup(ts) };
                 self.expect(token::RPAREN);
                 t
@@ -1061,6 +1070,9 @@ pub impl Parser {
 
         if self.token == token::LPAREN {
             self.bump();
+            // (e) is parenthesized e
+            // (e,) is a tuple with only one field, e
+            let mut one_tuple = false;
             if self.token == token::RPAREN {
                 hi = self.span.hi;
                 self.bump();
@@ -1069,12 +1081,18 @@ pub impl Parser {
             }
             let mut es = ~[self.parse_expr()];
             while self.token == token::COMMA {
-                self.bump(); es.push(self.parse_expr());
+                self.bump();
+                if self.token != token::RPAREN {
+                    es.push(self.parse_expr());
+                }
+                else {
+                    one_tuple = true;
+                }
             }
             hi = self.span.hi;
             self.expect(token::RPAREN);
 
-            return if es.len() == 1 {
+            return if es.len() == 1 && !one_tuple {
                 self.mk_expr(lo, self.span.hi, expr_paren(es[0]))
             }
             else {
@@ -2158,11 +2176,13 @@ pub impl Parser {
                 pat = pat_lit(expr);
             } else {
                 let mut fields = ~[self.parse_pat(refutable)];
-                while self.token == token::COMMA {
-                    self.bump();
-                    fields.push(self.parse_pat(refutable));
+                if self.look_ahead(1) != token::RPAREN {
+                    while self.token == token::COMMA {
+                        self.bump();
+                        fields.push(self.parse_pat(refutable));
+                    }
                 }
-                if vec::len(fields) == 1u { self.expect(token::COMMA); }
+                if fields.len() == 1 { self.expect(token::COMMA); }
                 hi = self.span.hi;
                 self.expect(token::RPAREN);
                 pat = pat_tup(fields);
