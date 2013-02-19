@@ -1198,7 +1198,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
                     tcx.sess.span_err(sp, msg);
 
-                    vec::from_fn(expected_arg_count, |_| ty::mk_err(tcx))
+                    vec::from_fn(supplied_arg_count, |_| ty::mk_err(tcx))
                 };
 
                 sig.output
