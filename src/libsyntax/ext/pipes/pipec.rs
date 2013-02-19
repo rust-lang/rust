@@ -50,16 +50,13 @@ pub impl gen_send for message {
     fn gen_send(&self, cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
         match *self {
-          message(ref _id, span, tys, this,
-                  Some(next_state {state: ref next, tys: next_tys})) => {
+          message(ref _id, span, ref tys, this, Some(ref next_state)) => {
             debug!("pipec: next state exists");
-            let next = this.proto.get_state((*next));
-            assert next_tys.len() == next.ty_params.len();
+            let next = this.proto.get_state(next_state.state);
+            assert next_state.tys.len() == next.ty_params.len();
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
 
-            let args_ast = (arg_names, tys).map(
-                |n, t| cx.arg(*n, *t)
-            );
+            let args_ast = (arg_names, *tys).map(|n, t| cx.arg(*n, *t));
 
             let pipe_ty = cx.ty_path_ast_builder(
                 path(~[this.data_name()], span)
@@ -119,7 +116,7 @@ pub impl gen_send for message {
 
             let mut rty = cx.ty_path_ast_builder(path(~[next.data_name()],
                                                       span)
-                                                 .add_tys(next_tys));
+                                                 .add_tys(next_state.tys));
             if try {
                 rty = cx.ty_option(rty);
             }
@@ -134,13 +131,13 @@ pub impl gen_send for message {
                             cx.expr_block(body))
           }
 
-            message(ref _id, span, tys, this, None) => {
+            message(ref _id, span, ref tys, this, None) => {
                 debug!("pipec: no next state");
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
-                let args_ast = (arg_names, tys).map(
-                    |n, t| cx.arg(cx.ident_of(*n), *t)
-                );
+                let args_ast = do (arg_names, *tys).map |n, t| {
+                    cx.arg(cx.ident_of(*n), *t)
+                };
 
                 let args_ast = vec::append(
                     ~[cx.arg(cx.ident_of(~"pipe"),
@@ -219,8 +216,8 @@ pub impl to_type_decls for state {
             let message(name, span, tys, this, next) = *m;
 
             let tys = match next {
-              Some(next_state { state: ref next, tys: next_tys }) => {
-                let next = this.proto.get_state((*next));
+              Some(ref next_state) => {
+                let next = this.proto.get_state((next_state.state));
                 let next_name = cx.str_of(next.data_name());
 
                 let dir = match this.dir {
@@ -232,7 +229,7 @@ pub impl to_type_decls for state {
                                 cx.ty_path_ast_builder(
                                     path(~[cx.ident_of(dir),
                                            cx.ident_of(next_name)], span)
-                                    .add_tys(next_tys)))
+                                    .add_tys(next_state.tys)))
               }
               None => tys
             };

@@ -521,7 +521,7 @@ pub fn compare_scalar_types(cx: block,
             rslt(
                 controlflow::trans_fail(
                     cx, None,
-                    ~"attempt to compare values of type type"),
+                    @~"attempt to compare values of type type"),
                 C_nil())
         }
         _ => {
@@ -639,7 +639,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
           _ => cx.tcx().sess.bug(fmt!("iter_variant: not a function type: \
                                        %s (variant name = %s)",
                                       cx.ty_to_str(fn_ty),
-                                      cx.sess().str_of(variant.name)))
+                                      *cx.sess().str_of(variant.name)))
         }
         return cx;
     }
@@ -776,7 +776,7 @@ pub fn fail_if_zero(cx: block, span: span, divmod: ast::binop,
       }
     };
     do with_cond(cx, is_zero) |bcx| {
-        controlflow::trans_fail(bcx, Some(span), /*bad*/copy text)
+        controlflow::trans_fail(bcx, Some(span), @/*bad*/copy text)
     }
 }
 
@@ -1037,20 +1037,20 @@ pub fn load_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     return v;
 }
 
-pub fn trans_trace(bcx: block, sp_opt: Option<span>, +trace_str: ~str) {
+pub fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: ~str) {
     if !bcx.sess().trace() { return; }
     let _icx = bcx.insn_ctxt("trans_trace");
-    add_comment(bcx, trace_str);
-    let V_trace_str = C_cstr(bcx.ccx(), trace_str);
+    add_comment(bcx, /*bad*/ copy trace_str);
+    let V_trace_str = C_cstr(bcx.ccx(), @/*bad*/ copy trace_str);
     let {V_filename, V_line} = match sp_opt {
       Some(sp) => {
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        {V_filename: C_cstr(bcx.ccx(), /*bad*/copy loc.file.name),
+        {V_filename: C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name),
          V_line: loc.line as int}
       }
       None => {
-        {V_filename: C_cstr(bcx.ccx(), ~"<runtime>"),
+        {V_filename: C_cstr(bcx.ccx(), @~"<runtime>"),
          V_line: 0}
       }
     };
@@ -1170,7 +1170,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
         special_idents::invalid
     };
     unsafe {
-        let llbb: BasicBlockRef = str::as_c_str(cx.ccx.sess.str_of(s), |buf| {
+        let llbb = str::as_c_str(*cx.ccx.sess.str_of(s), |buf| {
             llvm::LLVMAppendBasicBlock(cx.llfn, buf)
         });
         let bcx = mk_block(llbb,
@@ -1401,7 +1401,7 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
         do option::iter(&simple_name) |name| {
-            str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
+            str::as_c_str(*cx.ccx().sess.str_of(*name), |buf| {
                 unsafe {
                     llvm::LLVMSetValueName(val, buf)
                 }
@@ -2815,7 +2815,7 @@ pub fn create_module_map(ccx: @crate_ctxt) -> ValueRef {
     }
     let mut elts: ~[ValueRef] = ~[];
     for ccx.module_data.each |&key, &val| {
-        let elt = C_struct(~[p2i(ccx, C_cstr(ccx, key)),
+        let elt = C_struct(~[p2i(ccx, C_cstr(ccx, @/*bad*/ copy key)),
                             p2i(ccx, val)]);
         elts.push(elt);
     }
@@ -2859,9 +2859,9 @@ pub fn fill_crate_map(ccx: @crate_ctxt, map: ValueRef) {
     let cstore = ccx.sess.cstore;
     while cstore::have_crate_data(cstore, i) {
         let cdata = cstore::get_crate_data(cstore, i);
-        let nm = ~"_rust_crate_map_" + cdata.name +
-            ~"_" + cstore::get_crate_vers(cstore, i) +
-            ~"_" + cstore::get_crate_hash(cstore, i);
+        let nm = ~"_rust_crate_map_" + *cdata.name +
+            ~"_" + *cstore::get_crate_vers(cstore, i) +
+            ~"_" + *cstore::get_crate_hash(cstore, i);
         let cr = str::as_c_str(nm, |buf| {
             unsafe {
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)

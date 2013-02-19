@@ -231,7 +231,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
                 tcx.sess.span_err(span,
                                   fmt!("struct `%s` does not have a field
                                         named `%s`", name,
-                                       tcx.sess.str_of(field.ident)));
+                                       *tcx.sess.str_of(field.ident)));
             }
         }
     }
@@ -244,7 +244,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
             }
             tcx.sess.span_err(span,
                               fmt!("pattern does not mention field `%s`",
-                                   tcx.sess.str_of(field.ident)));
+                                   *tcx.sess.str_of(field.ident)));
         }
     }
 }
@@ -436,7 +436,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                 tcx.sess.span_fatal(pat.span,
                                     fmt!("mismatched types: did not \
                                           expect a record with a field `%s`",
-                                          tcx.sess.str_of(f.ident)));
+                                          *tcx.sess.str_of(f.ident)));
               }
             }
         }

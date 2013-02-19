@@ -134,39 +134,47 @@ pub fn raw_pat(p: @pat) -> @pat {
 pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
     assert(!pats.is_empty());
     let ext = match is_useful(cx, vec::map(pats, |p| ~[*p]), ~[wild()]) {
-      not_useful => return, // This is good, wildcard pattern isn't reachable
-      useful_ => None,
-      useful(ty, ref ctor) => {
-        match ty::get(ty).sty {
-          ty::ty_bool => {
-            match (*ctor) {
-              val(const_bool(true)) => Some(~"true"),
-              val(const_bool(false)) => Some(~"false"),
-              _ => None
-            }
-          }
-          ty::ty_enum(id, _) => {
-              let vid = match (*ctor) { variant(id) => id,
-              _ => fail!(~"check_exhaustive: non-variant ctor") };
-            match vec::find(*ty::enum_variants(cx.tcx, id),
-                                |v| v.id == vid) {
-                Some(v) => Some(cx.tcx.sess.str_of(v.name)),
-              None => fail!(~"check_exhaustive: bad variant in ctor")
-            }
-          }
-          ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
-            match (*ctor) {
-              vec(n) => Some(fmt!("vectors of length %u", n)),
-              _ => None
-            }
-          }
-          _ => None
+        not_useful => {
+            // This is good, wildcard pattern isn't reachable
+            return;
         }
-      }
+        useful_ => None,
+        useful(ty, ref ctor) => {
+            match ty::get(ty).sty {
+                ty::ty_bool => {
+                    match (*ctor) {
+                        val(const_bool(true)) => Some(@~"true"),
+                        val(const_bool(false)) => Some(@~"false"),
+                        _ => None
+                    }
+                }
+                ty::ty_enum(id, _) => {
+                    let vid = match *ctor {
+                        variant(id) => id,
+                        _ => fail!(~"check_exhaustive: non-variant ctor"),
+                    };
+                    let variants = ty::enum_variants(cx.tcx, id);
+
+                    match variants.find(|v| v.id == vid) {
+                        Some(v) => Some(cx.tcx.sess.str_of(v.name)),
+                        None => {
+                            fail!(~"check_exhaustive: bad variant in ctor")
+                        }
+                    }
+                }
+                ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
+                    match *ctor {
+                        vec(n) => Some(@fmt!("vectors of length %u", n)),
+                    _ => None
+                    }
+                }
+                _ => None
+            }
+        }
     };
     let msg = ~"non-exhaustive patterns" + match ext {
-      Some(ref s) => ~": " + (*s) + ~" not covered",
-      None => ~""
+        Some(ref s) => ~": " + **s + ~" not covered",
+        None => ~""
     };
     cx.tcx.sess.span_err(sp, msg);
 }

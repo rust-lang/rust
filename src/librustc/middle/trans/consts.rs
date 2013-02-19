@@ -55,7 +55,7 @@ pub fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
       }
       ast::lit_bool(b) => C_bool(b),
       ast::lit_nil => C_nil(),
-      ast::lit_str(s) => C_estr_slice(cx, /*bad*/copy *s)
+      ast::lit_str(s) => C_estr_slice(cx, s)
     }
 }
 

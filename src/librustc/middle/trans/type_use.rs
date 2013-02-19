@@ -112,7 +112,7 @@ pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                                                    _ },
                                  abi, _) => {
         if abi == foreign_abi_rust_intrinsic {
-            let flags = match cx.ccx.sess.str_of(i.ident) {
+            let flags = match *cx.ccx.sess.str_of(i.ident) {
                 ~"size_of"  | ~"pref_align_of"    | ~"min_align_of" |
                 ~"init"     | ~"reinterpret_cast" |
                 ~"move_val" | ~"move_val_init" => use_repr,

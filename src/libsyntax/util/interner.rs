@@ -14,72 +14,66 @@
 
 use core::prelude::*;
 
-use core::dvec::DVec;
-use std::oldmap::HashMap;
-use std::oldmap;
+use hashmap::linear::LinearMap;
+use dvec::DVec;
 
-pub type hash_interner<T> = {map: HashMap<T, uint>, vect: DVec<T>};
-
-pub fn mk<T:Eq IterBytes Hash Const Copy>() -> Interner<T> {
-    let m = oldmap::HashMap::<T, uint>();
-    let hi: hash_interner<T> =
-        {map: m, vect: DVec()};
-    ((hi) as Interner::<T>)
+pub struct Interner<T> {
+    priv mut map: LinearMap<T, uint>,
+    priv vect: DVec<T>,
 }
 
-pub fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: &[T]) -> Interner<T> {
-    let rv = mk();
-    for init.each() |v| { rv.intern(*v); }
-    return rv;
-}
-
-
-/* when traits can extend traits, we should extend index<uint,T> to get [] */
-pub trait Interner<T:Eq IterBytes Hash Const Copy> {
-    fn intern(T) -> uint;
-    fn gensym(T) -> uint;
-    pure fn get(uint) -> T;
-    fn len() -> uint;
-}
-
-pub impl<T:Eq IterBytes Hash Const Copy> Interner<T> for hash_interner<T> {
-    fn intern(val: T) -> uint {
-        match self.map.find(&val) {
-          Some(idx) => return idx,
-          None => {
-            let new_idx = self.vect.len();
-            self.map.insert(val, new_idx);
-            self.vect.push(val);
-            return new_idx;
-          }
+// when traits can extend traits, we should extend index<uint,T> to get []
+pub impl<T: Eq IterBytes Hash Const Copy> Interner<T> {
+    static fn new() -> Interner<T> {
+        Interner {
+            map: LinearMap::new(),
+            vect: DVec(),
         }
     }
-    fn gensym(val: T) -> uint {
+
+    static fn prefill(init: &[T]) -> Interner<T> {
+        let rv = Interner::new();
+        for init.each() |v| { rv.intern(*v); }
+        rv
+    }
+
+    fn intern(&self, val: T) -> uint {
+        match self.map.find(&val) {
+            Some(&idx) => return idx,
+            None => (),
+        }
+
+        let new_idx = self.vect.len();
+        self.map.insert(val, new_idx);
+        self.vect.push(val);
+        new_idx
+    }
+
+    fn gensym(&self, val: T) -> uint {
         let new_idx = self.vect.len();
         // leave out of .map to avoid colliding
         self.vect.push(val);
-        return new_idx;
+        new_idx
     }
 
     // this isn't "pure" in the traditional sense, because it can go from
     // failing to returning a value as items are interned. But for typestate,
     // where we first check a pred and then rely on it, ceasing to fail is ok.
-    pure fn get(idx: uint) -> T { self.vect.get_elt(idx) }
+    pure fn get(&self, idx: uint) -> T { self.vect.get_elt(idx) }
 
-    fn len() -> uint { return self.vect.len(); }
+    fn len(&self) -> uint { self.vect.len() }
 }
-
 
 #[test]
 #[should_fail]
 pub fn i1 () {
-    let i : Interner<@~str> = mk();
+    let i : Interner<@~str> = Interner::new();
     i.get(13);
 }
 
 #[test]
 pub fn i2 () {
-    let i : Interner<@~str> = mk();
+    let i : Interner<@~str> = Interner::new();
     // first one is zero:
     assert i.intern (@~"dog") == 0;
     // re-use gets the same entry:
@@ -104,7 +98,7 @@ pub fn i2 () {
 
 #[test]
 pub fn i3 () {
-    let i : Interner<@~str> = mk_prefill([@~"Alan",@~"Bob",@~"Carol"]);
+    let i : Interner<@~str> = Interner::prefill([@~"Alan",@~"Bob",@~"Carol"]);
     assert i.get(0) == @~"Alan";
     assert i.get(1) == @~"Bob";
     assert i.get(2) == @~"Carol";

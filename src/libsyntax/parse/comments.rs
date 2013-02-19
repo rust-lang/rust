@@ -46,14 +46,14 @@ impl cmp::Eq for cmnt_style {
 
 pub type cmnt = {style: cmnt_style, lines: ~[~str], pos: BytePos};
 
-pub fn is_doc_comment(s: ~str) -> bool {
+pub fn is_doc_comment(s: &str) -> bool {
     (s.starts_with(~"///") && !is_line_non_doc_comment(s)) ||
     s.starts_with(~"//!") ||
     (s.starts_with(~"/**") && !is_block_non_doc_comment(s)) ||
     s.starts_with(~"/*!")
 }
 
-pub fn doc_comment_style(comment: ~str) -> ast::attr_style {
+pub fn doc_comment_style(comment: &str) -> ast::attr_style {
     assert is_doc_comment(comment);
     if comment.starts_with(~"//!") || comment.starts_with(~"/*!") {
         ast::attr_inner
@@ -62,7 +62,7 @@ pub fn doc_comment_style(comment: ~str) -> ast::attr_style {
     }
 }
 
-pub fn strip_doc_comment_decoration(comment: ~str) -> ~str {
+pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
