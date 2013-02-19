@@ -111,6 +111,8 @@ impl<A: Copy, B: Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
     }
 }
 
+// FIXME #4898: impl for one-tuples
+
 #[cfg(notest)]
 impl<A: Eq, B: Eq> Eq for (A, B) {
     #[inline(always)]

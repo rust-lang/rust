@@ -576,12 +576,21 @@ pub impl Parser {
                 self.bump();
                 ty_nil
             } else {
+                // (t) is a parenthesized ty
+                // (t,) is the type of a tuple with only one field,
+                // of type t
                 let mut ts = ~[self.parse_ty(false)];
+                let mut one_tuple = false;
                 while self.token == token::COMMA {
                     self.bump();
-                    ts.push(self.parse_ty(false));
+                    if self.token != token::RPAREN {
+                        ts.push(self.parse_ty(false));
+                    }
+                    else {
+                        one_tuple = true;
+                    }
                 }
-                let t = if vec::len(ts) == 1u { ts[0].node }
+                let t = if ts.len() == 1 && !one_tuple { ts[0].node }
                 else { ty_tup(ts) };
                 self.expect(token::RPAREN);
                 t
