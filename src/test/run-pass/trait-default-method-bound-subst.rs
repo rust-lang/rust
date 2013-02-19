@@ -20,6 +20,6 @@ fn f<T, U, V: A<T>>(i: V, j: T, k: U) -> (T, U) {
     i.g(j, k)
 }
 
-fn main () {
+pub fn main () {
     assert f(0, 1, 2) == (1, 2);
 }

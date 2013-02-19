@@ -11,7 +11,7 @@
 enum E { V0, V1(int) }
 const C: &static/E = &V0;
 
-fn main() {
+pub fn main() {
     match *C {
         V0 => (),
         _ => fail!()
