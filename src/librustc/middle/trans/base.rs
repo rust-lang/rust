@@ -456,7 +456,6 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: @crate_ctxt, +sym: ~str) {
-    // XXX: Bad copy.
     if ccx.all_llvm_symbols.contains_key(&sym) {
         ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
     }
@@ -628,7 +627,10 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             for vec::each(fn_ty.sig.inputs) |a| {
                 let llfldp_a = GEP_enum(cx, a_tup, tid, v_id,
                                         /*bad*/copy tps, j);
-                // XXX: Is "None" right here?
+                // This assumes the self type is absent (it passes
+                // None for the self_ty_opt arg of substs_tps).
+                // I think that's ok since you can't have an enum
+                // inside a trait.
                 let ty_subst = ty::subst_tps(ccx.tcx, tps, None, a.ty);
                 cx = f(cx, llfldp_a, ty_subst);
                 j += 1u;
@@ -1038,8 +1040,7 @@ pub fn load_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
 pub fn trans_trace(bcx: block, sp_opt: Option<span>, +trace_str: ~str) {
     if !bcx.sess().trace() { return; }
     let _icx = bcx.insn_ctxt("trans_trace");
-    // XXX: Bad copy.
-    add_comment(bcx, copy trace_str);
+    add_comment(bcx, trace_str);
     let V_trace_str = C_cstr(bcx.ccx(), trace_str);
     let {V_filename, V_line} = match sp_opt {
       Some(sp) => {
@@ -1551,7 +1552,7 @@ pub fn new_fn_ctxt_w_id(ccx: @crate_ctxt,
                         llfndecl: ValueRef,
                         id: ast::node_id,
                         impl_id: Option<ast::def_id>,
-                        +param_substs: Option<param_substs>,
+                        param_substs: Option<@param_substs>,
                         sp: Option<span>) -> fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
     return @fn_ctxt_ {
@@ -1740,7 +1741,7 @@ pub fn trans_closure(ccx: @crate_ctxt,
                      body: &ast::blk,
                      llfndecl: ValueRef,
                      ty_self: self_arg,
-                     +param_substs: Option<param_substs>,
+                     param_substs: Option<@param_substs>,
                      id: ast::node_id,
                      impl_id: Option<ast::def_id>,
                      maybe_load_env: fn(fn_ctxt),
@@ -1804,7 +1805,7 @@ pub fn trans_fn(ccx: @crate_ctxt,
                 body: &ast::blk,
                 llfndecl: ValueRef,
                 ty_self: self_arg,
-                +param_substs: Option<param_substs>,
+                param_substs: Option<@param_substs>,
                 id: ast::node_id,
                 impl_id: Option<ast::def_id>) {
     let do_time = ccx.sess.trans_stats();
@@ -1813,8 +1814,8 @@ pub fn trans_fn(ccx: @crate_ctxt,
     debug!("trans_fn(ty_self=%?)", ty_self);
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
-    // XXX: Bad copy of `path`.
-    trans_closure(ccx, copy path, decl, body, llfndecl, ty_self,
+    let the_path_str = path_str(ccx.sess, path);
+    trans_closure(ccx, path, decl, body, llfndecl, ty_self,
                   param_substs, id, impl_id,
                   |fcx| {
                       if ccx.sess.opts.extra_debuginfo {
@@ -1824,7 +1825,7 @@ pub fn trans_fn(ccx: @crate_ctxt,
                   |_bcx| { });
     if do_time {
         let end = time::get_time();
-        log_fn_time(ccx, path_str(ccx.sess, path), start, end);
+        log_fn_time(ccx, the_path_str, start, end);
     }
 }
 
@@ -1834,7 +1835,7 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
                           args: ~[ast::variant_arg],
                           disr: int,
                           is_degen: bool,
-                          +param_substs: Option<param_substs>,
+                          param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
     let _icx = ccx.insn_ctxt("trans_enum_variant");
     // Translate variant arguments to function arguments.
@@ -1850,9 +1851,8 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
             id: varg.id,
         }
     };
-    // XXX: Bad copy of `param_substs`.
     let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id, None,
-                               copy param_substs, None);
+                               param_substs, None);
     // XXX: Bad copy.
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, copy fn_args);
     let ty_param_substs = match param_substs {
@@ -1897,7 +1897,7 @@ pub fn trans_enum_variant(ccx: @crate_ctxt,
 pub fn trans_tuple_struct(ccx: @crate_ctxt,
                           fields: ~[@ast::struct_field],
                           ctor_id: ast::node_id,
-                          +param_substs: Option<param_substs>,
+                          param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
     let _icx = ccx.insn_ctxt("trans_tuple_struct");
 
@@ -1951,7 +1951,7 @@ pub fn trans_struct_dtor(ccx: @crate_ctxt,
                          +path: path,
                          body: &ast::blk,
                          dtor_id: ast::node_id,
-                         +psubsts: Option<param_substs>,
+                         psubsts: Option<@param_substs>,
                          hash_id: Option<mono_id>,
                          parent_id: ast::def_id)
                       -> ValueRef {
@@ -1968,7 +1968,7 @@ pub fn trans_struct_dtor(ccx: @crate_ctxt,
   let lldty = type_of_dtor(ccx, class_ty);
 
   // XXX: Bad copies.
-  let s = get_dtor_symbol(ccx, copy path, dtor_id, copy psubsts);
+  let s = get_dtor_symbol(ccx, copy path, dtor_id, psubsts);
 
   /* Register the dtor as a function. It has external linkage */
   let lldecl = decl_internal_cdecl_fn(ccx.llmod, s, lldty);
@@ -2296,7 +2296,7 @@ pub fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
 pub fn get_dtor_symbol(ccx: @crate_ctxt,
                        +path: path,
                        id: ast::node_id,
-                       +substs: Option<param_substs>)
+                       substs: Option<@param_substs>)
                     -> ~str {
   let t = ty::node_id_to_type(ccx.tcx, id);
   match ccx.item_symbols.find(&id) {
