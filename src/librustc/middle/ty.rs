@@ -2823,7 +2823,7 @@ pub pure fn ty_fn_ret(fty: t) -> t {
     }
 }
 
-fn is_fn_ty(fty: t) -> bool {
+pub fn is_fn_ty(fty: t) -> bool {
     match get(fty).sty {
         ty_bare_fn(_) => true,
         ty_closure(_) => true,
