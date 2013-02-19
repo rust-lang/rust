@@ -130,42 +130,42 @@ pub fn get_lint_dict() -> LintDict {
 
         (@~"unused_imports",
          @LintSpec {
-			lint: unused_imports,
+            lint: unused_imports,
             desc: "imports that are never used",
             default: allow
          }),
 
         (@~"while_true",
          @LintSpec {
-			lint: while_true,
+            lint: while_true,
             desc: "suggest using loop { } instead of while(true) { }",
             default: warn
          }),
 
         (@~"path_statement",
          @LintSpec {
-			lint: path_statement,
+            lint: path_statement,
             desc: "path statements with no effect",
             default: warn
          }),
 
         (@~"unrecognized_lint",
          @LintSpec {
-			lint: unrecognized_lint,
+            lint: unrecognized_lint,
             desc: "unrecognized lint attribute",
             default: warn
          }),
 
         (@~"non_implicitly_copyable_typarams",
          @LintSpec {
-			lint: non_implicitly_copyable_typarams,
+            lint: non_implicitly_copyable_typarams,
             desc: "passing non implicitly copyable types as copy type params",
             default: warn
          }),
 
         (@~"vecs_implicitly_copyable",
          @LintSpec {
-			lint: vecs_implicitly_copyable,
+            lint: vecs_implicitly_copyable,
             desc: "make vecs and strs not implicitly copyable \
                   (only checked at top level)",
             default: warn
@@ -173,84 +173,84 @@ pub fn get_lint_dict() -> LintDict {
 
         (@~"implicit_copies",
          @LintSpec {
-			lint: implicit_copies,
+            lint: implicit_copies,
             desc: "implicit copies of non implicitly copyable data",
             default: warn
          }),
 
         (@~"deprecated_mode",
          @LintSpec {
-			lint: deprecated_mode,
+            lint: deprecated_mode,
             desc: "warn about deprecated uses of modes",
             default: warn
          }),
 
         (@~"deprecated_pattern",
          @LintSpec {
-			lint: deprecated_pattern,
+            lint: deprecated_pattern,
             desc: "warn about deprecated uses of pattern bindings",
             default: allow
          }),
 
         (@~"non_camel_case_types",
          @LintSpec {
-			lint: non_camel_case_types,
+            lint: non_camel_case_types,
             desc: "types, variants and traits should have camel case names",
             default: allow
          }),
 
         (@~"managed_heap_memory",
          @LintSpec {
-			lint: managed_heap_memory,
+            lint: managed_heap_memory,
             desc: "use of managed (@ type) heap memory",
             default: allow
          }),
 
         (@~"owned_heap_memory",
          @LintSpec {
-			lint: owned_heap_memory,
+            lint: owned_heap_memory,
             desc: "use of owned (~ type) heap memory",
             default: allow
          }),
 
         (@~"heap_memory",
          @LintSpec {
-			lint: heap_memory,
+            lint: heap_memory,
             desc: "use of any (~ type or @ type) heap memory",
             default: allow
          }),
 
         (@~"structural_records",
          @LintSpec {
-			lint: structural_records,
+            lint: structural_records,
             desc: "use of any structural records",
             default: deny
          }),
 
         (@~"legacy modes",
          @LintSpec {
-			lint: legacy_modes,
+            lint: legacy_modes,
             desc: "allow legacy modes",
             default: forbid
          }),
 
         (@~"type_limits",
          @LintSpec {
-			lint: type_limits,
+            lint: type_limits,
             desc: "comparisons made useless by limits of the types involved",
             default: warn
          }),
 
         (@~"default_methods",
          @LintSpec {
-			lint: default_methods,
+            lint: default_methods,
             desc: "allow default methods",
             default: deny
          }),
 
         (@~"deprecated_self",
          @LintSpec {
-			lint: deprecated_self,
+            lint: deprecated_self,
             desc: "warn about deprecated uses of `self`",
             default: warn
          }),
@@ -258,14 +258,14 @@ pub fn get_lint_dict() -> LintDict {
         /* FIXME(#3266)--make liveness warnings lintable
         (@~"unused_variable",
          @LintSpec {
-			lint: unused_variable,
+            lint: unused_variable,
             desc: "detect variables which are not used in any way",
             default: warn
          }),
 
         (@~"dead_assignment",
          @LintSpec {
-			lint: dead_assignment,
+            lint: dead_assignment,
             desc: "detect assignments that will never be read",
             default: warn
          }),

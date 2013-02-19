@@ -223,7 +223,7 @@ pub impl ResolveState {
             let bounds = nde.possible_types;
 
             let t1 = match bounds {
-              Bounds { ub:_, lb:Some(t) } if !type_is_bot(t) 
+              Bounds { ub:_, lb:Some(t) } if !type_is_bot(t)
                 => self.resolve_type(t),
               Bounds { ub:Some(t), lb:_ } => self.resolve_type(t),
               Bounds { ub:_, lb:Some(t) } => self.resolve_type(t),
