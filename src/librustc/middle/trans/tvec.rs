@@ -81,7 +81,7 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
-    let {bcx, box: bx, body} =
+    let MallocResult {bcx, box: bx, body} =
         base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
     Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
@@ -144,7 +144,7 @@ pub struct VecTypes {
 }
 
 pub impl VecTypes {
-    fn to_str(ccx: @crate_ctxt) -> ~str {
+    fn to_str(ccx: @CrateContext) -> ~str {
         fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
              ty_to_str(ccx.tcx, self.vec_ty),
              ty_to_str(ccx.tcx, self.unit_ty),

@@ -48,10 +48,10 @@ pub pure fn stmt_id(s: stmt) -> node_id {
     }
 }
 
-pub fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
+pub fn variant_def_ids(d: def) -> (def_id, def_id) {
     match d {
       def_variant(enum_id, var_id) => {
-        return {enm: enum_id, var: var_id}
+        return (enum_id, var_id);
       }
       _ => fail!(~"non-variant in variant_def_ids")
     }

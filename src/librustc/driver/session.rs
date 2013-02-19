@@ -37,13 +37,14 @@ pub enum arch { arch_x86, arch_x86_64, arch_arm, }
 
 pub enum crate_type { bin_crate, lib_crate, unknown_crate, }
 
-pub type config =
-    {os: os,
-     arch: arch,
-     target_strs: target_strs::t,
-     int_type: int_ty,
-     uint_type: uint_ty,
-     float_type: float_ty};
+pub struct config {
+    os: os,
+    arch: arch,
+    target_strs: target_strs::t,
+    int_type: int_ty,
+    uint_type: uint_ty,
+    float_type: float_ty
+}
 
 pub const verbose: uint = 1 << 0;
 pub const time_passes: uint = 1 << 1;
@@ -113,35 +114,38 @@ pub enum OptLevel {
     Aggressive // -O3
 }
 
-pub type options =
+pub struct options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
-    {crate_type: crate_type,
-     static: bool,
-     gc: bool,
-     optimize: OptLevel,
-     debuginfo: bool,
-     extra_debuginfo: bool,
-     lint_opts: ~[(lint::lint, lint::level)],
-     save_temps: bool,
-     jit: bool,
-     output_type: back::link::output_type,
-     addl_lib_search_paths: ~[Path],
-     maybe_sysroot: Option<Path>,
-     target_triple: ~str,
-     // User-specified cfg meta items. The compiler itself will add additional
-     // items to the crate config, and during parsing the entire crate config
-     // will be added to the crate AST node.  This should not be used for
-     // anything except building the full crate config prior to parsing.
-     cfg: ast::crate_cfg,
-     binary: ~str,
-     test: bool,
-     parse_only: bool,
-     no_trans: bool,
-     debugging_opts: uint,
-    };
+    crate_type: crate_type,
+    is_static: bool,
+    gc: bool,
+    optimize: OptLevel,
+    debuginfo: bool,
+    extra_debuginfo: bool,
+    lint_opts: ~[(lint::lint, lint::level)],
+    save_temps: bool,
+    jit: bool,
+    output_type: back::link::output_type,
+    addl_lib_search_paths: ~[Path],
+    maybe_sysroot: Option<Path>,
+    target_triple: ~str,
+    // User-specified cfg meta items. The compiler itself will add additional
+    // items to the crate config, and during parsing the entire crate config
+    // will be added to the crate AST node.  This should not be used for
+    // anything except building the full crate config prior to parsing.
+    cfg: ast::crate_cfg,
+    binary: ~str,
+    test: bool,
+    parse_only: bool,
+    no_trans: bool,
+    debugging_opts: uint,
+}
 
-pub type crate_metadata = {name: ~str, data: ~[u8]};
+pub struct crate_metadata {
+    name: ~str,
+    data: ~[u8]
+}
 
 pub struct Session_ {
     targ_cfg: @config,
@@ -155,7 +159,7 @@ pub struct Session_ {
     filesearch: filesearch::FileSearch,
     building_library: @mut bool,
     working_dir: Path,
-    lint_settings: lint::lint_settings
+    lint_settings: lint::LintSettings
 }
 
 pub type Session = @Session_;
@@ -266,9 +270,9 @@ pub impl Session {
 
 /// Some reasonable defaults
 pub fn basic_options() -> @options {
-    @{
+    @options {
         crate_type: session::lib_crate,
-        static: false,
+        is_static: false,
         gc: false,
         optimize: No,
         debuginfo: false,

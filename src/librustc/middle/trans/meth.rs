@@ -50,7 +50,7 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-pub fn trans_impl(ccx: @crate_ctxt, +path: path, name: ast::ident,
+pub fn trans_impl(ccx: @CrateContext, +path: path, name: ast::ident,
                   methods: ~[@ast::method], tps: ~[ast::ty_param],
                   self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
@@ -96,7 +96,7 @@ Translates a (possibly monomorphized) method body.
 - `llfn`: the LLVM ValueRef for the method
 - `impl_id`: the node ID of the impl this method is inside
 */
-pub fn trans_method(ccx: @crate_ctxt,
+pub fn trans_method(ccx: @CrateContext,
                     +path: path,
                     method: &ast::method,
                     param_substs: Option<@param_substs>,
@@ -359,7 +359,7 @@ pub fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
     ms.find(|m| m.ident == name).map(|m| local_def(m.id))
 }
 
-pub fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
+pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
                         name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(&impl_id.node) {
@@ -376,7 +376,7 @@ pub fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
     }
 }
 
-pub fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
+pub fn method_with_name_or_default(ccx: @CrateContext, impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(&impl_id.node) {
@@ -410,7 +410,7 @@ pub fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
     }
 }
 
-pub fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
+pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
                              i_id: ast::def_id) -> uint {
     debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
     if m_id.crate == ast::local_crate {
@@ -559,7 +559,8 @@ pub fn combine_impl_and_methods_origins(bcx: block,
     // rcvr + method bounds.
     let ccx = bcx.ccx(), tcx = bcx.tcx();
     let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
-    let {bounds: r_m_bounds, _} = ty::lookup_item_type(tcx, mth_did);
+    let ty::ty_param_bounds_and_ty {bounds: r_m_bounds, _}
+        = ty::lookup_item_type(tcx, mth_did);
     let n_r_m_tps = r_m_bounds.len(); // rcvr + method tps
     let m_boundss = vec::slice(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
 
@@ -745,7 +746,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     };
 }
 
-pub fn vtable_id(ccx: @crate_ctxt,
+pub fn vtable_id(ccx: @CrateContext,
                  +origin: typeck::vtable_origin)
               -> mono_id {
     match origin {
@@ -774,7 +775,7 @@ pub fn vtable_id(ccx: @crate_ctxt,
     }
 }
 
-pub fn get_vtable(ccx: @crate_ctxt,
+pub fn get_vtable(ccx: @CrateContext,
                   +origin: typeck::vtable_origin)
                -> ValueRef {
     // XXX: Bad copy.
@@ -790,7 +791,7 @@ pub fn get_vtable(ccx: @crate_ctxt,
     }
 }
 
-pub fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
+pub fn make_vtable(ccx: @CrateContext, ptrs: ~[ValueRef]) -> ValueRef {
     unsafe {
         let _icx = ccx.insn_ctxt("impl::make_vtable");
         let tbl = C_struct(ptrs);
@@ -805,7 +806,7 @@ pub fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn make_impl_vtable(ccx: @crate_ctxt,
+pub fn make_impl_vtable(ccx: @CrateContext,
                         impl_id: ast::def_id,
                         substs: ~[ty::t],
                         vtables: typeck::vtable_res)
@@ -838,8 +839,9 @@ pub fn make_impl_vtable(ccx: @crate_ctxt,
                     // XXX: Set impl ID here?
                     m_id = inline::maybe_instantiate_inline(ccx, m_id, true);
                 }
-                monomorphize::monomorphic_fn(ccx, m_id, substs,
-                                             Some(vtables), None, None).val
+                let (val, _) = monomorphize::monomorphic_fn(ccx, m_id, substs,
+                                Some(vtables), None, None);
+                val
             } else if m_id.crate == ast::local_crate {
                 get_item_val(ccx, m_id.node)
             } else {
@@ -873,7 +875,7 @@ pub fn trans_trait_cast(bcx: block,
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
             if bcx.tcx().legacy_boxed_traits.contains_key(&id) {
                 // Allocate an @ box and store the value into it
-                let {bcx: new_bcx, box: llbox, body: body} =
+                let MallocResult {bcx: new_bcx, box: llbox, body: body} =
                     malloc_boxed(bcx, v_ty);
                 bcx = new_bcx;
                 add_clean_free(bcx, llbox, heap_shared);

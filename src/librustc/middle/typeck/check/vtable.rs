@@ -315,8 +315,10 @@ pub fn lookup_vtable(vcx: &VtableContext,
                             // of the thing that we're trying to cast
                             // to some_trait.  If not, then we try the next
                             // impl.
-                            let {substs: substs, ty: for_ty} =
-                                impl_self_ty(vcx, location_info, im.did);
+                            let ty::ty_param_substs_and_ty {
+                                substs: substs,
+                                ty: for_ty
+                            } = impl_self_ty(vcx, location_info, im.did);
                             match infer::mk_subty(vcx.infcx,
                                                   false,
                                                   location_info.span,

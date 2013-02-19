@@ -10,6 +10,10 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
+// XXX - Need to finish off libsyntax first
+#[legacy_records];
+#[allow(structural_records)];
+
 use core::prelude::*;
 
 use driver::session;
@@ -32,20 +36,20 @@ use syntax::ext::base::{mk_ctxt, ext_ctxt};
 
 type node_id_gen = fn@() -> ast::node_id;
 
-type test = {
+struct Test {
     span: span,
     path: ~[ast::ident],
     bench: bool,
     ignore: bool,
     should_fail: bool
-};
+}
 
 struct TestCtxt {
     sess: session::Session,
     crate: @ast::crate,
     path: ~[ast::ident],
-      ext_cx: ext_ctxt,
-    testfns: ~[test]
+    ext_cx: ext_ctxt,
+    testfns: ~[Test]
 }
 
 // Traverse the crate, collecting all the test functions, eliding any
@@ -77,9 +81,11 @@ fn generate_test_harness(sess: session::Session,
         testfns: ~[]
     };
 
-    cx.ext_cx.bt_push(ExpandedFrom({call_site: dummy_sp(),
-                                    callie: {name: ~"test",
-                                             span: None}}));
+    cx.ext_cx.bt_push(ExpandedFrom({
+                        call_site: dummy_sp(),
+                        callie: {
+                            name: ~"test",
+                            span: None}}));
 
     let precursor = @fold::AstFoldFns {
         fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
@@ -153,11 +159,13 @@ fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: fold::ast_fold)
           }
           _ => {
             debug!("this is a test function");
-            let test = {span: i.span,
-                        path: /*bad*/copy cx.path,
-                        bench: is_bench_fn(i),
-                        ignore: is_ignored(cx, i),
-                        should_fail: should_fail(i)};
+            let test = Test {
+                span: i.span,
+                path: /*bad*/copy cx.path,
+                bench: is_bench_fn(i),
+                ignore: is_ignored(cx, i),
+                should_fail: should_fail(i)
+            };
             cx.testfns.push(test);
             debug!("have %u test/bench functions", cx.testfns.len());
           }
@@ -396,7 +404,7 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     }
 }
 
-fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: test) -> @ast::expr {
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: Test) -> @ast::expr {
     let span = test.span;
     let path = /*bad*/copy test.path;
 

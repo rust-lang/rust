@@ -138,7 +138,7 @@ pub impl CombineFields {
         let node_a = self.infcx.get(a_id);
         let a_id = node_a.root;
         let a_bounds = &node_a.possible_types;
-        let b_bounds = &{lb: None, ub: Some(b)};
+        let b_bounds = &Bounds { lb: None, ub: Some(b) };
 
         debug!("var_sub_t(%s=%s <: %s)",
                a_id.to_str(),
@@ -159,7 +159,7 @@ pub impl CombineFields {
          *
          * Make a concrete type (`a`) a subtype of the variable `b_id` */
 
-        let a_bounds = &{lb: Some(a), ub: None};
+        let a_bounds = &Bounds { lb: Some(a), ub: None };
         let node_b = self.infcx.get(b_id);
         let b_id = node_b.root;
         let b_bounds = &node_b.possible_types;
@@ -251,7 +251,7 @@ pub impl CombineFields {
         let () = if_ok!(self.bnds(&b.lb, &a.ub));
         let ub = if_ok!(self.merge_bnd(&a.ub, &b.ub, LatticeValue::glb));
         let lb = if_ok!(self.merge_bnd(&a.lb, &b.lb, LatticeValue::lub));
-        let bounds = {lb: lb, ub: ub};
+        let bounds = Bounds { lb: lb, ub: ub };
         debug!("merge(%s): bounds=%s",
                v_id.to_str(),
                bounds.inf_str(self.infcx));
@@ -305,7 +305,7 @@ pub impl LatticeDir for Lub {
     fn combine_fields() -> CombineFields { *self }
     fn bnd<T:Copy>(b: &Bounds<T>) -> Option<T> { b.ub }
     fn with_bnd<T:Copy>(b: &Bounds<T>, +t: T) -> Bounds<T> {
-        {ub: Some(t), ..*b}
+        Bounds { ub: Some(t), ..*b }
     }
 }
 
@@ -319,7 +319,7 @@ pub impl LatticeDir for Glb {
     fn combine_fields() -> CombineFields { *self }
     fn bnd<T:Copy>(b: &Bounds<T>) -> Option<T> { b.lb }
     fn with_bnd<T:Copy>(b: &Bounds<T>, +t: T) -> Bounds<T> {
-        {lb: Some(t), ..*b}
+        Bounds { lb: Some(t), ..*b }
     }
 }
 
