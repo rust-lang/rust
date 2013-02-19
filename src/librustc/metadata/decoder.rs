@@ -962,7 +962,7 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
     for reader::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(reader::doc_data(nd));
-        items.push(attr::mk_word_item(n));
+        items.push(attr::mk_word_item(@n));
     };
     for reader::tagged_docs(md, tag_meta_item_name_value) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
@@ -971,13 +971,13 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
         let v = str::from_bytes(reader::doc_data(vd));
         // FIXME (#623): Should be able to decode meta_name_value variants,
         // but currently the encoder just drops them
-        items.push(attr::mk_name_value_item_str(n, v));
+        items.push(attr::mk_name_value_item_str(@n, @v));
     };
     for reader::tagged_docs(md, tag_meta_item_list) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(reader::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
-        items.push(attr::mk_list_item(n, subitems));
+        items.push(attr::mk_list_item(@n, subitems));
     };
     return items;
 }
@@ -1015,7 +1015,7 @@ fn list_meta_items(intr: @ident_interner,
     }
 }
 
-fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: ~str,
+fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
                          out: io::Writer) {
     out.write_str(fmt!("=Crate Attributes (%s)=\n", hash));
 
@@ -1031,7 +1031,7 @@ pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
 }
 
 pub type crate_dep = {cnum: ast::crate_num, name: ast::ident,
-                      vers: ~str, hash: ~str};
+                      vers: @~str, hash: @~str};
 
 pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     let mut deps: ~[crate_dep] = ~[];
@@ -1044,8 +1044,8 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         deps.push({cnum: crate_num,
                   name: intr.intern(@docstr(depdoc, tag_crate_dep_name)),
-                  vers: docstr(depdoc, tag_crate_dep_vers),
-                  hash: docstr(depdoc, tag_crate_dep_hash)});
+                  vers: @docstr(depdoc, tag_crate_dep_vers),
+                  hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;
     };
     return deps;
@@ -1057,25 +1057,26 @@ fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: io::Writer) {
     for get_crate_deps(intr, data).each |dep| {
         out.write_str(
             fmt!("%d %s-%s-%s\n",
-                 dep.cnum, *intr.get(dep.name), dep.hash, dep.vers));
+                 dep.cnum, *intr.get(dep.name), *dep.hash, *dep.vers));
     }
 
     out.write_str(~"\n");
 }
 
-pub fn get_crate_hash(data: @~[u8]) -> ~str {
+pub fn get_crate_hash(data: @~[u8]) -> @~str {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
-    return str::from_bytes(reader::doc_data(hashdoc));
+    @str::from_bytes(reader::doc_data(hashdoc))
 }
 
-pub fn get_crate_vers(data: @~[u8]) -> ~str {
+pub fn get_crate_vers(data: @~[u8]) -> @~str {
     let attrs = decoder::get_crate_attributes(data);
-    return match attr::last_meta_item_value_str_by_name(
-        attr::find_linkage_metas(attrs), ~"vers") {
-      Some(ref ver) => (/*bad*/copy *ver),
-      None => ~"0.0"
-    };
+    let linkage_attrs = attr::find_linkage_metas(attrs);
+
+    match attr::last_meta_item_value_str_by_name(linkage_attrs, ~"vers") {
+        Some(ver) => ver,
+        None => @~"0.0"
+    }
 }
 
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
@@ -1096,7 +1097,7 @@ pub fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
                            out: io::Writer) {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
-    list_crate_attributes(intr, md, hash, out);
+    list_crate_attributes(intr, md, *hash, out);
     list_crate_deps(intr, bytes, out);
 }
 

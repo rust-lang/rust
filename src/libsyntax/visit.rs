@@ -137,11 +137,20 @@ pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         (v.visit_ty)(t, e, v);
         (v.visit_expr)(ex, e, v);
       }
-      item_fn(decl, purity, tp, ref body) => {
-        (v.visit_fn)(fk_item_fn(/* FIXME (#2543) */ copy i.ident,
-                              /* FIXME (#2543) */ copy tp,
-                              purity), decl, (*body),
-                   i.span, i.id, e, v);
+      item_fn(ref decl, purity, ref tp, ref body) => {
+        (v.visit_fn)(
+            fk_item_fn(
+                /* FIXME (#2543) */ copy i.ident,
+                /* FIXME (#2543) */ copy *tp,
+                purity
+            ),
+            /* FIXME (#2543) */ copy *decl,
+            (*body),
+            i.span,
+            i.id,
+            e,
+            v
+        );
       }
       item_mod(m) => (v.visit_mod)(m, i.span, i.id, e, v),
       item_foreign_mod(nm) => {
@@ -152,9 +161,14 @@ pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         (v.visit_ty)(t, e, v);
         (v.visit_ty_params)(tps, e, v);
       }
-      item_enum(ref enum_definition, tps) => {
-        (v.visit_ty_params)(tps, e, v);
-        visit_enum_def((*enum_definition), tps, e, v);
+      item_enum(ref enum_definition, ref tps) => {
+        (v.visit_ty_params)(/* FIXME (#2543) */ copy *tps, e, v);
+        visit_enum_def(
+            *enum_definition,
+            /* FIXME (#2543) */ copy *tps,
+            e,
+            v
+        );
       }
       item_impl(tps, traits, ty, methods) => {
         (v.visit_ty_params)(tps, e, v);
@@ -170,8 +184,8 @@ pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         (v.visit_ty_params)(tps, e, v);
         (v.visit_struct_def)(struct_def, i.ident, tps, i.id, e, v);
       }
-      item_trait(tps, traits, ref methods) => {
-        (v.visit_ty_params)(tps, e, v);
+      item_trait(ref tps, ref traits, ref methods) => {
+        (v.visit_ty_params)(/* FIXME (#2543) */ copy *tps, e, v);
         for traits.each |p| { visit_path(p.path, e, v); }
         for (*methods).each |m| {
             (v.visit_trait_method)(*m, e, v);
@@ -460,13 +474,27 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         (v.visit_expr)(x, e, v);
         for (*arms).each |a| { (v.visit_arm)(*a, e, v); }
       }
-      expr_fn(proto, decl, ref body, _) => {
-        (v.visit_fn)(fk_anon(proto), decl, (*body),
-                     ex.span, ex.id, e, v);
+      expr_fn(proto, ref decl, ref body, _) => {
+        (v.visit_fn)(
+            fk_anon(proto),
+            /* FIXME (#2543) */ copy *decl,
+            *body,
+            ex.span,
+            ex.id,
+            e,
+            v
+        );
       }
-      expr_fn_block(decl, ref body) => {
-        (v.visit_fn)(fk_fn_block, decl, (*body),
-                     ex.span, ex.id, e, v);
+      expr_fn_block(ref decl, ref body) => {
+        (v.visit_fn)(
+            fk_fn_block,
+            /* FIXME (#2543) */ copy *decl,
+            *body,
+            ex.span,
+            ex.id,
+            e,
+            v
+        );
       }
       expr_block(ref b) => (v.visit_block)((*b), e, v),
       expr_assign(a, b) => {

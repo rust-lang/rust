@@ -117,7 +117,7 @@ type lint_spec = @{lint: lint,
                    desc: &static/str,
                    default: level};
 
-pub type lint_dict = HashMap<~str,lint_spec>;
+pub type lint_dict = HashMap<@~str, lint_spec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes
@@ -125,109 +125,109 @@ pub type lint_dict = HashMap<~str,lint_spec>;
  */
 pub fn get_lint_dict() -> lint_dict {
     let v = ~[
-        (~"ctypes",
+        (@~"ctypes",
          @{lint: ctypes,
            desc: "proper use of core::libc types in foreign modules",
            default: warn}),
 
-        (~"unused_imports",
+        (@~"unused_imports",
          @{lint: unused_imports,
            desc: "imports that are never used",
            default: allow}),
 
-        (~"while_true",
+        (@~"while_true",
          @{lint: while_true,
            desc: "suggest using loop { } instead of while(true) { }",
            default: warn}),
 
-        (~"path_statement",
+        (@~"path_statement",
          @{lint: path_statement,
            desc: "path statements with no effect",
            default: warn}),
 
-        (~"unrecognized_lint",
+        (@~"unrecognized_lint",
          @{lint: unrecognized_lint,
            desc: "unrecognized lint attribute",
            default: warn}),
 
-        (~"non_implicitly_copyable_typarams",
+        (@~"non_implicitly_copyable_typarams",
          @{lint: non_implicitly_copyable_typarams,
            desc: "passing non implicitly copyable types as copy type params",
            default: warn}),
 
-        (~"vecs_implicitly_copyable",
+        (@~"vecs_implicitly_copyable",
          @{lint: vecs_implicitly_copyable,
            desc: "make vecs and strs not implicitly copyable \
                   (only checked at top level)",
            default: warn}),
 
-        (~"implicit_copies",
+        (@~"implicit_copies",
          @{lint: implicit_copies,
            desc: "implicit copies of non implicitly copyable data",
            default: warn}),
 
-        (~"deprecated_mode",
+        (@~"deprecated_mode",
          @{lint: deprecated_mode,
            desc: "warn about deprecated uses of modes",
            default: warn}),
 
-        (~"deprecated_pattern",
+        (@~"deprecated_pattern",
          @{lint: deprecated_pattern,
            desc: "warn about deprecated uses of pattern bindings",
            default: allow}),
 
-        (~"non_camel_case_types",
+        (@~"non_camel_case_types",
          @{lint: non_camel_case_types,
            desc: "types, variants and traits should have camel case names",
            default: allow}),
 
-        (~"managed_heap_memory",
+        (@~"managed_heap_memory",
          @{lint: managed_heap_memory,
            desc: "use of managed (@ type) heap memory",
            default: allow}),
 
-        (~"owned_heap_memory",
+        (@~"owned_heap_memory",
          @{lint: owned_heap_memory,
            desc: "use of owned (~ type) heap memory",
            default: allow}),
 
-        (~"heap_memory",
+        (@~"heap_memory",
          @{lint: heap_memory,
            desc: "use of any (~ type or @ type) heap memory",
            default: allow}),
 
-        (~"structural_records",
+        (@~"structural_records",
          @{lint: structural_records,
            desc: "use of any structural records",
            default: deny}),
 
-        (~"legacy modes",
+        (@~"legacy modes",
          @{lint: legacy_modes,
            desc: "allow legacy modes",
            default: forbid}),
 
-        (~"type_limits",
+        (@~"type_limits",
          @{lint: type_limits,
            desc: "comparisons made useless by limits of the types involved",
            default: warn}),
 
-        (~"default_methods",
+        (@~"default_methods",
          @{lint: default_methods,
            desc: "allow default methods",
            default: deny}),
 
-        (~"deprecated_self",
+        (@~"deprecated_self",
          @{lint: deprecated_self,
            desc: "warn about deprecated uses of `self`",
            default: warn}),
 
         /* FIXME(#3266)--make liveness warnings lintable
-        (~"unused_variable",
+        (@~"unused_variable",
          @{lint: unused_variable,
            desc: "detect variables which are not used in any way",
            default: warn}),
 
-        (~"dead_assignment",
+        (@~"dead_assignment",
          @{lint: dead_assignment,
            desc: "detect assignments that will never be read",
            default: warn}),
@@ -344,15 +344,20 @@ impl ctxt {
             }
         }
 
-        for triples.each |pair| {
-            let (meta, level, lintname) = /*bad*/copy *pair;
+        for triples.each |triple| {
+            // FIXME(#3874): it would be nicer to write this...
+            // let (meta, level, lintname) = /*bad*/copy *pair;
+            let (meta, level, lintname) = match *triple {
+                (ref meta, level, lintname) => (meta, level, lintname)
+            };
+
             match self.dict.find(&lintname) {
               None => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
                     meta.span,
                     fmt!("unknown `%s` attribute: `%s`",
-                         level_to_str(level), lintname));
+                         level_to_str(level), *lintname));
               }
               Some(lint) => {
 
@@ -363,7 +368,7 @@ impl ctxt {
                         meta.span,
                         fmt!("%s(%s) overruled by outer forbid(%s)",
                              level_to_str(level),
-                             lintname, lintname));
+                             *lintname, *lintname));
                 }
 
                 // we do multiple unneeded copies of the
@@ -829,26 +834,23 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
         let ident = cx.sess.str_of(ident);
         assert !ident.is_empty();
-        let ident = ident_without_trailing_underscores(ident);
+        let ident = ident_without_trailing_underscores(*ident);
         let ident = ident_without_leading_underscores(ident);
         char::is_uppercase(str::char_at(ident, 0)) &&
             !ident.contains_char('_')
     }
 
-    fn ident_without_trailing_underscores(+ident: ~str) -> ~str {
+    fn ident_without_trailing_underscores(ident: &r/str) -> &r/str {
         match str::rfind(ident, |c| c != '_') {
-            Some(idx) => (ident).slice(0, idx + 1),
-            None => { ident } // all underscores
+            Some(idx) => str::view(ident, 0, idx + 1),
+            None => ident, // all underscores
         }
     }
 
-    fn ident_without_leading_underscores(+ident: ~str) -> ~str {
+    fn ident_without_leading_underscores(ident: &r/str) -> &r/str {
         match str::find(ident, |c| c != '_') {
-          Some(idx) => ident.slice(idx, ident.len()),
-          None => {
-            // all underscores
-            ident
-          }
+            Some(idx) => str::view(ident, idx, ident.len()),
+            None => ident // all underscores
         }
     }
 
@@ -864,18 +866,18 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     }
 
     match it.node {
-      ast::item_ty(*) | ast::item_struct(*) |
-      ast::item_trait(*) => {
-        check_case(cx, it.ident, it.id, it.id, it.span)
-      }
-      ast::item_enum(ref enum_definition, _) => {
-        check_case(cx, it.ident, it.id, it.id, it.span);
-        for enum_definition.variants.each |variant| {
-            check_case(cx, variant.node.name,
-                       variant.node.id, it.id, variant.span);
+        ast::item_ty(*) | ast::item_struct(*) |
+        ast::item_trait(*) => {
+            check_case(cx, it.ident, it.id, it.id, it.span)
         }
-      }
-      _ => ()
+        ast::item_enum(ref enum_definition, _) => {
+            check_case(cx, it.ident, it.id, it.id, it.span);
+            for enum_definition.variants.each |variant| {
+                check_case(cx, variant.node.name,
+                           variant.node.id, it.id, variant.span);
+            }
+        }
+        _ => ()
     }
 }
 

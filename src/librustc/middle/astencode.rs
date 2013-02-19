@@ -96,7 +96,7 @@ pub fn encode_inlined_item(ecx: @e::encode_ctxt,
                            maps: Maps) {
     debug!("> Encoding inlined item: %s::%s (%u)",
            ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
-           ecx.tcx.sess.str_of(ii.ident()),
+           *ecx.tcx.sess.str_of(ii.ident()),
            ebml_w.writer.tell());
 
     let id_range = ast_util::compute_id_range_for_inlined_item(ii);
@@ -108,7 +108,7 @@ pub fn encode_inlined_item(ecx: @e::encode_ctxt,
 
     debug!("< Encoded inlined fn: %s::%s (%u)",
            ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
-           ecx.tcx.sess.str_of(ii.ident()),
+           *ecx.tcx.sess.str_of(ii.ident()),
            ebml_w.writer.tell());
 }
 
@@ -132,10 +132,10 @@ pub fn decode_inlined_item(cdata: cstore::crate_metadata,
                                           to_id_range: to_id_range});
         let raw_ii = decode_ast(ast_doc);
         let ii = renumber_ast(xcx, raw_ii);
-        debug!("Fn named: %s", tcx.sess.str_of(ii.ident()));
+        debug!("Fn named: %s", *tcx.sess.str_of(ii.ident()));
         debug!("< Decoded inlined fn: %s::%s",
                ast_map::path_to_str(path, tcx.sess.parse_sess.interner),
-               tcx.sess.str_of(ii.ident()));
+               *tcx.sess.str_of(ii.ident()));
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
                                   dcx.tcx.items, path, ii);
         decode_side_tables(xcx, ast_doc);

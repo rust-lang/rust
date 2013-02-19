@@ -82,10 +82,10 @@ fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
         node:
             match mi.node {
                 meta_word(ref id) => meta_word((*id)),
-                meta_list(ref id, mis) => {
-                    let fold_meta_item = |x|fold_meta_item_(x, fld);
-                    meta_list(/* FIXME: (#2543) */ copy (*id),
-                        vec::map(mis, |e| fold_meta_item(*e)))
+                meta_list(ref id, ref mis) => {
+                    let fold_meta_item = |x| fold_meta_item_(x, fld);
+                    meta_list(/* FIXME: (#2543) */ copy *id,
+                              mis.map(|e| fold_meta_item(*e)))
                 }
                 meta_name_value(ref id, s) => {
                     meta_name_value((*id), /* FIXME (#2543) */ copy s)
@@ -213,52 +213,54 @@ fn noop_fold_struct_field(&&sf: @struct_field, fld: ast_fold)
 }
 
 pub fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
-    return match i {
-          item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
-          item_fn(decl, purity, typms, ref body) => {
-              item_fn(fold_fn_decl(decl, fld),
-                      purity,
-                      fold_ty_params(typms, fld),
-                      fld.fold_block((*body)))
-          }
-          item_mod(m) => item_mod(fld.fold_mod(m)),
-          item_foreign_mod(nm) => item_foreign_mod(fld.fold_foreign_mod(nm)),
-          item_ty(t, typms) => item_ty(fld.fold_ty(t),
-                                       fold_ty_params(typms, fld)),
-          item_enum(ref enum_definition, typms) => {
+    match i {
+        item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
+        item_fn(ref decl, purity, ref typms, ref body) => {
+            item_fn(fold_fn_decl(/* FIXME (#2543) */ copy *decl, fld),
+                    purity,
+                    fold_ty_params(/* FIXME (#2543) */ copy *typms, fld),
+                    fld.fold_block(*body))
+        }
+        item_mod(m) => item_mod(fld.fold_mod(m)),
+        item_foreign_mod(nm) => item_foreign_mod(fld.fold_foreign_mod(nm)),
+        item_ty(t, typms) => item_ty(fld.fold_ty(t),
+                                     fold_ty_params(typms, fld)),
+        item_enum(ref enum_definition, ref typms) => {
             item_enum(ast::enum_def(ast::enum_def_ {
                 variants: enum_definition.variants.map(
                     |x| fld.fold_variant(*x)),
                 common: enum_definition.common.map(
                     |x| fold_struct_def(*x, fld)),
-            }), fold_ty_params(typms, fld))
-          }
-          item_struct(struct_def, typms) => {
-            let struct_def = fold_struct_def(struct_def, fld);
-              item_struct(struct_def, /* FIXME (#2543) */ copy typms)
-          }
-          item_impl(tps, ifce, ty, ref methods) => {
-              item_impl(fold_ty_params(tps, fld),
-                        ifce.map(|p| fold_trait_ref(*p, fld)),
-                        fld.fold_ty(ty),
-                        vec::map(*methods, |x| fld.fold_method(*x)))
-          }
-          item_trait(tps, traits, ref methods) => {
-              let methods = do (*methods).map |method| {
-                  match *method {
-                      required(*) => copy *method,
-                      provided(method) => provided(fld.fold_method(method))
-                  }
-              };
-            item_trait(fold_ty_params(tps, fld),
-                       vec::map(traits, |p| fold_trait_ref(*p, fld)),
+            }), fold_ty_params(/* FIXME (#2543) */ copy *typms, fld))
+        }
+        item_struct(ref struct_def, ref typms) => {
+            let struct_def = fold_struct_def(
+                /* FIXME (#2543) */ copy *struct_def,
+                fld);
+            item_struct(struct_def, /* FIXME (#2543) */ copy *typms)
+        }
+        item_impl(ref tps, ifce, ty, ref methods) => {
+            item_impl(fold_ty_params(/* FIXME (#2543) */ copy *tps, fld),
+                      ifce.map(|p| fold_trait_ref(*p, fld)),
+                      fld.fold_ty(ty),
+                      methods.map(|x| fld.fold_method(*x)))
+        }
+        item_trait(ref tps, ref traits, ref methods) => {
+            let methods = do methods.map |method| {
+                match *method {
+                    required(*) => copy *method,
+                    provided(method) => provided(fld.fold_method(method))
+                }
+            };
+            item_trait(fold_ty_params(/* FIXME (#2543) */ copy *tps, fld),
+                       traits.map(|p| fold_trait_ref(*p, fld)),
                        methods)
-          }
-      item_mac(ref m) => {
-        // FIXME #2888: we might actually want to do something here.
-        item_mac((*m))
-      }
-        };
+        }
+        item_mac(ref m) => {
+            // FIXME #2888: we might actually want to do something here.
+            item_mac((*m))
+        }
+    }
 }
 
 fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
@@ -466,14 +468,14 @@ pub fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_match(fld.fold_expr(expr),
                      vec::map((*arms), |x| fld.fold_arm(*x)))
           }
-          expr_fn(proto, decl, ref body, _) => {
+          expr_fn(proto, ref decl, ref body, _) => {
             expr_fn(proto,
-                    fold_fn_decl(decl, fld),
+                    fold_fn_decl(/* FIXME (#2543) */ copy *decl, fld),
                     fld.fold_block(*body),
                     @())
           }
-          expr_fn_block(decl, ref body) => {
-            expr_fn_block(fold_fn_decl(decl, fld),
+          expr_fn_block(ref decl, ref body) => {
+            expr_fn_block(fold_fn_decl(/* FIXME (#2543) */ copy *decl, fld),
                           fld.fold_block(*body))
           }
           expr_block(ref blk) => expr_block(fld.fold_block((*blk))),

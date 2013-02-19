@@ -253,8 +253,8 @@ pub impl Session {
         self.debugging_opt(no_monomorphic_collapse)
     }
 
-    fn str_of(id: ast::ident) -> ~str {
-        /*bad*/copy *self.parse_sess.interner.get(id)
+    fn str_of(id: ast::ident) -> @~str {
+        self.parse_sess.interner.get(id)
     }
     fn ident_of(+st: ~str) -> ast::ident {
         self.parse_sess.interner.intern(@st)
@@ -310,7 +310,7 @@ pub fn building_library(req_crate_type: crate_type,
             match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 ~"crate_type") {
-              option::Some(~"lib") => true,
+              Some(@~"lib") => true,
               _ => false
             }
         }
@@ -346,7 +346,7 @@ pub mod test {
             style: ast::attr_outer,
             value: codemap::respan(codemap::dummy_sp(),
                 ast::meta_name_value(
-                    ~"crate_type",
+                    @~"crate_type",
                     codemap::respan(codemap::dummy_sp(),
                                      ast::lit_str(@t)))),
             is_sugared_doc: false

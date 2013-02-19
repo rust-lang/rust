@@ -49,7 +49,7 @@ pub type ctxt = {
     span: span,
     ident: ast::ident,
     metas: ~[@ast::meta_item],
-    hash: ~str,
+    hash: @~str,
     os: os,
     static: bool,
     intr: @ident_interner
@@ -91,7 +91,7 @@ fn find_library_crate_aux(cx: ctxt,
                           filesearch: filesearch::FileSearch) ->
    Option<{ident: ~str, data: @~[u8]}> {
     let crate_name = crate_name_from_metas(/*bad*/copy cx.metas);
-    let prefix: ~str = nn.prefix + crate_name + ~"-";
+    let prefix: ~str = nn.prefix + *crate_name + ~"-";
     let suffix: ~str = /*bad*/copy nn.suffix;
 
     let mut matches = ~[];
@@ -130,7 +130,7 @@ fn find_library_crate_aux(cx: ctxt,
         Some(/*bad*/copy matches[0])
     } else {
         cx.diag.span_err(
-            cx.span, fmt!("multiple matching crates for `%s`", crate_name));
+            cx.span, fmt!("multiple matching crates for `%s`", *crate_name));
         cx.diag.handler().note(~"candidates:");
         for matches.each |match_| {
             cx.diag.handler().note(fmt!("path: %s", match_.ident));
@@ -142,18 +142,18 @@ fn find_library_crate_aux(cx: ctxt,
     }
 }
 
-pub fn crate_name_from_metas(+metas: ~[@ast::meta_item]) -> ~str {
+pub fn crate_name_from_metas(+metas: &[@ast::meta_item]) -> @~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
     match vec::last_opt(name_items) {
-      Some(i) => {
-        match attr::get_meta_item_value_str(i) {
-          Some(ref n) => (/*bad*/copy *n),
-          // FIXME (#2406): Probably want a warning here since the user
-          // is using the wrong type of meta item.
-          _ => fail!()
+        Some(i) => {
+            match attr::get_meta_item_value_str(i) {
+                Some(n) => n,
+                // FIXME (#2406): Probably want a warning here since the user
+                // is using the wrong type of meta item.
+                _ => fail!()
+            }
         }
-      }
-      None => fail!(~"expected to find the crate name")
+        None => fail!(~"expected to find the crate name")
     }
 }
 
@@ -167,7 +167,7 @@ pub fn note_linkage_attrs(intr: @ident_interner, diag: span_handler,
 
 fn crate_matches(crate_data: @~[u8],
                  metas: &[@ast::meta_item],
-                 hash: ~str) -> bool {
+                 hash: @~str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
     let linkage_metas = attr::find_linkage_metas(attrs);
     if !hash.is_empty() {

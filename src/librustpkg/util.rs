@@ -81,7 +81,7 @@ fn fold_mod(_ctx: @ReadyCtx, m: ast::_mod,
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
             attrs: do item.attrs.filtered |attr| {
-                attr::get_attr_name(*attr) != ~"main"
+                *attr::get_attr_name(attr) != ~"main"
             },
             .. copy *item
         }
@@ -110,7 +110,7 @@ fn fold_item(ctx: @ReadyCtx, item: @ast::item,
                 ast::meta_list(_, mis) => {
                     for mis.each |mi| {
                         match mi.node {
-                            ast::meta_word(cmd) => cmds.push(cmd),
+                            ast::meta_word(cmd) => cmds.push(copy *cmd),
                             _ => {}
                         };
                     }
@@ -609,7 +609,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
     let mut crate_cfg = options.cfg;
 
     for cfgs.each |&cfg| {
-        crate_cfg.push(attr::mk_word_item(cfg));
+        crate_cfg.push(attr::mk_word_item(@cfg));
     }
 
     let options = @{
@@ -639,7 +639,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
             match a.node {
                 ast::meta_name_value(v, spanned {node: ast::lit_str(s),
                                          span: _}) => {
-                    match v {
+                    match *v {
                         ~"name" => name = Some(*s),
                         ~"vers" => vers = Some(*s),
                         ~"uuid" => uuid = Some(*s),
@@ -657,13 +657,13 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
         match a.node.value.node {
             ast::meta_name_value(v, spanned {node: ast::lit_str(s),
                                      span: _}) => {
-                match v {
+                match *v {
                     ~"crate_type" => crate_type = Some(*s),
                     _ => {}
                 }
             }
             ast::meta_list(v, mis) => {
-                match v {
+                match *v {
                     ~"link" => {
                         let (n, v, u) = load_link_attr(mis);
 

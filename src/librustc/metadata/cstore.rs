@@ -33,7 +33,7 @@ use syntax::parse::token::ident_interner;
 // own crate numbers.
 pub type cnum_map = oldmap::HashMap<ast::crate_num, ast::crate_num>;
 
-pub type crate_metadata = @{name: ~str,
+pub type crate_metadata = @{name: @~str,
                             data: @~[u8],
                             cnum_map: cnum_map,
                             cnum: ast::crate_num};
@@ -68,14 +68,14 @@ pub fn get_crate_data(cstore: @mut CStore, cnum: ast::crate_num)
     return cstore.metas.get(&cnum);
 }
 
-pub fn get_crate_hash(cstore: @mut CStore, cnum: ast::crate_num) -> ~str {
+pub fn get_crate_hash(cstore: @mut CStore, cnum: ast::crate_num) -> @~str {
     let cdata = get_crate_data(cstore, cnum);
-    return decoder::get_crate_hash(cdata.data);
+    decoder::get_crate_hash(cdata.data)
 }
 
-pub fn get_crate_vers(cstore: @mut CStore, cnum: ast::crate_num) -> ~str {
+pub fn get_crate_vers(cstore: @mut CStore, cnum: ast::crate_num) -> @~str {
     let cdata = get_crate_data(cstore, cnum);
-    return decoder::get_crate_vers(cdata.data);
+    decoder::get_crate_vers(cdata.data)
 }
 
 pub fn set_crate_data(cstore: @mut CStore,
@@ -107,24 +107,24 @@ pub fn get_used_crate_files(cstore: @mut CStore) -> ~[Path] {
     return /*bad*/copy cstore.used_crate_files;
 }
 
-pub fn add_used_library(cstore: @mut CStore, +lib: ~str) -> bool {
-    assert lib != ~"";
+pub fn add_used_library(cstore: @mut CStore, lib: @~str) -> bool {
+    assert *lib != ~"";
 
-    if vec::contains(cstore.used_libraries, &lib) { return false; }
-    cstore.used_libraries.push(lib);
-    return true;
+    if cstore.used_libraries.contains(&*lib) { return false; }
+    cstore.used_libraries.push(/*bad*/ copy *lib);
+    true
 }
 
 pub fn get_used_libraries(cstore: @mut CStore) -> ~[~str] {
-    return /*bad*/copy cstore.used_libraries;
+    /*bad*/copy cstore.used_libraries
 }
 
 pub fn add_used_link_args(cstore: @mut CStore, args: &str) {
-    cstore.used_link_args.push_all(str::split_char(args, ' '));
+    cstore.used_link_args.push_all(args.split_char(' '));
 }
 
 pub fn get_used_link_args(cstore: @mut CStore) -> ~[~str] {
-    return /*bad*/copy cstore.used_link_args;
+    /*bad*/copy cstore.used_link_args
 }
 
 pub fn add_extern_mod_stmt_cnum(cstore: @mut CStore,
@@ -151,25 +151,18 @@ pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
     for extern_mod_crate_map.each_value |&cnum| {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
-        debug!("Add hash[%s]: %s", cdata.name, hash);
+        debug!("Add hash[%s]: %s", *cdata.name, *hash);
         result.push({name: /*bad*/copy cdata.name, hash: hash});
     }
 
-    pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {
-        a.name <= b.name
-    }
+    let sorted = std::sort::merge_sort(result, |a, b| a.name <= b.name);
 
-    let sorted = std::sort::merge_sort(result, lteq);
     debug!("sorted:");
     for sorted.each |x| {
-        debug!("  hash[%s]: %s", x.name, x.hash);
+        debug!("  hash[%s]: %s", *x.name, *x.hash);
     }
 
-    fn mapper(ch: &crate_hash) -> ~str {
-        return /*bad*/copy ch.hash;
-    }
-
-    return vec::map(sorted, mapper);
+    sorted.map(|ch| /*bad*/copy *ch.hash)
 }
 
 // Local Variables:

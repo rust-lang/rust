@@ -466,14 +466,14 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if attr::get_meta_item_name(*meta) == ~"name" {
+            if *attr::get_meta_item_name(*meta) == ~"name" {
                 match attr::get_meta_item_value_str(*meta) {
                   // Changing attr would avoid the need for the copy
                   // here
                   Some(v) => { name = Some(v.to_managed()); }
                   None => cmh_items.push(*meta)
                 }
-            } else if attr::get_meta_item_name(*meta) == ~"vers" {
+            } else if *attr::get_meta_item_name(*meta) == ~"vers" {
                 match attr::get_meta_item_value_str(*meta) {
                   Some(v) => { vers = Some(v.to_managed()); }
                   None => cmh_items.push(*meta)
@@ -487,27 +487,27 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
                               -cmh_items: ~[@ast::meta_item],
                               dep_hashes: ~[~str]) -> @str {
-        fn len_and_str(s: ~str) -> ~str {
-            return fmt!("%u_%s", str::len(s), s);
+        fn len_and_str(s: &str) -> ~str {
+            fmt!("%u_%s", s.len(), s)
         }
 
         fn len_and_str_lit(l: ast::lit) -> ~str {
-            return len_and_str(pprust::lit_to_str(@l));
+            len_and_str(pprust::lit_to_str(@l))
         }
 
         let cmh_items = attr::sort_meta_items(cmh_items);
 
         fn hash(symbol_hasher: &hash::State, m: &@ast::meta_item) {
             match m.node {
-              ast::meta_name_value(ref key, value) => {
-                symbol_hasher.write_str(len_and_str((*key)));
+              ast::meta_name_value(key, value) => {
+                symbol_hasher.write_str(len_and_str(*key));
                 symbol_hasher.write_str(len_and_str_lit(value));
               }
-              ast::meta_word(ref name) => {
-                symbol_hasher.write_str(len_and_str((*name)));
+              ast::meta_word(name) => {
+                symbol_hasher.write_str(len_and_str(*name));
               }
-              ast::meta_list(ref name, ref mis) => {
-                symbol_hasher.write_str(len_and_str((*name)));
+              ast::meta_list(name, ref mis) => {
+                symbol_hasher.write_str(len_and_str(*name));
                 for mis.each |m_| {
                     hash(symbol_hasher, m_);
                 }
@@ -615,7 +615,7 @@ pub fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
-pub fn sanitize(s: ~str) -> ~str {
+pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
     for str::chars_each(s) |c| {
         match c {
@@ -629,10 +629,10 @@ pub fn sanitize(s: ~str) -> ~str {
           'a' .. 'z'
           | 'A' .. 'Z'
           | '0' .. '9'
-          | '_' => str::push_char(&mut result, c),
+          | '_' => result.push_char(c),
           _ => {
             if c > 'z' && char::is_XID_continue(c) {
-                str::push_char(&mut result, c);
+                result.push_char(c);
             }
           }
         }
@@ -655,7 +655,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 
     for ss.each |s| {
         match *s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(sess.str_of(s));
+          let sani = sanitize(*sess.str_of(s));
           n += fmt!("%u%s", str::len(sani), sani);
         } }
     }

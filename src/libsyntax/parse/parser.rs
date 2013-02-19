@@ -3267,11 +3267,11 @@ pub impl Parser {
         // on the mod, then we'll go and suck in another file and merge
         // its contents
         match ::attr::first_attr_value_str_by_name(outer_attrs, ~"merge") {
-            Some(ref path) => {
+            Some(path) => {
                 let prefix = Path(
                     self.sess.cm.span_to_filename(copy self.span));
                 let prefix = prefix.dir_path();
-                let path = Path((*path));
+                let path = Path(copy *path);
                 let (new_mod_item, new_attrs) = self.eval_src_mod_from_path(
                     prefix, path, ~[], id_span);
 
@@ -3300,7 +3300,7 @@ pub impl Parser {
         let file_path = match ::attr::first_attr_value_str_by_name(
             attrs, ~"path") {
 
-            Some(ref d) => (*d),
+            Some(d) => copy *d,
             None => copy *default_path
         };
         self.mod_path_stack.push(file_path)
@@ -3320,10 +3320,10 @@ pub impl Parser {
         let default_path = self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, ~"path") {
-            Some(ref d) => {
-                let path = Path(*d);
+            Some(d) => {
+                let path = Path(copy *d);
                 if !path.is_absolute {
-                    mod_path.push(*d)
+                    mod_path.push(copy *d)
                 } else {
                     path
                 }
@@ -3357,7 +3357,7 @@ pub impl Parser {
 
         fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
             match ::attr::first_attr_value_str_by_name(attrs, ~"path") {
-                Some(ref d) => (*d),
+                Some(d) => copy *d,
                 None => default
             }
         }

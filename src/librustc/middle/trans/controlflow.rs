@@ -320,8 +320,8 @@ pub fn trans_check_expr(bcx: block,
                         s: ~str)
                      -> block {
     let _icx = bcx.insn_ctxt("trans_check_expr");
-    let expr_str = s + ~" " + expr_to_str(pred_expr, bcx.ccx().sess.intr())
-        + ~" failed";
+    let expr_str = @(s + ~" " + expr_to_str(pred_expr, bcx.ccx().sess.intr())
+        + ~" failed");
     let Result {bcx, val} = {
         do with_scope_result(bcx, chk_expr.info(), ~"check") |bcx| {
             expr::trans_to_datum(bcx, pred_expr).to_result()
@@ -329,7 +329,7 @@ pub fn trans_check_expr(bcx: block,
     };
     let val = bool_to_i1(bcx, val);
     do with_cond(bcx, Not(bcx, val)) |bcx| {
-        trans_fail(bcx, Some(pred_expr.span), /*bad*/copy expr_str)
+        trans_fail(bcx, Some(pred_expr.span), expr_str)
     }
 }
 
@@ -356,13 +356,13 @@ pub fn trans_fail_expr(bcx: block,
                     ppaux::ty_to_str(tcx, arg_datum.ty));
             }
         }
-        _ => return trans_fail(bcx, sp_opt, ~"explicit failure")
+        _ => trans_fail(bcx, sp_opt, @~"explicit failure")
     }
 }
 
 pub fn trans_fail(bcx: block,
                   sp_opt: Option<span>,
-                  +fail_str: ~str)
+                  fail_str: @~str)
                -> block {
     let _icx = bcx.insn_ctxt("trans_fail");
     let V_fail_str = C_cstr(bcx.ccx(), fail_str);
@@ -379,11 +379,11 @@ fn trans_fail_value(bcx: block,
       Some(sp) => {
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        {V_filename: C_cstr(bcx.ccx(), /*bad*/copy loc.file.name),
+        {V_filename: C_cstr(bcx.ccx(), @/*bad*/ copy loc.file.name),
          V_line: loc.line as int}
       }
       None => {
-        {V_filename: C_cstr(bcx.ccx(), ~"<runtime>"),
+        {V_filename: C_cstr(bcx.ccx(), @~"<runtime>"),
          V_line: 0}
       }
     };
@@ -403,7 +403,7 @@ pub fn trans_fail_bounds_check(bcx: block, sp: span,
 
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(sp.lo);
     let line = C_int(ccx, loc.line as int);
-    let filename_cstr = C_cstr(bcx.ccx(), /*bad*/copy loc.file.name);
+    let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
     let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
 
     let args = ~[filename, line, index, len];
