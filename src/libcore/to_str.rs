@@ -43,6 +43,8 @@ impl ToStr for @str {
     pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
 }
 
+// FIXME #4898: impl for one-tuples
+
 impl<A: ToStr, B: ToStr> ToStr for (A, B) {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
