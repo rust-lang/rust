@@ -1859,7 +1859,7 @@ pub fn print_view_item(s: @ps, item: @ast::view_item) {
     print_outer_attributes(s, item.attrs);
     print_visibility(s, item.vis);
     match item.node {
-        ast::view_item_use(id, mta, _) => {
+        ast::view_item_extern_mod(id, mta, _) => {
             head(s, ~"extern mod");
             print_ident(s, id);
             if !mta.is_empty() {
@@ -1869,7 +1869,7 @@ pub fn print_view_item(s: @ps, item: @ast::view_item) {
             }
         }
 
-        ast::view_item_import(vps) => {
+        ast::view_item_use(vps) => {
             head(s, ~"use");
             print_view_paths(s, vps);
         }

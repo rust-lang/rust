@@ -1121,8 +1121,8 @@ pub struct view_item {
 #[auto_decode]
 #[deriving_eq]
 pub enum view_item_ {
-    view_item_use(ident, ~[@meta_item], node_id),
-    view_item_import(~[@view_path]),
+    view_item_extern_mod(ident, ~[@meta_item], node_id),
+    view_item_use(~[@view_path]),
 }
 
 // Meta-data associated with an item
