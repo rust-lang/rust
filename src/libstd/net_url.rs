@@ -253,7 +253,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> LinearMap<~str, ~[~str]> {
                 '&' | ';' => {
                     if key != ~"" && value != ~"" {
                         let mut values = match m.pop(&key) {
-                            Some(move values) => values,
+                            Some(values) => values,
                             None => ~[],
                         };
 
@@ -287,7 +287,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> LinearMap<~str, ~[~str]> {
 
         if key != ~"" && value != ~"" {
             let mut values = match m.pop(&key) {
-                Some(move values) => values,
+                Some(values) => values,
                 None => ~[],
             };
 
@@ -671,7 +671,7 @@ pub pure fn from_str(rawurl: &str) -> Result<Url, ~str> {
 impl FromStr for Url {
     static pure fn from_str(s: &str) -> Option<Url> {
         match from_str(s) {
-            Ok(move url) => Some(url),
+            Ok(url) => Some(url),
             Err(_) => None
         }
     }

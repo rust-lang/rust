@@ -87,7 +87,7 @@ impl<A: ToStr> ToStr for ~[A] {
                 }
             }
             str::push_char(&mut acc, ']');
-            move acc
+            acc
         }
     }
 }

@@ -821,7 +821,7 @@ fn encode_side_tables_for_ii(ecx: @e::encode_ctxt,
         let ebml_w = copy ebml_w;
         ast_util::visit_ids_for_inlined_item(
             ii,
-            fn@(id: ast::node_id, copy ebml_w) {
+            fn@(id: ast::node_id) {
                 // Note: this will cause a copy of ebml_w, which is bad as
                 // it has mut fields.  But I believe it's harmless since
                 // we generate balanced EBML.
@@ -1140,7 +1140,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 let ids = val_dsr.read_to_vec(|| {
                     xcx.tr_id(val_dsr.read_int())
                 });
-                let dvec = @dvec::from_vec(move ids);
+                let dvec = @dvec::from_vec(ids);
                 dcx.maps.last_use_map.insert(id, dvec);
             } else if tag == (c::tag_table_method_map as uint) {
                 dcx.maps.method_map.insert(

@@ -170,7 +170,6 @@ pub mod condition;
 pub mod logging;
 pub mod util;
 
-
 /* Reexported core operators */
 
 pub use kinds::{Const, Copy, Owned, Durable};

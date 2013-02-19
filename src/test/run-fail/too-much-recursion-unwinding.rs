@@ -39,6 +39,6 @@ fn r(recursed: *mut bool) -> r {
 
 fn main() {
     let mut recursed = false;
-    let _r = r(ptr::mut_addr_of(&recursed));
+    let _r = r(&mut recursed);
     recurse();
 }

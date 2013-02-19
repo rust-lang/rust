@@ -599,7 +599,7 @@ impl @mut InferCtxt {
             self.ty_var_bindings.bindings.truncate(0);
             self.int_var_bindings.bindings.truncate(0);
             self.region_vars.commit();
-            move r
+            r
         }
     }
 
@@ -613,7 +613,7 @@ impl @mut InferCtxt {
               Ok(_) => (),
               Err(_) => self.rollback_to(&snapshot)
             }
-            move r
+            r
         }
     }
 
@@ -624,7 +624,7 @@ impl @mut InferCtxt {
             let snapshot = self.start_snapshot();
             let r = self.try(f);
             self.rollback_to(&snapshot);
-            move r
+            r
         }
     }
 }

@@ -73,7 +73,7 @@ pub fn mk_raw_path_(sp: span,
                  global: false,
                  idents: idents,
                  rp: None,
-                 types: move types }
+                 types: types }
 }
 pub fn mk_raw_path_global(sp: span, idents: ~[ast::ident]) -> @ast::path {
     @ast::path { span: sp,
@@ -156,7 +156,7 @@ pub fn mk_field(sp: span, f: &{ident: ast::ident, ex: @ast::expr})
 }
 pub fn mk_fields(sp: span, fields: ~[{ident: ast::ident, ex: @ast::expr}])
               -> ~[ast::field] {
-    move fields.map(|f| mk_field(sp, f))
+    fields.map(|f| mk_field(sp, f))
 }
 pub fn mk_rec_e(cx: ext_ctxt,
                 sp: span,
@@ -288,33 +288,33 @@ pub fn mk_pat_ident_with_binding_mode(cx: ext_ctxt,
                                       bm: ast::binding_mode) -> @ast::pat {
     let path = mk_raw_path(span, ~[ ident ]);
     let pat = ast::pat_ident(bm, path, None);
-    mk_pat(cx, span, move pat)
+    mk_pat(cx, span, pat)
 }
 pub fn mk_pat_enum(cx: ext_ctxt,
                    span: span,
                    path: @ast::path,
                    +subpats: ~[@ast::pat])
                 -> @ast::pat {
-    let pat = ast::pat_enum(path, Some(move subpats));
-    mk_pat(cx, span, move pat)
+    let pat = ast::pat_enum(path, Some(subpats));
+    mk_pat(cx, span, pat)
 }
 pub fn mk_pat_struct(cx: ext_ctxt,
                      span: span,
                      path: @ast::path,
                      +field_pats: ~[ast::field_pat])
                   -> @ast::pat {
-    let pat = ast::pat_struct(path, move field_pats, false);
-    mk_pat(cx, span, move pat)
+    let pat = ast::pat_struct(path, field_pats, false);
+    mk_pat(cx, span, pat)
 }
 pub fn mk_bool(cx: ext_ctxt, span: span, value: bool) -> @ast::expr {
     let lit_expr = ast::expr_lit(@codemap::spanned {
         node: ast::lit_bool(value),
         span: span });
-    build::mk_expr(cx, span, move lit_expr)
+    build::mk_expr(cx, span, lit_expr)
 }
 pub fn mk_stmt(cx: ext_ctxt, span: span, expr: @ast::expr) -> @ast::stmt {
     let stmt_ = ast::stmt_semi(expr, cx.next_id());
-    @codemap::spanned { node: move stmt_, span: span }
+    @codemap::spanned { node: stmt_, span: span }
 }
 pub fn mk_ty_path(cx: ext_ctxt,
                   span: span,
@@ -322,7 +322,7 @@ pub fn mk_ty_path(cx: ext_ctxt,
                -> @ast::Ty {
     let ty = build::mk_raw_path(span, idents);
     let ty = ast::ty_path(ty, cx.next_id());
-    let ty = @ast::Ty { id: cx.next_id(), node: move ty, span: span };
+    let ty = @ast::Ty { id: cx.next_id(), node: ty, span: span };
     ty
 }
 pub fn mk_ty_path_global(cx: ext_ctxt,
@@ -331,7 +331,7 @@ pub fn mk_ty_path_global(cx: ext_ctxt,
                       -> @ast::Ty {
     let ty = build::mk_raw_path_global(span, idents);
     let ty = ast::ty_path(ty, cx.next_id());
-    let ty = @ast::Ty { id: cx.next_id(), node: move ty, span: span };
+    let ty = @ast::Ty { id: cx.next_id(), node: ty, span: span };
     ty
 }
 pub fn mk_simple_ty_path(cx: ext_ctxt,

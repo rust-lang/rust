@@ -13,6 +13,7 @@
 
 #include "rust_globals.h"
 #include "rust_log.h"
+#include "rust_rng.h"
 #include "rust_stack.h"
 #include "rust_signal.h"
 #include "context.h"
@@ -61,7 +62,7 @@ private:
 #endif
 
     context c_context;
-
+    rust_rng rng;
     bool should_exit;
 
     stk_seg *cached_c_stack;
@@ -102,7 +103,6 @@ public:
     size_t min_stack_size;
     memory_region local_region;
 
-    randctx rctx;
     const char *const name; // Used for debugging
 
     // Only a pointer to 'name' is kept, so it must live as long as this

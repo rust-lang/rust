@@ -2,7 +2,7 @@ pub trait Number: NumConv {
     static pure fn from<T:Number>(n: T) -> Self;
 }
 
-pub impl float: Number {
+pub impl Number for float {
     static pure fn from<T:Number>(n: T) -> float { n.to_float() }
 }
 
@@ -10,7 +10,7 @@ pub trait NumConv {
     pure fn to_float(&self) -> float;
 }
 
-pub impl float: NumConv {
+pub impl NumConv for float {
     pure fn to_float(&self) -> float { *self }
 }
 

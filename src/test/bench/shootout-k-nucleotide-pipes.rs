@@ -77,7 +77,7 @@ fn find(mm: HashMap<~[u8], uint>, key: ~str) -> uint {
 
 // given a map, increment the counter for a key
 fn update_freq(mm: HashMap<~[u8], uint>, key: &[u8]) {
-    let key = vec::slice(key, 0, key.len());
+    let key = vec::slice(key, 0, key.len()).to_vec();
     mm.update(key, 1, |v,v1| { v+v1 });
 }
 
@@ -90,11 +90,11 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 
    let len = vec::len(bb);
    while ii < len - (nn - 1u) {
-      it(vec::view(bb, ii, ii+nn));
+      it(vec::slice(bb, ii, ii+nn));
       ii += 1u;
    }
 
-   return vec::slice(bb, len - (nn - 1u), len);
+   return vec::slice(bb, len - (nn - 1u), len).to_vec();
 }
 
 fn make_sequence_processor(sz: uint, from_parent: pipes::Port<~[u8]>,
@@ -128,7 +128,7 @@ fn make_sequence_processor(sz: uint, from_parent: pipes::Port<~[u8]>,
         _ => { ~"" }
    };
 
-    to_parent.send(move buffer);
+    to_parent.send(buffer);
 }
 
 // given a FASTA file on stdin, process sequence THREE
@@ -149,23 +149,23 @@ fn main() {
    // initialize each sequence sorter
    let sizes = ~[1,2,3,4,6,12,18];
     let streams = vec::map(sizes, |_sz| Some(stream()));
-    let mut streams = move streams;
+    let mut streams = streams;
     let mut from_child = ~[];
     let to_child   = vec::mapi(sizes, |ii, sz| {
         let sz = *sz;
         let mut stream = None;
         stream <-> streams[ii];
-        let (from_child_, to_parent_) = option::unwrap(move stream);
+        let (from_child_, to_parent_) = option::unwrap(stream);
 
-        from_child.push(move from_child_);
+        from_child.push(from_child_);
 
         let (from_parent, to_child) = pipes::stream();
 
-        do task::spawn_with(move from_parent) |move to_parent_, from_parent| {
+        do task::spawn_with(from_parent) |from_parent| {
             make_sequence_processor(sz, from_parent, to_parent_);
         };
 
-        move to_child
+        to_child
     });
 
 

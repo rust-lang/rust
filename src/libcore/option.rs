@@ -33,15 +33,15 @@ match msg {
 }
 
 // Remove the contained string, destroying the Option
-let unwrapped_msg = match move msg {
-    Some(move m) => m,
+let unwrapped_msg = match msg {
+    Some(m) => m,
     None => ~"default message"
 };
 ~~~
 
 */
 
-use cmp::Eq;
+use cmp::{Eq,Ord};
 use kinds::Copy;
 use option;
 use ptr;
@@ -54,6 +54,34 @@ use num::Zero;
 pub enum Option<T> {
     None,
     Some(T),
+}
+
+pub impl<T:Ord> Ord for Option<T> {
+    pure fn lt(&self, other: &Option<T>) -> bool {
+        match (self, other) {
+            (&None, &None) => false,
+            (&None, &Some(_)) => true,
+            (&Some(_), &None) => false,
+            (&Some(ref a), &Some(ref b)) => *a < *b
+        }
+    }
+
+    pure fn le(&self, other: &Option<T>) -> bool {
+        match (self, other) {
+            (&None, &None) => true,
+            (&None, &Some(_)) => true,
+            (&Some(_), &None) => false,
+            (&Some(ref a), &Some(ref b)) => *a <= *b
+        }
+    }
+
+    pure fn ge(&self, other: &Option<T>) -> bool {
+        ! (self < other)
+    }
+
+    pure fn gt(&self, other: &Option<T>) -> bool {
+        ! (self <= other)
+    }
 }
 
 #[inline(always)]
@@ -126,8 +154,8 @@ pub pure fn chain<T, U>(opt: Option<T>,
      * function that returns an option.
      */
 
-    match move opt {
-        Some(move t) => f(move t),
+    match opt {
+        Some(t) => f(t),
         None => None
     }
 }
@@ -148,9 +176,9 @@ pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
     /*!
      * Returns the leftmost Some() value, or None if both are None.
      */
-    match move opta {
-        Some(move opta) => Some(move opta),
-        _ => move optb
+    match opta {
+        Some(opta) => Some(opta),
+        _ => optb
     }
 }
 
@@ -158,9 +186,9 @@ pub pure fn or<T>(opta: Option<T>, optb: Option<T>) -> Option<T> {
 pub pure fn while_some<T>(x: Option<T>, blk: fn(v: T) -> Option<T>) {
     //! Applies a function zero or more times until the result is none.
 
-    let mut opt = move x;
+    let mut opt = x;
     while opt.is_some() {
-        opt = blk(unwrap(move opt));
+        opt = blk(unwrap(opt));
     }
 }
 
@@ -197,7 +225,7 @@ pub pure fn map_default<T, U>(opt: &r/Option<T>, def: U,
                               f: fn(&r/T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
-    match *opt { None => move def, Some(ref t) => f(t) }
+    match *opt { None => def, Some(ref t) => f(t) }
 }
 
 #[inline(always)]
@@ -224,8 +252,8 @@ pub pure fn unwrap<T>(opt: Option<T>) -> T {
     Instead, prefer to use pattern matching and handle the `None`
     case explicitly.
      */
-    match move opt {
-        Some(move x) => move x,
+    match opt {
+        Some(x) => x,
         None => fail!(~"option::unwrap none")
     }
 }
@@ -247,8 +275,8 @@ pub fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
 #[inline(always)]
 pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
-    match move opt {
-        Some(move val) => val,
+    match opt {
+        Some(val) => val,
         None => fail!(reason.to_owned()),
     }
 }
@@ -285,7 +313,7 @@ impl<T> Option<T> {
     /// Applies a function to the contained value or returns a default
     #[inline(always)]
     pure fn map_default<U>(&self, def: U, f: fn(&self/T) -> U) -> U {
-        map_default(self, move def, f)
+        map_default(self, def, f)
     }
 
     /// As `map_default`, but consumes the option and gives `f`
@@ -402,8 +430,8 @@ impl<T: Copy Zero> Option<T> {
 fn test_unwrap_ptr() {
     let x = ~0;
     let addr_x = ptr::addr_of(&(*x));
-    let opt = Some(move x);
-    let y = unwrap(move opt);
+    let opt = Some(x);
+    let y = unwrap(opt);
     let addr_y = ptr::addr_of(&(*y));
     assert addr_x == addr_y;
 }
@@ -412,8 +440,8 @@ fn test_unwrap_ptr() {
 fn test_unwrap_str() {
     let x = ~"test";
     let addr_x = str::as_buf(x, |buf, _len| buf);
-    let opt = Some(move x);
-    let y = unwrap(move opt);
+    let opt = Some(x);
+    let y = unwrap(opt);
     let addr_y = str::as_buf(y, |buf, _len| buf);
     assert addr_x == addr_y;
 }
@@ -434,8 +462,8 @@ fn test_unwrap_resource() {
     let i = @mut 0;
     {
         let x = R(i);
-        let opt = Some(move x);
-        let _y = unwrap(move opt);
+        let opt = Some(x);
+        let _y = unwrap(opt);
     }
     assert *i == 1;
 }

@@ -88,10 +88,12 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
 
     let mk = attr::mk_name_value_item_str;
 
-    let (arch,wordsz) = match sess.targ_cfg.arch {
-      session::arch_x86 => (~"x86",~"32"),
-      session::arch_x86_64 => (~"x86_64",~"64"),
-      session::arch_arm => (~"arm",~"32")
+    // ARM is bi-endian, however using NDK seems to default
+    // to little-endian unless a flag is provided.
+    let (end,arch,wordsz) = match sess.targ_cfg.arch {
+      session::arch_x86 => (~"little",~"x86",~"32"),
+      session::arch_x86_64 => (~"little",~"x86_64",~"64"),
+      session::arch_arm => (~"little",~"arm",~"32")
     };
 
     return ~[ // Target bindings.
@@ -99,6 +101,7 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
          mk(~"target_os", tos),
          mk(~"target_family", str::from_slice(os::FAMILY)),
          mk(~"target_arch", arch),
+         mk(~"target_endian", end),
          mk(~"target_word_size", wordsz),
          mk(~"target_libc", libc),
          // Build bindings.
@@ -172,9 +175,10 @@ pub fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
     let end = std::time::precise_time_s();
     io::stdout().write_str(fmt!("time: %3.3f s\t%s\n",
                                 end - start, what));
-    move rv
+    rv
 }
 
+#[deriving_eq]
 pub enum compile_upto {
     cu_parse,
     cu_expand,
@@ -183,21 +187,14 @@ pub enum compile_upto {
     cu_everything,
 }
 
-pub impl compile_upto : cmp::Eq {
-    pure fn eq(&self, other: &compile_upto) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &compile_upto) -> bool { !(*self).eq(other) }
-}
-
-pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
-                    input: input, upto: compile_upto,
-                    outputs: Option<output_filenames>)
-                 -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
+// For continuing compilation after a parsed crate has been
+// modified
+pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
+                    upto: compile_upto, outputs: Option<output_filenames>,
+                    curr: Option<@ast::crate>)
+    -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
     let time_passes = sess.time_passes();
-    let mut crate = time(time_passes, ~"parsing",
-                         || parse_input(sess, copy cfg, input) );
-    if upto == cu_parse { return {crate: crate, tcx: None}; }
+    let mut crate = curr.get();
 
     *sess.building_library = session::building_library(
         sess.opts.crate_type, crate, sess.opts.test);
@@ -257,7 +254,7 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     let (llmod, link_meta) = {
 
         let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                                region_map, rp_set, move lang_items, crate);
+                                region_map, rp_set, lang_items, crate);
 
         let (method_map, vtable_map) =
             time(time_passes, ~"typechecking", ||
@@ -328,7 +325,6 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
 
     };
 
-
     time(time_passes, ~"LLVM passes", ||
         link::write::run_passes(sess, llmod,
                                 &outputs.obj_filename));
@@ -348,9 +344,20 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
     return {crate: crate, tcx: None};
 }
 
+pub fn compile_upto(sess: Session, +cfg: ast::crate_cfg,
+                input: input, upto: compile_upto,
+                outputs: Option<output_filenames>)
+    -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
+    let time_passes = sess.time_passes();
+    let mut crate = time(time_passes, ~"parsing",
+                         || parse_input(sess, copy cfg, input) );
+    if upto == cu_parse { return {crate: crate, tcx: None}; }
+
+    compile_rest(sess, cfg, upto, outputs, Some(crate))
+}
+
 pub fn compile_input(sess: Session, +cfg: ast::crate_cfg, input: input,
                      outdir: &Option<Path>, output: &Option<Path>) {
-
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
                else { cu_everything };

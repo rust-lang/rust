@@ -156,7 +156,7 @@ pub mod jit {
                     code: entry,
                     env: ptr::null()
                 };
-                let func: fn(++argv: ~[~str]) = cast::transmute(move closure);
+                let func: fn(++argv: ~[~str]) = cast::transmute(closure);
 
                 func(~[/*bad*/copy sess.opts.binary]);
             }
@@ -497,8 +497,7 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 
         let cmh_items = attr::sort_meta_items(cmh_items);
 
-        symbol_hasher.reset();
-        for cmh_items.each |m| {
+        fn hash(symbol_hasher: &hash::State, m: &@ast::meta_item) {
             match m.node {
               ast::meta_name_value(ref key, value) => {
                 symbol_hasher.write_str(len_and_str((*key)));
@@ -507,11 +506,18 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
               ast::meta_word(ref name) => {
                 symbol_hasher.write_str(len_and_str((*name)));
               }
-              ast::meta_list(_, _) => {
-                // FIXME (#607): Implement this
-                fail!(~"unimplemented meta_item variant");
+              ast::meta_list(ref name, ref mis) => {
+                symbol_hasher.write_str(len_and_str((*name)));
+                for mis.each |m_| {
+                    hash(symbol_hasher, m_);
+                }
               }
             }
+        }
+
+        symbol_hasher.reset();
+        for cmh_items.each |m| {
+            hash(symbol_hasher, m);
         }
 
         for dep_hashes.each |dh| {
@@ -559,11 +565,11 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
 
     let {name: opt_name, vers: opt_vers,
          cmh_items: cmh_items} = provided_link_metas(sess, c);
-    let name = crate_meta_name(sess, output, move opt_name);
-    let vers = crate_meta_vers(sess, move opt_vers);
+    let name = crate_meta_name(sess, output, opt_name);
+    let vers = crate_meta_vers(sess, opt_vers);
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
-        crate_meta_extras_hash(symbol_hasher, move cmh_items,
+        crate_meta_extras_hash(symbol_hasher, cmh_items,
                                dep_hashes);
 
     return {name: name, vers: vers, extras_hash: extras_hash};

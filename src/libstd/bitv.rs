@@ -108,7 +108,7 @@ struct BigBitv {
 }
 
 fn BigBitv(storage: ~[uint]) -> BigBitv {
-    BigBitv {storage: move storage}
+    BigBitv {storage: storage}
 }
 
 /**
@@ -232,9 +232,9 @@ pub fn Bitv (nbits: uint, init: bool) -> Bitv {
                      if nbits % uint_bits == 0 {0} else {1};
         let elem = if init {!0} else {0};
         let s = from_elem(nelems, elem);
-        Big(~BigBitv(move s))
+        Big(~BigBitv(s))
     };
-    Bitv {rep: move rep, nbits: nbits}
+    Bitv {rep: rep, nbits: nbits}
 }
 
 priv impl Bitv {
@@ -519,7 +519,7 @@ impl Clone for Bitv {
             let mut st = from_elem(self.nbits / uint_bits + 1, 0);
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
-            Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: move st})}
+            Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: st})}
           }
         }
     }
@@ -555,7 +555,7 @@ pub fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
     for uint::range(0, len) |i| {
         bitv.set(i, f(i));
     }
-    move bitv
+    bitv
 }
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);

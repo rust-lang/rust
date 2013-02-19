@@ -13,7 +13,7 @@ use num::NumCast::from;
 
 pub trait NumExt: Eq Ord NumCast {}
 
-pub impl f32: NumExt {}
+pub impl NumExt for f32 {}
 
 fn num_eq_one<T:NumExt>(n: T) { io::println(fmt!("%?", n == from(1))) }
 

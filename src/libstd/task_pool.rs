@@ -50,11 +50,11 @@ pub impl<T> TaskPool<T> {
             let (port, chan) = pipes::stream::<Msg<T>>();
             let init_fn = init_fn_factory();
 
-            let task_body: ~fn() = |move port, move init_fn| {
+            let task_body: ~fn() = || {
                 let local_data = init_fn(i);
                 loop {
                     match port.recv() {
-                        Execute(move f) => f(&local_data),
+                        Execute(f) => f(&local_data),
                         Quit => break
                     }
                 }
@@ -64,23 +64,23 @@ pub impl<T> TaskPool<T> {
             match opt_sched_mode {
                 None => {
                     // Run on this scheduler.
-                    task::spawn(move task_body);
+                    task::spawn(task_body);
                 }
                 Some(sched_mode) => {
-                    task::task().sched_mode(sched_mode).spawn(move task_body);
+                    task::task().sched_mode(sched_mode).spawn(task_body);
                 }
             }
 
-            move chan
+            chan
         };
 
-        return TaskPool { channels: move channels, next_index: 0 };
+        return TaskPool { channels: channels, next_index: 0 };
     }
 
     /// Executes the function `f` on a task in the pool. The function
     /// receives a reference to the local data returned by the `init_fn`.
     fn execute(&self, f: ~fn(&T)) {
-        self.channels[self.next_index].send(Execute(move f));
+        self.channels[self.next_index].send(Execute(f));
         self.next_index += 1;
         if self.next_index == self.channels.len() { self.next_index = 0; }
     }
@@ -90,9 +90,9 @@ pub impl<T> TaskPool<T> {
 fn test_task_pool() {
     let f: ~fn() -> ~fn(uint) -> uint = || {
         let g: ~fn(uint) -> uint = |i| i;
-        move g
+        g
     };
-    let pool = TaskPool::new(4, Some(SingleThreaded), move f);
+    let pool = TaskPool::new(4, Some(SingleThreaded), f);
     for 8.times {
         pool.execute(|i| io::println(fmt!("Hello from thread %u!", *i)));
     }

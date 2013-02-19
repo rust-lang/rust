@@ -202,6 +202,7 @@ pub struct crate_ctxt {
      const_values: HashMap<ast::node_id, ValueRef>,
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, TypeRef>,
+     llsizingtypes: HashMap<ty::t, TypeRef>,
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
@@ -484,8 +485,8 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
             });
         for cleanup_pos.each |i| {
             scope_info.cleanups =
-                vec::append(vec::slice(scope_info.cleanups, 0u, *i),
-                            vec::view(scope_info.cleanups,
+                vec::append(vec::slice(scope_info.cleanups, 0u, *i).to_vec(),
+                            vec::slice(scope_info.cleanups,
                                       *i + 1u,
                                       scope_info.cleanups.len()));
             scope_clean_changed(scope_info);
@@ -532,13 +533,13 @@ pub trait get_node_info {
     fn info() -> Option<node_info>;
 }
 
-pub impl @ast::expr: get_node_info {
+pub impl get_node_info for @ast::expr {
     fn info() -> Option<node_info> {
         Some({id: self.id, span: self.span})
     }
 }
 
-pub impl ast::blk: get_node_info {
+pub impl get_node_info for ast::blk {
     fn info() -> Option<node_info> {
         Some({id: self.node.id, span: self.span})
     }
@@ -547,7 +548,7 @@ pub impl ast::blk: get_node_info {
 // XXX: Work around a trait parsing bug. remove after snapshot
 pub type optional_boxed_ast_expr = Option<@ast::expr>;
 
-pub impl optional_boxed_ast_expr: get_node_info {
+pub impl get_node_info for optional_boxed_ast_expr {
     fn info() -> Option<node_info> {
         self.chain_ref(|s| s.info())
     }
@@ -593,7 +594,7 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: move kind,
+        kind: kind,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
@@ -607,7 +608,7 @@ pub enum block = @block_;
 pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
             is_lpad: bool, node_info: Option<node_info>, fcx: fn_ctxt)
     -> block {
-    block(@block_(llbb, parent, move kind, is_lpad, node_info, fcx))
+    block(@block_(llbb, parent, kind, is_lpad, node_info, fcx))
 }
 
 // First two args are retptr, env
@@ -1280,7 +1281,7 @@ pub struct mono_id_ {
 
 pub type mono_id = @mono_id_;
 
-pub impl mono_param_id : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for mono_param_id {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match /*bad*/copy *self {
           mono_precise(t, mids) =>
@@ -1294,7 +1295,7 @@ pub impl mono_param_id : to_bytes::IterBytes {
     }
 }
 
-pub impl mono_id_ : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for mono_id_ {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }

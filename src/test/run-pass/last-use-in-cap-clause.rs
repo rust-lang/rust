@@ -15,7 +15,7 @@ struct A { a: ~int }
 fn foo() -> fn@() -> int {
     let k = ~22;
     let _u = A {a: copy k};
-    return fn@(move k) -> int { 22 };
+    return fn@() -> int { 22 };
 }
 
 pub fn main() {

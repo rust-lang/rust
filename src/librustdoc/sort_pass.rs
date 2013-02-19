@@ -42,7 +42,7 @@ fn run(
 ) -> doc::Doc {
     let fold = Fold {
         fold_mod: fold_mod,
-        .. fold::default_any_fold(move lteq)
+        .. fold::default_any_fold(lteq)
     };
     (fold.fold_doc)(&fold, doc)
 }

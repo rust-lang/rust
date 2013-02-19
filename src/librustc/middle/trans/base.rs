@@ -108,7 +108,7 @@ pub trait get_insn_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper;
 }
 
-pub impl @crate_ctxt: get_insn_ctxt {
+pub impl get_insn_ctxt for @crate_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper {
         debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
@@ -118,13 +118,13 @@ pub impl @crate_ctxt: get_insn_ctxt {
     }
 }
 
-pub impl block: get_insn_ctxt {
+pub impl get_insn_ctxt for block {
     fn insn_ctxt(s: &str) -> icx_popper {
         self.ccx().insn_ctxt(s)
     }
 }
 
-pub impl fn_ctxt: get_insn_ctxt {
+pub impl get_insn_ctxt for fn_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper {
         self.ccx.insn_ctxt(s)
     }
@@ -1174,7 +1174,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
         });
         let bcx = mk_block(llbb,
                            parent,
-                           move kind,
+                           kind,
                            is_lpad,
                            opt_node_info,
                            cx);
@@ -3030,6 +3030,7 @@ pub fn trans_crate(sess: session::Session,
               const_values: HashMap(),
               module_data: HashMap(),
               lltypes: ty::new_ty_hash(),
+              llsizingtypes: ty::new_ty_hash(),
               names: new_namegen(sess.parse_sess.interner),
               next_addrspace: new_addrspace_gen(),
               symbol_hasher: symbol_hasher,

@@ -15,11 +15,11 @@ extern mod std;
 
 fn start(c: pipes::Chan<pipes::Chan<int>>) {
     let (p, ch) = pipes::stream();
-    c.send(move ch);
+    c.send(ch);
 }
 
 pub fn main() {
     let (p, ch) = pipes::stream();
-    let child = task::spawn(|move ch| start(ch) );
+    let child = task::spawn(|| start(ch) );
     let c = p.recv();
 }

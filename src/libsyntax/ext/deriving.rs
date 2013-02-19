@@ -95,19 +95,19 @@ fn expand_deriving(cx: ext_ctxt,
                                                        span,
                                                        struct_def,
                                                        item.ident,
-                                                       move ty_params));
+                                                       ty_params));
             }
             item_enum(ref enum_definition, copy ty_params) => {
                 result.push(expand_deriving_enum_def(cx,
                                                      span,
                                                      enum_definition,
                                                      item.ident,
-                                                     move ty_params));
+                                                     ty_params));
             }
             _ => ()
         }
     }
-    dvec::unwrap(move result)
+    dvec::unwrap(result)
 }
 
 fn create_impl_item(cx: ext_ctxt, span: span, +item: item_) -> @item {
@@ -115,7 +115,7 @@ fn create_impl_item(cx: ext_ctxt, span: span, +item: item_) -> @item {
         ident: clownshoes_extensions,
         attrs: ~[],
         id: cx.next_id(),
-        node: move item,
+        node: item,
         vis: public,
         span: span,
     }
@@ -161,7 +161,7 @@ fn create_eq_method(cx: ext_ctxt,
     };
 
     // Create the function declaration.
-    let fn_decl = build::mk_fn_decl(~[ move arg ], output_type);
+    let fn_decl = build::mk_fn_decl(~[ arg ], output_type);
 
     // Create the body block.
     let body_block = build::mk_simple_block(cx, span, body);
@@ -174,8 +174,8 @@ fn create_eq_method(cx: ext_ctxt,
         tps: ~[],
         self_ty: self_ty,
         purity: pure_fn,
-        decl: move fn_decl,
-        body: move body_block,
+        decl: fn_decl,
+        body: body_block,
         id: cx.next_id(),
         span: span,
         self_id: cx.next_id(),
@@ -194,14 +194,14 @@ fn create_self_type_with_params(cx: ext_ctxt,
         let self_ty_param = build::mk_simple_ty_path(cx,
                                                      span,
                                                      ty_param.ident);
-        self_ty_params.push(move self_ty_param);
+        self_ty_params.push(self_ty_param);
     }
-    let self_ty_params = dvec::unwrap(move self_ty_params);
+    let self_ty_params = dvec::unwrap(self_ty_params);
 
     // Create the type of `self`.
     let self_type = build::mk_raw_path_(span,
                                         ~[ type_ident ],
-                                        move self_ty_params);
+                                        self_ty_params);
     let self_type = ty_path(self_type, cx.next_id());
     @ast::Ty { id: cx.next_id(), node: self_type, span: span }
 }
@@ -221,9 +221,9 @@ fn create_derived_impl(cx: ext_ctxt,
                                              trait_path.map(|x| *x));
         let bounds = @~[ TraitTyParamBound(bound) ];
         let impl_ty_param = build::mk_ty_param(cx, ty_param.ident, bounds);
-        impl_ty_params.push(move impl_ty_param);
+        impl_ty_params.push(impl_ty_param);
     }
-    let impl_ty_params = dvec::unwrap(move impl_ty_params);
+    let impl_ty_params = dvec::unwrap(impl_ty_params);
 
     // Create the reference to the trait.
     let trait_path = ast::path {
@@ -233,12 +233,12 @@ fn create_derived_impl(cx: ext_ctxt,
         rp: None,
         types: ~[]
     };
-    let trait_path = @move trait_path;
+    let trait_path = @trait_path;
     let trait_ref = ast::trait_ref {
         path: trait_path,
         ref_id: cx.next_id()
     };
-    let trait_ref = @move trait_ref;
+    let trait_ref = @trait_ref;
 
     // Create the type of `self`.
     let self_type = create_self_type_with_params(cx,
@@ -247,11 +247,11 @@ fn create_derived_impl(cx: ext_ctxt,
                                                  ty_params);
 
     // Create the impl item.
-    let impl_item = item_impl(move impl_ty_params,
+    let impl_item = item_impl(impl_ty_params,
                               Some(trait_ref),
                               self_type,
                               methods.map(|x| *x));
-    return create_impl_item(cx, span, move impl_item);
+    return create_impl_item(cx, span, impl_item);
 }
 
 fn create_derived_eq_impl(cx: ext_ctxt,
@@ -310,11 +310,11 @@ fn create_iter_bytes_method(cx: ext_ctxt,
     let output_type = @ast::Ty { id: cx.next_id(), node: ty_nil, span: span };
 
     // Create the function declaration.
-    let inputs = ~[ move lsb0_arg, move f_arg ];
-    let fn_decl = build::mk_fn_decl(move inputs, output_type);
+    let inputs = ~[ lsb0_arg, f_arg ];
+    let fn_decl = build::mk_fn_decl(inputs, output_type);
 
     // Create the body block.
-    let body_block = build::mk_block_(cx, span, move statements);
+    let body_block = build::mk_block_(cx, span, statements);
 
     // Create the method.
     let self_ty = spanned { node: sty_region(m_imm), span: span };
@@ -325,8 +325,8 @@ fn create_iter_bytes_method(cx: ext_ctxt,
         tps: ~[],
         self_ty: self_ty,
         purity: pure_fn,
-        decl: move fn_decl,
-        body: move body_block,
+        decl: fn_decl,
+        body: body_block,
         id: cx.next_id(),
         span: span,
         self_id: cx.next_id(),
@@ -348,10 +348,10 @@ fn create_subpatterns(cx: ext_ctxt,
         // Create the subpattern.
         let subpath = build::mk_raw_path(span, ~[ ident ]);
         let subpat = pat_ident(bind_by_ref(m_imm), subpath, None);
-        let subpat = build::mk_pat(cx, span, move subpat);
+        let subpat = build::mk_pat(cx, span, subpat);
         subpats.push(subpat);
     }
-    return dvec::unwrap(move subpats);
+    return dvec::unwrap(subpats);
 }
 
 fn create_enum_variant_pattern(cx: ext_ctxt,
@@ -373,7 +373,7 @@ fn create_enum_variant_pattern(cx: ext_ctxt,
                                              prefix,
                                              variant_args.len());
 
-            return build::mk_pat_enum(cx, span, matching_path, move subpats);
+            return build::mk_pat_enum(cx, span, matching_path, subpats);
         }
         struct_variant_kind(struct_def) => {
             let matching_path = build::mk_raw_path(span, ~[ variant_ident ]);
@@ -508,7 +508,7 @@ fn expand_deriving_eq_struct_def(cx: ext_ctxt,
     return create_derived_eq_impl(cx,
                                   span,
                                   type_ident,
-                                  move ty_params,
+                                  ty_params,
                                   eq_method,
                                   ne_method);
 }
@@ -541,7 +541,7 @@ fn expand_deriving_eq_enum_def(cx: ext_ctxt,
     return create_derived_eq_impl(cx,
                                   span,
                                   type_ident,
-                                  move ty_params,
+                                  ty_params,
                                   eq_method,
                                   ne_method);
 }
@@ -561,7 +561,7 @@ fn expand_deriving_iter_bytes_struct_def(cx: ext_ctxt,
     return create_derived_iter_bytes_impl(cx,
                                           span,
                                           type_ident,
-                                          move ty_params,
+                                          ty_params,
                                           method);
 }
 
@@ -580,7 +580,7 @@ fn expand_deriving_iter_bytes_enum_def(cx: ext_ctxt,
     return create_derived_iter_bytes_impl(cx,
                                           span,
                                           type_ident,
-                                          move ty_params,
+                                          ty_params,
                                           method);
 }
 
@@ -671,8 +671,8 @@ fn expand_deriving_iter_bytes_struct_method(cx: ext_ctxt,
     }
 
     // Create the method itself.
-    let statements = dvec::unwrap(move statements);
-    return create_iter_bytes_method(cx, span, move statements);
+    let statements = dvec::unwrap(statements);
+    return create_iter_bytes_method(cx, span, statements);
 }
 
 fn expand_deriving_eq_enum_method(cx: ext_ctxt,
@@ -738,9 +738,9 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
         let matching_arm = ast::arm {
             pats: ~[ matching_pat ],
             guard: None,
-            body: move matching_body_block
+            body: matching_body_block
         };
-        other_arms.push(move matching_arm);
+        other_arms.push(matching_arm);
 
         // Maybe generate a non-matching case. If there is only one
         // variant then there will always be a match.
@@ -777,11 +777,11 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
         // Create the self pattern body.
         let other_expr = build::mk_path(cx, span, ~[ other_ident ]);
         let other_expr = build::mk_unary(cx, span, deref, other_expr);
-        let other_arms = dvec::unwrap(move other_arms);
-        let other_match_expr = expr_match(other_expr, move other_arms);
+        let other_arms = dvec::unwrap(other_arms);
+        let other_match_expr = expr_match(other_expr, other_arms);
         let other_match_expr = build::mk_expr(cx,
                                               span,
-                                              move other_match_expr);
+                                              other_match_expr);
         let other_match_body_block = build::mk_simple_block(cx,
                                                             span,
                                                             other_match_expr);
@@ -792,15 +792,15 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
             guard: None,
             body: other_match_body_block,
         };
-        self_arms.push(move self_arm);
+        self_arms.push(self_arm);
     }
 
     // Create the method body.
     let self_expr = build::mk_path(cx, span, ~[ self_ident ]);
     let self_expr = build::mk_unary(cx, span, deref, self_expr);
-    let self_arms = dvec::unwrap(move self_arms);
-    let self_match_expr = expr_match(self_expr, move self_arms);
-    let self_match_expr = build::mk_expr(cx, span, move self_match_expr);
+    let self_arms = dvec::unwrap(self_arms);
+    let self_match_expr = expr_match(self_expr, self_arms);
+    let self_match_expr = build::mk_expr(cx, span, self_match_expr);
 
     // Create the method.
     return create_eq_method(cx,
@@ -848,8 +848,8 @@ fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
         }
 
         // Create the pattern body.
-        let stmts = dvec::unwrap(move stmts);
-        let match_body_block = build::mk_block_(cx, span, move stmts);
+        let stmts = dvec::unwrap(stmts);
+        let match_body_block = build::mk_block_(cx, span, stmts);
 
         // Create the arm.
         ast::arm {

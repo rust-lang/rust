@@ -67,18 +67,18 @@ pub pure fn DVec<A>() -> DVec<A> {
 
 /// Creates a new dvec with a single element
 pub pure fn from_elem<A>(e: A) -> DVec<A> {
-    DVec {mut data: ~[move e]}
+    DVec {mut data: ~[e]}
 }
 
 /// Creates a new dvec with the contents of a vector
 pub pure fn from_vec<A>(v: ~[A]) -> DVec<A> {
-    DVec {mut data: move v}
+    DVec {mut data: v}
 }
 
 /// Consumes the vector and returns its contents
 pub pure fn unwrap<A>(d: DVec<A>) -> ~[A] {
-    let DVec {data: v} = move d;
-    move v
+    let DVec {data: v} = d;
+    v
 }
 
 priv impl<A> DVec<A> {
@@ -99,14 +99,14 @@ priv impl<A> DVec<A> {
             data <-> self.data;
             let data_ptr: *() = cast::reinterpret_cast(&data);
             if data_ptr.is_null() { fail!(~"Recursive use of dvec"); }
-            return f(move data);
+            return f(data);
         }
     }
 
     #[inline(always)]
     fn give_back(data: ~[A]) {
         unsafe {
-            self.data = move data;
+            self.data = data;
         }
     }
 
@@ -130,7 +130,7 @@ impl<A> DVec<A> {
      */
     #[inline(always)]
     fn swap(f: &fn(v: ~[A]) -> ~[A]) {
-        self.check_out(|v| self.give_back(f(move v)))
+        self.check_out(|v| self.give_back(f(v)))
     }
 
     /**
@@ -141,7 +141,7 @@ impl<A> DVec<A> {
     #[inline(always)]
     fn swap_mut(f: &fn(v: ~[mut A]) -> ~[mut A]) {
         do self.swap |v| {
-            vec::cast_from_mut(f(vec::cast_to_mut(move v)))
+            vec::cast_from_mut(f(vec::cast_to_mut(v)))
         }
     }
 
@@ -156,16 +156,16 @@ impl<A> DVec<A> {
     #[inline(always)]
     fn set(w: ~[A]) {
         self.check_not_borrowed();
-        self.data = move w;
+        self.data = w;
     }
 
     /// Remove and return the last element
     fn pop() -> A {
         do self.check_out |v| {
-            let mut v = move v;
+            let mut v = v;
             let result = v.pop();
-            self.give_back(move v);
-            move result
+            self.give_back(v);
+            result
         }
     }
 
@@ -176,8 +176,8 @@ impl<A> DVec<A> {
             data <-> self.data;
             let data_ptr: *() = cast::reinterpret_cast(&data);
             if data_ptr.is_null() { fail!(~"Recursive use of dvec"); }
-            self.data = move ~[move t];
-            self.data.push_all_move(move data);
+            self.data = ~[t];
+            self.data.push_all_move(data);
         }
     }
 
@@ -185,25 +185,25 @@ impl<A> DVec<A> {
     #[inline(always)]
     fn push(t: A) {
         self.check_not_borrowed();
-        self.data.push(move t);
+        self.data.push(t);
     }
 
     /// Remove and return the first element
     fn shift() -> A {
         do self.check_out |v| {
-            let mut v = move v;
+            let mut v = v;
             let result = v.shift();
-            self.give_back(move v);
-            move result
+            self.give_back(v);
+            result
         }
     }
 
     /// Reverse the elements in the list, in place
     fn reverse() {
         do self.check_out |v| {
-            let mut v = move v;
+            let mut v = v;
             vec::reverse(v);
-            self.give_back(move v);
+            self.give_back(v);
         }
     }
 
@@ -211,18 +211,18 @@ impl<A> DVec<A> {
     fn borrow<R>(op: fn(x: &[A]) -> R) -> R {
         do self.check_out |v| {
             let result = op(v);
-            self.give_back(move v);
-            move result
+            self.give_back(v);
+            result
         }
     }
 
     /// Gives access to the vector as a slice with mutable contents
     fn borrow_mut<R>(op: fn(x: &[mut A]) -> R) -> R {
         do self.check_out |v| {
-            let mut v = move v;
+            let mut v = v;
             let result = op(v);
-            self.give_back(move v);
-            move result
+            self.give_back(v);
+            result
         }
     }
 }
@@ -240,7 +240,7 @@ impl<A: Copy> DVec<A> {
     /// Appends elements from `from_idx` to `to_idx` (exclusive)
     fn push_slice(ts: &[const A], from_idx: uint, to_idx: uint) {
         do self.swap |v| {
-            let mut v = move v;
+            let mut v = v;
             let new_len = vec::len(v) + to_idx - from_idx;
             vec::reserve(&mut v, new_len);
             let mut i = from_idx;
@@ -248,7 +248,7 @@ impl<A: Copy> DVec<A> {
                 v.push(ts[i]);
                 i += 1u;
             }
-            move v
+            v
         }
     }
 
@@ -265,7 +265,7 @@ impl<A: Copy> DVec<A> {
              none { v }
              Some(h) {
                let len = v.len() + h;
-               let mut v = move v;
+               let mut v = v;
                vec::reserve(v, len);
                v
             }
@@ -286,8 +286,8 @@ impl<A: Copy> DVec<A> {
         unsafe {
             do self.check_out |v| {
                 let w = copy v;
-                self.give_back(move v);
-                move w
+                self.give_back(v);
+                w
             }
         }
     }
@@ -312,9 +312,9 @@ impl<A: Copy> DVec<A> {
      */
     fn grow_set_elt(idx: uint, initval: &A, val: A) {
         do self.swap |v| {
-            let mut v = move v;
+            let mut v = v;
             v.grow_set(idx, initval, val);
-            move v
+            v
         }
     }
 
@@ -340,7 +340,7 @@ impl<A: Copy> DVec<A> {
             for vec::rev_each(v) |e| {
                 if !f(e) { break; }
             }
-            move v
+            v
         }
     }
 
@@ -353,7 +353,7 @@ impl<A: Copy> DVec<A> {
             for vec::rev_eachi(v) |i, e| {
                 if !f(i, e) { break; }
             }
-            move v
+            v
         }
     }
 }

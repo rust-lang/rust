@@ -14,7 +14,7 @@ use c_malloc = libc::malloc;
 use c_free = libc::free;
 use managed::raw::{BoxHeaderRepr, BoxRepr};
 use cast::transmute;
-use ptr::{set_memory, null};
+use ptr::null;
 use intrinsic::TyDesc;
 
 pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
@@ -24,10 +24,6 @@ pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
         let total_size = get_box_size(size, (*td).align);
         let p = c_malloc(total_size as size_t);
         assert p.is_not_null();
-
-        // FIXME #4761: Would be very nice to not memset all allocations
-        let p: *mut u8 = transmute(p);
-        set_memory(p, 0, total_size);
 
         // FIXME #3475: Converting between our two different tydesc types
         let td: *TyDesc = transmute(td);

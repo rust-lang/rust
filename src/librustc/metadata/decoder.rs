@@ -64,7 +64,7 @@ fn lookup_hash(d: ebml::Doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
     let belt = tag_index_buckets_bucket_elt;
     for reader::tagged_docs(tagged_doc.doc, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
-        if eq_fn(vec::view(*elt.data, elt.start + 4u, elt.end)) {
+        if eq_fn(vec::slice(*elt.data, elt.start + 4u, elt.end)) {
             return Some(reader::doc_at(d.data, pos).doc);
         }
     };
@@ -75,7 +75,8 @@ pub type GetCrateDataCb = &fn(ast::crate_num) -> cmd;
 
 pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
-        return io::u64_from_be_bytes(vec::view(bytes, 0u, 4u), 0u, 4u) as int
+        return io::u64_from_be_bytes(
+            vec::slice(bytes, 0u, 4u), 0u, 4u) as int
             == item_id;
     }
     lookup_hash(items,
@@ -752,10 +753,10 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
             def_id: did
         };
 
-        vec::push(&mut result, move provided_trait_method_info);
+        vec::push(&mut result, provided_trait_method_info);
     }
 
-    return move result;
+    return result;
 }
 
 /// Returns the supertraits of the given trait.
@@ -766,7 +767,7 @@ pub fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     for reader::tagged_docs(item_doc, tag_impl_trait) |trait_doc| {
         results.push(doc_type(trait_doc, tcx, cdata));
     }
-    return dvec::unwrap(move results);
+    return dvec::unwrap(results);
 }
 
 // If the item in question is a trait, returns its set of methods and
@@ -847,7 +848,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
         }
     }
 
-    return Some(dvec::unwrap(move static_impl_methods));
+    return Some(dvec::unwrap(static_impl_methods));
 }
 
 pub fn get_item_attrs(cdata: cmd,

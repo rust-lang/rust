@@ -2110,7 +2110,7 @@ pub mod raw {
         let v: **vec::raw::VecRepr = cast::transmute(v);
         let repr: *vec::raw::VecRepr = *v;
         (*repr).unboxed.fill = new_len + 1u;
-        let null = ptr::mut_offset(ptr::mut_addr_of(&((*repr).unboxed.data)),
+        let null = ptr::mut_offset(cast::transmute(&((*repr).unboxed.data)),
                                    new_len);
         *null = 0u8;
     }
@@ -2328,7 +2328,7 @@ pub trait OwnedStr {
     fn push_char(&mut self, c: char);
 }
 
-pub impl ~str : OwnedStr {
+pub impl OwnedStr for ~str {
     fn push_str(&mut self, v: &str) {
         push_str(self, v);
     }

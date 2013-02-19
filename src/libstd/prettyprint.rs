@@ -22,7 +22,7 @@ pub fn Serializer(wr: io::Writer) -> Serializer {
     Serializer { wr: wr }
 }
 
-pub impl Serializer: serialize::Encoder {
+pub impl serialize::Encoder for Serializer {
     fn emit_nil(&self) {
         self.wr.write_str(~"()")
     }

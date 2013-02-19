@@ -17,8 +17,8 @@ fn dispose(+_x: arc::ARC<bool>) unsafe { }
 pub fn main() {
     let p = arc::arc(true);
     let x = Some(p);
-    match move x {
-        Some(move z) => { dispose(z); },
+    match x {
+        Some(z) => { dispose(z); },
         None => fail!()
     }
 }

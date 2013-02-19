@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Clam { chowder: &int }
-
-trait get_chowder {
-    fn get_chowder() -> &self/int;
+struct Clam<'self> {
+    chowder: &'self int
 }
 
-impl get_chowder for Clam {
-    fn get_chowder() -> &self/int { return self.chowder; }
+trait get_chowder<'self> {
+    fn get_chowder() -> &'self int;
+}
+
+impl<'self> get_chowder<'self> for Clam<'self> {
+    fn get_chowder() -> &'self int { return self.chowder; }
 }
 
 pub fn main() {

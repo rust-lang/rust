@@ -1147,7 +1147,7 @@ fn encode_crate_deps(ecx: @encode_ctxt,
         }
 
         // mut -> immutable hack for vec::map
-        return vec::slice(deps, 0u, vec::len(deps));
+        return vec::slice(deps, 0u, vec::len(deps)).to_vec();
     }
 
     // We're just going to write a list of crate 'name-hash-version's, with
@@ -1229,7 +1229,7 @@ pub fn encode_metadata(parms: encode_parms, crate: &crate) -> ~[u8] {
     let ecx: @encode_ctxt = @encode_ctxt({
         diag: parms.diag,
         tcx: parms.tcx,
-        stats: @mut move stats,
+        stats: @mut stats,
         reachable: parms.reachable,
         reexports2: parms.reexports2,
         item_symbols: parms.item_symbols,
@@ -1307,7 +1307,7 @@ pub fn encode_metadata(parms: encode_parms, crate: &crate) -> ~[u8] {
     //   vec::from_slice(metadata_encoding_version) +
 
     (do str::as_bytes(&~"rust\x00\x00\x00\x01") |bytes| {
-        vec::slice(*bytes, 0, 8)
+        vec::slice(*bytes, 0, 8).to_vec()
     }) + flate::deflate_bytes(wr.bytes.check_out(|buf| buf))
 }
 

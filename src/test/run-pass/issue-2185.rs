@@ -35,11 +35,11 @@ fn filter<A,IA:iterable<A>>(self: IA, prd: fn@(A) -> bool, blk: fn(A)) {
 }
 
 fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
-    let mut b = move b0;
+    let mut b = b0;
     do self.iter |a| {
-        b = move blk(b, a);
+        b = blk(b, a);
     }
-    move b
+    b
 }
 
 fn range(lo: uint, hi: uint, it: fn(uint)) {

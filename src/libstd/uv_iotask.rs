@@ -78,7 +78,7 @@ pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
  */
 pub unsafe fn interact(iotask: &IoTask,
                    cb: fn~(*c_void)) {
-    send_msg(iotask, Interaction(move cb));
+    send_msg(iotask, Interaction(cb));
 }
 
 /**
@@ -150,7 +150,7 @@ struct IoTaskLoopData {
 
 fn send_msg(iotask: &IoTask,
             msg: IoTaskMsg) {
-    iotask.op_chan.send(move msg);
+    iotask.op_chan.send(msg);
     unsafe {
         ll::async_send(iotask.async_handle);
     }

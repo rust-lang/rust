@@ -154,11 +154,11 @@ pub pure fn flat_map_to_vec<A,B,IA:BaseIter<A>,IB:BaseIter<B>>(
 pub pure fn foldl<A,B,IA:BaseIter<A>>(self: &IA, b0: B,
                                       blk: fn(&B, &A) -> B)
     -> B {
-    let mut b = move b0;
+    let mut b = b0;
     for self.each |a| {
         b = blk(&b, a);
     }
-    move b
+    b
 }
 
 #[inline(always)]
@@ -215,12 +215,12 @@ pub pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
           &Some(ref a_) if *a_ < *b => {
-             *(move a)
+             *(a)
           }
           _ => Some(*b)
         }
     } {
-        Some(move val) => val,
+        Some(val) => val,
         None => fail!(~"min called on empty iterator")
     }
 }
@@ -230,12 +230,12 @@ pub pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
           &Some(ref a_) if *a_ > *b => {
-              *(move a)
+              *(a)
           }
           _ => Some(*b)
         }
     } {
-        Some(move val) => val,
+        Some(val) => val,
         None => fail!(~"max called on empty iterator")
     }
 }

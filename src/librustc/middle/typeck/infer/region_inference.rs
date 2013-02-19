@@ -899,7 +899,7 @@ pub impl RegionVarBindings {
                 // replace the NoValue entry with ErrorValue.
                 let mut values = self.values.take();
                 values[*rid] = ErrorValue;
-                self.values.put_back(move values);
+                self.values.put_back(values);
                 re_static
             }
 
@@ -999,9 +999,9 @@ pub impl RegionVarBindings {
                     None => {}
                     Some((ref r1, ref r2)) => {
                         result_set =
-                            consider_adding_edge(move result_set, &r, r1, r2);
+                            consider_adding_edge(result_set, &r, r1, r2);
                         result_set =
-                            consider_adding_edge(move result_set, &r, r2, r1);
+                            consider_adding_edge(result_set, &r, r2, r1);
                     }
                 }
 
@@ -1018,13 +1018,13 @@ pub impl RegionVarBindings {
                                 r1: &Region,
                                 r2: &Region) -> ~[Region]
         {
-            let mut result_set = move result_set;
+            let mut result_set = result_set;
             if *r == *r1 { // Clearly, this is potentially inefficient.
                 if !result_set.contains(r2) {
                     result_set.push(*r2);
                 }
             }
-            return move result_set;
+            return result_set;
         }
     }
 
@@ -1254,8 +1254,8 @@ impl RegionVarBindings {
         }
 
         let mut graph = Graph {
-            nodes: move nodes,
-            edges: move edges
+            nodes: nodes,
+            edges: edges
         };
 
         for uint::range(0, num_edges) |edge_idx| {
@@ -1273,7 +1273,7 @@ impl RegionVarBindings {
             }
         }
 
-        return (move graph);
+        return (graph);
 
         fn insert_edge(+graph: &mut Graph,
                        node_id: RegionVid,

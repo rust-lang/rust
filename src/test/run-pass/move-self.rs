@@ -4,7 +4,7 @@ struct S {
 
 impl S {
     fn foo(self) {
-        (move self).bar();
+        self.bar();
     }
 
     fn bar(self) {

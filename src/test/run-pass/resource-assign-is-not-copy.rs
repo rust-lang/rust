@@ -29,8 +29,8 @@ pub fn main() {
     // Even though these look like copies, they are guaranteed not to be
     {
         let a = r(i);
-        let b = (move a, 10);
-        let (c, _d) = move b;
+        let b = (a, 10);
+        let (c, _d) = b;
         log(debug, c);
     }
     assert *i == 1;

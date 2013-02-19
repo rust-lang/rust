@@ -131,7 +131,7 @@ CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
 CFG_LIBSYNTAX :=$(call CFG_LIB_NAME,syntax)
 CFG_LIBFUZZER :=$(call CFG_LIB_NAME,fuzzer)
-CFG_LIBCARGO :=$(call CFG_LIB_NAME,cargo)
+CFG_LIBRUSTPKG :=$(call CFG_LIB_NAME,rustpkg)
 CFG_LIBRUSTDOC :=$(call CFG_LIB_NAME,rustdoc)
 CFG_LIBRUSTI :=$(call CFG_LIB_NAME,rusti)
 
@@ -140,7 +140,7 @@ CORELIB_GLOB :=$(call CFG_LIB_GLOB,core)
 LIBRUSTC_GLOB :=$(call CFG_LIB_GLOB,rustc)
 LIBSYNTAX_GLOB :=$(call CFG_LIB_GLOB,syntax)
 LIBFUZZER_GLOB :=$(call CFG_LIB_GLOB,fuzzer)
-LIBCARGO_GLOB :=$(call CFG_LIB_GLOB,cargo)
+LIBRUSTPKG_GLOB :=$(call CFG_LIB_GLOB,rustpkg)
 LIBRUSTDOC_GLOB :=$(call CFG_LIB_GLOB,rustdoc)
 LIBRUSTI_GLOB :=$(call CFG_LIB_GLOB,rusti)
 STDLIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,std)
@@ -148,7 +148,7 @@ CORELIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,core)
 LIBRUSTC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustc)
 LIBSYNTAX_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,syntax)
 LIBFUZZER_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,fuzzer)
-LIBCARGO_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,cargo)
+LIBRUSTPKG_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustpkg)
 LIBRUSTDOC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustdoc)
 LIBRUSTI_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rusti)
 
@@ -371,11 +371,11 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(HBIN$(1)_H_$(3))/fuzzer$$(X) \
-	$$(HBIN$(1)_H_$(3))/cargo$$(X) \
+	$$(HBIN$(1)_H_$(3))/rustpkg$$(X) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X) \
 	$$(HBIN$(1)_H_$(3))/rusti$$(X) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBFUZZER) \
-	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBCARGO) \
+	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTPKG) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTDOC) \
 	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTI) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
@@ -383,7 +383,7 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBFUZZER) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBCARGO) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTPKG) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTDOC) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI)
 

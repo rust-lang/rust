@@ -84,7 +84,7 @@ pub fn partition<T, U>(eithers: ~[Either<T, U>])
           Right(r) => rights.push(r)
         }
     }
-    return (move lefts, move rights);
+    return (lefts, rights);
 }
 
 #[inline(always)]
@@ -131,8 +131,8 @@ pub pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
 pub pure fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
     //! Retrieves the value in the left branch. Fails if the either is Right.
 
-    match move eith {
-        Left(move x) => move x,
+    match eith {
+        Left(x) => x,
         Right(_) => fail!(~"either::unwrap_left Right")
     }
 }
@@ -141,8 +141,8 @@ pub pure fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
 pub pure fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     //! Retrieves the value in the right branch. Fails if the either is Left.
 
-    match move eith {
-        Right(move x) => move x,
+    match eith {
+        Right(x) => x,
         Left(_) => fail!(~"either::unwrap_right Left")
     }
 }

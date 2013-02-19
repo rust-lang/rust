@@ -36,7 +36,7 @@ pub impl Lub {
     fn ty_bot(b: ty::t) -> cres<ty::t> { self.bot_ty(b) } // commutative
 }
 
-pub impl Lub: Combine {
+pub impl Combine for Lub {
     fn infcx() -> @mut InferCtxt { self.infcx }
     fn tag() -> ~str { ~"lub" }
     fn a_is_expected() -> bool { self.a_is_expected }
@@ -144,7 +144,7 @@ pub impl Lub: Combine {
                 &sig0,
                 |r, _in_fn| generalize_region(&self, snapshot, new_vars,
                                               a_isr, r));
-        return Ok(move sig1);
+        return Ok(sig1);
 
         fn generalize_region(self: &Lub,
                              snapshot: uint,

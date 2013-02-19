@@ -116,15 +116,15 @@ impl<T: Rand> Rand for Option<T> {
 }
 
 #[allow(non_camel_case_types)] // runtime type
-enum rctx {}
+enum rust_rng {}
 
 #[abi = "cdecl"]
 extern mod rustrt {
     unsafe fn rand_seed() -> ~[u8];
-    unsafe fn rand_new() -> *rctx;
-    unsafe fn rand_new_seeded2(&&seed: ~[u8]) -> *rctx;
-    unsafe fn rand_next(c: *rctx) -> u32;
-    unsafe fn rand_free(c: *rctx);
+    unsafe fn rand_new() -> *rust_rng;
+    unsafe fn rand_new_seeded2(&&seed: ~[u8]) -> *rust_rng;
+    unsafe fn rand_next(rng: *rust_rng) -> u32;
+    unsafe fn rand_free(rng: *rust_rng);
 }
 
 /// A random number generator
@@ -273,7 +273,7 @@ impl Rng {
             s = s + str::from_char(self.gen_char_from(charset));
             i += 1u;
         }
-        move s
+        s
     }
 
     /// Return a random byte string of the specified length
@@ -339,14 +339,14 @@ impl Rng {
                 r.push(item.item);
             }
         }
-        move r
+        r
     }
 
     /// Shuffle a vec
     fn shuffle<T:Copy>(values: &[T]) -> ~[T] {
         let mut m = vec::from_slice(values);
         self.shuffle_mut(m);
-        move m
+        m
     }
 
     /// Shuffle a mutable vec in place
@@ -363,24 +363,24 @@ impl Rng {
 }
 
 struct RandRes {
-    c: *rctx,
+    rng: *rust_rng,
     drop {
         unsafe {
-            rustrt::rand_free(self.c);
+            rustrt::rand_free(self.rng);
         }
     }
 }
 
-fn RandRes(c: *rctx) -> RandRes {
+fn RandRes(rng: *rust_rng) -> RandRes {
     RandRes {
-        c: c
+        rng: rng
     }
 }
 
 impl Rng for @RandRes {
     fn next() -> u32 {
         unsafe {
-            return rustrt::rand_next((*self).c);
+            return rustrt::rand_next((*self).rng);
         }
     }
 }

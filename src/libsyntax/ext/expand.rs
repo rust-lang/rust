@@ -287,15 +287,6 @@ pub fn core_macros() -> ~str {
     macro_rules! debug ( ($( $arg:expr ),+) => (
         log(::core::debug, fmt!( $($arg),+ )) ))
 
-    macro_rules! die(
-        ($msg: expr) => (
-            ::core::sys::begin_unwind($msg, file!().to_owned(), line!())
-        );
-        () => (
-            fail!(~\"explicit failure\")
-        )
-    )
-
     macro_rules! fail(
         ($msg: expr) => (
             ::core::sys::begin_unwind($msg, file!().to_owned(), line!())

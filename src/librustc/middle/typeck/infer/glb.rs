@@ -27,7 +27,7 @@ use std::list;
 
 pub enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
 
-pub impl Glb: Combine {
+pub impl Combine for Glb {
     fn infcx() -> @mut InferCtxt { self.infcx }
     fn tag() -> ~str { ~"glb" }
     fn a_is_expected() -> bool { self.a_is_expected }
@@ -186,7 +186,7 @@ pub impl Glb: Combine {
                                               new_vars, a_isr, a_vars, b_vars,
                                               r));
         debug!("sig1 = %s", sig1.inf_str(self.infcx));
-        return Ok(move sig1);
+        return Ok(sig1);
 
         fn generalize_region(self: &Glb,
                              snapshot: uint,

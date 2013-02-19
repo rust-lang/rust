@@ -108,9 +108,10 @@ pub mod win32 {
             let mut res = None;
             let mut done = false;
             while !done {
-                let mut buf = vec::from_elem(n as uint, 0u16);
+                let mut k: DWORD = 0;
+                let buf = vec::cast_to_mut(vec::from_elem(n as uint, 0u16));
                 do vec::as_mut_buf(buf) |b, _sz| {
-                    let k : DWORD = f(b, TMPBUF_SZ as DWORD);
+                    k = f(b, TMPBUF_SZ as DWORD);
                     if k == (0 as DWORD) {
                         done = true;
                     } else if (k == n &&
@@ -118,10 +119,12 @@ pub mod win32 {
                                libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
                         n *= (2 as DWORD);
                     } else {
-                        let sub = vec::slice(buf, 0u, k as uint);
-                        res = option::Some(str::from_utf16(sub));
                         done = true;
                     }
+                }
+                if k != 0 && done {
+                    let sub = vec::slice(buf, 0u, k as uint);
+                    res = option::Some(str::from_utf16(sub));
                 }
             }
             return res;
@@ -171,7 +174,7 @@ pub fn env() -> ~[(~str,~str)] {
                 assert vec::len(vs) == 2u;
                 pairs.push((copy vs[0], copy vs[1]));
             }
-            move pairs
+            pairs
         }
     }
 }
@@ -306,10 +309,9 @@ pub fn waitpid(pid: pid_t) -> c_int {
 pub fn waitpid(pid: pid_t) -> c_int {
     unsafe {
         use libc::funcs::posix01::wait::*;
-        let status = 0 as c_int;
+        let mut status = 0 as c_int;
 
-        assert (waitpid(pid, ptr::mut_addr_of(&status),
-                        0 as c_int) != (-1 as c_int));
+        assert (waitpid(pid, &mut status, 0 as c_int) != (-1 as c_int));
         return status;
     }
 }
@@ -322,7 +324,7 @@ pub fn pipe() -> Pipe {
     unsafe {
         let mut fds = Pipe {mut in: 0 as c_int,
                         mut out: 0 as c_int };
-        assert (libc::pipe(ptr::mut_addr_of(&(fds.in))) == (0 as c_int));
+        assert (libc::pipe(&mut fds.in) == (0 as c_int));
         return Pipe {in: fds.in, out: fds.out};
     }
 }
@@ -339,8 +341,7 @@ pub fn pipe() -> Pipe {
         // first, as in rust_run_program.
         let mut fds = Pipe { mut in: 0 as c_int,
                     mut out: 0 as c_int };
-        let res = libc::pipe(ptr::mut_addr_of(&(fds.in)),
-                             1024 as c_uint,
+        let res = libc::pipe(&mut fds.in, 1024 as c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
         assert (res == 0 as c_int);
         assert (fds.in != -1 as c_int && fds.in != 0 as c_int);
@@ -374,8 +375,8 @@ pub fn self_exe_path() -> Option<Path> {
                            KERN_PROC as c_int,
                            KERN_PROC_PATHNAME as c_int, -1 as c_int];
                 sysctl(vec::raw::to_ptr(mib), vec::len(mib) as c_uint,
-                       buf as *mut c_void, ptr::mut_addr_of(&sz),
-                       ptr::null(), 0u as size_t) == (0 as c_int)
+                       buf as *mut c_void, &mut sz, ptr::null(),
+                       0u as size_t) == (0 as c_int)
             }
         }
     }
@@ -406,8 +407,9 @@ pub fn self_exe_path() -> Option<Path> {
     fn load_self() -> Option<~str> {
         unsafe {
             do fill_charp_buf() |buf, sz| {
+                let mut sz = sz as u32;
                 libc::funcs::extra::_NSGetExecutablePath(
-                    buf, ptr::mut_addr_of(&(sz as u32))) == (0 as c_int)
+                    buf, &mut sz) == (0 as c_int)
             }
         }
     }
@@ -483,7 +485,7 @@ pub fn tmpdir() -> Path {
 
     fn getenv_nonempty(v: &str) -> Option<Path> {
         match getenv(v) {
-            Some(move x) =>
+            Some(x) =>
                 if str::is_empty(x) {
                     None
                 } else {
@@ -849,7 +851,7 @@ pub fn last_os_error() -> ~str {
             let err = strerror_r(errno() as c_int, &buf[0],
                                  TMPBUF_SZ as size_t);
             if err < 0 {
-                die!(~"strerror_r failure");
+                fail!(~"strerror_r failure");
             }
 
             str::raw::from_c_str(&buf[0])
@@ -887,7 +889,7 @@ pub fn last_os_error() -> ~str {
                                      &mut buf[0], TMPBUF_SZ as DWORD,
                                      ptr::null());
             if res == 0 {
-                die!(fmt!("[%?] FormatMessage failure", errno()));
+                fail!(fmt!("[%?] FormatMessage failure", errno()));
             }
 
             str::raw::from_c_str(&buf[0])
@@ -916,7 +918,7 @@ unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
     for uint::range(0, argc as uint) |i| {
         vec::push(&mut args, str::raw::from_c_str(*argv.offset(i)));
     }
-    move args
+    args
 }
 
 /**
@@ -1138,7 +1140,7 @@ mod tests {
         let rng: rand::Rng = rand::Rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert getenv(n).is_none();
-        move n
+        n
     }
 
     #[test]
@@ -1172,7 +1174,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n, s);
         log(debug, copy s);
-        assert getenv(n) == option::Some(move s);
+        assert getenv(n) == option::Some(s);
     }
 
     #[test]
@@ -1198,7 +1200,7 @@ mod tests {
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
-            assert v2.is_none() || v2 == option::Some(move v);
+            assert v2.is_none() || v2 == option::Some(v);
         }
     }
 
@@ -1211,7 +1213,7 @@ mod tests {
         assert !vec::contains(e, &(copy n, ~"VALUE"));
 
         e = env();
-        assert vec::contains(e, &(move n, ~"VALUE"));
+        assert vec::contains(e, &(n, ~"VALUE"));
     }
 
     #[test]

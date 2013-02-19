@@ -45,7 +45,7 @@ pub trait gen_init {
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr;
 }
 
-pub impl message: gen_send {
+pub impl gen_send for message {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
         match self {
@@ -73,10 +73,10 @@ pub impl message: gen_send {
 
             if this.proto.is_bounded() {
                 let (sp, rp) = match (this.dir, next.dir) {
-                  (send, send) => (~"move c", ~"move s"),
+                  (send, send) => (~"c", ~"s"),
                   (send, recv) => (~"s", ~"c"),
                   (recv, send) => (~"s", ~"c"),
-                  (recv, recv) => (~"move c", ~"move s")
+                  (recv, recv) => (~"c", ~"s")
                 };
 
                 body += ~"let b = pipe.reuse_buffer();\n";
@@ -89,10 +89,10 @@ pub impl message: gen_send {
             }
             else {
                 let pat = match (this.dir, next.dir) {
-                  (send, send) => "(move c, move s)",
+                  (send, send) => "(c, s)",
                   (send, recv) => "(s, c)",
                   (recv, send) => "(s, c)",
-                  (recv, recv) => "(move c, move s)"
+                  (recv, recv) => "(c, s)"
                 };
 
                 body += fmt!("let %s = ::pipes::entangle();\n", pat);
@@ -100,17 +100,17 @@ pub impl message: gen_send {
             body += fmt!("let message = %s(%s);\n",
                          self.name(),
                          str::connect(vec::append_one(
-                           arg_names.map(|x| ~"move " + cx.str_of(*x)),
-                             ~"move s"), ~", "));
+                           arg_names.map(|x| cx.str_of(*x)),
+                             ~"s"), ~", "));
 
             if !try {
-                body += fmt!("::pipes::send(move pipe, move message);\n");
+                body += fmt!("::pipes::send(pipe, message);\n");
                 // return the new channel
-                body += ~"move c }";
+                body += ~"c }";
             }
             else {
-                body += fmt!("if ::pipes::send(move pipe, move message) {\n \
-                                  ::pipes::rt::make_some(move c) \
+                body += fmt!("if ::pipes::send(pipe, message) {\n \
+                                  ::pipes::rt::make_some(c) \
                               } else { ::pipes::rt::make_none() } }");
             }
 
@@ -153,7 +153,7 @@ pub impl message: gen_send {
                     ~""
                 }
                 else {
-                    ~"(" + str::connect(arg_names.map(|x| ~"move " + *x),
+                    ~"(" + str::connect(arg_names.map(|x| *x),
                                         ~", ") + ~")"
                 };
 
@@ -164,10 +164,10 @@ pub impl message: gen_send {
                              message_args);
 
                 if !try {
-                    body += fmt!("::pipes::send(move pipe, move message);\n");
+                    body += fmt!("::pipes::send(pipe, message);\n");
                     body += ~" }";
                 } else {
-                    body += fmt!("if ::pipes::send(move pipe, move message) \
+                    body += fmt!("if ::pipes::send(pipe, message) \
                                         { \
                                       ::pipes::rt::make_some(()) \
                                   } else { \
@@ -201,7 +201,7 @@ pub impl message: gen_send {
     }
 }
 
-pub impl state: to_type_decls {
+pub impl to_type_decls for state {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
         debug!("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
@@ -305,8 +305,7 @@ pub impl state: to_type_decls {
     }
 }
 
-pub impl protocol: gen_init {
-
+pub impl gen_init for protocol {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
 
@@ -319,7 +318,7 @@ pub impl protocol: gen_init {
               recv => {
                 quote_expr!({
                     let (s, c) = ::pipes::entangle();
-                    (move c, move s)
+                    (c, s)
                 })
               }
             }
@@ -331,7 +330,7 @@ pub impl protocol: gen_init {
               recv => {
                   quote_expr!({
                       let (s, c) = $body;
-                      (move c, move s)
+                      (c, s)
                   })
               }
             }
@@ -375,7 +374,7 @@ pub impl protocol: gen_init {
 
         quote_expr!({
             let buffer = $buffer;
-            do ::pipes::entangle_buffer(move buffer) |buffer, data| {
+            do ::pipes::entangle_buffer(buffer) |buffer, data| {
                 $entangle_body
             }
         })

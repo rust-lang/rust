@@ -152,7 +152,7 @@ enum debug_metadata {
 fn cast_safely<T: Copy, U>(val: T) -> U {
     unsafe {
         let val2 = val;
-        return cast::transmute(move val2);
+        return cast::transmute(val2);
     }
 }
 

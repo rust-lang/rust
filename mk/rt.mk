@@ -50,6 +50,7 @@ RUNTIME_CXXS_$(1) := \
               rt/rust_builtin.cpp \
               rt/rust_run_program.cpp \
               rt/rust_env.cpp \
+              rt/rust_rng.cpp \
               rt/rust_sched_loop.cpp \
               rt/rust_sched_launcher.cpp \
               rt/rust_sched_driver.cpp \

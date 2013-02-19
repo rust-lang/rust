@@ -44,21 +44,21 @@ proto! bank (
 )
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y = move *ptr::addr_of(&($x)); move y } }
+    { $x:expr } => { unsafe { let y = *ptr::addr_of(&($x)); y } }
 )
 
 fn switch<T: Owned, U>(+endp: pipes::RecvPacket<T>,
                       f: fn(+v: Option<T>) -> U) -> U {
-    f(pipes::try_recv(move endp))
+    f(pipes::try_recv(endp))
 }
 
-fn move_it<T>(-x: T) -> T { move x }
+fn move_it<T>(-x: T) -> T { x }
 
 macro_rules! follow (
     {
         $($message:path$(($($x: ident),+))||* -> $next:ident $e:expr)+
     } => (
-        |m| match move m {
+        |m| match m {
           $(Some($message($($($x,)+)* next)) => {
             let $next = move_it!(next);
             $e })+
@@ -70,15 +70,15 @@ macro_rules! follow (
 fn client_follow(+bank: bank::client::login) {
     use bank::*;
 
-    let bank = client::login(move bank, ~"theincredibleholk", ~"1234");
-    let bank = switch(move bank, follow! (
-        ok -> connected { move connected }
+    let bank = client::login(bank, ~"theincredibleholk", ~"1234");
+    let bank = switch(bank, follow! (
+        ok -> connected { connected }
         invalid -> _next { fail!(~"bank closed the connected") }
     ));
 
-    let bank = client::deposit(move bank, 100.00);
-    let bank = client::withdrawal(move bank, 50.00);
-    switch(move bank, follow! (
+    let bank = client::deposit(bank, 100.00);
+    let bank = client::withdrawal(bank, 50.00);
+    switch(bank, follow! (
         money(m) -> _next {
             io::println(~"Yay! I got money!");
         }
@@ -91,8 +91,8 @@ fn client_follow(+bank: bank::client::login) {
 fn bank_client(+bank: bank::client::login) {
     use bank::*;
 
-    let bank = client::login(move bank, ~"theincredibleholk", ~"1234");
-    let bank = match try_recv(move bank) {
+    let bank = client::login(bank, ~"theincredibleholk", ~"1234");
+    let bank = match try_recv(bank) {
       Some(ok(connected)) => {
         move_it!(connected)
       }
@@ -100,9 +100,9 @@ fn bank_client(+bank: bank::client::login) {
       None => { fail!(~"bank closed the connection") }
     };
 
-    let bank = client::deposit(move bank, 100.00);
-    let bank = client::withdrawal(move bank, 50.00);
-    match try_recv(move bank) {
+    let bank = client::deposit(bank, 100.00);
+    let bank = client::withdrawal(bank, 50.00);
+    match try_recv(bank) {
       Some(money(*)) => {
         io::println(~"Yay! I got money!");
       }

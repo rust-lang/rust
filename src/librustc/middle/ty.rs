@@ -320,7 +320,7 @@ pub pure fn get(t: t) -> t_box {
     unsafe {
         let t2 = cast::reinterpret_cast::<t, t_box>(&t);
         let t3 = t2;
-        cast::forget(move t2);
+        cast::forget(t2);
         t3
     }
 }
@@ -657,46 +657,46 @@ pub trait Vid {
     pure fn to_uint() -> uint;
 }
 
-pub impl TyVid: Vid {
+pub impl Vid for TyVid {
     pure fn to_uint() -> uint { *self }
 }
 
-pub impl TyVid: ToStr {
+pub impl ToStr for TyVid {
     pure fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
-pub impl IntVid: Vid {
+pub impl Vid for IntVid {
     pure fn to_uint() -> uint { *self }
 }
 
-pub impl IntVid: ToStr {
+pub impl ToStr for IntVid {
     pure fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
-pub impl FloatVid: Vid {
+pub impl Vid for FloatVid {
     pure fn to_uint() -> uint { *self }
 }
 
-pub impl FloatVid: ToStr {
+pub impl ToStr for FloatVid {
     pure fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
-pub impl RegionVid: Vid {
+pub impl Vid for RegionVid {
     pure fn to_uint() -> uint { *self }
 }
 
-pub impl RegionVid: ToStr {
+pub impl ToStr for RegionVid {
     pure fn to_str(&self) -> ~str { fmt!("%?", self) }
 }
 
-pub impl FnSig : ToStr {
+pub impl ToStr for FnSig {
     pure fn to_str(&self) -> ~str {
         // grr, without tcx not much we can do.
         return ~"(...)";
     }
 }
 
-pub impl InferTy: ToStr {
+pub impl ToStr for InferTy {
     pure fn to_str(&self) -> ~str {
         match *self {
             TyVar(ref v) => v.to_str(),
@@ -706,7 +706,7 @@ pub impl InferTy: ToStr {
     }
 }
 
-pub impl IntVarValue : ToStr {
+pub impl ToStr for IntVarValue {
     pure fn to_str(&self) -> ~str {
         match *self {
             IntType(ref v) => v.to_str(),
@@ -715,25 +715,25 @@ pub impl IntVarValue : ToStr {
     }
 }
 
-pub impl TyVid : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for TyVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl IntVid : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for IntVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl FloatVid : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for FloatVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl RegionVid : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for RegionVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
@@ -830,7 +830,7 @@ pub fn mk_ctxt(s: session::Session,
         inferred_modes: HashMap(),
         adjustments: HashMap(),
         normalized_cache: new_ty_hash(),
-        lang_items: move lang_items,
+        lang_items: lang_items,
         legacy_boxed_traits: HashMap(),
         provided_methods: HashMap(),
         provided_method_sources: HashMap(),
@@ -909,10 +909,10 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
     }
 
-    let t = @{sty: move st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
+    let t = @{sty: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
 
     let key = intern_key {sty: to_unsafe_ptr(&t.sty), o_def_id: o_def_id};
-    cx.interner.insert(move key, t);
+    cx.interner.insert(key, t);
 
     cx.next_id += 1u;
     unsafe { cast::reinterpret_cast(&t) }
@@ -1178,7 +1178,7 @@ pub fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
     };
 
     FnSig {
-        inputs: move args,
+        inputs: args,
         output: fldop(sig.output)
     }
 }
@@ -3110,7 +3110,7 @@ pub fn expr_kind(tcx: ctxt,
                 ast::def_local(*) |
                 ast::def_self(*) => LvalueExpr,
 
-                move def => {
+                def => {
                     tcx.sess.span_bug(expr.span, fmt!(
                         "Uncategorized def for expr %?: %?",
                         expr.id, def));
@@ -3617,7 +3617,7 @@ pub fn trait_supertraits(cx: ctxt,
     }
 
     // Unwrap and return the result.
-    return @dvec::unwrap(move result);
+    return @dvec::unwrap(result);
 }
 
 pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
