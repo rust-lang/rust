@@ -115,8 +115,8 @@ for more information on them.
 When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
 API-documentation tool; `rustpkg`, the Rust package manager;
-`rusti`, the Rust REPL; and `rust`, a tool which acts as a unified way to
-call them, either directly or with common command line arguments.
+`rusti`, the Rust REPL; and `rust`, a tool which acts both as a unified
+interface for them, and for a few common command line scenarios.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://static.rust-lang.org/dist/rust-0.5.tar.gz
@@ -154,6 +154,25 @@ compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file: all statements must
 live inside a function.  Rust programs can also be compiled as
 libraries, and included in other programs.
+
+## Using the rust tool
+
+While using `rustc` directly to generate your executables, and then
+running them manually is a perfectly valid way to test your code,
+for smaller projects, prototypes, or if you're a beginner, it might be
+more convenient to use the `rust` tool.
+
+You use it by calling it with one of the supported commands, followed by
+arguments for that command. For example `rust build foo.rs` calls the
+`build` command with the argument `foo.rs`.
+
+The commands are:
+  - `build`, `doc`, `pkg` and `sketch`, which simply forward all arguments
+     to the included programs `rustc`, `rustdoc`, `rustpkg` and `rusti`.
+  - `run` and `test`, which both accept one source file and, using `rustc`,
+    produce either a normal or a test executable in the current working
+    directory and run it.
+  - `help`, which prints out the usage text of one of the commands.
 
 ## Editing Rust code
 
