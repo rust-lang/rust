@@ -362,6 +362,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       ast::pat_ident(*) if pat_is_const(tcx.def_map, pat) => {
         let const_did = ast_util::def_id_of_def(tcx.def_map.get(&pat.id));
         let const_tpt = ty::lookup_item_type(tcx, const_did);
+        demand::suptype(fcx, pat.span, expected, const_tpt.ty);
         fcx.write_ty(pat.id, const_tpt.ty);
       }
       ast::pat_ident(bm, name, sub) if pat_is_binding(tcx.def_map, pat) => {
