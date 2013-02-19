@@ -190,9 +190,9 @@ pub enum compile_upto {
 // For continuing compilation after a parsed crate has been
 // modified
 pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
-                    upto: compile_upto, outputs: Option<output_filenames>,
+                    upto: compile_upto, outputs: Option<@OutputFilenames>,
                     curr: Option<@ast::crate>)
-    -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
+    -> (@ast::crate, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
     let mut crate = curr.get();
 
@@ -209,7 +209,7 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
         syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
                                           crate));
 
-    if upto == cu_expand { return {crate: crate, tcx: None}; }
+    if upto == cu_expand { return (crate, None); }
 
     crate = time(time_passes, ~"intrinsic injection", ||
         front::intrinsic_inject::inject_intrinsic(sess, crate));
@@ -227,15 +227,17 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
         creader::read_crates(sess.diagnostic(), *crate, sess.cstore,
                              sess.filesearch,
                              session::sess_os_to_meta_os(sess.targ_cfg.os),
-                             sess.opts.static,
+                             sess.opts.is_static,
                              sess.parse_sess.interner));
 
     let lang_items = time(time_passes, ~"language item collection", ||
          middle::lang_items::collect_language_items(crate, sess));
 
-    let { def_map: def_map,
-          exp_map2: exp_map2,
-          trait_map: trait_map } =
+    let middle::resolve::CrateMap {
+        def_map: def_map,
+        exp_map2: exp_map2,
+        trait_map: trait_map
+    } =
         time(time_passes, ~"resolution", ||
              middle::resolve::resolve_crate(sess, lang_items, crate));
 
@@ -270,7 +272,7 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
              middle::check_const::check_crate(sess, crate, ast_map, def_map,
                                               method_map, ty_cx));
 
-        if upto == cu_typeck { return {crate: crate, tcx: Some(ty_cx)}; }
+        if upto == cu_typeck { return (crate, Some(ty_cx)); }
 
         time(time_passes, ~"privacy checking", ||
              middle::privacy::check_crate(ty_cx, &method_map, crate));
@@ -305,7 +307,7 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
         time(time_passes, ~"lint checking", ||
              lint::check_crate(ty_cx, crate));
 
-        if upto == cu_no_trans { return {crate: crate, tcx: Some(ty_cx)}; }
+        if upto == cu_no_trans { return (crate, Some(ty_cx)); }
 
         let maps = astencode::Maps {
             mutbl_map: mutbl_map,
@@ -331,27 +333,27 @@ pub fn compile_rest(sess: Session, cfg: ast::crate_cfg,
 
     let stop_after_codegen =
         sess.opts.output_type != link::output_type_exe ||
-        (sess.opts.static && *sess.building_library)   ||
+        (sess.opts.is_static && *sess.building_library)   ||
         sess.opts.jit;
 
-    if stop_after_codegen { return {crate: crate, tcx: None}; }
+    if stop_after_codegen { return (crate, None); }
 
     time(time_passes, ~"linking", ||
          link::link_binary(sess,
                            &outputs.obj_filename,
                            &outputs.out_filename, link_meta));
 
-    return {crate: crate, tcx: None};
+    return (crate, None);
 }
 
 pub fn compile_upto(sess: Session, +cfg: ast::crate_cfg,
                 input: input, upto: compile_upto,
-                outputs: Option<output_filenames>)
-    -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
+                outputs: Option<@OutputFilenames>)
+    -> (@ast::crate, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
     let mut crate = time(time_passes, ~"parsing",
                          || parse_input(sess, copy cfg, input) );
-    if upto == cu_parse { return {crate: crate, tcx: None}; }
+    if upto == cu_parse { return (crate, None); }
 
     compile_rest(sess, cfg, upto, outputs, Some(crate))
 }
@@ -417,7 +419,7 @@ pub fn pretty_print_input(sess: Session, +cfg: ast::crate_cfg, input: input,
       ppm_typed => cu_typeck,
       _ => cu_parse
     };
-    let {crate, tcx} = compile_upto(sess, cfg, input, upto, None);
+    let (crate, tcx) = compile_upto(sess, cfg, input, upto, None);
 
     let ann = match ppm {
       ppm_typed => {
@@ -494,9 +496,14 @@ pub fn build_target_config(sopts: @session::options,
       session::arch_x86_64 => x86_64::get_target_strs(os),
       session::arch_arm => arm::get_target_strs(os)
     };
-    let target_cfg: @session::config =
-        @{os: os, arch: arch, target_strs: target_strs, int_type: int_type,
-          uint_type: uint_type, float_type: float_type};
+    let target_cfg = @session::config {
+        os: os,
+        arch: arch,
+        target_strs: target_strs,
+        int_type: int_type,
+        uint_type: uint_type,
+        float_type: float_type
+    };
     return target_cfg;
 }
 
@@ -634,26 +641,27 @@ pub fn build_session_options(+binary: ~str,
         .map(|s| Path(*s));
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"));
     let test = opt_present(matches, ~"test");
-    let sopts: @session::options =
-        @{crate_type: crate_type,
-          static: static,
-          gc: gc,
-          optimize: opt_level,
-          debuginfo: debuginfo,
-          extra_debuginfo: extra_debuginfo,
-          lint_opts: lint_opts,
-          save_temps: save_temps,
-          jit: jit,
-          output_type: output_type,
-          addl_lib_search_paths: addl_lib_search_paths,
-          maybe_sysroot: sysroot_opt,
-          target_triple: target,
-          cfg: cfg,
-          binary: binary,
-          test: test,
-          parse_only: parse_only,
-          no_trans: no_trans,
-          debugging_opts: debugging_opts};
+    let sopts = @session::options {
+        crate_type: crate_type,
+        is_static: static,
+        gc: gc,
+        optimize: opt_level,
+        debuginfo: debuginfo,
+        extra_debuginfo: extra_debuginfo,
+        lint_opts: lint_opts,
+        save_temps: save_temps,
+        jit: jit,
+        output_type: output_type,
+        addl_lib_search_paths: addl_lib_search_paths,
+        maybe_sysroot: sysroot_opt,
+        target_triple: target,
+        cfg: cfg,
+        binary: binary,
+        test: test,
+        parse_only: parse_only,
+        no_trans: no_trans,
+        debugging_opts: debugging_opts
+    };
     return sopts;
 }
 
@@ -770,19 +778,22 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
  ]
 }
 
-pub type output_filenames = @{out_filename:Path, obj_filename:Path};
+pub struct OutputFilenames {
+    out_filename: Path,
+    obj_filename: Path
+}
 
 pub fn build_output_filenames(input: input,
                               odir: &Option<Path>,
                               ofile: &Option<Path>,
                               sess: Session)
-                           -> output_filenames {
+                           -> @OutputFilenames {
     let obj_path;
     let out_path;
     let sopts = sess.opts;
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
-            sopts.static && *sess.building_library;
+            sopts.is_static && *sess.building_library;
 
 
     let obj_suffix =
@@ -842,8 +853,11 @@ pub fn build_output_filenames(input: input,
         }
       }
     }
-    return @{out_filename: out_path,
-             obj_filename: obj_path};
+
+    @OutputFilenames {
+        out_filename: out_path,
+        obj_filename: obj_path
+    }
 }
 
 pub fn early_error(emitter: diagnostic::Emitter, msg: ~str) -> ! {

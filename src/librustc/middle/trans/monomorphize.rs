@@ -36,13 +36,13 @@ use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util::local_def;
 use syntax::parse::token::special_idents;
 
-pub fn monomorphic_fn(ccx: @crate_ctxt,
+pub fn monomorphic_fn(ccx: @CrateContext,
                       fn_id: ast::def_id,
                       real_substs: ~[ty::t],
                       vtables: Option<typeck::vtable_res>,
                       impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>) ->
-                      {val: ValueRef, must_cast: bool} {
+                      (ValueRef, bool) {
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
     let substs = vec::map(real_substs, |t| {
@@ -73,7 +73,7 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
       Some(val) => {
         debug!("leaving monomorphic fn %s",
                ty::item_path_str(ccx.tcx, fn_id));
-        return {val: val, must_cast: must_cast};
+        return (val, must_cast);
       }
       None => ()
     }
@@ -94,8 +94,7 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
       => (pt, i.ident, i.span),
       ast_map::node_foreign_item(*) => {
         // Foreign externs don't have to be monomorphized.
-        return {val: get_item_val(ccx, fn_id.node),
-                must_cast: true};
+        return (get_item_val(ccx, fn_id.node), true);
       }
       ast_map::node_dtor(_, dtor, _, pt) =>
           (pt, special_idents::dtor, dtor.span),
@@ -261,7 +260,7 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
     ccx.monomorphizing.insert(fn_id, depth);
 
     debug!("leaving monomorphic fn %s", ty::item_path_str(ccx.tcx, fn_id));
-    {val: lldecl, must_cast: must_cast}
+    (lldecl, must_cast)
 }
 
 pub fn normalize_for_monomorphization(tcx: ty::ctxt,
@@ -319,7 +318,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
     }
 }
 
-pub fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
+pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: ~[ty::t],
                     vtables: Option<typeck::vtable_res>,
                     impl_did_opt: Option<ast::def_id>,
                     param_uses: Option<~[type_use::type_uses]>) -> mono_id {

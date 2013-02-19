@@ -641,8 +641,10 @@ pub impl LookupContext {
             ccx: self.fcx.ccx,
             infcx: self.fcx.infcx()
         };
-        let {substs: impl_substs, ty: impl_ty} =
-            impl_self_ty(&vcx, location_info, impl_info.did);
+        let ty::ty_param_substs_and_ty {
+            substs: impl_substs,
+            ty: impl_ty
+        } = impl_self_ty(&vcx, location_info, impl_info.did);
 
         let (impl_ty, impl_substs) =
             self.create_rcvr_ty_and_substs_for_method(

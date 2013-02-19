@@ -17,7 +17,7 @@ use core::prelude::*;
 use middle::pat_util;
 use middle::ty::arg;
 use middle::ty;
-use middle::typeck::check::{FnCtxt, self_info};
+use middle::typeck::check::{FnCtxt, SelfInfo};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
 use middle::typeck::infer;
@@ -261,7 +261,7 @@ pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::expr) -> bool {
 pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                decl: &ast::fn_decl,
                                blk: ast::blk,
-                               self_info: Option<self_info>) -> bool {
+                               self_info: Option<SelfInfo>) -> bool {
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
     (visit.visit_block)(blk, wbcx, visit);

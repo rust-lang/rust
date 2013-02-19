@@ -14,34 +14,49 @@ use middle::ty;
 use syntax::ast::*;
 use syntax::visit;
 
-pub type ctx = {in_loop: bool, can_ret: bool};
+pub struct Context {
+    in_loop: bool,
+    can_ret: bool
+}
 
 pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate,
-                       {in_loop: false, can_ret: true},
+                       Context { in_loop: false, can_ret: true },
                        visit::mk_vt(@visit::Visitor {
         visit_item: |i, _cx, v| {
-            visit::visit_item(i, {in_loop: false, can_ret: true}, v);
+            visit::visit_item(i, Context {
+                                    in_loop: false,
+                                    can_ret: true
+                                 }, v);
         },
-        visit_expr: |e: @expr, cx: ctx, v: visit::vt<ctx>| {
+        visit_expr: |e: @expr, cx: Context, v: visit::vt<Context>| {
             match e.node {
               expr_while(e, ref b) => {
                 (v.visit_expr)(e, cx, v);
-                (v.visit_block)((*b), {in_loop: true,.. cx}, v);
+                (v.visit_block)((*b), Context { in_loop: true,.. cx }, v);
               }
               expr_loop(ref b, _) => {
-                (v.visit_block)((*b), {in_loop: true,.. cx}, v);
+                (v.visit_block)((*b), Context { in_loop: true,.. cx }, v);
               }
               expr_fn(*) => {
-                visit::visit_expr(e, {in_loop: false, can_ret: true}, v);
+                visit::visit_expr(e, Context {
+                                        in_loop: false,
+                                        can_ret: true
+                                     }, v);
               }
               expr_fn_block(_, ref b) => {
-                (v.visit_block)((*b), {in_loop: false, can_ret: false}, v);
+                (v.visit_block)((*b), Context {
+                                         in_loop: false,
+                                         can_ret: false
+                                      }, v);
               }
               expr_loop_body(@expr {node: expr_fn_block(_, ref b), _}) => {
                 let sigil = ty::ty_closure_sigil(ty::expr_ty(tcx, e));
                 let blk = (sigil == BorrowedSigil);
-                (v.visit_block)((*b), {in_loop: true, can_ret: blk}, v);
+                (v.visit_block)((*b), Context {
+                                         in_loop: true,
+                                         can_ret: blk
+                                      }, v);
               }
               expr_break(_) => {
                 if !cx.in_loop {

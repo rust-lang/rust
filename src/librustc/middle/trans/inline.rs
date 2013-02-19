@@ -27,7 +27,7 @@ use syntax::ast_util::local_def;
 // `translate` will be true if this function is allowed to translate the
 // item and false otherwise. Currently, this parameter is set to false when
 // translating default methods.
-pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
+pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
                                 translate: bool)
     -> ast::def_id {
     let _icx = ccx.insn_ctxt("maybe_instantiate_inline");
@@ -86,8 +86,11 @@ pub fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id,
           csearch::found(ast::ii_method(impl_did, mth)) => {
             ccx.stats.n_inlines += 1;
             ccx.external.insert(fn_id, Some(mth.id));
-            let {bounds: impl_bnds, region_param: _, ty: _} =
-                ty::lookup_item_type(ccx.tcx, impl_did);
+            let ty::ty_param_bounds_and_ty {
+                bounds: impl_bnds,
+                region_param: _,
+                ty: _
+            } = ty::lookup_item_type(ccx.tcx, impl_did);
             if translate && (*impl_bnds).len() + mth.tps.len() == 0u {
                 let llfn = get_item_val(ccx, mth.id);
                 let path = vec::append(
