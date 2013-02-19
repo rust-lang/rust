@@ -128,47 +128,28 @@ vec_reserve_shared(type_desc* ty, rust_vec_box** vp,
     reserve_vec_exact(task, vp, n_elts * ty->size);
 }
 
-extern "C" CDECL rust_vec*
-rand_seed() {
-    size_t size = sizeof(ub4) * RANDSIZ;
+extern "C" CDECL size_t
+rand_seed_size() {
+    return rng_seed_size();
+}
+
+extern "C" CDECL void
+rand_gen_seed(uint8_t* dest, size_t size) {
     rust_task *task = rust_get_current_task();
-    rust_vec *v = (rust_vec *) task->kernel->malloc(vec_size<uint8_t>(size),
-                                            "rand_seed");
-    v->fill = v->alloc = size;
-    rng_gen_seed(task->kernel, (uint8_t*) &v->data, size);
-    return v;
+    rng_gen_seed(task->kernel, dest, size);
 }
 
 extern "C" CDECL void *
-rand_new() {
+rand_new_seeded(uint8_t* seed, size_t seed_size) {
     rust_task *task = rust_get_current_task();
-    rust_sched_loop *thread = task->sched_loop;
-    rust_rng *rng = (rust_rng *) task->malloc(sizeof(rust_rng), "rand_new");
-    if (!rng) {
-        task->fail();
-        return NULL;
-    }
-    rng_init(thread->kernel, rng, NULL);
-    return rng;
-}
-
-extern "C" CDECL void *
-rand_new_seeded(rust_vec_box* seed) {
-    rust_task *task = rust_get_current_task();
-    rust_sched_loop *thread = task->sched_loop;
     rust_rng *rng = (rust_rng *) task->malloc(sizeof(rust_rng),
                                               "rand_new_seeded");
     if (!rng) {
         task->fail();
         return NULL;
     }
-    rng_init(thread->kernel, rng, seed);
+    rng_init(task->kernel, rng, seed, seed_size);
     return rng;
-}
-
-extern "C" CDECL void *
-rand_new_seeded2(rust_vec_box** seed) {
-    return rand_new_seeded(*seed);
 }
 
 extern "C" CDECL uint32_t

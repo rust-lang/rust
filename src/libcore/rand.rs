@@ -18,6 +18,7 @@ use u32;
 use uint;
 use util;
 use vec;
+use libc::size_t;
 
 /// A type that can be randomly generated using an RNG
 pub trait Rand {
@@ -120,9 +121,9 @@ enum rust_rng {}
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    unsafe fn rand_seed() -> ~[u8];
-    unsafe fn rand_new() -> *rust_rng;
-    unsafe fn rand_new_seeded2(&&seed: ~[u8]) -> *rust_rng;
+    unsafe fn rand_seed_size() -> size_t;
+    unsafe fn rand_gen_seed(buf: *mut u8, sz: size_t);
+    unsafe fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
     unsafe fn rand_next(rng: *rust_rng) -> u32;
     unsafe fn rand_free(rng: *rust_rng);
 }
@@ -388,15 +389,18 @@ impl Rng for @RandRes {
 /// Create a new random seed for seeded_rng
 pub fn seed() -> ~[u8] {
     unsafe {
-        rustrt::rand_seed()
+        let n = rustrt::rand_seed_size() as uint;
+        let mut s = vec::from_elem(n, 0_u8);
+        do vec::as_mut_buf(s) |p, sz| {
+            rustrt::rand_gen_seed(p, sz as size_t)
+        }
+        s
     }
 }
 
 /// Create a random number generator with a system specified seed
 pub fn Rng() -> Rng {
-    unsafe {
-        @RandRes(rustrt::rand_new()) as Rng
-    }
+    seeded_rng(seed())
 }
 
 /**
@@ -405,9 +409,15 @@ pub fn Rng() -> Rng {
  * all other generators constructed with the same seed. The seed may be any
  * length.
  */
-pub fn seeded_rng(seed: &~[u8]) -> Rng {
+pub fn seeded_rng(seed: &[u8]) -> Rng {
+    seeded_randres(seed) as Rng
+}
+
+fn seeded_randres(seed: &[u8]) -> @RandRes {
     unsafe {
-        @RandRes(rustrt::rand_new_seeded2(*seed)) as Rng
+        do vec::as_imm_buf(seed) |p, sz| {
+            @RandRes(rustrt::rand_new_seeded(p, sz as size_t))
+        }
     }
 }
 
@@ -457,7 +467,7 @@ pub fn task_rng() -> Rng {
     match r {
         None => {
             unsafe {
-                let rng = @RandRes(rustrt::rand_new());
+                let rng = seeded_randres(seed());
                 task::local_data::local_data_set(tls_rng_state, rng);
                 rng as Rng
             }
@@ -483,24 +493,24 @@ pub mod tests {
     #[test]
     pub fn rng_seeded() {
         let seed = rand::seed();
-        let ra = rand::seeded_rng(&seed);
-        let rb = rand::seeded_rng(&seed);
+        let ra = rand::seeded_rng(seed);
+        let rb = rand::seeded_rng(seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
     }
 
     #[test]
     pub fn rng_seeded_custom_seed() {
         // much shorter than generated seeds which are 1024 bytes
-        let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = rand::seeded_rng(&seed);
-        let rb = rand::seeded_rng(&seed);
+        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
+        let ra = rand::seeded_rng(seed);
+        let rb = rand::seeded_rng(seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
     }
 
     #[test]
     pub fn rng_seeded_custom_seed2() {
-        let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = rand::seeded_rng(&seed);
+        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
+        let ra = rand::seeded_rng(seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
         error!("%?", r);

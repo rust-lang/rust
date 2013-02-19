@@ -12,6 +12,12 @@
 #include "rust_rng.h"
 #include "rust_util.h"
 
+size_t
+rng_seed_size() {
+    randctx rctx;
+    return sizeof(rctx.randrsl);
+}
+
 // Initialization helpers for ISAAC RNG
 
 void
@@ -48,15 +54,17 @@ rng_gen_seed(rust_kernel* kernel, uint8_t* dest, size_t size) {
 }
 
 static void
-isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec_box* user_seed) {
+isaac_init(rust_kernel *kernel, randctx *rctx,
+           uint8_t* user_seed, size_t seed_len) {
     memset(rctx, 0, sizeof(randctx));
 
     char *env_seed = kernel->env->rust_seed;
     if (user_seed != NULL) {
         // ignore bytes after the required length
-        size_t seed_len = user_seed->body.fill < sizeof(rctx->randrsl)
-            ? user_seed->body.fill : sizeof(rctx->randrsl);
-        memcpy(&rctx->randrsl, user_seed->body.data, seed_len);
+        if (seed_len > sizeof(rctx->randrsl)) {
+            seed_len = sizeof(rctx->randrsl);
+        }
+        memcpy(&rctx->randrsl, user_seed, seed_len);
     } else if (env_seed != NULL) {
         ub4 seed = (ub4) atoi(env_seed);
         for (size_t i = 0; i < RANDSIZ; i ++) {
@@ -64,15 +72,18 @@ isaac_init(rust_kernel *kernel, randctx *rctx, rust_vec_box* user_seed) {
             seed = (seed + 0x7ed55d16) + (seed << 12);
         }
     } else {
-        rng_gen_seed(kernel, (uint8_t*)&rctx->randrsl, sizeof(rctx->randrsl));
+        rng_gen_seed(kernel,
+                     (uint8_t*)&rctx->randrsl,
+                     sizeof(rctx->randrsl));
     }
 
     randinit(rctx, 1);
 }
 
 void
-rng_init(rust_kernel* kernel, rust_rng* rng, rust_vec_box* user_seed) {
-    isaac_init(kernel, &rng->rctx, user_seed);
+rng_init(rust_kernel* kernel, rust_rng* rng,
+         uint8_t *user_seed, size_t seed_len) {
+    isaac_init(kernel, &rng->rctx, user_seed, seed_len);
     rng->reseedable = !user_seed && !kernel->env->rust_seed;
 }
 
@@ -85,15 +96,9 @@ rng_maybe_reseed(rust_kernel* kernel, rust_rng* rng) {
     if (bytes_generated < RESEED_THRESHOLD || !rng->reseedable) {
         return;
     }
-
-    uint32_t new_seed[RANDSIZ];
-    rng_gen_seed(kernel, (uint8_t*) new_seed, RANDSIZ * sizeof(uint32_t));
-
-    // Stir new seed into PRNG's entropy pool.
-    for (size_t i = 0; i < RANDSIZ; i++) {
-        rng->rctx.randrsl[i] ^= new_seed[i];
-    }
-
+    rng_gen_seed(kernel,
+                 (uint8_t*)rng->rctx.randrsl,
+                 sizeof(rng->rctx.randrsl));
     randinit(&rng->rctx, 1);
 }
 

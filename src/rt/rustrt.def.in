@@ -17,9 +17,9 @@ rust_mktime
 new_task
 precise_time_ns
 rand_free
-rand_new
 rand_new_seeded
-rand_new_seeded2
+rand_seed_size
+rand_gen_seed
 rand_next
 rand_seed
 rust_get_sched_id
