@@ -429,7 +429,7 @@ pub fn mk_ident_interner() -> @ident_interner {
                 ];
 
                 let rv = @ident_interner {
-                    interner: interner::mk_prefill(init_vec)
+                    interner: interner::Interner::prefill(init_vec)
                 };
 
                 task::local_data::local_data_set(interner_key!(), @rv);
@@ -443,7 +443,7 @@ pub fn mk_ident_interner() -> @ident_interner {
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
 pub fn mk_fake_ident_interner() -> @ident_interner {
-    @ident_interner { interner: interner::mk::<@~str>() }
+    @ident_interner { interner: interner::Interner::new() }
 }
 
 /**

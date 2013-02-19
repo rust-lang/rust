@@ -62,7 +62,7 @@ pub fn anon_src() -> ~str { ~"<anon>" }
 
 pub fn source_name(input: input) -> ~str {
     match input {
-      file_input(ref ifile) => (*ifile).to_str(),
+      file_input(ref ifile) => ifile.to_str(),
       str_input(_) => anon_src()
     }
 }
@@ -97,24 +97,24 @@ pub fn default_configuration(sess: Session, +argv0: ~str, input: input) ->
     };
 
     return ~[ // Target bindings.
-         attr::mk_word_item(str::from_slice(os::FAMILY)),
-         mk(~"target_os", tos),
-         mk(~"target_family", str::from_slice(os::FAMILY)),
-         mk(~"target_arch", arch),
-         mk(~"target_endian", end),
-         mk(~"target_word_size", wordsz),
-         mk(~"target_libc", libc),
+         attr::mk_word_item(@str::from_slice(os::FAMILY)),
+         mk(@~"target_os", @tos),
+         mk(@~"target_family", @str::from_slice(os::FAMILY)),
+         mk(@~"target_arch", @arch),
+         mk(@~"target_endian", @end),
+         mk(@~"target_word_size", @wordsz),
+         mk(@~"target_libc", @libc),
          // Build bindings.
-         mk(~"build_compiler", argv0),
-         mk(~"build_input", source_name(input))];
+         mk(@~"build_compiler", @argv0),
+         mk(@~"build_input", @source_name(input))];
 }
 
 pub fn append_configuration(+cfg: ast::crate_cfg, +name: ~str)
                          -> ast::crate_cfg {
     if attr::contains_name(cfg, name) {
-        return cfg;
+        cfg
     } else {
-        return vec::append_one(cfg, attr::mk_word_item(name));
+        vec::append_one(cfg, attr::mk_word_item(@name))
     }
 }
 
@@ -142,7 +142,7 @@ pub fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // meta_word variant.
     let mut words = ~[];
     for cfgspecs.each |s| {
-        words.push(attr::mk_word_item(/*bad*/copy *s));
+        words.push(attr::mk_word_item(@/*bad*/copy *s));
     }
     return words;
 }
@@ -541,11 +541,11 @@ pub fn build_session_options(+binary: ~str,
         let flags = vec::append(getopts::opt_strs(matches, level_short),
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
-            let lint_name = str::replace(*lint_name, ~"-", ~"_");
+            let lint_name = @str::replace(*lint_name, ~"-", ~"_");
             match lint_dict.find(&lint_name) {
               None => {
                 early_error(demitter, fmt!("unknown %s flag: %s",
-                                           level_name, lint_name));
+                                           level_name, *lint_name));
               }
               Some(lint) => {
                 lint_opts.push((lint.lint, *level));

@@ -47,10 +47,10 @@ fn abi_info(arch: session::arch) -> cabi::ABIInfo {
     }
 }
 
-pub fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> ~str {
+pub fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> @~str {
     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
         None => ccx.sess.str_of(i.ident),
-        option::Some(ref ln) => (/*bad*/copy *ln)
+        Some(ln) => ln,
     }
 }
 
@@ -228,18 +228,18 @@ pub fn trans_foreign_mod(ccx: @crate_ctxt,
         }
 
         let lname = link_name(ccx, foreign_item);
-        let llbasefn = base_fn(ccx, copy lname, tys, cc);
+        let llbasefn = base_fn(ccx, *lname, tys, cc);
         // Name the shim function
         let shim_name = lname + ~"__c_stack_shim";
         return build_shim_fn_(ccx, shim_name, llbasefn, tys, cc,
                            build_args, build_ret);
     }
 
-    fn base_fn(ccx: @crate_ctxt, +lname: ~str, tys: @c_stack_tys,
+    fn base_fn(ccx: @crate_ctxt, lname: &str, tys: @c_stack_tys,
                cc: lib::llvm::CallConv) -> ValueRef {
         // Declare the "prototype" for the base function F:
         do tys.fn_ty.decl_fn |fnty| {
-            decl_fn(ccx.llmod, /*bad*/copy lname, cc, fnty)
+            decl_fn(ccx.llmod, lname, cc, fnty)
         }
     }
 
@@ -250,7 +250,7 @@ pub fn trans_foreign_mod(ccx: @crate_ctxt,
                        cc: lib::llvm::CallConv) {
         let fcx = new_fn_ctxt(ccx, ~[], decl, None);
         let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
-        let llbasefn = base_fn(ccx, link_name(ccx, item), tys, cc);
+        let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
         let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
@@ -334,13 +334,13 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
                        +path: ast_map::path,
                        substs: @param_substs,
                        ref_id: Option<ast::node_id>) {
-    debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
+    debug!("trans_intrinsic(item.ident=%s)", *ccx.sess.str_of(item.ident));
 
     // XXX: Bad copy.
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id, None,
                                Some(copy substs), Some(item.span));
     let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
-    match ccx.sess.str_of(item.ident) {
+    match *ccx.sess.str_of(item.ident) {
         ~"atomic_cxchg" => {
             let old = AtomicCmpXchg(bcx,
                                     get_param(decl, first_real_arg),

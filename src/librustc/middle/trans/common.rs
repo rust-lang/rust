@@ -186,7 +186,7 @@ pub struct crate_ctxt {
      // Cache generated vtables
      vtables: HashMap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: HashMap<~str, ValueRef>,
+     const_cstr_cache: HashMap<@~str, ValueRef>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,
@@ -1141,15 +1141,15 @@ pub fn C_u8(i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: @crate_ctxt, +s: ~str) -> ValueRef {
+pub fn C_cstr(cx: @crate_ctxt, s: @~str) -> ValueRef {
     unsafe {
         match cx.const_cstr_cache.find(&s) {
-          Some(llval) => return llval,
-          None => ()
+            Some(llval) => return llval,
+            None => ()
         }
 
-        let sc = do str::as_c_str(s) |buf| {
-            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+        let sc = do str::as_c_str(*s) |buf| {
+            llvm::LLVMConstString(buf, s.len() as c_uint, False)
         };
         let g =
             str::as_c_str(fmt!("str%u", (cx.names)(~"str").repr),
@@ -1166,9 +1166,9 @@ pub fn C_cstr(cx: @crate_ctxt, +s: ~str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_estr_slice(cx: @crate_ctxt, +s: ~str) -> ValueRef {
+pub fn C_estr_slice(cx: @crate_ctxt, s: @~str) -> ValueRef {
     unsafe {
-        let len = str::len(s);
+        let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
         C_struct(~[cs, C_uint(cx, len + 1u /* +1 for null */)])
     }
@@ -1324,7 +1324,7 @@ pub fn path_str(sess: session::Session, p: path) -> ~str {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }
                 else { r += ~"::"; }
-                r += sess.str_of(s);
+                r += *sess.str_of(s);
             }
         }
     }

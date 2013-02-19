@@ -357,20 +357,20 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             tcx.sess.span_fatal(cm.span,
                  fmt!("method `%s` is declared as \
                        static in its impl, but not in \
-                       its trait", tcx.sess.str_of(impl_m.ident)));
+                       its trait", *tcx.sess.str_of(impl_m.ident)));
         }
         else if trait_m.self_ty == ast::sty_static {
             tcx.sess.span_fatal(cm.span,
                  fmt!("method `%s` is declared as \
                        static in its trait, but not in \
-                       its impl", tcx.sess.str_of(impl_m.ident)));
+                       its impl", *tcx.sess.str_of(impl_m.ident)));
         }
         else {
             tcx.sess.span_err(
                 cm.span,
                 fmt!("method `%s`'s self type does \
                       not match the trait method's \
-                      self type", tcx.sess.str_of(impl_m.ident)));
+                      self type", *tcx.sess.str_of(impl_m.ident)));
         }
     }
 
@@ -379,7 +379,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             cm.span,
             fmt!("method `%s` has %u type %s, but its trait \
                   declaration has %u type %s",
-                 tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
+                 *tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
                  pluralize(impl_m.tps.len(), ~"parameter"),
                  trait_m.tps.len(),
                  pluralize(trait_m.tps.len(), ~"parameter")));
@@ -391,7 +391,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             cm.span,
             fmt!("method `%s` has %u parameters \
                   but the trait has %u",
-                 tcx.sess.str_of(trait_m.ident),
+                 *tcx.sess.str_of(trait_m.ident),
                  vec::len(impl_m.fty.sig.inputs),
                  vec::len(trait_m.fty.sig.inputs)));
         return;
@@ -412,7 +412,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                fmt!("in method `%s`, \
                      type parameter %u has %u %s, but the same type \
                      parameter in its trait declaration has %u %s",
-                    tcx.sess.str_of(trait_m.ident),
+                    *tcx.sess.str_of(trait_m.ident),
                     i, impl_param_bounds.len(),
                     pluralize(impl_param_bounds.len(), ~"bound"),
                     trait_param_bounds.len(),
@@ -466,7 +466,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             tcx.sess.span_err(
                 cm.span,
                 fmt!("method `%s` has an incompatible type: %s",
-                     tcx.sess.str_of(trait_m.ident),
+                     *tcx.sess.str_of(trait_m.ident),
                      ty::type_err_to_str(tcx, terr)));
             ty::note_and_explain_type_err(tcx, terr);
         }
@@ -526,7 +526,7 @@ pub fn check_methods_against_trait(ccx: @mut CrateCtxt,
                 tcx.sess.span_err(
                     impl_m.span,
                     fmt!("method `%s` is not a member of trait `%s`",
-                         tcx.sess.str_of(impl_m.mty.ident),
+                         *tcx.sess.str_of(impl_m.mty.ident),
                          path_to_str(a_trait_ty.path, tcx.sess.intr())));
             }
         }
@@ -596,7 +596,7 @@ pub fn convert(ccx: @mut CrateCtxt, it: @ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.find(&it.id);
     debug!("convert: item %s with id %d rp %?",
-           tcx.sess.str_of(it.ident), it.id, rp);
+           *tcx.sess.str_of(it.ident), it.id, rp);
     match /*bad*/copy it.node {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
@@ -809,7 +809,7 @@ pub fn ty_of_item(ccx: @mut CrateCtxt, it: @ast::item)
                    region_param: None,
                    ty: ty::mk_bare_fn(ccx.tcx, tofd)};
         debug!("type of %s (id %d) is %s",
-               tcx.sess.str_of(it.ident),
+               *tcx.sess.str_of(it.ident),
                it.id,
                ppaux::ty_to_str(tcx, tpt.ty));
         ccx.tcx.tcache.insert(local_def(it.id), tpt);

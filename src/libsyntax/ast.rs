@@ -173,9 +173,9 @@ pub type meta_item = spanned<meta_item_>;
 #[auto_decode]
 #[deriving_eq]
 pub enum meta_item_ {
-    meta_word(~str),
-    meta_list(~str, ~[@meta_item]),
-    meta_name_value(~str, lit),
+    meta_word(@~str),
+    meta_list(@~str, ~[@meta_item]),
+    meta_name_value(@~str, lit),
 }
 
 pub type blk = spanned<blk_>;

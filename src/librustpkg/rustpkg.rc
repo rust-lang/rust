@@ -89,7 +89,7 @@ impl PackageScript {
                     ast::meta_name_value(v, spanned {
                                                 node: ast::lit_str(s),
                                                 span: _}) => {
-                        match v {
+                        match *v {
                             ~"id" => id = Some(*s),
                             ~"vers" => vers = Some(*s),
                             _ => ()
@@ -112,7 +112,7 @@ impl PackageScript {
                     ast::meta_name_value(v, spanned {
                                                 node: ast::lit_str(s),
                                                 span: _}) => {
-                        match v {
+                        match *v {
                             ~"url" => url = Some(*s),
                             ~"target" => target = Some(*s),
                             _ => ()
@@ -133,7 +133,7 @@ impl PackageScript {
                     ast::meta_name_value(v, spanned {
                                                 node: ast::lit_str(s),
                                                 span: _}) => {
-                        match v {
+                        match *v {
                             ~"file" => file = Some(*s),
                             _ => ()
                         }
@@ -148,7 +148,7 @@ impl PackageScript {
         for crate.node.attrs.each |a| {
             match a.node.value.node {
                 ast::meta_list(v, mis) => {
-                    match v {
+                    match *v {
                         ~"pkg" => {
                             let (i, v) = load_pkg_attr(mis);
 

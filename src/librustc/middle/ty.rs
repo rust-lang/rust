@@ -783,11 +783,11 @@ pub fn mk_ctxt(s: session::Session,
     let mut legacy_records = false;
     for crate.node.attrs.each |attribute| {
         match attribute.node.value.node {
-            ast::meta_word(ref w) if (*w) == ~"legacy_modes" => {
+            ast::meta_word(w) if *w == ~"legacy_modes" => {
                 legacy_modes = true;
                 if legacy_records { break; }
             }
-            ast::meta_word(ref w) if (*w) == ~"legacy_records" => {
+            ast::meta_word(w) if *w == ~"legacy_records" => {
                 legacy_records = true;
                 if legacy_modes { break; }
             }
@@ -3226,7 +3226,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
     for fields.each |f| { if f.ident == id { return i; } i += 1u; }
     tcx.sess.bug(fmt!(
         "No field named `%s` found in the list of fields `%?`",
-        tcx.sess.str_of(id),
+        *tcx.sess.str_of(id),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
@@ -3235,7 +3235,7 @@ pub fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
       Some(f) => f,
       // Do we only call this when we know the field is legit?
       None => fail!(fmt!("get_field: ty doesn't have a field %s",
-                         tcx.sess.str_of(id)))
+                         *tcx.sess.str_of(id)))
     }
 }
 
@@ -3465,8 +3465,8 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_record_fields(values) => {
             fmt!("expected a record with field `%s` but found one with field \
                   `%s`",
-                 cx.sess.str_of(values.expected),
-                 cx.sess.str_of(values.found))
+                 *cx.sess.str_of(values.expected),
+                 *cx.sess.str_of(values.found))
         }
         terr_arg_count => ~"incorrect number of function parameters",
         terr_mode_mismatch(values) => {
@@ -3500,7 +3500,7 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  vstore_to_str(cx, (*values).found))
         }
         terr_in_field(err, fname) => {
-            fmt!("in field `%s`, %s", cx.sess.str_of(fname),
+            fmt!("in field `%s`, %s", *cx.sess.str_of(fname),
                  type_err_to_str(cx, err))
         }
         terr_sorts(values) => {

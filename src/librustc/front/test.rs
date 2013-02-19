@@ -57,7 +57,7 @@ pub fn modify_for_testing(sess: session::Session,
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
     let should_test = attr::contains(crate.node.config,
-                                     attr::mk_word_item(~"test"));
+                                     attr::mk_word_item(@~"test"));
 
     if should_test {
         generate_test_harness(sess, crate)
@@ -111,7 +111,7 @@ fn fold_mod(cx: @mut TestCtxt,
     fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
         if !*cx.sess.building_library {
             @ast::item{attrs: item.attrs.filtered(|attr| {
-                               attr::get_attr_name(*attr) != ~"main"
+                               *attr::get_attr_name(attr) != ~"main"
                            }),.. copy *item}
         } else { item }
     }
@@ -262,7 +262,7 @@ mod __test {
 fn mk_std(cx: &TestCtxt) -> @ast::view_item {
     let vers = ast::lit_str(@~"0.6");
     let vers = nospan(vers);
-    let mi = ast::meta_name_value(~"vers", vers);
+    let mi = ast::meta_name_value(@~"vers", vers);
     let mi = nospan(mi);
     let id_std = cx.sess.ident_of(~"std");
     let vi = if is_std(cx) {
@@ -310,7 +310,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
 
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_attr =
-        attr::mk_attr(attr::mk_word_item(~"!resolve_unexported"));
+        attr::mk_attr(attr::mk_word_item(@~"!resolve_unexported"));
 
     let item = ast::item {
         ident: cx.sess.ident_of(~"__test"),
@@ -366,7 +366,7 @@ fn is_std(cx: &TestCtxt) -> bool {
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, ~"name") {
-          Some(~"std") => true,
+          Some(@~"std") => true,
           _ => false
         }
     };

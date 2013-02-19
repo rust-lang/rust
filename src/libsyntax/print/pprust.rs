@@ -498,9 +498,16 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         end(s); // end the outer cbox
 
       }
-      ast::item_fn(decl, purity, typarams, ref body) => {
-        print_fn(s, decl, Some(purity), item.ident, typarams, None,
-                 item.vis);
+      ast::item_fn(ref decl, purity, ref typarams, ref body) => {
+        print_fn(
+            s,
+            /* FIXME (#2543) */ copy *decl,
+            Some(purity),
+            item.ident,
+            /* FIXME (#2543) */ copy *typarams,
+            None,
+            item.vis
+        );
         word(s.s, ~" ");
         print_block_with_attrs(s, (*body), item.attrs);
       }
@@ -542,9 +549,15 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         word(s.s, ~";");
         end(s); // end the outer ibox
       }
-      ast::item_enum(ref enum_definition, params) => {
-        print_enum_def(s, (*enum_definition), params, item.ident,
-                       item.span, item.vis);
+      ast::item_enum(ref enum_definition, ref params) => {
+        print_enum_def(
+            s,
+            *enum_definition,
+            /* FIXME (#2543) */ copy *params,
+            item.ident,
+            item.span,
+            item.vis
+        );
       }
       ast::item_struct(struct_def, tps) => {
           head(s, visibility_qualified(item.vis, ~"struct"));
@@ -580,13 +593,13 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_trait(tps, traits, ref methods) => {
+      ast::item_trait(ref tps, ref traits, ref methods) => {
         head(s, visibility_qualified(item.vis, ~"trait"));
         print_ident(s, item.ident);
-        print_type_params(s, tps);
-        if vec::len(traits) != 0u {
+        print_type_params(s, /* FIXME (#2543) */ copy *tps);
+        if traits.len() != 0u {
             word(s.s, ~":");
-            for vec::each(traits) |trait_| {
+            for traits.each |trait_| {
                 nbsp(s);
                 print_path(s, trait_.path, false);
             }
@@ -622,7 +635,7 @@ pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
         ident == enum_definition.variants[0].node.name;
     if newtype {
         match enum_definition.variants[0].node.kind {
-            ast::tuple_variant_kind(args) if args.len() == 1 => {}
+            ast::tuple_variant_kind(ref args) if args.len() == 1 => {}
             _ => newtype = false
         }
     }
@@ -887,7 +900,7 @@ pub fn print_attribute(s: @ps, attr: ast::attribute) {
     if attr.node.is_sugared_doc {
         let meta = attr::attr_meta(attr);
         let comment = attr::get_meta_item_value_str(meta).get();
-        word(s.s, comment);
+        word(s.s, *comment);
     } else {
         word(s.s, ~"#[");
         print_meta_item(s, @attr.node.value);
@@ -1331,24 +1344,24 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, match_indent_unit);
       }
-      ast::expr_fn(sigil, decl, ref body, _) => {
+      ast::expr_fn(sigil, ref decl, ref body, _) => {
         // containing cbox, will be closed by print-block at }
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         print_fn_header_info(s, None, None, ast::Many,
                              Some(sigil), ast::inherited);
-        print_fn_args_and_ret(s, decl, None);
+        print_fn_args_and_ret(s, /* FIXME (#2543) */ copy *decl, None);
         space(s.s);
         print_block(s, (*body));
       }
-      ast::expr_fn_block(decl, ref body) => {
+      ast::expr_fn_block(ref decl, ref body) => {
         // in do/for blocks we don't want to show an empty
         // argument list, but at this point we don't know which
         // we are inside.
         //
         // if !decl.inputs.is_empty() {
-        print_fn_block_args(s, decl);
+        print_fn_block_args(s, /* FIXME (#2543) */ copy *decl);
         space(s.s);
         // }
         assert (*body).node.stmts.is_empty();
@@ -1812,16 +1825,21 @@ pub fn print_type_params(s: @ps, &&params: ~[ast::ty_param]) {
 pub fn print_meta_item(s: @ps, &&item: @ast::meta_item) {
     ibox(s, indent_unit);
     match item.node {
-      ast::meta_word(ref name) => word(s.s, (*name)),
-      ast::meta_name_value(ref name, value) => {
-        word_space(s, (*name));
+      ast::meta_word(name) => word(s.s, *name),
+      ast::meta_name_value(name, value) => {
+        word_space(s, *name);
         word_space(s, ~"=");
         print_literal(s, @value);
       }
-      ast::meta_list(ref name, items) => {
-        word(s.s, (*name));
+      ast::meta_list(name, ref items) => {
+        word(s.s, *name);
         popen(s);
-        commasep(s, consistent, items, print_meta_item);
+        commasep(
+            s,
+            consistent,
+            /* FIXME (#2543) */ copy *items,
+            print_meta_item
+        );
         pclose(s);
       }
     }
