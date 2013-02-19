@@ -114,8 +114,9 @@ for more information on them.
 
 When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
-API-documentation tool; `cargo`, the Rust package manager;
-and `rusti`, the Rust REPL.
+API-documentation tool; `rustpkg`, the Rust package manager;
+`rusti`, the Rust REPL; and `rust`, a tool which acts as a unified way to
+call them, either directly or with common command line arguments.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://static.rust-lang.org/dist/rust-0.5.tar.gz
@@ -2184,7 +2185,7 @@ impl Circle for CircleStruct {
 }
 impl Shape for CircleStruct {
     fn area(&self) -> float { pi * square(self.radius) }
-}   
+}
 ~~~~
 
 Notice that methods of `Circle` can call methods on `Shape`, as our
