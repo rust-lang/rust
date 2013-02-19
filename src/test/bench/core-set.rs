@@ -152,11 +152,11 @@ fn main() {
         }
     };
 
-    let seed = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let max = 200000;
 
     {
-        let rng = rand::seeded_rng(&seed);
+        let rng = rand::seeded_rng(seed);
         let mut results = empty_results();
         results.bench_int(rng, num_keys, max, || LinearSet::new::<uint>());
         results.bench_str(rng, num_keys, || LinearSet::new::<~str>());
@@ -164,7 +164,7 @@ fn main() {
     }
 
     {
-        let rng = rand::seeded_rng(&seed);
+        let rng = rand::seeded_rng(seed);
         let mut results = empty_results();
         results.bench_int(rng, num_keys, max, || TreeSet::new::<uint>());
         results.bench_str(rng, num_keys, || TreeSet::new::<~str>());
@@ -172,7 +172,7 @@ fn main() {
     }
 
     {
-        let rng = rand::seeded_rng(&seed);
+        let rng = rand::seeded_rng(seed);
         let mut results = empty_results();
         results.bench_int(rng, num_keys, max, || BitvSet::new());
         write_results("std::bitv::BitvSet", &results);
