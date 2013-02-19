@@ -156,7 +156,7 @@ pub fn monomorphic_fn(ccx: @crate_ctxt,
         lldecl
     };
 
-    let psubsts = Some(param_substs {
+    let psubsts = Some(@param_substs {
         tys: substs,
         vtables: vtables,
         bounds: tpt.bounds,

@@ -332,7 +332,7 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
                        decl: ValueRef,
                        item: @ast::foreign_item,
                        +path: ast_map::path,
-                       +substs: param_substs,
+                       substs: @param_substs,
                        ref_id: Option<ast::node_id>) {
     debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
 
