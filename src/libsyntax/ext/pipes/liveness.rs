@@ -43,13 +43,13 @@ use ext::base::ext_ctxt;
 use ext::pipes::proto::protocol;
 
 use core::str;
-use std::bitv::{Bitv};
+use std::bitv::Bitv;
 
 pub fn analyze(proto: protocol, _cx: ext_ctxt) {
     debug!("initializing colive analysis");
     let num_states = proto.num_states();
-    let colive = do (copy proto.states).map_to_vec |state| {
-        let bv = ~Bitv(num_states, false);
+    let mut colive = do (copy proto.states).map_to_vec |state| {
+        let mut bv = ~Bitv::new(num_states, false);
         for state.reachable |s| {
             bv.set(s.id, true);
         }
@@ -61,15 +61,19 @@ pub fn analyze(proto: protocol, _cx: ext_ctxt) {
     while changed {
         changed = false;
         debug!("colive iteration %?", i);
+        let mut new_colive = ~[];
         for colive.eachi |i, this_colive| {
+            let mut result = ~this_colive.clone();
             let this = proto.get_state_by_id(i);
             for this_colive.ones |j| {
                 let next = proto.get_state_by_id(j);
                 if this.dir == next.dir {
-                    changed = changed || this_colive.union(colive[j]);
+                    changed = result.union(colive[j]) || changed;
                 }
             }
+            new_colive.push(result)
         }
+        colive = new_colive;
         i += 1;
     }
 
