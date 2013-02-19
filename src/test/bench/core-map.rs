@@ -302,10 +302,10 @@ fn main() {
         }
     };
 
-    let seed = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     {
-        let rng = rand::seeded_rng(&seed);
+        let rng = rand::seeded_rng(seed);
         let mut results = empty_results();
         old_int_benchmarks(rng, num_keys, &mut results);
         old_str_benchmarks(rng, num_keys, &mut results);
@@ -313,7 +313,7 @@ fn main() {
     }
 
     {
-        let rng = rand::seeded_rng(&seed);
+        let rng = rand::seeded_rng(seed);
         let mut results = empty_results();
         linear_int_benchmarks(rng, num_keys, &mut results);
         linear_str_benchmarks(rng, num_keys, &mut results);
@@ -321,7 +321,7 @@ fn main() {
     }
 
     {
-        let rng = rand::seeded_rng(&seed);
+        let rng = rand::seeded_rng(seed);
         let mut results = empty_results();
         tree_int_benchmarks(rng, num_keys, &mut results);
         tree_str_benchmarks(rng, num_keys, &mut results);
