@@ -636,11 +636,12 @@ struct Triple { x: int, y: int, z: int }
 
 pub fn main() {
     unsafe {
-        let r = (1,2,3,true,false, Triple {x:5,y:4,z:3});
+        let r = (1,2,3,true,false, Triple {x:5,y:4,z:3}, (12,));
         let p = ptr::addr_of(&r) as *c_void;
         let u = my_visitor(@Stuff {mut ptr1: p,
                              mut ptr2: p,
-                             mut vals: ~[]});
+                             mut vals: ~[]
+                                  });
         let v = ptr_visit_adaptor(Inner {inner: u});
         let td = get_tydesc_for(r);
         unsafe { error!("tydesc sz: %u, align: %u",
@@ -653,7 +654,7 @@ pub fn main() {
         }
         error!("%?", copy u.vals);
         assert u.vals == ~[
-            ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3"
+            ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"
         ];
     }
  }

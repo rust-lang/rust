@@ -414,6 +414,9 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
       ast::ty_tup(elts) => {
         popen(s);
         commasep(s, inconsistent, elts, print_type);
+        if elts.len() == 1 {
+            word(s.s, ~",");
+        }
         pclose(s);
       }
       ast::ty_bare_fn(f) => {
