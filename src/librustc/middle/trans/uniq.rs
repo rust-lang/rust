@@ -42,8 +42,11 @@ pub fn duplicate(bcx: block, src_box: ValueRef, src_ty: ty::t) -> Result {
     let body_datum = src_datum.box_body(bcx);
 
     // Malloc space in exchange heap and copy src into it
-    let {bcx: bcx, box: dst_box, body: dst_body} =
-        malloc_unique(bcx, body_datum.ty);
+    let MallocResult {
+        bcx: bcx,
+        box: dst_box,
+        body: dst_body
+    } = malloc_unique(bcx, body_datum.ty);
     body_datum.copy_to(bcx, datum::INIT, dst_body);
 
     // Copy the type descriptor

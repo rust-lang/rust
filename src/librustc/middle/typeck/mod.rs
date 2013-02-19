@@ -235,7 +235,11 @@ pub fn lookup_def_ccx(ccx: @mut CrateCtxt, sp: span, id: ast::node_id)
 }
 
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
-    {bounds: @~[], region_param: None, ty: t}
+    ty::ty_param_bounds_and_ty {
+        bounds: @~[],
+        region_param: None,
+        ty: t
+    }
 }
 
 pub fn require_same_types(
