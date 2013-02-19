@@ -146,7 +146,7 @@ struct LocalVarMetadata {
 struct TyDescMetadata {
     hash: uint
 }
-struct BlockMetadata { 
+struct BlockMetadata {
     start: codemap::Loc,
     end: codemap::Loc
 }
@@ -261,7 +261,8 @@ fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
     }, str::from_slice(work_dir))
 }
 
-fn create_file(cx: @CrateContext, +full_path: ~str) -> @Metadata<FileMetadata> {
+fn create_file(cx: @CrateContext, +full_path: ~str)
+    -> @Metadata<FileMetadata> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
     match cached_metadata::<@Metadata<FileMetadata>>(

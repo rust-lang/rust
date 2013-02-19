@@ -45,7 +45,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
                                      }, v);
               }
               expr_fn_block(_, ref b) => {
-                (v.visit_block)((*b), Context { 
+                (v.visit_block)((*b), Context {
                                          in_loop: false,
                                          can_ret: false
                                       }, v);

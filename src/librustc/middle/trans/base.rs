@@ -353,7 +353,7 @@ pub fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef)
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
     let non_gc_box = non_gc_box_cast(bcx, llbox);
     let body = GEPi(bcx, non_gc_box, [0u, abi::box_field_body]);
-    
+
     MallocResult { bcx: bcx, box: llbox, body: body }
 }
 
@@ -479,7 +479,9 @@ pub fn get_res_dtor(ccx: @CrateContext, did: ast::def_id,
             inline::maybe_instantiate_inline(ccx, did, true)
         } else { did };
         assert did.crate == ast::local_crate;
-        let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, None, None, None);
+        let (val, _) =
+            monomorphize::monomorphic_fn(ccx, did, substs, None, None, None);
+
         val
     } else if did.crate == ast::local_crate {
         get_item_val(ccx, did.node)
@@ -2206,7 +2208,8 @@ pub fn is_main_fn(sess: &Session, node_id: ast::node_id) -> bool {
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-pub fn create_main_wrapper(ccx: @CrateContext, _sp: span, main_llfn: ValueRef) {
+pub fn create_main_wrapper(ccx: @CrateContext,
+                           _sp: span, main_llfn: ValueRef) {
 
     let llfn = create_main(ccx, main_llfn);
     create_entry_fn(ccx, llfn);
@@ -2911,7 +2914,8 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
     }
 }
 
-pub fn crate_ctxt_to_encode_parms(cx: @CrateContext) -> encoder::EncodeParams {
+pub fn crate_ctxt_to_encode_parms(cx: @CrateContext)
+    -> encoder::EncodeParams {
     let encode_inlined_item: encoder::encode_inlined_item =
         |ecx, ebml_w, path, ii|
         astencode::encode_inlined_item(ecx, ebml_w, path, ii, cx.maps);

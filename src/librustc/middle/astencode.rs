@@ -565,7 +565,8 @@ fn encode_method_map_entry(ecx: @e::EncodeContext,
 }
 
 impl read_method_map_entry_helper for reader::Decoder {
-    fn read_method_map_entry(xcx: @ExtendedDecodeContext) -> method_map_entry {
+    fn read_method_map_entry(xcx: @ExtendedDecodeContext)
+        -> method_map_entry {
         do self.read_rec {
             method_map_entry {
                 self_arg: self.read_field(~"self_arg", 0u, || {
@@ -672,7 +673,8 @@ fn encode_vtable_origin(ecx: @e::EncodeContext,
 
 trait vtable_decoder_helpers {
     fn read_vtable_res(xcx: @ExtendedDecodeContext) -> typeck::vtable_res;
-    fn read_vtable_origin(xcx: @ExtendedDecodeContext) -> typeck::vtable_origin;
+    fn read_vtable_origin(xcx: @ExtendedDecodeContext)
+        -> typeck::vtable_origin;
 }
 
 impl vtable_decoder_helpers for reader::Decoder {
