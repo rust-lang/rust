@@ -21,7 +21,6 @@ rand_new_seeded
 rand_seed_size
 rand_gen_seed
 rand_next
-rand_seed
 rust_get_sched_id
 rust_get_argc
 rust_get_argv
