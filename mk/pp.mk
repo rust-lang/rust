@@ -19,7 +19,8 @@ else
                          $(S)src/test/*/*/*.rs) \
               $(wildcard $(S)src/fuzzer/*.rs)   \
               $(wildcard $(S)src/rustpkg/*.rs) \
-              $(wildcard $(S)src/rusti/*.rs)
+              $(wildcard $(S)src/rusti/*.rs) \
+              $(wildcard $(S)src/rust/*.rs)
 
   PP_INPUTS_FILTERED = $(shell echo $(PP_INPUTS) | xargs grep -L \
                        "no-reformat\|xfail-pretty\|xfail-test")
