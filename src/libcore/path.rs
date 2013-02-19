@@ -65,6 +65,7 @@ pub trait GenericPath {
     pure fn pop() -> Self;
 
     pure fn unsafe_join((&Self)) -> Self;
+    pure fn is_restricted() -> bool;
 
     pure fn normalize() -> Self;
 }
@@ -496,6 +497,10 @@ impl GenericPath for PosixPath {
         }
     }
 
+    pure fn is_restricted() -> bool {
+        false
+    }
+
     pure fn push_many(cs: &[~str]) -> PosixPath {
         let mut v = copy self.components;
         for cs.each |e| {
@@ -735,6 +740,19 @@ impl GenericPath for WindowsPath {
             device: copy self.device,
             is_absolute: self.is_absolute || other.is_absolute,
             components: copy other.components
+        }
+    }
+
+    pure fn is_restricted() -> bool {
+        match self.filestem() {
+            Some(stem) => {
+                match stem.to_lower() {
+                    ~"con" | ~"aux" | ~"com1" | ~"com2" | ~"com3" | ~"com4" |
+                    ~"lpt1" | ~"lpt2" | ~"lpt3" | ~"prn" | ~"nul" => true,
+                    _ => false
+                }
+            },
+            None => false
         }
     }
 
@@ -1093,5 +1111,13 @@ mod tests {
         t(&(WindowsPath("c:\\foo")
             .normalize()),
           "C:\\foo");
+    }
+
+    #[test]
+    fn test_windows_path_restrictions() {
+        assert WindowsPath("hi").is_restricted() == false;
+        assert WindowsPath("C:\\NUL").is_restricted() == true;
+        assert WindowsPath("C:\\COM1.TXT").is_restricted() == true;
+        assert WindowsPath("c:\\prn.exe").is_restricted() == true;
     }
 }
