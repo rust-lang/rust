@@ -470,20 +470,20 @@ $(foreach host,$(CFG_TARGET_TRIPLES), \
 
 define DEF_RUN_DOC_TEST
 
-DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
+DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-doc-$(4) := \
         $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3))	\
         --src-base $(3)/test/doc-$(4)/	\
         --build-base $(3)/test/doc-$(4)/	\
         --mode run-pass
 
-check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
 
-$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
                 doc-$(4)-extract$(3)
 	@$$(call E, run doc-$(4): $$<)
 	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
-                $$(DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
+                $$(DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-doc-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),doc-$(4)) \
                 && touch $$@
 
