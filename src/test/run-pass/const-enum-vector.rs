@@ -11,7 +11,7 @@
 enum E { V1(int), V0 }
 const C: [E * 3] = [V0, V1(0xDEADBEE), V0];
 
-fn main() {
+pub fn main() {
     match C[1] {
         V1(n) => assert(n == 0xDEADBEE),
         _ => fail!()

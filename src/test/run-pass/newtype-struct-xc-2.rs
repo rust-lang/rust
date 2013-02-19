@@ -8,7 +8,7 @@ fn f() -> Au {
     Au(2)
 }
 
-fn main() {
+pub fn main() {
     let _ = f();
 }
 
