@@ -127,7 +127,7 @@ priv impl<T> cat<T> {
     }
 }
 
-fn main() {
+pub fn main() {
     let mut nyan: cat<~str> = cat::new(0, 2, ~"nyan");
     for uint::range(1, 5) |_| { nyan.speak(); }
     assert(*nyan.find(&1).unwrap() == ~"nyan");

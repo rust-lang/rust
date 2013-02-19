@@ -20,6 +20,6 @@ fn f<T: A>(i: T) {
     assert i.g() == 10;
 }
 
-fn main () {
+pub fn main () {
     f(0);
 }

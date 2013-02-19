@@ -3,7 +3,7 @@
 
 extern mod newtype_struct_xc;
 
-fn main() {
+pub fn main() {
     let _ = newtype_struct_xc::Au(2);
 }
 

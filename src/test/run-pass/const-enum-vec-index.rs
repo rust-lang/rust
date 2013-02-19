@@ -13,7 +13,7 @@ const C: &[E] = &[V0, V1(0xDEADBEE)];
 const C0: E = C[0];
 const C1: E = C[1];
 
-fn main() {
+pub fn main() {
     match C0 { 
         V0 => (),
         _ => fail!()
