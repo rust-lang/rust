@@ -1361,13 +1361,34 @@ pub fn compile_submatch(bcx: block,
     if opts.len() > 0u {
         match opts[0] {
             var(_, vdef) => {
-                if (*ty::enum_variants(tcx, vdef.enm)).len() == 1u {
+                let variants = ty::enum_variants(tcx, vdef.enm);
+                if variants.len() == 1 {
                     kind = single;
                 } else {
                     let enumptr =
                         PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
                     let discrimptr = GEPi(bcx, enumptr, [0u, 0u]);
-                    test_val = Load(bcx, discrimptr);
+
+                    let mut min_discrim = variants[0].disr_val;
+                    for uint::range(1, variants.len()) |idx| {
+                        if variants[idx].disr_val < min_discrim {
+                            min_discrim = variants[idx].disr_val;
+                        }
+                    }
+
+                    let mut max_discrim = variants[0].disr_val;
+                    for uint::range(1, variants.len()) |idx| {
+                        if variants[idx].disr_val > max_discrim {
+                            max_discrim = variants[idx].disr_val;
+                        }
+                    }
+
+                    test_val = LoadRangeAssert(bcx, discrimptr,
+                                               min_discrim as c_ulonglong,
+                                               (max_discrim + 1)
+                                               as c_ulonglong,
+                                               lib::llvm::True);
+
                     kind = switch;
                 }
             }
