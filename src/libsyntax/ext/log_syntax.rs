@@ -19,12 +19,14 @@ use core::option;
 
 pub fn expand_syntax_ext(cx: ext_ctxt,
                          sp: codemap::span,
-                         tt: ~[ast::token_tree])
+                         tt: &[ast::token_tree])
                       -> base::MacResult {
 
     cx.print_backtrace();
     io::stdout().write_line(
-        print::pprust::tt_to_str(ast::tt_delim(tt),cx.parse_sess().interner));
+        print::pprust::tt_to_str(
+            ast::tt_delim(vec::from_slice(tt)),
+            cx.parse_sess().interner));
 
     //trivial expression
     MRExpr(@ast::expr {

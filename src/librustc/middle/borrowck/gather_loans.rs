@@ -95,7 +95,7 @@ pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     return glcx.req_maps;
 }
 
-fn req_loans_in_fn(fk: visit::fn_kind,
+fn req_loans_in_fn(fk: &visit::fn_kind,
                    decl: ast::fn_decl,
                    body: ast::blk,
                    sp: span,
@@ -107,7 +107,7 @@ fn req_loans_in_fn(fk: visit::fn_kind,
     let old_root_ub = self.root_ub;
     self.root_ub = body.node.id;
 
-    match fk {
+    match *fk {
         visit::fk_anon(*) | visit::fk_fn_block(*) => {}
         visit::fk_item_fn(*) | visit::fk_method(*) |
         visit::fk_dtor(*) => {

@@ -123,8 +123,8 @@ pub fn get_meta_item_value_str(meta: @ast::meta_item) -> Option<@~str> {
 pub fn get_meta_item_list(meta: @ast::meta_item)
                        -> Option<~[@ast::meta_item]> {
     match meta.node {
-      ast::meta_list(_, l) => option::Some(/* FIXME (#2543) */ copy l),
-      _ => option::None
+        ast::meta_list(_, ref l) => Some(/* FIXME (#2543) */ copy *l),
+        _ => None
     }
 }
 

@@ -219,19 +219,19 @@ pub mod rt {
 
 pub fn expand_quote_tokens(cx: ext_ctxt,
                            sp: span,
-                           tts: ~[ast::token_tree]) -> base::MacResult {
+                           tts: &[ast::token_tree]) -> base::MacResult {
     base::MRExpr(expand_tts(cx, sp, tts))
 }
 
 pub fn expand_quote_expr(cx: ext_ctxt,
                          sp: span,
-                         tts: ~[ast::token_tree]) -> base::MacResult {
+                         tts: &[ast::token_tree]) -> base::MacResult {
     base::MRExpr(expand_parse_call(cx, sp, ~"parse_expr", ~[], tts))
 }
 
 pub fn expand_quote_item(cx: ext_ctxt,
                          sp: span,
-                         tts: ~[ast::token_tree]) -> base::MacResult {
+                         tts: &[ast::token_tree]) -> base::MacResult {
     let e_attrs = build::mk_uniq_vec_e(cx, sp, ~[]);
     base::MRExpr(expand_parse_call(cx, sp, ~"parse_item",
                                     ~[e_attrs], tts))
@@ -239,7 +239,7 @@ pub fn expand_quote_item(cx: ext_ctxt,
 
 pub fn expand_quote_pat(cx: ext_ctxt,
                         sp: span,
-                        tts: ~[ast::token_tree]) -> base::MacResult {
+                        tts: &[ast::token_tree]) -> base::MacResult {
     let e_refutable = build::mk_lit(cx, sp, ast::lit_bool(true));
     base::MRExpr(expand_parse_call(cx, sp, ~"parse_pat",
                                     ~[e_refutable], tts))
@@ -247,7 +247,7 @@ pub fn expand_quote_pat(cx: ext_ctxt,
 
 pub fn expand_quote_ty(cx: ext_ctxt,
                        sp: span,
-                       tts: ~[ast::token_tree]) -> base::MacResult {
+                       tts: &[ast::token_tree]) -> base::MacResult {
     let e_param_colons = build::mk_lit(cx, sp, ast::lit_bool(false));
     base::MRExpr(expand_parse_call(cx, sp, ~"parse_ty",
                                     ~[e_param_colons], tts))
@@ -255,7 +255,7 @@ pub fn expand_quote_ty(cx: ext_ctxt,
 
 pub fn expand_quote_stmt(cx: ext_ctxt,
                          sp: span,
-                         tts: ~[ast::token_tree]) -> base::MacResult {
+                         tts: &[ast::token_tree]) -> base::MacResult {
     let e_attrs = build::mk_uniq_vec_e(cx, sp, ~[]);
     base::MRExpr(expand_parse_call(cx, sp, ~"parse_stmt",
                                     ~[e_attrs], tts))
@@ -506,7 +506,7 @@ fn mk_tts(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
 
 fn expand_tts(cx: ext_ctxt,
               sp: span,
-              tts: ~[ast::token_tree]) -> @ast::expr {
+              tts: &[ast::token_tree]) -> @ast::expr {
 
     // NB: It appears that the main parser loses its mind if we consider
     // $foo as a tt_nonterminal during the main parse, so we have to re-parse
@@ -514,7 +514,11 @@ fn expand_tts(cx: ext_ctxt,
     // it has to do with transition away from supporting old-style macros, so
     // try removing it when enough of them are gone.
 
-    let p = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), tts);
+    let p = parse::new_parser_from_tts(
+        cx.parse_sess(),
+        cx.cfg(),
+        vec::from_slice(tts)
+    );
     *p.quote_depth += 1u;
     let tts = p.parse_all_token_trees();
     p.abort_if_errors();
@@ -578,7 +582,7 @@ fn expand_parse_call(cx: ext_ctxt,
                      sp: span,
                      parse_method: ~str,
                      arg_exprs: ~[@ast::expr],
-                     tts: ~[ast::token_tree]) -> @ast::expr {
+                     tts: &[ast::token_tree]) -> @ast::expr {
     let tts_expr = expand_tts(cx, sp, tts);
 
     let cfg_call = || build::mk_call_(

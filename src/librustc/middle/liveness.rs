@@ -435,7 +435,7 @@ impl IrMaps {
     }
 }
 
-fn visit_fn(fk: visit::fn_kind,
+fn visit_fn(fk: &visit::fn_kind,
             decl: fn_decl,
             body: blk,
             sp: span,
@@ -465,7 +465,7 @@ fn visit_fn(fk: visit::fn_kind,
     };
 
     // Add `self`, whether explicit or implicit.
-    match fk {
+    match *fk {
         fk_method(_, _, method) => {
             match method.self_ty.node {
                 sty_by_ref => {
@@ -1639,7 +1639,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
     }
 }
 
-fn check_fn(_fk: visit::fn_kind, _decl: fn_decl,
+fn check_fn(_fk: &visit::fn_kind, _decl: fn_decl,
             _body: blk, _sp: span, _id: node_id,
             &&_self: @Liveness, _v: vt<@Liveness>) {
     // do not check contents of nested fns
@@ -1653,7 +1653,7 @@ enum ReadKind {
 }
 
 impl @Liveness {
-    fn check_ret(&self, id: node_id, sp: span, _fk: visit::fn_kind,
+    fn check_ret(&self, id: node_id, sp: span, _fk: &visit::fn_kind,
                  entry_ln: LiveNode) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             // if no_ret_var is live, then we fall off the end of the

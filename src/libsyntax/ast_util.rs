@@ -263,13 +263,13 @@ pub fn public_methods(ms: ~[@method]) -> ~[@method] {
 pub fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     match method {
         required(ref m) => (*m),
-        provided(m) => {
+        provided(ref m) => {
             ty_method {
                 ident: m.ident,
-                attrs: m.attrs,
+                attrs: copy m.attrs,
                 purity: m.purity,
-                decl: m.decl,
-                tps: m.tps,
+                decl: copy m.decl,
+                tps: copy m.tps,
                 self_ty: m.self_ty,
                 id: m.id,
                 span: m.span,
@@ -396,8 +396,8 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_view_item: fn@(vi: @view_item) {
             match vi.node {
               view_item_extern_mod(_, _, id) => vfn(id),
-              view_item_use(vps) => {
-                  for vec::each(vps) |vp| {
+              view_item_use(ref vps) => {
+                  for vps.each |vp| {
                       match vp.node {
                           view_path_simple(_, _, _, id) => vfn(id),
                           view_path_glob(_, id) => vfn(id),
@@ -457,29 +457,29 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             }
         },
 
-        visit_ty_params: fn@(ps: ~[ty_param]) {
-            for vec::each(ps) |p| {
+        visit_ty_params: fn@(ps: &[ty_param]) {
+            for ps.each |p| {
                 vfn(p.id);
             }
         },
 
-        visit_fn: fn@(fk: visit::fn_kind, d: ast::fn_decl,
+        visit_fn: fn@(fk: &visit::fn_kind, d: ast::fn_decl,
                       _b: ast::blk, _sp: span, id: ast::node_id) {
             vfn(id);
 
-            match fk {
-                visit::fk_dtor(tps, _, self_id, parent_id) => {
-                    for vec::each(tps) |tp| { vfn(tp.id); }
+            match *fk {
+                visit::fk_dtor(ref tps, _, self_id, parent_id) => {
+                    for tps.each |tp| { vfn(tp.id); }
                     vfn(id);
                     vfn(self_id);
                     vfn(parent_id.node);
                 }
-                visit::fk_item_fn(_, tps, _) => {
-                    for vec::each(tps) |tp| { vfn(tp.id); }
+                visit::fk_item_fn(_, ref tps, _) => {
+                    for tps.each |tp| { vfn(tp.id); }
                 }
-                visit::fk_method(_, tps, m) => {
+                visit::fk_method(_, ref tps, m) => {
                     vfn(m.self_id);
-                    for vec::each(tps) |tp| { vfn(tp.id); }
+                    for tps.each |tp| { vfn(tp.id); }
                 }
                 visit::fk_anon(_) |
                 visit::fk_fn_block => {
@@ -497,7 +497,7 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_trait_method: fn@(_ty_m: trait_method) {
         },
 
-        visit_struct_def: fn@(_sd: @struct_def, _id: ident, _tps: ~[ty_param],
+        visit_struct_def: fn@(_sd: @struct_def, _id: ident, _tps: &[ty_param],
                               _id: node_id) {
         },
 
@@ -539,12 +539,12 @@ pub fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
-        pat_rec(fields, _) | pat_struct(_, fields, _) => {
+        pat_rec(ref fields, _) | pat_struct(_, ref fields, _) => {
             for fields.each |f| {
                 walk_pat(f.pat, it)
             }
         }
-        pat_enum(_, Some(s)) | pat_tup(s) => {
+        pat_enum(_, Some(ref s)) | pat_tup(ref s) => {
             for s.each |p| {
                 walk_pat(*p, it)
             }
@@ -552,17 +552,16 @@ pub fn walk_pat(pat: @pat, it: fn(@pat)) {
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
-        pat_vec(elts, tail) => {
+        pat_vec(ref elts, ref tail) => {
             for elts.each |p| {
                 walk_pat(*p, it)
             }
-            do option::iter(&tail) |tail| {
+            do tail.iter |tail| {
                 walk_pat(*tail, it)
             }
         }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
-        pat_enum(_, _) => {
-        }
+        pat_enum(_, _) => { }
     }
 }
 

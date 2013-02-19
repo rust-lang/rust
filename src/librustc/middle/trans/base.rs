@@ -3008,8 +3008,12 @@ pub fn trans_crate(sess: session::Session,
     let symbol_hasher = @hash::default_state();
     let link_meta =
         link::build_link_meta(sess, crate, output, symbol_hasher);
-    let reachable = reachable::find_reachable(crate.node.module, emap2, tcx,
-                                              maps.method_map);
+    let reachable = reachable::find_reachable(
+        &crate.node.module,
+        emap2,
+        tcx,
+        maps.method_map
+    );
 
     // Append ".rc" to crate name as LLVM module identifier.
     //

@@ -38,7 +38,7 @@ struct ctx {
     rmap: map
 }
 
-pub fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
+pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
                       tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let rmap = HashMap();
     let cx = ctx {
@@ -85,10 +85,10 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     }
 }
 
-fn traverse_public_mod(cx: ctx, mod_id: node_id, m: _mod) {
+fn traverse_public_mod(cx: ctx, mod_id: node_id, m: &_mod) {
     if !traverse_exports(cx, mod_id) {
         // No exports, so every local item is exported
-        for vec::each(m.items) |item| {
+        for m.items.each |item| {
             traverse_public_item(cx, *item);
         }
     }
@@ -98,10 +98,10 @@ fn traverse_public_item(cx: ctx, item: @item) {
     if cx.rmap.contains_key(&item.id) { return; }
     cx.rmap.insert(item.id, ());
     match /*bad*/copy item.node {
-      item_mod(m) => traverse_public_mod(cx, item.id, m),
+      item_mod(ref m) => traverse_public_mod(cx, item.id, m),
       item_foreign_mod(nm) => {
           if !traverse_exports(cx, item.id) {
-              for vec::each(nm.items) |item| {
+              for nm.items.each |item| {
                   cx.rmap.insert(item.id, ());
               }
           }
@@ -224,9 +224,12 @@ fn traverse_inline_body(cx: ctx, body: blk) {
     }));
 }
 
-fn traverse_all_resources_and_impls(cx: ctx, crate_mod: _mod) {
+fn traverse_all_resources_and_impls(cx: ctx, crate_mod: &_mod) {
     visit::visit_mod(
-        crate_mod, codemap::dummy_sp(), 0, cx,
+        crate_mod,
+        codemap::dummy_sp(),
+        0,
+        cx,
         visit::mk_vt(@visit::Visitor {
             visit_expr: |_e, _cx, _v| { },
             visit_item: |i, cx, v| {

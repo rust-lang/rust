@@ -628,7 +628,7 @@ pub impl CoherenceChecker {
         visit_crate(*crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor| {
                 match /*bad*/copy item.node {
-                    item_mod(module_) => {
+                    item_mod(ref module_) => {
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, (), visitor);
                     }

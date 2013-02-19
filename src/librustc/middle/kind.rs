@@ -153,7 +153,7 @@ fn with_appropriate_checker(cx: Context, id: node_id, b: fn(check_fn)) {
 
 // Check that the free variables used in a shared/sendable closure conform
 // to the copy/move kind bounds. Then recursively check the function body.
-fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
+fn check_fn(fk: &visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             fn_id: node_id, cx: Context, v: visit::vt<Context>) {
 
     // Check kinds on free variables:

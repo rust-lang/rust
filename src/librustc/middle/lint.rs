@@ -923,13 +923,13 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     }
 }
 
-fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
+fn check_fn(tcx: ty::ctxt, fk: &visit::fn_kind, decl: ast::fn_decl,
             _body: ast::blk, span: span, id: ast::node_id) {
     debug!("lint check_fn fk=%? id=%?", fk, id);
 
     // don't complain about blocks, since they tend to get their modes
     // specified from the outside
-    match fk {
+    match *fk {
       visit::fk_fn_block(*) => { return; }
       _ => {}
     }
