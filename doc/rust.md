@@ -549,7 +549,7 @@ This requirement most often affects name-designator pairs when they occur at the
 
 * `log_syntax!` : print out the arguments at compile time
 * `trace_macros!` : supply `true` or `false` to enable or disable printing of the macro expansion process.
-* `ident_to_str!` : turn the identifier argument into a string literal
+* `stringify!` : turn the identifier argument into a string literal
 * `concat_idents!` : create a new identifier by concatenating the arguments
 
 
