@@ -266,13 +266,13 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
     let mi = nospan(mi);
     let id_std = cx.sess.ident_of(~"std");
     let vi = if is_std(cx) {
-        ast::view_item_import(
+        ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_std,
                                             path_node(~[id_std]),
                                             ast::type_value_ns,
                                             cx.sess.next_node_id()))])
     } else {
-        ast::view_item_use(id_std, ~[@mi],
+        ast::view_item_extern_mod(id_std, ~[@mi],
                            cx.sess.next_node_id())
     };
     let vi = ast::view_item {

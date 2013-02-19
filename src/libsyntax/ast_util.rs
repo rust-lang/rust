@@ -395,8 +395,8 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_view_item: fn@(vi: @view_item) {
             match vi.node {
-              view_item_use(_, _, id) => vfn(id),
-              view_item_import(vps) => {
+              view_item_extern_mod(_, _, id) => vfn(id),
+              view_item_use(vps) => {
                   for vec::each(vps) |vp| {
                       match vp.node {
                           view_path_simple(_, _, _, id) => vfn(id),
