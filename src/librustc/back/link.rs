@@ -686,7 +686,9 @@ pub fn exported_name(sess: Session,
             path_name(sess.ident_of(vers.to_owned()))));
 }
 
-pub fn mangle_exported_name(ccx: @CrateContext, +path: path, t: ty::t) -> ~str {
+pub fn mangle_exported_name(ccx: @CrateContext,
+                            +path: path,
+                            t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
                          hash,

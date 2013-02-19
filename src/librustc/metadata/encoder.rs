@@ -1071,7 +1071,8 @@ fn encode_attributes(ebml_w: writer::Encoder, attrs: &[attribute]) {
 // metadata that Rust cares about for linking crates. This attribute requires
 // 'name' and 'vers' items, so if the user didn't provide them we will throw
 // them in anyway with default values.
-fn synthesize_crate_attrs(ecx: @EncodeContext, crate: &crate) -> ~[attribute] {
+fn synthesize_crate_attrs(ecx: @EncodeContext,
+                          crate: &crate) -> ~[attribute] {
 
     fn synthesize_link_attr(ecx: @EncodeContext, +items: ~[@meta_item]) ->
        attribute {

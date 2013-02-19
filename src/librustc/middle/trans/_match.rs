@@ -854,7 +854,7 @@ pub fn extract_variant_args(bcx: block,
         GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
                  /*bad*/copy enum_ty_substs, i)
     };
-    
+
     ExtractedBlock { vals: args, bcx: bcx }
 }
 
