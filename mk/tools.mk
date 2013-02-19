@@ -30,6 +30,10 @@ RUSTDOC_INPUTS := $(wildcard $(S)src/librustdoc/*.rs)
 RUSTI_LIB := $(S)src/librusti/rusti.rc
 RUSTI_INPUTS := $(wildcard $(S)src/librusti/*.rs)
 
+# Rust, the convenience tool
+RUST_LIB := $(S)src/librust/rust.rc
+RUST_INPUTS := $(wildcard $(S)src/librust/*.rs)
+
 # FIXME: These are only built for the host arch. Eventually we'll
 # have tools that need to built for other targets.
 define TOOLS_STAGE_N_TARGET
@@ -101,6 +105,21 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X):			\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI)
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rusti -o $$@ $$<
+
+$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUST):		\
+		$$(RUST_LIB) $$(RUST_INPUTS)			\
+		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
+
+$$(TBIN$(1)_T_$(4)_H_$(3))/rust$$(X):			\
+		$$(DRIVER_CRATE) 							\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUST)
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rust -o $$@ $$<
 
 endef
 
@@ -181,6 +200,23 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTI):					\
 $$(HBIN$(2)_H_$(4))/rusti$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X)	\
 		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTI)	\
+		$$(HSREQ$(2)_H_$(4))
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
+$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUST):					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUST)	\
+		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)			\
+		$$(HSREQ$(2)_H_$(4))
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUST_GLOB) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUST_DSYM_GLOB)) \
+	        $$(HLIB$(2)_H_$(4))
+
+$$(HBIN$(2)_H_$(4))/rust$$(X):				\
+		$$(TBIN$(1)_T_$(4)_H_$(3))/rust$$(X)	\
+		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUST)	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@

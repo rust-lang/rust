@@ -23,6 +23,9 @@ extern mod this(name = "rustdoc", vers = "0.6");
 #[cfg(rusti)]
 extern mod this(name = "rusti", vers = "0.6");
 
+#[cfg(rust)]
+extern mod this(name = "rust", vers = "0.6");
+
 #[cfg(rustc)]
 extern mod this(name = "rustc", vers = "0.6");
 
