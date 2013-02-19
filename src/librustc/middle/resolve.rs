@@ -15,7 +15,7 @@ use driver::session::Session;
 use metadata::csearch::{each_path, get_method_names_if_trait};
 use metadata::csearch::{get_static_methods_if_impl, get_struct_fields};
 use metadata::csearch::{get_type_name_if_impl};
-use metadata::cstore::find_use_stmt_cnum;
+use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
@@ -55,7 +55,7 @@ use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path};
 use syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
 use syntax::ast::{type_value_ns, ty_param_bound, unnamed_field};
-use syntax::ast::{variant, view_item, view_item_import};
+use syntax::ast::{variant, view_item, view_item_extern_mod};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named, not};
 use syntax::ast::{unsafe_fn};
@@ -1388,7 +1388,7 @@ pub impl Resolver {
                                          &&_visitor: vt<ReducedGraphParent>) {
         let privacy = visibility_to_privacy(view_item.vis);
         match /*bad*/copy view_item.node {
-            view_item_import(view_paths) => {
+            view_item_use(view_paths) => {
                 for view_paths.each |view_path| {
                     // Extract and intern the module part of the path. For
                     // globs and lists, the path is found directly in the AST;
@@ -1462,8 +1462,9 @@ pub impl Resolver {
                 }
             }
 
-            view_item_use(name, _, node_id) => {
-                match find_use_stmt_cnum(self.session.cstore, node_id) {
+            view_item_extern_mod(name, _, node_id) => {
+                match find_extern_mod_stmt_cnum(self.session.cstore,
+                                                node_id) {
                     Some(crate_id) => {
                         let (child_name_bindings, new_parent) =
                             self.add_child(name, parent, ForbidDuplicateTypes,

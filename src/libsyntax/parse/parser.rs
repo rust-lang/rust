@@ -54,7 +54,7 @@ use ast::{ty_infer, ty_mac, ty_method};
 use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, type_value_ns, uniq};
 use ast::{unnamed_field, unsafe_blk, unsafe_fn, variant, view_item};
-use ast::{view_item_, view_item_import, view_item_use};
+use ast::{view_item_, view_item_extern_mod, view_item_use};
 use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::{visibility, vstore, vstore_box, vstore_fixed, vstore_slice};
 use ast::{vstore_uniq};
@@ -3503,7 +3503,7 @@ pub impl Parser {
         let metadata = self.parse_optional_meta();
         self.expect(token::SEMI);
         iovi_view_item(@ast::view_item {
-            node: view_item_use(ident, metadata, self.get_id()),
+            node: view_item_extern_mod(ident, metadata, self.get_id()),
             attrs: attrs,
             vis: visibility,
             span: mk_sp(lo, self.last_span.hi)
@@ -3884,7 +3884,7 @@ pub impl Parser {
     }
 
     fn parse_use() -> view_item_ {
-        return view_item_import(self.parse_view_paths());
+        return view_item_use(self.parse_view_paths());
     }
 
     fn parse_view_path() -> @view_path {
@@ -4006,7 +4006,7 @@ pub impl Parser {
             self.expect_keyword(~"mod");
             let ident = self.parse_ident();
             let metadata = self.parse_optional_meta();
-            view_item_use(ident, metadata, self.get_id())
+            view_item_extern_mod(ident, metadata, self.get_id())
         } else {
             fail!();
         };
@@ -4053,8 +4053,8 @@ pub impl Parser {
                 iovi_view_item(view_item) => {
                     if restricted_to_imports {
                             match view_item.node {
-                                view_item_import(_) => {}
-                                view_item_use(*) =>
+                                view_item_use(*) => {}
+                                view_item_extern_mod(*) =>
                                     self.fatal(~"\"extern mod\" \
                                                  declarations are not \
                                                  allowed here")

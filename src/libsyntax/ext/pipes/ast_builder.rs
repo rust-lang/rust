@@ -319,7 +319,7 @@ pub impl ext_ctxt_ast_builder for ext_ctxt {
 
         // XXX: Total hack: import `core::kinds::Owned` to work around a
         // parser bug whereby `fn f<T: ::kinds::Owned>` doesn't parse.
-        let vi = ast::view_item_import(~[
+        let vi = ast::view_item_use(~[
             @codemap::spanned {
                 node: ast::view_path_simple(
                     self.ident_of(~"Owned"),

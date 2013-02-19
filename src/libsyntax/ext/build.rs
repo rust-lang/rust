@@ -192,7 +192,7 @@ pub fn mk_glob_use(cx: ext_ctxt,
         node: ast::view_path_glob(mk_raw_path(sp, path), cx.next_id()),
         span: sp,
     };
-    @ast::view_item { node: ast::view_item_import(~[glob]),
+    @ast::view_item { node: ast::view_item_use(~[glob]),
                       attrs: ~[],
                       vis: ast::private,
                       span: sp }
