@@ -1149,7 +1149,9 @@ pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
                         }
                     }
                 }
-                ast::decl_item(i) => trans_item(cx.fcx.ccx, *i)
+                ast::decl_item(i) => {
+                    trans_item(cx.fcx.ccx, *i, DontForceInternal)
+                }
             }
         }
         ast::stmt_mac(*) => cx.tcx().sess.bug(~"unexpanded macro")
@@ -1986,10 +1988,14 @@ pub fn trans_struct_dtor(ccx: @crate_ctxt,
   lldecl
 }
 
-pub fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
-                      id: ast::node_id, degen: bool,
-                      path: @ast_map::path, vi: @~[ty::VariantInfo],
-                      i: &mut uint) {
+pub fn trans_enum_def(ccx: @crate_ctxt,
+                      enum_definition: ast::enum_def,
+                      id: ast::node_id,
+                      degen: bool,
+                      path: @ast_map::path,
+                      vi: @~[ty::VariantInfo],
+                      i: &mut uint,
+                      force_internal: ForceInternalFlag) {
     for vec::each(enum_definition.variants) |variant| {
         let disr_val = vi[*i].disr_val;
         *i += 1;
@@ -1997,6 +2003,9 @@ pub fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
         match variant.node.kind {
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
+                if force_internal == ForceInternal {
+                    internalize_item(llfn);
+                }
                 trans_enum_variant(ccx, id, *variant, /*bad*/copy *args,
                                    disr_val, degen, None, llfn);
             }
@@ -2004,8 +2013,11 @@ pub fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                 // Nothing to do.
             }
             ast::struct_variant_kind(struct_def) => {
-                trans_struct_def(ccx, struct_def, path,
-                                 variant.node.id);
+                trans_struct_def(ccx,
+                                 struct_def,
+                                 path,
+                                 variant.node.id,
+                                 force_internal);
             }
             ast::enum_variant_kind(ref enum_definition) => {
                 trans_enum_def(ccx,
@@ -2014,13 +2026,28 @@ pub fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                                degen,
                                path,
                                vi,
-                               &mut *i);
+                               &mut *i,
+                               force_internal);
             }
         }
     }
 }
 
-pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
+#[deriving_eq]
+pub enum ForceInternalFlag {
+    DontForceInternal,
+    ForceInternal,
+}
+
+// Marks the LLVM ValueRef corresponding to the given item as internal, so
+// that if it gets inlined away LLVM won't bother translating it.
+pub fn internalize_item(llval: ValueRef) {
+    lib::llvm::SetLinkage(llval, lib::llvm::InternalLinkage);
+}
+
+pub fn trans_item(ccx: @crate_ctxt,
+                  item: ast::item,
+                  force_internal: ForceInternalFlag) {
     let _icx = ccx.insn_ctxt("trans_item");
     let path = match ccx.tcx.items.get(&item.id) {
         ast_map::node_item(_, p) => p,
@@ -2031,6 +2058,9 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_fn(ref decl, purity, ref tps, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
+            if force_internal == ForceInternal {
+                internalize_item(llfndecl);
+            }
             foreign::trans_foreign_fn(ccx,
                                      vec::append(
                                          /*bad*/copy *path,
@@ -2038,6 +2068,9 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                                       decl, body, llfndecl, item.id);
         } else if tps.is_empty() {
             let llfndecl = get_item_val(ccx, item.id);
+            if force_internal == ForceInternal {
+                internalize_item(llfndecl);
+            }
             trans_fn(ccx,
                      vec::append(/*bad*/copy *path, ~[path_name(item.ident)]),
                      decl, body, llfndecl, no_self, None, item.id, None);
@@ -2046,7 +2079,7 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                 match stmt.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
-                    trans_item(ccx, *i);
+                    trans_item(ccx, *i, DontForceInternal);
                   }
                   _ => ()
                 }
@@ -2054,8 +2087,14 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         }
       }
       ast::item_impl(tps, _, _, ms) => {
-        meth::trans_impl(ccx, /*bad*/copy *path, item.ident, ms, tps, None,
-                         item.id);
+        meth::trans_impl(ccx,
+                         /*bad*/copy *path,
+                         item.ident,
+                         ms,
+                         tps,
+                         None,
+                         item.id,
+                         force_internal);
       }
       ast::item_mod(m) => {
         trans_mod(ccx, m);
@@ -2065,8 +2104,14 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             let degen = (*enum_definition).variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, (*enum_definition), item.id,
-                           degen, path, vi, &mut i);
+            trans_enum_def(ccx,
+                           *enum_definition,
+                           item.id,
+                           degen,
+                           path,
+                           vi,
+                           &mut i,
+                           force_internal);
         }
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
@@ -2080,16 +2125,22 @@ pub fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       }
       ast::item_struct(struct_def, tps) => {
         if tps.is_empty() {
-            trans_struct_def(ccx, struct_def, path, item.id);
+            trans_struct_def(ccx,
+                             struct_def,
+                             path,
+                             item.id,
+                             DontForceInternal);
         }
       }
       _ => {/* fall through */ }
     }
 }
 
-pub fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
+pub fn trans_struct_def(ccx: @crate_ctxt,
+                        struct_def: @ast::struct_def,
                         path: @ast_map::path,
-                        id: ast::node_id) {
+                        id: ast::node_id,
+                        force_internal: ForceInternalFlag) {
     // Translate the destructor.
     do option::iter(&struct_def.dtor) |dtor| {
         trans_struct_dtor(ccx, /*bad*/copy *path, &dtor.node.body,
@@ -2102,6 +2153,9 @@ pub fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
         // otherwise this is a unit-like struct.
         Some(ctor_id) if struct_def.fields.len() > 0 => {
             let llfndecl = get_item_val(ccx, ctor_id);
+            if force_internal == ForceInternal {
+                internalize_item(llfndecl);
+            }
             trans_tuple_struct(ccx, /*bad*/copy struct_def.fields,
                                ctor_id, None, llfndecl);
         }
@@ -2117,7 +2171,7 @@ pub fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
 pub fn trans_mod(ccx: @crate_ctxt, m: ast::_mod) {
     let _icx = ccx.insn_ctxt("trans_mod");
     for vec::each(m.items) |item| {
-        trans_item(ccx, **item);
+        trans_item(ccx, **item, DontForceInternal);
     }
 }
 
@@ -2491,8 +2545,9 @@ pub fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             ccx.sess.bug(~"get_item_val(): unexpected variant")
           }
         };
-        if !(exprt || ccx.reachable.contains_key(&id)) {
-            lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
+        if !*ccx.sess.building_library ||
+                (!exprt && !ccx.reachable.contains_key(&id)) {
+            internalize_item(val);
         }
         ccx.item_vals.insert(id, val);
         val
