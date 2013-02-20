@@ -19,6 +19,7 @@ use num::strconv;
 use num;
 use ops;
 use option::Option;
+use private::intrinsics::floorf64;
 use to_str;
 use from_str;
 
@@ -355,11 +356,6 @@ impl ops::Modulo<f64,f64> for f64 {
 #[cfg(notest)]
 impl ops::Neg<f64> for f64 {
     pure fn neg(&self) -> f64 { -*self }
-}
-
-#[abi="rust-intrinsic"]
-pub extern {
-    fn floorf64(val: f64) -> f64;
 }
 
 impl num::Round for f64 {

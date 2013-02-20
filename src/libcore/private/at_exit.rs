@@ -70,12 +70,6 @@ fn exit_runner(exit_fns: *ExitFunctions) {
     }
 }
 
-#[abi = "rust-intrinsic"]
-pub extern mod rusti {
-    fn move_val_init<T>(dst: &mut T, -src: T);
-    fn init<T>() -> T;
-}
-
 #[test]
 fn test_at_exit() {
     let i = 10;
