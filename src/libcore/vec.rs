@@ -114,7 +114,8 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
         do as_mut_buf(v) |p, _len| {
             let mut i: uint = 0u;
             while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
+                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
+                                          op(i));
                 i += 1u;
             }
         }
@@ -551,7 +552,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        // FIXME #4204: Should be intrinsics::uninit() - we don't need this zeroed
+        // FIXME #4204: Should be uninit() - we don't need this zeroed
         let mut val = intrinsics::init();
         val <-> *valptr;
         raw::set_len(v, ln - 1u);
@@ -626,7 +627,7 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                // FIXME #4204 Should be intrinsics::uninit() - don't need to zero
+                // FIXME #4204 Should be uninit() - don't need to zero
                 let mut x = intrinsics::init();
                 x <-> *ptr::mut_offset(p, i);
                 push(&mut *v, x);
@@ -643,7 +644,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                // FIXME #4204 Should be intrinsics::uninit() - don't need to zero
+                // FIXME #4204 Should be uninit() - don't need to zero
                 let mut dropped = intrinsics::init();
                 dropped <-> *ptr::mut_offset(p, i);
             }
@@ -669,7 +670,7 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) {
                 // last_written < next_to_read < ln
                 if *ptr::mut_offset(p, next_to_read) ==
                     *ptr::mut_offset(p, last_written) {
-                    // FIXME #4204 Should be intrinsics::uninit() - don't need to
+                    // FIXME #4204 Should be uninit() - don't need to
                     // zero
                     let mut dropped = intrinsics::init();
                     dropped <-> *ptr::mut_offset(p, next_to_read);

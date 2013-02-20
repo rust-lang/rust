@@ -11,5 +11,5 @@
 pub fn main() {
     let mut x: bool = false;
     // this line breaks it
-    vec::rusti::move_val_init(&mut x, false);
+    private::intrinsics::move_val_init(&mut x, false);
 }
