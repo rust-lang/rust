@@ -103,12 +103,15 @@ syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\(f\|f32\|f64\)\>
 syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\%([eE][+-]\=[0-9_]\+\)\>"
 syn match     rustFloat       display "\<[0-9][0-9_]*\.[0-9_]\+\%([eE][+-]\=[0-9_]\+\)\(f\|f32\|f64\)\>"
 
+"rustLifetime must appear before rustCharacter, or chars will get the lifetime highlighting
+syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*"
 syn match   rustCharacter   "'\([^'\\]\|\\\(['nrt\\\"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'"
 
 syn region    rustComment     start="/\*" end="\*/" contains=rustComment,rustTodo
 syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo keepend
 
-syn keyword   rustTodo        TODO FIXME XXX NB
+
+syn keyword   rustTodo        TODO FIXME XXX NB unsafe
 
 hi def link rustHexNumber       rustNumber
 hi def link rustBinNumber       rustNumber
@@ -134,6 +137,7 @@ hi def link rustType          Type
 hi def link rustTodo          Todo
 hi def link rustAttribute     PreProc
 hi def link rustStorage       StorageClass
+hi def link rustLifetime      Special
 
 " Other Suggestions:
 " hi rustAssert ctermfg=yellow
