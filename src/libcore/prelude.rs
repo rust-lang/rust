@@ -52,7 +52,6 @@ pub use char;
 pub use cmp;
 pub use dvec;
 pub use either;
-pub use extfmt;
 pub use f32;
 pub use f64;
 pub use float;
