@@ -878,7 +878,7 @@ pub fn trans_trait_cast(bcx: block,
                 let MallocResult {bcx: new_bcx, box: llbox, body: body} =
                     malloc_boxed(bcx, v_ty);
                 bcx = new_bcx;
-                add_clean_free(bcx, llbox, heap_shared);
+                add_clean_free(bcx, llbox, heap_managed);
                 bcx = expr::trans_into(bcx, val, SaveIn(body));
                 revoke_clean(bcx, llbox);
 
