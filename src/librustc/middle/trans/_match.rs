@@ -1369,19 +1369,14 @@ pub fn compile_submatch(bcx: block,
                         PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
                     let discrimptr = GEPi(bcx, enumptr, [0u, 0u]);
 
-                    let mut min_discrim = variants[0].disr_val;
-                    for uint::range(1, variants.len()) |idx| {
-                        if variants[idx].disr_val < min_discrim {
-                            min_discrim = variants[idx].disr_val;
-                        }
-                    }
 
-                    let mut max_discrim = variants[0].disr_val;
-                    for uint::range(1, variants.len()) |idx| {
-                        if variants[idx].disr_val > max_discrim {
-                            max_discrim = variants[idx].disr_val;
-                        }
-                    }
+                    assert variants.len() > 1;
+                    let min_discrim = do variants.foldr(0) |&x, y| {
+                        int::min(x.disr_val, y)
+                    };
+                    let max_discrim = do variants.foldr(0) |&x, y| {
+                        int::max(x.disr_val, y)
+                    };
 
                     test_val = LoadRangeAssert(bcx, discrimptr,
                                                min_discrim as c_ulonglong,
