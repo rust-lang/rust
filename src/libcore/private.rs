@@ -127,7 +127,8 @@ struct ArcDestruct<T> {
             }
             do task::unkillable {
                 let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
-                let new_count = intrinsics::atomic_xsub(&mut data.count, 1) - 1;
+                let new_count =
+                    intrinsics::atomic_xsub(&mut data.count, 1) - 1;
                 assert new_count >= 0;
                 if new_count == 0 {
                     // Were we really last, or should we hand off to an
