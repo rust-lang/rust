@@ -125,24 +125,54 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             kind_name = "variant";
         }
         ty::ty_struct(struct_def_id, ref expected_substs) => {
-            // Lookup the struct ctor def id
-            let s_def = lookup_def(pcx.fcx, pat.span, pat.id);
-            let s_def_id = ast_util::def_id_of_def(s_def);
-
             // Assign the pattern the type of the struct.
-            let ctor_tpt = ty::lookup_item_type(tcx, s_def_id);
-            let struct_tpt = if ty::is_fn_ty(ctor_tpt.ty) {
-                {ty: ty::ty_fn_ret(ctor_tpt.ty), ..ctor_tpt}
-            } else {
-                ctor_tpt
-            };
+            let struct_tpt = ty::lookup_item_type(tcx, struct_def_id);
             instantiate_path(pcx.fcx, path, struct_tpt, pat.span, pat.id,
                              pcx.block_region);
 
-            // Check that the type of the value being matched is a subtype of
-            // the type of the pattern.
-            let pat_ty = fcx.node_ty(pat.id);
-            demand::suptype(fcx, pat.span, pat_ty, expected);
+            let s_tcx = pcx.fcx.ccx.tcx;
+
+            // Check to ensure that the tuple is the one specified.
+            match s_tcx.def_map.find(&pat.id)  {
+              Some(ast::def_struct(supplied_def_id))
+                    if supplied_def_id == struct_def_id => {
+                // OK
+              }
+              Some(ast::def_struct(*)) if subpats != None => {
+                let class_fields = ty::lookup_struct_fields(tcx,
+                                                            struct_def_id);
+                for class_fields.eachi |i, class_field| {
+                  let field_type = ty::lookup_field_type(tcx, struct_def_id,
+                                                         class_field.id,
+                                                         expected_substs);
+                  match /*bad*/copy subpats {
+                    Some(pats) => {
+                      check_pat(pcx, pats[i], field_type);
+                    }
+                    _ => {
+                      let name = pprust::path_to_str(path, tcx.sess.intr());
+                      tcx.sess.span_err(pat.span,
+                                        fmt!("mismatched types: expected \
+                                              `%s` but found `%s`",
+                                        pcx.fcx.infcx().ty_to_str(expected),
+                                        name)); // unreachable?
+                    }
+                  }
+                }
+              }
+              Some(ast::def_struct(*)) | Some(ast::def_variant(*)) => {
+                let name = pprust::path_to_str(path, tcx.sess.intr());
+                tcx.sess.span_err(pat.span,
+                                  fmt!("mismatched types: expected `%s` \
+                                        but found `%s`",
+                                       pcx.fcx.infcx().ty_to_str(expected),
+                                       name));
+              }
+              _ => {
+                s_tcx.sess.span_bug(pat.span, ~"resolve didn't write in \
+                                                class");
+              }
+            }
 
             // Get the expected types of the arguments.
             let class_fields = ty::struct_fields(
