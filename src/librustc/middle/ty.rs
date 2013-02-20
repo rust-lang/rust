@@ -1571,10 +1571,11 @@ pub pure fn type_is_vec(ty: t) -> bool {
 
 pub pure fn type_is_unique(ty: t) -> bool {
     match get(ty).sty {
-      ty_uniq(_) => return true,
-      ty_evec(_, vstore_uniq) => true,
-      ty_estr(vstore_uniq) => true,
-      _ => return false
+        ty_uniq(_) |
+        ty_evec(_, vstore_uniq) |
+        ty_estr(vstore_uniq) |
+        ty_opaque_closure_ptr(ast::OwnedSigil) => true,
+        _ => return false
     }
 }
 
@@ -1797,6 +1798,10 @@ pub impl TypeContents {
 
     static fn nonowned(_cx: ctxt) -> TypeContents {
         TC_MANAGED + TC_BORROWED_POINTER
+    }
+
+    fn contains_managed(&self) -> bool {
+        self.intersects(TC_MANAGED)
     }
 
     fn is_const(&self, cx: ctxt) -> bool {
@@ -2083,11 +2088,19 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_ALL
             }
 
-            ty_trait(_, _, vstore_fixed(_)) |
-            ty_type |
-            ty_opaque_closure_ptr(_) |
-            ty_opaque_box |
-            ty_unboxed_vec(_) |
+            ty_opaque_box => TC_MANAGED,
+            ty_unboxed_vec(mt) => tc_mt(cx, mt, cache),
+            ty_opaque_closure_ptr(sigil) => {
+                match sigil {
+                    ast::BorrowedSigil => TC_BORROWED_POINTER,
+                    ast::ManagedSigil => TC_MANAGED,
+                    ast::OwnedSigil => TC_OWNED_CLOSURE
+                }
+            }
+
+            ty_type => TC_NONE,
+            ty_trait(_, _, vstore_fixed(_)) => TC_NONE,
+
             ty_err => {
                 cx.sess.bug(~"Asked to compute contents of fictitious type");
             }
@@ -2229,8 +2242,11 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
           ty_infer(_) => {
             cx.sess.bug(~"Asked to compute kind of a type variable");
           }
-          ty_type | ty_opaque_closure_ptr(_)
-          | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
+          ty_type => 1,
+          ty_opaque_closure_ptr(_) => 1,
+          ty_opaque_box => 1,
+          ty_unboxed_vec(_) => 10,
+          ty_err => {
             cx.sess.bug(~"Asked to compute kind of fictitious type");
           }
         }

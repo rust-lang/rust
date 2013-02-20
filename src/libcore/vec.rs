@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -31,9 +31,14 @@ use vec;
 
 #[abi = "cdecl"]
 pub extern mod rustrt {
+    // These names are terrible. reserve_shared applies
+    // to ~[] and reserve_shared_actual applies to @[].
     unsafe fn vec_reserve_shared(++t: *sys::TypeDesc,
                                  ++v: **raw::VecRepr,
                                  ++n: libc::size_t);
+    unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
+                                        ++v: **raw::VecRepr,
+                                        ++n: libc::size_t);
 }
 
 /// Returns true if a vector contains no elements
@@ -59,11 +64,17 @@ pub pure fn same_length<T, U>(xs: &[const T], ys: &[const U]) -> bool {
  */
 pub fn reserve<T>(v: &mut ~[T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
+    use managed;
     if capacity(v) < n {
         unsafe {
             let ptr: **raw::VecRepr = cast::transmute(v);
-            rustrt::vec_reserve_shared(sys::get_type_desc::<T>(),
-                                       ptr, n as size_t);
+            let td = sys::get_type_desc::<T>();
+            if ((**ptr).box_header.ref_count ==
+                managed::raw::RC_MANAGED_UNIQUE) {
+                rustrt::vec_reserve_shared_actual(td, ptr, n as size_t);
+            } else {
+                rustrt::vec_reserve_shared(td, ptr, n as size_t);
+            }
         }
     }
 }

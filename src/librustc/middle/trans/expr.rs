@@ -414,11 +414,12 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     match expr.node {
         ast::expr_vstore(contents, ast::expr_vstore_box) |
         ast::expr_vstore(contents, ast::expr_vstore_mut_box) => {
-            return tvec::trans_uniq_or_managed_vstore(bcx, heap_shared,
+            return tvec::trans_uniq_or_managed_vstore(bcx, heap_managed,
                                                       expr, contents);
         }
         ast::expr_vstore(contents, ast::expr_vstore_uniq) => {
-            return tvec::trans_uniq_or_managed_vstore(bcx, heap_exchange,
+            let heap = heap_for_unique(bcx, expr_ty(bcx, contents));
+            return tvec::trans_uniq_or_managed_vstore(bcx, heap,
                                                       expr, contents);
         }
         ast::expr_lit(lit) => {
@@ -1272,10 +1273,12 @@ fn trans_unary_datum(bcx: block,
             immediate_rvalue_bcx(bcx, llneg, un_ty)
         }
         ast::box(_) => {
-            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap_shared)
+            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty,
+                             heap_managed)
         }
         ast::uniq(_) => {
-            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap_exchange)
+            let heap  = heap_for_unique(bcx, un_ty);
+            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap)
         }
         ast::deref => {
             bcx.sess().bug(~"deref expressions should have been \
