@@ -431,7 +431,13 @@ pub impl Datum {
         } else {
             match self.mode {
                 ByValue => self.val,
-                ByRef => Load(bcx, self.val)
+                ByRef => {
+                    if ty::type_is_bool(self.ty) {
+                        LoadRangeAssert(bcx, self.val, 0, 2, lib::llvm::True)
+                    } else {
+                        Load(bcx, self.val)
+                    }
+                }
             }
         }
     }
