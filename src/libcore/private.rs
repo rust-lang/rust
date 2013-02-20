@@ -34,6 +34,8 @@ pub mod weak_task;
 pub mod exchange_alloc;
 #[path = "private/intrinsics.rs"]
 pub mod intrinsics;
+#[path = "private/extfmt.rs"]
+pub mod extfmt;
 
 extern mod rustrt {
     pub unsafe fn rust_create_little_lock() -> rust_little_lock;
