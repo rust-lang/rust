@@ -184,6 +184,15 @@ pub enum FileType {
     ObjectFile = 1
 }
 
+pub enum Metadata {
+    MD_dbg = 0,
+    MD_tbaa = 1,
+    MD_prof = 2,
+    MD_fpmath = 3,
+    MD_range = 4,
+    MD_tbaa_struct = 5
+}
+
 // Opaque pointer types
 pub enum Module_opaque {}
 pub type ModuleRef = *Module_opaque;

@@ -14,8 +14,9 @@ use lib::llvm::llvm;
 use lib::llvm::{CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
 use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False};
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
-use libc::{c_uint, c_int};
+use libc::{c_uint, c_int, c_ulonglong};
 use middle::trans::common::*;
+use middle::trans::machine::llsize_of_real;
 
 use core::cast::transmute;
 use core::cast;
@@ -534,6 +535,25 @@ pub fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
         count_insn(cx, "load");
         return llvm::LLVMBuildLoad(B(cx), PointerVal, noname());
     }
+}
+
+pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
+                       hi: c_ulonglong, signed: lib::llvm::Bool) -> ValueRef {
+    let value = Load(cx, PointerVal);
+
+    unsafe {
+        let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(PointerVal));
+        let min = llvm::LLVMConstInt(t, lo, signed);
+        let max = llvm::LLVMConstInt(t, hi, signed);
+
+
+        do vec::as_imm_buf([min, max]) |ptr, len| {
+            llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
+                                  llvm::LLVMMDNode(ptr, len as c_uint));
+        }
+    }
+
+    value
 }
 
 pub fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
