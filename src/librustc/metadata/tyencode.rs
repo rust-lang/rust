@@ -39,7 +39,11 @@ pub struct ctxt {
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
-pub type ty_abbrev = {pos: uint, len: uint, s: @~str};
+pub struct ty_abbrev {
+    pos: uint,
+    len: uint,
+    s: @~str
+}
 
 pub enum abbrev_ctxt {
     ac_no_abbrevs,
@@ -100,7 +104,7 @@ pub fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
                 // I.e. it's actually an abbreviation.
                 let s = ~"#" + uint::to_str_radix(pos, 16u) + ~":" +
                     uint::to_str_radix(len, 16u) + ~"#";
-                let a = {pos: pos, len: len, s: @s};
+                let a = ty_abbrev { pos: pos, len: len, s: @s };
                 abbrevs.insert(t, a);
             }
             return;

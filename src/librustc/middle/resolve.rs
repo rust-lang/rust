@@ -99,14 +99,18 @@ pub type BindingMap = HashMap<ident,binding_info>;
 // FIXME #4946: This kind of duplicates information kept in
 // ty::method. Maybe it should go away.
 
-pub type MethodInfo = {
+pub struct MethodInfo {
     did: def_id,
     n_tps: uint,
     ident: ident,
     self_type: self_ty_
-};
+}
 
-pub type Impl = { did: def_id, ident: ident, methods: ~[@MethodInfo] };
+pub struct Impl {
+    did: def_id,
+    ident: ident,
+    methods: ~[@MethodInfo]
+}
 
 // Trait method resolution
 pub type TraitMap = @HashMap<node_id,@DVec<def_id>>;
@@ -5323,21 +5327,23 @@ pub impl Resolver {
     }
 }
 
+pub struct CrateMap {
+    def_map: DefMap,
+    exp_map2: ExportMap2,
+    trait_map: TraitMap
+}
+
 /// Entry point to crate resolution.
 pub fn resolve_crate(session: Session,
                      lang_items: LanguageItems,
                      crate: @crate)
-                  -> {
-                    def_map: DefMap,
-                    exp_map2: ExportMap2,
-                    trait_map: TraitMap
-                  } {
+                  -> CrateMap {
     let resolver = @Resolver(session, lang_items, crate);
     resolver.resolve(resolver);
-    return {
+    CrateMap {
         def_map: resolver.def_map,
         exp_map2: resolver.export_map2,
         trait_map: resolver.trait_map
-    };
+    }
 }
 

@@ -49,9 +49,12 @@ pub const use_repr: uint = 1u;   /* Dependency on size/alignment/mode and
                                     take/drop glue */
 pub const use_tydesc: uint = 2u; /* Takes the tydesc, or compares */
 
-pub type ctx = {ccx: @crate_ctxt, uses: ~[mut type_uses]};
+pub struct Context {
+    ccx: @CrateContext,
+    uses: ~[mut type_uses]
+}
 
-pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
+pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
     -> ~[type_uses] {
     match ccx.type_use_cache.find(&fn_id) {
       Some(uses) => return uses,
@@ -67,7 +70,10 @@ pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     // Conservatively assume full use for recursive loops
     ccx.type_use_cache.insert(fn_id, vec::from_elem(n_tps, 3u));
 
-    let cx = {ccx: ccx, uses: vec::cast_to_mut(vec::from_elem(n_tps, 0u))};
+    let cx = Context {
+        ccx: ccx,
+        uses: vec::cast_to_mut(vec::from_elem(n_tps, 0u))
+    };
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
@@ -175,7 +181,7 @@ pub fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     uses
 }
 
-pub fn type_needs(cx: ctx, use_: uint, ty: ty::t) {
+pub fn type_needs(cx: Context, use_: uint, ty: ty::t) {
     // Optimization -- don't descend type if all params already have this use
     for vec::each_mut(cx.uses) |u| {
         if *u & use_ != use_ {
@@ -185,7 +191,7 @@ pub fn type_needs(cx: ctx, use_: uint, ty: ty::t) {
     }
 }
 
-pub fn type_needs_inner(cx: ctx,
+pub fn type_needs_inner(cx: Context,
                         use_: uint,
                         ty: ty::t,
                         enums_seen: @List<def_id>) {
@@ -226,11 +232,11 @@ pub fn type_needs_inner(cx: ctx,
     }
 }
 
-pub fn node_type_needs(cx: ctx, use_: uint, id: node_id) {
+pub fn node_type_needs(cx: Context, use_: uint, id: node_id) {
     type_needs(cx, use_, ty::node_id_to_type(cx.ccx.tcx, id));
 }
 
-pub fn mark_for_method_call(cx: ctx, e_id: node_id, callee_id: node_id) {
+pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     do option::iter(&cx.ccx.maps.method_map.find(&e_id)) |mth| {
         match mth.origin {
           typeck::method_static(did) => {
@@ -253,7 +259,7 @@ pub fn mark_for_method_call(cx: ctx, e_id: node_id, callee_id: node_id) {
     }
 }
 
-pub fn mark_for_expr(cx: ctx, e: @expr) {
+pub fn mark_for_expr(cx: Context, e: @expr) {
     match e.node {
       expr_vstore(_, _) |
       expr_vec(_, _) |
@@ -353,7 +359,7 @@ pub fn mark_for_expr(cx: ctx, e: @expr) {
     }
 }
 
-pub fn handle_body(cx: ctx, body: blk) {
+pub fn handle_body(cx: Context, body: blk) {
     let v = visit::mk_vt(@visit::Visitor {
         visit_expr: |e, cx, v| {
             visit::visit_expr(e, cx, v);

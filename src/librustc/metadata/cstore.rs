@@ -33,13 +33,15 @@ use syntax::parse::token::ident_interner;
 // own crate numbers.
 pub type cnum_map = oldmap::HashMap<ast::crate_num, ast::crate_num>;
 
-pub type crate_metadata = @{name: @~str,
-                            data: @~[u8],
-                            cnum_map: cnum_map,
-                            cnum: ast::crate_num};
+pub struct crate_metadata {
+    name: @~str,
+    data: @~[u8],
+    cnum_map: cnum_map,
+    cnum: ast::crate_num
+}
 
 pub struct CStore {
-    priv metas: oldmap::HashMap<ast::crate_num, crate_metadata>,
+    priv metas: oldmap::HashMap<ast::crate_num, @crate_metadata>,
     priv extern_mod_crate_map: extern_mod_crate_map,
     priv used_crate_files: ~[Path],
     priv used_libraries: ~[~str],
@@ -64,7 +66,7 @@ pub fn mk_cstore(intr: @ident_interner) -> CStore {
 }
 
 pub fn get_crate_data(cstore: @mut CStore, cnum: ast::crate_num)
-                   -> crate_metadata {
+                   -> @crate_metadata {
     return cstore.metas.get(&cnum);
 }
 
@@ -80,7 +82,7 @@ pub fn get_crate_vers(cstore: @mut CStore, cnum: ast::crate_num) -> @~str {
 
 pub fn set_crate_data(cstore: @mut CStore,
                       cnum: ast::crate_num,
-                      data: crate_metadata) {
+                      data: @crate_metadata) {
     let metas = cstore.metas;
     metas.insert(cnum, data);
 }
@@ -90,7 +92,7 @@ pub fn have_crate_data(cstore: @mut CStore, cnum: ast::crate_num) -> bool {
 }
 
 pub fn iter_crate_data(cstore: @mut CStore,
-                       i: fn(ast::crate_num, crate_metadata)) {
+                       i: fn(ast::crate_num, @crate_metadata)) {
     let metas = cstore.metas;
     for metas.each |&k, &v| {
         i(k, v);
@@ -144,7 +146,7 @@ pub fn find_extern_mod_stmt_cnum(cstore: @mut CStore,
 // returns hashes of crates directly used by this crate. Hashes are
 // sorted by crate name.
 pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
-    type crate_hash = {name: ~str, hash: ~str};
+    struct crate_hash { name: @~str, hash: @~str }
     let mut result = ~[];
 
     let extern_mod_crate_map = cstore.extern_mod_crate_map;
@@ -152,7 +154,10 @@ pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
         let cdata = cstore::get_crate_data(cstore, cnum);
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", *cdata.name, *hash);
-        result.push({name: /*bad*/copy cdata.name, hash: hash});
+        result.push(crate_hash {
+            name: cdata.name,
+            hash: hash
+        });
     }
 
     let sorted = std::sort::merge_sort(result, |a, b| a.name <= b.name);

@@ -16,10 +16,10 @@ use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
 use lib::llvm::{PassManagerRef, FileType};
 use lib;
-use metadata::common::link_meta;
+use metadata::common::LinkMeta;
 use metadata::filesearch;
 use metadata::{encoder, cstore};
-use middle::trans::common::crate_ctxt;
+use middle::trans::common::CrateContext;
 use middle::ty;
 use session::Session;
 use session;
@@ -451,15 +451,16 @@ pub mod write {
  */
 
 pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
-                   symbol_hasher: &hash::State) -> link_meta {
+                   symbol_hasher: &hash::State) -> LinkMeta {
 
-    type provided_metas =
-        {name: Option<@str>,
-         vers: Option<@str>,
-         cmh_items: ~[@ast::meta_item]};
+    struct ProvidedMetas {
+        name: Option<@str>,
+        vers: Option<@str>,
+        cmh_items: ~[@ast::meta_item]
+    }
 
     fn provided_link_metas(sess: Session, c: &ast::crate) ->
-       provided_metas {
+       ProvidedMetas {
         let mut name = None;
         let mut vers = None;
         let mut cmh_items = ~[];
@@ -480,7 +481,12 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
                 }
             } else { cmh_items.push(*meta); }
         }
-        return {name: name, vers: vers, cmh_items: cmh_items};
+
+        ProvidedMetas {
+            name: name,
+            vers: vers,
+            cmh_items: cmh_items
+        }
     }
 
     // This calculates CMH as defined above
@@ -563,8 +569,11 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
             };
     }
 
-    let {name: opt_name, vers: opt_vers,
-         cmh_items: cmh_items} = provided_link_metas(sess, c);
+    let ProvidedMetas {
+        name: opt_name,
+        vers: opt_vers,
+        cmh_items: cmh_items
+    } = provided_link_metas(sess, c);
     let name = crate_meta_name(sess, output, opt_name);
     let vers = crate_meta_vers(sess, opt_vers);
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
@@ -572,7 +581,11 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
         crate_meta_extras_hash(symbol_hasher, cmh_items,
                                dep_hashes);
 
-    return {name: name, vers: vers, extras_hash: extras_hash};
+    LinkMeta {
+        name: name,
+        vers: vers,
+        extras_hash: extras_hash
+    }
 }
 
 pub fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
@@ -584,7 +597,7 @@ pub fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
 
 // This calculates STH for a symbol, as defined above
 pub fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
-               link_meta: link_meta) -> @str {
+               link_meta: LinkMeta) -> @str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -601,7 +614,7 @@ pub fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
     hash.to_managed()
 }
 
-pub fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
+pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
     match ccx.type_hashcodes.find(&t) {
       Some(h) => h,
       None => {
@@ -673,14 +686,16 @@ pub fn exported_name(sess: Session,
             path_name(sess.ident_of(vers.to_owned()))));
 }
 
-pub fn mangle_exported_name(ccx: @crate_ctxt, +path: path, t: ty::t) -> ~str {
+pub fn mangle_exported_name(ccx: @CrateContext,
+                            +path: path,
+                            t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
                          hash,
                          ccx.link_meta.vers);
 }
 
-pub fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
+pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
@@ -691,23 +706,23 @@ pub fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
           path_name(ccx.sess.ident_of(hash.to_owned()))]);
 }
 
-pub fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt,
+pub fn mangle_internal_name_by_path_and_seq(ccx: @CrateContext,
                                             +path: path,
                                             +flav: ~str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
-pub fn mangle_internal_name_by_path(ccx: @crate_ctxt, +path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: @CrateContext, +path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-pub fn mangle_internal_name_by_seq(ccx: @crate_ctxt, +flav: ~str) -> ~str {
+pub fn mangle_internal_name_by_seq(ccx: @CrateContext, +flav: ~str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
 
-pub fn output_dll_filename(os: session::os, lm: link_meta) -> ~str {
+pub fn output_dll_filename(os: session::os, lm: LinkMeta) -> ~str {
     let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
     let (dll_prefix, dll_suffix) = match os {
         session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
@@ -725,7 +740,7 @@ pub fn output_dll_filename(os: session::os, lm: link_meta) -> ~str {
 pub fn link_binary(sess: Session,
                    obj_filename: &Path,
                    out_filename: &Path,
-                   lm: link_meta) {
+                   lm: LinkMeta) {
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: @session::config, +stem: ~str) -> ~str {
         if stem.starts_with("lib") &&

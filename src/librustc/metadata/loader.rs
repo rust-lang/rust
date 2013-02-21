@@ -43,7 +43,7 @@ pub enum os {
     os_freebsd
 }
 
-pub type ctxt = {
+pub struct Context {
     diag: span_handler,
     filesearch: FileSearch,
     span: span,
@@ -51,11 +51,11 @@ pub type ctxt = {
     metas: ~[@ast::meta_item],
     hash: @~str,
     os: os,
-    static: bool,
+    is_static: bool,
     intr: @ident_interner
-};
+}
 
-pub fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
+pub fn load_library_crate(cx: Context) -> (~str, @~[u8]) {
     match find_library_crate(cx) {
       Some(ref t) => return (/*bad*/copy *t),
       None => {
@@ -66,13 +66,13 @@ pub fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
     }
 }
 
-fn find_library_crate(cx: ctxt) -> Option<{ident: ~str, data: @~[u8]}> {
+fn find_library_crate(cx: Context) -> Option<(~str, @~[u8])> {
     attr::require_unique_names(cx.diag, cx.metas);
     find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
 
-fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
-    if cx.static { return {prefix: ~"lib", suffix: ~".rlib"}; }
+fn libname(cx: Context) -> (~str, ~str) {
+    if cx.is_static { return (~"lib", ~".rlib"); }
     let (dll_prefix, dll_suffix) = match cx.os {
         os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
         os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
@@ -80,19 +80,17 @@ fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
         os_android => (android::DLL_PREFIX, android::DLL_SUFFIX),
         os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
-    return {
-        prefix: str::from_slice(dll_prefix),
-        suffix: str::from_slice(dll_suffix)
-    }
+
+    (str::from_slice(dll_prefix), str::from_slice(dll_suffix))
 }
 
-fn find_library_crate_aux(cx: ctxt,
-                          nn: {prefix: ~str, suffix: ~str},
+fn find_library_crate_aux(cx: Context,
+                          (prefix, suffix): (~str, ~str),
                           filesearch: filesearch::FileSearch) ->
-   Option<{ident: ~str, data: @~[u8]}> {
+   Option<(~str, @~[u8])> {
     let crate_name = crate_name_from_metas(/*bad*/copy cx.metas);
-    let prefix: ~str = nn.prefix + *crate_name + ~"-";
-    let suffix: ~str = /*bad*/copy nn.suffix;
+    let prefix: ~str = prefix + *crate_name + ~"-";
+    let suffix: ~str = /*bad*/copy suffix;
 
     let mut matches = ~[];
     filesearch::search(filesearch, |path| {
@@ -112,7 +110,7 @@ fn find_library_crate_aux(cx: ctxt,
                     option::None::<()>
                 } else {
                     debug!("found %s with matching metadata", path.to_str());
-                    matches.push({ident: path.to_str(), data: cvec});
+                    matches.push((path.to_str(), cvec));
                     option::None::<()>
                 }
               }
@@ -132,9 +130,9 @@ fn find_library_crate_aux(cx: ctxt,
         cx.diag.span_err(
             cx.span, fmt!("multiple matching crates for `%s`", *crate_name));
         cx.diag.handler().note(~"candidates:");
-        for matches.each |match_| {
-            cx.diag.handler().note(fmt!("path: %s", match_.ident));
-            let attrs = decoder::get_crate_attributes(match_.data);
+        for matches.each |&(ident, data)| {
+            cx.diag.handler().note(fmt!("path: %s", ident));
+            let attrs = decoder::get_crate_attributes(data);
             note_linkage_attrs(cx.intr, cx.diag, attrs);
         }
         cx.diag.handler().abort_if_errors();

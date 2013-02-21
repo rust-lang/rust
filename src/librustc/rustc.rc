@@ -19,7 +19,6 @@
 #[crate_type = "lib"];
 
 #[legacy_modes];
-#[legacy_records];
 
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(non_camel_case_types)];
