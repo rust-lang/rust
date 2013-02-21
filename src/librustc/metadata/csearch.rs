@@ -17,7 +17,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata;
-use middle::ty;
+use middle::{ty, resolve};
 
 use core::dvec::DVec;
 use core::vec;
@@ -110,7 +110,7 @@ pub fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
 
 pub fn get_impls_for_mod(cstore: @mut cstore::CStore, def: ast::def_id,
                          name: Option<ast::ident>)
-                      -> @~[@decoder::_impl] {
+                      -> @~[@resolve::Impl] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     do decoder::get_impls_for_mod(cstore.intr, cdata, def.node, name) |cnum| {
         cstore::get_crate_data(cstore, cnum)
@@ -204,9 +204,11 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                  class_id, def) );
     debug!("got field data %?", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
-    return {bounds: @~[],
-            region_param: None,
-            ty: ty};
+    ty::ty_param_bounds_and_ty {
+        bounds: @~[],
+        region_param: None,
+        ty: ty
+    }
 }
 
 // Given a def_id for an impl or class, return the traits it implements,

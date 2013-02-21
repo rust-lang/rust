@@ -599,7 +599,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
     let test_dir = dir.push(~"test");
     let binary = os::args()[0];
     let matches = getopts(flags, driver::optgroups()).get();
-    let options = @{
+    let options = @session::options {
         crate_type: session::unknown_crate,
         optimize: if opt { session::Aggressive } else { session::No },
         test: test,
@@ -612,7 +612,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
         crate_cfg.push(attr::mk_word_item(@cfg));
     }
 
-    let options = @{
+    let options = @session::options {
         cfg: vec::append(options.cfg, crate_cfg),
         .. *options
     };
@@ -620,7 +620,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
     let cfg = driver::build_configuration(sess, binary, input);
     let mut outputs = driver::build_output_filenames(input, &None, &None,
                                                      sess);
-    let {crate, _} = driver::compile_upto(sess, cfg, input, driver::cu_parse,
+    let (crate, _) = driver::compile_upto(sess, cfg, input, driver::cu_parse,
                                           Some(outputs));
 
     let mut name = None;

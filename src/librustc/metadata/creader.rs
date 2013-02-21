@@ -61,12 +61,12 @@ pub fn read_crates(diag: span_handler,
     warn_if_multiple_versions(e, diag, e.crate_cache);
 }
 
-type cache_entry = {
+struct cache_entry {
     cnum: int,
     span: span,
     hash: @~str,
     metas: @~[@ast::meta_item]
-};
+}
 
 fn dump_crates(+crate_cache: @mut ~[cache_entry]) {
     debug!("resolved crates:");
@@ -244,7 +244,7 @@ fn resolve_crate(e: @mut Env,
 
     match existing_match(e, metas, hash) {
       None => {
-        let load_ctxt: loader::ctxt = {
+        let load_ctxt = loader::Context {
             diag: e.diag,
             filesearch: e.filesearch,
             span: span,
@@ -252,13 +252,13 @@ fn resolve_crate(e: @mut Env,
             metas: metas,
             hash: hash,
             os: e.os,
-            static: e.statik,
+            is_static: e.statik,
             intr: e.intr
         };
-        let cinfo = loader::load_library_crate(load_ctxt);
+        let (lident, ldata) = loader::load_library_crate(load_ctxt);
 
-        let cfilename = Path(cinfo.ident);
-        let cdata = cinfo.data;
+        let cfilename = Path(lident);
+        let cdata = ldata;
 
         let attrs = decoder::get_crate_attributes(cdata);
         let linkage_metas = attr::find_linkage_metas(attrs);
@@ -266,8 +266,12 @@ fn resolve_crate(e: @mut Env,
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache.push({cnum: cnum, span: span,
-                            hash: hash, metas: @linkage_metas});
+        e.crate_cache.push(cache_entry {
+            cnum: cnum,
+            span: span,
+            hash: hash,
+            metas: @linkage_metas
+        });
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
@@ -279,8 +283,12 @@ fn resolve_crate(e: @mut Env,
                 Some(v) => v,
                 None => e.intr.get(ident),
             };
-        let cmeta = @{name: cname, data: cdata,
-                      cnum_map: cnum_map, cnum: cnum};
+        let cmeta = @cstore::crate_metadata {
+            name: cname,
+            data: cdata,
+            cnum_map: cnum_map,
+            cnum: cnum
+        };
 
         let cstore = e.cstore;
         cstore::set_crate_data(cstore, cnum, cmeta);

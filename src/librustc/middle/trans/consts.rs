@@ -20,7 +20,7 @@ use middle::ty;
 
 use syntax::{ast, ast_util, codemap, ast_map};
 
-pub fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
+pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
     let _icx = cx.insn_ctxt("trans_lit");
     match lit.node {
@@ -59,7 +59,7 @@ pub fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     }
 }
 
-pub fn const_ptrcast(cx: @crate_ctxt, a: ValueRef, t: TypeRef) -> ValueRef {
+pub fn const_ptrcast(cx: @CrateContext, a: ValueRef, t: TypeRef) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, T_ptr(t));
         assert cx.const_globals.insert(b as int, a);
@@ -67,7 +67,7 @@ pub fn const_ptrcast(cx: @crate_ctxt, a: ValueRef, t: TypeRef) -> ValueRef {
     }
 }
 
-pub fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
+pub fn const_vec(cx: @CrateContext, e: @ast::expr, es: &[@ast::expr])
     -> (ValueRef, ValueRef, TypeRef) {
     unsafe {
         let vec_ty = ty::expr_ty(cx.tcx, e);
@@ -86,7 +86,7 @@ pub fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
     }
 }
 
-pub fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
+pub fn const_deref(cx: @CrateContext, v: ValueRef) -> ValueRef {
     unsafe {
         let v = match cx.const_globals.find(&(v as int)) {
             Some(v) => v,
@@ -98,7 +98,7 @@ pub fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(cx: @crate_ctxt, v: ValueRef, us: &[c_uint])
+pub fn const_get_elt(cx: @CrateContext, v: ValueRef, us: &[c_uint])
                   -> ValueRef {
     unsafe {
         let r = do vec::as_imm_buf(us) |p, len| {
@@ -112,7 +112,7 @@ pub fn const_get_elt(cx: @crate_ctxt, v: ValueRef, us: &[c_uint])
     }
 }
 
-pub fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
+pub fn const_autoderef(cx: @CrateContext, ty: ty::t, v: ValueRef)
     -> (ty::t, ValueRef) {
     let mut t1 = ty;
     let mut v1 = v;
@@ -128,7 +128,7 @@ pub fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
     }
 }
 
-pub fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
+pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
     if !ast_util::is_local(def_id) {
         cx.tcx.sess.bug(~"cross-crate constants");
     }
@@ -145,7 +145,7 @@ pub fn get_const_val(cx: @crate_ctxt, def_id: ast::def_id) -> ValueRef {
     cx.const_values.get(&def_id.node)
 }
 
-pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
+pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
     unsafe {
         let _icx = cx.insn_ctxt("const_expr");
         return match /*bad*/copy e.node {
@@ -483,7 +483,7 @@ pub fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     }
 }
 
-pub fn trans_const(ccx: @crate_ctxt, _e: @ast::expr, id: ast::node_id) {
+pub fn trans_const(ccx: @CrateContext, _e: @ast::expr, id: ast::node_id) {
     unsafe {
         let _icx = ccx.insn_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
