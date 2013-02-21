@@ -302,7 +302,7 @@ pub fn build_closure(bcx0: block,
         // Return value (we just pass a by-ref () and cast it later to
         // the right thing):
         let ret_true = match bcx.fcx.loop_ret {
-            Some((retptr, _)) => retptr,
+            Some((_, retptr)) => retptr,
             None => bcx.fcx.llretptr
         };
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
