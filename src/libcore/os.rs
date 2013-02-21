@@ -58,10 +58,8 @@ pub mod rustrt {
     pub extern {
         unsafe fn rust_get_argc() -> c_int;
         unsafe fn rust_get_argv() -> **c_char;
-        unsafe fn rust_getcwd() -> ~str;
         unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
         unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
-        unsafe fn rust_list_files2(&&path: ~str) -> ~[~str];
         unsafe fn rust_process_wait(handle: c_int) -> c_int;
         unsafe fn rust_set_exit_status(code: libc::intptr_t);
     }
@@ -670,13 +668,95 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
 #[allow(non_implicitly_copyable_typarams)]
 pub fn list_dir(p: &Path) -> ~[~str] {
     unsafe {
-        #[cfg(unix)]
-        fn star(p: &Path) -> Path { copy *p }
-
+        #[cfg(target_os = "linux")]
+        #[cfg(target_os = "android")]
+        #[cfg(target_os = "freebsd")]
+        #[cfg(target_os = "macos")]
+        unsafe fn get_list(p: &Path) -> ~[~str] {
+            use libc::{DIR, dirent_t};
+            use libc::{opendir, readdir, closedir};
+            extern mod rustrt {
+                unsafe fn rust_list_dir_val(ptr: *dirent_t)
+                    -> *libc::c_char;
+            }
+            let input = p.to_str();
+            let mut strings = ~[];
+            let input_ptr = ::cast::transmute(&input[0]);
+            log(debug, "os::list_dir -- BEFORE OPENDIR");
+            let dir_ptr = opendir(input_ptr);
+            if (dir_ptr as uint != 0) {
+		log(debug, "os::list_dir -- opendir() SUCCESS");
+                let mut entry_ptr = readdir(dir_ptr);
+                while (entry_ptr as uint != 0) {
+                    strings.push(
+                        str::raw::from_c_str(
+                            rustrt::rust_list_dir_val(
+                                entry_ptr)));
+                    entry_ptr = readdir(dir_ptr);
+                }
+                closedir(dir_ptr);
+            }
+            else {
+		log(debug, "os::list_dir -- opendir() FAILURE");
+            }
+            log(debug, fmt!("os::list_dir -- AFTER ITERATION -- # of results: %?", strings.len()));
+            strings
+        }
         #[cfg(windows)]
-        fn star(p: &Path) -> Path { p.push("*") }
-
-        do rustrt::rust_list_files2(star(p).to_str()).filtered |filename| {
+        unsafe fn get_list(p: &Path) -> ~[~str] {
+            use libc::types::os::arch::extra::{LPCTSTR, HANDLE, BOOL};
+            use libc::consts::os::extra::INVALID_HANDLE_VALUE;
+            use libc::wcslen;
+            use libc::funcs::extra::kernel32::{
+                FindFirstFileW,
+                FindNextFileW,
+                FindClose,
+            };
+            use os::win32::{
+                as_utf16_p
+            };
+            use private::exchange_alloc::{malloc_raw, free_raw};
+            #[nolink]
+            extern mod rustrt {
+                unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
+                unsafe fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void)
+                    -> *u16;
+            }
+            fn star(p: &Path) -> Path { p.push("*") }
+            do as_utf16_p(star(p).to_str()) |path_ptr| {
+                let mut strings = ~[];
+                let wfd_ptr = malloc_raw(
+                    rustrt::rust_list_dir_wfd_size() as uint);
+                let find_handle =
+                    FindFirstFileW(
+                        path_ptr,
+                        ::cast::transmute(wfd_ptr));
+                if find_handle as int != INVALID_HANDLE_VALUE {
+                    let mut more_files = 1 as libc::c_int;
+                    while more_files != 0 {
+                        let fp_buf = rustrt::rust_list_dir_wfd_fp_buf(
+                            wfd_ptr);
+                        if fp_buf as uint == 0 {
+                            fail!(~"os::list_dir() failure:"+
+                                  ~" got null ptr from wfd");
+                        }
+                        else {
+                            let fp_vec = vec::from_buf(
+                                fp_buf, wcslen(fp_buf) as uint);
+                            let fp_str = str::from_utf16(fp_vec);
+                            strings.push(fp_str);
+                        }
+                        more_files = FindNextFileW(
+                            find_handle,
+                            ::cast::transmute(wfd_ptr));
+                    }
+                    FindClose(find_handle);
+                    free_raw(wfd_ptr);
+                }
+                strings
+            }
+        }
+        do get_list(p).filtered |filename| {
             *filename != ~"." && *filename != ~".."
         }
     }
