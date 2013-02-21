@@ -18,9 +18,9 @@ use sys;
 
 #[cfg(test)] use vec;
 #[cfg(test)] use str;
-#[cfg(test)] use uint;
-#[cfg(test)] use debug;
 #[cfg(notest)] use cmp::{Eq, Ord};
+use debug;
+use uint;
 
 pub mod libc_ {
     use libc::c_void;
@@ -504,6 +504,7 @@ pub mod ptr_tests {
     }
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     pub fn test_ptr_array_each_with_len_null_ptr() {
         unsafe {
             ptr::array_each_with_len(0 as **libc::c_char, 1, |e| {
@@ -513,6 +514,7 @@ pub mod ptr_tests {
     }
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     pub fn test_ptr_array_each_null_ptr() {
         unsafe {
             ptr::array_each(0 as **libc::c_char, |e| {

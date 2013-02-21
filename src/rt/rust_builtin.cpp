@@ -247,49 +247,43 @@ debug_get_stk_seg() {
     return task->stk;
 }
 
-extern "C" CDECL rust_vec_box*
-rust_list_files(rust_str *path) {
-    rust_task *task = rust_get_current_task();
-    array_list<rust_str*> strings;
+extern "C" CDECL char*
 #if defined(__WIN32__)
-    WIN32_FIND_DATA FindFileData;
-    HANDLE hFind = FindFirstFile((char*)path->body.data, &FindFileData);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            rust_str *str = make_str(task->kernel, FindFileData.cFileName,
-                                     strlen(FindFileData.cFileName),
-                                     "list_files_str");
-            strings.push(str);
-        } while (FindNextFile(hFind, &FindFileData));
-        FindClose(hFind);
-    }
+rust_list_dir_val(WIN32_FIND_DATA* entry_ptr) {
+    return entry_ptr->cFileName;
+}
 #else
-    DIR *dirp = opendir((char*)path->body.data);
-  if (dirp) {
-      struct dirent *dp;
-      while ((dp = readdir(dirp))) {
-          rust_vec_box *str = make_str(task->kernel, dp->d_name,
-                                       strlen(dp->d_name),
-                                       "list_files_str");
-          strings.push(str);
-      }
-      closedir(dirp);
-  }
+rust_list_dir_val(dirent* entry_ptr) {
+    return entry_ptr->d_name;
+}
 #endif
 
-  rust_vec_box *vec = (rust_vec_box *)
-      task->kernel->malloc(vec_size<rust_vec_box*>(strings.size()),
-                           "list_files_vec");
-  size_t alloc_sz = sizeof(rust_vec*) * strings.size();
-  vec->body.fill = vec->body.alloc = alloc_sz;
-  memcpy(&vec->body.data[0], strings.data(), alloc_sz);
-  return vec;
+extern "C" CDECL size_t
+#if defined(__WIN32__)
+rust_list_dir_wfd_size() {
+    return sizeof(WIN32_FIND_DATAW);
 }
+#else
+rust_list_dir_wfd_size() {
+    return 0;
+}
+#endif
 
-extern "C" CDECL rust_vec_box*
-rust_list_files2(rust_str **path) {
-    return rust_list_files(*path);
+extern "C" CDECL void*
+#if defined(__WIN32__)
+rust_list_dir_wfd_fp_buf(WIN32_FIND_DATAW* wfd) {
+    if(wfd == NULL) {
+        return 0;
+    }
+    else {
+        return wfd->cFileName;
+    }
 }
+#else
+rust_list_dir_wfd_fp_buf(void* wfd) {
+    return 0;
+}
+#endif
 
 extern "C" CDECL int
 rust_path_is_dir(char *path) {
