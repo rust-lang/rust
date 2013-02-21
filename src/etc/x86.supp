@@ -366,6 +366,55 @@
    ...
 }
 
+{
+   enum-instruction-scheduling-1
+   Memcheck:Cond
+   fun:*fold_mod*
+   ...
+}
+
+{
+   enum-instruction-scheduling-2
+   Memcheck:Cond
+   fun:*fold_nmod*
+   ...
+}
+
+{
+   enum-instruction-scheduling-3
+   Memcheck:Cond
+   fun:*fold_crate*
+   ...
+}
+
+{
+   enum-instruction-scheduling-4
+   Memcheck:Cond
+   fun:*fold_enum*
+   ...
+}
+
+{
+   enum-instruction-scheduling-5
+   Memcheck:Cond
+   fun:*write_variant*
+   ...
+}
+
+{
+   enum-instruction-scheduling-6
+   Memcheck:Cond
+   fun:*merge_method_attrs*
+   ...
+}
+
+{
+   enum-instruction-scheduling-7
+   Memcheck:Cond
+   fun:*parse_config_*
+   ...
+}
+
 {  
    llvm-user-new-leak
    Memcheck:Leak
