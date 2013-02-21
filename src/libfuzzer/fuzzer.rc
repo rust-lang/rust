@@ -466,7 +466,7 @@ pub fn parse_and_print(code: @~str) -> ~str {
                    sess.cm,
                    // Assuming there are no token_trees
                    syntax::parse::token::mk_fake_ident_interner(),
-                   sess.span_diagnostic,
+                   copy sess.span_diagnostic,
                    crate,
                    filename.to_str(),
                    rdr, a,
@@ -622,7 +622,7 @@ pub fn check_variants(files: &[Path], cx: Context) {
                        sess.cm,
                        // Assuming no token_trees
                        syntax::parse::token::mk_fake_ident_interner(),
-                       sess.span_diagnostic,
+                       copy sess.span_diagnostic,
                        crate,
                        file_str,
                        rdr, a,

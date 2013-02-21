@@ -290,10 +290,10 @@ fn highlight_lines(cm: @codemap::CodeMap,
 
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
     do option::iter(&sp.expn_info) |ei| {
-        let ss = option::map_default(&ei.callie.span, @~"",
+        let ss = option::map_default(&ei.callee.span, @~"",
                                      |span| @cm.span_to_str(*span));
         print_diagnostic(*ss, note,
-                         fmt!("in expansion of %s!", ei.callie.name));
+                         fmt!("in expansion of %s!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);
         print_diagnostic(ss, note, ~"expansion site");
         print_macro_backtrace(cm, ei.call_site);

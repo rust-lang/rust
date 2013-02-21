@@ -10,10 +10,6 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
-// XXX - Need to finish off libsyntax first
-#[legacy_records];
-#[allow(structural_records)];
-
 use core::prelude::*;
 
 use driver::session;
@@ -25,7 +21,7 @@ use core::option;
 use core::vec;
 use syntax::ast_util::*;
 use syntax::attr;
-use syntax::codemap::{dummy_sp, span, ExpandedFrom};
+use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
 use syntax::codemap;
 use syntax::fold;
 use syntax::print::pprust;
@@ -81,11 +77,13 @@ fn generate_test_harness(sess: session::Session,
         testfns: ~[]
     };
 
-    cx.ext_cx.bt_push(ExpandedFrom({
-                        call_site: dummy_sp(),
-                        callie: {
-                            name: ~"test",
-                            span: None}}));
+    cx.ext_cx.bt_push(ExpandedFrom(CallInfo {
+        call_site: dummy_sp(),
+        callee: NameAndSpan {
+            name: ~"test",
+            span: None
+        }
+    }));
 
     let precursor = @fold::AstFoldFns {
         fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),

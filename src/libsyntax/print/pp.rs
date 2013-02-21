@@ -72,9 +72,15 @@ use core::vec;
 #[deriving_eq]
 pub enum breaks { consistent, inconsistent, }
 
-pub type break_t = {offset: int, blank_space: int};
+pub struct break_t {
+    offset: int,
+    blank_space: int
+}
 
-pub type begin_t = {offset: int, breaks: breaks};
+pub struct begin_t {
+    offset: int,
+    breaks: breaks
+}
 
 pub enum token {
     STRING(@~str, int),
@@ -90,7 +96,10 @@ pub impl token {
     }
     fn is_hardbreak_tok(&self) -> bool {
         match *self {
-            BREAK({offset: 0, blank_space: bs }) if bs == size_infinity =>
+            BREAK(break_t {
+                offset: 0,
+                blank_space: bs
+            }) if bs == size_infinity =>
                 true,
             _ =>
                 false
@@ -128,7 +137,10 @@ pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
 
 pub enum print_stack_break { fits, broken(breaks), }
 
-pub type print_stack_elt = {offset: int, pbreak: print_stack_break};
+pub struct print_stack_elt {
+    offset: int,
+    pbreak: print_stack_break
+}
 
 pub const size_infinity: int = 0xffff;
 
@@ -445,7 +457,10 @@ pub impl Printer {
         if n != 0u {
             self.print_stack[n - 1u]
         } else {
-            {offset: 0, pbreak: broken(inconsistent)}
+            print_stack_elt {
+                offset: 0,
+                pbreak: broken(inconsistent)
+            }
         }
     }
     fn print_str(&mut self, s: ~str) {
@@ -468,12 +483,16 @@ pub impl Printer {
             if L > self.space {
                 let col = self.margin - self.space + b.offset;
                 debug!("print BEGIN -> push broken block at col %d", col);
-                self.print_stack.push({offset: col,
-                                       pbreak: broken(b.breaks)});
+                self.print_stack.push(print_stack_elt {
+                    offset: col,
+                    pbreak: broken(b.breaks)
+                });
             } else {
                 debug!("print BEGIN -> push fitting block");
-                self.print_stack.push({offset: 0,
-                                       pbreak: fits});
+                self.print_stack.push(print_stack_elt {
+                    offset: 0,
+                    pbreak: fits
+                });
             }
           }
           END => {
@@ -527,7 +546,10 @@ pub impl Printer {
 
 // Convenience functions to talk to the printer.
 pub fn box(p: @mut Printer, indent: uint, b: breaks) {
-    p.pretty_print(BEGIN({offset: indent as int, breaks: b}));
+    p.pretty_print(BEGIN(begin_t {
+        offset: indent as int,
+        breaks: b
+    }));
 }
 
 pub fn ibox(p: @mut Printer, indent: uint) { box(p, indent, inconsistent); }
@@ -535,7 +557,10 @@ pub fn ibox(p: @mut Printer, indent: uint) { box(p, indent, inconsistent); }
 pub fn cbox(p: @mut Printer, indent: uint) { box(p, indent, consistent); }
 
 pub fn break_offset(p: @mut Printer, n: uint, off: int) {
-    p.pretty_print(BREAK({offset: off, blank_space: n as int}));
+    p.pretty_print(BREAK(break_t {
+        offset: off,
+        blank_space: n as int
+    }));
 }
 
 pub fn end(p: @mut Printer) { p.pretty_print(END); }
@@ -563,7 +588,7 @@ pub fn space(p: @mut Printer) { spaces(p, 1u); }
 pub fn hardbreak(p: @mut Printer) { spaces(p, size_infinity as uint); }
 
 pub fn hardbreak_tok_offset(off: int) -> token {
-    return BREAK({offset: off, blank_space: size_infinity});
+    BREAK(break_t {offset: off, blank_space: size_infinity})
 }
 
 pub fn hardbreak_tok() -> token { return hardbreak_tok_offset(0); }
