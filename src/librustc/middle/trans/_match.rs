@@ -1368,8 +1368,8 @@ pub fn compile_submatch(bcx: block,
     let mut test_val = val;
     if opts.len() > 0u {
         match opts[0] {
-            var(_, vdef) => {
-                let variants = ty::enum_variants(tcx, vdef.enm);
+            var(_, (enm, _)) => {
+                let variants = ty::enum_variants(tcx, enm);
                 if variants.len() == 1 {
                     kind = single;
                 } else {
