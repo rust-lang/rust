@@ -23,7 +23,7 @@ use codemap::span;
 use ext::base::*;
 use ext::base;
 use ext::build::*;
-use extfmt::ct::*;
+use private::extfmt::ct::*;
 
 pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {
@@ -56,8 +56,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
    -> @ast::expr {
     fn make_path_vec(cx: ext_ctxt, ident: @~str) -> ~[ast::ident] {
         let intr = cx.parse_sess().interner;
-        return ~[intr.intern(@~"extfmt"), intr.intern(@~"rt"),
-                 intr.intern(ident)];
+        return ~[intr.intern(@~"private"), intr.intern(@~"extfmt"),
+                 intr.intern(@~"rt"), intr.intern(ident)];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span, nm: @~str) -> @ast::expr {
         let path = make_path_vec(cx, nm);
