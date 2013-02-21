@@ -19,6 +19,11 @@ use ext::build;
 use core::dvec;
 use core::option;
 
+pub struct Field {
+    ident: ast::ident,
+    ex: @ast::expr
+}
+
 pub fn mk_expr(cx: ext_ctxt,
                sp: codemap::span,
                expr: ast::expr_)
@@ -147,47 +152,37 @@ pub fn mk_base_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
 pub fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_str(cx, sp, s), ast::expr_vstore_uniq)
 }
-pub fn mk_field(sp: span, f: &{ident: ast::ident, ex: @ast::expr})
-             -> ast::field {
+pub fn mk_field(sp: span, f: &Field) -> ast::field {
     codemap::spanned {
         node: ast::field_ { mutbl: ast::m_imm, ident: f.ident, expr: f.ex },
         span: sp,
     }
 }
-pub fn mk_fields(sp: span, fields: ~[{ident: ast::ident, ex: @ast::expr}])
-              -> ~[ast::field] {
+pub fn mk_fields(sp: span, fields: ~[Field]) -> ~[ast::field] {
     fields.map(|f| mk_field(sp, f))
 }
-pub fn mk_rec_e(cx: ext_ctxt,
-                sp: span,
-                fields: ~[{ident: ast::ident, ex: @ast::expr}])
-             -> @ast::expr {
+pub fn mk_rec_e(cx: ext_ctxt, sp: span, fields: ~[Field]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_rec(mk_fields(sp, fields),
                                   option::None::<@ast::expr>))
 }
-pub fn mk_struct_e(cx: ext_ctxt,
-                   sp: span,
-                   ctor_path: ~[ast::ident],
-                   fields: ~[{ident: ast::ident, ex: @ast::expr}])
-                -> @ast::expr {
+pub fn mk_struct_e(cx: ext_ctxt, sp: span, ctor_path: ~[ast::ident],
+                   fields: ~[Field]) -> @ast::expr {
     mk_expr(cx, sp,
             ast::expr_struct(mk_raw_path(sp, ctor_path),
                              mk_fields(sp, fields),
                                     option::None::<@ast::expr>))
 }
-pub fn mk_global_struct_e(cx: ext_ctxt,
-                          sp: span,
+pub fn mk_global_struct_e(cx: ext_ctxt, sp: span,
                           ctor_path: ~[ast::ident],
-                          fields: ~[{ident: ast::ident, ex: @ast::expr}])
+                          fields: ~[Field])
                        -> @ast::expr {
     mk_expr(cx, sp,
             ast::expr_struct(mk_raw_path_global(sp, ctor_path),
                              mk_fields(sp, fields),
                                     option::None::<@ast::expr>))
 }
-pub fn mk_glob_use(cx: ext_ctxt,
-                   sp: span,
-                   path: ~[ast::ident]) -> @ast::view_item {
+pub fn mk_glob_use(cx: ext_ctxt, sp: span, path: ~[ast::ident])
+            -> @ast::view_item {
     let glob = @codemap::spanned {
         node: ast::view_path_glob(mk_raw_path(sp, path), cx.next_id()),
         span: sp,

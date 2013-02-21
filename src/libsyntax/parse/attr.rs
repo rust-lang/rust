@@ -24,7 +24,7 @@ pub trait parser_attr {
     fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->
         ast::attribute;
     fn parse_inner_attrs_and_next() ->
-        {inner: ~[ast::attribute], next: ~[ast::attribute]};
+        (~[ast::attribute], ~[ast::attribute]);
     fn parse_meta_item() -> @ast::meta_item;
     fn parse_meta_seq() -> ~[@ast::meta_item];
     fn parse_optional_meta() -> ~[@ast::meta_item];
@@ -82,7 +82,7 @@ impl parser_attr for Parser {
     // is an inner attribute of the containing item or an outer attribute of
     // the first contained item until we see the semi).
     fn parse_inner_attrs_and_next() ->
-        {inner: ~[ast::attribute], next: ~[ast::attribute]} {
+        (~[ast::attribute], ~[ast::attribute]) {
         let mut inner_attrs: ~[ast::attribute] = ~[];
         let mut next_outer_attrs: ~[ast::attribute] = ~[];
         loop {
@@ -121,7 +121,7 @@ impl parser_attr for Parser {
               _ => break
             }
         }
-        return {inner: inner_attrs, next: next_outer_attrs};
+        (inner_attrs, next_outer_attrs)
     }
 
     fn parse_meta_item() -> @ast::meta_item {
