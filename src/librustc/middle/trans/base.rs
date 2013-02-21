@@ -1162,7 +1162,7 @@ pub fn trans_stmt(cx: block, s: ast::stmt) -> block {
                         }
                     }
                 }
-                ast::decl_item(i) => trans_item(cx.fcx.ccx, *i)
+                ast::decl_item(i) => trans_item(*cx.fcx.ccx, *i)
             }
         }
         ast::stmt_mac(*) => cx.tcx().sess.bug(~"unexpanded macro")
@@ -1584,25 +1584,25 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         param_substs: Option<@param_substs>,
                         sp: Option<span>) -> fn_ctxt {
     let llbbs = mk_standard_basic_blocks(llfndecl);
-    return @fn_ctxt_ {
+    return @mut fn_ctxt_ {
           llfn: llfndecl,
           llenv: unsafe { llvm::LLVMGetParam(llfndecl, 1u as c_uint) },
           llretptr: unsafe { llvm::LLVMGetParam(llfndecl, 0u as c_uint) },
-          mut llstaticallocas: llbbs.sa,
-          mut llloadenv: None,
-          mut llreturn: llbbs.rt,
-          mut llself: None,
-          mut personality: None,
-          mut loop_ret: None,
-          llargs: HashMap(),
-          lllocals: HashMap(),
-          llupvars: HashMap(),
+          llstaticallocas: llbbs.sa,
+          llloadenv: None,
+          llreturn: llbbs.rt,
+          llself: None,
+          personality: None,
+          loop_ret: None,
+          llargs: @HashMap(),
+          lllocals: @HashMap(),
+          llupvars: @HashMap(),
           id: id,
           impl_id: impl_id,
           param_substs: param_substs,
           span: sp,
           path: path,
-          ccx: ccx
+          ccx: @ccx
     };
 }
 
@@ -1792,7 +1792,7 @@ pub fn trans_closure(ccx: @CrateContext,
                 llvm::LLVMSetGC(fcx.llfn, strategy);
             }
         }
-        ccx.uses_gc = true;
+        *ccx.uses_gc = true;
     }
 
     // Create the first basic block in the function and keep a handle on it to
@@ -2815,7 +2815,7 @@ pub fn trap(bcx: block) {
 }
 
 pub fn decl_gc_metadata(ccx: @CrateContext, llmod_id: ~str) {
-    if !ccx.sess.opts.gc || !ccx.uses_gc {
+    if !ccx.sess.opts.gc || !*ccx.uses_gc {
         return;
     }
 
@@ -3050,7 +3050,7 @@ pub fn trans_crate(sess: session::Session,
               discrims: HashMap(),
               discrim_symbols: HashMap(),
               tydescs: ty::new_ty_hash(),
-              mut finished_tydescs: false,
+              finished_tydescs: @mut false,
               external: HashMap(),
               monomorphized: HashMap(),
               monomorphizing: HashMap(),
@@ -3092,9 +3092,9 @@ pub fn trans_crate(sess: session::Session,
               builder: BuilderRef_res(unsafe { llvm::LLVMCreateBuilder() }),
               shape_cx: mk_ctxt(llmod),
               crate_map: crate_map,
-              mut uses_gc: false,
+              uses_gc: @mut false,
               dbg_cx: dbg_cx,
-              mut do_not_commit_warning_issued: false
+              do_not_commit_warning_issued: @mut false
         };
 
         {
