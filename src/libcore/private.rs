@@ -32,6 +32,8 @@ pub mod finally;
 pub mod weak_task;
 #[path = "private/exchange_alloc.rs"]
 pub mod exchange_alloc;
+#[path = "private/intrinsics.rs"]
+pub mod intrinsics;
 
 extern mod rustrt {
     pub unsafe fn rust_create_little_lock() -> rust_little_lock;
@@ -41,13 +43,6 @@ extern mod rustrt {
 
     pub unsafe fn rust_raw_thread_start(f: &fn()) -> *raw_thread;
     pub unsafe fn rust_raw_thread_join_delete(thread: *raw_thread);
-}
-
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
-    fn atomic_xadd(dst: &mut int, src: int) -> int;
-    fn atomic_xsub(dst: &mut int, src: int) -> int;
 }
 
 #[allow(non_camel_case_types)] // runtime type
@@ -101,7 +96,7 @@ fn test_run_in_bare_thread_exchange() {
 
 fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
     unsafe {
-        let old = rusti::atomic_cxchg(address, oldval, newval);
+        let old = intrinsics::atomic_cxchg(address, oldval, newval);
         old == oldval
     }
 }
@@ -132,7 +127,8 @@ struct ArcDestruct<T> {
             }
             do task::unkillable {
                 let data: ~ArcData<T> = cast::reinterpret_cast(&self.data);
-                let new_count = rusti::atomic_xsub(&mut data.count, 1) - 1;
+                let new_count =
+                    intrinsics::atomic_xsub(&mut data.count, 1) - 1;
                 assert new_count >= 0;
                 if new_count == 0 {
                     // Were we really last, or should we hand off to an
@@ -205,7 +201,7 @@ pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
             // Got in. Step 0: Tell destructor not to run. We are now it.
             rc.data = ptr::null();
             // Step 1 - drop our own reference.
-            let new_count = rusti::atomic_xsub(&mut ptr.count, 1) - 1;
+            let new_count = intrinsics::atomic_xsub(&mut ptr.count, 1) - 1;
             //assert new_count >= 0;
             if new_count == 0 {
                 // We were the last owner. Can unwrap immediately.
@@ -284,7 +280,7 @@ pub unsafe fn clone_shared_mutable_state<T: Owned>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
-        let new_count = rusti::atomic_xadd(&mut ptr.count, 1) + 1;
+        let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
         assert new_count >= 2;
         cast::forget(ptr);
     }

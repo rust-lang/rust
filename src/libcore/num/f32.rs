@@ -18,6 +18,7 @@ use num::strconv;
 use num;
 use ops;
 use option::Option;
+use private::intrinsics::floorf32;
 use from_str;
 use to_str;
 
@@ -330,11 +331,6 @@ impl ops::Modulo<f32,f32> for f32 {
 #[cfg(notest)]
 impl ops::Neg<f32> for f32 {
     pure fn neg(&self) -> f32 { -*self }
-}
-
-#[abi="rust-intrinsic"]
-pub extern {
-    fn floorf32(val: f32) -> f32;
 }
 
 impl num::Round for f32 {

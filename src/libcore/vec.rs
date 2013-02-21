@@ -22,6 +22,7 @@ use kinds::Copy;
 use libc;
 use libc::size_t;
 use option::{None, Option, Some};
+use private::intrinsics;
 use ptr;
 use ptr::addr_of;
 use sys;
@@ -34,13 +35,6 @@ pub extern mod rustrt {
                                  ++v: **raw::VecRepr,
                                  ++n: libc::size_t);
 }
-
-#[abi = "rust-intrinsic"]
-pub extern mod rusti {
-    fn move_val_init<T>(dst: &mut T, -src: T);
-    fn init<T>() -> T;
-}
-
 
 /// Returns true if a vector contains no elements
 pub pure fn is_empty<T>(v: &[const T]) -> bool {
@@ -120,7 +114,8 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
         do as_mut_buf(v) |p, _len| {
             let mut i: uint = 0u;
             while i < n_elts {
-                rusti::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
+                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
+                                          op(i));
                 i += 1u;
             }
         }
@@ -538,7 +533,7 @@ pub fn consume<T>(mut v: ~[T], f: fn(uint, v: T)) {
                 // holes we create in the vector. That ensures that, if the
                 // iterator fails then we won't try to clean up the consumed
                 // elements during unwinding
-                let mut x = rusti::init();
+                let mut x = intrinsics::init();
                 let p = ptr::mut_offset(p, i);
                 x <-> *p;
                 f(i, x);
@@ -557,8 +552,8 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        // FIXME #4204: Should be rusti::uninit() - we don't need this zeroed
-        let mut val = rusti::init();
+        // FIXME #4204: Should be uninit() - we don't need this zeroed
+        let mut val = intrinsics::init();
         val <-> *valptr;
         raw::set_len(v, ln - 1u);
         val
@@ -605,7 +600,7 @@ unsafe fn push_fast<T>(v: &mut ~[T], initval: T) {
     (**repr).unboxed.fill += sys::nonzero_size_of::<T>();
     let p = addr_of(&((**repr).unboxed.data));
     let p = ptr::offset(p, fill) as *mut T;
-    rusti::move_val_init(&mut(*p), initval);
+    intrinsics::move_val_init(&mut(*p), initval);
 }
 
 #[inline(never)]
@@ -632,8 +627,8 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                // FIXME #4204 Should be rusti::uninit() - don't need to zero
-                let mut x = rusti::init();
+                // FIXME #4204 Should be uninit() - don't need to zero
+                let mut x = intrinsics::init();
                 x <-> *ptr::mut_offset(p, i);
                 push(&mut *v, x);
             }
@@ -649,8 +644,8 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                // FIXME #4204 Should be rusti::uninit() - don't need to zero
-                let mut dropped = rusti::init();
+                // FIXME #4204 Should be uninit() - don't need to zero
+                let mut dropped = intrinsics::init();
                 dropped <-> *ptr::mut_offset(p, i);
             }
         }
@@ -675,9 +670,9 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) {
                 // last_written < next_to_read < ln
                 if *ptr::mut_offset(p, next_to_read) ==
                     *ptr::mut_offset(p, last_written) {
-                    // FIXME #4204 Should be rusti::uninit() - don't need to
+                    // FIXME #4204 Should be uninit() - don't need to
                     // zero
-                    let mut dropped = rusti::init();
+                    let mut dropped = intrinsics::init();
                     dropped <-> *ptr::mut_offset(p, next_to_read);
                 } else {
                     last_written += 1;
@@ -2009,11 +2004,11 @@ pub mod raw {
     use managed;
     use option::{None, Some};
     use option;
+    use private::intrinsics;
     use ptr::addr_of;
     use ptr;
     use sys;
     use vec::{UnboxedVecRepr, as_const_buf, as_mut_buf, len, with_capacity};
-    use vec::rusti;
 
     /// The internal representation of a (boxed) vector
     pub struct VecRepr {
@@ -2101,7 +2096,7 @@ pub mod raw {
         do as_mut_buf(v) |p, _len| {
             let mut box2 = None;
             box2 <-> box;
-            rusti::move_val_init(&mut(*ptr::mut_offset(p, i)),
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
                                  option::unwrap(box2));
         }
     }
