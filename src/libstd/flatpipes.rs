@@ -151,7 +151,7 @@ pub mod serial {
     }
 
     /// Create a pair of `FlatChan` and `FlatPort`, backed by pipes
-    pub fn pipe_stream<T: Encodable<DefaultEncoder>
+    pub fn pipe_stream<T: Encodable<DefaultEncoder> +
                           Decodable<DefaultDecoder>>(
                           ) -> (PipePort<T>, PipeChan<T>) {
         let (port, chan) = pipes::stream();
@@ -443,8 +443,8 @@ pub mod flatteners {
     SerializingFlattener
     */
 
-    pub fn deserialize_buffer<D: Decoder FromReader,
-                          T: Decodable<D>>(buf: &[u8]) -> T {
+    pub fn deserialize_buffer<D: Decoder + FromReader,
+                              T: Decodable<D>>(buf: &[u8]) -> T {
         let buf = vec::from_slice(buf);
         let buf_reader = @BufReader::new(buf);
         let reader = buf_reader as @Reader;
@@ -452,8 +452,8 @@ pub mod flatteners {
         Decodable::decode(&deser)
     }
 
-    pub fn serialize_value<D: Encoder FromWriter,
-                       T: Encodable<D>>(val: &T) -> ~[u8] {
+    pub fn serialize_value<D: Encoder + FromWriter,
+                           T: Encodable<D>>(val: &T) -> ~[u8] {
         let bytes_writer = @BytesWriter();
         let writer = bytes_writer as @Writer;
         let ser = FromWriter::from_writer(writer);
