@@ -75,6 +75,7 @@ use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
 use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
+use parse::obsolete::{ObsoleteTraitBoundSeparator};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -2676,7 +2677,12 @@ pub impl Parser {
                 }
 
                 if self.eat(token::BINOP(token::PLUS)) {
-                    // Should be `break;` but that isn't backwards compatible.
+                    loop;
+                }
+
+                if is_ident_or_path(self.token) {
+                    self.obsolete(copy self.span,
+                                  ObsoleteTraitBoundSeparator);
                 }
             }
         }
