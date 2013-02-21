@@ -127,18 +127,23 @@ enum view_item_parse_mode {
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
-    ($p:expr) => ( match *$p.token {
-      INTERPOLATED(token::nt_expr(e)) => {
-        $p.bump();
-        return e;
-      }
-      INTERPOLATED(token::nt_path(pt)) => {
-        $p.bump();
-        return $p.mk_expr($p.span.lo, $p.span.lo,
-                       expr_path(pt));
-      }
-      _ => ()
-    })
+    ($p:expr) => (
+        match *$p.token {
+            INTERPOLATED(token::nt_expr(e)) => {
+                $p.bump();
+                return e;
+            }
+            INTERPOLATED(token::nt_path(pt)) => {
+                $p.bump();
+                return $p.mk_expr(
+                    $p.span.lo,
+                    $p.span.hi,
+                    expr_path(pt)
+                );
+            }
+        _ => ()
+        }
+    )
 )
 
 macro_rules! maybe_whole (
