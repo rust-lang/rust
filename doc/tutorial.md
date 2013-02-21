@@ -2072,12 +2072,12 @@ on values of type `T` inside the function. It will also cause a
 compile-time error when anyone tries to call `print_all` on an array
 whose element type does not have a `Printable` implementation.
 
-Type parameters can have multiple bounds by separating them with spaces,
+Type parameters can have multiple bounds by separating them with `+`,
 as in this version of `print_all` that copies elements.
 
 ~~~
 # trait Printable { fn print(&self); }
-fn print_all<T: Printable Copy>(printable_things: ~[T]) {
+fn print_all<T: Printable + Copy>(printable_things: ~[T]) {
     let mut i = 0;
     while i < printable_things.len() {
         let copy_of_thing = printable_things[i];

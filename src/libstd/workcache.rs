@@ -260,9 +260,7 @@ impl Context {
         Context{db: db, logger: lg, cfg: cfg, freshness: LinearMap::new()}
     }
 
-    fn prep<T:Owned
-              Encodable<json::Encoder>
-              Decodable<json::Decoder>>(
+    fn prep<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
                   @self,
                   fn_name:&str,
                   blk: fn(@Mut<Prep>)->Work<T>) -> Work<T> {
@@ -278,9 +276,8 @@ trait TPrep {
     fn declare_input(&self, kind:&str, name:&str, val:&str);
     fn is_fresh(&self, cat:&str, kind:&str, name:&str, val:&str) -> bool;
     fn all_fresh(&self, cat:&str, map:&WorkMap) -> bool;
-    fn exec<T:Owned
-        Encodable<json::Encoder>
-        Decodable<json::Decoder>>(&self, blk: ~fn(&Exec) -> T) -> Work<T>;
+    fn exec<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
+        &self, blk: ~fn(&Exec) -> T) -> Work<T>;
 }
 
 impl TPrep for @Mut<Prep> {
@@ -318,11 +315,8 @@ impl TPrep for @Mut<Prep> {
         return true;
     }
 
-    fn exec<T:Owned
-        Encodable<json::Encoder>
-        Decodable<json::Decoder>>(&self,
-                                  blk: ~fn(&Exec) -> T) -> Work<T> {
-
+    fn exec<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
+            &self, blk: ~fn(&Exec) -> T) -> Work<T> {
         let mut bo = Some(blk);
 
         do self.borrow_imm |p| {
@@ -360,20 +354,15 @@ impl TPrep for @Mut<Prep> {
     }
 }
 
-impl<T:Owned
-       Encodable<json::Encoder>
-       Decodable<json::Decoder>>
-    Work<T> {
+impl<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>> Work<T> {
     static fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }
 }
 
 // FIXME (#3724): movable self. This should be in impl Work.
-fn unwrap<T:Owned
-            Encodable<json::Encoder>
-            Decodable<json::Decoder>>(w: Work<T>) -> T {
-
+fn unwrap<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
+        w: Work<T>) -> T {
     let mut ww = w;
     let mut s = None;
 
@@ -383,7 +372,6 @@ fn unwrap<T:Owned
         None => fail!(),
         Some(Left(v)) => v,
         Some(Right(port)) => {
-
             let (exe, v) = match recv(port) {
                 oneshot::send(data) => data
             };

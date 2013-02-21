@@ -163,8 +163,8 @@ pub fn mk_err<T:SimplyUnifiable>(+a_is_expected: bool,
 }
 
 pub impl InferCtxt {
-    fn simple_vars<T:Copy Eq InferStr SimplyUnifiable,
-                   V:Copy Eq Vid ToStr UnifyVid<Option<T>>>(
+    fn simple_vars<T:Copy + Eq + InferStr + SimplyUnifiable,
+                   V:Copy + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
             &mut self,
             +a_is_expected: bool,
             +a_id: V,
@@ -201,8 +201,8 @@ pub impl InferCtxt {
         return uok();
     }
 
-    fn simple_var_t<T:Copy Eq InferStr SimplyUnifiable,
-                    V:Copy Eq Vid ToStr UnifyVid<Option<T>>>(
+    fn simple_var_t<T:Copy + Eq + InferStr + SimplyUnifiable,
+                    V:Copy + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
             &mut self,
             +a_is_expected: bool,
             +a_id: V,
