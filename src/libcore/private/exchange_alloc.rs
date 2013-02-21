@@ -14,6 +14,7 @@ use c_malloc = libc::malloc;
 use c_free = libc::free;
 use managed::raw::{BoxHeaderRepr, BoxRepr};
 use cast::transmute;
+use private::intrinsics::{atomic_xadd,atomic_xsub};
 use ptr::null;
 use intrinsic::TyDesc;
 
@@ -35,7 +36,7 @@ pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
         box.header.next = null();
 
         let exchange_count = &mut *rust_get_exchange_count_ptr();
-        rusti::atomic_xadd(exchange_count, 1);
+        atomic_xadd(exchange_count, 1);
 
         return transmute(box);
     }
@@ -43,7 +44,7 @@ pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
 
 pub unsafe fn free(ptr: *c_void) {
     let exchange_count = &mut *rust_get_exchange_count_ptr();
-    rusti::atomic_xsub(exchange_count, 1);
+    atomic_xsub(exchange_count, 1);
 
     assert ptr.is_not_null();
     c_free(ptr);
@@ -68,8 +69,3 @@ extern {
     fn rust_get_exchange_count_ptr() -> *mut int;
 }
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    fn atomic_xadd(dst: &mut int, src: int) -> int;
-    fn atomic_xsub(dst: &mut int, src: int) -> int;
-}
