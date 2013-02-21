@@ -38,10 +38,12 @@ pub trait FileSearch {
 pub fn mk_filesearch(maybe_sysroot: Option<Path>,
                      target_triple: &str,
                      +addl_lib_search_paths: ~[Path]) -> FileSearch {
-    type filesearch_impl = {sysroot: Path,
-                            addl_lib_search_paths: ~[Path],
-                            target_triple: ~str};
-    impl FileSearch for filesearch_impl {
+    struct FileSearchImpl {
+        sysroot: Path,
+        addl_lib_search_paths: ~[Path],
+        target_triple: ~str
+    }
+    impl FileSearch for FileSearchImpl {
         fn sysroot() -> Path { /*bad*/copy self.sysroot }
         fn lib_search_paths() -> ~[Path] {
             let mut paths = /*bad*/copy self.addl_lib_search_paths;
@@ -69,9 +71,11 @@ pub fn mk_filesearch(maybe_sysroot: Option<Path>,
 
     let sysroot = get_sysroot(maybe_sysroot);
     debug!("using sysroot = %s", sysroot.to_str());
-    {sysroot: sysroot,
-     addl_lib_search_paths: addl_lib_search_paths,
-     target_triple: str::from_slice(target_triple)} as FileSearch
+    FileSearchImpl {
+        sysroot: sysroot,
+        addl_lib_search_paths: addl_lib_search_paths,
+        target_triple: str::from_slice(target_triple)
+    } as FileSearch
 }
 
 pub fn search<T: Copy>(filesearch: FileSearch, pick: pick<T>) -> Option<T> {

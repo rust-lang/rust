@@ -117,8 +117,11 @@ pub fn ast_path_to_substs_and_ty<AC: AstConv, RS: region_scope Copy Durable>(
         path: @ast::path)
      -> ty_param_substs_and_ty {
     let tcx = self.tcx();
-    let {bounds: decl_bounds, region_param: decl_rp, ty: decl_ty} =
-        self.get_item_ty(did);
+    let ty::ty_param_bounds_and_ty {
+        bounds: decl_bounds,
+        region_param: decl_rp,
+        ty: decl_ty
+    } = self.get_item_ty(did);
 
     debug!("ast_path_to_substs_and_ty: did=%? decl_rp=%?",
            did, decl_rp);
@@ -159,7 +162,8 @@ pub fn ast_path_to_substs_and_ty<AC: AstConv, RS: region_scope Copy Durable>(
 
     let substs = substs {self_r:self_r, self_ty:None, tps:tps};
     let ty = ty::subst(tcx, &substs, decl_ty);
-    {substs: substs, ty: ty}
+
+    ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
 pub fn ast_path_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
@@ -172,11 +176,14 @@ pub fn ast_path_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
     // Look up the polytype of the item and then substitute the provided types
     // for any type/region parameters.
     let tcx = self.tcx();
-    let {substs: substs, ty: ty} =
-        ast_path_to_substs_and_ty(self, rscope, did, path);
+    let ty::ty_param_substs_and_ty {
+        substs: substs,
+        ty: ty
+    } = ast_path_to_substs_and_ty(self, rscope, did, path);
     write_ty_to_tcx(tcx, path_id, ty);
     write_substs_to_tcx(tcx, path_id, /*bad*/copy substs.tps);
-    return {substs: substs, ty: ty};
+
+    ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
 pub const NO_REGIONS: uint = 1;

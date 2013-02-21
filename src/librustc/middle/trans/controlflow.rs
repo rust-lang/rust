@@ -289,7 +289,7 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
     let _icx = bcx.insn_ctxt("trans_ret");
     let mut bcx = bcx;
     let retptr = match copy bcx.fcx.loop_ret {
-      Some({flagptr, retptr}) => {
+      Some((flagptr, retptr)) => {
         // This is a loop body return. Must set continue flag (our retptr)
         // to false, return flag to true, and then store the value in the
         // parent's retptr.
@@ -375,16 +375,15 @@ fn trans_fail_value(bcx: block,
                  -> block {
     let _icx = bcx.insn_ctxt("trans_fail_value");
     let ccx = bcx.ccx();
-    let {V_filename, V_line} = match sp_opt {
+    let (V_filename, V_line) = match sp_opt {
       Some(sp) => {
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        {V_filename: C_cstr(bcx.ccx(), @/*bad*/ copy loc.file.name),
-         V_line: loc.line as int}
+        (C_cstr(bcx.ccx(), @/*bad*/ copy loc.file.name),
+         loc.line as int)
       }
       None => {
-        {V_filename: C_cstr(bcx.ccx(), @~"<runtime>"),
-         V_line: 0}
+        (C_cstr(bcx.ccx(), @~"<runtime>"), 0)
       }
     };
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));

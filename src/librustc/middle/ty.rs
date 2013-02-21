@@ -70,14 +70,14 @@ pub struct field {
 
 pub type param_bounds = @~[param_bound];
 
-pub type method = {
+pub struct method {
     ident: ast::ident,
     tps: @~[param_bounds],
     fty: BareFnTy,
     self_ty: ast::self_ty_,
     vis: ast::visibility,
     def_id: ast::def_id
-};
+}
 
 pub struct mt {
     ty: t,
@@ -303,10 +303,14 @@ enum tbox_flag {
     needs_subst = 1 | 2 | 8
 }
 
-type t_box = @{sty: sty,
-               id: uint,
-               flags: uint,
-               o_def_id: Option<ast::def_id>};
+type t_box = @t_box_;
+
+struct t_box_ {
+    sty: sty,
+    id: uint,
+    flags: uint,
+    o_def_id: Option<ast::def_id>
+}
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
 // throughout the compiler. These are simply casted t_box values. Use ty::get
@@ -749,11 +753,16 @@ pub impl to_bytes::IterBytes for RegionVid {
 ///
 /// - `ty`: the base type.  May have reference to the (unsubstituted) bound
 ///   region `&self` or to (unsubstituted) ty_param types
-pub type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
-                                   region_param: Option<region_variance>,
-                                   ty: t};
+pub struct ty_param_bounds_and_ty {
+    bounds: @~[param_bounds],
+    region_param: Option<region_variance>,
+    ty: t
+}
 
-pub type ty_param_substs_and_ty = {substs: ty::substs, ty: ty::t};
+pub struct ty_param_substs_and_ty {
+    substs: ty::substs,
+    ty: ty::t
+}
 
 type type_cache = HashMap<ast::def_id, ty_param_bounds_and_ty>;
 
@@ -909,9 +918,17 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
     }
 
-    let t = @{sty: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
+    let t = @t_box_ {
+        sty: st,
+        id: cx.next_id,
+        flags: flags,
+        o_def_id: o_def_id
+    };
+    let key = intern_key {
+        sty: to_unsafe_ptr(&t.sty),
+        o_def_id: o_def_id
+    };
 
-    let key = intern_key {sty: to_unsafe_ptr(&t.sty), o_def_id: o_def_id};
     cx.interner.insert(key, t);
 
     cx.next_id += 1u;
@@ -3010,11 +3027,18 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
     }
 }
 
+pub struct ParamsTy {
+    params: ~[t],
+    ty: t
+}
+
 pub fn expr_ty_params_and_ty(cx: ctxt,
                              expr: @ast::expr)
-                          -> {params: ~[t], ty: t} {
-    return {params: node_id_to_type_params(cx, expr.id),
-         ty: node_id_to_type(cx, expr.id)};
+                          -> ParamsTy {
+    ParamsTy {
+        params: node_id_to_type_params(cx, expr.id),
+        ty: node_id_to_type(cx, expr.id)
+    }
 }
 
 pub fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
@@ -3609,7 +3633,10 @@ pub fn trait_supertraits(cx: ctxt,
             ty_trait(def_id, ref substs, _) => {
                 result.push(InstantiatedTraitRef {
                     def_id: def_id,
-                    tpt: { substs: (/*bad*/copy *substs), ty: *trait_type }
+                    tpt: ty_param_substs_and_ty {
+                        substs: (/*bad*/copy *substs),
+                        ty: *trait_type
+                    }
                 });
             }
             _ => cx.sess.bug(~"trait_supertraits: trait ref wasn't a trait")

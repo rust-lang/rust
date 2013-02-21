@@ -189,7 +189,7 @@ pub enum Lit {
 // range)
 pub enum Opt {
     lit(Lit),
-    var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
+    var(/* disr val */int, /* variant dids (enm, var) */(def_id, def_id)),
     range(@ast::expr, @ast::expr),
     vec_len_eq(uint),
     vec_len_ge(uint)
@@ -287,7 +287,7 @@ pub fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
             let variants = ty::enum_variants(tcx, enum_id);
             for vec::each(*variants) |v| {
                 if var_id == v.id {
-                    return var(v.disr_val, {enm: enum_id, var: var_id});
+                    return var(v.disr_val, (enum_id, var_id));
                 }
             }
             ::core::util::unreachable();
@@ -760,7 +760,7 @@ pub fn enter_region(bcx: block,
 // Returns the options in one column of matches. An option is something that
 // needs to be conditionally matched at runtime; for example, the discriminant
 // on a set of enum variants or a literal.
-pub fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
+pub fn get_options(ccx: @CrateContext, m: &[@Match], col: uint) -> ~[Opt] {
     fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, val: Opt) {
         if set.any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
@@ -819,36 +819,43 @@ pub fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
     return dvec::unwrap(found);
 }
 
+pub struct ExtractedBlock {
+    vals: ~[ValueRef],
+    bcx: block
+}
+
 pub fn extract_variant_args(bcx: block,
                             pat_id: ast::node_id,
-                            vdefs: {enm: def_id, var: def_id},
+                            vdefs: (def_id, def_id),
                             val: ValueRef)
-                         -> {vals: ~[ValueRef], bcx: block} {
+                         -> ExtractedBlock {
+    let (enm, evar) = vdefs;
     let _icx = bcx.insn_ctxt("match::extract_variant_args");
     let ccx = bcx.fcx.ccx;
     let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id)).sty {
       ty::ty_enum(id, ref substs) => {
-        assert id == vdefs.enm;
+        assert id == enm;
         /*bad*/copy (*substs).tps
       }
       _ => bcx.sess().bug(~"extract_variant_args: pattern has non-enum type")
     };
     let mut blobptr = val;
-    let variants = ty::enum_variants(ccx.tcx, vdefs.enm);
-    let size = ty::enum_variant_with_id(ccx.tcx, vdefs.enm,
-                                        vdefs.var).args.len();
+    let variants = ty::enum_variants(ccx.tcx, enm);
+    let size = ty::enum_variant_with_id(ccx.tcx, enm,
+                                        evar).args.len();
     if size > 0u && (*variants).len() != 1u {
         let enumptr =
             PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
         blobptr = GEPi(bcx, enumptr, [0u, 1u]);
     }
-    let vdefs_tg = vdefs.enm;
-    let vdefs_var = vdefs.var;
+    let vdefs_tg = enm;
+    let vdefs_var = evar;
     let args = do vec::from_fn(size) |i| {
         GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
                  /*bad*/copy enum_ty_substs, i)
     };
-    return {vals: args, bcx: bcx};
+
+    ExtractedBlock { vals: args, bcx: bcx }
 }
 
 pub fn extract_vec_elems(bcx: block,
@@ -856,7 +863,7 @@ pub fn extract_vec_elems(bcx: block,
                          elem_count: uint,
                          tail: bool,
                          val: ValueRef)
-                      -> {vals: ~[ValueRef], bcx: block} {
+                      -> ExtractedBlock {
     let _icx = bcx.insn_ctxt("match::extract_vec_elems");
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
     let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
@@ -885,7 +892,8 @@ pub fn extract_vec_elems(bcx: block,
         elems.push(scratch.val);
         scratch.add_clean(bcx);
     }
-    return {vals: elems, bcx: bcx};
+
+    ExtractedBlock { vals: elems, bcx: bcx }
 }
 
 // NB: This function does not collect fields from struct-like enum variants.
@@ -1360,8 +1368,8 @@ pub fn compile_submatch(bcx: block,
     let mut test_val = val;
     if opts.len() > 0u {
         match opts[0] {
-            var(_, vdef) => {
-                let variants = ty::enum_variants(tcx, vdef.enm);
+            var(_, (enm, _)) => {
+                let variants = ty::enum_variants(tcx, enm);
                 if variants.len() == 1 {
                     kind = single;
                 } else {

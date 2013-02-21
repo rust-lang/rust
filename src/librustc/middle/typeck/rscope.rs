@@ -68,10 +68,10 @@ pub fn bound_self_region(rp: Option<ty::region_variance>)
     }
 }
 
-pub enum anon_rscope = {anon: ty::Region, base: region_scope};
+pub struct anon_rscope { anon: ty::Region, base: region_scope }
 pub fn in_anon_rscope<RS: region_scope Copy Durable>(self: RS, r: ty::Region)
     -> @anon_rscope {
-    @anon_rscope({anon: r, base: self as region_scope})
+    @anon_rscope { anon: r, base: self as region_scope }
 }
 pub impl region_scope for @anon_rscope {
     pure fn anon_region(_span: span) -> Result<ty::Region, ~str> {

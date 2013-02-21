@@ -145,7 +145,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
 
 
 pub fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
-    @{
+    @MethodInfo {
         did: local_def(ast_method.id),
         n_tps: ast_method.tps.len(),
         ident: ast_method.ident,
@@ -345,7 +345,7 @@ pub impl CoherenceChecker {
 
             let provided_method_info =
                 @ProvidedMethodInfo {
-                    method_info: @{
+                    method_info: @MethodInfo {
                         did: new_did,
                         n_tps: trait_method.tps.len(),
                         ident: trait_method.ident,
@@ -792,7 +792,7 @@ pub impl CoherenceChecker {
                     }
                 }
 
-                return @{
+                return @Impl {
                     did: local_def(item.id),
                     ident: item.ident,
                     methods: methods
@@ -925,7 +925,7 @@ pub impl CoherenceChecker {
 
             let provided_method_info =
                 @ProvidedMethodInfo {
-                    method_info: @{
+                    method_info: @MethodInfo {
                         did: new_did,
                         n_tps: trait_method_info.ty.tps.len(),
                         ident: trait_method_info.ty.ident,

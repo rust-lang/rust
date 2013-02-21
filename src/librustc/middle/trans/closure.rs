@@ -131,7 +131,7 @@ pub impl EnvAction {
 }
 
 pub impl EnvValue {
-    fn to_str(ccx: @crate_ctxt) -> ~str {
+    fn to_str(ccx: @CrateContext) -> ~str {
         fmt!("%s(%s)", self.action.to_str(), self.datum.to_str(ccx))
     }
 }
@@ -192,11 +192,11 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
     }
 }
 
-pub type closure_result = {
-    llbox: ValueRef,     // llvalue of ptr to closure
-    cdata_ty: ty::t,      // type of the closure data
-    bcx: block     // final bcx
-};
+pub struct ClosureResult {
+    llbox: ValueRef, // llvalue of ptr to closure
+    cdata_ty: ty::t, // type of the closure data
+    bcx: block       // final bcx
+}
 
 // Given a block context and a list of tydescs and values to bind
 // construct a closure out of them. If copying is true, it is a
@@ -204,7 +204,7 @@ pub type closure_result = {
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 pub fn store_environment(bcx: block,
                          bound_values: ~[EnvValue],
-                         sigil: ast::Sigil) -> closure_result {
+                         sigil: ast::Sigil) -> ClosureResult {
     let _icx = bcx.insn_ctxt("closure::store_environment");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -254,7 +254,7 @@ pub fn store_environment(bcx: block,
         revoke_clean(bcx, *cleanup);
     }
 
-    return {llbox: llbox, cdata_ty: cdata_ty, bcx: bcx};
+    ClosureResult { llbox: llbox, cdata_ty: cdata_ty, bcx: bcx }
 }
 
 // Given a context and a list of upvars, build a closure. This just
@@ -262,7 +262,7 @@ pub fn store_environment(bcx: block,
 pub fn build_closure(bcx0: block,
                      cap_vars: &[moves::CaptureVar],
                      sigil: ast::Sigil,
-                     include_ret_handle: Option<ValueRef>) -> closure_result {
+                     include_ret_handle: Option<ValueRef>) -> ClosureResult {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
     let mut bcx = bcx0;;
@@ -302,7 +302,7 @@ pub fn build_closure(bcx0: block,
         // Return value (we just pass a by-ref () and cast it later to
         // the right thing):
         let ret_true = match bcx.fcx.loop_ret {
-            Some({retptr, _}) => retptr,
+            Some((_, retptr)) => retptr,
             None => bcx.fcx.llretptr
         };
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
@@ -360,7 +360,7 @@ pub fn load_environment(fcx: fn_ctxt,
         let flagptr = Load(bcx, GEPi(bcx, llcdata, [0u, i]));
         let retptr = Load(bcx,
                           GEPi(bcx, llcdata, [0u, i+1u]));
-        fcx.loop_ret = Some({flagptr: flagptr, retptr: retptr});
+        fcx.loop_ret = Some((flagptr, retptr));
     }
 }
 
@@ -418,8 +418,8 @@ pub fn trans_expr_fn(bcx: block,
             let cap_vars = ccx.maps.capture_map.get(&user_id);
             let ret_handle = match is_loop_body {Some(x) => x,
                                                  None => None};
-            let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, sigil,
-                                                       ret_handle);
+            let ClosureResult {llbox, cdata_ty, bcx}
+                = build_closure(bcx, cap_vars, sigil, ret_handle);
             trans_closure(ccx, sub_path, decl,
                           body, llfn, no_self,
                           /*bad*/ copy bcx.fcx.param_substs, user_id, None,

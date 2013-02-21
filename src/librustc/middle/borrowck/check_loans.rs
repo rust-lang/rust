@@ -21,7 +21,7 @@ use core::prelude::*;
 
 use middle::moves;
 use middle::borrowck::{Loan, bckerr, BorrowckCtxt, inherent_mutability};
-use middle::borrowck::{req_maps, root_map_key, save_and_restore_managed};
+use middle::borrowck::{ReqMaps, root_map_key, save_and_restore_managed};
 use middle::borrowck::{MoveError, MoveOk, MoveFromIllegalCmt};
 use middle::borrowck::{MoveWhileBorrowed};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
@@ -45,7 +45,7 @@ use syntax::visit;
 
 struct CheckLoanCtxt {
     bccx: @BorrowckCtxt,
-    req_maps: req_maps,
+    req_maps: ReqMaps,
 
     reported: HashMap<ast::node_id, ()>,
 
@@ -66,7 +66,7 @@ enum purity_cause {
 }
 
 pub fn check_loans(bccx: @BorrowckCtxt,
-                   req_maps: req_maps,
+                   req_maps: ReqMaps,
                    crate: @ast::crate) {
     let clcx = @mut CheckLoanCtxt {
         bccx: bccx,

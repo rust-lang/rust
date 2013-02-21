@@ -131,7 +131,7 @@ fn record(repl: Repl, blk: @ast::blk, intr: @token::ident_interner) -> Repl {
 
 /// Run an input string in a Repl, returning the new Repl.
 fn run(repl: Repl, input: ~str) -> Repl {
-    let options: @session::options = @{
+    let options = @session::options {
         crate_type: session::unknown_crate,
         binary: repl.binary,
         addl_lib_search_paths: repl.lib_search_paths.map(|p| Path(*p)),
@@ -157,7 +157,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     let outputs = driver::build_output_filenames(wrapped, &None, &None, sess);
     debug!("calling compile_upto");
-    let {crate: crate, tcx: _} = driver::compile_upto(sess, cfg, wrapped,
+    let (crate, _) = driver::compile_upto(sess, cfg, wrapped,
                                                  driver::cu_everything,
                                                  Some(outputs));
 
@@ -196,7 +196,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
 fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
     match do task::try {
         let src_path = Path(src_filename);
-        let options: @session::options = @{
+        let options = @session::options {
             binary: binary,
             addl_lib_search_paths: ~[os::getcwd()],
             .. *session::basic_options()

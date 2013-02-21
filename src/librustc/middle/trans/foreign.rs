@@ -47,23 +47,23 @@ fn abi_info(arch: session::arch) -> cabi::ABIInfo {
     }
 }
 
-pub fn link_name(ccx: @crate_ctxt, i: @ast::foreign_item) -> @~str {
-    match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
+pub fn link_name(ccx: @CrateContext, i: @ast::foreign_item) -> @~str {
+     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
         None => ccx.sess.str_of(i.ident),
         Some(ln) => ln,
     }
 }
 
-type c_stack_tys = {
+struct c_stack_tys {
     arg_tys: ~[TypeRef],
     ret_ty: TypeRef,
     ret_def: bool,
     bundle_ty: TypeRef,
     shim_fn_ty: TypeRef,
     fn_ty: cabi::FnType
-};
+}
 
-fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
+fn c_arg_and_ret_lltys(ccx: @CrateContext,
                        id: ast::node_id) -> (~[TypeRef], TypeRef, ty::t) {
     match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
         ty::ty_bare_fn(ref fn_ty) => {
@@ -75,7 +75,7 @@ fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
     }
 }
 
-fn c_stack_tys(ccx: @crate_ctxt,
+fn c_stack_tys(ccx: @CrateContext,
                id: ast::node_id) -> @c_stack_tys {
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, id);
     // XXX: Bad copy.
@@ -83,7 +83,7 @@ fn c_stack_tys(ccx: @crate_ctxt,
     let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
     let fn_ty = abi_info(ccx.sess.targ_cfg.arch).
                     compute_info(llargtys, llretty, ret_def);
-    return @{
+    return @c_stack_tys {
         arg_tys: llargtys,
         ret_ty: llretty,
         ret_def: ret_def,
@@ -99,7 +99,7 @@ type shim_arg_builder = fn(bcx: block, tys: @c_stack_tys,
 type shim_ret_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef, llretval: ValueRef);
 
-fn build_shim_fn_(ccx: @crate_ctxt,
+fn build_shim_fn_(ccx: @CrateContext,
                   +shim_name: ~str,
                   llbasefn: ValueRef,
                   tys: @c_stack_tys,
@@ -136,7 +136,7 @@ type wrap_arg_builder = fn(bcx: block, tys: @c_stack_tys,
 type wrap_ret_builder = fn(bcx: block, tys: @c_stack_tys,
                            llargbundle: ValueRef);
 
-fn build_wrap_fn_(ccx: @crate_ctxt,
+fn build_wrap_fn_(ccx: @CrateContext,
                   tys: @c_stack_tys,
                   llshimfn: ValueRef,
                   llwrapfn: ValueRef,
@@ -201,13 +201,13 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
 // stack pointer appropriately to avoid a round of copies.  (In fact, the shim
 // function itself is unnecessary). We used to do this, in fact, and will
 // perhaps do so in the future.
-pub fn trans_foreign_mod(ccx: @crate_ctxt,
+pub fn trans_foreign_mod(ccx: @CrateContext,
                          foreign_mod: ast::foreign_mod,
                          abi: ast::foreign_abi) {
 
     let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
 
-    fn build_shim_fn(ccx: @crate_ctxt,
+    fn build_shim_fn(ccx: @CrateContext,
                      foreign_item: @ast::foreign_item,
                      tys: @c_stack_tys,
                      cc: lib::llvm::CallConv) -> ValueRef {
@@ -235,7 +235,7 @@ pub fn trans_foreign_mod(ccx: @crate_ctxt,
                            build_args, build_ret);
     }
 
-    fn base_fn(ccx: @crate_ctxt, lname: &str, tys: @c_stack_tys,
+    fn base_fn(ccx: @CrateContext, lname: &str, tys: @c_stack_tys,
                cc: lib::llvm::CallConv) -> ValueRef {
         // Declare the "prototype" for the base function F:
         do tys.fn_ty.decl_fn |fnty| {
@@ -245,7 +245,7 @@ pub fn trans_foreign_mod(ccx: @crate_ctxt,
 
     // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
     // over the place
-    fn build_direct_fn(ccx: @crate_ctxt, decl: ValueRef,
+    fn build_direct_fn(ccx: @CrateContext, decl: ValueRef,
                        item: @ast::foreign_item, tys: @c_stack_tys,
                        cc: lib::llvm::CallConv) {
         let fcx = new_fn_ctxt(ccx, ~[], decl, None);
@@ -264,7 +264,7 @@ pub fn trans_foreign_mod(ccx: @crate_ctxt,
         finish_fn(fcx, lltop);
     }
 
-    fn build_wrap_fn(ccx: @crate_ctxt,
+    fn build_wrap_fn(ccx: @CrateContext,
                      tys: @c_stack_tys,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
@@ -328,7 +328,7 @@ pub fn trans_foreign_mod(ccx: @crate_ctxt,
     }
 }
 
-pub fn trans_intrinsic(ccx: @crate_ctxt,
+pub fn trans_intrinsic(ccx: @CrateContext,
                        decl: ValueRef,
                        item: @ast::foreign_item,
                        +path: ast_map::path,
@@ -838,7 +838,7 @@ pub fn trans_intrinsic(ccx: @crate_ctxt,
     finish_fn(fcx, lltop);
 }
 
-pub fn trans_foreign_fn(ccx: @crate_ctxt,
+pub fn trans_foreign_fn(ccx: @CrateContext,
                         +path: ast_map::path,
                         decl: &ast::fn_decl,
                         body: &ast::blk,
@@ -846,7 +846,7 @@ pub fn trans_foreign_fn(ccx: @crate_ctxt,
                         id: ast::node_id) {
     let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
 
-    fn build_rust_fn(ccx: @crate_ctxt, +path: ast_map::path,
+    fn build_rust_fn(ccx: @CrateContext, +path: ast_map::path,
                      decl: &ast::fn_decl, body: &ast::blk,
                      id: ast::node_id) -> ValueRef {
         let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
@@ -862,7 +862,7 @@ pub fn trans_foreign_fn(ccx: @crate_ctxt,
         return llfndecl;
     }
 
-    fn build_shim_fn(ccx: @crate_ctxt, +path: ast_map::path,
+    fn build_shim_fn(ccx: @CrateContext, +path: ast_map::path,
                      llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
         let _icx = ccx.insn_ctxt("foreign::foreign::build_shim_fn");
 
@@ -899,7 +899,7 @@ pub fn trans_foreign_fn(ccx: @crate_ctxt,
                            build_args, build_ret);
     }
 
-    fn build_wrap_fn(ccx: @crate_ctxt, llshimfn: ValueRef,
+    fn build_wrap_fn(ccx: @CrateContext, llshimfn: ValueRef,
                      llwrapfn: ValueRef, tys: @c_stack_tys) {
 
         let _icx = ccx.insn_ctxt("foreign::foreign::build_wrap_fn");
@@ -932,7 +932,7 @@ pub fn trans_foreign_fn(ccx: @crate_ctxt,
     build_wrap_fn(ccx, llshimfn, llwrapfn, tys)
 }
 
-pub fn register_foreign_fn(ccx: @crate_ctxt,
+pub fn register_foreign_fn(ccx: @CrateContext,
                            sp: span,
                            +path: ast_map::path,
                            node_id: ast::node_id,
@@ -950,7 +950,7 @@ pub fn register_foreign_fn(ccx: @crate_ctxt,
     }
 }
 
-fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
+fn abi_of_foreign_fn(ccx: @CrateContext, i: @ast::foreign_item)
     -> ast::foreign_abi {
     match attr::first_attr_value_str_by_name(i.attrs, ~"abi") {
       None => match ccx.tcx.items.get(&i.id) {

@@ -93,10 +93,10 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
         ty::ty_enum(_, ref expected_substs) => {
             // Lookup the enum and variant def ids:
             let v_def = lookup_def(pcx.fcx, pat.span, pat.id);
-            let v_def_ids = ast_util::variant_def_ids(v_def);
+            let (enm, var) = ast_util::variant_def_ids(v_def);
 
             // Assign the pattern the type of the *enum*, not the variant.
-            let enum_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
+            let enum_tpt = ty::lookup_item_type(tcx, enm);
             instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
                              pcx.block_region);
 
@@ -108,9 +108,8 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             // Get the expected types of the arguments.
             arg_types = {
                 let vinfo =
-                    ty::enum_variant_with_id(
-                        tcx, v_def_ids.enm, v_def_ids.var);
-                let var_tpt = ty::lookup_item_type(tcx, v_def_ids.var);
+                    ty::enum_variant_with_id(tcx, enm, var);
+                let var_tpt = ty::lookup_item_type(tcx, var);
                 vinfo.args.map(|t| {
                     if var_tpt.bounds.len() == expected_substs.tps.len() {
                         ty::subst(tcx, expected_substs, *t)
@@ -132,7 +131,8 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             // Assign the pattern the type of the struct.
             let ctor_tpt = ty::lookup_item_type(tcx, s_def_id);
             let struct_tpt = if ty::is_fn_ty(ctor_tpt.ty) {
-                {ty: ty::ty_fn_ret(ctor_tpt.ty), ..ctor_tpt}
+                ty::ty_param_bounds_and_ty {ty: ty::ty_fn_ret(ctor_tpt.ty),
+                                        ..ctor_tpt}
             } else {
                 ctor_tpt
             };

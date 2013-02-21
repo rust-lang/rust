@@ -156,5 +156,9 @@ pub const tag_lang_items_item_node_id: uint = 0x75;
 pub const tag_item_unnamed_field: uint = 0x76;
 pub const tag_items_data_item_struct_ctor: uint = 0x77;
 
-pub type link_meta = {name: @str, vers: @str, extras_hash: @str};
+pub struct LinkMeta {
+    name: @str,
+    vers: @str,
+    extras_hash: @str
+}
 

@@ -400,9 +400,11 @@ pub enum LoanKind {
 }
 
 /// a complete record of a loan that was granted
-pub struct Loan {lp: @loan_path,
-                 cmt: cmt,
-                 kind: LoanKind}
+pub struct Loan {
+    lp: @loan_path,
+    cmt: cmt,
+    kind: LoanKind
+}
 
 /// maps computed by `gather_loans` that are then used by `check_loans`
 ///
@@ -410,10 +412,10 @@ pub struct Loan {lp: @loan_path,
 ///   for the duration of that block/expr
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
-pub type req_maps = {
+pub struct ReqMaps {
     req_loan_map: HashMap<ast::node_id, @DVec<Loan>>,
     pure_map: HashMap<ast::node_id, bckerr>
-};
+}
 
 pub fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T,
                                   f: &fn() -> U) -> U {

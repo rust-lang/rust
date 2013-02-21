@@ -299,7 +299,10 @@ pub mod unify;
 pub mod coercion;
 
 pub type Bound<T> = Option<T>;
-pub type Bounds<T> = {lb: Bound<T>, ub: Bound<T>};
+pub struct Bounds<T> {
+    lb: Bound<T>,
+    ub: Bound<T>
+}
 
 pub type cres<T> = Result<T,ty::type_err>; // "combine result"
 pub type ures = cres<()>; // "unify result"
@@ -644,7 +647,7 @@ impl @mut InferCtxt {
         let id = self.ty_var_counter;
         self.ty_var_counter += 1;
         let vals = self.ty_var_bindings.vals;
-        vals.insert(id, Root({lb: None, ub: None}, 0u));
+        vals.insert(id, Root(Bounds { lb: None, ub: None }, 0u));
         return TyVid(id);
     }
 
@@ -750,7 +753,7 @@ impl @mut InferCtxt {
             span: span,
             fsig: &ty::FnSig)
          -> (ty::FnSig, isr_alist) {
-        let {fn_sig: fn_sig, isr: isr, _} =
+        let(isr, _, fn_sig) =
             replace_bound_regions_in_fn_sig(self.tcx, @Nil, None, fsig, |br| {
                 // N.B.: The name of the bound region doesn't have anything to
                 // do with the region variable that's created for it.  The
