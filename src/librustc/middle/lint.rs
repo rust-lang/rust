@@ -113,7 +113,7 @@ struct LintSpec {
     default: level
 }
 
-pub type LintDict = HashMap<~str, @LintSpec>;
+pub type LintDict = HashMap<@~str, @LintSpec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes

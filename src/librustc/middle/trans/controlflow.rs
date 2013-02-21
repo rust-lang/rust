@@ -380,7 +380,7 @@ fn trans_fail_value(bcx: block,
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
         (C_cstr(bcx.ccx(), @/*bad*/ copy loc.file.name),
-         V_line: loc.line as int)
+         loc.line as int)
       }
       None => {
         (C_cstr(bcx.ccx(), @~"<runtime>"), 0)

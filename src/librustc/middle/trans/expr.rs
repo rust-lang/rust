@@ -409,7 +409,7 @@ fn trans_to_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
 fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     let _icx = bcx.insn_ctxt("trans_rvalue_datum_unadjusted");
 
-    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
+    trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
         ast::expr_vstore(contents, ast::expr_vstore_box) |
@@ -456,7 +456,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
     let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("trans_rvalue_stmt");
 
-    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
+    trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
         ast::expr_break(label_opt) => {
@@ -537,7 +537,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
     let _icx = bcx.insn_ctxt("trans_rvalue_dps_unadjusted");
     let tcx = bcx.tcx();
 
-    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
+    trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
         ast::expr_paren(e) => {
@@ -728,7 +728,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     debug!("trans_lvalue(expr=%s)", bcx.expr_to_str(expr));
     let _indenter = indenter();
 
-    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
+    trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
     let unrooted_datum = unpack_datum!(bcx, unrooted(bcx, expr));
 

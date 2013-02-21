@@ -146,7 +146,7 @@ pub fn find_extern_mod_stmt_cnum(cstore: @mut CStore,
 // returns hashes of crates directly used by this crate. Hashes are
 // sorted by crate name.
 pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
-    struct crate_hash { name: ~str, hash: ~str }
+    struct crate_hash { name: @~str, hash: @~str }
     let mut result = ~[];
 
     let extern_mod_crate_map = cstore.extern_mod_crate_map;
@@ -155,7 +155,7 @@ pub fn get_dep_hashes(cstore: @mut CStore) -> ~[~str] {
         let hash = decoder::get_crate_hash(cdata.data);
         debug!("Add hash[%s]: %s", *cdata.name, *hash);
         result.push(crate_hash {
-            name: /*bad*/copy cdata.name,
+            name: cdata.name,
             hash: hash
         });
     }

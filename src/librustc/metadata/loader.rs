@@ -89,8 +89,8 @@ fn find_library_crate_aux(cx: Context,
                           filesearch: filesearch::FileSearch) ->
    Option<(~str, @~[u8])> {
     let crate_name = crate_name_from_metas(/*bad*/copy cx.metas);
-    let prefix: ~str = prefix + crate_name + ~"-";
-    let suffix: ~str = /*bad*/copy nn.suffix;
+    let prefix: ~str = prefix + *crate_name + ~"-";
+    let suffix: ~str = /*bad*/copy suffix;
 
     let mut matches = ~[];
     filesearch::search(filesearch, |path| {
