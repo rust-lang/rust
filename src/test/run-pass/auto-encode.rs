@@ -38,8 +38,8 @@ fn test_prettyprint<A:Encodable<prettyprint::Serializer>>(
 }
 
 fn test_ebml<A:
-    Eq
-    Encodable<EBWriter::Encoder>
+    Eq +
+    Encodable<EBWriter::Encoder> +
     Decodable<EBReader::Decoder>
 >(a1: &A) {
     let bytes = do io::with_bytes_writer |wr| {

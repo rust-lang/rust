@@ -46,7 +46,8 @@ pub enum ObsoleteSyntax {
     ObsoleteBinaryMove,
     ObsoleteUnsafeBlock,
     ObsoleteUnenforcedBound,
-    ObsoleteImplSyntax
+    ObsoleteImplSyntax,
+    ObsoleteTraitBoundSeparator,
 }
 
 pub impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -120,7 +121,11 @@ pub impl Parser {
             ObsoleteImplSyntax => (
                 "colon-separated impl syntax",
                 "write `impl Trait for Type`"
-            )
+            ),
+            ObsoleteTraitBoundSeparator => (
+                "space-separated trait bounds",
+                "write `+` between trait bounds"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);
