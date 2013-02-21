@@ -489,20 +489,36 @@ fn expand_deriving_eq_struct_def(cx: ext_ctxt,
     // Create the methods.
     let eq_ident = cx.ident_of(~"eq");
     let ne_ident = cx.ident_of(~"ne");
-    let eq_method = expand_deriving_eq_struct_method(cx,
-                                                     span,
-                                                     struct_def,
-                                                     eq_ident,
-                                                     type_ident,
-                                                     ty_params,
-                                                     Conjunction);
-    let ne_method = expand_deriving_eq_struct_method(cx,
-                                                     span,
-                                                     struct_def,
-                                                     ne_ident,
-                                                     type_ident,
-                                                     ty_params,
-                                                     Disjunction);
+
+    let is_struct_tuple =
+    struct_def.fields.len() > 0 && struct_def.fields.all(|f| {
+        match f.node.kind {
+            named_field(*) => false,
+            unnamed_field => true
+        }
+    });
+
+    let derive_struct_fn = if is_struct_tuple {
+        expand_deriving_eq_struct_tuple_method
+    } else {
+        expand_deriving_eq_struct_method
+    };
+
+
+    let eq_method = derive_struct_fn(cx,
+                                     span,
+                                     struct_def,
+                                     eq_ident,
+                                     type_ident,
+                                     ty_params,
+                                     Conjunction);
+    let ne_method = derive_struct_fn(cx,
+                                     span,
+                                     struct_def,
+                                     ne_ident,
+                                     type_ident,
+                                     ty_params,
+                                     Disjunction);
 
     // Create the implementation.
     return create_derived_eq_impl(cx,
@@ -809,6 +825,65 @@ fn expand_deriving_eq_enum_method(cx: ext_ctxt,
                             type_ident,
                             ty_params,
                             self_match_expr);
+}
+
+fn expand_deriving_eq_struct_tuple_method(cx: ext_ctxt,
+                                          span: span,
+                                          struct_def: &struct_def,
+                                          method_ident: ident,
+                                          type_ident: ident,
+                                          ty_params: &[ty_param],
+                                          junction: Junction)
+                                        -> @method {
+    let self_str = ~"self";
+    let other_str = ~"__other";
+    let type_path = build::mk_raw_path(span, ~[type_ident]);
+    let fields = struct_def.fields;
+
+    // Create comparison expression, comparing each of the fields
+    let mut match_body = None;
+    for fields.eachi |i, _| {
+        let other_field_ident = cx.ident_of(other_str + i.to_str());
+        let other_field = build::mk_path(cx, span, ~[ other_field_ident ]);
+
+        let self_field_ident = cx.ident_of(self_str + i.to_str());
+        let self_field = build::mk_path(cx, span, ~[ self_field_ident ]);
+
+        call_substructure_eq_method(cx, span, self_field, other_field,
+            method_ident, junction, &mut match_body);
+    }
+    let match_body = finish_eq_chain_expr(cx, span, match_body, junction);
+
+    // Create arm for the '__other' match, containing the comparison expr
+    let other_subpats = create_subpatterns(cx, span, other_str, fields.len());
+    let other_arm = ast::arm {
+        pats: ~[ build::mk_pat_enum(cx, span, type_path, other_subpats) ],
+        guard: None,
+        body: build::mk_simple_block(cx, span, match_body),
+    };
+
+    // Create the match on '__other'
+    let other_expr = build::mk_path(cx, span, ~[ cx.ident_of(other_str) ]);
+    let other_expr = build::mk_unary(cx, span, deref, other_expr);
+    let other_match_expr = expr_match(other_expr, ~[other_arm]);
+    let other_match_expr = build::mk_expr(cx, span, other_match_expr);
+
+    // Create arm for the 'self' match, which contains the '__other' match
+    let self_subpats = create_subpatterns(cx, span, self_str, fields.len());
+    let self_arm = ast::arm {
+        pats: ~[build::mk_pat_enum(cx, span, type_path, self_subpats)],
+        guard: None,
+        body: build::mk_simple_block(cx, span, other_match_expr),
+    };
+
+    // Create the match on 'self'
+    let self_expr = build::mk_path(cx, span, ~[ cx.ident_of(self_str) ]);
+    let self_expr = build::mk_unary(cx, span, deref, self_expr);
+    let self_match_expr = expr_match(self_expr, ~[self_arm]);
+    let self_match_expr = build::mk_expr(cx, span, self_match_expr);
+
+    create_eq_method(cx, span, method_ident,
+        type_ident, ty_params, self_match_expr)
 }
 
 fn expand_deriving_iter_bytes_enum_method(cx: ext_ctxt,
