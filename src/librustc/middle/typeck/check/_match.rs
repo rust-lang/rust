@@ -131,7 +131,8 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             // Assign the pattern the type of the struct.
             let ctor_tpt = ty::lookup_item_type(tcx, s_def_id);
             let struct_tpt = if ty::is_fn_ty(ctor_tpt.ty) {
-                {ty: ty::ty_fn_ret(ctor_tpt.ty), ..ctor_tpt}
+                ty::ty_param_bounds_and_ty {ty: ty::ty_fn_ret(ctor_tpt.ty),
+                                        ..ctor_tpt}
             } else {
                 ctor_tpt
             };
