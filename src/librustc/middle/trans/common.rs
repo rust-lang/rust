@@ -175,7 +175,7 @@ pub struct CrateContext {
      tydescs: HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
-     mut finished_tydescs: bool,
+     finished_tydescs: @mut bool,
      // Track mapping of external ids to local items imported for inlining
      external: HashMap<ast::def_id, Option<ast::node_id>>,
      // Cache instances of monomorphized functions
@@ -224,9 +224,9 @@ pub struct CrateContext {
      // Set when at least one function uses GC. Needed so that
      // decl_gc_metadata knows whether to link to the module metadata, which
      // is not emitted by LLVM's GC pass when no functions use GC.
-     mut uses_gc: bool,
+     uses_gc: @mut bool,
      dbg_cx: Option<debuginfo::DebugContext>,
-     mut do_not_commit_warning_issued: bool
+     do_not_commit_warning_issued: @mut bool
 }
 
 // Types used for llself.
@@ -273,34 +273,34 @@ pub struct fn_ctxt_ {
     // the function, due to LLVM's quirks.
     // A block for all the function's static allocas, so that LLVM
     // will coalesce them into a single alloca call.
-    mut llstaticallocas: BasicBlockRef,
+    llstaticallocas: BasicBlockRef,
     // A block containing code that copies incoming arguments to space
     // already allocated by code in one of the llallocas blocks.
     // (LLVM requires that arguments be copied to local allocas before
     // allowing most any operation to be performed on them.)
-    mut llloadenv: Option<BasicBlockRef>,
-    mut llreturn: BasicBlockRef,
+    llloadenv: Option<BasicBlockRef>,
+    llreturn: BasicBlockRef,
     // The 'self' value currently in use in this function, if there
     // is one.
     //
     // NB: This is the type of the self *variable*, not the self *type*. The
     // self type is set only for default methods, while the self variable is
     // set for all methods.
-    mut llself: Option<ValSelfData>,
+    llself: Option<ValSelfData>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
-    mut personality: Option<ValueRef>,
+    personality: Option<ValueRef>,
     // If this is a for-loop body that returns, this holds the pointers needed
     // for that (flagptr, retptr)
-    mut loop_ret: Option<(ValueRef, ValueRef)>,
+    loop_ret: Option<(ValueRef, ValueRef)>,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: HashMap<ast::node_id, local_val>,
+    llargs: @HashMap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: HashMap<ast::node_id, local_val>,
+    lllocals: @HashMap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
-    llupvars: HashMap<ast::node_id, ValueRef>,
+    llupvars: @HashMap<ast::node_id, ValueRef>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -319,14 +319,14 @@ pub struct fn_ctxt_ {
     path: path,
 
     // This function's enclosing crate context.
-    ccx: @CrateContext
+    ccx: @@CrateContext
 }
 
-pub type fn_ctxt = @fn_ctxt_;
+pub type fn_ctxt = @mut fn_ctxt_;
 
 pub fn warn_not_to_commit(ccx: @CrateContext, msg: ~str) {
-    if !ccx.do_not_commit_warning_issued {
-        ccx.do_not_commit_warning_issued = true;
+    if !*ccx.do_not_commit_warning_issued {
+        *ccx.do_not_commit_warning_issued = true;
         ccx.sess.warn(msg + ~" -- do not commit like this!");
     }
 }
@@ -689,7 +689,7 @@ pub fn block_parent(cx: block) -> block {
 // Accessors
 
 pub impl block {
-    pure fn ccx() -> @CrateContext { self.fcx.ccx }
+    pure fn ccx() -> @CrateContext { *self.fcx.ccx }
     pure fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
     pure fn sess() -> Session { self.fcx.ccx.sess }
 
