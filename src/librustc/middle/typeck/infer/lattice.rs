@@ -72,8 +72,8 @@ pub impl LatticeValue for ty::t {
 }
 
 pub impl CombineFields {
-    fn var_sub_var<T:Copy InferStr LatticeValue,
-                   V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
+    fn var_sub_var<T:Copy + InferStr + LatticeValue,
+                   V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
         &self,
         +a_id: V,
         +b_id: V) -> ures
@@ -125,8 +125,8 @@ pub impl CombineFields {
     }
 
     /// make variable a subtype of T
-    fn var_sub_t<T:Copy InferStr LatticeValue,
-                 V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
+    fn var_sub_t<T:Copy + InferStr + LatticeValue,
+                 V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
         &self,
         +a_id: V,
         +b: T) -> ures
@@ -149,8 +149,8 @@ pub impl CombineFields {
             a_id, a_bounds, b_bounds, node_a.rank)
     }
 
-    fn t_sub_var<T:Copy InferStr LatticeValue,
-                 V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
+    fn t_sub_var<T:Copy + InferStr + LatticeValue,
+                 V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
         &self,
         +a: T,
         +b_id: V) -> ures
@@ -201,8 +201,8 @@ pub impl CombineFields {
         }
     }
 
-    fn set_var_to_merged_bounds<T:Copy InferStr LatticeValue,
-                                V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
+    fn set_var_to_merged_bounds<T:Copy + InferStr + LatticeValue,
+                                V:Copy+Eq+ToStr+Vid+UnifyVid<Bounds<T>>>(
         &self,
         +v_id: V,
         a: &Bounds<T>,
@@ -395,9 +395,9 @@ pub enum LatticeVarResult<V,T> {
  *   the variables and return the unified variable, in which case the
  *   result is a variable.  This is indicated with a `VarResult`
  *   return. */
-pub fn lattice_vars<L:LatticeDir Combine,
-                    T:Copy InferStr LatticeValue,
-                    V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
+pub fn lattice_vars<L:LatticeDir + Combine,
+                    T:Copy + InferStr + LatticeValue,
+                    V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
     self: &L,                           // defines whether we want LUB or GLB
     +a_vid: V,                          // first variable
     +b_vid: V,                          // second variable
@@ -441,9 +441,9 @@ pub fn lattice_vars<L:LatticeDir Combine,
     }
 }
 
-pub fn lattice_var_and_t<L:LatticeDir Combine,
-                         T:Copy InferStr LatticeValue,
-                         V:Copy Eq ToStr Vid UnifyVid<Bounds<T>>>(
+pub fn lattice_var_and_t<L:LatticeDir + Combine,
+                         T:Copy + InferStr + LatticeValue,
+                         V:Copy + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
     self: &L,
     +a_id: V,
     b: &T,
