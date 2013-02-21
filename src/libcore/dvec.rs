@@ -227,7 +227,7 @@ impl<A> DVec<A> {
     }
 }
 
-impl<A: Copy> DVec<A> {
+impl<A:Copy> DVec<A> {
     /**
      * Append all elements of a vector to the end of the list
      *

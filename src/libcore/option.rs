@@ -85,7 +85,7 @@ pub impl<T:Ord> Ord for Option<T> {
 }
 
 #[inline(always)]
-pub pure fn get<T: Copy>(opt: Option<T>) -> T {
+pub pure fn get<T:Copy>(opt: Option<T>) -> T {
     /*!
     Gets the value out of an option
 
@@ -207,14 +207,14 @@ pub pure fn is_some<T>(opt: &Option<T>) -> bool {
 }
 
 #[inline(always)]
-pub pure fn get_or_zero<T: Copy Zero>(opt: Option<T>) -> T {
+pub pure fn get_or_zero<T:Copy + Zero>(opt: Option<T>) -> T {
     //! Returns the contained value or zero (for this type)
 
     match opt { Some(copy x) => x, None => Zero::zero() }
 }
 
 #[inline(always)]
-pub pure fn get_or_default<T: Copy>(opt: Option<T>, def: T) -> T {
+pub pure fn get_or_default<T:Copy>(opt: Option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
     match opt { Some(copy x) => x, None => def }
@@ -393,7 +393,7 @@ impl<T> Option<T> {
     pure fn expect(self, reason: &str) -> T { expect(self, reason) }
 }
 
-impl<T: Copy> Option<T> {
+impl<T:Copy> Option<T> {
     /**
     Gets the value out of an option
 
@@ -421,7 +421,7 @@ impl<T: Copy> Option<T> {
     }
 }
 
-impl<T: Copy Zero> Option<T> {
+impl<T:Copy + Zero> Option<T> {
     #[inline(always)]
     pure fn get_or_zero(self) -> T { get_or_zero(self) }
 }

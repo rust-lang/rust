@@ -173,7 +173,7 @@ pub impl CombineFields {
             b_id, a_bounds, b_bounds, node_b.rank)
     }
 
-    fn merge_bnd<T:Copy InferStr LatticeValue>(
+    fn merge_bnd<T:Copy + InferStr + LatticeValue>(
         &self,
         a: &Bound<T>,
         b: &Bound<T>,
@@ -263,7 +263,7 @@ pub impl CombineFields {
         uok()
     }
 
-    fn bnds<T:Copy InferStr LatticeValue>(
+    fn bnds<T:Copy + InferStr + LatticeValue>(
         &self,
         a: &Bound<T>,
         b: &Bound<T>) -> ures
@@ -329,7 +329,7 @@ pub impl TyLatticeDir for Glb {
     }
 }
 
-pub fn super_lattice_tys<L:LatticeDir TyLatticeDir Combine>(
+pub fn super_lattice_tys<L:LatticeDir + TyLatticeDir + Combine>(
     self: &L,
     a: ty::t,
     b: ty::t) -> cres<ty::t> {
@@ -485,7 +485,7 @@ pub fn lattice_var_and_t<L:LatticeDir Combine,
 // Random utility functions used by LUB/GLB when computing LUB/GLB of
 // fn types
 
-pub fn var_ids<T: Combine>(self: &T, isr: isr_alist) -> ~[RegionVid] {
+pub fn var_ids<T:Combine>(self: &T, isr: isr_alist) -> ~[RegionVid] {
     let mut result = ~[];
     for list::each(isr) |pair| {
         match pair.second() {

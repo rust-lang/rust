@@ -138,7 +138,7 @@ impl WorkKey {
 
 type WorkMap = LinearMap<WorkKey, ~str>;
 
-pub impl<S: Encoder> Encodable<S> for WorkMap {
+pub impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &S) {
         let mut d = ~[];
         for self.each |&(k, v)| {
@@ -149,7 +149,7 @@ pub impl<S: Encoder> Encodable<S> for WorkMap {
     }
 }
 
-pub impl<D: Decoder> Decodable<D> for WorkMap {
+pub impl<D:Decoder> Decodable<D> for WorkMap {
     static fn decode(&self, d: &D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
         let mut w = LinearMap::new();

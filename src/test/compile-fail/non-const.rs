@@ -10,7 +10,7 @@
 
 // Test that various non const things are rejected.
 
-fn foo<T: Const>(_x: T) { }
+fn foo<T:Const>(_x: T) { }
 
 struct r {
   x:int,

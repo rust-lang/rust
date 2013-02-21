@@ -41,7 +41,7 @@ pub fn either<T, U, V>(f_left: fn(&T) -> V,
     }
 }
 
-pub fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
+pub fn lefts<T:Copy,U>(eithers: &[Either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
     do vec::build_sized(eithers.len()) |push| {

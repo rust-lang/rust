@@ -190,7 +190,7 @@ impl PacketHeader {
         reinterpret_cast(&self.buffer)
     }
 
-    fn set_buffer<T: Owned>(b: ~Buffer<T>) {
+    fn set_buffer<T:Owned>(b: ~Buffer<T>) {
         unsafe {
             self.buffer = reinterpret_cast(&b);
         }
@@ -208,14 +208,14 @@ pub trait HasBuffer {
     fn set_buffer(b: *libc::c_void);
 }
 
-impl<T: Owned> HasBuffer for Packet<T> {
+impl<T:Owned> HasBuffer for Packet<T> {
     fn set_buffer(b: *libc::c_void) {
         self.header.buffer = b;
     }
 }
 
 #[doc(hidden)]
-pub fn mk_packet<T: Owned>() -> Packet<T> {
+pub fn mk_packet<T:Owned>() -> Packet<T> {
     Packet {
         header: PacketHeader(),
         payload: None,
@@ -247,7 +247,7 @@ pub fn packet<T>() -> *Packet<T> {
 }
 
 #[doc(hidden)]
-pub fn entangle_buffer<T: Owned, Tstart: Owned>(
+pub fn entangle_buffer<T:Owned,Tstart:Owned>(
     buffer: ~Buffer<T>,
     init: fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
     -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>)
@@ -422,7 +422,7 @@ pub fn send<T,Tbuffer>(p: SendPacketBuffered<T,Tbuffer>, payload: T) -> bool {
 Fails if the sender closes the connection.
 
 */
-pub fn recv<T: Owned, Tbuffer: Owned>(
+pub fn recv<T:Owned,Tbuffer:Owned>(
     p: RecvPacketBuffered<T, Tbuffer>) -> T {
     try_recv(p).expect("connection closed")
 }
@@ -433,7 +433,7 @@ Returns `None` if the sender has closed the connection without sending
 a message, or `Some(T)` if a message was received.
 
 */
-pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
+pub fn try_recv<T:Owned,Tbuffer:Owned>(p: RecvPacketBuffered<T, Tbuffer>)
     -> Option<T>
 {
     let p_ = p.unwrap();
@@ -543,7 +543,7 @@ pub fn try_recv<T: Owned, Tbuffer: Owned>(p: RecvPacketBuffered<T, Tbuffer>)
 }
 
 /// Returns true if messages are available.
-pub pure fn peek<T: Owned, Tb: Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
+pub pure fn peek<T:Owned,Tb:Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     match unsafe {(*p.header()).state} {
       Empty | Terminated => false,
       Blocked => fail!(~"peeking on blocked packet"),
@@ -551,14 +551,14 @@ pub pure fn peek<T: Owned, Tb: Owned>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     }
 }
 
-impl<T: Owned, Tb: Owned> Peekable<T> for RecvPacketBuffered<T, Tb> {
+impl<T:Owned,Tb:Owned> Peekable<T> for RecvPacketBuffered<T, Tb> {
     pure fn peek() -> bool {
         peek(&self)
     }
 }
 
 #[doc(hidden)]
-fn sender_terminate<T: Owned>(p: *Packet<T>) {
+fn sender_terminate<T:Owned>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
       Empty => {
@@ -589,7 +589,7 @@ fn sender_terminate<T: Owned>(p: *Packet<T>) {
 }
 
 #[doc(hidden)]
-fn receiver_terminate<T: Owned>(p: *Packet<T>) {
+fn receiver_terminate<T:Owned>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
       Empty => {
@@ -622,7 +622,7 @@ that vector. The index points to an endpoint that has either been
 closed by the sender or has a message waiting to be received.
 
 */
-fn wait_many<T: Selectable>(pkts: &[T]) -> uint {
+fn wait_many<T:Selectable>(pkts: &[T]) -> uint {
     let this = unsafe { rustrt::rust_get_task() };
 
     unsafe {
@@ -704,7 +704,7 @@ Sometimes messages will be available on both endpoints at once. In
 this case, `select2` may return either `left` or `right`.
 
 */
-pub fn select2<A: Owned, Ab: Owned, B: Owned, Bb: Owned>(
+pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
     a: RecvPacketBuffered<A, Ab>,
     b: RecvPacketBuffered<B, Bb>)
     -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
@@ -729,12 +729,12 @@ impl Selectable for *PacketHeader {
 }
 
 /// Returns the index of an endpoint that is ready to receive.
-pub fn selecti<T: Selectable>(endpoints: &[T]) -> uint {
+pub fn selecti<T:Selectable>(endpoints: &[T]) -> uint {
     wait_many(endpoints)
 }
 
 /// Returns 0 or 1 depending on which endpoint is ready to receive
-pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
+pub fn select2i<A:Selectable,B:Selectable>(a: &A, b: &B) ->
         Either<(), ()> {
     match wait_many([a.header(), b.header()]) {
       0 => Left(()),
@@ -747,7 +747,7 @@ pub fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) ->
  list of the remaining endpoints.
 
 */
-pub fn select<T: Owned, Tb: Owned>(endpoints: ~[RecvPacketBuffered<T, Tb>])
+pub fn select<T:Owned,Tb:Owned>(endpoints: ~[RecvPacketBuffered<T, Tb>])
     -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
@@ -842,7 +842,7 @@ pub struct RecvPacketBuffered<T, Tbuffer> {
     mut buffer: Option<BufferResource<Tbuffer>>,
 }
 
-impl<T:Owned, Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
+impl<T:Owned,Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         //if self.p != none {
         //    debug!("drop recv %?", option::get(self.p));
@@ -859,7 +859,7 @@ impl<T:Owned, Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
     }
 }
 
-impl<T: Owned, Tbuffer: Owned> RecvPacketBuffered<T, Tbuffer> {
+impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
@@ -874,7 +874,7 @@ impl<T: Owned, Tbuffer: Owned> RecvPacketBuffered<T, Tbuffer> {
     }
 }
 
-impl<T: Owned, Tbuffer: Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
+impl<T:Owned,Tbuffer:Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
     pure fn header() -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
@@ -913,7 +913,7 @@ endpoint. The send endpoint is returned to the caller and the receive
 endpoint is passed to the new task.
 
 */
-pub fn spawn_service<T: Owned, Tb: Owned>(
+pub fn spawn_service<T:Owned,Tb:Owned>(
     init: extern fn() -> (SendPacketBuffered<T, Tb>,
                           RecvPacketBuffered<T, Tb>),
     service: fn~(v: RecvPacketBuffered<T, Tb>))
@@ -937,7 +937,7 @@ pub fn spawn_service<T: Owned, Tb: Owned>(
 receive state.
 
 */
-pub fn spawn_service_recv<T: Owned, Tb: Owned>(
+pub fn spawn_service_recv<T:Owned,Tb:Owned>(
     init: extern fn() -> (RecvPacketBuffered<T, Tb>,
                           SendPacketBuffered<T, Tb>),
     service: fn~(v: SendPacketBuffered<T, Tb>))
@@ -960,7 +960,7 @@ pub fn spawn_service_recv<T: Owned, Tb: Owned>(
 // Streams - Make pipes a little easier in general.
 
 proto! streamp (
-    Open:send<T: Owned> {
+    Open:send<T:Owned> {
         data(T) -> Open<T>
     }
 )
@@ -1026,7 +1026,7 @@ pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
     (Port_(Port_ { endp: Some(s) }), Chan_(Chan_{ endp: Some(c) }))
 }
 
-impl<T: Owned> GenericChan<T> for Chan<T> {
+impl<T:Owned> GenericChan<T> for Chan<T> {
     fn send(x: T) {
         let mut endp = None;
         endp <-> self.endp;
@@ -1035,7 +1035,7 @@ impl<T: Owned> GenericChan<T> for Chan<T> {
     }
 }
 
-impl<T: Owned> GenericSmartChan<T> for Chan<T> {
+impl<T:Owned> GenericSmartChan<T> for Chan<T> {
 
     fn try_send(x: T) -> bool {
         let mut endp = None;
@@ -1050,7 +1050,7 @@ impl<T: Owned> GenericSmartChan<T> for Chan<T> {
     }
 }
 
-impl<T: Owned> GenericPort<T> for Port<T> {
+impl<T:Owned> GenericPort<T> for Port<T> {
     fn recv() -> T {
         let mut endp = None;
         endp <-> self.endp;
@@ -1072,7 +1072,7 @@ impl<T: Owned> GenericPort<T> for Port<T> {
     }
 }
 
-impl<T: Owned> Peekable<T> for Port<T> {
+impl<T:Owned> Peekable<T> for Port<T> {
     pure fn peek() -> bool {
         unsafe {
             let mut endp = None;
@@ -1087,7 +1087,7 @@ impl<T: Owned> Peekable<T> for Port<T> {
     }
 }
 
-impl<T: Owned> Selectable for Port<T> {
+impl<T:Owned> Selectable for Port<T> {
     pure fn header() -> *PacketHeader {
         unsafe {
             match self.endp {
@@ -1103,13 +1103,13 @@ pub struct PortSet<T> {
     mut ports: ~[pipes::Port<T>],
 }
 
-pub fn PortSet<T: Owned>() -> PortSet<T>{
+pub fn PortSet<T:Owned>() -> PortSet<T>{
     PortSet {
         ports: ~[]
     }
 }
 
-impl<T: Owned> PortSet<T> {
+impl<T:Owned> PortSet<T> {
 
     fn add(port: pipes::Port<T>) {
         self.ports.push(port)
@@ -1122,7 +1122,7 @@ impl<T: Owned> PortSet<T> {
     }
 }
 
-impl<T: Owned> GenericPort<T> for PortSet<T> {
+impl<T:Owned> GenericPort<T> for PortSet<T> {
 
     fn try_recv() -> Option<T> {
         let mut result = None;
@@ -1152,7 +1152,7 @@ impl<T: Owned> GenericPort<T> for PortSet<T> {
 
 }
 
-impl<T: Owned> Peekable<T> for PortSet<T> {
+impl<T:Owned> Peekable<T> for PortSet<T> {
     pure fn peek() -> bool {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
@@ -1166,7 +1166,7 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
 /// A channel that can be shared between many senders.
 pub type SharedChan<T> = private::Exclusive<Chan<T>>;
 
-impl<T: Owned> GenericChan<T> for SharedChan<T> {
+impl<T:Owned> GenericChan<T> for SharedChan<T> {
     fn send(x: T) {
         let mut xx = Some(x);
         do self.with_imm |chan| {
@@ -1177,7 +1177,7 @@ impl<T: Owned> GenericChan<T> for SharedChan<T> {
     }
 }
 
-impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
+impl<T:Owned> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(x: T) -> bool {
         let mut xx = Some(x);
         do self.with_imm |chan| {
@@ -1194,7 +1194,7 @@ pub fn SharedChan<T:Owned>(c: Chan<T>) -> SharedChan<T> {
 }
 
 /// Receive a message from one of two endpoints.
-pub trait Select2<T: Owned, U: Owned> {
+pub trait Select2<T:Owned,U:Owned> {
     /// Receive a message or return `None` if a connection closes.
     fn try_select() -> Either<Option<T>, Option<U>>;
     /// Receive a message or fail if a connection closes.
@@ -1237,17 +1237,17 @@ pub type ChanOne<T> = oneshot::client::Oneshot<T>;
 pub type PortOne<T> = oneshot::server::Oneshot<T>;
 
 /// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
-pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
+pub fn oneshot<T:Owned>() -> (PortOne<T>, ChanOne<T>) {
     let (chan, port) = oneshot::init();
     (port, chan)
 }
 
-impl<T: Owned> PortOne<T> {
+impl<T:Owned> PortOne<T> {
     fn recv(self) -> T { recv_one(self) }
     fn try_recv(self) -> Option<T> { try_recv_one(self) }
 }
 
-impl<T: Owned> ChanOne<T> {
+impl<T:Owned> ChanOne<T> {
     fn send(self, data: T) { send_one(self, data) }
     fn try_send(self, data: T) -> bool { try_send_one(self, data) }
 }
@@ -1256,13 +1256,13 @@ impl<T: Owned> ChanOne<T> {
  * Receive a message from a oneshot pipe, failing if the connection was
  * closed.
  */
-pub fn recv_one<T: Owned>(port: PortOne<T>) -> T {
+pub fn recv_one<T:Owned>(port: PortOne<T>) -> T {
     let oneshot::send(message) = recv(port);
     message
 }
 
 /// Receive a message from a oneshot pipe unless the connection was closed.
-pub fn try_recv_one<T: Owned> (port: PortOne<T>) -> Option<T> {
+pub fn try_recv_one<T:Owned> (port: PortOne<T>) -> Option<T> {
     let message = try_recv(port);
 
     if message.is_none() { None }
@@ -1273,7 +1273,7 @@ pub fn try_recv_one<T: Owned> (port: PortOne<T>) -> Option<T> {
 }
 
 /// Send a message on a oneshot pipe, failing if the connection was closed.
-pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
+pub fn send_one<T:Owned>(chan: ChanOne<T>, data: T) {
     oneshot::client::send(chan, data);
 }
 
@@ -1281,7 +1281,7 @@ pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
  * Send a message on a oneshot pipe, or return false if the connection was
  * closed.
  */
-pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T)
+pub fn try_send_one<T:Owned>(chan: ChanOne<T>, data: T)
         -> bool {
     oneshot::client::try_send(chan, data).is_some()
 }

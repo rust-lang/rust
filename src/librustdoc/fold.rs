@@ -35,7 +35,7 @@ pub struct Fold<T> {
     fold_struct: FoldStruct<T>
 }
 
-impl<T: Clone> Clone for Fold<T> {
+impl<T:Clone> Clone for Fold<T> {
     fn clone(&self) -> Fold<T> {
         Fold {
             ctxt: self.ctxt.clone(),
@@ -103,7 +103,7 @@ fn mk_fold<T>(
     }
 }
 
-pub fn default_any_fold<T: Clone>(ctxt: T) -> Fold<T> {
+pub fn default_any_fold<T:Clone>(ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -121,7 +121,7 @@ pub fn default_any_fold<T: Clone>(ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_seq_fold<T: Clone>(ctxt: T) -> Fold<T> {
+pub fn default_seq_fold<T:Clone>(ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -139,7 +139,7 @@ pub fn default_seq_fold<T: Clone>(ctxt: T) -> Fold<T> {
     )
 }
 
-pub fn default_par_fold<T: Clone>(ctxt: T) -> Fold<T> {
+pub fn default_par_fold<T:Clone>(ctxt: T) -> Fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),

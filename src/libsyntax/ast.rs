@@ -32,7 +32,7 @@ macro_rules! interner_key (
 #[deriving_eq]
 pub struct ident { repr: uint }
 
-pub impl<S: Encoder> Encodable<S> for ident {
+pub impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &S) {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
@@ -45,7 +45,7 @@ pub impl<S: Encoder> Encodable<S> for ident {
     }
 }
 
-pub impl<D: Decoder> Decodable<D> for ident {
+pub impl<D:Decoder> Decodable<D> for ident {
     static fn decode(d: &D) -> ident {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
@@ -383,7 +383,7 @@ pub enum inferable<T> {
     infer(node_id)
 }
 
-pub impl<T: to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
+pub impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           expl(ref t) =>

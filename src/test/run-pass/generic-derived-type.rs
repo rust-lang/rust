@@ -10,11 +10,11 @@
 
 
 
-fn g<X: Copy>(x: X) -> X { return x; }
+fn g<X:Copy>(x: X) -> X { return x; }
 
 struct Pair<T> {a: T, b: T}
 
-fn f<T: Copy>(t: T) -> Pair<T> {
+fn f<T:Copy>(t: T) -> Pair<T> {
 
     let x: Pair<T> = Pair {a: t, b: t};
     return g::<Pair<T>>(x);

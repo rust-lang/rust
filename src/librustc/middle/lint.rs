@@ -526,7 +526,7 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
 }
 
 fn check_item_type_limits(cx: ty::ctxt, it: @ast::item) {
-    pure fn is_valid<T: cmp::Ord>(binop: ast::binop, v: T,
+    pure fn is_valid<T:cmp::Ord>(binop: ast::binop, v: T,
             min: T, max: T) -> bool {
         match binop {
             ast::lt => v <= max,

@@ -2282,7 +2282,7 @@ pub mod test {
     //use util;
     use util::testing::check_equal;
 
-    fn string_check<T : Eq> (given : &T, expected: &T) {
+    fn string_check<T:Eq> (given : &T, expected: &T) {
         if !(given == expected) {
             fail!(fmt!("given %?, expected %?",given,expected));
         }

@@ -263,7 +263,7 @@ pub fn cat_def(
     return mcx.cat_def(expr_id, expr_span, expr_ty, def);
 }
 
-pub fn cat_variant<N: ast_node>(
+pub fn cat_variant<N:ast_node>(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     arg: N,
@@ -292,11 +292,11 @@ pub impl ast_node for @ast::pat {
 }
 
 pub trait get_type_for_node {
-    fn ty<N: ast_node>(node: N) -> ty::t;
+    fn ty<N:ast_node>(node: N) -> ty::t;
 }
 
 pub impl get_type_for_node for ty::ctxt {
-    fn ty<N: ast_node>(node: N) -> ty::t {
+    fn ty<N:ast_node>(node: N) -> ty::t {
         ty::node_id_to_type(self, node.id())
     }
 }
@@ -575,7 +575,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_variant<N: ast_node>(&self,
+    fn cat_variant<N:ast_node>(&self,
                                 arg: N,
                                 enum_did: ast::def_id,
                                 cmt: cmt) -> cmt {
@@ -589,7 +589,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_rvalue<N: ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
+    fn cat_rvalue<N:ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
         @cmt_ {
             id:elt.id(),
             span:elt.span(),
@@ -739,7 +739,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_index<N: ast_node>(&self,
+    fn cat_index<N:ast_node>(&self,
                               elt: N,
                               base_cmt: cmt) -> cmt {
         let mt = match ty::index(self.tcx, base_cmt.ty) {
@@ -792,7 +792,7 @@ pub impl mem_categorization_ctxt {
           }
         };
 
-        fn comp<N: ast_node>(elt: N, of_cmt: cmt,
+        fn comp<N:ast_node>(elt: N, of_cmt: cmt,
                              vect: ty::t, mutbl: MutabilityCategory,
                              mt: ty::mt) -> cmt
         {
@@ -809,7 +809,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_tuple_elt<N: ast_node>(&self,
+    fn cat_tuple_elt<N:ast_node>(&self,
                                   elt: N,
                                   cmt: cmt) -> cmt {
         @cmt_ {
@@ -822,7 +822,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_anon_struct_field<N: ast_node>(&self,
+    fn cat_anon_struct_field<N:ast_node>(&self,
                                           elt: N,
                                           cmt: cmt) -> cmt {
         @cmt_ {

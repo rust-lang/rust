@@ -775,7 +775,7 @@ fn mk_rcache() -> creader_cache {
     return oldmap::HashMap();
 }
 
-pub fn new_ty_hash<V: Copy>() -> oldmap::HashMap<t, V> {
+pub fn new_ty_hash<V:Copy>() -> oldmap::HashMap<t, V> {
     oldmap::HashMap()
 }
 
@@ -3326,7 +3326,7 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
 
 // Maintains a little union-set tree for inferred modes.  `canon()` returns
 // the current head value for `m0`.
-fn canon<T:Copy cmp::Eq>(tbl: HashMap<ast::node_id, ast::inferable<T>>,
+fn canon<T:Copy + cmp::Eq>(tbl: HashMap<ast::node_id, ast::inferable<T>>,
                          +m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
       ast::infer(id) => match tbl.find(&id) {

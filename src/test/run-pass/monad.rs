@@ -12,11 +12,11 @@
 #[legacy_modes];
 
 trait vec_monad<A> {
-    fn bind<B: Copy>(f: fn(A) -> ~[B]) -> ~[B];
+    fn bind<B:Copy>(f: fn(A) -> ~[B]) -> ~[B];
 }
 
 impl<A> vec_monad<A> for ~[A] {
-    fn bind<B: Copy>(f: fn(A) -> ~[B]) -> ~[B] {
+    fn bind<B:Copy>(f: fn(A) -> ~[B]) -> ~[B] {
         let mut r = ~[];
         for self.each |elt| { r += f(*elt); }
         r

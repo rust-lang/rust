@@ -32,7 +32,7 @@ pub enum SmallIntMap<T> {
 }
 
 /// Create a smallintmap
-pub fn mk<T: Copy>() -> SmallIntMap<T> {
+pub fn mk<T:Copy>() -> SmallIntMap<T> {
     let v = DVec();
     SmallIntMap_(@SmallIntMap_ { v: v } )
 }
@@ -42,7 +42,7 @@ pub fn mk<T: Copy>() -> SmallIntMap<T> {
  * the specified key then the original value is replaced.
  */
 #[inline(always)]
-pub fn insert<T: Copy>(self: SmallIntMap<T>, key: uint, val: T) {
+pub fn insert<T:Copy>(self: SmallIntMap<T>, key: uint, val: T) {
     //io::println(fmt!("%?", key));
     self.v.grow_set_elt(key, &None, Some(val));
 }
@@ -51,7 +51,7 @@ pub fn insert<T: Copy>(self: SmallIntMap<T>, key: uint, val: T) {
  * Get the value for the specified key. If the key does not exist
  * in the map then returns none
  */
-pub pure fn find<T: Copy>(self: SmallIntMap<T>, key: uint) -> Option<T> {
+pub pure fn find<T:Copy>(self: SmallIntMap<T>, key: uint) -> Option<T> {
     if key < self.v.len() { return self.v.get_elt(key); }
     return None::<T>;
 }
@@ -63,7 +63,7 @@ pub pure fn find<T: Copy>(self: SmallIntMap<T>, key: uint) -> Option<T> {
  *
  * If the key does not exist in the map
  */
-pub pure fn get<T: Copy>(self: SmallIntMap<T>, key: uint) -> T {
+pub pure fn get<T:Copy>(self: SmallIntMap<T>, key: uint) -> T {
     match find(self, key) {
       None => {
         error!("smallintmap::get(): key not present");
@@ -74,7 +74,7 @@ pub pure fn get<T: Copy>(self: SmallIntMap<T>, key: uint) -> T {
 }
 
 /// Returns true if the map contains a value for the specified key
-pub pure fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
+pub pure fn contains_key<T:Copy>(self: SmallIntMap<T>, key: uint) -> bool {
     return !find(self, key).is_none();
 }
 
@@ -100,7 +100,7 @@ impl<V> Mutable for SmallIntMap<V> {
 }
 
 /// Implements the map::map interface for smallintmap
-impl<V: Copy> SmallIntMap<V> {
+impl<V:Copy> SmallIntMap<V> {
     #[inline(always)]
     fn insert(key: uint, value: V) -> bool {
         let exists = contains_key(self, key);
@@ -162,7 +162,7 @@ impl<V: Copy> SmallIntMap<V> {
     }
 }
 
-impl<V: Copy> ops::Index<uint, V> for SmallIntMap<V> {
+impl<V:Copy> ops::Index<uint, V> for SmallIntMap<V> {
     pure fn index(&self, key: uint) -> V {
         unsafe {
             get(*self, key)

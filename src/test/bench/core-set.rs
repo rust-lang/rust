@@ -32,7 +32,7 @@ fn timed(result: &mut float, op: fn()) {
 }
 
 impl Results {
-    fn bench_int<T: Set<uint>>(&mut self, rng: @rand::Rng, num_keys: uint,
+    fn bench_int<T:Set<uint>>(&mut self, rng: @rand::Rng, num_keys: uint,
                                rand_cap: uint, f: fn() -> T) {
         {
             let mut set = f();
@@ -70,7 +70,7 @@ impl Results {
         }
     }
 
-    fn bench_str<T: Set<~str>>(&mut self, rng: @rand::Rng, num_keys: uint,
+    fn bench_str<T:Set<~str>>(&mut self, rng: @rand::Rng, num_keys: uint,
                                f: fn() -> T) {
         {
             let mut set = f();

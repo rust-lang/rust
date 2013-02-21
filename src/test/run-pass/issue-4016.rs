@@ -18,7 +18,7 @@ use std::serialization::{Deserializable, deserialize};
 trait JD : Deserializable<json::Deserializer> { }
 //type JD = Deserializable<json::Deserializer>;
 
-fn exec<T: JD>() {
+fn exec<T:JD>() {
     let doc = result::unwrap(json::from_str(""));
     let _v: T = deserialize(&json::Deserializer(doc));
     fail!()

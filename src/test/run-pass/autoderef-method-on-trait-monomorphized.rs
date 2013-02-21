@@ -16,7 +16,7 @@ impl double for uint {
     fn double() -> uint { self * 2u }
 }
 
-fn is_equal<D: double>(x: @D, exp: uint) {
+fn is_equal<D:double>(x: @D, exp: uint) {
     assert x.double() == exp;
 }
 

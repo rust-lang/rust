@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn get_third<T: Copy>(t: (T, T, T)) -> T { let (_, _, x) = t; return x; }
+fn get_third<T:Copy>(t: (T, T, T)) -> T { let (_, _, x) = t; return x; }
 
 pub fn main() {
     log(debug, get_third((1, 2, 3)));

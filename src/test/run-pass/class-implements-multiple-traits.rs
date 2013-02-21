@@ -96,14 +96,14 @@ class cat : noisy, scratchy, bitey {
   }
 }
 
-fn annoy_neighbors<T: noisy>(critter: T) {
+fn annoy_neighbors<T:noisy>(critter: T) {
   for uint::range(0u, 10u) |i| {
       let what = critter.speak();
       debug!("%u %d", i, what);
   }
 }
 
-fn bite_everything<T: bitey>(critter: T) -> bool {
+fn bite_everything<T:bitey>(critter: T) -> bool {
   let mut left : ~[body_part] = ~[finger, toe, nose, ear];
   while vec::len(left) > 0u {
     let part = critter.bite();
@@ -118,7 +118,7 @@ fn bite_everything<T: bitey>(critter: T) -> bool {
   true
 }
 
-fn scratched_something<T: scratchy>(critter: T) -> bool {
+fn scratched_something<T:scratchy>(critter: T) -> bool {
   option::is_some(critter.scratch())
 }
 

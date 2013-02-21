@@ -96,7 +96,7 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 
 // Appending
 #[inline(always)]
-pub pure fn append<T: Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
+pub pure fn append<T:Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
         for vec::each(lhs) |x| { push(*x); }
         for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
@@ -132,7 +132,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
+pub pure fn from_elem<T:Copy>(n_elts: uint, t: T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(copy t); i += 1u; }
@@ -168,7 +168,7 @@ pub mod traits {
     use kinds::Copy;
     use ops::Add;
 
-    pub impl<T: Copy> Add<&[const T],@[T]> for @[T] {
+    pub impl<T:Copy> Add<&[const T],@[T]> for @[T] {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> @[T] {
             append(*self, (*rhs))

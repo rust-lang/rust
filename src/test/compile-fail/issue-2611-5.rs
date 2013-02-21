@@ -13,7 +13,7 @@
 use iter::BaseIter;
 
 trait A {
-  fn b<C:Copy, D>(x: C) -> C;
+  fn b<C:Copy,D>(x: C) -> C;
 }
 
 struct E {
@@ -22,7 +22,7 @@ struct E {
 
 impl A for E {
   // n.b. The error message is awful -- see #3404
-  fn b<F:Copy, G>(_x: G) -> G { fail!() } //~ ERROR method `b` has an incompatible type
+  fn b<F:Copy,G>(_x: G) -> G { fail!() } //~ ERROR method `b` has an incompatible type
 }
 
 fn main() {}
