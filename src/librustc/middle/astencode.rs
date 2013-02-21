@@ -1193,18 +1193,18 @@ fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
 #[cfg(test)]
 trait fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg;
-    fn parse_sess() -> parse::parse_sess;
+    fn parse_sess() -> @mut parse::ParseSess;
     fn call_site() -> span;
     fn ident_of(+st: ~str) -> ast::ident;
 }
 
 #[cfg(test)]
-type fake_session = parse::parse_sess;
+type fake_session = @mut parse::ParseSess;
 
 #[cfg(test)]
 impl fake_ext_ctxt for fake_session {
     fn cfg() -> ast::crate_cfg { ~[] }
-    fn parse_sess() -> parse::parse_sess { self }
+    fn parse_sess() -> @mut parse::ParseSess { self }
     fn call_site() -> span {
         codemap::span {
             lo: codemap::BytePos(0),

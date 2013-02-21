@@ -80,7 +80,7 @@ use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
 use parse::token;
-use parse::{new_sub_parser_from_file, next_node_id, parse_sess};
+use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
 use print::pprust::expr_to_str;
 use util::interner::Interner;
 
@@ -179,10 +179,16 @@ pure fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
 }
 
 
+struct ParsedItemsAndViewItems {
+    attrs_remaining: ~[attribute],
+    view_items: ~[@view_item],
+    items: ~[@item],
+    foreign_items: ~[@foreign_item]
+}
+
 /* ident is handled by common.rs */
 
-pub fn Parser(sess: parse_sess
-              ,
+pub fn Parser(sess: @mut ParseSess,
               cfg: ast::crate_cfg,
               +rdr: reader) -> Parser {
 
@@ -213,7 +219,7 @@ pub fn Parser(sess: parse_sess
 }
 
 pub struct Parser {
-    sess: parse_sess,
+    sess: @mut ParseSess,
     cfg: crate_cfg,
     mut token: token::Token,
     mut span: span,
@@ -1706,8 +1712,7 @@ pub impl Parser {
             els = Some(elexpr);
             hi = elexpr.span.hi;
         }
-        let q = {cond: cond, then: thn, els: els, lo: lo, hi: hi};
-        self.mk_expr(q.lo, q.hi, expr_if(q.cond, q.then, q.els))
+        self.mk_expr(lo, hi, expr_if(cond, thn, els))
     }
 
     fn parse_fn_expr(sigil: Sigil) -> @expr {
@@ -2470,11 +2475,11 @@ pub impl Parser {
         maybe_whole!(pair_empty self, nt_block);
 
         fn maybe_parse_inner_attrs_and_next(p: Parser, parse_attrs: bool) ->
-            {inner: ~[attribute], next: ~[attribute]} {
+            (~[attribute], ~[attribute]) {
             if parse_attrs {
                 p.parse_inner_attrs_and_next()
             } else {
-                {inner: ~[], next: ~[]}
+                (~[], ~[])
             }
         }
 
@@ -2483,7 +2488,7 @@ pub impl Parser {
             self.obsolete(copy self.span, ObsoleteUnsafeBlock);
         }
         self.expect(token::LBRACE);
-        let {inner: inner, next: next} =
+        let (inner, next) =
             maybe_parse_inner_attrs_and_next(self, parse_attrs);
         return (inner, self.parse_block_tail_(lo, default_blk, next));
     }
@@ -2508,10 +2513,12 @@ pub impl Parser {
         let mut stmts = ~[];
         let mut expr = None;
 
-        let {attrs_remaining: attrs_remaining,
-             view_items: view_items,
-             items: items, _} =
-            self.parse_items_and_view_items(first_item_attrs,
+        let ParsedItemsAndViewItems {
+            attrs_remaining: attrs_remaining,
+            view_items: view_items,
+            items: items,
+            _
+        } = self.parse_items_and_view_items(first_item_attrs,
                                             IMPORTS_AND_ITEMS_ALLOWED, false);
 
         for items.each |item| {
@@ -2851,10 +2858,10 @@ pub impl Parser {
         }
     }
 
-    fn parse_fn_header() -> {ident: ident, tps: ~[ty_param]} {
+    fn parse_fn_header() -> (ident, ~[ty_param]) {
         let id = self.parse_value_ident();
         let ty_params = self.parse_ty_params();
-        return {ident: id, tps: ty_params};
+        (id, ty_params)
     }
 
     fn mk_item(+lo: BytePos, +hi: BytePos, +ident: ident,
@@ -2869,10 +2876,10 @@ pub impl Parser {
     }
 
     fn parse_item_fn(purity: purity) -> item_info {
-        let t = self.parse_fn_header();
+        let (ident, tps) = self.parse_fn_header();
         let decl = self.parse_fn_decl(|p| p.parse_arg());
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
-        (t.ident, item_fn(decl, purity, t.tps, body), Some(inner_attrs))
+        (ident, item_fn(decl, purity, tps, body), Some(inner_attrs))
     }
 
     fn parse_method_name() -> ident {
@@ -3200,10 +3207,12 @@ pub impl Parser {
     fn parse_mod_items(term: token::Token,
                        +first_item_attrs: ~[attribute]) -> _mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining: attrs_remaining,
-             view_items: view_items,
-             items: starting_items, _} =
-            self.parse_items_and_view_items(first_item_attrs,
+        let ParsedItemsAndViewItems {
+            attrs_remaining: attrs_remaining,
+            view_items: view_items,
+            items: starting_items,
+            _
+        } = self.parse_items_and_view_items(first_item_attrs,
                                             VIEW_ITEMS_AND_ITEMS_ALLOWED,
                                             true);
         let mut items: ~[@item] = starting_items;
@@ -3261,11 +3270,11 @@ pub impl Parser {
         } else {
             self.push_mod_path(id, outer_attrs);
             self.expect(token::LBRACE);
-            let inner_attrs = self.parse_inner_attrs_and_next();
-            let m = self.parse_mod_items(token::RBRACE, inner_attrs.next);
+            let (inner, next) = self.parse_inner_attrs_and_next();
+            let m = self.parse_mod_items(token::RBRACE, next);
             self.expect(token::RBRACE);
             self.pop_mod_path();
-            (id, item_mod(m), Some(inner_attrs.inner))
+            (id, item_mod(m), Some(inner))
         };
 
         // XXX: Transitionary hack to do the template work inside core
@@ -3355,9 +3364,9 @@ pub impl Parser {
         let p0 =
             new_sub_parser_from_file(self.sess, self.cfg,
                                      &full_path, id_sp);
-        let inner_attrs = p0.parse_inner_attrs_and_next();
-        let mod_attrs = vec::append(outer_attrs, inner_attrs.inner);
-        let first_item_outer_attrs = inner_attrs.next;
+        let (inner, next) = p0.parse_inner_attrs_and_next();
+        let mod_attrs = vec::append(outer_attrs, inner);
+        let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         return (ast::item_mod(m0), mod_attrs);
 
@@ -3373,13 +3382,13 @@ pub impl Parser {
         let lo = self.span.lo;
         let vis = self.parse_visibility();
         let purity = self.parse_fn_purity();
-        let t = self.parse_fn_header();
+        let (ident, tps) = self.parse_fn_header();
         let decl = self.parse_fn_decl(|p| p.parse_arg());
         let mut hi = self.span.hi;
         self.expect(token::SEMI);
-        @ast::foreign_item { ident: t.ident,
+        @ast::foreign_item { ident: ident,
                              attrs: attrs,
-                             node: foreign_item_fn(decl, purity, t.tps),
+                             node: foreign_item_fn(decl, purity, tps),
                              id: self.get_id(),
                              span: mk_sp(lo, hi),
                              vis: vis }
@@ -3428,11 +3437,12 @@ pub impl Parser {
                                +first_item_attrs: ~[attribute])
                             -> foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining: attrs_remaining,
-             view_items: view_items,
-             items: _,
-             foreign_items: foreign_items} =
-            self.parse_items_and_view_items(first_item_attrs,
+        let ParsedItemsAndViewItems {
+            attrs_remaining: attrs_remaining,
+            view_items: view_items,
+            items: _,
+            foreign_items: foreign_items
+        } = self.parse_items_and_view_items(first_item_attrs,
                                          VIEW_ITEMS_AND_FOREIGN_ITEMS_ALLOWED,
                                             true);
 
@@ -3504,17 +3514,13 @@ pub impl Parser {
                 None => abi = special_idents::c_abi,
             }
 
-            let extra_attrs = self.parse_inner_attrs_and_next();
-            let m = self.parse_foreign_mod_items(sort,
-                                                 abi,
-                                                 extra_attrs.next);
+            let (inner, next) = self.parse_inner_attrs_and_next();
+            let m = self.parse_foreign_mod_items(sort, abi, next);
             self.expect(token::RBRACE);
 
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
-                                          item_foreign_mod(m), visibility,
-                                          maybe_append(attrs,
-                                                       Some(extra_attrs.
-                                                            inner))));
+                                     item_foreign_mod(m), visibility,
+                                     maybe_append(attrs, Some(inner))));
         }
 
         match abi_opt {
@@ -3536,20 +3542,20 @@ pub impl Parser {
         })
     }
 
-    fn parse_type_decl() -> {lo: BytePos, ident: ident} {
+    fn parse_type_decl() -> (BytePos, ident) {
         let lo = self.last_span.lo;
         let id = self.parse_ident();
-        return {lo: lo, ident: id};
+        (lo, id)
     }
 
     fn parse_item_type() -> item_info {
-        let t = self.parse_type_decl();
+        let (_, ident) = self.parse_type_decl();
         self.parse_region_param();
         let tps = self.parse_ty_params();
         self.expect(token::EQ);
         let ty = self.parse_ty(false);
         self.expect(token::SEMI);
-        (t.ident, item_ty(ty, tps), None)
+        (ident, item_ty(ty, tps), None)
     }
 
     fn parse_region_param() {
@@ -4046,10 +4052,7 @@ pub impl Parser {
     fn parse_items_and_view_items(+first_item_attrs: ~[attribute],
                                   mode: view_item_parse_mode,
                                   macros_allowed: bool)
-                               -> {attrs_remaining: ~[attribute],
-                                   view_items: ~[@view_item],
-                                   items: ~[@item],
-                                   foreign_items: ~[@foreign_item]} {
+                                -> ParsedItemsAndViewItems {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
 
@@ -4100,21 +4103,23 @@ pub impl Parser {
             attrs = self.parse_outer_attributes();
         }
 
-        {attrs_remaining: attrs,
-         view_items: view_items,
-         items: items,
-         foreign_items: foreign_items}
+        ParsedItemsAndViewItems {
+            attrs_remaining: attrs,
+            view_items: view_items,
+            items: items,
+            foreign_items: foreign_items
+        }
     }
 
     // Parses a source module as a crate
     fn parse_crate_mod(_cfg: crate_cfg) -> @crate {
         let lo = self.span.lo;
-        let crate_attrs = self.parse_inner_attrs_and_next();
-        let first_item_outer_attrs = crate_attrs.next;
+        let (inner, next) = self.parse_inner_attrs_and_next();
+        let first_item_outer_attrs = next;
         let m = self.parse_mod_items(token::EOF, first_item_outer_attrs);
         @spanned(lo, self.span.lo,
                  ast::crate_ { module: m,
-                               attrs: crate_attrs.inner,
+                               attrs: inner,
                                config: self.cfg })
     }
 

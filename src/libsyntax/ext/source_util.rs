@@ -10,6 +10,7 @@
 
 use codemap;
 use codemap::{FileMap, Loc, Pos, ExpandedFrom, span};
+use codemap::{CallInfo, NameAndSpan};
 use ext::base::*;
 use ext::base;
 use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_base_str};
@@ -22,10 +23,13 @@ use core::str;
 use core::vec;
 
 fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
-    let ExpandedFrom({call_site, _}) = *expn_info;
+    let ExpandedFrom(CallInfo { call_site, _ }) = *expn_info;
     match call_site.expn_info {
         Some(next_expn_info) => {
-            let ExpandedFrom({callie: {name, _}, _}) = *next_expn_info;
+            let ExpandedFrom(CallInfo {
+                callee: NameAndSpan {name, _},
+                _
+            }) = *next_expn_info;
             // Don't recurse into file using "include!"
             if name == ~"include" { return expn_info; }
 
