@@ -866,8 +866,8 @@ pub fn need_invoke(bcx: block) -> bool {
     // Walk the scopes to look for cleanups
     let mut cur = bcx;
     loop {
-        match cur.kind {
-          block_scope(ref inf) => {
+        match *cur.kind {
+          block_scope(ref mut inf) => {
             for vec::each((*inf).cleanups) |cleanup| {
                 match *cleanup {
                   clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
@@ -898,16 +898,21 @@ pub fn have_cached_lpad(bcx: block) -> bool {
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: block, f: fn(scope_info)) {
+pub fn in_lpad_scope_cx(bcx: block, f: fn(&mut scope_info)) {
     let mut bcx = bcx;
     loop {
-        match bcx.kind {
-          block_scope(ref inf) => {
-            if (*inf).cleanups.len() > 0u || bcx.parent.is_none() {
-                f((*inf)); return;
+        {
+            // XXX: Borrow check bug workaround.
+            let kind: &mut block_kind = &mut *bcx.kind;
+            match *kind {
+                block_scope(ref mut inf) => {
+                    if inf.cleanups.len() > 0u || bcx.parent.is_none() {
+                        f(inf);
+                        return;
+                    }
+                }
+                _ => ()
             }
-          }
-          _ => ()
         }
         bcx = block_parent(bcx);
     }
@@ -1198,9 +1203,9 @@ pub fn simple_block_scope() -> block_kind {
     block_scope(scope_info {
         loop_break: None,
         loop_label: None,
-        mut cleanups: ~[],
-        mut cleanup_paths: ~[],
-        mut landing_pad: None
+        cleanups: ~[],
+        cleanup_paths: ~[],
+        landing_pad: None
     })
 }
 
@@ -1226,9 +1231,9 @@ pub fn loop_scope_block(bcx: block,
     return new_block(bcx.fcx, Some(bcx), block_scope(scope_info {
         loop_break: Some(loop_break),
         loop_label: loop_label,
-        mut cleanups: ~[],
-        mut cleanup_paths: ~[],
-        mut landing_pad: None
+        cleanups: ~[],
+        cleanup_paths: ~[],
+        landing_pad: None
     }), bcx.is_lpad, n, opt_node_info);
 }
 
@@ -1301,23 +1306,30 @@ pub fn cleanup_and_leave(bcx: block,
                 @fmt!("cleanup_and_leave(%s)", cur.to_str()));
         }
 
-        match cur.kind {
-          block_scope(ref inf) if !inf.cleanups.is_empty() => {
-            for vec::find((*inf).cleanup_paths,
-                          |cp| cp.target == leave).each |cp| {
-                Br(bcx, cp.dest);
-                return;
+        {
+            // XXX: Borrow check bug workaround.
+            let kind: &mut block_kind = &mut *cur.kind;
+            match *kind {
+              block_scope(ref mut inf) if !inf.cleanups.is_empty() => {
+                for vec::find((*inf).cleanup_paths,
+                              |cp| cp.target == leave).each |cp| {
+                    Br(bcx, cp.dest);
+                    return;
+                }
+                let sub_cx = sub_block(bcx, ~"cleanup");
+                Br(bcx, sub_cx.llbb);
+                inf.cleanup_paths.push(cleanup_path {
+                    target: leave,
+                    dest: sub_cx.llbb
+                });
+                bcx = trans_block_cleanups_(sub_cx,
+                                            block_cleanups(cur),
+                                            is_lpad);
+              }
+              _ => ()
             }
-            let sub_cx = sub_block(bcx, ~"cleanup");
-            Br(bcx, sub_cx.llbb);
-            (*inf).cleanup_paths.push(cleanup_path {
-                target: leave,
-                dest: sub_cx.llbb
-            });
-            bcx = trans_block_cleanups_(sub_cx, block_cleanups(cur), is_lpad);
-          }
-          _ => ()
         }
+
         match upto {
           Some(bb) => { if cur.llbb == bb { break; } }
           _ => ()
