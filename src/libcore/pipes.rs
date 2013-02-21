@@ -92,6 +92,7 @@ use libc;
 use option;
 use option::{None, Option, Some, unwrap};
 use pipes;
+use private::intrinsics;
 use ptr;
 use private;
 use task;
@@ -256,37 +257,26 @@ pub fn entangle_buffer<T: Owned, Tstart: Owned>(
     (SendPacketBuffered(p), RecvPacketBuffered(p))
 }
 
-#[abi = "rust-intrinsic"]
-#[doc(hidden)]
-extern mod rusti {
-    fn atomic_xchg(dst: &mut int, src: int) -> int;
-    fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
-    fn atomic_xchg_rel(dst: &mut int, src: int) -> int;
-
-    fn atomic_xadd_acq(dst: &mut int, src: int) -> int;
-    fn atomic_xsub_rel(dst: &mut int, src: int) -> int;
-}
-
 // If I call the rusti versions directly from a polymorphic function,
 // I get link errors. This is a bug that needs investigated more.
 #[doc(hidden)]
 pub fn atomic_xchng_rel(dst: &mut int, src: int) -> int {
     unsafe {
-        rusti::atomic_xchg_rel(dst, src)
+        intrinsics::atomic_xchg_rel(dst, src)
     }
 }
 
 #[doc(hidden)]
 pub fn atomic_add_acq(dst: &mut int, src: int) -> int {
     unsafe {
-        rusti::atomic_xadd_acq(dst, src)
+        intrinsics::atomic_xadd_acq(dst, src)
     }
 }
 
 #[doc(hidden)]
 pub fn atomic_sub_rel(dst: &mut int, src: int) -> int {
     unsafe {
-        rusti::atomic_xsub_rel(dst, src)
+        intrinsics::atomic_xsub_rel(dst, src)
     }
 }
 
@@ -295,7 +285,7 @@ pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
     // It might be worth making both acquire and release versions of
     // this.
     unsafe {
-        transmute(rusti::atomic_xchg(transmute(dst), src as int))
+        transmute(intrinsics::atomic_xchg(transmute(dst), src as int))
     }
 }
 
@@ -335,14 +325,14 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
 #[doc(hidden)]
 fn swap_state_acq(dst: &mut State, src: State) -> State {
     unsafe {
-        transmute(rusti::atomic_xchg_acq(transmute(dst), src as int))
+        transmute(intrinsics::atomic_xchg_acq(transmute(dst), src as int))
     }
 }
 
 #[doc(hidden)]
 fn swap_state_rel(dst: &mut State, src: State) -> State {
     unsafe {
-        transmute(rusti::atomic_xchg_rel(transmute(dst), src as int))
+        transmute(intrinsics::atomic_xchg_rel(transmute(dst), src as int))
     }
 }
 

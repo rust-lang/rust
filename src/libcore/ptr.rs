@@ -14,6 +14,7 @@ use cast;
 use cmp::{Eq, Ord};
 use libc;
 use libc::{c_void, size_t};
+use private::intrinsics::{memmove32,memmove64};
 use ptr;
 use str;
 use sys;
@@ -177,12 +178,6 @@ pub trait Ptr<T> {
     pure fn is_null() -> bool;
     pure fn is_not_null() -> bool;
     pure fn offset(count: uint) -> Self;
-}
-
-#[abi="rust-intrinsic"]
-pub extern {
-    fn memmove32(dst: *mut u8, src: *u8, size: u32);
-    fn memmove64(dst: *mut u8, src: *u8, size: u64);
 }
 
 /// Extension methods for immutable pointers

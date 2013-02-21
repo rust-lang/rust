@@ -36,6 +36,7 @@ use private::{Exclusive, exclusive};
 use private::{SharedMutableState, shared_mutable_state};
 use private::{get_shared_immutable_state};
 use private::at_exit::at_exit;
+use private::intrinsics::atomic_cxchg;
 use hashmap::linear::LinearMap;
 use sys::Closure;
 use task::spawn;
@@ -229,11 +230,6 @@ fn key_ptr<T: Owned>(key: GlobalDataKey<T>) -> uint {
 
 extern {
     fn rust_get_global_data_ptr() -> *mut int;
-}
-
-#[abi = "rust-intrinsic"]
-extern {
-    fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
 }
 
 #[test]
