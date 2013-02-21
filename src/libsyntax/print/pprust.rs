@@ -108,17 +108,18 @@ pub fn print_crate(cm: @CodeMap, intr: @ident_interner,
                    span_diagnostic: diagnostic::span_handler,
                    crate: @ast::crate, filename: ~str, in: io::Reader,
                    out: io::Writer, ann: pp_ann, is_expanded: bool) {
-    let r = comments::gather_comments_and_literals(span_diagnostic,
-                                                   filename, in);
+    let (cmnts, lits) =
+        comments::gather_comments_and_literals(span_diagnostic,
+                                               filename, in);
     let s = @ps {
         s: pp::mk_printer(out, default_columns),
         cm: Some(cm),
         intr: intr,
-        comments: Some(r.cmnts),
+        comments: Some(cmnts),
         // If the code is post expansion, don't use the table of
         // literals, since it doesn't correspond with the literals
         // in the AST anymore.
-        literals: if is_expanded { None } else { Some(r.lits) },
+        literals: if is_expanded { None } else { Some(lits) },
         cur_cmnt_and_lit: @mut CurrentCommentAndLiteral {
             cur_cmnt: 0,
             cur_lit: 0

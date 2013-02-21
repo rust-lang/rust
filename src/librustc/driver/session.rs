@@ -25,7 +25,7 @@ use syntax::ast::node_id;
 use syntax::ast::{int_ty, uint_ty, float_ty};
 use syntax::codemap::span;
 use syntax::diagnostic;
-use syntax::parse::parse_sess;
+use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
 use syntax;
 
@@ -151,7 +151,7 @@ pub struct Session_ {
     targ_cfg: @config,
     opts: @options,
     cstore: @mut metadata::cstore::CStore,
-    parse_sess: parse_sess,
+    parse_sess: @mut ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
     main_fn: @mut Option<(node_id, codemap::span)>,

@@ -20,21 +20,30 @@ use core::option::{None, Option, Some};
 use core::option;
 use std::oldmap::HashMap;
 
-// seq_sep : a sequence separator (token)
+// SeqSep : a sequence separator (token)
 // and whether a trailing separator is allowed.
-pub type seq_sep = {
+pub struct SeqSep {
     sep: Option<token::Token>,
     trailing_sep_allowed: bool
-};
+}
 
-pub fn seq_sep_trailing_disallowed(t: token::Token) -> seq_sep {
-    return {sep: option::Some(t), trailing_sep_allowed: false};
+pub fn seq_sep_trailing_disallowed(t: token::Token) -> SeqSep {
+    SeqSep {
+        sep: option::Some(t),
+        trailing_sep_allowed: false
+    }
 }
-pub fn seq_sep_trailing_allowed(t: token::Token) -> seq_sep {
-    return {sep: option::Some(t), trailing_sep_allowed: true};
+pub fn seq_sep_trailing_allowed(t: token::Token) -> SeqSep {
+    SeqSep {
+        sep: option::Some(t),
+        trailing_sep_allowed: true
+    }
 }
-pub fn seq_sep_none() -> seq_sep {
-    return {sep: option::None, trailing_sep_allowed: false};
+pub fn seq_sep_none() -> SeqSep {
+    SeqSep {
+        sep: option::None,
+        trailing_sep_allowed: false
+    }
 }
 
 pub fn token_to_str(reader: reader, ++token: token::Token) -> ~str {
@@ -253,7 +262,7 @@ pub impl Parser {
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    fn parse_seq_to_end<T:Copy>(ket: token::Token, sep: seq_sep,
+    fn parse_seq_to_end<T:Copy>(ket: token::Token, sep: SeqSep,
                                  f: fn(Parser) -> T) -> ~[T] {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
@@ -263,7 +272,7 @@ pub impl Parser {
     // parse a sequence, not including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    fn parse_seq_to_before_end<T:Copy>(ket: token::Token, sep: seq_sep,
+    fn parse_seq_to_before_end<T:Copy>(ket: token::Token, sep: SeqSep,
                                         f: fn(Parser) -> T) -> ~[T] {
         let mut first: bool = true;
         let mut v: ~[T] = ~[];
@@ -286,7 +295,7 @@ pub impl Parser {
     // closing bracket.
     fn parse_unspanned_seq<T:Copy>(bra: token::Token,
                                     ket: token::Token,
-                                    sep: seq_sep,
+                                    sep: SeqSep,
                                     f: fn(Parser) -> T) -> ~[T] {
         self.expect(bra);
         let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
@@ -296,7 +305,7 @@ pub impl Parser {
 
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
-    fn parse_seq<T:Copy>(bra: token::Token, ket: token::Token, sep: seq_sep,
+    fn parse_seq<T:Copy>(bra: token::Token, ket: token::Token, sep: SeqSep,
                           f: fn(Parser) -> T) -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(bra);

@@ -196,11 +196,16 @@ pub struct LocWithOpt {
 // used to be structural records. Better names, anyone?
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
+pub struct NameAndSpan {name: ~str, span: Option<span>}
+
+pub struct CallInfo {
+    call_site: span,
+    callee: NameAndSpan
+}
 
 /// Extra information for tracking macro expansion of spans
 pub enum ExpnInfo {
-    ExpandedFrom({call_site: span,
-                  callie: {name: ~str, span: Option<span>}})
+    ExpandedFrom(CallInfo)
 }
 
 pub type FileName = ~str;
