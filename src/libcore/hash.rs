@@ -59,7 +59,7 @@ pub trait HashUtil {
     pure fn hash() -> u64;
 }
 
-impl<A: Hash> HashUtil for A {
+impl<A:Hash> HashUtil for A {
     #[inline(always)]
     pure fn hash() -> u64 { self.hash_keyed(0,0) }
 }
@@ -74,7 +74,7 @@ pub trait Streaming {
     fn reset();
 }
 
-impl<A: IterBytes> Hash for A {
+impl<A:IterBytes> Hash for A {
     #[inline(always)]
     pure fn hash_keyed(k0: u64, k1: u64) -> u64 {
         unsafe {

@@ -23,7 +23,7 @@ For example, a type like:
 
 would generate two implementations like:
 
-impl<S: std::serialize::Encoder> Encodable<S> for Node {
+impl<S:std::serialize::Encoder> Encodable<S> for Node {
     fn encode(&self, s: &S) {
         do s.emit_struct("Node", 1) {
             s.emit_field("id", 0, || s.emit_uint(self.id))
@@ -31,7 +31,7 @@ impl<S: std::serialize::Encoder> Encodable<S> for Node {
     }
 }
 
-impl<D: Decoder> Decodable for node_id {
+impl<D:Decoder> Decodable for node_id {
     static fn decode(d: &D) -> Node {
         do d.read_struct("Node", 1) {
             Node {
@@ -54,7 +54,7 @@ would yield functions like:
         S: Encoder,
         T: Encodable<S>
     > spanned<T>: Encodable<S> {
-        fn encode<S: Encoder>(s: &S) {
+        fn encode<S:Encoder>(s: &S) {
             do s.emit_rec {
                 s.emit_field("node", 0, || self.node.encode(s));
                 s.emit_field("span", 1, || self.span.encode(s));

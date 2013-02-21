@@ -17,13 +17,13 @@ struct finish<T> {
   arg: Arg<T>
 }
 
-impl<T: Copy> Drop for finish<T> {
+impl<T:Copy> Drop for finish<T> {
     fn finalize(&self) {
         (self.arg.fin)(self.arg.val);
     }
 }
 
-fn finish<T: Copy>(arg: Arg<T>) -> finish<T> {
+fn finish<T:Copy>(arg: Arg<T>) -> finish<T> {
     finish {
         arg: arg
     }

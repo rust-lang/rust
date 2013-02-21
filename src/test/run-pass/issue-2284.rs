@@ -12,7 +12,7 @@ trait Send {
     fn f();
 }
 
-fn f<T: Send>(t: T) {
+fn f<T:Send>(t: T) {
     t.f();
 }
 

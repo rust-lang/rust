@@ -248,7 +248,7 @@ trait def_id_encoder_helpers {
     fn emit_def_id(did: ast::def_id);
 }
 
-impl<S: serialize::Encoder> def_id_encoder_helpers for S {
+impl<S:serialize::Encoder> def_id_encoder_helpers for S {
     fn emit_def_id(did: ast::def_id) {
         did.encode(&self)
     }
@@ -258,7 +258,7 @@ trait def_id_decoder_helpers {
     fn read_def_id(xcx: @ExtendedDecodeContext) -> ast::def_id;
 }
 
-impl<D: serialize::Decoder> def_id_decoder_helpers for D {
+impl<D:serialize::Decoder> def_id_decoder_helpers for D {
 
     fn read_def_id(xcx: @ExtendedDecodeContext) -> ast::def_id {
         let did: ast::def_id = Decodable::decode(&self);
@@ -1276,14 +1276,14 @@ fn test_more() {
 fn test_simplification() {
     let ext_cx = mk_ctxt();
     let item_in = ast::ii_item(quote_item!(
-        fn new_int_alist<B: Copy>() -> alist<int, B> {
+        fn new_int_alist<B:Copy>() -> alist<int, B> {
             fn eq_int(&&a: int, &&b: int) -> bool { a == b }
             return {eq_fn: eq_int, data: ~[]};
         }
     ).get());
     let item_out = simplify_ast(item_in);
     let item_exp = ast::ii_item(quote_item!(
-        fn new_int_alist<B: Copy>() -> alist<int, B> {
+        fn new_int_alist<B:Copy>() -> alist<int, B> {
             return {eq_fn: eq_int, data: ~[]};
         }
     ).get());

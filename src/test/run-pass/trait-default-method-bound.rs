@@ -16,7 +16,7 @@ trait A {
 
 impl A for int { }
 
-fn f<T: A>(i: T) {
+fn f<T:A>(i: T) {
     assert i.g() == 10;
 }
 

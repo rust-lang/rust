@@ -41,11 +41,11 @@ pub fn align(size: uint, align: uint) -> uint {
 pub struct MovePtrAdaptor<V> {
     inner: V
 }
-pub fn MovePtrAdaptor<V: TyVisitor MovePtr>(v: V) -> MovePtrAdaptor<V> {
+pub fn MovePtrAdaptor<V:TyVisitor + MovePtr>(v: V) -> MovePtrAdaptor<V> {
     MovePtrAdaptor { inner: v }
 }
 
-impl<V: TyVisitor MovePtr> MovePtrAdaptor<V> {
+impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     #[inline(always)]
     fn bump(sz: uint) {
       do self.inner.move_ptr() |p| {
@@ -72,7 +72,7 @@ impl<V: TyVisitor MovePtr> MovePtrAdaptor<V> {
 }
 
 /// Abstract type-directed pointer-movement using the MovePtr trait
-impl<V: TyVisitor MovePtr> TyVisitor for MovePtrAdaptor<V> {
+impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     fn visit_bot(&self) -> bool {
         self.align_to::<()>();
         if ! self.inner.visit_bot() { return false; }

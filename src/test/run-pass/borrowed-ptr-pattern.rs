@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<T: Copy>(x: &T) -> T{
+fn foo<T:Copy>(x: &T) -> T{
     match x {
         &a => a
     }

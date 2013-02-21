@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn to_closure<A: Durable Copy>(x: A) -> @fn() -> A {
+pub fn to_closure<A:Durable + Copy>(x: A) -> @fn() -> A {
     fn@() -> A { copy x }
 }

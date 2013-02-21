@@ -20,7 +20,7 @@ pub trait CopyableTuple<T, U> {
     pure fn swap() -> (U, T);
 }
 
-impl<T: Copy, U: Copy> CopyableTuple<T, U> for (T, U) {
+impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
 
     /// Return the first element of self
     #[inline(always)]
@@ -70,7 +70,7 @@ pub trait ExtendedTupleOps<A,B> {
     fn map<C>(&self, f: &fn(a: &A, b: &B) -> C) -> ~[C];
 }
 
-impl<A: Copy, B: Copy> ExtendedTupleOps<A,B> for (&[A], &[B]) {
+impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (&[A], &[B]) {
     #[inline(always)]
     fn zip(&self) -> ~[(A, B)] {
         match *self {
@@ -90,7 +90,7 @@ impl<A: Copy, B: Copy> ExtendedTupleOps<A,B> for (&[A], &[B]) {
     }
 }
 
-impl<A: Copy, B: Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
+impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
 
     #[inline(always)]
     fn zip(&self) -> ~[(A, B)] {
@@ -114,7 +114,7 @@ impl<A: Copy, B: Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
 // FIXME #4898: impl for one-tuples
 
 #[cfg(notest)]
-impl<A: Eq, B: Eq> Eq for (A, B) {
+impl<A:Eq,B:Eq> Eq for (A, B) {
     #[inline(always)]
     pure fn eq(&self, other: &(A, B)) -> bool {
         match (*self) {
@@ -130,7 +130,7 @@ impl<A: Eq, B: Eq> Eq for (A, B) {
 }
 
 #[cfg(notest)]
-impl<A: Ord, B: Ord> Ord for (A, B) {
+impl<A:Ord,B:Ord> Ord for (A, B) {
     #[inline(always)]
     pure fn lt(&self, other: &(A, B)) -> bool {
         match (*self) {
@@ -155,7 +155,7 @@ impl<A: Ord, B: Ord> Ord for (A, B) {
 }
 
 #[cfg(notest)]
-impl<A: Eq, B: Eq, C: Eq> Eq for (A, B, C) {
+impl<A:Eq,B:Eq,C:Eq> Eq for (A, B, C) {
     #[inline(always)]
     pure fn eq(&self, other: &(A, B, C)) -> bool {
         match (*self) {
@@ -172,7 +172,7 @@ impl<A: Eq, B: Eq, C: Eq> Eq for (A, B, C) {
 }
 
 #[cfg(notest)]
-impl<A: Ord, B: Ord, C: Ord> Ord for (A, B, C) {
+impl<A:Ord,B:Ord,C:Ord> Ord for (A, B, C) {
     #[inline(always)]
     pure fn lt(&self, other: &(A, B, C)) -> bool {
         match (*self) {

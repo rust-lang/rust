@@ -62,7 +62,7 @@ pub enum RoundMode {
  * ~~~
  */
 #[inline(always)]
-pub pure fn cast<T:NumCast, U:NumCast>(n: T) -> U {
+pub pure fn cast<T:NumCast,U:NumCast>(n: T) -> U {
     NumCast::from(n)
 }
 

@@ -129,7 +129,7 @@ pub mod serial {
     }
 
     /// Create a `FlatPort` from a `Port<~[u8]>`
-    pub fn pipe_port<T: Decodable<DefaultDecoder>>(
+    pub fn pipe_port<T:Decodable<DefaultDecoder>>(
         port: Port<~[u8]>
     ) -> PipePort<T> {
         let unflat: DeserializingUnflattener<DefaultDecoder, T> =
@@ -140,7 +140,7 @@ pub mod serial {
     }
 
     /// Create a `FlatChan` from a `Chan<~[u8]>`
-    pub fn pipe_chan<T: Encodable<DefaultEncoder>>(
+    pub fn pipe_chan<T:Encodable<DefaultEncoder>>(
         chan: Chan<~[u8]>
     ) -> PipeChan<T> {
         let flat: SerializingFlattener<DefaultEncoder, T> =
@@ -189,7 +189,7 @@ pub mod pod {
     pub type PipeChan<T> = FlatChan<T, PodFlattener<T>, PipeByteChan>;
 
     /// Create a `FlatPort` from a `Reader`
-    pub fn reader_port<T: Copy Owned, R: Reader>(
+    pub fn reader_port<T:Copy + Owned,R:Reader>(
         reader: R
     ) -> ReaderPort<T, R> {
         let unflat: PodUnflattener<T> = PodUnflattener::new();
@@ -198,7 +198,7 @@ pub mod pod {
     }
 
     /// Create a `FlatChan` from a `Writer`
-    pub fn writer_chan<T: Copy Owned, W: Writer>(
+    pub fn writer_chan<T:Copy + Owned,W:Writer>(
         writer: W
     ) -> WriterChan<T, W> {
         let flat: PodFlattener<T> = PodFlattener::new();
@@ -207,21 +207,21 @@ pub mod pod {
     }
 
     /// Create a `FlatPort` from a `Port<~[u8]>`
-    pub fn pipe_port<T: Copy Owned>(port: Port<~[u8]>) -> PipePort<T> {
+    pub fn pipe_port<T:Copy + Owned>(port: Port<~[u8]>) -> PipePort<T> {
         let unflat: PodUnflattener<T> = PodUnflattener::new();
         let byte_port = PipeBytePort::new(port);
         FlatPort::new(unflat, byte_port)
     }
 
     /// Create a `FlatChan` from a `Chan<~[u8]>`
-    pub fn pipe_chan<T: Copy Owned>(chan: Chan<~[u8]>) -> PipeChan<T> {
+    pub fn pipe_chan<T:Copy + Owned>(chan: Chan<~[u8]>) -> PipeChan<T> {
         let flat: PodFlattener<T> = PodFlattener::new();
         let byte_chan = PipeByteChan::new(chan);
         FlatChan::new(flat, byte_chan)
     }
 
     /// Create a pair of `FlatChan` and `FlatPort`, backed by pipes
-    pub fn pipe_stream<T: Copy Owned>() -> (PipePort<T>, PipeChan<T>) {
+    pub fn pipe_stream<T:Copy + Owned>() -> (PipePort<T>, PipeChan<T>) {
         let (port, chan) = pipes::stream();
         return (pipe_port(port), pipe_chan(chan));
     }
@@ -358,7 +358,7 @@ pub mod flatteners {
         bogus: ()
     }
 
-    pub impl<T: Copy Owned> Unflattener<T> for PodUnflattener<T> {
+    pub impl<T:Copy + Owned> Unflattener<T> for PodUnflattener<T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             assert size_of::<T>() != 0;
             assert size_of::<T>() == buf.len();
@@ -368,7 +368,7 @@ pub mod flatteners {
         }
     }
 
-    pub impl<T: Copy Owned> Flattener<T> for PodFlattener<T> {
+    pub impl<T:Copy + Owned> Flattener<T> for PodFlattener<T> {
         fn flatten(&self, val: T) -> ~[u8] {
             assert size_of::<T>() != 0;
             let val: *T = ptr::to_unsafe_ptr(&val);
@@ -377,7 +377,7 @@ pub mod flatteners {
         }
     }
 
-    pub impl<T: Copy Owned> PodUnflattener<T> {
+    pub impl<T:Copy + Owned> PodUnflattener<T> {
         static fn new() -> PodUnflattener<T> {
             PodUnflattener {
                 bogus: ()
@@ -385,7 +385,7 @@ pub mod flatteners {
         }
     }
 
-    pub impl<T: Copy Owned> PodFlattener<T> {
+    pub impl<T:Copy + Owned> PodFlattener<T> {
         static fn new() -> PodFlattener<T> {
             PodFlattener {
                 bogus: ()
@@ -406,21 +406,21 @@ pub mod flatteners {
         serialize_value: SerializeValue<T>
     }
 
-    pub impl<D: Decoder, T: Decodable<D>> Unflattener<T>
+    pub impl<D:Decoder,T:Decodable<D>> Unflattener<T>
             for DeserializingUnflattener<D, T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             (self.deserialize_buffer)(buf)
         }
     }
 
-    pub impl<S: Encoder, T: Encodable<S>> Flattener<T>
+    pub impl<S:Encoder,T:Encodable<S>> Flattener<T>
             for SerializingFlattener<S, T> {
         fn flatten(&self, val: T) -> ~[u8] {
             (self.serialize_value)(&val)
         }
     }
 
-    pub impl<D: Decoder, T: Decodable<D>> DeserializingUnflattener<D, T> {
+    pub impl<D:Decoder,T:Decodable<D>> DeserializingUnflattener<D, T> {
         static fn new(deserialize_buffer: DeserializeBuffer<T>)
                    -> DeserializingUnflattener<D, T> {
             DeserializingUnflattener {
@@ -429,7 +429,7 @@ pub mod flatteners {
         }
     }
 
-    pub impl<S: Encoder, T: Encodable<S>> SerializingFlattener<S, T> {
+    pub impl<S:Encoder,T:Encodable<S>> SerializingFlattener<S, T> {
         static fn new(serialize_value: SerializeValue<T>)
                    -> SerializingFlattener<S, T> {
             SerializingFlattener {
@@ -519,7 +519,7 @@ pub mod bytepipes {
         writer: W
     }
 
-    pub impl<R: Reader> BytePort for ReaderBytePort<R> {
+    pub impl<R:Reader> BytePort for ReaderBytePort<R> {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             let mut left = count;
             let mut bytes = ~[];
@@ -541,13 +541,13 @@ pub mod bytepipes {
         }
     }
 
-    pub impl<W: Writer> ByteChan for WriterByteChan<W> {
+    pub impl<W:Writer> ByteChan for WriterByteChan<W> {
         fn send(&self, val: ~[u8]) {
             self.writer.write(val);
         }
     }
 
-    pub impl<R: Reader> ReaderBytePort<R> {
+    pub impl<R:Reader> ReaderBytePort<R> {
         static fn new(r: R) -> ReaderBytePort<R> {
             ReaderBytePort {
                 reader: r
@@ -555,7 +555,7 @@ pub mod bytepipes {
         }
     }
 
-    pub impl<W: Writer> WriterByteChan<W> {
+    pub impl<W:Writer> WriterByteChan<W> {
         static fn new(w: W) -> WriterByteChan<W> {
             WriterByteChan {
                 writer: w
@@ -765,7 +765,7 @@ mod test {
     type WriterChanFactory<F> =
         ~fn(TcpSocketBuf) -> FlatChan<int, F, WriterByteChan<TcpSocketBuf>>;
 
-    fn test_some_tcp_stream<U: Unflattener<int>, F: Flattener<int>>(
+    fn test_some_tcp_stream<U:Unflattener<int>,F:Flattener<int>>(
         reader_port: ReaderPortFactory<U>,
         writer_chan: WriterChanFactory<F>,
         port: uint) {
@@ -901,7 +901,7 @@ mod test {
             pod::pipe_port(port)
         }
 
-        fn test_try_recv_none1<P: BytePort>(loader: PortLoader<P>) {
+        fn test_try_recv_none1<P:BytePort>(loader: PortLoader<P>) {
             let bytes = ~[];
             let port = loader(bytes);
             let res: Option<int> = port.try_recv();
@@ -917,7 +917,7 @@ mod test {
             test_try_recv_none1(pipe_port_loader);
         }
 
-        fn test_try_recv_none2<P: BytePort>(loader: PortLoader<P>) {
+        fn test_try_recv_none2<P:BytePort>(loader: PortLoader<P>) {
             // The control word in the protocol is interrupted
             let bytes = ~[0];
             let port = loader(bytes);
@@ -934,7 +934,7 @@ mod test {
             test_try_recv_none2(pipe_port_loader);
         }
 
-        fn test_try_recv_none3<P: BytePort>(loader: PortLoader<P>) {
+        fn test_try_recv_none3<P:BytePort>(loader: PortLoader<P>) {
             const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
             // The control word is followed by garbage
             let bytes = CONTINUE.to_vec() + ~[0];
@@ -952,7 +952,7 @@ mod test {
             test_try_recv_none3(pipe_port_loader);
         }
 
-        fn test_try_recv_none4<P: BytePort>(+loader: PortLoader<P>) {
+        fn test_try_recv_none4<P:BytePort>(+loader: PortLoader<P>) {
             assert do task::try || {
                 const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
                 // The control word is followed by a valid length,

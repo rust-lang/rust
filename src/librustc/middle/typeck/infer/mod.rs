@@ -351,7 +351,7 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
     }
 }
 
-fn new_ValsAndBindings<V:Copy, T:Copy>() -> ValsAndBindings<V, T> {
+fn new_ValsAndBindings<V:Copy,T:Copy>() -> ValsAndBindings<V, T> {
     ValsAndBindings {
         vals: oldsmallintmap::mk(),
         bindings: ~[]
@@ -517,7 +517,7 @@ trait CresCompare<T> {
     fn compare(t: T, f: fn() -> ty::type_err) -> cres<T>;
 }
 
-impl<T:Copy Eq> CresCompare<T> for cres<T> {
+impl<T:Copy + Eq> CresCompare<T> for cres<T> {
     fn compare(t: T, f: fn() -> ty::type_err) -> cres<T> {
         do self.chain |s| {
             if s == t {
@@ -533,7 +533,7 @@ pub fn uok() -> ures {
     Ok(())
 }
 
-fn rollback_to<V:Copy Vid, T:Copy>(
+fn rollback_to<V:Copy + Vid,T:Copy>(
     vb: &mut ValsAndBindings<V, T>,
     len: uint)
 {
@@ -632,7 +632,7 @@ impl @mut InferCtxt {
     }
 }
 
-fn next_simple_var<V: Copy,T: Copy>(
+fn next_simple_var<V:Copy,T:Copy>(
         +counter: &mut uint,
         +bindings: &mut ValsAndBindings<V,Option<T>>)
      -> uint {

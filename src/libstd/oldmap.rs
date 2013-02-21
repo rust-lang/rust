@@ -76,7 +76,7 @@ pub mod chained {
         FoundAfter(@Entry<K,V>, @Entry<K,V>)
     }
 
-    priv impl<K:Eq IterBytes Hash, V> T<K, V> {
+    priv impl<K:Eq + IterBytes + Hash,V> T<K, V> {
         pure fn search_rem(k: &K, h: uint, idx: uint,
                            e_root: @Entry<K,V>) -> SearchResult<K,V> {
             let mut e0 = e_root;
@@ -156,19 +156,19 @@ pub mod chained {
         }
     }
 
-    impl<K: Eq IterBytes Hash, V> Container for T<K, V> {
+    impl<K:Eq + IterBytes + Hash,V> Container for T<K, V> {
         pure fn len(&self) -> uint { self.count }
         pure fn is_empty(&self) -> bool { self.count == 0 }
     }
 
-    impl<K: Eq IterBytes Hash, V> Mutable for T<K, V> {
+    impl<K:Eq + IterBytes + Hash,V> Mutable for T<K, V> {
         fn clear(&mut self) {
             self.count = 0u;
             self.chains = chains(initial_capacity);
         }
     }
 
-    impl<K: Eq IterBytes Hash, V> T<K, V> {
+    impl<K:Eq + IterBytes + Hash,V> T<K, V> {
         pure fn contains_key(&self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
@@ -252,7 +252,7 @@ pub mod chained {
         }
     }
 
-    impl<K: Eq IterBytes Hash Copy, V: Copy> T<K, V> {
+    impl<K:Eq + IterBytes + Hash + Copy,V:Copy> T<K, V> {
         pure fn find(&self, k: &K) -> Option<V> {
             match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
               NotFound => None,
@@ -325,7 +325,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> T<K, V> {
+    impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> T<K, V> {
         fn to_writer(wr: io::Writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");
@@ -347,7 +347,8 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> ToStr for T<K, V> {
+    impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> ToStr
+            for T<K, V> {
         pure fn to_str(&self) -> ~str {
             unsafe {
                 // Meh -- this should be safe
@@ -356,7 +357,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash Copy, V: Copy> ops::Index<K, V> for T<K, V> {
+    impl<K:Eq + IterBytes + Hash + Copy,V:Copy> ops::Index<K, V> for T<K, V> {
         pure fn index(&self, k: K) -> V {
             self.get(&k)
         }
@@ -366,7 +367,7 @@ pub mod chained {
         vec::from_elem(nchains, None)
     }
 
-    pub fn mk<K:Eq IterBytes Hash, V: Copy>() -> T<K,V> {
+    pub fn mk<K:Eq + IterBytes + Hash,V:Copy>() -> T<K,V> {
         let slf: T<K, V> = @HashMap_ {count: 0u,
                                       chains: chains(initial_capacity)};
         slf
@@ -378,18 +379,19 @@ Function: hashmap
 
 Construct a hashmap.
 */
-pub fn HashMap<K:Eq IterBytes Hash Const, V: Copy>()
+pub fn HashMap<K:Eq + IterBytes + Hash + Const,V:Copy>()
         -> HashMap<K, V> {
     chained::mk()
 }
 
 /// Convenience function for adding keys to a hashmap with nil type keys
-pub fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, key: K) -> bool {
+pub fn set_add<K:Eq + IterBytes + Hash + Const + Copy>(set: Set<K>, key: K)
+                                                    -> bool {
     set.insert(key, ())
 }
 
 /// Convert a set into a vector.
-pub pure fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
+pub pure fn vec_from_set<T:Eq + IterBytes + Hash + Copy>(s: Set<T>) -> ~[T] {
     do vec::build_sized(s.len()) |push| {
         for s.each_key() |&k| {
             push(k);
@@ -398,7 +400,7 @@ pub pure fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
 }
 
 /// Construct a hashmap from a vector
-pub fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
+pub fn hash_from_vec<K:Eq + IterBytes + Hash + Const + Copy,V:Copy>(
     items: &[(K, V)]) -> HashMap<K, V> {
     let map = HashMap();
     for vec::each(items) |item| {

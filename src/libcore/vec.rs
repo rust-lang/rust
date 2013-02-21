@@ -130,12 +130,12 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> ~[T] {
+pub pure fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
     from_fn(n_elts, |_i| copy t)
 }
 
 /// Creates a new unique vector with the same contents as the slice
-pub pure fn from_slice<T: Copy>(t: &[T]) -> ~[T] {
+pub pure fn from_slice<T:Copy>(t: &[T]) -> ~[T] {
     from_fn(t.len(), |i| t[i])
 }
 
@@ -211,10 +211,10 @@ pub pure fn cast_from_mut<T>(v: ~[mut T]) -> ~[T] {
 // Accessors
 
 /// Returns the first element of a vector
-pub pure fn head<T: Copy>(v: &[const T]) -> T { v[0] }
+pub pure fn head<T:Copy>(v: &[const T]) -> T { v[0] }
 
 /// Returns a vector containing all but the first element of a slice
-pub pure fn tail<T: Copy>(v: &[const T]) -> ~[T] {
+pub pure fn tail<T:Copy>(v: &[const T]) -> ~[T] {
     slice(v, 1u, len(v)).to_vec()
 }
 
@@ -222,18 +222,18 @@ pub pure fn tail<T: Copy>(v: &[const T]) -> ~[T] {
  * Returns a vector containing all but the first `n` \
  * elements of a slice
  */
-pub pure fn tailn<T: Copy>(v: &[const T], n: uint) -> ~[T] {
+pub pure fn tailn<T:Copy>(v: &[const T], n: uint) -> ~[T] {
     slice(v, n, len(v)).to_vec()
 }
 
 /// Returns a vector containing all but the last element of a slice
-pub pure fn init<T: Copy>(v: &[const T]) -> ~[T] {
+pub pure fn init<T:Copy>(v: &[const T]) -> ~[T] {
     assert len(v) != 0u;
     slice(v, 0u, len(v) - 1u).to_vec()
 }
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
-pub pure fn last<T: Copy>(v: &[const T]) -> T {
+pub pure fn last<T:Copy>(v: &[const T]) -> T {
     if len(v) == 0u { fail!(~"last_unsafe: empty vector") }
     v[len(v) - 1u]
 }
@@ -242,7 +242,7 @@ pub pure fn last<T: Copy>(v: &[const T]) -> T {
  * Returns `Some(x)` where `x` is the last element of the slice `v`,
  * or `none` if the vector is empty.
  */
-pub pure fn last_opt<T: Copy>(v: &[const T]) -> Option<T> {
+pub pure fn last_opt<T:Copy>(v: &[const T]) -> Option<T> {
     if len(v) == 0u { return None; }
     Some(v[len(v) - 1u])
 }
@@ -295,7 +295,7 @@ pub pure fn const_slice<T>(v: &r/[const T], start: uint,
 /// Copies
 
 /// Split the vector `v` by applying each element against the predicate `f`.
-pub fn split<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
+pub fn split<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { return ~[] }
 
@@ -318,7 +318,7 @@ pub fn split<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
  * Split the vector `v` by applying each element against the predicate `f` up
  * to `n` times.
  */
-pub fn splitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
+pub fn splitn<T:Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { return ~[] }
 
@@ -344,7 +344,7 @@ pub fn splitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
  * Reverse split the vector `v` by applying each element against the predicate
  * `f`.
  */
-pub fn rsplit<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
+pub fn rsplit<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0) { return ~[] }
 
@@ -368,7 +368,7 @@ pub fn rsplit<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[~[T]] {
  * Reverse split the vector `v` by applying each element against the predicate
  * `f` up to `n times.
  */
-pub fn rsplitn<T: Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
+pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: fn(t: &T) -> bool) -> ~[~[T]] {
     let ln = len(v);
     if (ln == 0u) { return ~[] }
 
@@ -416,7 +416,7 @@ pub fn partition<T>(v: ~[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
  * Partitions a vector into two new vectors: those that satisfies the
  * predicate, and those that do not.
  */
-pub pure fn partitioned<T: Copy>(v: &[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
+pub pure fn partitioned<T:Copy>(v: &[T], f: fn(&T) -> bool) -> (~[T], ~[T]) {
     let mut lefts  = ~[];
     let mut rights = ~[];
 
@@ -611,7 +611,7 @@ fn push_slow<T>(v: &mut ~[T], initval: T) {
 }
 
 #[inline(always)]
-pub fn push_all<T: Copy>(v: &mut ~[T], rhs: &[const T]) {
+pub fn push_all<T:Copy>(v: &mut ~[T], rhs: &[const T]) {
     let new_len = v.len() + rhs.len();
     reserve(&mut *v, new_len);
 
@@ -657,7 +657,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
  * Remove consecutive repeated elements from a vector; if the vector is
  * sorted, this removes all duplicates.
  */
-pub fn dedup<T: Eq>(v: &mut ~[T]) {
+pub fn dedup<T:Eq>(v: &mut ~[T]) {
     unsafe {
         if v.len() < 1 { return; }
         let mut last_written = 0, next_to_read = 1;
@@ -695,7 +695,7 @@ pub fn dedup<T: Eq>(v: &mut ~[T]) {
 
 // Appending
 #[inline(always)]
-pub pure fn append<T: Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
+pub pure fn append<T:Copy>(lhs: ~[T], rhs: &[const T]) -> ~[T] {
     let mut v = lhs;
     unsafe {
         v.push_all(rhs);
@@ -719,7 +719,7 @@ pub pure fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
  * * n - The number of elements to add
  * * initval - The value for the new elements
  */
-pub fn grow<T: Copy>(v: &mut ~[T], n: uint, initval: &T) {
+pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
     let new_len = v.len() + n;
     reserve_at_least(&mut *v, new_len);
     let mut i: uint = 0u;
@@ -761,7 +761,7 @@ pub fn grow_fn<T>(v: &mut ~[T], n: uint, op: iter::InitOp<T>) {
  * of the vector, expands the vector by replicating `initval` to fill the
  * intervening space.
  */
-pub fn grow_set<T: Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
+pub fn grow_set<T:Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
     let l = v.len();
     if index >= l { grow(&mut *v, index - l + 1u, initval); }
     v[index] = val;
@@ -808,7 +808,7 @@ pub pure fn flat_map<T, U>(v: &[T], f: fn(t: &T) -> ~[U]) -> ~[U] {
 }
 
 /// Apply a function to each pair of elements and return the results
-pub pure fn map2<T: Copy, U: Copy, V>(v0: &[T], v1: &[U],
+pub pure fn map2<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
                                   f: fn(t: &T, v: &U) -> V) -> ~[V] {
     let v0_len = len(v0);
     if v0_len != len(v1) { fail!(); }
@@ -886,7 +886,7 @@ pub fn filter<T>(v: ~[T], f: fn(t: &T) -> bool) -> ~[T] {
  * Apply function `f` to each element of `v` and return a vector containing
  * only those elements for which `f` returned true.
  */
-pub pure fn filtered<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
+pub pure fn filtered<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
         if f(elem) { unsafe { result.push(*elem); } }
@@ -919,14 +919,14 @@ pub fn retain<T>(v: &mut ~[T], f: pure fn(t: &T) -> bool) {
  *
  * Flattens a vector of vectors of T into a single vector of T.
  */
-pub pure fn concat<T: Copy>(v: &[~[T]]) -> ~[T] {
+pub pure fn concat<T:Copy>(v: &[~[T]]) -> ~[T] {
     let mut r = ~[];
     for each(v) |inner| { unsafe { r.push_all(*inner); } }
     r
 }
 
 /// Concatenate a vector of vectors, placing a given separator between each
-pub pure fn connect<T: Copy>(v: &[~[T]], sep: &T) -> ~[T] {
+pub pure fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] {
     let mut r: ~[T] = ~[];
     let mut first = true;
     for each(v) |inner| {
@@ -1055,13 +1055,13 @@ pub pure fn all2<T, U>(v0: &[T], v1: &[U],
 }
 
 /// Return true if a vector contains an element with the given value
-pub pure fn contains<T: Eq>(v: &[T], x: &T) -> bool {
+pub pure fn contains<T:Eq>(v: &[T], x: &T) -> bool {
     for each(v) |elt| { if *x == *elt { return true; } }
     return false;
 }
 
 /// Returns the number of elements that are equal to a given value
-pub pure fn count<T: Eq>(v: &[T], x: &T) -> uint {
+pub pure fn count<T:Eq>(v: &[T], x: &T) -> uint {
     let mut cnt = 0u;
     for each(v) |elt| { if *x == *elt { cnt += 1u; } }
     return cnt;
@@ -1074,7 +1074,7 @@ pub pure fn count<T: Eq>(v: &[T], x: &T) -> uint {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-pub pure fn find<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
+pub pure fn find<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
     find_between(v, 0u, len(v), f)
 }
 
@@ -1085,7 +1085,7 @@ pub pure fn find<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
  * [`start`, `end`). When function `f` returns true then an option containing
  * the element is returned. If `f` matches no elements then none is returned.
  */
-pub pure fn find_between<T: Copy>(v: &[T], start: uint, end: uint,
+pub pure fn find_between<T:Copy>(v: &[T], start: uint, end: uint,
                       f: fn(t: &T) -> bool) -> Option<T> {
     position_between(v, start, end, f).map(|i| v[*i])
 }
@@ -1097,7 +1097,7 @@ pub pure fn find_between<T: Copy>(v: &[T], start: uint, end: uint,
  * `f` returns true then an option containing the element is returned. If `f`
  * matches no elements then none is returned.
  */
-pub pure fn rfind<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
+pub pure fn rfind<T:Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
     rfind_between(v, 0u, len(v), f)
 }
 
@@ -1108,13 +1108,13 @@ pub pure fn rfind<T: Copy>(v: &[T], f: fn(t: &T) -> bool) -> Option<T> {
  * [`start`, `end`). When function `f` returns true then an option containing
  * the element is returned. If `f` matches no elements then none is return.
  */
-pub pure fn rfind_between<T: Copy>(v: &[T], start: uint, end: uint,
+pub pure fn rfind_between<T:Copy>(v: &[T], start: uint, end: uint,
                                f: fn(t: &T) -> bool) -> Option<T> {
     rposition_between(v, start, end, f).map(|i| v[*i])
 }
 
 /// Find the first index containing a matching value
-pub pure fn position_elem<T: Eq>(v: &[T], x: &T) -> Option<uint> {
+pub pure fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
     position(v, |y| *x == *y)
 }
 
@@ -1146,7 +1146,7 @@ pub pure fn position_between<T>(v: &[T], start: uint, end: uint,
 }
 
 /// Find the last index containing a matching value
-pure fn rposition_elem<T: Eq>(v: &[T], x: &T) -> Option<uint> {
+pure fn rposition_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
     rposition(v, |y| *x == *y)
 }
 
@@ -1188,7 +1188,7 @@ pub pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
 /**
  * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
  */
-pure fn unzip_slice<T: Copy, U: Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
+pure fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
     for each(v) |p| {
         let (t, u) = *p;
@@ -1223,7 +1223,7 @@ pub pure fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
 /**
  * Convert two vectors to a vector of pairs, by reference. As zip().
  */
-pub pure fn zip_slice<T: Copy, U: Copy>(v: &[const T], u: &[const U])
+pub pure fn zip_slice<T:Copy,U:Copy>(v: &[const T], u: &[const U])
         -> ~[(T, U)] {
     let mut zipped = ~[];
     let sz = len(v);
@@ -1274,7 +1274,7 @@ pub fn reverse<T>(v: &mut [T]) {
 }
 
 /// Returns a vector with the order of elements reversed
-pub pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
+pub pure fn reversed<T:Copy>(v: &[const T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = len::<T>(v);
     if i == 0 { return (rs); } else { i -= 1; }
@@ -1440,7 +1440,7 @@ pub fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
  * The total number of permutations produced is `len(v)!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
  */
-pure fn each_permutation<T: Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
+pure fn each_permutation<T:Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
     let ln = len(v);
     if ln <= 1 {
         put(v);
@@ -1464,7 +1464,7 @@ pure fn each_permutation<T: Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
     }
 }
 
-pub pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
+pub pure fn windowed<TT:Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     let mut ww = ~[];
     assert 1u <= nn;
     for vec::eachi (xx) |ii, _x| {
@@ -1531,7 +1531,7 @@ pub pure fn as_mut_buf<T,U>(s: &mut [T],
 
 // Equality
 
-pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
+pure fn eq<T:Eq>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
     if a_len != b_len { return false; }
 
@@ -1545,7 +1545,7 @@ pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
 }
 
 #[cfg(notest)]
-impl<T: Eq> Eq for &[T] {
+impl<T:Eq> Eq for &[T] {
     #[inline(always)]
     pure fn eq(&self, other: & &self/[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
@@ -1554,7 +1554,7 @@ impl<T: Eq> Eq for &[T] {
 
 
 #[cfg(notest)]
-impl<T: Eq> Eq for ~[T] {
+impl<T:Eq> Eq for ~[T] {
     #[inline(always)]
     pure fn eq(&self, other: &~[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
@@ -1562,7 +1562,7 @@ impl<T: Eq> Eq for ~[T] {
 }
 
 #[cfg(notest)]
-impl<T: Eq> Eq for @[T] {
+impl<T:Eq> Eq for @[T] {
     #[inline(always)]
     pure fn eq(&self, other: &@[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
@@ -1571,7 +1571,7 @@ impl<T: Eq> Eq for @[T] {
 
 // Lexicographical comparison
 
-pure fn lt<T: Ord>(a: &[T], b: &[T]) -> bool {
+pure fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
     let mut end = uint::min(a_len, b_len);
 
@@ -1586,12 +1586,12 @@ pure fn lt<T: Ord>(a: &[T], b: &[T]) -> bool {
     return a_len < b_len;
 }
 
-pure fn le<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
-pure fn ge<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
-pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
+pure fn le<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
+pure fn ge<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
+pure fn gt<T:Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
 #[cfg(notest)]
-impl<T: Ord> Ord for &[T] {
+impl<T:Ord> Ord for &[T] {
     #[inline(always)]
     pure fn lt(&self, other: & &self/[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -1603,7 +1603,7 @@ impl<T: Ord> Ord for &[T] {
 }
 
 #[cfg(notest)]
-impl<T: Ord> Ord for ~[T] {
+impl<T:Ord> Ord for ~[T] {
     #[inline(always)]
     pure fn lt(&self, other: &~[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -1615,7 +1615,7 @@ impl<T: Ord> Ord for ~[T] {
 }
 
 #[cfg(notest)]
-impl<T: Ord> Ord for @[T] {
+impl<T:Ord> Ord for @[T] {
     #[inline(always)]
     pure fn lt(&self, other: &@[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -1632,7 +1632,7 @@ pub mod traits {
     use ops::Add;
     use vec::append;
 
-    impl<T: Copy> Add<&[const T],~[T]> for ~[T] {
+    impl<T:Copy> Add<&[const T],~[T]> for ~[T] {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
             append(copy *self, (*rhs))
@@ -1659,7 +1659,7 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T: Copy> CopyableVector<T> for &[const T] {
+impl<T:Copy> CopyableVector<T> for &[const T] {
     /// Returns the first element of a vector
     #[inline]
     pure fn head(&self) -> T { head(*self) }
@@ -1685,13 +1685,13 @@ impl<T: Copy> CopyableVector<T> for &[const T] {
 
 pub trait ImmutableVector<T> {
     pure fn view(&self, start: uint, end: uint) -> &self/[T];
-    pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
+    pure fn foldr<U:Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U];
     fn map_r<U>(&self, f: fn(x: &T) -> U) -> ~[U];
     pure fn alli(&self, f: fn(uint, t: &T) -> bool) -> bool;
     pure fn flat_map<U>(&self, f: fn(t: &T) -> ~[U]) -> ~[U];
-    pure fn filter_mapped<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U];
+    pure fn filter_mapped<U:Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U];
 }
 
 /// Extension methods for vectors
@@ -1704,7 +1704,7 @@ impl<T> ImmutableVector<T> for &[T] {
 
     /// Reduce a vector from right to left
     #[inline]
-    pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U {
+    pure fn foldr<U:Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U {
         foldr(*self, z, p)
     }
 
@@ -1754,19 +1754,19 @@ impl<T> ImmutableVector<T> for &[T] {
      * the resulting vector.
      */
     #[inline]
-    pure fn filter_mapped<U: Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U] {
+    pure fn filter_mapped<U:Copy>(&self, f: fn(t: &T) -> Option<U>) -> ~[U] {
         filter_mapped(*self, f)
     }
 }
 
-pub trait ImmutableEqVector<T: Eq> {
+pub trait ImmutableEqVector<T:Eq> {
     pure fn position(&self, f: fn(t: &T) -> bool) -> Option<uint>;
     pure fn position_elem(&self, t: &T) -> Option<uint>;
     pure fn rposition(&self, f: fn(t: &T) -> bool) -> Option<uint>;
     pure fn rposition_elem(&self, t: &T) -> Option<uint>;
 }
 
-impl<T: Eq> ImmutableEqVector<T> for &[T] {
+impl<T:Eq> ImmutableEqVector<T> for &[T] {
     /**
      * Find the first index matching some predicate
      *
@@ -1811,7 +1811,7 @@ pub trait ImmutableCopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T: Copy> ImmutableCopyableVector<T> for &[T] {
+impl<T:Copy> ImmutableCopyableVector<T> for &[T] {
     /**
      * Construct a new vector from the elements of a vector for which some
      * predicate holds.
@@ -1944,13 +1944,13 @@ impl<T> Mutable for ~[T] {
     fn clear(&mut self) { self.truncate(0) }
 }
 
-pub trait OwnedCopyableVector<T: Copy> {
+pub trait OwnedCopyableVector<T:Copy> {
     fn push_all(&mut self, rhs: &[const T]);
     fn grow(&mut self, n: uint, initval: &T);
     fn grow_set(&mut self, index: uint, initval: &T, val: T);
 }
 
-impl<T: Copy> OwnedCopyableVector<T> for ~[T] {
+impl<T:Copy> OwnedCopyableVector<T> for ~[T] {
     #[inline]
     fn push_all(&mut self, rhs: &[const T]) {
         push_all(self, rhs);
@@ -1967,11 +1967,11 @@ impl<T: Copy> OwnedCopyableVector<T> for ~[T] {
     }
 }
 
-trait OwnedEqVector<T: Eq> {
+trait OwnedEqVector<T:Eq> {
     fn dedup(&mut self);
 }
 
-impl<T: Eq> OwnedEqVector<T> for ~[T] {
+impl<T:Eq> OwnedEqVector<T> for ~[T] {
     #[inline]
     fn dedup(&mut self) {
         dedup(self)
@@ -2081,7 +2081,7 @@ pub mod raw {
      * Unchecked vector indexing.
      */
     #[inline(always)]
-    pub unsafe fn get<T: Copy>(v: &[const T], i: uint) -> T {
+    pub unsafe fn get<T:Copy>(v: &[const T], i: uint) -> T {
         as_const_buf(v, |p, _len| *ptr::const_offset(p, i))
     }
 
@@ -2319,24 +2319,24 @@ impl<A> iter::ExtendedIter<A> for @[A] {
     }
 }
 
-impl<A: Eq> iter::EqIter<A> for &[A] {
+impl<A:Eq> iter::EqIter<A> for &[A] {
     pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Eq> iter::EqIter<A> for ~[A] {
+impl<A:Eq> iter::EqIter<A> for ~[A] {
     pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Eq> iter::EqIter<A> for @[A] {
+impl<A:Eq> iter::EqIter<A> for @[A] {
     pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
-impl<A: Copy> iter::CopyableIter<A> for &[A] {
+impl<A:Copy> iter::CopyableIter<A> for &[A] {
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2347,7 +2347,7 @@ impl<A: Copy> iter::CopyableIter<A> for &[A] {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Copy> iter::CopyableIter<A> for ~[A] {
+impl<A:Copy> iter::CopyableIter<A> for ~[A] {
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2358,7 +2358,7 @@ impl<A: Copy> iter::CopyableIter<A> for ~[A] {
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Copy> iter::CopyableIter<A> for @[A] {
+impl<A:Copy> iter::CopyableIter<A> for @[A] {
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2368,19 +2368,19 @@ impl<A: Copy> iter::CopyableIter<A> for @[A] {
     }
 }
 
-impl<A: Copy Ord> iter::CopyableOrderedIter<A> for &[A] {
+impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for &[A] {
     pure fn min(&self) -> A { iter::min(self) }
     pure fn max(&self) -> A { iter::max(self) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Copy Ord> iter::CopyableOrderedIter<A> for ~[A] {
+impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for ~[A] {
     pure fn min(&self) -> A { iter::min(self) }
     pure fn max(&self) -> A { iter::max(self) }
 }
 
 // FIXME(#4148): This should be redundant
-impl<A: Copy Ord> iter::CopyableOrderedIter<A> for @[A] {
+impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for @[A] {
     pure fn min(&self) -> A { iter::min(self) }
     pure fn max(&self) -> A { iter::max(self) }
 }

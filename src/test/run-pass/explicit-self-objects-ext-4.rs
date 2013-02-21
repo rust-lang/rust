@@ -13,7 +13,7 @@ pub trait ReaderUtil {
     fn read_bytes(len: uint);
 }
 
-impl<T: Reader> ReaderUtil for T {
+impl<T:Reader> ReaderUtil for T {
 
     fn read_bytes(len: uint) {
         let mut count = self.read(&mut [0], len);
