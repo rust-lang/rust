@@ -323,7 +323,7 @@ pub impl serialize::Encoder for PrettyEncoder {
     }
 }
 
-pub impl<S: serialize::Encoder> serialize::Encodable<S> for Json {
+pub impl<S:serialize::Encoder> serialize::Encodable<S> for Json {
     fn encode(&self, s: &S) {
         match *self {
             Number(v) => v.encode(s),
@@ -1150,7 +1150,7 @@ impl ToJson for @~str {
     fn to_json() -> Json { String(copy *self) }
 }
 
-impl<A: ToJson, B: ToJson> ToJson for (A, B) {
+impl<A:ToJson,B:ToJson> ToJson for (A, B) {
     fn to_json() -> Json {
         match self {
           (ref a, ref b) => {
@@ -1160,7 +1160,7 @@ impl<A: ToJson, B: ToJson> ToJson for (A, B) {
     }
 }
 
-impl<A: ToJson, B: ToJson, C: ToJson> ToJson for (A, B, C) {
+impl<A:ToJson,B:ToJson,C:ToJson> ToJson for (A, B, C) {
     fn to_json() -> Json {
         match self {
           (ref a, ref b, ref c) => {
@@ -1170,11 +1170,11 @@ impl<A: ToJson, B: ToJson, C: ToJson> ToJson for (A, B, C) {
     }
 }
 
-impl<A: ToJson> ToJson for ~[A] {
+impl<A:ToJson> ToJson for ~[A] {
     fn to_json() -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl<A: ToJson Copy> ToJson for LinearMap<~str, A> {
+impl<A:ToJson + Copy> ToJson for LinearMap<~str, A> {
     fn to_json() -> Json {
         let mut d = LinearMap::new();
         for self.each |&(key, value)| {
@@ -1184,7 +1184,7 @@ impl<A: ToJson Copy> ToJson for LinearMap<~str, A> {
     }
 }
 
-impl<A: ToJson> ToJson for Option<A> {
+impl<A:ToJson> ToJson for Option<A> {
     fn to_json() -> Json {
         match self {
           None => Null,
@@ -1282,13 +1282,13 @@ mod tests {
 
     // two fns copied from libsyntax/util/testing.rs.
     // Should they be in their own crate?
-    pub pure fn check_equal_ptr<T : cmp::Eq> (given : &T, expected: &T) {
+    pub pure fn check_equal_ptr<T:cmp::Eq> (given : &T, expected: &T) {
         if !((given == expected) && (expected == given )) {
             fail!(fmt!("given %?, expected %?",given,expected));
         }
     }
 
-    pub pure fn check_equal<T : cmp::Eq> (given : T, expected: T) {
+    pub pure fn check_equal<T:cmp::Eq> (given : T, expected: T) {
         if !((given == expected) && (expected == given )) {
             fail!(fmt!("given %?, expected %?",given,expected));
         }

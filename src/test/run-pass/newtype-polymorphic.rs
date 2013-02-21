@@ -10,9 +10,9 @@
 
 enum myvec<X> = ~[X];
 
-fn myvec_deref<X: Copy>(mv: myvec<X>) -> ~[X] { return copy *mv; }
+fn myvec_deref<X:Copy>(mv: myvec<X>) -> ~[X] { return copy *mv; }
 
-fn myvec_elt<X: Copy>(mv: myvec<X>) -> X { return mv[0]; }
+fn myvec_elt<X:Copy>(mv: myvec<X>) -> X { return mv[0]; }
 
 pub fn main() {
     let mv = myvec(~[1, 2, 3]);

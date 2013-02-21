@@ -335,7 +335,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     return @item;
 }
 
-fn nospan<T: Copy>(t: T) -> codemap::spanned<T> {
+fn nospan<T:Copy>(t: T) -> codemap::spanned<T> {
     codemap::spanned { node: t, span: dummy_sp() }
 }
 

@@ -94,7 +94,7 @@ pub fn get_region_reporting_err(tcx: ty::ctxt,
     }
 }
 
-pub fn ast_region_to_region<AC: AstConv, RS: region_scope Copy Durable>(
+pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: @mut AC,
         rscope: RS,
         span: span,
@@ -110,7 +110,7 @@ pub fn ast_region_to_region<AC: AstConv, RS: region_scope Copy Durable>(
     get_region_reporting_err(self.tcx(), span, res)
 }
 
-pub fn ast_path_to_substs_and_ty<AC: AstConv, RS: region_scope Copy Durable>(
+pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: @mut AC,
         rscope: RS,
         did: ast::def_id,
@@ -166,7 +166,7 @@ pub fn ast_path_to_substs_and_ty<AC: AstConv, RS: region_scope Copy Durable>(
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
-pub fn ast_path_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
+pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: @mut AC,
         rscope: RS,
         did: ast::def_id,
@@ -192,10 +192,10 @@ pub const NO_TPS: uint = 2;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-pub fn ast_ty_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
+pub fn ast_ty_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
     self: @mut AC, rscope: RS, &&ast_ty: @ast::Ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC: AstConv, RS: region_scope Copy Durable>(
+    fn ast_mt_to_mt<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: @mut AC, rscope: RS, mt: ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl}
@@ -204,7 +204,7 @@ pub fn ast_ty_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle function sigils and first-class trait types.
-    fn mk_pointer<AC: AstConv, RS: region_scope Copy Durable>(
+    fn mk_pointer<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: @mut AC,
         rscope: RS,
         a_seq_ty: ast::mt,
@@ -420,7 +420,7 @@ pub fn ast_ty_to_ty<AC: AstConv, RS: region_scope Copy Durable>(
     return typ;
 }
 
-pub fn ty_of_arg<AC: AstConv, RS: region_scope Copy Durable>(
+pub fn ty_of_arg<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: @mut AC,
         rscope: RS,
         a: ast::arg,
@@ -468,7 +468,7 @@ pub fn ty_of_arg<AC: AstConv, RS: region_scope Copy Durable>(
     arg {mode: mode, ty: ty}
 }
 
-pub fn ty_of_bare_fn<AC: AstConv, RS: region_scope Copy Durable>(
+pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: @mut AC,
         rscope: RS,
         purity: ast::purity,
@@ -494,7 +494,7 @@ pub fn ty_of_bare_fn<AC: AstConv, RS: region_scope Copy Durable>(
     }
 }
 
-pub fn ty_of_closure<AC: AstConv, RS: region_scope Copy Durable>(
+pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
         self: @mut AC,
         rscope: RS,
         sigil: ast::Sigil,

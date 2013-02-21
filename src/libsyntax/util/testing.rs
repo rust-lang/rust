@@ -11,13 +11,13 @@
 // support for test cases.
 use core::cmp;
 
-pub pure fn check_equal_ptr<T : cmp::Eq> (given : &T, expected: &T) {
+pub pure fn check_equal_ptr<T:cmp::Eq> (given : &T, expected: &T) {
     if !((given == expected) && (expected == given )) {
         fail!(fmt!("given %?, expected %?",given,expected));
     }
 }
 
-pub pure fn check_equal<T : cmp::Eq> (given : T, expected: T) {
+pub pure fn check_equal<T:cmp::Eq> (given : T, expected: T) {
     if !((given == expected) && (expected == given )) {
         fail!(fmt!("given %?, expected %?",given,expected));
     }

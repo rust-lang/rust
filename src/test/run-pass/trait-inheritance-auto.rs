@@ -10,7 +10,7 @@
 
 // Testing that this impl turns A into a Quux, because
 // A is already a Foo Bar Baz
-impl<T: Foo Bar Baz> Quux for T { }
+impl<T:Foo + Bar + Baz> Quux for T { }
 
 trait Foo { fn f() -> int; }
 trait Bar { fn g() -> int; }
@@ -24,7 +24,7 @@ impl Foo for A { fn f() -> int { 10 } }
 impl Bar for A { fn g() -> int { 20 } }
 impl Baz for A { fn h() -> int { 30 } }
 
-fn f<T: Quux>(a: &T) {
+fn f<T:Quux>(a: &T) {
     assert a.f() == 10;
     assert a.g() == 20;
     assert a.h() == 30;

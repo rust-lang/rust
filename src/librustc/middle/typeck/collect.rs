@@ -115,7 +115,7 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 }
 
 pub impl @mut CrateCtxt {
-    fn to_ty<RS: region_scope Copy Durable>(rs: RS, ast_ty: @ast::Ty)
+    fn to_ty<RS:region_scope + Copy + Durable>(rs: RS, ast_ty: @ast::Ty)
                                          -> ty::t {
         ast_ty_to_ty(self, rs, ast_ty)
     }

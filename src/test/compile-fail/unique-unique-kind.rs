@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f<T: Owned>(_i: T) {
+fn f<T:Owned>(_i: T) {
 }
 
 fn main() {

@@ -105,218 +105,218 @@ pub trait Decoder {
     fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T;
 }
 
-pub trait Encodable<S: Encoder> {
+pub trait Encodable<S:Encoder> {
     fn encode(&self, s: &S);
 }
 
-pub trait Decodable<D: Decoder> {
+pub trait Decodable<D:Decoder> {
     static fn decode(&self, d: &D) -> Self;
 }
 
-pub impl<S: Encoder> Encodable<S> for uint {
+pub impl<S:Encoder> Encodable<S> for uint {
     fn encode(&self, s: &S) { s.emit_uint(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for uint {
+pub impl<D:Decoder> Decodable<D> for uint {
     static fn decode(&self, d: &D) -> uint {
         d.read_uint()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for u8 {
+pub impl<S:Encoder> Encodable<S> for u8 {
     fn encode(&self, s: &S) { s.emit_u8(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for u8 {
+pub impl<D:Decoder> Decodable<D> for u8 {
     static fn decode(&self, d: &D) -> u8 {
         d.read_u8()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for u16 {
+pub impl<S:Encoder> Encodable<S> for u16 {
     fn encode(&self, s: &S) { s.emit_u16(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for u16 {
+pub impl<D:Decoder> Decodable<D> for u16 {
     static fn decode(&self, d: &D) -> u16 {
         d.read_u16()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for u32 {
+pub impl<S:Encoder> Encodable<S> for u32 {
     fn encode(&self, s: &S) { s.emit_u32(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for u32 {
+pub impl<D:Decoder> Decodable<D> for u32 {
     static fn decode(&self, d: &D) -> u32 {
         d.read_u32()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for u64 {
+pub impl<S:Encoder> Encodable<S> for u64 {
     fn encode(&self, s: &S) { s.emit_u64(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for u64 {
+pub impl<D:Decoder> Decodable<D> for u64 {
     static fn decode(&self, d: &D) -> u64 {
         d.read_u64()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for int {
+pub impl<S:Encoder> Encodable<S> for int {
     fn encode(&self, s: &S) { s.emit_int(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for int {
+pub impl<D:Decoder> Decodable<D> for int {
     static fn decode(&self, d: &D) -> int {
         d.read_int()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for i8 {
+pub impl<S:Encoder> Encodable<S> for i8 {
     fn encode(&self, s: &S) { s.emit_i8(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for i8 {
+pub impl<D:Decoder> Decodable<D> for i8 {
     static fn decode(&self, d: &D) -> i8 {
         d.read_i8()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for i16 {
+pub impl<S:Encoder> Encodable<S> for i16 {
     fn encode(&self, s: &S) { s.emit_i16(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for i16 {
+pub impl<D:Decoder> Decodable<D> for i16 {
     static fn decode(&self, d: &D) -> i16 {
         d.read_i16()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for i32 {
+pub impl<S:Encoder> Encodable<S> for i32 {
     fn encode(&self, s: &S) { s.emit_i32(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for i32 {
+pub impl<D:Decoder> Decodable<D> for i32 {
     static fn decode(&self, d: &D) -> i32 {
         d.read_i32()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for i64 {
+pub impl<S:Encoder> Encodable<S> for i64 {
     fn encode(&self, s: &S) { s.emit_i64(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for i64 {
+pub impl<D:Decoder> Decodable<D> for i64 {
     static fn decode(&self, d: &D) -> i64 {
         d.read_i64()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for &str {
+pub impl<S:Encoder> Encodable<S> for &str {
     fn encode(&self, s: &S) { s.emit_borrowed_str(*self) }
 }
 
-pub impl<S: Encoder> Encodable<S> for ~str {
+pub impl<S:Encoder> Encodable<S> for ~str {
     fn encode(&self, s: &S) { s.emit_owned_str(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for ~str {
+pub impl<D:Decoder> Decodable<D> for ~str {
     static fn decode(&self, d: &D) -> ~str {
         d.read_owned_str()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for @str {
+pub impl<S:Encoder> Encodable<S> for @str {
     fn encode(&self, s: &S) { s.emit_managed_str(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for @str {
+pub impl<D:Decoder> Decodable<D> for @str {
     static fn decode(&self, d: &D) -> @str {
         d.read_managed_str()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for float {
+pub impl<S:Encoder> Encodable<S> for float {
     fn encode(&self, s: &S) { s.emit_float(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for float {
+pub impl<D:Decoder> Decodable<D> for float {
     static fn decode(&self, d: &D) -> float {
         d.read_float()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for f32 {
+pub impl<S:Encoder> Encodable<S> for f32 {
     fn encode(&self, s: &S) { s.emit_f32(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for f32 {
+pub impl<D:Decoder> Decodable<D> for f32 {
     static fn decode(&self, d: &D) -> f32 {
         d.read_f32() }
 }
 
-pub impl<S: Encoder> Encodable<S> for f64 {
+pub impl<S:Encoder> Encodable<S> for f64 {
     fn encode(&self, s: &S) { s.emit_f64(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for f64 {
+pub impl<D:Decoder> Decodable<D> for f64 {
     static fn decode(&self, d: &D) -> f64 {
         d.read_f64()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for bool {
+pub impl<S:Encoder> Encodable<S> for bool {
     fn encode(&self, s: &S) { s.emit_bool(*self) }
 }
 
-pub impl<D: Decoder> Decodable<D> for bool {
+pub impl<D:Decoder> Decodable<D> for bool {
     static fn decode(&self, d: &D) -> bool {
         d.read_bool()
     }
 }
 
-pub impl<S: Encoder> Encodable<S> for () {
+pub impl<S:Encoder> Encodable<S> for () {
     fn encode(&self, s: &S) { s.emit_nil() }
 }
 
-pub impl<D: Decoder> Decodable<D> for () {
+pub impl<D:Decoder> Decodable<D> for () {
     static fn decode(&self, d: &D) -> () {
         d.read_nil()
     }
 }
 
-pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for &T {
+pub impl<S:Encoder,T:Encodable<S>> Encodable<S> for &T {
     fn encode(&self, s: &S) {
         s.emit_borrowed(|| (**self).encode(s))
     }
 }
 
-pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for ~T {
+pub impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~T {
     fn encode(&self, s: &S) {
         s.emit_owned(|| (**self).encode(s))
     }
 }
 
-pub impl<D: Decoder, T: Decodable<D>> Decodable<D> for ~T {
+pub impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~T {
     static fn decode(&self, d: &D) -> ~T {
         d.read_owned(|| ~Decodable::decode(d))
     }
 }
 
-pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for @T {
+pub impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
     fn encode(&self, s: &S) {
         s.emit_managed(|| (**self).encode(s))
     }
 }
 
-pub impl<D: Decoder, T: Decodable<D>> Decodable<D> for @T {
+pub impl<D:Decoder,T:Decodable<D>> Decodable<D> for @T {
     static fn decode(&self, d: &D) -> @T {
         d.read_managed(|| @Decodable::decode(d))
     }
 }
 
-pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for &[T] {
+pub impl<S:Encoder,T:Encodable<S>> Encodable<S> for &[T] {
     fn encode(&self, s: &S) {
         do s.emit_borrowed_vec(self.len()) {
             for self.eachi |i, e| {
@@ -326,7 +326,7 @@ pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for &[T] {
     }
 }
 
-pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for ~[T] {
+pub impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~[T] {
     fn encode(&self, s: &S) {
         do s.emit_owned_vec(self.len()) {
             for self.eachi |i, e| {
@@ -336,7 +336,7 @@ pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for ~[T] {
     }
 }
 
-pub impl<D: Decoder, T: Decodable<D>> Decodable<D> for ~[T] {
+pub impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
     static fn decode(&self, d: &D) -> ~[T] {
         do d.read_owned_vec |len| {
             do vec::from_fn(len) |i| {
@@ -346,7 +346,7 @@ pub impl<D: Decoder, T: Decodable<D>> Decodable<D> for ~[T] {
     }
 }
 
-pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for @[T] {
+pub impl<S:Encoder,T:Encodable<S>> Encodable<S> for @[T] {
     fn encode(&self, s: &S) {
         do s.emit_managed_vec(self.len()) {
             for self.eachi |i, e| {
@@ -356,7 +356,7 @@ pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for @[T] {
     }
 }
 
-pub impl<D: Decoder, T: Decodable<D>> Decodable<D> for @[T] {
+pub impl<D:Decoder,T:Decodable<D>> Decodable<D> for @[T] {
     static fn decode(&self, d: &D) -> @[T] {
         do d.read_managed_vec |len| {
             do at_vec::from_fn(len) |i| {
@@ -366,7 +366,7 @@ pub impl<D: Decoder, T: Decodable<D>> Decodable<D> for @[T] {
     }
 }
 
-pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
+pub impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &S) {
         do s.emit_enum(~"option") {
             match *self {
@@ -381,7 +381,7 @@ pub impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
     }
 }
 
-pub impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
+pub impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
     static fn decode(&self, d: &D) -> Option<T> {
         do d.read_enum(~"option") {
             do d.read_enum_variant |i| {
@@ -396,7 +396,7 @@ pub impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
     }
 }
 
-pub impl<S: Encoder, T0: Encodable<S>, T1: Encodable<S>> Encodable<S>
+pub impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S>
         for (T0, T1) {
     fn encode(&self, s: &S) {
         match *self {
@@ -410,7 +410,7 @@ pub impl<S: Encoder, T0: Encodable<S>, T1: Encodable<S>> Encodable<S>
     }
 }
 
-pub impl<D: Decoder, T0: Decodable<D>, T1: Decodable<D>> Decodable<D>
+pub impl<D:Decoder,T0:Decodable<D>,T1:Decodable<D>> Decodable<D>
         for (T0, T1) {
     static fn decode(&self, d: &D) -> (T0, T1) {
         do d.read_tup(2) {
@@ -552,7 +552,7 @@ pub trait EncoderHelpers {
     fn emit_from_vec<T>(&self, v: &[T], f: fn(v: &T));
 }
 
-pub impl<S: Encoder> EncoderHelpers for S {
+pub impl<S:Encoder> EncoderHelpers for S {
     fn emit_from_vec<T>(&self, v: &[T], f: fn(v: &T)) {
         do self.emit_owned_vec(v.len()) {
             for v.eachi |i, e| {
@@ -568,7 +568,7 @@ pub trait DecoderHelpers {
     fn read_to_vec<T>(&self, f: fn() -> T) -> ~[T];
 }
 
-pub impl<D: Decoder> DecoderHelpers for D {
+pub impl<D:Decoder> DecoderHelpers for D {
     fn read_to_vec<T>(&self, f: fn() -> T) -> ~[T] {
         do self.read_owned_vec |len| {
             do vec::from_fn(len) |i| {

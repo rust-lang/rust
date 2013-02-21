@@ -16,7 +16,7 @@
 use iter::BaseIter;
 
 trait A {
-  fn b<C:Copy Const, D>(x: C) -> C;
+  fn b<C:Copy + Const,D>(x: C) -> C;
 }
 
 struct E {
@@ -24,7 +24,7 @@ struct E {
 }
 
 impl A for E {
-  fn b<F:Copy, G>(_x: F) -> F { fail!() } //~ ERROR in method `b`, type parameter 0 has 1 bound, but
+  fn b<F:Copy,G>(_x: F) -> F { fail!() } //~ ERROR in method `b`, type parameter 0 has 1 bound, but
 }
 
 fn main() {}

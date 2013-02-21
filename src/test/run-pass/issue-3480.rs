@@ -9,14 +9,14 @@
 // except according to those terms.
 
 // xfail-test
-type IMap<K: Copy, V: Copy> = ~[(K, V)];
+type IMap<K:Copy,V:Copy> = ~[(K, V)];
 
-trait ImmutableMap<K: Copy, V: Copy>
+trait ImmutableMap<K:Copy,V:Copy>
 {
     pure fn contains_key(key: K) -> bool;
 }
 
-impl<K: Copy, V: Copy> IMap<K, V> : ImmutableMap<K, V>
+impl<K:Copy,V:Copy> IMap<K, V> : ImmutableMap<K, V>
 {
     pure fn contains_key(key: K) -> bool
     {

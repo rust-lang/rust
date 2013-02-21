@@ -37,7 +37,7 @@ pub enum Result<T, U> {
  * If the result is an error
  */
 #[inline(always)]
-pub pure fn get<T: Copy, U>(res: &Result<T, U>) -> T {
+pub pure fn get<T:Copy,U>(res: &Result<T, U>) -> T {
     match *res {
       Ok(copy t) => t,
       Err(ref the_err) => unsafe {
@@ -100,7 +100,7 @@ pub pure fn is_err<T, U>(res: &Result<T, U>) -> bool {
  * result variants are converted to `either::left`.
  */
 #[inline(always)]
-pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
+pub pure fn to_either<T:Copy,U:Copy>(res: &Result<U, T>)
     -> Either<T, U> {
     match *res {
       Ok(copy res) => either::Right(res),
@@ -220,7 +220,7 @@ pub pure fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn(&T) -> U)
  * successful result while handling an error.
  */
 #[inline(always)]
-pub pure fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn(&E) -> F)
+pub pure fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: fn(&E) -> F)
   -> Result<T, F> {
     match *res {
       Ok(copy t) => Ok(t),
@@ -261,7 +261,7 @@ impl<T, E> Result<T, E> {
     }
 }
 
-impl<T: Copy, E> Result<T, E> {
+impl<T:Copy,E> Result<T, E> {
     #[inline(always)]
     pure fn get(&self) -> T { get(self) }
 

@@ -396,7 +396,7 @@ impl TaskBuilder {
         spawn::spawn_raw(opts, (x.gen_body)(f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A: Owned>(arg: A, f: fn~(v: A)) {
+    fn spawn_with<A:Owned>(arg: A, f: fn~(v: A)) {
         let arg = ~mut Some(arg);
         do self.spawn || {
             f(option::swap_unwrap(arg))
@@ -416,7 +416,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn try<T: Owned>(f: fn~() -> T) -> Result<T,()> {
+    fn try<T:Owned>(f: fn~() -> T) -> Result<T,()> {
         let (po, ch) = stream::<T>();
         let mut result = None;
 

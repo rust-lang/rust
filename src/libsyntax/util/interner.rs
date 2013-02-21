@@ -23,7 +23,7 @@ pub struct Interner<T> {
 }
 
 // when traits can extend traits, we should extend index<uint,T> to get []
-pub impl<T: Eq IterBytes Hash Const Copy> Interner<T> {
+pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     static fn new() -> Interner<T> {
         Interner {
             map: LinearMap::new(),

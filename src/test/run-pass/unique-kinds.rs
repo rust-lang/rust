@@ -12,11 +12,11 @@ use cmp::Eq;
 
 fn sendable() {
 
-    fn f<T: Owned Eq>(i: T, j: T) {
+    fn f<T:Owned + Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T: Owned Eq>(i: T, j: T) {
+    fn g<T:Owned + Eq>(i: T, j: T) {
         assert i != j;
     }
 
@@ -30,11 +30,11 @@ fn sendable() {
 
 fn copyable() {
 
-    fn f<T: Copy Eq>(i: T, j: T) {
+    fn f<T:Copy + Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T: Copy Eq>(i: T, j: T) {
+    fn g<T:Copy + Eq>(i: T, j: T) {
         assert i != j;
     }
 
@@ -48,11 +48,11 @@ fn copyable() {
 
 fn noncopyable() {
 
-    fn f<T: Eq>(i: T, j: T) {
+    fn f<T:Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T: Eq>(i: T, j: T) {
+    fn g<T:Eq>(i: T, j: T) {
         assert i != j;
     }
 
