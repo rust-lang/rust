@@ -118,10 +118,18 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                 sp,
                 make_path_vec(cx, @~"Conv"),
                 ~[
-                    {ident: intr.intern(@~"flags"), ex: flags_expr},
-                    {ident: intr.intern(@~"width"), ex: width_expr},
-                    {ident: intr.intern(@~"precision"), ex: precision_expr},
-                    {ident: intr.intern(@~"ty"), ex: ty_expr},
+                    build::Field {
+                        ident: intr.intern(@~"flags"), ex: flags_expr
+                    },
+                    build::Field {
+                        ident: intr.intern(@~"width"), ex: width_expr
+                    },
+                    build::Field {
+                        ident: intr.intern(@~"precision"), ex: precision_expr
+                    },
+                    build::Field {
+                        ident: intr.intern(@~"ty"), ex: ty_expr
+                    },
                 ]
             )
         }

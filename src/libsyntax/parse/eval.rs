@@ -75,9 +75,9 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
         let p0 = new_sub_parser_from_file(cx.sess, cx.cfg,
                                           modpath,
                                           codemap::dummy_sp());
-        let inner_attrs = p0.parse_inner_attrs_and_next();
-        let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
-        return (m0.view_items, m0.items, inner_attrs.inner);
+        let (inner, next) = p0.parse_inner_attrs_and_next();
+        let m0 = p0.parse_mod_items(token::EOF, next);
+        return (m0.view_items, m0.items, inner);
     } else {
         return (~[], ~[], ~[]);
     }
@@ -111,9 +111,9 @@ pub fn eval_src_mod_from_path(cx: ctx, prefix: &Path, path: &Path,
     let p0 =
         new_sub_parser_from_file(cx.sess, cx.cfg,
                                  &full_path, sp);
-    let inner_attrs = p0.parse_inner_attrs_and_next();
-    let mod_attrs = vec::append(outer_attrs, inner_attrs.inner);
-    let first_item_outer_attrs = inner_attrs.next;
+    let (inner, next) = p0.parse_inner_attrs_and_next();
+    let mod_attrs = vec::append(outer_attrs, inner);
+    let first_item_outer_attrs = next;
     let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
     return (ast::item_mod(m0), mod_attrs);
 }

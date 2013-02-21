@@ -13,6 +13,7 @@ use core::prelude::*;
 use ast;
 use codemap;
 use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom, dummy_sp};
+use codemap::{CallInfo, NameAndSpan};
 use diagnostic::span_handler;
 use ext;
 use parse;
@@ -166,7 +167,7 @@ pub fn syntax_expander_table() -> SyntaxExtensions {
 // -> expn_info of their expansion context stored into their span.
 pub trait ext_ctxt {
     fn codemap(@mut self) -> @CodeMap;
-    fn parse_sess(@mut self) -> parse::parse_sess;
+    fn parse_sess(@mut self) -> @mut parse::ParseSess;
     fn cfg(@mut self) -> ast::crate_cfg;
     fn call_site(@mut self) -> span;
     fn print_backtrace(@mut self);
@@ -190,10 +191,10 @@ pub trait ext_ctxt {
     fn ident_of(@mut self, st: ~str) -> ast::ident;
 }
 
-pub fn mk_ctxt(parse_sess: parse::parse_sess,
+pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
                cfg: ast::crate_cfg) -> ext_ctxt {
     struct CtxtRepr {
-        parse_sess: parse::parse_sess,
+        parse_sess: @mut parse::ParseSess,
         cfg: ast::crate_cfg,
         backtrace: Option<@ExpnInfo>,
         mod_path: ~[ast::ident],
@@ -201,11 +202,11 @@ pub fn mk_ctxt(parse_sess: parse::parse_sess,
     }
     impl ext_ctxt for CtxtRepr {
         fn codemap(@mut self) -> @CodeMap { self.parse_sess.cm }
-        fn parse_sess(@mut self) -> parse::parse_sess { self.parse_sess }
+        fn parse_sess(@mut self) -> @mut parse::ParseSess { self.parse_sess }
         fn cfg(@mut self) -> ast::crate_cfg { self.cfg }
         fn call_site(@mut self) -> span {
             match self.backtrace {
-                Some(@ExpandedFrom({call_site: cs, _})) => cs,
+                Some(@ExpandedFrom(CallInfo {call_site: cs, _})) => cs,
                 None => self.bug(~"missing top span")
             }
         }
@@ -216,18 +217,18 @@ pub fn mk_ctxt(parse_sess: parse::parse_sess,
         fn mod_path(@mut self) -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(@mut self, ei: codemap::ExpnInfo) {
             match ei {
-              ExpandedFrom({call_site: cs, callie: ref callie}) => {
+              ExpandedFrom(CallInfo {call_site: cs, callee: ref callee}) => {
                 self.backtrace =
-                    Some(@ExpandedFrom({
+                    Some(@ExpandedFrom(CallInfo {
                         call_site: span {lo: cs.lo, hi: cs.hi,
                                          expn_info: self.backtrace},
-                        callie: (*callie)}));
+                        callee: (*callee)}));
               }
             }
         }
         fn bt_pop(@mut self) {
             match self.backtrace {
-              Some(@ExpandedFrom({
+              Some(@ExpandedFrom(CallInfo {
                   call_site: span {expn_info: prev, _}, _
               })) => {
                 self.backtrace = prev

@@ -14,7 +14,7 @@ use codemap::{BytePos, mk_sp};
 use codemap;
 use parse::common::*; //resolve bug?
 use parse::lexer::*; //resolve bug?
-use parse::parse_sess;
+use parse::ParseSess;
 use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::token;
@@ -101,7 +101,7 @@ eof: [a $( a )* a b ·]
 nonempty body. */
 
 pub enum matcher_pos_up { /* to break a circularity */
-    matcher_pos_up(Option<matcher_pos>)
+    matcher_pos_up(Option<~MatcherPos>)
 }
 
 pub fn is_some(&&mpu: matcher_pos_up) -> bool {
@@ -111,7 +111,7 @@ pub fn is_some(&&mpu: matcher_pos_up) -> bool {
     }
 }
 
-pub type matcher_pos = ~{
+pub struct MatcherPos {
     elts: ~[ast::matcher], // maybe should be /&? Need to understand regions.
     sep: Option<Token>,
     mut idx: uint,
@@ -119,9 +119,9 @@ pub type matcher_pos = ~{
     matches: ~[DVec<@named_match>],
     match_lo: uint, match_hi: uint,
     sp_lo: BytePos,
-};
+}
 
-pub fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
+pub fn copy_up(&& mpu: matcher_pos_up) -> ~MatcherPos {
     match &mpu {
       &matcher_pos_up(Some(ref mp)) => copy (*mp),
       _ => fail!()
@@ -139,7 +139,7 @@ pub fn count_names(ms: &[matcher]) -> uint {
 
 #[allow(non_implicitly_copyable_typarams)]
 pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
-                        -> matcher_pos {
+                        -> ~MatcherPos {
     let mut match_idx_hi = 0u;
     for ms.each() |elt| {
         match elt.node {
@@ -152,9 +152,16 @@ pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
           }
         }
     }
-    ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(None),
-      matches: copy vec::from_fn(count_names(ms), |_i| dvec::DVec()),
-      match_lo: 0u, match_hi: match_idx_hi, sp_lo: lo}
+    ~MatcherPos {
+        elts: ms,
+        sep: sep,
+        mut idx: 0u,
+        mut up: matcher_pos_up(None),
+        matches: copy vec::from_fn(count_names(ms), |_i| dvec::DVec()),
+        match_lo: 0u,
+        match_hi: match_idx_hi,
+        sp_lo: lo
+    }
 }
 
 // named_match is a pattern-match result for a single ast::match_nonterminal:
@@ -181,11 +188,11 @@ pub enum named_match {
     matched_nonterminal(nonterminal)
 }
 
-pub type earley_item = matcher_pos;
+pub type earley_item = ~MatcherPos;
 
-pub fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
+pub fn nameize(p_s: @mut ParseSess, ms: ~[matcher], res: ~[@named_match])
             -> HashMap<ident,@named_match> {
-    fn n_rec(p_s: parse_sess, m: matcher, res: ~[@named_match],
+    fn n_rec(p_s: @mut ParseSess, m: matcher, res: ~[@named_match],
              ret_val: HashMap<ident, @named_match>) {
         match m {
           codemap::spanned {node: match_tok(_), _} => (),
@@ -216,7 +223,7 @@ pub enum parse_result {
     error(codemap::span, ~str)
 }
 
-pub fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
+pub fn parse_or_else(sess: @mut ParseSess, cfg: ast::crate_cfg, rdr: reader,
                      ms: ~[matcher]) -> HashMap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
@@ -225,7 +232,7 @@ pub fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
     }
 }
 
-pub fn parse(sess: parse_sess,
+pub fn parse(sess: @mut ParseSess,
              cfg: ast::crate_cfg,
              rdr: reader,
              ms: ~[matcher])
@@ -321,8 +328,10 @@ pub fn parse(sess: parse_sess,
                     let matches = vec::map(ei.matches, // fresh, same size:
                                            |_m| DVec::<@named_match>());
                     let ei_t = ei;
-                    cur_eis.push(~{
-                        elts: (*matchers), sep: (*sep), mut idx: 0u,
+                    cur_eis.push(~MatcherPos {
+                        elts: (*matchers),
+                        sep: (*sep),
+                        mut idx: 0u,
                         mut up: matcher_pos_up(Some(ei_t)),
                         matches: matches,
                         match_lo: match_idx_lo, match_hi: match_idx_hi,
