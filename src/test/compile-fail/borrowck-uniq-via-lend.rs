@@ -16,12 +16,16 @@ fn local() {
 }
 
 fn local_rec() {
-    let mut v = {f: ~3};
+    struct F { f: ~int }
+    let mut v = F {f: ~3};
     borrow(v.f);
 }
 
 fn local_recs() {
-    let mut v = {f: {g: {h: ~3}}};
+    struct F { f: G }
+    struct G { g: H }
+    struct H { h: ~int }
+    let mut v = F {f: G {g: H {h: ~3}}};
     borrow(v.f.g.h);
 }
 
