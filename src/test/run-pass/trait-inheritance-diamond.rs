@@ -22,7 +22,7 @@ impl B for S { fn b(&self) -> int { 20 } }
 impl C for S { fn c(&self) -> int { 30 } }
 impl D for S { fn d(&self) -> int { 40 } }
 
-fn f<T: D>(x: &T) {
+fn f<T:D>(x: &T) {
     assert x.a() == 10;
     assert x.b() == 20;
     assert x.c() == 30;

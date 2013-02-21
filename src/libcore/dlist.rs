@@ -106,7 +106,7 @@ pub pure fn from_elem<T>(data: T) -> @mut DList<T> {
     list
 }
 
-pub fn from_vec<T: Copy>(vec: &[T]) -> @mut DList<T> {
+pub fn from_vec<T:Copy>(vec: &[T]) -> @mut DList<T> {
     do vec::foldl(DList(), vec) |list,data| {
         list.push(*data); // Iterating left-to-right -- add newly to the tail.
         list
@@ -457,7 +457,7 @@ impl<T> DList<T> {
     }
 }
 
-impl<T: Copy> DList<T> {
+impl<T:Copy> DList<T> {
     /// Remove data from the head of the list. O(1).
     fn pop(@mut self) -> Option<T> {
         self.pop_n().map(|nobe| nobe.data)

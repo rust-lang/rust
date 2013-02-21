@@ -31,7 +31,7 @@ fn align(size: uint, align: uint) -> uint {
 
 enum ptr_visit_adaptor<V> = Inner<V>;
 
-impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V> {
+impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
     fn bump(sz: uint) {
@@ -59,7 +59,7 @@ impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V> {
 
 }
 
-impl<V: TyVisitor movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
+impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
 
     fn visit_bot(&self) -> bool {
         self.align_to::<()>();

@@ -57,7 +57,7 @@ pub trait CopyableIter<A:Copy> {
     pure fn find(&self, p: fn(&A) -> bool) -> Option<A>;
 }
 
-pub trait CopyableOrderedIter<A:Copy Ord> {
+pub trait CopyableOrderedIter<A:Copy + Ord> {
     pure fn min(&self) -> A;
     pure fn max(&self) -> A;
 }
@@ -211,7 +211,7 @@ pub pure fn repeat(times: uint, blk: fn() -> bool) {
 }
 
 #[inline(always)]
-pub pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
+pub pure fn min<A:Copy + Ord,IA:BaseIter<A>>(self: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
           &Some(ref a_) if *a_ < *b => {
@@ -226,7 +226,7 @@ pub pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
 }
 
 #[inline(always)]
-pub pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
+pub pure fn max<A:Copy + Ord,IA:BaseIter<A>>(self: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
           &Some(ref a_) if *a_ > *b => {
@@ -241,7 +241,7 @@ pub pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: &IA) -> A {
 }
 
 #[inline(always)]
-pub pure fn find<A: Copy,IA:BaseIter<A>>(self: &IA,
+pub pure fn find<A:Copy,IA:BaseIter<A>>(self: &IA,
                                    f: fn(&A) -> bool) -> Option<A> {
     for self.each |i| {
         if f(i) { return Some(*i) }
@@ -323,7 +323,7 @@ pub pure fn from_fn<T,BT: Buildable<T>>(n_elts: uint,
  * to the value `t`.
  */
 #[inline(always)]
-pub pure fn from_elem<T: Copy,BT: Buildable<T>>(n_elts: uint,
+pub pure fn from_elem<T:Copy,BT:Buildable<T>>(n_elts: uint,
                                                 t: T) -> BT {
     do Buildable::build_sized(n_elts) |push| {
         let mut i: uint = 0;
@@ -333,7 +333,7 @@ pub pure fn from_elem<T: Copy,BT: Buildable<T>>(n_elts: uint,
 
 /// Appending two generic sequences
 #[inline(always)]
-pub pure fn append<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
+pub pure fn append<T:Copy,IT:BaseIter<T>,BT:Buildable<T>>(
     lhs: &IT, rhs: &IT) -> BT {
     let size_opt = lhs.size_hint().chain_ref(
         |sz1| rhs.size_hint().map(|sz2| *sz1+*sz2));
@@ -346,7 +346,7 @@ pub pure fn append<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
 /// Copies a generic sequence, possibly converting it to a different
 /// type of sequence.
 #[inline(always)]
-pub pure fn copy_seq<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
+pub pure fn copy_seq<T:Copy,IT:BaseIter<T>,BT:Buildable<T>>(
     v: &IT) -> BT {
     do build_sized_opt(v.size_hint()) |push| {
         for v.each |x| { push(*x); }

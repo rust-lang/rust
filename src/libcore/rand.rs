@@ -109,7 +109,7 @@ impl Rand for bool {
     }
 }
 
-impl<T: Rand> Rand for Option<T> {
+impl<T:Rand> Rand for Option<T> {
     static fn rand(rng: rand::Rng) -> Option<T> {
         if rng.gen_bool() { Some(Rand::rand(rng)) }
         else { None }
@@ -143,7 +143,7 @@ pub struct Weighted<T> {
 /// Extension methods for random number generators
 impl Rng {
     /// Return a random value for a Rand type
-    fn gen<T: Rand>() -> T {
+    fn gen<T:Rand>() -> T {
         Rand::rand(self)
     }
 
@@ -302,7 +302,7 @@ impl Rng {
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      */
-    fn choose_weighted<T: Copy>(v : &[Weighted<T>]) -> T {
+    fn choose_weighted<T:Copy>(v : &[Weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 

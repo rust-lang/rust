@@ -140,12 +140,12 @@ pub impl cmp::Eq for span {
     pure fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
 }
 
-pub impl<S: Encoder> Encodable<S> for span {
+pub impl<S:Encoder> Encodable<S> for span {
     /* Note #1972 -- spans are encoded but not decoded */
     fn encode(&self, _s: &S) { }
 }
 
-pub impl<D: Decoder> Decodable<D> for span {
+pub impl<D:Decoder> Decodable<D> for span {
     static fn decode(_d: &D) -> span {
         dummy_sp()
     }

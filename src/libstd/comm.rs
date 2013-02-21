@@ -25,19 +25,19 @@ pub struct DuplexStream<T, U> {
     priv port: Port<U>,
 }
 
-impl<T: Owned, U: Owned> GenericChan<T> for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> GenericChan<T> for DuplexStream<T, U> {
     fn send(x: T) {
         self.chan.send(x)
     }
 }
 
-impl<T: Owned, U: Owned> GenericSmartChan<T> for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> GenericSmartChan<T> for DuplexStream<T, U> {
     fn try_send(x: T) -> bool {
         self.chan.try_send(x)
     }
 }
 
-impl<T: Owned, U: Owned> GenericPort<U> for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> GenericPort<U> for DuplexStream<T, U> {
     fn recv() -> U {
         self.port.recv()
     }
@@ -47,20 +47,20 @@ impl<T: Owned, U: Owned> GenericPort<U> for DuplexStream<T, U> {
     }
 }
 
-impl<T: Owned, U: Owned> Peekable<U> for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> Peekable<U> for DuplexStream<T, U> {
     pure fn peek() -> bool {
         self.port.peek()
     }
 }
 
-impl<T: Owned, U: Owned> Selectable for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> Selectable for DuplexStream<T, U> {
     pure fn header() -> *pipes::PacketHeader {
         self.port.header()
     }
 }
 
 /// Creates a bidirectional stream.
-pub fn DuplexStream<T: Owned, U: Owned>()
+pub fn DuplexStream<T:Owned,U:Owned>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
     let (p1, c2) = pipes::stream();

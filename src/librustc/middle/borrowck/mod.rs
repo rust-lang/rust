@@ -491,7 +491,7 @@ pub impl BorrowckCtxt {
         cat_def(self.tcx, self.method_map, id, span, ty, def)
     }
 
-    fn cat_variant<N: ast_node>(&self,
+    fn cat_variant<N:ast_node>(&self,
                                 arg: N,
                                 enum_did: ast::def_id,
                                 cmt: cmt) -> cmt {

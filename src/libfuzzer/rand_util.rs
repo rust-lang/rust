@@ -17,7 +17,7 @@ fn under(r : rand::rng, n : uint) -> uint {
 }
 
 // random choice from a vec
-fn choice<T: copy>(r : rand::rng, v : ~[T]) -> T {
+fn choice<T:copy>(r : rand::rng, v : ~[T]) -> T {
     assert vec::len(v) != 0u; v[under(r, vec::len(v))]
 }
 
@@ -35,7 +35,7 @@ fn shuffle<T>(r : rand::rng, &v : ~[T]) {
 }
 
 // create a shuffled copy of a vec
-fn shuffled<T: copy>(r : rand::rng, v : ~[T]) -> ~[T] {
+fn shuffled<T:copy>(r : rand::rng, v : ~[T]) -> ~[T] {
     let w = vec::to_mut(v);
     shuffle(r, w);
     vec::from_mut(w) // Shouldn't this happen automatically?
@@ -48,7 +48,7 @@ fn shuffled<T: copy>(r : rand::rng, v : ~[T]) -> ~[T] {
 // * weighted_choice is O(number of choices) time
 // * weighted_vec is O(total weight) space
 type weighted<T> = { weight: uint, item: T };
-fn weighted_choice<T: copy>(r : rand::rng, v : ~[weighted<T>]) -> T {
+fn weighted_choice<T:copy>(r : rand::rng, v : ~[weighted<T>]) -> T {
     assert vec::len(v) != 0u;
     let total = 0u;
     for {weight: weight, item: _} in v {
@@ -66,7 +66,7 @@ fn weighted_choice<T: copy>(r : rand::rng, v : ~[weighted<T>]) -> T {
     core::unreachable();
 }
 
-fn weighted_vec<T: copy>(v : ~[weighted<T>]) -> ~[T] {
+fn weighted_vec<T:copy>(v : ~[weighted<T>]) -> ~[T] {
     let r = ~[];
     for {weight: weight, item: item} in v {
         let i = 0u;

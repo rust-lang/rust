@@ -169,7 +169,7 @@ pub trait ReaderUtil {
     fn read_i8(&self) -> i8;
 }
 
-impl<T: Reader> ReaderUtil for T {
+impl<T:Reader> ReaderUtil for T {
 
     fn read_bytes(&self,len: uint) -> ~[u8] {
         let mut bytes = vec::with_capacity(len);
@@ -193,7 +193,7 @@ impl<T: Reader> ReaderUtil for T {
 
     fn read_chars(&self, n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
-        fn chars_from_bytes<T: Reader>(bytes: &~[u8], chars: &mut ~[char])
+        fn chars_from_bytes<T:Reader>(bytes: &~[u8], chars: &mut ~[char])
             -> (uint, uint) {
             let mut i = 0;
             let bytes_len = bytes.len();
@@ -460,7 +460,7 @@ struct Wrapper<T, C> {
 // A forwarding impl of reader that also holds on to a resource for the
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
-impl<R: Reader, C> Reader for Wrapper<R, C> {
+impl<R:Reader,C> Reader for Wrapper<R, C> {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         self.base.read(bytes, len)
     }
@@ -589,7 +589,7 @@ pub trait Writer {
     fn get_type(&self) -> WriterType;
 }
 
-impl<W: Writer, C> Writer for Wrapper<W, C> {
+impl<W:Writer,C> Writer for Wrapper<W, C> {
     fn write(&self, bs: &[const u8]) { self.base.write(bs); }
     fn seek(&self, off: int, style: SeekStyle) { self.base.seek(off, style); }
     fn tell(&self) -> uint { self.base.tell() }
@@ -890,7 +890,7 @@ pub trait WriterUtil {
     fn write_i8(&self, n: i8);
 }
 
-impl<T: Writer> WriterUtil for T {
+impl<T:Writer> WriterUtil for T {
     fn write_char(&self, ch: char) {
         if ch as uint < 128u {
             self.write(&[ch as u8]);
@@ -1112,7 +1112,7 @@ pub mod fsync {
         arg: Arg<t>,
     }
 
-    impl<T: Copy> Drop for Res<T> {
+    impl<T:Copy> Drop for Res<T> {
         fn finalize(&self) {
           match self.arg.opt_level {
             None => (),

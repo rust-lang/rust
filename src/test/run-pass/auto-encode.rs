@@ -26,7 +26,7 @@ use std::serialize::{Encodable, Decodable};
 use std::prettyprint;
 use std::time;
 
-fn test_prettyprint<A: Encodable<prettyprint::Serializer>>(
+fn test_prettyprint<A:Encodable<prettyprint::Serializer>>(
     a: &A,
     expected: &~str
 ) {

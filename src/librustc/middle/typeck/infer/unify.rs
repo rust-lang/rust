@@ -89,7 +89,7 @@ pub impl InferCtxt {
         }
     }
 
-    fn set<T:Copy InferStr, V:Copy Vid ToStr UnifyVid<T>>(
+    fn set<T:Copy + InferStr,V:Copy + Vid + ToStr + UnifyVid<T>>(
             &mut self,
             +vid: V,
             +new_v: VarValue<V, T>) {
@@ -109,7 +109,7 @@ pub impl InferCtxt {
         }
     }
 
-    fn unify<T:Copy InferStr, V:Copy Vid ToStr UnifyVid<T>>(
+    fn unify<T:Copy + InferStr,V:Copy + Vid + ToStr + UnifyVid<T>>(
         &mut self,
         node_a: &Node<V, T>,
         node_b: &Node<V, T>) -> (V, uint)
@@ -150,7 +150,7 @@ pub trait SimplyUnifiable {
     static fn to_type_err(expected_found<Self>) -> ty::type_err;
 }
 
-pub fn mk_err<T: SimplyUnifiable>(+a_is_expected: bool,
+pub fn mk_err<T:SimplyUnifiable>(+a_is_expected: bool,
                                   +a_t: T,
                                   +b_t: T) -> ures {
     if a_is_expected {

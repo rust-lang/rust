@@ -157,7 +157,7 @@ pub enum vtable_origin {
     vtable_static(ast::def_id, ~[ty::t], vtable_res),
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
-      fn foo<T: quux, baz, bar>(a: T) -- a's vtable would have a
+      fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
       vtable_param origin
 
       The first uint is the param number (identifying T in the example),

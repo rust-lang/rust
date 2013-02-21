@@ -15,7 +15,7 @@ pub fn main() { test05(); }
 
 struct Pair<A,B> { a: A, b: B }
 
-fn make_generic_record<A: Copy, B: Copy>(a: A, b: B) -> Pair<A,B> {
+fn make_generic_record<A:Copy,B:Copy>(a: A, b: B) -> Pair<A,B> {
     return Pair {a: a, b: b};
 }
 
@@ -31,7 +31,7 @@ fn test05_start(&&f: fn~(&&v: float, &&v: ~str) -> Pair<float, ~str>) {
     assert q.b == ~"Ho";
 }
 
-fn spawn<A: Copy, B: Copy>(f: extern fn(fn~(A,B)->Pair<A,B>)) {
+fn spawn<A:Copy,B:Copy>(f: extern fn(fn~(A,B)->Pair<A,B>)) {
     let arg = fn~(a: A, b: B) -> Pair<A,B> {
         return make_generic_record(a, b);
     };
