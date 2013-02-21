@@ -41,8 +41,11 @@ fn r2(x:@mut int) -> r2 {
 }
 
 fn main() {
-    foo({f: 3});
-    foo({mut f: 3}); //~ ERROR does not fulfill `Const`
+    struct A<T> { f: T }
+    struct B<T> { mut f: T }
+
+    foo(A {f: 3});
+    foo(B {mut f: 3}); //~ ERROR does not fulfill `Const`
     foo(~[1]);
     foo(~[mut 1]); //~ ERROR does not fulfill `Const`
     foo(~1);
@@ -51,5 +54,5 @@ fn main() {
     foo(@mut 1); //~ ERROR does not fulfill `Const`
     foo(r(1)); // this is okay now.
     foo(r2(@mut 1)); //~ ERROR does not fulfill `Const`
-    foo({f: {mut f: 1}}); //~ ERROR does not fulfill `Const`
+    foo(A {f: B {mut f: 1}}); //~ ERROR does not fulfill `Const`
 }

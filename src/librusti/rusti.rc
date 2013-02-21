@@ -17,7 +17,6 @@
 
 #[crate_type = "lib"];
 
-#[legacy_records];
 #[no_core];
 
 #[allow(vecs_implicitly_copyable,

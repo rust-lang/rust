@@ -51,11 +51,6 @@ fn obsolete_with() {
     //~^ ERROR obsolete syntax: with
     let c = S { foo: (), with a };
     //~^ ERROR obsolete syntax: with
-    let a = { foo: (), bar: () };
-    let b = { foo: () with a };
-    //~^ ERROR obsolete syntax: with
-    let c = { foo: (), with a };
-    //~^ ERROR obsolete syntax: with
 }
 
 fn obsolete_moves() {
