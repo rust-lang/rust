@@ -14,4 +14,4 @@ trait Baz { fn h() -> int; }
 
 trait Quux: Foo Bar Baz { }
 
-impl<T: Foo Bar Baz> Quux for T { }
+impl<T:Foo + Bar + Baz> Quux for T { }

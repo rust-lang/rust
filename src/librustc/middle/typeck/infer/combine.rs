@@ -290,7 +290,7 @@ pub fn super_self_tys<C:Combine>(
     }
 }
 
-pub fn super_sigils<C: Combine>(
+pub fn super_sigils<C:Combine>(
     self: &C, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil> {
     if p1 == p2 {
         Ok(p1)

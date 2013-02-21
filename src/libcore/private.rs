@@ -166,7 +166,7 @@ fn ArcDestruct<T>(data: *libc::c_void) -> ArcDestruct<T> {
     }
 }
 
-pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
+pub unsafe fn unwrap_shared_mutable_state<T:Owned>(rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>,
@@ -242,7 +242,7 @@ pub unsafe fn unwrap_shared_mutable_state<T: Owned>(rc: SharedMutableState<T>)
  */
 pub type SharedMutableState<T> = ArcDestruct<T>;
 
-pub unsafe fn shared_mutable_state<T: Owned>(data: T) ->
+pub unsafe fn shared_mutable_state<T:Owned>(data: T) ->
         SharedMutableState<T> {
     let data = ~ArcData { count: 1, unwrapper: 0, data: Some(data) };
     unsafe {
@@ -252,7 +252,7 @@ pub unsafe fn shared_mutable_state<T: Owned>(data: T) ->
 }
 
 #[inline(always)]
-pub unsafe fn get_shared_mutable_state<T: Owned>(
+pub unsafe fn get_shared_mutable_state<T:Owned>(
     rc: *SharedMutableState<T>) -> *mut T
 {
     unsafe {
@@ -264,7 +264,7 @@ pub unsafe fn get_shared_mutable_state<T: Owned>(
     }
 }
 #[inline(always)]
-pub unsafe fn get_shared_immutable_state<T: Owned>(
+pub unsafe fn get_shared_immutable_state<T:Owned>(
         rc: &a/SharedMutableState<T>) -> &a/T {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
@@ -276,7 +276,7 @@ pub unsafe fn get_shared_immutable_state<T: Owned>(
     }
 }
 
-pub unsafe fn clone_shared_mutable_state<T: Owned>(rc: &SharedMutableState<T>)
+pub unsafe fn clone_shared_mutable_state<T:Owned>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&(*rc).data);
@@ -287,7 +287,7 @@ pub unsafe fn clone_shared_mutable_state<T: Owned>(rc: &SharedMutableState<T>)
     ArcDestruct((*rc).data)
 }
 
-impl<T: Owned> Clone for SharedMutableState<T> {
+impl<T:Owned> Clone for SharedMutableState<T> {
     fn clone(&self) -> SharedMutableState<T> {
         unsafe {
             clone_shared_mutable_state(self)
@@ -349,21 +349,21 @@ struct ExData<T> { lock: LittleLock, mut failed: bool, mut data: T, }
  */
 pub struct Exclusive<T> { x: SharedMutableState<ExData<T>> }
 
-pub fn exclusive<T:Owned >(user_data: T) -> Exclusive<T> {
+pub fn exclusive<T:Owned>(user_data: T) -> Exclusive<T> {
     let data = ExData {
         lock: LittleLock(), mut failed: false, mut data: user_data
     };
     Exclusive { x: unsafe { shared_mutable_state(data) } }
 }
 
-impl<T: Owned> Clone for Exclusive<T> {
+impl<T:Owned> Clone for Exclusive<T> {
     // Duplicate an exclusive ARC, as std::arc::clone.
     fn clone(&self) -> Exclusive<T> {
         Exclusive { x: unsafe { clone_shared_mutable_state(&self.x) } }
     }
 }
 
-impl<T: Owned> Exclusive<T> {
+impl<T:Owned> Exclusive<T> {
     // Exactly like std::arc::mutex_arc,access(), but with the little_lock
     // instead of a proper mutex. Same reason for being unsafe.
     //
@@ -396,7 +396,7 @@ impl<T: Owned> Exclusive<T> {
 }
 
 // FIXME(#3724) make this a by-move method on the exclusive
-pub fn unwrap_exclusive<T: Owned>(arc: Exclusive<T>) -> T {
+pub fn unwrap_exclusive<T:Owned>(arc: Exclusive<T>) -> T {
     let Exclusive { x: x } = arc;
     let inner = unsafe { unwrap_shared_mutable_state(x) };
     let ExData { data: data, _ } = inner;

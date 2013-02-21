@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f1<T: copy>() -> T { }
+fn f1<T:copy>() -> T { }
 //~^ ERROR obsolete syntax: lower-case kind bounds
 
-fn f1<T: send>() -> T { }
+fn f1<T:send>() -> T { }
 //~^ ERROR obsolete syntax: lower-case kind bounds
 
-fn f1<T: const>() -> T { }
+fn f1<T:const>() -> T { }
 //~^ ERROR obsolete syntax: lower-case kind bounds
 
-fn f1<T: owned>() -> T { }
+fn f1<T:owned>() -> T { }
 //~^ ERROR obsolete syntax: lower-case kind bounds
 
 struct s {

@@ -19,7 +19,7 @@ impl B for S { fn b(&self) -> int { 20 } }
 impl C for S { fn c(&self) -> int { 30 } }
 
 // Multiple type params, multiple levels of inheritance
-fn f<X: A, Y: B, Z: C>(x: &X, y: &Y, z: &Z) {
+fn f<X:A,Y:B,Z:C>(x: &X, y: &Y, z: &Z) {
     assert x.a() == 10;
     assert y.a() == 10;
     assert y.b() == 20;

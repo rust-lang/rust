@@ -16,6 +16,6 @@ type port_id = int;
 
 enum chan_t<T> = {task: task_id, port: port_id};
 
-fn send<T: Owned>(ch: chan_t<T>, data: T) { fail!(); }
+fn send<T:Owned>(ch: chan_t<T>, data: T) { fail!(); }
 
 fn main() { fail!(~"quux"); }

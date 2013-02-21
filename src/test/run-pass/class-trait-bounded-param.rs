@@ -13,7 +13,7 @@
 extern mod std;
 use std::oldmap::{map, hashmap, int_hash};
 
-class keys<K: Copy, V: Copy, M: Copy map<K,V>>
+class keys<K:Copy,V:Copy,M:Copy + map<K,V>>
     : iter::base_iter<K> {
 
     let map: M;

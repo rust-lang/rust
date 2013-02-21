@@ -198,7 +198,7 @@ mod tests {
         assert *deq.get(3) == d;
     }
 
-    fn test_parameterized<T: Copy Eq Durable>(a: T, b: T, c: T, d: T) {
+    fn test_parameterized<T:Copy + Eq + Durable>(a: T, b: T, c: T, d: T) {
         let mut deq = Deque::new();
         assert deq.len() == 0;
         deq.add_front(a);

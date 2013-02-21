@@ -27,14 +27,14 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
       return (xx as float) * 100f / (yy as float);
    }
 
-   pure fn le_by_val<TT: Copy, UU: Copy Ord>(kv0: &(TT,UU),
+   pure fn le_by_val<TT:Copy,UU:Copy + Ord>(kv0: &(TT,UU),
                                          kv1: &(TT,UU)) -> bool {
       let (_, v0) = *kv0;
       let (_, v1) = *kv1;
       return v0 >= v1;
    }
 
-   pure fn le_by_key<TT: Copy Ord, UU: Copy>(kv0: &(TT,UU),
+   pure fn le_by_key<TT:Copy + Ord,UU:Copy>(kv0: &(TT,UU),
                                          kv1: &(TT,UU)) -> bool {
       let (k0, _) = *kv0;
       let (k1, _) = *kv1;
@@ -42,7 +42,7 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
    }
 
    // sort by key, then by value
-   fn sortKV<TT: Copy Ord, UU: Copy Ord>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
+   fn sortKV<TT:Copy + Ord,UU:Copy + Ord>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
       return sort::merge_sort(sort::merge_sort(orig, le_by_key), le_by_val);
    }
 

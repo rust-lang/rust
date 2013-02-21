@@ -15,11 +15,11 @@ mod traits {
 }
 
 trait Quux: traits::Foo { }
-impl<T: traits::Foo> Quux for T { }
+impl<T:traits::Foo> Quux for T { }
 
 // Foo is not in scope but because Quux is we can still access
 // Foo's methods on a Quux bound typaram
-fn f<T: Quux>(x: &T) {
+fn f<T:Quux>(x: &T) {
     assert x.f() == 10;
 }
 

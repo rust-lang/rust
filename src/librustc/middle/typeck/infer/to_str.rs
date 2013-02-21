@@ -71,7 +71,7 @@ pub impl<T:InferStr> InferStr for Bounds<T> {
     }
 }
 
-pub impl<V:Vid ToStr, T:InferStr> InferStr for VarValue<V, T> {
+pub impl<V:Vid + ToStr,T:InferStr> InferStr for VarValue<V, T> {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         match *self {
           Redirect(ref vid) => fmt!("Redirect(%s)", vid.to_str()),

@@ -21,7 +21,7 @@ trait to_str {
     fn to_str() -> ~str;
 }
 
-impl<T: to_str> to_str for Option<T> {
+impl<T:to_str> to_str for Option<T> {
     fn to_str() -> ~str {
         match self {
           None => { ~"none" }
@@ -42,7 +42,7 @@ impl to_str for Tree {
     }
 }
 
-fn foo<T: to_str>(x: T) -> ~str { x.to_str() }
+fn foo<T:to_str>(x: T) -> ~str { x.to_str() }
 
 pub fn main() {
     let t1 = Tree(@TreeR{mut left: None,

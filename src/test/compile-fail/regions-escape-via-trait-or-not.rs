@@ -18,7 +18,7 @@ impl deref for &int {
     }
 }
 
-fn with<R: deref>(f: fn(x: &int) -> R) -> int {
+fn with<R:deref>(f: fn(x: &int) -> R) -> int {
     f(&3).get()
 }
 

@@ -17,7 +17,7 @@ trait bool_like {
     static fn select<A>(b: Self, +x1: A, +x2: A) -> A;
 }
 
-fn andand<T: bool_like Copy>(x1: T, x2: T) -> T {
+fn andand<T:bool_like + Copy>(x1: T, x2: T) -> T {
     bool_like::select(x1, x2, x1)
 }
 
@@ -70,7 +70,7 @@ fn map<T, IT: BaseIter<T>, U, BU: buildable<U>>
     }
 }
 
-fn seq_range<BT: buildable<int>>(lo: uint, hi: uint) -> BT {
+fn seq_range<BT:buildable<int>>(lo: uint, hi: uint) -> BT {
     do buildable::build_sized(hi-lo) |push| {
         for uint::range(lo, hi) |i| {
             push(i as int);
