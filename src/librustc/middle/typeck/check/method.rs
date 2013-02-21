@@ -438,10 +438,9 @@ pub impl LookupContext {
 
                 let trait_methods = ty::trait_methods(tcx, init_trait_id);
                 let pos = {
-                    // FIXME #3453 can't use trait_methods.position
-                    match vec::position(*trait_methods,
-                                        |m| (m.self_ty != ast::sty_static &&
-                                             m.ident == self.m_name))
+                    match trait_methods.position(|m| {
+                        m.self_ty != ast::sty_static &&
+                            m.ident == self.m_name })
                     {
                         Some(pos) => pos,
                         None => {
@@ -624,9 +623,7 @@ pub impl LookupContext {
         }
 
         let idx = {
-            // FIXME #3453 can't use impl_info.methods.position
-            match vec::position(impl_info.methods,
-                                |m| m.ident == self.m_name) {
+            match impl_info.methods.position(|m| m.ident == self.m_name) {
                 Some(idx) => idx,
                 None => { return; } // No method with the right name.
             }
