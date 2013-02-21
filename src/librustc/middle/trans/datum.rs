@@ -530,7 +530,7 @@ pub impl Datum {
         if bcx.sess().trace() {
             trans_trace(
                 bcx, None,
-                fmt!("preserving until end of scope %d",
+                @fmt!("preserving until end of scope %d",
                      root_info.scope));
         }
 

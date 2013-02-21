@@ -1047,21 +1047,19 @@ pub fn load_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     return v;
 }
 
-pub fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: ~str) {
+pub fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: @~str) {
     if !bcx.sess().trace() { return; }
     let _icx = bcx.insn_ctxt("trans_trace");
-    add_comment(bcx, trace_str);
+    add_comment(bcx, *trace_str);
     let V_trace_str = C_cstr(bcx.ccx(), trace_str);
     let (V_filename, V_line) = match sp_opt {
       Some(sp) => {
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        (C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name),
-         V_line: loc.line as int)
+        (C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name), loc.line as int)
       }
       None => {
-        (V_filename: C_cstr(bcx.ccx(), @~"<runtime>"),
-         V_line: 0)
+        (C_cstr(bcx.ccx(), @~"<runtime>"), 0)
       }
     };
     let ccx = bcx.ccx();
@@ -1300,11 +1298,11 @@ pub fn cleanup_and_leave(bcx: block,
         if bcx.sess().trace() {
             trans_trace(
                 bcx, None,
-                fmt!("cleanup_and_leave(%s)", cur.to_str()));
+                @fmt!("cleanup_and_leave(%s)", cur.to_str()));
         }
 
         match cur.kind {
-          block_scope(ref inf) if (*inf).cleanups.len() > 0u => {
+          block_scope(ref inf) if !inf.cleanups.is_empty() => {
             for vec::find((*inf).cleanup_paths,
                           |cp| cp.target == leave).each |cp| {
                 Br(bcx, cp.dest);
