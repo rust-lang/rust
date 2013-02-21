@@ -355,7 +355,7 @@ pub struct cleanup_path {
     dest: BasicBlockRef
 }
 
-pub fn scope_clean_changed(scope_info: scope_info) {
+pub fn scope_clean_changed(scope_info: &mut scope_info) {
     if scope_info.cleanup_paths.len() > 0u { scope_info.cleanup_paths = ~[]; }
     scope_info.landing_pad = None;
 }
@@ -498,9 +498,9 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
 }
 
 pub fn block_cleanups(bcx: block) -> ~[cleanup] {
-    match bcx.kind {
+    match *bcx.kind {
        block_non_scope  => ~[],
-       block_scope(ref inf) => /*bad*/copy inf.cleanups
+       block_scope(ref mut inf) => /*bad*/copy inf.cleanups
     }
 }
 
@@ -524,12 +524,12 @@ pub struct scope_info {
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.
-    mut cleanups: ~[cleanup],
+    cleanups: ~[cleanup],
     // Existing cleanup paths that may be reused, indexed by destination and
     // cleared when the set of cleanups changes.
-    mut cleanup_paths: ~[cleanup_path],
+    cleanup_paths: ~[cleanup_path],
     // Unwinding landing pad. Also cleared when cleanups change.
-    mut landing_pad: Option<BasicBlockRef>,
+    landing_pad: Option<BasicBlockRef>,
 }
 
 pub trait get_node_info {
@@ -574,11 +574,11 @@ pub struct block_ {
     // instructions into that block by way of this block context.
     // The block pointing to this one in the function's digraph.
     llbb: BasicBlockRef,
-    mut terminated: bool,
-    mut unreachable: bool,
+    terminated: bool,
+    unreachable: bool,
     parent: Option<block>,
     // The 'kind' of basic block this is.
-    kind: block_kind,
+    kind: @mut block_kind,
     // Is this block part of a landing pad?
     is_lpad: bool,
     // info about the AST node this block originated from, if any
@@ -597,21 +597,19 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: kind,
+        kind: @mut kind,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
     }
 }
 
-/* This must be enum and not type, or trans goes into an infinite loop (#2572)
- */
-pub enum block = @block_;
+pub type block = @mut block_;
 
 pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
             is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block {
-    block(@block_(llbb, parent, kind, is_lpad, node_info, fcx))
+    @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
 }
 
 // First two args are retptr, env
@@ -660,17 +658,21 @@ pub fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
     }
 }
 
-pub fn in_scope_cx(cx: block, f: fn(scope_info)) {
+pub fn in_scope_cx(cx: block, f: &fn(&mut scope_info)) {
     let mut cur = cx;
     loop {
-        match cur.kind {
-          block_scope(ref inf) => {
-              debug!("in_scope_cx: selected cur=%s (cx=%s)",
-                     cur.to_str(), cx.to_str());
-              f((*inf));
-              return;
-          }
-          _ => ()
+        {
+            // XXX: Borrow check bug workaround.
+            let kind: &mut block_kind = &mut *cur.kind;
+            match *kind {
+              block_scope(ref mut inf) => {
+                  debug!("in_scope_cx: selected cur=%s (cx=%s)",
+                         cur.to_str(), cx.to_str());
+                  f(inf);
+                  return;
+              }
+              _ => ()
+            }
         }
         cur = block_parent(cur);
     }

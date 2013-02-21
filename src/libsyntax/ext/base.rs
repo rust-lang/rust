@@ -196,7 +196,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
     struct CtxtRepr {
         parse_sess: @mut parse::ParseSess,
         cfg: ast::crate_cfg,
-        backtrace: Option<@ExpnInfo>,
+        backtrace: @mut Option<@ExpnInfo>,
         mod_path: ~[ast::ident],
         trace_mac: bool
     }
@@ -205,33 +205,33 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
         fn parse_sess(@mut self) -> @mut parse::ParseSess { self.parse_sess }
         fn cfg(@mut self) -> ast::crate_cfg { self.cfg }
         fn call_site(@mut self) -> span {
-            match self.backtrace {
+            match *self.backtrace {
                 Some(@ExpandedFrom(CallInfo {call_site: cs, _})) => cs,
                 None => self.bug(~"missing top span")
             }
         }
         fn print_backtrace(@mut self) { }
-        fn backtrace(@mut self) -> Option<@ExpnInfo> { self.backtrace }
+        fn backtrace(@mut self) -> Option<@ExpnInfo> { *self.backtrace }
         fn mod_push(@mut self, i: ast::ident) { self.mod_path.push(i); }
         fn mod_pop(@mut self) { self.mod_path.pop(); }
         fn mod_path(@mut self) -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(@mut self, ei: codemap::ExpnInfo) {
             match ei {
               ExpandedFrom(CallInfo {call_site: cs, callee: ref callee}) => {
-                self.backtrace =
+                *self.backtrace =
                     Some(@ExpandedFrom(CallInfo {
                         call_site: span {lo: cs.lo, hi: cs.hi,
-                                         expn_info: self.backtrace},
+                                         expn_info: *self.backtrace},
                         callee: (*callee)}));
               }
             }
         }
         fn bt_pop(@mut self) {
-            match self.backtrace {
+            match *self.backtrace {
               Some(@ExpandedFrom(CallInfo {
                   call_site: span {expn_info: prev, _}, _
               })) => {
-                self.backtrace = prev
+                *self.backtrace = prev
               }
               _ => self.bug(~"tried to pop without a push")
             }
@@ -280,7 +280,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
     let imp: @mut CtxtRepr = @mut CtxtRepr {
         parse_sess: parse_sess,
         cfg: cfg,
-        backtrace: None,
+        backtrace: @mut None,
         mod_path: ~[],
         trace_mac: false
     };

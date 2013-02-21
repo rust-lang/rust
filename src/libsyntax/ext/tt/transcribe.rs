@@ -28,7 +28,7 @@ use std::oldmap::HashMap;
    `~` */
 ///an unzipping of `token_tree`s
 struct TtFrame {
-    readme: ~[ast::token_tree],
+    readme: @mut ~[ast::token_tree],
     idx: uint,
     dotdotdoted: bool,
     sep: Option<Token>,
@@ -60,7 +60,7 @@ pub fn new_tt_reader(sp_diag: span_handler,
         sp_diag: sp_diag,
         interner: itr,
         mut cur: @mut TtFrame {
-            readme: src,
+            readme: @mut src,
             idx: 0u,
             dotdotdoted: false,
             sep: None,
@@ -82,7 +82,7 @@ pub fn new_tt_reader(sp_diag: span_handler,
 
 pure fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
     @mut TtFrame {
-        readme: f.readme,
+        readme: @mut (copy *f.readme),
         idx: f.idx,
         dotdotdoted: f.dotdotdoted,
         sep: f.sep,
@@ -199,9 +199,9 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
         match r.cur.readme[r.cur.idx] {
-          tt_delim(copy tts) => {
+          tt_delim(tts) => {
             r.cur = @mut TtFrame {
-                readme: tts,
+                readme: @mut copy tts,
                 idx: 0u,
                 dotdotdoted: false,
                 sep: None,
@@ -242,7 +242,7 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
                     r.repeat_len.push(len);
                     r.repeat_idx.push(0u);
                     r.cur = @mut TtFrame {
-                        readme: tts,
+                        readme: @mut copy tts,
                         idx: 0u,
                         dotdotdoted: true,
                         sep: sep,
