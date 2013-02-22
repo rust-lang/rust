@@ -59,7 +59,7 @@ pub fn new_tt_reader(sp_diag: span_handler,
     let r = @mut TtReader {
         sp_diag: sp_diag,
         interner: itr,
-        mut cur: @mut TtFrame {
+        cur: @mut TtFrame {
             readme: @mut src,
             idx: 0u,
             dotdotdoted: false,
