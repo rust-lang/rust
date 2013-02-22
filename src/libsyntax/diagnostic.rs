@@ -26,17 +26,9 @@ use std::term;
 pub type Emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
                    msg: &str, lvl: level);
 
-
-pub trait span_handler {
-    fn span_fatal(@mut self, sp: span, msg: &str) -> !;
-    fn span_err(@mut self, sp: span, msg: &str);
-    fn span_warn(@mut self, sp: span, msg: &str);
-    fn span_note(@mut self, sp: span, msg: &str);
-    fn span_bug(@mut self, sp: span, msg: &str) -> !;
-    fn span_unimpl(@mut self, sp: span, msg: &str) -> !;
-    fn handler(@mut self) -> handler;
-}
-
+// a handler deals with errors; certain errors
+// (fatal, bug, unimpl) may cause immediate exit,
+// others log errors for later reporting.
 pub trait handler {
     fn fatal(@mut self, msg: &str) -> !;
     fn err(@mut self, msg: &str);
@@ -45,12 +37,26 @@ pub trait handler {
     fn abort_if_errors(@mut self);
     fn warn(@mut self, msg: &str);
     fn note(@mut self, msg: &str);
+    // used to indicate a bug in the compiler:
     fn bug(@mut self, msg: &str) -> !;
     fn unimpl(@mut self, msg: &str) -> !;
     fn emit(@mut self,
             cmsp: Option<(@codemap::CodeMap, span)>,
             msg: &str,
             lvl: level);
+}
+
+// a span-handler is like a handler but also
+// accepts span information for source-location
+// reporting.
+pub trait span_handler {
+    fn span_fatal(@mut self, sp: span, msg: &str) -> !;
+    fn span_err(@mut self, sp: span, msg: &str);
+    fn span_warn(@mut self, sp: span, msg: &str);
+    fn span_note(@mut self, sp: span, msg: &str);
+    fn span_bug(@mut self, sp: span, msg: &str) -> !;
+    fn span_unimpl(@mut self, sp: span, msg: &str) -> !;
+    fn handler(@mut self) -> handler;
 }
 
 struct HandlerT {
