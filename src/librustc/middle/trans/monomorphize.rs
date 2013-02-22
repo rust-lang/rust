@@ -137,9 +137,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     let depth = option::get_or_default(ccx.monomorphizing.find(&fn_id), 0u);
     // Random cut-off -- code that needs to instantiate the same function
-    // recursively more than ten times can probably safely be assumed to be
+    // recursively more than thirty times can probably safely be assumed to be
     // causing an infinite expansion.
-    if depth > 10 {
+    if depth > 30 {
         ccx.sess.span_fatal(
             span, ~"overly deep expansion of inlined function");
     }

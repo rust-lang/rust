@@ -74,11 +74,18 @@ pub fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
     }
 }
 
+// a bunch of utility functions of the form parse_<thing>_from_<source>
+// where <thing> includes crate, expr, item, stmt, tts, and one that
+// uses a HOF to parse anything, and <source> includes file and
+// source_str.
+
+// this appears to be the main entry point for rust parsing by
+// rustc and crate:
 pub fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
                          sess: @mut ParseSess) -> @ast::crate {
-    let p = new_crate_parser_from_file(sess, cfg, input);
-    let r = p.parse_crate_mod(cfg);
-    return r;
+    let p = new_parser_from_file(sess, cfg, input);
+    p.parse_crate_mod(cfg)
+    // why is there no p.abort_if_errors here?
 }
 
 pub fn parse_crate_from_source_str(name: ~str,
@@ -174,7 +181,9 @@ pub fn new_parser_from_source_str(sess: @mut ParseSess, cfg: ast::crate_cfg,
     return Parser(sess, cfg, srdr as reader);
 }
 
-pub fn new_parser_from_file(sess: @mut ParseSess,
+// Read the entire source file, return a parser
+// that draws from that string
+pub fn new_parser_result_from_file(sess: @mut ParseSess,
                             cfg: ast::crate_cfg,
                             path: &Path)
                          -> Result<Parser, ~str> {
@@ -194,9 +203,9 @@ pub fn new_parser_from_file(sess: @mut ParseSess,
 
 /// Create a new parser for an entire crate, handling errors as appropriate
 /// if the file doesn't exist
-pub fn new_crate_parser_from_file(sess: @mut ParseSess, cfg: ast::crate_cfg,
+pub fn new_parser_from_file(sess: @mut ParseSess, cfg: ast::crate_cfg,
                               path: &Path) -> Parser {
-    match new_parser_from_file(sess, cfg, path) {
+    match new_parser_result_from_file(sess, cfg, path) {
         Ok(parser) => parser,
         Err(e) => {
             sess.span_diagnostic.handler().fatal(e)
@@ -208,7 +217,7 @@ pub fn new_crate_parser_from_file(sess: @mut ParseSess, cfg: ast::crate_cfg,
 /// error messages correctly when the file does not exist.
 pub fn new_sub_parser_from_file(sess: @mut ParseSess, cfg: ast::crate_cfg,
                             path: &Path, sp: span) -> Parser {
-    match new_parser_from_file(sess, cfg, path) {
+    match new_parser_result_from_file(sess, cfg, path) {
         Ok(parser) => parser,
         Err(e) => {
             sess.span_diagnostic.span_fatal(sp, e)
