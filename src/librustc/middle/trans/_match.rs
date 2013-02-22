@@ -831,7 +831,7 @@ pub fn extract_variant_args(bcx: block,
                          -> ExtractedBlock {
     let (enm, evar) = vdefs;
     let _icx = bcx.insn_ctxt("match::extract_variant_args");
-    let ccx = bcx.fcx.ccx;
+    let ccx = *bcx.fcx.ccx;
     let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id)).sty {
       ty::ty_enum(id, ref substs) => {
         assert id == enm;
@@ -1272,7 +1272,7 @@ pub fn compile_submatch(bcx: block,
 
     let vals_left = vec::append(vec::slice(vals, 0u, col).to_vec(),
                                 vec::slice(vals, col + 1u, vals.len()));
-    let ccx = bcx.fcx.ccx;
+    let ccx = *bcx.fcx.ccx;
     let mut pat_id = 0;
     for vec::each(m) |br| {
         // Find a real id (we're adding placeholder wildcard patterns, but
@@ -1710,7 +1710,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                             binding_mode: IrrefutablePatternBindingMode)
                          -> block {
     let _icx = bcx.insn_ctxt("match::bind_irrefutable_pat");
-    let ccx = bcx.fcx.ccx;
+    let ccx = *bcx.fcx.ccx;
     let mut bcx = bcx;
 
     // Necessary since bind_irrefutable_pat is called outside trans_match
