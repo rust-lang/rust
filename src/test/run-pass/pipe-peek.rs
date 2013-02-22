@@ -10,8 +10,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_records];
-
 extern mod std;
 use std::timer::sleep;
 use std::uv;

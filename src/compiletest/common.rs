@@ -21,7 +21,7 @@ pub enum mode {
     mode_debug_info,
 }
 
-pub type config = {
+pub struct config {
     // The library paths required for running the compiler
     compile_lib_path: ~str,
 
@@ -68,4 +68,4 @@ pub type config = {
     // Explain what's going on
     verbose: bool
 
-};
+}

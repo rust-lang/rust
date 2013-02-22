@@ -1278,13 +1278,13 @@ fn test_simplification() {
     let item_in = ast::ii_item(quote_item!(
         fn new_int_alist<B:Copy>() -> alist<int, B> {
             fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-            return {eq_fn: eq_int, data: ~[]};
+            return alist {eq_fn: eq_int, data: ~[]};
         }
     ).get());
     let item_out = simplify_ast(item_in);
     let item_exp = ast::ii_item(quote_item!(
         fn new_int_alist<B:Copy>() -> alist<int, B> {
-            return {eq_fn: eq_int, data: ~[]};
+            return alist {eq_fn: eq_int, data: ~[]};
         }
     ).get());
     match (item_out, item_exp) {
