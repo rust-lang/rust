@@ -172,8 +172,8 @@ pub enum vtable_origin {
 }
 
 pub impl vtable_origin {
-    fn to_str(tcx: ty::ctxt) -> ~str {
-        match self {
+    fn to_str(&self, tcx: ty::ctxt) -> ~str {
+        match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
                 fmt!("vtable_static(%?:%s, %?, %?)",
                      def_id, ty::item_path_str(tcx, def_id),
@@ -279,17 +279,17 @@ pub fn require_same_types(
 pub type isr_alist = @List<(ty::bound_region, ty::Region)>;
 
 trait get_and_find_region {
-    fn get(br: ty::bound_region) -> ty::Region;
-    fn find(br: ty::bound_region) -> Option<ty::Region>;
+    fn get(&self, br: ty::bound_region) -> ty::Region;
+    fn find(&self, br: ty::bound_region) -> Option<ty::Region>;
 }
 
 impl get_and_find_region for isr_alist {
-    fn get(br: ty::bound_region) -> ty::Region {
+    fn get(&self, br: ty::bound_region) -> ty::Region {
         self.find(br).get()
     }
 
-    fn find(br: ty::bound_region) -> Option<ty::Region> {
-        for list::each(self) |isr| {
+    fn find(&self, br: ty::bound_region) -> Option<ty::Region> {
+        for list::each(*self) |isr| {
             let (isr_br, isr_r) = *isr;
             if isr_br == br { return Some(isr_r); }
         }

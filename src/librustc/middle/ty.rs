@@ -657,11 +657,11 @@ impl to_bytes::IterBytes for param_bound {
 }
 
 pub trait Vid {
-    pure fn to_uint() -> uint;
+    pure fn to_uint(&self) -> uint;
 }
 
 pub impl Vid for TyVid {
-    pure fn to_uint() -> uint { *self }
+    pure fn to_uint(&self) -> uint { **self }
 }
 
 pub impl ToStr for TyVid {
@@ -669,7 +669,7 @@ pub impl ToStr for TyVid {
 }
 
 pub impl Vid for IntVid {
-    pure fn to_uint() -> uint { *self }
+    pure fn to_uint(&self) -> uint { **self }
 }
 
 pub impl ToStr for IntVid {
@@ -677,7 +677,7 @@ pub impl ToStr for IntVid {
 }
 
 pub impl Vid for FloatVid {
-    pure fn to_uint() -> uint { *self }
+    pure fn to_uint(&self) -> uint { **self }
 }
 
 pub impl ToStr for FloatVid {
@@ -685,7 +685,7 @@ pub impl ToStr for FloatVid {
 }
 
 pub impl Vid for RegionVid {
-    pure fn to_uint() -> uint { *self }
+    pure fn to_uint(&self) -> uint { **self }
 }
 
 pub impl ToStr for RegionVid {

@@ -154,8 +154,8 @@ pub enum NamespaceResult {
 }
 
 pub impl NamespaceResult {
-    pure fn is_unknown() -> bool {
-        match self {
+    pure fn is_unknown(&self) -> bool {
+        match *self {
             UnknownResult => true,
             _ => false
         }
@@ -206,11 +206,11 @@ pub enum ResolveResult<T> {
 }
 
 pub impl<T> ResolveResult<T> {
-    fn failed() -> bool {
-        match self { Failed => true, _ => false }
+    fn failed(&self) -> bool {
+        match *self { Failed => true, _ => false }
     }
-    fn indeterminate() -> bool {
-        match self { Indeterminate => true, _ => false }
+    fn indeterminate(&self) -> bool {
+        match *self { Indeterminate => true, _ => false }
     }
 }
 
@@ -417,7 +417,7 @@ pub fn ImportResolution(privacy: Privacy,
 }
 
 pub impl ImportResolution {
-    fn target_for_namespace(namespace: Namespace) -> Option<Target> {
+    fn target_for_namespace(&self, namespace: Namespace) -> Option<Target> {
         match namespace {
             TypeNS      => return copy self.type_target,
             ValueNS     => return copy self.value_target
@@ -503,7 +503,7 @@ pub fn Module(parent_link: ParentLink,
 }
 
 pub impl Module {
-    fn all_imports_resolved() -> bool {
+    fn all_imports_resolved(&self) -> bool {
         return self.imports.len() == self.resolved_import_count;
     }
 }
@@ -706,7 +706,7 @@ pub struct PrimitiveTypeTable {
 }
 
 pub impl PrimitiveTypeTable {
-    fn intern(intr: @ident_interner, string: @~str,
+    fn intern(&self, intr: @ident_interner, string: @~str,
               primitive_type: prim_ty) {
         let ident = intr.intern(string);
         self.primitive_types.insert(ident, primitive_type);

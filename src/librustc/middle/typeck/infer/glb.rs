@@ -28,16 +28,16 @@ use std::list;
 pub enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
 
 pub impl Combine for Glb {
-    fn infcx() -> @mut InferCtxt { self.infcx }
-    fn tag() -> ~str { ~"glb" }
-    fn a_is_expected() -> bool { self.a_is_expected }
-    fn span() -> span { self.span }
+    fn infcx(&self) -> @mut InferCtxt { self.infcx }
+    fn tag(&self) -> ~str { ~"glb" }
+    fn a_is_expected(&self) -> bool { self.a_is_expected }
+    fn span(&self) -> span { self.span }
 
-    fn sub() -> Sub { Sub(*self) }
-    fn lub() -> Lub { Lub(*self) }
-    fn glb() -> Glb { Glb(*self) }
+    fn sub(&self) -> Sub { Sub(**self) }
+    fn lub(&self) -> Lub { Lub(**self) }
+    fn glb(&self) -> Glb { Glb(**self) }
 
-    fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
+    fn mts(&self, a: ty::mt, b: ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx.tcx;
 
         debug!("%s.mts(%s, %s)",
@@ -49,17 +49,17 @@ pub impl Combine for Glb {
           // If one side or both is mut, then the GLB must use
           // the precise type from the mut side.
           (m_mutbl, m_const) => {
-            Sub(*self).tys(a.ty, b.ty).chain(|_t| {
+            Sub(**self).tys(a.ty, b.ty).chain(|_t| {
                 Ok(ty::mt {ty: a.ty, mutbl: m_mutbl})
             })
           }
           (m_const, m_mutbl) => {
-            Sub(*self).tys(b.ty, a.ty).chain(|_t| {
+            Sub(**self).tys(b.ty, a.ty).chain(|_t| {
                 Ok(ty::mt {ty: b.ty, mutbl: m_mutbl})
             })
           }
           (m_mutbl, m_mutbl) => {
-            eq_tys(&self, a.ty, b.ty).then(|| {
+            eq_tys(self, a.ty, b.ty).then(|| {
                 Ok(ty::mt {ty: a.ty, mutbl: m_mutbl})
             })
           }
@@ -90,11 +90,11 @@ pub impl Combine for Glb {
         }
     }
 
-    fn contratys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        Lub(*self).tys(a, b)
+    fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+        Lub(**self).tys(a, b)
     }
 
-    fn purities(a: purity, b: purity) -> cres<purity> {
+    fn purities(&self, a: purity, b: purity) -> cres<purity> {
         match (a, b) {
           (pure_fn, _) | (_, pure_fn) => Ok(pure_fn),
           (extern_fn, _) | (_, extern_fn) => Ok(extern_fn),
@@ -103,14 +103,14 @@ pub impl Combine for Glb {
         }
     }
 
-    fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness> {
+    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness> {
         match (a, b) {
             (Many, _) | (_, Many) => Ok(Many),
             (Once, Once) => Ok(Once)
         }
     }
 
-    fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
+    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {
         debug!("%s.regions(%?, %?)",
                self.tag(),
                a.inf_str(self.infcx),
@@ -121,34 +121,35 @@ pub impl Combine for Glb {
         }
     }
 
-    fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region> {
-        Lub(*self).regions(a, b)
+    fn contraregions(&self, a: ty::Region, b: ty::Region)
+                    -> cres<ty::Region> {
+        Lub(**self).regions(a, b)
     }
 
-    fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        super_lattice_tys(&self, a, b)
+    fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
+        super_lattice_tys(self, a, b)
     }
 
     // Traits please (FIXME: #2794):
 
-    fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
-        super_flds(&self, a, b)
+    fn flds(&self, a: ty::field, b: ty::field) -> cres<ty::field> {
+        super_flds(self, a, b)
     }
 
-    fn vstores(vk: ty::terr_vstore_kind,
+    fn vstores(&self, vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
-        super_vstores(&self, vk, a, b)
+        super_vstores(self, vk, a, b)
     }
 
-    fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode> {
-        super_modes(&self, a, b)
+    fn modes(&self, a: ast::mode, b: ast::mode) -> cres<ast::mode> {
+        super_modes(self, a, b)
     }
 
-    fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg> {
-        super_args(&self, a, b)
+    fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg> {
+        super_args(self, a, b)
     }
 
-    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+    fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
         // Note: this is a subtle algorithm.  For a full explanation,
         // please see the large comment in `region_inference.rs`.
 
@@ -166,14 +167,14 @@ pub impl Combine for Glb {
         let (a_with_fresh, a_isr) =
             self.infcx.replace_bound_regions_with_fresh_regions(
                 self.span, a);
-        let a_vars = var_ids(&self, a_isr);
+        let a_vars = var_ids(self, a_isr);
         let (b_with_fresh, b_isr) =
             self.infcx.replace_bound_regions_with_fresh_regions(
                 self.span, b);
-        let b_vars = var_ids(&self, b_isr);
+        let b_vars = var_ids(self, b_isr);
 
         // Collect constraints.
-        let sig0 = if_ok!(super_fn_sigs(&self, &a_with_fresh, &b_with_fresh));
+        let sig0 = if_ok!(super_fn_sigs(self, &a_with_fresh, &b_with_fresh));
         debug!("sig0 = %s", sig0.inf_str(self.infcx));
 
         // Generalize the regions appearing in fn_ty0 if possible
@@ -182,7 +183,7 @@ pub impl Combine for Glb {
         let sig1 =
             self.infcx.fold_regions_in_sig(
                 &sig0,
-                |r, _in_fn| generalize_region(&self, snapshot,
+                |r, _in_fn| generalize_region(self, snapshot,
                                               new_vars, a_isr, a_vars, b_vars,
                                               r));
         debug!("sig1 = %s", sig1.inf_str(self.infcx));
@@ -267,36 +268,37 @@ pub impl Combine for Glb {
         }
     }
 
-    fn sigils(p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil> {
-        super_sigils(&self, p1, p2)
+    fn sigils(&self, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil> {
+        super_sigils(self, p1, p2)
     }
 
-    fn abis(p1: ast::Abi, p2: ast::Abi) -> cres<ast::Abi> {
-        super_abis(&self, p1, p2)
+    fn abis(&self, p1: ast::Abi, p2: ast::Abi) -> cres<ast::Abi> {
+        super_abis(self, p1, p2)
     }
 
-    fn bare_fn_tys(a: &ty::BareFnTy,
+    fn bare_fn_tys(&self, a: &ty::BareFnTy,
                    b: &ty::BareFnTy) -> cres<ty::BareFnTy> {
-        super_bare_fn_tys(&self, a, b)
+        super_bare_fn_tys(self, a, b)
     }
 
-    fn closure_tys(a: &ty::ClosureTy,
+    fn closure_tys(&self, a: &ty::ClosureTy,
                    b: &ty::ClosureTy) -> cres<ty::ClosureTy> {
-        super_closure_tys(&self, a, b)
+        super_closure_tys(self, a, b)
     }
 
-    fn substs(did: ast::def_id,
+    fn substs(&self, did: ast::def_id,
               as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs> {
-        super_substs(&self, did, as_, bs)
+        super_substs(self, did, as_, bs)
     }
 
-    fn tps(as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
-        super_tps(&self, as_, bs)
+    fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
+        super_tps(self, as_, bs)
     }
 
-    fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
-        super_self_tys(&self, a, b)
+    fn self_tys(&self, a: Option<ty::t>, b: Option<ty::t>)
+               -> cres<Option<ty::t>> {
+        super_self_tys(self, a, b)
     }
 }
 

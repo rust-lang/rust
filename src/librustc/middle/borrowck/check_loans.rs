@@ -90,16 +90,16 @@ enum assignment_type {
 }
 
 impl assignment_type {
-    fn checked_by_liveness() -> bool {
+    fn checked_by_liveness(&self) -> bool {
         // the liveness pass guarantees that immutable local variables
         // are only assigned once; but it doesn't consider &mut
-        match self {
+        match *self {
           at_straight_up => true,
           at_swap => true
         }
     }
-    fn ing_form(desc: ~str) -> ~str {
-        match self {
+    fn ing_form(&self, desc: ~str) -> ~str {
+        match *self {
           at_straight_up => ~"assigning to " + desc,
           at_swap => ~"swapping to and from " + desc
         }

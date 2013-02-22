@@ -19,21 +19,21 @@ use syntax::codemap::span;
 use syntax::parse::token::special_idents;
 
 pub trait region_scope {
-    pure fn anon_region(span: span) -> Result<ty::Region, ~str>;
-    pure fn self_region(span: span) -> Result<ty::Region, ~str>;
-    pure fn named_region(span: span, id: ast::ident)
+    pure fn anon_region(&self, span: span) -> Result<ty::Region, ~str>;
+    pure fn self_region(&self, span: span) -> Result<ty::Region, ~str>;
+    pure fn named_region(&self, span: span, id: ast::ident)
                       -> Result<ty::Region, ~str>;
 }
 
 pub enum empty_rscope { empty_rscope }
 pub impl region_scope for empty_rscope {
-    pure fn anon_region(_span: span) -> Result<ty::Region, ~str> {
+    pure fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
         result::Ok(ty::re_static)
     }
-    pure fn self_region(_span: span) -> Result<ty::Region, ~str> {
+    pure fn self_region(&self, _span: span) -> Result<ty::Region, ~str> {
         result::Err(~"only the static region is allowed here")
     }
-    pure fn named_region(_span: span, _id: ast::ident)
+    pure fn named_region(&self, _span: span, _id: ast::ident)
         -> Result<ty::Region, ~str> {
         result::Err(~"only the static region is allowed here")
     }
@@ -41,17 +41,17 @@ pub impl region_scope for empty_rscope {
 
 pub enum type_rscope = Option<ty::region_variance>;
 pub impl region_scope for type_rscope {
-    pure fn anon_region(_span: span) -> Result<ty::Region, ~str> {
-        match *self {
+    pure fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
+        match **self {
           Some(_) => result::Ok(ty::re_bound(ty::br_self)),
           None => result::Err(~"to use region types here, the containing \
                                 type must be declared with a region bound")
         }
     }
-    pure fn self_region(span: span) -> Result<ty::Region, ~str> {
+    pure fn self_region(&self, span: span) -> Result<ty::Region, ~str> {
         self.anon_region(span)
     }
-    pure fn named_region(span: span, id: ast::ident)
+    pure fn named_region(&self, span: span, id: ast::ident)
                       -> Result<ty::Region, ~str> {
         do empty_rscope.named_region(span, id).chain_err |_e| {
             result::Err(~"named regions other than `self` are not \
@@ -75,13 +75,13 @@ pub fn in_anon_rscope<RS:region_scope + Copy + Durable>(self: RS,
     @anon_rscope {anon: r, base: self as region_scope}
 }
 pub impl region_scope for @anon_rscope {
-    pure fn anon_region(_span: span) -> Result<ty::Region, ~str> {
+    pure fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
         result::Ok(self.anon)
     }
-    pure fn self_region(span: span) -> Result<ty::Region, ~str> {
+    pure fn self_region(&self, span: span) -> Result<ty::Region, ~str> {
         self.base.self_region(span)
     }
-    pure fn named_region(span: span, id: ast::ident)
+    pure fn named_region(&self, span: span, id: ast::ident)
                       -> Result<ty::Region, ~str> {
         self.base.named_region(span, id)
     }
@@ -98,7 +98,7 @@ pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(self: RS)
     @mut binding_rscope { base: base, anon_bindings: 0 }
 }
 pub impl region_scope for @mut binding_rscope {
-    pure fn anon_region(_span: span) -> Result<ty::Region, ~str> {
+    pure fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
         // XXX: Unsafe to work around purity
         unsafe {
             let idx = self.anon_bindings;
@@ -106,10 +106,10 @@ pub impl region_scope for @mut binding_rscope {
             result::Ok(ty::re_bound(ty::br_anon(idx)))
         }
     }
-    pure fn self_region(span: span) -> Result<ty::Region, ~str> {
+    pure fn self_region(&self, span: span) -> Result<ty::Region, ~str> {
         self.base.self_region(span)
     }
-    pure fn named_region(span: span, id: ast::ident)
+    pure fn named_region(&self, span: span, id: ast::ident)
                       -> Result<ty::Region, ~str> {
         do self.base.named_region(span, id).chain_err |_e| {
             result::Ok(ty::re_bound(ty::br_named(id)))
