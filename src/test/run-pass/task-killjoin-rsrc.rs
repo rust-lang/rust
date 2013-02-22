@@ -13,7 +13,7 @@
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
-use core::pipes::*;
+use core::comm::*;
 
 struct notify {
     ch: Chan<bool>, v: @mut bool,

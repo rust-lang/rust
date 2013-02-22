@@ -32,7 +32,7 @@ macro_rules! select_if (
         ], )*
     } => {
         if $index == $count {
-            match pipes::try_recv($port) {
+            match core::pipes::try_recv($port) {
               $(Some($message($($($x,)+)* next)) => {
                 let $next = next;
                 $e
@@ -66,7 +66,7 @@ macro_rules! select (
               -> $next:ident $e:expr),+
         } )+
     } => ({
-        let index = pipes::selecti([$(($port).header()),+]);
+        let index = core::comm::selecti([$(($port).header()),+]);
         select_if!(index, 0, $( $port => [
             $($message$(($($x),+))dont_type_this* -> $next $e),+
         ], )+)

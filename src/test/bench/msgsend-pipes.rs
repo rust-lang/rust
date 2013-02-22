@@ -20,7 +20,7 @@ extern mod std;
 use io::Writer;
 use io::WriterUtil;
 
-use pipes::{Port, PortSet, Chan};
+use comm::{Port, PortSet, Chan, stream};
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = *ptr::addr_of(&($x)); y } }
@@ -32,7 +32,7 @@ enum request {
     stop
 }
 
-fn server(requests: PortSet<request>, responses: pipes::Chan<uint>) {
+fn server(requests: PortSet<request>, responses: Chan<uint>) {
     let mut count = 0;
     let mut done = false;
     while !done {
@@ -51,8 +51,8 @@ fn server(requests: PortSet<request>, responses: pipes::Chan<uint>) {
 }
 
 fn run(args: &[~str]) {
-    let (from_child, to_parent) = pipes::stream();
-    let (from_parent_, to_child) = pipes::stream();
+    let (from_child, to_parent) = stream();
+    let (from_parent_, to_child) = stream();
     let from_parent = PortSet();
     from_parent.add(from_parent_);
 
@@ -62,7 +62,7 @@ fn run(args: &[~str]) {
     let start = std::time::precise_time_s();
     let mut worker_results = ~[];
     for uint::range(0, workers) |_i| {
-        let (from_parent_, to_child) = pipes::stream();
+        let (from_parent_, to_child) = stream();
         from_parent.add(from_parent_);
         do task::task().future_result(|+r| {
             worker_results.push(r);

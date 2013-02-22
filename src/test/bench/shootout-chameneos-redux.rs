@@ -15,7 +15,7 @@ use std::oldmap;
 use std::oldmap::HashMap;
 use std::sort;
 use std::cell::Cell;
-use core::pipes::*;
+use core::comm::*;
 
 fn print_complements() {
     let all = ~[Blue, Red, Yellow];

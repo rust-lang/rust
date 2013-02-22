@@ -12,7 +12,7 @@
 
 use core::libc;
 use core::prelude::*;
-use core::pipes::{stream, SharedChan};
+use core::comm::{stream, SharedChan};
 use core::ptr;
 use core::result;
 use core::str;

@@ -13,6 +13,7 @@
 extern mod std;
 use std::timer::sleep;
 use std::uv;
+use core::pipes;
 
 proto! oneshot (
     waiting:send {

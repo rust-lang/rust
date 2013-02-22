@@ -18,7 +18,7 @@ use core::either;
 use core::libc;
 use core::libc::c_void;
 use core::cast::transmute;
-use core::pipes::{stream, Chan, SharedChan, Port, select2i};
+use core::comm::{stream, Chan, SharedChan, Port, select2i};
 use core::prelude::*;
 use core::ptr;
 use core;

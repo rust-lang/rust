@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use pipes::send;
-use pipes::Chan;
-use pipes::recv;
+use core::comm::Chan;
 
 pub fn main() { test00(); }
 
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = pipes::PortSet();
+    let p = comm::PortSet();
     let c0 = p.chan();
     let c1 = p.chan();
     let c2 = p.chan();

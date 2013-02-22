@@ -14,7 +14,7 @@ use cast;
 use iter;
 use libc;
 use option;
-use pipes::{GenericChan, GenericPort};
+use comm::{GenericChan, GenericPort};
 use prelude::*;
 use ptr;
 use result;
@@ -59,7 +59,7 @@ The executing thread has no access to a task pointer and will be using
 a normal large stack.
 */
 pub unsafe fn run_in_bare_thread(f: ~fn()) {
-    let (port, chan) = pipes::stream();
+    let (port, chan) = comm::stream();
     // FIXME #4525: Unfortunate that this creates an extra scheduler but it's
     // necessary since rust_raw_thread_join_delete is blocking
     do task::spawn_sched(task::SingleThreaded) {
@@ -110,7 +110,7 @@ fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
 // An unwrapper uses this protocol to communicate with the "other" task that
 // drops the last refcount on an arc. Unfortunately this can't be a proper
 // pipe protocol because the unwrapper has to access both stages at once.
-type UnwrapProto = ~mut Option<(pipes::ChanOne<()>,  pipes::PortOne<bool>)>;
+type UnwrapProto = ~mut Option<(comm::ChanOne<()>,  comm::PortOne<bool>)>;
 
 struct ArcData<T> {
     mut count:     libc::intptr_t,
@@ -143,9 +143,9 @@ struct ArcDestruct<T> {
                             cast::reinterpret_cast(&data.unwrapper);
                         let (message, response) = option::swap_unwrap(p);
                         // Send 'ready' and wait for a response.
-                        pipes::send_one(message, ());
+                        comm::send_one(message, ());
                         // Unkillable wait. Message guaranteed to come.
-                        if pipes::recv_one(response) {
+                        if comm::recv_one(response) {
                             // Other task got the data.
                             cast::forget(data);
                         } else {
@@ -172,7 +172,7 @@ pub unsafe fn unwrap_shared_mutable_state<T:Owned>(rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>,
-        mut response: Option<pipes::ChanOne<bool>>,
+        mut response: Option<comm::ChanOne<bool>>,
         drop {
             unsafe {
                 let response = option::swap_unwrap(&mut self.response);
@@ -180,13 +180,13 @@ pub unsafe fn unwrap_shared_mutable_state<T:Owned>(rc: SharedMutableState<T>)
                 // tried to wake us whether they should hand-off the data to
                 // us.
                 if task::failing() {
-                    pipes::send_one(response, false);
+                    comm::send_one(response, false);
                     // Either this swap_unwrap or the one below (at "Got
                     // here") ought to run.
                     cast::forget(option::swap_unwrap(&mut self.ptr));
                 } else {
                     assert self.ptr.is_none();
-                    pipes::send_one(response, true);
+                    comm::send_one(response, true);
                 }
             }
         }
@@ -194,8 +194,8 @@ pub unsafe fn unwrap_shared_mutable_state<T:Owned>(rc: SharedMutableState<T>)
 
     do task::unkillable {
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&rc.data);
-        let (p1,c1) = pipes::oneshot(); // ()
-        let (p2,c2) = pipes::oneshot(); // bool
+        let (p1,c1) = comm::oneshot(); // ()
+        let (p2,c2) = comm::oneshot(); // bool
         let server: UnwrapProto = ~mut Some((c1,p2));
         let serverp: int = cast::transmute(server);
         // Try to put our server end in the unwrapper slot.
@@ -218,7 +218,7 @@ pub unsafe fn unwrap_shared_mutable_state<T:Owned>(rc: SharedMutableState<T>)
                                   response: Some(c2) };
                 let mut p1 = Some(p1); // argh
                 do task::rekillable {
-                    pipes::recv_one(option::swap_unwrap(&mut p1));
+                    comm::recv_one(option::swap_unwrap(&mut p1));
                 }
                 // Got here. Back in the 'unkillable' without getting killed.
                 // Recover ownership of ptr, then take the data out.
@@ -410,7 +410,7 @@ pub mod tests {
     use core::option::{None, Some};
 
     use option;
-    use pipes;
+    use comm;
     use private::{exclusive, unwrap_exclusive};
     use result;
     use task;
@@ -427,7 +427,7 @@ pub mod tests {
 
         for uint::range(0, num_tasks) |_i| {
             let total = total.clone();
-            let (port, chan) = pipes::stream();
+            let (port, chan) = comm::stream();
             futures.push(port);
 
             do task::spawn || {

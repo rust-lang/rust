@@ -39,7 +39,7 @@ use core::ptr::to_unsafe_ptr;
 use core::ptr;
 use core::str;
 use core::vec;
-use core::pipes::{stream, Chan, SharedChan, Port};
+use core::comm::{stream, Chan, SharedChan, Port};
 
 // libuv struct mappings
 pub struct uv_ip4_addr {

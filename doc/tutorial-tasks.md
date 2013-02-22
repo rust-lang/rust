@@ -157,7 +157,7 @@ concurrently:
 
 ~~~~
 use task::spawn;
-use pipes::{stream, Port, Chan};
+use comm::{stream, Port, Chan};
 
 let (port, chan): (Port<int>, Chan<int>) = stream();
 
@@ -178,7 +178,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 a tuple into its component parts).
 
 ~~~~
-# use pipes::{stream, Chan, Port};
+# use comm::{stream, Chan, Port};
 let (port, chan): (Port<int>, Chan<int>) = stream();
 ~~~~
 
@@ -189,7 +189,7 @@ spawns the child task.
 ~~~~
 # use task::{spawn};
 # use task::spawn;
-# use pipes::{stream, Port, Chan};
+# use comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 # let (port, chan) = stream();
 do spawn || {
@@ -209,7 +209,7 @@ computation, then waits for the child's result to arrive on the
 port:
 
 ~~~~
-# use pipes::{stream, Port, Chan};
+# use comm::{stream, Port, Chan};
 # fn some_other_expensive_computation() {}
 # let (port, chan) = stream::<int>();
 # chan.send(0);
@@ -225,7 +225,7 @@ following program is ill-typed:
 
 ~~~ {.xfail-test}
 # use task::{spawn};
-# use pipes::{stream, Port, Chan};
+# use comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 let (port, chan) = stream();
 
@@ -245,7 +245,7 @@ Instead we can use a `SharedChan`, a type that allows a single
 
 ~~~
 # use task::spawn;
-use pipes::{stream, SharedChan};
+use comm::{stream, SharedChan};
 
 let (port, chan) = stream();
 let chan = SharedChan(chan);
@@ -278,7 +278,7 @@ might look like the example below.
 
 ~~~
 # use task::spawn;
-# use pipes::{stream, Port, Chan};
+# use comm::{stream, Port, Chan};
 
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
@@ -393,7 +393,7 @@ internally, with additional logic to wait for the child task to finish
 before returning. Hence:
 
 ~~~
-# use pipes::{stream, Chan, Port};
+# use comm::{stream, Chan, Port};
 # use task::{spawn, try};
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
@@ -468,7 +468,7 @@ Here is the function that implements the child task:
 
 ~~~~
 # use std::comm::DuplexStream;
-# use pipes::{Port, Chan};
+# use comm::{Port, Chan};
 fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -491,7 +491,7 @@ Here is the code for the parent task:
 
 ~~~~
 # use std::comm::DuplexStream;
-# use pipes::{Port, Chan};
+# use comm::{Port, Chan};
 # use task::spawn;
 # fn stringifier(channel: &DuplexStream<~str, uint>) {
 #     let mut value: uint;

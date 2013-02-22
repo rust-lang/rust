@@ -12,7 +12,7 @@
 /// parallelism.
 
 use core::io;
-use core::pipes::{Chan, Port};
+use core::comm::{Chan, Port};
 use core::pipes;
 use core::prelude::*;
 use core::task::{SchedMode, SingleThreaded};
@@ -47,7 +47,7 @@ pub impl<T> TaskPool<T> {
         assert n_tasks >= 1;
 
         let channels = do vec::from_fn(n_tasks) |i| {
-            let (port, chan) = pipes::stream::<Msg<T>>();
+            let (port, chan) = comm::stream::<Msg<T>>();
             let init_fn = init_fn_factory();
 
             let task_body: ~fn() = || {

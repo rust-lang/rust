@@ -13,8 +13,8 @@
 
 extern mod std;
 
-fn start(c: pipes::Chan<pipes::Chan<~str>>) {
-    let (p, ch) = pipes::stream();
+fn start(c: comm::Chan<comm::Chan<~str>>) {
+    let (p, ch) = comm::stream();
     c.send(ch);
 
     let mut a;
@@ -28,7 +28,7 @@ fn start(c: pipes::Chan<pipes::Chan<~str>>) {
 }
 
 pub fn main() {
-    let (p, ch) = pipes::stream();
+    let (p, ch) = comm::stream();
     let child = task::spawn(|| start(ch) );
 
     let c = p.recv();

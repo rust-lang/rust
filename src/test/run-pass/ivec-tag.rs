@@ -1,4 +1,4 @@
-use core::pipes::*;
+use core::comm::*;
 
 fn producer(c: &Chan<~[u8]>) {
     c.send(

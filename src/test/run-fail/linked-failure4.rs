@@ -14,7 +14,7 @@
 fn child() { assert (1 == 2); }
 
 fn parent() {
-    let (p, _c) = pipes::stream::<int>();
+    let (p, _c) = comm::stream::<int>();
     task::spawn(|| child() );
     let x = p.recv();
 }
@@ -22,7 +22,7 @@ fn parent() {
 // This task is not linked to the failure chain, but since the other
 // tasks are going to fail the kernel, this one will fail too
 fn sleeper() {
-    let (p, _c) = pipes::stream::<int>();
+    let (p, _c) = comm::stream::<int>();
     let x = p.recv();
 }
 
