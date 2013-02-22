@@ -105,27 +105,27 @@ pub fn icx_popper(ccx: @CrateContext) -> icx_popper {
 }
 
 pub trait get_insn_ctxt {
-    fn insn_ctxt(s: &str) -> icx_popper;
+    fn insn_ctxt(&self, s: &str) -> icx_popper;
 }
 
 pub impl get_insn_ctxt for @CrateContext {
-    fn insn_ctxt(s: &str) -> icx_popper {
+    fn insn_ctxt(&self, s: &str) -> icx_popper {
         debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
             self.stats.llvm_insn_ctxt.push(str::from_slice(s));
         }
-        icx_popper(self)
+        icx_popper(*self)
     }
 }
 
 pub impl get_insn_ctxt for block {
-    fn insn_ctxt(s: &str) -> icx_popper {
+    fn insn_ctxt(&self, s: &str) -> icx_popper {
         self.ccx().insn_ctxt(s)
     }
 }
 
 pub impl get_insn_ctxt for fn_ctxt {
-    fn insn_ctxt(s: &str) -> icx_popper {
+    fn insn_ctxt(&self, s: &str) -> icx_popper {
         self.ccx.insn_ctxt(s)
     }
 }

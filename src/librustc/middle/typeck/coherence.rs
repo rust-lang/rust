@@ -197,6 +197,7 @@ pub struct CoherenceChecker {
 }
 
 pub impl CoherenceChecker {
+    // IMPLICIT SELF WARNING: fix this!
     fn check_coherence(crate: @crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
@@ -235,7 +236,8 @@ pub impl CoherenceChecker {
         self.populate_destructor_table();
     }
 
-    fn check_implementation(item: @item, associated_traits: ~[@trait_ref]) {
+    fn check_implementation(&self,
+                            item: @item, associated_traits: ~[@trait_ref]) {
         let self_type = self.crate_context.tcx.tcache.get(
             &local_def(item.id));
 
@@ -302,7 +304,8 @@ pub impl CoherenceChecker {
                     let implementation;
                     match implementation_opt {
                         None => {
-                            implementation = self.create_impl_from_item(item);
+                            implementation =
+                                self.create_impl_from_item(item);
                         }
                         Some(copy existing_implementation) => {
                             implementation = existing_implementation;
@@ -321,7 +324,7 @@ pub impl CoherenceChecker {
     // Creates default method IDs and performs type substitutions for an impl
     // and trait pair. Then, for each provided method in the trait, inserts a
     // `ProvidedMethodInfo` instance into the `provided_method_sources` map.
-    fn instantiate_default_methods(impl_id: ast::node_id,
+    fn instantiate_default_methods(&self, impl_id: ast::node_id,
                                    trait_did: ast::def_id) {
         for self.each_provided_trait_method(trait_did) |trait_method| {
             // Synthesize an ID.
@@ -330,7 +333,8 @@ pub impl CoherenceChecker {
             let new_did = local_def(new_id);
 
             // XXX: Perform substitutions.
-            let new_polytype = ty::lookup_item_type(tcx, trait_method.def_id);
+            let new_polytype = ty::lookup_item_type(tcx,
+                                                    trait_method.def_id);
             tcx.tcache.insert(new_did, new_polytype);
 
             // Pair the new synthesized ID up with the
@@ -380,7 +384,8 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn add_inherent_method(base_def_id: def_id, implementation: @Impl) {
+    fn add_inherent_method(&self,
+                           base_def_id: def_id, implementation: @Impl) {
         let implementation_list;
         match self.crate_context.coherence_info.inherent_methods
                   .find(&base_def_id) {
@@ -397,7 +402,7 @@ pub impl CoherenceChecker {
         implementation_list.push(implementation);
     }
 
-    fn add_trait_method(trait_id: def_id, implementation: @Impl) {
+    fn add_trait_method(&self, trait_id: def_id, implementation: @Impl) {
         let implementation_list;
         match self.crate_context.coherence_info.extension_methods
                   .find(&trait_id) {
@@ -414,7 +419,7 @@ pub impl CoherenceChecker {
         implementation_list.push(implementation);
     }
 
-    fn check_implementation_coherence() {
+    fn check_implementation_coherence(&self) {
         let coherence_info = &mut self.crate_context.coherence_info;
         let extension_methods = &coherence_info.extension_methods;
 
@@ -423,7 +428,7 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn check_implementation_coherence_of(trait_def_id: def_id) {
+    fn check_implementation_coherence_of(&self, trait_def_id: def_id) {
 
         // Unify pairs of polytypes.
         do self.iter_impls_of_trait(trait_def_id) |a| {
@@ -459,7 +464,8 @@ pub impl CoherenceChecker {
 
     // Adds an impl of trait trait_t for self type self_t; that impl
     // is the_impl
-    fn add_impl_for_trait(trait_t: def_id, self_t: t, the_impl: @Impl) {
+    fn add_impl_for_trait(&self,
+                          trait_t: def_id, self_t: t, the_impl: @Impl) {
         debug!("Adding impl %? of %? for %s",
                the_impl.did, trait_t,
                ty_to_str(self.crate_context.tcx, self_t));
@@ -475,7 +481,7 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn iter_impls_of_trait(trait_def_id: def_id,
+    fn iter_impls_of_trait(&self, trait_def_id: def_id,
                            f: &fn(@Impl)) {
 
         let coherence_info = &mut self.crate_context.coherence_info;
@@ -491,7 +497,7 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn each_provided_trait_method(
+    fn each_provided_trait_method(&self,
             trait_did: ast::def_id,
             f: &fn(x: &ty::method) -> bool) {
         // Make a list of all the names of the provided methods.
@@ -511,7 +517,7 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn polytypes_unify(polytype_a: ty_param_bounds_and_ty,
+    fn polytypes_unify(&self, polytype_a: ty_param_bounds_and_ty,
                        polytype_b: ty_param_bounds_and_ty)
                     -> bool {
         let universally_quantified_a =
@@ -527,7 +533,7 @@ pub impl CoherenceChecker {
 
     // Converts a polytype to a monotype by replacing all parameters with
     // type variables. Returns the monotype and the type variables created.
-    fn universally_quantify_polytype(polytype: ty_param_bounds_and_ty)
+    fn universally_quantify_polytype(&self, polytype: ty_param_bounds_and_ty)
                                   -> UniversalQuantificationResult {
         // NDM--this span is bogus.
         let self_region =
@@ -558,7 +564,8 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn can_unify_universally_quantified(a: &a/UniversalQuantificationResult,
+    fn can_unify_universally_quantified(&self,
+                                        a: &a/UniversalQuantificationResult,
                                         b: &a/UniversalQuantificationResult)
                                      -> bool {
         let mut might_unify = true;
@@ -610,12 +617,13 @@ pub impl CoherenceChecker {
         might_unify
     }
 
-    fn get_self_type_for_implementation(implementation: @Impl)
+    fn get_self_type_for_implementation(&self, implementation: @Impl)
                                      -> ty_param_bounds_and_ty {
         return self.crate_context.tcx.tcache.get(&implementation.did);
     }
 
     // Privileged scope checking
+    // IMPLICIT SELF WARNING: fix this!
     fn check_privileged_scopes(crate: @crate) {
         visit_crate(*crate, (), mk_vt(@Visitor {
             visit_item: |item, _context, visitor| {
@@ -699,7 +707,7 @@ pub impl CoherenceChecker {
         }));
     }
 
-    fn trait_ref_to_trait_def_id(trait_ref: @trait_ref) -> def_id {
+    fn trait_ref_to_trait_def_id(&self, trait_ref: @trait_ref) -> def_id {
         let def_map = self.crate_context.tcx.def_map;
         let trait_def = def_map.get(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
@@ -708,7 +716,7 @@ pub impl CoherenceChecker {
 
     // This check doesn't really have anything to do with coherence. It's
     // here for historical reasons
-    fn please_check_that_trait_methods_are_implemented(
+    fn please_check_that_trait_methods_are_implemented(&self,
         all_methods: &mut ~[@MethodInfo],
         trait_did: def_id,
         trait_ref_span: span) {
@@ -735,7 +743,7 @@ pub impl CoherenceChecker {
     }
 
     // Converts an implementation in the AST to an Impl structure.
-    fn create_impl_from_item(item: @item) -> @Impl {
+    fn create_impl_from_item(&self, item: @item) -> @Impl {
         fn add_provided_methods(all_methods: &mut ~[@MethodInfo],
                                 all_provided_methods: ~[@ProvidedMethodInfo],
                                 sess: driver::session::Session) {
@@ -806,7 +814,7 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn span_of_impl(implementation: @Impl) -> span {
+    fn span_of_impl(&self, implementation: @Impl) -> span {
         assert implementation.did.crate == local_crate;
         match self.crate_context.tcx.items.find(&implementation.did.node) {
             Some(node_item(item, _)) => {
@@ -822,7 +830,7 @@ pub impl CoherenceChecker {
 
     // External crate handling
 
-    fn add_impls_for_module(impls_seen: HashMap<def_id,()>,
+    fn add_impls_for_module(&self, impls_seen: HashMap<def_id,()>,
                             crate_store: @mut CStore,
                             module_def_id: def_id) {
         let implementations = get_impls_for_mod(crate_store,
@@ -907,7 +915,8 @@ pub impl CoherenceChecker {
         }
     }
 
-    fn add_default_methods_for_external_trait(trait_def_id: ast::def_id) {
+    fn add_default_methods_for_external_trait(&self,
+                                              trait_def_id: ast::def_id) {
         let tcx = self.crate_context.tcx;
         let pmm = tcx.provided_methods;
 
@@ -942,7 +951,7 @@ pub impl CoherenceChecker {
 
     // Adds implementations and traits from external crates to the coherence
     // info.
-    fn add_external_crates() {
+    fn add_external_crates(&self) {
         let impls_seen = HashMap();
 
         let crate_store = self.crate_context.tcx.sess.cstore;
@@ -983,7 +992,7 @@ pub impl CoherenceChecker {
     // Destructors
     //
 
-    fn populate_destructor_table() {
+    fn populate_destructor_table(&self) {
         let coherence_info = &mut self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
         let drop_trait = tcx.lang_items.drop_trait();
