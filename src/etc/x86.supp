@@ -415,6 +415,13 @@
    ...
 }
 
+{
+   enum-instruction-scheduling-8
+   Memcheck:Cond
+   fun:*should_set_output_format_to_markdown_if_requested*
+   ...
+}
+
 {  
    llvm-user-new-leak
    Memcheck:Leak
