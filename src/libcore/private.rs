@@ -495,7 +495,7 @@ pub mod tests {
         res.recv();
     }
 
-    #[test] #[should_fail] #[ignore(reason = "random red")]
+    #[test] #[should_fail] #[ignore(cfg(windows))]
     pub fn exclusive_unwrap_conflict() {
         let x = exclusive(~~"hello");
         let x2 = ~mut Some(x.clone());
@@ -507,7 +507,8 @@ pub mod tests {
         }
         assert unwrap_exclusive(x) == ~~"hello";
         let res = option::swap_unwrap(&mut res);
-        res.recv();
+        // See #4689 for why this can't be just "res.recv()".
+        assert res.recv() == task::Success;
     }
 
     #[test] #[ignore(cfg(windows))]
