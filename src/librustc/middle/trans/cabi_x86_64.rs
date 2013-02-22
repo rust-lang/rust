@@ -14,6 +14,7 @@
 use lib::llvm::{llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
+use lib::llvm::struct_tys;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
@@ -63,19 +64,6 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     fn align(off: uint, ty: TypeRef) -> uint {
         let a = ty_align(ty);
         return (off + a - 1u) / a * a;
-    }
-
-    fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
-        unsafe {
-            let n = llvm::LLVMCountStructElementTypes(ty);
-        if (n == 0) {
-            return ~[];
-        }
-            let mut elts = vec::from_elem(n as uint, ptr::null());
-            llvm::LLVMGetStructElementTypes(ty,
-                ptr::to_mut_unsafe_ptr(&mut elts[0]));
-            return elts;
-        }
     }
 
     fn ty_align(ty: TypeRef) -> uint {
