@@ -535,17 +535,17 @@ pub struct scope_info {
 }
 
 pub trait get_node_info {
-    fn info() -> Option<NodeInfo>;
+    fn info(&self) -> Option<NodeInfo>;
 }
 
 pub impl get_node_info for @ast::expr {
-    fn info() -> Option<NodeInfo> {
+    fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo { id: self.id, span: self.span })
     }
 }
 
 pub impl get_node_info for ast::blk {
-    fn info() -> Option<NodeInfo> {
+    fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo { id: self.node.id, span: self.span })
     }
 }
@@ -554,7 +554,7 @@ pub impl get_node_info for ast::blk {
 pub type optional_boxed_ast_expr = Option<@ast::expr>;
 
 pub impl get_node_info for optional_boxed_ast_expr {
-    fn info() -> Option<NodeInfo> {
+    fn info(&self) -> Option<NodeInfo> {
         self.chain_ref(|s| s.info())
     }
 }
@@ -627,7 +627,7 @@ pub fn rslt(bcx: block, val: ValueRef) -> Result {
 }
 
 pub impl Result {
-    fn unpack(bcx: &mut block) -> ValueRef {
+    fn unpack(&self, bcx: &mut block) -> ValueRef {
         *bcx = self.bcx;
         return self.val;
     }
@@ -691,27 +691,27 @@ pub fn block_parent(cx: block) -> block {
 // Accessors
 
 pub impl block {
-    pure fn ccx() -> @CrateContext { *self.fcx.ccx }
-    pure fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
-    pure fn sess() -> Session { self.fcx.ccx.sess }
+    pure fn ccx(&self) -> @CrateContext { *self.fcx.ccx }
+    pure fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
+    pure fn sess(&self) -> Session { self.fcx.ccx.sess }
 
-    fn node_id_to_str(id: ast::node_id) -> ~str {
+    fn node_id_to_str(&self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    fn expr_to_str(e: @ast::expr) -> ~str {
+    fn expr_to_str(&self, e: @ast::expr) -> ~str {
         expr_repr(self.tcx(), e)
     }
 
-    fn expr_is_lval(e: @ast::expr) -> bool {
+    fn expr_is_lval(&self, e: @ast::expr) -> bool {
         ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn expr_kind(e: @ast::expr) -> ty::ExprKind {
+    fn expr_kind(&self, e: @ast::expr) -> ty::ExprKind {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn def(nid: ast::node_id) -> ast::def {
+    fn def(&self, nid: ast::node_id) -> ast::def {
         match self.tcx().def_map.find(&nid) {
             Some(v) => v,
             None => {
@@ -721,15 +721,15 @@ pub impl block {
         }
     }
 
-    fn val_str(val: ValueRef) -> @str {
+    fn val_str(&self, val: ValueRef) -> @str {
         val_str(self.ccx().tn, val)
     }
 
-    fn llty_str(llty: TypeRef) -> @str {
+    fn llty_str(&self, llty: TypeRef) -> @str {
         ty_str(self.ccx().tn, llty)
     }
 
-    fn ty_to_str(t: ty::t) -> ~str {
+    fn ty_to_str(&self, t: ty::t) -> ~str {
         ty_to_str(self.tcx(), t)
     }
     fn to_str(&self) -> ~str {

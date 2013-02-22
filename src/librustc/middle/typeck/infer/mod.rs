@@ -489,24 +489,24 @@ fn resolve_borrowings(cx: @mut InferCtxt) {
 */
 
 trait then {
-    fn then<T:Copy>(f: fn() -> Result<T,ty::type_err>)
+    fn then<T:Copy>(&self, f: fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err>;
 }
 
 impl then for ures {
-    fn then<T:Copy>(f: fn() -> Result<T,ty::type_err>)
+    fn then<T:Copy>(&self, f: fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err> {
         self.chain(|_i| f())
     }
 }
 
 trait ToUres {
-    fn to_ures() -> ures;
+    fn to_ures(&self) -> ures;
 }
 
 impl<T> ToUres for cres<T> {
-    fn to_ures() -> ures {
-        match self {
+    fn to_ures(&self) -> ures {
+        match *self {
           Ok(ref _v) => Ok(()),
           Err(ref e) => Err((*e))
         }
@@ -514,14 +514,14 @@ impl<T> ToUres for cres<T> {
 }
 
 trait CresCompare<T> {
-    fn compare(t: T, f: fn() -> ty::type_err) -> cres<T>;
+    fn compare(&self, t: T, f: fn() -> ty::type_err) -> cres<T>;
 }
 
 impl<T:Copy + Eq> CresCompare<T> for cres<T> {
-    fn compare(t: T, f: fn() -> ty::type_err) -> cres<T> {
+    fn compare(&self, t: T, f: fn() -> ty::type_err) -> cres<T> {
         do self.chain |s| {
             if s == t {
-                self
+                *self
             } else {
                 Err(f())
             }
@@ -551,22 +551,22 @@ struct Snapshot {
 }
 
 impl @mut InferCtxt {
-    fn combine_fields(a_is_expected: bool,
+    fn combine_fields(&self, a_is_expected: bool,
                       span: span) -> CombineFields {
-        CombineFields {infcx: self,
+        CombineFields {infcx: *self,
                        a_is_expected: a_is_expected,
                        span: span}
     }
 
-    fn sub(a_is_expected: bool, span: span) -> Sub {
+    fn sub(&self, a_is_expected: bool, span: span) -> Sub {
         Sub(self.combine_fields(a_is_expected, span))
     }
 
-    fn in_snapshot() -> bool {
+    fn in_snapshot(&self) -> bool {
         self.region_vars.in_snapshot()
     }
 
-    fn start_snapshot() -> Snapshot {
+    fn start_snapshot(&self) -> Snapshot {
         Snapshot {
             ty_var_bindings_len:
                 self.ty_var_bindings.bindings.len(),
@@ -579,7 +579,7 @@ impl @mut InferCtxt {
         }
     }
 
-    fn rollback_to(snapshot: &Snapshot) {
+    fn rollback_to(&self, snapshot: &Snapshot) {
         debug!("rollback!");
         rollback_to(&mut self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
@@ -643,7 +643,7 @@ fn next_simple_var<V:Copy,T:Copy>(
 }
 
 impl @mut InferCtxt {
-    fn next_ty_var_id() -> TyVid {
+    fn next_ty_var_id(&self) -> TyVid {
         let id = self.ty_var_counter;
         self.ty_var_counter += 1;
         let vals = self.ty_var_bindings.vals;
@@ -651,37 +651,37 @@ impl @mut InferCtxt {
         return TyVid(id);
     }
 
-    fn next_ty_var() -> ty::t {
+    fn next_ty_var(&self) -> ty::t {
         ty::mk_var(self.tcx, self.next_ty_var_id())
     }
 
-    fn next_ty_vars(n: uint) -> ~[ty::t] {
+    fn next_ty_vars(&self, n: uint) -> ~[ty::t] {
         vec::from_fn(n, |_i| self.next_ty_var())
     }
 
-    fn next_int_var_id() -> IntVid {
+    fn next_int_var_id(&self) -> IntVid {
         IntVid(next_simple_var(&mut self.int_var_counter,
                                &mut self.int_var_bindings))
     }
 
-    fn next_int_var() -> ty::t {
+    fn next_int_var(&self) -> ty::t {
         ty::mk_int_var(self.tcx, self.next_int_var_id())
     }
 
-    fn next_float_var_id() -> FloatVid {
+    fn next_float_var_id(&self) -> FloatVid {
         FloatVid(next_simple_var(&mut self.float_var_counter,
                                  &mut self.float_var_bindings))
     }
 
-    fn next_float_var() -> ty::t {
+    fn next_float_var(&self) -> ty::t {
         ty::mk_float_var(self.tcx, self.next_float_var_id())
     }
 
-    fn next_region_var_nb(span: span) -> ty::Region {
+    fn next_region_var_nb(&self, span: span) -> ty::Region {
         ty::re_infer(ty::ReVar(self.region_vars.new_region_var(span)))
     }
 
-    fn next_region_var_with_lb(span: span,
+    fn next_region_var_with_lb(&self, span: span,
                                lb_region: ty::Region) -> ty::Region {
         let region_var = self.next_region_var_nb(span);
 
@@ -693,27 +693,28 @@ impl @mut InferCtxt {
         return region_var;
     }
 
-    fn next_region_var(span: span, scope_id: ast::node_id) -> ty::Region {
+    fn next_region_var(&self, span: span, scope_id: ast::node_id)
+                      -> ty::Region {
         self.next_region_var_with_lb(span, ty::re_scope(scope_id))
     }
 
-    fn resolve_regions() {
+    fn resolve_regions(&self) {
         self.region_vars.resolve_regions();
     }
 
-    fn ty_to_str(t: ty::t) -> ~str {
+    fn ty_to_str(&self, t: ty::t) -> ~str {
         ty_to_str(self.tcx,
                   self.resolve_type_vars_if_possible(t))
     }
 
-    fn resolve_type_vars_if_possible(typ: ty::t) -> ty::t {
-        match resolve_type(self, typ, resolve_nested_tvar | resolve_ivar) {
+    fn resolve_type_vars_if_possible(&self, typ: ty::t) -> ty::t {
+        match resolve_type(*self, typ, resolve_nested_tvar | resolve_ivar) {
           result::Ok(new_type) => new_type,
           result::Err(_) => typ
         }
     }
 
-    fn type_error_message(sp: span, mk_msg: fn(~str) -> ~str,
+    fn type_error_message(&self, sp: span, mk_msg: fn(~str) -> ~str,
                           actual_ty: ty::t, err: Option<&ty::type_err>) {
         let actual_ty = self.resolve_type_vars_if_possible(actual_ty);
 
@@ -731,7 +732,7 @@ impl @mut InferCtxt {
              ty::note_and_explain_type_err(self.tcx, *err));
     }
 
-    fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
+    fn report_mismatched_types(&self, sp: span, e: ty::t, a: ty::t,
                                err: &ty::type_err) {
         // Don't report an error if expected is ty_err
         let resolved_expected =
@@ -749,7 +750,7 @@ impl @mut InferCtxt {
         self.type_error_message(sp, mk_msg, a, Some(err));
     }
 
-    fn replace_bound_regions_with_fresh_regions(
+    fn replace_bound_regions_with_fresh_regions(&self,
             span: span,
             fsig: &ty::FnSig)
          -> (ty::FnSig, isr_alist) {

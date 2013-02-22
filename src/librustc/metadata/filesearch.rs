@@ -29,10 +29,10 @@ pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
 }
 
 pub trait FileSearch {
-    fn sysroot() -> Path;
-    fn lib_search_paths() -> ~[Path];
-    fn get_target_lib_path() -> Path;
-    fn get_target_lib_file_path(file: &Path) -> Path;
+    fn sysroot(&self) -> Path;
+    fn lib_search_paths(&self) -> ~[Path];
+    fn get_target_lib_path(&self) -> Path;
+    fn get_target_lib_file_path(&self, file: &Path) -> Path;
 }
 
 pub fn mk_filesearch(maybe_sysroot: Option<Path>,
@@ -44,8 +44,8 @@ pub fn mk_filesearch(maybe_sysroot: Option<Path>,
         target_triple: ~str
     }
     impl FileSearch for FileSearchImpl {
-        fn sysroot() -> Path { /*bad*/copy self.sysroot }
-        fn lib_search_paths() -> ~[Path] {
+        fn sysroot(&self) -> Path { /*bad*/copy self.sysroot }
+        fn lib_search_paths(&self) -> ~[Path] {
             let mut paths = /*bad*/copy self.addl_lib_search_paths;
 
             paths.push(
@@ -61,10 +61,10 @@ pub fn mk_filesearch(maybe_sysroot: Option<Path>,
             }
             paths
         }
-        fn get_target_lib_path() -> Path {
+        fn get_target_lib_path(&self) -> Path {
             make_target_lib_path(&self.sysroot, self.target_triple)
         }
-        fn get_target_lib_file_path(file: &Path) -> Path {
+        fn get_target_lib_file_path(&self, file: &Path) -> Path {
             self.get_target_lib_path().push_rel(file)
         }
     }

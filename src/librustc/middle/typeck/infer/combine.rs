@@ -78,37 +78,38 @@ pub fn macros() {
 }
 
 pub trait Combine {
-    fn infcx() -> @mut InferCtxt;
-    fn tag() -> ~str;
-    fn a_is_expected() -> bool;
-    fn span() -> span;
+    fn infcx(&self) -> @mut InferCtxt;
+    fn tag(&self) -> ~str;
+    fn a_is_expected(&self) -> bool;
+    fn span(&self) -> span;
 
-    fn sub() -> Sub;
-    fn lub() -> Lub;
-    fn glb() -> Glb;
+    fn sub(&self) -> Sub;
+    fn lub(&self) -> Lub;
+    fn glb(&self) -> Glb;
 
-    fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt>;
-    fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
-    fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
-    fn tps(as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
-    fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>>;
-    fn substs(did: ast::def_id, as_: &ty::substs,
+    fn mts(&self, a: ty::mt, b: ty::mt) -> cres<ty::mt>;
+    fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
+    fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
+    fn tps(&self, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
+    fn self_tys(&self, a: Option<ty::t>, b: Option<ty::t>)
+               -> cres<Option<ty::t>>;
+    fn substs(&self, did: ast::def_id, as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs>;
-    fn bare_fn_tys(a: &ty::BareFnTy,
+    fn bare_fn_tys(&self, a: &ty::BareFnTy,
                    b: &ty::BareFnTy) -> cres<ty::BareFnTy>;
-    fn closure_tys(a: &ty::ClosureTy,
+    fn closure_tys(&self, a: &ty::ClosureTy,
                    b: &ty::ClosureTy) -> cres<ty::ClosureTy>;
-    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
-    fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
-    fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
-    fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg>;
-    fn sigils(p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil>;
-    fn purities(a: purity, b: purity) -> cres<purity>;
-    fn abis(a: ast::Abi, b: ast::Abi) -> cres<ast::Abi>;
-    fn oncenesses(a: Onceness, b: Onceness) -> cres<Onceness>;
-    fn contraregions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
-    fn regions(a: ty::Region, b: ty::Region) -> cres<ty::Region>;
-    fn vstores(vk: ty::terr_vstore_kind,
+    fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
+    fn flds(&self, a: ty::field, b: ty::field) -> cres<ty::field>;
+    fn modes(&self, a: ast::mode, b: ast::mode) -> cres<ast::mode>;
+    fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg>;
+    fn sigils(&self, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil>;
+    fn purities(&self, a: purity, b: purity) -> cres<purity>;
+    fn abis(&self, a: ast::Abi, b: ast::Abi) -> cres<ast::Abi>;
+    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness>;
+    fn contraregions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
+    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
+    fn vstores(&self, vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore>;
 }
 
