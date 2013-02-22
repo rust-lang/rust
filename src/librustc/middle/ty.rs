@@ -230,7 +230,7 @@ pub type ctxt = @ctxt_;
 struct ctxt_ {
     diag: syntax::diagnostic::span_handler,
     interner: HashMap<intern_key, t_box>,
-    mut next_id: uint,
+    next_id: @mut uint,
     vecs_implicitly_copyable: bool,
     legacy_modes: bool,
     cstore: @mut metadata::cstore::CStore,
@@ -260,7 +260,7 @@ struct ctxt_ {
     short_names_cache: HashMap<t, @~str>,
     needs_drop_cache: HashMap<t, bool>,
     needs_unwind_cleanup_cache: HashMap<t, bool>,
-    mut tc_cache: LinearMap<uint, TypeContents>,
+    tc_cache: @mut LinearMap<uint, TypeContents>,
     ast_ty_to_ty_cache: HashMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
     trait_method_cache: HashMap<def_id, @~[method]>,
@@ -804,7 +804,7 @@ pub fn mk_ctxt(s: session::Session,
     @ctxt_ {
         diag: s.diagnostic(),
         interner: interner,
-        mut next_id: 0u,
+        next_id: @mut 0,
         vecs_implicitly_copyable: vecs_implicitly_copyable,
         legacy_modes: legacy_modes,
         cstore: s.cstore,
@@ -823,7 +823,7 @@ pub fn mk_ctxt(s: session::Session,
         short_names_cache: new_ty_hash(),
         needs_drop_cache: new_ty_hash(),
         needs_unwind_cleanup_cache: new_ty_hash(),
-        tc_cache: LinearMap::new(),
+        tc_cache: @mut LinearMap::new(),
         ast_ty_to_ty_cache: HashMap(),
         enum_var_cache: HashMap(),
         trait_method_cache: HashMap(),
@@ -912,7 +912,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
 
     let t = @t_box_ {
         sty: st,
-        id: cx.next_id,
+        id: *cx.next_id,
         flags: flags,
         o_def_id: o_def_id
     };
@@ -923,7 +923,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
 
     cx.interner.insert(key, t);
 
-    cx.next_id += 1u;
+    *cx.next_id += 1;
     unsafe { cast::reinterpret_cast(&t) }
 }
 
