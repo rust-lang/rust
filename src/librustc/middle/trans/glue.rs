@@ -654,7 +654,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     let _icx = ccx.insn_ctxt("declare_tydesc");
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
-    assert !ccx.finished_tydescs;
+    assert !*ccx.finished_tydescs;
 
     let llty = type_of(ccx, t);
 
@@ -761,7 +761,7 @@ pub fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
 pub fn emit_tydescs(ccx: @CrateContext) {
     let _icx = ccx.insn_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
-    ccx.finished_tydescs = true;
+    *ccx.finished_tydescs = true;
     for ccx.tydescs.each_value |&val| {
         let glue_fn_ty = T_ptr(T_generic_glue_fn(ccx));
         let ti = val;
