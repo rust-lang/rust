@@ -18,7 +18,7 @@ use hashmap::linear::LinearMap;
 use dvec::DVec;
 
 pub struct Interner<T> {
-    priv mut map: LinearMap<T, uint>,
+    priv map: @mut LinearMap<T, uint>,
     priv vect: DVec<T>,
 }
 
@@ -26,7 +26,7 @@ pub struct Interner<T> {
 pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     static fn new() -> Interner<T> {
         Interner {
-            map: LinearMap::new(),
+            map: @mut LinearMap::new(),
             vect: DVec(),
         }
     }

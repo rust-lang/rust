@@ -242,7 +242,7 @@ pub struct FileMap {
     /// The start position of this source in the CodeMap
     start_pos: BytePos,
     /// Locations of lines beginnings in the source code
-    mut lines: ~[BytePos],
+    lines: @mut ~[BytePos],
     /// Locations of multi-byte characters in the source code
     multibyte_chars: DVec<MultiByteChar>
 }
@@ -312,7 +312,7 @@ pub impl CodeMap {
         let filemap = @FileMap {
             name: filename, substr: substr, src: src,
             start_pos: BytePos(start_pos),
-            mut lines: ~[],
+            lines: @mut ~[],
             multibyte_chars: DVec()
         };
 
@@ -439,7 +439,7 @@ priv impl CodeMap {
         let idx = self.lookup_filemap_idx(pos);
         let f = self.files[idx];
         let mut a = 0u;
-        let mut b = vec::len(f.lines);
+        let mut b = f.lines.len();
         while b - a > 1u {
             let m = (a + b) / 2u;
             if f.lines[m] > pos { b = m; } else { a = m; }
