@@ -38,7 +38,10 @@ rust_opaque_box *boxed_region::malloc(type_desc *td, size_t body_size) {
 
 rust_opaque_box *boxed_region::realloc(rust_opaque_box *box,
                                        size_t new_size) {
-    assert(box->ref_count == 1);
+
+    // We also get called on the unique-vec-in-managed-heap path.
+    assert(box->ref_count == 1 ||
+           box->ref_count == (size_t)(-2));
 
     size_t total_size = new_size + sizeof(rust_opaque_box);
     rust_opaque_box *new_box =
@@ -46,7 +49,6 @@ rust_opaque_box *boxed_region::realloc(rust_opaque_box *box,
     if (new_box->prev) new_box->prev->next = new_box;
     if (new_box->next) new_box->next->prev = new_box;
     if (live_allocs == box) live_allocs = new_box;
-
 
     LOG(rust_get_current_task(), box,
         "@realloc()=%p with orig=%p, size %lu==%lu+%lu",
