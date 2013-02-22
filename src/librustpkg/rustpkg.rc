@@ -252,7 +252,7 @@ impl PackageScript {
 struct Ctx {
     cfgs: ~[~str],
     json: bool,
-    mut dep_cache: LinearMap<~str, bool>
+    dep_cache: @mut LinearMap<~str, bool>
 }
 
 impl Ctx {
@@ -912,7 +912,7 @@ pub fn main() {
     Ctx {
         cfgs: cfgs,
         json: json,
-        mut dep_cache: LinearMap::new()
+        dep_cache: @mut LinearMap::new()
     }.run(cmd, args);
 }
 
