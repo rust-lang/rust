@@ -67,24 +67,24 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 endef
 
 $(foreach target,$(CFG_TARGET_TRIPLES), \
- $(eval $(call INSTALL_TARGET_N,$(target),$(CFG_HOST_TRIPLE))))
+ $(eval $(call INSTALL_TARGET_N,$(target),$(CFG_BUILD_TRIPLE))))
 
 INSTALL_TARGET_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
- install-target-$(target)-host-$(CFG_HOST_TRIPLE))
+ install-target-$(target)-host-$(CFG_BUILD_TRIPLE))
 
 install: all install-host install-targets
 
 # Shorthand for build/stageN/bin
-HB = $(HBIN$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
-HB2 = $(HBIN2_H_$(CFG_HOST_TRIPLE))
+HB = $(HBIN$(ISTAGE)_H_$(CFG_BUILD_TRIPLE))
+HB2 = $(HBIN2_H_$(CFG_BUILD_TRIPLE))
 # Shorthand for build/stageN/lib
-HL = $(HLIB$(ISTAGE)_H_$(CFG_HOST_TRIPLE))
+HL = $(HLIB$(ISTAGE)_H_$(CFG_BUILD_TRIPLE))
 # Shorthand for the prefix bin directory
 PHB = $(PREFIX_BIN)
 # Shorthand for the prefix bin directory
 PHL = $(PREFIX_LIB)
 
-install-host: $(CSREQ$(ISTAGE)_T_$(CFG_HOST_TRIPLE)_H_$(CFG_HOST_TRIPLE))
+install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
 	$(Q)mkdir -p $(PREFIX_BIN)
 	$(Q)mkdir -p $(PREFIX_LIB)
 	$(Q)mkdir -p $(PREFIX_ROOT)/share/man/man1
