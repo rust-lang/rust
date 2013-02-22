@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::pipes::*;
+use core::comm::*;
 
 // tests that ctrl's type gets inferred properly
 type command<K, V> = {key: K, val: V};

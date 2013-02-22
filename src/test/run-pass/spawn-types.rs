@@ -14,7 +14,7 @@
   Arnold.
  */
 
-use core::pipes::*;
+use core::comm::*;
 
 type ctx = Chan<int>;
 

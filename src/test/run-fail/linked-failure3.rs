@@ -15,13 +15,13 @@
 fn grandchild() { fail!(~"grandchild dies"); }
 
 fn child() {
-    let (p, _c) = pipes::stream::<int>();
+    let (p, _c) = comm::stream::<int>();
     task::spawn(|| grandchild() );
     let x = p.recv();
 }
 
 fn main() {
-    let (p, _c) = pipes::stream::<int>();
+    let (p, _c) = comm::stream::<int>();
     task::spawn(|| child() );
     let x = p.recv();
 }

@@ -11,7 +11,7 @@
 // xfail-win32
 extern mod std;
 
-use core::pipes::*;
+use core::comm::*;
 
 struct complainer {
   c: SharedChan<bool>,

@@ -78,10 +78,10 @@ pub impl gen_send for message {
                 };
 
                 body += ~"let b = pipe.reuse_buffer();\n";
-                body += fmt!("let %s = ::pipes::SendPacketBuffered(\
+                body += fmt!("let %s = ::core::pipes::SendPacketBuffered(\
                               ::ptr::addr_of(&(b.buffer.data.%s)));\n",
                              sp, next.name);
-                body += fmt!("let %s = ::pipes::RecvPacketBuffered(\
+                body += fmt!("let %s = ::core::pipes::RecvPacketBuffered(\
                               ::ptr::addr_of(&(b.buffer.data.%s)));\n",
                              rp, next.name);
             }
@@ -93,7 +93,7 @@ pub impl gen_send for message {
                   (recv, recv) => "(c, s)"
                 };
 
-                body += fmt!("let %s = ::pipes::entangle();\n", pat);
+                body += fmt!("let %s = ::core::pipes::entangle();\n", pat);
             }
             body += fmt!("let message = %s(%s);\n",
                          self.name(),
@@ -102,14 +102,14 @@ pub impl gen_send for message {
                              ~"s"), ~", "));
 
             if !try {
-                body += fmt!("::pipes::send(pipe, message);\n");
+                body += fmt!("::core::pipes::send(pipe, message);\n");
                 // return the new channel
                 body += ~"c }";
             }
             else {
-                body += fmt!("if ::pipes::send(pipe, message) {\n \
-                                  ::pipes::rt::make_some(c) \
-                              } else { ::pipes::rt::make_none() } }");
+                body += fmt!("if ::core::pipes::send(pipe, message) {\n \
+                                  ::core::pipes::rt::make_some(c) \
+                              } else { ::core::pipes::rt::make_none() } }");
             }
 
             let body = cx.parse_expr(body);
@@ -162,14 +162,14 @@ pub impl gen_send for message {
                              message_args);
 
                 if !try {
-                    body += fmt!("::pipes::send(pipe, message);\n");
+                    body += fmt!("::core::pipes::send(pipe, message);\n");
                     body += ~" }";
                 } else {
-                    body += fmt!("if ::pipes::send(pipe, message) \
+                    body += fmt!("if ::core::pipes::send(pipe, message) \
                                         { \
-                                      ::pipes::rt::make_some(()) \
+                                      ::core::pipes::rt::make_some(()) \
                                   } else { \
-                                    ::pipes::rt::make_none() \
+                                    ::core::pipes::rt::make_none() \
                                   } }");
                 }
 
@@ -272,7 +272,8 @@ pub impl to_type_decls for state {
                     self.data_name(),
                     self.span,
                     cx.ty_path_ast_builder(
-                        path_global(~[cx.ident_of(~"pipes"),
+                        path_global(~[cx.ident_of(~"core"),
+                                      cx.ident_of(~"pipes"),
                                       cx.ident_of(dir.to_str() + ~"Packet")],
                              dummy_sp())
                         .add_ty(cx.ty_path_ast_builder(
@@ -288,7 +289,8 @@ pub impl to_type_decls for state {
                     self.data_name(),
                     self.span,
                     cx.ty_path_ast_builder(
-                        path_global(~[cx.ident_of(~"pipes"),
+                        path_global(~[cx.ident_of(~"core"),
+                                      cx.ident_of(~"pipes"),
                                       cx.ident_of(dir.to_str()
                                                   + ~"PacketBuffered")],
                              dummy_sp())
@@ -313,10 +315,10 @@ pub impl gen_init for protocol {
 
         let body = if !self.is_bounded() {
             match start_state.dir {
-              send => quote_expr!( ::pipes::entangle() ),
+              send => quote_expr!( ::core::pipes::entangle() ),
               recv => {
                 quote_expr!({
-                    let (s, c) = ::pipes::entangle();
+                    let (s, c) = ::core::pipes::entangle();
                     (c, s)
                 })
               }
@@ -336,7 +338,7 @@ pub impl gen_init for protocol {
         };
 
         cx.parse_item(fmt!("pub fn init%s() -> (client::%s, server::%s)\
-                            { use pipes::HasBuffer; %s }",
+                            { use core::pipes::HasBuffer; %s }",
                            start_state.ty_params.to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
@@ -350,7 +352,7 @@ pub impl gen_init for protocol {
             let fty = s.to_ty(ext_cx);
             ext_cx.field_imm(ext_cx.ident_of(s.name),
                              quote_expr!(
-                                 ::pipes::mk_packet::<$fty>()
+                                 ::core::pipes::mk_packet::<$fty>()
                              ))
         }))
     }
@@ -358,8 +360,8 @@ pub impl gen_init for protocol {
     fn gen_init_bounded(&self, ext_cx: ext_ctxt) -> @ast::expr {
         debug!("gen_init_bounded");
         let buffer_fields = self.gen_buffer_init(ext_cx);
-        let buffer = quote_expr!(~::pipes::Buffer {
-            header: ::pipes::BufferHeader(),
+        let buffer = quote_expr!(~::core::pipes::Buffer {
+            header: ::core::pipes::BufferHeader(),
             data: $buffer_fields,
         });
 
@@ -375,7 +377,7 @@ pub impl gen_init for protocol {
 
         quote_expr!({
             let buffer = $buffer;
-            do ::pipes::entangle_buffer(buffer) |buffer, data| {
+            do ::core::pipes::entangle_buffer(buffer) |buffer, data| {
                 $entangle_body
             }
         })
@@ -408,7 +410,7 @@ pub impl gen_init for protocol {
                 }
             }
             let ty = s.to_ty(cx);
-            let fty = quote_ty!( ::pipes::Packet<$ty> );
+            let fty = quote_ty!( ::core::pipes::Packet<$ty> );
 
             @spanned {
                 node: ast::struct_field_ {

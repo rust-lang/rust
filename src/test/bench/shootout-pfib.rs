@@ -24,12 +24,9 @@
 extern mod std;
 
 use std::{time, getopts};
-use io::WriterUtil;
-use int::range;
-use pipes::Port;
-use pipes::Chan;
-use pipes::send;
-use pipes::recv;
+use core::int::range;
+use core::comm::*;
+use core::io::WriterUtil;
 
 use core::result;
 use result::{Ok, Err};
@@ -41,7 +38,7 @@ fn fib(n: int) -> int {
         } else if n <= 2 {
             c.send(1);
         } else {
-            let p = pipes::PortSet();
+            let p = PortSet();
             let ch = p.chan();
             task::spawn(|| pfib(ch, n - 1) );
             let ch = p.chan();
@@ -50,7 +47,7 @@ fn fib(n: int) -> int {
         }
     }
 
-    let (p, ch) = pipes::stream();
+    let (p, ch) = stream();
     let _t = task::spawn(|| pfib(ch, n) );
     p.recv()
 }

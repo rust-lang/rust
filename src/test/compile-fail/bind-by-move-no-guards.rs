@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let (p,c) = pipes::stream();
+    let (p,c) = comm::stream();
     let x = Some(p);
     c.send(false);
     match x {

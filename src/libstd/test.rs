@@ -27,7 +27,7 @@ use core::either;
 use core::io::WriterUtil;
 use core::io;
 use core::libc::size_t;
-use core::pipes::{stream, Chan, Port, SharedChan};
+use core::comm::{stream, Chan, Port, SharedChan};
 use core::option;
 use core::prelude::*;
 use core::result;
@@ -794,7 +794,7 @@ mod tests {
     use test::{TestOpts, run_test};
 
     use core::either;
-    use core::pipes::{stream, SharedChan};
+    use core::comm::{stream, SharedChan};
     use core::option;
     use core::vec;
 
