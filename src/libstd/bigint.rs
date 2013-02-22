@@ -216,8 +216,9 @@ impl Mul<BigUint, BigUint> for BigUint {
 
         pure fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
             let mid = uint::min(a.data.len(), n);
-            return (BigUint::from_slice(vec::view(a.data, mid, a.data.len())),
-                    BigUint::from_slice(vec::view(a.data, 0, mid)));
+            return (BigUint::from_slice(vec::slice(a.data, mid,
+                                                   a.data.len())),
+                    BigUint::from_slice(vec::slice(a.data, 0, mid)));
         }
 
         pure fn sub_sign(a: BigUint, b: BigUint) -> (int, BigUint) {
@@ -301,7 +302,7 @@ pub impl BigUint {
         let mut power: BigUint  = One::one();
         loop {
             let start = uint::max(end, unit_len) - unit_len;
-            match uint::parse_bytes(vec::view(buf, start, end), radix) {
+            match uint::parse_bytes(vec::slice(buf, start, end), radix) {
                 Some(d) => n += BigUint::from_uint(d) * power,
                 None    => return None
             }
@@ -380,7 +381,7 @@ pub impl BigUint {
                 return (Zero::zero(), Zero::zero(), copy *a);
             }
 
-            let an = vec::view(a.data, a.data.len() - n, a.data.len());
+            let an = vec::slice(a.data, a.data.len() - n, a.data.len());
             let bn = b.data.last();
             let mut d = ~[];
             let mut carry = 0;
@@ -487,7 +488,7 @@ pub impl BigUint {
         if n_unit == 0 { return self; }
         if self.data.len() < n_unit { return Zero::zero(); }
         return BigUint::from_slice(
-            vec::view(self.data, n_unit, self.data.len())
+            vec::slice(self.data, n_unit, self.data.len())
         );
     }
 
@@ -770,7 +771,7 @@ pub impl BigInt {
             sign  = Minus;
             start = 1;
         }
-        return BigUint::parse_bytes(vec::view(buf, start, buf.len()), radix)
+        return BigUint::parse_bytes(vec::slice(buf, start, buf.len()), radix)
             .map(|bu| BigInt::from_biguint(sign, *bu));
     }
 
@@ -885,7 +886,7 @@ mod biguint_tests {
         let data = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
             .map(|v| BigUint::from_slice(*v));
         for data.eachi |i, ni| {
-            for vec::view(data, i, data.len()).eachi |j0, nj| {
+            for vec::slice(data, i, data.len()).eachi |j0, nj| {
                 let j = j0 + i;
                 if i == j {
                     assert ni.cmp(nj) == 0;
@@ -1298,7 +1299,7 @@ mod bigint_tests {
         nums.push_all_move(vs.map(|s| BigInt::from_slice(Plus, *s)));
 
         for nums.eachi |i, ni| {
-            for vec::view(nums, i, nums.len()).eachi |j0, nj| {
+            for vec::slice(nums, i, nums.len()).eachi |j0, nj| {
                 let j = i + j0;
                 if i == j {
                     assert ni.cmp(nj) == 0;

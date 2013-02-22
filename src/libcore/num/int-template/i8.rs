@@ -17,7 +17,7 @@ mod inst {
     pub const bits: uint = ::u8::bits;
 }
 
-pub impl i8: NumCast {
+pub impl NumCast for i8 {
     /**
      * Cast `n` to a `i8`
      */

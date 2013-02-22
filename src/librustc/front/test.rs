@@ -21,7 +21,7 @@ use core::option;
 use core::vec;
 use syntax::ast_util::*;
 use syntax::attr;
-use syntax::codemap::{dummy_sp, span, ExpandedFrom};
+use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
 use syntax::codemap;
 use syntax::fold;
 use syntax::print::pprust;
@@ -32,20 +32,20 @@ use syntax::ext::base::{mk_ctxt, ext_ctxt};
 
 type node_id_gen = fn@() -> ast::node_id;
 
-type test = {
+struct Test {
     span: span,
     path: ~[ast::ident],
     bench: bool,
     ignore: bool,
     should_fail: bool
-};
+}
 
 struct TestCtxt {
     sess: session::Session,
     crate: @ast::crate,
     path: ~[ast::ident],
-      ext_cx: ext_ctxt,
-    testfns: ~[test]
+    ext_cx: ext_ctxt,
+    testfns: ~[Test]
 }
 
 // Traverse the crate, collecting all the test functions, eliding any
@@ -57,7 +57,7 @@ pub fn modify_for_testing(sess: session::Session,
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
     let should_test = attr::contains(crate.node.config,
-                                     attr::mk_word_item(~"test"));
+                                     attr::mk_word_item(@~"test"));
 
     if should_test {
         generate_test_harness(sess, crate)
@@ -77,9 +77,13 @@ fn generate_test_harness(sess: session::Session,
         testfns: ~[]
     };
 
-    cx.ext_cx.bt_push(ExpandedFrom({call_site: dummy_sp(),
-                                    callie: {name: ~"test",
-                                             span: None}}));
+    cx.ext_cx.bt_push(ExpandedFrom(CallInfo {
+        call_site: dummy_sp(),
+        callee: NameAndSpan {
+            name: ~"test",
+            span: None
+        }
+    }));
 
     let precursor = @fold::AstFoldFns {
         fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
@@ -111,7 +115,7 @@ fn fold_mod(cx: @mut TestCtxt,
     fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
         if !*cx.sess.building_library {
             @ast::item{attrs: item.attrs.filtered(|attr| {
-                               attr::get_attr_name(*attr) != ~"main"
+                               *attr::get_attr_name(attr) != ~"main"
                            }),.. copy *item}
         } else { item }
     }
@@ -153,11 +157,13 @@ fn fold_item(cx: @mut TestCtxt, &&i: @ast::item, fld: fold::ast_fold)
           }
           _ => {
             debug!("this is a test function");
-            let test = {span: i.span,
-                        path: /*bad*/copy cx.path,
-                        bench: is_bench_fn(i),
-                        ignore: is_ignored(cx, i),
-                        should_fail: should_fail(i)};
+            let test = Test {
+                span: i.span,
+                path: /*bad*/copy cx.path,
+                bench: is_bench_fn(i),
+                ignore: is_ignored(cx, i),
+                should_fail: should_fail(i)
+            };
             cx.testfns.push(test);
             debug!("have %u test/bench functions", cx.testfns.len());
           }
@@ -262,17 +268,17 @@ mod __test {
 fn mk_std(cx: &TestCtxt) -> @ast::view_item {
     let vers = ast::lit_str(@~"0.6");
     let vers = nospan(vers);
-    let mi = ast::meta_name_value(~"vers", vers);
+    let mi = ast::meta_name_value(@~"vers", vers);
     let mi = nospan(mi);
     let id_std = cx.sess.ident_of(~"std");
     let vi = if is_std(cx) {
-        ast::view_item_import(
+        ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_std,
                                             path_node(~[id_std]),
                                             ast::type_value_ns,
                                             cx.sess.next_node_id()))])
     } else {
-        ast::view_item_use(id_std, ~[@mi],
+        ast::view_item_extern_mod(id_std, ~[@mi],
                            cx.sess.next_node_id())
     };
     let vi = ast::view_item {
@@ -310,7 +316,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
 
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_attr =
-        attr::mk_attr(attr::mk_word_item(~"!resolve_unexported"));
+        attr::mk_attr(attr::mk_word_item(@~"!resolve_unexported"));
 
     let item = ast::item {
         ident: cx.sess.ident_of(~"__test"),
@@ -327,7 +333,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     return @item;
 }
 
-fn nospan<T: Copy>(t: T) -> codemap::spanned<T> {
+fn nospan<T:Copy>(t: T) -> codemap::spanned<T> {
     codemap::spanned { node: t, span: dummy_sp() }
 }
 
@@ -366,7 +372,7 @@ fn is_std(cx: &TestCtxt) -> bool {
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, ~"name") {
-          Some(~"std") => true,
+          Some(@~"std") => true,
           _ => false
         }
     };
@@ -396,7 +402,7 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     }
 }
 
-fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: test) -> @ast::expr {
+fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: Test) -> @ast::expr {
     let span = test.span;
     let path = /*bad*/copy test.path;
 

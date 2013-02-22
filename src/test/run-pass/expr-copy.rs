@@ -9,9 +9,8 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
-fn f(arg: A) {
+fn f(arg: &A) {
     arg.a = 100;
 }
 
@@ -19,9 +18,9 @@ struct A { mut a: int }
 
 pub fn main() {
     let x = A {a: 10};
-    f(x);
+    f(&x);
     assert x.a == 100;
     x.a = 20;
-    f(copy x);
+    f(&copy x);
     assert x.a == 20;
 }

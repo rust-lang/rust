@@ -157,7 +157,7 @@ pub enum vtable_origin {
     vtable_static(ast::def_id, ~[ty::t], vtable_res),
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
-      fn foo<T: quux, baz, bar>(a: T) -- a's vtable would have a
+      fn foo<T:quux,baz,bar>(a: T) -- a's vtable would have a
       vtable_param origin
 
       The first uint is the param number (identifying T in the example),
@@ -172,8 +172,8 @@ pub enum vtable_origin {
 }
 
 pub impl vtable_origin {
-    fn to_str(tcx: ty::ctxt) -> ~str {
-        match self {
+    fn to_str(&self, tcx: ty::ctxt) -> ~str {
+        match *self {
             vtable_static(def_id, ref tys, ref vtable_res) => {
                 fmt!("vtable_static(%?:%s, %?, %?)",
                      def_id, ty::item_path_str(tcx, def_id),
@@ -208,7 +208,7 @@ pub struct CrateCtxt {
 // Functions that write types into the node type table
 pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
     debug!("write_ty_to_tcx(%d, %s)", node_id, ppaux::ty_to_str(tcx, ty));
-    oldsmallintmap::insert(*tcx.node_types, node_id as uint, ty);
+    tcx.node_types.insert(node_id as uint, ty);
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
                            node_id: ast::node_id,
@@ -235,7 +235,11 @@ pub fn lookup_def_ccx(ccx: @mut CrateCtxt, sp: span, id: ast::node_id)
 }
 
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
-    {bounds: @~[], region_param: None, ty: t}
+    ty::ty_param_bounds_and_ty {
+        bounds: @~[],
+        region_param: None,
+        ty: t
+    }
 }
 
 pub fn require_same_types(
@@ -275,17 +279,17 @@ pub fn require_same_types(
 pub type isr_alist = @List<(ty::bound_region, ty::Region)>;
 
 trait get_and_find_region {
-    fn get(br: ty::bound_region) -> ty::Region;
-    fn find(br: ty::bound_region) -> Option<ty::Region>;
+    fn get(&self, br: ty::bound_region) -> ty::Region;
+    fn find(&self, br: ty::bound_region) -> Option<ty::Region>;
 }
 
 impl get_and_find_region for isr_alist {
-    fn get(br: ty::bound_region) -> ty::Region {
+    fn get(&self, br: ty::bound_region) -> ty::Region {
         self.find(br).get()
     }
 
-    fn find(br: ty::bound_region) -> Option<ty::Region> {
-        for list::each(self) |isr| {
+    fn find(&self, br: ty::bound_region) -> Option<ty::Region> {
+        for list::each(*self) |isr| {
             let (isr_br, isr_r) = *isr;
             if isr_br == br { return Some(isr_r); }
         }

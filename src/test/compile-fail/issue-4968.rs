@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type cat = {cat_name: ~str, cat_name: int};  //~ ERROR Duplicate field name cat_name
+// Regression test for issue #4968
 
-fn main()
-{
-  io::println(int::str({x: 1, x: 2}.x)); //~ ERROR Duplicate field name x
+const A: (int,int) = (4,2);
+fn main() {
+    match 42 { A => () } //~ ERROR mismatched types: expected `<VI0>` but found `(int,int)` (expected integral variable but found tuple)
 }
+

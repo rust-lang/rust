@@ -11,16 +11,16 @@
 #[allow(default_methods)];
 
 trait A<T> {
-    fn g(x: uint) -> uint { move x }
+    fn g(x: uint) -> uint { x }
 }
 
 impl<T> A<T> for int { }
 
 fn f<T, V: A<T>>(i: V, j: uint) -> uint {
-    i.g(move j)
+    i.g(j)
 }
 
-fn main () {
+pub fn main () {
     assert f::<float, int>(0, 2u) == 2u;
     assert f::<uint, int>(0, 2u) == 2u;
 }

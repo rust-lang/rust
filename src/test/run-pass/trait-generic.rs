@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 trait to_str {
     fn to_str() -> ~str;
@@ -25,12 +24,12 @@ impl to_str for () {
 }
 
 trait map<T> {
-    fn map<U: Copy>(f: fn(T) -> U) -> ~[U];
+    fn map<U:Copy>(f: fn(&T) -> U) -> ~[U];
 }
 impl<T> map<T> for ~[T] {
-    fn map<U: Copy>(f: fn(T) -> U) -> ~[U] {
+    fn map<U:Copy>(f: fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        for self.each |x| { r += ~[f(*x)]; }
+        for self.each |x| { r += ~[f(x)]; }
         r
     }
 }
@@ -38,7 +37,7 @@ impl<T> map<T> for ~[T] {
 fn foo<U, T: map<U>>(x: T) -> ~[~str] {
     x.map(|_e| ~"hi" )
 }
-fn bar<U: to_str, T: map<U>>(x: T) -> ~[~str] {
+fn bar<U:to_str,T:map<U>>(x: T) -> ~[~str] {
     x.map(|_e| _e.to_str() )
 }
 

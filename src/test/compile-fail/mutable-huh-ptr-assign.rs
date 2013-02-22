@@ -16,8 +16,8 @@ fn main() {
     }
 
     unsafe {
-        let a = 0;
-        let v = ptr::mut_addr_of(&a);
+        let mut a = 0;
+        let v = &mut a;
         f(v);
     }
 }

@@ -37,8 +37,8 @@ pub fn trans_free(cx: block, v: ValueRef) -> block {
         expr::Ignore)
 }
 
-pub fn trans_unique_free(cx: block, v: ValueRef) -> block {
-    let _icx = cx.insn_ctxt("trans_unique_free");
+pub fn trans_exchange_free(cx: block, v: ValueRef) -> block {
+    let _icx = cx.insn_ctxt("trans_exchange_free");
     callee::trans_rtcall_or_lang_call(
         cx,
         cx.tcx().lang_items.exchange_free_fn(),
@@ -142,7 +142,7 @@ pub fn free_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
     }
 }
 
-pub fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
+pub fn lazily_emit_all_tydesc_glue(ccx: @CrateContext,
                                    static_ti: @mut tydesc_info) {
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
@@ -204,7 +204,7 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     return t;
 }
 
-pub pure fn cast_glue(ccx: @crate_ctxt, ti: @mut tydesc_info, v: ValueRef)
+pub pure fn cast_glue(ccx: @CrateContext, ti: @mut tydesc_info, v: ValueRef)
                    -> ValueRef {
     unsafe {
         let llfnty = type_of_glue_fn(ccx, ti.ty);
@@ -212,7 +212,7 @@ pub pure fn cast_glue(ccx: @crate_ctxt, ti: @mut tydesc_info, v: ValueRef)
     }
 }
 
-pub fn lazily_emit_simplified_tydesc_glue(ccx: @crate_ctxt,
+pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
                                           field: uint,
                                           ti: @mut tydesc_info) -> bool {
     let _icx = ccx.insn_ctxt("lazily_emit_simplified_tydesc_glue");
@@ -239,7 +239,7 @@ pub fn lazily_emit_simplified_tydesc_glue(ccx: @crate_ctxt,
 }
 
 
-pub fn lazily_emit_tydesc_glue(ccx: @crate_ctxt,
+pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = ccx.insn_ctxt("lazily_emit_tydesc_glue");
@@ -636,7 +636,7 @@ pub fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 
 
 // Chooses the addrspace for newly declared types.
-pub fn declare_tydesc_addrspace(ccx: @crate_ctxt, t: ty::t) -> addrspace {
+pub fn declare_tydesc_addrspace(ccx: @CrateContext, t: ty::t) -> addrspace {
     if !ty::type_needs_drop(ccx.tcx, t) {
         return default_addrspace;
     } else if ty::type_is_immediate(t) {
@@ -650,11 +650,11 @@ pub fn declare_tydesc_addrspace(ccx: @crate_ctxt, t: ty::t) -> addrspace {
 }
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-pub fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @mut tydesc_info {
+pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     let _icx = ccx.insn_ctxt("declare_tydesc");
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
-    assert !ccx.finished_tydescs;
+    assert !*ccx.finished_tydescs;
 
     let llty = type_of(ccx, t);
 
@@ -698,7 +698,7 @@ pub fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @mut tydesc_info {
 
 pub type glue_helper = fn@(block, ValueRef, ty::t);
 
-pub fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
+pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
                             +name: ~str) -> ValueRef {
     let _icx = ccx.insn_ctxt("declare_generic_glue");
     let name = name;
@@ -717,7 +717,7 @@ pub fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
     return llfn;
 }
 
-pub fn make_generic_glue_inner(ccx: @crate_ctxt,
+pub fn make_generic_glue_inner(ccx: @CrateContext,
                                t: ty::t,
                                llfn: ValueRef,
                                helper: glue_helper)
@@ -742,7 +742,7 @@ pub fn make_generic_glue_inner(ccx: @crate_ctxt,
     return llfn;
 }
 
-pub fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
+pub fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
                          helper: glue_helper, name: ~str)
                       -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue");
@@ -758,10 +758,10 @@ pub fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
     return llval;
 }
 
-pub fn emit_tydescs(ccx: @crate_ctxt) {
+pub fn emit_tydescs(ccx: @CrateContext) {
     let _icx = ccx.insn_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
-    ccx.finished_tydescs = true;
+    *ccx.finished_tydescs = true;
     for ccx.tydescs.each_value |&val| {
         let glue_fn_ty = T_ptr(T_generic_glue_fn(ccx));
         let ti = val;

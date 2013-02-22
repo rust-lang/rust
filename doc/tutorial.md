@@ -114,8 +114,9 @@ for more information on them.
 
 When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
-API-documentation tool; `cargo`, the Rust package manager;
-and `rusti`, the Rust REPL.
+API-documentation tool; `rustpkg`, the Rust package manager;
+`rusti`, the Rust REPL; and `rust`, a tool which acts both as a unified
+interface for them, and for a few common command line scenarios.
 
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [tarball]: http://static.rust-lang.org/dist/rust-0.5.tar.gz
@@ -153,6 +154,22 @@ compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file: all statements must
 live inside a function.  Rust programs can also be compiled as
 libraries, and included in other programs.
+
+## Using the rust tool
+
+While using `rustc` directly to generate your executables, and then
+running them manually is a perfectly valid way to test your code,
+for smaller projects, prototypes, or if you're a beginner, it might be
+more convenient to use the `rust` tool.
+
+The `rust` tool provides central access to the other rust tools,
+as well as handy shortcuts for directly running source files.
+For example, if you have a file `foo.rs` in your current directory,
+`rust run foo.rs` would attempt to compile it and, if successful,
+directly run the resulting binary.
+
+To get a list of all available commands, simply call `rust` without any
+argument.
 
 ## Editing Rust code
 
@@ -1260,7 +1277,7 @@ Moving it into a mutable slot makes the elements assignable.
 let crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
 
 // Put the vector into a mutable slot
-let mut mutable_crayons = move crayons;
+let mut mutable_crayons = crayons;
 
 // Now it's mutable to the bone
 mutable_crayons[0] = Apricot;
@@ -2055,12 +2072,12 @@ on values of type `T` inside the function. It will also cause a
 compile-time error when anyone tries to call `print_all` on an array
 whose element type does not have a `Printable` implementation.
 
-Type parameters can have multiple bounds by separating them with spaces,
+Type parameters can have multiple bounds by separating them with `+`,
 as in this version of `print_all` that copies elements.
 
 ~~~
 # trait Printable { fn print(&self); }
-fn print_all<T: Printable Copy>(printable_things: ~[T]) {
+fn print_all<T: Printable + Copy>(printable_things: ~[T]) {
     let mut i = 0;
     while i < printable_things.len() {
         let copy_of_thing = printable_things[i];
@@ -2184,7 +2201,7 @@ impl Circle for CircleStruct {
 }
 impl Shape for CircleStruct {
     fn area(&self) -> float { pi * square(self.radius) }
-}   
+}
 ~~~~
 
 Notice that methods of `Circle` can call methods on `Shape`, as our

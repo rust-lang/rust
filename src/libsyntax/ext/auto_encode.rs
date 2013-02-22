@@ -23,7 +23,7 @@ For example, a type like:
 
 would generate two implementations like:
 
-impl<S: std::serialize::Encoder> Encodable<S> for Node {
+impl<S:std::serialize::Encoder> Encodable<S> for Node {
     fn encode(&self, s: &S) {
         do s.emit_struct("Node", 1) {
             s.emit_field("id", 0, || s.emit_uint(self.id))
@@ -31,7 +31,7 @@ impl<S: std::serialize::Encoder> Encodable<S> for Node {
     }
 }
 
-impl<D: Decoder> Decodable for node_id {
+impl<D:Decoder> Decodable for node_id {
     static fn decode(d: &D) -> Node {
         do d.read_struct("Node", 1) {
             Node {
@@ -54,7 +54,7 @@ would yield functions like:
         S: Encoder,
         T: Encodable<S>
     > spanned<T>: Encodable<S> {
-        fn encode<S: Encoder>(s: &S) {
+        fn encode<S:Encoder>(s: &S) {
             do s.emit_rec {
                 s.emit_field("node", 0, || self.node.encode(s));
                 s.emit_field("span", 1, || self.span.encode(s));
@@ -114,7 +114,7 @@ pub fn expand_auto_encode(
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
     fn is_auto_encode(a: &ast::attribute) -> bool {
-        attr::get_attr_name(*a) == ~"auto_encode"
+        *attr::get_attr_name(a) == ~"auto_encode"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
@@ -127,24 +127,24 @@ pub fn expand_auto_encode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_encode) {
             match item.node {
-                ast::item_struct(@ast::struct_def { fields, _}, tps) => {
+                ast::item_struct(ref struct_def, ref tps) => {
                     let ser_impl = mk_struct_ser_impl(
                         cx,
                         item.span,
                         item.ident,
-                        fields,
-                        tps
+                        struct_def.fields,
+                        *tps
                     );
 
                     ~[filter_attrs(*item), ser_impl]
                 },
-                ast::item_enum(ref enum_def, tps) => {
+                ast::item_enum(ref enum_def, ref tps) => {
                     let ser_impl = mk_enum_ser_impl(
                         cx,
                         item.span,
                         item.ident,
-                        (*enum_def),
-                        tps
+                        *enum_def,
+                        *tps
                     );
 
                     ~[filter_attrs(*item), ser_impl]
@@ -169,7 +169,7 @@ pub fn expand_auto_decode(
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
     fn is_auto_decode(a: &ast::attribute) -> bool {
-        attr::get_attr_name(*a) == ~"auto_decode"
+        *attr::get_attr_name(a) == ~"auto_decode"
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
@@ -182,24 +182,24 @@ pub fn expand_auto_decode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_decode) {
             match item.node {
-                ast::item_struct(@ast::struct_def { fields, _}, tps) => {
+                ast::item_struct(ref struct_def, ref tps) => {
                     let deser_impl = mk_struct_deser_impl(
                         cx,
                         item.span,
                         item.ident,
-                        fields,
-                        tps
+                        struct_def.fields,
+                        *tps
                     );
 
                     ~[filter_attrs(*item), deser_impl]
                 },
-                ast::item_enum(ref enum_def, tps) => {
+                ast::item_enum(ref enum_def, ref tps) => {
                     let deser_impl = mk_enum_deser_impl(
                         cx,
                         item.span,
                         item.ident,
-                        (*enum_def),
-                        tps
+                        *enum_def,
+                        *tps
                     );
 
                     ~[filter_attrs(*item), deser_impl]
@@ -410,7 +410,7 @@ fn mk_impl(
     ident: ast::ident,
     ty_param: ast::ty_param,
     path: @ast::path,
-    tps: ~[ast::ty_param],
+    tps: &[ast::ty_param],
     f: fn(@ast::Ty) -> @ast::method
 ) -> @ast::item {
     // All the type parameters need to bound to the trait.
@@ -458,7 +458,7 @@ fn mk_ser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
-    tps: ~[ast::ty_param],
+    tps: &[ast::ty_param],
     body: @ast::expr
 ) -> @ast::item {
     // Make a path to the std::serialize::Encodable typaram.
@@ -666,8 +666,8 @@ fn mk_struct_ser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
-    fields: ~[@ast::struct_field],
-    tps: ~[ast::ty_param]
+    fields: &[@ast::struct_field],
+    tps: &[ast::ty_param]
 ) -> @ast::item {
     let fields = do mk_struct_fields(fields).mapi |idx, field| {
         // ast for `|| self.$(name).encode(__s)`
@@ -808,7 +808,7 @@ struct field {
     mutbl: ast::mutability,
 }
 
-fn mk_struct_fields(fields: ~[@ast::struct_field]) -> ~[field] {
+fn mk_struct_fields(fields: &[@ast::struct_field]) -> ~[field] {
     do fields.map |field| {
         let (ident, mutbl) = match field.node.kind {
             ast::named_field(ident, mutbl, _) => (ident, mutbl),

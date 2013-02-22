@@ -18,9 +18,9 @@ use aux::{Foo, Bar, Baz, A};
 
 // We want to extend all Foo, Bar, Bazes to Quuxes
 pub trait Quux: Foo Bar Baz { }
-impl<T: Foo Bar Baz> Quux for T { }
+impl<T:Foo + Bar + Baz> Quux for T { }
 
-fn f<T: Quux>(a: &T) {
+fn f<T:Quux>(a: &T) {
     assert a.f() == 10;
     assert a.g() == 20;
     assert a.h() == 30;

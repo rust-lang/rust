@@ -20,10 +20,10 @@ extern mod std;
 use io::Writer;
 use io::WriterUtil;
 
-use pipes::{Port, PortSet, Chan};
+use comm::{Port, PortSet, Chan, stream};
 
 macro_rules! move_out (
-    { $x:expr } => { unsafe { let y = move *ptr::addr_of(&($x)); move y } }
+    { $x:expr } => { unsafe { let y = *ptr::addr_of(&($x)); y } }
 )
 
 enum request {
@@ -32,7 +32,7 @@ enum request {
     stop
 }
 
-fn server(requests: PortSet<request>, responses: pipes::Chan<uint>) {
+fn server(requests: PortSet<request>, responses: Chan<uint>) {
     let mut count = 0;
     let mut done = false;
     while !done {
@@ -51,10 +51,10 @@ fn server(requests: PortSet<request>, responses: pipes::Chan<uint>) {
 }
 
 fn run(args: &[~str]) {
-    let (from_child, to_parent) = pipes::stream();
-    let (from_parent_, to_child) = pipes::stream();
+    let (from_child, to_parent) = stream();
+    let (from_parent_, to_child) = stream();
     let from_parent = PortSet();
-    from_parent.add(move from_parent_);
+    from_parent.add(from_parent_);
 
     let size = uint::from_str(args[1]).get();
     let workers = uint::from_str(args[2]).get();
@@ -62,11 +62,11 @@ fn run(args: &[~str]) {
     let start = std::time::precise_time_s();
     let mut worker_results = ~[];
     for uint::range(0, workers) |_i| {
-        let (from_parent_, to_child) = pipes::stream();
-        from_parent.add(move from_parent_);
+        let (from_parent_, to_child) = stream();
+        from_parent.add(from_parent_);
         do task::task().future_result(|+r| {
-            worker_results.push(move r);
-        }).spawn |move to_child| {
+            worker_results.push(r);
+        }).spawn || {
             for uint::range(0, size / workers) |_i| {
                 //error!("worker %?: sending %? bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
@@ -74,7 +74,7 @@ fn run(args: &[~str]) {
             //error!("worker %? exiting", i);
         };
     }
-    do task::spawn |move from_parent, move to_parent| {
+    do task::spawn || {
         server(from_parent, to_parent);
     }
 

@@ -24,12 +24,9 @@
 extern mod std;
 
 use std::{time, getopts};
-use io::WriterUtil;
-use int::range;
-use pipes::Port;
-use pipes::Chan;
-use pipes::send;
-use pipes::recv;
+use core::int::range;
+use core::comm::*;
+use core::io::WriterUtil;
 
 use core::result;
 use result::{Ok, Err};
@@ -41,17 +38,17 @@ fn fib(n: int) -> int {
         } else if n <= 2 {
             c.send(1);
         } else {
-            let p = pipes::PortSet();
+            let p = PortSet();
             let ch = p.chan();
-            task::spawn(|move ch| pfib(ch, n - 1) );
+            task::spawn(|| pfib(ch, n - 1) );
             let ch = p.chan();
-            task::spawn(|move ch| pfib(ch, n - 2) );
+            task::spawn(|| pfib(ch, n - 2) );
             c.send(p.recv() + p.recv());
         }
     }
 
-    let (p, ch) = pipes::stream();
-    let _t = task::spawn(|move ch| pfib(ch, n) );
+    let (p, ch) = stream();
+    let _t = task::spawn(|| pfib(ch, n) );
     p.recv()
 }
 
@@ -86,7 +83,7 @@ fn stress(num_tasks: int) {
     let mut results = ~[];
     for range(0, num_tasks) |i| {
         do task::task().future_result(|+r| {
-            results.push(move r);
+            results.push(r);
         }).spawn {
             stress_task(i);
         }

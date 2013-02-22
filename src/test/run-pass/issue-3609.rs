@@ -1,6 +1,6 @@
 extern mod std;
 
-use pipes::Chan;
+use comm::Chan;
 
 type RingBuffer = ~[float];
 type SamplesFn = fn~ (samples: &RingBuffer);
@@ -12,7 +12,6 @@ enum Msg
 
 fn foo(name: ~str, samples_chan: Chan<Msg>) {
     do task::spawn
-    |copy name|
     {
         let callback: SamplesFn =
             |buffer|

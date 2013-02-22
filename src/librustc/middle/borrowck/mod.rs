@@ -400,9 +400,11 @@ pub enum LoanKind {
 }
 
 /// a complete record of a loan that was granted
-pub struct Loan {lp: @loan_path,
-                 cmt: cmt,
-                 kind: LoanKind}
+pub struct Loan {
+    lp: @loan_path,
+    cmt: cmt,
+    kind: LoanKind
+}
 
 /// maps computed by `gather_loans` that are then used by `check_loans`
 ///
@@ -410,17 +412,17 @@ pub struct Loan {lp: @loan_path,
 ///   for the duration of that block/expr
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
-pub type req_maps = {
+pub struct ReqMaps {
     req_loan_map: HashMap<ast::node_id, @DVec<Loan>>,
     pure_map: HashMap<ast::node_id, bckerr>
-};
+}
 
 pub fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T,
                                   f: &fn() -> U) -> U {
     let old_save_and_restore_t = *save_and_restore_t;
     let u = f();
     *save_and_restore_t = old_save_and_restore_t;
-    move u
+    u
 }
 
 pub fn save_and_restore_managed<T:Copy,U>(save_and_restore_t: @mut T,
@@ -428,7 +430,7 @@ pub fn save_and_restore_managed<T:Copy,U>(save_and_restore_t: @mut T,
     let old_save_and_restore_t = *save_and_restore_t;
     let u = f();
     *save_and_restore_t = old_save_and_restore_t;
-    move u
+    u
 }
 
 impl LoanKind {
@@ -449,7 +451,7 @@ impl LoanKind {
 
 /// Creates and returns a new root_map
 
-pub impl root_map_key : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for root_map_key {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
     }
@@ -489,7 +491,7 @@ pub impl BorrowckCtxt {
         cat_def(self.tcx, self.method_map, id, span, ty, def)
     }
 
-    fn cat_variant<N: ast_node>(&self,
+    fn cat_variant<N:ast_node>(&self,
                                 arg: N,
                                 enum_did: ast::def_id,
                                 cmt: cmt) -> cmt {

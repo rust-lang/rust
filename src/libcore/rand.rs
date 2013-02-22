@@ -18,6 +18,7 @@ use u32;
 use uint;
 use util;
 use vec;
+use libc::size_t;
 
 /// A type that can be randomly generated using an RNG
 pub trait Rand {
@@ -108,7 +109,7 @@ impl Rand for bool {
     }
 }
 
-impl<T: Rand> Rand for Option<T> {
+impl<T:Rand> Rand for Option<T> {
     static fn rand(rng: rand::Rng) -> Option<T> {
         if rng.gen_bool() { Some(Rand::rand(rng)) }
         else { None }
@@ -116,15 +117,15 @@ impl<T: Rand> Rand for Option<T> {
 }
 
 #[allow(non_camel_case_types)] // runtime type
-enum rctx {}
+enum rust_rng {}
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    unsafe fn rand_seed() -> ~[u8];
-    unsafe fn rand_new() -> *rctx;
-    unsafe fn rand_new_seeded2(&&seed: ~[u8]) -> *rctx;
-    unsafe fn rand_next(c: *rctx) -> u32;
-    unsafe fn rand_free(c: *rctx);
+    unsafe fn rand_seed_size() -> size_t;
+    unsafe fn rand_gen_seed(buf: *mut u8, sz: size_t);
+    unsafe fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
+    unsafe fn rand_next(rng: *rust_rng) -> u32;
+    unsafe fn rand_free(rng: *rust_rng);
 }
 
 /// A random number generator
@@ -142,7 +143,7 @@ pub struct Weighted<T> {
 /// Extension methods for random number generators
 impl Rng {
     /// Return a random value for a Rand type
-    fn gen<T: Rand>() -> T {
+    fn gen<T:Rand>() -> T {
         Rand::rand(self)
     }
 
@@ -273,7 +274,7 @@ impl Rng {
             s = s + str::from_char(self.gen_char_from(charset));
             i += 1u;
         }
-        move s
+        s
     }
 
     /// Return a random byte string of the specified length
@@ -301,7 +302,7 @@ impl Rng {
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      */
-    fn choose_weighted<T: Copy>(v : &[Weighted<T>]) -> T {
+    fn choose_weighted<T:Copy>(v : &[Weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
@@ -339,14 +340,14 @@ impl Rng {
                 r.push(item.item);
             }
         }
-        move r
+        r
     }
 
     /// Shuffle a vec
     fn shuffle<T:Copy>(values: &[T]) -> ~[T] {
         let mut m = vec::from_slice(values);
         self.shuffle_mut(m);
-        move m
+        m
     }
 
     /// Shuffle a mutable vec in place
@@ -363,24 +364,24 @@ impl Rng {
 }
 
 struct RandRes {
-    c: *rctx,
+    rng: *rust_rng,
     drop {
         unsafe {
-            rustrt::rand_free(self.c);
+            rustrt::rand_free(self.rng);
         }
     }
 }
 
-fn RandRes(c: *rctx) -> RandRes {
+fn RandRes(rng: *rust_rng) -> RandRes {
     RandRes {
-        c: c
+        rng: rng
     }
 }
 
 impl Rng for @RandRes {
     fn next() -> u32 {
         unsafe {
-            return rustrt::rand_next((*self).c);
+            return rustrt::rand_next((*self).rng);
         }
     }
 }
@@ -388,15 +389,18 @@ impl Rng for @RandRes {
 /// Create a new random seed for seeded_rng
 pub fn seed() -> ~[u8] {
     unsafe {
-        rustrt::rand_seed()
+        let n = rustrt::rand_seed_size() as uint;
+        let mut s = vec::from_elem(n, 0_u8);
+        do vec::as_mut_buf(s) |p, sz| {
+            rustrt::rand_gen_seed(p, sz as size_t)
+        }
+        s
     }
 }
 
 /// Create a random number generator with a system specified seed
 pub fn Rng() -> Rng {
-    unsafe {
-        @RandRes(rustrt::rand_new()) as Rng
-    }
+    seeded_rng(seed())
 }
 
 /**
@@ -405,9 +409,15 @@ pub fn Rng() -> Rng {
  * all other generators constructed with the same seed. The seed may be any
  * length.
  */
-pub fn seeded_rng(seed: &~[u8]) -> Rng {
+pub fn seeded_rng(seed: &[u8]) -> Rng {
+    seeded_randres(seed) as Rng
+}
+
+fn seeded_randres(seed: &[u8]) -> @RandRes {
     unsafe {
-        @RandRes(rustrt::rand_new_seeded2(*seed)) as Rng
+        do vec::as_imm_buf(seed) |p, sz| {
+            @RandRes(rustrt::rand_new_seeded(p, sz as size_t))
+        }
     }
 }
 
@@ -457,7 +467,7 @@ pub fn task_rng() -> Rng {
     match r {
         None => {
             unsafe {
-                let rng = @RandRes(rustrt::rand_new());
+                let rng = seeded_randres(seed());
                 task::local_data::local_data_set(tls_rng_state, rng);
                 rng as Rng
             }
@@ -483,24 +493,24 @@ pub mod tests {
     #[test]
     pub fn rng_seeded() {
         let seed = rand::seed();
-        let ra = rand::seeded_rng(&seed);
-        let rb = rand::seeded_rng(&seed);
+        let ra = rand::seeded_rng(seed);
+        let rb = rand::seeded_rng(seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
     }
 
     #[test]
     pub fn rng_seeded_custom_seed() {
         // much shorter than generated seeds which are 1024 bytes
-        let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = rand::seeded_rng(&seed);
-        let rb = rand::seeded_rng(&seed);
+        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
+        let ra = rand::seeded_rng(seed);
+        let rb = rand::seeded_rng(seed);
         assert ra.gen_str(100u) == rb.gen_str(100u);
     }
 
     #[test]
     pub fn rng_seeded_custom_seed2() {
-        let seed = ~[2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = rand::seeded_rng(&seed);
+        let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
+        let ra = rand::seeded_rng(seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
         error!("%?", r);

@@ -10,7 +10,7 @@
 
 // Test for concurrent tasks
 
-use core::pipes::*;
+use core::comm::*;
 
 fn calc(children: uint, parent_wait_chan: &Chan<Chan<Chan<int>>>) {
 

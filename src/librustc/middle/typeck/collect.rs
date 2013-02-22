@@ -34,7 +34,7 @@ use core::prelude::*;
 
 use metadata::csearch;
 use middle::ty::{InstantiatedTraitRef, arg};
-use middle::ty::{substs, ty_param_substs_and_ty};
+use middle::ty::{substs, ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
 use middle::typeck::astconv::{ast_ty_to_ty};
@@ -115,13 +115,13 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 }
 
 pub impl @mut CrateCtxt {
-    fn to_ty<RS: region_scope Copy Durable>(rs: RS, ast_ty: @ast::Ty)
+    fn to_ty<RS:region_scope + Copy + Durable>(rs: RS, ast_ty: @ast::Ty)
                                          -> ty::t {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }
 
-pub impl CrateCtxt: AstConv {
+pub impl AstConv for CrateCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.tcx }
     fn ccx(@mut self) -> @mut CrateCtxt { self }
 
@@ -174,9 +174,11 @@ pub fn get_enum_variant_types(ccx: @mut CrateCtxt,
             }
 
             ast::struct_variant_kind(struct_def) => {
-                let tpt = {bounds: ty_param_bounds(ccx, ty_params),
-                           region_param: rp,
-                           ty: enum_ty};
+                let tpt = ty_param_bounds_and_ty {
+                    bounds: ty_param_bounds(ccx, ty_params),
+                    region_param: rp,
+                    ty: enum_ty
+                };
 
                 convert_struct(ccx,
                                rp,
@@ -203,9 +205,11 @@ pub fn get_enum_variant_types(ccx: @mut CrateCtxt,
         match result_ty {
             None => {}
             Some(result_ty) => {
-                let tpt = {bounds: ty_param_bounds(ccx, ty_params),
-                           region_param: rp,
-                           ty: result_ty};
+                let tpt = ty_param_bounds_and_ty {
+                    bounds: ty_param_bounds(ccx, ty_params),
+                    region_param: rp,
+                    ty: result_ty
+                };
                 tcx.tcache.insert(local_def(variant.node.id), tpt);
                 write_ty_to_tcx(tcx, variant.node.id, result_ty);
             }
@@ -261,9 +265,10 @@ pub fn ensure_trait_methods(ccx: @mut CrateCtxt,
         let bounds = @(*trait_bounds + ~[@~[ty::bound_trait(trait_ty)]]
                        + *m.tps);
         ccx.tcx.tcache.insert(local_def(am.id),
-                              {bounds: bounds,
-                               region_param: rp,
-                               ty: ty});
+                              ty_param_bounds_and_ty {
+                                bounds: bounds,
+                                region_param: rp,
+                                ty: ty});
     }
 
 
@@ -320,7 +325,7 @@ pub fn ensure_supertraits(ccx: @mut CrateCtxt,
         instantiated.push(InstantiatedTraitRef { def_id: did, tpt: tpt });
     }
     tcx.supertraits.insert(local_def(id),
-                               @dvec::unwrap(move instantiated));
+                               @dvec::unwrap(instantiated));
 }
 
 /**
@@ -357,20 +362,20 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             tcx.sess.span_fatal(cm.span,
                  fmt!("method `%s` is declared as \
                        static in its impl, but not in \
-                       its trait", tcx.sess.str_of(impl_m.ident)));
+                       its trait", *tcx.sess.str_of(impl_m.ident)));
         }
         else if trait_m.self_ty == ast::sty_static {
             tcx.sess.span_fatal(cm.span,
                  fmt!("method `%s` is declared as \
                        static in its trait, but not in \
-                       its impl", tcx.sess.str_of(impl_m.ident)));
+                       its impl", *tcx.sess.str_of(impl_m.ident)));
         }
         else {
             tcx.sess.span_err(
                 cm.span,
                 fmt!("method `%s`'s self type does \
                       not match the trait method's \
-                      self type", tcx.sess.str_of(impl_m.ident)));
+                      self type", *tcx.sess.str_of(impl_m.ident)));
         }
     }
 
@@ -379,7 +384,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             cm.span,
             fmt!("method `%s` has %u type %s, but its trait \
                   declaration has %u type %s",
-                 tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
+                 *tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
                  pluralize(impl_m.tps.len(), ~"parameter"),
                  trait_m.tps.len(),
                  pluralize(trait_m.tps.len(), ~"parameter")));
@@ -391,7 +396,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             cm.span,
             fmt!("method `%s` has %u parameters \
                   but the trait has %u",
-                 tcx.sess.str_of(trait_m.ident),
+                 *tcx.sess.str_of(trait_m.ident),
                  vec::len(impl_m.fty.sig.inputs),
                  vec::len(trait_m.fty.sig.inputs)));
         return;
@@ -412,7 +417,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                fmt!("in method `%s`, \
                      type parameter %u has %u %s, but the same type \
                      parameter in its trait declaration has %u %s",
-                    tcx.sess.str_of(trait_m.ident),
+                    *tcx.sess.str_of(trait_m.ident),
                     i, impl_param_bounds.len(),
                     pluralize(impl_param_bounds.len(), ~"bound"),
                     trait_param_bounds.len(),
@@ -466,7 +471,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
             tcx.sess.span_err(
                 cm.span,
                 fmt!("method `%s` has an incompatible type: %s",
-                     tcx.sess.str_of(trait_m.ident),
+                     *tcx.sess.str_of(trait_m.ident),
                      ty::type_err_to_str(tcx, terr)));
             ty::note_and_explain_type_err(tcx, terr);
         }
@@ -526,7 +531,7 @@ pub fn check_methods_against_trait(ccx: @mut CrateCtxt,
                 tcx.sess.span_err(
                     impl_m.span,
                     fmt!("method `%s` is not a member of trait `%s`",
-                         tcx.sess.str_of(impl_m.mty.ident),
+                         *tcx.sess.str_of(impl_m.mty.ident),
                          path_to_str(a_trait_ty.path, tcx.sess.intr())));
             }
         }
@@ -541,9 +546,11 @@ pub fn convert_field(ccx: @mut CrateCtxt,
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
     /* add the field to the tcache */
     ccx.tcx.tcache.insert(local_def(v.node.id),
-                          {bounds: bounds,
-                           region_param: rp,
-                           ty: tt});
+                          ty::ty_param_bounds_and_ty {
+                              bounds: bounds,
+                              region_param: rp,
+                              ty: tt
+                          });
 }
 
 pub struct ConvertedMethod {
@@ -569,9 +576,11 @@ pub fn convert_methods(ccx: @mut CrateCtxt,
 
             // n.b.: the type of a method is parameterized by both
             // the tps on the receiver and those on the method itself
-            {bounds: @(vec::append(/*bad*/copy *rcvr_bounds, *bounds)),
-             region_param: rp,
-             ty: fty});
+            ty_param_bounds_and_ty {
+                bounds: @(vec::append(/*bad*/copy *rcvr_bounds, *bounds)),
+                region_param: rp,
+                ty: fty
+            });
         write_ty_to_tcx(tcx, m.id, fty);
         ConvertedMethod {mty: mty, id: m.id,
                          span: m.span, body_id: m.body.node.id}
@@ -596,7 +605,7 @@ pub fn convert(ccx: @mut CrateCtxt, it: @ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.find(&it.id);
     debug!("convert: item %s with id %d rp %?",
-           tcx.sess.str_of(it.ident), it.id, rp);
+           *tcx.sess.str_of(it.ident), it.id, rp);
     match /*bad*/copy it.node {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
@@ -615,9 +624,10 @@ pub fn convert(ccx: @mut CrateCtxt, it: @ast::item) {
         let selfty = ccx.to_ty(type_rscope(rp), selfty);
         write_ty_to_tcx(tcx, it.id, selfty);
         tcx.tcache.insert(local_def(it.id),
-                          {bounds: i_bounds,
-                           region_param: rp,
-                           ty: selfty});
+                          ty_param_bounds_and_ty {
+                            bounds: i_bounds,
+                            region_param: rp,
+                            ty: selfty});
 
         // XXX: Bad copy of `ms` below.
         let cms = convert_methods(ccx, /*bad*/copy *ms, rp, i_bounds);
@@ -636,7 +646,7 @@ pub fn convert(ccx: @mut CrateCtxt, it: @ast::item) {
 
         let (_, provided_methods) =
             split_trait_methods(/*bad*/copy *trait_methods);
-        let {bounds, _} = mk_substs(ccx, /*bad*/copy *tps, rp);
+        let (bounds, _) = mk_substs(ccx, /*bad*/copy *tps, rp);
         let _ = convert_methods(ccx, provided_methods, rp, bounds);
       }
       ast::item_struct(struct_def, tps) => {
@@ -682,16 +692,17 @@ pub fn convert_struct(ccx: @mut CrateCtxt,
                 ast_util::dtor_dec()));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
-                          {bounds: tpt.bounds,
-                           region_param: rp,
-                           ty: t_dtor});
+                          ty_param_bounds_and_ty {
+                            bounds: tpt.bounds,
+                            region_param: rp,
+                            ty: t_dtor});
     };
 
     // Write the type of each of the members
     for struct_def.fields.each |f| {
        convert_field(ccx, rp, tpt.bounds, *f);
     }
-    let {bounds: _, substs: substs} = mk_substs(ccx, tps, rp);
+    let (_, substs) = mk_substs(ccx, tps, rp);
     let selfty = ty::mk_struct(tcx, local_def(id), substs);
 
     // If this struct is enum-like or tuple-like, create the type of its
@@ -711,7 +722,7 @@ pub fn convert_struct(ccx: @mut CrateCtxt,
                             &local_def(field.node.id)).ty);
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx, inputs, selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
-                tcx.tcache.insert(local_def(ctor_id), {
+                tcx.tcache.insert(local_def(ctor_id), ty_param_bounds_and_ty {
                     bounds: tpt.bounds,
                     region_param: tpt.region_param,
                     ty: ctor_fn_ty
@@ -733,27 +744,31 @@ pub fn convert_foreign(ccx: @mut CrateCtxt, i: @ast::foreign_item) {
 pub fn ty_of_method(ccx: @mut CrateCtxt,
                     m: @ast::method,
                     rp: Option<ty::region_variance>) -> ty::method {
-    {ident: m.ident,
-     tps: ty_param_bounds(ccx, m.tps),
-     fty: astconv::ty_of_bare_fn(ccx, type_rscope(rp), m.purity,
-                                 ast::RustAbi, m.decl),
-     self_ty: m.self_ty.node,
-     vis: m.vis,
-     def_id: local_def(m.id)}
+    ty::method {
+        ident: m.ident,
+        tps: ty_param_bounds(ccx, m.tps),
+        fty: astconv::ty_of_bare_fn(ccx, type_rscope(rp), m.purity,
+                                    ast::RustAbi, m.decl),
+        self_ty: m.self_ty.node,
+        vis: m.vis,
+        def_id: local_def(m.id)
+    }
 }
 
 pub fn ty_of_ty_method(self: @mut CrateCtxt,
                        m: ast::ty_method,
                        rp: Option<ty::region_variance>,
                        id: ast::def_id) -> ty::method {
-    {ident: m.ident,
-     tps: ty_param_bounds(self, m.tps),
-     fty: astconv::ty_of_bare_fn(self, type_rscope(rp), m.purity,
-                                 ast::RustAbi, m.decl),
-     // assume public, because this is only invoked on trait methods
-     self_ty: m.self_ty.node,
-     vis: ast::public,
-     def_id: id}
+    ty::method {
+        ident: m.ident,
+        tps: ty_param_bounds(self, m.tps),
+        fty: astconv::ty_of_bare_fn(self, type_rscope(rp), m.purity,
+                                    ast::RustAbi, m.decl),
+        // assume public, because this is only invoked on trait methods
+        self_ty: m.self_ty.node,
+        vis: ast::public,
+        def_id: id
+    }
 }
 
 /*
@@ -805,11 +820,13 @@ pub fn ty_of_item(ccx: @mut CrateCtxt, it: @ast::item)
         let bounds = ty_param_bounds(ccx, tps);
         let tofd = astconv::ty_of_bare_fn(ccx, empty_rscope, purity,
                                           ast::RustAbi, decl);
-        let tpt = {bounds: bounds,
-                   region_param: None,
-                   ty: ty::mk_bare_fn(ccx.tcx, tofd)};
+        let tpt = ty_param_bounds_and_ty {
+            bounds: bounds,
+            region_param: None,
+            ty: ty::mk_bare_fn(ccx.tcx, tofd)
+        };
         debug!("type of %s (id %d) is %s",
-               tcx.sess.str_of(it.ident),
+               *tcx.sess.str_of(it.ident),
                it.id,
                ppaux::ty_to_str(tcx, tpt.ty));
         ccx.tcx.tcache.insert(local_def(it.id), tpt);
@@ -833,9 +850,11 @@ pub fn ty_of_item(ccx: @mut CrateCtxt, it: @ast::item)
                     ty::mk_with_id(tcx, t0, def_id)
                 }
             };
-            {bounds: ty_param_bounds(ccx, tps),
-             region_param: rp,
-             ty: ty}
+            ty_param_bounds_and_ty {
+                bounds: ty_param_bounds(ccx, tps),
+                region_param: rp,
+                ty: ty
+            }
         };
 
         tcx.tcache.insert(local_def(it.id), tpt);
@@ -843,29 +862,35 @@ pub fn ty_of_item(ccx: @mut CrateCtxt, it: @ast::item)
       }
       ast::item_enum(_, tps) => {
         // Create a new generic polytype.
-        let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
+        let (bounds, substs) = mk_substs(ccx, tps, rp);
         let t = ty::mk_enum(tcx, local_def(it.id), substs);
-        let tpt = {bounds: bounds,
-                   region_param: rp,
-                   ty: t};
+        let tpt = ty_param_bounds_and_ty {
+            bounds: bounds,
+            region_param: rp,
+            ty: t
+        };
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
       ast::item_trait(tps, _, _) => {
-        let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
+        let (bounds, substs) = mk_substs(ccx, tps, rp);
         let t = ty::mk_trait(tcx, local_def(it.id), substs, ty::vstore_box);
-        let tpt = {bounds: bounds,
-                   region_param: rp,
-                   ty: t};
+        let tpt = ty_param_bounds_and_ty {
+            bounds: bounds,
+            region_param: rp,
+            ty: t
+        };
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
       ast::item_struct(_, tps) => {
-          let {bounds: bounds, substs: substs} = mk_substs(ccx, tps, rp);
+          let (bounds, substs) = mk_substs(ccx, tps, rp);
           let t = ty::mk_struct(tcx, local_def(it.id), substs);
-          let tpt = {bounds: bounds,
-                     region_param: rp,
-                     ty: t};
+          let tpt = ty_param_bounds_and_ty {
+            bounds: bounds,
+            region_param: rp,
+            ty: t
+          };
           tcx.tcache.insert(local_def(it.id), tpt);
           return tpt;
       }
@@ -883,7 +908,7 @@ pub fn ty_of_foreign_item(ccx: @mut CrateCtxt, it: @ast::foreign_item)
       }
       ast::foreign_item_const(t) => {
         let rb = in_binding_rscope(empty_rscope);
-        return {
+        return ty::ty_param_bounds_and_ty {
             bounds: @~[],
             region_param: None,
             ty: ast_ty_to_ty(ccx, rb, t)
@@ -964,32 +989,33 @@ pub fn ty_of_foreign_fn_decl(ccx: @mut CrateCtxt,
             purity: ast::unsafe_fn,
             sig: ty::FnSig {inputs: input_tys, output: output_ty}
         });
-    let tpt = {bounds: bounds, region_param: None, ty: t_fn};
+    let tpt = ty_param_bounds_and_ty {
+        bounds: bounds,
+        region_param: None,
+        ty: t_fn
+    };
     ccx.tcx.tcache.insert(def_id, tpt);
     return tpt;
 }
 
 pub fn mk_ty_params(ccx: @mut CrateCtxt, atps: ~[ast::ty_param])
-    -> {bounds: @~[ty::param_bounds], params: ~[ty::t]} {
+    -> (@~[ty::param_bounds], ~[ty::t]) {
 
     let mut i = 0u;
     let bounds = ty_param_bounds(ccx, atps);
-    {bounds: bounds,
-     params: vec::map(atps, |atp| {
+    (bounds,
+     vec::map(atps, |atp| {
          let t = ty::mk_param(ccx.tcx, i, local_def(atp.id));
          i += 1u;
          t
-     })}
+     }))
 }
 
 pub fn mk_substs(ccx: @mut CrateCtxt,
                  +atps: ~[ast::ty_param],
                  rp: Option<ty::region_variance>)
-              -> {bounds: @~[ty::param_bounds], substs: ty::substs} {
-    let {bounds, params} = mk_ty_params(ccx, atps);
+              -> (@~[ty::param_bounds], ty::substs) {
+    let (bounds, params) = mk_ty_params(ccx, atps);
     let self_r = rscope::bound_self_region(rp);
-    {
-        bounds: bounds,
-        substs: substs { self_r: self_r, self_ty: None, tps: params }
-    }
+    (bounds, substs { self_r: self_r, self_ty: None, tps: params })
 }

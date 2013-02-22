@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use pipes::send;
-
 pub fn main() { test00(); }
 
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let (p, c) = pipes::stream();
+    let (p, c) = comm::stream();
     c.send(1);
     c.send(2);
     c.send(3);

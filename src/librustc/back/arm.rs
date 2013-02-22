@@ -14,7 +14,7 @@ use session::sess_os_to_meta_os;
 use metadata::loader::meta_section_name;
 
 pub fn get_target_strs(target_os: session::os) -> target_strs::t {
-    return {
+    return target_strs::t {
         module_asm: ~"",
 
         meta_sect_name: meta_section_name(sess_os_to_meta_os(target_os)),

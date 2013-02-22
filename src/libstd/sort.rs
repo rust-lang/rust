@@ -25,12 +25,12 @@ type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-pub pure fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
+pub pure fn merge_sort<T:Copy>(v: &[const T], le: Le<T>) -> ~[T] {
     type Slice = (uint, uint);
 
     unsafe {return merge_sort_(v, (0u, len(v)), le);}
 
-    fn merge_sort_<T: Copy>(v: &[const T], slice: Slice, le: Le<T>)
+    fn merge_sort_<T:Copy>(v: &[const T], slice: Slice, le: Le<T>)
         -> ~[T] {
         let begin = slice.first();
         let end = slice.second();
@@ -45,7 +45,7 @@ pub pure fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
         return merge(le, merge_sort_(v, a, le), merge_sort_(v, b, le));
     }
 
-    fn merge<T: Copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
+    fn merge<T:Copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
         let mut rs = vec::with_capacity(len(a) + len(b));
         let a_len = len(a);
         let mut a_ix = 0;
@@ -59,7 +59,7 @@ pub pure fn merge_sort<T: Copy>(v: &[const T], le: Le<T>) -> ~[T] {
         }
         rs.push_all(vec::slice(a, a_ix, a_len));
         rs.push_all(vec::slice(b, b_ix, b_len));
-        move rs
+        rs
     }
 }
 
@@ -103,7 +103,7 @@ pub fn quick_sort<T>(arr: &mut [T], compare_func: Le<T>) {
     qsort::<T>(arr, 0u, len::<T>(arr) - 1u, compare_func);
 }
 
-fn qsort3<T: Copy Ord Eq>(arr: &mut [T], left: int, right: int) {
+fn qsort3<T:Copy + Ord + Eq>(arr: &mut [T], left: int, right: int) {
     if right <= left { return; }
     let v: T = arr[right];
     let mut i: int = left - 1;
@@ -160,7 +160,7 @@ fn qsort3<T: Copy Ord Eq>(arr: &mut [T], left: int, right: int) {
  *
  * This is an unstable sort.
  */
-pub fn quick_sort3<T: Copy Ord Eq>(arr: &mut [T]) {
+pub fn quick_sort3<T:Copy + Ord + Eq>(arr: &mut [T]) {
     if arr.len() <= 1 { return; }
     qsort3(arr, 0, (arr.len() - 1) as int);
 }
@@ -169,7 +169,7 @@ pub trait Sort {
     fn qsort(self);
 }
 
-impl<T: Copy Ord Eq> Sort for &mut [T] {
+impl<T:Copy + Ord + Eq> Sort for &mut [T] {
     fn qsort(self) { quick_sort3(self); }
 }
 
@@ -177,7 +177,7 @@ const MIN_MERGE: uint = 64;
 const MIN_GALLOP: uint = 7;
 const INITIAL_TMP_STORAGE: uint = 128;
 
-pub fn tim_sort<T: Copy Ord>(array: &mut [T]) {
+pub fn tim_sort<T:Copy + Ord>(array: &mut [T]) {
     let size = array.len();
     if size < 2 {
         return;
@@ -195,12 +195,12 @@ pub fn tim_sort<T: Copy Ord>(array: &mut [T]) {
     let mut idx = 0;
     let mut remaining = size;
     loop {
-        let arr = vec::mut_view(array, idx, size);
+        let arr = vec::mut_slice(array, idx, size);
         let mut run_len: uint = count_run_ascending(arr);
 
         if run_len < min_run {
             let force = if remaining <= min_run {remaining} else {min_run};
-            let slice = vec::mut_view(arr, 0, force);
+            let slice = vec::mut_slice(arr, 0, force);
             binarysort(slice, run_len);
             run_len = force;
         }
@@ -216,7 +216,7 @@ pub fn tim_sort<T: Copy Ord>(array: &mut [T]) {
     ms.merge_force_collapse(array);
 }
 
-fn binarysort<T: Copy Ord>(array: &mut [T], start: uint) {
+fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
     let size = array.len();
     let mut start = start;
     assert start <= size;
@@ -241,7 +241,7 @@ fn binarysort<T: Copy Ord>(array: &mut [T], start: uint) {
         let mut n = start-left;
 
         copy_vec(array, left+1, array, left, n);
-        array[left] = move pivot;
+        array[left] = pivot;
         start += 1;
     }
 }
@@ -266,7 +266,7 @@ pure fn min_run_length(n: uint) -> uint {
     return n + r;
 }
 
-fn count_run_ascending<T: Copy Ord>(array: &mut [T]) -> uint {
+fn count_run_ascending<T:Copy + Ord>(array: &mut [T]) -> uint {
     let size = array.len();
     assert size > 0;
     if size == 1 { return 1; }
@@ -286,7 +286,7 @@ fn count_run_ascending<T: Copy Ord>(array: &mut [T]) -> uint {
     return run;
 }
 
-pure fn gallop_left<T: Copy Ord>(key: &const T, array: &[const T],
+pure fn gallop_left<T:Copy + Ord>(key: &const T, array: &[const T],
                             hint: uint) -> uint {
     let size = array.len();
     assert size != 0 && hint < size;
@@ -335,7 +335,7 @@ pure fn gallop_left<T: Copy Ord>(key: &const T, array: &[const T],
     return ofs;
 }
 
-pure fn gallop_right<T: Copy Ord>(key: &const T, array: &[const T],
+pure fn gallop_right<T:Copy + Ord>(key: &const T, array: &[const T],
                             hint: uint) -> uint {
     let size = array.len();
     assert size != 0 && hint < size;
@@ -404,7 +404,7 @@ fn MergeState<T>() -> MergeState<T> {
     }
 }
 
-impl<T: Copy Ord> MergeState<T> {
+impl<T:Copy + Ord> MergeState<T> {
     fn push_run(&self, run_base: uint, run_len: uint) {
         let tmp = RunState{base: run_base, len: run_len};
         self.runs.push(tmp);
@@ -431,12 +431,12 @@ impl<T: Copy Ord> MergeState<T> {
                 arr[n+1].len = arr[n+2].len;
             }
 
-            let slice = vec::mut_view(array, b1, b1+l1);
+            let slice = vec::mut_slice(array, b1, b1+l1);
             let k = gallop_right(&const array[b2], slice, 0);
             b1 += k;
             l1 -= k;
             if l1 != 0 {
-                let slice = vec::mut_view(array, b2, b2+l2);
+                let slice = vec::mut_slice(array, b2, b2+l2);
                 let l2 = gallop_left(
                     &const array[b1+l1-1],slice,l2-1);
                 if l2 > 0 {
@@ -455,7 +455,8 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 0 && len2 != 0 && base1+len1 == base2;
 
-        let mut tmp = vec::slice(array, base1, base1+len1);
+        let tmp = vec::cast_to_mut(
+            vec::slice(array, base1, base1+len1).to_vec());
 
         let mut c1 = 0;
         let mut c2 = base2;
@@ -509,7 +510,7 @@ impl<T: Copy Ord> MergeState<T> {
             loop {
                 assert len1 > 1 && len2 != 0;
 
-                let tmp_view = vec::const_view(tmp, c1, c1+len1);
+                let tmp_view = vec::const_slice(tmp, c1, c1+len1);
                 count1 = gallop_right(&const array[c2], tmp_view, 0);
                 if count1 != 0 {
                     copy_vec(array, dest, tmp, c1, count1);
@@ -520,7 +521,7 @@ impl<T: Copy Ord> MergeState<T> {
                 dest += 1; c2 += 1; len2 -= 1;
                 if len2 == 0 { break_outer = true; break; }
 
-                let tmp_view = vec::const_view(array, c2, c2+len2);
+                let tmp_view = vec::const_slice(array, c2, c2+len2);
                 count2 = gallop_left(&const tmp[c1], tmp_view, 0);
                 if count2 != 0 {
                     copy_vec(array, dest, array, c2, count2);
@@ -558,7 +559,8 @@ impl<T: Copy Ord> MergeState<T> {
                 base2: uint, len2: uint) {
         assert len1 != 1 && len2 != 0 && base1 + len1 == base2;
 
-        let mut tmp = vec::slice(array, base2, base2+len2);
+        let tmp = vec::cast_to_mut(
+            vec::slice(array, base2, base2+len2).to_vec());
 
         let mut c1 = base1 + len1 - 1;
         let mut c2 = len2 - 1;
@@ -614,7 +616,7 @@ impl<T: Copy Ord> MergeState<T> {
             loop {
                 assert len2 > 1 && len1 != 0;
 
-                let tmp_view = vec::mut_view(array, base1, base1+len1);
+                let tmp_view = vec::mut_slice(array, base1, base1+len1);
                 count1 = len1 - gallop_right(
                     &const tmp[c2], tmp_view, len1-1);
 
@@ -630,7 +632,7 @@ impl<T: Copy Ord> MergeState<T> {
 
                 let count2;
                 {
-                    let tmp_view = vec::mut_view(tmp, 0, len2);
+                    let tmp_view = vec::mut_slice(tmp, 0, len2);
                     count2 = len2 - gallop_left(&const array[c1],
                                                 tmp_view,
                                                 len2-1);
@@ -706,11 +708,11 @@ impl<T: Copy Ord> MergeState<T> {
 }
 
 #[inline(always)]
-fn copy_vec<T: Copy>(dest: &mut [T], s1: uint,
+fn copy_vec<T:Copy>(dest: &mut [T], s1: uint,
                     from: &[const T], s2: uint, len: uint) {
     assert s1+len <= dest.len() && s2+len <= from.len();
 
-    let slice = vec::slice(from, s2, s2+len);
+    let slice = vec::slice(from, s2, s2+len).to_vec();
     for slice.eachi |i, v| {
         dest[s1+i] = *v;
     }
@@ -816,7 +818,7 @@ mod test_qsort {
 
         do quick_sort(names) |x, y| { int::le(*x, *y) };
 
-        let immut_names = move names;
+        let immut_names = names;
 
         let pairs = vec::zip_slice(expected, immut_names);
         for vec::each(pairs) |p| {
@@ -1017,23 +1019,23 @@ mod big_tests {
         tabulate_managed(low, high);
     }
 
-    fn multiplyVec<T: Copy>(arr: &[const T], num: uint) -> ~[T] {
+    fn multiplyVec<T:Copy>(arr: &[const T], num: uint) -> ~[T] {
         let size = arr.len();
         let res = do vec::from_fn(num) |i| {
             arr[i % size]
         };
-        move res
+        res
     }
 
     fn makeRange(n: uint) -> ~[uint] {
         let one = do vec::from_fn(n) |i| { i };
         let mut two = copy one;
         vec::reverse(two);
-        vec::append(move two, one)
+        vec::append(two, one)
     }
 
     fn tabulate_unique(lo: uint, hi: uint) {
-        fn isSorted<T: Ord>(arr: &[const T]) {
+        fn isSorted<T:Ord>(arr: &[const T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
                     fail!(~"Array not sorted");
@@ -1048,7 +1050,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 rng.gen_float()
             };
-            let mut arr = move arr;
+            let mut arr = arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1087,9 +1089,9 @@ mod big_tests {
             isSorted(arr);
 
             let mut arr = if n > 4 {
-                let part = vec::view(arr, 0, 4);
+                let part = vec::slice(arr, 0, 4);
                 multiplyVec(part, n)
-            } else { move arr };
+            } else { arr };
             tim_sort(arr); // ~sort
             isSorted(arr);
 
@@ -1105,7 +1107,7 @@ mod big_tests {
     }
 
     fn tabulate_managed(lo: uint, hi: uint) {
-        fn isSorted<T: Ord>(arr: &[const @T]) {
+        fn isSorted<T:Ord>(arr: &[const @T]) {
             for uint::range(0, arr.len()-1) |i| {
                 if arr[i] > arr[i+1] {
                     fail!(~"Array not sorted");
@@ -1120,7 +1122,7 @@ mod big_tests {
             let arr = do vec::from_fn(n) |_i| {
                 @rng.gen_float()
             };
-            let mut arr = move arr;
+            let mut arr = arr;
 
             tim_sort(arr); // *sort
             isSorted(arr);
@@ -1159,9 +1161,9 @@ mod big_tests {
             isSorted(arr);
 
             let mut arr = if n > 4 {
-                let part = vec::view(arr, 0, 4);
+                let part = vec::slice(arr, 0, 4);
                 multiplyVec(part, n)
-            } else { move arr };
+            } else { arr };
             tim_sort(arr); // ~sort
             isSorted(arr);
 

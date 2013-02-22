@@ -70,14 +70,14 @@ pub struct field {
 
 pub type param_bounds = @~[param_bound];
 
-pub type method = {
+pub struct method {
     ident: ast::ident,
     tps: @~[param_bounds],
     fty: BareFnTy,
     self_ty: ast::self_ty_,
     vis: ast::visibility,
     def_id: ast::def_id
-};
+}
 
 pub struct mt {
     ty: t,
@@ -230,10 +230,9 @@ pub type ctxt = @ctxt_;
 struct ctxt_ {
     diag: syntax::diagnostic::span_handler,
     interner: HashMap<intern_key, t_box>,
-    mut next_id: uint,
+    next_id: @mut uint,
     vecs_implicitly_copyable: bool,
     legacy_modes: bool,
-    legacy_records: bool,
     cstore: @mut metadata::cstore::CStore,
     sess: session::Session,
     def_map: resolve::DefMap,
@@ -261,7 +260,7 @@ struct ctxt_ {
     short_names_cache: HashMap<t, @~str>,
     needs_drop_cache: HashMap<t, bool>,
     needs_unwind_cleanup_cache: HashMap<t, bool>,
-    mut tc_cache: LinearMap<uint, TypeContents>,
+    tc_cache: @mut LinearMap<uint, TypeContents>,
     ast_ty_to_ty_cache: HashMap<node_id, ast_ty_to_ty_cache_entry>,
     enum_var_cache: HashMap<def_id, @~[VariantInfo]>,
     trait_method_cache: HashMap<def_id, @~[method]>,
@@ -303,10 +302,14 @@ enum tbox_flag {
     needs_subst = 1 | 2 | 8
 }
 
-type t_box = @{sty: sty,
-               id: uint,
-               flags: uint,
-               o_def_id: Option<ast::def_id>};
+type t_box = @t_box_;
+
+struct t_box_ {
+    sty: sty,
+    id: uint,
+    flags: uint,
+    o_def_id: Option<ast::def_id>
+}
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
 // throughout the compiler. These are simply casted t_box values. Use ty::get
@@ -320,7 +323,7 @@ pub pure fn get(t: t) -> t_box {
     unsafe {
         let t2 = cast::reinterpret_cast::<t, t_box>(&t);
         let t3 = t2;
-        cast::forget(move t2);
+        cast::forget(t2);
         t3
     }
 }
@@ -654,49 +657,49 @@ impl to_bytes::IterBytes for param_bound {
 }
 
 pub trait Vid {
-    pure fn to_uint() -> uint;
+    pure fn to_uint(&self) -> uint;
 }
 
-pub impl TyVid: Vid {
-    pure fn to_uint() -> uint { *self }
+pub impl Vid for TyVid {
+    pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl TyVid: ToStr {
+pub impl ToStr for TyVid {
     pure fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
-pub impl IntVid: Vid {
-    pure fn to_uint() -> uint { *self }
+pub impl Vid for IntVid {
+    pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl IntVid: ToStr {
+pub impl ToStr for IntVid {
     pure fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
-pub impl FloatVid: Vid {
-    pure fn to_uint() -> uint { *self }
+pub impl Vid for FloatVid {
+    pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl FloatVid: ToStr {
+pub impl ToStr for FloatVid {
     pure fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
-pub impl RegionVid: Vid {
-    pure fn to_uint() -> uint { *self }
+pub impl Vid for RegionVid {
+    pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl RegionVid: ToStr {
+pub impl ToStr for RegionVid {
     pure fn to_str(&self) -> ~str { fmt!("%?", self) }
 }
 
-pub impl FnSig : ToStr {
+pub impl ToStr for FnSig {
     pure fn to_str(&self) -> ~str {
         // grr, without tcx not much we can do.
         return ~"(...)";
     }
 }
 
-pub impl InferTy: ToStr {
+pub impl ToStr for InferTy {
     pure fn to_str(&self) -> ~str {
         match *self {
             TyVar(ref v) => v.to_str(),
@@ -706,7 +709,7 @@ pub impl InferTy: ToStr {
     }
 }
 
-pub impl IntVarValue : ToStr {
+pub impl ToStr for IntVarValue {
     pure fn to_str(&self) -> ~str {
         match *self {
             IntType(ref v) => v.to_str(),
@@ -715,25 +718,25 @@ pub impl IntVarValue : ToStr {
     }
 }
 
-pub impl TyVid : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for TyVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl IntVid : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for IntVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl FloatVid : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for FloatVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl RegionVid : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for RegionVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
@@ -749,11 +752,16 @@ pub impl RegionVid : to_bytes::IterBytes {
 ///
 /// - `ty`: the base type.  May have reference to the (unsubstituted) bound
 ///   region `&self` or to (unsubstituted) ty_param types
-pub type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
-                                   region_param: Option<region_variance>,
-                                   ty: t};
+pub struct ty_param_bounds_and_ty {
+    bounds: @~[param_bounds],
+    region_param: Option<region_variance>,
+    ty: t
+}
 
-pub type ty_param_substs_and_ty = {substs: ty::substs, ty: ty::t};
+pub struct ty_param_substs_and_ty {
+    substs: ty::substs,
+    ty: ty::t
+}
 
 type type_cache = HashMap<ast::def_id, ty_param_bounds_and_ty>;
 
@@ -766,7 +774,7 @@ fn mk_rcache() -> creader_cache {
     return oldmap::HashMap();
 }
 
-pub fn new_ty_hash<V: Copy>() -> oldmap::HashMap<t, V> {
+pub fn new_ty_hash<V:Copy>() -> oldmap::HashMap<t, V> {
     oldmap::HashMap()
 }
 
@@ -780,16 +788,10 @@ pub fn mk_ctxt(s: session::Session,
                crate: @ast::crate)
             -> ctxt {
     let mut legacy_modes = false;
-    let mut legacy_records = false;
     for crate.node.attrs.each |attribute| {
         match attribute.node.value.node {
-            ast::meta_word(ref w) if (*w) == ~"legacy_modes" => {
+            ast::meta_word(w) if *w == ~"legacy_modes" => {
                 legacy_modes = true;
-                if legacy_records { break; }
-            }
-            ast::meta_word(ref w) if (*w) == ~"legacy_records" => {
-                legacy_records = true;
-                if legacy_modes { break; }
             }
             _ => {}
         }
@@ -802,10 +804,9 @@ pub fn mk_ctxt(s: session::Session,
     @ctxt_ {
         diag: s.diagnostic(),
         interner: interner,
-        mut next_id: 0u,
+        next_id: @mut 0,
         vecs_implicitly_copyable: vecs_implicitly_copyable,
         legacy_modes: legacy_modes,
-        legacy_records: legacy_records,
         cstore: s.cstore,
         sess: s,
         def_map: dm,
@@ -822,7 +823,7 @@ pub fn mk_ctxt(s: session::Session,
         short_names_cache: new_ty_hash(),
         needs_drop_cache: new_ty_hash(),
         needs_unwind_cleanup_cache: new_ty_hash(),
-        tc_cache: LinearMap::new(),
+        tc_cache: @mut LinearMap::new(),
         ast_ty_to_ty_cache: HashMap(),
         enum_var_cache: HashMap(),
         trait_method_cache: HashMap(),
@@ -830,7 +831,7 @@ pub fn mk_ctxt(s: session::Session,
         inferred_modes: HashMap(),
         adjustments: HashMap(),
         normalized_cache: new_ty_hash(),
-        lang_items: move lang_items,
+        lang_items: lang_items,
         legacy_boxed_traits: HashMap(),
         provided_methods: HashMap(),
         provided_method_sources: HashMap(),
@@ -909,12 +910,20 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       }
     }
 
-    let t = @{sty: move st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
+    let t = @t_box_ {
+        sty: st,
+        id: *cx.next_id,
+        flags: flags,
+        o_def_id: o_def_id
+    };
+    let key = intern_key {
+        sty: to_unsafe_ptr(&t.sty),
+        o_def_id: o_def_id
+    };
 
-    let key = intern_key {sty: to_unsafe_ptr(&t.sty), o_def_id: o_def_id};
-    cx.interner.insert(move key, t);
+    cx.interner.insert(key, t);
 
-    cx.next_id += 1u;
+    *cx.next_id += 1;
     unsafe { cast::reinterpret_cast(&t) }
 }
 
@@ -1178,7 +1187,7 @@ pub fn fold_sig(sig: &FnSig, fldop: fn(t) -> t) -> FnSig {
     };
 
     FnSig {
-        inputs: move args,
+        inputs: args,
         output: fldop(sig.output)
     }
 }
@@ -1562,10 +1571,11 @@ pub pure fn type_is_vec(ty: t) -> bool {
 
 pub pure fn type_is_unique(ty: t) -> bool {
     match get(ty).sty {
-      ty_uniq(_) => return true,
-      ty_evec(_, vstore_uniq) => true,
-      ty_estr(vstore_uniq) => true,
-      _ => return false
+        ty_uniq(_) |
+        ty_evec(_, vstore_uniq) |
+        ty_estr(vstore_uniq) |
+        ty_opaque_closure_ptr(ast::OwnedSigil) => true,
+        _ => return false
     }
 }
 
@@ -1788,6 +1798,10 @@ pub impl TypeContents {
 
     static fn nonowned(_cx: ctxt) -> TypeContents {
         TC_MANAGED + TC_BORROWED_POINTER
+    }
+
+    fn contains_managed(&self) -> bool {
+        self.intersects(TC_MANAGED)
     }
 
     fn is_const(&self, cx: ctxt) -> bool {
@@ -2074,11 +2088,19 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_ALL
             }
 
-            ty_trait(_, _, vstore_fixed(_)) |
-            ty_type |
-            ty_opaque_closure_ptr(_) |
-            ty_opaque_box |
-            ty_unboxed_vec(_) |
+            ty_opaque_box => TC_MANAGED,
+            ty_unboxed_vec(mt) => tc_mt(cx, mt, cache),
+            ty_opaque_closure_ptr(sigil) => {
+                match sigil {
+                    ast::BorrowedSigil => TC_BORROWED_POINTER,
+                    ast::ManagedSigil => TC_MANAGED,
+                    ast::OwnedSigil => TC_OWNED_CLOSURE
+                }
+            }
+
+            ty_type => TC_NONE,
+            ty_trait(_, _, vstore_fixed(_)) => TC_NONE,
+
             ty_err => {
                 cx.sess.bug(~"Asked to compute contents of fictitious type");
             }
@@ -2220,8 +2242,11 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
           ty_infer(_) => {
             cx.sess.bug(~"Asked to compute kind of a type variable");
           }
-          ty_type | ty_opaque_closure_ptr(_)
-          | ty_opaque_box | ty_unboxed_vec(_) | ty_err => {
+          ty_type => 1,
+          ty_opaque_closure_ptr(_) => 1,
+          ty_opaque_box => 1,
+          ty_unboxed_vec(_) => 10,
+          ty_err => {
             cx.sess.bug(~"Asked to compute kind of fictitious type");
           }
         }
@@ -2823,7 +2848,7 @@ pub pure fn ty_fn_ret(fty: t) -> t {
     }
 }
 
-fn is_fn_ty(fty: t) -> bool {
+pub fn is_fn_ty(fty: t) -> bool {
     match get(fty).sty {
         ty_bare_fn(_) => true,
         ty_closure(_) => true,
@@ -3010,11 +3035,18 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
     }
 }
 
+pub struct ParamsTy {
+    params: ~[t],
+    ty: t
+}
+
 pub fn expr_ty_params_and_ty(cx: ctxt,
                              expr: @ast::expr)
-                          -> {params: ~[t], ty: t} {
-    return {params: node_id_to_type_params(cx, expr.id),
-         ty: node_id_to_type(cx, expr.id)};
+                          -> ParamsTy {
+    ParamsTy {
+        params: node_id_to_type_params(cx, expr.id),
+        ty: node_id_to_type(cx, expr.id)
+    }
 }
 
 pub fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
@@ -3110,7 +3142,7 @@ pub fn expr_kind(tcx: ctxt,
                 ast::def_local(*) |
                 ast::def_self(*) => LvalueExpr,
 
-                move def => {
+                def => {
                     tcx.sess.span_bug(expr.span, fmt!(
                         "Uncategorized def for expr %?: %?",
                         expr.id, def));
@@ -3226,7 +3258,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
     for fields.each |f| { if f.ident == id { return i; } i += 1u; }
     tcx.sess.bug(fmt!(
         "No field named `%s` found in the list of fields `%?`",
-        tcx.sess.str_of(id),
+        *tcx.sess.str_of(id),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
@@ -3235,7 +3267,7 @@ pub fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
       Some(f) => f,
       // Do we only call this when we know the field is legit?
       None => fail!(fmt!("get_field: ty doesn't have a field %s",
-                         tcx.sess.str_of(id)))
+                         *tcx.sess.str_of(id)))
     }
 }
 
@@ -3302,7 +3334,7 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
 
 // Maintains a little union-set tree for inferred modes.  `canon()` returns
 // the current head value for `m0`.
-fn canon<T:Copy cmp::Eq>(tbl: HashMap<ast::node_id, ast::inferable<T>>,
+fn canon<T:Copy + cmp::Eq>(tbl: HashMap<ast::node_id, ast::inferable<T>>,
                          +m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
       ast::infer(id) => match tbl.find(&id) {
@@ -3465,8 +3497,8 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_record_fields(values) => {
             fmt!("expected a record with field `%s` but found one with field \
                   `%s`",
-                 cx.sess.str_of(values.expected),
-                 cx.sess.str_of(values.found))
+                 *cx.sess.str_of(values.expected),
+                 *cx.sess.str_of(values.found))
         }
         terr_arg_count => ~"incorrect number of function parameters",
         terr_mode_mismatch(values) => {
@@ -3500,7 +3532,7 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  vstore_to_str(cx, (*values).found))
         }
         terr_in_field(err, fname) => {
-            fmt!("in field `%s`, %s", cx.sess.str_of(fname),
+            fmt!("in field `%s`, %s", *cx.sess.str_of(fname),
                  type_err_to_str(cx, err))
         }
         terr_sorts(values) => {
@@ -3609,7 +3641,10 @@ pub fn trait_supertraits(cx: ctxt,
             ty_trait(def_id, ref substs, _) => {
                 result.push(InstantiatedTraitRef {
                     def_id: def_id,
-                    tpt: { substs: (/*bad*/copy *substs), ty: *trait_type }
+                    tpt: ty_param_substs_and_ty {
+                        substs: (/*bad*/copy *substs),
+                        ty: *trait_type
+                    }
                 });
             }
             _ => cx.sess.bug(~"trait_supertraits: trait ref wasn't a trait")
@@ -3617,7 +3652,7 @@ pub fn trait_supertraits(cx: ctxt,
     }
 
     // Unwrap and return the result.
-    return @dvec::unwrap(move result);
+    return @dvec::unwrap(result);
 }
 
 pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {

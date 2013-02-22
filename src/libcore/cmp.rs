@@ -56,41 +56,41 @@ pub trait Ord {
 }
 
 #[inline(always)]
-pub pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {
+pub pure fn lt<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).lt(v2)
 }
 
 #[inline(always)]
-pub pure fn le<T: Ord>(v1: &T, v2: &T) -> bool {
+pub pure fn le<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).le(v2)
 }
 
 #[inline(always)]
-pub pure fn eq<T: Eq>(v1: &T, v2: &T) -> bool {
+pub pure fn eq<T:Eq>(v1: &T, v2: &T) -> bool {
     (*v1).eq(v2)
 }
 
 #[inline(always)]
-pub pure fn ne<T: Eq>(v1: &T, v2: &T) -> bool {
+pub pure fn ne<T:Eq>(v1: &T, v2: &T) -> bool {
     (*v1).ne(v2)
 }
 
 #[inline(always)]
-pub pure fn ge<T: Ord>(v1: &T, v2: &T) -> bool {
+pub pure fn ge<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).ge(v2)
 }
 
 #[inline(always)]
-pub pure fn gt<T: Ord>(v1: &T, v2: &T) -> bool {
+pub pure fn gt<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).gt(v2)
 }
 
 #[inline(always)]
-pub pure fn min<T: Ord>(v1: T, v2: T) -> T {
+pub pure fn min<T:Ord>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
 }
 
 #[inline(always)]
-pub pure fn max<T: Ord>(v1: T, v2: T) -> T {
+pub pure fn max<T:Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }

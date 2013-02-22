@@ -17,7 +17,7 @@ fn goodfail() {
 
 fn main() {
     task::spawn(|| goodfail() );
-    let (po, _c) = pipes::stream();
+    let (po, _c) = comm::stream();
     // We shouldn't be able to get past this recv since there's no
     // message available
     let i: int = po.recv();

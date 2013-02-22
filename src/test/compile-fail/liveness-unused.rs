@@ -68,5 +68,5 @@ impl Drop for r {
 
 fn main() {
     let x = r { x: () };
-    fn@(move x) { copy x; }; //~ ERROR copying a value of non-copyable type
+    fn@() { copy x; }; //~ ERROR copying a value of non-copyable type
 }

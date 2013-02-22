@@ -10,13 +10,11 @@
 
 // Compare bounded and unbounded protocol performance.
 
-#[allow(structural_records)]; // Pipes
-// Until a snapshot
 // xfail-pretty
  
 extern mod std;
 
-use pipes::{spawn_service, recv};
+use core::pipes::{spawn_service, recv};
 use std::time::precise_time_s;
 
 proto! pingpong (
@@ -45,17 +43,17 @@ proto! pingpong_unbounded (
 
 // This stuff should go in libcore::pipes
 macro_rules! move_it (
-    { $x:expr } => { let t = move *ptr::addr_of(&($x)); move t }
+    { $x:expr } => { let t = *ptr::addr_of(&($x)); t }
 )
 
 macro_rules! follow (
     {
         $($message:path($($x: ident),+) -> $next:ident $e:expr)+
     } => (
-        |m| match move m {
-            $(Some($message($($x,)* move next)) => {
-                let $next = move next;
-                move $e })+
+        |m| match m {
+            $(Some($message($($x,)* next)) => {
+                let $next = next;
+                $e })+
                 _ => { fail!() }
         }
     );
@@ -63,18 +61,18 @@ macro_rules! follow (
     {
         $($message:path -> $next:ident $e:expr)+
     } => (
-        |m| match move m {
-            $(Some($message(move next)) => {
-                let $next = move next;
-                move $e })+
+        |m| match m {
+            $(Some($message(next)) => {
+                let $next = next;
+                $e })+
                 _ => { fail!() }
         }
     )
 )
 
-fn switch<T: Owned, Tb: Owned, U>(+endp: pipes::RecvPacketBuffered<T, Tb>,
+fn switch<T:Owned,Tb:Owned,U>(+endp: core::pipes::RecvPacketBuffered<T, Tb>,
                       f: fn(+v: Option<T>) -> U) -> U {
-    f(pipes::try_recv(move endp))
+    f(core::pipes::try_recv(endp))
 }
 
 // Here's the benchmark
@@ -84,10 +82,10 @@ fn bounded(count: uint) {
 
     let mut ch = do spawn_service(init) |ch| {
         let mut count = count;
-        let mut ch = move ch;
+        let mut ch = ch;
         while count > 0 {
-            ch = switch(move ch, follow! (
-                ping -> next { server::pong(move next) }
+            ch = switch(ch, follow! (
+                ping -> next { server::pong(next) }
             ));
 
             count -= 1;
@@ -96,10 +94,10 @@ fn bounded(count: uint) {
 
     let mut count = count;
     while count > 0 {
-        let ch_ = client::ping(move ch);
+        let ch_ = client::ping(ch);
 
-        ch = switch(move ch_, follow! (
-            pong -> next { move next }
+        ch = switch(ch_, follow! (
+            pong -> next { next }
         ));
 
         count -= 1;
@@ -111,10 +109,10 @@ fn unbounded(count: uint) {
 
     let mut ch = do spawn_service(init) |ch| {
         let mut count = count;
-        let mut ch = move ch;
+        let mut ch = ch;
         while count > 0 {
-            ch = switch(move ch, follow! (
-                ping -> next { server::pong(move next) }
+            ch = switch(ch, follow! (
+                ping -> next { server::pong(next) }
             ));
 
             count -= 1;
@@ -123,10 +121,10 @@ fn unbounded(count: uint) {
 
     let mut count = count;
     while count > 0 {
-        let ch_ = client::ping(move ch);
+        let ch_ = client::ping(ch);
 
-        ch = switch(move ch_, follow! (
-            pong -> next { move next }
+        ch = switch(ch_, follow! (
+            pong -> next { next }
         ));
 
         count -= 1;

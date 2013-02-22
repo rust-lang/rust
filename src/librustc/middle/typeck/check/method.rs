@@ -139,7 +139,7 @@ pub fn lookup(
     let mme = lcx.do_lookup(self_ty);
     debug!("method lookup for %s yielded %?",
            expr_repr(fcx.tcx(), expr), mme);
-    return move mme;
+    return mme;
 }
 
 pub struct LookupContext {
@@ -204,26 +204,26 @@ pub impl LookupContext {
                 check::DontDerefArgs => {
                     match self.search_for_autoderefd_method(self_ty,
                                                             autoderefs) {
-                        Some(move mme) => { return Some(mme); }
+                        Some(mme) => { return Some(mme); }
                         None => {}
                     }
 
                     match self.search_for_autoptrd_method(self_ty,
                                                           autoderefs) {
-                        Some(move mme) => { return Some(move mme); }
+                        Some(mme) => { return Some(mme); }
                         None => {}
                     }
                 }
                 check::DoDerefArgs => {
                     match self.search_for_autoptrd_method(self_ty,
                                                           autoderefs) {
-                        Some(move mme) => { return Some(move mme); }
+                        Some(mme) => { return Some(mme); }
                         None => {}
                     }
 
                     match self.search_for_autoderefd_method(self_ty,
                                                             autoderefs) {
-                        Some(move mme) => { return Some(mme); }
+                        Some(mme) => { return Some(mme); }
                         None => {}
                     }
                 }
@@ -438,10 +438,9 @@ pub impl LookupContext {
 
                 let trait_methods = ty::trait_methods(tcx, init_trait_id);
                 let pos = {
-                    // FIXME #3453 can't use trait_methods.position
-                    match vec::position(*trait_methods,
-                                        |m| (m.self_ty != ast::sty_static &&
-                                             m.ident == self.m_name))
+                    match trait_methods.position(|m| {
+                        m.self_ty != ast::sty_static &&
+                            m.ident == self.m_name })
                     {
                         Some(pos) => pos,
                         None => {
@@ -457,7 +456,7 @@ pub impl LookupContext {
                     self.create_rcvr_ty_and_substs_for_method(
                         method.self_ty,
                         rcvr_ty,
-                        move init_substs,
+                        init_substs,
                         TransformTypeNormally);
 
                 let cand = Candidate {
@@ -525,12 +524,12 @@ pub impl LookupContext {
         let (rcvr_ty, rcvr_substs) =
             self.create_rcvr_ty_and_substs_for_method(method.self_ty,
                                                       self_ty,
-                                                      move rcvr_substs,
+                                                      rcvr_substs,
                                                       TransformTypeForObject);
 
         self.inherent_candidates.push(Candidate {
             rcvr_ty: rcvr_ty,
-            rcvr_substs: move rcvr_substs,
+            rcvr_substs: rcvr_substs,
             explicit_self: method.self_ty,
             num_method_tps: method.tps.len(),
             self_mode: get_mode_from_self_type(method.self_ty),
@@ -585,7 +584,7 @@ pub impl LookupContext {
                     self.create_rcvr_ty_and_substs_for_method(
                         method_self_ty,
                         self_ty,
-                        move rcvr_substs,
+                        rcvr_substs,
                         TransformTypeNormally);
                 let origin = if trait_did == did {
                     method_self(trait_did, index)
@@ -595,7 +594,7 @@ pub impl LookupContext {
                 };
                 self.inherent_candidates.push(Candidate {
                     rcvr_ty: rcvr_ty,
-                    rcvr_substs: move rcvr_substs,
+                    rcvr_substs: rcvr_substs,
                     explicit_self: method_self_ty,
                     num_method_tps: method_num_tps,
                     self_mode: get_mode_from_self_type(method_self_ty),
@@ -624,9 +623,7 @@ pub impl LookupContext {
         }
 
         let idx = {
-            // FIXME #3453 can't use impl_info.methods.position
-            match vec::position(impl_info.methods,
-                                |m| m.ident == self.m_name) {
+            match impl_info.methods.position(|m| m.ident == self.m_name) {
                 Some(idx) => idx,
                 None => { return; } // No method with the right name.
             }
@@ -641,19 +638,21 @@ pub impl LookupContext {
             ccx: self.fcx.ccx,
             infcx: self.fcx.infcx()
         };
-        let {substs: impl_substs, ty: impl_ty} =
-            impl_self_ty(&vcx, location_info, impl_info.did);
+        let ty::ty_param_substs_and_ty {
+            substs: impl_substs,
+            ty: impl_ty
+        } = impl_self_ty(&vcx, location_info, impl_info.did);
 
         let (impl_ty, impl_substs) =
             self.create_rcvr_ty_and_substs_for_method(
                 method.self_type,
                 impl_ty,
-                move impl_substs,
+                impl_substs,
                 TransformTypeNormally);
 
         candidates.push(Candidate {
             rcvr_ty: impl_ty,
-            rcvr_substs: move impl_substs,
+            rcvr_substs: impl_substs,
             explicit_self: method.self_type,
             num_method_tps: method.n_tps,
             self_mode: get_mode_from_self_type(method.self_type),
@@ -693,7 +692,7 @@ pub impl LookupContext {
 
             candidates.push(Candidate {
                 rcvr_ty: impl_ty,
-                rcvr_substs: move impl_substs,
+                rcvr_substs: impl_substs,
                 explicit_self: provided_method_info.method_info.self_type,
                 num_method_tps: provided_method_info.method_info.n_tps,
                 self_mode: get_mode_from_self_type(
@@ -722,10 +721,10 @@ pub impl LookupContext {
             match self_decl {
                 sty_static | sty_value | sty_by_ref |
                 sty_box(_) | sty_uniq(_) => {
-                    move self_substs
+                    self_substs
                 }
                 sty_region(_) if self_substs.self_r.is_some() => {
-                    move self_substs
+                    self_substs
                 }
                 sty_region(_) => {
                     substs {
@@ -761,7 +760,7 @@ pub impl LookupContext {
             self.consider_reborrow(self_ty, autoderefs);
         match self.search_for_method(self_ty) {
             None => None,
-            Some(move mme) => {
+            Some(mme) => {
                 debug!("(searching for autoderef'd method) writing \
                        adjustment (%u) to %d",
                        autoderefs,
@@ -945,7 +944,7 @@ pub impl LookupContext {
             let autoref_ty = mk_autoref_ty(*mutbl, region);
             match self.search_for_method(autoref_ty) {
                 None => {}
-                Some(move mme) => {
+                Some(mme) => {
                     self.fcx.write_adjustment(
                         self.self_expr.id,
                         @ty::AutoAdjustment {
@@ -977,8 +976,8 @@ pub impl LookupContext {
         debug!("searching inherent candidates");
         match self.consider_candidates(self_ty, &self.inherent_candidates) {
             None => {}
-            Some(move mme) => {
-                return Some(move mme);
+            Some(mme) => {
+                return Some(mme);
             }
         }
 
@@ -987,8 +986,8 @@ pub impl LookupContext {
             None => {
                 return None;
             }
-            Some(move mme) => {
-                return Some(move mme);
+            Some(mme) => {
+                return Some(mme);
             }
         }
     }

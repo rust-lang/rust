@@ -17,7 +17,7 @@ fn die() {
 
 fn iloop() {
     task::spawn(|| die() );
-    let (p, c) = core::pipes::stream::<()>();
+    let (p, c) = comm::stream::<()>();
     loop {
         // Sending and receiving here because these actions yield,
         // at which point our child can kill us.

@@ -16,10 +16,10 @@ use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
 use lib::llvm::{PassManagerRef, FileType};
 use lib;
-use metadata::common::link_meta;
+use metadata::common::LinkMeta;
 use metadata::filesearch;
 use metadata::{encoder, cstore};
-use middle::trans::common::crate_ctxt;
+use middle::trans::common::CrateContext;
 use middle::ty;
 use session::Session;
 use session;
@@ -156,7 +156,7 @@ pub mod jit {
                     code: entry,
                     env: ptr::null()
                 };
-                let func: fn(++argv: ~[~str]) = cast::transmute(move closure);
+                let func: fn(++argv: ~[~str]) = cast::transmute(closure);
 
                 func(~[/*bad*/copy sess.opts.binary]);
             }
@@ -451,67 +451,79 @@ pub mod write {
  */
 
 pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
-                   symbol_hasher: &hash::State) -> link_meta {
+                   symbol_hasher: &hash::State) -> LinkMeta {
 
-    type provided_metas =
-        {name: Option<@str>,
-         vers: Option<@str>,
-         cmh_items: ~[@ast::meta_item]};
+    struct ProvidedMetas {
+        name: Option<@str>,
+        vers: Option<@str>,
+        cmh_items: ~[@ast::meta_item]
+    }
 
     fn provided_link_metas(sess: Session, c: &ast::crate) ->
-       provided_metas {
+       ProvidedMetas {
         let mut name = None;
         let mut vers = None;
         let mut cmh_items = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if attr::get_meta_item_name(*meta) == ~"name" {
+            if *attr::get_meta_item_name(*meta) == ~"name" {
                 match attr::get_meta_item_value_str(*meta) {
                   // Changing attr would avoid the need for the copy
                   // here
                   Some(v) => { name = Some(v.to_managed()); }
                   None => cmh_items.push(*meta)
                 }
-            } else if attr::get_meta_item_name(*meta) == ~"vers" {
+            } else if *attr::get_meta_item_name(*meta) == ~"vers" {
                 match attr::get_meta_item_value_str(*meta) {
                   Some(v) => { vers = Some(v.to_managed()); }
                   None => cmh_items.push(*meta)
                 }
             } else { cmh_items.push(*meta); }
         }
-        return {name: name, vers: vers, cmh_items: cmh_items};
+
+        ProvidedMetas {
+            name: name,
+            vers: vers,
+            cmh_items: cmh_items
+        }
     }
 
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
                               -cmh_items: ~[@ast::meta_item],
                               dep_hashes: ~[~str]) -> @str {
-        fn len_and_str(s: ~str) -> ~str {
-            return fmt!("%u_%s", str::len(s), s);
+        fn len_and_str(s: &str) -> ~str {
+            fmt!("%u_%s", s.len(), s)
         }
 
         fn len_and_str_lit(l: ast::lit) -> ~str {
-            return len_and_str(pprust::lit_to_str(@l));
+            len_and_str(pprust::lit_to_str(@l))
         }
 
         let cmh_items = attr::sort_meta_items(cmh_items);
 
-        symbol_hasher.reset();
-        for cmh_items.each |m| {
+        fn hash(symbol_hasher: &hash::State, m: &@ast::meta_item) {
             match m.node {
-              ast::meta_name_value(ref key, value) => {
-                symbol_hasher.write_str(len_and_str((*key)));
+              ast::meta_name_value(key, value) => {
+                symbol_hasher.write_str(len_and_str(*key));
                 symbol_hasher.write_str(len_and_str_lit(value));
               }
-              ast::meta_word(ref name) => {
-                symbol_hasher.write_str(len_and_str((*name)));
+              ast::meta_word(name) => {
+                symbol_hasher.write_str(len_and_str(*name));
               }
-              ast::meta_list(_, _) => {
-                // FIXME (#607): Implement this
-                fail!(~"unimplemented meta_item variant");
+              ast::meta_list(name, ref mis) => {
+                symbol_hasher.write_str(len_and_str(*name));
+                for mis.each |m_| {
+                    hash(symbol_hasher, m_);
+                }
               }
             }
+        }
+
+        symbol_hasher.reset();
+        for cmh_items.each |m| {
+            hash(symbol_hasher, m);
         }
 
         for dep_hashes.each |dh| {
@@ -557,16 +569,23 @@ pub fn build_link_meta(sess: Session, c: &ast::crate, output: &Path,
             };
     }
 
-    let {name: opt_name, vers: opt_vers,
-         cmh_items: cmh_items} = provided_link_metas(sess, c);
-    let name = crate_meta_name(sess, output, move opt_name);
-    let vers = crate_meta_vers(sess, move opt_vers);
+    let ProvidedMetas {
+        name: opt_name,
+        vers: opt_vers,
+        cmh_items: cmh_items
+    } = provided_link_metas(sess, c);
+    let name = crate_meta_name(sess, output, opt_name);
+    let vers = crate_meta_vers(sess, opt_vers);
     let dep_hashes = cstore::get_dep_hashes(sess.cstore);
     let extras_hash =
-        crate_meta_extras_hash(symbol_hasher, move cmh_items,
+        crate_meta_extras_hash(symbol_hasher, cmh_items,
                                dep_hashes);
 
-    return {name: name, vers: vers, extras_hash: extras_hash};
+    LinkMeta {
+        name: name,
+        vers: vers,
+        extras_hash: extras_hash
+    }
 }
 
 pub fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
@@ -578,7 +597,7 @@ pub fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str {
 
 // This calculates STH for a symbol, as defined above
 pub fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
-               link_meta: link_meta) -> @str {
+               link_meta: LinkMeta) -> @str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -595,7 +614,7 @@ pub fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
     hash.to_managed()
 }
 
-pub fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
+pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
     match ccx.type_hashcodes.find(&t) {
       Some(h) => h,
       None => {
@@ -609,7 +628,7 @@ pub fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> @str {
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
-pub fn sanitize(s: ~str) -> ~str {
+pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
     for str::chars_each(s) |c| {
         match c {
@@ -623,10 +642,10 @@ pub fn sanitize(s: ~str) -> ~str {
           'a' .. 'z'
           | 'A' .. 'Z'
           | '0' .. '9'
-          | '_' => str::push_char(&mut result, c),
+          | '_' => result.push_char(c),
           _ => {
             if c > 'z' && char::is_XID_continue(c) {
-                str::push_char(&mut result, c);
+                result.push_char(c);
             }
           }
         }
@@ -649,7 +668,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 
     for ss.each |s| {
         match *s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(sess.str_of(s));
+          let sani = sanitize(*sess.str_of(s));
           n += fmt!("%u%s", str::len(sani), sani);
         } }
     }
@@ -667,14 +686,16 @@ pub fn exported_name(sess: Session,
             path_name(sess.ident_of(vers.to_owned()))));
 }
 
-pub fn mangle_exported_name(ccx: @crate_ctxt, +path: path, t: ty::t) -> ~str {
+pub fn mangle_exported_name(ccx: @CrateContext,
+                            +path: path,
+                            t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
                          hash,
                          ccx.link_meta.vers);
 }
 
-pub fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
+pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
@@ -685,23 +706,23 @@ pub fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
           path_name(ccx.sess.ident_of(hash.to_owned()))]);
 }
 
-pub fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt,
+pub fn mangle_internal_name_by_path_and_seq(ccx: @CrateContext,
                                             +path: path,
                                             +flav: ~str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
-pub fn mangle_internal_name_by_path(ccx: @crate_ctxt, +path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: @CrateContext, +path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-pub fn mangle_internal_name_by_seq(ccx: @crate_ctxt, +flav: ~str) -> ~str {
+pub fn mangle_internal_name_by_seq(ccx: @CrateContext, +flav: ~str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
 }
 
 
-pub fn output_dll_filename(os: session::os, lm: link_meta) -> ~str {
+pub fn output_dll_filename(os: session::os, lm: LinkMeta) -> ~str {
     let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
     let (dll_prefix, dll_suffix) = match os {
         session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
@@ -719,7 +740,7 @@ pub fn output_dll_filename(os: session::os, lm: link_meta) -> ~str {
 pub fn link_binary(sess: Session,
                    obj_filename: &Path,
                    out_filename: &Path,
-                   lm: link_meta) {
+                   lm: LinkMeta) {
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: @session::config, +stem: ~str) -> ~str {
         if stem.starts_with("lib") &&

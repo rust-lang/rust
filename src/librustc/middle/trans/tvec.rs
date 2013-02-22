@@ -81,15 +81,17 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
-    let {bcx, box: bx, body} =
+    let MallocResult {bcx, box: bx, body} =
         base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
     Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
+    base::maybe_set_managed_unique_rc(bcx, bx, heap);
     return rslt(bcx, bx);
 }
+
 pub fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                       fill: ValueRef, alloc: ValueRef) -> Result {
-    alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
+    alloc_raw(bcx, unit_ty, fill, alloc, heap_for_unique(bcx, unit_ty))
 }
 
 pub fn alloc_vec(bcx: block,
@@ -144,7 +146,7 @@ pub struct VecTypes {
 }
 
 pub impl VecTypes {
-    fn to_str(ccx: @crate_ctxt) -> ~str {
+    fn to_str(&self, ccx: @CrateContext) -> ~str {
         fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
              ty_to_str(ccx.tcx, self.vec_ty),
              ty_to_str(ccx.tcx, self.unit_ty),
@@ -263,7 +265,7 @@ pub fn trans_lit_str(bcx: block,
             unsafe {
                 let bytes = str_lit.len() + 1; // count null-terminator too
                 let llbytes = C_uint(bcx.ccx(), bytes);
-                let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *str_lit);
+                let llcstr = C_cstr(bcx.ccx(), str_lit);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr,
                                                         T_ptr(T_i8()));
                 Store(bcx,
@@ -299,7 +301,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                 ast::expr_lit(@codemap::spanned {
                     node: ast::lit_str(s), _
                 }) => {
-                    let llptrval = C_cstr(bcx.ccx(), copy *s);
+                    let llptrval = C_cstr(bcx.ccx(), s);
                     let llptrval = PointerCast(bcx, llptrval, T_ptr(T_i8()));
                     let llsizeval = C_uint(bcx.ccx(), s.len());
                     let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
@@ -317,13 +319,14 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                 _ => {}
             }
         }
-        heap_shared => {}
+        heap_managed | heap_managed_unique => {}
     }
 
     let vt = vec_types_from_expr(bcx, vstore_expr);
     let count = elements_required(bcx, content_expr);
 
     let Result {bcx, val} = alloc_vec(bcx, vt.unit_ty, count, heap);
+
     add_clean_free(bcx, val, heap);
     let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
 
@@ -362,7 +365,7 @@ pub fn write_content(bcx: block,
                 SaveIn(lldest) => {
                     let bytes = s.len() + 1; // copy null-terminator too
                     let llbytes = C_uint(bcx.ccx(), bytes);
-                    let llcstr = C_cstr(bcx.ccx(), /*bad*/copy *s);
+                    let llcstr = C_cstr(bcx.ccx(), s);
                     base::call_memcpy(bcx, lldest, llcstr, llbytes);
                     return bcx;
                 }

@@ -15,7 +15,7 @@ pub struct rsrc {
   x: i32,
 }
 
-pub impl rsrc : Drop {
+pub impl Drop for rsrc {
     fn finalize(&self) {
         foo(self.x);
     }

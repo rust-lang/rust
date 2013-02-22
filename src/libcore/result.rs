@@ -37,7 +37,7 @@ pub enum Result<T, U> {
  * If the result is an error
  */
 #[inline(always)]
-pub pure fn get<T: Copy, U>(res: &Result<T, U>) -> T {
+pub pure fn get<T:Copy,U>(res: &Result<T, U>) -> T {
     match *res {
       Ok(copy t) => t,
       Err(ref the_err) => unsafe {
@@ -100,7 +100,7 @@ pub pure fn is_err<T, U>(res: &Result<T, U>) -> bool {
  * result variants are converted to `either::left`.
  */
 #[inline(always)]
-pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
+pub pure fn to_either<T:Copy,U:Copy>(res: &Result<U, T>)
     -> Either<T, U> {
     match *res {
       Ok(copy res) => either::Right(res),
@@ -125,9 +125,9 @@ pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
 #[inline(always)]
 pub pure fn chain<T, U, V>(res: Result<T, V>, op: fn(T)
     -> Result<U, V>) -> Result<U, V> {
-    match move res {
-        Ok(move t) => op(move t),
-        Err(move e) => Err(move e)
+    match res {
+        Ok(t) => op(t),
+        Err(e) => Err(e)
     }
 }
 
@@ -144,9 +144,9 @@ pub pure fn chain_err<T, U, V>(
     res: Result<T, V>,
     op: fn(t: V) -> Result<T, U>)
     -> Result<T, U> {
-    match move res {
-      Ok(move t) => Ok(move t),
-      Err(move v) => op(move v)
+    match res {
+      Ok(t) => Ok(t),
+      Err(v) => op(v)
     }
 }
 
@@ -220,7 +220,7 @@ pub pure fn map<T, E: Copy, U: Copy>(res: &Result<T, E>, op: fn(&T) -> U)
  * successful result while handling an error.
  */
 #[inline(always)]
-pub pure fn map_err<T: Copy, E, F: Copy>(res: &Result<T, E>, op: fn(&E) -> F)
+pub pure fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: fn(&E) -> F)
   -> Result<T, F> {
     match *res {
       Ok(copy t) => Ok(t),
@@ -261,7 +261,7 @@ impl<T, E> Result<T, E> {
     }
 }
 
-impl<T: Copy, E> Result<T, E> {
+impl<T:Copy,E> Result<T, E> {
     #[inline(always)]
     pure fn get(&self) -> T { get(self) }
 
@@ -309,7 +309,7 @@ pub fn map_vec<T,U:Copy,V:Copy>(
           Err(copy u) => return Err(u)
         }
     }
-    return Ok(move vs);
+    return Ok(vs);
 }
 
 #[inline(always)]
@@ -349,7 +349,7 @@ pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
         }
         i += 1u;
     }
-    return Ok(move vs);
+    return Ok(vs);
 }
 
 /**
@@ -377,8 +377,8 @@ pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
 /// Unwraps a result, assuming it is an `ok(T)`
 #[inline(always)]
 pub pure fn unwrap<T, U>(res: Result<T, U>) -> T {
-    match move res {
-      Ok(move t) => move t,
+    match res {
+      Ok(t) => t,
       Err(_) => fail!(~"unwrap called on an err result")
     }
 }
@@ -386,8 +386,8 @@ pub pure fn unwrap<T, U>(res: Result<T, U>) -> T {
 /// Unwraps a result, assuming it is an `err(U)`
 #[inline(always)]
 pub pure fn unwrap_err<T, U>(res: Result<T, U>) -> U {
-    match move res {
-      Err(move u) => move u,
+    match res {
+      Err(u) => u,
       Ok(_) => fail!(~"unwrap called on an ok result")
     }
 }

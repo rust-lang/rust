@@ -51,18 +51,19 @@ pub mod linear {
         FoundEntry(uint), FoundHole(uint), TableFull
     }
 
+    #[inline(always)]
     pure fn resize_at(capacity: uint) -> uint {
         ((capacity as float) * 3. / 4.) as uint
     }
 
-    pub fn linear_map_with_capacity<K: Eq Hash, V>(
+    pub fn linear_map_with_capacity<K:Eq + Hash,V>(
         initial_capacity: uint) -> LinearMap<K, V> {
         let r = rand::task_rng();
         linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(),
                                           initial_capacity)
     }
 
-    pure fn linear_map_with_capacity_and_keys<K: Eq Hash, V>(
+    pure fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
         k0: u64, k1: u64,
         initial_capacity: uint) -> LinearMap<K, V> {
         LinearMap {
@@ -73,13 +74,11 @@ pub mod linear {
         }
     }
 
-    priv impl<K: Hash IterBytes Eq, V> LinearMap<K, V> {
+    priv impl<K:Hash + IterBytes + Eq,V> LinearMap<K, V> {
         #[inline(always)]
         pure fn to_bucket(&self, h: uint) -> uint {
-            // FIXME(#3041) borrow a more sophisticated technique here from
-            // Gecko, for example borrowing from Knuth, as Eich so
-            // colorfully argues for here:
-            // https://bugzilla.mozilla.org/show_bug.cgi?id=743107#c22
+            // A good hash function with entropy spread over all of the
+            // bits is assumed. SipHash is more than good enough.
             h % self.buckets.len()
         }
 
@@ -128,12 +127,19 @@ pub mod linear {
             TableFull
         }
 
-        /// Expands the capacity of the array and re-inserts each
-        /// of the existing buckets.
+        /// Expand the capacity of the array to the next power of two
+        /// and re-insert each of the existing buckets.
+        #[inline(always)]
         fn expand(&mut self) {
+            let new_capacity = self.buckets.len() * 2;
+            self.resize(new_capacity);
+        }
+
+        /// Expands the capacity of the array and re-insert each of the
+        /// existing buckets.
+        fn resize(&mut self, new_capacity: uint) {
             let old_capacity = self.buckets.len();
-            let new_capacity = old_capacity * 2;
-            self.resize_at = ((new_capacity as float) * 3.0 / 4.0) as uint;
+            self.resize_at = resize_at(new_capacity);
 
             let mut old_buckets = vec::from_fn(new_capacity, |_| None);
             self.buckets <-> old_buckets;
@@ -159,7 +165,7 @@ pub mod linear {
         pure fn value_for_bucket(&self, idx: uint) -> &self/V {
             match self.buckets[idx] {
                 Some(ref bkt) => &bkt.value,
-                None => die!(~"LinearMap::find: internal logic error"),
+                None => fail!(~"LinearMap::find: internal logic error"),
             }
         }
 
@@ -240,7 +246,7 @@ pub mod linear {
         }
     }
 
-    impl<K: Hash IterBytes Eq, V> BaseIter<(&K, &V)> for LinearMap<K, V> {
+    impl<K:Hash + IterBytes + Eq,V> BaseIter<(&K, &V)> for LinearMap<K, V> {
         /// Visit all key-value pairs
         pure fn each(&self, blk: fn(&(&self/K, &self/V)) -> bool) {
             for uint::range(0, self.buckets.len()) |i| {
@@ -257,7 +263,7 @@ pub mod linear {
     }
 
 
-    impl<K: Hash IterBytes Eq, V> Container for LinearMap<K, V> {
+    impl<K:Hash + IterBytes + Eq,V> Container for LinearMap<K, V> {
         /// Return the number of elements in the map
         pure fn len(&self) -> uint { self.size }
 
@@ -265,7 +271,7 @@ pub mod linear {
         pure fn is_empty(&self) -> bool { self.len() == 0 }
     }
 
-    impl<K: Hash IterBytes Eq, V> Mutable for LinearMap<K, V> {
+    impl<K:Hash + IterBytes + Eq,V> Mutable for LinearMap<K, V> {
         /// Clear the map, removing all key-value pairs.
         fn clear(&mut self) {
             for uint::range(0, self.buckets.len()) |idx| {
@@ -275,7 +281,7 @@ pub mod linear {
         }
     }
 
-    impl<K: Hash IterBytes Eq, V> Map<K, V> for LinearMap<K, V> {
+    impl<K:Hash + IterBytes + Eq,V> Map<K, V> for LinearMap<K, V> {
         /// Return true if the map contains a value for the specified key
         pure fn contains_key(&self, k: &K) -> bool {
             match self.bucket_for_key(k) {
@@ -327,10 +333,18 @@ pub mod linear {
         }
     }
 
-    pub impl<K:Hash IterBytes Eq, V> LinearMap<K, V> {
+    pub impl<K:Hash + IterBytes + Eq,V> LinearMap<K, V> {
         /// Create an empty LinearMap
         static fn new() -> LinearMap<K, V> {
             linear_map_with_capacity(INITIAL_CAPACITY)
+        }
+
+        /// Reserve space for at least `n` elements in the hash table.
+        fn reserve_at_least(&mut self, n: uint) {
+            if n > self.buckets.len() {
+                let buckets = n * 4 / 3 + 1;
+                self.resize(uint::next_power_of_two(buckets));
+            }
         }
 
         fn pop(&mut self, k: &K) -> Option<V> {
@@ -373,7 +387,7 @@ pub mod linear {
 
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             let idx = match self.bucket_for_key_with_hash(hash, &k) {
-                TableFull => die!(~"Internal logic error"),
+                TableFull => fail!(~"Internal logic error"),
                 FoundEntry(idx) => idx,
                 FoundHole(idx) => {
                     self.buckets[idx] = Some(Bucket{hash: hash, key: k,
@@ -403,7 +417,7 @@ pub mod linear {
 
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
             let idx = match self.bucket_for_key_with_hash(hash, &k) {
-                TableFull => die!(~"Internal logic error"),
+                TableFull => fail!(~"Internal logic error"),
                 FoundEntry(idx) => idx,
                 FoundHole(idx) => {
                     let v = f(&k);
@@ -443,7 +457,7 @@ pub mod linear {
         }
     }
 
-    impl<K: Hash IterBytes Eq, V: Eq> Eq for LinearMap<K, V> {
+    impl<K:Hash + IterBytes + Eq,V:Eq> Eq for LinearMap<K, V> {
         pure fn eq(&self, other: &LinearMap<K, V>) -> bool {
             if self.len() != other.len() { return false; }
 
@@ -464,13 +478,13 @@ pub mod linear {
         priv map: LinearMap<T, ()>
     }
 
-    impl<T: Hash IterBytes Eq> BaseIter<T> for LinearSet<T> {
+    impl<T:Hash + IterBytes + Eq> BaseIter<T> for LinearSet<T> {
         /// Visit all values in order
         pure fn each(&self, f: fn(&T) -> bool) { self.map.each_key(f) }
         pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
     }
 
-    impl<T: Hash IterBytes Eq> Eq for LinearSet<T> {
+    impl<T:Hash + IterBytes + Eq> Eq for LinearSet<T> {
         pure fn eq(&self, other: &LinearSet<T>) -> bool {
             self.map == other.map
         }
@@ -479,7 +493,7 @@ pub mod linear {
         }
     }
 
-    impl<T: Hash IterBytes Eq> Container for LinearSet<T> {
+    impl<T:Hash + IterBytes + Eq> Container for LinearSet<T> {
         /// Return the number of elements in the set
         pure fn len(&self) -> uint { self.map.len() }
 
@@ -487,12 +501,12 @@ pub mod linear {
         pure fn is_empty(&self) -> bool { self.map.is_empty() }
     }
 
-    impl<T: Hash IterBytes Eq> Mutable for LinearSet<T> {
+    impl<T:Hash + IterBytes + Eq> Mutable for LinearSet<T> {
         /// Clear the set, removing all values.
         fn clear(&mut self) { self.map.clear() }
     }
 
-    impl<T: Hash IterBytes Eq> Set<T> for LinearSet<T> {
+    impl<T:Hash + IterBytes + Eq> Set<T> for LinearSet<T> {
         /// Return true if the set contains a value
         pure fn contains(&self, value: &T) -> bool {
             self.map.contains_key(value)
@@ -561,9 +575,14 @@ pub mod linear {
         }
     }
 
-    pub impl <T: Hash IterBytes Eq> LinearSet<T> {
+    pub impl <T:Hash + IterBytes + Eq> LinearSet<T> {
         /// Create an empty LinearSet
         static fn new() -> LinearSet<T> { LinearSet{map: LinearMap::new()} }
+
+        /// Reserve space for at least `n` elements in the hash table.
+        fn reserve_at_least(&mut self, n: uint) {
+            self.map.reserve_at_least(n)
+        }
     }
 }
 

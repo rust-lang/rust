@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 use core::bool;
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
@@ -31,7 +30,7 @@ fn align(size: uint, align: uint) -> uint {
 
 enum ptr_visit_adaptor<V> = Inner<V>;
 
-impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V> {
+impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
     fn bump(sz: uint) {
@@ -59,7 +58,7 @@ impl<V: TyVisitor movable_ptr> ptr_visit_adaptor<V> {
 
 }
 
-impl<V: TyVisitor movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
+impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
 
     fn visit_bot(&self) -> bool {
         self.align_to::<()>();
@@ -636,11 +635,12 @@ struct Triple { x: int, y: int, z: int }
 
 pub fn main() {
     unsafe {
-        let r = (1,2,3,true,false, Triple {x:5,y:4,z:3});
+        let r = (1,2,3,true,false, Triple {x:5,y:4,z:3}, (12,));
         let p = ptr::addr_of(&r) as *c_void;
         let u = my_visitor(@Stuff {mut ptr1: p,
                              mut ptr2: p,
-                             mut vals: ~[]});
+                             mut vals: ~[]
+                                  });
         let v = ptr_visit_adaptor(Inner {inner: u});
         let td = get_tydesc_for(r);
         unsafe { error!("tydesc sz: %u, align: %u",
@@ -653,7 +653,7 @@ pub fn main() {
         }
         error!("%?", copy u.vals);
         assert u.vals == ~[
-            ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3"
+            ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"
         ];
     }
  }

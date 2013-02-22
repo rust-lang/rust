@@ -22,7 +22,7 @@ use middle::borrowck::preserve::{PreserveCondition, PcOk, PcIfPure};
 use middle::borrowck::{Loan, bckerr, bckres, BorrowckCtxt, err_mutbl};
 use middle::borrowck::{LoanKind, TotalFreeze, PartialFreeze,
                        TotalTake, PartialTake, Immobile};
-use middle::borrowck::{req_maps};
+use middle::borrowck::ReqMaps;
 use middle::borrowck::loan;
 use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
 use middle::mem_categorization::{mem_categorization_ctxt};
@@ -47,7 +47,7 @@ use syntax::visit;
 ///
 /// - `bccx`: the the borrow check context
 /// - `req_maps`: the maps computed by `gather_loans()`, see def'n of the
-///   type `req_maps` for more info
+///   struct `ReqMaps` for more info
 /// - `item_ub`: the id of the block for the enclosing fn/method item
 /// - `root_ub`: the id of the outermost block for which we can root
 ///   an `@T`.  This is the id of the innermost enclosing
@@ -73,16 +73,16 @@ use syntax::visit;
 /// because it would have to be rooted for a region greater than `root_ub`.
 struct GatherLoanCtxt {
     bccx: @BorrowckCtxt,
-    req_maps: req_maps,
+    req_maps: ReqMaps,
     item_ub: ast::node_id,
     root_ub: ast::node_id,
     ignore_adjustments: LinearSet<ast::node_id>
 }
 
-pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> req_maps {
+pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
-        req_maps: {req_loan_map: HashMap(), pure_map: HashMap()},
+        req_maps: ReqMaps { req_loan_map: HashMap(), pure_map: HashMap() },
         item_ub: 0,
         root_ub: 0,
         ignore_adjustments: LinearSet::new()
@@ -376,8 +376,8 @@ impl GatherLoanCtxt {
           Some(_) => {
               match loan::loan(self.bccx, cmt, scope_r, loan_kind) {
                   Err(ref e) => { self.bccx.report((*e)); }
-                  Ok(move loans) => {
-                      self.add_loans(cmt, loan_kind, scope_r, move loans);
+                  Ok(loans) => {
+                      self.add_loans(cmt, loan_kind, scope_r, loans);
                   }
               }
           }
@@ -540,7 +540,7 @@ impl GatherLoanCtxt {
             }
         };
 
-        self.add_loans_to_scope_id(scope_id, move loans);
+        self.add_loans_to_scope_id(scope_id, loans);
 
         if loan_kind.is_freeze() && !cmt.mutbl.is_immutable() {
             self.bccx.stats.loaned_paths_imm += 1;
@@ -566,7 +566,7 @@ impl GatherLoanCtxt {
                 req_loans.push_all(loans);
             }
             None => {
-                let dvec = @dvec::from_vec(move loans);
+                let dvec = @dvec::from_vec(loans);
                 let req_loan_map = self.req_maps.req_loan_map;
                 req_loan_map.insert(scope_id, dvec);
             }

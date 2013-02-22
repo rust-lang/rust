@@ -99,6 +99,7 @@ pub mod rl;
 pub mod workcache;
 pub mod bigint;
 pub mod stats;
+pub mod semver;
 
 #[cfg(unicode)]
 mod unicode;

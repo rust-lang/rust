@@ -48,10 +48,10 @@ pub pure fn stmt_id(s: stmt) -> node_id {
     }
 }
 
-pub fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
+pub fn variant_def_ids(d: def) -> (def_id, def_id) {
     match d {
       def_variant(enum_id, var_id) => {
-        return {enm: enum_id, var: var_id}
+        return (enum_id, var_id);
       }
       _ => fail!(~"non-variant in variant_def_ids")
     }
@@ -198,7 +198,7 @@ pub pure fn is_call_expr(e: @expr) -> bool {
 }
 
 // This makes def_id hashable
-pub impl def_id : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for def_id {
     #[inline(always)]
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
@@ -303,7 +303,7 @@ pub trait inlined_item_utils {
     fn accept<E>(&self, e: E, v: visit::vt<E>);
 }
 
-pub impl inlined_item: inlined_item_utils {
+pub impl inlined_item_utils for inlined_item {
     fn ident(&self) -> ident {
         match *self {
             ii_item(i) => /* FIXME (#2543) */ copy i.ident,
@@ -327,8 +327,8 @@ pub impl inlined_item: inlined_item_utils {
             ii_item(i) => (v.visit_item)(i, e, v),
             ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
             ii_method(_, m) => visit::visit_method_helper(m, e, v),
-            ii_dtor(ref dtor, _, tps, parent_id) => {
-              visit::visit_struct_dtor_helper((*dtor), tps, parent_id, e, v);
+            ii_dtor(/*bad*/ copy dtor, _, /*bad*/ copy tps, parent_id) => {
+                visit::visit_struct_dtor_helper(dtor, tps, parent_id, e, v);
             }
         }
     }
@@ -395,8 +395,8 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_view_item: fn@(vi: @view_item) {
             match vi.node {
-              view_item_use(_, _, id) => vfn(id),
-              view_item_import(vps) => {
+              view_item_extern_mod(_, _, id) => vfn(id),
+              view_item_use(vps) => {
                   for vec::each(vps) |vp| {
                       match vp.node {
                           view_path_simple(_, _, _, id) => vfn(id),

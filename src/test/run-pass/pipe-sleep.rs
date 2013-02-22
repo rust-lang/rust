@@ -10,12 +10,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_records];
-
 extern mod std;
 use std::timer::sleep;
 use std::uv;
-use pipes::recv;
+use core::pipes;
+use core::pipes::recv;
 
 proto! oneshot (
     waiting:send {
@@ -26,10 +25,10 @@ proto! oneshot (
 pub fn main() {
     use oneshot::client::*;
 
-    let c = pipes::spawn_service(oneshot::init, |p| { recv(move p); });
+    let c = pipes::spawn_service(oneshot::init, |p| { recv(p); });
 
     let iotask = &uv::global_loop::get();
     sleep(iotask, 500);
     
-    signal(move c);
+    signal(c);
 }

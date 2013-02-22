@@ -26,7 +26,7 @@ use std::serialize::{Encodable, Decodable};
 use std::prettyprint;
 use std::time;
 
-fn test_prettyprint<A: Encodable<prettyprint::Serializer>>(
+fn test_prettyprint<A:Encodable<prettyprint::Serializer>>(
     a: &A,
     expected: &~str
 ) {
@@ -38,15 +38,15 @@ fn test_prettyprint<A: Encodable<prettyprint::Serializer>>(
 }
 
 fn test_ebml<A:
-    Eq
-    Encodable<EBWriter::Encoder>
+    Eq +
+    Encodable<EBWriter::Encoder> +
     Decodable<EBReader::Decoder>
 >(a1: &A) {
     let bytes = do io::with_bytes_writer |wr| {
         let ebml_w = &EBWriter::Encoder(wr);
         a1.encode(ebml_w)
     };
-    let d = EBReader::Doc(@move bytes);
+    let d = EBReader::Doc(@bytes);
     let a2: A = Decodable::decode(&EBReader::Decoder(d));
     assert *a1 == a2;
 }

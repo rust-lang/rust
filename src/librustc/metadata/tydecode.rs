@@ -493,8 +493,8 @@ pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
         fail!();
     }
 
-    let crate_part = vec::view(buf, 0u, colon_idx);
-    let def_part = vec::view(buf, colon_idx + 1u, len);
+    let crate_part = vec::slice(buf, 0u, colon_idx);
+    let def_part = vec::slice(buf, colon_idx + 1u, len);
 
     let crate_num = match uint::parse_bytes(crate_part, 10u) {
        Some(cn) => cn as int,

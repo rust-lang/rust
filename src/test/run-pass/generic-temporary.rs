@@ -9,11 +9,10 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 fn mk() -> int { return 1; }
 
-fn chk(&&a: int) { log(debug, a); assert (a == 1); }
+fn chk(a: int) { log(debug, a); assert (a == 1); }
 
 fn apply<T>(produce: extern fn() -> T,
             consume: extern fn(T)) {
@@ -22,6 +21,6 @@ fn apply<T>(produce: extern fn() -> T,
 
 pub fn main() {
     let produce: extern fn() -> int = mk;
-    let consume: extern fn(&&v: int) = chk;
+    let consume: extern fn(v: int) = chk;
     apply::<int>(produce, consume);
 }

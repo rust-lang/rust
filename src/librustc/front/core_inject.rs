@@ -37,7 +37,7 @@ fn use_core(crate: @ast::crate) -> bool {
 
 fn inject_libcore_ref(sess: Session,
                       crate: @ast::crate) -> @ast::crate {
-    fn spanned<T: Copy>(x: T) -> codemap::spanned<T> {
+    fn spanned<T:Copy>(x: T) -> codemap::spanned<T> {
         codemap::spanned { node: x, span: dummy_sp() }
     }
 
@@ -45,12 +45,13 @@ fn inject_libcore_ref(sess: Session,
         fold_crate: |crate, span, fld| {
             let n1 = sess.next_node_id();
             let vi1 = @ast::view_item {
-                node: ast::view_item_use(sess.ident_of(~"core"), ~[], n1),
+                node: ast::view_item_extern_mod(
+                        sess.ident_of(~"core"), ~[], n1),
                 attrs: ~[
                     spanned(ast::attribute_ {
                         style: ast::attr_inner,
                         value: spanned(ast::meta_name_value(
-                            ~"vers",
+                            @~"vers",
                             spanned(ast::lit_str(@CORE_VERSION.to_str()))
                         )),
                         is_sugared_doc: false
@@ -86,7 +87,7 @@ fn inject_libcore_ref(sess: Session,
             };
 
             let vp = @spanned(ast::view_path_glob(prelude_path, n2));
-            let vi2 = @ast::view_item { node: ast::view_item_import(~[vp]),
+            let vi2 = @ast::view_item { node: ast::view_item_use(~[vp]),
                                         attrs: ~[],
                                         vis: ast::private,
                                         span: dummy_sp() };

@@ -92,11 +92,11 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
     match structure_of(pcx.fcx, pat.span, expected) {
         ty::ty_enum(_, ref expected_substs) => {
             // Lookup the enum and variant def ids:
-            let v_def = lookup_def(pcx.fcx, path.span, pat.id);
-            let v_def_ids = ast_util::variant_def_ids(v_def);
+            let v_def = lookup_def(pcx.fcx, pat.span, pat.id);
+            let (enm, var) = ast_util::variant_def_ids(v_def);
 
             // Assign the pattern the type of the *enum*, not the variant.
-            let enum_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
+            let enum_tpt = ty::lookup_item_type(tcx, enm);
             instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
                              pcx.block_region);
 
@@ -108,9 +108,8 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             // Get the expected types of the arguments.
             arg_types = {
                 let vinfo =
-                    ty::enum_variant_with_id(
-                        tcx, v_def_ids.enm, v_def_ids.var);
-                let var_tpt = ty::lookup_item_type(tcx, v_def_ids.var);
+                    ty::enum_variant_with_id(tcx, enm, var);
+                let var_tpt = ty::lookup_item_type(tcx, var);
                 vinfo.args.map(|t| {
                     if var_tpt.bounds.len() == expected_substs.tps.len() {
                         ty::subst(tcx, expected_substs, *t)
@@ -125,8 +124,18 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             kind_name = "variant";
         }
         ty::ty_struct(struct_def_id, ref expected_substs) => {
+            // Lookup the struct ctor def id
+            let s_def = lookup_def(pcx.fcx, pat.span, pat.id);
+            let s_def_id = ast_util::def_id_of_def(s_def);
+
             // Assign the pattern the type of the struct.
-            let struct_tpt = ty::lookup_item_type(tcx, struct_def_id);
+            let ctor_tpt = ty::lookup_item_type(tcx, s_def_id);
+            let struct_tpt = if ty::is_fn_ty(ctor_tpt.ty) {
+                ty::ty_param_bounds_and_ty {ty: ty::ty_fn_ret(ctor_tpt.ty),
+                                        ..ctor_tpt}
+            } else {
+                ctor_tpt
+            };
             instantiate_path(pcx.fcx, path, struct_tpt, pat.span, pat.id,
                              pcx.block_region);
 
@@ -231,7 +240,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
                 tcx.sess.span_err(span,
                                   fmt!("struct `%s` does not have a field
                                         named `%s`", name,
-                                       tcx.sess.str_of(field.ident)));
+                                       *tcx.sess.str_of(field.ident)));
             }
         }
     }
@@ -244,7 +253,7 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
             }
             tcx.sess.span_err(span,
                               fmt!("pattern does not mention field `%s`",
-                                   tcx.sess.str_of(field.ident)));
+                                   *tcx.sess.str_of(field.ident)));
         }
     }
 }
@@ -362,6 +371,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       ast::pat_ident(*) if pat_is_const(tcx.def_map, pat) => {
         let const_did = ast_util::def_id_of_def(tcx.def_map.get(&pat.id));
         let const_tpt = ty::lookup_item_type(tcx, const_did);
+        demand::suptype(fcx, pat.span, expected, const_tpt.ty);
         fcx.write_ty(pat.id, const_tpt.ty);
       }
       ast::pat_ident(bm, name, sub) if pat_is_binding(tcx.def_map, pat) => {
@@ -435,7 +445,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                 tcx.sess.span_fatal(pat.span,
                                     fmt!("mismatched types: did not \
                                           expect a record with a field `%s`",
-                                          tcx.sess.str_of(f.ident)));
+                                          *tcx.sess.str_of(f.ident)));
               }
             }
         }

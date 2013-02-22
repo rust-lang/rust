@@ -48,7 +48,7 @@ class cat : to_str {
   fn to_str() -> str { self.name }
 }
 
-fn print_out<T: to_str>(thing: T, expected: str) {
+fn print_out<T:to_str>(thing: T, expected: str) {
   let actual = thing.to_str();
   debug!("%s", actual);
   assert(actual == expected);

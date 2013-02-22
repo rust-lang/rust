@@ -21,7 +21,7 @@ use core::prelude::*;
 
 use middle::moves;
 use middle::borrowck::{Loan, bckerr, BorrowckCtxt, inherent_mutability};
-use middle::borrowck::{req_maps, root_map_key, save_and_restore_managed};
+use middle::borrowck::{ReqMaps, root_map_key, save_and_restore_managed};
 use middle::borrowck::{MoveError, MoveOk, MoveFromIllegalCmt};
 use middle::borrowck::{MoveWhileBorrowed};
 use middle::mem_categorization::{cat_arg, cat_binding, cat_comp, cat_deref};
@@ -45,7 +45,7 @@ use syntax::visit;
 
 struct CheckLoanCtxt {
     bccx: @BorrowckCtxt,
-    req_maps: req_maps,
+    req_maps: ReqMaps,
 
     reported: HashMap<ast::node_id, ()>,
 
@@ -66,7 +66,7 @@ enum purity_cause {
 }
 
 pub fn check_loans(bccx: @BorrowckCtxt,
-                   req_maps: req_maps,
+                   req_maps: ReqMaps,
                    crate: @ast::crate) {
     let clcx = @mut CheckLoanCtxt {
         bccx: bccx,
@@ -90,16 +90,16 @@ enum assignment_type {
 }
 
 impl assignment_type {
-    fn checked_by_liveness() -> bool {
+    fn checked_by_liveness(&self) -> bool {
         // the liveness pass guarantees that immutable local variables
         // are only assigned once; but it doesn't consider &mut
-        match self {
+        match *self {
           at_straight_up => true,
           at_swap => true
         }
     }
-    fn ing_form(desc: ~str) -> ~str {
-        match self {
+    fn ing_form(&self, desc: ~str) -> ~str {
+        match *self {
           at_straight_up => ~"assigning to " + desc,
           at_swap => ~"swapping to and from " + desc
         }
@@ -632,7 +632,7 @@ fn check_loans_in_fn(fk: visit::fn_kind,
                             _ => {} // Ignore this argument.
                         }
                     }
-                    *self.fn_args = @move fn_args;
+                    *self.fn_args = @fn_args;
                 }
             }
 

@@ -45,7 +45,7 @@ pub impl Reflector {
         C_int(self.bcx.ccx(), i)
     }
 
-    fn c_slice(&mut self, +s: ~str) -> ValueRef {
+    fn c_slice(&mut self, s: @~str) -> ValueRef {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;

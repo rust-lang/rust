@@ -30,7 +30,7 @@ use util;
 
 use core::option;
 use core::vec;
-use core::pipes::*;
+use core::comm::*;
 use syntax::ast;
 
 pub fn mk_pass(output_style: config::OutputStyle) -> Pass {
@@ -71,7 +71,7 @@ fn make_doc_from_pages(page_port: &PagePort) -> doc::Doc {
     loop {
         let val = page_port.recv();
         if val.is_some() {
-            pages += ~[option::unwrap(move val)];
+            pages += ~[option::unwrap(val)];
         } else {
             break;
         }

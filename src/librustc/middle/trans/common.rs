@@ -21,9 +21,9 @@ use driver::session;
 use driver::session::Session;
 use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
-use lib::llvm::{llvm, target_data, type_names, associate_type, name_has_type};
+use lib::llvm::{llvm, TargetData, TypeNames, associate_type, name_has_type};
 use lib;
-use metadata::common::link_meta;
+use metadata::common::LinkMeta;
 use metadata::{csearch};
 use middle::astencode;
 use middle::resolve;
@@ -136,7 +136,7 @@ pub struct Stats {
     n_closures: uint,
     llvm_insn_ctxt: @mut ~[~str],
     llvm_insns: HashMap<~str, uint>,
-    fn_times: @mut ~[{ident: ~str, time: int}]
+    fn_times: @mut ~[(~str, int)] // (ident, time)
 }
 
 pub struct BuilderRef_res {
@@ -157,25 +157,25 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
 type ExternMap = HashMap<@str, ValueRef>;
 
 // Crate context.  Every crate we compile has one of these.
-pub struct crate_ctxt {
+pub struct CrateContext {
      sess: session::Session,
      llmod: ModuleRef,
-     td: target_data,
-     tn: type_names,
+     td: TargetData,
+     tn: @TypeNames,
      externs: ExternMap,
      intrinsics: HashMap<~str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
      item_symbols: HashMap<ast::node_id, ~str>,
-     link_meta: link_meta,
+     link_meta: LinkMeta,
      enum_sizes: HashMap<ty::t, uint>,
      discrims: HashMap<ast::def_id, ValueRef>,
      discrim_symbols: HashMap<ast::node_id, ~str>,
      tydescs: HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
-     mut finished_tydescs: bool,
+     finished_tydescs: @mut bool,
      // Track mapping of external ids to local items imported for inlining
      external: HashMap<ast::def_id, Option<ast::node_id>>,
      // Cache instances of monomorphized functions
@@ -186,7 +186,7 @@ pub struct crate_ctxt {
      // Cache generated vtables
      vtables: HashMap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: HashMap<~str, ValueRef>,
+     const_cstr_cache: HashMap<@~str, ValueRef>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,
@@ -202,6 +202,7 @@ pub struct crate_ctxt {
      const_values: HashMap<ast::node_id, ValueRef>,
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, TypeRef>,
+     llsizingtypes: HashMap<ty::t, TypeRef>,
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
@@ -211,7 +212,7 @@ pub struct crate_ctxt {
      tcx: ty::ctxt,
      maps: astencode::Maps,
      stats: @mut Stats,
-     upcalls: @upcall::upcalls,
+     upcalls: @upcall::Upcalls,
      tydesc_type: TypeRef,
      int_type: TypeRef,
      float_type: TypeRef,
@@ -223,9 +224,9 @@ pub struct crate_ctxt {
      // Set when at least one function uses GC. Needed so that
      // decl_gc_metadata knows whether to link to the module metadata, which
      // is not emitted by LLVM's GC pass when no functions use GC.
-     mut uses_gc: bool,
-     dbg_cx: Option<debuginfo::debug_ctxt>,
-     mut do_not_commit_warning_issued: bool
+     uses_gc: @mut bool,
+     dbg_cx: Option<debuginfo::DebugContext>,
+     do_not_commit_warning_issued: @mut bool
 }
 
 // Types used for llself.
@@ -272,34 +273,34 @@ pub struct fn_ctxt_ {
     // the function, due to LLVM's quirks.
     // A block for all the function's static allocas, so that LLVM
     // will coalesce them into a single alloca call.
-    mut llstaticallocas: BasicBlockRef,
+    llstaticallocas: BasicBlockRef,
     // A block containing code that copies incoming arguments to space
     // already allocated by code in one of the llallocas blocks.
     // (LLVM requires that arguments be copied to local allocas before
     // allowing most any operation to be performed on them.)
-    mut llloadenv: Option<BasicBlockRef>,
-    mut llreturn: BasicBlockRef,
+    llloadenv: Option<BasicBlockRef>,
+    llreturn: BasicBlockRef,
     // The 'self' value currently in use in this function, if there
     // is one.
     //
     // NB: This is the type of the self *variable*, not the self *type*. The
     // self type is set only for default methods, while the self variable is
     // set for all methods.
-    mut llself: Option<ValSelfData>,
+    llself: Option<ValSelfData>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
-    mut personality: Option<ValueRef>,
+    personality: Option<ValueRef>,
     // If this is a for-loop body that returns, this holds the pointers needed
-    // for that
-    mut loop_ret: Option<{flagptr: ValueRef, retptr: ValueRef}>,
+    // for that (flagptr, retptr)
+    loop_ret: Option<(ValueRef, ValueRef)>,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: HashMap<ast::node_id, local_val>,
+    llargs: @HashMap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: HashMap<ast::node_id, local_val>,
+    lllocals: @HashMap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
-    llupvars: HashMap<ast::node_id, ValueRef>,
+    llupvars: @HashMap<ast::node_id, ValueRef>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -310,7 +311,7 @@ pub struct fn_ctxt_ {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    param_substs: Option<param_substs>,
+    param_substs: Option<@param_substs>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -318,21 +319,23 @@ pub struct fn_ctxt_ {
     path: path,
 
     // This function's enclosing crate context.
-    ccx: @crate_ctxt
+    ccx: @@CrateContext
 }
 
-pub type fn_ctxt = @fn_ctxt_;
+pub type fn_ctxt = @mut fn_ctxt_;
 
-pub fn warn_not_to_commit(ccx: @crate_ctxt, msg: ~str) {
-    if !ccx.do_not_commit_warning_issued {
-        ccx.do_not_commit_warning_issued = true;
+pub fn warn_not_to_commit(ccx: @CrateContext, msg: ~str) {
+    if !*ccx.do_not_commit_warning_issued {
+        *ccx.do_not_commit_warning_issued = true;
         ccx.sess.warn(msg + ~" -- do not commit like this!");
     }
 }
 
 // Heap selectors. Indicate which heap something should go on.
+#[deriving_eq]
 pub enum heap {
-    heap_shared,
+    heap_managed,
+    heap_managed_unique,
     heap_exchange,
 }
 
@@ -349,9 +352,12 @@ pub enum cleanup {
 
 // Used to remember and reuse existing cleanup paths
 // target: none means the path ends in an resume instruction
-pub type cleanup_path = {target: Option<BasicBlockRef>, dest: BasicBlockRef};
+pub struct cleanup_path {
+    target: Option<BasicBlockRef>,
+    dest: BasicBlockRef
+}
 
-pub fn scope_clean_changed(scope_info: scope_info) {
+pub fn scope_clean_changed(scope_info: &mut scope_info) {
     if scope_info.cleanup_paths.len() > 0u { scope_info.cleanup_paths = ~[]; }
     scope_info.landing_pad = None;
 }
@@ -371,7 +377,7 @@ pub fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
 // non-immediates, we must add an additional level of indirection, which
 // allows us to alloca a pointer with the right addrspace.
 pub fn root_for_cleanup(bcx: block, v: ValueRef, t: ty::t)
-    -> {root: ValueRef, rooted: bool} {
+    -> (ValueRef, bool) {
     let ccx = bcx.ccx();
 
     let addrspace = base::get_tydesc(ccx, t).addrspace;
@@ -379,9 +385,9 @@ pub fn root_for_cleanup(bcx: block, v: ValueRef, t: ty::t)
         let llty = type_of::type_of_rooted(ccx, t);
         let root = base::alloca(bcx, llty);
         build::Store(bcx, build::PointerCast(bcx, v, llty), root);
-        {root: root, rooted: true}
+        (root, true)
     } else {
-        {root: v, rooted: false}
+        (v, false)
     }
 }
 
@@ -390,7 +396,7 @@ pub fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
     debug!("add_clean(%s, %s, %s)",
            bcx.to_str(), val_str(bcx.ccx().tn, val),
            ty_to_str(bcx.ccx().tcx, t));
-    let {root, rooted} = root_for_cleanup(bcx, val, t);
+    let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
         scope_info.cleanups.push(
@@ -418,7 +424,7 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
     debug!("add_clean_temp_mem(%s, %s, %s)",
            bcx.to_str(), val_str(bcx.ccx().tn, val),
            ty_to_str(bcx.ccx().tcx, t));
-    let {root, rooted} = root_for_cleanup(bcx, val, t);
+    let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
         scope_info.cleanups.push(
@@ -431,7 +437,7 @@ pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
     debug!("add_clean_frozen_root(%s, %s, %s)",
            bcx.to_str(), val_str(bcx.ccx().tn, val),
            ty_to_str(bcx.ccx().tcx, t));
-    let {root, rooted} = root_for_cleanup(bcx, val, t);
+    let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     do in_scope_cx(bcx) |scope_info| {
         scope_info.cleanups.push(
@@ -454,12 +460,12 @@ pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
 }
 pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
     let free_fn = match heap {
-      heap_shared => {
+      heap_managed | heap_managed_unique => {
         let f: @fn(block) -> block = |a| glue::trans_free(a, ptr);
         f
       }
       heap_exchange => {
-        let f: @fn(block) -> block = |a| glue::trans_unique_free(a, ptr);
+        let f: @fn(block) -> block = |a| glue::trans_exchange_free(a, ptr);
         f
       }
     };
@@ -484,8 +490,8 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
             });
         for cleanup_pos.each |i| {
             scope_info.cleanups =
-                vec::append(vec::slice(scope_info.cleanups, 0u, *i),
-                            vec::view(scope_info.cleanups,
+                vec::append(vec::slice(scope_info.cleanups, 0u, *i).to_vec(),
+                            vec::slice(scope_info.cleanups,
                                       *i + 1u,
                                       scope_info.cleanups.len()));
             scope_clean_changed(scope_info);
@@ -494,9 +500,9 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
 }
 
 pub fn block_cleanups(bcx: block) -> ~[cleanup] {
-    match bcx.kind {
+    match *bcx.kind {
        block_non_scope  => ~[],
-       block_scope(ref inf) => /*bad*/copy inf.cleanups
+       block_scope(ref mut inf) => /*bad*/copy inf.cleanups
     }
 }
 
@@ -520,43 +526,43 @@ pub struct scope_info {
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.
-    mut cleanups: ~[cleanup],
+    cleanups: ~[cleanup],
     // Existing cleanup paths that may be reused, indexed by destination and
     // cleared when the set of cleanups changes.
-    mut cleanup_paths: ~[cleanup_path],
+    cleanup_paths: ~[cleanup_path],
     // Unwinding landing pad. Also cleared when cleanups change.
-    mut landing_pad: Option<BasicBlockRef>,
+    landing_pad: Option<BasicBlockRef>,
 }
 
 pub trait get_node_info {
-    fn info() -> Option<node_info>;
+    fn info(&self) -> Option<NodeInfo>;
 }
 
-pub impl @ast::expr: get_node_info {
-    fn info() -> Option<node_info> {
-        Some({id: self.id, span: self.span})
+pub impl get_node_info for @ast::expr {
+    fn info(&self) -> Option<NodeInfo> {
+        Some(NodeInfo { id: self.id, span: self.span })
     }
 }
 
-pub impl ast::blk: get_node_info {
-    fn info() -> Option<node_info> {
-        Some({id: self.node.id, span: self.span})
+pub impl get_node_info for ast::blk {
+    fn info(&self) -> Option<NodeInfo> {
+        Some(NodeInfo { id: self.node.id, span: self.span })
     }
 }
 
 // XXX: Work around a trait parsing bug. remove after snapshot
 pub type optional_boxed_ast_expr = Option<@ast::expr>;
 
-pub impl optional_boxed_ast_expr: get_node_info {
-    fn info() -> Option<node_info> {
+pub impl get_node_info for optional_boxed_ast_expr {
+    fn info(&self) -> Option<NodeInfo> {
         self.chain_ref(|s| s.info())
     }
 }
 
-pub type node_info = {
+pub struct NodeInfo {
     id: ast::node_id,
     span: span
-};
+}
 
 // Basic block context.  We create a block context for each basic block
 // (single-entry, single-exit sequence of instructions) we generate from Rust
@@ -570,22 +576,22 @@ pub struct block_ {
     // instructions into that block by way of this block context.
     // The block pointing to this one in the function's digraph.
     llbb: BasicBlockRef,
-    mut terminated: bool,
-    mut unreachable: bool,
+    terminated: bool,
+    unreachable: bool,
     parent: Option<block>,
     // The 'kind' of basic block this is.
-    kind: block_kind,
+    kind: @mut block_kind,
     // Is this block part of a landing pad?
     is_lpad: bool,
     // info about the AST node this block originated from, if any
-    node_info: Option<node_info>,
+    node_info: Option<NodeInfo>,
     // The function context for the function to which this block is
     // attached.
     fcx: fn_ctxt
 }
 
 pub fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
-              is_lpad: bool, node_info: Option<node_info>, fcx: fn_ctxt)
+              is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block_ {
 
     block_ {
@@ -593,21 +599,19 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: move kind,
+        kind: @mut kind,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
     }
 }
 
-/* This must be enum and not type, or trans goes into an infinite loop (#2572)
- */
-pub enum block = @block_;
+pub type block = @mut block_;
 
 pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
-            is_lpad: bool, node_info: Option<node_info>, fcx: fn_ctxt)
+            is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block {
-    block(@block_(llbb, parent, move kind, is_lpad, node_info, fcx))
+    @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
 }
 
 // First two args are retptr, env
@@ -623,13 +627,13 @@ pub fn rslt(bcx: block, val: ValueRef) -> Result {
 }
 
 pub impl Result {
-    fn unpack(bcx: &mut block) -> ValueRef {
+    fn unpack(&self, bcx: &mut block) -> ValueRef {
         *bcx = self.bcx;
         return self.val;
     }
 }
 
-pub fn ty_str(tn: type_names, t: TypeRef) -> @str {
+pub fn ty_str(tn: @TypeNames, t: TypeRef) -> @str {
     return lib::llvm::type_to_str(tn, t);
 }
 
@@ -639,7 +643,7 @@ pub fn val_ty(v: ValueRef) -> TypeRef {
     }
 }
 
-pub fn val_str(tn: type_names, v: ValueRef) -> @str {
+pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
 }
 
@@ -656,17 +660,21 @@ pub fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
     }
 }
 
-pub fn in_scope_cx(cx: block, f: fn(scope_info)) {
+pub fn in_scope_cx(cx: block, f: &fn(&mut scope_info)) {
     let mut cur = cx;
     loop {
-        match cur.kind {
-          block_scope(ref inf) => {
-              debug!("in_scope_cx: selected cur=%s (cx=%s)",
-                     cur.to_str(), cx.to_str());
-              f((*inf));
-              return;
-          }
-          _ => ()
+        {
+            // XXX: Borrow check bug workaround.
+            let kind: &mut block_kind = &mut *cur.kind;
+            match *kind {
+              block_scope(ref mut inf) => {
+                  debug!("in_scope_cx: selected cur=%s (cx=%s)",
+                         cur.to_str(), cx.to_str());
+                  f(inf);
+                  return;
+              }
+              _ => ()
+            }
         }
         cur = block_parent(cur);
     }
@@ -683,27 +691,27 @@ pub fn block_parent(cx: block) -> block {
 // Accessors
 
 pub impl block {
-    pure fn ccx() -> @crate_ctxt { self.fcx.ccx }
-    pure fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
-    pure fn sess() -> Session { self.fcx.ccx.sess }
+    pure fn ccx(&self) -> @CrateContext { *self.fcx.ccx }
+    pure fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
+    pure fn sess(&self) -> Session { self.fcx.ccx.sess }
 
-    fn node_id_to_str(id: ast::node_id) -> ~str {
+    fn node_id_to_str(&self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    fn expr_to_str(e: @ast::expr) -> ~str {
+    fn expr_to_str(&self, e: @ast::expr) -> ~str {
         expr_repr(self.tcx(), e)
     }
 
-    fn expr_is_lval(e: @ast::expr) -> bool {
+    fn expr_is_lval(&self, e: @ast::expr) -> bool {
         ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn expr_kind(e: @ast::expr) -> ty::ExprKind {
+    fn expr_kind(&self, e: @ast::expr) -> ty::ExprKind {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn def(nid: ast::node_id) -> ast::def {
+    fn def(&self, nid: ast::node_id) -> ast::def {
         match self.tcx().def_map.find(&nid) {
             Some(v) => v,
             None => {
@@ -713,15 +721,15 @@ pub impl block {
         }
     }
 
-    fn val_str(val: ValueRef) -> @str {
+    fn val_str(&self, val: ValueRef) -> @str {
         val_str(self.ccx().tn, val)
     }
 
-    fn llty_str(llty: TypeRef) -> @str {
+    fn llty_str(&self, llty: TypeRef) -> @str {
         ty_str(self.ccx().tn, llty)
     }
 
-    fn ty_to_str(t: ty::t) -> ~str {
+    fn ty_to_str(&self, t: ty::t) -> ~str {
         ty_to_str(self.tcx(), t)
     }
     fn to_str(&self) -> ~str {
@@ -773,7 +781,7 @@ pub fn T_int(targ_cfg: @session::config) -> TypeRef {
     };
 }
 
-pub fn T_int_ty(cx: @crate_ctxt, t: ast::int_ty) -> TypeRef {
+pub fn T_int_ty(cx: @CrateContext, t: ast::int_ty) -> TypeRef {
     match t {
       ast::ty_i => cx.int_type,
       ast::ty_char => T_char(),
@@ -784,7 +792,7 @@ pub fn T_int_ty(cx: @crate_ctxt, t: ast::int_ty) -> TypeRef {
     }
 }
 
-pub fn T_uint_ty(cx: @crate_ctxt, t: ast::uint_ty) -> TypeRef {
+pub fn T_uint_ty(cx: @CrateContext, t: ast::uint_ty) -> TypeRef {
     match t {
       ast::ty_u => cx.int_type,
       ast::ty_u8 => T_i8(),
@@ -794,7 +802,7 @@ pub fn T_uint_ty(cx: @crate_ctxt, t: ast::uint_ty) -> TypeRef {
     }
 }
 
-pub fn T_float_ty(cx: @crate_ctxt, t: ast::float_ty) -> TypeRef {
+pub fn T_float_ty(cx: @CrateContext, t: ast::float_ty) -> TypeRef {
     match t {
       ast::ty_f => cx.float_type,
       ast::ty_f32 => T_f32(),
@@ -824,7 +832,7 @@ pub fn T_fn(inputs: ~[TypeRef], output: TypeRef) -> TypeRef {
     }
 }
 
-pub fn T_fn_pair(cx: @crate_ctxt, tfn: TypeRef) -> TypeRef {
+pub fn T_fn_pair(cx: @CrateContext, tfn: TypeRef) -> TypeRef {
     return T_struct(~[T_ptr(tfn), T_opaque_cbox_ptr(cx)]);
 }
 
@@ -894,7 +902,7 @@ pub fn T_task(targ_cfg: @session::config) -> TypeRef {
     return t;
 }
 
-pub fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef {
+pub fn T_tydesc_field(cx: @CrateContext, field: uint) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     unsafe {
@@ -909,7 +917,7 @@ pub fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef {
     }
 }
 
-pub fn T_generic_glue_fn(cx: @crate_ctxt) -> TypeRef {
+pub fn T_generic_glue_fn(cx: @CrateContext) -> TypeRef {
     let s = @"glue_fn";
     match name_has_type(cx.tn, s) {
       Some(t) => return t,
@@ -950,7 +958,7 @@ pub fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
                   T_array(t, 0u)]); // elements
 }
 
-pub fn T_vec(ccx: @crate_ctxt, t: TypeRef) -> TypeRef {
+pub fn T_vec(ccx: @CrateContext, t: TypeRef) -> TypeRef {
     return T_vec2(ccx.sess.targ_cfg, t);
 }
 
@@ -972,16 +980,16 @@ pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
                          t]);
 }
 
-pub fn T_box_header_fields(cx: @crate_ctxt) -> ~[TypeRef] {
+pub fn T_box_header_fields(cx: @CrateContext) -> ~[TypeRef] {
     let ptr = T_ptr(T_i8());
     return ~[cx.int_type, T_ptr(cx.tydesc_type), ptr, ptr];
 }
 
-pub fn T_box_header(cx: @crate_ctxt) -> TypeRef {
+pub fn T_box_header(cx: @CrateContext) -> TypeRef {
     return T_struct(T_box_header_fields(cx));
 }
 
-pub fn T_box(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
+pub fn T_box(cx: @CrateContext, t: TypeRef) -> TypeRef {
     return T_struct(vec::append(T_box_header_fields(cx), ~[t]));
 }
 
@@ -991,15 +999,15 @@ pub fn T_box_ptr(t: TypeRef) -> TypeRef {
     }
 }
 
-pub fn T_opaque_box(cx: @crate_ctxt) -> TypeRef {
+pub fn T_opaque_box(cx: @CrateContext) -> TypeRef {
     return T_box(cx, T_i8());
 }
 
-pub fn T_opaque_box_ptr(cx: @crate_ctxt) -> TypeRef {
+pub fn T_opaque_box_ptr(cx: @CrateContext) -> TypeRef {
     return T_box_ptr(T_opaque_box(cx));
 }
 
-pub fn T_unique(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
+pub fn T_unique(cx: @CrateContext, t: TypeRef) -> TypeRef {
     return T_struct(vec::append(T_box_header_fields(cx), ~[t]));
 }
 
@@ -1009,21 +1017,21 @@ pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
     }
 }
 
-pub fn T_port(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {
+pub fn T_port(cx: @CrateContext, _t: TypeRef) -> TypeRef {
     return T_struct(~[cx.int_type]); // Refcount
 
 }
 
-pub fn T_chan(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {
+pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
     return T_struct(~[cx.int_type]); // Refcount
 
 }
 
-pub fn T_taskptr(cx: @crate_ctxt) -> TypeRef { return T_ptr(cx.task_type); }
+pub fn T_taskptr(cx: @CrateContext) -> TypeRef { return T_ptr(cx.task_type); }
 
 
 // This type must never be used directly; it must always be cast away.
-pub fn T_typaram(tn: type_names) -> TypeRef {
+pub fn T_typaram(tn: @TypeNames) -> TypeRef {
     let s = @"typaram";
     match name_has_type(tn, s) {
       Some(t) => return t,
@@ -1034,21 +1042,21 @@ pub fn T_typaram(tn: type_names) -> TypeRef {
     return t;
 }
 
-pub fn T_typaram_ptr(tn: type_names) -> TypeRef {
+pub fn T_typaram_ptr(tn: @TypeNames) -> TypeRef {
     return T_ptr(T_typaram(tn));
 }
 
-pub fn T_opaque_cbox_ptr(cx: @crate_ctxt) -> TypeRef {
+pub fn T_opaque_cbox_ptr(cx: @CrateContext) -> TypeRef {
     // closures look like boxes (even when they are fn~ or fn&)
     // see trans_closure.rs
     return T_opaque_box_ptr(cx);
 }
 
-pub fn T_enum_discrim(cx: @crate_ctxt) -> TypeRef {
+pub fn T_enum_discrim(cx: @CrateContext) -> TypeRef {
     return cx.int_type;
 }
 
-pub fn T_opaque_enum(cx: @crate_ctxt) -> TypeRef {
+pub fn T_opaque_enum(cx: @CrateContext) -> TypeRef {
     let s = @"opaque_enum";
     match name_has_type(cx.tn, s) {
       Some(t) => return t,
@@ -1059,15 +1067,15 @@ pub fn T_opaque_enum(cx: @crate_ctxt) -> TypeRef {
     return t;
 }
 
-pub fn T_opaque_enum_ptr(cx: @crate_ctxt) -> TypeRef {
+pub fn T_opaque_enum_ptr(cx: @CrateContext) -> TypeRef {
     return T_ptr(T_opaque_enum(cx));
 }
 
-pub fn T_captured_tydescs(cx: @crate_ctxt, n: uint) -> TypeRef {
+pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
     return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)));
 }
 
-pub fn T_opaque_trait(cx: @crate_ctxt, vstore: ty::vstore) -> TypeRef {
+pub fn T_opaque_trait(cx: @CrateContext, vstore: ty::vstore) -> TypeRef {
     match vstore {
         ty::vstore_box => {
             T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)])
@@ -1125,11 +1133,11 @@ pub fn C_i64(i: i64) -> ValueRef {
     return C_integral(T_i64(), i as u64, True);
 }
 
-pub fn C_int(cx: @crate_ctxt, i: int) -> ValueRef {
+pub fn C_int(cx: @CrateContext, i: int) -> ValueRef {
     return C_integral(cx.int_type, i as u64, True);
 }
 
-pub fn C_uint(cx: @crate_ctxt, i: uint) -> ValueRef {
+pub fn C_uint(cx: @CrateContext, i: uint) -> ValueRef {
     return C_integral(cx.int_type, i as u64, False);
 }
 
@@ -1140,15 +1148,15 @@ pub fn C_u8(i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: @crate_ctxt, +s: ~str) -> ValueRef {
+pub fn C_cstr(cx: @CrateContext, s: @~str) -> ValueRef {
     unsafe {
         match cx.const_cstr_cache.find(&s) {
-          Some(llval) => return llval,
-          None => ()
+            Some(llval) => return llval,
+            None => ()
         }
 
-        let sc = do str::as_c_str(s) |buf| {
-            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+        let sc = do str::as_c_str(*s) |buf| {
+            llvm::LLVMConstString(buf, s.len() as c_uint, False)
         };
         let g =
             str::as_c_str(fmt!("str%u", (cx.names)(~"str").repr),
@@ -1165,9 +1173,9 @@ pub fn C_cstr(cx: @crate_ctxt, +s: ~str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_estr_slice(cx: @crate_ctxt, +s: ~str) -> ValueRef {
+pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
     unsafe {
-        let len = str::len(s);
+        let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
         C_struct(~[cs, C_uint(cx, len + 1u /* +1 for null */)])
     }
@@ -1240,7 +1248,7 @@ pub fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef {
     }
 }
 
-pub fn C_shape(ccx: @crate_ctxt, +bytes: ~[u8]) -> ValueRef {
+pub fn C_shape(ccx: @CrateContext, +bytes: ~[u8]) -> ValueRef {
     unsafe {
         let llshape = C_bytes_plus_null(bytes);
         let name = fmt!("shape%u", (ccx.names)(~"shape").repr);
@@ -1280,7 +1288,7 @@ pub struct mono_id_ {
 
 pub type mono_id = @mono_id_;
 
-pub impl mono_param_id : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for mono_param_id {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match /*bad*/copy *self {
           mono_precise(t, mids) =>
@@ -1294,7 +1302,7 @@ pub impl mono_param_id : to_bytes::IterBytes {
     }
 }
 
-pub impl mono_id_ : to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for mono_id_ {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }
@@ -1323,7 +1331,7 @@ pub fn path_str(sess: session::Session, p: path) -> ~str {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }
                 else { r += ~"::"; }
-                r += sess.str_of(s);
+                r += *sess.str_of(s);
             }
         }
     }
@@ -1394,7 +1402,7 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, +vt: typeck::vtable_origin)
         }
         typeck::vtable_param(n_param, n_bound) => {
             match fcx.param_substs {
-                Some(ref substs) => {
+                Some(substs) => {
                     find_vtable(tcx, substs, n_param, n_bound)
                 }
                 _ => {

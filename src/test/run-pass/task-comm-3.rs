@@ -9,16 +9,13 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 extern mod std;
-use pipes::Chan;
-use pipes::send;
-use pipes::recv;
+use core::comm::Chan;
 
 pub fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 
-fn test00_start(ch: Chan<int>, message: int, count: int) {
+fn test00_start(ch: &Chan<int>, message: int, count: int) {
     debug!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
@@ -35,7 +32,7 @@ fn test00() {
 
     debug!("Creating tasks");
 
-    let po = pipes::PortSet();
+    let po = comm::PortSet();
 
     let mut i: int = 0;
 
@@ -44,10 +41,10 @@ fn test00() {
     while i < number_of_tasks {
         let ch = po.chan();
         task::task().future_result(|+r| {
-            results.push(move r);
+            results.push(r);
         }).spawn({
             let i = i;
-            |move ch| test00_start(ch, i, number_of_messages)
+            || test00_start(&ch, i, number_of_messages)
         });
         i = i + 1;
     }

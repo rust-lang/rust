@@ -38,7 +38,7 @@ pub struct Node<V, T> {
 }
 
 pub trait UnifyVid<T> {
-    static fn appropriate_vals_and_bindings(infcx: &v/mut InferCtxt)
+    static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<Self, T>;
 }
 
@@ -89,7 +89,7 @@ pub impl InferCtxt {
         }
     }
 
-    fn set<T:Copy InferStr, V:Copy Vid ToStr UnifyVid<T>>(
+    fn set<T:Copy + InferStr,V:Copy + Vid + ToStr + UnifyVid<T>>(
             &mut self,
             +vid: V,
             +new_v: VarValue<V, T>) {
@@ -109,7 +109,7 @@ pub impl InferCtxt {
         }
     }
 
-    fn unify<T:Copy InferStr, V:Copy Vid ToStr UnifyVid<T>>(
+    fn unify<T:Copy + InferStr,V:Copy + Vid + ToStr + UnifyVid<T>>(
         &mut self,
         node_a: &Node<V, T>,
         node_b: &Node<V, T>) -> (V, uint)
@@ -147,10 +147,10 @@ pub impl InferCtxt {
 // doesn't have a subtyping relationship we need to worry about.
 
 pub trait SimplyUnifiable {
-    static fn to_type_err(expected_found<Self>) -> ty::type_err;
+    static fn to_type_err(&self, expected_found<Self>) -> ty::type_err;
 }
 
-pub fn mk_err<T: SimplyUnifiable>(+a_is_expected: bool,
+pub fn mk_err<T:SimplyUnifiable>(+a_is_expected: bool,
                                   +a_t: T,
                                   +b_t: T) -> ures {
     if a_is_expected {
@@ -163,8 +163,8 @@ pub fn mk_err<T: SimplyUnifiable>(+a_is_expected: bool,
 }
 
 pub impl InferCtxt {
-    fn simple_vars<T:Copy Eq InferStr SimplyUnifiable,
-                   V:Copy Eq Vid ToStr UnifyVid<Option<T>>>(
+    fn simple_vars<T:Copy + Eq + InferStr + SimplyUnifiable,
+                   V:Copy + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
             &mut self,
             +a_is_expected: bool,
             +a_id: V,
@@ -201,8 +201,8 @@ pub impl InferCtxt {
         return uok();
     }
 
-    fn simple_var_t<T:Copy Eq InferStr SimplyUnifiable,
-                    V:Copy Eq Vid ToStr UnifyVid<Option<T>>>(
+    fn simple_var_t<T:Copy + Eq + InferStr + SimplyUnifiable,
+                    V:Copy + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
             &mut self,
             +a_is_expected: bool,
             +a_id: V,
@@ -237,36 +237,36 @@ pub impl InferCtxt {
 
 // ______________________________________________________________________
 
-pub impl ty::TyVid : UnifyVid<Bounds<ty::t>> {
-    static fn appropriate_vals_and_bindings(infcx: &v/mut InferCtxt)
+pub impl UnifyVid<Bounds<ty::t>> for ty::TyVid {
+    static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::TyVid, Bounds<ty::t>> {
         return &mut infcx.ty_var_bindings;
     }
 }
 
-pub impl ty::IntVid : UnifyVid<Option<IntVarValue>> {
-    static fn appropriate_vals_and_bindings(infcx: &v/mut InferCtxt)
+pub impl UnifyVid<Option<IntVarValue>> for ty::IntVid {
+    static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::IntVid, Option<IntVarValue>> {
         return &mut infcx.int_var_bindings;
     }
 }
 
-pub impl IntVarValue : SimplyUnifiable {
-    static fn to_type_err(err: expected_found<IntVarValue>)
+pub impl SimplyUnifiable for IntVarValue {
+    static fn to_type_err(&self, err: expected_found<IntVarValue>)
         -> ty::type_err {
         return ty::terr_int_mismatch(err);
     }
 }
 
-pub impl ty::FloatVid : UnifyVid<Option<ast::float_ty>> {
-    static fn appropriate_vals_and_bindings(infcx: &v/mut InferCtxt)
+pub impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
+    static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::FloatVid, Option<ast::float_ty>> {
         return &mut infcx.float_var_bindings;
     }
 }
 
-pub impl ast::float_ty : SimplyUnifiable {
-    static fn to_type_err(err: expected_found<ast::float_ty>)
+pub impl SimplyUnifiable for ast::float_ty {
+    static fn to_type_err(&self, err: expected_found<ast::float_ty>)
         -> ty::type_err {
         return ty::terr_float_mismatch(err);
     }

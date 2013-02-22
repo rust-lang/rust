@@ -51,7 +51,7 @@ use core::prelude::*;
 use middle::ty::{FloatVar, FloatVid, IntVar, IntVid, RegionVid, TyVar, TyVid};
 use middle::ty::{type_is_bot, IntType, UintType};
 use middle::ty;
-use middle::typeck::infer::{cyclic_ty, fixup_err, fres, InferCtxt};
+use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::Root;
@@ -223,10 +223,11 @@ pub impl ResolveState {
             let bounds = nde.possible_types;
 
             let t1 = match bounds {
-              { ub:_, lb:Some(t) } if !type_is_bot(t) => self.resolve_type(t),
-              { ub:Some(t), lb:_ } => self.resolve_type(t),
-              { ub:_, lb:Some(t) } => self.resolve_type(t),
-              { ub:None, lb:None } => {
+              Bounds { ub:_, lb:Some(t) } if !type_is_bot(t)
+                => self.resolve_type(t),
+              Bounds { ub:Some(t), lb:_ } => self.resolve_type(t),
+              Bounds { ub:_, lb:Some(t) } => self.resolve_type(t),
+              Bounds { ub:None, lb:None } => {
                 if self.should(force_tvar) {
                     self.err = Some(unresolved_ty(vid));
                 }

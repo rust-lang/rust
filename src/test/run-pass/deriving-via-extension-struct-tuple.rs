@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    fn f(&&v: {const field: int}) {
-        // This shouldn't be possible
-        v.field = 1 //~ ERROR assigning to const field
-    }
+#[deriving_eq]
+struct Foo(int, int, ~str);
 
-    let v = {field: 0};
+pub fn main() {
+  let a1 = Foo(5, 6, ~"abc");
+  let a2 = Foo(5, 6, ~"abc");
+  let b = Foo(5, 7, ~"def");
 
-    f(v);
+  assert a1 == a1;
+  assert a1 == a2;
+  assert !(a1 == b);
+
+  assert a1 != b;
+  assert !(a1 != a1);
+  assert !(a1 != a2);
 }

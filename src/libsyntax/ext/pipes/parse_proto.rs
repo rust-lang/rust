@@ -11,29 +11,31 @@
 // Parsing pipes protocols from token trees.
 
 use ext::pipes::pipec::*;
+use parse::common::SeqSep;
 use parse::parser;
 use parse::token;
 
 use core::prelude::*;
 
 pub trait proto_parser {
-    fn parse_proto(id: ~str) -> protocol;
-    fn parse_state(proto: protocol);
-    fn parse_message(state: state);
+    fn parse_proto(&self, id: ~str) -> protocol;
+    fn parse_state(&self, proto: protocol);
+    fn parse_message(&self, state: state);
 }
 
-pub impl parser::Parser: proto_parser {
-    fn parse_proto(id: ~str) -> protocol {
+pub impl proto_parser for parser::Parser {
+    fn parse_proto(&self, id: ~str) -> protocol {
         let proto = protocol(id, self.span);
 
-        self.parse_seq_to_before_end(token::EOF,
-                                     {sep: None, trailing_sep_allowed: false},
-                                     |self| self.parse_state(proto));
+        self.parse_seq_to_before_end(token::EOF, SeqSep {
+                                        sep: None,
+                                        trailing_sep_allowed: false
+                                     }, |self| self.parse_state(proto));
 
         return proto;
     }
 
-    fn parse_state(proto: protocol) {
+    fn parse_state(&self, proto: protocol) {
         let id = self.parse_ident();
         let name = *self.interner.get(id);
 
@@ -58,20 +60,21 @@ pub impl parser::Parser: proto_parser {
 
         // parse the messages
         self.parse_unspanned_seq(
-            token::LBRACE, token::RBRACE,
-            {sep: Some(token::COMMA), trailing_sep_allowed: true},
-            |self| self.parse_message(state));
+            token::LBRACE, token::RBRACE, SeqSep {
+                sep: Some(token::COMMA),
+                trailing_sep_allowed: true
+            }, |self| self.parse_message(state));
     }
 
-    fn parse_message(state: state) {
+    fn parse_message(&self, state: state) {
         let mname = *self.interner.get(self.parse_ident());
 
         let args = if self.token == token::LPAREN {
             self.parse_unspanned_seq(token::LPAREN,
-                                     token::RPAREN,
-                                     {sep: Some(token::COMMA),
-                                      trailing_sep_allowed: true},
-                                     |p| p.parse_ty(false))
+                                     token::RPAREN, SeqSep {
+                                        sep: Some(token::COMMA),
+                                        trailing_sep_allowed: true
+                                     }, |p| p.parse_ty(false))
         }
         else { ~[] };
 
@@ -82,10 +85,10 @@ pub impl parser::Parser: proto_parser {
             let name = *self.interner.get(self.parse_ident());
             let ntys = if self.token == token::LT {
                 self.parse_unspanned_seq(token::LT,
-                                         token::GT,
-                                         {sep: Some(token::COMMA),
-                                          trailing_sep_allowed: true},
-                                         |p| p.parse_ty(false))
+                                         token::GT, SeqSep {
+                                            sep: Some(token::COMMA),
+                                            trailing_sep_allowed: true
+                                         }, |p| p.parse_ty(false))
             }
             else { ~[] };
             Some(next_state {state: name, tys: ntys})

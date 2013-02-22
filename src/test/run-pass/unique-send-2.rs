@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::pipes::*;
+use core::comm::*;
 
 fn child(c: &SharedChan<~uint>, i: uint) {
     c.send(~i);

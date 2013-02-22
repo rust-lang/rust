@@ -14,6 +14,7 @@ use cast;
 use cmp::{Eq, Ord};
 use libc;
 use libc::{c_void, size_t};
+use private::intrinsics::{memmove32,memmove64};
 use ptr;
 use str;
 use sys;
@@ -43,14 +44,6 @@ extern mod rusti {
 /// Get an unsafe pointer to a value
 #[inline(always)]
 pub pure fn addr_of<T>(val: &T) -> *T { unsafe { rusti::addr_of(*val) } }
-
-/// Get an unsafe mut pointer to a value
-#[inline(always)]
-pub pure fn mut_addr_of<T>(val: &T) -> *mut T {
-    unsafe {
-        cast::reinterpret_cast(&rusti::addr_of(*val))
-    }
-}
 
 /// Calculate the offset from a pointer
 #[inline(always)]
@@ -187,12 +180,6 @@ pub trait Ptr<T> {
     pure fn offset(count: uint) -> Self;
 }
 
-#[abi="rust-intrinsic"]
-pub extern {
-    fn memmove32(dst: *mut u8, src: *u8, size: u32);
-    fn memmove64(dst: *mut u8, src: *u8, size: u64);
-}
-
 /// Extension methods for immutable pointers
 impl<T> Ptr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
@@ -313,8 +300,8 @@ impl<T:Ord> Ord for &const T {
 pub fn test() {
     unsafe {
         struct Pair {mut fst: int, mut snd: int};
-        let p = Pair {mut fst: 10, mut snd: 20};
-        let pptr: *mut Pair = mut_addr_of(&p);
+        let mut p = Pair {mut fst: 10, mut snd: 20};
+        let pptr: *mut Pair = &mut p;
         let iptr: *mut int = cast::reinterpret_cast(&pptr);
         assert (*iptr == 10);;
         *iptr = 30;

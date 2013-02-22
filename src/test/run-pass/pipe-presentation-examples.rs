@@ -15,8 +15,6 @@
 // Code is easier to write in emacs, and it's good to be sure all the
 // code samples compile (or not) as they should.
 
-#[legacy_records];
-
 use double_buffer::client::*;
 use double_buffer::give_buffer;
 
@@ -34,10 +32,10 @@ macro_rules! select_if (
         ], )*
     } => {
         if $index == $count {
-            match move pipes::try_recv(move $port) {
-              $(Some($message($($(move $x,)+)* move next)) => {
-                let $next = move next;
-                move $e
+            match core::pipes::try_recv($port) {
+              $(Some($message($($($x,)+)* next)) => {
+                let $next = next;
+                $e
               })+
               _ => fail!()
             }
@@ -68,7 +66,7 @@ macro_rules! select (
               -> $next:ident $e:expr),+
         } )+
     } => ({
-        let index = pipes::selecti([$(($port).header()),+]);
+        let index = core::comm::selecti([$(($port).header()),+]);
         select_if!(index, 0, $( $port => [
             $($message$(($($x),+))dont_type_this* -> $next $e),+
         ], )+)
@@ -81,7 +79,7 @@ pub struct Buffer {
 
 }
 
-pub impl Buffer : Drop {
+pub impl Drop for Buffer {
     fn finalize(&self) {}
 }
 
@@ -105,33 +103,33 @@ fn render(_buffer: &Buffer) {
 }
 
 fn draw_frame(+channel: double_buffer::client::acquire) {
-    let channel = request(move channel);
+    let channel = request(channel);
     select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(move channel, move buffer)
+                release(channel, buffer)
             }
         }
     );
 }
 
 fn draw_two_frames(+channel: double_buffer::client::acquire) {
-    let channel = request(move channel);
+    let channel = request(channel);
     let channel = select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(move channel, move buffer)
+                release(channel, buffer)
             }
         }
     );
-    let channel = request(move channel);
+    let channel = request(channel);
     select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(move channel, move buffer)
+                release(channel, buffer)
             }
         }
     );
@@ -152,7 +150,7 @@ fn draw_two_frames_bad1(+channel: double_buffer::client::acquire) {
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(channel, move buffer)
+                release(channel, buffer)
             }
         }
     );
@@ -165,9 +163,9 @@ fn draw_two_frames_bad2(+channel: double_buffer::client::acquire) {
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(channel, move buffer);
+                release(channel, buffer);
                 render(&buffer);
-                release(channel, move buffer);
+                release(channel, buffer);
             }
         }
     );

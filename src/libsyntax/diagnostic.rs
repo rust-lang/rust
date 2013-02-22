@@ -26,17 +26,9 @@ use std::term;
 pub type Emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
                    msg: &str, lvl: level);
 
-
-pub trait span_handler {
-    fn span_fatal(@mut self, sp: span, msg: &str) -> !;
-    fn span_err(@mut self, sp: span, msg: &str);
-    fn span_warn(@mut self, sp: span, msg: &str);
-    fn span_note(@mut self, sp: span, msg: &str);
-    fn span_bug(@mut self, sp: span, msg: &str) -> !;
-    fn span_unimpl(@mut self, sp: span, msg: &str) -> !;
-    fn handler(@mut self) -> handler;
-}
-
+// a handler deals with errors; certain errors
+// (fatal, bug, unimpl) may cause immediate exit,
+// others log errors for later reporting.
 pub trait handler {
     fn fatal(@mut self, msg: &str) -> !;
     fn err(@mut self, msg: &str);
@@ -45,12 +37,26 @@ pub trait handler {
     fn abort_if_errors(@mut self);
     fn warn(@mut self, msg: &str);
     fn note(@mut self, msg: &str);
+    // used to indicate a bug in the compiler:
     fn bug(@mut self, msg: &str) -> !;
     fn unimpl(@mut self, msg: &str) -> !;
     fn emit(@mut self,
             cmsp: Option<(@codemap::CodeMap, span)>,
             msg: &str,
             lvl: level);
+}
+
+// a span-handler is like a handler but also
+// accepts span information for source-location
+// reporting.
+pub trait span_handler {
+    fn span_fatal(@mut self, sp: span, msg: &str) -> !;
+    fn span_err(@mut self, sp: span, msg: &str);
+    fn span_warn(@mut self, sp: span, msg: &str);
+    fn span_note(@mut self, sp: span, msg: &str);
+    fn span_bug(@mut self, sp: span, msg: &str) -> !;
+    fn span_unimpl(@mut self, sp: span, msg: &str) -> !;
+    fn handler(@mut self) -> handler;
 }
 
 struct HandlerT {
@@ -231,7 +237,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     let mut elided = false;
     let mut display_lines = /* FIXME (#2543) */ copy lines.lines;
     if vec::len(display_lines) > max_lines {
-        display_lines = vec::slice(display_lines, 0u, max_lines);
+        display_lines = vec::slice(display_lines, 0u, max_lines).to_vec();
         elided = true;
     }
     // Print the offending lines
@@ -290,17 +296,17 @@ fn highlight_lines(cm: @codemap::CodeMap,
 
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
     do option::iter(&sp.expn_info) |ei| {
-        let ss = option::map_default(&ei.callie.span, @~"",
+        let ss = option::map_default(&ei.callee.span, @~"",
                                      |span| @cm.span_to_str(*span));
         print_diagnostic(*ss, note,
-                         fmt!("in expansion of %s!", ei.callie.name));
+                         fmt!("in expansion of %s!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);
         print_diagnostic(ss, note, ~"expansion site");
         print_macro_backtrace(cm, ei.call_site);
     }
 }
 
-pub fn expect<T: Copy>(diag: span_handler,
+pub fn expect<T:Copy>(diag: span_handler,
                        opt: Option<T>,
                        msg: fn() -> ~str) -> T {
     match opt {

@@ -30,7 +30,11 @@ pub fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
         let body_datum = box_datum.box_body(bcx);
         let bcx = glue::drop_ty(bcx, body_datum.to_ref_llval(bcx),
                                 body_datum.ty);
-        glue::trans_unique_free(bcx, box_datum.val)
+        if ty::type_contents(bcx.tcx(), box_ty).contains_managed() {
+            glue::trans_free(bcx, box_datum.val)
+        } else {
+            glue::trans_exchange_free(bcx, box_datum.val)
+        }
     }
 }
 
@@ -42,8 +46,11 @@ pub fn duplicate(bcx: block, src_box: ValueRef, src_ty: ty::t) -> Result {
     let body_datum = src_datum.box_body(bcx);
 
     // Malloc space in exchange heap and copy src into it
-    let {bcx: bcx, box: dst_box, body: dst_body} =
-        malloc_unique(bcx, body_datum.ty);
+    let MallocResult {
+        bcx: bcx,
+        box: dst_box,
+        body: dst_body
+    } = malloc_unique(bcx, body_datum.ty);
     body_datum.copy_to(bcx, datum::INIT, dst_body);
 
     // Copy the type descriptor
