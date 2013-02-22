@@ -75,11 +75,11 @@ struct ExtendedDecodeContext {
 }
 
 trait tr {
-    fn tr(xcx: @ExtendedDecodeContext) -> Self;
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> Self;
 }
 
 trait tr_intern {
-    fn tr_intern(xcx: @ExtendedDecodeContext) -> ast::def_id;
+    fn tr_intern(&self, xcx: @ExtendedDecodeContext) -> ast::def_id;
 }
 
 // ______________________________________________________________________
@@ -227,41 +227,41 @@ impl ExtendedDecodeContext {
 }
 
 impl tr_intern for ast::def_id {
-    fn tr_intern(xcx: @ExtendedDecodeContext) -> ast::def_id {
-        xcx.tr_intern_def_id(self)
+    fn tr_intern(&self, xcx: @ExtendedDecodeContext) -> ast::def_id {
+        xcx.tr_intern_def_id(*self)
     }
 }
 
 impl tr for ast::def_id {
-    fn tr(xcx: @ExtendedDecodeContext) -> ast::def_id {
-        xcx.tr_def_id(self)
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::def_id {
+        xcx.tr_def_id(*self)
     }
 }
 
 impl tr for span {
-    fn tr(xcx: @ExtendedDecodeContext) -> span {
-        xcx.tr_span(self)
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> span {
+        xcx.tr_span(*self)
     }
 }
 
 trait def_id_encoder_helpers {
-    fn emit_def_id(did: ast::def_id);
+    fn emit_def_id(&self, did: ast::def_id);
 }
 
 impl<S:serialize::Encoder> def_id_encoder_helpers for S {
-    fn emit_def_id(did: ast::def_id) {
-        did.encode(&self)
+    fn emit_def_id(&self, did: ast::def_id) {
+        did.encode(self)
     }
 }
 
 trait def_id_decoder_helpers {
-    fn read_def_id(xcx: @ExtendedDecodeContext) -> ast::def_id;
+    fn read_def_id(&self, xcx: @ExtendedDecodeContext) -> ast::def_id;
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D {
 
-    fn read_def_id(xcx: @ExtendedDecodeContext) -> ast::def_id {
-        let did: ast::def_id = Decodable::decode(&self);
+    fn read_def_id(&self, xcx: @ExtendedDecodeContext) -> ast::def_id {
+        let did: ast::def_id = Decodable::decode(self);
         did.tr(xcx)
     }
 }
@@ -405,8 +405,8 @@ fn decode_def(xcx: @ExtendedDecodeContext, doc: ebml::Doc) -> ast::def {
 }
 
 impl tr for ast::def {
-    fn tr(xcx: @ExtendedDecodeContext) -> ast::def {
-        match self {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ast::def {
+        match *self {
           ast::def_fn(did, p) => { ast::def_fn(did.tr(xcx), p) }
           ast::def_static_method(did, did2_opt, p) => {
             ast::def_static_method(did.tr(xcx),
@@ -450,7 +450,7 @@ impl tr for ast::def {
 // Encoding and decoding of adjustment information
 
 impl tr for ty::AutoAdjustment {
-    fn tr(xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment {
         ty::AutoAdjustment {
             autoderefs: self.autoderefs,
             autoref: self.autoref.map(|ar| ar.tr(xcx)),
@@ -459,7 +459,7 @@ impl tr for ty::AutoAdjustment {
 }
 
 impl tr for ty::AutoRef {
-    fn tr(xcx: @ExtendedDecodeContext) -> ty::AutoRef {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoRef {
         ty::AutoRef {
             kind: self.kind,
             region: self.region.tr(xcx),
@@ -469,21 +469,21 @@ impl tr for ty::AutoRef {
 }
 
 impl tr for ty::Region {
-    fn tr(xcx: @ExtendedDecodeContext) -> ty::Region {
-        match self {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::Region {
+        match *self {
             ty::re_bound(br) => ty::re_bound(br.tr(xcx)),
             ty::re_free(id, br) => ty::re_free(xcx.tr_id(id), br.tr(xcx)),
             ty::re_scope(id) => ty::re_scope(xcx.tr_id(id)),
-            ty::re_static | ty::re_infer(*) => self,
+            ty::re_static | ty::re_infer(*) => *self,
         }
     }
 }
 
 impl tr for ty::bound_region {
-    fn tr(xcx: @ExtendedDecodeContext) -> ty::bound_region {
-        match self {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::bound_region {
+        match *self {
             ty::br_anon(_) | ty::br_named(_) | ty::br_self |
-            ty::br_fresh(_) => self,
+            ty::br_fresh(_) => *self,
             ty::br_cap_avoid(id, br) => ty::br_cap_avoid(xcx.tr_id(id),
                                                          @br.tr(xcx))
         }
@@ -498,18 +498,20 @@ fn encode_freevar_entry(ebml_w: writer::Encoder, fv: @freevar_entry) {
 }
 
 trait ebml_decoder_helper {
-    fn read_freevar_entry(xcx: @ExtendedDecodeContext) -> freevar_entry;
+    fn read_freevar_entry(&self, xcx: @ExtendedDecodeContext)
+                         -> freevar_entry;
 }
 
 impl ebml_decoder_helper for reader::Decoder {
-    fn read_freevar_entry(xcx: @ExtendedDecodeContext) -> freevar_entry {
-        let fv: freevar_entry = Decodable::decode(&self);
+    fn read_freevar_entry(&self, xcx: @ExtendedDecodeContext)
+                         -> freevar_entry {
+        let fv: freevar_entry = Decodable::decode(self);
         fv.tr(xcx)
     }
 }
 
 impl tr for freevar_entry {
-    fn tr(xcx: @ExtendedDecodeContext) -> freevar_entry {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> freevar_entry {
         freevar_entry {
             def: self.def.tr(xcx),
             span: self.span.tr(xcx),
@@ -521,18 +523,20 @@ impl tr for freevar_entry {
 // Encoding and decoding of CaptureVar information
 
 trait capture_var_helper {
-    fn read_capture_var(xcx: @ExtendedDecodeContext) -> moves::CaptureVar;
+    fn read_capture_var(&self, xcx: @ExtendedDecodeContext)
+                       -> moves::CaptureVar;
 }
 
 impl capture_var_helper for reader::Decoder {
-    fn read_capture_var(xcx: @ExtendedDecodeContext) -> moves::CaptureVar {
-        let cvar: moves::CaptureVar = Decodable::decode(&self);
+    fn read_capture_var(&self, xcx: @ExtendedDecodeContext)
+                       -> moves::CaptureVar {
+        let cvar: moves::CaptureVar = Decodable::decode(self);
         cvar.tr(xcx)
     }
 }
 
 impl tr for moves::CaptureVar {
-    fn tr(xcx: @ExtendedDecodeContext) -> moves::CaptureVar {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> moves::CaptureVar {
         moves::CaptureVar {
             def: self.def.tr(xcx),
             span: self.span.tr(xcx),
@@ -545,7 +549,8 @@ impl tr for moves::CaptureVar {
 // Encoding and decoding of method_map_entry
 
 trait read_method_map_entry_helper {
-    fn read_method_map_entry(xcx: @ExtendedDecodeContext) -> method_map_entry;
+    fn read_method_map_entry(&self, xcx: @ExtendedDecodeContext)
+                            -> method_map_entry;
 }
 
 fn encode_method_map_entry(ecx: @e::EncodeContext,
@@ -565,7 +570,7 @@ fn encode_method_map_entry(ecx: @e::EncodeContext,
 }
 
 impl read_method_map_entry_helper for reader::Decoder {
-    fn read_method_map_entry(xcx: @ExtendedDecodeContext)
+    fn read_method_map_entry(&self, xcx: @ExtendedDecodeContext)
         -> method_map_entry {
         do self.read_rec {
             method_map_entry {
@@ -573,12 +578,12 @@ impl read_method_map_entry_helper for reader::Decoder {
                     self.read_arg(xcx)
                 }),
                 explicit_self: self.read_field(~"explicit_self", 2u, || {
-                    let self_type: ast::self_ty_ = Decodable::decode(&self);
+                    let self_type: ast::self_ty_ = Decodable::decode(self);
                     self_type
                 }),
                 origin: self.read_field(~"origin", 1u, || {
                     let method_origin: method_origin =
-                        Decodable::decode(&self);
+                        Decodable::decode(self);
                     method_origin.tr(xcx)
                 }),
             }
@@ -587,8 +592,8 @@ impl read_method_map_entry_helper for reader::Decoder {
 }
 
 impl tr for method_origin {
-    fn tr(xcx: @ExtendedDecodeContext) -> method_origin {
-        match self {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> method_origin {
+        match *self {
           typeck::method_static(did) => {
               typeck::method_static(did.tr(xcx))
           }
@@ -672,17 +677,19 @@ fn encode_vtable_origin(ecx: @e::EncodeContext,
 }
 
 trait vtable_decoder_helpers {
-    fn read_vtable_res(xcx: @ExtendedDecodeContext) -> typeck::vtable_res;
-    fn read_vtable_origin(xcx: @ExtendedDecodeContext)
+    fn read_vtable_res(&self, xcx: @ExtendedDecodeContext)
+                      -> typeck::vtable_res;
+    fn read_vtable_origin(&self, xcx: @ExtendedDecodeContext)
         -> typeck::vtable_origin;
 }
 
 impl vtable_decoder_helpers for reader::Decoder {
-    fn read_vtable_res(xcx: @ExtendedDecodeContext) -> typeck::vtable_res {
+    fn read_vtable_res(&self, xcx: @ExtendedDecodeContext)
+                      -> typeck::vtable_res {
         @self.read_to_vec(|| self.read_vtable_origin(xcx) )
     }
 
-    fn read_vtable_origin(xcx: @ExtendedDecodeContext)
+    fn read_vtable_origin(&self, xcx: @ExtendedDecodeContext)
         -> typeck::vtable_origin {
         do self.read_enum(~"vtable_origin") {
             do self.read_enum_variant |i| {
@@ -736,6 +743,7 @@ trait get_ty_str_ctxt {
 }
 
 impl get_ty_str_ctxt for @e::EncodeContext {
+    // IMPLICIT SELF WARNING: fix this!
     fn ty_str_ctxt() -> @tyencode::ctxt {
         @tyencode::ctxt {diag: self.tcx.sess.diagnostic(),
                         ds: e::def_to_str,
@@ -746,46 +754,48 @@ impl get_ty_str_ctxt for @e::EncodeContext {
 }
 
 trait ebml_writer_helpers {
-    fn emit_arg(ecx: @e::EncodeContext, arg: ty::arg);
-    fn emit_ty(ecx: @e::EncodeContext, ty: ty::t);
-    fn emit_vstore(ecx: @e::EncodeContext, vstore: ty::vstore);
-    fn emit_tys(ecx: @e::EncodeContext, tys: ~[ty::t]);
-    fn emit_bounds(ecx: @e::EncodeContext, bs: ty::param_bounds);
-    fn emit_tpbt(ecx: @e::EncodeContext, tpbt: ty::ty_param_bounds_and_ty);
+    fn emit_arg(&self, ecx: @e::EncodeContext, arg: ty::arg);
+    fn emit_ty(&self, ecx: @e::EncodeContext, ty: ty::t);
+    fn emit_vstore(&self, ecx: @e::EncodeContext, vstore: ty::vstore);
+    fn emit_tys(&self, ecx: @e::EncodeContext, tys: ~[ty::t]);
+    fn emit_bounds(&self, ecx: @e::EncodeContext, bs: ty::param_bounds);
+    fn emit_tpbt(&self, ecx: @e::EncodeContext,
+                 tpbt: ty::ty_param_bounds_and_ty);
 }
 
 impl ebml_writer_helpers for writer::Encoder {
-    fn emit_ty(ecx: @e::EncodeContext, ty: ty::t) {
+    fn emit_ty(&self, ecx: @e::EncodeContext, ty: ty::t) {
         do self.emit_opaque {
-            e::write_type(ecx, self, ty)
+            e::write_type(ecx, *self, ty)
         }
     }
 
-    fn emit_vstore(ecx: @e::EncodeContext, vstore: ty::vstore) {
+    fn emit_vstore(&self, ecx: @e::EncodeContext, vstore: ty::vstore) {
         do self.emit_opaque {
-            e::write_vstore(ecx, self, vstore)
+            e::write_vstore(ecx, *self, vstore)
         }
     }
 
-    fn emit_arg(ecx: @e::EncodeContext, arg: ty::arg) {
+    fn emit_arg(&self, ecx: @e::EncodeContext, arg: ty::arg) {
         do self.emit_opaque {
             tyencode::enc_arg(self.writer, ecx.ty_str_ctxt(), arg);
         }
     }
 
-    fn emit_tys(ecx: @e::EncodeContext, tys: ~[ty::t]) {
+    fn emit_tys(&self, ecx: @e::EncodeContext, tys: ~[ty::t]) {
         do self.emit_from_vec(tys) |ty| {
             self.emit_ty(ecx, *ty)
         }
     }
 
-    fn emit_bounds(ecx: @e::EncodeContext, bs: ty::param_bounds) {
+    fn emit_bounds(&self, ecx: @e::EncodeContext, bs: ty::param_bounds) {
         do self.emit_opaque {
             tyencode::enc_bounds(self.writer, ecx.ty_str_ctxt(), bs)
         }
     }
 
-    fn emit_tpbt(ecx: @e::EncodeContext, tpbt: ty::ty_param_bounds_and_ty) {
+    fn emit_tpbt(&self, ecx: @e::EncodeContext,
+                 tpbt: ty::ty_param_bounds_and_ty) {
         do self.emit_rec {
             do self.emit_field(~"bounds", 0) {
                 do self.emit_from_vec(*tpbt.bounds) |bs| {
@@ -793,7 +803,7 @@ impl ebml_writer_helpers for writer::Encoder {
                 }
             }
             do self.emit_field(~"region_param", 1u) {
-                tpbt.region_param.encode(&self);
+                tpbt.region_param.encode(self);
             }
             do self.emit_field(~"ty", 2u) {
                 self.emit_ty(ecx, tpbt.ty);
@@ -803,16 +813,16 @@ impl ebml_writer_helpers for writer::Encoder {
 }
 
 trait write_tag_and_id {
-    fn tag(tag_id: c::astencode_tag, f: fn());
-    fn id(id: ast::node_id);
+    fn tag(&self, tag_id: c::astencode_tag, f: fn());
+    fn id(&self, id: ast::node_id);
 }
 
 impl write_tag_and_id for writer::Encoder {
-    fn tag(tag_id: c::astencode_tag, f: fn()) {
+    fn tag(&self, tag_id: c::astencode_tag, f: fn()) {
         do self.wr_tag(tag_id as uint) { f() }
     }
 
-    fn id(id: ast::node_id) {
+    fn id(&self, id: ast::node_id) {
         self.wr_tagged_u64(c::tag_table_id as uint, id as u64)
     }
 }
@@ -981,31 +991,31 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
 }
 
 trait doc_decoder_helpers {
-    fn as_int() -> int;
-    fn opt_child(tag: c::astencode_tag) -> Option<ebml::Doc>;
+    fn as_int(&self) -> int;
+    fn opt_child(&self, tag: c::astencode_tag) -> Option<ebml::Doc>;
 }
 
 impl doc_decoder_helpers for ebml::Doc {
-    fn as_int() -> int { reader::doc_as_u64(self) as int }
-    fn opt_child(tag: c::astencode_tag) -> Option<ebml::Doc> {
-        reader::maybe_get_doc(self, tag as uint)
+    fn as_int(&self) -> int { reader::doc_as_u64(*self) as int }
+    fn opt_child(&self, tag: c::astencode_tag) -> Option<ebml::Doc> {
+        reader::maybe_get_doc(*self, tag as uint)
     }
 }
 
 trait ebml_decoder_decoder_helpers {
-    fn read_arg(xcx: @ExtendedDecodeContext) -> ty::arg;
-    fn read_ty(xcx: @ExtendedDecodeContext) -> ty::t;
-    fn read_tys(xcx: @ExtendedDecodeContext) -> ~[ty::t];
-    fn read_bounds(xcx: @ExtendedDecodeContext) -> @~[ty::param_bound];
-    fn read_ty_param_bounds_and_ty(xcx: @ExtendedDecodeContext)
+    fn read_arg(&self, xcx: @ExtendedDecodeContext) -> ty::arg;
+    fn read_ty(&self, xcx: @ExtendedDecodeContext) -> ty::t;
+    fn read_tys(&self, xcx: @ExtendedDecodeContext) -> ~[ty::t];
+    fn read_bounds(&self, xcx: @ExtendedDecodeContext) -> @~[ty::param_bound];
+    fn read_ty_param_bounds_and_ty(&self, xcx: @ExtendedDecodeContext)
                                 -> ty::ty_param_bounds_and_ty;
-    fn convert_def_id(xcx: @ExtendedDecodeContext,
+    fn convert_def_id(&self, xcx: @ExtendedDecodeContext,
                       source: DefIdSource,
                       did: ast::def_id) -> ast::def_id;
 }
 
 impl ebml_decoder_decoder_helpers for reader::Decoder {
-    fn read_arg(xcx: @ExtendedDecodeContext) -> ty::arg {
+    fn read_arg(&self, xcx: @ExtendedDecodeContext) -> ty::arg {
         do self.read_opaque |doc| {
             tydecode::parse_arg_data(
                 doc.data, xcx.dcx.cdata.cnum, doc.start, xcx.dcx.tcx,
@@ -1013,7 +1023,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         }
     }
 
-    fn read_ty(xcx: @ExtendedDecodeContext) -> ty::t {
+    fn read_ty(&self, xcx: @ExtendedDecodeContext) -> ty::t {
         // Note: regions types embed local node ids.  In principle, we
         // should translate these node ids into the new decode
         // context.  However, we do not bother, because region types
@@ -1040,11 +1050,12 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         }
     }
 
-    fn read_tys(xcx: @ExtendedDecodeContext) -> ~[ty::t] {
+    fn read_tys(&self, xcx: @ExtendedDecodeContext) -> ~[ty::t] {
         self.read_to_vec(|| self.read_ty(xcx) )
     }
 
-    fn read_bounds(xcx: @ExtendedDecodeContext) -> @~[ty::param_bound] {
+    fn read_bounds(&self, xcx: @ExtendedDecodeContext)
+                  -> @~[ty::param_bound] {
         do self.read_opaque |doc| {
             tydecode::parse_bounds_data(
                 doc.data, doc.start, xcx.dcx.cdata.cnum, xcx.dcx.tcx,
@@ -1052,7 +1063,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         }
     }
 
-    fn read_ty_param_bounds_and_ty(xcx: @ExtendedDecodeContext)
+    fn read_ty_param_bounds_and_ty(&self, xcx: @ExtendedDecodeContext)
         -> ty::ty_param_bounds_and_ty
     {
         do self.read_rec {
@@ -1061,7 +1072,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                     @self.read_to_vec(|| self.read_bounds(xcx) )
                 }),
                 region_param: self.read_field(~"region_param", 1u, || {
-                    Decodable::decode(&self)
+                    Decodable::decode(self)
                 }),
                 ty: self.read_field(~"ty", 2u, || {
                     self.read_ty(xcx)
@@ -1070,7 +1081,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         }
     }
 
-    fn convert_def_id(xcx: @ExtendedDecodeContext,
+    fn convert_def_id(&self, xcx: @ExtendedDecodeContext,
                       source: tydecode::DefIdSource,
                       did: ast::def_id) -> ast::def_id {
         /*!
@@ -1192,10 +1203,10 @@ fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
 
 #[cfg(test)]
 trait fake_ext_ctxt {
-    fn cfg() -> ast::crate_cfg;
-    fn parse_sess() -> @mut parse::ParseSess;
-    fn call_site() -> span;
-    fn ident_of(+st: ~str) -> ast::ident;
+    fn cfg(&self) -> ast::crate_cfg;
+    fn parse_sess(&self) -> @mut parse::ParseSess;
+    fn call_site(&self) -> span;
+    fn ident_of(&self, +st: ~str) -> ast::ident;
 }
 
 #[cfg(test)]
@@ -1203,16 +1214,16 @@ type fake_session = @mut parse::ParseSess;
 
 #[cfg(test)]
 impl fake_ext_ctxt for fake_session {
-    fn cfg() -> ast::crate_cfg { ~[] }
-    fn parse_sess() -> @mut parse::ParseSess { self }
-    fn call_site() -> span {
+    fn cfg(&self) -> ast::crate_cfg { ~[] }
+    fn parse_sess(&self) -> @mut parse::ParseSess { *self }
+    fn call_site(&self) -> span {
         codemap::span {
             lo: codemap::BytePos(0),
             hi: codemap::BytePos(0),
             expn_info: None
         }
     }
-    fn ident_of(+st: ~str) -> ast::ident {
+    fn ident_of(&self, +st: ~str) -> ast::ident {
         self.interner.intern(@st)
     }
 }
