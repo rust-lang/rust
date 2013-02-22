@@ -27,8 +27,8 @@ use core::to_str::ToStr;
 use core::vec;
 
 pub trait gen_send {
-    fn gen_send(&self, cx: ext_ctxt, try: bool) -> @ast::item;
-    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty;
+    fn gen_send(&mut self, cx: ext_ctxt, try: bool) -> @ast::item;
+    fn to_ty(&mut self, cx: ext_ctxt) -> @ast::Ty;
 }
 
 pub trait to_type_decls {
@@ -47,7 +47,7 @@ pub trait gen_init {
 }
 
 pub impl gen_send for message {
-    fn gen_send(&self, cx: ext_ctxt, try: bool) -> @ast::item {
+    fn gen_send(&mut self, cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
         match *self {
           message(ref _id, span, ref tys, this, Some(ref next_state)) => {
@@ -193,7 +193,7 @@ pub impl gen_send for message {
           }
         }
 
-    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty {
+    fn to_ty(&mut self, cx: ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder(path(~[cx.ident_of(self.name())], self.span())
           .add_tys(cx.ty_vars_global(self.get_params())))
     }
@@ -259,10 +259,14 @@ pub impl to_type_decls for state {
           recv => (*self).dir.reverse()
         };
         let mut items = ~[];
-        for self.messages.each |m| {
-            if dir == send {
-                items.push(m.gen_send(cx, true));
-                items.push(m.gen_send(cx, false));
+
+        {
+            let messages = &mut *self.messages;
+            for vec::each_mut(*messages) |m| {
+                if dir == send {
+                    items.push(m.gen_send(cx, true));
+                    items.push(m.gen_send(cx, false));
+                }
             }
         }
 
@@ -395,7 +399,8 @@ pub impl gen_init for protocol {
         }
 
         cx.ty_path_ast_builder(path(~[cx.ident_of(~"super"),
-                                      cx.ident_of(~"__Buffer")], self.span)
+                                      cx.ident_of(~"__Buffer")],
+                                    copy self.span)
                                .add_tys(cx.ty_vars_global(params)))
     }
 
@@ -453,12 +458,12 @@ pub impl gen_init for protocol {
         }
 
         items.push(cx.item_mod(cx.ident_of(~"client"),
-                               self.span,
+                               copy self.span,
                                client_states));
         items.push(cx.item_mod(cx.ident_of(~"server"),
-                               self.span,
+                               copy self.span,
                                server_states));
 
-        cx.item_mod(cx.ident_of(self.name), self.span, items)
+        cx.item_mod(cx.ident_of(self.name), copy self.span, items)
     }
 }

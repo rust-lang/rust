@@ -158,7 +158,7 @@ pub fn mk_handler(emitter: Option<Emitter>) -> @handler {
         }
     };
 
-    @mut HandlerT { mut err_count: 0, emit: emit } as @handler
+    @mut HandlerT { err_count: 0, emit: emit } as @handler
 }
 
 #[deriving_eq]
