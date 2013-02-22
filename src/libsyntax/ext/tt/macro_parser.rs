@@ -114,8 +114,8 @@ pub fn is_some(&&mpu: matcher_pos_up) -> bool {
 pub struct MatcherPos {
     elts: ~[ast::matcher], // maybe should be /&? Need to understand regions.
     sep: Option<Token>,
-    mut idx: uint,
-    mut up: matcher_pos_up, // mutable for swapping only
+    idx: uint,
+    up: matcher_pos_up, // mutable for swapping only
     matches: ~[DVec<@named_match>],
     match_lo: uint, match_hi: uint,
     sp_lo: BytePos,
@@ -155,8 +155,8 @@ pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
     ~MatcherPos {
         elts: ms,
         sep: sep,
-        mut idx: 0u,
-        mut up: matcher_pos_up(None),
+        idx: 0u,
+        up: matcher_pos_up(None),
         matches: copy vec::from_fn(count_names(ms), |_i| dvec::DVec()),
         match_lo: 0u,
         match_hi: match_idx_hi,
@@ -267,7 +267,7 @@ pub fn parse(sess: @mut ParseSess,
                     if idx == len {
                         // pop from the matcher position
 
-                        let new_pos = copy_up(ei.up);
+                        let mut new_pos = copy_up(ei.up);
 
                         // update matches (the MBE "parse tree") by appending
                         // each tree as a subtree.
@@ -295,13 +295,13 @@ pub fn parse(sess: @mut ParseSess,
                     match copy ei.sep {
                       Some(ref t) if idx == len => { // we need a separator
                         if tok == (*t) { //pass the separator
-                            let ei_t = ei;
+                            let mut ei_t = ei;
                             ei_t.idx += 1;
                             next_eis.push(ei_t);
                         }
                       }
                       _ => { // we don't need a separator
-                        let ei_t = ei;
+                        let mut ei_t = ei;
                         ei_t.idx = 0;
                         cur_eis.push(ei_t);
                       }
@@ -315,7 +315,7 @@ pub fn parse(sess: @mut ParseSess,
                   match_seq(ref matchers, ref sep, zero_ok,
                             match_idx_lo, match_idx_hi) => {
                     if zero_ok {
-                        let new_ei = copy ei;
+                        let mut new_ei = copy ei;
                         new_ei.idx += 1u;
                         //we specifically matched zero repeats.
                         for uint::range(match_idx_lo, match_idx_hi) |idx| {
@@ -331,8 +331,8 @@ pub fn parse(sess: @mut ParseSess,
                     cur_eis.push(~MatcherPos {
                         elts: (*matchers),
                         sep: (*sep),
-                        mut idx: 0u,
-                        mut up: matcher_pos_up(Some(ei_t)),
+                        idx: 0u,
+                        up: matcher_pos_up(Some(ei_t)),
                         matches: matches,
                         match_lo: match_idx_lo, match_hi: match_idx_hi,
                         sp_lo: sp.lo
@@ -340,7 +340,7 @@ pub fn parse(sess: @mut ParseSess,
                   }
                   match_nonterminal(_,_,_) => { bb_eis.push(ei) }
                   match_tok(ref t) => {
-                    let ei_t = ei;
+                    let mut ei_t = ei;
                     if (*t) == tok {
                         ei_t.idx += 1;
                         next_eis.push(ei_t);
@@ -388,7 +388,7 @@ pub fn parse(sess: @mut ParseSess,
             } else /* bb_eis.len() == 1 */ {
                 let rust_parser = Parser(sess, cfg, rdr.dup());
 
-                let ei = bb_eis.pop();
+                let mut ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
