@@ -19,6 +19,13 @@ endef
 $(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_HOST_VAR,$(t))))
 $(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: host for $(t) is $(HOST_$(t))))
 
+# Ditto for OSTYPE
+define DEF_OSTYPE_VAR
+  OSTYPE_$(1) = $(subst $(firstword $(subst -, ,$(1)))-,,$(1))
+endef
+$(foreach t,$(CFG_TARGET_TRIPLES),$(eval $(call DEF_OSTYPE_VAR,$(t))))
+$(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: os for $(t) is $(OSTYPE_$(t))))
+
 # FIXME: no-omit-frame-pointer is just so that task_start_wrapper
 # has a frame pointer and the stack walker can understand it. Turning off
 # frame pointers everywhere is overkill
@@ -32,6 +39,21 @@ CFG_DSYMUTIL := true
 # Add a dSYM glob for all platforms, even though it will do nothing on
 # non-Darwin platforms; omitting it causes a full -R copy of lib/
 CFG_LIB_DSYM_GLOB=lib$(1)-*.dylib.dSYM
+
+# Hack: not sure how to test if a file exists in make other than this
+OS_SUPP = $(patsubst %,--suppressions=%,\
+      $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
+
+ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
+  CFG_WINDOWSY := 1
+endif
+
+ifdef CFG_DISABLE_OPTIMIZE_CXX
+  $(info cfg: disabling C++ optimization (CFG_DISABLE_OPTIMIZE_CXX))
+  CFG_GCCISH_CFLAGS += -O0
+else
+  CFG_GCCISH_CFLAGS += -O2
+endif
 
 ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_LIB_NAME=lib$(1).so
@@ -112,32 +134,6 @@ ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
   CFG_INSTALL_NAME = -Wl,-install_name,@rpath/$(1)
 endif
 
-# Hack: not sure how to test if a file exists in make other than this
-OS_SUPP = $(patsubst %,--suppressions=%,\
-      $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
-
-ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
-  CFG_WINDOWSY := 1
-endif
-
-ifdef CFG_DISABLE_OPTIMIZE_CXX
-  $(info cfg: disabling C++ optimization (CFG_DISABLE_OPTIMIZE_CXX))
-  CFG_GCCISH_CFLAGS += -O0
-else
-  CFG_GCCISH_CFLAGS += -O2
-endif
-
-CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
- $(if $(findstring stage0,$(1)), \
-       stage0/$(CFG_LIBDIR), \
-      $(if $(findstring stage1,$(1)), \
-           stage1/$(CFG_LIBDIR), \
-          $(if $(findstring stage2,$(1)), \
-               stage2/$(CFG_LIBDIR), \
-               $(if $(findstring stage3,$(1)), \
-                    stage3/$(CFG_LIBDIR), \
-               )))))/rustc/$(CFG_BUILD_TRIPLE)/$(CFG_LIBDIR)
-
 ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
 
@@ -152,25 +148,26 @@ ifdef CFG_UNIXY
     CFG_LIBUV_LINK_FLAGS=-lpthread -lkvm
   endif
 
-  ifdef CFG_ENABLE_MINGW_CROSS
-    CFG_WINDOWSY := 1
-    CFG_INFO := $(info cfg: mingw-cross)
-    CFG_GCCISH_CROSS := i586-mingw32msvc-
-    ifdef CFG_VALGRIND
-      CFG_VALGRIND += wine
-    endif
+  # FIXME: This is surely super broken
+  # ifdef CFG_ENABLE_MINGW_CROSS
+  #   CFG_WINDOWSY := 1
+  #   CFG_INFO := $(info cfg: mingw-cross)
+  #   CFG_GCCISH_CROSS := i586-mingw32msvc-
+  #   ifdef CFG_VALGRIND
+  #     CFG_VALGRIND += wine
+  #   endif
 
-    CFG_GCCISH_CFLAGS := -march=i586
-    CFG_GCCISH_PRE_LIB_FLAGS :=
-    CFG_GCCISH_POST_LIB_FLAGS :=
-    CFG_GCCISH_DEF_FLAG :=
-    CFG_GCCISH_LINK_FLAGS := -shared
+  #   CFG_GCCISH_CFLAGS := -march=i586
+  #   CFG_GCCISH_PRE_LIB_FLAGS :=
+  #   CFG_GCCISH_POST_LIB_FLAGS :=
+  #   CFG_GCCISH_DEF_FLAG :=
+  #   CFG_GCCISH_LINK_FLAGS := -shared
 
-    ifeq ($(CFG_CPUTYPE), x86_64)
-      CFG_GCCISH_CFLAGS += -m32
-      CFG_GCCISH_LINK_FLAGS += -m32
-    endif
-  endif
+  #   ifeq ($(CFG_CPUTYPE), x86_64)
+  #     CFG_GCCISH_CFLAGS += -m32
+  #     CFG_GCCISH_LINK_FLAGS += -m32
+  #   endif
+  # endif
   ifdef CFG_VALGRIND
     CFG_VALGRIND += --error-exitcode=100 \
                     --quiet \
@@ -200,6 +197,18 @@ else
   CFG_LDPATH :=
   CFG_RUN=$(2)
 endif
+
+  CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
+   $(if $(findstring stage0,$(1)), \
+       stage0/$(CFG_LIBDIR), \
+      $(if $(findstring stage1,$(1)), \
+           stage1/$(CFG_LIBDIR), \
+          $(if $(findstring stage2,$(1)), \
+               stage2/$(CFG_LIBDIR), \
+               $(if $(findstring stage3,$(1)), \
+                    stage3/$(CFG_LIBDIR), \
+               )))))/rustc/$(CFG_BUILD_TRIPLE)/$(CFG_LIBDIR)
+
   CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
   CFG_LIBUV_LINK_FLAGS=-lWs2_32 -lpsapi -liphlpapi
@@ -233,34 +242,13 @@ ifeq ($(CFG_C_COMPILER),clang)
   # next to the .o file that lists header deps.
   CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
 
-  define CFG_MAKE_CC
-  CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CC)  \
-    $$(CFG_GCCISH_CFLAGS) $$(CFG_CLANG_CFLAGS)    \
-    $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))       \
-      $$(CFG_CLANG_CFLAGS_$$(HOST_$(1)))        \
-        $$(CFG_DEPEND_FLAGS)                            \
-    -c -o $$(1) $$(2)
-    CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CC) \
-    $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)      \
-    $$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))   \
-        $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)      \
-      $$(call CFG_INSTALL_NAME,$$(4))
-  CFG_COMPILE_CXX_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX)  \
-    $$(CFG_GCCISH_CFLAGS) $$(CFG_CLANG_CFLAGS)    \
-    $$(CFG_GCCISH_CXXFLAGS)                       \
-    $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))       \
-      $$(CFG_CLANG_CFLAGS_$$(HOST_$(1)))        \
-        $$(CFG_DEPEND_FLAGS)                            \
-    -c -o $$(1) $$(2)
-    CFG_LINK_CXX_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX) \
-    $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)      \
-    $$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))   \
-        $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)      \
-      $$(call CFG_INSTALL_NAME,$$(4))
+  CFG_SPECIFIC_CC_CFLAGS = $(CFG_CLANG_CFLAGS)
+  define MAKE_CLANG_SPECIFIC_CFLAGS
+    CFG_SPECIFIC_CC_CFLAGS_$$(HOST_$(target)) = $(CFG_CLANG_CFLAGS_$$(HOST_$(target)))
   endef
-
   $(foreach target,$(CFG_TARGET_TRIPLES), \
-    $(eval $(call CFG_MAKE_CC,$(target))))
+    $(eval $(call MAKE_CLANG_SPECIFIC_CFLAGS,$(target))))
+
 else
 ifeq ($(CFG_C_COMPILER),gcc)
   ifeq ($(origin CC),default)
@@ -279,12 +267,24 @@ ifeq ($(CFG_C_COMPILER),gcc)
   # next to the .o file that lists header deps.
   CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
 
-  define CFG_MAKE_CC
+  CFG_SPECIFIC_CC_CFLAGS = $(CFG_GCC_CFLAGS)
+  define MAKE_GCC_SPECIFIC_CFLAGS
+    CFG_SPECIFIC_CC_CFLAGS_$$(HOST_$(target)) = $(CFG_GCC_CFLAGS_$$(HOST_$(target)))
+  endef
+  $(foreach target,$(CFG_TARGET_TRIPLES), \
+    $(eval $(call MAKE_GCC_SPECIFIC_CFLAGS,$(target))))
+
+else
+  CFG_ERR := $(error please try on a system with gcc or clang)
+endif
+endif
+
+define CFG_MAKE_CC
   CFG_COMPILE_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CC)  \
         $$(CFG_GCCISH_CFLAGS)             \
       $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))       \
-        $$(CFG_GCC_CFLAGS)                \
-        $$(CFG_GCC_CFLAGS_$$(HOST_$(1)))        \
+        $$(CFG_SPECIFIC_CC_CFLAGS)                \
+        $$(CFG_SPECIFIC_CC_CFLAGS_$$(HOST_$(1)))        \
         $$(CFG_DEPEND_FLAGS)                            \
         -c -o $$(1) $$(2)
     CFG_LINK_C_$(1) = $$(CFG_GCCISH_CROSS)$$(CC) \
@@ -296,8 +296,8 @@ ifeq ($(CFG_C_COMPILER),gcc)
         $$(CFG_GCCISH_CFLAGS)             \
         $$(CFG_GCCISH_CXXFLAGS)           \
       $$(CFG_GCCISH_CFLAGS_$$(HOST_$(1)))       \
-        $$(CFG_GCC_CFLAGS)                \
-        $$(CFG_GCC_CFLAGS_$$(HOST_$(1)))        \
+        $$(CFG_SPECIFIC_CC_CFLAGS)                \
+        $$(CFG_SPECIFIC_CC_CFLAGS_$$(HOST_$(1)))        \
         $$(CFG_DEPEND_FLAGS)                            \
         -c -o $$(1) $$(2)
     CFG_LINK_CXX_$(1) = $$(CFG_GCCISH_CROSS)$$(CXX) \
@@ -305,14 +305,10 @@ ifeq ($(CFG_C_COMPILER),gcc)
     $$(CFG_GCCISH_LINK_FLAGS_$$(HOST_$(1)))   \
         $$(CFG_GCCISH_DEF_FLAG)$$(3) $$(2)      \
         $$(call CFG_INSTALL_NAME,$$(4))
-  endef
+endef
 
-  $(foreach target,$(CFG_TARGET_TRIPLES), \
-    $(eval $(call CFG_MAKE_CC,$(target))))
-else
-  CFG_ERR := $(error please try on a system with gcc or clang)
-endif
-endif
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+  $(eval $(call CFG_MAKE_CC,$(target))))
 
 # We're using llvm-mc as our assembler because it supports
 # .cfi pseudo-ops on mac
