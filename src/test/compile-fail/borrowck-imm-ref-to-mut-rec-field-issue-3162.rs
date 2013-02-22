@@ -13,7 +13,10 @@ fn each<T>(x: &[T], op: fn(elem: &T) -> bool) {
 }
 
 fn main() {
-    let x = ~[{mut a: 0}];
+    struct A {
+        mut a: int
+    }
+    let x = ~[A {mut a: 0}];
     for each(x) |y| {
         let z = &y.a; //~ ERROR illegal borrow unless pure
         x[0].a = 10; //~ NOTE impure due to assigning to mutable field

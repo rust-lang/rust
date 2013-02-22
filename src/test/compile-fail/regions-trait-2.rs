@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type ctxt = { v: uint };
+struct ctxt { v: uint }
 
 trait get_ctxt {
     fn get_ctxt() -> &self/ctxt;
 }
 
-type has_ctxt = { c: &ctxt };
+struct has_ctxt { c: &ctxt }
 
 impl get_ctxt for has_ctxt {
     fn get_ctxt() -> &self/ctxt { self.c }
 }
 
 fn make_gc() -> get_ctxt  {
-    let ctxt = { v: 22u };
-    let hc = { c: &ctxt }; //~ ERROR illegal borrow
+    let ctxt = ctxt { v: 22u };
+    let hc = has_ctxt { c: &ctxt }; //~ ERROR illegal borrow
     return hc as get_ctxt;
 }
 

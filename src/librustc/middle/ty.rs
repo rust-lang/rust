@@ -233,7 +233,6 @@ struct ctxt_ {
     mut next_id: uint,
     vecs_implicitly_copyable: bool,
     legacy_modes: bool,
-    legacy_records: bool,
     cstore: @mut metadata::cstore::CStore,
     sess: session::Session,
     def_map: resolve::DefMap,
@@ -789,16 +788,10 @@ pub fn mk_ctxt(s: session::Session,
                crate: @ast::crate)
             -> ctxt {
     let mut legacy_modes = false;
-    let mut legacy_records = false;
     for crate.node.attrs.each |attribute| {
         match attribute.node.value.node {
             ast::meta_word(w) if *w == ~"legacy_modes" => {
                 legacy_modes = true;
-                if legacy_records { break; }
-            }
-            ast::meta_word(w) if *w == ~"legacy_records" => {
-                legacy_records = true;
-                if legacy_modes { break; }
             }
             _ => {}
         }
@@ -814,7 +807,6 @@ pub fn mk_ctxt(s: session::Session,
         mut next_id: 0u,
         vecs_implicitly_copyable: vecs_implicitly_copyable,
         legacy_modes: legacy_modes,
-        legacy_records: legacy_records,
         cstore: s.cstore,
         sess: s,
         def_map: dm,

@@ -17,21 +17,20 @@
 
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
-#[legacy_records];
 
 mod pingpong {
     use core::pipes::*;
     use core::ptr;
 
-    pub type packets = {
+    pub struct Packets {
         ping: Packet<ping>,
         pong: Packet<pong>,
-    };
+    }
 
     pub fn init() -> (client::ping, server::ping) {
         let buffer = ~Buffer {
             header: BufferHeader(),
-            data: {
+            data: Packets {
                 ping: mk_packet::<ping>(),
                 pong: mk_packet::<pong>()
             }
@@ -59,16 +58,16 @@ mod pingpong {
             }
         }
         pub type ping = pipes::SendPacketBuffered<::pingpong::ping,
-                                                  ::pingpong::packets>;
+                                                  ::pingpong::Packets>;
         pub type pong = pipes::RecvPacketBuffered<::pingpong::pong,
-                                                  ::pingpong::packets>;
+                                                  ::pingpong::Packets>;
     }
     pub mod server {
         use core::pipes::*;
         use core::ptr;
 
         pub type ping = pipes::RecvPacketBuffered<::pingpong::ping,
-        ::pingpong::packets>;
+        ::pingpong::Packets>;
         pub fn pong(+pipe: pong) -> ping {
             {
                 let b = pipe.reuse_buffer();
@@ -80,7 +79,7 @@ mod pingpong {
             }
         }
         pub type pong = pipes::SendPacketBuffered<::pingpong::pong,
-                                                  ::pingpong::packets>;
+                                                  ::pingpong::Packets>;
     }
 }
 

@@ -1926,7 +1926,7 @@ pub impl Parser {
             fields.push(self.parse_field(token::COLON));
         }
         self.expect(token::RBRACE);
-        //self.warn(~"REC");
+        self.warn(~"REC");
         return expr_rec(fields, base);
     }
 
