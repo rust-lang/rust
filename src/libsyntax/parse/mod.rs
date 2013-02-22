@@ -141,7 +141,7 @@ pub fn parse_tts_from_source_str(name: ~str,
                                  sess: @mut ParseSess) -> ~[ast::token_tree] {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
-    p.quote_depth += 1u;
+    *p.quote_depth += 1u;
     let r = p.parse_all_token_trees();
     p.abort_if_errors();
     return r;
