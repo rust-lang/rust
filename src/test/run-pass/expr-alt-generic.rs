@@ -10,7 +10,6 @@
 
 // xfail-fast
 // -*- rust -*-
-#[legacy_modes];
 
 type compare<T> = fn@(T, T) -> bool;
 
@@ -20,7 +19,7 @@ fn test_generic<T:Copy>(expected: T, eq: compare<T>) {
 }
 
 fn test_bool() {
-    fn compare_bool(&&b1: bool, &&b2: bool) -> bool { return b1 == b2; }
+    fn compare_bool(b1: bool, b2: bool) -> bool { return b1 == b2; }
     test_generic::<bool>(true, compare_bool);
 }
 

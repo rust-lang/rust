@@ -14,8 +14,6 @@
 // However, the condition it was testing seemed complex enough to
 // warrant still having a test, so I inlined the old definitions.
 
-#[legacy_modes];
-
 trait iterable<A> {
     fn iter(blk: fn(A));
 }
@@ -34,7 +32,7 @@ fn filter<A,IA:iterable<A>>(self: IA, prd: fn@(A) -> bool, blk: fn(A)) {
     }
 }
 
-fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
+fn foldl<A,B,IA:iterable<A>>(self: IA, b0: B, blk: fn(B, A) -> B) -> B {
     let mut b = b0;
     do self.iter |a| {
         b = blk(b, a);
@@ -52,7 +50,7 @@ fn range(lo: uint, hi: uint, it: fn(uint)) {
 
 pub fn main() {
     let range: fn@(fn&(uint)) = |a| range(0u, 1000u, a);
-    let filt: fn@(fn&(&&v: uint)) = |a| filter(
+    let filt: fn@(fn&(v: uint)) = |a| filter(
         range,
         |&&n: uint| n % 3u != 0u && n % 5u != 0u,
         a);

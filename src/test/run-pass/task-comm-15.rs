@@ -10,11 +10,10 @@
 
 // xfail-fast
 // xfail-win32
-#[legacy_modes];
 
 extern mod std;
 
-fn start(c: comm::Chan<int>, i0: int) {
+fn start(c: &comm::Chan<int>, i0: int) {
     let mut i = i0;
     while i > 0 {
         c.send(0);
@@ -28,6 +27,6 @@ pub fn main() {
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
     let (p, ch) = comm::stream();
-    task::spawn(|| start(ch, 10));
+    task::spawn(|| start(&ch, 10));
     p.recv();
 }
