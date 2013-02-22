@@ -421,16 +421,16 @@ pub fn parse_nt(p: Parser, name: ~str) -> nonterminal {
       ~"expr" => token::nt_expr(p.parse_expr()),
       ~"ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
-      ~"ident" => match copy p.token {
+      ~"ident" => match *p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
-                     + token::to_str(p.reader.interner(), copy p.token))
+                     + token::to_str(p.reader.interner(), *p.token))
       },
       ~"path" => token::nt_path(p.parse_path_with_tps(false)),
       ~"tt" => {
-        p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
+        *p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
         let res = token::nt_tt(@p.parse_token_tree());
-        p.quote_depth -= 1u;
+        *p.quote_depth -= 1u;
         res
       }
       ~"matchers" => token::nt_matchers(p.parse_matchers()),
