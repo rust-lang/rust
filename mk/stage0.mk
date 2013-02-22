@@ -2,16 +2,16 @@
 
 
 
-$(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X):		\
+$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X):		\
 		$(S)src/snapshots.txt					\
 		$(S)src/etc/get-snapshot.py $(MKFILE_DEPS)
 	@$(call E, fetch: $@)
 #   Note: the variable "SNAPSHOT_FILE" is generally not set, and so
 #   we generally only pass one argument to this script.  
 ifdef CFG_ENABLE_LOCAL_RUST
-	$(Q)$(S)src/etc/local_stage0.sh $(CFG_HOST_TRIPLE) $(CFG_LOCAL_RUST_ROOT)
+	$(Q)$(S)src/etc/local_stage0.sh $(CFG_BUILD_TRIPLE) $(CFG_LOCAL_RUST_ROOT)
 else 
-	$(Q)$(CFG_PYTHON) $(S)src/etc/get-snapshot.py $(CFG_HOST_TRIPLE) $(SNAPSHOT_FILE)
+	$(Q)$(CFG_PYTHON) $(S)src/etc/get-snapshot.py $(CFG_BUILD_TRIPLE) $(SNAPSHOT_FILE)
 ifdef CFG_ENABLE_PAX_FLAGS
 	@$(call E, apply PaX flags: $@)
 	@"$(CFG_PAXCTL)" -cm "$@"
@@ -21,24 +21,24 @@ endif
 
 # Host libs will be extracted by the above rule
 
-$(HLIB0_H_$(CFG_HOST_TRIPLE))/$(CFG_RUNTIME): \
-		$(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X)
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUNTIME): \
+		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_HOST_TRIPLE))/$(CFG_CORELIB): \
-		$(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X)
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_CORELIB): \
+		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_HOST_TRIPLE))/$(CFG_STDLIB): \
-		$(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X)
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_STDLIB): \
+		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_HOST_TRIPLE))/$(CFG_LIBRUSTC): \
-		$(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X)
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_LIBRUSTC): \
+		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_HOST_TRIPLE))/$(CFG_RUSTLLVM): \
-		$(HBIN0_H_$(CFG_HOST_TRIPLE))/rustc$(X)
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUSTLLVM): \
+		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
 # For other targets, let the host build the target:
@@ -82,5 +82,5 @@ endef
 
 # Use stage1 to build other architectures: then you don't have to wait
 # for stage2, but you get the latest updates to the compiler source.
-$(foreach t,$(NON_HOST_TRIPLES),								\
- $(eval $(call BOOTSTRAP_STAGE0,$(t),1,$(CFG_HOST_TRIPLE))))
+$(foreach t,$(NON_BUILD_HOST_TRIPLES),								\
+ $(eval $(call BOOTSTRAP_STAGE0,$(t),1,$(CFG_BUILD_TRIPLE))))
