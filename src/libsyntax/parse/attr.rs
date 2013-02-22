@@ -37,7 +37,7 @@ impl parser_attr for Parser {
     fn parse_outer_attributes() -> ~[ast::attribute] {
         let mut attrs: ~[ast::attribute] = ~[];
         loop {
-            match copy self.token {
+            match *self.token {
               token::POUND => {
                 if self.look_ahead(1u) != token::LBRACKET {
                     break;
@@ -90,14 +90,14 @@ impl parser_attr for Parser {
         let mut inner_attrs: ~[ast::attribute] = ~[];
         let mut next_outer_attrs: ~[ast::attribute] = ~[];
         loop {
-            match copy self.token {
+            match *self.token {
               token::POUND => {
                 if self.look_ahead(1u) != token::LBRACKET {
                     // This is an extension
                     break;
                 }
                 let attr = self.parse_attribute(ast::attr_inner);
-                if self.token == token::SEMI {
+                if *self.token == token::SEMI {
                     self.bump();
                     inner_attrs += ~[attr];
                 } else {
@@ -131,7 +131,7 @@ impl parser_attr for Parser {
     fn parse_meta_item() -> @ast::meta_item {
         let lo = self.span.lo;
         let name = self.id_to_str(self.parse_ident());
-        match self.token {
+        match *self.token {
             token::EQ => {
                 self.bump();
                 let lit = self.parse_lit();
@@ -157,7 +157,7 @@ impl parser_attr for Parser {
     }
 
     fn parse_optional_meta() -> ~[@ast::meta_item] {
-        match self.token {
+        match *self.token {
           token::LPAREN => return self.parse_meta_seq(),
           _ => return ~[]
         }

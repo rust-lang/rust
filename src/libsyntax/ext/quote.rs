@@ -515,7 +515,7 @@ fn expand_tts(cx: ext_ctxt,
     // try removing it when enough of them are gone.
 
     let p = parse::new_parser_from_tts(cx.parse_sess(), cx.cfg(), tts);
-    p.quote_depth += 1u;
+    *p.quote_depth += 1u;
     let tts = p.parse_all_token_trees();
     p.abort_if_errors();
 
