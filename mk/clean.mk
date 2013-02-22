@@ -14,7 +14,7 @@
 
 CLEAN_STAGE_RULES =								\
  $(foreach stage, $(STAGES),					\
-  $(foreach host, $(CFG_TARGET_TRIPLES),		\
+  $(foreach host, $(CFG_HOST_TRIPLES),		\
    clean$(stage)_H_$(host)						\
    $(foreach target, $(CFG_TARGET_TRIPLES),		\
     clean$(stage)_T_$(target)_H_$(host))))
@@ -33,7 +33,7 @@ clean: clean-misc $(CLEAN_STAGE_RULES)
 
 clean-misc:
 	@$(call E, cleaning)
-	$(Q)find rustllvm rt $(CFG_HOST_TRIPLE)/test \
+	$(Q)find rustllvm rt $(CFG_BUILD_TRIPLE)/test \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
@@ -41,7 +41,7 @@ clean-misc:
          -name '*.def' -o     \
          -name '*.bc'         \
          | xargs rm -f
-	$(Q)find rustllvm rt $(CFG_HOST_TRIPLE)\
+	$(Q)find rustllvm rt $(CFG_BUILD_TRIPLE)\
          -name '*.dSYM'       \
          | xargs rm -Rf
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
@@ -93,7 +93,7 @@ clean$(1)_H_$(2):
 
 endef
 
-$(foreach host, $(CFG_TARGET_TRIPLES), \
+$(foreach host, $(CFG_HOST_TRIPLES), \
  $(eval $(foreach stage, $(STAGES), \
   $(eval $(call CLEAN_HOST_STAGE_N,$(stage),$(host))))))
 
@@ -127,12 +127,12 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/run_pass_stage* # For windows
 endef
 
-$(foreach host, $(CFG_TARGET_TRIPLES), \
+$(foreach host, $(CFG_HOST_TRIPLES), \
  $(eval $(foreach target, $(CFG_TARGET_TRIPLES), \
   $(eval $(foreach stage, 0 1 2 3, \
    $(eval $(call CLEAN_TARGET_STAGE_N,$(stage),$(target),$(host))))))))
 
-define DEF_CLEAN_LLVM_TARGET
+define DEF_CLEAN_LLVM_HOST
 ifeq ($(CFG_LLVM_ROOT),)
 clean-llvm$(1):
 	$$(Q)$$(MAKE) -C $$(CFG_LLVM_BUILD_DIR_$(1)) clean
@@ -142,5 +142,5 @@ clean-llvm$(1): ;
 endif
 endef
 
-$(foreach target, $(CFG_TARGET_TRIPLES), \
- $(eval $(call DEF_CLEAN_LLVM_TARGET,$(target))))
+$(foreach host, $(CFG_HOST_TRIPLES), \
+ $(eval $(call DEF_CLEAN_LLVM_HOST,$(host))))

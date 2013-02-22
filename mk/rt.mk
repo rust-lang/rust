@@ -127,7 +127,7 @@ rt/$(1)/%.o: rt/%.c $$(MKFILE_DEPS)
                  $$(SNAP_DEFINES)) $$<
 
 rt/$(1)/%.o: rt/%.S  $$(MKFILE_DEPS) \
-                     $$(LLVM_CONFIG_$$(CFG_HOST_TRIPLE))
+                     $$(LLVM_CONFIG_$$(CFG_BUILD_TRIPLE))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
 

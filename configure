@@ -301,7 +301,7 @@ then
 fi
 
 
-DEFAULT_HOST_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
+DEFAULT_BUILD_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_BUILD_DIR="$(pwd)/"
@@ -346,8 +346,9 @@ opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
-valopt host-triple "${DEFAULT_HOST_TRIPLE}" "LLVM host triple"
-valopt target-triples "${CFG_HOST_TRIPLE}" "LLVM target triples"
+valopt build-triple "${DEFAULT_BUILD_TRIPLE}" "LLVM build triple"
+valopt host-triples "${CFG_BUILD_TRIPLE}" "LLVM host triples"
+valopt target-triples "${CFG_HOST_TRIPLES}" "LLVM target triples"
 
 # Validate Options
 step_msg "validating $CFG_SELF args"
@@ -532,10 +533,6 @@ fi
 
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
-case $CFG_TARGET_TRIPLES in
-    (*$CFG_HOST_TRIPLE*) ;;
-    (*) err "Host triple is not among the target triples." ;;
-esac
 
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
@@ -562,13 +559,13 @@ do
 done
 
 make_dir llvm
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_HOST_TRIPLES
 do
     make_dir llvm/$t
 done
 
 make_dir rustllvm
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_HOST_TRIPLES
 do
     make_dir rustllvm/$t
 done
@@ -593,7 +590,7 @@ then
     CFG_LIBDIR=bin
 fi
 
-for h in $CFG_TARGET_TRIPLES
+for h in $CFG_HOST_TRIPLES
 do
     for t in $CFG_TARGET_TRIPLES
     do
@@ -669,7 +666,7 @@ fi
 # Configure llvm, only if necessary
 step_msg "looking at LLVM"
 CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_HOST_TRIPLES
 do
     do_reconfigure=1
 
@@ -819,6 +816,8 @@ putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
 putvar CFG_CONFIGURE_ARGS
 putvar CFG_PREFIX
+putvar CFG_BUILD_TRIPLE
+putvar CFG_HOST_TRIPLES
 putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
@@ -854,7 +853,7 @@ fi
 putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_SRC_DIR
 
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_HOST_TRIPLES
 do
     CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
     CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)

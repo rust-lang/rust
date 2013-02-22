@@ -516,11 +516,11 @@ pub fn host_triple() -> ~str {
     // FIXME (#2400): Instead of grabbing the host triple we really should
     // be grabbing (at compile time) the target triple that this rustc is
     // built with and calling that (at runtime) the host triple.
-    let ht = env!("CFG_HOST_TRIPLE");
+    let ht = env!("CFG_BUILD_TRIPLE");
     return if ht != ~"" {
             ht
         } else {
-            fail!(~"rustc built without CFG_HOST_TRIPLE")
+            fail!(~"rustc built without CFG_BUILD_TRIPLE")
         };
 }
 
