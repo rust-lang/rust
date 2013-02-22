@@ -157,8 +157,8 @@ pub enum Dest {
 }
 
 impl Dest {
-    fn to_str(ccx: @CrateContext) -> ~str {
-        match self {
+    fn to_str(&self, ccx: @CrateContext) -> ~str {
+        match *self {
             SaveIn(v) => fmt!("SaveIn(%s)", val_str(ccx.tn, v)),
             Ignore => ~"Ignore"
         }
