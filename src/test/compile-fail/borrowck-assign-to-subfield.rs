@@ -9,11 +9,23 @@
 // except according to those terms.
 
 fn main() {
-    let mut p = {a: 1,
-                 w: {a: 1},
-                 x: @{a: 1},
-                 y: @const {a: 1},
-                 z: @mut{a: 1}};
+    struct A {
+        a: int,
+        w: B,
+        x: @B,
+        y: @const B,
+        z: @mut B
+    }
+    struct B {
+        a: int
+    }
+    let mut p = A {
+        a: 1,
+        w: B {a: 1},
+        x: @B {a: 1},
+        y: @const B {a: 1},
+        z: @mut B {a: 1}
+    };
 
     // even though `x` is not declared as a mutable field,
     // `p` as a whole is mutable, so it can be modified.

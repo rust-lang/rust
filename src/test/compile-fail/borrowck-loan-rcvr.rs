@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type point = { x: int, y: int };
+struct point { x: int, y: int }
 
 trait methods {
     fn impurem();
@@ -27,7 +27,7 @@ impl methods for point {
 }
 
 fn a() {
-    let mut p = {x: 3, y: 4};
+    let mut p = point {x: 3, y: 4};
 
     // Here: it's ok to call even though receiver is mutable, because we
     // can loan it out.
@@ -41,7 +41,7 @@ fn a() {
 }
 
 fn b() {
-    let mut p = {x: 3, y: 4};
+    let mut p = point {x: 3, y: 4};
 
     // Here I create an outstanding loan and check that we get conflicts:
 
@@ -56,7 +56,7 @@ fn b() {
 
 fn c() {
     // Loaning @mut as & is considered legal due to dynamic checks:
-    let q = @mut {x: 3, y: 4};
+    let q = @mut point {x: 3, y: 4};
     q.purem();
     q.impurem();
 }

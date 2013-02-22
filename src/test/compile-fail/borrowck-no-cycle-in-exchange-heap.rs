@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct node_ {
+    mut a: ~cycle
+}
+
 enum cycle {
-    node({mut a: ~cycle}),
+    node(node_),
     empty
 }
 fn main() {
-    let x = ~node({mut a: ~empty});
+    let x = ~node(node_ {mut a: ~empty});
     // Create a cycle!
     match *x { //~ NOTE loan of immutable local variable granted here
       node(ref y) => {

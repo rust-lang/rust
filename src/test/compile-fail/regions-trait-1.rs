@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type ctxt = { v: uint };
+struct ctxt { v: uint }
 
 trait get_ctxt {
     // Here the `&` is bound in the method definition:
     fn get_ctxt() -> &ctxt;
 }
 
-type has_ctxt = { c: &ctxt };
+struct has_ctxt { c: &ctxt }
 
 impl get_ctxt for has_ctxt {
 
@@ -32,7 +32,7 @@ fn get_v(gc: get_ctxt) -> uint {
 }
 
 fn main() {
-    let ctxt = { v: 22u };
-    let hc = { c: &ctxt };
+    let ctxt = ctxt { v: 22u };
+    let hc = has_ctxt { c: &ctxt };
     assert get_v(hc as get_ctxt) == 22u;
 }

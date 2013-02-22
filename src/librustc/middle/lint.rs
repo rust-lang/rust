@@ -706,23 +706,21 @@ fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
 }
 
 fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
-    if !cx.legacy_records {
-        let visit = item_stopping_visitor(
-            visit::mk_simple_visitor(@visit::SimpleVisitor {
-                visit_expr: |e: @ast::expr| {
-                    match e.node {
-                        ast::expr_rec(*) =>
-                            cx.sess.span_lint(
-                                structural_records, e.id, it.id,
-                                e.span,
-                                ~"structural records are deprecated"),
-                        _ => ()
-                    }
-                },
-                .. *visit::default_simple_visitor()
-            }));
-        visit::visit_item(it, (), visit);
-    }
+    let visit = item_stopping_visitor(
+        visit::mk_simple_visitor(@visit::SimpleVisitor {
+            visit_expr: |e: @ast::expr| {
+                match e.node {
+                    ast::expr_rec(*) =>
+                        cx.sess.span_lint(
+                            structural_records, e.id, it.id,
+                            e.span,
+                            ~"structural records are deprecated"),
+                    _ => ()
+                }
+            },
+            .. *visit::default_simple_visitor()
+        }));
+    visit::visit_item(it, (), visit);
 }
 
 fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {

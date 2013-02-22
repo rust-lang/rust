@@ -16,7 +16,6 @@
 #[allow(non_implicitly_copyable_typarams)];
 #[allow(owned_heap_memory)];
 #[allow(path_statement)];
-#[allow(structural_records)];
 #[allow(unrecognized_lint)];
 #[allow(unused_imports)];
 #[allow(vecs_implicitly_copyable)];
