@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 struct Arg<T> {val: T, fin: extern fn(T)}
 
@@ -31,7 +30,7 @@ fn finish<T:Copy>(arg: Arg<T>) -> finish<T> {
 
 pub fn main() {
     let box = @mut 10;
-    fn dec_box(&&i: @mut int) { *i -= 1; }
+    fn dec_box(i: @mut int) { *i -= 1; }
 
     { let _i = finish(Arg{val: box, fin: dec_box}); }
     assert (*box == 9);

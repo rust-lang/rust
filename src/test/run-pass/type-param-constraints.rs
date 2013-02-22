@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 fn p_foo<T>(pinned: T) { }
 fn s_foo<T:Copy>(shared: T) { }

@@ -9,11 +9,10 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 extern mod std;
 
-fn start(c: comm::Chan<comm::Chan<~str>>) {
+fn start(c: &comm::Chan<comm::Chan<~str>>) {
     let (p, ch) = comm::stream();
     c.send(ch);
 
@@ -29,7 +28,7 @@ fn start(c: comm::Chan<comm::Chan<~str>>) {
 
 pub fn main() {
     let (p, ch) = comm::stream();
-    let child = task::spawn(|| start(ch) );
+    let child = task::spawn(|| start(&ch) );
 
     let c = p.recv();
     c.send(~"A");
