@@ -778,7 +778,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
 pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
     -> Option<@Metadata<ArgumentMetadata>> {
     unsafe {
-        let fcx = bcx.fcx, cx = fcx.ccx;
+        let fcx = bcx.fcx, cx = *fcx.ccx;
         let cache = get_cache(cx);
         let tg = ArgVariableTag;
         match cached_metadata::<@Metadata<ArgumentMetadata>>(
@@ -845,7 +845,7 @@ pub fn update_source_pos(cx: block, s: span) {
 }
 
 pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
-    let cx = fcx.ccx;
+    let cx = *fcx.ccx;
     let dbg_cx = (/*bad*/copy cx.dbg_cx).get();
 
     debug!("~~");
