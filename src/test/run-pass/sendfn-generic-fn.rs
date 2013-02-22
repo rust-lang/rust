@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 pub fn main() { test05(); }
 
@@ -19,23 +18,23 @@ fn make_generic_record<A:Copy,B:Copy>(a: A, b: B) -> Pair<A,B> {
     return Pair {a: a, b: b};
 }
 
-fn test05_start(&&f: fn~(&&v: float, &&v: ~str) -> Pair<float, ~str>) {
-    let p = f(22.22f, ~"Hi");
+fn test05_start(f: &~fn(v: float, v: ~str) -> Pair<float, ~str>) {
+    let p = (*f)(22.22f, ~"Hi");
     log(debug, copy p);
     assert p.a == 22.22f;
     assert p.b == ~"Hi";
 
-    let q = f(44.44f, ~"Ho");
+    let q = (*f)(44.44f, ~"Ho");
     log(debug, copy q);
     assert q.a == 44.44f;
     assert q.b == ~"Ho";
 }
 
-fn spawn<A:Copy,B:Copy>(f: extern fn(fn~(A,B)->Pair<A,B>)) {
+fn spawn<A:Copy,B:Copy>(f: extern fn(&~fn(A,B)->Pair<A,B>)) {
     let arg = fn~(a: A, b: B) -> Pair<A,B> {
         return make_generic_record(a, b);
     };
-    task::spawn(|| f(arg) );
+    task::spawn(|| f(&arg) );
 }
 
 fn test05() {
