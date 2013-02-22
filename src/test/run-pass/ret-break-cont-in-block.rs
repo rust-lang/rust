@@ -9,14 +9,13 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 use cmp::Eq;
 
-fn iter<T>(v: ~[T], it: fn(T) -> bool) {
+fn iter<T>(v: ~[T], it: fn(&T) -> bool) {
     let mut i = 0u, l = v.len();
     while i < l {
-        if !it(v[i]) { break; }
+        if !it(&v[i]) { break; }
         i += 1u;
     }
 }
@@ -24,7 +23,7 @@ fn iter<T>(v: ~[T], it: fn(T) -> bool) {
 fn find_pos<T:Eq + Copy>(n: T, h: ~[T]) -> Option<uint> {
     let mut i = 0u;
     for iter(copy h) |e| {
-        if e == n { return Some(i); }
+        if *e == n { return Some(i); }
         i += 1u;
     }
     None
@@ -33,9 +32,9 @@ fn find_pos<T:Eq + Copy>(n: T, h: ~[T]) -> Option<uint> {
 fn bail_deep(x: ~[~[bool]]) {
     let mut seen = false;
     for iter(copy x) |x| {
-        for iter(copy x) |x| {
+        for iter(copy *x) |x| {
             assert !seen;
-            if x { seen = true; return; }
+            if *x { seen = true; return; }
         }
     }
     assert !seen;
@@ -44,7 +43,7 @@ fn bail_deep(x: ~[~[bool]]) {
 fn ret_deep() -> ~str {
     for iter(~[1, 2]) |e| {
         for iter(~[3, 4]) |x| {
-            if e + x > 4 { return ~"hi"; }
+            if *e + *x > 4 { return ~"hi"; }
         }
     }
     return ~"bye";

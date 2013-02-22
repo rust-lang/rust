@@ -9,14 +9,13 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 extern mod std;
 use core::comm::Chan;
 
 pub fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 
-fn test00_start(ch: Chan<int>, message: int, count: int) {
+fn test00_start(ch: &Chan<int>, message: int, count: int) {
     debug!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
@@ -45,7 +44,7 @@ fn test00() {
             results.push(r);
         }).spawn({
             let i = i;
-            || test00_start(ch, i, number_of_messages)
+            || test00_start(&ch, i, number_of_messages)
         });
         i = i + 1;
     }

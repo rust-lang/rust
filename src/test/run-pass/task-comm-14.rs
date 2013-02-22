@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 pub fn main() {
     let po = comm::PortSet();
@@ -20,7 +19,7 @@ pub fn main() {
         log(debug, i);
         let (p, ch) = comm::stream();
         po.add(p);
-        task::spawn({let i = i; || child(i, ch)});
+        task::spawn({let i = i; || child(i, &ch)});
         i = i - 1;
     }
 
@@ -37,7 +36,7 @@ pub fn main() {
     debug!("main thread exiting");
 }
 
-fn child(x: int, ch: comm::Chan<int>) {
+fn child(x: int, ch: &comm::Chan<int>) {
     log(debug, x);
     ch.send(x);
 }
