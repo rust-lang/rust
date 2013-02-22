@@ -72,11 +72,11 @@ struct ReadyCtx {
     sess: session::Session,
     crate: @ast::crate,
     ext_cx: ext_ctxt,
-    mut path: ~[ast::ident],
-    mut fns: ~[ListenerFn]
+    path: ~[ast::ident],
+    fns: ~[ListenerFn]
 }
 
-fn fold_mod(_ctx: @ReadyCtx, m: ast::_mod,
+fn fold_mod(_ctx: @mut ReadyCtx, m: ast::_mod,
             fold: fold::ast_fold) -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
@@ -95,7 +95,7 @@ fn fold_mod(_ctx: @ReadyCtx, m: ast::_mod,
     }, fold)
 }
 
-fn fold_item(ctx: @ReadyCtx, item: @ast::item,
+fn fold_item(ctx: @mut ReadyCtx, item: @ast::item,
              fold: fold::ast_fold) -> Option<@ast::item> {
 
     ctx.path.push(item.ident);
@@ -133,7 +133,7 @@ fn fold_item(ctx: @ReadyCtx, item: @ast::item,
     res
 }
 
-fn add_pkg_module(ctx: @ReadyCtx, m: ast::_mod) -> ast::_mod {
+fn add_pkg_module(ctx: @mut ReadyCtx, m: ast::_mod) -> ast::_mod {
     let listeners = mk_listener_vec(ctx);
     let ext_cx = ctx.ext_cx;
     let item = quote_item! (
@@ -152,24 +152,25 @@ fn add_pkg_module(ctx: @ReadyCtx, m: ast::_mod) -> ast::_mod {
     }
 }
 
-fn mk_listener_vec(ctx: @ReadyCtx) -> @ast::expr {
+fn mk_listener_vec(ctx: @mut ReadyCtx) -> @ast::expr {
     let fns = ctx.fns;
     let descs = do fns.map |listener| {
         mk_listener_rec(ctx, *listener)
     };
-    build::mk_slice_vec_e(ctx.ext_cx, dummy_sp(), descs)
+    let ext_cx = ctx.ext_cx;
+    build::mk_slice_vec_e(ext_cx, dummy_sp(), descs)
 }
 
-fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
-
+fn mk_listener_rec(ctx: @mut ReadyCtx, listener: ListenerFn) -> @ast::expr {
     let span = listener.span;
     let cmds = do listener.cmds.map |&cmd| {
-        build::mk_base_str(ctx.ext_cx, span, cmd)
+        let ext_cx = ctx.ext_cx;
+        build::mk_base_str(ext_cx, span, cmd)
     };
 
-    let cmds_expr = build::mk_slice_vec_e(ctx.ext_cx, span, cmds);
-    let cb_expr = build::mk_path(ctx.ext_cx, span, copy listener.path);
     let ext_cx = ctx.ext_cx;
+    let cmds_expr = build::mk_slice_vec_e(ext_cx, span, cmds);
+    let cb_expr = build::mk_path(ext_cx, span, copy listener.path);
 
     quote_expr!(
         Listener {
@@ -182,12 +183,12 @@ fn mk_listener_rec(ctx: @ReadyCtx, listener: ListenerFn) -> @ast::expr {
 /// Generate/filter main function, add the list of commands, etc.
 pub fn ready_crate(sess: session::Session,
                    crate: @ast::crate) -> @ast::crate {
-    let ctx = @ReadyCtx {
+    let ctx = @mut ReadyCtx {
         sess: sess,
         crate: crate,
         ext_cx: mk_ctxt(sess.parse_sess, copy sess.opts.cfg),
-        mut path: ~[],
-        mut fns: ~[]
+        path: ~[],
+        fns: ~[]
     };
     let precursor = @fold::AstFoldFns {
         // fold_crate: fold::wrap(|a, b| fold_crate(ctx, a, b)),
