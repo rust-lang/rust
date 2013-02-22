@@ -178,10 +178,10 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
     // Allocate and initialize the box:
     match sigil {
         ast::ManagedSigil => {
-            malloc_raw(bcx, cdata_ty, heap_shared)
+            malloc_raw(bcx, cdata_ty, heap_managed)
         }
         ast::OwnedSigil => {
-            malloc_raw(bcx, cdata_ty, heap_exchange)
+            malloc_raw(bcx, cdata_ty, heap_for_unique(bcx, cdata_ty))
         }
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
@@ -574,7 +574,7 @@ pub fn make_opaque_cbox_free_glue(
         // Free the ty descr (if necc) and the box itself
         match sigil {
             ast::ManagedSigil => glue::trans_free(bcx, cbox),
-            ast::OwnedSigil => glue::trans_unique_free(bcx, cbox),
+            ast::OwnedSigil => glue::trans_exchange_free(bcx, cbox),
             ast::BorrowedSigil => {
                 bcx.sess().bug(~"impossible")
             }

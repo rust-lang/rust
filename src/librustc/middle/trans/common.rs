@@ -332,8 +332,10 @@ pub fn warn_not_to_commit(ccx: @CrateContext, msg: ~str) {
 }
 
 // Heap selectors. Indicate which heap something should go on.
+#[deriving_eq]
 pub enum heap {
-    heap_shared,
+    heap_managed,
+    heap_managed_unique,
     heap_exchange,
 }
 
@@ -458,12 +460,12 @@ pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
 }
 pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
     let free_fn = match heap {
-      heap_shared => {
+      heap_managed | heap_managed_unique => {
         let f: @fn(block) -> block = |a| glue::trans_free(a, ptr);
         f
       }
       heap_exchange => {
-        let f: @fn(block) -> block = |a| glue::trans_unique_free(a, ptr);
+        let f: @fn(block) -> block = |a| glue::trans_exchange_free(a, ptr);
         f
       }
     };

@@ -85,11 +85,13 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
         base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
     Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
+    base::maybe_set_managed_unique_rc(bcx, bx, heap);
     return rslt(bcx, bx);
 }
+
 pub fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                       fill: ValueRef, alloc: ValueRef) -> Result {
-    alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
+    alloc_raw(bcx, unit_ty, fill, alloc, heap_for_unique(bcx, unit_ty))
 }
 
 pub fn alloc_vec(bcx: block,
@@ -317,13 +319,14 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                 _ => {}
             }
         }
-        heap_shared => {}
+        heap_managed | heap_managed_unique => {}
     }
 
     let vt = vec_types_from_expr(bcx, vstore_expr);
     let count = elements_required(bcx, content_expr);
 
     let Result {bcx, val} = alloc_vec(bcx, vt.unit_ty, count, heap);
+
     add_clean_free(bcx, val, heap);
     let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
 
