@@ -223,13 +223,13 @@ $$(HBIN$(2)_H_$(4))/rust$$(X):				\
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES),				\
+$(foreach host,$(CFG_HOST_TRIPLES),				\
 $(foreach target,$(CFG_TARGET_TRIPLES),				\
- $(eval $(call TOOLS_STAGE_N_TARGET,0,1,$(target),$(host)))	\
- $(eval $(call TOOLS_STAGE_N_TARGET,1,2,$(target),$(host)))	\
- $(eval $(call TOOLS_STAGE_N_TARGET,2,3,$(target),$(host)))))
+ $(eval $(call TOOLS_STAGE_N_TARGET,0,1,$(host),$(target)))	\
+ $(eval $(call TOOLS_STAGE_N_TARGET,1,2,$(host),$(target)))	\
+ $(eval $(call TOOLS_STAGE_N_TARGET,2,3,$(host),$(target)))))
 
-$(foreach host,$(CFG_TARGET_TRIPLES),				\
+$(foreach host,$(CFG_HOST_TRIPLES),				\
  $(eval $(call TOOLS_STAGE_N_HOST,0,1,$(host),$(host)))	\
  $(eval $(call TOOLS_STAGE_N_HOST,1,2,$(host),$(host)))	\
  $(eval $(call TOOLS_STAGE_N_HOST,2,3,$(host),$(host))))

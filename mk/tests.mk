@@ -14,7 +14,9 @@
 ######################################################################
 
 # The names of crates that must be tested
-TEST_CRATES = core std syntax rustc rustdoc rusti rust rustpkg
+TEST_TARGET_CRATES = core std
+TEST_HOST_CRATES = syntax rustc rustdoc rusti rust rustpkg
+TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 # Markdown files under doc/ that should have their code extracted and run
 DOC_TEST_NAMES = tutorial tutorial-ffi tutorial-macros tutorial-borrowed-ptr tutorial-tasks rust
@@ -93,7 +95,7 @@ cleantmptestlogs:
 	$(Q)rm -f tmp/*.log
 
 cleantestlibs:
-	$(Q)find $(CFG_HOST_TRIPLE)/test \
+	$(Q)find $(CFG_BUILD_TRIPLE)/test \
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
@@ -175,9 +177,21 @@ check-stage$(1)-T-$(2)-H-$(3)-exec:     				\
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
 
+# Only test the compiler-dependent crates when the target is
+# able to build a compiler (when the target triple is in the set of host triples)
+ifneq ($$(findstring $(2),$$(CFG_HOST_TRIPLES)),)
+
 check-stage$(1)-T-$(2)-H-$(3)-crates-exec: \
 	$$(foreach crate,$$(TEST_CRATES), \
            check-stage$(1)-T-$(2)-H-$(3)-$$(crate)-exec)
+
+else
+
+check-stage$(1)-T-$(2)-H-$(3)-crates-exec: \
+	$$(foreach crate,$$(TEST_TARGET_CRATES), \
+           check-stage$(1)-T-$(2)-H-$(3)-$$(crate)-exec)
+
+endif
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-exec: \
         $$(foreach docname,$$(DOC_TEST_NAMES), \
@@ -192,7 +206,7 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-exec: \
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(foreach stage,$(STAGES), \
     $(eval $(call DEF_TEST_SETS,$(stage),$(target),$(host))))))
@@ -255,7 +269,7 @@ $(3)/test/rustdoctest.stage$(1)-$(2)$$(X):					\
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(eval $(foreach stage,$(STAGES), \
    $(eval $(call TEST_RUNNER,$(stage),$(target),$(host))))))))
@@ -271,7 +285,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	&& touch $$@
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(foreach stage,$(STAGES), \
    $(foreach crate, $(TEST_CRATES), \
@@ -381,7 +395,7 @@ CTEST_DEPS_debuginfo_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_TESTS)
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(eval $(foreach stage,$(STAGES), \
    $(eval $(call DEF_CTEST_VARS,$(stage),$(target),$(host))))))))
@@ -423,7 +437,7 @@ endef
 
 CTEST_NAMES = rpass rpass-full rfail cfail bench perf debuginfo
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(eval $(foreach stage,$(STAGES), \
    $(eval $(foreach name,$(CTEST_NAMES), \
@@ -462,7 +476,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(foreach stage,$(STAGES), \
    $(foreach pretty-name,$(PRETTY_NAMES), \
@@ -489,7 +503,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): \
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(foreach stage,$(STAGES), \
    $(foreach docname,$(DOC_TEST_NAMES), \
@@ -511,7 +525,7 @@ doc-$(2)-extract$(1):
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(foreach docname,$(DOC_TEST_NAMES), \
   $(eval $(call DEF_DOC_TEST_HOST,$(host),$(docname)))))
 
@@ -546,7 +560,7 @@ endef
 
 $(foreach stage,$(STAGES), \
  $(foreach target,$(CFG_TARGET_TRIPLES), \
-  $(foreach host,$(CFG_TARGET_TRIPLES), \
+  $(foreach host,$(CFG_HOST_TRIPLES), \
    $(eval $(call DEF_CHECK_FOR_STAGE_AND_TARGET_AND_HOST,$(stage),$(target),$(host))))))
 
 define DEF_CHECK_FOR_STAGE_AND_TARGET_AND_HOST_AND_GROUP
@@ -555,13 +569,13 @@ endef
 
 $(foreach stage,$(STAGES), \
  $(foreach target,$(CFG_TARGET_TRIPLES), \
-  $(foreach host,$(CFG_TARGET_TRIPLES), \
+  $(foreach host,$(CFG_HOST_TRIPLES), \
    $(foreach group,$(TEST_GROUPS), \
     $(eval $(call DEF_CHECK_FOR_STAGE_AND_TARGET_AND_HOST_AND_GROUP,$(stage),$(target),$(host),$(group)))))))
 
 define DEF_CHECK_FOR_STAGE
-check-stage$(1): check-stage$(1)-H-$$(CFG_HOST_TRIPLE)
-check-stage$(1)-H-all: $$(foreach target,$$(CFG_TARGET_TRIPLES), \
+check-stage$(1): check-stage$(1)-H-$$(CFG_BUILD_TRIPLE)
+check-stage$(1)-H-all: $$(foreach target,$$(CFG_HOST_TRIPLES), \
                            check-stage$(1)-H-$$(target))
 endef
 
@@ -569,8 +583,8 @@ $(foreach stage,$(STAGES), \
  $(eval $(call DEF_CHECK_FOR_STAGE,$(stage))))
 
 define DEF_CHECK_FOR_STAGE_AND_GROUP
-check-stage$(1)-$(2): check-stage$(1)-H-$$(CFG_HOST_TRIPLE)-$(2)
-check-stage$(1)-H-all-$(2): $$(foreach target,$$(CFG_TARGET_TRIPLES), \
+check-stage$(1)-$(2): check-stage$(1)-H-$$(CFG_BUILD_TRIPLE)-$(2)
+check-stage$(1)-H-all-$(2): $$(foreach target,$$(CFG_HOST_TRIPLES), \
                                check-stage$(1)-H-$$(target)-$(2))
 endef
 
@@ -580,24 +594,23 @@ $(foreach stage,$(STAGES), \
 
 
 define DEF_CHECK_FOR_STAGE_AND_HOSTS
-check-stage$(1)-H-$(2): $$(foreach target,$$(CFG_TARGET_TRIPLES), \
+check-stage$(1)-H-$(2): $$(foreach target,$$(CFG_HOST_TRIPLES), \
                            check-stage$(1)-T-$$(target)-H-$(2))
 endef
 
 $(foreach stage,$(STAGES), \
- $(foreach host,$(CFG_TARGET_TRIPLES), \
+ $(foreach host,$(CFG_HOST_TRIPLES), \
   $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS,$(stage),$(host)))))
 
 define DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP
-check-stage$(1)-H-$(2)-$(3): $$(foreach target,$$(CFG_TARGET_TRIPLES), \
+check-stage$(1)-H-$(2)-$(3): $$(foreach target,$$(CFG_HOST_TRIPLES), \
                                 check-stage$(1)-T-$$(target)-H-$(2)-$(3))
 endef
 
 $(foreach stage,$(STAGES), \
- $(foreach host,$(CFG_TARGET_TRIPLES), \
+ $(foreach host,$(CFG_HOST_TRIPLES), \
   $(foreach group,$(TEST_GROUPS), \
    $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP,$(stage),$(host),$(group))))))
-
 
 ######################################################################
 # check-fast rules
@@ -644,11 +657,11 @@ check-fast-T-$(2)-H-$(3):     			\
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES), \
+$(foreach host,$(CFG_HOST_TRIPLES), \
  $(eval $(foreach target,$(CFG_TARGET_TRIPLES), \
    $(eval $(call DEF_CHECK_FAST_FOR_T_H,,$(target),$(host))))))
 
-check-fast: tidy check-fast-H-$(CFG_HOST_TRIPLE)
+check-fast: tidy check-fast-H-$(CFG_BUILD_TRIPLE)
 
 define DEF_CHECK_FAST_FOR_H
 
@@ -656,6 +669,6 @@ check-fast-H-$(1): 		check-fast-T-$(1)-H-$(1)
 
 endef
 
-$(foreach target,$(CFG_TARGET_TRIPLES),			\
- $(eval $(call DEF_CHECK_FAST_FOR_H,$(target))))
+$(foreach host,$(CFG_HOST_TRIPLES),			\
+ $(eval $(call DEF_CHECK_FAST_FOR_H,$(host))))
 

@@ -136,7 +136,7 @@ CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
                stage2/$(CFG_LIBDIR), \
                $(if $(findstring stage3,$(1)), \
                     stage3/$(CFG_LIBDIR), \
-               )))))/rustc/$(CFG_HOST_TRIPLE)/$(CFG_LIBDIR)
+               )))))/rustc/$(CFG_BUILD_TRIPLE)/$(CFG_LIBDIR)
 
 ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
@@ -200,7 +200,7 @@ else
   CFG_LDPATH :=
   CFG_RUN=$(2)
 endif
-  CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
+  CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
   CFG_LIBUV_LINK_FLAGS=-lWs2_32 -lpsapi -liphlpapi
 
@@ -318,7 +318,7 @@ endif
 # .cfi pseudo-ops on mac
 define CFG_MAKE_ASSEMBLER
   CFG_ASSEMBLE_$(1)=$$(CPP) $$(CFG_DEPEND_FLAGS) $$(2) | \
-                    $$(LLVM_MC_$$(CFG_HOST_TRIPLE)) \
+                    $$(LLVM_MC_$$(CFG_BUILD_TRIPLE)) \
                     -assemble \
                     -filetype=obj \
                     -triple=$(1) \

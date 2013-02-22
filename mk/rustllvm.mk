@@ -46,5 +46,5 @@ rustllvm/$(1)/%.o: rustllvm/%.cpp $$(MKFILE_DEPS) $$(LLVM_CONFIG_$(1))
 endef
 
 # Instantiate template for all stages
-$(foreach target,$(CFG_TARGET_TRIPLES), \
- $(eval $(call DEF_RUSTLLVM_TARGETS,$(target))))
+$(foreach host,$(CFG_HOST_TRIPLES), \
+ $(eval $(call DEF_RUSTLLVM_TARGETS,$(host))))

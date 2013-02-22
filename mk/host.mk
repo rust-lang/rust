@@ -115,7 +115,7 @@ $$(HLIB$(2)_H_$(4))/$$(CFG_RUSTLLVM): \
 
 endef
 
-$(foreach t,$(CFG_TARGET_TRIPLES),					\
+$(foreach t,$(CFG_HOST_TRIPLES),					\
 	$(eval $(call CP_HOST_STAGE_N,0,1,$(t),$(t)))	\
 	$(eval $(call CP_HOST_STAGE_N,1,2,$(t),$(t)))	\
 	$(eval $(call CP_HOST_STAGE_N,2,3,$(t),$(t))))
