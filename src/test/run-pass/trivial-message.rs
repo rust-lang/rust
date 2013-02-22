@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use pipes::{Port, Chan};
-
 /*
   This is about the simplest program that can successfully send a
   message.
  */
 pub fn main() {
-    let (po, ch) = pipes::stream();
+    let (po, ch) = comm::stream();
     ch.send(42);
     let r = po.recv();
     log(error, r);

@@ -23,6 +23,6 @@ fn foo(i:int, j: char) -> foo {
 }
 
 pub fn main() {
-    let (_po, ch) = pipes::stream();
+    let (_po, ch) = comm::stream();
     ch.send(foo(42, 'c'));
 }

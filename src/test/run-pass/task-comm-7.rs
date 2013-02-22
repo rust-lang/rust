@@ -15,7 +15,7 @@ extern mod std;
 
 pub fn main() { test00(); }
 
-fn test00_start(c: pipes::Chan<int>, start: int, number_of_messages: int) {
+fn test00_start(c: comm::Chan<int>, start: int, number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(start + i); i += 1; }
 }
@@ -23,7 +23,7 @@ fn test00_start(c: pipes::Chan<int>, start: int, number_of_messages: int) {
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = pipes::PortSet();
+    let p = comm::PortSet();
     let number_of_messages: int = 10;
 
     let c = p.chan();

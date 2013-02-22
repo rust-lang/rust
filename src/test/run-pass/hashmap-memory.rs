@@ -20,14 +20,14 @@ extern mod std;
 
 use std::oldmap;
 use std::oldmap::HashMap;
-use core::pipes::*;
+use core::comm::*;
 
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
     use std::oldmap;
     use std::oldmap::HashMap;
-    use core::pipes::*;
+    use core::comm::*;
 
     pub type putter = fn@(~str, ~str);
 

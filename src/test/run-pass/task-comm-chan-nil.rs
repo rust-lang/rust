@@ -16,7 +16,7 @@ extern mod std;
 // any size, but rustc currently can because they do have size. Whether
 // or not this is desirable I don't know, but here's a regression test.
 pub fn main() {
-    let (po, ch) = pipes::stream();
+    let (po, ch) = comm::stream();
     ch.send(());
     let n: () = po.recv();
     assert (n == ());

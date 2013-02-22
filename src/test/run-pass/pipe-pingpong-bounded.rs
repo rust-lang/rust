@@ -19,6 +19,7 @@
 // modified in hopefully straightforward ways.
 
 mod pingpong {
+    use core::pipes;
     use core::pipes::*;
     use core::ptr;
 
@@ -44,6 +45,7 @@ mod pingpong {
     pub enum ping = server::pong;
     pub enum pong = client::ping;
     pub mod client {
+        use core::pipes;
         use core::pipes::*;
         use core::ptr;
 
@@ -53,7 +55,7 @@ mod pingpong {
                 let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
                 let c = RecvPacketBuffered(ptr::addr_of(&(b.buffer.data.pong)));
                 let message = ::pingpong::ping(s);
-                ::pipes::send(pipe, message);
+                send(pipe, message);
                 c
             }
         }
@@ -63,6 +65,7 @@ mod pingpong {
                                                   ::pingpong::Packets>;
     }
     pub mod server {
+        use core::pipes;
         use core::pipes::*;
         use core::ptr;
 
@@ -74,7 +77,7 @@ mod pingpong {
                 let s = SendPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
                 let c = RecvPacketBuffered(ptr::addr_of(&(b.buffer.data.ping)));
                 let message = ::pingpong::pong(s);
-                ::pipes::send(pipe, message);
+                send(pipe, message);
                 c
             }
         }
@@ -84,7 +87,7 @@ mod pingpong {
 }
 
 mod test {
-    use pipes::recv;
+    use core::pipes::recv;
     use pingpong::{ping, pong};
 
     pub fn client(-chan: ::pingpong::client::ping) {

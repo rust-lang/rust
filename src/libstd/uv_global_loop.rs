@@ -17,7 +17,7 @@ use uv_iotask::{IoTask, spawn_iotask};
 
 use core::either::{Left, Right};
 use core::libc;
-use core::pipes::{Port, Chan, SharedChan, select2i};
+use core::comm::{Port, Chan, SharedChan, select2i};
 use core::private::global::{global_data_clone_create,
                             global_data_clone};
 use core::private::weak_task::weaken_task;
@@ -133,7 +133,7 @@ mod test {
     use core::task;
     use core::cast::transmute;
     use core::libc::c_void;
-    use core::pipes::{stream, SharedChan, Chan};
+    use core::comm::{stream, SharedChan, Chan};
 
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) {
         unsafe {

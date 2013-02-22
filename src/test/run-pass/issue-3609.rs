@@ -1,6 +1,6 @@
 extern mod std;
 
-use pipes::Chan;
+use comm::Chan;
 
 type RingBuffer = ~[float];
 type SamplesFn = fn~ (samples: &RingBuffer);

@@ -68,7 +68,7 @@ pub use ops;
 pub use option;
 pub use os;
 pub use path;
-pub use pipes;
+pub use comm;
 pub use private;
 pub use ptr;
 pub use rand;

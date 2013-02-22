@@ -25,7 +25,8 @@ use core::cast::copy_lifetime;
 use core::cast;
 use core::either::Either;
 use core::option;
-use core::pipes::{recv, oneshot, ChanOne, PortOne, send_one, recv_one};
+use core::comm::{oneshot, ChanOne, PortOne, send_one, recv_one};
+use core::pipes::recv;
 use core::prelude::*;
 use core::task;
 
@@ -150,7 +151,7 @@ pub mod test {
 
     use future::*;
 
-    use core::pipes::oneshot;
+    use core::comm::oneshot;
     use core::task;
 
     #[test]

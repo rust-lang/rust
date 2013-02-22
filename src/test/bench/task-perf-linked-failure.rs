@@ -20,7 +20,7 @@
 // Creates in the background 'num_tasks' tasks, all blocked forever.
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 
-use core::pipes::*;
+use core::comm::*;
 
 fn grandchild_group(num_tasks: uint) {
     let (po, ch) = stream();

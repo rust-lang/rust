@@ -24,7 +24,7 @@ extern mod std;
 use io::Writer;
 use io::WriterUtil;
 
-use pipes::{Port, Chan, SharedChan};
+use comm::{Port, Chan, SharedChan};
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = *ptr::addr_of(&($x)); y } }
@@ -36,7 +36,7 @@ enum request {
     stop
 }
 
-fn server(requests: Port<request>, responses: pipes::Chan<uint>) {
+fn server(requests: Port<request>, responses: comm::Chan<uint>) {
     let mut count = 0u;
     let mut done = false;
     while !done {
@@ -55,8 +55,8 @@ fn server(requests: Port<request>, responses: pipes::Chan<uint>) {
 }
 
 fn run(args: &[~str]) {
-    let (from_child, to_parent) = pipes::stream();
-    let (from_parent, to_child) = pipes::stream();
+    let (from_child, to_parent) = comm::stream();
+    let (from_parent, to_child) = comm::stream();
 
     let to_child = SharedChan(to_child);
 
