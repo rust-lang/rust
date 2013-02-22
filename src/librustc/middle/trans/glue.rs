@@ -37,8 +37,8 @@ pub fn trans_free(cx: block, v: ValueRef) -> block {
         expr::Ignore)
 }
 
-pub fn trans_unique_free(cx: block, v: ValueRef) -> block {
-    let _icx = cx.insn_ctxt("trans_unique_free");
+pub fn trans_exchange_free(cx: block, v: ValueRef) -> block {
+    let _icx = cx.insn_ctxt("trans_exchange_free");
     callee::trans_rtcall_or_lang_call(
         cx,
         cx.tcx().lang_items.exchange_free_fn(),
