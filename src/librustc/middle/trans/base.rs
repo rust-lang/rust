@@ -76,7 +76,6 @@ use core::option::{is_none, is_some};
 use core::option;
 use core::uint;
 use std::oldmap::HashMap;
-use std::oldsmallintmap;
 use std::{oldmap, time, list};
 use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
