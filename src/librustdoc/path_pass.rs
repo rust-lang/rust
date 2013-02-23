@@ -31,14 +31,14 @@ pub fn mk_pass() -> Pass {
 
 struct Ctxt {
     srv: astsrv::Srv,
-    mut path: ~[~str]
+    path: @mut ~[~str]
 }
 
 impl Clone for Ctxt {
     fn clone(&self) -> Ctxt {
         Ctxt {
             srv: self.srv.clone(),
-            path: copy self.path
+            path: @mut copy *self.path
         }
     }
 }
@@ -47,7 +47,7 @@ impl Clone for Ctxt {
 fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
     let ctxt = Ctxt {
         srv: srv,
-        mut path: ~[]
+        path: @mut ~[]
     };
     let fold = Fold {
         ctxt: ctxt.clone(),
@@ -61,7 +61,7 @@ fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
 
 fn fold_item(fold: &fold::Fold<Ctxt>, doc: doc::ItemDoc) -> doc::ItemDoc {
     doc::ItemDoc {
-        path: copy fold.ctxt.path,
+        path: copy *fold.ctxt.path,
         .. doc
     }
 }

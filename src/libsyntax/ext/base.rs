@@ -339,7 +339,7 @@ pub fn get_exprs_from_tts(cx: ext_ctxt, tts: ~[ast::token_tree])
                                        cx.cfg(),
                                        tts);
     let mut es = ~[];
-    while p.token != token::EOF {
+    while *p.token != token::EOF {
         if es.len() != 0 {
             p.eat(token::COMMA);
         }

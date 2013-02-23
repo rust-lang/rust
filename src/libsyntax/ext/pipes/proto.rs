@@ -16,7 +16,6 @@ use ext::base::ext_ctxt;
 use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
 
 use core::cmp;
-use core::dvec::DVec;
 use core::to_str::ToStr;
 
 #[deriving_eq]
@@ -45,26 +44,24 @@ pub struct next_state {
     tys: ~[@ast::Ty],
 }
 
-pub enum message {
-    // name, span, data, current state, next state
-    message(~str, span, ~[@ast::Ty], state, Option<next_state>)
-}
+// name, span, data, current state, next state
+pub struct message(~str, span, ~[@ast::Ty], state, Option<next_state>);
 
 pub impl message {
-    fn name(&self) -> ~str {
+    fn name(&mut self) -> ~str {
         match *self {
           message(ref id, _, _, _, _) => (*id)
         }
     }
 
-    fn span(&self) -> span {
+    fn span(&mut self) -> span {
         match *self {
           message(_, span, _, _, _) => span
         }
     }
 
     /// Return the type parameters actually used by this message
-    fn get_params(&self) -> ~[ast::ty_param] {
+    fn get_params(&mut self) -> ~[ast::ty_param] {
         match *self {
           message(_, _, _, this, _) => this.ty_params
         }
@@ -80,7 +77,7 @@ pub struct state_ {
     span: span,
     dir: direction,
     ty_params: ~[ast::ty_param],
-    messages: DVec<message>,
+    messages: @mut ~[message],
     proto: protocol
 }
 
@@ -121,17 +118,17 @@ pub impl state_ {
     }
 }
 
-pub type protocol = @protocol_;
+pub type protocol = @mut protocol_;
 
 pub fn protocol(name: ~str, +span: span) -> protocol {
-    @protocol_(name, span)
+    @mut protocol_(name, span)
 }
 
 pub fn protocol_(name: ~str, span: span) -> protocol_ {
     protocol_ {
         name: name,
         span: span,
-        states: DVec(),
+        states: @mut ~[],
         bounded: None
     }
 }
@@ -139,30 +136,30 @@ pub fn protocol_(name: ~str, span: span) -> protocol_ {
 pub struct protocol_ {
     name: ~str,
     span: span,
-    states: DVec<state>,
+    states: @mut ~[state],
 
-    mut bounded: Option<bool>,
+    bounded: Option<bool>,
 }
 
 pub impl protocol_ {
     /// Get a state.
-    fn get_state(&self, name: ~str) -> state {
+    fn get_state(&mut self, name: ~str) -> state {
         self.states.find(|i| i.name == name).get()
     }
 
-    fn get_state_by_id(&self, id: uint) -> state { self.states[id] }
+    fn get_state_by_id(&mut self, id: uint) -> state { self.states[id] }
 
-    fn has_state(&self, name: ~str) -> bool {
+    fn has_state(&mut self, name: ~str) -> bool {
         self.states.find(|i| i.name == name).is_some()
     }
 
-    fn filename(&self) -> ~str {
+    fn filename(&mut self) -> ~str {
         ~"proto://" + self.name
     }
 
-    fn num_states(&self) -> uint { self.states.len() }
+    fn num_states(&mut self) -> uint { self.states.len() }
 
-    fn has_ty_params(&self) -> bool {
+    fn has_ty_params(&mut self) -> bool {
         for self.states.each |s| {
             if s.ty_params.len() > 0 {
                 return true;
@@ -170,7 +167,7 @@ pub impl protocol_ {
         }
         false
     }
-    fn is_bounded(&self) -> bool {
+    fn is_bounded(&mut self) -> bool {
         let bounded = self.bounded.get();
         bounded
     }
@@ -179,7 +176,7 @@ pub impl protocol_ {
 pub impl protocol {
     fn add_state_poly(&self, name: ~str, ident: ast::ident, dir: direction,
                       +ty_params: ~[ast::ty_param]) -> state {
-        let messages = DVec();
+        let messages = @mut ~[];
 
         let state = @state_ {
             id: self.states.len(),
