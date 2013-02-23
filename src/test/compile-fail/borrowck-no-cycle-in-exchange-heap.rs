@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct node_ {
-    mut a: ~cycle
+    a: ~cycle
 }
 
 enum cycle {
@@ -17,11 +17,11 @@ enum cycle {
     empty
 }
 fn main() {
-    let x = ~node(node_ {mut a: ~empty});
+    let mut x = ~node(node_ {a: ~empty});
     // Create a cycle!
-    match *x { //~ NOTE loan of immutable local variable granted here
-      node(ref y) => {
-        y.a = x; //~ ERROR moving out of immutable local variable prohibited due to outstanding loan
+    match *x { //~ NOTE loan of mutable local variable granted here
+      node(ref mut y) => {
+        y.a = x; //~ ERROR moving out of mutable local variable prohibited due to outstanding loan
       }
       empty => {}
     };

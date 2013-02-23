@@ -25,7 +25,7 @@ pub trait proto_parser {
 
 pub impl proto_parser for parser::Parser {
     fn parse_proto(&self, id: ~str) -> protocol {
-        let proto = protocol(id, self.span);
+        let proto = protocol(id, *self.span);
 
         self.parse_seq_to_before_end(token::EOF, SeqSep {
                                         sep: None,
@@ -40,7 +40,7 @@ pub impl proto_parser for parser::Parser {
         let name = *self.interner.get(id);
 
         self.expect(token::COLON);
-        let dir = match copy self.token {
+        let dir = match *self.token {
           token::IDENT(n, _) => self.interner.get(n),
           _ => fail!()
         };
@@ -51,10 +51,11 @@ pub impl proto_parser for parser::Parser {
           _ => fail!()
         };
 
-        let typarms = if self.token == token::LT {
+        let typarms = if *self.token == token::LT {
             self.parse_ty_params()
-        }
-        else { ~[] };
+        } else {
+            ~[]
+        };
 
         let state = proto.add_state_poly(name, id, dir, typarms);
 
@@ -69,7 +70,7 @@ pub impl proto_parser for parser::Parser {
     fn parse_message(&self, state: state) {
         let mname = *self.interner.get(self.parse_ident());
 
-        let args = if self.token == token::LPAREN {
+        let args = if *self.token == token::LPAREN {
             self.parse_unspanned_seq(token::LPAREN,
                                      token::RPAREN, SeqSep {
                                         sep: Some(token::COMMA),
@@ -80,10 +81,10 @@ pub impl proto_parser for parser::Parser {
 
         self.expect(token::RARROW);
 
-        let next = match copy self.token {
+        let next = match *self.token {
           token::IDENT(_, _) => {
             let name = *self.interner.get(self.parse_ident());
-            let ntys = if self.token == token::LT {
+            let ntys = if *self.token == token::LT {
                 self.parse_unspanned_seq(token::LT,
                                          token::GT, SeqSep {
                                             sep: Some(token::COMMA),
@@ -101,7 +102,7 @@ pub impl proto_parser for parser::Parser {
           _ => self.fatal(~"invalid next state")
         };
 
-        state.add_message(mname, copy self.span, args, next);
+        state.add_message(mname, *self.span, args, next);
 
     }
 }

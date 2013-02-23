@@ -20,7 +20,7 @@ fn exit(+print: ErrPrinter, prog: &str, arg: &str) {
 }
 
 struct X {
-    mut err: ErrPrinter
+    err: ErrPrinter
 }
 
 impl X {

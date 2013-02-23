@@ -10,17 +10,17 @@
 
 struct list<T> {
     element: &self/T,
-    mut next: Option<@list<T>>
+    next: Option<@mut list<T>>
 }
 
 impl<T> list<T>{
-    fn addEnd(&self, element: &self/T) {
+    fn addEnd(&mut self, element: &self/T) {
         let newList = list {
             element: element,
             next: option::None
         };
 
-        self.next = Some(@(newList));
+        self.next = Some(@mut newList);
     }
 }
 

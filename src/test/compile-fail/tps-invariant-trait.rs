@@ -14,7 +14,7 @@ trait box_trait<T> {
 }
 
 struct box<T> {
-    mut f: T
+    f: T
 }
 
 enum box_impl<T> = box<T>;
@@ -33,7 +33,7 @@ fn set_box_impl<T>(b: box_impl<@const T>, v: @const T) {
 }
 
 fn main() {
-    let b = box_impl::<@int>(box::<@int> {mut f: @3});
+    let b = box_impl::<@int>(box::<@int> {f: @3});
     set_box_trait(b as box_trait::<@int>, @mut 5);
     //~^ ERROR values differ in mutability
     set_box_impl(b, @mut 5);

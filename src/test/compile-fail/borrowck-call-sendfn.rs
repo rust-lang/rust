@@ -10,7 +10,7 @@
 
 // xfail-test #2978
 
-fn call(x: @{mut f: fn~()}) {
+fn call(x: @{f: fn~()}) {
     x.f(); //~ ERROR foo
     //~^ NOTE bar
 }

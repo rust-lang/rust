@@ -11,8 +11,8 @@
 // xfail-test
 
 struct Point {
-    mut x: float,
-    mut y: float,
+    x: float,
+    y: float,
 }
 
 impl ToStr for Point { //~ ERROR implements a method not defined in the trait

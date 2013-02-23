@@ -27,8 +27,8 @@ use core::to_str::ToStr;
 use core::vec;
 
 pub trait gen_send {
-    fn gen_send(&self, cx: ext_ctxt, try: bool) -> @ast::item;
-    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty;
+    fn gen_send(&mut self, cx: ext_ctxt, try: bool) -> @ast::item;
+    fn to_ty(&mut self, cx: ext_ctxt) -> @ast::Ty;
 }
 
 pub trait to_type_decls {
@@ -47,8 +47,11 @@ pub trait gen_init {
 }
 
 pub impl gen_send for message {
-    fn gen_send(&self, cx: ext_ctxt, try: bool) -> @ast::item {
+    fn gen_send(&mut self, cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
+        let name = self.name();
+        let params = self.get_params();
+
         match *self {
           message(ref _id, span, ref tys, this, Some(ref next_state)) => {
             debug!("pipec: next state exists");
@@ -67,7 +70,7 @@ pub impl gen_send for message {
                 args_ast);
 
             let mut body = ~"{\n";
-            body += fmt!("use super::%s;\n", self.name());
+            body += fmt!("use super::%s;\n", name);
 
             if this.proto.is_bounded() {
                 let (sp, rp) = match (this.dir, next.dir) {
@@ -96,7 +99,7 @@ pub impl gen_send for message {
                 body += fmt!("let %s = ::core::pipes::entangle();\n", pat);
             }
             body += fmt!("let message = %s(%s);\n",
-                         self.name(),
+                         name,
                          str::connect(vec::append_one(
                            arg_names.map(|x| cx.str_of(*x)),
                              ~"s"), ~", "));
@@ -121,13 +124,12 @@ pub impl gen_send for message {
                 rty = cx.ty_option(rty);
             }
 
-            let name = cx.ident_of(if try { ~"try_" + self.name()
-                                          } else { self.name() } );
+            let name = cx.ident_of(if try { ~"try_" + name } else { name } );
 
             cx.item_fn_poly(name,
                             args_ast,
                             rty,
-                            self.get_params(),
+                            params,
                             cx.expr_block(body))
           }
 
@@ -156,10 +158,8 @@ pub impl gen_send for message {
                 };
 
                 let mut body = ~"{ ";
-                body += fmt!("use super::%s;\n", self.name());
-                body += fmt!("let message = %s%s;\n",
-                             self.name(),
-                             message_args);
+                body += fmt!("use super::%s;\n", name);
+                body += fmt!("let message = %s%s;\n", name, message_args);
 
                 if !try {
                     body += fmt!("::core::pipes::send(pipe, message);\n");
@@ -175,10 +175,7 @@ pub impl gen_send for message {
 
                 let body = cx.parse_expr(body);
 
-                let name = if try {
-                    ~"try_" + self.name()
-                }
-                else { self.name() };
+                let name = if try { ~"try_" + name } else { name };
 
                 cx.item_fn_poly(cx.ident_of(name),
                                 args_ast,
@@ -187,13 +184,13 @@ pub impl gen_send for message {
                                 } else {
                                     cx.ty_nil_ast_builder()
                                 },
-                                self.get_params(),
+                                params,
                                 cx.expr_block(body))
             }
           }
         }
 
-    fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty {
+    fn to_ty(&mut self, cx: ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder(path(~[cx.ident_of(self.name())], self.span())
           .add_tys(cx.ty_vars_global(self.get_params())))
     }
@@ -259,10 +256,14 @@ pub impl to_type_decls for state {
           recv => (*self).dir.reverse()
         };
         let mut items = ~[];
-        for self.messages.each |m| {
-            if dir == send {
-                items.push(m.gen_send(cx, true));
-                items.push(m.gen_send(cx, false));
+
+        {
+            let messages = &mut *self.messages;
+            for vec::each_mut(*messages) |m| {
+                if dir == send {
+                    items.push(m.gen_send(cx, true));
+                    items.push(m.gen_send(cx, false));
+                }
             }
         }
 
@@ -395,7 +396,8 @@ pub impl gen_init for protocol {
         }
 
         cx.ty_path_ast_builder(path(~[cx.ident_of(~"super"),
-                                      cx.ident_of(~"__Buffer")], self.span)
+                                      cx.ident_of(~"__Buffer")],
+                                    copy self.span)
                                .add_tys(cx.ty_vars_global(params)))
     }
 
@@ -453,12 +455,12 @@ pub impl gen_init for protocol {
         }
 
         items.push(cx.item_mod(cx.ident_of(~"client"),
-                               self.span,
+                               copy self.span,
                                client_states));
         items.push(cx.item_mod(cx.ident_of(~"server"),
-                               self.span,
+                               copy self.span,
                                server_states));
 
-        cx.item_mod(cx.ident_of(self.name), self.span, items)
+        cx.item_mod(cx.ident_of(self.name), copy self.span, items)
     }
 }

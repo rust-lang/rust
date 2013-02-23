@@ -10,7 +10,7 @@
 
 // xfail-test
 struct HTMLImageData {
-    mut image: Option<~str>
+    image: Option<~str>
 }
 
 struct ElementData {
@@ -30,7 +30,7 @@ enum NodeData = {
 };
 
 fn main() {
-    let id = HTMLImageData { image: None };
+    let mut id = HTMLImageData { image: None };
     let ed = ElementData { kind: ~HTMLImageElement(id) };
     let n = NodeData({kind : ~Element(ed)});
     match n.kind {

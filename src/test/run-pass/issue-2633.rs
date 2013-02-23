@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct cat {
-    mut meow: fn@(),
+    meow: fn@(),
 }
 
 fn cat() -> cat {
