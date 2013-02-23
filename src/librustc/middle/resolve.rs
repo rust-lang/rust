@@ -4816,6 +4816,75 @@ pub impl Resolver {
         }
     }
 
+    fn find_best_match_for_name(@mut self, name: &str) -> Option<~str> {
+        let mut maybes: ~[~str] = ~[];
+        let mut values: ~[uint] = ~[];
+
+        let mut j = self.value_ribs.len();
+        while j != 0 {
+            j -= 1;
+            let rib = self.value_ribs.get_elt(j);
+            for rib.bindings.each_entry |e| {
+                vec::push(&mut maybes, copy *self.session.str_of(e.key));
+                vec::push(&mut values, uint::max_value);
+            }
+        }
+
+        // Levenshtein Distance between two strings
+        fn distance(s: &str, t: &str) -> uint {
+
+            let slen = str::len(s);
+            let tlen = str::len(t);
+
+            if slen == 0 { return tlen; }
+            if tlen == 0 { return slen; }
+
+            let mut dcol = vec::from_fn(tlen + 1, |x| x);
+
+            for str::each_chari(s) |i, sc| {
+
+                let mut current = i;
+                dcol[0] = current + 1;
+
+                for str::each_chari(t) |j, tc| {
+
+                    let mut next = dcol[j + 1];
+
+                    if sc == tc {
+                        dcol[j + 1] = current;
+                    } else {
+                        dcol[j + 1] = cmp::min(current, next);
+                        dcol[j + 1] = cmp::min(dcol[j + 1], dcol[j]) + 1;
+                    }
+
+                    current = next;
+                }
+            }
+
+            return dcol[tlen];
+        }
+
+        let mut smallest = 0;
+        for vec::eachi(maybes) |i, &other| {
+
+            values[i] = distance(name, other);
+
+            if values[i] <= values[smallest] {
+                smallest = i;
+            }
+        }
+
+        if vec::len(values) > 0 &&
+            values[smallest] != uint::max_value &&
+            values[smallest] < str::len(name) + 2 {
+
+            Some(vec::swap_remove(&mut maybes, smallest))
+
+        } else {
+            None
+        }
+    }
+
     fn name_exists_in_scope_struct(@mut self, name: &str) -> bool {
         let mut i = self.type_ribs.len();
         while i != 0 {
@@ -4882,9 +4951,20 @@ pub impl Resolver {
                                         wrong_name));
                         }
                         else {
-                            self.session.span_err(expr.span,
-                                                fmt!("unresolved name: %s",
+                            match self.find_best_match_for_name(wrong_name) {
+
+                                Some(m) => {
+                                    self.session.span_err(expr.span,
+                                            fmt!("unresolved name: `%s`. \
+                                                Did you mean: `%s`?",
+                                                wrong_name, m));
+                                }
+                                None => {
+                                    self.session.span_err(expr.span,
+                                            fmt!("unresolved name: `%s`.",
                                                 wrong_name));
+                                }
+                            }
                         }
                     }
                 }
