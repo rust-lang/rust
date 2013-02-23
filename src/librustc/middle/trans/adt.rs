@@ -205,24 +205,28 @@ pub fn trans_GEP(bcx: block, r: &Repr, val: ValueRef, discr: int, ix: uint)
                 NoDtor => val,
                 DtorPresent | DtorAbsent => GEPi(bcx, val, [0, 0])
             };
-            struct_GEP(bcx, st, val, ix)
+            struct_GEP(bcx, st, val, ix, false)
         }
         General(ref cases) => {
             struct_GEP(bcx, &cases[discr as uint],
-                       GEPi(bcx, val, [0, 1]), ix)
+                       GEPi(bcx, val, [0, 1]), ix, true)
         }
     }
 }
 
-fn struct_GEP(bcx: block, st: &Struct, val: ValueRef, ix: uint)
-    -> ValueRef {
+fn struct_GEP(bcx: block, st: &Struct, val: ValueRef, ix: uint,
+              needs_cast: bool) -> ValueRef {
     let ccx = bcx.ccx();
 
-    let real_llty = T_struct(st.fields.map(
-        |&ty| type_of::type_of(ccx, ty)));
-    let cast_val = PointerCast(bcx, val, T_ptr(real_llty));
+    let val = if needs_cast {
+        let real_llty = T_struct(st.fields.map(
+            |&ty| type_of::type_of(ccx, ty)));
+        PointerCast(bcx, val, T_ptr(real_llty))
+    } else {
+        val
+    };
 
-    GEPi(bcx, cast_val, [0, ix])
+    GEPi(bcx, val, [0, ix])
 }
 
 pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
