@@ -139,7 +139,6 @@ fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
 fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
     -> ValueRef {
     let ptr = GEPi(bcx, scrutinee, [0, 0]);
-    // XXX: write tests for the edge cases here
     if max + 1 == min {
         // i.e., if the range is everything.  The lo==hi case would be
         // rejected by the LLVM verifier (it would mean either an
