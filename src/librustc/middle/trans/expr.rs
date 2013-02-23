@@ -126,6 +126,7 @@ use lib;
 use lib::llvm::{ValueRef, TypeRef, llvm, True};
 use middle::borrowck::root_map_key;
 use middle::trans::_match;
+use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -602,7 +603,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return trans_rec_or_struct(bcx, (*fields), base, expr.id, dest);
         }
         ast::expr_tup(ref args) => {
-            return trans_tup(bcx, *args, dest);
+            let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
+            return trans_adt(bcx, &repr, 0, *args, dest);
         }
         ast::expr_lit(@codemap::spanned {node: ast::lit_str(s), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
@@ -1249,7 +1251,8 @@ fn trans_rec_or_struct(bcx: block,
     }
 }
 
-fn trans_tup(bcx: block, elts: &[@ast::expr], dest: Dest) -> block {
+fn trans_adt(bcx: block, repr: &adt::Repr, discr: int, elts: &[@ast::expr],
+             dest: Dest) -> block {
     let _icx = bcx.insn_ctxt("trans_tup");
     let mut bcx = bcx;
     let addr = match dest {
@@ -1262,8 +1265,9 @@ fn trans_tup(bcx: block, elts: &[@ast::expr], dest: Dest) -> block {
         SaveIn(pos) => pos,
     };
     let mut temp_cleanups = ~[];
+    adt::trans_set_discr(bcx, repr, addr, discr);
     for vec::eachi(elts) |i, e| {
-        let dest = GEPi(bcx, addr, [0u, i]);
+        let dest = adt::trans_GEP(bcx, repr, addr, discr, i);
         let e_ty = expr_ty(bcx, *e);
         bcx = trans_into(bcx, *e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
