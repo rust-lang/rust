@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct F { mut f: ~[int] }
+struct F { f: ~[int] }
 
 fn impure(_v: &[int]) {
 }
 
 pub fn main() {
-    let x = F {f: ~[3]};
+    let mut x = F {f: ~[3]};
 
     match x {
       F {f: ref mut v} => {

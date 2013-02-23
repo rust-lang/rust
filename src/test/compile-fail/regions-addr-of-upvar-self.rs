@@ -9,13 +9,13 @@
 // except according to those terms.
 
 struct dog {
-    mut food: uint,
+    food: uint,
 }
 
 impl dog {
-    fn chase_cat() {
+    fn chase_cat(&mut self) {
         for uint::range(0u, 10u) |_i| {
-            let p: &'static mut uint = &mut self.food; //~ ERROR illegal borrow
+            let p: &'static mut uint = &mut self.food; //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
             *p = 3u;
         }
     }

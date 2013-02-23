@@ -46,7 +46,7 @@ fn r(v: U, w: int, _x: *int) -> R {
 enum t = Node;
 
 struct Node {
-    mut next: Option<@t>,
+    next: Option<@mut t>,
     r: R
 }
 
@@ -62,12 +62,12 @@ pub fn main() {
         let u1 = U {a: 0xB, b: 0xC, c: i1p};
         let u2 = U {a: 0xB, b: 0xC, c: i2p};
 
-        let x1 = @t(Node{
-            mut next: None,
+        let x1 = @mut t(Node{
+            next: None,
             r: r(u1, 42, i1p)
         });
-        let x2 = @t(Node{
-            mut next: None,
+        let x2 = @mut t(Node{
+            next: None,
             r: r(u2, 42, i2p)
         });
         x1.next = Some(x2);

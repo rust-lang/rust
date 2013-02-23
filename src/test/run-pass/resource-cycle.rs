@@ -37,7 +37,7 @@ fn r(v: *int) -> r {
 enum t = Node;
 
 struct Node {
-    mut next: Option<@t>,
+    next: Option<@mut t>,
     r: r
 }
 
@@ -50,8 +50,8 @@ pub fn main() {
         let i2p = cast::reinterpret_cast(&i2);
         cast::forget(i2);
 
-        let x1 = @t(Node{
-            mut next: None,
+        let mut x1 = @mut t(Node{
+            next: None,
               r: {
               let rs = r(i1p);
               debug!("r = %x",
@@ -60,11 +60,11 @@ pub fn main() {
         });
         
         debug!("x1 = %x, x1.r = %x",
-            cast::reinterpret_cast::<@t, uint>(&x1),
+            cast::reinterpret_cast::<@mut t, uint>(&x1),
             cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&(x1.r))));
 
-        let x2 = @t(Node{
-            mut next: None,
+        let mut x2 = @mut t(Node{
+            next: None,
               r: {
               let rs = r(i2p);
               debug!("r2 = %x",
@@ -74,7 +74,7 @@ pub fn main() {
         });
         
         debug!("x2 = %x, x2.r = %x",
-               cast::reinterpret_cast::<@t, uint>(&x2),
+               cast::reinterpret_cast::<@mut t, uint>(&x2),
                cast::reinterpret_cast::<*r, uint>(&ptr::addr_of(&(x2.r))));
 
         x1.next = Some(x2);

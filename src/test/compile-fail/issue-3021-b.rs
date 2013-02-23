@@ -13,11 +13,11 @@ extern mod std;
 fn siphash(k0 : u64) {
 
     struct siphash {
-        mut v0: u64,
+        v0: u64,
     }
 
     impl siphash {
-        fn reset() {
+        fn reset(&mut self) {
            self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR attempted dynamic environment-capture
            //~^ ERROR unresolved name: k0
         }

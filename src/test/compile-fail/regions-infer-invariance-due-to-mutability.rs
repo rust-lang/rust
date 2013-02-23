@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct invariant {
-    mut f: &int
+    f: &int
 }
 
 fn to_same_lifetime(bi: invariant/&r) {
@@ -17,8 +17,8 @@ fn to_same_lifetime(bi: invariant/&r) {
 }
 
 fn to_shorter_lifetime(bi: invariant/&r) {
-    let bj: invariant/&blk = bi; //~ ERROR mismatched types
-}
+    let bj: invariant/&blk = bi;
+}   
 
 fn to_longer_lifetime(bi: invariant/&r) -> invariant/&static {
     bi //~ ERROR mismatched types

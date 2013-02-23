@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Pair { mut a: ~int, mut b: ~int }
+struct Pair { a: ~int, b: ~int }
 
 pub fn main() {
-    let x = ~Pair {mut a: ~10, b: ~20};
+    let mut x = ~Pair {a: ~10, b: ~20};
     match x {
-      ~Pair {a: ref mut a, b: ref b} => {
+      ~Pair {a: ref mut a, b: ref mut b} => {
         assert **a == 10; *a = ~30; assert **a == 30;
       }
     }

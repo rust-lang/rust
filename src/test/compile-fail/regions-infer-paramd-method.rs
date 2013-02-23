@@ -17,14 +17,16 @@ trait foo {
     fn any_int() -> &int;
 }
 
-type with_foo = {mut f: foo};
+struct with_foo {
+    f: foo
+}
 
 trait set_foo_foo {
-    fn set_foo(f: foo);
+    fn set_foo(&mut self, f: foo);
 }
 
 impl set_foo_foo for with_foo {
-    fn set_foo(f: foo) {
+    fn set_foo(&mut self, f: foo) {
         self.f = f; //~ ERROR mismatched types: expected `@foo/&self` but found `@foo/&`
     }
 }
@@ -35,14 +37,16 @@ trait bar {
     fn any_int() -> &int;
 }
 
-type with_bar = {mut f: bar};
+struct with_bar {
+    f: bar
+}
 
 trait set_foo_bar {
-    fn set_foo(f: bar);
+    fn set_foo(&mut self, f: bar);
 }
 
 impl set_foo_bar for with_bar {
-    fn set_foo(f: bar) {
+    fn set_foo(&mut self, f: bar) {
         self.f = f;
     }
 }

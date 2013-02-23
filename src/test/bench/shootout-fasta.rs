@@ -21,10 +21,10 @@ use io::WriterUtil;
 fn LINE_LENGTH() -> uint { return 60u; }
 
 struct MyRandom {
-    mut last: u32
+    last: u32
 }
 
-fn myrandom_next(r: @MyRandom, mx: u32) -> u32 {
+fn myrandom_next(r: @mut MyRandom, mx: u32) -> u32 {
     r.last = (r.last * 3877u32 + 29573u32) % 139968u32;
     mx * r.last / 139968u32
 }
@@ -59,7 +59,7 @@ fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
 
 fn make_random_fasta(wr: io::Writer, id: ~str, desc: ~str, genelist: ~[AminoAcids], n: int) {
     wr.write_line(~">" + id + ~" " + desc);
-    let rng = @MyRandom {mut last: rand::Rng().next()};
+    let rng = @mut MyRandom {last: rand::Rng().next()};
     let mut op: ~str = ~"";
     for uint::range(0u, n as uint) |_i| {
         str::push_char(&mut op, select_random(myrandom_next(rng, 100u32),

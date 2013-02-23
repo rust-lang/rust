@@ -10,11 +10,15 @@
 
 // error-pattern: mismatched types
 
-fn main() {
-    let v = {mut g: ~[0]};
+struct S {
+    g: ~[int]
+}
 
-    fn f(&&v: {mut g: ~[const int]}) {
-        v.g = ~[mut 3]
+fn main() {
+    let v = S {g: ~[0]};
+
+    fn f(&&v: {g: ~[const int]}) {
+        v.g = ~[3]
     }
 
     f(v);

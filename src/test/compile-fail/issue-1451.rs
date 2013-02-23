@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // xfail-test
-type T = { mut f: fn@() };
-type S = { f: fn@() };
+struct T { f: fn@() };
+struct S { f: fn@() };
 
 fn fooS(t: S) {
 }
@@ -23,11 +23,11 @@ fn bar() {
 
 fn main() {
     let x: fn@() = bar;
-    fooS({f: x});
-    fooS({f: bar});
+    fooS(S {f: x});
+    fooS(S {f: bar});
 
     let x: fn@() = bar;
-    fooT({mut f: x});
-    fooT({mut f: bar});
+    fooT(T {f: x});
+    fooT(T {f: bar});
 }
 

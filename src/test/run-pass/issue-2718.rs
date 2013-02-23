@@ -15,9 +15,9 @@ pub mod pipes {
     use core::cast::{forget, transmute};
 
     pub struct Stuff<T> {
-        mut state: state,
-        mut blocked_task: Option<task::Task>,
-        mut payload: Option<T>
+        state: state,
+        blocked_task: Option<task::Task>,
+        payload: Option<T>
     }
 
     #[deriving_eq]
@@ -29,17 +29,17 @@ pub mod pipes {
     }
 
     pub type packet<T> = {
-        mut state: state,
-        mut blocked_task: Option<task::Task>,
-        mut payload: Option<T>
+        state: state,
+        blocked_task: Option<task::Task>,
+        payload: Option<T>
     };
 
     pub fn packet<T:Owned>() -> *packet<T> {
         unsafe {
             let p: *packet<T> = cast::transmute(~Stuff{
-                mut state: empty,
-                mut blocked_task: None::<task::Task>,
-                mut payload: None::<T>
+                state: empty,
+                blocked_task: None::<task::Task>,
+                payload: None::<T>
             });
             p
         }
@@ -70,9 +70,9 @@ pub mod pipes {
         }
     }
 
-    pub fn send<T:Owned>(-p: send_packet<T>, -payload: T) {
-        let p = p.unwrap();
-        let p = unsafe { uniquify(p) };
+    pub fn send<T:Owned>(mut p: send_packet<T>, -payload: T) {
+        let mut p = p.unwrap();
+        let mut p = unsafe { uniquify(p) };
         assert (*p).payload.is_none();
         (*p).payload = Some(payload);
         let old_state = swap_state_rel(&mut (*p).state, full);
@@ -96,9 +96,9 @@ pub mod pipes {
         }
     }
 
-    pub fn recv<T:Owned>(-p: recv_packet<T>) -> Option<T> {
-        let p = p.unwrap();
-        let p = unsafe { uniquify(p) };
+    pub fn recv<T:Owned>(mut p: recv_packet<T>) -> Option<T> {
+        let mut p = p.unwrap();
+        let mut p = unsafe { uniquify(p) };
         loop {
             let old_state = swap_state_acq(&mut (*p).state,
                                            blocked);
@@ -117,8 +117,8 @@ pub mod pipes {
         }
     }
 
-    pub fn sender_terminate<T:Owned>(p: *packet<T>) {
-        let p = unsafe { uniquify(p) };
+    pub fn sender_terminate<T:Owned>(mut p: *packet<T>) {
+        let mut p = unsafe { uniquify(p) };
         match swap_state_rel(&mut (*p).state, terminated) {
           empty | blocked => {
             // The receiver will eventually clean up.
@@ -134,8 +134,8 @@ pub mod pipes {
         }
     }
 
-    pub fn receiver_terminate<T:Owned>(p: *packet<T>) {
-        let p = unsafe { uniquify(p) };
+    pub fn receiver_terminate<T:Owned>(mut p: *packet<T>) {
+        let mut p = unsafe { uniquify(p) };
         match swap_state_rel(&mut (*p).state, terminated) {
           empty => {
             // the sender will clean up
@@ -152,21 +152,25 @@ pub mod pipes {
     }
 
     pub struct send_packet<T> {
-        mut p: Option<*packet<T>>,
+        p: Option<*packet<T>>,
     }
 
     pub impl<T:Owned> Drop for send_packet<T> {
         fn finalize(&self) {
-            if self.p != None {
-                let mut p = None;
-                p <-> self.p;
-                sender_terminate(option::unwrap(p))
+            unsafe {
+                if self.p != None {
+                    let mut p = None;
+                    let self_p: &mut Option<*packet<T>> =
+                        cast::transmute(&self.p);
+                    p <-> *self_p;
+                    sender_terminate(option::unwrap(p))
+                }
             }
         }
     }
 
     pub impl<T:Owned> send_packet<T> {
-        fn unwrap() -> *packet<T> {
+        fn unwrap(&mut self) -> *packet<T> {
             let mut p = None;
             p <-> self.p;
             option::unwrap(p)
@@ -180,21 +184,25 @@ pub mod pipes {
     }
 
     pub struct recv_packet<T> {
-        mut p: Option<*packet<T>>,
+        p: Option<*packet<T>>,
     }
 
     pub impl<T:Owned> Drop for recv_packet<T> {
         fn finalize(&self) {
-            if self.p != None {
-                let mut p = None;
-                p <-> self.p;
-                receiver_terminate(option::unwrap(p))
+            unsafe {
+                if self.p != None {
+                    let mut p = None;
+                    let self_p: &mut Option<*packet<T>> =
+                        cast::transmute(&self.p);
+                    p <-> *self_p;
+                    receiver_terminate(option::unwrap(p))
+                }
             }
         }
     }
 
     pub impl<T:Owned> recv_packet<T> {
-        fn unwrap() -> *packet<T> {
+        fn unwrap(&mut self) -> *packet<T> {
             let mut p = None;
             p <-> self.p;
             option::unwrap(p)
