@@ -14,10 +14,6 @@ fn box_mut(v: @mut ~int) {
     borrow(*v); //~ ERROR illegal borrow unless pure
 }
 
-fn box_rec_mut(v: @{mut f: ~int}) {
-    borrow(v.f); //~ ERROR illegal borrow unless pure
-}
-
 fn box_mut_rec(v: @mut {f: ~int}) {
     borrow(v.f); //~ ERROR illegal borrow unless pure
 }
@@ -40,14 +36,6 @@ fn box_imm_recs(v: @{f: {g: {h: ~int}}}) {
 
 fn box_const(v: @const ~int) {
     borrow(*v); //~ ERROR illegal borrow unless pure
-}
-
-fn box_rec_const(v: @{const f: ~int}) {
-    borrow(v.f); //~ ERROR illegal borrow unless pure
-}
-
-fn box_recs_const(v: @{f: {g: {const h: ~int}}}) {
-    borrow(v.f.g.h); //~ ERROR illegal borrow unless pure
 }
 
 fn box_const_rec(v: @const {f: ~int}) {

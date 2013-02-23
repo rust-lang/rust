@@ -15,17 +15,17 @@ enum option<T> {
     some(T),
 }
 
-struct Smallintmap<T> {mut v: ~[option<T>]}
+struct Smallintmap<T> {v: ~[option<T>]}
 
 struct V<T> { v: ~[option<T>] }
 
-fn mk<T>() -> @Smallintmap<T> {
+fn mk<T>() -> @mut Smallintmap<T> {
     let mut v: ~[option<T>] = ~[];
-    return @Smallintmap {mut v: v};
+    return @mut Smallintmap {v: v};
 }
 
 fn f<T,U>() {
-    let sim = mk::<U>();
+    let mut sim = mk::<U>();
     log(error, sim);
 }
 

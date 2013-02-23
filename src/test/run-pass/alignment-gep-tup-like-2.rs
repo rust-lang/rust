@@ -15,11 +15,11 @@ struct Pair<A,B> {
 enum RecEnum<A> = Rec<A>;
 struct Rec<A> {
     val: A,
-    mut rec: Option<@RecEnum<A>>
+    rec: Option<@mut RecEnum<A>>
 }
 
 fn make_cycle<A:Copy>(a: A) {
-    let g: @RecEnum<A> = @RecEnum(Rec {val: a, mut rec: None});
+    let g: @mut RecEnum<A> = @mut RecEnum(Rec {val: a, rec: None});
     g.rec = Some(g);
 }
 

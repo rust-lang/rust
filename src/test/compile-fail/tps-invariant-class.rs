@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct box_impl<T> {
-    mut f: T,
+    f: T,
 }
 
 fn box_impl<T>(f: T) -> box_impl<T> {

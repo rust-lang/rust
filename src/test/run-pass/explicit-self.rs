@@ -46,7 +46,7 @@ struct thing {
     x: A
 }
 
-struct A { mut a: @int }
+struct A { a: @int }
 
 fn thing(x: A) -> thing {
     thing {
@@ -67,14 +67,14 @@ impl Nus for thing { fn f(&self) {} }
 
 pub fn main() {
 
-    let x = @thing(A {mut a: @10});
+    let x = @thing(A {a: @10});
     assert x.foo() == 10;
     assert x.quux() == 10;
 
-    let y = ~thing(A {mut a: @10});
+    let y = ~thing(A {a: @10});
     assert (copy y).bar() == 10;
     assert y.quux() == 10;
 
-    let z = thing(A {mut a: @11});
+    let z = thing(A {a: @11});
     assert z.spam() == 11;
 }

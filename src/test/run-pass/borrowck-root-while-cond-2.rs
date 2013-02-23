@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct F { mut f: @G }
+struct F { f: @G }
 struct G { g: ~[int] }
 
 pub fn main() {
-    let rec = @F {mut f: @G {g: ~[1, 2, 3]}};
+    let rec = @mut F {f: @G {g: ~[1, 2, 3]}};
     while rec.f.g.len() == 23 {}
 }

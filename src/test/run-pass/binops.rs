@@ -86,9 +86,10 @@ extern mod test {
     pub fn get_task_id() -> libc::intptr_t;
 }
 
+#[deriving_eq]
 struct p {
-  mut x: int,
-  mut y: int,
+  x: int,
+  y: int,
 }
 
 fn p(x: int, y: int) -> p {
@@ -98,16 +99,9 @@ fn p(x: int, y: int) -> p {
     }
 }
 
-impl cmp::Eq for p {
-    pure fn eq(&self, other: &p) -> bool {
-        (*self).x == (*other).x && (*self).y == (*other).y
-    }
-    pure fn ne(&self, other: &p) -> bool { !(*self).eq(other) }
-}
-
 fn test_class() {
-  let q = p(1, 2);
-  let r = p(1, 2);
+  let mut q = p(1, 2);
+  let mut r = p(1, 2);
   
   unsafe {
   error!("q = %x, r = %x",

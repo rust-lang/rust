@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo = {mut bar: baz};
+struct foo {bar: baz}
 
-enum baz = @{mut baz: int};
+struct baz_ {baz: int}
+
+type baz = @mut baz_;
 
 trait frob {
     fn frob();

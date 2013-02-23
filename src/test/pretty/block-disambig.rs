@@ -16,10 +16,10 @@ fn test1() { let val = @0; { } *val; }
 
 fn test2() -> int { let val = @0; { } *val }
 
-struct S { mut eax: int }
+struct S { eax: int }
 
 fn test3() {
-    let regs = @S {mut eax: 0};
+    let regs = @mut S {eax: 0};
     match true { true => { } _ => { } }
     (*regs).eax = 1;
 }

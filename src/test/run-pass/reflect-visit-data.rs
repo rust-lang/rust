@@ -470,12 +470,12 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 }
 
-enum my_visitor = @Stuff;
+enum my_visitor = @mut Stuff;
 
 struct Stuff {
-    mut ptr1: *c_void,
-    mut ptr2: *c_void,
-    mut vals: ~[~str]
+    ptr1: *c_void,
+    ptr2: *c_void,
+    vals: ~[~str]
 }
 
 impl my_visitor {
@@ -637,10 +637,9 @@ pub fn main() {
     unsafe {
         let r = (1,2,3,true,false, Triple {x:5,y:4,z:3}, (12,));
         let p = ptr::addr_of(&r) as *c_void;
-        let u = my_visitor(@Stuff {mut ptr1: p,
-                             mut ptr2: p,
-                             mut vals: ~[]
-                                  });
+        let u = my_visitor(@mut Stuff {ptr1: p,
+                                       ptr2: p,
+                                       vals: ~[]});
         let v = ptr_visit_adaptor(Inner {inner: u});
         let td = get_tydesc_for(r);
         unsafe { error!("tydesc sz: %u, align: %u",
