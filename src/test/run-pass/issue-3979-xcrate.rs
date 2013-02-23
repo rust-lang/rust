@@ -13,10 +13,10 @@
 extern mod issue_3979_traits;
 use issue_3979_traits::*;
 
-struct Point { mut x: int, mut y: int }
+struct Point { x: int, y: int }
 
 impl Positioned for Point {
-    fn SetX(&self, x: int) {
+    fn SetX(&mut self, x: int) {
         self.x = x;
     }
     fn X(&self) -> int {
@@ -24,10 +24,10 @@ impl Positioned for Point {
     }
 }
 
-impl Point: Movable;
+impl Movable for Point;
 
 pub fn main() {
-    let p = Point{ x: 1, y: 2};
+    let mut p = Point{ x: 1, y: 2};
     p.translate(3);
     assert p.X() == 4;
 }

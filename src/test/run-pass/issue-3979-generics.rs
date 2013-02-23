@@ -10,7 +10,7 @@
 
 // xfail-test
 trait Positioned<S> {
-  fn SetX(&self, S);
+  fn SetX(&mut self, S);
   fn X(&self) -> S;
 }
 
@@ -21,10 +21,10 @@ trait Movable<S, T>: Positioned<T> {
   }
 }
 
-struct Point { mut x: int, mut y: int }
+struct Point { x: int, y: int }
 
 impl Positioned<int> for Point {
-    fn SetX(&self, x: int) {
+    fn SetX(&mut self, x: int) {
         self.x = x;
     }
     fn X(&self) -> int {

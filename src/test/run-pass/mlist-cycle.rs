@@ -12,14 +12,14 @@
 // -*- rust -*-
 extern mod std;
 
-type cell = {mut c: @list};
+type cell = {c: @list};
 
-enum list { link(@cell), nil, }
+enum list { link(@mut cell), nil, }
 
 pub fn main() {
-    let first: @cell = @{mut c: @nil()};
-    let second: @cell = @{mut c: @link(first)};
+    let first: @cell = @mut {c: @nil()};
+    let second: @cell = @mut {c: @link(first)};
     first._0 = @link(second);
     sys.rustrt.gc();
-    let third: @cell = @{mut c: @nil()};
+    let third: @cell = @mut {c: @nil()};
 }
