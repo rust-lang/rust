@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -25,17 +25,17 @@ enum NodeKind {
     Element(ElementData)
 }
 
-enum NodeData = {
+struct NodeData {
     kind: ~NodeKind
-};
+}
 
 fn main() {
     let mut id = HTMLImageData { image: None };
     let ed = ElementData { kind: ~HTMLImageElement(id) };
-    let n = NodeData({kind : ~Element(ed)});
+    let n = NodeData {kind : ~Element(ed)};
     match n.kind {
         ~Element(ed) => match ed.kind {
-            ~HTMLImageElement(d) if d.image.is_some() => { true }
+            ~HTMLImageElement(ref d) if d.image.is_some() => { true }
         },
         _ => fail!(~"WAT") //~ ERROR wat
     };
