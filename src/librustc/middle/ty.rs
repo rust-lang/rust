@@ -42,7 +42,8 @@ use core::uint;
 use core::vec;
 use core::hashmap::linear::LinearMap;
 use std::oldmap::HashMap;
-use std::{oldmap, oldsmallintmap};
+use std::oldmap;
+use std::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
@@ -767,7 +768,7 @@ type type_cache = HashMap<ast::def_id, ty_param_bounds_and_ty>;
 
 type constness_cache = HashMap<ast::def_id, const_eval::constness>;
 
-pub type node_type_table = @oldsmallintmap::SmallIntMap<t>;
+pub type node_type_table = @mut SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
@@ -812,7 +813,7 @@ pub fn mk_ctxt(s: session::Session,
         def_map: dm,
         region_map: region_map,
         region_paramd_items: region_paramd_items,
-        node_types: @oldsmallintmap::mk(),
+        node_types: @mut SmallIntMap::new(),
         node_type_substs: oldmap::HashMap(),
         items: amap,
         intrinsic_defs: oldmap::HashMap(),
@@ -2787,8 +2788,8 @@ pub fn br_hashmap<V:Copy>() -> HashMap<bound_region, V> {
 
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     //io::println(fmt!("%?/%?", id, cx.node_types.len()));
-    match oldsmallintmap::find(*cx.node_types, id as uint) {
-       Some(t) => t,
+    match cx.node_types.find(&(id as uint)) {
+       Some(&t) => t,
        None => cx.sess.bug(
            fmt!("node_id_to_type: no type for node `%s`",
                 ast_map::node_id_to_str(cx.items, id,
@@ -3179,8 +3180,8 @@ pub fn expr_kind(tcx: ctxt,
         }
 
         ast::expr_cast(*) => {
-            match oldsmallintmap::find(*tcx.node_types, expr.id as uint) {
-                Some(t) => {
+            match tcx.node_types.find(&(expr.id as uint)) {
+                Some(&t) => {
                     if ty::type_is_immediate(t) {
                         RvalueDatumExpr
                     } else {

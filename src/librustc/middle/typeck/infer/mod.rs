@@ -277,7 +277,7 @@ use core::result;
 use core::vec;
 use std::list::Nil;
 use std::oldmap::HashMap;
-use std::oldsmallintmap;
+use std::smallintmap::SmallIntMap;
 use syntax::ast::{ret_style, purity};
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
@@ -353,7 +353,7 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
 
 fn new_ValsAndBindings<V:Copy,T:Copy>() -> ValsAndBindings<V, T> {
     ValsAndBindings {
-        vals: oldsmallintmap::mk(),
+        vals: @mut SmallIntMap::new(),
         bindings: ~[]
     }
 }

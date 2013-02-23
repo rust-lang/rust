@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 use core::result;
-use std::oldsmallintmap::SmallIntMap;
+use std::smallintmap::SmallIntMap;
 
 use middle::ty::{Vid, expected_found, IntVarValue};
 use middle::ty;
@@ -27,7 +27,7 @@ pub enum VarValue<V, T> {
 }
 
 pub struct ValsAndBindings<V, T> {
-    vals: SmallIntMap<VarValue<V, T>>,
+    vals: @mut SmallIntMap<VarValue<V, T>>,
     bindings: ~[(V, VarValue<V, T>)],
 }
 
@@ -64,12 +64,12 @@ pub impl InferCtxt {
             vid: V) -> Node<V, T>
         {
             let vid_u = vid.to_uint();
-            match vb.vals.find(vid_u) {
+            match vb.vals.find(&vid_u) {
                 None => {
                     tcx.sess.bug(fmt!(
                         "failed lookup of vid `%u`", vid_u));
                 }
-                Some(ref var_val) => {
+                Some(var_val) => {
                     match *var_val {
                         Redirect(vid) => {
                             let node: Node<V,T> = helper(tcx, vb, vid);
@@ -103,8 +103,8 @@ pub impl InferCtxt {
 
         { // FIXME(#4903)---borrow checker is not flow sensitive
             let vb = UnifyVid::appropriate_vals_and_bindings(self);
-            let old_v = vb.vals.get(vid.to_uint());
-            vb.bindings.push((vid, old_v));
+            let old_v = vb.vals.get(&vid.to_uint());
+            vb.bindings.push((vid, *old_v));
             vb.vals.insert(vid.to_uint(), new_v);
         }
     }
