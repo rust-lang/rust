@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};
 use core::vec;
-use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::{ValueRef, TypeRef, True, False};
 use middle::trans::_match;
 use middle::trans::build::*;
 use middle::trans::common::*;
@@ -23,7 +24,7 @@ use util::ppaux::ty_to_str;
 
 // XXX: should this be done with boxed traits instead of ML-style?
 pub enum Repr {
-    CEnum,
+    CEnum(int, int), /* discriminant range */
     Univariant(Struct, Destructor),
     General(~[Struct])
 }
@@ -65,13 +66,13 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> Repr {
             })), if dt { DtorPresent } else { DtorAbsent })
         }
         ty::ty_enum(def_id, ref substs) => {
-            struct Case { discr: i64, tys: ~[ty::t] };
+            struct Case { discr: int, tys: ~[ty::t] };
 
             let cases = do ty::enum_variants(cx.tcx, def_id).map |vi| {
                 let arg_tys = do vi.args.map |&raw_ty| {
                     ty::subst(cx.tcx, substs, raw_ty)
                 };
-                Case { discr: vi.disr_val /*bad*/as i64, tys: arg_tys }
+                Case { discr: vi.disr_val, tys: arg_tys }
             };
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
@@ -80,9 +81,10 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> Repr {
                 // struct, tuple, newtype, etc.
                 Univariant(mk_struct(cx, cases[0].tys), NoDtor)
             } else if cases.all(|c| c.tys.len() == 0) {
-                CEnum
+                let discrs = cases.map(|c| c.discr);
+                CEnum(discrs.min(), discrs.max())
             } else {
-                if !cases.alli(|i,c| c.discr == (i as i64)) {
+                if !cases.alli(|i,c| c.discr == (i as int)) {
                     cx.sess.bug(fmt!("non-C-like enum %s with specified \
                                       discriminants",
                                      ty::item_path_str(cx.tcx, def_id)))
@@ -114,7 +116,7 @@ pub fn fields_of(cx: @CrateContext, r: &Repr) -> ~[TypeRef] {
 fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
     -> ~[TypeRef] {
     match *r {
-        CEnum => ~[T_enum_discrim(cx)],
+        CEnum(*) => ~[T_enum_discrim(cx)],
         Univariant(ref st, dt) => {
             let f = if sizing {
                 st.fields.map(|&ty| type_of::sizing_type_of(cx, ty))
@@ -134,25 +136,44 @@ fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
     }
 }
 
+fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
+    -> ValueRef {
+    let ptr = GEPi(bcx, scrutinee, [0, 0]);
+    // XXX: write tests for the edge cases here
+    if max + 1 == min {
+        // i.e., if the range is everything.  The lo==hi case would be
+        // rejected by the LLVM verifier (it would mean either an
+        // empty set, which is impossible, or the entire range of the
+        // type, which is pointless).
+        Load(bcx, ptr)
+    } else {
+        // llvm::ConstantRange can deal with ranges that wrap around,
+        // so an overflow on (max + 1) is fine.
+        LoadRangeAssert(bcx, ptr, min as c_ulonglong,
+                        (max + 1) as c_ulonglong,
+                        /* signed: */ True)
+    }
+}
+
 pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef) ->
     (_match::branch_kind, Option<ValueRef>) {
-    // XXX: LoadRangeAssert
     match *r {
-        CEnum => {
-            (_match::switch, Some(Load(bcx, GEPi(bcx, scrutinee, [0, 0]))))
+        CEnum(min, max) => {
+            (_match::switch, Some(load_discr(bcx, scrutinee, min, max)))
         }
         Univariant(*) => {
             (_match::single, None)
         }
-        General(*) => {
-            (_match::switch, Some(Load(bcx, GEPi(bcx, scrutinee, [0, 0]))))
+        General(ref cases) => {
+            (_match::switch, Some(load_discr(bcx, scrutinee, 0,
+                                             (cases.len() - 1) as int)))
         }
     }
 }
 
 pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
     match *r {
-        CEnum => {
+        CEnum(*) => {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
         }
         Univariant(*) => {
@@ -166,7 +187,8 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
 
 pub fn trans_set_discr(bcx: block, r: &Repr, val: ValueRef, discr: int) {
     match *r {
-        CEnum => {
+        CEnum(min, max) => {
+            assert min <= discr && discr <= max;
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
         Univariant(_, DtorPresent) => {
@@ -184,7 +206,7 @@ pub fn trans_set_discr(bcx: block, r: &Repr, val: ValueRef, discr: int) {
 
 pub fn num_args(r: &Repr, discr: int) -> uint {
     match *r {
-        CEnum => 0,
+        CEnum(*) => 0,
         Univariant(ref st, _dt) => { assert discr == 0; st.fields.len() }
         General(ref cases) => cases[discr as uint].fields.len()
     }
@@ -196,7 +218,7 @@ pub fn trans_GEP(bcx: block, r: &Repr, val: ValueRef, discr: int, ix: uint)
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it'll need to return a possibly-new bcx as well.
     match *r {
-        CEnum => {
+        CEnum(*) => {
             bcx.ccx().sess.bug(~"element access in C-like enum")
         }
         Univariant(ref st, dt) => {
@@ -232,8 +254,9 @@ fn struct_GEP(bcx: block, st: &Struct, val: ValueRef, ix: uint,
 pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
-        CEnum => {
+        CEnum(min, max) => {
             assert vals.len() == 0;
+            assert min <= discr && discr <= max;
             C_int(ccx, discr)
         }
         Univariant(ref st, _dt) => {
