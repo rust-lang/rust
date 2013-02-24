@@ -511,14 +511,13 @@ pub impl Datum {
         }
     }
 
-    fn GEPi(&self, bcx: block,
-            ixs: &[uint],
-            ty: ty::t,
-            source: DatumCleanup)
-         -> Datum {
+    fn get_element(&self, bcx: block,
+                   ty: ty::t,
+                   source: DatumCleanup,
+                   gep: fn(ValueRef) -> ValueRef) -> Datum {
         let base_val = self.to_ref_llval(bcx);
         Datum {
-            val: GEPi(bcx, base_val, ixs),
+            val: gep(base_val),
             mode: ByRef,
             ty: ty,
             source: source

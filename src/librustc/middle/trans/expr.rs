@@ -884,13 +884,15 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let _icx = bcx.insn_ctxt("trans_rec_field");
 
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-        do with_field_tys(bcx.tcx(), base_datum.ty, None) |_disr, field_tys| {
+        let repr = adt::represent_type(bcx.ccx(), base_datum.ty);
+        do with_field_tys(bcx.tcx(), base_datum.ty, None) |discr, field_tys| {
             let ix = ty::field_idx_strict(bcx.tcx(), field, field_tys);
             DatumBlock {
-                datum: base_datum.GEPi(bcx,
-                                       [0u, 0u, ix],
-                                       field_tys[ix].mt.ty,
-                                       ZeroMem),
+                datum: do base_datum.get_element(bcx,
+                                                 field_tys[ix].mt.ty,
+                                                 ZeroMem) |srcval| {
+                    adt::trans_GEP(bcx, &repr, srcval, discr, ix)
+                },
                 bcx: bcx
             }
         }
@@ -1227,11 +1229,13 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
         temp_cleanups.push(dest);
     }
     for optbase.each |base| {
+        // XXX is it sound to use the destination's repr on the base?
+        // XXX would it ever be reasonable to be here with discr != 0?
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base.expr));
         for base.fields.each |&(i, t)| {
-            let datum =
-                // XXX convert this to adt
-                base_datum.GEPi(bcx, struct_field(i), t, ZeroMem);
+            let datum = do base_datum.get_element(bcx, t, ZeroMem) |srcval| {
+                adt::trans_GEP(bcx, repr, srcval, discr, i)
+            };
             let dest = adt::trans_GEP(bcx, repr, addr, discr, i);
             bcx = datum.store_to(bcx, base.expr.id, INIT, dest);
         }
