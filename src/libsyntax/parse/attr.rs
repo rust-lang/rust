@@ -61,15 +61,15 @@ impl parser_attr for Parser {
 
     fn parse_attribute(style: ast::attr_style) -> ast::attribute {
         let lo = self.span.lo;
-        self.expect(token::POUND);
+        self.expect(&token::POUND);
         return self.parse_attribute_naked(style, lo);
     }
 
     fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->
         ast::attribute {
-        self.expect(token::LBRACKET);
+        self.expect(&token::LBRACKET);
         let meta_item = self.parse_meta_item();
-        self.expect(token::RBRACKET);
+        self.expect(&token::RBRACKET);
         let mut hi = self.span.hi;
         return spanned(lo, hi, ast::attribute_ { style: style,
                                                  value: meta_item,

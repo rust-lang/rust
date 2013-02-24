@@ -39,7 +39,7 @@ pub impl proto_parser for parser::Parser {
         let id = self.parse_ident();
         let name = *self.interner.get(id);
 
-        self.expect(token::COLON);
+        self.expect(&token::COLON);
         let dir = match *self.token {
           token::IDENT(n, _) => self.interner.get(n),
           _ => fail!()
@@ -79,7 +79,7 @@ pub impl proto_parser for parser::Parser {
         }
         else { ~[] };
 
-        self.expect(token::RARROW);
+        self.expect(&token::RARROW);
 
         let next = match *self.token {
           token::IDENT(_, _) => {
