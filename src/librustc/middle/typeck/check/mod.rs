@@ -355,7 +355,8 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         let tail_expr_ty = fcx.expr_ty(tail_expr);
         // Special case: we print a special error if there appears
         // to be do-block/for-loop confusion
-        demand::suptype_with_fn(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty,
+        demand::suptype_with_fn(fcx, tail_expr.span, false,
+            fcx.ret_ty, tail_expr_ty,
             |sp, e, a, s| {
                 fcx.report_mismatched_return_types(sp, e, a, s) });
       }
