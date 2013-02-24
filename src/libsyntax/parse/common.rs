@@ -103,8 +103,8 @@ pub impl Parser {
 
     // consume token 'tok' if it exists. Returns true if the given
     // token was present, false otherwise.
-    fn eat(tok: token::Token) -> bool {
-        return if *self.token == tok { self.bump(); true } else { false };
+    fn eat(tok: &token::Token) -> bool {
+        return if *self.token == *tok { self.bump(); true } else { false };
     }
 
     // Storing keywords as interned idents instead of strings would be nifty.
