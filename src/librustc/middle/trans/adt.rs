@@ -378,3 +378,12 @@ fn const_struct_field(ccx: @CrateContext, val: ValueRef, ix: uint)
         real_ix = real_ix + 1;
     }
 }
+
+/// Is it safe to bitcast a value to the one field of its one variant?
+pub fn is_newtypeish(r: &Repr) -> bool {
+    match *r {
+        Univariant(ref st, DtorAbsent)
+        | Univariant(ref st, NoDtor) => st.fields.len() == 1,
+        _ => false
+    }
+}
