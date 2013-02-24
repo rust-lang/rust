@@ -240,16 +240,12 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           }
           ast::expr_field(base, field, _) => {
               let bt = ty::expr_ty(cx.tcx, base);
+              let brepr = adt::represent_type(cx, bt);
               let bv = const_expr(cx, base);
               let (bt, bv) = const_autoderef(cx, bt, bv);
-              do expr::with_field_tys(cx.tcx, bt, None) |_, field_tys| {
+              do expr::with_field_tys(cx.tcx, bt, None) |discr, field_tys| {
                   let ix = ty::field_idx_strict(cx.tcx, field, field_tys);
-
-                  // Note: ideally, we'd use `struct_field()` here instead
-                  // of hardcoding [0, ix], but we can't because it yields
-                  // the wrong type and also inserts an extra 0 that is
-                  // not needed in the constant variety:
-                  const_get_elt(cx, bv, [0, ix as c_uint])
+                  adt::const_get_element(cx, &brepr, bv, discr, ix)
               }
           }
 
