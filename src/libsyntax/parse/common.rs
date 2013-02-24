@@ -64,15 +64,16 @@ pub impl Parser {
 
     // expect and consume the token t. Signal an error if
     // the next token is not t.
-    fn expect(t: token::Token) {
-        if *self.token == t {
+    fn expect(t: &token::Token) {
+        if *self.token == *t {
             self.bump();
         } else {
-            let mut s: ~str = ~"expected `";
-            s += token_to_str(self.reader, t);
-            s += ~"` but found `";
-            s += token_to_str(self.reader, *self.token);
-            self.fatal(s + ~"`");
+            self.fatal(
+                fmt!("expected `%s` but found `%s`",
+                    token_to_str(self.reader, *t),
+                    token_to_str(self.reader, *self.token)
+                )
+            )
         }
     }
 
@@ -230,7 +231,7 @@ pub impl Parser {
             match sep {
               Some(ref t) => {
                 if first { first = false; }
-                else { self.expect(*t); }
+                else { self.expect(t); }
               }
               _ => ()
             }
@@ -252,7 +253,7 @@ pub impl Parser {
     fn parse_seq_lt_gt<T:Copy>(sep: Option<token::Token>,
                                 f: fn(Parser) -> T) -> spanned<~[T]> {
         let lo = self.span.lo;
-        self.expect(token::LT);
+        self.expect(&token::LT);
         let result = self.parse_seq_to_before_gt::<T>(sep, f);
         let hi = self.span.hi;
         self.expect_gt();
@@ -280,7 +281,7 @@ pub impl Parser {
             match sep.sep {
               Some(ref t) => {
                 if first { first = false; }
-                else { self.expect(*t); }
+                else { self.expect(t); }
               }
               _ => ()
             }
@@ -297,7 +298,7 @@ pub impl Parser {
                                    +ket: token::Token,
                                     sep: SeqSep,
                                     f: fn(Parser) -> T) -> ~[T] {
-        self.expect(bra);
+        self.expect(&bra);
         let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
         self.bump();
         return result;
@@ -308,7 +309,7 @@ pub impl Parser {
     fn parse_seq<T:Copy>(bra: token::Token, ket: token::Token, sep: SeqSep,
                           f: fn(Parser) -> T) -> spanned<~[T]> {
         let lo = self.span.lo;
-        self.expect(bra);
+        self.expect(&bra);
         let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
         let hi = self.span.hi;
         self.bump();

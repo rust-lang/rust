@@ -419,7 +419,7 @@ pub impl Parser {
         */
         if self.eat(&token::LT) {
             let _lifetimes = self.parse_lifetimes();
-            self.expect(token::GT);
+            self.expect(&token::GT);
         }
         let inputs = self.parse_unspanned_seq(
             token::LPAREN, token::RPAREN,
@@ -512,7 +512,7 @@ pub impl Parser {
         let lo = self.span.lo;
         let mutbl = self.parse_mutability();
         let id = self.parse_ident();
-        self.expect(token::COLON);
+        self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         spanned(
             lo,
@@ -565,7 +565,7 @@ pub impl Parser {
 
     // Parses something like "&x"
     fn parse_region() -> @region {
-        self.expect(token::BINOP(token::AND));
+        self.expect(&token::BINOP(token::AND));
 
         match *self.token {
           token::IDENT(sid, _) => {
@@ -605,7 +605,7 @@ pub impl Parser {
                 }
                 let t = if ts.len() == 1 && !one_tuple { ts[0].node }
                 else { ty_tup(ts) };
-                self.expect(token::RPAREN);
+                self.expect(&token::RPAREN);
                 t
             }
         } else if *self.token == token::AT {
@@ -627,7 +627,7 @@ pub impl Parser {
             }
             ty_rec(elems)
         } else if *self.token == token::LBRACKET {
-            self.expect(token::LBRACKET);
+            self.expect(&token::LBRACKET);
             let mt = self.parse_mt();
 
             // Parse the `* 3` in `[ int * 3 ]`
@@ -635,7 +635,7 @@ pub impl Parser {
                 None => ty_vec(mt),
                 Some(suffix) => ty_fixed_length_vec(mt, suffix)
             };
-            self.expect(token::RBRACKET);
+            self.expect(&token::RBRACKET);
             t
         } else if *self.token == token::BINOP(token::AND) {
             self.bump();
@@ -778,7 +778,7 @@ pub impl Parser {
             m = self.parse_arg_mode();
             is_mutbl = self.eat_keyword(&~"mut");
             let pat = self.parse_pat(false);
-            self.expect(token::COLON);
+            self.expect(&token::COLON);
             pat
         } else {
             m = infer(self.get_id());
@@ -853,7 +853,7 @@ pub impl Parser {
           token::LIT_FLOAT_UNSUFFIXED(s) =>
             lit_float_unsuffixed(self.id_to_str(s)),
           token::LIT_STR(s) => lit_str(self.id_to_str(s)),
-          token::LPAREN => { self.expect(token::RPAREN); lit_nil },
+          token::LPAREN => { self.expect(&token::RPAREN); lit_nil },
           _ => { self.unexpected_last(tok); }
         }
     }
@@ -893,7 +893,7 @@ pub impl Parser {
 
             if is_not_last {
                 ids.push(parse_ident(self));
-                self.expect(token::MOD_SEP);
+                self.expect(&token::MOD_SEP);
             } else {
                 ids.push(parse_last_ident(self));
                 break;
@@ -931,7 +931,8 @@ pub impl Parser {
             // ought to and have to sort it out later.
             if *self.token == token::BINOP(token::SLASH)
                 && self.look_ahead(1u) == token::BINOP(token::AND) {
-                self.expect(token::BINOP(token::SLASH));
+
+                self.expect(&token::BINOP(token::SLASH));
                 Some(self.parse_region())
             } else {
                 None
@@ -1041,7 +1042,7 @@ pub impl Parser {
         let lo = self.span.lo;
         let m = self.parse_mutability();
         let i = self.parse_ident();
-        self.expect(sep);
+        self.expect(&sep);
         let e = self.parse_expr();
         spanned(lo, e.span.hi, ast::field_ { mutbl: m, ident: i, expr: e })
     }
@@ -1108,7 +1109,7 @@ pub impl Parser {
                 }
             }
             hi = self.span.hi;
-            self.expect(token::RPAREN);
+            self.expect(&token::RPAREN);
 
             return if es.len() == 1 && !one_tuple {
                 self.mk_expr(lo, self.span.hi, expr_paren(es[0]))
@@ -1169,7 +1170,7 @@ pub impl Parser {
                     self.bump();
                     self.bump();
                     let count = self.parse_expr();
-                    self.expect(token::RBRACKET);
+                    self.expect(&token::RBRACKET);
                     ex = expr_repeat(first_expr, count, mutbl);
                 } else if *self.token == token::COMMA {
                     // Vector with two or more elements.
@@ -1181,19 +1182,19 @@ pub impl Parser {
                     ex = expr_vec(~[first_expr] + remaining_exprs, mutbl);
                 } else {
                     // Vector with one element.
-                    self.expect(token::RBRACKET);
+                    self.expect(&token::RBRACKET);
                     ex = expr_vec(~[first_expr], mutbl);
                 }
             }
             hi = self.span.hi;
         } else if self.eat_keyword(&~"log") {
-            self.expect(token::LPAREN);
+            self.expect(&token::LPAREN);
             let lvl = self.parse_expr();
-            self.expect(token::COMMA);
+            self.expect(&token::COMMA);
             let e = self.parse_expr();
             ex = expr_log(ast::log_other, lvl, e);
             hi = self.span.hi;
-            self.expect(token::RPAREN);
+            self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"assert") {
             let e = self.parse_expr();
             ex = expr_assert(e);
@@ -1249,7 +1250,7 @@ pub impl Parser {
                             break;
                         }
 
-                        self.expect(token::COMMA);
+                        self.expect(&token::COMMA);
 
                         if self.eat(&token::DOTDOT) {
                             base = Some(self.parse_expr());
@@ -1264,7 +1265,7 @@ pub impl Parser {
                     }
 
                     hi = pth.span.hi;
-                    self.expect(token::RBRACE);
+                    self.expect(&token::RBRACE);
                     ex = expr_struct(pth, fields, base);
                     return self.mk_expr(lo, hi, ex);
                 }
@@ -1282,7 +1283,7 @@ pub impl Parser {
     }
 
     fn parse_block_expr(lo: BytePos, blk_mode: blk_check_mode) -> @expr {
-        self.expect(token::LBRACE);
+        self.expect(&token::LBRACE);
         let blk = self.parse_block_tail(lo, blk_mode);
         return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
     }
@@ -1308,7 +1309,7 @@ pub impl Parser {
                     hi = self.span.hi;
                     self.bump();
                     let tys = if self.eat(&token::MOD_SEP) {
-                        self.expect(token::LT);
+                        self.expect(&token::LT);
                         self.parse_seq_to_gt(Some(token::COMMA),
                                              |p| p.parse_ty(false))
                     } else {
@@ -1355,7 +1356,7 @@ pub impl Parser {
                 self.bump();
                 let ix = self.parse_expr();
                 hi = ix.span.hi;
-                self.expect(token::RBRACKET);
+                self.expect(&token::RBRACKET);
                 e = self.mk_expr(lo, hi, expr_index(e, ix));
               }
 
@@ -1480,7 +1481,7 @@ pub impl Parser {
         let mut ret_val = ~[];
         let mut lparens = 0u;
 
-        self.expect(bra);
+        self.expect(&bra);
 
         while *self.token != ket || lparens > 0u {
             if *self.token == token::LPAREN { lparens += 1u; }
@@ -1510,7 +1511,7 @@ pub impl Parser {
                 match_seq(ms, sep, zerok, name_idx_lo, *name_idx)
             } else {
                 let bound_to = self.parse_ident();
-                self.expect(token::COLON);
+                self.expect(&token::COLON);
                 let nt_name = self.parse_ident();
                 let m = match_nonterminal(bound_to, nt_name, *name_idx);
                 *name_idx += 1u;
@@ -1882,7 +1883,7 @@ pub impl Parser {
             let opt_ident;
             if is_labeled_loop_header {
                 opt_ident = Some(self.parse_ident());
-                self.expect(token::COLON);
+                self.expect(&token::COLON);
             } else {
                 opt_ident = None;
             }
@@ -1914,7 +1915,7 @@ pub impl Parser {
     }
 
     fn parse_record_literal() -> expr_ {
-        self.expect(token::LBRACE);
+        self.expect(&token::LBRACE);
         let mut fields = ~[self.parse_field(token::COLON)];
         let mut base = None;
         while *self.token != token::RBRACE {
@@ -1929,14 +1930,14 @@ pub impl Parser {
                 break;
             }
 
-            self.expect(token::COMMA);
+            self.expect(&token::COMMA);
             if *self.token == token::RBRACE {
                 // record ends by an optional trailing comma
                 break;
             }
             fields.push(self.parse_field(token::COLON));
         }
-        self.expect(token::RBRACE);
+        self.expect(&token::RBRACE);
         self.warn(~"REC");
         return expr_rec(fields, base);
     }
@@ -1944,13 +1945,13 @@ pub impl Parser {
     fn parse_match_expr() -> @expr {
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr();
-        self.expect(token::LBRACE);
+        self.expect(&token::LBRACE);
         let mut arms: ~[arm] = ~[];
         while *self.token != token::RBRACE {
             let pats = self.parse_pats();
             let mut guard = None;
             if self.eat_keyword(&~"if") { guard = Some(self.parse_expr()); }
-            self.expect(token::FAT_ARROW);
+            self.expect(&token::FAT_ARROW);
             let expr = self.parse_expr_res(RESTRICT_STMT_EXPR);
 
             let require_comma =
@@ -1958,7 +1959,7 @@ pub impl Parser {
                 && *self.token != token::RBRACE;
 
             if require_comma {
-                self.expect(token::COMMA);
+                self.expect(&token::COMMA);
             } else {
                 self.eat(&token::COMMA);
             }
@@ -2029,7 +2030,7 @@ pub impl Parser {
 
         while *self.token != token::RBRACKET {
             if first { first = false; }
-            else { self.expect(token::COMMA); }
+            else { self.expect(&token::COMMA); }
 
             let mut is_tail = false;
             if *self.token == token::DOTDOT {
@@ -2061,7 +2062,7 @@ pub impl Parser {
         let mut first = true;
         while *self.token != token::RBRACE {
             if first { first = false; }
-            else { self.expect(token::COMMA); }
+            else { self.expect(&token::COMMA); }
 
             if *self.token == token::UNDERSCORE {
                 self.bump();
@@ -2199,9 +2200,9 @@ pub impl Parser {
                         fields.push(self.parse_pat(refutable));
                     }
                 }
-                if fields.len() == 1 { self.expect(token::COMMA); }
+                if fields.len() == 1 { self.expect(&token::COMMA); }
                 hi = self.span.hi;
-                self.expect(token::RPAREN);
+                self.expect(&token::RPAREN);
                 pat = pat_tup(fields);
             }
           }
@@ -2209,7 +2210,7 @@ pub impl Parser {
             self.bump();
             let (elements, tail) = self.parse_pat_vec_elements(refutable);
             hi = self.span.hi;
-            self.expect(token::RBRACKET);
+            self.expect(&token::RBRACKET);
             pat = ast::pat_vec(elements, tail);
           }
           copy tok => {
@@ -2271,7 +2272,7 @@ pub impl Parser {
                                     // This is a "top constructor only" pat
                                       self.bump(); self.bump();
                                       star_pat = true;
-                                      self.expect(token::RPAREN);
+                                      self.expect(&token::RPAREN);
                                   }
                                 _ => {
                                     args = self.parse_unspanned_seq(
@@ -2379,7 +2380,7 @@ pub impl Parser {
             self.fatal(~"expected ident");
         }
         let name = self.parse_ident();
-        self.expect(token::COLON);
+        self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         @spanned(lo, self.last_span.hi, ast::struct_field_ {
             kind: named_field(name, is_mutbl, pr),
@@ -2498,7 +2499,7 @@ pub impl Parser {
         if self.eat_keyword(&~"unsafe") {
             self.obsolete(*self.span, ObsoleteUnsafeBlock);
         }
-        self.expect(token::LBRACE);
+        self.expect(&token::LBRACE);
         let (inner, next) =
             maybe_parse_inner_attrs_and_next(self, parse_attrs);
         return (inner, self.parse_block_tail_(lo, default_blk, next));
@@ -2603,7 +2604,7 @@ pub impl Parser {
                             stmts.push(stmt);
 
                             if classify::stmt_ends_with_semi(*stmt) {
-                                self.expect(token::SEMI);
+                                self.expect(&token::SEMI);
                             }
                         }
                     }
@@ -2778,7 +2779,7 @@ pub impl Parser {
             }
         }
 
-        self.expect(token::LPAREN);
+        self.expect(&token::LPAREN);
 
         // A bit of complexity and lookahead is needed here in order to to be
         // backwards compatible.
@@ -2831,7 +2832,7 @@ pub impl Parser {
                                              parse_arg_fn);
         }
 
-        self.expect(token::RPAREN);
+        self.expect(&token::RPAREN);
 
         let hi = self.span.hi;
 
@@ -3005,7 +3006,7 @@ pub impl Parser {
 
         let mut meths = ~[];
         if !self.eat(&token::SEMI) {
-            self.expect(token::LBRACE);
+            self.expect(&token::LBRACE);
             while !self.eat(&token::RBRACE) {
                 meths.push(self.parse_method());
             }
@@ -3112,7 +3113,7 @@ pub impl Parser {
                 };
                 @spanned(lo, p.span.hi, struct_field_)
             };
-            self.expect(token::SEMI);
+            self.expect(&token::SEMI);
         } else if self.eat(&token::SEMI) {
             // It's a unit-like struct.
             is_tuple_like = true;
@@ -3270,11 +3271,11 @@ pub impl Parser {
 
     fn parse_item_const() -> item_info {
         let id = self.parse_value_ident();
-        self.expect(token::COLON);
+        self.expect(&token::COLON);
         let ty = self.parse_ty(false);
-        self.expect(token::EQ);
+        self.expect(&token::EQ);
         let e = self.parse_expr();
-        self.expect(token::SEMI);
+        self.expect(&token::SEMI);
         (id, item_const(ty, e), None)
     }
 
@@ -3288,10 +3289,10 @@ pub impl Parser {
             (id, m, Some(attrs))
         } else {
             self.push_mod_path(id, outer_attrs);
-            self.expect(token::LBRACE);
+            self.expect(&token::LBRACE);
             let (inner, next) = self.parse_inner_attrs_and_next();
             let m = self.parse_mod_items(token::RBRACE, next);
-            self.expect(token::RBRACE);
+            self.expect(&token::RBRACE);
             self.pop_mod_path();
             (id, item_mod(m), Some(inner))
         };
@@ -3404,7 +3405,7 @@ pub impl Parser {
         let (ident, tps) = self.parse_fn_header();
         let decl = self.parse_fn_decl(|p| p.parse_arg());
         let mut hi = self.span.hi;
-        self.expect(token::SEMI);
+        self.expect(&token::SEMI);
         @ast::foreign_item { ident: ident,
                              attrs: attrs,
                              node: foreign_item_fn(decl, purity, tps),
@@ -3418,10 +3419,10 @@ pub impl Parser {
         let lo = self.span.lo;
         self.expect_keyword(&~"const");
         let ident = self.parse_ident();
-        self.expect(token::COLON);
+        self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         let hi = self.span.hi;
-        self.expect(token::SEMI);
+        self.expect(&token::SEMI);
         @ast::foreign_item { ident: ident,
                              attrs: attrs,
                              node: foreign_item_const(ty),
@@ -3535,7 +3536,7 @@ pub impl Parser {
 
             let (inner, next) = self.parse_inner_attrs_and_next();
             let m = self.parse_foreign_mod_items(sort, abi, next);
-            self.expect(token::RBRACE);
+            self.expect(&token::RBRACE);
 
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
                                      item_foreign_mod(m), visibility,
@@ -3552,7 +3553,7 @@ pub impl Parser {
 
         // extern mod foo;
         let metadata = self.parse_optional_meta();
-        self.expect(token::SEMI);
+        self.expect(&token::SEMI);
         iovi_view_item(@ast::view_item {
             node: view_item_extern_mod(ident, metadata, self.get_id()),
             attrs: attrs,
@@ -3571,15 +3572,15 @@ pub impl Parser {
         let (_, ident) = self.parse_type_decl();
         self.parse_region_param();
         let tps = self.parse_ty_params();
-        self.expect(token::EQ);
+        self.expect(&token::EQ);
         let ty = self.parse_ty(false);
-        self.expect(token::SEMI);
+        self.expect(&token::SEMI);
         (ident, item_ty(ty, tps), None)
     }
 
     fn parse_region_param() {
         if self.eat(&token::BINOP(token::SLASH)) {
-            self.expect(token::BINOP(token::AND));
+            self.expect(&token::BINOP(token::AND));
         }
     }
 
@@ -3641,7 +3642,7 @@ pub impl Parser {
                 if common_fields.is_some() {
                     self.fatal(~"duplicate declaration of shared fields");
                 }
-                self.expect(token::LBRACE);
+                self.expect(&token::LBRACE);
                 common_fields = Some(self.parse_struct_def());
                 loop;
             }
@@ -3653,7 +3654,7 @@ pub impl Parser {
             let mut args = ~[], disr_expr = None;
             if self.eat_keyword(&~"enum") {
                 ident = self.parse_ident();
-                self.expect(token::LBRACE);
+                self.expect(&token::LBRACE);
                 let nested_enum_def = self.parse_enum_def(ty_params);
                 kind = enum_variant_kind(nested_enum_def);
                 needs_comma = false;
@@ -3698,7 +3699,7 @@ pub impl Parser {
 
             if needs_comma && !self.eat(&token::COMMA) { break; }
         }
-        self.expect(token::RBRACE);
+        self.expect(&token::RBRACE);
         if (have_disr && !all_nullary) {
             self.fatal(~"discriminator values can only be used with a c-like \
                         enum");
@@ -3715,7 +3716,7 @@ pub impl Parser {
         if *self.token == token::EQ {
             self.bump();
             let ty = self.parse_ty(false);
-            self.expect(token::SEMI);
+            self.expect(&token::SEMI);
             let variant = spanned(ty.span.lo, ty.span.hi, ast::variant_ {
                 name: id,
                 attrs: ~[],
@@ -3737,7 +3738,7 @@ pub impl Parser {
                 None
             );
         }
-        self.expect(token::LBRACE);
+        self.expect(&token::LBRACE);
 
         let enum_definition = self.parse_enum_def(ty_params);
         (id, item_enum(enum_definition, ty_params), None)
@@ -3883,7 +3884,7 @@ pub impl Parser {
         } else if self.eat_keyword(&~"use") {
             // USE ITEM
             let view_item = self.parse_use();
-            self.expect(token::SEMI);
+            self.expect(&token::SEMI);
             return iovi_view_item(@ast::view_item {
                 node: view_item,
                 attrs: attrs,
@@ -3902,7 +3903,7 @@ pub impl Parser {
 
             // item macro.
             let pth = self.parse_path_without_tps();
-            self.expect(token::NOT);
+            self.expect(&token::NOT);
 
             // a 'special' identifier (like what `macro_rules!` uses)
             // is optional. We should eventually unify invoc syntax
@@ -4082,7 +4083,7 @@ pub impl Parser {
         } else {
             self.bug(~"expected view item");
         };
-        self.expect(token::SEMI);
+        self.expect(&token::SEMI);
         @ast::view_item { node: node,
                           attrs: attrs,
                           vis: vis,
