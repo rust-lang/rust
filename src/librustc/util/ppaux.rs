@@ -238,8 +238,7 @@ pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
       ty::vstore_fixed(n) => fmt!("%u", n),
       ty::vstore_uniq => ~"~",
       ty::vstore_box => ~"@",
-      /* FIXME(#4517) slice fmt */
-      ty::vstore_slice(r) => region_to_str(cx, r)
+      ty::vstore_slice(r) => region_to_str_adorned(cx, "&", r, "/")
     }
 }
 
@@ -248,7 +247,6 @@ pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
       ty::vstore_fixed(_) => {
         fmt!("[%s * %s]", ty, vstore_to_str(cx, vs))
       }
-      /* FIXME(#4517) slice fmt */
       ty::vstore_slice(_) => {
         fmt!("%s/%s", vstore_to_str(cx, vs), ty)
       }
