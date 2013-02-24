@@ -1267,14 +1267,14 @@ pub fn compile_submatch(bcx: block,
     }
 
     bcx = root_pats_as_necessary(bcx, m, col, val);
-
     let rec_fields = collect_record_or_struct_fields(bcx, m, col);
     if rec_fields.len() > 0 {
         let pat_ty = node_id_type(bcx, pat_id);
-        do expr::with_field_tys(tcx, pat_ty, None) |_has_dtor, field_tys| {
+        let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
+        do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
             let rec_vals = rec_fields.map(|field_name| {
                 let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
-                GEPi(bcx, val, struct_field(ix))
+                adt::trans_GEP(bcx, &pat_repr, val, discr, ix)
             });
             compile_submatch(
                 bcx,
@@ -1287,11 +1287,14 @@ pub fn compile_submatch(bcx: block,
 
     if any_tup_pat(m, col) {
         let tup_ty = node_id_type(bcx, pat_id);
+        let tup_repr = adt::represent_type(bcx.ccx(), tup_ty);
         let n_tup_elts = match /*bad*/copy ty::get(tup_ty).sty {
           ty::ty_tup(elts) => elts.len(),
           _ => ccx.sess.bug(~"non-tuple type in tuple pattern")
         };
-        let tup_vals = vec::from_fn(n_tup_elts, |i| GEPi(bcx, val, [0u, i]));
+        let tup_vals = do vec::from_fn(n_tup_elts) |i| {
+            adt::trans_GEP(bcx, &tup_repr, val, 0, i)
+        };
         compile_submatch(bcx, enter_tup(bcx, dm, m, col, val, n_tup_elts),
                          vec::append(tup_vals, vals_left), chk);
         return;
@@ -1310,8 +1313,10 @@ pub fn compile_submatch(bcx: block,
             }
         }
 
-        let llstructvals = vec::from_fn(
-            struct_element_count, |i| GEPi(bcx, val, struct_field(i)));
+        let struct_repr = adt::represent_type(bcx.ccx(), struct_ty);
+        let llstructvals = do vec::from_fn(struct_element_count) |i| {
+            adt::trans_GEP(bcx, &struct_repr, val, 0, i)
+        };
         compile_submatch(bcx,
                          enter_tuple_struct(bcx, dm, m, col, val,
                                             struct_element_count),
@@ -1745,9 +1750,11 @@ pub fn bind_irrefutable_pat(bcx: block,
                             // This is a unit-like struct. Nothing to do here.
                         }
                         Some(elems) => {
-                            // This is the tuple variant case.
+                            // This is the tuple struct case.
+                            let repr = adt::represent_node(bcx, pat.id);
                             for vec::eachi(elems) |i, elem| {
-                                let fldptr = GEPi(bcx, val, struct_field(i));
+                                let fldptr = adt::trans_GEP(bcx, &repr,
+                                                            val, 0, i);
                                 bcx = bind_irrefutable_pat(bcx,
                                                            *elem,
                                                            fldptr,
@@ -1765,10 +1772,12 @@ pub fn bind_irrefutable_pat(bcx: block,
         ast::pat_rec(fields, _) | ast::pat_struct(_, fields, _) => {
             let tcx = bcx.tcx();
             let pat_ty = node_id_type(bcx, pat.id);
-            do expr::with_field_tys(tcx, pat_ty, None) |_hd, field_tys| {
+            let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
+            do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
                 for vec::each(fields) |f| {
                     let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
-                    let fldptr = GEPi(bcx, val, struct_field(ix));
+                    let fldptr = adt::trans_GEP(bcx, &pat_repr, val,
+                                                discr, ix);
                     bcx = bind_irrefutable_pat(bcx,
                                                f.pat,
                                                fldptr,
@@ -1778,8 +1787,9 @@ pub fn bind_irrefutable_pat(bcx: block,
             }
         }
         ast::pat_tup(elems) => {
+            let repr = adt::represent_node(bcx, pat.id);
             for vec::eachi(elems) |i, elem| {
-                let fldptr = GEPi(bcx, val, [0u, i]);
+                let fldptr = adt::trans_GEP(bcx, &repr, val, 0, i);
                 bcx = bind_irrefutable_pat(bcx,
                                            *elem,
                                            fldptr,
