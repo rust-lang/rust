@@ -604,7 +604,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         }
         ast::expr_tup(ref args) => {
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
-            return trans_adt(bcx, &repr, 0, *args, dest);
+            return trans_adt(bcx, &repr, 0, args.mapi(|i, arg| (i, *arg)),
+                             None, dest);
         }
         ast::expr_lit(@codemap::spanned {node: ast::lit_str(s), _}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
@@ -885,7 +886,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let _icx = bcx.insn_ctxt("trans_rec_field");
 
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-        do with_field_tys(bcx.tcx(), base_datum.ty, None) |_dtor, field_tys| {
+        do with_field_tys(bcx.tcx(), base_datum.ty, None) |_disr, field_tys| {
             let ix = ty::field_idx_strict(bcx.tcx(), field, field_tys);
             DatumBlock {
                 datum: base_datum.GEPi(bcx,
@@ -1098,15 +1099,14 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
 pub fn with_field_tys<R>(tcx: ty::ctxt,
                          ty: ty::t,
                          node_id_opt: Option<ast::node_id>,
-                         op: fn(bool, (&[ty::field])) -> R) -> R {
+                         op: fn(int, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
         ty::ty_rec(ref fields) => {
-            op(false, *fields)
+            op(0, *fields)
         }
 
         ty::ty_struct(did, ref substs) => {
-            let has_dtor = ty::ty_dtor(tcx, did).is_present();
-            op(has_dtor, struct_mutable_fields(tcx, did, substs))
+            op(0, struct_mutable_fields(tcx, did, substs))
         }
 
         ty::ty_enum(_, ref substs) => {
@@ -1120,8 +1120,10 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                 }
                 Some(node_id) => {
                     match tcx.def_map.get(&node_id) {
-                        ast::def_variant(_, variant_id) => {
-                            op(false, struct_mutable_fields(
+                        ast::def_variant(enum_id, variant_id) => {
+                            let variant_info = ty::enum_variant_with_id(
+                                tcx, enum_id, variant_id);
+                            op(variant_info.disr_val, struct_mutable_fields(
                                 tcx, variant_id, substs))
                         }
                         _ => {
@@ -1150,134 +1152,99 @@ fn trans_rec_or_struct(bcx: block,
     let _icx = bcx.insn_ctxt("trans_rec");
     let mut bcx = bcx;
 
-    // Handle the case where the result is ignored.
-    let addr;
-    match dest {
-        SaveIn(p) => {
-            addr = p;
-        }
-        Ignore => {
-            // just evaluate the values for each field and drop them
-            // on the floor
-            for vec::each(fields) |fld| {
-                bcx = trans_into(bcx, fld.node.expr, Ignore);
-            }
-            return bcx;
-        }
-    }
-
-    // If this is a struct-like variant, write in the discriminant if
-    // necessary, position the address at the right location, and cast the
-    // address.
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
-    let addr = match ty::get(ty).sty {
-        ty::ty_enum(_, ref substs) => {
-            match tcx.def_map.get(&id) {
-                ast::def_variant(enum_id, variant_id) => {
-                    let variant_info = ty::enum_variant_with_id(
-                        tcx, enum_id, variant_id);
-                    let addr = if ty::enum_is_univariant(tcx, enum_id) {
-                        addr
-                    } else {
-                        Store(bcx,
-                              C_int(bcx.ccx(), variant_info.disr_val),
-                              GEPi(bcx, addr, [0, 0]));
-                        GEPi(bcx, addr, [0, 1])
-                    };
-                    let fields = ty::struct_mutable_fields(
-                        tcx, variant_id, substs);
-                    let field_lltys = do fields.map |field| {
-                        type_of::type_of(bcx.ccx(),
-                                ty::subst_tps(
-                                    tcx, substs.tps, None, field.mt.ty))
-                    };
-                    PointerCast(bcx, addr,
-                                T_ptr(T_struct(~[T_struct(field_lltys)])))
+    do with_field_tys(tcx, ty, Some(id)) |discr, field_tys| {
+        let mut need_base = vec::from_elem(field_tys.len(), true);
+
+        let numbered_fields = do fields.map |field| {
+            match do vec::position(field_tys) |field_ty| {
+                field_ty.ident == field.node.ident
+            } {
+                Some(i) => {
+                    need_base[i] = false;
+                    (i, field.node.expr)
                 }
-                _ => {
-                    tcx.sess.bug(~"resolve didn't write the right def in for \
-                                   this struct-like variant")
+                None => {
+                    tcx.sess.span_bug(field.span,
+                                      ~"Couldn't find field in struct type")
                 }
             }
-        }
-        _ => addr
-    };
-
-    do with_field_tys(tcx, ty, Some(id)) |has_dtor, field_tys| {
-        // evaluate each of the fields and store them into their
-        // correct locations
-        let mut temp_cleanups = ~[];
-        for fields.each |field| {
-            let ix = ty::field_idx_strict(tcx, field.node.ident, field_tys);
-            let dest = GEPi(bcx, addr, struct_field(ix));
-            bcx = trans_into(bcx, field.node.expr, SaveIn(dest));
-            add_clean_temp_mem(bcx, dest, field_tys[ix].mt.ty);
-            temp_cleanups.push(dest);
-        }
-
-        // copy over any remaining fields from the base (for
-        // functional record update)
-        for base.each |base_expr| {
-            let base_datum = unpack_datum!(
-                bcx, trans_to_datum(bcx, *base_expr));
-
-            // Copy/move over inherited fields
-            for field_tys.eachi |i, field_ty| {
-                if !fields.any(|f| f.node.ident == field_ty.ident) {
-                    let dest = GEPi(bcx, addr, struct_field(i));
-                    let base_field =
-                        base_datum.GEPi(bcx,
-                                        struct_field(i),
-                                        field_ty.mt.ty,
-                                        ZeroMem);
-                    bcx = base_field.store_to(bcx, base_expr.id, INIT, dest);
+        };
+        let optbase = match base {
+            Some(base_expr) => {
+                let mut leftovers = ~[];
+                for need_base.eachi |i, b| {
+                    if *b {
+                        leftovers.push((i, field_tys[i].mt.ty))
+                    }
                 }
+                Some(StructBaseInfo {expr: base_expr,
+                                     fields: leftovers })
             }
-        }
+            None => {
+                if need_base.any(|b| *b) {
+                    // XXX should be span bug
+                    tcx.sess.bug(~"missing fields and no base expr")
+                }
+                None
+            }
+        };
 
-        // Add the drop flag if necessary.
-        if has_dtor {
-            let dest = GEPi(bcx, addr, struct_dtor());
-            Store(bcx, C_u8(1), dest);
-        }
-
-        // Now revoke the cleanups as we pass responsibility for the data
-        // structure on to the caller
-        for temp_cleanups.each |cleanup| {
-            revoke_clean(bcx, *cleanup);
-        }
-        bcx
+        let repr = adt::represent_type(bcx.ccx(), ty);
+        trans_adt(bcx, &repr, discr, numbered_fields, optbase, dest)
     }
 }
 
-fn trans_adt(bcx: block, repr: &adt::Repr, discr: int, elts: &[@ast::expr],
+struct StructBaseInfo {
+    expr: @ast::expr,
+    fields: ~[(uint, ty::t)]
+}
+
+fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
+             fields: &[(uint, @ast::expr)],
+             optbase: Option<StructBaseInfo>,
              dest: Dest) -> block {
-    let _icx = bcx.insn_ctxt("trans_tup");
+    let _icx = bcx.insn_ctxt("trans_adt");
     let mut bcx = bcx;
     let addr = match dest {
         Ignore => {
-            for vec::each(elts) |ex| {
-                bcx = trans_into(bcx, *ex, Ignore);
+            for fields.each |&(_i, e)| {
+                bcx = trans_into(bcx, e, Ignore);
+            }
+            for optbase.each |sbi| {
+                bcx = trans_into(bcx, sbi.expr, Ignore);
             }
             return bcx;
         }
-        SaveIn(pos) => pos,
+        SaveIn(pos) => pos
     };
     let mut temp_cleanups = ~[];
     adt::trans_set_discr(bcx, repr, addr, discr);
-    for vec::eachi(elts) |i, e| {
+    for fields.each |&(i, e)| {
         let dest = adt::trans_GEP(bcx, repr, addr, discr, i);
-        let e_ty = expr_ty(bcx, *e);
-        bcx = trans_into(bcx, *e, SaveIn(dest));
+        let e_ty = expr_ty(bcx, e);
+        bcx = trans_into(bcx, e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
         temp_cleanups.push(dest);
     }
+    for optbase.each |base| {
+        let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base.expr));
+        for base.fields.each |&(i, t)| {
+            let datum =
+                // XXX convert this to adt
+                base_datum.GEPi(bcx, struct_field(i), t, ZeroMem);
+            let dest = adt::trans_GEP(bcx, repr, addr, discr, i);
+            bcx = datum.store_to(bcx, base.expr.id, INIT, dest);
+        }
+    }
+
     for vec::each(temp_cleanups) |cleanup| {
         revoke_clean(bcx, *cleanup);
     }
     return bcx;
 }
+
 
 fn trans_immediate_lit(bcx: block, expr: @ast::expr,
                        lit: ast::lit) -> DatumBlock {
