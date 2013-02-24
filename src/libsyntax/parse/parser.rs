@@ -1228,7 +1228,7 @@ pub impl Parser {
                   _ => self.fatal(~"expected open delimiter")
                 };
 
-                let ket = token::flip_delimiter(*self.token);
+                let ket = token::flip_delimiter(&*self.token);
                 let tts = self.parse_unspanned_seq(*self.token,
                                                    ket,
                                                    seq_sep_none(),
@@ -1433,7 +1433,7 @@ pub impl Parser {
           }
           token::LPAREN | token::LBRACE | token::LBRACKET => {
               // tjc: ??????
-            let ket = token::flip_delimiter(*self.token);
+            let ket = token::flip_delimiter(&*self.token);
             tt_delim(vec::append(
                 // the open delimiter:
                 ~[parse_any_tt_tok(self)],
@@ -1465,7 +1465,7 @@ pub impl Parser {
           token::LBRACE | token::LPAREN | token::LBRACKET => {
             self.parse_matcher_subseq(name_idx, *self.token,
                                       // tjc: not sure why we need a copy
-                                      token::flip_delimiter(*self.token))
+                                      token::flip_delimiter(&*self.token))
           }
           _ => self.fatal(~"expected open delimiter")
         }
@@ -3915,7 +3915,7 @@ pub impl Parser {
             // eat a matched-delimiter token tree:
             let tts = match *self.token {
               token::LPAREN | token::LBRACE => {
-                let ket = token::flip_delimiter(*self.token);
+                let ket = token::flip_delimiter(&*self.token);
                 self.parse_unspanned_seq(*self.token, ket,
                                          seq_sep_none(),
                                          |p| p.parse_token_tree())

@@ -257,8 +257,8 @@ pub pure fn can_begin_expr(t: Token) -> bool {
 }
 
 /// what's the opposite delimiter?
-pub fn flip_delimiter(t: token::Token) -> token::Token {
-    match t {
+pub fn flip_delimiter(t: &token::Token) -> token::Token {
+    match *t {
       token::LPAREN => token::RPAREN,
       token::LBRACE => token::RBRACE,
       token::LBRACKET => token::RBRACKET,
