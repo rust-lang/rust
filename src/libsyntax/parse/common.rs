@@ -110,25 +110,25 @@ pub impl Parser {
     // Storing keywords as interned idents instead of strings would be nifty.
 
     // A sanity check that the word we are asking for is a known keyword
-    fn require_keyword(word: ~str) {
-        if !self.keywords.contains_key(&word) {
-            self.bug(fmt!("unknown keyword: %s", word));
+    fn require_keyword(word: &~str) {
+        if !self.keywords.contains_key(word) {
+            self.bug(fmt!("unknown keyword: %s", *word));
         }
     }
 
-    fn token_is_word(word: ~str, ++tok: token::Token) -> bool {
+    fn token_is_word(word: &~str, tok: token::Token) -> bool {
         match tok {
-          token::IDENT(sid, false) => { *self.id_to_str(sid) == word }
+          token::IDENT(sid, false) => { *self.id_to_str(sid) == *word }
           _ => { false }
         }
     }
 
-    fn token_is_keyword(word: ~str, ++tok: token::Token) -> bool {
+    fn token_is_keyword(word: &~str, ++tok: token::Token) -> bool {
         self.require_keyword(word);
         self.token_is_word(word, tok)
     }
 
-    fn is_keyword(word: ~str) -> bool {
+    fn is_keyword(word: &~str) -> bool {
         self.token_is_keyword(word, *self.token)
     }
 
@@ -141,62 +141,62 @@ pub impl Parser {
         }
     }
 
-    fn eat_keyword(word: ~str) -> bool {
+    fn eat_keyword(word: &~str) -> bool {
         self.require_keyword(word);
         let is_kw = match *self.token {
-          token::IDENT(sid, false) => (word == *self.id_to_str(sid)),
+          token::IDENT(sid, false) => *word == *self.id_to_str(sid),
           _ => false
         };
         if is_kw { self.bump() }
         is_kw
     }
 
-    fn expect_keyword(word: ~str) {
+    fn expect_keyword(word: &~str) {
         self.require_keyword(word);
         if !self.eat_keyword(word) {
-            self.fatal(~"expected `" + word + ~"`, found `" +
+            self.fatal(~"expected `" + *word + ~"`, found `" +
                        token_to_str(self.reader, *self.token) +
                        ~"`");
         }
     }
 
-    fn is_strict_keyword(word: ~str) -> bool {
-        self.strict_keywords.contains_key(&word)
+    fn is_strict_keyword(word: &~str) -> bool {
+        self.strict_keywords.contains_key(word)
     }
 
     fn check_strict_keywords() {
         match *self.token {
           token::IDENT(_, false) => {
             let w = token_to_str(self.reader, *self.token);
-            self.check_strict_keywords_(w);
+            self.check_strict_keywords_(&w);
           }
           _ => ()
         }
     }
 
-    fn check_strict_keywords_(w: ~str) {
+    fn check_strict_keywords_(w: &~str) {
         if self.is_strict_keyword(w) {
-            self.fatal(~"found `" + w + ~"` in ident position");
+            self.fatal(~"found `" + *w + ~"` in ident position");
         }
     }
 
-    fn is_reserved_keyword(word: ~str) -> bool {
-        self.reserved_keywords.contains_key(&word)
+    fn is_reserved_keyword(word: &~str) -> bool {
+        self.reserved_keywords.contains_key(word)
     }
 
     fn check_reserved_keywords() {
         match *self.token {
           token::IDENT(_, false) => {
             let w = token_to_str(self.reader, *self.token);
-            self.check_reserved_keywords_(w);
+            self.check_reserved_keywords_(&w);
           }
           _ => ()
         }
     }
 
-    fn check_reserved_keywords_(w: ~str) {
+    fn check_reserved_keywords_(w: &~str) {
         if self.is_reserved_keyword(w) {
-            self.fatal(~"`" + w + ~"` is a reserved keyword");
+            self.fatal(~"`" + *w + ~"` is a reserved keyword");
         }
     }
 
