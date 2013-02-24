@@ -10,6 +10,6 @@
 
 fn main() {
     match None {
-            Err(_) => () //~ ERROR expected `core::result
+        Err(_) => () //~ ERROR mismatched types: expected `core::option::Option<<V1>>` but found `core::result::Result<<V2>,<V3>>`
     }
 }
