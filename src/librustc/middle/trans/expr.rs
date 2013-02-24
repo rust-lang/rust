@@ -722,14 +722,12 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
                 let fn_data = callee::trans_fn_ref(bcx, vid, ref_expr.id);
                 Store(bcx, fn_data.llfn, lldest);
                 return bcx;
-            } else if !ty::enum_is_univariant(ccx.tcx, tid) {
-                // Nullary variant.
-                let lldiscrimptr = GEPi(bcx, lldest, [0u, 0u]);
-                let lldiscrim = C_int(bcx.ccx(), variant_info.disr_val);
-                Store(bcx, lldiscrim, lldiscrimptr);
-                return bcx;
             } else {
-                // Nullary univariant.
+                // Nullary variant.
+                let ty = expr_ty(bcx, ref_expr);
+                let repr = adt::represent_type(ccx, ty);
+                adt::trans_set_discr(bcx, &repr, lldest,
+                                     variant_info.disr_val);
                 return bcx;
             }
         }
