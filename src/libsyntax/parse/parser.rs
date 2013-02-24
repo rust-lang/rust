@@ -422,16 +422,21 @@ pub impl Parser {
             self.expect(&token::GT);
         }
         let inputs = self.parse_unspanned_seq(
-            token::LPAREN, token::RPAREN,
+            token::LPAREN,
+            token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA),
-            |p| p.parse_arg_general(false));
+            |p| p.parse_arg_general(false)
+        );
         let (ret_style, ret_ty) = self.parse_ret_ty();
         ast::fn_decl { inputs: inputs, output: ret_ty, cf: ret_style }
     }
 
     fn parse_trait_methods() -> ~[trait_method] {
-        do self.parse_unspanned_seq(token::LBRACE, token::RBRACE,
-                                    seq_sep_none()) |p| {
+        do self.parse_unspanned_seq(
+            token::LBRACE,
+            token::RBRACE,
+            seq_sep_none()
+        ) |p| {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
             let is_static = p.parse_staticness();
@@ -619,9 +624,11 @@ pub impl Parser {
             ty_ptr(self.parse_mt())
         } else if *self.token == token::LBRACE {
             let elems = self.parse_unspanned_seq(
-                token::LBRACE, token::RBRACE,
+                token::LBRACE,
+                token::RBRACE,
                 seq_sep_trailing_allowed(token::COMMA),
-                |p| p.parse_ty_field());
+                |p| p.parse_ty_field()
+            );
             if vec::len(elems) == 0u {
                 self.unexpected_last(token::RBRACE);
             }
@@ -1175,10 +1182,11 @@ pub impl Parser {
                 } else if *self.token == token::COMMA {
                     // Vector with two or more elements.
                     self.bump();
-                    let remaining_exprs =
-                        self.parse_seq_to_end(token::RBRACKET,
-                            seq_sep_trailing_allowed(token::COMMA),
-                            |p| p.parse_expr());
+                    let remaining_exprs = self.parse_seq_to_end(
+                        token::RBRACKET,
+                        seq_sep_trailing_allowed(token::COMMA),
+                        |p| p.parse_expr()
+                    );
                     ex = expr_vec(~[first_expr] + remaining_exprs, mutbl);
                 } else {
                     // Vector with one element.
@@ -1230,10 +1238,12 @@ pub impl Parser {
                 };
 
                 let ket = token::flip_delimiter(&*self.token);
-                let tts = self.parse_unspanned_seq(*self.token,
-                                                   ket,
-                                                   seq_sep_none(),
-                                                   |p| p.parse_token_tree());
+                let tts = self.parse_unspanned_seq(
+                    *self.token,
+                    ket,
+                    seq_sep_none(),
+                    |p| p.parse_token_tree()
+                );
                 let hi = self.span.hi;
 
                 return self.mk_mac_expr(lo, hi, mac_invoc_tt(pth, tts));
@@ -1310,8 +1320,10 @@ pub impl Parser {
                     self.bump();
                     let tys = if self.eat(&token::MOD_SEP) {
                         self.expect(&token::LT);
-                        self.parse_seq_to_gt(Some(token::COMMA),
-                                             |p| p.parse_ty(false))
+                        self.parse_seq_to_gt(
+                            Some(token::COMMA),
+                            |p| p.parse_ty(false)
+                        )
                     } else {
                         ~[]
                     };
@@ -1320,9 +1332,11 @@ pub impl Parser {
                     match *self.token {
                         token::LPAREN if self.permits_call() => {
                             let es = self.parse_unspanned_seq(
-                                token::LPAREN, token::RPAREN,
+                                token::LPAREN,
+                                token::RPAREN,
                                 seq_sep_trailing_disallowed(token::COMMA),
-                                |p| p.parse_expr());
+                                |p| p.parse_expr()
+                            );
                             hi = self.span.hi;
 
                             let nd = expr_method_call(e, i, tys, es, NoSugar);
@@ -1342,9 +1356,11 @@ pub impl Parser {
               // expr(...)
               token::LPAREN if self.permits_call() => {
                 let es = self.parse_unspanned_seq(
-                    token::LPAREN, token::RPAREN,
+                    token::LPAREN,
+                    token::RPAREN,
                     seq_sep_trailing_disallowed(token::COMMA),
-                    |p| p.parse_expr());
+                    |p| p.parse_expr()
+                );
                 hi = self.span.hi;
 
                 let nd = expr_call(e, es, NoSugar);
@@ -1373,7 +1389,7 @@ pub impl Parser {
             || *self.token == token::BINOP(token::PLUS) {
             let zerok = *self.token == token::BINOP(token::STAR);
             self.bump();
-            return (None, zerok);
+            (None, zerok)
         } else {
             let sep = *self.token;
             self.bump();
@@ -1381,7 +1397,7 @@ pub impl Parser {
                 || *self.token == token::BINOP(token::PLUS) {
                 let zerok = *self.token == token::BINOP(token::STAR);
                 self.bump();
-                return (Some(sep), zerok);
+                (Some(sep), zerok)
             } else {
                 self.fatal(~"expected `*` or `+`");
             }
@@ -1397,8 +1413,12 @@ pub impl Parser {
             match *p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
               => {
-                p.fatal(~"incorrect close delimiter: `"
-                           + token_to_str(p.reader, *p.token) + ~"`");
+                p.fatal(
+                    fmt!(
+                        "incorrect close delimiter: `%s`",
+                        token_to_str(p.reader, *p.token)
+                    )
+                );
               }
               /* we ought to allow different depths of unquotation */
               token::DOLLAR if *p.quote_depth > 0u => {
@@ -1406,9 +1426,12 @@ pub impl Parser {
                 let sp = *p.span;
 
                 if *p.token == token::LPAREN {
-                    let seq = p.parse_seq(token::LPAREN, token::RPAREN,
-                                          seq_sep_none(),
-                                          |p| p.parse_token_tree());
+                    let seq = p.parse_seq(
+                        token::LPAREN,
+                        token::RPAREN,
+                        seq_sep_none(),
+                        |p| p.parse_token_tree()
+                    );
                     let (s, z) = p.parse_sep_and_zerok();
                     tt_seq(mk_sp(sp.lo ,p.span.hi), seq.node, s, z)
                 } else {
@@ -1429,23 +1452,29 @@ pub impl Parser {
         }
 
         match *self.token {
-          token::EOF => {
+            token::EOF => {
                 self.fatal(~"file ended in the middle of a macro invocation");
-          }
-          token::LPAREN | token::LBRACE | token::LBRACKET => {
-              // tjc: ??????
-            let ket = token::flip_delimiter(&*self.token);
-            tt_delim(vec::append(
-                // the open delimiter:
-                ~[parse_any_tt_tok(self)],
-                vec::append(
-                    self.parse_seq_to_before_end(
-                        ket, seq_sep_none(),
-                        |p| p.parse_token_tree()),
-                    // the close delimiter:
-                    ~[parse_any_tt_tok(self)])))
-          }
-          _ => parse_non_delim_tt_tok(self)
+            }
+            token::LPAREN | token::LBRACE | token::LBRACKET => {
+                // tjc: ??????
+                let ket = token::flip_delimiter(&*self.token);
+                tt_delim(
+                    vec::append(
+                        // the open delimiter:
+                        ~[parse_any_tt_tok(self)],
+                        vec::append(
+                            self.parse_seq_to_before_end(
+                                ket,
+                                seq_sep_none(),
+                                |p| p.parse_token_tree()
+                            ),
+                            // the close delimiter:
+                            ~[parse_any_tt_tok(self)]
+                        )
+                    )
+                )
+            }
+            _ => parse_non_delim_tt_tok(self)
         }
     }
 
@@ -1462,13 +1491,16 @@ pub impl Parser {
         // the interpolation of matchers
         maybe_whole!(self, nt_matchers);
         let name_idx = @mut 0u;
-        return match *self.token {
-          token::LBRACE | token::LPAREN | token::LBRACKET => {
-            self.parse_matcher_subseq(name_idx, *self.token,
-                                      // tjc: not sure why we need a copy
-                                      token::flip_delimiter(&*self.token))
-          }
-          _ => self.fatal(~"expected open delimiter")
+        match *self.token {
+            token::LBRACE | token::LPAREN | token::LBRACKET => {
+                self.parse_matcher_subseq(
+                    name_idx,
+                    *self.token,
+                    // tjc: not sure why we need a copy
+                    token::flip_delimiter(&*self.token)
+                )
+            }
+            _ => self.fatal(~"expected open delimiter")
         }
     }
 
@@ -1476,8 +1508,11 @@ pub impl Parser {
     // This goofy function is necessary to correctly match parens in matchers.
     // Otherwise, `$( ( )` would be a valid matcher, and `$( () )` would be
     // invalid. It's similar to common::parse_seq.
-    fn parse_matcher_subseq(name_idx: @mut uint, bra: token::Token,
-                            ket: token::Token) -> ~[matcher] {
+    fn parse_matcher_subseq(
+        name_idx: @mut uint,
+        bra: token::Token,
+        ket: token::Token
+    ) -> ~[matcher] {
         let mut ret_val = ~[];
         let mut lparens = 0u;
 
@@ -1501,9 +1536,11 @@ pub impl Parser {
             self.bump();
             if *self.token == token::LPAREN {
                 let name_idx_lo = *name_idx;
-                let ms = self.parse_matcher_subseq(name_idx,
-                                                   token::LPAREN,
-                                                   token::RPAREN);
+                let ms = self.parse_matcher_subseq(
+                    name_idx,
+                    token::LPAREN,
+                    token::RPAREN
+                );
                 if ms.len() == 0u {
                     self.fatal(~"repetition body must be nonempty");
                 }
@@ -2276,10 +2313,13 @@ pub impl Parser {
                                   }
                                 _ => {
                                     args = self.parse_unspanned_seq(
-                                        token::LPAREN, token::RPAREN,
-                                        seq_sep_trailing_disallowed
-                                            (token::COMMA),
-                                        |p| p.parse_pat(refutable));
+                                        token::LPAREN,
+                                        token::RPAREN,
+                                        seq_sep_trailing_disallowed(
+                                            token::COMMA
+                                        ),
+                                        |p| p.parse_pat(refutable)
+                                    );
                                   }
                               },
                               _ => ()
@@ -2423,8 +2463,11 @@ pub impl Parser {
             };
 
             let tts = self.parse_unspanned_seq(
-                token::LPAREN, token::RPAREN, seq_sep_none(),
-                |p| p.parse_token_tree());
+                token::LPAREN,
+                token::RPAREN,
+                seq_sep_none(),
+                |p| p.parse_token_tree()
+            );
             let hi = self.span.hi;
 
             if id == token::special_idents::invalid {
@@ -2720,7 +2763,8 @@ pub impl Parser {
             let _lifetimes = self.parse_lifetimes();
             self.parse_seq_to_gt(
                 Some(token::COMMA),
-                |p| p.parse_ty_param())
+                |p| p.parse_ty_param()
+            )
         } else { ~[] }
     }
 
@@ -2729,8 +2773,11 @@ pub impl Parser {
     {
         let args_or_capture_items: ~[arg_or_capture_item] =
             self.parse_unspanned_seq(
-                token::LPAREN, token::RPAREN,
-                seq_sep_trailing_disallowed(token::COMMA), parse_arg_fn);
+                token::LPAREN,
+                token::RPAREN,
+                seq_sep_trailing_disallowed(token::COMMA),
+                parse_arg_fn
+            );
 
         let inputs = either::lefts(args_or_capture_items);
 
@@ -2810,10 +2857,11 @@ pub impl Parser {
                 token::COMMA => {
                     self.bump();
                     let sep = seq_sep_trailing_disallowed(token::COMMA);
-                    args_or_capture_items =
-                        self.parse_seq_to_before_end(token::RPAREN,
-                                                     sep,
-                                                     parse_arg_fn);
+                    args_or_capture_items = self.parse_seq_to_before_end(
+                        token::RPAREN,
+                        sep,
+                        parse_arg_fn
+                    );
                 }
                 token::RPAREN => {
                     args_or_capture_items = ~[];
@@ -2826,10 +2874,11 @@ pub impl Parser {
             }
         } else {
             let sep = seq_sep_trailing_disallowed(token::COMMA);
-            args_or_capture_items =
-                self.parse_seq_to_before_end(token::RPAREN,
-                                             sep,
-                                             parse_arg_fn);
+            args_or_capture_items = self.parse_seq_to_before_end(
+                token::RPAREN,
+                sep,
+                parse_arg_fn
+            );
         }
 
         self.expect(&token::RPAREN);
@@ -2854,9 +2903,11 @@ pub impl Parser {
                 ~[]
             } else {
                 self.parse_unspanned_seq(
-                    token::BINOP(token::OR), token::BINOP(token::OR),
+                    token::BINOP(token::OR),
+                    token::BINOP(token::OR),
                     seq_sep_trailing_disallowed(token::COMMA),
-                    |p| p.parse_fn_block_arg())
+                    |p| p.parse_fn_block_arg()
+                )
             }
         };
         let output = if self.eat(&token::RARROW) {
@@ -3054,8 +3105,10 @@ pub impl Parser {
 
     fn parse_trait_ref_list(ket: token::Token) -> ~[@trait_ref] {
         self.parse_seq_to_before_end(
-            ket, seq_sep_none(),
-            |p| p.parse_trait_ref())
+            ket,
+            seq_sep_none(),
+            |p| p.parse_trait_ref()
+        )
     }
 
     fn parse_item_struct() -> item_info {
@@ -3102,9 +3155,11 @@ pub impl Parser {
         } else if *self.token == token::LPAREN {
             // It's a tuple-like struct.
             is_tuple_like = true;
-            fields = do self.parse_unspanned_seq(token::LPAREN, token::RPAREN,
-                                                 seq_sep_trailing_allowed
-                                                    (token::COMMA)) |p| {
+            fields = do self.parse_unspanned_seq(
+                token::LPAREN,
+                token::RPAREN,
+                seq_sep_trailing_allowed(token::COMMA)
+            ) |p| {
                 let lo = p.span.lo;
                 let struct_field_ = ast::struct_field_ {
                     kind: unnamed_field,
@@ -3667,9 +3722,11 @@ pub impl Parser {
                 } else if *self.token == token::LPAREN {
                     all_nullary = false;
                     let arg_tys = self.parse_unspanned_seq(
-                        token::LPAREN, token::RPAREN,
+                        token::LPAREN,
+                        token::RPAREN,
                         seq_sep_trailing_disallowed(token::COMMA),
-                        |p| p.parse_ty(false));
+                        |p| p.parse_ty(false)
+                    );
                     for arg_tys.each |ty| {
                         args.push(ast::variant_arg {
                             ty: *ty,
@@ -3915,13 +3972,16 @@ pub impl Parser {
             };
             // eat a matched-delimiter token tree:
             let tts = match *self.token {
-              token::LPAREN | token::LBRACE => {
-                let ket = token::flip_delimiter(&*self.token);
-                self.parse_unspanned_seq(*self.token, ket,
-                                         seq_sep_none(),
-                                         |p| p.parse_token_tree())
-              }
-              _ => self.fatal(~"expected open delimiter")
+                token::LPAREN | token::LBRACE => {
+                    let ket = token::flip_delimiter(&*self.token);
+                    self.parse_unspanned_seq(
+                        *self.token,
+                        ket,
+                        seq_sep_none(),
+                        |p| p.parse_token_tree()
+                    )
+                }
+                _ => self.fatal(~"expected open delimiter")
             };
             // single-variant-enum... :
             let m = ast::mac_invoc_tt(pth, tts);
@@ -4007,9 +4067,11 @@ pub impl Parser {
                   // foo::bar::{a,b,c}
                   token::LBRACE => {
                     let idents = self.parse_unspanned_seq(
-                        token::LBRACE, token::RBRACE,
+                        token::LBRACE,
+                        token::RBRACE,
                         seq_sep_trailing_allowed(token::COMMA),
-                        |p| p.parse_path_list_ident());
+                        |p| p.parse_path_list_ident()
+                    );
                     let path = @ast::path { span: mk_sp(lo, self.span.hi),
                                             global: false,
                                             idents: path,

@@ -29,20 +29,20 @@ pub struct SeqSep {
 
 pub fn seq_sep_trailing_disallowed(t: token::Token) -> SeqSep {
     SeqSep {
-        sep: option::Some(t),
-        trailing_sep_allowed: false
+        sep: Some(t),
+        trailing_sep_allowed: false,
     }
 }
 pub fn seq_sep_trailing_allowed(t: token::Token) -> SeqSep {
     SeqSep {
-        sep: option::Some(t),
-        trailing_sep_allowed: true
+        sep: Some(t),
+        trailing_sep_allowed: true,
     }
 }
 pub fn seq_sep_none() -> SeqSep {
     SeqSep {
-        sep: option::None,
-        trailing_sep_allowed: false
+        sep: None,
+        trailing_sep_allowed: false,
     }
 }
 
@@ -54,12 +54,20 @@ pub impl Parser {
     fn unexpected_last(t: token::Token) -> ! {
         self.span_fatal(
             *self.last_span,
-            ~"unexpected token: `" + token_to_str(self.reader, t) + ~"`");
+            fmt!(
+                "unexpected token: `%s`",
+                token_to_str(self.reader, t)
+            )
+        );
     }
 
     fn unexpected() -> ! {
-        self.fatal(~"unexpected token: `"
-                   + token_to_str(self.reader, *self.token) + ~"`");
+        self.fatal(
+            fmt!(
+                "unexpected token: `%s`",
+                token_to_str(self.reader, *self.token)
+            )
+        );
     }
 
     // expect and consume the token t. Signal an error if
@@ -81,12 +89,23 @@ pub impl Parser {
         self.check_strict_keywords();
         self.check_reserved_keywords();
         match *self.token {
-          token::IDENT(i, _) => { self.bump(); return i; }
-          token::INTERPOLATED(token::nt_ident(*)) => { self.bug(
-              ~"ident interpolation not converted to real token"); }
-          _ => { self.fatal(~"expected ident, found `"
-                         + token_to_str(self.reader, *self.token)
-                         + ~"`"); }
+            token::IDENT(i, _) => {
+                self.bump();
+                i
+            }
+            token::INTERPOLATED(token::nt_ident(*)) => {
+                self.bug(
+                    ~"ident interpolation not converted to real token"
+                );
+            }
+            _ => {
+                self.fatal(
+                    fmt!(
+                        "expected ident, found `%s`",
+                         token_to_str(self.reader, *self.token)
+                    )
+                );
+            }
         }
     }
 
@@ -155,9 +174,13 @@ pub impl Parser {
     fn expect_keyword(word: &~str) {
         self.require_keyword(word);
         if !self.eat_keyword(word) {
-            self.fatal(~"expected `" + *word + ~"`, found `" +
-                       token_to_str(self.reader, *self.token) +
-                       ~"`");
+            self.fatal(
+                fmt!(
+                    "expected `%s`, found `%s`",
+                    *word,
+                    token_to_str(self.reader, *self.token)
+                )
+            );
         }
     }
 
@@ -177,7 +200,7 @@ pub impl Parser {
 
     fn check_strict_keywords_(w: &~str) {
         if self.is_strict_keyword(w) {
-            self.fatal(~"found `" + *w + ~"` in ident position");
+            self.fatal(fmt!("found `%s` in ident position", *w));
         }
     }
 
@@ -197,7 +220,7 @@ pub impl Parser {
 
     fn check_reserved_keywords_(w: &~str) {
         if self.is_reserved_keyword(w) {
-            self.fatal(~"`" + *w + ~"` is a reserved keyword");
+            self.fatal(fmt!("`%s` is a reserved keyword", *w));
         }
     }
 
@@ -207,9 +230,11 @@ pub impl Parser {
         if *self.token == token::GT {
             self.bump();
         } else if *self.token == token::BINOP(token::SHR) {
-            self.replace_token(token::GT,
-                               self.span.lo + BytePos(1u),
-                               self.span.hi);
+            self.replace_token(
+                token::GT,
+                self.span.lo + BytePos(1u),
+                self.span.hi
+            );
         } else {
             let mut s: ~str = ~"expected `";
             s += token_to_str(self.reader, token::GT);
@@ -222,8 +247,10 @@ pub impl Parser {
 
     // parse a sequence bracketed by '<' and '>', stopping
     // before the '>'.
-    fn parse_seq_to_before_gt<T:Copy>(sep: Option<token::Token>,
-                                       f: fn(Parser) -> T) -> ~[T] {
+    fn parse_seq_to_before_gt<T: Copy>(
+        sep: Option<token::Token>,
+        f: fn(Parser) -> T
+    ) -> ~[T] {
         let mut first = true;
         let mut v = ~[];
         while *self.token != token::GT
@@ -241,8 +268,10 @@ pub impl Parser {
         return v;
     }
 
-    fn parse_seq_to_gt<T:Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> ~[T] {
+    fn parse_seq_to_gt<T: Copy>(
+        sep: Option<token::Token>,
+        f: fn(Parser) -> T
+    ) -> ~[T] {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
 
@@ -250,8 +279,10 @@ pub impl Parser {
     }
 
     // parse a sequence bracketed by '<' and '>'
-    fn parse_seq_lt_gt<T:Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> spanned<~[T]> {
+    fn parse_seq_lt_gt<T: Copy>(
+        sep: Option<token::Token>,
+        f: fn(Parser) -> T
+    ) -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(&token::LT);
         let result = self.parse_seq_to_before_gt::<T>(sep, f);
@@ -263,18 +294,24 @@ pub impl Parser {
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    fn parse_seq_to_end<T:Copy>(ket: token::Token, sep: SeqSep,
-                                 f: fn(Parser) -> T) -> ~[T] {
+    fn parse_seq_to_end<T: Copy>(
+        ket: token::Token,
+        sep: SeqSep,
+        f: fn(Parser) -> T
+    ) -> ~[T] {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
-        return val;
+        val
     }
 
     // parse a sequence, not including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    fn parse_seq_to_before_end<T:Copy>(ket: token::Token, sep: SeqSep,
-                                        f: fn(Parser) -> T) -> ~[T] {
+    fn parse_seq_to_before_end<T: Copy>(
+        ket: token::Token,
+        sep: SeqSep,
+        f: fn(Parser) -> T
+    ) -> ~[T] {
         let mut first: bool = true;
         let mut v: ~[T] = ~[];
         while *self.token != ket {
@@ -288,31 +325,37 @@ pub impl Parser {
             if sep.trailing_sep_allowed && *self.token == ket { break; }
             v.push(f(self));
         }
-        return v;
+        v
     }
 
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    fn parse_unspanned_seq<T:Copy>(+bra: token::Token,
-                                   +ket: token::Token,
-                                    sep: SeqSep,
-                                    f: fn(Parser) -> T) -> ~[T] {
+    fn parse_unspanned_seq<T: Copy>(
+        +bra: token::Token,
+        +ket: token::Token,
+        sep: SeqSep,
+        f: fn(Parser) -> T
+    ) -> ~[T] {
         self.expect(&bra);
-        let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
+        let result = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
-        return result;
+        result
     }
 
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
-    fn parse_seq<T:Copy>(bra: token::Token, ket: token::Token, sep: SeqSep,
-                          f: fn(Parser) -> T) -> spanned<~[T]> {
+    fn parse_seq<T: Copy>(
+        +bra: token::Token,
+        +ket: token::Token,
+        sep: SeqSep,
+        f: fn(Parser) -> T
+    ) -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(&bra);
-        let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
+        let result = self.parse_seq_to_before_end(ket, sep, f);
         let hi = self.span.hi;
         self.bump();
-        return spanned(lo, hi, result);
+        spanned(lo, hi, result)
     }
 }

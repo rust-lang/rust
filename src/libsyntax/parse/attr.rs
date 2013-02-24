@@ -151,9 +151,12 @@ impl parser_attr for Parser {
     }
 
     fn parse_meta_seq() -> ~[@ast::meta_item] {
-        return self.parse_seq(token::LPAREN, token::RPAREN,
-                           seq_sep_trailing_disallowed(token::COMMA),
-                           |p| p.parse_meta_item()).node;
+        self.parse_seq(
+            token::LPAREN,
+            token::RPAREN,
+            seq_sep_trailing_disallowed(token::COMMA),
+            |p| p.parse_meta_item()
+        ).node
     }
 
     fn parse_optional_meta() -> ~[@ast::meta_item] {
