@@ -309,7 +309,7 @@ pub impl Parser {
 
     pure fn id_to_str(id: ident) -> @~str { self.sess.interner.get(id) }
 
-    fn token_is_closure_keyword(+tok: token::Token) -> bool {
+    fn token_is_closure_keyword(tok: &token::Token) -> bool {
         self.token_is_keyword(&~"pure", tok) ||
             self.token_is_keyword(&~"unsafe", tok) ||
             self.token_is_keyword(&~"once", tok) ||
@@ -649,7 +649,7 @@ pub impl Parser {
             self.parse_borrowed_pointee()
         } else if self.eat_keyword(&~"extern") {
             self.parse_ty_bare_fn()
-        } else if self.token_is_closure_keyword(*self.token) {
+        } else if self.token_is_closure_keyword(&*self.token) {
             self.parse_ty_closure(None, None)
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(*self.token) {
@@ -676,12 +676,12 @@ pub impl Parser {
 
             token::IDENT(rname, _) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) &&
-                    self.token_is_closure_keyword(self.look_ahead(2u))
+                    self.token_is_closure_keyword(&self.look_ahead(2u))
                 {
                     self.bump();
                     self.bump();
                     return self.parse_ty_closure(Some(sigil), Some(rname));
-                } else if self.token_is_closure_keyword(*self.token) {
+                } else if self.token_is_closure_keyword(&*self.token) {
                     return self.parse_ty_closure(Some(sigil), None);
                 }
             }
@@ -716,7 +716,7 @@ pub impl Parser {
             _ => { None }
         };
 
-        if self.token_is_closure_keyword(*self.token) {
+        if self.token_is_closure_keyword(&*self.token) {
             return self.parse_ty_closure(Some(BorrowedSigil), rname);
         }
 
@@ -1912,7 +1912,7 @@ pub impl Parser {
         // labeled loop headers look like 'loop foo: {'
         let is_labeled_loop_header =
             is_ident(*self.token)
-            && !self.is_any_keyword(*self.token)
+            && !self.is_any_keyword(&*self.token)
             && self.look_ahead(1) == token::COLON;
 
         if is_loop_header || is_labeled_loop_header {
@@ -1946,7 +1946,7 @@ pub impl Parser {
     fn looking_at_record_literal() -> bool {
         let lookahead = self.look_ahead(1);
         *self.token == token::LBRACE &&
-            (self.token_is_keyword(&~"mut", lookahead) ||
+            (self.token_is_keyword(&~"mut", &lookahead) ||
              (is_plain_ident(lookahead) &&
               self.look_ahead(2) == token::COLON))
     }
@@ -2446,7 +2446,7 @@ pub impl Parser {
             let decl = self.parse_let();
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
         } else if is_ident(*self.token)
-            && !self.is_any_keyword(*self.token)
+            && !self.is_any_keyword(&*self.token)
             && self.look_ahead(1) == token::NOT {
 
             check_expected_item(self, first_item_attrs);
@@ -2812,10 +2812,10 @@ pub impl Parser {
         fn maybe_parse_self_ty(cnstr: fn(+v: mutability) -> ast::self_ty_,
                                p: Parser) -> ast::self_ty_ {
             // We need to make sure it isn't a mode or a type
-            if p.token_is_keyword(&~"self", p.look_ahead(1)) ||
-                ((p.token_is_keyword(&~"const", p.look_ahead(1)) ||
-                  p.token_is_keyword(&~"mut", p.look_ahead(1))) &&
-                 p.token_is_keyword(&~"self", p.look_ahead(2))) {
+            if p.token_is_keyword(&~"self", &p.look_ahead(1)) ||
+                ((p.token_is_keyword(&~"const", &p.look_ahead(1)) ||
+                  p.token_is_keyword(&~"mut", &p.look_ahead(1))) &&
+                 p.token_is_keyword(&~"self", &p.look_ahead(2))) {
 
                 p.bump();
                 let mutability = p.parse_mutability();
@@ -3948,7 +3948,7 @@ pub impl Parser {
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
             });
-        } else if macros_allowed && !self.is_any_keyword(*self.token)
+        } else if macros_allowed && !self.is_any_keyword(&*self.token)
                 && self.look_ahead(1) == token::NOT
                 && (is_plain_ident(self.look_ahead(2))
                     || self.look_ahead(2) == token::LPAREN
@@ -4127,9 +4127,9 @@ pub impl Parser {
             tok = self.look_ahead(1);
             next_tok = self.look_ahead(2);
         };
-        self.token_is_keyword(&~"use", tok)
-            || (self.token_is_keyword(&~"extern", tok) &&
-                self.token_is_keyword(&~"mod", next_tok))
+        self.token_is_keyword(&~"use", &tok)
+            || (self.token_is_keyword(&~"extern", &tok) &&
+                self.token_is_keyword(&~"mod", &next_tok))
     }
 
     // parse a view item.

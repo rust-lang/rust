@@ -136,24 +136,24 @@ pub impl Parser {
         }
     }
 
-    fn token_is_word(word: &~str, tok: token::Token) -> bool {
-        match tok {
+    fn token_is_word(word: &~str, tok: &token::Token) -> bool {
+        match *tok {
           token::IDENT(sid, false) => { *self.id_to_str(sid) == *word }
           _ => { false }
         }
     }
 
-    fn token_is_keyword(word: &~str, ++tok: token::Token) -> bool {
+    fn token_is_keyword(word: &~str, tok: &token::Token) -> bool {
         self.require_keyword(word);
         self.token_is_word(word, tok)
     }
 
     fn is_keyword(word: &~str) -> bool {
-        self.token_is_keyword(word, *self.token)
+        self.token_is_keyword(word, &*self.token)
     }
 
-    fn is_any_keyword(tok: token::Token) -> bool {
-        match tok {
+    fn is_any_keyword(tok: &token::Token) -> bool {
+        match *tok {
           token::IDENT(sid, false) => {
             self.keywords.contains_key(self.id_to_str(sid))
           }
