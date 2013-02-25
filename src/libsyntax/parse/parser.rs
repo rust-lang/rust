@@ -3001,7 +3001,7 @@ pub impl Parser {
         let traits;
         if *self.token == token::COLON {
             self.bump();
-            traits = self.parse_trait_ref_list(token::LBRACE);
+            traits = self.parse_trait_ref_list(&token::LBRACE);
         } else {
             traits = ~[];
         }
@@ -3110,9 +3110,9 @@ pub impl Parser {
         }
     }
 
-    fn parse_trait_ref_list(ket: token::Token) -> ~[@trait_ref] {
+    fn parse_trait_ref_list(ket: &token::Token) -> ~[@trait_ref] {
         self.parse_seq_to_before_end(
-            ket,
+            *ket,
             seq_sep_none(),
             |p| p.parse_trait_ref()
         )
@@ -3124,7 +3124,7 @@ pub impl Parser {
         let ty_params = self.parse_ty_params();
         if self.eat(&token::COLON) {
             self.obsolete(copy *self.span, ObsoleteClassTraits);
-            let _ = self.parse_trait_ref_list(token::LBRACE);
+            let _ = self.parse_trait_ref_list(&token::LBRACE);
         }
 
         let mut fields: ~[@struct_field];
