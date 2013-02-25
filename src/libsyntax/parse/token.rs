@@ -225,8 +225,8 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
     }
 }
 
-pub pure fn can_begin_expr(t: Token) -> bool {
-    match t {
+pub pure fn can_begin_expr(t: &Token) -> bool {
+    match *t {
       LPAREN => true,
       LBRACE => true,
       LBRACKET => true,
@@ -259,20 +259,20 @@ pub pure fn can_begin_expr(t: Token) -> bool {
 /// what's the opposite delimiter?
 pub fn flip_delimiter(t: &token::Token) -> token::Token {
     match *t {
-      token::LPAREN => token::RPAREN,
-      token::LBRACE => token::RBRACE,
-      token::LBRACKET => token::RBRACKET,
-      token::RPAREN => token::LPAREN,
-      token::RBRACE => token::LBRACE,
-      token::RBRACKET => token::LBRACKET,
+      LPAREN => RPAREN,
+      LBRACE => RBRACE,
+      LBRACKET => RBRACKET,
+      RPAREN => LPAREN,
+      RBRACE => LBRACE,
+      RBRACKET => LBRACKET,
       _ => fail!()
     }
 }
 
 
 
-pub fn is_lit(t: Token) -> bool {
-    match t {
+pub fn is_lit(t: &Token) -> bool {
+    match *t {
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,
       LIT_INT_UNSUFFIXED(_) => true,
@@ -283,23 +283,23 @@ pub fn is_lit(t: Token) -> bool {
     }
 }
 
-pub pure fn is_ident(t: Token) -> bool {
-    match t { IDENT(_, _) => true, _ => false }
+pub pure fn is_ident(t: &Token) -> bool {
+    match *t { IDENT(_, _) => true, _ => false }
 }
 
-pub pure fn is_ident_or_path(t: Token) -> bool {
-    match t {
+pub pure fn is_ident_or_path(t: &Token) -> bool {
+    match *t {
       IDENT(_, _) | INTERPOLATED(nt_path(*)) => true,
       _ => false
     }
 }
 
-pub pure fn is_plain_ident(t: Token) -> bool {
-    match t { IDENT(_, false) => true, _ => false }
+pub pure fn is_plain_ident(t: &Token) -> bool {
+    match *t { IDENT(_, false) => true, _ => false }
 }
 
-pub pure fn is_bar(t: Token) -> bool {
-    match t { BINOP(OR) | OROR => true, _ => false }
+pub pure fn is_bar(t: &Token) -> bool {
+    match *t { BINOP(OR) | OROR => true, _ => false }
 }
 
 

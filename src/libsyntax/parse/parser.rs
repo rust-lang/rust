@@ -656,7 +656,7 @@ pub impl Parser {
         } else if self.token_is_closure_keyword(&copy *self.token) {
             self.parse_ty_closure(None, None)
         } else if *self.token == token::MOD_SEP
-            || is_ident_or_path(*self.token) {
+            || is_ident_or_path(&*self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
             ty_path(path, self.get_id())
         } else {
@@ -760,10 +760,10 @@ pub impl Parser {
             }
         } else { 0 };
         if offset == 0 {
-            is_plain_ident(*self.token)
+            is_plain_ident(&*self.token)
                 && self.look_ahead(1) == token::COLON
         } else {
-            is_plain_ident(self.look_ahead(offset))
+            is_plain_ident(&self.look_ahead(offset))
                 && self.look_ahead(offset + 1) == token::COLON
         }
     }
@@ -1141,7 +1141,7 @@ pub impl Parser {
                 return self.mk_expr(blk.span.lo, blk.span.hi,
                                      expr_block(blk));
             }
-        } else if token::is_bar(*self.token) {
+        } else if token::is_bar(&*self.token) {
             return self.parse_lambda_expr();
         } else if self.eat_keyword(&~"if") {
             return self.parse_if_expr();
@@ -1215,13 +1215,13 @@ pub impl Parser {
             ex = expr_assert(e);
             hi = e.span.hi;
         } else if self.eat_keyword(&~"return") {
-            if can_begin_expr(*self.token) {
+            if can_begin_expr(&*self.token) {
                 let e = self.parse_expr();
                 hi = e.span.hi;
                 ex = expr_ret(Some(e));
             } else { ex = expr_ret(None); }
         } else if self.eat_keyword(&~"break") {
-            if is_ident(*self.token) {
+            if is_ident(&*self.token) {
                 ex = expr_break(Some(self.parse_ident()));
             } else {
                 ex = expr_break(None);
@@ -1232,7 +1232,7 @@ pub impl Parser {
             ex = expr_copy(e);
             hi = e.span.hi;
         } else if *self.token == token::MOD_SEP ||
-                is_ident(*self.token) && !self.is_keyword(&~"true") &&
+                is_ident(&*self.token) && !self.is_keyword(&~"true") &&
                 !self.is_keyword(&~"false") {
             let pth = self.parse_path_with_tps(true);
 
@@ -1914,11 +1914,11 @@ pub impl Parser {
         // loop headers look like 'loop {' or 'loop unsafe {'
         let is_loop_header =
             *self.token == token::LBRACE
-            || (is_ident(*self.token)
+            || (is_ident(&*self.token)
                 && self.look_ahead(1) == token::LBRACE);
         // labeled loop headers look like 'loop foo: {'
         let is_labeled_loop_header =
-            is_ident(*self.token)
+            is_ident(&*self.token)
             && !self.is_any_keyword(&copy *self.token)
             && self.look_ahead(1) == token::COLON;
 
@@ -1939,7 +1939,7 @@ pub impl Parser {
         } else {
             // This is a 'continue' expression
             let lo = self.span.lo;
-            let ex = if is_ident(*self.token) {
+            let ex = if is_ident(&*self.token) {
                 expr_again(Some(self.parse_ident()))
             } else {
                 expr_again(None)
@@ -1954,7 +1954,7 @@ pub impl Parser {
         let lookahead = self.look_ahead(1);
         *self.token == token::LBRACE &&
             (self.token_is_keyword(&~"mut", &lookahead) ||
-             (is_plain_ident(lookahead) &&
+             (is_plain_ident(&lookahead) &&
               self.look_ahead(2) == token::COLON))
     }
 
@@ -2260,7 +2260,7 @@ pub impl Parser {
             pat = ast::pat_vec(elements, tail);
           }
           copy tok => {
-            if !is_ident_or_path(tok)
+            if !is_ident_or_path(&tok)
                 || self.is_keyword(&~"true")
                 || self.is_keyword(&~"false")
             {
@@ -2290,7 +2290,7 @@ pub impl Parser {
                         cannot_be_enum_or_struct = true
                 }
 
-                if is_plain_ident(*self.token) && cannot_be_enum_or_struct {
+                if is_plain_ident(&*self.token) && cannot_be_enum_or_struct {
                     let name = self.parse_value_path();
                     let sub;
                     if self.eat(&token::AT) {
@@ -2359,7 +2359,7 @@ pub impl Parser {
 
     fn parse_pat_ident(refutable: bool,
                        binding_mode: ast::binding_mode) -> ast::pat_ {
-        if !is_plain_ident(*self.token) {
+        if !is_plain_ident(&*self.token) {
             self.span_fatal(
                 *self.last_span,
                 ~"expected identifier, found path");
@@ -2425,7 +2425,7 @@ pub impl Parser {
         if self.eat_keyword(&~"mut") {
             is_mutbl = struct_mutable;
         }
-        if !is_plain_ident(*self.token) {
+        if !is_plain_ident(&*self.token) {
             self.fatal(~"expected ident");
         }
         let name = self.parse_ident();
@@ -2454,7 +2454,7 @@ pub impl Parser {
             self.expect_keyword(&~"let");
             let decl = self.parse_let();
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
-        } else if is_ident(*self.token)
+        } else if is_ident(&*self.token)
             && !self.is_any_keyword(&copy *self.token)
             && self.look_ahead(1) == token::NOT {
 
@@ -2716,7 +2716,7 @@ pub impl Parser {
                                       ~"`&static` is the only permissible \
                                         region bound here");
                     }
-                } else if is_ident(*self.token) {
+                } else if is_ident(&*self.token) {
                     let maybe_bound = match *self.token {
                       token::IDENT(copy sid, _) => {
                         match *self.id_to_str(sid) {
@@ -2757,7 +2757,7 @@ pub impl Parser {
                     loop;
                 }
 
-                if is_ident_or_path(*self.token) {
+                if is_ident_or_path(&*self.token) {
                     self.obsolete(*self.span,
                                   ObsoleteTraitBoundSeparator);
                 }
@@ -3987,7 +3987,7 @@ pub impl Parser {
             });
         } else if macros_allowed && !self.is_any_keyword(&copy *self.token)
                 && self.look_ahead(1) == token::NOT
-                && (is_plain_ident(self.look_ahead(2))
+                && (is_plain_ident(&self.look_ahead(2))
                     || self.look_ahead(2) == token::LPAREN
                     || self.look_ahead(2) == token::LBRACE) {
             // MACRO INVOCATION ITEM
@@ -4002,7 +4002,7 @@ pub impl Parser {
             // a 'special' identifier (like what `macro_rules!` uses)
             // is optional. We should eventually unify invoc syntax
             // and remove this.
-            let id = if is_plain_ident(*self.token) {
+            let id = if is_plain_ident(&*self.token) {
                 self.parse_ident()
             } else {
                 token::special_idents::invalid // no special identifier
