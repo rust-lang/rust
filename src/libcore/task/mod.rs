@@ -34,6 +34,7 @@
  */
 
 use cast;
+use cell::Cell;
 use cmp;
 use cmp::Eq;
 use iter;
@@ -397,9 +398,9 @@ impl TaskBuilder {
     }
     /// Runs a task, while transfering ownership of one argument to the child.
     fn spawn_with<A:Owned>(arg: A, f: fn~(v: A)) {
-        let arg = ~mut Some(arg);
-        do self.spawn || {
-            f(option::swap_unwrap(arg))
+        let arg = Cell(arg);
+        do self.spawn {
+            f(arg.take());
         }
     }
 

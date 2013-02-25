@@ -86,6 +86,7 @@ bounded and unbounded protocols allows for less code duplication.
 
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
+use cell::Cell;
 use either::{Either, Left, Right};
 use kinds::Owned;
 use libc;
@@ -917,11 +918,9 @@ pub fn spawn_service<T:Owned,Tb:Owned>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut Some(server);
-    do task::spawn || {
-        let mut server_ = None;
-        server_ <-> *server;
-        service(option::unwrap(server_))
+    let server = Cell(server);
+    do task::spawn {
+        service(server.take());
     }
 
     client
@@ -941,11 +940,9 @@ pub fn spawn_service_recv<T:Owned,Tb:Owned>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut Some(server);
-    do task::spawn || {
-        let mut server_ = None;
-        server_ <-> *server;
-        service(option::unwrap(server_))
+    let server = Cell(server);
+    do task::spawn {
+        service(server.take())
     }
 
     client
