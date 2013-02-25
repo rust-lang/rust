@@ -1644,22 +1644,8 @@ fn trans_imm_cast(bcx: block, expr: @ast::expr,
             (cast_enum, cast_integral) |
             (cast_enum, cast_float) => {
                 let bcx = bcx;
-                let in_tid = match ty::get(t_in).sty {
-                    ty::ty_enum(did, _) => did,
-                    _ => ccx.sess.bug(~"enum cast source is not enum")
-                };
-                let variants = ty::enum_variants(ccx.tcx, in_tid);
-                let lldiscrim_a = if variants.len() == 1 {
-                    // Univariants don't have a discriminant field,
-                    // because there's only one value it could have:
-                    C_integral(T_enum_discrim(ccx),
-                               variants[0].disr_val as u64, True)
-                } else {
-                    let llenumty = T_opaque_enum_ptr(ccx);
-                    let av_enum = PointerCast(bcx, llexpr, llenumty);
-                    let lldiscrim_a_ptr = GEPi(bcx, av_enum, [0u, 0u]);
-                    Load(bcx, lldiscrim_a_ptr)
-                };
+                let repr = adt::represent_type(ccx, t_in);
+                let lldiscrim_a = adt::trans_cast_to_int(bcx, &repr, llexpr);
                 match k_out {
                     cast_integral => int_cast(bcx, ll_t_out,
                                               val_ty(lldiscrim_a),
