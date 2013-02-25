@@ -676,9 +676,10 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     let mut cx = cx;
     match /*bad*/copy ty::get(t).sty {
       ty::ty_rec(*) | ty::ty_struct(*) => {
-          do expr::with_field_tys(cx.tcx(), t, None) |_has_dtor, field_tys| {
+          let repr = adt::represent_type(cx.ccx(), t);
+          do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
               for vec::eachi(field_tys) |i, field_ty| {
-                  let llfld_a = GEPi(cx, av, struct_field(i));
+                  let llfld_a = adt::trans_GEP(cx, &repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
               }
           }
