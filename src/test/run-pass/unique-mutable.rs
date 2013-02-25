@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let mut i = ~0;
+    let i = ~mut 0;
     *i = 1;
     assert *i == 1;
 }

@@ -21,6 +21,9 @@ impl Box {
     fn set_many2(@mut self, xs: &[uint]) {
         for xs.each |x| { self.x = *x; }
     }
+    fn set_many3(~mut self, xs: &[uint]) {
+        for xs.each |x| { self.x = *x; }
+    }
 }
 
 pub fn main() {}

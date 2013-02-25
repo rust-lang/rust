@@ -8,13 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    let i = ~mut 1;
-    // Should be a copy
-    let mut j;
-    j = copy i;
-    *i = 2;
-    *j = 3;
-    assert *i == 2;
-    assert *j == 3;
+//error-pattern:mismatched types
+fn main() {
+    let i: ~int = ~mut 0;
 }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cell::Cell;
-
 struct Port<T>(@T);
 
 fn main() {
@@ -27,10 +25,11 @@ fn main() {
         }
     }
 
-    let x = Cell(foo(Port(@())));
+    let x = ~mut Some(foo(Port(@())));
 
     do task::spawn {
-        let y = x.take();   //~ ERROR value has non-owned type
+        let mut y = None;
+        *x <-> y; //~ ERROR value has non-owned type
         log(error, y);
     }
 }
