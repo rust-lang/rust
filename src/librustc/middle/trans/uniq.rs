@@ -17,6 +17,7 @@ use middle::trans::common::*;
 use middle::trans::datum::immediate_rvalue;
 use middle::trans::datum;
 use middle::trans::glue;
+use middle::ty;
 
 use syntax::ast;
 

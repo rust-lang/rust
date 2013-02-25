@@ -1444,7 +1444,7 @@ pub fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
  * The total number of permutations produced is `len(v)!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
  */
-pure fn each_permutation<T:Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
+pub pure fn each_permutation<T:Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
     let ln = len(v);
     if ln <= 1 {
         put(v);
@@ -2427,6 +2427,7 @@ impl<A:Copy> iter::CopyableNonstrictIter<A> for @[A] {
 mod tests {
     use option::{None, Option, Some};
     use option;
+    use sys;
     use vec::*;
 
     fn square(n: uint) -> uint { return n * n; }

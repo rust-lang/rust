@@ -234,6 +234,8 @@ mod test {
     use super::*;
     use std::serialize::Encodable;
     use std;
+    use core::io;
+    use core::option::None;
     use core::str;
     use util::testing::*;
 

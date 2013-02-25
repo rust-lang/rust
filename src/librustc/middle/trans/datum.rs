@@ -87,21 +87,29 @@
 
 use core::prelude::*;
 
+use lib;
 use lib::llvm::ValueRef;
 use middle::borrowck::{RootInfo, root_map_key};
 use middle::trans::base::*;
 use middle::trans::build::*;
+use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::common;
+use middle::trans::expr;
+use middle::trans::glue;
 use middle::trans::tvec;
+use middle::trans::type_of;
+use middle::ty;
 use middle::typeck;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::cmp;
 use core::option;
+use core::to_bytes;
 use core::uint;
 use core::vec;
+use syntax::ast;
 use syntax::parse::token::special_idents;
 
 #[deriving_eq]
@@ -326,7 +334,7 @@ pub impl Datum {
                 Store(bcx, self.val, dst);
             }
             ByRef => {
-                base::memcpy_ty(bcx, dst, self.val, self.ty);
+                memcpy_ty(bcx, dst, self.val, self.ty);
             }
         }
 
@@ -354,7 +362,7 @@ pub impl Datum {
 
         match self.mode {
             ByRef => {
-                base::memcpy_ty(bcx, dst, self.val, self.ty);
+                memcpy_ty(bcx, dst, self.val, self.ty);
             }
             ByValue => {
                 Store(bcx, self.val, dst);
@@ -540,7 +548,7 @@ pub impl Datum {
 
         let scratch = scratch_datum(bcx, self.ty, true);
         self.copy_to_datum(bcx, INIT, scratch);
-        base::add_root_cleanup(bcx, root_info, scratch.val, scratch.ty);
+        add_root_cleanup(bcx, root_info, scratch.val, scratch.ty);
 
         // If we need to freeze the box, do that now.
         if root_info.freezes {

@@ -2299,11 +2299,14 @@ pub fn print_onceness(s: @ps, o: ast::Onceness) {
 
 #[cfg(test)]
 pub mod test {
+    use super::*;
+
     use ast;
     use ast_util;
+    use codemap;
+    use core::cmp::Eq;
+    use core::option::None;
     use parse;
-    use super::*;
-    //use util;
     use util::testing::check_equal;
 
     fn string_check<T:Eq> (given : &T, expected: &T) {

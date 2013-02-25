@@ -21,11 +21,13 @@ use middle::resolve;
 use middle::ty;
 use middle::typeck;
 
-use core::vec;
+use core::prelude::*;
 use std::oldmap::HashMap;
+use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
+use syntax::codemap;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util, ast_map};
 

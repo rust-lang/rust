@@ -123,9 +123,11 @@ fn spawn_loop() -> IoTask {
 mod test {
     use core::prelude::*;
 
+    use get_gl = get;
     use uv::iotask;
     use uv::ll;
     use uv_global_loop::*;
+    use uv_iotask::IoTask;
 
     use core::iter;
     use core::libc;

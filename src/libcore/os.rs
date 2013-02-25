@@ -1021,10 +1021,10 @@ extern {
 pub mod consts {
 
     #[cfg(unix)]
-    use os::consts::unix::*;
+    pub use os::consts::unix::*;
 
     #[cfg(windows)]
-    use os::consts::windows::*;
+    pub use os::consts::windows::*;
 
     pub mod unix {
         pub const FAMILY: &str = "unix";
@@ -1035,19 +1035,19 @@ pub mod consts {
     }
 
     #[cfg(target_os = "macos")]
-    use os::consts::macos::*;
+    pub use os::consts::macos::*;
 
     #[cfg(target_os = "freebsd")]
-    use os::consts::freebsd::*;
+    pub use os::consts::freebsd::*;
 
     #[cfg(target_os = "linux")]
-    use os::consts::linux::*;
+    pub use os::consts::linux::*;
 
     #[cfg(target_os = "android")]
-    use os::consts::android::*;
+    pub use os::consts::android::*;
 
     #[cfg(target_os = "win32")]
-    use os::consts::win32::*;
+    pub use os::consts::win32::*;
 
     pub mod macos {
         pub const SYSNAME: &str = "macos";
@@ -1086,13 +1086,13 @@ pub mod consts {
 
 
     #[cfg(target_arch = "x86")]
-    use os::consts::x86::*;
+    pub use os::consts::x86::*;
 
     #[cfg(target_arch = "x86_64")]
-    use os::consts::x86_64::*;
+    pub use os::consts::x86_64::*;
 
     #[cfg(target_arch = "arm")]
-    use os::consts::arm::*;
+    pub use os::consts::arm::*;
 
     pub mod x86 {
         pub const ARCH: &str = "x86";

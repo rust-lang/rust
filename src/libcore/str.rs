@@ -2375,6 +2375,7 @@ impl OwnedStr for ~str {
 #[cfg(test)]
 mod tests {
     use char;
+    use option::Some;
     use debug;
     use libc::c_char;
     use libc;

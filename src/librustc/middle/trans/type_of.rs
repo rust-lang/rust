@@ -11,12 +11,16 @@
 
 use lib::llvm::llvm;
 use lib::llvm::{TypeRef};
+use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::common;
 use middle::trans::expr;
 use middle::trans::machine;
+use middle::ty;
 use util::ppaux;
 
+use core::option::None;
+use core::vec;
 use std::oldmap::HashMap;
 use syntax::ast;
 
@@ -387,7 +391,7 @@ pub fn type_of_dtor(ccx: @CrateContext, self_ty: ty::t) -> TypeRef {
 pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
     let addrspace = base::get_tydesc(ccx, t).addrspace;
     debug!("type_of_rooted %s in addrspace %u",
-           ty_to_str(ccx.tcx, t), addrspace as uint);
+           ppaux::ty_to_str(ccx.tcx, t), addrspace as uint);
     return T_root(type_of(ccx, t), addrspace);
 }
 
