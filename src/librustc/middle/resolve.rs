@@ -2480,7 +2480,7 @@ pub impl Resolver {
 
             // Here we merge two import resolutions.
             match module_.import_resolutions.find(&ident) {
-                None => {
+                None if target_import_resolution.privacy == Public => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
                         @mut ImportResolution(privacy,
@@ -2494,6 +2494,7 @@ pub impl Resolver {
                     module_.import_resolutions.insert
                         (ident, new_import_resolution);
                 }
+                None => { /* continue ... */ }
                 Some(dest_import_resolution) => {
                     // Merge the two import resolutions at a finer-grained
                     // level.
@@ -2756,6 +2757,8 @@ pub impl Resolver {
                                namespace);
                     }
                     Some(target) => {
+                        debug!("(resolving item in lexical scope) using \
+                                import resolution");
                         import_resolution.state.used = true;
                         return Success(copy target);
                     }
