@@ -143,6 +143,7 @@ pub mod dlist;
 #[path="iter-trait.rs"] #[merge = "iter-trait/dlist.rs"]
 pub mod dlist_iter;
 pub mod hashmap;
+pub mod cell;
 
 
 /* Tasks and communication */

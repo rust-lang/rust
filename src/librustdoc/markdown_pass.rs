@@ -34,11 +34,11 @@ use sort_pass;
 use trim_pass;
 use unindent_pass;
 
+use core::cell::Cell;
 use core::iter;
 use core::str;
 use core::vec;
 use std::par;
-use std::cell::Cell;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
