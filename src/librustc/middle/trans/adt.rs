@@ -24,6 +24,7 @@ use util::ppaux::ty_to_str;
 
 // XXX: should this be done with boxed traits instead of ML-style?
 pub enum Repr {
+    Unit(int),
     CEnum(int, int), /* discriminant range */
     Univariant(Struct, Destructor),
     General(~[Struct])
@@ -77,8 +78,11 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> Repr {
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
                 Univariant(mk_struct(cx, ~[]), NoDtor)
-            } else if cases.len() == 1 && cases[0].discr == 0 {
+            } else if cases.len() == 1 && cases[0].tys.len() == 0 {
+                Unit(cases[0].discr)
+            } else if cases.len() == 1 {
                 // struct, tuple, newtype, etc.
+                assert cases[0].discr == 0;
                 Univariant(mk_struct(cx, cases[0].tys), NoDtor)
             } else if cases.all(|c| c.tys.len() == 0) {
                 let discrs = cases.map(|c| c.discr);
@@ -116,6 +120,7 @@ pub fn fields_of(cx: @CrateContext, r: &Repr) -> ~[TypeRef] {
 fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
     -> ~[TypeRef] {
     match *r {
+        Unit(*) => ~[],
         CEnum(*) => ~[T_enum_discrim(cx)],
         Univariant(ref st, dt) => {
             let f = if sizing {
@@ -160,7 +165,7 @@ pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef) ->
         CEnum(min, max) => {
             (_match::switch, Some(load_discr(bcx, scrutinee, min, max)))
         }
-        Univariant(*) => {
+        Unit(*) | Univariant(*) => {
             (_match::single, None)
         }
         General(ref cases) => {
@@ -175,7 +180,7 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
         CEnum(*) => {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
         }
-        Univariant(*) => {
+        Unit(*) | Univariant(*)=> {
             bcx.ccx().sess.bug(~"no cases for univariants or structs")
         }
         General(*) => {
@@ -186,6 +191,9 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
 
 pub fn trans_set_discr(bcx: block, r: &Repr, val: ValueRef, discr: int) {
     match *r {
+        Unit(the_discr) => {
+            assert discr == the_discr;
+        }
         CEnum(min, max) => {
             assert min <= discr && discr <= max;
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
@@ -205,7 +213,7 @@ pub fn trans_set_discr(bcx: block, r: &Repr, val: ValueRef, discr: int) {
 
 pub fn num_args(r: &Repr, discr: int) -> uint {
     match *r {
-        CEnum(*) => 0,
+        Unit(*) | CEnum(*) => 0,
         Univariant(ref st, _dt) => { assert discr == 0; st.fields.len() }
         General(ref cases) => cases[discr as uint].fields.len()
     }
@@ -217,7 +225,7 @@ pub fn trans_GEP(bcx: block, r: &Repr, val: ValueRef, discr: int, ix: uint)
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it'll need to return a possibly-new bcx as well.
     match *r {
-        CEnum(*) => {
+        Unit(*) | CEnum(*) => {
             bcx.ccx().sess.bug(~"element access in C-like enum")
         }
         Univariant(ref st, dt) => {
@@ -253,6 +261,9 @@ fn struct_GEP(bcx: block, st: &Struct, val: ValueRef, ix: uint,
 pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
+        Unit(*) => {
+            C_struct(~[])
+        }
         CEnum(min, max) => {
             assert vals.len() == 0;
             assert min <= discr && discr <= max;
@@ -312,6 +323,7 @@ fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
     -> int {
     match *r {
+        Unit(discr) => discr,
         CEnum(*) => const_to_int(val) as int,
         Univariant(*) => 0,
         General(*) => const_to_int(const_get_elt(ccx, val, [0])) as int,
@@ -322,7 +334,8 @@ pub fn const_get_element(ccx: @CrateContext, r: &Repr, val: ValueRef,
                          _discr: int, ix: uint) -> ValueRef {
     // Not to be confused with common::const_get_elt.
     match *r {
-        CEnum(*) => ccx.sess.bug(~"element access in C-like enum const"),
+        Unit(*) | CEnum(*) => ccx.sess.bug(~"element access in C-like enum \
+                                             const"),
         Univariant(*) => const_struct_field(ccx, val, ix),
         General(*) => const_struct_field(ccx, const_get_elt(ccx, val,
                                                             [1, 0]), ix)
