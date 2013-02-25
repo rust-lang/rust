@@ -1938,8 +1938,23 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, ctor_id));
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
+    // XXX is there a better way to reconstruct the ty::t?
+    let ty_param_substs = match param_substs {
+        Some(ref substs) => /*bad*/copy substs.tys,
+        None => ~[]
+    };
+    let ctor_ty = ty::subst_tps(ccx.tcx, ty_param_substs, None,
+                                ty::node_id_to_type(ccx.tcx, ctor_id));
+    let tup_ty = match ty::get(ctor_ty).sty {
+        ty::ty_bare_fn(ref bft) => bft.sig.output,
+        _ => ccx.sess.bug(fmt!("trans_tuple_struct: unexpected ctor \
+                                return type %s",
+                               ty_to_str(ccx.tcx, ctor_ty)))
+    };
+    let repr = adt::represent_type(ccx, tup_ty);
+
     for fields.eachi |i, field| {
-        let lldestptr = GEPi(bcx, fcx.llretptr, [0, 0, i]);
+        let lldestptr = adt::trans_GEP(bcx, &repr, fcx.llretptr, 0, i);
         let llarg = match fcx.llargs.get(&field.node.id) {
             local_mem(x) => x,
             _ => {
