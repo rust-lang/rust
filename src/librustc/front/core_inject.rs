@@ -50,7 +50,7 @@ fn inject_libcore_ref(sess: Session,
                 attrs: ~[
                     spanned(ast::attribute_ {
                         style: ast::attr_inner,
-                        value: spanned(ast::meta_name_value(
+                        value: @spanned(ast::meta_name_value(
                             @~"vers",
                             spanned(ast::lit_str(@CORE_VERSION.to_str()))
                         )),

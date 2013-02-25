@@ -98,7 +98,7 @@ fn fold_attribute_(at: attribute, fld: ast_fold) -> attribute {
     spanned {
         node: ast::attribute_ {
             style: at.node.style,
-            value: *fold_meta_item_(@at.node.value, fld),
+            value: fold_meta_item_(at.node.value, fld),
             is_sugared_doc: at.node.is_sugared_doc,
         },
         span: fld.new_span(at.span),

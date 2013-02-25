@@ -110,7 +110,7 @@ mod syntax {
 pub fn expand_auto_encode(
     cx: ext_ctxt,
     span: span,
-    _mitem: ast::meta_item,
+    _mitem: @ast::meta_item,
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
     fn is_auto_encode(a: &ast::attribute) -> bool {
@@ -165,7 +165,7 @@ pub fn expand_auto_encode(
 pub fn expand_auto_decode(
     cx: ext_ctxt,
     span: span,
-    _mitem: ast::meta_item,
+    _mitem: @ast::meta_item,
     in_items: ~[@ast::item]
 ) -> ~[@ast::item] {
     fn is_auto_decode(a: &ast::attribute) -> bool {

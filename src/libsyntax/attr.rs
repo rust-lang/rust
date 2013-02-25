@@ -51,16 +51,17 @@ pub fn mk_word_item(name: @~str) -> @ast::meta_item {
 
 pub fn mk_attr(item: @ast::meta_item) -> ast::attribute {
     dummy_spanned(ast::attribute_ { style: ast::attr_inner,
-                                    value: *item,
+                                    value: item,
                                     is_sugared_doc: false })
 }
 
-pub fn mk_sugared_doc_attr(text: ~str,
+pub fn mk_sugared_doc_attr(+text: ~str,
                            +lo: BytePos, +hi: BytePos) -> ast::attribute {
+    let style = doc_comment_style(text);
     let lit = spanned(lo, hi, ast::lit_str(@text));
     let attr = ast::attribute_ {
-        style: doc_comment_style(text),
-        value: spanned(lo, hi, ast::meta_name_value(@~"doc", lit)),
+        style: style,
+        value: @spanned(lo, hi, ast::meta_name_value(@~"doc", lit)),
         is_sugared_doc: true
     };
     spanned(lo, hi, attr)
@@ -69,7 +70,7 @@ pub fn mk_sugared_doc_attr(text: ~str,
 /* Conversion */
 
 pub fn attr_meta(attr: ast::attribute) -> @ast::meta_item {
-    @attr.node.value
+    attr.node.value
 }
 
 // Get the meta_items from inside a vector of attributes
@@ -79,7 +80,7 @@ pub fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
 
 pub fn desugar_doc_attr(attr: &ast::attribute) -> ast::attribute {
     if attr.node.is_sugared_doc {
-        let comment = get_meta_item_value_str(@attr.node.value).get();
+        let comment = get_meta_item_value_str(attr.node.value).get();
         let meta = mk_name_value_item_str(@~"doc",
                                      @strip_doc_comment_decoration(*comment));
         mk_attr(meta)
@@ -91,7 +92,7 @@ pub fn desugar_doc_attr(attr: &ast::attribute) -> ast::attribute {
 /* Accessors */
 
 pub pure fn get_attr_name(attr: &ast::attribute) -> @~str {
-    get_meta_item_name(@attr.node.value)
+    get_meta_item_name(attr.node.value)
 }
 
 pub pure fn get_meta_item_name(meta: @ast::meta_item) -> @~str {
