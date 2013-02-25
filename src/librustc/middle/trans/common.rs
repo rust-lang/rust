@@ -1042,21 +1042,6 @@ pub fn T_enum_discrim(cx: @CrateContext) -> TypeRef {
     return cx.int_type;
 }
 
-pub fn T_opaque_enum(cx: @CrateContext) -> TypeRef {
-    let s = @"opaque_enum";
-    match name_has_type(cx.tn, s) {
-      Some(t) => return t,
-      _ => ()
-    }
-    let t = T_struct(~[T_enum_discrim(cx), T_i8()]);
-    associate_type(cx.tn, s, t);
-    return t;
-}
-
-pub fn T_opaque_enum_ptr(cx: @CrateContext) -> TypeRef {
-    return T_ptr(T_opaque_enum(cx));
-}
-
 pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
     return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)));
 }
@@ -1466,18 +1451,6 @@ pub fn dummy_substs(+tps: ~[ty::t]) -> ty::substs {
         self_ty: None,
         tps: tps
     }
-}
-
-pub fn struct_field(index: uint) -> [uint * 3] {
-    //! The GEPi sequence to access a field of a record/struct.
-
-    [0, 0, index]
-}
-
-pub fn struct_dtor() -> [uint * 2] {
-    //! The GEPi sequence to access the dtor of a struct.
-
-    [0, 1]
 }
 
 // Casts a Rust bool value to an i1.
