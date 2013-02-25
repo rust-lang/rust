@@ -196,8 +196,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         match (*v).node.kind {
             ast::tuple_variant_kind(ref args) => {
                 trans_enum_variant(ccx, enum_item.id, *v, /*bad*/copy *args,
-                                   this_tv.disr_val, tvs.len() == 1u,
-                                   psubsts, d);
+                                   this_tv.disr_val, psubsts, d);
             }
             ast::struct_variant_kind(_) =>
                 ccx.tcx.sess.bug(~"can't monomorphize struct variants"),
