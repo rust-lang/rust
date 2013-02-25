@@ -51,12 +51,12 @@ pub fn token_to_str(reader: reader, token: &token::Token) -> ~str {
 }
 
 pub impl Parser {
-    fn unexpected_last(t: token::Token) -> ! {
+    fn unexpected_last(t: &token::Token) -> ! {
         self.span_fatal(
             *self.last_span,
             fmt!(
                 "unexpected token: `%s`",
-                token_to_str(self.reader, &t)
+                token_to_str(self.reader, t)
             )
         );
     }

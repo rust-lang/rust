@@ -634,7 +634,7 @@ pub impl Parser {
                 |p| p.parse_ty_field()
             );
             if elems.len() == 0 {
-                self.unexpected_last(token::RBRACE);
+                self.unexpected_last(&token::RBRACE);
             }
             ty_rec(elems)
         } else if *self.token == token::LBRACKET {
@@ -868,7 +868,7 @@ pub impl Parser {
                 lit_float_unsuffixed(self.id_to_str(s)),
             token::LIT_STR(s) => lit_str(self.id_to_str(s)),
             token::LPAREN => { self.expect(&token::RPAREN); lit_nil },
-            _ => { self.unexpected_last(*tok); }
+            _ => { self.unexpected_last(tok); }
         }
     }
 
