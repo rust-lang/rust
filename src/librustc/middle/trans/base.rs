@@ -689,10 +689,11 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         cx = tvec::iter_vec_raw(cx, base, t, len, f);
       }
       ty::ty_tup(args) => {
-        for vec::eachi(args) |i, arg| {
-            let llfld_a = GEPi(cx, av, [0u, i]);
-            cx = f(cx, llfld_a, *arg);
-        }
+          let repr = adt::represent_type(cx.ccx(), t);
+          for vec::eachi(args) |i, arg| {
+              let llfld_a = adt::trans_GEP(cx, &repr, av, 0, i);
+              cx = f(cx, llfld_a, *arg);
+          }
       }
       ty::ty_enum(tid, ref substs) => {
         let variants = ty::enum_variants(cx.tcx(), tid);
