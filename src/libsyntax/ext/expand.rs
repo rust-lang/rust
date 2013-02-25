@@ -52,7 +52,7 @@ pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
                             cx.bt_push(ExpandedFrom(CallInfo {
                                 call_site: s,
                                 callee: NameAndSpan {
-                                    name: *extname,
+                                    name: copy *extname,
                                     span: exp_sp,
                                 },
                             }));
@@ -72,7 +72,8 @@ pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
                             };
 
                             //keep going, outside-in
-                            let fully_expanded = fld.fold_expr(expanded).node;
+                            let fully_expanded =
+                                copy fld.fold_expr(expanded).node;
                             cx.bt_pop();
 
                             (fully_expanded, s)
@@ -169,7 +170,7 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
 
     let (pth, tts) = match it.node {
         item_mac(codemap::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
-            (pth, (*tts))
+            (pth, copy *tts)
         }
         _ => cx.span_bug(it.span, ~"invalid item macro invocation")
     };
@@ -189,8 +190,8 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
             cx.bt_push(ExpandedFrom(CallInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
-                    name: *extname,
-                    span: (*expand).span
+                    name: copy *extname,
+                    span: expand.span
                 }
             }));
             ((*expand).expander)(cx, it.span, tts)
@@ -204,8 +205,8 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
             cx.bt_push(ExpandedFrom(CallInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
-                    name: *extname,
-                    span: (*expand).span
+                    name: copy *extname,
+                    span: expand.span
                 }
             }));
             ((*expand).expander)(cx, it.span, it.ident, tts)
@@ -238,7 +239,9 @@ pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
     let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
-                mac_invoc_tt(pth, ref tts) => ((*mac), pth, (*tts), semi)
+                mac_invoc_tt(pth, ref tts) => {
+                    (copy *mac, pth, copy *tts, semi)
+                }
             }
         }
         _ => return orig(s, sp, fld)
@@ -254,7 +257,7 @@ pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
             SyntaxExpanderTT{expander: exp, span: exp_sp})) => {
             cx.bt_push(ExpandedFrom(CallInfo {
                 call_site: sp,
-                callee: NameAndSpan { name: *extname, span: exp_sp }
+                callee: NameAndSpan { name: copy *extname, span: exp_sp }
             }));
             let expanded = match exp(cx, mac.span, tts) {
                 MRExpr(e) =>
@@ -267,7 +270,7 @@ pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
             };
 
             //keep going, outside-in
-            let fully_expanded = fld.fold_stmt(expanded).node;
+            let fully_expanded = copy fld.fold_stmt(expanded).node;
             cx.bt_pop();
 
             (fully_expanded, sp)
@@ -351,7 +354,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
                     cfg: ast::crate_cfg, c: @crate) -> @crate {
     let exts = syntax_expander_table();
     let afp = default_ast_fold();
-    let cx: ext_ctxt = mk_ctxt(parse_sess, cfg);
+    let cx: ext_ctxt = mk_ctxt(parse_sess, copy cfg);
     let f_pre = @AstFoldFns {
         fold_expr: |a,b,c| expand_expr(exts, cx, a, b, c, afp.fold_expr),
         fold_mod: |a,b| expand_mod_items(exts, cx, a, b, afp.fold_mod),
@@ -362,7 +365,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str(~"<core-macros>",
                                         @core_macros(),
-                                        cfg,
+                                        copy cfg,
                                         parse_sess);
 
     // This is run for its side-effects on the expander env,

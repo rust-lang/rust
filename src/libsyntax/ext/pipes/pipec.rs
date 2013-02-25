@@ -118,7 +118,7 @@ pub impl gen_send for message {
 
             let mut rty = cx.ty_path_ast_builder(path(~[next.data_name()],
                                                       span)
-                                                 .add_tys(next_state.tys));
+                                               .add_tys(copy next_state.tys));
             if try {
                 rty = cx.ty_option(rty);
             }
@@ -152,7 +152,7 @@ pub impl gen_send for message {
                     ~""
                 }
                 else {
-                    ~"(" + str::connect(arg_names.map(|x| *x),
+                    ~"(" + str::connect(arg_names.map(|x| copy *x),
                                         ~", ") + ~")"
                 };
 
@@ -209,7 +209,7 @@ pub impl to_type_decls for state {
         let mut items_msg = ~[];
 
         for self.messages.each |m| {
-            let message(name, span, tys, this, next) = *m;
+            let message(name, span, tys, this, next) = copy *m;
 
             let tys = match next {
               Some(ref next_state) => {
@@ -225,7 +225,7 @@ pub impl to_type_decls for state {
                                 cx.ty_path_ast_builder(
                                     path(~[cx.ident_of(dir),
                                            cx.ident_of(next_name)], span)
-                                    .add_tys(next_state.tys)))
+                                    .add_tys(copy next_state.tys)))
               }
               None => tys
             };

@@ -31,8 +31,8 @@ pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     // Option<str> rather than just an maybe-empty string.
 
     let e = match os::getenv(var) {
-      option::None => mk_uniq_str(cx, sp, ~""),
-      option::Some(ref s) => mk_uniq_str(cx, sp, (*s))
+      None => mk_uniq_str(cx, sp, ~""),
+      Some(ref s) => mk_uniq_str(cx, sp, copy *s)
     };
     MRExpr(e)
 }

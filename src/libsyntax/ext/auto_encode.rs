@@ -143,8 +143,8 @@ pub fn expand_auto_encode(
                         cx,
                         item.span,
                         item.ident,
-                        *enum_def,
-                        *tps
+                        copy *enum_def,
+                        copy *tps
                     );
 
                     ~[filter_attrs(*item), ser_impl]
@@ -188,7 +188,7 @@ pub fn expand_auto_decode(
                         item.span,
                         item.ident,
                         struct_def.fields,
-                        *tps
+                        copy *tps
                     );
 
                     ~[filter_attrs(*item), deser_impl]
@@ -198,8 +198,8 @@ pub fn expand_auto_decode(
                         cx,
                         item.span,
                         item.ident,
-                        *enum_def,
-                        *tps
+                        copy *enum_def,
+                        copy *tps
                     );
 
                     ~[filter_attrs(*item), deser_impl]
@@ -346,7 +346,7 @@ priv impl ext_ctxt {
 
     fn lambda(+blk: ast::blk) -> @ast::expr {
         let ext_cx = self;
-        let blk_e = self.expr(blk.span, ast::expr_block(blk));
+        let blk_e = self.expr(copy blk.span, ast::expr_block(copy blk));
         quote_expr!( || $blk_e )
     }
 
@@ -840,14 +840,14 @@ fn mk_enum_ser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
-    enum_def: ast::enum_def,
+    +enum_def: ast::enum_def,
     tps: ~[ast::ty_param]
 ) -> @ast::item {
     let body = mk_enum_ser_body(
         cx,
         span,
         ident,
-        enum_def.variants
+        copy enum_def.variants
     );
 
     mk_ser_impl(cx, span, ident, tps, body)
@@ -857,7 +857,7 @@ fn mk_enum_deser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
-    enum_def: ast::enum_def,
+    +enum_def: ast::enum_def,
     tps: ~[ast::ty_param]
 ) -> @ast::item {
     let body = mk_enum_deser_body(
@@ -960,8 +960,14 @@ fn mk_enum_ser_body(
 ) -> @ast::expr {
     let arms = do variants.mapi |v_idx, variant| {
         match variant.node.kind {
-            ast::tuple_variant_kind(args) =>
-                ser_variant(cx, span, variant.node.name, v_idx, args),
+            ast::tuple_variant_kind(ref args) =>
+                ser_variant(
+                    cx,
+                    span,
+                    variant.node.name,
+                    v_idx,
+                    /*bad*/ copy *args
+                ),
             ast::struct_variant_kind(*) =>
                 fail!(~"struct variants unimplemented"),
             ast::enum_variant_kind(*) =>
@@ -1041,7 +1047,7 @@ fn mk_enum_deser_body(
 ) -> @ast::expr {
     let mut arms = do variants.mapi |v_idx, variant| {
         let body = match variant.node.kind {
-            ast::tuple_variant_kind(args) => {
+            ast::tuple_variant_kind(ref args) => {
                 if args.is_empty() {
                     // for a nullary variant v, do "v"
                     ext_cx.expr_path(span, ~[variant.node.name])
@@ -1051,7 +1057,7 @@ fn mk_enum_deser_body(
                         ext_cx,
                         span,
                         variant.node.name,
-                        args
+                        copy *args
                     )
                 }
             },
@@ -1074,7 +1080,7 @@ fn mk_enum_deser_body(
         }
     };
 
-    let quoted_expr = quote_expr!(
+    let quoted_expr = copy quote_expr!(
       ::core::sys::begin_unwind(~"explicit failure", ~"empty", 1);
     ).node;
 

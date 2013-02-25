@@ -18,13 +18,13 @@ use parse::token;
 use core::prelude::*;
 
 pub trait proto_parser {
-    fn parse_proto(&self, id: ~str) -> protocol;
+    fn parse_proto(&self, +id: ~str) -> protocol;
     fn parse_state(&self, proto: protocol);
     fn parse_message(&self, state: state);
 }
 
 pub impl proto_parser for parser::Parser {
-    fn parse_proto(&self, id: ~str) -> protocol {
+    fn parse_proto(&self, +id: ~str) -> protocol {
         let proto = protocol(id, *self.span);
 
         self.parse_seq_to_before_end(
@@ -41,7 +41,7 @@ pub impl proto_parser for parser::Parser {
 
     fn parse_state(&self, proto: protocol) {
         let id = self.parse_ident();
-        let name = *self.interner.get(id);
+        let name = copy *self.interner.get(id);
 
         self.expect(&token::COLON);
         let dir = match copy *self.token {
@@ -76,7 +76,7 @@ pub impl proto_parser for parser::Parser {
     }
 
     fn parse_message(&self, state: state) {
-        let mname = *self.interner.get(self.parse_ident());
+        let mname = copy *self.interner.get(self.parse_ident());
 
         let args = if *self.token == token::LPAREN {
             self.parse_unspanned_seq(
@@ -95,7 +95,7 @@ pub impl proto_parser for parser::Parser {
 
         let next = match *self.token {
           token::IDENT(_, _) => {
-            let name = *self.interner.get(self.parse_ident());
+            let name = copy *self.interner.get(self.parse_ident());
             let ntys = if *self.token == token::LT {
                 self.parse_unspanned_seq(
                     &token::LT,

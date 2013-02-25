@@ -58,14 +58,14 @@ pub impl append_types for @ast::path {
     fn add_ty(&self, ty: @ast::Ty) -> @ast::path {
         @ast::path {
             types: vec::append_one(copy self.types, ty),
-            .. **self
+            .. copy **self
         }
     }
 
     fn add_tys(&self, +tys: ~[@ast::Ty]) -> @ast::path {
         @ast::path {
             types: vec::append(copy self.types, tys),
-            .. **self
+            .. copy **self
         }
     }
 }
@@ -97,12 +97,12 @@ pub trait ext_ctxt_ast_builder {
                  +enum_definition: ast::enum_def) -> @ast::item;
     fn item_struct_poly(&self,
         name: ident, span: span,
-        struct_def: ast::struct_def,
+        +struct_def: ast::struct_def,
         +ty_params: ~[ast::ty_param]) -> @ast::item;
     fn item_struct(&self, name: ident, span: span,
-                   struct_def: ast::struct_def) -> @ast::item;
+                   +struct_def: ast::struct_def) -> @ast::item;
     fn struct_expr(&self, path: @ast::path,
-                   fields: ~[ast::field]) -> @ast::expr;
+                   +fields: ~[ast::field]) -> @ast::expr;
     fn variant(&self, name: ident, span: span,
                +tys: ~[@ast::Ty]) -> ast::variant;
     fn item_mod(&self, name: ident, span: span,
@@ -284,18 +284,18 @@ pub impl ext_ctxt_ast_builder for ext_ctxt {
     }
 
     fn item_struct(&self, name: ident, span: span,
-                   struct_def: ast::struct_def) -> @ast::item {
+                   +struct_def: ast::struct_def) -> @ast::item {
         self.item_struct_poly(name, span, struct_def, ~[])
     }
 
     fn item_struct_poly(&self, name: ident, span: span,
-                        struct_def: ast::struct_def,
+                        +struct_def: ast::struct_def,
                         +ty_params: ~[ast::ty_param]) -> @ast::item {
         self.item(name, span, ast::item_struct(@struct_def, ty_params))
     }
 
     fn struct_expr(&self, path: @ast::path,
-                   fields: ~[ast::field]) -> @ast::expr {
+                   +fields: ~[ast::field]) -> @ast::expr {
         @ast::expr {
             id: self.next_id(),
             callee_id: self.next_id(),

@@ -50,7 +50,7 @@ pub struct message(~str, span, ~[@ast::Ty], state, Option<next_state>);
 pub impl message {
     fn name(&mut self) -> ~str {
         match *self {
-          message(ref id, _, _, _, _) => (*id)
+          message(ref id, _, _, _, _) => copy *id
         }
     }
 
@@ -63,7 +63,7 @@ pub impl message {
     /// Return the type parameters actually used by this message
     fn get_params(&mut self) -> ~[ast::ty_param] {
         match *self {
-          message(_, _, _, this, _) => this.ty_params
+          message(_, _, _, this, _) => copy this.ty_params
         }
     }
 }
@@ -82,8 +82,8 @@ pub struct state_ {
 }
 
 pub impl state_ {
-    fn add_message(@self, name: ~str, span: span,
-                   +data: ~[@ast::Ty], next: Option<next_state>) {
+    fn add_message(@self, +name: ~str, span: span,
+                   +data: ~[@ast::Ty], +next: Option<next_state>) {
         self.messages.push(message(name, span, data, self,
                                    next));
     }

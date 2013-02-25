@@ -138,10 +138,10 @@ pub fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(+ms: ~[matcher], sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
-    for ms.each() |elt| {
+    for ms.each |elt| {
         match elt.node {
           match_tok(_) => (),
           match_seq(_,_,_,_,hi) => {
@@ -152,12 +152,13 @@ pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
           }
         }
     }
+    let matches = vec::from_fn(count_names(ms), |_i| dvec::DVec());
     ~MatcherPos {
         elts: ms,
         sep: sep,
         idx: 0u,
         up: matcher_pos_up(None),
-        matches: copy vec::from_fn(count_names(ms), |_i| dvec::DVec()),
+        matches: matches,
         match_lo: 0u,
         match_hi: match_idx_hi,
         sp_lo: lo
@@ -238,7 +239,7 @@ pub fn parse(sess: @mut ParseSess,
              ms: ~[matcher])
           -> parse_result {
     let mut cur_eis = ~[];
-    cur_eis.push(initial_matcher_pos(ms, None, rdr.peek().sp.lo));
+    cur_eis.push(initial_matcher_pos(copy ms, None, rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = ~[]; // black-box parsed by parser.rs
@@ -329,8 +330,8 @@ pub fn parse(sess: @mut ParseSess,
                                            |_m| DVec::<@named_match>());
                     let ei_t = ei;
                     cur_eis.push(~MatcherPos {
-                        elts: (*matchers),
-                        sep: (*sep),
+                        elts: copy *matchers,
+                        sep: copy *sep,
                         idx: 0u,
                         up: matcher_pos_up(Some(ei_t)),
                         matches: matches,
