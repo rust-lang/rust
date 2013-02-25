@@ -633,7 +633,7 @@ pub impl Parser {
                 seq_sep_trailing_allowed(token::COMMA),
                 |p| p.parse_ty_field()
             );
-            if vec::len(elems) == 0u {
+            if elems.len() == 0 {
                 self.unexpected_last(token::RBRACE);
             }
             ty_rec(elems)
@@ -858,17 +858,17 @@ pub impl Parser {
         }
     }
 
-    fn lit_from_token(tok: token::Token) -> lit_ {
-        match tok {
-          token::LIT_INT(i, it) => lit_int(i, it),
-          token::LIT_UINT(u, ut) => lit_uint(u, ut),
-          token::LIT_INT_UNSUFFIXED(i) => lit_int_unsuffixed(i),
-          token::LIT_FLOAT(s, ft) => lit_float(self.id_to_str(s), ft),
-          token::LIT_FLOAT_UNSUFFIXED(s) =>
-            lit_float_unsuffixed(self.id_to_str(s)),
-          token::LIT_STR(s) => lit_str(self.id_to_str(s)),
-          token::LPAREN => { self.expect(&token::RPAREN); lit_nil },
-          _ => { self.unexpected_last(tok); }
+    fn lit_from_token(tok: &token::Token) -> lit_ {
+        match *tok {
+            token::LIT_INT(i, it) => lit_int(i, it),
+            token::LIT_UINT(u, ut) => lit_uint(u, ut),
+            token::LIT_INT_UNSUFFIXED(i) => lit_int_unsuffixed(i),
+            token::LIT_FLOAT(s, ft) => lit_float(self.id_to_str(s), ft),
+            token::LIT_FLOAT_UNSUFFIXED(s) =>
+                lit_float_unsuffixed(self.id_to_str(s)),
+            token::LIT_STR(s) => lit_str(self.id_to_str(s)),
+            token::LPAREN => { self.expect(&token::RPAREN); lit_nil },
+            _ => { self.unexpected_last(*tok); }
         }
     }
 
@@ -882,7 +882,7 @@ pub impl Parser {
             // XXX: This is a really bad copy!
             let tok = copy *self.token;
             self.bump();
-            self.lit_from_token(tok)
+            self.lit_from_token(&tok)
         };
         codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
@@ -1240,8 +1240,8 @@ pub impl Parser {
             if *self.token == token::NOT {
                 self.bump();
                 match *self.token {
-                  token::LPAREN | token::LBRACE => {}
-                  _ => self.fatal(~"expected open delimiter")
+                    token::LPAREN | token::LBRACE => {}
+                    _ => self.fatal(~"expected open delimiter")
                 };
 
                 let ket = token::flip_delimiter(&*self.token);
@@ -2554,7 +2554,8 @@ pub impl Parser {
         self.expect(&token::LBRACE);
         let (inner, next) =
             maybe_parse_inner_attrs_and_next(self, parse_attrs);
-        return (inner, self.parse_block_tail_(lo, default_blk, next));
+
+        (inner, self.parse_block_tail_(lo, default_blk, next))
     }
 
     fn parse_block_no_value() -> blk {
@@ -2624,10 +2625,7 @@ pub impl Parser {
                                             fmt!(
                                                 "expected `;` or `}` after \
                                                 expression but found `%s`",
-                                                token_to_str(
-                                                    self.reader,
-                                                    &t
-                                                )
+                                                token_to_str(self.reader, &t)
                                             )
                                         );
                                     }
@@ -2823,12 +2821,14 @@ pub impl Parser {
         self.bump();
     }
 
-    fn parse_fn_decl_with_self(parse_arg_fn:
-                               fn(Parser) -> arg_or_capture_item)
-                            -> (self_ty, fn_decl) {
-
-        fn maybe_parse_self_ty(cnstr: fn(+v: mutability) -> ast::self_ty_,
-                               p: Parser) -> ast::self_ty_ {
+    fn parse_fn_decl_with_self(
+        parse_arg_fn:
+        fn(Parser) -> arg_or_capture_item
+    ) -> (self_ty, fn_decl) {
+        fn maybe_parse_self_ty(
+            cnstr: fn(+v: mutability) -> ast::self_ty_,
+            p: Parser
+        ) -> ast::self_ty_ {
             // We need to make sure it isn't a mode or a type
             if p.token_is_keyword(&~"self", &p.look_ahead(1)) ||
                 ((p.token_is_keyword(&~"const", &p.look_ahead(1)) ||
