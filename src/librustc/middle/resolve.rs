@@ -5285,10 +5285,13 @@ pub impl Resolver {
         for module_.import_resolutions.each_value |&import_resolution| {
             // Ignore dummy spans for things like automatically injected
             // imports for the prelude, and also don't warn about the same
-            // import statement being unused more than once.
+            // import statement being unused more than once. Furthermore, if
+            // the import is public, then we can't be sure whether it's unused
+            // or not so don't warn about it.
             if !import_resolution.state.used &&
                     !import_resolution.state.warned &&
-                    import_resolution.span != dummy_sp() {
+                    import_resolution.span != dummy_sp() &&
+                    import_resolution.privacy != Public {
                 import_resolution.state.warned = true;
                 match self.unused_import_lint_level {
                     warn => {
