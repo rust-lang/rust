@@ -66,22 +66,17 @@
                     "trait" "struct" "fn" "enum"
                     "impl"))
       (puthash word 'def table))
-    (dolist (word '("again" "assert"
-                    "break"
-                    "copy"
-                    "do" "drop"
-                    "else" "export" "extern"
-                    "fail" "for"
-                    "if" "use"
-                    "let" "log" "loop"
-                    "move" "new"
-                    "pure" "pub" "priv"
-                    "ref" "return" "static"
-                    "unchecked" "unsafe"
-                    "while"))
+    (dolist (word '("as" "break"
+                    "copy" "do" "drop" "else"
+                    "extern" "for" "if" "let" "log"
+                    "loop" "once" "priv" "pub" "pure"
+                    "ref" "return" "static" "unsafe" "use"
+                    "while" "while"
+                    "assert"
+                    "mut"))
       (puthash word t table))
     (puthash "match" 'alt table)
-    (dolist (word '("true" "false")) (puthash word 'atom table))
+    (dolist (word '("self" "true" "false")) (puthash word 'atom table))
     table))
 ;; FIXME type-context keywords
 
