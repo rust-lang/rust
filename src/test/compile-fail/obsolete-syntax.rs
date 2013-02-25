@@ -63,7 +63,11 @@ fn obsolete_moves() {
 
 fn obsolete_capture() {
     let a = 5;
-    let b = |copy a| { };
+    let b = ~"abc";
+
+    let x = |copy a| { };
+    //~^ ERROR obsolete syntax: capture clause
+    let y = |move b| { };
     //~^ ERROR obsolete syntax: capture clause
 }
 

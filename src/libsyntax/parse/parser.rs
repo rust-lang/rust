@@ -751,9 +751,12 @@ pub impl Parser {
     fn parse_capture_item_or(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
         -> arg_or_capture_item
     {
-        if self.eat_keyword(~"copy") {
+        if self.token_is_keyword(~"copy", *self.token) ||
+            self.token_is_word(~"move", *self.token) {
+
             // XXX outdated syntax now that moves-based-on-type has gone in
             self.obsolete(*self.span, ObsoleteCaptureClause);
+            self.bump(); // eat move/copy
             self.parse_ident();
             either::Right(())
         } else {
