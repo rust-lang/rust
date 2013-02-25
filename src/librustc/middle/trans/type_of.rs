@@ -147,7 +147,7 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         ty::ty_tup(*) | ty::ty_rec(*) | ty::ty_struct(*)
         | ty::ty_enum(*) => {
             let repr = adt::represent_type(cx, t);
-            T_struct(adt::sizing_fields_of(cx, &repr))
+            T_struct(adt::sizing_fields_of(cx, repr))
         }
 
         ty::ty_self | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
@@ -244,7 +244,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
       ty::ty_type => T_ptr(cx.tydesc_type),
       ty::ty_tup(*) | ty::ty_rec(*) => {
           let repr = adt::represent_type(cx, t);
-          T_struct(adt::fields_of(cx, &repr))
+          T_struct(adt::fields_of(cx, repr))
       }
       ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
       ty::ty_struct(did, ref substs) => {
@@ -269,7 +269,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
     match ty::get(t).sty {
       ty::ty_enum(*) | ty::ty_struct(*) => {
           let repr = adt::represent_type(cx, t);
-          common::set_struct_body(llty, adt::fields_of(cx, &repr));
+          common::set_struct_body(llty, adt::fields_of(cx, repr));
       }
       _ => ()
     }

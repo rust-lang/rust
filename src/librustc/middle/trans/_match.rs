@@ -192,7 +192,7 @@ pub enum Lit {
 // range)
 pub enum Opt {
     lit(Lit),
-    var(/* disr val */int, adt::Repr),
+    var(/* disr val */int, @adt::Repr),
     range(@ast::expr, @ast::expr),
     vec_len_eq(uint),
     vec_len_ge(uint)
@@ -268,7 +268,7 @@ pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
             let llval = consts::get_const_val(bcx.ccx(), lit_id);
             return single_result(rslt(bcx, llval));
         }
-        var(disr_val, ref repr) => {
+        var(disr_val, repr) => {
             return adt::trans_case(bcx, repr, disr_val);
         }
         range(l1, l2) => {
@@ -1274,7 +1274,7 @@ pub fn compile_submatch(bcx: block,
         do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
             let rec_vals = rec_fields.map(|field_name| {
                 let ix = ty::field_idx_strict(tcx, *field_name, field_tys);
-                adt::trans_GEP(bcx, &pat_repr, val, discr, ix)
+                adt::trans_GEP(bcx, pat_repr, val, discr, ix)
             });
             compile_submatch(
                 bcx,
@@ -1293,7 +1293,7 @@ pub fn compile_submatch(bcx: block,
           _ => ccx.sess.bug(~"non-tuple type in tuple pattern")
         };
         let tup_vals = do vec::from_fn(n_tup_elts) |i| {
-            adt::trans_GEP(bcx, &tup_repr, val, 0, i)
+            adt::trans_GEP(bcx, tup_repr, val, 0, i)
         };
         compile_submatch(bcx, enter_tup(bcx, dm, m, col, val, n_tup_elts),
                          vec::append(tup_vals, vals_left), chk);
@@ -1315,7 +1315,7 @@ pub fn compile_submatch(bcx: block,
 
         let struct_repr = adt::represent_type(bcx.ccx(), struct_ty);
         let llstructvals = do vec::from_fn(struct_element_count) |i| {
-            adt::trans_GEP(bcx, &struct_repr, val, 0, i)
+            adt::trans_GEP(bcx, struct_repr, val, 0, i)
         };
         compile_submatch(bcx,
                          enter_tuple_struct(bcx, dm, m, col, val,
@@ -1359,7 +1359,7 @@ pub fn compile_submatch(bcx: block,
     let mut test_val = val;
     if opts.len() > 0u {
         match opts[0] {
-            var(_, ref repr) => {
+            var(_, repr) => {
                 let (the_kind, val_opt) = adt::trans_switch(bcx, repr, val);
                 kind = the_kind;
                 for val_opt.each |&tval| { test_val = tval; }
@@ -1511,7 +1511,7 @@ pub fn compile_submatch(bcx: block,
         let mut size = 0u;
         let mut unpacked = ~[];
         match *opt {
-            var(disr_val, ref repr) => {
+            var(disr_val, repr) => {
                 let ExtractedBlock {vals: argvals, bcx: new_bcx} =
                     extract_variant_args(opt_cx, repr, disr_val, val);
                 size = argvals.len();
@@ -1731,7 +1731,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                                                          enum_id,
                                                          var_id);
                     let args = extract_variant_args(bcx,
-                                                    &repr,
+                                                    repr,
                                                     vinfo.disr_val,
                                                     val);
                     for sub_pats.each |sub_pat| {
@@ -1753,7 +1753,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                             // This is the tuple struct case.
                             let repr = adt::represent_node(bcx, pat.id);
                             for vec::eachi(elems) |i, elem| {
-                                let fldptr = adt::trans_GEP(bcx, &repr,
+                                let fldptr = adt::trans_GEP(bcx, repr,
                                                             val, 0, i);
                                 bcx = bind_irrefutable_pat(bcx,
                                                            *elem,
@@ -1776,7 +1776,7 @@ pub fn bind_irrefutable_pat(bcx: block,
             do expr::with_field_tys(tcx, pat_ty, None) |discr, field_tys| {
                 for vec::each(fields) |f| {
                     let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
-                    let fldptr = adt::trans_GEP(bcx, &pat_repr, val,
+                    let fldptr = adt::trans_GEP(bcx, pat_repr, val,
                                                 discr, ix);
                     bcx = bind_irrefutable_pat(bcx,
                                                f.pat,
@@ -1789,7 +1789,7 @@ pub fn bind_irrefutable_pat(bcx: block,
         ast::pat_tup(elems) => {
             let repr = adt::represent_node(bcx, pat.id);
             for vec::eachi(elems) |i, elem| {
-                let fldptr = adt::trans_GEP(bcx, &repr, val, 0, i);
+                let fldptr = adt::trans_GEP(bcx, repr, val, 0, i);
                 bcx = bind_irrefutable_pat(bcx,
                                            *elem,
                                            fldptr,
