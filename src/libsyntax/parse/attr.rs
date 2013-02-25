@@ -161,8 +161,8 @@ impl parser_attr for Parser {
 
     fn parse_optional_meta() -> ~[@ast::meta_item] {
         match *self.token {
-          token::LPAREN => return self.parse_meta_seq(),
-          _ => return ~[]
+            token::LPAREN => self.parse_meta_seq(),
+            _ => ~[]
         }
     }
 }

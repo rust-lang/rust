@@ -139,8 +139,8 @@ pub impl Parser {
 
     fn token_is_word(word: &~str, tok: &token::Token) -> bool {
         match *tok {
-          token::IDENT(sid, false) => { *self.id_to_str(sid) == *word }
-          _ => { false }
+            token::IDENT(sid, false) => { *self.id_to_str(sid) == *word }
+             _ => { false }
         }
     }
 
@@ -165,8 +165,8 @@ pub impl Parser {
     fn eat_keyword(word: &~str) -> bool {
         self.require_keyword(word);
         let is_kw = match *self.token {
-          token::IDENT(sid, false) => *word == *self.id_to_str(sid),
-          _ => false
+            token::IDENT(sid, false) => *word == *self.id_to_str(sid),
+            _ => false
         };
         if is_kw { self.bump() }
         is_kw
