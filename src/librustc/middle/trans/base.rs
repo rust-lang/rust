@@ -39,6 +39,7 @@ use middle::astencode;
 use middle::borrowck::RootInfo;
 use middle::resolve;
 use middle::trans::_match;
+use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -1861,7 +1862,6 @@ pub fn trans_enum_variant(ccx: @CrateContext,
                           variant: ast::variant,
                           args: &[ast::variant_arg],
                           disr: int,
-                          is_degen: bool,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
     let _icx = ccx.insn_ctxt("trans_enum_variant");
@@ -1890,21 +1890,15 @@ pub fn trans_enum_variant(ccx: @CrateContext,
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
-    // Cast the enum to a type we can GEP into.
-    let llblobptr = if is_degen {
-        fcx.llretptr
-    } else {
-        let llenumptr =
-            PointerCast(bcx, fcx.llretptr, T_opaque_enum_ptr(ccx));
-        let lldiscrimptr = GEPi(bcx, llenumptr, [0u, 0u]);
-        Store(bcx, C_int(ccx, disr), lldiscrimptr);
-        GEPi(bcx, llenumptr, [0u, 1u])
-    };
-    let t_id = local_def(enum_id);
-    let v_id = local_def(variant.node.id);
+    // XXX is there a better way to reconstruct the ty::t?
+    let enum_ty = ty::subst_tps(ccx.tcx, ty_param_substs, None,
+                                ty::node_id_to_type(ccx.tcx, enum_id));
+    let repr = adt::represent_type(ccx, enum_ty);
+
+    adt::trans_set_discr(bcx, &repr, fcx.llretptr, disr);
     for vec::eachi(args) |i, va| {
-        let lldestptr = GEP_enum(bcx, llblobptr, t_id, v_id,
-                                 /*bad*/copy ty_param_substs, i);
+        let lldestptr = adt::trans_GEP(bcx, &repr, fcx.llretptr, disr, i);
+
         // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
@@ -2014,7 +2008,7 @@ pub fn trans_struct_dtor(ccx: @CrateContext,
 }
 
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
-                      id: ast::node_id, degen: bool,
+                      id: ast::node_id,
                       path: @ast_map::path, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
     for vec::each(enum_definition.variants) |variant| {
@@ -2025,7 +2019,7 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
                 trans_enum_variant(ccx, id, *variant, /*bad*/copy *args,
-                                   disr_val, degen, None, llfn);
+                                   disr_val, None, llfn);
             }
             ast::tuple_variant_kind(_) => {
                 // Nothing to do.
@@ -2038,7 +2032,6 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: ast::enum_def,
                 trans_enum_def(ccx,
                                *enum_definition,
                                id,
-                               degen,
                                path,
                                vi,
                                &mut *i);
@@ -2089,11 +2082,10 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
       }
       ast::item_enum(ref enum_definition, ref generics) => {
         if !generics.is_type_parameterized() {
-            let degen = (*enum_definition).variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
             trans_enum_def(ccx, (*enum_definition), item.id,
-                           degen, path, vi, &mut i);
+                           path, vi, &mut i);
         }
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
