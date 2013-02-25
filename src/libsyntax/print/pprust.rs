@@ -904,7 +904,7 @@ pub fn print_attribute(s: @ps, attr: ast::attribute) {
         word(s.s, *comment);
     } else {
         word(s.s, ~"#[");
-        print_meta_item(s, @attr.node.value);
+        print_meta_item(s, attr.node.value);
         word(s.s, ~"]");
     }
 }

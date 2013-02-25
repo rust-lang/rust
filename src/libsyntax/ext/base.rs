@@ -38,7 +38,7 @@ pub struct MacroDef {
 }
 
 pub type ItemDecorator =
-    fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
+    fn@(ext_ctxt, span, @ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
 pub struct SyntaxExpanderTT {
     expander: SyntaxExpanderTTFun,

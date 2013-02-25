@@ -72,7 +72,7 @@ impl parser_attr for Parser {
         self.expect(token::RBRACKET);
         let mut hi = self.span.hi;
         return spanned(lo, hi, ast::attribute_ { style: style,
-                                                 value: *meta_item,
+                                                 value: meta_item,
                                                  is_sugared_doc: false });
     }
 

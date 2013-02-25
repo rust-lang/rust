@@ -227,7 +227,7 @@ pub impl ext_ctxt_ast_builder for ext_ctxt {
         // Rust coding conventions
         let non_camel_case_attribute = respan(dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
-            value: respan(dummy_sp(),
+            value: @respan(dummy_sp(),
                           ast::meta_list(@~"allow", ~[
                               @respan(dummy_sp(),
                                       ast::meta_word(

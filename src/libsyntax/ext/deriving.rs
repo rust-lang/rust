@@ -58,7 +58,7 @@ type ExpandDerivingEnumDefFn = &fn(ext_ctxt,
 
 pub fn expand_deriving_eq(cx: ext_ctxt,
                           span: span,
-                          _mitem: meta_item,
+                          _mitem: @meta_item,
                           in_items: ~[@item])
                        -> ~[@item] {
     expand_deriving(cx,
@@ -70,7 +70,7 @@ pub fn expand_deriving_eq(cx: ext_ctxt,
 
 pub fn expand_deriving_iter_bytes(cx: ext_ctxt,
                                   span: span,
-                                  _mitem: meta_item,
+                                  _mitem: @meta_item,
                                   in_items: ~[@item])
                                -> ~[@item] {
     expand_deriving(cx,

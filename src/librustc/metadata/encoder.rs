@@ -1020,7 +1020,7 @@ fn write_int(writer: io::Writer, &&n: int) {
     writer.write_be_u32(n as u32);
 }
 
-fn encode_meta_item(ebml_w: writer::Encoder, mi: meta_item) {
+fn encode_meta_item(ebml_w: writer::Encoder, mi: @meta_item) {
     match mi.node {
       meta_word(name) => {
         ebml_w.start_tag(tag_meta_item_word);
@@ -1050,7 +1050,7 @@ fn encode_meta_item(ebml_w: writer::Encoder, mi: meta_item) {
         ebml_w.writer.write(str::to_bytes(*name));
         ebml_w.end_tag();
         for items.each |inner_item| {
-            encode_meta_item(ebml_w, **inner_item);
+            encode_meta_item(ebml_w, *inner_item);
         }
         ebml_w.end_tag();
       }
