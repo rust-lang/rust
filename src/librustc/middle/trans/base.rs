@@ -239,25 +239,6 @@ pub fn bump_ptr(bcx: block, t: ty::t, base: ValueRef, sz: ValueRef) ->
     PointerCast(bcx, bumped, typ)
 }
 
-// Replacement for the LLVM 'GEP' instruction when field indexing into a enum.
-// @llblobptr is the data part of a enum value; its actual type
-// is meaningless, as it will be cast away.
-pub fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
-                variant_id: ast::def_id, ty_substs: &[ty::t],
-                ix: uint) -> ValueRef {
-    let _icx = bcx.insn_ctxt("GEP_enum");
-    let ccx = bcx.ccx();
-    let variant = ty::enum_variant_with_id(ccx.tcx, enum_id, variant_id);
-    assert ix < variant.args.len();
-
-    let arg_lltys = vec::map(variant.args, |aty| {
-        type_of(ccx, ty::subst_tps(ccx.tcx, ty_substs, None, *aty))
-    });
-    let typed_blobptr = PointerCast(bcx, llblobptr,
-                                    T_ptr(T_struct(arg_lltys)));
-    GEPi(bcx, typed_blobptr, [0u, ix])
-}
-
 // Returns a pointer to the body for the box. The box may be an opaque
 // box. The result will be casted to the type of body_t, if it is statically
 // known.
