@@ -12,6 +12,7 @@
 
 // An example to make sure the protocol parsing syntax extension works.
 
+use core::cell::Cell;
 use core::option;
 
 proto! pingpong (
@@ -49,17 +50,15 @@ mod test {
 
 pub fn main() {
     let (client_, server_) = pingpong::init();
-    let client_ = ~mut Some(client_);
-    let server_ = ~mut Some(server_);
+    let client_ = Cell(client_);
+    let server_ = Cell(server_);
 
-    do task::spawn || {
-        let mut client__ = None;
-        *client_ <-> client__;
-        test::client(option::unwrap(client__));
+    do task::spawn {
+        let client__ = client_.take();
+        test::client(client__);
     };
-    do task::spawn || {
-        let mut server_ˊ = None;
-        *server_ <-> server_ˊ;
-        test::server(option::unwrap(server_ˊ));
+    do task::spawn {
+        let server__ = server_.take();
+        test::server(server__);
     };
 }

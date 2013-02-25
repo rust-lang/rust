@@ -17,13 +17,15 @@
 //
 // The filename is a song reference; google it in quotes.
 
+use core::cell::Cell;
+
 fn child_generation(gens_left: uint, -c: comm::Chan<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
     // With this code, only as many generations are alive at a time as tasks
     // alive at a time,
-    let c = ~mut Some(c);
-    do task::spawn_supervised || {
-        let c = option::swap_unwrap(c);
+    let c = Cell(c);
+    do task::spawn_supervised {
+        let c = c.take();
         if gens_left & 1 == 1 {
             task::yield(); // shake things up a bit
         }
