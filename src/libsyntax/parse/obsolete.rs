@@ -48,6 +48,7 @@ pub enum ObsoleteSyntax {
     ObsoleteUnenforcedBound,
     ObsoleteImplSyntax,
     ObsoleteTraitBoundSeparator,
+    ObsoleteCaptureClause,
 }
 
 pub impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -125,6 +126,10 @@ pub impl Parser {
             ObsoleteTraitBoundSeparator => (
                 "space-separated trait bounds",
                 "write `+` between trait bounds"
+            ),
+            ObsoleteCaptureClause => (
+                "capture clause",
+                "referenced variables are now captured implicitly"
             ),
         };
 

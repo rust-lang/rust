@@ -75,7 +75,7 @@ use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
 use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
-use parse::obsolete::{ObsoleteTraitBoundSeparator};
+use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteCaptureClause};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -753,6 +753,7 @@ pub impl Parser {
     {
         if self.eat_keyword(~"copy") {
             // XXX outdated syntax now that moves-based-on-type has gone in
+            self.obsolete(*self.span, ObsoleteCaptureClause);
             self.parse_ident();
             either::Right(())
         } else {
