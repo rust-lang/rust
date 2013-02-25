@@ -192,7 +192,7 @@ pub trait ext_ctxt {
 }
 
 pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
-               cfg: ast::crate_cfg) -> ext_ctxt {
+               +cfg: ast::crate_cfg) -> ext_ctxt {
     struct CtxtRepr {
         parse_sess: @mut parse::ParseSess,
         cfg: ast::crate_cfg,
@@ -203,7 +203,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
     impl ext_ctxt for CtxtRepr {
         fn codemap(@mut self) -> @CodeMap { self.parse_sess.cm }
         fn parse_sess(@mut self) -> @mut parse::ParseSess { self.parse_sess }
-        fn cfg(@mut self) -> ast::crate_cfg { self.cfg }
+        fn cfg(@mut self) -> ast::crate_cfg { copy self.cfg }
         fn call_site(@mut self) -> span {
             match *self.backtrace {
                 Some(@ExpandedFrom(CallInfo {call_site: cs, _})) => cs,
@@ -214,7 +214,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
         fn backtrace(@mut self) -> Option<@ExpnInfo> { *self.backtrace }
         fn mod_push(@mut self, i: ast::ident) { self.mod_path.push(i); }
         fn mod_pop(@mut self) { self.mod_path.pop(); }
-        fn mod_path(@mut self) -> ~[ast::ident] { return self.mod_path; }
+        fn mod_path(@mut self) -> ~[ast::ident] { copy self.mod_path }
         fn bt_push(@mut self, ei: codemap::ExpnInfo) {
             match ei {
               ExpandedFrom(CallInfo {call_site: cs, callee: ref callee}) => {
@@ -222,7 +222,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
                     Some(@ExpandedFrom(CallInfo {
                         call_site: span {lo: cs.lo, hi: cs.hi,
                                          expn_info: *self.backtrace},
-                        callee: (*callee)}));
+                        callee: copy *callee}));
               }
             }
         }
@@ -269,12 +269,11 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
         fn set_trace_macros(@mut self, x: bool) {
             self.trace_mac = x
         }
-
         fn str_of(@mut self, id: ast::ident) -> ~str {
-            *self.parse_sess.interner.get(id)
+            copy *self.parse_sess.interner.get(id)
         }
         fn ident_of(@mut self, st: ~str) -> ast::ident {
-            self.parse_sess.interner.intern(@st)
+            self.parse_sess.interner.intern(@/*bad*/ copy st)
         }
     }
     let imp: @mut CtxtRepr = @mut CtxtRepr {
@@ -290,7 +289,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
 pub fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
     match expr.node {
       ast::expr_lit(l) => match l.node {
-        ast::lit_str(s) => return *s,
+        ast::lit_str(s) => copy *s,
         _ => cx.span_fatal(l.span, err_msg)
       },
       _ => cx.span_fatal(expr.span, err_msg)

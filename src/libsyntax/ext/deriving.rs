@@ -472,8 +472,8 @@ fn call_substructure_iter_bytes_method(cx: ext_ctxt,
 
 fn variant_arg_count(cx: ext_ctxt, span: span, variant: &variant) -> uint {
     match variant.node.kind {
-        tuple_variant_kind(args) => args.len(),
-        struct_variant_kind(struct_def) => struct_def.fields.len(),
+        tuple_variant_kind(ref args) => args.len(),
+        struct_variant_kind(ref struct_def) => struct_def.fields.len(),
         enum_variant_kind(*) => {
             cx.span_bug(span, ~"variant_arg_count: enum variants deprecated")
         }
