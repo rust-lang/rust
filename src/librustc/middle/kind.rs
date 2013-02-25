@@ -263,7 +263,7 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
 }
 
 pub fn check_bounds(cx: Context,
-                    _type_parameter_id: node_id,
+                    type_parameter_id: node_id,
                     sp: span,
                     ty: ty::t,
                     bounds: ty::param_bounds)
@@ -279,6 +279,12 @@ pub fn check_bounds(cx: Context,
             ty::bound_copy => {
                 if !kind.is_copy(cx.tcx) {
                     missing.push("Copy");
+                } else if kind.moves_by_default(cx.tcx) {
+                    cx.tcx.sess.span_lint(
+                        non_implicitly_copyable_typarams,
+                        type_parameter_id, cx.current_item, sp,
+                        ~"instantiating copy type parameter with a \
+                          not implicitly copyable type");
                 }
             }
 
