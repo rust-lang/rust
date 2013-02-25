@@ -13,7 +13,6 @@
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
-use core::cell::Cell;
 use core::comm::*;
 
 struct notify {
@@ -50,9 +49,11 @@ fn joinable(f: fn~()) -> Port<bool> {
         *b = true;
     }
     let (p, c) = stream();
-    let c = Cell(c);
+    let c = ~mut Some(c);
     do task::spawn_unlinked {
-        let ccc = c.take();
+        let mut cc = None;
+        *c <-> cc;
+        let ccc = option::unwrap(cc);
         wrapper(ccc, f)
     }
     p

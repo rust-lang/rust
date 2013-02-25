@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let mut a = ~[~10];
+    let a = ~[~mut 10];
     let b = copy a;
 
     assert *a[0] == 10;

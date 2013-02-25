@@ -318,16 +318,18 @@ pub fn main() {
 //    Commented out because of option::get error
 
     let (client_, server_) = pingpong::init();
-    let client_ = Cell(client_);
-    let server_ = Cell(server_);
+    let client_ = ~mut Some(client_);
+    let server_ = ~mut Some(server_);
 
     task::spawn {|client_|
-        let client__ = client_.take();
-        client(client__);
+        let mut client__ = none;
+        *client_ <-> client__;
+        client(option::unwrap(client__));
     };
     task::spawn {|server_|
-        let server__ = server_.take();
-        server(server_ˊ);
+        let mut server_ˊ = none;
+        *server_ <-> server_ˊ;
+        server(option::unwrap(server_ˊ));
     };
   */
 }

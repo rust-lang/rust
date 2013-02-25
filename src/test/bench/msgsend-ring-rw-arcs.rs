@@ -87,12 +87,17 @@ fn main() {
     for uint::range(1u, num_tasks) |i| {
         //error!("spawning %?", i);
         let (new_chan, num_port) = init();
-        let num_chan2 = Cell(num_chan);
-        let num_port = Cell(num_port);
-        let new_future = do future::spawn {
-            let num_chan = num_chan2.take();
-            let num_port1 = num_port.take();
-            thread_ring(i, msg_per_task, num_chan, num_port1)
+        let num_chan2 = ~mut None;
+        *num_chan2 <-> num_chan;
+        let num_port = ~mut Some(num_port);
+        let new_future = do future::spawn || {
+            let mut num_chan = None;
+            num_chan <-> *num_chan2;
+            let mut num_port1 = None;
+            num_port1 <-> *num_port;
+            thread_ring(i, msg_per_task,
+                        option::unwrap(num_chan),
+                        option::unwrap(num_port1))
         };
         futures.push(new_future);
         num_chan = Some(new_chan);
