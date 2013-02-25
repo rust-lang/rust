@@ -1502,9 +1502,9 @@ pub impl Parser {
             token::LBRACE | token::LPAREN | token::LBRACKET => {
                 self.parse_matcher_subseq(
                     name_idx,
-                    *self.token,
+                    &*self.token,
                     // tjc: not sure why we need a copy
-                    token::flip_delimiter(&*self.token)
+                    &token::flip_delimiter(&*self.token)
                 )
             }
             _ => self.fatal(~"expected open delimiter")
@@ -1517,15 +1517,15 @@ pub impl Parser {
     // invalid. It's similar to common::parse_seq.
     fn parse_matcher_subseq(
         name_idx: @mut uint,
-        bra: token::Token,
-        ket: token::Token
+        bra: &token::Token,
+        ket: &token::Token
     ) -> ~[matcher] {
         let mut ret_val = ~[];
         let mut lparens = 0u;
 
-        self.expect(&bra);
+        self.expect(bra);
 
-        while *self.token != ket || lparens > 0u {
+        while *self.token != *ket || lparens > 0u {
             if *self.token == token::LPAREN { lparens += 1u; }
             if *self.token == token::RPAREN { lparens -= 1u; }
             ret_val.push(self.parse_matcher(name_idx));
@@ -1545,8 +1545,8 @@ pub impl Parser {
                 let name_idx_lo = *name_idx;
                 let ms = self.parse_matcher_subseq(
                     name_idx,
-                    token::LPAREN,
-                    token::RPAREN
+                    &token::LPAREN,
+                    &token::RPAREN
                 );
                 if ms.len() == 0u {
                     self.fatal(~"repetition body must be nonempty");
