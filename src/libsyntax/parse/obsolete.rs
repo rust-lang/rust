@@ -48,6 +48,7 @@ pub enum ObsoleteSyntax {
     ObsoleteUnenforcedBound,
     ObsoleteImplSyntax,
     ObsoleteTraitBoundSeparator,
+    ObsoleteMutOwnedPointer,
 }
 
 pub impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -125,6 +126,12 @@ pub impl Parser {
             ObsoleteTraitBoundSeparator => (
                 "space-separated trait bounds",
                 "write `+` between trait bounds"
+            ),
+            ObsoleteMutOwnedPointer => (
+                "mutable owned pointer",
+                "mutability inherits through `~` pointers; place the `~` box
+                 in a mutable location, like a mutable local variable or an \
+                 `@mut` box"
             ),
         };
 
