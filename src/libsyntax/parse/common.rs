@@ -46,7 +46,7 @@ pub fn seq_sep_none() -> SeqSep {
     }
 }
 
-pub fn token_to_str(reader: reader, ++token: token::Token) -> ~str {
+pub fn token_to_str(reader: reader, token: &token::Token) -> ~str {
     token::to_str(reader.interner(), token)
 }
 
@@ -56,7 +56,7 @@ pub impl Parser {
             *self.last_span,
             fmt!(
                 "unexpected token: `%s`",
-                token_to_str(self.reader, t)
+                token_to_str(self.reader, &t)
             )
         );
     }
@@ -65,7 +65,7 @@ pub impl Parser {
         self.fatal(
             fmt!(
                 "unexpected token: `%s`",
-                token_to_str(self.reader, *self.token)
+                token_to_str(self.reader, &copy *self.token)
             )
         );
     }
@@ -77,9 +77,10 @@ pub impl Parser {
             self.bump();
         } else {
             self.fatal(
-                fmt!("expected `%s` but found `%s`",
-                    token_to_str(self.reader, *t),
-                    token_to_str(self.reader, *self.token)
+                fmt!(
+                    "expected `%s` but found `%s`",
+                    token_to_str(self.reader, t),
+                    token_to_str(self.reader, &copy *self.token)
                 )
             )
         }
@@ -102,7 +103,7 @@ pub impl Parser {
                 self.fatal(
                     fmt!(
                         "expected ident, found `%s`",
-                         token_to_str(self.reader, *self.token)
+                        token_to_str(self.reader, &copy *self.token)
                     )
                 );
             }
@@ -149,7 +150,7 @@ pub impl Parser {
     }
 
     fn is_keyword(word: &~str) -> bool {
-        self.token_is_keyword(word, &*self.token)
+        self.token_is_keyword(word, &copy *self.token)
     }
 
     fn is_any_keyword(tok: &token::Token) -> bool {
@@ -178,7 +179,7 @@ pub impl Parser {
                 fmt!(
                     "expected `%s`, found `%s`",
                     *word,
-                    token_to_str(self.reader, *self.token)
+                    token_to_str(self.reader, &copy *self.token)
                 )
             );
         }
@@ -190,11 +191,11 @@ pub impl Parser {
 
     fn check_strict_keywords() {
         match *self.token {
-          token::IDENT(_, false) => {
-            let w = token_to_str(self.reader, *self.token);
-            self.check_strict_keywords_(&w);
-          }
-          _ => ()
+            token::IDENT(_, false) => {
+                let w = token_to_str(self.reader, &copy *self.token);
+                self.check_strict_keywords_(&w);
+            }
+            _ => ()
         }
     }
 
@@ -210,11 +211,11 @@ pub impl Parser {
 
     fn check_reserved_keywords() {
         match *self.token {
-          token::IDENT(_, false) => {
-            let w = token_to_str(self.reader, *self.token);
-            self.check_reserved_keywords_(&w);
-          }
-          _ => ()
+            token::IDENT(_, false) => {
+                let w = token_to_str(self.reader, &copy *self.token);
+                self.check_reserved_keywords_(&w);
+            }
+            _ => ()
         }
     }
 
@@ -237,9 +238,9 @@ pub impl Parser {
             );
         } else {
             let mut s: ~str = ~"expected `";
-            s += token_to_str(self.reader, token::GT);
+            s += token_to_str(self.reader, &token::GT);
             s += ~"`, found `";
-            s += token_to_str(self.reader, *self.token);
+            s += token_to_str(self.reader, &copy *self.token);
             s += ~"`";
             self.fatal(s);
         }

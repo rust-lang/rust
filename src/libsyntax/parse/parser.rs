@@ -460,7 +460,7 @@ pub impl Parser {
             let hi = p.last_span.hi;
             debug!("parse_trait_methods(): trait method signature ends in \
                     `%s`",
-                   token_to_str(p.reader, copy *p.token));
+                   token_to_str(p.reader, &copy *p.token));
             match *p.token {
               token::SEMI => {
                 p.bump();
@@ -502,7 +502,7 @@ pub impl Parser {
                     p.fatal(
                         fmt!(
                             "expected `;` or `}` but found `%s`",
-                            token_to_str(p.reader, copy *p.token)
+                            token_to_str(p.reader, &copy *p.token)
                         )
                     );
                 }
@@ -848,7 +848,7 @@ pub impl Parser {
                         fmt!(
                             "expected integral vector length \
                             but found `%s`",
-                            token_to_str(self.reader, copy *self.token)
+                            token_to_str(self.reader, &copy *self.token)
                         )
                     );
                 }
@@ -1423,7 +1423,7 @@ pub impl Parser {
                 p.fatal(
                     fmt!(
                         "incorrect close delimiter: `%s`",
-                        token_to_str(p.reader, copy *p.token)
+                        token_to_str(p.reader, &copy *p.token)
                     )
                 );
               }
@@ -2114,7 +2114,7 @@ pub impl Parser {
                     self.fatal(
                         fmt!(
                             "expected `}`, found `%s`",
-                            token_to_str(self.reader, copy *self.token)
+                            token_to_str(self.reader, &copy *self.token)
                         )
                     );
                 }
@@ -2621,10 +2621,15 @@ pub impl Parser {
                                 copy t => {
                                     if classify::stmt_ends_with_semi(*stmt) {
                                         self.fatal(
-                                            ~"expected `;` or `}` after \
-                                              expression but found `"
-                                            + token_to_str(self.reader, t)
-                                            + ~"`");
+                                            fmt!(
+                                                "expected `;` or `}` after \
+                                                expression but found `%s`",
+                                                token_to_str(
+                                                    self.reader,
+                                                    &t
+                                                )
+                                            )
+                                        );
                                     }
                                     stmts.push(stmt);
                                 }
@@ -2811,7 +2816,7 @@ pub impl Parser {
             self.fatal(
                 fmt!(
                     "expected `self` but found `%s`",
-                    token_to_str(self.reader, copy *self.token)
+                    token_to_str(self.reader, &copy *self.token)
                 )
             );
         }
@@ -2883,7 +2888,7 @@ pub impl Parser {
                     self.fatal(
                         fmt!(
                             "expected `,` or `)`, found `%s`",
-                            token_to_str(self.reader, copy *self.token)
+                            token_to_str(self.reader, &copy *self.token)
                         )
                     );
                 }
@@ -3194,7 +3199,7 @@ pub impl Parser {
                 fmt!(
                     "expected `{`, `(`, or `;` after struct name \
                     but found `%s`",
-                    token_to_str(self.reader, copy *self.token)
+                    token_to_str(self.reader, &copy *self.token)
                 )
             );
         }
@@ -3244,7 +3249,7 @@ pub impl Parser {
                     copy *self.span,
                     fmt!(
                         "expected `;`, `,`, or '}' but found `%s`",
-                        token_to_str(self.reader, copy *self.token)
+                        token_to_str(self.reader, &copy *self.token)
                     )
                 );
             }
@@ -3334,7 +3339,7 @@ pub impl Parser {
                 self.fatal(
                     fmt!(
                         "expected item but found `%s`",
-                        token_to_str(self.reader, copy *self.token)
+                        token_to_str(self.reader, &copy *self.token)
                     )
                 );
               }
@@ -3590,7 +3595,7 @@ pub impl Parser {
                 copy *self.span,
                 fmt!(
                     "expected `{` or `mod` but found `%s`",
-                    token_to_str(self.reader, copy *self.token)
+                    token_to_str(self.reader, &copy *self.token)
                 )
             );
         }
@@ -3603,7 +3608,7 @@ pub impl Parser {
                         copy *self.span,
                         fmt!(
                             "expected foreign module name but found `%s`",
-                            token_to_str(self.reader, copy *self.token)
+                            token_to_str(self.reader, &copy *self.token)
                         )
                     );
                 }

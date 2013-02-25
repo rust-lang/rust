@@ -359,7 +359,7 @@ pub fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
             literals.push(lit {lit: s, pos: sp.lo});
             log(debug, ~"tok lit: " + s);
         } else {
-            log(debug, ~"tok: " + token::to_str(rdr.interner, tok));
+            log(debug, ~"tok: " + token::to_str(rdr.interner, &tok));
         }
         first_read = false;
     }

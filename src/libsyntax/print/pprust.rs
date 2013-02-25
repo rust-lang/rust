@@ -777,14 +777,14 @@ pub fn print_tt(s: @ps, tt: ast::token_tree) {
     match tt {
       ast::tt_delim(ref tts) => print_tts(s, *tts),
       ast::tt_tok(_, ref tk) => {
-          word(s.s, parse::token::to_str(s.intr, (*tk)));
+          word(s.s, parse::token::to_str(s.intr, tk));
       }
       ast::tt_seq(_, ref tts, ref sep, zerok) => {
         word(s.s, ~"$(");
         for (*tts).each() |tt_elt| { print_tt(s, *tt_elt); }
         word(s.s, ~")");
         match (*sep) {
-          Some(ref tk) => word(s.s, parse::token::to_str(s.intr, (*tk))),
+          Some(ref tk) => word(s.s, parse::token::to_str(s.intr, tk)),
           None => ()
         }
         word(s.s, if zerok { ~"*" } else { ~"+" });

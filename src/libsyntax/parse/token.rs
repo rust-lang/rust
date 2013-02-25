@@ -130,8 +130,8 @@ pub fn binop_to_str(o: binop) -> ~str {
     }
 }
 
-pub fn to_str(in: @ident_interner, t: Token) -> ~str {
-    match t {
+pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
+    match *t {
       EQ => ~"=",
       LT => ~"<",
       LE => ~"<=",
