@@ -60,8 +60,8 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: ~str, itr: @ident_interner)
                          -> ~str {
     let strs = do p.map |e| {
         match *e {
-          path_mod(s) => *itr.get(s),
-          path_name(s) => *itr.get(s)
+          path_mod(s) => copy *itr.get(s),
+          path_name(s) => copy *itr.get(s)
         }
     };
     str::connect(strs, sep)
@@ -70,7 +70,7 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: ~str, itr: @ident_interner)
 pub fn path_ident_to_str(p: path, i: ident, itr: @ident_interner) -> ~str {
     if vec::is_empty(p) {
         //FIXME /* FIXME (#2543) */ copy *i
-        *itr.get(i)
+        copy *itr.get(i)
     } else {
         fmt!("%s::%s", path_to_str(p, itr), *itr.get(i))
     }
@@ -82,8 +82,8 @@ pub fn path_to_str(p: &[path_elt], itr: @ident_interner) -> ~str {
 
 pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
     match pe {
-        path_mod(s) => *itr.get(s),
-        path_name(s) => *itr.get(s)
+        path_mod(s) => copy *itr.get(s),
+        path_name(s) => copy *itr.get(s)
     }
 }
 
@@ -310,7 +310,10 @@ pub fn map_item(i: @item, &&cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
             for methods.each |tm| {
                 let id = ast_util::trait_method_to_ty_method(tm).id;
                 let d_id = ast_util::local_def(i.id);
-                cx.map.insert(id, node_trait_method(@*tm, d_id, item_path));
+                cx.map.insert(
+                    id,
+                    node_trait_method(@copy *tm, d_id, item_path)
+                );
             }
         }
         _ => ()

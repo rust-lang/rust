@@ -195,11 +195,10 @@ struct ParsedItemsAndViewItems {
 /* ident is handled by common.rs */
 
 pub fn Parser(sess: @mut ParseSess,
-              cfg: ast::crate_cfg,
+              +cfg: ast::crate_cfg,
               +rdr: reader) -> Parser {
 
-    let tok0 = rdr.next_token();
-    let span0 = tok0.sp;
+    let tok0 = copy rdr.next_token();
     let interner = rdr.interner();
 
     Parser {
@@ -207,15 +206,15 @@ pub fn Parser(sess: @mut ParseSess,
         interner: interner,
         sess: sess,
         cfg: cfg,
-        token: @mut tok0.tok,
-        span: @mut span0,
-        last_span: @mut span0,
-        buffer: @mut [TokenAndSpan {tok: tok0.tok, sp: span0}, ..4],
+        token: @mut copy tok0.tok,
+        span: @mut copy tok0.sp,
+        last_span: @mut copy tok0.sp,
+        buffer: @mut [copy tok0, .. 4],
         buffer_start: @mut 0,
         buffer_end: @mut 0,
-        tokens_consumed: @mut 0u,
+        tokens_consumed: @mut 0,
         restriction: @mut UNRESTRICTED,
-        quote_depth: @mut 0u,
+        quote_depth: @mut 0,
         keywords: token::keyword_table(),
         strict_keywords: token::strict_keyword_table(),
         reserved_keywords: token::reserved_keyword_table(),
@@ -253,20 +252,20 @@ pub struct Parser {
 pub impl Parser {
     // advance the parser by one token
     fn bump() {
-        *self.last_span = *self.span;
+        *self.last_span = copy *self.span;
         let next = if *self.buffer_start == *self.buffer_end {
             self.reader.next_token()
         } else {
-            let next = self.buffer[*self.buffer_start];
+            let next = copy self.buffer[*self.buffer_start];
             *self.buffer_start = (*self.buffer_start + 1) & 3;
             next
         };
-        *self.token = next.tok;
-        *self.span = next.sp;
+        *self.token = copy next.tok;
+        *self.span = copy next.sp;
         *self.tokens_consumed += 1u;
     }
     // EFFECT: replace the current token and span with the given one
-    fn replace_token(next: token::Token, +lo: BytePos, +hi: BytePos) {
+    fn replace_token(+next: token::Token, +lo: BytePos, +hi: BytePos) {
         *self.token = next;
         *self.span = mk_sp(lo, hi);
     }
@@ -461,7 +460,7 @@ pub impl Parser {
             let hi = p.last_span.hi;
             debug!("parse_trait_methods(): trait method signature ends in \
                     `%s`",
-                   token_to_str(p.reader, *p.token));
+                   token_to_str(p.reader, copy *p.token));
             match *p.token {
               token::SEMI => {
                 p.bump();
@@ -499,8 +498,13 @@ pub impl Parser {
                 })
               }
 
-              _ => { p.fatal(~"expected `;` or `}` but found `" +
-                          token_to_str(p.reader, *p.token) + ~"`");
+              _ => {
+                    p.fatal(
+                        fmt!(
+                            "expected `;` or `}` but found `%s`",
+                            token_to_str(p.reader, copy *p.token)
+                        )
+                    );
                 }
             }
         }
@@ -649,7 +653,7 @@ pub impl Parser {
             self.parse_borrowed_pointee()
         } else if self.eat_keyword(&~"extern") {
             self.parse_ty_bare_fn()
-        } else if self.token_is_closure_keyword(&*self.token) {
+        } else if self.token_is_closure_keyword(&copy *self.token) {
             self.parse_ty_closure(None, None)
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(*self.token) {
@@ -681,7 +685,7 @@ pub impl Parser {
                     self.bump();
                     self.bump();
                     return self.parse_ty_closure(Some(sigil), Some(rname));
-                } else if self.token_is_closure_keyword(&*self.token) {
+                } else if self.token_is_closure_keyword(&copy *self.token) {
                     return self.parse_ty_closure(Some(sigil), None);
                 }
             }
@@ -716,7 +720,7 @@ pub impl Parser {
             _ => { None }
         };
 
-        if self.token_is_closure_keyword(&*self.token) {
+        if self.token_is_closure_keyword(&copy *self.token) {
             return self.parse_ty_closure(Some(BorrowedSigil), rname);
         }
 
@@ -841,9 +845,12 @@ pub impl Parser {
                 }
                 _ => {
                     self.fatal(
-                        fmt!("expected integral vector length \
-                              but found `%s`",
-                             token_to_str(self.reader, *self.token)));
+                        fmt!(
+                            "expected integral vector length \
+                            but found `%s`",
+                            token_to_str(self.reader, copy *self.token)
+                        )
+                    );
                 }
             }
         } else {
@@ -873,7 +880,7 @@ pub impl Parser {
             lit_bool(false)
         } else {
             // XXX: This is a really bad copy!
-            let tok = *self.token;
+            let tok = copy *self.token;
             self.bump();
             self.lit_from_token(tok)
         };
@@ -1063,7 +1070,7 @@ pub impl Parser {
         }
     }
 
-    fn mk_mac_expr(+lo: BytePos, +hi: BytePos, m: mac_) -> @expr {
+    fn mk_mac_expr(+lo: BytePos, +hi: BytePos, +m: mac_) -> @expr {
         @expr {
             id: self.get_id(),
             callee_id: self.get_id(),
@@ -1391,7 +1398,7 @@ pub impl Parser {
             self.bump();
             (None, zerok)
         } else {
-            let sep = *self.token;
+            let sep = copy *self.token;
             self.bump();
             if *self.token == token::BINOP(token::STAR)
                 || *self.token == token::BINOP(token::PLUS) {
@@ -1416,7 +1423,7 @@ pub impl Parser {
                 p.fatal(
                     fmt!(
                         "incorrect close delimiter: `%s`",
-                        token_to_str(p.reader, *p.token)
+                        token_to_str(p.reader, copy *p.token)
                     )
                 );
               }
@@ -1912,7 +1919,7 @@ pub impl Parser {
         // labeled loop headers look like 'loop foo: {'
         let is_labeled_loop_header =
             is_ident(*self.token)
-            && !self.is_any_keyword(&*self.token)
+            && !self.is_any_keyword(&copy *self.token)
             && self.look_ahead(1) == token::COLON;
 
         if is_loop_header || is_labeled_loop_header {
@@ -2143,7 +2150,7 @@ pub impl Parser {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
         let mut pat;
-        match *self.token {
+        match copy *self.token {
           token::UNDERSCORE => { self.bump(); pat = pat_wild; }
           token::AT => {
             self.bump();
@@ -2446,7 +2453,7 @@ pub impl Parser {
             let decl = self.parse_let();
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
         } else if is_ident(*self.token)
-            && !self.is_any_keyword(&*self.token)
+            && !self.is_any_keyword(&copy *self.token)
             && self.look_ahead(1) == token::NOT {
 
             check_expected_item(self, first_item_attrs);
@@ -2540,7 +2547,7 @@ pub impl Parser {
 
         let lo = self.span.lo;
         if self.eat_keyword(&~"unsafe") {
-            self.obsolete(*self.span, ObsoleteUnsafeBlock);
+            self.obsolete(copy *self.span, ObsoleteUnsafeBlock);
         }
         self.expect(&token::LBRACE);
         let (inner, next) =
@@ -3049,7 +3056,7 @@ pub impl Parser {
             ty = self.parse_ty(false);
             opt_trait_ref
         } else if self.eat(&token::COLON) {
-            self.obsolete(*self.span, ObsoleteImplSyntax);
+            self.obsolete(copy *self.span, ObsoleteImplSyntax);
             Some(self.parse_trait_ref())
         } else {
             None
@@ -3116,7 +3123,7 @@ pub impl Parser {
         self.parse_region_param();
         let ty_params = self.parse_ty_params();
         if self.eat(&token::COLON) {
-            self.obsolete(*self.span, ObsoleteClassTraits);
+            self.obsolete(copy *self.span, ObsoleteClassTraits);
             let _ = self.parse_trait_ref_list(token::LBRACE);
         }
 
@@ -3948,7 +3955,7 @@ pub impl Parser {
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
             });
-        } else if macros_allowed && !self.is_any_keyword(&*self.token)
+        } else if macros_allowed && !self.is_any_keyword(&copy *self.token)
                 && self.look_ahead(1) == token::NOT
                 && (is_plain_ident(self.look_ahead(2))
                     || self.look_ahead(2) == token::LPAREN
@@ -4121,7 +4128,7 @@ pub impl Parser {
     fn is_view_item() -> bool {
         let tok, next_tok;
         if !self.is_keyword(&~"pub") && !self.is_keyword(&~"priv") {
-            tok = *self.token;
+            tok = copy *self.token;
             next_tok = self.look_ahead(1);
         } else {
             tok = self.look_ahead(1);

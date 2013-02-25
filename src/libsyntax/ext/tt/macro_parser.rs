@@ -424,7 +424,7 @@ pub fn parse_nt(p: Parser, name: ~str) -> nonterminal {
       ~"ident" => match *p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
-                     + token::to_str(p.reader.interner(), *p.token))
+                     + token::to_str(p.reader.interner(), copy *p.token))
       },
       ~"path" => token::nt_path(p.parse_path_with_tps(false)),
       ~"tt" => {
