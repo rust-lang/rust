@@ -1016,22 +1016,6 @@ pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
 pub fn T_taskptr(cx: @CrateContext) -> TypeRef { return T_ptr(cx.task_type); }
 
 
-// This type must never be used directly; it must always be cast away.
-pub fn T_typaram(tn: @TypeNames) -> TypeRef {
-    let s = @"typaram";
-    match name_has_type(tn, s) {
-      Some(t) => return t,
-      _ => ()
-    }
-    let t = T_i8();
-    associate_type(tn, s, t);
-    return t;
-}
-
-pub fn T_typaram_ptr(tn: @TypeNames) -> TypeRef {
-    return T_ptr(T_typaram(tn));
-}
-
 pub fn T_opaque_cbox_ptr(cx: @CrateContext) -> TypeRef {
     // closures look like boxes (even when they are ~fn or &fn)
     // see trans_closure.rs
