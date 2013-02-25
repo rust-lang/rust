@@ -20,7 +20,7 @@ fn borrow(x: &int, f: fn(x: &int)) {
 struct F { f: ~int }
 
 pub fn main() {
-    let mut x = ~mut @F{f: ~3};
+    let mut x = ~@F{f: ~3};
     do borrow(x.f) |b_x| {
         assert *b_x == 3;
         assert ptr::addr_of(&(*x.f)) == ptr::addr_of(&(*b_x));

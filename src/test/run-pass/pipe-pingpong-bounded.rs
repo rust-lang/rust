@@ -14,6 +14,7 @@
 // experiment with what code the compiler should generate for bounded
 // protocols.
 
+use core::cell::Cell;
 
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
@@ -111,16 +112,14 @@ mod test {
 
 pub fn main() {
     let (client_, server_) = ::pingpong::init();
-    let client_ = ~mut Some(client_);
-    let server_ = ~mut Some(server_);
-    do task::spawn || {
-        let mut client__ = None;
-        *client_ <-> client__;
-        test::client(option::unwrap(client__));
+    let client_ = Cell(client_);
+    let server_ = Cell(server_);
+    do task::spawn {
+        let client__ = client_.take();
+        test::client(client__);
     };
-    do task::spawn || {
-        let mut server_ˊ = None;
-        *server_ <-> server_ˊ;
-        test::server(option::unwrap(server_ˊ));
+    do task::spawn {
+        let server__ = server_.take();
+        test::server(server_ˊ);
     };
 }
