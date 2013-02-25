@@ -27,7 +27,7 @@ use core::vec;
 pub pure fn path_name_i(idents: &[ident], intr: @token::ident_interner)
                      -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    str::connect(idents.map(|i| *intr.get(*i)), ~"::")
+    str::connect(idents.map(|i| copy *intr.get(*i)), ~"::")
 }
 
 
@@ -283,7 +283,7 @@ pub fn split_trait_methods(trait_methods: &[trait_method])
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
         match *trt_method {
-          required(ref tm) => reqd.push((*tm)),
+          required(ref tm) => reqd.push(copy *tm),
           provided(m) => provd.push(m)
         }
     };
