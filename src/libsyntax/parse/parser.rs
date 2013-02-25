@@ -2111,9 +2111,12 @@ pub impl Parser {
             if *self.token == token::UNDERSCORE {
                 self.bump();
                 if *self.token != token::RBRACE {
-                    self.fatal(~"expected `}`, found `" +
-                               token_to_str(self.reader, *self.token) +
-                               ~"`");
+                    self.fatal(
+                        fmt!(
+                            "expected `}`, found `%s`",
+                            token_to_str(self.reader, copy *self.token)
+                        )
+                    );
                 }
                 etc = true;
                 break;
@@ -2195,7 +2198,6 @@ pub impl Parser {
               }
               _ => pat_uniq(sub)
             };
-
           }
           token::BINOP(token::AND) => {
               let lo = self.span.lo;
@@ -2806,8 +2808,12 @@ pub impl Parser {
 
     fn expect_self_ident() {
         if !self.is_self_ident() {
-            self.fatal(fmt!("expected `self` but found `%s`",
-                            token_to_str(self.reader, *self.token)));
+            self.fatal(
+                fmt!(
+                    "expected `self` but found `%s`",
+                    token_to_str(self.reader, copy *self.token)
+                )
+            );
         }
         self.bump();
     }
@@ -2874,9 +2880,12 @@ pub impl Parser {
                     args_or_capture_items = ~[];
                 }
                 _ => {
-                    self.fatal(~"expected `,` or `)`, found `" +
-                               token_to_str(self.reader, *self.token) +
-                               ~"`");
+                    self.fatal(
+                        fmt!(
+                            "expected `,` or `)`, found `%s`",
+                            token_to_str(self.reader, copy *self.token)
+                        )
+                    );
                 }
             }
         } else {
@@ -3181,9 +3190,13 @@ pub impl Parser {
             is_tuple_like = true;
             fields = ~[];
         } else {
-            self.fatal(fmt!("expected `{`, `(`, or `;` after struct name \
-                             but found `%s`",
-                            token_to_str(self.reader, *self.token)));
+            self.fatal(
+                fmt!(
+                    "expected `{`, `(`, or `;` after struct name \
+                    but found `%s`",
+                    token_to_str(self.reader, copy *self.token)
+                )
+            );
         }
 
         let actual_dtor = do the_dtor.map |dtor| {
@@ -3218,21 +3231,23 @@ pub impl Parser {
 
         let a_var = self.parse_instance_var(vis);
         match *self.token {
-          token::SEMI => {
-            self.obsolete(*self.span, ObsoleteFieldTerminator);
-            self.bump();
-          }
-          token::COMMA => {
-            self.bump();
-          }
-          token::RBRACE => {}
-          _ => {
-            self.span_fatal(*self.span,
-                            fmt!("expected `;`, `,`, or '}' but \
-                                  found `%s`",
-                                 token_to_str(self.reader,
-                                              *self.token)));
-          }
+            token::SEMI => {
+                self.obsolete(copy *self.span, ObsoleteFieldTerminator);
+                self.bump();
+            }
+            token::COMMA => {
+                self.bump();
+            }
+            token::RBRACE => {}
+            _ => {
+                self.span_fatal(
+                    copy *self.span,
+                    fmt!(
+                        "expected `;`, `,`, or '}' but found `%s`",
+                        token_to_str(self.reader, copy *self.token)
+                    )
+                );
+            }
         }
         a_var
     }
@@ -3316,8 +3331,12 @@ pub impl Parser {
                                                   module");
               }
               _ => {
-                self.fatal(~"expected item but found `" +
-                           token_to_str(self.reader, *self.token) + ~"`");
+                self.fatal(
+                    fmt!(
+                        "expected item but found `%s`",
+                        token_to_str(self.reader, copy *self.token)
+                    )
+                );
               }
             }
             debug!("parse_mod_items: attrs=%?", attrs);
@@ -3567,20 +3586,26 @@ pub impl Parser {
             must_be_named_mod = true;
             self.expect_keyword(&~"mod");
         } else if *self.token != token::LBRACE {
-            self.span_fatal(*self.span,
-                            fmt!("expected `{` or `mod` but found %s",
-                                 token_to_str(self.reader, *self.token)));
+            self.span_fatal(
+                copy *self.span,
+                fmt!(
+                    "expected `{` or `mod` but found `%s`",
+                    token_to_str(self.reader, copy *self.token)
+                )
+            );
         }
 
         let (sort, ident) = match *self.token {
             token::IDENT(*) => (ast::named, self.parse_ident()),
             _ => {
                 if must_be_named_mod {
-                    self.span_fatal(*self.span,
-                                    fmt!("expected foreign module name but \
-                                          found %s",
-                                         token_to_str(self.reader,
-                                                      *self.token)));
+                    self.span_fatal(
+                        copy *self.span,
+                        fmt!(
+                            "expected foreign module name but found `%s`",
+                            token_to_str(self.reader, copy *self.token)
+                        )
+                    );
                 }
 
                 (ast::anonymous,
