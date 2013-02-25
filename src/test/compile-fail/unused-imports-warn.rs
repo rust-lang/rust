@@ -31,6 +31,9 @@ mod foo {
 }
 
 mod bar {
+    // Don't ignore on 'pub use' because we're not sure if it's used or not
+    pub use core::cmp::Eq;
+
     pub mod c {
         use foo::Point;
         use foo::Square; //~ ERROR unused import
