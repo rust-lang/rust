@@ -604,7 +604,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         }
         ast::expr_tup(ref args) => {
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
-            return trans_adt(bcx, &repr, 0, args.mapi(|i, arg| (i, *arg)),
+            return trans_adt(bcx, repr, 0, args.mapi(|i, arg| (i, *arg)),
                              None, dest);
         }
         ast::expr_lit(@codemap::spanned {node: ast::lit_str(s), _}) => {
@@ -726,7 +726,7 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
                 // Nullary variant.
                 let ty = expr_ty(bcx, ref_expr);
                 let repr = adt::represent_type(ccx, ty);
-                adt::trans_set_discr(bcx, &repr, lldest,
+                adt::trans_set_discr(bcx, repr, lldest,
                                      variant_info.disr_val);
                 return bcx;
             }
@@ -891,7 +891,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 datum: do base_datum.get_element(bcx,
                                                  field_tys[ix].mt.ty,
                                                  ZeroMem) |srcval| {
-                    adt::trans_GEP(bcx, &repr, srcval, discr, ix)
+                    adt::trans_GEP(bcx, repr, srcval, discr, ix)
                 },
                 bcx: bcx
             }
@@ -1192,7 +1192,7 @@ fn trans_rec_or_struct(bcx: block,
         };
 
         let repr = adt::represent_type(bcx.ccx(), ty);
-        trans_adt(bcx, &repr, discr, numbered_fields, optbase, dest)
+        trans_adt(bcx, repr, discr, numbered_fields, optbase, dest)
     }
 }
 
@@ -1645,7 +1645,7 @@ fn trans_imm_cast(bcx: block, expr: @ast::expr,
             (cast_enum, cast_float) => {
                 let bcx = bcx;
                 let repr = adt::represent_type(ccx, t_in);
-                let lldiscrim_a = adt::trans_cast_to_int(bcx, &repr, llexpr);
+                let lldiscrim_a = adt::trans_cast_to_int(bcx, repr, llexpr);
                 match k_out {
                     cast_integral => int_cast(bcx, ll_t_out,
                                               val_ty(lldiscrim_a),

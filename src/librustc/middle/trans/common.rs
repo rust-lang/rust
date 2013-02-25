@@ -26,6 +26,7 @@ use lib;
 use metadata::common::LinkMeta;
 use middle::astencode;
 use middle::resolve;
+use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::callee;
@@ -44,6 +45,7 @@ use util::ppaux::{expr_repr, ty_to_str};
 
 use core::cast;
 use core::hash;
+use core::hashmap::linear::LinearMap;
 use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::ptr;
 use core::str;
@@ -203,6 +205,7 @@ pub struct CrateContext {
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, TypeRef>,
      llsizingtypes: HashMap<ty::t, TypeRef>,
+     adt_reprs: @mut LinearMap<ty::t, @adt::Repr>,
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,

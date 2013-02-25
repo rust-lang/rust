@@ -67,6 +67,7 @@ use util::ppaux::{ty_to_str, ty_to_short_str};
 use util::ppaux;
 
 use core::hash;
+use core::hashmap::linear::LinearMap;
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
@@ -641,7 +642,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
           let repr = adt::represent_type(cx.ccx(), t);
           do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
               for vec::eachi(field_tys) |i, field_ty| {
-                  let llfld_a = adt::trans_GEP(cx, &repr, av, discr, i);
+                  let llfld_a = adt::trans_GEP(cx, repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
               }
           }
@@ -654,7 +655,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_tup(args) => {
           let repr = adt::represent_type(cx.ccx(), t);
           for vec::eachi(args) |i, arg| {
-              let llfld_a = adt::trans_GEP(cx, &repr, av, 0, i);
+              let llfld_a = adt::trans_GEP(cx, repr, av, 0, i);
               cx = f(cx, llfld_a, *arg);
           }
       }
@@ -668,9 +669,9 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
           // NB: we must hit the discriminant first so that structural
           // comparison know not to proceed when the discriminants differ.
 
-          match adt::trans_switch(cx, &repr, av) {
+          match adt::trans_switch(cx, repr, av) {
               (_match::single, None) => {
-                  cx = iter_variant(cx, &repr, av, variants[0],
+                  cx = iter_variant(cx, repr, av, variants[0],
                                     substs.tps, f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
@@ -686,9 +687,9 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                           sub_block(cx, ~"enum-iter-variant-" +
                                     int::to_str(variant.disr_val));
                       let variant_cx =
-                          iter_variant(variant_cx, &repr, av, *variant,
+                          iter_variant(variant_cx, repr, av, *variant,
                                        substs.tps, f);
-                      match adt::trans_case(cx, &repr, variant.disr_val) {
+                      match adt::trans_case(cx, repr, variant.disr_val) {
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
                           }
@@ -1863,9 +1864,9 @@ pub fn trans_enum_variant(ccx: @CrateContext,
                                 ty::node_id_to_type(ccx.tcx, enum_id));
     let repr = adt::represent_type(ccx, enum_ty);
 
-    adt::trans_set_discr(bcx, &repr, fcx.llretptr, disr);
+    adt::trans_set_discr(bcx, repr, fcx.llretptr, disr);
     for vec::eachi(args) |i, va| {
-        let lldestptr = adt::trans_GEP(bcx, &repr, fcx.llretptr, disr, i);
+        let lldestptr = adt::trans_GEP(bcx, repr, fcx.llretptr, disr, i);
 
         // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
@@ -1935,7 +1936,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     let repr = adt::represent_type(ccx, tup_ty);
 
     for fields.eachi |i, field| {
-        let lldestptr = adt::trans_GEP(bcx, &repr, fcx.llretptr, 0, i);
+        let lldestptr = adt::trans_GEP(bcx, repr, fcx.llretptr, 0, i);
         let llarg = match fcx.llargs.get(&field.node.id) {
             local_mem(x) => x,
             _ => {
@@ -3050,6 +3051,7 @@ pub fn trans_crate(sess: session::Session,
               module_data: HashMap(),
               lltypes: ty::new_ty_hash(),
               llsizingtypes: ty::new_ty_hash(),
+              adt_reprs: @mut LinearMap::new(),
               names: new_namegen(sess.parse_sess.interner),
               next_addrspace: new_addrspace_gen(),
               symbol_hasher: symbol_hasher,

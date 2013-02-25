@@ -245,7 +245,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               let (bt, bv) = const_autoderef(cx, bt, bv);
               do expr::with_field_tys(cx.tcx, bt, None) |discr, field_tys| {
                   let ix = ty::field_idx_strict(cx.tcx, field, field_tys);
-                  adt::const_get_element(cx, &brepr, bv, discr, ix)
+                  adt::const_get_element(cx, brepr, bv, discr, ix)
               }
           }
 
@@ -326,7 +326,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               (expr::cast_enum, expr::cast_integral) |
               (expr::cast_enum, expr::cast_float)  => {
                 let repr = adt::represent_type(cx, basety);
-                let iv = C_int(cx, adt::const_get_discrim(cx, &repr, v));
+                let iv = C_int(cx, adt::const_get_discrim(cx, repr, v));
                 let ety_cast = expr::cast_type_kind(ety);
                 match ety_cast {
                     expr::cast_integral => {
@@ -356,12 +356,12 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           ast::expr_tup(es) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
-              adt::trans_const(cx, &repr, 0, es.map(|e| const_expr(cx, *e)))
+              adt::trans_const(cx, repr, 0, es.map(|e| const_expr(cx, *e)))
           }
           ast::expr_rec(ref fs, None) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
-              adt::trans_const(cx, &repr, 0,
+              adt::trans_const(cx, repr, 0,
                                fs.map(|f| const_expr(cx, f.node.expr)))
           }
           ast::expr_struct(_, ref fs, None) => {
@@ -378,7 +378,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                           }
                       }
                   });
-                  adt::trans_const(cx, &repr, discr, cs)
+                  adt::trans_const(cx, repr, discr, cs)
               }
           }
           ast::expr_vec(es, ast::m_imm) => {
@@ -442,7 +442,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                     let vinfo = ty::enum_variant_with_id(cx.tcx,
                                                          enum_did,
                                                          variant_did);
-                    adt::trans_const(cx, &repr, vinfo.disr_val, [])
+                    adt::trans_const(cx, repr, vinfo.disr_val, [])
                 }
                 Some(ast::def_struct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
@@ -460,7 +460,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                   Some(ast::def_struct(_)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
-                      adt::trans_const(cx, &repr, 0,
+                      adt::trans_const(cx, repr, 0,
                                        args.map(|a| const_expr(cx, *a)))
                   }
                   Some(ast::def_variant(enum_did, variant_did)) => {
@@ -469,7 +469,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                       let vinfo = ty::enum_variant_with_id(cx.tcx,
                                                            enum_did,
                                                            variant_did);
-                      adt::trans_const(cx, &repr, vinfo.disr_val,
+                      adt::trans_const(cx, repr, vinfo.disr_val,
                                        args.map(|a| const_expr(cx, *a)))
                   }
                   _ => cx.sess.span_bug(e.span, ~"expected a struct or \

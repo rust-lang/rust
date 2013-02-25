@@ -679,7 +679,7 @@ pub impl Datum {
                 }
 
                 let repr = adt::represent_type(ccx, self.ty);
-                assert adt::is_newtypeish(&repr);
+                assert adt::is_newtypeish(repr);
                 let ty = ty::subst(ccx.tcx, substs, variants[0].args[0]);
                 return match self.mode {
                     ByRef => {
@@ -687,7 +687,7 @@ pub impl Datum {
                         // rather than a ptr to the enum type.
                         (
                             Some(Datum {
-                                val: adt::trans_GEP(bcx, &repr, self.val,
+                                val: adt::trans_GEP(bcx, repr, self.val,
                                                     0, 0),
                                 ty: ty,
                                 mode: ByRef,
@@ -719,7 +719,7 @@ pub impl Datum {
                 }
 
                 let repr = adt::represent_type(ccx, self.ty);
-                assert adt::is_newtypeish(&repr);
+                assert adt::is_newtypeish(repr);
                 let ty = fields[0].mt.ty;
                 return match self.mode {
                     ByRef => {
@@ -729,7 +729,7 @@ pub impl Datum {
                         // destructors.
                         (
                             Some(Datum {
-                                val: adt::trans_GEP(bcx, &repr, self.val,
+                                val: adt::trans_GEP(bcx, repr, self.val,
                                                     0, 0),
                                 ty: ty,
                                 mode: ByRef,

@@ -469,7 +469,7 @@ pub fn trans_struct_drop(bcx: block,
                          take_ref: bool)
                       -> block {
     let repr = adt::represent_type(bcx.ccx(), t);
-    let drop_flag = adt::trans_drop_flag_ptr(bcx, &repr, v0);
+    let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
         let mut bcx = cx;
 
@@ -507,7 +507,7 @@ pub fn trans_struct_drop(bcx: block,
             ty::struct_mutable_fields(bcx.tcx(), class_did,
                                               substs);
         for vec::eachi(field_tys) |i, fld| {
-            let llfld_a = adt::trans_GEP(bcx, &repr, v0, 0, i);
+            let llfld_a = adt::trans_GEP(bcx, repr, v0, 0, i);
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }
 
