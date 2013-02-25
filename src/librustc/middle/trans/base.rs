@@ -640,35 +640,16 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                           f: val_and_ty_fn) -> block {
     let _icx = cx.insn_ctxt("iter_structural_ty");
 
-    fn iter_variant(cx: block, a_tup: ValueRef,
+    fn iter_variant(cx: block, repr: &adt::Repr, av: ValueRef,
                     variant: ty::VariantInfo,
-                    tps: &[ty::t], tid: ast::def_id,
-                    f: val_and_ty_fn) -> block {
+                    tps: &[ty::t], f: val_and_ty_fn) -> block {
         let _icx = cx.insn_ctxt("iter_variant");
-        if variant.args.len() == 0u { return cx; }
-        let fn_ty = variant.ctor_ty;
-        let ccx = cx.ccx();
+        let tcx = cx.tcx();
         let mut cx = cx;
-        match ty::get(fn_ty).sty {
-          ty::ty_bare_fn(ref fn_ty) => {
-            let mut j = 0u;
-            let v_id = variant.id;
-            for vec::each(fn_ty.sig.inputs) |a| {
-                let llfldp_a = GEP_enum(cx, a_tup, tid, v_id,
-                                        /*bad*/copy tps, j);
-                // This assumes the self type is absent (it passes
-                // None for the self_ty_opt arg of substs_tps).
-                // I think that's ok since you can't have an enum
-                // inside a trait.
-                let ty_subst = ty::subst_tps(ccx.tcx, tps, None, a.ty);
-                cx = f(cx, llfldp_a, ty_subst);
-                j += 1u;
-            }
-          }
-          _ => cx.tcx().sess.bug(fmt!("iter_variant: not a function type: \
-                                       %s (variant name = %s)",
-                                      cx.ty_to_str(fn_ty),
-                                      *cx.sess().str_of(variant.name)))
+
+        for variant.args.eachi |i, &arg| {
+            cx = f(cx, adt::trans_GEP(cx, repr, av, variant.disr_val, i),
+                   ty::subst_tps(tcx, tps, None, arg));
         }
         return cx;
     }
@@ -697,45 +678,49 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
           }
       }
       ty::ty_enum(tid, ref substs) => {
-        let variants = ty::enum_variants(cx.tcx(), tid);
-        let n_variants = (*variants).len();
+          let ccx = cx.ccx();
 
-        // Cast the enums to types we can GEP into.
-        if n_variants == 1u {
-            return iter_variant(cx,
-                                av,
-                                variants[0],
-                                /*bad*/copy substs.tps,
-                                tid,
-                                f);
-        }
+          let repr = adt::represent_type(ccx, t);
+          let variants = ty::enum_variants(ccx.tcx, tid);
+          let n_variants = (*variants).len();
 
-        let ccx = cx.ccx();
-        let llenumty = T_opaque_enum_ptr(ccx);
-        let av_enum = PointerCast(cx, av, llenumty);
-        let lldiscrim_a_ptr = GEPi(cx, av_enum, [0u, 0u]);
-        let llunion_a_ptr = GEPi(cx, av_enum, [0u, 1u]);
-        let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
+          // NB: we must hit the discriminant first so that structural
+          // comparison know not to proceed when the discriminants differ.
 
-        // NB: we must hit the discriminant first so that structural
-        // comparison know not to proceed when the discriminants differ.
-        cx = f(cx, lldiscrim_a_ptr, ty::mk_int(cx.tcx()));
-        let unr_cx = sub_block(cx, ~"enum-iter-unr");
-        Unreachable(unr_cx);
-        let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb, n_variants);
-        let next_cx = sub_block(cx, ~"enum-iter-next");
-        for vec::each(*variants) |variant| {
-            let variant_cx =
-                sub_block(cx,
-                                   ~"enum-iter-variant-" +
-                                       int::to_str(variant.disr_val));
-            AddCase(llswitch, C_int(ccx, variant.disr_val), variant_cx.llbb);
-            let variant_cx =
-                iter_variant(variant_cx, llunion_a_ptr, *variant,
-                             /*bad*/copy (*substs).tps, tid, f);
-            Br(variant_cx, next_cx.llbb);
-        }
-        return next_cx;
+          match adt::trans_switch(cx, &repr, av) {
+              (_match::single, None) => {
+                  cx = iter_variant(cx, &repr, av, variants[0],
+                                    substs.tps, f);
+              }
+              (_match::switch, Some(lldiscrim_a)) => {
+                  cx = f(cx, lldiscrim_a, ty::mk_int(cx.tcx()));
+                  let unr_cx = sub_block(cx, ~"enum-iter-unr");
+                  Unreachable(unr_cx);
+                  let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
+                                        n_variants);
+                  let next_cx = sub_block(cx, ~"enum-iter-next");
+
+                  for vec::each(*variants) |variant| {
+                      let variant_cx =
+                          sub_block(cx, ~"enum-iter-variant-" +
+                                    int::to_str(variant.disr_val));
+                      let variant_cx =
+                          iter_variant(variant_cx, &repr, av, *variant,
+                                       substs.tps, f);
+                      match adt::trans_case(cx, &repr, variant.disr_val) {
+                          _match::single_result(r) => {
+                              AddCase(llswitch, r.val, variant_cx.llbb)
+                          }
+                          _ => ccx.sess.unimpl(~"value from adt::trans_case \
+                                                 in iter_structural_ty")
+                      }
+                      Br(variant_cx, next_cx.llbb);
+                  }
+                  cx = next_cx;
+              }
+              _ => ccx.sess.unimpl(~"value from adt::trans_switch \
+                                     in iter_structural_ty")
+          }
       }
       _ => cx.sess().unimpl(~"type in iter_structural_ty")
     }
