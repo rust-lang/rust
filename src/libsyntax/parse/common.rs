@@ -137,7 +137,7 @@ pub impl Parser {
         }
     }
 
-    fn token_is_word(word: &~str, tok: &token::Token) -> bool {
+    pure fn token_is_word(word: &~str, tok: &token::Token) -> bool {
         match *tok {
             token::IDENT(sid, false) => { *self.id_to_str(sid) == *word }
              _ => { false }
