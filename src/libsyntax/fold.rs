@@ -372,7 +372,7 @@ fn noop_fold_arm(a: &arm, fld: ast_fold) -> arm {
 pub fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
     match *p {
         pat_wild => pat_wild,
-        pat_ident(binding_mode, pth, sub) => {
+        pat_ident(binding_mode, pth, ref sub) => {
             pat_ident(
                 binding_mode,
                 fld.fold_path(pth),
@@ -380,13 +380,13 @@ pub fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
             )
         }
         pat_lit(e) => pat_lit(fld.fold_expr(e)),
-        pat_enum(pth, pats) => {
+        pat_enum(pth, ref pats) => {
             pat_enum(
                 fld.fold_path(pth),
                 pats.map(|pats| pats.map(|x| fld.fold_pat(*x)))
             )
         }
-        pat_rec(fields, etc) => {
+        pat_rec(ref fields, etc) => {
             let fs = do fields.map |f| {
                 ast::field_pat {
                     ident: /* FIXME (#2543) */ copy f.ident,
@@ -395,7 +395,7 @@ pub fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
             };
             pat_rec(fs, etc)
         }
-        pat_struct(pth, fields, etc) => {
+        pat_struct(pth, ref fields, etc) => {
             let pth_ = fld.fold_path(pth);
             let fs = do fields.map |f| {
                 ast::field_pat {
@@ -412,7 +412,7 @@ pub fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
         pat_range(e1, e2) => {
             pat_range(fld.fold_expr(e1), fld.fold_expr(e2))
         },
-        pat_vec(elts, tail) => {
+        pat_vec(ref elts, ref tail) => {
             pat_vec(
                 elts.map(|x| fld.fold_pat(*x)),
                 tail.map(|tail| fld.fold_pat(*tail))
@@ -423,7 +423,7 @@ pub fn noop_fold_pat(p: &pat_, fld: ast_fold) -> pat_ {
 
 fn noop_fold_decl(d: &decl_, fld: ast_fold) -> decl_ {
     match *d {
-        decl_local(ls) => decl_local(ls.map(|x| fld.fold_local(*x))),
+        decl_local(ref ls) => decl_local(ls.map(|x| fld.fold_local(*x))),
         decl_item(it) => {
             match fld.fold_item(it) {
                 Some(it_folded) => decl_item(it_folded),
