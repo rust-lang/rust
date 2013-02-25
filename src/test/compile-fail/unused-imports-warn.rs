@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -D unused-imports
+#[deny(unused_imports)];
 
 use cal = bar::c::cc;
 
@@ -38,6 +38,11 @@ mod bar {
         use foo::Point;
         use foo::Square; //~ ERROR unused import
         pub fn cc(p: Point) -> int { return 2 * (p.x + p.y); }
+    }
+
+    #[allow(unused_imports)]
+    mod foo {
+        use core::cmp::Eq;
     }
 }
 
