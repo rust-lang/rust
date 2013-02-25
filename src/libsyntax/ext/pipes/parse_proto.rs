@@ -28,7 +28,7 @@ pub impl proto_parser for parser::Parser {
         let proto = protocol(id, *self.span);
 
         self.parse_seq_to_before_end(
-            token::EOF,
+            &token::EOF,
             SeqSep {
                 sep: None,
                 trailing_sep_allowed: false,
@@ -65,8 +65,8 @@ pub impl proto_parser for parser::Parser {
 
         // parse the messages
         self.parse_unspanned_seq(
-            token::LBRACE,
-            token::RBRACE,
+            &token::LBRACE,
+            &token::RBRACE,
             SeqSep {
                 sep: Some(token::COMMA),
                 trailing_sep_allowed: true,
@@ -80,8 +80,8 @@ pub impl proto_parser for parser::Parser {
 
         let args = if *self.token == token::LPAREN {
             self.parse_unspanned_seq(
-                token::LPAREN,
-                token::RPAREN,
+                &token::LPAREN,
+                &token::RPAREN,
                 SeqSep {
                     sep: Some(token::COMMA),
                     trailing_sep_allowed: true,
@@ -98,8 +98,8 @@ pub impl proto_parser for parser::Parser {
             let name = *self.interner.get(self.parse_ident());
             let ntys = if *self.token == token::LT {
                 self.parse_unspanned_seq(
-                    token::LT,
-                    token::GT,
+                    &token::LT,
+                    &token::GT,
                     SeqSep {
                         sep: Some(token::COMMA),
                         trailing_sep_allowed: true,
