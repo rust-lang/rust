@@ -256,7 +256,7 @@ pub fn trans_fn_ref_with_vtables(
         // Should be either intra-crate or inlined.
         assert def_id.crate == ast::local_crate;
 
-        let mut {val, must_cast} =
+        let mut (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,
                                          vtables, opt_impl_did, Some(ref_id));
         if must_cast && ref_id != 0 {
@@ -410,7 +410,7 @@ pub fn body_contains_ret(body: ast::blk) -> bool {
 // See [Note-arg-mode]
 pub fn trans_call_inner(
     ++in_cx: block,
-    call_info: Option<node_info>,
+    call_info: Option<NodeInfo>,
     fn_expr_ty: ty::t,
     ret_ty: ty::t,
     get_callee: fn(block) -> Callee,
@@ -510,8 +510,8 @@ pub fn trans_call_inner(
         } else if ret_in_loop {
             let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
             bcx = do with_cond(bcx, ret_flag_result) |bcx| {
-                do option::iter(&copy bcx.fcx.loop_ret) |lret| {
-                    Store(bcx, C_bool(true), lret.flagptr);
+                do option::iter(&copy bcx.fcx.loop_ret) |&(flagptr, _)| {
+                    Store(bcx, C_bool(true), flagptr);
                     Store(bcx, C_bool(false), bcx.fcx.llretptr);
                 }
                 base::cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
@@ -529,14 +529,19 @@ pub enum CallArgs {
     ArgVals(&[ValueRef])
 }
 
+pub struct Args {
+    bcx: block,
+    args: ~[ValueRef],
+    retslot: ValueRef
+}
+
 pub fn trans_args(cx: block,
                   llenv: ValueRef,
                   +args: CallArgs,
                   fn_ty: ty::t,
                   dest: expr::Dest,
                   ret_flag: Option<ValueRef>,
-                  +autoref_arg: AutorefArg)
-               -> {bcx: block, args: ~[ValueRef], retslot: ValueRef} {
+                  +autoref_arg: AutorefArg) -> Args {
     let _icx = cx.insn_ctxt("trans_args");
     let mut temp_cleanups = ~[];
     let arg_tys = ty::ty_fn_args(fn_ty);
@@ -593,7 +598,7 @@ pub fn trans_args(cx: block,
         revoke_clean(bcx, *c)
     }
 
-    return {bcx: bcx, args: llargs, retslot: llretslot};
+    Args { bcx: bcx, args: llargs, retslot: llretslot }
 }
 
 pub enum AutorefArg {

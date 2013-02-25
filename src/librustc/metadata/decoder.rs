@@ -13,7 +13,7 @@
 
 use core::prelude::*;
 
-use cmd = metadata::cstore::crate_metadata;
+use metadata::cstore::crate_metadata;
 use dvec::DVec;
 use hash::{Hash, HashUtil};
 use io::WriterUtil;
@@ -24,7 +24,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::tydecode::{parse_ty_data, parse_def_id, parse_bounds_data};
 use metadata::tydecode::{parse_ident};
-use middle::ty;
+use middle::{ty, resolve};
 use util::ppaux::ty_to_str;
 
 use core::cmp;
@@ -47,6 +47,8 @@ use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::codemap;
 
+type cmd = @crate_metadata;
+
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
 // def_id for an item defined in another crate, somebody needs to figure out
@@ -64,7 +66,7 @@ fn lookup_hash(d: ebml::Doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
     let belt = tag_index_buckets_bucket_elt;
     for reader::tagged_docs(tagged_doc.doc, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
-        if eq_fn(vec::view(*elt.data, elt.start + 4u, elt.end)) {
+        if eq_fn(vec::slice(*elt.data, elt.start + 4u, elt.end)) {
             return Some(reader::doc_at(d.data, pos).doc);
         }
     };
@@ -75,7 +77,8 @@ pub type GetCrateDataCb = &fn(ast::crate_num) -> cmd;
 
 pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
-        return io::u64_from_be_bytes(vec::view(bytes, 0u, 4u), 0u, 4u) as int
+        return io::u64_from_be_bytes(
+            vec::slice(bytes, 0u, 4u), 0u, 4u) as int
             == item_id;
     }
     lookup_hash(items,
@@ -97,6 +100,7 @@ fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
     }
 }
 
+#[deriving_eq]
 enum Family {
     Const,                 // c
     Fn,                    // f
@@ -118,13 +122,6 @@ enum Family {
     PublicField,           // g
     PrivateField,          // j
     InheritedField         // N
-}
-
-impl cmp::Eq for Family {
-    pure fn eq(&self, other: &Family) -> bool {
-        ((*self) as uint) == ((*other) as uint)
-    }
-    pure fn ne(&self, other: &Family) -> bool { !(*self).eq(other) }
 }
 
 fn item_family(item: ebml::Doc) -> Family {
@@ -359,9 +356,11 @@ pub fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         item_ty_param_bounds(item, tcx, cdata)
     } else { @~[] };
     let rp = item_ty_region_param(item);
-    return {bounds: tp_bounds,
-            region_param: rp,
-            ty: t};
+    ty::ty_param_bounds_and_ty {
+        bounds: tp_bounds,
+        region_param: rp,
+        ty: t
+    }
 }
 
 pub fn get_region_param(cdata: cmd, id: ast::node_id)
@@ -543,7 +542,7 @@ pub fn get_item_path(intr: @ident_interner, cdata: cmd, id: ast::node_id)
 }
 
 pub type decode_inlined_item = fn(
-    cdata: cstore::crate_metadata,
+    cdata: @cstore::crate_metadata,
     tcx: ty::ctxt,
     path: ast_map::path,
     par_doc: ebml::Doc) -> Option<ast::inlined_item>;
@@ -605,20 +604,6 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     return infos;
 }
 
-// NB: These types are duplicated in resolve.rs
-pub type method_info = {
-    did: ast::def_id,
-    n_tps: uint,
-    ident: ast::ident,
-    self_type: ast::self_ty_
-};
-
-pub type _impl = {
-    did: ast::def_id,
-    ident: ast::ident,
-    methods: ~[@method_info]
-};
-
 fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
     fn get_mutability(ch: u8) -> ast::mutability {
         match ch as char {
@@ -649,16 +634,17 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
 }
 
 fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
-                     base_tps: uint) -> ~[@method_info] {
+                     base_tps: uint) -> ~[@resolve::MethodInfo] {
     let mut rslt = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |doc| {
         let m_did = reader::with_doc_data(doc, |d| parse_def_id(d));
         let mth_item = lookup_item(m_did.node, cdata.data);
         let self_ty = get_self_ty(mth_item);
-        rslt.push(@{did: translate_def_id(cdata, m_did),
-                   n_tps: item_ty_param_count(mth_item) - base_tps,
-                   ident: item_name(intr, mth_item),
-                   self_type: self_ty});
+        rslt.push(@resolve::MethodInfo {
+                    did: translate_def_id(cdata, m_did),
+                    n_tps: item_ty_param_count(mth_item) - base_tps,
+                    ident: item_name(intr, mth_item),
+                    self_type: self_ty});
     }
     rslt
 }
@@ -668,7 +654,7 @@ pub fn get_impls_for_mod(intr: @ident_interner,
                          m_id: ast::node_id,
                          name: Option<ast::ident>,
                          get_cdata: &fn(ast::crate_num) -> cmd)
-                      -> @~[@_impl] {
+                      -> @~[@resolve::Impl] {
     let data = cdata.data;
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];
@@ -685,7 +671,7 @@ pub fn get_impls_for_mod(intr: @ident_interner,
         let nm = item_name(intr, item);
         if match name { Some(n) => { n == nm } None => { true } } {
            let base_tps = item_ty_param_count(item);
-           result.push(@{
+           result.push(@resolve::Impl {
                 did: local_did, ident: nm,
                 methods: item_impl_methods(intr, impl_cdata, item, base_tps)
             });
@@ -713,8 +699,14 @@ pub fn get_trait_methods(intr: @ident_interner, cdata: cmd, id: ast::node_id,
             }
         };
         let self_ty = get_self_ty(mth);
-        result.push({ident: name, tps: bounds, fty: fty, self_ty: self_ty,
-                     vis: ast::public, def_id: def_id});
+        result.push(ty::method {
+            ident: name,
+            tps: bounds,
+            fty: fty,
+            self_ty: self_ty,
+            vis: ast::public,
+            def_id: def_id
+        });
     }
     debug!("get_trait_methods: }");
     @result
@@ -745,17 +737,23 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
         };
 
         let self_ty = get_self_ty(mth);
-        let ty_method = {ident: name, tps: bounds, fty: fty, self_ty: self_ty,
-                         vis: ast::public, def_id: did};
+        let ty_method = ty::method {
+            ident: name,
+            tps: bounds,
+            fty: fty,
+            self_ty: self_ty,
+            vis: ast::public,
+            def_id: did
+        };
         let provided_trait_method_info = ProvidedTraitMethodInfo {
             ty: ty_method,
             def_id: did
         };
 
-        vec::push(&mut result, move provided_trait_method_info);
+        vec::push(&mut result, provided_trait_method_info);
     }
 
-    return move result;
+    return result;
 }
 
 /// Returns the supertraits of the given trait.
@@ -766,7 +764,7 @@ pub fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     for reader::tagged_docs(item_doc, tag_impl_trait) |trait_doc| {
         results.push(doc_type(trait_doc, tcx, cdata));
     }
-    return dvec::unwrap(move results);
+    return dvec::unwrap(results);
 }
 
 // If the item in question is a trait, returns its set of methods and
@@ -847,7 +845,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
         }
     }
 
-    return Some(dvec::unwrap(move static_impl_methods));
+    return Some(dvec::unwrap(static_impl_methods));
 }
 
 pub fn get_item_attrs(cdata: cmd,
@@ -914,12 +912,13 @@ fn family_names_type(fam: Family) -> bool {
     match fam { Type | Mod | Trait => true, _ => false }
 }
 
-fn read_path(d: ebml::Doc) -> {path: ~str, pos: uint} {
+fn read_path(d: ebml::Doc) -> (~str, uint) {
     let desc = reader::doc_data(d);
     let pos = io::u64_from_be_bytes(desc, 0u, 4u) as uint;
     let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
     let path = str::from_bytes(pathbytes);
-    return {path: path, pos: pos};
+
+    (path, pos)
 }
 
 fn describe_def(items: ebml::Doc, id: ast::def_id) -> ~str {
@@ -961,7 +960,7 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
     for reader::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(reader::doc_data(nd));
-        items.push(attr::mk_word_item(n));
+        items.push(attr::mk_word_item(@n));
     };
     for reader::tagged_docs(md, tag_meta_item_name_value) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
@@ -970,13 +969,13 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
         let v = str::from_bytes(reader::doc_data(vd));
         // FIXME (#623): Should be able to decode meta_name_value variants,
         // but currently the encoder just drops them
-        items.push(attr::mk_name_value_item_str(n, v));
+        items.push(attr::mk_name_value_item_str(@n, @v));
     };
     for reader::tagged_docs(md, tag_meta_item_list) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = str::from_bytes(reader::doc_data(nd));
         let subitems = get_meta_items(meta_item_doc);
-        items.push(attr::mk_list_item(n, subitems));
+        items.push(attr::mk_list_item(@n, subitems));
     };
     return items;
 }
@@ -1014,7 +1013,7 @@ fn list_meta_items(intr: @ident_interner,
     }
 }
 
-fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: ~str,
+fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
                          out: io::Writer) {
     out.write_str(fmt!("=Crate Attributes (%s)=\n", hash));
 
@@ -1029,8 +1028,12 @@ pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
     return get_attributes(reader::Doc(data));
 }
 
-pub type crate_dep = {cnum: ast::crate_num, name: ast::ident,
-                      vers: ~str, hash: ~str};
+pub struct crate_dep {
+    cnum: ast::crate_num,
+    name: ast::ident,
+    vers: @~str,
+    hash: @~str
+}
 
 pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     let mut deps: ~[crate_dep] = ~[];
@@ -1041,10 +1044,10 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
         str::from_bytes(reader::doc_data(reader::get_doc(doc, tag_)))
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
-        deps.push({cnum: crate_num,
+        deps.push(crate_dep {cnum: crate_num,
                   name: intr.intern(@docstr(depdoc, tag_crate_dep_name)),
-                  vers: docstr(depdoc, tag_crate_dep_vers),
-                  hash: docstr(depdoc, tag_crate_dep_hash)});
+                  vers: @docstr(depdoc, tag_crate_dep_vers),
+                  hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;
     };
     return deps;
@@ -1056,25 +1059,26 @@ fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: io::Writer) {
     for get_crate_deps(intr, data).each |dep| {
         out.write_str(
             fmt!("%d %s-%s-%s\n",
-                 dep.cnum, *intr.get(dep.name), dep.hash, dep.vers));
+                 dep.cnum, *intr.get(dep.name), *dep.hash, *dep.vers));
     }
 
     out.write_str(~"\n");
 }
 
-pub fn get_crate_hash(data: @~[u8]) -> ~str {
+pub fn get_crate_hash(data: @~[u8]) -> @~str {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
-    return str::from_bytes(reader::doc_data(hashdoc));
+    @str::from_bytes(reader::doc_data(hashdoc))
 }
 
-pub fn get_crate_vers(data: @~[u8]) -> ~str {
+pub fn get_crate_vers(data: @~[u8]) -> @~str {
     let attrs = decoder::get_crate_attributes(data);
-    return match attr::last_meta_item_value_str_by_name(
-        attr::find_linkage_metas(attrs), ~"vers") {
-      Some(ref ver) => (/*bad*/copy *ver),
-      None => ~"0.0"
-    };
+    let linkage_attrs = attr::find_linkage_metas(attrs);
+
+    match attr::last_meta_item_value_str_by_name(linkage_attrs, ~"vers") {
+        Some(ver) => ver,
+        None => @~"0.0"
+    }
 }
 
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
@@ -1095,7 +1099,7 @@ pub fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
                            out: io::Writer) {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
-    list_crate_attributes(intr, md, hash, out);
+    list_crate_attributes(intr, md, *hash, out);
     list_crate_deps(intr, bytes, out);
 }
 

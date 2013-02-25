@@ -43,7 +43,9 @@ impl ToStr for @str {
     pure fn to_str(&self) -> ~str { ::str::from_slice(*self) }
 }
 
-impl<A: ToStr, B: ToStr> ToStr for (A, B) {
+// FIXME #4898: impl for one-tuples
+
+impl<A:ToStr,B:ToStr> ToStr for (A, B) {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         // FIXME(#4760): this causes an llvm assertion
@@ -55,7 +57,7 @@ impl<A: ToStr, B: ToStr> ToStr for (A, B) {
         }
     }
 }
-impl<A: ToStr, B: ToStr, C: ToStr> ToStr for (A, B, C) {
+impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         // FIXME(#4760): this causes an llvm assertion
@@ -72,7 +74,7 @@ impl<A: ToStr, B: ToStr, C: ToStr> ToStr for (A, B, C) {
     }
 }
 
-impl<A: ToStr> ToStr for ~[A] {
+impl<A:ToStr> ToStr for ~[A] {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         unsafe {
@@ -87,16 +89,16 @@ impl<A: ToStr> ToStr for ~[A] {
                 }
             }
             str::push_char(&mut acc, ']');
-            move acc
+            acc
         }
     }
 }
 
-impl<A: ToStr> ToStr for @A {
+impl<A:ToStr> ToStr for @A {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ~"@" + (**self).to_str() }
 }
-impl<A: ToStr> ToStr for ~A {
+impl<A:ToStr> ToStr for ~A {
     #[inline(always)]
     pure fn to_str(&self) -> ~str { ~"~" + (**self).to_str() }
 }

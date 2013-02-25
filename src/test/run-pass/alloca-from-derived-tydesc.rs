@@ -10,8 +10,8 @@
 
 enum option<T> { some(T), none, }
 
-struct R<T> {mut v: ~[option<T>]}
+struct R<T> {v: ~[option<T>]}
 
 fn f<T>() -> ~[T] { return ~[]; }
 
-pub fn main() { let r: R<int> = R {mut v: ~[]}; r.v = f(); }
+pub fn main() { let mut r: R<int> = R {v: ~[]}; r.v = f(); }

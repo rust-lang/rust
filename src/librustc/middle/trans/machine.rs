@@ -13,60 +13,8 @@
 
 use middle::trans::common::*;
 use middle::trans::type_of;
-use middle::ty::field;
 use middle::ty;
-
-use syntax::parse::token::special_idents;
-
-// Creates a simpler, size-equivalent type. The resulting type is guaranteed
-// to have (a) the same size as the type that was passed in; (b) to be non-
-// recursive. This is done by replacing all boxes in a type with boxed unit
-// types.
-// This should reduce all pointers to some simple pointer type, to
-// ensure that we don't recurse endlessly when computing the size of a
-// nominal type that has pointers to itself in it.
-pub fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
-    fn nilptr(tcx: ty::ctxt) -> ty::t {
-        ty::mk_ptr(tcx, ty::mt {ty: ty::mk_nil(tcx), mutbl: ast::m_imm})
-    }
-    fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
-        match ty::get(typ).sty {
-          ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) |
-          ty::ty_evec(_, ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_box) |
-          ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |
-          ty::ty_ptr(_) | ty::ty_rptr(*) => nilptr(tcx),
-
-          ty::ty_bare_fn(*) | // FIXME(#4804) Bare fn repr
-          ty::ty_closure(*) => ty::mk_tup(tcx, ~[nilptr(tcx), nilptr(tcx)]),
-
-          ty::ty_evec(_, ty::vstore_slice(_)) |
-          ty::ty_estr(ty::vstore_slice(_)) => {
-            ty::mk_tup(tcx, ~[nilptr(tcx), ty::mk_int(tcx)])
-          }
-          // Reduce a class type to a record type in which all the fields are
-          // simplified
-          ty::ty_struct(did, ref substs) => {
-            let simpl_fields = (if ty::ty_dtor(tcx, did).is_present() {
-                // remember the drop flag
-                  ~[field {
-                    ident: special_idents::dtor,
-                    mt: ty::mt {ty: ty::mk_u8(tcx), mutbl: ast::m_mutbl}
-                   }] }
-                else { ~[] }) +
-                do ty::lookup_struct_fields(tcx, did).map |f| {
-                 let t = ty::lookup_field_type(tcx, did, f.id, substs);
-                 field {
-                    ident: f.ident,
-                    mt: ty::mt {ty: simplify_type(tcx, t), mutbl: ast::m_const
-                 }}
-            };
-            ty::mk_rec(tcx, simpl_fields)
-          }
-          _ => typ
-        }
-    }
-    ty::fold_ty(tcx, typ, |t| simplifier(tcx, t))
-}
+use util::ppaux::ty_to_str;
 
 // ______________________________________________________________________
 // compute sizeof / alignof
@@ -85,7 +33,7 @@ pub type tag_metrics = {
 };
 
 // Returns the number of bytes clobbered by a Store to this type.
-pub fn llsize_of_store(cx: @crate_ctxt, t: TypeRef) -> uint {
+pub fn llsize_of_store(cx: @CrateContext, t: TypeRef) -> uint {
     unsafe {
         return llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
     }
@@ -93,7 +41,7 @@ pub fn llsize_of_store(cx: @crate_ctxt, t: TypeRef) -> uint {
 
 // Returns the number of bytes between successive elements of type T in an
 // array of T. This is the "ABI" size. It includes any ABI-mandated padding.
-pub fn llsize_of_alloc(cx: @crate_ctxt, t: TypeRef) -> uint {
+pub fn llsize_of_alloc(cx: @CrateContext, t: TypeRef) -> uint {
     unsafe {
         return llvm::LLVMABISizeOfType(cx.td.lltd, t) as uint;
     }
@@ -107,7 +55,7 @@ pub fn llsize_of_alloc(cx: @crate_ctxt, t: TypeRef) -> uint {
 // that LLVM *does* distinguish between e.g. a 1-bit value and an 8-bit value
 // at the codegen level! In general you should prefer `llbitsize_of_real`
 // below.
-pub fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
+pub fn llsize_of_real(cx: @CrateContext, t: TypeRef) -> uint {
     unsafe {
         let nbits = llvm::LLVMSizeOfTypeInBits(cx.td.lltd, t) as uint;
         if nbits & 7u != 0u {
@@ -120,14 +68,14 @@ pub fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
 }
 
 /// Returns the "real" size of the type in bits.
-pub fn llbitsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
+pub fn llbitsize_of_real(cx: @CrateContext, t: TypeRef) -> uint {
     unsafe {
         llvm::LLVMSizeOfTypeInBits(cx.td.lltd, t) as uint
     }
 }
 
 /// Returns the size of the type as an LLVM constant integer value.
-pub fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
+pub fn llsize_of(cx: @CrateContext, t: TypeRef) -> ValueRef {
     // Once upon a time, this called LLVMSizeOf, which does a
     // getelementptr(1) on a null pointer and casts to an int, in
     // order to obtain the type size as a value without requiring the
@@ -141,7 +89,7 @@ pub fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 // Returns the "default" size of t (see above), or 1 if the size would
 // be zero.  This is important for things like vectors that expect
 // space to be consumed.
-pub fn nonzero_llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
+pub fn nonzero_llsize_of(cx: @CrateContext, t: TypeRef) -> ValueRef {
     if llbitsize_of_real(cx, t) == 0 {
         unsafe { llvm::LLVMConstInt(cx.int_type, 1, False) }
     } else {
@@ -153,7 +101,7 @@ pub fn nonzero_llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 // The preffered alignment may be larger than the alignment used when
 // packing the type into structs. This will be used for things like
 // allocations inside a stack frame, which LLVM has a free hand in.
-pub fn llalign_of_pref(cx: @crate_ctxt, t: TypeRef) -> uint {
+pub fn llalign_of_pref(cx: @CrateContext, t: TypeRef) -> uint {
     unsafe {
         return llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
     }
@@ -162,7 +110,7 @@ pub fn llalign_of_pref(cx: @crate_ctxt, t: TypeRef) -> uint {
 // Returns the minimum alignment of a type required by the plattform.
 // This is the alignment that will be used for struct fields, arrays,
 // and similar ABI-mandated things.
-pub fn llalign_of_min(cx: @crate_ctxt, t: TypeRef) -> uint {
+pub fn llalign_of_min(cx: @CrateContext, t: TypeRef) -> uint {
     unsafe {
         return llvm::LLVMABIAlignmentOfType(cx.td.lltd, t) as uint;
     }
@@ -171,7 +119,7 @@ pub fn llalign_of_min(cx: @crate_ctxt, t: TypeRef) -> uint {
 // Returns the "default" alignment of t, which is calculated by casting
 // null to a record containing a single-bit followed by a t value, then
 // doing gep(0,1) to get at the trailing (and presumably padded) t cell.
-pub fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
+pub fn llalign_of(cx: @CrateContext, t: TypeRef) -> ValueRef {
     unsafe {
         return llvm::LLVMConstIntCast(
             lib::llvm::llvm::LLVMAlignOf(t), cx.int_type, False);
@@ -179,28 +127,41 @@ pub fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 }
 
 // Computes the size of the data part of an enum.
-pub fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
-    if cx.enum_sizes.contains_key(&t) { return cx.enum_sizes.get(&t); }
+pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
+    if cx.enum_sizes.contains_key(&t) {
+        return cx.enum_sizes.get(&t);
+    }
+
+    debug!("static_size_of_enum %s", ty_to_str(cx.tcx, t));
+
     match ty::get(t).sty {
-      ty::ty_enum(tid, ref substs) => {
-        // Compute max(variant sizes).
-        let mut max_size = 0u;
-        let variants = ty::enum_variants(cx.tcx, tid);
-        for vec::each(*variants) |variant| {
-            let tup_ty = simplify_type(
-                cx.tcx,
-                ty::mk_tup(cx.tcx, /*bad*/copy variant.args));
-            // Perform any type parameter substitutions.
-            let tup_ty = ty::subst(cx.tcx, substs, tup_ty);
-            // Here we possibly do a recursive call.
-            let this_size =
-                llsize_of_real(cx, type_of::type_of(cx, tup_ty));
-            if max_size < this_size { max_size = this_size; }
+        ty::ty_enum(tid, ref substs) => {
+            // Compute max(variant sizes).
+            let mut max_size = 0;
+            let variants = ty::enum_variants(cx.tcx, tid);
+            for variants.each |variant| {
+                if variant.args.len() == 0 {
+                    loop;
+                }
+
+                let lltypes = variant.args.map(|&variant_arg| {
+                    let substituted = ty::subst(cx.tcx, substs, variant_arg);
+                    type_of::sizing_type_of(cx, substituted)
+                });
+
+                debug!("static_size_of_enum: variant %s type %s",
+                       *cx.tcx.sess.str_of(variant.name),
+                       ty_str(cx.tn, T_struct(lltypes)));
+
+                let this_size = llsize_of_real(cx, T_struct(lltypes));
+                if max_size < this_size {
+                    max_size = this_size;
+                }
+            }
+            cx.enum_sizes.insert(t, max_size);
+            return max_size;
         }
-        cx.enum_sizes.insert(t, max_size);
-        return max_size;
-      }
-      _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
+        _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
     }
 }
 

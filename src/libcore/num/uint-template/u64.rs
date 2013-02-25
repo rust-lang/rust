@@ -19,7 +19,7 @@ mod inst {
     pub const bits: uint = 64;
 }
 
-pub impl u64: num::NumCast {
+pub impl NumCast for u64 {
     /**
      * Cast `n` to a `u64`
      */

@@ -45,10 +45,12 @@ pub enum ObsoleteSyntax {
     ObsoleteMoveInit,
     ObsoleteBinaryMove,
     ObsoleteUnsafeBlock,
-    ObsoleteUnenforcedBound
+    ObsoleteUnenforcedBound,
+    ObsoleteImplSyntax,
+    ObsoleteTraitBoundSeparator,
 }
 
-pub impl ObsoleteSyntax: to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for ObsoleteSyntax {
     #[inline(always)]
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
@@ -115,7 +117,15 @@ pub impl Parser {
                 "unenforced type parameter bound",
                 "use trait bounds on the functions that take the type as \
                  arguments, not on the types themselves"
-            )
+            ),
+            ObsoleteImplSyntax => (
+                "colon-separated impl syntax",
+                "write `impl Trait for Type`"
+            ),
+            ObsoleteTraitBoundSeparator => (
+                "space-separated trait bounds",
+                "write `+` between trait bounds"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);
@@ -148,7 +158,7 @@ pub impl Parser {
     }
 
     fn is_obsolete_ident(ident: &str) -> bool {
-        self.token_is_obsolete_ident(ident, copy self.token)
+        self.token_is_obsolete_ident(ident, *self.token)
     }
 
     fn eat_obsolete_ident(ident: &str) -> bool {
@@ -162,7 +172,7 @@ pub impl Parser {
 
     fn try_parse_obsolete_struct_ctor() -> bool {
         if self.eat_obsolete_ident("new") {
-            self.obsolete(copy self.last_span, ObsoleteStructCtor);
+            self.obsolete(*self.last_span, ObsoleteStructCtor);
             self.parse_fn_decl(|p| p.parse_arg());
             self.parse_block();
             true
@@ -172,13 +182,13 @@ pub impl Parser {
     }
 
     fn try_parse_obsolete_with() -> bool {
-        if self.token == token::COMMA
+        if *self.token == token::COMMA
             && self.token_is_obsolete_ident("with",
                                             self.look_ahead(1u)) {
             self.bump();
         }
         if self.eat_obsolete_ident("with") {
-            self.obsolete(copy self.last_span, ObsoleteWith);
+            self.obsolete(*self.last_span, ObsoleteWith);
             self.parse_expr();
             true
         } else {
@@ -188,10 +198,10 @@ pub impl Parser {
 
     fn try_parse_obsolete_priv_section() -> bool {
         if self.is_keyword(~"priv") && self.look_ahead(1) == token::LBRACE {
-            self.obsolete(copy self.span, ObsoletePrivSection);
+            self.obsolete(*self.span, ObsoletePrivSection);
             self.eat_keyword(~"priv");
             self.bump();
-            while self.token != token::RBRACE {
+            while *self.token != token::RBRACE {
                 self.parse_single_class_item(ast::private);
             }
             self.bump();

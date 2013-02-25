@@ -10,10 +10,10 @@
 // except according to those terms.
 
 
-type point = {x: int, y: int};
+struct point {x: int, y: int}
 
 fn main() {
     let mut origin: point;
-    origin = {x: 10,.. origin}; //~ ERROR use of possibly uninitialized variable: `origin`
+    origin = point {x: 10,.. origin}; //~ ERROR use of possibly uninitialized variable: `origin`
     copy origin;
 }

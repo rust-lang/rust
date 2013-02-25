@@ -59,7 +59,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 
-fn make_speak<C: noisy>(c: C) {
+fn make_speak<C:noisy>(c: C) {
     c.speak();
 }
 

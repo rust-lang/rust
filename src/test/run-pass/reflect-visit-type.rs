@@ -10,7 +10,7 @@
 
 // xfail-test
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
-enum my_visitor = @{ mut types: ~[str] };
+enum my_visitor = @mut { types: ~[str] };
 
 impl TyVisitor for my_visitor {
     fn visit_bot() -> bool {
@@ -141,7 +141,7 @@ fn visit_ty<T>(v: TyVisitor) {
 }
 
 pub fn main() {
-    let v = my_visitor(@{mut types: ~[]});
+    let v = my_visitor(@mut {types: ~[]});
     let vv = v as TyVisitor;
 
     visit_ty::<bool>(vv);

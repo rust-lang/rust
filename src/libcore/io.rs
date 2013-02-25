@@ -169,7 +169,7 @@ pub trait ReaderUtil {
     fn read_i8(&self) -> i8;
 }
 
-impl<T: Reader> ReaderUtil for T {
+impl<T:Reader> ReaderUtil for T {
 
     fn read_bytes(&self,len: uint) -> ~[u8] {
         let mut bytes = vec::with_capacity(len);
@@ -178,7 +178,7 @@ impl<T: Reader> ReaderUtil for T {
         let count = self.read(bytes, len);
 
         unsafe { vec::raw::set_len(&mut bytes, count); }
-        move bytes
+        bytes
     }
 
     fn read_line(&self) -> ~str {
@@ -193,7 +193,7 @@ impl<T: Reader> ReaderUtil for T {
 
     fn read_chars(&self, n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
-        fn chars_from_bytes<T: Reader>(bytes: &~[u8], chars: &mut ~[char])
+        fn chars_from_bytes<T:Reader>(bytes: &~[u8], chars: &mut ~[char])
             -> (uint, uint) {
             let mut i = 0;
             let bytes_len = bytes.len();
@@ -246,10 +246,10 @@ impl<T: Reader> ReaderUtil for T {
             // over-read by reading 1-byte per char needed
             nbread = if ncreq > nbreq { ncreq } else { nbreq };
             if nbread > 0 {
-                bytes = vec::slice(bytes, offset, bytes.len());
+                bytes = vec::slice(bytes, offset, bytes.len()).to_vec();
             }
         }
-        move chars
+        chars
     }
 
     fn read_char(&self) -> char {
@@ -273,7 +273,7 @@ impl<T: Reader> ReaderUtil for T {
     fn read_whole_stream(&self) -> ~[u8] {
         let mut bytes: ~[u8] = ~[];
         while !self.eof() { bytes.push_all(self.read_bytes(2048u)); }
-        move bytes
+        bytes
     }
 
     fn each_byte(&self, it: fn(int) -> bool) {
@@ -460,7 +460,7 @@ struct Wrapper<T, C> {
 // A forwarding impl of reader that also holds on to a resource for the
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
-impl<R: Reader, C> Reader for Wrapper<R, C> {
+impl<R:Reader,C> Reader for Wrapper<R, C> {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         self.base.read(bytes, len)
     }
@@ -531,7 +531,7 @@ impl Reader for BytesReader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
         let count = uint::min(len, self.bytes.len() - self.pos);
 
-        let view = vec::view(self.bytes, self.pos, self.bytes.len());
+        let view = vec::slice(self.bytes, self.pos, self.bytes.len());
         vec::bytes::copy_memory(bytes, view, count);
 
         self.pos += count;
@@ -589,7 +589,7 @@ pub trait Writer {
     fn get_type(&self) -> WriterType;
 }
 
-impl<W: Writer, C> Writer for Wrapper<W, C> {
+impl<W:Writer,C> Writer for Wrapper<W, C> {
     fn write(&self, bs: &[const u8]) { self.base.write(bs); }
     fn seek(&self, off: int, style: SeekStyle) { self.base.seek(off, style); }
     fn tell(&self) -> uint { self.base.tell() }
@@ -890,7 +890,7 @@ pub trait WriterUtil {
     fn write_i8(&self, n: i8);
 }
 
-impl<T: Writer> WriterUtil for T {
+impl<T:Writer> WriterUtil for T {
     fn write_char(&self, ch: char) {
         if ch as uint < 128u {
             self.write(&[ch as u8]);
@@ -999,7 +999,7 @@ pub struct BytesWriter {
 impl Writer for BytesWriter {
     fn write(&self, v: &[const u8]) {
         do self.bytes.swap |bytes| {
-            let mut bytes = move bytes;
+            let mut bytes = bytes;
             let v_len = v.len();
             let bytes_len = bytes.len();
 
@@ -1008,13 +1008,13 @@ impl Writer for BytesWriter {
             unsafe { vec::raw::set_len(&mut bytes, count); }
 
             {
-                let view = vec::mut_view(bytes, self.pos, count);
+                let view = vec::mut_slice(bytes, self.pos, count);
                 vec::bytes::copy_memory(view, v, v_len);
             }
 
             self.pos += v_len;
 
-            move bytes
+            bytes
         }
     }
     fn seek(&self, offset: int, whence: SeekStyle) {
@@ -1035,7 +1035,7 @@ pub pure fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as Writer);
     // FIXME (#3758): This should not be needed.
-    unsafe { wr.bytes.check_out(|bytes| move bytes) }
+    unsafe { wr.bytes.check_out(|bytes| bytes) }
 }
 
 pub pure fn with_str_writer(f: fn(Writer)) -> ~str {
@@ -1048,7 +1048,7 @@ pub pure fn with_str_writer(f: fn(Writer)) -> ~str {
     }
     assert str::is_utf8(v);
 
-    unsafe { move ::cast::transmute(move v) }
+    unsafe { ::cast::transmute(v) }
 }
 
 // Utility functions
@@ -1112,7 +1112,7 @@ pub mod fsync {
         arg: Arg<t>,
     }
 
-    impl<T: Copy> Drop for Res<T> {
+    impl<T:Copy> Drop for Res<T> {
         fn finalize(&self) {
           match self.arg.opt_level {
             None => (),
@@ -1126,7 +1126,7 @@ pub mod fsync {
 
     pub fn Res<t: Copy>(arg: Arg<t>) -> Res<t>{
         Res {
-            arg: move arg
+            arg: arg
         }
     }
 

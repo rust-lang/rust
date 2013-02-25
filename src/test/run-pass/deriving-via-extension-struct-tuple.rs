@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type cat = {cat_name: ~str, cat_name: int};  //~ ERROR Duplicate field name cat_name
+#[deriving_eq]
+struct Foo(int, int, ~str);
 
-fn main()
-{
-  io::println(int::str({x: 1, x: 2}.x)); //~ ERROR Duplicate field name x
+pub fn main() {
+  let a1 = Foo(5, 6, ~"abc");
+  let a2 = Foo(5, 6, ~"abc");
+  let b = Foo(5, 7, ~"def");
+
+  assert a1 == a1;
+  assert a1 == a2;
+  assert !(a1 == b);
+
+  assert a1 != b;
+  assert !(a1 != a1);
+  assert !(a1 != a2);
 }

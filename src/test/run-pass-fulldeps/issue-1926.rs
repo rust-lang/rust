@@ -20,12 +20,12 @@ use syntax::parse::parser;
 fn new_parse_sess() -> parser::parse_sess {
     let cm = codemap::new_codemap();
     let handler = diagnostic::mk_handler(option::none);
-    let sess = @{
+    let sess = @mut {
         cm: cm,
-        mut next_id: 1,
+        next_id: 1,
         span_diagnostic: diagnostic::mk_span_handler(handler, cm),
-        mut chpos: 0u,
-        mut byte_pos: 0u
+        chpos: 0u,
+        byte_pos: 0u
     };
     return sess;
 }

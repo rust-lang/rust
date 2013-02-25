@@ -12,13 +12,13 @@
 
 
 // -*- rust -*-
-struct Point {x: int, y: int, mut z: int}
+struct Point {x: int, y: int, z: int}
 
-fn f(p: @Point) { assert (p.z == 12); p.z = 13; assert (p.z == 13); }
+fn f(p: @mut Point) { assert (p.z == 12); p.z = 13; assert (p.z == 13); }
 
 pub fn main() {
-    let a: Point = Point {x: 10, y: 11, mut z: 12};
-    let b: @Point = @copy a;
+    let a: Point = Point {x: 10, y: 11, z: 12};
+    let b: @mut Point = @mut copy a;
     assert (b.z == 12);
     f(b);
     assert (a.z == 12);

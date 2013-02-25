@@ -12,7 +12,7 @@ enum E { V0, V16(u16) }
 struct S(E, u16, u16);
 const C: S = S(V0, 0x600D, 0xBAD);
 
-fn main() {
+pub fn main() {
     let S(_, n, _) = C;
     assert n != 0xBAD;
     assert n == 0x600D;

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 pub trait plus {
     fn plus() -> int;
@@ -17,12 +16,12 @@ pub trait plus {
 
 mod a {
     use plus;
-    pub impl uint: plus { fn plus() -> int { self as int + 20 } }
+    pub impl plus for uint { fn plus() -> int { self as int + 20 } }
 }
 
 mod b {
     use plus;
-    pub impl ~str: plus { fn plus() -> int { 200 } }
+    pub impl plus for ~str { fn plus() -> int { 200 } }
 }
 
 trait uint_utils {
@@ -40,16 +39,16 @@ impl uint_utils for uint {
 
 trait vec_utils<T> {
     fn length_() -> uint;
-    fn iter_(f: fn(T));
-    fn map_<U: Copy>(f: fn(T) -> U) -> ~[U];
+    fn iter_(f: fn(&T));
+    fn map_<U:Copy>(f: fn(&T) -> U) -> ~[U];
 }
 
 impl<T> vec_utils<T> for ~[T] {
     fn length_() -> uint { vec::len(self) }
-    fn iter_(f: fn(T)) { for self.each |x| { f(*x); } }
-    fn map_<U: Copy>(f: fn(T) -> U) -> ~[U] {
+    fn iter_(f: fn(&T)) { for self.each |x| { f(x); } }
+    fn map_<U:Copy>(f: fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        for self.each |elt| { r += ~[f(*elt)]; }
+        for self.each |elt| { r += ~[f(elt)]; }
         r
     }
 }
@@ -59,8 +58,8 @@ pub fn main() {
     assert (~"hi").plus() == 200;
 
     assert (~[1]).length_().str() == ~"1";
-    assert (~[3, 4]).map_(|a| a + 4 )[0] == 7;
-    assert (~[3, 4]).map_::<uint>(|a| a as uint + 4u )[0] == 7u;
+    assert (~[3, 4]).map_(|a| *a + 4 )[0] == 7;
+    assert (~[3, 4]).map_::<uint>(|a| *a as uint + 4u )[0] == 7u;
     let mut x = 0u;
     10u.multi(|_n| x += 2u );
     assert x == 20u;

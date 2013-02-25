@@ -30,11 +30,6 @@ pub extern mod rustrt {
                                             ++n: libc::size_t);
 }
 
-#[abi = "rust-intrinsic"]
-pub extern mod rusti {
-    pub fn move_val_init<T>(dst: &mut T, -src: T);
-}
-
 /// Returns the number of elements the vector can hold without reallocating
 #[inline(always)]
 pub pure fn capacity<T>(v: @[const T]) -> uint {
@@ -101,7 +96,7 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 
 // Appending
 #[inline(always)]
-pub pure fn append<T: Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
+pub pure fn append<T:Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
         for vec::each(lhs) |x| { push(*x); }
         for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
@@ -137,7 +132,7 @@ pub pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pub pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
+pub pure fn from_elem<T:Copy>(n_elts: uint, t: T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(copy t); i += 1u; }
@@ -173,7 +168,7 @@ pub mod traits {
     use kinds::Copy;
     use ops::Add;
 
-    pub impl<T: Copy> @[T] : Add<&[const T],@[T]> {
+    pub impl<T:Copy> Add<&[const T],@[T]> for @[T] {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> @[T] {
             append(*self, (*rhs))
@@ -185,9 +180,10 @@ pub mod traits {
 pub mod traits {}
 
 pub mod raw {
-    use at_vec::{capacity, rusti, rustrt};
+    use at_vec::{capacity, rustrt};
     use cast::transmute;
     use libc;
+    use private::intrinsics::{move_val_init};
     use ptr::addr_of;
     use ptr;
     use sys;
@@ -229,12 +225,12 @@ pub mod raw {
         (**repr).unboxed.fill += sys::size_of::<T>();
         let p = addr_of(&((**repr).unboxed.data));
         let p = ptr::offset(p, fill) as *mut T;
-        rusti::move_val_init(&mut(*p), move initval);
+        move_val_init(&mut(*p), initval);
     }
 
     pub unsafe fn push_slow<T>(v: &mut @[const T], initval: T) {
         reserve_at_least(&mut *v, v.len() + 1u);
-        push_fast(v, move initval);
+        push_fast(v, initval);
     }
 
     /**

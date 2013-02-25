@@ -27,7 +27,7 @@ pub struct PriorityQueue<T> {
     priv data: ~[T],
 }
 
-impl<T: Ord> BaseIter<T> for PriorityQueue<T> {
+impl<T:Ord> BaseIter<T> for PriorityQueue<T> {
     /// Visit all values in the underlying vector.
     ///
     /// The values are **not** visited in order.
@@ -35,7 +35,7 @@ impl<T: Ord> BaseIter<T> for PriorityQueue<T> {
     pure fn size_hint(&self) -> Option<uint> { self.data.size_hint() }
 }
 
-impl<T: Ord> Container for PriorityQueue<T> {
+impl<T:Ord> Container for PriorityQueue<T> {
     /// Returns the length of the queue
     pure fn len(&self) -> uint { self.data.len() }
 
@@ -43,12 +43,12 @@ impl<T: Ord> Container for PriorityQueue<T> {
     pure fn is_empty(&self) -> bool { self.data.is_empty() }
 }
 
-impl<T: Ord> Mutable for PriorityQueue<T> {
+impl<T:Ord> Mutable for PriorityQueue<T> {
     /// Drop all items from the queue
     fn clear(&mut self) { self.data.truncate(0) }
 }
 
-impl <T: Ord> PriorityQueue<T> {
+impl <T:Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
     pure fn top(&self) -> &self/T { &self.data[0] }
 
@@ -139,27 +139,27 @@ impl <T: Ord> PriorityQueue<T> {
 
     priv fn siftup(&mut self, start: uint, mut pos: uint) {
         unsafe {
-            let new = move *addr_of(&self.data[pos]);
+            let new = *addr_of(&self.data[pos]);
 
             while pos > start {
                 let parent = (pos - 1) >> 1;
                 if new > self.data[parent] {
                     let mut x = rusti::init();
                     x <-> self.data[parent];
-                    rusti::move_val_init(&mut self.data[pos], move x);
+                    rusti::move_val_init(&mut self.data[pos], x);
                     pos = parent;
                     loop
                 }
                 break
             }
-            rusti::move_val_init(&mut self.data[pos], move new);
+            rusti::move_val_init(&mut self.data[pos], new);
         }
     }
 
     priv fn siftdown_range(&mut self, mut pos: uint, end: uint) {
         unsafe {
             let start = pos;
-            let new = move *addr_of(&self.data[pos]);
+            let new = *addr_of(&self.data[pos]);
 
             let mut child = 2 * pos + 1;
             while child < end {
@@ -169,12 +169,12 @@ impl <T: Ord> PriorityQueue<T> {
                 }
                 let mut x = rusti::init();
                 x <-> self.data[child];
-                rusti::move_val_init(&mut self.data[pos], move x);
+                rusti::move_val_init(&mut self.data[pos], x);
                 pos = child;
                 child = 2 * pos + 1;
             }
 
-            rusti::move_val_init(&mut self.data[pos], move new);
+            rusti::move_val_init(&mut self.data[pos], new);
             self.siftup(start, pos);
         }
     }

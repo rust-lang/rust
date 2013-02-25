@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::pipes::*;
+use core::comm::*;
 
-pub fn foo<T: Owned Copy>(x: T) -> Port<T> {
+pub fn foo<T:Owned + Copy>(x: T) -> Port<T> {
     let (p, c) = stream();
-    do task::spawn() |copy x| {
+    do task::spawn() {
         c.send(x);
     }
     p

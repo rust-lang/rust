@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    fn f(&&v: {const field: int}) {
-        // This shouldn't be possible
-        v.field = 1 //~ ERROR assigning to const field
-    }
+// Regresion test for issue #4935
 
-    let v = {field: 0};
-
-    f(v);
-}
+fn foo(a: uint) {}
+fn main() { foo(5, 6) } //~ ERROR this function takes 1 parameter but 2 parameters were supplied

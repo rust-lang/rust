@@ -9,16 +9,16 @@
 // except according to those terms.
 
 struct dog {
-    mut cats_chased: uint,
+    cats_chased: uint,
 }
 
 impl dog {
-    fn chase_cat() {
-        let p: &static/mut uint = &mut self.cats_chased; //~ ERROR illegal borrow
+    fn chase_cat(&mut self) {
+        let p: &static/mut uint = &mut self.cats_chased; //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
         *p += 1u;
     }
 
-    fn chase_cat_2() {
+    fn chase_cat_2(&mut self) {
         let p: &blk/mut uint = &mut self.cats_chased;
         *p += 1u;
     }
@@ -31,7 +31,7 @@ fn dog() -> dog {
 }
 
 fn main() {
-    let d = dog();
+    let mut d = dog();
     d.chase_cat();
     debug!("cats_chased: %u", d.cats_chased);
 }

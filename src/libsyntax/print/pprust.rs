@@ -108,17 +108,18 @@ pub fn print_crate(cm: @CodeMap, intr: @ident_interner,
                    span_diagnostic: diagnostic::span_handler,
                    crate: @ast::crate, filename: ~str, in: io::Reader,
                    out: io::Writer, ann: pp_ann, is_expanded: bool) {
-    let r = comments::gather_comments_and_literals(span_diagnostic,
-                                                   filename, in);
+    let (cmnts, lits) =
+        comments::gather_comments_and_literals(span_diagnostic,
+                                               filename, in);
     let s = @ps {
         s: pp::mk_printer(out, default_columns),
         cm: Some(cm),
         intr: intr,
-        comments: Some(r.cmnts),
+        comments: Some(cmnts),
         // If the code is post expansion, don't use the table of
         // literals, since it doesn't correspond with the literals
         // in the AST anymore.
-        literals: if is_expanded { None } else { Some(r.lits) },
+        literals: if is_expanded { None } else { Some(lits) },
         cur_cmnt_and_lit: @mut CurrentCommentAndLiteral {
             cur_cmnt: 0,
             cur_lit: 0
@@ -414,6 +415,9 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
       ast::ty_tup(elts) => {
         popen(s);
         commasep(s, inconsistent, elts, print_type);
+        if elts.len() == 1 {
+            word(s.s, ~",");
+        }
         pclose(s);
       }
       ast::ty_bare_fn(f) => {
@@ -495,9 +499,16 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         end(s); // end the outer cbox
 
       }
-      ast::item_fn(decl, purity, typarams, ref body) => {
-        print_fn(s, decl, Some(purity), item.ident, typarams, None,
-                 item.vis);
+      ast::item_fn(ref decl, purity, ref typarams, ref body) => {
+        print_fn(
+            s,
+            /* FIXME (#2543) */ copy *decl,
+            Some(purity),
+            item.ident,
+            /* FIXME (#2543) */ copy *typarams,
+            None,
+            item.vis
+        );
         word(s.s, ~" ");
         print_block_with_attrs(s, (*body), item.attrs);
       }
@@ -539,9 +550,15 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         word(s.s, ~";");
         end(s); // end the outer ibox
       }
-      ast::item_enum(ref enum_definition, params) => {
-        print_enum_def(s, (*enum_definition), params, item.ident,
-                       item.span, item.vis);
+      ast::item_enum(ref enum_definition, ref params) => {
+        print_enum_def(
+            s,
+            *enum_definition,
+            /* FIXME (#2543) */ copy *params,
+            item.ident,
+            item.span,
+            item.vis
+        );
       }
       ast::item_struct(struct_def, tps) => {
           head(s, visibility_qualified(item.vis, ~"struct"));
@@ -577,13 +594,13 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_trait(tps, traits, ref methods) => {
+      ast::item_trait(ref tps, ref traits, ref methods) => {
         head(s, visibility_qualified(item.vis, ~"trait"));
         print_ident(s, item.ident);
-        print_type_params(s, tps);
-        if vec::len(traits) != 0u {
+        print_type_params(s, /* FIXME (#2543) */ copy *tps);
+        if traits.len() != 0u {
             word(s.s, ~":");
-            for vec::each(traits) |trait_| {
+            for traits.each |trait_| {
                 nbsp(s);
                 print_path(s, trait_.path, false);
             }
@@ -619,7 +636,7 @@ pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
         ident == enum_definition.variants[0].node.name;
     if newtype {
         match enum_definition.variants[0].node.kind {
-            ast::tuple_variant_kind(args) if args.len() == 1 => {}
+            ast::tuple_variant_kind(ref args) if args.len() == 1 => {}
             _ => newtype = false
         }
     }
@@ -884,7 +901,7 @@ pub fn print_attribute(s: @ps, attr: ast::attribute) {
     if attr.node.is_sugared_doc {
         let meta = attr::attr_meta(attr);
         let comment = attr::get_meta_item_value_str(meta).get();
-        word(s.s, comment);
+        word(s.s, *comment);
     } else {
         word(s.s, ~"#[");
         print_meta_item(s, @attr.node.value);
@@ -1199,6 +1216,9 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
       ast::expr_tup(exprs) => {
         popen(s);
         commasep_exprs(s, inconsistent, exprs);
+        if exprs.len() == 1 {
+            word(s.s, ~",");
+        }
         pclose(s);
       }
       ast::expr_call(func, args, sugar) => {
@@ -1325,24 +1345,24 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, match_indent_unit);
       }
-      ast::expr_fn(sigil, decl, ref body, _) => {
+      ast::expr_fn(sigil, ref decl, ref body, _) => {
         // containing cbox, will be closed by print-block at }
         cbox(s, indent_unit);
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         print_fn_header_info(s, None, None, ast::Many,
                              Some(sigil), ast::inherited);
-        print_fn_args_and_ret(s, decl, None);
+        print_fn_args_and_ret(s, /* FIXME (#2543) */ copy *decl, None);
         space(s.s);
         print_block(s, (*body));
       }
-      ast::expr_fn_block(decl, ref body) => {
+      ast::expr_fn_block(ref decl, ref body) => {
         // in do/for blocks we don't want to show an empty
         // argument list, but at this point we don't know which
         // we are inside.
         //
         // if !decl.inputs.is_empty() {
-        print_fn_block_args(s, decl);
+        print_fn_block_args(s, /* FIXME (#2543) */ copy *decl);
         space(s.s);
         // }
         assert (*body).node.stmts.is_empty();
@@ -1634,6 +1654,9 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
       ast::pat_tup(elts) => {
         popen(s);
         commasep(s, inconsistent, elts, |s, p| print_pat(s, p, refutable));
+        if elts.len() == 1 {
+            word(s.s, ~",");
+        }
         pclose(s);
       }
       ast::pat_box(inner) => {
@@ -1803,16 +1826,21 @@ pub fn print_type_params(s: @ps, &&params: ~[ast::ty_param]) {
 pub fn print_meta_item(s: @ps, &&item: @ast::meta_item) {
     ibox(s, indent_unit);
     match item.node {
-      ast::meta_word(ref name) => word(s.s, (*name)),
-      ast::meta_name_value(ref name, value) => {
-        word_space(s, (*name));
+      ast::meta_word(name) => word(s.s, *name),
+      ast::meta_name_value(name, value) => {
+        word_space(s, *name);
         word_space(s, ~"=");
         print_literal(s, @value);
       }
-      ast::meta_list(ref name, items) => {
-        word(s.s, (*name));
+      ast::meta_list(name, ref items) => {
+        word(s.s, *name);
         popen(s);
-        commasep(s, consistent, items, print_meta_item);
+        commasep(
+            s,
+            consistent,
+            /* FIXME (#2543) */ copy *items,
+            print_meta_item
+        );
         pclose(s);
       }
     }
@@ -1859,7 +1887,7 @@ pub fn print_view_item(s: @ps, item: @ast::view_item) {
     print_outer_attributes(s, item.attrs);
     print_visibility(s, item.vis);
     match item.node {
-        ast::view_item_use(id, mta, _) => {
+        ast::view_item_extern_mod(id, mta, _) => {
             head(s, ~"extern mod");
             print_ident(s, id);
             if !mta.is_empty() {
@@ -1869,7 +1897,7 @@ pub fn print_view_item(s: @ps, item: @ast::view_item) {
             }
         }
 
-        ast::view_item_import(vps) => {
+        ast::view_item_use(vps) => {
             head(s, ~"use");
             print_view_paths(s, vps);
         }
@@ -2255,7 +2283,7 @@ pub mod test {
     //use util;
     use util::testing::check_equal;
 
-    fn string_check<T : Eq> (given : &T, expected: &T) {
+    fn string_check<T:Eq> (given : &T, expected: &T) {
         if !(given == expected) {
             fail!(fmt!("given %?, expected %?",given,expected));
         }

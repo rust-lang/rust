@@ -73,7 +73,7 @@ pub fn loan(bccx: @BorrowckCtxt,
         Err(ref e) => return Err((*e)),
         Ok(()) => {}
     }
-    // XXX: Workaround for borrow check bug.
+    // FIXME #4945: Workaround for borrow check bug.
     Ok(copy lc.loans)
 }
 

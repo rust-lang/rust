@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn copy1<T: Copy>(t: T) -> fn@() -> T {
+fn copy1<T:Copy>(t: T) -> fn@() -> T {
     fn@() -> T { t } //~ ERROR value may contain borrowed pointers
 }
 
-fn copy2<T: Copy &static>(t: T) -> fn@() -> T {
+fn copy2<T:Copy + &static>(t: T) -> fn@() -> T {
     fn@() -> T { t }
 }
 

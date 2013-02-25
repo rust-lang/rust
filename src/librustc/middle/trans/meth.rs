@@ -50,7 +50,7 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-pub fn trans_impl(ccx: @crate_ctxt, +path: path, name: ast::ident,
+pub fn trans_impl(ccx: @CrateContext, +path: path, name: ast::ident,
                   methods: ~[@ast::method], tps: ~[ast::ty_param],
                   self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
@@ -66,7 +66,7 @@ pub fn trans_impl(ccx: @crate_ctxt, +path: path, name: ast::ident,
             match self_ty {
                 None => param_substs_opt = None,
                 Some(self_ty) => {
-                    param_substs_opt = Some(param_substs {
+                    param_substs_opt = Some(@param_substs {
                         tys: ~[],
                         vtables: None,
                         bounds: @~[],
@@ -96,10 +96,10 @@ Translates a (possibly monomorphized) method body.
 - `llfn`: the LLVM ValueRef for the method
 - `impl_id`: the node ID of the impl this method is inside
 */
-pub fn trans_method(ccx: @crate_ctxt,
+pub fn trans_method(ccx: @CrateContext,
                     +path: path,
                     method: &ast::method,
-                    +param_substs: Option<param_substs>,
+                    param_substs: Option<@param_substs>,
                     base_self_ty: Option<ty::t>,
                     llfn: ValueRef,
                     impl_id: ast::def_id) {
@@ -118,7 +118,7 @@ pub fn trans_method(ccx: @crate_ctxt,
         }
         let self_ty = match param_substs {
             None => self_ty,
-            Some(param_substs {tys: ref tys, _}) => {
+            Some(@param_substs {tys: ref tys, _}) => {
                 ty::subst_tps(ccx.tcx, *tys, None, self_ty)
             }
         };
@@ -247,7 +247,7 @@ pub fn trans_method_callee(bcx: block,
             bound_num: b
         }) => {
             match bcx.fcx.param_substs {
-                Some(ref substs) => {
+                Some(substs) => {
                     let vtbl = find_vtable(bcx.tcx(), substs, p, b);
                     trans_monomorphized_callee(bcx, callee_id, self, mentry,
                                                trait_id, off, vtbl)
@@ -322,7 +322,7 @@ pub fn trans_static_method_callee(bcx: block,
         }
     };
     debug!("trans_static_method_callee: method_id=%?, callee_id=%?, \
-            name=%s", method_id, callee_id, ccx.sess.str_of(mname));
+            name=%s", method_id, callee_id, *ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get(&callee_id));
@@ -359,7 +359,7 @@ pub fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
     ms.find(|m| m.ident == name).map(|m| local_def(m.id))
 }
 
-pub fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
+pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
                         name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(&impl_id.node) {
@@ -376,7 +376,7 @@ pub fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
     }
 }
 
-pub fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
+pub fn method_with_name_or_default(ccx: @CrateContext, impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         match ccx.tcx.items.get(&impl_id.node) {
@@ -410,7 +410,7 @@ pub fn method_with_name_or_default(ccx: @crate_ctxt, impl_id: ast::def_id,
     }
 }
 
-pub fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
+pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
                              i_id: ast::def_id) -> uint {
     debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
     if m_id.crate == ast::local_crate {
@@ -559,9 +559,10 @@ pub fn combine_impl_and_methods_origins(bcx: block,
     // rcvr + method bounds.
     let ccx = bcx.ccx(), tcx = bcx.tcx();
     let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
-    let {bounds: r_m_bounds, _} = ty::lookup_item_type(tcx, mth_did);
+    let ty::ty_param_bounds_and_ty {bounds: r_m_bounds, _}
+        = ty::lookup_item_type(tcx, mth_did);
     let n_r_m_tps = r_m_bounds.len(); // rcvr + method tps
-    let m_boundss = vec::view(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
+    let m_boundss = vec::slice(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
 
     // Flatten out to find the number of vtables the method expects.
     let m_vtables = ty::count_traits_and_supertraits(tcx, m_boundss);
@@ -745,7 +746,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     };
 }
 
-pub fn vtable_id(ccx: @crate_ctxt,
+pub fn vtable_id(ccx: @CrateContext,
                  +origin: typeck::vtable_origin)
               -> mono_id {
     match origin {
@@ -774,7 +775,7 @@ pub fn vtable_id(ccx: @crate_ctxt,
     }
 }
 
-pub fn get_vtable(ccx: @crate_ctxt,
+pub fn get_vtable(ccx: @CrateContext,
                   +origin: typeck::vtable_origin)
                -> ValueRef {
     // XXX: Bad copy.
@@ -790,14 +791,14 @@ pub fn get_vtable(ccx: @crate_ctxt,
     }
 }
 
-pub fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
+pub fn make_vtable(ccx: @CrateContext, ptrs: ~[ValueRef]) -> ValueRef {
     unsafe {
         let _icx = ccx.insn_ctxt("impl::make_vtable");
         let tbl = C_struct(ptrs);
-        let vt_gvar =
-                str::as_c_str(ccx.sess.str_of((ccx.names)(~"vtable")), |buf| {
+        let vtable = ccx.sess.str_of((ccx.names)(~"vtable"));
+        let vt_gvar = do str::as_c_str(*vtable) |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
-        });
+        };
         llvm::LLVMSetInitializer(vt_gvar, tbl);
         llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);
         lib::llvm::SetLinkage(vt_gvar, lib::llvm::InternalLinkage);
@@ -805,7 +806,7 @@ pub fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn make_impl_vtable(ccx: @crate_ctxt,
+pub fn make_impl_vtable(ccx: @CrateContext,
                         impl_id: ast::def_id,
                         substs: ~[ty::t],
                         vtables: typeck::vtable_res)
@@ -825,11 +826,11 @@ pub fn make_impl_vtable(ccx: @crate_ctxt,
                                 ty::mk_bare_fn(tcx, copy im.fty));
         if (*im.tps).len() > 0u || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
-                   tcx.sess.str_of(im.ident));
+                   *tcx.sess.str_of(im.ident));
             C_null(T_ptr(T_nil()))
         } else {
             debug!("(making impl vtable) adding method to vtable: %s",
-                   tcx.sess.str_of(im.ident));
+                   *tcx.sess.str_of(im.ident));
             let mut m_id = method_with_name(ccx, impl_id, im.ident);
             if has_tps {
                 // If the method is in another crate, need to make an inlined
@@ -838,8 +839,9 @@ pub fn make_impl_vtable(ccx: @crate_ctxt,
                     // XXX: Set impl ID here?
                     m_id = inline::maybe_instantiate_inline(ccx, m_id, true);
                 }
-                monomorphize::monomorphic_fn(ccx, m_id, substs,
-                                             Some(vtables), None, None).val
+                let (val, _) = monomorphize::monomorphic_fn(ccx, m_id, substs,
+                                Some(vtables), None, None);
+                val
             } else if m_id.crate == ast::local_crate {
                 get_item_val(ccx, m_id.node)
             } else {
@@ -873,10 +875,10 @@ pub fn trans_trait_cast(bcx: block,
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
             if bcx.tcx().legacy_boxed_traits.contains_key(&id) {
                 // Allocate an @ box and store the value into it
-                let {bcx: new_bcx, box: llbox, body: body} =
+                let MallocResult {bcx: new_bcx, box: llbox, body: body} =
                     malloc_boxed(bcx, v_ty);
                 bcx = new_bcx;
-                add_clean_free(bcx, llbox, heap_shared);
+                add_clean_free(bcx, llbox, heap_managed);
                 bcx = expr::trans_into(bcx, val, SaveIn(body));
                 revoke_clean(bcx, llbox);
 

@@ -9,11 +9,10 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
 fn p_foo<T>(pinned: T) { }
-fn s_foo<T: Copy>(shared: T) { }
-fn u_foo<T: Owned>(unique: T) { }
+fn s_foo<T:Copy>(shared: T) { }
+fn u_foo<T:Owned>(unique: T) { }
 
 struct r {
   i: int,

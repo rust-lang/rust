@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct trie_node {
-    mut content: ~[~str],
-    mut children: ~[trie_node],
+    content: ~[~str],
+    children: ~[trie_node],
 }
 
 fn print_str_vector(vector: ~[~str]) {
@@ -20,7 +20,7 @@ fn print_str_vector(vector: ~[~str]) {
 }
 
 pub fn main() {
-    let node: trie_node = trie_node {
+    let mut node: trie_node = trie_node {
         content: ~[],
         children: ~[]
     };

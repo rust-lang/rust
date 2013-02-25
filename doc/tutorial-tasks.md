@@ -157,11 +157,11 @@ concurrently:
 
 ~~~~
 use task::spawn;
-use pipes::{stream, Port, Chan};
+use comm::{stream, Port, Chan};
 
 let (port, chan): (Port<int>, Chan<int>) = stream();
 
-do spawn |move chan| {
+do spawn || {
     let result = some_expensive_computation();
     chan.send(result);
 }
@@ -178,7 +178,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 a tuple into its component parts).
 
 ~~~~
-# use pipes::{stream, Chan, Port};
+# use comm::{stream, Chan, Port};
 let (port, chan): (Port<int>, Chan<int>) = stream();
 ~~~~
 
@@ -189,10 +189,10 @@ spawns the child task.
 ~~~~
 # use task::{spawn};
 # use task::spawn;
-# use pipes::{stream, Port, Chan};
+# use comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 # let (port, chan) = stream();
-do spawn |move chan| {
+do spawn || {
     let result = some_expensive_computation();
     chan.send(result);
 }
@@ -209,7 +209,7 @@ computation, then waits for the child's result to arrive on the
 port:
 
 ~~~~
-# use pipes::{stream, Port, Chan};
+# use comm::{stream, Port, Chan};
 # fn some_other_expensive_computation() {}
 # let (port, chan) = stream::<int>();
 # chan.send(0);
@@ -225,11 +225,11 @@ following program is ill-typed:
 
 ~~~ {.xfail-test}
 # use task::{spawn};
-# use pipes::{stream, Port, Chan};
+# use comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 let (port, chan) = stream();
 
-do spawn |move chan| {
+do spawn {
     chan.send(some_expensive_computation());
 }
 
@@ -245,15 +245,15 @@ Instead we can use a `SharedChan`, a type that allows a single
 
 ~~~
 # use task::spawn;
-use pipes::{stream, SharedChan};
+use comm::{stream, SharedChan};
 
 let (port, chan) = stream();
-let chan = SharedChan(move chan);
+let chan = SharedChan(chan);
 
 for uint::range(0, 3) |init_val| {
     // Create a new channel handle to distribute to the child task
     let child_chan = chan.clone();
-    do spawn |move child_chan| {
+    do spawn {
         child_chan.send(some_expensive_computation(init_val));
     }
 }
@@ -278,15 +278,15 @@ might look like the example below.
 
 ~~~
 # use task::spawn;
-# use pipes::{stream, Port, Chan};
+# use comm::{stream, Port, Chan};
 
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
     let (port, chan) = stream();
-    do spawn |move chan| {
+    do spawn {
         chan.send(some_expensive_computation(init_val));
     }
-    move port
+    port
 };
 
 // Wait on each port, accumulating the results
@@ -313,7 +313,7 @@ of all tasks are intertwined: if one fails, so do all the others.
 # fn do_some_work() { loop { task::yield() } }
 # do task::try {
 // Create a child task that fails
-do spawn { die!() }
+do spawn { fail!() }
 
 // This will also fail because the task we spawned failed
 do_some_work();
@@ -337,7 +337,7 @@ let result: Result<int, ()> = do task::try {
     if some_condition() {
         calculate_result()
     } else {
-        die!(~"oops!");
+        fail!(~"oops!");
     }
 };
 assert result.is_err();
@@ -370,14 +370,14 @@ proceed). Hence, you will need different _linked failure modes_.
 ## Failure modes
 
 By default, task failure is _bidirectionally linked_, which means that if
-either task dies, it kills the other one.
+either task fails, it kills the other one.
 
 ~~~
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 do task::spawn {
     do task::spawn {
-        die!();  // All three tasks will die.
+        fail!();  // All three tasks will fail.
     }
     sleep_forever();  // Will get woken up by force, then fail
 }
@@ -386,25 +386,25 @@ sleep_forever();  // Will get woken up by force, then fail
 ~~~
 
 If you want parent tasks to be able to kill their children, but do not want a
-parent to die automatically if one of its child task dies, you can call
+parent to fail automatically if one of its child task fails, you can call
 `task::spawn_supervised` for _unidirectionally linked_ failure. The
 function `task::try`, which we saw previously, uses `spawn_supervised`
 internally, with additional logic to wait for the child task to finish
 before returning. Hence:
 
 ~~~
-# use pipes::{stream, Chan, Port};
+# use comm::{stream, Chan, Port};
 # use task::{spawn, try};
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
-do spawn |move receiver| {  // Bidirectionally linked
+do spawn {  // Bidirectionally linked
     // Wait for the supervised child task to exist.
     let message = receiver.recv();
     // Kill both it and the parent task.
     assert message != 42;
 }
-do try |move sender| {  // Unidirectionally linked
+do try {  // Unidirectionally linked
     sender.send(42);
     sleep_forever();  // Will get woken up by force
 }
@@ -432,7 +432,7 @@ do task::spawn_supervised {
     // Intermediate task immediately exits
 }
 wait_for_a_while();
-die!();  // Will kill grandchild even if child has already exited
+fail!();  // Will kill grandchild even if child has already exited
 # };
 ~~~
 
@@ -446,10 +446,10 @@ other at all, using `task::spawn_unlinked` for _isolated failure_.
 let (time1, time2) = (random(), random());
 do task::spawn_unlinked {
     sleep_for(time2);  // Won't get forced awake
-    die!();
+    fail!();
 }
 sleep_for(time1);  // Won't get forced awake
-die!();
+fail!();
 // It will take MAX(time1,time2) for the program to finish.
 # };
 ~~~
@@ -468,7 +468,7 @@ Here is the function that implements the child task:
 
 ~~~~
 # use std::comm::DuplexStream;
-# use pipes::{Port, Chan};
+# use comm::{Port, Chan};
 fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -491,7 +491,7 @@ Here is the code for the parent task:
 
 ~~~~
 # use std::comm::DuplexStream;
-# use pipes::{Port, Chan};
+# use comm::{Port, Chan};
 # use task::spawn;
 # fn stringifier(channel: &DuplexStream<~str, uint>) {
 #     let mut value: uint;
@@ -505,7 +505,7 @@ Here is the code for the parent task:
 
 let (from_child, to_child) = DuplexStream();
 
-do spawn |move to_child| {
+do spawn {
     stringifier(&to_child);
 };
 

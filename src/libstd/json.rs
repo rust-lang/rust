@@ -82,7 +82,7 @@ pub fn Encoder(wr: io::Writer) -> Encoder {
     Encoder { wr: wr }
 }
 
-pub impl Encoder: serialize::Encoder {
+pub impl serialize::Encoder for Encoder {
     fn emit_nil(&self) { self.wr.write_str("null") }
 
     fn emit_uint(&self, v: uint) { self.emit_float(v as float); }
@@ -217,7 +217,7 @@ pub fn PrettyEncoder(wr: io::Writer) -> PrettyEncoder {
     PrettyEncoder { wr: wr, indent: 0 }
 }
 
-pub impl PrettyEncoder: serialize::Encoder {
+pub impl serialize::Encoder for PrettyEncoder {
     fn emit_nil(&self) { self.wr.write_str("null") }
 
     fn emit_uint(&self, v: uint) { self.emit_float(v as float); }
@@ -323,7 +323,7 @@ pub impl PrettyEncoder: serialize::Encoder {
     }
 }
 
-pub impl<S: serialize::Encoder> Json: serialize::Encodable<S> {
+pub impl<S:serialize::Encoder> serialize::Encodable<S> for Json {
     fn encode(&self, s: &S) {
         match *self {
             Number(v) => v.encode(s),
@@ -388,18 +388,18 @@ pub fn Parser(rdr: io::Reader) -> Parser {
 
 pub impl Parser {
     fn parse() -> Result<Json, Error> {
-        match move self.parse_value() {
-          Ok(move value) => {
+        match self.parse_value() {
+          Ok(value) => {
             // Skip trailing whitespaces.
             self.parse_whitespace();
             // Make sure there is no trailing characters.
             if self.eof() {
-                Ok(move value)
+                Ok(value)
             } else {
                 self.error(~"trailing characters")
             }
           }
-          Err(move e) => Err(e)
+          Err(e) => Err(e)
         }
     }
 }
@@ -438,9 +438,9 @@ priv impl Parser {
           'f' => self.parse_ident(~"alse", Boolean(false)),
           '0' .. '9' | '-' => self.parse_number(),
           '"' =>
-            match move self.parse_str() {
-              Ok(move s) => Ok(String(s)),
-              Err(move e) => Err(e),
+            match self.parse_str() {
+              Ok(s) => Ok(String(s)),
+              Err(e) => Err(e),
             },
           '[' => self.parse_list(),
           '{' => self.parse_object(),
@@ -455,7 +455,7 @@ priv impl Parser {
     fn parse_ident(ident: &str, value: Json) -> Result<Json, Error> {
         if str::all(ident, |c| c == self.next_char()) {
             self.bump();
-            Ok(move value)
+            Ok(value)
         } else {
             self.error(~"invalid syntax")
         }
@@ -662,13 +662,13 @@ priv impl Parser {
 
         if self.ch == ']' {
             self.bump();
-            return Ok(List(move values));
+            return Ok(List(values));
         }
 
         loop {
-            match move self.parse_value() {
-              Ok(move v) => values.push(move v),
-              Err(move e) => return Err(e)
+            match self.parse_value() {
+              Ok(v) => values.push(v),
+              Err(e) => return Err(e)
             }
 
             self.parse_whitespace();
@@ -678,7 +678,7 @@ priv impl Parser {
 
             match self.ch {
               ',' => self.bump(),
-              ']' => { self.bump(); return Ok(List(move values)); }
+              ']' => { self.bump(); return Ok(List(values)); }
               _ => return self.error(~"expected `,` or `]`")
             }
         };
@@ -692,7 +692,7 @@ priv impl Parser {
 
         if self.ch == '}' {
           self.bump();
-          return Ok(Object(move values));
+          return Ok(Object(values));
         }
 
         while !self.eof() {
@@ -702,9 +702,9 @@ priv impl Parser {
                 return self.error(~"key must be a string");
             }
 
-            let key = match move self.parse_str() {
-              Ok(move key) => key,
-              Err(move e) => return Err(e)
+            let key = match self.parse_str() {
+              Ok(key) => key,
+              Err(e) => return Err(e)
             };
 
             self.parse_whitespace();
@@ -715,15 +715,15 @@ priv impl Parser {
             }
             self.bump();
 
-            match move self.parse_value() {
-              Ok(move value) => { values.insert(key, move value); }
-              Err(move e) => return Err(e)
+            match self.parse_value() {
+              Ok(value) => { values.insert(key, value); }
+              Err(e) => return Err(e)
             }
             self.parse_whitespace();
 
             match self.ch {
               ',' => self.bump(),
-              '}' => { self.bump(); return Ok(Object(move values)); }
+              '}' => { self.bump(); return Ok(Object(values)); }
               _ => {
                   if self.eof() { break; }
                   return self.error(~"expected `,` or `}`");
@@ -753,7 +753,7 @@ pub struct Decoder {
 }
 
 pub fn Decoder(json: Json) -> Decoder {
-    Decoder { json: move json, stack: ~[] }
+    Decoder { json: json, stack: ~[] }
 }
 
 priv impl Decoder {
@@ -768,7 +768,7 @@ priv impl Decoder {
     }
 }
 
-pub impl Decoder: serialize::Decoder {
+pub impl serialize::Decoder for Decoder {
     fn read_nil(&self) -> () {
         debug!("read_nil");
         match *self.pop() {
@@ -868,7 +868,7 @@ pub impl Decoder: serialize::Decoder {
         };
         let res = f(len);
         self.pop();
-        move res
+        res
     }
 
     fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T {
@@ -879,7 +879,7 @@ pub impl Decoder: serialize::Decoder {
         };
         let res = f(len);
         self.pop();
-        move res
+        res
     }
 
     fn read_vec_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
@@ -897,14 +897,14 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_rec()");
         let value = f();
         self.pop();
-        move value
+        value
     }
 
     fn read_struct<T>(&self, _name: &str, _len: uint, f: fn() -> T) -> T {
         debug!("read_struct()");
         let value = f();
         self.pop();
-        move value
+        value
     }
 
     fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T {
@@ -934,7 +934,7 @@ pub impl Decoder: serialize::Decoder {
         debug!("read_tup(len=%u)", len);
         let value = f();
         self.pop();
-        move value
+        value
     }
 
     fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
@@ -1150,7 +1150,7 @@ impl ToJson for @~str {
     fn to_json() -> Json { String(copy *self) }
 }
 
-impl<A: ToJson, B: ToJson> ToJson for (A, B) {
+impl<A:ToJson,B:ToJson> ToJson for (A, B) {
     fn to_json() -> Json {
         match self {
           (ref a, ref b) => {
@@ -1160,7 +1160,7 @@ impl<A: ToJson, B: ToJson> ToJson for (A, B) {
     }
 }
 
-impl<A: ToJson, B: ToJson, C: ToJson> ToJson for (A, B, C) {
+impl<A:ToJson,B:ToJson,C:ToJson> ToJson for (A, B, C) {
     fn to_json() -> Json {
         match self {
           (ref a, ref b, ref c) => {
@@ -1170,11 +1170,11 @@ impl<A: ToJson, B: ToJson, C: ToJson> ToJson for (A, B, C) {
     }
 }
 
-impl<A: ToJson> ToJson for ~[A] {
+impl<A:ToJson> ToJson for ~[A] {
     fn to_json() -> Json { List(self.map(|elt| elt.to_json())) }
 }
 
-impl<A: ToJson Copy> ToJson for LinearMap<~str, A> {
+impl<A:ToJson + Copy> ToJson for LinearMap<~str, A> {
     fn to_json() -> Json {
         let mut d = LinearMap::new();
         for self.each |&(key, value)| {
@@ -1184,7 +1184,7 @@ impl<A: ToJson Copy> ToJson for LinearMap<~str, A> {
     }
 }
 
-impl<A: ToJson> ToJson for Option<A> {
+impl<A:ToJson> ToJson for Option<A> {
     fn to_json() -> Json {
         match self {
           None => Null,
@@ -1219,11 +1219,11 @@ mod tests {
 
         for items.each |item| {
             match *item {
-                (copy key, copy value) => { d.insert(key, move value); },
+                (copy key, copy value) => { d.insert(key, value); },
             }
         };
 
-        Object(move d)
+        Object(d)
     }
 
     #[test]
@@ -1282,23 +1282,21 @@ mod tests {
 
     // two fns copied from libsyntax/util/testing.rs.
     // Should they be in their own crate?
-    pub pure fn check_equal_ptr<T : cmp::Eq> (given : &T, expected: &T) {
+    pub pure fn check_equal_ptr<T:cmp::Eq> (given : &T, expected: &T) {
         if !((given == expected) && (expected == given )) {
-            die!(fmt!("given %?, expected %?",given,expected));
+            fail!(fmt!("given %?, expected %?",given,expected));
         }
     }
 
-    pub pure fn check_equal<T : cmp::Eq> (given : T, expected: T) {
+    pub pure fn check_equal<T:cmp::Eq> (given : T, expected: T) {
         if !((given == expected) && (expected == given )) {
-            die!(fmt!("given %?, expected %?",given,expected));
+            fail!(fmt!("given %?, expected %?",given,expected));
         }
     }
 
-    // testing both auto_encode's calling patterns
-    // and json... not sure where to put these tests.
     #[test]
     fn test_write_enum () {
-        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bw = @io::BytesWriter();
         let bww : @io::Writer = (bw as @io::Writer);
         let encoder = (@Encoder(bww) as @serialize::Encoder);
         do encoder.emit_enum(~"animal") {
@@ -1319,7 +1317,7 @@ mod tests {
 
     #[test]
     fn test_write_some () {
-        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bw = @io::BytesWriter();
         let bww : @io::Writer = (bw as @io::Writer);
         let encoder = (@Encoder(bww) as @serialize::Encoder);
         do encoder.emit_enum(~"Option") {
@@ -1335,7 +1333,7 @@ mod tests {
 
     #[test]
     fn test_write_none () {
-        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bw = @io::BytesWriter();
         let bww : @io::Writer = (bw as @io::Writer);
         let encoder = (@Encoder(bww) as @serialize::Encoder);
         do encoder.emit_enum(~"Option") {

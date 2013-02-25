@@ -137,12 +137,12 @@ pub mod regionck;
 pub mod demand;
 pub mod method;
 
-pub type self_info = {
+pub struct SelfInfo {
     self_ty: ty::t,
     self_id: ast::node_id,
     def_id: ast::def_id,
     explicit_self: ast::self_ty
-};
+}
 
 /// Fields that are part of a `FnCtxt` which are inherited by
 /// closures defined within the function.  For example:
@@ -171,7 +171,7 @@ pub struct FnCtxt {
 
     // Refers to whichever `self` is in scope, even this FnCtxt is
     // for a nested closure that captures `self`
-    self_info: Option<self_info>,
+    self_info: Option<SelfInfo>,
     ret_ty: ty::t,
     // Used by loop bodies that return from the outer function
     indirect_ret_ty: Option<ty::t>,
@@ -246,7 +246,7 @@ pub fn check_bare_fn(ccx: @mut CrateCtxt,
                      decl: &ast::fn_decl,
                      body: ast::blk,
                      id: ast::node_id,
-                     self_info: Option<self_info>) {
+                     self_info: Option<SelfInfo>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
     match ty::get(fty).sty {
         ty::ty_bare_fn(ref fn_ty) => {
@@ -259,7 +259,7 @@ pub fn check_bare_fn(ccx: @mut CrateCtxt,
 }
 
 pub fn check_fn(ccx: @mut CrateCtxt,
-                +self_info: Option<self_info>,
+                +self_info: Option<SelfInfo>,
                 purity: ast::purity,
                 sigil: Option<ast::Sigil>,
                 fn_sig: &ty::FnSig,
@@ -277,7 +277,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     // types with free ones.  The free region references will be bound
     // the node_id of the body block.
 
-    let {isr, self_info, fn_sig} = {
+    let (isr, self_info, fn_sig) = {
         let old_isr = option::map_default(&old_fcx, @Nil,
                                           |fcx| fcx.in_scope_regions);
         replace_bound_regions_in_fn_sig(tcx, old_isr, self_info, fn_sig,
@@ -326,7 +326,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         }
     };
 
-    // Update the self_info to contain an accurate self type (taking
+    // Update the SelfInfo to contain an accurate self type (taking
     // into account explicit self).
     let self_info = do self_info.chain_ref |self_info| {
         // If the self type is sty_static, we don't have a self ty.
@@ -341,7 +341,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 self_info.self_ty,
                 self_info.explicit_self.node,
                 TransformTypeNormally);
-            Some({self_ty: ty,.. *self_info})
+            Some(SelfInfo { self_ty: ty,.. *self_info })
         }
     };
 
@@ -383,7 +383,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                      decl: &ast::fn_decl,
                      body: ast::blk,
                      arg_tys: &[ty::t],
-                     self_info: Option<self_info>) {
+                     self_info: Option<SelfInfo>) {
         let tcx = fcx.ccx.tcx;
 
         let assign = fn@(nid: ast::node_id, ty_opt: Option<ty::t>) {
@@ -450,7 +450,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
                 assign(p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
-                       tcx.sess.str_of(path.idents[0]),
+                       *tcx.sess.str_of(path.idents[0]),
                        fcx.infcx().ty_to_str(
                            fcx.inh.locals.get(&p.id)));
               }
@@ -491,10 +491,12 @@ pub fn check_method(ccx: @mut CrateCtxt,
                     method: @ast::method,
                     self_ty: ty::t,
                     self_impl_def_id: ast::def_id) {
-    let self_info = {self_ty: self_ty,
-                     self_id: method.self_id,
-                     def_id: self_impl_def_id,
-                     explicit_self: method.self_ty };
+    let self_info = SelfInfo {
+        self_ty: self_ty,
+        self_id: method.self_id,
+        def_id: self_impl_def_id,
+        explicit_self: method.self_ty
+    };
     check_bare_fn(ccx, &method.decl, method.body, method.id, Some(self_info));
 }
 
@@ -508,7 +510,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
           Some(orig_sp) => {
             tcx.sess.span_err(sp, fmt!("Duplicate field \
                                    name %s in record type declaration",
-                                        tcx.sess.str_of(id)));
+                                        *tcx.sess.str_of(id)));
             tcx.sess.span_note(orig_sp, ~"First declaration of \
                                           this field occurred here");
             break;
@@ -528,12 +530,15 @@ pub fn check_struct(ccx: @mut CrateCtxt,
     let self_ty = ty::node_id_to_type(tcx, id);
 
     do struct_def.dtor.iter() |dtor| {
-        let class_t = { self_ty: self_ty,
-                        self_id: dtor.node.self_id,
-                        def_id: local_def(id),
-                        explicit_self:
-                            spanned { node: ast::sty_by_ref,
-                                      span: codemap::dummy_sp() } };
+        let class_t = SelfInfo {
+            self_ty: self_ty,
+            self_id: dtor.node.self_id,
+            def_id: local_def(id),
+            explicit_self: spanned {
+                node: ast::sty_by_ref,
+                span: codemap::dummy_sp()
+            }
+        };
         // typecheck the dtor
         let dtor_dec = ast_util::dtor_dec();
         check_bare_fn(ccx, &dtor_dec,
@@ -565,7 +570,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_impl(_, _, ty, ms) => {
         let rp = ccx.tcx.region_paramd_items.find(&it.id);
         debug!("item_impl %s with id %d rp %?",
-               ccx.tcx.sess.str_of(it.ident), it.id, rp);
+               *ccx.tcx.sess.str_of(it.ident), it.id, rp);
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| {
             check_method(ccx, *m, self_ty, local_def(it.id));
@@ -620,7 +625,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
     }
 }
 
-pub impl FnCtxt: AstConv {
+pub impl AstConv for FnCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.ccx.tcx }
     fn ccx(@mut self) -> @mut CrateCtxt { self.ccx }
 
@@ -654,20 +659,20 @@ pub impl FnCtxt {
     }
 }
 
-pub impl @mut FnCtxt: region_scope {
-    pure fn anon_region(span: span) -> Result<ty::Region, ~str> {
+pub impl region_scope for @mut FnCtxt {
+    pure fn anon_region(&self, span: span) -> Result<ty::Region, ~str> {
         // XXX: Unsafe to work around purity
         unsafe {
             result::Ok(self.infcx().next_region_var_nb(span))
         }
     }
-    pure fn self_region(_span: span) -> Result<ty::Region, ~str> {
+    pure fn self_region(&self, _span: span) -> Result<ty::Region, ~str> {
         // XXX: Unsafe to work around purity
         unsafe {
             self.search_in_scope_regions(ty::br_self)
         }
     }
-    pure fn named_region(_span: span, id: ast::ident)
+    pure fn named_region(&self, _span: span, id: ast::ident)
                       -> Result<ty::Region, ~str> {
         // XXX: Unsafe to work around purity
         unsafe {
@@ -870,7 +875,7 @@ pub impl FnCtxt {
         self.region_lb = lb;
         let v = f();
         self.region_lb = old_region_lb;
-        move v
+        v
     }
 
     fn region_var_if_parameterized(@mut self,
@@ -1050,16 +1055,15 @@ pub fn impl_self_ty(vcx: &VtableContext,
                  -> ty_param_substs_and_ty {
     let tcx = vcx.tcx();
 
-    let {n_tps, region_param, raw_ty} = if did.crate == ast::local_crate {
+    let (n_tps, region_param, raw_ty) = if did.crate == ast::local_crate {
         let region_param = tcx.region_paramd_items.find(&did.node);
         match tcx.items.find(&did.node) {
           Some(ast_map::node_item(@ast::item {
                   node: ast::item_impl(ref ts, _, st, _),
                   _
               }, _)) => {
-            {n_tps: ts.len(),
-             region_param: region_param,
-             raw_ty: vcx.ccx.to_ty(rscope::type_rscope(region_param), st)}
+            (ts.len(), region_param,
+                vcx.ccx.to_ty(rscope::type_rscope(region_param), st))
           }
           Some(ast_map::node_item(@ast::item {
                   node: ast::item_struct(_, ref ts),
@@ -1070,23 +1074,20 @@ pub fn impl_self_ty(vcx: &VtableContext,
                  (doing a no-op subst for the ty params; in the next step,
                  we substitute in fresh vars for them)
                */
-              {n_tps: ts.len(),
-               region_param: region_param,
-               raw_ty: ty::mk_struct(tcx, local_def(class_id),
+              (ts.len(), region_param,
+                  ty::mk_struct(tcx, local_def(class_id),
                       substs {
                         self_r: rscope::bound_self_region(region_param),
                         self_ty: None,
                         tps: ty::ty_params_to_tys(tcx, /*bad*/copy *ts)
-                      })}
+                      }))
           }
           _ => { tcx.sess.bug(~"impl_self_ty: unbound item or item that \
                doesn't have a self_ty"); }
         }
     } else {
         let ity = ty::lookup_item_type(tcx, did);
-        {n_tps: vec::len(*ity.bounds),
-         region_param: ity.region_param,
-         raw_ty: ity.ty}
+        (vec::len(*ity.bounds), ity.region_param, ity.ty)
     };
 
     let self_r = if region_param.is_some() {
@@ -1099,7 +1100,8 @@ pub fn impl_self_ty(vcx: &VtableContext,
 
     let substs = substs { self_r: self_r, self_ty: None, tps: tps };
     let substd_ty = ty::subst(tcx, &substs, raw_ty);
-    {substs: substs, ty: substd_ty}
+
+    ty_param_substs_and_ty { substs: substs, ty: substd_ty }
 }
 
 // Only for fields! Returns <none> for methods>
@@ -1163,7 +1165,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let ret_ty = match structure_of(fcx, sp, in_fty) {
             ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
             ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
-                let {fn_sig: sig, _} =
+                let (_, _, sig) =
                     replace_bound_regions_in_fn_sig(
                         tcx, @Nil, None, sig,
                         |_br| fcx.infcx().next_region_var(
@@ -1198,7 +1200,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
                     tcx.sess.span_err(sp, msg);
 
-                    vec::from_fn(expected_arg_count, |_| ty::mk_err(tcx))
+                    vec::from_fn(supplied_arg_count, |_| ty::mk_err(tcx))
                 };
 
                 sig.output
@@ -1370,7 +1372,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                       fmt!("type `%s` does not implement any method in scope \
                             named `%s`",
                            actual,
-                           fcx.ccx.tcx.sess.str_of(method_name))
+                           *fcx.ccx.tcx.sess.str_of(method_name))
                   },
                   expr_t,
                   None);
@@ -1588,7 +1590,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     // through the `unpack` function.  It there is no expected type or
     // resolution is not possible (e.g., no constraints yet present), just
     // returns `none`.
-    fn unpack_expected<O: Copy>(fcx: @mut FnCtxt,
+    fn unpack_expected<O:Copy>(fcx: @mut FnCtxt,
                                 expected: Option<ty::t>,
                                 unpack: fn(&ty::sty) -> Option<O>)
                              -> Option<O> {
@@ -1628,7 +1630,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             match expected_sty {
                 Some(ty::ty_closure(ref cenv)) => {
                     let id = expr.id;
-                    let {fn_sig: sig, _} =
+                    let (_, _, sig) =
                         replace_bound_regions_in_fn_sig(
                             tcx, @Nil, None, &cenv.sig,
                             |br| ty::re_bound(ty::br_cap_avoid(id, @br)));
@@ -1752,7 +1754,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                   |actual| {
                       fmt!("attempted access of field `%s` on type `%s`, but \
                             no field or method with that name was found",
-                           tcx.sess.str_of(field), actual)
+                           *tcx.sess.str_of(field), actual)
                   },
                   expr_t, None);
                 // Add error type for the result
@@ -1790,13 +1792,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     tcx.sess.span_err(
                         field.span,
                         fmt!("structure has no field named `%s`",
-                             tcx.sess.str_of(field.node.ident)));
+                             *tcx.sess.str_of(field.node.ident)));
                 }
                 Some((_, true)) => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("field `%s` specified more than once",
-                             tcx.sess.str_of(field.node.ident)));
+                             *tcx.sess.str_of(field.node.ident)));
                 }
                 Some((field_id, false)) => {
                     let expected_field_type =
@@ -1824,7 +1826,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     let (_, seen) = class_field_map.get(&name);
                     if !seen {
                         missing_fields.push(
-                            ~"`" + tcx.sess.str_of(name) + ~"`");
+                            ~"`" + *tcx.sess.str_of(name) + ~"`");
                     }
                 }
 
@@ -2543,7 +2545,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 if !found {
                     tcx.sess.span_err(f.span,
                                         ~"unknown field in record update: " +
-                                        tcx.sess.str_of(f.node.ident));
+                                        *tcx.sess.str_of(f.node.ident));
                     fcx.write_ty(id, ty::mk_err(tcx));
                     return true;
                 }
@@ -2929,7 +2931,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       }
       ast::def_fn(_, ast::extern_fn) => {
         // extern functions are just u8 pointers
-        return {
+        return ty_param_bounds_and_ty {
             bounds: @~[],
             region_param: None,
             ty: ty::mk_ptr(
@@ -3151,7 +3153,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
         if !*b {
             ccx.tcx.sess.span_err(
                 span, fmt!("type parameter `%s` is unused",
-                           ccx.tcx.sess.str_of(tps[i].ident)));
+                           *ccx.tcx.sess.str_of(tps[i].ident)));
         }
     }
 }
@@ -3164,7 +3166,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
         arg {mode: ast::expl(m), ty: ty}
     }
     let tcx = ccx.tcx;
-    let (n_tps, inputs, output) = match ccx.tcx.sess.str_of(it.ident) {
+    let (n_tps, inputs, output) = match *ccx.tcx.sess.str_of(it.ident) {
       ~"size_of" |
       ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint(ccx.tcx)),
       ~"init" => (1u, ~[], param(ccx, 0u)),

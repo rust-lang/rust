@@ -1,3 +1,5 @@
+// xfail-pretty
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -23,7 +25,6 @@ use std::time;
 use std::oldmap;
 use std::oldmap::Map;
 use std::oldmap::HashMap;
-use std::deque;
 use std::deque::Deque;
 use std::par;
 use core::io::WriterUtil;
@@ -124,24 +125,24 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
     let mut marks : ~[node_id]
         = vec::from_elem(vec::len(graph), -1i64);
 
-    let Q = deque::create();
+    let mut q = Deque::new();
 
-    Q.add_back(key);
+    q.add_back(key);
     marks[key] = key;
 
-    while Q.size() > 0 {
-        let t = Q.pop_front();
+    while !q.is_empty() {
+        let t = q.pop_front();
 
         do graph[t].each() |k| {
             if marks[*k] == -1i64 {
                 marks[*k] = t;
-                Q.add_back(*k);
+                q.add_back(*k);
             }
             true
         };
     }
 
-    move marks
+    marks
 }
 
 /**
@@ -260,7 +261,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         i += 1;
         let old_len = colors.len();
 
-        let color = arc::ARC(move colors);
+        let color = arc::ARC(colors);
 
         let color_vec = arc::get(&color); // FIXME #3387 requires this temp
         colors = do par::mapi(*color_vec) {

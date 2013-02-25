@@ -17,7 +17,7 @@ mod argparse {
         name: &str,
         desc: &str,
         max_count: uint,
-        mut value: uint
+        value: uint
     }
 
     pub fn flag(name: &r/str, desc: &r/str) -> Flag/&r {

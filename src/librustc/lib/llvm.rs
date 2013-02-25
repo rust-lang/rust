@@ -132,6 +132,7 @@ pub enum RealPredicate {
 
 // enum for the LLVM TypeKind type - must stay in sync with the def of
 // LLVMTypeKind in llvm/include/llvm-c/Core.h
+#[deriving_eq]
 pub enum TypeKind {
     Void      = 0,
     Half      = 1,
@@ -149,46 +150,6 @@ pub enum TypeKind {
     Vector    = 13,
     Metadata  = 14,
     X86_MMX   = 15
-}
-
-pub impl TypeKind : cmp::Eq {
-    pure fn eq(&self, other: &TypeKind) -> bool {
-        match ((*self), (*other)) {
-            (Void, Void) => true,
-            (Half, Half) => true,
-            (Float, Float) => true,
-            (Double, Double) => true,
-            (X86_FP80, X86_FP80) => true,
-            (FP128, FP128) => true,
-            (PPC_FP128, PPC_FP128) => true,
-            (Label, Label) => true,
-            (Integer, Integer) => true,
-            (Function, Function) => true,
-            (Struct, Struct) => true,
-            (Array, Array) => true,
-            (Pointer, Pointer) => true,
-            (Vector, Vector) => true,
-            (Metadata, Metadata) => true,
-            (X86_MMX, X86_MMX) => true,
-            (Void, _) => false,
-            (Half, _) => false,
-            (Float, _) => false,
-            (Double, _) => false,
-            (X86_FP80, _) => false,
-            (FP128, _) => false,
-            (PPC_FP128, _) => false,
-            (Label, _) => false,
-            (Integer, _) => false,
-            (Function, _) => false,
-            (Struct, _) => false,
-            (Array, _) => false,
-            (Pointer, _) => false,
-            (Vector, _) => false,
-            (Metadata, _) => false,
-            (X86_MMX, _) => false,
-        }
-    }
-    pure fn ne(&self, other: &TypeKind) -> bool { !(*self).eq(other) }
 }
 
 pub enum AtomicBinOp {
@@ -221,6 +182,15 @@ pub enum AtomicOrdering {
 pub enum FileType {
     AssemblyFile = 0,
     ObjectFile = 1
+}
+
+pub enum Metadata {
+    MD_dbg = 0,
+    MD_tbaa = 1,
+    MD_prof = 2,
+    MD_fpmath = 3,
+    MD_range = 4,
+    MD_tbaa_struct = 5
 }
 
 // Opaque pointer types
@@ -1328,32 +1298,36 @@ pub fn SetLinkage(Global: ValueRef, Link: Linkage) {
 
 /* Memory-managed object interface to type handles. */
 
-pub type type_names = @{type_names: HashMap<TypeRef, @str>,
-                    named_types: HashMap<@str, TypeRef>};
+pub struct TypeNames {
+    type_names: HashMap<TypeRef, @str>,
+    named_types: HashMap<@str, TypeRef>
+}
 
-pub fn associate_type(tn: type_names, s: @str, t: TypeRef) {
+pub fn associate_type(tn: @TypeNames, s: @str, t: TypeRef) {
     assert tn.type_names.insert(t, s);
     assert tn.named_types.insert(s, t);
 }
 
-pub fn type_has_name(tn: type_names, t: TypeRef) -> Option<@str> {
+pub fn type_has_name(tn: @TypeNames, t: TypeRef) -> Option<@str> {
     return tn.type_names.find(&t);
 }
 
-pub fn name_has_type(tn: type_names, s: @str) -> Option<TypeRef> {
+pub fn name_has_type(tn: @TypeNames, s: @str) -> Option<TypeRef> {
     return tn.named_types.find(&s);
 }
 
-pub fn mk_type_names() -> type_names {
-    @{type_names: HashMap(),
-      named_types: HashMap()}
+pub fn mk_type_names() -> @TypeNames {
+    @TypeNames {
+        type_names: HashMap(),
+        named_types: HashMap()
+    }
 }
 
-pub fn type_to_str(names: type_names, ty: TypeRef) -> @str {
+pub fn type_to_str(names: @TypeNames, ty: TypeRef) -> @str {
     return type_to_str_inner(names, [], ty);
 }
 
-pub fn type_to_str_inner(names: type_names, +outer0: &[TypeRef], ty: TypeRef)
+pub fn type_to_str_inner(names: @TypeNames, +outer0: &[TypeRef], ty: TypeRef)
                       -> @str {
     unsafe {
         match type_has_name(names, ty) {
@@ -1365,7 +1339,7 @@ pub fn type_to_str_inner(names: type_names, +outer0: &[TypeRef], ty: TypeRef)
 
         let kind = llvm::LLVMGetTypeKind(ty);
 
-        fn tys_str(names: type_names, outer: &[TypeRef],
+        fn tys_str(names: @TypeNames, outer: &[TypeRef],
                    tys: ~[TypeRef]) -> @str {
             let mut s = ~"";
             let mut first: bool = true;
@@ -1481,7 +1455,7 @@ pub fn struct_element_types(struct_ty: TypeRef) -> ~[TypeRef] {
             llvm::LLVMGetStructElementTypes(
                 struct_ty, ptr::to_mut_unsafe_ptr(&mut buf[0]));
         }
-        return move buf;
+        return buf;
     }
 }
 
@@ -1503,14 +1477,21 @@ pub fn target_data_res(TD: TargetDataRef) -> target_data_res {
     }
 }
 
-pub type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
+pub struct TargetData {
+    lltd: TargetDataRef,
+    dtor: @target_data_res
+}
 
-pub fn mk_target_data(string_rep: ~str) -> target_data {
+pub fn mk_target_data(string_rep: ~str) -> TargetData {
     let lltd =
         str::as_c_str(string_rep, |buf| unsafe {
             llvm::LLVMCreateTargetData(buf)
         });
-    return {lltd: lltd, dtor: @target_data_res(lltd)};
+
+    TargetData {
+        lltd: lltd,
+        dtor: @target_data_res(lltd)
+    }
 }
 
 /* Memory-managed interface to pass managers. */
@@ -1530,12 +1511,19 @@ pub fn pass_manager_res(PM: PassManagerRef) -> pass_manager_res {
     }
 }
 
-pub type pass_manager = {llpm: PassManagerRef, dtor: @pass_manager_res};
+pub struct PassManager {
+    llpm: PassManagerRef,
+    dtor: @pass_manager_res
+}
 
-pub fn mk_pass_manager() -> pass_manager {
+pub fn mk_pass_manager() -> PassManager {
     unsafe {
         let llpm = llvm::LLVMCreatePassManager();
-        return {llpm: llpm, dtor: @pass_manager_res(llpm)};
+
+        PassManager {
+            llpm: llpm,
+            dtor: @pass_manager_res(llpm)
+        }
     }
 }
 
@@ -1556,13 +1544,20 @@ pub fn object_file_res(ObjFile: ObjectFileRef) -> object_file_res {
     }
 }
 
-pub type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
+pub struct ObjectFile {
+    llof: ObjectFileRef,
+    dtor: @object_file_res
+}
 
-pub fn mk_object_file(llmb: MemoryBufferRef) -> Option<object_file> {
+pub fn mk_object_file(llmb: MemoryBufferRef) -> Option<ObjectFile> {
     unsafe {
         let llof = llvm::LLVMCreateObjectFile(llmb);
-        if llof as int == 0 { return option::None::<object_file>; }
-        return option::Some({llof: llof, dtor: @object_file_res(llof)});
+        if llof as int == 0 { return option::None::<ObjectFile>; }
+
+        option::Some(ObjectFile {
+            llof: llof,
+            dtor: @object_file_res(llof)
+        })
     }
 }
 
@@ -1583,12 +1578,18 @@ pub fn section_iter_res(SI: SectionIteratorRef) -> section_iter_res {
     }
 }
 
-pub type section_iter = {llsi: SectionIteratorRef, dtor: @section_iter_res};
+pub struct SectionIter {
+    llsi: SectionIteratorRef,
+    dtor: @section_iter_res
+}
 
-pub fn mk_section_iter(llof: ObjectFileRef) -> section_iter {
+pub fn mk_section_iter(llof: ObjectFileRef) -> SectionIter {
     unsafe {
         let llsi = llvm::LLVMGetSections(llof);
-        return {llsi: llsi, dtor: @section_iter_res(llsi)};
+        SectionIter {
+            llsi: llsi,
+            dtor: @section_iter_res(llsi)
+        }
     }
 }
 

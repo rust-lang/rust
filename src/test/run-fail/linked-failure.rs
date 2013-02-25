@@ -16,7 +16,7 @@ extern mod std;
 fn child() { assert (1 == 2); }
 
 fn main() {
-    let (p, _c) = pipes::stream::<int>();
+    let (p, _c) = comm::stream::<int>();
     task::spawn(|| child() );
     let x = p.recv();
 }

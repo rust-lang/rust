@@ -10,8 +10,8 @@
 
 fn vec_peek<T>(v: &r/[T]) -> &r/[T] {
 // This doesn't work, and should.
-//    v.view(1, 5)
-    vec::view(v, 1, 5)
+//    v.slice(1, 5)
+    vec::slice(v, 1, 5)
 }
 
 pub fn main() {}

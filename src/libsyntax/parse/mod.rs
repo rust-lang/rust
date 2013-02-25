@@ -47,42 +47,51 @@ pub mod classify;
 /// Reporting obsolete syntax
 pub mod obsolete;
 
-pub type parse_sess = @{
+pub struct ParseSess {
     cm: @codemap::CodeMap,
-    mut next_id: node_id,
+    next_id: node_id,
     span_diagnostic: span_handler,
     interner: @ident_interner,
-};
+}
 
-pub fn new_parse_sess(demitter: Option<Emitter>) -> parse_sess {
+pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
     let cm = @CodeMap::new();
-    return @{cm: cm,
-             mut next_id: 1,
-             span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-             interner: mk_ident_interner(),
-            };
+    @mut ParseSess {
+        cm: cm,
+        next_id: 1,
+        span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
+        interner: mk_ident_interner(),
+    }
 }
 
 pub fn new_parse_sess_special_handler(sh: span_handler, cm: @codemap::CodeMap)
-    -> parse_sess {
-    return @{cm: cm,
-             mut next_id: 1,
-             span_diagnostic: sh,
-             interner: mk_ident_interner(),
-             };
+    -> @mut ParseSess {
+    @mut ParseSess {
+        cm: cm,
+        next_id: 1,
+        span_diagnostic: sh,
+        interner: mk_ident_interner(),
+    }
 }
 
+// a bunch of utility functions of the form parse_<thing>_from_<source>
+// where <thing> includes crate, expr, item, stmt, tts, and one that
+// uses a HOF to parse anything, and <source> includes file and
+// source_str.
+
+// this appears to be the main entry point for rust parsing by
+// rustc and crate:
 pub fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
-                         sess: parse_sess) -> @ast::crate {
-    let p = new_crate_parser_from_file(sess, cfg, input);
-    let r = p.parse_crate_mod(cfg);
-    return r;
+                         sess: @mut ParseSess) -> @ast::crate {
+    let p = new_parser_from_file(sess, cfg, input);
+    p.parse_crate_mod(cfg)
+    // why is there no p.abort_if_errors here?
 }
 
 pub fn parse_crate_from_source_str(name: ~str,
                                    source: @~str,
                                    cfg: ast::crate_cfg,
-                                   sess: parse_sess) -> @ast::crate {
+                                   sess: @mut ParseSess) -> @ast::crate {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
     let r = p.parse_crate_mod(cfg);
@@ -93,7 +102,7 @@ pub fn parse_crate_from_source_str(name: ~str,
 pub fn parse_expr_from_source_str(name: ~str,
                                   source: @~str,
                                   cfg: ast::crate_cfg,
-                                  sess: parse_sess) -> @ast::expr {
+                                  sess: @mut ParseSess) -> @ast::expr {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
     let r = p.parse_expr();
@@ -105,7 +114,7 @@ pub fn parse_item_from_source_str(name: ~str,
                                   source: @~str,
                                   cfg: ast::crate_cfg,
                                   +attrs: ~[ast::attribute],
-                                  sess: parse_sess)
+                                  sess: @mut ParseSess)
                                -> Option<@ast::item> {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
@@ -118,7 +127,7 @@ pub fn parse_stmt_from_source_str(name: ~str,
                                   source: @~str,
                                   cfg: ast::crate_cfg,
                                   +attrs: ~[ast::attribute],
-                                  sess: parse_sess) -> @ast::stmt {
+                                  sess: @mut ParseSess) -> @ast::stmt {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
     let r = p.parse_stmt(attrs);
@@ -129,10 +138,10 @@ pub fn parse_stmt_from_source_str(name: ~str,
 pub fn parse_tts_from_source_str(name: ~str,
                                  source: @~str,
                                  cfg: ast::crate_cfg,
-                                 sess: parse_sess) -> ~[ast::token_tree] {
+                                 sess: @mut ParseSess) -> ~[ast::token_tree] {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
-    p.quote_depth += 1u;
+    *p.quote_depth += 1u;
     let r = p.parse_all_token_trees();
     p.abort_if_errors();
     return r;
@@ -141,7 +150,7 @@ pub fn parse_tts_from_source_str(name: ~str,
 pub fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
                             name: ~str, ss: codemap::FileSubstr,
                             source: @~str, cfg: ast::crate_cfg,
-                            sess: parse_sess)
+                            sess: @mut ParseSess)
     -> T
 {
     let p = new_parser_from_source_str(sess, cfg, name, ss,
@@ -151,10 +160,10 @@ pub fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
         p.reader.fatal(~"expected end-of-string");
     }
     p.abort_if_errors();
-    move r
+    r
 }
 
-pub fn next_node_id(sess: parse_sess) -> node_id {
+pub fn next_node_id(sess: @mut ParseSess) -> node_id {
     let rv = sess.next_id;
     sess.next_id += 1;
     // ID 0 is reserved for the crate and doesn't actually exist in the AST
@@ -162,41 +171,43 @@ pub fn next_node_id(sess: parse_sess) -> node_id {
     return rv;
 }
 
-pub fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
+pub fn new_parser_from_source_str(sess: @mut ParseSess, cfg: ast::crate_cfg,
                               +name: ~str, +ss: codemap::FileSubstr,
                               source: @~str) -> Parser {
     let filemap = sess.cm.new_filemap_w_substr(name, ss, source);
-    let srdr = lexer::new_string_reader(sess.span_diagnostic,
+    let srdr = lexer::new_string_reader(copy sess.span_diagnostic,
                                         filemap,
                                         sess.interner);
     return Parser(sess, cfg, srdr as reader);
 }
 
-pub fn new_parser_from_file(sess: parse_sess,
+// Read the entire source file, return a parser
+// that draws from that string
+pub fn new_parser_result_from_file(sess: @mut ParseSess,
                             cfg: ast::crate_cfg,
                             path: &Path)
                          -> Result<Parser, ~str> {
     match io::read_whole_file_str(path) {
-      result::Ok(move src) => {
+      result::Ok(src) => {
 
-          let filemap = sess.cm.new_filemap(path.to_str(), @move src);
-          let srdr = lexer::new_string_reader(sess.span_diagnostic,
+          let filemap = sess.cm.new_filemap(path.to_str(), @src);
+          let srdr = lexer::new_string_reader(copy sess.span_diagnostic,
                                               filemap,
                                               sess.interner);
           Ok(Parser(sess, cfg, srdr as reader))
 
       }
-      result::Err(move e) => Err(move e)
+      result::Err(e) => Err(e)
     }
 }
 
 /// Create a new parser for an entire crate, handling errors as appropriate
 /// if the file doesn't exist
-pub fn new_crate_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
+pub fn new_parser_from_file(sess: @mut ParseSess, cfg: ast::crate_cfg,
                               path: &Path) -> Parser {
-    match new_parser_from_file(sess, cfg, path) {
-        Ok(move parser) => move parser,
-        Err(move e) => {
+    match new_parser_result_from_file(sess, cfg, path) {
+        Ok(parser) => parser,
+        Err(e) => {
             sess.span_diagnostic.handler().fatal(e)
         }
     }
@@ -204,19 +215,19 @@ pub fn new_crate_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
 
 /// Create a new parser based on a span from an existing parser. Handles
 /// error messages correctly when the file does not exist.
-pub fn new_sub_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg,
+pub fn new_sub_parser_from_file(sess: @mut ParseSess, cfg: ast::crate_cfg,
                             path: &Path, sp: span) -> Parser {
-    match new_parser_from_file(sess, cfg, path) {
-        Ok(move parser) => move parser,
-        Err(move e) => {
+    match new_parser_result_from_file(sess, cfg, path) {
+        Ok(parser) => parser,
+        Err(e) => {
             sess.span_diagnostic.span_fatal(sp, e)
         }
     }
 }
 
-pub fn new_parser_from_tts(sess: parse_sess, cfg: ast::crate_cfg,
+pub fn new_parser_from_tts(sess: @mut ParseSess, cfg: ast::crate_cfg,
                        tts: ~[ast::token_tree]) -> Parser {
-    let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner,
+    let trdr = lexer::new_tt_reader(copy sess.span_diagnostic, sess.interner,
                                     None, tts);
     return Parser(sess, cfg, trdr as reader)
 }
@@ -227,12 +238,11 @@ mod test {
     use super::*;
     use std::serialize::Encodable;
     use std;
-    use core::dvec;
     use core::str;
     use util::testing::*;
 
     #[test] fn to_json_str (val: Encodable<std::json::Encoder>) -> ~str {
-        let bw = @io::BytesWriter {bytes: dvec::DVec(), pos: 0};
+        let bw = @io::BytesWriter();
         val.encode(~std::json::Encoder(bw as io::Writer));
         str::from_bytes(bw.bytes.data)
     }

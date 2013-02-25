@@ -55,17 +55,18 @@ pub fn read_crates(diag: span_handler,
             visit_view_item: |a| visit_view_item(e, a),
             visit_item: |a| visit_item(e, a),
             .. *visit::default_simple_visitor()});
+    visit_crate(e, crate);
     visit::visit_crate(crate, (), v);
     dump_crates(e.crate_cache);
     warn_if_multiple_versions(e, diag, e.crate_cache);
 }
 
-type cache_entry = {
+struct cache_entry {
     cnum: int,
     span: span,
-    hash: ~str,
+    hash: @~str,
     metas: @~[@ast::meta_item]
-};
+}
 
 fn dump_crates(+crate_cache: @mut ~[cache_entry]) {
     debug!("resolved crates:");
@@ -99,12 +100,12 @@ fn warn_if_multiple_versions(e: @mut Env,
 
         if matches.len() != 1u {
             diag.handler().warn(
-                fmt!("using multiple versions of crate `%s`", name));
+                fmt!("using multiple versions of crate `%s`", *name));
             for matches.each |match_| {
                 diag.span_note(match_.span, ~"used here");
                 let attrs = ~[
                     attr::mk_attr(attr::mk_list_item(
-                        ~"link", /*bad*/copy *match_.metas))
+                        @~"link", /*bad*/copy *match_.metas))
                 ];
                 loader::note_linkage_attrs(e.intr, diag, attrs);
             }
@@ -125,12 +126,27 @@ struct Env {
     intr: @ident_interner
 }
 
+fn visit_crate(e: @mut Env, c: ast::crate) {
+    let cstore = e.cstore;
+    let link_args = attr::find_attrs_by_name(c.node.attrs, "link_args");
+
+    for link_args.each |a| {
+        match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
+          Some(ref linkarg) => {
+            cstore::add_used_link_args(cstore, **linkarg);
+          }
+          None => {/* fallthrough */ }
+        }
+    }
+}
+
 fn visit_view_item(e: @mut Env, i: @ast::view_item) {
     match /*bad*/copy i.node {
-      ast::view_item_use(ident, meta_items, id) => {
-        debug!("resolving use stmt. ident: %?, meta: %?", ident, meta_items);
-        let cnum = resolve_crate(e, ident, meta_items, ~"", i.span);
-        cstore::add_use_stmt_cnum(e.cstore, id, cnum);
+      ast::view_item_extern_mod(ident, meta_items, id) => {
+        debug!("resolving extern mod stmt. ident: %?, meta: %?",
+               ident, meta_items);
+        let cnum = resolve_crate(e, ident, meta_items, @~"", i.span);
+        cstore::add_extern_mod_stmt_cnum(e.cstore, id, cnum);
       }
       _ => ()
     }
@@ -152,38 +168,39 @@ fn visit_item(e: @mut Env, i: @ast::item) {
         let link_args = attr::find_attrs_by_name(i.attrs, "link_args");
 
         match fm.sort {
-          ast::named => {
-            let foreign_name =
-               match attr::first_attr_value_str_by_name(i.attrs,
-                                                        ~"link_name") {
-                 Some(ref nn) => {
-                   if (*nn) == ~"" {
-                      e.diag.span_fatal(
-                          i.span,
-                          ~"empty #[link_name] not allowed; use #[nolink].");
-                   }
-                   (/*bad*/copy *nn)
-                 }
-                None => /*bad*/copy *e.intr.get(i.ident)
-            };
-            if attr::find_attrs_by_name(i.attrs, ~"nolink").is_empty() {
-                already_added =
-                    !cstore::add_used_library(cstore, copy foreign_name);
+            ast::named => {
+                let foreign_name =
+                    match attr::first_attr_value_str_by_name(i.attrs,
+                                                            ~"link_name") {
+                        Some(nn) => {
+                            if *nn == ~"" {
+                                e.diag.span_fatal(
+                                    i.span,
+                                    ~"empty #[link_name] not allowed; use " +
+                                    ~"#[nolink].");
+                            }
+                            nn
+                        }
+                        None => e.intr.get(i.ident)
+                    };
+                if attr::find_attrs_by_name(i.attrs, ~"nolink").is_empty() {
+                    already_added =
+                        !cstore::add_used_library(cstore, foreign_name);
+                }
+                if !link_args.is_empty() && already_added {
+                    e.diag.span_fatal(i.span, ~"library '" + *foreign_name +
+                               ~"' already added: can't specify link_args.");
+                }
             }
-            if !link_args.is_empty() && already_added {
-                e.diag.span_fatal(i.span, ~"library '" + foreign_name +
-                           ~"' already added: can't specify link_args.");
-            }
-          }
-          ast::anonymous => { /* do nothing */ }
+            ast::anonymous => { /* do nothing */ }
         }
 
         for link_args.each |a| {
             match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
-              Some(ref linkarg) => {
-                cstore::add_used_link_args(cstore, (/*bad*/copy *linkarg));
-              }
-              None => {/* fallthrough */ }
+                Some(linkarg) => {
+                    cstore::add_used_link_args(cstore, *linkarg);
+                }
+                None => { /* fallthrough */ }
             }
         }
       }
@@ -191,9 +208,9 @@ fn visit_item(e: @mut Env, i: @ast::item) {
     }
 }
 
-fn metas_with(+ident: ~str, +key: ~str, +metas: ~[@ast::meta_item])
+fn metas_with(ident: @~str, key: @~str, +metas: ~[@ast::meta_item])
     -> ~[@ast::meta_item] {
-    let name_items = attr::find_meta_items_by_name(metas, key);
+    let name_items = attr::find_meta_items_by_name(metas, *key);
     if name_items.is_empty() {
         vec::append_one(metas, attr::mk_name_value_item_str(key, ident))
     } else {
@@ -201,12 +218,12 @@ fn metas_with(+ident: ~str, +key: ~str, +metas: ~[@ast::meta_item])
     }
 }
 
-fn metas_with_ident(+ident: ~str, +metas: ~[@ast::meta_item])
+fn metas_with_ident(ident: @~str, +metas: ~[@ast::meta_item])
     -> ~[@ast::meta_item] {
-    metas_with(ident, ~"name", metas)
+    metas_with(ident, @~"name", metas)
 }
 
-fn existing_match(e: @mut Env, metas: ~[@ast::meta_item], hash: ~str)
+fn existing_match(e: @mut Env, metas: ~[@ast::meta_item], hash: @~str)
                -> Option<int> {
     for e.crate_cache.each |c| {
         if loader::metadata_matches(*c.metas, metas)
@@ -220,14 +237,14 @@ fn existing_match(e: @mut Env, metas: ~[@ast::meta_item], hash: ~str)
 fn resolve_crate(e: @mut Env,
                  ident: ast::ident,
                  +metas: ~[@ast::meta_item],
-                 +hash: ~str,
+                 hash: @~str,
                  span: span)
               -> ast::crate_num {
-    let metas = metas_with_ident(/*bad*/copy *e.intr.get(ident), metas);
+    let metas = metas_with_ident(@/*bad*/copy *e.intr.get(ident), metas);
 
     match existing_match(e, metas, hash) {
       None => {
-        let load_ctxt: loader::ctxt = {
+        let load_ctxt = loader::Context {
             diag: e.diag,
             filesearch: e.filesearch,
             span: span,
@@ -235,13 +252,13 @@ fn resolve_crate(e: @mut Env,
             metas: metas,
             hash: hash,
             os: e.os,
-            static: e.statik,
+            is_static: e.statik,
             intr: e.intr
         };
-        let cinfo = loader::load_library_crate(load_ctxt);
+        let (lident, ldata) = loader::load_library_crate(load_ctxt);
 
-        let cfilename = Path(cinfo.ident);
-        let cdata = cinfo.data;
+        let cfilename = Path(lident);
+        let cdata = ldata;
 
         let attrs = decoder::get_crate_attributes(cdata);
         let linkage_metas = attr::find_linkage_metas(attrs);
@@ -249,8 +266,12 @@ fn resolve_crate(e: @mut Env,
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache.push({cnum: cnum, span: span,
-                            hash: hash, metas: @linkage_metas});
+        e.crate_cache.push(cache_entry {
+            cnum: cnum,
+            span: span,
+            hash: hash,
+            metas: @linkage_metas
+        });
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
@@ -259,11 +280,15 @@ fn resolve_crate(e: @mut Env,
         let cname =
             match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
                                                          ~"name") {
-              option::Some(ref v) => (/*bad*/copy *v),
-              option::None => /*bad*/copy *e.intr.get(ident)
+                Some(v) => v,
+                None => e.intr.get(ident),
             };
-        let cmeta = @{name: cname, data: cdata,
-                      cnum_map: cnum_map, cnum: cnum};
+        let cmeta = @cstore::crate_metadata {
+            name: cname,
+            data: cdata,
+            cnum_map: cnum_map,
+            cnum: cnum
+        };
 
         let cstore = e.cstore;
         cstore::set_crate_data(cstore, cnum, cmeta);
@@ -285,10 +310,10 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     for decoder::get_crate_deps(e.intr, cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
-        let cmetas = metas_with(/*bad*/copy dep.vers, ~"vers", ~[]);
+        let cmetas = metas_with(dep.vers, @~"vers", ~[]);
         debug!("resolving dep crate %s ver: %s hash: %s",
-               *e.intr.get(dep.name), dep.vers, dep.hash);
-        match existing_match(e, metas_with_ident(copy *e.intr.get(cname),
+               *e.intr.get(dep.name), *dep.vers, *dep.hash);
+        match existing_match(e, metas_with_ident(e.intr.get(cname),
                                                  copy cmetas),
                              dep.hash) {
           Some(local_cnum) => {
@@ -302,8 +327,8 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
             // FIXME (#2404): Need better error reporting than just a bogus
             // span.
             let fake_span = dummy_sp();
-            let local_cnum = resolve_crate(e, cname, cmetas,
-                                           /*bad*/copy dep.hash, fake_span);
+            let local_cnum = resolve_crate(e, cname, cmetas, dep.hash,
+                                           fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);
           }
         }

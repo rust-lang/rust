@@ -21,7 +21,7 @@ impl Foo for A { fn f() -> int { 10 } }
 impl Bar for A { fn g() -> int { 20 } }
 impl Baz for A { fn h() -> int { 30 } }
 
-fn f<T: Quux>(a: &T) {
+fn f<T:Quux>(a: &T) {
     assert a.f() == 10;
     assert a.g() == 20;
     assert a.h() == 30;

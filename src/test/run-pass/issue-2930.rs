@@ -17,5 +17,5 @@ proto! stream (
 pub fn main() {
     let (bc, _bp) = stream::init();
 
-    stream::client::send(move bc, ~"abc");
+    stream::client::send(bc, ~"abc");
 }

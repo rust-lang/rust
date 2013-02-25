@@ -1,3 +1,5 @@
+// xfail-pretty
+
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -20,7 +22,7 @@
 // Creates in the background 'num_tasks' tasks, all blocked forever.
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 
-use core::pipes::*;
+use core::comm::*;
 
 fn grandchild_group(num_tasks: uint) {
     let (po, ch) = stream();
@@ -46,9 +48,9 @@ fn grandchild_group(num_tasks: uint) {
 
 fn spawn_supervised_blocking(myname: &str, +f: fn~()) {
     let mut res = None;
-    task::task().future_result(|+r| res = Some(move r)).supervised().spawn(move f);
+    task::task().future_result(|+r| res = Some(r)).supervised().spawn(f);
     error!("%s group waiting", myname);
-    let x = option::unwrap(move res).recv();
+    let x = option::unwrap(res).recv();
     assert x == task::Success;
 }
 

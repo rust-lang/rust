@@ -14,7 +14,7 @@ extern mod cci_class_cast;
 use core::to_str::ToStr;
 use cci_class_cast::kitty::*;
 
-fn print_out<T: ToStr>(thing: T, expected: ~str) {
+fn print_out<T:ToStr>(thing: T, expected: ~str) {
   let actual = thing.to_str();
   debug!("%s", actual);
   assert(actual == expected);

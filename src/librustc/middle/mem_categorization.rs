@@ -263,7 +263,7 @@ pub fn cat_def(
     return mcx.cat_def(expr_id, expr_span, expr_ty, def);
 }
 
-pub fn cat_variant<N: ast_node>(
+pub fn cat_variant<N:ast_node>(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     arg: N,
@@ -277,27 +277,27 @@ pub fn cat_variant<N: ast_node>(
 }
 
 pub trait ast_node {
-    fn id() -> ast::node_id;
-    fn span() -> span;
+    fn id(&self) -> ast::node_id;
+    fn span(&self) -> span;
 }
 
-pub impl @ast::expr: ast_node {
-    fn id() -> ast::node_id { self.id }
-    fn span() -> span { self.span }
+pub impl ast_node for @ast::expr {
+    fn id(&self) -> ast::node_id { self.id }
+    fn span(&self) -> span { self.span }
 }
 
-pub impl @ast::pat: ast_node {
-    fn id() -> ast::node_id { self.id }
-    fn span() -> span { self.span }
+pub impl ast_node for @ast::pat {
+    fn id(&self) -> ast::node_id { self.id }
+    fn span(&self) -> span { self.span }
 }
 
 pub trait get_type_for_node {
-    fn ty<N: ast_node>(node: N) -> ty::t;
+    fn ty<N:ast_node>(&self, node: N) -> ty::t;
 }
 
-pub impl ty::ctxt: get_type_for_node {
-    fn ty<N: ast_node>(node: N) -> ty::t {
-        ty::node_id_to_type(self, node.id())
+pub impl get_type_for_node for ty::ctxt {
+    fn ty<N:ast_node>(&self, node: N) -> ty::t {
+        ty::node_id_to_type(*self, node.id())
     }
 }
 
@@ -313,7 +313,7 @@ impl ToStr for MutabilityCategory {
 }
 
 impl MutabilityCategory {
-    static fn from_mutbl(m: ast::mutability) -> MutabilityCategory {
+    static fn from_mutbl(&self, m: ast::mutability) -> MutabilityCategory {
         match m {
             m_imm => McImmutable,
             m_const => McReadOnly,
@@ -575,7 +575,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_variant<N: ast_node>(&self,
+    fn cat_variant<N:ast_node>(&self,
                                 arg: N,
                                 enum_did: ast::def_id,
                                 cmt: cmt) -> cmt {
@@ -589,7 +589,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_rvalue<N: ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
+    fn cat_rvalue<N:ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
         @cmt_ {
             id:elt.id(),
             span:elt.span(),
@@ -629,7 +629,7 @@ pub impl mem_categorization_ctxt {
                 self.tcx.sess.span_bug(
                     node.span(),
                     fmt!("Cannot find field `%s` in type `%s`",
-                         self.tcx.sess.str_of(f_name),
+                         *self.tcx.sess.str_of(f_name),
                          ty_to_str(self.tcx, base_cmt.ty)));
             }
         };
@@ -739,7 +739,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_index<N: ast_node>(&self,
+    fn cat_index<N:ast_node>(&self,
                               elt: N,
                               base_cmt: cmt) -> cmt {
         let mt = match ty::index(self.tcx, base_cmt.ty) {
@@ -792,7 +792,7 @@ pub impl mem_categorization_ctxt {
           }
         };
 
-        fn comp<N: ast_node>(elt: N, of_cmt: cmt,
+        fn comp<N:ast_node>(elt: N, of_cmt: cmt,
                              vect: ty::t, mutbl: MutabilityCategory,
                              mt: ty::mt) -> cmt
         {
@@ -809,7 +809,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_tuple_elt<N: ast_node>(&self,
+    fn cat_tuple_elt<N:ast_node>(&self,
                                   elt: N,
                                   cmt: cmt) -> cmt {
         @cmt_ {
@@ -822,7 +822,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_anon_struct_field<N: ast_node>(&self,
+    fn cat_anon_struct_field<N:ast_node>(&self,
                                           elt: N,
                                           cmt: cmt) -> cmt {
         @cmt_ {
@@ -995,7 +995,7 @@ pub impl mem_categorization_ctxt {
                  self.ptr_sigil(ptr), derefs)
           }
           cat_comp(cmt, comp) => {
-            fmt!("%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp))
+            fmt!("%s.%s", self.cat_to_repr(cmt.cat), *self.comp_to_repr(comp))
           }
           cat_discr(cmt, _) => self.cat_to_repr(cmt.cat)
         }
@@ -1018,13 +1018,13 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn comp_to_repr(&self, comp: comp_kind) -> ~str {
+    fn comp_to_repr(&self, comp: comp_kind) -> @~str {
         match comp {
           comp_field(fld, _) => self.tcx.sess.str_of(fld),
-          comp_index(*) => ~"[]",
-          comp_tuple => ~"()",
-          comp_anon_field => ~"<anonymous field>",
-          comp_variant(_) => ~"<enum>"
+          comp_index(*) => @~"[]",
+          comp_tuple => @~"()",
+          comp_anon_field => @~"<anonymous field>",
+          comp_variant(_) => @~"<enum>"
         }
     }
 
@@ -1043,7 +1043,7 @@ pub impl mem_categorization_ctxt {
           }
           lp_comp(lp, comp) => {
             fmt!("%s.%s", self.lp_to_str(lp),
-                 self.comp_to_repr(comp))
+                 *self.comp_to_repr(comp))
           }
         }
     }

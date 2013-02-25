@@ -46,71 +46,71 @@ pub enum CharPos = uint;
 // XXX: Lots of boilerplate in these impls, but so far my attempts to fix
 // have been unsuccessful
 
-pub impl BytePos: Pos {
+pub impl Pos for BytePos {
     static pure fn from_uint(n: uint) -> BytePos { BytePos(n) }
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl BytePos: cmp::Eq {
+pub impl cmp::Eq for BytePos {
     pure fn eq(&self, other: &BytePos) -> bool { **self == **other }
     pure fn ne(&self, other: &BytePos) -> bool { !(*self).eq(other) }
 }
 
-pub impl BytePos: cmp::Ord {
+pub impl cmp::Ord for BytePos {
     pure fn lt(&self, other: &BytePos) -> bool { **self < **other }
     pure fn le(&self, other: &BytePos) -> bool { **self <= **other }
     pure fn ge(&self, other: &BytePos) -> bool { **self >= **other }
     pure fn gt(&self, other: &BytePos) -> bool { **self > **other }
 }
 
-pub impl BytePos: Add<BytePos, BytePos> {
+pub impl Add<BytePos, BytePos> for BytePos {
     pure fn add(&self, rhs: &BytePos) -> BytePos {
         BytePos(**self + **rhs)
     }
 }
 
-pub impl BytePos: Sub<BytePos, BytePos> {
+pub impl Sub<BytePos, BytePos> for BytePos {
     pure fn sub(&self, rhs: &BytePos) -> BytePos {
         BytePos(**self - **rhs)
     }
 }
 
-pub impl BytePos: to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for BytePos {
     pure fn iter_bytes(&self, +lsb0: bool, &&f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-pub impl CharPos: Pos {
+pub impl Pos for CharPos {
     static pure fn from_uint(n: uint) -> CharPos { CharPos(n) }
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl CharPos: cmp::Eq {
+pub impl cmp::Eq for CharPos {
     pure fn eq(&self, other: &CharPos) -> bool { **self == **other }
     pure fn ne(&self, other: &CharPos) -> bool { !(*self).eq(other) }
 }
 
-pub impl CharPos: cmp::Ord {
+pub impl cmp::Ord for CharPos {
     pure fn lt(&self, other: &CharPos) -> bool { **self < **other }
     pure fn le(&self, other: &CharPos) -> bool { **self <= **other }
     pure fn ge(&self, other: &CharPos) -> bool { **self >= **other }
     pure fn gt(&self, other: &CharPos) -> bool { **self > **other }
 }
 
-pub impl CharPos: to_bytes::IterBytes {
+pub impl to_bytes::IterBytes for CharPos {
     pure fn iter_bytes(&self, +lsb0: bool, &&f: to_bytes::Cb) {
         (**self).iter_bytes(lsb0, f)
     }
 }
 
-pub impl CharPos: Add<CharPos, CharPos> {
+pub impl Add<CharPos,CharPos> for CharPos {
     pure fn add(&self, rhs: &CharPos) -> CharPos {
         CharPos(**self + **rhs)
     }
 }
 
-pub impl CharPos: Sub<CharPos, CharPos> {
+pub impl Sub<CharPos,CharPos> for CharPos {
     pure fn sub(&self, rhs: &CharPos) -> CharPos {
         CharPos(**self - **rhs)
     }
@@ -133,26 +133,26 @@ pub struct span {
 #[deriving_eq]
 pub struct spanned<T> { node: T, span: span }
 
-pub impl span : cmp::Eq {
+pub impl cmp::Eq for span {
     pure fn eq(&self, other: &span) -> bool {
         return (*self).lo == (*other).lo && (*self).hi == (*other).hi;
     }
     pure fn ne(&self, other: &span) -> bool { !(*self).eq(other) }
 }
 
-pub impl<S: Encoder> span: Encodable<S> {
+pub impl<S:Encoder> Encodable<S> for span {
     /* Note #1972 -- spans are encoded but not decoded */
     fn encode(&self, _s: &S) { }
 }
 
-pub impl<D: Decoder> span: Decodable<D> {
+pub impl<D:Decoder> Decodable<D> for span {
     static fn decode(_d: &D) -> span {
         dummy_sp()
     }
 }
 
 pub pure fn spanned<T>(+lo: BytePos, +hi: BytePos, +t: T) -> spanned<T> {
-    respan(mk_sp(lo, hi), move t)
+    respan(mk_sp(lo, hi), t)
 }
 
 pub pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
@@ -160,7 +160,7 @@ pub pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
 }
 
 pub pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
-    respan(dummy_sp(), move t)
+    respan(dummy_sp(), t)
 }
 
 /* assuming that we're not in macro expansion */
@@ -196,11 +196,16 @@ pub struct LocWithOpt {
 // used to be structural records. Better names, anyone?
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
+pub struct NameAndSpan {name: ~str, span: Option<span>}
+
+pub struct CallInfo {
+    call_site: span,
+    callee: NameAndSpan
+}
 
 /// Extra information for tracking macro expansion of spans
 pub enum ExpnInfo {
-    ExpandedFrom({call_site: span,
-                  callie: {name: ~str, span: Option<span>}})
+    ExpandedFrom(CallInfo)
 }
 
 pub type FileName = ~str;
@@ -237,7 +242,7 @@ pub struct FileMap {
     /// The start position of this source in the CodeMap
     start_pos: BytePos,
     /// Locations of lines beginnings in the source code
-    mut lines: ~[BytePos],
+    lines: @mut ~[BytePos],
     /// Locations of multi-byte characters in the source code
     multibyte_chars: DVec<MultiByteChar>
 }
@@ -307,7 +312,7 @@ pub impl CodeMap {
         let filemap = @FileMap {
             name: filename, substr: substr, src: src,
             start_pos: BytePos(start_pos),
-            mut lines: ~[],
+            lines: @mut ~[],
             multibyte_chars: DVec()
         };
 
@@ -434,7 +439,7 @@ priv impl CodeMap {
         let idx = self.lookup_filemap_idx(pos);
         let f = self.files[idx];
         let mut a = 0u;
-        let mut b = vec::len(f.lines);
+        let mut b = f.lines.len();
         while b - a > 1u {
             let m = (a + b) / 2u;
             if f.lines[m] > pos { b = m; } else { a = m; }

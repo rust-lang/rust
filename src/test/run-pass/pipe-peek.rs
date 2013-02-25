@@ -10,11 +10,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[legacy_records];
-
 extern mod std;
 use std::timer::sleep;
 use std::uv;
+use core::pipes;
 
 proto! oneshot (
     waiting:send {
@@ -27,7 +26,7 @@ pub fn main() {
 
     assert !pipes::peek(&p);
 
-    oneshot::client::signal(move c);
+    oneshot::client::signal(c);
 
     assert pipes::peek(&p);
 }

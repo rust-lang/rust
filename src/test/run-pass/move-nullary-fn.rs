@@ -12,7 +12,7 @@
 fn f2(-thing: fn@()) { }
 
 fn f(-thing: fn@()) {
-    f2(move thing);
+    f2(thing);
 }
 
 pub fn main() {

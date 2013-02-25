@@ -9,19 +9,19 @@
 // except according to those terms.
 
 // xfail-fast
-#[legacy_modes];
 
-fn f(arg: A) {
+fn f(arg: &mut A) {
     arg.a = 100;
 }
 
-struct A { mut a: int }
+struct A { a: int }
 
 pub fn main() {
-    let x = A {a: 10};
-    f(x);
+    let mut x = A {a: 10};
+    f(&mut x);
     assert x.a == 100;
     x.a = 20;
-    f(copy x);
+    let mut y = copy x;
+    f(&mut y);
     assert x.a == 20;
 }

@@ -11,16 +11,16 @@
 #[allow(default_methods)];
 
 trait A {
-    fn g<T>(x: T, y: T) -> (T, T) { (move x, move y) }
+    fn g<T>(x: T, y: T) -> (T, T) { (x, y) }
 }
 
 impl A for int { }
 
 fn f<T, V: A>(i: V, j: T, k: T) -> (T, T) {
-    i.g(move j, move k)
+    i.g(j, k)
 }
 
-fn main () {
+pub fn main () {
     assert f(0, 1, 2) == (1, 2);
     assert f(0, 1u8, 2u8) == (1u8, 2u8);
 }

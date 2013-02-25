@@ -37,7 +37,7 @@ fn r(v: U) -> r {
 enum t = Node;
 
 struct Node {
-    mut next: Option<@t>,
+    next: Option<@mut t>,
     r: r
 }
 
@@ -45,20 +45,20 @@ pub fn main() {
     unsafe {
         let i1 = ~0xA;
         let i1p = cast::reinterpret_cast(&i1);
-        cast::forget(move i1);
+        cast::forget(i1);
         let i2 = ~0xA;
         let i2p = cast::reinterpret_cast(&i2);
-        cast::forget(move i2);
+        cast::forget(i2);
 
         let u1 = U {a: 0xB, b: 0xC, c: i1p};
         let u2 = U {a: 0xB, b: 0xC, c: i2p};
 
-        let x1 = @t(Node {
-            mut next: None,
+        let x1 = @mut t(Node {
+            next: None,
             r: r(u1)
         });
-        let x2 = @t(Node {
-            mut next: None,
+        let x2 = @mut t(Node {
+            next: None,
             r: r(u2)
         });
         x1.next = Some(x2);

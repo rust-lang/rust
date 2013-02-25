@@ -20,7 +20,7 @@ impl Baz for A { fn h() -> int { 30 } }
 
 // Call a function on Foo, given a T: Baz,
 // which is inherited via Bar
-fn gg<T: Baz>(a: &T) -> int {
+fn gg<T:Baz>(a: &T) -> int {
     a.f()
 }
 

@@ -22,8 +22,8 @@ use option::{Some, None, swap_unwrap};
 use private::at_exit::at_exit;
 use private::global::global_data_clone_create;
 use private::finally::Finally;
-use pipes::{Port, Chan, SharedChan, GenericChan, GenericPort,
-            GenericSmartChan, stream};
+use comm::{Port, Chan, SharedChan, GenericChan,
+           GenericPort, GenericSmartChan, stream};
 use task::{Task, task, spawn};
 use task::rt::{task_id, get_task_id};
 use hashmap::linear::LinearMap;
@@ -186,7 +186,7 @@ fn test_wait_for_signal_many() {
 
 #[test]
 fn test_select_stream_and_oneshot() {
-    use pipes::select2i;
+    use comm::select2i;
     use either::{Left, Right};
 
     let (port, chan) = stream();

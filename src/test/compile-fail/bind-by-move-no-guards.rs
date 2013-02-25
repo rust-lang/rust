@@ -9,12 +9,12 @@
 // except according to those terms.
 
 fn main() {
-    let (p,c) = pipes::stream();
+    let (p,c) = comm::stream();
     let x = Some(p);
     c.send(false);
-    match move x {
-        Some(move z) if z.recv() => { fail!() }, //~ ERROR cannot bind by-move into a pattern guard
-        Some(move z) => { assert !z.recv(); },
+    match x {
+        Some(z) if z.recv() => { fail!() }, //~ ERROR cannot bind by-move into a pattern guard
+        Some(z) => { assert !z.recv(); },
         None => fail!()
     }
 }

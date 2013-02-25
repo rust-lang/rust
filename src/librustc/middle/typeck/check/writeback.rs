@@ -17,7 +17,7 @@ use core::prelude::*;
 use middle::pat_util;
 use middle::ty::arg;
 use middle::ty;
-use middle::typeck::check::{FnCtxt, self_info};
+use middle::typeck::check::{FnCtxt, SelfInfo};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::{resolve_type};
 use middle::typeck::infer;
@@ -261,7 +261,7 @@ pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::expr) -> bool {
 pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                decl: &ast::fn_decl,
                                blk: ast::blk,
-                               self_info: Option<self_info>) -> bool {
+                               self_info: Option<SelfInfo>) -> bool {
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
     (visit.visit_block)(blk, wbcx, visit);
@@ -274,6 +274,10 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
         do pat_util::pat_bindings(fcx.tcx().def_map, arg.pat)
                 |_bm, pat_id, span, _path| {
             resolve_type_vars_for_node(wbcx, span, pat_id);
+        }
+        // Privacy needs the type for the whole pattern, not just each binding
+        if !pat_util::pat_is_binding(fcx.tcx().def_map, arg.pat) {
+            resolve_type_vars_for_node(wbcx, arg.pat.span, arg.pat.id);
         }
     }
     return wbcx.success;

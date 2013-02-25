@@ -15,17 +15,18 @@ use middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
                                T_int, T_nil,
                                T_opaque_vec, T_ptr, T_unique_ptr,
                                T_size_t, T_void, T_vec2};
-use lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
+use lib::llvm::{TypeNames, ModuleRef, ValueRef, TypeRef};
 
-pub type upcalls =
-    {trace: ValueRef,
-     call_shim_on_c_stack: ValueRef,
-     call_shim_on_rust_stack: ValueRef,
-     rust_personality: ValueRef,
-     reset_stack_limit: ValueRef};
+pub struct Upcalls {
+    trace: ValueRef,
+    call_shim_on_c_stack: ValueRef,
+    call_shim_on_rust_stack: ValueRef,
+    rust_personality: ValueRef,
+    reset_stack_limit: ValueRef
+}
 
 pub fn declare_upcalls(targ_cfg: @session::config,
-                       llmod: ModuleRef) -> @upcalls {
+                       llmod: ModuleRef) -> @Upcalls {
     fn decl(llmod: ModuleRef, prefix: ~str, name: ~str,
             tys: ~[TypeRef], rv: TypeRef) ->
        ValueRef {
@@ -43,22 +44,23 @@ pub fn declare_upcalls(targ_cfg: @session::config,
 
     let int_t = T_int(targ_cfg);
 
-    return @{trace: dv(~"trace", ~[T_ptr(T_i8()),
+    @Upcalls {
+        trace: dv(~"trace", ~[T_ptr(T_i8()),
                               T_ptr(T_i8()),
                               int_t]),
-          call_shim_on_c_stack:
-              d(~"call_shim_on_c_stack",
-                // arguments: void *args, void *fn_ptr
-                ~[T_ptr(T_i8()), T_ptr(T_i8())],
-                int_t),
-          call_shim_on_rust_stack:
-              d(~"call_shim_on_rust_stack",
-                ~[T_ptr(T_i8()), T_ptr(T_i8())], int_t),
-          rust_personality:
-              nothrow(d(~"rust_personality", ~[], T_i32())),
-          reset_stack_limit:
-              nothrow(dv(~"reset_stack_limit", ~[]))
-         };
+        call_shim_on_c_stack:
+            d(~"call_shim_on_c_stack",
+              // arguments: void *args, void *fn_ptr
+              ~[T_ptr(T_i8()), T_ptr(T_i8())],
+              int_t),
+        call_shim_on_rust_stack:
+            d(~"call_shim_on_rust_stack",
+              ~[T_ptr(T_i8()), T_ptr(T_i8())], int_t),
+        rust_personality:
+            nothrow(d(~"rust_personality", ~[], T_i32())),
+        reset_stack_limit:
+            nothrow(dv(~"reset_stack_limit", ~[]))
+    }
 }
 //
 // Local Variables:

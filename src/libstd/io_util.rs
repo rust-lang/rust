@@ -20,7 +20,7 @@ pub struct BufReader {
 pub impl BufReader {
     static pub fn new(v: ~[u8]) -> BufReader {
         BufReader {
-            buf: move v,
+            buf: v,
             pos: 0
         }
     }
@@ -38,7 +38,7 @@ pub impl BufReader {
         // FIXME #4429: This isn't correct if f fails
         self.pos = bytes_reader.pos;
 
-        return move res;
+        return res;
     }
 }
 

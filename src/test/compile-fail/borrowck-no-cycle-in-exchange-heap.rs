@@ -8,16 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct node_ {
+    a: ~cycle
+}
+
 enum cycle {
-    node({mut a: ~cycle}),
+    node(node_),
     empty
 }
 fn main() {
-    let x = ~node({mut a: ~empty});
+    let mut x = ~node(node_ {a: ~empty});
     // Create a cycle!
-    match *x { //~ NOTE loan of immutable local variable granted here
-      node(ref y) => {
-        y.a = x; //~ ERROR moving out of immutable local variable prohibited due to outstanding loan
+    match *x { //~ NOTE loan of mutable local variable granted here
+      node(ref mut y) => {
+        y.a = x; //~ ERROR moving out of mutable local variable prohibited due to outstanding loan
       }
       empty => {}
     };

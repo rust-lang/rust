@@ -34,7 +34,7 @@ const min_granularity : uint = 1024u;
  * This is used to build most of the other parallel vector functions,
  * like map or alli.
  */
-fn map_slices<A: Copy Owned, B: Copy Owned>(
+fn map_slices<A:Copy + Owned,B:Copy + Owned>(
     xs: &[A],
     f: &fn() -> ~fn(uint, v: &[A]) -> B)
     -> ~[B] {
@@ -58,7 +58,7 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
             do vec::as_imm_buf(xs) |p, _len| {
                 let f = f();
                 let base = base;
-                let f = do future_spawn() |move f| {
+                let f = do future_spawn() || {
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base),
@@ -72,7 +72,7 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
                         f(base, slice)
                     }
                 };
-                futures.push(move f);
+                futures.push(f);
             };
             base += items_per_task;
         }
@@ -90,7 +90,7 @@ fn map_slices<A: Copy Owned, B: Copy Owned>(
 }
 
 /// A parallel version of map.
-pub fn map<A: Copy Owned, B: Copy Owned>(
+pub fn map<A:Copy + Owned,B:Copy + Owned>(
     xs: &[A], fn_factory: &fn() -> ~fn(&A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         let f = fn_factory();
@@ -101,13 +101,13 @@ pub fn map<A: Copy Owned, B: Copy Owned>(
 }
 
 /// A parallel version of mapi.
-pub fn mapi<A: Copy Owned, B: Copy Owned>(
+pub fn mapi<A:Copy + Owned,B:Copy + Owned>(
     xs: &[A],
     fn_factory: &fn() -> ~fn(uint, &A) -> B) -> ~[B]
 {
     let slices = map_slices(xs, || {
         let f = fn_factory();
-        fn~(base: uint, slice : &[A], copy f) -> ~[B] {
+        fn~(base: uint, slice : &[A]) -> ~[B] {
             vec::mapi(slice, |i, x| {
                 f(i + base, x)
             })
@@ -120,13 +120,13 @@ pub fn mapi<A: Copy Owned, B: Copy Owned>(
 }
 
 /// Returns true if the function holds for all elements in the vector.
-pub fn alli<A: Copy Owned>(
+pub fn alli<A:Copy + Owned>(
     xs: &[A],
     fn_factory: &fn() -> ~fn(uint, &A) -> bool) -> bool
 {
     do vec::all(map_slices(xs, || {
         let f = fn_factory();
-        fn~(base: uint, slice : &[A], copy f) -> bool {
+        fn~(base: uint, slice : &[A]) -> bool {
             vec::alli(slice, |i, x| {
                 f(i + base, x)
             })
@@ -135,12 +135,12 @@ pub fn alli<A: Copy Owned>(
 }
 
 /// Returns true if the function holds for any elements in the vector.
-pub fn any<A: Copy Owned>(
+pub fn any<A:Copy + Owned>(
     xs: &[A],
     fn_factory: &fn() -> ~fn(&A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         let f = fn_factory();
-        fn~(_base : uint, slice: &[A], copy f) -> bool {
+        fn~(_base : uint, slice: &[A]) -> bool {
             vec::any(slice, |x| f(x))
         }
     })) |x| { *x }

@@ -16,7 +16,7 @@ pub mod socket {
         sockfd: libc::c_int,
     }
 
-    pub impl socket_handle : Drop {
+    pub impl Drop for socket_handle {
         fn finalize(&self) {
             /* c::close(self.sockfd); */
         }

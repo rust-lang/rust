@@ -213,7 +213,7 @@ else enum extern
 false fn for
 if impl
 let log loop
-match mod move mut
+match mod mut
 priv pub pure
 ref return
 self static struct super
@@ -297,7 +297,7 @@ the following forms:
 num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
         | '0' [       [ dec_digit | '_' ] + num_suffix ?
               | 'b'   [ '1' | '0' | '_' ] + int_suffix ?
-              | 'x'   [ hex_digit | '-' ] + int_suffix ? ] ;
+              | 'x'   [ hex_digit | '_' ] + int_suffix ? ] ;
 
 num_suffix : int_suffix | float_suffix ;
 
@@ -549,7 +549,7 @@ This requirement most often affects name-designator pairs when they occur at the
 
 * `log_syntax!` : print out the arguments at compile time
 * `trace_macros!` : supply `true` or `false` to enable or disable printing of the macro expansion process.
-* `ident_to_str!` : turn the identifier argument into a string literal
+* `stringify!` : turn the identifier argument into a string literal
 * `concat_idents!` : create a new identifier by concatenating the arguments
 
 
@@ -686,15 +686,15 @@ mod math {
     type complex = (f64, f64);
     fn sin(f: f64) -> f64 {
         ...
-# die!();
+# fail!();
     }
     fn cos(f: f64) -> f64 {
         ...
-# die!();
+# fail!();
     }
     fn tan(f: f64) -> f64 {
         ...
-# die!();
+# fail!();
     }
 }
 ~~~~~~~~
@@ -986,7 +986,7 @@ output slot type would normally be. For example:
 ~~~~
 fn my_err(s: &str) -> ! {
     log(info, s);
-    die!();
+    fail!();
 }
 ~~~~
 
@@ -1004,7 +1004,7 @@ were declared without the `!` annotation, the following code would not
 typecheck:
 
 ~~~~
-# fn my_err(s: &str) -> ! { die!() }
+# fn my_err(s: &str) -> ! { fail!() }
 
 fn f(i: int) -> int {
    if i == 42 {
@@ -1117,6 +1117,7 @@ a = Cat{ name: ~"Spotty", weight: 2.7 };
 
 In this example, `Cat` is a _struct-like enum variant_,
 whereas `Dog` is simply called an enum variant.
+
 ### Constants
 
 ~~~~~~~~ {.ebnf .gram}
@@ -2284,9 +2285,9 @@ enum List<X> { Nil, Cons(X, @List<X>) }
 let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
-    Cons(_, @Nil) => die!(~"singleton list"),
+    Cons(_, @Nil) => fail!(~"singleton list"),
     Cons(*)       => return,
-    Nil           => die!(~"empty list")
+    Nil           => fail!(~"empty list")
 }
 ~~~~
 
@@ -2323,7 +2324,7 @@ match x {
         return;
     }
     _ => {
-        die!();
+        fail!();
     }
 }
 ~~~~
@@ -2411,7 +2412,7 @@ guard may refer to the variables bound within the pattern they follow.
 let message = match maybe_digit {
   Some(x) if x < 10 => process_digit(x),
   Some(x) => process_other(x),
-  None => die!()
+  None => fail!()
 };
 ~~~~
 

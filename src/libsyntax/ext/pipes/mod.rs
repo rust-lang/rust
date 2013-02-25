@@ -68,12 +68,12 @@ pub fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
                 tt: ~[ast::token_tree]) -> base::MacResult {
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
-    let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
+    let tt_rdr = new_tt_reader(copy cx.parse_sess().span_diagnostic,
                                cx.parse_sess().interner, None, tt);
     let rdr = tt_rdr as reader;
     let rust_parser = Parser(sess, cfg, rdr.dup());
 
-    let proto = rust_parser.parse_proto(cx.str_of(id));
+    let mut proto = rust_parser.parse_proto(cx.str_of(id));
 
     // check for errors
     visit(proto, cx);

@@ -53,18 +53,19 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
-    let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
+    let arg_reader = new_tt_reader(copy cx.parse_sess().span_diagnostic,
                                    cx.parse_sess().interner, None, arg);
     let argument_map = parse_or_else(cx.parse_sess(), cx.cfg(),
                                      arg_reader as reader, argument_gram);
 
     // Extract the arguments:
-    let lhses:~[@named_match] = match argument_map.get(&lhs_nm) {
-      @matched_seq(s, _) => s,
-      _ => cx.span_bug(sp, ~"wrong-structured lhs")
+    let lhses = match argument_map.get(&lhs_nm) {
+        @matched_seq(ref s, _) => /* FIXME (#2543) */ copy *s,
+        _ => cx.span_bug(sp, ~"wrong-structured lhs")
     };
-    let rhses:~[@named_match] = match argument_map.get(&rhs_nm) {
-      @matched_seq(s, _) => s,
+
+    let rhses = match argument_map.get(&rhs_nm) {
+      @matched_seq(ref s, _) => /* FIXME (#2543) */ copy *s,
       _ => cx.span_bug(sp, ~"wrong-structured rhs")
     };
 

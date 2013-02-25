@@ -110,7 +110,7 @@ pub mod inst {
         return true;
     }
 
-    pub impl uint: iter::Times {
+    pub impl iter::Times for uint {
         #[inline(always)]
         /**
         * A convenience form for basic iteration. Given a uint `x`,
@@ -209,7 +209,7 @@ pub mod inst {
     }
 }
 
-pub impl uint: NumCast {
+pub impl NumCast for uint {
     /**
      * Cast `n` to a `uint`
      */

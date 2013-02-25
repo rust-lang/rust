@@ -11,16 +11,16 @@
 // xfail-fast
 
 pub fn main() {
-    let (p,c) = pipes::stream();
-    do task::try |move c| {
-        let (p2,c2) = pipes::stream();
-        do task::spawn |move p2| {
+    let (p,c) = comm::stream();
+    do task::try || {
+        let (p2,c2) = comm::stream();
+        do task::spawn || {
             p2.recv();
             error!("sibling fails");
             fail!();
         }   
-        let (p3,c3) = pipes::stream();
-        c.send(move c3);
+        let (p3,c3) = comm::stream();
+        c.send(c3);
         c2.send(());
         error!("child blocks");
         p3.recv();

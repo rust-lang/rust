@@ -31,6 +31,6 @@ pub fn main() {
         assert *e == exp[i];
     }
 
-    let v = dvec::unwrap(move d);
+    let v = dvec::unwrap(d);
     assert v == exp;
 }

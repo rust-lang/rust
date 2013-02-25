@@ -131,7 +131,7 @@ pub impl<V> SmallIntMap<V> {
     }
 }
 
-pub impl<V: Copy> SmallIntMap<V> {
+pub impl<V:Copy> SmallIntMap<V> {
     fn update_with_key(&mut self, key: uint, val: V,
                        ff: fn(uint, V, V) -> V) -> bool {
         let new_val = match self.find(&key) {

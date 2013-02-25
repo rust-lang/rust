@@ -15,7 +15,7 @@ pub fn main() {
     let mut x: int;
     while z < 50 {
         z += 1;
-        while false { x = move y; y = z; }
+        while false { x = y; y = z; }
         log(debug, y);
     }
     assert (y == 42 && z == 50);

@@ -848,11 +848,11 @@ pub mod node {
                         offset += 1u;
                         i      += 1u;
                     }
-                    cast::forget(move local_buf);
+                    cast::forget(local_buf);
                   }
                 }
             }
-            return cast::transmute(move buf);
+            return cast::transmute(buf);
         }
     }
 

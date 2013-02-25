@@ -12,7 +12,7 @@ trait connection {
     fn read() -> int;
 }
 
-trait connection_factory<C: connection> {
+trait connection_factory<C:connection> {
     fn create() -> C;
 }
 

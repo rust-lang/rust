@@ -77,8 +77,7 @@ private:
 public:
     memory_region(rust_env *env, bool synchronized);
     memory_region(memory_region *parent);
-    void *malloc(size_t size, const char *tag, bool zero = true);
-    void *calloc(size_t size, const char *tag);
+    void *malloc(size_t size, const char *tag);
     void *realloc(void *mem, size_t size);
     void free(void *mem);
     ~memory_region();

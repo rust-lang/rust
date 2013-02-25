@@ -13,6 +13,7 @@ use core::prelude::*;
 use ast;
 use codemap;
 use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom, dummy_sp};
+use codemap::{CallInfo, NameAndSpan};
 use diagnostic::span_handler;
 use ext;
 use parse;
@@ -75,9 +76,11 @@ pub enum SyntaxExtension {
     ItemTT(SyntaxExpanderTTItem),
 }
 
+type SyntaxExtensions = HashMap<@~str, SyntaxExtension>;
+
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
-pub fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
+pub fn syntax_expander_table() -> SyntaxExtensions {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> SyntaxExtension {
         NormalTT(SyntaxExpanderTT{expander: f, span: None})
@@ -87,74 +90,74 @@ pub fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
         ItemTT(SyntaxExpanderTTItem{expander: f, span: None})
     }
     let syntax_expanders = HashMap();
-    syntax_expanders.insert(~"macro_rules",
+    syntax_expanders.insert(@~"macro_rules",
                             builtin_item_tt(
                                 ext::tt::macro_rules::add_new_extension));
-    syntax_expanders.insert(~"fmt",
+    syntax_expanders.insert(@~"fmt",
                             builtin_normal_tt(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(
-        ~"auto_encode",
+        @~"auto_encode",
         ItemDecorator(ext::auto_encode::expand_auto_encode));
     syntax_expanders.insert(
-        ~"auto_decode",
+        @~"auto_decode",
         ItemDecorator(ext::auto_encode::expand_auto_decode));
-    syntax_expanders.insert(~"env",
+    syntax_expanders.insert(@~"env",
                             builtin_normal_tt(ext::env::expand_syntax_ext));
-    syntax_expanders.insert(~"concat_idents",
+    syntax_expanders.insert(@~"concat_idents",
                             builtin_normal_tt(
                                 ext::concat_idents::expand_syntax_ext));
-    syntax_expanders.insert(~"log_syntax",
+    syntax_expanders.insert(@~"log_syntax",
                             builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
-    syntax_expanders.insert(~"deriving_eq",
+    syntax_expanders.insert(@~"deriving_eq",
                             ItemDecorator(
                                 ext::deriving::expand_deriving_eq));
-    syntax_expanders.insert(~"deriving_iter_bytes",
+    syntax_expanders.insert(@~"deriving_iter_bytes",
                             ItemDecorator(
                                 ext::deriving::expand_deriving_iter_bytes));
 
     // Quasi-quoting expanders
-    syntax_expanders.insert(~"quote_tokens",
+    syntax_expanders.insert(@~"quote_tokens",
                        builtin_normal_tt(ext::quote::expand_quote_tokens));
-    syntax_expanders.insert(~"quote_expr",
+    syntax_expanders.insert(@~"quote_expr",
                             builtin_normal_tt(ext::quote::expand_quote_expr));
-    syntax_expanders.insert(~"quote_ty",
+    syntax_expanders.insert(@~"quote_ty",
                             builtin_normal_tt(ext::quote::expand_quote_ty));
-    syntax_expanders.insert(~"quote_item",
+    syntax_expanders.insert(@~"quote_item",
                             builtin_normal_tt(ext::quote::expand_quote_item));
-    syntax_expanders.insert(~"quote_pat",
+    syntax_expanders.insert(@~"quote_pat",
                             builtin_normal_tt(ext::quote::expand_quote_pat));
-    syntax_expanders.insert(~"quote_stmt",
+    syntax_expanders.insert(@~"quote_stmt",
                             builtin_normal_tt(ext::quote::expand_quote_stmt));
 
-    syntax_expanders.insert(~"line",
+    syntax_expanders.insert(@~"line",
                             builtin_normal_tt(
                                 ext::source_util::expand_line));
-    syntax_expanders.insert(~"col",
+    syntax_expanders.insert(@~"col",
                             builtin_normal_tt(
                                 ext::source_util::expand_col));
-    syntax_expanders.insert(~"file",
+    syntax_expanders.insert(@~"file",
                             builtin_normal_tt(
                                 ext::source_util::expand_file));
-    syntax_expanders.insert(~"stringify",
+    syntax_expanders.insert(@~"stringify",
                             builtin_normal_tt(
                                 ext::source_util::expand_stringify));
-    syntax_expanders.insert(~"include",
+    syntax_expanders.insert(@~"include",
                             builtin_normal_tt(
                                 ext::source_util::expand_include));
-    syntax_expanders.insert(~"include_str",
+    syntax_expanders.insert(@~"include_str",
                             builtin_normal_tt(
                                 ext::source_util::expand_include_str));
-    syntax_expanders.insert(~"include_bin",
+    syntax_expanders.insert(@~"include_bin",
                             builtin_normal_tt(
                                 ext::source_util::expand_include_bin));
-    syntax_expanders.insert(~"module_path",
+    syntax_expanders.insert(@~"module_path",
                             builtin_normal_tt(
                                 ext::source_util::expand_mod));
-    syntax_expanders.insert(~"proto",
+    syntax_expanders.insert(@~"proto",
                             builtin_item_tt(ext::pipes::expand_proto));
     syntax_expanders.insert(
-        ~"trace_macros",
+        @~"trace_macros",
         builtin_normal_tt(ext::trace_macros::expand_trace_macros));
     return syntax_expanders;
 }
@@ -164,7 +167,7 @@ pub fn syntax_expander_table() -> HashMap<~str, SyntaxExtension> {
 // -> expn_info of their expansion context stored into their span.
 pub trait ext_ctxt {
     fn codemap(@mut self) -> @CodeMap;
-    fn parse_sess(@mut self) -> parse::parse_sess;
+    fn parse_sess(@mut self) -> @mut parse::ParseSess;
     fn cfg(@mut self) -> ast::crate_cfg;
     fn call_site(@mut self) -> span;
     fn print_backtrace(@mut self);
@@ -188,47 +191,47 @@ pub trait ext_ctxt {
     fn ident_of(@mut self, st: ~str) -> ast::ident;
 }
 
-pub fn mk_ctxt(parse_sess: parse::parse_sess,
+pub fn mk_ctxt(parse_sess: @mut parse::ParseSess,
                cfg: ast::crate_cfg) -> ext_ctxt {
     struct CtxtRepr {
-        parse_sess: parse::parse_sess,
+        parse_sess: @mut parse::ParseSess,
         cfg: ast::crate_cfg,
-        backtrace: Option<@ExpnInfo>,
+        backtrace: @mut Option<@ExpnInfo>,
         mod_path: ~[ast::ident],
         trace_mac: bool
     }
     impl ext_ctxt for CtxtRepr {
         fn codemap(@mut self) -> @CodeMap { self.parse_sess.cm }
-        fn parse_sess(@mut self) -> parse::parse_sess { self.parse_sess }
+        fn parse_sess(@mut self) -> @mut parse::ParseSess { self.parse_sess }
         fn cfg(@mut self) -> ast::crate_cfg { self.cfg }
         fn call_site(@mut self) -> span {
-            match self.backtrace {
-                Some(@ExpandedFrom({call_site: cs, _})) => cs,
+            match *self.backtrace {
+                Some(@ExpandedFrom(CallInfo {call_site: cs, _})) => cs,
                 None => self.bug(~"missing top span")
             }
         }
         fn print_backtrace(@mut self) { }
-        fn backtrace(@mut self) -> Option<@ExpnInfo> { self.backtrace }
+        fn backtrace(@mut self) -> Option<@ExpnInfo> { *self.backtrace }
         fn mod_push(@mut self, i: ast::ident) { self.mod_path.push(i); }
         fn mod_pop(@mut self) { self.mod_path.pop(); }
         fn mod_path(@mut self) -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(@mut self, ei: codemap::ExpnInfo) {
             match ei {
-              ExpandedFrom({call_site: cs, callie: ref callie}) => {
-                self.backtrace =
-                    Some(@ExpandedFrom({
+              ExpandedFrom(CallInfo {call_site: cs, callee: ref callee}) => {
+                *self.backtrace =
+                    Some(@ExpandedFrom(CallInfo {
                         call_site: span {lo: cs.lo, hi: cs.hi,
-                                         expn_info: self.backtrace},
-                        callie: (*callie)}));
+                                         expn_info: *self.backtrace},
+                        callee: (*callee)}));
               }
             }
         }
         fn bt_pop(@mut self) {
-            match self.backtrace {
-              Some(@ExpandedFrom({
+            match *self.backtrace {
+              Some(@ExpandedFrom(CallInfo {
                   call_site: span {expn_info: prev, _}, _
               })) => {
-                self.backtrace = prev
+                *self.backtrace = prev
               }
               _ => self.bug(~"tried to pop without a push")
             }
@@ -277,11 +280,11 @@ pub fn mk_ctxt(parse_sess: parse::parse_sess,
     let imp: @mut CtxtRepr = @mut CtxtRepr {
         parse_sess: parse_sess,
         cfg: cfg,
-        backtrace: None,
+        backtrace: @mut None,
         mod_path: ~[],
         trace_mac: false
     };
-    move ((move imp) as @ext_ctxt)
+    ((imp) as @ext_ctxt)
 }
 
 pub fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
@@ -336,7 +339,7 @@ pub fn get_exprs_from_tts(cx: ext_ctxt, tts: ~[ast::token_tree])
                                        cx.cfg(),
                                        tts);
     let mut es = ~[];
-    while p.token != token::EOF {
+    while *p.token != token::EOF {
         if es.len() != 0 {
             p.eat(token::COMMA);
         }

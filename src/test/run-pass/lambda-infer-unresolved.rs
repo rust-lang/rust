@@ -12,10 +12,10 @@
 // resolved when we finish typechecking the fn@.
 
 
-struct Refs { mut refs: ~[int], n: int }
+struct Refs { refs: ~[int], n: int }
 
 pub fn main() {
-    let e = @Refs{mut refs: ~[], n: 0};
+    let e = @mut Refs{refs: ~[], n: 0};
     let f = fn@ () { log(error, e.n); };
     e.refs += ~[1];
 }

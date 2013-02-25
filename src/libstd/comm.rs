@@ -14,8 +14,8 @@ Higher level communication abstractions.
 
 */
 
-use core::pipes::{GenericChan, GenericSmartChan, GenericPort};
-use core::pipes::{Chan, Port, Selectable, Peekable};
+use core::comm::{GenericChan, GenericSmartChan, GenericPort};
+use core::comm::{Chan, Port, Selectable, Peekable};
 use core::pipes;
 use core::prelude::*;
 
@@ -25,19 +25,19 @@ pub struct DuplexStream<T, U> {
     priv port: Port<U>,
 }
 
-impl<T: Owned, U: Owned> GenericChan<T> for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> GenericChan<T> for DuplexStream<T, U> {
     fn send(x: T) {
-        self.chan.send(move x)
+        self.chan.send(x)
     }
 }
 
-impl<T: Owned, U: Owned> GenericSmartChan<T> for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> GenericSmartChan<T> for DuplexStream<T, U> {
     fn try_send(x: T) -> bool {
-        self.chan.try_send(move x)
+        self.chan.try_send(x)
     }
 }
 
-impl<T: Owned, U: Owned> GenericPort<U> for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> GenericPort<U> for DuplexStream<T, U> {
     fn recv() -> U {
         self.port.recv()
     }
@@ -47,31 +47,31 @@ impl<T: Owned, U: Owned> GenericPort<U> for DuplexStream<T, U> {
     }
 }
 
-impl<T: Owned, U: Owned> Peekable<U> for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> Peekable<U> for DuplexStream<T, U> {
     pure fn peek() -> bool {
         self.port.peek()
     }
 }
 
-impl<T: Owned, U: Owned> Selectable for DuplexStream<T, U> {
+impl<T:Owned,U:Owned> Selectable for DuplexStream<T, U> {
     pure fn header() -> *pipes::PacketHeader {
         self.port.header()
     }
 }
 
 /// Creates a bidirectional stream.
-pub fn DuplexStream<T: Owned, U: Owned>()
+pub fn DuplexStream<T:Owned,U:Owned>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
-    let (p1, c2) = pipes::stream();
-    let (p2, c1) = pipes::stream();
+    let (p1, c2) = comm::stream();
+    let (p2, c1) = comm::stream();
     (DuplexStream {
-        chan: move c1,
-        port: move p1
+        chan: c1,
+        port: p1
     },
      DuplexStream {
-         chan: move c2,
-         port: move p2
+         chan: c2,
+         port: p2
      })
 }
 

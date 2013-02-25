@@ -15,11 +15,12 @@ pub mod pipes {
     use core::cast::{forget, transmute};
 
     pub struct Stuff<T> {
-        mut state: state,
-        mut blocked_task: Option<task::Task>,
-        mut payload: Option<T>
+        state: state,
+        blocked_task: Option<task::Task>,
+        payload: Option<T>
     }
 
+    #[deriving_eq]
     pub enum state {
         empty,
         full,
@@ -27,25 +28,18 @@ pub mod pipes {
         terminated
     }
 
-    pub impl state : cmp::Eq {
-        pure fn eq(&self, other: &state) -> bool {
-            ((*self) as uint) == ((*other) as uint)
-        }
-        pure fn ne(&self, other: &state) -> bool { !(*self).eq(other) }
-    }
-
     pub type packet<T> = {
-        mut state: state,
-        mut blocked_task: Option<task::Task>,
-        mut payload: Option<T>
+        state: state,
+        blocked_task: Option<task::Task>,
+        payload: Option<T>
     };
 
-    pub fn packet<T: Owned>() -> *packet<T> {
+    pub fn packet<T:Owned>() -> *packet<T> {
         unsafe {
             let p: *packet<T> = cast::transmute(~Stuff{
-                mut state: empty,
-                mut blocked_task: None::<task::Task>,
-                mut payload: None::<T>
+                state: empty,
+                blocked_task: None::<task::Task>,
+                payload: None::<T>
             });
             p
         }
@@ -61,39 +55,39 @@ pub mod pipes {
     // We should consider moving this to ::core::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
     pub unsafe fn uniquify<T>(+x: *T) -> ~T {
-        unsafe { cast::transmute(move x) }
+        unsafe { cast::transmute(x) }
     }
 
     pub fn swap_state_acq(+dst: &mut state, src: state) -> state {
         unsafe {
-            transmute(rusti::atomic_xchg_acq(transmute(move dst), src as int))
+            transmute(rusti::atomic_xchg_acq(transmute(dst), src as int))
         }
     }
 
     pub fn swap_state_rel(+dst: &mut state, src: state) -> state {
         unsafe {
-            transmute(rusti::atomic_xchg_rel(transmute(move dst), src as int))
+            transmute(rusti::atomic_xchg_rel(transmute(dst), src as int))
         }
     }
 
-    pub fn send<T: Owned>(-p: send_packet<T>, -payload: T) {
-        let p = p.unwrap();
-        let p = unsafe { uniquify(p) };
+    pub fn send<T:Owned>(mut p: send_packet<T>, -payload: T) {
+        let mut p = p.unwrap();
+        let mut p = unsafe { uniquify(p) };
         assert (*p).payload.is_none();
-        (*p).payload = move Some(move payload);
+        (*p).payload = Some(payload);
         let old_state = swap_state_rel(&mut (*p).state, full);
         match old_state {
           empty => {
             // Yay, fastpath.
 
             // The receiver will eventually clean this up.
-            unsafe { forget(move p); }
+            unsafe { forget(p); }
           }
           full => { fail!(~"duplicate send") }
           blocked => {
 
             // The receiver will eventually clean this up.
-            unsafe { forget(move p); }
+            unsafe { forget(p); }
           }
           terminated => {
             // The receiver will never receive this. Rely on drop_glue
@@ -102,9 +96,9 @@ pub mod pipes {
         }
     }
 
-    pub fn recv<T: Owned>(-p: recv_packet<T>) -> Option<T> {
-        let p = p.unwrap();
-        let p = unsafe { uniquify(p) };
+    pub fn recv<T:Owned>(mut p: recv_packet<T>) -> Option<T> {
+        let mut p = p.unwrap();
+        let mut p = unsafe { uniquify(p) };
         loop {
             let old_state = swap_state_acq(&mut (*p).state,
                                            blocked);
@@ -113,7 +107,7 @@ pub mod pipes {
               full => {
                 let mut payload = None;
                 payload <-> (*p).payload;
-                return Some(option::unwrap(move payload))
+                return Some(option::unwrap(payload))
               }
               terminated => {
                 assert old_state == terminated;
@@ -123,12 +117,12 @@ pub mod pipes {
         }
     }
 
-    pub fn sender_terminate<T: Owned>(p: *packet<T>) {
-        let p = unsafe { uniquify(p) };
+    pub fn sender_terminate<T:Owned>(mut p: *packet<T>) {
+        let mut p = unsafe { uniquify(p) };
         match swap_state_rel(&mut (*p).state, terminated) {
           empty | blocked => {
             // The receiver will eventually clean up.
-            unsafe { forget(move p) }
+            unsafe { forget(p) }
           }
           full => {
             // This is impossible
@@ -140,12 +134,12 @@ pub mod pipes {
         }
     }
 
-    pub fn receiver_terminate<T: Owned>(p: *packet<T>) {
-        let p = unsafe { uniquify(p) };
+    pub fn receiver_terminate<T:Owned>(mut p: *packet<T>) {
+        let mut p = unsafe { uniquify(p) };
         match swap_state_rel(&mut (*p).state, terminated) {
           empty => {
             // the sender will clean up
-            unsafe { forget(move p) }
+            unsafe { forget(p) }
           }
           blocked => {
             // this shouldn't happen.
@@ -158,62 +152,70 @@ pub mod pipes {
     }
 
     pub struct send_packet<T> {
-        mut p: Option<*packet<T>>,
+        p: Option<*packet<T>>,
     }
 
-    pub impl<T: Owned> send_packet<T> : Drop {
+    pub impl<T:Owned> Drop for send_packet<T> {
         fn finalize(&self) {
-            if self.p != None {
-                let mut p = None;
-                p <-> self.p;
-                sender_terminate(option::unwrap(move p))
+            unsafe {
+                if self.p != None {
+                    let mut p = None;
+                    let self_p: &mut Option<*packet<T>> =
+                        cast::transmute(&self.p);
+                    p <-> *self_p;
+                    sender_terminate(option::unwrap(p))
+                }
             }
         }
     }
 
-    pub impl<T: Owned> send_packet<T> {
-        fn unwrap() -> *packet<T> {
+    pub impl<T:Owned> send_packet<T> {
+        fn unwrap(&mut self) -> *packet<T> {
             let mut p = None;
             p <-> self.p;
-            option::unwrap(move p)
+            option::unwrap(p)
         }
     }
 
-    pub fn send_packet<T: Owned>(p: *packet<T>) -> send_packet<T> {
+    pub fn send_packet<T:Owned>(p: *packet<T>) -> send_packet<T> {
         send_packet {
             p: Some(p)
         }
     }
 
     pub struct recv_packet<T> {
-        mut p: Option<*packet<T>>,
+        p: Option<*packet<T>>,
     }
 
-    pub impl<T: Owned> recv_packet<T> : Drop {
+    pub impl<T:Owned> Drop for recv_packet<T> {
         fn finalize(&self) {
-            if self.p != None {
-                let mut p = None;
-                p <-> self.p;
-                receiver_terminate(option::unwrap(move p))
+            unsafe {
+                if self.p != None {
+                    let mut p = None;
+                    let self_p: &mut Option<*packet<T>> =
+                        cast::transmute(&self.p);
+                    p <-> *self_p;
+                    receiver_terminate(option::unwrap(p))
+                }
             }
         }
     }
 
-    pub impl<T: Owned> recv_packet<T> {
-        fn unwrap() -> *packet<T> {
+    pub impl<T:Owned> recv_packet<T> {
+        fn unwrap(&mut self) -> *packet<T> {
             let mut p = None;
             p <-> self.p;
-            option::unwrap(move p)
+            option::unwrap(p)
         }
     }
 
-    pub fn recv_packet<T: Owned>(p: *packet<T>) -> recv_packet<T> {
+    pub fn recv_packet<T:Owned>(p: *packet<T>) -> recv_packet<T> {
         recv_packet {
             p: Some(p)
         }
     }
 
-    pub fn entangle<T: Owned>() -> (send_packet<T>, recv_packet<T>) {
+    pub fn entangle<T:Owned>() -> (send_packet<T>, recv_packet<T>) {
         let p = packet();
         (send_packet(p), recv_packet(p))
     }
@@ -231,9 +233,9 @@ pub mod pingpong {
             let addr : *::pipes::send_packet<pong> = match &p {
               &ping(ref x) => { cast::transmute(ptr::addr_of(x)) }
             };
-            let liberated_value = move *addr;
-            cast::forget(move p);
-            move liberated_value
+            let liberated_value = *addr;
+            cast::forget(p);
+            liberated_value
         }
     }
 
@@ -242,9 +244,9 @@ pub mod pingpong {
             let addr : *::pipes::send_packet<ping> = match &p {
               &pong(ref x) => { cast::transmute(ptr::addr_of(x)) }
             };
-            let liberated_value = move *addr;
-            cast::forget(move p);
-            move liberated_value
+            let liberated_value = *addr;
+            cast::forget(p);
+            liberated_value
         }
     }
 
@@ -262,16 +264,16 @@ pub mod pingpong {
         pub fn do_ping(-c: ping) -> pong {
             let (sp, rp) = ::pipes::entangle();
 
-            ::pipes::send(move c, pingpong::ping(move sp));
-            move rp
+            ::pipes::send(c, pingpong::ping(sp));
+            rp
         }
 
         pub fn do_pong(-c: pong) -> (ping, ()) {
-            let packet = ::pipes::recv(move c);
+            let packet = ::pipes::recv(c);
             if packet.is_none() {
                 fail!(~"sender closed the connection")
             }
-            (pingpong::liberate_pong(option::unwrap(move packet)), ())
+            (pingpong::liberate_pong(option::unwrap(packet)), ())
         }
     }
 
@@ -282,32 +284,32 @@ pub mod pingpong {
         pub type pong = ::pipes::send_packet<pingpong::pong>;
 
         pub fn do_ping(-c: ping) -> (pong, ()) {
-            let packet = ::pipes::recv(move c);
+            let packet = ::pipes::recv(c);
             if packet.is_none() {
                 fail!(~"sender closed the connection")
             }
-            (pingpong::liberate_ping(option::unwrap(move packet)), ())
+            (pingpong::liberate_ping(option::unwrap(packet)), ())
         }
 
         pub fn do_pong(-c: pong) -> ping {
             let (sp, rp) = ::pipes::entangle();
-            ::pipes::send(move c, pingpong::pong(move sp));
-            move rp
+            ::pipes::send(c, pingpong::pong(sp));
+            rp
         }
     }
 }
 
 fn client(-chan: pingpong::client::ping) {
-    let chan = pingpong::client::do_ping(move chan);
+    let chan = pingpong::client::do_ping(chan);
     log(error, ~"Sent ping");
-    let (_chan, _data) = pingpong::client::do_pong(move chan);
+    let (_chan, _data) = pingpong::client::do_pong(chan);
     log(error, ~"Received pong");
 }
 
 fn server(-chan: pingpong::server::ping) {
-    let (chan, _data) = pingpong::server::do_ping(move chan);
+    let (chan, _data) = pingpong::server::do_ping(chan);
     log(error, ~"Received ping");
-    let _chan = pingpong::server::do_pong(move chan);
+    let _chan = pingpong::server::do_pong(chan);
     log(error, ~"Sent pong");
 }
 
@@ -319,12 +321,12 @@ pub fn main() {
     let client_ = ~mut Some(client_);
     let server_ = ~mut Some(server_);
 
-    task::spawn {|move client_|
+    task::spawn {|client_|
         let mut client__ = none;
         *client_ <-> client__;
         client(option::unwrap(client__));
     };
-    task::spawn {|move server_|
+    task::spawn {|server_|
         let mut server_ˊ = none;
         *server_ <-> server_ˊ;
         server(option::unwrap(server_ˊ));
