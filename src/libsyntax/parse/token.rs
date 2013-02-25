@@ -115,7 +115,7 @@ pub enum nonterminal {
     nt_matchers(~[ast::matcher])
 }
 
-pub fn binop_to_str(o: binop) -> ~str {
+pub pure fn binop_to_str(o: binop) -> ~str {
     match o {
       PLUS => ~"+",
       MINUS => ~"-",
