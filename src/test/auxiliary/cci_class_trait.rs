@@ -10,6 +10,6 @@
 
 pub mod animals {
     pub trait noisy {
-        fn speak();
+        fn speak(&mut self);
     }
 }

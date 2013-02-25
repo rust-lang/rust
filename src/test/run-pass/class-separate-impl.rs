@@ -12,36 +12,35 @@
 use core::to_str::*;
 
 struct cat {
-  priv mut meows : uint,
+    priv meows : uint,
 
-  mut how_hungry : int,
-  name : ~str,
+    how_hungry : int,
+    name : ~str,
 }
 
 impl cat {
+    fn speak(&mut self) { self.meow(); }
 
-  fn speak() { self.meow(); }
-
-  fn eat() -> bool {
-    if self.how_hungry > 0 {
-        error!("OM NOM NOM");
-        self.how_hungry -= 2;
-        return true;
+    fn eat(&mut self) -> bool {
+        if self.how_hungry > 0 {
+            error!("OM NOM NOM");
+            self.how_hungry -= 2;
+            return true;
+        }
+        else {
+            error!("Not hungry!");
+            return false;
+        }
     }
-    else {
-        error!("Not hungry!");
-        return false;
-    }
-  }
 }
 
 priv impl cat {
-    fn meow() {
-      error!("Meow");
-      self.meows += 1u;
-      if self.meows % 5u == 0u {
-          self.how_hungry += 1;
-      }
+    fn meow(&mut self) {
+        error!("Meow");
+        self.meows += 1u;
+        if self.meows % 5u == 0u {
+            self.how_hungry += 1;
+        }
     }
 }
 
@@ -64,6 +63,6 @@ fn print_out<T:ToStr>(thing: T, expected: ~str) {
 }
 
 pub fn main() {
-  let nyan : ToStr = cat(0u, 2, ~"nyan") as ToStr;
+  let mut nyan : ToStr = cat(0u, 2, ~"nyan") as ToStr;
   print_out(nyan, ~"nyan");
 }
