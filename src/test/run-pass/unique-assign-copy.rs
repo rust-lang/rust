@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let i = ~mut 1;
+    let mut i = ~1;
     // Should be a copy
     let mut j;
     j = copy i;
