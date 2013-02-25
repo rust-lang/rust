@@ -21,8 +21,8 @@ use core::prelude::*;
 
 use parse;
 use util;
-use std::cell::Cell;
 
+use core::cell::Cell;
 use core::comm::{stream, Chan, SharedChan, Port};
 use core::vec;
 use core::ops::Drop;

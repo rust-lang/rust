@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::option;
-use core::prelude::*;
+use option;
+use prelude::*;
 
 /// A dynamic, mutable location.
 ///
