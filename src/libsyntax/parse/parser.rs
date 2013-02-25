@@ -421,8 +421,8 @@ pub impl Parser {
             self.expect(&token::GT);
         }
         let inputs = self.parse_unspanned_seq(
-            token::LPAREN,
-            token::RPAREN,
+            &token::LPAREN,
+            &token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA),
             |p| p.parse_arg_general(false)
         );
@@ -432,8 +432,8 @@ pub impl Parser {
 
     fn parse_trait_methods() -> ~[trait_method] {
         do self.parse_unspanned_seq(
-            token::LBRACE,
-            token::RBRACE,
+            &token::LBRACE,
+            &token::RBRACE,
             seq_sep_none()
         ) |p| {
             let attrs = p.parse_outer_attributes();
@@ -628,8 +628,8 @@ pub impl Parser {
             ty_ptr(self.parse_mt())
         } else if *self.token == token::LBRACE {
             let elems = self.parse_unspanned_seq(
-                token::LBRACE,
-                token::RBRACE,
+                &token::LBRACE,
+                &token::RBRACE,
                 seq_sep_trailing_allowed(token::COMMA),
                 |p| p.parse_ty_field()
             );
@@ -1190,7 +1190,7 @@ pub impl Parser {
                     // Vector with two or more elements.
                     self.bump();
                     let remaining_exprs = self.parse_seq_to_end(
-                        token::RBRACKET,
+                        &token::RBRACKET,
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_expr()
                     );
@@ -1246,8 +1246,8 @@ pub impl Parser {
 
                 let ket = token::flip_delimiter(&*self.token);
                 let tts = self.parse_unspanned_seq(
-                    *self.token,
-                    ket,
+                    &copy *self.token,
+                    &ket,
                     seq_sep_none(),
                     |p| p.parse_token_tree()
                 );
@@ -1339,8 +1339,8 @@ pub impl Parser {
                     match *self.token {
                         token::LPAREN if self.permits_call() => {
                             let es = self.parse_unspanned_seq(
-                                token::LPAREN,
-                                token::RPAREN,
+                                &token::LPAREN,
+                                &token::RPAREN,
                                 seq_sep_trailing_disallowed(token::COMMA),
                                 |p| p.parse_expr()
                             );
@@ -1363,8 +1363,8 @@ pub impl Parser {
               // expr(...)
               token::LPAREN if self.permits_call() => {
                 let es = self.parse_unspanned_seq(
-                    token::LPAREN,
-                    token::RPAREN,
+                    &token::LPAREN,
+                    &token::RPAREN,
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_expr()
                 );
@@ -1434,8 +1434,8 @@ pub impl Parser {
 
                 if *p.token == token::LPAREN {
                     let seq = p.parse_seq(
-                        token::LPAREN,
-                        token::RPAREN,
+                        &token::LPAREN,
+                        &token::RPAREN,
                         seq_sep_none(),
                         |p| p.parse_token_tree()
                     );
@@ -1471,7 +1471,7 @@ pub impl Parser {
                         ~[parse_any_tt_tok(self)],
                         vec::append(
                             self.parse_seq_to_before_end(
-                                ket,
+                                &ket,
                                 seq_sep_none(),
                                 |p| p.parse_token_tree()
                             ),
@@ -2320,8 +2320,8 @@ pub impl Parser {
                                   }
                                 _ => {
                                     args = self.parse_unspanned_seq(
-                                        token::LPAREN,
-                                        token::RPAREN,
+                                        &token::LPAREN,
+                                        &token::RPAREN,
                                         seq_sep_trailing_disallowed(
                                             token::COMMA
                                         ),
@@ -2470,8 +2470,8 @@ pub impl Parser {
             };
 
             let tts = self.parse_unspanned_seq(
-                token::LPAREN,
-                token::RPAREN,
+                &token::LPAREN,
+                &token::RPAREN,
                 seq_sep_none(),
                 |p| p.parse_token_tree()
             );
@@ -2780,8 +2780,8 @@ pub impl Parser {
     {
         let args_or_capture_items: ~[arg_or_capture_item] =
             self.parse_unspanned_seq(
-                token::LPAREN,
-                token::RPAREN,
+                &token::LPAREN,
+                &token::RPAREN,
                 seq_sep_trailing_disallowed(token::COMMA),
                 parse_arg_fn
             );
@@ -2865,7 +2865,7 @@ pub impl Parser {
                     self.bump();
                     let sep = seq_sep_trailing_disallowed(token::COMMA);
                     args_or_capture_items = self.parse_seq_to_before_end(
-                        token::RPAREN,
+                        &token::RPAREN,
                         sep,
                         parse_arg_fn
                     );
@@ -2882,7 +2882,7 @@ pub impl Parser {
         } else {
             let sep = seq_sep_trailing_disallowed(token::COMMA);
             args_or_capture_items = self.parse_seq_to_before_end(
-                token::RPAREN,
+                &token::RPAREN,
                 sep,
                 parse_arg_fn
             );
@@ -2910,8 +2910,8 @@ pub impl Parser {
                 ~[]
             } else {
                 self.parse_unspanned_seq(
-                    token::BINOP(token::OR),
-                    token::BINOP(token::OR),
+                    &token::BINOP(token::OR),
+                    &token::BINOP(token::OR),
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_fn_block_arg()
                 )
@@ -3112,7 +3112,7 @@ pub impl Parser {
 
     fn parse_trait_ref_list(ket: &token::Token) -> ~[@trait_ref] {
         self.parse_seq_to_before_end(
-            *ket,
+            ket,
             seq_sep_none(),
             |p| p.parse_trait_ref()
         )
@@ -3163,8 +3163,8 @@ pub impl Parser {
             // It's a tuple-like struct.
             is_tuple_like = true;
             fields = do self.parse_unspanned_seq(
-                token::LPAREN,
-                token::RPAREN,
+                &token::LPAREN,
+                &token::RPAREN,
                 seq_sep_trailing_allowed(token::COMMA)
             ) |p| {
                 let lo = p.span.lo;
@@ -3729,8 +3729,8 @@ pub impl Parser {
                 } else if *self.token == token::LPAREN {
                     all_nullary = false;
                     let arg_tys = self.parse_unspanned_seq(
-                        token::LPAREN,
-                        token::RPAREN,
+                        &token::LPAREN,
+                        &token::RPAREN,
                         seq_sep_trailing_disallowed(token::COMMA),
                         |p| p.parse_ty(false)
                     );
@@ -3982,8 +3982,8 @@ pub impl Parser {
                 token::LPAREN | token::LBRACE => {
                     let ket = token::flip_delimiter(&*self.token);
                     self.parse_unspanned_seq(
-                        *self.token,
-                        ket,
+                        &copy *self.token,
+                        &ket,
                         seq_sep_none(),
                         |p| p.parse_token_tree()
                     )
@@ -4074,8 +4074,8 @@ pub impl Parser {
                   // foo::bar::{a,b,c}
                   token::LBRACE => {
                     let idents = self.parse_unspanned_seq(
-                        token::LBRACE,
-                        token::RBRACE,
+                        &token::LBRACE,
+                        &token::RBRACE,
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_path_list_ident()
                     );
