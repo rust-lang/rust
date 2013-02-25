@@ -468,7 +468,8 @@ pub fn trans_struct_drop(bcx: block,
                          substs: &ty::substs,
                          take_ref: bool)
                       -> block {
-    let drop_flag = GEPi(bcx, v0, struct_dtor());
+    let repr = adt::represent_type(bcx.ccx(), t);
+    let drop_flag = adt::trans_drop_flag_ptr(bcx, &repr, v0);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
         let mut bcx = cx;
 
@@ -502,7 +503,6 @@ pub fn trans_struct_drop(bcx: block,
         Call(bcx, dtor_addr, args);
 
         // Drop the fields
-        let repr = adt::represent_type(bcx.ccx(), t);
         let field_tys =
             ty::struct_mutable_fields(bcx.tcx(), class_did,
                                               substs);

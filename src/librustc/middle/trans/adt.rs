@@ -266,6 +266,14 @@ fn struct_GEP(bcx: block, st: &Struct, val: ValueRef, ix: uint,
     GEPi(bcx, val, [0, ix])
 }
 
+pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
+    match *r {
+        Univariant(_, DtorPresent) => GEPi(bcx, val, [0, 1]),
+        _ => bcx.ccx().sess.bug(~"tried to get drop flag of non-droppable \
+                                  type")
+    }
+}
+
 pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
