@@ -145,9 +145,10 @@
 use core::prelude::*;
 
 use back::abi;
-use lib::llvm::llvm;
-use lib::llvm::{ValueRef, BasicBlockRef};
+use lib;
+use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
+use middle::borrowck::root_map_key;
 use middle::pat_util::*;
 use middle::resolve::DefMap;
 use middle::trans::base::*;
@@ -156,20 +157,26 @@ use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::controlflow;
+use middle::trans::datum;
 use middle::trans::datum::*;
 use middle::trans::expr::Dest;
 use middle::trans::expr;
 use middle::trans::glue;
+use middle::trans::tvec;
+use middle::trans::type_of;
+use middle::ty;
 use util::common::indenter;
 
 use core::dvec::DVec;
 use core::dvec;
+use core::libc::c_ulonglong;
 use std::oldmap::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
-use syntax::ast_util::{dummy_sp, path_to_ident};
+use syntax::ast::ident;
+use syntax::ast_util::path_to_ident;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::{span, dummy_sp};
 use syntax::print::pprust::pat_to_str;
 
 // An option identifying a literal: either a unit-like struct or an

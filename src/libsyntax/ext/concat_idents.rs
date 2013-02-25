@@ -10,8 +10,11 @@
 
 use core::prelude::*;
 
+use ast;
+use codemap::span;
 use ext::base::*;
 use ext::base;
+use parse::token;
 
 pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {

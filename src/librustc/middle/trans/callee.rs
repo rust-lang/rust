@@ -18,21 +18,33 @@
 
 use core::prelude::*;
 
-use lib::llvm::ValueRef;
-use middle::trans::base::{get_item_val, trans_external_path};
+use back::abi;
+use driver::session;
+use lib;
+use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::llvm;
+use metadata::csearch;
+use middle::trans::base;
+use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::closure;
-use middle::trans::common::{block, node_id_type_params};
+use middle::trans::common;
+use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::datum::Datum;
+use middle::trans::expr;
+use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::meth;
 use middle::trans::monomorphize;
+use middle::trans::type_of;
+use middle::ty;
 use middle::typeck;
 use util::common::indenter;
 
 use syntax::ast;
+use syntax::ast_map;
 use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
 use syntax::visit;
 

@@ -15,6 +15,7 @@ use codemap::spanned;
 use codemap::BytePos;
 use parse::common::*; //resolve bug?
 use parse::token;
+use parse::parser::Parser;
 
 use core::either::{Either, Left, Right};
 

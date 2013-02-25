@@ -82,7 +82,7 @@ pub enum SyntaxExtension {
     IdentTT(SyntaxExpanderTTItem),
 }
 
-type SyntaxEnv = @mut MapChain<Name, Transformer>;
+pub type SyntaxEnv = @mut MapChain<Name, Transformer>;
 
 // Name : the domain of SyntaxEnvs
 // want to change these to uints....
@@ -98,7 +98,7 @@ type Name = @~str;
 // toward a more uniform syntax syntax (sorry) where blocks are just
 // another kind of transformer.
 
-enum Transformer {
+pub enum Transformer {
     // this identifier maps to a syntax extension or macro
     SE(SyntaxExtension),
     // should blocks occurring here limit macro scopes?
@@ -495,6 +495,7 @@ mod test {
     use super::*;
     use super::MapChain;
     use util::testing::check_equal;
+    use core::hashmap::linear::LinearMap;
 
     #[test] fn testenv () {
         let mut a = LinearMap::new();

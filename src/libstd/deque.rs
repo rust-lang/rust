@@ -116,6 +116,9 @@ fn get<T>(elts: &r/[Option<T>], i: uint) -> &r/T {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::cmp::Eq;
+    use core::kinds::{Durable, Copy};
+    use core::prelude::debug;
 
     #[test]
     fn test_simple() {
