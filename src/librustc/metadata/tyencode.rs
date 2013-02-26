@@ -307,7 +307,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, +st: ty::sty) {
         w.write_char('p');
         w.write_str((cx.ds)(did));
         w.write_char('|');
-        w.write_str(uint::str(id));
+        w.write_str(uint::to_str(id));
       }
       ty::ty_self => {
         w.write_char('s');
