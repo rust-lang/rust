@@ -76,6 +76,7 @@ use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
+use parse::obsolete::{ObsoleteMutVector};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -624,6 +625,9 @@ pub impl Parser {
         } else if *self.token == token::LBRACKET {
             self.expect(token::LBRACKET);
             let mt = self.parse_mt();
+            if mt.mutbl == m_mutbl {    // `m_const` too after snapshot
+                self.obsolete(*self.last_span, ObsoleteMutVector);
+            }
 
             // Parse the `* 3` in `[ int * 3 ]`
             let t = match self.maybe_parse_fixed_vstore_with_star() {
@@ -1134,6 +1138,10 @@ pub impl Parser {
         } else if *self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();
+            if mutbl == m_mutbl {   // `m_const` too after snapshot
+                self.obsolete(*self.last_span, ObsoleteMutVector);
+            }
+
             if *self.token == token::RBRACKET {
                 // Empty vector.
                 self.bump();
