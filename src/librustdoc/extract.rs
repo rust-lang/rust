@@ -161,7 +161,7 @@ fn nmoddoc_from_mod(
           ast::foreign_item_const(*) => {} // XXX: Not implemented.
         }
     }
-    doc:: NmodDoc {
+    doc::NmodDoc {
         item: itemdoc,
         fns: fns,
         index: None
