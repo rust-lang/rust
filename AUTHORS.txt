@@ -93,6 +93,7 @@ Josh Matthews <josh@joshmatthews.net>
 Joshua Clark <joshua.clark@txstate.edu>
 Joshua Wise <joshua@joshuawise.com>
 Jyun-Yan You <jyyou@cs.nctu.edu.tw>
+Kang Seonghoon <kang.seonghoon@mearie.org>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
 Kevin Atkinson <kevina@cs.utah.edu>
 Kevin Cantu <me@kevincantu.org>
