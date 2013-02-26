@@ -57,7 +57,7 @@ use core::prelude::*;
 use middle::ty::{arg, field, substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::rscope::{in_anon_rscope, in_binding_rscope};
+use middle::typeck::rscope::{in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope};
 use middle::typeck::{CrateCtxt, write_substs_to_tcx, write_ty_to_tcx};
 
@@ -315,8 +315,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
       }
       ast::ty_rptr(region, mt) => {
         let r = ast_region_to_region(self, rscope, ast_ty.span, region);
-        let anon_rscope = in_anon_rscope(rscope, r);
-        mk_pointer(self, &anon_rscope, mt, ty::vstore_slice(r),
+        mk_pointer(self, rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(fields) => {

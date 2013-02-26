@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+n// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -95,7 +95,7 @@ use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
-use middle::typeck::rscope::{anon_rscope, binding_rscope, bound_self_region};
+use middle::typeck::rscope::{binding_rscope, bound_self_region};
 use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
 use middle::typeck::rscope;
 use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
