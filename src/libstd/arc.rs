@@ -17,6 +17,7 @@ use sync;
 use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
 use core::cast;
+use core::cell::Cell;
 use core::pipes;
 use core::prelude::*;
 use core::private::{SharedMutableState, shared_mutable_state};
@@ -532,17 +533,17 @@ mod tests {
         let arc = ~MutexARC(false);
         let arc2 = ~arc.clone();
         let (p,c) = comm::oneshot();
-        let (c,p) = (~mut Some(c), ~mut Some(p));
+        let (c,p) = (Cell(c), Cell(p));
         do task::spawn || {
             // wait until parent gets in
-            comm::recv_one(option::swap_unwrap(p));
+            comm::recv_one(p.take());
             do arc2.access_cond |state, cond| {
                 *state = true;
                 cond.signal();
             }
         }
         do arc.access_cond |state, cond| {
-            comm::send_one(option::swap_unwrap(c), ());
+            comm::send_one(c.take(), ());
             assert !*state;
             while !*state {
                 cond.wait();
