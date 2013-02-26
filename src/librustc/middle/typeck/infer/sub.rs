@@ -25,10 +25,6 @@ use std::list::Nil;
 use std::list;
 use syntax::ast::{m_const, purity, ret_style};
 
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
 
 pub enum Sub = CombineFields;  // "subtype", "subregion" etc
 

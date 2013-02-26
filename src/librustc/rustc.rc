@@ -49,6 +49,7 @@ use back_ = back;
 
 pub mod middle {
     pub mod trans {
+        pub mod macros;
         pub mod inline;
         pub mod monomorphize;
         pub mod controlflow;
