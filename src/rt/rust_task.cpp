@@ -124,7 +124,9 @@ cleanup_task(cleanup_args *args) {
         // assert(task->task_local_data != NULL);
         task->task_local_data_cleanup(task->task_local_data);
         task->task_local_data = NULL;
-    } else if (threw_exception && task->id == INIT_TASK_ID) {
+    }
+
+    if (threw_exception && task->id == INIT_TASK_ID) {
         // Edge case: If main never spawns any tasks, but fails anyway, TLS
         // won't be around to take down the kernel (task.rs:kill_taskgroup,
         // rust_task_kill_all). Do it here instead.
