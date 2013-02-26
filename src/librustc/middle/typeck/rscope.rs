@@ -27,7 +27,7 @@ pub trait region_scope {
 pub enum empty_rscope { empty_rscope }
 impl region_scope for empty_rscope {
     fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
-        Ok(ty::re_static)
+        result::Err(~"only the static region is allowed here")
     }
     fn self_region(&self, _span: span) -> Result<ty::Region, ~str> {
         result::Err(~"only the static region is allowed here")
@@ -62,13 +62,13 @@ impl region_scope for MethodRscope {
 pub enum type_rscope = Option<ty::region_variance>;
 impl region_scope for type_rscope {
     fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
-        // if the anon or self region is used, region parameterization should
+        result::Err(~"anonymous region types are not permitted here")
+    }
+    fn self_region(&self, _span: span) -> Result<ty::Region, ~str> {
+        // if the self region is used, region parameterization should
         // have inferred that this type is RP
         assert self.is_some();
         result::Ok(ty::re_bound(ty::br_self))
-    }
-    fn self_region(&self, span: span) -> Result<ty::Region, ~str> {
-        self.anon_region(span)
     }
     fn named_region(&self, span: span, id: ast::ident)
                       -> Result<ty::Region, ~str> {
@@ -84,33 +84,6 @@ pub fn bound_self_region(rp: Option<ty::region_variance>)
     match rp {
       Some(_) => Some(ty::re_bound(ty::br_self)),
       None => None
-    }
-}
-
-pub struct anon_rscope { anon: ty::Region, base: @region_scope }
-pub fn in_anon_rscope<RS:region_scope + Copy + Durable>(
-    self: &RS,
-    r: ty::Region) -> anon_rscope
-{
-    let base = @(copy *self) as @region_scope;
-    anon_rscope {anon: r, base: base}
-}
-impl region_scope for anon_rscope {
-    fn anon_region(&self,
-                   _span: span) -> Result<ty::Region, ~str>
-    {
-        result::Ok(self.anon)
-    }
-    fn self_region(&self,
-                   span: span) -> Result<ty::Region, ~str>
-    {
-        self.base.self_region(span)
-    }
-    fn named_region(&self,
-                    span: span,
-                    id: ast::ident) -> Result<ty::Region, ~str>
-    {
-        self.base.named_region(span, id)
     }
 }
 
