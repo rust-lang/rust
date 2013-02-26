@@ -2270,7 +2270,9 @@ fn chicken_farmer() {
     // The same, but name it `my_chicken`
     use my_chicken = farm::chicken;
     ...
+# my_chicken();
 }
+# chicken();
 # }
 ~~~
 
