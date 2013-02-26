@@ -468,7 +468,6 @@ Here is the function that implements the child task:
 
 ~~~~
 # use std::comm::DuplexStream;
-# use comm::{Port, Chan};
 fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -491,7 +490,6 @@ Here is the code for the parent task:
 
 ~~~~
 # use std::comm::DuplexStream;
-# use comm::{Port, Chan};
 # use task::spawn;
 # fn stringifier(channel: &DuplexStream<~str, uint>) {
 #     let mut value: uint;
