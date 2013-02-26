@@ -15,6 +15,7 @@ use sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sort;
 
+use core::cell::Cell;
 use core::cmp;
 use core::either::{Either, Left, Right};
 use core::io;
@@ -339,11 +340,11 @@ impl TPrep for @Mut<Prep> {
                     let mut blk = None;
                     blk <-> bo;
                     let blk = blk.unwrap();
-                    let chan = ~mut Some(chan);
+                    let chan = Cell(chan);
                     do task::spawn || {
                         let exe = Exec{discovered_inputs: LinearMap::new(),
                                        discovered_outputs: LinearMap::new()};
-                        let chan = option::swap_unwrap(&mut *chan);
+                        let chan = chan.take();
                         let v = blk(&exe);
                         send_one(chan, (exe, v));
                     }
