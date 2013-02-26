@@ -73,6 +73,7 @@
 #[doc(hidden)]; // FIXME #3538
 
 use cast;
+use cell::Cell;
 use container::Map;
 use option;
 use comm::{Chan, GenericChan, GenericPort, Port, stream};
@@ -530,11 +531,11 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
         gen_child_taskgroup(opts.linked, opts.supervised);
 
     unsafe {
-        let child_data = ~mut Some((child_tg, ancestors, f));
+        let child_data = Cell((child_tg, ancestors, f));
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let (child_tg, ancestors, f) = option::swap_unwrap(child_data);
+            let (child_tg, ancestors, f) = child_data.take();
             // Create child task.
             let new_task = match opts.sched.mode {
                 DefaultScheduler => rt::new_task(),
@@ -571,10 +572,10 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
                           ancestors: AncestorList, is_main: bool,
                           notify_chan: Option<Chan<TaskResult>>,
                           f: fn~()) -> fn~() {
-        let child_data = ~mut Some((child_arc, ancestors));
+        let child_data = Cell((child_arc, ancestors));
         return fn~() {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut (child_arc, ancestors) = option::swap_unwrap(child_data);
+            let mut (child_arc, ancestors) = child_data.take();
             // Child task runs this code.
 
             // Even if the below code fails to kick the child off, we must

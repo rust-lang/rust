@@ -602,7 +602,6 @@ fn test_repr() {
     exact_test(&(@10), "@10");
     exact_test(&(@mut 10), "@10");
     exact_test(&(~10), "~10");
-    exact_test(&(~mut 10), "~mut 10");
     exact_test(&(&10), "&10");
     let mut x = 10;
     exact_test(&(&mut x), "&mut 10");

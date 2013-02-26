@@ -29,7 +29,7 @@ extern mod rusti {
 
 pub fn main() {
     unsafe {
-        let x = ~mut 1;
+        let mut x = ~1;
 
         assert rusti::atomic_cxchg(x, 1, 2) == 1;
         assert *x == 2;
