@@ -48,13 +48,8 @@ impl<K:Eq + Ord,V:Eq> Eq for TreeMap<K, V> {
             let mut y = other.iter();
             for self.len().times {
                 unsafe { // unsafe as a purity workaround
-                    map_next(&mut x);
-                    map_next(&mut y);
-                    // FIXME: #4492 (ICE), x.get() == y.get()
-                    let (x1, x2) = x.get().unwrap();
-                    let (y1, y2) = y.get().unwrap();
-
-                    if x1 != y1 || x2 != y2 {
+                    if map_next(&mut x).unwrap() !=
+                       map_next(&mut y).unwrap() {
                         return false
                     }
                 }
@@ -73,10 +68,8 @@ pure fn lt<K:Ord,V>(a: &TreeMap<K, V>, b: &TreeMap<K, V>) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
     for uint::min(a_len, b_len).times {
         unsafe { // purity workaround
-            map_next(&mut x);
-            map_next(&mut y);
-            let (key_a,_) = x.get().unwrap();
-            let (key_b,_) = y.get().unwrap();
+            let (key_a,_) = map_next(&mut x).unwrap();
+            let (key_b,_) = map_next(&mut y).unwrap();
             if *key_a < *key_b { return true; }
             if *key_a > *key_b { return false; }
         }
@@ -201,30 +194,21 @@ impl <K:Ord,V> TreeMap<K, V> {
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
     pure fn iter(&self) -> TreeMapIterator/&self<K, V> {
-        TreeMapIterator{stack: ~[], node: &self.root, current: None}
+        TreeMapIterator{stack: ~[], node: &self.root}
     }
 }
 
 /// Lazy forward iterator over a map
 pub struct TreeMapIterator<K, V> {
     priv stack: ~[&~TreeNode<K, V>],
-    priv node: &Option<~TreeNode<K, V>>,
-    priv current: Option<&~TreeNode<K, V>>
+    priv node: &Option<~TreeNode<K, V>>
 }
 
-impl <K:Ord,V> TreeMapIterator<K, V> {
-    // Returns the current node, or None if this iterator is at the end.
-    fn get(&const self) -> Option<(&self/K, &self/V)> {
-        match self.current {
-          Some(res) => Some((&res.key, &res.value)),
-          None => None
-        }
-    }
-}
-
-/// Advance the iterator to the next node (in order). If this iterator
-/// is finished, does nothing.
-pub fn map_next<K:Ord,V>(iter: &mut TreeMapIterator/&a<K, V>) {
+/// Advance the iterator to the next node (in order) and return a
+/// tuple with a reference to the key and value. If there are no
+/// more nodes, return `None`.
+fn map_next<K: Ord, V>(iter: &mut TreeMapIterator/&r<K, V>)
+ -> Option<(&r/K, &r/V)> {
     while !iter.stack.is_empty() || iter.node.is_some() {
         match *iter.node {
           Some(ref x) => {
@@ -234,12 +218,24 @@ pub fn map_next<K:Ord,V>(iter: &mut TreeMapIterator/&a<K, V>) {
           None => {
             let res = iter.stack.pop();
             iter.node = &res.right;
-            iter.current = Some(res);
-            return;
+            return Some((&res.key, &res.value));
           }
         }
     }
-    iter.current = None;
+    None
+}
+
+/// Advance the iterator through the map
+fn map_advance<K: Ord, V>(iter: &mut TreeMapIterator/&r<K, V>,
+                          f: fn((&r/K, &r/V)) -> bool) {
+    loop {
+        match map_next(iter) {
+          Some(x) => {
+            if !f(x) { return }
+          }
+          None => return
+        }
+    }
 }
 
 pub struct TreeSet<T> {
@@ -308,19 +304,15 @@ impl<T:Ord> Set<T> for TreeSet<T> {
         let mut x = self.iter();
         let mut y = other.iter();
         unsafe { // purity workaround
-            set_next(&mut x);
-            set_next(&mut y);
-            let mut a = x.get();
-            let mut b = y.get();
+            let mut a = set_next(&mut x);
+            let mut b = set_next(&mut y);
             while a.is_some() && b.is_some() {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
                 if a1 < b1 {
-                    set_next(&mut x);
-                    a = x.get();
+                    a = set_next(&mut x);
                 } else if b1 < a1 {
-                    set_next(&mut y);
-                    b = y.get();
+                    b = set_next(&mut y);
                 } else {
                     return false;
                 }
@@ -339,10 +331,8 @@ impl<T:Ord> Set<T> for TreeSet<T> {
         let mut x = self.iter();
         let mut y = other.iter();
         unsafe { // purity workaround
-            set_next(&mut x);
-            set_next(&mut y);
-            let mut a = x.get();
-            let mut b = y.get();
+            let mut a = set_next(&mut x);
+            let mut b = set_next(&mut y);
             while b.is_some() {
                 if a.is_none() {
                     return false
@@ -356,11 +346,9 @@ impl<T:Ord> Set<T> for TreeSet<T> {
                 }
 
                 if !(a1 < b1) {
-                    set_next(&mut y);
-                    b = y.get();
+                    b = set_next(&mut y);
                 }
-                set_next(&mut x);
-                a = x.get();
+                a = set_next(&mut x);
             }
         }
         true
@@ -372,15 +360,13 @@ impl<T:Ord> Set<T> for TreeSet<T> {
         let mut y = other.iter();
 
         unsafe { // purity workaround
-            set_next(&mut x);
-            set_next(&mut y);
-            let mut a = x.get();
-            let mut b = y.get();
+            let mut a = set_next(&mut x);
+            let mut b = set_next(&mut y);
 
             while a.is_some() {
                 if b.is_none() {
                     return do a.while_some() |a1| {
-                        if f(a1) { set_next(&mut x); x.get() } else { None }
+                        if f(a1) { set_next(&mut x) } else { None }
                     }
                 }
 
@@ -389,12 +375,10 @@ impl<T:Ord> Set<T> for TreeSet<T> {
 
                 if a1 < b1 {
                     if !f(a1) { return }
-                    set_next(&mut x);
-                    a = x.get();
+                    a = set_next(&mut x);
                 } else {
-                    if !(b1 < a1) { set_next(&mut x); a = x.get() }
-                    set_next(&mut y);
-                    b = y.get();
+                    if !(b1 < a1) { a = set_next(&mut x) }
+                    b = set_next(&mut y);
                 }
             }
         }
@@ -407,15 +391,13 @@ impl<T:Ord> Set<T> for TreeSet<T> {
         let mut y = other.iter();
 
         unsafe { // purity workaround
-            set_next(&mut x);
-            set_next(&mut y);
-            let mut a = x.get();
-            let mut b = y.get();
+            let mut a = set_next(&mut x);
+            let mut b = set_next(&mut y);
 
             while a.is_some() {
                 if b.is_none() {
                     return do a.while_some() |a1| {
-                        if f(a1) { set_next(&mut x); x.get() } else { None }
+                        if f(a1) { set_next(&mut x) } else { None }
                     }
                 }
 
@@ -424,21 +406,18 @@ impl<T:Ord> Set<T> for TreeSet<T> {
 
                 if a1 < b1 {
                     if !f(a1) { return }
-                    set_next(&mut x);
-                    a = x.get();
+                    a = set_next(&mut x);
                 } else {
                     if b1 < a1 {
                         if !f(b1) { return }
                     } else {
-                        set_next(&mut x);
-                        a = x.get();
+                        a = set_next(&mut x);
                     }
-                    set_next(&mut y);
-                    b = y.get();
+                    b = set_next(&mut y);
                 }
             }
             do b.while_some |b1| {
-                if f(b1) { set_next(&mut y); y.get() } else { None }
+                if f(b1) { set_next(&mut y) } else { None }
             }
         }
     }
@@ -449,23 +428,19 @@ impl<T:Ord> Set<T> for TreeSet<T> {
         let mut y = other.iter();
 
         unsafe { // purity workaround
-            set_next(&mut x);
-            set_next(&mut y);
-            let mut a = x.get();
-            let mut b = y.get();
+            let mut a = set_next(&mut x);
+            let mut b = set_next(&mut y);
 
             while a.is_some() && b.is_some() {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
                 if a1 < b1 {
-                    set_next(&mut x);
-                    a = x.get();
+                    a = set_next(&mut x);
                 } else {
                     if !(b1 < a1) {
                         if !f(a1) { return }
                     }
-                    set_next(&mut y);
-                    b = y.get();
+                    b = set_next(&mut y);
                 }
             }
         }
@@ -477,15 +452,13 @@ impl<T:Ord> Set<T> for TreeSet<T> {
         let mut y = other.iter();
 
         unsafe { // purity workaround
-            set_next(&mut x);
-            set_next(&mut y);
-            let mut a = x.get();
-            let mut b = y.get();
+            let mut a = set_next(&mut x);
+            let mut b = set_next(&mut y);
 
             while a.is_some() {
                 if b.is_none() {
                     return do a.while_some() |a1| {
-                        if f(a1) { set_next(&mut x); x.get() } else { None }
+                        if f(a1) { set_next(&mut x) } else { None }
                     }
                 }
 
@@ -494,16 +467,13 @@ impl<T:Ord> Set<T> for TreeSet<T> {
 
                 if b1 < a1 {
                     if !f(b1) { return }
-                    set_next(&mut y);
-                    b = y.get();
+                    b = set_next(&mut y);
                 } else {
                     if !f(a1) { return }
                     if !(a1 < b1) {
-                        set_next(&mut y);
-                        b = y.get()
+                        b = set_next(&mut y);
                     }
-                    set_next(&mut x);
-                    a = x.get();
+                    a = set_next(&mut x);
                 }
             }
         }
@@ -526,20 +496,16 @@ pub struct TreeSetIterator<T> {
     priv iter: TreeMapIterator<T, ()>
 }
 
-impl <T:Ord> TreeSetIterator<T> {
-    /// Returns the current node, or None if this iterator is at the end.
-    fn get(&const self) -> Option<&self/T> {
-        match self.iter.get() {
-          None => None,
-          Some((k, _)) => Some(k)
-        }
-    }
-}
-
 /// Advance the iterator to the next node (in order). If this iterator is
 /// finished, does nothing.
-pub fn set_next<T:Ord>(iter: &mut TreeSetIterator/&a<T>) {
-    map_next(&mut iter.iter);
+pub fn set_next<T: Ord>(iter: &mut TreeSetIterator/&r<T>) -> Option<&r/T> {
+    do map_next(&mut iter.iter).map |&(value, _)| { value }
+}
+
+/// Advance the iterator through the set
+fn set_advance<T: Ord>(iter: &mut TreeSetIterator/&r<T>,
+                       f: fn(&r/T) -> bool) {
+    do map_advance(&mut iter.iter) |(k, _)| { f(k) }
 }
 
 // Nodes keep track of their level in the tree, starting at 1 in the
@@ -983,23 +949,37 @@ mod test_treemap {
         assert m.insert(x5, y5);
 
         let m = m;
-        let mut iter = m.iter();
+        let mut a = m.iter();
 
         // FIXME: #4492 (ICE): iter.get() == Some((&x1, &y1))
 
-        map_next(&mut iter);
-        assert iter.get().unwrap() == (&x1, &y1);
-        map_next(&mut iter);
-        assert iter.get().unwrap() == (&x2, &y2);
-        map_next(&mut iter);
-        assert iter.get().unwrap() == (&x3, &y3);
-        map_next(&mut iter);
-        assert iter.get().unwrap() == (&x4, &y4);
-        map_next(&mut iter);
-        assert iter.get().unwrap() == (&x5, &y5);
+        assert map_next(&mut a).unwrap() == (&x1, &y1);
+        assert map_next(&mut a).unwrap() == (&x2, &y2);
+        assert map_next(&mut a).unwrap() == (&x3, &y3);
+        assert map_next(&mut a).unwrap() == (&x4, &y4);
+        assert map_next(&mut a).unwrap() == (&x5, &y5);
 
-        map_next(&mut iter);
-        assert iter.get().is_none();
+        assert map_next(&mut a).is_none();
+
+        let mut b = m.iter();
+
+        let expected = [(&x1, &y1), (&x2, &y2), (&x3, &y3), (&x4, &y4),
+                        (&x5, &y5)];
+        let mut i = 0;
+
+        for map_advance(&mut b) |x| {
+            assert expected[i] == x;
+            i += 1;
+
+            if i == 2 {
+                break
+            }
+        }
+
+        for map_advance(&mut b) |x| {
+            assert expected[i] == x;
+            i += 1;
+        }
     }
 }
 
