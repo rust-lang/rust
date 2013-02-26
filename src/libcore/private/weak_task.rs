@@ -18,16 +18,17 @@ it is running, sending a notification to the task that the runtime
 is trying to shut down.
 */
 
-use option::{Some, None, swap_unwrap};
-use private::at_exit::at_exit;
-use private::global::global_data_clone_create;
-use private::finally::Finally;
-use comm::{Port, Chan, SharedChan, GenericChan,
-           GenericPort, GenericSmartChan, stream};
-use task::{Task, task, spawn};
-use task::rt::{task_id, get_task_id};
+use cell::Cell;
+use comm::{GenericSmartChan, stream};
+use comm::{Port, Chan, SharedChan, GenericChan, GenericPort};
 use hashmap::linear::LinearMap;
 use ops::Drop;
+use option::{Some, None, swap_unwrap};
+use private::at_exit::at_exit;
+use private::finally::Finally;
+use private::global::global_data_clone_create;
+use task::rt::{task_id, get_task_id};
+use task::{Task, task, spawn};
 
 type ShutdownMsg = ();
 
@@ -37,14 +38,13 @@ pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     let service = global_data_clone_create(global_data_key,
                                            create_global_service);
     let (shutdown_port, shutdown_chan) = stream::<ShutdownMsg>();
-    let shutdown_port = ~mut Some(shutdown_port);
+    let shutdown_port = Cell(shutdown_port);
     let task = get_task_id();
     // Expect the weak task service to be alive
     assert service.try_send(RegisterWeakTask(task, shutdown_chan));
     unsafe { rust_dec_kernel_live_count(); }
     do fn&() {
-        let shutdown_port = swap_unwrap(&mut *shutdown_port);
-        f(shutdown_port)
+        f(shutdown_port.take())
     }.finally || {
         unsafe { rust_inc_kernel_live_count(); }
         // Service my have already exited
@@ -67,16 +67,15 @@ fn create_global_service() -> ~WeakTaskService {
 
     debug!("creating global weak task service");
     let (port, chan) = stream::<ServiceMsg>();
-    let port = ~mut Some(port);
+    let port = Cell(port);
     let chan = SharedChan(chan);
     let chan_clone = chan.clone();
 
     do task().unlinked().spawn {
         debug!("running global weak task service");
-        let port = swap_unwrap(&mut *port);
-        let port = ~mut Some(port);
+        let port = Cell(port.take());
         do fn&() {
-            let port = swap_unwrap(&mut *port);
+            let port = port.take();
             // The weak task service is itself a weak task
             debug!("weakening the weak service task");
             unsafe { rust_dec_kernel_live_count(); }

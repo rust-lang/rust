@@ -549,6 +549,7 @@ use syntax::codemap;
 use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
+use core::cell::{Cell, empty_cell};
 use core::cmp;
 use core::dvec::DVec;
 use core::to_bytes;
@@ -557,7 +558,6 @@ use core::vec;
 use result::Result;
 use result::{Ok, Err};
 use std::oldmap::HashMap;
-use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 use syntax::codemap::span;
 use syntax::codemap;
