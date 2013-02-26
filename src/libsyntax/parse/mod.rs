@@ -92,7 +92,7 @@ pub fn parse_crate_from_source_str(name: ~str,
                                    source: @~str,
                                    cfg: ast::crate_cfg,
                                    sess: @mut ParseSess) -> @ast::crate {
-    let p = new_parser_from_source_str(sess, cfg, name,
+    let p = new_parser_from_source_str(sess, cfg, /*bad*/ copy name,
                                        codemap::FssNone, source);
     let r = p.parse_crate_mod(cfg);
     p.abort_if_errors();
@@ -103,7 +103,7 @@ pub fn parse_expr_from_source_str(name: ~str,
                                   source: @~str,
                                   cfg: ast::crate_cfg,
                                   sess: @mut ParseSess) -> @ast::expr {
-    let p = new_parser_from_source_str(sess, cfg, name,
+    let p = new_parser_from_source_str(sess, cfg, /*bad*/ copy name,
                                        codemap::FssNone, source);
     let r = p.parse_expr();
     p.abort_if_errors();
@@ -116,7 +116,7 @@ pub fn parse_item_from_source_str(name: ~str,
                                   +attrs: ~[ast::attribute],
                                   sess: @mut ParseSess)
                                -> Option<@ast::item> {
-    let p = new_parser_from_source_str(sess, cfg, name,
+    let p = new_parser_from_source_str(sess, cfg, /*bad*/ copy name,
                                        codemap::FssNone, source);
     let r = p.parse_item(attrs);
     p.abort_if_errors();
@@ -128,7 +128,7 @@ pub fn parse_stmt_from_source_str(name: ~str,
                                   cfg: ast::crate_cfg,
                                   +attrs: ~[ast::attribute],
                                   sess: @mut ParseSess) -> @ast::stmt {
-    let p = new_parser_from_source_str(sess, cfg, name,
+    let p = new_parser_from_source_str(sess, cfg, /*bad*/ copy name,
                                        codemap::FssNone, source);
     let r = p.parse_stmt(attrs);
     p.abort_if_errors();
@@ -139,7 +139,7 @@ pub fn parse_tts_from_source_str(name: ~str,
                                  source: @~str,
                                  cfg: ast::crate_cfg,
                                  sess: @mut ParseSess) -> ~[ast::token_tree] {
-    let p = new_parser_from_source_str(sess, cfg, name,
+    let p = new_parser_from_source_str(sess, cfg, /*bad*/ copy name,
                                        codemap::FssNone, source);
     *p.quote_depth += 1u;
     let r = p.parse_all_token_trees();
@@ -153,8 +153,13 @@ pub fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
                             sess: @mut ParseSess)
     -> T
 {
-    let p = new_parser_from_source_str(sess, cfg, name, ss,
-                                       source);
+    let p = new_parser_from_source_str(
+        sess,
+        cfg,
+        /*bad*/ copy name,
+        /*bad*/ copy ss,
+        source
+    );
     let r = f(p);
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");
@@ -226,7 +231,7 @@ pub fn new_sub_parser_from_file(sess: @mut ParseSess, cfg: ast::crate_cfg,
 }
 
 pub fn new_parser_from_tts(sess: @mut ParseSess, cfg: ast::crate_cfg,
-                       tts: ~[ast::token_tree]) -> Parser {
+                           +tts: ~[ast::token_tree]) -> Parser {
     let trdr = lexer::new_tt_reader(copy sess.span_diagnostic, sess.interner,
                                     None, tts);
     return Parser(sess, cfg, trdr as reader)

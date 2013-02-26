@@ -46,7 +46,10 @@ impl parser_attr for Parser {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
-                        *self.id_to_str(s), self.span.lo, self.span.hi);
+                    copy *self.id_to_str(s),
+                    self.span.lo,
+                    self.span.hi
+                );
                 if attr.node.style != ast::attr_outer {
                   self.fatal(~"expected outer comment");
                 }
@@ -113,7 +116,10 @@ impl parser_attr for Parser {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
-                        *self.id_to_str(s), self.span.lo, self.span.hi);
+                    copy *self.id_to_str(s),
+                    self.span.lo,
+                    self.span.hi
+                );
                 self.bump();
                 if attr.node.style == ast::attr_inner {
                   inner_attrs += ~[attr];
@@ -151,7 +157,7 @@ impl parser_attr for Parser {
     }
 
     fn parse_meta_seq() -> ~[@ast::meta_item] {
-        self.parse_seq(
+        copy self.parse_seq(
             &token::LPAREN,
             &token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA),
