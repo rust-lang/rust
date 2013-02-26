@@ -2171,11 +2171,6 @@ pub fn trans_mod(ccx: @CrateContext, m: ast::_mod) {
     }
 }
 
-pub fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
-    // Bit of a kludge: pick the fn typeref out of the pair.
-    return struct_elt(llpairty, 0u);
-}
-
 pub fn register_fn(ccx: @CrateContext,
                    sp: span,
                    +path: path,
