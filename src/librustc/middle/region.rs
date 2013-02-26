@@ -416,8 +416,12 @@ pub struct DetermineRpCtxt {
     item_id: ast::node_id,
 
     // true when we are within an item but not within a method.
-    // see long discussion on region_is_relevant()
+    // see long discussion on region_is_relevant().
     anon_implies_rp: bool,
+
+    // true when we are not within an &self method.
+    // see long discussion on region_is_relevant().
+    self_implies_rp: bool,
 
     // encodes the context of the current type; invariant if
     // mutable, covariant otherwise
@@ -458,14 +462,14 @@ pub fn add_variance(+ambient_variance: region_variance,
 }
 
 pub impl DetermineRpCtxt {
-    fn add_variance(@mut self, variance: region_variance) -> region_variance {
+    fn add_variance(&self, variance: region_variance) -> region_variance {
         add_variance(self.ambient_variance, variance)
     }
 
     /// Records that item `id` is region-parameterized with the
     /// variance `variance`.  If `id` was already parameterized, then
     /// the new variance is joined with the old variance.
-    fn add_rp(@mut self, id: ast::node_id, variance: region_variance) {
+    fn add_rp(&mut self, id: ast::node_id, variance: region_variance) {
         assert id != 0;
         let old_variance = self.region_paramd_items.find(&id);
         let joined_variance = match old_variance {
@@ -490,7 +494,7 @@ pub impl DetermineRpCtxt {
     /// `from`.  Put another way, it indicates that the current item
     /// contains a value of type `from`, so if `from` is
     /// region-parameterized, so is the current item.
-    fn add_dep(@mut self, from: ast::node_id) {
+    fn add_dep(&mut self, from: ast::node_id) {
         debug!("add dependency from %d -> %d (%s -> %s) with variance %?",
                from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
@@ -515,42 +519,46 @@ pub impl DetermineRpCtxt {
     }
 
     // Determines whether a reference to a region that appears in the
-    // AST implies that the enclosing type is region-parameterized.
-    //
-    // This point is subtle.  Here are four examples to make it more
+    // AST implies that the enclosing type is region-parameterized (RP).
+    // This point is subtle.  Here are some examples to make it more
     // concrete.
     //
     // 1. impl foo for &int { ... }
     // 2. impl foo for &self/int { ... }
-    // 3. impl foo for bar { fn m() -> &self/int { ... } }
-    // 4. impl foo for bar { fn m() -> &int { ... } }
+    // 3. impl foo for bar { fn m(@self) -> &self/int { ... } }
+    // 4. impl foo for bar { fn m(&self) -> &self/int { ... } }
+    // 5. impl foo for bar { fn m(&self) -> &int { ... } }
     //
     // In case 1, the anonymous region is being referenced,
     // but it appears in a context where the anonymous region
-    // resolves to self, so the impl foo is region-parameterized.
+    // resolves to self, so the impl foo is RP.
     //
     // In case 2, the self parameter is written explicitly.
     //
-    // In case 3, the method refers to self, so that implies that the
-    // impl must be region parameterized.  (If the type bar is not
-    // region parameterized, that is an error, because the self region
-    // is effectively unconstrained, but that is detected elsewhere).
+    // In case 3, the method refers to the region `self`, so that
+    // implies that the impl must be region parameterized.  (If the
+    // type bar is not region parameterized, that is an error, because
+    // the self region is effectively unconstrained, but that is
+    // detected elsewhere).
     //
-    // In case 4, the anonymous region is referenced, but it
+    // In case 4, the method refers to the region `self`, but the
+    // `self` region is bound by the `&self` receiver, and so this
+    // does not require that `bar` be RP.
+    //
+    // In case 5, the anonymous region is referenced, but it
     // bound by the method, so it does not refer to self.  This impl
     // need not be region parameterized.
     //
-    // So the rules basically are: the `self` region always implies
-    // that the enclosing type is region parameterized.  The anonymous
-    // region also does, unless it appears within a method, in which
-    // case it is bound.  We handle this by setting a flag
-    // (anon_implies_rp) to true when we enter an item and setting
-    // that flag to false when we enter a method.
-    fn region_is_relevant(@mut self, r: @ast::region) -> bool {
+    // Normally, & or &self implies that the enclosing item is RP.
+    // However, within a function, & is always bound.  Within a method
+    // with &self type, &self is also bound.  We detect those last two
+    // cases via flags (anon_implies_rp and self_implies_rp) that are
+    // true when the anon or self region implies RP.
+    fn region_is_relevant(&self, r: @ast::region) -> bool {
         match r.node {
             ast::re_static => false,
             ast::re_anon => self.anon_implies_rp,
-            ast::re_self => true,
+            ast::re_self => self.self_implies_rp,
             ast::re_named(_) => false
         }
     }
@@ -561,7 +569,7 @@ pub impl DetermineRpCtxt {
     //
     // If the region is explicitly specified, then we follows the
     // normal rules.
-    fn opt_region_is_relevant(@mut self,
+    fn opt_region_is_relevant(&self,
                               opt_r: Option<@ast::region>)
                            -> bool {
         debug!("opt_region_is_relevant: %? (anon_implies_rp=%b)",
@@ -575,16 +583,23 @@ pub impl DetermineRpCtxt {
     fn with(@mut self,
             item_id: ast::node_id,
             anon_implies_rp: bool,
+            self_implies_rp: bool,
             f: &fn()) {
         let old_item_id = self.item_id;
         let old_anon_implies_rp = self.anon_implies_rp;
+        let old_self_implies_rp = self.self_implies_rp;
         self.item_id = item_id;
         self.anon_implies_rp = anon_implies_rp;
-        debug!("with_item_id(%d, %b)", item_id, anon_implies_rp);
+        self.self_implies_rp = self_implies_rp;
+        debug!("with_item_id(%d, %b, %b)",
+               item_id,
+               anon_implies_rp,
+               self_implies_rp);
         let _i = ::util::common::indenter();
         f();
         self.item_id = old_item_id;
         self.anon_implies_rp = old_anon_implies_rp;
+        self.self_implies_rp = old_self_implies_rp;
     }
 
     fn with_ambient_variance(@mut self, variance: region_variance, f: &fn()) {
@@ -598,7 +613,7 @@ pub impl DetermineRpCtxt {
 pub fn determine_rp_in_item(item: @ast::item,
                             &&cx: @mut DetermineRpCtxt,
                             visitor: visit::vt<@mut DetermineRpCtxt>) {
-    do cx.with(item.id, true) {
+    do cx.with(item.id, true, true) {
         visit::visit_item(item, cx, visitor);
     }
 }
@@ -610,7 +625,12 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
                           _: ast::node_id,
                           &&cx: @mut DetermineRpCtxt,
                           visitor: visit::vt<@mut DetermineRpCtxt>) {
-    do cx.with(cx.item_id, false) {
+    let self_implies_rp = match fk {
+        &visit::fk_method(_, _, m) => !m.self_ty.node.is_borrowed(),
+        _ => true
+    };
+
+    do cx.with(cx.item_id, false, self_implies_rp) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.each |a| {
                 (visitor.visit_ty)(a.ty, cx, visitor);
@@ -626,7 +646,7 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
 pub fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
                                  &&cx: @mut DetermineRpCtxt,
                                  visitor: visit::vt<@mut DetermineRpCtxt>) {
-    do cx.with(cx.item_id, false) {
+    do cx.with(cx.item_id, false, !ty_m.self_ty.node.is_borrowed()) {
         visit::visit_ty_method(ty_m, cx, visitor);
     }
 }
@@ -735,7 +755,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
       ast::ty_bare_fn(@ast::TyBareFn {decl: ref decl, _}) => {
         // fn() binds the & region, so do not consider &T types that
         // appear *inside* a fn() type to affect the enclosing item:
-        do cx.with(cx.item_id, false) {
+        do cx.with(cx.item_id, false, true) {
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
                 for decl.inputs.each |a| {
@@ -796,6 +816,7 @@ pub fn determine_rp_in_crate(sess: Session,
         worklist: ~[],
         item_id: 0,
         anon_implies_rp: false,
+        self_implies_rp: true,
         ambient_variance: rv_covariant
     };
 

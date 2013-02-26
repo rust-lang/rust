@@ -16,7 +16,6 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
-use core::option;
 use syntax::ast::*;
 use syntax::codemap;
 use syntax::{visit, ast_util, ast_map};
