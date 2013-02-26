@@ -622,6 +622,19 @@ pub impl NameBindings {
         }
     }
 
+    fn defined_in_public_namespace(namespace: Namespace) -> bool {
+        match namespace {
+            TypeNS => match self.type_def {
+                Some(def) => def.privacy != Private,
+                None => false
+            },
+            ValueNS => match self.value_def {
+                Some(def) => def.privacy != Private,
+                None => false
+            }
+        }
+    }
+
     fn def_for_namespace(namespace: Namespace) -> Option<def> {
         match namespace {
             TypeNS => {
@@ -2538,7 +2551,6 @@ pub impl Resolver {
                 }
             }
 
-
             debug!("(resolving glob import) writing resolution `%s` in `%s` \
                     to `%s`, privacy=%?",
                    *self.session.str_of(ident),
@@ -2547,12 +2559,12 @@ pub impl Resolver {
                    dest_import_resolution.privacy);
 
             // Merge the child item into the import resolution.
-            if (*name_bindings).defined_in_namespace(ValueNS) {
+            if (*name_bindings).defined_in_public_namespace(ValueNS) {
                 debug!("(resolving glob import) ... for value target");
                 dest_import_resolution.value_target =
                     Some(Target(containing_module, name_bindings));
             }
-            if (*name_bindings).defined_in_namespace(TypeNS) {
+            if (*name_bindings).defined_in_public_namespace(TypeNS) {
                 debug!("(resolving glob import) ... for type target");
                 dest_import_resolution.type_target =
                     Some(Target(containing_module, name_bindings));
