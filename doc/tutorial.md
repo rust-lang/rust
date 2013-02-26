@@ -583,19 +583,16 @@ Inherited mutability means that any field of a struct may be mutable, if the
 struct is in a mutable slot (or a field of a struct in a mutable slot, and
 so forth).
 
-A struct that is not mutable due to inherited mutability may declare some
-of its fields nevertheless mutable, using the `mut` keyword.
-
 ~~~~
 struct Stack {
     content: ~[int],
-    mut head: uint
+    head: uint
 }
 ~~~~
 
-With a value of such a type, you can do `mystack.head += 1`. If `mut` were
-omitted from the type, such an assignment to a struct without inherited
-mutability would result in a type error.
+With a value (say, `mystack`) of such a type in a mutable location, you can do
+`mystack.head += 1`. But in an immutable location, such an assignment to a
+struct without inherited mutability would result in a type error.
 
 `match` patterns destructure structs. The basic syntax is
 `Name { fieldname: pattern, ... }`:
@@ -938,19 +935,19 @@ type that contains managed boxes or other managed types.
 ~~~
 // A linked list node
 struct Node {
-    mut next: MaybeNode,
-    mut prev: MaybeNode,
+    next: MaybeNode,
+    prev: MaybeNode,
     payload: int
 }
 
 enum MaybeNode {
-    SomeNode(@Node),
+    SomeNode(@mut Node),
     NoNode
 }
 
-let node1 = @Node { next: NoNode, prev: NoNode, payload: 1 };
-let node2 = @Node { next: NoNode, prev: NoNode, payload: 2 };
-let node3 = @Node { next: NoNode, prev: NoNode, payload: 3 };
+let node1 = @mut Node { next: NoNode, prev: NoNode, payload: 1 };
+let node2 = @mut Node { next: NoNode, prev: NoNode, payload: 2 };
+let node3 = @mut Node { next: NoNode, prev: NoNode, payload: 3 };
 
 // Link the three list nodes together
 node1.next = SomeNode(node2);
@@ -2300,8 +2297,8 @@ mod farm {
 # impl Human { fn rest(&self) { } }
 # pub fn make_me_a_farm() -> farm::Farm { farm::Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
     pub struct Farm {
-        priv mut chickens: ~[Chicken],
-        priv mut cows: ~[Cow],
+        priv chickens: ~[Chicken],
+        priv cows: ~[Cow],
         farmer: Human
     }
 

@@ -314,8 +314,8 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 pub fn monitor(+f: fn~(diagnostic::Emitter)) {
+    use core::cell::Cell;
     use core::comm::*;
-    use std::cell::Cell;
     let (p, ch) = stream();
     let ch = SharedChan(ch);
     let ch_capture = ch.clone();

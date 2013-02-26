@@ -1176,9 +1176,9 @@ mod test {
         // all of the ones I was too lazy to handle:
         CallToOther
     }
-    // using a mutable field rather than changing the
+    // using `@mut` rather than changing the
     // type of self in every method of every encoder everywhere.
-    pub struct TestEncoder {mut call_log : ~[call]}
+    pub struct TestEncoder {call_log : @mut ~[call]}
 
     pub impl TestEncoder {
         // these self's should be &mut self's, as well....
@@ -1272,9 +1272,9 @@ mod test {
     struct Node {id: uint}
 
     fn to_call_log (val: Encodable<TestEncoder>) -> ~[call] {
-        let mut te = TestEncoder {call_log: ~[]};
+        let mut te = TestEncoder {call_log: @mut ~[]};
         val.encode(&te);
-        te.call_log
+        copy *te.call_log
     }
 /*
     #[test] fn encode_test () {

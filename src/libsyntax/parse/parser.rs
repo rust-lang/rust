@@ -75,7 +75,7 @@ use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
 use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
-use parse::obsolete::{ObsoleteTraitBoundSeparator};
+use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -677,6 +677,11 @@ pub impl Parser {
         // rather than boxed ptrs.  But the special casing of str/vec is not
         // reflected in the AST type.
         let mt = self.parse_mt();
+
+        if mt.mutbl == m_mutbl && sigil == OwnedSigil {
+            self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
+        }
+
         ctor(mt)
     }
 
