@@ -4290,7 +4290,8 @@ pub fn eval_repeat_count(tcx: ctxt,
                          count_expr: @ast::expr,
                          span: span)
                       -> uint {
-    match const_eval::eval_const_expr(tcx, count_expr) {
+    match const_eval::eval_const_expr_partial(tcx, count_expr) {
+      Ok(ref const_val) => match *const_val {
         const_eval::const_int(count) => return count as uint,
         const_eval::const_uint(count) => return count as uint,
         const_eval::const_float(count) => {
@@ -4311,7 +4312,13 @@ pub fn eval_repeat_count(tcx: ctxt,
                                 repeat count but found boolean");
             return 0;
         }
-
+      },
+      Err(*) => {
+        tcx.sess.span_err(span,
+                          ~"expected constant integer for repeat count \
+                            but found variable");
+        return 0;
+      }
     }
 }
 
