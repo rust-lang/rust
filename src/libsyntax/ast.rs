@@ -29,8 +29,37 @@ macro_rules! interner_key (
         (-3 as uint, 0u)))
 )
 
+// an identifier contains an index into the interner
+// table and a SyntaxContext to track renaming and
+// macro expansion per Flatt et al., "Macros
+// That Work Together"
 #[deriving_eq]
-pub struct ident { repr: uint }
+pub struct ident { repr: Name }
+
+// a SyntaxContext represents a chain of macro-expandings
+// and renamings. Each macro expansion corresponds to
+// a fresh uint
+#[deriving_eq]
+pub enum SyntaxContext {
+    MT,
+    Mark (Mrk,~SyntaxContext),
+    Rename (~ident,Name,~SyntaxContext)
+}
+
+/*
+// ** this is going to have to apply to paths, not to idents.
+// Returns true if these two identifiers access the same
+// local binding or top-level binding... that's what it
+// should do. For now, it just compares the names.
+pub fn free_ident_eq (a : ident, b: ident) -> bool{
+    a.repr == b.repr
+}
+*/
+// a name represents a string, interned
+type Name = uint;
+// a mark represents a unique id associated
+// with a macro expansion
+type Mrk = uint;
 
 pub impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &S) {
@@ -1230,6 +1259,7 @@ pub enum item_ {
               Option<@trait_ref>, // (optional) trait this impl implements
               @Ty, // self
               ~[@method]),
+    // a macro invocation (which includes macro definition)
     item_mac(mac),
 }
 
