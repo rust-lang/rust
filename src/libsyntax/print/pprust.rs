@@ -108,18 +108,20 @@ pub fn print_crate(cm: @CodeMap, intr: @ident_interner,
                    span_diagnostic: diagnostic::span_handler,
                    crate: @ast::crate, filename: ~str, in: io::Reader,
                    out: io::Writer, ann: pp_ann, is_expanded: bool) {
-    let (cmnts, lits) =
-        comments::gather_comments_and_literals(span_diagnostic,
-                                               filename, in);
+    let (cmnts, lits) = comments::gather_comments_and_literals(
+        span_diagnostic,
+        copy filename,
+        in
+    );
     let s = @ps {
         s: pp::mk_printer(out, default_columns),
         cm: Some(cm),
         intr: intr,
-        comments: Some(cmnts),
+        comments: Some(copy cmnts),
         // If the code is post expansion, don't use the table of
         // literals, since it doesn't correspond with the literals
         // in the AST anymore.
-        literals: if is_expanded { None } else { Some(lits) },
+        literals: if is_expanded { None } else { Some(copy lits) },
         cur_cmnt_and_lit: @mut CurrentCommentAndLiteral {
             cur_cmnt: 0,
             cur_lit: 0
@@ -378,7 +380,7 @@ pub fn print_type(s: @ps, &&ty: @ast::Ty) {
 pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
     maybe_print_comment(s, ty.span.lo);
     ibox(s, 0u);
-    match ty.node {
+    match /*bad*/ copy ty.node {
       ast::ty_nil => word(s.s, ~"()"),
       ast::ty_bot => word(s.s, ~"!"),
       ast::ty_box(mt) => { word(s.s, ~"@"); print_mt(s, mt); }
@@ -458,7 +460,7 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
-    match item.node {
+    match /*bad*/ copy item.node {
       ast::foreign_item_fn(decl, purity, typarams) => {
         print_fn(s, decl, Some(purity), item.ident, typarams, None,
                  ast::inherited);
@@ -484,7 +486,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
     print_outer_attributes(s, item.attrs);
     let ann_node = node_item(s, item);
     (s.ann.pre)(ann_node);
-    match item.node {
+    match /*bad*/ copy item.node {
       ast::item_const(ty, expr) => {
         head(s, visibility_qualified(item.vis, ~"const"));
         print_ident(s, item.ident);
@@ -652,7 +654,7 @@ pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
     space(s.s);
     if newtype {
         word_space(s, ~"=");
-        match enum_definition.variants[0].node.kind {
+        match /*bad*/ copy enum_definition.variants[0].node.kind {
             ast::tuple_variant_kind(args) => print_type(s, args[0].ty),
             _ => fail!(~"newtype syntax with struct?")
         }
@@ -690,9 +692,8 @@ pub fn visibility_to_str(vis: ast::visibility) -> ~str {
 
 pub fn visibility_qualified(vis: ast::visibility, s: ~str) -> ~str {
     match vis {
-        ast::private | ast::public =>
-        visibility_to_str(vis) + " " + s,
-        ast::inherited => s
+        ast::private | ast::public => visibility_to_str(vis) + " " + s,
+        ast::inherited => copy s
     }
 }
 
@@ -809,7 +810,7 @@ pub fn print_tts(s: @ps, &&tts: &[ast::token_tree]) {
 
 pub fn print_variant(s: @ps, v: ast::variant) {
     print_visibility(s, v.node.vis);
-    match v.node.kind {
+    match /*bad*/ copy v.node.kind {
         ast::tuple_variant_kind(args) => {
             print_ident(s, v.node.name);
             if !args.is_empty() {
@@ -844,8 +845,8 @@ pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
     print_ty_fn(s, None, None, None, m.purity, ast::Many,
-                m.decl, Some(m.ident), Some(m.tps),
-                Some(m.self_ty.node));
+                m.decl, Some(m.ident), Some(/*bad*/ copy m.tps),
+                Some(/*bad*/ copy m.self_ty.node));
     word(s.s, ~";");
 }
 
@@ -1141,7 +1142,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
     ibox(s, indent_unit);
     let ann_node = node_expr(s, expr);
     (s.ann.pre)(ann_node);
-    match expr.node {
+    match /*bad*/ copy expr.node {
         ast::expr_vstore(e, v) => match v {
             ast::expr_vstore_fixed(_) => {
                 print_expr(s, e);
@@ -1490,7 +1491,7 @@ pub fn print_local_decl(s: @ps, loc: @ast::local) {
 
 pub fn print_decl(s: @ps, decl: @ast::decl) {
     maybe_print_comment(s, decl.span.lo);
-    match decl.node {
+    match /*bad*/ copy decl.node {
       ast::decl_local(locs) => {
         space_if_not_bol(s);
         ibox(s, indent_unit);
@@ -1574,7 +1575,7 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
     (s.ann.pre)(ann_node);
     /* Pat isn't normalized, but the beauty of it
      is that it doesn't matter */
-    match pat.node {
+    match /*bad*/ copy pat.node {
       ast::pat_wild => word(s.s, ~"_"),
       ast::pat_ident(binding_mode, path, sub) => {
           if refutable {
@@ -1886,7 +1887,7 @@ pub fn print_view_item(s: @ps, item: @ast::view_item) {
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     print_visibility(s, item.vis);
-    match item.node {
+    match /*bad*/ copy item.node {
         ast::view_item_extern_mod(id, mta, _) => {
             head(s, ~"extern mod");
             print_ident(s, id);
@@ -1968,7 +1969,7 @@ pub fn print_ty_fn(s: @ps,
     print_onceness(s, onceness);
     word(s.s, ~"fn");
     match id { Some(id) => { word(s.s, ~" "); print_ident(s, id); } _ => () }
-    match tps { Some(tps) => print_type_params(s, tps), _ => () }
+    match /*bad*/ copy tps { Some(tps) => print_type_params(s, tps), _ => () }
     zerobreak(s.s);
 
     popen(s);
@@ -2095,7 +2096,7 @@ pub fn next_lit(s: @ps, pos: BytePos) -> Option<comments::lit> {
     match s.literals {
       Some(ref lits) => {
         while s.cur_cmnt_and_lit.cur_lit < vec::len((*lits)) {
-            let ltrl = (*lits)[s.cur_cmnt_and_lit.cur_lit];
+            let ltrl = /*bad*/ copy (*lits)[s.cur_cmnt_and_lit.cur_lit];
             if ltrl.pos > pos { return None; }
             s.cur_cmnt_and_lit.cur_lit += 1u;
             if ltrl.pos == pos { return Some(ltrl); }
@@ -2182,7 +2183,7 @@ pub fn next_comment(s: @ps) -> Option<comments::cmnt> {
     match s.comments {
       Some(ref cmnts) => {
         if s.cur_cmnt_and_lit.cur_cmnt < vec::len((*cmnts)) {
-            return Some((*cmnts)[s.cur_cmnt_and_lit.cur_cmnt]);
+            return Some(copy cmnts[s.cur_cmnt_and_lit.cur_cmnt]);
         } else { return None::<comments::cmnt>; }
       }
       _ => return None::<comments::cmnt>

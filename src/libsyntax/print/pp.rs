@@ -568,15 +568,15 @@ pub fn end(p: @mut Printer) { p.pretty_print(END); }
 pub fn eof(p: @mut Printer) { p.pretty_print(EOF); }
 
 pub fn word(p: @mut Printer, wrd: ~str) {
-    p.pretty_print(STRING(@wrd, str::len(wrd) as int));
+    p.pretty_print(STRING(@/*bad*/ copy wrd, wrd.len() as int));
 }
 
 pub fn huge_word(p: @mut Printer, wrd: ~str) {
-    p.pretty_print(STRING(@wrd, size_infinity));
+    p.pretty_print(STRING(@/*bad*/ copy wrd, size_infinity));
 }
 
 pub fn zero_word(p: @mut Printer, wrd: ~str) {
-    p.pretty_print(STRING(@wrd, 0));
+    p.pretty_print(STRING(@/*bad*/ copy wrd, 0));
 }
 
 pub fn spaces(p: @mut Printer, n: uint) { break_offset(p, n, 0); }
