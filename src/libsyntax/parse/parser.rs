@@ -768,7 +768,7 @@ pub impl Parser {
         }
     }
 
-    fn parse_capture_item_or(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
+    fn parse_capture_item_or(parse_arg_fn: fn(&Parser) -> arg_or_capture_item)
         -> arg_or_capture_item
     {
         if self.eat_keyword(&~"copy") {
@@ -776,7 +776,7 @@ pub impl Parser {
             self.parse_ident();
             either::Right(())
         } else {
-            parse_arg_fn(self)
+            parse_arg_fn(&self)
         }
     }
 
@@ -893,8 +893,8 @@ pub impl Parser {
     }
 
     fn parse_path_without_tps_(
-        parse_ident: fn(Parser) -> ident,
-        parse_last_ident: fn(Parser) -> ident) -> @path {
+        parse_ident: fn(&Parser) -> ident,
+        parse_last_ident: fn(&Parser) -> ident) -> @path {
 
         maybe_whole!(self, nt_path);
         let lo = self.span.lo;
@@ -906,10 +906,10 @@ pub impl Parser {
                 && self.look_ahead(1u) == token::MOD_SEP;
 
             if is_not_last {
-                ids.push(parse_ident(self));
+                ids.push(parse_ident(&self));
                 self.expect(&token::MOD_SEP);
             } else {
-                ids.push(parse_last_ident(self));
+                ids.push(parse_last_ident(&self));
                 break;
             }
         }
@@ -1415,7 +1415,7 @@ pub impl Parser {
     fn parse_token_tree() -> token_tree {
         maybe_whole!(deref self, nt_tt);
 
-        fn parse_non_delim_tt_tok(p: Parser) -> token_tree {
+        fn parse_non_delim_tt_tok(p: &Parser) -> token_tree {
             maybe_whole!(deref p, nt_tt);
             match *p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
@@ -1452,7 +1452,7 @@ pub impl Parser {
         }
 
         // turn the next token into a tt_tok:
-        fn parse_any_tt_tok(p: Parser) -> token_tree{
+        fn parse_any_tt_tok(p: &Parser) -> token_tree{
             let res = tt_tok(*p.span, *p.token);
             p.bump();
             res
@@ -1468,7 +1468,7 @@ pub impl Parser {
                 tt_delim(
                     vec::append(
                         // the open delimiter:
-                        ~[parse_any_tt_tok(self)],
+                        ~[parse_any_tt_tok(&self)],
                         vec::append(
                             self.parse_seq_to_before_end(
                                 &ket,
@@ -1476,12 +1476,12 @@ pub impl Parser {
                                 |p| p.parse_token_tree()
                             ),
                             // the close delimiter:
-                            ~[parse_any_tt_tok(self)]
+                            ~[parse_any_tt_tok(&self)]
                         )
                     )
                 )
             }
-            _ => parse_non_delim_tt_tok(self)
+            _ => parse_non_delim_tt_tok(&self)
         }
     }
 
@@ -2441,7 +2441,7 @@ pub impl Parser {
     fn parse_stmt(+first_item_attrs: ~[attribute]) -> @stmt {
         maybe_whole!(self, nt_stmt);
 
-        fn check_expected_item(p: Parser, current_attrs: ~[attribute]) {
+        fn check_expected_item(p: &Parser, current_attrs: ~[attribute]) {
             // If we have attributes then we should have an item
             if !current_attrs.is_empty() {
                 p.fatal(~"expected item after attrs");
@@ -2450,7 +2450,7 @@ pub impl Parser {
 
         let lo = self.span.lo;
         if self.is_keyword(&~"let") {
-            check_expected_item(self, first_item_attrs);
+            check_expected_item(&self, first_item_attrs);
             self.expect_keyword(&~"let");
             let decl = self.parse_let();
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
@@ -2458,7 +2458,7 @@ pub impl Parser {
             && !self.is_any_keyword(&copy *self.token)
             && self.look_ahead(1) == token::NOT {
 
-            check_expected_item(self, first_item_attrs);
+            check_expected_item(&self, first_item_attrs);
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
@@ -2514,7 +2514,7 @@ pub impl Parser {
               iovi_none() => { /* fallthrough */ }
             }
 
-            check_expected_item(self, item_attrs);
+            check_expected_item(&self, item_attrs);
 
             // Remainder are line-expr stmts.
             let e = self.parse_expr_res(RESTRICT_STMT_EXPR);
@@ -2538,7 +2538,7 @@ pub impl Parser {
 
         maybe_whole!(pair_empty self, nt_block);
 
-        fn maybe_parse_inner_attrs_and_next(p: Parser, parse_attrs: bool) ->
+        fn maybe_parse_inner_attrs_and_next(p: &Parser, parse_attrs: bool) ->
             (~[attribute], ~[attribute]) {
             if parse_attrs {
                 p.parse_inner_attrs_and_next()
@@ -2553,7 +2553,7 @@ pub impl Parser {
         }
         self.expect(&token::LBRACE);
         let (inner, next) =
-            maybe_parse_inner_attrs_and_next(self, parse_attrs);
+            maybe_parse_inner_attrs_and_next(&self, parse_attrs);
 
         (inner, self.parse_block_tail_(lo, default_blk, next))
     }
@@ -2780,7 +2780,7 @@ pub impl Parser {
         } else { ~[] }
     }
 
-    fn parse_fn_decl(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
+    fn parse_fn_decl(parse_arg_fn: fn(&Parser) -> arg_or_capture_item)
         -> fn_decl
     {
         let args_or_capture_items: ~[arg_or_capture_item] =
@@ -2823,11 +2823,11 @@ pub impl Parser {
 
     fn parse_fn_decl_with_self(
         parse_arg_fn:
-        fn(Parser) -> arg_or_capture_item
+        fn(&Parser) -> arg_or_capture_item
     ) -> (self_ty, fn_decl) {
         fn maybe_parse_self_ty(
             cnstr: fn(+v: mutability) -> ast::self_ty_,
-            p: Parser
+            p: &Parser
         ) -> ast::self_ty_ {
             // We need to make sure it isn't a mode or a type
             if p.token_is_keyword(&~"self", &p.look_ahead(1)) ||
@@ -2851,13 +2851,13 @@ pub impl Parser {
         let lo = self.span.lo;
         let self_ty = match *self.token {
           token::BINOP(token::AND) => {
-            maybe_parse_self_ty(sty_region, self)
+            maybe_parse_self_ty(sty_region, &self)
           }
           token::AT => {
-            maybe_parse_self_ty(sty_box, self)
+            maybe_parse_self_ty(sty_box, &self)
           }
           token::TILDE => {
-            maybe_parse_self_ty(sty_uniq, self)
+            maybe_parse_self_ty(sty_uniq, &self)
           }
           token::IDENT(*) if self.is_self_ident() => {
             self.bump();
@@ -3028,7 +3028,7 @@ pub impl Parser {
     //    impl<T> ~[T] : to_str { ... }
     //    impl<T> to_str for ~[T] { ... }
     fn parse_item_impl() -> item_info {
-        fn wrap_path(p: Parser, pt: @path) -> @Ty {
+        fn wrap_path(p: &Parser, pt: @path) -> @Ty {
             @Ty {
                 id: p.get_id(),
                 node: ty_path(pt, p.get_id()),
