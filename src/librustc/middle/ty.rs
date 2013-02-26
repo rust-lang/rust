@@ -259,7 +259,6 @@ struct ctxt_ {
     rcache: creader_cache,
     ccache: constness_cache,
     short_names_cache: HashMap<t, @~str>,
-    needs_drop_cache: HashMap<t, bool>,
     needs_unwind_cleanup_cache: HashMap<t, bool>,
     tc_cache: @mut LinearMap<uint, TypeContents>,
     ast_ty_to_ty_cache: HashMap<node_id, ast_ty_to_ty_cache_entry>,
@@ -822,7 +821,6 @@ pub fn mk_ctxt(s: session::Session,
         rcache: mk_rcache(),
         ccache: HashMap(),
         short_names_cache: new_ty_hash(),
-        needs_drop_cache: new_ty_hash(),
         needs_unwind_cleanup_cache: new_ty_hash(),
         tc_cache: @mut LinearMap::new(),
         ast_ty_to_ty_cache: HashMap(),
@@ -1600,79 +1598,7 @@ pub fn type_is_immediate(ty: t) -> bool {
 }
 
 pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
-    match cx.needs_drop_cache.find(&ty) {
-      Some(result) => return result,
-      None => {/* fall through */ }
-    }
-
-    let mut accum = false;
-    let result = match /*bad*/copy get(ty).sty {
-      // scalar types
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type | ty_ptr(_) | ty_rptr(_, _) |
-      ty_estr(vstore_fixed(_)) |
-      ty_estr(vstore_slice(_)) |
-      ty_evec(_, vstore_slice(_)) |
-      ty_self => false,
-
-      ty_box(_) | ty_uniq(_) |
-      ty_opaque_box | ty_opaque_closure_ptr(*) |
-      ty_estr(vstore_uniq) |
-      ty_estr(vstore_box) |
-      ty_evec(_, vstore_uniq) |
-      ty_evec(_, vstore_box) => true,
-
-      ty_trait(_, _, vstore_box) |
-      ty_trait(_, _, vstore_uniq) => true,
-      ty_trait(_, _, vstore_fixed(_)) |
-      ty_trait(_, _, vstore_slice(_)) => false,
-
-      ty_param(*) | ty_infer(*) | ty_err => true,
-
-      ty_evec(mt, vstore_fixed(_)) => type_needs_drop(cx, mt.ty),
-      ty_unboxed_vec(mt) => type_needs_drop(cx, mt.ty),
-      ty_rec(flds) => {
-        for flds.each |f| {
-            if type_needs_drop(cx, f.mt.ty) { accum = true; }
-        }
-        accum
-      }
-      ty_struct(did, ref substs) => {
-         // Any struct with a dtor needs a drop
-         ty_dtor(cx, did).is_present() || {
-             for vec::each(ty::struct_fields(cx, did, substs)) |f| {
-                 if type_needs_drop(cx, f.mt.ty) { accum = true; }
-             }
-             accum
-         }
-      }
-      ty_tup(elts) => {
-          for elts.each |m| { if type_needs_drop(cx, *m) { accum = true; } }
-        accum
-      }
-      ty_enum(did, ref substs) => {
-        let variants = enum_variants(cx, did);
-          for vec::each(*variants) |variant| {
-              for variant.args.each |aty| {
-                // Perform any type parameter substitutions.
-                let arg_ty = subst(cx, substs, *aty);
-                if type_needs_drop(cx, arg_ty) { accum = true; }
-            }
-            if accum { break; }
-        }
-        accum
-      }
-      ty_bare_fn(*) => false,
-      ty_closure(ref fty) => {
-        match fty.sigil {
-          ast::BorrowedSigil => false,
-          ast::ManagedSigil | ast::OwnedSigil => true,
-        }
-      }
-    };
-
-    cx.needs_drop_cache.insert(ty, result);
-    return result;
+    type_contents(cx, ty).needs_drop(cx)
 }
 
 // Some things don't need cleanups during unwinding because the
@@ -1819,7 +1745,7 @@ pub impl TypeContents {
 
     static fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
         let base = TypeContents::noncopyable(cx) + TC_OWNED_POINTER;
-        if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_SLICE}
+        if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_VEC}
     }
 
     fn is_safe_for_default_mode(&self, cx: ctxt) -> bool {
@@ -1828,7 +1754,17 @@ pub impl TypeContents {
 
     static fn nondefault_mode(cx: ctxt) -> TypeContents {
         let tc = TypeContents::nonimplicitly_copyable(cx);
-        tc + TC_BIG + TC_OWNED_SLICE // disregard cx.vecs_implicitly_copyable
+        tc + TC_BIG + TC_OWNED_VEC // disregard cx.vecs_implicitly_copyable
+    }
+
+    fn needs_drop(&self, cx: ctxt) -> bool {
+        let tc = TC_MANAGED + TC_DTOR + TypeContents::owned(cx);
+        self.intersects(tc)
+    }
+
+    static fn owned(&self, _cx: ctxt) -> TypeContents {
+        //! Any kind of owned contents.
+        TC_OWNED_CLOSURE + TC_OWNED_POINTER + TC_OWNED_VEC
     }
 }
 
@@ -1859,8 +1795,8 @@ const TC_BORROWED_POINTER: TypeContents = TypeContents{bits:0b0000_00000001};
 /// Contains an owned pointer (~T) but not slice of some kind
 const TC_OWNED_POINTER: TypeContents =    TypeContents{bits:0b000000000010};
 
-/// Contains an owned slice
-const TC_OWNED_SLICE: TypeContents =      TypeContents{bits:0b000000000100};
+/// Contains an owned vector ~[] or owned string ~str
+const TC_OWNED_VEC: TypeContents =        TypeContents{bits:0b000000000100};
 
 /// Contains a ~fn() or a ~Trait, which is non-copyable.
 const TC_OWNED_CLOSURE: TypeContents =    TypeContents{bits:0b000000001000};
@@ -1963,7 +1899,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_estr(vstore_uniq) => {
-                TC_OWNED_SLICE
+                TC_OWNED_VEC
             }
 
             ty_closure(ref c) => {
@@ -1996,7 +1932,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_evec(mt, vstore_uniq) => {
-                TC_OWNED_SLICE + tc_mt(cx, mt, cache)
+                TC_OWNED_VEC + tc_mt(cx, mt, cache)
             }
 
             ty_evec(mt, vstore_box) => {
