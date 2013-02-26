@@ -61,4 +61,14 @@ fn obsolete_moves() {
     //~^ ERROR obsolete syntax: binary move
 }
 
+fn obsolete_capture() {
+    let a = 5;
+    let b = ~"abc";
+
+    let x = |copy a| { };
+    //~^ ERROR obsolete syntax: capture clause
+    let y = |move b| { };
+    //~^ ERROR obsolete syntax: capture clause
+}
+
 fn main() { }
