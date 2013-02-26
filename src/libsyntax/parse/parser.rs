@@ -678,7 +678,7 @@ pub impl Parser {
         // reflected in the AST type.
         let mt = self.parse_mt();
 
-        if mt.mutbl == m_mutbl && sigil == OwnedSigil {
+        if mt.mutbl != m_imm && sigil == OwnedSigil {
             self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
         }
 
@@ -1574,6 +1574,10 @@ pub impl Parser {
           token::TILDE => {
             self.bump();
             let m = self.parse_mutability();
+            if m != m_imm {
+                self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
+            }
+
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec

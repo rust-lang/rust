@@ -128,7 +128,7 @@ pub impl Parser {
                 "write `+` between trait bounds"
             ),
             ObsoleteMutOwnedPointer => (
-                "mutable owned pointer",
+                "const or mutable owned pointer",
                 "mutability inherits through `~` pointers; place the `~` box
                  in a mutable location, like a mutable local variable or an \
                  `@mut` box"
