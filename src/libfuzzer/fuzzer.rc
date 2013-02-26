@@ -290,7 +290,7 @@ pub fn check_variants_T<T: Copy>(
 
     if L < 100 {
         do under(uint::min(L, 20)) |i| {
-            log(error, ~"Replacing... #" + uint::str(i));
+            log(error, ~"Replacing... #" + uint::to_str(i));
             let fname = str::from_slice(filename.to_str());
             do under(uint::min(L, 30)) |j| {
                 log(error, ~"With... " + stringifier(@things[j], intr));
@@ -415,7 +415,7 @@ pub fn check_running(exe_filename: &Path) -> happiness {
             }
             rc => {
               failed(~"Rust program ran but exited with status " +
-                     int::str(rc))
+                     int::to_str(rc))
             }
         }
     }

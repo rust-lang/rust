@@ -14,7 +14,7 @@ trait to_str {
     fn to_str() -> ~str;
 }
 impl to_str for int {
-    fn to_str() -> ~str { int::str(self) }
+    fn to_str() -> ~str { int::to_str(self) }
 }
 impl to_str for ~str {
     fn to_str() -> ~str { copy self }
