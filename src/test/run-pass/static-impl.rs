@@ -30,7 +30,7 @@ trait uint_utils {
 }
 
 impl uint_utils for uint {
-    fn str() -> ~str { uint::str(self) }
+    fn str() -> ~str { uint::to_str(self) }
     fn multi(f: fn(uint)) {
         let mut c = 0u;
         while c < self { f(c); c += 1u; }
