@@ -186,41 +186,45 @@ fn SipState(key0: u64, key1: u64) -> SipState {
     state
 }
 
+// sadly, these macro definitions can't appear later,
+// because they're needed in the following defs;
+// this design could be improved.
+
+macro_rules! u8to64_le (
+    ($buf:expr, $i:expr) =>
+    ($buf[0+$i] as u64 |
+     $buf[1+$i] as u64 << 8 |
+     $buf[2+$i] as u64 << 16 |
+     $buf[3+$i] as u64 << 24 |
+     $buf[4+$i] as u64 << 32 |
+     $buf[5+$i] as u64 << 40 |
+     $buf[6+$i] as u64 << 48 |
+     $buf[7+$i] as u64 << 56)
+)
+
+macro_rules! rotl (
+    ($x:expr, $b:expr) =>
+    (($x << $b) | ($x >> (64 - $b)))
+)
+
+macro_rules! compress (
+    ($v0:expr, $v1:expr, $v2:expr, $v3:expr) =>
+    ({
+        $v0 += $v1; $v1 = rotl!($v1, 13); $v1 ^= $v0;
+        $v0 = rotl!($v0, 32);
+        $v2 += $v3; $v3 = rotl!($v3, 16); $v3 ^= $v2;
+        $v0 += $v3; $v3 = rotl!($v3, 21); $v3 ^= $v0;
+        $v2 += $v1; $v1 = rotl!($v1, 17); $v1 ^= $v2;
+        $v2 = rotl!($v2, 32);
+    })
+)
+
 
 impl io::Writer for SipState {
 
     // Methods for io::writer
     #[inline(always)]
     fn write(&self, msg: &[const u8]) {
-
-        macro_rules! u8to64_le (
-            ($buf:expr, $i:expr) =>
-            ($buf[0+$i] as u64 |
-             $buf[1+$i] as u64 << 8 |
-             $buf[2+$i] as u64 << 16 |
-             $buf[3+$i] as u64 << 24 |
-             $buf[4+$i] as u64 << 32 |
-             $buf[5+$i] as u64 << 40 |
-             $buf[6+$i] as u64 << 48 |
-             $buf[7+$i] as u64 << 56)
-        );
-
-        macro_rules! rotl (
-            ($x:expr, $b:expr) =>
-            (($x << $b) | ($x >> (64 - $b)))
-        );
-
-        macro_rules! compress (
-            ($v0:expr, $v1:expr, $v2:expr, $v3:expr) =>
-            ({
-                $v0 += $v1; $v1 = rotl!($v1, 13); $v1 ^= $v0;
-                $v0 = rotl!($v0, 32);
-                $v2 += $v3; $v3 = rotl!($v3, 16); $v3 ^= $v2;
-                $v0 += $v3; $v3 = rotl!($v3, 21); $v3 ^= $v0;
-                $v2 += $v1; $v1 = rotl!($v1, 17); $v1 ^= $v2;
-                $v2 = rotl!($v2, 32);
-            })
-        );
 
         let length = msg.len();
         self.length += length;
