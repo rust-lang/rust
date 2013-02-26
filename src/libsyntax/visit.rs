@@ -287,11 +287,14 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
             (v.visit_expr)(e2, e, v);
         }
         pat_wild => (),
-        pat_vec(ref elts, ref tail) => {
-            for elts.each |elt| {
+        pat_vec(ref before, ref slice, ref after) => {
+            for before.each |elt| {
                 (v.visit_pat)(*elt, e, v);
             }
-            for tail.each |tail| {
+            for slice.each |elt| {
+                (v.visit_pat)(*elt, e, v);
+            }
+            for after.each |tail| {
                 (v.visit_pat)(*tail, e, v);
             }
         }

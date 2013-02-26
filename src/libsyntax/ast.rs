@@ -309,7 +309,9 @@ pub enum pat_ {
     pat_region(@pat), // borrowed pointer pattern
     pat_lit(@expr),
     pat_range(@expr, @expr),
-    pat_vec(~[@pat], Option<@pat>)
+    // [a, b, ..i, y, z] is represented as
+    // pat_vec(~[a, b], Some(i), ~[y, z])
+    pat_vec(~[@pat], Option<@pat>, ~[@pat])
 }
 
 #[auto_encode]
