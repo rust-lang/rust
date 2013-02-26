@@ -12,9 +12,9 @@ fn foo() -> int {
     return 0xca7f000d;
 }
 
-struct Bar { f: &fn() -> int }
+struct Bar { f: &'self fn() -> int }
 
-const b : Bar = Bar { f: foo };
+const b : Bar/&static = Bar { f: foo };
 
 pub fn main() {
     assert (b.f)() == 0xca7f000d;

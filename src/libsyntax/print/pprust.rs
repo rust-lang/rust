@@ -35,8 +35,8 @@ use core::u64;
 use core::vec;
 
 // The @ps is stored here to prevent recursive type.
-pub enum ann_node/& {
-    node_block(@ps, &ast::blk),
+pub enum ann_node<'self> {
+    node_block(@ps, &'self ast::blk),
     node_item(@ps, @ast::item),
     node_expr(@ps, @ast::expr),
     node_pat(@ps, @ast::pat),

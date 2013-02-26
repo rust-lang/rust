@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum E { V1(int), V0 }
-const C: &[E] = &[V0, V1(0xDEADBEE)];
+const C: &'static [E] = &[V0, V1(0xDEADBEE)];
 const C0: E = C[0];
 const C1: E = C[1];
 

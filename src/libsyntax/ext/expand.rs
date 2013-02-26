@@ -442,11 +442,12 @@ pub fn core_macros() -> ~str {
             mod $c {
                 fn key(_x: @::core::condition::Handler<$in,$out>) { }
 
-                pub const cond : ::core::condition::Condition<$in,$out> =
+                pub const cond :
+                    ::core::condition::Condition/&static<$in,$out> =
                     ::core::condition::Condition {
-                    name: stringify!($c),
-                    key: key
-                };
+                        name: stringify!($c),
+                        key: key
+                    };
             }
         }
     )

@@ -9,11 +9,11 @@
 // except according to those terms.
 
 
-struct Pair { a: int, b: &int }
+struct Pair { a: int, b: &'self int }
 
-const x: &int = &10;
+const x: &'static int = &10;
 
-const y: &Pair = &Pair {a: 15, b: x};
+const y: &'static Pair<'static> = &Pair {a: 15, b: x};
 
 pub fn main() {
     io::println(fmt!("x = %?", *x));

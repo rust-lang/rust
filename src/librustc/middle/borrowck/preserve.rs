@@ -64,7 +64,7 @@ pub impl BorrowckCtxt {
 }
 
 struct PreserveCtxt {
-    bccx: &BorrowckCtxt,
+    bccx: &self/BorrowckCtxt,
 
     // the region scope for which we must preserve the memory
     scope_region: ty::Region,
@@ -79,7 +79,7 @@ struct PreserveCtxt {
     root_managed_data: bool
 }
 
-pub impl PreserveCtxt {
+pub impl PreserveCtxt/&self {
     fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     fn preserve(&self, cmt: cmt) -> bckres<PreserveCondition> {

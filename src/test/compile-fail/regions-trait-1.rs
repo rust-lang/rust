@@ -15,13 +15,13 @@ trait get_ctxt {
     fn get_ctxt() -> &ctxt;
 }
 
-struct has_ctxt { c: &ctxt }
+struct has_ctxt { c: &'self ctxt }
 
-impl get_ctxt for has_ctxt {
+impl get_ctxt for has_ctxt<'self> {
 
     // Here an error occurs because we used `&self` but
     // the definition used `&`:
-    fn get_ctxt() -> &self/ctxt { //~ ERROR method `get_ctxt` has an incompatible type
+    fn get_ctxt() -> &'self ctxt { //~ ERROR method `get_ctxt` has an incompatible type
         self.c
     }
 

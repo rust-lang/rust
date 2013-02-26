@@ -17,7 +17,7 @@ use core::util;
 use core::vec::{len, push};
 use core::vec;
 
-type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
+type Le<T> = &self/pure fn(v1: &T, v2: &T) -> bool;
 
 /**
  * Merge sort. Returns a new vector containing the sorted list.
@@ -169,7 +169,7 @@ pub trait Sort {
     fn qsort(self);
 }
 
-impl<T:Copy + Ord + Eq> Sort for &mut [T] {
+impl<T:Copy + Ord + Eq> Sort for &self/mut [T] {
     fn qsort(self) { quick_sort3(self); }
 }
 
@@ -1178,11 +1178,10 @@ mod big_tests {
 
     struct LVal {
         val: uint,
-        key: fn(@uint),
-
+        key: &self/fn(@uint),
     }
 
-    impl Drop for LVal {
+    impl Drop for LVal/&self {
         fn finalize(&self) {
             let x = unsafe { task::local_data::local_data_get(self.key) };
             match x {
@@ -1196,7 +1195,7 @@ mod big_tests {
         }
     }
 
-    impl Ord for LVal {
+    impl Ord for LVal/&self {
         pure fn lt(&self, other: &a/LVal/&self) -> bool {
             (*self).val < other.val
         }

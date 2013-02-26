@@ -31,7 +31,7 @@ pub trait Finally<T> {
     fn finally(&self, dtor: &fn()) -> T;
 }
 
-impl<T> Finally<T> for &fn() -> T {
+impl<T> Finally<T> for &self/fn() -> T {
     fn finally(&self, dtor: &fn()) -> T {
         let _d = Finallyalizer {
             dtor: dtor
@@ -42,10 +42,10 @@ impl<T> Finally<T> for &fn() -> T {
 }
 
 struct Finallyalizer {
-    dtor: &fn()
+    dtor: &self/fn()
 }
 
-impl Drop for Finallyalizer {
+impl Drop for Finallyalizer/&self {
     fn finalize(&self) {
         (self.dtor)();
     }

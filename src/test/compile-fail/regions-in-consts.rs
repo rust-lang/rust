@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const c_x: &blk/int = &22; //~ ERROR only the static region is allowed here
-const c_y: &static/int = &22;
+const c_x: &'blk int = &22; //~ ERROR only the static region is allowed here
+const c_y: &int = &22; //~ ERROR only the static region is allowed here
+const c_z: &'static int = &22;
 
 fn main() {
 }
