@@ -19,6 +19,7 @@ use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
+use middle::lint::{get_lint_level, get_lint_settings_level};
 use middle::pat_util::{pat_bindings};
 
 use core::cmp;
@@ -508,16 +509,6 @@ pub impl Module {
     }
 }
 
-pub fn unused_import_lint_level(session: Session) -> level {
-    for session.opts.lint_opts.each |lint_option_pair| {
-        let (lint_type, lint_level) = *lint_option_pair;
-        if lint_type == unused_imports {
-            return lint_level;
-        }
-    }
-    return allow;
-}
-
 // Records a possibly-private type definition.
 pub struct TypeNsDef {
     privacy: Privacy,
@@ -770,8 +761,6 @@ pub fn Resolver(session: Session,
 
         graph_root: graph_root,
 
-        unused_import_lint_level: unused_import_lint_level(session),
-
         trait_info: @HashMap(),
         structs: @HashMap(),
 
@@ -815,8 +804,6 @@ pub struct Resolver {
     intr: @ident_interner,
 
     graph_root: @mut NameBindings,
-
-    unused_import_lint_level: level,
 
     trait_info: @HashMap<def_id,@HashMap<ident,()>>,
     structs: @HashMap<def_id,()>,
@@ -5232,8 +5219,17 @@ pub impl Resolver {
     // resolve data structures.
     //
 
+    fn unused_import_lint_level(@mut self, m: @mut Module) -> level {
+        let settings = self.session.lint_settings;
+        match m.def_id {
+            Some(def) => get_lint_settings_level(settings, unused_imports,
+                                                 def.node, def.node),
+            None => get_lint_level(settings.default_settings, unused_imports)
+        }
+    }
+
     fn check_for_unused_imports_if_necessary(@mut self) {
-        if self.unused_import_lint_level == allow {
+        if self.unused_import_lint_level(self.current_module) == allow {
             return;
         }
 
@@ -5285,12 +5281,15 @@ pub impl Resolver {
         for module_.import_resolutions.each_value |&import_resolution| {
             // Ignore dummy spans for things like automatically injected
             // imports for the prelude, and also don't warn about the same
-            // import statement being unused more than once.
+            // import statement being unused more than once. Furthermore, if
+            // the import is public, then we can't be sure whether it's unused
+            // or not so don't warn about it.
             if !import_resolution.state.used &&
                     !import_resolution.state.warned &&
-                    import_resolution.span != dummy_sp() {
+                    import_resolution.span != dummy_sp() &&
+                    import_resolution.privacy != Public {
                 import_resolution.state.warned = true;
-                match self.unused_import_lint_level {
+                match self.unused_import_lint_level(module_) {
                     warn => {
                         self.session.span_warn(copy import_resolution.span,
                                                ~"unused import");
@@ -5299,11 +5298,7 @@ pub impl Resolver {
                       self.session.span_err(copy import_resolution.span,
                                             ~"unused import");
                     }
-                    allow => {
-                      self.session.span_bug(copy import_resolution.span,
-                                            ~"shouldn't be here if lint \
-                                              is allowed");
-                    }
+                    allow => ()
                 }
             }
         }

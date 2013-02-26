@@ -1611,7 +1611,6 @@ The following are examples of structure expressions:
 # struct Point { x: float, y: float }
 # struct TuplePoint(float, float);
 # mod game { pub struct User { name: &str, age: uint, score: uint } }
-# use game;
 Point {x: 10f, y: 20f};
 TuplePoint(10f, 20f);
 let u = game::User {name: "Joe", age: 35u, score: 100_000};
