@@ -195,7 +195,7 @@ fn contains_macro_escape (attrs: &[ast::attribute]) -> bool{
 macro_rules! without_macro_scoping(
     ($extsexpr:expr,$exp:expr) =>
     ({
-        // only evaluaate this once:
+        // only evaluate this once:
         let exts = $extsexpr;
         // capture the existing binding:
         let existingBlockBinding =
@@ -420,8 +420,6 @@ pub fn core_macros() -> ~str {
 
 }";
 }
-
-// could cfg just be a borrowed pointer here?
 
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
                     cfg: ast::crate_cfg, c: @crate) -> @crate {

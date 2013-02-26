@@ -414,8 +414,8 @@ pub fn get_exprs_from_tts(cx: ext_ctxt, tts: ~[ast::token_tree])
 // a transformer env is either a base map or a map on top
 // of another chain.
 pub enum MapChain<K,V> {
-    TEC_Base(~LinearMap<K,@V>),
-    TEC_Cons(~LinearMap<K,@V>,@mut MapChain<K,V>)
+    BaseMapChain(~LinearMap<K,@V>),
+    ConsMapChain(~LinearMap<K,@V>,@mut MapChain<K,V>)
 }
 
 
@@ -424,12 +424,12 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     // Constructor. I don't think we need a zero-arg one.
     static fn new(+init: ~LinearMap<K,@V>) -> @mut MapChain<K,V> {
-        @mut TEC_Base(init)
+        @mut BaseMapChain(init)
     }
 
     // add a new frame to the environment (functionally)
     fn push_frame (@mut self) -> @mut MapChain<K,V> {
-        @mut TEC_Cons(~LinearMap::new() ,self)
+        @mut ConsMapChain(~LinearMap::new() ,self)
     }
 
 // no need for pop, it'll just be functional.
@@ -440,8 +440,8 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
     // lack of flow sensitivity.
     fn get_map(&self) -> &self/LinearMap<K,@V> {
         match *self {
-            TEC_Base (~ref map) => map,
-            TEC_Cons (~ref map,_) => map
+            BaseMapChain (~ref map) => map,
+            ConsMapChain (~ref map,_) => map
         }
     }
 
@@ -450,8 +450,8 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     pure fn contains_key (&self, key: &K) -> bool {
         match *self {
-            TEC_Base (ref map) => map.contains_key(key),
-            TEC_Cons (ref map,ref rest) =>
+            BaseMapChain (ref map) => map.contains_key(key),
+            ConsMapChain (ref map,ref rest) =>
             (map.contains_key(key)
              || rest.contains_key(key))
         }
@@ -473,8 +473,8 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
         match self.get_map().find (key) {
             Some(ref v) => Some(**v),
             None => match *self {
-                TEC_Base (_) => None,
-                TEC_Cons (_,ref rest) => rest.find(key)
+                BaseMapChain (_) => None,
+                ConsMapChain (_,ref rest) => rest.find(key)
             }
         }
     }
@@ -483,8 +483,8 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
     fn insert (&mut self, +key: K, +ext: @V) -> bool {
         // can't abstract over get_map because of flow sensitivity...
         match *self {
-            TEC_Base (~ref mut map) => map.insert(key, ext),
-            TEC_Cons (~ref mut map,_) => map.insert(key,ext)
+            BaseMapChain (~ref mut map) => map.insert(key, ext),
+            ConsMapChain (~ref mut map,_) => map.insert(key,ext)
         }
     }
 
