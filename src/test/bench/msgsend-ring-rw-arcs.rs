@@ -16,6 +16,8 @@
 // This also serves as a pipes test, because ARCs are implemented with pipes.
 
 extern mod std;
+
+use core::cell::Cell;
 use std::time;
 use std::arc;
 use std::future;
@@ -77,7 +79,7 @@ fn main() {
     let msg_per_task = uint::from_str(args[2]).get();
 
     let (num_chan, num_port) = init();
-    let mut num_chan = Some(num_chan);
+    let mut num_chan = Cell(num_chan);
 
     let start = time::precise_time_s();
 
@@ -87,7 +89,7 @@ fn main() {
     for uint::range(1u, num_tasks) |i| {
         //error!("spawning %?", i);
         let (new_chan, num_port) = init();
-        let num_chan2 = Cell(num_chan);
+        let num_chan2 = Cell(num_chan.take());
         let num_port = Cell(num_port);
         let new_future = do future::spawn {
             let num_chan = num_chan2.take();
@@ -95,11 +97,11 @@ fn main() {
             thread_ring(i, msg_per_task, num_chan, num_port1)
         };
         futures.push(new_future);
-        num_chan = Some(new_chan);
+        num_chan.put_back(new_chan);
     };
 
     // do our iteration
-    thread_ring(0, msg_per_task, option::unwrap(num_chan), num_port);
+    thread_ring(0, msg_per_task, num_chan.take(), num_port);
 
     // synchronize
     for futures.each |f| { f.get() };
