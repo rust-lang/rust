@@ -107,10 +107,14 @@ fn compare_and_swap(address: &mut int, oldval: int, newval: int) -> bool {
  * Shared state & exclusive ARC
  ****************************************************************************/
 
+struct UnwrapProtoInner {
+    contents: Option<(comm::ChanOne<()>,  comm::PortOne<bool>)>,
+}
+
 // An unwrapper uses this protocol to communicate with the "other" task that
 // drops the last refcount on an arc. Unfortunately this can't be a proper
 // pipe protocol because the unwrapper has to access both stages at once.
-type UnwrapProto = ~mut Option<(comm::ChanOne<()>,  comm::PortOne<bool>)>;
+type UnwrapProto = ~UnwrapProtoInner;
 
 struct ArcData<T> {
     mut count:     libc::intptr_t,
@@ -139,9 +143,10 @@ struct ArcDestruct<T> {
                     // reference. In effect, being here means we're the only
                     // *awake* task with the data.
                     if data.unwrapper != 0 {
-                        let p: UnwrapProto =
+                        let mut p: UnwrapProto =
                             cast::reinterpret_cast(&data.unwrapper);
-                        let (message, response) = option::swap_unwrap(p);
+                        let (message, response) =
+                            option::swap_unwrap(&mut p.contents);
                         // Send 'ready' and wait for a response.
                         comm::send_one(message, ());
                         // Unkillable wait. Message guaranteed to come.
@@ -196,7 +201,9 @@ pub unsafe fn unwrap_shared_mutable_state<T:Owned>(rc: SharedMutableState<T>)
         let ptr: ~ArcData<T> = cast::reinterpret_cast(&rc.data);
         let (p1,c1) = comm::oneshot(); // ()
         let (p2,c2) = comm::oneshot(); // bool
-        let server: UnwrapProto = ~mut Some((c1,p2));
+        let mut server: UnwrapProto = ~UnwrapProtoInner {
+            contents: Some((c1,p2))
+        };
         let serverp: int = cast::transmute(server);
         // Try to put our server end in the unwrapper slot.
         if compare_and_swap(&mut ptr.unwrapper, 0, serverp) {
@@ -409,8 +416,9 @@ pub fn unwrap_exclusive<T:Owned>(arc: Exclusive<T>) -> T {
 pub mod tests {
     use core::option::{None, Some};
 
-    use option;
+    use cell::Cell;
     use comm;
+    use option;
     use private::{exclusive, unwrap_exclusive};
     use result;
     use task;
@@ -423,7 +431,7 @@ pub mod tests {
         let num_tasks = 10;
         let count = 10;
 
-        let total = exclusive(~mut 0);
+        let total = exclusive(~0);
 
         for uint::range(0, num_tasks) |_i| {
             let total = total.clone();
@@ -472,9 +480,9 @@ pub mod tests {
     #[test]
     pub fn exclusive_unwrap_contended() {
         let x = exclusive(~~"hello");
-        let x2 = ~mut Some(x.clone());
-        do task::spawn || {
-            let x2 = option::swap_unwrap(x2);
+        let x2 = Cell(x.clone());
+        do task::spawn {
+            let x2 = x2.take();
             do x2.with |_hello| { }
             task::yield();
         }
@@ -482,11 +490,10 @@ pub mod tests {
 
         // Now try the same thing, but with the child task blocking.
         let x = exclusive(~~"hello");
-        let x2 = ~mut Some(x.clone());
+        let x2 = Cell(x.clone());
         let mut res = None;
-        do task::task().future_result(|+r| res = Some(r)).spawn
-              || {
-            let x2 = option::swap_unwrap(x2);
+        do task::task().future_result(|+r| res = Some(r)).spawn {
+            let x2 = x2.take();
             assert unwrap_exclusive(x2) == ~~"hello";
         }
         // Have to get rid of our reference before blocking.
@@ -498,11 +505,10 @@ pub mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     pub fn exclusive_unwrap_conflict() {
         let x = exclusive(~~"hello");
-        let x2 = ~mut Some(x.clone());
+        let x2 = Cell(x.clone());
         let mut res = None;
-        do task::task().future_result(|+r| res = Some(r)).spawn
-           || {
-            let x2 = option::swap_unwrap(x2);
+        do task::task().future_result(|+r| res = Some(r)).spawn {
+            let x2 = x2.take();
             assert unwrap_exclusive(x2) == ~~"hello";
         }
         assert unwrap_exclusive(x) == ~~"hello";

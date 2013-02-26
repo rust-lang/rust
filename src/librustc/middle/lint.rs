@@ -80,6 +80,7 @@ pub enum lint {
     type_limits,
     default_methods,
     deprecated_self,
+    deprecated_mutable_fields,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -253,6 +254,13 @@ pub fn get_lint_dict() -> LintDict {
             desc: "warn about deprecated uses of `self`",
             default: warn
          }),
+
+        (@~"deprecated_mutable_fields",
+         @LintSpec {
+            lint: deprecated_mutable_fields,
+            desc: "deprecated mutable fields in structures",
+            default: deny
+        }),
 
         /* FIXME(#3266)--make liveness warnings lintable
         (@~"unused_variable",
@@ -486,6 +494,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
     check_item_deprecated_self(cx, i);
+    check_item_deprecated_mutable_fields(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -697,6 +706,26 @@ fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
         ast::item_impl(_, _, _, methods) => {
             for methods.each |method| {
                 maybe_warn(cx, item, method.self_ty);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn check_item_deprecated_mutable_fields(cx: ty::ctxt, item: @ast::item) {
+    match item.node {
+        ast::item_struct(struct_def, _) => {
+            for struct_def.fields.each |field| {
+                match field.node.kind {
+                    ast::named_field(_, ast::struct_mutable, _) => {
+                        cx.sess.span_lint(deprecated_mutable_fields,
+                                          item.id,
+                                          item.id,
+                                          field.span,
+                                          ~"mutable fields are deprecated");
+                    }
+                    ast::named_field(*) | ast::unnamed_field => {}
+                }
             }
         }
         _ => {}
