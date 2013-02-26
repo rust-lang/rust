@@ -216,7 +216,8 @@ pub fn ast_ty_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
         match a_seq_ty.ty.node {
             ast::ty_vec(mt) => {
                 let mut mt = ast_mt_to_mt(self, rscope, mt);
-                if a_seq_ty.mutbl == ast::m_mutbl {
+                if a_seq_ty.mutbl == ast::m_mutbl ||
+                        a_seq_ty.mutbl == ast::m_const {
                     mt = ty::mt { ty: mt.ty, mutbl: ast::m_mutbl };
                 }
                 return ty::mk_evec(tcx, mt, vst);
