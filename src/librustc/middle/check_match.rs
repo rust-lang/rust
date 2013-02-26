@@ -19,7 +19,6 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use core::option;
 use core::uint;
 use core::vec;
 use std::sort;

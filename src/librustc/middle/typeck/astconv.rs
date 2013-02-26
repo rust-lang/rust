@@ -69,12 +69,11 @@ use syntax::print::pprust::path_to_str;
 use util::common::indenter;
 
 pub trait AstConv {
-    fn tcx(@mut self) -> ty::ctxt;
-    fn ccx(@mut self) -> @mut CrateCtxt;
-    fn get_item_ty(@mut self, id: ast::def_id) -> ty::ty_param_bounds_and_ty;
+    fn tcx(&self) -> ty::ctxt;
+    fn get_item_ty(&self, id: ast::def_id) -> ty::ty_param_bounds_and_ty;
 
     // what type should we use when a type is omitted?
-    fn ty_infer(@mut self, span: span) -> ty::t;
+    fn ty_infer(&self, span: span) -> ty::t;
 }
 
 pub fn get_region_reporting_err(tcx: ty::ctxt,
@@ -92,8 +91,8 @@ pub fn get_region_reporting_err(tcx: ty::ctxt,
 }
 
 pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: @mut AC,
-        rscope: RS,
+        self: &AC,
+        rscope: &RS,
         span: span,
         a_r: @ast::region)
      -> ty::Region {
@@ -108,8 +107,8 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + Durable>(
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: @mut AC,
-        rscope: RS,
+        self: &AC,
+        rscope: &RS,
         did: ast::def_id,
         path: @ast::path)
      -> ty_param_substs_and_ty {
@@ -164,8 +163,8 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
 }
 
 pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: @mut AC,
-        rscope: RS,
+        self: &AC,
+        rscope: &RS,
         did: ast::def_id,
         path: @ast::path,
         path_id: ast::node_id)
@@ -189,11 +188,11 @@ pub const NO_TPS: uint = 2;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-pub fn ast_ty_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
-    self: @mut AC, rscope: RS, &&ast_ty: @ast::Ty) -> ty::t {
+pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
+    self: &AC, rscope: &RS, &&ast_ty: @ast::Ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: @mut AC, rscope: RS, mt: ast::mt) -> ty::mt {
+    fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + Durable>(
+        self: &AC, rscope: &RS, mt: ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl}
     }
@@ -202,8 +201,8 @@ pub fn ast_ty_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle function sigils and first-class trait types.
     fn mk_pointer<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: @mut AC,
-        rscope: RS,
+        self: &AC,
+        rscope: &RS,
         a_seq_ty: ast::mt,
         vst: ty::vstore,
         constr: fn(ty::mt) -> ty::t) -> ty::t
@@ -316,7 +315,8 @@ pub fn ast_ty_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
       }
       ast::ty_rptr(region, mt) => {
         let r = ast_region_to_region(self, rscope, ast_ty.span, region);
-        mk_pointer(self, in_anon_rscope(rscope, r), mt, ty::vstore_slice(r),
+        let anon_rscope = in_anon_rscope(rscope, r);
+        mk_pointer(self, &anon_rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(fields) => {
@@ -419,8 +419,8 @@ pub fn ast_ty_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
 }
 
 pub fn ty_of_arg<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: @mut AC,
-        rscope: RS,
+        self: &AC,
+        rscope: &RS,
         a: ast::arg,
         expected_ty: Option<ty::arg>)
      -> ty::arg {
@@ -467,8 +467,8 @@ pub fn ty_of_arg<AC:AstConv,RS:region_scope + Copy + Durable>(
 }
 
 pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: @mut AC,
-        rscope: RS,
+        self: &AC,
+        rscope: &RS,
         purity: ast::purity,
         abi: ast::Abi,
         decl: &ast::fn_decl)
@@ -479,10 +479,10 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
     // that function type
     let rb = in_binding_rscope(rscope);
 
-    let input_tys = decl.inputs.map(|a| ty_of_arg(self, rb, *a, None));
+    let input_tys = decl.inputs.map(|a| ty_of_arg(self, &rb, *a, None));
     let output_ty = match decl.output.node {
         ast::ty_infer => self.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(self, rb, decl.output)
+        _ => ast_ty_to_ty(self, &rb, decl.output)
     };
 
     ty::BareFnTy {
@@ -493,8 +493,8 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
 }
 
 pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
-        self: @mut AC,
-        rscope: RS,
+        self: &AC,
+        rscope: &RS,
         sigil: ast::Sigil,
         purity: ast::purity,
         onceness: ast::Onceness,
@@ -538,14 +538,14 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
         };
-        ty_of_arg(self, rb, *a, expected_arg_ty)
+        ty_of_arg(self, &rb, *a, expected_arg_ty)
     };
 
     let expected_ret_ty = expected_tys.map(|e| e.output);
     let output_ty = match decl.output.node {
         ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.get(),
         ast::ty_infer => self.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(self, rb, decl.output)
+        _ => ast_ty_to_ty(self, &rb, decl.output)
     };
 
     ty::ClosureTy {

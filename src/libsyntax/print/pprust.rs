@@ -30,7 +30,6 @@ use print::pprust;
 use core::char;
 use core::dvec::DVec;
 use core::io;
-use core::option;
 use core::str;
 use core::u64;
 use core::vec;
