@@ -265,11 +265,6 @@ pub pure fn to_str_radix(num: T, radix: uint) -> ~str {
     buf
 }
 
-/// Convert to a string.
-/// *Deprecated*, use to_str() instead.
-#[inline(always)]
-pub pure fn str(i: T) -> ~str { to_str(i) }
-
 impl ToStr for T {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
