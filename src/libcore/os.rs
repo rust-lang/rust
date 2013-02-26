@@ -566,17 +566,13 @@ pub fn path_exists(p: &Path) -> bool {
  *
  * If the given path is relative, return it prepended with the current working
  * directory. If the given path is already an absolute path, return it
- * as is.
+ * as is.  This is a shortcut for calling os::getcwd().unsafe_join(p)
  */
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
 pub fn make_absolute(p: &Path) -> Path {
-    if p.is_absolute {
-        copy *p
-    } else {
-        getcwd().push_many(p.components)
-    }
+    getcwd().unsafe_join(p)
 }
 
 
