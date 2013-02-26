@@ -97,11 +97,11 @@ fn c_stack_tys(ccx: @CrateContext,
     };
 }
 
-type shim_arg_builder = fn(bcx: block, tys: @c_stack_tys,
-                           llargbundle: ValueRef) -> ~[ValueRef];
+type shim_arg_builder = &self/fn(bcx: block, tys: @c_stack_tys,
+                                 llargbundle: ValueRef) -> ~[ValueRef];
 
-type shim_ret_builder = fn(bcx: block, tys: @c_stack_tys,
-                           llargbundle: ValueRef, llretval: ValueRef);
+type shim_ret_builder = &self/fn(bcx: block, tys: @c_stack_tys,
+                                 llargbundle: ValueRef, llretval: ValueRef);
 
 fn build_shim_fn_(ccx: @CrateContext,
                   +shim_name: ~str,
@@ -133,12 +133,12 @@ fn build_shim_fn_(ccx: @CrateContext,
     return llshimfn;
 }
 
-type wrap_arg_builder = fn(bcx: block, tys: @c_stack_tys,
-                           llwrapfn: ValueRef,
-                           llargbundle: ValueRef);
+type wrap_arg_builder = &self/fn(bcx: block, tys: @c_stack_tys,
+                                 llwrapfn: ValueRef,
+                                 llargbundle: ValueRef);
 
-type wrap_ret_builder = fn(bcx: block, tys: @c_stack_tys,
-                           llargbundle: ValueRef);
+type wrap_ret_builder = &self/fn(bcx: block, tys: @c_stack_tys,
+                                 llargbundle: ValueRef);
 
 fn build_wrap_fn_(ccx: @CrateContext,
                   tys: @c_stack_tys,

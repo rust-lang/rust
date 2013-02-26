@@ -9,10 +9,10 @@
 // except according to those terms.
 
 struct CMap {
-    buf: &[u8],
+    buf: &'self [u8],
 }
 
-fn CMap(buf: &r/[u8]) -> CMap/&r {
+fn CMap(buf: &'r [u8]) -> CMap/&r {
     CMap {
         buf: buf
     }

@@ -16,10 +16,9 @@
  */
 
 fn f() { }
-const bare_fns: &[extern fn()] = &[f, f];
-// NOTE Why does this not type without the struct?
-struct S(&fn());
-const closures: &[S] = &[S(f), S(f)];
+const bare_fns: &'static [extern fn()] = &[f, f];
+struct S<'self>(&'self fn());
+const closures: &'static [S<'static>] = &[S(f), S(f)];
 
 pub fn main() {
     for bare_fns.each |&bare_fn| { bare_fn() }

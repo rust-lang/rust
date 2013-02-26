@@ -22,10 +22,10 @@ pub struct Handler<T, U> {
 
 pub struct Condition<T, U> {
     name: &static/str,
-    key: task::local_data::LocalDataKey<Handler<T, U>>
+    key: task::local_data::LocalDataKey/&self<Handler<T, U>>
 }
 
-pub impl<T, U> Condition<T, U> {
+pub impl<T, U> Condition/&self<T, U> {
     fn trap(&self, h: &self/fn(T) -> U) -> Trap/&self<T, U> {
         unsafe {
             let p : *RustClosure = ::cast::transmute(&h);
@@ -65,11 +65,11 @@ pub impl<T, U> Condition<T, U> {
 }
 
 struct Trap<T, U> {
-    cond: &Condition<T, U>,
+    cond: &self/Condition/&self<T, U>,
     handler: @Handler<T, U>
 }
 
-pub impl<T, U> Trap<T, U> {
+pub impl<T, U> Trap/&self<T, U> {
     fn in<V>(&self, inner: &self/fn() -> V) -> V {
         unsafe {
             let _g = Guard { cond: self.cond };
@@ -81,10 +81,10 @@ pub impl<T, U> Trap<T, U> {
 }
 
 struct Guard<T, U> {
-    cond: &Condition<T, U>
+    cond: &self/Condition/&self<T, U>
 }
 
-impl<T, U> Drop for Guard<T, U> {
+impl<T, U> Drop for Guard/&self<T, U> {
     fn finalize(&self) {
         unsafe {
             debug!("Guard: popping handler from TLS");

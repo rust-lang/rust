@@ -9,12 +9,12 @@
 // except according to those terms.
 
 struct list<T> {
-    element: &self/T,
-    next: Option<@mut list<T>>
+    element: &'self T,
+    next: Option<@mut list<'self, T>>
 }
 
-pub impl<T> list<T>{
-    fn addEnd(&mut self, element: &self/T) {
+pub impl<'self, T> list<'self, T>{
+    fn addEnd(&mut self, element: &'self T) {
         let newList = list {
             element: element,
             next: option::None

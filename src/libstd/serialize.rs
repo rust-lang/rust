@@ -213,7 +213,7 @@ impl<D:Decoder> Decodable<D> for i64 {
     }
 }
 
-impl<S:Encoder> Encodable<S> for &str {
+impl<S:Encoder> Encodable<S> for &self/str {
     fn encode(&self, s: &S) { s.emit_borrowed_str(*self) }
 }
 
@@ -286,7 +286,7 @@ impl<D:Decoder> Decodable<D> for () {
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for &T {
+impl<S:Encoder,T:Encodable<S>> Encodable<S> for &self/T {
     fn encode(&self, s: &S) {
         s.emit_borrowed(|| (**self).encode(s))
     }
@@ -316,7 +316,7 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for @T {
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for &[T] {
+impl<S:Encoder,T:Encodable<S>> Encodable<S> for &self/[T] {
     fn encode(&self, s: &S) {
         do s.emit_borrowed_vec(self.len()) {
             for self.eachi |i, e| {

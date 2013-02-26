@@ -55,7 +55,7 @@ use syntax::{visit, ast_util};
 // primitives in the stdlib are explicitly annotated to only take sendable
 // types.
 
-pub const try_adding: &str = "Try adding a move";
+pub const try_adding: &static/str = "Try adding a move";
 
 pub type rval_map = HashMap<node_id, ()>;
 

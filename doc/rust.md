@@ -1144,22 +1144,23 @@ Constants are declared with the `const` keyword.
 A constant item must have an expression giving its definition.
 The definition expression of a constant is limited to expression forms that can be evaluated at compile time.
 
-Constants must be explicitly typed. The type may be ```bool```, ```char```, a number, or a type derived from
-those primitive types. The derived types are borrowed pointers, static arrays, tuples, and structs.
+Constants must be explicitly typed. The type may be ```bool```, ```char```, a number, or a type derived from those primitive types.
+The derived types are borrowed pointers, static arrays, tuples, and structs.
+Borrowed pointers must be have the `'static` lifetime.
 
 ~~~~
 const bit1: uint = 1 << 0;
 const bit2: uint = 1 << 1;
 
 const bits: [uint * 2] = [bit1, bit2];
-const string: &str = "bitstring";
+const string: &'static str = "bitstring";
 
 struct BitsNStrings {
     mybits: [uint *2],
-    mystring: &str
+    mystring: &'self str
 }
 
-const bits_n_strings: BitsNStrings = BitsNStrings {
+const bits_n_strings: BitsNStrings<'static> = BitsNStrings {
     mybits: bits,
     mystring: string
 };
@@ -1630,7 +1631,7 @@ The following are examples of structure expressions:
 ~~~~
 # struct Point { x: float, y: float }
 # struct TuplePoint(float, float);
-# mod game { pub struct User { name: &str, age: uint, score: uint } }
+# mod game { pub struct User<'self> { name: &'self str, age: uint, score: uint } }
 # struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10f, y: 20f};
 TuplePoint(10f, 20f);
@@ -2556,8 +2557,8 @@ order specified by the tuple type.
 An example of a tuple type and its use:
 
 ~~~~
-type Pair = (int,&str);
-let p: Pair = (10,"hello");
+type Pair<'self> = (int,&'self str);
+let p: Pair<'static> = (10,"hello");
 let (a, b) = p;
 assert b != "world";
 ~~~~
@@ -2718,7 +2719,7 @@ fn add(x: int, y: int) -> int {
 
 let mut x = add(5,7);
 
-type Binop = fn(int,int) -> int;
+type Binop<'self> = &'self fn(int,int) -> int;
 let bo: Binop = add;
 x = bo(5,7);
 ~~~~~~~~

@@ -8,25 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct param1 {
-    g: &fn()
+struct parameterized1 {
+    g: &'self fn()
 }
 
-struct param2 {
-    g: fn()
-}
-
-struct not_param1 {
+struct not_parameterized1 {
     g: @fn()
 }
 
-struct not_param2 {
+struct not_parameterized2 {
     g: @fn()
 }
 
-fn take1(p: param1) -> param1 { p } //~ ERROR mismatched types
-fn take2(p: param2) -> param2 { p } //~ ERROR mismatched types
-fn take3(p: not_param1) -> not_param1 { p }
-fn take4(p: not_param2) -> not_param2 { p }
+fn take1(p: parameterized1) -> parameterized1 { p } //~ ERROR mismatched types
+fn take3(p: not_parameterized1) -> not_parameterized1 { p }
+fn take4(p: not_parameterized2) -> not_parameterized2 { p }
 
 fn main() {}

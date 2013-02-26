@@ -29,7 +29,7 @@ pub struct TrieMap<T> {
     priv length: uint
 }
 
-impl<T> BaseIter<(uint, &T)> for TrieMap<T> {
+impl<T> BaseIter<(uint, &'self T)> for TrieMap<T> {
     /// Visit all key-value pairs in order
     #[inline(always)]
     pure fn each(&self, f: fn(&(uint, &self/T)) -> bool) {
@@ -39,7 +39,7 @@ impl<T> BaseIter<(uint, &T)> for TrieMap<T> {
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<T> ReverseIter<(uint, &T)> for TrieMap<T> {
+impl<T> ReverseIter<(uint, &'self T)> for TrieMap<T> {
     /// Visit all key-value pairs in reverse order
     #[inline(always)]
     pure fn each_reverse(&self, f: fn(&(uint, &self/T)) -> bool) {

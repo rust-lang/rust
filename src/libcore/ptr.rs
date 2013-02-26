@@ -264,7 +264,7 @@ impl<T> Ord for *const T {
 
 // Equality for region pointers
 #[cfg(notest)]
-impl<T:Eq> Eq for &const T {
+impl<T:Eq> Eq for &self/const T {
     #[inline(always)]
     pure fn eq(&self, other: & &self/const T) -> bool {
         return *(*self) == *(*other);
@@ -277,7 +277,7 @@ impl<T:Eq> Eq for &const T {
 
 // Comparison for region pointers
 #[cfg(notest)]
-impl<T:Ord> Ord for &const T {
+impl<T:Ord> Ord for &self/const T {
     #[inline(always)]
     pure fn lt(&self, other: & &self/const T) -> bool {
         *(*self) < *(*other)

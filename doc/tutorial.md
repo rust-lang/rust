@@ -1951,7 +1951,7 @@ trait Printable {
 Traits may be implemented for specific types with [impls]. An impl
 that implements a trait includes the name of the trait at the start of
 the definition, as in the following impls of `Printable` for `int`
-and `&str`.
+and `~str`.
 
 [impls]: #functions-and-methods
 
@@ -1961,12 +1961,12 @@ impl Printable for int {
     fn print(&self) { io::println(fmt!("%d", *self)) }
 }
 
-impl Printable for &str {
+impl Printable for ~str {
     fn print(&self) { io::println(*self) }
 }
 
 # 1.print();
-# ("foo").print();
+# (~"foo").print();
 ~~~~
 
 Methods defined in an implementation of a trait may be called just like

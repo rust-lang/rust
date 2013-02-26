@@ -1028,11 +1028,11 @@ pub mod consts {
     pub use os::consts::windows::*;
 
     pub mod unix {
-        pub const FAMILY: &str = "unix";
+        pub const FAMILY: &static/str = "unix";
     }
 
     pub mod windows {
-        pub const FAMILY: &str = "windows";
+        pub const FAMILY: &static/str = "windows";
     }
 
     #[cfg(target_os = "macos")]
@@ -1051,38 +1051,38 @@ pub mod consts {
     pub use os::consts::win32::*;
 
     pub mod macos {
-        pub const SYSNAME: &str = "macos";
-        pub const DLL_PREFIX: &str = "lib";
-        pub const DLL_SUFFIX: &str = ".dylib";
-        pub const EXE_SUFFIX: &str = "";
+        pub const SYSNAME: &static/str = "macos";
+        pub const DLL_PREFIX: &static/str = "lib";
+        pub const DLL_SUFFIX: &static/str = ".dylib";
+        pub const EXE_SUFFIX: &static/str = "";
     }
 
     pub mod freebsd {
-        pub const SYSNAME: &str = "freebsd";
-        pub const DLL_PREFIX: &str = "lib";
-        pub const DLL_SUFFIX: &str = ".so";
-        pub const EXE_SUFFIX: &str = "";
+        pub const SYSNAME: &static/str = "freebsd";
+        pub const DLL_PREFIX: &static/str = "lib";
+        pub const DLL_SUFFIX: &static/str = ".so";
+        pub const EXE_SUFFIX: &static/str = "";
     }
 
     pub mod linux {
-        pub const SYSNAME: &str = "linux";
-        pub const DLL_PREFIX: &str = "lib";
-        pub const DLL_SUFFIX: &str = ".so";
-        pub const EXE_SUFFIX: &str = "";
+        pub const SYSNAME: &static/str = "linux";
+        pub const DLL_PREFIX: &static/str = "lib";
+        pub const DLL_SUFFIX: &static/str = ".so";
+        pub const EXE_SUFFIX: &static/str = "";
     }
 
     pub mod android {
-        pub const SYSNAME: &str = "android";
-        pub const DLL_PREFIX: &str = "lib";
-        pub const DLL_SUFFIX: &str = ".so";
-        pub const EXE_SUFFIX: &str = "";
+        pub const SYSNAME: &static/str = "android";
+        pub const DLL_PREFIX: &static/str = "lib";
+        pub const DLL_SUFFIX: &static/str = ".so";
+        pub const EXE_SUFFIX: &static/str = "";
     }
 
     pub mod win32 {
-        pub const SYSNAME: &str = "win32";
-        pub const DLL_PREFIX: &str = "";
-        pub const DLL_SUFFIX: &str = ".dll";
-        pub const EXE_SUFFIX: &str = ".exe";
+        pub const SYSNAME: &static/str = "win32";
+        pub const DLL_PREFIX: &static/str = "";
+        pub const DLL_SUFFIX: &static/str = ".dll";
+        pub const EXE_SUFFIX: &static/str = ".exe";
     }
 
 
@@ -1099,16 +1099,16 @@ pub mod consts {
     use os::consts::mips::*;
 
     pub mod x86 {
-        pub const ARCH: &str = "x86";
+        pub const ARCH: &'static str = "x86";
     }
     pub mod x86_64 {
-        pub const ARCH: &str = "x86_64";
+        pub const ARCH: &'static str = "x86_64";
     }
     pub mod arm {
-        pub const ARCH: &str = "arm";
+        pub const ARCH: &'static str = "arm";
     }
     pub mod mips {
-        pub const ARCH: &str = "mips";
+        pub const ARCH: &'static str = "mips";
     }
 }
 

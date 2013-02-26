@@ -49,8 +49,8 @@ pub impl<T> cat<T> {
     }
 }
 
-impl<T> BaseIter<(int, &T)> for cat<T> {
-    pure fn each(&self, f: fn(&(int, &self/T)) -> bool) {
+impl<T> BaseIter<(int, &'self T)> for cat<T> {
+    pure fn each(&self, f: fn(&(int, &'self T)) -> bool) {
         let mut n = int::abs(self.meows);
         while n > 0 {
             if !f(&(n, &self.name)) { break; }
@@ -86,7 +86,7 @@ impl<T> Map<int, T> for cat<T> {
         true
     }
 
-    pure fn find(&self, k: &int) -> Option<&self/T> {
+    pure fn find(&self, k: &int) -> Option<&'self T> {
         if *k <= self.meows {
             Some(&self.name)
         } else {
@@ -104,7 +104,7 @@ impl<T> Map<int, T> for cat<T> {
 }
 
 pub impl<T> cat<T> {
-    pure fn get(&self, k: &int) -> &self/T {
+    pure fn get(&self, k: &int) -> &'self T {
         match self.find(k) {
           Some(v) => { v }
           None    => { fail!(~"epic fail"); }
