@@ -49,6 +49,7 @@ pub enum ObsoleteSyntax {
     ObsoleteImplSyntax,
     ObsoleteTraitBoundSeparator,
     ObsoleteMutOwnedPointer,
+    ObsoleteMutVector,
 }
 
 pub impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -130,6 +131,12 @@ pub impl Parser {
             ObsoleteMutOwnedPointer => (
                 "const or mutable owned pointer",
                 "mutability inherits through `~` pointers; place the `~` box
+                 in a mutable location, like a mutable local variable or an \
+                 `@mut` box"
+            ),
+            ObsoleteMutVector => (
+                "const or mutable vector",
+                "mutability inherits through `~` pointers; place the vector \
                  in a mutable location, like a mutable local variable or an \
                  `@mut` box"
             ),
