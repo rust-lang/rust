@@ -172,11 +172,6 @@ use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
-
 // An option identifying a literal: either a unit-like struct or an
 // expression.
 pub enum Lit {

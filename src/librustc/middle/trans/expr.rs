@@ -149,8 +149,6 @@ use syntax::codemap::spanned;
 // These are passed around by the code generating functions to track the
 // destination of a computation's value.
 
-fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
-
 pub enum Dest {
     SaveIn(ValueRef),
     Ignore,
