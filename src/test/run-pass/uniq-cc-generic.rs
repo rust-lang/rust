@@ -10,11 +10,11 @@
 
 enum maybe_pointy {
     none,
-    p(@Pointy),
+    p(@mut Pointy),
 }
 
 struct Pointy {
-    mut a : maybe_pointy,
+    a : maybe_pointy,
     d : fn~() -> uint,
 }
 
@@ -22,15 +22,14 @@ fn make_uniq_closure<A:Owned + Copy>(a: A) -> fn~() -> uint {
     fn~() -> uint { ptr::addr_of(&a) as uint }
 }
 
-fn empty_pointy() -> @Pointy {
-    return @Pointy {
+fn empty_pointy() -> @mut Pointy {
+    return @mut Pointy {
         mut a : none,
         d : make_uniq_closure(~"hi")
     }
 }
 
-pub fn main()
-{
+pub fn main() {
     let v = empty_pointy();
     v.a = p(v);
 }
