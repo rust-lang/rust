@@ -202,9 +202,9 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
         match r.cur.readme[r.cur.idx] {
-          tt_delim(tts) => {
+          tt_delim(copy tts) => {
             r.cur = @mut TtFrame {
-                readme: @mut copy tts,
+                readme: @mut tts,
                 idx: 0u,
                 dotdotdoted: false,
                 sep: None,

@@ -29,7 +29,11 @@ pub fn expand_trace_macros(cx: ext_ctxt, sp: span,
         vec::from_slice(tt)
     );
     let rdr = tt_rdr as reader;
-    let rust_parser = Parser(sess, cfg, rdr.dup());
+    let rust_parser = Parser(
+        sess,
+        copy cfg,
+        rdr.dup()
+    );
 
     if rust_parser.is_keyword(&~"true") {
         cx.set_trace_macros(true);

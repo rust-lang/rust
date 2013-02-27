@@ -838,7 +838,7 @@ fn expand_deriving_eq_struct_tuple_method(cx: ext_ctxt,
     let self_str = ~"self";
     let other_str = ~"__other";
     let type_path = build::mk_raw_path(span, ~[type_ident]);
-    let fields = struct_def.fields;
+    let fields = copy struct_def.fields;
 
     // Create comparison expression, comparing each of the fields
     let mut match_body = None;

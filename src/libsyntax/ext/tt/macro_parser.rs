@@ -224,8 +224,12 @@ pub enum parse_result {
     error(codemap::span, ~str)
 }
 
-pub fn parse_or_else(sess: @mut ParseSess, cfg: ast::crate_cfg, rdr: reader,
-                     ms: ~[matcher]) -> HashMap<ident, @named_match> {
+pub fn parse_or_else(
+    sess: @mut ParseSess,
+    +cfg: ast::crate_cfg,
+    rdr: reader,
+    ms: ~[matcher]
+) -> HashMap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, ref str) => sess.span_diagnostic.span_fatal(sp, (*str)),
@@ -233,11 +237,12 @@ pub fn parse_or_else(sess: @mut ParseSess, cfg: ast::crate_cfg, rdr: reader,
     }
 }
 
-pub fn parse(sess: @mut ParseSess,
-             cfg: ast::crate_cfg,
-             rdr: reader,
-             ms: ~[matcher])
-          -> parse_result {
+pub fn parse(
+    sess: @mut ParseSess,
+    cfg: ast::crate_cfg,
+    rdr: reader,
+    ms: ~[matcher]
+) -> parse_result {
     let mut cur_eis = ~[];
     cur_eis.push(initial_matcher_pos(copy ms, None, rdr.peek().sp.lo));
 
@@ -387,7 +392,7 @@ pub fn parse(sess: @mut ParseSess,
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let rust_parser = Parser(sess, cfg, rdr.dup());
+                let rust_parser = Parser(sess, copy cfg, rdr.dup());
 
                 let mut ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
