@@ -19,7 +19,7 @@ mod inst {
     pub const bits: uint = 32;
 }
 
-pub impl NumCast for u32 {
+impl NumCast for u32 {
     /**
      * Cast `n` to a `u32`
      */

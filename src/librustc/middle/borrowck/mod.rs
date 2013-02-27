@@ -451,7 +451,7 @@ impl LoanKind {
 
 /// Creates and returns a new root_map
 
-pub impl to_bytes::IterBytes for root_map_key {
+impl to_bytes::IterBytes for root_map_key {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
     }
