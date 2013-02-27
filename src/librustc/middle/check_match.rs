@@ -101,7 +101,11 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
           _ => { /* We assume only enum types can be uninhabited */ }
        }
        let arms = vec::concat(arms.filter_mapped(unguarded_pat));
-       check_exhaustive(cx, ex.span, arms);
+       if arms.is_empty() {
+           cx.tcx.sess.span_err(ex.span, ~"non-exhaustive patterns");
+       } else {
+           check_exhaustive(cx, ex.span, arms);
+       }
      }
      _ => ()
     }
