@@ -21,20 +21,25 @@ use syntax::codemap::span;
 // Requires that the two types unify, and prints an error message if they
 // don't.
 pub fn suptype(fcx: @mut FnCtxt, sp: span, expected: ty::t, actual: ty::t) {
-    suptype_with_fn(fcx, sp, expected, actual,
+    suptype_with_fn(fcx, sp, false, expected, actual,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
+pub fn subtype(fcx: @mut FnCtxt, sp: span, expected: ty::t, actual: ty::t) {
+    suptype_with_fn(fcx, sp, true, actual, expected,
+        |sp, a, e, s| { fcx.report_mismatched_types(sp, e, a, s) })
+}
+
 pub fn suptype_with_fn(fcx: @mut FnCtxt,
-                       sp: span,
-                       expected: ty::t, actual: ty::t,
+                       sp: span, b_is_expected: bool,
+                       ty_a: ty::t, ty_b: ty::t,
                        handle_err: fn(span, ty::t, ty::t, &ty::type_err)) {
     // n.b.: order of actual, expected is reversed
-    match infer::mk_subty(fcx.infcx(), false, sp,
-                          actual, expected) {
+    match infer::mk_subty(fcx.infcx(), b_is_expected, sp,
+                          ty_b, ty_a) {
       result::Ok(()) => { /* ok */ }
       result::Err(ref err) => {
-          handle_err(sp, expected, actual, err);
+          handle_err(sp, ty_a, ty_b, err);
       }
     }
 }
