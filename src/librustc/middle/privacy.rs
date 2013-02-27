@@ -25,7 +25,7 @@ use core::util::ignore;
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_struct};
 use syntax::ast::{expr_unary, ident, item_struct, item_enum, item_impl};
 use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
-use syntax::ast::{provided, required};
+use syntax::ast::{provided, public, required};
 use syntax::ast;
 use syntax::ast_map::{node_item, node_method};
 use syntax::ast_map;
@@ -107,7 +107,41 @@ pub fn check_crate(tcx: ty::ctxt,
                 if method_id.crate == local_crate {
                     match tcx.items.find(&method_id.node) {
                         Some(node_method(method, impl_id, _)) => {
-                            if method.vis == private &&
+                            let mut is_private = false;
+                            if method.vis == private {
+                                is_private = true;
+                            } else {
+                                // Look up the enclosing impl.
+                                if impl_id.crate != local_crate {
+                                    tcx.sess.span_bug(span,
+                                                      ~"local method isn't \
+                                                        in local impl?!");
+                                }
+
+                                match tcx.items.find(&impl_id.node) {
+                                    Some(node_item(item, _)) => {
+                                        match item.node {
+                                            item_impl(_, None, _, _) 
+                                                    if item.vis != public => {
+                                                is_private = true;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    Some(_) => {
+                                        tcx.sess.span_bug(span,
+                                                          ~"impl wasn't an \
+                                                            item?!");
+                                    }
+                                    None => {
+                                        tcx.sess.span_bug(span,
+                                                          ~"impl wasn't in \
+                                                            AST map?!");
+                                    }
+                                }
+                            }
+
+                            if is_private &&
                                     (impl_id.crate != local_crate ||
                                      !privileged_items
                                      .contains(&(impl_id.node))) {
