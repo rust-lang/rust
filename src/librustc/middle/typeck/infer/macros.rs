@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-{
+#[macro_escape];
 
 macro_rules! if_ok(
     ($inp: expr) => (
@@ -17,6 +17,5 @@ macro_rules! if_ok(
             Err(e) => { return Err(e); }
         }
     )
-);
+)
 
-}

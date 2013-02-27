@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 use core::result;
-use std::oldsmallintmap::SmallIntMap;
+use std::smallintmap::SmallIntMap;
 
 use middle::ty::{Vid, expected_found, IntVarValue};
 use middle::ty;
@@ -27,7 +27,7 @@ pub enum VarValue<V, T> {
 }
 
 pub struct ValsAndBindings<V, T> {
-    vals: SmallIntMap<VarValue<V, T>>,
+    vals: @mut SmallIntMap<VarValue<V, T>>,
     bindings: ~[(V, VarValue<V, T>)],
 }
 
@@ -64,12 +64,12 @@ pub impl InferCtxt {
             vid: V) -> Node<V, T>
         {
             let vid_u = vid.to_uint();
-            match vb.vals.find(vid_u) {
+            match vb.vals.find(&vid_u) {
                 None => {
                     tcx.sess.bug(fmt!(
                         "failed lookup of vid `%u`", vid_u));
                 }
-                Some(ref var_val) => {
+                Some(var_val) => {
                     match *var_val {
                         Redirect(vid) => {
                             let node: Node<V,T> = helper(tcx, vb, vid);
@@ -103,8 +103,8 @@ pub impl InferCtxt {
 
         { // FIXME(#4903)---borrow checker is not flow sensitive
             let vb = UnifyVid::appropriate_vals_and_bindings(self);
-            let old_v = vb.vals.get(vid.to_uint());
-            vb.bindings.push((vid, old_v));
+            let old_v = vb.vals.get(&vid.to_uint());
+            vb.bindings.push((vid, *old_v));
             vb.vals.insert(vid.to_uint(), new_v);
         }
     }
@@ -237,35 +237,35 @@ pub impl InferCtxt {
 
 // ______________________________________________________________________
 
-pub impl UnifyVid<Bounds<ty::t>> for ty::TyVid {
+impl UnifyVid<Bounds<ty::t>> for ty::TyVid {
     static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::TyVid, Bounds<ty::t>> {
         return &mut infcx.ty_var_bindings;
     }
 }
 
-pub impl UnifyVid<Option<IntVarValue>> for ty::IntVid {
+impl UnifyVid<Option<IntVarValue>> for ty::IntVid {
     static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::IntVid, Option<IntVarValue>> {
         return &mut infcx.int_var_bindings;
     }
 }
 
-pub impl SimplyUnifiable for IntVarValue {
+impl SimplyUnifiable for IntVarValue {
     static fn to_type_err(&self, err: expected_found<IntVarValue>)
         -> ty::type_err {
         return ty::terr_int_mismatch(err);
     }
 }
 
-pub impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
+impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
     static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::FloatVid, Option<ast::float_ty>> {
         return &mut infcx.float_var_bindings;
     }
 }
 
-pub impl SimplyUnifiable for ast::float_ty {
+impl SimplyUnifiable for ast::float_ty {
     static fn to_type_err(&self, err: expected_found<ast::float_ty>)
         -> ty::type_err {
         return ty::terr_float_mismatch(err);

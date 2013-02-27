@@ -422,6 +422,13 @@
    ...
 }
 
+{
+   enum-instruction-scheduling-9
+   Memcheck:Cond
+   fun:*get_authority*
+   ...
+}
+
 {  
    llvm-user-new-leak
    Memcheck:Leak

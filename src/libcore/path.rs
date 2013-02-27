@@ -64,6 +64,9 @@ pub trait GenericPath {
     pure fn push_many((&[~str])) -> Self;
     pure fn pop() -> Self;
 
+    pure fn unsafe_join((&Self)) -> Self;
+    pure fn is_restricted() -> bool;
+
     pure fn normalize() -> Self;
 }
 
@@ -485,6 +488,19 @@ impl GenericPath for PosixPath {
         self.push_many(other.components)
     }
 
+    pure fn unsafe_join(other: &PosixPath) -> PosixPath {
+        if other.is_absolute {
+            PosixPath { is_absolute: true,
+                        components: copy other.components }
+        } else {
+            self.push_rel(other)
+        }
+    }
+
+    pure fn is_restricted() -> bool {
+        false
+    }
+
     pure fn push_many(cs: &[~str]) -> PosixPath {
         let mut v = copy self.components;
         for cs.each |e| {
@@ -685,6 +701,61 @@ impl GenericPath for WindowsPath {
         self.push_many(other.components)
     }
 
+    pure fn unsafe_join(other: &WindowsPath) -> WindowsPath {
+        /* rhs not absolute is simple push */
+        if !other.is_absolute {
+            return self.push_many(other.components);
+        }
+
+        /* if rhs has a host set, then the whole thing wins */
+        match other.host {
+            Some(copy host) => {
+                return WindowsPath {
+                    host: Some(host),
+                    device: copy other.device,
+                    is_absolute: true,
+                    components: copy other.components
+                };
+            }
+            _ => {}
+        }
+
+        /* if rhs has a device set, then a part wins */
+        match other.device {
+            Some(copy device) => {
+                return WindowsPath {
+                    host: None,
+                    device: Some(device),
+                    is_absolute: true,
+                    components: copy other.components
+                };
+            }
+            _ => {}
+        }
+
+        /* fallback: host and device of lhs win, but the
+           whole path of the right */
+        WindowsPath {
+            host: copy self.host,
+            device: copy self.device,
+            is_absolute: self.is_absolute || other.is_absolute,
+            components: copy other.components
+        }
+    }
+
+    pure fn is_restricted() -> bool {
+        match self.filestem() {
+            Some(stem) => {
+                match stem.to_lower() {
+                    ~"con" | ~"aux" | ~"com1" | ~"com2" | ~"com3" | ~"com4" |
+                    ~"lpt1" | ~"lpt2" | ~"lpt3" | ~"prn" | ~"nul" => true,
+                    _ => false
+                }
+            },
+            None => false
+        }
+    }
+
     pure fn push_many(cs: &[~str]) -> WindowsPath {
         let mut v = copy self.components;
         for cs.each |e| {
@@ -725,7 +796,10 @@ impl GenericPath for WindowsPath {
     pure fn normalize() -> WindowsPath {
         return WindowsPath {
             host: copy self.host,
-            device: copy self.device,
+            device: match self.device {
+                None => None,
+                Some(ref device) => Some(device.to_upper())
+            },
             is_absolute: self.is_absolute,
             components: normalize(self.components)
         }
@@ -764,13 +838,13 @@ pub mod windows {
 
     pub pure fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
         if (s.len() > 1 &&
-            s[0] == '\\' as u8 &&
-            s[1] == '\\' as u8) {
+            (s[0] == '\\' as u8 || s[0] == '/' as u8) &&
+            s[0] == s[1]) {
             let mut i = 2;
             while i < s.len() {
-                if s[i] == '\\' as u8 {
+                if is_sep(s[i]) {
                     let pre = s.slice(2, i);
-                    let rest = s.slice(i, s.len());
+                    let mut rest = s.slice(i, s.len());
                     return Some((pre, rest));
                 }
                 i += 1;
@@ -916,12 +990,20 @@ mod tests {
     #[test]
     fn test_extract_unc_prefixes() {
         assert windows::extract_unc_prefix("\\\\").is_none();
+        assert windows::extract_unc_prefix("//").is_none();
         assert windows::extract_unc_prefix("\\\\hi").is_none();
+        assert windows::extract_unc_prefix("//hi").is_none();
         assert windows::extract_unc_prefix("\\\\hi\\") ==
+            Some((~"hi", ~"\\"));
+        assert windows::extract_unc_prefix("//hi\\") ==
             Some((~"hi", ~"\\"));
         assert windows::extract_unc_prefix("\\\\hi\\there") ==
             Some((~"hi", ~"\\there"));
+        assert windows::extract_unc_prefix("//hi/there") ==
+            Some((~"hi", ~"/there"));
         assert windows::extract_unc_prefix("\\\\hi\\there\\friends.txt") ==
+            Some((~"hi", ~"\\there\\friends.txt"));
+        assert windows::extract_unc_prefix("//hi\\there\\friends.txt") ==
             Some((~"hi", ~"\\there\\friends.txt"));
     }
 
@@ -981,5 +1063,61 @@ mod tests {
             .push_many([~"lib", ~"thingy.dll"])
             .with_filename("librustc.dll")),
           "c:\\program files (x86)\\rust\\lib\\librustc.dll");
+
+        t(&(WindowsPath("\\\\computer\\share")
+            .unsafe_join(&WindowsPath("\\a"))),
+          "\\\\computer\\a");
+
+        t(&(WindowsPath("//computer/share")
+            .unsafe_join(&WindowsPath("\\a"))),
+          "\\\\computer\\a");
+
+        t(&(WindowsPath("//computer/share")
+            .unsafe_join(&WindowsPath("\\\\computer\\share"))),
+          "\\\\computer\\share");
+
+        t(&(WindowsPath("C:/whatever")
+            .unsafe_join(&WindowsPath("//computer/share/a/b"))),
+          "\\\\computer\\share\\a\\b");
+
+        t(&(WindowsPath("C:")
+            .unsafe_join(&WindowsPath("D:/foo"))),
+          "D:\\foo");
+
+        t(&(WindowsPath("C:")
+            .unsafe_join(&WindowsPath("B"))),
+          "C:B");
+
+        t(&(WindowsPath("C:")
+            .unsafe_join(&WindowsPath("/foo"))),
+          "C:\\foo");
+
+        t(&(WindowsPath("C:\\")
+            .unsafe_join(&WindowsPath("\\bar"))),
+          "C:\\bar");
+
+        t(&(WindowsPath("")
+            .unsafe_join(&WindowsPath(""))),
+          "");
+
+        t(&(WindowsPath("")
+            .unsafe_join(&WindowsPath("a"))),
+          "a");
+
+        t(&(WindowsPath("")
+            .unsafe_join(&WindowsPath("C:\\a"))),
+          "C:\\a");
+
+        t(&(WindowsPath("c:\\foo")
+            .normalize()),
+          "C:\\foo");
+    }
+
+    #[test]
+    fn test_windows_path_restrictions() {
+        assert WindowsPath("hi").is_restricted() == false;
+        assert WindowsPath("C:\\NUL").is_restricted() == true;
+        assert WindowsPath("C:\\COM1.TXT").is_restricted() == true;
+        assert WindowsPath("c:\\prn.exe").is_restricted() == true;
     }
 }

@@ -238,19 +238,19 @@ pub fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
       ty::vstore_fixed(n) => fmt!("%u", n),
       ty::vstore_uniq => ~"~",
       ty::vstore_box => ~"@",
-      ty::vstore_slice(r) => region_to_str(cx, r)
+      ty::vstore_slice(r) => region_to_str_adorned(cx, "&", r, "/")
     }
 }
 
 pub fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     match vs {
       ty::vstore_fixed(_) => {
-        fmt!("%s/%s", ty, vstore_to_str(cx, vs))
+        fmt!("[%s * %s]", ty, vstore_to_str(cx, vs))
       }
       ty::vstore_slice(_) => {
         fmt!("%s/%s", vstore_to_str(cx, vs), ty)
       }
-      _ => fmt!("%s%s", vstore_to_str(cx, vs), ty)
+      _ => fmt!("%s[%s]", vstore_to_str(cx, vs), ty)
     }
 }
 
@@ -453,13 +453,13 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_trait(did, ref substs, vs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path, cx.sess.intr());
-        let result = parameterized(cx, base, substs.self_r, substs.tps);
-        vstore_ty_to_str(cx, result, vs)
+        let ty = parameterized(cx, base, substs.self_r, substs.tps);
+        fmt!("%s%s", vstore_to_str(cx, vs), ty)
       }
       ty_evec(mt, vs) => {
-        vstore_ty_to_str(cx, fmt!("[%s]", mt_to_str(cx, mt)), vs)
+        vstore_ty_to_str(cx, fmt!("%s", mt_to_str(cx, mt)), vs)
       }
-      ty_estr(vs) => vstore_ty_to_str(cx, ~"str", vs),
+      ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), ~"str"),
       ty_opaque_box => ~"@?",
       ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"closure&",
       ty_opaque_closure_ptr(ast::ManagedSigil) => ~"closure@",

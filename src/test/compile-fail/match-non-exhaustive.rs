@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: mismatched types
-
 fn main() {
-    let v = @mut ~[0];
-
-    fn f(&&v: @mut ~[const int]) {
-        *v = ~[mut 3]
-    }
-
-    f(v);
+    match 0 { 1 => () } //~ ERROR non-exhaustive patterns
+    match 0 { 0 if false => () } //~ ERROR non-exhaustive patterns
 }

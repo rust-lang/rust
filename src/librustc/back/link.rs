@@ -838,9 +838,6 @@ pub fn link_binary(sess: Session,
         }
     }
 
-    // Always want the runtime linked in
-    cc_args.push(~"-lrustrt");
-
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
@@ -879,6 +876,9 @@ pub fn link_binary(sess: Session,
     if sess.targ_cfg.os != session::os_android {
     cc_args.push(~"-lmorestack");
     }
+
+    // Always want the runtime linked in
+    cc_args.push(~"-lrustrt");
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
     // extern libraries might live, based on the addl_lib_search_paths

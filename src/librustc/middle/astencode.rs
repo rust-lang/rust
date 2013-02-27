@@ -860,7 +860,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
             }
         }
     }
-    do option::iter(&(*tcx.node_types).find(id as uint)) |ty| {
+    do option::iter(&tcx.node_types.find(&(id as uint))) |&ty| {
         do ebml_w.tag(c::tag_table_node_type) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -1135,7 +1135,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 let ty = val_dsr.read_ty(xcx);
                 debug!("inserting ty for node %?: %s",
                        id, ty_to_str(dcx.tcx, ty));
-                (*dcx.tcx.node_types).insert(id as uint, ty);
+                dcx.tcx.node_types.insert(id as uint, ty);
             } else if tag == (c::tag_table_node_type_subst as uint) {
                 let tys = val_dsr.read_tys(xcx);
                 dcx.tcx.node_type_substs.insert(id, tys);

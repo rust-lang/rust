@@ -10,25 +10,24 @@
 
 enum maybe_pointy {
     none,
-    p(@Pointy),
+    p(@mut Pointy),
 }
 
 struct Pointy {
-    mut a : maybe_pointy,
+    a : maybe_pointy,
     c : ~int,
     d : fn~()->(),
 }
 
-fn empty_pointy() -> @Pointy {
-    return @Pointy {
-        mut a : none,
+fn empty_pointy() -> @mut Pointy {
+    return @mut Pointy {
+        a : none,
         c : ~22,
         d : fn~()->(){},
     }
 }
 
-pub fn main()
-{
+pub fn main() {
     let v = empty_pointy();
     v.a = p(v);
 }

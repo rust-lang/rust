@@ -9,9 +9,9 @@
 // except according to those terms.
 
 pub fn main() {
-    let i = ~mut 1;
+    let mut i = ~1;
     // Should be a copy
-    let j = copy i;
+    let mut j = copy i;
     *i = 2;
     *j = 3;
     assert *i == 2;

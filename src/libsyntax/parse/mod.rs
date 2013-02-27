@@ -104,9 +104,7 @@ pub fn parse_crate_from_source_str(
         codemap::FssNone,
         source
     );
-    let r = p.parse_crate_mod(/*bad*/ copy cfg);
-    p.abort_if_errors();
-    r
+    maybe_aborted(p.parse_crate_mod(/*bad*/ copy cfg),p)
 }
 
 pub fn parse_expr_from_source_str(
@@ -122,9 +120,7 @@ pub fn parse_expr_from_source_str(
         codemap::FssNone,
         source
     );
-    let r = p.parse_expr();
-    p.abort_if_errors();
-    r
+    maybe_aborted(p.parse_expr(), p)
 }
 
 pub fn parse_item_from_source_str(
@@ -141,9 +137,7 @@ pub fn parse_item_from_source_str(
         codemap::FssNone,
         source
     );
-    let r = p.parse_item(attrs);
-    p.abort_if_errors();
-    r
+    maybe_aborted(p.parse_item(attrs),p)
 }
 
 pub fn parse_stmt_from_source_str(
@@ -160,9 +154,7 @@ pub fn parse_stmt_from_source_str(
         codemap::FssNone,
         source
     );
-    let r = p.parse_stmt(attrs);
-    p.abort_if_errors();
-    r
+    maybe_aborted(p.parse_stmt(attrs),p)
 }
 
 pub fn parse_tts_from_source_str(
@@ -179,9 +171,7 @@ pub fn parse_tts_from_source_str(
         source
     );
     *p.quote_depth += 1u;
-    let r = p.parse_all_token_trees();
-    p.abort_if_errors();
-    r
+    maybe_aborted(p.parse_all_token_trees(),p)
 }
 
 pub fn parse_from_source_str<T>(
@@ -202,8 +192,7 @@ pub fn parse_from_source_str<T>(
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");
     }
-    p.abort_if_errors();
-    r
+    maybe_aborted(r,p)
 }
 
 pub fn next_node_id(sess: @mut ParseSess) -> node_id {
@@ -230,8 +219,8 @@ pub fn new_parser_from_source_str(
     Parser(sess, cfg, srdr as reader)
 }
 
-// Read the entire source file, return a parser
-// that draws from that string
+/// Read the entire source file, return a parser
+/// that draws from that string
 pub fn new_parser_result_from_file(
     sess: @mut ParseSess,
     +cfg: ast::crate_cfg,
@@ -252,7 +241,7 @@ pub fn new_parser_result_from_file(
     }
 }
 
-/// Create a new parser for an entire crate, handling errors as appropriate
+/// Create a new parser, handling errors as appropriate
 /// if the file doesn't exist
 pub fn new_parser_from_file(
     sess: @mut ParseSess,
@@ -296,6 +285,13 @@ pub fn new_parser_from_tts(
     );
     Parser(sess, cfg, trdr as reader)
 }
+
+// abort if necessary
+pub fn maybe_aborted<T>(+result : T, p: Parser) -> T {
+    p.abort_if_errors();
+    result
+}
+
 
 
 #[cfg(test)]

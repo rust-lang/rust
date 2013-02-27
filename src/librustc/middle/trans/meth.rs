@@ -39,11 +39,6 @@ use syntax::ast_util::local_def;
 use syntax::print::pprust::expr_to_str;
 use syntax::{ast, ast_map};
 
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
-
 /**
 The main "translation" pass for methods.  Generates code
 for non-monomorphized methods only.  Other methods will

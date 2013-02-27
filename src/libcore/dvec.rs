@@ -133,18 +133,6 @@ impl<A> DVec<A> {
         self.check_out(|v| self.give_back(f(v)))
     }
 
-    /**
-     * Swaps out the current vector and hands it off to a user-provided
-     * function `f`.  The function should transform it however is desired
-     * and return a new vector to replace it with.
-     */
-    #[inline(always)]
-    fn swap_mut(f: &fn(v: ~[mut A]) -> ~[mut A]) {
-        do self.swap |v| {
-            vec::cast_from_mut(f(vec::cast_to_mut(v)))
-        }
-    }
-
     /// Returns the number of elements currently in the dvec
     #[inline(always)]
     pure fn len() -> uint {
@@ -217,7 +205,7 @@ impl<A> DVec<A> {
     }
 
     /// Gives access to the vector as a slice with mutable contents
-    fn borrow_mut<R>(op: fn(x: &[mut A]) -> R) -> R {
+    fn borrow_mut<R>(op: &fn(x: &mut [A]) -> R) -> R {
         do self.check_out |v| {
             let mut v = v;
             let result = op(v);

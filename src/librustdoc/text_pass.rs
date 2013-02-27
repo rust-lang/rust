@@ -20,8 +20,8 @@ use fold;
 use pass::Pass;
 use util::NominalOp;
 
+use core::cell::Cell;
 use std::par;
-use std::cell::Cell;
 
 pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
     let op = Cell(op);

@@ -10,14 +10,14 @@
 
 pub mod kitties {
     pub struct cat {
-        priv mut meows : uint,
+        priv meows : uint,
 
         how_hungry : int,
     }
 
     pub impl cat {
-        fn speak() { self.meows += 1u; }
-        fn meow_count() -> uint { self.meows }
+        fn speak(&mut self) { self.meows += 1u; }
+        fn meow_count(&mut self) -> uint { self.meows }
     }
 
     pub fn cat(in_x : uint, in_y : int) -> cat {

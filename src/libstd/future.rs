@@ -23,6 +23,7 @@
 
 use core::cast::copy_lifetime;
 use core::cast;
+use core::cell::Cell;
 use core::either::Either;
 use core::option;
 use core::comm::{oneshot, ChanOne, PortOne, send_one, recv_one};
@@ -103,11 +104,9 @@ pub fn from_port<A:Owned>(port: PortOne<A>) ->
      * waiting for the result to be received on the port.
      */
 
-    let port = ~mut Some(port);
+    let port = Cell(port);
     do from_fn || {
-        let mut port_ = None;
-        port_ <-> *port;
-        let port = option::unwrap(port_);
+        let port = port.take();
         match recv(port) {
             oneshot::send(data) => data
         }
@@ -136,9 +135,9 @@ pub fn spawn<A:Owned>(blk: fn~() -> A) -> Future<A> {
 
     let (chan, port) = oneshot::init();
 
-    let chan = ~mut Some(chan);
+    let chan = Cell(chan);
     do task::spawn || {
-        let chan = option::swap_unwrap(&mut *chan);
+        let chan = chan.take();
         send_one(chan, blk());
     }
 
