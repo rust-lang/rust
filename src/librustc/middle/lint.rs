@@ -132,7 +132,7 @@ pub fn get_lint_dict() -> LintDict {
          @LintSpec {
             lint: unused_imports,
             desc: "imports that are never used",
-            default: allow
+            default: warn
          }),
 
         (@~"while_true",
