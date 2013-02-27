@@ -349,6 +349,7 @@ valopt llvm-root "" "set LLVM root"
 valopt build-triple "${DEFAULT_BUILD_TRIPLE}" "LLVM build triple"
 valopt host-triples "${CFG_BUILD_TRIPLE}" "LLVM host triples"
 valopt target-triples "${CFG_HOST_TRIPLES}" "LLVM target triples"
+valopt android-ndk-path "" "Android NDK Standalone path"
 
 # Validate Options
 step_msg "validating $CFG_SELF args"
@@ -527,6 +528,24 @@ then
     esac
 else
     CFG_C_COMPILER="gcc"
+fi
+
+if [ ! -z "$CFG_ANDROID_NDK_PATH" ]
+then
+    if [ ! -f $CFG_ANDROID_NDK_PATH/bin/arm-linux-androideabi-gcc ]
+    then
+        err "NDK $CFG_ANDROID_NDK_PATH/bin/arm-linux-androideabi-gcc not found"
+    fi
+    if [ ! -f $CFG_ANDROID_NDK_PATH/bin/arm-linux-androideabi-g++ ]
+    then
+        err "NDK $CFG_ANDROID_NDK_PATH/bin/arm-linux-androideabi-g++ not found"
+    fi
+    if [ ! -f $CFG_ANDROID_NDK_PATH/bin/arm-linux-androideabi-ar ]
+    then
+        err "NDK $CFG_ANDROID_NDK_PATH/bin/arm-linux-androideabi-ar not found"
+    fi
+
+    CFG_CROSS_PREFIX_arm=$CFG_ANDROID_NDK_PATH"/bin/arm-linux-androideabi-"
 fi
 
 # a little post-processing of various config values
@@ -822,6 +841,7 @@ putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_DISABLE_MANAGE_SUBMODULES
+putvar CFG_CROSS_PREFIX_arm
 
 if [ ! -z "$CFG_ENABLE_PAX_FLAGS" ]
 then

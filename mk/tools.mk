@@ -38,86 +38,86 @@ RUST_INPUTS := $(wildcard $(S)src/librust/*.rs)
 # have tools that need to built for other targets.
 define TOOLS_STAGE_N_TARGET
 
-$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBFUZZER):          \
+$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBFUZZER_$(3)):          \
 		$$(FUZZER_LIB) $$(FUZZER_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X):				\
 		$$(DRIVER_CRATE)								\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBFUZZER)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBFUZZER_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg fuzzer -o $$@ $$<
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/compiletest$$(X):			\
 		$$(COMPILETEST_CRATE) $$(COMPILETEST_INPUTS)	\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))						\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)      \
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(3))      \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
 
-$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTPKG):		\
+$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)):		\
 		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		    \
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rustpkg$$(X):				\
 		$$(DRIVER_CRATE) 							\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTPKG)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rustpkg -o $$@ $$<
 
-$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTDOC):		\
+$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)):		\
 		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X):			\
 		$$(DRIVER_CRATE) 							\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTDOC)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rustdoc -o $$@ $$<
 
-$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI):		\
+$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(3)):		\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X):			\
 		$$(DRIVER_CRATE) 							\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rusti -o $$@ $$<
 
-$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUST):		\
+$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(3)):		\
 		$$(RUST_LIB) $$(RUST_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_CORELIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_STDLIB)	\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(3))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
 
 $$(TBIN$(1)_T_$(4)_H_$(3))/rust$$(X):			\
 		$$(DRIVER_CRATE) 							\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUST)
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) --cfg rust -o $$@ $$<
 
@@ -129,19 +129,19 @@ define TOOLS_STAGE_N_HOST
 # Promote the stageN target to stageN+1 host
 # FIXME: Shouldn't need to depend on host/librustc.so once
 # rpath is working
-$$(HLIB$(2)_H_$(4))/$$(CFG_LIBFUZZER):					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBFUZZER)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)			\
+$$(HLIB$(2)_H_$(4))/$(CFG_LIBFUZZER_$(3)):					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBFUZZER_$(3))	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(3))			\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBFUZZER_GLOB) \
-		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBFUZZER_DSYM_GLOB)) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBFUZZER_GLOB_$(3)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBFUZZER_DSYM_GLOB_$(3))) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/fuzzer$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBFUZZER)	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBFUZZER_$(3))	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
@@ -153,70 +153,70 @@ $$(HBIN$(2)_H_$(4))/compiletest$$(X):				\
 	$$(Q)cp $$< $$@
 
 
-$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTPKG):				\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTPKG)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)		\
+$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTPKG_$(3)):				\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(3))	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(3))		\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTPKG_GLOB) \
-		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTPKG_DSYM_GLOB)) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTPKG_GLOB_$(3)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTPKG_DSYM_GLOB_$(3))) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/rustpkg$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rustpkg$$(X)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTPKG)	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTPKG_$(3))	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTDOC):					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTDOC)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)			\
+$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTDOC_$(3)):					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(3))	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(3))			\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOC_GLOB) \
-		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOC_DSYM_GLOB)) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOC_GLOB_$(3)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTDOC_DSYM_GLOB_$(3))) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/rustdoc$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTDOC)	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTDOC_$(3))	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTI):					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUSTI)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)			\
+$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTI_$(3)):					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(3))	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(3))			\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTI_GLOB) \
-		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTI_DSYM_GLOB)) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTI_GLOB_$(3)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUSTI_DSYM_GLOB_$(3))) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/rusti$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTI)	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTI_$(3))	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUST):					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$$(CFG_LIBRUST)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUSTC)			\
+$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUST_$(3)):					\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(3))	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(3))			\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
-	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUST_GLOB) \
-		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUST_DSYM_GLOB)) \
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUST_GLOB_$(3)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBRUST_DSYM_GLOB)_$(3)) \
 	        $$(HLIB$(2)_H_$(4))
 
 $$(HBIN$(2)_H_$(4))/rust$$(X):				\
 		$$(TBIN$(1)_T_$(4)_H_$(3))/rust$$(X)	\
-		$$(HLIB$(2)_H_$(4))/$$(CFG_LIBRUST)	\
+		$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUST_$(3))	\
 		$$(HSREQ$(2)_H_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
