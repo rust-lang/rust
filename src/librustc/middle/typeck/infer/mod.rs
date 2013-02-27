@@ -287,6 +287,7 @@ use syntax::codemap;
 use syntax::ast_util;
 use syntax::codemap::span;
 
+pub mod macros;
 pub mod combine;
 pub mod glb;
 pub mod lattice;

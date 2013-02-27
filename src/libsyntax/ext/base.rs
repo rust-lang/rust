@@ -21,12 +21,12 @@ use parse::{parser, token};
 
 use core::io;
 use core::vec;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
 
 // new-style macro! tt code:
 //
 //    SyntaxExpanderTT, SyntaxExpanderTTItem, MacResult,
-//    NormalTT, ItemTT
+//    NormalTT, IdentTT
 //
 // also note that ast::mac used to have a bunch of extraneous cases and
 // is now probably a redundant AST node, can be merged with
@@ -71,25 +71,55 @@ pub enum SyntaxExtension {
     // Token-tree expanders
     NormalTT(SyntaxExpanderTT),
 
+    // An IdentTT is a macro that has an
+    // identifier in between the name of the
+    // macro and the argument. Currently,
+    // the only examples of this are
+    // macro_rules! and proto!
+
     // perhaps macro_rules! will lose its odd special identifier argument,
     // and this can go away also
-    ItemTT(SyntaxExpanderTTItem),
+    IdentTT(SyntaxExpanderTTItem),
 }
 
-type SyntaxExtensions = HashMap<@~str, SyntaxExtension>;
+type SyntaxEnv = @mut MapChain<Name, Transformer>;
 
-// A temporary hard-coded map of methods for expanding syntax extension
+// Name : the domain of SyntaxEnvs
+// want to change these to uints....
+// note that we use certain strings that are not legal as identifiers
+// to indicate, for instance, how blocks are supposed to behave.
+type Name = @~str;
+
+// Transformer : the codomain of SyntaxEnvs
+
+// NB: it may seem crazy to lump both of these into one environment;
+// what would it mean to bind "foo" to BlockLimit(true)? The idea
+// is that this follows the lead of MTWT, and accommodates growth
+// toward a more uniform syntax syntax (sorry) where blocks are just
+// another kind of transformer.
+
+enum Transformer {
+    // this identifier maps to a syntax extension or macro
+    SE(SyntaxExtension),
+    // should blocks occurring here limit macro scopes?
+    ScopeMacros(bool)
+}
+
+// The base map of methods for expanding syntax extension
 // AST nodes into full ASTs
-pub fn syntax_expander_table() -> SyntaxExtensions {
+pub fn syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
-    fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> SyntaxExtension {
-        NormalTT(SyntaxExpanderTT{expander: f, span: None})
+    fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> @Transformer {
+        @SE(NormalTT(SyntaxExpanderTT{expander: f, span: None}))
     }
-    // utility function to simplify creating ItemTT syntax extensions
-    fn builtin_item_tt(f: SyntaxExpanderTTItemFun) -> SyntaxExtension {
-        ItemTT(SyntaxExpanderTTItem{expander: f, span: None})
+    // utility function to simplify creating IdentTT syntax extensions
+    fn builtin_item_tt(f: SyntaxExpanderTTItemFun) -> @Transformer {
+        @SE(IdentTT(SyntaxExpanderTTItem{expander: f, span: None}))
     }
-    let syntax_expanders = HashMap();
+    let mut syntax_expanders = LinearMap::new();
+    // NB identifier starts with space, and can't conflict with legal idents
+    syntax_expanders.insert(@~" block",
+                            @ScopeMacros(true));
     syntax_expanders.insert(@~"macro_rules",
                             builtin_item_tt(
                                 ext::tt::macro_rules::add_new_extension));
@@ -97,10 +127,10 @@ pub fn syntax_expander_table() -> SyntaxExtensions {
                             builtin_normal_tt(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(
         @~"auto_encode",
-        ItemDecorator(ext::auto_encode::expand_auto_encode));
+        @SE(ItemDecorator(ext::auto_encode::expand_auto_encode)));
     syntax_expanders.insert(
         @~"auto_decode",
-        ItemDecorator(ext::auto_encode::expand_auto_decode));
+        @SE(ItemDecorator(ext::auto_encode::expand_auto_decode)));
     syntax_expanders.insert(@~"env",
                             builtin_normal_tt(ext::env::expand_syntax_ext));
     syntax_expanders.insert(@~"concat_idents",
@@ -110,25 +140,25 @@ pub fn syntax_expander_table() -> SyntaxExtensions {
                             builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(@~"deriving_eq",
-                            ItemDecorator(
-                                ext::deriving::expand_deriving_eq));
+                            @SE(ItemDecorator(
+                                ext::deriving::expand_deriving_eq)));
     syntax_expanders.insert(@~"deriving_iter_bytes",
-                            ItemDecorator(
-                                ext::deriving::expand_deriving_iter_bytes));
+                            @SE(ItemDecorator(
+                                ext::deriving::expand_deriving_iter_bytes)));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(@~"quote_tokens",
                        builtin_normal_tt(ext::quote::expand_quote_tokens));
     syntax_expanders.insert(@~"quote_expr",
-                            builtin_normal_tt(ext::quote::expand_quote_expr));
+                       builtin_normal_tt(ext::quote::expand_quote_expr));
     syntax_expanders.insert(@~"quote_ty",
-                            builtin_normal_tt(ext::quote::expand_quote_ty));
+                       builtin_normal_tt(ext::quote::expand_quote_ty));
     syntax_expanders.insert(@~"quote_item",
-                            builtin_normal_tt(ext::quote::expand_quote_item));
+                       builtin_normal_tt(ext::quote::expand_quote_item));
     syntax_expanders.insert(@~"quote_pat",
-                            builtin_normal_tt(ext::quote::expand_quote_pat));
+                       builtin_normal_tt(ext::quote::expand_quote_pat));
     syntax_expanders.insert(@~"quote_stmt",
-                            builtin_normal_tt(ext::quote::expand_quote_stmt));
+                       builtin_normal_tt(ext::quote::expand_quote_stmt));
 
     syntax_expanders.insert(@~"line",
                             builtin_normal_tt(
@@ -159,7 +189,7 @@ pub fn syntax_expander_table() -> SyntaxExtensions {
     syntax_expanders.insert(
         @~"trace_macros",
         builtin_normal_tt(ext::trace_macros::expand_trace_macros));
-    return syntax_expanders;
+    MapChain::new(~syntax_expanders)
 }
 
 // One of these is made during expansion and incrementally updated as we go;
@@ -346,6 +376,149 @@ pub fn get_exprs_from_tts(cx: ext_ctxt, tts: ~[ast::token_tree])
         es.push(p.parse_expr());
     }
     es
+}
+
+// in order to have some notion of scoping for macros,
+// we want to implement the notion of a transformation
+// environment.
+
+// This environment maps Names to Transformers.
+// Initially, this includes macro definitions and
+// block directives.
+
+
+
+// Actually, the following implementation is parameterized
+// by both key and value types.
+
+//impl question: how to implement it? Initially, the
+// env will contain only macros, so it might be painful
+// to add an empty frame for every context. Let's just
+// get it working, first....
+
+// NB! the mutability of the underlying maps means that
+// if expansion is out-of-order, a deeper scope may be
+// able to refer to a macro that was added to an enclosing
+// scope lexically later than the deeper scope.
+
+// Note on choice of representation: I've been pushed to
+// use a top-level managed pointer by some difficulties
+// with pushing and popping functionally, and the ownership
+// issues.  As a result, the values returned by the table
+// also need to be managed; the &self/... type that Maps
+// return won't work for things that need to get outside
+// of that managed pointer.  The easiest way to do this
+// is just to insist that the values in the tables are
+// managed to begin with.
+
+// a transformer env is either a base map or a map on top
+// of another chain.
+pub enum MapChain<K,V> {
+    BaseMapChain(~LinearMap<K,@V>),
+    ConsMapChain(~LinearMap<K,@V>,@mut MapChain<K,V>)
+}
+
+
+// get the map from an env frame
+impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
+
+    // Constructor. I don't think we need a zero-arg one.
+    static fn new(+init: ~LinearMap<K,@V>) -> @mut MapChain<K,V> {
+        @mut BaseMapChain(init)
+    }
+
+    // add a new frame to the environment (functionally)
+    fn push_frame (@mut self) -> @mut MapChain<K,V> {
+        @mut ConsMapChain(~LinearMap::new() ,self)
+    }
+
+// no need for pop, it'll just be functional.
+
+    // utility fn...
+
+    // ugh: can't get this to compile with mut because of the
+    // lack of flow sensitivity.
+    fn get_map(&self) -> &self/LinearMap<K,@V> {
+        match *self {
+            BaseMapChain (~ref map) => map,
+            ConsMapChain (~ref map,_) => map
+        }
+    }
+
+// traits just don't work anywhere...?
+//pub impl Map<Name,SyntaxExtension> for MapChain {
+
+    pure fn contains_key (&self, key: &K) -> bool {
+        match *self {
+            BaseMapChain (ref map) => map.contains_key(key),
+            ConsMapChain (ref map,ref rest) =>
+            (map.contains_key(key)
+             || rest.contains_key(key))
+        }
+    }
+    // should each_key and each_value operate on shadowed
+    // names? I think not.
+    // delaying implementing this....
+    pure fn each_key (&self, _f: &fn (&K)->bool) {
+        fail!(~"unimplemented 2013-02-15T10:01");
+    }
+
+    pure fn each_value (&self, _f: &fn (&V) -> bool) {
+        fail!(~"unimplemented 2013-02-15T10:02");
+    }
+
+    // Returns a copy of the value that the name maps to.
+    // Goes down the chain 'til it finds one (or bottom out).
+    fn find (&self, key: &K) -> Option<@V> {
+        match self.get_map().find (key) {
+            Some(ref v) => Some(**v),
+            None => match *self {
+                BaseMapChain (_) => None,
+                ConsMapChain (_,ref rest) => rest.find(key)
+            }
+        }
+    }
+
+    // insert the binding into the top-level map
+    fn insert (&mut self, +key: K, +ext: @V) -> bool {
+        // can't abstract over get_map because of flow sensitivity...
+        match *self {
+            BaseMapChain (~ref mut map) => map.insert(key, ext),
+            ConsMapChain (~ref mut map,_) => map.insert(key,ext)
+        }
+    }
+
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use super::MapChain;
+    use util::testing::check_equal;
+
+    #[test] fn testenv () {
+        let mut a = LinearMap::new();
+        a.insert (@~"abc",@15);
+        let m = MapChain::new(~a);
+        m.insert (@~"def",@16);
+        // FIXME: #4492 (ICE)  check_equal(m.find(&@~"abc"),Some(@15));
+        //  ....               check_equal(m.find(&@~"def"),Some(@16));
+        check_equal(*(m.find(&@~"abc").get()),15);
+        check_equal(*(m.find(&@~"def").get()),16);
+        let n = m.push_frame();
+        // old bindings are still present:
+        check_equal(*(n.find(&@~"abc").get()),15);
+        check_equal(*(n.find(&@~"def").get()),16);
+        n.insert (@~"def",@17);
+        // n shows the new binding
+        check_equal(*(n.find(&@~"abc").get()),15);
+        check_equal(*(n.find(&@~"def").get()),17);
+        // ... but m still has the old ones
+        // FIXME: #4492: check_equal(m.find(&@~"abc"),Some(@15));
+        // FIXME: #4492: check_equal(m.find(&@~"def"),Some(@16));
+        check_equal(*(m.find(&@~"abc").get()),15);
+        check_equal(*(m.find(&@~"def").get()),16);
+    }
 }
 
 //
