@@ -12,7 +12,7 @@ trait hax { }
 impl<A> hax for A { } 
 
 fn perform_hax<T:&static>(x: @T) -> hax {
-    x as hax 
+    @x as @hax
 }
 
 fn deadcode() {

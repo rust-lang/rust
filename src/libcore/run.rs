@@ -288,7 +288,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
         finished: false,
     };
 
-    ProgRes(repr) as Program
+    @ProgRes(repr) as @Program
 }
 
 fn read_all(rd: io::Reader) -> ~str {

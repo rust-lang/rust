@@ -23,7 +23,7 @@ impl get_ctxt for has_ctxt {
 fn make_gc() -> get_ctxt  {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt }; //~ ERROR illegal borrow
-    return hc as get_ctxt;
+    return @hc as get_ctxt;
 }
 
 fn main() {
