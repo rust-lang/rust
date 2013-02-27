@@ -348,12 +348,12 @@ mutations:
 ~~~ {.xfail-test}
 fn example3() -> int {
     struct R { g: int }
-    struct S { mut f: ~R }
+    struct S { f: ~R }
 
-    let mut x = ~S {mut f: ~R {g: 3}};
+    let mut x = ~S {f: ~R {g: 3}};
     let y = &x.f.g;
-    x = ~S {mut f: ~R {g: 4}}; // Error reported here.
-    x.f = ~R {g: 5};           // Error reported here.
+    x = ~S {f: ~R {g: 4}};  // Error reported here.
+    x.f = ~R {g: 5};        // Error reported here.
     *y
 }
 ~~~
@@ -361,91 +361,6 @@ fn example3() -> int {
 In this case, two errors are reported, one when the variable `x` is
 modified and another when `x.f` is modified. Either modification would
 invalidate the pointer `y`.
-
-Things get trickier when the unique box is not uniquely owned by the
-stack frame, or when there is no way for the compiler to determine the
-box's owner. Consider a program like this:
-
-~~~ {.xfail-test}
-struct R { g: int }
-struct S { mut f: ~R }
-fn example5a(x: @S, callback: @fn()) -> int {
-    let y = &x.f.g;   // Error reported here.
-    ...
-    callback();
-    ...
-#   return 0;
-}
-~~~
-
-Here the heap looks something like:
-
-~~~ {.notrust}
-     Stack            Managed Heap       Exchange Heap
-
-  x +------+        +-------------+       +------+
-    | @... | ---->  | mut f: ~... | --+-> | g: 3 |
-  y +------+        +-------------+   |   +------+
-    | &int | -------------------------+
-    +------+
-~~~
-
-In this case, the owning reference to the value being borrowed is
-`x.f`. Moreover, `x.f` is both mutable and *aliasable*. Aliasable
-means that there may be other pointers to that same managed box, so
-even if the compiler were to prove an absence of mutations to `x.f`,
-code could mutate `x.f` indirectly by changing an alias of
-`x`. Therefore, to be safe, the compiler only accepts *pure* actions
-during the lifetime of `y`. We define what "pure" means in the section
-on [purity](#purity).
-
-Besides ensuring purity, the only way to borrow the interior of a
-unique found in aliasable memory is to ensure that the borrowed field
-itself is also unique, as in the following example:
-
-~~~
-struct R { g: int }
-struct S { f: ~R }
-fn example5b(x: @S) -> int {
-    let y = &x.f.g;
-    ...
-# return 0;
-}
-~~~
-
-Here, the field `f` is not declared as mutable. But that is enough for
-the compiler to know that, even if aliases to `x` exist, the field `f`
-cannot be changed and hence the unique box `g` will remain valid.
-
-If you do have a unique box in a mutable field, and you wish to borrow
-it, one option is to use the swap operator to move that unique box
-onto your stack:
-
-~~~
-struct R { g: int }
-struct S { mut f: ~R }
-fn example5c(x: @S) -> int {
-    let mut v = ~R {g: 0};
-    v <-> x.f;         // Swap v and x.f
-    { // Block constrains the scope of `y`:
-        let y = &v.g;
-        ...
-    }
-    x.f = v;          // Replace x.f
-    ...
-# return 0;
-}
-~~~
-
-Of course, this has the side effect of modifying your managed box for
-the duration of the borrow, so it only works when you know that you
-won't be accessing that same box for the duration of the loan. Also,
-it is sometimes necessary to introduce additional blocks to constrain
-the scope of the loan.  In this example, the borrowed pointer `y`
-would still be in scope when you moved the value `v` back into `x.f`,
-and hence moving `v` would be considered illegal.  You cannot move
-values if they are the targets of valid outstanding loans. Introducing
-the block restricts the scope of `y`, making the move legal.
 
 # Borrowing and enums
 
@@ -557,11 +472,6 @@ would be ill-typed. Just as with unique boxes, the compiler will
 permit `ref` bindings into data owned by the stack frame even if the
 data are mutable, but otherwise it requires that the data reside in
 immutable memory.
-
-> ***Note:*** Right now, pattern bindings not explicitly annotated
-> with `ref` or `copy` use a special mode of "implicit by reference".
-> This is changing as soon as we finish updating all the existing code
-> in the compiler that relies on the current settings.
 
 # Returning borrowed pointers
 
@@ -744,69 +654,6 @@ fn select<T>(shape: &Shape, threshold: float,
 ~~~
 
 This is equivalent to the previous definition.
-
-# Purity
-
-As mentioned before, the Rust compiler offers a kind of escape hatch
-that permits borrowing of any data, as long as the actions that occur
-during the lifetime of the borrow are pure. Pure actions are those
-that only modify data owned by the current stack frame. The compiler
-can therefore permit arbitrary pointers into the heap, secure in the
-knowledge that no pure action will ever cause them to become
-invalidated (the compiler must still track data on the stack which is
-borrowed and enforce those rules normally, of course). A pure function
-in Rust is referentially transparent: it returns the same results
-given the same (observably equivalent) inputs. That is because while
-pure functions are allowed to modify data, they may only modify
-*stack-local* data, which cannot be observed outside the scope of the
-function itself. (Using an `unsafe` block invalidates this guarantee.)
-
-Let’s revisit a previous example and show how purity can affect
-typechecking. Here is `example5a()`, which borrows the interior of a
-unique box found in an aliasable, mutable location, only now we’ve
-replaced the `...` with some specific code:
-
-~~~
-struct R { g: int }
-struct S { mut f: ~R }
-fn example5a(x: @S ...) -> int {
-    let y = &x.f.g;   // Unsafe
-    *y + 1        
-}
-~~~
-
-The new code simply returns an incremented version of `y`. This code
-clearly doesn't mutate the heap, so the compiler is satisfied.
-
-But suppose we wanted to pull the increment code into a helper, like
-this:
-
-~~~
-fn add_one(x: &int) -> int { *x + 1 }
-~~~
-
-We can now update `example5a()` to use `add_one()`:
-
-~~~
-# struct R { g: int }
-# struct S { mut f: ~R }
-# pure fn add_one(x: &int) -> int { *x + 1 }
-fn example5a(x: @S ...) -> int {
-    let y = &x.f.g;
-    add_one(y)        // Error reported here
-}
-~~~
-
-But now the compiler will report an error again. The reason is that it
-only considers one function at a time (like most typecheckers), and
-so it does not know that `add_one()` consists of pure code. We can
-help the compiler by labeling `add_one()` as pure:
-
-~~~
-pure fn add_one(x: &int) -> int { *x + 1 }
-~~~
-
-With this change, the modified version of `example5a()` will again compile.
 
 # Conclusion
 

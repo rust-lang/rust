@@ -117,7 +117,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
 
 pub fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     match tcx.freevars.find(&fid) {
-      None => fail!(~"get_freevars: " + int::str(fid) + ~" has no freevars"),
+      None => fail!(~"get_freevars: "+int::to_str(fid)+~" has no freevars"),
       Some(d) => return d
     }
 }

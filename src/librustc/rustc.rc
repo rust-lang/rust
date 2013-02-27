@@ -49,6 +49,7 @@ use back_ = back;
 
 pub mod middle {
     pub mod trans {
+        pub mod macros;
         pub mod inline;
         pub mod monomorphize;
         pub mod controlflow;
@@ -68,6 +69,7 @@ pub mod middle {
         pub mod meth;
         pub mod cabi;
         pub mod cabi_x86_64;
+        pub mod cabi_arm;
         pub mod foreign;
         pub mod reflect;
         pub mod shape;
@@ -314,8 +316,8 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 pub fn monitor(+f: fn~(diagnostic::Emitter)) {
+    use core::cell::Cell;
     use core::comm::*;
-    use std::cell::Cell;
     let (p, ch) = stream();
     let ch = SharedChan(ch);
     let ch_capture = ch.clone();

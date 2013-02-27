@@ -21,7 +21,7 @@ use core::to_str::ToStr;
 #[deriving_eq]
 pub enum direction { send, recv }
 
-pub impl ToStr for direction {
+impl ToStr for direction {
     pure fn to_str(&self) -> ~str {
         match *self {
           send => ~"Send",

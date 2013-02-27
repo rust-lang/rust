@@ -258,7 +258,7 @@ pub trait ByteChan {
 
 const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
 
-pub impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
+impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
     fn recv() -> T {
         match self.try_recv() {
             Some(val) => val,
@@ -358,7 +358,7 @@ pub mod flatteners {
         bogus: ()
     }
 
-    pub impl<T:Copy + Owned> Unflattener<T> for PodUnflattener<T> {
+    impl<T:Copy + Owned> Unflattener<T> for PodUnflattener<T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             assert size_of::<T>() != 0;
             assert size_of::<T>() == buf.len();
@@ -368,7 +368,7 @@ pub mod flatteners {
         }
     }
 
-    pub impl<T:Copy + Owned> Flattener<T> for PodFlattener<T> {
+    impl<T:Copy + Owned> Flattener<T> for PodFlattener<T> {
         fn flatten(&self, val: T) -> ~[u8] {
             assert size_of::<T>() != 0;
             let val: *T = ptr::to_unsafe_ptr(&val);
@@ -406,14 +406,14 @@ pub mod flatteners {
         serialize_value: SerializeValue<T>
     }
 
-    pub impl<D:Decoder,T:Decodable<D>> Unflattener<T>
+    impl<D:Decoder,T:Decodable<D>> Unflattener<T>
             for DeserializingUnflattener<D, T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             (self.deserialize_buffer)(buf)
         }
     }
 
-    pub impl<S:Encoder,T:Encodable<S>> Flattener<T>
+    impl<S:Encoder,T:Encodable<S>> Flattener<T>
             for SerializingFlattener<S, T> {
         fn flatten(&self, val: T) -> ~[u8] {
             (self.serialize_value)(&val)
@@ -519,7 +519,7 @@ pub mod bytepipes {
         writer: W
     }
 
-    pub impl<R:Reader> BytePort for ReaderBytePort<R> {
+    impl<R:Reader> BytePort for ReaderBytePort<R> {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             let mut left = count;
             let mut bytes = ~[];
@@ -541,7 +541,7 @@ pub mod bytepipes {
         }
     }
 
-    pub impl<W:Writer> ByteChan for WriterByteChan<W> {
+    impl<W:Writer> ByteChan for WriterByteChan<W> {
         fn send(&self, val: ~[u8]) {
             self.writer.write(val);
         }
@@ -572,7 +572,7 @@ pub mod bytepipes {
         chan: comm::Chan<~[u8]>
     }
 
-    pub impl BytePort for PipeBytePort {
+    impl BytePort for PipeBytePort {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
             if self.buf.len() >= count {
                 let mut bytes = ::core::util::replace(&mut self.buf, ~[]);
@@ -604,7 +604,7 @@ pub mod bytepipes {
         }
     }
 
-    pub impl ByteChan for PipeByteChan {
+    impl ByteChan for PipeByteChan {
         fn send(&self, val: ~[u8]) {
             self.chan.send(val)
         }

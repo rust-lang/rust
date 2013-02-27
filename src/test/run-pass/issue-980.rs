@@ -10,14 +10,14 @@
 
 enum maybe_pointy {
     no_pointy,
-    yes_pointy(@Pointy),
+    yes_pointy(@mut Pointy),
 }
 
 struct Pointy {
-    mut x : maybe_pointy
+    x : maybe_pointy
 }
 
 pub fn main() {
-    let m = @Pointy { mut x : no_pointy };
+    let m = @mut Pointy { x : no_pointy };
     m.x = yes_pointy(m);
 }

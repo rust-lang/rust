@@ -842,7 +842,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
           //'U' {}
           'u' => {
             let i = tm.tm_wday as int;
-            int::str(if i == 0 { 7 } else { i })
+            int::to_str(if i == 0 { 7 } else { i })
           }
           //'V' {}
           'v' => {
@@ -852,10 +852,10 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
                 parse_type('Y', tm))
           }
           //'W' {}
-          'w' => int::str(tm.tm_wday as int),
+          'w' => int::to_str(tm.tm_wday as int),
           //'X' {}
           //'x' {}
-          'Y' => int::str(tm.tm_year as int + 1900),
+          'Y' => int::to_str(tm.tm_year as int + 1900),
           'y' => fmt!("%02d", (tm.tm_year as int + 1900) % 100),
           'Z' => copy tm.tm_zone,
           'z' => {
@@ -902,15 +902,15 @@ mod tests {
         const some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
-        log(debug, ~"tv1=" + uint::str(tv1.sec as uint) + ~" sec + "
-                   + uint::str(tv1.nsec as uint) + ~" nsec");
+        log(debug, ~"tv1=" + uint::to_str(tv1.sec as uint) + ~" sec + "
+                   + uint::to_str(tv1.nsec as uint) + ~" nsec");
 
         assert tv1.sec > some_recent_date;
         assert tv1.nsec < 1000000000i32;
 
         let tv2 = get_time();
-        log(debug, ~"tv2=" + uint::str(tv2.sec as uint) + ~" sec + "
-                   + uint::str(tv2.nsec as uint) + ~" nsec");
+        log(debug, ~"tv2=" + uint::to_str(tv2.sec as uint) + ~" sec + "
+                   + uint::to_str(tv2.nsec as uint) + ~" nsec");
 
         assert tv2.sec >= tv1.sec;
         assert tv2.sec < some_future_date;
@@ -927,13 +927,13 @@ mod tests {
         log(debug, ~"s0=" + float::to_str_digits(s0, 9u) + ~" sec");
         assert s0 > 0.;
         let ns0 = (s0 * 1000000000.) as u64;
-        log(debug, ~"ns0=" + u64::str(ns0) + ~" ns");
+        log(debug, ~"ns0=" + u64::to_str(ns0) + ~" ns");
 
-        log(debug, ~"ns1=" + u64::str(ns1) + ~" ns");
+        log(debug, ~"ns1=" + u64::to_str(ns1) + ~" ns");
         assert ns1 >= ns0;
 
         let ns2 = precise_time_ns();
-        log(debug, ~"ns2=" + u64::str(ns2) + ~" ns");
+        log(debug, ~"ns2=" + u64::to_str(ns2) + ~" ns");
         assert ns2 >= ns1;
     }
 

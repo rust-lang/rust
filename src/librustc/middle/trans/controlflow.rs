@@ -18,11 +18,6 @@ use middle::trans::datum::*;
 
 use core::str;
 
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
-
 pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     let _icx = bcx.insn_ctxt("trans_block");
     let mut bcx = bcx;

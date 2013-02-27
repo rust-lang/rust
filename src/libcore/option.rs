@@ -56,7 +56,7 @@ pub enum Option<T> {
     Some(T),
 }
 
-pub impl<T:Ord> Ord for Option<T> {
+impl<T:Ord> Ord for Option<T> {
     pure fn lt(&self, other: &Option<T>) -> bool {
         match (self, other) {
             (&None, &None) => false,

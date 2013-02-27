@@ -635,7 +635,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
     }
 }
 
-pub impl AstConv for FnCtxt {
+impl AstConv for FnCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.ccx.tcx }
     fn ccx(@mut self) -> @mut CrateCtxt { self.ccx }
 
@@ -669,7 +669,7 @@ pub impl FnCtxt {
     }
 }
 
-pub impl region_scope for @mut FnCtxt {
+impl region_scope for @mut FnCtxt {
     pure fn anon_region(&self, span: span) -> Result<ty::Region, ~str> {
         // XXX: Unsafe to work around purity
         unsafe {

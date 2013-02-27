@@ -667,8 +667,8 @@ struct Liveness {
     tcx: ty::ctxt,
     ir: @mut IrMaps,
     s: Specials,
-    successors: ~[mut LiveNode],
-    users: ~[mut Users],
+    successors: @mut ~[LiveNode],
+    users: @mut ~[Users],
     // The list of node IDs for the nested loop scopes
     // we're in.
     loop_scope: DVec<node_id>,
@@ -684,14 +684,9 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         ir: ir,
         tcx: ir.tcx,
         s: specials,
-        successors:
-            vec::cast_to_mut(
-                vec::from_elem(ir.num_live_nodes,
-                               invalid_node())),
-        users:
-            vec::cast_to_mut(
-                vec::from_elem(ir.num_live_nodes * ir.num_vars,
-                               invalid_users())),
+        successors: @mut vec::from_elem(ir.num_live_nodes, invalid_node()),
+        users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
+                                   invalid_users()),
         loop_scope: DVec(),
         break_ln: HashMap(),
         cont_ln: HashMap()
@@ -916,12 +911,13 @@ impl Liveness {
 
         let mut changed = false;
         do self.indices2(ln, succ_ln) |idx, succ_idx| {
-            changed |= copy_if_invalid(copy self.users[succ_idx].reader,
-                                       &mut self.users[idx].reader);
-            changed |= copy_if_invalid(copy self.users[succ_idx].writer,
-                                       &mut self.users[idx].writer);
-            if self.users[succ_idx].used && !self.users[idx].used {
-                self.users[idx].used = true;
+            let users = &mut *self.users;
+            changed |= copy_if_invalid(copy users[succ_idx].reader,
+                                       &mut users[idx].reader);
+            changed |= copy_if_invalid(copy users[succ_idx].writer,
+                                       &mut users[idx].writer);
+            if users[succ_idx].used && !users[idx].used {
+                users[idx].used = true;
                 changed = true;
             }
         }
@@ -956,7 +952,8 @@ impl Liveness {
     // Either read, write, or both depending on the acc bitset
     fn acc(&self, ln: LiveNode, var: Variable, acc: uint) {
         let idx = self.idx(ln, var);
-        let user = &mut self.users[idx];
+        let users = &mut *self.users;
+        let user = &mut users[idx];
 
         if (acc & ACC_WRITE) != 0 {
             user.reader = invalid_node();
@@ -970,7 +967,7 @@ impl Liveness {
         }
 
         if (acc & ACC_USE) != 0 {
-            self.users[idx].used = true;
+            user.used = true;
         }
 
         debug!("%s accesses[%x] %s: %s",

@@ -155,7 +155,7 @@ pub mod pipes {
         p: Option<*packet<T>>,
     }
 
-    pub impl<T:Owned> Drop for send_packet<T> {
+    impl<T:Owned> Drop for send_packet<T> {
         fn finalize(&self) {
             unsafe {
                 if self.p != None {
@@ -187,7 +187,7 @@ pub mod pipes {
         p: Option<*packet<T>>,
     }
 
-    pub impl<T:Owned> Drop for recv_packet<T> {
+    impl<T:Owned> Drop for recv_packet<T> {
         fn finalize(&self) {
             unsafe {
                 if self.p != None {
@@ -318,18 +318,16 @@ pub fn main() {
 //    Commented out because of option::get error
 
     let (client_, server_) = pingpong::init();
-    let client_ = ~mut Some(client_);
-    let server_ = ~mut Some(server_);
+    let client_ = Cell(client_);
+    let server_ = Cell(server_);
 
     task::spawn {|client_|
-        let mut client__ = none;
-        *client_ <-> client__;
-        client(option::unwrap(client__));
+        let client__ = client_.take();
+        client(client__);
     };
     task::spawn {|server_|
-        let mut server_ˊ = none;
-        *server_ <-> server_ˊ;
-        server(option::unwrap(server_ˊ));
+        let server__ = server_.take();
+        server(server_ˊ);
     };
   */
 }

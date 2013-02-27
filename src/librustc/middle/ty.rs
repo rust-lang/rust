@@ -42,7 +42,8 @@ use core::uint;
 use core::vec;
 use core::hashmap::linear::LinearMap;
 use std::oldmap::HashMap;
-use std::{oldmap, oldsmallintmap};
+use std::oldmap;
+use std::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::{is_local, local_def};
 use syntax::ast_util;
@@ -258,7 +259,6 @@ struct ctxt_ {
     rcache: creader_cache,
     ccache: constness_cache,
     short_names_cache: HashMap<t, @~str>,
-    needs_drop_cache: HashMap<t, bool>,
     needs_unwind_cleanup_cache: HashMap<t, bool>,
     tc_cache: @mut LinearMap<uint, TypeContents>,
     ast_ty_to_ty_cache: HashMap<node_id, ast_ty_to_ty_cache_entry>,
@@ -660,46 +660,46 @@ pub trait Vid {
     pure fn to_uint(&self) -> uint;
 }
 
-pub impl Vid for TyVid {
+impl Vid for TyVid {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl ToStr for TyVid {
+impl ToStr for TyVid {
     pure fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
-pub impl Vid for IntVid {
+impl Vid for IntVid {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl ToStr for IntVid {
+impl ToStr for IntVid {
     pure fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
-pub impl Vid for FloatVid {
+impl Vid for FloatVid {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl ToStr for FloatVid {
+impl ToStr for FloatVid {
     pure fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
-pub impl Vid for RegionVid {
+impl Vid for RegionVid {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl ToStr for RegionVid {
+impl ToStr for RegionVid {
     pure fn to_str(&self) -> ~str { fmt!("%?", self) }
 }
 
-pub impl ToStr for FnSig {
+impl ToStr for FnSig {
     pure fn to_str(&self) -> ~str {
         // grr, without tcx not much we can do.
         return ~"(...)";
     }
 }
 
-pub impl ToStr for InferTy {
+impl ToStr for InferTy {
     pure fn to_str(&self) -> ~str {
         match *self {
             TyVar(ref v) => v.to_str(),
@@ -709,7 +709,7 @@ pub impl ToStr for InferTy {
     }
 }
 
-pub impl ToStr for IntVarValue {
+impl ToStr for IntVarValue {
     pure fn to_str(&self) -> ~str {
         match *self {
             IntType(ref v) => v.to_str(),
@@ -718,25 +718,25 @@ pub impl ToStr for IntVarValue {
     }
 }
 
-pub impl to_bytes::IterBytes for TyVid {
+impl to_bytes::IterBytes for TyVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl to_bytes::IterBytes for IntVid {
+impl to_bytes::IterBytes for IntVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl to_bytes::IterBytes for FloatVid {
+impl to_bytes::IterBytes for FloatVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl to_bytes::IterBytes for RegionVid {
+impl to_bytes::IterBytes for RegionVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
@@ -767,7 +767,7 @@ type type_cache = HashMap<ast::def_id, ty_param_bounds_and_ty>;
 
 type constness_cache = HashMap<ast::def_id, const_eval::constness>;
 
-pub type node_type_table = @oldsmallintmap::SmallIntMap<t>;
+pub type node_type_table = @mut SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
@@ -812,7 +812,7 @@ pub fn mk_ctxt(s: session::Session,
         def_map: dm,
         region_map: region_map,
         region_paramd_items: region_paramd_items,
-        node_types: @oldsmallintmap::mk(),
+        node_types: @mut SmallIntMap::new(),
         node_type_substs: oldmap::HashMap(),
         items: amap,
         intrinsic_defs: oldmap::HashMap(),
@@ -821,7 +821,6 @@ pub fn mk_ctxt(s: session::Session,
         rcache: mk_rcache(),
         ccache: HashMap(),
         short_names_cache: new_ty_hash(),
-        needs_drop_cache: new_ty_hash(),
         needs_unwind_cleanup_cache: new_ty_hash(),
         tc_cache: @mut LinearMap::new(),
         ast_ty_to_ty_cache: HashMap(),
@@ -1599,79 +1598,7 @@ pub fn type_is_immediate(ty: t) -> bool {
 }
 
 pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
-    match cx.needs_drop_cache.find(&ty) {
-      Some(result) => return result,
-      None => {/* fall through */ }
-    }
-
-    let mut accum = false;
-    let result = match /*bad*/copy get(ty).sty {
-      // scalar types
-      ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_type | ty_ptr(_) | ty_rptr(_, _) |
-      ty_estr(vstore_fixed(_)) |
-      ty_estr(vstore_slice(_)) |
-      ty_evec(_, vstore_slice(_)) |
-      ty_self => false,
-
-      ty_box(_) | ty_uniq(_) |
-      ty_opaque_box | ty_opaque_closure_ptr(*) |
-      ty_estr(vstore_uniq) |
-      ty_estr(vstore_box) |
-      ty_evec(_, vstore_uniq) |
-      ty_evec(_, vstore_box) => true,
-
-      ty_trait(_, _, vstore_box) |
-      ty_trait(_, _, vstore_uniq) => true,
-      ty_trait(_, _, vstore_fixed(_)) |
-      ty_trait(_, _, vstore_slice(_)) => false,
-
-      ty_param(*) | ty_infer(*) | ty_err => true,
-
-      ty_evec(mt, vstore_fixed(_)) => type_needs_drop(cx, mt.ty),
-      ty_unboxed_vec(mt) => type_needs_drop(cx, mt.ty),
-      ty_rec(flds) => {
-        for flds.each |f| {
-            if type_needs_drop(cx, f.mt.ty) { accum = true; }
-        }
-        accum
-      }
-      ty_struct(did, ref substs) => {
-         // Any struct with a dtor needs a drop
-         ty_dtor(cx, did).is_present() || {
-             for vec::each(ty::struct_fields(cx, did, substs)) |f| {
-                 if type_needs_drop(cx, f.mt.ty) { accum = true; }
-             }
-             accum
-         }
-      }
-      ty_tup(elts) => {
-          for elts.each |m| { if type_needs_drop(cx, *m) { accum = true; } }
-        accum
-      }
-      ty_enum(did, ref substs) => {
-        let variants = enum_variants(cx, did);
-          for vec::each(*variants) |variant| {
-              for variant.args.each |aty| {
-                // Perform any type parameter substitutions.
-                let arg_ty = subst(cx, substs, *aty);
-                if type_needs_drop(cx, arg_ty) { accum = true; }
-            }
-            if accum { break; }
-        }
-        accum
-      }
-      ty_bare_fn(*) => false,
-      ty_closure(ref fty) => {
-        match fty.sigil {
-          ast::BorrowedSigil => false,
-          ast::ManagedSigil | ast::OwnedSigil => true,
-        }
-      }
-    };
-
-    cx.needs_drop_cache.insert(ty, result);
-    return result;
+    type_contents(cx, ty).needs_drop(cx)
 }
 
 // Some things don't need cleanups during unwinding because the
@@ -1818,7 +1745,7 @@ pub impl TypeContents {
 
     static fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
         let base = TypeContents::noncopyable(cx) + TC_OWNED_POINTER;
-        if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_SLICE}
+        if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_VEC}
     }
 
     fn is_safe_for_default_mode(&self, cx: ctxt) -> bool {
@@ -1827,7 +1754,17 @@ pub impl TypeContents {
 
     static fn nondefault_mode(cx: ctxt) -> TypeContents {
         let tc = TypeContents::nonimplicitly_copyable(cx);
-        tc + TC_BIG + TC_OWNED_SLICE // disregard cx.vecs_implicitly_copyable
+        tc + TC_BIG + TC_OWNED_VEC // disregard cx.vecs_implicitly_copyable
+    }
+
+    fn needs_drop(&self, cx: ctxt) -> bool {
+        let tc = TC_MANAGED + TC_DTOR + TypeContents::owned(cx);
+        self.intersects(tc)
+    }
+
+    static fn owned(&self, _cx: ctxt) -> TypeContents {
+        //! Any kind of owned contents.
+        TC_OWNED_CLOSURE + TC_OWNED_POINTER + TC_OWNED_VEC
     }
 }
 
@@ -1858,8 +1795,8 @@ const TC_BORROWED_POINTER: TypeContents = TypeContents{bits:0b0000_00000001};
 /// Contains an owned pointer (~T) but not slice of some kind
 const TC_OWNED_POINTER: TypeContents =    TypeContents{bits:0b000000000010};
 
-/// Contains an owned slice
-const TC_OWNED_SLICE: TypeContents =      TypeContents{bits:0b000000000100};
+/// Contains an owned vector ~[] or owned string ~str
+const TC_OWNED_VEC: TypeContents =        TypeContents{bits:0b000000000100};
 
 /// Contains a ~fn() or a ~Trait, which is non-copyable.
 const TC_OWNED_CLOSURE: TypeContents =    TypeContents{bits:0b000000001000};
@@ -1962,7 +1899,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_estr(vstore_uniq) => {
-                TC_OWNED_SLICE
+                TC_OWNED_VEC
             }
 
             ty_closure(ref c) => {
@@ -1995,7 +1932,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_evec(mt, vstore_uniq) => {
-                TC_OWNED_SLICE + tc_mt(cx, mt, cache)
+                TC_OWNED_VEC + tc_mt(cx, mt, cache)
             }
 
             ty_evec(mt, vstore_box) => {
@@ -2787,8 +2724,8 @@ pub fn br_hashmap<V:Copy>() -> HashMap<bound_region, V> {
 
 pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     //io::println(fmt!("%?/%?", id, cx.node_types.len()));
-    match oldsmallintmap::find(*cx.node_types, id as uint) {
-       Some(t) => t,
+    match cx.node_types.find(&(id as uint)) {
+       Some(&t) => t,
        None => cx.sess.bug(
            fmt!("node_id_to_type: no type for node `%s`",
                 ast_map::node_id_to_str(cx.items, id,
@@ -3179,8 +3116,8 @@ pub fn expr_kind(tcx: ctxt,
         }
 
         ast::expr_cast(*) => {
-            match oldsmallintmap::find(*tcx.node_types, expr.id as uint) {
-                Some(t) => {
+            match tcx.node_types.find(&(expr.id as uint)) {
+                Some(&t) => {
                     if ty::type_is_immediate(t) {
                         RvalueDatumExpr
                     } else {
@@ -4289,7 +4226,8 @@ pub fn eval_repeat_count(tcx: ctxt,
                          count_expr: @ast::expr,
                          span: span)
                       -> uint {
-    match const_eval::eval_const_expr(tcx, count_expr) {
+    match const_eval::eval_const_expr_partial(tcx, count_expr) {
+      Ok(ref const_val) => match *const_val {
         const_eval::const_int(count) => return count as uint,
         const_eval::const_uint(count) => return count as uint,
         const_eval::const_float(count) => {
@@ -4310,7 +4248,13 @@ pub fn eval_repeat_count(tcx: ctxt,
                                 repeat count but found boolean");
             return 0;
         }
-
+      },
+      Err(*) => {
+        tcx.sess.span_err(span,
+                          ~"expected constant integer for repeat count \
+                            but found variable");
+        return 0;
+      }
     }
 }
 

@@ -69,7 +69,6 @@ use std::list::{List, Nil, Cons};
 use std::list;
 use std::oldmap::HashMap;
 use std::oldmap;
-use std::oldsmallintmap;
 use syntax::ast::{provided, required};
 use syntax::ast_map::node_id_to_str;
 use syntax::ast_util::{local_def, split_trait_methods};

@@ -51,7 +51,7 @@ pub const use_tydesc: uint = 2u; /* Takes the tydesc, or compares */
 
 pub struct Context {
     ccx: @CrateContext,
-    uses: ~[mut type_uses]
+    uses: @mut ~[type_uses]
 }
 
 pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
@@ -72,7 +72,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
 
     let cx = Context {
         ccx: ccx,
-        uses: vec::cast_to_mut(vec::from_elem(n_tps, 0u))
+        uses: @mut vec::from_elem(n_tps, 0u)
     };
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
@@ -90,7 +90,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
     }
 
     if fn_id_loc.crate != local_crate {
-        let uses = vec::cast_from_mut(copy cx.uses);
+        let uses = copy *cx.uses;
         ccx.type_use_cache.insert(fn_id, copy uses);
         return uses;
     }
@@ -175,16 +175,16 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                                 ccx.tcx.sess.parse_sess.interner)));
       }
     }
-    let uses = vec::cast_from_mut(copy cx.uses);
-    // XXX: Bad copy, use @vec instead?
+    // XXX: Bad copies, use @vec instead?
+    let uses = copy *cx.uses;
     ccx.type_use_cache.insert(fn_id, copy uses);
     uses
 }
 
 pub fn type_needs(cx: Context, use_: uint, ty: ty::t) {
     // Optimization -- don't descend type if all params already have this use
-    for vec::each_mut(cx.uses) |u| {
-        if *u & use_ != use_ {
+    for uint::range(0, cx.uses.len()) |i| {
+        if cx.uses[i] & use_ != use_ {
             type_needs_inner(cx, use_, ty, @Nil);
             return;
         }

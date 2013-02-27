@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::cell::Cell;
 use core::cmp;
 use core::os;
 use core::result;
@@ -18,7 +19,6 @@ use core::run::ProgramOutput;
 use core::vec;
 use core::result::Result;
 use std::getopts;
-use std::cell::Cell;
 
 /// The type of document to output
 pub enum OutputFormat {
@@ -59,7 +59,7 @@ pub struct Config {
     pandoc_cmd: Option<~str>
 }
 
-pub impl Clone for Config {
+impl Clone for Config {
     fn clone(&self) -> Config { copy *self }
 }
 

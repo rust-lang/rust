@@ -538,13 +538,13 @@ pub trait get_node_info {
     fn info(&self) -> Option<NodeInfo>;
 }
 
-pub impl get_node_info for @ast::expr {
+impl get_node_info for @ast::expr {
     fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo { id: self.id, span: self.span })
     }
 }
 
-pub impl get_node_info for ast::blk {
+impl get_node_info for ast::blk {
     fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo { id: self.node.id, span: self.span })
     }
@@ -553,7 +553,7 @@ pub impl get_node_info for ast::blk {
 // XXX: Work around a trait parsing bug. remove after snapshot
 pub type optional_boxed_ast_expr = Option<@ast::expr>;
 
-pub impl get_node_info for optional_boxed_ast_expr {
+impl get_node_info for optional_boxed_ast_expr {
     fn info(&self) -> Option<NodeInfo> {
         self.chain_ref(|s| s.info())
     }
@@ -645,19 +645,6 @@ pub fn val_ty(v: ValueRef) -> TypeRef {
 
 pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
-}
-
-// Returns the nth element of the given LLVM structure type.
-pub fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
-    unsafe {
-        let elt_count = llvm::LLVMCountStructElementTypes(llstructty) as uint;
-        assert (n < elt_count);
-        let mut elt_tys = vec::from_elem(elt_count, T_nil());
-        llvm::LLVMGetStructElementTypes(
-            llstructty,
-            ptr::to_mut_unsafe_ptr(&mut elt_tys[0]));
-        return llvm::LLVMGetElementType(elt_tys[n]);
-    }
 }
 
 pub fn in_scope_cx(cx: block, f: &fn(&mut scope_info)) {
@@ -1288,7 +1275,7 @@ pub struct mono_id_ {
 
 pub type mono_id = @mono_id_;
 
-pub impl to_bytes::IterBytes for mono_param_id {
+impl to_bytes::IterBytes for mono_param_id {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match /*bad*/copy *self {
           mono_precise(t, mids) =>
@@ -1302,7 +1289,7 @@ pub impl to_bytes::IterBytes for mono_param_id {
     }
 }
 
-pub impl to_bytes::IterBytes for mono_id_ {
+impl to_bytes::IterBytes for mono_id_ {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }

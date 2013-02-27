@@ -75,7 +75,8 @@ use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
 use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
-use parse::obsolete::{ObsoleteTraitBoundSeparator};
+use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
+use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -653,6 +654,9 @@ pub impl Parser {
         } else if *self.token == token::LBRACKET {
             self.expect(&token::LBRACKET);
             let mt = self.parse_mt();
+            if mt.mutbl == m_mutbl {    // `m_const` too after snapshot
+                self.obsolete(*self.last_span, ObsoleteMutVector);
+            }
 
             // Parse the `* 3` in `[ int * 3 ]`
             let t = match self.maybe_parse_fixed_vstore_with_star() {
@@ -710,6 +714,11 @@ pub impl Parser {
         // rather than boxed ptrs.  But the special casing of str/vec is not
         // reflected in the AST type.
         let mt = self.parse_mt();
+
+        if mt.mutbl != m_imm && sigil == OwnedSigil {
+            self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
+        }
+
         ctor(mt)
     }
 
@@ -781,18 +790,6 @@ pub impl Parser {
         }
     }
 
-    fn parse_capture_item_or(parse_arg_fn: fn(&Parser) -> arg_or_capture_item)
-        -> arg_or_capture_item
-    {
-        if self.eat_keyword(&~"copy") {
-            // XXX outdated syntax now that moves-based-on-type has gone in
-            self.parse_ident();
-            either::Right(())
-        } else {
-            parse_arg_fn(&self)
-        }
-    }
-
     // This version of parse arg doesn't necessarily require
     // identifier names.
     fn parse_arg_general(require_name: bool) -> arg {
@@ -821,32 +818,26 @@ pub impl Parser {
         either::Left(self.parse_arg_general(true))
     }
 
-    fn parse_arg_or_capture_item() -> arg_or_capture_item {
-        self.parse_capture_item_or(|p| p.parse_arg())
-    }
-
     fn parse_fn_block_arg() -> arg_or_capture_item {
-        do self.parse_capture_item_or |p| {
-            let m = p.parse_arg_mode();
-            let is_mutbl = self.eat_keyword(&~"mut");
-            let pat = p.parse_pat(false);
-            let t = if p.eat(&token::COLON) {
-                p.parse_ty(false)
-            } else {
-                @Ty {
-                    id: p.get_id(),
-                    node: ty_infer,
-                    span: mk_sp(p.span.lo, p.span.hi),
-                }
-            };
-            either::Left(ast::arg {
-                mode: m,
-                is_mutbl: is_mutbl,
-                ty: t,
-                pat: pat,
-                id: p.get_id()
-            })
-        }
+        let m = self.parse_arg_mode();
+        let is_mutbl = self.eat_keyword(&~"mut");
+        let pat = self.parse_pat(false);
+        let t = if self.eat(&token::COLON) {
+            self.parse_ty(false)
+        } else {
+            @Ty {
+                id: self.get_id(),
+                node: ty_infer,
+                span: mk_sp(self.span.lo, self.span.hi),
+            }
+        };
+        either::Left(ast::arg {
+            mode: m,
+            is_mutbl: is_mutbl,
+            ty: t,
+            pat: pat,
+            id: self.get_id()
+        })
     }
 
     fn maybe_parse_fixed_vstore_with_star() -> Option<uint> {
@@ -1184,6 +1175,10 @@ pub impl Parser {
         } else if *self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();
+            if mutbl == m_mutbl {   // `m_const` too after snapshot
+                self.obsolete(*self.last_span, ObsoleteMutVector);
+            }
+
             if *self.token == token::RBRACKET {
                 // Empty vector.
                 self.bump();
@@ -1659,6 +1654,10 @@ pub impl Parser {
           token::TILDE => {
             self.bump();
             let m = self.parse_mutability();
+            if m != m_imm {
+                self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
+            }
+
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
@@ -1794,7 +1793,7 @@ pub impl Parser {
 
         // if we want to allow fn expression argument types to be inferred in
         // the future, just have to change parse_arg to parse_fn_block_arg.
-        let decl = self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
+        let decl = self.parse_fn_decl(|p| p.parse_arg());
 
         let body = self.parse_block();
 
@@ -3044,9 +3043,9 @@ pub impl Parser {
     }
 
     // Parses two variants (with the region/type params always optional):
-    //    impl<T> ~[T] : to_str { ... }
-    //    impl<T> to_str for ~[T] { ... }
-    fn parse_item_impl() -> item_info {
+    //    impl<T> Foo { ... }
+    //    impl<T> ToStr for ~[T] { ... }
+    fn parse_item_impl(visibility: ast::visibility) -> item_info {
         fn wrap_path(p: &Parser, pt: @path) -> @Ty {
             @Ty {
                 id: p.get_id(),
@@ -3094,6 +3093,12 @@ pub impl Parser {
         } else {
             None
         };
+
+        // Do not allow visibility to be specified in `impl...for...`. It is
+        // meaningless.
+        if opt_trait.is_some() && visibility != ast::inherited {
+            self.obsolete(*self.span, ObsoleteTraitImplVisibility);
+        }
 
         let mut meths = ~[];
         if !self.eat(&token::SEMI) {
@@ -3993,7 +3998,8 @@ pub impl Parser {
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(&~"impl") {
             // IMPL ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_impl();
+            let (ident, item_, extra_attrs) =
+                self.parse_item_impl(visibility);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));

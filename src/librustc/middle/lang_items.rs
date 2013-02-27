@@ -75,16 +75,18 @@ pub enum LangItem {
     ReturnToMutFnLangItem,      // 31
     CheckNotBorrowedFnLangItem, // 32
     StrDupUniqFnLangItem,       // 33
+
+    StartFnLangItem,            // 34
 }
 
 pub struct LanguageItems {
-    items: [ Option<def_id> * 34 ]
+    items: [ Option<def_id> * 35 ]
 }
 
 pub impl LanguageItems {
     static pub fn new(&self) -> LanguageItems {
         LanguageItems {
-            items: [ None, ..34 ]
+            items: [ None, ..35 ]
         }
     }
 
@@ -135,6 +137,8 @@ pub impl LanguageItems {
             31 => "return_to_mut",
             32 => "check_not_borrowed",
             33 => "strdup_uniq",
+
+            34 => "start",
 
             _ => "???"
         }
@@ -248,6 +252,9 @@ pub impl LanguageItems {
     pub fn strdup_uniq_fn(&const self) -> def_id {
         self.items[StrDupUniqFnLangItem as uint].get()
     }
+    pub fn start_fn(&const self) -> def_id {
+        self.items[StartFnLangItem as uint].get()
+    }
 }
 
 fn LanguageItemCollector(crate: @crate,
@@ -296,6 +303,7 @@ fn LanguageItemCollector(crate: @crate,
     item_refs.insert(@~"check_not_borrowed",
                      CheckNotBorrowedFnLangItem as uint);
     item_refs.insert(@~"strdup_uniq", StrDupUniqFnLangItem as uint);
+    item_refs.insert(@~"start", StartFnLangItem as uint);
 
     LanguageItemCollector {
         crate: crate,

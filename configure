@@ -678,7 +678,7 @@ do
         LLVM_BUILD_DIR=${CFG_BUILD_DIR}llvm/$t
         if [ ! -z "$CFG_DISABLE_OPTIMIZE_LLVM" ]
         then
-            LLVM_DBG_OPTS=""
+            LLVM_DBG_OPTS="--enable-debug-symbols --disable-optimized"
             # Just use LLVM straight from its build directory to
             # avoid 'make install' time
             LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug+Asserts

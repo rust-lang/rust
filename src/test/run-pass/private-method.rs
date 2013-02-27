@@ -9,20 +9,20 @@
 // except according to those terms.
 
 struct cat {
-  priv mut meows : uint,
+    priv meows : uint,
 
-  how_hungry : int,
+    how_hungry : int,
 }
 
 impl cat {
-  fn play() {
-    self.meows += 1u;
-    self.nap();
-  }
+    fn play(&mut self) {
+        self.meows += 1u;
+        self.nap();
+    }
 }
 
 priv impl cat {
-    fn nap() { for uint::range(1u, 10u) |_i| { }}
+    fn nap(&mut self) { for uint::range(1u, 10u) |_i| { }}
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {
@@ -33,6 +33,6 @@ fn cat(in_x : uint, in_y : int) -> cat {
 }
 
 pub fn main() {
-  let nyan : cat = cat(52u, 99);
+  let mut nyan : cat = cat(52u, 99);
   nyan.play();
 }
