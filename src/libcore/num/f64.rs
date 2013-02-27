@@ -299,7 +299,7 @@ impl cmp::Ord for f64 {
     pure fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
 }
 
-pub impl NumCast for f64 {
+impl NumCast for f64 {
     /**
      * Cast `n` to an `f64`
      */

@@ -109,7 +109,7 @@ pub mod win32 {
             let mut done = false;
             while !done {
                 let mut k: DWORD = 0;
-                let buf = vec::cast_to_mut(vec::from_elem(n as uint, 0u16));
+                let mut buf = vec::from_elem(n as uint, 0u16);
                 do vec::as_mut_buf(buf) |b, _sz| {
                     k = f(b, TMPBUF_SZ as DWORD);
                     if k == (0 as DWORD) {

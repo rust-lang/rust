@@ -127,7 +127,7 @@ impl reader for StringReader {
     fn dup(@mut self) -> reader { dup_string_reader(self) as reader }
 }
 
-pub impl reader for TtReader {
+impl reader for TtReader {
     fn is_eof(@mut self) -> bool { self.cur_tok == token::EOF }
     fn next_token(@mut self) -> TokenAndSpan { tt_next_token(self) }
     fn fatal(@mut self, m: ~str) -> ! {

@@ -27,7 +27,7 @@ use std::list;
 
 pub enum Glb = CombineFields;  // "greatest lower bound" (common subtype)
 
-pub impl Combine for Glb {
+impl Combine for Glb {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"glb" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }

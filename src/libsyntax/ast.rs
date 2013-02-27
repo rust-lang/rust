@@ -61,7 +61,7 @@ type Name = uint;
 // with a macro expansion
 type Mrk = uint;
 
-pub impl<S:Encoder> Encodable<S> for ident {
+impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &S) {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
@@ -74,7 +74,7 @@ pub impl<S:Encoder> Encodable<S> for ident {
     }
 }
 
-pub impl<D:Decoder> Decodable<D> for ident {
+impl<D:Decoder> Decodable<D> for ident {
     static fn decode(d: &D) -> ident {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
@@ -87,7 +87,7 @@ pub impl<D:Decoder> Decodable<D> for ident {
     }
 }
 
-pub impl to_bytes::IterBytes for ident {
+impl to_bytes::IterBytes for ident {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.repr.iter_bytes(lsb0, f)
     }
@@ -246,7 +246,7 @@ pub enum binding_mode {
     bind_infer
 }
 
-pub impl to_bytes::IterBytes for binding_mode {
+impl to_bytes::IterBytes for binding_mode {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           bind_by_copy => 0u8.iter_bytes(lsb0, f),
@@ -291,7 +291,7 @@ pub enum pat_ {
 #[deriving_eq]
 pub enum mutability { m_mutbl, m_imm, m_const, }
 
-pub impl to_bytes::IterBytes for mutability {
+impl to_bytes::IterBytes for mutability {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -304,13 +304,13 @@ pub enum Abi {
     RustAbi
 }
 
-pub impl to_bytes::IterBytes for Abi {
+impl to_bytes::IterBytes for Abi {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
-pub impl ToStr for Abi {
+impl ToStr for Abi {
     pure fn to_str(&self) -> ~str {
         match *self {
             RustAbi => ~"\"rust\""
@@ -327,13 +327,13 @@ pub enum Sigil {
     ManagedSigil
 }
 
-pub impl to_bytes::IterBytes for Sigil {
+impl to_bytes::IterBytes for Sigil {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
-pub impl ToStr for Sigil {
+impl ToStr for Sigil {
     pure fn to_str(&self) -> ~str {
         match *self {
             BorrowedSigil => ~"&",
@@ -412,7 +412,7 @@ pub enum inferable<T> {
     infer(node_id)
 }
 
-pub impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
+impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           expl(ref t) =>
@@ -430,7 +430,7 @@ pub impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
 #[deriving_eq]
 pub enum rmode { by_ref, by_val, by_copy }
 
-pub impl to_bytes::IterBytes for rmode {
+impl to_bytes::IterBytes for rmode {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -771,13 +771,13 @@ pub enum trait_method {
 #[deriving_eq]
 pub enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
-pub impl ToStr for int_ty {
+impl ToStr for int_ty {
     pure fn to_str(&self) -> ~str {
         ::ast_util::int_ty_to_str(*self)
     }
 }
 
-pub impl to_bytes::IterBytes for int_ty {
+impl to_bytes::IterBytes for int_ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -788,13 +788,13 @@ pub impl to_bytes::IterBytes for int_ty {
 #[deriving_eq]
 pub enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
-pub impl ToStr for uint_ty {
+impl ToStr for uint_ty {
     pure fn to_str(&self) -> ~str {
         ::ast_util::uint_ty_to_str(*self)
     }
 }
 
-pub impl to_bytes::IterBytes for uint_ty {
+impl to_bytes::IterBytes for uint_ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -805,13 +805,13 @@ pub impl to_bytes::IterBytes for uint_ty {
 #[deriving_eq]
 pub enum float_ty { ty_f, ty_f32, ty_f64, }
 
-pub impl ToStr for float_ty {
+impl ToStr for float_ty {
     pure fn to_str(&self) -> ~str {
         ::ast_util::float_ty_to_str(*self)
     }
 }
 
-pub impl to_bytes::IterBytes for float_ty {
+impl to_bytes::IterBytes for float_ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -865,7 +865,7 @@ pub enum Onceness {
     Many
 }
 
-pub impl ToStr for Onceness {
+impl ToStr for Onceness {
     pure fn to_str(&self) -> ~str {
         match *self {
             Once => ~"once",
@@ -874,7 +874,7 @@ pub impl ToStr for Onceness {
     }
 }
 
-pub impl to_bytes::IterBytes for Onceness {
+impl to_bytes::IterBytes for Onceness {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
     }
@@ -924,7 +924,7 @@ pub enum ty_ {
     ty_infer,
 }
 
-pub impl to_bytes::IterBytes for Ty {
+impl to_bytes::IterBytes for Ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
     }
@@ -960,7 +960,7 @@ pub enum purity {
     extern_fn, // declared with "extern fn"
 }
 
-pub impl ToStr for purity {
+impl ToStr for purity {
     pure fn to_str(&self) -> ~str {
         match *self {
             impure_fn => ~"impure",
@@ -971,7 +971,7 @@ pub impl ToStr for purity {
     }
 }
 
-pub impl to_bytes::IterBytes for purity {
+impl to_bytes::IterBytes for purity {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -986,7 +986,7 @@ pub enum ret_style {
     return_val, // everything else
 }
 
-pub impl to_bytes::IterBytes for ret_style {
+impl to_bytes::IterBytes for ret_style {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -1268,7 +1268,7 @@ pub enum item_ {
 #[deriving_eq]
 pub enum struct_mutability { struct_mutable, struct_immutable }
 
-pub impl to_bytes::IterBytes for struct_mutability {
+impl to_bytes::IterBytes for struct_mutability {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
