@@ -1,4 +1,4 @@
-n// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -96,6 +96,7 @@ use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
 use middle::typeck::rscope::{binding_rscope, bound_self_region};
+use middle::typeck::rscope::{RegionError};
 use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
 use middle::typeck::rscope;
 use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
@@ -651,7 +652,8 @@ pub impl FnCtxt {
     fn infcx(&self) -> @mut infer::InferCtxt { self.inh.infcx }
     fn search_in_scope_regions(
         &self,
-        br: ty::bound_region) -> Result<ty::Region, ~str>
+        span: span,
+        br: ty::bound_region) -> Result<ty::Region, RegionError>
     {
         let in_scope_regions = self.in_scope_regions;
         match in_scope_regions.find(br) {
@@ -661,8 +663,11 @@ pub impl FnCtxt {
                 if br == blk_br {
                     result::Ok(self.block_region())
                 } else {
-                    result::Err(fmt!("named region `%s` not in scope here",
-                                     bound_region_to_str(self.tcx(), br)))
+                    result::Err(RegionError {
+                        msg: fmt!("named region `%s` not in scope here",
+                                  bound_region_to_str(self.tcx(), br)),
+                        replacement: self.infcx().next_region_var_nb(span)
+                    })
                 }
             }
         }
@@ -670,16 +675,16 @@ pub impl FnCtxt {
 }
 
 impl region_scope for FnCtxt {
-    fn anon_region(&self, span: span) -> Result<ty::Region, ~str> {
+    fn anon_region(&self, span: span) -> Result<ty::Region, RegionError> {
         result::Ok(self.infcx().next_region_var_nb(span))
     }
-    fn self_region(&self, _span: span) -> Result<ty::Region, ~str> {
-        self.search_in_scope_regions(ty::br_self)
+    fn self_region(&self, span: span) -> Result<ty::Region, RegionError> {
+        self.search_in_scope_regions(span, ty::br_self)
     }
     fn named_region(&self,
-                    _span: span,
-                    id: ast::ident) -> Result<ty::Region, ~str> {
-        self.search_in_scope_regions(ty::br_named(id))
+                    span: span,
+                    id: ast::ident) -> Result<ty::Region, RegionError> {
+        self.search_in_scope_regions(span, ty::br_named(id))
     }
 }
 

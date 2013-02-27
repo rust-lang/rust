@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct yes0<'self> {
-  x: &uint, //~ ERROR anonymous region types are not permitted here
+  x: &uint, //~ ERROR Illegal anonymous lifetime: anonymous lifetimes are not permitted here
 }
 
 struct yes1<'self> {
@@ -17,7 +17,7 @@ struct yes1<'self> {
 }
 
 struct yes2<'self> {
-  x: &'foo uint, //~ ERROR named regions other than `self` are not allowed as part of a type declaration
+  x: &'foo uint, //~ ERROR Illegal lifetime &foo: only 'self is allowed allowed as part of a type declaration
 }
 
 fn main() {}

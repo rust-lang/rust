@@ -9,7 +9,7 @@
 // except according to those terms.
 
 type item_ty_yes0 = {
-    x: &uint //~ ERROR anonymous region types are not permitted here
+    x: &uint //~ ERROR Illegal anonymous lifetime: anonymous lifetimes are not permitted here
 };
 
 type item_ty_yes1 = {
@@ -17,7 +17,7 @@ type item_ty_yes1 = {
 };
 
 type item_ty_yes2 = {
-    x: &'foo uint //~ ERROR named regions other than `self` are not allowed as part of a type declaration
+    x: &'foo uint //~ ERROR Illegal lifetime &foo: only 'self is allowed allowed as part of a type declaration
 };
 
 fn main() {}
