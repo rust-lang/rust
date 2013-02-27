@@ -93,17 +93,6 @@ priv impl<A> DVec<A> {
     }
 
     #[inline(always)]
-    fn check_out<B>(f: &fn(v: ~[A]) -> B) -> B {
-        unsafe {
-            let mut data = cast::reinterpret_cast(&null::<()>());
-            data <-> self.data;
-            let data_ptr: *() = cast::reinterpret_cast(&data);
-            if data_ptr.is_null() { fail!(~"Recursive use of dvec"); }
-            return f(data);
-        }
-    }
-
-    #[inline(always)]
     fn give_back(data: ~[A]) {
         unsafe {
             self.data = data;
@@ -118,6 +107,18 @@ priv impl<A> DVec<A> {
 // almost nothing works without the copy bound due to limitations
 // around closures.
 pub impl<A> DVec<A> {
+    // FIXME (#3758): This should not need to be public.
+    #[inline(always)]
+    fn check_out<B>(f: &fn(v: ~[A]) -> B) -> B {
+        unsafe {
+            let mut data = cast::reinterpret_cast(&null::<()>());
+            data <-> self.data;
+            let data_ptr: *() = cast::reinterpret_cast(&data);
+            if data_ptr.is_null() { fail!(~"Recursive use of dvec"); }
+            return f(data);
+        }
+    }
+
     /// Reserves space for N elements
     fn reserve(count: uint) {
         vec::reserve(&mut self.data, count)
