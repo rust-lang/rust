@@ -103,7 +103,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             // check that the type of the value being matched is a subtype
             // of the type of the pattern:
             let pat_ty = fcx.node_ty(pat.id);
-            demand::suptype(fcx, pat.span, pat_ty, expected);
+            demand::subtype(fcx, pat.span, expected, pat_ty);
 
             // Get the expected types of the arguments.
             arg_types = {
@@ -142,7 +142,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             // Check that the type of the value being matched is a subtype of
             // the type of the pattern.
             let pat_ty = fcx.node_ty(pat.id);
-            demand::suptype(fcx, pat.span, pat_ty, expected);
+            demand::subtype(fcx, pat.span, expected, pat_ty);
 
             // Get the expected types of the arguments.
             let class_fields = ty::struct_fields(
@@ -154,8 +154,8 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
         _ => {
             tcx.sess.span_fatal(
                 pat.span,
-                fmt!("mismatched types: expected enum or structure but \
-                      found `%s`",
+                fmt!("mismatched types: expected `%s` but found enum or \
+                      structure",
                      fcx.infcx().ty_to_str(expected)));
         }
     }
