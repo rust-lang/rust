@@ -70,11 +70,11 @@ pub fn bound_self_region(rp: Option<ty::region_variance>)
     }
 }
 
-pub struct anon_rscope { anon: ty::Region, base: region_scope }
+pub struct anon_rscope { anon: ty::Region, base: @region_scope }
 pub fn in_anon_rscope<RS:region_scope + Copy + Durable>(self: RS,
                                                         r: ty::Region)
                                                      -> @anon_rscope {
-    @anon_rscope {anon: r, base: self as region_scope}
+    @anon_rscope {anon: r, base: @self as @region_scope}
 }
 
 impl region_scope for @anon_rscope {
@@ -97,7 +97,7 @@ pub struct binding_rscope {
 
 pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(self: RS)
     -> @mut binding_rscope {
-    let base = self as region_scope;
+    let base = @self as @region_scope;
     @mut binding_rscope { base: base, anon_bindings: 0 }
 }
 

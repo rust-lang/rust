@@ -1296,7 +1296,7 @@ mod test {
     }
 
 
-    fn to_call_log (val: Encodable<TestEncoder>) -> ~[call] {
+    fn to_call_log<E:Encodable<TestEncoder>>(val: E) -> ~[call] {
         let mut te = TestEncoder {call_log: @mut ~[]};
         val.encode(&te);
         copy *te.call_log
@@ -1309,8 +1309,7 @@ mod test {
     }
 
     #[test] fn encode_enum_test () {
-        check_equal (to_call_log(Book(34,44)
-                                 as Encodable::<TestEncoder>),
+        check_equal (to_call_log(Book(34,44)),
                      ~[CallToEmitEnum (~"Written"),
                        CallToEmitEnumVariant (~"Book",0,2),
                        CallToEmitEnumVariantArg (0),
@@ -1325,8 +1324,7 @@ mod test {
     pub struct HasPos { pos : BPos }
 
     #[test] fn encode_newtype_test () {
-        check_equal (to_call_log (HasPos {pos:BPos(48)}
-                                 as Encodable::<TestEncoder>),
+        check_equal (to_call_log (HasPos {pos:BPos(48)}),
                     ~[CallToEmitStruct(~"HasPos",1),
                       CallToEmitField(~"pos",0),
                       CallToEmitUint(48)]);

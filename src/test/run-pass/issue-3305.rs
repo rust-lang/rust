@@ -21,6 +21,6 @@ fn is_equal<D:double>(x: @D, exp: uint) {
 }
 
 pub fn main() {
-    let x = @(3u as double);
+    let x = @(@3u as @double);
     is_equal(x, 6);
 }
