@@ -18,9 +18,7 @@
 		<item> drop </item>
 		<item> else </item>
 		<item> enum </item>
-		<item> export </item>
 		<item> extern </item>
-		<item> fail </item>
 		<item> for </item>
 		<item> if </item>
 		<item> impl </item>
@@ -29,7 +27,6 @@
 		<item> loop </item>
 		<item> match </item>
 		<item> mod </item>
-		<item> move </item>
 		<item> mut </item>
 		<item> priv </item>
 		<item> pub </item>
