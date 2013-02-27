@@ -198,7 +198,7 @@ pub pure fn is_call_expr(e: @expr) -> bool {
 }
 
 // This makes def_id hashable
-pub impl to_bytes::IterBytes for def_id {
+impl to_bytes::IterBytes for def_id {
     #[inline(always)]
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
@@ -303,7 +303,7 @@ pub trait inlined_item_utils {
     fn accept<E>(&self, e: E, v: visit::vt<E>);
 }
 
-pub impl inlined_item_utils for inlined_item {
+impl inlined_item_utils for inlined_item {
     fn ident(&self) -> ident {
         match *self {
             ii_item(i) => /* FIXME (#2543) */ copy i.ident,

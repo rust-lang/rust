@@ -13,8 +13,8 @@ use num::NumCast::from;
 
 pub trait NumExt: Eq NumCast {}
 
-pub impl NumExt for f32 {}
-pub impl NumExt for int {}
+impl NumExt for f32 {}
+impl NumExt for int {}
 
 fn num_eq_one<T:NumExt>() -> T {
     from(1)

@@ -1192,7 +1192,7 @@ mod test {
         }
     }
 
-    pub impl Encoder for TestEncoder {
+    impl Encoder for TestEncoder {
         fn emit_nil(&self) { self.add_to_log(CallToEmitNil) }
 
         fn emit_uint(&self, +v: uint) {self.add_to_log(CallToEmitUint(v)); }

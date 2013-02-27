@@ -19,7 +19,7 @@ mod base {
         dummy: (),
     }
 
-    pub impl ::base::HasNew<Foo> for Foo {
+    impl ::base::HasNew<Foo> for Foo {
         static pure fn new() -> Foo {
 			unsafe { io::println("Foo"); }
             Foo { dummy: () }
@@ -30,7 +30,7 @@ mod base {
         dummy: (),
     }
 
-    pub impl ::base::HasNew<Bar> for Bar {
+    impl ::base::HasNew<Bar> for Bar {
         static pure fn new() -> Bar {
 			unsafe { io::println("Bar"); }
             Bar { dummy: () }

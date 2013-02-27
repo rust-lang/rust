@@ -23,7 +23,7 @@ pub trait proto_parser {
     fn parse_message(&self, state: state);
 }
 
-pub impl proto_parser for parser::Parser {
+impl proto_parser for parser::Parser {
     fn parse_proto(&self, id: ~str) -> protocol {
         let proto = protocol(id, *self.span);
 
