@@ -3492,7 +3492,7 @@ pub impl Parser {
         };
         let full_path = full_path.normalize();
         let p0 =
-            new_sub_parser_from_file(self.sess, self.cfg,
+            new_sub_parser_from_file(self.sess, copy self.cfg,
                                      &full_path, id_sp);
         let (inner, next) = p0.parse_inner_attrs_and_next();
         let mod_attrs = vec::append(
