@@ -2267,7 +2267,7 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         fn main_name() -> ~str { return ~"WinMain@16"; }
         #[cfg(unix)]
         fn main_name() -> ~str { return ~"main"; }
-        let llfty = T_fn(~[ccx.int_type, ccx.int_type], ccx.int_type);
+        let llfty = T_fn(~[ccx.int_type, T_ptr(T_i8())], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
@@ -2285,33 +2285,50 @@ pub fn create_main_wrapper(ccx: @CrateContext,
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
         }
         let crate_map = ccx.crate_map;
-        let start_ty = T_fn(~[val_ty(rust_main), ccx.int_type, ccx.int_type,
-                             val_ty(crate_map)], ccx.int_type);
-        let start = decl_cdecl_fn(ccx.llmod, ~"rust_start", start_ty);
+        let start_def_id = ccx.tcx.lang_items.start_fn();
+        let start_fn = if start_def_id.crate == ast::local_crate {
+            ccx.sess.bug(~"start lang item is never in the local crate")
+        } else {
+            let start_fn_type = csearch::get_type(ccx.tcx,
+                                                  start_def_id).ty;
+            trans_external_path(ccx, start_def_id, start_fn_type)
+        };
+
+        let retptr = unsafe {
+            llvm::LLVMBuildAlloca(bld, ccx.int_type, noname())
+        };
 
         let args = unsafe {
+            let opaque_rust_main = llvm::LLVMBuildPointerCast(
+                bld, rust_main, T_ptr(T_i8()), noname());
+            let opaque_crate_map = llvm::LLVMBuildPointerCast(
+                bld, crate_map, T_ptr(T_i8()), noname());
+
             if *ccx.sess.building_library {
                 ~[
-                    rust_main,
+                    retptr,
+                    C_null(T_opaque_box_ptr(ccx)),
+                    opaque_rust_main,
                     llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
                     llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    crate_map
+                    opaque_crate_map
                 ]
             } else {
                 ~[
-                    rust_main,
+                    retptr,
+                    C_null(T_opaque_box_ptr(ccx)),
+                    opaque_rust_main,
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint),
-                    crate_map
+                    opaque_crate_map
                 ]
             }
         };
 
-        let result = unsafe {
-            llvm::LLVMBuildCall(bld, start, vec::raw::to_ptr(args),
-                                args.len() as c_uint, noname())
-        };
         unsafe {
+            llvm::LLVMBuildCall(bld, start_fn, vec::raw::to_ptr(args),
+                                args.len() as c_uint, noname());
+            let result = llvm::LLVMBuildLoad(bld, retptr, noname());
             llvm::LLVMBuildRet(bld, result);
         }
     }
