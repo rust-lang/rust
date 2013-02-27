@@ -147,6 +147,10 @@ pub fn expr_to_str(e: @ast::expr, intr: @ident_interner) -> ~str {
     to_str(e, print_expr, intr)
 }
 
+pub fn region_to_str(e: @ast::region, intr: @ident_interner) -> ~str {
+    to_str(e, |s, e| print_region(s, ~"&", e, ~""), intr)
+}
+
 pub fn tt_to_str(tt: ast::token_tree, intr: @ident_interner) -> ~str {
     to_str(tt, print_tt, intr)
 }
