@@ -22,14 +22,9 @@ use middle::{ty, resolve};
 use core::dvec::DVec;
 use core::vec;
 use reader = std::ebml::reader;
-use std::ebml;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::codemap::dummy_sp;
-use syntax::ast_util;
 use syntax::diagnostic::expect;
-use syntax::diagnostic::span_handler;
 
 pub struct ProvidedTraitMethodInfo {
     ty: ty::method,

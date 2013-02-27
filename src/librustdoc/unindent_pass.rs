@@ -27,7 +27,6 @@ use text_pass;
 use core::str;
 use core::uint;
 use core::vec;
-use std::par;
 
 pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"unindent", unindent)

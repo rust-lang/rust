@@ -543,9 +543,7 @@ use middle::region;
 use middle::ty;
 use middle::ty::{Region, RegionVid, re_static, re_infer, re_free, re_bound};
 use middle::ty::{re_scope, ReVar, ReSkolemized, br_fresh};
-use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::cres;
-use syntax::codemap;
 use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
@@ -556,10 +554,8 @@ use core::result::{Err, Ok, Result};
 use core::to_bytes;
 use core::uint;
 use core::vec;
-use std::list::{List, Nil, Cons};
 use std::oldmap::HashMap;
 use syntax::codemap::span;
-use syntax::codemap;
 
 enum Constraint {
     ConstrainVarSubVar(RegionVid, RegionVid),

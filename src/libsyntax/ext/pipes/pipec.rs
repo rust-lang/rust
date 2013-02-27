@@ -11,19 +11,15 @@
 // A protocol compiler for Rust.
 
 use ast;
-use ast::ident;
 use codemap::{dummy_sp, spanned};
 use ext::base::ext_ctxt;
 use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
 use ext::pipes::ast_builder::{path_global};
 use ext::pipes::proto::*;
 use ext::quote::rt::*;
-use parse::*;
-use util::interner;
 use opt_vec;
 use opt_vec::OptVec;
 
-use core::dvec::DVec;
 use core::prelude::*;
 use core::str;
 use core::to_str::ToStr;
@@ -342,7 +338,7 @@ impl gen_init for protocol {
         };
 
         cx.parse_item(fmt!("pub fn init%s() -> (client::%s, server::%s)\
-                            { use core::pipes::HasBuffer; %s }",
+                            { pub use core::pipes::HasBuffer; %s }",
                            start_state.generics.to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
                            start_state.to_ty(cx).to_source(cx),

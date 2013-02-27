@@ -12,7 +12,6 @@ use core::prelude::*;
 
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
-use ast_util;
 use codemap::{span, dummy_sp};
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
@@ -22,7 +21,6 @@ use parse::lexer::TokenAndSpan;
 use core::option;
 use core::vec;
 use std;
-use std::oldmap::HashMap;
 
 /* FIXME #2811: figure out how to have a uniquely linked stack, and change to
    `~` */

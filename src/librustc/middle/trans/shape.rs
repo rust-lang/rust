@@ -12,28 +12,13 @@
 // This substitutes for the runtime tags used by e.g. MLs.
 
 
-use back::abi;
 use lib::llvm::llvm;
 use lib::llvm::{True, False, ModuleRef, TypeRef, ValueRef};
-use middle::trans::base;
 use middle::trans::common::*;
-use middle::trans::machine::*;
 use middle::trans;
-use middle::ty::field;
-use middle::ty;
-use util::ppaux::ty_to_str;
 
-use core::dvec::DVec;
-use core::option::is_some;
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
-use syntax::ast;
-use syntax::codemap::dummy_sp;
-use syntax::codemap::span;
-use syntax::util::interner;
-
-use ty_ctxt = middle::ty::ctxt;
 
 pub struct Ctxt {
     next_tag_id: u16,

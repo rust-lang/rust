@@ -15,9 +15,7 @@
  * in std.
  */
 
-use core::cell::Cell;
 use core::option;
-use core::pipes;
 use core::prelude::*;
 use core::unstable::{Exclusive, exclusive};
 use core::ptr;
@@ -714,7 +712,6 @@ mod tests {
     use core::cast;
     use core::cell::Cell;
     use core::option;
-    use core::pipes;
     use core::ptr;
     use core::result;
     use core::task;

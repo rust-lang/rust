@@ -203,10 +203,6 @@ mod test {
     use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
     use back::rpath::{get_relative_to, get_rpath_relative_to_output};
     use back::rpath::{minimize_rpaths, rpaths_to_flags};
-    use driver::session;
-
-    use core::os;
-    use core::str;
 
     #[test]
     pub fn test_rpaths_to_flags() {

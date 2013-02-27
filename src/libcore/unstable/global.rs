@@ -31,16 +31,14 @@ use kinds::Owned;
 use libc::{c_void, uintptr_t};
 use option::{Option, Some, None};
 use ops::Drop;
-use pipes;
 use unstable::{Exclusive, exclusive};
-use unstable::{SharedMutableState, shared_mutable_state};
-use unstable::{get_shared_immutable_state};
 use unstable::at_exit::at_exit;
 use unstable::intrinsics::atomic_cxchg;
 use hashmap::linear::LinearMap;
 use sys::Closure;
-use task::spawn;
-use uint;
+
+#[cfg(test)]
+use private::{SharedMutableState, shared_mutable_state};
 
 pub type GlobalDataKey<T> = &fn(v: T);
 

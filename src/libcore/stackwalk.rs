@@ -11,8 +11,6 @@
 #[doc(hidden)]; // FIXME #3538
 
 use cast::reinterpret_cast;
-use ptr::offset;
-use sys::size_of;
 
 pub type Word = uint;
 

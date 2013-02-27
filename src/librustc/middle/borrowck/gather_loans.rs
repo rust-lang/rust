@@ -26,7 +26,6 @@ use middle::borrowck::ReqMaps;
 use middle::borrowck::loan;
 use middle::mem_categorization::{cat_binding, cat_discr, cmt, comp_variant};
 use middle::mem_categorization::{mem_categorization_ctxt};
-use middle::mem_categorization::{opt_deref_kind};
 use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;

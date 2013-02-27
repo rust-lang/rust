@@ -34,19 +34,6 @@ use core::*;
 extern mod std(vers = "0.6");
 extern mod syntax(vers = "0.6");
 
-/*
-Alternate names for some modules.
-
-I am using this to help extract metadata into its own crate. In metadata.rs
-it redefines all these modules in order to gate access from metadata to the
-rest of the compiler, then uses these to access the original implementation.
-*/
-use util_ = util;
-use lib_ = lib;
-use driver_ = driver;
-use middle_ = middle;
-use back_ = back;
-
 pub mod middle {
     pub mod trans {
         pub mod macros;
@@ -148,7 +135,6 @@ use core::io::ReaderUtil;
 use core::result::{Ok, Err};
 use std::getopts::{groups, opt_present};
 use std::getopts;
-use std::oldmap::HashMap;
 use syntax::codemap;
 use syntax::diagnostic;
 
@@ -318,7 +304,6 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 pub fn monitor(+f: ~fn(diagnostic::Emitter)) {
-    use core::cell::Cell;
     use core::comm::*;
     let (p, ch) = stream();
     let ch = SharedChan(ch);

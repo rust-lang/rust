@@ -19,8 +19,6 @@ use metadata::filesearch;
 use metadata;
 use middle::lint;
 
-use core::cmp;
-use core::option;
 use syntax::ast::node_id;
 use syntax::ast::{int_ty, uint_ty, float_ty};
 use syntax::codemap::span;

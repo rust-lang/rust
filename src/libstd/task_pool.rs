@@ -11,9 +11,7 @@
 /// A task pool abstraction. Useful for achieving predictable CPU
 /// parallelism.
 
-use core::io;
 use core::comm::{Chan, Port};
-use core::pipes;
 use core::prelude::*;
 use core::task::{SchedMode, SingleThreaded};
 use core::task;

@@ -10,7 +10,6 @@
 
 use core::cmp::{Eq, Ord};
 use core::int;
-use core::libc::{c_char, c_int, c_long, size_t, time_t};
 use core::i32;
 use core::io::{Reader, ReaderUtil};
 use core::io;
@@ -894,8 +893,6 @@ mod tests {
     use core::result;
     use core::result::{Err, Ok};
     use core::str;
-    use core::u64;
-    use core::uint;
     use core::vec;
 
     pub fn test_get_time() {

@@ -24,7 +24,6 @@ use parse::{parser, parse_item_from_source_str, new_parser_from_tts};
 
 use core::option;
 use core::vec;
-use core::hashmap::LinearMap;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    cx: ext_ctxt,

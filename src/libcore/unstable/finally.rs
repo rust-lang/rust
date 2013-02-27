@@ -24,7 +24,6 @@ do || {
 */
 
 use ops::Drop;
-use task::{spawn, failing};
 
 pub trait Finally<T> {
     fn finally(&self, dtor: &fn()) -> T;

@@ -12,7 +12,6 @@ use core::prelude::*;
 
 use astsrv;
 use doc;
-use extract;
 use time;
 
 use core::vec;

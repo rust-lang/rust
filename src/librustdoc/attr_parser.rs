@@ -18,12 +18,8 @@ an AST's attributes.
 use core::prelude::*;
 
 use core::str;
-use core::tuple;
-use core::vec;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap;
-use syntax;
 
 pub struct CrateAttrs {
     name: Option<~str>

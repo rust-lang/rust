@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use driver::session::Session;
 use driver::session;
 use metadata::csearch;
 use metadata;

@@ -9,9 +9,7 @@
 // except according to those terms.
 
 use core::container::{Container, Mutable};
-use core::cmp::Eq;
 use core::prelude::*;
-use core::uint;
 use core::vec;
 
 const initial_capacity: uint = 32u; // 2^5

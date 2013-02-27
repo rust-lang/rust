@@ -19,7 +19,6 @@ use ext;
 use parse;
 use parse::{parser, token};
 
-use core::io;
 use core::vec;
 use core::hashmap::linear::LinearMap;
 

@@ -18,9 +18,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::vec;
-use std::oldmap::HashMap;
-
 pub fn mk_pass() -> Pass {
     Pass {
         name: ~"prune_hidden",

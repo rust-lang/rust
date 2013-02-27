@@ -102,8 +102,6 @@ use opt_vec::OptVec;
 use ext::build;
 
 use core::vec;
-use std::oldmap;
-use std::oldmap::HashMap;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

@@ -14,7 +14,6 @@ use driver::session::Session;
 
 use core::vec;
 use syntax::ast;
-use syntax::ast_util::*;
 use syntax::attr;
 use syntax::codemap;
 use syntax::codemap::dummy_sp;

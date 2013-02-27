@@ -60,7 +60,6 @@ use util::ppaux::ty_to_str;
 
 use syntax::ast;
 
-use core::uint;
 use core::vec;
 
 pub const resolve_nested_tvar: uint = 0b0000000001;

@@ -22,7 +22,6 @@ use core::cmp;
 use core::libc::c_uint;
 use core::option;
 use core::option::Option;
-use core::ptr;
 use core::uint;
 use core::vec;
 

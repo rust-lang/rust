@@ -13,9 +13,7 @@
 use core::prelude::*;
 
 use doc;
-use pass::Pass;
 
-use core::cmp;
 use core::option;
 use core::vec;
 

@@ -15,17 +15,14 @@ use driver::session::Session;
 use driver::session;
 use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
-use lib::llvm::{PassManagerRef, FileType};
 use lib;
 use metadata::common::LinkMeta;
-use metadata::filesearch;
 use metadata::{encoder, cstore};
 use middle::trans::common::CrateContext;
 use middle::ty;
 use util::ppaux;
 
 use core::char;
-use core::cmp;
 use core::hash;
 use core::io::{Writer, WriterUtil};
 use core::libc::{c_int, c_uint, c_char};
@@ -35,8 +32,6 @@ use core::ptr;
 use core::run;
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
-use std::sha1::sha1;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
@@ -175,11 +170,9 @@ pub mod write {
     use lib::llvm::{False, True, ModuleRef, mk_pass_manager, mk_target_data};
     use lib;
 
-    use core::char;
     use core::libc::{c_char, c_int, c_uint};
     use core::path::Path;
     use core::str;
-    use core::vec;
 
     pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||

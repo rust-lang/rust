@@ -12,7 +12,6 @@ use core::prelude::*;
 
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
-use back::link::{mangle_internal_name_by_path};
 use lib::llvm::{llvm, ValueRef, TypeRef};
 use middle::moves;
 use middle::trans::base::*;
@@ -27,14 +26,10 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::libc::c_uint;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
-use syntax::codemap::span;
 use syntax::parse::token::special_idents;
-use syntax::print::pprust::expr_to_str;
 
 // ___Good to know (tm)__________________________________________________
 //

@@ -15,10 +15,7 @@ use cmp::{Eq, Ord};
 use libc;
 use libc::{c_void, size_t};
 use unstable::intrinsics::{memmove32,memmove64};
-use ptr;
-use str;
 use sys;
-use vec;
 
 #[nolink]
 #[abi = "cdecl"]

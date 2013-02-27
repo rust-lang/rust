@@ -12,8 +12,6 @@ use core::prelude::*;
 
 use middle::ty;
 use middle::ty::{arg, canon_mode};
-use middle::ty::{bound_copy, bound_const, bound_durable, bound_owned,
-        bound_trait};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid,
                  br_fresh};
 use middle::ty::{ctxt, field, method};
@@ -28,7 +26,6 @@ use middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
 use middle::ty::{ty_type, ty_uniq, ty_uint, ty_infer};
 use middle::ty::{ty_unboxed_vec};
 use metadata::encoder;
-use syntax::codemap;
 use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::print::pprust::{path_to_str, mode_to_str};
@@ -37,7 +34,6 @@ use syntax::ast_map;
 
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
 
 pub fn note_and_explain_region(cx: ctxt,
                                prefix: ~str,

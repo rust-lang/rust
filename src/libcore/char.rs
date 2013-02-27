@@ -10,7 +10,6 @@
 
 //! Utilities for manipulating the char type
 
-use char;
 use cmp::Eq;
 use option::{None, Option, Some};
 use str;

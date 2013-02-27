@@ -17,7 +17,6 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
-use middle::trans::datum::*;
 use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::type_of::*;

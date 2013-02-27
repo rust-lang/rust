@@ -19,8 +19,6 @@ use fold;
 use pass::Pass;
 
 use core::util;
-use core::vec;
-use syntax::ast;
 
 pub fn mk_pass() -> Pass {
     Pass {
