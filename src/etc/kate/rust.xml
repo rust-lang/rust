@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE language SYSTEM "language.dtd">
+<!DOCTYPE language SYSTEM "language.dtd"
+[
+	<!ENTITY rustIdent "[a-zA-Z_][a-zA-Z_0-9]*">
+]>
 <language name="Rust" version="0.4.0" kateversion="2.4" section="Sources" extensions="*.rs;*.rc" mimetype="text/x-rust" priority="15">
 <highlighting>
 	<list name="fn">
@@ -171,8 +174,8 @@
 			<RegExpr String="0b[0-1_]+(u8|u16|u32|u64|i8|i16|i32|i64|u|i)?" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*\.[0-9_]*([eE][+-]?[0-9_]+)?(f32|f64|f)?" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*(u8|u16|u32|u64|i8|i16|i32|i64|u|i)?" attribute="Number" context="#stay"/>
-			<RegExpr String="[a-zA-Z_][a-zA-Z0-9_]*::" attribute="Scope"/>
-			<RegExpr String="\w+!" attribute="Macro"/>
+			<RegExpr String="&rustIdent;::" attribute="Scope"/>
+			<RegExpr String="&rustIdent;!" attribute="Macro"/>
 			<DetectChar char="{" attribute="Symbol" context="#stay" beginRegion="Brace" />
 			<DetectChar char="}" attribute="Symbol" context="#stay" endRegion="Brace" />
 			<DetectChar char="&quot;" attribute="String" context="String"/>
