@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-// compile-flags:-g
-// debugger:break 20
+// compile-flags:-Z extra-debug-info
+// debugger:break 23
 // debugger:run
-// debugger:print x
-// check:$1 = 42
+// debugger:print t
+// check:$1 = {
+// check:4,
+// check:5.5,
+// check:true
+// check:}
 
 fn main() {
-    let x = 42;
-    debug!("The answer is %d", x);
+    let t = (4, 5.5, true);
+    let _z = ();
 }
