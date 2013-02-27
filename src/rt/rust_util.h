@@ -67,11 +67,12 @@ inline void reserve_vec_exact_shared(rust_task* task, rust_vec_box** vpp,
     }
 }
 
-inline void reserve_vec_exact(rust_task* task, rust_vec_box** vpp,
+inline void reserve_vec_exact(rust_vec_box** vpp,
                               size_t size) {
     if (size > (*vpp)->body.alloc) {
-        *vpp = (rust_vec_box*)task->kernel
-            ->realloc(*vpp, size + sizeof(rust_vec_box));
+        rust_exchange_alloc exchange_alloc;
+        *vpp = (rust_vec_box*)exchange_alloc
+            .realloc(*vpp, size + sizeof(rust_vec_box));
         (*vpp)->body.alloc = size;
     }
 }
