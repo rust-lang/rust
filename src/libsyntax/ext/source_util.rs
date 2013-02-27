@@ -22,22 +22,9 @@ use core::result;
 use core::str;
 use core::vec;
 
-fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
-    let ExpandedFrom(CallInfo { call_site, _ }) = *expn_info;
-    match call_site.expn_info {
-        Some(next_expn_info) => {
-            let ExpandedFrom(CallInfo {
-                callee: NameAndSpan {name, _},
-                _
-            }) = *next_expn_info;
-            // Don't recurse into file using "include!"
-            if name == ~"include" { return expn_info; }
-
-            topmost_expn_info(next_expn_info)
-        },
-        None => expn_info
-    }
-}
+// These macros all relate to the file system; they either return
+// the column/row/filename of the expression, or they include
+// a given file into the current one.
 
 /* line!(): expands to the current line number */
 pub fn expand_line(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
@@ -87,6 +74,9 @@ pub fn expand_mod(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
                                   |x| cx.str_of(*x)), ~"::")))
 }
 
+// include! : parse the given file as an expr
+// This is generally a bad idea because it's going to behave
+// unhygienically.
 pub fn expand_include(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include!");
@@ -96,6 +86,7 @@ pub fn expand_include(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     base::MRExpr(p.parse_expr())
 }
 
+// include_str! : read the given file, insert it as a literal string expr
 pub fn expand_include_str(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
@@ -126,6 +117,26 @@ pub fn expand_include_bin(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     }
 }
 
+// recur along an ExpnInfo chain to find the original expression
+fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
+    let ExpandedFrom(CallInfo { call_site, _ }) = *expn_info;
+    match call_site.expn_info {
+        Some(next_expn_info) => {
+            let ExpandedFrom(CallInfo {
+                callee: NameAndSpan {name, _},
+                _
+            }) = *next_expn_info;
+            // Don't recurse into file using "include!"
+            if name == ~"include" { return expn_info; }
+
+            topmost_expn_info(next_expn_info)
+        },
+        None => expn_info
+    }
+}
+
+// resolve a file-system path to an absolute file-system path (if it
+// isn't already)
 fn res_rel_file(cx: ext_ctxt, sp: codemap::span, arg: &Path) -> Path {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute {

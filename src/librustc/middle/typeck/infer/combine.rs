@@ -72,11 +72,6 @@ use syntax::ast::{Onceness, purity, ret_style};
 use syntax::ast;
 use syntax::codemap::span;
 
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
-
 pub trait Combine {
     fn infcx(&self) -> @mut InferCtxt;
     fn tag(&self) -> ~str;

@@ -24,11 +24,6 @@ use std::list;
 use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn, noreturn};
 use syntax::ast::{pure_fn, ret_style, return_val, unsafe_fn};
 
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
-
 pub enum Lub = CombineFields;  // least-upper-bound: common supertype
 
 pub impl Lub {

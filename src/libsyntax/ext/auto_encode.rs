@@ -1173,6 +1173,8 @@ mod test {
         CallToEmitEnumVariantArg(uint),
         CallToEmitUint(uint),
         CallToEmitNil,
+        CallToEmitStruct(~str,uint),
+        CallToEmitField(~str,uint),
         // all of the ones I was too lazy to handle:
         CallToOther
     }
@@ -1251,11 +1253,11 @@ mod test {
         fn emit_rec(&self, f: fn()) {
             self.add_unknown_to_log(); f();
         }
-        fn emit_struct(&self, _name: &str, +_len: uint, f: fn()) {
-            self.add_unknown_to_log(); f();
+        fn emit_struct(&self, name: &str, +len: uint, f: fn()) {
+            self.add_to_log(CallToEmitStruct (name.to_str(),len)); f();
         }
-        fn emit_field(&self, _name: &str, +_idx: uint, f: fn()) {
-            self.add_unknown_to_log(); f();
+        fn emit_field(&self, name: &str, +idx: uint, f: fn()) {
+            self.add_to_log(CallToEmitField (name.to_str(),idx)); f();
         }
 
         fn emit_tup(&self, +_len: uint, f: fn()) {
@@ -1267,23 +1269,12 @@ mod test {
     }
 
 
-    #[auto_decode]
-    #[auto_encode]
-    struct Node {id: uint}
-
     fn to_call_log (val: Encodable<TestEncoder>) -> ~[call] {
         let mut te = TestEncoder {call_log: @mut ~[]};
         val.encode(&te);
         copy *te.call_log
     }
-/*
-    #[test] fn encode_test () {
-        check_equal (to_call_log(Node{id:34}
-                                 as Encodable::<std::json::Encoder>),
-                     ~[CallToEnum (~"Node"),
-                       CallToEnumVariant]);
-    }
-*/
+
     #[auto_encode]
     enum Written {
         Book(uint,uint),
@@ -1300,4 +1291,17 @@ mod test {
                        CallToEmitEnumVariantArg (1),
                        CallToEmitUint (44)]);
         }
+
+    pub enum BPos = uint;
+
+    #[auto_encode]
+    pub struct HasPos { pos : BPos }
+
+    #[test] fn encode_newtype_test () {
+        check_equal (to_call_log (HasPos {pos:BPos(48)}
+                                 as Encodable::<TestEncoder>),
+                    ~[CallToEmitStruct(~"HasPos",1),
+                      CallToEmitField(~"pos",0),
+                      CallToEmitUint(48)]);
+    }
 }

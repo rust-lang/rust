@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-{
+#[macro_escape];
 
 macro_rules! unpack_datum(
     ($bcx: ident, $inp: expr) => (
@@ -18,7 +18,7 @@ macro_rules! unpack_datum(
             db.datum
         }
     )
-);
+)
 
 macro_rules! unpack_result(
     ($bcx: ident, $inp: expr) => (
@@ -28,7 +28,7 @@ macro_rules! unpack_result(
             db.val
         }
     )
-);
+)
 
 macro_rules! trace_span(
     ($bcx: ident, $sp: expr, $str: expr) => (
@@ -39,7 +39,7 @@ macro_rules! trace_span(
             }
         }
     )
-);
+)
 
 macro_rules! trace(
     ($bcx: ident, $str: expr) => (
@@ -50,6 +50,5 @@ macro_rules! trace(
             }
         }
     )
-);
+)
 
-}
