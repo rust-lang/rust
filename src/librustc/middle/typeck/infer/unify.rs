@@ -237,35 +237,35 @@ pub impl InferCtxt {
 
 // ______________________________________________________________________
 
-pub impl UnifyVid<Bounds<ty::t>> for ty::TyVid {
+impl UnifyVid<Bounds<ty::t>> for ty::TyVid {
     static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::TyVid, Bounds<ty::t>> {
         return &mut infcx.ty_var_bindings;
     }
 }
 
-pub impl UnifyVid<Option<IntVarValue>> for ty::IntVid {
+impl UnifyVid<Option<IntVarValue>> for ty::IntVid {
     static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::IntVid, Option<IntVarValue>> {
         return &mut infcx.int_var_bindings;
     }
 }
 
-pub impl SimplyUnifiable for IntVarValue {
+impl SimplyUnifiable for IntVarValue {
     static fn to_type_err(&self, err: expected_found<IntVarValue>)
         -> ty::type_err {
         return ty::terr_int_mismatch(err);
     }
 }
 
-pub impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
+impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
     static fn appropriate_vals_and_bindings(&self, infcx: &v/mut InferCtxt)
         -> &v/mut ValsAndBindings<ty::FloatVid, Option<ast::float_ty>> {
         return &mut infcx.float_var_bindings;
     }
 }
 
-pub impl SimplyUnifiable for ast::float_ty {
+impl SimplyUnifiable for ast::float_ty {
     static fn to_type_err(&self, err: expected_found<ast::float_ty>)
         -> ty::type_err {
         return ty::terr_float_mismatch(err);

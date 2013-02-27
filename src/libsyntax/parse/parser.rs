@@ -76,7 +76,7 @@ use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
-use parse::obsolete::{ObsoleteMutVector};
+use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -2942,9 +2942,9 @@ pub impl Parser {
     }
 
     // Parses two variants (with the region/type params always optional):
-    //    impl<T> ~[T] : to_str { ... }
-    //    impl<T> to_str for ~[T] { ... }
-    fn parse_item_impl() -> item_info {
+    //    impl<T> Foo { ... }
+    //    impl<T> ToStr for ~[T] { ... }
+    fn parse_item_impl(visibility: ast::visibility) -> item_info {
         fn wrap_path(p: Parser, pt: @path) -> @Ty {
             @Ty {
                 id: p.get_id(),
@@ -2992,6 +2992,12 @@ pub impl Parser {
         } else {
             None
         };
+
+        // Do not allow visibility to be specified in `impl...for...`. It is
+        // meaningless.
+        if opt_trait.is_some() && visibility != ast::inherited {
+            self.obsolete(*self.span, ObsoleteTraitImplVisibility);
+        }
 
         let mut meths = ~[];
         if !self.eat(token::SEMI) {
@@ -3860,7 +3866,8 @@ pub impl Parser {
                                           maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"impl") {
             // IMPL ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_impl();
+            let (ident, item_, extra_attrs) =
+                self.parse_item_impl(visibility);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));

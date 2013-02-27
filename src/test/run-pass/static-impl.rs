@@ -16,12 +16,12 @@ pub trait plus {
 
 mod a {
     use plus;
-    pub impl plus for uint { fn plus() -> int { self as int + 20 } }
+    impl plus for uint { fn plus() -> int { self as int + 20 } }
 }
 
 mod b {
     use plus;
-    pub impl plus for ~str { fn plus() -> int { 200 } }
+    impl plus for ~str { fn plus() -> int { 200 } }
 }
 
 trait uint_utils {

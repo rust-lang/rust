@@ -420,7 +420,7 @@ impl num::One for float {
     static pure fn one() -> float { 1.0 }
 }
 
-pub impl NumCast for float {
+impl NumCast for float {
     /**
      * Cast `n` to a `float`
      */
