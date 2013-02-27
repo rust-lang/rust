@@ -4816,6 +4816,42 @@ pub impl Resolver {
         }
     }
 
+    fn find_best_match_for_name(@mut self, name: &str) -> Option<~str> {
+        let mut maybes: ~[~str] = ~[];
+        let mut values: ~[uint] = ~[];
+
+        let mut j = self.value_ribs.len();
+        while j != 0 {
+            j -= 1;
+            let rib = self.value_ribs.get_elt(j);
+            for rib.bindings.each_entry |e| {
+                vec::push(&mut maybes, copy *self.session.str_of(e.key));
+                vec::push(&mut values, uint::max_value);
+            }
+        }
+
+        let mut smallest = 0;
+        for vec::eachi(maybes) |i, &other| {
+
+            values[i] = str::levdistance(name, other);
+
+            if values[i] <= values[smallest] {
+                smallest = i;
+            }
+        }
+
+        if vec::len(values) > 0 &&
+            values[smallest] != uint::max_value &&
+            values[smallest] < str::len(name) + 2 &&
+            maybes[smallest] != name.to_owned() {
+
+            Some(vec::swap_remove(&mut maybes, smallest))
+
+        } else {
+            None
+        }
+    }
+
     fn name_exists_in_scope_struct(@mut self, name: &str) -> bool {
         let mut i = self.type_ribs.len();
         while i != 0 {
@@ -4882,9 +4918,20 @@ pub impl Resolver {
                                         wrong_name));
                         }
                         else {
-                            self.session.span_err(expr.span,
-                                                fmt!("unresolved name: %s",
+                            match self.find_best_match_for_name(wrong_name) {
+
+                                Some(m) => {
+                                    self.session.span_err(expr.span,
+                                            fmt!("unresolved name: `%s`. \
+                                                Did you mean: `%s`?",
+                                                wrong_name, m));
+                                }
+                                None => {
+                                    self.session.span_err(expr.span,
+                                            fmt!("unresolved name: `%s`.",
                                                 wrong_name));
+                                }
+                            }
                         }
                     }
                 }

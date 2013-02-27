@@ -590,6 +590,40 @@ pub pure fn split_str_nonempty(s: &a/str, sep: &b/str) -> ~[~str] {
     result
 }
 
+/// Levenshtein Distance between two strings
+pub fn levdistance(s: &str, t: &str) -> uint {
+
+    let slen = str::len(s);
+    let tlen = str::len(t);
+
+    if slen == 0 { return tlen; }
+    if tlen == 0 { return slen; }
+
+    let mut dcol = vec::from_fn(tlen + 1, |x| x);
+
+    for str::each_chari(s) |i, sc| {
+
+        let mut current = i;
+        dcol[0] = current + 1;
+
+        for str::each_chari(t) |j, tc| {
+
+            let mut next = dcol[j + 1];
+
+            if sc == tc {
+                dcol[j + 1] = current;
+            } else {
+                dcol[j + 1] = ::cmp::min(current, next);
+                dcol[j + 1] = ::cmp::min(dcol[j + 1], dcol[j]) + 1;
+            }
+
+            current = next;
+        }
+    }
+
+    return dcol[tlen];
+}
+
 /**
  * Splits a string into a vector of the substrings separated by LF ('\n')
  */

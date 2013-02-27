@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    log(error, x); //~ ERROR unresolved name: x
+    log(error, x); //~ ERROR unresolved name: `x`.
 }
