@@ -74,10 +74,53 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     }
 }
 
+impl<A:ToStr> ToStr for &[A] {
+    #[inline(always)]
+    pure fn to_str(&self) -> ~str {
+        unsafe {
+            // FIXME #4568
+            // Bleh -- not really unsafe
+            // push_str and push_char
+            let mut acc = ~"[", first = true;
+            for self.each |elt| {
+                unsafe {
+                    if first { first = false; }
+                    else { str::push_str(&mut acc, ~", "); }
+                    str::push_str(&mut acc, elt.to_str());
+                }
+            }
+            str::push_char(&mut acc, ']');
+            acc
+        }
+    }
+}
+
 impl<A:ToStr> ToStr for ~[A] {
     #[inline(always)]
     pure fn to_str(&self) -> ~str {
         unsafe {
+            // FIXME #4568
+            // Bleh -- not really unsafe
+            // push_str and push_char
+            let mut acc = ~"[", first = true;
+            for self.each |elt| {
+                unsafe {
+                    if first { first = false; }
+                    else { str::push_str(&mut acc, ~", "); }
+                    str::push_str(&mut acc, elt.to_str());
+                }
+            }
+            str::push_char(&mut acc, ']');
+            acc
+        }
+    }
+}
+
+impl<A:ToStr> ToStr for @[A] {
+    #[inline(always)]
+    pure fn to_str(&self) -> ~str {
+        unsafe {
+            // FIXME #4568
             // Bleh -- not really unsafe
             // push_str and push_char
             let mut acc = ~"[", first = true;
