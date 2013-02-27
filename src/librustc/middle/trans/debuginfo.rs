@@ -356,7 +356,31 @@ fn create_basic_type(cx: @CrateContext, t: ty::t, span: span)
       option::None => ()
     }
 
-    let (name, encoding) = (~"uint", DW_ATE_unsigned);
+    let (name, encoding) = match ty::get(t).sty {
+        ty::ty_nil | ty::ty_bot => (~"uint", DW_ATE_unsigned),
+        ty::ty_bool => (~"bool", DW_ATE_boolean),
+        ty::ty_int(int_ty) => match int_ty {
+            ast::ty_i => (~"int", DW_ATE_signed),
+            ast::ty_char => (~"char", DW_ATE_signed_char),
+            ast::ty_i8 => (~"i8", DW_ATE_signed),
+            ast::ty_i16 => (~"i16", DW_ATE_signed),
+            ast::ty_i32 => (~"i32", DW_ATE_signed),
+            ast::ty_i64 => (~"i64", DW_ATE_signed)
+        },
+        ty::ty_uint(uint_ty) => match uint_ty {
+            ast::ty_u => (~"uint", DW_ATE_unsigned),
+            ast::ty_u8 => (~"u8", DW_ATE_unsigned),
+            ast::ty_u16 => (~"i16", DW_ATE_unsigned),
+            ast::ty_u32 => (~"u32", DW_ATE_unsigned),
+            ast::ty_u64 => (~"u64", DW_ATE_unsigned)
+        },
+        ty::ty_float(float_ty) => match float_ty {
+            ast::ty_f => (~"float", DW_ATE_float),
+            ast::ty_f32 => (~"f32", DW_ATE_float),
+            ast::ty_f64 => (~"f64", DW_ATE_float)
+        },
+        _ => cx.sess.bug(~"debuginfo::create_basic_type - t is invalid type")
+    };
 
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
@@ -473,6 +497,53 @@ fn add_member(cx: @mut StructCtxt,
     cx.total_size += size * 8;
 }
 
+fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field],
+                 span: span) -> @Metadata<TyDescMetadata> {
+    let fname = filename_from_span(cx, span);
+    let file_node = create_file(cx, fname);
+    let scx = create_structure(file_node, @ty_to_str(cx.tcx, t),
+                               line_from_span(cx.sess.codemap, span) as int);
+    for fields.each |field| {
+        let field_t = field.mt.ty;
+        let ty_md = create_ty(cx, field_t, span);
+        let (size, align) = size_and_align_of(cx, field_t);
+        add_member(scx, *cx.sess.str_of(field.ident),
+                   line_from_span(cx.sess.codemap, span) as int,
+                   size as int, align as int, ty_md.node);
+    }
+    let mdval = @Metadata {
+        node: finish_structure(scx),
+        data: TyDescMetadata {
+            hash: ty::type_id(t)
+        }
+    };
+    return mdval;
+}
+
+fn create_tuple(cx: @CrateContext, t: ty::t, elements: ~[ty::t], span: span)
+    -> @Metadata<TyDescMetadata> {
+    let fname = filename_from_span(cx, span);
+    let file_node = create_file(cx, fname);
+    let scx = create_structure(file_node,
+                               cx.sess.str_of(
+                                   ((/*bad*/copy cx.dbg_cx).get().names)
+                                   (~"tuple")),
+                               line_from_span(cx.sess.codemap, span) as int);
+    for elements.each |element| {
+        let ty_md = create_ty(cx, *element, span);
+        let (size, align) = size_and_align_of(cx, *element);
+        add_member(scx, ~"", line_from_span(cx.sess.codemap, span) as int,
+                   size as int, align as int, ty_md.node);
+    }
+    let mdval = @Metadata {
+        node: finish_structure(scx),
+        data: TyDescMetadata {
+            hash: ty::type_id(t)
+        }
+    };
+    return mdval;
+}
+
 fn create_boxed_type(cx: @CrateContext, outer: ty::t, _inner: ty::t,
                      span: span, boxed: @Metadata<TyDescMetadata>)
     -> @Metadata<TyDescMetadata> {
@@ -538,11 +609,10 @@ fn create_composite_type(type_tag: int, name: &str, file: ValueRef,
 }
 
 fn create_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
-              vec_ty_span: codemap::span, elem_ty: @ast::Ty)
-    -> @Metadata<TyDescMetadata> {
+              vec_ty_span: codemap::span) -> @Metadata<TyDescMetadata> {
     let fname = filename_from_span(cx, vec_ty_span);
     let file_node = create_file(cx, fname);
-    let elem_ty_md = create_ty(cx, elem_t, elem_ty);
+    let elem_ty_md = create_ty(cx, elem_t, vec_ty_span);
     let scx = create_structure(file_node,
                                @/*bad*/ copy ty_to_str(cx.tcx, vec_t), 0);
     let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx), vec_ty_span);
@@ -567,8 +637,9 @@ fn create_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     }
 }
 
-fn create_ty(_cx: @CrateContext, _t: ty::t, _ty: @ast::Ty)
+fn create_ty(cx: @CrateContext, t: ty::t, span: span)
     -> @Metadata<TyDescMetadata> {
+    debug!("create_ty: %?", ty::get(t));
     /*let cache = get_cache(cx);
     match cached_metadata::<@Metadata<TyDescMetadata>>(
         cache, tg, {|md| t == md.data.hash}) {
@@ -576,85 +647,50 @@ fn create_ty(_cx: @CrateContext, _t: ty::t, _ty: @ast::Ty)
       option::None {}
     }*/
 
-    /* FIXME (#2012): disabled this code as part of the patch that moves
-     * recognition of named builtin types into resolve. I tried to fix
-     * it, but it seems to already be broken -- it's only called when
-     * --xg is given, and compiling with --xg fails on trivial programs.
-     *
-     * Generating an ast::ty from a ty::t seems like it should not be
-     * needed. It is only done to track spans, but you will not get the
-     * right spans anyway -- types tend to refer to stuff defined
-     * elsewhere, not be self-contained.
-     */
-
-    fail!();
-    /*
-    fn t_to_ty(cx: CrateContext, t: ty::t, span: span) -> @ast::ty {
-        let ty = match ty::get(t).struct {
-          ty::ty_nil { ast::ty_nil }
-          ty::ty_bot { ast::ty_bot }
-          ty::ty_bool { ast::ty_bool }
-          ty::ty_int(t) { ast::ty_int(t) }
-          ty::ty_float(t) { ast::ty_float(t) }
-          ty::ty_uint(t) { ast::ty_uint(t) }
-          ty::ty_box(mt) { ast::ty_box({ty: t_to_ty(cx, mt.ty, span),
-                                        mutbl: mt.mutbl}) }
-          ty::ty_uniq(mt) { ast::ty_uniq({ty: t_to_ty(cx, mt.ty, span),
-                                          mutbl: mt.mutbl}) }
-          ty::ty_vec(mt) { ast::ty_vec({ty: t_to_ty(cx, mt.ty, span),
-                                        mutbl: mt.mutbl}) }
-          _ {
-            cx.sess.span_bug(span, "t_to_ty: Can't handle this type");
-          }
-        };
-        return @{node: ty, span: span};
-    }
-
-    match ty.node {
-      ast::ty_box(mt) {
-        let inner_t = match ty::get(t).struct {
-          ty::ty_box(boxed) { boxed.ty }
-          _ { cx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
-        };
-        let md = create_ty(cx, inner_t, mt.ty);
-        let box = create_boxed_type(cx, t, inner_t, ty.span, md);
-        return create_pointer_type(cx, t, ty.span, box);
-      }
-
-      ast::ty_uniq(mt) {
-        let inner_t = match ty::get(t).struct {
-          ty::ty_uniq(boxed) { boxed.ty }
-          // Hoping we'll have a way to eliminate this check soon.
-          _ { cx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
-        };
-        let md = create_ty(cx, inner_t, mt.ty);
-        return create_pointer_type(cx, t, ty.span, md);
-      }
-
-      ast::ty_infer {
-        let inferred = t_to_ty(cx, t, ty.span);
-        return create_ty(cx, t, inferred);
-      }
-
-      ast::ty_vec(mt) {
-        let inner_t = ty::sequence_element_type(cx.tcx, t);
-        let inner_ast_t = t_to_ty(cx, inner_t, mt.ty.span);
-        let v = create_vec(cx, t, inner_t, ty.span, inner_ast_t);
-        return create_pointer_type(cx, t, ty.span, v);
-      }
-
-      ast::ty_path(_, id) {
-        match cx.tcx.def_map.get(id) {
-          ast::def_prim_ty(pty) {
-            return create_basic_type(cx, t, pty, ty.span);
-          }
-          _ {}
+    let sty = copy ty::get(t).sty;
+    match copy sty {
+        ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_)
+        | ty::ty_float(_) => create_basic_type(cx, t, span),
+        ty::ty_estr(_vstore) => {
+            cx.sess.span_bug(span, ~"debuginfo for estr NYI")
+        },
+        ty::ty_enum(_did, _substs) => {
+            cx.sess.span_bug(span, ~"debuginfo for enum NYI")
         }
-      }
-
-      _ {}
-    };
-    */
+        ty::ty_box(_mt) => {
+            cx.sess.span_bug(span, ~"debuginfo for box NYI")
+        },
+        ty::ty_uniq(_mt) => {
+            cx.sess.span_bug(span, ~"debuginfo for uniq NYI")
+        },
+        ty::ty_evec(_mt, _vstore) => {
+            cx.sess.span_bug(span, ~"debuginfo for evec NYI")
+        },
+        ty::ty_ptr(mt) => {
+            let pointee = create_ty(cx, mt.ty, span);
+            create_pointer_type(cx, t, span, pointee)
+        },
+        ty::ty_rptr(_region, _mt) => {
+            cx.sess.span_bug(span, ~"debuginfo for rptr NYI")
+        },
+        ty::ty_bare_fn(_barefnty) => {
+            cx.sess.span_bug(span, ~"debuginfo for bare_fn NYI")
+        },
+        ty::ty_closure(_closurety) => {
+            cx.sess.span_bug(span, ~"debuginfo for closure NYI")
+        },
+        ty::ty_trait(_did, _substs, _vstore) => {
+            cx.sess.span_bug(span, ~"debuginfo for trait NYI")
+        },
+        ty::ty_struct(did, substs) => {
+            let fields = ty::struct_fields(cx.tcx, did, &substs);
+            create_struct(cx, t, fields, span)
+        },
+        ty::ty_tup(elements) => {
+            create_tuple(cx, t, elements, span)
+        },
+        _ => cx.sess.bug(~"debuginfo: unexpected type in create_ty")
+    }
 }
 
 fn filename_from_span(cx: @CrateContext, sp: codemap::span) -> ~str {
@@ -693,7 +729,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
         };
         let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
         let ty = node_id_type(bcx, local.node.id);
-        let tymd = create_ty(cx, ty, local.node.ty);
+        let tymd = create_ty(cx, ty, local.node.ty.span);
         let filemd = create_file(cx, /*bad*/copy loc.file.name);
         let context = match bcx.parent {
             None => create_function(bcx.fcx).node,
@@ -743,8 +779,11 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
         }
 
         let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
+        if loc.file.name == ~"<intrinsic>" {
+            return None;
+        }
         let ty = node_id_type(bcx, arg.id);
-        let tymd = create_ty(cx, ty, arg.ty);
+        let tymd = create_ty(cx, ty, arg.ty.span);
         let filemd = create_file(cx, /*bad*/copy loc.file.name);
         let context = create_function(bcx.fcx);
 
@@ -856,7 +895,8 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     let ty_node = if cx.sess.opts.extra_debuginfo {
         match ret_ty.node {
           ast::ty_nil => llnull(),
-          _ => create_ty(cx, ty::node_id_to_type(cx.tcx, id), ret_ty).node
+          _ => create_ty(cx, ty::node_id_to_type(cx.tcx, id),
+                         ret_ty.span).node
         }
     } else {
         llnull()
