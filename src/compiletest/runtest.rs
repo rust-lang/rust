@@ -225,6 +225,15 @@ actual:\n\
 }
 
 fn run_debuginfo_test(config: config, props: TestProps, testfile: &Path) {
+    // do not optimize debuginfo tests
+    let config = match config.rustcflags {
+        Some(flags) => config {
+            rustcflags: Some(str::replace(flags, ~"-O", ~"")),
+            .. config
+        },
+        None => config
+    };
+
     // compile test file (it shoud have 'compile-flags:-g' in the header)
     let mut ProcRes = compile_test(config, props, testfile);
     if ProcRes.status != 0 {
