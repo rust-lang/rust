@@ -109,14 +109,13 @@ pub fn from_byte(b: u8) -> ~str {
 
 /// Appends a character at the end of a string
 pub fn push_char(s: &mut ~str, ch: char) {
+    assert!(ch as uint <= 0x10FFFF);
     unsafe {
         let code = ch as uint;
         let nb = if code < max_one_b { 1u }
         else if code < max_two_b { 2u }
         else if code < max_three_b { 3u }
-        else if code < max_four_b { 4u }
-        else if code < max_five_b { 5u }
-        else { 6u };
+        else { 4u };
         let len = len(*s);
         let new_len = len + nb;
         reserve_at_least(&mut *s, new_len);
@@ -146,30 +145,6 @@ pub fn push_char(s: &mut ~str, ch: char) {
                 *ptr::mut_offset(buf, off + 2u) =
                     (code >> 6u & 63u | tag_cont) as u8;
                 *ptr::mut_offset(buf, off + 3u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 5u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 24u & 3u | tag_five_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 18u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code >> 12u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 3u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 4u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 6u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 30u & 1u | tag_six_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 24u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code >> 18u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 3u) =
-                    (code >> 12u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 4u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 5u) =
                     (code & 63u | tag_cont) as u8;
             }
         }
@@ -2082,10 +2057,6 @@ static max_two_b: uint = 2048u;
 static tag_three_b: uint = 224u;
 static max_three_b: uint = 65536u;
 static tag_four_b: uint = 240u;
-static max_four_b: uint = 2097152u;
-static tag_five_b: uint = 248u;
-static max_five_b: uint = 67108864u;
-static tag_six_b: uint = 252u;
 
 /**
  * Work with the byte buffer of a string.
