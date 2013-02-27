@@ -17,13 +17,13 @@ use attr;
 use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan};
 use ext::base::*;
 use fold::*;
-use parse::{parser, parse_expr_from_source_str, new_parser_from_tts};
+use parse::{parser, parse_item_from_source_str, new_parser_from_tts};
 
 use core::option;
 use core::vec;
-use std::oldmap::HashMap;
+use core::hashmap::LinearMap;
 
-pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
+pub fn expand_expr(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
                    e: expr_, s: span, fld: ast_fold,
                    orig: fn@(expr_, span, ast_fold) -> (expr_, span))
                 -> (expr_, span) {
@@ -41,13 +41,14 @@ pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
                 /* using idents and token::special_idents would make the
                 the macro names be hygienic */
                 let extname = cx.parse_sess().interner.get(pth.idents[0]);
-                match exts.find(&extname) {
+                // leaving explicit deref here to highlight unbox op:
+                match (*extsbox).find(&extname) {
                   None => {
                     cx.span_fatal(pth.span,
                                   fmt!("macro undefined: '%s'", *extname))
                   }
-                  Some(NormalTT(SyntaxExpanderTT{expander: exp,
-                                                 span: exp_sp})) => {
+                  Some(@SE(NormalTT(SyntaxExpanderTT{expander: exp,
+                                                 span: exp_sp}))) => {
                     cx.bt_push(ExpandedFrom(CallInfo{
                         call_site: s,
                         callee: NameAndSpan {
@@ -92,7 +93,7 @@ pub fn expand_expr(exts: SyntaxExtensions, cx: ext_ctxt,
 //
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
-pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
+pub fn expand_mod_items(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
                         module_: ast::_mod, fld: ast_fold,
                         orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
                      -> ast::_mod {
@@ -106,9 +107,8 @@ pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
         do vec::foldr(item.attrs, ~[*item]) |attr, items| {
             let mname = attr::get_attr_name(attr);
 
-            match exts.find(&mname) {
-              None | Some(NormalTT(_)) | Some(ItemTT(*)) => items,
-              Some(ItemDecorator(dec_fn)) => {
+            match (*extsbox).find(&mname) {
+              Some(@SE(ItemDecorator(dec_fn))) => {
                   cx.bt_push(ExpandedFrom(CallInfo {
                       call_site: attr.span,
                       callee: NameAndSpan {
@@ -119,7 +119,8 @@ pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
                   let r = dec_fn(cx, attr.span, attr.node.value, items);
                   cx.bt_pop();
                   r
-              }
+              },
+              _ => items,
             }
         }
     };
@@ -128,34 +129,94 @@ pub fn expand_mod_items(exts: SyntaxExtensions, cx: ext_ctxt,
 }
 
 
+// eval $e with a new exts frame:
+macro_rules! with_exts_frame (
+    ($extsboxexpr:expr,$e:expr) =>
+    ({let extsbox = $extsboxexpr;
+      let oldexts = *extsbox;
+      *extsbox = oldexts.push_frame();
+      let result = $e;
+      *extsbox = oldexts;
+      result
+     })
+)
+
 // When we enter a module, record it, for the sake of `module!`
-pub fn expand_item(exts: SyntaxExtensions,
+pub fn expand_item(extsbox: @mut SyntaxEnv,
                    cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                    orig: fn@(&&v: @ast::item, ast_fold) -> Option<@ast::item>)
                 -> Option<@ast::item> {
-    let is_mod = match it.node {
-      ast::item_mod(_) | ast::item_foreign_mod(_) => true,
-      _ => false
-    };
+    // need to do expansion first... it might turn out to be a module.
     let maybe_it = match it.node {
-      ast::item_mac(*) => expand_item_mac(exts, cx, it, fld),
+      ast::item_mac(*) => expand_item_mac(extsbox, cx, it, fld),
       _ => Some(it)
     };
-
     match maybe_it {
       Some(it) => {
-        if is_mod { cx.mod_push(it.ident); }
-        let ret_val = orig(it, fld);
-        if is_mod { cx.mod_pop(); }
-        return ret_val;
+          match it.node {
+              ast::item_mod(_) | ast::item_foreign_mod(_) => {
+                  cx.mod_push(it.ident);
+                  let result =
+                      // don't push a macro scope for macro_escape:
+                      if contains_macro_escape(it.attrs) {
+                      orig(it,fld)
+                  } else {
+                      // otherwise, push a scope:
+                      with_exts_frame!(extsbox,orig(it,fld))
+                  };
+                  cx.mod_pop();
+                  result
+              }
+              _ => orig(it,fld)
+          }
       }
-      None => return None
+      None => None
     }
 }
 
+// does this attribute list contain "macro_escape" ?
+fn contains_macro_escape (attrs: &[ast::attribute]) -> bool{
+    let mut accum = false;
+    do attrs.each |attr| {
+        let mname = attr::get_attr_name(attr);
+        if (mname == @~"macro_escape") {
+            accum = true;
+            false
+        } else {
+            true
+        }
+    }
+    accum
+}
+
+// this macro disables (one layer of) macro
+// scoping, to allow a block to add macro bindings
+// to its parent env
+macro_rules! without_macro_scoping(
+    ($extsexpr:expr,$exp:expr) =>
+    ({
+        // only evaluate this once:
+        let exts = $extsexpr;
+        // capture the existing binding:
+        let existingBlockBinding =
+            match exts.find(&@~" block"){
+                Some(binding) => binding,
+                None => cx.bug("expected to find \" block\" binding")
+            };
+        // this prevents the block from limiting the macros' scope:
+        exts.insert(@~" block",@ScopeMacros(false));
+        let result = $exp;
+        // reset the block binding. Note that since the original
+        // one may have been inherited, this procedure may wind
+        // up introducing a block binding where one didn't exist
+        // before.
+        exts.insert(@~" block",existingBlockBinding);
+        result
+    }))
+
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-pub fn expand_item_mac(exts: SyntaxExtensions,
+pub fn expand_item_mac(+extsbox: @mut SyntaxEnv,
                        cx: ext_ctxt, &&it: @ast::item,
                        fld: ast_fold) -> Option<@ast::item> {
 
@@ -167,11 +228,11 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
     };
 
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
-    let expanded = match exts.find(&extname) {
+    let expanded = match (*extsbox).find(&extname) {
         None => cx.span_fatal(pth.span,
                               fmt!("macro undefined: '%s!'", *extname)),
 
-        Some(NormalTT(ref expand)) => {
+        Some(@SE(NormalTT(ref expand))) => {
             if it.ident != parse::token::special_idents::invalid {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects no ident argument, \
@@ -187,7 +248,7 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
             }));
             ((*expand).expander)(cx, it.span, tts)
         }
-        Some(ItemTT(ref expand)) => {
+        Some(@SE(IdentTT(ref expand))) => {
             if it.ident == parse::token::special_idents::invalid {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects an ident argument",
@@ -214,7 +275,7 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
         MRAny(_, item_maker, _) =>
             option::chain(item_maker(), |i| {fld.fold_item(i)}),
         MRDef(ref mdef) => {
-            exts.insert(@/*bad*/ copy mdef.name, (*mdef).ext);
+            extsbox.insert(@/*bad*/ copy mdef.name, @SE((*mdef).ext));
             None
         }
     };
@@ -222,7 +283,8 @@ pub fn expand_item_mac(exts: SyntaxExtensions,
     return maybe_it;
 }
 
-pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
+// expand a stmt
+pub fn expand_stmt(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
                    && s: stmt_, sp: span, fld: ast_fold,
                    orig: fn@(&&s: stmt_, span, ast_fold) -> (stmt_, span))
                 -> (stmt_, span) {
@@ -238,12 +300,12 @@ pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
 
     assert(vec::len(pth.idents) == 1u);
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
-    let (fully_expanded, sp) = match exts.find(&extname) {
+    let (fully_expanded, sp) = match (*extsbox).find(&extname) {
         None =>
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extname)),
 
-        Some(NormalTT(
-            SyntaxExpanderTT{expander: exp, span: exp_sp})) => {
+        Some(@SE(NormalTT(
+            SyntaxExpanderTT{expander: exp, span: exp_sp}))) => {
             cx.bt_push(ExpandedFrom(CallInfo {
                 call_site: sp,
                 callee: NameAndSpan { name: *extname, span: exp_sp }
@@ -271,7 +333,7 @@ pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
         }
     };
 
-    return (match fully_expanded {
+    (match fully_expanded {
         stmt_expr(e, stmt_id) if semi => stmt_semi(e, stmt_id),
         _ => { fully_expanded } /* might already have a semi */
     }, sp)
@@ -279,19 +341,39 @@ pub fn expand_stmt(exts: SyntaxExtensions, cx: ext_ctxt,
 }
 
 
+
+pub fn expand_block(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
+                    && blk: blk_, sp: span, fld: ast_fold,
+                    orig: fn@(&&s: blk_, span, ast_fold) -> (blk_, span))
+    -> (blk_, span) {
+    match (*extsbox).find(&@~" block") {
+        // no scope limit on macros in this block, no need
+        // to push an exts frame:
+        Some(@ScopeMacros(false)) => {
+            orig (blk,sp,fld)
+        },
+        // this block should limit the scope of its macros:
+        Some(@ScopeMacros(true)) => {
+            // see note below about treatment of exts table
+            with_exts_frame!(extsbox,orig(blk,sp,fld))
+        },
+        _ => cx.span_bug(sp,
+                         ~"expected ScopeMacros binding for \" block\"")
+    }
+}
+
 pub fn new_span(cx: ext_ctxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
     return span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
 
-// FIXME (#2247): this is a terrible kludge to inject some macros into
-// the default compilation environment. When the macro-definition system
-// is substantially more mature, these should move from here, into a
-// compiled part of libcore at very least.
+// FIXME (#2247): this is a moderately bad kludge to inject some macros into
+// the default compilation environment. It would be much nicer to use
+// a mechanism like syntax_quote to ensure hygiene.
 
 pub fn core_macros() -> ~str {
     return
-~"{
+~"pub mod macros {
     macro_rules! ignore (($($x:tt)*) => (()))
 
     macro_rules! error ( ($( $arg:expr ),+) => (
@@ -341,29 +423,160 @@ pub fn core_macros() -> ~str {
 
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
                     cfg: ast::crate_cfg, c: @crate) -> @crate {
-    let exts = syntax_expander_table();
+    // adding *another* layer of indirection here so that the block
+    // visitor can swap out one exts table for another for the duration
+    // of the block.  The cleaner alternative would be to thread the
+    // exts table through the fold, but that would require updating
+    // every method/element of AstFoldFns in fold.rs.
+    let extsbox = @mut syntax_expander_table();
     let afp = default_ast_fold();
     let cx: ext_ctxt = mk_ctxt(parse_sess, cfg);
     let f_pre = @AstFoldFns {
-        fold_expr: |a,b,c| expand_expr(exts, cx, a, b, c, afp.fold_expr),
-        fold_mod: |a,b| expand_mod_items(exts, cx, a, b, afp.fold_mod),
-        fold_item: |a,b| expand_item(exts, cx, a, b, afp.fold_item),
-        fold_stmt: |a,b,c| expand_stmt(exts, cx, a, b, c, afp.fold_stmt),
+        fold_expr: |expr,span,recur|
+            expand_expr(extsbox, cx, expr, span, recur, afp.fold_expr),
+        fold_mod: |modd,recur|
+            expand_mod_items(extsbox, cx, modd, recur, afp.fold_mod),
+        fold_item: |item,recur|
+            expand_item(extsbox, cx, item, recur, afp.fold_item),
+        fold_stmt: |stmt,span,recur|
+            expand_stmt(extsbox, cx, stmt, span, recur, afp.fold_stmt),
+        fold_block: |blk,span,recur|
+            expand_block (extsbox, cx, blk, span, recur, afp.fold_block),
         new_span: |a| new_span(cx, a),
         .. *afp};
     let f = make_fold(f_pre);
-    let cm = parse_expr_from_source_str(~"<core-macros>",
-                                        @core_macros(),
-                                        cfg,
-                                        parse_sess);
+    // add a bunch of macros as though they were placed at the
+    // head of the program (ick).
+    let attrs = ~[spanned {span:codemap::dummy_sp(),
+                           node: attribute_
+                               {style:attr_outer,
+                                value:spanned
+                                    {node:meta_word(@~"macro_escape"),
+                                     span:codemap::dummy_sp()},
+                                is_sugared_doc:false}}];
 
+    let cm = match parse_item_from_source_str(~"<core-macros>",
+                                              @core_macros(),
+                                              cfg,attrs,
+                                              parse_sess) {
+        Some(item) => item,
+        None => cx.bug(~"expected core macros to parse correctly")
+    };
     // This is run for its side-effects on the expander env,
     // as it registers all the core macros as expanders.
-    f.fold_expr(cm);
+    f.fold_item(cm);
 
     let res = @f.fold_crate(*c);
     return res;
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use util::testing::check_equal;
+
+    // make sure that fail! is present
+    #[test] fn fail_exists_test () {
+        let src = ~"fn main() { fail!(~\"something appropriately gloomy\");}";
+        let sess = parse::new_parse_sess(None);
+        let cfg = ~[];
+        let crate_ast = parse::parse_crate_from_source_str(
+            ~"<test>",
+            @src,
+            cfg,sess);
+        expand_crate(sess,cfg,crate_ast);
+    }
+
+    // these following tests are quite fragile, in that they don't test what
+    // *kind* of failure occurs.
+
+    // make sure that macros can leave scope
+    #[should_fail]
+    #[test] fn macros_cant_escape_fns_test () {
+        let src = ~"fn bogus() {macro_rules! z (() => (3+4))}\
+                    fn inty() -> int { z!() }";
+        let sess = parse::new_parse_sess(None);
+        let cfg = ~[];
+        let crate_ast = parse::parse_crate_from_source_str(
+            ~"<test>",
+            @src,
+            cfg,sess);
+        // should fail:
+        expand_crate(sess,cfg,crate_ast);
+    }
+
+    // make sure that macros can leave scope for modules
+    #[should_fail]
+    #[test] fn macros_cant_escape_mods_test () {
+        let src = ~"mod foo {macro_rules! z (() => (3+4))}\
+                    fn inty() -> int { z!() }";
+        let sess = parse::new_parse_sess(None);
+        let cfg = ~[];
+        let crate_ast = parse::parse_crate_from_source_str(
+            ~"<test>",
+            @src,
+            cfg,sess);
+        // should fail:
+        expand_crate(sess,cfg,crate_ast);
+    }
+
+    // macro_escape modules shouldn't cause macros to leave scope
+    #[test] fn macros_can_escape_flattened_mods_test () {
+        let src = ~"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
+                    fn inty() -> int { z!() }";
+        let sess = parse::new_parse_sess(None);
+        let cfg = ~[];
+        let crate_ast = parse::parse_crate_from_source_str(
+            ~"<test>",
+            @src,
+            cfg,sess);
+        // should fail:
+        expand_crate(sess,cfg,crate_ast);
+    }
+
+    #[test] fn core_macros_must_parse () {
+        let src = ~"
+  pub mod macros {
+    macro_rules! ignore (($($x:tt)*) => (()))
+
+    macro_rules! error ( ($( $arg:expr ),+) => (
+        log(::core::error, fmt!( $($arg),+ )) ))
+}";
+        let sess = parse::new_parse_sess(None);
+        let cfg = ~[];
+        let item_ast = parse::parse_item_from_source_str(
+            ~"<test>",
+            @src,
+            cfg,~[make_dummy_attr (@~"macro_escape")],sess);
+        match item_ast {
+            Some(_) => (), // success
+            None => fail!(~"expected this to parse")
+        }
+    }
+
+    #[test] fn test_contains_flatten (){
+        let attr1 = make_dummy_attr (@~"foo");
+        let attr2 = make_dummy_attr (@~"bar");
+        let escape_attr = make_dummy_attr (@~"macro_escape");
+        let attrs1 = ~[attr1, escape_attr, attr2];
+        check_equal (contains_macro_escape (attrs1),true);
+        let attrs2 = ~[attr1,attr2];
+        check_equal (contains_macro_escape (attrs2),false);
+    }
+
+    // make a "meta_word" outer attribute with the given name
+    fn make_dummy_attr(s: @~str) -> ast::attribute {
+        spanned {span:codemap::dummy_sp(),
+                 node: attribute_
+                     {style:attr_outer,
+                      value:spanned
+                          {node:meta_word(s),
+                           span:codemap::dummy_sp()},
+                      is_sugared_doc:false}}
+    }
+
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;
