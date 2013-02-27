@@ -15,6 +15,7 @@
  * in std.
  */
 
+use core::cell::Cell;
 use core::option;
 use core::pipes;
 use core::prelude::*;
@@ -799,9 +800,9 @@ mod tests {
             let s = ~semaphore(1);
             let s2 = ~s.clone();
             let (p,c) = comm::stream();
-            let child_data = ~mut Some((s2, c));
+            let child_data = Cell((s2, c));
             do s.access {
-                let (s2,c) = option::swap_unwrap(child_data);
+                let (s2, c) = child_data.take();
                 do task::spawn || {
                     c.send(());
                     do s2.access { }
@@ -976,13 +977,13 @@ mod tests {
             let mut sibling_convos = ~[];
             for 2.times {
                 let (p,c) = comm::stream();
-                let c = ~mut Some(c);
+                let c = Cell(c);
                 sibling_convos.push(p);
                 let mi = ~m2.clone();
                 // spawn sibling task
-                do task::spawn || { // linked
+                do task::spawn { // linked
                     do mi.lock_cond |cond| {
-                        let c = option::swap_unwrap(c);
+                        let c = c.take();
                         c.send(()); // tell sibling to go ahead
                         let _z = SendOnFailure(c);
                         cond.wait(); // block forever

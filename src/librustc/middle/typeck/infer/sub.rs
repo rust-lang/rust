@@ -28,7 +28,7 @@ use syntax::ast::{m_const, purity, ret_style};
 
 pub enum Sub = CombineFields;  // "subtype", "subregion" etc
 
-pub impl Combine for Sub {
+impl Combine for Sub {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"sub" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }

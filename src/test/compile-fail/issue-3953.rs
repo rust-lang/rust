@@ -19,7 +19,7 @@ trait Hahaha: Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq //~ ERROR Duplicat
 
 enum Lol = int;
 
-pub impl Hahaha for Lol { }
+impl Hahaha for Lol { }
 
 impl Eq for Lol {
     pure fn eq(&self, other: &Lol) -> bool { **self != **other }

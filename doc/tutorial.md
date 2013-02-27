@@ -1126,7 +1126,7 @@ points to.
 
 ~~~
 let managed = @mut 10;
-let owned = ~mut 20;
+let mut owned = ~20;
 
 let mut value = 30;
 let borrowed = &mut value;

@@ -281,12 +281,12 @@ pub trait ast_node {
     fn span(&self) -> span;
 }
 
-pub impl ast_node for @ast::expr {
+impl ast_node for @ast::expr {
     fn id(&self) -> ast::node_id { self.id }
     fn span(&self) -> span { self.span }
 }
 
-pub impl ast_node for @ast::pat {
+impl ast_node for @ast::pat {
     fn id(&self) -> ast::node_id { self.id }
     fn span(&self) -> span { self.span }
 }
@@ -295,7 +295,7 @@ pub trait get_type_for_node {
     fn ty<N:ast_node>(&self, node: N) -> ty::t;
 }
 
-pub impl get_type_for_node for ty::ctxt {
+impl get_type_for_node for ty::ctxt {
     fn ty<N:ast_node>(&self, node: N) -> ty::t {
         ty::node_id_to_type(*self, node.id())
     }

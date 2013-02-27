@@ -694,7 +694,7 @@ pub fn default_ast_fold() -> ast_fold_fns {
           new_span: noop_span};
 }
 
-pub impl ast_fold for ast_fold_fns {
+impl ast_fold for ast_fold_fns {
     /* naturally, a macro to write these would be nice */
     fn fold_crate(c: crate) -> crate {
         let (n, s) = (self.fold_crate)(c.node, c.span, self as ast_fold);

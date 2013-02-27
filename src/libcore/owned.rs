@@ -13,22 +13,22 @@
 use cmp::{Eq, Ord};
 
 #[cfg(notest)]
-impl<T:Eq> Eq for ~const T {
+impl<T:Eq> Eq for ~T {
     #[inline(always)]
-    pure fn eq(&self, other: &~const T) -> bool { *(*self) == *(*other) }
+    pure fn eq(&self, other: &~T) -> bool { *(*self) == *(*other) }
     #[inline(always)]
-    pure fn ne(&self, other: &~const T) -> bool { *(*self) != *(*other) }
+    pure fn ne(&self, other: &~T) -> bool { *(*self) != *(*other) }
 }
 
 #[cfg(notest)]
-impl<T:Ord> Ord for ~const T {
+impl<T:Ord> Ord for ~T {
     #[inline(always)]
-    pure fn lt(&self, other: &~const T) -> bool { *(*self) < *(*other) }
+    pure fn lt(&self, other: &~T) -> bool { *(*self) < *(*other) }
     #[inline(always)]
-    pure fn le(&self, other: &~const T) -> bool { *(*self) <= *(*other) }
+    pure fn le(&self, other: &~T) -> bool { *(*self) <= *(*other) }
     #[inline(always)]
-    pure fn ge(&self, other: &~const T) -> bool { *(*self) >= *(*other) }
+    pure fn ge(&self, other: &~T) -> bool { *(*self) >= *(*other) }
     #[inline(always)]
-    pure fn gt(&self, other: &~const T) -> bool { *(*self) > *(*other) }
+    pure fn gt(&self, other: &~T) -> bool { *(*self) > *(*other) }
 }
 

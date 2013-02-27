@@ -49,9 +49,11 @@ pub enum ObsoleteSyntax {
     ObsoleteImplSyntax,
     ObsoleteTraitBoundSeparator,
     ObsoleteMutOwnedPointer,
+    ObsoleteMutVector,
+    ObsoleteTraitImplVisibility,
 }
 
-pub impl to_bytes::IterBytes for ObsoleteSyntax {
+impl to_bytes::IterBytes for ObsoleteSyntax {
     #[inline(always)]
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
@@ -128,10 +130,22 @@ pub impl Parser {
                 "write `+` between trait bounds"
             ),
             ObsoleteMutOwnedPointer => (
-                "mutable owned pointer",
+                "const or mutable owned pointer",
                 "mutability inherits through `~` pointers; place the `~` box
                  in a mutable location, like a mutable local variable or an \
                  `@mut` box"
+            ),
+            ObsoleteMutVector => (
+                "const or mutable vector",
+                "mutability inherits through `~` pointers; place the vector \
+                 in a mutable location, like a mutable local variable or an \
+                 `@mut` box"
+            ),
+            ObsoleteTraitImplVisibility => (
+                "visibility-qualified trait implementation",
+                "`pub` or `priv` is meaningless for trait implementations, \
+                 because the `impl...for...` form defines overloads for \
+                 methods that already exist; remove the `pub` or `priv`"
             ),
         };
 

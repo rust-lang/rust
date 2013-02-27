@@ -377,7 +377,7 @@ pub fn run_tests_console(opts: &TestOpts,
 
 fn print_failures(st: @ConsoleTestState) {
     st.out.write_line(~"\nfailures:");
-    let failures = vec::cast_to_mut(st.failures.map(|t| t.name.to_str()));
+    let mut failures = st.failures.map(|t| t.name.to_str());
     sort::tim_sort(failures);
     for vec::each(failures) |name| {
         st.out.write_line(fmt!("    %s", name.to_str()));

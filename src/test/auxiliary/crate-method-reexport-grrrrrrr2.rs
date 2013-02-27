@@ -19,7 +19,7 @@ pub mod name_pool {
         fn add(s: ~str);
     }
 
-    pub impl add for name_pool {
+    impl add for name_pool {
         fn add(s: ~str) {
         }
     }
@@ -34,7 +34,7 @@ pub mod rust {
         fn cx();
     }
 
-    pub impl cx for rt {
+    impl cx for rt {
         fn cx() {
         }
     }
