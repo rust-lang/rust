@@ -68,6 +68,7 @@ pub mod middle {
         pub mod meth;
         pub mod cabi;
         pub mod cabi_x86_64;
+        pub mod cabi_arm;
         pub mod foreign;
         pub mod reflect;
         pub mod shape;

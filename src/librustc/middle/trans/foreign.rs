@@ -21,6 +21,7 @@ use lib;
 use middle::trans::base::*;
 use middle::trans::cabi;
 use middle::trans::cabi_x86_64::*;
+use middle::trans::cabi_arm;
 use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::common::*;
@@ -42,7 +43,8 @@ use syntax::parse::token::special_idents;
 
 fn abi_info(arch: session::arch) -> cabi::ABIInfo {
     return match arch {
-        arch_x86_64 | arch_arm => x86_64_abi_info(),
+        arch_x86_64 => x86_64_abi_info(),
+        arch_arm => cabi_arm::abi_info(),
         _ => cabi::llvm_abi_info()
     }
 }
