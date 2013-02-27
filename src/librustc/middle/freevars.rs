@@ -20,7 +20,6 @@ use core::option::*;
 use core::vec;
 use std::oldmap::*;
 use syntax::codemap::span;
-use syntax::print::pprust::path_to_str;
 use syntax::{ast, ast_util, visit};
 
 // A vector of defs representing the free variables referred to in a function.

@@ -11,7 +11,6 @@
 //! Process spawning
 use cast;
 use io;
-use io::ReaderUtil;
 use libc;
 use libc::{pid_t, c_void, c_int};
 use comm::{stream, SharedChan, GenericChan, GenericPort};

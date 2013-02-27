@@ -10,11 +10,8 @@
 
 use core::prelude::*;
 
-use core::cmp;
-use core::dvec::DVec;
 use core::io::WriterUtil;
 use core::io;
-use core::str;
 use core::vec;
 
 /*

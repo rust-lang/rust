@@ -15,12 +15,9 @@ If the first paragraph of a long description is short enough then it
 is interpreted as the brief description.
 */
 
-use doc::ItemUtils;
-use doc;
 use pass::Pass;
 use text_pass;
 
-use core::option::Some;
 use core::str;
 
 pub fn mk_pass() -> Pass {

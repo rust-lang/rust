@@ -12,12 +12,10 @@ use core::prelude::*;
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
-use middle::lint::{non_implicitly_copyable_typarams, implicit_copies};
 use middle::liveness;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
-use middle;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::option;

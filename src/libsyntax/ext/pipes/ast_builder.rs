@@ -17,9 +17,7 @@ use core::prelude::*;
 
 use ast::{ident, node_id};
 use ast;
-use ast_util::{ident_to_path};
 use ast_util;
-use attr;
 use codemap::{span, respan, dummy_sp, spanned};
 use codemap;
 use ext::base::{ext_ctxt, mk_ctxt};

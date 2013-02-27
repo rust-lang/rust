@@ -10,12 +10,9 @@
 
 //! Operations on managed box types
 
-use cast::transmute;
-use cmp::{Eq, Ord};
-use managed::raw::BoxRepr;
-use prelude::*;
 use ptr;
 
+#[cfg(notest)] use cmp::{Eq, Ord};
 
 pub mod raw {
 

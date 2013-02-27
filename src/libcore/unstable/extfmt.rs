@@ -77,9 +77,7 @@ debug!("hello, %s!", "world");
 */
 
 use cmp::Eq;
-use option::{Some, None};
 use prelude::*;
-use str;
 
 /*
  * We have a 'ct' (compile-time) module that parses format strings into a
@@ -98,7 +96,6 @@ pub mod ct {
     use char;
     use prelude::*;
     use str;
-    use vec;
 
     #[deriving_eq]
     pub enum Signedness { Signed, Unsigned, }

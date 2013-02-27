@@ -11,7 +11,6 @@
 //! A standard linked list
 
 use core::cmp::Eq;
-use core::option;
 use core::option::*;
 use core::prelude::*;
 use core::vec;

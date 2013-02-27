@@ -28,7 +28,6 @@ use util::ppaux;
 
 use core::result::{Result, Ok, Err};
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;

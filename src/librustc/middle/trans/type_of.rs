@@ -14,14 +14,12 @@ use lib::llvm::{TypeRef};
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::common;
-use middle::trans::expr;
 use middle::trans::machine;
 use middle::ty;
 use util::ppaux;
 
 use core::option::None;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast;
 
 pub fn type_of_explicit_arg(ccx: @CrateContext, arg: ty::arg) -> TypeRef {

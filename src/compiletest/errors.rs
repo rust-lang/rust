@@ -10,8 +10,6 @@
 
 use core::prelude::*;
 
-use common::config;
-
 use core::io;
 use core::io::ReaderUtil;
 use core::str;

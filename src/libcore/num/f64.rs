@@ -13,7 +13,6 @@
 use cmath;
 use cmp;
 use libc::{c_double, c_int};
-use libc;
 use num::NumCast;
 use num::strconv;
 use num;

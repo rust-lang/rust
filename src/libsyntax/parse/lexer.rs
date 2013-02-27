@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use ast;
-use ast_util;
 use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
 use diagnostic::span_handler;

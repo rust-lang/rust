@@ -47,7 +47,6 @@ use syntax::ast;
 use syntax::ast_map::node_item;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
-use syntax::attr;
 use syntax::codemap::{span, dummy_sp};
 use syntax::parse;
 use syntax::visit::{default_simple_visitor, default_visitor};
@@ -59,10 +58,7 @@ use util::ppaux::ty_to_str;
 use core::dvec::DVec;
 use core::result::Ok;
 use core::hashmap::linear::LinearSet;
-use core::uint::range;
 use core::uint;
-use core::vec::{len, push};
-use core::vec;
 use std::oldmap::HashMap;
 
 pub struct UniversalQuantificationResult {

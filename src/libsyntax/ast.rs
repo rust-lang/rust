@@ -13,9 +13,7 @@
 use codemap::{span, FileName, spanned};
 
 use core::cast;
-use core::cmp;
 use core::option::{None, Option, Some};
-use core::ptr;
 use core::task;
 use core::to_bytes;
 use core::to_str::ToStr;

@@ -17,7 +17,6 @@ use middle::typeck::infer::{Bound, Bounds};
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::unify::{Redirect, Root, VarValue};
 use util::ppaux::{mt_to_str, ty_to_str};
-use util::ppaux;
 
 use syntax::{ast, ast_util};
 

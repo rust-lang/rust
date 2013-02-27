@@ -100,15 +100,12 @@ use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty;
-use middle::typeck;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::cmp;
-use core::option;
 use core::to_bytes;
 use core::uint;
-use core::vec;
 use syntax::ast;
 use syntax::parse::token::special_idents;
 

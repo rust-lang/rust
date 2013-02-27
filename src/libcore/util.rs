@@ -14,7 +14,6 @@ Miscellaneous helpers for common patterns.
 
 */
 
-use cmp::Eq;
 use prelude::*;
 
 /// The identity function.
@@ -102,8 +101,8 @@ pub fn unreachable() -> ! {
     fail!(~"internal error: entered unreachable code");
 }
 
+#[cfg(test)]
 mod tests {
-    use option::{None, Some};
     use util::{NonCopyable, id, replace, swap};
 
     #[test]

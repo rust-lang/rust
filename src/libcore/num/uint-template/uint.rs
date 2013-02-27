@@ -19,7 +19,6 @@ pub use self::inst::{
 
 pub mod inst {
     use sys;
-    use uint;
     use iter;
 
     pub type T = uint;

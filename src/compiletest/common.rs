@@ -10,8 +10,6 @@
 
 use core::prelude::*;
 
-use cmp;
-
 #[deriving_eq]
 pub enum mode {
     mode_compile_fail,

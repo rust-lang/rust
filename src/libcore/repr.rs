@@ -15,25 +15,19 @@ More runtime type reflection
 */
 
 use cast::transmute;
-use cast;
 use char;
 use dvec::DVec;
 use intrinsic;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
-use io;
 use io::{Writer, WriterUtil};
 use libc::c_void;
 use managed;
-use managed::raw::BoxHeaderRepr;
 use ptr;
 use reflect;
 use reflect::{MovePtr, MovePtrAdaptor, align};
-use repr;
 use str;
 use sys;
-use sys::TypeDesc;
 use to_str::ToStr;
-use uint;
 use vec::UnboxedVecRepr;
 use vec::raw::{VecRepr, SliceRepr};
 use vec;

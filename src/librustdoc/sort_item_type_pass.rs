@@ -10,12 +10,7 @@
 
 //! Sorts items by type
 
-use core::prelude::*;
-
-use astsrv;
-use doc::ItemUtils;
 use doc;
-use extract;
 use pass::Pass;
 use sort_pass;
 

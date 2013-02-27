@@ -10,14 +10,9 @@
 
 use core::prelude::*;
 
-use astsrv;
 use doc;
-use extract;
-use parse;
-use pass::Pass;
 
 use core::vec;
-use std::par;
 
 pub struct Fold<T> {
     ctxt: T,

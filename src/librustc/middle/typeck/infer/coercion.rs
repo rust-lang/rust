@@ -78,7 +78,6 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::resolve::try_resolve_tvar_shallow;
 use util::common::{indent, indenter};
 
-use core::option;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 

@@ -12,7 +12,6 @@
 
 // NB: transitionary, de-mode-ing.
 
-use cmp;
 use cmp::Eq;
 use either;
 use either::Either;

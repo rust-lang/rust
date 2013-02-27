@@ -36,11 +36,9 @@
  * still held if needed.
  */
 
-use core::libc;
 use core::option;
 use core::prelude::*;
 use core::ptr;
-use core::task;
 
 /**
  * The type representing a foreign chunk of memory

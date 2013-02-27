@@ -43,9 +43,6 @@ let unwrapped_msg = match msg {
 
 use cmp::{Eq,Ord};
 use kinds::Copy;
-use option;
-use ptr;
-use str;
 use util;
 use num::Zero;
 

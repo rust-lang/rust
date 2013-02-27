@@ -13,8 +13,6 @@
 // See middle::ty::type_contents() for more information.
 
 extern mod std;
-use core::cmp::Ord;
-use core::option::swap_unwrap;
 
 struct List { key: int, next: Option<~List> }
 

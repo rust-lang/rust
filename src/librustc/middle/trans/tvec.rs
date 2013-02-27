@@ -31,8 +31,6 @@ use core::uint;
 use core::vec;
 use syntax::ast;
 use syntax::codemap;
-use syntax::codemap::span;
-use syntax::print::pprust::{expr_to_str};
 
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an

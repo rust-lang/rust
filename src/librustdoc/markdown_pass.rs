@@ -13,32 +13,18 @@
 use core::prelude::*;
 
 use astsrv;
-use attr_pass;
-use config;
-use desc_to_brief_pass;
 use doc::ItemUtils;
 use doc;
-use extract;
-use fold;
-use markdown_index_pass;
 use markdown_pass;
 use markdown_writer::Writer;
 use markdown_writer::WriterUtils;
 use markdown_writer::WriterFactory;
-use markdown_writer;
-use page_pass;
 use pass::Pass;
-use path_pass;
-use sectionalize_pass;
 use sort_pass;
-use trim_pass;
-use unindent_pass;
 
 use core::cell::Cell;
-use core::iter;
 use core::str;
 use core::vec;
-use std::par;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {

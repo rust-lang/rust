@@ -15,7 +15,6 @@ use codemap::span;
 use ext::base::ext_ctxt;
 use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
 
-use core::cmp;
 use core::to_str::ToStr;
 
 #[deriving_eq]

@@ -10,10 +10,8 @@
 
 //! Sorts items by name
 
-use astsrv;
 use doc::ItemUtils;
 use doc;
-use extract;
 use pass::Pass;
 use sort_pass;
 

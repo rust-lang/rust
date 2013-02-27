@@ -11,12 +11,9 @@
 use core::prelude::*;
 
 use config;
-use config::Config;
 use doc::ItemUtils;
 use doc;
-use pass::Pass;
 
-use core::io::ReaderUtil;
 use core::io;
 use core::libc;
 use core::os;
@@ -27,7 +24,6 @@ use core::str;
 use core::task;
 use core::comm::*;
 use std::future;
-use syntax;
 
 pub enum WriteInstr {
     Write(~str),

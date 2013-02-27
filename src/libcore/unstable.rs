@@ -11,16 +11,12 @@
 #[doc(hidden)];
 
 use cast;
-use iter;
 use libc;
 use option;
 use comm::{GenericChan, GenericPort};
 use prelude::*;
-use ptr;
-use result;
 use task;
 use task::{TaskBuilder, atomically};
-use uint;
 
 #[path = "unstable/at_exit.rs"]
 pub mod at_exit;

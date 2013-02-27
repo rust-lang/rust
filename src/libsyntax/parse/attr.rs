@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
-
 use ast;
 use codemap::spanned;
 use codemap::BytePos;
 use parse::common::*; //resolve bug?
 use parse::token;
 use parse::parser::Parser;
-
-use core::either::{Either, Left, Right};
 
 // a parser that can parse attributes.
 pub trait parser_attr {

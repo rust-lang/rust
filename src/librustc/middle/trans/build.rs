@@ -14,10 +14,9 @@ use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False};
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use lib;
 use middle::trans::common::*;
-use middle::trans::machine::llsize_of_real;
+use syntax::codemap::span;
 
 use core::prelude::*;
-use core::cast::transmute;
 use core::cast;
 use core::libc::{c_uint, c_int, c_ulonglong};
 use core::libc;
@@ -26,8 +25,6 @@ use core::ptr;
 use core::str;
 use core::vec;
 use std::oldmap::HashMap;
-use syntax::codemap::span;
-use syntax::codemap;
 
 pub fn terminate(cx: block, _: &str) {
     unsafe {

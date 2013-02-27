@@ -13,7 +13,6 @@ use core::prelude::*;
 use middle::ty::RegionVid;
 use middle::ty;
 use middle::typeck::infer::combine::*;
-use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
