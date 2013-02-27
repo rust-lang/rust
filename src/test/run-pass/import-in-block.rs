@@ -9,10 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    // Once cast_to_mut is removed, pick a better function to import
-    // for this test!
-    use vec::cast_to_mut;
-    log(debug, vec::len(cast_to_mut(~[1, 2])));
+    use vec::from_fn;
+    log(debug, vec::len(from_fn(2, |i| i)));
     {
         use vec::*;
         log(debug, len(~[2]));

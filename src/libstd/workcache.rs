@@ -15,6 +15,7 @@ use sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sort;
 
+use core::cell::Cell;
 use core::cmp;
 use core::either::{Either, Left, Right};
 use core::io;
@@ -139,7 +140,7 @@ impl WorkKey {
 
 type WorkMap = LinearMap<WorkKey, ~str>;
 
-pub impl<S:Encoder> Encodable<S> for WorkMap {
+impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &S) {
         let mut d = ~[];
         for self.each |&(k, v)| {
@@ -150,7 +151,7 @@ pub impl<S:Encoder> Encodable<S> for WorkMap {
     }
 }
 
-pub impl<D:Decoder> Decodable<D> for WorkMap {
+impl<D:Decoder> Decodable<D> for WorkMap {
     static fn decode(&self, d: &D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
         let mut w = LinearMap::new();
@@ -339,11 +340,11 @@ impl TPrep for @Mut<Prep> {
                     let mut blk = None;
                     blk <-> bo;
                     let blk = blk.unwrap();
-                    let chan = ~mut Some(chan);
+                    let chan = Cell(chan);
                     do task::spawn || {
                         let exe = Exec{discovered_inputs: LinearMap::new(),
                                        discovered_outputs: LinearMap::new()};
-                        let chan = option::swap_unwrap(&mut *chan);
+                        let chan = chan.take();
                         let v = blk(&exe);
                         send_one(chan, (exe, v));
                     }

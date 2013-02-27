@@ -2362,7 +2362,7 @@ pub trait OwnedStr {
     fn push_char(&mut self, c: char);
 }
 
-pub impl OwnedStr for ~str {
+impl OwnedStr for ~str {
     fn push_str(&mut self, v: &str) {
         push_str(self, v);
     }

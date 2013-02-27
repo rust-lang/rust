@@ -54,7 +54,7 @@ pub trait append_types {
     fn add_tys(+tys: ~[@ast::Ty]) -> @ast::path;
 }
 
-pub impl append_types for @ast::path {
+impl append_types for @ast::path {
     fn add_ty(ty: @ast::Ty) -> @ast::path {
         @ast::path { types: vec::append_one(self.types, ty),
                      .. *self}
@@ -119,7 +119,7 @@ pub trait ext_ctxt_ast_builder {
     fn strip_bounds(&self, bounds: &[ast::ty_param]) -> ~[ast::ty_param];
 }
 
-pub impl ext_ctxt_ast_builder for ext_ctxt {
+impl ext_ctxt_ast_builder for ext_ctxt {
     fn ty_option(&self, ty: @ast::Ty) -> @ast::Ty {
         self.ty_path_ast_builder(path_global(~[
             self.ident_of(~"core"),
