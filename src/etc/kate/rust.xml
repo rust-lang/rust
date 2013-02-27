@@ -176,6 +176,7 @@
 			<RegExpr String="[0-9][0-9_]*(u8|u16|u32|u64|i8|i16|i32|i64|u|i)?" attribute="Number" context="#stay"/>
 			<RegExpr String="&rustIdent;::" attribute="Scope"/>
 			<RegExpr String="&rustIdent;!" attribute="Macro"/>
+			<RegExpr String="&apos;&rustIdent;(?!&apos;)" attribute="Lifetime"/>
 			<DetectChar char="{" attribute="Symbol" context="#stay" beginRegion="Brace" />
 			<DetectChar char="}" attribute="Symbol" context="#stay" endRegion="Brace" />
 			<DetectChar char="&quot;" attribute="String" context="String"/>
@@ -223,6 +224,7 @@
 		<itemData name="String Char"  defStyleNum="dsChar" color="#FF0000"/>
 		<itemData name="Character"    defStyleNum="dsChar" color="#FF0000"/>
 		<itemData name="Macro"        defStyleNum="dsOthers"/>
+		<itemData name="Lifetime"     defStyleNum="dsOthers" bold="1"/>
 	</itemDatas>
 </highlighting>
 <general>
