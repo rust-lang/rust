@@ -12,7 +12,7 @@ struct c1<T> {
     x: T,
 }
 
-impl<T:Copy> c1<T> {
+pub impl<T:Copy> c1<T> {
     fn f1(x: T) {}
 }
 
@@ -22,7 +22,7 @@ fn c1<T:Copy>(x: T) -> c1<T> {
     }
 }
 
-impl<T:Copy> c1<T> {
+pub impl<T:Copy> c1<T> {
     fn f2(x: T) {}
 }
 

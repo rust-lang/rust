@@ -177,7 +177,7 @@ impl<K:Ord,V> Map<K, V> for TreeMap<K, V> {
     }
 }
 
-impl <K:Ord,V> TreeMap<K, V> {
+pub impl <K:Ord,V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
@@ -208,7 +208,7 @@ pub struct TreeMapIterator<K, V> {
 /// tuple with a reference to the key and value. If there are no
 /// more nodes, return `None`.
 fn map_next<K: Ord, V>(iter: &mut TreeMapIterator/&r<K, V>)
- -> Option<(&r/K, &r/V)> {
+                    -> Option<(&r/K, &r/V)> {
     while !iter.stack.is_empty() || iter.node.is_some() {
         match *iter.node {
           Some(ref x) => {
@@ -480,7 +480,7 @@ impl<T:Ord> Set<T> for TreeSet<T> {
     }
 }
 
-impl <T:Ord> TreeSet<T> {
+pub impl <T:Ord> TreeSet<T> {
     /// Create an empty TreeSet
     static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
@@ -518,7 +518,7 @@ struct TreeNode<K, V> {
     level: uint
 }
 
-impl <K:Ord,V> TreeNode<K, V> {
+pub impl <K:Ord,V> TreeNode<K, V> {
     #[inline(always)]
     static pure fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}

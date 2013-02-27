@@ -12,7 +12,7 @@ struct S {
     x: int
 }
 
-impl S {
+pub impl S {
     pure fn add(&self, other: &S) -> S {
         S { x: self.x + other.x }
     }

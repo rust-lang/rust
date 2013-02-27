@@ -38,7 +38,7 @@ enum Junction {
     Disjunction,
 }
 
-impl Junction {
+pub impl Junction {
     fn to_binop(self) -> binop {
         match self {
             Conjunction => and,

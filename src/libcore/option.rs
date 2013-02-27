@@ -281,7 +281,7 @@ pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
     }
 }
 
-impl<T> Option<T> {
+pub impl<T> Option<T> {
     /// Returns true if the option equals `none`
     #[inline(always)]
     pure fn is_none(&self) -> bool { is_none(self) }
@@ -393,7 +393,7 @@ impl<T> Option<T> {
     pure fn expect(self, reason: &str) -> T { expect(self, reason) }
 }
 
-impl<T:Copy> Option<T> {
+pub impl<T:Copy> Option<T> {
     /**
     Gets the value out of an option
 
@@ -421,7 +421,7 @@ impl<T:Copy> Option<T> {
     }
 }
 
-impl<T:Copy + Zero> Option<T> {
+pub impl<T:Copy + Zero> Option<T> {
     #[inline(always)]
     pure fn get_or_zero(self) -> T { get_or_zero(self) }
 }

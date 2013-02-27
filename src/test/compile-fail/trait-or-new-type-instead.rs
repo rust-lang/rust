@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern: implement a trait or new type instead
-impl <T> Option<T> {
+pub impl <T> Option<T> {
     fn foo() { }
 }
 

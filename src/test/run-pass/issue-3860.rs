@@ -10,7 +10,7 @@
 
 struct Foo { x: int }
 
-impl Foo {
+pub impl Foo {
     fn stuff(&mut self) -> &self/mut Foo {
         return self;
     }

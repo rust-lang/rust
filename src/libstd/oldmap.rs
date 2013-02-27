@@ -168,7 +168,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq + IterBytes + Hash,V> T<K, V> {
+    pub impl<K:Eq + IterBytes + Hash,V> T<K, V> {
         pure fn contains_key(&self, k: &K) -> bool {
             let hash = k.hash_keyed(0,0) as uint;
             match self.search_tbl(k, hash) {
@@ -252,7 +252,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq + IterBytes + Hash + Copy,V:Copy> T<K, V> {
+    pub impl<K:Eq + IterBytes + Hash + Copy,V:Copy> T<K, V> {
         pure fn find(&self, k: &K) -> Option<V> {
             match self.search_tbl(k, k.hash_keyed(0,0) as uint) {
               NotFound => None,
@@ -325,7 +325,7 @@ pub mod chained {
         }
     }
 
-    impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> T<K, V> {
+    pub impl<K:Eq + IterBytes + Hash + Copy + ToStr,V:ToStr + Copy> T<K, V> {
         fn to_writer(wr: io::Writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");

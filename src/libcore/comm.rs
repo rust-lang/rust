@@ -190,7 +190,7 @@ pub fn PortSet<T: Owned>() -> PortSet<T>{
     }
 }
 
-impl<T: Owned> PortSet<T> {
+pub impl<T: Owned> PortSet<T> {
 
     fn add(port: Port<T>) {
         self.ports.push(port)
@@ -323,12 +323,12 @@ pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
     (port, chan)
 }
 
-impl<T: Owned> PortOne<T> {
+pub impl<T: Owned> PortOne<T> {
     fn recv(self) -> T { recv_one(self) }
     fn try_recv(self) -> Option<T> { try_recv_one(self) }
 }
 
-impl<T: Owned> ChanOne<T> {
+pub impl<T: Owned> ChanOne<T> {
     fn send(self, data: T) { send_one(self, data) }
     fn try_send(self, data: T) -> bool { try_send_one(self, data) }
 }
