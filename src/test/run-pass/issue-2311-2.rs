@@ -13,7 +13,7 @@ struct foo<A> {
     x: A,
 }
 
-impl<A:Copy> foo<A> {
+pub impl<A:Copy> foo<A> {
    fn bar<B,C:clam<A>>(c: C) -> B {
      fail!();
    }

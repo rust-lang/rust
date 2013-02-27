@@ -433,7 +433,7 @@ pub fn save_and_restore_managed<T:Copy,U>(save_and_restore_t: @mut T,
     u
 }
 
-impl LoanKind {
+pub impl LoanKind {
     fn is_freeze(&self) -> bool {
         match *self {
             TotalFreeze | PartialFreeze => true,

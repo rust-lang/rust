@@ -31,7 +31,7 @@ fn timed(result: &mut float, op: fn()) {
     *result = (end - start);
 }
 
-impl Results {
+pub impl Results {
     fn bench_int<T:Set<uint>>(&mut self, rng: @rand::Rng, num_keys: uint,
                                rand_cap: uint, f: fn() -> T) {
         {

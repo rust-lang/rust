@@ -154,7 +154,7 @@ pub enum Dest {
     Ignore,
 }
 
-impl Dest {
+pub impl Dest {
     fn to_str(&self, ccx: @CrateContext) -> ~str {
         match *self {
             SaveIn(v) => fmt!("SaveIn(%s)", val_str(ccx.tn, v)),

@@ -117,7 +117,7 @@ priv impl<A> DVec<A> {
 // In theory, most everything should work with any A, but in practice
 // almost nothing works without the copy bound due to limitations
 // around closures.
-impl<A> DVec<A> {
+pub impl<A> DVec<A> {
     /// Reserves space for N elements
     fn reserve(count: uint) {
         vec::reserve(&mut self.data, count)
@@ -215,7 +215,7 @@ impl<A> DVec<A> {
     }
 }
 
-impl<A:Copy> DVec<A> {
+pub impl<A:Copy> DVec<A> {
     /**
      * Append all elements of a vector to the end of the list
      *

@@ -141,7 +141,7 @@ pub struct Weighted<T> {
 }
 
 /// Extension methods for random number generators
-impl Rng {
+pub impl Rng {
     /// Return a random value for a Rand type
     fn gen<T:Rand>() -> T {
         Rand::rand(self)

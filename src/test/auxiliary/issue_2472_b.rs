@@ -11,7 +11,7 @@
 
 enum S = ();
 
-impl S {
+pub impl S {
     fn foo() { }
 }
 

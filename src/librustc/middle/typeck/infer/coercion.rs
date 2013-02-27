@@ -87,7 +87,7 @@ use syntax::ast;
 // function.
 pub enum Coerce = CombineFields;
 
-impl Coerce {
+pub impl Coerce {
     fn tys(&self, a: ty::t, b: ty::t) -> CoerceResult {
         debug!("Coerce.tys(%s => %s)",
                a.inf_str(self.infcx),
