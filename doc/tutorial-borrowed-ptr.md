@@ -348,11 +348,11 @@ mutations:
 ~~~ {.xfail-test}
 fn example3() -> int {
     struct R { g: int }
-    struct S { mut f: ~R }
+    struct S { f: ~R }
 
-    let mut x = ~S {mut f: ~R {g: 3}};
+    let mut x = ~S {f: ~R {g: 3}};
     let y = &x.f.g;
-    x = ~S {mut f: ~R {g: 4}}; // Error reported here.
+    x = ~S {f: ~R {g: 4}}; // Error reported here.
     x.f = ~R {g: 5};           // Error reported here.
     *y
 }
@@ -368,8 +368,8 @@ box's owner. Consider a program like this:
 
 ~~~ {.xfail-test}
 struct R { g: int }
-struct S { mut f: ~R }
-fn example5a(x: @S, callback: @fn()) -> int {
+struct S { f: ~R }
+fn example5a(x: @mut S, callback: @fn()) -> int {
     let y = &x.f.g;   // Error reported here.
     ...
     callback();
@@ -383,11 +383,11 @@ Here the heap looks something like:
 ~~~ {.notrust}
      Stack            Managed Heap       Exchange Heap
 
-  x +------+        +-------------+       +------+
-    | @... | ---->  | mut f: ~... | --+-> | g: 3 |
-  y +------+        +-------------+   |   +------+
-    | &int | -------------------------+
-    +------+
+  x +---------+        +---------+       +------+
+    | @mut... | ---->  | f: ~... | --+-> | g: 3 |
+  y +---------+        +---------+   |   +------+
+    | &int    | ---------------------+
+    +---------+
 ~~~
 
 In this case, the owning reference to the value being borrowed is
@@ -423,8 +423,8 @@ onto your stack:
 
 ~~~
 struct R { g: int }
-struct S { mut f: ~R }
-fn example5c(x: @S) -> int {
+struct S { f: ~R }
+fn example5c(x: @mut S) -> int {
     let mut v = ~R {g: 0};
     v <-> x.f;         // Swap v and x.f
     { // Block constrains the scope of `y`:
@@ -768,7 +768,7 @@ replaced the `...` with some specific code:
 
 ~~~
 struct R { g: int }
-struct S { mut f: ~R }
+struct S { f: ~R }
 fn example5a(x: @S ...) -> int {
     let y = &x.f.g;   // Unsafe
     *y + 1        
@@ -789,7 +789,7 @@ We can now update `example5a()` to use `add_one()`:
 
 ~~~
 # struct R { g: int }
-# struct S { mut f: ~R }
+# struct S { f: ~R }
 # pure fn add_one(x: &int) -> int { *x + 1 }
 fn example5a(x: @S ...) -> int {
     let y = &x.f.g;

@@ -589,7 +589,7 @@ of its fields nevertheless mutable, using the `mut` keyword.
 ~~~~
 struct Stack {
     content: ~[int],
-    mut head: uint
+    head: uint
 }
 ~~~~
 
@@ -938,19 +938,19 @@ type that contains managed boxes or other managed types.
 ~~~
 // A linked list node
 struct Node {
-    mut next: MaybeNode,
-    mut prev: MaybeNode,
-    payload: int
+	next: MaybeNode,
+	prev: MaybeNode,
+	payload: int
 }
 
 enum MaybeNode {
-    SomeNode(@Node),
-    NoNode
+	SomeNode(@mut Node),
+	NoNode
 }
 
-let node1 = @Node { next: NoNode, prev: NoNode, payload: 1 };
-let node2 = @Node { next: NoNode, prev: NoNode, payload: 2 };
-let node3 = @Node { next: NoNode, prev: NoNode, payload: 3 };
+let node1 = @mut Node { next: NoNode, prev: NoNode, payload: 1 };
+let node2 = @mut Node { next: NoNode, prev: NoNode, payload: 2 };
+let node3 = @mut Node { next: NoNode, prev: NoNode, payload: 3 };
 
 // Link the three list nodes together
 node1.next = SomeNode(node2);
@@ -2300,8 +2300,8 @@ mod farm {
 # impl Human { fn rest(&self) { } }
 # pub fn make_me_a_farm() -> farm::Farm { farm::Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
     pub struct Farm {
-        priv mut chickens: ~[Chicken],
-        priv mut cows: ~[Cow],
+        priv chickens: ~[Chicken],
+        priv cows: ~[Cow],
         farmer: Human
     }
 
