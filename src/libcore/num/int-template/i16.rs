@@ -17,7 +17,7 @@ mod inst {
     pub const bits: uint = ::u16::bits;
 }
 
-pub impl NumCast for i16 {
+impl NumCast for i16 {
     /**
      * Cast `n` to a `i16`
      */

@@ -660,46 +660,46 @@ pub trait Vid {
     pure fn to_uint(&self) -> uint;
 }
 
-pub impl Vid for TyVid {
+impl Vid for TyVid {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl ToStr for TyVid {
+impl ToStr for TyVid {
     pure fn to_str(&self) -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
-pub impl Vid for IntVid {
+impl Vid for IntVid {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl ToStr for IntVid {
+impl ToStr for IntVid {
     pure fn to_str(&self) -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
 
-pub impl Vid for FloatVid {
+impl Vid for FloatVid {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl ToStr for FloatVid {
+impl ToStr for FloatVid {
     pure fn to_str(&self) -> ~str { fmt!("<VF%u>", self.to_uint()) }
 }
 
-pub impl Vid for RegionVid {
+impl Vid for RegionVid {
     pure fn to_uint(&self) -> uint { **self }
 }
 
-pub impl ToStr for RegionVid {
+impl ToStr for RegionVid {
     pure fn to_str(&self) -> ~str { fmt!("%?", self) }
 }
 
-pub impl ToStr for FnSig {
+impl ToStr for FnSig {
     pure fn to_str(&self) -> ~str {
         // grr, without tcx not much we can do.
         return ~"(...)";
     }
 }
 
-pub impl ToStr for InferTy {
+impl ToStr for InferTy {
     pure fn to_str(&self) -> ~str {
         match *self {
             TyVar(ref v) => v.to_str(),
@@ -709,7 +709,7 @@ pub impl ToStr for InferTy {
     }
 }
 
-pub impl ToStr for IntVarValue {
+impl ToStr for IntVarValue {
     pure fn to_str(&self) -> ~str {
         match *self {
             IntType(ref v) => v.to_str(),
@@ -718,25 +718,25 @@ pub impl ToStr for IntVarValue {
     }
 }
 
-pub impl to_bytes::IterBytes for TyVid {
+impl to_bytes::IterBytes for TyVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl to_bytes::IterBytes for IntVid {
+impl to_bytes::IterBytes for IntVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl to_bytes::IterBytes for FloatVid {
+impl to_bytes::IterBytes for FloatVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-pub impl to_bytes::IterBytes for RegionVid {
+impl to_bytes::IterBytes for RegionVid {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.to_uint().iter_bytes(lsb0, f)
     }

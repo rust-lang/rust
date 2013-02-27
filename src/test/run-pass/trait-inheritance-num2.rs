@@ -21,84 +21,84 @@ use std::cmp::FuzzyEq;
 pub trait TypeExt {}
 
 
-pub impl TypeExt for u8 {}
-pub impl TypeExt for u16 {}
-pub impl TypeExt for u32 {}
-pub impl TypeExt for u64 {}
-pub impl TypeExt for uint {}
+impl TypeExt for u8 {}
+impl TypeExt for u16 {}
+impl TypeExt for u32 {}
+impl TypeExt for u64 {}
+impl TypeExt for uint {}
 
-pub impl TypeExt for i8 {}
-pub impl TypeExt for i16 {}
-pub impl TypeExt for i32 {}
-pub impl TypeExt for i64 {}
-pub impl TypeExt for int {}
+impl TypeExt for i8 {}
+impl TypeExt for i16 {}
+impl TypeExt for i32 {}
+impl TypeExt for i64 {}
+impl TypeExt for int {}
 
-pub impl TypeExt for f32 {}
-pub impl TypeExt for f64 {}
-pub impl TypeExt for float {}
+impl TypeExt for f32 {}
+impl TypeExt for f64 {}
+impl TypeExt for float {}
 
 
 pub trait NumExt: TypeExt Eq Ord NumCast {}
 
-pub impl NumExt for u8 {}
-pub impl NumExt for u16 {}
-pub impl NumExt for u32 {}
-pub impl NumExt for u64 {}
-pub impl NumExt for uint {}
+impl NumExt for u8 {}
+impl NumExt for u16 {}
+impl NumExt for u32 {}
+impl NumExt for u64 {}
+impl NumExt for uint {}
 
-pub impl NumExt for i8 {}
-pub impl NumExt for i16 {}
-pub impl NumExt for i32 {}
-pub impl NumExt for i64 {}
-pub impl NumExt for int {}
+impl NumExt for i8 {}
+impl NumExt for i16 {}
+impl NumExt for i32 {}
+impl NumExt for i64 {}
+impl NumExt for int {}
 
-pub impl NumExt for f32 {}
-pub impl NumExt for f64 {}
-pub impl NumExt for float {}
+impl NumExt for f32 {}
+impl NumExt for f64 {}
+impl NumExt for float {}
 
 
 pub trait UnSignedExt: NumExt {}
 
-pub impl UnSignedExt for u8 {}
-pub impl UnSignedExt for u16 {}
-pub impl UnSignedExt for u32 {}
-pub impl UnSignedExt for u64 {}
-pub impl UnSignedExt for uint {}
+impl UnSignedExt for u8 {}
+impl UnSignedExt for u16 {}
+impl UnSignedExt for u32 {}
+impl UnSignedExt for u64 {}
+impl UnSignedExt for uint {}
 
 
 pub trait SignedExt: NumExt {}
 
-pub impl SignedExt for i8 {}
-pub impl SignedExt for i16 {}
-pub impl SignedExt for i32 {}
-pub impl SignedExt for i64 {}
-pub impl SignedExt for int {}
+impl SignedExt for i8 {}
+impl SignedExt for i16 {}
+impl SignedExt for i32 {}
+impl SignedExt for i64 {}
+impl SignedExt for int {}
 
-pub impl SignedExt for f32 {}
-pub impl SignedExt for f64 {}
-pub impl SignedExt for float {}
+impl SignedExt for f32 {}
+impl SignedExt for f64 {}
+impl SignedExt for float {}
 
 
 pub trait IntegerExt: NumExt {}
 
-pub impl IntegerExt for u8 {}
-pub impl IntegerExt for u16 {}
-pub impl IntegerExt for u32 {}
-pub impl IntegerExt for u64 {}
-pub impl IntegerExt for uint {}
+impl IntegerExt for u8 {}
+impl IntegerExt for u16 {}
+impl IntegerExt for u32 {}
+impl IntegerExt for u64 {}
+impl IntegerExt for uint {}
 
-pub impl IntegerExt for i8 {}
-pub impl IntegerExt for i16 {}
-pub impl IntegerExt for i32 {}
-pub impl IntegerExt for i64 {}
-pub impl IntegerExt for int {}
+impl IntegerExt for i8 {}
+impl IntegerExt for i16 {}
+impl IntegerExt for i32 {}
+impl IntegerExt for i64 {}
+impl IntegerExt for int {}
 
 
 pub trait FloatExt: NumExt FuzzyEq<Self> {}
 
-pub impl FloatExt for f32 {}
-pub impl FloatExt for f64 {}
-pub impl FloatExt for float {}
+impl FloatExt for f32 {}
+impl FloatExt for f64 {}
+impl FloatExt for float {}
 
 
 fn test_float_ext<T:FloatExt>(n: T) { io::println(fmt!("%?", n < n)) }

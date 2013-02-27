@@ -151,14 +151,14 @@ pub impl DatumMode {
     }
 }
 
-pub impl cmp::Eq for DatumMode {
+impl cmp::Eq for DatumMode {
     pure fn eq(&self, other: &DatumMode) -> bool {
         (*self) as uint == (*other as uint)
     }
     pure fn ne(&self, other: &DatumMode) -> bool { !(*self).eq(other) }
 }
 
-pub impl to_bytes::IterBytes for DatumMode {
+impl to_bytes::IterBytes for DatumMode {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
