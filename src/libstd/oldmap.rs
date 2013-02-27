@@ -134,7 +134,9 @@ pub mod chained {
             }
             self.chains = new_chains;
         }
+    }
 
+    pub impl<K:Eq + IterBytes + Hash,V> T<K, V> {
         pure fn each_entry(blk: fn(@Entry<K,V>) -> bool) {
             // n.b. we can't use vec::iter() here because self.chains
             // is stored in a mutable location.

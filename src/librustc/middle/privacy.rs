@@ -14,10 +14,11 @@
 
 use core::prelude::*;
 
+use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
 use middle::ty;
-use middle::typeck::{method_map, method_origin, method_param, method_self,
-                     method_super};
+use middle::typeck::{method_map, method_origin, method_param, method_self};
+use middle::typeck::{method_super};
 use middle::typeck::{method_static, method_trait};
 
 use core::dvec::DVec;
@@ -100,8 +101,10 @@ pub fn check_crate(tcx: ty::ctxt,
     };
 
     // Checks that a private method is in scope.
-    let check_method: @fn(span: span, origin: &method_origin) =
-            |span, origin| {
+    let check_method: @fn(span: span,
+                          origin: &method_origin,
+                          ident: ast::ident) =
+            |span, origin, ident| {
         match *origin {
             method_static(method_id) => {
                 if method_id.crate == local_crate {
@@ -110,6 +113,8 @@ pub fn check_crate(tcx: ty::ctxt,
                             let mut is_private = false;
                             if method.vis == private {
                                 is_private = true;
+                            } else if method.vis == public {
+                                is_private = false;
                             } else {
                                 // Look up the enclosing impl.
                                 if impl_id.crate != local_crate {
@@ -121,7 +126,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                 match tcx.items.find(&impl_id.node) {
                                     Some(node_item(item, _)) => {
                                         match item.node {
-                                            item_impl(_, None, _, _) 
+                                            item_impl(_, None, _, _)
                                                     if item.vis != public => {
                                                 is_private = true;
                                             }
@@ -165,7 +170,15 @@ pub fn check_crate(tcx: ty::ctxt,
                         }
                     }
                 } else {
-                    // FIXME #4732: External crates.
+                    let visibility =
+                        csearch::get_method_visibility(tcx.sess.cstore,
+                                                       method_id);
+                    if visibility != public {
+                        tcx.sess.span_err(span,
+                                          fmt!("method `%s` is private",
+                                               *tcx.sess.parse_sess.interner
+                                                   .get(ident)));
+                    }
                 }
             }
             method_param(method_param {
@@ -264,14 +277,16 @@ pub fn check_crate(tcx: ty::ctxt,
                                 Some(ref entry) => {
                                     debug!("(privacy checking) checking \
                                             impl method");
-                                    check_method(expr.span, &(*entry).origin);
+                                    check_method(expr.span,
+                                                 &entry.origin,
+                                                 ident);
                                 }
                             }
                         }
                         _ => {}
                     }
                 }
-                expr_method_call(base, _, _, _, _) => {
+                expr_method_call(base, ident, _, _, _) => {
                     // Ditto
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
@@ -287,7 +302,9 @@ pub fn check_crate(tcx: ty::ctxt,
                                 Some(ref entry) => {
                                     debug!("(privacy checking) checking \
                                             impl method");
-                                    check_method(expr.span, &(*entry).origin);
+                                    check_method(expr.span,
+                                                 &entry.origin,
+                                                 ident);
                                 }
                             }
                         }
