@@ -4842,7 +4842,8 @@ pub impl Resolver {
 
         if vec::len(values) > 0 &&
             values[smallest] != uint::max_value &&
-            values[smallest] < str::len(name) + 2 {
+            values[smallest] < str::len(name) + 2 &&
+            maybes[smallest] != name.to_owned() {
 
             Some(vec::swap_remove(&mut maybes, smallest))
 
