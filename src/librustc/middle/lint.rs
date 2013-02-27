@@ -34,8 +34,7 @@ use core::uint;
 use core::vec;
 use std::oldmap::{Map, HashMap};
 use std::oldmap;
-use std::oldsmallintmap::{Map, SmallIntMap};
-use std::oldsmallintmap;
+use std::smallintmap::SmallIntMap;
 use syntax::ast_util::{path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
@@ -81,6 +80,7 @@ pub enum lint {
     type_limits,
     default_methods,
     deprecated_self,
+    deprecated_mutable_fields,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -255,6 +255,13 @@ pub fn get_lint_dict() -> LintDict {
             default: warn
          }),
 
+        (@~"deprecated_mutable_fields",
+         @LintSpec {
+            lint: deprecated_mutable_fields,
+            desc: "deprecated mutable fields in structures",
+            default: deny
+        }),
+
         /* FIXME(#3266)--make liveness warnings lintable
         (@~"unused_variable",
          @LintSpec {
@@ -275,7 +282,7 @@ pub fn get_lint_dict() -> LintDict {
 }
 
 // This is a highly not-optimal set of data structure decisions.
-type LintModes = SmallIntMap<level>;
+type LintModes = @mut SmallIntMap<level>;
 type LintModeMap = HashMap<ast::node_id, LintModes>;
 
 // settings_map maps node ids of items with non-default lint settings
@@ -288,14 +295,14 @@ pub struct LintSettings {
 
 pub fn mk_lint_settings() -> LintSettings {
     LintSettings {
-        default_settings: oldsmallintmap::mk(),
+        default_settings: @mut SmallIntMap::new(),
         settings_map: HashMap()
     }
 }
 
 pub fn get_lint_level(modes: LintModes, lint: lint) -> level {
-    match modes.find(lint as uint) {
-      Some(c) => c,
+    match modes.find(&(lint as uint)) {
+      Some(&c) => c,
       None => allow
     }
 }
@@ -314,8 +321,7 @@ pub fn get_lint_settings_level(settings: LintSettings,
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: LintModes) -> LintModes {
-    oldsmallintmap::SmallIntMap_(@oldsmallintmap::SmallIntMap_
-    {v: copy modes.v})
+    @mut (copy *modes)
 }
 
 struct Context {
@@ -332,7 +338,7 @@ impl Context {
 
     fn set_level(&self, lint: lint, level: level) {
         if level == allow {
-            self.curr.remove(lint as uint);
+            self.curr.remove(&(lint as uint));
         } else {
             self.curr.insert(lint as uint, level);
         }
@@ -440,7 +446,7 @@ fn build_settings_item(i: @ast::item, &&cx: Context, v: visit::vt<Context>) {
 pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
     let cx = Context {
         dict: get_lint_dict(),
-        curr: oldsmallintmap::mk(),
+        curr: @mut SmallIntMap::new(),
         is_default: true,
         sess: sess
     };
@@ -458,7 +464,7 @@ pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
 
     do cx.with_lint_attrs(/*bad*/copy crate.node.attrs) |cx| {
         // Copy out the default settings
-        for cx.curr.each |k, v| {
+        for cx.curr.each |&(k, &v)| {
             sess.lint_settings.default_settings.insert(k, v);
         }
 
@@ -488,6 +494,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
     check_item_deprecated_self(cx, i);
+    check_item_deprecated_mutable_fields(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -699,6 +706,26 @@ fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
         ast::item_impl(_, _, _, methods) => {
             for methods.each |method| {
                 maybe_warn(cx, item, method.self_ty);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn check_item_deprecated_mutable_fields(cx: ty::ctxt, item: @ast::item) {
+    match item.node {
+        ast::item_struct(struct_def, _) => {
+            for struct_def.fields.each |field| {
+                match field.node.kind {
+                    ast::named_field(_, ast::struct_mutable, _) => {
+                        cx.sess.span_lint(deprecated_mutable_fields,
+                                          item.id,
+                                          item.id,
+                                          field.span,
+                                          ~"mutable fields are deprecated");
+                    }
+                    ast::named_field(*) | ast::unnamed_field => {}
+                }
             }
         }
         _ => {}

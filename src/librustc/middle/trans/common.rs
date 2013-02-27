@@ -647,19 +647,6 @@ pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
 }
 
-// Returns the nth element of the given LLVM structure type.
-pub fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
-    unsafe {
-        let elt_count = llvm::LLVMCountStructElementTypes(llstructty) as uint;
-        assert (n < elt_count);
-        let mut elt_tys = vec::from_elem(elt_count, T_nil());
-        llvm::LLVMGetStructElementTypes(
-            llstructty,
-            ptr::to_mut_unsafe_ptr(&mut elt_tys[0]));
-        return llvm::LLVMGetElementType(elt_tys[n]);
-    }
-}
-
 pub fn in_scope_cx(cx: block, f: &fn(&mut scope_info)) {
     let mut cur = cx;
     loop {

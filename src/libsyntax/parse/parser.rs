@@ -75,7 +75,7 @@ use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
 use parse::obsolete::{ObsoleteStructCtor, ObsoleteWith};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
-use parse::obsolete::{ObsoleteTraitBoundSeparator};
+use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -677,6 +677,11 @@ pub impl Parser {
         // rather than boxed ptrs.  But the special casing of str/vec is not
         // reflected in the AST type.
         let mt = self.parse_mt();
+
+        if mt.mutbl == m_mutbl && sigil == OwnedSigil {
+            self.obsolete(*self.last_span, ObsoleteMutOwnedPointer);
+        }
+
         ctor(mt)
     }
 
@@ -748,18 +753,6 @@ pub impl Parser {
         }
     }
 
-    fn parse_capture_item_or(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
-        -> arg_or_capture_item
-    {
-        if self.eat_keyword(~"copy") {
-            // XXX outdated syntax now that moves-based-on-type has gone in
-            self.parse_ident();
-            either::Right(())
-        } else {
-            parse_arg_fn(self)
-        }
-    }
-
     // This version of parse arg doesn't necessarily require
     // identifier names.
     fn parse_arg_general(require_name: bool) -> arg {
@@ -788,32 +781,26 @@ pub impl Parser {
         either::Left(self.parse_arg_general(true))
     }
 
-    fn parse_arg_or_capture_item() -> arg_or_capture_item {
-        self.parse_capture_item_or(|p| p.parse_arg())
-    }
-
     fn parse_fn_block_arg() -> arg_or_capture_item {
-        do self.parse_capture_item_or |p| {
-            let m = p.parse_arg_mode();
-            let is_mutbl = self.eat_keyword(~"mut");
-            let pat = p.parse_pat(false);
-            let t = if p.eat(token::COLON) {
-                p.parse_ty(false)
-            } else {
-                @Ty {
-                    id: p.get_id(),
-                    node: ty_infer,
-                    span: mk_sp(p.span.lo, p.span.hi),
-                }
-            };
-            either::Left(ast::arg {
-                mode: m,
-                is_mutbl: is_mutbl,
-                ty: t,
-                pat: pat,
-                id: p.get_id()
-            })
-        }
+        let m = self.parse_arg_mode();
+        let is_mutbl = self.eat_keyword(~"mut");
+        let pat = self.parse_pat(false);
+        let t = if self.eat(token::COLON) {
+            self.parse_ty(false)
+        } else {
+            @Ty {
+                id: self.get_id(),
+                node: ty_infer,
+                span: mk_sp(self.span.lo, self.span.hi),
+            }
+        };
+        either::Left(ast::arg {
+            mode: m,
+            is_mutbl: is_mutbl,
+            ty: t,
+            pat: pat,
+            id: self.get_id()
+        })
     }
 
     fn maybe_parse_fixed_vstore_with_star() -> Option<uint> {
@@ -1722,7 +1709,7 @@ pub impl Parser {
 
         // if we want to allow fn expression argument types to be inferred in
         // the future, just have to change parse_arg to parse_fn_block_arg.
-        let decl = self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
+        let decl = self.parse_fn_decl(|p| p.parse_arg());
 
         let body = self.parse_block();
 

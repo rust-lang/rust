@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct invariant {
-    f: @[mut &int]
+    f: @mut [&int]
 }
 
 fn to_same_lifetime(bi: invariant/&r) {

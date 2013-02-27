@@ -9,17 +9,17 @@
 // except according to those terms.
 
 struct cat<U> {
-  priv mut info : ~[U],
-  priv mut meows : uint,
+    priv info : ~[U],
+    priv meows : uint,
 
-  how_hungry : int,
+    how_hungry : int,
 }
 
 impl<U> cat<U> {
-  fn speak<T>(stuff: ~[T]) {
-    self.meows += stuff.len();
-  }
-  fn meow_count() -> uint { self.meows }
+    fn speak<T>(&mut self, stuff: ~[T]) {
+        self.meows += stuff.len();
+    }
+    fn meow_count(&mut self) -> uint { self.meows }
 }
 
 fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {
@@ -31,8 +31,8 @@ fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {
 }
 
 pub fn main() {
-  let nyan : cat<int> = cat::<int>(52u, 99, ~[9]);
-  let kitty = cat(1000u, 2, ~[~"tabby"]);
+  let mut nyan : cat<int> = cat::<int>(52u, 99, ~[9]);
+  let mut kitty = cat(1000u, 2, ~[~"tabby"]);
   assert(nyan.how_hungry == 99);
   assert(kitty.how_hungry == 2);
   nyan.speak(~[1,2,3]);

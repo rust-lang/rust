@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Regression test for issue #3645
+
 fn main() {
-    let mut x: ~[mut int] = ~[mut 3];
-    let y: ~[int] = ~[3];
-    x = y; //~ ERROR values differ in mutability
+    let n = 1;
+    let a = ~[0, ..n]; //~ ERROR expected constant integer for repeat count but found variable
 }

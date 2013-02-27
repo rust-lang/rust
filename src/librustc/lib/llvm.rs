@@ -1379,12 +1379,7 @@ pub fn type_to_str_inner(names: @TypeNames, +outer0: &[TypeRef], ty: TypeRef)
                         type_to_str_inner(names, outer, out_ty)).to_managed();
           }
           Struct => {
-            let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
-            let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
-            if !elts.is_empty() {
-                llvm::LLVMGetStructElementTypes(
-                    ty, ptr::to_mut_unsafe_ptr(&mut elts[0]));
-            }
+            let elts = struct_tys(ty);
             // See [Note at-str]
             return fmt!("{%s}", tys_str(names, outer, elts)).to_managed();
           }
@@ -1445,17 +1440,16 @@ pub fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] {
     }
 }
 
-pub fn struct_element_types(struct_ty: TypeRef) -> ~[TypeRef] {
+pub fn struct_tys(struct_ty: TypeRef) -> ~[TypeRef] {
     unsafe {
-        let count = llvm::LLVMCountStructElementTypes(struct_ty);
-        let mut buf: ~[TypeRef] =
-            vec::from_elem(count as uint,
-                           cast::transmute::<uint,TypeRef>(0));
-        if buf.len() > 0 {
-            llvm::LLVMGetStructElementTypes(
-                struct_ty, ptr::to_mut_unsafe_ptr(&mut buf[0]));
+        let n_elts = llvm::LLVMCountStructElementTypes(struct_ty) as uint;
+        if n_elts == 0 {
+            return ~[];
         }
-        return buf;
+        let mut elts = vec::from_elem(n_elts, ptr::null());
+        llvm::LLVMGetStructElementTypes(
+            struct_ty, ptr::to_mut_unsafe_ptr(&mut elts[0]));
+        return elts;
     }
 }
 
