@@ -21,23 +21,23 @@ endif
 
 # Host libs will be extracted by the above rule
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUNTIME): \
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUNTIME_$(CFG_BUILD_TRIPLE)): \
 		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_CORELIB): \
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_CORELIB_$(CFG_BUILD_TRIPLE)): \
 		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_STDLIB): \
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_STDLIB_$(CFG_BUILD_TRIPLE)): \
 		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_LIBRUSTC): \
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_LIBRUSTC_$(CFG_BUILD_TRIPLE)): \
 		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUSTLLVM): \
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUSTLLVM_$(CFG_BUILD_TRIPLE)): \
 		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X)
 	$(Q)touch $@
 
@@ -53,28 +53,28 @@ $$(HBIN0_H_$(1))/rustc$$(X):								\
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB0_H_$(1))/$$(CFG_RUNTIME): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$$(CFG_RUNTIME)
+$$(HLIB0_H_$(1))/$(CFG_RUNTIME_$(4)): \
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_RUNTIME_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB0_H_$(1))/$(CFG_CORELIB): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$$(CFG_CORELIB)
+$$(HLIB0_H_$(1))/$(CFG_CORELIB_$(4)): \
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_CORELIB_$(4))
 	@$$(call E, cp: $$@)
-	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$$(CORELIB_GLOB) $$@
+	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(CORELIB_GLOB_$(4)) $$@
 
-$$(HLIB0_H_$(1))/$(CFG_STDLIB): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$$(CFG_STDLIB)
+$$(HLIB0_H_$(1))/$(CFG_STDLIB_$(4)): \
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_STDLIB_$(4))
 	@$$(call E, cp: $$@)
-	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$$(STDLIB_GLOB) $$@
+	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(STDLIB_GLOB_$(4)) $$@
 
-$$(HLIB0_H_$(1))/$(CFG_LIBRUSTC): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$$(CFG_LIBRUSTC)
+$$(HLIB0_H_$(1))/$(CFG_LIBRUSTC_$(4)): \
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_LIBRUSTC_$(4))
 	@$$(call E, cp: $$@)
-	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$$(LIBRUSTC_GLOB) $$@
+	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(LIBRUSTC_GLOB_$(4)) $$@
 
-$$(HLIB0_H_$(1))/$(CFG_RUSTLLVM): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$$(CFG_RUSTLLVM)
+$$(HLIB0_H_$(1))/$(CFG_RUSTLLVM_$(4)): \
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_RUSTLLVM_$(4))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 

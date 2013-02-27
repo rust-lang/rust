@@ -130,36 +130,43 @@ else
   CFG_VALGRIND_COMPILE :=
 endif
 
-CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
-CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
-CFG_CORELIB :=$(call CFG_LIB_NAME,core)
-CFG_STDLIB :=$(call CFG_LIB_NAME,std)
-CFG_LIBRUSTC :=$(call CFG_LIB_NAME,rustc)
-CFG_LIBSYNTAX :=$(call CFG_LIB_NAME,syntax)
-CFG_LIBFUZZER :=$(call CFG_LIB_NAME,fuzzer)
-CFG_LIBRUSTPKG :=$(call CFG_LIB_NAME,rustpkg)
-CFG_LIBRUSTDOC :=$(call CFG_LIB_NAME,rustdoc)
-CFG_LIBRUSTI :=$(call CFG_LIB_NAME,rusti)
-CFG_LIBRUST :=$(call CFG_LIB_NAME,rust)
+define LIBREQ
 
-STDLIB_GLOB :=$(call CFG_LIB_GLOB,std)
-CORELIB_GLOB :=$(call CFG_LIB_GLOB,core)
-LIBRUSTC_GLOB :=$(call CFG_LIB_GLOB,rustc)
-LIBSYNTAX_GLOB :=$(call CFG_LIB_GLOB,syntax)
-LIBFUZZER_GLOB :=$(call CFG_LIB_GLOB,fuzzer)
-LIBRUSTPKG_GLOB :=$(call CFG_LIB_GLOB,rustpkg)
-LIBRUSTDOC_GLOB :=$(call CFG_LIB_GLOB,rustdoc)
-LIBRUSTI_GLOB :=$(call CFG_LIB_GLOB,rusti)
-LIBRUST_GLOB :=$(call CFG_LIB_GLOB,rust)
-STDLIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,std)
-CORELIB_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,core)
-LIBRUSTC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustc)
-LIBSYNTAX_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,syntax)
-LIBFUZZER_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,fuzzer)
-LIBRUSTPKG_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustpkg)
-LIBRUSTDOC_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rustdoc)
-LIBRUSTI_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rusti)
-LIBRUST_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,rust)
+CFG_RUNTIME_$(1) :=$(call CFG_LIB_NAME_$(1),rustrt)
+CFG_RUSTLLVM_$(1) :=$(call CFG_LIB_NAME_$(1),rustllvm)
+CFG_CORELIB_$(1) :=$(call CFG_LIB_NAME_$(1),core)
+CFG_STDLIB_$(1) :=$(call CFG_LIB_NAME_$(1),std)
+CFG_LIBRUSTC_$(1) :=$(call CFG_LIB_NAME_$(1),rustc)
+CFG_LIBSYNTAX_$(1) :=$(call CFG_LIB_NAME_$(1),syntax)
+CFG_LIBFUZZER_$(1) :=$(call CFG_LIB_NAME_$(1),fuzzer)
+CFG_LIBRUSTPKG_$(1) :=$(call CFG_LIB_NAME_$(1),rustpkg)
+CFG_LIBRUSTDOC_$(1) :=$(call CFG_LIB_NAME_$(1),rustdoc)
+CFG_LIBRUSTI_$(1) :=$(call CFG_LIB_NAME_$(1),rusti)
+CFG_LIBRUST_$(1) :=$(call CFG_LIB_NAME_$(1),rust)
+
+STDLIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),std)
+CORELIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),core)
+LIBRUSTC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustc)
+LIBSYNTAX_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),syntax)
+LIBFUZZER_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),fuzzer)
+LIBRUSTPKG_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustpkg)
+LIBRUSTDOC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustdoc)
+LIBRUSTI_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rusti)
+LIBRUST_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rust)
+STDLIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),std)
+CORELIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),core)
+LIBRUSTC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustc)
+LIBSYNTAX_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),syntax)
+LIBFUZZER_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),fuzzer)
+LIBRUSTPKG_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustpkg)
+LIBRUSTDOC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustdoc)
+LIBRUSTI_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rusti)
+LIBRUST_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rust)
+
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+  $(eval $(call LIBREQ,$(target))))
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
@@ -190,13 +197,13 @@ endif
 # Target-and-rule "utility variables"
 ######################################################################
 
-ifdef VERBOSE
+#ifdef VERBOSE
   Q :=
   E =
-else
-  Q := @
-  E = echo $(1)
-endif
+#else
+#  Q := @
+#  E = echo $(1)
+#endif
 
 S := $(CFG_SRC_DIR)
 X := $(CFG_EXE_SUFFIX)
@@ -338,26 +345,26 @@ ifdef CFG_DISABLE_SHAREDSTD
     $$(TLIB$(1)_T_$(2)_H_$(3))/librustc.rlib
 else
   HCORELIB_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/$(CFG_CORELIB)
+    $$(HLIB$(1)_H_$(3))/$(CFG_CORELIB_$(3))
   TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB)
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2))
 
   HSTDLIB_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/$(CFG_STDLIB)
+    $$(HLIB$(1)_H_$(3))/$(CFG_STDLIB_$(3))
   TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB)
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))
 
   HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTC)
+    $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTC_$(3))
   TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC)
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3))
 endif
 
 # Preqrequisites for using the stageN compiler
 HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X) \
-	$$(HLIB$(1)_H_$(3))/$$(CFG_RUNTIME) \
-	$$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLLVM) \
+	$$(HLIB$(1)_H_$(3))/$(CFG_RUNTIME_$(3)) \
+	$$(HLIB$(1)_H_$(3))/$(CFG_RUSTLLVM_$(3)) \
 	$$(HCORELIB_DEFAULT$(1)_H_$(3)) \
 	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBSYNTAX_DEFAULT$(1)_H_$(3)) \
@@ -367,14 +374,14 @@ HSREQ$(1)_H_$(3) = \
 # Prerequisites for using the stageN compiler to build target artifacts
 TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 
 # Prerequisites for a working stageN compiler and libraries, for a specific target
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))
 
 # Prerequisites for a working stageN compiler and libraries, for a specific target
 CSREQ$(1)_T_$(2)_H_$(3) = \
@@ -384,20 +391,20 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X) \
 	$$(HBIN$(1)_H_$(3))/rusti$$(X) \
 	$$(HBIN$(1)_H_$(3))/rust$$(X) \
-	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBFUZZER) \
-	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTPKG) \
-	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTDOC) \
-	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUSTI) \
-	$$(HLIB$(1)_H_$(3))/$$(CFG_LIBRUST) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB)  \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)  \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBFUZZER) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTPKG) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTDOC) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTI) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUST)
+	$$(HLIB$(1)_H_$(3))/$(CFG_LIBFUZZER_$(3)) \
+	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)) \
+	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
+	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTI_$(3)) \
+	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUST_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(3))  \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3))  \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTI_$(3)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUST_$(3))
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed
