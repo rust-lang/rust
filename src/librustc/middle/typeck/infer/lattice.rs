@@ -34,7 +34,7 @@
 
 use core::prelude::*;
 
-use middle::ty::{RegionVid, TyVar};
+use middle::ty::{RegionVid, TyVar, Vid};
 use middle::ty;
 use middle::typeck::isr_alist;
 use middle::typeck::infer::*;
@@ -46,6 +46,7 @@ use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::to_str::InferStr;
+use util::common::indenter;
 
 use std::list;
 

@@ -157,7 +157,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-type ExternMap = HashMap<@str, ValueRef>;
+pub type ExternMap = HashMap<@str, ValueRef>;
 
 // Crate context.  Every crate we compile has one of these.
 pub struct CrateContext {

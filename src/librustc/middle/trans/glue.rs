@@ -14,19 +14,32 @@
 
 use core::prelude::*;
 
-use lib::llvm::{ValueRef, TypeRef};
+use back::abi;
+use back::link::*;
+use driver::session;
+use lib;
+use lib::llvm::{llvm, ValueRef, TypeRef, True};
 use middle::trans::base::*;
 use middle::trans::callee;
 use middle::trans::closure;
 use middle::trans::common::*;
 use middle::trans::build::*;
+use middle::trans::expr;
+use middle::trans::machine::*;
 use middle::trans::reflect;
 use middle::trans::tvec;
-use middle::trans::type_of::type_of;
+use middle::trans::type_of::{type_of, type_of_glue_fn};
 use middle::trans::uniq;
+use middle::ty;
+use util::ppaux;
+use util::ppaux::ty_to_short_str;
 
 use core::io;
+use core::libc::c_uint;
 use core::str;
+use std::time;
+use syntax::ast;
+use syntax::parse::token::special_idents;
 
 pub fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_free");
@@ -218,7 +231,7 @@ pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
     let _icx = ccx.insn_ctxt("lazily_emit_simplified_tydesc_glue");
     let simpl = simplified_glue_type(ccx.tcx, field, ti.ty);
     if simpl != ti.ty {
-        let simpl_ti = base::get_tydesc(ccx, simpl);
+        let simpl_ti = get_tydesc(ccx, simpl);
         lazily_emit_tydesc_glue(ccx, field, simpl_ti);
         if field == abi::tydesc_field_take_glue {
             ti.take_glue =
@@ -661,7 +674,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     if ccx.sess.count_type_sizes() {
         io::println(fmt!("%u\t%s",
                          llsize_of_real(ccx, llty),
-                         ty_to_str(ccx.tcx, t)));
+                         ppaux::ty_to_str(ccx.tcx, t)));
     }
 
     let llsize = llsize_of(ccx, llty);
@@ -675,7 +688,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     };
     // XXX: Bad copy.
     note_unique_llvm_symbol(ccx, copy name);
-    log(debug, fmt!("+++ declare_tydesc %s %s", ty_to_str(ccx.tcx, t), name));
+    debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), name);
     let gvar = str::as_c_str(name, |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
@@ -709,7 +722,7 @@ pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
     } else {
         fn_nm = mangle_internal_name_by_seq(ccx, (~"glue_" + name));
     }
-    debug!("%s is for type %s", fn_nm, ty_to_str(ccx.tcx, t));
+    debug!("%s is for type %s", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
     // XXX: Bad copy.
     note_unique_llvm_symbol(ccx, copy fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);

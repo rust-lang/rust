@@ -16,6 +16,7 @@ use ast_util;
 use codemap::span;
 use parse;
 use opt_vec;
+use opt_vec::OptVec;
 
 use core::option;
 use core::vec;

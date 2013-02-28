@@ -121,10 +121,15 @@ lvalues are *never* stored by value.
 
 use core::prelude::*;
 
-use lib::llvm::ValueRef;
+use back::abi;
+use lib;
+use lib::llvm::{ValueRef, TypeRef, llvm, True};
 use middle::borrowck::root_map_key;
 use middle::resolve;
+use middle::trans::_match;
+use middle::trans::base;
 use middle::trans::base::*;
+use middle::trans::build::*;
 use middle::trans::callee::{AutorefArg, DoAutorefArg, DontAutorefArg};
 use middle::trans::callee;
 use middle::trans::closure;
@@ -132,16 +137,21 @@ use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::controlflow;
 use middle::trans::datum::*;
+use middle::trans::debuginfo;
 use middle::trans::machine;
 use middle::trans::meth;
 use middle::trans::tvec;
+use middle::trans::type_of;
+use middle::ty;
 use middle::ty::struct_mutable_fields;
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
+use std::oldmap::HashMap;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
+use syntax::codemap;
 use syntax::codemap::spanned;
 
 // Destinations
@@ -1128,7 +1138,7 @@ fn trans_rec_or_struct(bcx: block,
                     let fields = ty::struct_mutable_fields(
                         tcx, variant_id, substs);
                     let field_lltys = do fields.map |field| {
-                        type_of(bcx.ccx(),
+                        type_of::type_of(bcx.ccx(),
                                 ty::subst_tps(
                                     tcx, substs.tps, None, field.mt.ty))
                     };

@@ -150,7 +150,7 @@ pub mod test {
 
     use future::*;
 
-    use core::comm::oneshot;
+    use core::comm::{oneshot, send_one};
     use core::task;
 
     #[test]

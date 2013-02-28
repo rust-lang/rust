@@ -12,7 +12,8 @@ use core::prelude::*;
 
 use ast::*;
 use ast;
-use codemap::span;
+use codemap::{span, spanned};
+use opt_vec::OptVec;
 
 use core::option;
 use core::vec;

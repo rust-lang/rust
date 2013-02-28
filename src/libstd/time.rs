@@ -892,6 +892,7 @@ mod tests {
     use core::float;
     use core::os;
     use core::result;
+    use core::result::{Err, Ok};
     use core::str;
     use core::u64;
     use core::uint;
@@ -902,15 +903,13 @@ mod tests {
         const some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
-        log(debug, ~"tv1=" + uint::to_str(tv1.sec as uint) + ~" sec + "
-                   + uint::to_str(tv1.nsec as uint) + ~" nsec");
+        debug!("tv1=%? sec + %? nsec", tv1.sec as uint, tv1.nsec as uint);
 
         assert tv1.sec > some_recent_date;
         assert tv1.nsec < 1000000000i32;
 
         let tv2 = get_time();
-        log(debug, ~"tv2=" + uint::to_str(tv2.sec as uint) + ~" sec + "
-                   + uint::to_str(tv2.nsec as uint) + ~" nsec");
+        debug!("tv2=%? sec + %? nsec", tv2.sec as uint, tv2.nsec as uint);
 
         assert tv2.sec >= tv1.sec;
         assert tv2.sec < some_future_date;
@@ -924,16 +923,16 @@ mod tests {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
 
-        log(debug, ~"s0=" + float::to_str_digits(s0, 9u) + ~" sec");
+        debug!("s0=%s sec", float::to_str_digits(s0, 9u));
         assert s0 > 0.;
         let ns0 = (s0 * 1000000000.) as u64;
-        log(debug, ~"ns0=" + u64::to_str(ns0) + ~" ns");
+        debug!("ns0=%? ns", ns0);
 
-        log(debug, ~"ns1=" + u64::to_str(ns1) + ~" ns");
+        debug!("ns1=%? ns", ns0);
         assert ns1 >= ns0;
 
         let ns2 = precise_time_ns();
-        log(debug, ~"ns2=" + u64::to_str(ns2) + ~" ns");
+        debug!("ns2=%? ns", ns0);
         assert ns2 >= ns1;
     }
 

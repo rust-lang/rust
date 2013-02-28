@@ -15,6 +15,8 @@
  * interface.
  */
 
+use ast;
+use codemap::span;
 use ext::base::*;
 use ext::base;
 use ext::build::mk_uniq_str;

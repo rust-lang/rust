@@ -10,7 +10,9 @@
 
 // Parsing pipes protocols from token trees.
 
+use ast_util;
 use ext::pipes::pipec::*;
+use ext::pipes::proto::*;
 use parse::common::SeqSep;
 use parse::parser;
 use parse::token;

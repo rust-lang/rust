@@ -22,6 +22,7 @@ use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
+use ext::build;
 use ext::build::*;
 use private::extfmt::ct::*;
 

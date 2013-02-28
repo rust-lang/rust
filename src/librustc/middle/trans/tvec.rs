@@ -10,20 +10,27 @@
 
 
 use back::abi;
-use lib::llvm::{ValueRef, TypeRef};
+use lib;
+use lib::llvm::{llvm, ValueRef, TypeRef};
+use middle::trans::base;
+use middle::trans::base::*;
 use middle::trans::build::*;
+use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore, SaveIn};
 use middle::trans::expr;
 use middle::trans::glue;
-use middle::trans::shape::{llsize_of, nonzero_llsize_of};
+use middle::trans::machine::{llsize_of, nonzero_llsize_of};
 use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
+use core::uint;
+use core::vec;
 use syntax::ast;
+use syntax::codemap;
 use syntax::codemap::span;
 use syntax::print::pprust::{expr_to_str};
 
@@ -81,7 +88,7 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
-    let MallocResult {bcx, box: bx, body} =
+    let base::MallocResult {bcx, box: bx, body} =
         base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
     Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
@@ -91,7 +98,7 @@ pub fn alloc_raw(bcx: block, unit_ty: ty::t,
 
 pub fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                       fill: ValueRef, alloc: ValueRef) -> Result {
-    alloc_raw(bcx, unit_ty, fill, alloc, heap_for_unique(bcx, unit_ty))
+    alloc_raw(bcx, unit_ty, fill, alloc, base::heap_for_unique(bcx, unit_ty))
 }
 
 pub fn alloc_vec(bcx: block,
@@ -305,13 +312,13 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                     let llptrval = PointerCast(bcx, llptrval, T_ptr(T_i8()));
                     let llsizeval = C_uint(bcx.ccx(), s.len());
                     let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
-                    let lldestval = datum::scratch_datum(bcx, typ, false);
+                    let lldestval = scratch_datum(bcx, typ, false);
                     let bcx = callee::trans_lang_call(
                         bcx,
                         bcx.tcx().lang_items.strdup_uniq_fn(),
                         ~[ llptrval, llsizeval ],
                         expr::SaveIn(lldestval.to_ref_llval(bcx)));
-                    return datum::DatumBlock {
+                    return DatumBlock {
                         bcx: bcx,
                         datum: lldestval
                     };
@@ -508,8 +515,8 @@ pub fn get_base_and_len(bcx: block,
             (base, len)
         }
         ty::vstore_uniq | ty::vstore_box => {
-            let body = tvec::get_bodyptr(bcx, llval);
-            (tvec::get_dataptr(bcx, body), tvec::get_fill(bcx, body))
+            let body = get_bodyptr(bcx, llval);
+            (get_dataptr(bcx, body), get_fill(bcx, body))
         }
     }
 }

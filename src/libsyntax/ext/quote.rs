@@ -34,10 +34,12 @@ use core::str;
 
 pub mod rt {
     use ast;
+    use codemap;
     use ext::base::ext_ctxt;
     use parse;
     use print::pprust;
 
+    use core::prelude::*;
     use core::str;
 
     pub use ast::*;
@@ -49,7 +51,7 @@ pub mod rt {
     use print::pprust;
     use print::pprust::{item_to_str, ty_to_str};
 
-    trait ToTokens {
+    pub trait ToTokens {
         pub fn to_tokens(&self, _cx: ext_ctxt) -> ~[token_tree];
     }
 
@@ -73,7 +75,7 @@ pub mod rt {
 
     */
 
-    trait ToSource {
+    pub trait ToSource {
         // Takes a thing and generates a string containing rust code for it.
         pub fn to_source(&self, cx: ext_ctxt) -> ~str;
     }
@@ -164,7 +166,7 @@ pub mod rt {
         }
     }
 
-    trait ExtParseUtils {
+    pub trait ExtParseUtils {
         fn parse_item(s: ~str) -> @ast::item;
         fn parse_expr(s: ~str) -> @ast::expr;
         fn parse_stmt(s: ~str) -> @ast::stmt;
