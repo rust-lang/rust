@@ -118,7 +118,12 @@ extern "C" CDECL void
 upcall_fail(char const *expr,
             char const *file,
             size_t line) {
-    rust_task *task = rust_get_current_task();
+    rust_task *task = rust_try_get_current_task();
+    if (task == NULL) {
+        // NOTE: Need to think about what to do here
+        printf("failure outside of a task");
+        abort();
+    }
     s_fail_args args = {task,expr,file,line};
     UPCALL_SWITCH_STACK(task, &args, upcall_s_fail);
 }

@@ -14,6 +14,8 @@ use ast::{RegionTyParamBound, TraitTyParamBound, required, provided};
 use ast;
 use ast_util;
 use ast_util::{operator_prec};
+use opt_vec;
+use opt_vec::OptVec;
 use attr;
 use codemap::{CodeMap, BytePos};
 use codemap;
@@ -166,19 +168,20 @@ pub fn item_to_str(i: @ast::item, intr: @ident_interner) -> ~str {
     to_str(i, print_item, intr)
 }
 
-pub fn typarams_to_str(tps: ~[ast::ty_param], intr: @ident_interner) -> ~str {
-    to_str(tps, print_type_params, intr)
+pub fn generics_to_str(generics: &ast::Generics,
+                       intr: @ident_interner) -> ~str {
+    to_str(generics, print_generics, intr)
 }
 
 pub fn path_to_str(&&p: @ast::path, intr: @ident_interner) -> ~str {
     to_str(p, |a,b| print_path(a, b, false), intr)
 }
 
-pub fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
-                  params: ~[ast::ty_param], intr: @ident_interner) -> ~str {
+pub fn fun_to_str(decl: &ast::fn_decl, name: ast::ident,
+                  generics: &ast::Generics, intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
-        print_fn(s, decl, None, name, params, None, ast::inherited);
+        print_fn(s, decl, None, name, generics, None, ast::inherited);
         end(s); // Close the head box
         end(s); // Close the outer box
         eof(s.s);
@@ -302,7 +305,7 @@ pub fn synth_comment(s: @ps, text: ~str) {
     word(s.s, ~"*/");
 }
 
-pub fn commasep<IN>(s: @ps, b: breaks, elts: ~[IN], op: fn(@ps, IN)) {
+pub fn commasep<IN>(s: @ps, b: breaks, elts: ~[IN], op: &fn(@ps, IN)) {
     box(s, 0u, b);
     let mut first = true;
     for elts.each |elt| {
@@ -424,12 +427,12 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
       }
       ast::ty_bare_fn(f) => {
           print_ty_fn(s, Some(f.abi), None, None,
-                      f.purity, ast::Many, f.decl, None,
+                      f.purity, ast::Many, &f.decl, None,
                       None, None);
       }
       ast::ty_closure(f) => {
           print_ty_fn(s, None, Some(f.sigil), f.region,
-                      f.purity, f.onceness, f.decl, None,
+                      f.purity, f.onceness, &f.decl, None,
                       None, None);
       }
       ast::ty_path(path, _) => print_path(s, path, print_colons),
@@ -461,8 +464,8 @@ pub fn print_foreign_item(s: @ps, item: @ast::foreign_item) {
     maybe_print_comment(s, item.span.lo);
     print_outer_attributes(s, item.attrs);
     match /*bad*/ copy item.node {
-      ast::foreign_item_fn(decl, purity, typarams) => {
-        print_fn(s, decl, Some(purity), item.ident, typarams, None,
+      ast::foreign_item_fn(ref decl, purity, ref generics) => {
+        print_fn(s, decl, Some(purity), item.ident, generics, None,
                  ast::inherited);
         end(s); // end head-ibox
         word(s.s, ~";");
@@ -504,10 +507,10 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
       ast::item_fn(ref decl, purity, ref typarams, ref body) => {
         print_fn(
             s,
-            /* FIXME (#2543) */ copy *decl,
+            decl,
             Some(purity),
             item.ident,
-            /* FIXME (#2543) */ copy *typarams,
+            typarams,
             None,
             item.vis
         );
@@ -538,12 +541,12 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         print_foreign_mod(s, nmod, item.attrs);
         bclose(s, item.span);
       }
-      ast::item_ty(ty, params) => {
+      ast::item_ty(ty, ref params) => {
         ibox(s, indent_unit);
         ibox(s, 0u);
         word_nbsp(s, visibility_qualified(item.vis, ~"type"));
         print_ident(s, item.ident);
-        print_type_params(s, params);
+        print_generics(s, params);
         end(s); // end the inner ibox
 
         space(s.s);
@@ -556,21 +559,21 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         print_enum_def(
             s,
             *enum_definition,
-            /* FIXME (#2543) */ copy *params,
+            params,
             item.ident,
             item.span,
             item.vis
         );
       }
-      ast::item_struct(struct_def, tps) => {
+      ast::item_struct(struct_def, ref generics) => {
           head(s, visibility_qualified(item.vis, ~"struct"));
-          print_struct(s, struct_def, tps, item.ident, item.span);
+          print_struct(s, struct_def, generics, item.ident, item.span);
       }
 
-      ast::item_impl(tps, opt_trait, ty, methods) => {
+      ast::item_impl(ref generics, opt_trait, ty, ref methods) => {
         head(s, visibility_qualified(item.vis, ~"impl"));
-        if !tps.is_empty() {
-            print_type_params(s, tps);
+        if !generics.is_empty() {
+            print_generics(s, generics);
             space(s.s);
         }
 
@@ -596,10 +599,10 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_trait(ref tps, ref traits, ref methods) => {
+      ast::item_trait(ref generics, ref traits, ref methods) => {
         head(s, visibility_qualified(item.vis, ~"trait"));
         print_ident(s, item.ident);
-        print_type_params(s, /* FIXME (#2543) */ copy *tps);
+        print_generics(s, generics);
         if traits.len() != 0u {
             word(s.s, ~":");
             for traits.each |trait_| {
@@ -631,7 +634,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
 }
 
 pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
-                      params: ~[ast::ty_param], ident: ast::ident,
+                      generics: &ast::Generics, ident: ast::ident,
                       span: codemap::span, visibility: ast::visibility) {
     let mut newtype =
         vec::len(enum_definition.variants) == 1u &&
@@ -650,7 +653,7 @@ pub fn print_enum_def(s: @ps, enum_definition: ast::enum_def,
     }
 
     print_ident(s, ident);
-    print_type_params(s, params);
+    print_generics(s, generics);
     space(s.s);
     if newtype {
         word_space(s, ~"=");
@@ -707,12 +710,12 @@ pub fn print_visibility(s: @ps, vis: ast::visibility) {
 
 pub fn print_struct(s: @ps,
                     struct_def: @ast::struct_def,
-                    tps: ~[ast::ty_param],
+                    generics: &ast::Generics,
                     ident: ast::ident,
                     span: codemap::span) {
     print_ident(s, ident);
     nbsp(s);
-    print_type_params(s, tps);
+    print_generics(s, generics);
     if ast_util::struct_def_is_tuple_like(struct_def) {
         popen(s);
         let mut first = true;
@@ -824,7 +827,8 @@ pub fn print_variant(s: @ps, v: ast::variant) {
         }
         ast::struct_variant_kind(struct_def) => {
             head(s, ~"");
-            print_struct(s, struct_def, ~[], v.node.name, v.span);
+            let generics = ast_util::empty_generics();
+            print_struct(s, struct_def, &generics, v.node.name, v.span);
         }
         ast::enum_variant_kind(ref enum_definition) => {
             print_variants(s, (*enum_definition).variants, v.span);
@@ -845,7 +849,7 @@ pub fn print_ty_method(s: @ps, m: &ast::ty_method) {
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
     print_ty_fn(s, None, None, None, m.purity, ast::Many,
-                m.decl, Some(m.ident), Some(/*bad*/ copy m.tps),
+                &m.decl, Some(m.ident), Some(&m.generics),
                 Some(/*bad*/ copy m.self_ty.node));
     word(s.s, ~";");
 }
@@ -861,8 +865,8 @@ pub fn print_method(s: @ps, meth: @ast::method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, meth.span.lo);
     print_outer_attributes(s, meth.attrs);
-    print_fn(s, meth.decl, Some(meth.purity),
-             meth.ident, meth.tps, Some(meth.self_ty.node),
+    print_fn(s, &meth.decl, Some(meth.purity),
+             meth.ident, &meth.generics, Some(meth.self_ty.node),
              meth.vis);
     word(s.s, ~" ");
     print_block_with_attrs(s, &meth.body, meth.attrs);
@@ -1353,7 +1357,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         ibox(s, 0u);
         print_fn_header_info(s, None, None, ast::Many,
                              Some(sigil), ast::inherited);
-        print_fn_args_and_ret(s, /* FIXME (#2543) */ copy *decl, None);
+        print_fn_args_and_ret(s, decl, None);
         space(s.s);
         print_block(s, body);
       }
@@ -1363,7 +1367,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         // we are inside.
         //
         // if !decl.inputs.is_empty() {
-        print_fn_block_args(s, /* FIXME (#2543) */ copy *decl);
+        print_fn_block_args(s, decl);
         space(s.s);
         // }
         assert body.node.stmts.is_empty();
@@ -1712,21 +1716,21 @@ pub fn print_self_ty(s: @ps, self_ty: ast::self_ty_) -> bool {
 }
 
 pub fn print_fn(s: @ps,
-                decl: ast::fn_decl,
+                decl: &ast::fn_decl,
                 purity: Option<ast::purity>,
                 name: ast::ident,
-                typarams: ~[ast::ty_param],
+                generics: &ast::Generics,
                 opt_self_ty: Option<ast::self_ty_>,
                 vis: ast::visibility) {
     head(s, ~"");
     print_fn_header_info(s, opt_self_ty, purity, ast::Many, None, vis);
     nbsp(s);
     print_ident(s, name);
-    print_type_params(s, typarams);
+    print_generics(s, generics);
     print_fn_args_and_ret(s, decl, opt_self_ty);
 }
 
-pub fn print_fn_args(s: @ps, decl: ast::fn_decl,
+pub fn print_fn_args(s: @ps, decl: &ast::fn_decl,
                  opt_self_ty: Option<ast::self_ty_>) {
     // It is unfortunate to duplicate the commasep logic, but we we want the
     // self type and the args all in the same box.
@@ -1744,7 +1748,7 @@ pub fn print_fn_args(s: @ps, decl: ast::fn_decl,
     end(s);
 }
 
-pub fn print_fn_args_and_ret(s: @ps, decl: ast::fn_decl,
+pub fn print_fn_args_and_ret(s: @ps, decl: &ast::fn_decl,
                              opt_self_ty: Option<ast::self_ty_>) {
     popen(s);
     print_fn_args(s, decl, opt_self_ty);
@@ -1761,7 +1765,7 @@ pub fn print_fn_args_and_ret(s: @ps, decl: ast::fn_decl,
     }
 }
 
-pub fn print_fn_block_args(s: @ps, decl: ast::fn_decl) {
+pub fn print_fn_block_args(s: @ps, decl: &ast::fn_decl) {
     word(s.s, ~"|");
     print_fn_args(s, decl, None);
     word(s.s, ~"|");
@@ -1792,11 +1796,11 @@ pub fn print_arg_mode(s: @ps, m: ast::mode) {
     if ms != ~"" { word(s.s, ms); }
 }
 
-pub fn print_bounds(s: @ps, bounds: @~[ast::ty_param_bound]) {
+pub fn print_bounds(s: @ps, bounds: @OptVec<ast::TyParamBound>) {
     if !bounds.is_empty() {
         word(s.s, ~":");
         let mut first = true;
-        for vec::each(*bounds) |&bound| {
+        for bounds.each |bound| {
             nbsp(s);
             if first {
                 first = false;
@@ -1804,7 +1808,7 @@ pub fn print_bounds(s: @ps, bounds: @~[ast::ty_param_bound]) {
                 word_space(s, ~"+");
             }
 
-            match bound {
+            match *bound {
                 TraitTyParamBound(ty) => print_type(s, ty),
                 RegionTyParamBound => word(s.s, ~"&static"),
             }
@@ -1812,14 +1816,33 @@ pub fn print_bounds(s: @ps, bounds: @~[ast::ty_param_bound]) {
     }
 }
 
-pub fn print_type_params(s: @ps, &&params: ~[ast::ty_param]) {
-    if vec::len(params) > 0u {
+pub fn print_lifetime(s: @ps, lifetime: &ast::Lifetime) {
+    word(s.s, ~"'");
+    print_ident(s, lifetime.ident);
+}
+
+pub fn print_generics(s: @ps, &&generics: &ast::Generics) {
+    let total = generics.lifetimes.len() + generics.ty_params.len();
+    if total > 0 {
         word(s.s, ~"<");
-        fn printParam(s: @ps, param: ast::ty_param) {
-            print_ident(s, param.ident);
-            print_bounds(s, param.bounds);
+        fn print_item(s: @ps, generics: &ast::Generics, idx: uint) {
+            if idx < generics.lifetimes.len() {
+                let lifetime = generics.lifetimes.get(idx);
+                print_lifetime(s, lifetime);
+            } else {
+                let param = generics.ty_params.get(idx);
+                print_ident(s, param.ident);
+                print_bounds(s, param.bounds);
+            }
         }
-        commasep(s, inconsistent, params, printParam);
+
+        let mut ints = ~[];
+        for uint::range(0, total) |i| {
+            ints.push(i);
+        }
+
+        commasep(s, inconsistent, ints,
+                 |s, i| print_item(s, generics, i));
         word(s.s, ~">");
     }
 }
@@ -1954,8 +1977,8 @@ pub fn print_ty_fn(s: @ps,
                    opt_region: Option<@ast::region>,
                    purity: ast::purity,
                    onceness: ast::Onceness,
-                   decl: ast::fn_decl, id: Option<ast::ident>,
-                   tps: Option<~[ast::ty_param]>,
+                   decl: &ast::fn_decl, id: Option<ast::ident>,
+                   generics: Option<&ast::Generics>,
                    opt_self_ty: Option<ast::self_ty_>) {
     ibox(s, indent_unit);
 
@@ -1969,7 +1992,7 @@ pub fn print_ty_fn(s: @ps,
     print_onceness(s, onceness);
     word(s.s, ~"fn");
     match id { Some(id) => { word(s.s, ~" "); print_ident(s, id); } _ => () }
-    match /*bad*/ copy tps { Some(tps) => print_type_params(s, tps), _ => () }
+    match /*bad*/ copy generics { Some(g) => print_generics(s, g), _ => () }
     zerobreak(s.s);
 
     popen(s);
@@ -2295,14 +2318,15 @@ pub mod test {
         let mock_interner = parse::token::mk_fake_ident_interner();
         let abba_ident = mock_interner.intern(@~"abba");
 
-        let decl: ast::fn_decl = ast::fn_decl {
+        let decl = ast::fn_decl {
             inputs: ~[],
             output: @ast::Ty {id: 0,
                               node: ast::ty_nil,
                               span: codemap::dummy_sp()},
             cf: ast::return_val
         };
-        check_equal (&fun_to_str(decl, abba_ident, ~[],mock_interner),
+        let generics = ast_util::empty_generics();
+        check_equal (&fun_to_str(&decl, abba_ident, &generics, mock_interner),
                      &~"fn abba()");
     }
 

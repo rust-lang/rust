@@ -753,7 +753,7 @@ fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
 fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
-                       decl: &ast::fn_decl) {
+                        decl: &ast::fn_decl) {
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             match ty.node {

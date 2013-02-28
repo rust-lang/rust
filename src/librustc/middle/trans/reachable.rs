@@ -99,36 +99,39 @@ fn traverse_public_item(cx: ctx, item: @item) {
     cx.rmap.insert(item.id, ());
     match /*bad*/copy item.node {
       item_mod(ref m) => traverse_public_mod(cx, item.id, m),
-      item_foreign_mod(nm) => {
+      item_foreign_mod(ref nm) => {
           if !traverse_exports(cx, item.id) {
               for nm.items.each |item| {
                   cx.rmap.insert(item.id, ());
               }
           }
       }
-      item_fn(_, _, ref tps, ref blk) => {
-        if tps.len() > 0u ||
+      item_fn(_, _, ref generics, ref blk) => {
+        if generics.ty_params.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
             traverse_inline_body(cx, blk);
         }
       }
-      item_impl(tps, _, _, ms) => {
-        for vec::each(ms) |m| {
-            if tps.len() > 0u || m.tps.len() > 0u ||
-               attr::find_inline_attr(m.attrs) != attr::ia_none {
+      item_impl(ref generics, _, _, ref ms) => {
+        for ms.each |m| {
+            if generics.ty_params.len() > 0u ||
+                m.generics.ty_params.len() > 0u ||
+                attr::find_inline_attr(m.attrs) != attr::ia_none
+            {
                 cx.rmap.insert(m.id, ());
                 traverse_inline_body(cx, &m.body);
             }
         }
       }
-      item_struct(struct_def, tps) => {
+      item_struct(ref struct_def, ref generics) => {
         for struct_def.ctor_id.each |&ctor_id| {
             cx.rmap.insert(ctor_id, ());
         }
-        do option::iter(&struct_def.dtor) |dtor| {
+        do struct_def.dtor.iter |dtor| {
             cx.rmap.insert(dtor.node.id, ());
-            if tps.len() > 0u || attr::find_inline_attr(dtor.node.attrs)
-                     != attr::ia_none {
+            if generics.ty_params.len() > 0u ||
+                attr::find_inline_attr(dtor.node.attrs) != attr::ia_none
+            {
                 traverse_inline_body(cx, &dtor.node.body);
             }
         }

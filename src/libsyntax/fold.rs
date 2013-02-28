@@ -132,26 +132,38 @@ pub fn fold_fn_decl(decl: &ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
     }
 }
 
-fn fold_ty_param_bound(
-    tpb: &ty_param_bound,
-    fld: ast_fold
-) -> ty_param_bound {
+fn fold_ty_param_bound(tpb: &TyParamBound, fld: ast_fold) -> TyParamBound {
     match *tpb {
         TraitTyParamBound(ty) => TraitTyParamBound(fld.fold_ty(ty)),
         RegionTyParamBound => RegionTyParamBound
     }
 }
 
-pub fn fold_ty_param(tp: &ty_param, fld: ast_fold) -> ty_param {
-    ast::ty_param {
-        ident: /* FIXME (#2543) */ copy tp.ident,
-        id: fld.new_id(tp.id),
-        bounds: @tp.bounds.map(|x| fold_ty_param_bound(x, fld)),
-    }
+pub fn fold_ty_param(tp: TyParam, fld: ast_fold) -> TyParam {
+    TyParam {ident: tp.ident,
+             id: fld.new_id(tp.id),
+             bounds: @tp.bounds.map(|x| fold_ty_param_bound(x, fld))}
 }
 
-pub fn fold_ty_params(tps: &[ty_param], fld: ast_fold) -> ~[ty_param] {
-    tps.map(|x| fold_ty_param(x, fld))
+pub fn fold_ty_params(tps: &OptVec<TyParam>,
+                      fld: ast_fold) -> OptVec<TyParam> {
+    tps.map(|tp| fold_ty_param(*tp, fld))
+}
+
+pub fn fold_lifetime(l: &Lifetime, fld: ast_fold) -> Lifetime {
+    Lifetime {id: fld.new_id(l.id),
+              span: fld.new_span(l.span),
+              ident: l.ident}
+}
+
+pub fn fold_lifetimes(lts: &OptVec<Lifetime>,
+                      fld: ast_fold) -> OptVec<Lifetime> {
+    lts.map(|l| fold_lifetime(l, fld))
+}
+
+pub fn fold_generics(generics: &Generics, fld: ast_fold) -> Generics {
+    Generics {ty_params: fold_ty_params(&generics.ty_params, fld),
+              lifetimes: fold_lifetimes(&generics.lifetimes, fld)}
 }
 
 pub fn noop_fold_crate(c: &crate_, fld: ast_fold) -> crate_ {
@@ -180,7 +192,7 @@ fn noop_fold_foreign_item(ni: @foreign_item, fld: ast_fold)
         attrs: ni.attrs.map(|x| fold_attribute(*x)),
         node:
             match ni.node {
-                foreign_item_fn(ref fdec, purity, ref tps) => {
+                foreign_item_fn(ref fdec, purity, ref generics) => {
                     foreign_item_fn(
                         ast::fn_decl {
                             inputs: fdec.inputs.map(|a| fold_arg(*a)),
@@ -188,7 +200,7 @@ fn noop_fold_foreign_item(ni: @foreign_item, fld: ast_fold)
                             cf: fdec.cf,
                         },
                         purity,
-                        fold_ty_params(*tps, fld))
+                        fold_generics(generics, fld))
                 }
                 foreign_item_const(t) => {
                     foreign_item_const(fld.fold_ty(t))
@@ -221,14 +233,12 @@ fn noop_fold_struct_field(sf: @struct_field, fld: ast_fold)
 
 pub fn noop_fold_item_underscore(i: &item_, fld: ast_fold) -> item_ {
     match *i {
-        item_const(t, e) => {
-            item_const(fld.fold_ty(t), fld.fold_expr(e))
-        }
-        item_fn(ref decl, purity, ref tps, ref body) => {
+        item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
+        item_fn(ref decl, purity, ref generics, ref body) => {
             item_fn(
                 fold_fn_decl(decl, fld),
                 purity,
-                fold_ty_params(*tps, fld),
+                fold_generics(generics, fld),
                 fld.fold_block(body)
             )
         }
@@ -236,10 +246,10 @@ pub fn noop_fold_item_underscore(i: &item_, fld: ast_fold) -> item_ {
         item_foreign_mod(ref nm) => {
             item_foreign_mod(fld.fold_foreign_mod(nm))
         }
-        item_ty(t, ref tps) => {
-            item_ty(fld.fold_ty(t), fold_ty_params(*tps, fld))
+        item_ty(t, ref generics) => {
+            item_ty(fld.fold_ty(t), fold_generics(generics, fld))
         }
-        item_enum(ref enum_definition, ref tps) => {
+        item_enum(ref enum_definition, ref generics) => {
             item_enum(
                 ast::enum_def(
                     ast::enum_def_ {
@@ -251,21 +261,21 @@ pub fn noop_fold_item_underscore(i: &item_, fld: ast_fold) -> item_ {
                         }
                     }
                 ),
-                fold_ty_params(*tps, fld))
+                fold_generics(generics, fld))
         }
-        item_struct(ref struct_def, ref tps) => {
+        item_struct(ref struct_def, ref generics) => {
             let struct_def = fold_struct_def(*struct_def, fld);
-            item_struct(struct_def, /* FIXME (#2543) */ copy *tps)
+            item_struct(struct_def, /* FIXME (#2543) */ copy *generics)
         }
-        item_impl(ref tps, ifce, ty, ref methods) => {
+        item_impl(ref generics, ifce, ty, ref methods) => {
             item_impl(
-                fold_ty_params(*tps, fld),
+                fold_generics(generics, fld),
                 ifce.map(|p| fold_trait_ref(*p, fld)),
                 fld.fold_ty(ty),
                 methods.map(|x| fld.fold_method(*x))
             )
         }
-        item_trait(ref tps, ref traits, ref methods) => {
+        item_trait(ref generics, ref traits, ref methods) => {
             let methods = do methods.map |method| {
                 match *method {
                     required(*) => copy *method,
@@ -273,7 +283,7 @@ pub fn noop_fold_item_underscore(i: &item_, fld: ast_fold) -> item_ {
                 }
             };
             item_trait(
-                fold_ty_params(*tps, fld),
+                fold_generics(generics, fld),
                 traits.map(|p| fold_trait_ref(*p, fld)),
                 methods
             )
@@ -328,7 +338,7 @@ fn noop_fold_method(m: @method, fld: ast_fold) -> @method {
     @ast::method {
         ident: fld.fold_ident(m.ident),
         attrs: /* FIXME (#2543) */ copy m.attrs,
-        tps: fold_ty_params(m.tps, fld),
+        generics: fold_generics(&m.generics, fld),
         self_ty: m.self_ty,
         purity: m.purity,
         decl: fold_fn_decl(&m.decl, fld),
