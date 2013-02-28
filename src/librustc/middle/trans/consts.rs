@@ -10,14 +10,18 @@
 
 use core::prelude::*;
 
+use lib::llvm::{llvm, ValueRef, True, TypeRef, False};
 use middle::const_eval;
+use middle::trans::base;
 use middle::trans::base::get_insn_ctxt;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::expr;
 use middle::trans::machine;
+use middle::trans::type_of;
 use middle::ty;
 
+use core::libc::c_uint;
 use syntax::{ast, ast_util, codemap, ast_map};
 
 pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)

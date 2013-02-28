@@ -497,6 +497,7 @@ mod tests {
     use arc::*;
     use arc;
 
+    use core::cell::Cell;
     use core::option::{Some, None};
     use core::option;
     use core::pipes;

@@ -93,6 +93,7 @@ use core::prelude::*;
 use ast;
 use ast_util;
 use attr;
+use codemap;
 use codemap::span;
 use ext::base::*;
 use parse;

@@ -316,7 +316,7 @@ pub fn super_modes<C:Combine>(
     ty::unify_mode(tcx, expected_found(self, a, b))
 }
 
-fn super_args<C:Combine>(
+pub fn super_args<C:Combine>(
     self: &C, a: ty::arg, b: ty::arg)
     -> cres<ty::arg> {
 

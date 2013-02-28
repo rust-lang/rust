@@ -636,6 +636,7 @@ mod test {
     use DefaultEncoder = json::Encoder;
     use DefaultDecoder = json::Decoder;
 
+    use flatpipes::{Flattener, Unflattener};
     use flatpipes::flatteners::*;
     use flatpipes::bytepipes::*;
     use flatpipes::pod;
@@ -647,7 +648,7 @@ mod test {
 
     use core::dvec::DVec;
     use core::int;
-    use core::io::BytesReader;
+    use core::io::{BytesReader, BytesWriter};
     use core::io;
     use core::prelude::*;
     use core::result;

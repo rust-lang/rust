@@ -14,6 +14,7 @@ use ext::base::*;
 use ext::base;
 use print;
 
+use core::io;
 use core::io::WriterUtil;
 use core::option;
 

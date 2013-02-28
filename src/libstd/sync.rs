@@ -399,7 +399,7 @@ pub impl &Semaphore {
  * A task which fails while holding a mutex will unlock the mutex as it
  * unwinds.
  */
-struct Mutex { priv sem: Sem<~[Waitqueue]> }
+pub struct Mutex { priv sem: Sem<~[Waitqueue]> }
 
 /// Create a new mutex, with one associated condvar.
 pub fn Mutex() -> Mutex { mutex_with_condvars(1) }
@@ -447,7 +447,7 @@ struct RWlockInner {
  * A task which fails while holding an rwlock will unlock the rwlock as it
  * unwinds.
  */
-struct RWlock {
+pub struct RWlock {
     priv order_lock:  Semaphore,
     priv access_lock: Sem<~[Waitqueue]>,
     priv state:       Exclusive<RWlockInner>
@@ -712,6 +712,7 @@ mod tests {
     use sync::*;
 
     use core::cast;
+    use core::cell::Cell;
     use core::option;
     use core::pipes;
     use core::ptr;
