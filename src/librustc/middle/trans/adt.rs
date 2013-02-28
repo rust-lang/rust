@@ -231,14 +231,16 @@ fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
 }
 
 /**
- * Obtain as much of a "discriminant" as this representation has.
+ * Obtain a representation of the discriminant sufficient to translate
+ * destructuring; this may or may not involve the actual discriminant.
+ *
  * This should ideally be less tightly tied to `_match`.
  */
 pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
     -> (_match::branch_kind, Option<ValueRef>) {
     match *r {
         CEnum(*) | General(*) => {
-            (_match::switch, Some(trans_cast_to_int(bcx, r, scrutinee)))
+            (_match::switch, Some(trans_get_discr(bcx, r, scrutinee)))
         }
         Unit(*) | Univariant(*) => {
             (_match::single, None)
@@ -246,24 +248,19 @@ pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
     }
 }
 
-/**
- * If the representation is potentially of a C-like enum, implement
- * coercion to numeric types.
- */
-pub fn trans_cast_to_int(bcx: block, r: &Repr, scrutinee: ValueRef)
+/// Obtain the actual discriminant of a value.
+pub fn trans_get_discr(bcx: block, r: &Repr, scrutinee: ValueRef)
     -> ValueRef {
     match *r {
         Unit(the_disc) => C_int(bcx.ccx(), the_disc),
         CEnum(min, max) => load_discr(bcx, scrutinee, min, max),
-        Univariant(*) => bcx.ccx().sess.bug(~"type has no explicit \
-                                              discriminant"),
-        // Note: this case is used internally by trans_switch,
-        // even though it shouldn't be reached by an external caller.
+        Univariant(*) => C_int(bcx.ccx(), 0),
         General(ref cases) => load_discr(bcx, scrutinee, 0,
                                          (cases.len() - 1) as int)
     }
 }
 
+/// Helper for cases where the discriminant is simply loaded.
 fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
     -> ValueRef {
     let ptr = GEPi(bcx, scrutinee, [0, 0]);
@@ -285,6 +282,7 @@ fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
 /**
  * Yield information about how to dispatch a case of the
  * discriminant-like value returned by `trans_switch`.
+ *
  * This should ideally be less tightly tied to `_match`.
  */
 pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
