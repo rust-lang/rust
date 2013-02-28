@@ -208,6 +208,8 @@ mod test {
     use back::rpath::{get_relative_to, get_rpath_relative_to_output};
     #[cfg(test)]
     use back::rpath::{minimize_rpaths, rpaths_to_flags};
+    #[cfg(test)]
+    use driver::session;
 
     #[test]
     pub fn test_rpaths_to_flags() {

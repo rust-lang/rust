@@ -10,7 +10,7 @@
 
 //! Operations on unique pointer types
 
-use cmp::{Eq, Ord};
+#[cfg(notest)] use cmp::{Eq, Ord};
 
 #[cfg(notest)]
 impl<T:Eq> Eq for ~T {

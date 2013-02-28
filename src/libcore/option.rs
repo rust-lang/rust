@@ -46,6 +46,9 @@ use kinds::Copy;
 use util;
 use num::Zero;
 
+#[cfg(test)] use ptr;
+#[cfg(test)] use str;
+
 /// The option type
 #[deriving_eq]
 pub enum Option<T> {

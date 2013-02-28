@@ -22,6 +22,10 @@ use markdown_writer::WriterFactory;
 use pass::Pass;
 use sort_pass;
 
+#[cfg(test)] use config;
+#[cfg(test)] use markdown_writer;
+#[cfg(test)] use page_pass;
+
 use core::cell::Cell;
 use core::str;
 use core::vec;

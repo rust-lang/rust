@@ -10,11 +10,7 @@
 
 //! Logging
 
-use cast::transmute;
-use io;
 use libc;
-use repr;
-use vec;
 
 #[nolink]
 extern mod rustrt {
@@ -48,6 +44,11 @@ pub fn console_off() {
 #[cfg(notest)]
 #[lang="log_type"]
 pub fn log_type<T>(level: u32, object: &T) {
+    use cast::transmute;
+    use io;
+    use repr;
+    use vec;
+
     let bytes = do io::with_bytes_writer |writer| {
         repr::write_repr(writer, object);
     };

@@ -11,6 +11,8 @@
 use core::prelude::*;
 
 use doc;
+#[cfg(test)] use extract;
+#[cfg(test)] use parse;
 
 use core::vec;
 

@@ -19,6 +19,8 @@ use libc::{c_void, size_t, c_int};
 use ptr;
 use vec;
 
+#[cfg(test)] use rand;
+
 extern mod rustrt {
     unsafe fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
                                          src_buf_len: size_t,

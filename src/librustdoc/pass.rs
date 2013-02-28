@@ -14,6 +14,8 @@ use astsrv;
 use doc;
 use time;
 
+#[cfg(test)] use extract;
+
 use core::vec;
 
 /// A single operation on the document model

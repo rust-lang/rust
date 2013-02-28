@@ -11,16 +11,17 @@
 //! Operations and constants for `f32`
 
 use cmath;
-use cmp;
 use libc::{c_float, c_int};
 use num::NumCast;
 use num::strconv;
 use num;
-use ops;
 use option::Option;
 use unstable::intrinsics::floorf32;
 use from_str;
 use to_str;
+
+#[cfg(notest)] use cmp;
+#[cfg(notest)] use ops;
 
 pub use cmath::c_float_targ_consts::*;
 

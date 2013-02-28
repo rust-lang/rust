@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use ast::tt_delim;
 use ast;
 use codemap::span;
 use ext::base::ext_ctxt;

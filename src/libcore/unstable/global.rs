@@ -37,8 +37,10 @@ use unstable::intrinsics::atomic_cxchg;
 use hashmap::linear::LinearMap;
 use sys::Closure;
 
-#[cfg(test)]
-use private::{SharedMutableState, shared_mutable_state};
+#[cfg(test)] use unstable::{SharedMutableState, shared_mutable_state};
+#[cfg(test)] use unstable::get_shared_immutable_state;
+#[cfg(test)] use task::spawn;
+#[cfg(test)] use uint;
 
 pub type GlobalDataKey<T> = &fn(v: T);
 

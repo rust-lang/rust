@@ -41,6 +41,9 @@ use syntax::fold;
 use syntax;
 use writer = std::ebml::writer;
 
+#[cfg(test)] use syntax::parse;
+#[cfg(test)] use syntax::print::pprust;
+
 // Auxiliary maps of things to be encoded
 pub struct Maps {
     mutbl_map: middle::borrowck::mutbl_map,
@@ -1226,6 +1229,8 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
+    use std::prettyprint;
+
     let in_item = in_item.get();
     let bytes = do io::with_bytes_writer |wr| {
         let ebml_w = writer::Encoder(wr);

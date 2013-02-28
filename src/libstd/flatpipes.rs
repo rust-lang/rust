@@ -635,8 +635,8 @@ mod test {
     use flatpipes::pod;
     use flatpipes::serial;
     use io_util::BufReader;
-    use net::tcp::TcpSocketBuf;
     use flatpipes::{BytePort, FlatChan, FlatPort};
+    use net::tcp::TcpSocketBuf;
 
     use core::int;
     use core::io::{BytesReader, BytesWriter};
@@ -762,7 +762,6 @@ mod test {
 
         use core::cell::Cell;
         use net::ip;
-        use net::tcp::TcpSocket;
         use net::tcp;
         use uv;
 

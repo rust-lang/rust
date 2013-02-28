@@ -15,6 +15,8 @@ use vec;
 use rand;
 use libc::{c_void, size_t};
 
+#[cfg(test)] use uint;
+
 /**
 Register a function to be run during runtime shutdown.
 

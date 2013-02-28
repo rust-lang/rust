@@ -1334,15 +1334,15 @@ pub enum inlined_item {
 
 #[cfg(test)]
 mod test {
-    use std;
-    use codemap::*;
-    use super::*;
-
     //are asts encodable?
 
     // it looks like this *will* be a compiler bug, after
     // I get deriving_eq for crates into incoming :)
     /*
+    use std;
+    use codemap::*;
+    use super::*;
+
     #[test] fn check_asts_encodable() {
         let bogus_span = span {lo:BytePos(10),
                                hi:BytePos(20),

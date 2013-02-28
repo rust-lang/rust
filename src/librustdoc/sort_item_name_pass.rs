@@ -24,6 +24,9 @@ pub fn mk_pass() -> Pass {
 
 #[test]
 fn test() {
+    use astsrv;
+    use extract;
+
     let source = ~"mod z { } fn y() { }";
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");

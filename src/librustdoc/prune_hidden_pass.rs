@@ -63,6 +63,8 @@ fn is_hidden(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
 
 #[test]
 fn should_prune_hidden_items() {
+    use core::vec;
+
     let doc = test::mk_doc(~"#[doc(hidden)] mod a { }");
     assert vec::is_empty(doc.cratemod().mods())
 }

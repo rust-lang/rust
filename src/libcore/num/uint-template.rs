@@ -11,7 +11,6 @@
 use T = self::inst::T;
 use T_SIGNED = self::inst::T_SIGNED;
 
-use cmp::{Eq, Ord};
 use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
@@ -19,6 +18,8 @@ use num::strconv;
 use num;
 use option::{None, Option, Some};
 use prelude::*;
+
+#[cfg(notest)] use cmp::{Eq, Ord};
 
 pub use cmp::{min, max};
 

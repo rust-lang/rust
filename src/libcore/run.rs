@@ -451,7 +451,6 @@ pub fn waitpid(pid: pid_t) -> int {
 #[cfg(test)]
 mod tests {
     use debug;
-    use io::WriterUtil;
     use option::{None, Some};
     use os;
     use run::{readclose, writeclose};

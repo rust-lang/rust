@@ -14,6 +14,7 @@ Functions for the unit type.
 
 */
 
+#[cfg(notest)]
 use cmp::{Eq, Ord};
 
 #[cfg(notest)]
