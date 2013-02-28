@@ -1458,7 +1458,10 @@ pub fn struct_tys(struct_ty: TypeRef) -> ~[TypeRef] {
 
 pub struct target_data_res {
     TD: TargetDataRef,
-    drop {
+}
+
+impl Drop for target_data_res {
+    fn finalize(&self) {
         unsafe {
             llvm::LLVMDisposeTargetData(self.TD);
         }
@@ -1492,7 +1495,10 @@ pub fn mk_target_data(string_rep: ~str) -> TargetData {
 
 pub struct pass_manager_res {
     PM: PassManagerRef,
-    drop {
+}
+
+impl Drop for pass_manager_res {
+    fn finalize(&self) {
         unsafe {
             llvm::LLVMDisposePassManager(self.PM);
         }
@@ -1525,7 +1531,10 @@ pub fn mk_pass_manager() -> PassManager {
 
 pub struct object_file_res {
     ObjectFile: ObjectFileRef,
-    drop {
+}
+
+impl Drop for object_file_res {
+    fn finalize(&self) {
         unsafe {
             llvm::LLVMDisposeObjectFile(self.ObjectFile);
         }
@@ -1559,7 +1568,10 @@ pub fn mk_object_file(llmb: MemoryBufferRef) -> Option<ObjectFile> {
 
 pub struct section_iter_res {
     SI: SectionIteratorRef,
-    drop {
+}
+
+impl Drop for section_iter_res {
+    fn finalize(&self) {
         unsafe {
             llvm::LLVMDisposeSectionIterator(self.SI);
         }

@@ -474,7 +474,10 @@ impl<R:Reader,C> Reader for Wrapper<R, C> {
 
 pub struct FILERes {
     f: *libc::FILE,
-    drop {
+}
+
+impl Drop for FILERes {
+    fn finalize(&self) {
         unsafe {
             libc::fclose(self.f);
         }
@@ -683,7 +686,10 @@ impl Writer for fd_t {
 
 pub struct FdRes {
     fd: fd_t,
-    drop {
+}
+
+impl Drop for FdRes {
+    fn finalize(&self) {
         unsafe {
             libc::close(self.fd);
         }
