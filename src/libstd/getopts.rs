@@ -445,7 +445,7 @@ pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
 }
 
 #[deriving_eq]
-enum FailType {
+pub enum FailType {
     ArgumentMissing_,
     UnrecognizedOption_,
     OptionMissing_,

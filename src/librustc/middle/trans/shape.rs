@@ -25,6 +25,7 @@ use util::ppaux::ty_to_str;
 
 use core::dvec::DVec;
 use core::option::is_some;
+use core::str;
 use core::vec;
 use std::oldmap::HashMap;
 use syntax::ast;

@@ -13,6 +13,10 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
 
+use core::libc::c_uint;
+use core::option;
+use core::vec;
+
 pub trait ABIInfo {
     fn compute_info(&self,
                     atys: &[TypeRef],
@@ -28,7 +32,7 @@ pub struct LLVMType {
 pub struct FnType {
     arg_tys: ~[LLVMType],
     ret_ty: LLVMType,
-    attrs: ~[Option<Attribute>],
+    attrs: ~[option::Option<Attribute>],
     sret: bool
 }
 
@@ -93,7 +97,7 @@ pub impl FnType {
                       llargbundle: ValueRef, llretval: ValueRef) {
         for vec::eachi(self.attrs) |i, a| {
             match *a {
-                Some(attr) => {
+                option::Some(attr) => {
                     unsafe {
                         llvm::LLVMAddInstrAttribute(
                             llretval, (i + 1u) as c_uint,

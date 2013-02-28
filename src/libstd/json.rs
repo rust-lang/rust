@@ -1208,6 +1208,7 @@ mod tests {
     use core::prelude::*;
 
     use json::*;
+    use serialize;
 
     use core::result;
     use core::hashmap::linear::LinearMap;

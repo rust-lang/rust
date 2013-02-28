@@ -10,13 +10,16 @@
 
 use core::prelude::*;
 
+use ast::{blk_, attribute_, attr_outer, meta_word};
 use ast::{crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{tt_delim, tt_tok, item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast;
 use attr;
-use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan};
+use codemap;
+use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
 use ext::base::*;
 use fold::*;
+use parse;
 use parse::{parser, parse_item_from_source_str, new_parser_from_tts};
 
 use core::option;
@@ -175,7 +178,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 }
 
 // does this attribute list contain "macro_escape" ?
-fn contains_macro_escape (attrs: &[ast::attribute]) -> bool{
+pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool{
     let mut accum = false;
     do attrs.each |attr| {
         let mname = attr::get_attr_name(attr);
@@ -473,7 +476,13 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
 #[cfg(test)]
 mod test {
     use super::*;
+    use ast;
+    use ast::{attribute_, attr_outer, meta_word};
+    use codemap;
+    use codemap::spanned;
+    use parse;
     use util::testing::check_equal;
+    use core::option::{None, Some};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {

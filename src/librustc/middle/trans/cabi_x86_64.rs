@@ -18,6 +18,14 @@ use lib::llvm::struct_tys;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
+use core::cmp;
+use core::libc::c_uint;
+use core::option;
+use core::option::Option;
+use core::ptr;
+use core::uint;
+use core::vec;
+
 enum x86_64_reg_class {
     no_class,
     integer_class,

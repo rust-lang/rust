@@ -10,8 +10,9 @@
 
 // A protocol compiler for Rust.
 
+use ast;
 use ast::ident;
-use codemap::dummy_sp;
+use codemap::{dummy_sp, spanned};
 use ext::base::ext_ctxt;
 use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
 use ext::pipes::ast_builder::{path_global};
