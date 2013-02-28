@@ -9,12 +9,15 @@
 // except according to those terms.
 
 // compile-flags:-Z extra-debug-info
-// debugger:break 26
+// debugger:set print pretty off
+// debugger:break 29
 // debugger:run
+// debugger:print pair
+// check:$1 = {x = 1, y = 2}
 // debugger:print pair.x
-// check:$1 = 1
+// check:$2 = 1
 // debugger:print pair.y
-// check:$2 = 2
+// check:$3 = 2
 
 struct Pair {
     x: int,
