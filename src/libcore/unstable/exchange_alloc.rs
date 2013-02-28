@@ -14,7 +14,7 @@ use c_malloc = libc::malloc;
 use c_free = libc::free;
 use managed::raw::{BoxHeaderRepr, BoxRepr};
 use cast::transmute;
-use private::intrinsics::{atomic_xadd,atomic_xsub};
+use unstable::intrinsics::{atomic_xadd,atomic_xsub};
 use ptr::null;
 use intrinsic::TyDesc;
 
