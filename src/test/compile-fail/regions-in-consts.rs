@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const c_x: &'blk int = &22; //~ ERROR Illegal lifetime &blk: only 'static is allowed here
+const c_x: &'blk int = &22; //~ ERROR Illegal lifetime 'blk: only 'static is allowed here
 const c_y: &int = &22; //~ ERROR Illegal anonymous lifetime: only 'static is allowed here
 const c_z: &'static int = &22;
 

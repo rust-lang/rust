@@ -19,7 +19,7 @@ use ast::{enum_variant_kind, expr, expr_match, ident, impure_fn, item, item_};
 use ast::{item_enum, item_impl, item_struct, Generics};
 use ast::{m_imm, meta_item, method};
 use ast::{named_field, or, pat, pat_ident, pat_wild, public, pure_fn};
-use ast::{re_anon, stmt, struct_def, struct_variant_kind};
+use ast::{stmt, struct_def, struct_variant_kind};
 use ast::{sty_by_ref, sty_region, tuple_variant_kind, ty_nil, TyParam};
 use ast::{TyParamBound, ty_path, ty_rptr, unnamed_field, variant};
 use ext::base::ext_ctxt;
@@ -147,9 +147,8 @@ fn create_eq_method(cx: ext_ctxt,
                                                      span,
                                                      type_ident,
                                                      generics);
-    let arg_region = @ast::region { id: cx.next_id(), node: re_anon };
     let arg_type = ty_rptr(
-        arg_region,
+        None,
         ast::mt { ty: arg_path_type, mutbl: m_imm }
     );
     let arg_type = @ast::Ty {
