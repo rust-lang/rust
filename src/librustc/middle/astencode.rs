@@ -451,9 +451,17 @@ impl tr for ast::def {
 
 impl tr for ty::AutoAdjustment {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment {
-        ty::AutoAdjustment {
-            autoderefs: self.autoderefs,
-            autoref: self.autoref.map(|ar| ar.tr(xcx)),
+        match self {
+            &ty::AutoAddEnv(r, s) => {
+                ty::AutoAddEnv(r.tr(xcx), s)
+            }
+
+            &ty::AutoDerefRef(ref adr) => {
+                ty::AutoDerefRef(ty::AutoDerefRef {
+                    autoderefs: adr.autoderefs,
+                    autoref: adr.autoref.map(|ar| ar.tr(xcx)),
+                })
+            }
         }
     }
 }

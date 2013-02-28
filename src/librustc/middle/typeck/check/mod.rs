@@ -736,7 +736,9 @@ pub impl FnCtxt {
         if derefs == 0 { return; }
         self.write_adjustment(
             node_id,
-            @ty::AutoAdjustment { autoderefs: derefs, autoref: None }
+            @ty::AutoDerefRef(ty::AutoDerefRef {
+                autoderefs: derefs,
+                autoref: None })
         );
     }
 
