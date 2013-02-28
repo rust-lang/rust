@@ -116,7 +116,7 @@ pub struct path {
     span: span,
     global: bool,
     idents: ~[ident],
-    rp: Option<@region>,
+    rp: Option<@Lifetime>,
     types: ~[@Ty],
 }
 
@@ -374,10 +374,10 @@ impl ToStr for Sigil {
 #[deriving_eq]
 pub enum vstore {
     // FIXME (#3469): Change uint to @expr (actually only constant exprs)
-    vstore_fixed(Option<uint>),   // [1,2,3,4]
-    vstore_uniq,                  // ~[1,2,3,4]
-    vstore_box,                   // @[1,2,3,4]
-    vstore_slice(@region)         // &[1,2,3,4](foo)?
+    vstore_fixed(Option<uint>),     // [1,2,3,4]
+    vstore_uniq,                    // ~[1,2,3,4]
+    vstore_box,                     // @[1,2,3,4]
+    vstore_slice(Option<@Lifetime>) // &'foo? [1,2,3,4]
 }
 
 #[auto_encode]
@@ -860,24 +860,6 @@ pub enum prim_ty {
 #[auto_encode]
 #[auto_decode]
 #[deriving_eq]
-pub struct region {
-    id: node_id,
-    node: region_,
-}
-
-#[auto_encode]
-#[auto_decode]
-#[deriving_eq]
-pub enum region_ {
-    re_anon,
-    re_static,
-    re_self,
-    re_named(ident)
-}
-
-#[auto_encode]
-#[auto_decode]
-#[deriving_eq]
 pub enum Onceness {
     Once,
     Many
@@ -903,7 +885,7 @@ impl to_bytes::IterBytes for Onceness {
 #[deriving_eq]
 pub struct TyClosure {
     sigil: Sigil,
-    region: Option<@region>,
+    region: Option<@Lifetime>,
     purity: purity,
     onceness: Onceness,
     decl: fn_decl
@@ -929,7 +911,7 @@ pub enum ty_ {
     ty_vec(mt),
     ty_fixed_length_vec(mt, uint),
     ty_ptr(mt),
-    ty_rptr(@region, mt),
+    ty_rptr(Option<@Lifetime>, mt),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),

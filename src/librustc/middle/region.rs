@@ -31,6 +31,7 @@ use std::oldmap::HashMap;
 use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;
+use syntax::parse::token::special_idents;
 use syntax::{ast, visit};
 
 pub type parent = Option<ast::node_id>;
@@ -546,29 +547,20 @@ pub impl DetermineRpCtxt {
     // with &self type, &self is also bound.  We detect those last two
     // cases via flags (anon_implies_rp and self_implies_rp) that are
     // true when the anon or self region implies RP.
-    fn region_is_relevant(&self, r: @ast::region) -> bool {
-        match r.node {
-            ast::re_static => false,
-            ast::re_anon => self.anon_implies_rp,
-            ast::re_self => self.self_implies_rp,
-            ast::re_named(_) => false
-        }
-    }
-
-    // For named types like Foo, if there is no explicit region
-    // parameter, then we will add the anonymous region, so there is
-    // a dependency if the anonymous region implies rp.
-    //
-    // If the region is explicitly specified, then we follows the
-    // normal rules.
-    fn opt_region_is_relevant(&self,
-                              opt_r: Option<@ast::region>)
-                           -> bool {
-        debug!("opt_region_is_relevant: %? (anon_implies_rp=%b)",
-               opt_r, self.anon_implies_rp);
-        match opt_r {
-          None => self.anon_implies_rp,
-          Some(r) => self.region_is_relevant(r)
+    fn region_is_relevant(&self, r: Option<@ast::Lifetime>) -> bool {
+        match r {
+            None => {
+                self.anon_implies_rp
+            }
+            Some(ref l) if l.ident == special_idents::static => {
+                false
+            }
+            Some(ref l) if l.ident == special_idents::self_ => {
+                self.self_implies_rp
+            }
+            Some(_) => {
+                false
+            }
         }
     }
 
@@ -672,8 +664,8 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
             debug!("referenced fn type: %s",
                    pprust::ty_to_str(ty, sess.intr()));
             match f.region {
-                Some(r) => {
-                    if cx.region_is_relevant(r) {
+                Some(_) => {
+                    if cx.region_is_relevant(f.region) {
                         cx.add_rp(cx.item_id,
                                   cx.add_variance(rv_contravariant))
                     }
@@ -699,7 +691,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
         match cx.def_map.find(&id) {
           Some(ast::def_ty(did)) | Some(ast::def_struct(did)) => {
             if did.crate == ast::local_crate {
-                if cx.opt_region_is_relevant(path.rp) {
+                if cx.region_is_relevant(path.rp) {
                     cx.add_dep(did.node);
                 }
             } else {
@@ -709,7 +701,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
                   Some(variance) => {
                     debug!("reference to external, rp'd type %s",
                            pprust::ty_to_str(ty, sess.intr()));
-                    if cx.opt_region_is_relevant(path.rp) {
+                    if cx.region_is_relevant(path.rp) {
                         cx.add_rp(cx.item_id, cx.add_variance(variance))
                     }
                   }
