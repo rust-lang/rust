@@ -232,7 +232,7 @@ priv impl TaskBuilder {
     }
 }
 
-impl TaskBuilder {
+pub impl TaskBuilder {
     /**
      * Decouple the child task's failure from the parent's. If either fails,
      * the other will not be killed.

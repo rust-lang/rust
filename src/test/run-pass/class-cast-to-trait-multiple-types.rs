@@ -18,7 +18,7 @@ struct dog {
   volume : @mut int,
 }
 
-impl dog {
+pub impl dog {
     priv fn bark() -> int {
       debug!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
@@ -55,7 +55,7 @@ impl noisy for cat {
   fn speak() -> int { self.meow() as int }
 }
 
-impl cat {
+pub impl cat {
   fn meow_count() -> uint { *self.meows }
 }
 

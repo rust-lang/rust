@@ -18,7 +18,7 @@ struct cat {
     name : ~str,
 }
 
-impl cat {
+pub impl cat {
     fn speak(&mut self) { self.meow(); }
 
     fn eat(&mut self) -> bool {

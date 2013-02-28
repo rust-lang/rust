@@ -14,6 +14,6 @@ struct cat {
   tail: int,
 }
 
-impl cat {
+pub impl cat {
   fn meow() { tail += 1; } //~ ERROR: Did you mean: `self.tail`
 }

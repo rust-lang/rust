@@ -10,7 +10,7 @@
 
 use core::either::*;
 enum X = Either<(uint,uint),extern fn()>;
-impl &X {
+pub impl &X {
     fn with(blk: fn(x: &Either<(uint,uint),extern fn()>)) {
         blk(&**self)
     }

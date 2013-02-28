@@ -6,7 +6,7 @@ impl Drop for S {
     fn finalize(&self) {}
 }
 
-impl S {
+pub impl S {
     fn foo(self) -> int {
         self.bar();
         return self.x;  //~ ERROR use of moved value

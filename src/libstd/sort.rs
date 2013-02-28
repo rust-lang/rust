@@ -404,7 +404,7 @@ fn MergeState<T>() -> MergeState<T> {
     }
 }
 
-impl<T:Copy + Ord> MergeState<T> {
+pub impl<T:Copy + Ord> MergeState<T> {
     fn push_run(&self, run_base: uint, run_len: uint) {
         let tmp = RunState{base: run_base, len: run_len};
         self.runs.push(tmp);

@@ -161,7 +161,7 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
     (reinterpret_cast(&(p & !1)), p & 1 == 1)
 }
 
-impl &Arena {
+pub impl &Arena {
     // Functions for the POD part of the arena
     fn alloc_pod_grow(n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.

@@ -167,7 +167,7 @@ fn reserve_id_range(sess: Session,
     ast_util::id_range { min: to_id_min, max: to_id_min }
 }
 
-impl ExtendedDecodeContext {
+pub impl ExtendedDecodeContext {
     fn tr_id(&self, id: ast::node_id) -> ast::node_id {
         /*!
          *

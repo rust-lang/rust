@@ -13,7 +13,7 @@
 
 enum Foo = uint;
 
-impl Foo {
+pub impl Foo {
     fn len(&self) -> uint { **self }
 }
 

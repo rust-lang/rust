@@ -335,7 +335,7 @@ fn LittleLock() -> LittleLock {
     }
 }
 
-impl LittleLock {
+pub impl LittleLock {
     #[inline(always)]
     unsafe fn lock<T>(f: fn() -> T) -> T {
         struct Unlock {
@@ -381,7 +381,7 @@ impl<T:Owned> Clone for Exclusive<T> {
     }
 }
 
-impl<T:Owned> Exclusive<T> {
+pub impl<T:Owned> Exclusive<T> {
     // Exactly like std::arc::mutex_arc,access(), but with the little_lock
     // instead of a proper mutex. Same reason for being unsafe.
     //

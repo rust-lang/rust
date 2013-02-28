@@ -2,7 +2,7 @@ struct SpeechMaker {
     speeches: uint
 }
 
-impl SpeechMaker {
+pub impl SpeechMaker {
     fn talk(&mut self) {
         self.speeches += 1;
     }

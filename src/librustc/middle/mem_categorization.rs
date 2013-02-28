@@ -312,7 +312,7 @@ impl ToStr for MutabilityCategory {
     }
 }
 
-impl MutabilityCategory {
+pub impl MutabilityCategory {
     static fn from_mutbl(&self, m: ast::mutability) -> MutabilityCategory {
         match m {
             m_imm => McImmutable,

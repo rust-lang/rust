@@ -19,7 +19,7 @@ impl ops::Add<int,int> for Point {
     }
 }
 
-impl Point {
+pub impl Point {
     fn times(z: int) -> int {
         self.x * self.y * z
     }
