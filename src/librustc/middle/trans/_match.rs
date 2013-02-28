@@ -1054,7 +1054,7 @@ pub fn compare_values(cx: block,
             let scratch_rhs = alloca(cx, val_ty(rhs));
             Store(cx, rhs, scratch_rhs);
             let did = cx.tcx().lang_items.uniq_str_eq_fn();
-            let bcx = callee::trans_rtcall_or_lang_call(cx, did,
+            let bcx = callee::trans_lang_call(cx, did,
                                                         ~[scratch_lhs,
                                                           scratch_rhs],
                                                         expr::SaveIn(
@@ -1069,7 +1069,7 @@ pub fn compare_values(cx: block,
             let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
                                                false);
             let did = cx.tcx().lang_items.str_eq_fn();
-            let bcx = callee::trans_rtcall_or_lang_call(cx, did,
+            let bcx = callee::trans_lang_call(cx, did,
                                                         ~[lhs, rhs],
                                                         expr::SaveIn(
                                                          scratch_result.val));
