@@ -248,7 +248,10 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
     }
     struct ProgRes {
         r: ProgRepr,
-        drop {
+    }
+
+    impl Drop for ProgRes {
+        fn finalize(&self) {
             unsafe {
                 // FIXME #4943: This is bad.
                 destroy_repr(cast::transmute(&self.r));

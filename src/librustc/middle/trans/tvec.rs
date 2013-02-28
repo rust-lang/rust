@@ -306,7 +306,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                     let llsizeval = C_uint(bcx.ccx(), s.len());
                     let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
                     let lldestval = datum::scratch_datum(bcx, typ, false);
-                    let bcx = callee::trans_rtcall_or_lang_call(
+                    let bcx = callee::trans_lang_call(
                         bcx,
                         bcx.tcx().lang_items.strdup_uniq_fn(),
                         ~[ llptrval, llsizeval ],

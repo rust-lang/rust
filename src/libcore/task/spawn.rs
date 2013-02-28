@@ -308,8 +308,11 @@ struct TCB {
     mut ancestors: AncestorList,
     is_main:       bool,
     notifier:      Option<AutoNotify>,
+}
+
+impl Drop for TCB {
     // Runs on task exit.
-    drop {
+    fn finalize(&self) {
         unsafe {
             // If we are failing, the whole taskgroup needs to die.
             if rt::rust_task_is_unwinding(self.me) {
@@ -353,7 +356,10 @@ fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
 struct AutoNotify {
     notify_chan: Chan<TaskResult>,
     mut failed:  bool,
-    drop {
+}
+
+impl Drop for AutoNotify {
+    fn finalize(&self) {
         let result = if self.failed { Failure } else { Success };
         self.notify_chan.send(result);
     }

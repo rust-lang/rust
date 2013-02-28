@@ -90,7 +90,10 @@ use syntax::{ast, ast_util, codemap, ast_map};
 
 pub struct icx_popper {
     ccx: @CrateContext,
-    drop {
+}
+
+impl Drop for icx_popper {
+    fn finalize(&self) {
       if self.ccx.sess.count_llvm_insns() {
           self.ccx.stats.llvm_insn_ctxt.pop();
       }
@@ -304,7 +307,7 @@ pub fn malloc_raw_dyn(bcx: block,
     // Allocate space:
     let tydesc = PointerCast(bcx, static_ti.tydesc, T_ptr(T_i8()));
     let rval = alloca(bcx, T_ptr(T_i8()));
-    let bcx = callee::trans_rtcall_or_lang_call(
+    let bcx = callee::trans_lang_call(
         bcx,
         langcall,
         ~[tydesc, size],

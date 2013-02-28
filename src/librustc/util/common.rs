@@ -32,7 +32,10 @@ pub fn indent<R>(op: fn() -> R) -> R {
 
 pub struct _indenter {
     _i: (),
-    drop { debug!("<<"); }
+}
+
+impl Drop for _indenter {
+    fn finalize(&self) { debug!("<<"); }
 }
 
 pub fn _indenter(_i: ()) -> _indenter {
