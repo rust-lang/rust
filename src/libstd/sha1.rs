@@ -251,7 +251,11 @@ pub fn sha1() -> Sha1 {
             let rr = mk_result(self);
             let mut s = ~"";
             for vec::each(rr) |b| {
-                s += uint::to_str_radix(*b as uint, 16u);
+                let hex = uint::to_str_radix(*b as uint, 16u);
+                if hex.len() == 1 {
+                    s += "0";
+                }
+                s += hex;
             }
             return s;
         }
@@ -283,6 +287,7 @@ mod tests {
             struct Test {
                 input: ~str,
                 output: ~[u8],
+                output_str: ~str,
             }
 
             fn a_million_letter_a() -> ~str {
@@ -306,6 +311,7 @@ mod tests {
                         0x78u8, 0x50u8, 0xC2u8, 0x6Cu8,
                         0x9Cu8, 0xD0u8, 0xD8u8, 0x9Du8,
                     ],
+                    output_str: ~"a9993e364706816aba3e25717850c26c9cd0d89d"
                 },
                 Test {
                     input:
@@ -318,6 +324,7 @@ mod tests {
                         0xF9u8, 0x51u8, 0x29u8, 0xE5u8,
                         0xE5u8, 0x46u8, 0x70u8, 0xF1u8,
                     ],
+                    output_str: ~"84983e441c3bd26ebaae4aa1f95129e5e54670f1"
                 },
                 Test {
                     input: a_million_letter_a(),
@@ -328,6 +335,7 @@ mod tests {
                         0xDBu8, 0xADu8, 0x27u8, 0x31u8,
                         0x65u8, 0x34u8, 0x01u8, 0x6Fu8,
                     ],
+                    output_str: ~"34aa973cd4c4daa4f61eeb2bdbad27316534016f"
                 },
             ];
             // Examples from wikipedia
@@ -342,6 +350,7 @@ mod tests {
                         0xbbu8, 0x76u8, 0xe7u8, 0x39u8,
                         0x1bu8, 0x93u8, 0xebu8, 0x12u8,
                     ],
+                    output_str: ~"2fd4e1c67a2d28fced849ee1bb76e7391b93eb12",
                 },
                 Test {
                     input: ~"The quick brown fox jumps over the lazy cog",
@@ -352,6 +361,7 @@ mod tests {
                         0x0bu8, 0xd1u8, 0x7du8, 0x9bu8,
                         0x10u8, 0x0du8, 0xb4u8, 0xb3u8,
                     ],
+                    output_str: ~"de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3",
                 },
             ];
             let tests = fips_180_1_tests + wikipedia_tests;
@@ -373,6 +383,11 @@ mod tests {
                 sh.input_str(t.input);
                 let out = sh.result();
                 check_vec_eq(t.output, out);
+
+                let out_str = sh.result_str();
+                assert(out_str.len() == 40);
+                assert(out_str == t.output_str);
+
                 sh.reset();
             }
 
@@ -389,6 +404,11 @@ mod tests {
                 }
                 let out = sh.result();
                 check_vec_eq(t.output, out);
+
+                let out_str = sh.result_str();
+                assert(out_str.len() == 40);
+                assert(out_str == t.output_str);
+
                 sh.reset();
             }
         }

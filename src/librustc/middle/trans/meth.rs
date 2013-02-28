@@ -46,13 +46,13 @@ be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 pub fn trans_impl(ccx: @CrateContext, +path: path, name: ast::ident,
-                  methods: ~[@ast::method], tps: ~[ast::ty_param],
+                  methods: ~[@ast::method], generics: &ast::Generics,
                   self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
-    if tps.len() > 0u { return; }
+    if !generics.ty_params.is_empty() { return; }
     let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) |method| {
-        if method.tps.len() == 0u {
+        if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(/*bad*/copy sub_path,
                                        path_name(method.ident));
@@ -410,7 +410,7 @@ pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
     debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
     if m_id.crate == ast::local_crate {
         match ccx.tcx.items.find(&m_id.node) {
-            Some(ast_map::node_method(m, _, _)) => m.tps.len(),
+            Some(ast_map::node_method(m, _, _)) => m.generics.ty_params.len(),
             None => {
                 match ccx.tcx.provided_method_sources.find(&m_id) {
                     Some(source) => {
@@ -420,9 +420,9 @@ pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
                     None => fail!()
                 }
             }
-            Some(ast_map::node_trait_method(@ast::provided(@ref m), _, _))
-                => {
-                m.tps.len()
+            Some(ast_map::node_trait_method(@ast::provided(@ref m),
+                                            _, _)) => {
+                m.generics.ty_params.len()
             }
             copy e => fail!(fmt!("method_ty_param_count %?", e))
         }

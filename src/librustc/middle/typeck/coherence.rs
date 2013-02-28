@@ -147,7 +147,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
 pub fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
     @MethodInfo {
         did: local_def(ast_method.id),
-        n_tps: ast_method.tps.len(),
+        n_tps: ast_method.generics.ty_params.len(),
         ident: ast_method.ident,
         self_type: ast_method.self_ty.node
     }

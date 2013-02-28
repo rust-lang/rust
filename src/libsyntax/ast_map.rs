@@ -101,7 +101,7 @@ pub enum ast_node {
     node_arg(arg, uint),
     node_local(uint),
     // Destructor for a struct
-    node_dtor(~[ty_param], @struct_dtor, def_id, @path),
+    node_dtor(Generics, @struct_dtor, def_id, @path),
     node_block(blk),
     node_struct_ctor(@struct_def, @item, @path),
 }
@@ -199,7 +199,7 @@ pub fn map_fn(
         cx.local_id += 1u;
     }
     match *fk {
-        visit::fk_dtor(tps, ref attrs, self_id, parent_id) => {
+        visit::fk_dtor(generics, ref attrs, self_id, parent_id) => {
             let dt = @spanned {
                 node: ast::struct_dtor_ {
                     id: id,
@@ -212,7 +212,7 @@ pub fn map_fn(
             cx.map.insert(
                 id,
                 node_dtor(
-                    /* FIXME (#2543) */ vec::from_slice(tps),
+                    /* FIXME (#2543) */ copy *generics,
                     dt,
                     parent_id,
                     @/* FIXME (#2543) */ copy cx.path));
