@@ -159,19 +159,27 @@ fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
     }
 }
 
-pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef) ->
-    (_match::branch_kind, Option<ValueRef>) {
+pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
+    -> (_match::branch_kind, Option<ValueRef>) {
     match *r {
-        CEnum(min, max) => {
-            (_match::switch, Some(load_discr(bcx, scrutinee, min, max)))
+        CEnum(*) | General(*) => {
+            (_match::switch, Some(trans_cast_to_int(bcx, r, scrutinee)))
         }
         Unit(*) | Univariant(*) => {
             (_match::single, None)
         }
-        General(ref cases) => {
-            (_match::switch, Some(load_discr(bcx, scrutinee, 0,
-                                             (cases.len() - 1) as int)))
-        }
+    }
+}
+
+pub fn trans_cast_to_int(bcx: block, r: &Repr, scrutinee: ValueRef)
+    -> ValueRef {
+    match *r {
+        Unit(the_disc) => C_int(bcx.ccx(), the_disc),
+        CEnum(min, max) => load_discr(bcx, scrutinee, min, max),
+        Univariant(*) => bcx.ccx().sess.bug(~"type has no explicit \
+                                              discriminant"),
+        General(ref cases) => load_discr(bcx, scrutinee, 0,
+                                         (cases.len() - 1) as int)
     }
 }
 
