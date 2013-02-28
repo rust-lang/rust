@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test
 // compile-flags:-Z extra-debug-info
 // debugger:break 23
 // debugger:run
