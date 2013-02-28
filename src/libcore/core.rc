@@ -228,8 +228,12 @@ pub const debug : u32 = 4_u32;
 // The runtime interface used by the compiler
 #[cfg(notest)] pub mod rt;
 // Private APIs
-pub mod private;
-
+pub mod unstable;
+// NOTE: Remove after snapshot
+#[cfg(stage0)]
+pub mod private {
+    pub use super::unstable::extfmt;
+}
 
 /* For internal use, not exported */
 

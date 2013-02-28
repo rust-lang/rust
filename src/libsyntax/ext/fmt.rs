@@ -24,7 +24,7 @@ use ext::base::*;
 use ext::base;
 use ext::build;
 use ext::build::*;
-use private::extfmt::ct::*;
+use unstable::extfmt::ct::*;
 
 pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     -> base::MacResult {
@@ -57,7 +57,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
    -> @ast::expr {
     fn make_path_vec(cx: ext_ctxt, ident: @~str) -> ~[ast::ident] {
         let intr = cx.parse_sess().interner;
-        return ~[intr.intern(@~"private"), intr.intern(@~"extfmt"),
+        return ~[intr.intern(@~"unstable"), intr.intern(@~"extfmt"),
                  intr.intern(@~"rt"), intr.intern(ident)];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span, nm: @~str) -> @ast::expr {

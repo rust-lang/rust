@@ -91,9 +91,9 @@ use libc;
 use option;
 use option::{None, Option, Some, unwrap};
 use pipes;
-use private::intrinsics;
+use unstable::intrinsics;
 use ptr;
-use private;
+use unstable;
 use task;
 use vec;
 

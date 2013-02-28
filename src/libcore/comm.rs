@@ -12,7 +12,7 @@ use either::{Either, Left, Right};
 use kinds::Owned;
 use option;
 use option::{Option, Some, None, unwrap};
-use private;
+use unstable;
 use vec;
 
 use pipes::{recv, try_recv, wait_many, peek, PacketHeader};
@@ -242,7 +242,7 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
 }
 
 /// A channel that can be shared between many senders.
-pub type SharedChan<T> = private::Exclusive<Chan<T>>;
+pub type SharedChan<T> = unstable::Exclusive<Chan<T>>;
 
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
     fn send(x: T) {
@@ -268,7 +268,7 @@ impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
 
 /// Converts a `chan` into a `shared_chan`.
 pub fn SharedChan<T:Owned>(c: Chan<T>) -> SharedChan<T> {
-    private::exclusive(c)
+    unstable::exclusive(c)
 }
 
 /// Receive a message from one of two endpoints.

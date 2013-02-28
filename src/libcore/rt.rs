@@ -15,7 +15,7 @@ use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int};
 use managed::raw::BoxRepr;
 use str;
 use sys;
-use private::exchange_alloc;
+use unstable::exchange_alloc;
 use cast::transmute;
 
 use gc::{cleanup_stack_for_failure, gc, Word};

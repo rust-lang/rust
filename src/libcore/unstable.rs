@@ -22,19 +22,19 @@ use task;
 use task::{TaskBuilder, atomically};
 use uint;
 
-#[path = "private/at_exit.rs"]
+#[path = "unstable/at_exit.rs"]
 pub mod at_exit;
-#[path = "private/global.rs"]
+#[path = "unstable/global.rs"]
 pub mod global;
-#[path = "private/finally.rs"]
+#[path = "unstable/finally.rs"]
 pub mod finally;
-#[path = "private/weak_task.rs"]
+#[path = "unstable/weak_task.rs"]
 pub mod weak_task;
-#[path = "private/exchange_alloc.rs"]
+#[path = "unstable/exchange_alloc.rs"]
 pub mod exchange_alloc;
-#[path = "private/intrinsics.rs"]
+#[path = "unstable/intrinsics.rs"]
 pub mod intrinsics;
-#[path = "private/extfmt.rs"]
+#[path = "unstable/extfmt.rs"]
 pub mod extfmt;
 
 extern mod rustrt {
@@ -312,7 +312,7 @@ pub mod tests {
     use cell::Cell;
     use comm;
     use option;
-    use private::exclusive;
+    use super::exclusive;
     use result;
     use task;
     use uint;

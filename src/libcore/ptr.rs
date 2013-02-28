@@ -14,7 +14,7 @@ use cast;
 use cmp::{Eq, Ord};
 use libc;
 use libc::{c_void, size_t};
-use private::intrinsics::{memmove32,memmove64};
+use unstable::intrinsics::{memmove32,memmove64};
 use ptr;
 use str;
 use sys;
