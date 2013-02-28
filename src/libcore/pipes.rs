@@ -346,7 +346,10 @@ pub unsafe fn get_buffer<T>(p: *PacketHeader) -> ~Buffer<T> {
 struct BufferResource<T> {
     buffer: ~Buffer<T>,
 
-    drop {
+}
+
+impl<T> ::ops::Drop for BufferResource<T> {
+    fn finalize(&self) {
         unsafe {
             let b = move_it!(self.buffer);
             //let p = ptr::addr_of(*b);

@@ -450,7 +450,10 @@ fn test_unwrap_str() {
 fn test_unwrap_resource() {
     struct R {
        i: @mut int,
-       drop { *(self.i) += 1; }
+    }
+
+    impl ::ops::Drop for R {
+       fn finalize(&self) { *(self.i) += 1; }
     }
 
     fn R(i: @mut int) -> R {

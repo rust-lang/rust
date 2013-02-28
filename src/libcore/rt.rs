@@ -36,60 +36,54 @@ pub extern mod rustrt {
     unsafe fn rust_upcall_free(ptr: *c_char);
 }
 
-#[rt(fail_)]
 #[lang="fail_"]
-pub fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
+pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
     sys::begin_unwind_(expr, file, line);
 }
 
-#[rt(fail_bounds_check)]
 #[lang="fail_bounds_check"]
-pub unsafe fn rt_fail_bounds_check(file: *c_char, line: size_t,
-                                   index: size_t, len: size_t) {
+pub unsafe fn fail_bounds_check(file: *c_char, line: size_t,
+                                index: size_t, len: size_t) {
     let msg = fmt!("index out of bounds: the len is %d but the index is %d",
                     len as int, index as int);
     do str::as_buf(msg) |p, _len| {
-        rt_fail_(p as *c_char, file, line);
+        fail_(p as *c_char, file, line);
     }
 }
 
-pub unsafe fn rt_fail_borrowed() {
+pub unsafe fn fail_borrowed() {
     let msg = "borrowed";
     do str::as_buf(msg) |msg_p, _| {
         do str::as_buf("???") |file_p, _| {
-            rt_fail_(msg_p as *c_char, file_p as *c_char, 0);
+            fail_(msg_p as *c_char, file_p as *c_char, 0);
         }
     }
 }
 
 // FIXME #4942: Make these signatures agree with exchange_alloc's signatures
-#[rt(exchange_malloc)]
 #[lang="exchange_malloc"]
-pub unsafe fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     transmute(exchange_alloc::malloc(transmute(td), transmute(size)))
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
-#[rt(exchange_free)]
 #[lang="exchange_free"]
-pub unsafe fn rt_exchange_free(ptr: *c_char) {
+pub unsafe fn exchange_free(ptr: *c_char) {
     exchange_alloc::free(transmute(ptr))
 }
 
-#[rt(malloc)]
 #[lang="malloc"]
-pub unsafe fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_malloc(td, size);
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
-#[rt(free)]
 #[lang="free"]
-pub unsafe fn rt_free(ptr: *c_char) {
+pub unsafe fn local_free(ptr: *c_char) {
     rustrt::rust_upcall_free(ptr);
 }
 
@@ -112,7 +106,7 @@ pub unsafe fn return_to_mut(a: *u8) {
 pub unsafe fn check_not_borrowed(a: *u8) {
     let a: *mut BoxRepr = transmute(a);
     if ((*a).header.ref_count & FROZEN_BIT) != 0 {
-        rt_fail_borrowed();
+        fail_borrowed();
     }
 }
 

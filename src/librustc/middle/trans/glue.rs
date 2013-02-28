@@ -30,7 +30,7 @@ use core::str;
 
 pub fn trans_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_free");
-    callee::trans_rtcall_or_lang_call(
+    callee::trans_lang_call(
         cx,
         cx.tcx().lang_items.free_fn(),
         ~[PointerCast(cx, v, T_ptr(T_i8()))],
@@ -39,7 +39,7 @@ pub fn trans_free(cx: block, v: ValueRef) -> block {
 
 pub fn trans_exchange_free(cx: block, v: ValueRef) -> block {
     let _icx = cx.insn_ctxt("trans_exchange_free");
-    callee::trans_rtcall_or_lang_call(
+    callee::trans_lang_call(
         cx,
         cx.tcx().lang_items.exchange_free_fn(),
         ~[PointerCast(cx, v, T_ptr(T_i8()))],
