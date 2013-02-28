@@ -28,7 +28,10 @@ pub struct TaskPool<T> {
     channels: ~[Chan<Msg<T>>],
     mut next_index: uint,
 
-    drop {
+}
+
+impl<T> Drop for TaskPool<T> {
+    fn finalize(&self) {
         for self.channels.each |channel| {
             channel.send(Quit);
         }

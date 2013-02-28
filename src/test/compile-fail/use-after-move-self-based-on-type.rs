@@ -1,6 +1,9 @@
 struct S {
     x: int,
-    drop {}
+}
+
+impl Drop for S {
+    fn finalize(&self) {}
 }
 
 impl S {

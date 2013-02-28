@@ -54,7 +54,10 @@ struct AsciiArt
 
     // This struct can be quite large so we'll disable copying: developers need
     // to either pass these structs around via borrowed pointers or move them.
-    drop {}
+}
+
+impl Drop for AsciiArt {
+    fn finalize(&self) {}
 }
 
 // It's common to define a constructor sort of function to create struct instances.

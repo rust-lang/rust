@@ -21,7 +21,10 @@ fn recurse() {
 
 struct r {
     recursed: *mut bool,
-    drop {
+}
+
+impl Drop for r {
+    fn finalize(&self) {
         unsafe {
             if !*(self.recursed) {
                 *(self.recursed) = true;

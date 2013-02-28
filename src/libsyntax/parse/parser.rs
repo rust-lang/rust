@@ -245,7 +245,11 @@ pub struct Parser {
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[~str],
 
-    drop {} /* do not copy the parser; its state is tied to outside state */
+}
+
+impl Drop for Parser {
+    /* do not copy the parser; its state is tied to outside state */
+    fn finalize(&self) {}
 }
 
 pub impl Parser {

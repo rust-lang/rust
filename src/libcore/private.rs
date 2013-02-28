@@ -126,7 +126,10 @@ struct ArcData<T> {
 
 struct ArcDestruct<T> {
     mut data: *libc::c_void,
-    drop {
+}
+
+impl<T> Drop for ArcDestruct<T>{
+    fn finalize(&self) {
         unsafe {
             if self.data.is_null() {
                 return; // Happens when destructing an unwrapper's handle.
@@ -178,7 +181,10 @@ pub unsafe fn unwrap_shared_mutable_state<T:Owned>(rc: SharedMutableState<T>)
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>,
         mut response: Option<comm::ChanOne<bool>>,
-        drop {
+    }
+
+    impl<T> Drop for DeathThroes<T>{
+        fn finalize(&self) {
             unsafe {
                 let response = option::swap_unwrap(&mut self.response);
                 // In case we get killed early, we need to tell the person who
@@ -311,7 +317,10 @@ type rust_little_lock = *libc::c_void;
 
 struct LittleLock {
     l: rust_little_lock,
-    drop {
+}
+
+impl Drop for LittleLock {
+    fn finalize(&self) {
         unsafe {
             rustrt::rust_destroy_little_lock(self.l);
         }

@@ -66,7 +66,10 @@ pub fn replace<T>(dest: &mut T, src: T) -> T {
 /// A non-copyable dummy type.
 pub struct NonCopyable {
     i: (),
-    drop { }
+}
+
+impl Drop for NonCopyable {
+    fn finalize(&self) { }
 }
 
 pub fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
