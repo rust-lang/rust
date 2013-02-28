@@ -332,11 +332,11 @@ pub fn trans_method_call(in_cx: block,
         DontAutorefArg)
 }
 
-pub fn trans_rtcall_or_lang_call(bcx: block,
-                                 did: ast::def_id,
-                                 args: &[ValueRef],
-                                 dest: expr::Dest)
-                              -> block {
+pub fn trans_lang_call(bcx: block,
+                       did: ast::def_id,
+                       args: &[ValueRef],
+                       dest: expr::Dest)
+    -> block {
     let fty = if did.crate == ast::local_crate {
         ty::node_id_to_type(bcx.ccx().tcx, did.node)
     } else {
@@ -349,12 +349,12 @@ pub fn trans_rtcall_or_lang_call(bcx: block,
         ArgVals(args), dest, DontAutorefArg);
 }
 
-pub fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
-                                                  did: ast::def_id,
-                                                  args: &[ValueRef],
-                                                  type_params: ~[ty::t],
-                                                  dest: expr::Dest)
-                                               -> block {
+pub fn trans_lang_call_with_type_params(bcx: block,
+                                        did: ast::def_id,
+                                        args: &[ValueRef],
+                                        type_params: ~[ty::t],
+                                        dest: expr::Dest)
+    -> block {
     let fty;
     if did.crate == ast::local_crate {
         fty = ty::node_id_to_type(bcx.tcx(), did.node);
