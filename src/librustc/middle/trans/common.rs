@@ -445,7 +445,7 @@ pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
     do in_scope_cx(bcx) |scope_info| {
         scope_info.cleanups.push(
             clean_temp(val, |bcx| {
-                let bcx = callee::trans_rtcall_or_lang_call(
+                let bcx = callee::trans_lang_call(
                     bcx,
                     bcx.tcx().lang_items.return_to_mut_fn(),
                     ~[

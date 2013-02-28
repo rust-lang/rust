@@ -544,7 +544,7 @@ pub impl Datum {
 
         // If we need to freeze the box, do that now.
         if root_info.freezes {
-            callee::trans_rtcall_or_lang_call(
+            callee::trans_lang_call(
                 bcx,
                 bcx.tcx().lang_items.borrow_as_imm_fn(),
                 ~[
@@ -566,7 +566,7 @@ pub impl Datum {
             ByRef => Load(bcx, self.val),
         };
 
-        callee::trans_rtcall_or_lang_call(
+        callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.check_not_borrowed_fn(),
             ~[ PointerCast(bcx, llval, T_ptr(T_i8())) ],

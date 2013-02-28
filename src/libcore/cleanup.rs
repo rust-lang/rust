@@ -154,7 +154,7 @@ fn debug_mem() -> bool {
 #[cfg(notest)]
 #[lang="annihilate"]
 pub unsafe fn annihilate() {
-    use rt::rt_free;
+    use rt::local_free;
     use io::WriterUtil;
     use io;
     use libc;
@@ -192,7 +192,7 @@ pub unsafe fn annihilate() {
             stats.n_bytes_freed +=
                 (*((*box).header.type_desc)).size
                 + sys::size_of::<BoxRepr>();
-            rt_free(transmute(box));
+            local_free(transmute(box));
         }
     }
 
