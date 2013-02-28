@@ -639,7 +639,6 @@ pub mod groups {
 mod tests {
     use core::prelude::*;
 
-    use opt = getopts;
     use getopts::groups::OptGroup;
     use getopts::*;
 

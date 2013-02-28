@@ -26,6 +26,8 @@ pub fn mk_pass() -> Pass {
 
 #[test]
 fn should_trim_text() {
+    use core::option::Some;
+
     let doc = test::mk_doc(~"#[doc = \" desc \"] \
                             mod m {
                             }");

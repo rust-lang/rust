@@ -306,13 +306,8 @@ pub impl<T:Owned> Exclusive<T> {
 
 #[cfg(test)]
 pub mod tests {
-    use core::option::{None, Some};
-
-    use cell::Cell;
     use comm;
-    use option;
     use super::exclusive;
-    use result;
     use task;
     use uint;
 

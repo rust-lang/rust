@@ -38,6 +38,9 @@ pub fn mk_pass() -> Pass {
 
 #[test]
 fn test() {
+    use astsrv;
+    use extract;
+
     let source =
         ~"mod imod { } \
          extern mod inmod {

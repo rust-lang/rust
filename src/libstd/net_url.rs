@@ -819,7 +819,6 @@ mod tests {
     use net_url::*;
 
     use core::hashmap::linear::LinearMap;
-    use core::str;
 
     #[test]
     pub fn test_url_parse() {

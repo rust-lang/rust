@@ -17,6 +17,8 @@ use fold;
 use pass::Pass;
 use util::NominalOp;
 
+#[cfg(test)] use extract;
+
 use std::sort;
 
 pub type ItemLtEqOp = @pure fn(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;

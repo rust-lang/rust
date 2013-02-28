@@ -103,6 +103,7 @@ pub fn unreachable() -> ! {
 
 #[cfg(test)]
 mod tests {
+    use option::{None, Some};
     use util::{NonCopyable, id, replace, swap};
 
     #[test]

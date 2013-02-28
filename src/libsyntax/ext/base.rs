@@ -500,7 +500,6 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::MapChain;
     use util::testing::check_equal;
     use core::hashmap::linear::LinearMap;

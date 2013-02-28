@@ -10,7 +10,6 @@
 
 use T = self::inst::T;
 
-use cmp::{Eq, Ord};
 use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};

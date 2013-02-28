@@ -25,6 +25,8 @@ do || {
 
 use ops::Drop;
 
+#[cfg(test)] use task::failing;
+
 pub trait Finally<T> {
     fn finally(&self, dtor: &fn()) -> T;
 }

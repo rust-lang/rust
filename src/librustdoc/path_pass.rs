@@ -19,6 +19,8 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
+#[cfg(test)] use extract;
+
 use syntax::ast;
 
 pub fn mk_pass() -> Pass {

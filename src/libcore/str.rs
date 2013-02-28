@@ -20,7 +20,7 @@
 use at_vec;
 use cast;
 use char;
-use cmp::{Eq, Ord, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use libc;
 use option::{None, Option, Some};
 use ptr;
@@ -28,6 +28,8 @@ use str;
 use u8;
 use uint;
 use vec;
+
+#[cfg(notest)] use cmp::{Eq, Ord};
 
 /*
 Section: Creating a string
