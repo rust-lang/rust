@@ -8,10 +8,56 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+ * # Representation of Algebraic Data Types
+ *
+ * This module determines how to represent enums, structs, tuples, and
+ * (deprecated) structural records based on their monomorphized types;
+ * it is responsible both for choosing a representation and
+ * translating basic operations on values of those types.
+ *
+ * Note that the interface treats everything as a general case of an
+ * enum, so structs/tuples/etc. have one pseudo-variant with
+ * discriminant 0; i.e., as if they were a univariant enum.
+ *
+ * Having everything in one place will enable improvements to data
+ * structure representation; possibilities include:
+ *
+ * - Aligning enum bodies correctly, which in turn makes possible SIMD
+ *   vector types (which are strict-alignment even on x86) and ports
+ *   to strict-alignment architectures (PowerPC, SPARC, etc.).
+ *
+ * - User-specified alignment (e.g., cacheline-aligning parts of
+ *   concurrently accessed data structures); LLVM can't represent this
+ *   directly, so we'd have to insert padding fields in any structure
+ *   that might contain one and adjust GEP indices accordingly.  See
+ *   issue #4578.
+ *
+ * - Rendering `Option<&T>` as a possibly-null `*T` instead of using
+ *   an extra word (and likewise for `@T` and `~T`).  Can and probably
+ *   should also apply to any enum with one empty case and one case
+ *   starting with a non-null pointer (e.g., `Result<(), ~str>`).
+ *
+ * - Using smaller integer types for discriminants.
+ *
+ * - Store nested enums' discriminants in the same word.  Rather, if
+ *   some variants start with enums, and those enums representations
+ *   have unused alignment padding between discriminant and body, the
+ *   outer enum's discriminant can be stored there and those variants
+ *   can start at offset 0.  Kind of fancy, and might need work to
+ *   make copies of the inner enum type cooperate, but it could help
+ *   with `Option` or `Result` wrapped around another enum.
+ *
+ * - Tagged pointers would be neat, but given that any type can be
+ *   used unboxed and any field can have pointers (including mutable)
+ *   taken to it, implementing them for Rust seems difficult.
+ */
+
 use core::container::Map;
 use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};
 use core::vec;
+
 use lib::llvm::{ValueRef, TypeRef, True, False};
 use middle::trans::_match;
 use middle::trans::build::*;
@@ -23,31 +69,58 @@ use syntax::ast;
 use util::ppaux::ty_to_str;
 
 
-// XXX: should this be done with boxed traits instead of ML-style?
+/// Representations.
 pub enum Repr {
+    /**
+     * `Unit` exists only so that an enum with a single C-like variant
+     * can occupy no space, for ABI compatibility with rustc from
+     * before (and during) the creation of this module.  It may not be
+     * worth keeping around; `CEnum` and `Univariant` cover it
+     * overwise.
+     */
     Unit(int),
-    CEnum(int, int), /* discriminant range */
+    /// C-like enums; basically an int.
+    CEnum(int, int), // discriminant range
+    /// Single-case variants, and structs/tuples/records.
     Univariant(Struct, Destructor),
+    /**
+     * General-case enums: discriminant as int, followed by fields.
+     * The fields start immediately after the discriminant, meaning
+     * that they may not be correctly aligned for the platform's ABI;
+     * see above.
+     */
     General(~[Struct])
 }
 
+/**
+ * Structs without destructors have historically had an extra layer of
+ * LLVM-struct to make accessing them work the same as structs with
+ * destructors.  This could probably be flattened to a boolean now
+ * that this module exists.
+ */
 enum Destructor {
-    DtorPresent,
-    DtorAbsent,
-    NoDtor
+    StructWithDtor,
+    StructWithoutDtor,
+    NonStruct
 }
 
+/// For structs, and struct-like parts of anything fancier.
 struct Struct {
     size: u64,
     align: u64,
     fields: ~[ty::t]
 }
 
-
+/**
+ * Convenience for `represent_type`.  There should probably be more or
+ * these, for places in trans where the `ty::t` isn't directly
+ * available.
+ */
 pub fn represent_node(bcx: block, node: ast::node_id) -> @Repr {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
 }
 
+/// Decides how to represent a given type.
 pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
     debug!("Representing: %s", ty_to_str(cx.tcx, t));
     match cx.adt_reprs.find(&t) {
@@ -56,18 +129,19 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
     }
     let repr = @match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
-            Univariant(mk_struct(cx, *elems), NoDtor)
+            Univariant(mk_struct(cx, *elems), NonStruct)
         }
         ty::ty_rec(ref fields) => {
             // XXX: Are these in the right order?
-            Univariant(mk_struct(cx, fields.map(|f| f.mt.ty)), DtorAbsent)
+            Univariant(mk_struct(cx, fields.map(|f| f.mt.ty)),
+                       StructWithoutDtor)
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
             let dt = ty::ty_dtor(cx.tcx, def_id).is_present();
             Univariant(mk_struct(cx, fields.map(|field| {
                 ty::lookup_field_type(cx.tcx, def_id, field.id, substs)
-            })), if dt { DtorPresent } else { DtorAbsent })
+            })), if dt { StructWithDtor } else { StructWithoutDtor })
         }
         ty::ty_enum(def_id, ref substs) => {
             struct Case { discr: int, tys: ~[ty::t] };
@@ -80,17 +154,22 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
             };
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
-                Univariant(mk_struct(cx, ~[]), NoDtor)
+                Unit(0)
             } else if cases.len() == 1 && cases[0].tys.len() == 0 {
+                // `()`-like; see comment on definition of `Unit`.
                 Unit(cases[0].discr)
             } else if cases.len() == 1 {
-                // struct, tuple, newtype, etc.
+                // Equivalent to a struct/tuple/newtype.
                 assert cases[0].discr == 0;
-                Univariant(mk_struct(cx, cases[0].tys), NoDtor)
+                Univariant(mk_struct(cx, cases[0].tys), NonStruct)
             } else if cases.all(|c| c.tys.len() == 0) {
+                // All bodies empty -> intlike
                 let discrs = cases.map(|c| c.discr);
                 CEnum(discrs.min(), discrs.max())
             } else {
+                // The general case.  Since there's at least one
+                // non-empty body, explicit discriminants should have
+                // been rejected by a checker before this point.
                 if !cases.alli(|i,c| c.discr == (i as int)) {
                     cx.sess.bug(fmt!("non-C-like enum %s with specified \
                                       discriminants",
@@ -115,12 +194,17 @@ fn mk_struct(cx: @CrateContext, tys: &[ty::t]) -> Struct {
     }
 }
 
-
-pub fn sizing_fields_of(cx: @CrateContext, r: &Repr) -> ~[TypeRef] {
-    generic_fields_of(cx, r, true)
-}
+/**
+ * Returns the fields of a struct for the given representation.
+ * All nominal types are LLVM structs, in order to be able to use
+ * forward-declared opaque types to prevent circularity in `type_of`.
+ */
 pub fn fields_of(cx: @CrateContext, r: &Repr) -> ~[TypeRef] {
     generic_fields_of(cx, r, false)
+}
+/// Like `fields_of`, but for `type_of::sizing_type_of` (q.v.).
+pub fn sizing_fields_of(cx: @CrateContext, r: &Repr) -> ~[TypeRef] {
+    generic_fields_of(cx, r, true)
 }
 fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
     -> ~[TypeRef] {
@@ -134,9 +218,9 @@ fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
                 st.fields.map(|&ty| type_of::type_of(cx, ty))
             };
             match dt {
-                NoDtor => f,
-                DtorAbsent => ~[T_struct(f)],
-                DtorPresent => ~[T_struct(f), T_i8()]
+                NonStruct => f,
+                StructWithoutDtor => ~[T_struct(f)],
+                StructWithDtor => ~[T_struct(f), T_i8()]
             }
         }
         General(ref sts) => {
@@ -164,6 +248,10 @@ fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
     }
 }
 
+/**
+ * Obtain as much of a "discriminant" as this representation has.
+ * This should ideally be less tightly tied to `_match`.
+ */
 pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
     -> (_match::branch_kind, Option<ValueRef>) {
     match *r {
@@ -176,6 +264,10 @@ pub fn trans_switch(bcx: block, r: &Repr, scrutinee: ValueRef)
     }
 }
 
+/**
+ * If the representation is potentially of a C-like enum, implement
+ * coercion to numeric types.
+ */
 pub fn trans_cast_to_int(bcx: block, r: &Repr, scrutinee: ValueRef)
     -> ValueRef {
     match *r {
@@ -183,11 +275,18 @@ pub fn trans_cast_to_int(bcx: block, r: &Repr, scrutinee: ValueRef)
         CEnum(min, max) => load_discr(bcx, scrutinee, min, max),
         Univariant(*) => bcx.ccx().sess.bug(~"type has no explicit \
                                               discriminant"),
+        // Note: this case is used internally by trans_switch,
+        // even though it shouldn't be reached by an external caller.
         General(ref cases) => load_discr(bcx, scrutinee, 0,
                                          (cases.len() - 1) as int)
     }
 }
 
+/**
+ * Yield information about how to dispatch a case of the
+ * discriminant-like value returned by `trans_switch`.
+ * This should ideally be less tightly tied to `_match`.
+ */
 pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
     match *r {
         CEnum(*) => {
@@ -202,6 +301,11 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
     }
 }
 
+/**
+ * Begin initializing a new value of the given case of the given
+ * representation.  The fields should then be initialized with
+ * `trans_GEP` and stores.
+ */
 pub fn trans_set_discr(bcx: block, r: &Repr, val: ValueRef, discr: int) {
     match *r {
         Unit(the_discr) => {
@@ -211,7 +315,7 @@ pub fn trans_set_discr(bcx: block, r: &Repr, val: ValueRef, discr: int) {
             assert min <= discr && discr <= max;
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
-        Univariant(_, DtorPresent) => {
+        Univariant(_, StructWithDtor) => {
             assert discr == 0;
             Store(bcx, C_u8(1), GEPi(bcx, val, [0, 1]))
         }
@@ -224,6 +328,10 @@ pub fn trans_set_discr(bcx: block, r: &Repr, val: ValueRef, discr: int) {
     }
 }
 
+/**
+ * The number of fields in a given case; for use when obtaining this
+ * information from the type or definition is less convenient.
+ */
 pub fn num_args(r: &Repr, discr: int) -> uint {
     match *r {
         Unit(*) | CEnum(*) => 0,
@@ -232,11 +340,12 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
     }
 }
 
+/// Access a field, at a point when the value's case is known.
 pub fn trans_GEP(bcx: block, r: &Repr, val: ValueRef, discr: int, ix: uint)
     -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
-    // someday), it'll need to return a possibly-new bcx as well.
+    // someday), it will need to return a possibly-new bcx as well.
     match *r {
         Unit(*) | CEnum(*) => {
             bcx.ccx().sess.bug(~"element access in C-like enum")
@@ -244,8 +353,8 @@ pub fn trans_GEP(bcx: block, r: &Repr, val: ValueRef, discr: int, ix: uint)
         Univariant(ref st, dt) => {
             assert discr == 0;
             let val = match dt {
-                NoDtor => val,
-                DtorPresent | DtorAbsent => GEPi(bcx, val, [0, 0])
+                NonStruct => val,
+                StructWithDtor | StructWithoutDtor => GEPi(bcx, val, [0, 0])
             };
             struct_GEP(bcx, st, val, ix, false)
         }
@@ -271,14 +380,26 @@ fn struct_GEP(bcx: block, st: &Struct, val: ValueRef, ix: uint,
     GEPi(bcx, val, [0, ix])
 }
 
+/// Access the struct drop flag, if present.
 pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
     match *r {
-        Univariant(_, DtorPresent) => GEPi(bcx, val, [0, 1]),
+        Univariant(_, StructWithDtor) => GEPi(bcx, val, [0, 1]),
         _ => bcx.ccx().sess.bug(~"tried to get drop flag of non-droppable \
                                   type")
     }
 }
 
+/**
+ * Construct a constant value, suitable for initializing a
+ * GlobalVariable, given a case and constant values for its fields.
+ * Note that this may have a different LLVM type (and different
+ * alignment!) from the representation's `type_of`, so it needs a
+ * pointer cast before use.
+ *
+ * Currently it has the same size as the type, but this may be changed
+ * in the future to avoid allocating unnecessary space after values of
+ * shorter-than-maximum cases.
+ */
 pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
@@ -294,10 +415,10 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
             assert discr == 0;
             let s = C_struct(build_const_struct(ccx, st, vals));
             match dt {
-                NoDtor => s,
+                NonStruct => s,
                 // The actual destructor flag doesn't need to be present.
                 // But add an extra struct layer for compatibility.
-                DtorPresent | DtorAbsent => C_struct(~[s])
+                StructWithDtor | StructWithoutDtor => C_struct(~[s])
             }
         }
         General(ref cases) => {
@@ -345,7 +466,7 @@ fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
 #[always_inline]
 fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 
-
+/// Get the discriminant of a constant value.  (Not currently used.)
 pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
     -> int {
     match *r {
@@ -356,13 +477,14 @@ pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
     }
 }
 
+/// Access a field of a constant value.
 pub fn const_get_element(ccx: @CrateContext, r: &Repr, val: ValueRef,
                          _discr: int, ix: uint) -> ValueRef {
     // Not to be confused with common::const_get_elt.
     match *r {
         Unit(*) | CEnum(*) => ccx.sess.bug(~"element access in C-like enum \
                                              const"),
-        Univariant(_, NoDtor) => const_struct_field(ccx, val, ix),
+        Univariant(_, NonStruct) => const_struct_field(ccx, val, ix),
         Univariant(*) => const_struct_field(ccx, const_get_elt(ccx, val,
                                                                [0]), ix),
         General(*) => const_struct_field(ccx, const_get_elt(ccx, val,
@@ -395,8 +517,8 @@ fn const_struct_field(ccx: @CrateContext, val: ValueRef, ix: uint)
 /// Is it safe to bitcast a value to the one field of its one variant?
 pub fn is_newtypeish(r: &Repr) -> bool {
     match *r {
-        Univariant(ref st, DtorAbsent)
-        | Univariant(ref st, NoDtor) => st.fields.len() == 1,
+        Univariant(ref st, StructWithoutDtor)
+        | Univariant(ref st, NonStruct) => st.fields.len() == 1,
         _ => false
     }
 }
