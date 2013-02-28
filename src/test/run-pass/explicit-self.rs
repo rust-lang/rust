@@ -26,7 +26,7 @@ fn compute_area(shape: &shape) -> float {
     }
 }
 
-impl shape {
+pub impl shape {
     // self is in the implicit self region
     fn select<T>(&self, threshold: float,
                  a: &r/T, b: &r/T) -> &r/T {
@@ -54,7 +54,7 @@ fn thing(x: A) -> thing {
     }
 }
 
-impl thing {
+pub impl thing {
     fn foo(@self) -> int { *self.x.a }
     fn bar(~self) -> int { *self.x.a }
     fn quux(&self) -> int { *self.x.a }

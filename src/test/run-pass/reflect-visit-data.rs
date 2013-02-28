@@ -30,7 +30,7 @@ fn align(size: uint, align: uint) -> uint {
 
 enum ptr_visit_adaptor<V> = Inner<V>;
 
-impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
+pub impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
     fn bump(sz: uint) {
@@ -478,7 +478,7 @@ struct Stuff {
     vals: ~[~str]
 }
 
-impl my_visitor {
+pub impl my_visitor {
     fn get<T>(f: fn(T)) {
         unsafe {
             f(*(self.ptr1 as *T));

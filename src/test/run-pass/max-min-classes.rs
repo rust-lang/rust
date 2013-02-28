@@ -17,7 +17,7 @@ struct Foo {
     y: int,
 }
 
-impl Foo {
+pub impl Foo {
     fn sum() -> int {
         self.x + self.y
     }

@@ -47,7 +47,7 @@ pub struct Timespec { sec: i64, nsec: i32 }
  * -1.2 seconds before the epoch is represented by `Timespec { sec: -2_i64,
  * nsec: 800_000_000_i32 }`.
  */
-impl Timespec {
+pub impl Timespec {
     static pure fn new(sec: i64, nsec: i32) -> Timespec {
         assert nsec >= 0 && nsec < NSEC_PER_SEC;
         Timespec { sec: sec, nsec: nsec }
@@ -208,7 +208,7 @@ pub pure fn strftime(format: &str, tm: &Tm) -> ~str {
     unsafe { do_strftime(format, tm) }
 }
 
-impl Tm {
+pub impl Tm {
     /// Convert time to the seconds from January 1, 1970
     fn to_timespec() -> Timespec {
         unsafe {

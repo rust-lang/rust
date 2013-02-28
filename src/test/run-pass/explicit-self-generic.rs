@@ -30,7 +30,7 @@ fn linear_map<K,V>() -> LinearMap<K,V> {
         size: 0})
 }
 
-impl<K,V> LinearMap<K,V> {
+pub impl<K,V> LinearMap<K,V> {
     fn len(&mut self) -> uint {
         self.size
     }

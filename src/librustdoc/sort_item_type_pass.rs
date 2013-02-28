@@ -51,7 +51,7 @@ fn test() {
          fn ifn() { } \
          enum ienum { ivar } \
          trait itrait { fn a(); } \
-         impl int { fn a() { } } \
+         pub impl int { fn a() { } } \
          type itype = int; \
          struct istruct { f: () }";
     do astsrv::from_str(source) |srv| {

@@ -14,7 +14,7 @@ struct Foo {
     u: ~()
 }
 
-impl Foo {
+pub impl Foo {
     fn get_s(&self) -> &self/str {
         self.s
     }

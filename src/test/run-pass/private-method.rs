@@ -14,7 +14,7 @@ struct cat {
     how_hungry : int,
 }
 
-impl cat {
+pub impl cat {
     fn play(&mut self) {
         self.meows += 1u;
         self.nap();

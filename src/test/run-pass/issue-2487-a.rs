@@ -17,7 +17,7 @@ impl Drop for socket {
     fn finalize(&self) {}
 }
 
-impl socket {
+pub impl socket {
 
     fn set_identity()  {
         do closure {

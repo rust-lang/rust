@@ -3714,7 +3714,7 @@ pub enum DtorKind {
     TraitDtor(def_id)
 }
 
-impl DtorKind {
+pub impl DtorKind {
     pure fn is_not_present(&const self) -> bool {
         match *self {
             NoDtor => true,

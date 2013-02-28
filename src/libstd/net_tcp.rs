@@ -820,7 +820,7 @@ pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
 }
 
 /// Convenience methods extending `net::tcp::tcp_socket`
-impl TcpSocket {
+pub impl TcpSocket {
     pub fn read_start() -> result::Result<@Port<
         result::Result<~[u8], TcpErrData>>, TcpErrData> {
         read_start(&self)

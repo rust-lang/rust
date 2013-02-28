@@ -19,7 +19,7 @@ struct cat {
   name : ~str,
 }
 
-impl cat {
+pub impl cat {
 
   fn eat() -> bool {
     if self.how_hungry > 0 {

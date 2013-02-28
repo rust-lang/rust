@@ -40,7 +40,7 @@ fn Noise2DContext() -> ~Noise2DContext {
     }
 }
 
-impl Noise2DContext {
+pub impl Noise2DContext {
     #[inline(always)]
     fn get_gradient(&self, x: int, y: int) -> Vec2 {
         let idx = self.permutations[x & 255] + self.permutations[y & 255];

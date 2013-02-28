@@ -28,7 +28,7 @@ pub pure fn empty_cell<T>() -> Cell<T> {
     Cell { value: None }
 }
 
-impl<T> Cell<T> {
+pub impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
     fn take() -> T {
         if self.is_empty() {

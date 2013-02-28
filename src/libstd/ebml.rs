@@ -279,7 +279,7 @@ pub mod reader {
         }
     }
 
-    impl Decoder {
+    pub impl Decoder {
         fn read_opaque<R>(&self, op: fn(Doc) -> R) -> R {
             do self.push_doc(self.next_doc(EsOpaque)) {
                 op(copy self.parent)
@@ -451,7 +451,7 @@ pub mod writer {
     }
 
     // FIXME (#2741): Provide a function to write the standard ebml header.
-    impl Encoder {
+    pub impl Encoder {
         fn start_tag(tag_id: uint) {
             debug!("Start tag %u", tag_id);
 
@@ -571,7 +571,7 @@ pub mod writer {
         }
     }
 
-    impl Encoder {
+    pub impl Encoder {
         fn emit_opaque(&self, f: fn()) {
             do self.wr_tag(EsOpaque as uint) {
                 f()

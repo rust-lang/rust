@@ -43,7 +43,7 @@ pub fn unwrap<T>(m: Mut<T>) -> T {
     value
 }
 
-impl<T> Data<T> {
+pub impl<T> Data<T> {
     fn borrow_mut<R>(op: &fn(t: &mut T) -> R) -> R {
         match self.mode {
             Immutable => fail!(fmt!("%? currently immutable",

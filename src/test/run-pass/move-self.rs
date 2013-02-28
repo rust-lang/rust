@@ -2,7 +2,7 @@ struct S {
     x: ~str
 }
 
-impl S {
+pub impl S {
     fn foo(self) {
         self.bar();
     }

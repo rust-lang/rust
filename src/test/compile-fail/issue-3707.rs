@@ -13,7 +13,7 @@ struct Obj {
     member: uint
 }
 
-impl Obj {
+pub impl Obj {
     static pure fn boom() -> bool {
         return 1+1 == 2
     }
