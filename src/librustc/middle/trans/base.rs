@@ -307,7 +307,7 @@ pub fn malloc_raw_dyn(bcx: block,
     // Allocate space:
     let tydesc = PointerCast(bcx, static_ti.tydesc, T_ptr(T_i8()));
     let rval = alloca(bcx, T_ptr(T_i8()));
-    let bcx = callee::trans_rtcall_or_lang_call(
+    let bcx = callee::trans_lang_call(
         bcx,
         langcall,
         ~[tydesc, size],
