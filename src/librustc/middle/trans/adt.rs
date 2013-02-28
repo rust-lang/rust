@@ -230,24 +230,6 @@ fn generic_fields_of(cx: @CrateContext, r: &Repr, sizing: bool)
     }
 }
 
-fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
-    -> ValueRef {
-    let ptr = GEPi(bcx, scrutinee, [0, 0]);
-    if max + 1 == min {
-        // i.e., if the range is everything.  The lo==hi case would be
-        // rejected by the LLVM verifier (it would mean either an
-        // empty set, which is impossible, or the entire range of the
-        // type, which is pointless).
-        Load(bcx, ptr)
-    } else {
-        // llvm::ConstantRange can deal with ranges that wrap around,
-        // so an overflow on (max + 1) is fine.
-        LoadRangeAssert(bcx, ptr, min as c_ulonglong,
-                        (max + 1) as c_ulonglong,
-                        /* signed: */ True)
-    }
-}
-
 /**
  * Obtain as much of a "discriminant" as this representation has.
  * This should ideally be less tightly tied to `_match`.
@@ -279,6 +261,24 @@ pub fn trans_cast_to_int(bcx: block, r: &Repr, scrutinee: ValueRef)
         // even though it shouldn't be reached by an external caller.
         General(ref cases) => load_discr(bcx, scrutinee, 0,
                                          (cases.len() - 1) as int)
+    }
+}
+
+fn load_discr(bcx: block, scrutinee: ValueRef, min: int, max: int)
+    -> ValueRef {
+    let ptr = GEPi(bcx, scrutinee, [0, 0]);
+    if max + 1 == min {
+        // i.e., if the range is everything.  The lo==hi case would be
+        // rejected by the LLVM verifier (it would mean either an
+        // empty set, which is impossible, or the entire range of the
+        // type, which is pointless).
+        Load(bcx, ptr)
+    } else {
+        // llvm::ConstantRange can deal with ranges that wrap around,
+        // so an overflow on (max + 1) is fine.
+        LoadRangeAssert(bcx, ptr, min as c_ulonglong,
+                        (max + 1) as c_ulonglong,
+                        /* signed: */ True)
     }
 }
 
@@ -433,10 +433,10 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
     }
 }
 
-fn padding(size: u64) -> ValueRef {
-    C_undef(T_array(T_i8(), size /*bad*/as uint))
-}
-
+/**
+ * Building structs is a little complicated, because we might need to
+ * insert padding if a field's value is less aligned than its type.
+ */
 fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
     -> ~[ValueRef] {
     assert vals.len() == st.fields.len();
@@ -457,12 +457,18 @@ fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
         }
         assert !is_undef(vals[i]);
         // If that assert fails, could change it to wrap in a struct?
+        // (See `const_struct_field` for why real fields must not be undef.)
         cfields.push(vals[i]);
     }
 
     return cfields;
 }
 
+fn padding(size: u64) -> ValueRef {
+    C_undef(T_array(T_i8(), size /*bad*/as uint))
+}
+
+// XXX this utility routine should be somewhere more general
 #[always_inline]
 fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 
@@ -492,6 +498,7 @@ pub fn const_get_element(ccx: @CrateContext, r: &Repr, val: ValueRef,
     }
 }
 
+/// Extract field of struct-like const, skipping our alignment padding.
 fn const_struct_field(ccx: @CrateContext, val: ValueRef, ix: uint)
     -> ValueRef {
     // Get the ix-th non-undef element of the struct.
