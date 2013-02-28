@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -137,15 +137,6 @@ impl<A:ToStr> ToStr for @[A] {
     }
 }
 
-impl<A:ToStr> ToStr for @A {
-    #[inline(always)]
-    pure fn to_str(&self) -> ~str { ~"@" + (**self).to_str() }
-}
-impl<A:ToStr> ToStr for ~A {
-    #[inline(always)]
-    pure fn to_str(&self) -> ~str { ~"~" + (**self).to_str() }
-}
-
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
@@ -170,19 +161,12 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_vectors() {
         let x: ~[int] = ~[];
-        assert x.to_str() == ~"~[]";
-        assert (~[1]).to_str() == ~"~[1]";
-        assert (~[1, 2, 3]).to_str() == ~"~[1, 2, 3]";
+        assert x.to_str() == ~"[]";
+        assert (~[1]).to_str() == ~"[1]";
+        assert (~[1, 2, 3]).to_str() == ~"[1, 2, 3]";
         assert (~[~[], ~[1], ~[1, 1]]).to_str() ==
-               ~"~[~[], ~[1], ~[1, 1]]";
-    }
-
-    #[test]
-    fn test_pointer_types() {
-        assert (@1).to_str() == ~"@1";
-        assert (~(true, false)).to_str() == ~"~(true, false)";
+               ~"[[], [1], [1, 1]]";
     }
 }
