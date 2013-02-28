@@ -90,7 +90,10 @@ use syntax::{ast, ast_util, codemap, ast_map};
 
 pub struct icx_popper {
     ccx: @CrateContext,
-    drop {
+}
+
+impl Drop for icx_popper {
+    fn finalize(&self) {
       if self.ccx.sess.count_llvm_insns() {
           self.ccx.stats.llvm_insn_ctxt.pop();
       }
