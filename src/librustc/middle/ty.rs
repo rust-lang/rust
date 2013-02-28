@@ -4143,10 +4143,11 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     return tbl[tycat(ty)][opcat(op)];
 }
 
-pub fn ty_params_to_tys(tcx: ty::ctxt, tps: ~[ast::ty_param]) -> ~[t] {
-    vec::from_fn(tps.len(), |i| {
-                ty::mk_param(tcx, i, ast_util::local_def(tps[i].id))
-        })
+pub fn ty_params_to_tys(tcx: ty::ctxt, generics: &ast::Generics) -> ~[t] {
+    vec::from_fn(generics.ty_params.len(), |i| {
+        let id = generics.ty_params.get(i).id;
+        ty::mk_param(tcx, i, ast_util::local_def(id))
+    })
 }
 
 /// Returns an equivalent type with all the typedefs and self regions removed.

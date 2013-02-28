@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
+/*!
 
 The compiler code necessary to implement the #[auto_encode] and
 #[auto_decode] extension.  The idea here is that type-defining items may
@@ -96,6 +96,9 @@ use attr;
 use codemap::span;
 use ext::base::*;
 use parse;
+use opt_vec;
+use opt_vec::OptVec;
+use ext::build;
 
 use core::vec;
 use std::oldmap;
@@ -127,24 +130,24 @@ pub fn expand_auto_encode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_encode) {
             match item.node {
-                ast::item_struct(ref struct_def, ref tps) => {
+                ast::item_struct(ref struct_def, ref generics) => {
                     let ser_impl = mk_struct_ser_impl(
                         cx,
                         item.span,
                         item.ident,
                         struct_def.fields,
-                        *tps
+                        generics
                     );
 
                     ~[filter_attrs(*item), ser_impl]
                 },
-                ast::item_enum(ref enum_def, ref tps) => {
+                ast::item_enum(ref enum_def, ref generics) => {
                     let ser_impl = mk_enum_ser_impl(
                         cx,
                         item.span,
                         item.ident,
                         *enum_def,
-                        *tps
+                        generics
                     );
 
                     ~[filter_attrs(*item), ser_impl]
@@ -182,24 +185,24 @@ pub fn expand_auto_decode(
     do vec::flat_map(in_items) |item| {
         if item.attrs.any(is_auto_decode) {
             match item.node {
-                ast::item_struct(ref struct_def, ref tps) => {
+                ast::item_struct(ref struct_def, ref generics) => {
                     let deser_impl = mk_struct_deser_impl(
                         cx,
                         item.span,
                         item.ident,
                         struct_def.fields,
-                        *tps
+                        generics
                     );
 
                     ~[filter_attrs(*item), deser_impl]
                 },
-                ast::item_enum(ref enum_def, ref tps) => {
+                ast::item_enum(ref enum_def, ref generics) => {
                     let deser_impl = mk_enum_deser_impl(
                         cx,
                         item.span,
                         item.ident,
                         *enum_def,
-                        *tps
+                        generics
                     );
 
                     ~[filter_attrs(*item), deser_impl]
@@ -222,18 +225,18 @@ priv impl ext_ctxt {
         span: span,
         ident: ast::ident,
         path: @ast::path,
-        bounds: @~[ast::ty_param_bound]
-    ) -> ast::ty_param {
+        bounds: @OptVec<ast::TyParamBound>
+    ) -> ast::TyParam {
         let bound = ast::TraitTyParamBound(@ast::Ty {
             id: self.next_id(),
             node: ast::ty_path(path, self.next_id()),
             span: span,
         });
 
-        ast::ty_param {
+        ast::TyParam {
             ident: ident,
             id: self.next_id(),
-            bounds: @vec::append(~[bound], *bounds)
+            bounds: @bounds.prepend(bound)
         }
     }
 
@@ -408,28 +411,45 @@ fn mk_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
-    ty_param: ast::ty_param,
+    ty_param: ast::TyParam,
     path: @ast::path,
-    tps: &[ast::ty_param],
+    generics: &ast::Generics,
     f: fn(@ast::Ty) -> @ast::method
 ) -> @ast::item {
-    // All the type parameters need to bound to the trait.
-    let mut trait_tps = vec::append(
-        ~[ty_param],
-         do tps.map |tp| {
-            let t_bound = ast::TraitTyParamBound(@ast::Ty {
-                id: cx.next_id(),
-                node: ast::ty_path(path, cx.next_id()),
-                span: span,
-            });
+    /*!
+     *
+     * Given that we are deriving auto-encode a type `T<'a, ...,
+     * 'z, A, ..., Z>`, creates an impl like:
+     *
+     *      impl<'a, ..., 'z, A:Tr, ..., Z:Tr> Tr for T<A, ..., Z> { ... }
+     *
+     * where Tr is either Serializable and Deserialize.
+     *
+     * FIXME(#5090): Remove code duplication between this and the code
+     * in deriving.rs
+     */
 
-            ast::ty_param {
-                ident: tp.ident,
-                id: cx.next_id(),
-                bounds: @vec::append(~[t_bound], *tp.bounds)
-            }
-        }
-    );
+
+    // Copy the lifetimes
+    let impl_lifetimes = generics.lifetimes.map(|l| {
+        build::mk_lifetime(cx, l.span, l.ident)
+    });
+
+    // All the type parameters need to bound to the trait.
+    let mut impl_tps = opt_vec::with(ty_param);
+    for generics.ty_params.each |tp| {
+        let t_bound = ast::TraitTyParamBound(@ast::Ty {
+            id: cx.next_id(),
+            node: ast::ty_path(path, cx.next_id()),
+            span: span,
+        });
+
+        impl_tps.push(ast::TyParam {
+            ident: tp.ident,
+            id: cx.next_id(),
+            bounds: @tp.bounds.prepend(t_bound)
+        })
+    }
 
     let opt_trait = Some(@ast::trait_ref {
         path: path,
@@ -439,8 +459,14 @@ fn mk_impl(
     let ty = cx.ty_path(
         span,
         ~[ident],
-        tps.map(|tp| cx.ty_path(span, ~[tp.ident], ~[]))
+        generics.ty_params.map(
+            |tp| cx.ty_path(span, ~[tp.ident], ~[])).to_vec()
     );
+
+    let generics = ast::Generics {
+        lifetimes: impl_lifetimes,
+        ty_params: impl_tps
+    };
 
     @ast::item {
         // This is a new-style impl declaration.
@@ -448,7 +474,7 @@ fn mk_impl(
         ident: parse::token::special_idents::clownshoes_extensions,
         attrs: ~[],
         id: cx.next_id(),
-        node: ast::item_impl(trait_tps, opt_trait, ty, ~[f(ty)]),
+        node: ast::item_impl(generics, opt_trait, ty, ~[f(ty)]),
         vis: ast::public,
         span: span,
     }
@@ -458,7 +484,7 @@ fn mk_ser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
-    tps: &[ast::ty_param],
+    generics: &ast::Generics,
     body: @ast::expr
 ) -> @ast::item {
     // Make a path to the std::serialize::Encodable typaram.
@@ -473,7 +499,7 @@ fn mk_ser_impl(
                 cx.ident_of(~"Encoder"),
             ]
         ),
-        @~[]
+        @opt_vec::Empty
     );
 
     // Make a path to the std::serialize::Encodable trait.
@@ -493,7 +519,7 @@ fn mk_ser_impl(
         ident,
         ty_param,
         path,
-        tps,
+        generics,
         |_ty| mk_ser_method(cx, span, cx.expr_blk(body))
     )
 }
@@ -502,7 +528,7 @@ fn mk_deser_impl(
     cx: ext_ctxt,
     span: span,
     ident: ast::ident,
-    tps: ~[ast::ty_param],
+    generics: &ast::Generics,
     body: @ast::expr
 ) -> @ast::item {
     // Make a path to the std::serialize::Decodable typaram.
@@ -517,7 +543,7 @@ fn mk_deser_impl(
                 cx.ident_of(~"Decoder"),
             ]
         ),
-        @~[]
+        @opt_vec::Empty
     );
 
     // Make a path to the std::serialize::Decodable trait.
@@ -537,7 +563,7 @@ fn mk_deser_impl(
         ident,
         ty_param,
         path,
-        tps,
+        generics,
         |ty| mk_deser_method(cx, span, ty, cx.expr_blk(body))
     )
 }
@@ -592,7 +618,7 @@ fn mk_ser_method(
     @ast::method {
         ident: cx.ident_of(~"encode"),
         attrs: ~[],
-        tps: ~[],
+        generics: ast_util::empty_generics(),
         self_ty: codemap::spanned { node: ast::sty_region(ast::m_imm),
                                 span: span },
         purity: ast::impure_fn,
@@ -650,7 +676,7 @@ fn mk_deser_method(
     @ast::method {
         ident: cx.ident_of(~"decode"),
         attrs: ~[],
-        tps: ~[],
+        generics: ast_util::empty_generics(),
         self_ty: codemap::spanned { node: ast::sty_static, span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
@@ -667,7 +693,7 @@ fn mk_struct_ser_impl(
     span: span,
     ident: ast::ident,
     fields: &[@ast::struct_field],
-    tps: &[ast::ty_param]
+    generics: &ast::Generics
 ) -> @ast::item {
     let fields = do mk_struct_fields(fields).mapi |idx, field| {
         // ast for `|| self.$(name).encode(__s)`
@@ -720,7 +746,7 @@ fn mk_struct_ser_impl(
         ]
     );
 
-    mk_ser_impl(cx, span, ident, tps, ser_body)
+    mk_ser_impl(cx, span, ident, generics, ser_body)
 }
 
 fn mk_struct_deser_impl(
@@ -728,7 +754,7 @@ fn mk_struct_deser_impl(
     span: span,
     ident: ast::ident,
     fields: ~[@ast::struct_field],
-    tps: ~[ast::ty_param]
+    generics: &ast::Generics
 ) -> @ast::item {
     let fields = do mk_struct_fields(fields).mapi |idx, field| {
         // ast for `|| std::serialize::decode(__d)`
@@ -796,7 +822,7 @@ fn mk_struct_deser_impl(
         ]
     );
 
-    mk_deser_impl(cx, span, ident, tps, body)
+    mk_deser_impl(cx, span, ident, generics, body)
 }
 
 // Records and structs don't have the same fields types, but they share enough
@@ -832,7 +858,7 @@ fn mk_enum_ser_impl(
     span: span,
     ident: ast::ident,
     enum_def: ast::enum_def,
-    tps: ~[ast::ty_param]
+    generics: &ast::Generics
 ) -> @ast::item {
     let body = mk_enum_ser_body(
         cx,
@@ -841,7 +867,7 @@ fn mk_enum_ser_impl(
         enum_def.variants
     );
 
-    mk_ser_impl(cx, span, ident, tps, body)
+    mk_ser_impl(cx, span, ident, generics, body)
 }
 
 fn mk_enum_deser_impl(
@@ -849,7 +875,7 @@ fn mk_enum_deser_impl(
     span: span,
     ident: ast::ident,
     enum_def: ast::enum_def,
-    tps: ~[ast::ty_param]
+    generics: &ast::Generics
 ) -> @ast::item {
     let body = mk_enum_deser_body(
         cx,
@@ -858,7 +884,7 @@ fn mk_enum_deser_impl(
         enum_def.variants
     );
 
-    mk_deser_impl(cx, span, ident, tps, body)
+    mk_deser_impl(cx, span, ident, generics, body)
 }
 
 fn ser_variant(

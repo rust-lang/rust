@@ -21,6 +21,8 @@ use core::to_bytes;
 use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
+use opt_vec::OptVec;
+
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
 macro_rules! interner_key (
@@ -96,6 +98,9 @@ impl to_bytes::IterBytes for ident {
 // Functions may or may not have names.
 pub type fn_ident = Option<ident>;
 
+#[auto_encode]
+#[auto_decode]
+#[deriving_eq]
 pub struct Lifetime {
     id: node_id,
     span: span,
@@ -135,7 +140,7 @@ pub const crate_node_id: node_id = 0;
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Owned, and Const.
-pub enum ty_param_bound {
+pub enum TyParamBound {
     TraitTyParamBound(@Ty),
     RegionTyParamBound
 }
@@ -143,10 +148,24 @@ pub enum ty_param_bound {
 #[auto_encode]
 #[auto_decode]
 #[deriving_eq]
-pub struct ty_param {
+pub struct TyParam {
     ident: ident,
     id: node_id,
-    bounds: @~[ty_param_bound]
+    bounds: @OptVec<TyParamBound>
+}
+
+#[auto_encode]
+#[auto_decode]
+#[deriving_eq]
+pub struct Generics {
+    lifetimes: OptVec<Lifetime>,
+    ty_params: OptVec<TyParam>
+}
+
+impl Generics {
+    fn is_empty(&self) -> bool {
+        self.lifetimes.len() + self.ty_params.len() == 0
+    }
 }
 
 #[auto_encode]
@@ -273,8 +292,8 @@ pub enum pat_ {
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
     pat_ident(binding_mode, @path, Option<@pat>),
-    pat_enum(@path, Option<~[@pat]>), // "none" means a * pattern where
-                                  // we don't bind the fields to names
+    pat_enum(@path, Option<~[@pat]>), /* "none" means a * pattern where
+                                       * we don't bind the fields to names */
     pat_rec(~[field_pat], bool),
     pat_struct(@path, ~[field_pat], bool),
     pat_tup(~[@pat]),
@@ -749,7 +768,7 @@ pub struct ty_method {
     attrs: ~[attribute],
     purity: purity,
     decl: fn_decl,
-    tps: ~[ty_param],
+    generics: Generics,
     self_ty: self_ty,
     id: node_id,
     span: span,
@@ -1012,7 +1031,7 @@ pub type self_ty = spanned<self_ty_>;
 pub struct method {
     ident: ident,
     attrs: ~[attribute],
-    tps: ~[ty_param],
+    generics: Generics,
     self_ty: self_ty,
     purity: purity,
     decl: fn_decl,
@@ -1248,14 +1267,14 @@ pub struct item {
 #[deriving_eq]
 pub enum item_ {
     item_const(@Ty, @expr),
-    item_fn(fn_decl, purity, ~[ty_param], blk),
+    item_fn(fn_decl, purity, Generics, blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
-    item_ty(@Ty, ~[ty_param]),
-    item_enum(enum_def, ~[ty_param]),
-    item_struct(@struct_def, ~[ty_param]),
-    item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
-    item_impl(~[ty_param],
+    item_ty(@Ty, Generics),
+    item_enum(enum_def, Generics),
+    item_struct(@struct_def, Generics),
+    item_trait(Generics, ~[@trait_ref], ~[trait_method]),
+    item_impl(Generics,
               Option<@trait_ref>, // (optional) trait this impl implements
               @Ty, // self
               ~[@method]),
@@ -1302,7 +1321,7 @@ pub struct foreign_item {
 #[auto_decode]
 #[deriving_eq]
 pub enum foreign_item_ {
-    foreign_item_fn(fn_decl, purity, ~[ty_param]),
+    foreign_item_fn(fn_decl, purity, Generics),
     foreign_item_const(@Ty)
 }
 
@@ -1316,7 +1335,7 @@ pub enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_foreign(@foreign_item),
-    ii_dtor(struct_dtor, ident, ~[ty_param], def_id /* parent id */)
+    ii_dtor(struct_dtor, ident, Generics, def_id /* parent id */)
 }
 
 #[cfg(test)]

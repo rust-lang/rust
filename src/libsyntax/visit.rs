@@ -15,6 +15,7 @@ use ast;
 use ast_util;
 use codemap::span;
 use parse;
+use opt_vec;
 
 use core::option;
 use core::vec;
@@ -30,11 +31,11 @@ use core::vec;
 pub enum vt<E> { mk_vt(visitor<E>), }
 
 pub enum fn_kind {
-    fk_item_fn(ident, ~[ty_param], purity), // fn foo()
-    fk_method(ident, ~[ty_param], @method), // fn foo(&self)
+    fk_item_fn(ident, Generics, purity), // fn foo()
+    fk_method(ident, Generics, @method), // fn foo(&self)
     fk_anon(ast::Sigil),                    // fn@(x, y) { ... }
     fk_fn_block,                            // |x, y| ...
-    fk_dtor(~[ty_param], ~[attribute], node_id /* self id */,
+    fk_dtor(Generics, ~[attribute], node_id /* self id */,
             def_id /* parent class id */) // class destructor
 
 }
@@ -49,13 +50,17 @@ pub fn name_of_fn(fk: fn_kind) -> ident {
     }
 }
 
-pub fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
+pub fn generics_of_fn(fk: fn_kind) -> Generics {
     match fk {
-        fk_item_fn(_, tps, _) | fk_method(_, tps, _) |
+        fk_item_fn(_, tps, _) |
+        fk_method(_, tps, _) |
         fk_dtor(tps, _, _, _) => {
-            /* FIXME (#2543) */ copy tps
+            copy tps
         }
-        fk_anon(*) | fk_fn_block(*) => ~[]
+        fk_anon(*) | fk_fn_block(*) => {
+            Generics {lifetimes: opt_vec::Empty,
+                      ty_params: opt_vec::Empty}
+        }
     }
 }
 
@@ -73,11 +78,11 @@ pub struct Visitor<E> {
     visit_expr: fn@(@expr, E, vt<E>),
     visit_expr_post: fn@(@expr, E, vt<E>),
     visit_ty: fn@(@Ty, E, vt<E>),
-    visit_ty_params: fn@(~[ty_param], E, vt<E>),
+    visit_generics: fn@(&Generics, E, vt<E>),
     visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
     visit_ty_method: fn@(ty_method, E, vt<E>),
     visit_trait_method: fn@(trait_method, E, vt<E>),
-    visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id, E,
+    visit_struct_def: fn@(@struct_def, ident, &Generics, node_id, E,
                           vt<E>),
     visit_struct_field: fn@(@struct_field, E, vt<E>),
     visit_struct_method: fn@(@method, E, vt<E>)
@@ -100,7 +105,7 @@ pub fn default_visitor<E>() -> visitor<E> {
         visit_expr: |a,b,c|visit_expr::<E>(a, b, c),
         visit_expr_post: |_a,_b,_c| (),
         visit_ty: |a,b,c|skip_ty::<E>(a, b, c),
-        visit_ty_params: |a,b,c|visit_ty_params::<E>(a, b, c),
+        visit_generics: |a,b,c|visit_generics::<E>(a, b, c),
         visit_fn: |a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g),
         visit_ty_method: |a,b,c|visit_ty_method::<E>(a, b, c),
         visit_trait_method: |a,b,c|visit_trait_method::<E>(a, b, c),
@@ -157,21 +162,21 @@ pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         for nm.view_items.each |vi| { (v.visit_view_item)(*vi, e, v); }
         for nm.items.each |ni| { (v.visit_foreign_item)(*ni, e, v); }
       }
-      item_ty(t, tps) => {
+      item_ty(t, ref tps) => {
         (v.visit_ty)(t, e, v);
-        (v.visit_ty_params)(tps, e, v);
+        (v.visit_generics)(tps, e, v);
       }
       item_enum(ref enum_definition, ref tps) => {
-        (v.visit_ty_params)(/* FIXME (#2543) */ copy *tps, e, v);
+        (v.visit_generics)(tps, e, v);
         visit_enum_def(
             *enum_definition,
-            /* FIXME (#2543) */ copy *tps,
+            tps,
             e,
             v
         );
       }
-      item_impl(tps, traits, ty, methods) => {
-        (v.visit_ty_params)(tps, e, v);
+      item_impl(ref tps, traits, ty, methods) => {
+        (v.visit_generics)(tps, e, v);
         for traits.each |p| {
             visit_path(p.path, e, v);
         }
@@ -180,12 +185,12 @@ pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(*m, e, v)
         }
       }
-      item_struct(struct_def, tps) => {
-        (v.visit_ty_params)(tps, e, v);
+      item_struct(struct_def, ref tps) => {
+        (v.visit_generics)(tps, e, v);
         (v.visit_struct_def)(struct_def, i.ident, tps, i.id, e, v);
       }
       item_trait(ref tps, ref traits, ref methods) => {
-        (v.visit_ty_params)(/* FIXME (#2543) */ copy *tps, e, v);
+        (v.visit_generics)(tps, e, v);
         for traits.each |p| { visit_path(p.path, e, v); }
         for (*methods).each |m| {
             (v.visit_trait_method)(*m, e, v);
@@ -196,7 +201,7 @@ pub fn visit_item<E>(i: @item, e: E, v: vt<E>) {
 }
 
 pub fn visit_enum_def<E>(enum_definition: ast::enum_def,
-                         tps: ~[ast::ty_param],
+                         tps: &Generics,
                          e: E,
                          v: vt<E>) {
     for enum_definition.variants.each |vr| {
@@ -296,9 +301,9 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
 
 pub fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     match ni.node {
-      foreign_item_fn(fd, _, tps) => {
-        (v.visit_ty_params)(tps, e, v);
+      foreign_item_fn(fd, _, ref generics) => {
         visit_fn_decl(fd, e, v);
+        (v.visit_generics)(generics, e, v);
       }
       foreign_item_const(t) => {
         (v.visit_ty)(t, e, v);
@@ -306,17 +311,18 @@ pub fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     }
 }
 
-pub fn visit_ty_param_bounds<E>(bounds: @~[ty_param_bound], e: E, v: vt<E>) {
-    for bounds.each |&bound| {
-        match bound {
+pub fn visit_ty_param_bounds<E>(bounds: @OptVec<TyParamBound>,
+                                e: E, v: vt<E>) {
+    for bounds.each |bound| {
+        match *bound {
             TraitTyParamBound(ty) => (v.visit_ty)(ty, e, v),
             RegionTyParamBound => ()
         }
     }
 }
 
-pub fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
-    for tps.each |tp| {
+pub fn visit_generics<E>(generics: &Generics, e: E, v: vt<E>) {
+    for generics.ty_params.each |tp| {
         visit_ty_param_bounds(tp.bounds, e, v);
     }
 }
@@ -334,29 +340,33 @@ pub fn visit_fn_decl<E>(fd: fn_decl, e: E, v: vt<E>) {
 // because it is not a default impl of any method, though I doubt that really
 // clarifies anything. - Niko
 pub fn visit_method_helper<E>(m: @method, e: E, v: vt<E>) {
-    (v.visit_fn)(fk_method(/* FIXME (#2543) */ copy m.ident,
-                         /* FIXME (#2543) */ copy m.tps, m),
-               m.decl, m.body, m.span, m.id, e, v);
+    (v.visit_fn)(fk_method(m.ident, /* FIXME (#2543) */ copy m.generics, m),
+                 m.decl, m.body, m.span, m.id, e, v);
 }
 
-pub fn visit_struct_dtor_helper<E>(dtor: struct_dtor, tps: ~[ty_param],
+pub fn visit_struct_dtor_helper<E>(dtor: struct_dtor, generics: &Generics,
                                    parent_id: def_id, e: E, v: vt<E>) {
-    (v.visit_fn)(fk_dtor(/* FIXME (#2543) */ copy tps, dtor.node.attrs,
-                       dtor.node.self_id, parent_id), ast_util::dtor_dec(),
-               dtor.node.body, dtor.span, dtor.node.id, e, v)
+    (v.visit_fn)(fk_dtor(copy *generics, dtor.node.attrs,
+                         dtor.node.self_id, parent_id),
+                 ast_util::dtor_dec(),
+                 dtor.node.body,
+                 dtor.span,
+                 dtor.node.id,
+                 e, v)
 
 }
 
 pub fn visit_fn<E>(fk: fn_kind, decl: fn_decl, body: blk, _sp: span,
                    _id: node_id, e: E, v: vt<E>) {
     visit_fn_decl(decl, e, v);
-    (v.visit_ty_params)(tps_of_fn(fk), e, v);
+    let generics = generics_of_fn(fk);
+    (v.visit_generics)(&generics, e, v);
     (v.visit_block)(body, e, v);
 }
 
 pub fn visit_ty_method<E>(m: ty_method, e: E, v: vt<E>) {
     for m.decl.inputs.each |a| { (v.visit_ty)(a.ty, e, v); }
-    (v.visit_ty_params)(m.tps, e, v);
+    (v.visit_generics)(&m.generics, e, v);
     (v.visit_ty)(m.decl.output, e, v);
 }
 
@@ -367,13 +377,16 @@ pub fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
     }
 }
 
-pub fn visit_struct_def<E>(sd: @struct_def, _nm: ast::ident, tps: ~[ty_param],
-                           id: node_id, e: E, v: vt<E>) {
+pub fn visit_struct_def<E>(sd: @struct_def,
+                           _nm: ast::ident,
+                           generics: &Generics,
+                           id: node_id,
+                           e: E, v: vt<E>) {
     for sd.fields.each |f| {
         (v.visit_struct_field)(*f, e, v);
     }
     do option::iter(&sd.dtor) |dtor| {
-      visit_struct_dtor_helper(*dtor, tps, ast_util::local_def(id), e, v)
+      visit_struct_dtor_helper(*dtor, generics, ast_util::local_def(id), e, v)
     };
 }
 
@@ -552,11 +565,11 @@ pub struct SimpleVisitor {
     visit_expr: fn@(@expr),
     visit_expr_post: fn@(@expr),
     visit_ty: fn@(@Ty),
-    visit_ty_params: fn@(~[ty_param]),
+    visit_generics: fn@(&Generics),
     visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
     visit_ty_method: fn@(ty_method),
     visit_trait_method: fn@(trait_method),
-    visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id),
+    visit_struct_def: fn@(@struct_def, ident, &Generics, node_id),
     visit_struct_field: fn@(@struct_field),
     visit_struct_method: fn@(@method)
 }
@@ -579,13 +592,13 @@ pub fn default_simple_visitor() -> @SimpleVisitor {
           visit_expr: |_e: @expr| { },
           visit_expr_post: |_e: @expr| { },
           visit_ty: simple_ignore_ty,
-          visit_ty_params: fn@(_ps: ~[ty_param]) {},
+          visit_generics: fn@(_ps: &Generics) {},
           visit_fn: fn@(_fk: fn_kind, _d: fn_decl, _b: blk, _sp: span,
                         _id: node_id) { },
           visit_ty_method: fn@(_m: ty_method) { },
           visit_trait_method: fn@(_m: trait_method) { },
           visit_struct_def: fn@(_sd: @struct_def, _nm: ident,
-                                _tps: ~[ty_param], _id: node_id) { },
+                                _generics: &Generics, _id: node_id) { },
           visit_struct_field: fn@(_f: @struct_field) { },
           visit_struct_method: fn@(_m: @method) { }
          };
@@ -654,17 +667,20 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(m);
         visit_trait_method(m, e, v);
     }
-    fn v_struct_def(f: fn@(@struct_def, ident, ~[ty_param], node_id),
-                    sd: @struct_def, nm: ident, tps: ~[ty_param], id: node_id,
+    fn v_struct_def(f: fn@(@struct_def, ident, &Generics, node_id),
+                    sd: @struct_def,
+                    nm: ident,
+                    generics: &Generics,
+                    id: node_id,
                     &&e: (), v: vt<()>) {
-        f(sd, nm, tps, id);
-        visit_struct_def(sd, nm, tps, id, e, v);
+        f(sd, nm, generics, id);
+        visit_struct_def(sd, nm, generics, id, e, v);
     }
-    fn v_ty_params(f: fn@(~[ty_param]),
-                   ps: ~[ty_param],
-                   &&e: (), v: vt<()>) {
+    fn v_generics(f: fn@(&Generics),
+                  ps: &Generics,
+                  &&e: (), v: vt<()>) {
         f(ps);
-        visit_ty_params(ps, e, v);
+        visit_generics(ps, e, v);
     }
     fn v_fn(f: fn@(fn_kind, fn_decl, blk, span, node_id),
             fk: fn_kind, decl: fn_decl, body: blk, sp: span,
@@ -699,8 +715,8 @@ pub fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         visit_expr_post: |a,b,c| v_expr_post(v.visit_expr_post,
                                              a, b, c),
         visit_ty: visit_ty,
-        visit_ty_params: |a,b,c|
-            v_ty_params(v.visit_ty_params, a, b, c),
+        visit_generics: |a,b,c|
+            v_generics(v.visit_generics, a, b, c),
         visit_fn: |a,b,c,d,e,f,g|
             v_fn(v.visit_fn, a, b, c, d, e, f, g),
         visit_ty_method: |a,b,c|

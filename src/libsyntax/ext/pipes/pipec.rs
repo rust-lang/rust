@@ -19,6 +19,8 @@ use ext::pipes::proto::*;
 use ext::quote::rt::*;
 use parse::*;
 use util::interner;
+use opt_vec;
+use opt_vec::OptVec;
 
 use core::dvec::DVec;
 use core::prelude::*;
@@ -50,20 +52,19 @@ impl gen_send for message {
     fn gen_send(&mut self, cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
         let name = self.name();
-        let params = self.get_params();
 
         match *self {
           message(ref _id, span, ref tys, this, Some(ref next_state)) => {
             debug!("pipec: next state exists");
             let next = this.proto.get_state(next_state.state);
-            assert next_state.tys.len() == next.ty_params.len();
+            assert next_state.tys.len() == next.generics.ty_params.len();
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
 
             let args_ast = (arg_names, *tys).map(|n, t| cx.arg(*n, *t));
 
             let pipe_ty = cx.ty_path_ast_builder(
                 path(~[this.data_name()], span)
-                .add_tys(cx.ty_vars_global(this.ty_params)));
+                .add_tys(cx.ty_vars_global(&this.generics.ty_params)));
             let args_ast = vec::append(
                 ~[cx.arg(cx.ident_of(~"pipe"),
                               pipe_ty)],
@@ -129,7 +130,7 @@ impl gen_send for message {
             cx.item_fn_poly(name,
                             args_ast,
                             rty,
-                            params,
+                            self.get_generics(),
                             cx.expr_block(body))
           }
 
@@ -143,10 +144,10 @@ impl gen_send for message {
 
                 let args_ast = vec::append(
                     ~[cx.arg(cx.ident_of(~"pipe"),
-                                  cx.ty_path_ast_builder(
-                                      path(~[this.data_name()], span)
-                                      .add_tys(cx.ty_vars_global(
-                                        this.ty_params))))],
+                             cx.ty_path_ast_builder(
+                                 path(~[this.data_name()], span)
+                                 .add_tys(cx.ty_vars_global(
+                                     &this.generics.ty_params))))],
                     args_ast);
 
                 let message_args = if arg_names.len() == 0 {
@@ -184,7 +185,7 @@ impl gen_send for message {
                                 } else {
                                     cx.ty_nil_ast_builder()
                                 },
-                                params,
+                                self.get_generics(),
                                 cx.expr_block(body))
             }
           }
@@ -192,7 +193,7 @@ impl gen_send for message {
 
     fn to_ty(&mut self, cx: ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder(path(~[cx.ident_of(self.name())], self.span())
-          .add_tys(cx.ty_vars_global(self.get_params())))
+          .add_tys(cx.ty_vars_global(&self.get_generics().ty_params)))
     }
 }
 
@@ -243,7 +244,7 @@ impl to_type_decls for state {
                 ast::enum_def(enum_def_ {
                     variants: items_msg,
                     common: None }),
-                cx.strip_bounds(self.ty_params)
+                cx.strip_bounds(&self.generics)
             )
         ]
     }
@@ -281,8 +282,9 @@ impl to_type_decls for state {
                             path(~[cx.ident_of(~"super"),
                                    self.data_name()],
                                  dummy_sp())
-                            .add_tys(cx.ty_vars_global(self.ty_params))))),
-                    cx.strip_bounds(self.ty_params)));
+                            .add_tys(cx.ty_vars_global(
+                                &self.generics.ty_params))))),
+                    cx.strip_bounds(&self.generics)));
         }
         else {
             items.push(
@@ -299,9 +301,10 @@ impl to_type_decls for state {
                             path(~[cx.ident_of(~"super"),
                                    self.data_name()],
                                         dummy_sp())
-                            .add_tys(cx.ty_vars_global(self.ty_params))),
+                            .add_tys(cx.ty_vars_global(
+                                &self.generics.ty_params))),
                                    self.proto.buffer_ty_path(cx)])),
-                    cx.strip_bounds(self.ty_params)));
+                    cx.strip_bounds(&self.generics)));
         };
         items
     }
@@ -340,7 +343,7 @@ impl gen_init for protocol {
 
         cx.parse_item(fmt!("pub fn init%s() -> (client::%s, server::%s)\
                             { use core::pipes::HasBuffer; %s }",
-                           start_state.ty_params.to_source(cx),
+                           start_state.generics.to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
                            body.to_source(cx)))
@@ -385,9 +388,9 @@ impl gen_init for protocol {
     }
 
     fn buffer_ty_path(&self, cx: ext_ctxt) -> @ast::Ty {
-        let mut params: ~[ast::ty_param] = ~[];
+        let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
         for (copy self.states).each |s| {
-            for s.ty_params.each |tp| {
+            for s.generics.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
                   None => params.push(*tp),
                   _ => ()
@@ -398,19 +401,20 @@ impl gen_init for protocol {
         cx.ty_path_ast_builder(path(~[cx.ident_of(~"super"),
                                       cx.ident_of(~"__Buffer")],
                                     copy self.span)
-                               .add_tys(cx.ty_vars_global(params)))
+                               .add_tys(cx.ty_vars_global(&params)))
     }
 
     fn gen_buffer_type(&self, cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
-        let mut params: ~[ast::ty_param] = ~[];
+        let mut params: OptVec<ast::TyParam> = opt_vec::Empty;
         let fields = do (copy self.states).map_to_vec |s| {
-            for s.ty_params.each |tp| {
+            for s.generics.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
                   None => params.push(*tp),
                   _ => ()
                 }
             }
+
             let ty = s.to_ty(cx);
             let fty = quote_ty!( ::core::pipes::Packet<$ty> );
 
@@ -427,6 +431,11 @@ impl gen_init for protocol {
             }
         };
 
+        let generics = Generics {
+            lifetimes: opt_vec::Empty,
+            ty_params: params
+        };
+
         cx.item_struct_poly(
             cx.ident_of(~"__Buffer"),
             dummy_sp(),
@@ -435,7 +444,7 @@ impl gen_init for protocol {
                 dtor: None,
                 ctor_id: None
             },
-            cx.strip_bounds(params))
+            cx.strip_bounds(&generics))
     }
 
     fn compile(&self, cx: ext_ctxt) -> @ast::item {
