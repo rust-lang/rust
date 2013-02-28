@@ -141,7 +141,10 @@ pub struct Stats {
 
 pub struct BuilderRef_res {
     B: BuilderRef,
-    drop {
+}
+
+impl Drop for BuilderRef_res {
+    fn finalize(&self) {
         unsafe {
             llvm::LLVMDisposeBuilder(self.B);
         }

@@ -125,7 +125,10 @@ mod blade_runner {
  */
 struct Bored {
   bored: bool,
-  drop { log(error, self.bored); }
+}
+
+impl Drop for Bored {
+  fn finalize(&self) { log(error, self.bored); }
 }
 
 /**

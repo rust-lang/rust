@@ -365,7 +365,10 @@ impl Rng {
 
 struct RandRes {
     rng: *rust_rng,
-    drop {
+}
+
+impl Drop for RandRes {
+    fn finalize(&self) {
         unsafe {
             rustrt::rand_free(self.rng);
         }

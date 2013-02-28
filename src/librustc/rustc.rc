@@ -336,7 +336,10 @@ pub fn monitor(+f: fn~(diagnostic::Emitter)) {
 
         struct finally {
             ch: SharedChan<monitor_msg>,
-            drop { self.ch.send(done); }
+        }
+
+        impl Drop for finally {
+            fn finalize(&self) { self.ch.send(done); }
         }
 
         let _finally = finally { ch: ch };
