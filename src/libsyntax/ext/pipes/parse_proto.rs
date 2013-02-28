@@ -51,13 +51,13 @@ impl proto_parser for parser::Parser {
           _ => fail!()
         };
 
-        let typarms = if *self.token == token::LT {
-            self.parse_ty_params()
+        let generics = if *self.token == token::LT {
+            self.parse_generics()
         } else {
-            ~[]
+            ast_util::empty_generics()
         };
 
-        let state = proto.add_state_poly(name, id, dir, typarms);
+        let state = proto.add_state_poly(name, id, dir, generics);
 
         // parse the messages
         self.parse_unspanned_seq(

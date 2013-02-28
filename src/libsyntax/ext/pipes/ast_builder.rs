@@ -24,6 +24,8 @@ use codemap::{span, respan, dummy_sp};
 use codemap;
 use ext::base::{ext_ctxt, mk_ctxt};
 use ext::quote::rt::*;
+use opt_vec;
+use opt_vec::OptVec;
 
 use core::vec;
 
@@ -67,8 +69,8 @@ impl append_types for @ast::path {
 }
 
 pub trait ext_ctxt_ast_builder {
-    fn ty_param(&self, id: ast::ident, +bounds: ~[ast::ty_param_bound])
-        -> ast::ty_param;
+    fn ty_param(&self, id: ast::ident, bounds: @OptVec<ast::TyParamBound>)
+        -> ast::TyParam;
     fn arg(&self, name: ident, ty: @ast::Ty) -> ast::arg;
     fn expr_block(&self, e: @ast::expr) -> ast::blk;
     fn fn_decl(&self, +inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl;
@@ -76,7 +78,7 @@ pub trait ext_ctxt_ast_builder {
     fn item_fn_poly(&self, name: ident,
                     +inputs: ~[ast::arg],
                     output: @ast::Ty,
-                    +ty_params: ~[ast::ty_param],
+                    +generics: Generics,
                     +body: ast::blk) -> @ast::item;
     fn item_fn(&self, name: ident,
                +inputs: ~[ast::arg],
@@ -85,12 +87,12 @@ pub trait ext_ctxt_ast_builder {
     fn item_enum_poly(&self, name: ident,
                       span: span,
                       +enum_definition: ast::enum_def,
-                      +ty_params: ~[ast::ty_param]) -> @ast::item;
+                      +generics: Generics) -> @ast::item;
     fn item_enum(&self, name: ident, span: span,
                  +enum_definition: ast::enum_def) -> @ast::item;
     fn item_struct_poly(&self, name: ident, span: span,
                         struct_def: ast::struct_def,
-                        ty_params: ~[ast::ty_param]) -> @ast::item;
+                        +generics: Generics) -> @ast::item;
     fn item_struct(&self, name: ident, span: span,
                    struct_def: ast::struct_def) -> @ast::item;
     fn struct_expr(&self, path: @ast::path,
@@ -103,10 +105,10 @@ pub trait ext_ctxt_ast_builder {
     fn item_ty_poly(&self, name: ident,
                     span: span,
                     ty: @ast::Ty,
-                    +params: ~[ast::ty_param]) -> @ast::item;
+                    +generics: Generics) -> @ast::item;
     fn item_ty(&self, name: ident, span: span, ty: @ast::Ty) -> @ast::item;
-    fn ty_vars(&self, +ty_params: ~[ast::ty_param]) -> ~[@ast::Ty];
-    fn ty_vars_global(&self, +ty_params: ~[ast::ty_param]) -> ~[@ast::Ty];
+    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty];
+    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty];
     fn ty_field_imm(&self, name: ident, ty: @ast::Ty) -> ast::ty_field;
     fn field_imm(&self, name: ident, e: @ast::expr) -> ast::field;
     fn block(&self, +stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk;
@@ -116,7 +118,7 @@ pub trait ext_ctxt_ast_builder {
     fn ty_option(&self, ty: @ast::Ty) -> @ast::Ty;
     fn ty_infer(&self) -> @ast::Ty;
     fn ty_nil_ast_builder(&self) -> @ast::Ty;
-    fn strip_bounds(&self, bounds: &[ast::ty_param]) -> ~[ast::ty_param];
+    fn strip_bounds(&self, bounds: &Generics) -> Generics;
 }
 
 impl ext_ctxt_ast_builder for ext_ctxt {
@@ -172,10 +174,10 @@ impl ext_ctxt_ast_builder for ext_ctxt {
         }
     }
 
-    fn ty_param(&self, id: ast::ident, +bounds: ~[ast::ty_param_bound])
-        -> ast::ty_param
+    fn ty_param(&self, id: ast::ident, bounds: @OptVec<ast::TyParamBound>)
+        -> ast::TyParam
     {
-        ast::ty_param { ident: id, id: self.next_id(), bounds: @bounds }
+        ast::TyParam { ident: id, id: self.next_id(), bounds: bounds }
     }
 
     fn arg(&self, name: ident, ty: @ast::Ty) -> ast::arg {
@@ -247,13 +249,13 @@ impl ext_ctxt_ast_builder for ext_ctxt {
     fn item_fn_poly(&self, name: ident,
                     +inputs: ~[ast::arg],
                     output: @ast::Ty,
-                    +ty_params: ~[ast::ty_param],
+                    +generics: Generics,
                     +body: ast::blk) -> @ast::item {
         self.item(name,
                   dummy_sp(),
                   ast::item_fn(self.fn_decl(inputs, output),
                                ast::impure_fn,
-                               ty_params,
+                               generics,
                                body))
     }
 
@@ -261,29 +263,32 @@ impl ext_ctxt_ast_builder for ext_ctxt {
                +inputs: ~[ast::arg],
                output: @ast::Ty,
                +body: ast::blk) -> @ast::item {
-        self.item_fn_poly(name, inputs, output, ~[], body)
+        self.item_fn_poly(name, inputs, output,
+                          ast_util::empty_generics(), body)
     }
 
     fn item_enum_poly(&self, name: ident, span: span,
                       +enum_definition: ast::enum_def,
-                      +ty_params: ~[ast::ty_param]) -> @ast::item {
-        self.item(name, span, ast::item_enum(enum_definition, ty_params))
+                      +generics: Generics) -> @ast::item {
+        self.item(name, span, ast::item_enum(enum_definition, generics))
     }
 
     fn item_enum(&self, name: ident, span: span,
                  +enum_definition: ast::enum_def) -> @ast::item {
-        self.item_enum_poly(name, span, enum_definition, ~[])
+        self.item_enum_poly(name, span, enum_definition,
+                            ast_util::empty_generics())
     }
 
     fn item_struct(&self, name: ident, span: span,
                    struct_def: ast::struct_def) -> @ast::item {
-        self.item_struct_poly(name, span, struct_def, ~[])
+        self.item_struct_poly(name, span, struct_def,
+                              ast_util::empty_generics())
     }
 
     fn item_struct_poly(&self, name: ident, span: span,
                         struct_def: ast::struct_def,
-                        ty_params: ~[ast::ty_param]) -> @ast::item {
-        self.item(name, span, ast::item_struct(@struct_def, ty_params))
+                        +generics: Generics) -> @ast::item {
+        self.item(name, span, ast::item_struct(@struct_def, generics))
     }
 
     fn struct_expr(&self, path: @ast::path,
@@ -371,28 +376,31 @@ impl ext_ctxt_ast_builder for ext_ctxt {
         }
     }
 
-    fn strip_bounds(&self, bounds: &[ast::ty_param]) -> ~[ast::ty_param] {
-        do bounds.map |ty_param| {
-            ast::ty_param { bounds: @~[], ..copy *ty_param }
-        }
+    fn strip_bounds(&self, generics: &Generics) -> Generics {
+        let no_bounds = @opt_vec::Empty;
+        let new_params = do generics.ty_params.map |ty_param| {
+            ast::TyParam { bounds: no_bounds, ..copy *ty_param }
+        };
+        Generics { ty_params: new_params, ..*generics }
     }
 
     fn item_ty_poly(&self, name: ident, span: span, ty: @ast::Ty,
-                    +params: ~[ast::ty_param]) -> @ast::item {
-        self.item(name, span, ast::item_ty(ty, params))
+                    +generics: Generics) -> @ast::item {
+        self.item(name, span, ast::item_ty(ty, generics))
     }
 
     fn item_ty(&self, name: ident, span: span, ty: @ast::Ty) -> @ast::item {
-        self.item_ty_poly(name, span, ty, ~[])
+        self.item_ty_poly(name, span, ty, ast_util::empty_generics())
     }
 
-    fn ty_vars(&self, +ty_params: ~[ast::ty_param]) -> ~[@ast::Ty] {
+    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty] {
         ty_params.map(|p| self.ty_path_ast_builder(
-            path(~[p.ident], dummy_sp())))
+            path(~[p.ident], dummy_sp()))).to_vec()
     }
 
-    fn ty_vars_global(&self, +ty_params: ~[ast::ty_param]) -> ~[@ast::Ty] {
+    fn ty_vars_global(&self,
+                      ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty] {
         ty_params.map(|p| self.ty_path_ast_builder(
-            path(~[p.ident], dummy_sp())))
+            path(~[p.ident], dummy_sp()))).to_vec()
     }
 }

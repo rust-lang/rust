@@ -16,6 +16,9 @@ use codemap::span;
 use ext::base::ext_ctxt;
 use ext::build;
 
+use opt_vec;
+use opt_vec::OptVec;
+
 use core::dvec;
 use core::option;
 
@@ -354,8 +357,14 @@ pub fn mk_fn_decl(+inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
 }
 pub fn mk_ty_param(cx: ext_ctxt,
                    ident: ast::ident,
-                   bounds: @~[ast::ty_param_bound])
-                -> ast::ty_param {
-    ast::ty_param { ident: ident, id: cx.next_id(), bounds: bounds }
+                   bounds: @OptVec<ast::TyParamBound>)
+                -> ast::TyParam {
+    ast::TyParam { ident: ident, id: cx.next_id(), bounds: bounds }
+}
+pub fn mk_lifetime(cx: ext_ctxt,
+                   span: span,
+                   ident: ast::ident) -> ast::Lifetime
+{
+    ast::Lifetime { id: cx.next_id(), span: span, ident: ident }
 }
 

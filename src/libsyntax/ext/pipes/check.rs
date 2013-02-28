@@ -67,13 +67,13 @@ impl proto::visitor<(), (), ()> for ext_ctxt {
             else {
                 let next = proto.get_state(next_state.state);
 
-                if next.ty_params.len() != next_state.tys.len() {
+                if next.generics.ty_params.len() != next_state.tys.len() {
                     self.span_err(
                         next.span, // use a real span
                         fmt!("message %s target (%s) \
                               needs %u type parameters, but got %u",
                              name, next.name,
-                             next.ty_params.len(),
+                             next.generics.ty_params.len(),
                              next_state.tys.len()));
                 }
             }
