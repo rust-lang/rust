@@ -16,6 +16,7 @@ use ast_util;
 use codemap::{span, BytePos, dummy_sp};
 use parse::token;
 use visit;
+use opt_vec;
 
 use core::cmp;
 use core::int;
@@ -263,13 +264,13 @@ pub fn public_methods(ms: ~[@method]) -> ~[@method] {
 pub fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     match method {
         required(ref m) => (*m),
-        provided(m) => {
+        provided(ref m) => {
             ty_method {
                 ident: m.ident,
                 attrs: m.attrs,
                 purity: m.purity,
                 decl: m.decl,
-                tps: m.tps,
+                generics: copy m.generics,
                 self_ty: m.self_ty,
                 id: m.id,
                 span: m.span,
@@ -327,8 +328,9 @@ impl inlined_item_utils for inlined_item {
             ii_item(i) => (v.visit_item)(i, e, v),
             ii_foreign(i) => (v.visit_foreign_item)(i, e, v),
             ii_method(_, m) => visit::visit_method_helper(m, e, v),
-            ii_dtor(/*bad*/ copy dtor, _, /*bad*/ copy tps, parent_id) => {
-                visit::visit_struct_dtor_helper(dtor, tps, parent_id, e, v);
+            ii_dtor(/*bad*/ copy dtor, _, ref generics, parent_id) => {
+                visit::visit_struct_dtor_helper(dtor, generics,
+                                                parent_id, e, v);
             }
         }
     }
@@ -375,6 +377,11 @@ pub fn dtor_dec() -> fn_decl {
     }
 }
 
+pub fn empty_generics() -> Generics {
+    Generics {lifetimes: opt_vec::Empty,
+              ty_params: opt_vec::Empty}
+}
+
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
@@ -390,6 +397,14 @@ pub fn empty(range: id_range) -> bool {
 }
 
 pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
+    let visit_generics = fn@(generics: &Generics) {
+        for generics.ty_params.each |p| {
+            vfn(p.id);
+        }
+        for generics.lifetimes.each |p| {
+            vfn(p.id);
+        }
+    };
     visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_mod: |_m, _sp, id| vfn(id),
 
@@ -457,29 +472,25 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             }
         },
 
-        visit_ty_params: fn@(ps: ~[ty_param]) {
-            for vec::each(ps) |p| {
-                vfn(p.id);
-            }
-        },
+        visit_generics: visit_generics,
 
         visit_fn: fn@(fk: visit::fn_kind, d: ast::fn_decl,
                       _b: ast::blk, _sp: span, id: ast::node_id) {
             vfn(id);
 
             match fk {
-                visit::fk_dtor(tps, _, self_id, parent_id) => {
-                    for vec::each(tps) |tp| { vfn(tp.id); }
+                visit::fk_dtor(ref generics, _, self_id, parent_id) => {
+                    visit_generics(generics);
                     vfn(id);
                     vfn(self_id);
                     vfn(parent_id.node);
                 }
-                visit::fk_item_fn(_, tps, _) => {
-                    for vec::each(tps) |tp| { vfn(tp.id); }
+                visit::fk_item_fn(_, ref generics, _) => {
+                    visit_generics(generics);
                 }
-                visit::fk_method(_, tps, m) => {
+                visit::fk_method(_, ref generics, m) => {
                     vfn(m.self_id);
-                    for vec::each(tps) |tp| { vfn(tp.id); }
+                    visit_generics(generics);
                 }
                 visit::fk_anon(_) |
                 visit::fk_fn_block => {
@@ -497,7 +508,9 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_trait_method: fn@(_ty_m: trait_method) {
         },
 
-        visit_struct_def: fn@(_sd: @struct_def, _id: ident, _tps: ~[ty_param],
+        visit_struct_def: fn@(_sd: @struct_def,
+                              _id: ident,
+                              _generics: &Generics,
                               _id: node_id) {
         },
 

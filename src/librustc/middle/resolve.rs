@@ -42,6 +42,7 @@ use syntax::ast::{enum_variant_kind, expr, expr_again, expr_assign_op};
 use syntax::ast::{expr_fn_block, expr_index, expr_loop};
 use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
+use syntax::ast::{Generics};
 use syntax::ast::{gt, ident, impure_fn, inherited, item, item_struct};
 use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
@@ -53,9 +54,9 @@ use syntax::ast::{public, required, rem, self_ty_, shl, shr, stmt_decl};
 use syntax::ast::{struct_dtor, struct_field, struct_variant_kind, sty_by_ref};
 use syntax::ast::{sty_static, subtract, trait_ref, tuple_variant_kind, Ty};
 use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
-use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param, ty_path};
+use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, TyParam, ty_path};
 use syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
-use syntax::ast::{type_value_ns, ty_param_bound, unnamed_field};
+use syntax::ast::{type_value_ns, unnamed_field};
 use syntax::ast::{variant, view_item, view_item_extern_mod};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named, not};
@@ -73,6 +74,8 @@ use syntax::visit::{default_visitor, fk_method, mk_vt, Visitor, visit_block};
 use syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
 use syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
 use syntax::visit::{visit_mod, visit_ty, vt};
+use syntax::opt_vec;
+use syntax::opt_vec::OptVec;
 
 use managed::ptr_eq;
 use dvec::DVec;
@@ -216,9 +219,9 @@ pub impl<T> ResolveResult<T> {
 }
 
 pub enum TypeParameters/& {
-    NoTypeParameters,               //< No type parameters.
-    HasTypeParameters(&~[ty_param], //< Type parameters.
-                      node_id,      //< ID of the enclosing item
+    NoTypeParameters,              //< No type parameters.
+    HasTypeParameters(&Generics,   //< Type parameters.
+                      node_id,     //< ID of the enclosing item
 
                       // The index to start numbering the type parameters at.
                       // This is zero if this is the outermost set of type
@@ -231,7 +234,6 @@ pub enum TypeParameters/& {
                       //
                       // The index at the method site will be 1, because the
                       // outer T had index 0.
-
                       uint,
 
                       // The kind of the rib used for type parameters.
@@ -1500,14 +1502,15 @@ pub impl Resolver {
             self.add_child(name, parent, ForbidDuplicateValues,
                            foreign_item.span);
 
-        match /*bad*/copy foreign_item.node {
-            foreign_item_fn(_, _, type_parameters) => {
+        match foreign_item.node {
+            foreign_item_fn(_, _, ref generics) => {
                 let def = def_fn(local_def(foreign_item.id), unsafe_fn);
                 name_bindings.define_value(Public, def, foreign_item.span);
 
-                do self.with_type_parameter_rib
-                        (HasTypeParameters(&type_parameters, foreign_item.id,
-                                           0, NormalRibKind)) {
+                do self.with_type_parameter_rib(
+                    HasTypeParameters(
+                        generics, foreign_item.id, 0, NormalRibKind))
+                {
                     visit_foreign_item(foreign_item, new_parent, visitor);
                 }
             }
@@ -3582,8 +3585,7 @@ pub impl Resolver {
 
             // enum item: resolve all the variants' discrs,
             // then resolve the ty params
-            item_enum(ref enum_def, ref type_parameters) => {
-
+            item_enum(ref enum_def, ref generics) => {
                 for (*enum_def).variants.each() |variant| {
                     do variant.node.disr_expr.iter() |dis_expr| {
                         // resolve the discriminator expr
@@ -3599,14 +3601,14 @@ pub impl Resolver {
                 // error if there is one? -- tjc
                 do self.with_type_parameter_rib(
                     HasTypeParameters(
-                        type_parameters, item.id, 0, NormalRibKind)) {
+                        generics, item.id, 0, NormalRibKind)) {
                     visit_item(item, (), visitor);
                 }
             }
 
-            item_ty(_, type_parameters) => {
+            item_ty(_, ref generics) => {
                 do self.with_type_parameter_rib
-                        (HasTypeParameters(&type_parameters, item.id, 0,
+                        (HasTypeParameters(generics, item.id, 0,
                                            NormalRibKind))
                         || {
 
@@ -3614,20 +3616,20 @@ pub impl Resolver {
                 }
             }
 
-            item_impl(type_parameters,
+            item_impl(ref generics,
                       implemented_traits,
                       self_type,
-                      methods) => {
+                      ref methods) => {
                 self.resolve_implementation(item.id,
                                             item.span,
-                                            type_parameters,
+                                            generics,
                                             implemented_traits,
                                             self_type,
-                                            methods,
+                                            *methods,
                                             visitor);
             }
 
-            item_trait(ref type_parameters, ref traits, ref methods) => {
+            item_trait(ref generics, ref traits, ref methods) => {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
@@ -3636,10 +3638,10 @@ pub impl Resolver {
 
                 // Create a new rib for the trait-wide type parameters.
                 do self.with_type_parameter_rib
-                        (HasTypeParameters(type_parameters, item.id, 0,
+                        (HasTypeParameters(generics, item.id, 0,
                                            NormalRibKind)) {
 
-                    self.resolve_type_parameters(/*bad*/copy *type_parameters,
+                    self.resolve_type_parameters(&generics.ty_params,
                                                  visitor);
 
                     // Resolve derived traits.
@@ -3672,18 +3674,18 @@ pub impl Resolver {
                         match *method {
                           required(ref ty_m) => {
                             do self.with_type_parameter_rib
-                                (HasTypeParameters(&(*ty_m).tps,
+                                (HasTypeParameters(&ty_m.generics,
                                                    item.id,
-                                                   type_parameters.len(),
+                                                   generics.ty_params.len(),
                                         MethodRibKind(item.id, Required))) {
 
                                 // Resolve the method-specific type
                                 // parameters.
                                 self.resolve_type_parameters(
-                                    /*bad*/copy (*ty_m).tps,
+                                    &ty_m.generics.ty_params,
                                     visitor);
 
-                                for (*ty_m).decl.inputs.each |argument| {
+                                for ty_m.decl.inputs.each |argument| {
                                     self.resolve_type(argument.ty, visitor);
                                 }
 
@@ -3694,7 +3696,7 @@ pub impl Resolver {
                               self.resolve_method(MethodRibKind(item.id,
                                                      Provided(m.id)),
                                                   m,
-                                                  type_parameters.len(),
+                                                  generics.ty_params.len(),
                                                   visitor)
                           }
                         }
@@ -3704,12 +3706,12 @@ pub impl Resolver {
                 (*self.type_ribs).pop();
             }
 
-            item_struct(struct_def, ty_params) => {
+            item_struct(struct_def, ref generics) => {
                 self.resolve_struct(item.id,
-                                   @copy ty_params,
-                                   /*bad*/copy struct_def.fields,
-                                   struct_def.dtor,
-                                   visitor);
+                                    generics,
+                                    struct_def.fields,
+                                    struct_def.dtor,
+                                    visitor);
             }
 
             item_mod(module_) => {
@@ -3722,18 +3724,14 @@ pub impl Resolver {
             item_foreign_mod(foreign_module) => {
                 do self.with_scope(Some(item.ident)) {
                     for foreign_module.items.each |foreign_item| {
-                        match /*bad*/copy foreign_item.node {
-                            foreign_item_fn(_, _, type_parameters) => {
-                                do self.with_type_parameter_rib
-                                    (HasTypeParameters(&type_parameters,
-                                                       foreign_item.id,
-                                                       0,
-                                                       OpaqueFunctionRibKind))
-                                        || {
-
-                                    visit_foreign_item(*foreign_item, (),
-                                                       visitor);
-                                }
+                        match foreign_item.node {
+                            foreign_item_fn(_, _, ref generics) => {
+                                self.with_type_parameter_rib(
+                                    HasTypeParameters(
+                                        generics, foreign_item.id, 0,
+                                        NormalRibKind),
+                                    || visit_foreign_item(*foreign_item, (),
+                                                          visitor));
                             }
                             foreign_item_const(_) => {
                                 visit_foreign_item(*foreign_item, (),
@@ -3744,7 +3742,7 @@ pub impl Resolver {
                 }
             }
 
-            item_fn(ref fn_decl, _, ref ty_params, ref block) => {
+            item_fn(ref fn_decl, _, ref generics, ref block) => {
                 // If this is the main function, we must record it in the
                 // session.
                 // FIXME #4404 android JNI hacks
@@ -3771,7 +3769,7 @@ pub impl Resolver {
                 self.resolve_function(OpaqueFunctionRibKind,
                                       Some(@/*bad*/copy *fn_decl),
                                       HasTypeParameters
-                                        (ty_params,
+                                        (generics,
                                          item.id,
                                          0,
                                          OpaqueFunctionRibKind),
@@ -3798,13 +3796,13 @@ pub impl Resolver {
                                type_parameters: TypeParameters,
                                f: fn()) {
         match type_parameters {
-            HasTypeParameters(type_parameters, node_id, initial_index,
+            HasTypeParameters(generics, node_id, initial_index,
                               rib_kind) => {
 
                 let function_type_rib = @Rib(rib_kind);
-                (*self.type_ribs).push(function_type_rib);
+                self.type_ribs.push(function_type_rib);
 
-                for (*type_parameters).eachi |index, type_parameter| {
+                for generics.ty_params.eachi |index, type_parameter| {
                     let name = type_parameter.ident;
                     debug!("with_type_parameter_rib: %d %d", node_id,
                            type_parameter.id);
@@ -3815,7 +3813,7 @@ pub impl Resolver {
                     // the item that bound it
                     self.record_def(type_parameter.id,
                                     def_typaram_binder(node_id));
-                    (*function_type_rib).bindings.insert(name, def_like);
+                    function_type_rib.bindings.insert(name, def_like);
                 }
             }
 
@@ -3828,7 +3826,7 @@ pub impl Resolver {
 
         match type_parameters {
             HasTypeParameters(*) => {
-                (*self.type_ribs).pop();
+                self.type_ribs.pop();
             }
 
             NoTypeParameters => {
@@ -3871,8 +3869,8 @@ pub impl Resolver {
                 NoTypeParameters => {
                     // Continue.
                 }
-                HasTypeParameters(type_parameters, _, _, _) => {
-                    self.resolve_type_parameters(/*bad*/copy *type_parameters,
+                HasTypeParameters(ref generics, _, _, _) => {
+                    self.resolve_type_parameters(&generics.ty_params,
                                                  visitor);
                 }
             }
@@ -3927,7 +3925,7 @@ pub impl Resolver {
     }
 
     fn resolve_type_parameters(@mut self,
-                               type_parameters: ~[ty_param],
+                               type_parameters: &OptVec<TyParam>,
                                visitor: ResolveVisitor) {
         for type_parameters.each |type_parameter| {
             for type_parameter.bounds.each |&bound| {
@@ -3941,19 +3939,17 @@ pub impl Resolver {
 
     fn resolve_struct(@mut self,
                       id: node_id,
-                      type_parameters: @~[ty_param],
-                      fields: ~[@struct_field],
+                      generics: &Generics,
+                      fields: &[@struct_field],
                       optional_destructor: Option<struct_dtor>,
                       visitor: ResolveVisitor) {
         // If applicable, create a rib for the type parameters.
-        let borrowed_type_parameters: &~[ty_param] = &*type_parameters;
         do self.with_type_parameter_rib(HasTypeParameters
-                                        (borrowed_type_parameters, id, 0,
+                                        (generics, id, 0,
                                          OpaqueFunctionRibKind)) {
 
             // Resolve the type parameters.
-            self.resolve_type_parameters(/*bad*/copy *type_parameters,
-                                         visitor);
+            self.resolve_type_parameters(&generics.ty_params, visitor);
 
             // Resolve fields.
             for fields.each |field| {
@@ -3986,9 +3982,9 @@ pub impl Resolver {
                       method: @method,
                       outer_type_parameter_count: uint,
                       visitor: ResolveVisitor) {
-        let borrowed_method_type_parameters = &method.tps;
+        let method_generics = &method.generics;
         let type_parameters =
-            HasTypeParameters(borrowed_method_type_parameters,
+            HasTypeParameters(method_generics,
                               method.id,
                               outer_type_parameter_count,
                               rib_kind);
@@ -4010,19 +4006,18 @@ pub impl Resolver {
     fn resolve_implementation(@mut self,
                               id: node_id,
                               span: span,
-                              type_parameters: ~[ty_param],
+                              generics: &Generics,
                               opt_trait_reference: Option<@trait_ref>,
                               self_type: @Ty,
                               methods: ~[@method],
                               visitor: ResolveVisitor) {
         // If applicable, create a rib for the type parameters.
-        let outer_type_parameter_count = type_parameters.len();
-        let borrowed_type_parameters: &~[ty_param] = &type_parameters;
+        let outer_type_parameter_count = generics.ty_params.len();
         do self.with_type_parameter_rib(HasTypeParameters
-                                        (borrowed_type_parameters, id, 0,
+                                        (generics, id, 0,
                                          NormalRibKind)) {
             // Resolve the type parameters.
-            self.resolve_type_parameters(/*bad*/copy type_parameters,
+            self.resolve_type_parameters(&generics.ty_params,
                                          visitor);
 
             // Resolve the trait reference, if necessary.

@@ -61,9 +61,9 @@ pub impl message {
     }
 
     /// Return the type parameters actually used by this message
-    fn get_params(&mut self) -> ~[ast::ty_param] {
+    fn get_generics(&self) -> ast::Generics {
         match *self {
-          message(_, _, _, this, _) => this.ty_params
+          message(_, _, _, this, _) => this.generics
         }
     }
 }
@@ -76,7 +76,7 @@ pub struct state_ {
     ident: ast::ident,
     span: span,
     dir: direction,
-    ty_params: ~[ast::ty_param],
+    generics: ast::Generics,
     messages: @mut ~[message],
     proto: protocol
 }
@@ -100,7 +100,7 @@ pub impl state_ {
     fn to_ty(&self, cx: ext_ctxt) -> @ast::Ty {
         cx.ty_path_ast_builder
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
-                cx.ty_vars(self.ty_params)))
+                cx.ty_vars(&self.generics.ty_params)))
     }
 
     /// Iterate over the states that can be reached in one message
@@ -161,7 +161,7 @@ pub impl protocol_ {
 
     fn has_ty_params(&mut self) -> bool {
         for self.states.each |s| {
-            if s.ty_params.len() > 0 {
+            if s.generics.ty_params.len() > 0 {
                 return true;
             }
         }
@@ -175,7 +175,7 @@ pub impl protocol_ {
 
 pub impl protocol {
     fn add_state_poly(&self, name: ~str, ident: ast::ident, dir: direction,
-                      +ty_params: ~[ast::ty_param]) -> state {
+                      +generics: ast::Generics) -> state {
         let messages = @mut ~[];
 
         let state = @state_ {
@@ -184,7 +184,7 @@ pub impl protocol {
             ident: ident,
             span: self.span,
             dir: dir,
-            ty_params: ty_params,
+            generics: generics,
             messages: messages,
             proto: *self
         };

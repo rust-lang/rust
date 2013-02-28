@@ -51,7 +51,7 @@ use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
 use ast::{ty_field, ty_fixed_length_vec, ty_closure, ty_bare_fn};
 use ast::{ty_infer, ty_mac, ty_method};
-use ast::{ty_nil, ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr};
+use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rec, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, type_value_ns, uniq};
 use ast::{unnamed_field, unsafe_blk, unsafe_fn, variant, view_item};
 use ast::{view_item_, view_item_extern_mod, view_item_use};
@@ -84,6 +84,8 @@ use parse::token;
 use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
 use print::pprust::expr_to_str;
 use util::interner::Interner;
+use opt_vec;
+use opt_vec::OptVec;
 
 use core::cmp;
 use core::either::{Either, Left, Right};
@@ -439,7 +441,7 @@ pub impl Parser {
             // could change.
             let ident = p.parse_method_name();
 
-            let tps = p.parse_ty_params();
+            let generics = p.parse_generics();
 
             let (self_ty, d) = do self.parse_fn_decl_with_self() |p| {
                 // This is somewhat dubious; We don't want to allow argument
@@ -464,7 +466,7 @@ pub impl Parser {
                     attrs: attrs,
                     purity: pur,
                     decl: d,
-                    tps: tps,
+                    generics: generics,
                     self_ty: self_ty,
                     id: p.get_id(),
                     span: mk_sp(lo, hi)
@@ -478,7 +480,7 @@ pub impl Parser {
                 provided(@ast::method {
                     ident: ident,
                     attrs: attrs,
-                    tps: tps,
+                    generics: generics,
                     self_ty: self_ty,
                     purity: pur,
                     decl: d,
@@ -921,19 +923,7 @@ pub impl Parser {
         };
 
         // Parse any lifetime or type parameters which may appear:
-        let tps = {
-            if !self.eat(token::LT) {
-                ~[]
-            } else {
-                // First consume lifetimes.
-                let _lifetimes = self.parse_lifetimes();
-                let result = self.parse_seq_to_gt(
-                    Some(token::COMMA),
-                    |p| p.parse_ty(false));
-                result
-            }
-        };
-
+        let tps = self.parse_generic_values();
         let hi = self.span.lo;
 
         @ast::path { span: mk_sp(lo, hi),
@@ -979,7 +969,7 @@ pub impl Parser {
         }
     }
 
-    fn parse_lifetimes() -> ~[ast::Lifetime] {
+    fn parse_lifetimes() -> OptVec<ast::Lifetime> {
         /*!
          *
          * Parses zero or more comma separated lifetimes.
@@ -988,7 +978,7 @@ pub impl Parser {
          * lists, where we expect something like `<'a, 'b, T>`.
          */
 
-        let mut res = ~[];
+        let mut res = opt_vec::Empty;
         loop {
             match *self.token {
                 token::LIFETIME(_) => {
@@ -1163,7 +1153,7 @@ pub impl Parser {
                     let remaining_exprs =
                         self.parse_seq_to_end(token::RBRACKET,
                             seq_sep_trailing_allowed(token::COMMA),
-                            |p| p.parse_expr());
+                            |p| p.parse_expr()).to_vec();
                     ex = expr_vec(~[first_expr] + remaining_exprs, mutbl);
                 } else {
                     // Vector with one element.
@@ -1295,8 +1285,7 @@ pub impl Parser {
                     self.bump();
                     let tys = if self.eat(token::MOD_SEP) {
                         self.expect(token::LT);
-                        self.parse_seq_to_gt(Some(token::COMMA),
-                                             |p| p.parse_ty(false))
+                        self.parse_generic_values_after_lt()
                     } else {
                         ~[]
                     };
@@ -1426,7 +1415,7 @@ pub impl Parser {
                 vec::append(
                     self.parse_seq_to_before_end(
                         ket, seq_sep_none(),
-                        |p| p.parse_token_tree()),
+                        |p| p.parse_token_tree()).to_vec(),
                     // the close delimiter:
                     ~[parse_any_tt_tok(self)])))
           }
@@ -2636,81 +2625,105 @@ pub impl Parser {
         if self.eat_keyword(~"once") { ast::Once } else { ast::Many }
     }
 
-    fn parse_optional_ty_param_bounds() -> @~[ty_param_bound] {
-        let mut bounds = ~[];
-        if self.eat(token::COLON) {
-            loop {
-                if self.eat(token::BINOP(token::AND)) {
-                    if self.eat_keyword(~"static") {
-                        bounds.push(RegionTyParamBound);
-                    } else {
-                        self.span_err(*self.span,
-                                      ~"`&static` is the only permissible \
-                                        region bound here");
-                    }
-                } else if is_ident(*self.token) {
-                    let maybe_bound = match *self.token {
-                      token::IDENT(copy sid, _) => {
-                        match *self.id_to_str(sid) {
+    fn parse_optional_ty_param_bounds() -> @OptVec<TyParamBound> {
+        if !self.eat(token::COLON) {
+            return @opt_vec::Empty;
+        }
 
-                          ~"send"
-                          | ~"copy"
-                          | ~"const"
-                          | ~"owned" => {
-                            self.obsolete(*self.span,
-                                          ObsoleteLowerCaseKindBounds);
-                            // Bogus value, but doesn't matter, since
-                            // is an error
-                            Some(TraitTyParamBound(self.mk_ty_path(sid)))
-                          }
-
-                          _ => None
-                        }
-                      }
-                      _ => self.bug(
-                          ~"is_ident() said this would be an identifier")
-                    };
-
-                    match maybe_bound {
-                        Some(bound) => {
-                            self.bump();
-                            bounds.push(bound);
-                        }
-                        None => {
-                            let ty = self.parse_ty(false);
-                            bounds.push(TraitTyParamBound(ty));
-                        }
-                    }
+        let mut result = opt_vec::Empty;
+        loop {
+            if self.eat(token::BINOP(token::AND)) {
+                if self.eat_keyword(~"static") {
+                    result.push(RegionTyParamBound);
                 } else {
-                    break;
+                    self.span_err(*self.span,
+                                  ~"`&static` is the only permissible \
+                                    region bound here");
                 }
+            } else if is_ident(*self.token) {
+                let maybe_bound = match *self.token {
+                    token::IDENT(sid, _) => {
+                        match *self.id_to_str(sid) {
+                            ~"send" |
+                            ~"copy" |
+                            ~"const" |
+                            ~"owned" => {
+                                self.obsolete(
+                                    *self.span,
+                                    ObsoleteLowerCaseKindBounds);
 
-                if self.eat(token::BINOP(token::PLUS)) {
-                    loop;
-                }
+                                // Bogus value, but doesn't matter, since
+                                // is an error
+                                Some(TraitTyParamBound(
+                                    self.mk_ty_path(sid)))
+                            }
 
-                if is_ident_or_path(*self.token) {
-                    self.obsolete(*self.span,
-                                  ObsoleteTraitBoundSeparator);
+                            _ => None
+                        }
+                    }
+                    _ => fail!()
+                };
+
+                match maybe_bound {
+                    Some(bound) => {
+                        self.bump();
+                        result.push(bound);
+                    }
+                    None => {
+                        let ty = self.parse_ty(false);
+                        result.push(TraitTyParamBound(ty));
+                    }
                 }
+            } else {
+                break;
+            }
+
+            if self.eat(token::BINOP(token::PLUS)) {
+                loop;
+            }
+
+            if is_ident_or_path(*self.token) {
+                self.obsolete(*self.span,
+                              ObsoleteTraitBoundSeparator);
             }
         }
-        return @bounds;
+
+        return @result;
     }
 
-    fn parse_ty_param() -> ty_param {
+    fn parse_ty_param() -> TyParam {
         let ident = self.parse_ident();
         let bounds = self.parse_optional_ty_param_bounds();
-        ast::ty_param { ident: ident, id: self.get_id(), bounds: bounds }
+        ast::TyParam { ident: ident, id: self.get_id(), bounds: bounds }
     }
 
-    fn parse_ty_params() -> ~[ty_param] {
+    fn parse_generics() -> ast::Generics {
         if self.eat(token::LT) {
-            let _lifetimes = self.parse_lifetimes();
-            self.parse_seq_to_gt(
+            let lifetimes = self.parse_lifetimes();
+            let ty_params = self.parse_seq_to_gt(
                 Some(token::COMMA),
-                |p| p.parse_ty_param())
-        } else { ~[] }
+                |p| p.parse_ty_param());
+            return ast::Generics {lifetimes: lifetimes,
+                                  ty_params: ty_params};
+        } else {
+            return ast_util::empty_generics();
+        }
+    }
+
+    fn parse_generic_values() -> ~[@Ty] {
+        if !self.eat(token::LT) {
+            ~[]
+        } else {
+            self.parse_generic_values_after_lt()
+        }
+    }
+
+    fn parse_generic_values_after_lt() -> ~[@Ty] {
+        let _lifetimes = self.parse_lifetimes();
+        let result = self.parse_seq_to_gt(
+            Some(token::COMMA),
+            |p| p.parse_ty(false));
+        result.to_vec()
     }
 
     fn parse_fn_decl(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
@@ -2802,7 +2815,7 @@ pub impl Parser {
                     args_or_capture_items =
                         self.parse_seq_to_before_end(token::RPAREN,
                                                      sep,
-                                                     parse_arg_fn);
+                                                     parse_arg_fn).to_vec();
                 }
                 token::RPAREN => {
                     args_or_capture_items = ~[];
@@ -2818,7 +2831,7 @@ pub impl Parser {
             args_or_capture_items =
                 self.parse_seq_to_before_end(token::RPAREN,
                                              sep,
-                                             parse_arg_fn);
+                                             parse_arg_fn).to_vec();
         }
 
         self.expect(token::RPAREN);
@@ -2861,10 +2874,10 @@ pub impl Parser {
         }
     }
 
-    fn parse_fn_header() -> (ident, ~[ty_param]) {
+    fn parse_fn_header() -> (ident, ast::Generics) {
         let id = self.parse_value_ident();
-        let ty_params = self.parse_ty_params();
-        (id, ty_params)
+        let generics = self.parse_generics();
+        (id, generics)
     }
 
     fn mk_item(+lo: BytePos, +hi: BytePos, +ident: ident,
@@ -2879,10 +2892,10 @@ pub impl Parser {
     }
 
     fn parse_item_fn(purity: purity) -> item_info {
-        let (ident, tps) = self.parse_fn_header();
+        let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(|p| p.parse_arg());
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
-        (ident, item_fn(decl, purity, tps, body), Some(inner_attrs))
+        (ident, item_fn(decl, purity, generics, body), Some(inner_attrs))
     }
 
     fn parse_method_name() -> ident {
@@ -2899,7 +2912,7 @@ pub impl Parser {
         let visa = self.parse_visibility();
         let pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
-        let tps = self.parse_ty_params();
+        let generics = self.parse_generics();
         let (self_ty, decl) = do self.parse_fn_decl_with_self() |p| {
             p.parse_arg()
         };
@@ -2911,7 +2924,7 @@ pub impl Parser {
         @ast::method {
             ident: ident,
             attrs: attrs,
-            tps: tps,
+            generics: generics,
             self_ty: self_ty,
             purity: pur,
             decl: decl,
@@ -2926,7 +2939,7 @@ pub impl Parser {
     fn parse_item_trait() -> item_info {
         let ident = self.parse_ident();
         self.parse_region_param();
-        let tps = self.parse_ty_params();
+        let tps = self.parse_generics();
 
         // Parse traits, if necessary.
         let traits;
@@ -2954,12 +2967,7 @@ pub impl Parser {
         }
 
         // First, parse type parameters if necessary.
-        let mut tps;
-        if *self.token == token::LT {
-            tps = self.parse_ty_params();
-        } else {
-            tps = ~[];
-        }
+        let generics = self.parse_generics();
 
         // This is a new-style impl declaration.
         // XXX: clownshoes
@@ -3007,37 +3015,7 @@ pub impl Parser {
             }
         }
 
-        (ident, item_impl(tps, opt_trait, ty, meths), None)
-    }
-
-    // Instantiates ident <i> with references to <typarams> as arguments.
-    // Used to create a path that refers to a class which will be defined as
-    // the return type of the ctor function.
-    fn ident_to_path_tys(i: ident,
-                         typarams: ~[ty_param]) -> @path {
-        let s = *self.last_span;
-
-        @ast::path {
-             span: s,
-             global: false,
-             idents: ~[i],
-             rp: None,
-             types: do typarams.map |tp| {
-                @Ty {
-                    id: self.get_id(),
-                    node: ty_path(ident_to_path(s, tp.ident), self.get_id()),
-                    span: s
-                }
-            }
-         }
-    }
-
-    fn ident_to_path(i: ident) -> @path {
-        @ast::path { span: *self.last_span,
-                     global: false,
-                     idents: ~[i],
-                     rp: None,
-                     types: ~[] }
+        (ident, item_impl(generics, opt_trait, ty, meths), None)
     }
 
     fn parse_trait_ref() -> @trait_ref {
@@ -3050,13 +3028,13 @@ pub impl Parser {
     fn parse_trait_ref_list(ket: token::Token) -> ~[@trait_ref] {
         self.parse_seq_to_before_end(
             ket, seq_sep_none(),
-            |p| p.parse_trait_ref())
+            |p| p.parse_trait_ref()).to_vec()
     }
 
     fn parse_item_struct() -> item_info {
         let class_name = self.parse_value_ident();
         self.parse_region_param();
-        let ty_params = self.parse_ty_params();
+        let generics = self.parse_generics();
         if self.eat(token::COLON) {
             self.obsolete(*self.span, ObsoleteClassTraits);
             let _ = self.parse_trait_ref_list(token::LBRACE);
@@ -3133,7 +3111,7 @@ pub impl Parser {
              fields: fields,
              dtor: actual_dtor,
              ctor_id: if is_tuple_like { Some(new_id) } else { None }
-         }, ty_params),
+         }, generics),
          None)
     }
 
@@ -3397,13 +3375,13 @@ pub impl Parser {
         let lo = self.span.lo;
         let vis = self.parse_visibility();
         let purity = self.parse_fn_purity();
-        let (ident, tps) = self.parse_fn_header();
+        let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(|p| p.parse_arg());
         let mut hi = self.span.hi;
         self.expect(token::SEMI);
         @ast::foreign_item { ident: ident,
                              attrs: attrs,
-                             node: foreign_item_fn(decl, purity, tps),
+                             node: foreign_item_fn(decl, purity, generics),
                              id: self.get_id(),
                              span: mk_sp(lo, hi),
                              vis: vis }
@@ -3566,7 +3544,7 @@ pub impl Parser {
     fn parse_item_type() -> item_info {
         let (_, ident) = self.parse_type_decl();
         self.parse_region_param();
-        let tps = self.parse_ty_params();
+        let tps = self.parse_generics();
         self.expect(token::EQ);
         let ty = self.parse_ty(false);
         self.expect(token::SEMI);
@@ -3622,8 +3600,7 @@ pub impl Parser {
         };
     }
 
-    fn parse_enum_def(ty_params: ~[ast::ty_param])
-                   -> enum_def {
+    fn parse_enum_def(+generics: ast::Generics) -> enum_def {
         let mut variants: ~[variant] = ~[];
         let mut all_nullary = true, have_disr = false;
         let mut common_fields = None;
@@ -3650,7 +3627,7 @@ pub impl Parser {
             if self.eat_keyword(~"enum") {
                 ident = self.parse_ident();
                 self.expect(token::LBRACE);
-                let nested_enum_def = self.parse_enum_def(ty_params);
+                let nested_enum_def = self.parse_enum_def(generics);
                 kind = enum_variant_kind(nested_enum_def);
                 needs_comma = false;
             } else {
@@ -3706,7 +3683,7 @@ pub impl Parser {
     fn parse_item_enum() -> item_info {
         let id = self.parse_ident();
         self.parse_region_param();
-        let ty_params = self.parse_ty_params();
+        let generics = self.parse_generics();
         // Newtype syntax
         if *self.token == token::EQ {
             self.bump();
@@ -3729,14 +3706,14 @@ pub impl Parser {
                     enum_def(
                         ast::enum_def_ { variants: ~[variant], common: None }
                     ),
-                    ty_params),
+                    generics),
                 None
             );
         }
         self.expect(token::LBRACE);
 
-        let enum_definition = self.parse_enum_def(ty_params);
-        (id, item_enum(enum_definition, ty_params), None)
+        let enum_definition = self.parse_enum_def(generics);
+        (id, item_enum(enum_definition, generics), None)
     }
 
     fn parse_fn_ty_sigil() -> Option<Sigil> {

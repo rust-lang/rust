@@ -753,7 +753,7 @@ fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
 fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
-                       decl: ast::fn_decl) {
+                        decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             match ty.node {
@@ -786,9 +786,9 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
       if attr::foreign_abi(it.attrs) !=
             either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
-            match /*bad*/copy ni.node {
-              ast::foreign_item_fn(decl, _, _) => {
-                check_foreign_fn(cx, it.id, decl);
+            match ni.node {
+              ast::foreign_item_fn(ref decl, _, _) => {
+                check_foreign_fn(cx, it.id, *decl);
               }
               // FIXME #4622: Not implemented.
               ast::foreign_item_const(*) => {}
