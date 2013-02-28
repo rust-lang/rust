@@ -331,7 +331,7 @@ struct Context {
     sess: Session
 }
 
-impl Context {
+pub impl Context {
     fn get_level(&self, lint: lint) -> level {
         get_lint_level(self.curr, lint)
     }

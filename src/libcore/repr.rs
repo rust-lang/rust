@@ -167,7 +167,7 @@ impl MovePtr for ReprVisitor {
     }
 }
 
-impl ReprVisitor {
+pub impl ReprVisitor {
 
     // Various helpers for the TyVisitor impl
 

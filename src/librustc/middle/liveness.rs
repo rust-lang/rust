@@ -254,7 +254,7 @@ impl to_str::ToStr for Variable {
 // variable must not be assigned if there is some successor
 // assignment.  And so forth.
 
-impl LiveNode {
+pub impl LiveNode {
     pure fn is_valid(&self) -> bool { **self != uint::max_value }
 }
 
@@ -334,7 +334,7 @@ fn IrMaps(tcx: ty::ctxt,
     }
 }
 
-impl IrMaps {
+pub impl IrMaps {
     fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
         let ln = LiveNode(self.num_live_nodes);
         self.lnks.push(lnk);
@@ -693,7 +693,7 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
     }
 }
 
-impl Liveness {
+pub impl Liveness {
     fn live_node(&self, node_id: node_id, span: span) -> LiveNode {
         match self.ir.live_node_map.find(&node_id) {
           Some(ln) => ln,
@@ -1649,7 +1649,7 @@ enum ReadKind {
     PartiallyMovedValue
 }
 
-impl @Liveness {
+pub impl @Liveness {
     fn check_ret(&self, id: node_id, sp: span, _fk: visit::fn_kind,
                  entry_ln: LiveNode) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {

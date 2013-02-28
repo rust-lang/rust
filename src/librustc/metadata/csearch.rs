@@ -234,6 +234,14 @@ pub fn struct_dtor(cstore: @mut cstore::CStore, def: ast::def_id)
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::struct_dtor(cdata, def.node)
 }
+
+pub fn get_method_visibility(cstore: @mut cstore::CStore,
+                             def_id: ast::def_id)
+                          -> ast::visibility {
+    let cdata = cstore::get_crate_data(cstore, def_id.crate);
+    decoder::get_method_visibility(cdata, def_id.node)
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

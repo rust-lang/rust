@@ -14,10 +14,11 @@
 
 use core::prelude::*;
 
+use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
 use middle::ty;
-use middle::typeck::{method_map, method_origin, method_param, method_self,
-                     method_super};
+use middle::typeck::{method_map, method_origin, method_param, method_self};
+use middle::typeck::{method_super};
 use middle::typeck::{method_static, method_trait};
 
 use core::dvec::DVec;
@@ -25,7 +26,7 @@ use core::util::ignore;
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_struct};
 use syntax::ast::{expr_unary, ident, item_struct, item_enum, item_impl};
 use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
-use syntax::ast::{provided, required};
+use syntax::ast::{provided, public, required};
 use syntax::ast;
 use syntax::ast_map::{node_item, node_method};
 use syntax::ast_map;
@@ -100,14 +101,52 @@ pub fn check_crate(tcx: ty::ctxt,
     };
 
     // Checks that a private method is in scope.
-    let check_method: @fn(span: span, origin: &method_origin) =
-            |span, origin| {
+    let check_method: @fn(span: span,
+                          origin: &method_origin,
+                          ident: ast::ident) =
+            |span, origin, ident| {
         match *origin {
             method_static(method_id) => {
                 if method_id.crate == local_crate {
                     match tcx.items.find(&method_id.node) {
                         Some(node_method(method, impl_id, _)) => {
-                            if method.vis == private &&
+                            let mut is_private = false;
+                            if method.vis == private {
+                                is_private = true;
+                            } else if method.vis == public {
+                                is_private = false;
+                            } else {
+                                // Look up the enclosing impl.
+                                if impl_id.crate != local_crate {
+                                    tcx.sess.span_bug(span,
+                                                      ~"local method isn't \
+                                                        in local impl?!");
+                                }
+
+                                match tcx.items.find(&impl_id.node) {
+                                    Some(node_item(item, _)) => {
+                                        match item.node {
+                                            item_impl(_, None, _, _)
+                                                    if item.vis != public => {
+                                                is_private = true;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                    Some(_) => {
+                                        tcx.sess.span_bug(span,
+                                                          ~"impl wasn't an \
+                                                            item?!");
+                                    }
+                                    None => {
+                                        tcx.sess.span_bug(span,
+                                                          ~"impl wasn't in \
+                                                            AST map?!");
+                                    }
+                                }
+                            }
+
+                            if is_private &&
                                     (impl_id.crate != local_crate ||
                                      !privileged_items
                                      .contains(&(impl_id.node))) {
@@ -131,7 +170,15 @@ pub fn check_crate(tcx: ty::ctxt,
                         }
                     }
                 } else {
-                    // FIXME #4732: External crates.
+                    let visibility =
+                        csearch::get_method_visibility(tcx.sess.cstore,
+                                                       method_id);
+                    if visibility != public {
+                        tcx.sess.span_err(span,
+                                          fmt!("method `%s` is private",
+                                               *tcx.sess.parse_sess.interner
+                                                   .get(ident)));
+                    }
                 }
             }
             method_param(method_param {
@@ -230,14 +277,16 @@ pub fn check_crate(tcx: ty::ctxt,
                                 Some(ref entry) => {
                                     debug!("(privacy checking) checking \
                                             impl method");
-                                    check_method(expr.span, &(*entry).origin);
+                                    check_method(expr.span,
+                                                 &entry.origin,
+                                                 ident);
                                 }
                             }
                         }
                         _ => {}
                     }
                 }
-                expr_method_call(base, _, _, _, _) => {
+                expr_method_call(base, ident, _, _, _) => {
                     // Ditto
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
@@ -253,7 +302,9 @@ pub fn check_crate(tcx: ty::ctxt,
                                 Some(ref entry) => {
                                     debug!("(privacy checking) checking \
                                             impl method");
-                                    check_method(expr.span, &(*entry).origin);
+                                    check_method(expr.span,
+                                                 &entry.origin,
+                                                 ident);
                                 }
                             }
                         }

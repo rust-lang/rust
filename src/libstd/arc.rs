@@ -30,7 +30,7 @@ use core::util;
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
 pub struct Condvar { is_mutex: bool, failed: &mut bool, cond: &sync::Condvar }
 
-impl &Condvar {
+pub impl &Condvar {
     /// Atomically exit the associated ARC and block until a signal is sent.
     #[inline(always)]
     fn wait() { self.wait_on(0) }
@@ -158,7 +158,7 @@ impl<T:Owned> Clone for MutexARC<T> {
     }
 }
 
-impl<T:Owned> &MutexARC<T> {
+pub impl<T:Owned> &MutexARC<T> {
 
     /**
      * Access the underlying mutable data with mutual exclusion from other
@@ -301,7 +301,7 @@ pub fn rw_arc_with_condvars<T:Const + Owned>(
     RWARC { x: unsafe { shared_mutable_state(data) }, cant_nest: () }
 }
 
-impl<T:Const + Owned> RWARC<T> {
+pub impl<T:Const + Owned> RWARC<T> {
     /// Duplicate a rwlock-protected ARC, as arc::clone.
     fn clone(&self) -> RWARC<T> {
         RWARC { x: unsafe { clone_shared_mutable_state(&self.x) },
@@ -310,7 +310,7 @@ impl<T:Const + Owned> RWARC<T> {
 
 }
 
-impl<T:Const + Owned> &RWARC<T> {
+pub impl<T:Const + Owned> &RWARC<T> {
     /**
      * Access the underlying data mutably. Locks the rwlock in write mode;
      * other readers and writers will block.
@@ -445,7 +445,7 @@ pub enum RWWriteMode<T> =
 /// The "read permission" token used for RWARC.write_downgrade().
 pub enum RWReadMode<T> = (&T, sync::RWlockReadMode);
 
-impl<T:Const + Owned> &RWWriteMode<T> {
+pub impl<T:Const + Owned> &RWWriteMode<T> {
     /// Access the pre-downgrade RWARC in write mode.
     fn write<U>(blk: fn(x: &mut T) -> U) -> U {
         match *self {
@@ -475,7 +475,7 @@ impl<T:Const + Owned> &RWWriteMode<T> {
     }
 }
 
-impl<T:Const + Owned> &RWReadMode<T> {
+pub impl<T:Const + Owned> &RWReadMode<T> {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(blk: fn(x: &T) -> U) -> U {
         match *self {

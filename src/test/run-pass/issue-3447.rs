@@ -13,7 +13,7 @@ struct list<T> {
     next: Option<@mut list<T>>
 }
 
-impl<T> list<T>{
+pub impl<T> list<T>{
     fn addEnd(&mut self, element: &self/T) {
         let newList = list {
             element: element,

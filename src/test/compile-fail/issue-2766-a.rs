@@ -14,7 +14,7 @@ pub mod stream {
         use core::option;
         use core::pipes;
 
-        impl<T:Owned> Stream<T> {
+        pub impl<T:Owned> Stream<T> {
             pub fn recv() -> extern fn(+v: Stream<T>) -> ::stream::Stream<T> {
               // resolve really should report just one error here.
               // Change the test case when it changes.

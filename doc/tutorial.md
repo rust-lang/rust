@@ -2304,11 +2304,10 @@ mod farm {
         farmer: Human
     }
 
-    // Note - visibility modifiers on impls currently have no effect
     impl Farm {
         priv fn feed_chickens(&self) { ... }
         priv fn feed_cows(&self) { ... }
-        fn add_chicken(&self, c: Chicken) { ... }
+        pub fn add_chicken(&self, c: Chicken) { ... }
     }
 
     pub fn feed_animals(farm: &Farm) {

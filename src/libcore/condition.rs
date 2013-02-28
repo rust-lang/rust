@@ -25,7 +25,7 @@ pub struct Condition<T, U> {
     key: task::local_data::LocalDataKey<Handler<T, U>>
 }
 
-impl<T, U> Condition<T, U> {
+pub impl<T, U> Condition<T, U> {
     fn trap(&self, h: &self/fn(T) -> U) -> Trap/&self<T, U> {
         unsafe {
             let p : *RustClosure = ::cast::transmute(&h);
@@ -69,7 +69,7 @@ struct Trap<T, U> {
     handler: @Handler<T, U>
 }
 
-impl<T, U> Trap<T, U> {
+pub impl<T, U> Trap<T, U> {
     fn in<V>(&self, inner: &self/fn() -> V) -> V {
         unsafe {
             let _g = Guard { cond: self.cond };

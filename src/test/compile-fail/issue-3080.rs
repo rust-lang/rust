@@ -10,7 +10,7 @@
 
 // xfail-test
 enum x = ();
-impl x {
+pub impl x {
     unsafe fn with() { } // This should fail
 }
 

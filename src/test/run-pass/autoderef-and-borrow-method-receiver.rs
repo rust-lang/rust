@@ -12,7 +12,7 @@ struct Foo {
     x: int,
 }
 
-impl Foo {
+pub impl Foo {
     fn f(&const self) {}
 }
 
