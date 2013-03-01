@@ -82,8 +82,6 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-#[allow(structural_records)]; // Macros -- needs another snapshot
-
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
 use cell::Cell;

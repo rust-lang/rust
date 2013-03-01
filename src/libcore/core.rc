@@ -227,10 +227,6 @@ pub const debug : u32 = 4_u32;
 
 // The runtime interface used by the compiler
 #[cfg(notest)] pub mod rt;
-// The runtime and compiler interface to fmt!
-#[cfg(stage0)]
-#[path = "private/extfmt.rs"]
-pub mod extfmt;
 // Private APIs
 pub mod private;
 
