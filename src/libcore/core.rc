@@ -253,9 +253,8 @@ pub mod core {
 
     pub use cmp;
     pub use condition;
-    pub use kinds;
-    pub use ops;
     pub use option;
+    pub use kinds;
     pub use sys;
     pub use pipes;
 }
