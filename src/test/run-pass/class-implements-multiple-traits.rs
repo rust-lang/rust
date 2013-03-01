@@ -58,10 +58,8 @@ class cat : noisy, scratchy, bitey {
   new(in_x : uint, in_y : int, in_name: str)
     { self.meows = @mut in_x; self.how_hungry = @mut in_y;
       self.name = in_name; self.scratched = dvec();
-      let hsher: hashfn<body_part> =
-        fn@(p: body_part) -> uint { int::hash(p as int) };
-      let eqer : eqfn<body_part> =
-        fn@(p: body_part, q: body_part)  -> bool { p == q };
+      let hsher: hashfn<body_part> = |p| int::hash(p as int);
+      let eqer : eqfn<body_part> = |p, q| p == q;
       let t : hashmap<body_part, uint> =
         hashmap::<body_part, uint>(hsher, eqer);
       self.bite_counts = t;

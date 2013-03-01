@@ -11,8 +11,8 @@
 // A raw test of vector appending performance.
 
 extern mod std;
-use dvec::DVec;
-use io::WriterUtil;
+use core::dvec::DVec;
+use core::io::WriterUtil;
 
 fn collect_raw(num: uint) -> ~[uint] {
     let mut result = ~[];

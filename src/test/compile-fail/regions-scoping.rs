@@ -12,13 +12,12 @@ fn with<T>(t: T, f: fn(T)) { f(t) }
 
 fn nested<'x>(x: &'x int) {  // (1)
     do with(
-        fn&(x: &'x int, // Refers to the region `x` at (1)
-            y: &'y int, // A fresh region `y` (2)
-            z: fn<'z>(x: &'x int, // Refers to `x` at (1)
-                      y: &'y int, // Refers to `y` at (2)
-                      z: &'z int) -> &'z int) // A fresh region `z` (3)
-            -> &x/int {
-
+        |x: &'x int, // Refers to the region `x` at (1)
+         y: &'y int, // A fresh region `y` (2)
+         z: &fn<'z>(x: &'x int, // Refers to `x` at (1)
+                    y: &'y int, // Refers to `y` at (2)
+                    z: &'z int) -> &'z int| // A fresh region `z` (3)
+                 -> &x/int {
             if false { return z(x, y, x); }
 
             if false { return z(x, y, y); }

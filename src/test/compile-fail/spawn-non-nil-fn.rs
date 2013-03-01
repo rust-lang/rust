@@ -12,4 +12,4 @@
 
 extern mod std;
 
-fn main() { task::spawn(fn~() -> int { 10 }); }
+fn main() { task::spawn(|| -> int { 10 }); }

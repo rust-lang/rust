@@ -9,12 +9,12 @@
 // except according to those terms.
 
 struct cat {
-    meow: fn@(),
+    meow: @fn(),
 }
 
 fn cat() -> cat {
     cat {
-        meow: fn@() { error!("meow"); }
+        meow: || error!("meow")
     }
 }
 

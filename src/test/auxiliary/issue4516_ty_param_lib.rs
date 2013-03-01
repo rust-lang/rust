@@ -9,5 +9,6 @@
 // except according to those terms.
 
 pub fn to_closure<A:Durable + Copy>(x: A) -> @fn() -> A {
-    fn@() -> A { copy x }
+    let result: @fn() -> A = || copy x;
+    result
 }

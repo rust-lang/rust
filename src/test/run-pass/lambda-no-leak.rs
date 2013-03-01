@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure we don't leak fn@s in silly ways.
-fn force(f: fn@()) { f() }
+// Make sure we don't leak @fns in silly ways.
+fn force(f: @fn()) { f() }
 pub fn main() {
     let x = 7;
-    let _f = fn@() { log(error, x); };
-    force(fn@() { log(error, x); });
+    let _f: @fn() = || log(error, x);
+    force(|| log(error, x));
 }

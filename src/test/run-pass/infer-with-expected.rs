@@ -13,7 +13,7 @@
 // type must be known in this context' if the passing down doesn't
 // happen.)
 
-fn eat_tup(_r: ~@(int, fn@(Pair) -> int)) {}
+fn eat_tup(_r: ~@(int, @fn(Pair) -> int)) {}
 fn eat_rec(_r: @~Rec) {}
 
 struct Rec { a: int, b: fn(Pair) -> int }

@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn copy1<T:Copy>(t: T) -> fn@() -> T {
-    fn@() -> T { t } //~ ERROR value may contain borrowed pointers
+fn copy1<T:Copy>(t: T) -> @fn() -> T {
+    let result: @fn() -> T = || t; //~ ERROR value may contain borrowed pointers
+    result
 }
 
-fn copy2<T:Copy + &static>(t: T) -> fn@() -> T {
-    fn@() -> T { t }
+fn copy2<T:Copy + &static>(t: T) -> @fn() -> T {
+    let result: @fn() -> T = || t;
+    result
 }
 
 fn main() {
@@ -23,7 +25,10 @@ fn main() {
     copy2(@3);
     copy2(@&x); //~ ERROR does not fulfill `&static`
 
-    copy2(fn@() {});
-    copy2(fn~() {}); //~ ERROR does not fulfill `Copy`
-    copy2(fn&() {}); //~ ERROR does not fulfill `&static`
+    let boxed: @fn() = || {};
+    copy2(boxed);
+    let owned: ~fn() = || {};
+    copy2(owned);    //~ ERROR does not fulfill `Copy`
+    let borrowed: &fn() = || {};
+    copy2(borrowed); //~ ERROR does not fulfill `&static`
 }

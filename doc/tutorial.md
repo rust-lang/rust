@@ -2291,13 +2291,12 @@ be private. But this encapsulation is at the module level, not the
 struct level. Note that fields and methods are _public_ by default.
 
 ~~~
-mod farm {
-# use farm;
+pub mod farm {
 # pub type Chicken = int;
 # type Cow = int;
 # enum Human = int;
 # impl Human { fn rest(&self) { } }
-# pub fn make_me_a_farm() -> farm::Farm { farm::Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
+# pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
     pub struct Farm {
         priv chickens: ~[Chicken],
         priv cows: ~[Cow],

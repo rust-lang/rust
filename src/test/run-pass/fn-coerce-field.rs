@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct r {
-    field: fn@()
+    field: @fn()
 }
 
 pub fn main() {

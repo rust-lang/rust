@@ -15,8 +15,8 @@ extern mod std;
  *
  * The hash should concentrate entropy in the lower bits.
  */
-type HashFn<K> = pure fn~(K) -> uint;
-type EqFn<K> = pure fn~(K, K) -> bool;
+type HashFn<K> = ~pure fn(K) -> uint;
+type EqFn<K> = ~pure fn(K, K) -> bool;
 
 struct LM { resize_at: uint, size: uint }
 

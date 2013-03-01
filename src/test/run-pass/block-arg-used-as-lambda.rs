@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn to_lambda(f: fn@(uint) -> uint) -> fn@(uint) -> uint {
+fn to_lambda(f: @fn(uint) -> uint) -> @fn(uint) -> uint {
     return f;
 }
 
 pub fn main() {
-    let x: fn@(uint) -> uint = to_lambda(|x| x * 2u );
+    let x: @fn(uint) -> uint = to_lambda(|x| x * 2u );
     let y = to_lambda(x);
 
     let x_r = x(22u);

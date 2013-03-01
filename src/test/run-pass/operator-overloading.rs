@@ -66,5 +66,6 @@ pub fn main() {
     assert q.y == !(p.y);
 
     // Issue #1733
-    fn~(_x: int){}(p[true]);
+    let result: ~fn(int) = |_|();
+    result(p[true]);
 }
