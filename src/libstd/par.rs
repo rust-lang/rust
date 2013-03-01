@@ -94,24 +94,24 @@ pub fn map<A:Copy + Owned,B:Copy + Owned>(
     xs: &[A], fn_factory: &fn() -> ~fn(&A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         let f = fn_factory();
-        fn~(_base: uint, slice : &[A]) -> ~[B] {
-            vec::map(slice, |x| f(x))
-        }
+        let result: ~fn(uint, &[A]) -> ~[B] =
+            |_, slice| vec::map(slice, |x| f(x));
+        result
     }))
 }
 
 /// A parallel version of mapi.
 pub fn mapi<A:Copy + Owned,B:Copy + Owned>(
-    xs: &[A],
-    fn_factory: &fn() -> ~fn(uint, &A) -> B) -> ~[B]
-{
+        xs: &[A],
+        fn_factory: &fn() -> ~fn(uint, &A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
         let f = fn_factory();
-        fn~(base: uint, slice : &[A]) -> ~[B] {
+        let result: ~fn(uint, &[A]) -> ~[B] = |base, slice| {
             vec::mapi(slice, |i, x| {
                 f(i + base, x)
             })
-        }
+        };
+        result
     });
     let r = vec::concat(slices);
     log(info, (r.len(), xs.len()));
@@ -126,11 +126,12 @@ pub fn alli<A:Copy + Owned>(
 {
     do vec::all(map_slices(xs, || {
         let f = fn_factory();
-        fn~(base: uint, slice : &[A]) -> bool {
+        let result: ~fn(uint, &[A]) -> bool = |base, slice| {
             vec::alli(slice, |i, x| {
                 f(i + base, x)
             })
-        }
+        };
+        result
     })) |x| { *x }
 }
 
@@ -140,8 +141,8 @@ pub fn any<A:Copy + Owned>(
     fn_factory: &fn() -> ~fn(&A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         let f = fn_factory();
-        fn~(_base : uint, slice: &[A]) -> bool {
-            vec::any(slice, |x| f(x))
-        }
+        let result: ~fn(uint, &[A]) -> bool =
+            |_, slice| vec::any(slice, |x| f(x));
+        result
     })) |x| { *x }
 }
