@@ -159,6 +159,6 @@ impl ABIInfo for ARM_ABIInfo {
     }
 }
 
-pub fn abi_info() -> ABIInfo {
-    return ARM_ABIInfo as ABIInfo;
+pub fn abi_info() -> @ABIInfo {
+    return @ARM_ABIInfo as @ABIInfo;
 }

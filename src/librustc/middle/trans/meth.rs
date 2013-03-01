@@ -870,26 +870,11 @@ pub fn trans_trait_cast(bcx: block,
     match vstore {
         ty::vstore_slice(*) | ty::vstore_box => {
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-            if bcx.tcx().legacy_boxed_traits.contains_key(&id) {
-                // Allocate an @ box and store the value into it
-                let MallocResult {bcx: new_bcx, box: llbox, body: body} =
-                    malloc_boxed(bcx, v_ty);
-                bcx = new_bcx;
-                add_clean_free(bcx, llbox, heap_managed);
-                bcx = expr::trans_into(bcx, val, SaveIn(body));
-                revoke_clean(bcx, llbox);
-
-                // Store the @ box into the pair
-                Store(bcx, llbox, PointerCast(bcx,
-                                              llboxdest,
-                                              T_ptr(val_ty(llbox))));
-            } else {
-                // Just store the pointer into the pair.
-                llboxdest = PointerCast(bcx,
-                                        llboxdest,
-                                        T_ptr(type_of(bcx.ccx(), v_ty)));
-                bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
-            }
+            // Just store the pointer into the pair.
+            llboxdest = PointerCast(bcx,
+                                    llboxdest,
+                                    T_ptr(type_of(bcx.ccx(), v_ty)));
+            bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
         }
         ty::vstore_uniq => {
             // Translate the uniquely-owned value into the second element of
