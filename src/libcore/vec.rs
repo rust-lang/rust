@@ -1450,6 +1450,9 @@ pub fn reverse<T>(v: &mut [T]) {
  *
  * Reverse the elements in the vector between `start` and `end - 1`.
  *
+ * If either start or end do not represent valid positions in the vector, the
+ * vector is returned unchanged.
+ *
  * # Arguments
  *
  * * `v` - The mutable vector to be modified
@@ -1469,13 +1472,10 @@ pub fn reverse<T>(v: &mut [T]) {
  * ~~~
  *
  * `v` now contains `[1,4,3,2,5]`.
- *
- * # Safety note
- *
- * Behavior is undefined if `start` or `end` do not represent valid
- * positions in `v`.
  */
 pub fn reverse_part<T>(v: &mut [T], start: uint, end : uint) {
+    let sz = v.len();
+    if start >= sz || end > sz { return; }
     let mut i = start;
     let mut j = end - 1;
     while i < j {
