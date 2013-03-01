@@ -478,17 +478,16 @@ pub pure fn from_str_bytes_common<T:NumCast+Zero+One+Ord+Copy+Div<T,T>+
         }
     }
 
-    // XXX: Bytevector constant from str
     if special {
-        if buf == str::to_bytes("inf") || buf == str::to_bytes("+inf") {
+        if buf == str::inf_buf || buf == str::positive_inf_buf {
             return NumStrConv::inf();
-        } else if buf == str::to_bytes("-inf") {
+        } else if buf == str::negative_inf_buf {
             if negative {
                 return NumStrConv::neg_inf();
             } else {
                 return None;
             }
-        } else if buf == str::to_bytes("NaN") {
+        } else if buf == str::nan_buf {
             return NumStrConv::NaN();
         }
     }
