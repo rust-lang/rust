@@ -16,7 +16,7 @@ use std::time::precise_time_s;
 use std::oldmap;
 use std::oldmap::{Map, HashMap};
 
-use io::{Reader, ReaderUtil};
+use core::io::{Reader, ReaderUtil};
 
 macro_rules! bench (
     ($id:ident) => (maybe_run_test(argv, stringify!($id).to_owned(), $id))

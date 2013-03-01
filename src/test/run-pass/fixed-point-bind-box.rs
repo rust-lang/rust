@@ -10,15 +10,15 @@
 
 // xfail-fast
 
-fn fix_help<A, B>(f: extern fn(fn@(A) -> B, A) -> B, x: A) -> B {
+fn fix_help<A, B>(f: extern fn(@fn(A) -> B, A) -> B, x: A) -> B {
     return f( |a| fix_help(f, a), x);
 }
 
-fn fix<A, B>(f: extern fn(fn@(A) -> B, A) -> B) -> fn@(A) -> B {
+fn fix<A, B>(f: extern fn(@fn(A) -> B, A) -> B) -> @fn(A) -> B {
     return |a| fix_help(f, a);
 }
 
-fn fact_(f: fn@(v: int) -> int, n: int) -> int {
+fn fact_(f: @fn(v: int) -> int, n: int) -> int {
     // fun fact 0 = 1
     return if n == 0 { 1 } else { n * f(n - 1) };
 }

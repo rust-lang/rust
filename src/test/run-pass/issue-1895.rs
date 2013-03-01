@@ -10,8 +10,7 @@
 
 pub fn main() {
   let x = 1;
-  let y = fn@() -> int {
-             x
-          }();
+  let y: @fn() -> int = || x;
+  let z = y();
 }
 

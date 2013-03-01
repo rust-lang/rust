@@ -14,7 +14,7 @@
 extern mod std;
 use core::path::{Path};
 
-type rsrc_loader = fn~ (path: &Path) -> result::Result<~str, ~str>;
+type rsrc_loader = ~fn(path: &Path) -> result::Result<~str, ~str>;
 
 #[test]
 fn tester()

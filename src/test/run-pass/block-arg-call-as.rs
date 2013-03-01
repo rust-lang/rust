@@ -10,19 +10,15 @@
 
 extern mod std;
 
-fn asSendfn( f : fn~()->uint ) -> uint {
+fn asSendfn( f : ~fn()->uint ) -> uint {
    return f();
 }
 
-fn asLambda( f : fn@()->uint ) -> uint {
+fn asLambda( f : @fn()->uint ) -> uint {
    return f();
 }
 
-fn asBlock( f : fn&()->uint ) -> uint {
-   return f();
-}
-
-fn asAny( f : fn()->uint ) -> uint {
+fn asBlock( f : &fn()->uint ) -> uint {
    return f();
 }
 

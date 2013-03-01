@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test fn~ is not inferred
+// xfail-test ~fn is not inferred
 // Test that the lambda kind is inferred correctly as a return
 // expression
 
-fn shared() -> fn@() { || () }
+fn shared() -> @fn() { || () }
 
-fn unique() -> fn~() { || () }
+fn unique() -> ~fn() { || () }
 
 pub fn main() {
 }

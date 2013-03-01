@@ -8,16 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: @int) -> fn@() -> &static/int {
-    fn@() -> &static/int {&*x} //~ ERROR illegal borrow
+fn foo(x: @int) -> @fn() -> &static/int {
+    let result: @fn() -> &static/int = || &*x;  //~ ERROR illegal borrow
+    result
 }
 
-fn bar(x: @int) -> fn@() -> &int {
-    fn@() -> &int {&*x} //~ ERROR illegal borrow
+fn bar(x: @int) -> @fn() -> &int {
+    let result: @fn() -> &int = || &*x; //~ ERROR illegal borrow
+    result
 }
 
-fn zed(x: @int) -> fn@() -> int {
-    fn@() -> int {*&*x}
+fn zed(x: @int) -> @fn() -> int {
+    let result: @fn() -> int = || *&*x;
+    result
 }
 
 fn main() {

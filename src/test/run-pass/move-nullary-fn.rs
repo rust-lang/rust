@@ -9,12 +9,12 @@
 // except according to those terms.
 
 // Issue #922
-fn f2(-thing: fn@()) { }
+fn f2(-thing: @fn()) { }
 
-fn f(-thing: fn@()) {
+fn f(-thing: @fn()) {
     f2(thing);
 }
 
 pub fn main() {
-    f(fn@() {});
+    f(|| {});
 }

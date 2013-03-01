@@ -13,7 +13,7 @@
 
 fn ok(a: &uint) {
     // Here &r is an alias for &:
-    let mut g: fn@(x: &uint) = fn@(x: &r/uint) {};
+    let mut g: @fn(x: &uint) = |x: &r/uint| {};
     g(a);
 }
 

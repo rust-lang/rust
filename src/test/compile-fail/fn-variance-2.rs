@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn reproduce<T:Copy>(t: T) -> fn@() -> T {
-    fn@() -> T { t }
+fn reproduce<T:Copy>(t: T) -> @fn() -> T {
+    let result: @fn() -> T = || t;
+    result
 }
 
 fn main() {
@@ -17,7 +18,7 @@ fn main() {
     // with the lower bound @mut int
     let x = @mut 3;
 
-    // type of r is fn@() -> X
+    // type of r is @fn() -> X
     let r = reproduce(x);
 
     // Requires that X be a subtype of

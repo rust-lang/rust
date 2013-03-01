@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct boxedFn { theFn: fn~() -> uint }
+struct boxedFn { theFn: ~fn() -> uint }
 
 fn createClosure (closedUint: uint) -> boxedFn {
-    boxedFn {theFn: fn@ () -> uint { closedUint }} //~ ERROR mismatched types
+    let result: @fn() -> uint = || closedUint;
+    boxedFn { theFn: result } //~ ERROR mismatched types
 }
 
 fn main () {
