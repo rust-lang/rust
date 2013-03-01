@@ -17,8 +17,8 @@ use vec;
 
 use pipes::{recv, try_recv, wait_many, peek, PacketHeader};
 
-// NOTE Making this public exposes some plumbing from pipes. Needs
-// some refactoring
+// FIXME #5160: Making this public exposes some plumbing from
+// pipes. Needs some refactoring
 pub use pipes::Selectable;
 
 /// A trait for things that can send multiple messages.

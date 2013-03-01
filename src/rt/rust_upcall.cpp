@@ -120,7 +120,7 @@ upcall_fail(char const *expr,
             size_t line) {
     rust_task *task = rust_try_get_current_task();
     if (task == NULL) {
-        // NOTE: Need to think about what to do here
+        // FIXME #5161: Need to think about what to do here
         printf("failure outside of a task");
         abort();
     }
