@@ -209,8 +209,8 @@ impl ABIInfo for LLVM_ABIInfo {
     }
 }
 
-pub fn llvm_abi_info() -> ABIInfo {
-    return LLVM_ABIInfo as ABIInfo;
+pub fn llvm_abi_info() -> @ABIInfo {
+    return @LLVM_ABIInfo as @ABIInfo;
 }
 
 

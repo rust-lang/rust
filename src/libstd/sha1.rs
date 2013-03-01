@@ -63,7 +63,7 @@ const k3: u32 = 0xCA62C1D6u32;
 
 
 /// Construct a `sha` object
-pub fn sha1() -> Sha1 {
+pub fn sha1() -> @Sha1 {
     struct Sha1State
         { h: ~[u32],
           len_low: u32,
@@ -269,7 +269,7 @@ pub fn sha1() -> Sha1 {
          computed: false,
          work_buf: @mut vec::from_elem(work_buf_len, 0u32)
     };
-    let mut sh = (st) as Sha1;
+    let mut sh = @st as @Sha1;
     sh.reset();
     return sh;
 }

@@ -966,12 +966,6 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    do option::iter(&tcx.legacy_boxed_traits.find(&id)) |_x| {
-        do ebml_w.tag(c::tag_table_legacy_boxed_trait) {
-            ebml_w.id(id);
-        }
-    }
-
     for maps.moves_map.find(&id).each |_| {
         do ebml_w.tag(c::tag_table_moves_map) {
             ebml_w.id(id);
@@ -1121,8 +1115,6 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
 
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
-        } else if tag == (c::tag_table_legacy_boxed_trait as uint) {
-            dcx.tcx.legacy_boxed_traits.insert(id, ());
         } else if tag == (c::tag_table_moves_map as uint) {
             dcx.maps.moves_map.insert(id, ());
         } else {
@@ -1230,7 +1222,7 @@ impl fake_ext_ctxt for fake_session {
 
 #[cfg(test)]
 fn mk_ctxt() -> fake_ext_ctxt {
-    parse::new_parse_sess(None) as fake_ext_ctxt
+    @parse::new_parse_sess(None) as fake_ext_ctxt
 }
 
 #[cfg(test)]
