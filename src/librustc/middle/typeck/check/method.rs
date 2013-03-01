@@ -799,26 +799,28 @@ pub impl LookupContext {
                 let region = self.infcx().next_region_var(self.expr.span,
                                                           self.expr.id);
                 (ty::mk_rptr(tcx, region, self_mt),
-                 ty::AutoAdjustment {
+                 ty::AutoDerefRef(ty::AutoDerefRef {
                      autoderefs: autoderefs+1,
                      autoref: Some(ty::AutoRef {kind: AutoPtr,
                                                 region: region,
-                                                mutbl: self_mt.mutbl})})
+                                                mutbl: self_mt.mutbl})}))
             }
             ty::ty_evec(self_mt, vstore_slice(_))
             if self_mt.mutbl == m_mutbl => {
                 let region = self.infcx().next_region_var(self.expr.span,
                                                           self.expr.id);
                 (ty::mk_evec(tcx, self_mt, vstore_slice(region)),
-                 ty::AutoAdjustment {
+                 ty::AutoDerefRef(ty::AutoDerefRef {
                     autoderefs: autoderefs,
                     autoref: Some(ty::AutoRef {kind: AutoBorrowVec,
                                                region: region,
-                                               mutbl: self_mt.mutbl})})
+                                               mutbl: self_mt.mutbl})}))
             }
             _ => {
-                (self_ty, ty::AutoAdjustment {autoderefs: autoderefs,
-                                              autoref: None})
+                (self_ty,
+                 ty::AutoDerefRef(ty::AutoDerefRef {
+                     autoderefs: autoderefs,
+                     autoref: None}))
             }
         };
     }
@@ -947,14 +949,14 @@ pub impl LookupContext {
                 Some(mme) => {
                     self.fcx.write_adjustment(
                         self.self_expr.id,
-                        @ty::AutoAdjustment {
+                        @ty::AutoDerefRef(ty::AutoDerefRef {
                             autoderefs: autoderefs,
                             autoref: Some(ty::AutoRef {
                                 kind: kind,
                                 region: region,
                                 mutbl: *mutbl,
                             }),
-                        });
+                        }));
                     return Some(mme);
                 }
             }
