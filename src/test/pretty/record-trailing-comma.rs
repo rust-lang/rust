@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// NOTE this is a pretty-printer bug that I fixed, but it's
-// not in the snapshot yet. After a new snapshot, can un-xfail
-// xfail-pretty
 // pp-exact
 struct Thing {
     x: int,
