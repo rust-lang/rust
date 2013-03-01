@@ -67,7 +67,7 @@ we may want to adjust precisely when coercions occur.
 use core::prelude::*;
 
 use middle::ty::{TyVar, AutoPtr, AutoBorrowVec, AutoBorrowFn};
-use middle::ty::{AutoAdjustment, AutoRef};
+use middle::ty::{AutoAdjustment, AutoDerefRef, AutoRef};
 use middle::ty::{vstore_slice, vstore_box, vstore_uniq, vstore_fixed};
 use middle::ty::{mt};
 use middle::ty;
@@ -206,14 +206,14 @@ pub impl Coerce {
                                      r_borrow,
                                      mt {ty: inner_ty, mutbl: mt_b.mutbl});
         if_ok!(sub.tys(a_borrowed, b));
-        Ok(Some(@AutoAdjustment {
+        Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
             autoref: Some(AutoRef {
                 kind: AutoPtr,
                 region: r_borrow,
                 mutbl: mt_b.mutbl
             })
-        }))
+        })))
     }
 
     fn coerce_borrowed_string(&self,
@@ -236,14 +236,14 @@ pub impl Coerce {
         let r_a = self.infcx.next_region_var_nb(self.span);
         let a_borrowed = ty::mk_estr(self.infcx.tcx, vstore_slice(r_a));
         if_ok!(self.subtype(a_borrowed, b));
-        Ok(Some(@AutoAdjustment {
+        Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoRef {
                 kind: AutoBorrowVec,
                 region: r_a,
                 mutbl: m_imm
             })
-        }))
+        })))
     }
 
     fn coerce_borrowed_vector(&self,
@@ -269,14 +269,14 @@ pub impl Coerce {
                                      mt {ty: ty_inner, mutbl: mt_b.mutbl},
                                      vstore_slice(r_borrow));
         if_ok!(sub.tys(a_borrowed, b));
-        Ok(Some(@AutoAdjustment {
+        Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoRef {
                 kind: AutoBorrowVec,
                 region: r_borrow,
                 mutbl: mt_b.mutbl
             })
-        }))
+        })))
     }
 
     fn coerce_borrowed_fn(&self,
@@ -309,14 +309,14 @@ pub impl Coerce {
             });
 
         if_ok!(self.subtype(a_borrowed, b));
-        Ok(Some(@AutoAdjustment {
+        Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoRef {
                 kind: AutoBorrowFn,
                 region: r_borrow,
                 mutbl: m_imm
             })
-        }))
+        })))
     }
 
     fn coerce_from_bare_fn(&self,
@@ -347,10 +347,12 @@ pub impl Coerce {
 
         // for now, bare fn and closures have the same
         // representation
+        let adj = @ty::AutoAddEnv(fn_ty_b.region, fn_ty_b.sigil);
         let a_closure = ty::mk_closure(
             self.infcx.tcx,
             ty::ClosureTy {sig: copy fn_ty_a.sig, ..fn_ty_b});
-        self.subtype(a_closure, b)
+        if_ok!(self.subtype(a_closure, b));
+        Ok(Some(adj))
     }
 
     fn coerce_unsafe_ptr(&self,

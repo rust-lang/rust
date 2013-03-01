@@ -184,8 +184,13 @@ pub fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
     debug!("visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
     for rcx.fcx.inh.adjustments.find(&expr.id).each |adjustment| {
-        for adjustment.autoref.each |autoref| {
-            guarantor::for_autoref(rcx, expr, *adjustment, autoref);
+        match *adjustment {
+            @ty::AutoDerefRef(
+                ty::AutoDerefRef {
+                    autoderefs: autoderefs, autoref: Some(ref autoref)}) => {
+                guarantor::for_autoref(rcx, expr, autoderefs, autoref);
+            }
+            _ => {}
         }
     }
 
@@ -329,9 +334,11 @@ pub fn constrain_auto_ref(rcx: @mut Rcx, expr: @ast::expr) {
 
     let adjustment = rcx.fcx.inh.adjustments.find(&expr.id);
     let region = match adjustment {
-        Some(@ty::AutoAdjustment { autoref: Some(ref auto_ref), _ }) => {
+        Some(@ty::AutoDerefRef(
+            ty::AutoDerefRef {
+                autoref: Some(ref auto_ref), _})) => {
             auto_ref.region
-        },
+        }
         _ => { return; }
     };
 
@@ -563,7 +570,7 @@ pub mod guarantor {
 
     pub fn for_autoref(rcx: @mut Rcx,
                        expr: @ast::expr,
-                       adjustment: &ty::AutoAdjustment,
+                       autoderefs: uint,
                        autoref: &ty::AutoRef) {
         /*!
          *
@@ -578,7 +585,7 @@ pub mod guarantor {
 
         let mut expr_ct = categorize_unadjusted(rcx, expr);
         expr_ct = apply_autoderefs(
-            rcx, expr, adjustment.autoderefs, expr_ct);
+            rcx, expr, autoderefs, expr_ct);
         for expr_ct.cat.guarantor.each |g| {
             infallibly_mk_subr(rcx, true, expr.span, autoref.region, *g);
         }
@@ -723,19 +730,32 @@ pub mod guarantor {
         let mut expr_ct = categorize_unadjusted(rcx, expr);
         debug!("before adjustments, cat=%?", expr_ct.cat);
 
-        for rcx.fcx.inh.adjustments.find(&expr.id).each |adjustment| {
-            debug!("adjustment=%?", adjustment);
-
-            expr_ct = apply_autoderefs(
-                rcx, expr, adjustment.autoderefs, expr_ct);
-
-            for adjustment.autoref.each |autoref| {
-                // If there is an autoref, then the result of this
-                // expression will be some sort of borrowed pointer.
-                expr_ct.cat.guarantor = None;
-                expr_ct.cat.pointer = BorrowedPointer(autoref.region);
-                debug!("autoref, cat=%?", expr_ct.cat);
+        match rcx.fcx.inh.adjustments.find(&expr.id) {
+            Some(@ty::AutoAddEnv(*)) => {
+                // This is basically an rvalue, not a pointer, no regions
+                // involved.
+                expr_ct.cat = ExprCategorization {
+                    guarantor: None,
+                    pointer: NotPointer
+                };
             }
+
+            Some(@ty::AutoDerefRef(ref adjustment)) => {
+                debug!("adjustment=%?", adjustment);
+
+                expr_ct = apply_autoderefs(
+                    rcx, expr, adjustment.autoderefs, expr_ct);
+
+                for adjustment.autoref.each |autoref| {
+                    // If there is an autoref, then the result of this
+                    // expression will be some sort of borrowed pointer.
+                    expr_ct.cat.guarantor = None;
+                    expr_ct.cat.pointer = BorrowedPointer(autoref.region);
+                    debug!("autoref, cat=%?", expr_ct.cat);
+                }
+            }
+
+            None => {}
         }
 
         debug!("result=%?", expr_ct.cat);
