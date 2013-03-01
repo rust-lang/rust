@@ -39,6 +39,7 @@ use middle::trans::inline;
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::type_of;
+use middle::ty::ty_to_str;
 use middle::ty;
 use middle::typeck;
 use util::common::indenter;
