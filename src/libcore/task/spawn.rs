@@ -173,19 +173,19 @@ fn access_ancestors<U>(x: &unstable::Exclusive<AncestorNode>,
 //     taskgroups that forward_blk already ran on successfully (Note: bail_blk
 //     is NOT called on the block that forward_blk broke on!).
 // (3) As a bonus, coalesces away all 'dead' taskgroup nodes in the list.
-// FIXME(#2190): Change Option<fn@(...)> to Option<fn&(...)>, to save on
+// FIXME(#2190): Change Option<@fn(...)> to Option<&fn(...)>, to save on
 // allocations. Once that bug is fixed, changing the sigil should suffice.
 fn each_ancestor(list:        &mut AncestorList,
-                     bail_opt:    Option<fn@(TaskGroupInner)>,
-                     forward_blk: fn(TaskGroupInner) -> bool)
-        -> bool {
+                 bail_opt:    Option<@fn(TaskGroupInner)>,
+                 forward_blk: fn(TaskGroupInner) -> bool)
+              -> bool {
     // "Kickoff" call - there was no last generation.
     return !coalesce(list, bail_opt, forward_blk, uint::max_value);
 
     // Recursively iterates, and coalesces afterwards if needed. Returns
     // whether or not unwinding is needed (i.e., !successful iteration).
     fn coalesce(list:            &mut AncestorList,
-                bail_opt:        Option<fn@(TaskGroupInner)>,
+                bail_opt:        Option<@fn(TaskGroupInner)>,
                 forward_blk:     fn(TaskGroupInner) -> bool,
                 last_generation: uint) -> bool {
         // Need to swap the list out to use it, to appease borrowck.
@@ -213,9 +213,10 @@ fn each_ancestor(list:        &mut AncestorList,
     //     True if the supplied block did 'break', here or in any recursive
     //     calls. If so, must call the unwinder on all previous nodes.
     fn iterate(ancestors:       &AncestorList,
-               bail_opt:        Option<fn@(TaskGroupInner)>,
-               forward_blk:     fn(TaskGroupInner) -> bool,
-               last_generation: uint) -> (Option<AncestorList>, bool) {
+               bail_opt:        Option<@fn(TaskGroupInner)>,
+               forward_blk:     &fn(TaskGroupInner) -> bool,
+               last_generation: uint)
+            -> (Option<AncestorList>, bool) {
         // At each step of iteration, three booleans are at play which govern
         // how the iteration should behave.
         // 'nobe_is_dead' - Should the list should be coalesced at this point?
@@ -532,7 +533,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     }
 }
 
-pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
+pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);
 
@@ -577,9 +578,10 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
     fn make_child_wrapper(child: *rust_task, child_arc: TaskGroupArc,
                           ancestors: AncestorList, is_main: bool,
                           notify_chan: Option<Chan<TaskResult>>,
-                          f: fn~()) -> fn~() {
+                          f: ~fn())
+                       -> ~fn() {
         let child_data = Cell((child_arc, ancestors));
-        return fn~() {
+        let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let mut (child_arc, ancestors) = child_data.take();
             // Child task runs this code.
@@ -613,6 +615,7 @@ pub fn spawn_raw(opts: TaskOpts, f: fn~()) {
             // FIXME #4428: Crashy.
             // unsafe { cleanup::annihilate(); }
         };
+        return result;
 
         // Set up membership in taskgroup and descendantship in all ancestor
         // groups. If any enlistment fails, Some task was already failing, so
