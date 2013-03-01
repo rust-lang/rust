@@ -1085,6 +1085,15 @@ let p = Point(10, 11);
 let px: int = match p { Point(x, _) => x };
 ~~~~
 
+A _unit-like struct_ is a structure without any fields, defined by leaving off the fields list entirely.
+Such types will have a single value, just like the [unit value `()`](#unit-and-boolean-literals) of the unit type.
+For example:
+
+~~~~
+struct Cookie;
+let c = [Cookie, Cookie, Cookie, Cookie];
+~~~~
+
 ### Enumerations
 
 An _enumeration_ is a simultaneous definition of a nominal [enumerated type](#enumerated-types) as well as a set of *constructors*,
@@ -1590,7 +1599,8 @@ struct_expr : expr_path '{' ident ':' expr
                       [ ',' ident ':' expr ] *
                       [ ".." expr ] '}' |
               expr_path '(' expr
-                      [ ',' expr ] * ')'
+                      [ ',' expr ] * ')' |
+              expr_path
 ~~~~~~~~
 
 There are several forms of structure expressions.
@@ -1600,10 +1610,12 @@ providing the field values of a new instance of the structure.
 A field name can be any identifier, and is separated from its value expression by a colon.
 To indicate that a field is mutable, the `mut` keyword is written before its name.
 
-A _tuple structure expression_ constists of the [path](#paths) of a [structure item](#structures),
+A _tuple structure expression_ consists of the [path](#paths) of a [structure item](#structures),
 followed by a parenthesized list of one or more comma-separated expressions
 (in other words, the path of a structured item followed by a tuple expression).
 The structure item must be a tuple structure item.
+
+A _unit-like structure expression_ consists only of the [path](#paths) of a [structure item](#structures).
 
 The following are examples of structure expressions:
 
@@ -1611,12 +1623,15 @@ The following are examples of structure expressions:
 # struct Point { x: float, y: float }
 # struct TuplePoint(float, float);
 # mod game { pub struct User { name: &str, age: uint, score: uint } }
+# struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10f, y: 20f};
 TuplePoint(10f, 20f);
 let u = game::User {name: "Joe", age: 35u, score: 100_000};
+some_fn::<Cookie>(Cookie);
 ~~~~
 
 A structure expression forms a new value of the named structure type.
+Note that for a given *unit-like* structure type, this will always be the same value.
 
 A structure expression can terminate with the syntax `..` followed by an expression to denote a functional update.
 The expression following `..` (the base) must be of the same structure type as the new structure type being formed.
@@ -2643,7 +2658,10 @@ the resulting `struct` value will always be laid out in memory in the order spec
 The fields of a `struct` may be qualified by [visibility modifiers](#visibility-modifiers),
 to restrict access to implementation-private data in a structure.
 
-A `tuple struct` type is just like a structure type, except that the fields are anonymous.
+A _tuple struct_ type is just like a structure type, except that the fields are anonymous.
+
+A _unit-like struct_ type is like a structure type, except that it has no fields.
+The one value constructed by the associated [structure expression](#structure-expression) is the only value that inhabits such a type.
 
 ### Enumerated types
 
