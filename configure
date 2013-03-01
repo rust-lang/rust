@@ -594,7 +594,7 @@ for t in $CFG_TARGET_TRIPLES
 do
   make_dir rt/$t
   for i in                                   \
-    isaac linenoise sync test libuv          \
+    isaac linenoise sync test libuv libuv/src \
     arch/i386 arch/x86_64 arch/arm arch/mips
   do
     make_dir rt/$t/$i
