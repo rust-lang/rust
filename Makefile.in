@@ -197,13 +197,13 @@ endif
 # Target-and-rule "utility variables"
 ######################################################################
 
-#ifdef VERBOSE
+ifdef VERBOSE
   Q :=
   E =
-#else
-#  Q := @
-#  E = echo $(1)
-#endif
+else
+  Q := @
+  E = echo $(1)
+endif
 
 S := $(CFG_SRC_DIR)
 X := $(CFG_EXE_SUFFIX)
