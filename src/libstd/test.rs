@@ -409,7 +409,7 @@ type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
-             callback: fn@(e: TestEvent)) {
+             callback: @fn(e: TestEvent)) {
     let mut filtered_tests = filter_tests(opts, tests);
 
     let filtered_descs = filtered_tests.map(|t| t.desc);
@@ -537,7 +537,7 @@ pub fn filter_tests(
 
 struct TestFuture {
     test: TestDesc,
-    wait: fn@() -> TestResult,
+    wait: @fn() -> TestResult,
 }
 
 pub fn run_test(force_ignore: bool,
@@ -782,7 +782,7 @@ mod tests {
                 ignore: true,
                 should_fail: false
             },
-            testfn: DynTestFn(fn~() { f()}),
+            testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -800,7 +800,7 @@ mod tests {
                 ignore: true,
                 should_fail: false
             },
-            testfn: DynTestFn(fn~() { f()}),
+            testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -819,7 +819,7 @@ mod tests {
                 ignore: false,
                 should_fail: true
             },
-            testfn: DynTestFn(fn~() { f() }),
+            testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -837,7 +837,7 @@ mod tests {
                 ignore: false,
                 should_fail: true
             },
-            testfn: DynTestFn(fn~() { f() }),
+            testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -890,7 +890,7 @@ mod tests {
                     ignore: true,
                     should_fail: false,
                 },
-                testfn: DynTestFn(fn~() { }),
+                testfn: DynTestFn(|| {}),
             },
             TestDescAndFn {
                 desc: TestDesc {
@@ -898,7 +898,7 @@ mod tests {
                     ignore: false,
                     should_fail: false
                 },
-                testfn: DynTestFn(fn~() { }),
+                testfn: DynTestFn(|| {}),
             },
         ];
         let filtered = filter_tests(&opts, tests);

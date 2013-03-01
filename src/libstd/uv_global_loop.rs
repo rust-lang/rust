@@ -97,7 +97,7 @@ fn get_monitor_task_gl() -> IoTask {
 
 fn spawn_loop() -> IoTask {
     let builder = do task().add_wrapper |task_body| {
-        fn~() {
+        let result: ~fn() = || {
             // The I/O loop task also needs to be weak so it doesn't keep
             // the runtime alive
             unsafe {
@@ -112,7 +112,8 @@ fn spawn_loop() -> IoTask {
                     debug!("global libuv task is leaving weakened state");
                 }
             }
-        }
+        };
+        result
     };
     let builder = builder.unlinked();
     spawn_iotask(builder)

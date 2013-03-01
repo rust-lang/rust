@@ -53,7 +53,7 @@ pub struct CVec<T> {
 }
 
 struct DtorRes {
-  dtor: Option<fn@()>,
+  dtor: Option<@fn()>,
 }
 
 impl Drop for DtorRes {
@@ -65,7 +65,7 @@ impl Drop for DtorRes {
     }
 }
 
-fn DtorRes(dtor: Option<fn@()>) -> DtorRes {
+fn DtorRes(dtor: Option<@fn()>) -> DtorRes {
     DtorRes {
         dtor: dtor
     }
@@ -102,7 +102,7 @@ pub unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
  * * dtor - A function to run when the value is destructed, useful
  *          for freeing the buffer, etc.
  */
-pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
+pub unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: @fn())
   -> CVec<T> {
     return CVec{
         base: base,
