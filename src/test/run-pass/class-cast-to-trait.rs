@@ -22,7 +22,7 @@ impl noisy for cat {
   fn speak(&mut self) { self.meow(); }
 }
 
-impl cat {
+pub impl cat {
   fn eat(&mut self) -> bool {
     if self.how_hungry > 0 {
         error!("OM NOM NOM");
@@ -56,6 +56,6 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 
 
 pub fn main() {
-  let mut nyan: noisy = cat(0u, 2, ~"nyan") as noisy;
+  let mut nyan: @noisy = @cat(0u, 2, ~"nyan") as @noisy;
   nyan.speak();
 }

@@ -289,7 +289,7 @@ fn req_loans_in_expr(ex: @ast::expr,
     self.root_ub = old_root_ub;
 }
 
-impl GatherLoanCtxt {
+pub impl GatherLoanCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.bccx.tcx }
 
     fn guarantee_adjustments(@mut self,

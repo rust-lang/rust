@@ -34,7 +34,7 @@ struct cat<T> {
     name : T,
 }
 
-impl<T> cat<T> {
+pub impl<T> cat<T> {
     fn speak(&mut self) { self.meow(); }
 
     fn eat(&mut self) -> bool {
@@ -103,7 +103,7 @@ impl<T> Map<int, T> for cat<T> {
     }
 }
 
-impl<T> cat<T> {
+pub impl<T> cat<T> {
     pure fn get(&self, k: &int) -> &self/T {
         match self.find(k) {
           Some(v) => { v }

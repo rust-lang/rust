@@ -97,8 +97,8 @@ pub fn lookup_vtables(vcx: &VtableContext,
     let mut result = ~[], i = 0u;
     for substs.tps.each |ty| {
         for ty::iter_bound_traits_and_supertraits(
-            tcx, bounds[i]) |trait_ty| {
-
+            tcx, bounds[i]) |trait_ty|
+        {
             debug!("about to subst: %?, %?",
                    ppaux::ty_to_str(tcx, trait_ty),
                    ty::substs_to_str(tcx, substs));
@@ -585,138 +585,102 @@ pub fn early_resolve_expr(ex: @ast::expr,
         }
       }
       ast::expr_cast(src, _) => {
-        let target_ty = fcx.expr_ty(ex);
-        match ty::get(target_ty).sty {
-          ty::ty_trait(_, _, vstore) => {
-            // Look up vtables for the type we're casting to, passing in the
-            // source and target type.
-            //
-            // XXX: This is invariant and shouldn't be. --pcw
+          let target_ty = fcx.expr_ty(ex);
+          match ty::get(target_ty).sty {
+              ty::ty_trait(_, _, vstore) => {
+                  // Look up vtables for the type we're casting to,
+                  // passing in the source and target type.  The source
+                  // must be a pointer type suitable to the object sigil,
+                  // e.g.: `@x as @Trait`, `&x as &Trait` or `~x as ~Trait`
+                  let ty = structurally_resolved_type(fcx, ex.span,
+                                                      fcx.expr_ty(src));
+                  match (&ty::get(ty).sty, vstore) {
+                      (&ty::ty_box(mt), ty::vstore_box) |
+                      (&ty::ty_uniq(mt), ty::vstore_uniq) |
+                      (&ty::ty_rptr(_, mt), ty::vstore_slice(*)) => {
+                          let location_info =
+                              &location_info_for_expr(ex);
+                          let vcx = VtableContext {
+                              ccx: fcx.ccx,
+                              infcx: fcx.infcx()
+                          };
+                          let vtable_opt =
+                              lookup_vtable(&vcx,
+                                            location_info,
+                                            mt.ty,
+                                            target_ty,
+                                            true,
+                                            is_early);
+                          match vtable_opt {
+                              Some(vtable) => {
+                                  // Map this expression to that
+                                  // vtable (that is: "ex has vtable
+                                  // <vtable>")
+                                  if !is_early {
+                                      let vtable_map =
+                                          cx.vtable_map;
+                                      vtable_map.insert(ex.id,
+                                                        @~[vtable]);
+                                  }
+                              }
+                              None => {
+                                  fcx.tcx().sess.span_err(
+                                      ex.span,
+                                      fmt!("failed to find an implementation \
+                                            of trait %s for %s",
+                                           fcx.infcx().ty_to_str(target_ty),
+                                           fcx.infcx().ty_to_str(mt.ty)));
+                              }
+                          }
 
-            let ty = fcx.expr_ty(src);
-            let vcx = VtableContext { ccx: fcx.ccx, infcx: fcx.infcx() };
-            let vtable_opt =
-                lookup_vtable(&vcx,
-                              &location_info_for_expr(ex),
-                              ty,
-                              target_ty,
-                              true,
-                              is_early);
-            match vtable_opt {
-                None => {
-                    // Try the new-style boxed trait; "@int as @Trait".
-                    // Or the new-style region trait; "&int as &Trait".
-                    // Or the new-style uniquely-owned trait; "~int as
-                    // ~Trait".
-                    let mut err = false;
-                    let ty = structurally_resolved_type(fcx, ex.span, ty);
-                    match ty::get(ty).sty {
-                        ty::ty_box(mt) | ty::ty_rptr(_, mt) |
-                        ty::ty_uniq(mt) => {
-                            // Ensure that the trait vstore and the pointer
-                            // type match.
-                            match (&ty::get(ty).sty, vstore) {
-                                (&ty::ty_box(_), ty::vstore_box) |
-                                (&ty::ty_uniq(_), ty::vstore_uniq) |
-                                (&ty::ty_rptr(*), ty::vstore_slice(*)) => {
-                                    let location_info =
-                                        &location_info_for_expr(ex);
-                                    let vtable_opt =
-                                        lookup_vtable(&vcx,
-                                                      location_info,
-                                                      mt.ty,
-                                                      target_ty,
-                                                      true,
-                                                      is_early);
-                                    match vtable_opt {
-                                        Some(vtable) => {
-                                            // Map this expression to that
-                                            // vtable (that is: "ex has vtable
-                                            // <vtable>")
-                                            if !is_early {
-                                                let vtable_map =
-                                                    cx.vtable_map;
-                                                vtable_map.insert(ex.id,
-                                                                  @~[vtable]);
-                                            }
-                                        }
-                                        None => err = true
-                                    }
+                          // Now, if this is &trait, we need to link the
+                          // regions.
+                          match (&ty::get(ty).sty, vstore) {
+                              (&ty::ty_rptr(ra, _),
+                               ty::vstore_slice(rb)) => {
+                                  infer::mk_subr(fcx.infcx(),
+                                                 false,
+                                                 ex.span,
+                                                 rb,
+                                                 ra);
+                              }
+                              _ => {}
+                          }
+                      }
 
-                                    // Now, if this is &trait, we need to link
-                                    // the regions.
-                                    match (&ty::get(ty).sty, vstore) {
-                                        (&ty::ty_rptr(ra, _),
-                                         ty::vstore_slice(rb)) => {
-                                            infer::mk_subr(fcx.infcx(),
-                                                           false,
-                                                           ex.span,
-                                                           rb,
-                                                           ra);
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                                (&ty::ty_box(_), _) => {
-                                    fcx.ccx.tcx.sess.span_err(ex.span,
-                                                              ~"must cast \
-                                                                a boxed \
-                                                                pointer to \
-                                                                a boxed
-                                                                trait");
-                                    err = true;
-                                }
-                                (&ty::ty_rptr(*), _) => {
-                                    fcx.ccx.tcx.sess.span_err(ex.span,
-                                                              ~"must cast \
-                                                                a borrowed \
-                                                                pointer to \
-                                                                a borrowed \
-                                                                trait");
-                                }
-                                (&ty::ty_uniq(*), _) => {
-                                    fcx.ccx.tcx.sess.span_err(ex.span,
-                                                              ~"must cast \
-                                                                a unique \
-                                                                pointer to \
-                                                                a uniquely-\
-                                                                owned trait");
-                                }
-                                _ => {
-                                    fcx.ccx.tcx.sess.impossible_case(
-                                        ex.span,
-                                        ~"impossible combination of type and \
-                                          trait vstore");
-                                }
-                            }
-                        }
-                        _ => err = true
-                    }
+                      (_, ty::vstore_box(*)) => {
+                          fcx.ccx.tcx.sess.span_err(
+                              ex.span,
+                              fmt!("can only cast an @-pointer \
+                                    to an @-object, not a %s",
+                                   ty::ty_sort_str(fcx.tcx(), ty)));
+                      }
 
-                    if err {
-                        fcx.tcx().sess.span_fatal(
-                            ex.span,
-                            fmt!("failed to find an implementation of trait \
-                                  %s for %s",
-                                 fcx.infcx().ty_to_str(target_ty),
-                                 fcx.infcx().ty_to_str(ty)));
-                    }
-                }
-                Some(vtable) => {
-                    /*
-                    Map this expression to that vtable (that is: "ex has
-                    vtable <vtable>")
-                    */
-                    if !is_early {
-                        let vtable_map = cx.vtable_map;
-                        vtable_map.insert(ex.id, @~[vtable]);
-                    }
-                    fcx.tcx().legacy_boxed_traits.insert(ex.id, ());
-                }
-            }
+                      (_, ty::vstore_uniq(*)) => {
+                          fcx.ccx.tcx.sess.span_err(
+                              ex.span,
+                              fmt!("can only cast an ~-pointer \
+                                    to a ~-object, not a %s",
+                                   ty::ty_sort_str(fcx.tcx(), ty)));
+                      }
+
+                      (_, ty::vstore_slice(*)) => {
+                          fcx.ccx.tcx.sess.span_err(
+                              ex.span,
+                              fmt!("can only cast an &-pointer \
+                                    to an &-object, not a %s",
+                                   ty::ty_sort_str(fcx.tcx(), ty)));
+                      }
+
+                      (_, ty::vstore_fixed(*)) => {
+                          fcx.tcx().sess.span_bug(
+                              ex.span,
+                              fmt!("trait with fixed vstore"));
+                      }
+                  }
+              }
+              _ => { /* not a cast to a trait; ignore */ }
           }
-          _ => ()
-        }
       }
       _ => ()
     }

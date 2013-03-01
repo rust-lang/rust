@@ -301,7 +301,7 @@ fn compute_modes_for_expr(expr: @expr,
     cx.consume_expr(expr, v);
 }
 
-impl UseMode {
+pub impl UseMode {
     fn component_mode(&self, expr: @expr) -> UseMode {
         /*!
          *
@@ -316,7 +316,7 @@ impl UseMode {
     }
 }
 
-impl VisitContext {
+pub impl VisitContext {
     fn consume_exprs(&self,
                      exprs: &[@expr],
                      visitor: vt<VisitContext>)

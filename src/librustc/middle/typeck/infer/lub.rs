@@ -17,12 +17,17 @@ use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
+use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::isr_alist;
+use util::common::indent;
 use util::ppaux::mt_to_str;
 
 use std::list;
+use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn, noreturn};
 use syntax::ast::{pure_fn, ret_style, return_val, unsafe_fn};
+use syntax::ast::{Onceness, purity};
+use syntax::codemap::span;
 
 pub enum Lub = CombineFields;  // least-upper-bound: common supertype
 

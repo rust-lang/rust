@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::*;
+use core::io::WriterUtil;
+
 use ast;
 use codemap;
 use ext::base::*;
 use ext::base;
 use print;
-
-use core::io::WriterUtil;
-use core::option;
 
 pub fn expand_syntax_ext(cx: ext_ctxt,
                          sp: codemap::span,

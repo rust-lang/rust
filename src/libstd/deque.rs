@@ -37,7 +37,7 @@ impl<T> Mutable for Deque<T> {
     }
 }
 
-impl<T> Deque<T> {
+pub impl<T> Deque<T> {
     static pure fn new() -> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
               elts: vec::from_fn(initial_capacity, |_| None)}
@@ -116,6 +116,9 @@ fn get<T>(elts: &r/[Option<T>], i: uint) -> &r/T {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::cmp::Eq;
+    use core::kinds::{Durable, Copy};
+    use core::prelude::debug;
 
     #[test]
     fn test_simple() {

@@ -12,7 +12,7 @@ struct dog {
     cats_chased: uint,
 }
 
-impl dog {
+pub impl dog {
     fn chase_cat(&mut self) {
         let p: &static/mut uint = &mut self.cats_chased; //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
         *p += 1u;

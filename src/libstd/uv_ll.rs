@@ -1199,6 +1199,7 @@ pub mod test {
 
     use uv_ll::*;
 
+    use core::comm::{SharedChan, stream};
     use core::libc;
     use core::ptr;
     use core::str;
@@ -1687,7 +1688,7 @@ pub mod test {
 
     // this is the impl for a test that is (maybe) ran on a
     // per-platform/arch basis below
-    fn impl_uv_tcp_server_and_request() {
+    pub fn impl_uv_tcp_server_and_request() {
         unsafe {
             let bind_ip = ~"0.0.0.0";
             let request_ip = ~"127.0.0.1";

@@ -174,7 +174,7 @@ pub struct IndexEntry {
     link: ~str
 }
 
-impl Doc {
+pub impl Doc {
     fn CrateDoc(&self) -> CrateDoc {
         option::get(vec::foldl(None, self.pages, |_m, page| {
             match copy *page {
@@ -190,7 +190,7 @@ impl Doc {
 }
 
 /// Some helper methods on ModDoc, mostly for testing
-impl ModDoc {
+pub impl ModDoc {
     fn mods(&self) -> ~[ModDoc] {
         do vec::filter_mapped(self.items) |itemtag| {
             match copy *itemtag {

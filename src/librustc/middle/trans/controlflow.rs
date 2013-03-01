@@ -10,13 +10,28 @@
 
 use core::prelude::*;
 
-use lib::llvm::ValueRef;
+use back::link;
+use lib;
+use lib::llvm::*;
 use middle::trans::base::*;
+use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
+use middle::trans::debuginfo;
+use middle::trans::expr;
+use middle::trans::type_of::*;
+use middle::ty;
+use util::common::indenter;
+use util::ppaux;
 
 use core::str;
+use syntax::ast;
+use syntax::ast::ident;
+use syntax::ast_map::path_mod;
+use syntax::ast_util;
+use syntax::codemap::span;
+use syntax::print::pprust::expr_to_str;
 
 pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     let _icx = bcx.insn_ctxt("trans_block");

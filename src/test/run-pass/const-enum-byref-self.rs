@@ -11,7 +11,7 @@
 enum E { V, VV(int) }
 const C: E = V;
 
-impl E {
+pub impl E {
     fn method(&self) {
         match *self {
             V => {}

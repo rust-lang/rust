@@ -162,7 +162,7 @@ pub struct Generics {
     ty_params: OptVec<TyParam>
 }
 
-impl Generics {
+pub impl Generics {
     fn is_empty(&self) -> bool {
         self.lifetimes.len() + self.ty_params.len() == 0
     }

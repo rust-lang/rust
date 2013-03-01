@@ -241,7 +241,7 @@ mod stat {
 }
 
 
-impl Path {
+pub impl Path {
     fn stat(&self) -> Option<libc::stat> {
         unsafe {
              do str::as_c_str(self.to_str()) |buf| {
@@ -290,7 +290,7 @@ impl Path {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-impl Path {
+pub impl Path {
     fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -324,7 +324,7 @@ impl Path {
 
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
-impl Path {
+pub impl Path {
     fn get_birthtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -337,7 +337,7 @@ impl Path {
 }
 
 #[cfg(target_os = "win32")]
-impl Path {
+pub impl Path {
     fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,

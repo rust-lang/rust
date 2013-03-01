@@ -16,6 +16,7 @@ use ast_util::{inlined_item_utils, path_to_ident, stmt_id};
 use ast_util;
 use attr;
 use codemap;
+use codemap::spanned;
 use diagnostic::span_handler;
 use parse::token::ident_interner;
 use print::pprust;

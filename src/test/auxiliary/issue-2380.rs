@@ -16,5 +16,5 @@ pub trait i<T> { }
 pub fn f<T>() -> i<T> {
     impl<T> i<T> for () { }
 
-    () as i::<T>
+    @() as @i<T>
 }

@@ -18,7 +18,7 @@ impl Drop for shrinky_pointer {
     }
 }
 
-impl shrinky_pointer {
+pub impl shrinky_pointer {
   fn look_at() -> int { return **(self.i); }
 }
 

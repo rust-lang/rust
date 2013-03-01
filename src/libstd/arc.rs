@@ -21,7 +21,7 @@ use core::cell::Cell;
 use core::pipes;
 use core::prelude::*;
 use core::private::{SharedMutableState, shared_mutable_state};
-use core::private::{clone_shared_mutable_state, unwrap_shared_mutable_state};
+use core::private::{clone_shared_mutable_state};
 use core::private::{get_shared_mutable_state, get_shared_immutable_state};
 use core::ptr;
 use core::task;
@@ -30,7 +30,7 @@ use core::util;
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
 pub struct Condvar { is_mutex: bool, failed: &mut bool, cond: &sync::Condvar }
 
-impl &Condvar {
+pub impl &Condvar {
     /// Atomically exit the associated ARC and block until a signal is sent.
     #[inline(always)]
     fn wait() { self.wait_on(0) }
@@ -104,20 +104,6 @@ pub fn clone<T:Const + Owned>(rc: &ARC<T>) -> ARC<T> {
     ARC { x: unsafe { clone_shared_mutable_state(&rc.x) } }
 }
 
-/**
- * Retrieve the data back out of the ARC. This function blocks until the
- * reference given to it is the last existing one, and then unwrap the data
- * instead of destroying it.
- *
- * If multiple tasks call unwrap, all but the first will fail. Do not call
- * unwrap from a task that holds another reference to the same ARC; it is
- * guaranteed to deadlock.
- */
-pub fn unwrap<T:Const + Owned>(rc: ARC<T>) -> T {
-    let ARC { x: x } = rc;
-    unsafe { unwrap_shared_mutable_state(x) }
-}
-
 impl<T:Const + Owned> Clone for ARC<T> {
     fn clone(&self) -> ARC<T> {
         clone(self)
@@ -158,7 +144,7 @@ impl<T:Owned> Clone for MutexARC<T> {
     }
 }
 
-impl<T:Owned> &MutexARC<T> {
+pub impl<T:Owned> &MutexARC<T> {
 
     /**
      * Access the underlying mutable data with mutual exclusion from other
@@ -211,23 +197,6 @@ impl<T:Owned> &MutexARC<T> {
             }
         }
     }
-}
-
-/**
- * Retrieves the data, blocking until all other references are dropped,
- * exactly as arc::unwrap.
- *
- * Will additionally fail if another task has failed while accessing the arc.
- */
-// FIXME(#3724) make this a by-move method on the arc
-pub fn unwrap_mutex_arc<T:Owned>(arc: MutexARC<T>) -> T {
-    let MutexARC { x: x } = arc;
-    let inner = unsafe { unwrap_shared_mutable_state(x) };
-    let MutexARCInner { failed: failed, data: data, _ } = inner;
-    if failed {
-        fail!(~"Can't unwrap poisoned MutexARC - another task failed inside!")
-    }
-    data
 }
 
 // Common code for {mutex.access,rwlock.write}{,_cond}.
@@ -301,7 +270,7 @@ pub fn rw_arc_with_condvars<T:Const + Owned>(
     RWARC { x: unsafe { shared_mutable_state(data) }, cant_nest: () }
 }
 
-impl<T:Const + Owned> RWARC<T> {
+pub impl<T:Const + Owned> RWARC<T> {
     /// Duplicate a rwlock-protected ARC, as arc::clone.
     fn clone(&self) -> RWARC<T> {
         RWARC { x: unsafe { clone_shared_mutable_state(&self.x) },
@@ -310,7 +279,7 @@ impl<T:Const + Owned> RWARC<T> {
 
 }
 
-impl<T:Const + Owned> &RWARC<T> {
+pub impl<T:Const + Owned> &RWARC<T> {
     /**
      * Access the underlying data mutably. Locks the rwlock in write mode;
      * other readers and writers will block.
@@ -411,24 +380,6 @@ impl<T:Const + Owned> &RWARC<T> {
     }
 }
 
-/**
- * Retrieves the data, blocking until all other references are dropped,
- * exactly as arc::unwrap.
- *
- * Will additionally fail if another task has failed while accessing the arc
- * in write mode.
- */
-// FIXME(#3724) make this a by-move method on the arc
-pub fn unwrap_rw_arc<T:Const + Owned>(arc: RWARC<T>) -> T {
-    let RWARC { x: x, _ } = arc;
-    let inner = unsafe { unwrap_shared_mutable_state(x) };
-    let RWARCInner { failed: failed, data: data, _ } = inner;
-    if failed {
-        fail!(~"Can't unwrap poisoned RWARC - another task failed inside!")
-    }
-    data
-}
-
 // Borrowck rightly complains about immutably aliasing the rwlock in order to
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
@@ -445,7 +396,7 @@ pub enum RWWriteMode<T> =
 /// The "read permission" token used for RWARC.write_downgrade().
 pub enum RWReadMode<T> = (&T, sync::RWlockReadMode);
 
-impl<T:Const + Owned> &RWWriteMode<T> {
+pub impl<T:Const + Owned> &RWWriteMode<T> {
     /// Access the pre-downgrade RWARC in write mode.
     fn write<U>(blk: fn(x: &mut T) -> U) -> U {
         match *self {
@@ -475,7 +426,7 @@ impl<T:Const + Owned> &RWWriteMode<T> {
     }
 }
 
-impl<T:Const + Owned> &RWReadMode<T> {
+pub impl<T:Const + Owned> &RWReadMode<T> {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(blk: fn(x: &T) -> U) -> U {
         match *self {
@@ -497,6 +448,7 @@ mod tests {
     use arc::*;
     use arc;
 
+    use core::cell::Cell;
     use core::option::{Some, None};
     use core::option;
     use core::pipes;
@@ -583,21 +535,6 @@ mod tests {
         do arc.access |one| {
             assert *one == 1;
         }
-    }
-    #[test] #[should_fail] #[ignore(cfg(windows))]
-    pub fn test_mutex_arc_unwrap_poison() {
-        let arc = MutexARC(1);
-        let arc2 = ~(&arc).clone();
-        let (p, c) = comm::stream();
-        do task::spawn || {
-            do arc2.access |one| {
-                c.send(());
-                assert *one == 2;
-            }
-        }
-        let _ = p.recv();
-        let one = unwrap_mutex_arc(arc);
-        assert one == 1;
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     pub fn test_rw_arc_poison_wr() {

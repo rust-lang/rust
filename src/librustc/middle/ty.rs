@@ -269,7 +269,6 @@ struct ctxt_ {
     adjustments: HashMap<ast::node_id, @AutoAdjustment>,
     normalized_cache: HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
-    legacy_boxed_traits: HashMap<node_id, ()>,
     // A mapping from an implementation ID to the method info and trait
     // method ID of the provided (a.k.a. default) methods in the traits that
     // that implementation implements.
@@ -831,7 +830,6 @@ pub fn mk_ctxt(s: session::Session,
         adjustments: HashMap(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
-        legacy_boxed_traits: HashMap(),
         provided_methods: HashMap(),
         provided_method_sources: HashMap(),
         supertraits: HashMap(),
@@ -3714,7 +3712,7 @@ pub enum DtorKind {
     TraitDtor(def_id)
 }
 
-impl DtorKind {
+pub impl DtorKind {
     pure fn is_not_present(&const self) -> bool {
         match *self {
             NoDtor => true,

@@ -622,6 +622,19 @@ pub impl NameBindings {
         }
     }
 
+    fn defined_in_public_namespace(namespace: Namespace) -> bool {
+        match namespace {
+            TypeNS => match self.type_def {
+                Some(def) => def.privacy != Private,
+                None => false
+            },
+            ValueNS => match self.value_def {
+                Some(def) => def.privacy != Private,
+                None => false
+            }
+        }
+    }
+
     fn def_for_namespace(namespace: Namespace) -> Option<def> {
         match namespace {
             TypeNS => {
@@ -2480,7 +2493,7 @@ pub impl Resolver {
 
             // Here we merge two import resolutions.
             match module_.import_resolutions.find(&ident) {
-                None => {
+                None if target_import_resolution.privacy == Public => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
                         @mut ImportResolution(privacy,
@@ -2494,6 +2507,7 @@ pub impl Resolver {
                     module_.import_resolutions.insert
                         (ident, new_import_resolution);
                 }
+                None => { /* continue ... */ }
                 Some(dest_import_resolution) => {
                     // Merge the two import resolutions at a finer-grained
                     // level.
@@ -2537,7 +2551,6 @@ pub impl Resolver {
                 }
             }
 
-
             debug!("(resolving glob import) writing resolution `%s` in `%s` \
                     to `%s`, privacy=%?",
                    *self.session.str_of(ident),
@@ -2546,12 +2559,12 @@ pub impl Resolver {
                    dest_import_resolution.privacy);
 
             // Merge the child item into the import resolution.
-            if (*name_bindings).defined_in_namespace(ValueNS) {
+            if (*name_bindings).defined_in_public_namespace(ValueNS) {
                 debug!("(resolving glob import) ... for value target");
                 dest_import_resolution.value_target =
                     Some(Target(containing_module, name_bindings));
             }
-            if (*name_bindings).defined_in_namespace(TypeNS) {
+            if (*name_bindings).defined_in_public_namespace(TypeNS) {
                 debug!("(resolving glob import) ... for type target");
                 dest_import_resolution.type_target =
                     Some(Target(containing_module, name_bindings));
@@ -2756,6 +2769,8 @@ pub impl Resolver {
                                namespace);
                     }
                     Some(target) => {
+                        debug!("(resolving item in lexical scope) using \
+                                import resolution");
                         import_resolution.state.used = true;
                         return Success(copy target);
                     }
