@@ -23,7 +23,7 @@ impl i for ~int {
 }
 
 fn main() {
-    let x = ~0 as i;
+    let x = @~0 as @i;
     failfn();
     log(error, x);
 }
