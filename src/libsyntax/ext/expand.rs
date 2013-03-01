@@ -26,9 +26,12 @@ use core::option;
 use core::vec;
 use core::hashmap::LinearMap;
 
-pub fn expand_expr(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
-                   e: &expr_, s: span, fld: ast_fold,
-                   orig: fn@(&expr_, span, ast_fold) -> (expr_, span))
+pub fn expand_expr(extsbox: @mut SyntaxEnv,
+                   cx: ext_ctxt,
+                   e: &expr_,
+                   s: span,
+                   fld: ast_fold,
+                   orig: @fn(&expr_, span, ast_fold) -> (expr_, span))
                 -> (expr_, span) {
     match *e {
         // expr_mac should really be expr_ext or something; it's the
@@ -105,9 +108,11 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
 //
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
-pub fn expand_mod_items(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
-                        module_: &ast::_mod, fld: ast_fold,
-                        orig: fn@(&ast::_mod, ast_fold) -> ast::_mod)
+pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
+                        cx: ext_ctxt,
+                        module_: &ast::_mod,
+                        fld: ast_fold,
+                        orig: @fn(&ast::_mod, ast_fold) -> ast::_mod)
                      -> ast::_mod {
     // Fold the contents first:
     let module_ = orig(module_, fld);
@@ -155,8 +160,10 @@ macro_rules! with_exts_frame (
 
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(extsbox: @mut SyntaxEnv,
-                   cx: ext_ctxt, it: @ast::item, fld: ast_fold,
-                   orig: fn@(@ast::item, ast_fold) -> Option<@ast::item>)
+                   cx: ext_ctxt,
+                   it: @ast::item,
+                   fld: ast_fold,
+                   orig: @fn(@ast::item, ast_fold) -> Option<@ast::item>)
                 -> Option<@ast::item> {
     // need to do expansion first... it might turn out to be a module.
     let maybe_it = match it.node {
@@ -296,11 +303,13 @@ pub fn expand_item_mac(+extsbox: @mut SyntaxEnv,
 }
 
 // expand a stmt
-pub fn expand_stmt(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
-                   s: &stmt_, sp: span, fld: ast_fold,
-                   orig: fn@(s: &stmt_, span, ast_fold) -> (stmt_, span))
+pub fn expand_stmt(extsbox: @mut SyntaxEnv,
+                   cx: ext_ctxt,
+                   s: &stmt_,
+                   sp: span,
+                   fld: ast_fold,
+                   orig: @fn(&stmt_, span, ast_fold) -> (stmt_, span))
                 -> (stmt_, span) {
-
     let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
@@ -356,10 +365,13 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
 
 
 
-pub fn expand_block(extsbox: @mut SyntaxEnv, cx: ext_ctxt,
-                    blk: &blk_, sp: span, fld: ast_fold,
-                    orig: fn@(&blk_, span, ast_fold) -> (blk_, span))
-    -> (blk_, span) {
+pub fn expand_block(extsbox: @mut SyntaxEnv,
+                    cx: ext_ctxt,
+                    blk: &blk_,
+                    sp: span,
+                    fld: ast_fold,
+                    orig: @fn(&blk_, span, ast_fold) -> (blk_, span))
+                 -> (blk_, span) {
     match (*extsbox).find(&@~" block") {
         // no scope limit on macros in this block, no need
         // to push an exts frame:
