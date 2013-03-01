@@ -36,21 +36,7 @@ CFG_GCCISH_CFLAGS += -fno-omit-frame-pointer
 # embedded into the executable, so use a no-op command.
 CFG_DSYMUTIL := true
 
-# Hack: not sure how to test if a file exists in make other than this
-OS_SUPP = $(patsubst %,--suppressions=%,\
-      $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
-
-ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
-  CFG_WINDOWSY := 1
-endif
-
-ifdef CFG_DISABLE_OPTIMIZE_CXX
-  $(info cfg: disabling C++ optimization (CFG_DISABLE_OPTIMIZE_CXX))
-  CFG_GCCISH_CFLAGS += -O0
-else
-  CFG_GCCISH_CFLAGS += -O2
-endif
-
+# x86_64-unknown-linux-gnu configuration
 CFG_LIB_NAME_x86_64-unknown-linux-gnu=lib$(1).so
 CFG_LIB_GLOB_x86_64-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_x86_64-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
@@ -62,10 +48,9 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
-CFG_UNIXY := 1
-CFG_LDENV := LD_LIBRARY_PATH
 CFG_GCCISH_CROSS_x86_64-unknown-linux-gnu =
 
+# x86_64-apple-darwin configuration
 CFG_LIB_NAME_x86_64-apple-darwin=lib$(1).dylib
 CFG_LIB_GLOB_x86_64-apple-darwin=lib$(1)-*.dylib
 CFG_LIB_DSYM_GLOB_x86_64-apple-darwin=lib$(1)-*.dylib.dSYM
@@ -78,10 +63,11 @@ CFG_GCCISH_POST_LIB_FLAGS_x86_64-apple-darwin :=
 CFG_DEF_SUFFIX_x86_64-apple-darwin := .darwin.def
 CFG_INSTALL_NAME_x86_64-apple-darwin = -Wl,-install_name,@rpath/$(1)
 
+# arm-unknown-android configuration
 CFG_LIB_NAME_arm-unknown-android=lib$(1).so
 CFG_LIB_GLOB_arm-unknown-android=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-unknown-android=lib$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_arm-unknown-android := -fPIC -Wall -g -D__arm__ -DANDROID -D__ANDROID__
+CFG_GCCISH_CFLAGS_arm-unknown-android := -Wall -g -fPIC -D__arm__ -DANDROID -D__ANDROID__
 CFG_GCCISH_CXXFLAGS_arm-unknown-android := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_arm-unknown-android := -shared -fPIC -ldl -g -lm -lsupc++ -lgnustl_shared
 CFG_GCCISH_DEF_FLAG_arm-unknown-android := -Wl,--export-dynamic,--dynamic-list=
@@ -91,6 +77,51 @@ CFG_DEF_SUFFIX_arm-unknown-android := .android.def
 CFG_INSTALL_NAME_arm-unknown-android =
 CFG_GCCISH_CROSS_arm-unknown-android = $(CFG_CROSS_PREFIX_arm)
 
+# i686-pc-mingw32 configuration
+CFG_LIB_NAME_i686-pc-mingw32=lib$(1).dll
+CFG_LIB_GLOB_i686-pc-mingw32=lib$(1)-*.dll
+CFG_LIB_DSYM_GLOB_i686-pc-mingw32=lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -march=i686
+CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g
+CFG_GCCISH_DEF_FLAG_i686-pc-mingw32 :=
+CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 := 
+CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 := 
+CFG_DEF_SUFFIX_i686-pc-mingw32 := .def
+CFG_INSTALL_NAME_i686-pc-mingw32 =
+CFG_GCCISH_CROSS_i686-pc-mingw32 =
+
+# Hack: not sure how to test if a file exists in make other than this
+OS_SUPP = $(patsubst %,--suppressions=%,\
+      $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
+
+ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
+  CFG_WINDOWSY := 1
+endif
+ifneq ($(findstring linux,$(CFG_OSTYPE)),)
+  CFG_UNIXY := 1
+endif
+ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
+  CFG_UNIXY := 1
+endif
+
+ifdef CFG_DISABLE_OPTIMIZE_CXX
+  $(info cfg: disabling C++ optimization (CFG_DISABLE_OPTIMIZE_CXX))
+  CFG_GCCISH_CFLAGS += -O0
+else
+  CFG_GCCISH_CFLAGS += -O2
+endif
+
+CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
+ $(if $(findstring stage0,$(1)), \
+       stage0/$(CFG_LIBDIR), \
+      $(if $(findstring stage1,$(1)), \
+           stage1/$(CFG_LIBDIR), \
+          $(if $(findstring stage2,$(1)), \
+               stage2/$(CFG_LIBDIR), \
+               $(if $(findstring stage3,$(1)), \
+                    stage3/$(CFG_LIBDIR), \
+               )))))/rustc/$(CFG_HOST_TRIPLE)/$(CFG_LIBDIR)
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   # -znoexecstack is here because librt is for some reason being created
@@ -123,30 +154,26 @@ ifdef CFG_UNIXY
   CFG_RUN_TARG=$(call CFG_RUN,,$(2))
   CFG_RUN_TEST=$(call CFG_RUN,,$(CFG_VALGRIND) $(1))
   CFG_LIBUV_LINK_FLAGS=
-  ifdef CFG_FBSD
-    CFG_LIBUV_LINK_FLAGS=-lpthread -lkvm
+
+  ifdef CFG_ENABLE_MINGW_CROSS
+    CFG_WINDOWSY := 1
+    CFG_INFO := $(info cfg: mingw-cross)
+    CFG_GCCISH_CROSS := i586-mingw32msvc-
+    ifdef CFG_VALGRIND
+      CFG_VALGRIND += wine
+    endif
+
+    CFG_GCCISH_CFLAGS := -march=i586
+    CFG_GCCISH_PRE_LIB_FLAGS :=
+    CFG_GCCISH_POST_LIB_FLAGS :=
+    CFG_GCCISH_DEF_FLAG :=
+    CFG_GCCISH_LINK_FLAGS := -shared
+
+    ifeq ($(CFG_CPUTYPE), x86_64)
+      CFG_GCCISH_CFLAGS += -m32
+      CFG_GCCISH_LINK_FLAGS += -m32
+    endif
   endif
-
-  # FIXME: This is surely super broken
-  # ifdef CFG_ENABLE_MINGW_CROSS
-  #   CFG_WINDOWSY := 1
-  #   CFG_INFO := $(info cfg: mingw-cross)
-  #   CFG_GCCISH_CROSS := i586-mingw32msvc-
-  #   ifdef CFG_VALGRIND
-  #     CFG_VALGRIND += wine
-  #   endif
-
-  #   CFG_GCCISH_CFLAGS := -march=i586
-  #   CFG_GCCISH_PRE_LIB_FLAGS :=
-  #   CFG_GCCISH_POST_LIB_FLAGS :=
-  #   CFG_GCCISH_DEF_FLAG :=
-  #   CFG_GCCISH_LINK_FLAGS := -shared
-
-  #   ifeq ($(CFG_CPUTYPE), x86_64)
-  #     CFG_GCCISH_CFLAGS += -m32
-  #     CFG_GCCISH_LINK_FLAGS += -m32
-  #   endif
-  # endif
   ifdef CFG_VALGRIND
     CFG_VALGRIND += --error-exitcode=100 \
                     --quiet \
@@ -161,14 +188,10 @@ ifdef CFG_UNIXY
   endif
 endif
 
-
 ifdef CFG_WINDOWSY
   CFG_INFO := $(info cfg: windows-y environment)
 
   CFG_EXE_SUFFIX := .exe
-  CFG_LIB_NAME=$(1).dll
-  CFG_LIB_GLOB=$(1)-*.dll
-  CFG_DEF_SUFFIX := .def
 ifdef MSYSTEM
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
@@ -176,19 +199,7 @@ else
   CFG_LDPATH :=
   CFG_RUN=$(2)
 endif
-
-  CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
-   $(if $(findstring stage0,$(1)), \
-       stage0/$(CFG_LIBDIR), \
-      $(if $(findstring stage1,$(1)), \
-           stage1/$(CFG_LIBDIR), \
-          $(if $(findstring stage2,$(1)), \
-               stage2/$(CFG_LIBDIR), \
-               $(if $(findstring stage3,$(1)), \
-                    stage3/$(CFG_LIBDIR), \
-               )))))/rustc/$(CFG_BUILD_TRIPLE)/$(CFG_LIBDIR)
-
-  CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
+  CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
   CFG_LIBUV_LINK_FLAGS=-lWs2_32 -lpsapi -liphlpapi
 
@@ -196,12 +207,8 @@ endif
     CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
                              -e 's@\\(\S)@/\1@go;'       \
                              -e 's@^/([a-zA-Z])/@\1:/@o;')
-    CFG_GCCISH_CFLAGS += -march=i686
-    CFG_GCCISH_LINK_FLAGS += -shared -fPIC
   endif
-  CFG_INSTALL_NAME =
 endif
-
 
 CFG_INFO := $(info cfg: using $(CFG_C_COMPILER))
 ifeq ($(CFG_C_COMPILER),clang)
