@@ -11,7 +11,7 @@ You're not off the hook even if you just stick to documentation; code examples i
 Pull requests will be treated as "review requests",
 and we will give feedback we expect to see corrected on [style](https://github.com/mozilla/rust/wiki/Note-style-guide) and substance before pulling.
 Changes contributed via pull request should focus on a single issue at a time, like any other.
-We will not look accept pull-requests that try to "sneak" unrelated changes in.
+We will not accept pull-requests that try to "sneak" unrelated changes in.
 
 Normally, all pull requests must include regression tests (see [Note-testsuite](https://github.com/mozilla/rust/wiki/Note-testsuite)) that test your change.
 Occasionally, a change will be very difficult to test for.
