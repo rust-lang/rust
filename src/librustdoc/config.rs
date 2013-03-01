@@ -85,7 +85,7 @@ fn opts() -> ~[(getopts::Opt, ~str)] {
 }
 
 pub fn usage() {
-    use io::println;
+    use core::io::println;
 
     println(~"Usage: rustdoc [options] <cratefile>\n");
     println(~"Options:\n");

@@ -12,21 +12,20 @@
 
 use ll = uv_ll;
 use iotask = uv_iotask;
-use get_gl = get;
+use get_gl = self::get;
 use uv_iotask::{IoTask, spawn_iotask};
 
+use core::clone::Clone;
+use core::comm::{Port, Chan, SharedChan, select2i};
 use core::either::{Left, Right};
 use core::libc;
-use core::comm::{Port, Chan, SharedChan, select2i};
-use core::unstable::global::{global_data_clone_create,
-                            global_data_clone};
-use core::unstable::weak_task::weaken_task;
+use core::option::{Some, None};
 use core::str;
 use core::task::{task, SingleThreaded, spawn};
 use core::task;
+use core::unstable::global::{global_data_clone_create, global_data_clone};
+use core::unstable::weak_task::weaken_task;
 use core::vec;
-use core::clone::Clone;
-use core::option::{Some, None};
 
 /**
  * Race-free helper to get access to a global task where a libuv
@@ -123,7 +122,7 @@ fn spawn_loop() -> IoTask {
 mod test {
     use core::prelude::*;
 
-    use get_gl = get;
+    use get_gl = uv_global_loop::get;
     use uv::iotask;
     use uv::ll;
     use uv_global_loop::*;

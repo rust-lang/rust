@@ -34,7 +34,7 @@ use syntax::visit::{visit_crate, visit_item};
 
 use core::ptr;
 use std::oldmap::HashMap;
-use str_eq = str::eq;
+use str_eq = core::str::eq;
 
 pub enum LangItem {
     ConstTraitLangItem,         // 0

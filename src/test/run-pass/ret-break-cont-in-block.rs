@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-use cmp::Eq;
+use core::cmp::Eq;
 
 fn iter<T>(v: ~[T], it: fn(&T) -> bool) {
     let mut i = 0u, l = v.len();

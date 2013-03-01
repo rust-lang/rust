@@ -865,7 +865,7 @@ pub impl BigInt {
 mod biguint_tests {
 
     use core::*;
-    use num::{IntConvertible, Zero, One};
+    use core::num::{IntConvertible, Zero, One};
     use super::{BigInt, BigUint, BigDigit};
 
     #[test]

@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use driver::session::Session;
 use driver::session;
 use metadata::csearch;
 use metadata;
@@ -22,7 +23,6 @@ use middle::resolve;
 use middle::ty;
 use middle::typeck;
 use middle;
-use session::Session;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{region_to_str, explain_region, vstore_to_str};
 use util::ppaux::{ty_to_str, tys_to_str};

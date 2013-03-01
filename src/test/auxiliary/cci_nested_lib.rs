@@ -10,7 +10,7 @@
 
 #[legacy_modes];
 
-use dvec::DVec;
+use core::dvec::DVec;
 
 pub struct Entry<A,B> {key: A, value: B}
 

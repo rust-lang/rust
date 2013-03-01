@@ -12,14 +12,15 @@ use core::prelude::*;
 
 use back::link;
 use back::{arm, x86, x86_64};
+use driver::session::{Aggressive};
+use driver::session::{Session, Session_, OptLevel, No, Less, Default};
+use driver::session;
 use front;
 use lib::llvm::llvm;
 use metadata::{creader, cstore, filesearch};
 use metadata;
 use middle::{trans, freevars, kind, ty, typeck, lint, astencode};
 use middle;
-use session::{Session, Session_, OptLevel, No, Less, Default, Aggressive};
-use session;
 use util::ppaux;
 
 use core::cmp;

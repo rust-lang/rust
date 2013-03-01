@@ -221,7 +221,7 @@ mod test {
                 let ch = ch.clone();
                 let hl_loop_clone = hl_loop.clone();
                 do task::spawn {
-                    use rand::*;
+                    use core::rand::*;
                     let rng = Rng();
                     for iter::repeat(times) {
                         sleep(&hl_loop_clone, rng.next() as uint % maxms);

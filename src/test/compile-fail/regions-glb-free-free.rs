@@ -11,7 +11,7 @@
 mod argparse {
     extern mod std;
 
-    use either::{Either, Left, Right};
+    use core::either::{Either, Left, Right};
 
     pub struct Flag {
         name: &str,

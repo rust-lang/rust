@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dvec::DVec;
+use core::dvec::DVec;
 
-type parser = {
+struct parser {
     tokens: DVec<int>,
-};
+}
 
 trait parse {
     fn parse() -> ~[int];
@@ -20,7 +20,7 @@ trait parse {
 
 impl parse for parser {
     fn parse() -> ~[int] {
-        dvec::unwrap(self.tokens) //~ ERROR moving out of immutable field
+        ::core::dvec::unwrap(self.tokens) //~ ERROR moving out of immutable field
     }
 }
 

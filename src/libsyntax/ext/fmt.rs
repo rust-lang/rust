@@ -24,7 +24,8 @@ use ext::base::*;
 use ext::base;
 use ext::build;
 use ext::build::*;
-use unstable::extfmt::ct::*;
+
+use core::unstable::extfmt::ct::*;
 
 pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {

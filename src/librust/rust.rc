@@ -220,7 +220,7 @@ fn usage() {
 
 }
 
-fn main() {
+pub fn main() {
     let args = os::args().tail();
 
     if !args.is_empty() {
