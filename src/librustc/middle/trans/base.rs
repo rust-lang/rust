@@ -867,7 +867,7 @@ pub fn in_lpad_scope_cx(bcx: block, f: &fn(+si: &mut scope_info)) {
     let mut bcx = bcx;
     loop {
         {
-            // XXX: Borrow check bug workaround.
+            // FIXME #4280: Borrow check bug workaround.
             let kind: &mut block_kind = &mut *bcx.kind;
             match *kind {
                 block_scope(ref mut inf) => {
@@ -1272,7 +1272,7 @@ pub fn cleanup_and_leave(bcx: block,
         }
 
         {
-            // XXX: Borrow check bug workaround.
+            // FIXME #4280: Borrow check bug workaround.
             let kind: &mut block_kind = &mut *cur.kind;
             match *kind {
               block_scope(ref mut inf) if !inf.cleanups.is_empty() => {
@@ -1850,8 +1850,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
     };
     let fcx = new_fn_ctxt_w_id(ccx, ~[], llfndecl, variant.node.id, None,
                                param_substs, None);
-    // XXX: Bad copy.
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, copy fn_args);
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
     let ty_param_substs = match param_substs {
       Some(ref substs) => /*bad*/copy substs.tys,
       None => ~[]
