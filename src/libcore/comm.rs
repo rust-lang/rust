@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Transitional -- needs snapshot
-#[allow(structural_records)];
-
 use either::{Either, Left, Right};
 use kinds::Owned;
 use option;
