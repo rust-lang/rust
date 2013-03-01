@@ -315,7 +315,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-pub fn monitor(+f: fn~(diagnostic::Emitter)) {
+pub fn monitor(+f: ~fn(diagnostic::Emitter)) {
     use core::cell::Cell;
     use core::comm::*;
     let (p, ch) = stream();
@@ -326,8 +326,10 @@ pub fn monitor(+f: fn~(diagnostic::Emitter)) {
         let ch_capture = ch.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
-        let demitter = fn@(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
-                           msg: &str, lvl: diagnostic::level) {
+        let demitter: @fn(Option<(@codemap::CodeMap, codemap::span)>,
+                          &str,
+                          diagnostic::level) =
+                          |cmsp, msg, lvl| {
             if lvl == diagnostic::fatal {
                 ch_capture.send(fatal);
             }

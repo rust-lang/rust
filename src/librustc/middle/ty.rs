@@ -525,7 +525,7 @@ pub enum sty {
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_opaque_closure_ptr(Sigil), // ptr to env for fn, fn@, fn~
+    ty_opaque_closure_ptr(Sigil), // ptr to env for &fn, @fn, ~fn
     ty_unboxed_vec(mt),
 }
 
@@ -1102,8 +1102,8 @@ pub pure fn mach_sty(cfg: @session::config, t: t) -> sty {
 }
 
 pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
-        // FIXME(#2202) --- We retain by-ref for fn& things to workaround a
-        // memory leak that otherwise results when @fn is upcast to &fn.
+    // FIXME(#2202) --- We retain by-ref for &fn things to workaround a
+    // memory leak that otherwise results when @fn is upcast to &fn.
     match ty::get(ty).sty {
         ty::ty_closure(ClosureTy {sigil: ast::BorrowedSigil, _}) => {
             return ast::by_ref;

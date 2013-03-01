@@ -709,7 +709,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     return inf;
 }
 
-pub type glue_helper = fn@(block, ValueRef, ty::t);
+pub type glue_helper = @fn(block, ValueRef, ty::t);
 
 pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
                             +name: ~str) -> ValueRef {

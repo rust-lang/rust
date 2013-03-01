@@ -29,7 +29,7 @@ use syntax::fold;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
-type node_id_gen = fn@() -> ast::node_id;
+type node_id_gen = @fn() -> ast::node_id;
 
 struct Test {
     span: span,
