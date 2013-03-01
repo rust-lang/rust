@@ -1822,8 +1822,8 @@ pub impl Parser {
                                 || self.parse_expr())
     }
 
-    fn parse_lambda_expr_(parse_decl: fn&() -> fn_decl,
-                          parse_body: fn&() -> @expr) -> @expr {
+    fn parse_lambda_expr_(parse_decl: &fn() -> fn_decl,
+                          parse_body: &fn() -> @expr) -> @expr {
         let lo = self.last_span.lo;
         let decl = parse_decl();
         let body = parse_body();

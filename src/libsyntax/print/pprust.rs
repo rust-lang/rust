@@ -47,8 +47,8 @@ pub enum ann_node/& {
     node_pat(@ps, @ast::pat),
 }
 pub struct pp_ann {
-    pre: fn@(ann_node),
-    post: fn@(ann_node)
+    pre: @fn(ann_node),
+    post: @fn(ann_node)
 }
 
 pub fn no_ann() -> pp_ann {
@@ -2190,7 +2190,7 @@ pub fn print_string(s: @ps, st: ~str) {
     word(s.s, ~"\"");
 }
 
-pub fn to_str<T>(t: T, f: fn@(@ps, T), intr: @ident_interner) -> ~str {
+pub fn to_str<T>(t: T, f: @fn(@ps, T), intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         f(s, t);
