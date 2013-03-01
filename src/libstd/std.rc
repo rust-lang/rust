@@ -113,7 +113,7 @@ pub mod serialize;
 // 'std' so that macro-expanded references to std::serialize and such
 // can be resolved within libcore.
 #[doc(hidden)] // FIXME #3538
-mod std {
+pub mod std {
     pub use serialize;
     pub use test;
 }

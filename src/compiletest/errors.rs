@@ -11,9 +11,10 @@
 use core::prelude::*;
 
 use common::config;
-use io;
-use io::ReaderUtil;
-use str;
+
+use core::io;
+use core::io::ReaderUtil;
+use core::str;
 
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 

@@ -14,9 +14,6 @@
 use core::prelude::*;
 
 use metadata::cstore::crate_metadata;
-use dvec::DVec;
-use hash::{Hash, HashUtil};
-use io::WriterUtil;
 use metadata::common::*;
 use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
 use metadata::csearch;
@@ -28,8 +25,11 @@ use middle::{ty, resolve};
 use util::ppaux::ty_to_str;
 
 use core::cmp;
+use core::dvec::DVec;
 use core::dvec;
+use core::hash::{Hash, HashUtil};
 use core::int;
+use core::io::WriterUtil;
 use core::io;
 use core::option;
 use core::str;

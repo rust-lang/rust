@@ -18,7 +18,7 @@ mod foo {
     }
 }
 mod bar {
-    pub use zed::baz;
+    pub use foo::zed::baz;
     pub mod foo {
         pub mod zed {}
     }

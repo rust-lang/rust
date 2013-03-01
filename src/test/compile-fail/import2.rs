@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved
-use baz::zed::bar;
+use baz::zed::bar;  //~ ERROR unresolved name
+//~^ ERROR failed to resolve import
+
 mod baz {}
 mod zed {
     pub fn bar() { debug!("bar3"); }

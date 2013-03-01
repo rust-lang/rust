@@ -13,7 +13,7 @@ use core::prelude::*;
 use back::link;
 use back::target_strs;
 use back;
-use driver;
+use driver::driver::host_triple;
 use driver::session;
 use metadata::filesearch;
 use metadata;
@@ -293,7 +293,7 @@ pub fn basic_options() -> @options {
         output_type: link::output_type_exe,
         addl_lib_search_paths: ~[],
         maybe_sysroot: None,
-        target_triple: driver::host_triple(),
+        target_triple: host_triple(),
         cfg: ~[],
         binary: ~"rustc",
         test: false,

@@ -11,9 +11,9 @@
 // xfail-fast
 
 use core::bool;
+use core::libc::c_void;
+use core::vec::UnboxedVecRepr;
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
-use libc::c_void;
-use vec::UnboxedVecRepr;
 
 #[doc = "High-level interfaces to `intrinsic::visit_ty` reflection system."]
 

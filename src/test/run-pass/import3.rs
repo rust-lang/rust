@@ -12,7 +12,7 @@
 
 
 use baz::zed;
-use zed::bar;
+use baz::zed::bar;
 
 mod baz {
     pub mod zed {

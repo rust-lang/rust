@@ -594,15 +594,14 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 }
 
 pub mod bench {
-
-    use rand;
-    use u64;
-    use vec;
     use time::precise_time_ns;
     use test::{BenchHarness, BenchSamples};
     use stats::Stats;
-    use num;
-    use rand;
+
+    use core::num;
+    use core::rand;
+    use core::u64;
+    use core::vec;
 
     pub impl BenchHarness {
 

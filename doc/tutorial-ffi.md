@@ -14,7 +14,7 @@ should compile and run without any extra effort.
 
 ~~~~ {.xfail-test}
 extern mod std;
-use libc::c_uint;
+use core::libc::c_uint;
 
 extern mod crypto {
     fn SHA1(src: *u8, sz: c_uint, out: *u8) -> *u8;
@@ -217,7 +217,7 @@ microsecond-resolution timer.
 
 ~~~~
 extern mod std;
-use libc::c_ulonglong;
+use core::libc::c_ulonglong;
 
 struct timeval {
     tv_sec: c_ulonglong,

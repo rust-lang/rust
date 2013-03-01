@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp::Eq;
+use core::cmp::Eq;
 
 pub trait MyNum : Add<Self,Self> Sub<Self,Self> Mul<Self,Self> Eq {
 }

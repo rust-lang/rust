@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern mod std;
-use cmp::Eq;
+use core::cmp::Eq;
 
 fn f<T:Eq>(o: &mut Option<T>) {
     assert *o == option::None;
