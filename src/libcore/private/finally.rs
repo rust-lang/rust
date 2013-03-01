@@ -26,33 +26,10 @@ do || {
 use ops::Drop;
 use task::{spawn, failing};
 
-#[cfg(stage0)]
-pub trait Finally<T> {
-    fn finally(&self, +dtor: &fn()) -> T;
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 pub trait Finally<T> {
     fn finally(&self, dtor: &fn()) -> T;
 }
 
-#[cfg(stage0)]
-impl<T> Finally<T> for &fn() -> T {
-    // FIXME #4518: Should not require a mode here
-    fn finally(&self, +dtor: &fn()) -> T {
-        let _d = Finallyalizer {
-            dtor: dtor
-        };
-
-        (*self)()
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 impl<T> Finally<T> for &fn() -> T {
     fn finally(&self, dtor: &fn()) -> T {
         let _d = Finallyalizer {
