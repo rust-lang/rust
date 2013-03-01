@@ -23,7 +23,7 @@ not required in or otherwise suitable for the core library.
        url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
 
 #[comment = "The Rust standard library"];
-#[license = "MIT/APL2"];
+#[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
 #[allow(vecs_implicitly_copyable)];

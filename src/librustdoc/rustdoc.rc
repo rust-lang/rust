@@ -16,7 +16,7 @@
        url = "https://github.com/mozilla/rust/tree/master/src/rustdoc")];
 
 #[comment = "The Rust documentation generator"];
-#[license = "MIT/APL2"];
+#[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
 #[no_core];
