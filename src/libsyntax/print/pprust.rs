@@ -1817,6 +1817,7 @@ pub fn print_generics(s: @ps, &&generics: &ast::Generics) {
                 let lifetime = generics.lifetimes.get(idx);
                 print_lifetime(s, lifetime);
             } else {
+                let idx = idx - generics.lifetimes.len();
                 let param = generics.ty_params.get(idx);
                 print_ident(s, param.ident);
                 print_bounds(s, param.bounds);
