@@ -79,9 +79,8 @@ fn test_fail() {
 
 #[test]
 fn test_retval() {
-    let i = do (fn&() -> int {
-        10
-    }).finally { };
+    let closure: &fn() -> int = || 10;
+    let i = do closure.finally { };
     assert i == 10;
 }
 
