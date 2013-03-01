@@ -342,8 +342,11 @@ rust_kernel::register_exit_function(spawn_fn runner, fn_env_pair *f) {
     assert(!at_exit_started && "registering at_exit function after exit");
 
     if (at_exit_runner) {
-        assert(runner == at_exit_runner
-               && "there can be only one at_exit_runner");
+        // FIXME #2912 Would be very nice to assert this but we can't because
+        // of the way coretest works (the test case ends up using its own
+        // function)
+        //assert(runner == at_exit_runner
+        //       && "there can be only one at_exit_runner");
     }
 
     at_exit_runner = runner;
