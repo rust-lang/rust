@@ -2,7 +2,7 @@ struct Wizard {
     spells: ~[&static/str]
 }
 
-impl Wizard {
+pub impl Wizard {
     fn cast(&mut self) {
         for self.spells.each |&spell| {
             io::println(spell);

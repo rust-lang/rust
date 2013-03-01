@@ -551,7 +551,7 @@ struct Snapshot {
     region_vars_snapshot: uint,
 }
 
-impl @mut InferCtxt {
+pub impl @mut InferCtxt {
     fn combine_fields(&self, a_is_expected: bool,
                       span: span) -> CombineFields {
         CombineFields {infcx: *self,
@@ -643,7 +643,7 @@ fn next_simple_var<V:Copy,T:Copy>(
     return id;
 }
 
-impl @mut InferCtxt {
+pub impl @mut InferCtxt {
     fn next_ty_var_id(&self) -> TyVid {
         let id = self.ty_var_counter;
         self.ty_var_counter += 1;

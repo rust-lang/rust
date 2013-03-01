@@ -32,7 +32,7 @@ priv impl cat {
     }
 }
 
-impl cat {
+pub impl cat {
     fn eat(&mut self) -> bool {
         if self.how_hungry > 0 {
             error!("OM NOM NOM");

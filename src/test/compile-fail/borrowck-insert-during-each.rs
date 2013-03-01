@@ -14,7 +14,7 @@ struct Foo {
   n: LinearSet<int>,
 }
 
-impl Foo {
+pub impl Foo {
   fn foo(&mut self, fun: fn(&int)) {
     for self.n.each |f| {
       fun(f);

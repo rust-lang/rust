@@ -132,7 +132,7 @@ impl cmp::Ord for WorkKey {
     }
 }
 
-impl WorkKey {
+pub impl WorkKey {
     static fn new(kind: &str, name: &str) -> WorkKey {
     WorkKey { kind: kind.to_owned(), name: name.to_owned() }
     }
@@ -168,7 +168,7 @@ struct Database {
     mut db_dirty: bool
 }
 
-impl Database {
+pub impl Database {
     fn prepare(&mut self, fn_name: &str,
                declared_inputs: &WorkMap) -> Option<(WorkMap, WorkMap, ~str)>
     {
@@ -199,7 +199,7 @@ struct Logger {
     a: ()
 }
 
-impl Logger {
+pub impl Logger {
     fn info(i: &str) {
         io::println(~"workcache: " + i.to_owned());
     }
@@ -254,7 +254,7 @@ fn digest_file(path: &Path) -> ~str {
     sha.result_str()
 }
 
-impl Context {
+pub impl Context {
 
     static fn new(db: @Mut<Database>,
                   lg: @Mut<Logger>,
@@ -356,7 +356,7 @@ impl TPrep for @Mut<Prep> {
     }
 }
 
-impl<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>> Work<T> {
+pub impl<T:Owned+Encodable<json::Encoder>+Decodable<json::Decoder>> Work<T> {
     static fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }

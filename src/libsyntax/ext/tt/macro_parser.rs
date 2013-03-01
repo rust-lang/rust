@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // Earley-like parser for macros.
+use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use codemap::{BytePos, mk_sp};
 use codemap;
@@ -23,6 +24,7 @@ use core::dvec::DVec;
 use core::dvec;
 use core::io;
 use core::option;
+use core::option::{Option, Some, None};
 use core::str;
 use core::uint;
 use core::vec;

@@ -71,11 +71,11 @@ pub fn mk_filesearch(maybe_sysroot: Option<Path>,
 
     let sysroot = get_sysroot(maybe_sysroot);
     debug!("using sysroot = %s", sysroot.to_str());
-    FileSearchImpl {
+    @FileSearchImpl {
         sysroot: sysroot,
         addl_lib_search_paths: addl_lib_search_paths,
         target_triple: str::from_slice(target_triple)
-    } as FileSearch
+    } as @FileSearch
 }
 
 pub fn search<T:Copy>(filesearch: FileSearch, pick: pick<T>) -> Option<T> {

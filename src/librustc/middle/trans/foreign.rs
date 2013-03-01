@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use back::{link, abi};
+use driver::session;
 use driver::session::arch_x86_64;
 use driver::session::arch_arm;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
@@ -27,11 +28,13 @@ use middle::trans::callee::*;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore};
+use middle::trans::machine::llsize_of;
 use middle::trans::glue;
 use middle::trans::machine;
 use middle::trans::shape;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
+use middle::ty;
 use middle::ty::{FnSig, arg};
 use util::ppaux::ty_to_str;
 

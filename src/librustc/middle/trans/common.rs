@@ -157,7 +157,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-type ExternMap = HashMap<@str, ValueRef>;
+pub type ExternMap = HashMap<@str, ValueRef>;
 
 // Crate context.  Every crate we compile has one of these.
 pub struct CrateContext {
@@ -553,10 +553,7 @@ impl get_node_info for ast::blk {
     }
 }
 
-// XXX: Work around a trait parsing bug. remove after snapshot
-pub type optional_boxed_ast_expr = Option<@ast::expr>;
-
-impl get_node_info for optional_boxed_ast_expr {
+impl get_node_info for Option<@ast::expr> {
     fn info(&self) -> Option<NodeInfo> {
         self.chain_ref(|s| s.info())
     }

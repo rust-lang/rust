@@ -15,12 +15,13 @@
  * interface.
  */
 
+use prelude::*;
+
+use ast;
+use codemap::span;
 use ext::base::*;
 use ext::base;
 use ext::build::mk_uniq_str;
-
-use core::option;
-use core::os;
 
 pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {

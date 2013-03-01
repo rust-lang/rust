@@ -299,6 +299,8 @@ mod test {
     use super::*;
     use std::serialize::Encodable;
     use std;
+    use core::io;
+    use core::option::None;
     use core::str;
     use util::testing::*;
 
@@ -314,7 +316,7 @@ mod test {
             @~"fn foo (x : int) { x; }",
             ~[],
             new_parse_sess(None));
-        check_equal(to_json_str(tts as Encodable::<std::json::Encoder>),
+        check_equal(to_json_str(@tts as Encodable::<std::json::Encoder>),
                     ~"[[\"tt_tok\",[,[\"IDENT\",[\"fn\",false]]]],\
                       [\"tt_tok\",[,[\"IDENT\",[\"foo\",false]]]],\
                       [\"tt_delim\",[[[\"tt_tok\",[,[\"LPAREN\",[]]]],\

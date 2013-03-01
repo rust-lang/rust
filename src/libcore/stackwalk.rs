@@ -10,9 +10,6 @@
 
 #[doc(hidden)]; // FIXME #3538
 
-#[legacy_modes]; // tjc: remove after snapshot
-#[allow(deprecated_mode)];
-
 use cast::reinterpret_cast;
 use ptr::offset;
 use sys::size_of;

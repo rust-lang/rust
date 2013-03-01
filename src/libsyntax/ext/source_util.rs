@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast;
 use codemap;
 use codemap::{FileMap, Loc, Pos, ExpandedFrom, span};
 use codemap::{CallInfo, NameAndSpan};
 use ext::base::*;
 use ext::base;
 use ext::build::{mk_base_vec_e, mk_uint, mk_u8, mk_base_str};
+use parse;
 use print::pprust;
 
 use core::io;

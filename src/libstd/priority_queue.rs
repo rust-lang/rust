@@ -48,7 +48,7 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
     fn clear(&mut self) { self.data.truncate(0) }
 }
 
-impl <T:Ord> PriorityQueue<T> {
+pub impl <T:Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
     pure fn top(&self) -> &self/T { &self.data[0] }
 

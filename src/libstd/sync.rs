@@ -100,7 +100,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 }
 
 #[doc(hidden)]
-impl<Q:Owned> &Sem<Q> {
+pub impl<Q:Owned> &Sem<Q> {
     fn acquire() {
         let mut waiter_nobe = None;
         unsafe {
@@ -136,7 +136,7 @@ impl<Q:Owned> &Sem<Q> {
 }
 // FIXME(#3154) move both copies of this into Sem<Q>, and unify the 2 structs
 #[doc(hidden)]
-impl &Sem<()> {
+pub impl &Sem<()> {
     fn access<U>(blk: fn() -> U) -> U {
         let mut release = None;
         unsafe {
@@ -149,7 +149,7 @@ impl &Sem<()> {
     }
 }
 #[doc(hidden)]
-impl &Sem<~[Waitqueue]> {
+pub impl &Sem<~[Waitqueue]> {
     fn access<U>(blk: fn() -> U) -> U {
         let mut release = None;
         unsafe {
@@ -192,7 +192,7 @@ pub struct Condvar { priv sem: &Sem<~[Waitqueue]> }
 
 impl Drop for Condvar { fn finalize(&self) {} }
 
-impl &Condvar {
+pub impl &Condvar {
     /**
      * Atomically drop the associated lock, and block until a signal is sent.
      *
@@ -344,7 +344,7 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
 }
 
 #[doc(hidden)]
-impl &Sem<~[Waitqueue]> {
+pub impl &Sem<~[Waitqueue]> {
     // The only other place that condvars get built is rwlock_write_mode.
     fn access_cond<U>(blk: fn(c: &Condvar) -> U) -> U {
         do self.access { blk(&Condvar { sem: self }) }
@@ -370,7 +370,7 @@ impl Clone for Semaphore {
     }
 }
 
-impl &Semaphore {
+pub impl &Semaphore {
     /**
      * Acquire a resource represented by the semaphore. Blocks if necessary
      * until resource(s) become available.
@@ -399,7 +399,7 @@ impl &Semaphore {
  * A task which fails while holding a mutex will unlock the mutex as it
  * unwinds.
  */
-struct Mutex { priv sem: Sem<~[Waitqueue]> }
+pub struct Mutex { priv sem: Sem<~[Waitqueue]> }
 
 /// Create a new mutex, with one associated condvar.
 pub fn Mutex() -> Mutex { mutex_with_condvars(1) }
@@ -418,7 +418,7 @@ impl Clone for Mutex {
     fn clone(&self) -> Mutex { Mutex { sem: Sem((*self.sem).clone()) } }
 }
 
-impl &Mutex {
+pub impl &Mutex {
     /// Run a function with ownership of the mutex.
     fn lock<U>(blk: fn() -> U) -> U { (&self.sem).access(blk) }
 
@@ -447,7 +447,7 @@ struct RWlockInner {
  * A task which fails while holding an rwlock will unlock the rwlock as it
  * unwinds.
  */
-struct RWlock {
+pub struct RWlock {
     priv order_lock:  Semaphore,
     priv access_lock: Sem<~[Waitqueue]>,
     priv state:       Exclusive<RWlockInner>
@@ -467,7 +467,7 @@ pub fn rwlock_with_condvars(num_condvars: uint) -> RWlock {
                                              read_count: 0 }) }
 }
 
-impl &RWlock {
+pub impl &RWlock {
     /// Create a new handle to the rwlock.
     fn clone() -> RWlock {
         RWlock { order_lock:  (&(self.order_lock)).clone(),
@@ -688,7 +688,7 @@ impl Drop for RWlockWriteMode { fn finalize(&self) {} }
 pub struct RWlockReadMode  { priv lock: &RWlock }
 impl Drop for RWlockReadMode { fn finalize(&self) {} }
 
-impl &RWlockWriteMode {
+pub impl &RWlockWriteMode {
     /// Access the pre-downgrade rwlock in write mode.
     fn write<U>(blk: fn() -> U) -> U { blk() }
     /// Access the pre-downgrade rwlock in write mode with a condvar.
@@ -696,7 +696,7 @@ impl &RWlockWriteMode {
         blk(&Condvar { sem: &self.lock.access_lock })
     }
 }
-impl &RWlockReadMode {
+pub impl &RWlockReadMode {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(blk: fn() -> U) -> U { blk() }
 }
@@ -712,6 +712,7 @@ mod tests {
     use sync::*;
 
     use core::cast;
+    use core::cell::Cell;
     use core::option;
     use core::pipes;
     use core::ptr;

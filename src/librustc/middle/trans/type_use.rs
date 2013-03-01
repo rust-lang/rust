@@ -32,13 +32,17 @@ use metadata::csearch;
 use middle::freevars;
 use middle::trans::common::*;
 use middle::trans::inline;
+use middle::ty;
+use middle::typeck;
 
 use core::option;
+use core::option::{Some, None, Option};
 use core::uint;
 use core::vec;
 use std::list::{List, Cons, Nil};
 use std::list;
 use std::oldmap::HashMap;
+use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_map;
 use syntax::ast_util;

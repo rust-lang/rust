@@ -14,7 +14,7 @@ struct cat<U> {
     how_hungry : int,
 }
 
-impl<U> cat<U> {
+pub impl<U> cat<U> {
     fn speak(&mut self) { self.meows += 1u; }
     fn meow_count(&mut self) -> uint { self.meows }
 }

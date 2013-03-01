@@ -28,14 +28,16 @@ use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::monomorphize;
 use middle::trans::type_of::*;
+use middle::ty;
 use middle::ty::arg;
 use middle::typeck;
+use util::common::indenter;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::libc::c_uint;
 use std::oldmap::HashMap;
 use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
-use syntax::ast_util::local_def;
+use syntax::ast_util;
 use syntax::print::pprust::expr_to_str;
 use syntax::{ast, ast_map};
 
@@ -351,7 +353,7 @@ pub fn trans_static_method_callee(bcx: block,
 
 pub fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
     -> Option<ast::def_id> {
-    ms.find(|m| m.ident == name).map(|m| local_def(m.id))
+    ms.find(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
 }
 
 pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
@@ -725,7 +727,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
-    let llcallee_ty = type_of::type_of_fn_from_ty(ccx, callee_ty);
+    let llcallee_ty = type_of_fn_from_ty(ccx, callee_ty);
     let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method]));
     let mptr = PointerCast(bcx, mptr, T_ptr(llcallee_ty));
 
@@ -868,27 +870,11 @@ pub fn trans_trait_cast(bcx: block,
     match vstore {
         ty::vstore_slice(*) | ty::vstore_box => {
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-            if bcx.tcx().legacy_boxed_traits.contains_key(&id) {
-                // Allocate an @ box and store the value into it
-                let MallocResult {bcx: new_bcx, box: llbox, body: body} =
-                    malloc_boxed(bcx, v_ty);
-                bcx = new_bcx;
-                add_clean_free(bcx, llbox, heap_managed);
-                bcx = expr::trans_into(bcx, val, SaveIn(body));
-                revoke_clean(bcx, llbox);
-
-                // Store the @ box into the pair
-                Store(bcx, llbox, PointerCast(bcx,
-                                              llboxdest,
-                                              T_ptr(val_ty(llbox))));
-            } else {
-                // Just store the pointer into the pair.
-                llboxdest = PointerCast(bcx,
-                                        llboxdest,
-                                        T_ptr(type_of::type_of(bcx.ccx(),
-                                                               v_ty)));
-                bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
-            }
+            // Just store the pointer into the pair.
+            llboxdest = PointerCast(bcx,
+                                    llboxdest,
+                                    T_ptr(type_of(bcx.ccx(), v_ty)));
+            bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
         }
         ty::vstore_uniq => {
             // Translate the uniquely-owned value into the second element of
@@ -896,7 +882,7 @@ pub fn trans_trait_cast(bcx: block,
             let mut llvaldest = GEPi(bcx, lldest, [0, 1]);
             llvaldest = PointerCast(bcx,
                                     llvaldest,
-                                    T_ptr(type_of::type_of(bcx.ccx(), v_ty)));
+                                    T_ptr(type_of(bcx.ccx(), v_ty)));
             bcx = expr::trans_into(bcx, val, SaveIn(llvaldest));
 
             // Get the type descriptor of the wrapped value and store it into

@@ -87,7 +87,7 @@ struct LoanContext {
     loans: ~[Loan]
 }
 
-impl LoanContext {
+pub impl LoanContext {
     fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     fn loan(&mut self,

@@ -1218,7 +1218,7 @@ fn TwoRegionsMap() -> TwoRegionsMap {
     return HashMap();
 }
 
-impl RegionVarBindings {
+pub impl RegionVarBindings {
     fn infer_variable_values(&mut self) -> ~[GraphNodeValue] {
         let mut graph = self.construct_graph();
         self.expansion(&mut graph);

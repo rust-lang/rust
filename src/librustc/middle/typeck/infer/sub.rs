@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use middle::ty;
+use middle::ty::TyVar;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::cres;
@@ -19,11 +20,14 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::*;
+use util::common::{indent, indenter};
 use util::ppaux::bound_region_to_str;
 
 use std::list::Nil;
 use std::list;
-use syntax::ast::{m_const, purity, ret_style};
+use syntax::ast;
+use syntax::ast::{Onceness, m_const, purity, ret_style};
+use syntax::codemap::span;
 
 
 pub enum Sub = CombineFields;  // "subtype", "subregion" etc

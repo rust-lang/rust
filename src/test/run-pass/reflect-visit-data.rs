@@ -30,7 +30,7 @@ fn align(size: uint, align: uint) -> uint {
 
 enum ptr_visit_adaptor<V> = Inner<V>;
 
-impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
+pub impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
     fn bump(sz: uint) {
@@ -478,7 +478,7 @@ struct Stuff {
     vals: ~[~str]
 }
 
-impl my_visitor {
+pub impl my_visitor {
     fn get<T>(f: fn(T)) {
         unsafe {
             f(*(self.ptr1 as *T));
@@ -489,7 +489,7 @@ impl my_visitor {
         unsafe {
             let u = my_visitor(*self);
             let v = ptr_visit_adaptor::<my_visitor>(Inner {inner: u});
-            visit_tydesc(inner, v as TyVisitor);
+            visit_tydesc(inner, @v as @TyVisitor);
             true
         }
     }
@@ -644,7 +644,7 @@ pub fn main() {
         let td = get_tydesc_for(r);
         unsafe { error!("tydesc sz: %u, align: %u",
                         (*td).size, (*td).align); }
-        let v = v as TyVisitor;
+        let v = @v as @TyVisitor;
         visit_tydesc(td, v);
 
         for (copy u.vals).each |s| {

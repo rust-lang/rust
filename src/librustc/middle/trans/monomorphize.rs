@@ -11,6 +11,8 @@
 use core::prelude::*;
 
 use back::link::mangle_exported_name;
+use driver::session;
+use lib::llvm::ValueRef;
 use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{set_inline_hint_if_appr, set_inline_hint};
 use middle::trans::base::{trans_enum_variant, trans_struct_dtor};
@@ -26,12 +28,15 @@ use middle::trans::shape;
 use middle::trans::type_of::type_of_fn_from_ty;
 use middle::trans::type_of;
 use middle::trans::type_use;
+use middle::ty;
 use middle::ty::{FnSig};
 use middle::typeck;
+use util::ppaux::ty_to_str;
 
 use core::option;
 use core::vec;
 use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util::local_def;
 use syntax::parse::token::special_idents;

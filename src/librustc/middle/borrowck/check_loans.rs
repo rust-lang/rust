@@ -89,7 +89,7 @@ enum assignment_type {
     at_swap
 }
 
-impl assignment_type {
+pub impl assignment_type {
     fn checked_by_liveness(&self) -> bool {
         // the liveness pass guarantees that immutable local variables
         // are only assigned once; but it doesn't consider &mut
@@ -106,7 +106,7 @@ impl assignment_type {
     }
 }
 
-impl CheckLoanCtxt {
+pub impl CheckLoanCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.bccx.tcx }
 
     fn purity(@mut self, scope_id: ast::node_id) -> Option<purity_cause> {

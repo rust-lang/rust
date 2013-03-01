@@ -62,7 +62,7 @@ priv impl<T> DListNode<T> {
     }
 }
 
-impl<T> DListNode<T> {
+pub impl<T> DListNode<T> {
     /// Get the next node in the list, if there is one.
     pure fn next_link(@mut self) -> DListLink<T> {
         self.assert_links();
@@ -208,7 +208,7 @@ priv impl<T> DList<T> {
     }
 }
 
-impl<T> DList<T> {
+pub impl<T> DList<T> {
     /// Get the size of the list. O(1).
     pure fn len(@mut self) -> uint { self.size }
     /// Returns true if the list is empty. O(1).
@@ -457,7 +457,7 @@ impl<T> DList<T> {
     }
 }
 
-impl<T:Copy> DList<T> {
+pub impl<T:Copy> DList<T> {
     /// Remove data from the head of the list. O(1).
     fn pop(@mut self) -> Option<T> {
         self.pop_n().map(|nobe| nobe.data)

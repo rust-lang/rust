@@ -11,6 +11,9 @@
 // Information concerning the machine representation of various types.
 
 
+use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
+use lib::llvm::{True, False, Bool};
+use lib::llvm::llvm;
 use middle::trans::common::*;
 use middle::trans::type_of;
 use middle::ty;
@@ -122,7 +125,7 @@ pub fn llalign_of_min(cx: @CrateContext, t: TypeRef) -> uint {
 pub fn llalign_of(cx: @CrateContext, t: TypeRef) -> ValueRef {
     unsafe {
         return llvm::LLVMConstIntCast(
-            lib::llvm::llvm::LLVMAlignOf(t), cx.int_type, False);
+            llvm::LLVMAlignOf(t), cx.int_type, False);
     }
 }
 

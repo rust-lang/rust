@@ -730,6 +730,91 @@ impl to_bytes::IterBytes for Url {
     }
 }
 
+// Put a few tests outside of the 'test' module so they can test the internal
+// functions and those functions don't need 'pub'
+
+#[test]
+fn test_split_char_first() {
+    let (u,v) = split_char_first(~"hello, sweet world", ',');
+    assert u == ~"hello";
+    assert v == ~" sweet world";
+
+    let (u,v) = split_char_first(~"hello sweet world", ',');
+    assert u == ~"hello sweet world";
+    assert v == ~"";
+}
+
+#[test]
+fn test_get_authority() {
+    let (u, h, p, r) = get_authority(
+        "//user:pass@rust-lang.org/something").unwrap();
+    assert u == Some(UserInfo::new(~"user", Some(~"pass")));
+    assert h == ~"rust-lang.org";
+    assert p.is_none();
+    assert r == ~"/something";
+
+    let (u, h, p, r) = get_authority(
+        "//rust-lang.org:8000?something").unwrap();
+    assert u.is_none();
+    assert h == ~"rust-lang.org";
+    assert p == Some(~"8000");
+    assert r == ~"?something";
+
+    let (u, h, p, r) = get_authority(
+        "//rust-lang.org#blah").unwrap();
+    assert u.is_none();
+    assert h == ~"rust-lang.org";
+    assert p.is_none();
+    assert r == ~"#blah";
+
+    // ipv6 tests
+    let (_, h, _, _) = get_authority(
+        "//2001:0db8:85a3:0042:0000:8a2e:0370:7334#blah").unwrap();
+    assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
+
+    let (_, h, p, _) = get_authority(
+        "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah").unwrap();
+    assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
+    assert p == Some(~"8000");
+
+    let (u, h, p, _) = get_authority(
+        "//us:p@2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah"
+    ).unwrap();
+    assert u == Some(UserInfo::new(~"us", Some(~"p")));
+    assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
+    assert p == Some(~"8000");
+
+    // invalid authorities;
+    assert get_authority("//user:pass@rust-lang:something").is_err();
+    assert get_authority("//user@rust-lang:something:/path").is_err();
+    assert get_authority(
+        "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:800a").is_err();
+    assert get_authority(
+        "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000:00").is_err();
+
+    // these parse as empty, because they don't start with '//'
+    let (_, h, _, _) = get_authority(~"user:pass@rust-lang").unwrap();
+    assert h == ~"";
+    let (_, h, _, _) = get_authority(~"rust-lang.org").unwrap();
+    assert h == ~"";
+}
+
+#[test]
+fn test_get_path() {
+    let (p, r) = get_path("/something+%20orother", true).unwrap();
+    assert p == ~"/something+ orother";
+    assert r == ~"";
+    let (p, r) = get_path("test@email.com#fragment", false).unwrap();
+    assert p == ~"test@email.com";
+    assert r == ~"#fragment";
+    let (p, r) = get_path(~"/gen/:addr=?q=v", false).unwrap();
+    assert p == ~"/gen/:addr=";
+    assert r == ~"?q=v";
+
+    //failure cases
+    assert get_path(~"something?q", true).is_err();
+}
+
 #[cfg(test)]
 mod tests {
     use core::prelude::*;
@@ -737,90 +822,9 @@ mod tests {
     use net_url::*;
     use net_url::UserInfo;
 
+    use core::hashmap::linear::LinearMap;
     use core::result;
     use core::str;
-
-    #[test]
-    pub fn test_split_char_first() {
-        let (u,v) = split_char_first(~"hello, sweet world", ',');
-        assert u == ~"hello";
-        assert v == ~" sweet world";
-
-        let (u,v) = split_char_first(~"hello sweet world", ',');
-        assert u == ~"hello sweet world";
-        assert v == ~"";
-    }
-
-    #[test]
-    pub fn test_get_authority() {
-        let (u, h, p, r) = get_authority(
-            "//user:pass@rust-lang.org/something").unwrap();
-        assert u == Some(UserInfo::new(~"user", Some(~"pass")));
-        assert h == ~"rust-lang.org";
-        assert p.is_none();
-        assert r == ~"/something";
-
-        let (u, h, p, r) = get_authority(
-            "//rust-lang.org:8000?something").unwrap();
-        assert u.is_none();
-        assert h == ~"rust-lang.org";
-        assert p == Some(~"8000");
-        assert r == ~"?something";
-
-        let (u, h, p, r) = get_authority(
-            "//rust-lang.org#blah").unwrap();
-        assert u.is_none();
-        assert h == ~"rust-lang.org";
-        assert p.is_none();
-        assert r == ~"#blah";
-
-        // ipv6 tests
-        let (_, h, _, _) = get_authority(
-            "//2001:0db8:85a3:0042:0000:8a2e:0370:7334#blah").unwrap();
-        assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
-
-        let (_, h, p, _) = get_authority(
-            "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah").unwrap();
-        assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
-        assert p == Some(~"8000");
-
-        let (u, h, p, _) = get_authority(
-            "//us:p@2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah"
-        ).unwrap();
-        assert u == Some(UserInfo::new(~"us", Some(~"p")));
-        assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
-        assert p == Some(~"8000");
-
-        // invalid authorities;
-        assert get_authority("//user:pass@rust-lang:something").is_err();
-        assert get_authority("//user@rust-lang:something:/path").is_err();
-        assert get_authority(
-            "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:800a").is_err();
-        assert get_authority(
-            "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000:00").is_err();
-
-        // these parse as empty, because they don't start with '//'
-        let (_, h, _, _) = get_authority(~"user:pass@rust-lang").unwrap();
-        assert h == ~"";
-        let (_, h, _, _) = get_authority(~"rust-lang.org").unwrap();
-        assert h == ~"";
-    }
-
-    #[test]
-    pub fn test_get_path() {
-        let (p, r) = get_path("/something+%20orother", true).unwrap();
-        assert p == ~"/something+ orother";
-        assert r == ~"";
-        let (p, r) = get_path("test@email.com#fragment", false).unwrap();
-        assert p == ~"test@email.com";
-        assert r == ~"#fragment";
-        let (p, r) = get_path(~"/gen/:addr=?q=v", false).unwrap();
-        assert p == ~"/gen/:addr=";
-        assert r == ~"?q=v";
-
-        //failure cases
-        assert get_path(~"something?q", true).is_err();
-    }
 
     #[test]
     pub fn test_url_parse() {

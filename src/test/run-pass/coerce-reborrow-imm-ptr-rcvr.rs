@@ -2,7 +2,7 @@ struct SpeechMaker {
     speeches: uint
 }
 
-impl SpeechMaker {
+pub impl SpeechMaker {
     pure fn how_many(&self) -> uint { self.speeches }
 }
 

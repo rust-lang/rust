@@ -82,8 +82,6 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-#[allow(structural_records)]; // Macros -- needs another snapshot
-
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
 use cell::Cell;
@@ -800,7 +798,7 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *Packet<T>)
     }
 }
 
-impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
+pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
@@ -857,7 +855,7 @@ impl<T:Owned,Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
     }
 }
 
-impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
+pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
