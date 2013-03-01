@@ -241,12 +241,12 @@ pub fn cat_expr_autoderefd(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
     expr: @ast::expr,
-    adj: @ty::AutoAdjustment) -> cmt {
-
+    autoderefs: uint) -> cmt
+{
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
     };
-    return mcx.cat_expr_autoderefd(expr, adj);
+    return mcx.cat_expr_autoderefd(expr, autoderefs);
 }
 
 pub fn cat_def(
@@ -361,28 +361,38 @@ pub impl mem_categorization_ctxt {
                 self.cat_expr_unadjusted(expr)
             }
 
-            Some(adjustment) => {
-                match adjustment.autoref {
-                    Some(_) => {
-                        // Equivalent to &*expr or something similar.
-                        // This is an rvalue, effectively.
-                        let expr_ty = ty::expr_ty(self.tcx, expr);
-                        self.cat_rvalue(expr, expr_ty)
-                    }
-                    None => {
-                        // Equivalent to *expr or something similar.
-                        self.cat_expr_autoderefd(expr, adjustment)
-                    }
-                }
+            Some(@ty::AutoAddEnv(*)) => {
+                // Convert a bare fn to a closure by adding NULL env.
+                // Result is an rvalue.
+                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                self.cat_rvalue(expr, expr_ty)
+            }
+
+            Some(
+                @ty::AutoDerefRef(
+                    ty::AutoDerefRef {
+                        autoref: Some(_), _})) => {
+                // Equivalent to &*expr or something similar.
+                // Result is an rvalue.
+                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                self.cat_rvalue(expr, expr_ty)
+            }
+
+            Some(
+                @ty::AutoDerefRef(
+                    ty::AutoDerefRef {
+                        autoref: None, autoderefs: autoderefs})) => {
+                // Equivalent to *expr or something similar.
+                self.cat_expr_autoderefd(expr, autoderefs)
             }
         }
     }
 
     fn cat_expr_autoderefd(&self,
                            expr: @ast::expr,
-                           adjustment: &ty::AutoAdjustment) -> cmt {
+                           autoderefs: uint) -> cmt {
         let mut cmt = self.cat_expr_unadjusted(expr);
-        for uint::range(1, adjustment.autoderefs+1) |deref| {
+        for uint::range(1, autoderefs+1) |deref| {
             cmt = self.cat_deref(expr, cmt, deref);
         }
         return cmt;

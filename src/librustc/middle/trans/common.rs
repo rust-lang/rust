@@ -1344,6 +1344,12 @@ pub fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {
     node_id_type(bcx, ex.id)
 }
 
+pub fn expr_ty_adjusted(bcx: block, ex: @ast::expr) -> ty::t {
+    let tcx = bcx.tcx();
+    let t = ty::expr_ty_adjusted(tcx, ex);
+    monomorphize_type(bcx, t)
+}
+
 pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);

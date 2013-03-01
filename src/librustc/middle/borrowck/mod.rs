@@ -480,9 +480,20 @@ pub impl BorrowckCtxt {
     }
 
     fn cat_expr_autoderefd(&self, expr: @ast::expr,
-                           adj: @ty::AutoAdjustment)
-                        -> cmt {
-        cat_expr_autoderefd(self.tcx, self.method_map, expr, adj)
+                           adj: @ty::AutoAdjustment) -> cmt {
+        match *adj {
+            ty::AutoAddEnv(*) => {
+                // no autoderefs
+                cat_expr_unadjusted(self.tcx, self.method_map, expr)
+            }
+
+            ty::AutoDerefRef(
+                ty::AutoDerefRef {
+                    autoderefs: autoderefs, _}) => {
+                cat_expr_autoderefd(self.tcx, self.method_map, expr,
+                                    autoderefs)
+            }
+        }
     }
 
     fn cat_def(&self,

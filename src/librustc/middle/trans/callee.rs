@@ -94,10 +94,25 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
     }
 
     // any other expressions are closures:
-    return closure_callee(&expr::trans_to_datum(bcx, expr));
+    return datum_callee(bcx, expr);
 
-    fn closure_callee(db: &DatumBlock) -> Callee {
-        return Callee {bcx: db.bcx, data: Closure(db.datum)};
+    fn datum_callee(bcx: block, expr: @ast::expr) -> Callee {
+        let DatumBlock {bcx, datum} = expr::trans_to_datum(bcx, expr);
+        match ty::get(datum.ty).sty {
+            ty::ty_bare_fn(*) => {
+                let llval = datum.to_appropriate_llval(bcx);
+                return Callee {bcx: bcx, data: Fn(FnData {llfn: llval})};
+            }
+            ty::ty_closure(*) => {
+                return Callee {bcx: bcx, data: Closure(datum)};
+            }
+            _ => {
+                bcx.tcx().sess.span_bug(
+                    expr.span,
+                    fmt!("Type of callee is neither bare-fn nor closure: %s",
+                         bcx.ty_to_str(datum.ty)));
+            }
+        }
     }
 
     fn fn_callee(bcx: block, fd: FnData) -> Callee {
@@ -129,7 +144,7 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
             ast::def_binding(*) |
             ast::def_upvar(*) |
             ast::def_self(*) => {
-                closure_callee(&expr::trans_to_datum(bcx, ref_expr))
+                datum_callee(bcx, ref_expr)
             }
             ast::def_mod(*) | ast::def_foreign_mod(*) |
             ast::def_const(*) | ast::def_ty(*) | ast::def_prim_ty(*) |
@@ -392,7 +407,6 @@ pub fn trans_lang_call_with_type_params(bcx: block,
                                                     fty);
                     let mut llfnty = type_of::type_of(callee.bcx.ccx(),
                                                       substituted);
-                    llfnty = lib::llvm::struct_tys(llfnty)[0];
                     new_llval = PointerCast(callee.bcx, fn_data.llfn, llfnty);
                 }
                 _ => fail!()
@@ -715,6 +729,8 @@ pub fn trans_arg_expr(bcx: block,
                     }
 
                     ast::by_copy => {
+                        debug!("by copy arg with type %s, storing to scratch",
+                               ty_to_str(ccx.tcx, arg_datum.ty));
                         let scratch = scratch_datum(bcx, arg_datum.ty, false);
 
                         arg_datum.store_to_datum(bcx, arg_expr.id,
