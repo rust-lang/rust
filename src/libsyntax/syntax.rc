@@ -14,7 +14,7 @@
 
 
 
-#[license = "MIT/APL2"];
+#[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
 #[legacy_modes];

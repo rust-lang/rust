@@ -41,7 +41,7 @@ Implicitly, all crates behave as if they included the following prologue:
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
 
 #[comment = "The Rust core library"];
-#[license = "MIT/APL2"];
+#[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
 
