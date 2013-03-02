@@ -1299,19 +1299,22 @@ An _implementation_ is an item that implements a [trait](#traits) for a specific
 Implementations are defined with the keyword `impl`.
 
 ~~~~
-# type Point = {x: float, y: float};
+# struct Point {x: float, y: float};
 # type Surface = int;
-# type BoundingBox = {x: float, y: float, width: float, height: float};
+# struct BoundingBox {x: float, y: float, width: float, height: float};
 # trait Shape { fn draw(Surface); fn bounding_box() -> BoundingBox; }
 # fn do_draw_circle(s: Surface, c: Circle) { }
 
-type Circle = {radius: float, center: Point};
+struct Circle {
+    radius: float,
+    center: Point,
+}
 
 impl Shape for Circle {
     fn draw(s: Surface) { do_draw_circle(s, self); }
     fn bounding_box() -> BoundingBox {
         let r = self.radius;
-        {x: self.center.x - r, y: self.center.y - r,
+        BoundingBox{x: self.center.x - r, y: self.center.y - r,
          width: 2.0 * r, height: 2.0 * r}
     }
 }
@@ -1657,38 +1660,6 @@ rec_expr : '{' ident ':' expr
                [ ".." expr ] '}'
 ~~~~~~~~
 
-> **Note:** In future versions of Rust, record expressions and [record types](#record-types) will be removed.
-
-A [_record_](#record-types) _expression_ is one or more comma-separated
-name-value pairs enclosed by braces. A fieldname can be any identifier,
-and is separated from its value expression by a
-colon. To indicate that a field is mutable, the `mut` keyword is
-written before its name.
-
-~~~~
-{x: 10f, y: 20f};
-{name: "Joe", age: 35u, score: 100_000};
-{ident: "X", mut count: 0u};
-~~~~
-
-The order of the fields in a record expression is significant, and
-determines the type of the resulting value. `{a: u8, b: u8}` and `{b:
-u8, a: u8}` are two different fields.
-
-A record expression can terminate with the syntax `..` followed by an
-expression to denote a functional update. The expression following
-`..` (the base) must be of a record type that includes at least all the
-fields mentioned in the record expression. A new record will be
-created, of the same type as the base expression, with the given
-values for the fields that were explicitly specified, and the values
-in the base record for all other fields. The ordering of the fields in
-such a record expression is not significant.
-
-~~~~
-let base = {x: 1, y: 2, z: 3};
-{y: 0, z: 10, .. base};
-~~~~
-
 ### Method-call expressions
 
 ~~~~~~~~{.ebnf .gram}
@@ -1709,7 +1680,7 @@ field_expr : expr '.' ident
 
 A _field expression_ consists of an expression followed by a single dot and an identifier,
 when not immediately followed by a parenthesized expression-list (the latter is a [method call expression](#method-call-expressions)).
-A field expression denotes a field of a [structure](#structure-types) or [record](#record-types).
+A field expression denotes a field of a [structure](#structure-types).
 
 ~~~~~~~~ {.field}
 myrecord.myfield;
@@ -1925,8 +1896,10 @@ An example of three different swap expressions:
 # let mut x = &mut [0];
 # let mut a = &mut [0];
 # let i = 0;
-# let y = {mut z: 0};
-# let b = {mut c: 0};
+# struct S1 { z: int };
+# struct S2 { c: int };
+# let mut y = S1{z: 0};
+# let mut b = S2{c: 0};
 
 x <-> a;
 x[i] <-> a[i];
@@ -2350,42 +2323,6 @@ match x {
 }
 ~~~~
 
-Records and structures can also be pattern-matched and their fields bound to variables.
-When matching fields of a record,
-the fields being matched are specified first,
-then a placeholder (`_`) represents the remaining fields.
-
-~~~~
-# type options = {choose: bool, size: ~str};
-# type player = {player: ~str, stats: (), options: options};
-# fn load_stats() { }
-# fn choose_player(r: &player) { }
-# fn next_player() { }
-
-fn main() {
-    let r = {
-        player: ~"ralph",
-        stats: load_stats(),
-        options: {
-            choose: true,
-            size: ~"small"
-        }
-    };
-
-    match r {
-      {options: {choose: true, _}, _} => {
-        choose_player(&r)
-      }
-      {player: ref p, options: {size: ~"small", _}, _} => {
-        log(info, (copy *p) + ~" is small");
-      }
-      _ => {
-        next_player();
-      }
-    }
-}
-~~~~
-
 Patterns that bind variables default to binding to a copy of the matched value. This can be made
 explicit using the ```copy``` keyword, changed to bind to a borrowed pointer by using the ```ref```
 keyword, or to a mutable borrowed pointer using ```ref mut```, or the value can be moved into
@@ -2714,25 +2651,6 @@ enum List<T> {
 }
 
 let a: List<int> = Cons(7, @Cons(13, @Nil));
-~~~~
-
-
-### Record types
-
-> **Note:** Records are not nominal types, thus do not directly support recursion, visibility control,
-> out-of-order field initialization, or coherent trait implementation.
-> Records are therefore deprecated and will be removed in future versions of Rust.
-> [Structure types](#structure-types) should be used instead.
-
-The record type-constructor forms a new heterogeneous product of values.
-Fields of a record type are accessed by name and are arranged in memory in the order specified by the record type.
-
-An example of a record type and its use:
-
-~~~~
-type Point = {x: int, y: int};
-let p: Point = {x: 10, y: 11};
-let px: int = p.x;
 ~~~~
 
 
@@ -3065,7 +2983,8 @@ Some operations (such as field selection) implicitly dereference boxes. An
 example of an _implicit dereference_ operation performed on box values:
 
 ~~~~~~~~
-let x = @{y: 10};
+struct Foo { y: int }
+let x = @Foo{y: 10};
 assert x.y == 10;
 ~~~~~~~~
 

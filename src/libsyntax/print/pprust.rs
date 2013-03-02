@@ -1209,7 +1209,7 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
                 print_expr(s, expr);
                 end(s);
             }
-            _ => word(s.s, ~",")
+            _ => (word(s.s, ~","))
         }
         word(s.s, ~"}");
       }
