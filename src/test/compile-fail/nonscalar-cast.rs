@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,10 @@
 
 // error-pattern:non-scalar cast
 
+struct foo {
+    x:int
+}
+
 fn main() {
-  log(debug, { x: 1 } as int);
+    log(debug, foo{ x: 1 } as int);
 }

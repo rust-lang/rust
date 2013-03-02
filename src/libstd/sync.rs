@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -87,7 +87,7 @@ enum Sem<Q> = Exclusive<SemInner<Q>>;
 #[doc(hidden)]
 fn new_sem<Q:Owned>(count: int, q: Q) -> Sem<Q> {
     Sem(exclusive(SemInner {
-        mut count: count, waiters: new_waitqueue(), blocked: q }))
+        count: count, waiters: new_waitqueue(), blocked: q }))
 }
 #[doc(hidden)]
 fn new_sem_and_signal(count: int, num_condvars: uint)

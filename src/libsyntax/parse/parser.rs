@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1093,15 +1093,10 @@ pub impl Parser {
                 self.mk_expr(lo, hi, expr_tup(es))
             }
         } else if *self.token == token::LBRACE {
-            if self.looking_at_record_literal() {
-                ex = self.parse_record_literal();
-                hi = self.span.hi;
-            } else {
-                self.bump();
-                let blk = self.parse_block_tail(lo, default_blk);
-                return self.mk_expr(blk.span.lo, blk.span.hi,
-                                     expr_block(blk));
-            }
+            self.bump();
+            let blk = self.parse_block_tail(lo, default_blk);
+            return self.mk_expr(blk.span.lo, blk.span.hi,
+                                 expr_block(blk));
         } else if token::is_bar(*self.token) {
             return self.parse_lambda_expr();
         } else if self.eat_keyword(~"if") {
@@ -1223,6 +1218,7 @@ pub impl Parser {
                     self.bump();
                     let mut fields = ~[];
                     let mut base = None;
+
                     fields.push(self.parse_field(token::COLON));
                     while *self.token != token::RBRACE {
                         if self.try_parse_obsolete_with() {
