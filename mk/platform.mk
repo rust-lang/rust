@@ -78,9 +78,9 @@ CFG_INSTALL_NAME_arm-unknown-android =
 CFG_GCCISH_CROSS_arm-unknown-android = $(CFG_CROSS_PREFIX_arm)
 
 # i686-pc-mingw32 configuration
-CFG_LIB_NAME_i686-pc-mingw32=lib$(1).dll
-CFG_LIB_GLOB_i686-pc-mingw32=lib$(1)-*.dll
-CFG_LIB_DSYM_GLOB_i686-pc-mingw32=lib$(1)-*.dylib.dSYM
+CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
+CFG_LIB_GLOB_i686-pc-mingw32=$(1)-*.dll
+CFG_LIB_DSYM_GLOB_i686-pc-mingw32=$(1)-*.dylib.dSYM
 CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -march=i686
 CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g
