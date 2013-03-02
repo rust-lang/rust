@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -300,7 +300,7 @@ impl<T:Ord> Ord for &const T {
 pub fn test() {
     unsafe {
         struct Pair {mut fst: int, mut snd: int};
-        let mut p = Pair {mut fst: 10, mut snd: 20};
+        let mut p = Pair {fst: 10, snd: 20};
         let pptr: *mut Pair = &mut p;
         let iptr: *mut int = cast::reinterpret_cast(&pptr);
         assert (*iptr == 10);;
@@ -308,7 +308,7 @@ pub fn test() {
         assert (*iptr == 30);
         assert (p.fst == 30);;
 
-        *pptr = Pair {mut fst: 50, mut snd: 60};
+        *pptr = Pair {fst: 50, snd: 60};
         assert (*iptr == 50);
         assert (p.fst == 50);
         assert (p.snd == 60);
