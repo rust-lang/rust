@@ -37,6 +37,70 @@ pub trait Eq {
     pure fn ne(&self, other: &Self) -> bool;
 }
 
+#[deriving_eq]
+pub enum Ordering { Less, Equal, Greater }
+
+/// Trait for types that form a total order
+pub trait TotalOrd {
+    pure fn cmp(&self, other: &Self) -> Ordering;
+}
+
+pure fn icmp<T: Ord>(a: &T, b: &T) -> Ordering {
+    if *a < *b { Less }
+    else if *a > *b { Greater }
+    else { Equal }
+}
+
+impl TotalOrd for u8 {
+    #[inline(always)]
+    pure fn cmp(&self, other: &u8) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for u16 {
+    #[inline(always)]
+    pure fn cmp(&self, other: &u16) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for u32 {
+    #[inline(always)]
+    pure fn cmp(&self, other: &u32) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for u64 {
+    #[inline(always)]
+    pure fn cmp(&self, other: &u64) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for i8 {
+    #[inline(always)]
+    pure fn cmp(&self, other: &i8) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for i16 {
+    #[inline(always)]
+    pure fn cmp(&self, other: &i16) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for i32 {
+    #[inline(always)]
+    pure fn cmp(&self, other: &i32) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for i64 {
+    #[inline(always)]
+    pure fn cmp(&self, other: &i64) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for int {
+    #[inline(always)]
+    pure fn cmp(&self, other: &int) -> Ordering { icmp(self, other) }
+}
+
+impl TotalOrd for uint {
+    #[inline(always)]
+    pure fn cmp(&self, other: &uint) -> Ordering { icmp(self, other) }
+}
+
 /**
 * Trait for values that can be compared for a sort-order.
 *
@@ -93,4 +157,16 @@ pub pure fn min<T:Ord>(v1: T, v2: T) -> T {
 #[inline(always)]
 pub pure fn max<T:Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_int() {
+        assert 5.cmp(&10) == Less;
+        assert 10.cmp(&5) == Greater;
+        assert 5.cmp(&5) == Equal;
+        assert (-5).cmp(&12) == Less;
+        assert 12.cmp(-5) == Greater;
+    }
 }
