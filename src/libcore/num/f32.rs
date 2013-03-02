@@ -18,7 +18,7 @@ use num::strconv;
 use num;
 use ops;
 use option::Option;
-use private::intrinsics::floorf32;
+use unstable::intrinsics::floorf32;
 use from_str;
 use to_str;
 

@@ -166,9 +166,9 @@ operator. For example, I could write:
 # struct Point {x: float, y: float} // as before
 # struct Size {w: float, h: float} // as before
 # struct Rectangle {origin: Point, size: Size}
-# let rect_stack  = &{origin: Point {x: 1f, y: 2f}, size: Size {w: 3f, h: 4f}};
-# let rect_managed = @{origin: Point {x: 3f, y: 4f}, size: Size {w: 3f, h: 4f}};
-# let rect_unique = ~{origin: Point {x: 5f, y: 6f}, size: Size {w: 3f, h: 4f}};
+# let rect_stack  = &Rectangle {origin: Point {x: 1f, y: 2f}, size: Size {w: 3f, h: 4f}};
+# let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f}, size: Size {w: 3f, h: 4f}};
+# let rect_unique = ~Rectangle {origin: Point {x: 5f, y: 6f}, size: Size {w: 3f, h: 4f}};
 # fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
 compute_distance(&rect_stack.origin, &rect_managed.origin);
 ~~~
@@ -274,13 +274,14 @@ the following function is legal:
 
 ~~~
 # fn some_condition() -> bool { true }
+# struct Foo { f: int }
 fn example3() -> int {
-    let mut x = ~{f: 3};
+    let mut x = ~Foo {f: 3};
     if some_condition() {
         let y = &x.f;      // -+ L
         return *y;         //  |
     }                      // -+
-    x = ~{f: 4};
+    x = ~Foo {f: 4};
     ...
 # return 0;
 }

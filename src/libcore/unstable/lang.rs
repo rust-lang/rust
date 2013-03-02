@@ -15,13 +15,10 @@ use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int};
 use managed::raw::BoxRepr;
 use str;
 use sys;
-use private::exchange_alloc;
+use unstable::exchange_alloc;
 use cast::transmute;
 
 use gc::{cleanup_stack_for_failure, gc, Word};
-
-#[allow(non_camel_case_types)]
-pub type rust_task = c_void;
 
 #[cfg(target_word_size = "32")]
 pub const FROZEN_BIT: uint = 0x80000000;

@@ -1,4 +1,4 @@
-use core::private::run_in_bare_thread;
+use core::unstable::run_in_bare_thread;
 
 extern {
     pub fn rust_dbg_call(cb: *u8,

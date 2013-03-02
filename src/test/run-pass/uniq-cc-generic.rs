@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,7 +24,7 @@ fn make_uniq_closure<A:Owned + Copy>(a: A) -> fn~() -> uint {
 
 fn empty_pointy() -> @mut Pointy {
     return @mut Pointy {
-        mut a : none,
+        a : none,
         d : make_uniq_closure(~"hi")
     }
 }

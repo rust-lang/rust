@@ -24,9 +24,9 @@ use comm::{Port, Chan, SharedChan, GenericChan, GenericPort};
 use hashmap::linear::LinearMap;
 use ops::Drop;
 use option::{Some, None, swap_unwrap};
-use private::at_exit::at_exit;
-use private::finally::Finally;
-use private::global::global_data_clone_create;
+use unstable::at_exit::at_exit;
+use unstable::finally::Finally;
+use unstable::global::global_data_clone_create;
 use task::rt::{task_id, get_task_id};
 use task::{Task, task, spawn};
 

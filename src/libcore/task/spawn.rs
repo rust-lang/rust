@@ -79,7 +79,7 @@ use option;
 use comm::{Chan, GenericChan, GenericPort, Port, stream};
 use pipes;
 use prelude::*;
-use private;
+use unstable;
 use ptr;
 use hashmap::linear::LinearSet;
 use task::local_data_priv::{local_get, local_set};
@@ -123,7 +123,7 @@ struct TaskGroupData {
     // tasks in this group.
     mut descendants: TaskSet,
 }
-type TaskGroupArc = private::Exclusive<Option<TaskGroupData>>;
+type TaskGroupArc = unstable::Exclusive<Option<TaskGroupData>>;
 
 type TaskGroupInner = &mut Option<TaskGroupData>;
 
@@ -153,7 +153,7 @@ struct AncestorNode {
     mut ancestors:    AncestorList,
 }
 
-enum AncestorList = Option<private::Exclusive<AncestorNode>>;
+enum AncestorList = Option<unstable::Exclusive<AncestorNode>>;
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
@@ -162,7 +162,7 @@ fn access_group<U>(x: &TaskGroupArc, blk: fn(TaskGroupInner) -> U) -> U {
 }
 
 #[inline(always)]
-fn access_ancestors<U>(x: &private::Exclusive<AncestorNode>,
+fn access_ancestors<U>(x: &unstable::Exclusive<AncestorNode>,
                        blk: fn(x: &mut AncestorNode) -> U) -> U {
     unsafe { x.with(blk) }
 }
@@ -458,7 +458,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 // Main task, doing first spawn ever. Lazily initialise here.
                 let mut members = new_taskset();
                 taskset_insert(&mut members, spawner);
-                let tasks = private::exclusive(Some(TaskGroupData {
+                let tasks = unstable::exclusive(Some(TaskGroupData {
                     members: members,
                     descendants: new_taskset(),
                 }));
@@ -482,7 +482,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             (g, a, spawner_group.is_main)
         } else {
             // Child is in a separate group from spawner.
-            let g = private::exclusive(Some(TaskGroupData {
+            let g = unstable::exclusive(Some(TaskGroupData {
                 members:     new_taskset(),
                 descendants: new_taskset(),
             }));
@@ -502,7 +502,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                     };
                 assert new_generation < uint::max_value;
                 // Build a new node in the ancestor list.
-                AncestorList(Some(private::exclusive(AncestorNode {
+                AncestorList(Some(unstable::exclusive(AncestorNode {
                     generation: new_generation,
                     parent_group: Some(spawner_group.tasks.clone()),
                     ancestors: old_ancestors,
