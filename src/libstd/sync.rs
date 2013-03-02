@@ -19,7 +19,7 @@ use core::cell::Cell;
 use core::option;
 use core::pipes;
 use core::prelude::*;
-use core::private::{Exclusive, exclusive};
+use core::unstable::{Exclusive, exclusive};
 use core::ptr;
 use core::task;
 use core::util;

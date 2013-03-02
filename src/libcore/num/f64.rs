@@ -19,7 +19,7 @@ use num::strconv;
 use num;
 use ops;
 use option::Option;
-use private::intrinsics::floorf64;
+use unstable::intrinsics::floorf64;
 use to_str;
 use from_str;
 
