@@ -38,12 +38,6 @@ pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
               expr_loop(ref b, _) => {
                 (v.visit_block)(b, Context { in_loop: true,.. cx }, v);
               }
-              expr_fn(*) => {
-                visit::visit_expr(e, Context {
-                                        in_loop: false,
-                                        can_ret: true
-                                     }, v);
-              }
               expr_fn_block(_, ref b) => {
                 (v.visit_block)(b, Context {
                                          in_loop: false,

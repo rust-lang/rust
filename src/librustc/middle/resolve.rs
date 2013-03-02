@@ -34,12 +34,12 @@ use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
 use syntax::ast::{def_self_ty, def_static_method, def_struct, def_ty};
 use syntax::ast::{def_ty_param, def_typaram_binder};
 use syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
-use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
+use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field};
 use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 use syntax::ast::{def_upvar, def_use, def_variant, div, eq};
 use syntax::ast::{enum_variant_kind, expr, expr_again, expr_assign_op};
-use syntax::ast::{expr_fn_block, expr_index, expr_loop};
+use syntax::ast::{expr_index, expr_loop};
 use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
 use syntax::ast::{Generics};
@@ -4810,7 +4810,6 @@ pub impl Resolver {
                 visit_expr(expr, (), visitor);
             }
 
-            expr_fn(_, ref fn_decl, ref block, _) |
             expr_fn_block(ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.node.id),
                                       Some(@/*bad*/copy *fn_decl),

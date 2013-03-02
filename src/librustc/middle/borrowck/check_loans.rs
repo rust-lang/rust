@@ -212,8 +212,8 @@ pub impl CheckLoanCtxt {
                     (*self.fn_args).contains(&(did.node));
                 if is_fn_arg { return; } // case (a) above
               }
-              ast::expr_fn_block(*) | ast::expr_fn(*) |
-              ast::expr_loop_body(*) | ast::expr_do_body(*) => {
+              ast::expr_fn_block(*) | ast::expr_loop_body(*) |
+              ast::expr_do_body(*) => {
                 if self.is_stack_closure(expr.id) {
                     // case (b) above
                     return;
@@ -244,7 +244,7 @@ pub impl CheckLoanCtxt {
     }
 
     // True if the expression with the given `id` is a stack closure.
-    // The expression must be an expr_fn(*) or expr_fn_block(*)
+    // The expression must be an expr_fn_block(*)
     fn is_stack_closure(@mut self, id: ast::node_id) -> bool {
         let fn_ty = ty::node_id_to_type(self.tcx(), id);
         match ty::get(fn_ty).sty {
@@ -262,10 +262,8 @@ pub impl CheckLoanCtxt {
             did.crate == ast::local_crate &&
                 (*self.fn_args).contains(&(did.node))
           }
-          ast::expr_fn_block(*) | ast::expr_fn(*) => {
-            self.is_stack_closure(expr.id)
-          }
-          _ => false
+          ast::expr_fn_block(*) => self.is_stack_closure(expr.id),
+          _ => false,
         };
     }
 

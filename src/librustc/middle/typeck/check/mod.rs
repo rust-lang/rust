@@ -2373,10 +2373,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::expr_match(discrim, ref arms) => {
         bot = _match::check_match(fcx, expr, discrim, (/*bad*/copy *arms));
       }
-      ast::expr_fn(sigil, ref decl, ref body, _) => {
-        check_expr_fn(fcx, expr, Some(sigil),
-                      decl, body, Vanilla, expected);
-      }
       ast::expr_fn_block(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
                       decl, body, Vanilla, expected);
