@@ -11,5 +11,5 @@
 pub fn main() {
     let mut x: bool = false;
     // this line breaks it
-    private::intrinsics::move_val_init(&mut x, false);
+    unstable::intrinsics::move_val_init(&mut x, false);
 }

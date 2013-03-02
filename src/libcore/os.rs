@@ -35,7 +35,6 @@ use libc::{mode_t, pid_t, FILE};
 use option;
 use option::{Some, None};
 use prelude::*;
-use private;
 use ptr;
 use str;
 use task;
@@ -145,8 +144,8 @@ This uses a per-runtime lock to serialize access.
 FIXME #4726: It would probably be appropriate to make this a real global
 */
 fn with_env_lock<T>(f: &fn() -> T) -> T {
-    use private::global::global_data_clone_create;
-    use private::{Exclusive, exclusive};
+    use unstable::global::global_data_clone_create;
+    use unstable::{Exclusive, exclusive};
 
     struct SharedValue(());
     type ValueMutex = Exclusive<SharedValue>;

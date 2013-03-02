@@ -18,9 +18,9 @@ use uv_iotask::{IoTask, spawn_iotask};
 use core::either::{Left, Right};
 use core::libc;
 use core::comm::{Port, Chan, SharedChan, select2i};
-use core::private::global::{global_data_clone_create,
+use core::unstable::global::{global_data_clone_create,
                             global_data_clone};
-use core::private::weak_task::weaken_task;
+use core::unstable::weak_task::weaken_task;
 use core::str;
 use core::task::{task, SingleThreaded, spawn};
 use core::task;

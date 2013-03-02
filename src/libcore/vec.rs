@@ -22,7 +22,7 @@ use kinds::Copy;
 use libc;
 use libc::size_t;
 use option::{None, Option, Some};
-use private::intrinsics;
+use unstable::intrinsics;
 use ptr;
 use ptr::addr_of;
 use sys;
@@ -2008,7 +2008,7 @@ pub mod raw {
     use managed;
     use option::{None, Some};
     use option;
-    use private::intrinsics;
+    use unstable::intrinsics;
     use ptr::addr_of;
     use ptr;
     use sys;
@@ -2622,8 +2622,8 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = ~[::private::exclusive(()), ::private::exclusive(()),
-                      ::private::exclusive(())];
+        let mut v = ~[::unstable::exclusive(()), ::unstable::exclusive(()),
+                      ::unstable::exclusive(())];
         let mut _e = v.swap_remove(0);
         assert (len(v) == 2);
         _e = v.swap_remove(1);

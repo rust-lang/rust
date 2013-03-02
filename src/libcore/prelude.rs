@@ -69,7 +69,7 @@ pub use option;
 pub use os;
 pub use path;
 pub use comm;
-pub use private;
+pub use unstable;
 pub use ptr;
 pub use rand;
 pub use result;
