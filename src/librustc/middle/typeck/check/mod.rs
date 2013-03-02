@@ -2157,7 +2157,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
-            let count = ty::eval_repeat_count(tcx, count_expr, expr.span);
+            let count = ty::eval_repeat_count(tcx, count_expr);
             fcx.write_ty(count_expr.id, ty::mk_uint(tcx));
             let tt = ast_expr_vstore_to_vstore(fcx, ev, count, vst);
             let t: ty::t = fcx.infcx().next_ty_var();
@@ -2484,7 +2484,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_repeat(element, count_expr, mutbl) => {
-        let count = ty::eval_repeat_count(tcx, count_expr, expr.span);
+        let count = ty::eval_repeat_count(tcx, count_expr);
         fcx.write_ty(count_expr.id, ty::mk_uint(tcx));
         let t: ty::t = fcx.infcx().next_ty_var();
         bot |= check_expr_has_type(fcx, element, t);
