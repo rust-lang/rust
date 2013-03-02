@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -321,8 +321,8 @@ pub struct Pipe { mut in: c_int, mut out: c_int }
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
-        let mut fds = Pipe {mut in: 0 as c_int,
-                        mut out: 0 as c_int };
+        let mut fds = Pipe {in: 0 as c_int,
+                        out: 0 as c_int };
         assert (libc::pipe(&mut fds.in) == (0 as c_int));
         return Pipe {in: fds.in, out: fds.out};
     }
@@ -338,8 +338,8 @@ pub fn pipe() -> Pipe {
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
         // first, as in rust_run_program.
-        let mut fds = Pipe { mut in: 0 as c_int,
-                    mut out: 0 as c_int };
+        let mut fds = Pipe {in: 0 as c_int,
+                    out: 0 as c_int };
         let res = libc::pipe(&mut fds.in, 1024 as c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
         assert (res == 0 as c_int);
@@ -565,13 +565,17 @@ pub fn path_exists(p: &Path) -> bool {
  *
  * If the given path is relative, return it prepended with the current working
  * directory. If the given path is already an absolute path, return it
- * as is.  This is a shortcut for calling os::getcwd().unsafe_join(p)
+ * as is.
  */
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
 pub fn make_absolute(p: &Path) -> Path {
-    getcwd().unsafe_join(p)
+    if p.is_absolute {
+        copy *p
+    } else {
+        getcwd().push_many(p.components)
+    }
 }
 
 

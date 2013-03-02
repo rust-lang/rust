@@ -9,9 +9,14 @@
 // except according to those terms.
 
 // error-pattern:`break` outside of loop
+
+struct Foo {
+    t: ~str
+}
+
 fn main() {
     let pth = break;
 
-    let rs: {t: ~str} = {t: pth};
+    let rs: Foo = Foo{t: pth};
 
 }

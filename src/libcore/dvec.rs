@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -62,17 +62,17 @@ pub struct DVec<A> {
 
 /// Creates a new, empty dvec
 pub pure fn DVec<A>() -> DVec<A> {
-    DVec {mut data: ~[]}
+    DVec {data: ~[]}
 }
 
 /// Creates a new dvec with a single element
 pub pure fn from_elem<A>(e: A) -> DVec<A> {
-    DVec {mut data: ~[e]}
+    DVec {data: ~[e]}
 }
 
 /// Creates a new dvec with the contents of a vector
 pub pure fn from_vec<A>(v: ~[A]) -> DVec<A> {
-    DVec {mut data: v}
+    DVec {data: v}
 }
 
 /// Consumes the vector and returns its contents
