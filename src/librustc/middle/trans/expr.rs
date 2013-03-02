@@ -144,7 +144,8 @@ use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::struct_mutable_fields;
-use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
+use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
+                 AutoDerefRef, AutoAddEnv};
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
@@ -197,7 +198,14 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         None => {
             trans_to_datum_unadjusted(bcx, expr)
         }
-        Some(adj) => {
+        Some(@AutoAddEnv(*)) => {
+            let mut bcx = bcx;
+            let mut datum = unpack_datum!(bcx, {
+                trans_to_datum_unadjusted(bcx, expr)
+            });
+            add_env(bcx, expr, datum)
+        }
+        Some(@AutoDerefRef(ref adj)) => {
             let mut bcx = bcx;
             let mut datum = unpack_datum!(bcx, {
                 trans_to_datum_unadjusted(bcx, expr)
@@ -263,6 +271,25 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         let scratch = scratch_datum(bcx, slice_ty, false);
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
         Store(bcx, len, GEPi(bcx, scratch.val, [0u, abi::slice_elt_len]));
+        DatumBlock {bcx: bcx, datum: scratch}
+    }
+
+    fn add_env(bcx: block, expr: @ast::expr, datum: Datum) -> DatumBlock {
+        // This is not the most efficient thing possible; since closures
+        // are two words it'd be better if this were compiled in
+        // 'dest' mode, but I can't find a nice way to structure the
+        // code and keep it DRY that accommodates that use case at the
+        // moment.
+
+        let tcx = bcx.tcx();
+        let closure_ty = expr_ty_adjusted(bcx, expr);
+        debug!("add_env(closure_ty=%s)", ty_to_str(tcx, closure_ty));
+        let scratch = scratch_datum(bcx, closure_ty, false);
+        let llfn = GEPi(bcx, scratch.val, [0u, abi::fn_field_code]);
+        assert datum.appropriate_mode() == ByValue;
+        Store(bcx, datum.to_appropriate_llval(bcx), llfn);
+        let llenv = GEPi(bcx, scratch.val, [0u, abi::fn_field_box]);
+        Store(bcx, base::null_env_ptr(bcx), llenv);
         DatumBlock {bcx: bcx, datum: scratch}
     }
 
@@ -420,6 +447,9 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
+        ast::expr_path(_) => {
+            return trans_def_datum_unadjusted(bcx, expr, bcx.def(expr.id));
+        }
         ast::expr_vstore(contents, ast::expr_vstore_box) |
         ast::expr_vstore(contents, ast::expr_vstore_mut_box) => {
             return tvec::trans_uniq_or_managed_vstore(bcx, heap_managed,
@@ -685,22 +715,13 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
     };
 
     match def {
-        ast::def_fn(did, _) | ast::def_static_method(did, None, _) => {
-            let fn_data = callee::trans_fn_ref(bcx, did, ref_expr.id);
-            return fn_data_to_datum(bcx, did, fn_data, lldest);
-        }
-        ast::def_static_method(impl_did, Some(trait_did), _) => {
-            let fn_data = meth::trans_static_method_callee(bcx, impl_did,
-                                                           trait_did,
-                                                           ref_expr.id);
-            return fn_data_to_datum(bcx, impl_did, fn_data, lldest);
-        }
         ast::def_variant(tid, vid) => {
             let variant_info = ty::enum_variant_with_id(ccx.tcx, tid, vid);
             if variant_info.args.len() > 0u {
                 // N-ary variant.
                 let fn_data = callee::trans_fn_ref(bcx, vid, ref_expr.id);
-                return fn_data_to_datum(bcx, vid, fn_data, lldest);
+                Store(bcx, fn_data.llfn, lldest);
+                return bcx;
             } else if !ty::enum_is_univariant(ccx.tcx, tid) {
                 // Nullary variant.
                 let lldiscrimptr = GEPi(bcx, lldest, [0u, 0u]);
@@ -722,6 +743,66 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
                 "Non-DPS def %? referened by %s",
                 def, bcx.node_id_to_str(ref_expr.id)));
         }
+    }
+}
+
+fn trans_def_datum_unadjusted(bcx: block,
+                              ref_expr: @ast::expr,
+                              def: ast::def) -> DatumBlock
+{
+    let _icx = bcx.insn_ctxt("trans_def_datum_unadjusted");
+
+    match def {
+        ast::def_fn(did, _) | ast::def_static_method(did, None, _) => {
+            let fn_data = callee::trans_fn_ref(bcx, did, ref_expr.id);
+            return fn_data_to_datum(bcx, ref_expr, did, fn_data);
+        }
+        ast::def_static_method(impl_did, Some(trait_did), _) => {
+            let fn_data = meth::trans_static_method_callee(bcx, impl_did,
+                                                           trait_did,
+                                                           ref_expr.id);
+            return fn_data_to_datum(bcx, ref_expr, impl_did, fn_data);
+        }
+        _ => {
+            bcx.tcx().sess.span_bug(ref_expr.span, fmt!(
+                "Non-DPS def %? referened by %s",
+                def, bcx.node_id_to_str(ref_expr.id)));
+        }
+    }
+
+    fn fn_data_to_datum(bcx: block,
+                        ref_expr: @ast::expr,
+                        def_id: ast::def_id,
+                        fn_data: callee::FnData) -> DatumBlock {
+        /*!
+        *
+        * Translates a reference to a top-level fn item into a rust
+        * value.  This is just a fn pointer.
+        */
+
+        let is_extern = {
+            let fn_tpt = ty::lookup_item_type(bcx.tcx(), def_id);
+            ty::ty_fn_purity(fn_tpt.ty) == ast::extern_fn
+        };
+        let (rust_ty, llval) = if is_extern {
+            let rust_ty = ty::mk_ptr(
+                bcx.tcx(),
+                ty::mt {
+                    ty: ty::mk_mach_uint(bcx.tcx(), ast::ty_u8),
+                    mutbl: ast::m_imm
+                }); // *u8
+            (rust_ty, PointerCast(bcx, fn_data.llfn, T_ptr(T_i8())))
+        } else {
+            let fn_ty = expr_ty(bcx, ref_expr);
+            (fn_ty, fn_data.llfn)
+        };
+        return DatumBlock {
+            bcx: bcx,
+            datum: Datum {val: llval,
+                          ty: rust_ty,
+                          mode: ByValue,
+                          source: RevokeClean}
+        };
     }
 }
 
@@ -1010,36 +1091,6 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             source: ZeroMem
         }
     }
-}
-
-fn fn_data_to_datum(bcx: block,
-                    def_id: ast::def_id,
-                    fn_data: callee::FnData,
-                    lldest: ValueRef) -> block {
-    //!
-    //
-    // Translates a reference to a top-level fn item into a rust
-    // value.  This is generally a Rust closure pair: (fn ptr, env)
-    // where the environment is NULL.  However, extern functions for
-    // interfacing with C are represted as just the fn ptr with type
-    // *u8.
-    //
-    // Strictly speaking, references to extern fns ought to be
-    // RvalueDatumExprs, but it's not worth the complexity to avoid the
-    // extra stack slot that LLVM probably optimizes away anyhow.
-
-    let fn_tpt = ty::lookup_item_type(bcx.tcx(), def_id);
-    if ty::ty_fn_purity(fn_tpt.ty) == ast::extern_fn {
-        let val = PointerCast(bcx, fn_data.llfn, T_ptr(T_i8()));
-        Store(bcx, val, lldest);
-        return bcx;
-    }
-
-    let llfn = GEPi(bcx, lldest, [0u, abi::fn_field_code]);
-    Store(bcx, fn_data.llfn, llfn);
-    let llenv = GEPi(bcx, lldest, [0u, abi::fn_field_box]);
-    Store(bcx, base::null_env_ptr(bcx), llenv);
-    return bcx;
 }
 
 // The optional node ID here is the node ID of the path identifying the enum

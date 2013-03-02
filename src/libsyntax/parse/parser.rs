@@ -1195,7 +1195,7 @@ pub impl Parser {
                         &token::RBRACKET,
                         seq_sep_trailing_allowed(token::COMMA),
                         |p| p.parse_expr()
-                    ).to_vec();
+                    );
                     ex = expr_vec(~[first_expr] + remaining_exprs, mutbl);
                 } else {
                     // Vector with one element.
@@ -1478,7 +1478,7 @@ pub impl Parser {
                                 &ket,
                                 seq_sep_none(),
                                 |p| p.parse_token_tree()
-                            ).to_vec(),
+                            ),
                             // the close delimiter:
                             ~[parse_any_tt_tok(&self)]
                         )
@@ -2806,7 +2806,7 @@ pub impl Parser {
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
             |p| p.parse_ty(false));
-        result.to_vec()
+        opt_vec::take_vec(result)
     }
 
     fn parse_fn_decl(parse_arg_fn: fn(&Parser) -> arg_or_capture_item)
@@ -2908,7 +2908,7 @@ pub impl Parser {
                         &token::RPAREN,
                         sep,
                         parse_arg_fn
-                    ).to_vec();
+                    );
                 }
                 token::RPAREN => {
                     args_or_capture_items = ~[];
@@ -2928,7 +2928,7 @@ pub impl Parser {
                 &token::RPAREN,
                 sep,
                 parse_arg_fn
-            ).to_vec();
+            );
         }
 
         self.expect(&token::RPAREN);
@@ -3130,7 +3130,7 @@ pub impl Parser {
             ket,
             seq_sep_none(),
             |p| p.parse_trait_ref()
-        ).to_vec()
+        )
     }
 
     fn parse_item_struct() -> item_info {
