@@ -39,8 +39,8 @@ type pointy = {
     mut b : ~maybe_pointy,
     mut c : @maybe_pointy,
 
-    mut f : fn@()->(),
-    mut g : fn~()->(),
+    mut f : @fn()->(),
+    mut g : ~fn()->(),
 
     mut m : ~[maybe_pointy],
     mut n : ~[maybe_pointy],
@@ -54,8 +54,8 @@ fn empty_pointy() -> @pointy {
         mut b : ~none,
         mut c : @none,
 
-        mut f : fn@()->(){},
-        mut g : fn~()->(){},
+        mut f : || {},
+        mut g : || {},
 
         mut m : ~[],
         mut n : ~[],
@@ -82,7 +82,7 @@ fn test_cycles(r : rand::rng, k: uint, n: uint)
         if (likelihood(r, k, n)) { v[i].c = @p(choice(r, v)); }
 
         if (likelihood(r, k, n)) { v[i].f = bind nopP(choice(r, v)); }
-        //if (false)               { v[i].g = bind (fn~(_x: @pointy) { })(
+        //if (false)               { v[i].g = bind (|_: @pointy| { })(
         // choice(r, v)); }
           // https://github.com/mozilla/rust/issues/1899
 

@@ -223,7 +223,7 @@ pub fn make_test_name(config: config, testfile: &Path) -> test::TestName {
 
 pub fn make_test_closure(config: config, testfile: &Path) -> test::TestFn {
     let testfile = testfile.to_str();
-    test::DynTestFn(fn~() { runtest::run(config, testfile) })
+    test::DynTestFn(|| runtest::run(config, testfile))
 }
 
 // Local Variables:

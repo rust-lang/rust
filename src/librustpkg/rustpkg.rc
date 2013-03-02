@@ -926,7 +926,7 @@ pub struct Crate {
 
 pub struct Listener {
     cmds: ~[~str],
-    cb: fn~()
+    cb: ~fn()
 }
 
 pub fn run(listeners: ~[Listener]) {

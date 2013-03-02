@@ -34,8 +34,8 @@ pub enum WriteInstr {
     Done
 }
 
-pub type Writer = fn~(v: WriteInstr);
-pub type WriterFactory = fn~(page: doc::Page) -> Writer;
+pub type Writer = ~fn(v: WriteInstr);
+pub type WriterFactory = ~fn(page: doc::Page) -> Writer;
 
 pub trait WriterUtils {
     fn write_str(&self, +str: ~str);
@@ -69,15 +69,17 @@ pub fn make_writer_factory(config: config::Config) -> WriterFactory {
 }
 
 fn markdown_writer_factory(config: config::Config) -> WriterFactory {
-    fn~(page: doc::Page) -> Writer {
+    let result: ~fn(page: doc::Page) -> Writer = |page| {
         markdown_writer(copy config, page)
-    }
+    };
+    result
 }
 
 fn pandoc_writer_factory(config: config::Config) -> WriterFactory {
-    fn~(page: doc::Page) -> Writer {
+    let result: ~fn(doc::Page) -> Writer = |page| {
         pandoc_writer(copy config, page)
-    }
+    };
+    result
 }
 
 fn markdown_writer(
@@ -167,7 +169,7 @@ fn readclose(fd: libc::c_int) -> ~str {
     }
 }
 
-fn generic_writer(process: fn~(markdown: ~str)) -> Writer {
+fn generic_writer(process: ~fn(markdown: ~str)) -> Writer {
     let (po, ch) = stream::<WriteInstr>();
     do task::spawn || {
         let mut markdown = ~"";
@@ -180,9 +182,8 @@ fn generic_writer(process: fn~(markdown: ~str)) -> Writer {
         }
         process(markdown);
     };
-    fn~(instr: WriteInstr) {
-        ch.send(instr);
-    }
+    let result: ~fn(instr: WriteInstr) = |instr| ch.send(instr);
+    result
 }
 
 fn make_local_filename(
@@ -295,7 +296,7 @@ pub fn future_writer_factory(
 ) -> (WriterFactory, Port<(doc::Page, ~str)>) {
     let (markdown_po, markdown_ch) = stream();
     let markdown_ch = SharedChan(markdown_ch);
-    let writer_factory = fn~(page: doc::Page) -> Writer {
+    let writer_factory: WriterFactory = |page| {
         let (writer_po, writer_ch) = comm::stream();
         let markdown_ch = markdown_ch.clone();
         do task::spawn || {
@@ -312,9 +313,7 @@ pub fn future_writer_factory(
 
 fn future_writer() -> (Writer, future::Future<~str>) {
     let (port, chan) = comm::stream();
-    let writer = fn~(instr: WriteInstr) {
-        chan.send(copy instr);
-    };
+    let writer: ~fn(instr: WriteInstr) = |instr| chan.send(copy instr);
     let future = do future::from_fn || {
         let mut res = ~"";
         loop {
