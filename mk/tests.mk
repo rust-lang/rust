@@ -50,13 +50,6 @@ ifdef VERBOSE
   CTEST_TESTARGS += --verbose
 endif
 
-# Run the compiletest runner itself under valgrind
-ifdef CTEST_VALGRIND
-  CFG_RUN_CTEST=$(call CFG_RUN_TEST,$(2),$(3))
-else
-  CFG_RUN_CTEST=$(call CFG_RUN,$(TLIB$(1)_T_$(3)_H_$(3)),$(2))
-endif
-
 # If we're running perf then set this environment variable
 # to put the benchmarks into 'hard mode'
 ifeq ($(MAKECMDGOALS),perf)
@@ -66,6 +59,39 @@ endif
 
 TEST_LOG_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
 TEST_OK_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).ok
+
+define DEF_TARGET_COMMANDS
+
+ifdef CFG_UNIXY_$(1)
+  CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),,$$(CFG_VALGRIND) $$(1))
+endif
+
+ifdef CFG_WINDOWSY_$(1)
+  CFG_TESTLIB_$(1)=$$(CFG_BUILD_DIR)/$$(2)/$$(strip \
+   $$(if $$(findstring stage0,$$(1)), \
+       stage0/$$(CFG_LIBDIR), \
+      $$(if $$(findstring stage1,$$(1)), \
+           stage1/$$(CFG_LIBDIR), \
+          $$(if $$(findstring stage2,$$(1)), \
+               stage2/$$(CFG_LIBDIR), \
+               $$(if $$(findstring stage3,$$(1)), \
+                    stage3/$$(CFG_LIBDIR), \
+               )))))/rustc/$$(CFG_BUILD_TRIPLE)/$$(CFG_LIBDIR)
+  CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),$$(call CFG_TESTLIB_$(1),$$(1),$$(3)),$$(1))
+endif
+
+# Run the compiletest runner itself under valgrind
+ifdef CTEST_VALGRIND
+CFG_RUN_CTEST_$(1)=$$(call CFG_RUN_TEST_$$(CFG_BUILD_TRIPLE),$$(2),$$(3))
+else
+CFG_RUN_CTEST_$(1)=$$(call CFG_RUN_$$(CFG_BUILD_TRIPLE),$$(TLIB$$(1)_T_$$(3)_H_$$(3)),$$(2))
+endif
+
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+  $(eval $(call DEF_TARGET_COMMANDS,$(target))))
+
 
 ######################################################################
 # Main test targets
@@ -218,50 +244,50 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
 
 define TEST_RUNNER
 
-$(3)/test/coretest.stage$(1)-$(2)$$(X):			\
+$(3)/test/coretest.stage$(1)-$(2)$$(X_$(2)):			\
 		$$(CORELIB_CRATE) $$(CORELIB_INPUTS)	\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/stdtest.stage$(1)-$(2)$$(X):			\
+$(3)/test/stdtest.stage$(1)-$(2)$$(X_$(2)):			\
 		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)	\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/syntaxtest.stage$(1)-$(2)$$(X):			\
+$(3)/test/syntaxtest.stage$(1)-$(2)$$(X_$(2)):			\
 		$$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS)	\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rustctest.stage$(1)-$(2)$$(X):					\
+$(3)/test/rustctest.stage$(1)-$(2)$$(X_$(2)):					\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM_$(2)) \
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rustpkgtest.stage$(1)-$(2)$$(X):					\
+$(3)/test/rustpkgtest.stage$(1)-$(2)$$(X_$(2)):					\
 		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rustitest.stage$(1)-$(2)$$(X):					\
+$(3)/test/rustitest.stage$(1)-$(2)$$(X_$(2)):					\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rusttest.stage$(1)-$(2)$$(X):					\
+$(3)/test/rusttest.stage$(1)-$(2)$$(X_$(2)):					\
 		$$(RUST_LIB) $$(RUST_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rustdoctest.stage$(1)-$(2)$$(X):					\
+$(3)/test/rustdoctest.stage$(1)-$(2)$$(X_$(2)):					\
 		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
@@ -278,9 +304,9 @@ define DEF_TEST_CRATE_RULES
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
-		$(3)/test/$(4)test.stage$(1)-$(2)$$(X)
+		$(3)/test/$(4)test.stage$(1)-$(2)$$(X_$(2))
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) $$(TESTARGS)	\
+	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
 	&& touch $$@
 endef
@@ -371,7 +397,7 @@ define DEF_CTEST_VARS
 
 # Prerequisites for compiletest tests
 TEST_SREQ$(1)_T_$(2)_H_$(3) = \
-	$$(HBIN$(1)_H_$(3))/compiletest$$(X) \
+	$$(HBIN$(1)_H_$(3))/compiletest$$(X_$(3)) \
 	$$(SREQ$(1)_T_$(2)_H_$(3))
 
 # Rules for the cfail/rfail/rpass/bench/perf test runner
@@ -379,7 +405,7 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 		--compile-lib-path $$(HLIB$(1)_H_$(3))				\
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3))			\
-        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X)			\
+        --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
         --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
        --rustcflags "$$(CFG_RUSTC_FLAGS) --target=$(2)"	\
@@ -417,7 +443,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
 	@$$(call E, run $(4): $$<)
-	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
+	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
 		$$(CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
                 && touch $$@
@@ -469,7 +495,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(PRETTY_DEPS_$(4))
 	@$$(call E, run pretty-rpass: $$<)
-	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
+	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
 		$$(PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
                 && touch $$@
@@ -496,7 +522,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
                 doc-$(4)-extract$(3)
 	@$$(call E, run doc-$(4): $$<)
-	$$(Q)$$(call CFG_RUN_CTEST,$(1),$$<,$(3)) \
+	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
                 $$(DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-doc-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),doc-$(4)) \
                 && touch $$@
@@ -575,7 +601,7 @@ $(foreach stage,$(STAGES), \
 
 define DEF_CHECK_FOR_STAGE
 check-stage$(1): check-stage$(1)-H-$$(CFG_BUILD_TRIPLE)
-check-stage$(1)-H-all: $$(foreach target,$$(CFG_HOST_TRIPLES), \
+check-stage$(1)-H-all: $$(foreach target,$$(CFG_TARGET_TRIPLES), \
                            check-stage$(1)-H-$$(target))
 endef
 
@@ -584,7 +610,7 @@ $(foreach stage,$(STAGES), \
 
 define DEF_CHECK_FOR_STAGE_AND_GROUP
 check-stage$(1)-$(2): check-stage$(1)-H-$$(CFG_BUILD_TRIPLE)-$(2)
-check-stage$(1)-H-all-$(2): $$(foreach target,$$(CFG_HOST_TRIPLES), \
+check-stage$(1)-H-all-$(2): $$(foreach target,$$(CFG_TARGET_TRIPLES), \
                                check-stage$(1)-H-$$(target)-$(2))
 endef
 
@@ -594,7 +620,7 @@ $(foreach stage,$(STAGES), \
 
 
 define DEF_CHECK_FOR_STAGE_AND_HOSTS
-check-stage$(1)-H-$(2): $$(foreach target,$$(CFG_HOST_TRIPLES), \
+check-stage$(1)-H-$(2): $$(foreach target,$$(CFG_TARGET_TRIPLES), \
                            check-stage$(1)-T-$$(target)-H-$(2))
 endef
 
@@ -603,7 +629,7 @@ $(foreach stage,$(STAGES), \
   $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS,$(stage),$(host)))))
 
 define DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP
-check-stage$(1)-H-$(2)-$(3): $$(foreach target,$$(CFG_HOST_TRIPLES), \
+check-stage$(1)-H-$(2)-$(3): $$(foreach target,$$(CFG_TARGET_TRIPLES), \
                                 check-stage$(1)-T-$$(target)-H-$(2)-$(3))
 endef
 
@@ -617,7 +643,7 @@ $(foreach stage,$(STAGES), \
 ######################################################################
 
 FT := run_pass_stage2
-FT_LIB := $(call CFG_LIB_NAME,$(FT))
+FT_LIB := $(call CFG_LIB_NAME_$(CFG_BUILD_TRIPLE),$(FT))
 FT_DRIVER := $(FT)_driver
 
 GENERATED += tmp/$(FT).rc tmp/$(FT_DRIVER).rs
@@ -639,7 +665,7 @@ $$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB): \
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE2_T_$(2)_H_$(3)) --lib -o $$@ $$<
 
-$(3)/test/$$(FT_DRIVER)-$(2)$$(X): \
+$(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)): \
 		tmp/$$(FT_DRIVER).rs \
 		$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB) \
 		$$(SREQ2_T_$(2)_H_$(3))
@@ -647,9 +673,9 @@ $(3)/test/$$(FT_DRIVER)-$(2)$$(X): \
 	$$(STAGE2_T_$(2)_H_$(3)) -o $$@ $$<
 
 $(3)/test/$$(FT_DRIVER)-$(2).out: \
-		$(3)/test/$$(FT_DRIVER)-$(2)$$(X) \
+		$(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)) \
 		$$(SREQ2_T_$(2)_H_$(3))
-	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) \
+	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) \
 	--logfile tmp/$$(FT_DRIVER)-$(2).log
 
 check-fast-T-$(2)-H-$(3):     			\

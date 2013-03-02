@@ -17,7 +17,7 @@ define DEF_RUSTLLVM_TARGETS
 # FIXME: Lately, on windows, llvm-config --includedir is not enough
 # to find the llvm includes (probably because we're not actually installing
 # llvm, but using it straight out of the build directory)
-ifdef CFG_WINDOWSY
+ifdef CFG_WINDOWSY_$(1)
 LLVM_EXTRA_INCDIRS_$(1)= -iquote $(S)src/llvm/include \
                          -iquote llvm/$(1)/include
 endif

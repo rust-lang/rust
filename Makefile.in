@@ -130,7 +130,71 @@ else
   CFG_VALGRIND_COMPILE :=
 endif
 
-define LIBREQ
+# version-string calculation
+CFG_GIT_DIR := $(CFG_SRC_DIR).git
+CFG_RELEASE = 0.6
+CFG_VERSION = $(CFG_RELEASE)
+
+ifneq ($(wildcard $(CFG_GIT)),)
+ifneq ($(wildcard $(CFG_GIT_DIR)),)
+    CFG_VERSION += $(shell git --git-dir=$(CFG_GIT_DIR) log -1 \
+                     --pretty=format:'(%h %ci)')
+    CFG_VER_HASH = $(shell git --git-dir=$(CFG_GIT_DIR) log -1 \
+                     --pretty=format:'%H')
+endif
+endif
+
+ifdef CFG_ENABLE_VALGRIND
+  $(info cfg: enabling valgrind (CFG_ENABLE_VALGRIND))
+else
+  CFG_VALGRIND :=
+endif
+ifdef CFG_BAD_VALGRIND
+  $(info cfg: disabling valgrind due to its unreliability on this platform)
+  CFG_VALGRIND :=
+endif
+
+
+######################################################################
+# Target-and-rule "utility variables"
+######################################################################
+
+ifdef VERBOSE
+  Q :=
+  E =
+else
+  Q := @
+  E = echo $(1)
+endif
+
+S := $(CFG_SRC_DIR)
+
+define DEF_X
+X_$(1) := $(CFG_EXE_SUFFIX_$(1))
+endef
+$(foreach target,$(CFG_TARGET_TRIPLES),\
+  $(eval $(call DEF_X,$(target))))
+
+# Look in doc and src dirs.
+VPATH := $(S)doc $(S)src
+
+# "Source" files we generate in builddir along the way.
+GENERATED :=
+
+# Delete the built-in rules.
+.SUFFIXES:
+%:: %,v
+%:: RCS/%,v
+%:: RCS/%
+%:: s.%
+%:: SCCS/s.%
+
+
+######################################################################
+# Crates
+######################################################################
+
+define DEF_LIBS
 
 CFG_RUNTIME_$(1) :=$(call CFG_LIB_NAME_$(1),rustrt)
 CFG_RUSTLLVM_$(1) :=$(call CFG_LIB_NAME_$(1),rustllvm)
@@ -165,62 +229,8 @@ LIBRUST_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rust)
 
 endef
 
-$(foreach target,$(CFG_TARGET_TRIPLES), \
-  $(eval $(call LIBREQ,$(target))))
-
-# version-string calculation
-CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = 0.6
-CFG_VERSION = $(CFG_RELEASE)
-
-ifneq ($(wildcard $(CFG_GIT)),)
-ifneq ($(wildcard $(CFG_GIT_DIR)),)
-    CFG_VERSION += $(shell git --git-dir=$(CFG_GIT_DIR) log -1 \
-                     --pretty=format:'(%h %ci)')
-    CFG_VER_HASH = $(shell git --git-dir=$(CFG_GIT_DIR) log -1 \
-                     --pretty=format:'%H')
-endif
-endif
-
-ifdef CFG_ENABLE_VALGRIND
-  $(info cfg: enabling valgrind (CFG_ENABLE_VALGRIND))
-else
-  CFG_VALGRIND :=
-endif
-ifdef CFG_BAD_VALGRIND
-  $(info cfg: disabling valgrind due to its unreliability on this platform)
-  CFG_VALGRIND :=
-endif
-
-
-######################################################################
-# Target-and-rule "utility variables"
-######################################################################
-
-#ifdef VERBOSE
-  Q :=
-  E =
-#else
-#  Q := @
-#  E = echo $(1)
-#endif
-
-S := $(CFG_SRC_DIR)
-X := $(CFG_EXE_SUFFIX)
-
-# Look in doc and src dirs.
-VPATH := $(S)doc $(S)src
-
-# "Source" files we generate in builddir along the way.
-GENERATED :=
-
-# Delete the built-in rules.
-.SUFFIXES:
-%:: %,v
-%:: RCS/%,v
-%:: RCS/%
-%:: s.%
-%:: SCCS/s.%
+$(foreach target,$(CFG_TARGET_TRIPLES),\
+  $(eval $(call DEF_LIBS,$(target))))
 
 ######################################################################
 # Core library variables
@@ -267,8 +277,8 @@ CFG_LLVM_BUILD_DIR_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))
 CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
 
 # Any rules that depend on LLVM should depend on LLVM_CONFIG
-LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X)
-LLVM_MC_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-mc$$(X)
+LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
+LLVM_MC_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-mc$$(X_$(1))
 LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
 LLVM_BINDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --bindir)
 LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)
@@ -280,8 +290,8 @@ LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
 LLVM_CXXFLAGS_$(1)=$$(subst -I, -iquote , $$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags))
 LLVM_HOST_TRIPLE_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --host-target)
 
-LLVM_AS_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-as$$(X)
-LLC_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llc$$(X)
+LLVM_AS_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-as$$(X_$(1))
+LLC_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llc$$(X_$(1))
 
 endef
 
@@ -357,12 +367,12 @@ else
   HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTC_$(3))
   TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3))
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2))
 endif
 
 # Preqrequisites for using the stageN compiler
 HSREQ$(1)_H_$(3) = \
-	$$(HBIN$(1)_H_$(3))/rustc$$(X) \
+	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_RUNTIME_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_RUSTLLVM_$(3)) \
 	$$(HCORELIB_DEFAULT$(1)_H_$(3)) \
@@ -386,25 +396,25 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 # Prerequisites for a working stageN compiler and libraries, for a specific target
 CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(HBIN$(1)_H_$(3))/fuzzer$$(X) \
-	$$(HBIN$(1)_H_$(3))/rustpkg$$(X) \
-	$$(HBIN$(1)_H_$(3))/rustdoc$$(X) \
-	$$(HBIN$(1)_H_$(3))/rusti$$(X) \
-	$$(HBIN$(1)_H_$(3))/rust$$(X) \
+	$$(HBIN$(1)_H_$(3))/fuzzer$$(X_$(3)) \
+	$$(HBIN$(1)_H_$(3))/rustpkg$$(X_$(3)) \
+	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
+	$$(HBIN$(1)_H_$(3))/rusti$$(X_$(3)) \
+	$$(HBIN$(1)_H_$(3))/rust$$(X_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBFUZZER_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTI_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUST_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(3))  \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3))  \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTI_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUST_$(3))
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))  \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(2))  \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTI_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUST_$(2))
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed
@@ -428,18 +438,20 @@ endif
 endif
 
 STAGE$(1)_T_$(2)_H_$(3) := 						\
-	$$(Q)$$(call CFG_RUN_TARG,$(1),				\
+	$$(Q)$$(call CFG_RUN_TARG_$(3),$(1),				\
 		$$(CFG_VALGRIND_COMPILE$(1)) 			\
-		$$(HBIN$(1)_H_$(3))/rustc$$(X)			\
+		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
 		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3))			\
-		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2))
+		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2)) \
+                $$(RUSTC_FLAGS_$(2))
 
 PERF_STAGE$(1)_T_$(2)_H_$(3) := 				\
-	$$(Q)$$(call CFG_RUN_TARG,$(1),				\
+	$$(Q)$$(call CFG_RUN_TARG_$(3),$(1),				\
 		$$(CFG_PERF_TOOL) 						\
-		$$(HBIN$(1)_H_$(3))/rustc$$(X)			\
+		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
 		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3))			\
-		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2))
+		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2)) \
+                $$(RUSTC_FLAGS_$(2))
 
 endef
 

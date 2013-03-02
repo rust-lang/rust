@@ -48,7 +48,16 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
-CFG_GCCISH_CROSS_x86_64-unknown-linux-gnu =
+CFG_LIBUV_LINK_FLAGS_x86_64-unknown-linux-gnu =
+CFG_LLVM_BUILD_ENV_x86_64-unknown-linux-gnu="CXXFLAGS=-fno-omit-frame-pointer"
+CFG_GCCISH_CROSS_PREFIX_x86_64-unknown-linux-gnu =
+CFG_EXE_SUFFIX_x86_64-unknown-linux-gnu =
+CFG_WINDOWSY_x86_64-unknown-linux-gnu :=
+CFG_LINUXY_x86_64-unknown-linux-gnu := 1
+CFG_PATH_MUNGE_x86_64-unknown-linux-gnu := true
+CFG_LDPATH_x86_64-unknown-linux-gnu :=
+CFG_RUN_x86_64-unknown-linux-gnu=$(2)
+CFG_RUN_TARG_x86_64-unknown-linux-gnu=$(call CFG_RUN_x86_64-unknown-linux-gnu,,$(2))
 
 # x86_64-apple-darwin configuration
 CFG_LIB_NAME_x86_64-apple-darwin=lib$(1).dylib
@@ -62,6 +71,14 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-apple-darwin :=
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-apple-darwin :=
 CFG_DEF_SUFFIX_x86_64-apple-darwin := .darwin.def
 CFG_INSTALL_NAME_x86_64-apple-darwin = -Wl,-install_name,@rpath/$(1)
+CFG_LIBUV_LINK_FLAGS_x86_64-apple-darwin =
+CFG_EXE_SUFFIX_x86_64-apple-darwin :=
+CFG_WINDOWSY_x86_64-apple-darwin :=
+CFG_LINUXY_x86_64-apple-darwin := 1
+CFG_PATH_MUNGE_x86_64-apple-darwin := true
+CFG_LDPATH_x86_64-apple-darwin :=
+CFG_RUN_x86_64-apple-darwin=$(2)
+CFG_RUN_TARG_x86_64-apple-darwin=$(call CFG_RUN_x86_64-apple-darwin,,$(2))
 
 # arm-unknown-android configuration
 CFG_LIB_NAME_arm-unknown-android=lib$(1).so
@@ -75,7 +92,15 @@ CFG_GCCISH_PRE_LIB_FLAGS_arm-unknown-android := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_arm-unknown-android := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_arm-unknown-android := .android.def
 CFG_INSTALL_NAME_arm-unknown-android =
-CFG_GCCISH_CROSS_arm-unknown-android = $(CFG_CROSS_PREFIX_arm)
+CFG_LIBUV_LINK_FLAGS_arm-unknown-android =
+CFG_GCCISH_CROSS_PREFIX_arm-unknown-android = $(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-
+CFG_EXE_SUFFIX_arm-unknown-android :=
+CFG_WINDOWSY_arm-unknown-android :=
+CFG_LINUXY_arm-unknown-android := 1
+CFG_PATH_MUNGE_arm-unknown-android := true
+CFG_LDPATH_arm-unknown-android :=
+CFG_RUN_arm-unknown-android=
+CFG_RUN_TARG_arm-unknown-android=
 
 # i686-pc-mingw32 configuration
 CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
@@ -87,23 +112,45 @@ CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g
 CFG_GCCISH_DEF_FLAG_i686-pc-mingw32 :=
 CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 := 
 CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 := 
-CFG_DEF_SUFFIX_i686-pc-mingw32 := .def
+CFG_DEF_SUFFIX_i686-pc-mingw32 := .mingw32.def
 CFG_INSTALL_NAME_i686-pc-mingw32 =
-CFG_GCCISH_CROSS_i686-pc-mingw32 =
+CFG_LIBUV_LINK_FLAGS_i686-pc-mingw32 := -lWs2_32 -lpsapi -liphlpapi
+CFG_GCCISH_CROSS_PREFIX_i686-pc-mingw32 =
+CFG_EXE_SUFFIX_i686-pc-mingw32 := .exe
+CFG_WINDOWSY_i686-pc-mingw32 := 1
+CFG_LINUXY_i686-pc-mingw32 :=
+CFG_PATH_MUNGE_i686-pc-mingw32 :=
+CFG_LDPATH_i686-pc-mingw32 :=$(CFG_LDPATH_i686-pc-mingw32):$(PATH)
+CFG_RUN_i686-pc-mingw32=PATH="$(CFG_LDPATH_i686-pc-mingw32):$(1)" $(2)
+CFG_RUN_TARG_i686-pc-mingw32=$(call CFG_RUN_i686-pc-mingw32,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
+
+# i586-mingw32msvc configuration
+CFG_LIB_NAME_i586-mingw32msvc=$(1).dll
+CFG_LIB_GLOB_i586-mingw32msvc=$(1)-*.dll
+CFG_LIB_DSYM_GLOB_i586-mingw32msvc=$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_i586-mingw32msvc := -Wall -Werror -g -march=586 -m32
+CFG_GCCISH_CXXFLAGS_i586-mingw32msvc := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_i586-mingw32msvc := -shared -g -m32
+CFG_GCCISH_DEF_FLAG_i586-mingw32msvc :=
+CFG_GCCISH_PRE_LIB_FLAGS_i586-mingw32msvc :=
+CFG_GCCISH_POST_LIB_FLAGS_i586-mingw32msvc :=
+CFG_DEF_SUFFIX_i586-mingw32msvc := .mingw32.def
+CFG_INSTALL_NAME_i586-mingw32msvc =
+CFG_LIBUV_LINK_FLAGS_i586-mingw32msvc := -lWs2_32 -lpsapi -liphlpapi
+CFG_GCCISH_CROSS_PREFIX_i586-mingw32msvc = $(CFG_MIGW32_CROSS_PATH)/bin/i586-mingw32msvc-
+CFG_EXE_SUFFIX_i586-mingw32msvc := .exe
+CFG_WINDOWSY_i586-mingw32msvc := 1
+CFG_LINUXY_i586-mingw32msvc :=
+CFG_PATH_MUNGE_i586-mingw32msvc := $(strip perl -i.bak -p   \
+                             -e 's@\\(\S)@/\1@go;'       \
+                             -e 's@^/([a-zA-Z])/@\1:/@o;')
+CFG_LDPATH_i586-mingw32msvc :=
+CFG_RUN_i586-mingw32msvc=
+CFG_RUN_TARG_i586-mingw32msvc=
 
 # Hack: not sure how to test if a file exists in make other than this
 OS_SUPP = $(patsubst %,--suppressions=%,\
       $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
-
-ifneq ($(findstring mingw,$(CFG_OSTYPE)),)
-  CFG_WINDOWSY := 1
-endif
-ifneq ($(findstring linux,$(CFG_OSTYPE)),)
-  CFG_UNIXY := 1
-endif
-ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
-  CFG_UNIXY := 1
-endif
 
 ifdef CFG_DISABLE_OPTIMIZE_CXX
   $(info cfg: disabling C++ optimization (CFG_DISABLE_OPTIMIZE_CXX))
@@ -112,16 +159,18 @@ else
   CFG_GCCISH_CFLAGS += -O2
 endif
 
-CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
- $(if $(findstring stage0,$(1)), \
-       stage0/$(CFG_LIBDIR), \
-      $(if $(findstring stage1,$(1)), \
-           stage1/$(CFG_LIBDIR), \
-          $(if $(findstring stage2,$(1)), \
-               stage2/$(CFG_LIBDIR), \
-               $(if $(findstring stage3,$(1)), \
-                    stage3/$(CFG_LIBDIR), \
-               )))))/rustc/$(CFG_HOST_TRIPLE)/$(CFG_LIBDIR)
+ifdef CFG_VALGRIND
+  CFG_VALGRIND += --error-exitcode=100 \
+                  --quiet \
+                  --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp \
+                  $(OS_SUPP)
+  ifdef CFG_ENABLE_HELGRIND
+    CFG_VALGRIND += --tool=helgrind
+  else
+    CFG_VALGRIND += --tool=memcheck \
+                    --leak-check=full
+  endif
+endif
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   # -znoexecstack is here because librt is for some reason being created
@@ -139,74 +188,6 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
     else
       CFG_PERF_TOOL := /usr/bin/time --verbose
     endif
-  endif
-  # Linux requires LLVM to be built like this to get backtraces into Rust code
-  CFG_LLVM_BUILD_ENV="CXXFLAGS=-fno-omit-frame-pointer"
-endif
-
-ifdef CFG_UNIXY
-  CFG_INFO := $(info cfg: unix-y environment)
-
-  CFG_PATH_MUNGE := true
-  CFG_EXE_SUFFIX :=
-  CFG_LDPATH :=
-  CFG_RUN=$(2)
-  CFG_RUN_TARG=$(call CFG_RUN,,$(2))
-  CFG_RUN_TEST=$(call CFG_RUN,,$(CFG_VALGRIND) $(1))
-  CFG_LIBUV_LINK_FLAGS=
-
-  ifdef CFG_ENABLE_MINGW_CROSS
-    CFG_WINDOWSY := 1
-    CFG_INFO := $(info cfg: mingw-cross)
-    CFG_GCCISH_CROSS := i586-mingw32msvc-
-    ifdef CFG_VALGRIND
-      CFG_VALGRIND += wine
-    endif
-
-    CFG_GCCISH_CFLAGS := -march=i586
-    CFG_GCCISH_PRE_LIB_FLAGS :=
-    CFG_GCCISH_POST_LIB_FLAGS :=
-    CFG_GCCISH_DEF_FLAG :=
-    CFG_GCCISH_LINK_FLAGS := -shared
-
-    ifeq ($(CFG_CPUTYPE), x86_64)
-      CFG_GCCISH_CFLAGS += -m32
-      CFG_GCCISH_LINK_FLAGS += -m32
-    endif
-  endif
-  ifdef CFG_VALGRIND
-    CFG_VALGRIND += --error-exitcode=100 \
-                    --quiet \
-                    --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp \
-                    $(OS_SUPP)
-    ifdef CFG_ENABLE_HELGRIND
-      CFG_VALGRIND += --tool=helgrind
-    else
-      CFG_VALGRIND += --tool=memcheck \
-                      --leak-check=full
-    endif
-  endif
-endif
-
-ifdef CFG_WINDOWSY
-  CFG_INFO := $(info cfg: windows-y environment)
-
-  CFG_EXE_SUFFIX := .exe
-ifdef MSYSTEM
-  CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-  CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
-else
-  CFG_LDPATH :=
-  CFG_RUN=$(2)
-endif
-  CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
-  CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
-  CFG_LIBUV_LINK_FLAGS=-lWs2_32 -lpsapi -liphlpapi
-
-  ifndef CFG_ENABLE_MINGW_CROSS
-    CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
-                             -e 's@\\(\S)@/\1@go;'       \
-                             -e 's@^/([a-zA-Z])/@\1:/@o;')
   endif
 endif
 
@@ -279,24 +260,24 @@ define CFG_MAKE_CC
 
   else
   
-  CFG_COMPILE_C_$(1) = $(CFG_GCCISH_CROSS_$(1))$$(CC)  \
+  CFG_COMPILE_C_$(1) = $(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CC)  \
         $$(CFG_GCCISH_CFLAGS)      \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
         $$(CFG_DEPEND_FLAGS)       \
         -c -o $$(1) $$(2)
-  CFG_LINK_C_$(1) = $(CFG_GCCISH_CROSS_$(1))$$(CC) \
+  CFG_LINK_C_$(1) = $(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CC) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)          \
         $$(CFG_GCCISH_LINK_FLAGS_$(1)))             \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)     \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
-  CFG_COMPILE_CXX_$(1) = $(CFG_GCCISH_CROSS_$(1))$$(CXX) \
+  CFG_COMPILE_CXX_$(1) = $(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CXX) \
         $$(CFG_GCCISH_CFLAGS)      \
         $$(CFG_GCCISH_CXXFLAGS)    \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
         $$(CFG_GCCISH_CXXFLAGS_$(1))    \
         $$(CFG_DEPEND_FLAGS)       \
         -c -o $$(1) $$(2)
-  CFG_LINK_CXX_$(1) = $(CFG_GCCISH_CROSS_$(1))$$(CXX) \
+  CFG_LINK_CXX_$(1) = $(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CXX) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)             \
         $$(CFG_GCCISH_LINK_FLAGS_$(1))                 \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
@@ -322,7 +303,7 @@ define CFG_MAKE_ASSEMBLER
                     -o=$$(1)
   else
 
-  CFG_ASSEMBLE_$(1)=$(CFG_GCCISH_CROSS_$(1))$$(CPP) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1) 
+  CFG_ASSEMBLE_$(1)=$(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CPP) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1) 
 
   endif
 
