@@ -40,7 +40,7 @@ struct ctx {
     rmap: map
 }
 
-pub fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
+pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
                       tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let rmap = HashMap();
     let cx = ctx {
@@ -87,10 +87,10 @@ fn traverse_def_id(cx: ctx, did: def_id) {
     }
 }
 
-fn traverse_public_mod(cx: ctx, mod_id: node_id, m: _mod) {
+fn traverse_public_mod(cx: ctx, mod_id: node_id, m: &_mod) {
     if !traverse_exports(cx, mod_id) {
         // No exports, so every local item is exported
-        for vec::each(m.items) |item| {
+        for m.items.each |item| {
             traverse_public_item(cx, *item);
         }
     }
@@ -99,11 +99,11 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: _mod) {
 fn traverse_public_item(cx: ctx, item: @item) {
     if cx.rmap.contains_key(&item.id) { return; }
     cx.rmap.insert(item.id, ());
-    match item.node {
-      item_mod(ref m) => traverse_public_mod(cx, item.id, *m),
+    match /*bad*/copy item.node {
+      item_mod(ref m) => traverse_public_mod(cx, item.id, m),
       item_foreign_mod(ref nm) => {
           if !traverse_exports(cx, item.id) {
-              for vec::each(nm.items) |item| {
+              for nm.items.each |item| {
                   cx.rmap.insert(item.id, ());
               }
           }
@@ -111,7 +111,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       item_fn(_, _, ref generics, ref blk) => {
         if generics.ty_params.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
-            traverse_inline_body(cx, (*blk));
+            traverse_inline_body(cx, blk);
         }
       }
       item_impl(ref generics, _, _, ref ms) => {
@@ -121,7 +121,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
                 attr::find_inline_attr(m.attrs) != attr::ia_none
             {
                 cx.rmap.insert(m.id, ());
-                traverse_inline_body(cx, m.body);
+                traverse_inline_body(cx, &m.body);
             }
         }
       }
@@ -129,12 +129,12 @@ fn traverse_public_item(cx: ctx, item: @item) {
         for struct_def.ctor_id.each |&ctor_id| {
             cx.rmap.insert(ctor_id, ());
         }
-        do option::iter(&struct_def.dtor) |dtor| {
+        do struct_def.dtor.iter |dtor| {
             cx.rmap.insert(dtor.node.id, ());
             if generics.ty_params.len() > 0u ||
                 attr::find_inline_attr(dtor.node.attrs) != attr::ia_none
             {
-                traverse_inline_body(cx, dtor.node.body);
+                traverse_inline_body(cx, &dtor.node.body);
             }
         }
       }
@@ -173,7 +173,7 @@ fn traverse_ty(ty: @Ty, cx: ctx, v: visit::vt<ctx>) {
     }
 }
 
-fn traverse_inline_body(cx: ctx, body: blk) {
+fn traverse_inline_body(cx: ctx, body: &blk) {
     fn traverse_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         match e.node {
           expr_path(_) => {
@@ -222,16 +222,19 @@ fn traverse_inline_body(cx: ctx, body: blk) {
     fn traverse_item(i: @item, cx: ctx, _v: visit::vt<ctx>) {
       traverse_public_item(cx, i);
     }
-     visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
+    visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
         visit_expr: traverse_expr,
         visit_item: traverse_item,
          ..*visit::default_visitor()
     }));
 }
 
-fn traverse_all_resources_and_impls(cx: ctx, crate_mod: _mod) {
+fn traverse_all_resources_and_impls(cx: ctx, crate_mod: &_mod) {
     visit::visit_mod(
-        crate_mod, codemap::dummy_sp(), 0, cx,
+        crate_mod,
+        codemap::dummy_sp(),
+        0,
+        cx,
         visit::mk_vt(@visit::Visitor {
             visit_expr: |_e, _cx, _v| { },
             visit_item: |i, cx, v| {

@@ -59,7 +59,7 @@ pub fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
+pub fn loop_query(b: &ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
                         &&flag: @mut bool,
@@ -82,7 +82,7 @@ pub fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
+pub fn block_query(b: &ast::blk, p: fn@(@ast::expr) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
                         &&flag: @mut bool,

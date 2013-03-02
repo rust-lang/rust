@@ -8,24 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::*;
+use core::io::WriterUtil;
+
 use ast;
 use codemap;
 use ext::base::*;
 use ext::base;
 use print;
 
-use core::io;
-use core::io::WriterUtil;
-use core::option;
-
 pub fn expand_syntax_ext(cx: ext_ctxt,
                          sp: codemap::span,
-                         tt: ~[ast::token_tree])
+                         tt: &[ast::token_tree])
                       -> base::MacResult {
 
     cx.print_backtrace();
     io::stdout().write_line(
-        print::pprust::tt_to_str(ast::tt_delim(tt),cx.parse_sess().interner));
+        print::pprust::tt_to_str(
+            ast::tt_delim(vec::from_slice(tt)),
+            cx.parse_sess().interner));
 
     //trivial expression
     MRExpr(@ast::expr {

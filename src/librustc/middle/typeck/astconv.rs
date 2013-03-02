@@ -333,14 +333,14 @@ pub fn ast_ty_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
         };
         ty::mk_rec(tcx, flds)
       }
-      ast::ty_bare_fn(bf) => {
+      ast::ty_bare_fn(ref bf) => {
           ty::mk_bare_fn(tcx, ty_of_bare_fn(self, rscope, bf.purity,
-                                            bf.abi, bf.decl))
+                                            bf.abi, &bf.decl))
       }
-      ast::ty_closure(f) => {
+      ast::ty_closure(ref f) => {
           let fn_decl = ty_of_closure(self, rscope, f.sigil,
                                       f.purity, f.onceness,
-                                      f.region, f.decl, None,
+                                      f.region, &f.decl, None,
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
@@ -474,7 +474,7 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
         rscope: RS,
         purity: ast::purity,
         abi: ast::Abi,
-        decl: ast::fn_decl)
+        decl: &ast::fn_decl)
      -> ty::BareFnTy {
     debug!("ty_of_fn_decl");
 
@@ -502,7 +502,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
         purity: ast::purity,
         onceness: ast::Onceness,
         opt_region: Option<@ast::region>,
-        decl: ast::fn_decl,
+        decl: &ast::fn_decl,
         expected_tys: Option<ty::FnSig>,
         span: span)
      -> ty::ClosureTy {

@@ -246,7 +246,7 @@ pub fn check_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 
 pub fn check_bare_fn(ccx: @mut CrateCtxt,
                      decl: &ast::fn_decl,
-                     body: ast::blk,
+                     body: &ast::blk,
                      id: ast::node_id,
                      self_info: Option<SelfInfo>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
@@ -266,7 +266,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 sigil: Option<ast::Sigil>,
                 fn_sig: &ty::FnSig,
                 decl: &ast::fn_decl,
-                body: ast::blk,
+                body: &ast::blk,
                 fn_kind: FnKind,
                 old_fcx: Option<@mut FnCtxt>) {
     let tcx = ccx.tcx;
@@ -384,7 +384,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 
     fn gather_locals(fcx: @mut FnCtxt,
                      decl: &ast::fn_decl,
-                     body: ast::blk,
+                     body: &ast::blk,
                      arg_tys: &[ty::t],
                      self_info: Option<SelfInfo>) {
         let tcx = fcx.ccx.tcx;
@@ -462,7 +462,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             visit::visit_pat(p, e, v);
         };
 
-        let visit_block = fn@(b: ast::blk, &&e: (), v: visit::vt<()>) {
+        let visit_block = fn@(b: &ast::blk, &&e: (), v: visit::vt<()>) {
             // non-obvious: the `blk` variable maps to region lb, so
             // we have to keep this up-to-date.  This
             // is... unfortunate.  It'd be nice to not need this.
@@ -472,8 +472,8 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         // Don't descend into fns and items
-        fn visit_fn(_fk: visit::fn_kind, _decl: ast::fn_decl,
-                    _body: ast::blk, _sp: span,
+        fn visit_fn(_fk: &visit::fn_kind, _decl: &ast::fn_decl,
+                    _body: &ast::blk, _sp: span,
                     _id: ast::node_id, &&_t: (), _v: visit::vt<()>) {
         }
         fn visit_item(_i: @ast::item, &&_e: (), _v: visit::vt<()>) { }
@@ -500,7 +500,13 @@ pub fn check_method(ccx: @mut CrateCtxt,
         def_id: self_impl_def_id,
         explicit_self: method.self_ty
     };
-    check_bare_fn(ccx, &method.decl, method.body, method.id, Some(self_info));
+    check_bare_fn(
+        ccx,
+        &method.decl,
+        &method.body,
+        method.id,
+        Some(self_info)
+    );
 }
 
 pub fn check_no_duplicate_fields(tcx: ty::ctxt,
@@ -544,9 +550,13 @@ pub fn check_struct(ccx: @mut CrateCtxt,
         };
         // typecheck the dtor
         let dtor_dec = ast_util::dtor_dec();
-        check_bare_fn(ccx, &dtor_dec,
-                      dtor.node.body, dtor.node.id,
-                      Some(class_t));
+        check_bare_fn(
+            ccx,
+            &dtor_dec,
+            &dtor.node.body,
+            dtor.node.id,
+            Some(class_t)
+        );
     };
 
     // Check that the class is instantiable
@@ -568,7 +578,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
                             it.id);
       }
       ast::item_fn(ref decl, _, _, ref body) => {
-        check_bare_fn(ccx, decl, (*body), it.id, None);
+        check_bare_fn(ccx, decl, body, it.id, None);
       }
       ast::item_impl(_, _, ty, ms) => {
         let rp = ccx.tcx.region_paramd_items.find(&it.id);
@@ -1404,7 +1414,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     fn check_for(fcx: @mut FnCtxt,
                  local: @ast::local,
                  element_ty: ty::t,
-                 body: ast::blk,
+                 body: &ast::blk,
                  node_id: ast::node_id)
               -> bool {
         let local_ty = fcx.local_ty(local.span, local.node.id);
@@ -1418,7 +1428,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     // A generic function for checking the then and else in an if
     // or if-check
     fn check_then_else(fcx: @mut FnCtxt,
-                       thn: ast::blk,
+                       thn: &ast::blk,
                        elsopt: Option<@ast::expr>,
                        id: ast::node_id,
                        _sp: span)
@@ -1616,7 +1626,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                      expr: @ast::expr,
                      ast_sigil_opt: Option<ast::Sigil>,
                      decl: &ast::fn_decl,
-                     body: ast::blk,
+                     body: &ast::blk,
                      fn_kind: FnKind,
                      expected: Option<ty::t>) {
         let tcx = fcx.ccx.tcx;
@@ -1660,7 +1670,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut fn_ty = astconv::ty_of_closure(
             fcx, fcx,
             sigil, purity, expected_onceness,
-            None, *decl, expected_tys, expr.span);
+            None, decl, expected_tys, expr.span);
 
         let fty = ty::mk_closure(tcx, copy fn_ty);
 
@@ -2101,7 +2111,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 // message because of the indirect_ret_ty.
                 let fn_kind = if err_happened {Vanilla} else {ForLoop};
                 check_expr_fn(fcx, loop_body, None,
-                              decl, *body, fn_kind, Some(inner_ty));
+                              decl, body, fn_kind, Some(inner_ty));
                 demand::suptype(fcx, loop_body.span,
                                 inner_ty, fcx.expr_ty(loop_body));
             }
@@ -2348,28 +2358,28 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::expr_if(cond, ref thn, elsopt) => {
         bot = check_expr_has_type(fcx, cond, ty::mk_bool(tcx));
-        bot |= check_then_else(fcx, *thn, elsopt, id, expr.span);
+        bot |= check_then_else(fcx, thn, elsopt, id, expr.span);
       }
       ast::expr_while(cond, ref body) => {
         bot = check_expr_has_type(fcx, cond, ty::mk_bool(tcx));
-        check_block_no_value(fcx, (*body));
+        check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
       }
       ast::expr_loop(ref body, _) => {
-        check_block_no_value(fcx, (*body));
+        check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
-        bot = !may_break(tcx, expr.id, (*body));
+        bot = !may_break(tcx, expr.id, body);
       }
       ast::expr_match(discrim, ref arms) => {
         bot = _match::check_match(fcx, expr, discrim, (/*bad*/copy *arms));
       }
       ast::expr_fn(sigil, ref decl, ref body, _) => {
         check_expr_fn(fcx, expr, Some(sigil),
-                      decl, (*body), Vanilla, expected);
+                      decl, body, Vanilla, expected);
       }
       ast::expr_fn_block(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,
-                      decl, (*body), Vanilla, expected);
+                      decl, body, Vanilla, expected);
       }
       ast::expr_loop_body(loop_body) => {
           check_loop_body(fcx, expr, expected, loop_body);
@@ -2399,7 +2409,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         match b.node {
           ast::expr_fn_block(ref decl, ref body) => {
             check_expr_fn(fcx, b, None,
-                          decl, *body, DoBlock, Some(inner_ty));
+                          decl, body, DoBlock, Some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
           }
           // argh
@@ -2409,7 +2419,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::expr_block(ref b) => {
         // If this is an unchecked block, turn off purity-checking
-        bot = check_block_with_expected(fcx, *b, expected);
+        bot = check_block_with_expected(fcx, b, expected);
         let typ =
             match b.node.expr {
               Some(expr) => fcx.expr_ty(expr),
@@ -2699,7 +2709,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt) -> bool {
     return bot;
 }
 
-pub fn check_block_no_value(fcx: @mut FnCtxt, blk: ast::blk) -> bool {
+pub fn check_block_no_value(fcx: @mut FnCtxt, blk: &ast::blk) -> bool {
     let bot = check_block(fcx, blk);
     if !bot {
         let blkty = fcx.node_ty(blk.node.id);
@@ -2709,12 +2719,12 @@ pub fn check_block_no_value(fcx: @mut FnCtxt, blk: ast::blk) -> bool {
     return bot;
 }
 
-pub fn check_block(fcx0: @mut FnCtxt, blk: ast::blk) -> bool {
+pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::blk) -> bool {
     check_block_with_expected(fcx0, blk, None)
 }
 
 pub fn check_block_with_expected(fcx0: @mut FnCtxt,
-                                 blk: ast::blk,
+                                 blk: &ast::blk,
                                  expected: Option<ty::t>)
                               -> bool {
     let fcx = match blk.node.rules {
@@ -3109,7 +3119,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
 }
 
 // Returns true if b contains a break that can exit from b
-pub fn may_break(cx: ty::ctxt, id: ast::node_id, b: ast::blk) -> bool {
+pub fn may_break(cx: ty::ctxt, id: ast::node_id, b: &ast::blk) -> bool {
     // First: is there an unlabeled break immediately
     // inside the loop?
     (loop_query(b, |e| {

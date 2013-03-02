@@ -134,7 +134,7 @@ pub pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
 
 pub fn safe_to_steal_ty(t: @ast::Ty, tm: test_mode) -> bool {
     // Restrictions happen to be the same.
-    safe_to_replace_ty(t.node, tm)
+    safe_to_replace_ty(&t.node, tm)
 }
 
 // Not type-parameterized: https://github.com/mozilla/rust/issues/898 (FIXED)
@@ -175,8 +175,8 @@ pub fn steal(crate: ast::crate, tm: test_mode) -> StolenStuff {
 }
 
 
-pub fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
-    match e {
+pub fn safe_to_replace_expr(e: &ast::expr_, _tm: test_mode) -> bool {
+    match *e {
       // https://github.com/mozilla/rust/issues/652
       ast::expr_if(*) => { false }
       ast::expr_block(_) => { false }
@@ -188,8 +188,8 @@ pub fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
     }
 }
 
-pub fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
-    match t {
+pub fn safe_to_replace_ty(t: &ast::ty_, _tm: test_mode) -> bool {
+    match *t {
       ast::ty_infer => { false } // always implicit, always top level
       ast::ty_bot => { false }   // in source, can only appear
                               // as the out type of a function
@@ -204,7 +204,7 @@ pub fn replace_expr_in_crate(crate: ast::crate, i: uint,
    ast::crate {
     let j: @mut uint = @mut 0u;
     fn fold_expr_rep(j_: @mut uint, i_: uint, newexpr_: ast::expr_,
-                     original: ast::expr_, fld: fold::ast_fold,
+                     original: &ast::expr_, fld: fold::ast_fold,
                      tm_: test_mode) ->
        ast::expr_ {
         *j_ += 1u;
@@ -221,7 +221,7 @@ pub fn replace_expr_in_crate(crate: ast::crate, i: uint,
         .. *fold::default_ast_fold()
     };
     let af = fold::make_fold(afp);
-    let crate2: @ast::crate = @af.fold_crate(crate);
+    let crate2: @ast::crate = @af.fold_crate(&crate);
     *crate2
 }
 
@@ -231,7 +231,7 @@ pub fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
                            tm: test_mode) -> ast::crate {
     let j: @mut uint = @mut 0u;
     fn fold_ty_rep(j_: @mut uint, i_: uint, newty_: ast::ty_,
-                   original: ast::ty_, fld: fold::ast_fold,
+                   original: &ast::ty_, fld: fold::ast_fold,
                    tm_: test_mode) ->
        ast::ty_ {
         *j_ += 1u;
@@ -244,7 +244,7 @@ pub fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::Ty,
         .. *fold::default_ast_fold()
     };
     let af = fold::make_fold(afp);
-    let crate2: @ast::crate = @af.fold_crate(crate);
+    let crate2: @ast::crate = @af.fold_crate(&crate);
     *crate2
 }
 

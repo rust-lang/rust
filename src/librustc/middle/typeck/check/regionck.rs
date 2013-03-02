@@ -125,7 +125,7 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
     fcx.infcx().resolve_regions();
 }
 
-pub fn regionck_fn(fcx: @mut FnCtxt, blk: ast::blk) {
+pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
     let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
     let v = regionck_visitor();
     (v.visit_block)(blk, rcx, v);
@@ -176,7 +176,7 @@ pub fn visit_local(l: @ast::local, &&rcx: @mut Rcx, v: rvt) {
     }
 }
 
-pub fn visit_block(b: ast::blk, &&rcx: @mut Rcx, v: rvt) {
+pub fn visit_block(b: &ast::blk, &&rcx: @mut Rcx, v: rvt) {
     visit::visit_block(b, rcx, v);
 }
 

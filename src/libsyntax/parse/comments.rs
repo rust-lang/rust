@@ -221,7 +221,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
         if col < len {
             s1 = str::slice(s, col, len);
         } else { s1 = ~""; }
-    } else { s1 = s; }
+    } else { s1 = /*bad*/ copy s; }
     log(debug, ~"pushing line: " + s1);
     lines.push(s1);
 }
@@ -321,7 +321,7 @@ pub struct lit {
 }
 
 pub fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
-                                    path: ~str,
+                                    +path: ~str,
                                     srdr: io::Reader) -> (~[cmnt], ~[lit]) {
     let src = @str::from_bytes(srdr.read_whole_stream());
     let itr = parse::token::mk_fake_ident_interner();
@@ -354,12 +354,12 @@ pub fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
-        if token::is_lit(tok) {
+        if token::is_lit(&tok) {
             let s = get_str_from(rdr, bstart);
-            literals.push(lit {lit: s, pos: sp.lo});
-            log(debug, ~"tok lit: " + s);
+            literals.push(lit {lit: /*bad*/ copy s, pos: sp.lo});
+            debug!("tok lit: %s", s);
         } else {
-            log(debug, ~"tok: " + token::to_str(rdr.interner, tok));
+            debug!("tok: %s", token::to_str(rdr.interner, &tok));
         }
         first_read = false;
     }

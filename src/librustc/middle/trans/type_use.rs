@@ -107,7 +107,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
       ast_map::node_item(@ast::item { node: item_fn(_, _, _, ref body),
                                       _ }, _) |
       ast_map::node_method(@ast::method {body: ref body, _}, _, _) => {
-        handle_body(cx, (*body));
+        handle_body(cx, body);
       }
       ast_map::node_trait_method(*) => {
         // This will be a static trait method. For now, we just assume
@@ -163,8 +163,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
       }
-      ast_map::node_dtor(_, dtor, _, _) => {
-        handle_body(cx, dtor.node.body);
+      ast_map::node_dtor(_, ref dtor, _, _) => {
+        handle_body(cx, &dtor.node.body);
       }
       ast_map::node_struct_ctor(*) => {
         // Similarly to node_variant, this monomorphized function just uses
@@ -363,7 +363,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
     }
 }
 
-pub fn handle_body(cx: Context, body: blk) {
+pub fn handle_body(cx: Context, body: &blk) {
     let v = visit::mk_vt(@visit::Visitor {
         visit_expr: |e, cx, v| {
             visit::visit_expr(e, cx, v);

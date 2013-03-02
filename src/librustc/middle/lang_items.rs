@@ -324,7 +324,7 @@ struct LanguageItemCollector {
 
 pub impl LanguageItemCollector {
     fn match_and_collect_meta_item(&self, item_def_id: def_id,
-                                   meta_item: meta_item) {
+                                   meta_item: @meta_item) {
         match meta_item.node {
             meta_name_value(key, literal) => {
                 match literal.node {
@@ -376,10 +376,10 @@ pub impl LanguageItemCollector {
             visit_item: |item| {
                 for item.attrs.each |attribute| {
                     unsafe {
-                        (*this).match_and_collect_meta_item(local_def(item
-                                                                      .id),
-                                                            attribute.node
-                                                                     .value);
+                        (*this).match_and_collect_meta_item(
+                            local_def(item.id),
+                            attribute.node.value
+                        );
                     }
                 }
             },

@@ -39,7 +39,7 @@ pub type freevar_map = HashMap<ast::node_id, freevar_info>;
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
+fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
     -> freevar_info {
     let seen = HashMap();
     let refs = @mut ~[];
@@ -100,8 +100,8 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
    freevar_map {
     let freevars = HashMap();
 
-    let walk_fn = fn@(_fk: visit::fn_kind, _decl: ast::fn_decl,
-                      blk: ast::blk, _sp: span, nid: ast::node_id) {
+    let walk_fn = fn@(_fk: &visit::fn_kind, _decl: &ast::fn_decl,
+                      blk: &ast::blk, _sp: span, nid: ast::node_id) {
         let vars = collect_freevars(def_map, blk);
         freevars.insert(nid, vars);
     };

@@ -76,7 +76,7 @@ struct ReadyCtx {
     fns: ~[ListenerFn]
 }
 
-fn fold_mod(_ctx: @mut ReadyCtx, m: ast::_mod,
+fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod,
             fold: fold::ast_fold) -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
@@ -87,11 +87,11 @@ fn fold_mod(_ctx: @mut ReadyCtx, m: ast::_mod,
         }
     }
 
-    fold::noop_fold_mod(ast::_mod {
-        items: do vec::map(m.items) |item| {
+    fold::noop_fold_mod(&ast::_mod {
+        items: do m.items.map |item| {
             strip_main(*item)
         },
-        .. m
+        .. copy *m
     }, fold)
 }
 
@@ -199,7 +199,7 @@ pub fn ready_crate(sess: session::Session,
 
     let fold = fold::make_fold(precursor);
 
-    @fold.fold_crate(*crate)
+    @fold.fold_crate(crate)
 }
 
 pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {

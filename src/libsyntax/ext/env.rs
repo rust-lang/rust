@@ -15,16 +15,15 @@
  * interface.
  */
 
+use prelude::*;
+
 use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
 use ext::build::mk_uniq_str;
 
-use core::option;
-use core::os;
-
-pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
 
     let var = get_single_str_from_tts(cx, sp, tts, "env!");
@@ -33,8 +32,8 @@ pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
     // Option<str> rather than just an maybe-empty string.
 
     let e = match os::getenv(var) {
-      option::None => mk_uniq_str(cx, sp, ~""),
-      option::Some(ref s) => mk_uniq_str(cx, sp, (*s))
+      None => mk_uniq_str(cx, sp, ~""),
+      Some(ref s) => mk_uniq_str(cx, sp, copy *s)
     };
     MRExpr(e)
 }

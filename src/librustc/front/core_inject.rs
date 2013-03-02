@@ -50,7 +50,7 @@ fn inject_libcore_ref(sess: Session,
                 attrs: ~[
                     spanned(ast::attribute_ {
                         style: ast::attr_inner,
-                        value: spanned(ast::meta_name_value(
+                        value: @spanned(ast::meta_name_value(
                             @~"vers",
                             spanned(ast::lit_str(@CORE_VERSION.to_str()))
                         )),
@@ -66,10 +66,13 @@ fn inject_libcore_ref(sess: Session,
                 view_items: vis,
                 ../*bad*/copy crate.module
             };
-            new_module = fld.fold_mod(new_module);
+            new_module = fld.fold_mod(&new_module);
 
             // FIXME #2543: Bad copy.
-            let new_crate = ast::crate_ { module: new_module, ..copy crate };
+            let new_crate = ast::crate_ {
+                module: new_module,
+                ..copy *crate
+            };
             (new_crate, span)
         },
         fold_mod: |module, fld| {
@@ -95,12 +98,15 @@ fn inject_libcore_ref(sess: Session,
             let vis = vec::append(~[vi2], module.view_items);
 
             // FIXME #2543: Bad copy.
-            let new_module = ast::_mod { view_items: vis, ..copy module };
-            fold::noop_fold_mod(new_module, fld)
+            let new_module = ast::_mod {
+                view_items: vis,
+                ..copy *module
+            };
+            fold::noop_fold_mod(&new_module, fld)
         },
         ..*fold::default_ast_fold()
     };
 
     let fold = fold::make_fold(precursor);
-    @fold.fold_crate(*crate)
+    @fold.fold_crate(crate)
 }

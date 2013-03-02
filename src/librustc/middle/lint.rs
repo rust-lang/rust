@@ -753,7 +753,7 @@ fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
 fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
-                        decl: ast::fn_decl) {
+                        decl: &ast::fn_decl) {
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             match ty.node {
@@ -786,9 +786,9 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
       if attr::foreign_abi(it.attrs) !=
             either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
-            match ni.node {
+            match /*bad*/copy ni.node {
               ast::foreign_item_fn(ref decl, _, _) => {
-                check_foreign_fn(cx, it.id, *decl);
+                check_foreign_fn(cx, it.id, decl);
               }
               // FIXME #4622: Not implemented.
               ast::foreign_item_const(*) => {}
@@ -950,13 +950,13 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     }
 }
 
-fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
-            _body: ast::blk, span: span, id: ast::node_id) {
+fn check_fn(tcx: ty::ctxt, fk: &visit::fn_kind, decl: &ast::fn_decl,
+            _body: &ast::blk, span: span, id: ast::node_id) {
     debug!("lint check_fn fk=%? id=%?", fk, id);
 
     // don't complain about blocks, since they tend to get their modes
     // specified from the outside
-    match fk {
+    match *fk {
       visit::fk_fn_block(*) => { return; }
       _ => {}
     }
@@ -965,7 +965,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
     check_fn_deprecated_modes(tcx, fn_ty, decl, span, id);
 }
 
-fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
+fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: &ast::fn_decl,
                              span: span, id: ast::node_id) {
     match ty::get(fn_ty).sty {
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) |
@@ -1017,7 +1017,7 @@ fn check_fn_deprecated_modes(tcx: ty::ctxt, fn_ty: ty::t, decl: ast::fn_decl,
                             ast::ty_closure(@ast::TyClosure{decl: ref d, _}) |
                             ast::ty_bare_fn(@ast::TyBareFn{decl: ref d, _})=>{
                                 check_fn_deprecated_modes(tcx, arg_ty.ty,
-                                                          *d, span, id);
+                                                          d, span, id);
                             }
                             ast::ty_path(*) => {
                                 // This is probably a typedef, so we can't
@@ -1053,7 +1053,7 @@ fn check_item_deprecated_modes(tcx: ty::ctxt, it: @ast::item) {
                 ast::ty_bare_fn(@ast::TyBareFn {decl: ref decl, _}) => {
                     let fn_ty = ty::node_id_to_type(tcx, it.id);
                     check_fn_deprecated_modes(
-                        tcx, fn_ty, *decl, ty.span, it.id)
+                        tcx, fn_ty, decl, ty.span, it.id)
                 }
                 _ => ()
             }

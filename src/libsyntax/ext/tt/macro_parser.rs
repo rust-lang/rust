@@ -140,10 +140,10 @@ pub fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(+ms: ~[matcher], sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
-    for ms.each() |elt| {
+    for ms.each |elt| {
         match elt.node {
           match_tok(_) => (),
           match_seq(_,_,_,_,hi) => {
@@ -154,12 +154,13 @@ pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
           }
         }
     }
+    let matches = vec::from_fn(count_names(ms), |_i| dvec::DVec());
     ~MatcherPos {
         elts: ms,
         sep: sep,
         idx: 0u,
         up: matcher_pos_up(None),
-        matches: copy vec::from_fn(count_names(ms), |_i| dvec::DVec()),
+        matches: matches,
         match_lo: 0u,
         match_hi: match_idx_hi,
         sp_lo: lo
@@ -225,8 +226,12 @@ pub enum parse_result {
     error(codemap::span, ~str)
 }
 
-pub fn parse_or_else(sess: @mut ParseSess, cfg: ast::crate_cfg, rdr: reader,
-                     ms: ~[matcher]) -> HashMap<ident, @named_match> {
+pub fn parse_or_else(
+    sess: @mut ParseSess,
+    +cfg: ast::crate_cfg,
+    rdr: reader,
+    ms: ~[matcher]
+) -> HashMap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, ref str) => sess.span_diagnostic.span_fatal(sp, (*str)),
@@ -234,13 +239,14 @@ pub fn parse_or_else(sess: @mut ParseSess, cfg: ast::crate_cfg, rdr: reader,
     }
 }
 
-pub fn parse(sess: @mut ParseSess,
-             cfg: ast::crate_cfg,
-             rdr: reader,
-             ms: ~[matcher])
-          -> parse_result {
+pub fn parse(
+    sess: @mut ParseSess,
+    cfg: ast::crate_cfg,
+    rdr: reader,
+    ms: ~[matcher]
+) -> parse_result {
     let mut cur_eis = ~[];
-    cur_eis.push(initial_matcher_pos(ms, None, rdr.peek().sp.lo));
+    cur_eis.push(initial_matcher_pos(copy ms, None, rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = ~[]; // black-box parsed by parser.rs
@@ -331,8 +337,8 @@ pub fn parse(sess: @mut ParseSess,
                                            |_m| DVec::<@named_match>());
                     let ei_t = ei;
                     cur_eis.push(~MatcherPos {
-                        elts: (*matchers),
-                        sep: (*sep),
+                        elts: copy *matchers,
+                        sep: copy *sep,
                         idx: 0u,
                         up: matcher_pos_up(Some(ei_t)),
                         matches: matches,
@@ -380,7 +386,7 @@ pub fn parse(sess: @mut ParseSess,
                     nts, next_eis.len()));
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
                 return failure(sp, ~"No rules expected the token: "
-                            + to_str(rdr.interner(), tok));
+                            + to_str(rdr.interner(), &tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
@@ -388,7 +394,7 @@ pub fn parse(sess: @mut ParseSess,
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let rust_parser = Parser(sess, cfg, rdr.dup());
+                let rust_parser = Parser(sess, copy cfg, rdr.dup());
 
                 let mut ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
@@ -426,7 +432,7 @@ pub fn parse_nt(p: Parser, name: ~str) -> nonterminal {
       ~"ident" => match *p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
-                     + token::to_str(p.reader.interner(), *p.token))
+                     + token::to_str(p.reader.interner(), &copy *p.token))
       },
       ~"path" => token::nt_path(p.parse_path_with_tps(false)),
       ~"tt" => {

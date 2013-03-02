@@ -218,7 +218,7 @@ fn visit_expr(e: @ast::expr, &&wbcx: @mut WbCtxt, v: wb_vt) {
     }
     visit::visit_expr(e, wbcx, v);
 }
-fn visit_block(b: ast::blk, &&wbcx: @mut WbCtxt, v: wb_vt) {
+fn visit_block(b: &ast::blk, &&wbcx: @mut WbCtxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, b.span, b.node.id);
     visit::visit_block(b, wbcx, v);
@@ -278,7 +278,7 @@ pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::expr) -> bool {
 
 pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
                                decl: &ast::fn_decl,
-                               blk: ast::blk,
+                               blk: &ast::blk,
                                self_info: Option<SelfInfo>) -> bool {
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();

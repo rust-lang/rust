@@ -58,7 +58,7 @@ pub fn check_match(fcx: @mut FnCtxt,
           Some(e) => { check_expr_has_type(fcx, e, ty::mk_bool(tcx)); },
           None => ()
         }
-        if !check_block(fcx, arm.body) { arm_non_bot = true; }
+        if !check_block(fcx, &arm.body) { arm_non_bot = true; }
         let bty = fcx.node_ty(arm.body.node.id);
         demand::suptype(fcx, arm.body.span, result_ty, bty);
     }

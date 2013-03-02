@@ -28,7 +28,7 @@ use core::vec;
 pub pure fn path_name_i(idents: &[ident], intr: @token::ident_interner)
                      -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    str::connect(idents.map(|i| *intr.get(*i)), ~"::")
+    str::connect(idents.map(|i| copy *intr.get(*i)), ~"::")
 }
 
 
@@ -261,15 +261,15 @@ pub fn public_methods(ms: ~[@method]) -> ~[@method] {
 
 // extract a ty_method from a trait_method. if the trait_method is
 // a default, pull out the useful fields to make a ty_method
-pub fn trait_method_to_ty_method(method: trait_method) -> ty_method {
-    match method {
-        required(ref m) => (*m),
+pub fn trait_method_to_ty_method(method: &trait_method) -> ty_method {
+    match *method {
+        required(ref m) => copy *m,
         provided(ref m) => {
             ty_method {
                 ident: m.ident,
-                attrs: m.attrs,
+                attrs: copy m.attrs,
                 purity: m.purity,
-                decl: m.decl,
+                decl: copy m.decl,
                 generics: copy m.generics,
                 self_ty: m.self_ty,
                 id: m.id,
@@ -279,12 +279,12 @@ pub fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     }
 }
 
-pub fn split_trait_methods(trait_methods: ~[trait_method])
+pub fn split_trait_methods(trait_methods: &[trait_method])
     -> (~[ty_method], ~[@method]) {
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
         match *trt_method {
-          required(ref tm) => reqd.push((*tm)),
+          required(ref tm) => reqd.push(copy *tm),
           provided(m) => provd.push(m)
         }
     };
@@ -411,8 +411,8 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_view_item: fn@(vi: @view_item) {
             match vi.node {
               view_item_extern_mod(_, _, id) => vfn(id),
-              view_item_use(vps) => {
-                  for vec::each(vps) |vp| {
+              view_item_use(ref vps) => {
+                  for vps.each |vp| {
                       match vp.node {
                           view_path_simple(_, _, _, id) => vfn(id),
                           view_path_glob(_, id) => vfn(id),
@@ -440,7 +440,7 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(l.node.id);
         },
 
-        visit_block: fn@(b: blk) {
+        visit_block: fn@(b: &blk) {
             vfn(b.node.id);
         },
 
@@ -448,7 +448,7 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(ast_util::stmt_id(*s));
         },
 
-        visit_arm: fn@(_a: arm) { },
+        visit_arm: fn@(_a: &arm) { },
 
         visit_pat: fn@(p: @pat) {
             vfn(p.id)
@@ -474,21 +474,21 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_generics: visit_generics,
 
-        visit_fn: fn@(fk: visit::fn_kind, d: ast::fn_decl,
-                      _b: ast::blk, _sp: span, id: ast::node_id) {
+        visit_fn: fn@(fk: &visit::fn_kind, d: &ast::fn_decl,
+                      _b: &ast::blk, _sp: span, id: ast::node_id) {
             vfn(id);
 
-            match fk {
-                visit::fk_dtor(ref generics, _, self_id, parent_id) => {
+            match *fk {
+                visit::fk_dtor(generics, _, self_id, parent_id) => {
                     visit_generics(generics);
                     vfn(id);
                     vfn(self_id);
                     vfn(parent_id.node);
                 }
-                visit::fk_item_fn(_, ref generics, _) => {
+                visit::fk_item_fn(_, generics, _) => {
                     visit_generics(generics);
                 }
-                visit::fk_method(_, ref generics, m) => {
+                visit::fk_method(_, generics, m) => {
                     vfn(m.self_id);
                     visit_generics(generics);
                 }
@@ -502,10 +502,10 @@ pub fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             }
         },
 
-        visit_ty_method: fn@(_ty_m: ty_method) {
+        visit_ty_method: fn@(_ty_m: &ty_method) {
         },
 
-        visit_trait_method: fn@(_ty_m: trait_method) {
+        visit_trait_method: fn@(_ty_m: &trait_method) {
         },
 
         visit_struct_def: fn@(_sd: @struct_def,
@@ -552,12 +552,12 @@ pub fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
-        pat_rec(fields, _) | pat_struct(_, fields, _) => {
+        pat_rec(ref fields, _) | pat_struct(_, ref fields, _) => {
             for fields.each |f| {
                 walk_pat(f.pat, it)
             }
         }
-        pat_enum(_, Some(s)) | pat_tup(s) => {
+        pat_enum(_, Some(ref s)) | pat_tup(ref s) => {
             for s.each |p| {
                 walk_pat(*p, it)
             }
@@ -565,17 +565,16 @@ pub fn walk_pat(pat: @pat, it: fn(@pat)) {
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
-        pat_vec(elts, tail) => {
+        pat_vec(ref elts, ref tail) => {
             for elts.each |p| {
                 walk_pat(*p, it)
             }
-            do option::iter(&tail) |tail| {
+            do tail.iter |tail| {
                 walk_pat(*tail, it)
             }
         }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
-        pat_enum(_, _) => {
-        }
+        pat_enum(_, _) => { }
     }
 }
 

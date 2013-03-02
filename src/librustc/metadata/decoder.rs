@@ -1009,7 +1009,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
                 codemap::spanned {
                     node: ast::attribute_ {
                         style: ast::attr_outer,
-                        value: /*bad*/copy *meta_item,
+                        value: meta_item,
                         is_sugared_doc: false,
                     },
                     span: codemap::dummy_sp()

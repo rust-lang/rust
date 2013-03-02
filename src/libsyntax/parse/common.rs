@@ -30,52 +30,62 @@ pub struct SeqSep {
     trailing_sep_allowed: bool
 }
 
-pub fn seq_sep_trailing_disallowed(t: token::Token) -> SeqSep {
+pub fn seq_sep_trailing_disallowed(+t: token::Token) -> SeqSep {
     SeqSep {
-        sep: option::Some(t),
-        trailing_sep_allowed: false
+        sep: Some(t),
+        trailing_sep_allowed: false,
     }
 }
-pub fn seq_sep_trailing_allowed(t: token::Token) -> SeqSep {
+pub fn seq_sep_trailing_allowed(+t: token::Token) -> SeqSep {
     SeqSep {
-        sep: option::Some(t),
-        trailing_sep_allowed: true
+        sep: Some(t),
+        trailing_sep_allowed: true,
     }
 }
 pub fn seq_sep_none() -> SeqSep {
     SeqSep {
-        sep: option::None,
-        trailing_sep_allowed: false
+        sep: None,
+        trailing_sep_allowed: false,
     }
 }
 
-pub fn token_to_str(reader: reader, ++token: token::Token) -> ~str {
+pub fn token_to_str(reader: reader, token: &token::Token) -> ~str {
     token::to_str(reader.interner(), token)
 }
 
 pub impl Parser {
-    fn unexpected_last(t: token::Token) -> ! {
+    fn unexpected_last(t: &token::Token) -> ! {
         self.span_fatal(
             *self.last_span,
-            ~"unexpected token: `" + token_to_str(self.reader, t) + ~"`");
+            fmt!(
+                "unexpected token: `%s`",
+                token_to_str(self.reader, t)
+            )
+        );
     }
 
     fn unexpected() -> ! {
-        self.fatal(~"unexpected token: `"
-                   + token_to_str(self.reader, *self.token) + ~"`");
+        self.fatal(
+            fmt!(
+                "unexpected token: `%s`",
+                token_to_str(self.reader, &copy *self.token)
+            )
+        );
     }
 
     // expect and consume the token t. Signal an error if
     // the next token is not t.
-    fn expect(t: token::Token) {
-        if *self.token == t {
+    fn expect(t: &token::Token) {
+        if *self.token == *t {
             self.bump();
         } else {
-            let mut s: ~str = ~"expected `";
-            s += token_to_str(self.reader, t);
-            s += ~"` but found `";
-            s += token_to_str(self.reader, *self.token);
-            self.fatal(s + ~"`");
+            self.fatal(
+                fmt!(
+                    "expected `%s` but found `%s`",
+                    token_to_str(self.reader, t),
+                    token_to_str(self.reader, &copy *self.token)
+                )
+            )
         }
     }
 
@@ -83,12 +93,23 @@ pub impl Parser {
         self.check_strict_keywords();
         self.check_reserved_keywords();
         match *self.token {
-          token::IDENT(i, _) => { self.bump(); return i; }
-          token::INTERPOLATED(token::nt_ident(*)) => { self.bug(
-              ~"ident interpolation not converted to real token"); }
-          _ => { self.fatal(~"expected ident, found `"
-                         + token_to_str(self.reader, *self.token)
-                         + ~"`"); }
+            token::IDENT(i, _) => {
+                self.bump();
+                i
+            }
+            token::INTERPOLATED(token::nt_ident(*)) => {
+                self.bug(
+                    ~"ident interpolation not converted to real token"
+                );
+            }
+            _ => {
+                self.fatal(
+                    fmt!(
+                        "expected ident, found `%s`",
+                        token_to_str(self.reader, &copy *self.token)
+                    )
+                );
+            }
         }
     }
 
@@ -106,37 +127,37 @@ pub impl Parser {
 
     // consume token 'tok' if it exists. Returns true if the given
     // token was present, false otherwise.
-    fn eat(tok: token::Token) -> bool {
-        return if *self.token == tok { self.bump(); true } else { false };
+    fn eat(tok: &token::Token) -> bool {
+        return if *self.token == *tok { self.bump(); true } else { false };
     }
 
     // Storing keywords as interned idents instead of strings would be nifty.
 
     // A sanity check that the word we are asking for is a known keyword
-    fn require_keyword(word: ~str) {
-        if !self.keywords.contains_key(&word) {
-            self.bug(fmt!("unknown keyword: %s", word));
+    fn require_keyword(word: &~str) {
+        if !self.keywords.contains_key(word) {
+            self.bug(fmt!("unknown keyword: %s", *word));
         }
     }
 
-    fn token_is_word(word: ~str, ++tok: token::Token) -> bool {
-        match tok {
-          token::IDENT(sid, false) => { *self.id_to_str(sid) == word }
-          _ => { false }
+    pure fn token_is_word(word: &~str, tok: &token::Token) -> bool {
+        match *tok {
+            token::IDENT(sid, false) => { *self.id_to_str(sid) == *word }
+             _ => { false }
         }
     }
 
-    fn token_is_keyword(word: ~str, ++tok: token::Token) -> bool {
+    fn token_is_keyword(word: &~str, tok: &token::Token) -> bool {
         self.require_keyword(word);
         self.token_is_word(word, tok)
     }
 
-    fn is_keyword(word: ~str) -> bool {
-        self.token_is_keyword(word, *self.token)
+    fn is_keyword(word: &~str) -> bool {
+        self.token_is_keyword(word, &copy *self.token)
     }
 
-    fn is_any_keyword(tok: token::Token) -> bool {
-        match tok {
+    fn is_any_keyword(tok: &token::Token) -> bool {
+        match *tok {
           token::IDENT(sid, false) => {
             self.keywords.contains_key(self.id_to_str(sid))
           }
@@ -144,62 +165,66 @@ pub impl Parser {
         }
     }
 
-    fn eat_keyword(word: ~str) -> bool {
+    fn eat_keyword(word: &~str) -> bool {
         self.require_keyword(word);
         let is_kw = match *self.token {
-          token::IDENT(sid, false) => (word == *self.id_to_str(sid)),
-          _ => false
+            token::IDENT(sid, false) => *word == *self.id_to_str(sid),
+            _ => false
         };
         if is_kw { self.bump() }
         is_kw
     }
 
-    fn expect_keyword(word: ~str) {
+    fn expect_keyword(word: &~str) {
         self.require_keyword(word);
         if !self.eat_keyword(word) {
-            self.fatal(~"expected `" + word + ~"`, found `" +
-                       token_to_str(self.reader, *self.token) +
-                       ~"`");
+            self.fatal(
+                fmt!(
+                    "expected `%s`, found `%s`",
+                    *word,
+                    token_to_str(self.reader, &copy *self.token)
+                )
+            );
         }
     }
 
-    fn is_strict_keyword(word: ~str) -> bool {
-        self.strict_keywords.contains_key(&word)
+    fn is_strict_keyword(word: &~str) -> bool {
+        self.strict_keywords.contains_key(word)
     }
 
     fn check_strict_keywords() {
         match *self.token {
-          token::IDENT(_, false) => {
-            let w = token_to_str(self.reader, *self.token);
-            self.check_strict_keywords_(w);
-          }
-          _ => ()
+            token::IDENT(_, false) => {
+                let w = token_to_str(self.reader, &copy *self.token);
+                self.check_strict_keywords_(&w);
+            }
+            _ => ()
         }
     }
 
-    fn check_strict_keywords_(w: ~str) {
+    fn check_strict_keywords_(w: &~str) {
         if self.is_strict_keyword(w) {
-            self.fatal(~"found `" + w + ~"` in ident position");
+            self.fatal(fmt!("found `%s` in ident position", *w));
         }
     }
 
-    fn is_reserved_keyword(word: ~str) -> bool {
-        self.reserved_keywords.contains_key(&word)
+    fn is_reserved_keyword(word: &~str) -> bool {
+        self.reserved_keywords.contains_key(word)
     }
 
     fn check_reserved_keywords() {
         match *self.token {
-          token::IDENT(_, false) => {
-            let w = token_to_str(self.reader, *self.token);
-            self.check_reserved_keywords_(w);
-          }
-          _ => ()
+            token::IDENT(_, false) => {
+                let w = token_to_str(self.reader, &copy *self.token);
+                self.check_reserved_keywords_(&w);
+            }
+            _ => ()
         }
     }
 
-    fn check_reserved_keywords_(w: ~str) {
+    fn check_reserved_keywords_(w: &~str) {
         if self.is_reserved_keyword(w) {
-            self.fatal(~"`" + w + ~"` is a reserved keyword");
+            self.fatal(fmt!("`%s` is a reserved keyword", *w));
         }
     }
 
@@ -209,14 +234,16 @@ pub impl Parser {
         if *self.token == token::GT {
             self.bump();
         } else if *self.token == token::BINOP(token::SHR) {
-            self.replace_token(token::GT,
-                               self.span.lo + BytePos(1u),
-                               self.span.hi);
+            self.replace_token(
+                token::GT,
+                self.span.lo + BytePos(1u),
+                self.span.hi
+            );
         } else {
             let mut s: ~str = ~"expected `";
-            s += token_to_str(self.reader, token::GT);
+            s += token_to_str(self.reader, &token::GT);
             s += ~"`, found `";
-            s += token_to_str(self.reader, *self.token);
+            s += token_to_str(self.reader, &copy *self.token);
             s += ~"`";
             self.fatal(s);
         }
@@ -224,8 +251,10 @@ pub impl Parser {
 
     // parse a sequence bracketed by '<' and '>', stopping
     // before the '>'.
-    fn parse_seq_to_before_gt<T: Copy>(sep: Option<token::Token>,
-                                       f: fn(Parser) -> T) -> OptVec<T> {
+    fn parse_seq_to_before_gt<T: Copy>(
+        sep: Option<token::Token>,
+        f: fn(&Parser) -> T
+    ) -> OptVec<T> {
         let mut first = true;
         let mut v = opt_vec::Empty;
         while *self.token != token::GT
@@ -233,17 +262,19 @@ pub impl Parser {
             match sep {
               Some(ref t) => {
                 if first { first = false; }
-                else { self.expect(*t); }
+                else { self.expect(t); }
               }
               _ => ()
             }
-            v.push(f(self));
+            v.push(f(&self));
         }
         return v;
     }
 
-    fn parse_seq_to_gt<T: Copy>(sep: Option<token::Token>,
-                                f: fn(Parser) -> T) -> OptVec<T> {
+    fn parse_seq_to_gt<T: Copy>(
+        sep: Option<token::Token>,
+        f: fn(&Parser) -> T
+    ) -> OptVec<T> {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
         return v;
@@ -252,30 +283,36 @@ pub impl Parser {
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    fn parse_seq_to_end<T:Copy>(ket: token::Token, sep: SeqSep,
-                                 f: fn(Parser) -> T) -> ~[T] {
+    fn parse_seq_to_end<T: Copy>(
+        ket: &token::Token,
+        sep: SeqSep,
+        f: fn(&Parser) -> T
+    ) -> ~[T] {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
-        return val;
+        val
     }
 
     // parse a sequence, not including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    fn parse_seq_to_before_end<T:Copy>(ket: token::Token, sep: SeqSep,
-                                        f: fn(Parser) -> T) -> ~[T] {
+    fn parse_seq_to_before_end<T: Copy>(
+        ket: &token::Token,
+        sep: SeqSep,
+        f: fn(&Parser) -> T
+    ) -> ~[T] {
         let mut first: bool = true;
         let mut v: ~[T] = ~[];
-        while *self.token != ket {
+        while *self.token != *ket {
             match sep.sep {
               Some(ref t) => {
                 if first { first = false; }
-                else { self.expect(*t); }
+                else { self.expect(t); }
               }
               _ => ()
             }
-            if sep.trailing_sep_allowed && *self.token == ket { break; }
-            v.push(f(self));
+            if sep.trailing_sep_allowed && *self.token == *ket { break; }
+            v.push(f(&self));
         }
         return v;
     }
@@ -283,25 +320,31 @@ pub impl Parser {
     // parse a sequence, including the closing delimiter. The function
     // f must consume tokens until reaching the next separator or
     // closing bracket.
-    fn parse_unspanned_seq<T:Copy>(+bra: token::Token,
-                                   +ket: token::Token,
-                                    sep: SeqSep,
-                                    f: fn(Parser) -> T) -> ~[T] {
+    fn parse_unspanned_seq<T: Copy>(
+        bra: &token::Token,
+        ket: &token::Token,
+        sep: SeqSep,
+        f: fn(&Parser) -> T
+    ) -> ~[T] {
         self.expect(bra);
-        let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
+        let result = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
-        return result;
+        result
     }
 
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
-    fn parse_seq<T:Copy>(bra: token::Token, ket: token::Token, sep: SeqSep,
-                          f: fn(Parser) -> T) -> spanned<~[T]> {
+    fn parse_seq<T: Copy>(
+        bra: &token::Token,
+        ket: &token::Token,
+        sep: SeqSep,
+        f: fn(&Parser) -> T
+    ) -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(bra);
-        let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
+        let result = self.parse_seq_to_before_end(ket, sep, f);
         let hi = self.span.hi;
         self.bump();
-        return spanned(lo, hi, result);
+        spanned(lo, hi, result)
     }
 }
