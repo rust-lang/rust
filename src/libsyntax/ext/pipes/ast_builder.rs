@@ -394,13 +394,15 @@ impl ext_ctxt_ast_builder for ext_ctxt {
     }
 
     fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty] {
-        ty_params.map(|p| self.ty_path_ast_builder(
-            path(~[p.ident], dummy_sp()))).to_vec()
+        opt_vec::take_vec(
+            ty_params.map(|p| self.ty_path_ast_builder(
+                path(~[p.ident], dummy_sp()))))
     }
 
     fn ty_vars_global(&self,
                       ty_params: &OptVec<ast::TyParam>) -> ~[@ast::Ty] {
-        ty_params.map(|p| self.ty_path_ast_builder(
-            path(~[p.ident], dummy_sp()))).to_vec()
+        opt_vec::take_vec(
+            ty_params.map(|p| self.ty_path_ast_builder(
+                path(~[p.ident], dummy_sp()))))
     }
 }
