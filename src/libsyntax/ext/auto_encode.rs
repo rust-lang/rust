@@ -460,8 +460,8 @@ fn mk_impl(
     let ty = cx.ty_path(
         span,
         ~[ident],
-        generics.ty_params.map(
-            |tp| cx.ty_path(span, ~[tp.ident], ~[])).to_vec()
+        opt_vec::take_vec(generics.ty_params.map(
+            |tp| cx.ty_path(span, ~[tp.ident], ~[])))
     );
 
     let generics = ast::Generics {
