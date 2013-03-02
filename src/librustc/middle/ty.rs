@@ -4247,35 +4247,32 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
 }
 
 // Returns the repeat count for a repeating vector expression.
-pub fn eval_repeat_count(tcx: ctxt,
-                         count_expr: @ast::expr,
-                         span: span)
-                      -> uint {
+pub fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr) -> uint {
     match const_eval::eval_const_expr_partial(tcx, count_expr) {
       Ok(ref const_val) => match *const_val {
         const_eval::const_int(count) => return count as uint,
         const_eval::const_uint(count) => return count as uint,
         const_eval::const_float(count) => {
-            tcx.sess.span_err(span,
+            tcx.sess.span_err(count_expr.span,
                               ~"expected signed or unsigned integer for \
                                 repeat count but found float");
             return count as uint;
         }
         const_eval::const_str(_) => {
-            tcx.sess.span_err(span,
+            tcx.sess.span_err(count_expr.span,
                               ~"expected signed or unsigned integer for \
                                 repeat count but found string");
             return 0;
         }
         const_eval::const_bool(_) => {
-            tcx.sess.span_err(span,
+            tcx.sess.span_err(count_expr.span,
                               ~"expected signed or unsigned integer for \
                                 repeat count but found boolean");
             return 0;
         }
       },
       Err(*) => {
-        tcx.sess.span_err(span,
+        tcx.sess.span_err(count_expr.span,
                           ~"expected constant integer for repeat count \
                             but found variable");
         return 0;
