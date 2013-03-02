@@ -43,6 +43,29 @@
 		<item> use </item>
 		<item> while </item>
 	</list>
+	<list name="traits">
+		<item> Const </item>
+		<item> Copy </item>
+		<item> Send </item>
+		<item> Owned </item>
+		<item> Eq </item>
+		<item> Ord </item>
+		<item> Num </item>
+		<item> Ptr </item>
+		<item> Drop </item>
+		<item> Add </item>
+		<item> Sub </item>
+		<item> Mul </item>
+		<item> Div </item>
+		<item> Modulo </item>
+		<item> Neg </item>
+		<item> BitAnd </item>
+		<item> BitOr </item>
+		<item> BitXor </item>
+		<item> Shl </item>
+		<item> Shr </item>
+		<item> Index </item>
+	</list>
 	<list name="types">
 		<item> bool </item>
 		<item> int </item>
@@ -164,6 +187,7 @@
 			<keyword String="type" attribute="Keyword" context="Type"/>
 			<keyword String="keywords" attribute="Keyword" context="#stay"/>
 			<keyword String="types" attribute="Type" context="#stay"/>
+			<keyword String="traits" attribute="Trait" context="#stay"/>
 			<keyword String="ctypes" attribute="CType" context="#stay"/>
 			<keyword String="self" attribute="Self" context="#stay"/>
 			<keyword String="constants" attribute="Constant" context="#stay"/>
@@ -213,6 +237,7 @@
 		<itemData name="Keyword"      defStyleNum="dsKeyword" color="#770088" bold="1"/>
 		<itemData name="Self"         defStyleNum="dsKeyword" color="#FF0000" bold="1"/>
 		<itemData name="Type"         defStyleNum="dsKeyword" color="#4e9a06" bold="1"/>
+		<itemData name="Trait"        defStyleNum="dsKeyword" color="#4e9a06" bold="1"/>
 		<itemData name="CType"        defStyleNum="dsNormal" color="#4e9a06"/>
 		<itemData name="Constant"     defStyleNum="dsKeyword" color="#116644"/>
 		<itemData name="CConstant"    defStyleNum="dsNormal" color="#116644"/>
