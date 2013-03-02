@@ -9,18 +9,23 @@
 // except according to those terms.
 
 // error-pattern: mismatched types
-type clam = {x: @int, y: @int};
+struct clam {
+    x: @int,
+    y: @int,
+}
 
-type fish = {a: @int};
+struct fish {
+    a: @int,
+}
 
 fn main() {
-    let a: clam = {x: @1, y: @2};
-    let b: clam = {x: @10, y: @20};
+    let a: clam = clam{x: @1, y: @2};
+    let b: clam = clam{x: @10, y: @20};
     let z: int = a.x + b.y;
     log(debug, z);
     assert (z == 21);
-    let forty: fish = {a: @40};
-    let two: fish = {a: @2};
+    let forty: fish = fish{a: @40};
+    let two: fish = fish{a: @2};
     let answer: int = forty.a + two.a;
     log(debug, answer);
     assert (answer == 42);

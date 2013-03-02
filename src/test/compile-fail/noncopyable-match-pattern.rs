@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x = Some(private::exclusive(false));
+    let x = Some(unstable::exclusive(false));
     match x {
         Some(copy z) => { //~ ERROR copying a value of non-copyable type
             do z.with |b| { assert !*b; }
