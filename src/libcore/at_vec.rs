@@ -183,7 +183,7 @@ pub mod raw {
     use at_vec::{capacity, rustrt};
     use cast::transmute;
     use libc;
-    use private::intrinsics::{move_val_init};
+    use unstable::intrinsics::{move_val_init};
     use ptr::addr_of;
     use ptr;
     use sys;
