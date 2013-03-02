@@ -908,6 +908,11 @@ function defined above on `[1, 2]` will instantiate type parameter `T`
 with `int`, and require the closure parameter to have type
 `fn(int)`.
 
+The type parameters can also be explicitly supplied in a trailing
+[path](#paths) component after the function name. This might be necessary
+if there is not sufficient context to determine the type parameters. For
+example, `sys::size_of::<u32>() == 4`.
+
 Since a parameter type is opaque to the generic function, the set of
 operations that can be performed on it is limited. Values of parameter
 type can always be moved, but they can only be copied when the
@@ -2055,12 +2060,14 @@ an optional reference slot to serve as the function's output, bound to the
 `lval` on the right hand side of the call. If the function eventually returns,
 then the expression completes.
 
-An example of a call expression:
+Some examples of call expressions:
 
 ~~~~
 # fn add(x: int, y: int) -> int { 0 }
+# use core::from_str::FromStr::from_str;
 
 let x: int = add(1, 2);
+let pi = from_str::<f32>("3.14");
 ~~~~
 
 ### Lambda expressions
