@@ -619,7 +619,6 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_vec(*) | ast::expr_repeat(*) => {
             return tvec::trans_fixed_vstore(bcx, expr, expr, dest);
         }
-        ast::expr_fn(_, ref decl, ref body, _) |
         ast::expr_fn_block(ref decl, ref body) => {
             let expr_ty = expr_ty(bcx, expr);
             let sigil = ty::ty_closure_sigil(expr_ty);

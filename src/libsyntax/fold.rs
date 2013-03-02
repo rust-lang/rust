@@ -533,14 +533,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 arms.map(|x| fld.fold_arm(x))
             )
         }
-        expr_fn(proto, ref decl, ref body, _) => {
-            expr_fn(
-                proto,
-                fold_fn_decl(decl, fld),
-                fld.fold_block(body),
-                @()
-            )
-        }
         expr_fn_block(ref decl, ref body) => {
             expr_fn_block(
                 fold_fn_decl(decl, fld),

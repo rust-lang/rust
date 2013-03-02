@@ -3124,7 +3124,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_tup(*) |
         ast::expr_if(*) |
         ast::expr_match(*) |
-        ast::expr_fn(*) |
         ast::expr_fn_block(*) |
         ast::expr_loop_body(*) |
         ast::expr_do_body(*) |
