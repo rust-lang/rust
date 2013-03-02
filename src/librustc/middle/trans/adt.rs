@@ -394,9 +394,20 @@ pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
  * alignment!) from the representation's `type_of`, so it needs a
  * pointer cast before use.
  *
- * Currently it has the same size as the type, but this may be changed
- * in the future to avoid allocating unnecessary space after values of
- * shorter-than-maximum cases.
+ * The LLVM type system does not directly support unions, and only
+ * pointers can be bitcast, so a constant (and, by extension, the
+ * GlobalVariable initialized by it) will have a type that can vary
+ * depending on which case of an enum it is.
+ *
+ * To understand the alignment situation, consider `enum E { V64(u64),
+ * V32(u32, u32) }` on win32.  The type should have 8-byte alignment
+ * to accommodate the u64 (currently it doesn't; this is a known bug),
+ * but `V32(x, y)` would have LLVM type `{i32, i32, i32}`, which is
+ * 4-byte aligned.
+ *
+ * Currently the returned value has the same size as the type, but
+ * this may be changed in the future to avoid allocating unnecessary
+ * space after values of shorter-than-maximum cases.
  */
 pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
@@ -424,6 +435,9 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
             let max_sz = cases.map(|s| s.size).max();
             let body = build_const_struct(ccx, case, vals);
 
+            // The unary packed struct has alignment 1 regardless of
+            // its contents, so it will always be located at the
+            // expected offset at runtime.
             C_struct([C_int(ccx, discr),
                       C_packed_struct([C_struct(body)]),
                       padding(max_sz - case.size)])
@@ -434,6 +448,12 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
 /**
  * Building structs is a little complicated, because we might need to
  * insert padding if a field's value is less aligned than its type.
+ *
+ * Continuing the example from `trans_const`, a value of type `(u32,
+ * E)` should have the `E` at offset 8, but if that field's
+ * initializer is 4-byte aligned then simply translating the tuple as
+ * a two-element struct will locate it at offset 4, and accesses to it
+ * will read the wrong memory.
  */
 fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
     -> ~[ValueRef] {

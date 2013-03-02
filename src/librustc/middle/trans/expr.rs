@@ -1158,9 +1158,9 @@ fn trans_rec_or_struct(bcx: block,
         let mut need_base = vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = do fields.map |field| {
-            match do vec::position(field_tys) |field_ty| {
-                field_ty.ident == field.node.ident
-            } {
+            let opt_pos = vec::position(field_tys, |field_ty|
+                                        field_ty.ident == field.node.ident);
+            match opt_pos {
                 Some(i) => {
                     need_base[i] = false;
                     (i, field.node.expr)
@@ -1196,11 +1196,31 @@ fn trans_rec_or_struct(bcx: block,
     }
 }
 
+/**
+ * Information that `trans_adt` needs in order to fill in the fields
+ * of a struct copied from a base struct (e.g., from an expression
+ * like `Foo { a: b, ..base }`.
+ *
+ * Note that `fields` may be empty; the base expression must always be
+ * evaluated for side-effects.
+ */
 struct StructBaseInfo {
+    /// The base expression; will be evaluated after all explicit fields.
     expr: @ast::expr,
+    /// The indices of fields to copy paired with their types.
     fields: ~[(uint, ty::t)]
 }
 
+/**
+ * Constructs an ADT instance:
+ *
+ * - `fields` should be a list of field indices paired with the
+ * expression to store into that field.  The initializers will be
+ * evaluated in the order specified by `fields`.
+ *
+ * - `optbase` contains information on the base struct (if any) from
+ * which remaining fields are copied; see comments on `StructBaseInfo`.
+ */
 fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
              fields: &[(uint, @ast::expr)],
              optbase: Option<StructBaseInfo>,
