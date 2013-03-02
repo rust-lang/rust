@@ -35,7 +35,6 @@ use util::common::indenter;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::libc::c_uint;
-use std::oldmap::HashMap;
 use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
 use syntax::ast_util;
 use syntax::print::pprust::expr_to_str;

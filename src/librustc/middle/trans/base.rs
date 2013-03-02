@@ -73,6 +73,7 @@ use util::ppaux;
 
 use core::either;
 use core::hash;
+use core::hashmap::linear::LinearMap;
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
@@ -1034,16 +1035,14 @@ pub fn add_root_cleanup(bcx: block,
         let mut bcx_sid = bcx;
         loop {
             bcx_sid = match bcx_sid.node_info {
-              Some(NodeInfo { id, _ }) if id == scope_id => {
-                return bcx_sid
-              }
-              _ => {
-                match bcx_sid.parent {
-                  None => bcx.tcx().sess.bug(
-                      fmt!("no enclosing scope with id %d", scope_id)),
-                  Some(bcx_par) => bcx_par
+                Some(NodeInfo { id, _ }) if id == scope_id => {
+                    return bcx_sid
                 }
-              }
+                _ => match bcx_sid.parent {
+                    None => bcx.tcx().sess.bug(
+                            fmt!("no enclosing scope with id %d", scope_id)),
+                    Some(bcx_par) => bcx_par
+                }
             }
         }
     }
@@ -1136,10 +1135,10 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
     }
 
     let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      Some(local_mem(v)) => v,
-      _ => { bcx.tcx().sess.span_bug(local.span,
-                        ~"init_local: Someone forgot to document why it's\
-                         safe to assume local.node.init must be local_mem!");
+        Some(&local_mem(v)) => v,
+        _ => { bcx.tcx().sess.span_bug(local.span,
+                ~"init_local: Someone forgot to document why it's\
+                safe to assume local.node.init must be local_mem!");
         }
     };
 
@@ -1428,17 +1427,17 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
 pub fn block_locals(b: &ast::blk, it: fn(@ast::local)) {
     for vec::each(b.node.stmts) |s| {
         match s.node {
-          ast::stmt_decl(d, _) => {
-            match /*bad*/copy d.node {
-              ast::decl_local(locals) => {
-                for vec::each(locals) |local| {
-                    it(*local);
+            ast::stmt_decl(d, _) => {
+                match /*bad*/copy d.node {
+                    ast::decl_local(locals) => {
+                        for vec::each(locals) |local| {
+                            it(*local);
+                        }
+                    }
+                    _ => {/* fall through */ }
                 }
-              }
-              _ => {/* fall through */ }
             }
-          }
-          _ => {/* fall through */ }
+            _ => {/* fall through */ }
         }
     }
 }
@@ -1623,9 +1622,9 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llself: None,
           personality: None,
           loop_ret: None,
-          llargs: @HashMap(),
-          lllocals: @HashMap(),
-          llupvars: @HashMap(),
+          llargs: @mut LinearMap::new(),
+          lllocals: @mut LinearMap::new(),
+          llupvars: @mut LinearMap::new(),
           id: id,
           impl_id: impl_id,
           param_substs: param_substs,
@@ -1940,7 +1939,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
         let llarg = match fcx.llargs.find(&va.id) {
-            Some(local_mem(x)) => x,
+            Some(&local_mem(x)) => x,
             _ => fail!(~"trans_enum_variant: how do we know this works?"),
         };
         let arg_ty = arg_tys[i].ty;
@@ -1991,7 +1990,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     for fields.eachi |i, field| {
         let lldestptr = GEPi(bcx, fcx.llretptr, [0, 0, i]);
         let llarg = match fcx.llargs.get(&field.node.id) {
-            local_mem(x) => x,
+            &local_mem(x) => x,
             _ => {
                 ccx.tcx.sess.bug(~"trans_tuple_struct: llarg wasn't \
                                    local_mem")
@@ -2371,33 +2370,33 @@ pub fn get_dtor_symbol(ccx: @CrateContext,
                     -> ~str {
   let t = ty::node_id_to_type(ccx.tcx, id);
   match ccx.item_symbols.find(&id) {
-     Some(ref s) => (/*bad*/copy *s),
+     Some(&ref s) => /* bad */ copy *s,
      None if substs.is_none() => {
-       let s = mangle_exported_name(
-           ccx,
-           vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
-           t);
-       // XXX: Bad copy, use `@str`?
-       ccx.item_symbols.insert(id, copy s);
-       s
+         let s = mangle_exported_name(
+                 ccx,
+                 vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
+                 t);
+         // XXX: Bad copy, use `@str`?
+         ccx.item_symbols.insert(id, copy s);
+         s
      }
-     None   => {
-       // Monomorphizing, so just make a symbol, don't add
-       // this to item_symbols
-       match substs {
-         Some(ss) => {
-           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
-           mangle_exported_name(
-               ccx,
-               vec::append(path,
-                           ~[path_name((ccx.names)(~"dtor"))]),
-               mono_ty)
+     None => {
+         // Monomorphizing, so just make a symbol, don't add
+         // this to item_symbols
+         match substs {
+             Some(ss) => {
+                 let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
+                 mangle_exported_name(
+                         ccx,
+                         vec::append(path,
+                             ~[path_name((ccx.names)(~"dtor"))]),
+                         mono_ty)
+             }
+             None => {
+                 ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
+                             couldn't find a symbol for dtor %?", path));
+             }
          }
-         None => {
-             ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
-               couldn't find a symbol for dtor %?", path));
-         }
-       }
      }
   }
 }
@@ -3085,11 +3084,11 @@ pub fn trans_crate(sess: session::Session,
               item_vals: HashMap(),
               exp_map2: emap2,
               reachable: reachable,
-              item_symbols: HashMap(),
+              item_symbols: @mut LinearMap::new(),
               link_meta: link_meta,
               enum_sizes: ty::new_ty_hash(),
               discrims: HashMap(),
-              discrim_symbols: HashMap(),
+              discrim_symbols: @mut LinearMap::new(),
               tydescs: ty::new_ty_hash(),
               finished_tydescs: @mut false,
               external: HashMap(),

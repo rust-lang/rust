@@ -21,7 +21,6 @@ use util::ppaux;
 
 use core::option::None;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast;
 
 pub fn type_of_explicit_arg(ccx: @CrateContext, arg: ty::arg) -> TypeRef {

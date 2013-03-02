@@ -1581,7 +1581,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
             match self.ir.variable_moves_map.find(&expr.id) {
                 None => {}
-                Some(entire_expr) => {
+                Some(&entire_expr) => {
                     debug!("(checking expr) is a move: `%s`",
                            expr_to_str(expr, self.tcx.sess.intr()));
                     self.check_move_from_var(ln, *var, entire_expr);

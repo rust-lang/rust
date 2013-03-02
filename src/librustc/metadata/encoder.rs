@@ -28,6 +28,7 @@ use core::dvec;
 use core::flate;
 use core::float;
 use core::hash::{Hash, HashUtil};
+use core::hashmap::linear::LinearMap;
 use core::int;
 use core::io::WriterUtil;
 use core::io;
@@ -36,7 +37,6 @@ use core::str;
 use core::to_bytes::IterBytes;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use std::serialize::Encodable;
 use std::{ebml, oldmap};
 use std;
@@ -55,7 +55,7 @@ use syntax;
 use writer = std::ebml::writer;
 
 // used by astencode:
-type abbrev_map = oldmap::HashMap<ty::t, tyencode::ty_abbrev>;
+type abbrev_map = @mut LinearMap<ty::t, tyencode::ty_abbrev>;
 
 pub type encode_inlined_item = fn@(ecx: @EncodeContext,
                                    ebml_w: writer::Encoder,
@@ -65,10 +65,10 @@ pub type encode_inlined_item = fn@(ecx: @EncodeContext,
 pub struct EncodeParams {
     diag: span_handler,
     tcx: ty::ctxt,
-    reachable: HashMap<ast::node_id, ()>,
+    reachable: @mut LinearMap<ast::node_id, ()>,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: HashMap<ast::node_id, ~str>,
-    discrim_symbols: HashMap<ast::node_id, ~str>,
+    item_symbols: @mut LinearMap<ast::node_id, ~str>,
+    discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item
@@ -91,10 +91,10 @@ pub struct EncodeContext {
     diag: span_handler,
     tcx: ty::ctxt,
     stats: @mut Stats,
-    reachable: HashMap<ast::node_id, ()>,
+    reachable: @mut LinearMap<ast::node_id, ()>,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: HashMap<ast::node_id, ~str>,
-    discrim_symbols: HashMap<ast::node_id, ~str>,
+    item_symbols: @mut LinearMap<ast::node_id, ~str>,
+    discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item,
@@ -234,11 +234,11 @@ fn encode_type(ecx: @EncodeContext, ebml_w: writer::Encoder, typ: ty::t) {
 fn encode_symbol(ecx: @EncodeContext, ebml_w: writer::Encoder, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     let sym = match ecx.item_symbols.find(&id) {
-      Some(ref x) => (/*bad*/copy *x),
-      None => {
-        ecx.diag.handler().bug(
-            fmt!("encode_symbol: id not found %d", id));
-      }
+        Some(&ref x) => (/*bad*/copy *x),
+        None => {
+            ecx.diag.handler().bug(
+                    fmt!("encode_symbol: id not found %d", id));
+        }
     };
     ebml_w.writer.write(str::to_bytes(sym));
     ebml_w.end_tag();
@@ -247,7 +247,7 @@ fn encode_symbol(ecx: @EncodeContext, ebml_w: writer::Encoder, id: node_id) {
 fn encode_discriminant(ecx: @EncodeContext, ebml_w: writer::Encoder,
                        id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    ebml_w.writer.write(str::to_bytes(ecx.discrim_symbols.get(&id)));
+    ebml_w.writer.write(str::to_bytes(*ecx.discrim_symbols.get(&id)));
     ebml_w.end_tag();
 }
 
@@ -1307,7 +1307,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
         link_meta: /*bad*/copy parms.link_meta,
         cstore: parms.cstore,
         encode_inlined_item: parms.encode_inlined_item,
-        type_abbrevs: ty::new_ty_hash()
+        type_abbrevs: @mut LinearMap::new()
      };
 
     let ebml_w = writer::Encoder(wr as io::Writer);

@@ -649,7 +649,7 @@ pub impl Datum {
         let key = root_map_key { id: expr_id, derefs: derefs };
         let bcx = match ccx.maps.root_map.find(&key) {
             None => bcx,
-            Some(root_info) => self.root(bcx, root_info)
+            Some(&root_info) => self.root(bcx, root_info)
         };
 
         // Perform the write guard, if necessary.

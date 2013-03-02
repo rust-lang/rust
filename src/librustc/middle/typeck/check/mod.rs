@@ -107,6 +107,7 @@ use util::ppaux::{bound_region_to_str, expr_repr, pat_repr};
 use util::ppaux;
 
 use core::either;
+use core::hashmap::linear::LinearMap;
 use core::option;
 use core::ptr;
 use core::result::{Result, Ok, Err};
@@ -505,12 +506,13 @@ pub fn check_method(ccx: @mut CrateCtxt,
 
 pub fn check_no_duplicate_fields(tcx: ty::ctxt,
                                  fields: ~[(ast::ident, span)]) {
-    let field_names = HashMap();
+    //XXX: Local variable on the @ box
+    let field_names = @mut LinearMap::new();
 
     for fields.each |p| {
         let (id, sp) = *p;
         match field_names.find(&id) {
-          Some(orig_sp) => {
+          Some(&orig_sp) => {
             tcx.sess.span_err(sp, fmt!("Duplicate field \
                                    name %s in record type declaration",
                                         *tcx.sess.str_of(id)));
@@ -1785,7 +1787,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         debug!("%? %?", ast_fields.len(), field_types.len());
 
-        let class_field_map = HashMap();
+        //XXX: Local variable on the @ box
+        let class_field_map = @mut LinearMap::new();
         let mut fields_found = 0;
         for field_types.each |field| {
             // XXX: Check visibility here.
@@ -1801,13 +1804,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         fmt!("structure has no field named `%s`",
                              *tcx.sess.str_of(field.node.ident)));
                 }
-                Some((_, true)) => {
+                Some(&(_, true)) => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("field `%s` specified more than once",
                              *tcx.sess.str_of(field.node.ident)));
                 }
-                Some((field_id, false)) => {
+                Some(&(field_id, false)) => {
                     let expected_field_type =
                         ty::lookup_field_type(
                             tcx, class_id, field_id, substitutions);
@@ -1830,7 +1833,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 let mut missing_fields = ~[];
                 for field_types.each |class_field| {
                     let name = class_field.ident;
-                    let (_, seen) = class_field_map.get(&name);
+                    let (_, seen) = *class_field_map.get(&name);
                     if !seen {
                         missing_fields.push(
                             ~"`" + *tcx.sess.str_of(name) + ~"`");

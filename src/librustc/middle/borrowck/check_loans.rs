@@ -33,9 +33,9 @@ use util::ppaux::ty_to_str;
 
 use core::cmp;
 use core::dvec::DVec;
+use core::hashmap::linear::LinearMap;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util;
@@ -47,7 +47,7 @@ struct CheckLoanCtxt {
     bccx: @BorrowckCtxt,
     req_maps: ReqMaps,
 
-    reported: HashMap<ast::node_id, ()>,
+    reported: @mut LinearMap<ast::node_id, ()>,
 
     declared_purity: @mut ast::purity,
     fn_args: @mut @~[ast::node_id]
@@ -71,7 +71,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
     let clcx = @mut CheckLoanCtxt {
         bccx: bccx,
         req_maps: req_maps,
-        reported: HashMap(),
+        reported: @mut LinearMap::new(),
         declared_purity: @mut ast::impure_fn,
         fn_args: @mut @~[]
     };
@@ -130,7 +130,7 @@ pub impl CheckLoanCtxt {
         loop {
             match pure_map.find(&scope_id) {
               None => (),
-              Some(ref e) => return Some(pc_cmt((*e)))
+              Some(&e) => return Some(pc_cmt((e)))
             }
 
             match region_map.find(&scope_id) {

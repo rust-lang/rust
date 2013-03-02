@@ -23,7 +23,6 @@ use core::dvec::DVec;
 use core::vec;
 use reader = std::ebml::reader;
 use std::ebml;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::codemap::dummy_sp;

@@ -216,6 +216,7 @@ use middle::typeck::check::{DerefArgs, DoDerefArgs, DontDerefArgs};
 use util::ppaux;
 use util::common::indenter;
 
+use core::hashmap::linear::LinearMap;
 use core::vec;
 use std::oldmap::HashMap;
 use syntax::ast::*;
@@ -242,14 +243,14 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = HashMap<node_id, @[CaptureVar]>;
+pub type CaptureMap = @mut LinearMap<node_id, @[CaptureVar]>;
 
-pub type MovesMap = HashMap<node_id, ()>;
+pub type MovesMap = @mut LinearMap<node_id, ()>;
 
 /**
  * For each variable which will be moved, links to the
  * expression */
-pub type VariableMovesMap = HashMap<node_id, @expr>;
+pub type VariableMovesMap = @mut LinearMap<node_id, @expr>;
 
 /** See the section Output on the module comment for explanation. */
 pub struct MoveMaps {
@@ -282,9 +283,9 @@ pub fn compute_moves(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: HashMap(),
-            variable_moves_map: HashMap(),
-            capture_map: HashMap()
+            moves_map: @mut LinearMap::new(),
+            variable_moves_map: @mut LinearMap::new(),
+            capture_map: @mut LinearMap::new()
         }
     };
     visit::visit_crate(*crate, visit_cx, visitor);

@@ -20,6 +20,7 @@ use metadata::filesearch::FileSearch;
 use metadata::loader;
 
 use core::either;
+use core::hashmap::linear::LinearMap;
 use core::option;
 use core::vec;
 use syntax::attr;
@@ -29,7 +30,6 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::visit;
 use syntax::{ast, ast_util};
-use std::oldmap::HashMap;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
@@ -306,7 +306,7 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    let cnum_map = HashMap();
+    let cnum_map = @mut LinearMap::new();
     for decoder::get_crate_deps(e.intr, cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;

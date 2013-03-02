@@ -41,7 +41,6 @@ use core::uint;
 use core::vec;
 use std::list::{List, Cons, Nil};
 use std::list;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_map;

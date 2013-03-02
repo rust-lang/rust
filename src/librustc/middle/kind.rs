@@ -20,10 +20,10 @@ use middle::typeck;
 use middle;
 use util::ppaux::{ty_to_str, tys_to_str};
 
+use core::hashmap::linear::LinearMap;
 use core::option;
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::codemap::{span, spanned};
 use syntax::print::pprust::expr_to_str;
@@ -60,7 +60,7 @@ use syntax::{visit, ast_util};
 
 pub const try_adding: &str = "Try adding a move";
 
-pub type rval_map = HashMap<node_id, ()>;
+pub type rval_map = @mut LinearMap<node_id, ()>;
 
 pub struct Context {
     tcx: ty::ctxt,

@@ -35,7 +35,6 @@ use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
 use std::getopts::groups;
 use std::getopts::{opt_present};
 use std::getopts;
-use std::oldmap::HashMap;
 use std;
 use syntax::ast;
 use syntax::ast_map;

@@ -16,10 +16,10 @@ use syntax::visit;
 use syntax::print;
 use syntax;
 
+use core::hashmap::linear::LinearMap;
 use core::option;
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
 
 pub fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
@@ -49,7 +49,7 @@ pub fn indenter() -> _indenter {
     _indenter(())
 }
 
-pub type flag = HashMap<~str, ()>;
+pub type flag = @mut LinearMap<~str, ()>;
 
 pub fn field_expr(f: ast::field) -> @ast::expr { return f.node.expr; }
 
@@ -110,7 +110,7 @@ pub fn pluralize(n: uint, +s: ~str) -> ~str {
 }
 
 // A set of node IDs (used to keep track of which node IDs are for statements)
-pub type stmt_set = HashMap<ast::node_id, ()>;
+pub type stmt_set = @mut LinearMap<ast::node_id, ()>;
 
 //
 // Local Variables:

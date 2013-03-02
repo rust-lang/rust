@@ -47,12 +47,14 @@ use util::ppaux::{expr_repr, ty_to_str};
 use core::cast;
 use core::cmp;
 use core::hash;
+use core::hashmap::linear::LinearMap;
 use core::libc::c_uint;
 use core::ptr;
 use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
 use core::vec;
+use core::hashmap::linear::LinearMap;
 use std::oldmap::{HashMap, Set};
 use syntax::ast::ident;
 use syntax::ast_map::path;
@@ -170,11 +172,11 @@ pub struct CrateContext {
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
-     item_symbols: HashMap<ast::node_id, ~str>,
+     item_symbols: @mut LinearMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
      enum_sizes: HashMap<ty::t, uint>,
      discrims: HashMap<ast::def_id, ValueRef>,
-     discrim_symbols: HashMap<ast::node_id, ~str>,
+     discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
      tydescs: HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
@@ -298,12 +300,12 @@ pub struct fn_ctxt_ {
     loop_ret: Option<(ValueRef, ValueRef)>,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @HashMap<ast::node_id, local_val>,
+    llargs: @mut LinearMap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @HashMap<ast::node_id, local_val>,
+    lllocals: @mut LinearMap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
-    llupvars: @HashMap<ast::node_id, ValueRef>,
+    llupvars: @mut LinearMap<ast::node_id, ValueRef>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.

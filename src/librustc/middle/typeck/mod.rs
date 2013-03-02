@@ -51,7 +51,6 @@ independently:
 use core::prelude::*;
 
 use metadata::csearch;
-use middle::pat_util::{pat_id_map, PatIdMap};
 use middle::resolve;
 use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{ty_param_substs_and_ty, vstore_uniq};
