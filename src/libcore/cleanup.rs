@@ -154,7 +154,7 @@ fn debug_mem() -> bool {
 #[cfg(notest)]
 #[lang="annihilate"]
 pub unsafe fn annihilate() {
-    use rt::local_free;
+    use unstable::lang::local_free;
     use io::WriterUtil;
     use io;
     use libc;
