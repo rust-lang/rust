@@ -36,7 +36,7 @@ struct rust_opaque_box {
     rust_opaque_box *next;
 };
 
-// corresponds to the layout of a fn(), fn@(), fn~() etc
+// corresponds to the layout of a &fn(), @fn(), ~fn() etc
 struct fn_env_pair {
     spawn_fn f;
     rust_opaque_box *env;

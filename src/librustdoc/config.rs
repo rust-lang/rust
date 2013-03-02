@@ -105,7 +105,7 @@ pub fn default_config(input_crate: &Path) -> Config {
     }
 }
 
-type Process = fn~((&str), (&[~str])) -> ProgramOutput;
+type Process = ~fn((&str), (&[~str])) -> ProgramOutput;
 
 pub fn mock_program_output(_prog: &str, _args: &[~str]) -> ProgramOutput {
     ProgramOutput {
@@ -262,11 +262,8 @@ fn should_find_pandoc() {
         output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
-    let mock_program_output = fn~(_prog: &str, _args: &[~str])
-        -> ProgramOutput {
-        ProgramOutput {
-            status: 0, out: ~"pandoc 1.8.2.1", err: ~""
-        }
+    let mock_program_output: ~fn(&str, &[~str]) -> ProgramOutput = |prog, _| {
+        ProgramOutput { status: 0, out: ~"pandoc 1.8.2.1", err: ~"" }
     };
     let result = maybe_find_pandoc(&config, None, mock_program_output);
     assert result == result::Ok(Some(~"pandoc"));
@@ -278,11 +275,8 @@ fn should_error_with_no_pandoc() {
         output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
-    let mock_program_output = fn~(_prog: &str, _args: &[~str])
-        -> ProgramOutput {
-        ProgramOutput {
-            status: 1, out: ~"", err: ~""
-        }
+    let mock_program_output: ~fn(&str, &[~str]) -> ProgramOutput = |_, _| {
+        ProgramOutput { status: 1, out: ~"", err: ~"" }
     };
     let result = maybe_find_pandoc(&config, None, mock_program_output);
     assert result == result::Err(~"couldn't find pandoc");
