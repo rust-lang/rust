@@ -299,17 +299,27 @@ pub impl GatherLoanCtxt {
                expr_repr(self.tcx(), expr), adjustment);
         let _i = indenter();
 
-        match adjustment.autoref {
-            None => {
+        match *adjustment {
+            ty::AutoAddEnv(*) => {
+                debug!("autoaddenv -- no autoref");
+                return;
+            }
+
+            ty::AutoDerefRef(
+                ty::AutoDerefRef {
+                    autoref: None, _ }) => {
                 debug!("no autoref");
                 return;
             }
 
-            Some(ref autoref) => {
+            ty::AutoDerefRef(
+                ty::AutoDerefRef {
+                    autoref: Some(ref autoref),
+                    autoderefs: autoderefs}) => {
                 let mcx = &mem_categorization_ctxt {
                     tcx: self.tcx(),
                     method_map: self.bccx.method_map};
-                let mut cmt = mcx.cat_expr_autoderefd(expr, adjustment);
+                let mut cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
                 debug!("after autoderef, cmt=%s", self.bccx.cmt_to_repr(cmt));
 
                 match autoref.kind {

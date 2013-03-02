@@ -172,7 +172,14 @@ impl cmp::Eq for region_variance {
 
 #[auto_encode]
 #[auto_decode]
-pub struct AutoAdjustment {
+pub enum AutoAdjustment {
+    AutoAddEnv(ty::Region, ast::Sigil),
+    AutoDerefRef(AutoDerefRef)
+}
+
+#[auto_encode]
+#[auto_decode]
+pub struct AutoDerefRef {
     autoderefs: uint,
     autoref: Option<AutoRef>
 }
@@ -198,7 +205,7 @@ pub enum AutoRefKind {
     AutoBorrowVecRef,
 
     /// Convert from @fn()/~fn() to &fn()
-    AutoBorrowFn,
+    AutoBorrowFn
 }
 
 // Stores information about provided methods (a.k.a. default methods) in
@@ -1475,7 +1482,6 @@ pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
       ty_rec(_) | ty_struct(*) | ty_tup(_) | ty_enum(*) |
       ty_closure(_) |
-      ty_bare_fn(_) | // FIXME(#4804) Bare fn repr
       ty_trait(*) |
       ty_evec(_, vstore_fixed(_)) | ty_estr(vstore_fixed(_)) |
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_))
@@ -1585,7 +1591,7 @@ pub pure fn type_is_scalar(ty: t) -> bool {
     match get(ty).sty {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) | ty_type |
-      ty_ptr(_) => true,
+      ty_bare_fn(*) | ty_ptr(_) => true,
       _ => false
     }
 }
@@ -2882,7 +2888,25 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
     return match cx.adjustments.find(&expr.id) {
         None => unadjusted_ty,
 
-        Some(adj) => {
+        Some(@AutoAddEnv(r, s)) => {
+            match ty::get(unadjusted_ty).sty {
+                ty::ty_bare_fn(ref b) => {
+                    ty::mk_closure(
+                        cx,
+                        ty::ClosureTy {purity: b.purity,
+                                       sigil: s,
+                                       onceness: ast::Many,
+                                       region: r,
+                                       sig: copy b.sig})
+                }
+                ref b => {
+                    cx.sess.bug(
+                        fmt!("add_env adjustment on non-bare-fn: %?", b));
+                }
+            }
+        }
+
+        Some(@AutoDerefRef(ref adj)) => {
             let mut adjusted_ty = unadjusted_ty;
 
             for uint::range(0, adj.autoderefs) |i| {
@@ -3064,8 +3088,10 @@ pub fn expr_kind(tcx: ctxt,
     match expr.node {
         ast::expr_path(*) => {
             match resolve_expr(tcx, expr) {
-                ast::def_fn(*) | ast::def_static_method(*) |
                 ast::def_variant(*) | ast::def_struct(*) => RvalueDpsExpr,
+
+                // Fn pointers are just scalar values.
+                ast::def_fn(*) | ast::def_static_method(*) => RvalueDatumExpr,
 
                 // Note: there is actually a good case to be made that
                 // def_args, particularly those of immediate type, ought to

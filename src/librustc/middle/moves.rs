@@ -410,7 +410,9 @@ pub impl VisitContext {
         // those adjustments is to take a reference, then it's only
         // reading the underlying expression, not moving it.
         let comp_mode = match self.tcx.adjustments.find(&expr.id) {
-            Some(adj) if adj.autoref.is_some() => Read,
+            Some(@ty::AutoDerefRef(
+                ty::AutoDerefRef {
+                    autoref: Some(_), _})) => Read,
             _ => expr_mode.component_mode(expr)
         };
 
