@@ -295,12 +295,16 @@ pub impl CodeMap {
     }
 
     /// Add a new FileMap to the CodeMap and return it
-    fn new_filemap(+filename: FileName, src: @~str) -> @FileMap {
+    fn new_filemap(&self, +filename: FileName, src: @~str) -> @FileMap {
         return self.new_filemap_w_substr(filename, FssNone, src);
     }
 
-    fn new_filemap_w_substr(+filename: FileName, +substr: FileSubstr,
-                            src: @~str) -> @FileMap {
+    fn new_filemap_w_substr(
+        &self,
+        +filename: FileName,
+        +substr: FileSubstr,
+        src: @~str
+    ) -> @FileMap {
         let start_pos = if self.files.len() == 0 {
             0
         } else {
