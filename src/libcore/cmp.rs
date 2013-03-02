@@ -45,6 +45,7 @@ pub trait TotalOrd {
     pure fn cmp(&self, other: &Self) -> Ordering;
 }
 
+#[inline(always)]
 pure fn icmp<T: Ord>(a: &T, b: &T) -> Ordering {
     if *a < *b { Less }
     else if *a > *b { Greater }
