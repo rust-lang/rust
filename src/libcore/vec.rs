@@ -15,7 +15,7 @@
 use container::{Container, Mutable};
 use cast::transmute;
 use cast;
-use cmp::{Eq, Ord};
+use cmp::{Eq, Ord, TotalOrd, Ordering, Less, Equal, Greater};
 use iter::BaseIter;
 use iter;
 use kinds::Copy;
@@ -1425,7 +1425,7 @@ pub pure fn rev_eachi<T>(v: &r/[T], blk: fn(i: uint, v: &r/T) -> bool) {
  * Both vectors must have the same length
  */
 #[inline]
-pub fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
+pub pure fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
     assert len(v1) == len(v2);
     for uint::range(0u, len(v1)) |i| {
         if !f(&v1[i], &v2[i]) {
@@ -1574,6 +1574,38 @@ impl<T:Eq> Eq for @[T] {
 }
 
 // Lexicographical comparison
+
+pure fn cmp<T: TotalOrd>(a: &[T], b: &[T]) -> Ordering {
+    let low = uint::min(a.len(), b.len());
+
+    for uint::range(0, low) |idx| {
+        match a[idx].cmp(&b[idx]) {
+          Greater => return Greater,
+          Less => return Less,
+          Equal => ()
+        }
+    }
+
+    a.len().cmp(&b.len())
+}
+
+#[cfg(notest)]
+impl<T: TotalOrd> TotalOrd for &[T] {
+    #[inline(always)]
+    pure fn cmp(&self, other: & &self/[T]) -> Ordering { cmp(*self, *other) }
+}
+
+#[cfg(notest)]
+impl<T: TotalOrd> TotalOrd for ~[T] {
+    #[inline(always)]
+    pure fn cmp(&self, other: &~[T]) -> Ordering { cmp(*self, *other) }
+}
+
+#[cfg(notest)]
+impl<T: TotalOrd> TotalOrd for @[T] {
+    #[inline(always)]
+    pure fn cmp(&self, other: &@[T]) -> Ordering { cmp(*self, *other) }
+}
 
 pure fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
@@ -2151,7 +2183,7 @@ pub mod bytes {
     use vec;
 
     /// Bytewise string comparison
-    pub pure fn cmp(a: &~[u8], b: &~[u8]) -> int {
+    pub pure fn memcmp(a: &~[u8], b: &~[u8]) -> int {
         let a_len = len(*a);
         let b_len = len(*b);
         let n = uint::min(a_len, b_len) as libc::size_t;
@@ -2172,22 +2204,22 @@ pub mod bytes {
     }
 
     /// Bytewise less than or equal
-    pub pure fn lt(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) < 0 }
+    pub pure fn lt(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) < 0 }
 
     /// Bytewise less than or equal
-    pub pure fn le(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) <= 0 }
+    pub pure fn le(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) <= 0 }
 
     /// Bytewise equality
-    pub pure fn eq(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) == 0 }
+    pub pure fn eq(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) == 0 }
 
     /// Bytewise inequality
-    pub pure fn ne(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) != 0 }
+    pub pure fn ne(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) != 0 }
 
     /// Bytewise greater than or equal
-    pub pure fn ge(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) >= 0 }
+    pub pure fn ge(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) >= 0 }
 
     /// Bytewise greater than
-    pub pure fn gt(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) > 0 }
+    pub pure fn gt(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) > 0 }
 
     /**
       * Copies data from one vector to another.
@@ -2429,6 +2461,7 @@ mod tests {
     use option;
     use sys;
     use vec::*;
+    use cmp::*;
 
     fn square(n: uint) -> uint { return n * n; }
 
@@ -3942,6 +3975,14 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_total_ord() {
+        [1, 2, 3, 4].cmp(& &[1, 2, 3]) == Greater;
+        [1, 2, 3].cmp(& &[1, 2, 3, 4]) == Less;
+        [1, 2, 3, 4].cmp(& &[1, 2, 3, 4]) == Equal;
+        [1, 2, 3, 4, 5, 5, 5, 5].cmp(& &[1, 2, 3, 4, 5, 6]) == Less;
+        [2, 2].cmp(& &[1, 2, 3, 4]) == Greater;
+    }
 }
 
 // Local Variables:
