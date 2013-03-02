@@ -168,7 +168,7 @@ pub mod traits {
     use kinds::Copy;
     use ops::Add;
 
-    pub impl<T:Copy> Add<&[const T],@[T]> for @[T] {
+    impl<T:Copy> Add<&[const T],@[T]> for @[T] {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> @[T] {
             append(*self, (*rhs))
@@ -183,7 +183,7 @@ pub mod raw {
     use at_vec::{capacity, rustrt};
     use cast::transmute;
     use libc;
-    use private::intrinsics::{move_val_init};
+    use unstable::intrinsics::{move_val_init};
     use ptr::addr_of;
     use ptr;
     use sys;

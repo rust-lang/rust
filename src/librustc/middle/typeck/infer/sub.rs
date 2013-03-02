@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use middle::ty;
+use middle::ty::TyVar;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::cres;
@@ -19,20 +20,19 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::*;
+use util::common::{indent, indenter};
 use util::ppaux::bound_region_to_str;
 
 use std::list::Nil;
 use std::list;
-use syntax::ast::{m_const, purity, ret_style};
+use syntax::ast;
+use syntax::ast::{Onceness, m_const, purity, ret_style};
+use syntax::codemap::span;
 
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
 
 pub enum Sub = CombineFields;  // "subtype", "subregion" etc
 
-pub impl Combine for Sub {
+impl Combine for Sub {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"sub" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }

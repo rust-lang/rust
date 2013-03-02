@@ -17,7 +17,7 @@ fn make_gc1(gc: get_ctxt/&a) -> get_ctxt/&b  {
 }
 
 fn make_gc2(gc: get_ctxt/&a) -> get_ctxt/&b  {
-    return gc as get_ctxt; //~ ERROR cannot infer an appropriate lifetime
+    return @gc as get_ctxt; //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {

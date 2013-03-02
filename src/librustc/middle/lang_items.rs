@@ -32,8 +32,8 @@ use syntax::ast_util::{local_def};
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::{visit_crate, visit_item};
 
+use core::hashmap::linear::LinearMap;
 use core::ptr;
-use std::oldmap::HashMap;
 use str_eq = str::eq;
 
 pub enum LangItem {
@@ -75,16 +75,18 @@ pub enum LangItem {
     ReturnToMutFnLangItem,      // 31
     CheckNotBorrowedFnLangItem, // 32
     StrDupUniqFnLangItem,       // 33
+
+    StartFnLangItem,            // 34
 }
 
 pub struct LanguageItems {
-    items: [ Option<def_id> * 34 ]
+    items: [ Option<def_id> * 35 ]
 }
 
 pub impl LanguageItems {
     static pub fn new(&self) -> LanguageItems {
         LanguageItems {
-            items: [ None, ..34 ]
+            items: [ None, ..35 ]
         }
     }
 
@@ -135,6 +137,8 @@ pub impl LanguageItems {
             31 => "return_to_mut",
             32 => "check_not_borrowed",
             33 => "strdup_uniq",
+
+            34 => "start",
 
             _ => "???"
         }
@@ -248,13 +252,16 @@ pub impl LanguageItems {
     pub fn strdup_uniq_fn(&const self) -> def_id {
         self.items[StrDupUniqFnLangItem as uint].get()
     }
+    pub fn start_fn(&const self) -> def_id {
+        self.items[StartFnLangItem as uint].get()
+    }
 }
 
 fn LanguageItemCollector(crate: @crate,
                          session: Session,
                          items: &r/mut LanguageItems)
                       -> LanguageItemCollector/&r {
-    let item_refs = HashMap();
+    let item_refs = @mut LinearMap::new();
 
     item_refs.insert(@~"const", ConstTraitLangItem as uint);
     item_refs.insert(@~"copy", CopyTraitLangItem as uint);
@@ -296,6 +303,7 @@ fn LanguageItemCollector(crate: @crate,
     item_refs.insert(@~"check_not_borrowed",
                      CheckNotBorrowedFnLangItem as uint);
     item_refs.insert(@~"strdup_uniq", StrDupUniqFnLangItem as uint);
+    item_refs.insert(@~"start", StartFnLangItem as uint);
 
     LanguageItemCollector {
         crate: crate,
@@ -311,10 +319,11 @@ struct LanguageItemCollector {
     crate: @crate,
     session: Session,
 
-    item_refs: HashMap<@~str, uint>,
+    //XXX: maybe immutable?
+    item_refs: @mut LinearMap<@~str, uint>,
 }
 
-impl LanguageItemCollector {
+pub impl LanguageItemCollector {
     fn match_and_collect_meta_item(&self, item_def_id: def_id,
                                    meta_item: meta_item) {
         match meta_item.node {
@@ -353,12 +362,8 @@ impl LanguageItemCollector {
         }
 
         match self.item_refs.find(&value) {
-            None => {
-                // Didn't match.
-            }
-            Some(item_index) => {
-                self.collect_item(item_index, item_def_id)
-            }
+            None => (),
+            Some(&item_index) => self.collect_item(item_index, item_def_id)
         }
     }
 
@@ -391,10 +396,10 @@ impl LanguageItemCollector {
     }
 
     fn check_completeness(&self) {
-        for self.item_refs.each |&key, &item_ref| {
-            match self.items.items[item_ref] {
+        for self.item_refs.each |&(key, item_ref)| {
+            match self.items.items[*item_ref] {
                 None => {
-                    self.session.err(fmt!("no item found for `%s`", *key));
+                    self.session.err(fmt!("no item found for `%s`", **key));
                 }
                 Some(_) => {
                     // OK.

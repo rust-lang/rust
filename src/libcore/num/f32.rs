@@ -18,7 +18,7 @@ use num::strconv;
 use num;
 use ops;
 use option::Option;
-use private::intrinsics::floorf32;
+use unstable::intrinsics::floorf32;
 use from_str;
 use to_str;
 
@@ -284,7 +284,7 @@ impl num::One for f32 {
     static pure fn one() -> f32 { 1.0 }
 }
 
-pub impl NumCast for f32 {
+impl NumCast for f32 {
     /**
      * Cast `n` to an `f32`
      */

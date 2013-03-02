@@ -45,7 +45,7 @@ pub fn MovePtrAdaptor<V:TyVisitor + MovePtr>(v: V) -> MovePtrAdaptor<V> {
     MovePtrAdaptor { inner: v }
 }
 
-impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
+pub impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     #[inline(always)]
     fn bump(sz: uint) {
       do self.inner.move_ptr() |p| {

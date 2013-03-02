@@ -16,6 +16,7 @@ use ast_util::{inlined_item_utils, path_to_ident, stmt_id};
 use ast_util;
 use attr;
 use codemap;
+use codemap::spanned;
 use diagnostic::span_handler;
 use parse::token::ident_interner;
 use print::pprust;
@@ -34,7 +35,7 @@ pub enum path_elt {
     path_name(ident)
 }
 
-pub impl cmp::Eq for path_elt {
+impl cmp::Eq for path_elt {
     pure fn eq(&self, other: &path_elt) -> bool {
         match (*self) {
             path_mod(e0a) => {
@@ -101,7 +102,7 @@ pub enum ast_node {
     node_arg(arg, uint),
     node_local(uint),
     // Destructor for a struct
-    node_dtor(~[ty_param], @struct_dtor, def_id, @path),
+    node_dtor(Generics, @struct_dtor, def_id, @path),
     node_block(blk),
     node_struct_ctor(@struct_def, @item, @path),
 }

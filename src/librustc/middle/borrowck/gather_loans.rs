@@ -34,9 +34,10 @@ use util::common::indenter;
 use util::ppaux::{expr_repr, region_to_str};
 
 use core::dvec;
+use core::hashmap::linear::LinearMap;
 use core::hashmap::linear::LinearSet;
 use core::vec;
-use std::oldmap::HashMap;
+
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
@@ -82,7 +83,10 @@ struct GatherLoanCtxt {
 pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
-        req_maps: ReqMaps { req_loan_map: HashMap(), pure_map: HashMap() },
+        req_maps: ReqMaps {
+            req_loan_map: @mut LinearMap::new(),
+            pure_map: @mut LinearMap::new()
+        },
         item_ub: 0,
         root_ub: 0,
         ignore_adjustments: LinearSet::new()
@@ -289,7 +293,7 @@ fn req_loans_in_expr(ex: @ast::expr,
     self.root_ub = old_root_ub;
 }
 
-impl GatherLoanCtxt {
+pub impl GatherLoanCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.bccx.tcx }
 
     fn guarantee_adjustments(@mut self,
@@ -299,17 +303,27 @@ impl GatherLoanCtxt {
                expr_repr(self.tcx(), expr), adjustment);
         let _i = indenter();
 
-        match adjustment.autoref {
-            None => {
+        match *adjustment {
+            ty::AutoAddEnv(*) => {
+                debug!("autoaddenv -- no autoref");
+                return;
+            }
+
+            ty::AutoDerefRef(
+                ty::AutoDerefRef {
+                    autoref: None, _ }) => {
                 debug!("no autoref");
                 return;
             }
 
-            Some(ref autoref) => {
+            ty::AutoDerefRef(
+                ty::AutoDerefRef {
+                    autoref: Some(ref autoref),
+                    autoderefs: autoderefs}) => {
                 let mcx = &mem_categorization_ctxt {
                     tcx: self.tcx(),
                     method_map: self.bccx.method_map};
-                let mut cmt = mcx.cat_expr_autoderefd(expr, adjustment);
+                let mut cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
                 debug!("after autoderef, cmt=%s", self.bccx.cmt_to_repr(cmt));
 
                 match autoref.kind {

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -41,7 +41,7 @@ Implicitly, all crates behave as if they included the following prologue:
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
 
 #[comment = "The Rust core library"];
-#[license = "MIT"];
+#[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
 
@@ -51,6 +51,7 @@ Implicitly, all crates behave as if they included the following prologue:
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 #[allow(deprecated_self)];
+#[allow(deprecated_mutable_fields)];
 
 /* The Prelude. */
 
@@ -142,6 +143,7 @@ pub mod dlist;
 #[path="iter-trait.rs"] #[merge = "iter-trait/dlist.rs"]
 pub mod dlist_iter;
 pub mod hashmap;
+pub mod cell;
 
 
 /* Tasks and communication */
@@ -223,15 +225,13 @@ pub const debug : u32 = 4_u32;
 
 /* Unsupported interfaces */
 
-// The runtime interface used by the compiler
-#[cfg(notest)] pub mod rt;
-// The runtime and compiler interface to fmt!
-#[cfg(stage0)]
-#[path = "private/extfmt.rs"]
-pub mod extfmt;
 // Private APIs
-pub mod private;
-
+pub mod unstable;
+// NOTE: Remove after snapshot
+#[cfg(stage0)]
+pub mod private {
+    pub use super::unstable::extfmt;
+}
 
 /* For internal use, not exported */
 

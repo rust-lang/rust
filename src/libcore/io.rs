@@ -474,7 +474,10 @@ impl<R:Reader,C> Reader for Wrapper<R, C> {
 
 pub struct FILERes {
     f: *libc::FILE,
-    drop {
+}
+
+impl Drop for FILERes {
+    fn finalize(&self) {
         unsafe {
             libc::fclose(self.f);
         }
@@ -501,7 +504,7 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
 
 pub fn stdin() -> @Reader {
     unsafe {
-        rustrt::rust_get_stdin() as @Reader
+        @rustrt::rust_get_stdin() as @Reader
     }
 }
 
@@ -639,11 +642,11 @@ impl Writer for *libc::FILE {
     }
 }
 
-pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> Writer {
+pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> @Writer {
     if cleanup {
-        Wrapper { base: f, cleanup: FILERes(f) } as Writer
+        @Wrapper { base: f, cleanup: FILERes(f) } as @Writer
     } else {
-        f as Writer
+        @f as @Writer
     }
 }
 
@@ -683,7 +686,10 @@ impl Writer for fd_t {
 
 pub struct FdRes {
     fd: fd_t,
-    drop {
+}
+
+impl Drop for FdRes {
+    fn finalize(&self) {
         unsafe {
             libc::close(self.fd);
         }
@@ -696,11 +702,11 @@ pub fn FdRes(fd: fd_t) -> FdRes {
     }
 }
 
-pub fn fd_writer(fd: fd_t, cleanup: bool) -> Writer {
+pub fn fd_writer(fd: fd_t, cleanup: bool) -> @Writer {
     if cleanup {
-        Wrapper { base: fd, cleanup: FdRes(fd) } as Writer
+        @Wrapper { base: fd, cleanup: FdRes(fd) } as @Writer
     } else {
-        fd as Writer
+        @fd as @Writer
     }
 }
 

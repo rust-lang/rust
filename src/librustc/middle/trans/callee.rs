@@ -18,21 +18,34 @@
 
 use core::prelude::*;
 
-use lib::llvm::ValueRef;
-use middle::trans::base::{get_item_val, trans_external_path};
+use back::abi;
+use driver::session;
+use lib;
+use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::llvm;
+use metadata::csearch;
+use middle::trans::base;
+use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::closure;
-use middle::trans::common::{block, node_id_type_params};
+use middle::trans::common;
+use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::datum::Datum;
+use middle::trans::expr;
+use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::meth;
 use middle::trans::monomorphize;
+use middle::trans::type_of;
+use middle::ty::ty_to_str;
+use middle::ty;
 use middle::typeck;
 use util::common::indenter;
 
 use syntax::ast;
+use syntax::ast_map;
 use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
 use syntax::visit;
 
@@ -82,10 +95,25 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
     }
 
     // any other expressions are closures:
-    return closure_callee(&expr::trans_to_datum(bcx, expr));
+    return datum_callee(bcx, expr);
 
-    fn closure_callee(db: &DatumBlock) -> Callee {
-        return Callee {bcx: db.bcx, data: Closure(db.datum)};
+    fn datum_callee(bcx: block, expr: @ast::expr) -> Callee {
+        let DatumBlock {bcx, datum} = expr::trans_to_datum(bcx, expr);
+        match ty::get(datum.ty).sty {
+            ty::ty_bare_fn(*) => {
+                let llval = datum.to_appropriate_llval(bcx);
+                return Callee {bcx: bcx, data: Fn(FnData {llfn: llval})};
+            }
+            ty::ty_closure(*) => {
+                return Callee {bcx: bcx, data: Closure(datum)};
+            }
+            _ => {
+                bcx.tcx().sess.span_bug(
+                    expr.span,
+                    fmt!("Type of callee is neither bare-fn nor closure: %s",
+                         bcx.ty_to_str(datum.ty)));
+            }
+        }
     }
 
     fn fn_callee(bcx: block, fd: FnData) -> Callee {
@@ -117,7 +145,7 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
             ast::def_binding(*) |
             ast::def_upvar(*) |
             ast::def_self(*) => {
-                closure_callee(&expr::trans_to_datum(bcx, ref_expr))
+                datum_callee(bcx, ref_expr)
             }
             ast::def_mod(*) | ast::def_foreign_mod(*) |
             ast::def_const(*) | ast::def_ty(*) | ast::def_prim_ty(*) |
@@ -332,11 +360,11 @@ pub fn trans_method_call(in_cx: block,
         DontAutorefArg)
 }
 
-pub fn trans_rtcall_or_lang_call(bcx: block,
-                                 did: ast::def_id,
-                                 args: &[ValueRef],
-                                 dest: expr::Dest)
-                              -> block {
+pub fn trans_lang_call(bcx: block,
+                       did: ast::def_id,
+                       args: &[ValueRef],
+                       dest: expr::Dest)
+    -> block {
     let fty = if did.crate == ast::local_crate {
         ty::node_id_to_type(bcx.ccx().tcx, did.node)
     } else {
@@ -349,12 +377,12 @@ pub fn trans_rtcall_or_lang_call(bcx: block,
         ArgVals(args), dest, DontAutorefArg);
 }
 
-pub fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
-                                                  did: ast::def_id,
-                                                  args: &[ValueRef],
-                                                  type_params: ~[ty::t],
-                                                  dest: expr::Dest)
-                                               -> block {
+pub fn trans_lang_call_with_type_params(bcx: block,
+                                        did: ast::def_id,
+                                        args: &[ValueRef],
+                                        type_params: ~[ty::t],
+                                        dest: expr::Dest)
+    -> block {
     let fty;
     if did.crate == ast::local_crate {
         fty = ty::node_id_to_type(bcx.tcx(), did.node);
@@ -380,7 +408,6 @@ pub fn trans_rtcall_or_lang_call_with_type_params(bcx: block,
                                                     fty);
                     let mut llfnty = type_of::type_of(callee.bcx.ccx(),
                                                       substituted);
-                    llfnty = T_ptr(struct_elt(llfnty, 0));
                     new_llval = PointerCast(callee.bcx, fn_data.llfn, llfnty);
                 }
                 _ => fail!()
@@ -703,6 +730,8 @@ pub fn trans_arg_expr(bcx: block,
                     }
 
                     ast::by_copy => {
+                        debug!("by copy arg with type %s, storing to scratch",
+                               bcx.ty_to_str(arg_datum.ty));
                         let scratch = scratch_datum(bcx, arg_datum.ty, false);
 
                         arg_datum.store_to_datum(bcx, arg_expr.id,

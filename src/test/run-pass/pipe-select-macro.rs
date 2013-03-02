@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// tjc: un-xfail after snapshot
 // xfail-test
-// xfail-pretty
 
 // Protocols
 proto! foo (

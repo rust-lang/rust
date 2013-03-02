@@ -11,13 +11,16 @@
 
 use lib::llvm::llvm;
 use lib::llvm::{TypeRef};
+use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::common;
 use middle::trans::expr;
 use middle::trans::machine;
+use middle::ty;
 use util::ppaux;
 
-use std::oldmap::HashMap;
+use core::option::None;
+use core::vec;
 use syntax::ast;
 
 pub fn type_of_explicit_arg(ccx: @CrateContext, arg: ty::arg) -> TypeRef {
@@ -130,8 +133,7 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
             T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())])
         }
 
-        // FIXME(#4804) Bare fn repr
-        ty::ty_bare_fn(*) => T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())]),
+        ty::ty_bare_fn(*) => T_ptr(T_i8()),
         ty::ty_closure(*) => T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())]),
         ty::ty_trait(_, _, vstore) => T_opaque_trait(cx, vstore),
 
@@ -169,7 +171,9 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         ty::ty_enum(def_id, _) => T_struct(enum_body_types(cx, def_id, t)),
 
         ty::ty_self | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
-            cx.tcx.sess.bug(~"fictitious type in sizing_type_of()")
+            cx.tcx.sess.bug(
+                fmt!("fictitious type %? in sizing_type_of()",
+                     ty::get(t).sty))
         }
     };
 
@@ -266,9 +270,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         T_struct(~[T_struct(tys)])
       }
 
-      // FIXME(#4804) Bare fn repr
-      // ty::ty_bare_fn(_) => T_ptr(type_of_fn_from_ty(cx, t)),
-      ty::ty_bare_fn(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
+      ty::ty_bare_fn(_) => T_ptr(type_of_fn_from_ty(cx, t)),
       ty::ty_closure(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
       ty::ty_trait(_, _, vstore) => T_opaque_trait(cx, vstore),
       ty::ty_type => T_ptr(cx.tydesc_type),
@@ -387,7 +389,7 @@ pub fn type_of_dtor(ccx: @CrateContext, self_ty: ty::t) -> TypeRef {
 pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
     let addrspace = base::get_tydesc(ccx, t).addrspace;
     debug!("type_of_rooted %s in addrspace %u",
-           ty_to_str(ccx.tcx, t), addrspace as uint);
+           ppaux::ty_to_str(ccx.tcx, t), addrspace as uint);
     return T_root(type_of(ccx, t), addrspace);
 }
 

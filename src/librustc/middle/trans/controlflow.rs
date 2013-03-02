@@ -10,18 +10,28 @@
 
 use core::prelude::*;
 
-use lib::llvm::ValueRef;
+use back::link;
+use lib;
+use lib::llvm::*;
 use middle::trans::base::*;
+use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
+use middle::trans::debuginfo;
+use middle::trans::expr;
+use middle::trans::type_of::*;
+use middle::ty;
+use util::common::indenter;
+use util::ppaux;
 
 use core::str;
-
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
+use syntax::ast;
+use syntax::ast::ident;
+use syntax::ast_map::path_mod;
+use syntax::ast_util;
+use syntax::codemap::span;
+use syntax::print::pprust::expr_to_str;
 
 pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     let _icx = bcx.insn_ctxt("trans_block");
@@ -221,7 +231,7 @@ pub fn trans_log(log_ex: @ast::expr,
             // Call the polymorphic log function
             let val = val_datum.to_ref_llval(bcx);
             let did = bcx.tcx().lang_items.log_type_fn();
-            let bcx = callee::trans_rtcall_or_lang_call_with_type_params(
+            let bcx = callee::trans_lang_call_with_type_params(
                 bcx, did, ~[level, val], ~[val_datum.ty], expr::Ignore);
             bcx
         }
@@ -389,7 +399,7 @@ fn trans_fail_value(bcx: block,
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = callee::trans_rtcall_or_lang_call(
+    let bcx = callee::trans_lang_call(
         bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
     Unreachable(bcx);
     return bcx;
@@ -406,7 +416,7 @@ pub fn trans_fail_bounds_check(bcx: block, sp: span,
     let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
 
     let args = ~[filename, line, index, len];
-    let bcx = callee::trans_rtcall_or_lang_call(
+    let bcx = callee::trans_lang_call(
         bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);
     Unreachable(bcx);
     return bcx;

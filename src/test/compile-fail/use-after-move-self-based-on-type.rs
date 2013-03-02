@@ -1,9 +1,12 @@
 struct S {
     x: int,
-    drop {}
 }
 
-impl S {
+impl Drop for S {
+    fn finalize(&self) {}
+}
+
+pub impl S {
     fn foo(self) -> int {
         self.bar();
         return self.x;  //~ ERROR use of moved value

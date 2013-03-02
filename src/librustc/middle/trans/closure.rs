@@ -13,8 +13,7 @@ use core::prelude::*;
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
 use back::link::{mangle_internal_name_by_path};
-use lib::llvm::llvm;
-use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::{llvm, ValueRef, TypeRef};
 use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -25,14 +24,15 @@ use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::machine;
 use middle::trans::type_of::*;
+use middle::ty;
 use util::ppaux::ty_to_str;
 
 use core::libc::c_uint;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
 use syntax::codemap::span;
+use syntax::parse::token::special_idents;
 use syntax::print::pprust::expr_to_str;
 
 // ___Good to know (tm)__________________________________________________
@@ -185,7 +185,7 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
         }
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-            let llbox = base::alloc_ty(bcx, cbox_ty);
+            let llbox = alloc_ty(bcx, cbox_ty);
             nuke_ref_count(bcx, llbox);
             rslt(bcx, llbox)
         }
@@ -342,7 +342,7 @@ pub fn load_environment(fcx: fn_ctxt,
     let bcx = raw_block(fcx, false, llloadenv);
 
     // Load a pointer to the closure data, skipping over the box header:
-    let llcdata = base::opaque_box_body(bcx, cdata_ty, fcx.llenv);
+    let llcdata = opaque_box_body(bcx, cdata_ty, fcx.llenv);
 
     // Populate the upvars from the environment.
     let mut i = 0u;
@@ -415,7 +415,7 @@ pub fn trans_expr_fn(bcx: block,
 
     let Result {bcx: bcx, val: closure} = match sigil {
         ast::BorrowedSigil | ast::ManagedSigil | ast::OwnedSigil => {
-            let cap_vars = ccx.maps.capture_map.get(&user_id);
+            let cap_vars = *ccx.maps.capture_map.get(&user_id);
             let ret_handle = match is_loop_body {Some(x) => x,
                                                  None => None};
             let ClosureResult {llbox, cdata_ty, bcx}
@@ -500,7 +500,7 @@ pub fn make_opaque_cbox_take_glue(
         // Allocate memory, update original ptr, and copy existing data
         let opaque_tydesc = PointerCast(bcx, tydesc, T_ptr(T_i8()));
         let rval = alloca(bcx, T_ptr(T_i8()));
-        let bcx = callee::trans_rtcall_or_lang_call(
+        let bcx = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.exchange_malloc_fn(),
             ~[opaque_tydesc, sz],

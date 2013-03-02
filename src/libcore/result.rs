@@ -228,7 +228,7 @@ pub pure fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: fn(&E) -> F)
     }
 }
 
-impl<T, E> Result<T, E> {
+pub impl<T, E> Result<T, E> {
     #[inline(always)]
     pure fn get_ref(&self) -> &self/T { get_ref(self) }
 
@@ -261,7 +261,7 @@ impl<T, E> Result<T, E> {
     }
 }
 
-impl<T:Copy,E> Result<T, E> {
+pub impl<T:Copy,E> Result<T, E> {
     #[inline(always)]
     pure fn get(&self) -> T { get(self) }
 
@@ -271,7 +271,7 @@ impl<T:Copy,E> Result<T, E> {
     }
 }
 
-impl<T, E: Copy> Result<T, E> {
+pub impl<T, E: Copy> Result<T, E> {
     #[inline(always)]
     pure fn get_err(&self) -> E { get_err(self) }
 

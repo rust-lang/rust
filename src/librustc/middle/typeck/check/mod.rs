@@ -107,6 +107,7 @@ use util::ppaux::{bound_region_to_str, expr_repr, pat_repr};
 use util::ppaux;
 
 use core::either;
+use core::hashmap::linear::LinearMap;
 use core::option;
 use core::ptr;
 use core::result::{Result, Ok, Err};
@@ -127,6 +128,8 @@ use syntax::codemap;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust;
 use syntax::visit;
+use syntax::opt_vec::OptVec;
+use syntax::opt_vec;
 use syntax;
 
 pub mod _match;
@@ -355,7 +358,8 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         let tail_expr_ty = fcx.expr_ty(tail_expr);
         // Special case: we print a special error if there appears
         // to be do-block/for-loop confusion
-        demand::suptype_with_fn(fcx, tail_expr.span, fcx.ret_ty, tail_expr_ty,
+        demand::suptype_with_fn(fcx, tail_expr.span, false,
+            fcx.ret_ty, tail_expr_ty,
             |sp, e, a, s| {
                 fcx.report_mismatched_return_types(sp, e, a, s) });
       }
@@ -502,12 +506,13 @@ pub fn check_method(ccx: @mut CrateCtxt,
 
 pub fn check_no_duplicate_fields(tcx: ty::ctxt,
                                  fields: ~[(ast::ident, span)]) {
-    let field_names = HashMap();
+    //XXX: Local variable on the @ box
+    let field_names = @mut LinearMap::new();
 
     for fields.each |p| {
         let (id, sp) = *p;
         match field_names.find(&id) {
-          Some(orig_sp) => {
+          Some(&orig_sp) => {
             tcx.sess.span_err(sp, fmt!("Duplicate field \
                                    name %s in record type declaration",
                                         *tcx.sess.str_of(id)));
@@ -592,9 +597,9 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_struct(struct_def, _) => {
         check_struct(ccx, struct_def, it.id, it.span);
       }
-      ast::item_ty(t, tps) => {
+      ast::item_ty(t, ref generics) => {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
-        check_bounds_are_used(ccx, t.span, tps, tpt_ty);
+        check_bounds_are_used(ccx, t.span, &generics.ty_params, tpt_ty);
         // If this is a record ty, check for duplicate fields
         match t.node {
             ast::ty_rec(ref fields) => {
@@ -625,7 +630,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
     }
 }
 
-pub impl AstConv for FnCtxt {
+impl AstConv for FnCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.ccx.tcx }
     fn ccx(@mut self) -> @mut CrateCtxt { self.ccx }
 
@@ -659,7 +664,7 @@ pub impl FnCtxt {
     }
 }
 
-pub impl region_scope for @mut FnCtxt {
+impl region_scope for @mut FnCtxt {
     pure fn anon_region(&self, span: span) -> Result<ty::Region, ~str> {
         // XXX: Unsafe to work around purity
         unsafe {
@@ -736,7 +741,9 @@ pub impl FnCtxt {
         if derefs == 0 { return; }
         self.write_adjustment(
             node_id,
-            @ty::AutoAdjustment { autoderefs: derefs, autoref: None }
+            @ty::AutoDerefRef(ty::AutoDerefRef {
+                autoderefs: derefs,
+                autoref: None })
         );
     }
 
@@ -1062,8 +1069,9 @@ pub fn impl_self_ty(vcx: &VtableContext,
                   node: ast::item_impl(ref ts, _, st, _),
                   _
               }, _)) => {
-            (ts.len(), region_param,
-                vcx.ccx.to_ty(rscope::type_rscope(region_param), st))
+            (ts.ty_params.len(),
+             region_param,
+             vcx.ccx.to_ty(rscope::type_rscope(region_param), st))
           }
           Some(ast_map::node_item(@ast::item {
                   node: ast::item_struct(_, ref ts),
@@ -1074,12 +1082,13 @@ pub fn impl_self_ty(vcx: &VtableContext,
                  (doing a no-op subst for the ty params; in the next step,
                  we substitute in fresh vars for them)
                */
-              (ts.len(), region_param,
-                  ty::mk_struct(tcx, local_def(class_id),
+              (ts.ty_params.len(),
+               region_param,
+               ty::mk_struct(tcx, local_def(class_id),
                       substs {
                         self_r: rscope::bound_self_region(region_param),
                         self_ty: None,
-                        tps: ty::ty_params_to_tys(tcx, /*bad*/copy *ts)
+                        tps: ty::ty_params_to_tys(tcx, ts)
                       }))
           }
           _ => { tcx.sess.bug(~"impl_self_ty: unbound item or item that \
@@ -1778,7 +1787,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         debug!("%? %?", ast_fields.len(), field_types.len());
 
-        let class_field_map = HashMap();
+        //XXX: Local variable on the @ box
+        let class_field_map = @mut LinearMap::new();
         let mut fields_found = 0;
         for field_types.each |field| {
             // XXX: Check visibility here.
@@ -1794,13 +1804,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         fmt!("structure has no field named `%s`",
                              *tcx.sess.str_of(field.node.ident)));
                 }
-                Some((_, true)) => {
+                Some(&(_, true)) => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("field `%s` specified more than once",
                              *tcx.sess.str_of(field.node.ident)));
                 }
-                Some((field_id, false)) => {
+                Some(&(field_id, false)) => {
                     let expected_field_type =
                         ty::lookup_field_type(
                             tcx, class_id, field_id, substitutions);
@@ -1823,7 +1833,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 let mut missing_fields = ~[];
                 for field_types.each |class_field| {
                     let name = class_field.ident;
-                    let (_, seen) = class_field_map.get(&name);
+                    let (_, seen) = *class_field_map.get(&name);
                     if !seen {
                         missing_fields.push(
                             ~"`" + *tcx.sess.str_of(name) + ~"`");
@@ -1862,11 +1872,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 tcx.region_paramd_items.find(&class_id.node);
             match tcx.items.find(&class_id.node) {
                 Some(ast_map::node_item(@ast::item {
-                        node: ast::item_struct(_, ref type_parameters),
+                        node: ast::item_struct(_, ref generics),
                         _
                     }, _)) => {
 
-                    type_parameter_count = type_parameters.len();
+                    type_parameter_count = generics.ty_params.len();
 
                     let self_region =
                         bound_self_region(region_parameterized);
@@ -1876,7 +1886,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         self_ty: None,
                         tps: ty::ty_params_to_tys(
                             tcx,
-                            /*bad*/copy *type_parameters)
+                            generics)
                     });
                 }
                 _ => {
@@ -1946,11 +1956,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 tcx.region_paramd_items.find(&enum_id.node);
             match tcx.items.find(&enum_id.node) {
                 Some(ast_map::node_item(@ast::item {
-                        node: ast::item_enum(_, ref type_parameters),
+                        node: ast::item_enum(_, ref generics),
                         _
                     }, _)) => {
 
-                    type_parameter_count = type_parameters.len();
+                    type_parameter_count = generics.ty_params.len();
 
                     let self_region =
                         bound_self_region(region_parameterized);
@@ -1960,7 +1970,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         self_ty: None,
                         tps: ty::ty_params_to_tys(
                             tcx,
-                            /*bad*/copy *type_parameters)
+                            generics)
                     });
                 }
                 _ => {
@@ -3126,7 +3136,7 @@ pub fn may_break(cx: ty::ctxt, id: ast::node_id, b: ast::blk) -> bool {
 
 pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
                              span: span,
-                             tps: ~[ast::ty_param],
+                             tps: &OptVec<ast::TyParam>,
                              ty: ty::t) {
     debug!("check_bounds_are_used(n_tps=%u, ty=%s)",
            tps.len(), ppaux::ty_to_str(ccx.tcx, ty));
@@ -3153,7 +3163,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
         if !*b {
             ccx.tcx.sess.span_err(
                 span, fmt!("type parameter `%s` is unused",
-                           *ccx.tcx.sess.str_of(tps[i].ident)));
+                           *ccx.tcx.sess.str_of(tps.get(i).ident)));
         }
     }
 }

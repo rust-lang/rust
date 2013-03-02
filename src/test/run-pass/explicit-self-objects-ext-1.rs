@@ -34,6 +34,6 @@ impl Reader for S {
 
 pub fn main() {
     let x = S { x: 1, y: 2 };
-    let x = x as @Reader;
+    let x = @x as @Reader;
     x.read_bytes(0);
 }

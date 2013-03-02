@@ -79,7 +79,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
                 err_messages: messages};
 }
 
-impl Env {
+pub impl Env {
     fn create_region_hierarchy(&self, rh: &RH) {
         for rh.sub.each |child_rh| {
             self.create_region_hierarchy(child_rh);

@@ -28,7 +28,6 @@ use util::ppaux;
 
 use core::result::{Result, Ok, Err};
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
@@ -79,7 +78,24 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
     // Resolve any borrowings for the node with id `id`
     match fcx.inh.adjustments.find(&id) {
         None => (),
-        Some(adj) => {
+
+        Some(@ty::AutoAddEnv(r, s)) => {
+            match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
+                Err(e) => {
+                    // This should not, I think, happen:
+                    fcx.ccx.tcx.sess.span_err(
+                        sp, fmt!("cannot resolve bound for closure: %s",
+                                 infer::fixup_err_to_str(e)));
+                }
+                Ok(r1) => {
+                    let resolved_adj = @ty::AutoAddEnv(r1, s);
+                    debug!("Adjustments for node %d: %?", id, resolved_adj);
+                    fcx.tcx().adjustments.insert(id, resolved_adj);
+                }
+            }
+        }
+
+        Some(@ty::AutoDerefRef(adj)) => {
             let resolved_autoref = match adj.autoref {
                 Some(ref autoref) => {
                     match resolve_region(fcx.infcx(), autoref.region,
@@ -99,9 +115,10 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
                 None => None
             };
 
-            let resolved_adj = @ty::AutoAdjustment {
+            let resolved_adj = @ty::AutoDerefRef(ty::AutoDerefRef {
+                autoderefs: adj.autoderefs,
                 autoref: resolved_autoref,
-                ..*adj};
+            });
             debug!("Adjustments for node %d: %?", id, resolved_adj);
             fcx.tcx().adjustments.insert(id, resolved_adj);
         }

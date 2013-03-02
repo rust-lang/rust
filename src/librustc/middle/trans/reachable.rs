@@ -21,15 +21,17 @@ use middle::resolve;
 use middle::ty;
 use middle::typeck;
 
-use core::vec;
-use std::oldmap::HashMap;
+use core::prelude::*;
+use core::hashmap::linear::LinearMap;
+use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
+use syntax::codemap;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util, ast_map};
 
-pub type map = HashMap<node_id, ()>;
+pub type map = @mut LinearMap<node_id, ()>;
 
 struct ctx {
     exp_map2: resolve::ExportMap2,
@@ -40,7 +42,7 @@ struct ctx {
 
 pub fn find_reachable(crate_mod: _mod, exp_map2: resolve::ExportMap2,
                       tcx: ty::ctxt, method_map: typeck::method_map) -> map {
-    let rmap = HashMap();
+    let rmap = @mut LinearMap::new();
     let cx = ctx {
         exp_map2: exp_map2,
         tcx: tcx,
@@ -97,38 +99,41 @@ fn traverse_public_mod(cx: ctx, mod_id: node_id, m: _mod) {
 fn traverse_public_item(cx: ctx, item: @item) {
     if cx.rmap.contains_key(&item.id) { return; }
     cx.rmap.insert(item.id, ());
-    match /*bad*/copy item.node {
-      item_mod(m) => traverse_public_mod(cx, item.id, m),
-      item_foreign_mod(nm) => {
+    match item.node {
+      item_mod(ref m) => traverse_public_mod(cx, item.id, *m),
+      item_foreign_mod(ref nm) => {
           if !traverse_exports(cx, item.id) {
               for vec::each(nm.items) |item| {
                   cx.rmap.insert(item.id, ());
               }
           }
       }
-      item_fn(_, _, ref tps, ref blk) => {
-        if tps.len() > 0u ||
+      item_fn(_, _, ref generics, ref blk) => {
+        if generics.ty_params.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
             traverse_inline_body(cx, (*blk));
         }
       }
-      item_impl(tps, _, _, ms) => {
-        for vec::each(ms) |m| {
-            if tps.len() > 0u || m.tps.len() > 0u ||
-               attr::find_inline_attr(m.attrs) != attr::ia_none {
+      item_impl(ref generics, _, _, ref ms) => {
+        for ms.each |m| {
+            if generics.ty_params.len() > 0u ||
+                m.generics.ty_params.len() > 0u ||
+                attr::find_inline_attr(m.attrs) != attr::ia_none
+            {
                 cx.rmap.insert(m.id, ());
                 traverse_inline_body(cx, m.body);
             }
         }
       }
-      item_struct(struct_def, tps) => {
+      item_struct(ref struct_def, ref generics) => {
         for struct_def.ctor_id.each |&ctor_id| {
             cx.rmap.insert(ctor_id, ());
         }
         do option::iter(&struct_def.dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());
-            if tps.len() > 0u || attr::find_inline_attr(dtor.node.attrs)
-                     != attr::ia_none {
+            if generics.ty_params.len() > 0u ||
+                attr::find_inline_attr(dtor.node.attrs) != attr::ia_none
+            {
                 traverse_inline_body(cx, dtor.node.body);
             }
         }

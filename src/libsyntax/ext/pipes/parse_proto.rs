@@ -10,7 +10,9 @@
 
 // Parsing pipes protocols from token trees.
 
+use ast_util;
 use ext::pipes::pipec::*;
+use ext::pipes::proto::*;
 use parse::common::SeqSep;
 use parse::parser;
 use parse::token;
@@ -23,7 +25,7 @@ pub trait proto_parser {
     fn parse_message(&self, state: state);
 }
 
-pub impl proto_parser for parser::Parser {
+impl proto_parser for parser::Parser {
     fn parse_proto(&self, id: ~str) -> protocol {
         let proto = protocol(id, *self.span);
 
@@ -51,13 +53,13 @@ pub impl proto_parser for parser::Parser {
           _ => fail!()
         };
 
-        let typarms = if *self.token == token::LT {
-            self.parse_ty_params()
+        let generics = if *self.token == token::LT {
+            self.parse_generics()
         } else {
-            ~[]
+            ast_util::empty_generics()
         };
 
-        let state = proto.add_state_poly(name, id, dir, typarms);
+        let state = proto.add_state_poly(name, id, dir, generics);
 
         // parse the messages
         self.parse_unspanned_seq(

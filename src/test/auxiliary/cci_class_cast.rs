@@ -12,17 +12,17 @@ use core::to_str::*;
 
 pub mod kitty {
     pub struct cat {
-      priv mut meows : uint,
-      mut how_hungry : int,
+      priv meows : uint,
+      how_hungry : int,
       name : ~str,
     }
 
-    pub impl ToStr for cat {
+    impl ToStr for cat {
        pure fn to_str(&self) -> ~str { copy self.name }
     }
 
     priv impl cat {
-        fn meow() {
+        fn meow(&mut self) {
             error!("Meow");
             self.meows += 1u;
             if self.meows % 5u == 0u {
@@ -33,9 +33,9 @@ pub mod kitty {
     }
 
     pub impl cat {
-        fn speak() { self.meow(); }
+        fn speak(&mut self) { self.meow(); }
 
-        fn eat() -> bool {
+        fn eat(&mut self) -> bool {
             if self.how_hungry > 0 {
                 error!("OM NOM NOM");
                 self.how_hungry -= 2;

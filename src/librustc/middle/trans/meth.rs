@@ -28,21 +28,17 @@ use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::monomorphize;
 use middle::trans::type_of::*;
+use middle::ty;
 use middle::ty::arg;
 use middle::typeck;
+use util::common::indenter;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::libc::c_uint;
-use std::oldmap::HashMap;
 use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
-use syntax::ast_util::local_def;
+use syntax::ast_util;
 use syntax::print::pprust::expr_to_str;
 use syntax::{ast, ast_map};
-
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
 
 /**
 The main "translation" pass for methods.  Generates code
@@ -51,13 +47,13 @@ be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 pub fn trans_impl(ccx: @CrateContext, +path: path, name: ast::ident,
-                  methods: ~[@ast::method], tps: ~[ast::ty_param],
+                  methods: ~[@ast::method], generics: &ast::Generics,
                   self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
-    if tps.len() > 0u { return; }
+    if !generics.ty_params.is_empty() { return; }
     let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) |method| {
-        if method.tps.len() == 0u {
+        if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(/*bad*/copy sub_path,
                                        path_name(method.ident));
@@ -356,7 +352,7 @@ pub fn trans_static_method_callee(bcx: block,
 
 pub fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
     -> Option<ast::def_id> {
-    ms.find(|m| m.ident == name).map(|m| local_def(m.id))
+    ms.find(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
 }
 
 pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
@@ -415,7 +411,7 @@ pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
     debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
     if m_id.crate == ast::local_crate {
         match ccx.tcx.items.find(&m_id.node) {
-            Some(ast_map::node_method(m, _, _)) => m.tps.len(),
+            Some(ast_map::node_method(m, _, _)) => m.generics.ty_params.len(),
             None => {
                 match ccx.tcx.provided_method_sources.find(&m_id) {
                     Some(source) => {
@@ -425,9 +421,9 @@ pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
                     None => fail!()
                 }
             }
-            Some(ast_map::node_trait_method(@ast::provided(@ref m), _, _))
-                => {
-                m.tps.len()
+            Some(ast_map::node_trait_method(@ast::provided(@ref m),
+                                            _, _)) => {
+                m.generics.ty_params.len()
             }
             copy e => fail!(fmt!("method_ty_param_count %?", e))
         }
@@ -730,7 +726,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
-    let llcallee_ty = type_of::type_of_fn_from_ty(ccx, callee_ty);
+    let llcallee_ty = type_of_fn_from_ty(ccx, callee_ty);
     let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method]));
     let mptr = PointerCast(bcx, mptr, T_ptr(llcallee_ty));
 
@@ -873,27 +869,11 @@ pub fn trans_trait_cast(bcx: block,
     match vstore {
         ty::vstore_slice(*) | ty::vstore_box => {
             let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-            if bcx.tcx().legacy_boxed_traits.contains_key(&id) {
-                // Allocate an @ box and store the value into it
-                let MallocResult {bcx: new_bcx, box: llbox, body: body} =
-                    malloc_boxed(bcx, v_ty);
-                bcx = new_bcx;
-                add_clean_free(bcx, llbox, heap_managed);
-                bcx = expr::trans_into(bcx, val, SaveIn(body));
-                revoke_clean(bcx, llbox);
-
-                // Store the @ box into the pair
-                Store(bcx, llbox, PointerCast(bcx,
-                                              llboxdest,
-                                              T_ptr(val_ty(llbox))));
-            } else {
-                // Just store the pointer into the pair.
-                llboxdest = PointerCast(bcx,
-                                        llboxdest,
-                                        T_ptr(type_of::type_of(bcx.ccx(),
-                                                               v_ty)));
-                bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
-            }
+            // Just store the pointer into the pair.
+            llboxdest = PointerCast(bcx,
+                                    llboxdest,
+                                    T_ptr(type_of(bcx.ccx(), v_ty)));
+            bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
         }
         ty::vstore_uniq => {
             // Translate the uniquely-owned value into the second element of
@@ -901,7 +881,7 @@ pub fn trans_trait_cast(bcx: block,
             let mut llvaldest = GEPi(bcx, lldest, [0, 1]);
             llvaldest = PointerCast(bcx,
                                     llvaldest,
-                                    T_ptr(type_of::type_of(bcx.ccx(), v_ty)));
+                                    T_ptr(type_of(bcx.ccx(), v_ty)));
             bcx = expr::trans_into(bcx, val, SaveIn(llvaldest));
 
             // Get the type descriptor of the wrapped value and store it into

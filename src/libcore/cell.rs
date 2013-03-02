@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::option;
-use core::prelude::*;
+use option;
+use prelude::*;
 
 /// A dynamic, mutable location.
 ///
@@ -28,7 +28,7 @@ pub pure fn empty_cell<T>() -> Cell<T> {
     Cell { value: None }
 }
 
-impl<T> Cell<T> {
+pub impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
     fn take() -> T {
         if self.is_empty() {

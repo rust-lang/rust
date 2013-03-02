@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn want_slice(v: &[int]) -> int {
-    let mut sum = 0;
-    for vec::each(v) |i| { sum += *i; }
-    return sum;
-}
+pub fn main() {
+    assert (~[0, 1]).to_str() == ~"[0, 1]";
+    assert (&[1, 2]).to_str() == ~"[1, 2]";
+    assert (@[2, 3]).to_str() == ~"[2, 3]";
 
-fn has_mut_vec(+v: @~[mut int]) -> int {
-    want_slice(*v) //~ ERROR illegal borrow unless pure
-        //~^ NOTE impure due to access to impure function
-}
+    let foo = ~[3, 4];
+    let bar = &[4, 5];
+    let baz = @[5, 6];
 
-fn main() {
-    assert has_mut_vec(@~[mut 1, 2, 3]) == 6;
+    assert foo.to_str() == ~"[3, 4]";
+    assert bar.to_str() == ~"[4, 5]";
+    assert baz.to_str() == ~"[5, 6]";
+
 }

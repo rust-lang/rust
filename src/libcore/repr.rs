@@ -167,7 +167,7 @@ impl MovePtr for ReprVisitor {
     }
 }
 
-impl ReprVisitor {
+pub impl ReprVisitor {
 
     // Various helpers for the TyVisitor impl
 
@@ -201,7 +201,7 @@ impl ReprVisitor {
         unsafe {
             let mut u = ReprVisitor(ptr, self.writer);
             let v = reflect::MovePtrAdaptor(u);
-            visit_tydesc(inner, (v) as @TyVisitor);
+            visit_tydesc(inner, @v as @TyVisitor);
             true
         }
     }
@@ -570,7 +570,7 @@ pub fn write_repr<T>(writer: @Writer, object: &T) {
         let tydesc = intrinsic::get_tydesc::<T>();
         let mut u = ReprVisitor(ptr, writer);
         let v = reflect::MovePtrAdaptor(u);
-        visit_tydesc(tydesc, (v) as @TyVisitor)
+        visit_tydesc(tydesc, @v as @TyVisitor)
     }
 }
 
@@ -602,7 +602,6 @@ fn test_repr() {
     exact_test(&(@10), "@10");
     exact_test(&(@mut 10), "@10");
     exact_test(&(~10), "~10");
-    exact_test(&(~mut 10), "~mut 10");
     exact_test(&(&10), "&10");
     let mut x = 10;
     exact_test(&(&mut x), "&mut 10");

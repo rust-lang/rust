@@ -15,6 +15,7 @@ use sha1;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use sort;
 
+use core::cell::Cell;
 use core::cmp;
 use core::either::{Either, Left, Right};
 use core::io;
@@ -131,7 +132,7 @@ impl cmp::Ord for WorkKey {
     }
 }
 
-impl WorkKey {
+pub impl WorkKey {
     static fn new(kind: &str, name: &str) -> WorkKey {
     WorkKey { kind: kind.to_owned(), name: name.to_owned() }
     }
@@ -139,7 +140,7 @@ impl WorkKey {
 
 type WorkMap = LinearMap<WorkKey, ~str>;
 
-pub impl<S:Encoder> Encodable<S> for WorkMap {
+impl<S:Encoder> Encodable<S> for WorkMap {
     fn encode(&self, s: &S) {
         let mut d = ~[];
         for self.each |&(k, v)| {
@@ -150,7 +151,7 @@ pub impl<S:Encoder> Encodable<S> for WorkMap {
     }
 }
 
-pub impl<D:Decoder> Decodable<D> for WorkMap {
+impl<D:Decoder> Decodable<D> for WorkMap {
     static fn decode(&self, d: &D) -> WorkMap {
         let v : ~[(WorkKey,~str)] = Decodable::decode(d);
         let mut w = LinearMap::new();
@@ -167,7 +168,7 @@ struct Database {
     mut db_dirty: bool
 }
 
-impl Database {
+pub impl Database {
     fn prepare(&mut self, fn_name: &str,
                declared_inputs: &WorkMap) -> Option<(WorkMap, WorkMap, ~str)>
     {
@@ -198,7 +199,7 @@ struct Logger {
     a: ()
 }
 
-impl Logger {
+pub impl Logger {
     fn info(i: &str) {
         io::println(~"workcache: " + i.to_owned());
     }
@@ -253,7 +254,7 @@ fn digest_file(path: &Path) -> ~str {
     sha.result_str()
 }
 
-impl Context {
+pub impl Context {
 
     static fn new(db: @Mut<Database>,
                   lg: @Mut<Logger>,
@@ -339,11 +340,11 @@ impl TPrep for @Mut<Prep> {
                     let mut blk = None;
                     blk <-> bo;
                     let blk = blk.unwrap();
-                    let chan = ~mut Some(chan);
+                    let chan = Cell(chan);
                     do task::spawn || {
                         let exe = Exec{discovered_inputs: LinearMap::new(),
                                        discovered_outputs: LinearMap::new()};
-                        let chan = option::swap_unwrap(&mut *chan);
+                        let chan = chan.take();
                         let v = blk(&exe);
                         send_one(chan, (exe, v));
                     }
@@ -355,7 +356,7 @@ impl TPrep for @Mut<Prep> {
     }
 }
 
-impl<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>> Work<T> {
+pub impl<T:Owned+Encodable<json::Encoder>+Decodable<json::Decoder>> Work<T> {
     static fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }

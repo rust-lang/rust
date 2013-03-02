@@ -98,10 +98,10 @@ use util::common::indenter;
 use util::ppaux::expr_repr;
 
 use core::dvec::DVec;
+use core::hashmap::linear::LinearMap;
 use core::result;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
@@ -131,7 +131,7 @@ pub fn lookup(
         callee_id: callee_id,
         m_name: m_name,
         supplied_tps: supplied_tps,
-        impl_dups: HashMap(),
+        impl_dups: @mut LinearMap::new(),
         inherent_candidates: DVec(),
         extension_candidates: DVec(),
         deref_args: deref_args,
@@ -149,7 +149,7 @@ pub struct LookupContext {
     callee_id: node_id,
     m_name: ast::ident,
     supplied_tps: &[ty::t],
-    impl_dups: HashMap<def_id, ()>,
+    impl_dups: @mut LinearMap<def_id, ()>,
     inherent_candidates: DVec<Candidate>,
     extension_candidates: DVec<Candidate>,
     deref_args: check::DerefArgs,
@@ -799,26 +799,28 @@ pub impl LookupContext {
                 let region = self.infcx().next_region_var(self.expr.span,
                                                           self.expr.id);
                 (ty::mk_rptr(tcx, region, self_mt),
-                 ty::AutoAdjustment {
+                 ty::AutoDerefRef(ty::AutoDerefRef {
                      autoderefs: autoderefs+1,
                      autoref: Some(ty::AutoRef {kind: AutoPtr,
                                                 region: region,
-                                                mutbl: self_mt.mutbl})})
+                                                mutbl: self_mt.mutbl})}))
             }
             ty::ty_evec(self_mt, vstore_slice(_))
             if self_mt.mutbl == m_mutbl => {
                 let region = self.infcx().next_region_var(self.expr.span,
                                                           self.expr.id);
                 (ty::mk_evec(tcx, self_mt, vstore_slice(region)),
-                 ty::AutoAdjustment {
+                 ty::AutoDerefRef(ty::AutoDerefRef {
                     autoderefs: autoderefs,
                     autoref: Some(ty::AutoRef {kind: AutoBorrowVec,
                                                region: region,
-                                               mutbl: self_mt.mutbl})})
+                                               mutbl: self_mt.mutbl})}))
             }
             _ => {
-                (self_ty, ty::AutoAdjustment {autoderefs: autoderefs,
-                                              autoref: None})
+                (self_ty,
+                 ty::AutoDerefRef(ty::AutoDerefRef {
+                     autoderefs: autoderefs,
+                     autoref: None}))
             }
         };
     }
@@ -947,14 +949,14 @@ pub impl LookupContext {
                 Some(mme) => {
                     self.fcx.write_adjustment(
                         self.self_expr.id,
-                        @ty::AutoAdjustment {
+                        @ty::AutoDerefRef(ty::AutoDerefRef {
                             autoderefs: autoderefs,
                             autoref: Some(ty::AutoRef {
                                 kind: kind,
                                 region: region,
                                 mutbl: *mutbl,
                             }),
-                        });
+                        }));
                     return Some(mme);
                 }
             }

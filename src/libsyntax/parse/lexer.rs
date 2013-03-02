@@ -127,7 +127,7 @@ impl reader for StringReader {
     fn dup(@mut self) -> reader { dup_string_reader(self) as reader }
 }
 
-pub impl reader for TtReader {
+impl reader for TtReader {
     fn is_eof(@mut self) -> bool { self.cur_tok == token::EOF }
     fn next_token(@mut self) -> TokenAndSpan { tt_next_token(self) }
     fn fatal(@mut self, m: ~str) -> ! {
@@ -764,17 +764,23 @@ fn consume_whitespace(rdr: @mut StringReader) {
 
 #[cfg(test)]
 pub mod test {
-
     use super::*;
-    use util::interner;
+
+    use ast;
+    use codemap::{BytePos, CodeMap, span};
+    use core::option::None;
     use diagnostic;
+    use parse::token;
+    use util::interner;
     use util::testing::{check_equal, check_equal_ptr};
 
+    // represents a testing reader (incl. both reader and interner)
     struct Env {
         interner: @token::ident_interner,
         string_reader: @mut StringReader
     }
 
+    // open a string reader for the given string
     fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"zebra.rs", @teststr);
@@ -807,6 +813,52 @@ pub mod test {
         check_equal (tok3,tok4);
         // the lparen is already read:
         check_equal (string_reader.last_pos,BytePos(29))
+    }
+
+    // check that the given reader produces the desired stream
+    // of tokens (stop checking after exhausting the expected vec)
+    fn check_tokenization (env: Env, expected: ~[token::Token]) {
+        for expected.each |expected_tok| {
+            let TokenAndSpan {tok:actual_tok, sp: _} =
+                env.string_reader.next_token();
+            check_equal(&actual_tok,expected_tok);
+        }
+    }
+
+    // make the identifier by looking up the string in the interner
+    fn mk_ident (env: Env, id: ~str, is_mod_name: bool) -> token::Token {
+        token::IDENT (env.interner.intern(@id),is_mod_name)
+    }
+
+    #[test] fn doublecolonparsing () {
+        let env = setup (~"a b");
+        check_tokenization (env,
+                           ~[mk_ident (env,~"a",false),
+                             mk_ident (env,~"b",false)]);
+    }
+
+    #[test] fn dcparsing_2 () {
+        let env = setup (~"a::b");
+        check_tokenization (env,
+                           ~[mk_ident (env,~"a",true),
+                             token::MOD_SEP,
+                             mk_ident (env,~"b",false)]);
+    }
+
+    #[test] fn dcparsing_3 () {
+        let env = setup (~"a ::b");
+        check_tokenization (env,
+                           ~[mk_ident (env,~"a",false),
+                             token::MOD_SEP,
+                             mk_ident (env,~"b",false)]);
+    }
+
+    #[test] fn dcparsing_4 () {
+        let env = setup (~"a:: b");
+        check_tokenization (env,
+                           ~[mk_ident (env,~"a",true),
+                             token::MOD_SEP,
+                             mk_ident (env,~"b",false)]);
     }
 
     #[test] fn character_a() {

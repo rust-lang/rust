@@ -35,7 +35,6 @@ use libc::{mode_t, pid_t, FILE};
 use option;
 use option::{Some, None};
 use prelude::*;
-use private;
 use ptr;
 use str;
 use task;
@@ -109,7 +108,7 @@ pub mod win32 {
             let mut done = false;
             while !done {
                 let mut k: DWORD = 0;
-                let buf = vec::cast_to_mut(vec::from_elem(n as uint, 0u16));
+                let mut buf = vec::from_elem(n as uint, 0u16);
                 do vec::as_mut_buf(buf) |b, _sz| {
                     k = f(b, TMPBUF_SZ as DWORD);
                     if k == (0 as DWORD) {
@@ -145,8 +144,8 @@ This uses a per-runtime lock to serialize access.
 FIXME #4726: It would probably be appropriate to make this a real global
 */
 fn with_env_lock<T>(f: &fn() -> T) -> T {
-    use private::global::global_data_clone_create;
-    use private::{Exclusive, exclusive};
+    use unstable::global::global_data_clone_create;
+    use unstable::{Exclusive, exclusive};
 
     struct SharedValue(());
     type ValueMutex = Exclusive<SharedValue>;
@@ -566,17 +565,13 @@ pub fn path_exists(p: &Path) -> bool {
  *
  * If the given path is relative, return it prepended with the current working
  * directory. If the given path is already an absolute path, return it
- * as is.
+ * as is.  This is a shortcut for calling os::getcwd().unsafe_join(p)
  */
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
 pub fn make_absolute(p: &Path) -> Path {
-    if p.is_absolute {
-        copy *p
-    } else {
-        getcwd().push_many(p.components)
-    }
+    getcwd().unsafe_join(p)
 }
 
 
@@ -1025,10 +1020,10 @@ extern {
 pub mod consts {
 
     #[cfg(unix)]
-    use os::consts::unix::*;
+    pub use os::consts::unix::*;
 
     #[cfg(windows)]
-    use os::consts::windows::*;
+    pub use os::consts::windows::*;
 
     pub mod unix {
         pub const FAMILY: &str = "unix";
@@ -1039,19 +1034,19 @@ pub mod consts {
     }
 
     #[cfg(target_os = "macos")]
-    use os::consts::macos::*;
+    pub use os::consts::macos::*;
 
     #[cfg(target_os = "freebsd")]
-    use os::consts::freebsd::*;
+    pub use os::consts::freebsd::*;
 
     #[cfg(target_os = "linux")]
-    use os::consts::linux::*;
+    pub use os::consts::linux::*;
 
     #[cfg(target_os = "android")]
-    use os::consts::android::*;
+    pub use os::consts::android::*;
 
     #[cfg(target_os = "win32")]
-    use os::consts::win32::*;
+    pub use os::consts::win32::*;
 
     pub mod macos {
         pub const SYSNAME: &str = "macos";
@@ -1090,13 +1085,13 @@ pub mod consts {
 
 
     #[cfg(target_arch = "x86")]
-    use os::consts::x86::*;
+    pub use os::consts::x86::*;
 
     #[cfg(target_arch = "x86_64")]
-    use os::consts::x86_64::*;
+    pub use os::consts::x86_64::*;
 
     #[cfg(target_arch = "arm")]
-    use os::consts::arm::*;
+    pub use os::consts::arm::*;
 
     pub mod x86 {
         pub const ARCH: &str = "x86";

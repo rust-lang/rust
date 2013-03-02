@@ -18,7 +18,7 @@ struct dog {
   volume : @mut int,
 }
 
-impl dog {
+pub impl dog {
     priv fn bark() -> int {
       debug!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
@@ -55,7 +55,7 @@ impl noisy for cat {
   fn speak() -> int { self.meow() as int }
 }
 
-impl cat {
+pub impl cat {
   fn meow_count() -> uint { *self.meows }
 }
 
@@ -86,8 +86,8 @@ fn annoy_neighbors<T:noisy>(critter: T) {
 pub fn main() {
   let nyan : cat  = cat(0u, 2, ~"nyan");
   let whitefang : dog = dog();
-  annoy_neighbors((copy nyan) as noisy);
-  annoy_neighbors((copy whitefang) as noisy);
+  annoy_neighbors(@(copy nyan) as @noisy);
+  annoy_neighbors(@(copy whitefang) as @noisy);
   assert(nyan.meow_count() == 10u);
   assert(*whitefang.volume == 1);
 }

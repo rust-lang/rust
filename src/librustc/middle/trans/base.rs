@@ -44,6 +44,7 @@ use middle::borrowck::RootInfo;
 use middle::pat_util::*;
 use middle::resolve;
 use middle::trans::_match;
+use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
@@ -56,12 +57,15 @@ use middle::trans::foreign;
 use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::machine;
+use middle::trans::machine::llsize_of;
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::reachable;
 use middle::trans::shape::*;
 use middle::trans::tvec;
+use middle::trans::type_of;
 use middle::trans::type_of::*;
+use middle::ty;
 use middle::ty::arg;
 use util::common::indenter;
 use util::ppaux::{ty_to_str, ty_to_short_str};
@@ -69,6 +73,7 @@ use util::ppaux;
 
 use core::either;
 use core::hash;
+use core::hashmap::linear::LinearMap;
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
@@ -76,8 +81,8 @@ use core::option::{is_none, is_some};
 use core::option;
 use core::uint;
 use std::oldmap::HashMap;
-use std::oldsmallintmap;
 use std::{oldmap, time, list};
+use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::attr;
@@ -91,7 +96,10 @@ use syntax::{ast, ast_util, codemap, ast_map};
 
 pub struct icx_popper {
     ccx: @CrateContext,
-    drop {
+}
+
+impl Drop for icx_popper {
+    fn finalize(&self) {
       if self.ccx.sess.count_llvm_insns() {
           self.ccx.stats.llvm_insn_ctxt.pop();
       }
@@ -108,7 +116,7 @@ pub trait get_insn_ctxt {
     fn insn_ctxt(&self, s: &str) -> icx_popper;
 }
 
-pub impl get_insn_ctxt for @CrateContext {
+impl get_insn_ctxt for @CrateContext {
     fn insn_ctxt(&self, s: &str) -> icx_popper {
         debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
@@ -118,13 +126,13 @@ pub impl get_insn_ctxt for @CrateContext {
     }
 }
 
-pub impl get_insn_ctxt for block {
+impl get_insn_ctxt for block {
     fn insn_ctxt(&self, s: &str) -> icx_popper {
         self.ccx().insn_ctxt(s)
     }
 }
 
-pub impl get_insn_ctxt for fn_ctxt {
+impl get_insn_ctxt for fn_ctxt {
     fn insn_ctxt(&self, s: &str) -> icx_popper {
         self.ccx.insn_ctxt(s)
     }
@@ -305,7 +313,7 @@ pub fn malloc_raw_dyn(bcx: block,
     // Allocate space:
     let tydesc = PointerCast(bcx, static_ti.tydesc, T_ptr(T_i8()));
     let rval = alloca(bcx, T_ptr(T_i8()));
-    let bcx = callee::trans_rtcall_or_lang_call(
+    let bcx = callee::trans_lang_call(
         bcx,
         langcall,
         ~[tydesc, size],
@@ -1027,16 +1035,14 @@ pub fn add_root_cleanup(bcx: block,
         let mut bcx_sid = bcx;
         loop {
             bcx_sid = match bcx_sid.node_info {
-              Some(NodeInfo { id, _ }) if id == scope_id => {
-                return bcx_sid
-              }
-              _ => {
-                match bcx_sid.parent {
-                  None => bcx.tcx().sess.bug(
-                      fmt!("no enclosing scope with id %d", scope_id)),
-                  Some(bcx_par) => bcx_par
+                Some(NodeInfo { id, _ }) if id == scope_id => {
+                    return bcx_sid
                 }
-              }
+                _ => match bcx_sid.parent {
+                    None => bcx.tcx().sess.bug(
+                            fmt!("no enclosing scope with id %d", scope_id)),
+                    Some(bcx_par) => bcx_par
+                }
             }
         }
     }
@@ -1129,10 +1135,10 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
     }
 
     let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      Some(local_mem(v)) => v,
-      _ => { bcx.tcx().sess.span_bug(local.span,
-                        ~"init_local: Someone forgot to document why it's\
-                         safe to assume local.node.init must be local_mem!");
+        Some(&local_mem(v)) => v,
+        _ => { bcx.tcx().sess.span_bug(local.span,
+                ~"init_local: Someone forgot to document why it's\
+                safe to assume local.node.init must be local_mem!");
         }
     };
 
@@ -1421,17 +1427,17 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
 pub fn block_locals(b: &ast::blk, it: fn(@ast::local)) {
     for vec::each(b.node.stmts) |s| {
         match s.node {
-          ast::stmt_decl(d, _) => {
-            match /*bad*/copy d.node {
-              ast::decl_local(locals) => {
-                for vec::each(locals) |local| {
-                    it(*local);
+            ast::stmt_decl(d, _) => {
+                match /*bad*/copy d.node {
+                    ast::decl_local(locals) => {
+                        for vec::each(locals) |local| {
+                            it(*local);
+                        }
+                    }
+                    _ => {/* fall through */ }
                 }
-              }
-              _ => {/* fall through */ }
             }
-          }
-          _ => {/* fall through */ }
+            _ => {/* fall through */ }
         }
     }
 }
@@ -1616,9 +1622,9 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llself: None,
           personality: None,
           loop_ret: None,
-          llargs: @HashMap(),
-          lllocals: @HashMap(),
-          llupvars: @HashMap(),
+          llargs: @mut LinearMap::new(),
+          lllocals: @mut LinearMap::new(),
+          llupvars: @mut LinearMap::new(),
           id: id,
           impl_id: impl_id,
           param_substs: param_substs,
@@ -1933,7 +1939,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
         let llarg = match fcx.llargs.find(&va.id) {
-            Some(local_mem(x)) => x,
+            Some(&local_mem(x)) => x,
             _ => fail!(~"trans_enum_variant: how do we know this works?"),
         };
         let arg_ty = arg_tys[i].ty;
@@ -1984,7 +1990,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     for fields.eachi |i, field| {
         let lldestptr = GEPi(bcx, fcx.llretptr, [0, 0, i]);
         let llarg = match fcx.llargs.get(&field.node.id) {
-            local_mem(x) => x,
+            &local_mem(x) => x,
             _ => {
                 ccx.tcx.sess.bug(~"trans_tuple_struct: llarg wasn't \
                                    local_mem")
@@ -2104,9 +2110,9 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
             }
         }
       }
-      ast::item_impl(tps, _, _, ms) => {
-        meth::trans_impl(ccx, /*bad*/copy *path, item.ident, ms, tps, None,
-                         item.id);
+      ast::item_impl(ref generics, _, _, ref ms) => {
+        meth::trans_impl(ccx, /*bad*/copy *path, item.ident, *ms,
+                         generics, None, item.id);
       }
       ast::item_mod(m) => {
         trans_mod(ccx, m);
@@ -2170,11 +2176,6 @@ pub fn trans_mod(ccx: @CrateContext, m: ast::_mod) {
     for vec::each(m.items) |item| {
         trans_item(ccx, **item);
     }
-}
-
-pub fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
-    // Bit of a kludge: pick the fn typeref out of the pair.
-    return struct_elt(llpairty, 0u);
 }
 
 pub fn register_fn(ccx: @CrateContext,
@@ -2273,7 +2274,7 @@ pub fn create_main_wrapper(ccx: @CrateContext,
         fn main_name() -> ~str { return ~"WinMain@16"; }
         #[cfg(unix)]
         fn main_name() -> ~str { return ~"main"; }
-        let llfty = T_fn(~[ccx.int_type, ccx.int_type], ccx.int_type);
+        let llfty = T_fn(~[ccx.int_type, T_ptr(T_i8())], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
@@ -2291,33 +2292,50 @@ pub fn create_main_wrapper(ccx: @CrateContext,
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
         }
         let crate_map = ccx.crate_map;
-        let start_ty = T_fn(~[val_ty(rust_main), ccx.int_type, ccx.int_type,
-                             val_ty(crate_map)], ccx.int_type);
-        let start = decl_cdecl_fn(ccx.llmod, ~"rust_start", start_ty);
+        let start_def_id = ccx.tcx.lang_items.start_fn();
+        let start_fn = if start_def_id.crate == ast::local_crate {
+            ccx.sess.bug(~"start lang item is never in the local crate")
+        } else {
+            let start_fn_type = csearch::get_type(ccx.tcx,
+                                                  start_def_id).ty;
+            trans_external_path(ccx, start_def_id, start_fn_type)
+        };
+
+        let retptr = unsafe {
+            llvm::LLVMBuildAlloca(bld, ccx.int_type, noname())
+        };
 
         let args = unsafe {
+            let opaque_rust_main = llvm::LLVMBuildPointerCast(
+                bld, rust_main, T_ptr(T_i8()), noname());
+            let opaque_crate_map = llvm::LLVMBuildPointerCast(
+                bld, crate_map, T_ptr(T_i8()), noname());
+
             if *ccx.sess.building_library {
                 ~[
-                    rust_main,
+                    retptr,
+                    C_null(T_opaque_box_ptr(ccx)),
+                    opaque_rust_main,
                     llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
                     llvm::LLVMConstInt(T_i32(), 0u as c_ulonglong, False),
-                    crate_map
+                    opaque_crate_map
                 ]
             } else {
                 ~[
-                    rust_main,
+                    retptr,
+                    C_null(T_opaque_box_ptr(ccx)),
+                    opaque_rust_main,
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint),
-                    crate_map
+                    opaque_crate_map
                 ]
             }
         };
 
-        let result = unsafe {
-            llvm::LLVMBuildCall(bld, start, vec::raw::to_ptr(args),
-                                args.len() as c_uint, noname())
-        };
         unsafe {
+            llvm::LLVMBuildCall(bld, start_fn, vec::raw::to_ptr(args),
+                                args.len() as c_uint, noname());
+            let result = llvm::LLVMBuildLoad(bld, retptr, noname());
             llvm::LLVMBuildRet(bld, result);
         }
     }
@@ -2352,33 +2370,33 @@ pub fn get_dtor_symbol(ccx: @CrateContext,
                     -> ~str {
   let t = ty::node_id_to_type(ccx.tcx, id);
   match ccx.item_symbols.find(&id) {
-     Some(ref s) => (/*bad*/copy *s),
+     Some(&ref s) => /* bad */ copy *s,
      None if substs.is_none() => {
-       let s = mangle_exported_name(
-           ccx,
-           vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
-           t);
-       // XXX: Bad copy, use `@str`?
-       ccx.item_symbols.insert(id, copy s);
-       s
+         let s = mangle_exported_name(
+                 ccx,
+                 vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
+                 t);
+         // XXX: Bad copy, use `@str`?
+         ccx.item_symbols.insert(id, copy s);
+         s
      }
-     None   => {
-       // Monomorphizing, so just make a symbol, don't add
-       // this to item_symbols
-       match substs {
-         Some(ss) => {
-           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
-           mangle_exported_name(
-               ccx,
-               vec::append(path,
-                           ~[path_name((ccx.names)(~"dtor"))]),
-               mono_ty)
+     None => {
+         // Monomorphizing, so just make a symbol, don't add
+         // this to item_symbols
+         match substs {
+             Some(ss) => {
+                 let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
+                 mangle_exported_name(
+                         ccx,
+                         vec::append(path,
+                             ~[path_name((ccx.names)(~"dtor"))]),
+                         mono_ty)
+             }
+             None => {
+                 ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
+                             couldn't find a symbol for dtor %?", path));
+             }
          }
-         None => {
-             ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
-               couldn't find a symbol for dtor %?", path));
-         }
-       }
      }
   }
 }
@@ -3066,11 +3084,11 @@ pub fn trans_crate(sess: session::Session,
               item_vals: HashMap(),
               exp_map2: emap2,
               reachable: reachable,
-              item_symbols: HashMap(),
+              item_symbols: @mut LinearMap::new(),
               link_meta: link_meta,
               enum_sizes: ty::new_ty_hash(),
               discrims: HashMap(),
-              discrim_symbols: HashMap(),
+              discrim_symbols: @mut LinearMap::new(),
               tydescs: ty::new_ty_hash(),
               finished_tydescs: @mut false,
               external: HashMap(),

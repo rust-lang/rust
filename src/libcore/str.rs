@@ -590,6 +590,40 @@ pub pure fn split_str_nonempty(s: &a/str, sep: &b/str) -> ~[~str] {
     result
 }
 
+/// Levenshtein Distance between two strings
+pub fn levdistance(s: &str, t: &str) -> uint {
+
+    let slen = str::len(s);
+    let tlen = str::len(t);
+
+    if slen == 0 { return tlen; }
+    if tlen == 0 { return slen; }
+
+    let mut dcol = vec::from_fn(tlen + 1, |x| x);
+
+    for str::each_chari(s) |i, sc| {
+
+        let mut current = i;
+        dcol[0] = current + 1;
+
+        for str::each_chari(t) |j, tc| {
+
+            let mut next = dcol[j + 1];
+
+            if sc == tc {
+                dcol[j + 1] = current;
+            } else {
+                dcol[j + 1] = ::cmp::min(current, next);
+                dcol[j + 1] = ::cmp::min(dcol[j + 1], dcol[j]) + 1;
+            }
+
+            current = next;
+        }
+    }
+
+    return dcol[tlen];
+}
+
 /**
  * Splits a string into a vector of the substrings separated by LF ('\n')
  */
@@ -1798,6 +1832,13 @@ const tag_five_b: uint = 248u;
 const max_five_b: uint = 67108864u;
 const tag_six_b: uint = 252u;
 
+// Constants used for converting strs to floats
+pub const inf_buf: [u8*3] = ['i' as u8, 'n' as u8, 'f' as u8];
+pub const positive_inf_buf: [u8*4] = ['+' as u8, 'i' as u8,
+                                      'n' as u8, 'f' as u8];
+pub const negative_inf_buf: [u8*4] = ['-' as u8, 'i' as u8,
+                                      'n' as u8, 'f' as u8];
+pub const nan_buf: [u8*3] = ['N' as u8, 'a' as u8, 'N' as u8];
 
 /**
  * Work with the byte buffer of a string.
@@ -2328,7 +2369,7 @@ pub trait OwnedStr {
     fn push_char(&mut self, c: char);
 }
 
-pub impl OwnedStr for ~str {
+impl OwnedStr for ~str {
     fn push_str(&mut self, v: &str) {
         push_str(self, v);
     }
@@ -2341,6 +2382,7 @@ pub impl OwnedStr for ~str {
 #[cfg(test)]
 mod tests {
     use char;
+    use option::Some;
     use debug;
     use libc::c_char;
     use libc;

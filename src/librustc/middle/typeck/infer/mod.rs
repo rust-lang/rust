@@ -276,8 +276,7 @@ use core::result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
 use core::result;
 use core::vec;
 use std::list::Nil;
-use std::oldmap::HashMap;
-use std::oldsmallintmap;
+use std::smallintmap::SmallIntMap;
 use syntax::ast::{ret_style, purity};
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
@@ -287,6 +286,7 @@ use syntax::codemap;
 use syntax::ast_util;
 use syntax::codemap::span;
 
+pub mod macros;
 pub mod combine;
 pub mod glb;
 pub mod lattice;
@@ -353,7 +353,7 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
 
 fn new_ValsAndBindings<V:Copy,T:Copy>() -> ValsAndBindings<V, T> {
     ValsAndBindings {
-        vals: oldsmallintmap::mk(),
+        vals: @mut SmallIntMap::new(),
         bindings: ~[]
     }
 }
@@ -550,7 +550,7 @@ struct Snapshot {
     region_vars_snapshot: uint,
 }
 
-impl @mut InferCtxt {
+pub impl @mut InferCtxt {
     fn combine_fields(&self, a_is_expected: bool,
                       span: span) -> CombineFields {
         CombineFields {infcx: *self,
@@ -642,7 +642,7 @@ fn next_simple_var<V:Copy,T:Copy>(
     return id;
 }
 
-impl @mut InferCtxt {
+pub impl @mut InferCtxt {
     fn next_ty_var_id(&self) -> TyVid {
         let id = self.ty_var_counter;
         self.ty_var_counter += 1;
@@ -734,10 +734,10 @@ impl @mut InferCtxt {
 
     fn report_mismatched_types(&self, sp: span, e: ty::t, a: ty::t,
                                err: &ty::type_err) {
-        // Don't report an error if expected is ty_err
         let resolved_expected =
             self.resolve_type_vars_if_possible(e);
         let mk_msg = match ty::get(resolved_expected).sty {
+            // Don't report an error if expected is ty_err
             ty::ty_err => return,
             _ => {
                 // if I leave out : ~str, it infers &str and complains
@@ -780,4 +780,3 @@ impl @mut InferCtxt {
     }
 
 }
-

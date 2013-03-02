@@ -82,19 +82,18 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
-#[allow(structural_records)]; // Macros -- needs another snapshot
-
 use cmp::Eq;
 use cast::{forget, reinterpret_cast, transmute};
+use cell::Cell;
 use either::{Either, Left, Right};
 use kinds::Owned;
 use libc;
 use option;
 use option::{None, Option, Some, unwrap};
 use pipes;
-use private::intrinsics;
+use unstable::intrinsics;
 use ptr;
-use private;
+use unstable;
 use task;
 use vec;
 
@@ -345,7 +344,10 @@ pub unsafe fn get_buffer<T>(p: *PacketHeader) -> ~Buffer<T> {
 struct BufferResource<T> {
     buffer: ~Buffer<T>,
 
-    drop {
+}
+
+impl<T> ::ops::Drop for BufferResource<T> {
+    fn finalize(&self) {
         unsafe {
             let b = move_it!(self.buffer);
             //let p = ptr::addr_of(*b);
@@ -796,7 +798,7 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *Packet<T>)
     }
 }
 
-impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
+pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
@@ -853,7 +855,7 @@ impl<T:Owned,Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
     }
 }
 
-impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
+pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
@@ -917,11 +919,9 @@ pub fn spawn_service<T:Owned,Tb:Owned>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut Some(server);
-    do task::spawn || {
-        let mut server_ = None;
-        server_ <-> *server;
-        service(option::unwrap(server_))
+    let server = Cell(server);
+    do task::spawn {
+        service(server.take());
     }
 
     client
@@ -941,11 +941,9 @@ pub fn spawn_service_recv<T:Owned,Tb:Owned>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut Some(server);
-    do task::spawn || {
-        let mut server_ = None;
-        server_ <-> *server;
-        service(option::unwrap(server_))
+    let server = Cell(server);
+    do task::spawn {
+        service(server.take())
     }
 
     client

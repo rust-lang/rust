@@ -145,9 +145,10 @@
 use core::prelude::*;
 
 use back::abi;
-use lib::llvm::llvm;
-use lib::llvm::{ValueRef, BasicBlockRef};
+use lib;
+use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
+use middle::borrowck::root_map_key;
 use middle::pat_util::*;
 use middle::resolve::DefMap;
 use middle::trans::base::*;
@@ -156,26 +157,27 @@ use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::controlflow;
+use middle::trans::datum;
 use middle::trans::datum::*;
 use middle::trans::expr::Dest;
 use middle::trans::expr;
 use middle::trans::glue;
+use middle::trans::tvec;
+use middle::trans::type_of;
+use middle::ty;
 use util::common::indenter;
 
 use core::dvec::DVec;
 use core::dvec;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
+use core::libc::c_ulonglong;
 use syntax::ast::def_id;
 use syntax::ast;
-use syntax::ast_util::{dummy_sp, path_to_ident};
+use syntax::ast::ident;
+use syntax::ast_util::path_to_ident;
 use syntax::ast_util;
-use syntax::codemap::span;
+use syntax::codemap::{span, dummy_sp};
 use syntax::print::pprust::pat_to_str;
-
-pub fn macros() {
-    // FIXME(#3114): Macro import/export.
-    include!("macros.rs");
-}
 
 // An option identifying a literal: either a unit-like struct or an
 // expression.
@@ -322,7 +324,7 @@ pub struct BindingInfo {
     ty: ty::t,
 }
 
-pub type BindingsMap = HashMap<ident, BindingInfo>;
+pub type BindingsMap = @mut LinearMap<ident, BindingInfo>;
 
 pub struct ArmData {
     bodycx: block,
@@ -938,7 +940,7 @@ pub fn root_pats_as_necessary(bcx: block,
         let key = root_map_key {id: pat_id, derefs: 0u };
         match bcx.ccx().maps.root_map.find(&key) {
             None => (),
-            Some(root_info) => {
+            Some(&root_info) => {
                 // Note: the scope_id will always be the id of the match.  See
                 // the extended comment in rustc::middle::borrowck::preserve()
                 // for details (look for the case covering cat_discr).
@@ -1059,7 +1061,7 @@ pub fn compare_values(cx: block,
             let scratch_rhs = alloca(cx, val_ty(rhs));
             Store(cx, rhs, scratch_rhs);
             let did = cx.tcx().lang_items.uniq_str_eq_fn();
-            let bcx = callee::trans_rtcall_or_lang_call(cx, did,
+            let bcx = callee::trans_lang_call(cx, did,
                                                         ~[scratch_lhs,
                                                           scratch_rhs],
                                                         expr::SaveIn(
@@ -1074,7 +1076,7 @@ pub fn compare_values(cx: block,
             let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
                                                false);
             let did = cx.tcx().lang_items.str_eq_fn();
-            let bcx = callee::trans_rtcall_or_lang_call(cx, did,
+            let bcx = callee::trans_lang_call(cx, did,
                                                         ~[lhs, rhs],
                                                         expr::SaveIn(
                                                          scratch_result.val));
@@ -1610,7 +1612,7 @@ pub fn trans_match_inner(scope_cx: block,
         // to an alloca() that will be the value for that local variable.
         // Note that we use the names because each binding will have many ids
         // from the various alternatives.
-        let bindings_map = HashMap();
+        let bindings_map = @mut LinearMap::new();
         do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
             let ident = path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);

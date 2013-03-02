@@ -26,7 +26,8 @@ pub trait region_scope {
 }
 
 pub enum empty_rscope { empty_rscope }
-pub impl region_scope for empty_rscope {
+
+impl region_scope for empty_rscope {
     pure fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
         result::Ok(ty::re_static)
     }
@@ -40,7 +41,8 @@ pub impl region_scope for empty_rscope {
 }
 
 pub enum type_rscope = Option<ty::region_variance>;
-pub impl region_scope for type_rscope {
+
+impl region_scope for type_rscope {
     pure fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
         match **self {
           Some(_) => result::Ok(ty::re_bound(ty::br_self)),
@@ -68,13 +70,14 @@ pub fn bound_self_region(rp: Option<ty::region_variance>)
     }
 }
 
-pub struct anon_rscope { anon: ty::Region, base: region_scope }
+pub struct anon_rscope { anon: ty::Region, base: @region_scope }
 pub fn in_anon_rscope<RS:region_scope + Copy + Durable>(self: RS,
                                                         r: ty::Region)
                                                      -> @anon_rscope {
-    @anon_rscope {anon: r, base: self as region_scope}
+    @anon_rscope {anon: r, base: @self as @region_scope}
 }
-pub impl region_scope for @anon_rscope {
+
+impl region_scope for @anon_rscope {
     pure fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
         result::Ok(self.anon)
     }
@@ -94,10 +97,11 @@ pub struct binding_rscope {
 
 pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(self: RS)
     -> @mut binding_rscope {
-    let base = self as region_scope;
+    let base = @self as @region_scope;
     @mut binding_rscope { base: base, anon_bindings: 0 }
 }
-pub impl region_scope for @mut binding_rscope {
+
+impl region_scope for @mut binding_rscope {
     pure fn anon_region(&self, _span: span) -> Result<ty::Region, ~str> {
         // XXX: Unsafe to work around purity
         unsafe {

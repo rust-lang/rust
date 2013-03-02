@@ -22,7 +22,7 @@ use kinds::Copy;
 use libc;
 use libc::size_t;
 use option::{None, Option, Some};
-use private::intrinsics;
+use unstable::intrinsics;
 use ptr;
 use ptr::addr_of;
 use sys;
@@ -209,16 +209,6 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
     build_sized(size.get_or_default(4), builder)
 }
 
-/// Produces a mut vector from an immutable vector.
-pub pure fn cast_to_mut<T>(v: ~[T]) -> ~[mut T] {
-    unsafe { ::cast::transmute(v) }
-}
-
-/// Produces an immutable vector from a mut vector.
-pub pure fn cast_from_mut<T>(v: ~[mut T]) -> ~[T] {
-    unsafe { ::cast::transmute(v) }
-}
-
 // Accessors
 
 /// Returns the first element of a vector
@@ -274,9 +264,10 @@ pub pure fn slice<T>(v: &r/[T], start: uint, end: uint) -> &r/[T] {
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub pure fn mut_slice<T>(v: &r/[mut T], start: uint,
-                         end: uint) -> &r/[mut T] {
-
+pub pure fn mut_slice<T>(v: &r/mut [T],
+                         start: uint,
+                         end: uint)
+                      -> &r/mut [T] {
     assert (start <= end);
     assert (end <= len(v));
     do as_mut_buf(v) |p, _len| {
@@ -290,8 +281,10 @@ pub pure fn mut_slice<T>(v: &r/[mut T], start: uint,
 
 /// Return a slice that points into another slice.
 #[inline(always)]
-pub pure fn const_slice<T>(v: &r/[const T], start: uint,
-                      end: uint) -> &r/[const T] {
+pub pure fn const_slice<T>(v: &r/[const T],
+                           start: uint,
+                           end: uint)
+                        -> &r/[const T] {
     assert (start <= end);
     assert (end <= len(v));
     do as_const_buf(v) |p, _len| {
@@ -1451,7 +1444,7 @@ pub fn each2<U, T>(v1: &[U], v2: &[T], f: fn(u: &U, t: &T) -> bool) {
  * The total number of permutations produced is `len(v)!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
  */
-pure fn each_permutation<T:Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
+pub pure fn each_permutation<T:Copy>(v: &[T], put: fn(ts: &[T]) -> bool) {
     let ln = len(v);
     if ln <= 1 {
         put(v);
@@ -2015,7 +2008,7 @@ pub mod raw {
     use managed;
     use option::{None, Some};
     use option;
-    use private::intrinsics;
+    use unstable::intrinsics;
     use ptr::addr_of;
     use ptr;
     use sys;
@@ -2434,6 +2427,7 @@ impl<A:Copy> iter::CopyableNonstrictIter<A> for @[A] {
 mod tests {
     use option::{None, Option, Some};
     use option;
+    use sys;
     use vec::*;
 
     fn square(n: uint) -> uint { return n * n; }
@@ -2628,8 +2622,8 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = ~[::private::exclusive(()), ::private::exclusive(()),
-                      ::private::exclusive(())];
+        let mut v = ~[::unstable::exclusive(()), ::unstable::exclusive(()),
+                      ::unstable::exclusive(())];
         let mut _e = v.swap_remove(0);
         assert (len(v) == 2);
         _e = v.swap_remove(1);
@@ -3335,28 +3329,6 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_windowed_() {
         let _x = windowed (0u, ~[1u,2u,3u,4u,5u,6u]);
-    }
-
-    #[test]
-    fn cast_to_mut_no_copy() {
-        unsafe {
-            let x = ~[1, 2, 3];
-            let addr = raw::to_ptr(x);
-            let x_mut = cast_to_mut(x);
-            let addr_mut = raw::to_ptr(x_mut);
-            assert addr == addr_mut;
-        }
-    }
-
-    #[test]
-    fn cast_from_mut_no_copy() {
-        unsafe {
-            let x = ~[mut 1, 2, 3];
-            let addr = raw::to_ptr(x);
-            let x_imm = cast_from_mut(x);
-            let addr_imm = raw::to_ptr(x_imm);
-            assert addr == addr_imm;
-        }
     }
 
     #[test]

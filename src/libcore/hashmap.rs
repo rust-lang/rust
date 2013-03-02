@@ -10,14 +10,12 @@
 
 //! Sendable hash maps.
 
-use container::{Container, Mutable, Map, Set};
-use cmp::Eq;
-use hash::Hash;
-use to_bytes::IterBytes;
-
 /// Open addressing with linear probing.
 pub mod linear {
-    use super::*;
+    use container::{Container, Mutable, Map, Set};
+    use cmp::Eq;
+    use hash::Hash;
+    use to_bytes::IterBytes;
     use iter::BaseIter;
     use hash::Hash;
     use iter;
@@ -752,7 +750,8 @@ mod test_map {
 
 #[test]
 mod test_set {
-    use super::*;
+    use hashmap::linear;
+    use container::{Container, Mutable, Map, Set};
     use vec;
 
     #[test]

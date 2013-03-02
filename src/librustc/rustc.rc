@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,7 +15,7 @@
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
 #[comment = "The Rust compiler"];
-#[license = "MIT"];
+#[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
 #[legacy_modes];
@@ -49,6 +49,7 @@ use back_ = back;
 
 pub mod middle {
     pub mod trans {
+        pub mod macros;
         pub mod inline;
         pub mod monomorphize;
         pub mod controlflow;
@@ -68,6 +69,7 @@ pub mod middle {
         pub mod meth;
         pub mod cabi;
         pub mod cabi_x86_64;
+        pub mod cabi_arm;
         pub mod foreign;
         pub mod reflect;
         pub mod shape;
@@ -185,8 +187,8 @@ Available lint options:
                      padded(max_key, ~"name"), ~"default", ~"meaning"));
     io::println(fmt!("    %s  %7.7s  %s\n",
                      padded(max_key, ~"----"), ~"-------", ~"-------"));
-    for lint_dict.each |&k, &v| {
-        let k = str::replace(*k, ~"_", ~"-");
+    for lint_dict.each |&(k, v)| {
+        let k = str::replace(**k, ~"_", ~"-");
         io::println(fmt!("    %s  %7.7s  %s",
                          padded(max_key, k),
                          match v.default {
@@ -314,8 +316,8 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 pub fn monitor(+f: fn~(diagnostic::Emitter)) {
+    use core::cell::Cell;
     use core::comm::*;
-    use std::cell::Cell;
     let (p, ch) = stream();
     let ch = SharedChan(ch);
     let ch_capture = ch.clone();
@@ -334,7 +336,10 @@ pub fn monitor(+f: fn~(diagnostic::Emitter)) {
 
         struct finally {
             ch: SharedChan<monitor_msg>,
-            drop { self.ch.send(done); }
+        }
+
+        impl Drop for finally {
+            fn finalize(&self) { self.ch.send(done); }
         }
 
         let _finally = finally { ch: ch };

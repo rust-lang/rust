@@ -10,17 +10,17 @@
 
 pub mod kitties {
     pub struct cat<U> {
-        priv mut info : ~[U],
-        priv mut meows : uint,
+        priv info : ~[U],
+        priv meows : uint,
 
         how_hungry : int,
     }
 
     pub impl<U> cat<U> {
-        fn speak<T>(stuff: ~[T]) {
+        fn speak<T>(&mut self, stuff: ~[T]) {
             self.meows += stuff.len();
         }
-        fn meow_count() -> uint { self.meows }
+        fn meow_count(&mut self) -> uint { self.meows }
     }
 
     pub fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {

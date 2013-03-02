@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use metadata::csearch;
 use middle::astencode;
 use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{impl_owned_self, impl_self, no_self};
@@ -18,6 +19,8 @@ use middle::trans::common::*;
 use middle::trans::common;
 use middle::trans::inline;
 use middle::trans::monomorphize;
+use middle::ty;
+use util::ppaux::ty_to_str;
 
 use core::vec;
 use syntax::ast;
@@ -91,7 +94,9 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
                 region_param: _,
                 ty: _
             } = ty::lookup_item_type(ccx.tcx, impl_did);
-            if translate && (*impl_bnds).len() + mth.tps.len() == 0u {
+            if translate &&
+                impl_bnds.len() + mth.generics.ty_params.len() == 0u
+            {
                 let llfn = get_item_val(ccx, mth.id);
                 let path = vec::append(
                     ty::item_path(ccx.tcx, impl_did),

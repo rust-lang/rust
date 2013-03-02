@@ -248,7 +248,10 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
     }
     struct ProgRes {
         r: ProgRepr,
-        drop {
+    }
+
+    impl Drop for ProgRes {
+        fn finalize(&self) {
             unsafe {
                 // FIXME #4943: This is bad.
                 destroy_repr(cast::transmute(&self.r));
@@ -285,7 +288,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
         finished: false,
     };
 
-    ProgRes(repr) as Program
+    @ProgRes(repr) as @Program
 }
 
 fn read_all(rd: io::Reader) -> ~str {

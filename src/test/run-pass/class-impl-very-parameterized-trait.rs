@@ -28,13 +28,13 @@ impl cmp::Eq for cat_type {
 // ok: T should be in scope when resolving the trait ref for map
 struct cat<T> {
     // Yes, you can have negative meows
-    priv mut meows : int,
+    priv meows : int,
 
-    mut how_hungry : int,
+    how_hungry : int,
     name : T,
 }
 
-impl<T> cat<T> {
+pub impl<T> cat<T> {
     fn speak(&mut self) { self.meow(); }
 
     fn eat(&mut self) -> bool {
@@ -95,16 +95,15 @@ impl<T> Map<int, T> for cat<T> {
     }
 
     fn remove(&mut self, k: &int) -> bool {
-        match self.find(k) {
-          Some(_) => {
-              self.meows -= *k; true
-          }
-          None => { false }
+        if self.find(k).is_some() {
+            self.meows -= *k; true
+        } else {
+            false
         }
     }
 }
 
-impl<T> cat<T> {
+pub impl<T> cat<T> {
     pure fn get(&self, k: &int) -> &self/T {
         match self.find(k) {
           Some(v) => { v }

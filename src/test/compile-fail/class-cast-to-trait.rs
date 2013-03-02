@@ -19,7 +19,7 @@ struct cat {
   name : ~str,
 }
 
-impl cat {
+pub impl cat {
 
   fn eat() -> bool {
     if self.how_hungry > 0 {
@@ -58,6 +58,6 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 fn main() {
-  let nyan : noisy  = cat(0, 2, ~"nyan") as noisy;
+  let nyan : noisy  = @cat(0, 2, ~"nyan") as @noisy;
   nyan.eat(); //~ ERROR type `@noisy` does not implement any method in scope named `eat`
 }

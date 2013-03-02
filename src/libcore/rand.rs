@@ -141,7 +141,7 @@ pub struct Weighted<T> {
 }
 
 /// Extension methods for random number generators
-impl Rng {
+pub impl Rng {
     /// Return a random value for a Rand type
     fn gen<T:Rand>() -> T {
         Rand::rand(self)
@@ -365,7 +365,10 @@ impl Rng {
 
 struct RandRes {
     rng: *rust_rng,
-    drop {
+}
+
+impl Drop for RandRes {
+    fn finalize(&self) {
         unsafe {
             rustrt::rand_free(self.rng);
         }
@@ -409,8 +412,8 @@ pub fn Rng() -> Rng {
  * all other generators constructed with the same seed. The seed may be any
  * length.
  */
-pub fn seeded_rng(seed: &[u8]) -> Rng {
-    seeded_randres(seed) as Rng
+pub fn seeded_rng(seed: &[u8]) -> @Rng {
+    @seeded_randres(seed) as @Rng
 }
 
 fn seeded_randres(seed: &[u8]) -> @RandRes {
@@ -446,8 +449,8 @@ pub pure fn xorshift() -> Rng {
     seeded_xorshift(123456789u32, 362436069u32, 521288629u32, 88675123u32)
 }
 
-pub pure fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
-    XorShiftState { x: x, y: y, z: z, w: w } as Rng
+pub pure fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> @Rng {
+    @XorShiftState { x: x, y: y, z: z, w: w } as @Rng
 }
 
 
@@ -469,10 +472,10 @@ pub fn task_rng() -> Rng {
             unsafe {
                 let rng = seeded_randres(seed());
                 task::local_data::local_data_set(tls_rng_state, rng);
-                rng as Rng
+                @rng as @Rng
             }
         }
-        Some(rng) => rng as Rng
+        Some(rng) => @rng as @Rng
     }
 }
 

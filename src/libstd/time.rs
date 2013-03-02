@@ -47,7 +47,7 @@ pub struct Timespec { sec: i64, nsec: i32 }
  * -1.2 seconds before the epoch is represented by `Timespec { sec: -2_i64,
  * nsec: 800_000_000_i32 }`.
  */
-impl Timespec {
+pub impl Timespec {
     static pure fn new(sec: i64, nsec: i32) -> Timespec {
         assert nsec >= 0 && nsec < NSEC_PER_SEC;
         Timespec { sec: sec, nsec: nsec }
@@ -208,7 +208,7 @@ pub pure fn strftime(format: &str, tm: &Tm) -> ~str {
     unsafe { do_strftime(format, tm) }
 }
 
-impl Tm {
+pub impl Tm {
     /// Convert time to the seconds from January 1, 1970
     fn to_timespec() -> Timespec {
         unsafe {
@@ -842,7 +842,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
           //'U' {}
           'u' => {
             let i = tm.tm_wday as int;
-            int::str(if i == 0 { 7 } else { i })
+            int::to_str(if i == 0 { 7 } else { i })
           }
           //'V' {}
           'v' => {
@@ -852,10 +852,10 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
                 parse_type('Y', tm))
           }
           //'W' {}
-          'w' => int::str(tm.tm_wday as int),
+          'w' => int::to_str(tm.tm_wday as int),
           //'X' {}
           //'x' {}
-          'Y' => int::str(tm.tm_year as int + 1900),
+          'Y' => int::to_str(tm.tm_year as int + 1900),
           'y' => fmt!("%02d", (tm.tm_year as int + 1900) % 100),
           'Z' => copy tm.tm_zone,
           'z' => {
@@ -892,6 +892,7 @@ mod tests {
     use core::float;
     use core::os;
     use core::result;
+    use core::result::{Err, Ok};
     use core::str;
     use core::u64;
     use core::uint;
@@ -902,15 +903,13 @@ mod tests {
         const some_future_date: i64 = 1577836800i64; // 2020-01-01T00:00:00Z
 
         let tv1 = get_time();
-        log(debug, ~"tv1=" + uint::str(tv1.sec as uint) + ~" sec + "
-                   + uint::str(tv1.nsec as uint) + ~" nsec");
+        debug!("tv1=%? sec + %? nsec", tv1.sec as uint, tv1.nsec as uint);
 
         assert tv1.sec > some_recent_date;
         assert tv1.nsec < 1000000000i32;
 
         let tv2 = get_time();
-        log(debug, ~"tv2=" + uint::str(tv2.sec as uint) + ~" sec + "
-                   + uint::str(tv2.nsec as uint) + ~" nsec");
+        debug!("tv2=%? sec + %? nsec", tv2.sec as uint, tv2.nsec as uint);
 
         assert tv2.sec >= tv1.sec;
         assert tv2.sec < some_future_date;
@@ -924,16 +923,16 @@ mod tests {
         let s0 = precise_time_s();
         let ns1 = precise_time_ns();
 
-        log(debug, ~"s0=" + float::to_str_digits(s0, 9u) + ~" sec");
+        debug!("s0=%s sec", float::to_str_digits(s0, 9u));
         assert s0 > 0.;
         let ns0 = (s0 * 1000000000.) as u64;
-        log(debug, ~"ns0=" + u64::str(ns0) + ~" ns");
+        debug!("ns0=%? ns", ns0);
 
-        log(debug, ~"ns1=" + u64::str(ns1) + ~" ns");
+        debug!("ns1=%? ns", ns0);
         assert ns1 >= ns0;
 
         let ns2 = precise_time_ns();
-        log(debug, ~"ns2=" + u64::str(ns2) + ~" ns");
+        debug!("ns2=%? ns", ns0);
         assert ns2 >= ns1;
     }
 

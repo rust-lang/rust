@@ -19,11 +19,7 @@ use prelude::*;
 use task::rt;
 use task::local_data::LocalDataKey;
 
-#[cfg(notest)]
-use rt::rust_task;
-#[cfg(test)]
-#[allow(non_camel_case_types)]
-type rust_task = libc::c_void;
+use super::rt::rust_task;
 
 pub trait LocalData { }
 impl<T:Durable> LocalData for @T { }
@@ -155,7 +151,7 @@ pub unsafe fn local_set<T:Durable>(
     // does not have a reference associated with it, so it may become invalid
     // when the box is destroyed.
     let data_ptr = cast::reinterpret_cast(&data);
-    let data_box = data as LocalData;
+    let data_box = @data as @LocalData;
     // Construct new entry to store in the map.
     let new_entry = Some((keyval, data_ptr, data_box));
     // Find a place to put it.

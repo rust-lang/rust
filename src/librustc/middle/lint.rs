@@ -19,6 +19,7 @@ use util::ppaux::{ty_to_str};
 use core::char;
 use core::cmp;
 use core::either;
+use core::hashmap::linear::LinearMap;
 use core::i8;
 use core::i16;
 use core::i32;
@@ -32,10 +33,9 @@ use core::u32;
 use core::u64;
 use core::uint;
 use core::vec;
-use std::oldmap::{Map, HashMap};
+use std::oldmap::Map;
 use std::oldmap;
-use std::oldsmallintmap::{Map, SmallIntMap};
-use std::oldsmallintmap;
+use std::smallintmap::SmallIntMap;
 use syntax::ast_util::{path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
@@ -81,6 +81,7 @@ pub enum lint {
     type_limits,
     default_methods,
     deprecated_self,
+    deprecated_mutable_fields,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -113,147 +114,155 @@ struct LintSpec {
     default: level
 }
 
-pub type LintDict = HashMap<@~str, @LintSpec>;
+pub type LintDict = @mut LinearMap<@~str, @LintSpec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes
   '-' to '_' in command-line flags
  */
 pub fn get_lint_dict() -> LintDict {
-    let v = ~[
-        (@~"ctypes",
+    let map = @mut LinearMap::new();
+
+    map.insert(@~"ctypes",
          @LintSpec {
             lint: ctypes,
             desc: "proper use of core::libc types in foreign modules",
             default: warn
-         }),
+         });
 
-        (@~"unused_imports",
+    map.insert(@~"unused_imports",
          @LintSpec {
             lint: unused_imports,
             desc: "imports that are never used",
             default: allow
-         }),
+         });
 
-        (@~"while_true",
+    map.insert(@~"while_true",
          @LintSpec {
             lint: while_true,
             desc: "suggest using loop { } instead of while(true) { }",
             default: warn
-         }),
+         });
 
-        (@~"path_statement",
+    map.insert(@~"path_statement",
          @LintSpec {
             lint: path_statement,
             desc: "path statements with no effect",
             default: warn
-         }),
+         });
 
-        (@~"unrecognized_lint",
+    map.insert(@~"unrecognized_lint",
          @LintSpec {
             lint: unrecognized_lint,
             desc: "unrecognized lint attribute",
             default: warn
-         }),
+         });
 
-        (@~"non_implicitly_copyable_typarams",
+    map.insert(@~"non_implicitly_copyable_typarams",
          @LintSpec {
             lint: non_implicitly_copyable_typarams,
             desc: "passing non implicitly copyable types as copy type params",
             default: warn
-         }),
+         });
 
-        (@~"vecs_implicitly_copyable",
+    map.insert(@~"vecs_implicitly_copyable",
          @LintSpec {
             lint: vecs_implicitly_copyable,
             desc: "make vecs and strs not implicitly copyable \
                   (only checked at top level)",
             default: warn
-         }),
+         });
 
-        (@~"implicit_copies",
+    map.insert(@~"implicit_copies",
          @LintSpec {
             lint: implicit_copies,
             desc: "implicit copies of non implicitly copyable data",
             default: warn
-         }),
+         });
 
-        (@~"deprecated_mode",
+    map.insert(@~"deprecated_mode",
          @LintSpec {
             lint: deprecated_mode,
             desc: "warn about deprecated uses of modes",
             default: warn
-         }),
+         });
 
-        (@~"deprecated_pattern",
+    map.insert(@~"deprecated_pattern",
          @LintSpec {
             lint: deprecated_pattern,
             desc: "warn about deprecated uses of pattern bindings",
             default: allow
-         }),
+         });
 
-        (@~"non_camel_case_types",
+    map.insert(@~"non_camel_case_types",
          @LintSpec {
             lint: non_camel_case_types,
             desc: "types, variants and traits should have camel case names",
             default: allow
-         }),
+         });
 
-        (@~"managed_heap_memory",
+    map.insert(@~"managed_heap_memory",
          @LintSpec {
             lint: managed_heap_memory,
             desc: "use of managed (@ type) heap memory",
             default: allow
-         }),
+         });
 
-        (@~"owned_heap_memory",
+    map.insert(@~"owned_heap_memory",
          @LintSpec {
             lint: owned_heap_memory,
             desc: "use of owned (~ type) heap memory",
             default: allow
-         }),
+         });
 
-        (@~"heap_memory",
+    map.insert(@~"heap_memory",
          @LintSpec {
             lint: heap_memory,
             desc: "use of any (~ type or @ type) heap memory",
             default: allow
-         }),
+         });
 
-        (@~"structural_records",
+    map.insert(@~"structural_records",
          @LintSpec {
             lint: structural_records,
             desc: "use of any structural records",
             default: deny
-         }),
+         });
 
-        (@~"legacy modes",
+    map.insert(@~"legacy modes",
          @LintSpec {
             lint: legacy_modes,
             desc: "allow legacy modes",
             default: forbid
-         }),
+         });
 
-        (@~"type_limits",
+    map.insert(@~"type_limits",
          @LintSpec {
             lint: type_limits,
             desc: "comparisons made useless by limits of the types involved",
             default: warn
-         }),
+         });
 
-        (@~"default_methods",
+    map.insert(@~"default_methods",
          @LintSpec {
             lint: default_methods,
             desc: "allow default methods",
             default: deny
-         }),
+         });
 
-        (@~"deprecated_self",
+    map.insert(@~"deprecated_self",
          @LintSpec {
             lint: deprecated_self,
             desc: "warn about deprecated uses of `self`",
             default: warn
-         }),
+         });
+
+    map.insert(@~"deprecated_mutable_fields",
+         @LintSpec {
+            lint: deprecated_mutable_fields,
+            desc: "deprecated mutable fields in structures",
+            default: deny
+        });
 
         /* FIXME(#3266)--make liveness warnings lintable
         (@~"unused_variable",
@@ -270,13 +279,12 @@ pub fn get_lint_dict() -> LintDict {
             default: warn
          }),
         */
-    ];
-    oldmap::hash_from_vec(v)
+    map
 }
 
 // This is a highly not-optimal set of data structure decisions.
-type LintModes = SmallIntMap<level>;
-type LintModeMap = HashMap<ast::node_id, LintModes>;
+type LintModes = @mut SmallIntMap<level>;
+type LintModeMap = @mut LinearMap<ast::node_id, LintModes>;
 
 // settings_map maps node ids of items with non-default lint settings
 // to their settings; default_settings contains the settings for everything
@@ -288,14 +296,14 @@ pub struct LintSettings {
 
 pub fn mk_lint_settings() -> LintSettings {
     LintSettings {
-        default_settings: oldsmallintmap::mk(),
-        settings_map: HashMap()
+        default_settings: @mut SmallIntMap::new(),
+        settings_map: @mut LinearMap::new()
     }
 }
 
 pub fn get_lint_level(modes: LintModes, lint: lint) -> level {
-    match modes.find(lint as uint) {
-      Some(c) => c,
+    match modes.find(&(lint as uint)) {
+      Some(&c) => c,
       None => allow
     }
 }
@@ -306,7 +314,7 @@ pub fn get_lint_settings_level(settings: LintSettings,
                                item_id: ast::node_id)
                             -> level {
     match settings.settings_map.find(&item_id) {
-      Some(modes) => get_lint_level(modes, lint_mode),
+      Some(&modes) => get_lint_level(modes, lint_mode),
       None => get_lint_level(settings.default_settings, lint_mode)
     }
 }
@@ -314,8 +322,7 @@ pub fn get_lint_settings_level(settings: LintSettings,
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: LintModes) -> LintModes {
-    oldsmallintmap::SmallIntMap_(@oldsmallintmap::SmallIntMap_
-    {v: copy modes.v})
+    @mut (copy *modes)
 }
 
 struct Context {
@@ -325,14 +332,14 @@ struct Context {
     sess: Session
 }
 
-impl Context {
+pub impl Context {
     fn get_level(&self, lint: lint) -> level {
         get_lint_level(self.curr, lint)
     }
 
     fn set_level(&self, lint: lint, level: level) {
         if level == allow {
-            self.curr.remove(lint as uint);
+            self.curr.remove(&(lint as uint));
         } else {
             self.curr.insert(lint as uint, level);
         }
@@ -440,7 +447,7 @@ fn build_settings_item(i: @ast::item, &&cx: Context, v: visit::vt<Context>) {
 pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
     let cx = Context {
         dict: get_lint_dict(),
-        curr: oldsmallintmap::mk(),
+        curr: @mut SmallIntMap::new(),
         is_default: true,
         sess: sess
     };
@@ -458,7 +465,7 @@ pub fn build_settings_crate(sess: session::Session, crate: @ast::crate) {
 
     do cx.with_lint_attrs(/*bad*/copy crate.node.attrs) |cx| {
         // Copy out the default settings
-        for cx.curr.each |k, v| {
+        for cx.curr.each |&(k, &v)| {
             sess.lint_settings.default_settings.insert(k, v);
         }
 
@@ -488,6 +495,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
     check_item_deprecated_self(cx, i);
+    check_item_deprecated_mutable_fields(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -705,6 +713,26 @@ fn check_item_deprecated_self(cx: ty::ctxt, item: @ast::item) {
     }
 }
 
+fn check_item_deprecated_mutable_fields(cx: ty::ctxt, item: @ast::item) {
+    match item.node {
+        ast::item_struct(struct_def, _) => {
+            for struct_def.fields.each |field| {
+                match field.node.kind {
+                    ast::named_field(_, ast::struct_mutable, _) => {
+                        cx.sess.span_lint(deprecated_mutable_fields,
+                                          item.id,
+                                          item.id,
+                                          field.span,
+                                          ~"mutable fields are deprecated");
+                    }
+                    ast::named_field(*) | ast::unnamed_field => {}
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(
         visit::mk_simple_visitor(@visit::SimpleVisitor {
@@ -726,7 +754,7 @@ fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
 fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
-                       decl: ast::fn_decl) {
+                        decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             match ty.node {
@@ -759,9 +787,9 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
       if attr::foreign_abi(it.attrs) !=
             either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
-            match /*bad*/copy ni.node {
-              ast::foreign_item_fn(decl, _, _) => {
-                check_foreign_fn(cx, it.id, decl);
+            match ni.node {
+              ast::foreign_item_fn(ref decl, _, _) => {
+                check_foreign_fn(cx, it.id, *decl);
               }
               // FIXME #4622: Not implemented.
               ast::foreign_item_const(*) => {}

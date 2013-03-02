@@ -35,7 +35,7 @@ pub enum PreserveCondition {
     PcIfPure(bckerr)
 }
 
-impl PreserveCondition {
+pub impl PreserveCondition {
     // combines two preservation conditions such that if either of
     // them requires purity, the result requires purity
     fn combine(&self, pc: PreserveCondition) -> PreserveCondition {
@@ -46,7 +46,7 @@ impl PreserveCondition {
     }
 }
 
-impl BorrowckCtxt {
+pub impl BorrowckCtxt {
     fn preserve(&self,
                 cmt: cmt,
                 scope_region: ty::Region,
@@ -80,7 +80,7 @@ struct PreserveCtxt {
     root_managed_data: bool
 }
 
-impl PreserveCtxt {
+pub impl PreserveCtxt {
     fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     fn preserve(&self, cmt: cmt) -> bckres<PreserveCondition> {

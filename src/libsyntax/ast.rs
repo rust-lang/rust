@@ -21,6 +21,8 @@ use core::to_bytes;
 use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
+use opt_vec::OptVec;
+
 /* can't import macros yet, so this is copied from token.rs. See its comment
  * there. */
 macro_rules! interner_key (
@@ -29,10 +31,39 @@ macro_rules! interner_key (
         (-3 as uint, 0u)))
 )
 
+// an identifier contains an index into the interner
+// table and a SyntaxContext to track renaming and
+// macro expansion per Flatt et al., "Macros
+// That Work Together"
 #[deriving_eq]
-pub struct ident { repr: uint }
+pub struct ident { repr: Name }
 
-pub impl<S:Encoder> Encodable<S> for ident {
+// a SyntaxContext represents a chain of macro-expandings
+// and renamings. Each macro expansion corresponds to
+// a fresh uint
+#[deriving_eq]
+pub enum SyntaxContext {
+    MT,
+    Mark (Mrk,~SyntaxContext),
+    Rename (~ident,Name,~SyntaxContext)
+}
+
+/*
+// ** this is going to have to apply to paths, not to idents.
+// Returns true if these two identifiers access the same
+// local binding or top-level binding... that's what it
+// should do. For now, it just compares the names.
+pub fn free_ident_eq (a : ident, b: ident) -> bool{
+    a.repr == b.repr
+}
+*/
+// a name represents a string, interned
+type Name = uint;
+// a mark represents a unique id associated
+// with a macro expansion
+type Mrk = uint;
+
+impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &S) {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
@@ -45,7 +76,7 @@ pub impl<S:Encoder> Encodable<S> for ident {
     }
 }
 
-pub impl<D:Decoder> Decodable<D> for ident {
+impl<D:Decoder> Decodable<D> for ident {
     static fn decode(d: &D) -> ident {
         let intr = match unsafe {
             task::local_data::local_data_get(interner_key!())
@@ -58,7 +89,7 @@ pub impl<D:Decoder> Decodable<D> for ident {
     }
 }
 
-pub impl to_bytes::IterBytes for ident {
+impl to_bytes::IterBytes for ident {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         self.repr.iter_bytes(lsb0, f)
     }
@@ -67,6 +98,9 @@ pub impl to_bytes::IterBytes for ident {
 // Functions may or may not have names.
 pub type fn_ident = Option<ident>;
 
+#[auto_encode]
+#[auto_decode]
+#[deriving_eq]
 pub struct Lifetime {
     id: node_id,
     span: span,
@@ -106,7 +140,7 @@ pub const crate_node_id: node_id = 0;
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
 // detects Copy, Send, Owned, and Const.
-pub enum ty_param_bound {
+pub enum TyParamBound {
     TraitTyParamBound(@Ty),
     RegionTyParamBound
 }
@@ -114,10 +148,24 @@ pub enum ty_param_bound {
 #[auto_encode]
 #[auto_decode]
 #[deriving_eq]
-pub struct ty_param {
+pub struct TyParam {
     ident: ident,
     id: node_id,
-    bounds: @~[ty_param_bound]
+    bounds: @OptVec<TyParamBound>
+}
+
+#[auto_encode]
+#[auto_decode]
+#[deriving_eq]
+pub struct Generics {
+    lifetimes: OptVec<Lifetime>,
+    ty_params: OptVec<TyParam>
+}
+
+pub impl Generics {
+    fn is_empty(&self) -> bool {
+        self.lifetimes.len() + self.ty_params.len() == 0
+    }
 }
 
 #[auto_encode]
@@ -217,7 +265,7 @@ pub enum binding_mode {
     bind_infer
 }
 
-pub impl to_bytes::IterBytes for binding_mode {
+impl to_bytes::IterBytes for binding_mode {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           bind_by_copy => 0u8.iter_bytes(lsb0, f),
@@ -244,8 +292,8 @@ pub enum pat_ {
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
     pat_ident(binding_mode, @path, Option<@pat>),
-    pat_enum(@path, Option<~[@pat]>), // "none" means a * pattern where
-                                  // we don't bind the fields to names
+    pat_enum(@path, Option<~[@pat]>), /* "none" means a * pattern where
+                                       * we don't bind the fields to names */
     pat_rec(~[field_pat], bool),
     pat_struct(@path, ~[field_pat], bool),
     pat_tup(~[@pat]),
@@ -262,7 +310,7 @@ pub enum pat_ {
 #[deriving_eq]
 pub enum mutability { m_mutbl, m_imm, m_const, }
 
-pub impl to_bytes::IterBytes for mutability {
+impl to_bytes::IterBytes for mutability {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -275,13 +323,13 @@ pub enum Abi {
     RustAbi
 }
 
-pub impl to_bytes::IterBytes for Abi {
+impl to_bytes::IterBytes for Abi {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
-pub impl ToStr for Abi {
+impl ToStr for Abi {
     pure fn to_str(&self) -> ~str {
         match *self {
             RustAbi => ~"\"rust\""
@@ -298,13 +346,13 @@ pub enum Sigil {
     ManagedSigil
 }
 
-pub impl to_bytes::IterBytes for Sigil {
+impl to_bytes::IterBytes for Sigil {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
-pub impl ToStr for Sigil {
+impl ToStr for Sigil {
     pure fn to_str(&self) -> ~str {
         match *self {
             BorrowedSigil => ~"&",
@@ -383,7 +431,7 @@ pub enum inferable<T> {
     infer(node_id)
 }
 
-pub impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
+impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match *self {
           expl(ref t) =>
@@ -401,7 +449,7 @@ pub impl<T:to_bytes::IterBytes> to_bytes::IterBytes for inferable<T> {
 #[deriving_eq]
 pub enum rmode { by_ref, by_val, by_copy }
 
-pub impl to_bytes::IterBytes for rmode {
+impl to_bytes::IterBytes for rmode {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -720,7 +768,7 @@ pub struct ty_method {
     attrs: ~[attribute],
     purity: purity,
     decl: fn_decl,
-    tps: ~[ty_param],
+    generics: Generics,
     self_ty: self_ty,
     id: node_id,
     span: span,
@@ -742,13 +790,13 @@ pub enum trait_method {
 #[deriving_eq]
 pub enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
-pub impl ToStr for int_ty {
+impl ToStr for int_ty {
     pure fn to_str(&self) -> ~str {
         ::ast_util::int_ty_to_str(*self)
     }
 }
 
-pub impl to_bytes::IterBytes for int_ty {
+impl to_bytes::IterBytes for int_ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -759,13 +807,13 @@ pub impl to_bytes::IterBytes for int_ty {
 #[deriving_eq]
 pub enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
-pub impl ToStr for uint_ty {
+impl ToStr for uint_ty {
     pure fn to_str(&self) -> ~str {
         ::ast_util::uint_ty_to_str(*self)
     }
 }
 
-pub impl to_bytes::IterBytes for uint_ty {
+impl to_bytes::IterBytes for uint_ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -776,13 +824,13 @@ pub impl to_bytes::IterBytes for uint_ty {
 #[deriving_eq]
 pub enum float_ty { ty_f, ty_f32, ty_f64, }
 
-pub impl ToStr for float_ty {
+impl ToStr for float_ty {
     pure fn to_str(&self) -> ~str {
         ::ast_util::float_ty_to_str(*self)
     }
 }
 
-pub impl to_bytes::IterBytes for float_ty {
+impl to_bytes::IterBytes for float_ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -836,7 +884,7 @@ pub enum Onceness {
     Many
 }
 
-pub impl ToStr for Onceness {
+impl ToStr for Onceness {
     pure fn to_str(&self) -> ~str {
         match *self {
             Once => ~"once",
@@ -845,7 +893,7 @@ pub impl ToStr for Onceness {
     }
 }
 
-pub impl to_bytes::IterBytes for Onceness {
+impl to_bytes::IterBytes for Onceness {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
     }
@@ -895,7 +943,7 @@ pub enum ty_ {
     ty_infer,
 }
 
-pub impl to_bytes::IterBytes for Ty {
+impl to_bytes::IterBytes for Ty {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
     }
@@ -931,7 +979,7 @@ pub enum purity {
     extern_fn, // declared with "extern fn"
 }
 
-pub impl ToStr for purity {
+impl ToStr for purity {
     pure fn to_str(&self) -> ~str {
         match *self {
             impure_fn => ~"impure",
@@ -942,7 +990,7 @@ pub impl ToStr for purity {
     }
 }
 
-pub impl to_bytes::IterBytes for purity {
+impl to_bytes::IterBytes for purity {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -957,7 +1005,7 @@ pub enum ret_style {
     return_val, // everything else
 }
 
-pub impl to_bytes::IterBytes for ret_style {
+impl to_bytes::IterBytes for ret_style {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -983,7 +1031,7 @@ pub type self_ty = spanned<self_ty_>;
 pub struct method {
     ident: ident,
     attrs: ~[attribute],
-    tps: ~[ty_param],
+    generics: Generics,
     self_ty: self_ty,
     purity: purity,
     decl: fn_decl,
@@ -1219,17 +1267,18 @@ pub struct item {
 #[deriving_eq]
 pub enum item_ {
     item_const(@Ty, @expr),
-    item_fn(fn_decl, purity, ~[ty_param], blk),
+    item_fn(fn_decl, purity, Generics, blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
-    item_ty(@Ty, ~[ty_param]),
-    item_enum(enum_def, ~[ty_param]),
-    item_struct(@struct_def, ~[ty_param]),
-    item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
-    item_impl(~[ty_param],
+    item_ty(@Ty, Generics),
+    item_enum(enum_def, Generics),
+    item_struct(@struct_def, Generics),
+    item_trait(Generics, ~[@trait_ref], ~[trait_method]),
+    item_impl(Generics,
               Option<@trait_ref>, // (optional) trait this impl implements
               @Ty, // self
               ~[@method]),
+    // a macro invocation (which includes macro definition)
     item_mac(mac),
 }
 
@@ -1238,7 +1287,7 @@ pub enum item_ {
 #[deriving_eq]
 pub enum struct_mutability { struct_mutable, struct_immutable }
 
-pub impl to_bytes::IterBytes for struct_mutability {
+impl to_bytes::IterBytes for struct_mutability {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         (*self as u8).iter_bytes(lsb0, f)
     }
@@ -1272,7 +1321,7 @@ pub struct foreign_item {
 #[auto_decode]
 #[deriving_eq]
 pub enum foreign_item_ {
-    foreign_item_fn(fn_decl, purity, ~[ty_param]),
+    foreign_item_fn(fn_decl, purity, Generics),
     foreign_item_const(@Ty)
 }
 
@@ -1286,7 +1335,7 @@ pub enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_foreign(@foreign_item),
-    ii_dtor(struct_dtor, ident, ~[ty_param], def_id /* parent id */)
+    ii_dtor(struct_dtor, ident, Generics, def_id /* parent id */)
 }
 
 #[cfg(test)]

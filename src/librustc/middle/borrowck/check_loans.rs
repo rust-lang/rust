@@ -33,9 +33,9 @@ use util::ppaux::ty_to_str;
 
 use core::cmp;
 use core::dvec::DVec;
+use core::hashmap::linear::LinearMap;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::ast_util;
@@ -47,7 +47,7 @@ struct CheckLoanCtxt {
     bccx: @BorrowckCtxt,
     req_maps: ReqMaps,
 
-    reported: HashMap<ast::node_id, ()>,
+    reported: @mut LinearMap<ast::node_id, ()>,
 
     declared_purity: @mut ast::purity,
     fn_args: @mut @~[ast::node_id]
@@ -71,7 +71,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
     let clcx = @mut CheckLoanCtxt {
         bccx: bccx,
         req_maps: req_maps,
-        reported: HashMap(),
+        reported: @mut LinearMap::new(),
         declared_purity: @mut ast::impure_fn,
         fn_args: @mut @~[]
     };
@@ -89,7 +89,7 @@ enum assignment_type {
     at_swap
 }
 
-impl assignment_type {
+pub impl assignment_type {
     fn checked_by_liveness(&self) -> bool {
         // the liveness pass guarantees that immutable local variables
         // are only assigned once; but it doesn't consider &mut
@@ -106,7 +106,7 @@ impl assignment_type {
     }
 }
 
-impl CheckLoanCtxt {
+pub impl CheckLoanCtxt {
     fn tcx(@mut self) -> ty::ctxt { self.bccx.tcx }
 
     fn purity(@mut self, scope_id: ast::node_id) -> Option<purity_cause> {
@@ -130,7 +130,7 @@ impl CheckLoanCtxt {
         loop {
             match pure_map.find(&scope_id) {
               None => (),
-              Some(ref e) => return Some(pc_cmt((*e)))
+              Some(&e) => return Some(pc_cmt((e)))
             }
 
             match region_map.find(&scope_id) {

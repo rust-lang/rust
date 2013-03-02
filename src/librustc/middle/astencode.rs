@@ -31,7 +31,6 @@ use std::ebml::reader::get_doc;
 use std::ebml::reader;
 use std::ebml::writer::Encoder;
 use std::ebml;
-use std::oldmap::HashMap;
 use std::prettyprint;
 use std::serialize;
 use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers};
@@ -167,7 +166,7 @@ fn reserve_id_range(sess: Session,
     ast_util::id_range { min: to_id_min, max: to_id_min }
 }
 
-impl ExtendedDecodeContext {
+pub impl ExtendedDecodeContext {
     fn tr_id(&self, id: ast::node_id) -> ast::node_id {
         /*!
          *
@@ -371,10 +370,10 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
       ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
+      ast::ii_dtor(ref dtor, nm, ref generics, parent_id) => {
         let dtor_body = fld.fold_block((*dtor).node.body);
-        let dtor_attrs = fld.fold_attributes(/*bad*/copy (*dtor).node.attrs);
-        let new_params = fold::fold_ty_params(/*bad*/copy *tps, fld);
+        let dtor_attrs = fld.fold_attributes(copy dtor.node.attrs);
+        let new_generics = fold::fold_generics(generics, fld);
         let dtor_id = fld.new_id((*dtor).node.id);
         let new_parent = xcx.tr_def_id(parent_id);
         let new_self = fld.new_id((*dtor).node.self_id);
@@ -386,7 +385,7 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
                                           body: dtor_body },
                 .. (/*bad*/copy *dtor)
             },
-            nm, new_params, new_parent)
+            nm, new_generics, new_parent)
       }
      }
 }
@@ -451,9 +450,17 @@ impl tr for ast::def {
 
 impl tr for ty::AutoAdjustment {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment {
-        ty::AutoAdjustment {
-            autoderefs: self.autoderefs,
-            autoref: self.autoref.map(|ar| ar.tr(xcx)),
+        match self {
+            &ty::AutoAddEnv(r, s) => {
+                ty::AutoAddEnv(r.tr(xcx), s)
+            }
+
+            &ty::AutoDerefRef(ref adr) => {
+                ty::AutoDerefRef(ty::AutoDerefRef {
+                    autoderefs: adr.autoderefs,
+                    autoref: adr.autoref.map(|ar| ar.tr(xcx)),
+                })
+            }
         }
     }
 }
@@ -860,7 +867,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
             }
         }
     }
-    do option::iter(&(*tcx.node_types).find(id as uint)) |ty| {
+    do option::iter(&tcx.node_types.find(&(id as uint))) |&ty| {
         do ebml_w.tag(c::tag_table_node_type) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -882,7 +889,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_freevars) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                do ebml_w.emit_from_vec(**fv) |fv_entry| {
+                do ebml_w.emit_from_vec(***fv) |fv_entry| {
                     encode_freevar_entry(ebml_w, *fv_entry)
                 }
             }
@@ -922,7 +929,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
     //    }
     //}
 
-    do option::iter(&maps.mutbl_map.find(&id)) |_m| {
+    do option::iter(&maps.mutbl_map.find(&id)) |&_m| {
         do ebml_w.tag(c::tag_table_mutbl) {
             ebml_w.id(id);
         }
@@ -966,12 +973,6 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    do option::iter(&tcx.legacy_boxed_traits.find(&id)) |_x| {
-        do ebml_w.tag(c::tag_table_legacy_boxed_trait) {
-            ebml_w.id(id);
-        }
-    }
-
     for maps.moves_map.find(&id).each |_| {
         do ebml_w.tag(c::tag_table_moves_map) {
             ebml_w.id(id);
@@ -982,7 +983,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_capture_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                do ebml_w.emit_from_vec(*cap_vars) |cap_var| {
+                do ebml_w.emit_from_vec(**cap_vars) |cap_var| {
                     cap_var.encode(&ebml_w);
                 }
             }
@@ -1121,8 +1122,6 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
 
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
-        } else if tag == (c::tag_table_legacy_boxed_trait as uint) {
-            dcx.tcx.legacy_boxed_traits.insert(id, ());
         } else if tag == (c::tag_table_moves_map as uint) {
             dcx.maps.moves_map.insert(id, ());
         } else {
@@ -1135,7 +1134,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 let ty = val_dsr.read_ty(xcx);
                 debug!("inserting ty for node %?: %s",
                        id, ty_to_str(dcx.tcx, ty));
-                (*dcx.tcx.node_types).insert(id as uint, ty);
+                dcx.tcx.node_types.insert(id as uint, ty);
             } else if tag == (c::tag_table_node_type_subst as uint) {
                 let tys = val_dsr.read_tys(xcx);
                 dcx.tcx.node_type_substs.insert(id, tys);
@@ -1230,7 +1229,7 @@ impl fake_ext_ctxt for fake_session {
 
 #[cfg(test)]
 fn mk_ctxt() -> fake_ext_ctxt {
-    parse::new_parse_sess(None) as fake_ext_ctxt
+    @parse::new_parse_sess(None) as fake_ext_ctxt
 }
 
 #[cfg(test)]

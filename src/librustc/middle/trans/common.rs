@@ -47,12 +47,14 @@ use util::ppaux::{expr_repr, ty_to_str};
 use core::cast;
 use core::cmp;
 use core::hash;
+use core::hashmap::linear::LinearMap;
 use core::libc::c_uint;
 use core::ptr;
 use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
 use core::vec;
+use core::hashmap::linear::LinearMap;
 use std::oldmap::{HashMap, Set};
 use syntax::ast::ident;
 use syntax::ast_map::path;
@@ -141,7 +143,10 @@ pub struct Stats {
 
 pub struct BuilderRef_res {
     B: BuilderRef,
-    drop {
+}
+
+impl Drop for BuilderRef_res {
+    fn finalize(&self) {
         unsafe {
             llvm::LLVMDisposeBuilder(self.B);
         }
@@ -154,7 +159,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-type ExternMap = HashMap<@str, ValueRef>;
+pub type ExternMap = HashMap<@str, ValueRef>;
 
 // Crate context.  Every crate we compile has one of these.
 pub struct CrateContext {
@@ -167,11 +172,11 @@ pub struct CrateContext {
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
-     item_symbols: HashMap<ast::node_id, ~str>,
+     item_symbols: @mut LinearMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
      enum_sizes: HashMap<ty::t, uint>,
      discrims: HashMap<ast::def_id, ValueRef>,
-     discrim_symbols: HashMap<ast::node_id, ~str>,
+     discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
      tydescs: HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
@@ -295,12 +300,12 @@ pub struct fn_ctxt_ {
     loop_ret: Option<(ValueRef, ValueRef)>,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @HashMap<ast::node_id, local_val>,
+    llargs: @mut LinearMap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @HashMap<ast::node_id, local_val>,
+    lllocals: @mut LinearMap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
-    llupvars: @HashMap<ast::node_id, ValueRef>,
+    llupvars: @mut LinearMap<ast::node_id, ValueRef>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -442,7 +447,7 @@ pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
     do in_scope_cx(bcx) |scope_info| {
         scope_info.cleanups.push(
             clean_temp(val, |bcx| {
-                let bcx = callee::trans_rtcall_or_lang_call(
+                let bcx = callee::trans_lang_call(
                     bcx,
                     bcx.tcx().lang_items.return_to_mut_fn(),
                     ~[
@@ -538,22 +543,19 @@ pub trait get_node_info {
     fn info(&self) -> Option<NodeInfo>;
 }
 
-pub impl get_node_info for @ast::expr {
+impl get_node_info for @ast::expr {
     fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo { id: self.id, span: self.span })
     }
 }
 
-pub impl get_node_info for ast::blk {
+impl get_node_info for ast::blk {
     fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo { id: self.node.id, span: self.span })
     }
 }
 
-// XXX: Work around a trait parsing bug. remove after snapshot
-pub type optional_boxed_ast_expr = Option<@ast::expr>;
-
-pub impl get_node_info for optional_boxed_ast_expr {
+impl get_node_info for Option<@ast::expr> {
     fn info(&self) -> Option<NodeInfo> {
         self.chain_ref(|s| s.info())
     }
@@ -645,19 +647,6 @@ pub fn val_ty(v: ValueRef) -> TypeRef {
 
 pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
-}
-
-// Returns the nth element of the given LLVM structure type.
-pub fn struct_elt(llstructty: TypeRef, n: uint) -> TypeRef {
-    unsafe {
-        let elt_count = llvm::LLVMCountStructElementTypes(llstructty) as uint;
-        assert (n < elt_count);
-        let mut elt_tys = vec::from_elem(elt_count, T_nil());
-        llvm::LLVMGetStructElementTypes(
-            llstructty,
-            ptr::to_mut_unsafe_ptr(&mut elt_tys[0]));
-        return llvm::LLVMGetElementType(elt_tys[n]);
-    }
 }
 
 pub fn in_scope_cx(cx: block, f: &fn(&mut scope_info)) {
@@ -1288,7 +1277,7 @@ pub struct mono_id_ {
 
 pub type mono_id = @mono_id_;
 
-pub impl to_bytes::IterBytes for mono_param_id {
+impl to_bytes::IterBytes for mono_param_id {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         match /*bad*/copy *self {
           mono_precise(t, mids) =>
@@ -1302,7 +1291,7 @@ pub impl to_bytes::IterBytes for mono_param_id {
     }
 }
 
-pub impl to_bytes::IterBytes for mono_id_ {
+impl to_bytes::IterBytes for mono_id_ {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }
@@ -1355,6 +1344,12 @@ pub fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
 
 pub fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {
     node_id_type(bcx, ex.id)
+}
+
+pub fn expr_ty_adjusted(bcx: block, ex: @ast::expr) -> ty::t {
+    let tcx = bcx.tcx();
+    let t = ty::expr_ty_adjusted(tcx, ex);
+    monomorphize_type(bcx, t)
 }
 
 pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {

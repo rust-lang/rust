@@ -254,7 +254,7 @@ impl to_str::ToStr for Variable {
 // variable must not be assigned if there is some successor
 // assignment.  And so forth.
 
-impl LiveNode {
+pub impl LiveNode {
     pure fn is_valid(&self) -> bool { **self != uint::max_value }
 }
 
@@ -334,7 +334,7 @@ fn IrMaps(tcx: ty::ctxt,
     }
 }
 
-impl IrMaps {
+pub impl IrMaps {
     fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
         let ln = LiveNode(self.num_live_nodes);
         self.lnks.push(lnk);
@@ -667,8 +667,8 @@ struct Liveness {
     tcx: ty::ctxt,
     ir: @mut IrMaps,
     s: Specials,
-    successors: ~[mut LiveNode],
-    users: ~[mut Users],
+    successors: @mut ~[LiveNode],
+    users: @mut ~[Users],
     // The list of node IDs for the nested loop scopes
     // we're in.
     loop_scope: DVec<node_id>,
@@ -684,21 +684,16 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         ir: ir,
         tcx: ir.tcx,
         s: specials,
-        successors:
-            vec::cast_to_mut(
-                vec::from_elem(ir.num_live_nodes,
-                               invalid_node())),
-        users:
-            vec::cast_to_mut(
-                vec::from_elem(ir.num_live_nodes * ir.num_vars,
-                               invalid_users())),
+        successors: @mut vec::from_elem(ir.num_live_nodes, invalid_node()),
+        users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
+                                   invalid_users()),
         loop_scope: DVec(),
         break_ln: HashMap(),
         cont_ln: HashMap()
     }
 }
 
-impl Liveness {
+pub impl Liveness {
     fn live_node(&self, node_id: node_id, span: span) -> LiveNode {
         match self.ir.live_node_map.find(&node_id) {
           Some(ln) => ln,
@@ -916,12 +911,13 @@ impl Liveness {
 
         let mut changed = false;
         do self.indices2(ln, succ_ln) |idx, succ_idx| {
-            changed |= copy_if_invalid(copy self.users[succ_idx].reader,
-                                       &mut self.users[idx].reader);
-            changed |= copy_if_invalid(copy self.users[succ_idx].writer,
-                                       &mut self.users[idx].writer);
-            if self.users[succ_idx].used && !self.users[idx].used {
-                self.users[idx].used = true;
+            let users = &mut *self.users;
+            changed |= copy_if_invalid(copy users[succ_idx].reader,
+                                       &mut users[idx].reader);
+            changed |= copy_if_invalid(copy users[succ_idx].writer,
+                                       &mut users[idx].writer);
+            if users[succ_idx].used && !users[idx].used {
+                users[idx].used = true;
                 changed = true;
             }
         }
@@ -956,7 +952,8 @@ impl Liveness {
     // Either read, write, or both depending on the acc bitset
     fn acc(&self, ln: LiveNode, var: Variable, acc: uint) {
         let idx = self.idx(ln, var);
-        let user = &mut self.users[idx];
+        let users = &mut *self.users;
+        let user = &mut users[idx];
 
         if (acc & ACC_WRITE) != 0 {
             user.reader = invalid_node();
@@ -970,7 +967,7 @@ impl Liveness {
         }
 
         if (acc & ACC_USE) != 0 {
-            self.users[idx].used = true;
+            user.used = true;
         }
 
         debug!("%s accesses[%x] %s: %s",
@@ -1584,7 +1581,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
             match self.ir.variable_moves_map.find(&expr.id) {
                 None => {}
-                Some(entire_expr) => {
+                Some(&entire_expr) => {
                     debug!("(checking expr) is a move: `%s`",
                            expr_to_str(expr, self.tcx.sess.intr()));
                     self.check_move_from_var(ln, *var, entire_expr);
@@ -1652,7 +1649,7 @@ enum ReadKind {
     PartiallyMovedValue
 }
 
-impl @Liveness {
+pub impl @Liveness {
     fn check_ret(&self, id: node_id, sp: span, _fk: visit::fn_kind,
                  entry_ln: LiveNode) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {

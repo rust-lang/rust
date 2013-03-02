@@ -94,9 +94,7 @@ pub fn parse_crate_from_source_str(name: ~str,
                                    sess: @mut ParseSess) -> @ast::crate {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
-    let r = p.parse_crate_mod(cfg);
-    p.abort_if_errors();
-    return r;
+    maybe_aborted(p.parse_crate_mod(cfg),p)
 }
 
 pub fn parse_expr_from_source_str(name: ~str,
@@ -105,9 +103,7 @@ pub fn parse_expr_from_source_str(name: ~str,
                                   sess: @mut ParseSess) -> @ast::expr {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
-    let r = p.parse_expr();
-    p.abort_if_errors();
-    return r;
+    maybe_aborted(p.parse_expr(), p)
 }
 
 pub fn parse_item_from_source_str(name: ~str,
@@ -118,9 +114,7 @@ pub fn parse_item_from_source_str(name: ~str,
                                -> Option<@ast::item> {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
-    let r = p.parse_item(attrs);
-    p.abort_if_errors();
-    return r;
+    maybe_aborted(p.parse_item(attrs),p)
 }
 
 pub fn parse_stmt_from_source_str(name: ~str,
@@ -130,9 +124,7 @@ pub fn parse_stmt_from_source_str(name: ~str,
                                   sess: @mut ParseSess) -> @ast::stmt {
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
-    let r = p.parse_stmt(attrs);
-    p.abort_if_errors();
-    return r;
+    maybe_aborted(p.parse_stmt(attrs),p)
 }
 
 pub fn parse_tts_from_source_str(name: ~str,
@@ -142,9 +134,7 @@ pub fn parse_tts_from_source_str(name: ~str,
     let p = new_parser_from_source_str(sess, cfg, name,
                                        codemap::FssNone, source);
     *p.quote_depth += 1u;
-    let r = p.parse_all_token_trees();
-    p.abort_if_errors();
-    return r;
+    maybe_aborted(p.parse_all_token_trees(),p)
 }
 
 pub fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
@@ -159,8 +149,7 @@ pub fn parse_from_source_str<T>(f: fn (p: Parser) -> T,
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");
     }
-    p.abort_if_errors();
-    r
+    maybe_aborted(r,p)
 }
 
 pub fn next_node_id(sess: @mut ParseSess) -> node_id {
@@ -181,8 +170,8 @@ pub fn new_parser_from_source_str(sess: @mut ParseSess, cfg: ast::crate_cfg,
     return Parser(sess, cfg, srdr as reader);
 }
 
-// Read the entire source file, return a parser
-// that draws from that string
+/// Read the entire source file, return a parser
+/// that draws from that string
 pub fn new_parser_result_from_file(sess: @mut ParseSess,
                             cfg: ast::crate_cfg,
                             path: &Path)
@@ -201,7 +190,7 @@ pub fn new_parser_result_from_file(sess: @mut ParseSess,
     }
 }
 
-/// Create a new parser for an entire crate, handling errors as appropriate
+/// Create a new parser, handling errors as appropriate
 /// if the file doesn't exist
 pub fn new_parser_from_file(sess: @mut ParseSess, cfg: ast::crate_cfg,
                               path: &Path) -> Parser {
@@ -232,12 +221,21 @@ pub fn new_parser_from_tts(sess: @mut ParseSess, cfg: ast::crate_cfg,
     return Parser(sess, cfg, trdr as reader)
 }
 
+// abort if necessary
+pub fn maybe_aborted<T>(+result : T, p: Parser) -> T {
+    p.abort_if_errors();
+    result
+}
+
+
 
 #[cfg(test)]
 mod test {
     use super::*;
     use std::serialize::Encodable;
     use std;
+    use core::io;
+    use core::option::None;
     use core::str;
     use util::testing::*;
 
@@ -253,7 +251,7 @@ mod test {
             @~"fn foo (x : int) { x; }",
             ~[],
             new_parse_sess(None));
-        check_equal(to_json_str(tts as Encodable::<std::json::Encoder>),
+        check_equal(to_json_str(@tts as Encodable::<std::json::Encoder>),
                     ~"[[\"tt_tok\",[,[\"IDENT\",[\"fn\",false]]]],\
                       [\"tt_tok\",[,[\"IDENT\",[\"foo\",false]]]],\
                       [\"tt_delim\",[[[\"tt_tok\",[,[\"LPAREN\",[]]]],\

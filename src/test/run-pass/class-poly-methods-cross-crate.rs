@@ -14,8 +14,8 @@ extern mod cci_class_6;
 use cci_class_6::kitties::*;
 
 pub fn main() {
-  let nyan : cat<char> = cat::<char>(52u, 99, ~['p']);
-  let kitty = cat(1000u, 2, ~[~"tabby"]);
+  let mut nyan : cat<char> = cat::<char>(52u, 99, ~['p']);
+  let mut kitty = cat(1000u, 2, ~[~"tabby"]);
   assert(nyan.how_hungry == 99);
   assert(kitty.how_hungry == 2);
   nyan.speak(~[1u,2u,3u]);

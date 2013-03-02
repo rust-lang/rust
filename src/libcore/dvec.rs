@@ -93,17 +93,6 @@ priv impl<A> DVec<A> {
     }
 
     #[inline(always)]
-    fn check_out<B>(f: &fn(v: ~[A]) -> B) -> B {
-        unsafe {
-            let mut data = cast::reinterpret_cast(&null::<()>());
-            data <-> self.data;
-            let data_ptr: *() = cast::reinterpret_cast(&data);
-            if data_ptr.is_null() { fail!(~"Recursive use of dvec"); }
-            return f(data);
-        }
-    }
-
-    #[inline(always)]
     fn give_back(data: ~[A]) {
         unsafe {
             self.data = data;
@@ -117,7 +106,19 @@ priv impl<A> DVec<A> {
 // In theory, most everything should work with any A, but in practice
 // almost nothing works without the copy bound due to limitations
 // around closures.
-impl<A> DVec<A> {
+pub impl<A> DVec<A> {
+    // FIXME (#3758): This should not need to be public.
+    #[inline(always)]
+    fn check_out<B>(f: &fn(v: ~[A]) -> B) -> B {
+        unsafe {
+            let mut data = cast::reinterpret_cast(&null::<()>());
+            data <-> self.data;
+            let data_ptr: *() = cast::reinterpret_cast(&data);
+            if data_ptr.is_null() { fail!(~"Recursive use of dvec"); }
+            return f(data);
+        }
+    }
+
     /// Reserves space for N elements
     fn reserve(count: uint) {
         vec::reserve(&mut self.data, count)
@@ -131,18 +132,6 @@ impl<A> DVec<A> {
     #[inline(always)]
     fn swap(f: &fn(v: ~[A]) -> ~[A]) {
         self.check_out(|v| self.give_back(f(v)))
-    }
-
-    /**
-     * Swaps out the current vector and hands it off to a user-provided
-     * function `f`.  The function should transform it however is desired
-     * and return a new vector to replace it with.
-     */
-    #[inline(always)]
-    fn swap_mut(f: &fn(v: ~[mut A]) -> ~[mut A]) {
-        do self.swap |v| {
-            vec::cast_from_mut(f(vec::cast_to_mut(v)))
-        }
     }
 
     /// Returns the number of elements currently in the dvec
@@ -217,7 +206,7 @@ impl<A> DVec<A> {
     }
 
     /// Gives access to the vector as a slice with mutable contents
-    fn borrow_mut<R>(op: fn(x: &[mut A]) -> R) -> R {
+    fn borrow_mut<R>(op: &fn(x: &mut [A]) -> R) -> R {
         do self.check_out |v| {
             let mut v = v;
             let result = op(v);
@@ -227,7 +216,7 @@ impl<A> DVec<A> {
     }
 }
 
-impl<A:Copy> DVec<A> {
+pub impl<A:Copy> DVec<A> {
     /**
      * Append all elements of a vector to the end of the list
      *

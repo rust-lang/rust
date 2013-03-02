@@ -46,34 +46,10 @@ extern mod rustrt {
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-#[cfg(stage0)]
-pub enum TestName {
-    // Stage0 doesn't understand sendable &static/str yet
-    StaticTestName(&static/[u8]),
-    DynTestName(~str)
-}
-
-#[cfg(stage0)]
-impl ToStr for TestName {
-    pure fn to_str(&self) -> ~str {
-        match self {
-            &StaticTestName(s) => str::from_bytes(s),
-            &DynTestName(s) => s.to_str()
-        }
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 pub enum TestName {
     StaticTestName(&static/str),
     DynTestName(~str)
 }
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 impl ToStr for TestName {
     pure fn to_str(&self) -> ~str {
         match self {
@@ -377,7 +353,7 @@ pub fn run_tests_console(opts: &TestOpts,
 
 fn print_failures(st: @ConsoleTestState) {
     st.out.write_line(~"\nfailures:");
-    let failures = vec::cast_to_mut(st.failures.map(|t| t.name.to_str()));
+    let mut failures = st.failures.map(|t| t.name.to_str());
     sort::tim_sort(failures);
     for vec::each(failures) |name| {
         st.out.write_line(fmt!("    %s", name.to_str()));

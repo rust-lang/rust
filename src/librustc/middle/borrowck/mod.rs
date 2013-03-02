@@ -230,6 +230,7 @@ use middle::liveness;
 use middle::mem_categorization::*;
 use middle::region;
 use middle::ty;
+use middle::typeck;
 use middle::moves;
 use util::common::{indenter, stmt_set};
 use util::ppaux::{expr_repr, note_and_explain_region};
@@ -237,11 +238,12 @@ use util::ppaux::{ty_to_str, region_to_str, explain_region};
 
 use core::cmp;
 use core::dvec::DVec;
+use core::hashmap::linear::LinearMap;
 use core::io;
 use core::result::{Result, Ok, Err};
+use core::to_bytes;
 use std::list::{List, Cons, Nil};
 use std::list;
-use std::oldmap::{HashMap, Set};
 use syntax::ast::{mutability, m_mutbl, m_imm, m_const};
 use syntax::ast;
 use syntax::ast_map;
@@ -267,10 +269,10 @@ pub fn check_crate(
         method_map: method_map,
         moves_map: moves_map,
         capture_map: capture_map,
-        root_map: root_map(),
-        mutbl_map: HashMap(),
-        write_guard_map: HashMap(),
-        stmt_map: HashMap(),
+        root_map: @mut LinearMap::new(),
+        mutbl_map: @mut LinearMap::new(),
+        write_guard_map: @mut LinearMap::new(),
+        stmt_map: @mut LinearMap::new(),
         stats: @mut BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -341,7 +343,7 @@ pub struct RootInfo {
 // a map mapping id's of expressions of gc'd type (@T, @[], etc) where
 // the box needs to be kept live to the id of the scope for which they
 // must stay live.
-pub type root_map = HashMap<root_map_key, RootInfo>;
+pub type root_map = @mut LinearMap<root_map_key, RootInfo>;
 
 // the keys to the root map combine the `id` of the expression with
 // the number of types that it is autodereferenced.  So, for example,
@@ -356,11 +358,11 @@ pub struct root_map_key {
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
-pub type mutbl_map = HashMap<ast::node_id, ()>;
+pub type mutbl_map = @mut LinearMap<ast::node_id, ()>;
 
 // A set containing IDs of expressions of gc'd type that need to have a write
 // guard.
-pub type write_guard_map = HashMap<root_map_key, ()>;
+pub type write_guard_map = @mut LinearMap<root_map_key, ()>;
 
 // Errors that can occur
 #[deriving_eq]
@@ -413,8 +415,8 @@ pub struct Loan {
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
 pub struct ReqMaps {
-    req_loan_map: HashMap<ast::node_id, @DVec<Loan>>,
-    pure_map: HashMap<ast::node_id, bckerr>
+    req_loan_map: @mut LinearMap<ast::node_id, @DVec<Loan>>,
+    pure_map: @mut LinearMap<ast::node_id, bckerr>
 }
 
 pub fn save_and_restore<T:Copy,U>(save_and_restore_t: &mut T,
@@ -433,7 +435,7 @@ pub fn save_and_restore_managed<T:Copy,U>(save_and_restore_t: @mut T,
     u
 }
 
-impl LoanKind {
+pub impl LoanKind {
     fn is_freeze(&self) -> bool {
         match *self {
             TotalFreeze | PartialFreeze => true,
@@ -451,15 +453,12 @@ impl LoanKind {
 
 /// Creates and returns a new root_map
 
-pub impl to_bytes::IterBytes for root_map_key {
+impl to_bytes::IterBytes for root_map_key {
     pure fn iter_bytes(&self, +lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
     }
 }
 
-pub fn root_map() -> root_map {
-    return HashMap();
-}
 
 // ___________________________________________________________________________
 // Misc
@@ -478,9 +477,20 @@ pub impl BorrowckCtxt {
     }
 
     fn cat_expr_autoderefd(&self, expr: @ast::expr,
-                           adj: @ty::AutoAdjustment)
-                        -> cmt {
-        cat_expr_autoderefd(self.tcx, self.method_map, expr, adj)
+                           adj: @ty::AutoAdjustment) -> cmt {
+        match *adj {
+            ty::AutoAddEnv(*) => {
+                // no autoderefs
+                cat_expr_unadjusted(self.tcx, self.method_map, expr)
+            }
+
+            ty::AutoDerefRef(
+                ty::AutoDerefRef {
+                    autoderefs: autoderefs, _}) => {
+                cat_expr_autoderefd(self.tcx, self.method_map, expr,
+                                    autoderefs)
+            }
+        }
     }
 
     fn cat_def(&self,
