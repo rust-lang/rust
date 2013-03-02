@@ -20,7 +20,7 @@
 use at_vec;
 use cast;
 use char;
-use cmp::{Eq, Ord};
+use cmp::{Eq, Ord, TotalOrd, Ordering, Less, Equal, Greater};
 use libc;
 use libc::size_t;
 use io::WriterUtil;
@@ -771,6 +771,35 @@ pub pure fn eq(a: &~str, b: &~str) -> bool {
 #[cfg(test)]
 pub pure fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
+}
+
+pure fn cmp(a: &str, b: &str) -> Ordering {
+    let low = uint::min(a.len(), b.len());
+
+    for uint::range(0, low) |idx| {
+        match a[idx].cmp(&b[idx]) {
+          Greater => return Greater,
+          Less => return Less,
+          Equal => ()
+        }
+    }
+
+    a.len().cmp(&b.len())
+}
+
+#[cfg(notest)]
+impl TotalOrd for &str {
+    pure fn cmp(&self, other: & &self/str) -> Ordering { cmp(*self, *other) }
+}
+
+#[cfg(notest)]
+impl TotalOrd for ~str {
+    pure fn cmp(&self, other: &~str) -> Ordering { cmp(*self, *other) }
+}
+
+#[cfg(notest)]
+impl TotalOrd for @str {
+    pure fn cmp(&self, other: &@str) -> Ordering { cmp(*self, *other) }
 }
 
 /// Bytewise slice less than
@@ -2389,6 +2418,7 @@ mod tests {
     use ptr;
     use str::*;
     use vec;
+    use cmp::{TotalOrd, Less, Equal, Greater};
 
     #[test]
     fn test_eq() {
@@ -3395,4 +3425,12 @@ mod tests {
         assert view("abcdef", 1, 5).to_managed() == @"bcde";
     }
 
+    #[test]
+    fn test_total_ord() {
+        "1234".cmp(& &"123") == Greater;
+        "123".cmp(& &"1234") == Less;
+        "1234".cmp(& &"1234") == Equal;
+        "12345555".cmp(& &"123456") == Less;
+        "22".cmp(& &"1234") == Greater;
+    }
 }
