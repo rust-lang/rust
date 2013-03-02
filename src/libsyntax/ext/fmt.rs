@@ -26,9 +26,9 @@ use ext::build;
 use ext::build::*;
 use unstable::extfmt::ct::*;
 
-pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: ~[ast::token_tree])
+pub fn expand_syntax_ext(cx: ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
-    let args = get_exprs_from_tts(cx, copy tts);
+    let args = get_exprs_from_tts(cx, tts);
     if args.len() == 0 {
         cx.span_fatal(sp, "fmt! takes at least 1 argument.");
     }
@@ -277,9 +277,9 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     for pieces.each |pc| {
         match *pc {
           PieceString(ref s) => {
-            piece_exprs.push(mk_uniq_str(cx, fmt_sp, (*s)))
+            piece_exprs.push(mk_uniq_str(cx, fmt_sp, copy *s))
           }
-          PieceConv(conv) => {
+          PieceConv(ref conv) => {
             n += 1u;
             if n >= nargs {
                 cx.span_fatal(sp,
@@ -287,9 +287,14 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                                   ~"for the given format string");
             }
             debug!("Building conversion:");
-            log_conv(conv);
+            log_conv(/*bad*/ copy *conv);
             let arg_expr = args[n];
-            let c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);
+            let c_expr = make_new_conv(
+                cx,
+                fmt_sp,
+                /*bad*/ copy *conv,
+                arg_expr
+            );
             piece_exprs.push(c_expr);
           }
         }

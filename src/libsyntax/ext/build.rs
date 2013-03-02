@@ -29,7 +29,7 @@ pub struct Field {
 
 pub fn mk_expr(cx: ext_ctxt,
                sp: codemap::span,
-               expr: ast::expr_)
+               +expr: ast::expr_)
             -> @ast::expr {
     @ast::expr {
         id: cx.next_id(),
@@ -65,7 +65,7 @@ pub fn mk_unary(cx: ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
     cx.next_id(); // see ast_util::op_expr_callee_id
     mk_expr(cx, sp, ast::expr_unary(op, e))
 }
-pub fn mk_raw_path(sp: span, idents: ~[ast::ident]) -> @ast::path {
+pub fn mk_raw_path(sp: span, +idents: ~[ast::ident]) -> @ast::path {
     let p = @ast::path { span: sp,
                          global: false,
                          idents: idents,
@@ -74,7 +74,7 @@ pub fn mk_raw_path(sp: span, idents: ~[ast::ident]) -> @ast::path {
     return p;
 }
 pub fn mk_raw_path_(sp: span,
-                    idents: ~[ast::ident],
+                    +idents: ~[ast::ident],
                     +types: ~[@ast::Ty])
                  -> @ast::path {
     @ast::path { span: sp,
@@ -83,17 +83,17 @@ pub fn mk_raw_path_(sp: span,
                  rp: None,
                  types: types }
 }
-pub fn mk_raw_path_global(sp: span, idents: ~[ast::ident]) -> @ast::path {
+pub fn mk_raw_path_global(sp: span, +idents: ~[ast::ident]) -> @ast::path {
     @ast::path { span: sp,
                  global: true,
                  idents: idents,
                  rp: None,
                  types: ~[] }
 }
-pub fn mk_path(cx: ext_ctxt, sp: span, idents: ~[ast::ident]) -> @ast::expr {
+pub fn mk_path(cx: ext_ctxt, sp: span, +idents: ~[ast::ident]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_path(mk_raw_path(sp, idents)))
 }
-pub fn mk_path_global(cx: ext_ctxt, sp: span, idents: ~[ast::ident])
+pub fn mk_path_global(cx: ext_ctxt, sp: span, +idents: ~[ast::ident])
                    -> @ast::expr {
     mk_expr(cx, sp, ast::expr_path(mk_raw_path_global(sp, idents)))
 }
@@ -101,7 +101,7 @@ pub fn mk_access_(cx: ext_ctxt, sp: span, p: @ast::expr, m: ast::ident)
                -> @ast::expr {
     mk_expr(cx, sp, ast::expr_field(p, m, ~[]))
 }
-pub fn mk_access(cx: ext_ctxt, sp: span, p: ~[ast::ident], m: ast::ident)
+pub fn mk_access(cx: ext_ctxt, sp: span, +p: ~[ast::ident], m: ast::ident)
               -> @ast::expr {
     let pathexpr = mk_path(cx, sp, p);
     return mk_access_(cx, sp, pathexpr, m);
@@ -110,21 +110,21 @@ pub fn mk_addr_of(cx: ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
     return mk_expr(cx, sp, ast::expr_addr_of(ast::m_imm, e));
 }
 pub fn mk_call_(cx: ext_ctxt, sp: span, fn_expr: @ast::expr,
-                args: ~[@ast::expr]) -> @ast::expr {
+                +args: ~[@ast::expr]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_call(fn_expr, args, ast::NoSugar))
 }
-pub fn mk_call(cx: ext_ctxt, sp: span, fn_path: ~[ast::ident],
-               args: ~[@ast::expr]) -> @ast::expr {
+pub fn mk_call(cx: ext_ctxt, sp: span, +fn_path: ~[ast::ident],
+               +args: ~[@ast::expr]) -> @ast::expr {
     let pathexpr = mk_path(cx, sp, fn_path);
     return mk_call_(cx, sp, pathexpr, args);
 }
-pub fn mk_call_global(cx: ext_ctxt, sp: span, fn_path: ~[ast::ident],
-                      args: ~[@ast::expr]) -> @ast::expr {
+pub fn mk_call_global(cx: ext_ctxt, sp: span, +fn_path: ~[ast::ident],
+                      +args: ~[@ast::expr]) -> @ast::expr {
     let pathexpr = mk_path_global(cx, sp, fn_path);
     return mk_call_(cx, sp, pathexpr, args);
 }
 // e = expr, t = type
-pub fn mk_base_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr])
+pub fn mk_base_vec_e(cx: ext_ctxt, sp: span, +exprs: ~[@ast::expr])
                   -> @ast::expr {
     let vecexpr = ast::expr_vec(exprs, ast::m_imm);
     mk_expr(cx, sp, vecexpr)
@@ -134,25 +134,25 @@ pub fn mk_vstore_e(cx: ext_ctxt, sp: span, expr: @ast::expr,
    @ast::expr {
     mk_expr(cx, sp, ast::expr_vstore(expr, vst))
 }
-pub fn mk_uniq_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr])
+pub fn mk_uniq_vec_e(cx: ext_ctxt, sp: span, +exprs: ~[@ast::expr])
                   -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs), ast::expr_vstore_uniq)
 }
-pub fn mk_slice_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr])
+pub fn mk_slice_vec_e(cx: ext_ctxt, sp: span, +exprs: ~[@ast::expr])
                    -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs),
                 ast::expr_vstore_slice)
 }
-pub fn mk_fixed_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr])
+pub fn mk_fixed_vec_e(cx: ext_ctxt, sp: span, +exprs: ~[@ast::expr])
                    -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs),
                 ast::expr_vstore_fixed(None))
 }
-pub fn mk_base_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
+pub fn mk_base_str(cx: ext_ctxt, sp: span, +s: ~str) -> @ast::expr {
     let lit = ast::lit_str(@s);
     return mk_lit(cx, sp, lit);
 }
-pub fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
+pub fn mk_uniq_str(cx: ext_ctxt, sp: span, +s: ~str) -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_str(cx, sp, s), ast::expr_vstore_uniq)
 }
 pub fn mk_field(sp: span, f: &Field) -> ast::field {
@@ -164,28 +164,36 @@ pub fn mk_field(sp: span, f: &Field) -> ast::field {
 pub fn mk_fields(sp: span, fields: ~[Field]) -> ~[ast::field] {
     fields.map(|f| mk_field(sp, f))
 }
-pub fn mk_rec_e(cx: ext_ctxt, sp: span, fields: ~[Field]) -> @ast::expr {
+pub fn mk_rec_e(cx: ext_ctxt,
+                sp: span,
+                +fields: ~[Field])
+             -> @ast::expr {
     mk_expr(cx, sp, ast::expr_rec(mk_fields(sp, fields),
                                   option::None::<@ast::expr>))
 }
-pub fn mk_struct_e(cx: ext_ctxt, sp: span, ctor_path: ~[ast::ident],
-                   fields: ~[Field]) -> @ast::expr {
+pub fn mk_struct_e(cx: ext_ctxt,
+                   sp: span,
+                   +ctor_path: ~[ast::ident],
+                   +fields: ~[Field])
+                -> @ast::expr {
     mk_expr(cx, sp,
             ast::expr_struct(mk_raw_path(sp, ctor_path),
                              mk_fields(sp, fields),
                                     option::None::<@ast::expr>))
 }
-pub fn mk_global_struct_e(cx: ext_ctxt, sp: span,
-                          ctor_path: ~[ast::ident],
-                          fields: ~[Field])
+pub fn mk_global_struct_e(cx: ext_ctxt,
+                          sp: span,
+                          +ctor_path: ~[ast::ident],
+                          +fields: ~[Field])
                        -> @ast::expr {
     mk_expr(cx, sp,
             ast::expr_struct(mk_raw_path_global(sp, ctor_path),
                              mk_fields(sp, fields),
                                     option::None::<@ast::expr>))
 }
-pub fn mk_glob_use(cx: ext_ctxt, sp: span, path: ~[ast::ident])
-            -> @ast::view_item {
+pub fn mk_glob_use(cx: ext_ctxt,
+                   sp: span,
+                   +path: ~[ast::ident]) -> @ast::view_item {
     let glob = @codemap::spanned {
         node: ast::view_path_glob(mk_raw_path(sp, path), cx.next_id()),
         span: sp,
@@ -221,8 +229,8 @@ pub fn mk_local(cx: ext_ctxt, sp: span, mutbl: bool,
     @codemap::spanned { node: ast::stmt_decl(@decl, cx.next_id()), span: sp }
 }
 pub fn mk_block(cx: ext_ctxt, span: span,
-                view_items: ~[@ast::view_item],
-                stmts: ~[@ast::stmt],
+                +view_items: ~[@ast::view_item],
+                +stmts: ~[@ast::stmt],
                 expr: Option<@ast::expr>) -> @ast::expr {
     let blk = codemap::spanned {
         node: ast::blk_ {
@@ -316,7 +324,7 @@ pub fn mk_stmt(cx: ext_ctxt, span: span, expr: @ast::expr) -> @ast::stmt {
 }
 pub fn mk_ty_path(cx: ext_ctxt,
                   span: span,
-                  idents: ~[ ast::ident ])
+                  +idents: ~[ ast::ident ])
                -> @ast::Ty {
     let ty = build::mk_raw_path(span, idents);
     let ty = ast::ty_path(ty, cx.next_id());
@@ -325,7 +333,7 @@ pub fn mk_ty_path(cx: ext_ctxt,
 }
 pub fn mk_ty_path_global(cx: ext_ctxt,
                          span: span,
-                         idents: ~[ ast::ident ])
+                         +idents: ~[ ast::ident ])
                       -> @ast::Ty {
     let ty = build::mk_raw_path_global(span, idents);
     let ty = ast::ty_path(ty, cx.next_id());

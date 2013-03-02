@@ -673,9 +673,9 @@ pub fn check_local(cx: @MatchCheckCtxt,
 }
 
 pub fn check_fn(cx: @MatchCheckCtxt,
-                kind: visit::fn_kind,
-                decl: fn_decl,
-                body: blk,
+                kind: &visit::fn_kind,
+                decl: &fn_decl,
+                body: &blk,
                 sp: span,
                 id: node_id,
                 &&s: (),

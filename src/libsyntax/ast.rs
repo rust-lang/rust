@@ -1190,7 +1190,7 @@ pub enum attr_style { attr_outer, attr_inner, }
 #[deriving_eq]
 pub struct attribute_ {
     style: attr_style,
-    value: meta_item,
+    value: @meta_item,
     is_sugared_doc: bool,
 }
 

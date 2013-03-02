@@ -77,7 +77,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
             ident: ident,
             node: ast::foreign_item_fn(ref decl, _, ref tys), _
           }, _, _) => {
-            Some(pprust::fun_to_str(*decl, ident, tys,
+            Some(pprust::fun_to_str(decl, ident, tys,
                                     extract::interner()))
           }
           _ => fail!(~"get_fn_sig: fn_id not bound to a fn item")
@@ -213,7 +213,7 @@ fn get_method_sig(
                   match method {
                     ast::required(ty_m) => {
                       Some(pprust::fun_to_str(
-                          ty_m.decl,
+                          &ty_m.decl,
                           ty_m.ident,
                           &ty_m.generics,
                           extract::interner()
@@ -221,7 +221,7 @@ fn get_method_sig(
                     }
                     ast::provided(m) => {
                       Some(pprust::fun_to_str(
-                          m.decl,
+                          &m.decl,
                           m.ident,
                           &m.generics,
                           extract::interner()
@@ -240,7 +240,7 @@ fn get_method_sig(
             }) {
                 Some(method) => {
                     Some(pprust::fun_to_str(
-                        method.decl,
+                        &method.decl,
                         method.ident,
                         &method.generics,
                         extract::interner()

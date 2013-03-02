@@ -298,7 +298,7 @@ fn encode_ast(ebml_w: writer::Encoder, item: ast::inlined_item) {
 // nested items, as otherwise it would get confused when translating
 // inlined items.
 fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
-    fn drop_nested_items(blk: ast::blk_, fld: fold::ast_fold) -> ast::blk_ {
+    fn drop_nested_items(blk: &ast::blk_, fld: fold::ast_fold) -> ast::blk_ {
         let stmts_sans_items = do blk.stmts.filtered |stmt| {
             match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
@@ -317,7 +317,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
             id: blk.id,
             rules: blk.rules
         };
-        fold::noop_fold_block(blk_sans_items, fld)
+        fold::noop_fold_block(&blk_sans_items, fld)
     }
 
     let fld = fold::make_fold(@fold::AstFoldFns {
@@ -336,7 +336,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
       ast::ii_dtor(ref dtor, nm, ref tps, parent_id) => {
-        let dtor_body = fld.fold_block((*dtor).node.body);
+        let dtor_body = fld.fold_block(&dtor.node.body);
         ast::ii_dtor(
             codemap::spanned {
                 node: ast::struct_dtor_ { body: dtor_body,
@@ -372,8 +372,8 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
       ast::ii_dtor(ref dtor, nm, ref generics, parent_id) => {
-        let dtor_body = fld.fold_block((*dtor).node.body);
-        let dtor_attrs = fld.fold_attributes(copy dtor.node.attrs);
+        let dtor_body = fld.fold_block(&dtor.node.body);
+        let dtor_attrs = fld.fold_attributes(/*bad*/copy (*dtor).node.attrs);
         let new_generics = fold::fold_generics(generics, fld);
         let dtor_id = fld.new_id((*dtor).node.id);
         let new_parent = xcx.tr_def_id(parent_id);

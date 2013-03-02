@@ -307,7 +307,7 @@ pub fn trans_static_method_callee(bcx: block,
     let mname = if method_id.crate == ast::local_crate {
         match bcx.tcx().items.get(&method_id.node) {
             ast_map::node_trait_method(trait_method, _, _) => {
-                ast_util::trait_method_to_ty_method(*trait_method).ident
+                ast_util::trait_method_to_ty_method(trait_method).ident
             }
             _ => fail!(~"callee is not a trait method")
         }

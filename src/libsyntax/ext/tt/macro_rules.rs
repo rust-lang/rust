@@ -54,7 +54,7 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
     let arg_reader = new_tt_reader(copy cx.parse_sess().span_diagnostic,
-                                   cx.parse_sess().interner, None, arg);
+                                   cx.parse_sess().interner, None, copy arg);
     let argument_map = parse_or_else(cx.parse_sess(), cx.cfg(),
                                      arg_reader as reader, argument_gram);
 
@@ -71,7 +71,7 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     // Given `lhses` and `rhses`, this is the new macro we create
     fn generic_extension(cx: ext_ctxt, sp: span, name: ident,
-                         arg: ~[ast::token_tree],
+                         arg: &[ast::token_tree],
                          lhses: ~[@named_match], rhses: ~[@named_match])
     -> MacResult {
 
@@ -79,7 +79,7 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
             io::println(fmt!("%s! { %s }",
                              cx.str_of(name),
                              print::pprust::tt_to_str(
-                                 ast::tt_delim(arg),
+                                 ast::tt_delim(vec::from_slice(arg)),
                                  cx.parse_sess().interner)));
         }
 
@@ -94,7 +94,12 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
             match *lhs {
               @matched_nonterminal(nt_matchers(ref mtcs)) => {
                 // `none` is because we're not interpolating
-                let arg_rdr = new_tt_reader(s_d, itr, None, arg) as reader;
+                let arg_rdr = new_tt_reader(
+                    s_d,
+                    itr,
+                    None,
+                    vec::from_slice(arg)
+                ) as reader;
                 match parse(cx.parse_sess(), cx.cfg(), arg_rdr, (*mtcs)) {
                   success(named_matches) => {
                     let rhs = match rhses[i] {
@@ -125,7 +130,7 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                   }
                   failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                     best_fail_spot = sp;
-                    best_fail_msg = (*msg);
+                    best_fail_msg = copy *msg;
                   },
                   error(sp, ref msg) => cx.span_fatal(sp, (*msg))
                 }
@@ -136,11 +141,11 @@ pub fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         cx.span_fatal(best_fail_spot, best_fail_msg);
     }
 
-    let exp: @fn(ext_ctxt, span, ~[ast::token_tree]) -> MacResult =
+    let exp: @fn(ext_ctxt, span, &[ast::token_tree]) -> MacResult =
         |cx, sp, arg| generic_extension(cx, sp, name, arg, lhses, rhses);
 
     return MRDef(MacroDef{
-        name: *cx.parse_sess().interner.get(name),
+        name: copy *cx.parse_sess().interner.get(name),
         ext: NormalTT(base::SyntaxExpanderTT{expander: exp, span: Some(sp)})
     });
 }

@@ -3811,7 +3811,7 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
                             ast_map::path_name(method.ident))
           }
           ast_map::node_trait_method(trait_method, _, path) => {
-            let method = ast_util::trait_method_to_ty_method(*trait_method);
+            let method = ast_util::trait_method_to_ty_method(&*trait_method);
             vec::append_one(/*bad*/copy *path,
                             ast_map::path_name(method.ident))
           }

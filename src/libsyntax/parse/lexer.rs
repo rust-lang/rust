@@ -103,8 +103,8 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
         curr: r.curr,
         filemap: r.filemap,
         interner: r.interner,
-        peek_tok: r.peek_tok,
-        peek_span: r.peek_span
+        peek_tok: copy r.peek_tok,
+        peek_span: copy r.peek_span
     }
 }
 
@@ -112,9 +112,12 @@ impl reader for StringReader {
     fn is_eof(@mut self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(@mut self) -> TokenAndSpan {
-        let ret_val = TokenAndSpan {tok: self.peek_tok, sp: self.peek_span};
+        let ret_val = TokenAndSpan {
+            tok: copy self.peek_tok,
+            sp: copy self.peek_span,
+        };
         string_advance_token(self);
-        return ret_val;
+        ret_val
     }
     fn fatal(@mut self, m: ~str) -> ! {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
@@ -122,7 +125,10 @@ impl reader for StringReader {
     fn span_diag(@mut self) -> span_handler { self.span_diagnostic }
     pure fn interner(@mut self) -> @token::ident_interner { self.interner }
     fn peek(@mut self) -> TokenAndSpan {
-        TokenAndSpan {tok: self.peek_tok, sp: self.peek_span}
+        TokenAndSpan {
+            tok: copy self.peek_tok,
+            sp: copy self.peek_span,
+        }
     }
     fn dup(@mut self) -> reader { dup_string_reader(self) as reader }
 }
@@ -136,7 +142,10 @@ impl reader for TtReader {
     fn span_diag(@mut self) -> span_handler { self.sp_diag }
     pure fn interner(@mut self) -> @token::ident_interner { self.interner }
     fn peek(@mut self) -> TokenAndSpan {
-        TokenAndSpan { tok: self.cur_tok, sp: self.cur_span }
+        TokenAndSpan {
+            tok: copy self.cur_tok,
+            sp: copy self.cur_span,
+        }
     }
     fn dup(@mut self) -> reader { dup_tt_reader(self) as reader }
 }
@@ -145,8 +154,8 @@ impl reader for TtReader {
 fn string_advance_token(r: @mut StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
-            r.peek_tok = comment.tok;
-            r.peek_span = comment.sp;
+            r.peek_tok = copy comment.tok;
+            r.peek_span = copy comment.sp;
         },
         None => {
             if is_eof(r) {

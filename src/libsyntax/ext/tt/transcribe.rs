@@ -54,7 +54,7 @@ pub struct TtReader {
 pub fn new_tt_reader(sp_diag: span_handler,
                      itr: @ident_interner,
                      interp: Option<std::oldmap::HashMap<ident,@named_match>>,
-                     src: ~[ast::token_tree])
+                     +src: ~[ast::token_tree])
                   -> @mut TtReader {
     let r = @mut TtReader {
         sp_diag: sp_diag,
@@ -101,7 +101,7 @@ pub pure fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
         interpolations: r.interpolations,
         repeat_idx: copy r.repeat_idx,
         repeat_len: copy r.repeat_len,
-        cur_tok: r.cur_tok,
+        cur_tok: copy r.cur_tok,
         cur_span: r.cur_span
     }
 }
@@ -115,7 +115,7 @@ pure fn lookup_cur_matched_by_matched(r: @mut TtReader,
             // end of the line; duplicate henceforth
             ad
           }
-          matched_seq(ads, _) => ads[*idx]
+          matched_seq(ref ads, _) => ads[*idx]
         }
     }
     vec::foldl(start, r.repeat_idx, red)
@@ -131,15 +131,15 @@ enum lis {
 fn lockstep_iter_size(t: token_tree, r: @mut TtReader) -> lis {
     fn lis_merge(lhs: lis, rhs: lis, r: @mut TtReader) -> lis {
         match lhs {
-          lis_unconstrained => rhs,
-          lis_contradiction(_) => lhs,
+          lis_unconstrained => copy rhs,
+          lis_contradiction(_) => copy lhs,
           lis_constraint(l_len, l_id) => match rhs {
-            lis_unconstrained => lhs,
-            lis_contradiction(_) => rhs,
-            lis_constraint(r_len, _) if l_len == r_len => lhs,
+            lis_unconstrained => copy lhs,
+            lis_contradiction(_) => copy rhs,
+            lis_constraint(r_len, _) if l_len == r_len => copy lhs,
             lis_constraint(r_len, r_id) => {
-                let l_n = *r.interner.get(l_id);
-                let r_n = *r.interner.get(r_id);
+                let l_n = copy *r.interner.get(l_id);
+                let r_n = copy *r.interner.get(r_id);
                 lis_contradiction(fmt!("Inconsistent lockstep iteration: \
                                        '%s' has %u items, but '%s' has %u",
                                         l_n, l_len, r_n, r_len))
@@ -155,14 +155,17 @@ fn lockstep_iter_size(t: token_tree, r: @mut TtReader) -> lis {
       tt_tok(*) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {
         matched_nonterminal(_) => lis_unconstrained,
-        matched_seq(ads, _) => lis_constraint(ads.len(), name)
+        matched_seq(ref ads, _) => lis_constraint(ads.len(), name)
       }
     }
 }
 
 
 pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
-    let ret_val = TokenAndSpan { tok: r.cur_tok, sp: r.cur_span };
+    let ret_val = TokenAndSpan {
+        tok: copy r.cur_tok,
+        sp: r.cur_span,
+    };
     while r.cur.idx >= r.cur.readme.len() {
         /* done with this set; pop or repeat? */
         if ! r.cur.dotdotdoted
@@ -199,9 +202,9 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
         match r.cur.readme[r.cur.idx] {
-          tt_delim(tts) => {
+          tt_delim(copy tts) => {
             r.cur = @mut TtFrame {
-                readme: @mut copy tts,
+                readme: @mut tts,
                 idx: 0u,
                 dotdotdoted: false,
                 sep: None,
@@ -210,12 +213,13 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
             // if this could be 0-length, we'd need to potentially recur here
           }
           tt_tok(sp, copy tok) => {
-            r.cur_span = sp; r.cur_tok = tok;
+            r.cur_span = sp;
+            r.cur_tok = tok;
             r.cur.idx += 1u;
             return ret_val;
           }
           tt_seq(sp, copy tts, copy sep, zerok) => {
-            match lockstep_iter_size(tt_seq(sp, tts, sep, zerok), r) {
+            match lockstep_iter_size(tt_seq(sp, copy tts, sep, zerok), r) {
               lis_unconstrained => {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
@@ -264,7 +268,8 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
                 return ret_val;
               }
               matched_nonterminal(ref other_whole_nt) => {
-                r.cur_span = sp; r.cur_tok = INTERPOLATED((*other_whole_nt));
+                r.cur_span = sp;
+                r.cur_tok = INTERPOLATED(copy *other_whole_nt);
                 r.cur.idx += 1u;
                 return ret_val;
               }

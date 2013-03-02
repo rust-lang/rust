@@ -62,7 +62,7 @@ type ExpandDerivingEnumDefFn = &fn(ext_ctxt,
 
 pub fn expand_deriving_eq(cx: ext_ctxt,
                           span: span,
-                          _mitem: meta_item,
+                          _mitem: @meta_item,
                           in_items: ~[@item])
                        -> ~[@item] {
     expand_deriving(cx,
@@ -74,7 +74,7 @@ pub fn expand_deriving_eq(cx: ext_ctxt,
 
 pub fn expand_deriving_iter_bytes(cx: ext_ctxt,
                                   span: span,
-                                  _mitem: meta_item,
+                                  _mitem: @meta_item,
                                   in_items: ~[@item])
                                -> ~[@item] {
     expand_deriving(cx,
@@ -490,8 +490,8 @@ fn call_substructure_iter_bytes_method(cx: ext_ctxt,
 
 fn variant_arg_count(cx: ext_ctxt, span: span, variant: &variant) -> uint {
     match variant.node.kind {
-        tuple_variant_kind(args) => args.len(),
-        struct_variant_kind(struct_def) => struct_def.fields.len(),
+        tuple_variant_kind(ref args) => args.len(),
+        struct_variant_kind(ref struct_def) => struct_def.fields.len(),
         enum_variant_kind(*) => {
             cx.span_bug(span, ~"variant_arg_count: enum variants deprecated")
         }
@@ -856,7 +856,7 @@ fn expand_deriving_eq_struct_tuple_method(cx: ext_ctxt,
     let self_str = ~"self";
     let other_str = ~"__other";
     let type_path = build::mk_raw_path(span, ~[type_ident]);
-    let fields = struct_def.fields;
+    let fields = copy struct_def.fields;
 
     // Create comparison expression, comparing each of the fields
     let mut match_body = None;

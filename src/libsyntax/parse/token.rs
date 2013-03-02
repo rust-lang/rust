@@ -117,7 +117,7 @@ pub enum nonterminal {
     nt_matchers(~[ast::matcher])
 }
 
-pub fn binop_to_str(o: binop) -> ~str {
+pub pure fn binop_to_str(o: binop) -> ~str {
     match o {
       PLUS => ~"+",
       MINUS => ~"-",
@@ -132,8 +132,8 @@ pub fn binop_to_str(o: binop) -> ~str {
     }
 }
 
-pub fn to_str(in: @ident_interner, t: Token) -> ~str {
-    match t {
+pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
+    match *t {
       EQ => ~"=",
       LT => ~"<",
       LE => ~"<=",
@@ -181,14 +181,14 @@ pub fn to_str(in: @ident_interner, t: Token) -> ~str {
       }
       LIT_INT_UNSUFFIXED(i) => { i.to_str() }
       LIT_FLOAT(s, t) => {
-        let mut body = *in.get(s);
+        let mut body = copy *in.get(s);
         if body.ends_with(~".") {
             body = body + ~"0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
       LIT_FLOAT_UNSUFFIXED(s) => {
-        let mut body = *in.get(s);
+        let mut body = copy *in.get(s);
         if body.ends_with(~".") {
             body = body + ~"0";  // `10.f` is not a float literal
         }
@@ -197,12 +197,12 @@ pub fn to_str(in: @ident_interner, t: Token) -> ~str {
       LIT_STR(s) => { ~"\"" + str::escape_default(*in.get(s)) + ~"\"" }
 
       /* Name components */
-      IDENT(s, _) => *in.get(s),
+      IDENT(s, _) => copy *in.get(s),
       LIFETIME(s) => fmt!("'%s", *in.get(s)),
       UNDERSCORE => ~"_",
 
       /* Other */
-      DOC_COMMENT(s) => *in.get(s),
+      DOC_COMMENT(s) => copy *in.get(s),
       EOF => ~"<eof>",
       INTERPOLATED(ref nt) => {
         match nt {
@@ -227,8 +227,8 @@ pub fn to_str(in: @ident_interner, t: Token) -> ~str {
     }
 }
 
-pub pure fn can_begin_expr(t: Token) -> bool {
-    match t {
+pub pure fn can_begin_expr(t: &Token) -> bool {
+    match *t {
       LPAREN => true,
       LBRACE => true,
       LBRACKET => true,
@@ -259,22 +259,22 @@ pub pure fn can_begin_expr(t: Token) -> bool {
 }
 
 /// what's the opposite delimiter?
-pub fn flip_delimiter(t: token::Token) -> token::Token {
-    match t {
-      token::LPAREN => token::RPAREN,
-      token::LBRACE => token::RBRACE,
-      token::LBRACKET => token::RBRACKET,
-      token::RPAREN => token::LPAREN,
-      token::RBRACE => token::LBRACE,
-      token::RBRACKET => token::LBRACKET,
+pub fn flip_delimiter(t: &token::Token) -> token::Token {
+    match *t {
+      LPAREN => RPAREN,
+      LBRACE => RBRACE,
+      LBRACKET => RBRACKET,
+      RPAREN => LPAREN,
+      RBRACE => LBRACE,
+      RBRACKET => LBRACKET,
       _ => fail!()
     }
 }
 
 
 
-pub fn is_lit(t: Token) -> bool {
-    match t {
+pub fn is_lit(t: &Token) -> bool {
+    match *t {
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,
       LIT_INT_UNSUFFIXED(_) => true,
@@ -285,23 +285,23 @@ pub fn is_lit(t: Token) -> bool {
     }
 }
 
-pub pure fn is_ident(t: Token) -> bool {
-    match t { IDENT(_, _) => true, _ => false }
+pub pure fn is_ident(t: &Token) -> bool {
+    match *t { IDENT(_, _) => true, _ => false }
 }
 
-pub pure fn is_ident_or_path(t: Token) -> bool {
-    match t {
+pub pure fn is_ident_or_path(t: &Token) -> bool {
+    match *t {
       IDENT(_, _) | INTERPOLATED(nt_path(*)) => true,
       _ => false
     }
 }
 
-pub pure fn is_plain_ident(t: Token) -> bool {
-    match t { IDENT(_, false) => true, _ => false }
+pub pure fn is_plain_ident(t: &Token) -> bool {
+    match *t { IDENT(_, false) => true, _ => false }
 }
 
-pub pure fn is_bar(t: Token) -> bool {
-    match t { BINOP(OR) | OROR => true, _ => false }
+pub pure fn is_bar(t: &Token) -> bool {
+    match *t { BINOP(OR) | OROR => true, _ => false }
 }
 
 
@@ -478,7 +478,7 @@ pub fn temporary_keyword_table() -> HashMap<~str, ()> {
         ~"self", ~"static",
     ];
     for keys.each |word| {
-        words.insert(*word, ());
+        words.insert(copy *word, ());
     }
     words
 }
@@ -505,7 +505,7 @@ pub fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"while"
     ];
     for keys.each |word| {
-        words.insert(*word, ());
+        words.insert(copy *word, ());
     }
     words
 }
@@ -516,7 +516,7 @@ pub fn reserved_keyword_table() -> HashMap<~str, ()> {
         ~"be"
     ];
     for keys.each |word| {
-        words.insert(*word, ());
+        words.insert(copy *word, ());
     }
     words
 }

@@ -33,10 +33,10 @@ pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
             match e.node {
               expr_while(e, ref b) => {
                 (v.visit_expr)(e, cx, v);
-                (v.visit_block)((*b), Context { in_loop: true,.. cx }, v);
+                (v.visit_block)(b, Context { in_loop: true,.. cx }, v);
               }
               expr_loop(ref b, _) => {
-                (v.visit_block)((*b), Context { in_loop: true,.. cx }, v);
+                (v.visit_block)(b, Context { in_loop: true,.. cx }, v);
               }
               expr_fn(*) => {
                 visit::visit_expr(e, Context {
@@ -45,7 +45,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
                                      }, v);
               }
               expr_fn_block(_, ref b) => {
-                (v.visit_block)((*b), Context {
+                (v.visit_block)(b, Context {
                                          in_loop: false,
                                          can_ret: false
                                       }, v);
@@ -53,10 +53,10 @@ pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
               expr_loop_body(@expr {node: expr_fn_block(_, ref b), _}) => {
                 let sigil = ty::ty_closure_sigil(ty::expr_ty(tcx, e));
                 let blk = (sigil == BorrowedSigil);
-                (v.visit_block)((*b), Context {
+                (v.visit_block)(b, Context {
                                          in_loop: true,
                                          can_ret: blk
-                                      }, v);
+                                     }, v);
               }
               expr_break(_) => {
                 if !cx.in_loop {

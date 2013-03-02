@@ -358,7 +358,7 @@ pub mod test {
     pub fn make_crate_type_attr(+t: ~str) -> ast::attribute {
         codemap::respan(codemap::dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
-            value: codemap::respan(codemap::dummy_sp(),
+            value: @codemap::respan(codemap::dummy_sp(),
                 ast::meta_name_value(
                     @~"crate_type",
                     codemap::respan(codemap::dummy_sp(),

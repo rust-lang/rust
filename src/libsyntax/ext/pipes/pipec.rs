@@ -60,8 +60,7 @@ impl gen_send for message {
             let next = this.proto.get_state(next_state.state);
             assert next_state.tys.len() == next.generics.ty_params.len();
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
-
-            let args_ast = (arg_names, *tys).map(|n, t| cx.arg(*n, *t));
+            let args_ast = vec::map2(arg_names, *tys, |n, t| cx.arg(*n, *t));
 
             let pipe_ty = cx.ty_path_ast_builder(
                 path(~[this.data_name()], span)
@@ -121,7 +120,7 @@ impl gen_send for message {
 
             let mut rty = cx.ty_path_ast_builder(path(~[next.data_name()],
                                                       span)
-                                                 .add_tys(next_state.tys));
+                                               .add_tys(copy next_state.tys));
             if try {
                 rty = cx.ty_option(rty);
             }
@@ -139,7 +138,7 @@ impl gen_send for message {
                 debug!("pipec: no next state");
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
-                let args_ast = do (arg_names, *tys).map |n, t| {
+                let args_ast = do vec::map2(arg_names, *tys) |n, t| {
                     cx.arg(cx.ident_of(*n), *t)
                 };
 
@@ -155,7 +154,7 @@ impl gen_send for message {
                     ~""
                 }
                 else {
-                    ~"(" + str::connect(arg_names.map(|x| *x),
+                    ~"(" + str::connect(arg_names.map(|x| copy *x),
                                         ~", ") + ~")"
                 };
 
@@ -212,7 +211,7 @@ impl to_type_decls for state {
         let mut items_msg = ~[];
 
         for self.messages.each |m| {
-            let message(name, span, tys, this, next) = *m;
+            let message(name, span, tys, this, next) = copy *m;
 
             let tys = match next {
               Some(ref next_state) => {
@@ -228,7 +227,7 @@ impl to_type_decls for state {
                                 cx.ty_path_ast_builder(
                                     path(~[cx.ident_of(dir),
                                            cx.ident_of(next_name)], span)
-                                    .add_tys(next_state.tys)))
+                                    .add_tys(copy next_state.tys)))
               }
               None => tys
             };
