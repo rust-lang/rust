@@ -36,6 +36,9 @@ pub mod exchange_alloc;
 pub mod intrinsics;
 #[path = "unstable/extfmt.rs"]
 pub mod extfmt;
+#[path = "unstable/lang.rs"]
+#[cfg(notest)]
+pub mod lang;
 
 extern mod rustrt {
     pub unsafe fn rust_create_little_lock() -> rust_little_lock;
