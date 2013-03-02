@@ -86,6 +86,7 @@
 		<item> Either </item>
 		<item> Option </item>
 		<item> Result </item>
+		<item> Self </item>
 	</list>
 	<list name="ctypes">
 		<item> c_float </item>
