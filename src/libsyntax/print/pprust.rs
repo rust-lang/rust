@@ -713,30 +713,26 @@ pub fn print_struct(s: @ps,
                     ident: ast::ident,
                     span: codemap::span) {
     print_ident(s, ident);
-    nbsp(s);
     print_generics(s, generics);
     if ast_util::struct_def_is_tuple_like(struct_def) {
-        popen(s);
-        let mut first = true;
-        for struct_def.fields.each |field| {
-            if first {
-                first = false;
-            } else {
-                word_space(s, ~",");
-            }
-
-            match field.node.kind {
-                ast::named_field(*) => fail!(~"unexpected named field"),
-                ast::unnamed_field => {
-                    maybe_print_comment(s, field.span.lo);
-                    print_type(s, field.node.ty);
+        if !struct_def.fields.is_empty() {
+            popen(s);
+            do commasep(s, inconsistent, struct_def.fields) |s, field| {
+                match field.node.kind {
+                    ast::named_field(*) => fail!(~"unexpected named field"),
+                    ast::unnamed_field => {
+                        maybe_print_comment(s, field.span.lo);
+                        print_type(s, field.node.ty);
+                    }
                 }
             }
+            pclose(s);
         }
-        pclose(s);
         word(s.s, ~";");
+        end(s);
         end(s); // close the outer-box
     } else {
+        nbsp(s);
         bopen(s);
         hardbreak_if_not_bol(s);
         do struct_def.dtor.iter |dtor| {
