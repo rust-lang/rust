@@ -140,7 +140,7 @@ pub fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-pub fn initial_matcher_pos(+ms: ~[matcher], sep: Option<Token>, lo: BytePos)
+pub fn initial_matcher_pos(+ms: ~[matcher], +sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
     for ms.each |elt| {
