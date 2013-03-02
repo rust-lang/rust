@@ -83,16 +83,20 @@ RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
                   rt/arch/$$(HOST_$(1))/ccall.S \
                   rt/arch/$$(HOST_$(1))/record_sp.S
 
-
-ifeq ($$(HOST_$(1)), arm)
+ifeq ($$(CFG_WINDOWSY_$(1)), 1)
+  LIBUV_OSTYPE_$(1) := win
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
-else ifeq ($$(CFG_WINDOWSY), 1)
+else ifeq ($(CFG_OSTYPE_$(1)), apple-darwin)
+  LIBUV_OSTYPE_$(1) := mac
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
-else ifeq ($(CFG_OSTYPE), apple-darwin)
+else ifeq ($(CFG_OSTYPE_$(1)), unknown-freebsd)
+  LIBUV_OSTYPE_$(1) := unix/freebsd
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
-else ifeq ($(CFG_OSTYPE), unknown-freebsd)
+else ifeq ($(CFG_OSTYPE_$(1)), unknown-android)
+  LIBUV_OSTYPE_$(1) := unix/android
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 else
+  LIBUV_OSTYPE_$(1) := unix/linux
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 endif
 
@@ -136,7 +140,7 @@ rt/$(1)/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)) \
 	  $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(RUNTIME_LIBS_$(1)) \
-	  $$(CFG_LIBUV_LINK_FLAGS),$$(RUNTIME_DEF_$(1)),$$(CFG_RUNTIME_$(1)))
+	  $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)),$$(CFG_RUNTIME_$(1)))
 
 # FIXME: For some reason libuv's makefiles can't figure out the
 # correct definition of CC on the mingw I'm using, so we are
@@ -153,32 +157,30 @@ LIBUV_DEPS := $$(wildcard \
               $$(S)src/libuv/*/*/*/*)
 endif
 
-ifdef CFG_WINDOWSY
+ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		OS=mingw \
 		V=$$(VERBOSE)
-else
-ifeq ($$(HOST_$(1)), arm)
+else ifeq ($(CFG_OSTYPE_$(1)), unknown-android)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CFG_GCCISH_CROSS_$(1))$$(CC)" \
-		CXX="$$(CFG_GCCISH_CROSS_$(1))$$(CXX)" \
-		AR="$$(CFG_CROSS_PREFIX_arm)$$(AR)" \
+		CC="$$(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CC)" \
+		CXX="$$(CFG_GCCISH_CROSS_PREFIX_$(1))$$(CXX)" \
+		AR="$$(CFG_GCCISH_CROSS_PREFIX_$(1))$$(AR)" \
 		BUILDTYPE=Release \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		host=android OS=linux \
-        V=$$(VERBOSE)
+		V=$$(VERBOSE)
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		V=$$(VERBOSE)
-endif
 endif
 
 
@@ -197,23 +199,21 @@ endif
 	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
 	$$(Q)echo "};" >> $$@
 
+%.darwin.def:	%.def.in $$(MKFILE_DEPS)
+	@$$(call E, def: $$@)
+	$$(Q)sed 's/^./_&/' $$< > $$@
+
 %.android.def:  %.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo "{" > $$@
 	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
 	$$(Q)echo "};" >> $$@
 
-%.darwin.def:	%.def.in $$(MKFILE_DEPS)
-	@$$(call E, def: $$@)
-	$$(Q)sed 's/^./_&/' $$< > $$@
-
-ifdef CFG_WINDOWSY
-%.def:	%.def.in $$(MKFILE_DEPS)
+%.mingw32.def:	%.def.in $$(MKFILE_DEPS)
 	@$$(call E, def: $$@)
 	$$(Q)echo LIBRARY $$* > $$@
 	$$(Q)echo EXPORTS >> $$@
 	$$(Q)sed 's/^./    &/' $$< >> $$@
-endif
 
 endef
 
