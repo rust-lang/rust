@@ -31,6 +31,14 @@ pub fn with<T>(+t: T) -> OptVec<T> {
     Vec(~[t])
 }
 
+pub fn from<T>(+t: ~[T]) -> OptVec<T> {
+    if t.len() == 0 {
+        Empty
+    } else {
+        Vec(t)
+    }
+}
+
 impl<T> OptVec<T> {
     fn push(&mut self, +t: T) {
         match *self {
@@ -70,12 +78,12 @@ impl<T> OptVec<T> {
             Vec(ref v) => v.len()
         }
     }
+}
 
-    pure fn to_vec(self) -> ~[T] {
-        match self {
-            Empty => ~[],
-            Vec(v) => v
-        }
+pub fn take_vec<T>(+v: OptVec<T>) -> ~[T] {
+    match v {
+        Empty => ~[],
+        Vec(v) => v
     }
 }
 

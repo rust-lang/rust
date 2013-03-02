@@ -1157,7 +1157,7 @@ pub impl Parser {
                     let remaining_exprs =
                         self.parse_seq_to_end(token::RBRACKET,
                             seq_sep_trailing_allowed(token::COMMA),
-                            |p| p.parse_expr()).to_vec();
+                            |p| p.parse_expr());
                     ex = expr_vec(~[first_expr] + remaining_exprs, mutbl);
                 } else {
                     // Vector with one element.
@@ -1419,7 +1419,7 @@ pub impl Parser {
                 vec::append(
                     self.parse_seq_to_before_end(
                         ket, seq_sep_none(),
-                        |p| p.parse_token_tree()).to_vec(),
+                        |p| p.parse_token_tree()),
                     // the close delimiter:
                     ~[parse_any_tt_tok(self)])))
           }
@@ -2727,7 +2727,7 @@ pub impl Parser {
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
             |p| p.parse_ty(false));
-        result.to_vec()
+        opt_vec::take_vec(result)
     }
 
     fn parse_fn_decl(parse_arg_fn: fn(Parser) -> arg_or_capture_item)
@@ -2819,7 +2819,7 @@ pub impl Parser {
                     args_or_capture_items =
                         self.parse_seq_to_before_end(token::RPAREN,
                                                      sep,
-                                                     parse_arg_fn).to_vec();
+                                                     parse_arg_fn);
                 }
                 token::RPAREN => {
                     args_or_capture_items = ~[];
@@ -2835,7 +2835,7 @@ pub impl Parser {
             args_or_capture_items =
                 self.parse_seq_to_before_end(token::RPAREN,
                                              sep,
-                                             parse_arg_fn).to_vec();
+                                             parse_arg_fn);
         }
 
         self.expect(token::RPAREN);
@@ -3032,7 +3032,7 @@ pub impl Parser {
     fn parse_trait_ref_list(ket: token::Token) -> ~[@trait_ref] {
         self.parse_seq_to_before_end(
             ket, seq_sep_none(),
-            |p| p.parse_trait_ref()).to_vec()
+            |p| p.parse_trait_ref())
     }
 
     fn parse_item_struct() -> item_info {

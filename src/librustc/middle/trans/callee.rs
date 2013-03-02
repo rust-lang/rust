@@ -731,7 +731,7 @@ pub fn trans_arg_expr(bcx: block,
 
                     ast::by_copy => {
                         debug!("by copy arg with type %s, storing to scratch",
-                               ty_to_str(ccx.tcx, arg_datum.ty));
+                               bcx.ty_to_str(arg_datum.ty));
                         let scratch = scratch_datum(bcx, arg_datum.ty, false);
 
                         arg_datum.store_to_datum(bcx, arg_expr.id,
