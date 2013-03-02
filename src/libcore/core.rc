@@ -225,8 +225,6 @@ pub const debug : u32 = 4_u32;
 
 /* Unsupported interfaces */
 
-// The runtime interface used by the compiler
-#[cfg(notest)] pub mod rt;
 // Private APIs
 pub mod unstable;
 // NOTE: Remove after snapshot
