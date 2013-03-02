@@ -92,7 +92,7 @@ impl<T:Copy> OptVec<T> {
         let mut v0 = ~[t];
         match *self {
             Empty => {}
-            Vec(v1) => { v0.push_all(v1); }
+            Vec(ref v1) => { v0.push_all(*v1); }
         }
         return Vec(v0);
     }

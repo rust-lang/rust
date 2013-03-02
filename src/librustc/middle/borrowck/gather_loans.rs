@@ -95,9 +95,9 @@ pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     return glcx.req_maps;
 }
 
-fn req_loans_in_fn(fk: visit::fn_kind,
-                   decl: ast::fn_decl,
-                   body: ast::blk,
+fn req_loans_in_fn(fk: &visit::fn_kind,
+                   decl: &ast::fn_decl,
+                   body: &ast::blk,
                    sp: span,
                    id: ast::node_id,
                    &&self: @mut GatherLoanCtxt,
@@ -107,7 +107,7 @@ fn req_loans_in_fn(fk: visit::fn_kind,
     let old_root_ub = self.root_ub;
     self.root_ub = body.node.id;
 
-    match fk {
+    match *fk {
         visit::fk_anon(*) | visit::fk_fn_block(*) => {}
         visit::fk_item_fn(*) | visit::fk_method(*) |
         visit::fk_dtor(*) => {
@@ -269,13 +269,13 @@ fn req_loans_in_expr(ex: @ast::expr,
         (vt.visit_expr)(cond, self, vt);
 
         // during body, can only root for the body
-        self.root_ub = (*body).node.id;
-        (vt.visit_block)((*body), self, vt);
+        self.root_ub = body.node.id;
+        (vt.visit_block)(body, self, vt);
       }
 
       // see explanation attached to the `root_ub` field:
       ast::expr_loop(ref body, _) => {
-        self.root_ub = (*body).node.id;
+        self.root_ub = body.node.id;
         visit::visit_expr(ex, self, vt);
       }
 

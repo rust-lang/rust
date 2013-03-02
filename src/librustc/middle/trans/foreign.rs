@@ -207,7 +207,7 @@ fn build_wrap_fn_(ccx: @CrateContext,
 // function itself is unnecessary). We used to do this, in fact, and will
 // perhaps do so in the future.
 pub fn trans_foreign_mod(ccx: @CrateContext,
-                         foreign_mod: ast::foreign_mod,
+                         foreign_mod: &ast::foreign_mod,
                          abi: ast::foreign_abi) {
 
     let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");

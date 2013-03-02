@@ -326,7 +326,7 @@ fn encode_path(ecx: @EncodeContext, ebml_w: writer::Encoder,
 }
 
 fn encode_info_for_mod(ecx: @EncodeContext, ebml_w: writer::Encoder,
-                       md: _mod, id: node_id, path: &[ast_map::path_elt],
+                       md: &_mod, id: node_id, path: &[ast_map::path_elt],
                        name: ident) {
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
@@ -659,7 +659,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         }
         ebml_w.end_tag();
       }
-      item_mod(m) => {
+      item_mod(ref m) => {
         add_to_index();
         encode_info_for_mod(ecx, ebml_w, m, item.id, path, item.ident);
       }
@@ -912,8 +912,8 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         // method info, we output static methods with type signatures as
         // written. Here, we output the *real* type signatures. I feel like
         // maybe we should only ever handle the real type signatures.
-        for vec::each((*ms)) |m| {
-            let ty_m = ast_util::trait_method_to_ty_method(*m);
+        for ms.each |m| {
+            let ty_m = ast_util::trait_method_to_ty_method(m);
             if ty_m.self_ty.node != ast::sty_static { loop; }
 
             index.push(entry { val: ty_m.id, pos: ebml_w.writer.tell() });
@@ -995,7 +995,7 @@ fn encode_info_for_items(ecx: @EncodeContext, ebml_w: writer::Encoder,
     let index = @mut ~[];
     ebml_w.start_tag(tag_items_data);
     index.push(entry { val: crate_node_id, pos: ebml_w.writer.tell() });
-    encode_info_for_mod(ecx, ebml_w, crate.node.module,
+    encode_info_for_mod(ecx, ebml_w, &crate.node.module,
                         crate_node_id, ~[],
                         syntax::parse::token::special_idents::invalid);
     visit::visit_crate(*crate, (), visit::mk_vt(@visit::Visitor {
@@ -1088,7 +1088,7 @@ fn write_int(writer: io::Writer, &&n: int) {
     writer.write_be_u32(n as u32);
 }
 
-fn encode_meta_item(ebml_w: writer::Encoder, mi: meta_item) {
+fn encode_meta_item(ebml_w: writer::Encoder, mi: @meta_item) {
     match mi.node {
       meta_word(name) => {
         ebml_w.start_tag(tag_meta_item_word);
@@ -1118,7 +1118,7 @@ fn encode_meta_item(ebml_w: writer::Encoder, mi: meta_item) {
         ebml_w.writer.write(str::to_bytes(*name));
         ebml_w.end_tag();
         for items.each |inner_item| {
-            encode_meta_item(ebml_w, **inner_item);
+            encode_meta_item(ebml_w, *inner_item);
         }
         ebml_w.end_tag();
       }

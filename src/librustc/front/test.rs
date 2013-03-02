@@ -91,7 +91,7 @@ fn generate_test_harness(sess: session::Session,
         fold_mod: |a,b| fold_mod(cx, a, b),.. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
-    let res = @fold.fold_crate(*crate);
+    let res = @fold.fold_crate(&*crate);
     cx.ext_cx.bt_pop();
     return res;
 }
@@ -106,7 +106,7 @@ fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
 }
 
 fn fold_mod(cx: @mut TestCtxt,
-            m: ast::_mod,
+            m: &ast::_mod,
             fld: fold::ast_fold)
          -> ast::_mod {
     // Remove any #[main] from the AST so it doesn't clash with
@@ -125,19 +125,21 @@ fn fold_mod(cx: @mut TestCtxt,
         items: vec::map(m.items, |i| nomain(cx, *i)),
     };
 
-    fold::noop_fold_mod(mod_nomain, fld)
+    fold::noop_fold_mod(&mod_nomain, fld)
 }
 
 fn fold_crate(cx: @mut TestCtxt,
-              c: ast::crate_,
+              c: &ast::crate_,
               fld: fold::ast_fold)
            -> ast::crate_ {
     let folded = fold::noop_fold_crate(c, fld);
 
     // Add a special __test module to the crate that will contain code
     // generated for the test harness
-    ast::crate_ { module: add_test_module(cx, /*bad*/copy folded.module),
-                  .. folded }
+    ast::crate_ {
+        module: add_test_module(cx, &folded.module),
+        .. folded
+    }
 }
 
 
@@ -238,11 +240,11 @@ fn should_fail(i: @ast::item) -> bool {
     vec::len(attr::find_attrs_by_name(i.attrs, ~"should_fail")) > 0u
 }
 
-fn add_test_module(cx: &TestCtxt, +m: ast::_mod) -> ast::_mod {
+fn add_test_module(cx: &TestCtxt, m: &ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
     ast::_mod {
         items: vec::append_one(/*bad*/copy m.items, testmod),
-        .. m
+        .. /*bad*/ copy *m
     }
 }
 

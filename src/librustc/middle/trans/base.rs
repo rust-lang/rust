@@ -2100,7 +2100,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
                      vec::append(/*bad*/copy *path, ~[path_name(item.ident)]),
                      decl, body, llfndecl, no_self, None, item.id, None);
         } else {
-            for vec::each((*body).node.stmts) |stmt| {
+            for body.node.stmts.each |stmt| {
                 match stmt.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_item(i),
                                                  _ }, _) => {
@@ -2115,7 +2115,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         meth::trans_impl(ccx, /*bad*/copy *path, item.ident, *ms,
                          generics, None, item.id);
       }
-      ast::item_mod(m) => {
+      ast::item_mod(ref m) => {
         trans_mod(ccx, m);
       }
       ast::item_enum(ref enum_definition, ref tps) => {
@@ -2128,11 +2128,10 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         }
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
-      ast::item_foreign_mod(foreign_mod) => {
+      ast::item_foreign_mod(ref foreign_mod) => {
         let abi = match attr::foreign_abi(item.attrs) {
-          either::Right(abi_) => abi_,
-          either::Left(ref msg) => ccx.sess.span_fatal(item.span,
-                                                       /*bad*/copy *msg)
+            Right(abi_) => abi_,
+            Left(ref msg) => ccx.sess.span_fatal(item.span, /*bad*/copy *msg)
         };
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
@@ -2172,9 +2171,9 @@ pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def,
 // separate modules in the compiled program.  That's because modules exist
 // only as a convenience for humans working with the code, to organize names
 // and control visibility.
-pub fn trans_mod(ccx: @CrateContext, m: ast::_mod) {
+pub fn trans_mod(ccx: @CrateContext, m: &ast::_mod) {
     let _icx = ccx.insn_ctxt("trans_mod");
-    for vec::each(m.items) |item| {
+    for m.items.each |item| {
         trans_item(ccx, **item);
     }
 }
@@ -3027,8 +3026,12 @@ pub fn trans_crate(sess: session::Session,
     let symbol_hasher = @hash::default_state();
     let link_meta =
         link::build_link_meta(sess, crate, output, symbol_hasher);
-    let reachable = reachable::find_reachable(crate.node.module, emap2, tcx,
-                                              maps.method_map);
+    let reachable = reachable::find_reachable(
+        &crate.node.module,
+        emap2,
+        tcx,
+        maps.method_map
+    );
 
     // Append ".rc" to crate name as LLVM module identifier.
     //
@@ -3145,7 +3148,7 @@ pub fn trans_crate(sess: session::Session,
 
         {
             let _icx = ccx.insn_ctxt("text");
-            trans_mod(ccx, crate.node.module);
+            trans_mod(ccx, &crate.node.module);
         }
 
         decl_gc_metadata(ccx, llmod_id);

@@ -47,7 +47,10 @@ impl parser_attr for Parser {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
-                        *self.id_to_str(s), self.span.lo, self.span.hi);
+                    copy *self.id_to_str(s),
+                    self.span.lo,
+                    self.span.hi
+                );
                 if attr.node.style != ast::attr_outer {
                   self.fatal(~"expected outer comment");
                 }
@@ -62,18 +65,18 @@ impl parser_attr for Parser {
 
     fn parse_attribute(style: ast::attr_style) -> ast::attribute {
         let lo = self.span.lo;
-        self.expect(token::POUND);
+        self.expect(&token::POUND);
         return self.parse_attribute_naked(style, lo);
     }
 
     fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->
         ast::attribute {
-        self.expect(token::LBRACKET);
+        self.expect(&token::LBRACKET);
         let meta_item = self.parse_meta_item();
-        self.expect(token::RBRACKET);
+        self.expect(&token::RBRACKET);
         let mut hi = self.span.hi;
         return spanned(lo, hi, ast::attribute_ { style: style,
-                                                 value: *meta_item,
+                                                 value: meta_item,
                                                  is_sugared_doc: false });
     }
 
@@ -114,7 +117,10 @@ impl parser_attr for Parser {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
-                        *self.id_to_str(s), self.span.lo, self.span.hi);
+                    copy *self.id_to_str(s),
+                    self.span.lo,
+                    self.span.hi
+                );
                 self.bump();
                 if attr.node.style == ast::attr_inner {
                   inner_attrs += ~[attr];
@@ -152,15 +158,18 @@ impl parser_attr for Parser {
     }
 
     fn parse_meta_seq() -> ~[@ast::meta_item] {
-        return self.parse_seq(token::LPAREN, token::RPAREN,
-                           seq_sep_trailing_disallowed(token::COMMA),
-                           |p| p.parse_meta_item()).node;
+        copy self.parse_seq(
+            &token::LPAREN,
+            &token::RPAREN,
+            seq_sep_trailing_disallowed(token::COMMA),
+            |p| p.parse_meta_item()
+        ).node
     }
 
     fn parse_optional_meta() -> ~[@ast::meta_item] {
         match *self.token {
-          token::LPAREN => return self.parse_meta_seq(),
-          _ => return ~[]
+            token::LPAREN => self.parse_meta_seq(),
+            _ => ~[]
         }
     }
 }
