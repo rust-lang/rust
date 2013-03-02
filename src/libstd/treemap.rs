@@ -10,12 +10,8 @@
 
 //! An ordered map and set implemented as self-balancing binary search
 //! trees. The only requirement for the types is that the key implements
-//! `Ord`, and that the `lt` method provides a total ordering.
+//! `TotalOrd`.
 
-use core::container::{Container, Mutable, Map, Set};
-use core::cmp::{Eq, Ord};
-use core::iter::{BaseIter, ReverseIter};
-use core::option::{Option, Some, None};
 use core::prelude::*;
 
 // This is implemented as an AA tree, which is a simplified variation of
@@ -39,7 +35,7 @@ pub struct TreeMap<K, V> {
     priv length: uint
 }
 
-impl<K:Eq + Ord,V:Eq> Eq for TreeMap<K, V> {
+impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
     pure fn eq(&self, other: &TreeMap<K, V>) -> bool {
         if self.len() != other.len() {
             false
@@ -61,7 +57,8 @@ impl<K:Eq + Ord,V:Eq> Eq for TreeMap<K, V> {
 }
 
 // Lexicographical comparison
-pure fn lt<K:Ord,V>(a: &TreeMap<K, V>, b: &TreeMap<K, V>) -> bool {
+pure fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>,
+                                 b: &TreeMap<K, V>) -> bool {
     let mut x = a.iter();
     let mut y = b.iter();
 
@@ -78,7 +75,7 @@ pure fn lt<K:Ord,V>(a: &TreeMap<K, V>, b: &TreeMap<K, V>) -> bool {
     return a_len < b_len;
 }
 
-impl<K:Ord,V> Ord for TreeMap<K, V> {
+impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
     #[inline(always)]
     pure fn lt(&self, other: &TreeMap<K, V>) -> bool {
         lt(self, other)
@@ -97,7 +94,7 @@ impl<K:Ord,V> Ord for TreeMap<K, V> {
     }
 }
 
-impl<K:Ord,V> BaseIter<(&K, &V)> for TreeMap<K, V> {
+impl<K: TotalOrd, V> BaseIter<(&K, &V)> for TreeMap<K, V> {
     /// Visit all key-value pairs in order
     pure fn each(&self, f: fn(&(&self/K, &self/V)) -> bool) {
         each(&self.root, f)
@@ -105,14 +102,14 @@ impl<K:Ord,V> BaseIter<(&K, &V)> for TreeMap<K, V> {
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<K:Ord,V> ReverseIter<(&K, &V)> for TreeMap<K, V> {
+impl<K: TotalOrd, V> ReverseIter<(&K, &V)> for TreeMap<K, V> {
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, f: fn(&(&self/K, &self/V)) -> bool) {
         each_reverse(&self.root, f);
     }
 }
 
-impl<K:Ord,V> Container for TreeMap<K, V> {
+impl<K: TotalOrd, V> Container for TreeMap<K, V> {
     /// Return the number of elements in the map
     pure fn len(&self) -> uint { self.length }
 
@@ -120,7 +117,7 @@ impl<K:Ord,V> Container for TreeMap<K, V> {
     pure fn is_empty(&self) -> bool { self.root.is_none() }
 }
 
-impl<K:Ord,V> Mutable for TreeMap<K, V> {
+impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
         self.root = None;
@@ -128,7 +125,7 @@ impl<K:Ord,V> Mutable for TreeMap<K, V> {
     }
 }
 
-impl<K:Ord,V> Map<K, V> for TreeMap<K, V> {
+impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     /// Return true if the map contains a value for the specified key
     pure fn contains_key(&self, key: &K) -> bool {
         self.find(key).is_some()
@@ -146,12 +143,10 @@ impl<K:Ord,V> Map<K, V> for TreeMap<K, V> {
         loop {
             match *current {
               Some(ref r) => {
-                if *key < r.key {
-                    current = &r.left;
-                } else if r.key < *key {
-                    current = &r.right;
-                } else {
-                    return Some(&r.value);
+                match key.cmp(&r.key) {
+                   Less => current = &r.left,
+                   Greater => current = &r.right,
+                   Equal => return Some(&r.value)
                 }
               }
               None => return None
@@ -177,7 +172,7 @@ impl<K:Ord,V> Map<K, V> for TreeMap<K, V> {
     }
 }
 
-pub impl <K:Ord,V> TreeMap<K, V> {
+pub impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     static pure fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
@@ -207,7 +202,7 @@ pub struct TreeMapIterator<K, V> {
 /// Advance the iterator to the next node (in order) and return a
 /// tuple with a reference to the key and value. If there are no
 /// more nodes, return `None`.
-pub fn map_next<K: Ord, V>(iter: &mut TreeMapIterator/&r<K, V>)
+pub fn map_next<K, V>(iter: &mut TreeMapIterator/&r<K, V>)
                         -> Option<(&r/K, &r/V)> {
     while !iter.stack.is_empty() || iter.node.is_some() {
         match *iter.node {
@@ -226,8 +221,8 @@ pub fn map_next<K: Ord, V>(iter: &mut TreeMapIterator/&r<K, V>)
 }
 
 /// Advance the iterator through the map
-pub fn map_advance<K: Ord, V>(iter: &mut TreeMapIterator/&r<K, V>,
-                          f: fn((&r/K, &r/V)) -> bool) {
+pub fn map_advance<K, V>(iter: &mut TreeMapIterator/&r<K, V>,
+                         f: fn((&r/K, &r/V)) -> bool) {
     loop {
         match map_next(iter) {
           Some(x) => {
@@ -242,25 +237,25 @@ pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }
 
-impl<T:Ord> BaseIter<T> for TreeSet<T> {
+impl<T: TotalOrd> BaseIter<T> for TreeSet<T> {
     /// Visit all values in order
     pure fn each(&self, f: fn(&T) -> bool) { self.map.each_key(f) }
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<T:Ord> ReverseIter<T> for TreeSet<T> {
+impl<T: TotalOrd> ReverseIter<T> for TreeSet<T> {
     /// Visit all values in reverse order
     pure fn each_reverse(&self, f: fn(&T) -> bool) {
         self.map.each_key_reverse(f)
     }
 }
 
-impl<T:Eq + Ord> Eq for TreeSet<T> {
+impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
     pure fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
     pure fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
-impl<T:Ord> Ord for TreeSet<T> {
+impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
     #[inline(always)]
     pure fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
     #[inline(always)]
@@ -271,7 +266,7 @@ impl<T:Ord> Ord for TreeSet<T> {
     pure fn gt(&self, other: &TreeSet<T>) -> bool { self.map > other.map }
 }
 
-impl<T:Ord> Container for TreeSet<T> {
+impl<T: TotalOrd> Container for TreeSet<T> {
     /// Return the number of elements in the set
     pure fn len(&self) -> uint { self.map.len() }
 
@@ -279,12 +274,12 @@ impl<T:Ord> Container for TreeSet<T> {
     pure fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
-impl<T:Ord> Mutable for TreeSet<T> {
+impl<T: TotalOrd> Mutable for TreeSet<T> {
     /// Clear the set, removing all values.
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl<T:Ord> Set<T> for TreeSet<T> {
+impl<T: TotalOrd> Set<T> for TreeSet<T> {
     /// Return true if the set contains a value
     pure fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)
@@ -309,12 +304,10 @@ impl<T:Ord> Set<T> for TreeSet<T> {
             while a.is_some() && b.is_some() {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
-                if a1 < b1 {
-                    a = set_next(&mut x);
-                } else if b1 < a1 {
-                    b = set_next(&mut y);
-                } else {
-                    return false;
+                match a1.cmp(b1) {
+                  Less => a = set_next(&mut x),
+                  Greater => b = set_next(&mut y),
+                  Equal => return false
                 }
             }
         }
@@ -341,13 +334,12 @@ impl<T:Ord> Set<T> for TreeSet<T> {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
 
-                if b1 < a1 {
-                    return false
+                match a1.cmp(b1) {
+                  Less => (),
+                  Greater => return false,
+                  Equal => b = set_next(&mut y),
                 }
 
-                if !(a1 < b1) {
-                    b = set_next(&mut y);
-                }
                 a = set_next(&mut x);
             }
         }
@@ -373,11 +365,13 @@ impl<T:Ord> Set<T> for TreeSet<T> {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
 
-                if a1 < b1 {
+                let cmp = a1.cmp(b1);
+
+                if cmp == Less {
                     if !f(a1) { return }
                     a = set_next(&mut x);
                 } else {
-                    if !(b1 < a1) { a = set_next(&mut x) }
+                    if cmp == Equal { a = set_next(&mut x) }
                     b = set_next(&mut y);
                 }
             }
@@ -404,11 +398,13 @@ impl<T:Ord> Set<T> for TreeSet<T> {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
 
-                if a1 < b1 {
+                let cmp = a1.cmp(b1);
+
+                if cmp == Less {
                     if !f(a1) { return }
                     a = set_next(&mut x);
                 } else {
-                    if b1 < a1 {
+                    if cmp == Greater {
                         if !f(b1) { return }
                     } else {
                         a = set_next(&mut x);
@@ -434,10 +430,13 @@ impl<T:Ord> Set<T> for TreeSet<T> {
             while a.is_some() && b.is_some() {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
-                if a1 < b1 {
+
+                let cmp = a1.cmp(b1);
+
+                if cmp == Less {
                     a = set_next(&mut x);
                 } else {
-                    if !(b1 < a1) {
+                    if cmp == Equal {
                         if !f(a1) { return }
                     }
                     b = set_next(&mut y);
@@ -465,12 +464,14 @@ impl<T:Ord> Set<T> for TreeSet<T> {
                 let a1 = a.unwrap();
                 let b1 = b.unwrap();
 
-                if b1 < a1 {
+                let cmp = a1.cmp(b1);
+
+                if cmp == Greater {
                     if !f(b1) { return }
                     b = set_next(&mut y);
                 } else {
                     if !f(a1) { return }
-                    if !(a1 < b1) {
+                    if cmp == Equal {
                         b = set_next(&mut y);
                     }
                     a = set_next(&mut x);
@@ -480,7 +481,7 @@ impl<T:Ord> Set<T> for TreeSet<T> {
     }
 }
 
-pub impl <T:Ord> TreeSet<T> {
+pub impl <T: TotalOrd> TreeSet<T> {
     /// Create an empty TreeSet
     static pure fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
@@ -498,12 +499,12 @@ pub struct TreeSetIterator<T> {
 
 /// Advance the iterator to the next node (in order). If this iterator is
 /// finished, does nothing.
-pub fn set_next<T: Ord>(iter: &mut TreeSetIterator/&r<T>) -> Option<&r/T> {
+pub fn set_next<T>(iter: &mut TreeSetIterator/&r<T>) -> Option<&r/T> {
     do map_next(&mut iter.iter).map |&(value, _)| { value }
 }
 
 /// Advance the iterator through the set
-fn set_advance<T: Ord>(iter: &mut TreeSetIterator/&r<T>,
+fn set_advance<T>(iter: &mut TreeSetIterator/&r<T>,
                        f: fn(&r/T) -> bool) {
     do map_advance(&mut iter.iter) |(k, _)| { f(k) }
 }
@@ -518,14 +519,14 @@ struct TreeNode<K, V> {
     level: uint
 }
 
-pub impl <K:Ord,V> TreeNode<K, V> {
+pub impl<K: TotalOrd, V> TreeNode<K, V> {
     #[inline(always)]
     static pure fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}
     }
 }
 
-pure fn each<K:Ord,V>(node: &r/Option<~TreeNode<K, V>>,
+pure fn each<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
                         f: fn(&(&r/K, &r/V)) -> bool) {
     do node.iter |x| {
         each(&x.left, f);
@@ -533,7 +534,7 @@ pure fn each<K:Ord,V>(node: &r/Option<~TreeNode<K, V>>,
     }
 }
 
-pure fn each_reverse<K:Ord,V>(node: &r/Option<~TreeNode<K, V>>,
+pure fn each_reverse<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
                                 f: fn(&(&r/K, &r/V)) -> bool) {
     do node.iter |x| {
         each_reverse(&x.right, f);
@@ -542,7 +543,7 @@ pure fn each_reverse<K:Ord,V>(node: &r/Option<~TreeNode<K, V>>,
 }
 
 // Remove left horizontal link by rotating right
-fn skew<K:Ord,V>(node: &mut ~TreeNode<K, V>) {
+fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     if node.left.map_default(false, |x| x.level == node.level) {
         let mut save = node.left.swap_unwrap();
         node.left <-> save.right; // save.right now None
@@ -553,7 +554,7 @@ fn skew<K:Ord,V>(node: &mut ~TreeNode<K, V>) {
 
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
-fn split<K:Ord,V>(node: &mut ~TreeNode<K, V>) {
+fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     if node.right.map_default(false,
       |x| x.right.map_default(false, |y| y.level == node.level)) {
         let mut save = node.right.swap_unwrap();
@@ -564,24 +565,28 @@ fn split<K:Ord,V>(node: &mut ~TreeNode<K, V>) {
     }
 }
 
-fn insert<K:Ord,V>(node: &mut Option<~TreeNode<K, V>>, key: K,
-                     value: V) -> bool {
+fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>, key: K,
+                          value: V) -> bool {
     match *node {
       Some(ref mut save) => {
-        if key < save.key {
+        match key.cmp(&save.key) {
+          Less => {
             let inserted = insert(&mut save.left, key, value);
             skew(save);
             split(save);
             inserted
-        } else if save.key < key {
+          }
+          Greater => {
             let inserted = insert(&mut save.right, key, value);
             skew(save);
             split(save);
             inserted
-        } else {
+          }
+          Equal => {
             save.key = key;
             save.value = value;
             false
+          }
         }
       }
       None => {
@@ -591,8 +596,9 @@ fn insert<K:Ord,V>(node: &mut Option<~TreeNode<K, V>>, key: K,
     }
 }
 
-fn remove<K:Ord,V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
-    fn heir_swap<K:Ord,V>(node: &mut ~TreeNode<K, V>,
+fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
+                          key: &K) -> bool {
+    fn heir_swap<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>,
                             child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
         do child.mutate |mut child| {
@@ -611,11 +617,10 @@ fn remove<K:Ord,V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
         return false // bottom of tree
       }
       Some(ref mut save) => {
-        let (removed, this) = if save.key < *key {
-            (remove(&mut save.right, key), false)
-        } else if *key < save.key {
-            (remove(&mut save.left, key), false)
-        } else {
+        let (removed, this) = match key.cmp(&save.key) {
+          Less => (remove(&mut save.left, key), false),
+          Greater => (remove(&mut save.right, key), false),
+          Equal => {
             if save.left.is_some() {
                 if save.right.is_some() {
                     let mut left = save.left.swap_unwrap();
@@ -637,6 +642,7 @@ fn remove<K:Ord,V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
             } else {
                 (true, true)
             }
+          }
         };
 
         if !this {
@@ -682,12 +688,9 @@ fn remove<K:Ord,V>(node: &mut Option<~TreeNode<K, V>>, key: &K) -> bool {
 
 #[cfg(test)]
 mod test_treemap {
+    use core::prelude::*;
     use super::*;
-    use core::cmp::{Ord, Eq};
-    use core::option::{Some, Option, None};
     use core::rand;
-    use core::str;
-    use core::vec;
 
     #[test]
     fn find_empty() {
@@ -742,7 +745,8 @@ mod test_treemap {
         assert m.find(&k1) == Some(&v1);
     }
 
-    fn check_equal<K:Eq + Ord,V:Eq>(ctrl: &[(K, V)], map: &TreeMap<K, V>) {
+    fn check_equal<K: Eq + TotalOrd, V: Eq>(ctrl: &[(K, V)],
+                                            map: &TreeMap<K, V>) {
         assert ctrl.is_empty() == map.is_empty();
         for ctrl.each |x| {
             let &(k, v) = x;
@@ -762,11 +766,11 @@ mod test_treemap {
         }
     }
 
-    fn check_left<K:Ord,V>(node: &Option<~TreeNode<K, V>>,
-                             parent: &~TreeNode<K, V>) {
+    fn check_left<K: TotalOrd, V>(node: &Option<~TreeNode<K, V>>,
+                                  parent: &~TreeNode<K, V>) {
         match *node {
           Some(ref r) => {
-            assert r.key < parent.key;
+            assert r.key.cmp(&parent.key) == Less;
             assert r.level == parent.level - 1; // left is black
             check_left(&r.left, r);
             check_right(&r.right, r, false);
@@ -775,11 +779,12 @@ mod test_treemap {
         }
     }
 
-    fn check_right<K:Ord,V>(node: &Option<~TreeNode<K, V>>,
-                              parent: &~TreeNode<K, V>, parent_red: bool) {
+    fn check_right<K: TotalOrd, V>(node: &Option<~TreeNode<K, V>>,
+                                   parent: &~TreeNode<K, V>,
+                                   parent_red: bool) {
         match *node {
           Some(ref r) => {
-            assert r.key > parent.key;
+            assert r.key.cmp(&parent.key) == Greater;
             let red = r.level == parent.level;
             if parent_red { assert !red } // no dual horizontal links
             assert red || r.level == parent.level - 1; // right red or black
@@ -790,7 +795,7 @@ mod test_treemap {
         }
     }
 
-    fn check_structure<K:Ord,V>(map: &TreeMap<K, V>) {
+    fn check_structure<K: TotalOrd, V>(map: &TreeMap<K, V>) {
         match map.root {
           Some(ref r) => {
             check_left(&r.left, r);
