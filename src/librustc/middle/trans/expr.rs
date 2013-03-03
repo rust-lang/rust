@@ -726,8 +726,8 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
                 // Nullary variant.
                 let ty = expr_ty(bcx, ref_expr);
                 let repr = adt::represent_type(ccx, ty);
-                adt::trans_set_discr(bcx, repr, lldest,
-                                     variant_info.disr_val);
+                adt::trans_start_init(bcx, repr, lldest,
+                                      variant_info.disr_val);
                 return bcx;
             }
         }
@@ -891,7 +891,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 datum: do base_datum.get_element(bcx,
                                                  field_tys[ix].mt.ty,
                                                  ZeroMem) |srcval| {
-                    adt::trans_GEP(bcx, repr, srcval, discr, ix)
+                    adt::trans_field_ptr(bcx, repr, srcval, discr, ix)
                 },
                 bcx: bcx
             }
@@ -1240,9 +1240,9 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
         SaveIn(pos) => pos
     };
     let mut temp_cleanups = ~[];
-    adt::trans_set_discr(bcx, repr, addr, discr);
+    adt::trans_start_init(bcx, repr, addr, discr);
     for fields.each |&(i, e)| {
-        let dest = adt::trans_GEP(bcx, repr, addr, discr, i);
+        let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
         let e_ty = expr_ty(bcx, e);
         bcx = trans_into(bcx, e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
@@ -1254,9 +1254,9 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base.expr));
         for base.fields.each |&(i, t)| {
             let datum = do base_datum.get_element(bcx, t, ZeroMem) |srcval| {
-                adt::trans_GEP(bcx, repr, srcval, discr, i)
+                adt::trans_field_ptr(bcx, repr, srcval, discr, i)
             };
-            let dest = adt::trans_GEP(bcx, repr, addr, discr, i);
+            let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
             bcx = datum.store_to(bcx, base.expr.id, INIT, dest);
         }
     }

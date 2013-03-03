@@ -630,7 +630,8 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         let mut cx = cx;
 
         for variant.args.eachi |i, &arg| {
-            cx = f(cx, adt::trans_GEP(cx, repr, av, variant.disr_val, i),
+            cx = f(cx,
+                   adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
                    ty::subst_tps(tcx, tps, None, arg));
         }
         return cx;
@@ -642,7 +643,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
           let repr = adt::represent_type(cx.ccx(), t);
           do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
               for vec::eachi(field_tys) |i, field_ty| {
-                  let llfld_a = adt::trans_GEP(cx, repr, av, discr, i);
+                  let llfld_a = adt::trans_field_ptr(cx, repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
               }
           }
@@ -655,7 +656,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_tup(args) => {
           let repr = adt::represent_type(cx.ccx(), t);
           for vec::eachi(args) |i, arg| {
-              let llfld_a = adt::trans_GEP(cx, repr, av, 0, i);
+              let llfld_a = adt::trans_field_ptr(cx, repr, av, 0, i);
               cx = f(cx, llfld_a, *arg);
           }
       }
@@ -1864,9 +1865,10 @@ pub fn trans_enum_variant(ccx: @CrateContext,
                                 ty::node_id_to_type(ccx.tcx, enum_id));
     let repr = adt::represent_type(ccx, enum_ty);
 
-    adt::trans_set_discr(bcx, repr, fcx.llretptr, disr);
+    adt::trans_start_init(bcx, repr, fcx.llretptr, disr);
     for vec::eachi(args) |i, va| {
-        let lldestptr = adt::trans_GEP(bcx, repr, fcx.llretptr, disr, i);
+        let lldestptr = adt::trans_field_ptr(bcx, repr, fcx.llretptr,
+                                             disr, i);
 
         // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
@@ -1936,7 +1938,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     let repr = adt::represent_type(ccx, tup_ty);
 
     for fields.eachi |i, field| {
-        let lldestptr = adt::trans_GEP(bcx, repr, fcx.llretptr, 0, i);
+        let lldestptr = adt::trans_field_ptr(bcx, repr, fcx.llretptr, 0, i);
         let llarg = match fcx.llargs.get(&field.node.id) {
             local_mem(x) => x,
             _ => {

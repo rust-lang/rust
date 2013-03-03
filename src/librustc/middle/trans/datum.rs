@@ -687,7 +687,7 @@ pub impl Datum {
                         // rather than a ptr to the enum type.
                         (
                             Some(Datum {
-                                val: adt::trans_GEP(bcx, repr, self.val,
+                                val: adt::trans_field_ptr(bcx, repr, self.val,
                                                     0, 0),
                                 ty: ty,
                                 mode: ByRef,
@@ -729,7 +729,7 @@ pub impl Datum {
                         // destructors.
                         (
                             Some(Datum {
-                                val: adt::trans_GEP(bcx, repr, self.val,
+                                val: adt::trans_field_ptr(bcx, repr, self.val,
                                                     0, 0),
                                 ty: ty,
                                 mode: ByRef,
