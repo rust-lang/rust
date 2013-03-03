@@ -229,12 +229,19 @@
 		</context>
 		<context attribute="String" lineEndContext="#stay" name="String">
 			<LineContinue attribute="String" context="#stay"/>
-			<HlCStringChar attribute="String Char" context="#stay"/>
+			<DetectChar char="\" attribute="CharEscape" context="CharEscape"/>
 			<DetectChar attribute="String" context="#pop" char="&quot;"/>
 		</context>
 		<context attribute="Character" lineEndContext="#pop" name="Character">
-			<HlCStringChar attribute="Character" context="#stay"/>
+			<DetectChar char="\" attribute="CharEscape" context="CharEscape"/>
 			<DetectChar attribute="Character" context="#pop" char="&apos;"/>
+		</context>
+		<context attribute="CharEscape" lineEndContext="#pop" name="CharEscape">
+			<AnyChar String="nrt\&apos;&quot;" attribute="CharEscape" context="#pop"/>
+			<RegExpr String="x[0-9a-fA-F]{2}" attribute="CharEscape" context="#pop"/>
+			<RegExpr String="u[0-9a-fA-F]{4}" attribute="CharEscape" context="#pop"/>
+			<RegExpr String="U[0-9a-fA-F]{8}" attribute="CharEscape" context="#pop"/>
+			<RegExpr String="." attribute="Error" context="#pop"/>
 		</context>
 		<context attribute="Comment" lineEndContext="#pop" name="Commentar 1"/>
 		<context attribute="Comment" lineEndContext="#stay" name="Commentar 2">
@@ -256,11 +263,12 @@
 		<itemData name="Scope"        defStyleNum="dsNormal" color="#0055AA"/>
 		<itemData name="Number"       defStyleNum="dsDecVal" color="#116644"/>
 		<itemData name="String"       defStyleNum="dsString" color="#FF0000"/>
-		<itemData name="String Char"  defStyleNum="dsChar" color="#FF0000"/>
+		<itemData name="CharEscape"   defStyleNum="dsChar" color="#FF0000" bold="1"/>
 		<itemData name="Character"    defStyleNum="dsChar" color="#FF0000"/>
 		<itemData name="Macro"        defStyleNum="dsOthers"/>
 		<itemData name="Attribute"    defStyleNum="dsOthers"/>
 		<itemData name="Lifetime"     defStyleNum="dsOthers" bold="1"/>
+		<itemData name="Error"        defStyleNum="dsError"/>
 	</itemDatas>
 </highlighting>
 <general>
