@@ -132,7 +132,7 @@ pub fn parse_config_(
     match getopts::getopts(args, opts) {
         result::Ok(matches) => {
             if matches.free.len() == 1 {
-                let input_crate = Path(vec::head(matches.free));
+                let input_crate = Path(copy *matches.free.head());
                 config_from_opts(&input_crate, &matches, program_output)
             } else if matches.free.is_empty() {
                 result::Err(~"no crates specified")
