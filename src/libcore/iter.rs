@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -69,7 +69,7 @@ pub trait CopyableNonstrictIter<A:Copy> {
     pure fn each_val(&const self, f: &fn(A) -> bool);
 }
 
-// A trait for sequences that can be by imperatively pushing elements
+// A trait for sequences that can be built by imperatively pushing elements
 // onto them.
 pub trait Buildable<A> {
     /**
@@ -198,7 +198,7 @@ pub pure fn position<A,IA:BaseIter<A>>(self: &IA, f: fn(&A) -> bool)
 }
 
 // note: 'rposition' would only make sense to provide with a bidirectional
-// iter interface, such as would provide "reach" in addition to "each". as is,
+// iter interface, such as would provide "reach" in addition to "each". As is,
 // it would have to be implemented with foldr, which is too inefficient.
 
 #[inline(always)]
@@ -269,13 +269,13 @@ pub pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(A)))
 
 /**
  * Builds a sequence by calling a provided function with an argument
- * function that pushes an element to the back of a sequence.
+ * function that pushes an element to the back of the sequence.
  * This version takes an initial size for the sequence.
  *
  * # Arguments
  *
  * * size - An option, maybe containing initial size of the sequence
- *          to reserve
+ *          to reserve.
  * * builder - A function that will construct the sequence. It receives
  *             as an argument a function that will push an element
  *             onto the sequence being constructed.
@@ -290,7 +290,7 @@ pub pure fn build_sized_opt<A,B: Buildable<A>>(
 
 // Functions that combine iteration and building
 
-/// Apply a function to each element of an iterable and return the results
+/// Applies a function to each element of an iterable and returns the results.
 #[inline(always)]
 pub fn map<T,IT: BaseIter<T>,U,BU: Buildable<U>>(v: &IT, f: fn(&T) -> U)
     -> BU {
@@ -302,7 +302,7 @@ pub fn map<T,IT: BaseIter<T>,U,BU: Buildable<U>>(v: &IT, f: fn(&T) -> U)
 }
 
 /**
- * Creates and initializes a generic sequence from a function
+ * Creates and initializes a generic sequence from a function.
  *
  * Creates a generic sequence of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
@@ -317,7 +317,7 @@ pub pure fn from_fn<T,BT: Buildable<T>>(n_elts: uint,
 }
 
 /**
- * Creates and initializes a generic sequence with some element
+ * Creates and initializes a generic sequence with some elements.
  *
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
@@ -331,7 +331,7 @@ pub pure fn from_elem<T:Copy,BT:Buildable<T>>(n_elts: uint,
     }
 }
 
-/// Appending two generic sequences
+/// Appends two generic sequences.
 #[inline(always)]
 pub pure fn append<T:Copy,IT:BaseIter<T>,BT:Buildable<T>>(
     lhs: &IT, rhs: &IT) -> BT {
