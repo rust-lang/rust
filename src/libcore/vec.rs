@@ -211,7 +211,16 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 // Accessors
 
 /// Returns the first element of a vector
-pub pure fn head<T:Copy>(v: &[const T]) -> T { v[0] }
+pub pure fn head<T>(v: &r/[T]) -> &r/T {
+    if v.len() == 0 { fail!(~"last_unsafe: empty vector") }
+    &v[0]
+}
+
+/// Returns `Some(x)` where `x` is the first element of the slice `v`,
+/// or `None` if the vector is empty.
+pub pure fn head_opt<T>(v: &r/[T]) -> Option<&r/T> {
+    if v.len() == 0 { None } else { Some(&v[0]) }
+}
 
 /// Returns a vector containing all but the first element of a slice
 pub pure fn tail<T:Copy>(v: &[const T]) -> ~[T] {
@@ -1692,7 +1701,6 @@ impl<T> Container for &[const T] {
 }
 
 pub trait CopyableVector<T> {
-    pure fn head(&self) -> T;
     pure fn init(&self) -> ~[T];
     pure fn last(&self) -> T;
     pure fn slice(&self, start: uint, end: uint) -> ~[T];
@@ -1701,10 +1709,6 @@ pub trait CopyableVector<T> {
 
 /// Extension methods for vectors
 impl<T:Copy> CopyableVector<T> for &[const T] {
-    /// Returns the first element of a vector
-    #[inline]
-    pure fn head(&self) -> T { head(*self) }
-
     /// Returns all but the last elemnt of a vector
     #[inline]
     pure fn init(&self) -> ~[T] { init(*self) }
@@ -1726,7 +1730,9 @@ impl<T:Copy> CopyableVector<T> for &[const T] {
 
 pub trait ImmutableVector<T> {
     pure fn view(&self, start: uint, end: uint) -> &self/[T];
-    pure fn foldr<U:Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
+    pure fn head(&self) -> &self/T;
+    pure fn head_opt(&self) -> Option<&self/T>;
+    pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U];
     fn map_r<U>(&self, f: fn(x: &T) -> U) -> ~[U];
@@ -1742,6 +1748,14 @@ impl<T> ImmutableVector<T> for &[T] {
     pure fn view(&self, start: uint, end: uint) -> &self/[T] {
         slice(*self, start, end)
     }
+
+    /// Returns the first element of a vector, failing if the vector is empty.
+    #[inline]
+    pure fn head(&self) -> &self/T { head(*self) }
+
+    /// Returns the first element of a vector
+    #[inline]
+    pure fn head_opt(&self) -> Option<&self/T> { head_opt(*self) }
 
     /// Reduce a vector from right to left
     #[inline]
@@ -2570,8 +2584,28 @@ mod tests {
 
     #[test]
     fn test_head() {
-        let a = ~[11, 12];
-        assert (head(a) == 11);
+        let mut a = ~[11];
+        assert a.head() == &11;
+        a = ~[11, 12];
+        assert a.head() == &11;
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_head_empty() {
+        let a: ~[int] = ~[];
+        a.head();
+    }
+
+    #[test]
+    fn test_head_opt() {
+        let mut a = ~[];
+        assert a.head_opt() == None;
+        a = ~[11];
+        assert a.head_opt().unwrap() == &11;
+        a = ~[11, 12];
+        assert a.head_opt().unwrap() == &11;
     }
 
     #[test]

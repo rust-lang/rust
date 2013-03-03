@@ -144,14 +144,14 @@ fn parse_desc(desc: ~str) -> Option<~str> {
 fn first_sentence(s: ~str) -> Option<~str> {
     let paras = paragraphs(s);
     if !paras.is_empty() {
-        let first_para = vec::head(paras);
-        Some(str::replace(first_sentence_(first_para), ~"\n", ~" "))
+        let first_para = paras.head();
+        Some(str::replace(first_sentence_(*first_para), ~"\n", ~" "))
     } else {
         None
     }
 }
 
-fn first_sentence_(s: ~str) -> ~str {
+fn first_sentence_(s: &str) -> ~str {
     let mut dotcount = 0;
     // The index of the character following a single dot. This allows
     // Things like [0..1) to appear in the brief description
@@ -169,16 +169,16 @@ fn first_sentence_(s: ~str) -> ~str {
         }
     };
     match idx {
-      Some(idx) if idx > 2u => {
-        str::slice(s, 0u, idx - 1u)
-      }
-      _ => {
-        if str::ends_with(s, ~".") {
-            str::slice(s, 0u, str::len(s))
-        } else {
-            copy s
+        Some(idx) if idx > 2u => {
+            str::from_slice(str::view(s, 0, idx - 1))
         }
-      }
+        _ => {
+            if str::ends_with(s, ~".") {
+                str::from_slice(s)
+            } else {
+                str::from_slice(s)
+            }
+        }
     }
 }
 
