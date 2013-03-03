@@ -223,17 +223,10 @@ pub pure fn head_opt<T>(v: &r/[T]) -> Option<&r/T> {
 }
 
 /// Returns a vector containing all but the first element of a slice
-pub pure fn tail<T:Copy>(v: &[const T]) -> ~[T] {
-    slice(v, 1u, len(v)).to_vec()
-}
+pub pure fn tail<T>(v: &r/[T]) -> &r/[T] { slice(v, 1, v.len()) }
 
-/**
- * Returns a vector containing all but the first `n` \
- * elements of a slice
- */
-pub pure fn tailn<T:Copy>(v: &[const T], n: uint) -> ~[T] {
-    slice(v, n, len(v)).to_vec()
-}
+/// Returns a vector containing all but the first `n` elements of a slice
+pub pure fn tailn<T>(v: &r/[T], n: uint) -> &r/[T] { slice(v, n, v.len()) }
 
 /// Returns a vector containing all but the last element of a slice
 pub pure fn init<T:Copy>(v: &[const T]) -> ~[T] {
@@ -1704,7 +1697,6 @@ pub trait CopyableVector<T> {
     pure fn init(&self) -> ~[T];
     pure fn last(&self) -> T;
     pure fn slice(&self, start: uint, end: uint) -> ~[T];
-    pure fn tail(&self) -> ~[T];
 }
 
 /// Extension methods for vectors
@@ -1722,16 +1714,14 @@ impl<T:Copy> CopyableVector<T> for &[const T] {
     pure fn slice(&self, start: uint, end: uint) -> ~[T] {
         slice(*self, start, end).to_vec()
     }
-
-    /// Returns all but the first element of a vector
-    #[inline]
-    pure fn tail(&self) -> ~[T] { tail(*self) }
 }
 
 pub trait ImmutableVector<T> {
     pure fn view(&self, start: uint, end: uint) -> &self/[T];
     pure fn head(&self) -> &self/T;
     pure fn head_opt(&self) -> Option<&self/T>;
+    pure fn tail(&self) -> &self/[T];
+    pure fn tailn(&self, n: uint) -> &self/[T];
     pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U];
@@ -1756,6 +1746,14 @@ impl<T> ImmutableVector<T> for &[T] {
     /// Returns the first element of a vector
     #[inline]
     pure fn head_opt(&self) -> Option<&self/T> { head_opt(*self) }
+
+    /// Returns all but the first element of a vector
+    #[inline]
+    pure fn tail(&self) -> &self/[T] { tail(*self) }
+
+    /// Returns all but the first `n' elements of a vector
+    #[inline]
+    pure fn tailn(&self, n: uint) -> &self/[T] { tailn(*self, n) }
 
     /// Reduce a vector from right to left
     #[inline]
@@ -2611,10 +2609,33 @@ mod tests {
     #[test]
     fn test_tail() {
         let mut a = ~[11];
-        assert (tail(a) == ~[]);
-
+        assert a.tail() == &[];
         a = ~[11, 12];
-        assert (tail(a) == ~[12]);
+        assert a.tail() == &[12];
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_tail_empty() {
+        let a: ~[int] = ~[];
+        a.tail();
+    }
+
+    #[test]
+    fn test_tailn() {
+        let mut a = ~[11, 12, 13];
+        assert a.tailn(0) == &[11, 12, 13];
+        a = ~[11, 12, 13];
+        assert a.tailn(2) == &[13];
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_tailn_empty() {
+        let a: ~[int] = ~[];
+        a.tailn(2);
     }
 
     #[test]
