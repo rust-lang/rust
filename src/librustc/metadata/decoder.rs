@@ -558,7 +558,10 @@ pub fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
                        -> csearch::found_ast {
     debug!("Looking up item: %d", id);
     let item_doc = lookup_item(id, cdata.data);
-    let path = vec::init(item_path(intr, item_doc));
+    let path = {
+        let item_path = item_path(intr, item_doc);
+        vec::from_slice(item_path.init())
+    };
     match decode_inlined_item(cdata, tcx, path, item_doc) {
       Some(ref ii) => csearch::found((/*bad*/copy *ii)),
       None => {
@@ -566,8 +569,7 @@ pub fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
           Some(did) => {
             let did = translate_def_id(cdata, did);
             let parent_item = lookup_item(did.node, cdata.data);
-            match decode_inlined_item(cdata, tcx, path,
-                                               parent_item) {
+            match decode_inlined_item(cdata, tcx, path, parent_item) {
               Some(ref ii) => csearch::found_parent(did, (/*bad*/copy *ii)),
               None => csearch::not_found
             }

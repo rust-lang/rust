@@ -3815,7 +3815,7 @@ pub fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
           }
 
           ast_map::node_variant(ref variant, _, path) => {
-            vec::append_one(vec::init(*path),
+            vec::append_one(vec::from_slice(vec::init(*path)),
                             ast_map::path_name((*variant).node.name))
           }
 
