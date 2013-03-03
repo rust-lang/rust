@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! An interface for numeric types
-use core::cmp::{Ord, Eq};
+use cmp::{Ord, Eq};
 use ops::{Add, Div, Modulo, Mul, Neg, Sub};
 use option::{None, Option, Some};
 use char;

@@ -31,41 +31,41 @@ extern mod syntax(vers = "0.6");
 use core::*;
 use std::par;
 
-mod pass;
-mod config;
-mod parse;
-mod extract;
-mod attr_parser;
-mod doc;
-mod markdown_index_pass;
-mod markdown_pass;
-mod markdown_writer;
-mod fold;
-mod path_pass;
-mod attr_pass;
-mod tystr_pass;
-mod prune_hidden_pass;
-mod desc_to_brief_pass;
-mod text_pass;
-mod unindent_pass;
-mod trim_pass;
-mod astsrv;
-mod demo;
-mod sort_pass;
-mod sort_item_name_pass;
-mod sort_item_type_pass;
-mod page_pass;
-mod sectionalize_pass;
-mod escape_pass;
-mod prune_private_pass;
-mod util;
+pub mod pass;
+pub mod config;
+pub mod parse;
+pub mod extract;
+pub mod attr_parser;
+pub mod doc;
+pub mod markdown_index_pass;
+pub mod markdown_pass;
+pub mod markdown_writer;
+pub mod fold;
+pub mod path_pass;
+pub mod attr_pass;
+pub mod tystr_pass;
+pub mod prune_hidden_pass;
+pub mod desc_to_brief_pass;
+pub mod text_pass;
+pub mod unindent_pass;
+pub mod trim_pass;
+pub mod astsrv;
+pub mod demo;
+pub mod sort_pass;
+pub mod sort_item_name_pass;
+pub mod sort_item_type_pass;
+pub mod page_pass;
+pub mod sectionalize_pass;
+pub mod escape_pass;
+pub mod prune_private_pass;
+pub mod util;
 
 use doc::ItemUtils;
 use doc::Item;
 use pass::Pass;
 use config::Config;
 
-fn main() {
+pub fn main() {
     let args = os::args();
 
     if args.contains(&~"-h") || args.contains(&~"--help") {
@@ -144,7 +144,7 @@ fn run(config: Config) {
     }
 }
 
-fn time<T>(what: ~str, f: fn() -> T) -> T {
+pub fn time<T>(what: ~str, f: fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = f();
     let end = std::time::precise_time_s();

@@ -10,7 +10,7 @@
 
 fn bare() {}
 
-fn likes_shared(f: fn@()) { f() }
+fn likes_shared(f: @fn()) { f() }
 
 pub fn main() {
     likes_shared(bare);

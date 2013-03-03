@@ -15,7 +15,7 @@
  * interface.
  */
 
-use prelude::*;
+use core::prelude::*;
 
 use ast;
 use codemap::span;

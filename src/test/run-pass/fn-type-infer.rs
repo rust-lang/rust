@@ -9,6 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    // We should be able to type infer inside of fn@s.
-    let f = fn@() { let i = 10; };
+    // We should be able to type infer inside of @fns.
+    let f = || {
+        let i = 10;
+    };
 }

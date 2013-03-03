@@ -13,8 +13,8 @@
 
 extern mod std;
 
-use comm::Chan;
-use comm::Port;
+use core::comm::Chan;
+use core::comm::Port;
 
 pub fn main() { test05(); }
 

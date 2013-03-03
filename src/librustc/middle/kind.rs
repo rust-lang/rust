@@ -84,7 +84,7 @@ pub fn check_crate(tcx: ty::ctxt,
         visit_expr: check_expr,
         visit_fn: check_fn,
         visit_ty: check_ty,
-        visit_item: fn@(i: @item, cx: Context, v: visit::vt<Context>) {
+        visit_item: |i, cx, v| {
             visit::visit_item(i, Context { current_item: i.id,.. cx }, v);
         },
         .. *visit::default_visitor()
@@ -93,7 +93,7 @@ pub fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-type check_fn = fn@(Context, @freevar_entry);
+type check_fn = @fn(Context, @freevar_entry);
 
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the

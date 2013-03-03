@@ -12,10 +12,11 @@ use core::prelude::*;
 
 use common;
 use common::config;
-use io;
-use io::ReaderUtil;
-use os;
-use str;
+
+use core::io::ReaderUtil;
+use core::io;
+use core::os;
+use core::str;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out

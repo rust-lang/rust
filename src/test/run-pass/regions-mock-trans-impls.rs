@@ -11,7 +11,9 @@
 // except according to those terms.
 
 extern mod std;
-use libc, sys, cast;
+use core::libc;
+use core::sys;
+use core::cast;
 use std::arena::Arena;
 
 struct Bcx {

@@ -910,11 +910,10 @@ endpoint is passed to the new task.
 
 */
 pub fn spawn_service<T:Owned,Tb:Owned>(
-    init: extern fn() -> (SendPacketBuffered<T, Tb>,
-                          RecvPacketBuffered<T, Tb>),
-    service: fn~(v: RecvPacketBuffered<T, Tb>))
-    -> SendPacketBuffered<T, Tb>
-{
+            init: extern fn() -> (SendPacketBuffered<T, Tb>,
+                                  RecvPacketBuffered<T, Tb>),
+            service: ~fn(v: RecvPacketBuffered<T, Tb>))
+        -> SendPacketBuffered<T, Tb> {
     let (client, server) = init();
 
     // This is some nasty gymnastics required to safely move the pipe
@@ -932,11 +931,10 @@ receive state.
 
 */
 pub fn spawn_service_recv<T:Owned,Tb:Owned>(
-    init: extern fn() -> (RecvPacketBuffered<T, Tb>,
-                          SendPacketBuffered<T, Tb>),
-    service: fn~(v: SendPacketBuffered<T, Tb>))
-    -> RecvPacketBuffered<T, Tb>
-{
+        init: extern fn() -> (RecvPacketBuffered<T, Tb>,
+                              SendPacketBuffered<T, Tb>),
+        service: ~fn(v: SendPacketBuffered<T, Tb>))
+        -> RecvPacketBuffered<T, Tb> {
     let (client, server) = init();
 
     // This is some nasty gymnastics required to safely move the pipe

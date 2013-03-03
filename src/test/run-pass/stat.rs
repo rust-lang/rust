@@ -11,7 +11,7 @@
 // xfail-fast
 
 extern mod std;
-use io::WriterUtil;
+use core::io::WriterUtil;
 use std::tempfile;
 
 pub fn main() {

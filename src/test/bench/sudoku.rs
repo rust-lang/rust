@@ -13,7 +13,8 @@
 extern mod std;
 
 use std::bitv;
-use io::{ReaderUtil, WriterUtil};
+use core::io::{ReaderUtil, WriterUtil};
+use core::io;
 
 // Computes a single solution to a given 9x9 sudoku
 //

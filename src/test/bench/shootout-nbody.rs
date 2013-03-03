@@ -45,7 +45,7 @@ fn main() {
     io::println(fmt!("%f", NBodySystem::energy(bodies)));
 }
 
-mod NBodySystem {
+pub mod NBodySystem {
     use Body;
 
     pub fn make() -> ~[Body::Props] {
@@ -162,7 +162,7 @@ mod NBodySystem {
     }
 }
 
-mod Body {
+pub mod Body {
     use Body;
 
     pub const PI: float = 3.141592653589793;

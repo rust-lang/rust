@@ -42,7 +42,7 @@ use syntax::print::pprust::expr_to_str;
 // roughly as follows:
 //
 // struct rust_opaque_box {         // see rust_internal.h
-//   unsigned ref_count;            // only used for fn@()
+//   unsigned ref_count;            // only used for @fn()
 //   type_desc *tydesc;             // describes closure_data struct
 //   rust_opaque_box *prev;         // (used internally by memory alloc)
 //   rust_opaque_box *next;         // (used internally by memory alloc)
@@ -57,7 +57,7 @@ use syntax::print::pprust::expr_to_str;
 // };
 //
 // Note that the closure is itself a rust_opaque_box.  This is true
-// even for fn~ and fn&, because we wish to keep binary compatibility
+// even for ~fn and &fn, because we wish to keep binary compatibility
 // between all kinds of closures.  The allocation strategy for this
 // closure depends on the closure type.  For a sendfn, the closure
 // (and the referenced type descriptors) will be allocated in the
@@ -440,11 +440,10 @@ pub fn trans_expr_fn(bcx: block,
 }
 
 pub fn make_closure_glue(
-    cx: block,
-    v: ValueRef,
-    t: ty::t,
-    glue_fn: fn@(block, v: ValueRef, t: ty::t) -> block) -> block
-{
+        cx: block,
+        v: ValueRef,
+        t: ty::t,
+        glue_fn: @fn(block, v: ValueRef, t: ty::t) -> block) -> block {
     let _icx = cx.insn_ctxt("closure::make_closure_glue");
     let bcx = cx;
     let tcx = cx.tcx();
@@ -483,7 +482,7 @@ pub fn make_opaque_cbox_take_glue(
         }
     }
 
-    // fn~ requires a deep copy.
+    // ~fn requires a deep copy.
     let ccx = bcx.ccx(), tcx = ccx.tcx;
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);

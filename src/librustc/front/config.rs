@@ -15,7 +15,7 @@ use syntax::{ast, fold, attr};
 use core::option;
 use core::vec;
 
-type in_cfg_pred = fn@(+attrs: ~[ast::attribute]) -> bool;
+type in_cfg_pred = @fn(+attrs: ~[ast::attribute]) -> bool;
 
 struct Context {
     in_cfg: in_cfg_pred

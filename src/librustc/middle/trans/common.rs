@@ -61,14 +61,15 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust::expr_to_str;
 use syntax::{ast, ast_map};
 
-pub type namegen = fn@(~str) -> ident;
+pub type namegen = @fn(~str) -> ident;
 pub fn new_namegen(intr: @ident_interner) -> namegen {
-    return fn@(prefix: ~str) -> ident {
+    let f: @fn(~str) -> ident = |prefix| {
         // XXX: Bad copies.
-        return intr.gensym(@fmt!("%s_%u",
-                                 prefix,
-                                 intr.gensym(@copy prefix).repr))
+        intr.gensym(@fmt!("%s_%u",
+                          prefix,
+                          intr.gensym(@copy prefix).repr))
     };
+    f
 }
 
 pub type addrspace = c_uint;
@@ -81,10 +82,11 @@ pub type addrspace = c_uint;
 pub const default_addrspace: addrspace = 0;
 pub const gc_box_addrspace: addrspace = 1;
 
-pub type addrspace_gen = fn@() -> addrspace;
+pub type addrspace_gen = @fn() -> addrspace;
 pub fn new_addrspace_gen() -> addrspace_gen {
     let i = @mut 1;
-    return fn@() -> addrspace { *i += 1; *i };
+    let result: addrspace_gen = || { *i += 1; *i };
+    result
 }
 
 pub struct tydesc_info {
@@ -349,8 +351,8 @@ pub enum cleantype {
 }
 
 pub enum cleanup {
-    clean(fn@(block) -> block, cleantype),
-    clean_temp(ValueRef, fn@(block) -> block, cleantype),
+    clean(@fn(block) -> block, cleantype),
+    clean_temp(ValueRef, @fn(block) -> block, cleantype),
 }
 
 // Used to remember and reuse existing cleanup paths
@@ -1034,7 +1036,7 @@ pub fn T_typaram_ptr(tn: @TypeNames) -> TypeRef {
 }
 
 pub fn T_opaque_cbox_ptr(cx: @CrateContext) -> TypeRef {
-    // closures look like boxes (even when they are fn~ or fn&)
+    // closures look like boxes (even when they are ~fn or &fn)
     // see trans_closure.rs
     return T_opaque_box_ptr(cx);
 }

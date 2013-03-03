@@ -10,13 +10,6 @@
 
 use core::prelude::*;
 
-use io;
-use io::WriterUtil;
-use os;
-use str;
-use uint;
-use vec;
-
 use common;
 use common::mode_run_pass;
 use common::mode_run_fail;
@@ -30,6 +23,13 @@ use header::TestProps;
 use procsrv;
 use util;
 use util::logv;
+
+use core::io::WriterUtil;
+use core::io;
+use core::os;
+use core::str;
+use core::uint;
+use core::vec;
 
 pub fn run(config: config, testfile: ~str) {
     if config.verbose {

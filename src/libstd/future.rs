@@ -37,13 +37,13 @@ pub struct Future<A> {
 }
 
 // FIXME(#2829) -- futures should not be copyable, because they close
-// over fn~'s that have pipes and so forth within!
+// over ~fn's that have pipes and so forth within!
 impl<A> Drop for Future<A> {
     fn finalize(&self) {}
 }
 
 priv enum FutureState<A> {
-    Pending(fn~() -> A),
+    Pending(~fn() -> A),
     Evaluating,
     Forced(A)
 }
@@ -125,7 +125,7 @@ pub fn from_fn<A>(f: ~fn() -> A) -> Future<A> {
     Future {state: Pending(f)}
 }
 
-pub fn spawn<A:Owned>(blk: fn~() -> A) -> Future<A> {
+pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
     /*!
      * Create a future from a unique closure.
      *

@@ -12,7 +12,7 @@
 // -*- rust -*-
 #[legacy_modes];
 
-type compare<T> = fn@(T, T) -> bool;
+type compare<T> = @fn(T, T) -> bool;
 
 fn test_generic<T:Copy>(expected: T, not_expected: T, eq: compare<T>) {
     let actual: T = if true { expected } else { not_expected };

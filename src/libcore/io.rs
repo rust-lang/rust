@@ -1139,7 +1139,7 @@ pub mod fsync {
     pub struct Arg<t> {
         val: t,
         opt_level: Option<Level>,
-        fsync_fn: fn@(f: t, Level) -> int,
+        fsync_fn: @fn(f: t, Level) -> int,
     }
 
     // fsync file after executing blk
@@ -1150,9 +1150,9 @@ pub mod fsync {
         unsafe {
             blk(Res(Arg {
                 val: file.f, opt_level: opt_level,
-                fsync_fn: fn@(file: *libc::FILE, l: Level) -> int {
+                fsync_fn: |file, l| {
                     unsafe {
-                        return os::fsync_fd(libc::fileno(file), l) as int;
+                        os::fsync_fd(libc::fileno(file), l) as int
                     }
                 }
             }));
@@ -1164,9 +1164,7 @@ pub mod fsync {
                        blk: fn(v: Res<fd_t>)) {
         blk(Res(Arg {
             val: fd.fd, opt_level: opt_level,
-            fsync_fn: fn@(fd: fd_t, l: Level) -> int {
-                return os::fsync_fd(fd, l) as int;
-            }
+            fsync_fn: |fd, l| os::fsync_fd(fd, l) as int
         }));
     }
 
@@ -1178,9 +1176,7 @@ pub mod fsync {
                     blk: fn(v: Res<FSyncable>)) {
         blk(Res(Arg {
             val: o, opt_level: opt_level,
-            fsync_fn: fn@(o: FSyncable, l: Level) -> int {
-                return o.fsync(l);
-            }
+            fsync_fn: |o, l| o.fsync(l)
         }));
     }
 }

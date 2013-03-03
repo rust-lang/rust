@@ -46,12 +46,12 @@ pub struct Ctxt {
     ast_map: ast_map::map
 }
 
-type SrvOwner<T> = fn(srv: Srv) -> T;
-pub type CtxtHandler<T> = fn~(ctxt: Ctxt) -> T;
-type Parser = fn~(Session, s: ~str) -> @ast::crate;
+type SrvOwner<T> = &fn(srv: Srv) -> T;
+pub type CtxtHandler<T> = ~fn(ctxt: Ctxt) -> T;
+type Parser = ~fn(Session, s: ~str) -> @ast::crate;
 
 enum Msg {
-    HandleRequest(fn~(Ctxt)),
+    HandleRequest(~fn(Ctxt)),
     Exit
 }
 
@@ -117,12 +117,10 @@ fn act(po: &Port<Msg>, source: ~str, parse: Parser) {
 
 pub fn exec<T:Owned>(
     srv: Srv,
-    f: fn~(ctxt: Ctxt) -> T
+    f: ~fn(ctxt: Ctxt) -> T
 ) -> T {
     let (po, ch) = stream();
-    let msg = HandleRequest(fn~(ctxt: Ctxt) {
-        ch.send(f(ctxt))
-    });
+    let msg = HandleRequest(|ctxt| ch.send(f(ctxt)));
     srv.ch.send(msg);
     po.recv()
 }

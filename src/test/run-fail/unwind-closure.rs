@@ -16,6 +16,6 @@ fn f(a: @int) {
 
 fn main() {
     let b = @0;
-    let g : fn@() = || f(b);
+    let g: @fn() = || f(b);
     g();
 }

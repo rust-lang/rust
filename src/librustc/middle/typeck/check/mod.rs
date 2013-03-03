@@ -389,7 +389,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                      self_info: Option<SelfInfo>) {
         let tcx = fcx.ccx.tcx;
 
-        let assign = fn@(nid: ast::node_id, ty_opt: Option<ty::t>) {
+        let assign: @fn(ast::node_id, Option<ty::t>) = |nid, ty_opt| {
             match ty_opt {
                 None => {
                     // infer the variable's type
@@ -432,8 +432,8 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         }
 
         // Add explicitly-declared locals.
-        let visit_local = fn@(local: @ast::local,
-                              &&e: (), v: visit::vt<()>) {
+        let visit_local: @fn(@ast::local, &&e: (), visit::vt<()>) =
+                |local, e, v| {
             let o_ty = match local.node.ty.node {
               ast::ty_infer => None,
               _ => Some(fcx.to_ty(local.node.ty))
@@ -447,7 +447,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         // Add pattern bindings.
-        let visit_pat = fn@(p: @ast::pat, &&e: (), v: visit::vt<()>) {
+        let visit_pat: @fn(@ast::pat, &&e: (), visit::vt<()>) = |p, e, v| {
             match p.node {
               ast::pat_ident(_, path, _)
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
@@ -462,7 +462,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             visit::visit_pat(p, e, v);
         };
 
-        let visit_block = fn@(b: &ast::blk, &&e: (), v: visit::vt<()>) {
+        let visit_block: @fn(&ast::blk, &&e: (), visit::vt<()>) = |b, e, v| {
             // non-obvious: the `blk` variable maps to region lb, so
             // we have to keep this up-to-date.  This
             // is... unfortunate.  It'd be nice to not need this.
@@ -2372,10 +2372,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       }
       ast::expr_match(discrim, ref arms) => {
         bot = _match::check_match(fcx, expr, discrim, (/*bad*/copy *arms));
-      }
-      ast::expr_fn(sigil, ref decl, ref body, _) => {
-        check_expr_fn(fcx, expr, Some(sigil),
-                      decl, body, Vanilla, expected);
       }
       ast::expr_fn_block(ref decl, ref body) => {
         check_expr_fn(fcx, expr, None,

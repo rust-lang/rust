@@ -29,7 +29,7 @@ mod map_reduce {
     use std::oldmap::HashMap;
     use core::comm::*;
 
-    pub type putter = fn@(~str, ~str);
+    pub type putter = @fn(~str, ~str);
 
     pub type mapper = extern fn(~str, putter);
 

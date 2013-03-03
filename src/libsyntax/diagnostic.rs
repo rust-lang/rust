@@ -23,8 +23,9 @@ use core::dvec::DVec;
 
 use std::term;
 
-pub type Emitter = fn@(cmsp: Option<(@codemap::CodeMap, span)>,
-                   msg: &str, lvl: level);
+pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
+                       msg: &str,
+                       lvl: level);
 
 // a handler deals with errors; certain errors
 // (fatal, bug, unimpl) may cause immediate exit,
@@ -204,8 +205,7 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: &str) {
 }
 
 pub fn collect(messages: @DVec<~str>)
-    -> fn@(Option<(@codemap::CodeMap, span)>, &str, level)
-{
+            -> @fn(Option<(@codemap::CodeMap, span)>, &str, level) {
     let f: @fn(Option<(@codemap::CodeMap, span)>, &str, level) =
         |_o, msg: &str, _l| { messages.push(msg.to_str()); };
     f

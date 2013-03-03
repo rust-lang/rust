@@ -21,10 +21,10 @@
 #[legacy_modes];
 
 extern mod std;
-use io::Writer;
-use io::WriterUtil;
+use core::io::Writer;
+use core::io::WriterUtil;
 
-use comm::{Port, Chan, SharedChan};
+use core::comm::{Port, Chan, SharedChan};
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = *ptr::addr_of(&($x)); y } }

@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test(f: fn@(uint) -> uint) -> uint {
+fn test(f: @fn(uint) -> uint) -> uint {
     return f(22u);
 }
 
 fn main() {
-    let f = fn~(x: uint) -> uint { return 4u; };
+    let f: ~fn(x: uint) -> uint = |x| 4u;
     log(debug, test(f)); //~ ERROR expected @ closure, found ~ closure
 }

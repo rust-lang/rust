@@ -634,8 +634,8 @@ pub fn compare_scalar_values(cx: block,
     }
 }
 
-pub type val_pair_fn = fn@(block, ValueRef, ValueRef) -> block;
-pub type val_and_ty_fn = fn@(block, ValueRef, ty::t) -> block;
+pub type val_pair_fn = @fn(block, ValueRef, ValueRef) -> block;
+pub type val_and_ty_fn = @fn(block, ValueRef, ty::t) -> block;
 
 pub fn load_inbounds(cx: block, p: ValueRef, idxs: &[uint]) -> ValueRef {
     return Load(cx, GEPi(cx, p, idxs));
