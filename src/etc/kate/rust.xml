@@ -203,6 +203,7 @@
 			<RegExpr String="0b[0-1_]+&rustIntSuf;" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*\.[0-9_]*([eE][+-]?[0-9_]+)?(f32|f64|f)?" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*&rustIntSuf;" attribute="Number" context="#stay"/>
+			<Detect2Chars char="#" char1="[" attribute="Attribute" context="Attribute"/>
 			<RegExpr String="&rustIdent;::" attribute="Scope"/>
 			<RegExpr String="&rustIdent;!" attribute="Macro"/>
 			<RegExpr String="&apos;&rustIdent;(?!&apos;)" attribute="Lifetime"/>
@@ -211,6 +212,10 @@
 			<DetectChar char="&quot;" attribute="String" context="String"/>
 			<DetectChar char="&apos;" attribute="Character" context="Character"/>
 			<DetectIdentifier/>
+		</context>
+		<context attribute="Attribute" lineEndContext="#stay" name="Attribute">
+			<IncludeRules context="Normal"/>
+			<DetectChar char="]" attribute="Attribute" context="#pop"/>
 		</context>
 		<context attribute="Definition" lineEndContext="#stay" name="Function">
 			<DetectSpaces/>
@@ -254,6 +259,7 @@
 		<itemData name="String Char"  defStyleNum="dsChar" color="#FF0000"/>
 		<itemData name="Character"    defStyleNum="dsChar" color="#FF0000"/>
 		<itemData name="Macro"        defStyleNum="dsOthers"/>
+		<itemData name="Attribute"    defStyleNum="dsOthers"/>
 		<itemData name="Lifetime"     defStyleNum="dsOthers" bold="1"/>
 	</itemDatas>
 </highlighting>
