@@ -142,7 +142,7 @@ fn parse_desc(desc: ~str) -> Option<~str> {
 }
 
 fn first_sentence(s: ~str) -> Option<~str> {
-    let paras = paragraphs(copy s);
+    let paras = paragraphs(s);
     if !paras.is_empty() {
         let first_para = vec::head(paras);
         Some(str::replace(first_sentence_(first_para), ~"\n", ~" "))
@@ -182,7 +182,7 @@ fn first_sentence_(s: ~str) -> ~str {
     }
 }
 
-fn paragraphs(s: ~str) -> ~[~str] {
+fn paragraphs(s: &str) -> ~[~str] {
     let lines = str::lines_any(s);
     let mut whitespace_lines = 0;
     let mut accum = ~"";
