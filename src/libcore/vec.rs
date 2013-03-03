@@ -229,9 +229,11 @@ pub pure fn tail<T>(v: &r/[T]) -> &r/[T] { slice(v, 1, v.len()) }
 pub pure fn tailn<T>(v: &r/[T], n: uint) -> &r/[T] { slice(v, n, v.len()) }
 
 /// Returns a vector containing all but the last element of a slice
-pub pure fn init<T:Copy>(v: &[const T]) -> ~[T] {
-    assert len(v) != 0u;
-    slice(v, 0u, len(v) - 1u).to_vec()
+pub pure fn init<T>(v: &r/[T]) -> &r/[T] { slice(v, 0, v.len() - 1) }
+
+/// Returns a vector containing all but the last `n' elements of a slice
+pub pure fn initn<T>(v: &r/[T], n: uint) -> &r/[T] {
+    slice(v, 0, v.len() - n)
 }
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
@@ -1694,17 +1696,12 @@ impl<T> Container for &[const T] {
 }
 
 pub trait CopyableVector<T> {
-    pure fn init(&self) -> ~[T];
     pure fn last(&self) -> T;
     pure fn slice(&self, start: uint, end: uint) -> ~[T];
 }
 
 /// Extension methods for vectors
-impl<T:Copy> CopyableVector<T> for &[const T] {
-    /// Returns all but the last elemnt of a vector
-    #[inline]
-    pure fn init(&self) -> ~[T] { init(*self) }
-
+impl<T: Copy> CopyableVector<T> for &[const T] {
     /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
     pure fn last(&self) -> T { last(*self) }
@@ -1722,6 +1719,8 @@ pub trait ImmutableVector<T> {
     pure fn head_opt(&self) -> Option<&self/T>;
     pure fn tail(&self) -> &self/[T];
     pure fn tailn(&self, n: uint) -> &self/[T];
+    pure fn init(&self) -> &self/[T];
+    pure fn initn(&self, n: uint) -> &self/[T];
     pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U];
@@ -1754,6 +1753,14 @@ impl<T> ImmutableVector<T> for &[T] {
     /// Returns all but the first `n' elements of a vector
     #[inline]
     pure fn tailn(&self, n: uint) -> &self/[T] { tailn(*self, n) }
+
+    /// Returns all but the last elemnt of a vector
+    #[inline]
+    pure fn init(&self) -> &self/[T] { init(*self) }
+
+    /// Returns all but the last `n' elemnts of a vector
+    #[inline]
+    pure fn initn(&self, n: uint) -> &self/[T] { initn(*self, n) }
 
     /// Reduce a vector from right to left
     #[inline]
@@ -2639,6 +2646,38 @@ mod tests {
     }
 
     #[test]
+    fn test_init() {
+        let mut a = ~[11];
+        assert a.init() == &[];
+        a = ~[11, 12];
+        assert a.init() == &[11];
+    }
+
+    #[init]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_init_empty() {
+        let a: ~[int] = ~[];
+        a.init();
+    }
+
+    #[test]
+    fn test_initn() {
+        let mut a = ~[11, 12, 13];
+        assert a.initn(0) == &[11, 12, 13];
+        a = ~[11, 12, 13];
+        assert a.initn(2) == &[11];
+    }
+
+    #[init]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_initn_empty() {
+        let a: ~[int] = ~[];
+        a.initn(2);
+    }
+
+    #[test]
     fn test_last() {
         let mut n = last_opt(~[]);
         assert (n.is_none());
@@ -3318,12 +3357,6 @@ mod tests {
     }
 
     #[test]
-    fn test_init() {
-        let v = init(~[1, 2, 3]);
-        assert v == ~[1, 2];
-    }
-
-    #[test]
     fn test_split() {
         fn f(x: &int) -> bool { *x == 3 }
 
@@ -3385,13 +3418,6 @@ mod tests {
                (~[1], ~[2, 3]);
         assert (~[1, 2, 3]).partitioned(|x: &int| *x < 0) ==
                (~[], ~[1, 2, 3]);
-    }
-
-    #[test]
-    #[should_fail]
-    #[ignore(cfg(windows))]
-    fn test_init_empty() {
-        init::<int>(~[]);
     }
 
     #[test]
