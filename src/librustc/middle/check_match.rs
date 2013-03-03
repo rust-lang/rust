@@ -71,7 +71,7 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
                                             arm.pats);
         }
 
-        check_arms(cx, (/*bad*/copy *arms));
+        check_arms(cx, *arms);
         /* Check for exhaustiveness */
          // Check for empty enum, because is_useful only works on inhabited
          // types.
@@ -108,12 +108,12 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, &&s: (), v: visit::vt<()>) {
 }
 
 // Check for unreachable patterns
-pub fn check_arms(cx: @MatchCheckCtxt, arms: ~[arm]) {
+pub fn check_arms(cx: @MatchCheckCtxt, arms: &[arm]) {
     let mut seen = ~[];
     for arms.each |arm| {
         for arm.pats.each |pat| {
             let v = ~[*pat];
-            match is_useful(cx, copy seen, v) {
+            match is_useful(cx, &seen, v) {
               not_useful => {
                 cx.tcx.sess.span_err(pat.span, ~"unreachable pattern");
               }
