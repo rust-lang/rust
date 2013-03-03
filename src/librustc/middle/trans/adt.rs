@@ -301,10 +301,10 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
 
 /**
  * Begin initializing a new value of the given case of the given
- * representation.  The fields should then be initialized with
- * `trans_GEP` and stores.
+ * representation.  The fields, if any, should then be initialized via
+ * `trans_field_ptr`.
  */
-pub fn trans_set_discr(bcx: block, r: &Repr, val: ValueRef, discr: int) {
+pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
     match *r {
         Unit(the_discr) => {
             assert discr == the_discr;
@@ -339,8 +339,8 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
 }
 
 /// Access a field, at a point when the value's case is known.
-pub fn trans_GEP(bcx: block, r: &Repr, val: ValueRef, discr: int, ix: uint)
-    -> ValueRef {
+pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
+                       ix: uint) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
@@ -354,16 +354,16 @@ pub fn trans_GEP(bcx: block, r: &Repr, val: ValueRef, discr: int, ix: uint)
                 NonStruct => val,
                 StructWithDtor | StructWithoutDtor => GEPi(bcx, val, [0, 0])
             };
-            struct_GEP(bcx, st, val, ix, false)
+            struct_field_ptr(bcx, st, val, ix, false)
         }
         General(ref cases) => {
-            struct_GEP(bcx, &cases[discr as uint],
-                       GEPi(bcx, val, [0, 1]), ix, true)
+            struct_field_ptr(bcx, &cases[discr as uint],
+                                 GEPi(bcx, val, [0, 1]), ix, true)
         }
     }
 }
 
-fn struct_GEP(bcx: block, st: &Struct, val: ValueRef, ix: uint,
+fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
               needs_cast: bool) -> ValueRef {
     let ccx = bcx.ccx();
 
@@ -501,10 +501,15 @@ pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
     }
 }
 
-/// Access a field of a constant value.
-pub fn const_get_element(ccx: @CrateContext, r: &Repr, val: ValueRef,
-                         _discr: int, ix: uint) -> ValueRef {
-    // Not to be confused with common::const_get_elt.
+/**
+ * Extract a field of a constant value, as appropriate for its
+ * representation.
+ *
+ * (Not to be confused with `common::const_get_elt`, which operates on
+ * raw LLVM-level structs and arrays.)
+ */
+pub fn const_get_field(ccx: @CrateContext, r: &Repr, val: ValueRef,
+                       _discr: int, ix: uint) -> ValueRef {
     match *r {
         Unit(*) | CEnum(*) => ccx.sess.bug(~"element access in C-like enum \
                                              const"),
