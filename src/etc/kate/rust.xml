@@ -203,7 +203,7 @@
 			<RegExpr String="0b[0-1_]+&rustIntSuf;" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*\.[0-9_]*([eE][+-]?[0-9_]+)?(f32|f64|f)?" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*&rustIntSuf;" attribute="Number" context="#stay"/>
-			<Detect2Chars char="#" char1="[" attribute="Attribute" context="Attribute"/>
+			<Detect2Chars char="#" char1="[" attribute="Attribute" context="Attribute" beginRegion="Attribute"/>
 			<RegExpr String="&rustIdent;::" attribute="Scope"/>
 			<RegExpr String="&rustIdent;!" attribute="Macro"/>
 			<RegExpr String="&apos;&rustIdent;(?!&apos;)" attribute="Lifetime"/>
@@ -211,11 +211,13 @@
 			<DetectChar char="}" attribute="Symbol" context="#stay" endRegion="Brace" />
 			<DetectChar char="&quot;" attribute="String" context="String"/>
 			<DetectChar char="&apos;" attribute="Character" context="Character"/>
+			<DetectChar char="[" attribute="Symbol" context="#stay" beginRegion="Bracket" />
+			<DetectChar char="]" attribute="Symbol" context="#stay" endRegion="Bracket" />
 			<DetectIdentifier/>
 		</context>
 		<context attribute="Attribute" lineEndContext="#stay" name="Attribute">
+			<DetectChar char="]" attribute="Attribute" context="#pop" endRegion="Attribute"/>
 			<IncludeRules context="Normal"/>
-			<DetectChar char="]" attribute="Attribute" context="#pop"/>
 		</context>
 		<context attribute="Definition" lineEndContext="#stay" name="Function">
 			<DetectSpaces/>
