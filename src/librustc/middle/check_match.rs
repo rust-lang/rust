@@ -133,7 +133,7 @@ pub fn raw_pat(p: @pat) -> @pat {
 
 pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
     assert(!pats.is_empty());
-    let ext = match is_useful(cx, vec::map(pats, |p| ~[*p]), ~[wild()]) {
+    let ext = match is_useful(cx, &pats.map(|p| ~[*p]), ~[wild()]) {
         not_useful => {
             // This is good, wildcard pattern isn't reachable
             return;
@@ -165,7 +165,7 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
                 ty::ty_unboxed_vec(*) | ty::ty_evec(*) => {
                     match *ctor {
                         vec(n) => Some(@fmt!("vectors of length %u", n)),
-                    _ => None
+                        _ => None
                     }
                 }
                 _ => None
@@ -205,10 +205,10 @@ pub enum ctor {
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
+pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
     if m.len() == 0u { return useful_; }
     if m[0].len() == 0u { return not_useful; }
-    let real_pat = match vec::find(m, |r| r[0].id != 0) {
+    let real_pat = match m.find(|r| r[0].id != 0) {
       Some(r) => r[0], None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil(cx.tcx) }
@@ -264,7 +264,7 @@ pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
           }
           Some(ref ctor) => {
             match is_useful(cx,
-                            vec::filter_map(m, |r| default(cx, r)),
+                            &m.filter_mapped(|r| default(cx, *r)),
                             v.tail()) {
               useful_ => useful(left_ty, (/*bad*/copy *ctor)),
               ref u => (/*bad*/copy *u)
@@ -280,7 +280,7 @@ pub fn is_useful(cx: @MatchCheckCtxt, +m: matrix, +v: &[@pat]) -> useful {
 }
 
 pub fn is_useful_specialized(cx: @MatchCheckCtxt,
-                             m: matrix,
+                             m: &matrix,
                              v: &[@pat],
                              +ctor: ctor,
                              arity: uint,
@@ -288,7 +288,7 @@ pub fn is_useful_specialized(cx: @MatchCheckCtxt,
                           -> useful {
     let ms = m.filter_mapped(|r| specialize(cx, *r, ctor, arity, lty));
     let could_be_useful = is_useful(
-        cx, ms, specialize(cx, v, ctor, arity, lty).get());
+        cx, &ms, specialize(cx, v, ctor, arity, lty).get());
     match could_be_useful {
       useful_ => useful(lty, ctor),
       ref u => (/*bad*/copy *u)
@@ -347,7 +347,7 @@ pub fn is_wild(cx: @MatchCheckCtxt, p: @pat) -> bool {
 }
 
 pub fn missing_ctor(cx: @MatchCheckCtxt,
-                    m: matrix,
+                    m: &matrix,
                     left_ty: ty::t)
                  -> Option<ctor> {
     match ty::get(left_ty).sty {
