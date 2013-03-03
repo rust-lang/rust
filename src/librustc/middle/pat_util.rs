@@ -26,7 +26,7 @@ pub fn pat_id_map(dm: resolve::DefMap, pat: @pat) -> PatIdMap {
     do pat_bindings(dm, pat) |_bm, p_id, _s, n| {
       map.insert(path_to_ident(n), p_id);
     };
-    return map;
+    map
 }
 
 pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: @pat) -> bool {

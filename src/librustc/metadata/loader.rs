@@ -97,7 +97,7 @@ fn find_library_crate_aux(
     filesearch::search(filesearch, |path| {
         debug!("inspecting file %s", path.to_str());
         let f: ~str = path.filename().get();
-        if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
+        if !(f.starts_with(prefix) && f.ends_with(suffix)) {
             debug!("skipping %s, doesn't look like %s*%s", path.to_str(),
                    prefix, suffix);
             option::None::<()>
