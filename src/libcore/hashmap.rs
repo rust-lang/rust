@@ -36,11 +36,11 @@ pub mod linear {
     }
 
     pub struct LinearMap<K,V> {
-        k0: u64,
-        k1: u64,
-        resize_at: uint,
-        size: uint,
-        buckets: ~[Option<Bucket<K, V>>],
+        priv k0: u64,
+        priv k1: u64,
+        priv resize_at: uint,
+        priv size: uint,
+        priv buckets: ~[Option<Bucket<K, V>>],
     }
 
     // We could rewrite FoundEntry to have type Option<&Bucket<K, V>>
@@ -582,335 +582,335 @@ pub mod linear {
             self.map.reserve_at_least(n)
         }
     }
-}
+
+    #[test]
+    mod test_map {
+        use container::{Container, Mutable, Map, Set};
+        use option::{None, Some};
+        use hashmap::linear::LinearMap;
+        use hashmap::linear;
+        use uint;
+
+        #[test]
+        pub fn test_insert() {
+            let mut m = LinearMap::new();
+            assert m.insert(1, 2);
+            assert m.insert(2, 4);
+            assert *m.get(&1) == 2;
+            assert *m.get(&2) == 4;
+        }
+
+        #[test]
+        pub fn test_insert_overwrite() {
+            let mut m = LinearMap::new();
+            assert m.insert(1, 2);
+            assert *m.get(&1) == 2;
+            assert !m.insert(1, 3);
+            assert *m.get(&1) == 3;
+        }
+
+        #[test]
+        pub fn test_insert_conflicts() {
+            let mut m = linear::linear_map_with_capacity(4);
+            assert m.insert(1, 2);
+            assert m.insert(5, 3);
+            assert m.insert(9, 4);
+            assert *m.get(&9) == 4;
+            assert *m.get(&5) == 3;
+            assert *m.get(&1) == 2;
+        }
+
+        #[test]
+        pub fn test_conflict_remove() {
+            let mut m = linear::linear_map_with_capacity(4);
+            assert m.insert(1, 2);
+            assert m.insert(5, 3);
+            assert m.insert(9, 4);
+            assert m.remove(&1);
+            assert *m.get(&9) == 4;
+            assert *m.get(&5) == 3;
+        }
+
+        #[test]
+        pub fn test_is_empty() {
+            let mut m = linear::linear_map_with_capacity(4);
+            assert m.insert(1, 2);
+            assert !m.is_empty();
+            assert m.remove(&1);
+            assert m.is_empty();
+        }
+
+        #[test]
+        pub fn test_pop() {
+            let mut m = LinearMap::new();
+            m.insert(1, 2);
+            assert m.pop(&1) == Some(2);
+            assert m.pop(&1) == None;
+        }
+
+        #[test]
+        pub fn test_swap() {
+            let mut m = LinearMap::new();
+            assert m.swap(1, 2) == None;
+            assert m.swap(1, 3) == Some(2);
+            assert m.swap(1, 4) == Some(3);
+        }
+
+        #[test]
+        pub fn test_find_or_insert() {
+            let mut m = LinearMap::new::<int, int>();
+            assert m.find_or_insert(1, 2) == &2;
+            assert m.find_or_insert(1, 3) == &2;
+        }
+
+        #[test]
+        pub fn test_find_or_insert_with() {
+            let mut m = LinearMap::new::<int, int>();
+            assert m.find_or_insert_with(1, |_| 2) == &2;
+            assert m.find_or_insert_with(1, |_| 3) == &2;
+        }
+
+        #[test]
+        pub fn test_consume() {
+            let mut m = LinearMap::new();
+            assert m.insert(1, 2);
+            assert m.insert(2, 3);
+            let mut m2 = LinearMap::new();
+            do m.consume |k, v| {
+                m2.insert(k, v);
+            }
+            assert m.len() == 0;
+            assert m2.len() == 2;
+            assert m2.get(&1) == &2;
+            assert m2.get(&2) == &3;
+        }
+
+        #[test]
+        pub fn test_iterate() {
+            let mut m = linear::linear_map_with_capacity(4);
+            for uint::range(0, 32) |i| {
+                assert m.insert(i, i*2);
+            }
+            let mut observed = 0;
+            for m.each |&(k, v)| {
+                assert *v == *k * 2;
+                observed |= (1 << *k);
+            }
+            assert observed == 0xFFFF_FFFF;
+        }
+
+        #[test]
+        pub fn test_find() {
+            let mut m = LinearMap::new();
+            assert m.find(&1).is_none();
+            m.insert(1, 2);
+            match m.find(&1) {
+                None => fail!(),
+                Some(v) => assert *v == 2
+            }
+        }
+
+        #[test]
+        pub fn test_eq() {
+            let mut m1 = LinearMap::new();
+            m1.insert(1, 2);
+            m1.insert(2, 3);
+            m1.insert(3, 4);
+
+            let mut m2 = LinearMap::new();
+            m2.insert(1, 2);
+            m2.insert(2, 3);
+
+            assert m1 != m2;
+
+            m2.insert(3, 4);
+
+            assert m1 == m2;
+        }
+
+        #[test]
+        pub fn test_expand() {
+            let mut m = LinearMap::new();
+
+            assert m.len() == 0;
+            assert m.is_empty();
+
+            let mut i = 0u;
+            let old_resize_at = m.resize_at;
+            while old_resize_at == m.resize_at {
+                m.insert(i, i);
+                i += 1;
+            }
+
+            assert m.len() == i;
+            assert !m.is_empty();
+        }
+    }
 
 #[test]
-mod test_map {
-    use container::{Container, Mutable, Map, Set};
-    use option::{None, Some};
-    use hashmap::linear::LinearMap;
-    use hashmap::linear;
-    use uint;
+    mod test_set {
+        use hashmap::linear;
+        use container::{Container, Mutable, Map, Set};
+        use vec;
 
-    #[test]
-    pub fn test_insert() {
-        let mut m = LinearMap::new();
-        assert m.insert(1, 2);
-        assert m.insert(2, 4);
-        assert *m.get(&1) == 2;
-        assert *m.get(&2) == 4;
-    }
-
-    #[test]
-    pub fn test_insert_overwrite() {
-        let mut m = LinearMap::new();
-        assert m.insert(1, 2);
-        assert *m.get(&1) == 2;
-        assert !m.insert(1, 3);
-        assert *m.get(&1) == 3;
-    }
-
-    #[test]
-    pub fn test_insert_conflicts() {
-        let mut m = linear::linear_map_with_capacity(4);
-        assert m.insert(1, 2);
-        assert m.insert(5, 3);
-        assert m.insert(9, 4);
-        assert *m.get(&9) == 4;
-        assert *m.get(&5) == 3;
-        assert *m.get(&1) == 2;
-    }
-
-    #[test]
-    pub fn test_conflict_remove() {
-        let mut m = linear::linear_map_with_capacity(4);
-        assert m.insert(1, 2);
-        assert m.insert(5, 3);
-        assert m.insert(9, 4);
-        assert m.remove(&1);
-        assert *m.get(&9) == 4;
-        assert *m.get(&5) == 3;
-    }
-
-    #[test]
-    pub fn test_is_empty() {
-        let mut m = linear::linear_map_with_capacity(4);
-        assert m.insert(1, 2);
-        assert !m.is_empty();
-        assert m.remove(&1);
-        assert m.is_empty();
-    }
-
-    #[test]
-    pub fn test_pop() {
-        let mut m = LinearMap::new();
-        m.insert(1, 2);
-        assert m.pop(&1) == Some(2);
-        assert m.pop(&1) == None;
-    }
-
-    #[test]
-    pub fn test_swap() {
-        let mut m = LinearMap::new();
-        assert m.swap(1, 2) == None;
-        assert m.swap(1, 3) == Some(2);
-        assert m.swap(1, 4) == Some(3);
-    }
-
-    #[test]
-    pub fn test_find_or_insert() {
-        let mut m = LinearMap::new::<int, int>();
-        assert m.find_or_insert(1, 2) == &2;
-        assert m.find_or_insert(1, 3) == &2;
-    }
-
-    #[test]
-    pub fn test_find_or_insert_with() {
-        let mut m = LinearMap::new::<int, int>();
-        assert m.find_or_insert_with(1, |_| 2) == &2;
-        assert m.find_or_insert_with(1, |_| 3) == &2;
-    }
-
-    #[test]
-    pub fn test_consume() {
-        let mut m = LinearMap::new();
-        assert m.insert(1, 2);
-        assert m.insert(2, 3);
-        let mut m2 = LinearMap::new();
-        do m.consume |k, v| {
-            m2.insert(k, v);
-        }
-        assert m.len() == 0;
-        assert m2.len() == 2;
-        assert m2.get(&1) == &2;
-        assert m2.get(&2) == &3;
-    }
-
-    #[test]
-    pub fn test_iterate() {
-        let mut m = linear::linear_map_with_capacity(4);
-        for uint::range(0, 32) |i| {
-            assert m.insert(i, i*2);
-        }
-        let mut observed = 0;
-        for m.each |&(k, v)| {
-            assert *v == *k * 2;
-            observed |= (1 << *k);
-        }
-        assert observed == 0xFFFF_FFFF;
-    }
-
-    #[test]
-    pub fn test_find() {
-        let mut m = LinearMap::new();
-        assert m.find(&1).is_none();
-        m.insert(1, 2);
-        match m.find(&1) {
-            None => fail!(),
-            Some(v) => assert *v == 2
-        }
-    }
-
-    #[test]
-    pub fn test_eq() {
-        let mut m1 = LinearMap::new();
-        m1.insert(1, 2);
-        m1.insert(2, 3);
-        m1.insert(3, 4);
-
-        let mut m2 = LinearMap::new();
-        m2.insert(1, 2);
-        m2.insert(2, 3);
-
-        assert m1 != m2;
-
-        m2.insert(3, 4);
-
-        assert m1 == m2;
-    }
-
-    #[test]
-    pub fn test_expand() {
-        let mut m = LinearMap::new();
-
-        assert m.len() == 0;
-        assert m.is_empty();
-
-        let mut i = 0u;
-        let old_resize_at = m.resize_at;
-        while old_resize_at == m.resize_at {
-            m.insert(i, i);
-            i += 1;
+        #[test]
+        fn test_disjoint() {
+            let mut xs = linear::LinearSet::new();
+            let mut ys = linear::LinearSet::new();
+            assert xs.is_disjoint(&ys);
+            assert ys.is_disjoint(&xs);
+            assert xs.insert(5);
+            assert ys.insert(11);
+            assert xs.is_disjoint(&ys);
+            assert ys.is_disjoint(&xs);
+            assert xs.insert(7);
+            assert xs.insert(19);
+            assert xs.insert(4);
+            assert ys.insert(2);
+            assert ys.insert(-11);
+            assert xs.is_disjoint(&ys);
+            assert ys.is_disjoint(&xs);
+            assert ys.insert(7);
+            assert !xs.is_disjoint(&ys);
+            assert !ys.is_disjoint(&xs);
         }
 
-        assert m.len() == i;
-        assert !m.is_empty();
-    }
-}
+        #[test]
+        fn test_subset_and_superset() {
+            let mut a = linear::LinearSet::new();
+            assert a.insert(0);
+            assert a.insert(5);
+            assert a.insert(11);
+            assert a.insert(7);
 
-#[test]
-mod test_set {
-    use hashmap::linear;
-    use container::{Container, Mutable, Map, Set};
-    use vec;
+            let mut b = linear::LinearSet::new();
+            assert b.insert(0);
+            assert b.insert(7);
+            assert b.insert(19);
+            assert b.insert(250);
+            assert b.insert(11);
+            assert b.insert(200);
 
-    #[test]
-    fn test_disjoint() {
-        let mut xs = linear::LinearSet::new();
-        let mut ys = linear::LinearSet::new();
-        assert xs.is_disjoint(&ys);
-        assert ys.is_disjoint(&xs);
-        assert xs.insert(5);
-        assert ys.insert(11);
-        assert xs.is_disjoint(&ys);
-        assert ys.is_disjoint(&xs);
-        assert xs.insert(7);
-        assert xs.insert(19);
-        assert xs.insert(4);
-        assert ys.insert(2);
-        assert ys.insert(-11);
-        assert xs.is_disjoint(&ys);
-        assert ys.is_disjoint(&xs);
-        assert ys.insert(7);
-        assert !xs.is_disjoint(&ys);
-        assert !ys.is_disjoint(&xs);
-    }
+            assert !a.is_subset(&b);
+            assert !a.is_superset(&b);
+            assert !b.is_subset(&a);
+            assert !b.is_superset(&a);
 
-    #[test]
-    fn test_subset_and_superset() {
-        let mut a = linear::LinearSet::new();
-        assert a.insert(0);
-        assert a.insert(5);
-        assert a.insert(11);
-        assert a.insert(7);
+            assert b.insert(5);
 
-        let mut b = linear::LinearSet::new();
-        assert b.insert(0);
-        assert b.insert(7);
-        assert b.insert(19);
-        assert b.insert(250);
-        assert b.insert(11);
-        assert b.insert(200);
-
-        assert !a.is_subset(&b);
-        assert !a.is_superset(&b);
-        assert !b.is_subset(&a);
-        assert !b.is_superset(&a);
-
-        assert b.insert(5);
-
-        assert a.is_subset(&b);
-        assert !a.is_superset(&b);
-        assert !b.is_subset(&a);
-        assert b.is_superset(&a);
-    }
-
-    #[test]
-    fn test_intersection() {
-        let mut a = linear::LinearSet::new();
-        let mut b = linear::LinearSet::new();
-
-        assert a.insert(11);
-        assert a.insert(1);
-        assert a.insert(3);
-        assert a.insert(77);
-        assert a.insert(103);
-        assert a.insert(5);
-        assert a.insert(-5);
-
-        assert b.insert(2);
-        assert b.insert(11);
-        assert b.insert(77);
-        assert b.insert(-9);
-        assert b.insert(-42);
-        assert b.insert(5);
-        assert b.insert(3);
-
-        let mut i = 0;
-        let expected = [3, 5, 11, 77];
-        for a.intersection(&b) |x| {
-            assert vec::contains(expected, x);
-            i += 1
+            assert a.is_subset(&b);
+            assert !a.is_superset(&b);
+            assert !b.is_subset(&a);
+            assert b.is_superset(&a);
         }
-        assert i == expected.len();
-    }
 
-    #[test]
-    fn test_difference() {
-        let mut a = linear::LinearSet::new();
-        let mut b = linear::LinearSet::new();
+        #[test]
+        fn test_intersection() {
+            let mut a = linear::LinearSet::new();
+            let mut b = linear::LinearSet::new();
 
-        assert a.insert(1);
-        assert a.insert(3);
-        assert a.insert(5);
-        assert a.insert(9);
-        assert a.insert(11);
+            assert a.insert(11);
+            assert a.insert(1);
+            assert a.insert(3);
+            assert a.insert(77);
+            assert a.insert(103);
+            assert a.insert(5);
+            assert a.insert(-5);
 
-        assert b.insert(3);
-        assert b.insert(9);
+            assert b.insert(2);
+            assert b.insert(11);
+            assert b.insert(77);
+            assert b.insert(-9);
+            assert b.insert(-42);
+            assert b.insert(5);
+            assert b.insert(3);
 
-        let mut i = 0;
-        let expected = [1, 5, 11];
-        for a.difference(&b) |x| {
-            assert vec::contains(expected, x);
-            i += 1
+            let mut i = 0;
+            let expected = [3, 5, 11, 77];
+            for a.intersection(&b) |x| {
+                assert vec::contains(expected, x);
+                i += 1
+            }
+            assert i == expected.len();
         }
-        assert i == expected.len();
-    }
 
-    #[test]
-    fn test_symmetric_difference() {
-        let mut a = linear::LinearSet::new();
-        let mut b = linear::LinearSet::new();
+        #[test]
+        fn test_difference() {
+            let mut a = linear::LinearSet::new();
+            let mut b = linear::LinearSet::new();
 
-        assert a.insert(1);
-        assert a.insert(3);
-        assert a.insert(5);
-        assert a.insert(9);
-        assert a.insert(11);
+            assert a.insert(1);
+            assert a.insert(3);
+            assert a.insert(5);
+            assert a.insert(9);
+            assert a.insert(11);
 
-        assert b.insert(-2);
-        assert b.insert(3);
-        assert b.insert(9);
-        assert b.insert(14);
-        assert b.insert(22);
+            assert b.insert(3);
+            assert b.insert(9);
 
-        let mut i = 0;
-        let expected = [-2, 1, 5, 11, 14, 22];
-        for a.symmetric_difference(&b) |x| {
-            assert vec::contains(expected, x);
-            i += 1
+            let mut i = 0;
+            let expected = [1, 5, 11];
+            for a.difference(&b) |x| {
+                assert vec::contains(expected, x);
+                i += 1
+            }
+            assert i == expected.len();
         }
-        assert i == expected.len();
-    }
 
-    #[test]
-    fn test_union() {
-        let mut a = linear::LinearSet::new();
-        let mut b = linear::LinearSet::new();
+        #[test]
+        fn test_symmetric_difference() {
+            let mut a = linear::LinearSet::new();
+            let mut b = linear::LinearSet::new();
 
-        assert a.insert(1);
-        assert a.insert(3);
-        assert a.insert(5);
-        assert a.insert(9);
-        assert a.insert(11);
-        assert a.insert(16);
-        assert a.insert(19);
-        assert a.insert(24);
+            assert a.insert(1);
+            assert a.insert(3);
+            assert a.insert(5);
+            assert a.insert(9);
+            assert a.insert(11);
 
-        assert b.insert(-2);
-        assert b.insert(1);
-        assert b.insert(5);
-        assert b.insert(9);
-        assert b.insert(13);
-        assert b.insert(19);
+            assert b.insert(-2);
+            assert b.insert(3);
+            assert b.insert(9);
+            assert b.insert(14);
+            assert b.insert(22);
 
-        let mut i = 0;
-        let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
-        for a.union(&b) |x| {
-            assert vec::contains(expected, x);
-            i += 1
+            let mut i = 0;
+            let expected = [-2, 1, 5, 11, 14, 22];
+            for a.symmetric_difference(&b) |x| {
+                assert vec::contains(expected, x);
+                i += 1
+            }
+            assert i == expected.len();
         }
-        assert i == expected.len();
+
+        #[test]
+        fn test_union() {
+            let mut a = linear::LinearSet::new();
+            let mut b = linear::LinearSet::new();
+
+            assert a.insert(1);
+            assert a.insert(3);
+            assert a.insert(5);
+            assert a.insert(9);
+            assert a.insert(11);
+            assert a.insert(16);
+            assert a.insert(19);
+            assert a.insert(24);
+
+            assert b.insert(-2);
+            assert b.insert(1);
+            assert b.insert(5);
+            assert b.insert(9);
+            assert b.insert(13);
+            assert b.insert(19);
+
+            let mut i = 0;
+            let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
+            for a.union(&b) |x| {
+                assert vec::contains(expected, x);
+                i += 1
+            }
+            assert i == expected.len();
+        }
     }
 }
