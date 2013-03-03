@@ -85,7 +85,7 @@ pure fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
         readme: @mut (copy *f.readme),
         idx: f.idx,
         dotdotdoted: f.dotdotdoted,
-        sep: f.sep,
+        sep: copy f.sep,
         up: match f.up {
             Some(up_frame) => Some(dup_tt_frame(up_frame)),
             None => None
@@ -191,7 +191,7 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
             r.cur.idx = 0u;
             r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
             match r.cur.sep {
-              Some(tk) => {
+              Some(copy tk) => {
                 r.cur_tok = tk; /* repeat same span, I guess */
                 return ret_val;
               }
@@ -219,7 +219,8 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
             return ret_val;
           }
           tt_seq(sp, copy tts, copy sep, zerok) => {
-            match lockstep_iter_size(tt_seq(sp, copy tts, sep, zerok), r) {
+            let t = tt_seq(sp, copy tts, copy sep, zerok);
+            match lockstep_iter_size(t, r) {
               lis_unconstrained => {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
@@ -246,11 +247,11 @@ pub fn tt_next_token(r: @mut TtReader) -> TokenAndSpan {
                     r.repeat_len.push(len);
                     r.repeat_idx.push(0u);
                     r.cur = @mut TtFrame {
-                        readme: @mut copy tts,
+                        readme: @mut tts,
                         idx: 0u,
                         dotdotdoted: true,
                         sep: sep,
-                        up: option::Some(r.cur)
+                        up: Some(r.cur)
                     };
                 }
               }
