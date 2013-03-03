@@ -10,17 +10,17 @@
 
 pub fn main() { test05(); }
 
-fn test05_start(&&f: fn~(int)) {
+fn test05_start(&&f: ~fn(int)) {
     f(22);
 }
 
 fn test05() {
     let three = ~3;
-    let fn_to_send = fn~(n: int) {
+    let fn_to_send: ~fn(int) = |n| {
         log(error, *three + n); // will copy x into the closure
         assert(*three == 3);
     };
-    task::spawn(fn~() {
+    task::spawn(|| {
         test05_start(fn_to_send);
     });
 }

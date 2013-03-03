@@ -1003,7 +1003,7 @@ pub fn any_tuple_struct_pat(bcx: block, m: &[@Match], col: uint) -> bool {
     })
 }
 
-pub type mk_fail = fn@() -> BasicBlockRef;
+pub type mk_fail = @fn() -> BasicBlockRef;
 
 pub fn pick_col(m: &[@Match]) -> uint {
     fn score(p: @ast::pat) -> uint {

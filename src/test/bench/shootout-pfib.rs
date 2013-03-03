@@ -29,7 +29,7 @@ use core::comm::*;
 use core::io::WriterUtil;
 
 use core::result;
-use result::{Ok, Err};
+use core::result::{Ok, Err};
 
 fn fib(n: int) -> int {
     fn pfib(c: Chan<int>, n: int) {

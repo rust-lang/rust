@@ -869,15 +869,12 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
       }
       ast_map::node_expr(expr) => {
         match /*bad*/copy expr.node {
-          ast::expr_fn(_, decl, _, _) => {
-            ((dbg_cx.names)(~"fn"), decl.output, expr.id)
-          }
           ast::expr_fn_block(decl, _) => {
             ((dbg_cx.names)(~"fn"), decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,
                                      ~"create_function: \
-                                       expected an expr_fn or fn_block here")
+                                       expected an expr_fn_block here")
         }
       }
       ast_map::node_dtor(_, _, did, _) => {

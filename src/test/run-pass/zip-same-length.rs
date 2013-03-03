@@ -10,7 +10,7 @@
 
 // In this case, the code should compile and should
 // succeed at runtime
-use vec::{head, last, same_length, zip};
+use core::vec::{head, last, same_length, zip};
 
 fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert start < end;

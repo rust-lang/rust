@@ -46,7 +46,7 @@ type nillist = List<()>;
 struct State {
     box: @nillist,
     unique: ~nillist,
-    fn_box: fn@() -> @nillist,
+    fn_box: @fn() -> @nillist,
     tuple: (@nillist, ~nillist),
     vec: ~[@nillist],
     res: r
@@ -78,7 +78,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
             State {
                 box: @Nil,
                 unique: ~Nil,
-                fn_box: fn@() -> @nillist { @Nil::<()> },
+                fn_box: || @Nil::<()>,
                 tuple: (@Nil, ~Nil),
                 vec: ~[@Nil],
                 res: r(@Nil)
@@ -90,7 +90,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
             State {
                 box: @Cons((), st.box),
                 unique: ~Cons((), @*st.unique),
-                fn_box: fn@() -> @nillist { @Cons((), fn_box()) },
+                fn_box: || @Cons((), fn_box()),
                 tuple: (@Cons((), st.tuple.first()),
                         ~Cons((), @*st.tuple.second())),
                 vec: st.vec + ~[@Cons((), st.vec.last())],

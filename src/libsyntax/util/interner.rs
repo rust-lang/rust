@@ -13,9 +13,8 @@
 // type, and vice versa.
 
 use core::prelude::*;
-
-use hashmap::linear::LinearMap;
-use dvec::DVec;
+use core::dvec::DVec;
+use core::hashmap::linear::LinearMap;
 
 pub struct Interner<T> {
     priv map: @mut LinearMap<T, uint>,

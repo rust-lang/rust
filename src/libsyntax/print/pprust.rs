@@ -47,8 +47,8 @@ pub enum ann_node/& {
     node_pat(@ps, @ast::pat),
 }
 pub struct pp_ann {
-    pre: fn@(ann_node),
-    post: fn@(ann_node)
+    pre: @fn(ann_node),
+    post: @fn(ann_node)
 }
 
 pub fn no_ann() -> pp_ann {
@@ -1346,17 +1346,6 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         }
         bclose_(s, expr.span, match_indent_unit);
       }
-      ast::expr_fn(sigil, ref decl, ref body, _) => {
-        // containing cbox, will be closed by print-block at }
-        cbox(s, indent_unit);
-        // head-box, will be closed by print-block at start
-        ibox(s, 0u);
-        print_fn_header_info(s, None, None, ast::Many,
-                             Some(sigil), ast::inherited);
-        print_fn_args_and_ret(s, decl, None);
-        space(s.s);
-        print_block(s, body);
-      }
       ast::expr_fn_block(ref decl, ref body) => {
         // in do/for blocks we don't want to show an empty
         // argument list, but at this point we don't know which
@@ -2190,7 +2179,7 @@ pub fn print_string(s: @ps, st: ~str) {
     word(s.s, ~"\"");
 }
 
-pub fn to_str<T>(t: T, f: fn@(@ps, T), intr: @ident_interner) -> ~str {
+pub fn to_str<T>(t: T, f: @fn(@ps, T), intr: @ident_interner) -> ~str {
     do io::with_str_writer |wr| {
         let s = rust_printer(wr, intr);
         f(s, t);

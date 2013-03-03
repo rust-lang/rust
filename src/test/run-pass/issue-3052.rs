@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type Connection = fn@(~[u8]);
+type Connection = @fn(~[u8]);
 
 fn f() -> Option<Connection> {
-    let mock_connection: Connection = fn@(_data: ~[u8]) { };
+    let mock_connection: Connection = |_| {};
     Some(mock_connection)
 }
 

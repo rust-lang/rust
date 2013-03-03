@@ -20,7 +20,7 @@ extern mod std;
 
 // Extern mod controls linkage. Use controls the visibility of names to modules that are
 // already linked in. Using WriterUtil allows us to use the write_line method.
-use io::WriterUtil;
+use core::io::WriterUtil;
 
 // Represents a position on a canvas.
 struct Point {

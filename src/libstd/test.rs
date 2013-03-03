@@ -409,7 +409,7 @@ type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
-             callback: fn@(e: TestEvent)) {
+             callback: @fn(e: TestEvent)) {
     let mut filtered_tests = filter_tests(opts, tests);
 
     let filtered_descs = filtered_tests.map(|t| t.desc);
@@ -537,7 +537,7 @@ pub fn filter_tests(
 
 struct TestFuture {
     test: TestDesc,
-    wait: fn@() -> TestResult,
+    wait: @fn() -> TestResult,
 }
 
 pub fn run_test(force_ignore: bool,
@@ -594,15 +594,14 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 }
 
 pub mod bench {
-
-    use rand;
-    use u64;
-    use vec;
     use time::precise_time_ns;
     use test::{BenchHarness, BenchSamples};
     use stats::Stats;
-    use num;
-    use rand;
+
+    use core::num;
+    use core::rand;
+    use core::u64;
+    use core::vec;
 
     pub impl BenchHarness {
 
@@ -783,7 +782,7 @@ mod tests {
                 ignore: true,
                 should_fail: false
             },
-            testfn: DynTestFn(fn~() { f()}),
+            testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -801,7 +800,7 @@ mod tests {
                 ignore: true,
                 should_fail: false
             },
-            testfn: DynTestFn(fn~() { f()}),
+            testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -820,7 +819,7 @@ mod tests {
                 ignore: false,
                 should_fail: true
             },
-            testfn: DynTestFn(fn~() { f() }),
+            testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -838,7 +837,7 @@ mod tests {
                 ignore: false,
                 should_fail: true
             },
-            testfn: DynTestFn(fn~() { f() }),
+            testfn: DynTestFn(|| f()),
         };
         let (p, ch) = stream();
         let ch = SharedChan(ch);
@@ -891,7 +890,7 @@ mod tests {
                     ignore: true,
                     should_fail: false,
                 },
-                testfn: DynTestFn(fn~() { }),
+                testfn: DynTestFn(|| {}),
             },
             TestDescAndFn {
                 desc: TestDesc {
@@ -899,7 +898,7 @@ mod tests {
                     ignore: false,
                     should_fail: false
                 },
-                testfn: DynTestFn(fn~() { }),
+                testfn: DynTestFn(|| {}),
             },
         ];
         let filtered = filter_tests(&opts, tests);

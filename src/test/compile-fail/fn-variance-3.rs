@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn mk_identity<T:Copy>() -> fn@(T) -> T {
-    fn@(t: T) -> T { t }
+fn mk_identity<T:Copy>() -> @fn(T) -> T {
+    let result: @fn(t: T) -> T = |t| t;
+    result
 }
 
 fn main() {
-    // type of r is fn@(X) -> X
+    // type of r is @fn(X) -> X
     // for some fresh X
     let r = mk_identity();
 

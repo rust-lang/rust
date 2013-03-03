@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp::{Eq, Ord};
-use num::NumCast::from;
+use core::cmp::{Eq, Ord};
+use core::num::NumCast::from;
 
 pub trait NumExt: Eq Ord NumCast {}
 

@@ -46,14 +46,10 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
 
     fn ignore_item(_i: @ast::item, &&_depth: int, _v: visit::vt<int>) { }
 
-    let walk_expr = fn@(expr: @ast::expr, &&depth: int, v: visit::vt<int>) {
+    let walk_expr: @fn(expr: @ast::expr, &&depth: int, v: visit::vt<int>) =
+        |expr, depth, v| {
             match expr.node {
-              ast::expr_fn(_, _, _, _) => {
-                visit::visit_expr(expr, depth + 1, v);
-              }
-              ast::expr_fn_block(*) => {
-                visit::visit_expr(expr, depth + 1, v);
-              }
+              ast::expr_fn_block(*) => visit::visit_expr(expr, depth + 1, v),
               ast::expr_path(*) => {
                   let mut i = 0;
                   match def_map.find(&expr.id) {
@@ -100,8 +96,11 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
    freevar_map {
     let freevars = HashMap();
 
-    let walk_fn = fn@(_fk: &visit::fn_kind, _decl: &ast::fn_decl,
-                      blk: &ast::blk, _sp: span, nid: ast::node_id) {
+    let walk_fn: @fn(&visit::fn_kind,
+                     &ast::fn_decl,
+                     &ast::blk,
+                     span,
+                     ast::node_id) = |_, _, blk, _, nid| {
         let vars = collect_freevars(def_map, blk);
         freevars.insert(nid, vars);
     };

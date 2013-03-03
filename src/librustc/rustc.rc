@@ -134,21 +134,21 @@ pub mod lib {
     pub mod llvm;
 }
 
-use result::{Ok, Err};
-use io::ReaderUtil;
-use std::getopts;
-use std::oldmap::HashMap;
-use getopts::{opt_present};
-use getopts::groups;
-use syntax::codemap;
-use syntax::diagnostic;
-use driver::driver::{host_triple, optgroups, early_error,
-                     str_input, file_input, build_session_options,
-                     build_session, build_configuration, parse_pretty,
-                     pp_mode, pretty_print_input, list_metadata,
-                     compile_input};
+use driver::driver::{host_triple, optgroups, early_error};
+use driver::driver::{str_input, file_input, build_session_options};
+use driver::driver::{build_session, build_configuration, parse_pretty};
+use driver::driver::{pp_mode, pretty_print_input, list_metadata};
+use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
+
+use core::io::ReaderUtil;
+use core::result::{Ok, Err};
+use std::getopts::{groups, opt_present};
+use std::getopts;
+use std::oldmap::HashMap;
+use syntax::codemap;
+use syntax::diagnostic;
 
 pub fn version(argv0: &str) {
     let mut vers = ~"unknown version";
@@ -315,7 +315,7 @@ diagnostic emitter which records when we hit a fatal error. If the task
 fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
-pub fn monitor(+f: fn~(diagnostic::Emitter)) {
+pub fn monitor(+f: ~fn(diagnostic::Emitter)) {
     use core::cell::Cell;
     use core::comm::*;
     let (p, ch) = stream();
@@ -326,8 +326,10 @@ pub fn monitor(+f: fn~(diagnostic::Emitter)) {
         let ch_capture = ch.clone();
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
-        let demitter = fn@(cmsp: Option<(@codemap::CodeMap, codemap::span)>,
-                           msg: &str, lvl: diagnostic::level) {
+        let demitter: @fn(Option<(@codemap::CodeMap, codemap::span)>,
+                          &str,
+                          diagnostic::level) =
+                          |cmsp, msg, lvl| {
             if lvl == diagnostic::fatal {
                 ch_capture.send(fatal);
             }

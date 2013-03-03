@@ -24,7 +24,7 @@
 //
 //  writes pbm image to output path
 
-use io::WriterUtil;
+use core::io::WriterUtil;
 use core::hashmap::linear::LinearMap;
 
 struct cmplx {

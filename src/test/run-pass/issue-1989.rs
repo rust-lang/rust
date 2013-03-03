@@ -17,13 +17,13 @@ enum maybe_pointy {
 
 struct Pointy {
     a : maybe_pointy,
-    f : fn@()->(),
+    f : @fn()->(),
 }
 
 fn empty_pointy() -> @mut Pointy {
     return @mut Pointy{
         a : none,
-        f : fn@()->(){},
+        f : || {},
     }
 }
 

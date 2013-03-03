@@ -35,7 +35,7 @@ pub fn main() {
         error!("new_sched_id %?", new_sched_id);
         let new_task_id = rustrt::rust_new_task_in_sched(new_sched_id);
         assert !new_task_id.is_null();
-        let f = fn~() {
+        let f: ~fn() = || {
             unsafe {
                 let child_sched_id = rustrt::rust_get_sched_id();
                 error!("child_sched_id %?", child_sched_id);

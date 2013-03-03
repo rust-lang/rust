@@ -14,12 +14,13 @@ fn main() {
     let cheese = ~"roquefort";
     let carrots = @~"crunchy";
 
-    fn@(tasties: @~str, macerate: fn(~str)) {
+    let result: @fn(@~str, &fn(~str)) = (|tasties, macerate| {
         macerate(copy *tasties);
-    } (carrots, |food| {
+    });
+    result(carrots, |food| {
         let mush = food + cheese;
         let cheese = copy cheese;
-        let f = fn@() {
+        let f: &fn() = || {
             let chew = mush + cheese;
             fail!(~"so yummy")
         };

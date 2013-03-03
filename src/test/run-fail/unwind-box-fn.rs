@@ -16,7 +16,7 @@ fn failfn() {
 
 fn main() {
     let y = ~0;
-    let x = @fn@() {
+    let x: @@fn() = @|| {
         log(error, copy y);
     };
     failfn();

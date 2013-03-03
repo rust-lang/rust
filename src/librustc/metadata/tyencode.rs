@@ -29,10 +29,10 @@ use middle::ty::Vid;
 pub struct ctxt {
     diag: span_handler,
     // Def -> str Callback:
-    ds: fn@(def_id) -> ~str,
+    ds: @fn(def_id) -> ~str,
     // The type context.
     tcx: ty::ctxt,
-    reachable: fn@(node_id) -> bool,
+    reachable: @fn(node_id) -> bool,
     abbrevs: abbrev_ctxt
 }
 

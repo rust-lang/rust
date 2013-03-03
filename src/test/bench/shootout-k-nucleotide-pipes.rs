@@ -17,9 +17,9 @@ extern mod std;
 use std::oldmap;
 use std::oldmap::HashMap;
 use std::sort;
-use io::ReaderUtil;
-use comm::{stream, Port, Chan};
-use cmp::Ord;
+use core::io::ReaderUtil;
+use core::comm::{stream, Port, Chan};
+use core::cmp::Ord;
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {

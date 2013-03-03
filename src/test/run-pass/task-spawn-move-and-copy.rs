@@ -16,7 +16,7 @@ pub fn main() {
     let x = ~1;
     let x_in_parent = ptr::addr_of(&(*x)) as uint;
 
-    task::spawn(fn~() {
+    task::spawn(|| {
         let x_in_child = ptr::addr_of(&(*x)) as uint;
         ch.send(x_in_child);
     });

@@ -771,10 +771,10 @@ mod test {
         writer_chan: WriterChanFactory<F>,
         port: uint) {
 
-        use net::tcp;
+        use core::cell::Cell;
         use net::ip;
-        use cell::Cell;
         use net::tcp::TcpSocket;
+        use net::tcp;
         use uv;
 
         // Indicate to the client task that the server is listening

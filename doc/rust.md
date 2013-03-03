@@ -1360,7 +1360,7 @@ Functions within foreign modules are declared in the same way as other Rust func
 with the exception that they may not have a body and are instead terminated by a semicolon.
 
 ~~~
-# use libc::{c_char, FILE};
+# use core::libc::{c_char, FILE};
 # #[nolink]
 
 extern mod c {

@@ -10,9 +10,9 @@
 
 
 use back::target_strs;
+use driver::session::sess_os_to_meta_os;
 use driver::session;
 use metadata::loader::meta_section_name;
-use session::sess_os_to_meta_os;
 
 pub fn get_target_strs(target_os: session::os) -> target_strs::t {
     return target_strs::t {

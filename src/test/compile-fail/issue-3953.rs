@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp::Eq;
+use core::cmp::Eq;
 
 trait Hahaha: Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq //~ ERROR Duplicate supertrait in trait declaration
               Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq

@@ -15,11 +15,12 @@ enum maybe_pointy {
 
 struct Pointy {
     a : maybe_pointy,
-    d : fn~() -> uint,
+    d : ~fn() -> uint,
 }
 
-fn make_uniq_closure<A:Owned + Copy>(a: A) -> fn~() -> uint {
-    fn~() -> uint { ptr::addr_of(&a) as uint }
+fn make_uniq_closure<A:Owned + Copy>(a: A) -> ~fn() -> uint {
+    let result: ~fn() -> uint = || ptr::addr_of(&a) as uint;
+    result
 }
 
 fn empty_pointy() -> @mut Pointy {

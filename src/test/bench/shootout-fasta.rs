@@ -16,7 +16,7 @@
  * http://shootout.alioth.debian.org/
  */
 extern mod std;
-use io::WriterUtil;
+use core::io::WriterUtil;
 
 fn LINE_LENGTH() -> uint { return 60u; }
 

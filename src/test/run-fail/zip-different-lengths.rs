@@ -12,7 +12,7 @@
 // the assert should fail at runtime
 // error-pattern:Assertion same_length(chars, ints) failed
 extern mod std;
-use vec::{same_length, zip};
+use core::vec::{same_length, zip};
 
 fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert start < end;

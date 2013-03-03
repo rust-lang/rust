@@ -10,13 +10,13 @@
 
 // xfail-test
 fn main() {
-    let one = fn@() -> uint {
+    let one: @fn() -> uint = || {
         enum r { a };
-        return a as uint;
+        a as uint
     };
-    let two = fn@() -> uint {
+    let two = @fn() -> uint = || {
         enum r { a };
-        return a as uint;
+        a as uint
     };
     one(); two();
 }

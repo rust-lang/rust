@@ -23,7 +23,7 @@ use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
 use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assert, expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
-use ast::{expr_field, expr_fn, expr_fn_block, expr_if, expr_index};
+use ast::{expr_field, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat};
 use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
@@ -61,10 +61,10 @@ use ast::{vstore_uniq};
 use ast;
 use ast_util::{ident_to_path, operator_prec};
 use ast_util;
-use classify;
 use codemap::{span,FssNone, BytePos, spanned, respan, mk_sp};
 use codemap;
 use parse::attr::parser_attr;
+use parse::classify;
 use parse::common::{seq_sep_none, token_to_str};
 use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::reader;
@@ -381,17 +381,8 @@ pub impl Parser {
         let purity = self.parse_purity();
         let onceness = parse_onceness(&self);
         self.expect_keyword(&~"fn");
-        let post_sigil = self.parse_fn_ty_sigil();
 
-        let sigil = match (pre_sigil, post_sigil) {
-            (None, None) => BorrowedSigil,
-            (Some(p), None) | (None, Some(p)) => p,
-            (Some(_), Some(_)) => {
-                self.fatal(~"cannot combine prefix and postfix \
-                             syntax for closure kind; note that \
-                             postfix syntax is obsolete");
-            }
-        };
+        let sigil = match pre_sigil { None => BorrowedSigil, Some(p) => p };
 
         let region = if pre_region_name.is_some() {
             Some(self.region_from_name(pre_region_name))
@@ -1150,15 +1141,6 @@ pub impl Parser {
             return self.parse_loop_expr();
         } else if self.eat_keyword(&~"match") {
             return self.parse_match_expr();
-        } else if self.eat_keyword(&~"fn") {
-            let opt_sigil = self.parse_fn_ty_sigil();
-            let sigil = match opt_sigil {
-                None => {
-                    self.fatal(~"fn expr are deprecated, use fn@")
-                }
-                Some(p) => { p }
-            };
-            return self.parse_fn_expr(sigil);
         } else if self.eat_keyword(&~"unsafe") {
             return self.parse_block_expr(lo, unsafe_blk);
         } else if *self.token == token::LBRACKET {
@@ -1775,19 +1757,6 @@ pub impl Parser {
         self.mk_expr(lo, hi, expr_if(cond, thn, els))
     }
 
-    fn parse_fn_expr(sigil: Sigil) -> @expr {
-        let lo = self.last_span.lo;
-
-        // if we want to allow fn expression argument types to be inferred in
-        // the future, just have to change parse_arg to parse_fn_block_arg.
-        let decl = self.parse_fn_decl(|p| p.parse_arg());
-
-        let body = self.parse_block();
-
-        self.mk_expr(lo, body.span.hi,
-                     expr_fn(sigil, decl, body, @()))
-    }
-
     // `|args| { ... }` like in `do` expressions
     fn parse_lambda_block_expr() -> @expr {
         self.parse_lambda_expr_(
@@ -1822,8 +1791,8 @@ pub impl Parser {
                                 || self.parse_expr())
     }
 
-    fn parse_lambda_expr_(parse_decl: fn&() -> fn_decl,
-                          parse_body: fn&() -> @expr) -> @expr {
+    fn parse_lambda_expr_(parse_decl: &fn() -> fn_decl,
+                          parse_body: &fn() -> @expr) -> @expr {
         let lo = self.last_span.lo;
         let decl = parse_decl();
         let body = parse_body();

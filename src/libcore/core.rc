@@ -235,10 +235,10 @@ pub mod private {
 
 /* For internal use, not exported */
 
-mod unicode;
+pub mod unicode;
 #[path = "num/cmath.rs"]
-mod cmath;
-mod stackwalk;
+pub mod cmath;
+pub mod stackwalk;
 
 
 // A curious inner-module that's not exported that contains the binding

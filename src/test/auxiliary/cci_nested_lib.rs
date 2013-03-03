@@ -10,11 +10,11 @@
 
 #[legacy_modes];
 
-use dvec::DVec;
+use core::dvec::DVec;
 
 pub struct Entry<A,B> {key: A, value: B}
 
-pub struct alist<A,B> { eq_fn: fn@(A,A) -> bool, data: DVec<Entry<A,B>> }
+pub struct alist<A,B> { eq_fn: @fn(A,A) -> bool, data: DVec<Entry<A,B>> }
 
 pub fn alist_add<A:Copy,B:Copy>(lst: alist<A,B>, k: A, v: B) {
     lst.data.push(Entry{key:k, value:v});

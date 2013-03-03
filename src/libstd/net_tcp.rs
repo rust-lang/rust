@@ -625,8 +625,8 @@ pub fn accept(new_conn: TcpNewConnection)
  */
 pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
               iotask: &IoTask,
-              on_establish_cb: fn~(SharedChan<Option<TcpErrData>>),
-              new_connect_cb: fn~(TcpNewConnection,
+              on_establish_cb: ~fn(SharedChan<Option<TcpErrData>>),
+              new_connect_cb: ~fn(TcpNewConnection,
                                   SharedChan<Option<TcpErrData>>))
     -> result::Result<(), TcpListenErrData> {
     do listen_common(host_ip, port, backlog, iotask,
@@ -643,11 +643,13 @@ pub fn listen(host_ip: ip::IpAddr, port: uint, backlog: uint,
     }
 }
 
-fn listen_common(host_ip: ip::IpAddr, port: uint, backlog: uint,
-          iotask: &IoTask,
-          on_establish_cb: fn~(SharedChan<Option<TcpErrData>>),
-          on_connect_cb: fn~(*uv::ll::uv_tcp_t))
-    -> result::Result<(), TcpListenErrData> {
+fn listen_common(host_ip: ip::IpAddr,
+                 port: uint,
+                 backlog: uint,
+                 iotask: &IoTask,
+                 on_establish_cb: ~fn(SharedChan<Option<TcpErrData>>),
+                 on_connect_cb: ~fn(*uv::ll::uv_tcp_t))
+              -> result::Result<(), TcpListenErrData> {
     unsafe {
         let (stream_closed_po, stream_closed_ch) = stream::<()>();
         let stream_closed_ch = SharedChan(stream_closed_ch);
@@ -1197,7 +1199,7 @@ struct TcpListenFcData {
     server_stream_ptr: *uv::ll::uv_tcp_t,
     stream_closed_ch: SharedChan<()>,
     kill_ch: SharedChan<Option<TcpErrData>>,
-    on_connect_cb: fn~(*uv::ll::uv_tcp_t),
+    on_connect_cb: ~fn(*uv::ll::uv_tcp_t),
     iotask: IoTask,
     ipv6: bool,
     mut active: bool,

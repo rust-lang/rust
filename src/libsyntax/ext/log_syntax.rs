@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
 use core::io::WriterUtil;
+use core::prelude::*;
 
 use ast;
 use codemap;

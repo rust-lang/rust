@@ -34,12 +34,12 @@ use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
 use syntax::ast::{def_self_ty, def_static_method, def_struct, def_ty};
 use syntax::ast::{def_ty_param, def_typaram_binder};
 use syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
-use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
+use syntax::ast::{expr_binary, expr_break, expr_cast, expr_field};
 use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 use syntax::ast::{def_upvar, def_use, def_variant, div, eq};
 use syntax::ast::{enum_variant_kind, expr, expr_again, expr_assign_op};
-use syntax::ast::{expr_fn_block, expr_index, expr_loop};
+use syntax::ast::{expr_index, expr_loop};
 use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
 use syntax::ast::{Generics};
@@ -77,15 +77,14 @@ use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec;
 use syntax::opt_vec::OptVec;
 
-use managed::ptr_eq;
-use dvec::DVec;
-use option::{Some, get, is_some, is_none};
-use str::{connect, split_str};
-use vec::pop;
-
+use core::dvec::DVec;
+use core::managed::ptr_eq;
+use core::option::{Some, get, is_some, is_none};
+use core::str::{connect, split_str};
+use core::vec::pop;
 use std::list::{Cons, List, Nil};
 use std::oldmap::HashMap;
-use str_eq = str::eq;
+use str_eq = core::str::eq;
 
 // Definition mapping
 pub type DefMap = HashMap<node_id,def>;
@@ -303,6 +302,12 @@ pub enum ModulePrefixResult {
 pub enum AllowCapturingSelfFlag {
     AllowCapturingSelf,         //< The "self" definition can be captured.
     DontAllowCapturingSelf,     //< The "self" definition cannot be captured.
+}
+
+#[deriving_eq]
+enum NameSearchType {
+    SearchItemsAndPublicImports,    //< Search items and public imports.
+    SearchItemsAndAllImports,       //< Search items and all imports.
 }
 
 pub enum BareIdentifierPatternResolution {
@@ -1488,7 +1493,7 @@ pub impl Resolver {
                         let parent_link = ModuleParentLink
                             (self.get_module_from_parent(new_parent), name);
 
-                        child_name_bindings.define_module(privacy,
+                        child_name_bindings.define_module(Public,
                                                           parent_link,
                                                           Some(def_id),
                                                           NormalModuleKind,
@@ -1948,10 +1953,8 @@ pub impl Resolver {
         }
     }
 
-    /**
-     * Attempts to resolve imports for the given module and all of its
-     * submodules.
-     */
+    /// Attempts to resolve imports for the given module and all of its
+    /// submodules.
     fn resolve_imports_for_module_subtree(@mut self, module_: @mut Module) {
         debug!("(resolving imports for module subtree) resolving %s",
                self.module_to_str(module_));
@@ -1974,19 +1977,19 @@ pub impl Resolver {
     }
 
     /// Attempts to resolve imports for the given module only.
-    fn resolve_imports_for_module(@mut self, module_: @mut Module) {
-        if (*module_).all_imports_resolved() {
+    fn resolve_imports_for_module(@mut self, module: @mut Module) {
+        if module.all_imports_resolved() {
             debug!("(resolving imports for module) all imports resolved for \
                    %s",
-                   self.module_to_str(module_));
+                   self.module_to_str(module));
             return;
         }
 
-        let import_count = module_.imports.len();
-        while module_.resolved_import_count < import_count {
-            let import_index = module_.resolved_import_count;
-            let import_directive = module_.imports.get_elt(import_index);
-            match self.resolve_import_for_module(module_, import_directive) {
+        let import_count = module.imports.len();
+        while module.resolved_import_count < import_count {
+            let import_index = module.resolved_import_count;
+            let import_directive = module.imports.get_elt(import_index);
+            match self.resolve_import_for_module(module, import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
                     let idents = import_directive.module_path.get();
@@ -2004,7 +2007,7 @@ pub impl Resolver {
                 }
             }
 
-            module_.resolved_import_count += 1;
+            module.resolved_import_count += 1;
         }
     }
 
@@ -2037,72 +2040,71 @@ pub impl Resolver {
         }
     }
 
-    /**
-     * Attempts to resolve the given import. The return value indicates
-     * failure if we're certain the name does not exist, indeterminate if we
-     * don't know whether the name exists at the moment due to other
-     * currently-unresolved imports, or success if we know the name exists.
-     * If successful, the resolved bindings are written into the module.
-     */
-    fn resolve_import_for_module(@mut self,
-                                 module_: @mut Module,
+    /// Attempts to resolve the given import. The return value indicates
+    /// failure if we're certain the name does not exist, indeterminate if we
+    /// don't know whether the name exists at the moment due to other
+    /// currently-unresolved imports, or success if we know the name exists.
+    /// If successful, the resolved bindings are written into the module.
+    fn resolve_import_for_module(@mut self, module_: @mut Module,
                                  import_directive: @ImportDirective)
                               -> ResolveResult<()> {
-        let mut resolution_result;
+        let mut resolution_result = Failed;
         let module_path = import_directive.module_path;
 
         debug!("(resolving import for module) resolving import `%s::...` in \
                 `%s`",
-               self.idents_to_str((*module_path).get()),
+               self.idents_to_str(module_path.get()),
                self.module_to_str(module_));
 
-        // One-level renaming imports of the form `import foo = bar;` are
-        // handled specially.
-
-        if (*module_path).len() == 0 {
-            resolution_result =
-                self.resolve_one_level_renaming_import(module_,
-                                                       import_directive);
+        // First, resolve the module path for the directive, if necessary.
+        let containing_module = if module_path.len() == 0 {
+            // Use the crate root.
+            Some(self.graph_root.get_module())
         } else {
-            // First, resolve the module path for the directive, if necessary.
             match self.resolve_module_path_for_import(module_,
                                                       module_path,
                                                       DontUseLexicalScope,
                                                       import_directive.span) {
 
-                Failed => {
-                    resolution_result = Failed;
-                }
+                Failed => None,
                 Indeterminate => {
                     resolution_result = Indeterminate;
+                    None
                 }
-                Success(containing_module) => {
-                    // We found the module that the target is contained
-                    // within. Attempt to resolve the import within it.
+                Success(containing_module) => Some(containing_module),
+            }
+        };
 
-                    match *import_directive.subclass {
-                        SingleImport(target, source, AnyNS) => {
-                            resolution_result =
-                                self.resolve_single_import(module_,
-                                                           containing_module,
-                                                           target,
-                                                           source);
-                        }
-                        SingleImport(target, source, TypeNSOnly) => {
-                            resolution_result =
-                                self.resolve_single_module_import
-                                    (module_, containing_module, target,
-                                     source);
-                        }
-                        GlobImport => {
-                            let span = import_directive.span;
-                            let p = import_directive.privacy;
-                            resolution_result =
-                                self.resolve_glob_import(p,
-                                                         module_,
-                                                         containing_module,
-                                                         span);
-                        }
+        match containing_module {
+            None => {}
+            Some(containing_module) => {
+                // We found the module that the target is contained
+                // within. Attempt to resolve the import within it.
+
+                match *import_directive.subclass {
+                    SingleImport(target, source, AnyNS) => {
+                        resolution_result =
+                            self.resolve_single_import(module_,
+                                                       containing_module,
+                                                       target,
+                                                       source);
+                    }
+                    SingleImport(target, source, TypeNSOnly) => {
+                        resolution_result =
+                            self.resolve_single_module_import(
+                                module_,
+                                containing_module,
+                                target,
+                                source);
+                    }
+                    GlobImport => {
+                        let span = import_directive.span;
+                        let privacy = import_directive.privacy;
+                        resolution_result =
+                            self.resolve_glob_import(privacy,
+                                                     module_,
+                                                     containing_module,
+                                                     span);
                     }
                 }
             }
@@ -2575,11 +2577,13 @@ pub impl Resolver {
         return Success(());
     }
 
+    /// Resolves the given module path from the given root `module_`.
     fn resolve_module_path_from_root(@mut self,
                                      module_: @mut Module,
                                      module_path: @DVec<ident>,
                                      index: uint,
-                                     span: span)
+                                     span: span,
+                                     mut name_search_type: NameSearchType)
                                   -> ResolveResult<@mut Module> {
         let mut search_module = module_;
         let mut index = index;
@@ -2594,7 +2598,7 @@ pub impl Resolver {
             match self.resolve_name_in_module(search_module,
                                               name,
                                               TypeNS,
-                                              false) {
+                                              name_search_type) {
                 Failed => {
                     self.session.span_err(span, ~"unresolved name");
                     return Failed;
@@ -2639,22 +2643,33 @@ pub impl Resolver {
             }
 
             index += 1;
+
+            // After the first element of the path, allow searching through
+            // items and imports unconditionally. This allows things like:
+            //
+            // pub mod core {
+            //     pub use vec;
+            // }
+            //
+            // pub mod something_else {
+            //     use core::vec;
+            // }
+
+            name_search_type = SearchItemsAndPublicImports;
         }
 
         return Success(search_module);
     }
 
-    /**
-     * Attempts to resolve the module part of an import directive or path
-     * rooted at the given module.
-     */
+    /// Attempts to resolve the module part of an import directive or path
+    /// rooted at the given module.
     fn resolve_module_path_for_import(@mut self,
                                       module_: @mut Module,
                                       module_path: @DVec<ident>,
                                       use_lexical_scope: UseLexicalScopeFlag,
                                       span: span)
                                    -> ResolveResult<@mut Module> {
-        let module_path_len = (*module_path).len();
+        let module_path_len = module_path.len();
         assert module_path_len > 0;
 
         debug!("(resolving module path for import) processing `%s` rooted at \
@@ -2721,12 +2736,15 @@ pub impl Resolver {
             }
         }
 
-        return self.resolve_module_path_from_root(search_module,
-                                                  module_path,
-                                                  start_index,
-                                                  span);
+        self.resolve_module_path_from_root(search_module,
+                                           module_path,
+                                           start_index,
+                                           span,
+                                           SearchItemsAndPublicImports)
     }
 
+    /// Invariant: This must only be called during main resolution, not during
+    /// import resolution.
     fn resolve_item_in_lexical_scope(@mut self,
                                      module_: @mut Module,
                                      name: ident,
@@ -2822,7 +2840,7 @@ pub impl Resolver {
             match self.resolve_name_in_module(search_module,
                                               name,
                                               namespace,
-                                              false) {
+                                              SearchItemsAndAllImports) {
                 Failed => {
                     // Continue up the search chain.
                 }
@@ -2973,16 +2991,14 @@ pub impl Resolver {
         return Success(PrefixFound(containing_module, i));
     }
 
-    /**
-     * Attempts to resolve the supplied name in the given module for the
-     * given namespace. If successful, returns the target corresponding to
-     * the name.
-     */
+    /// Attempts to resolve the supplied name in the given module for the
+    /// given namespace. If successful, returns the target corresponding to
+    /// the name.
     fn resolve_name_in_module(@mut self,
                               module_: @mut Module,
                               name: ident,
                               namespace: Namespace,
-                              allow_globs: bool)
+                              +name_search_type: NameSearchType)
                            -> ResolveResult<Target> {
         debug!("(resolving name in module) resolving `%s` in `%s`",
                *self.session.str_of(name),
@@ -3001,34 +3017,41 @@ pub impl Resolver {
             }
         }
 
-        // Next, check the module's imports. If the module has a glob and
-        // globs were not allowed, then we bail out; we don't know its imports
-        // yet.
-        if !allow_globs && module_.glob_count > 0 {
-            debug!("(resolving name in module) module has glob; bailing out");
-            return Indeterminate;
+        // Next, check the module's imports if necessary.
+
+        // If this is a search of all imports, we should be done with glob
+        // resolution at this point.
+        if name_search_type == SearchItemsAndAllImports {
+            assert module_.glob_count == 0;
         }
 
-        // Otherwise, we check the list of resolved imports.
+        // Check the list of resolved imports.
         match module_.import_resolutions.find(&name) {
             Some(import_resolution) => {
                 if import_resolution.outstanding_references != 0 {
-                    debug!("(resolving name in module) import unresolved; \
-                            bailing out");
+                    debug!("(resolving name in module) import \
+                            unresolved; bailing out");
                     return Indeterminate;
                 }
 
-                match (*import_resolution).target_for_namespace(namespace) {
+                match import_resolution.target_for_namespace(namespace) {
                     None => {
-                        debug!("(resolving name in module) name found, but \
-                                not in namespace %?",
+                        debug!("(resolving name in module) name found, \
+                                but not in namespace %?",
                                namespace);
                     }
-                    Some(target) => {
+                    Some(target)
+                            if name_search_type ==
+                                SearchItemsAndAllImports ||
+                            import_resolution.privacy == Public => {
                         debug!("(resolving name in module) resolved to \
                                 import");
                         import_resolution.state.used = true;
                         return Success(copy target);
+                    }
+                    Some(_) => {
+                        debug!("(resolving name in module) name found, \
+                                but not public");
                     }
                 }
             }
@@ -3041,168 +3064,6 @@ pub impl Resolver {
         debug!("(resolving name in module) failed to resolve %s",
                *self.session.str_of(name));
         return Failed;
-    }
-
-    /**
-     * Resolves a one-level renaming import of the kind `import foo = bar;`
-     * This needs special handling, as, unlike all of the other imports, it
-     * needs to look in the scope chain for modules and non-modules alike.
-     */
-    fn resolve_one_level_renaming_import(@mut self,
-                                         module_: @mut Module,
-                                         import_directive: @ImportDirective)
-                                      -> ResolveResult<()> {
-        let mut target_name;
-        let mut source_name;
-        let allowable_namespaces;
-        match *import_directive.subclass {
-            SingleImport(target, source, namespaces) => {
-                target_name = target;
-                source_name = source;
-                allowable_namespaces = namespaces;
-            }
-            GlobImport => {
-                fail!(~"found `import *`, which is invalid");
-            }
-        }
-
-        debug!("(resolving one-level naming result) resolving import `%s` = \
-                `%s` in `%s`",
-                *self.session.str_of(target_name),
-                *self.session.str_of(source_name),
-                self.module_to_str(module_));
-
-        // Find the matching items in the lexical scope chain for every
-        // namespace. If any of them come back indeterminate, this entire
-        // import is indeterminate.
-
-        let mut module_result;
-        debug!("(resolving one-level naming result) searching for module");
-        match self.resolve_item_in_lexical_scope(module_,
-                                                 source_name,
-                                                 TypeNS,
-                                                 SearchThroughModules) {
-            Failed => {
-                debug!("(resolving one-level renaming import) didn't find \
-                        module result");
-                module_result = None;
-            }
-            Indeterminate => {
-                debug!("(resolving one-level renaming import) module result \
-                        is indeterminate; bailing");
-                return Indeterminate;
-            }
-            Success(name_bindings) => {
-                debug!("(resolving one-level renaming import) module result \
-                        found");
-                module_result = Some(copy name_bindings);
-            }
-        }
-
-        let mut value_result;
-        let mut type_result;
-        if allowable_namespaces == TypeNSOnly {
-            value_result = None;
-            type_result = None;
-        } else {
-            debug!("(resolving one-level naming result) searching for value");
-            match self.resolve_item_in_lexical_scope(module_,
-                                                     source_name,
-                                                     ValueNS,
-                                                     SearchThroughModules) {
-
-                Failed => {
-                    debug!("(resolving one-level renaming import) didn't \
-                            find value result");
-                    value_result = None;
-                }
-                Indeterminate => {
-                    debug!("(resolving one-level renaming import) value \
-                            result is indeterminate; bailing");
-                    return Indeterminate;
-                }
-                Success(name_bindings) => {
-                    debug!("(resolving one-level renaming import) value \
-                            result found");
-                    value_result = Some(copy name_bindings);
-                }
-            }
-
-            debug!("(resolving one-level naming result) searching for type");
-            match self.resolve_item_in_lexical_scope(module_,
-                                                     source_name,
-                                                     TypeNS,
-                                                     SearchThroughModules) {
-
-                Failed => {
-                    debug!("(resolving one-level renaming import) didn't \
-                            find type result");
-                    type_result = None;
-                }
-                Indeterminate => {
-                    debug!("(resolving one-level renaming import) type \
-                            result is indeterminate; bailing");
-                    return Indeterminate;
-                }
-                Success(name_bindings) => {
-                    debug!("(resolving one-level renaming import) type \
-                            result found");
-                    type_result = Some(copy name_bindings);
-                }
-            }
-        }
-
-        //
-        // NB: This one results in effects that may be somewhat surprising. It
-        // means that this:
-        //
-        // mod A {
-        //     impl foo for ... { ... }
-        //     mod B {
-        //         impl foo for ... { ... }
-        //         import bar = foo;
-        //         ...
-        //     }
-        // }
-        //
-        // results in only A::B::foo being aliased to A::B::bar, not A::foo
-        // *and* A::B::foo being aliased to A::B::bar.
-        //
-
-        // If nothing at all was found, that's an error.
-        if is_none(&module_result) &&
-                is_none(&value_result) &&
-                is_none(&type_result) {
-
-            self.session.span_err(import_directive.span,
-                                  ~"unresolved import");
-            return Failed;
-        }
-
-        // Otherwise, proceed and write in the bindings.
-        match module_.import_resolutions.find(&target_name) {
-            None => {
-                fail!(~"(resolving one-level renaming import) reduced graph \
-                      construction or glob importing should have created the \
-                      import resolution name by now");
-            }
-            Some(import_resolution) => {
-                debug!("(resolving one-level renaming import) writing module \
-                        result %? for `%s` into `%s`",
-                       is_none(&module_result),
-                       *self.session.str_of(target_name),
-                       self.module_to_str(module_));
-
-                import_resolution.value_target = value_result;
-                import_resolution.type_target = type_result;
-
-                assert import_resolution.outstanding_references >= 1;
-                import_resolution.outstanding_references -= 1;
-            }
-        }
-
-        debug!("(resolving one-level renaming import) successfully resolved");
-        return Success(());
     }
 
     fn report_unresolved_imports(@mut self, module_: @mut Module) {
@@ -4538,10 +4399,8 @@ pub impl Resolver {
         }
     }
 
-    /**
-     * If `check_ribs` is true, checks the local definitions first; i.e.
-     * doesn't skip straight to the containing module.
-     */
+    /// If `check_ribs` is true, checks the local definitions first; i.e.
+    /// doesn't skip straight to the containing module.
     fn resolve_path(@mut self,
                     path: @path,
                     namespace: Namespace,
@@ -4714,6 +4573,8 @@ pub impl Resolver {
         }
     }
 
+    /// Invariant: This must be called only during main resolution, not during
+    /// import resolution.
     fn resolve_crate_relative_path(@mut self,
                                    path: @path,
                                    +xray: XrayFlag,
@@ -4727,8 +4588,8 @@ pub impl Resolver {
         match self.resolve_module_path_from_root(root_module,
                                                  module_path_idents,
                                                  0,
-                                                 path.span) {
-
+                                                 path.span,
+                                                 SearchItemsAndAllImports) {
             Failed => {
                 self.session.span_err(path.span,
                                       fmt!("use of undeclared module `::%s`",
@@ -4949,7 +4810,6 @@ pub impl Resolver {
                 visit_expr(expr, (), visitor);
             }
 
-            expr_fn(_, ref fn_decl, ref block, _) |
             expr_fn_block(ref fn_decl, ref block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.node.id),
                                       Some(@/*bad*/copy *fn_decl),

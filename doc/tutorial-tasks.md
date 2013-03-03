@@ -80,8 +80,8 @@ calling the `spawn` function with a closure argument. `spawn` executes the
 closure in the new task.
 
 ~~~~
-# use io::println;
-use task::spawn;
+# use core::io::println;
+use core::task::spawn;
 
 // Print something profound in a different task using a named function
 fn print_message() { println("I am running in a different task!"); }
@@ -110,8 +110,8 @@ execution. Like any closure, the function passed to `spawn` may capture
 an environment that it carries across tasks.
 
 ~~~
-# use io::println;
-# use task::spawn;
+# use core::io::println;
+# use core::task::spawn;
 # fn generate_task_number() -> int { 0 }
 // Generate some state locally
 let child_task_number = generate_task_number();
@@ -127,8 +127,8 @@ in parallel. Thus, on a multicore machine, running the following code
 should interleave the output in vaguely random order.
 
 ~~~
-# use io::print;
-# use task::spawn;
+# use core::io::print;
+# use core::task::spawn;
 
 for int::range(0, 20) |child_task_number| {
     do spawn {
@@ -156,8 +156,8 @@ endpoint. Consider the following example of calculating two results
 concurrently:
 
 ~~~~
-use task::spawn;
-use comm::{stream, Port, Chan};
+use core::task::spawn;
+use core::comm::{stream, Port, Chan};
 
 let (port, chan): (Port<int>, Chan<int>) = stream();
 
@@ -178,7 +178,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 a tuple into its component parts).
 
 ~~~~
-# use comm::{stream, Chan, Port};
+# use core::comm::{stream, Chan, Port};
 let (port, chan): (Port<int>, Chan<int>) = stream();
 ~~~~
 
@@ -187,9 +187,8 @@ which will wait to receive the data on the port. The next statement
 spawns the child task.
 
 ~~~~
-# use task::{spawn};
-# use task::spawn;
-# use comm::{stream, Port, Chan};
+# use core::task::spawn;
+# use core::comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 # let (port, chan) = stream();
 do spawn || {
@@ -209,7 +208,7 @@ computation, then waits for the child's result to arrive on the
 port:
 
 ~~~~
-# use comm::{stream, Port, Chan};
+# use core::comm::{stream, Port, Chan};
 # fn some_other_expensive_computation() {}
 # let (port, chan) = stream::<int>();
 # chan.send(0);
@@ -224,8 +223,8 @@ example needed to compute multiple results across a number of tasks? The
 following program is ill-typed:
 
 ~~~ {.xfail-test}
-# use task::{spawn};
-# use comm::{stream, Port, Chan};
+# use core::task::{spawn};
+# use core::comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 let (port, chan) = stream();
 
@@ -244,8 +243,8 @@ Instead we can use a `SharedChan`, a type that allows a single
 `Chan` to be shared by multiple senders.
 
 ~~~
-# use task::spawn;
-use comm::{stream, SharedChan};
+# use core::task::spawn;
+use core::comm::{stream, SharedChan};
 
 let (port, chan) = stream();
 let chan = SharedChan(chan);
@@ -277,8 +276,8 @@ illustrate the point. For reference, written with multiple streams, it
 might look like the example below.
 
 ~~~
-# use task::spawn;
-# use comm::{stream, Port, Chan};
+# use core::task::spawn;
+# use core::comm::{stream, Port, Chan};
 
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
@@ -309,7 +308,7 @@ All tasks are, by default, _linked_ to each other. That means that the fates
 of all tasks are intertwined: if one fails, so do all the others.
 
 ~~~
-# use task::spawn;
+# use core::task::spawn;
 # fn do_some_work() { loop { task::yield() } }
 # do task::try {
 // Create a child task that fails
@@ -393,8 +392,8 @@ internally, with additional logic to wait for the child task to finish
 before returning. Hence:
 
 ~~~
-# use comm::{stream, Chan, Port};
-# use task::{spawn, try};
+# use core::comm::{stream, Chan, Port};
+# use core::task::{spawn, try};
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
@@ -489,8 +488,8 @@ response itself is simply the stringified version of the received value,
 Here is the code for the parent task:
 
 ~~~~
+# use core::task::spawn;
 # use std::comm::DuplexStream;
-# use task::spawn;
 # fn stringifier(channel: &DuplexStream<~str, uint>) {
 #     let mut value: uint;
 #     loop {

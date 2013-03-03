@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // test that invoking functions which require
-// dictionaries from inside an fn@ works
+// dictionaries from inside an @fn works
 // (at one point, it didn't)
 
 fn mk_nil<C:ty_ops>(cx: C) -> uint {
@@ -25,8 +25,6 @@ impl ty_ops for () {
 }
 
 pub fn main() {
-    let fn_env = fn@() -> uint {
-        mk_nil(())
-    };
+    let fn_env: @fn() -> uint = || mk_nil(());
     assert fn_env() == 22u;
 }

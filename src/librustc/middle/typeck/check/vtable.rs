@@ -24,10 +24,10 @@ use util::common::indenter;
 use util::ppaux::tys_to_str;
 use util::ppaux;
 
+use core::result::{Result, Ok, Err};
 use core::result;
 use core::uint;
 use core::vec;
-use result::{Result, Ok, Err};
 use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_util;
