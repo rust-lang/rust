@@ -429,6 +429,13 @@
    ...
 }
 
+{
+   enum-instruction-scheduling-10
+   Memcheck:Cond
+   fun:*config_from_opts*
+   ...
+}
+
 {  
    llvm-user-new-leak
    Memcheck:Leak
