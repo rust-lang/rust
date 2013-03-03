@@ -20,6 +20,7 @@ use middle::trans::expr;
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::ty;
+use util::ppaux::{expr_repr, ty_to_str};
 
 use core::libc::c_uint;
 use syntax::{ast, ast_util, codemap, ast_map};
@@ -150,6 +151,24 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
 }
 
 pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
+    let ety = ty::expr_ty_adjusted(cx.tcx, e);
+    let llty = type_of::sizing_type_of(cx, ety);
+    let llconst = const_expr_unchecked(cx, e);
+    let csize = machine::llsize_of_alloc(cx, val_ty(llconst));
+    let tsize = machine::llsize_of_alloc(cx, llty);
+    if csize != tsize {
+        unsafe {
+            llvm::LLVMDumpValue(llconst);
+            llvm::LLVMDumpValue(C_null(llty));
+        }
+        cx.sess.bug(fmt!("const %s of type %s has size %u instead of %u",
+                         expr_repr(cx.tcx, e), ty_to_str(cx.tcx, ety),
+                         csize, tsize));
+    }
+    llconst
+}
+
+fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
     unsafe {
         let _icx = cx.insn_ctxt("const_expr");
         return match /*bad*/copy e.node {
