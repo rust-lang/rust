@@ -394,13 +394,22 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           ast::expr_path(pth) => {
             assert pth.types.len() == 0;
             match cx.tcx.def_map.find(&e.id) {
-                Some(ast::def_fn(def_id, purity)) => {
+                Some(ast::def_fn(def_id, _purity)) => {
                     assert ast_util::is_local(def_id);
                     let f = base::get_item_val(cx, def_id.node);
-                    match purity {
-                      ast::extern_fn =>
-                        llvm::LLVMConstPointerCast(f, T_ptr(T_i8())),
-                      _ => C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
+                    let ety = ty::expr_ty_adjusted(cx.tcx, e);
+                    match ty::get(ety).sty {
+                        ty::ty_bare_fn(*) | ty::ty_ptr(*) => {
+                            llvm::LLVMConstPointerCast(f, T_ptr(T_i8()))
+                        }
+                        ty::ty_closure(*) => {
+                            C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
+                        }
+                        _ => {
+                            cx.sess.span_bug(e.span, fmt!(
+                                "unexpected const fn type: %s",
+                                ty_to_str(cx.tcx, ety)))
+                        }
                     }
                 }
                 Some(ast::def_const(def_id)) => {
