@@ -860,7 +860,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
 
     debug!("Encoding side tables for id %d", id);
 
-    do option::iter(&tcx.def_map.find(&id)) |def| {
+    for tcx.def_map.find(&id).each |def| {
         do ebml_w.tag(c::tag_table_def) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -868,7 +868,8 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
             }
         }
     }
-    do option::iter(&tcx.node_types.find(&(id as uint))) |&ty| {
+
+    for tcx.node_types.find(&(id as uint)).each |&ty| {
         do ebml_w.tag(c::tag_table_node_type) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -877,7 +878,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    do option::iter(&tcx.node_type_substs.find(&id)) |tys| {
+    for tcx.node_type_substs.find(&id).each |tys| {
         do ebml_w.tag(c::tag_table_node_type_subst) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -886,7 +887,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    do option::iter(&tcx.freevars.find(&id)) |fv| {
+    for tcx.freevars.find(&id).each |fv| {
         do ebml_w.tag(c::tag_table_freevars) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -898,7 +899,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
     }
 
     let lid = ast::def_id { crate: ast::local_crate, node: id };
-    do option::iter(&tcx.tcache.find(&lid)) |tpbt| {
+    for tcx.tcache.find(&lid).each |tpbt| {
         do ebml_w.tag(c::tag_table_tcache) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -907,7 +908,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    do option::iter(&tcx.ty_param_bounds.find(&id)) |pbs| {
+    for tcx.ty_param_bounds.find(&id).each |pbs| {
         do ebml_w.tag(c::tag_table_param_bounds) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -921,7 +922,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
     // is what we actually use in trans, all modes will have been
     // resolved.
     //
-    //option::iter(tcx.inferred_modes.find(&id)) {|m|
+    //for tcx.inferred_modes.find(&id).each |m| {
     //    ebml_w.tag(c::tag_table_inferred_modes) {||
     //        ebml_w.id(id);
     //        ebml_w.tag(c::tag_table_val) {||
@@ -930,13 +931,13 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
     //    }
     //}
 
-    do option::iter(&maps.mutbl_map.find(&id)) |_m| {
+    if maps.mutbl_map.contains_key(&id) {
         do ebml_w.tag(c::tag_table_mutbl) {
             ebml_w.id(id);
         }
     }
 
-    do option::iter(&maps.last_use_map.find(&id)) |m| {
+    for maps.last_use_map.find(&id).each |m| {
         do ebml_w.tag(c::tag_table_last_use) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -947,7 +948,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    do option::iter(&maps.method_map.find(&id)) |mme| {
+    for maps.method_map.find(&id).each |mme| {
         do ebml_w.tag(c::tag_table_method_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -956,7 +957,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    do option::iter(&maps.vtable_map.find(&id)) |dr| {
+    for maps.vtable_map.find(&id).each |dr| {
         do ebml_w.tag(c::tag_table_vtable_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
@@ -965,7 +966,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    do option::iter(&tcx.adjustments.find(&id)) |adj| {
+    for tcx.adjustments.find(&id).each |adj| {
         do ebml_w.tag(c::tag_table_adjustments) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
