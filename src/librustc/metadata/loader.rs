@@ -84,11 +84,12 @@ fn libname(cx: Context) -> (~str, ~str) {
     (str::from_slice(dll_prefix), str::from_slice(dll_suffix))
 }
 
-fn find_library_crate_aux(cx: Context,
-                          (prefix, suffix): (~str, ~str),
-                          filesearch: filesearch::FileSearch) ->
-   Option<(~str, @~[u8])> {
-    let crate_name = crate_name_from_metas(/*bad*/copy cx.metas);
+fn find_library_crate_aux(
+    cx: Context,
+    (prefix, suffix): (~str, ~str),
+    filesearch: filesearch::FileSearch
+) -> Option<(~str, @~[u8])> {
+    let crate_name = crate_name_from_metas(cx.metas);
     let prefix: ~str = prefix + *crate_name + ~"-";
     let suffix: ~str = /*bad*/copy suffix;
 
@@ -140,7 +141,7 @@ fn find_library_crate_aux(cx: Context,
     }
 }
 
-pub fn crate_name_from_metas(+metas: &[@ast::meta_item]) -> @~str {
+pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
     match vec::last_opt(name_items) {
         Some(i) => {

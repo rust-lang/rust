@@ -65,7 +65,7 @@ struct cache_entry {
     metas: @~[@ast::meta_item]
 }
 
-fn dump_crates(+crate_cache: @mut ~[cache_entry]) {
+fn dump_crates(crate_cache: @mut ~[cache_entry]) {
     debug!("resolved crates:");
     for crate_cache.each |entry| {
         debug!("cnum: %?", entry.cnum);
