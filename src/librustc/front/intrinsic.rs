@@ -11,7 +11,7 @@
 // NB: this file is include_str!'ed into the compiler, re-parsed
 // and injected into each crate the compiler builds. Keep it small.
 
-mod intrinsic {
+pub mod intrinsic {
     pub use intrinsic::rusti::visit_tydesc;
 
     // FIXME (#3727): remove this when the interface has settled and the

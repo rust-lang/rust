@@ -1313,7 +1313,7 @@ and [`core::str`]. Here are some examples.
 [`core::str`]: core/str.html
 
 ~~~
-# use io::println;
+# use core::io::println;
 # enum Crayon {
 #     Almond, AntiqueBrass, Apricot,
 #     Aquamarine, Asparagus, AtomicTangerine,
@@ -1368,7 +1368,7 @@ Rust also supports _closures_, functions that can access variables in
 the enclosing scope.
 
 ~~~~
-# use println = io::println;
+# use println = core::io::println;
 fn call_closure_with_ten(b: fn(int)) { b(10); }
 
 let captured_var = 20;
@@ -1525,7 +1525,7 @@ words, it is a function that takes an owned closure that takes no
 arguments.
 
 ~~~~
-use task::spawn;
+use core::task::spawn;
 
 do spawn() || {
     debug!("I'm a task, whatever");
@@ -1537,7 +1537,7 @@ lists back to back. Since that is so unsightly, empty argument lists
 may be omitted from `do` expressions.
 
 ~~~~
-# use task::spawn;
+# use core::task::spawn;
 do spawn {
    debug!("Kablam!");
 }
@@ -1568,8 +1568,8 @@ fn each(v: &[int], op: fn(v: &int) -> bool) {
 And using this function to iterate over a vector:
 
 ~~~~
-# use each = vec::each;
-# use println = io::println;
+# use each = core::vec::each;
+# use println = core::io::println;
 each([2, 4, 8, 5, 16], |n| {
     if *n % 2 != 0 {
         println("found odd number!");
@@ -1585,8 +1585,8 @@ out of the loop, you just write `break`. To skip ahead
 to the next iteration, write `loop`.
 
 ~~~~
-# use each = vec::each;
-# use println = io::println;
+# use each = core::vec::each;
+# use println = core::io::println;
 for each([2, 4, 8, 5, 16]) |n| {
     if *n % 2 != 0 {
         println("found odd number!");
@@ -1601,7 +1601,7 @@ normally allowed in closures, in a block that appears as the body of a
 the enclosing function, not just the loop body.
 
 ~~~~
-# use each = vec::each;
+# use each = core::vec::each;
 fn contains(v: &[int], elt: int) -> bool {
     for each(v) |x| {
         if (*x == elt) { return true; }
@@ -1616,7 +1616,7 @@ In these situations it can be convenient to lean on Rust's
 argument patterns to bind `x` to the actual value, not the pointer.
 
 ~~~~
-# use each = vec::each;
+# use each = core::vec::each;
 # fn contains(v: &[int], elt: int) -> bool {
     for each(v) |&x| {
         if (x == elt) { return true; }
@@ -1758,8 +1758,8 @@ Constructors are one common application for static methods, as in `new` above.
 To call a static method, you have to prefix it with the type name and a double colon:
 
 ~~~~
-# use float::consts::pi;
-# use float::sqrt;
+# use core::float::consts::pi;
+# use core::float::sqrt;
 struct Circle { radius: float }
 impl Circle {
     static fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
@@ -2030,8 +2030,8 @@ The compiler will use type inference to decide which implementation to call.
 
 ~~~~
 trait Shape { static fn new(area: float) -> Self; }
-# use float::consts::pi;
-# use float::sqrt;
+# use core::float::consts::pi;
+# use core::float::sqrt;
 struct Circle { radius: float }
 struct Square { length: float }
 
@@ -2189,8 +2189,8 @@ Now, we can implement `Circle` on a type only if we also implement `Shape`.
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
-# use float::consts::pi;
-# use float::sqrt;
+# use core::float::consts::pi;
+# use core::float::sqrt;
 # fn square(x: float) -> float { x * x }
 struct CircleStruct { center: Point, radius: float }
 impl Circle for CircleStruct {
@@ -2224,8 +2224,8 @@ Likewise, supertrait methods may also be called on trait objects.
 ~~~ {.xfail-test}
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
-# use float::consts::pi;
-# use float::sqrt;
+# use core::float::consts::pi;
+# use core::float::sqrt;
 # struct Point { x: float, y: float }
 # struct CircleStruct { center: Point, radius: float }
 # impl Circle for CircleStruct { fn radius(&self) -> float { sqrt(self.area() / pi) } }
@@ -2291,13 +2291,12 @@ be private. But this encapsulation is at the module level, not the
 struct level. Note that fields and methods are _public_ by default.
 
 ~~~
-mod farm {
-# use farm;
+pub mod farm {
 # pub type Chicken = int;
 # type Cow = int;
 # enum Human = int;
 # impl Human { fn rest(&self) { } }
-# pub fn make_me_a_farm() -> farm::Farm { farm::Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
+# pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], cows: ~[], farmer: Human(0) } }
     pub struct Farm {
         priv chickens: ~[Chicken],
         priv cows: ~[Cow],

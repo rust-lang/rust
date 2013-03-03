@@ -17,13 +17,13 @@ extern mod std;
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
 
-use cmp::Eq;
-use std::ebml;
 use EBReader = std::ebml::reader;
 use EBWriter = std::ebml::writer;
-use io::Writer;
-use std::serialize::{Encodable, Decodable};
+use core::cmp::Eq;
+use core::io::Writer;
+use std::ebml;
 use std::prettyprint;
+use std::serialize::{Encodable, Decodable};
 use std::time;
 
 fn test_prettyprint<A:Encodable<prettyprint::Serializer>>(

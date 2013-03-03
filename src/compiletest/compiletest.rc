@@ -22,18 +22,18 @@ extern mod std(vers = "0.6");
 
 use core::*;
 
-mod procsrv;
-mod util;
-mod header;
-mod runtest;
-mod common;
-mod errors;
+pub mod procsrv;
+pub mod util;
+pub mod header;
+pub mod runtest;
+pub mod common;
+pub mod errors;
 
 use std::getopts;
 use std::test;
 
 use core::{result, either};
-use result::{Ok, Err};
+use core::result::{Ok, Err};
 
 use common::config;
 use common::mode_run_pass;
@@ -223,7 +223,7 @@ pub fn make_test_name(config: config, testfile: &Path) -> test::TestName {
 
 pub fn make_test_closure(config: config, testfile: &Path) -> test::TestFn {
     let testfile = testfile.to_str();
-    test::DynTestFn(fn~() { runtest::run(config, testfile) })
+    test::DynTestFn(|| runtest::run(config, testfile))
 }
 
 // Local Variables:

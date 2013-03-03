@@ -12,9 +12,9 @@
 
 // rustc --test ignores2.rs && ./ignores2
 extern mod std;
-use path::{Path};
+use core::path::{Path};
 
-type rsrc_loader = fn~ (path: &Path) -> result::Result<~str, ~str>;
+type rsrc_loader = ~fn(path: &Path) -> result::Result<~str, ~str>;
 
 #[test]
 fn tester()

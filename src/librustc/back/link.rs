@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use back::rpath;
+use driver::session::Session;
 use driver::session;
 use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False};
@@ -21,8 +22,6 @@ use metadata::filesearch;
 use metadata::{encoder, cstore};
 use middle::trans::common::CrateContext;
 use middle::ty;
-use session::Session;
-use session;
 use util::ppaux;
 
 use core::char;
@@ -89,10 +88,10 @@ pub fn WriteOutputFile(sess: Session,
 
 pub mod jit {
     use back::link::llvm_err;
+    use driver::session::Session;
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, PassManagerRef, mk_target_data};
     use metadata::cstore;
-    use session::Session;
 
     use core::cast;
     use core::libc::c_int;
@@ -170,11 +169,11 @@ pub mod write {
     use back::link::{output_type_assembly, output_type_bitcode};
     use back::link::{output_type_exe, output_type_llvm_assembly};
     use back::link::{output_type_object};
+    use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;
     use lib::llvm::{False, True, ModuleRef, mk_pass_manager, mk_target_data};
     use lib;
-    use session::Session;
 
     use core::char;
     use core::libc::{c_char, c_int, c_uint};

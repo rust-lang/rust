@@ -251,7 +251,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         // Receivers in method calls are always passed by ref.
         //
         // Here, the field a.b is in fact a closure.  Eventually, this
-        // should be an fn&, but for now it's an fn@.  In any case,
+        // should be an &fn, but for now it's an @fn.  In any case,
         // the enclosing scope is either the call where it is a rcvr
         // (if used like `a.b(...)`), the call where it's an argument
         // (if used like `x(a.b)`), or the block (if used like `let x

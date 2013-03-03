@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use driver::session::Session;
 use driver::session;
 use metadata::csearch;
 use metadata;
@@ -22,7 +23,6 @@ use middle::resolve;
 use middle::ty;
 use middle::typeck;
 use middle;
-use session::Session;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{region_to_str, explain_region, vstore_to_str};
 use util::ppaux::{ty_to_str, tys_to_str};
@@ -525,7 +525,7 @@ pub enum sty {
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
     ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_opaque_closure_ptr(Sigil), // ptr to env for fn, fn@, fn~
+    ty_opaque_closure_ptr(Sigil), // ptr to env for &fn, @fn, ~fn
     ty_unboxed_vec(mt),
 }
 
@@ -1102,8 +1102,8 @@ pub pure fn mach_sty(cfg: @session::config, t: t) -> sty {
 }
 
 pub fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
-        // FIXME(#2202) --- We retain by-ref for fn& things to workaround a
-        // memory leak that otherwise results when @fn is upcast to &fn.
+    // FIXME(#2202) --- We retain by-ref for &fn things to workaround a
+    // memory leak that otherwise results when @fn is upcast to &fn.
     match ty::get(ty).sty {
         ty::ty_closure(ClosureTy {sigil: ast::BorrowedSigil, _}) => {
             return ast::by_ref;
@@ -3124,7 +3124,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::expr_tup(*) |
         ast::expr_if(*) |
         ast::expr_match(*) |
-        ast::expr_fn(*) |
         ast::expr_fn_block(*) |
         ast::expr_loop_body(*) |
         ast::expr_do_body(*) |

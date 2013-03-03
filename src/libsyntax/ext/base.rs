@@ -37,29 +37,39 @@ pub struct MacroDef {
     ext: SyntaxExtension
 }
 
-pub type ItemDecorator =
-    fn@(ext_ctxt, span, @ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
+pub type ItemDecorator = @fn(ext_ctxt,
+                             span,
+                             @ast::meta_item,
+                             ~[@ast::item])
+                          -> ~[@ast::item];
 
 pub struct SyntaxExpanderTT {
     expander: SyntaxExpanderTTFun,
     span: Option<span>
 }
 
-pub type SyntaxExpanderTTFun
-    = fn@(ext_ctxt, span, &[ast::token_tree]) -> MacResult;
+pub type SyntaxExpanderTTFun = @fn(ext_ctxt,
+                                   span,
+                                   &[ast::token_tree])
+                                -> MacResult;
 
 pub struct SyntaxExpanderTTItem {
     expander: SyntaxExpanderTTItemFun,
     span: Option<span>
 }
 
-pub type SyntaxExpanderTTItemFun
-    = fn@(ext_ctxt, span, ast::ident, ~[ast::token_tree]) -> MacResult;
+pub type SyntaxExpanderTTItemFun = @fn(ext_ctxt,
+                                       span,
+                                       ast::ident,
+                                       ~[ast::token_tree])
+                                    -> MacResult;
 
 pub enum MacResult {
     MRExpr(@ast::expr),
     MRItem(@ast::item),
-    MRAny(fn@()-> @ast::expr, fn@()-> Option<@ast::item>, fn@()->@ast::stmt),
+    MRAny(@fn() -> @ast::expr,
+          @fn() -> Option<@ast::item>,
+          @fn() -> @ast::stmt),
     MRDef(MacroDef)
 }
 

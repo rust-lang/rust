@@ -80,7 +80,7 @@ fn dump_crates(+crate_cache: @mut ~[cache_entry]) {
 fn warn_if_multiple_versions(e: @mut Env,
                              diag: span_handler,
                              crate_cache: @mut ~[cache_entry]) {
-    use either::*;
+    use core::either::*;
 
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(

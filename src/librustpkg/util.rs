@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::*;
-use hashmap::linear::LinearMap;
-use rustc::metadata::filesearch;
-use rustc::driver::{driver, session};
-use syntax::ast_util::*;
-use syntax::{ast, attr, codemap, diagnostic, fold, parse, visit};
-use codemap::{span, dummy_sp, spanned};
-use std::semver;
-use std::{json, term, sort, getopts};
-use getopts::groups::getopts;
 use Listener;
 
+use core::*;
+use core::hashmap::linear::LinearMap;
+use rustc::driver::{driver, session};
+use rustc::metadata::filesearch;
+use std::getopts::groups::getopts;
+use std::semver;
+use std::{json, term, sort, getopts};
+use syntax::ast_util::*;
+use syntax::codemap::{span, dummy_sp, spanned};
 use syntax::ext::base::{mk_ctxt, ext_ctxt};
 use syntax::ext::build;
+use syntax::{ast, attr, codemap, diagnostic, fold, parse, visit};
 
 pub struct Package {
     id: ~str,

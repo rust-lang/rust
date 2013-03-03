@@ -11,12 +11,11 @@
 // except according to those terms.
 
 extern mod std;
-use io::WriterUtil;
+use core::io::WriterUtil;
 use std::oldmap::HashMap;
 use std::json;
 
-enum object
-{
+enum object {
     bool_value(bool),
     int_value(i64),
 }

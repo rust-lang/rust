@@ -81,7 +81,7 @@ pub fn parse_ident(st: @mut PState, last: char) -> ast::ident {
     return parse_ident_(st, |a| is_last(last, a) );
 }
 
-fn parse_ident_(st: @mut PState, is_last: fn@(char) -> bool) ->
+fn parse_ident_(st: @mut PState, is_last: @fn(char) -> bool) ->
    ast::ident {
     let mut rslt = ~"";
     while !is_last(peek(st)) {

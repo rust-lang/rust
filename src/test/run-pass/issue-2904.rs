@@ -12,7 +12,7 @@
 
 /// Map representation
 
-use io::ReaderUtil;
+use core::io::ReaderUtil;
 
 extern mod std;
 

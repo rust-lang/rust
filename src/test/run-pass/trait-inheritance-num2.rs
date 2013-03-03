@@ -12,8 +12,8 @@
 
 // A more complex example of numeric extensions
 
-use cmp::{Eq, Ord};
-use num::NumCast::from;
+use core::cmp::{Eq, Ord};
+use core::num::NumCast::from;
 
 extern mod std;
 use std::cmp::FuzzyEq;

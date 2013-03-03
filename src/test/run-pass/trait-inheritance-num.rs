@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp::{Eq, Ord};
-use num::NumCast::from;
+use core::cmp::{Eq, Ord};
+use core::num::NumCast::from;
 
 extern mod std;
 use std::cmp::FuzzyEq;

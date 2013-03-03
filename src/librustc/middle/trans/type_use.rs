@@ -301,7 +301,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
             }
         }
       }
-      expr_fn(*) | expr_fn_block(*) => {
+      expr_fn_block(*) => {
           match ty::ty_closure_sigil(ty::expr_ty(cx.ccx.tcx, e)) {
               ast::OwnedSigil => {}
               ast::BorrowedSigil | ast::ManagedSigil => {

@@ -10,12 +10,12 @@
 
 use core::prelude::*;
 
-use io;
-use os;
-use os::getenv;
-
 use common;
 use common::config;
+
+use core::io;
+use core::os::getenv;
+use core::os;
 
 pub fn make_new_path(path: ~str) -> ~str {
 

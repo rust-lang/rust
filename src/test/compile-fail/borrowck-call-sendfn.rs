@@ -10,7 +10,11 @@
 
 // xfail-test #2978
 
-fn call(x: @{f: fn~()}) {
+struct Foo {
+    f: ~fn()
+}
+
+fn call(x: @Foo) {
     x.f(); //~ ERROR foo
     //~^ NOTE bar
 }

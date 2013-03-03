@@ -282,7 +282,7 @@ pub fn visit_expr(expr: @ast::expr, &&rcx: @mut Rcx, v: rvt) {
             guarantor::for_match(rcx, discr, *arms);
         }
 
-        ast::expr_fn(*) | ast::expr_fn_block(*) => {
+        ast::expr_fn_block(*) => {
             let function_type = rcx.resolve_node_type(expr.id);
             match ty::get(function_type).sty {
                 ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
@@ -708,7 +708,6 @@ pub mod guarantor {
             ast::expr_tup(*) |
             ast::expr_if(*) |
             ast::expr_match(*) |
-            ast::expr_fn(*) |
             ast::expr_fn_block(*) |
             ast::expr_loop_body(*) |
             ast::expr_do_body(*) |

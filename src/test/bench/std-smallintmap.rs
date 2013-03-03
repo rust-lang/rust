@@ -12,7 +12,7 @@
 
 extern mod std;
 use std::smallintmap::SmallIntMap;
-use io::WriterUtil;
+use core::io::WriterUtil;
 
 fn append_sequential(min: uint, max: uint, map: &mut SmallIntMap<uint>) {
     for uint::range(min, max) |i| {

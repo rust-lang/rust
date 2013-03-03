@@ -396,7 +396,7 @@ fn unwrap<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
 
 //#[test]
 fn test() {
-    use io::WriterUtil;
+    use core::io::WriterUtil;
 
     let db = @Mut(Database { db_filename: Path("db.json"),
                              db_cache: LinearMap::new(),

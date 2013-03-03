@@ -27,14 +27,14 @@ extern mod rustc(vers = "0.6");
 extern mod syntax(vers = "0.6");
 
 use core::*;
-use io::{ReaderUtil, WriterUtil};
-use std::{json, semver, getopts};
-use std::net::url;
-use hashmap::linear::LinearMap;
-use rustc::metadata::filesearch;
+use core::hashmap::linear::LinearMap;
+use core::io::{ReaderUtil, WriterUtil};
 use rustc::driver::{driver, session};
-use syntax::{ast, attr, codemap, diagnostic, parse, visit};
+use rustc::metadata::filesearch;
+use std::net::url;
+use std::{json, semver, getopts};
 use syntax::codemap::spanned;
+use syntax::{ast, attr, codemap, diagnostic, parse, visit};
 
 mod usage;
 mod util;
@@ -926,7 +926,7 @@ pub struct Crate {
 
 pub struct Listener {
     cmds: ~[~str],
-    cb: fn~()
+    cb: ~fn()
 }
 
 pub fn run(listeners: ~[Listener]) {

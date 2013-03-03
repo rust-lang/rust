@@ -10,14 +10,14 @@
 
 //! Semver parsing and logic
 
-use io;
-use io::{ReaderUtil};
-use option::{Option, Some, None};
-use uint;
-use str;
-use to_str::ToStr;
-use char;
+use core::char;
 use core::cmp;
+use core::io::{ReaderUtil};
+use core::io;
+use core::option::{Option, Some, None};
+use core::str;
+use core::to_str::ToStr;
+use core::uint;
 
 #[deriving_eq]
 pub enum Identifier {

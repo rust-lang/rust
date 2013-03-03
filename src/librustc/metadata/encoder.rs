@@ -57,7 +57,7 @@ use writer = std::ebml::writer;
 // used by astencode:
 type abbrev_map = oldmap::HashMap<ty::t, tyencode::ty_abbrev>;
 
-pub type encode_inlined_item = fn@(ecx: @EncodeContext,
+pub type encode_inlined_item = @fn(ecx: @EncodeContext,
                                    ebml_w: writer::Encoder,
                                    path: &[ast_map::path_elt],
                                    ii: ast::inlined_item);
