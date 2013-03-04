@@ -86,13 +86,13 @@ RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1) := win
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
-else ifeq ($(CFG_OSTYPE_$(1)), apple-darwin)
+else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
-else ifeq ($(CFG_OSTYPE_$(1)), unknown-freebsd)
+else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
   LIBUV_OSTYPE_$(1) := unix/freebsd
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
-else ifeq ($(CFG_OSTYPE_$(1)), unknown-android)
+else ifeq ($(OSTYPE_$(1)), unknown-android)
   LIBUV_OSTYPE_$(1) := unix/android
   LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
 else
@@ -163,7 +163,7 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		OS=mingw \
 		V=$$(VERBOSE)
-else ifeq ($(CFG_OSTYPE_$(1)), unknown-android)
+else ifeq ($(OSTYPE_$(1)), unknown-android)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
