@@ -78,6 +78,9 @@ pub trait ReaderUtil {
     /// Read len bytes into a new vec.
     fn read_bytes(&self, len: uint) -> ~[u8];
 
+    /// Read up until a specified character (which is not returned) or EOF.
+    fn read_until(&self, c: char) -> ~str;
+
     /// Read up until the first '\n' char (which is not returned), or EOF.
     fn read_line(&self) -> ~str;
 
@@ -181,14 +184,20 @@ impl<T:Reader> ReaderUtil for T {
         bytes
     }
 
-    fn read_line(&self) -> ~str {
+    fn read_until(&self, c: char) -> ~str {
         let mut bytes = ~[];
         loop {
             let ch = self.read_byte();
-            if ch == -1 || ch == 10 { break; }
+            if ch == -1 || ch == c as int {
+                break;
+            }
             bytes.push(ch as u8);
         }
         str::from_bytes(bytes)
+    }
+
+    fn read_line(&self) -> ~str {
+        self.read_until('\n')
     }
 
     fn read_chars(&self, n: uint) -> ~[char] {
@@ -262,12 +271,7 @@ impl<T:Reader> ReaderUtil for T {
     }
 
     fn read_c_str(&self) -> ~str {
-        let mut bytes: ~[u8] = ~[];
-        loop {
-            let ch = self.read_byte();
-            if ch < 1 { break; } else { bytes.push(ch as u8); }
-        }
-        str::from_bytes(bytes)
+        self.read_until(0 as char)
     }
 
     fn read_whole_stream(&self) -> ~[u8] {
