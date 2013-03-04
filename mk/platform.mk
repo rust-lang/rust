@@ -50,6 +50,20 @@ CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
 CFG_GCCISH_CROSS_x86_64-unknown-linux-gnu =
 
+# i686-unknown-linux-gnu configuration
+CFG_LIB_NAME_i686-unknown-linux-gnu=lib$(1).so
+CFG_LIB_GLOB_i686-unknown-linux-gnu=lib$(1)-*.so
+CFG_LIB_DSYM_GLOB_i686-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_i686-unknown-linux-gnu := -Wall -Werror -g -fPIC -m32
+CFG_GCCISH_CXXFLAGS_i686-unknown-linux-gnu := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_i6868-unknown-linux-gnu := -shared -fPIC -ldl -lpthread -lrt -g -m32
+CFG_GCCISH_DEF_FLAG_i6868-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
+CFG_DEF_SUFFIX_i686-unknown-linux-gnu := .linux.def
+CFG_INSTALL_NAME_i686-unknown-linux-gnu =
+CFG_GCCISH_CROSS_i686-unknown-linux-gnu =
+
 # x86_64-apple-darwin configuration
 CFG_LIB_NAME_x86_64-apple-darwin=lib$(1).dylib
 CFG_LIB_GLOB_x86_64-apple-darwin=lib$(1)-*.dylib
@@ -62,6 +76,19 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-apple-darwin :=
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-apple-darwin :=
 CFG_DEF_SUFFIX_x86_64-apple-darwin := .darwin.def
 CFG_INSTALL_NAME_x86_64-apple-darwin = -Wl,-install_name,@rpath/$(1)
+
+# i686-apple-darwin configuration
+CFG_LIB_NAME_i686-apple-darwin=lib$(1).dylib
+CFG_LIB_GLOB_i686-apple-darwin=lib$(1)-*.dylib
+CFG_LIB_DSYM_GLOB_i686-apple-darwin=lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_i686-apple-darwin := -Wall -Werror -g -fPIC -m32 -arch i386
+CFG_GCCISH_CXXFLAGS_i686-apple-darwin := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_i686-apple-darwin := -dynamiclib -lpthread -framework CoreServices -Wl,-no_compact_unwind -m32
+CFG_GCCISH_DEF_FLAG_i686-apple-darwin := -Wl,-exported_symbols_list,
+CFG_GCCISH_PRE_LIB_FLAGS_i686-apple-darwin :=
+CFG_GCCISH_POST_LIB_FLAGS_i686-apple-darwin :=
+CFG_DEF_SUFFIX_i686-apple-darwin := .darwin.def
+CFG_INSTALL_NAME_i686-apple-darwin = -Wl,-install_name,@rpath/$(1)
 
 # arm-unknown-android configuration
 CFG_LIB_NAME_arm-unknown-android=lib$(1).so
@@ -91,6 +118,18 @@ CFG_DEF_SUFFIX_i686-pc-mingw32 := .def
 CFG_INSTALL_NAME_i686-pc-mingw32 =
 CFG_GCCISH_CROSS_i686-pc-mingw32 =
 
+# x86_64-unknown-freebsd configuration
+CFG_LIB_NAME_x86_64-unknown-freebsd=lib$(1).so
+CFG_LIB_GLOB_x86_64-unknown-freebsd=lib$(1)-*.so
+CFG_GCCISH_CFLAGS_x86_64-unknown-freebsd += -fPIC -I/usr/local/include
+CFG_GCCISH_LINK_FLAGS_x86_64-unknown-freebsd += -shared -fPIC -lpthread -lrt
+CFG_GCCISH_DEF_FLAG_x86_64-unknown-freebsd := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-no-whole-archive
+CFG_DEF_SUFFIX_x86_64-unknown-freebsd := .bsd.def
+CFG_INSTALL_NAME_x86_64-unknown-freebsd =
+CFG_GCCISH_CROSS_x86_64-unknown-freebsd =
+
 # Hack: not sure how to test if a file exists in make other than this
 OS_SUPP = $(patsubst %,--suppressions=%,\
       $(wildcard $(CFG_SRC_DIR)src/etc/$(CFG_OSTYPE).supp*))
@@ -102,6 +141,9 @@ ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   CFG_UNIXY := 1
 endif
 ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
+  CFG_UNIXY := 1
+endif
+ifneq ($(findstring freebsd,$(CFG_OSTYPE)),)
   CFG_UNIXY := 1
 endif
 
