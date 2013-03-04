@@ -50,7 +50,6 @@ CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_x86_64-unknown-linux-gnu =
 CFG_LLVM_BUILD_ENV_x86_64-unknown-linux-gnu="CXXFLAGS=-fno-omit-frame-pointer"
-CFG_GCCISH_CROSS_PREFIX_x86_64-unknown-linux-gnu =
 CFG_EXE_SUFFIX_x86_64-unknown-linux-gnu =
 CFG_WINDOWSY_x86_64-unknown-linux-gnu :=
 CFG_LINUXY_x86_64-unknown-linux-gnu := 1
@@ -65,13 +64,21 @@ CFG_LIB_GLOB_i686-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_i686-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
 CFG_GCCISH_CFLAGS_i686-unknown-linux-gnu := -Wall -Werror -g -fPIC -m32
 CFG_GCCISH_CXXFLAGS_i686-unknown-linux-gnu := -fno-rtti
-CFG_GCCISH_LINK_FLAGS_i6868-unknown-linux-gnu := -shared -fPIC -ldl -lpthread -lrt -g -m32
-CFG_GCCISH_DEF_FLAG_i6868-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_LINK_FLAGS_i686-unknown-linux-gnu := -shared -fPIC -ldl -lpthread -lrt -g -m32
+CFG_GCCISH_DEF_FLAG_i686-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_i686-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_i686-unknown-linux-gnu =
-CFG_GCCISH_CROSS_i686-unknown-linux-gnu =
+CFG_LIBUV_LINK_FLAGS_i686-unknown-linux-gnu =
+CFG_LLVM_BUILD_ENV_i686-unknown-linux-gnu="CXXFLAGS=-fno-omit-frame-pointer"
+CFG_EXE_SUFFIX_i686-unknown-linux-gnu =
+CFG_WINDOWSY_i686-unknown-linux-gnu :=
+CFG_LINUXY_i686-unknown-linux-gnu := 1
+CFG_PATH_MUNGE_i686-unknown-linux-gnu := true
+CFG_LDPATH_i686-unknown-linux-gnu :=
+CFG_RUN_i686-unknown-linux-gnu=$(2)
+CFG_RUN_TARG_i686-unknown-linux-gnu=$(call CFG_RUN_i686-unknown-linux-gnu,,$(2))
 
 # x86_64-apple-darwin configuration
 CFG_LIB_NAME_x86_64-apple-darwin=lib$(1).dylib
@@ -106,6 +113,14 @@ CFG_GCCISH_PRE_LIB_FLAGS_i686-apple-darwin :=
 CFG_GCCISH_POST_LIB_FLAGS_i686-apple-darwin :=
 CFG_DEF_SUFFIX_i686-apple-darwin := .darwin.def
 CFG_INSTALL_NAME_i686-apple-darwin = -Wl,-install_name,@rpath/$(1)
+CFG_LIBUV_LINK_FLAGS_i686-apple-darwin =
+CFG_EXE_SUFFIX_i686-apple-darwin :=
+CFG_WINDOWSY_i686-apple-darwin :=
+CFG_LINUXY_i686-apple-darwin := 1
+CFG_PATH_MUNGE_i686-apple-darwin := true
+CFG_LDPATH_i686-apple-darwin :=
+CFG_RUN_i686-apple-darwin=$(2)
+CFG_RUN_TARG_i686-apple-darwin=$(call CFG_RUN_i686-apple-darwin,,$(2))
 
 # arm-unknown-android configuration
 CFG_LIB_NAME_arm-unknown-android=lib$(1).so
@@ -142,7 +157,6 @@ CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 :=
 CFG_DEF_SUFFIX_i686-pc-mingw32 := .mingw32.def
 CFG_INSTALL_NAME_i686-pc-mingw32 =
 CFG_LIBUV_LINK_FLAGS_i686-pc-mingw32 := -lWs2_32 -lpsapi -liphlpapi
-CFG_GCCISH_CROSS_PREFIX_i686-pc-mingw32 =
 CFG_EXE_SUFFIX_i686-pc-mingw32 := .exe
 CFG_WINDOWSY_i686-pc-mingw32 := 1
 CFG_LINUXY_i686-pc-mingw32 :=
@@ -178,14 +192,22 @@ CFG_RUN_TARG_i586-mingw32msvc=
 # x86_64-unknown-freebsd configuration
 CFG_LIB_NAME_x86_64-unknown-freebsd=lib$(1).so
 CFG_LIB_GLOB_x86_64-unknown-freebsd=lib$(1)-*.so
-CFG_GCCISH_CFLAGS_x86_64-unknown-freebsd += -fPIC -I/usr/local/include
-CFG_GCCISH_LINK_FLAGS_x86_64-unknown-freebsd += -shared -fPIC -lpthread -lrt
+CFG_LIB_DSYM_GLOB_x86_64-unknown-freebsd=$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_x86_64-unknown-freebsd := -Wall -Werror -g -fPIC -I/usr/local/include
+CFG_GCCISH_LINK_FLAGS_x86_64-unknown-freebsd := -shared -fPIC -g -lpthread -lrt
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-freebsd := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_x86_64-unknown-freebsd := .bsd.def
 CFG_INSTALL_NAME_x86_64-unknown-freebsd =
-CFG_GCCISH_CROSS_x86_64-unknown-freebsd =
+CFG_LIBUV_LINK_FLAGS_x86_64-unknown-freebsd := -lpthread -lkvm
+CFG_EXE_SUFFIX_x86_64-unknown-freebsd :=
+CFG_WINDOWSY_x86_64-unknown-freebsd :=
+CFG_LINUXY_x86_64-unknown-freebsd := 1
+CFG_PATH_MUNGE_x86_64-unknown-freebsd :=
+CFG_LDPATH_x86_64-unknown-freebsd :=
+CFG_RUN_x86_64-unknown-freebsd=$(2)
+CFG_RUN_TARG_x86_64-unknown-freebsd=$(call CFG_RUN_x86_64-unknown-freebsd,,$(2))
 
 # Hack: not sure how to test if a file exists in make other than this
 OS_SUPP = $(patsubst %,--suppressions=%,\
