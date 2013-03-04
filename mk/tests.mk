@@ -617,7 +617,7 @@ $(foreach stage,$(STAGES), \
 ######################################################################
 
 FT := run_pass_stage2
-FT_LIB := $(call CFG_LIB_NAME,$(FT))
+FT_LIB := $(call CFG_LIB_NAME_$(CFG_BUILD_TRIPLE),$(FT))
 FT_DRIVER := $(FT)_driver
 
 GENERATED += tmp/$(FT).rc tmp/$(FT_DRIVER).rs
