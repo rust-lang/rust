@@ -167,15 +167,15 @@ pub mod rt {
     }
 
     pub trait ExtParseUtils {
-        fn parse_item(s: ~str) -> @ast::item;
-        fn parse_expr(s: ~str) -> @ast::expr;
-        fn parse_stmt(s: ~str) -> @ast::stmt;
-        fn parse_tts(s: ~str) -> ~[ast::token_tree];
+        fn parse_item(&self, s: ~str) -> @ast::item;
+        fn parse_expr(&self, s: ~str) -> @ast::expr;
+        fn parse_stmt(&self, s: ~str) -> @ast::stmt;
+        fn parse_tts(&self, s: ~str) -> ~[ast::token_tree];
     }
 
     impl ExtParseUtils for ext_ctxt {
 
-        fn parse_item(s: ~str) -> @ast::item {
+        fn parse_item(&self, s: ~str) -> @ast::item {
             let res = parse::parse_item_from_source_str(
                 ~"<quote expansion>",
                 @(copy s),
@@ -191,7 +191,7 @@ pub mod rt {
             }
         }
 
-        fn parse_stmt(s: ~str) -> @ast::stmt {
+        fn parse_stmt(&self, s: ~str) -> @ast::stmt {
             parse::parse_stmt_from_source_str(
                 ~"<quote expansion>",
                 @(copy s),
@@ -200,7 +200,7 @@ pub mod rt {
                 self.parse_sess())
         }
 
-        fn parse_expr(s: ~str) -> @ast::expr {
+        fn parse_expr(&self, s: ~str) -> @ast::expr {
             parse::parse_expr_from_source_str(
                 ~"<quote expansion>",
                 @(copy s),
@@ -208,7 +208,7 @@ pub mod rt {
                 self.parse_sess())
         }
 
-        fn parse_tts(s: ~str) -> ~[ast::token_tree] {
+        fn parse_tts(&self, s: ~str) -> ~[ast::token_tree] {
             parse::parse_tts_from_source_str(
                 ~"<quote expansion>",
                 @(copy s),

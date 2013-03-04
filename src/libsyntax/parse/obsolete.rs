@@ -62,7 +62,7 @@ impl to_bytes::IterBytes for ObsoleteSyntax {
 
 pub impl Parser {
     /// Reports an obsolete syntax non-fatal error.
-    fn obsolete(sp: span, kind: ObsoleteSyntax) {
+    fn obsolete(&self, sp: span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
             ObsoleteLowerCaseKindBounds => (
                 "lower-case kind bounds",
@@ -154,12 +154,12 @@ pub impl Parser {
 
     // Reports an obsolete syntax non-fatal error, and returns
     // a placeholder expression
-    fn obsolete_expr(sp: span, kind: ObsoleteSyntax) -> @expr {
+    fn obsolete_expr(&self, sp: span, kind: ObsoleteSyntax) -> @expr {
         self.obsolete(sp, kind);
         self.mk_expr(sp.lo, sp.hi, expr_lit(@respan(sp, lit_nil)))
     }
 
-    priv fn report(sp: span, kind: ObsoleteSyntax, kind_str: &str,
+    priv fn report(&self, sp: span, kind: ObsoleteSyntax, kind_str: &str,
                    desc: &str) {
         self.span_err(sp, fmt!("obsolete syntax: %s", kind_str));
 
@@ -169,7 +169,7 @@ pub impl Parser {
         }
     }
 
-    fn token_is_obsolete_ident(ident: &str, token: Token) -> bool {
+    fn token_is_obsolete_ident(&self, ident: &str, token: Token) -> bool {
         match token {
             token::IDENT(copy sid, _) => {
                 str::eq_slice(*self.id_to_str(sid), ident)
@@ -178,11 +178,11 @@ pub impl Parser {
         }
     }
 
-    fn is_obsolete_ident(ident: &str) -> bool {
+    fn is_obsolete_ident(&self, ident: &str) -> bool {
         self.token_is_obsolete_ident(ident, *self.token)
     }
 
-    fn eat_obsolete_ident(ident: &str) -> bool {
+    fn eat_obsolete_ident(&self, ident: &str) -> bool {
         if self.is_obsolete_ident(ident) {
             self.bump();
             true
@@ -191,7 +191,7 @@ pub impl Parser {
         }
     }
 
-    fn try_parse_obsolete_struct_ctor() -> bool {
+    fn try_parse_obsolete_struct_ctor(&self) -> bool {
         if self.eat_obsolete_ident("new") {
             self.obsolete(*self.last_span, ObsoleteStructCtor);
             self.parse_fn_decl(|p| p.parse_arg());
@@ -202,7 +202,7 @@ pub impl Parser {
         }
     }
 
-    fn try_parse_obsolete_with() -> bool {
+    fn try_parse_obsolete_with(&self) -> bool {
         if *self.token == token::COMMA
             && self.token_is_obsolete_ident("with",
                                             self.look_ahead(1u)) {
@@ -217,7 +217,7 @@ pub impl Parser {
         }
     }
 
-    fn try_parse_obsolete_priv_section() -> bool {
+    fn try_parse_obsolete_priv_section(&self) -> bool {
         if self.is_keyword(&~"priv") && self.look_ahead(1) == token::LBRACE {
             self.obsolete(copy *self.span, ObsoletePrivSection);
             self.eat_keyword(&~"priv");

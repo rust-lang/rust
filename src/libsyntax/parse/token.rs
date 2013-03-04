@@ -359,16 +359,16 @@ pub struct ident_interner {
 }
 
 pub impl ident_interner {
-    fn intern(val: @~str) -> ast::ident {
+    fn intern(&self, val: @~str) -> ast::ident {
         ast::ident { repr: self.interner.intern(val) }
     }
-    fn gensym(val: @~str) -> ast::ident {
+    fn gensym(&self, val: @~str) -> ast::ident {
         ast::ident { repr: self.interner.gensym(val) }
     }
-    pure fn get(idx: ast::ident) -> @~str {
+    pure fn get(&self, idx: ast::ident) -> @~str {
         self.interner.get(idx.repr)
     }
-    fn len() -> uint {
+    fn len(&self) -> uint {
         self.interner.len()
     }
 }

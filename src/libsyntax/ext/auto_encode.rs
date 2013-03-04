@@ -223,6 +223,7 @@ pub fn expand_auto_decode(
 
 priv impl ext_ctxt {
     fn bind_path(
+        &self,
         span: span,
         ident: ast::ident,
         path: @ast::path,
@@ -241,7 +242,7 @@ priv impl ext_ctxt {
         }
     }
 
-    fn expr(span: span, +node: ast::expr_) -> @ast::expr {
+    fn expr(&self, span: span, +node: ast::expr_) -> @ast::expr {
         @ast::expr {
             id: self.next_id(),
             callee_id: self.next_id(),
@@ -250,7 +251,7 @@ priv impl ext_ctxt {
         }
     }
 
-    fn path(span: span, +strs: ~[ast::ident]) -> @ast::path {
+    fn path(&self, span: span, +strs: ~[ast::ident]) -> @ast::path {
         @ast::path {
             span: span,
             global: false,
@@ -260,7 +261,7 @@ priv impl ext_ctxt {
         }
     }
 
-    fn path_global(span: span, +strs: ~[ast::ident]) -> @ast::path {
+    fn path_global(&self, span: span, +strs: ~[ast::ident]) -> @ast::path {
         @ast::path {
             span: span,
             global: true,
@@ -271,6 +272,7 @@ priv impl ext_ctxt {
     }
 
     fn path_tps(
+        &self,
         span: span,
         +strs: ~[ast::ident],
         +tps: ~[@ast::Ty]
@@ -285,6 +287,7 @@ priv impl ext_ctxt {
     }
 
     fn path_tps_global(
+        &self,
         span: span,
         +strs: ~[ast::ident],
         +tps: ~[@ast::Ty]
@@ -299,6 +302,7 @@ priv impl ext_ctxt {
     }
 
     fn ty_path(
+        &self,
         span: span,
         +strs: ~[ast::ident],
         +tps: ~[@ast::Ty]
@@ -312,7 +316,7 @@ priv impl ext_ctxt {
         }
     }
 
-    fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
+    fn binder_pat(&self, span: span, nm: ast::ident) -> @ast::pat {
         @ast::pat {
             id: self.next_id(),
             node: ast::pat_ident(
@@ -323,12 +327,12 @@ priv impl ext_ctxt {
         }
     }
 
-    fn stmt(expr: @ast::expr) -> @ast::stmt {
+    fn stmt(&self, expr: @ast::expr) -> @ast::stmt {
         @codemap::spanned { node: ast::stmt_semi(expr, self.next_id()),
                        span: expr.span }
     }
 
-    fn lit_str(span: span, s: @~str) -> @ast::expr {
+    fn lit_str(&self, span: span, s: @~str) -> @ast::expr {
         self.expr(
             span,
             ast::expr_vstore(
@@ -340,7 +344,7 @@ priv impl ext_ctxt {
                 ast::expr_vstore_uniq))
     }
 
-    fn lit_uint(span: span, i: uint) -> @ast::expr {
+    fn lit_uint(&self, span: span, i: uint) -> @ast::expr {
         self.expr(
             span,
             ast::expr_lit(
@@ -348,13 +352,13 @@ priv impl ext_ctxt {
                                 span: span}))
     }
 
-    fn lambda(+blk: ast::blk) -> @ast::expr {
-        let ext_cx = self;
+    fn lambda(&self, +blk: ast::blk) -> @ast::expr {
+        let ext_cx = *self;
         let blk_e = self.expr(copy blk.span, ast::expr_block(copy blk));
         quote_expr!( || $blk_e )
     }
 
-    fn blk(span: span, +stmts: ~[@ast::stmt]) -> ast::blk {
+    fn blk(&self, span: span, +stmts: ~[@ast::stmt]) -> ast::blk {
         codemap::spanned {
             node: ast::blk_ {
                 view_items: ~[],
@@ -367,7 +371,7 @@ priv impl ext_ctxt {
         }
     }
 
-    fn expr_blk(expr: @ast::expr) -> ast::blk {
+    fn expr_blk(&self, expr: @ast::expr) -> ast::blk {
         codemap::spanned {
             node: ast::blk_ {
                 view_items: ~[],
@@ -380,19 +384,24 @@ priv impl ext_ctxt {
         }
     }
 
-    fn expr_path(span: span, +strs: ~[ast::ident]) -> @ast::expr {
+    fn expr_path(&self, span: span, +strs: ~[ast::ident]) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path(span, strs)))
     }
 
-    fn expr_path_global(span: span, +strs: ~[ast::ident]) -> @ast::expr {
+    fn expr_path_global(
+        &self,
+        span: span,
+        +strs: ~[ast::ident]
+    ) -> @ast::expr {
         self.expr(span, ast::expr_path(self.path_global(span, strs)))
     }
 
-    fn expr_var(span: span, +var: ~str) -> @ast::expr {
+    fn expr_var(&self, span: span, +var: ~str) -> @ast::expr {
         self.expr_path(span, ~[self.ident_of(var)])
     }
 
     fn expr_field(
+        &self,
         span: span,
         expr: @ast::expr,
         ident: ast::ident
@@ -401,6 +410,7 @@ priv impl ext_ctxt {
     }
 
     fn expr_call(
+        &self,
         span: span,
         expr: @ast::expr,
         +args: ~[@ast::expr]
@@ -408,11 +418,11 @@ priv impl ext_ctxt {
         self.expr(span, ast::expr_call(expr, args, ast::NoSugar))
     }
 
-    fn lambda_expr(expr: @ast::expr) -> @ast::expr {
+    fn lambda_expr(&self, expr: @ast::expr) -> @ast::expr {
         self.lambda(self.expr_blk(expr))
     }
 
-    fn lambda_stmts(span: span, +stmts: ~[@ast::stmt]) -> @ast::expr {
+    fn lambda_stmts(&self, span: span, +stmts: ~[@ast::stmt]) -> @ast::expr {
         self.lambda(self.blk(span, stmts))
     }
 }

@@ -21,21 +21,24 @@ use core::either::{Either, Left, Right};
 
 // a parser that can parse attributes.
 pub trait parser_attr {
-    fn parse_outer_attributes() -> ~[ast::attribute];
-    fn parse_attribute(style: ast::attr_style) -> ast::attribute;
-    fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->
-        ast::attribute;
-    fn parse_inner_attrs_and_next() ->
+    fn parse_outer_attributes(&self) -> ~[ast::attribute];
+    fn parse_attribute(&self, style: ast::attr_style) -> ast::attribute;
+    fn parse_attribute_naked(
+        &self,
+        style: ast::attr_style,
+        lo: BytePos
+    ) -> ast::attribute;
+    fn parse_inner_attrs_and_next(&self) ->
         (~[ast::attribute], ~[ast::attribute]);
-    fn parse_meta_item() -> @ast::meta_item;
-    fn parse_meta_seq() -> ~[@ast::meta_item];
-    fn parse_optional_meta() -> ~[@ast::meta_item];
+    fn parse_meta_item(&self) -> @ast::meta_item;
+    fn parse_meta_seq(&self) -> ~[@ast::meta_item];
+    fn parse_optional_meta(&self) -> ~[@ast::meta_item];
 }
 
 impl parser_attr for Parser {
 
     // Parse attributes that appear before an item
-    fn parse_outer_attributes() -> ~[ast::attribute] {
+    fn parse_outer_attributes(&self) -> ~[ast::attribute] {
         let mut attrs: ~[ast::attribute] = ~[];
         loop {
             match *self.token {
@@ -63,13 +66,13 @@ impl parser_attr for Parser {
         return attrs;
     }
 
-    fn parse_attribute(style: ast::attr_style) -> ast::attribute {
+    fn parse_attribute(&self, style: ast::attr_style) -> ast::attribute {
         let lo = self.span.lo;
         self.expect(&token::POUND);
         return self.parse_attribute_naked(style, lo);
     }
 
-    fn parse_attribute_naked(style: ast::attr_style, lo: BytePos) ->
+    fn parse_attribute_naked(&self, style: ast::attr_style, lo: BytePos) ->
         ast::attribute {
         self.expect(&token::LBRACKET);
         let meta_item = self.parse_meta_item();
@@ -89,7 +92,7 @@ impl parser_attr for Parser {
 
     // you can make the 'next' field an Option, but the result is going to be
     // more useful as a vector.
-    fn parse_inner_attrs_and_next() ->
+    fn parse_inner_attrs_and_next(&self) ->
         (~[ast::attribute], ~[ast::attribute]) {
         let mut inner_attrs: ~[ast::attribute] = ~[];
         let mut next_outer_attrs: ~[ast::attribute] = ~[];
@@ -135,7 +138,7 @@ impl parser_attr for Parser {
         (inner_attrs, next_outer_attrs)
     }
 
-    fn parse_meta_item() -> @ast::meta_item {
+    fn parse_meta_item(&self) -> @ast::meta_item {
         let lo = self.span.lo;
         let name = self.id_to_str(self.parse_ident());
         match *self.token {
@@ -157,7 +160,7 @@ impl parser_attr for Parser {
         }
     }
 
-    fn parse_meta_seq() -> ~[@ast::meta_item] {
+    fn parse_meta_seq(&self) -> ~[@ast::meta_item] {
         copy self.parse_seq(
             &token::LPAREN,
             &token::RPAREN,
@@ -166,7 +169,7 @@ impl parser_attr for Parser {
         ).node
     }
 
-    fn parse_optional_meta() -> ~[@ast::meta_item] {
+    fn parse_optional_meta(&self) -> ~[@ast::meta_item] {
         match *self.token {
             token::LPAREN => self.parse_meta_seq(),
             _ => ~[]
