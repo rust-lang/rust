@@ -30,7 +30,7 @@ PREFIX_ROOT = $(CFG_PREFIX)
 PREFIX_BIN = $(PREFIX_ROOT)/bin
 PREFIX_LIB = $(PREFIX_ROOT)/$(CFG_LIBDIR)
 
-define INSTALL_TARGET_N
+define INSTALL_PREPARE_N
   # $(1) is the target triple
   # $(2) is the host triple
 
@@ -43,6 +43,24 @@ PTR$(1)$(2) = $$(PREFIX_LIB)/rustc/$(1)
 PTB$(1)$(2) = $$(PTR$(1)$(2))/bin
 PTL$(1)$(2) = $$(PTR$(1)$(2))/$(CFG_LIBDIR)
 
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+ $(eval $(call INSTALL_PREPARE_N,$(target),$(CFG_BUILD_TRIPLE))))
+
+define INSTALL_TARGET_N
+install-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
+	$$(Q)mkdir -p $$(PTL$(1)$(2))
+	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
+	$$(Q)$$(call INSTALL_LIB, \
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CORELIB_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB, \
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB_$(1)))
+	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
+
+endef
+
+define INSTALL_HOST_N
 install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
@@ -67,7 +85,9 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 endef
 
 $(foreach target,$(CFG_TARGET_TRIPLES), \
- $(eval $(call INSTALL_TARGET_N,$(target),$(CFG_BUILD_TRIPLE))))
+ $(if $(findstring $(target), $(CFG_BUILD_TRIPLE)), \
+  $(eval $(call INSTALL_HOST_N,$(target),$(CFG_BUILD_TRIPLE))), \
+  $(eval $(call INSTALL_TARGET_N,$(target),$(CFG_BUILD_TRIPLE)))))
 
 INSTALL_TARGET_RULES = $(foreach target,$(CFG_TARGET_TRIPLES), \
  install-target-$(target)-host-$(CFG_BUILD_TRIPLE))
