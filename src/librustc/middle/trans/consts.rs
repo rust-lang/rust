@@ -122,7 +122,7 @@ pub fn const_autoderef(cx: @CrateContext, ty: ty::t, v: ValueRef)
     let mut v1 = v;
     loop {
         // Only rptrs can be autoderef'ed in a const context.
-        match ty::get(ty).sty {
+        match ty::get(t1).sty {
             ty::ty_rptr(_, mt) => {
                 t1 = mt.ty;
                 v1 = const_deref(cx, v1);
@@ -320,6 +320,9 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               (expr::cast_float, expr::cast_integral) => {
                 if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty) }
                 else { llvm::LLVMConstFPToUI(v, llty) }
+              }
+              (expr::cast_pointer, expr::cast_pointer) => {
+                llvm::LLVMConstPointerCast(v, llty)
               }
               _ => {
                 cx.sess.impossible_case(e.span,
