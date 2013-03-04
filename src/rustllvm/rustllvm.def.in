@@ -384,7 +384,6 @@ LLVMInitializeScalarOpts
 LLVMInitializeTarget
 LLVMInitializeTransformUtils
 LLVMInitializeARMAsmLexer
-LLVMInitializeMipsAsmLexer
 LLVMInitializeX86AsmLexer
 LLVMInitializeARMAsmParser
 LLVMInitializeMipsAsmParser
