@@ -544,14 +544,20 @@ then
     then
         err "NDK $CFG_ANDROID_NDK_PATH/bin/arm-linux-androideabi-ar not found"
     fi
-
-    CFG_CROSS_PREFIX_arm=$CFG_ANDROID_NDK_PATH"/bin/arm-linux-androideabi-"
 fi
 
 # a little post-processing of various config values
 
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
+
+# copy host-triples to target-triples so that hosts are a subset of targets
+V_TEMP=""
+for i in $CFG_HOST_TRIPLES $CFG_TARGET_TRIPLES;
+do
+   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
+done
+CFG_TARGET_TRIPLES=$V_TEMP
 
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
@@ -841,7 +847,7 @@ putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_DISABLE_MANAGE_SUBMODULES
-putvar CFG_CROSS_PREFIX_arm
+putvar CFG_ANDROID_NDK_PATH
 
 if [ ! -z "$CFG_ENABLE_PAX_FLAGS" ]
 then

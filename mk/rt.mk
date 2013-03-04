@@ -159,14 +159,14 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 		OS=mingw \
 		V=$$(VERBOSE)
 else
-ifeq ($$(HOST_$(1)), arm)
+ifeq ($(1), arm-unknown-android)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(LIBUV_FLAGS_$$(HOST_$(1)))" \
-		CC="$$(CFG_GCCISH_CROSS_$(1))$$(CC)" \
-		CXX="$$(CFG_GCCISH_CROSS_$(1))$$(CXX)" \
-		AR="$$(CFG_CROSS_PREFIX_arm)$$(AR)" \
+		CC=$$(CC_$(1)) \
+		CXX=$$(CXX_$(1)) \
+		AR=$$(AR_$(1)) \
 		BUILDTYPE=Release \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		host=android OS=linux \

@@ -48,7 +48,6 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
-CFG_GCCISH_CROSS_x86_64-unknown-linux-gnu =
 
 # i686-unknown-linux-gnu configuration
 CFG_LIB_NAME_i686-unknown-linux-gnu=lib$(1).so
@@ -56,13 +55,12 @@ CFG_LIB_GLOB_i686-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_i686-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
 CFG_GCCISH_CFLAGS_i686-unknown-linux-gnu := -Wall -Werror -g -fPIC -m32
 CFG_GCCISH_CXXFLAGS_i686-unknown-linux-gnu := -fno-rtti
-CFG_GCCISH_LINK_FLAGS_i6868-unknown-linux-gnu := -shared -fPIC -ldl -lpthread -lrt -g -m32
-CFG_GCCISH_DEF_FLAG_i6868-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_LINK_FLAGS_i686-unknown-linux-gnu := -shared -fPIC -ldl -lpthread -lrt -g -m32
+CFG_GCCISH_DEF_FLAG_i686-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_i686-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_i686-unknown-linux-gnu =
-CFG_GCCISH_CROSS_i686-unknown-linux-gnu =
 
 # x86_64-apple-darwin configuration
 CFG_LIB_NAME_x86_64-apple-darwin=lib$(1).dylib
@@ -102,7 +100,6 @@ CFG_GCCISH_PRE_LIB_FLAGS_arm-unknown-android := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_arm-unknown-android := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_arm-unknown-android := .android.def
 CFG_INSTALL_NAME_arm-unknown-android =
-CFG_GCCISH_CROSS_arm-unknown-android = $(CFG_CROSS_PREFIX_arm)
 
 # i686-pc-mingw32 configuration
 CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
@@ -116,7 +113,6 @@ CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 :=
 CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 := 
 CFG_DEF_SUFFIX_i686-pc-mingw32 := .def
 CFG_INSTALL_NAME_i686-pc-mingw32 =
-CFG_GCCISH_CROSS_i686-pc-mingw32 =
 
 # x86_64-unknown-freebsd configuration
 CFG_LIB_NAME_x86_64-unknown-freebsd=lib$(1).so
@@ -128,7 +124,6 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_x86_64-unknown-freebsd := .bsd.def
 CFG_INSTALL_NAME_x86_64-unknown-freebsd =
-CFG_GCCISH_CROSS_x86_64-unknown-freebsd =
 
 # Hack: not sure how to test if a file exists in make other than this
 OS_SUPP = $(patsubst %,--suppressions=%,\
@@ -261,11 +256,8 @@ ifeq ($(CFG_C_COMPILER),clang)
     CXX=clang++
   endif
   ifeq ($(origin CPP),default)
-    CPP=clang
+    CPP=clang -E
   endif
-  CFG_GCCISH_CFLAGS += 
-  CFG_GCCISH_CXXFLAGS += 
-  CFG_GCCISH_LINK_FLAGS += 
   # These flags will cause the compiler to produce a .d file
   # next to the .o file that lists header deps.
   CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
@@ -279,11 +271,8 @@ ifeq ($(CFG_C_COMPILER),gcc)
     CXX=g++
   endif
   ifeq ($(origin CPP),default)
-    CPP=gcc
+    CPP=gcc -E
   endif
-  CFG_GCCISH_CFLAGS += 
-  CFG_GCCISH_CXXFLAGS += 
-  CFG_GCCISH_LINK_FLAGS += 
   # These flags will cause the compiler to produce a .d file
   # next to the .o file that lists header deps.
   CFG_DEPEND_FLAGS = -MMD -MP -MT $(1) -MF $(1:%.o=%.d)
@@ -294,55 +283,57 @@ endif
 endif
 
 define CFG_MAKE_CC
-  ifeq ($$(CFG_BUILD_TRIPLE),$(1))
-  
-  CFG_COMPILE_C_$(1) = $$(CC)  \
+
+  ifeq (arm-unknown-android,$(1))
+    CC_$(1)="$$(ANDROID_NDK_PATH)/bin/arm-linux-androidabi-gcc"
+    CXX_$(1)="$$(ANDROID_NDK_PATH)/bin/arm-linux-androidabi-g++"
+    CPP_$(1)="$$(ANDROID_NDK_PATH)/bin/arm-linux-androidabi-gcc" -E
+    AR_$(1)="$$(ANDROID_NDK_PATH)/bin/arm-linux-androidabi-ar"
+  else
+    CC_$(1)=$(CC)
+    CXX_$(1)=$(CXX)
+    CPP_$(1)=$(CPP)
+    AR_$(1)=ar
+  endif
+
+  CFG_COMPILE_C_$(1) = $$(CC_$(1))  \
         $$(CFG_GCCISH_CFLAGS)      \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
         $$(CFG_DEPEND_FLAGS)       \
         -c -o $$(1) $$(2)
-  CFG_LINK_C_$(1) = $$(CC) \
+  CFG_LINK_C_$(1) = $$(CC_$(1)) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)          \
         $$(CFG_GCCISH_LINK_FLAGS_$(1)))             \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)     \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
-  CFG_COMPILE_CXX_$(1) = $$(CXX) \
+  CFG_COMPILE_CXX_$(1) = $$(CXX_$(1)) \
         $$(CFG_GCCISH_CFLAGS)      \
         $$(CFG_GCCISH_CXXFLAGS)    \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
         $$(CFG_GCCISH_CXXFLAGS_$(1))    \
         $$(CFG_DEPEND_FLAGS)       \
         -c -o $$(1) $$(2)
-  CFG_LINK_CXX_$(1) = $$(CXX) \
+  CFG_LINK_CXX_$(1) = $$(CXX_$(1)) \
         $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)             \
         $$(CFG_GCCISH_LINK_FLAGS_$(1))                 \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
+
+  ifeq (arm-unknown-android,$(1))
+
+  CFG_ASSEMBLE_$(1)=$$(CC_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1) 
+
   else
-  
-  CFG_COMPILE_C_$(1) = $(CFG_GCCISH_CROSS_$(1))$$(CC)  \
-        $$(CFG_GCCISH_CFLAGS)      \
-        $$(CFG_GCCISH_CFLAGS_$(1)) \
-        $$(CFG_DEPEND_FLAGS)       \
-        -c -o $$(1) $$(2)
-  CFG_LINK_C_$(1) = $(CFG_GCCISH_CROSS_$(1))$$(CC) \
-        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)          \
-        $$(CFG_GCCISH_LINK_FLAGS_$(1)))             \
-        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)     \
-        $$(call CFG_INSTALL_NAME_$(1),$$(4))
-  CFG_COMPILE_CXX_$(1) = $(CFG_GCCISH_CROSS_$(1))$$(CXX) \
-        $$(CFG_GCCISH_CFLAGS)      \
-        $$(CFG_GCCISH_CXXFLAGS)    \
-        $$(CFG_GCCISH_CFLAGS_$(1)) \
-        $$(CFG_GCCISH_CXXFLAGS_$(1))    \
-        $$(CFG_DEPEND_FLAGS)       \
-        -c -o $$(1) $$(2)
-  CFG_LINK_CXX_$(1) = $(CFG_GCCISH_CROSS_$(1))$$(CXX) \
-        $$(CFG_GCCISH_LINK_FLAGS) -o $$(1)             \
-        $$(CFG_GCCISH_LINK_FLAGS_$(1))                 \
-        $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2)        \
-        $$(call CFG_INSTALL_NAME_$(1),$$(4))
+
+  # We're using llvm-mc as our assembler because it supports
+  # .cfi pseudo-ops on mac
+  CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
+                    $$(LLVM_MC_$$(CFG_BUILD_TRIPLE)) \
+                    -assemble \
+                    -filetype=obj \
+                    -triple=$(1) \
+                    -o=$$(1)
 
   endif
 
@@ -350,25 +341,3 @@ endef
 
 $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(eval $(call CFG_MAKE_CC,$(target))))
-
-# We're using llvm-mc as our assembler because it supports
-# .cfi pseudo-ops on mac
-define CFG_MAKE_ASSEMBLER
-  ifeq ($$(CFG_BUILD_TRIPLE),$(1))
-
-  CFG_ASSEMBLE_$(1)=$$(CPP) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
-                    $$(LLVM_MC_$$(CFG_BUILD_TRIPLE)) \
-                    -assemble \
-                    -filetype=obj \
-                    -triple=$(1) \
-                    -o=$$(1)
-  else
-
-  CFG_ASSEMBLE_$(1)=$(CFG_GCCISH_CROSS_$(1))$$(CPP) $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1) 
-
-  endif
-
-endef
-
-$(foreach target,$(CFG_TARGET_TRIPLES),\
-  $(eval $(call CFG_MAKE_ASSEMBLER,$(target))))
