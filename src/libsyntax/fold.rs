@@ -900,8 +900,8 @@ impl ast_fold for AstFoldFns {
 }
 
 pub impl ast_fold {
-    fn fold_attributes(attrs: ~[attribute]) -> ~[attribute] {
-        attrs.map(|x| fold_attribute_(*x, self))
+    fn fold_attributes(&self, attrs: ~[attribute]) -> ~[attribute] {
+        attrs.map(|x| fold_attribute_(*x, *self))
     }
 }
 
