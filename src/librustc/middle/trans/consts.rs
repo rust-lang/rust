@@ -110,7 +110,7 @@ pub fn const_autoderef(cx: @CrateContext, ty: ty::t, v: ValueRef)
     let mut v1 = v;
     loop {
         // Only rptrs can be autoderef'ed in a const context.
-        match ty::get(ty).sty {
+        match ty::get(t1).sty {
             ty::ty_rptr(_, mt) => {
                 t1 = mt.ty;
                 v1 = const_deref(cx, v1);
@@ -337,6 +337,9 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                     _ => cx.sess.bug(~"enum cast destination is not \
                                        integral or float")
                 }
+              }
+              (expr::cast_pointer, expr::cast_pointer) => {
+                llvm::LLVMConstPointerCast(v, llty)
               }
               _ => {
                 cx.sess.impossible_case(e.span,
