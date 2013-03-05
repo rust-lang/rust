@@ -44,7 +44,7 @@ pub fn unwrap<T>(m: Mut<T>) -> T {
 }
 
 pub impl<T> Data<T> {
-    fn borrow_mut<R>(op: &fn(t: &mut T) -> R) -> R {
+    fn borrow_mut<R>(&self, op: &fn(t: &mut T) -> R) -> R {
         match self.mode {
             Immutable => fail!(fmt!("%? currently immutable",
                                    self.value)),
@@ -56,11 +56,11 @@ pub impl<T> Data<T> {
         }
     }
 
-    pure fn borrow_const<R>(op: &fn(t: &const T) -> R) -> R {
+    pure fn borrow_const<R>(&self, op: &fn(t: &const T) -> R) -> R {
         op(&const self.value)
     }
 
-    fn borrow_imm<R>(op: &fn(t: &T) -> R) -> R {
+    fn borrow_imm<R>(&self, op: &fn(t: &T) -> R) -> R {
         match self.mode {
           Mutable => fail!(fmt!("%? currently mutable",
                                self.value)),

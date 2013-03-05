@@ -131,7 +131,7 @@ extern mod rustrt {
 /// A random number generator
 pub trait Rng {
     /// Return the next random integer
-    fn next() -> u32;
+    fn next(&self) -> u32;
 }
 
 /// A value with a particular weight compared to other values
@@ -143,12 +143,12 @@ pub struct Weighted<T> {
 /// Extension methods for random number generators
 pub impl Rng {
     /// Return a random value for a Rand type
-    fn gen<T:Rand>() -> T {
-        Rand::rand(self)
+    fn gen<T:Rand>(&self) -> T {
+        Rand::rand(*self)
     }
 
     /// Return a random int
-    fn gen_int() -> int {
+    fn gen_int(&self) -> int {
         self.gen_i64() as int
     }
 
@@ -156,33 +156,33 @@ pub impl Rng {
      * Return an int randomly chosen from the range [start, end),
      * failing if start >= end
      */
-    fn gen_int_range(start: int, end: int) -> int {
+    fn gen_int_range(&self, start: int, end: int) -> int {
         assert start < end;
         start + int::abs(self.gen_int() % (end - start))
     }
 
     /// Return a random i8
-    fn gen_i8() -> i8 {
+    fn gen_i8(&self) -> i8 {
         self.next() as i8
     }
 
     /// Return a random i16
-    fn gen_i16() -> i16 {
+    fn gen_i16(&self) -> i16 {
         self.next() as i16
     }
 
     /// Return a random i32
-    fn gen_i32() -> i32 {
+    fn gen_i32(&self) -> i32 {
         self.next() as i32
     }
 
     /// Return a random i64
-    fn gen_i64() -> i64 {
+    fn gen_i64(&self) -> i64 {
         (self.next() as i64 << 32) | self.next() as i64
     }
 
     /// Return a random uint
-    fn gen_uint() -> uint {
+    fn gen_uint(&self) -> uint {
         self.gen_u64() as uint
     }
 
@@ -190,43 +190,43 @@ pub impl Rng {
      * Return a uint randomly chosen from the range [start, end),
      * failing if start >= end
      */
-    fn gen_uint_range(start: uint, end: uint) -> uint {
+    fn gen_uint_range(&self, start: uint, end: uint) -> uint {
         assert start < end;
         start + (self.gen_uint() % (end - start))
     }
 
     /// Return a random u8
-    fn gen_u8() -> u8 {
+    fn gen_u8(&self) -> u8 {
         self.next() as u8
     }
 
     /// Return a random u16
-    fn gen_u16() -> u16 {
+    fn gen_u16(&self) -> u16 {
         self.next() as u16
     }
 
     /// Return a random u32
-    fn gen_u32() -> u32 {
+    fn gen_u32(&self) -> u32 {
         self.next()
     }
 
     /// Return a random u64
-    fn gen_u64() -> u64 {
+    fn gen_u64(&self) -> u64 {
         (self.next() as u64 << 32) | self.next() as u64
     }
 
     /// Return a random float in the interval [0,1]
-    fn gen_float() -> float {
+    fn gen_float(&self) -> float {
         self.gen_f64() as float
     }
 
     /// Return a random f32 in the interval [0,1]
-    fn gen_f32() -> f32 {
+    fn gen_f32(&self) -> f32 {
         self.gen_f64() as f32
     }
 
     /// Return a random f64 in the interval [0,1]
-    fn gen_f64() -> f64 {
+    fn gen_f64(&self) -> f64 {
         let u1 = self.next() as f64;
         let u2 = self.next() as f64;
         let u3 = self.next() as f64;
@@ -235,25 +235,25 @@ pub impl Rng {
     }
 
     /// Return a random char
-    fn gen_char() -> char {
+    fn gen_char(&self) -> char {
         self.next() as char
     }
 
     /**
      * Return a char randomly chosen from chars, failing if chars is empty
      */
-    fn gen_char_from(chars: &str) -> char {
+    fn gen_char_from(&self, chars: &str) -> char {
         assert !chars.is_empty();
         self.choose(str::chars(chars))
     }
 
     /// Return a random bool
-    fn gen_bool() -> bool {
+    fn gen_bool(&self) -> bool {
         self.next() & 1u32 == 1u32
     }
 
     /// Return a bool with a 1 in n chance of true
-    fn gen_weighted_bool(n: uint) -> bool {
+    fn gen_weighted_bool(&self, n: uint) -> bool {
         if n == 0u {
             true
         } else {
@@ -264,7 +264,7 @@ pub impl Rng {
     /**
      * Return a random string of the specified length composed of A-Z,a-z,0-9
      */
-    fn gen_str(len: uint) -> ~str {
+    fn gen_str(&self, len: uint) -> ~str {
         let charset = ~"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                        abcdefghijklmnopqrstuvwxyz\
                        0123456789";
@@ -278,19 +278,19 @@ pub impl Rng {
     }
 
     /// Return a random byte string of the specified length
-    fn gen_bytes(len: uint) -> ~[u8] {
+    fn gen_bytes(&self, len: uint) -> ~[u8] {
         do vec::from_fn(len) |_i| {
             self.gen_u8()
         }
     }
 
     /// Choose an item randomly, failing if values is empty
-    fn choose<T:Copy>(values: &[T]) -> T {
+    fn choose<T:Copy>(&self, values: &[T]) -> T {
         self.choose_option(values).get()
     }
 
     /// Choose Some(item) randomly, returning None if values is empty
-    fn choose_option<T:Copy>(values: &[T]) -> Option<T> {
+    fn choose_option<T:Copy>(&self, values: &[T]) -> Option<T> {
         if values.is_empty() {
             None
         } else {
@@ -302,7 +302,7 @@ pub impl Rng {
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      */
-    fn choose_weighted<T:Copy>(v : &[Weighted<T>]) -> T {
+    fn choose_weighted<T:Copy>(&self, v : &[Weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
@@ -310,7 +310,7 @@ pub impl Rng {
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
      */
-    fn choose_weighted_option<T:Copy>(v: &[Weighted<T>]) -> Option<T> {
+    fn choose_weighted_option<T:Copy>(&self, v: &[Weighted<T>]) -> Option<T> {
         let mut total = 0u;
         for v.each |item| {
             total += item.weight;
@@ -333,7 +333,7 @@ pub impl Rng {
      * Return a vec containing copies of the items, in order, where
      * the weight of the item determines how many copies there are
      */
-    fn weighted_vec<T:Copy>(v: &[Weighted<T>]) -> ~[T] {
+    fn weighted_vec<T:Copy>(&self, v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
         for v.each |item| {
             for uint::range(0u, item.weight) |_i| {
@@ -344,14 +344,14 @@ pub impl Rng {
     }
 
     /// Shuffle a vec
-    fn shuffle<T:Copy>(values: &[T]) -> ~[T] {
+    fn shuffle<T:Copy>(&self, values: &[T]) -> ~[T] {
         let mut m = vec::from_slice(values);
         self.shuffle_mut(m);
         m
     }
 
     /// Shuffle a mutable vec in place
-    fn shuffle_mut<T>(values: &mut [T]) {
+    fn shuffle_mut<T>(&self, values: &mut [T]) {
         let mut i = values.len();
         while i >= 2u {
             // invariant: elements with index >= i have been locked in place.
@@ -382,7 +382,7 @@ fn RandRes(rng: *rust_rng) -> RandRes {
 }
 
 impl Rng for @RandRes {
-    fn next() -> u32 {
+    fn next(&self) -> u32 {
         unsafe {
             return rustrt::rand_next((*self).rng);
         }
@@ -432,7 +432,7 @@ struct XorShiftState {
 }
 
 impl Rng for XorShiftState {
-    fn next() -> u32 {
+    fn next(&self) -> u32 {
         let x = self.x;
         let mut t = x ^ (x << 11);
         self.x = self.y;

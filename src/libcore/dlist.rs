@@ -148,7 +148,7 @@ priv impl<T> DList<T> {
             fail!(~"That node isn't on this dlist.")
         }
     }
-    fn make_mine(nobe: @mut DListNode<T>) {
+    fn make_mine(&self, nobe: @mut DListNode<T>) {
         if nobe.prev.is_some() || nobe.next.is_some() || nobe.linked {
             fail!(~"Cannot insert node that's already on a dlist!")
         }

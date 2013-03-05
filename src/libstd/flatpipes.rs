@@ -257,13 +257,13 @@ pub trait ByteChan {
 const CONTINUE: [u8 * 4] = [0xAA, 0xBB, 0xCC, 0xDD];
 
 impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
-    fn recv() -> T {
+    fn recv(&self) -> T {
         match self.try_recv() {
             Some(val) => val,
             None => fail!(~"port is closed")
         }
     }
-    fn try_recv() -> Option<T> {
+    fn try_recv(&self) -> Option<T> {
         let command = match self.byte_port.try_recv(CONTINUE.len()) {
             Some(c) => c,
             None => {
@@ -302,7 +302,7 @@ impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
 }
 
 impl<T,F:Flattener<T>,C:ByteChan> GenericChan<T> for FlatChan<T, F, C> {
-    fn send(val: T) {
+    fn send(&self, val: T) {
         self.byte_chan.send(CONTINUE.to_vec());
         let bytes = self.flattener.flatten(val);
         let len = bytes.len() as u64;
