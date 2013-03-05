@@ -642,7 +642,8 @@ pub impl Parser {
                 self.obsolete(*self.last_span, ObsoleteMutVector);
             }
 
-            // Parse the `* 3` in `[ int * 3 ]`
+            // Parse the `* e` in `[ int * e ]`
+            // where `e` is a const expression
             let t = match self.maybe_parse_fixed_vstore_with_star() {
                 None => ty_vec(mt),
                 Some(suffix) => ty_fixed_length_vec(mt, suffix)
@@ -814,23 +815,9 @@ pub impl Parser {
         })
     }
 
-    fn maybe_parse_fixed_vstore_with_star(&self) -> Option<uint> {
+    fn maybe_parse_fixed_vstore_with_star(&self) -> Option<@ast::expr> {
         if self.eat(&token::BINOP(token::STAR)) {
-            match *self.token {
-                token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 => {
-                    self.bump();
-                    Some(i as uint)
-                }
-                _ => {
-                    self.fatal(
-                        fmt!(
-                            "expected integral vector length \
-                            but found `%s`",
-                            token_to_str(self.reader, &copy *self.token)
-                        )
-                    );
-                }
-            }
+            Some(self.parse_expr())
         } else {
             None
         }

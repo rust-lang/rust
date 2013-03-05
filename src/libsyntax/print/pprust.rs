@@ -425,7 +425,7 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
         }
         print_type(s, mt.ty);
         word(s.s, ~" * ");
-        word(s.s, fmt!("%u", v));
+        word(s.s, fmt!("%?", v));
         word(s.s, ~"]");
       }
       ast::ty_mac(_) => {
@@ -1015,7 +1015,7 @@ pub fn print_mac(s: @ps, m: ast::mac) {
 
 pub fn print_vstore(s: @ps, t: ast::vstore) {
     match t {
-        ast::vstore_fixed(Some(i)) => word(s.s, fmt!("%u", i)),
+        ast::vstore_fixed(Some(i)) => word(s.s, fmt!("%?", i)),
         ast::vstore_fixed(None) => word(s.s, ~"_"),
         ast::vstore_uniq => word(s.s, ~"~"),
         ast::vstore_box => word(s.s, ~"@"),
@@ -1028,7 +1028,7 @@ pub fn print_vstore(s: @ps, t: ast::vstore) {
 
 pub fn print_expr_vstore(s: @ps, t: ast::expr_vstore) {
     match t {
-      ast::expr_vstore_fixed(Some(i)) => word(s.s, fmt!("%u", i)),
+      ast::expr_vstore_fixed(Some(i)) => word(s.s, fmt!("%?", i)),
       ast::expr_vstore_fixed(None) => word(s.s, ~"_"),
       ast::expr_vstore_uniq => word(s.s, ~"~"),
       ast::expr_vstore_box => word(s.s, ~"@"),
