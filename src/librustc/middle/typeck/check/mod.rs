@@ -535,7 +535,7 @@ pub fn check_struct(ccx: @mut CrateCtxt,
     let tcx = ccx.tcx;
     let self_ty = ty::node_id_to_type(tcx, id);
 
-    do struct_def.dtor.iter() |dtor| {
+    for struct_def.dtor.each |dtor| {
         let class_t = SelfInfo {
             self_ty: self_ty,
             self_id: dtor.node.self_id,
@@ -2817,7 +2817,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 variants: &mut ~[ty::VariantInfo]) {
         let rty = ty::node_id_to_type(ccx.tcx, id);
         for vs.each |v| {
-            do v.node.disr_expr.iter |e_ref| {
+            for v.node.disr_expr.each |e_ref| {
                 let e = *e_ref;
                 debug!("disr expr, checking %s",
                        pprust::expr_to_str(e, ccx.tcx.sess.intr()));

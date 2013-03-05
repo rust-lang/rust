@@ -1211,10 +1211,10 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
                            is_lpad,
                            opt_node_info,
                            cx);
-        do option::iter(&parent) |cx| {
+        for parent.each |cx| {
             if cx.unreachable { Unreachable(bcx); }
         };
-        return bcx;
+        bcx
     }
 }
 
@@ -1442,7 +1442,7 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
     };
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
-        do option::iter(&simple_name) |name| {
+        for simple_name.each |name| {
             str::as_c_str(*cx.ccx().sess.str_of(*name), |buf| {
                 unsafe {
                     llvm::LLVMSetValueName(val, buf)
@@ -1451,7 +1451,7 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
         }
     }
     cx.fcx.lllocals.insert(local.node.id, local_mem(val));
-    return cx;
+    cx
 }
 
 
@@ -2011,7 +2011,7 @@ pub fn trans_struct_dtor(ccx: @CrateContext,
   /* Look up the parent class's def_id */
   let mut class_ty = ty::lookup_item_type(tcx, parent_id).ty;
   /* Substitute in the class type if necessary */
-    do option::iter(&psubsts) |ss| {
+  for psubsts.each |ss| {
     class_ty = ty::subst_tps(tcx, ss.tys, ss.self_ty, class_ty);
   }
 
@@ -2028,7 +2028,7 @@ pub fn trans_struct_dtor(ccx: @CrateContext,
 
   /* If we're monomorphizing, register the monomorphized decl
      for the dtor */
-    do option::iter(&hash_id) |h_id| {
+  for hash_id.each |h_id| {
     ccx.monomorphized.insert(*h_id, lldecl);
   }
   /* Translate the dtor body */
@@ -2142,7 +2142,7 @@ pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def,
                         path: @ast_map::path,
                         id: ast::node_id) {
     // Translate the destructor.
-    do option::iter(&struct_def.dtor) |dtor| {
+    for struct_def.dtor.each |dtor| {
         trans_struct_dtor(ccx, /*bad*/copy *path, &dtor.node.body,
                          dtor.node.id, None, None, local_def(id));
     };

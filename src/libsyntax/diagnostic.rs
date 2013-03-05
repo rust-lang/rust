@@ -294,7 +294,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
 }
 
 fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
-    do option::iter(&sp.expn_info) |ei| {
+    for sp.expn_info.each |ei| {
         let ss = option::map_default(&ei.callee.span, @~"",
                                      |span| @cm.span_to_str(*span));
         print_diagnostic(*ss, note,

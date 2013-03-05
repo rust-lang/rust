@@ -132,8 +132,6 @@ pub mod container;
 /* Common data structures */
 
 pub mod option;
-#[path="iter-trait.rs"] #[merge = "iter-trait/option.rs"]
-pub mod option_iter;
 pub mod result;
 pub mod either;
 pub mod dvec;

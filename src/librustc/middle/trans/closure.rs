@@ -288,7 +288,7 @@ pub fn build_closure(bcx0: block,
 
     // If this is a `for` loop body, add two special environment
     // variables:
-    do option::iter(&include_ret_handle) |flagptr| {
+    for include_ret_handle.each |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(tcx),
                                 mode: ByRef, source: ZeroMem};

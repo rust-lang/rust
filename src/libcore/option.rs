@@ -45,6 +45,7 @@ use cmp::{Eq,Ord};
 use kinds::Copy;
 use util;
 use num::Zero;
+use iter::BaseIter;
 
 #[cfg(test)] use ptr;
 #[cfg(test)] use str;
@@ -229,12 +230,6 @@ pub pure fn map_default<T, U>(opt: &r/Option<T>, def: U,
 }
 
 #[inline(always)]
-pub pure fn iter<T>(opt: &r/Option<T>, f: fn(x: &r/T)) {
-    //! Performs an operation on the contained value by reference
-    match *opt { None => (), Some(ref t) => f(t) }
-}
-
-#[inline(always)]
 pub pure fn unwrap<T>(opt: Option<T>) -> T {
     /*!
     Moves a value out of an option type and returns it.
@@ -278,6 +273,19 @@ pub pure fn expect<T>(opt: Option<T>, reason: &str) -> T {
     match opt {
         Some(val) => val,
         None => fail!(reason.to_owned()),
+    }
+}
+
+impl<T> BaseIter<T> for Option<T> {
+    /// Performs an operation on the contained value by reference
+    #[inline(always)]
+    pure fn each(&self, f: fn(x: &self/T) -> bool) {
+        match *self { None => (), Some(ref t) => { f(t); } }
+    }
+
+    #[inline(always)]
+    pure fn size_hint(&self) -> Option<uint> {
+        if self.is_some() { Some(1) } else { Some(0) }
     }
 }
 
@@ -338,10 +346,6 @@ pub impl<T> Option<T> {
             *self = Some(def);
         }
     }
-
-    /// Performs an operation on the contained value by reference
-    #[inline(always)]
-    pure fn iter(&self, f: fn(x: &self/T)) { iter(self, f) }
 
     /**
     Gets an immutable reference to the value inside an option.
@@ -476,7 +480,7 @@ fn test_option_dance() {
     let x = Some(());
     let mut y = Some(5);
     let mut y2 = 0;
-    do x.iter |_x| {
+    for x.each |_x| {
         y2 = swap_unwrap(&mut y);
     }
     assert y2 == 5;

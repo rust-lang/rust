@@ -1016,7 +1016,7 @@ pub impl Resolver {
                         fmt!("duplicate definition of %s %s",
                              namespace_to_str(ns),
                              *self.session.str_of(name)));
-                    do child.span_for_namespace(ns).iter() |sp| {
+                    for child.span_for_namespace(ns).each |sp| {
                         self.session.span_note(*sp,
                              fmt!("first definition of %s %s here:",
                                   namespace_to_str(ns),
@@ -3457,7 +3457,7 @@ pub impl Resolver {
             // then resolve the ty params
             item_enum(ref enum_def, ref generics) => {
                 for (*enum_def).variants.each() |variant| {
-                    do variant.node.disr_expr.iter() |dis_expr| {
+                    for variant.node.disr_expr.each |dis_expr| {
                         // resolve the discriminator expr
                         // as a constant
                         self.with_constant_rib(|| {
