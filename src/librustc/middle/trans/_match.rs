@@ -145,7 +145,6 @@
 use core::prelude::*;
 
 use back::abi;
-use lib;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
 use middle::borrowck::root_map_key;
@@ -170,9 +169,7 @@ use util::common::indenter;
 
 use core::dvec::DVec;
 use core::dvec;
-use core::libc::c_ulonglong;
 use std::oldmap::HashMap;
-use syntax::ast::def_id;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;
