@@ -10,12 +10,15 @@
 
 use core::cmp::Eq;
 
-trait Hahaha: Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq //~ ERROR Duplicate supertrait in trait declaration
-              Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq
-              Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq
-              Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq
-              Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq
-              Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq Eq {}
+trait Hahaha: Eq + Eq + Eq + Eq + Eq + //~ ERROR Duplicate supertrait
+              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
+              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
+              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
+              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
+              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
+              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
+              Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
+              Eq {}
 
 enum Lol = int;
 
