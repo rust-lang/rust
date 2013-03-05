@@ -43,13 +43,19 @@ PTR$(1)$(2) = $$(PREFIX_LIB)/rustc/$(1)
 PTB$(1)$(2) = $$(PTR$(1)$(2))/bin
 PTL$(1)$(2) = $$(PTR$(1)$(2))/$(CFG_LIBDIR)
 
-install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
+install-target-$(1)-host-$(2): $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2)) \
+	install-target-$(1)-host-$(2)-host-artifacts
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CORELIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB_$(1)))
+
+# Only install LLVM-dependent tools for host architectures
+ifneq ($$(findstring $(1),$$(CFG_HOST_TRIPLES)),)
+
+install-target-$(1)-host-$(2)-host-artifacts: $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTC_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
@@ -63,6 +69,12 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUST_GLOB_$(1)))
 	$$(Q)$$(call INSTALL,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
+
+else
+
+install-target-$(1)-host-$(2)-host-artifacts:
+
+endif
 
 endef
 
