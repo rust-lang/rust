@@ -19,8 +19,8 @@ use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
+use core::hashmap::linear::LinearMap;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_util::walk_pat;
 use syntax::ast_util;
@@ -204,7 +204,7 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 /// `class_fields` describes the type of each field of the struct.
 /// `class_id` is the ID of the struct.
 /// `substitutions` are the type substitutions applied to this struct type
-/// (e.g. K,V in HashMap<K,V>).
+/// (e.g. K,V in LinearMap<K,V>).
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(pcx: pat_ctxt,
                                span: span,
@@ -217,16 +217,16 @@ pub fn check_struct_pat_fields(pcx: pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Index the class fields.
-    let field_map = HashMap();
+    let field_map = @mut LinearMap::new();
     for class_fields.eachi |i, class_field| {
         field_map.insert(class_field.ident, i);
     }
 
     // Typecheck each field.
-    let found_fields = HashMap();
+    let found_fields = @mut LinearMap::new();
     for fields.each |field| {
         match field_map.find(&field.ident) {
-            Some(index) => {
+            Some(&index) => {
                 let class_field = class_fields[index];
                 let field_type = ty::lookup_field_type(tcx,
                                                        class_id,
@@ -396,7 +396,7 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
 
-        let canon_id = pcx.map.get(&ast_util::path_to_ident(name));
+        let canon_id = *pcx.map.get(&ast_util::path_to_ident(name));
         if canon_id != pat.id {
             let ct = fcx.local_ty(pat.span, canon_id);
             demand::eqtype(fcx, pat.span, ct, typ);

@@ -19,13 +19,13 @@ use middle::trans::machine::llsize_of_real;
 use core::prelude::*;
 use core::cast::transmute;
 use core::cast;
+use core::hashmap::linear::LinearMap;
 use core::libc::{c_uint, c_int, c_ulonglong};
 use core::libc;
 use core::option::Some;
 use core::ptr;
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::codemap::span;
 use syntax::codemap;
 
@@ -58,7 +58,7 @@ pub fn count_insn(cx: block, category: &str) {
         // Build version of path with cycles removed.
 
         // Pass 1: scan table mapping str -> rightmost pos.
-        let mm = HashMap();
+        let mut mm = LinearMap::new();
         let len = vec::len(*v);
         let mut i = 0u;
         while i < len {
@@ -74,7 +74,7 @@ pub fn count_insn(cx: block, category: &str) {
         i = 0u;
         while i < len {
             let e = /*bad*/copy v[i];
-            i = mm.get(&e);
+            i = *mm.get(&e);
             s += ~"/";
             s += e;
             i += 1u;
@@ -84,7 +84,7 @@ pub fn count_insn(cx: block, category: &str) {
         s += category;
 
         let n = match h.find(&s) {
-          Some(n) => n,
+          Some(&n) => n,
           _ => 0u
         };
         h.insert(s, n+1u);

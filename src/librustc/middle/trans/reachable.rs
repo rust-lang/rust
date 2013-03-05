@@ -22,7 +22,7 @@ use middle::ty;
 use middle::typeck;
 
 use core::prelude::*;
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::def_id_of_def;
@@ -31,7 +31,7 @@ use syntax::codemap;
 use syntax::print::pprust::expr_to_str;
 use syntax::{visit, ast_util, ast_map};
 
-pub type map = HashMap<node_id, ()>;
+pub type map = @mut LinearMap<node_id, ()>;
 
 struct ctx {
     exp_map2: resolve::ExportMap2,
@@ -42,7 +42,7 @@ struct ctx {
 
 pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
                       tcx: ty::ctxt, method_map: typeck::method_map) -> map {
-    let rmap = HashMap();
+    let rmap = @mut LinearMap::new();
     let cx = ctx {
         exp_map2: exp_map2,
         tcx: tcx,

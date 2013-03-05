@@ -35,7 +35,6 @@ use util::common::indenter;
 use util::ppaux::{ty_to_str, tys_to_str};
 
 use core::libc::c_uint;
-use std::oldmap::HashMap;
 use syntax::ast_map::{path, path_mod, path_name, node_id_to_str};
 use syntax::ast_util;
 use syntax::print::pprust::expr_to_str;
@@ -778,7 +777,7 @@ pub fn get_vtable(ccx: @CrateContext,
     // XXX: Bad copy.
     let hash_id = vtable_id(ccx, copy origin);
     match ccx.vtables.find(&hash_id) {
-      Some(val) => val,
+      Some(&val) => val,
       None => match origin {
         typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)

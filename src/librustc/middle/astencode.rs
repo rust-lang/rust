@@ -31,7 +31,6 @@ use std::ebml::reader::get_doc;
 use std::ebml::reader;
 use std::ebml::writer::Encoder;
 use std::ebml;
-use std::oldmap::HashMap;
 use std::prettyprint;
 use std::serialize;
 use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers};
@@ -890,7 +889,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_freevars) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                do ebml_w.emit_from_vec(**fv) |fv_entry| {
+                do ebml_w.emit_from_vec(***fv) |fv_entry| {
                     encode_freevar_entry(ebml_w, *fv_entry)
                 }
             }
@@ -930,7 +929,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
     //    }
     //}
 
-    do option::iter(&maps.mutbl_map.find(&id)) |_m| {
+    do option::iter(&maps.mutbl_map.find(&id)) |&_m| {
         do ebml_w.tag(c::tag_table_mutbl) {
             ebml_w.id(id);
         }
@@ -984,7 +983,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_capture_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                do ebml_w.emit_from_vec(*cap_vars) |cap_var| {
+                do ebml_w.emit_from_vec(**cap_vars) |cap_var| {
                     cap_var.encode(&ebml_w);
                 }
             }

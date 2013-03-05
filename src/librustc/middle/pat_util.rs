@@ -18,16 +18,16 @@ use syntax::ast_util::{path_to_ident, walk_pat};
 use syntax::fold;
 use syntax::fold::*;
 use syntax::codemap::{span, respan};
-use std::oldmap::HashMap;
+use core::hashmap::linear::LinearMap;
 
-pub type PatIdMap = HashMap<ident, node_id>;
+pub type PatIdMap = @mut LinearMap<ident, node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
 pub fn pat_id_map(dm: resolve::DefMap, pat: @pat) -> PatIdMap {
-    let map = HashMap();
+    let map = @mut LinearMap::new();
     do pat_bindings(dm, pat) |_bm, p_id, _s, n| {
-      map.insert(path_to_ident(n), p_id);
+        map.insert(path_to_ident(n), p_id);
     };
     return map;
 }

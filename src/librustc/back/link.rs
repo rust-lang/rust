@@ -35,7 +35,6 @@ use core::ptr;
 use core::run;
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
 use std::sha1::sha1;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};

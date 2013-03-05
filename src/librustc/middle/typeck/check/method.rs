@@ -98,10 +98,10 @@ use util::common::indenter;
 use util::ppaux::expr_repr;
 
 use core::dvec::DVec;
+use core::hashmap::linear::LinearMap;
 use core::result;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
@@ -131,7 +131,7 @@ pub fn lookup(
         callee_id: callee_id,
         m_name: m_name,
         supplied_tps: supplied_tps,
-        impl_dups: HashMap(),
+        impl_dups: @mut LinearMap::new(),
         inherent_candidates: DVec(),
         extension_candidates: DVec(),
         deref_args: deref_args,
@@ -149,7 +149,7 @@ pub struct LookupContext {
     callee_id: node_id,
     m_name: ast::ident,
     supplied_tps: &[ty::t],
-    impl_dups: HashMap<def_id, ()>,
+    impl_dups: @mut LinearMap<def_id, ()>,
     inherent_candidates: DVec<Candidate>,
     extension_candidates: DVec<Candidate>,
     deref_args: check::DerefArgs,

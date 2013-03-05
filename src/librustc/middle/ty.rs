@@ -32,6 +32,7 @@ use core::cast;
 use core::cmp;
 use core::dvec::DVec;
 use core::dvec;
+use core::hashmap::linear::LinearMap;
 use core::ops;
 use core::option;
 use core::ptr::to_unsafe_ptr;
@@ -293,7 +294,7 @@ struct ctxt_ {
     destructors: HashMap<ast::def_id, ()>,
 
     // Maps a trait onto a mapping from self-ty to impl
-    trait_impls: HashMap<ast::def_id, HashMap<t, @Impl>>
+    trait_impls: @mut LinearMap<ast::def_id, @mut LinearMap<t, @Impl>>
 }
 
 enum tbox_flag {
@@ -842,7 +843,7 @@ pub fn mk_ctxt(s: session::Session,
         supertraits: HashMap(),
         destructor_for_type: HashMap(),
         destructors: HashMap(),
-        trait_impls: HashMap()
+        trait_impls: @mut LinearMap::new()
      }
 }
 
@@ -4370,8 +4371,8 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
 // Given a trait and a type, returns the impl of that type
 pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
     match tcx.trait_impls.find(&trait_id) {
-        Some(ty_to_impl) => match ty_to_impl.find(&self_ty) {
-            Some(the_impl) => the_impl.did,
+        Some(&ty_to_impl) => match ty_to_impl.find(&self_ty) {
+            Some(&the_impl) => the_impl.did,
             None => // try autoderef!
                 match deref(tcx, self_ty, false) {
                     Some(some_ty) => get_impl_id(tcx, trait_id, some_ty.ty),

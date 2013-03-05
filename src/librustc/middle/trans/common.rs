@@ -47,12 +47,14 @@ use util::ppaux::{expr_repr, ty_to_str};
 use core::cast;
 use core::cmp;
 use core::hash;
+use core::hashmap::linear::LinearMap;
 use core::libc::c_uint;
 use core::ptr;
 use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
 use core::vec;
+use core::hashmap::linear::LinearMap;
 use std::oldmap::{HashMap, Set};
 use syntax::ast::ident;
 use syntax::ast_map::path;
@@ -137,7 +139,7 @@ pub struct Stats {
     n_inlines: uint,
     n_closures: uint,
     llvm_insn_ctxt: @mut ~[~str],
-    llvm_insns: HashMap<~str, uint>,
+    llvm_insns: @mut LinearMap<~str, uint>,
     fn_times: @mut ~[(~str, int)] // (ident, time)
 }
 
@@ -168,15 +170,15 @@ pub struct CrateContext {
      td: TargetData,
      tn: @TypeNames,
      externs: ExternMap,
-     intrinsics: HashMap<~str, ValueRef>,
+     intrinsics: @mut LinearMap<~str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
-     item_symbols: HashMap<ast::node_id, ~str>,
+     item_symbols: @mut LinearMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
      enum_sizes: HashMap<ty::t, uint>,
-     discrims: HashMap<ast::def_id, ValueRef>,
-     discrim_symbols: HashMap<ast::node_id, ~str>,
+     discrims: @mut LinearMap<ast::def_id, ValueRef>,
+     discrim_symbols: @mut LinearMap<ast::node_id, ~str>,
      tydescs: HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
@@ -184,14 +186,14 @@ pub struct CrateContext {
      // Track mapping of external ids to local items imported for inlining
      external: HashMap<ast::def_id, Option<ast::node_id>>,
      // Cache instances of monomorphized functions
-     monomorphized: HashMap<mono_id, ValueRef>,
-     monomorphizing: HashMap<ast::def_id, uint>,
+     monomorphized: @mut LinearMap<mono_id, ValueRef>,
+     monomorphizing: @mut LinearMap<ast::def_id, uint>,
      // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: HashMap<ast::def_id, ~[type_use::type_uses]>,
+     type_use_cache: @mut LinearMap<ast::def_id, ~[type_use::type_uses]>,
      // Cache generated vtables
-     vtables: HashMap<mono_id, ValueRef>,
+     vtables: @mut LinearMap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: HashMap<@~str, ValueRef>,
+     const_cstr_cache: @mut LinearMap<@~str, ValueRef>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,
@@ -201,10 +203,10 @@ pub struct CrateContext {
      // when we ptrcast, and we have to ptrcast during translation
      // of a [T] const because we form a slice, a [*T,int] pair, not
      // a pointer to an LLVM array type.
-     const_globals: HashMap<int, ValueRef>,
+     const_globals: @mut LinearMap<int, ValueRef>,
 
      // Cache of emitted const values
-     const_values: HashMap<ast::node_id, ValueRef>,
+     const_values: @mut LinearMap<ast::node_id, ValueRef>,
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, TypeRef>,
      llsizingtypes: HashMap<ty::t, TypeRef>,
@@ -300,12 +302,12 @@ pub struct fn_ctxt_ {
     loop_ret: Option<(ValueRef, ValueRef)>,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @HashMap<ast::node_id, local_val>,
+    llargs: @mut LinearMap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @HashMap<ast::node_id, local_val>,
+    lllocals: @mut LinearMap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
-    llupvars: @HashMap<ast::node_id, ValueRef>,
+    llupvars: @mut LinearMap<ast::node_id, ValueRef>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -1142,7 +1144,7 @@ pub fn C_u8(i: uint) -> ValueRef {
 pub fn C_cstr(cx: @CrateContext, s: @~str) -> ValueRef {
     unsafe {
         match cx.const_cstr_cache.find(&s) {
-            Some(llval) => return llval,
+            Some(&llval) => return llval,
             None => ()
         }
 

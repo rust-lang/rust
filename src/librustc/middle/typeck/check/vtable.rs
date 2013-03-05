@@ -24,11 +24,10 @@ use util::common::indenter;
 use util::ppaux::tys_to_str;
 use util::ppaux;
 
-use core::result::{Result, Ok, Err};
-use core::result;
+use core::hashmap::linear::LinearMap;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
+use core::result::{Result, Ok, Err};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -253,13 +252,13 @@ pub fn lookup_vtable(vcx: &VtableContext,
         _ => {
             let mut found = ~[];
 
-            let mut impls_seen = HashMap();
+            let impls_seen = @mut LinearMap::new();
 
             match vcx.ccx.coherence_info.extension_methods.find(&trait_id) {
                 None => {
                     // Nothing found. Continue.
                 }
-                Some(implementations) => {
+                Some(&implementations) => {
                     // implementations is the list of all impls in scope for
                     // trait_ty. (Usually, there's just one.)
                     for uint::range(0, implementations.len()) |i| {

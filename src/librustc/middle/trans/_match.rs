@@ -169,8 +169,8 @@ use util::common::indenter;
 
 use core::dvec::DVec;
 use core::dvec;
+use core::hashmap::linear::LinearMap;
 use core::libc::c_ulonglong;
-use std::oldmap::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
 use syntax::ast::ident;
@@ -324,7 +324,7 @@ pub struct BindingInfo {
     ty: ty::t,
 }
 
-pub type BindingsMap = HashMap<ident, BindingInfo>;
+pub type BindingsMap = @mut LinearMap<ident, BindingInfo>;
 
 pub struct ArmData {
     bodycx: block,
@@ -940,7 +940,7 @@ pub fn root_pats_as_necessary(bcx: block,
         let key = root_map_key {id: pat_id, derefs: 0u };
         match bcx.ccx().maps.root_map.find(&key) {
             None => (),
-            Some(root_info) => {
+            Some(&root_info) => {
                 // Note: the scope_id will always be the id of the match.  See
                 // the extended comment in rustc::middle::borrowck::preserve()
                 // for details (look for the case covering cat_discr).
@@ -1612,7 +1612,7 @@ pub fn trans_match_inner(scope_cx: block,
         // to an alloca() that will be the value for that local variable.
         // Note that we use the names because each binding will have many ids
         // from the various alternatives.
-        let bindings_map = HashMap();
+        let bindings_map = @mut LinearMap::new();
         do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
             let ident = path_to_ident(path);
             let variable_ty = node_id_type(bcx, p_id);

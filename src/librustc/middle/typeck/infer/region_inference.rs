@@ -552,10 +552,11 @@ use util::ppaux::note_and_explain_region;
 use core::cell::{Cell, empty_cell};
 use core::cmp;
 use core::dvec::DVec;
-use core::result::{Err, Ok, Result};
+use core::hashmap::linear::LinearMap;
 use core::to_bytes;
 use core::uint;
 use core::vec;
+use core::result::{Err, Ok, Result};
 use std::list::{List, Nil, Cons};
 use std::oldmap::HashMap;
 use syntax::codemap::span;
@@ -627,12 +628,12 @@ enum UndoLogEntry {
     AddCombination(CombineMap, TwoRegions)
 }
 
-type CombineMap = HashMap<TwoRegions, RegionVid>;
+type CombineMap = @mut LinearMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
     var_spans: DVec<span>,
-    constraints: HashMap<Constraint, span>,
+    constraints: @mut LinearMap<Constraint, span>,
     lubs: CombineMap,
     glbs: CombineMap,
     skolemization_count: uint,
@@ -659,20 +660,13 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         tcx: tcx,
         var_spans: DVec(),
         values: empty_cell(),
-        constraints: HashMap(),
-        lubs: CombineMap(),
-        glbs: CombineMap(),
+        constraints: @mut LinearMap::new(),
+        lubs: @mut LinearMap::new(),
+        glbs: @mut LinearMap::new(),
         skolemization_count: 0,
         bound_count: 0,
         undo_log: ~[]
     }
-}
-
-// Note: takes two regions but doesn't care which is `a` and which is
-// `b`!  Not obvious that this is the most efficient way to go about
-// it.
-fn CombineMap() -> CombineMap {
-    return HashMap();
 }
 
 pub impl RegionVarBindings {
@@ -920,7 +914,7 @@ pub impl RegionVarBindings {
                  -> cres<Region> {
         let vars = TwoRegions { a: a, b: b };
         match combines.find(&vars) {
-          Some(c) => Ok(re_infer(ReVar(c))),
+          Some(&c) => Ok(re_infer(ReVar(c))),
           None => {
             let c = self.new_region_var(span);
             combines.insert(vars, c);
@@ -1211,10 +1205,10 @@ struct SpannedRegion {
     span: span,
 }
 
-type TwoRegionsMap = HashMap<TwoRegions, ()>;
+type TwoRegionsMap = @mut LinearMap<TwoRegions, ()>;
 
 fn TwoRegionsMap() -> TwoRegionsMap {
-    return HashMap();
+    return @mut LinearMap::new();
 }
 
 pub impl RegionVarBindings {
@@ -1244,7 +1238,7 @@ pub impl RegionVarBindings {
 
         // It would be nice to write this using map():
         let mut edges = vec::with_capacity(num_edges);
-        for self.constraints.each |constraint, span| {
+        for self.constraints.each |&(constraint, span)| {
             edges.push(GraphEdge {
                 next_edge: [uint::max_value, uint::max_value],
                 constraint: *constraint,
@@ -1619,7 +1613,7 @@ pub impl RegionVarBindings {
                                 orig_node_idx: RegionVid,
                                 dir: Direction)
                              -> ~[SpannedRegion] {
-        let set = HashMap();
+        let set = @mut LinearMap::new();
         let mut stack = ~[orig_node_idx];
         set.insert(*orig_node_idx, ());
         let mut result = ~[];

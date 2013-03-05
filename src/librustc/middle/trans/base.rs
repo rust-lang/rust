@@ -73,6 +73,7 @@ use util::ppaux;
 
 use core::either;
 use core::hash;
+use core::hashmap::linear::LinearMap;
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
@@ -1034,16 +1035,14 @@ pub fn add_root_cleanup(bcx: block,
         let mut bcx_sid = bcx;
         loop {
             bcx_sid = match bcx_sid.node_info {
-              Some(NodeInfo { id, _ }) if id == scope_id => {
-                return bcx_sid
-              }
-              _ => {
-                match bcx_sid.parent {
-                  None => bcx.tcx().sess.bug(
-                      fmt!("no enclosing scope with id %d", scope_id)),
-                  Some(bcx_par) => bcx_par
+                Some(NodeInfo { id, _ }) if id == scope_id => {
+                    return bcx_sid
                 }
-              }
+                _ => match bcx_sid.parent {
+                    None => bcx.tcx().sess.bug(
+                            fmt!("no enclosing scope with id %d", scope_id)),
+                    Some(bcx_par) => bcx_par
+                }
             }
         }
     }
@@ -1136,10 +1135,10 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
     }
 
     let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      Some(local_mem(v)) => v,
-      _ => { bcx.tcx().sess.span_bug(local.span,
-                        ~"init_local: Someone forgot to document why it's\
-                         safe to assume local.node.init must be local_mem!");
+        Some(&local_mem(v)) => v,
+        _ => { bcx.tcx().sess.span_bug(local.span,
+                ~"init_local: Someone forgot to document why it's\
+                safe to assume local.node.init must be local_mem!");
         }
     };
 
@@ -1428,17 +1427,17 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
 pub fn block_locals(b: &ast::blk, it: fn(@ast::local)) {
     for vec::each(b.node.stmts) |s| {
         match s.node {
-          ast::stmt_decl(d, _) => {
-            match /*bad*/copy d.node {
-              ast::decl_local(locals) => {
-                for vec::each(locals) |local| {
-                    it(*local);
+            ast::stmt_decl(d, _) => {
+                match /*bad*/copy d.node {
+                    ast::decl_local(locals) => {
+                        for vec::each(locals) |local| {
+                            it(*local);
+                        }
+                    }
+                    _ => {/* fall through */ }
                 }
-              }
-              _ => {/* fall through */ }
             }
-          }
-          _ => {/* fall through */ }
+            _ => {/* fall through */ }
         }
     }
 }
@@ -1489,7 +1488,7 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
       | session::arch_mips => ~"llvm.memcpy.p0i8.p0i8.i32",
       session::arch_x86_64 => ~"llvm.memcpy.p0i8.p0i8.i64"
     };
-    let memcpy = ccx.intrinsics.get(&key);
+    let memcpy = *ccx.intrinsics.get(&key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
     let size = IntCast(cx, n_bytes, ccx.int_type);
@@ -1538,7 +1537,7 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
         }
     }
 
-    let llintrinsicfn = ccx.intrinsics.get(&intrinsic_key);
+    let llintrinsicfn = *ccx.intrinsics.get(&intrinsic_key);
     let llptr = PointerCast(cx, llptr, T_ptr(T_i8()));
     let llzeroval = C_u8(0);
     let size = IntCast(cx, machine::llsize_of(ccx, llty), ccx.int_type);
@@ -1627,9 +1626,9 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llself: None,
           personality: None,
           loop_ret: None,
-          llargs: @HashMap(),
-          lllocals: @HashMap(),
-          llupvars: @HashMap(),
+          llargs: @mut LinearMap::new(),
+          lllocals: @mut LinearMap::new(),
+          llupvars: @mut LinearMap::new(),
           id: id,
           impl_id: impl_id,
           param_substs: param_substs,
@@ -1944,7 +1943,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
         let llarg = match fcx.llargs.find(&va.id) {
-            Some(local_mem(x)) => x,
+            Some(&local_mem(x)) => x,
             _ => fail!(~"trans_enum_variant: how do we know this works?"),
         };
         let arg_ty = arg_tys[i].ty;
@@ -1995,7 +1994,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     for fields.eachi |i, field| {
         let lldestptr = GEPi(bcx, fcx.llretptr, [0, 0, i]);
         let llarg = match fcx.llargs.get(&field.node.id) {
-            local_mem(x) => x,
+            &local_mem(x) => x,
             _ => {
                 ccx.tcx.sess.bug(~"trans_tuple_struct: llarg wasn't \
                                    local_mem")
@@ -2374,33 +2373,33 @@ pub fn get_dtor_symbol(ccx: @CrateContext,
                     -> ~str {
   let t = ty::node_id_to_type(ccx.tcx, id);
   match ccx.item_symbols.find(&id) {
-     Some(ref s) => (/*bad*/copy *s),
+     Some(&ref s) => /* bad */ copy *s,
      None if substs.is_none() => {
-       let s = mangle_exported_name(
-           ccx,
-           vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
-           t);
-       // XXX: Bad copy, use `@str`?
-       ccx.item_symbols.insert(id, copy s);
-       s
+         let s = mangle_exported_name(
+                 ccx,
+                 vec::append(path, ~[path_name((ccx.names)(~"dtor"))]),
+                 t);
+         // XXX: Bad copy, use `@str`?
+         ccx.item_symbols.insert(id, copy s);
+         s
      }
-     None   => {
-       // Monomorphizing, so just make a symbol, don't add
-       // this to item_symbols
-       match substs {
-         Some(ss) => {
-           let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
-           mangle_exported_name(
-               ccx,
-               vec::append(path,
-                           ~[path_name((ccx.names)(~"dtor"))]),
-               mono_ty)
+     None => {
+         // Monomorphizing, so just make a symbol, don't add
+         // this to item_symbols
+         match substs {
+             Some(ss) => {
+                 let mono_ty = ty::subst_tps(ccx.tcx, ss.tys, ss.self_ty, t);
+                 mangle_exported_name(
+                         ccx,
+                         vec::append(path,
+                             ~[path_name((ccx.names)(~"dtor"))]),
+                         mono_ty)
+             }
+             None => {
+                 ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
+                             couldn't find a symbol for dtor %?", path));
+             }
          }
-         None => {
-             ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
-               couldn't find a symbol for dtor %?", path));
-         }
-       }
      }
   }
 }
@@ -2644,7 +2643,8 @@ pub fn p2i(ccx: @CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
+pub fn declare_intrinsics(llmod: ModuleRef)
+        -> @mut LinearMap<~str, ValueRef> {
     let T_memcpy32_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
     let T_memcpy64_args: ~[TypeRef] =
@@ -2777,7 +2777,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let bswap64 = decl_cdecl_fn(llmod, ~"llvm.bswap.i64",
                                 T_fn(~[T_i64()], T_i64()));
 
-    let intrinsics = HashMap();
+    let intrinsics = @mut LinearMap::new();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
     intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i32", memcpy32);
@@ -2838,7 +2838,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
 }
 
 pub fn declare_dbg_intrinsics(llmod: ModuleRef,
-                              intrinsics: HashMap<~str, ValueRef>) {
+                              intrinsics: @mut LinearMap<~str, ValueRef>) {
     let declare =
         decl_cdecl_fn(llmod, ~"llvm.dbg.declare",
                       T_fn(~[T_metadata(), T_metadata()], T_void()));
@@ -2853,7 +2853,7 @@ pub fn declare_dbg_intrinsics(llmod: ModuleRef,
 pub fn trap(bcx: block) {
     let v: ~[ValueRef] = ~[];
     match bcx.ccx().intrinsics.find(&~"llvm.trap") {
-      Some(x) => { Call(bcx, x, v); },
+      Some(&x) => { Call(bcx, x, v); },
       _ => bcx.sess().bug(~"unbound llvm.trap in trap")
     }
 }
@@ -3092,21 +3092,22 @@ pub fn trans_crate(sess: session::Session,
               item_vals: HashMap(),
               exp_map2: emap2,
               reachable: reachable,
-              item_symbols: HashMap(),
+              item_symbols: @mut LinearMap::new(),
               link_meta: link_meta,
-              enum_sizes: ty::new_ty_hash(),
-              discrims: HashMap(),
-              discrim_symbols: HashMap(),
+              enum_sizes: HashMap(),
+              discrims: @mut LinearMap::new(),
+              discrim_symbols: @mut LinearMap::new(),
               tydescs: ty::new_ty_hash(),
               finished_tydescs: @mut false,
-              external: HashMap(),
-              monomorphized: HashMap(),
-              monomorphizing: HashMap(),
-              type_use_cache: HashMap(),
-              vtables: oldmap::HashMap(),
-              const_cstr_cache: HashMap(),
-              const_globals: HashMap(),
-              const_values: HashMap(),
+              external: HashMap(), //changing this to LinearMap
+                                   //causes Illegal instruction (core dumped)
+              monomorphized: @mut LinearMap::new(),
+              monomorphizing: @mut LinearMap::new(),
+              type_use_cache: @mut LinearMap::new(),
+              vtables: @mut LinearMap::new(),
+              const_cstr_cache: @mut LinearMap::new(),
+              const_globals: @mut LinearMap::new(),
+              const_values: @mut LinearMap::new(),
               module_data: HashMap(),
               lltypes: ty::new_ty_hash(),
               llsizingtypes: ty::new_ty_hash(),
@@ -3128,7 +3129,7 @@ pub fn trans_crate(sess: session::Session,
                 n_inlines: 0u,
                 n_closures: 0u,
                 llvm_insn_ctxt: @mut ~[],
-                llvm_insns: HashMap(),
+                llvm_insns: @mut LinearMap::new(),
                 fn_times: @mut ~[]
               },
               upcalls: upcall::declare_upcalls(targ_cfg, llmod),
@@ -3178,8 +3179,8 @@ pub fn trans_crate(sess: session::Session,
         }
 
         if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each |&k, &v| {
-                io::println(fmt!("%-7u %s", v, k));
+            for ccx.stats.llvm_insns.each |&(k, v)| {
+                io::println(fmt!("%-7u %s", *v, *k));
             }
         }
         return (llmod, link_meta);
