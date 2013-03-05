@@ -155,6 +155,9 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(@~"deriving_iter_bytes",
                             @SE(ItemDecorator(
                                 ext::deriving::expand_deriving_iter_bytes)));
+    syntax_expanders.insert(@~"deriving_clone",
+                            @SE(ItemDecorator(
+                                ext::deriving::expand_deriving_clone)));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(@~"quote_tokens",
