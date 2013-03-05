@@ -150,6 +150,14 @@ pub pure fn gt<T:Ord>(v1: &T, v2: &T) -> bool {
     (*v1).gt(v2)
 }
 
+/// The equivalence relation. Two values may be equivalent even if they are
+/// of different types. The most common use case for this relation is
+/// container types; e.g. it is often desirable to be able to use `&str`
+/// values to look up entries in a container with `~str` keys.
+pub trait Equiv<T> {
+    pure fn equiv(&self, other: &T) -> bool;
+}
+
 #[inline(always)]
 pub pure fn min<T:Ord>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
