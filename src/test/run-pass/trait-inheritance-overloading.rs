@@ -10,7 +10,7 @@
 
 use core::cmp::Eq;
 
-trait MyNum : Add<Self,Self> Sub<Self,Self> Mul<Self,Self> Eq { }
+trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + Eq { }
 
 struct MyInt { val: int }
 
