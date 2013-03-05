@@ -20,6 +20,7 @@ use middle::trans::expr;
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::ty;
+use util::ppaux::{expr_repr, ty_to_str};
 
 use core::libc::c_uint;
 use syntax::{ast, ast_util, codemap, ast_map};
@@ -150,6 +151,24 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
 }
 
 pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
+    let ety = ty::expr_ty_adjusted(cx.tcx, e);
+    let llty = type_of::sizing_type_of(cx, ety);
+    let llconst = const_expr_unchecked(cx, e);
+    let csize = machine::llsize_of_alloc(cx, val_ty(llconst));
+    let tsize = machine::llsize_of_alloc(cx, llty);
+    if csize != tsize {
+        unsafe {
+            llvm::LLVMDumpValue(llconst);
+            llvm::LLVMDumpValue(C_null(llty));
+        }
+        cx.sess.bug(fmt!("const %s of type %s has size %u instead of %u",
+                         expr_repr(cx.tcx, e), ty_to_str(cx.tcx, ety),
+                         csize, tsize));
+    }
+    llconst
+}
+
+fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
     unsafe {
         let _icx = cx.insn_ctxt("const_expr");
         return match /*bad*/copy e.node {
@@ -394,13 +413,22 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           ast::expr_path(pth) => {
             assert pth.types.len() == 0;
             match cx.tcx.def_map.find(&e.id) {
-                Some(ast::def_fn(def_id, purity)) => {
+                Some(ast::def_fn(def_id, _purity)) => {
                     assert ast_util::is_local(def_id);
                     let f = base::get_item_val(cx, def_id.node);
-                    match purity {
-                      ast::extern_fn =>
-                        llvm::LLVMConstPointerCast(f, T_ptr(T_i8())),
-                      _ => C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
+                    let ety = ty::expr_ty_adjusted(cx.tcx, e);
+                    match ty::get(ety).sty {
+                        ty::ty_bare_fn(*) | ty::ty_ptr(*) => {
+                            llvm::LLVMConstPointerCast(f, T_ptr(T_i8()))
+                        }
+                        ty::ty_closure(*) => {
+                            C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
+                        }
+                        _ => {
+                            cx.sess.span_bug(e.span, fmt!(
+                                "unexpected const fn type: %s",
+                                ty_to_str(cx.tcx, ety)))
+                        }
                     }
                 }
                 Some(ast::def_const(def_id)) => {
