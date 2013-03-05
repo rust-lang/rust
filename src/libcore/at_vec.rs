@@ -23,11 +23,18 @@ use vec;
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
 
-#[abi = "cdecl"]
-pub extern mod rustrt {
-    pub unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
-                                            ++v: **vec::raw::VecRepr,
-                                            ++n: libc::size_t);
+pub mod rustrt {
+    use libc;
+    use sys;
+    use vec;
+
+    #[abi = "cdecl"]
+    #[link_name = "rustrt"]
+    pub extern {
+        pub unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
+                                                ++v: **vec::raw::VecRepr,
+                                                ++n: libc::size_t);
+    }
 }
 
 /// Returns the number of elements the vector can hold without reallocating

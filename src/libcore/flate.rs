@@ -21,16 +21,23 @@ use vec;
 
 #[cfg(test)] use rand;
 
-extern mod rustrt {
-    unsafe fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
-                                         src_buf_len: size_t,
-                                         pout_len: *size_t,
-                                         flags: c_int) -> *c_void;
+pub mod rustrt {
+    use libc::{c_int, c_void, size_t};
 
-    unsafe fn tinfl_decompress_mem_to_heap(psrc_buf: *const c_void,
-                                           src_buf_len: size_t,
-                                           pout_len: *size_t,
-                                           flags: c_int) -> *c_void;
+    #[link_name = "rustrt"]
+    pub extern {
+        unsafe fn tdefl_compress_mem_to_heap(psrc_buf: *const c_void,
+                                             src_buf_len: size_t,
+                                             pout_len: *size_t,
+                                             flags: c_int)
+                                          -> *c_void;
+
+        unsafe fn tinfl_decompress_mem_to_heap(psrc_buf: *const c_void,
+                                               src_buf_len: size_t,
+                                               pout_len: *size_t,
+                                               flags: c_int)
+                                            -> *c_void;
+    }
 }
 
 const lz_none : c_int = 0x0;   // Huffman-coding only.

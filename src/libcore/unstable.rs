@@ -36,18 +36,22 @@ pub mod extfmt;
 #[cfg(notest)]
 pub mod lang;
 
-extern mod rustrt {
-    pub unsafe fn rust_create_little_lock() -> rust_little_lock;
-    pub unsafe fn rust_destroy_little_lock(lock: rust_little_lock);
-    pub unsafe fn rust_lock_little_lock(lock: rust_little_lock);
-    pub unsafe fn rust_unlock_little_lock(lock: rust_little_lock);
+mod rustrt {
+    use unstable::{raw_thread, rust_little_lock};
 
-    pub unsafe fn rust_raw_thread_start(f: &fn()) -> *raw_thread;
-    pub unsafe fn rust_raw_thread_join_delete(thread: *raw_thread);
+    pub extern {
+        pub unsafe fn rust_create_little_lock() -> rust_little_lock;
+        pub unsafe fn rust_destroy_little_lock(lock: rust_little_lock);
+        pub unsafe fn rust_lock_little_lock(lock: rust_little_lock);
+        pub unsafe fn rust_unlock_little_lock(lock: rust_little_lock);
+
+        pub unsafe fn rust_raw_thread_start(f: &fn()) -> *raw_thread;
+        pub unsafe fn rust_raw_thread_join_delete(thread: *raw_thread);
+    }
 }
 
 #[allow(non_camel_case_types)] // runtime type
-type raw_thread = libc::c_void;
+pub type raw_thread = libc::c_void;
 
 /**
 
@@ -204,7 +208,7 @@ impl<T:Owned> Clone for SharedMutableState<T> {
 /****************************************************************************/
 
 #[allow(non_camel_case_types)] // runtime type
-type rust_little_lock = *libc::c_void;
+pub type rust_little_lock = *libc::c_void;
 
 struct LittleLock {
     l: rust_little_lock,
