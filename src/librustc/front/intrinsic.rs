@@ -122,9 +122,13 @@ pub mod intrinsic {
         fn visit_closure_ptr(&self, ck: uint) -> bool;
     }
 
-    #[abi = "rust-intrinsic"]
-    pub extern mod rusti {
-        pub fn get_tydesc<T>() -> *();
-        pub fn visit_tydesc(++td: *TyDesc, &&tv: TyVisitor);
+    pub mod rusti {
+        use super::{TyDesc, TyVisitor};
+
+        #[abi = "rust-intrinsic"]
+        pub extern {
+            pub fn get_tydesc<T>() -> *();
+            pub fn visit_tydesc(++td: *TyDesc, &&tv: TyVisitor);
+        }
     }
 }

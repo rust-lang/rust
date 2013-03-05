@@ -786,9 +786,11 @@ pub mod rustrt {
         unsafe fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t,
                                     ++addr: *sockaddr_in6) -> libc::c_int;
         unsafe fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t,
-                                          ++name: *sockaddr_in) -> libc::c_int;
+                                          ++name: *sockaddr_in)
+                                       -> libc::c_int;
         unsafe fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
-                                           ++name: *sockaddr_in6) ->libc::c_int;
+                                           ++name: *sockaddr_in6)
+                                        -> libc::c_int;
         unsafe fn rust_uv_listen(stream: *libc::c_void,
                                  backlog: libc::c_int,
                                  cb: *u8) -> libc::c_int;
@@ -852,7 +854,8 @@ pub mod rustrt {
                                               -> *libc::c_void;
         unsafe fn rust_uv_set_data_for_uv_handle(handle: *libc::c_void,
                                                  data: *libc::c_void);
-        unsafe fn rust_uv_get_data_for_req(req: *libc::c_void) -> *libc::c_void;
+        unsafe fn rust_uv_get_data_for_req(req: *libc::c_void)
+                                        -> *libc::c_void;
         unsafe fn rust_uv_set_data_for_req(req: *libc::c_void,
                                            data: *libc::c_void);
         unsafe fn rust_uv_get_base_from_buf(++buf: uv_buf_t) -> *u8;

@@ -12,9 +12,11 @@
 
 #[allow(ctypes)];
 
-#[nolink]
-extern mod libc {
-    pub fn malloc(size: int) -> *u8;
+mod libc {
+    #[nolink]
+    pub extern {
+        pub fn malloc(size: int) -> *u8;
+    }
 }
 
 pub fn main() {

@@ -37,9 +37,11 @@ mod test_single_attr_outer {
     #[attr = "val"]
     pub mod mod1 {}
 
-    #[attr = "val"]
-    #[abi = "cdecl"]
-    pub extern mod rustrt {}
+    pub mod rustrt {
+        #[attr = "val"]
+        #[abi = "cdecl"]
+        pub extern {}
+    }
 }
 
 mod test_multi_attr_outer {
@@ -55,10 +57,12 @@ mod test_multi_attr_outer {
     #[attr2 = "val"]
     pub mod mod1 {}
 
-    #[attr1 = "val"]
-    #[attr2 = "val"]
-    #[abi = "cdecl"]
-    pub extern mod rustrt {}
+    pub mod rustrt {
+        #[attr1 = "val"]
+        #[attr2 = "val"]
+        #[abi = "cdecl"]
+        pub extern {}
+    }
 
     #[attr1 = "val"]
     #[attr2 = "val"]
@@ -77,9 +81,11 @@ mod test_stmt_single_attr_outer {
         mod mod1 {
         }
 
-        #[attr = "val"]
-        #[abi = "cdecl"]
-        extern mod rustrt {
+        mod rustrt {
+            #[attr = "val"]
+            #[abi = "cdecl"]
+            pub extern {
+            }
         }
     }
 }
@@ -101,10 +107,12 @@ mod test_stmt_multi_attr_outer {
         mod mod1 {
         }
 
-        #[attr1 = "val"]
-        #[attr2 = "val"]
-        #[abi = "cdecl"]
-        extern mod rustrt {
+        pub mod rustrt {
+            #[attr1 = "val"]
+            #[attr2 = "val"]
+            #[abi = "cdecl"]
+            pub extern {
+            }
         }
         */
     }
@@ -158,12 +166,14 @@ mod test_other_forms {
 }
 
 mod test_foreign_items {
-    #[abi = "cdecl"]
-    pub extern mod rustrt {
-        #[attr];
+    pub mod rustrt {
+        #[abi = "cdecl"]
+        pub extern {
+            #[attr];
 
-        #[attr]
-        fn get_task_id() -> libc::intptr_t;
+            #[attr]
+            fn get_task_id() -> libc::intptr_t;
+        }
     }
 }
 

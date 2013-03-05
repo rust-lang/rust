@@ -8,23 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[abi = "cdecl"]
-#[nolink]
-extern mod bar {}
-
-#[abi = "cdecl"]
-#[nolink]
-extern mod zed {}
-
-#[abi = "cdecl"]
-#[nolink]
-extern mod libc {
-    pub fn write(fd: int, buf: *u8,
-                 count: ::core::libc::size_t) -> ::core::libc::ssize_t;
+mod bar {
+    #[abi = "cdecl"]
+    #[nolink]
+    pub extern {}
 }
 
-#[abi = "cdecl"]
-#[nolink]
-extern mod baz {}
+mod zed {
+    #[abi = "cdecl"]
+    #[nolink]
+    pub extern {}
+}
+
+mod libc {
+    #[abi = "cdecl"]
+    #[nolink]
+    pub extern {
+        pub fn write(fd: int, buf: *u8, count: ::core::libc::size_t)
+                  -> ::core::libc::ssize_t;
+    }
+}
+
+mod baz {
+    #[abi = "cdecl"]
+    #[nolink]
+    pub extern {}
+}
 
 pub fn main() { }

@@ -17,8 +17,10 @@
 
 extern mod std;
 
-extern mod rustrt {
-    pub fn rust_get_argc() -> libc::c_int;
+mod rustrt {
+    pub extern {
+        pub fn rust_get_argc() -> libc::c_int;
+    }
 }
 
 fn getbig_call_c_and_fail(i: int) {

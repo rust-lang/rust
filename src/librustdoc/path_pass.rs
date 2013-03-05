@@ -115,22 +115,3 @@ fn should_record_fn_paths() {
     }
 }
 
-#[test]
-fn should_record_foreign_mod_paths() {
-    let source = ~"mod a { extern mod b { } }";
-    do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv.clone(), ~"");
-        let doc = run(srv.clone(), doc);
-        assert doc.cratemod().mods()[0].nmods()[0].path() == ~[~"a"];
-    }
-}
-
-#[test]
-fn should_record_foreign_fn_paths() {
-    let source = ~"extern mod a { fn b(); }";
-    do astsrv::from_str(source) |srv| {
-        let doc = extract::from_srv(srv.clone(), ~"");
-        let doc = run(srv.clone(), doc);
-        assert doc.cratemod().nmods()[0].fns[0].path() == ~[~"a"];
-    }
-}
