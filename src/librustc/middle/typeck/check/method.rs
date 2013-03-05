@@ -30,7 +30,7 @@ itself (note that inherent impls can only be defined in the same
 module as the type itself).
 
 Inherent candidates are not always derived from impls.  If you have a
-trait instance, such as a value of type `ToStr`, then the trait
+trait instance, such as a value of type `@ToStr`, then the trait
 methods (`to_str()`, in this case) are inherently associated with it.
 Another case is type parameters, in which case the methods of their
 bounds are inherent.
@@ -1221,7 +1221,7 @@ pub impl LookupContext {
             }
             method_trait(trait_did, _, _) | method_self(trait_did, _)
                 | method_super(trait_did, _) => {
-                self.report_param_candidate(idx, trait_did)
+                self.report_trait_candidate(idx, trait_did)
             }
         }
     }

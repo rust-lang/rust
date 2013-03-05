@@ -69,6 +69,26 @@ pub trait Reader {
     fn tell(&self) -> uint;
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Reader for @Reader {
+    fn read(&self, bytes: &mut [u8], len: uint) -> uint {
+        self.read(bytes, len)
+    }
+    fn read_byte(&self) -> int {
+        self.read_byte()
+    }
+    fn eof(&self) -> bool {
+        self.eof()
+    }
+    fn seek(&self, position: int, style: SeekStyle) {
+        self.seek(position, style)
+    }
+    fn tell(&self) -> uint {
+        self.tell()
+    }
+}
+
 /// Generic utility functions defined on readers.
 pub trait ReaderUtil {
 
@@ -631,6 +651,16 @@ pub trait Writer {
     fn get_type(&self) -> WriterType;
 }
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+impl Writer for @Writer {
+    fn write(&self, v: &[const u8]) { self.write(v) }
+    fn seek(&self, a: int, b: SeekStyle) { self.seek(a, b) }
+    fn tell(&self) -> uint { self.tell() }
+    fn flush(&self) -> int { self.flush() }
+    fn get_type(&self) -> WriterType { self.get_type() }
+}
+
 impl<W:Writer,C> Writer for Wrapper<W, C> {
     fn write(&self, bs: &[const u8]) { self.base.write(bs); }
     fn seek(&self, off: int, style: SeekStyle) { self.base.seek(off, style); }
@@ -1067,8 +1097,8 @@ pub fn buffered_file_writer(path: &Path) -> Result<Writer, ~str> {
 // FIXME (#2004) it would be great if this could be a const
 // FIXME (#2004) why are these different from the way stdin() is
 // implemented?
-pub fn stdout() -> Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
-pub fn stderr() -> Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
+pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
+pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
 pub fn print(s: &str) { stdout().write_str(s); }
 pub fn println(s: &str) { stdout().write_line(s); }

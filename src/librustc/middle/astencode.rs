@@ -664,16 +664,6 @@ fn encode_vtable_origin(ecx: @e::EncodeContext,
                 }
             }
           }
-          typeck::vtable_trait(def_id, tys) => {
-            do ebml_w.emit_enum_variant(~"vtable_trait", 1u, 3u) {
-                do ebml_w.emit_enum_variant_arg(0u) {
-                    ebml_w.emit_def_id(def_id)
-                }
-                do ebml_w.emit_enum_variant_arg(1u) {
-                    ebml_w.emit_tys(ecx, /*bad*/copy tys);
-                }
-            }
-          }
         }
     }
 
@@ -717,16 +707,6 @@ impl vtable_decoder_helpers for reader::Decoder {
                         },
                         do self.read_enum_variant_arg(1u) {
                             self.read_uint()
-                        }
-                    )
-                  }
-                  2 => {
-                    typeck::vtable_trait(
-                        do self.read_enum_variant_arg(0u) {
-                            self.read_def_id(xcx)
-                        },
-                        do self.read_enum_variant_arg(1u) {
-                            self.read_tys(xcx)
                         }
                     )
                   }
