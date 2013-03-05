@@ -32,12 +32,16 @@ use core::result;
 use core::uint;
 use core::vec;
 
-#[nolink]
-extern mod rustrt {
-    unsafe fn rust_uv_current_kernel_malloc(size: libc::c_uint)
-                                         -> *libc::c_void;
-    unsafe fn rust_uv_current_kernel_free(mem: *libc::c_void);
-    unsafe fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
+pub mod rustrt {
+    use core::libc;
+
+    #[nolink]
+    pub extern {
+        unsafe fn rust_uv_current_kernel_malloc(size: libc::c_uint)
+                                             -> *libc::c_void;
+        unsafe fn rust_uv_current_kernel_free(mem: *libc::c_void);
+        unsafe fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
+    }
 }
 
 /**
