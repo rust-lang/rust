@@ -15,12 +15,10 @@ use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::common;
-use middle::trans::machine;
 use middle::ty;
 use util::ppaux;
 
 use core::option::None;
-use core::vec;
 use syntax::ast;
 
 pub fn type_of_explicit_arg(ccx: @CrateContext, arg: ty::arg) -> TypeRef {
