@@ -165,7 +165,7 @@ CFG_TESTLIB=$(CFG_BUILD_DIR)/$(2)/$(strip \
                stage2/$(CFG_LIBDIR), \
                $(if $(findstring stage3,$(1)), \
                     stage3/$(CFG_LIBDIR), \
-               )))))/rustc/$(CFG_HOST_TRIPLE)/$(CFG_LIBDIR)
+               )))))/rustc/$(CFG_BUILD_TRIPLE)/$(CFG_LIBDIR)
 
 ifneq ($(findstring linux,$(CFG_OSTYPE)),)
   # -znoexecstack is here because librt is for some reason being created
@@ -236,13 +236,13 @@ ifdef CFG_WINDOWSY
 
   CFG_EXE_SUFFIX := .exe
 ifdef MSYSTEM
-  CFG_LDPATH :=$(CFG_LDPATH):$$PATH
+  CFG_LDPATH :=$(CFG_LDPATH):$(PATH)
   CFG_RUN=PATH="$(CFG_LDPATH):$(1)" $(2)
 else
   CFG_LDPATH :=
   CFG_RUN=$(2)
 endif
-  CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
+  CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_BUILD_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
 
   ifndef CFG_ENABLE_MINGW_CROSS
