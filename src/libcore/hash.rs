@@ -50,32 +50,32 @@ pub trait Hash {
      * function and require most types to only implement the
      * IterBytes trait, that feeds SipHash.
      */
-    pure fn hash_keyed(k0: u64, k1: u64) -> u64;
+    pure fn hash_keyed(&self, k0: u64, k1: u64) -> u64;
 }
 
 // When we have default methods, won't need this.
 pub trait HashUtil {
-    pure fn hash() -> u64;
+    pure fn hash(&self) -> u64;
 }
 
 impl<A:Hash> HashUtil for A {
     #[inline(always)]
-    pure fn hash() -> u64 { self.hash_keyed(0,0) }
+    pure fn hash(&self) -> u64 { self.hash_keyed(0,0) }
 }
 
 /// Streaming hash-functions should implement this.
 pub trait Streaming {
-    fn input((&[const u8]));
+    fn input(&self, (&[const u8]));
     // These can be refactored some when we have default methods.
-    fn result_bytes() -> ~[u8];
+    fn result_bytes(&self) -> ~[u8];
     fn result_str() -> ~str;
-    fn result_u64() -> u64;
-    fn reset();
+    fn result_u64(&self) -> u64;
+    fn reset(&self);
 }
 
 impl<A:IterBytes> Hash for A {
     #[inline(always)]
-    pure fn hash_keyed(k0: u64, k1: u64) -> u64 {
+    pure fn hash_keyed(&self, k0: u64, k1: u64) -> u64 {
         unsafe {
             let s = &State(k0, k1);
             for self.iter_bytes(true) |bytes| {
@@ -301,12 +301,12 @@ impl io::Writer for SipState {
 impl Streaming for &SipState {
 
     #[inline(always)]
-    fn input(buf: &[const u8]) {
+    fn input(&self, buf: &[const u8]) {
         self.write(buf);
     }
 
     #[inline(always)]
-    fn result_u64() -> u64 {
+    fn result_u64(&self) -> u64 {
         let mut v0 = self.v0;
         let mut v1 = self.v1;
         let mut v2 = self.v2;
@@ -336,7 +336,7 @@ impl Streaming for &SipState {
         return (v0 ^ v1 ^ v2 ^ v3);
     }
 
-    fn result_bytes() -> ~[u8] {
+    fn result_bytes(&self) -> ~[u8] {
         let h = self.result_u64();
         ~[(h >> 0) as u8,
           (h >> 8) as u8,
@@ -349,6 +349,7 @@ impl Streaming for &SipState {
         ]
     }
 
+    // IMPLICIT SELF WARNING: fix me!
     fn result_str() -> ~str {
         let r = self.result_bytes();
         let mut s = ~"";
@@ -359,7 +360,7 @@ impl Streaming for &SipState {
     }
 
     #[inline(always)]
-    fn reset() {
+    fn reset(&self) {
         self.length = 0;
         self.v0 = self.k0 ^ 0x736f6d6570736575;
         self.v1 = self.k1 ^ 0x646f72616e646f6d;

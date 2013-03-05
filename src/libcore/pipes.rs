@@ -158,14 +158,14 @@ pub fn PacketHeader() -> PacketHeader {
 
 pub impl PacketHeader {
     // Returns the old state.
-    unsafe fn mark_blocked(this: *rust_task) -> State {
+    unsafe fn mark_blocked(&self, this: *rust_task) -> State {
         rustrt::rust_task_ref(this);
         let old_task = swap_task(&mut self.blocked_task, this);
         assert old_task.is_null();
         swap_state_acq(&mut self.state, Blocked)
     }
 
-    unsafe fn unblock() {
+    unsafe fn unblock(&self) {
         let old_task = swap_task(&mut self.blocked_task, ptr::null());
         if !old_task.is_null() {
             unsafe {
@@ -182,12 +182,12 @@ pub impl PacketHeader {
     // unsafe because this can do weird things to the space/time
     // continuum. It ends making multiple unique pointers to the same
     // thing. You'll proobably want to forget them when you're done.
-    unsafe fn buf_header() -> ~BufferHeader {
+    unsafe fn buf_header(&self) -> ~BufferHeader {
         assert self.buffer.is_not_null();
         reinterpret_cast(&self.buffer)
     }
 
-    fn set_buffer<T:Owned>(b: ~Buffer<T>) {
+    fn set_buffer<T:Owned>(&self, b: ~Buffer<T>) {
         unsafe {
             self.buffer = reinterpret_cast(&b);
         }
@@ -202,11 +202,11 @@ pub struct Packet<T> {
 
 #[doc(hidden)]
 pub trait HasBuffer {
-    fn set_buffer(b: *libc::c_void);
+    fn set_buffer(&self, b: *libc::c_void);
 }
 
 impl<T:Owned> HasBuffer for Packet<T> {
-    fn set_buffer(b: *libc::c_void) {
+    fn set_buffer(&self, b: *libc::c_void) {
         self.header.buffer = b;
     }
 }
@@ -715,11 +715,11 @@ pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
 
 #[doc(hidden)]
 pub trait Selectable {
-    pure fn header() -> *PacketHeader;
+    pure fn header(&self) -> *PacketHeader;
 }
 
 impl Selectable for *PacketHeader {
-    pure fn header() -> *PacketHeader { self }
+    pure fn header(&self) -> *PacketHeader { *self }
 }
 
 /// Returns the index of an endpoint that is ready to receive.
@@ -797,13 +797,13 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *Packet<T>)
 }
 
 pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
-    fn unwrap() -> *Packet<T> {
+    fn unwrap(&self) -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
         option::unwrap(p)
     }
 
-    pure fn header() -> *PacketHeader {
+    pure fn header(&self) -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;
@@ -815,7 +815,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         }
     }
 
-    fn reuse_buffer() -> BufferResource<Tbuffer> {
+    fn reuse_buffer(&self) -> BufferResource<Tbuffer> {
         //error!("send reuse_buffer");
         let mut tmp = None;
         tmp <-> self.buffer;
@@ -854,13 +854,13 @@ impl<T:Owned,Tbuffer:Owned> ::ops::Drop for RecvPacketBuffered<T,Tbuffer> {
 }
 
 pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
-    fn unwrap() -> *Packet<T> {
+    fn unwrap(&self) -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
         option::unwrap(p)
     }
 
-    fn reuse_buffer() -> BufferResource<Tbuffer> {
+    fn reuse_buffer(&self) -> BufferResource<Tbuffer> {
         //error!("recv reuse_buffer");
         let mut tmp = None;
         tmp <-> self.buffer;
@@ -869,7 +869,7 @@ pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
 }
 
 impl<T:Owned,Tbuffer:Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
-    pure fn header() -> *PacketHeader {
+    pure fn header(&self) -> *PacketHeader {
         match self.p {
           Some(packet) => unsafe {
             let packet = &*packet;

@@ -16,31 +16,31 @@ use vec;
 #[cfg(notest)] use cmp::{Eq, Ord};
 
 pub trait CopyableTuple<T, U> {
-    pure fn first() -> T;
-    pure fn second() -> U;
-    pure fn swap() -> (U, T);
+    pure fn first(&self) -> T;
+    pure fn second(&self) -> U;
+    pure fn swap(&self) -> (U, T);
 }
 
 impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
 
     /// Return the first element of self
     #[inline(always)]
-    pure fn first() -> T {
-        let (t, _) = self;
+    pure fn first(&self) -> T {
+        let (t, _) = *self;
         return t;
     }
 
     /// Return the second element of self
     #[inline(always)]
-    pure fn second() -> U {
-        let (_, u) = self;
+    pure fn second(&self) -> U {
+        let (_, u) = *self;
         return u;
     }
 
     /// Return the results of swapping the two elements of self
     #[inline(always)]
-    pure fn swap() -> (U, T) {
-        let (t, u) = self;
+    pure fn swap(&self) -> (U, T) {
+        let (t, u) = *self;
         return (u, t);
     }
 

@@ -175,39 +175,39 @@ pub pure fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
 }
 
 pub trait Ptr<T> {
-    pure fn is_null() -> bool;
-    pure fn is_not_null() -> bool;
-    pure fn offset(count: uint) -> Self;
+    pure fn is_null(&self) -> bool;
+    pure fn is_not_null(&self) -> bool;
+    pure fn offset(&self, count: uint) -> Self;
 }
 
 /// Extension methods for immutable pointers
 impl<T> Ptr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
-    pure fn is_null() -> bool { is_null(self) }
+    pure fn is_null(&self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
-    pure fn is_not_null() -> bool { is_not_null(self) }
+    pure fn is_not_null(&self) -> bool { is_not_null(*self) }
 
     /// Calculates the offset from a pointer.
     #[inline(always)]
-    pure fn offset(count: uint) -> *T { offset(self, count) }
+    pure fn offset(&self, count: uint) -> *T { offset(*self, count) }
 }
 
 /// Extension methods for mutable pointers
 impl<T> Ptr<T> for *mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
-    pure fn is_null() -> bool { is_null(self) }
+    pure fn is_null(&self) -> bool { is_null(*self) }
 
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
-    pure fn is_not_null() -> bool { is_not_null(self) }
+    pure fn is_not_null(&self) -> bool { is_not_null(*self) }
 
     /// Calculates the offset from a mutable pointer.
     #[inline(always)]
-    pure fn offset(count: uint) -> *mut T { mut_offset(self, count) }
+    pure fn offset(&self, count: uint) -> *mut T { mut_offset(*self, count) }
 }
 
 // Equality for pointers
