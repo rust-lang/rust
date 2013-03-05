@@ -20,7 +20,7 @@
 use at_vec;
 use cast;
 use char;
-use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{Equiv, TotalOrd, Ordering, Less, Equal, Greater};
 use libc;
 use option::{None, Option, Some};
 use ptr;
@@ -896,6 +896,12 @@ impl Ord for @str {
     pure fn ge(&self, other: &@str) -> bool { ge((*self), (*other)) }
     #[inline(always)]
     pure fn gt(&self, other: &@str) -> bool { gt((*self), (*other)) }
+}
+
+#[cfg(notest)]
+impl Equiv<~str> for &str {
+    #[inline(always)]
+    pure fn equiv(&self, other: &~str) -> bool { eq_slice(*self, *other) }
 }
 
 /*
