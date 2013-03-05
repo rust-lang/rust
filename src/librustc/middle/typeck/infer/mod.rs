@@ -720,8 +720,9 @@ pub impl @mut InferCtxt {
         self.tcx.sess.span_err(sp,
            fmt!("%s%s", mk_msg(self.ty_to_str(actual_ty)),
                 error_str));
-        err.iter(|err|
-             ty::note_and_explain_type_err(self.tcx, *err));
+        for err.each |err| {
+            ty::note_and_explain_type_err(self.tcx, *err)
+        }
     }
 
     fn report_mismatched_types(&self, sp: span, e: ty::t, a: ty::t,

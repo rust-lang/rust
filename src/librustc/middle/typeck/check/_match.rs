@@ -181,11 +181,11 @@ pub fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             tcx.sess.span_fatal(pat.span, s);
         }
 
-        do subpats.iter() |pats| {
+        for subpats.each |pats| {
             for vec::each2(*pats, arg_types) |subpat, arg_ty| {
               check_pat(pcx, *subpat, *arg_ty);
             }
-        };
+        }
     } else if subpats_len > 0u {
         tcx.sess.span_fatal
             (pat.span, fmt!("this pattern has %u field%s, but the \

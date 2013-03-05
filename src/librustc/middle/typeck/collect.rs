@@ -688,7 +688,7 @@ pub fn convert_struct(ccx: @mut CrateCtxt,
                       id: ast::node_id) {
     let tcx = ccx.tcx;
 
-    do option::iter(&struct_def.dtor) |dtor| {
+    for struct_def.dtor.each |dtor| {
         // Write the dtor type
         let t_dtor = ty::mk_bare_fn(
             tcx,

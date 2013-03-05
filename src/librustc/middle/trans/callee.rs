@@ -535,7 +535,7 @@ pub fn trans_call_inner(
         } else if ret_in_loop {
             let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
             bcx = do with_cond(bcx, ret_flag_result) |bcx| {
-                do option::iter(&copy bcx.fcx.loop_ret) |&(flagptr, _)| {
+                for (copy bcx.fcx.loop_ret).each |&(flagptr, _)| {
                     Store(bcx, C_bool(true), flagptr);
                     Store(bcx, C_bool(false), bcx.fcx.llretptr);
                 }

@@ -59,11 +59,11 @@ pub fn load_props(testfile: &Path) -> TestProps {
             pp_exact = parse_pp_exact(ln, testfile);
         }
 
-        do parse_aux_build(ln).iter |ab| {
+        for parse_aux_build(ln).each |ab| {
             aux_builds.push(*ab);
         }
 
-        do parse_exec_env(ln).iter |ee| {
+        for parse_exec_env(ln).each |ee| {
             exec_env.push(*ee);
         }
 

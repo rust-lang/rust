@@ -128,7 +128,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
         for struct_def.ctor_id.each |&ctor_id| {
             cx.rmap.insert(ctor_id, ());
         }
-        do struct_def.dtor.iter |dtor| {
+        for struct_def.dtor.each |dtor| {
             cx.rmap.insert(dtor.node.id, ());
             if generics.ty_params.len() > 0u ||
                 attr::find_inline_attr(dtor.node.attrs) != attr::ia_none

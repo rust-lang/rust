@@ -15,7 +15,7 @@ pub fn main() {
     assert [2u, 4u].all(is_even);
     assert [].all(is_even);
 
-    assert !Some(1u).all(is_even);
-    assert Some(2u).all(is_even);
-    assert None.all(is_even);
+    assert !iter::all(&Some(1u), is_even);
+    assert iter::all(&Some(2u), is_even);
+    assert iter::all(&None::<uint>, is_even);
 }

@@ -1241,7 +1241,7 @@ mod tests {
         setenv(~"HOME", ~"");
         assert os::homedir().is_none();
 
-        oldhome.iter(|s| setenv(~"HOME", *s));
+        for oldhome.each |s| { setenv(~"HOME", *s) }
     }
 
     #[test]

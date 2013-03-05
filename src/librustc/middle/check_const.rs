@@ -50,7 +50,7 @@ pub fn check_item(sess: Session,
       }
       item_enum(ref enum_definition, _) => {
         for (*enum_definition).variants.each |var| {
-            do option::iter(&var.node.disr_expr) |ex| {
+            for var.node.disr_expr.each |ex| {
                 (v.visit_expr)(*ex, true, v);
             }
         }

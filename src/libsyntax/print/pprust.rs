@@ -732,7 +732,7 @@ pub fn print_struct(s: @ps,
         nbsp(s);
         bopen(s);
         hardbreak_if_not_bol(s);
-        do struct_def.dtor.iter |dtor| {
+        for struct_def.dtor.each |dtor| {
           hardbreak_if_not_bol(s);
           maybe_print_comment(s, dtor.span.lo);
           print_outer_attributes(s, dtor.node.attrs);
@@ -1271,10 +1271,10 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
       ast::expr_loop(ref blk, opt_ident) => {
         head(s, ~"loop");
         space(s.s);
-        opt_ident.iter(|ident| {
+        for opt_ident.each |ident| {
             print_ident(s, *ident);
             word_space(s, ~":");
-        });
+        }
         print_block(s, blk);
       }
       ast::expr_match(expr, ref arms) => {
@@ -1422,12 +1422,12 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
+        for opt_ident.each |ident| { print_ident(s, *ident); space(s.s) }
       }
       ast::expr_again(opt_ident) => {
         word(s.s, ~"loop");
         space(s.s);
-        opt_ident.iter(|ident| {print_ident(s, *ident); space(s.s)});
+        for opt_ident.each |ident| { print_ident(s, *ident); space(s.s) }
       }
       ast::expr_ret(result) => {
         word(s.s, ~"return");
@@ -1667,7 +1667,7 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
       ast::pat_vec(elts, tail) => {
         word(s.s, ~"[");
         commasep(s, inconsistent, elts, |s, p| print_pat(s, p, refutable));
-        do option::iter(&tail) |tail| {
+        for tail.each |tail| {
             if vec::len(elts) != 0u { word_space(s, ~","); }
             word(s.s, ~"..");
             print_pat(s, *tail, refutable);

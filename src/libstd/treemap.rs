@@ -528,7 +528,7 @@ pub impl<K: TotalOrd, V> TreeNode<K, V> {
 
 pure fn each<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
                         f: fn(&(&r/K, &r/V)) -> bool) {
-    do node.iter |x| {
+    for node.each |x| {
         each(&x.left, f);
         if f(&(&x.key, &x.value)) { each(&x.right, f) }
     }
@@ -536,7 +536,7 @@ pure fn each<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
 
 pure fn each_reverse<K: TotalOrd, V>(node: &r/Option<~TreeNode<K, V>>,
                                 f: fn(&(&r/K, &r/V)) -> bool) {
-    do node.iter |x| {
+    for node.each |x| {
         each_reverse(&x.right, f);
         if f(&(&x.key, &x.value)) { each_reverse(&x.left, f) }
     }
