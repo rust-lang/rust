@@ -157,16 +157,19 @@ pub mod icu {
 
     pub const UCHAR_INVALID_CODE : UProperty = -1;
 
-    #[link_name = "icuuc"]
-    #[abi = "cdecl"]
-    pub extern mod libicu {
-        unsafe fn u_hasBinaryProperty(c: UChar32, which: UProperty) -> UBool;
-        unsafe fn u_isdigit(c: UChar32) -> UBool;
-        unsafe fn u_islower(c: UChar32) -> UBool;
-        unsafe fn u_isspace(c: UChar32) -> UBool;
-        unsafe fn u_isupper(c: UChar32) -> UBool;
-        unsafe fn u_tolower(c: UChar32) -> UChar32;
-        unsafe fn u_toupper(c: UChar32) -> UChar32;
+    pub mod libicu {
+        #[link_name = "icuuc"]
+        #[abi = "cdecl"]
+        pub extern {
+            unsafe fn u_hasBinaryProperty(c: UChar32, which: UProperty)
+                                       -> UBool;
+            unsafe fn u_isdigit(c: UChar32) -> UBool;
+            unsafe fn u_islower(c: UChar32) -> UBool;
+            unsafe fn u_isspace(c: UChar32) -> UBool;
+            unsafe fn u_isupper(c: UChar32) -> UBool;
+            unsafe fn u_tolower(c: UChar32) -> UChar32;
+            unsafe fn u_toupper(c: UChar32) -> UChar32;
+        }
     }
 }
 

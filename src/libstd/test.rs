@@ -35,9 +35,13 @@ use core::str;
 use core::task;
 use core::vec;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    pub unsafe fn rust_sched_threads() -> size_t;
+pub mod rustrt {
+    use core::libc::size_t;
+
+    #[abi = "cdecl"]
+    pub extern {
+        pub unsafe fn rust_sched_threads() -> size_t;
+    }
 }
 
 // The name of a test. By convention this follows the rules for rust

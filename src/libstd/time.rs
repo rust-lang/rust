@@ -19,18 +19,26 @@ use core::str;
 
 const NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    pub unsafe fn get_time(sec: &mut i64, nsec: &mut i32);
+pub mod rustrt {
+    use super::Tm;
 
-    pub unsafe fn precise_time_ns(ns: &mut u64);
+    #[cfg(target_os = "linux")]
+    #[link_args = "-lrt"]
+    pub extern {}
 
-    pub unsafe fn rust_tzset();
-    // FIXME: The i64 values can be passed by-val when #2064 is fixed.
-    pub unsafe fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    pub unsafe fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
-    pub unsafe fn rust_timegm(&&tm: Tm, sec: &mut i64);
-    pub unsafe fn rust_mktime(&&tm: Tm, sec: &mut i64);
+    #[abi = "cdecl"]
+    pub extern {
+        pub unsafe fn get_time(sec: &mut i64, nsec: &mut i32);
+
+        pub unsafe fn precise_time_ns(ns: &mut u64);
+
+        pub unsafe fn rust_tzset();
+        // FIXME: The i64 values can be passed by-val when #2064 is fixed.
+        pub unsafe fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+        pub unsafe fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+        pub unsafe fn rust_timegm(&&tm: Tm, sec: &mut i64);
+        pub unsafe fn rust_mktime(&&tm: Tm, sec: &mut i64);
+    }
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
