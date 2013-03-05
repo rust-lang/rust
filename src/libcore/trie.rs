@@ -230,7 +230,7 @@ impl<T> TrieNode<T> {
     pure fn each_reverse(&self, f: fn(&(uint, &self/T)) -> bool) {
         for uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx - 1] {
-                Internal(ref x) => x.each(f),
+                Internal(ref x) => x.each_reverse(f),
                 External(k, ref v) => if !f(&(k, v)) { return },
                 Nothing => ()
             }
@@ -364,6 +364,42 @@ mod tests {
             assert trie.contains_key(&x);
             assert !trie.insert(x, x + 1);
             check_integrity(&trie.root);
+        }
+    }
+
+    #[test]
+    fn test_each() {
+        let mut m = TrieMap::new();
+
+        assert m.insert(3, 6);
+        assert m.insert(0, 0);
+        assert m.insert(4, 8);
+        assert m.insert(2, 4);
+        assert m.insert(1, 2);
+
+        let mut n = 0;
+        for m.each |&(k, v)| {
+            assert k == n;
+            assert *v == n * 2;
+            n += 1;
+        }
+    }
+
+    #[test]
+    fn test_each_reverse() {
+        let mut m = TrieMap::new();
+
+        assert m.insert(3, 6);
+        assert m.insert(0, 0);
+        assert m.insert(4, 8);
+        assert m.insert(2, 4);
+        assert m.insert(1, 2);
+
+        let mut n = 4;
+        for m.each_reverse |&(k, v)| {
+            assert k == n;
+            assert *v == n * 2;
+            n -= 1;
         }
     }
 }
