@@ -44,7 +44,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                         cx.span_fatal(
                             pth.span,
                             fmt!("expected macro name without module \
-                                  separators, got: '%?'",pth));
+                                  separators"));
                     }
                     /* using idents and token::special_idents would make the
                     the macro names be hygienic */
@@ -328,7 +328,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
         cx.span_fatal(
             pth.span,
             fmt!("expected macro name without module \
-                  separators, got: '%?'",pth));
+                  separators"));
     }
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
     let (fully_expanded, sp) = match (*extsbox).find(&extname) {
