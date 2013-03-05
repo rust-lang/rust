@@ -10,14 +10,12 @@
 
 use core::prelude::*;
 
-use common;
 use common::mode_run_pass;
 use common::mode_run_fail;
 use common::mode_compile_fail;
 use common::mode_pretty;
 use common::config;
 use errors;
-use header;
 use header::load_props;
 use header::TestProps;
 use procsrv;

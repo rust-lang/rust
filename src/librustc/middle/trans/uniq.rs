@@ -19,8 +19,6 @@ use middle::trans::datum;
 use middle::trans::glue;
 use middle::ty;
 
-use syntax::ast;
-
 pub fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
     -> block {
     let _icx = bcx.insn_ctxt("uniq::make_free_glue");

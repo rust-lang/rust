@@ -15,28 +15,24 @@ More runtime type reflection
 */
 
 use cast::transmute;
-use cast;
 use char;
 use dvec::DVec;
 use intrinsic;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
-use io;
 use io::{Writer, WriterUtil};
 use libc::c_void;
 use managed;
-use managed::raw::BoxHeaderRepr;
 use ptr;
 use reflect;
 use reflect::{MovePtr, MovePtrAdaptor, align};
-use repr;
 use str;
 use sys;
-use sys::TypeDesc;
 use to_str::ToStr;
-use uint;
 use vec::UnboxedVecRepr;
 use vec::raw::{VecRepr, SliceRepr};
 use vec;
+
+#[cfg(test)] use io;
 
 pub use managed::raw::BoxRepr;
 
@@ -581,7 +577,7 @@ struct P {a: int, b: float}
 fn test_repr() {
 
     fn exact_test<T>(t: &T, e:&str) {
-        let s : &str = io::with_str_writer(|w| repr::write_repr(w, t));
+        let s : &str = io::with_str_writer(|w| write_repr(w, t));
         if s != e {
             error!("expected '%s', got '%s'",
                    e, s);

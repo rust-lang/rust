@@ -27,7 +27,6 @@
  */
 
 use cast;
-use either;
 use io;
 use libc;
 use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t};
@@ -38,7 +37,6 @@ use prelude::*;
 use ptr;
 use str;
 use task;
-use task::TaskBuilder;
 use uint;
 use vec;
 

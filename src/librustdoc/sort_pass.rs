@@ -10,16 +10,14 @@
 
 //! A general sorting pass
 
-use core::prelude::*;
-
 use astsrv;
-use doc::ItemUtils;
 use doc;
-use extract;
 use fold::Fold;
 use fold;
 use pass::Pass;
 use util::NominalOp;
+
+#[cfg(test)] use extract;
 
 use std::sort;
 

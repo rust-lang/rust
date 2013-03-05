@@ -19,16 +19,13 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use core::cmp;
 use core::option;
 use core::uint;
 use core::vec;
-use std::oldmap::HashMap;
 use std::sort;
 use syntax::ast::*;
 use syntax::ast_util::{variant_def_ids, unguarded_pat, walk_pat};
 use syntax::codemap::{span, dummy_sp, spanned};
-use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 
 pub struct MatchCheckCtxt {

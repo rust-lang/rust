@@ -14,7 +14,6 @@ use middle::resolve;
 use middle::ty;
 use middle;
 
-use core::cmp;
 use core::float;
 use core::vec;
 use syntax::{ast, ast_map, ast_util, visit};

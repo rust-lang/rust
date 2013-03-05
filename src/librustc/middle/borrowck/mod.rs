@@ -226,31 +226,22 @@ Borrowck results in two maps.
 
 use core::prelude::*;
 
-use middle::liveness;
 use middle::mem_categorization::*;
 use middle::region;
 use middle::ty;
 use middle::typeck;
 use middle::moves;
 use util::common::{indenter, stmt_set};
-use util::ppaux::{expr_repr, note_and_explain_region};
-use util::ppaux::{ty_to_str, region_to_str, explain_region};
+use util::ppaux::note_and_explain_region;
 
-use core::cmp;
 use core::dvec::DVec;
 use core::io;
 use core::result::{Result, Ok, Err};
 use core::to_bytes;
-use std::list::{List, Cons, Nil};
-use std::list;
 use std::oldmap::{HashMap, Set};
 use syntax::ast::{mutability, m_mutbl, m_imm, m_const};
 use syntax::ast;
-use syntax::ast_map;
-use syntax::ast_util;
 use syntax::codemap::span;
-use syntax::print::pprust;
-use syntax::visit;
 
 pub mod check_loans;
 pub mod gather_loans;

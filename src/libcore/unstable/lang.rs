@@ -18,7 +18,8 @@ use sys;
 use unstable::exchange_alloc;
 use cast::transmute;
 
-use gc::{cleanup_stack_for_failure, gc, Word};
+#[allow(non_camel_case_types)]
+pub type rust_task = c_void;
 
 #[cfg(target_word_size = "32")]
 pub const FROZEN_BIT: uint = 0x80000000;

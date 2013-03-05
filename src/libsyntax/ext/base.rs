@@ -19,7 +19,6 @@ use ext;
 use parse;
 use parse::{parser, token};
 
-use core::io;
 use core::vec;
 use core::hashmap::linear::LinearMap;
 
@@ -504,7 +503,6 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::MapChain;
     use util::testing::check_equal;
     use core::hashmap::linear::LinearMap;

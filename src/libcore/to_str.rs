@@ -14,9 +14,7 @@ The `ToStr` trait for converting to strings
 
 */
 
-use kinds::Copy;
 use str;
-use vec;
 
 pub trait ToStr {
     pure fn to_str(&self) -> ~str;

@@ -14,14 +14,10 @@
 
 use core::prelude::*;
 
-use metadata::creader;
 use metadata::cstore;
 use metadata::decoder;
 
-use core::option;
-use core::str;
 use core::vec;
-use std::oldmap::HashMap;
 use std::oldmap;
 use std;
 use syntax::{ast, attr};

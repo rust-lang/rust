@@ -27,7 +27,6 @@ use middle::mem_categorization::{region_ptr};
 use middle::ty;
 use util::common::indenter;
 
-use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 
 pub enum PreserveCondition {

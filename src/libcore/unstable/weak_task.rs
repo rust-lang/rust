@@ -22,7 +22,6 @@ use cell::Cell;
 use comm::{GenericSmartChan, stream};
 use comm::{Port, Chan, SharedChan, GenericChan, GenericPort};
 use hashmap::linear::LinearMap;
-use ops::Drop;
 use option::{Some, None, swap_unwrap};
 use unstable::at_exit::at_exit;
 use unstable::finally::Finally;

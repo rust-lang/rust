@@ -11,10 +11,8 @@
 
 //! Boolean logic
 
-use bool;
-use cmp;
-use cmp::Eq;
 use option::{None, Option, Some};
+#[cfg(notest)] use cmp;
 
 /// Negation / inverse
 pub pure fn not(v: bool) -> bool { !v }
@@ -82,7 +80,7 @@ impl cmp::Eq for bool {
 #[test]
 pub fn test_bool_from_str() {
     do all_values |v| {
-        assert Some(v) == from_str(bool::to_str(v))
+        assert Some(v) == from_str(to_str(v))
     }
 }
 

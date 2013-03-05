@@ -14,19 +14,16 @@
 use core::prelude::*;
 
 use metadata::cstore;
-use metadata::common::*;
 use metadata::decoder;
 use metadata::filesearch::FileSearch;
 use metadata::loader;
 
 use core::either;
-use core::option;
 use core::vec;
 use syntax::attr;
 use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
-use syntax::print::pprust;
 use syntax::visit;
 use syntax::{ast, ast_util};
 use std::oldmap::HashMap;

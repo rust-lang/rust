@@ -32,7 +32,6 @@
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
 
-use arena;
 use list;
 use list::{List, Cons, Nil};
 
@@ -274,7 +273,7 @@ pub impl &Arena {
 
 #[test]
 fn test_arena_destructors() {
-    let arena = arena::Arena();
+    let arena = Arena();
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
@@ -287,7 +286,7 @@ fn test_arena_destructors() {
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_arena_destructors_fail() {
-    let arena = arena::Arena();
+    let arena = Arena();
     // Put some stuff in the arena.
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it

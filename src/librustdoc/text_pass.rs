@@ -21,7 +21,6 @@ use pass::Pass;
 use util::NominalOp;
 
 use core::cell::Cell;
-use std::par;
 
 pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
     let op = Cell(op);

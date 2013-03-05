@@ -19,8 +19,6 @@ use metadata::filesearch;
 use metadata;
 use middle::lint;
 
-use core::cmp;
-use core::option;
 use syntax::ast::node_id;
 use syntax::ast::{int_ty, uint_ty, float_ty};
 use syntax::codemap::span;
@@ -346,13 +344,10 @@ pub fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
 
 #[cfg(test)]
 pub mod test {
-    use core::prelude::*;
-
     use driver::session::{bin_crate, building_library, lib_crate};
     use driver::session::{unknown_crate};
 
     use syntax::ast;
-    use syntax::ast_util;
     use syntax::codemap;
 
     pub fn make_crate_type_attr(+t: ~str) -> ast::attribute {

@@ -29,7 +29,6 @@ extern mod rustc(vers = "0.6");
 extern mod syntax(vers = "0.6");
 
 use core::*;
-use std::par;
 
 pub mod pass;
 pub mod config;
@@ -62,7 +61,6 @@ pub mod util;
 
 use doc::ItemUtils;
 use doc::Item;
-use pass::Pass;
 use config::Config;
 
 pub fn main() {

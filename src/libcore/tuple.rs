@@ -10,9 +10,10 @@
 
 //! Operations on tuples
 
-use cmp::{Eq, Ord};
 use kinds::Copy;
 use vec;
+
+#[cfg(notest)] use cmp::{Eq, Ord};
 
 pub trait CopyableTuple<T, U> {
     pure fn first() -> T;

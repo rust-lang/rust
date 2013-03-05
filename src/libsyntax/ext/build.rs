@@ -16,10 +16,8 @@ use codemap::span;
 use ext::base::ext_ctxt;
 use ext::build;
 
-use opt_vec;
 use opt_vec::OptVec;
 
-use core::dvec;
 use core::option;
 
 pub struct Field {

@@ -16,7 +16,6 @@ use core::result::Result;
 use core::result;
 use syntax::ast;
 use syntax::codemap::span;
-use syntax::parse::token::special_idents;
 
 pub trait region_scope {
     pure fn anon_region(&self, span: span) -> Result<ty::Region, ~str>;

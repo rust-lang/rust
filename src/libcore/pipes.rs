@@ -90,10 +90,8 @@ use kinds::Owned;
 use libc;
 use option;
 use option::{None, Option, Some, unwrap};
-use pipes;
 use unstable::intrinsics;
 use ptr;
-use unstable;
 use task;
 use vec;
 

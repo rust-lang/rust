@@ -10,11 +10,9 @@
 
 //! Simple ANSI color library
 
-use core::i32;
 use core::io;
 use core::option;
 use core::os;
-use core::str;
 use core::vec;
 
 // FIXME (#2807): Windows support.

@@ -8,13 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use serialize;
-
-use core::io;
-use core::ops;
 use core::prelude::*;
-use core::str;
-use core::vec;
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:

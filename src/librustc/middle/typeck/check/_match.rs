@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
-use middle::pat_util::{pat_is_variant_or_struct};
 use middle::ty;
 use middle::typeck::check::demand;
 use middle::typeck::check::{check_block, check_expr_has_type, FnCtxt};
@@ -22,7 +21,6 @@ use middle::typeck::require_same_types;
 use core::vec;
 use std::oldmap::HashMap;
 use syntax::ast;
-use syntax::ast_util::walk_pat;
 use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust;

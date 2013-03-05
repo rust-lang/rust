@@ -16,9 +16,6 @@ use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{impl_owned_self, impl_self, no_self};
 use middle::trans::base::{trans_item, get_item_val, self_arg, trans_fn};
 use middle::trans::common::*;
-use middle::trans::common;
-use middle::trans::inline;
-use middle::trans::monomorphize;
 use middle::ty;
 use util::ppaux::ty_to_str;
 

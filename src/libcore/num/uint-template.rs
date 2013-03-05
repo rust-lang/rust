@@ -11,9 +11,6 @@
 use T = self::inst::T;
 use T_SIGNED = self::inst::T_SIGNED;
 
-use char;
-use cmp::{Eq, Ord};
-use cmp;
 use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
@@ -21,12 +18,8 @@ use num::strconv;
 use num;
 use option::{None, Option, Some};
 use prelude::*;
-use str;
-use uint;
-use vec;
-use u8;
-use u16;
-use u32;
+
+#[cfg(notest)] use cmp::{Eq, Ord};
 
 pub use cmp::{min, max};
 
@@ -357,7 +350,6 @@ pub fn to_str_radix37() {
     uint::to_str_radix(100u, 37u);
 }
 
-use io;
 #[test]
 pub fn test_ranges() {
     let mut l = ~[];

@@ -32,7 +32,6 @@ use core::option;
 use core::prelude::*;
 use core::result;
 use core::str;
-use core::task::TaskBuilder;
 use core::task;
 use core::vec;
 

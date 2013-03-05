@@ -13,7 +13,6 @@
 #[warn(non_camel_case_types)];
 
 use container::{Container, Mutable};
-use cast::transmute;
 use cast;
 use cmp::{Eq, Ord, TotalOrd, Ordering, Less, Equal, Greater};
 use iter::BaseIter;

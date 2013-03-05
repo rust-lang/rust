@@ -19,7 +19,6 @@ use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
 use parse;
-use util::interner;
 
 use core::cmp;
 use core::io::ReaderUtil;

@@ -27,7 +27,6 @@ use pass::Pass;
 use core::str;
 use core::vec;
 use core::util;
-use std::par;
 
 pub fn mk_pass() -> Pass {
     Pass {

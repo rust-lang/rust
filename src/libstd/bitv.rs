@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use core::container::{Container, Mutable, Set};
-use core::num::NumCast;
 use core::ops;
 use core::prelude::*;
 use core::uint;

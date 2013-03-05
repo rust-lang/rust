@@ -11,7 +11,6 @@
 //! A type that represents one of two alternatives
 
 use cmp::Eq;
-use cmp;
 use kinds::Copy;
 use result::Result;
 use result;

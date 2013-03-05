@@ -19,11 +19,8 @@ pub mod linear {
     use iter::BaseIter;
     use hash::Hash;
     use iter;
-    use kinds::Copy;
     use option::{None, Option, Some};
-    use option;
     use rand;
-    use to_bytes::IterBytes;
     use uint;
     use vec;
 

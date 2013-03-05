@@ -11,17 +11,17 @@
 //! Operations and constants for `f64`
 
 use cmath;
-use cmp;
 use libc::{c_double, c_int};
-use libc;
 use num::NumCast;
 use num::strconv;
 use num;
-use ops;
 use option::Option;
 use unstable::intrinsics::floorf64;
 use to_str;
 use from_str;
+
+#[cfg(notest)] use cmp;
+#[cfg(notest)] use ops;
 
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};

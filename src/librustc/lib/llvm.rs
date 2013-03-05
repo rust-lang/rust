@@ -10,15 +10,10 @@
 
 use core::prelude::*;
 
-use core::cast;
-use core::cmp;
-use core::int;
-use core::io;
 use core::libc::{c_char, c_int, c_uint, c_longlong, c_ulonglong};
 use core::option;
 use core::ptr;
 use core::str;
-use core::uint;
 use core::vec;
 use std::oldmap::HashMap;
 

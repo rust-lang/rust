@@ -28,7 +28,6 @@ use codemap::{span, spanned};
 use parse::token::special_idents::clownshoes_extensions;
 use ast_util;
 use opt_vec;
-use opt_vec::OptVec;
 
 use core::dvec;
 use core::uint;

@@ -21,11 +21,8 @@
  * ~~~
  */
 
-use core::cast::copy_lifetime;
 use core::cast;
 use core::cell::Cell;
-use core::either::Either;
-use core::option;
 use core::comm::{oneshot, ChanOne, PortOne, send_one, recv_one};
 use core::pipes::recv;
 use core::prelude::*;
@@ -145,6 +142,7 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
+#[cfg(test)]
 pub mod test {
     use core::prelude::*;
 

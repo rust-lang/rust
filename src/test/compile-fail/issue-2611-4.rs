@@ -10,7 +10,6 @@
 
 // Tests that an impl method's bounds aren't *more* restrictive
 // than the trait method it's implementing
-use core::iter::BaseIter;
 
 trait A {
   fn b<C:Copy,D>(x: C) -> C;

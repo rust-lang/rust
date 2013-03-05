@@ -22,7 +22,6 @@ use middle::lint::{deny, allow, forbid, level, unused_imports, warn};
 use middle::lint::{get_lint_level, get_lint_settings_level};
 use middle::pat_util::{pat_bindings};
 
-use core::cmp;
 use core::str;
 use core::vec;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound, _mod, add, arm};
@@ -74,17 +73,12 @@ use syntax::visit::{default_visitor, fk_method, mk_vt, Visitor, visit_block};
 use syntax::visit::{visit_crate, visit_expr, visit_expr_opt, visit_fn};
 use syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
 use syntax::visit::{visit_mod, visit_ty, vt};
-use syntax::opt_vec;
 use syntax::opt_vec::OptVec;
 
 use core::dvec::DVec;
-use core::managed::ptr_eq;
 use core::option::{Some, get, is_some, is_none};
 use core::str::{connect, split_str};
-use core::vec::pop;
-use std::list::{Cons, List, Nil};
 use std::oldmap::HashMap;
-use str_eq = core::str::eq;
 
 // Definition mapping
 pub type DefMap = HashMap<node_id,def>;

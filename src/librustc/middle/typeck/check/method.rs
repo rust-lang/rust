@@ -81,7 +81,6 @@ obtained the type `Foo`, we would never match this method.
 
 use core::prelude::*;
 
-use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
 use middle::ty::*;
 use middle::ty;
@@ -90,7 +89,6 @@ use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::check::vtable::VtableContext;
 use middle::typeck::check::vtable;
 use middle::typeck::check;
-use middle::typeck::coherence::get_base_type_def_id;
 use middle::typeck::infer;
 use middle::typeck::{method_map_entry, method_origin, method_param};
 use middle::typeck::{method_self, method_static, method_trait, method_super};
@@ -107,9 +105,6 @@ use syntax::ast::{sty_uniq, sty_static, node_id, by_copy, by_ref};
 use syntax::ast::{m_const, m_mutbl, m_imm};
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_map::node_id_to_str;
-use syntax::codemap::dummy_sp;
-use syntax::codemap::span;
 
 pub fn lookup(
     fcx: @mut FnCtxt,
