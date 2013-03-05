@@ -478,14 +478,6 @@ pub fn trans_monomorphized_callee(bcx: block,
               })
           }
       }
-      typeck::vtable_trait(_, _) => {
-          trans_trait_callee(bcx,
-                             callee_id,
-                             n_method,
-                             base,
-                             ty::vstore_box,
-                             mentry.explicit_self)
-      }
       typeck::vtable_param(*) => {
           fail!(~"vtable_param left in monomorphized function's " +
               "vtable substs");
@@ -756,13 +748,7 @@ pub fn vtable_id(ccx: @CrateContext,
                 None,
                 None)
         }
-        typeck::vtable_trait(trait_id, substs) => {
-            @mono_id_ {
-                def: trait_id,
-                params: vec::map(substs, |t| mono_precise(*t, None)),
-                impl_did_opt: None
-            }
-        }
+
         // can't this be checked at the callee?
         _ => fail!(~"vtable_id")
     }

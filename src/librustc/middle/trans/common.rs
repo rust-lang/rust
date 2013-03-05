@@ -1405,7 +1405,6 @@ pub fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, +vt: typeck::vtable_origin)
                 }
             }
         }
-        vt => vt
     }
 }
 

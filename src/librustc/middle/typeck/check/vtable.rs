@@ -18,7 +18,7 @@ use middle::typeck::infer::{fixup_err_to_str, InferCtxt};
 use middle::typeck::infer::{resolve_and_force_all_but_regions, resolve_type};
 use middle::typeck::infer;
 use middle::typeck::{CrateCtxt, vtable_origin, vtable_param, vtable_res};
-use middle::typeck::{vtable_static, vtable_trait};
+use middle::typeck::{vtable_static};
 use util::common::indenter;
 use util::ppaux::tys_to_str;
 use util::ppaux;
@@ -81,7 +81,6 @@ pub fn lookup_vtables(vcx: &VtableContext,
                       location_info: &LocationInfo,
                       bounds: @~[ty::param_bounds],
                       substs: &ty::substs,
-                      allow_unsafe: bool,
                       is_early: bool) -> vtable_res {
     debug!("lookup_vtables(location_info=%?,
             # bounds=%?, \
@@ -110,8 +109,7 @@ pub fn lookup_vtables(vcx: &VtableContext,
             debug!("after subst: %?",
                    ppaux::ty_to_str(tcx, trait_ty));
 
-            match lookup_vtable(vcx, location_info, *ty, trait_ty,
-                                allow_unsafe, is_early) {
+            match lookup_vtable(vcx, location_info, *ty, trait_ty, is_early) {
                 Some(vtable) => result.push(vtable),
                 None => {
                     vcx.tcx().sess.span_fatal(
@@ -162,7 +160,6 @@ pub fn lookup_vtable(vcx: &VtableContext,
                      location_info: &LocationInfo,
                      ty: ty::t,
                      trait_ty: ty::t,
-                     allow_unsafe: bool,
                      is_early: bool)
                   -> Option<vtable_origin> {
     debug!("lookup_vtable(ty=%s, trait_ty=%s)",
@@ -222,30 +219,6 @@ pub fn lookup_vtable(vcx: &VtableContext,
 
                 n_bound += 1;
             }
-        }
-
-        ty::ty_trait(did, ref substs, _) if trait_id == did => {
-            debug!("(checking vtable) @1 relating ty to trait ty with did %?",
-                   did);
-
-            relate_trait_tys(vcx, location_info, trait_ty, ty);
-            if !allow_unsafe && !is_early {
-                for vec::each(*ty::trait_methods(tcx, did)) |m| {
-                    if ty::type_has_self(ty::mk_bare_fn(tcx, copy m.fty)) {
-                        tcx.sess.span_err(
-                            location_info.span,
-                            ~"a boxed trait with self types may not be \
-                              passed as a bounded type");
-                    } else if (*m.tps).len() > 0u {
-                        tcx.sess.span_err(
-                            location_info.span,
-                            ~"a boxed trait with generic methods may not \
-                              be passed as a bounded type");
-
-                    }
-                }
-            }
-            return Some(vtable_trait(did, /*bad*/copy (*substs).tps));
         }
 
         _ => {
@@ -411,7 +384,7 @@ pub fn lookup_vtable(vcx: &VtableContext,
                                               trait_vstore);
                             let subres = lookup_vtables(
                                 vcx, location_info, im_bs, &substs_f,
-                                false, is_early);
+                                is_early);
 
                             // Finally, we register that we found a
                             // matching impl, and record the def ID of
@@ -542,8 +515,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                 }
                 let vcx = VtableContext { ccx: fcx.ccx, infcx: fcx.infcx() };
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),
-                                           item_ty.bounds, substs, false,
-                                           is_early);
+                                           item_ty.bounds, substs, is_early);
                 if !is_early {
                     let vtable_map = cx.vtable_map;
                     vtable_map.insert(ex.id, vtbls);
@@ -573,7 +545,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                 let substs = fcx.node_ty_substs(callee_id);
                 let vcx = VtableContext { ccx: fcx.ccx, infcx: fcx.infcx() };
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),
-                                           bounds, &substs, false, is_early);
+                                           bounds, &substs, is_early);
                 if !is_early {
                     insert_vtables(cx, callee_id, vtbls);
                 }
@@ -607,7 +579,6 @@ pub fn early_resolve_expr(ex: @ast::expr,
                                             location_info,
                                             mt.ty,
                                             target_ty,
-                                            true,
                                             is_early);
                           match vtable_opt {
                               Some(vtable) => {
