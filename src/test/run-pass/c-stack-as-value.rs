@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    pub fn get_task_id() -> libc::intptr_t;
+mod rustrt {
+    #[abi = "cdecl"]
+    pub extern {
+        pub fn get_task_id() -> libc::intptr_t;
+    }
 }
 
 pub fn main() {

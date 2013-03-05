@@ -11,16 +11,20 @@
 // xfail-fast - Somehow causes check-fast to livelock?? Probably because we're
 // calling pin_task and that's having wierd side-effects.
 
-#[abi = "cdecl"]
-#[link_name = "rustrt"]
-extern mod rustrt1 {
-    pub fn rust_get_argc() -> libc::c_int;
+mod rustrt1 {
+    #[abi = "cdecl"]
+    #[link_name = "rustrt"]
+    pub extern {
+        pub fn rust_get_argc() -> libc::c_int;
+    }
 }
 
-#[abi = "cdecl"]
-#[link_name = "rustrt"]
-extern mod rustrt2 {
-    pub fn rust_get_argc() -> libc::c_int;
+mod rustrt2 {
+    #[abi = "cdecl"]
+    #[link_name = "rustrt"]
+    pub extern {
+        pub fn rust_get_argc() -> libc::c_int;
+    }
 }
 
 pub fn main() {

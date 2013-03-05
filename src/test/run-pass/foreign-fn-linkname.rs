@@ -10,12 +10,13 @@
 
 extern mod std;
 
-
-#[nolink]
-#[abi = "cdecl"]
-extern mod libc {
-    #[link_name = "strlen"]
-    pub fn my_strlen(str: *u8) -> uint;
+mod libc {
+    #[nolink]
+    #[abi = "cdecl"]
+    pub extern {
+        #[link_name = "strlen"]
+        pub fn my_strlen(str: *u8) -> uint;
+    }
 }
 
 fn strlen(str: ~str) -> uint {

@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[nolink]
-extern mod foo {
-    pub const errno: int;
+mod foo {
+    #[nolink]
+    pub extern {
+        pub const errno: int;
+    }
 }
 
 pub fn main() {
