@@ -20,25 +20,15 @@ non-sendableness.
 use core::prelude::*;
 
 use parse;
-use util;
 
 use core::cell::Cell;
 use core::comm::{stream, Chan, SharedChan, Port};
-use core::vec;
-use core::ops::Drop;
-use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session::Session;
 use rustc::driver::session::{basic_options, options};
-use rustc::driver::session;
 use rustc::front;
-use rustc::metadata::filesearch;
-use std::oldmap::HashMap;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::codemap;
-use syntax::diagnostic::handler;
-use syntax::diagnostic;
 use syntax;
 
 pub struct Ctxt {

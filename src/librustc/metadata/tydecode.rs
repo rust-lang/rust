@@ -18,14 +18,12 @@ use core::prelude::*;
 
 use middle::ty;
 
-use core::io;
 use core::str;
 use core::uint;
 use core::vec;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::codemap::{respan, dummy_sp};
-use std::oldmap::HashMap;
 
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the

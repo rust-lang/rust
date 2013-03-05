@@ -10,7 +10,6 @@
 
 use serialize;
 
-use core::io::Writer;
 use core::io::WriterUtil;
 use core::io;
 

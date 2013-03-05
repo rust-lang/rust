@@ -17,7 +17,6 @@ Cross-platform file path handling
 use cmp::Eq;
 use libc;
 use option::{None, Option, Some};
-use ptr;
 use str;
 use to_str::ToStr;
 
@@ -830,7 +829,6 @@ pub pure fn normalize(components: &[~str]) -> ~[~str] {
 pub mod windows {
     use libc;
     use option::{None, Option, Some};
-    use to_str::ToStr;
 
     #[inline(always)]
     pub pure fn is_sep(u: u8) -> bool {

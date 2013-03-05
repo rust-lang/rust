@@ -16,14 +16,11 @@ Basic input/output
 
 use result::Result;
 
-use cmp::Eq;
 use dvec::DVec;
 use int;
 use libc;
 use libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 use libc::consts::os::posix88::*;
-use libc::consts::os::extra::*;
-use option;
 use os;
 use prelude::*;
 use ptr;
@@ -719,7 +716,9 @@ pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
     -> Result<Writer, ~str> {
 
     #[cfg(windows)]
-    fn wb() -> c_int { (O_WRONLY | O_BINARY) as c_int }
+    fn wb() -> c_int {
+      (O_WRONLY | libc::consts::os::extra::O_BINARY) as c_int
+    }
 
     #[cfg(unix)]
     fn wb() -> c_int { O_WRONLY as c_int }

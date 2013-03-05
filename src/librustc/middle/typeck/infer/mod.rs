@@ -254,13 +254,10 @@ pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
 pub use middle::typeck::infer::resolve::{resolve_rvar};
 
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
-use middle::ty::{ty_int, ty_uint, get, terr_fn, TyVar, IntVar, FloatVar};
 use middle::ty;
 use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};
 use middle::typeck::infer::coercion::Coerce;
 use middle::typeck::infer::combine::{Combine, CombineFields, eq_tys};
-use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::region_inference::{RegionVarBindings};
 use middle::typeck::infer::resolve::{resolver};
 use middle::typeck::infer::sub::Sub;
@@ -271,20 +268,14 @@ use util::common::{indent, indenter};
 use util::ppaux::{bound_region_to_str, ty_to_str, mt_to_str};
 
 use core::cmp::Eq;
-use core::dvec::DVec;
 use core::result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
 use core::result;
 use core::vec;
 use std::list::Nil;
-use std::oldmap::HashMap;
 use std::smallintmap::SmallIntMap;
-use syntax::ast::{ret_style, purity};
 use syntax::ast::{m_const, m_imm, m_mutbl};
-use syntax::ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 use syntax::ast;
-use syntax::codemap::dummy_sp;
 use syntax::codemap;
-use syntax::ast_util;
 use syntax::codemap::span;
 
 pub mod macros;

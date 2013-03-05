@@ -11,16 +11,12 @@
 #[doc(hidden)];
 
 use cast;
-use iter;
 use libc;
 use option;
 use comm::{GenericChan, GenericPort};
 use prelude::*;
-use ptr;
-use result;
 use task;
 use task::{TaskBuilder, atomically};
-use uint;
 
 #[path = "unstable/at_exit.rs"]
 pub mod at_exit;
@@ -310,13 +306,8 @@ pub impl<T:Owned> Exclusive<T> {
 
 #[cfg(test)]
 pub mod tests {
-    use core::option::{None, Some};
-
-    use cell::Cell;
     use comm;
-    use option;
     use super::exclusive;
-    use result;
     use task;
     use uint;
 

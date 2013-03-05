@@ -19,7 +19,6 @@ use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::unify::*;
 use util::common::{indent, indenter};
 use util::ppaux::bound_region_to_str;
 

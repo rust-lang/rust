@@ -23,11 +23,8 @@ use print::pprust;
 use visit;
 
 use core::cmp;
-use core::either;
 use core::str;
 use core::vec;
-use std::oldmap::HashMap;
-use std::oldmap;
 use std;
 
 pub enum path_elt {

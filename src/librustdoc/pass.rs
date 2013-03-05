@@ -12,8 +12,9 @@ use core::prelude::*;
 
 use astsrv;
 use doc;
-use extract;
 use time;
+
+#[cfg(test)] use extract;
 
 use core::vec;
 

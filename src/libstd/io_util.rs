@@ -10,7 +10,6 @@
 
 use core::io::{Reader, BytesReader};
 use core::io;
-use core::prelude::*;
 
 pub struct BufReader {
     buf: ~[u8],

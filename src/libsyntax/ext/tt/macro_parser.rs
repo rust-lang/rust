@@ -13,7 +13,6 @@ use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use codemap::{BytePos, mk_sp};
 use codemap;
-use parse::common::*; //resolve bug?
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
 use parse::parser::Parser;
@@ -22,8 +21,6 @@ use parse::token;
 
 use core::dvec::DVec;
 use core::dvec;
-use core::io;
-use core::option;
 use core::option::{Option, Some, None};
 use core::str;
 use core::uint;

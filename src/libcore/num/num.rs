@@ -12,10 +12,7 @@
 use cmp::{Ord, Eq};
 use ops::{Add, Div, Modulo, Mul, Neg, Sub};
 use option::{None, Option, Some};
-use char;
-use str;
 use kinds::Copy;
-use vec;
 
 pub mod strconv;
 

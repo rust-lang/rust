@@ -31,10 +31,7 @@ use middle::mem_categorization::{lp_comp, lp_deref, lp_local};
 use middle::ty;
 use util::ppaux::ty_to_str;
 
-use core::cmp;
-use core::dvec::DVec;
 use core::uint;
-use core::vec;
 use std::oldmap::HashMap;
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;

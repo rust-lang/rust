@@ -1007,7 +1007,6 @@ pub mod funcs {
 
     pub mod c95 {
         use libc::types::common::c95::{FILE, c_void, fpos_t};
-        use libc::types::common::posix88::dirent_t;
         use libc::types::os::arch::c95::{c_char, c_double, c_int, c_long};
         use libc::types::os::arch::c95::{c_uint, c_ulong, c_void, size_t};
 

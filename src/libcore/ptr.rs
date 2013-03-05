@@ -11,14 +11,14 @@
 //! Unsafe pointer utility functions
 
 use cast;
-use cmp::{Eq, Ord};
 use libc;
 use libc::{c_void, size_t};
 use unstable::intrinsics::{memmove32,memmove64};
-use ptr;
-use str;
 use sys;
-use vec;
+
+#[cfg(test)] use vec;
+#[cfg(test)] use str;
+#[cfg(notest)] use cmp::{Eq, Ord};
 
 #[nolink]
 #[abi = "cdecl"]
@@ -316,13 +316,13 @@ pub fn test() {
         let mut v0 = ~[32000u16, 32001u16, 32002u16];
         let mut v1 = ~[0u16, 0u16, 0u16];
 
-        ptr::copy_memory(ptr::mut_offset(vec::raw::to_mut_ptr(v1), 1u),
-                    ptr::offset(vec::raw::to_ptr(v0), 1u), 1u);
+        copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1u),
+                    offset(vec::raw::to_ptr(v0), 1u), 1u);
         assert (v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16);
-        ptr::copy_memory(vec::raw::to_mut_ptr(v1),
-                    ptr::offset(vec::raw::to_ptr(v0), 2u), 1u);
+        copy_memory(vec::raw::to_mut_ptr(v1),
+                    offset(vec::raw::to_ptr(v0), 2u), 1u);
         assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 0u16);
-        ptr::copy_memory(ptr::mut_offset(vec::raw::to_mut_ptr(v1), 2u),
+        copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2u),
                     vec::raw::to_ptr(v0), 1u);
         assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16);
     }
@@ -361,15 +361,15 @@ pub fn test_buf_len() {
 
 #[test]
 pub fn test_is_null() {
-   let p: *int = ptr::null();
+   let p: *int = null();
    assert p.is_null();
    assert !p.is_not_null();
 
-   let q = ptr::offset(p, 1u);
+   let q = offset(p, 1u);
    assert !q.is_null();
    assert q.is_not_null();
 
-   let mp: *mut int = ptr::mut_null();
+   let mp: *mut int = mut_null();
    assert mp.is_null();
    assert !mp.is_not_null();
 

@@ -33,22 +33,14 @@
  * ~~~
  */
 
-use cast;
 use cell::Cell;
-use cmp;
 use cmp::Eq;
-use iter;
-use libc;
 use option;
 use result::Result;
 use comm::{stream, Chan, GenericChan, GenericPort, Port, SharedChan};
-use pipes;
 use prelude::*;
-use ptr;
 use result;
-use task::local_data_priv::{local_get, local_set};
 use task::rt::{task_id, sched_id, rust_task};
-use task;
 use util;
 use util::replace;
 

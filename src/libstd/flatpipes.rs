@@ -51,10 +51,8 @@ block the scheduler thread, so will their pipes.
 use core::io;
 use core::comm::GenericChan;
 use core::comm::GenericPort;
-use core::pipes;
 use core::prelude::*;
 use core::sys::size_of;
-use core::uint;
 use core::vec;
 
 /**
@@ -508,7 +506,6 @@ pub mod bytepipes {
 
     use core::io::{Writer, Reader, ReaderUtil};
     use core::comm::{Port, Chan};
-    use core::pipes;
     use core::prelude::*;
 
     pub struct ReaderBytePort<R> {
@@ -633,26 +630,18 @@ pub mod bytepipes {
 mod test {
     use core::prelude::*;
 
-    use DefaultEncoder = json::Encoder;
-    use DefaultDecoder = json::Decoder;
-
     use flatpipes::{Flattener, Unflattener};
-    use flatpipes::flatteners::*;
     use flatpipes::bytepipes::*;
     use flatpipes::pod;
     use flatpipes::serial;
     use io_util::BufReader;
     use flatpipes::{BytePort, FlatChan, FlatPort};
-    use net::ip;
     use net::tcp::TcpSocketBuf;
 
-    use core::dvec::DVec;
     use core::int;
     use core::io::{BytesReader, BytesWriter};
-    use core::io;
     use core::prelude::*;
     use core::result;
-    use core::sys;
     use core::task;
 
     #[test]
@@ -773,7 +762,6 @@ mod test {
 
         use core::cell::Cell;
         use net::ip;
-        use net::tcp::TcpSocket;
         use net::tcp;
         use uv;
 
@@ -880,7 +868,6 @@ mod test {
         use io_util::BufReader;
 
         use core::io;
-        use core::pipes;
         use core::sys;
         use core::task;
 

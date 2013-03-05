@@ -23,7 +23,6 @@ use markdown_writer;
 use pass::Pass;
 
 use core::str;
-use std::par;
 
 pub fn mk_pass(config: config::Config) -> Pass {
     Pass {

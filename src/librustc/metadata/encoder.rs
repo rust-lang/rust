@@ -14,11 +14,9 @@
 use core::prelude::*;
 
 use metadata::common::*;
-use metadata::csearch;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
-use middle::resolve;
 use middle::ty::node_id_to_type;
 use middle::ty;
 use middle;
@@ -26,12 +24,10 @@ use util::ppaux::ty_to_str;
 
 use core::dvec;
 use core::flate;
-use core::float;
 use core::hash::{Hash, HashUtil};
 use core::int;
 use core::io::WriterUtil;
 use core::io;
-use core::str::to_bytes;
 use core::str;
 use core::to_bytes::IterBytes;
 use core::uint;
@@ -47,7 +43,6 @@ use syntax::ast_util::*;
 use syntax::attr;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::special_idents;
-use syntax::print::pprust;
 use syntax::{ast_util, visit};
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;

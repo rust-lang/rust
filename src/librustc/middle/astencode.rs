@@ -21,18 +21,13 @@ use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
 use metadata::tyencode;
 use middle::freevars::freevar_entry;
 use middle::typeck::{method_origin, method_map_entry, vtable_res};
-use middle::typeck::{vtable_origin};
 use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
 use core::{dvec, io, option, vec};
-use std::ebml::reader::get_doc;
 use std::ebml::reader;
-use std::ebml::writer::Encoder;
 use std::ebml;
-use std::oldmap::HashMap;
-use std::prettyprint;
 use std::serialize;
 use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers};
 use std::serialize::Decodable;
@@ -41,14 +36,13 @@ use syntax::ast_map;
 use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
-use syntax::diagnostic;
 use syntax::fold::*;
 use syntax::fold;
-use syntax::parse;
-use syntax::print::pprust;
-use syntax::visit;
 use syntax;
 use writer = std::ebml::writer;
+
+#[cfg(test)] use syntax::parse;
+#[cfg(test)] use syntax::print::pprust;
 
 // Auxiliary maps of things to be encoded
 pub struct Maps {
@@ -1235,6 +1229,8 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
+    use std::prettyprint;
+
     let in_item = in_item.get();
     let bytes = do io::with_bytes_writer |wr| {
         let ebml_w = writer::Encoder(wr);

@@ -17,8 +17,6 @@ use parse::parser::Parser;
 use parse::token;
 
 use core::option::{None, Option, Some};
-use core::option;
-use std::oldmap::HashMap;
 
 use opt_vec;
 use opt_vec::OptVec;

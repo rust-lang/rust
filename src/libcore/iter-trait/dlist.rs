@@ -9,8 +9,6 @@
 // except according to those terms.
 
 mod inst {
-    use cast;
-    use dlist;
     use dlist::DList;
     use managed;
     use option::{Option, Some};

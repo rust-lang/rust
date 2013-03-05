@@ -19,7 +19,6 @@ use core::cell::Cell;
 use core::cmp;
 use core::either::{Either, Left, Right};
 use core::io;
-use core::option;
 use core::comm::{oneshot, PortOne, send_one};
 use core::pipes::recv;
 use core::prelude::*;

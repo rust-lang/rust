@@ -26,10 +26,6 @@
 use core::prelude::*;
 
 use back::link::{mangle_exported_name};
-use back::link::{mangle_internal_name_by_path_and_seq};
-use back::link::{mangle_internal_name_by_path};
-use back::link::{mangle_internal_name_by_seq};
-use back::link::{mangle_internal_name_by_type_only};
 use back::{link, abi, upcall};
 use driver::session;
 use driver::session::Session;
@@ -41,7 +37,6 @@ use metadata::common::LinkMeta;
 use metadata::{csearch, cstore, decoder, encoder};
 use middle::astencode;
 use middle::borrowck::RootInfo;
-use middle::pat_util::*;
 use middle::resolve;
 use middle::trans::_match;
 use middle::trans::base;
@@ -66,17 +61,14 @@ use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::trans::type_of::*;
 use middle::ty;
-use middle::ty::arg;
 use util::common::indenter;
 use util::ppaux::{ty_to_str, ty_to_short_str};
 use util::ppaux;
 
-use core::either;
 use core::hash;
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
-use core::option::{is_none, is_some};
 use core::option;
 use core::uint;
 use std::oldmap::HashMap;
@@ -86,11 +78,9 @@ use syntax::ast_map::{path, path_elt_to_str, path_mod, path_name};
 use syntax::ast_util::{def_id_of_def, local_def, path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
-use syntax::diagnostic::expect;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
 use syntax::visit;
-use syntax::visit::vt;
 use syntax::{ast, ast_util, codemap, ast_map};
 
 pub struct icx_popper {

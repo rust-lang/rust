@@ -21,7 +21,6 @@ use core::cast::transmute;
 use core::comm::{stream, Chan, SharedChan, Port, select2i};
 use core::prelude::*;
 use core::ptr;
-use core;
 
 /**
  * Wait for timeout period then send provided value over a channel

@@ -21,7 +21,6 @@
 
 use io;
 use io::{Writer, WriterUtil};
-use os;
 use to_bytes::IterBytes;
 use uint;
 use vec;

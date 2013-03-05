@@ -16,7 +16,6 @@
 // reachable as well.
 
 
-use driver::session::*;
 use middle::resolve;
 use middle::ty;
 use middle::typeck;

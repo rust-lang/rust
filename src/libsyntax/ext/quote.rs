@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use ast;
-use attr;
 use codemap::{BytePos, Pos, span};
 use ext::base::ext_ctxt;
 use ext::base;
@@ -19,7 +18,6 @@ use parse::token;
 use parse;
 
 use core::prelude::*;
-use core::str;
 
 /**
 *
@@ -34,7 +32,6 @@ use core::str;
 
 pub mod rt {
     use ast;
-    use codemap;
     use ext::base::ext_ctxt;
     use parse;
     use print::pprust;

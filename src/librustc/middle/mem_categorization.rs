@@ -54,8 +54,6 @@ use middle::typeck;
 use util::ppaux::{ty_to_str, region_to_str};
 use util::common::indenter;
 
-use core::cmp;
-use core::to_bytes;
 use core::uint;
 use syntax::ast::{m_imm, m_const, m_mutbl};
 use syntax::ast;

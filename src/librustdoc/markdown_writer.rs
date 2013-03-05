@@ -11,12 +11,9 @@
 use core::prelude::*;
 
 use config;
-use config::Config;
 use doc::ItemUtils;
 use doc;
-use pass::Pass;
 
-use core::io::ReaderUtil;
 use core::io;
 use core::libc;
 use core::os;
@@ -27,7 +24,6 @@ use core::str;
 use core::task;
 use core::comm::*;
 use std::future;
-use syntax;
 
 pub enum WriteInstr {
     Write(~str),
@@ -224,7 +220,7 @@ pub fn make_filename(
 
 #[test]
 fn should_use_markdown_file_name_based_off_crate() {
-    let config = Config {
+    let config = config::Config {
         output_dir: Path("output/dir"),
         output_format: config::Markdown,
         output_style: config::DocPerCrate,
@@ -238,7 +234,7 @@ fn should_use_markdown_file_name_based_off_crate() {
 
 #[test]
 fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
-    let config = Config {
+    let config = config::Config {
         output_dir: Path("output/dir"),
         output_format: config::PandocHtml,
         output_style: config::DocPerMod,
@@ -252,7 +248,7 @@ fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
 
 #[test]
 fn should_name_mod_file_names_by_path() {
-    let config = Config {
+    let config = config::Config {
         output_dir: Path("output/dir"),
         output_format: config::PandocHtml,
         output_style: config::DocPerMod,
