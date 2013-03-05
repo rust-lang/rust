@@ -192,7 +192,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         expr_unary(*)|expr_binary(*)|expr_method_call(*) => e.callee_id,
         _ => e.id
     };
-    do option::iter(&cx.tcx.node_type_substs.find(&type_parameter_id)) |ts| {
+    for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
         let bounds = match e.node {
           expr_path(_) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(&e.id));
@@ -253,7 +253,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
 fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
     match aty.node {
       ty_path(_, id) => {
-        do option::iter(&cx.tcx.node_type_substs.find(&id)) |ts| {
+        for cx.tcx.node_type_substs.find(&id).each |ts| {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(&id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             for vec::each2(*ts, *bounds) |ty, bound| {

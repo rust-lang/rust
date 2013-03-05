@@ -220,7 +220,7 @@ pub fn visit_enum_def<E>(enum_definition: ast::enum_def,
             }
         }
         // Visit the disr expr if it exists
-        vr.node.disr_expr.iter(|ex| (v.visit_expr)(*ex, e, v));
+        for vr.node.disr_expr.each |ex| { (v.visit_expr)(*ex, e, v) }
     }
 }
 
@@ -264,7 +264,7 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
     match p.node {
         pat_enum(path, ref children) => {
             visit_path(path, e, v);
-            do children.iter |children| {
+            for children.each |children| {
                 for children.each |child| { (v.visit_pat)(*child, e, v); }
             }
         }
@@ -289,7 +289,7 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
         },
         pat_ident(_, path, ref inner) => {
             visit_path(path, e, v);
-            do inner.iter |subpat| { (v.visit_pat)(*subpat, e, v) }
+            for inner.each |subpat| { (v.visit_pat)(*subpat, e, v) }
         }
         pat_lit(ex) => (v.visit_expr)(ex, e, v),
         pat_range(e1, e2) => {
@@ -301,7 +301,7 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
             for elts.each |elt| {
                 (v.visit_pat)(*elt, e, v);
             }
-            do tail.iter |tail| {
+            for tail.each |tail| {
                 (v.visit_pat)(*tail, e, v);
             }
         }
@@ -415,7 +415,7 @@ pub fn visit_struct_def<E>(
     for sd.fields.each |f| {
         (v.visit_struct_field)(*f, e, v);
     }
-    do sd.dtor.iter |dtor| {
+    for sd.dtor.each |dtor| {
         visit_struct_dtor_helper(
             *dtor,
             generics,
@@ -423,7 +423,7 @@ pub fn visit_struct_def<E>(
             e,
             v
         )
-    };
+    }
 }
 
 pub fn visit_struct_field<E>(sf: @struct_field, e: E, v: vt<E>) {

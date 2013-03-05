@@ -362,7 +362,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       ty::ty_enum(eid, _) => {
         let mut found = ~[];
         for m.each |r| {
-            do option::iter(&pat_ctor_id(cx, r[0])) |id| {
+            for pat_ctor_id(cx, r[0]).each |id| {
                 if !vec::contains(found, id) {
                     found.push(/*bad*/copy *id);
                 }

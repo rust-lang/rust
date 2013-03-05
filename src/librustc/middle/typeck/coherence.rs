@@ -205,7 +205,8 @@ pub impl CoherenceChecker {
 
                 match item.node {
                     item_impl(_, opt_trait, _, _) => {
-                        self.check_implementation(item, opt_trait.to_vec());
+                        self.check_implementation(item,
+                                                  iter::to_vec(&opt_trait));
                     }
                     _ => {
                         // Nothing to do.
@@ -672,7 +673,7 @@ pub impl CoherenceChecker {
                                 _ => ()
                           }
 
-                          do opt_trait.iter() |trait_ref| {
+                          for opt_trait.each |trait_ref| {
                                 // This is OK if and only if the trait was
                                 // defined in this crate.
 

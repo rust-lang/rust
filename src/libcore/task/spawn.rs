@@ -266,7 +266,7 @@ fn each_ancestor(list:        &mut AncestorList,
                  * Step 3: Maybe unwind; compute return info for our caller.
                  *##########################################################*/
                 if need_unwind && !nobe_is_dead {
-                    do bail_opt.iter |bail_blk| {
+                    for bail_opt.each |bail_blk| {
                         do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
                             (*bail_blk)(tg_opt)
                         }
@@ -315,7 +315,7 @@ impl Drop for TCB {
         unsafe {
             // If we are failing, the whole taskgroup needs to die.
             if rt::rust_task_is_unwinding(self.me) {
-                self.notifier.iter(|x| { x.failed = true; });
+                for self.notifier.each |x| { x.failed = true; }
                 // Take everybody down with us.
                 do access_group(&self.tasks) |tg| {
                     kill_taskgroup(tg, self.me, self.is_main);
@@ -339,9 +339,7 @@ impl Drop for TCB {
 
 fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
        is_main: bool, notifier: Option<AutoNotify>) -> TCB {
-
-    let notifier = notifier;
-    notifier.iter(|x| { x.failed = false; });
+    for notifier.each |x| { x.failed = false; }
 
     TCB {
         me: me,

@@ -710,7 +710,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         let idx = encode_info_for_struct(ecx, ebml_w, path,
                                          struct_def.fields, index);
         /* Encode the dtor */
-        do struct_def.dtor.iter |dtor| {
+        for struct_def.dtor.each |dtor| {
             index.push(entry {val: dtor.node.id, pos: ebml_w.writer.tell()});
           encode_info_for_ctor(ecx,
                                ebml_w,
@@ -762,7 +762,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         encode_region_param(ecx, ebml_w, item);
         /* Encode the dtor */
         /* Encode id for dtor */
-        do struct_def.dtor.iter |dtor| {
+        for struct_def.dtor.each |dtor| {
             do ebml_w.wr_tag(tag_item_dtor) {
                 encode_def_id(ebml_w, local_def(dtor.node.id));
             }
@@ -816,7 +816,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
             ebml_w.writer.write(str::to_bytes(def_to_str(method_def_id)));
             ebml_w.end_tag();
         }
-        do opt_trait.iter() |associated_trait| {
+        for opt_trait.each |associated_trait| {
            encode_trait_ref(ebml_w, ecx, *associated_trait);
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));

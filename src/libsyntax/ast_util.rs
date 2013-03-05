@@ -537,7 +537,7 @@ pub fn walk_pat(pat: @pat, it: fn(@pat)) {
             for elts.each |p| {
                 walk_pat(*p, it)
             }
-            do tail.iter |tail| {
+            for tail.each |tail| {
                 walk_pat(*tail, it)
             }
         }
