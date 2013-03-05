@@ -581,7 +581,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
         let rp = ccx.tcx.region_paramd_items.find(&it.id);
         debug!("item_impl %s with id %d rp %?",
                *ccx.tcx.sess.str_of(it.ident), it.id, rp);
-        let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
+        let self_ty = ccx.to_ty(&rscope::type_rscope(rp), ty);
         for ms.each |m| {
             check_method(ccx, *m, self_ty, local_def(it.id));
         }
@@ -636,21 +636,20 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
 }
 
 impl AstConv for FnCtxt {
-    fn tcx(@mut self) -> ty::ctxt { self.ccx.tcx }
-    fn ccx(@mut self) -> @mut CrateCtxt { self.ccx }
+    fn tcx(&self) -> ty::ctxt { self.ccx.tcx }
 
-    fn get_item_ty(@mut self, id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+    fn get_item_ty(&self, id: ast::def_id) -> ty::ty_param_bounds_and_ty {
         ty::lookup_item_type(self.tcx(), id)
     }
 
-    fn ty_infer(@mut self, _span: span) -> ty::t {
+    fn ty_infer(&self, _span: span) -> ty::t {
         self.infcx().next_ty_var()
     }
 }
 
 pub impl FnCtxt {
-    fn infcx(@mut self) -> @mut infer::InferCtxt { self.inh.infcx }
-    fn search_in_scope_regions(@mut self,
+    fn infcx(&self) -> @mut infer::InferCtxt { self.inh.infcx }
+    fn search_in_scope_regions(&self,
                                br: ty::bound_region)
                             -> Result<ty::Region, ~str> {
         let in_scope_regions = self.in_scope_regions;
@@ -669,25 +668,17 @@ pub impl FnCtxt {
     }
 }
 
-impl region_scope for @mut FnCtxt {
-    pure fn anon_region(&self, span: span) -> Result<ty::Region, ~str> {
-        // XXX: Unsafe to work around purity
-        unsafe {
-            result::Ok(self.infcx().next_region_var_nb(span))
-        }
+impl region_scope for FnCtxt {
+    fn anon_region(&self, span: span) -> Result<ty::Region, ~str> {
+        result::Ok(self.infcx().next_region_var_nb(span))
     }
-    pure fn self_region(&self, _span: span) -> Result<ty::Region, ~str> {
-        // XXX: Unsafe to work around purity
-        unsafe {
-            self.search_in_scope_regions(ty::br_self)
-        }
+    fn self_region(&self, _span: span) -> Result<ty::Region, ~str> {
+        self.search_in_scope_regions(ty::br_self)
     }
-    pure fn named_region(&self, _span: span, id: ast::ident)
-                      -> Result<ty::Region, ~str> {
-        // XXX: Unsafe to work around purity
-        unsafe {
-            self.search_in_scope_regions(ty::br_named(id))
-        }
+    fn named_region(&self,
+                    _span: span,
+                    id: ast::ident) -> Result<ty::Region, ~str> {
+        self.search_in_scope_regions(ty::br_named(id))
     }
 }
 
@@ -710,7 +701,7 @@ pub impl FnCtxt {
              pprust::expr_to_str(expr, self.tcx().sess.intr()))
     }
 
-    fn block_region(@mut self) -> ty::Region {
+    fn block_region(&self) -> ty::Region {
         ty::re_scope(self.region_lb)
     }
 
@@ -1076,7 +1067,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
               }, _)) => {
             (ts.ty_params.len(),
              region_param,
-             vcx.ccx.to_ty(rscope::type_rscope(region_param), st))
+             vcx.ccx.to_ty(&rscope::type_rscope(region_param), st))
           }
           Some(ast_map::node_item(@ast::item {
                   node: ast::item_struct(_, ref ts),
