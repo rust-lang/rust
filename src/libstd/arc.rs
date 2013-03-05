@@ -17,15 +17,12 @@ use sync;
 use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
 use core::cast;
-use core::cell::Cell;
-use core::pipes;
 use core::prelude::*;
 use core::unstable::{SharedMutableState, shared_mutable_state};
 use core::unstable::{clone_shared_mutable_state};
 use core::unstable::{get_shared_mutable_state, get_shared_immutable_state};
 use core::ptr;
 use core::task;
-use core::util;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
 pub struct Condvar { is_mutex: bool, failed: &mut bool, cond: &sync::Condvar }
@@ -449,9 +446,6 @@ mod tests {
     use arc;
 
     use core::cell::Cell;
-    use core::option::{Some, None};
-    use core::option;
-    use core::pipes;
     use core::task;
     use core::vec;
 

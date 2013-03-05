@@ -102,8 +102,6 @@ use opt_vec::OptVec;
 use ext::build;
 
 use core::vec;
-use std::oldmap;
-use std::oldmap::HashMap;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -1208,14 +1206,7 @@ fn mk_enum_deser_body(
 mod test {
     use std::serialize::Encodable;
     use std::serialize::Encoder;
-    use core::dvec::*;
     use util::testing::*;
-    use core::io;
-    use core::str;
-    use core::option::Option;
-    use core::option::Some;
-    use core::option::None;
-    use std;
 
     // just adding the ones I want to test, for now:
     #[deriving_eq]

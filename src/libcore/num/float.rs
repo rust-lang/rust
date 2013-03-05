@@ -20,20 +20,16 @@
 
 // PORT this must match in width according to architecture
 
-use m_float = f64;
-
-use cmp::{Eq, Ord};
-use cmp;
 use f64;
 use num::NumCast;
 use num::strconv;
 use num;
-use ops;
 use option::{None, Option, Some};
-use str;
-use uint;
 use to_str;
 use from_str;
+
+#[cfg(notest)] use cmp::{Eq, Ord};
+#[cfg(notest)] use ops;
 
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;

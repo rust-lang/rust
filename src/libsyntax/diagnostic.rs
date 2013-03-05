@@ -13,7 +13,6 @@ use core::prelude::*;
 use codemap::{Pos, span};
 use codemap;
 
-use core::cmp;
 use core::io::WriterUtil;
 use core::io;
 use core::option;

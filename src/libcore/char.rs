@@ -10,13 +10,13 @@
 
 //! Utilities for manipulating the char type
 
-use char;
-use cmp::Eq;
 use option::{None, Option, Some};
 use str;
 use u32;
 use uint;
 use unicode;
+
+#[cfg(notest)] use cmp::Eq;
 
 /*
     Lu  Uppercase_Letter    an uppercase letter
@@ -305,8 +305,8 @@ fn test_to_digit() {
 
 #[test]
 fn test_is_ascii() {
-   assert str::all(~"banana", char::is_ascii);
-   assert ! str::all(~"ประเทศไทย中华Việt Nam", char::is_ascii);
+   assert str::all(~"banana", is_ascii);
+   assert ! str::all(~"ประเทศไทย中华Việt Nam", is_ascii);
 }
 
 #[test]

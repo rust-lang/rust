@@ -20,13 +20,11 @@ use parse::attr::parser_attr;
 use parse::lexer::{reader, StringReader};
 use parse::parser::Parser;
 use parse::token::{ident_interner, mk_ident_interner};
-use util::interner;
 
 use core::io;
 use core::option::{None, Option, Some};
 use core::path::Path;
 use core::result::{Err, Ok, Result};
-use core::result;
 
 pub mod lexer;
 pub mod parser;

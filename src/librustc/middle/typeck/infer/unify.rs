@@ -9,17 +9,14 @@
 // except according to those terms.
 
 use core::prelude::*;
-use core::result;
 use std::smallintmap::SmallIntMap;
 
 use middle::ty::{Vid, expected_found, IntVarValue};
 use middle::ty;
 use middle::typeck::infer::{Bound, Bounds, cres, uok, ures};
-use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::to_str::InferStr;
 use syntax::ast;
-use util::common::{indent, indenter};
 
 pub enum VarValue<V, T> {
     Redirect(V),

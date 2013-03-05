@@ -10,21 +10,15 @@
 
 use T = self::inst::T;
 
-use char;
-use cmp::{Eq, Ord};
-use cmp;
 use to_str::ToStr;
 use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use num;
 use prelude::*;
-use str;
-use uint;
-use vec;
-use i8;
-use i16;
-use i32;
+
+#[cfg(notest)] use cmp::{Eq, Ord};
+
 pub use cmp::{min, max};
 
 pub const bits : uint = inst::bits;

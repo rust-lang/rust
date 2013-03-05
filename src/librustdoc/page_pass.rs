@@ -24,12 +24,9 @@ use doc;
 use fold::Fold;
 use fold;
 use pass::Pass;
-use sort_pass;
 use util::NominalOp;
-use util;
 
 use core::option;
-use core::vec;
 use core::comm::*;
 use syntax::ast;
 

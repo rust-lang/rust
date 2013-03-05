@@ -12,15 +12,11 @@
 
 use core::prelude::*;
 
-use driver::session::Session;
 use driver::session;
 use front::config;
 
-use core::dvec::DVec;
-use core::option;
 use core::vec;
 use syntax::ast_util::*;
-use syntax::attr::attrs_contains_name;
 use syntax::attr;
 use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
 use syntax::codemap;

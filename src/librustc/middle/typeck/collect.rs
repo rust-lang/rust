@@ -45,7 +45,6 @@ use middle::typeck::rscope;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::common::{indenter, pluralize};
 use util::ppaux;
-use util::ppaux::bound_to_str;
 
 use core::dvec;
 use core::option;
@@ -60,7 +59,6 @@ use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust::path_to_str;
 use syntax::visit;
-use syntax::opt_vec;
 use syntax::opt_vec::OptVec;
 
 pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {

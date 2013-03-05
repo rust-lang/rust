@@ -12,7 +12,6 @@ use core::prelude::*;
 
 use driver::session::Session;
 use driver::session;
-use middle::pat_util::{pat_bindings};
 use middle::ty;
 use util::ppaux::{ty_to_str};
 
@@ -24,7 +23,6 @@ use core::i16;
 use core::i32;
 use core::i64;
 use core::int;
-use core::io::WriterUtil;
 use core::str;
 use core::u8;
 use core::u16;
@@ -35,7 +33,6 @@ use core::vec;
 use std::oldmap::{Map, HashMap};
 use std::oldmap;
 use std::smallintmap::SmallIntMap;
-use syntax::ast_util::{path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
@@ -132,7 +129,7 @@ pub fn get_lint_dict() -> LintDict {
          @LintSpec {
             lint: unused_imports,
             desc: "imports that are never used",
-            default: allow
+            default: warn
          }),
 
         (@~"while_true",

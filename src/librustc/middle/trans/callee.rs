@@ -39,14 +39,12 @@ use middle::trans::inline;
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::type_of;
-use middle::ty::ty_to_str;
 use middle::ty;
 use middle::typeck;
 use util::common::indenter;
 
 use syntax::ast;
 use syntax::ast_map;
-use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
 use syntax::visit;
 
 // Represents a (possibly monomorphized) top-level fn item or method

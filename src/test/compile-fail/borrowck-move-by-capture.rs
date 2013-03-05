@@ -1,9 +1,5 @@
 extern mod std;
 
-use std::ebml::reader;
-use std::ebml::writer;
-use std::serialize;
-
 fn main() {
     let foo = ~3;
     let _pfoo = &foo;

@@ -26,8 +26,6 @@ use parse::parser::Parser;
 use parse::token::Token;
 use parse::token;
 
-use core::cmp;
-use core::option;
 use core::str;
 use core::to_bytes;
 

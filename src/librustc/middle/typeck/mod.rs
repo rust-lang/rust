@@ -50,31 +50,19 @@ independently:
 
 use core::prelude::*;
 
-use metadata::csearch;
-use middle::pat_util::{pat_id_map, PatIdMap};
 use middle::resolve;
-use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{ty_param_substs_and_ty, vstore_uniq};
 use middle::ty;
-use util::common::{block_query, indent, indenter, loop_query};
-use util::ppaux::{bound_region_to_str, vstore_to_str, expr_repr};
-use util::ppaux::{ty_to_str, tys_to_str, region_to_str};
 use util::ppaux;
 
-use core::dvec::DVec;
-use core::result::Result;
 use core::result;
 use core::vec;
 use std::list::{List, Nil, Cons};
 use std::list;
 use std::oldmap::HashMap;
 use std::oldmap;
-use syntax::ast::{provided, required};
-use syntax::ast_map::node_id_to_str;
-use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::codemap::{span, spanned, respan};
 use syntax::print::pprust::*;
-use syntax::visit;
 use syntax::{ast, ast_util, ast_map};
 
 #[path = "check/mod.rs"]

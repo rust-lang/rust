@@ -14,7 +14,6 @@
 
 use ast;
 use codemap;
-use ast_util::operator_prec;
 
 pub fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     match e.node {

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use back::abi;
 use lib::llvm::{TypeRef, ValueRef};
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -27,7 +26,6 @@ use util::ppaux::ty_to_str;
 
 use core::option::None;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
 

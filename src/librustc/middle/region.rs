@@ -25,13 +25,9 @@ use middle::resolve;
 use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant};
 use middle::ty;
-use util::common::stmt_set;
 
-use core::cmp;
 use core::dvec::DVec;
 use core::vec;
-use std::list;
-use std::list::list;
 use std::oldmap::HashMap;
 use syntax::ast_map;
 use syntax::codemap::span;

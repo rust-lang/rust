@@ -13,7 +13,6 @@
 #[allow(deprecated_mode)];
 
 use core::cmp::Eq;
-use core::dvec::DVec;
 use core::from_str::FromStr;
 use core::io::{Reader, ReaderUtil};
 use core::io;
@@ -25,8 +24,6 @@ use core::to_bytes;
 use core::to_str::ToStr;
 use core::to_str;
 use core::uint;
-use core::util;
-use core::vec;
 
 #[deriving_eq]
 struct Url {
@@ -820,11 +817,8 @@ mod tests {
     use core::prelude::*;
 
     use net_url::*;
-    use net_url::UserInfo;
 
     use core::hashmap::linear::LinearMap;
-    use core::result;
-    use core::str;
 
     #[test]
     pub fn test_url_parse() {

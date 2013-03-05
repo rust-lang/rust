@@ -13,14 +13,11 @@ use core::prelude::*;
 use core::io::{ReaderUtil, WriterUtil};
 use core::io;
 use core::libc::{c_int, pid_t};
-use core::libc;
 use core::os;
-use core::pipes;
 use core::run::spawn_process;
 use core::run;
 use core::str;
 use core::task;
-use core::vec;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {

@@ -18,7 +18,6 @@ use parse::token;
 use visit;
 use opt_vec;
 
-use core::cmp;
 use core::int;
 use core::option;
 use core::str;

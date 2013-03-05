@@ -14,12 +14,9 @@ use core::container::{Container, Mutable, Map};
 use core::cmp::Eq;
 use core::hash::Hash;
 use core::io::WriterUtil;
-use core::io;
-use core::ops;
 use core::to_str::ToStr;
 use core::prelude::*;
 use core::to_bytes::IterBytes;
-use core::uint;
 use core::vec;
 
 /// A convenience type to treat a hashmap as a set
@@ -417,7 +414,6 @@ pub fn hash_from_vec<K:Eq + IterBytes + Hash + Const + Copy,V:Copy>(
 
 #[cfg(test)]
 mod tests {
-    use core::option::None;
     use core::uint;
 
     use super::*;

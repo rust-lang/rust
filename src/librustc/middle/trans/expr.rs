@@ -125,7 +125,6 @@ use back::abi;
 use lib;
 use lib::llvm::{ValueRef, TypeRef, llvm, True};
 use middle::borrowck::root_map_key;
-use middle::resolve;
 use middle::trans::_match;
 use middle::trans::base;
 use middle::trans::base::*;
@@ -153,7 +152,6 @@ use std::oldmap::HashMap;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::codemap;
-use syntax::codemap::spanned;
 
 // Destinations
 

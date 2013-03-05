@@ -18,12 +18,8 @@ an AST's attributes.
 use core::prelude::*;
 
 use core::str;
-use core::tuple;
-use core::vec;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap;
-use syntax;
 
 pub struct CrateAttrs {
     name: Option<~str>
@@ -38,10 +34,8 @@ mod test {
 
     pub fn parse_attributes(source: ~str) -> ~[ast::attribute] {
         use syntax::parse;
-        use syntax::parse::parser;
         use syntax::parse::attr::parser_attr;
         use syntax::codemap;
-        use syntax::diagnostic;
 
         let parse_sess = syntax::parse::new_parse_sess(None);
         let parser = parse::new_parser_from_source_str(

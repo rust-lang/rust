@@ -21,8 +21,6 @@ use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
 use core::cmp;
 use core::either::Either;
-use core::either;
-use core::option;
 use core::vec;
 use core::hashmap::linear::LinearSet;
 use std;

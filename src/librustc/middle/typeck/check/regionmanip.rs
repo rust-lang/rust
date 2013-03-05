@@ -22,7 +22,6 @@ use util::ppaux;
 use std::list::Cons;
 use syntax::ast;
 use syntax::codemap;
-use syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
 

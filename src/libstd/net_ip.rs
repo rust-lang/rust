@@ -16,7 +16,6 @@ use core::comm::{stream, SharedChan};
 use core::ptr;
 use core::result;
 use core::str;
-use core::uint;
 use core::vec;
 
 use iotask = uv::iotask::IoTask;
@@ -26,10 +25,8 @@ use sockaddr_in = uv::ll::sockaddr_in;
 use sockaddr_in6 = uv::ll::sockaddr_in6;
 use addrinfo = uv::ll::addrinfo;
 use uv_getaddrinfo_t = uv::ll::uv_getaddrinfo_t;
-use uv_ip4_addr = uv::ll::ip4_addr;
 use uv_ip4_name = uv::ll::ip4_name;
 use uv_ip4_port = uv::ll::ip4_port;
-use uv_ip6_addr = uv::ll::ip6_addr;
 use uv_ip6_name = uv::ll::ip6_name;
 use uv_ip6_port = uv::ll::ip6_port;
 use uv_getaddrinfo = uv::ll::getaddrinfo;

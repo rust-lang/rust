@@ -54,12 +54,9 @@
 
 use core::prelude::*;
 
-use middle::pat_util::pat_id_map;
 use middle::ty::{arg, field, substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::collect;
-use middle::typeck::rscope::{anon_rscope, binding_rscope, empty_rscope};
 use middle::typeck::rscope::{in_anon_rscope, in_binding_rscope};
 use middle::typeck::rscope::{region_scope, type_rscope};
 use middle::typeck::{CrateCtxt, write_substs_to_tcx, write_ty_to_tcx};

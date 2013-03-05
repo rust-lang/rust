@@ -16,10 +16,8 @@ use gc;
 use io;
 use libc;
 use libc::{c_void, c_char, size_t};
-use ptr;
 use repr;
 use str;
-use vec;
 
 pub type FreeGlue = fn(*TypeDesc, *c_void);
 

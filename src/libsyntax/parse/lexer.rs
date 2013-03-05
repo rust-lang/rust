@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use ast;
-use ast_util;
 use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
 use diagnostic::span_handler;
@@ -780,7 +779,6 @@ pub mod test {
     use core::option::None;
     use diagnostic;
     use parse::token;
-    use util::interner;
     use util::testing::{check_equal, check_equal_ptr};
 
     // represents a testing reader (incl. both reader and interner)

@@ -32,7 +32,6 @@ pub mod errors;
 use std::getopts;
 use std::test;
 
-use core::{result, either};
 use core::result::{Ok, Err};
 
 use common::config;

@@ -16,8 +16,6 @@ use rustc::driver::driver::{file_input, str_input};
 use rustc::driver::driver;
 use rustc::driver::session;
 use syntax::ast;
-use syntax::codemap;
-use syntax::diagnostic;
 use syntax::parse;
 
 pub fn from_file(file: &Path) -> @ast::crate {

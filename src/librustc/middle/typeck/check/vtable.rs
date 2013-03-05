@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use middle::resolve;
 use middle::ty::{param_ty, substs};
 use middle::ty;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
@@ -33,7 +32,6 @@ use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::print::pprust::expr_to_str;
-use syntax::print::pprust;
 use syntax::visit;
 
 // vtable resolution looks for places where trait bounds are

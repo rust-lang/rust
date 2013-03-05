@@ -198,15 +198,18 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 
 #[cfg(unix)]
 mod test {
+    // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
+    // these redundant #[cfg(test)] blocks can be removed
+    #[cfg(test)]
     use core::prelude::*;
-
+    #[cfg(test)]
     use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
+    #[cfg(test)]
     use back::rpath::{get_relative_to, get_rpath_relative_to_output};
+    #[cfg(test)]
     use back::rpath::{minimize_rpaths, rpaths_to_flags};
+    #[cfg(test)]
     use driver::session;
-
-    use core::os;
-    use core::str;
 
     #[test]
     pub fn test_rpaths_to_flags() {

@@ -44,7 +44,6 @@ FIXME (#3072) - This is still incomplete.
 */
 
 use ast;
-use ast::tt_delim;
 use codemap::span;
 use ext::base;
 use ext::base::ext_ctxt;

@@ -25,7 +25,6 @@ use core::prelude::*;
 use driver::session::Session;
 use metadata::csearch::{each_lang_item, get_item_attrs};
 use metadata::cstore::{iter_crate_data};
-use metadata::decoder::{dl_def, dl_field, dl_impl};
 use syntax::ast::{crate, def_fn, def_id, def_ty, lit_str, meta_item};
 use syntax::ast::{meta_list, meta_name_value, meta_word};
 use syntax::ast_util::{local_def};
@@ -34,7 +33,6 @@ use syntax::visit::{visit_crate, visit_item};
 
 use core::ptr;
 use std::oldmap::HashMap;
-use str_eq = core::str::eq;
 
 pub enum LangItem {
     ConstTraitLangItem,         // 0

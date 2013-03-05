@@ -33,7 +33,6 @@ use middle::freevars::get_freevars;
 use middle::pat_util::{pat_bindings, pat_is_binding};
 use middle::ty::{encl_region, re_scope};
 use middle::ty::{vstore_box, vstore_fixed, vstore_slice};
-use middle::ty::{vstore_uniq};
 use middle::ty;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::lookup_def;
@@ -46,7 +45,6 @@ use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
 use syntax::codemap::span;
-use syntax::print::pprust;
 use syntax::visit;
 
 pub struct Rcx {
