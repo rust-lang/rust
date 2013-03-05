@@ -13,7 +13,7 @@
 /// Open addressing with linear probing.
 pub mod linear {
     use container::{Container, Mutable, Map, Set};
-    use cmp::Eq;
+    use cmp::{Eq, Equiv};
     use hash::Hash;
     use to_bytes::IterBytes;
     use iter::BaseIter;
@@ -108,6 +108,15 @@ pub mod linear {
         }
 
         #[inline(always)]
+        pure fn bucket_for_key_equiv<Q:Hash + IterBytes + Equiv<K>>(
+                &self,
+                k: &Q)
+             -> SearchResult {
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
+            self.bucket_for_key_with_hash_equiv(hash, k)
+        }
+
+        #[inline(always)]
         pure fn bucket_for_key_with_hash(&self,
                                          hash: uint,
                                          k: &K) -> SearchResult {
@@ -115,6 +124,24 @@ pub mod linear {
                 match self.buckets[i] {
                     Some(ref bkt) => if bkt.hash == hash && *k == bkt.key {
                         return FoundEntry(i);
+                    },
+                    None => return FoundHole(i)
+                }
+            };
+            TableFull
+        }
+
+        #[inline(always)]
+        pure fn bucket_for_key_with_hash_equiv<Q:Equiv<K>>(&self,
+                                                           hash: uint,
+                                                           k: &Q)
+                                                        -> SearchResult {
+            let _ = for self.bucket_sequence(hash) |i| {
+                match self.buckets[i] {
+                    Some(ref bkt) => {
+                        if bkt.hash == hash && k.equiv(&bkt.key) {
+                            return FoundEntry(i);
+                        }
                     },
                     None => return FoundHole(i)
                 }
@@ -448,6 +475,28 @@ pub mod linear {
             match self.find(k) {
                 Some(v) => v,
                 None => fail!(fmt!("No entry found for key: %?", k)),
+            }
+        }
+
+        /// Return true if the map contains a value for the specified key,
+        /// using equivalence
+        pure fn contains_key_equiv<Q:Hash + IterBytes + Equiv<K>>(
+                &self,
+                key: &Q)
+             -> bool {
+            match self.bucket_for_key_equiv(key) {
+                FoundEntry(_) => {true}
+                TableFull | FoundHole(_) => {false}
+            }
+        }
+
+        /// Return the value corresponding to the key in the map, using
+        /// equivalence
+        pure fn find_equiv<Q:Hash + IterBytes + Equiv<K>>(&self, k: &Q)
+                                                       -> Option<&self/V> {
+            match self.bucket_for_key_equiv(k) {
+                FoundEntry(idx) => Some(self.value_for_bucket(idx)),
+                TableFull | FoundHole(_) => None,
             }
         }
     }

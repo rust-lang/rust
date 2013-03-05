@@ -214,7 +214,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
                 let mut mt = ast_mt_to_mt(self, rscope, mt);
                 if a_seq_ty.mutbl == ast::m_mutbl ||
                         a_seq_ty.mutbl == ast::m_const {
-                    mt = ty::mt { ty: mt.ty, mutbl: ast::m_mutbl };
+                    mt = ty::mt { ty: mt.ty, mutbl: a_seq_ty.mutbl };
                 }
                 return ty::mk_evec(tcx, mt, vst);
             }

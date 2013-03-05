@@ -14,7 +14,7 @@ trait MyNum {
     static fn from_int(int) -> Self;
 }
 
-pub trait NumExt: MyEq MyNum { }
+pub trait NumExt: MyEq + MyNum { }
 
 struct S { v: int }
 

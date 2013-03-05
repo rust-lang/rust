@@ -600,8 +600,11 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
         print_generics(s, generics);
         if traits.len() != 0u {
             word(s.s, ~":");
-            for traits.each |trait_| {
+            for traits.eachi |i, trait_| {
                 nbsp(s);
+                if i != 0 {
+                    word_space(s, ~"+");
+                }
                 print_path(s, trait_.path, false);
             }
         }

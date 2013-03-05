@@ -14,7 +14,7 @@
 
 use container::{Container, Mutable};
 use cast;
-use cmp::{Eq, Ord, TotalOrd, Ordering, Less, Equal, Greater};
+use cmp::{Eq, Equiv, Ord, TotalOrd, Ordering, Less, Equal, Greater};
 use iter::BaseIter;
 use iter;
 use kinds::Copy;
@@ -1570,6 +1570,12 @@ impl<T:Eq> Eq for @[T] {
     pure fn eq(&self, other: &@[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
     pure fn ne(&self, other: &@[T]) -> bool { !(*self).eq(other) }
+}
+
+#[cfg(notest)]
+impl<T:Eq> Equiv<~[T]> for &[T] {
+    #[inline(always)]
+    pure fn equiv(&self, other: &~[T]) -> bool { eq(*self, *other) }
 }
 
 // Lexicographical comparison
