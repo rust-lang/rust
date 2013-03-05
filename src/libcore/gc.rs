@@ -48,23 +48,30 @@ use sys;
 pub use stackwalk::Word;
 
 // Mirrors rust_stack.h stk_seg
-struct StackSegment {
+pub struct StackSegment {
     prev: *StackSegment,
     next: *StackSegment,
     end: uintptr_t,
     // And other fields which we don't care about...
 }
 
-extern mod rustrt {
-    #[rust_stack]
-    pub unsafe fn rust_call_tydesc_glue(root: *Word,
-                                        tydesc: *Word,
-                                        field: size_t);
+pub mod rustrt {
+    use libc::size_t;
+    use stackwalk::Word;
+    use super::StackSegment;
 
-    #[rust_stack]
-    pub unsafe fn rust_gc_metadata() -> *Word;
+    #[link_name = "rustrt"]
+    pub extern {
+        #[rust_stack]
+        pub unsafe fn rust_call_tydesc_glue(root: *Word,
+                                            tydesc: *Word,
+                                            field: size_t);
 
-    pub unsafe fn rust_get_stack_segment() -> *StackSegment;
+        #[rust_stack]
+        pub unsafe fn rust_gc_metadata() -> *Word;
+
+        pub unsafe fn rust_get_stack_segment() -> *StackSegment;
+    }
 }
 
 unsafe fn bump<T, U>(ptr: *T, count: uint) -> *U {

@@ -218,9 +218,14 @@ pub unsafe fn annihilate() {
 }
 
 /// Bindings to the runtime
-extern mod rustrt {
-    #[rust_stack]
-    // FIXME (#4386): Unable to make following method private.
-    pub unsafe fn rust_get_task() -> *c_void;
+pub mod rustrt {
+    use libc::c_void;
+
+    #[link_name = "rustrt"]
+    pub extern {
+        #[rust_stack]
+        // FIXME (#4386): Unable to make following method private.
+        pub unsafe fn rust_get_task() -> *c_void;
+    }
 }
 

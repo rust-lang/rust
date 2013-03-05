@@ -28,16 +28,22 @@ use sys;
 use uint;
 use vec;
 
-#[abi = "cdecl"]
-pub extern mod rustrt {
-    // These names are terrible. reserve_shared applies
-    // to ~[] and reserve_shared_actual applies to @[].
-    unsafe fn vec_reserve_shared(++t: *sys::TypeDesc,
-                                 ++v: **raw::VecRepr,
-                                 ++n: libc::size_t);
-    unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
-                                        ++v: **raw::VecRepr,
-                                        ++n: libc::size_t);
+pub mod rustrt {
+    use libc;
+    use sys;
+    use vec::raw;
+
+    #[abi = "cdecl"]
+    pub extern {
+        // These names are terrible. reserve_shared applies
+        // to ~[] and reserve_shared_actual applies to @[].
+        unsafe fn vec_reserve_shared(++t: *sys::TypeDesc,
+                                     ++v: **raw::VecRepr,
+                                     ++n: libc::size_t);
+        unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
+                                            ++v: **raw::VecRepr,
+                                            ++n: libc::size_t);
+    }
 }
 
 /// Returns true if a vector contains no elements

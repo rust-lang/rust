@@ -51,15 +51,20 @@ pub fn close(fd: c_int) -> c_int {
     }
 }
 
-extern mod rustrt {
-    unsafe fn rust_get_argc() -> c_int;
-    unsafe fn rust_get_argv() -> **c_char;
-    unsafe fn rust_getcwd() -> ~str;
-    unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
-    unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
-    unsafe fn rust_list_files2(&&path: ~str) -> ~[~str];
-    unsafe fn rust_process_wait(handle: c_int) -> c_int;
-    unsafe fn rust_set_exit_status(code: libc::intptr_t);
+pub mod rustrt {
+    use libc::{c_char, c_int};
+    use libc;
+
+    pub extern {
+        unsafe fn rust_get_argc() -> c_int;
+        unsafe fn rust_get_argv() -> **c_char;
+        unsafe fn rust_getcwd() -> ~str;
+        unsafe fn rust_path_is_dir(path: *libc::c_char) -> c_int;
+        unsafe fn rust_path_exists(path: *libc::c_char) -> c_int;
+        unsafe fn rust_list_files2(&&path: ~str) -> ~[~str];
+        unsafe fn rust_process_wait(handle: c_int) -> c_int;
+        unsafe fn rust_set_exit_status(code: libc::intptr_t);
+    }
 }
 
 pub const TMPBUF_SZ : uint = 1000u;
@@ -159,14 +164,14 @@ fn with_env_lock<T>(f: &fn() -> T) -> T {
 }
 
 pub fn env() -> ~[(~str,~str)] {
-    extern mod rustrt {
+    extern {
         unsafe fn rust_env_pairs() -> ~[~str];
     }
 
     unsafe {
         do with_env_lock {
             let mut pairs = ~[];
-            for vec::each(rustrt::rust_env_pairs()) |p| {
+            for vec::each(rust_env_pairs()) |p| {
                 let vs = str::splitn_char(*p, '=', 1u);
                 assert vec::len(vs) == 2u;
                 pairs.push((copy vs[0], copy vs[1]));

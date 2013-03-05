@@ -117,15 +117,20 @@ impl<T:Rand> Rand for Option<T> {
 }
 
 #[allow(non_camel_case_types)] // runtime type
-enum rust_rng {}
+pub enum rust_rng {}
 
 #[abi = "cdecl"]
-extern mod rustrt {
-    unsafe fn rand_seed_size() -> size_t;
-    unsafe fn rand_gen_seed(buf: *mut u8, sz: size_t);
-    unsafe fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
-    unsafe fn rand_next(rng: *rust_rng) -> u32;
-    unsafe fn rand_free(rng: *rust_rng);
+pub mod rustrt {
+    use libc::size_t;
+    use rand::rust_rng;
+
+    pub extern {
+        unsafe fn rand_seed_size() -> size_t;
+        unsafe fn rand_gen_seed(buf: *mut u8, sz: size_t);
+        unsafe fn rand_new_seeded(buf: *u8, sz: size_t) -> *rust_rng;
+        unsafe fn rand_next(rng: *rust_rng) -> u32;
+        unsafe fn rand_free(rng: *rust_rng);
+    }
 }
 
 /// A random number generator
