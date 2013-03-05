@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::*;
+use core::hash::{Hash, HashUtil, Streaming};
 use core::hashmap::linear::LinearMap;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;

@@ -902,8 +902,12 @@ pub impl CoherenceChecker {
                     // Nothing to do.
                 }
                 Some(base_type_def_id) => {
-                    self.add_inherent_method(base_type_def_id,
-                                             *implementation);
+                    // inherent methods apply to `impl Type` but not
+                    // `impl Trait for Type`:
+                    if associated_traits.len() == 0 {
+                        self.add_inherent_method(base_type_def_id,
+                                                 *implementation);
+                    }
 
                     self.base_type_def_ids.insert(implementation.did,
                                                   base_type_def_id);
