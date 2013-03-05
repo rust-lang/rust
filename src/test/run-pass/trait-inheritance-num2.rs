@@ -38,7 +38,7 @@ impl TypeExt for f64 {}
 impl TypeExt for float {}
 
 
-pub trait NumExt: TypeExt Eq Ord NumCast {}
+pub trait NumExt: TypeExt + Eq + Ord + NumCast {}
 
 impl NumExt for u8 {}
 impl NumExt for u16 {}
@@ -94,7 +94,7 @@ impl IntegerExt for i64 {}
 impl IntegerExt for int {}
 
 
-pub trait FloatExt: NumExt FuzzyEq<Self> {}
+pub trait FloatExt: NumExt + FuzzyEq<Self> {}
 
 impl FloatExt for f32 {}
 impl FloatExt for f64 {}
