@@ -17,7 +17,6 @@ use middle::typeck;
 use util::ppaux;
 
 use core::option;
-use std::oldmap::HashMap;
 use syntax::ast::*;
 use syntax::codemap;
 use syntax::{visit, ast_util, ast_map};

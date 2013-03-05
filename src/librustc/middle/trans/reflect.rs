@@ -27,7 +27,6 @@ use util::ppaux::ty_to_str;
 
 use core::option::None;
 use core::vec;
-use std::oldmap::HashMap;
 use syntax::ast::def_id;
 use syntax::ast;
 

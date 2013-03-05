@@ -36,7 +36,6 @@ use core::str;
 use core::vec;
 use std::ebml::reader;
 use std::ebml;
-use std::oldmap::HashMap;
 use std::oldmap;
 use std::serialize::Decodable;
 use syntax::ast_map;
@@ -1129,8 +1128,8 @@ pub fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
     }
 
     match cdata.cnum_map.find(&did.crate) {
-      option::Some(n) => ast::def_id { crate: n, node: did.node },
-      option::None => fail!(~"didn't find a crate in the cnum_map")
+        Some(&n) => ast::def_id { crate: n, node: did.node },
+        None => fail!(~"didn't find a crate in the cnum_map")
     }
 }
 

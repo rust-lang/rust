@@ -34,9 +34,10 @@ use util::common::indenter;
 use util::ppaux::{expr_repr, region_to_str};
 
 use core::dvec;
+use core::hashmap::linear::LinearMap;
 use core::hashmap::linear::LinearSet;
 use core::vec;
-use std::oldmap::HashMap;
+
 use syntax::ast::{m_const, m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;
@@ -82,7 +83,10 @@ struct GatherLoanCtxt {
 pub fn gather_loans(bccx: @BorrowckCtxt, crate: @ast::crate) -> ReqMaps {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
-        req_maps: ReqMaps { req_loan_map: HashMap(), pure_map: HashMap() },
+        req_maps: ReqMaps {
+            req_loan_map: @mut LinearMap::new(),
+            pure_map: @mut LinearMap::new()
+        },
         item_ub: 0,
         root_ub: 0,
         ignore_adjustments: LinearSet::new()
