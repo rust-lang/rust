@@ -26,7 +26,7 @@ use core::dvec;
 use core::flate;
 use core::hash::{Hash, HashUtil};
 use core::int;
-use core::io::WriterUtil;
+use core::io::{Writer, WriterUtil};
 use core::io;
 use core::str;
 use core::to_bytes::IterBytes;

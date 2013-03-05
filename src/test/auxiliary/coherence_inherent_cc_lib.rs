@@ -8,23 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-fast
-// aux-build:trait_inheritance_cross_trait_call_xc_aux.rs
+// See coherence_inherent_cc.rs
 
-extern mod aux(name = "trait_inheritance_cross_trait_call_xc_aux");
-
-use aux::Foo;
-
-trait Bar : Foo {
-    fn g() -> int;
+pub trait TheTrait {
+    fn the_fn(&self);
 }
 
-impl Bar for aux::A {
-    fn g() -> int { self.f() }
-}
+pub struct TheStruct;
 
-pub fn main() {
-    let a = &aux::A { x: 3 };
-    assert a.g() == 10;
+impl TheTrait for TheStruct {
+    fn the_fn(&self) {}
 }
-
