@@ -13,6 +13,7 @@
 use prelude::*;
 
 // FIXME: #3469: need to manually update TrieNode when SHIFT changes
+// FIXME: #5244: need to manually update the TrieNode constructor
 const SHIFT: uint = 4;
 const SIZE: uint = 1 << SHIFT;
 const MASK: uint = SIZE - 1;
@@ -56,7 +57,7 @@ impl<T> Container for TrieMap<T> {
     pure fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
-impl<T: Copy> Mutable for TrieMap<T> {
+impl<T> Mutable for TrieMap<T> {
     /// Clear the map, removing all values.
     #[inline(always)]
     fn clear(&mut self) {
@@ -65,7 +66,7 @@ impl<T: Copy> Mutable for TrieMap<T> {
     }
 }
 
-impl<T: Copy> Map<uint, T> for TrieMap<T> {
+impl<T> Map<uint, T> for TrieMap<T> {
     /// Return true if the map contains a value for the specified key
     #[inline(always)]
     pure fn contains_key(&self, key: &uint) -> bool {
@@ -127,7 +128,7 @@ impl<T: Copy> Map<uint, T> for TrieMap<T> {
     }
 }
 
-impl<T: Copy> TrieMap<T> {
+impl<T> TrieMap<T> {
     #[inline(always)]
     static pure fn new() -> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
@@ -209,10 +210,15 @@ struct TrieNode<T> {
     children: [Child<T> * 16] // FIXME: #3469: can't use the SIZE constant yet
 }
 
-impl<T: Copy> TrieNode<T> {
+impl<T> TrieNode<T> {
     #[inline(always)]
     static pure fn new() -> TrieNode<T> {
-        TrieNode{count: 0, children: [Nothing, ..SIZE]}
+        // FIXME: #5244: [Nothing, ..SIZE] should be possible without Copy
+        TrieNode{count: 0,
+                 children: [Nothing, Nothing, Nothing, Nothing,
+                            Nothing, Nothing, Nothing, Nothing,
+                            Nothing, Nothing, Nothing, Nothing,
+                            Nothing, Nothing, Nothing, Nothing]}
     }
 }
 
@@ -260,12 +266,16 @@ pure fn chunk(n: uint, idx: uint) -> uint {
     (n >> (SHIFT * real_idx)) & MASK
 }
 
-fn insert<T: Copy>(count: &mut uint, child: &mut Child<T>, key: uint,
+fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint,
                    value: T, idx: uint) -> bool {
-    match *child {
+    let mut tmp = Nothing;
+    tmp <-> *child;
+    let mut added = false;
+
+    *child = match tmp {
       External(stored_key, stored_value) => {
           if stored_key == key {
-              false // already in the trie
+              External(stored_key, value)
           } else {
               // conflict - split the node
               let mut new = ~TrieNode::new();
@@ -274,20 +284,24 @@ fn insert<T: Copy>(count: &mut uint, child: &mut Child<T>, key: uint,
                      stored_key, stored_value, idx + 1);
               insert(&mut new.count, &mut new.children[chunk(key, idx)], key,
                      value, idx + 1);
-              *child = Internal(new);
-              true
+              added = true;
+              Internal(new)
           }
       }
-      Internal(ref mut x) => {
-        insert(&mut x.count, &mut x.children[chunk(key, idx)], key, value,
-               idx + 1)
+      Internal(x) => {
+        let mut x = x;
+        added = insert(&mut x.count, &mut x.children[chunk(key, idx)], key,
+                       value, idx + 1);
+        Internal(x)
+
       }
       Nothing => {
         *count += 1;
-        *child = External(key, value);
-        true
+        added = true;
+        External(key, value)
       }
-    }
+    };
+    added
 }
 
 fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
