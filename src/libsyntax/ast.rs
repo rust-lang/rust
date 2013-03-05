@@ -1017,6 +1017,15 @@ pub enum self_ty_ {
     sty_uniq(mutability)                // by-unique-pointer self: `~self`
 }
 
+impl self_ty_ {
+    fn is_borrowed(&self) -> bool {
+        match *self {
+            sty_region(_) => true,
+            _ => false
+        }
+    }
+}
+
 pub type self_ty = spanned<self_ty_>;
 
 #[auto_encode]

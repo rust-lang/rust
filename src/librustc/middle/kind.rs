@@ -18,7 +18,6 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::{ty_to_str, tys_to_str};
 
-use core::option;
 use core::str;
 use core::vec;
 use std::oldmap::HashMap;

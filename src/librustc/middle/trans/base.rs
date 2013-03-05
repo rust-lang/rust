@@ -69,7 +69,6 @@ use core::hash;
 use core::int;
 use core::io;
 use core::libc::{c_uint, c_ulonglong};
-use core::option;
 use core::uint;
 use std::oldmap::HashMap;
 use std::{oldmap, time, list};
