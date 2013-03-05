@@ -14,13 +14,15 @@ type SIZE_T = u32;
 type LPVOID = uint;
 type BOOL = u8;
 
-#[cfg(target_os = "win32")]
-#[abi = "stdcall"]
-extern mod kernel32 {
-    pub fn GetProcessHeap() -> HANDLE;
-    pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T)
-                  -> LPVOID;
-    pub fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
+mod kernel32 {
+    #[cfg(target_os = "win32")]
+    #[abi = "stdcall"]
+    pub extern {
+        pub fn GetProcessHeap() -> HANDLE;
+        pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T)
+                      -> LPVOID;
+        pub fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
+    }
 }
 
 

@@ -13,5 +13,5 @@
 
 #[link_name = ""]
 #[nolink]
-extern mod foo {
+extern {
 }

@@ -1139,8 +1139,8 @@ pub mod funcs {
                 unsafe fn strxfrm(s: *c_char, ct: *c_char, n: size_t)
                                -> size_t;
 
-                // These are fine to execute on the Rust stack. They must be, in
-                // fact, because LLVM generates calls to them!
+                // These are fine to execute on the Rust stack. They must be,
+                // in fact, because LLVM generates calls to them!
                 #[rust_stack]
                 #[inline(always)]
                 unsafe fn memcpy(s: *c_void, ct: *c_void, n: size_t)

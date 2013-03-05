@@ -94,10 +94,12 @@ pub mod jit {
     use core::ptr;
     use core::str;
 
-    #[nolink]
-    #[abi = "rust-intrinsic"]
-    pub extern mod rusti {
-        pub fn morestack_addr() -> *();
+    pub mod rusti {
+        #[nolink]
+        #[abi = "rust-intrinsic"]
+        pub extern {
+            pub fn morestack_addr() -> *();
+        }
     }
 
     pub struct Closure {

@@ -10,6 +10,9 @@
 
 #[link(name="foreign_lib", vers="0.0")];
 
-pub extern mod rustrt {
-    pub fn rust_get_argc() -> libc::c_int;
+pub mod rustrt {
+    pub extern {
+        pub fn rust_get_argc() -> libc::c_int;
+    }
 }
+

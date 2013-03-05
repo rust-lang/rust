@@ -10,8 +10,10 @@
 
 #[link(name = "get_task_id")];
 
-extern mod rustrt {
-    pub fn get_task_id() -> libc::intptr_t;
+mod rustrt {
+    pub extern {
+        pub fn get_task_id() -> libc::intptr_t;
+    }
 }
 
 pub fn main() { }
