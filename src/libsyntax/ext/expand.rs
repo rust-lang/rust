@@ -37,10 +37,14 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
         // entry-point for all syntax extensions.
         expr_mac(ref mac) => {
             match (*mac).node {
-                // Token-tree macros, these will be the only case when we're
-                // finished transitioning.
+                // Token-tree macros:
                 mac_invoc_tt(pth, ref tts) => {
-                    assert (vec::len(pth.idents) == 1u);
+                    if (pth.idents.len() > 1u) {
+                        cx.span_fatal(
+                            pth.span,
+                            fmt!("expected macro name without module \
+                                  separators"));
+                    }
                     /* using idents and token::special_idents would make the
                     the macro names be hygienic */
                     let extname = cx.parse_sess().interner.get(pth.idents[0]);
@@ -319,8 +323,12 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
         }
         _ => return orig(s, sp, fld)
     };
-
-    assert(vec::len(pth.idents) == 1u);
+    if (pth.idents.len() > 1u) {
+        cx.span_fatal(
+            pth.span,
+            fmt!("expected macro name without module \
+                  separators"));
+    }
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
     let (fully_expanded, sp) = match (*extsbox).find(&extname) {
         None =>
