@@ -19,7 +19,7 @@ trait Num {
     fn gt(&self, other: &Self) -> bool;
 }
 
-pub trait NumExt: Num NumCast { }
+pub trait NumExt: Num + NumCast { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
     n.gt(&from(1))
