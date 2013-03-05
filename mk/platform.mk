@@ -48,6 +48,7 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
+CFG_LIBUV_LINK_FLAGS_x86_64-unknown-linux-gnu =
 
 # i686-unknown-linux-gnu configuration
 CFG_LIB_NAME_i686-unknown-linux-gnu=lib$(1).so
@@ -61,6 +62,7 @@ CFG_GCCISH_PRE_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_i686-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_i686-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_i686-unknown-linux-gnu =
+CFG_LIBUV_LINK_FLAGS_i686-unknown-linux-gnu =
 
 # x86_64-apple-darwin configuration
 CFG_LIB_NAME_x86_64-apple-darwin=lib$(1).dylib
@@ -74,6 +76,7 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-apple-darwin :=
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-apple-darwin :=
 CFG_DEF_SUFFIX_x86_64-apple-darwin := .darwin.def
 CFG_INSTALL_NAME_x86_64-apple-darwin = -Wl,-install_name,@rpath/$(1)
+CFG_LIBUV_LINK_FLAGS_x86_64-apple-darwin =
 
 # i686-apple-darwin configuration
 CFG_LIB_NAME_i686-apple-darwin=lib$(1).dylib
@@ -87,6 +90,7 @@ CFG_GCCISH_PRE_LIB_FLAGS_i686-apple-darwin :=
 CFG_GCCISH_POST_LIB_FLAGS_i686-apple-darwin :=
 CFG_DEF_SUFFIX_i686-apple-darwin := .darwin.def
 CFG_INSTALL_NAME_i686-apple-darwin = -Wl,-install_name,@rpath/$(1)
+CFG_LIBUV_LINK_FLAGS_i686-apple-darwin =
 
 # arm-unknown-android configuration
 CFG_LIB_NAME_arm-unknown-android=lib$(1).so
@@ -100,6 +104,7 @@ CFG_GCCISH_PRE_LIB_FLAGS_arm-unknown-android := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_arm-unknown-android := -Wl,-no-whole-archive -Wl,-znoexecstack
 CFG_DEF_SUFFIX_arm-unknown-android := .android.def
 CFG_INSTALL_NAME_arm-unknown-android =
+CFG_LIBUV_LINK_FLAGS_arm-unknown-android =
 
 # i686-pc-mingw32 configuration
 CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
@@ -113,6 +118,7 @@ CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 :=
 CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 := 
 CFG_DEF_SUFFIX_i686-pc-mingw32 := .def
 CFG_INSTALL_NAME_i686-pc-mingw32 =
+CFG_LIBUV_LINK_FLAGS_i686-pc-mingw32 = -lWs2_32 -lpsapi -liphlpapi
 
 # x86_64-unknown-freebsd configuration
 CFG_LIB_NAME_x86_64-unknown-freebsd=lib$(1).so
@@ -124,6 +130,7 @@ CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_x86_64-unknown-freebsd := .bsd.def
 CFG_INSTALL_NAME_x86_64-unknown-freebsd =
+CFG_LIBUV_LINK_FLAGS_x86_64-unknown-freebsd = -lpthread -lkvm
 
 # Hack: not sure how to test if a file exists in make other than this
 OS_SUPP = $(patsubst %,--suppressions=%,\
@@ -190,7 +197,6 @@ ifdef CFG_UNIXY
   CFG_RUN=$(2)
   CFG_RUN_TARG=$(call CFG_RUN,,$(2))
   CFG_RUN_TEST=$(call CFG_RUN,,$(CFG_VALGRIND) $(1))
-  CFG_LIBUV_LINK_FLAGS=
 
   ifdef CFG_ENABLE_MINGW_CROSS
     CFG_WINDOWSY := 1
@@ -238,7 +244,6 @@ else
 endif
   CFG_RUN_TARG=$(call CFG_RUN,$(HLIB$(1)_H_$(CFG_HOST_TRIPLE)),$(2))
   CFG_RUN_TEST=$(call CFG_RUN,$(call CFG_TESTLIB,$(1),$(3)),$(1))
-  CFG_LIBUV_LINK_FLAGS=-lWs2_32 -lpsapi -liphlpapi
 
   ifndef CFG_ENABLE_MINGW_CROSS
     CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
