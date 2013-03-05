@@ -1006,138 +1006,160 @@ pub mod funcs {
     // or anything. The same is not true of POSIX.
 
     pub mod c95 {
-        use libc::types::common::c95::{FILE, c_void, fpos_t};
-        use libc::types::os::arch::c95::{c_char, c_double, c_int, c_long};
-        use libc::types::os::arch::c95::{c_uint, c_ulong, c_void, size_t};
-
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod ctype {
-            unsafe fn isalnum(c: c_int) -> c_int;
-            unsafe fn isalpha(c: c_int) -> c_int;
-            unsafe fn iscntrl(c: c_int) -> c_int;
-            unsafe fn isdigit(c: c_int) -> c_int;
-            unsafe fn isgraph(c: c_int) -> c_int;
-            unsafe fn islower(c: c_int) -> c_int;
-            unsafe fn isprint(c: c_int) -> c_int;
-            unsafe fn ispunct(c: c_int) -> c_int;
-            unsafe fn isspace(c: c_int) -> c_int;
-            unsafe fn isupper(c: c_int) -> c_int;
-            unsafe fn isxdigit(c: c_int) -> c_int;
-            unsafe fn tolower(c: c_char) -> c_char;
-            unsafe fn toupper(c: c_char) -> c_char;
+        pub mod ctype {
+            use libc::types::os::arch::c95::{c_char, c_int};
+
+            pub extern {
+                unsafe fn isalnum(c: c_int) -> c_int;
+                unsafe fn isalpha(c: c_int) -> c_int;
+                unsafe fn iscntrl(c: c_int) -> c_int;
+                unsafe fn isdigit(c: c_int) -> c_int;
+                unsafe fn isgraph(c: c_int) -> c_int;
+                unsafe fn islower(c: c_int) -> c_int;
+                unsafe fn isprint(c: c_int) -> c_int;
+                unsafe fn ispunct(c: c_int) -> c_int;
+                unsafe fn isspace(c: c_int) -> c_int;
+                unsafe fn isupper(c: c_int) -> c_int;
+                unsafe fn isxdigit(c: c_int) -> c_int;
+                unsafe fn tolower(c: c_char) -> c_char;
+                unsafe fn toupper(c: c_char) -> c_char;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod stdio {
-            unsafe fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
-            unsafe fn freopen(filename: *c_char, mode: *c_char,
-                       file: *FILE) -> *FILE;
-            unsafe fn fflush(file: *FILE) -> c_int;
-            unsafe fn fclose(file: *FILE) -> c_int;
-            unsafe fn remove(filename: *c_char) -> c_int;
-            unsafe fn rename(oldname: *c_char, newname: *c_char) -> c_int;
-            unsafe fn tmpfile() -> *FILE;
-            unsafe fn setvbuf(stream: *FILE, buffer: *c_char,
-                       mode: c_int, size: size_t) -> c_int;
-            unsafe fn setbuf(stream: *FILE, buf: *c_char);
-            // Omitted: printf and scanf variants.
-            unsafe fn fgetc(stream: *FILE) -> c_int;
-            unsafe fn fgets(buf: *mut c_char, n: c_int,
-                     stream: *FILE) -> *c_char;
-            unsafe fn fputc(c: c_int, stream: *FILE) -> c_int;
-            unsafe fn fputs(s: *c_char, stream: *FILE) -> *c_char;
-            // Omitted: getc, getchar (might be macros).
+        pub mod stdio {
+            use libc::types::common::c95::{FILE, c_void, fpos_t};
+            use libc::types::os::arch::c95::{c_char, c_int, c_long, size_t};
 
-            // Omitted: gets, so ridiculously unsafe that it should not
-            // survive.
+            pub extern {
+                unsafe fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
+                unsafe fn freopen(filename: *c_char, mode: *c_char,
+                           file: *FILE) -> *FILE;
+                unsafe fn fflush(file: *FILE) -> c_int;
+                unsafe fn fclose(file: *FILE) -> c_int;
+                unsafe fn remove(filename: *c_char) -> c_int;
+                unsafe fn rename(oldname: *c_char, newname: *c_char) -> c_int;
+                unsafe fn tmpfile() -> *FILE;
+                unsafe fn setvbuf(stream: *FILE, buffer: *c_char,
+                           mode: c_int, size: size_t) -> c_int;
+                unsafe fn setbuf(stream: *FILE, buf: *c_char);
+                // Omitted: printf and scanf variants.
+                unsafe fn fgetc(stream: *FILE) -> c_int;
+                unsafe fn fgets(buf: *mut c_char, n: c_int,
+                         stream: *FILE) -> *c_char;
+                unsafe fn fputc(c: c_int, stream: *FILE) -> c_int;
+                unsafe fn fputs(s: *c_char, stream: *FILE) -> *c_char;
+                // Omitted: getc, getchar (might be macros).
 
-            // Omitted: putc, putchar (might be macros).
-            unsafe fn puts(s: *c_char) -> c_int;
-            unsafe fn ungetc(c: c_int, stream: *FILE) -> c_int;
-            unsafe fn fread(ptr: *mut c_void, size: size_t,
-                     nobj: size_t, stream: *FILE) -> size_t;
-            unsafe fn fwrite(ptr: *c_void, size: size_t,
-                      nobj: size_t, stream: *FILE) -> size_t;
-            unsafe fn fseek(stream: *FILE, offset: c_long,
-                     whence: c_int) -> c_int;
-            unsafe fn ftell(stream: *FILE) -> c_long;
-            unsafe fn rewind(stream: *FILE);
-            unsafe fn fgetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
-            unsafe fn fsetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
-            unsafe fn feof(stream: *FILE) -> c_int;
-            unsafe fn ferror(stream: *FILE) -> c_int;
-            unsafe fn perror(s: *c_char);
-        }
+                // Omitted: gets, so ridiculously unsafe that it should not
+                // survive.
 
-
-        #[nolink]
-        #[abi = "cdecl"]
-        pub extern mod stdlib {
-            unsafe fn abs(i: c_int) -> c_int;
-            unsafe fn labs(i: c_long) -> c_long;
-            // Omitted: div, ldiv (return pub type incomplete).
-            unsafe fn atof(s: *c_char) -> c_double;
-            unsafe fn atoi(s: *c_char) -> c_int;
-            unsafe fn strtod(s: *c_char, endp: **c_char) -> c_double;
-            unsafe fn strtol(s: *c_char, endp: **c_char, base: c_int)
-                          -> c_long;
-            unsafe fn strtoul(s: *c_char, endp: **c_char, base: c_int)
-                           -> c_ulong;
-            unsafe fn calloc(nobj: size_t, size: size_t) -> *c_void;
-            unsafe fn malloc(size: size_t) -> *c_void;
-            unsafe fn realloc(p: *c_void, size: size_t) -> *c_void;
-            unsafe fn free(p: *c_void);
-            unsafe fn abort() -> !;
-            unsafe fn exit(status: c_int) -> !;
-            // Omitted: atexit.
-            unsafe fn system(s: *c_char) -> c_int;
-            unsafe fn getenv(s: *c_char) -> *c_char;
-            // Omitted: bsearch, qsort
-            unsafe fn rand() -> c_int;
-            unsafe fn srand(seed: c_uint);
+                // Omitted: putc, putchar (might be macros).
+                unsafe fn puts(s: *c_char) -> c_int;
+                unsafe fn ungetc(c: c_int, stream: *FILE) -> c_int;
+                unsafe fn fread(ptr: *mut c_void, size: size_t,
+                         nobj: size_t, stream: *FILE) -> size_t;
+                unsafe fn fwrite(ptr: *c_void, size: size_t,
+                          nobj: size_t, stream: *FILE) -> size_t;
+                unsafe fn fseek(stream: *FILE, offset: c_long,
+                         whence: c_int) -> c_int;
+                unsafe fn ftell(stream: *FILE) -> c_long;
+                unsafe fn rewind(stream: *FILE);
+                unsafe fn fgetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
+                unsafe fn fsetpos(stream: *FILE, ptr: *fpos_t) -> c_int;
+                unsafe fn feof(stream: *FILE) -> c_int;
+                unsafe fn ferror(stream: *FILE) -> c_int;
+                unsafe fn perror(s: *c_char);
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod string {
-            unsafe fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
-            unsafe fn strncpy(dst: *c_char, src: *c_char, n: size_t)
-                           -> *c_char;
-            unsafe fn strcat(s: *c_char, ct: *c_char) -> *c_char;
-            unsafe fn strncat(s: *c_char, ct: *c_char, n: size_t) -> *c_char;
-            unsafe fn strcmp(cs: *c_char, ct: *c_char) -> c_int;
-            unsafe fn strncmp(cs: *c_char, ct: *c_char, n: size_t) -> c_int;
-            unsafe fn strcoll(cs: *c_char, ct: *c_char) -> c_int;
-            unsafe fn strchr(cs: *c_char, c: c_int) -> *c_char;
-            unsafe fn strrchr(cs: *c_char, c: c_int) -> *c_char;
-            unsafe fn strspn(cs: *c_char, ct: *c_char) -> size_t;
-            unsafe fn strcspn(cs: *c_char, ct: *c_char) -> size_t;
-            unsafe fn strpbrk(cs: *c_char, ct: *c_char) -> *c_char;
-            unsafe fn strstr(cs: *c_char, ct: *c_char) -> *c_char;
-            unsafe fn strlen(cs: *c_char) -> size_t;
-            unsafe fn strerror(n: c_int) -> *c_char;
-            unsafe fn strtok(s: *c_char, t: *c_char) -> *c_char;
-            unsafe fn strxfrm(s: *c_char, ct: *c_char, n: size_t) -> size_t;
+        pub mod stdlib {
+            use libc::types::common::c95::c_void;
+            use libc::types::os::arch::c95::{c_char, c_double, c_int};
+            use libc::types::os::arch::c95::{c_long, c_uint, c_ulong};
+            use libc::types::os::arch::c95::{size_t};
 
-            // These are fine to execute on the Rust stack. They must be, in
-            // fact, because LLVM generates calls to them!
-            #[rust_stack]
-            #[inline(always)]
-            unsafe fn memcpy(s: *c_void, ct: *c_void, n: size_t) -> *c_void;
-            #[rust_stack]
-            #[inline(always)]
-            unsafe fn memmove(s: *c_void, ct: *c_void, n: size_t) -> *c_void;
-            #[rust_stack]
-            #[inline(always)]
-            unsafe fn memcmp(cx: *c_void, ct: *c_void, n: size_t) -> c_int;
-            #[rust_stack]
-            #[inline(always)]
-            unsafe fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
-            #[rust_stack]
-            #[inline(always)]
-            unsafe fn memset(s: *c_void, c: c_int, n: size_t) -> *c_void;
+            pub extern {
+                unsafe fn abs(i: c_int) -> c_int;
+                unsafe fn labs(i: c_long) -> c_long;
+                // Omitted: div, ldiv (return pub type incomplete).
+                unsafe fn atof(s: *c_char) -> c_double;
+                unsafe fn atoi(s: *c_char) -> c_int;
+                unsafe fn strtod(s: *c_char, endp: **c_char) -> c_double;
+                unsafe fn strtol(s: *c_char, endp: **c_char, base: c_int)
+                              -> c_long;
+                unsafe fn strtoul(s: *c_char, endp: **c_char, base: c_int)
+                               -> c_ulong;
+                unsafe fn calloc(nobj: size_t, size: size_t) -> *c_void;
+                unsafe fn malloc(size: size_t) -> *c_void;
+                unsafe fn realloc(p: *c_void, size: size_t) -> *c_void;
+                unsafe fn free(p: *c_void);
+                unsafe fn abort() -> !;
+                unsafe fn exit(status: c_int) -> !;
+                // Omitted: atexit.
+                unsafe fn system(s: *c_char) -> c_int;
+                unsafe fn getenv(s: *c_char) -> *c_char;
+                // Omitted: bsearch, qsort
+                unsafe fn rand() -> c_int;
+                unsafe fn srand(seed: c_uint);
+            }
+        }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod string {
+            use libc::types::common::c95::c_void;
+            use libc::types::os::arch::c95::{c_char, c_int, size_t};
+
+            pub extern {
+                unsafe fn strcpy(dst: *c_char, src: *c_char) -> *c_char;
+                unsafe fn strncpy(dst: *c_char, src: *c_char, n: size_t)
+                               -> *c_char;
+                unsafe fn strcat(s: *c_char, ct: *c_char) -> *c_char;
+                unsafe fn strncat(s: *c_char, ct: *c_char, n: size_t)
+                               -> *c_char;
+                unsafe fn strcmp(cs: *c_char, ct: *c_char) -> c_int;
+                unsafe fn strncmp(cs: *c_char, ct: *c_char, n: size_t)
+                               -> c_int;
+                unsafe fn strcoll(cs: *c_char, ct: *c_char) -> c_int;
+                unsafe fn strchr(cs: *c_char, c: c_int) -> *c_char;
+                unsafe fn strrchr(cs: *c_char, c: c_int) -> *c_char;
+                unsafe fn strspn(cs: *c_char, ct: *c_char) -> size_t;
+                unsafe fn strcspn(cs: *c_char, ct: *c_char) -> size_t;
+                unsafe fn strpbrk(cs: *c_char, ct: *c_char) -> *c_char;
+                unsafe fn strstr(cs: *c_char, ct: *c_char) -> *c_char;
+                unsafe fn strlen(cs: *c_char) -> size_t;
+                unsafe fn strerror(n: c_int) -> *c_char;
+                unsafe fn strtok(s: *c_char, t: *c_char) -> *c_char;
+                unsafe fn strxfrm(s: *c_char, ct: *c_char, n: size_t)
+                               -> size_t;
+
+                // These are fine to execute on the Rust stack. They must be, in
+                // fact, because LLVM generates calls to them!
+                #[rust_stack]
+                #[inline(always)]
+                unsafe fn memcpy(s: *c_void, ct: *c_void, n: size_t)
+                              -> *c_void;
+                #[rust_stack]
+                #[inline(always)]
+                unsafe fn memmove(s: *c_void, ct: *c_void, n: size_t)
+                               -> *c_void;
+                #[rust_stack]
+                #[inline(always)]
+                unsafe fn memcmp(cx: *c_void, ct: *c_void, n: size_t)
+                              -> c_int;
+                #[rust_stack]
+                #[inline(always)]
+                unsafe fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
+                #[rust_stack]
+                #[inline(always)]
+                unsafe fn memset(s: *c_void, c: c_int, n: size_t) -> *c_void;
+            }
         }
     }
 
@@ -1151,127 +1173,136 @@ pub mod funcs {
     pub mod posix88 {
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod stat_ {
+        pub mod stat_ {
             use libc::types::os::common::posix01::stat;
             use libc::types::os::arch::c95::{c_int, c_char};
 
-            #[link_name = "_chmod"]
-            unsafe fn chmod(path: *c_char, mode: c_int) -> c_int;
+            pub extern {
+                #[link_name = "_chmod"]
+                unsafe fn chmod(path: *c_char, mode: c_int) -> c_int;
 
-            #[link_name = "_mkdir"]
-            unsafe fn mkdir(path: *c_char) -> c_int;
+                #[link_name = "_mkdir"]
+                unsafe fn mkdir(path: *c_char) -> c_int;
 
-            #[link_name = "_fstat64"]
-            unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+                #[link_name = "_fstat64"]
+                unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
 
-            #[link_name = "_stat64"]
-            unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                #[link_name = "_stat64"]
+                unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod stdio {
+        pub mod stdio {
             use libc::types::common::c95::FILE;
             use libc::types::os::arch::c95::{c_int, c_char};
 
-            #[link_name = "_popen"]
-            unsafe fn popen(command: *c_char, mode: *c_char) -> *FILE;
+            pub extern {
+                #[link_name = "_popen"]
+                unsafe fn popen(command: *c_char, mode: *c_char) -> *FILE;
 
-            #[link_name = "_pclose"]
-            unsafe fn pclose(stream: *FILE) -> c_int;
+                #[link_name = "_pclose"]
+                unsafe fn pclose(stream: *FILE) -> c_int;
 
-            #[link_name = "_fdopen"]
-            unsafe fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
+                #[link_name = "_fdopen"]
+                unsafe fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
 
-            #[link_name = "_fileno"]
-            unsafe fn fileno(stream: *FILE) -> c_int;
+                #[link_name = "_fileno"]
+                unsafe fn fileno(stream: *FILE) -> c_int;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod fcntl {
-            use libc::types::os::arch::c95::{c_int, c_char};
+        pub mod fcntl {
+            pub extern {
+                use libc::types::os::arch::c95::{c_int, c_char};
 
-            #[link_name = "_open"]
-            unsafe fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
+                #[link_name = "_open"]
+                unsafe fn open(path: *c_char, oflag: c_int, mode: c_int)
+                            -> c_int;
 
-            #[link_name = "_creat"]
-            unsafe fn creat(path: *c_char, mode: c_int) -> c_int;
+                #[link_name = "_creat"]
+                unsafe fn creat(path: *c_char, mode: c_int) -> c_int;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod dirent {
+        pub mod dirent {
             // Not supplied at all.
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod unistd {
+        pub mod unistd {
             use libc::types::common::c95::c_void;
             use libc::types::os::arch::c95::{c_int, c_uint, c_char,
                                              c_long, size_t};
             use libc::types::os::arch::c99::intptr_t;
 
-            #[link_name = "_access"]
-            unsafe fn access(path: *c_char, amode: c_int) -> c_int;
+            pub extern {
+                #[link_name = "_access"]
+                unsafe fn access(path: *c_char, amode: c_int) -> c_int;
 
-            #[link_name = "_chdir"]
-            unsafe fn chdir(dir: *c_char) -> c_int;
+                #[link_name = "_chdir"]
+                unsafe fn chdir(dir: *c_char) -> c_int;
 
-            #[link_name = "_close"]
-            unsafe fn close(fd: c_int) -> c_int;
+                #[link_name = "_close"]
+                unsafe fn close(fd: c_int) -> c_int;
 
-            #[link_name = "_dup"]
-            unsafe fn dup(fd: c_int) -> c_int;
+                #[link_name = "_dup"]
+                unsafe fn dup(fd: c_int) -> c_int;
 
-            #[link_name = "_dup2"]
-            unsafe fn dup2(src: c_int, dst: c_int) -> c_int;
+                #[link_name = "_dup2"]
+                unsafe fn dup2(src: c_int, dst: c_int) -> c_int;
 
-            #[link_name = "_execv"]
-            unsafe fn execv(prog: *c_char, argv: **c_char) -> intptr_t;
+                #[link_name = "_execv"]
+                unsafe fn execv(prog: *c_char, argv: **c_char) -> intptr_t;
 
-            #[link_name = "_execve"]
-            unsafe fn execve(prog: *c_char, argv: **c_char,
-                      envp: **c_char) -> c_int;
+                #[link_name = "_execve"]
+                unsafe fn execve(prog: *c_char, argv: **c_char,
+                          envp: **c_char) -> c_int;
 
-            #[link_name = "_execvp"]
-            unsafe fn execvp(c: *c_char, argv: **c_char) -> c_int;
+                #[link_name = "_execvp"]
+                unsafe fn execvp(c: *c_char, argv: **c_char) -> c_int;
 
-            #[link_name = "_execvpe"]
-            unsafe fn execvpe(c: *c_char, argv: **c_char,
-                       envp: **c_char) -> c_int;
+                #[link_name = "_execvpe"]
+                unsafe fn execvpe(c: *c_char, argv: **c_char,
+                           envp: **c_char) -> c_int;
 
-            #[link_name = "_getcwd"]
-            unsafe fn getcwd(buf: *c_char, size: size_t) -> *c_char;
+                #[link_name = "_getcwd"]
+                unsafe fn getcwd(buf: *c_char, size: size_t) -> *c_char;
 
-            #[link_name = "_getpid"]
-            unsafe fn getpid() -> c_int;
+                #[link_name = "_getpid"]
+                unsafe fn getpid() -> c_int;
 
-            #[link_name = "_isatty"]
-            unsafe fn isatty(fd: c_int) -> c_int;
+                #[link_name = "_isatty"]
+                unsafe fn isatty(fd: c_int) -> c_int;
 
-            #[link_name = "_lseek"]
-            unsafe fn lseek(fd: c_int, offset: c_long, origin: c_int)
-                         -> c_long;
+                #[link_name = "_lseek"]
+                unsafe fn lseek(fd: c_int, offset: c_long, origin: c_int)
+                             -> c_long;
 
-            #[link_name = "_pipe"]
-            unsafe fn pipe(fds: *mut c_int, psize: c_uint,
-                    textmode: c_int) -> c_int;
+                #[link_name = "_pipe"]
+                unsafe fn pipe(fds: *mut c_int, psize: c_uint,
+                        textmode: c_int) -> c_int;
 
-            #[link_name = "_read"]
-            unsafe fn read(fd: c_int, buf: *mut c_void, count: c_uint)
-                        -> c_int;
+                #[link_name = "_read"]
+                unsafe fn read(fd: c_int, buf: *mut c_void, count: c_uint)
+                            -> c_int;
 
-            #[link_name = "_rmdir"]
-            unsafe fn rmdir(path: *c_char) -> c_int;
+                #[link_name = "_rmdir"]
+                unsafe fn rmdir(path: *c_char) -> c_int;
 
-            #[link_name = "_unlink"]
-            unsafe fn unlink(c: *c_char) -> c_int;
+                #[link_name = "_unlink"]
+                unsafe fn unlink(c: *c_char) -> c_int;
 
-            #[link_name = "_write"]
-            unsafe fn write(fd: c_int, buf: *c_void, count: c_uint) -> c_int;
-
+                #[link_name = "_write"]
+                unsafe fn write(fd: c_int, buf: *c_void, count: c_uint)
+                             -> c_int;
+            }
         }
     }
 
@@ -1281,119 +1312,145 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod posix88 {
-        use libc::types::common::c95::{FILE, c_void};
-        use libc::types::common::posix88::{DIR, dirent_t};
-        use libc::types::os::arch::c95::{c_char, c_int, c_long, c_uint};
-        use libc::types::os::arch::c95::{size_t};
-        use libc::types::os::arch::posix01::stat;
-        use libc::types::os::arch::posix88::{gid_t, mode_t, off_t, pid_t};
-        use libc::types::os::arch::posix88::{ssize_t, uid_t};
+        pub mod stat_ {
+            use libc::types::os::arch::c95::{c_char, c_int};
+            use libc::types::os::arch::posix01::stat;
+            use libc::types::os::arch::posix88::mode_t;
 
-        #[nolink]
-        #[abi = "cdecl"]
-        pub extern mod stat_ {
-            unsafe fn chmod(path: *c_char, mode: mode_t) -> c_int;
-            unsafe fn fchmod(fd: c_int, mode: mode_t) -> c_int;
+            #[nolink]
+            #[abi = "cdecl"]
+            pub extern {
+                unsafe fn chmod(path: *c_char, mode: mode_t) -> c_int;
+                unsafe fn fchmod(fd: c_int, mode: mode_t) -> c_int;
 
-            #[cfg(target_os = "linux")]
-            #[cfg(target_os = "freebsd")]
-            #[cfg(target_os = "android")]
-           unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+                #[cfg(target_os = "linux")]
+                #[cfg(target_os = "freebsd")]
+                #[cfg(target_os = "android")]
+               unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
 
-            #[cfg(target_os = "macos")]
-            #[link_name = "fstat64"]
-            unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
+                #[cfg(target_os = "macos")]
+                #[link_name = "fstat64"]
+                unsafe fn fstat(fildes: c_int, buf: *mut stat) -> c_int;
 
-            unsafe fn mkdir(path: *c_char, mode: mode_t) -> c_int;
-            unsafe fn mkfifo(path: *c_char, mode: mode_t) -> c_int;
+                unsafe fn mkdir(path: *c_char, mode: mode_t) -> c_int;
+                unsafe fn mkfifo(path: *c_char, mode: mode_t) -> c_int;
 
-            #[cfg(target_os = "linux")]
-            #[cfg(target_os = "freebsd")]
-            #[cfg(target_os = "android")]
-            unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                #[cfg(target_os = "linux")]
+                #[cfg(target_os = "freebsd")]
+                #[cfg(target_os = "android")]
+                unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
 
-            #[cfg(target_os = "macos")]
-            #[link_name = "stat64"]
-            unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
+                #[cfg(target_os = "macos")]
+                #[link_name = "stat64"]
+                unsafe fn stat(path: *c_char, buf: *mut stat) -> c_int;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod stdio {
-            unsafe fn popen(command: *c_char, mode: *c_char) -> *FILE;
-            unsafe fn pclose(stream: *FILE) -> c_int;
-            unsafe fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
-            unsafe fn fileno(stream: *FILE) -> c_int;
+        pub mod stdio {
+            use libc::types::common::c95::FILE;
+            use libc::types::os::arch::c95::{c_char, c_int};
+
+            pub extern {
+                unsafe fn popen(command: *c_char, mode: *c_char) -> *FILE;
+                unsafe fn pclose(stream: *FILE) -> c_int;
+                unsafe fn fdopen(fd: c_int, mode: *c_char) -> *FILE;
+                unsafe fn fileno(stream: *FILE) -> c_int;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod fcntl {
-            unsafe fn open(path: *c_char, oflag: c_int, mode: c_int) -> c_int;
-            unsafe fn creat(path: *c_char, mode: mode_t) -> c_int;
-            unsafe fn fcntl(fd: c_int, cmd: c_int) -> c_int;
+        pub mod fcntl {
+            use libc::types::os::arch::c95::{c_char, c_int};
+            use libc::types::os::arch::posix88::mode_t;
+
+            pub extern {
+                unsafe fn open(path: *c_char, oflag: c_int, mode: c_int)
+                            -> c_int;
+                unsafe fn creat(path: *c_char, mode: mode_t) -> c_int;
+                unsafe fn fcntl(fd: c_int, cmd: c_int) -> c_int;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod dirent {
-            unsafe fn opendir(dirname: *c_char) -> *DIR;
-            unsafe fn closedir(dirp: *DIR) -> c_int;
-            unsafe fn readdir(dirp: *DIR) -> *dirent_t;
-            unsafe fn rewinddir(dirp: *DIR);
-            unsafe fn seekdir(dirp: *DIR, loc: c_long);
-            unsafe fn telldir(dirp: *DIR) -> c_long;
+        pub mod dirent {
+            use libc::types::common::posix88::{DIR, dirent_t};
+            use libc::types::os::arch::c95::{c_char, c_int, c_long};
+
+            pub extern {
+                unsafe fn opendir(dirname: *c_char) -> *DIR;
+                unsafe fn closedir(dirp: *DIR) -> c_int;
+                unsafe fn readdir(dirp: *DIR) -> *dirent_t;
+                unsafe fn rewinddir(dirp: *DIR);
+                unsafe fn seekdir(dirp: *DIR, loc: c_long);
+                unsafe fn telldir(dirp: *DIR) -> c_long;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod unistd {
-            unsafe fn access(path: *c_char, amode: c_int) -> c_int;
-            unsafe fn alarm(seconds: c_uint) -> c_uint;
-            unsafe fn chdir(dir: *c_char) -> c_int;
-            unsafe fn chown(path: *c_char, uid: uid_t, gid: gid_t) -> c_int;
-            unsafe fn close(fd: c_int) -> c_int;
-            unsafe fn dup(fd: c_int) -> c_int;
-            unsafe fn dup2(src: c_int, dst: c_int) -> c_int;
-            unsafe fn execv(prog: *c_char, argv: **c_char) -> c_int;
-            unsafe fn execve(prog: *c_char, argv: **c_char, envp: **c_char)
-                          -> c_int;
-            unsafe fn execvp(c: *c_char, argv: **c_char) -> c_int;
-            unsafe fn fork() -> pid_t;
-            unsafe fn fpathconf(filedes: c_int, name: c_int) -> c_long;
-            unsafe fn getcwd(buf: *c_char, size: size_t) -> *c_char;
-            unsafe fn getegid() -> gid_t;
-            unsafe fn geteuid() -> uid_t;
-            unsafe fn getgid() -> gid_t ;
-            unsafe fn getgroups(ngroups_max: c_int, groups: *mut gid_t)
+        pub mod unistd {
+            use libc::types::common::c95::c_void;
+            use libc::types::os::arch::c95::{c_char, c_int, c_long, c_uint};
+            use libc::types::os::arch::c95::{size_t};
+            use libc::types::os::arch::posix88::{gid_t, off_t, pid_t};
+            use libc::types::os::arch::posix88::{ssize_t, uid_t};
+
+            pub extern {
+                unsafe fn access(path: *c_char, amode: c_int) -> c_int;
+                unsafe fn alarm(seconds: c_uint) -> c_uint;
+                unsafe fn chdir(dir: *c_char) -> c_int;
+                unsafe fn chown(path: *c_char, uid: uid_t, gid: gid_t)
                              -> c_int;
-            unsafe fn getlogin() -> *c_char;
-            unsafe fn getopt(argc: c_int, argv: **c_char, optstr: *c_char)
-                          -> c_int;
-            unsafe fn getpgrp() -> pid_t;
-            unsafe fn getpid() -> pid_t;
-            unsafe fn getppid() -> pid_t;
-            unsafe fn getuid() -> uid_t;
-            unsafe fn isatty(fd: c_int) -> c_int;
-            unsafe fn link(src: *c_char, dst: *c_char) -> c_int;
-            unsafe fn lseek(fd: c_int, offset: off_t, whence: c_int) -> off_t;
-            unsafe fn pathconf(path: *c_char, name: c_int) -> c_long;
-            unsafe fn pause() -> c_int;
-            unsafe fn pipe(fds: *mut c_int) -> c_int;
-            unsafe fn read(fd: c_int, buf: *mut c_void,
-                    count: size_t) -> ssize_t;
-            unsafe fn rmdir(path: *c_char) -> c_int;
-            unsafe fn setgid(gid: gid_t) -> c_int;
-            unsafe fn setpgid(pid: pid_t, pgid: pid_t) -> c_int;
-            unsafe fn setsid() -> pid_t;
-            unsafe fn setuid(uid: uid_t) -> c_int;
-            unsafe fn sleep(secs: c_uint) -> c_uint;
-            unsafe fn sysconf(name: c_int) -> c_long;
-            unsafe fn tcgetpgrp(fd: c_int) -> pid_t;
-            unsafe fn ttyname(fd: c_int) -> *c_char;
-            unsafe fn unlink(c: *c_char) -> c_int;
-            unsafe fn write(fd: c_int, buf: *c_void, count: size_t)
-                         -> ssize_t;
+                unsafe fn close(fd: c_int) -> c_int;
+                unsafe fn dup(fd: c_int) -> c_int;
+                unsafe fn dup2(src: c_int, dst: c_int) -> c_int;
+                unsafe fn execv(prog: *c_char, argv: **c_char) -> c_int;
+                unsafe fn execve(prog: *c_char,
+                                 argv: **c_char,
+                                 envp: **c_char)
+                              -> c_int;
+                unsafe fn execvp(c: *c_char, argv: **c_char) -> c_int;
+                unsafe fn fork() -> pid_t;
+                unsafe fn fpathconf(filedes: c_int, name: c_int) -> c_long;
+                unsafe fn getcwd(buf: *c_char, size: size_t) -> *c_char;
+                unsafe fn getegid() -> gid_t;
+                unsafe fn geteuid() -> uid_t;
+                unsafe fn getgid() -> gid_t ;
+                unsafe fn getgroups(ngroups_max: c_int, groups: *mut gid_t)
+                                 -> c_int;
+                unsafe fn getlogin() -> *c_char;
+                unsafe fn getopt(argc: c_int, argv: **c_char, optstr: *c_char)
+                              -> c_int;
+                unsafe fn getpgrp() -> pid_t;
+                unsafe fn getpid() -> pid_t;
+                unsafe fn getppid() -> pid_t;
+                unsafe fn getuid() -> uid_t;
+                unsafe fn isatty(fd: c_int) -> c_int;
+                unsafe fn link(src: *c_char, dst: *c_char) -> c_int;
+                unsafe fn lseek(fd: c_int, offset: off_t, whence: c_int)
+                             -> off_t;
+                unsafe fn pathconf(path: *c_char, name: c_int) -> c_long;
+                unsafe fn pause() -> c_int;
+                unsafe fn pipe(fds: *mut c_int) -> c_int;
+                unsafe fn read(fd: c_int, buf: *mut c_void,
+                        count: size_t) -> ssize_t;
+                unsafe fn rmdir(path: *c_char) -> c_int;
+                unsafe fn setgid(gid: gid_t) -> c_int;
+                unsafe fn setpgid(pid: pid_t, pgid: pid_t) -> c_int;
+                unsafe fn setsid() -> pid_t;
+                unsafe fn setuid(uid: uid_t) -> c_int;
+                unsafe fn sleep(secs: c_uint) -> c_uint;
+                unsafe fn sysconf(name: c_int) -> c_long;
+                unsafe fn tcgetpgrp(fd: c_int) -> pid_t;
+                unsafe fn ttyname(fd: c_int) -> *c_char;
+                unsafe fn unlink(c: *c_char) -> c_int;
+                unsafe fn write(fd: c_int, buf: *c_void, count: size_t)
+                             -> ssize_t;
+            }
         }
     }
 
@@ -1402,59 +1459,70 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod posix01 {
-        use libc::types::os::arch::c95::{c_char, c_int, size_t};
-        use libc::types::os::arch::posix01::stat;
-        use libc::types::os::arch::posix88::{pid_t, ssize_t};
-
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod stat_ {
-            #[cfg(target_os = "linux")]
-            #[cfg(target_os = "freebsd")]
-            #[cfg(target_os = "android")]
-            unsafe fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+        pub mod stat_ {
+            use libc::types::os::arch::c95::{c_char, c_int};
+            use libc::types::os::arch::posix01::stat;
 
-            #[cfg(target_os = "macos")]
-            #[link_name = "lstat64"]
-            unsafe fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+            pub extern {
+                #[cfg(target_os = "linux")]
+                #[cfg(target_os = "freebsd")]
+                #[cfg(target_os = "android")]
+                unsafe fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+
+                #[cfg(target_os = "macos")]
+                #[link_name = "lstat64"]
+                unsafe fn lstat(path: *c_char, buf: *mut stat) -> c_int;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod unistd {
-            unsafe fn readlink(path: *c_char, buf: *mut c_char,
-                        bufsz: size_t) -> ssize_t;
+        pub mod unistd {
+            use libc::types::os::arch::c95::{c_char, c_int, size_t};
+            use libc::types::os::arch::posix88::{ssize_t};
 
-            unsafe fn fsync(fd: c_int) -> c_int;
+            pub extern {
+                unsafe fn readlink(path: *c_char, buf: *mut c_char,
+                            bufsz: size_t) -> ssize_t;
 
-            #[cfg(target_os = "linux")]
-            #[cfg(target_os = "android")]
-            unsafe fn fdatasync(fd: c_int) -> c_int;
+                unsafe fn fsync(fd: c_int) -> c_int;
 
-            unsafe fn setenv(name: *c_char, val: *c_char,
-                      overwrite: c_int) -> c_int;
-            unsafe fn unsetenv(name: *c_char) -> c_int;
-            unsafe fn putenv(string: *c_char) -> c_int;
+                #[cfg(target_os = "linux")]
+                #[cfg(target_os = "android")]
+                unsafe fn fdatasync(fd: c_int) -> c_int;
 
-            unsafe fn symlink(path1: *c_char, path2: *c_char) -> c_int;
+                unsafe fn setenv(name: *c_char, val: *c_char,
+                          overwrite: c_int) -> c_int;
+                unsafe fn unsetenv(name: *c_char) -> c_int;
+                unsafe fn putenv(string: *c_char) -> c_int;
+
+                unsafe fn symlink(path1: *c_char, path2: *c_char) -> c_int;
+            }
         }
 
         #[nolink]
         #[abi = "cdecl"]
-        pub extern mod wait {
-            unsafe fn waitpid(pid: pid_t, status: *mut c_int,
-                       options: c_int) -> pid_t;
+        pub mod wait {
+            use libc::types::os::arch::c95::{c_int};
+            use libc::types::os::arch::posix88::{pid_t};
+
+            pub extern {
+                unsafe fn waitpid(pid: pid_t,
+                                  status: *mut c_int,
+                                  options: c_int)
+                               -> pid_t;
+            }
         }
     }
 
     #[cfg(target_os = "win32")]
     pub mod posix01 {
-        #[nolink]
-        pub extern mod stat_ {
+        pub mod stat_ {
         }
 
-        #[nolink]
-        pub extern mod unistd {
+        pub mod unistd {
         }
     }
 
@@ -1465,30 +1533,30 @@ pub mod funcs {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     pub mod posix08 {
-        #[nolink]
-        pub extern mod unistd {
+        pub mod unistd {
         }
     }
 
 
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
-    #[nolink]
-    #[abi = "cdecl"]
-    pub extern mod bsd44 {
-        use libc::types::common::c95::{c_void};
-        use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
+    pub mod bsd44 {
+        #[abi = "cdecl"]
+        pub extern {
+            use libc::types::common::c95::{c_void};
+            use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
 
-        unsafe fn sysctl(name: *c_int, namelen: c_uint,
-                  oldp: *mut c_void, oldlenp: *mut size_t,
-                  newp: *c_void, newlen: size_t) -> c_int;
+            unsafe fn sysctl(name: *c_int, namelen: c_uint,
+                      oldp: *mut c_void, oldlenp: *mut size_t,
+                      newp: *c_void, newlen: size_t) -> c_int;
 
-        unsafe fn sysctlbyname(name: *c_char,
-                        oldp: *mut c_void, oldlenp: *mut size_t,
-                        newp: *c_void, newlen: size_t) -> c_int;
+            unsafe fn sysctlbyname(name: *c_char,
+                            oldp: *mut c_void, oldlenp: *mut size_t,
+                            newp: *c_void, newlen: size_t) -> c_int;
 
-        unsafe fn sysctlnametomib(name: *c_char, mibp: *mut c_int,
-                           sizep: *mut size_t) -> c_int;
+            unsafe fn sysctlnametomib(name: *c_char, mibp: *mut c_int,
+                               sizep: *mut size_t) -> c_int;
+        }
     }
 
 
@@ -1500,12 +1568,15 @@ pub mod funcs {
 
     #[cfg(target_os = "macos")]
     #[nolink]
-    #[abi = "cdecl"]
-    pub extern mod extra {
+    pub mod extra {
         use libc::types::os::arch::c95::{c_char, c_int};
 
-        unsafe fn _NSGetExecutablePath(buf: *mut c_char,
-                                bufsize: *mut u32) -> c_int;
+        #[abi = "cdecl"]
+        pub extern {
+            unsafe fn _NSGetExecutablePath(buf: *mut c_char,
+                                           bufsize: *mut u32)
+                                        -> c_int;
+        }
     }
 
     #[cfg(target_os = "freebsd")]
@@ -1520,38 +1591,50 @@ pub mod funcs {
 
     #[cfg(target_os = "win32")]
     pub mod extra {
-        use libc::types::os::arch::c95::c_int;
-        use libc::types::os::arch::extra::{DWORD, HMODULE, LPCWSTR, LPWSTR};
-        use libc::types::os::arch::extra::{BOOL, LPSECURITY_ATTRIBUTES};
 
-        #[abi = "stdcall"]
-        pub extern mod kernel32 {
-            unsafe fn GetEnvironmentVariableW(n: LPCWSTR,
-                                       v: LPWSTR,
-                                       nsize: DWORD) -> DWORD;
-            unsafe fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR) -> BOOL;
+        pub mod kernel32 {
+            use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
+            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR};
+            use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES};
 
-            unsafe fn GetModuleFileNameW(hModule: HMODULE,
-                                  lpFilename: LPWSTR,
-                                  nSize: DWORD) -> DWORD;
-            unsafe fn CreateDirectoryW(lpPathName: LPCWSTR,
-                                lpSecurityAttributes:
-                                LPSECURITY_ATTRIBUTES) -> BOOL;
-            unsafe fn CopyFileW(lpExistingFileName: LPCWSTR,
-                         lpNewFileName: LPCWSTR,
-                         bFailIfExists: BOOL) -> BOOL;
-            unsafe fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
-            unsafe fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
-            unsafe fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+            #[abi = "stdcall"]
+            pub extern {
+                unsafe fn GetEnvironmentVariableW(n: LPCWSTR,
+                                                  v: LPWSTR,
+                                                  nsize: DWORD)
+                                               -> DWORD;
+                unsafe fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
+                                               -> BOOL;
 
-            unsafe fn GetLastError() -> DWORD;
+                unsafe fn GetModuleFileNameW(hModule: HMODULE,
+                                             lpFilename: LPWSTR,
+                                             nSize: DWORD)
+                                          -> DWORD;
+                unsafe fn CreateDirectoryW(lpPathName: LPCWSTR,
+                                           lpSecurityAttributes:
+                                           LPSECURITY_ATTRIBUTES)
+                                        -> BOOL;
+                unsafe fn CopyFileW(lpExistingFileName: LPCWSTR,
+                                    lpNewFileName: LPCWSTR,
+                                    bFailIfExists: BOOL)
+                                 -> BOOL;
+                unsafe fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
+                unsafe fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+                unsafe fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
+
+                unsafe fn GetLastError() -> DWORD;
+            }
         }
 
-        #[abi = "cdecl"]
-        #[nolink]
-        pub extern mod msvcrt {
-            #[link_name = "_commit"]
-            unsafe fn commit(fd: c_int) -> c_int;
+        pub mod msvcrt {
+            use libc::types::os::arch::c95::c_int;
+
+            #[abi = "cdecl"]
+            #[nolink]
+            pub extern {
+                #[link_name = "_commit"]
+                unsafe fn commit(fd: c_int) -> c_int;
+            }
         }
     }
 }

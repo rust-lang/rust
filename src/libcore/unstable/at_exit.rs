@@ -37,8 +37,12 @@ pub fn at_exit(f: ~fn()) {
 // NB: The double pointer indirection here is because ~fn() is a fat
 // pointer and due to FFI problems I am more comfortable making the
 // interface use a normal pointer
-extern mod rustrt {
-    fn rust_register_exit_function(runner: *c_void, f: ~~fn());
+mod rustrt {
+    use libc::c_void;
+
+    pub extern {
+        fn rust_register_exit_function(runner: *c_void, f: ~~fn());
+    }
 }
 
 struct ExitFunctions {

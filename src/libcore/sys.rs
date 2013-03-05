@@ -37,17 +37,25 @@ pub struct Closure {
     env: *(),
 }
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    fn get_tydesc<T>() -> *();
-    fn size_of<T>() -> uint;
-    fn pref_align_of<T>() -> uint;
-    fn min_align_of<T>() -> uint;
+pub mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        fn get_tydesc<T>() -> *();
+        fn size_of<T>() -> uint;
+        fn pref_align_of<T>() -> uint;
+        fn min_align_of<T>() -> uint;
+    }
 }
 
-extern mod rustrt {
-    #[rust_stack]
-    unsafe fn rust_upcall_fail(expr: *c_char, file: *c_char, line: size_t);
+pub mod rustrt {
+    use libc::{c_char, size_t};
+
+    pub extern {
+        #[rust_stack]
+        unsafe fn rust_upcall_fail(expr: *c_char,
+                                   file: *c_char,
+                                   line: size_t);
+    }
 }
 
 /// Compares contents of two pointers using the default method.
