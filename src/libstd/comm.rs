@@ -26,35 +26,35 @@ pub struct DuplexStream<T, U> {
 }
 
 impl<T:Owned,U:Owned> GenericChan<T> for DuplexStream<T, U> {
-    fn send(x: T) {
+    fn send(&self, x: T) {
         self.chan.send(x)
     }
 }
 
 impl<T:Owned,U:Owned> GenericSmartChan<T> for DuplexStream<T, U> {
-    fn try_send(x: T) -> bool {
+    fn try_send(&self, x: T) -> bool {
         self.chan.try_send(x)
     }
 }
 
 impl<T:Owned,U:Owned> GenericPort<U> for DuplexStream<T, U> {
-    fn recv() -> U {
+    fn recv(&self) -> U {
         self.port.recv()
     }
 
-    fn try_recv() -> Option<U> {
+    fn try_recv(&self) -> Option<U> {
         self.port.try_recv()
     }
 }
 
 impl<T:Owned,U:Owned> Peekable<U> for DuplexStream<T, U> {
-    pure fn peek() -> bool {
+    pure fn peek(&self) -> bool {
         self.port.peek()
     }
 }
 
 impl<T:Owned,U:Owned> Selectable for DuplexStream<T, U> {
-    pure fn header() -> *pipes::PacketHeader {
+    pure fn header(&self) -> *pipes::PacketHeader {
         self.port.header()
     }
 }

@@ -26,9 +26,9 @@ use vec;
  * then build a MovePtrAdaptor wrapped around your struct.
  */
 pub trait MovePtr {
-    fn move_ptr(adjustment: fn(*c_void) -> *c_void);
-    fn push_ptr();
-    fn pop_ptr();
+    fn move_ptr(&self, adjustment: fn(*c_void) -> *c_void);
+    fn push_ptr(&self);
+    fn pop_ptr(&self);
 }
 
 /// Helper function for alignment calculation.
@@ -47,26 +47,26 @@ pub fn MovePtrAdaptor<V:TyVisitor + MovePtr>(v: V) -> MovePtrAdaptor<V> {
 
 pub impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     #[inline(always)]
-    fn bump(sz: uint) {
+    fn bump(&self, sz: uint) {
       do self.inner.move_ptr() |p| {
             ((p as uint) + sz) as *c_void
       };
     }
 
     #[inline(always)]
-    fn align(a: uint) {
+    fn align(&self, a: uint) {
       do self.inner.move_ptr() |p| {
             align(p as uint, a) as *c_void
       };
     }
 
     #[inline(always)]
-    fn align_to<T>() {
+    fn align_to<T>(&self) {
         self.align(sys::min_align_of::<T>());
     }
 
     #[inline(always)]
-    fn bump_past<T>() {
+    fn bump_past<T>(&self) {
         self.bump(sys::size_of::<T>());
     }
 }
