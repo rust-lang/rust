@@ -32,7 +32,7 @@ impl<T> BaseIter<(uint, &T)> for TrieMap<T> {
     /// Visit all key-value pairs in order
     #[inline(always)]
     pure fn each(&self, f: fn(&(uint, &self/T)) -> bool) {
-        self.root.each(f)
+        self.root.each(f);
     }
     #[inline(always)]
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
@@ -42,7 +42,7 @@ impl<T> ReverseIter<(uint, &T)> for TrieMap<T> {
     /// Visit all key-value pairs in reverse order
     #[inline(always)]
     pure fn each_reverse(&self, f: fn(&(uint, &self/T)) -> bool) {
-        self.root.each_reverse(f)
+        self.root.each_reverse(f);
     }
 }
 
@@ -149,7 +149,7 @@ impl<T> TrieMap<T> {
 
     /// Iterate over the map and mutate the contained values
     fn mutate_values(&mut self, f: fn(uint, &mut T) -> bool) {
-        self.root.mutate_values(f)
+        self.root.mutate_values(f);
     }
 }
 
@@ -217,34 +217,39 @@ impl<T: Copy> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    pure fn each(&self, f: fn(&(uint, &self/T)) -> bool) {
+    pure fn each(&self, f: fn(&(uint, &self/T)) -> bool) -> bool {
         for uint::range(0, self.children.len()) |idx| {
             match self.children[idx] {
-                Internal(ref x) => x.each(f),
-                External(k, ref v) => if !f(&(k, v)) { return },
+                Internal(ref x) => if !x.each(f) { return false },
+                External(k, ref v) => if !f(&(k, v)) { return false },
                 Nothing => ()
             }
         }
+        true
     }
 
-    pure fn each_reverse(&self, f: fn(&(uint, &self/T)) -> bool) {
+    pure fn each_reverse(&self, f: fn(&(uint, &self/T)) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx - 1] {
-                Internal(ref x) => x.each_reverse(f),
-                External(k, ref v) => if !f(&(k, v)) { return },
+                Internal(ref x) => if !x.each_reverse(f) { return false },
+                External(k, ref v) => if !f(&(k, v)) { return false },
                 Nothing => ()
             }
         }
+        true
     }
 
-    fn mutate_values(&mut self, f: fn(uint, &mut T) -> bool) {
+    fn mutate_values(&mut self, f: fn(uint, &mut T) -> bool) -> bool {
         for vec::each_mut(self.children) |child| {
             match *child {
-                Internal(ref mut x) => x.mutate_values(f),
-                External(k, ref mut v) => if !f(k, v) { return },
+                Internal(ref mut x) => if !x.mutate_values(f) {
+                    return false
+                },
+                External(k, ref mut v) => if !f(k, v) { return false },
                 Nothing => ()
             }
         }
+        true
     }
 }
 
@@ -386,6 +391,25 @@ mod tests {
     }
 
     #[test]
+    fn test_each_break() {
+        let mut m = TrieMap::new();
+
+        for uint::range_rev(uint::max_value, uint::max_value - 10000) |x| {
+            m.insert(x, x / 2);
+        }
+
+        let mut n = uint::max_value - 9999;
+        for m.each |&(k, v)| {
+            if n == uint::max_value - 5000 { break }
+            assert n < uint::max_value - 5000;
+
+            assert k == n;
+            assert *v == n / 2;
+            n += 1;
+        }
+    }
+
+    #[test]
     fn test_each_reverse() {
         let mut m = TrieMap::new();
 
@@ -399,6 +423,25 @@ mod tests {
         for m.each_reverse |&(k, v)| {
             assert k == n;
             assert *v == n * 2;
+            n -= 1;
+        }
+    }
+
+    #[test]
+    fn test_each_reverse_break() {
+        let mut m = TrieMap::new();
+
+        for uint::range_rev(uint::max_value, uint::max_value - 10000) |x| {
+            m.insert(x, x / 2);
+        }
+
+        let mut n = uint::max_value;
+        for m.each_reverse |&(k, v)| {
+            if n == uint::max_value - 5000 { break }
+            assert n > uint::max_value - 5000;
+
+            assert k == n;
+            assert *v == n / 2;
             n -= 1;
         }
     }
