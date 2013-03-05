@@ -82,7 +82,7 @@ pub pure fn unwrap<A>(d: DVec<A>) -> ~[A] {
 
 priv impl<A> DVec<A> {
     #[inline(always)]
-    pure fn check_not_borrowed() {
+    pure fn check_not_borrowed(&self) {
         unsafe {
             let data: *() = cast::reinterpret_cast(&self.data);
             if data.is_null() {
@@ -92,7 +92,7 @@ priv impl<A> DVec<A> {
     }
 
     #[inline(always)]
-    fn give_back(data: ~[A]) {
+    fn give_back(&self, data: ~[A]) {
         unsafe {
             self.data = data;
         }
@@ -119,7 +119,7 @@ pub impl<A> DVec<A> {
     }
 
     /// Reserves space for N elements
-    fn reserve(count: uint) {
+    fn reserve(&self, count: uint) {
         vec::reserve(&mut self.data, count)
     }
 
@@ -129,26 +129,26 @@ pub impl<A> DVec<A> {
      * and return a new vector to replace it with.
      */
     #[inline(always)]
-    fn swap(f: &fn(v: ~[A]) -> ~[A]) {
+    fn swap(&self, f: &fn(v: ~[A]) -> ~[A]) {
         self.check_out(|v| self.give_back(f(v)))
     }
 
     /// Returns the number of elements currently in the dvec
     #[inline(always)]
-    pure fn len() -> uint {
+    pure fn len(&self) -> uint {
         self.check_not_borrowed();
         return self.data.len();
     }
 
     /// Overwrite the current contents
     #[inline(always)]
-    fn set(w: ~[A]) {
+    fn set(&self, w: ~[A]) {
         self.check_not_borrowed();
         self.data = w;
     }
 
     /// Remove and return the last element
-    fn pop() -> A {
+    fn pop(&self) -> A {
         do self.check_out |v| {
             let mut v = v;
             let result = v.pop();
@@ -158,7 +158,7 @@ pub impl<A> DVec<A> {
     }
 
     /// Insert a single item at the front of the list
-    fn unshift(t: A) {
+    fn unshift(&self, t: A) {
         unsafe {
             let mut data = cast::reinterpret_cast(&null::<()>());
             data <-> self.data;
@@ -171,13 +171,13 @@ pub impl<A> DVec<A> {
 
     /// Append a single item to the end of the list
     #[inline(always)]
-    fn push(t: A) {
+    fn push(&self, t: A) {
         self.check_not_borrowed();
         self.data.push(t);
     }
 
     /// Remove and return the first element
-    fn shift() -> A {
+    fn shift(&self) -> A {
         do self.check_out |v| {
             let mut v = v;
             let result = v.shift();
@@ -187,7 +187,7 @@ pub impl<A> DVec<A> {
     }
 
     /// Reverse the elements in the list, in place
-    fn reverse() {
+    fn reverse(&self) {
         do self.check_out |v| {
             let mut v = v;
             vec::reverse(v);
@@ -196,7 +196,7 @@ pub impl<A> DVec<A> {
     }
 
     /// Gives access to the vector as a slice with immutable contents
-    fn borrow<R>(op: fn(x: &[A]) -> R) -> R {
+    fn borrow<R>(&self, op: fn(x: &[A]) -> R) -> R {
         do self.check_out |v| {
             let result = op(v);
             self.give_back(v);
@@ -205,7 +205,7 @@ pub impl<A> DVec<A> {
     }
 
     /// Gives access to the vector as a slice with mutable contents
-    fn borrow_mut<R>(op: &fn(x: &mut [A]) -> R) -> R {
+    fn borrow_mut<R>(&self, op: &fn(x: &mut [A]) -> R) -> R {
         do self.check_out |v| {
             let mut v = v;
             let result = op(v);
@@ -221,12 +221,12 @@ pub impl<A:Copy> DVec<A> {
      *
      * Equivalent to `append_iter()` but potentially more efficient.
      */
-    fn push_all(ts: &[const A]) {
+    fn push_all(&self, ts: &[const A]) {
         self.push_slice(ts, 0u, vec::len(ts));
     }
 
     /// Appends elements from `from_idx` to `to_idx` (exclusive)
-    fn push_slice(ts: &[const A], from_idx: uint, to_idx: uint) {
+    fn push_slice(&self, ts: &[const A], from_idx: uint, to_idx: uint) {
         do self.swap |v| {
             let mut v = v;
             let new_len = vec::len(v) + to_idx - from_idx;
@@ -270,7 +270,7 @@ pub impl<A:Copy> DVec<A> {
      *
      * See `unwrap()` if you do not wish to copy the contents.
      */
-    pure fn get() -> ~[A] {
+    pure fn get(&self) -> ~[A] {
         unsafe {
             do self.check_out |v| {
                 let w = copy v;
@@ -282,13 +282,13 @@ pub impl<A:Copy> DVec<A> {
 
     /// Copy out an individual element
     #[inline(always)]
-    pure fn get_elt(idx: uint) -> A {
+    pure fn get_elt(&self, idx: uint) -> A {
         self.check_not_borrowed();
         return self.data[idx];
     }
 
     /// Overwrites the contents of the element at `idx` with `a`
-    fn set_elt(idx: uint, a: A) {
+    fn set_elt(&self, idx: uint, a: A) {
         self.check_not_borrowed();
         self.data[idx] = a;
     }
@@ -298,7 +298,7 @@ pub impl<A:Copy> DVec<A> {
      * growing the vector if necessary.  New elements will be initialized
      * with `initval`
      */
-    fn grow_set_elt(idx: uint, initval: &A, val: A) {
+    fn grow_set_elt(&self, idx: uint, initval: &A, val: A) {
         do self.swap |v| {
             let mut v = v;
             v.grow_set(idx, initval, val);
@@ -308,7 +308,7 @@ pub impl<A:Copy> DVec<A> {
 
     /// Returns the last element, failing if the vector is empty
     #[inline(always)]
-    pure fn last() -> A {
+    pure fn last(&self) -> A {
         self.check_not_borrowed();
 
         let length = self.len();
@@ -321,7 +321,7 @@ pub impl<A:Copy> DVec<A> {
 
     /// Iterates over the elements in reverse order
     #[inline(always)]
-    fn rev_each(f: fn(v: &A) -> bool) {
+    fn rev_each(&self, f: fn(v: &A) -> bool) {
         do self.swap |v| {
             // FIXME(#2263)---we should be able to write
             // `vec::rev_each(v, f);` but we cannot write now
@@ -334,7 +334,7 @@ pub impl<A:Copy> DVec<A> {
 
     /// Iterates over the elements and indices in reverse order
     #[inline(always)]
-    fn rev_eachi(f: fn(uint, v: &A) -> bool) {
+    fn rev_eachi(&self, f: fn(uint, v: &A) -> bool) {
         do self.swap |v| {
             // FIXME(#2263)---we should be able to write
             // `vec::rev_eachi(v, f);` but we cannot write now

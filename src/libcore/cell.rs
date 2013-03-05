@@ -30,7 +30,7 @@ pub pure fn empty_cell<T>() -> Cell<T> {
 
 pub impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
-    fn take() -> T {
+    fn take(&self) -> T {
         if self.is_empty() {
             fail!(~"attempt to take an empty cell");
         }
@@ -41,7 +41,7 @@ pub impl<T> Cell<T> {
     }
 
     /// Returns the value, failing if the cell is full.
-    fn put_back(value: T) {
+    fn put_back(&self, value: T) {
         if !self.is_empty() {
             fail!(~"attempt to put a value back into a full cell");
         }
@@ -49,12 +49,12 @@ pub impl<T> Cell<T> {
     }
 
     /// Returns true if the cell is empty and false if the cell is full.
-    pure fn is_empty() -> bool {
+    pure fn is_empty(&self) -> bool {
         self.value.is_none()
     }
 
     // Calls a closure with a reference to the value.
-    fn with_ref<R>(op: fn(v: &T) -> R) -> R {
+    fn with_ref<R>(&self, op: fn(v: &T) -> R) -> R {
         let v = self.take();
         let r = op(&v);
         self.put_back(v);

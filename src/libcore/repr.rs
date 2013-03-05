@@ -39,11 +39,11 @@ pub use managed::raw::BoxRepr;
 /// Helpers
 
 trait EscapedCharWriter {
-    fn write_escaped_char(ch: char);
+    fn write_escaped_char(&self, ch: char);
 }
 
 impl EscapedCharWriter for Writer {
-    fn write_escaped_char(ch: char) {
+    fn write_escaped_char(&self, ch: char) {
         match ch {
             '\t' => self.write_str("\\t"),
             '\r' => self.write_str("\\r"),
@@ -64,68 +64,76 @@ impl EscapedCharWriter for Writer {
 /// Representations
 
 trait Repr {
-    fn write_repr(writer: @Writer);
+    fn write_repr(&self, writer: @Writer);
 }
 
 impl Repr for () {
-    fn write_repr(writer: @Writer) { writer.write_str("()"); }
+    fn write_repr(&self, writer: @Writer) { writer.write_str("()"); }
 }
 
 impl Repr for bool {
-    fn write_repr(writer: @Writer) {
-        writer.write_str(if self { "true" } else { "false" })
+    fn write_repr(&self, writer: @Writer) {
+        writer.write_str(if *self { "true" } else { "false" })
     }
 }
 
 impl Repr for int {
-    fn write_repr(writer: @Writer) { writer.write_int(self); }
+    fn write_repr(&self, writer: @Writer) { writer.write_int(*self); }
 }
 impl Repr for i8 {
-    fn write_repr(writer: @Writer) { writer.write_int(self as int); }
+    fn write_repr(&self, writer: @Writer) { writer.write_int(*self as int); }
 }
 impl Repr for i16 {
-    fn write_repr(writer: @Writer) { writer.write_int(self as int); }
+    fn write_repr(&self, writer: @Writer) { writer.write_int(*self as int); }
 }
 impl Repr for i32 {
-    fn write_repr(writer: @Writer) { writer.write_int(self as int); }
+    fn write_repr(&self, writer: @Writer) { writer.write_int(*self as int); }
 }
 impl Repr for i64 {
     // FIXME #4424: This can lose precision.
-    fn write_repr(writer: @Writer) { writer.write_int(self as int); }
+    fn write_repr(&self, writer: @Writer) { writer.write_int(*self as int); }
 }
 
 impl Repr for uint {
-    fn write_repr(writer: @Writer) { writer.write_uint(self); }
+    fn write_repr(&self, writer: @Writer) { writer.write_uint(*self); }
 }
 impl Repr for u8 {
-    fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
+    fn write_repr(&self, writer: @Writer) {
+        writer.write_uint(*self as uint);
+    }
 }
 impl Repr for u16 {
-    fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
+    fn write_repr(&self, writer: @Writer) {
+        writer.write_uint(*self as uint);
+    }
 }
 impl Repr for u32 {
-    fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
+    fn write_repr(&self, writer: @Writer) {
+        writer.write_uint(*self as uint);
+    }
 }
 impl Repr for u64 {
     // FIXME #4424: This can lose precision.
-    fn write_repr(writer: @Writer) { writer.write_uint(self as uint); }
+    fn write_repr(&self, writer: @Writer) {
+        writer.write_uint(*self as uint);
+    }
 }
 
 impl Repr for float {
     // FIXME #4423: This mallocs.
-    fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
+    fn write_repr(&self, writer: @Writer) { writer.write_str(self.to_str()); }
 }
 impl Repr for f32 {
     // FIXME #4423 This mallocs.
-    fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
+    fn write_repr(&self, writer: @Writer) { writer.write_str(self.to_str()); }
 }
 impl Repr for f64 {
     // FIXME #4423: This mallocs.
-    fn write_repr(writer: @Writer) { writer.write_str(self.to_str()); }
+    fn write_repr(&self, writer: @Writer) { writer.write_str(self.to_str()); }
 }
 
 impl Repr for char {
-    fn write_repr(writer: @Writer) { writer.write_char(self); }
+    fn write_repr(&self, writer: @Writer) { writer.write_char(*self); }
 }
 
 
@@ -152,13 +160,13 @@ pub fn ReprVisitor(ptr: *c_void, writer: @Writer) -> ReprVisitor {
 
 impl MovePtr for ReprVisitor {
     #[inline(always)]
-    fn move_ptr(adjustment: fn(*c_void) -> *c_void) {
+    fn move_ptr(&self, adjustment: fn(*c_void) -> *c_void) {
         self.ptr = adjustment(self.ptr);
     }
-    fn push_ptr() {
+    fn push_ptr(&self) {
         self.ptr_stk.push(self.ptr);
     }
-    fn pop_ptr() {
+    fn pop_ptr(&self) {
         self.ptr = self.ptr_stk.pop();
     }
 }
@@ -168,7 +176,7 @@ pub impl ReprVisitor {
     // Various helpers for the TyVisitor impl
 
     #[inline(always)]
-    fn get<T>(f: fn(&T)) -> bool {
+    fn get<T>(&self, f: fn(&T)) -> bool {
         unsafe {
             f(transmute::<*c_void,&T>(copy self.ptr));
         }
@@ -176,24 +184,24 @@ pub impl ReprVisitor {
     }
 
     #[inline(always)]
-    fn bump(sz: uint) {
+    fn bump(&self, sz: uint) {
       do self.move_ptr() |p| {
             ((p as uint) + sz) as *c_void
       };
     }
 
     #[inline(always)]
-    fn bump_past<T>() {
+    fn bump_past<T>(&self) {
         self.bump(sys::size_of::<T>());
     }
 
     #[inline(always)]
-    fn visit_inner(inner: *TyDesc) -> bool {
+    fn visit_inner(&self, inner: *TyDesc) -> bool {
         self.visit_ptr_inner(self.ptr, inner)
     }
 
     #[inline(always)]
-    fn visit_ptr_inner(ptr: *c_void, inner: *TyDesc) -> bool {
+    fn visit_ptr_inner(&self, ptr: *c_void, inner: *TyDesc) -> bool {
         unsafe {
             let mut u = ReprVisitor(ptr, self.writer);
             let v = reflect::MovePtrAdaptor(u);
@@ -203,13 +211,13 @@ pub impl ReprVisitor {
     }
 
     #[inline(always)]
-    fn write<T:Repr>() -> bool {
+    fn write<T:Repr>(&self) -> bool {
         do self.get |v:&T| {
             v.write_repr(self.writer);
         }
     }
 
-    fn write_escaped_slice(slice: &str) {
+    fn write_escaped_slice(&self, slice: &str) {
         self.writer.write_char('"');
         for str::chars_each(slice) |ch| {
             self.writer.write_escaped_char(ch);
@@ -217,7 +225,7 @@ pub impl ReprVisitor {
         self.writer.write_char('"');
     }
 
-    fn write_mut_qualifier(mtbl: uint) {
+    fn write_mut_qualifier(&self, mtbl: uint) {
         if mtbl == 0 {
             self.writer.write_str("mut ");
         } else if mtbl == 1 {
@@ -228,7 +236,7 @@ pub impl ReprVisitor {
         }
     }
 
-    fn write_vec_range(mtbl: uint, ptr: *u8, len: uint,
+    fn write_vec_range(&self, mtbl: uint, ptr: *u8, len: uint,
                        inner: *TyDesc) -> bool {
         let mut p = ptr;
         let end = ptr::offset(p, len);
@@ -249,7 +257,7 @@ pub impl ReprVisitor {
         true
     }
 
-    fn write_unboxed_vec_repr(mtbl: uint, v: &UnboxedVecRepr,
+    fn write_unboxed_vec_repr(&self, mtbl: uint, v: &UnboxedVecRepr,
                               inner: *TyDesc) -> bool {
         self.write_vec_range(mtbl, ptr::to_unsafe_ptr(&v.data),
                              v.fill, inner)
