@@ -35,12 +35,12 @@ pub impl<T, U> Condition<T, U> {
         }
     }
 
-    fn raise(t: T) -> U {
+    fn raise(&self, t: T) -> U {
         let msg = fmt!("Unhandled condition: %s: %?", self.name, t);
         self.raise_default(t, || fail!(copy msg))
     }
 
-    fn raise_default(t: T, default: &fn() -> U) -> U {
+    fn raise_default(&self, t: T, default: &fn() -> U) -> U {
         unsafe {
             match local_data_pop(self.key) {
                 None => {

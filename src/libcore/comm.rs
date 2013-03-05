@@ -24,31 +24,31 @@ pub use pipes::Selectable;
 /// A trait for things that can send multiple messages.
 pub trait GenericChan<T> {
     /// Sends a message.
-    fn send(x: T);
+    fn send(&self, x: T);
 }
 
 /// Things that can send multiple messages and can detect when the receiver
 /// is closed
 pub trait GenericSmartChan<T> {
     /// Sends a message, or report if the receiver has closed the connection.
-    fn try_send(x: T) -> bool;
+    fn try_send(&self, x: T) -> bool;
 }
 
 /// A trait for things that can receive multiple messages.
 pub trait GenericPort<T> {
     /// Receives a message, or fails if the connection closes.
-    fn recv() -> T;
+    fn recv(&self) -> T;
 
     /** Receives a message, or returns `none` if
     the connection is closed or closes.
     */
-    fn try_recv() -> Option<T>;
+    fn try_recv(&self) -> Option<T>;
 }
 
 /// Ports that can `peek`
 pub trait Peekable<T> {
     /// Returns true if a message is available
-    pure fn peek() -> bool;
+    pure fn peek(&self) -> bool;
 }
 
 /// Returns the index of an endpoint that is ready to receive.
@@ -105,7 +105,7 @@ pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
 }
 
 impl<T: Owned> GenericChan<T> for Chan<T> {
-    fn send(x: T) {
+    fn send(&self, x: T) {
         let mut endp = None;
         endp <-> self.endp;
         self.endp = Some(
@@ -115,7 +115,7 @@ impl<T: Owned> GenericChan<T> for Chan<T> {
 
 impl<T: Owned> GenericSmartChan<T> for Chan<T> {
 
-    fn try_send(x: T) -> bool {
+    fn try_send(&self, x: T) -> bool {
         let mut endp = None;
         endp <-> self.endp;
         match streamp::client::try_data(unwrap(endp), x) {
@@ -129,7 +129,7 @@ impl<T: Owned> GenericSmartChan<T> for Chan<T> {
 }
 
 impl<T: Owned> GenericPort<T> for Port<T> {
-    fn recv() -> T {
+    fn recv(&self) -> T {
         let mut endp = None;
         endp <-> self.endp;
         let streamp::data(x, endp) = recv(unwrap(endp));
@@ -137,7 +137,7 @@ impl<T: Owned> GenericPort<T> for Port<T> {
         x
     }
 
-    fn try_recv() -> Option<T> {
+    fn try_recv(&self) -> Option<T> {
         let mut endp = None;
         endp <-> self.endp;
         match try_recv(unwrap(endp)) {
@@ -151,7 +151,7 @@ impl<T: Owned> GenericPort<T> for Port<T> {
 }
 
 impl<T: Owned> Peekable<T> for Port<T> {
-    pure fn peek() -> bool {
+    pure fn peek(&self) -> bool {
         unsafe {
             let mut endp = None;
             endp <-> self.endp;
@@ -166,7 +166,7 @@ impl<T: Owned> Peekable<T> for Port<T> {
 }
 
 impl<T: Owned> Selectable for Port<T> {
-    pure fn header() -> *PacketHeader {
+    pure fn header(&self) -> *PacketHeader {
         unsafe {
             match self.endp {
               Some(ref endp) => endp.header(),
@@ -189,11 +189,11 @@ pub fn PortSet<T: Owned>() -> PortSet<T>{
 
 pub impl<T: Owned> PortSet<T> {
 
-    fn add(port: Port<T>) {
+    fn add(&self, port: Port<T>) {
         self.ports.push(port)
     }
 
-    fn chan() -> Chan<T> {
+    fn chan(&self) -> Chan<T> {
         let (po, ch) = stream();
         self.add(po);
         ch
@@ -202,7 +202,7 @@ pub impl<T: Owned> PortSet<T> {
 
 impl<T: Owned> GenericPort<T> for PortSet<T> {
 
-    fn try_recv() -> Option<T> {
+    fn try_recv(&self) -> Option<T> {
         let mut result = None;
         // we have to swap the ports array so we aren't borrowing
         // aliasable mutable memory.
@@ -224,14 +224,14 @@ impl<T: Owned> GenericPort<T> for PortSet<T> {
         result
     }
 
-    fn recv() -> T {
+    fn recv(&self) -> T {
         self.try_recv().expect("port_set: endpoints closed")
     }
 
 }
 
 impl<T: Owned> Peekable<T> for PortSet<T> {
-    pure fn peek() -> bool {
+    pure fn peek(&self) -> bool {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
         for vec::each(self.ports) |p| {
@@ -245,7 +245,7 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
 pub type SharedChan<T> = unstable::Exclusive<Chan<T>>;
 
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
-    fn send(x: T) {
+    fn send(&self, x: T) {
         let mut xx = Some(x);
         do self.with_imm |chan| {
             let mut x = None;
@@ -256,7 +256,7 @@ impl<T: Owned> GenericChan<T> for SharedChan<T> {
 }
 
 impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
-    fn try_send(x: T) -> bool {
+    fn try_send(&self, x: T) -> bool {
         let mut xx = Some(x);
         do self.with_imm |chan| {
             let mut x = None;
@@ -274,9 +274,9 @@ pub fn SharedChan<T:Owned>(c: Chan<T>) -> SharedChan<T> {
 /// Receive a message from one of two endpoints.
 pub trait Select2<T: Owned, U: Owned> {
     /// Receive a message or return `None` if a connection closes.
-    fn try_select() -> Either<Option<T>, Option<U>>;
+    fn try_select(&self) -> Either<Option<T>, Option<U>>;
     /// Receive a message or fail if a connection closes.
-    fn select() -> Either<T, U>;
+    fn select(&self) -> Either<T, U>;
 }
 
 impl<T: Owned, U: Owned,
@@ -284,8 +284,8 @@ impl<T: Owned, U: Owned,
      Right: Selectable + GenericPort<U>>
     Select2<T, U> for (Left, Right) {
 
-    fn select() -> Either<T, U> {
-        match self {
+    fn select(&self) -> Either<T, U> {
+        match *self {
           (ref lp, ref rp) => match select2i(lp, rp) {
             Left(()) => Left (lp.recv()),
             Right(()) => Right(rp.recv())
@@ -293,8 +293,8 @@ impl<T: Owned, U: Owned,
         }
     }
 
-    fn try_select() -> Either<Option<T>, Option<U>> {
-        match self {
+    fn try_select(&self) -> Either<Option<T>, Option<U>> {
+        match *self {
           (ref lp, ref rp) => match select2i(lp, rp) {
             Left(()) => Left (lp.try_recv()),
             Right(()) => Right(rp.try_recv())
