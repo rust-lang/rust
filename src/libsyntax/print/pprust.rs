@@ -398,20 +398,6 @@ pub fn print_type_ex(s: @ps, &&ty: @ast::Ty, print_colons: bool) {
           print_region(s, ~"&", region, ~"/");
           print_mt(s, mt);
       }
-      ast::ty_rec(ref fields) => {
-        word(s.s, ~"{");
-        fn print_field(s: @ps, f: ast::ty_field) {
-            cbox(s, indent_unit);
-            print_mutability(s, f.node.mt.mutbl);
-            print_ident(s, f.node.ident);
-            word_space(s, ~":");
-            print_type(s, f.node.mt.ty);
-            end(s);
-        }
-        fn get_span(f: ast::ty_field) -> codemap::span { return f.span; }
-        commasep_cmnt(s, consistent, (*fields), print_field, get_span);
-        word(s.s, ~",}");
-      }
       ast::ty_tup(elts) => {
         popen(s);
         commasep(s, inconsistent, elts, print_type);

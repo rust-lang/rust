@@ -907,9 +907,8 @@ pub impl LookupContext {
             ty_infer(FloatVar(_)) |
             ty_self | ty_param(*) | ty_nil | ty_bot | ty_bool |
             ty_int(*) | ty_uint(*) |
-            ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_rec(*) |
-            ty_struct(*) | ty_tup(*) | ty_estr(*) | ty_evec(*) |
-            ty_trait(*) | ty_closure(*) => {
+            ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_struct(*) | ty_tup(*) |
+            ty_estr(*) | ty_evec(*) | ty_trait(*) | ty_closure(*) => {
                 self.search_for_some_kind_of_autorefd_method(
                     AutoPtr, autoderefs, [m_const, m_imm, m_mutbl],
                     |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:self_ty, mutbl:m}))

@@ -473,33 +473,6 @@ fn add_member(cx: @mut StructCtxt,
     cx.total_size += size * 8;
 }
 
-fn create_record(cx: @CrateContext, t: ty::t, fields: ~[ast::ty_field],
-                 span: span) -> @Metadata<TyDescMetadata> {
-    let fname = filename_from_span(cx, span);
-    let file_node = create_file(cx, fname);
-    let scx = create_structure(file_node,
-                               cx.sess.str_of(
-                                   ((/*bad*/copy cx.dbg_cx).get().names)
-                                   (~"rec")),
-                               line_from_span(cx.sess.codemap,
-                                              span) as int);
-    for fields.each |field| {
-        let field_t = ty::get_field(cx.tcx, t, field.node.ident).mt.ty;
-        let ty_md = create_ty(cx, field_t, field.node.mt.ty);
-        let (size, align) = size_and_align_of(cx, field_t);
-        add_member(scx, *cx.sess.str_of(field.node.ident),
-                   line_from_span(cx.sess.codemap, field.span) as int,
-                   size as int, align as int, ty_md.node);
-    }
-    let mdval = @Metadata {
-        node: finish_structure(scx),
-        data: TyDescMetadata {
-            hash: ty::type_id(t)
-        }
-    };
-    return mdval;
-}
-
 fn create_boxed_type(cx: @CrateContext, outer: ty::t, _inner: ty::t,
                      span: span, boxed: @Metadata<TyDescMetadata>)
     -> @Metadata<TyDescMetadata> {
@@ -628,16 +601,6 @@ fn create_ty(_cx: @CrateContext, _t: ty::t, _ty: @ast::Ty)
                                         mutbl: mt.mutbl}) }
           ty::ty_uniq(mt) { ast::ty_uniq({ty: t_to_ty(cx, mt.ty, span),
                                           mutbl: mt.mutbl}) }
-          ty::ty_rec(fields) {
-            let fs = ~[];
-            for field in fields {
-                fs.push({node: {ident: field.ident,
-                               mt: {ty: t_to_ty(cx, field.mt.ty, span),
-                                    mutbl: field.mt.mutbl}},
-                        span: span});
-            }
-            ast::ty_rec(fs)
-          }
           ty::ty_vec(mt) { ast::ty_vec({ty: t_to_ty(cx, mt.ty, span),
                                         mutbl: mt.mutbl}) }
           _ {
@@ -671,10 +634,6 @@ fn create_ty(_cx: @CrateContext, _t: ty::t, _ty: @ast::Ty)
       ast::ty_infer {
         let inferred = t_to_ty(cx, t, ty.span);
         return create_ty(cx, t, inferred);
-      }
-
-      ast::ty_rec(fields) {
-        return create_record(cx, t, fields, ty.span);
       }
 
       ast::ty_vec(mt) {

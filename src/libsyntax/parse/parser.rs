@@ -51,7 +51,7 @@ use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
 use ast::{ty_field, ty_fixed_length_vec, ty_closure, ty_bare_fn};
 use ast::{ty_infer, ty_mac, ty_method};
-use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rec, ty_rptr};
+use ast::{ty_nil, TyParam, TyParamBound, ty_path, ty_ptr, ty_rptr};
 use ast::{ty_tup, ty_u32, ty_uniq, ty_vec, type_value_ns, uniq};
 use ast::{unnamed_field, unsafe_blk, unsafe_fn, variant, view_item};
 use ast::{view_item_, view_item_extern_mod, view_item_use};
@@ -653,7 +653,7 @@ pub impl Parser {
                 self.unexpected_last(&token::RBRACE);
             }
             self.obsolete(*self.last_span, ObsoleteRecordType);
-            ty_rec(elems)
+            ty_nil
         } else if *self.token == token::LBRACKET {
             self.expect(&token::LBRACKET);
             let mt = self.parse_mt();

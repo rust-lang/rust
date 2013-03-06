@@ -925,7 +925,6 @@ pub enum ty_ {
     ty_fixed_length_vec(mt, uint),
     ty_ptr(mt),
     ty_rptr(@region, mt),
-    ty_rec(~[ty_field]),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),

@@ -506,7 +506,6 @@ pub enum sty {
     ty_evec(mt, vstore),
     ty_ptr(mt),
     ty_rptr(Region, mt),
-    ty_rec(~[field]),
     ty_bare_fn(BareFnTy),
     ty_closure(ClosureTy),
     ty_trait(def_id, substs, vstore),
@@ -899,7 +898,6 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
       }
-      &ty_rec(ref flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
       &ty_tup(ref ts) => for ts.each |tt| { flags |= get(*tt).flags; },
       &ty_bare_fn(ref f) => {
         for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
@@ -1027,8 +1025,6 @@ pub fn mk_unboxed_vec(cx: ctxt, tm: mt) -> t {
 pub fn mk_mut_unboxed_vec(cx: ctxt, ty: t) -> t {
     mk_t(cx, ty_unboxed_vec(mt {ty: ty, mutbl: ast::m_imm}))
 }
-
-pub fn mk_rec(cx: ctxt, +fs: ~[field]) -> t { mk_t(cx, ty_rec(fs)) }
 
 pub fn mk_tup(cx: ctxt, +ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 
@@ -1163,9 +1159,6 @@ pub fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
       ty_trait(_, ref substs, _) => {
         for (*substs).tps.each |subty| { maybe_walk_ty(*subty, f); }
       }
-      ty_rec(fields) => {
-        for fields.each |fl| { maybe_walk_ty(fl.mt.ty, f); }
-      }
       ty_tup(ts) => { for ts.each |tt| { maybe_walk_ty(*tt, f); } }
       ty_bare_fn(ref ft) => {
         for ft.sig.inputs.each |a| { maybe_walk_ty(a.ty, f); }
@@ -1222,14 +1215,6 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
         }
         ty_trait(did, ref substs, vst) => {
             ty_trait(did, fold_substs(substs, fldop), vst)
-        }
-        ty_rec(fields) => {
-            let new_fields = do vec::map(fields) |fl| {
-                let new_ty = fldop(fl.mt.ty);
-                let new_mt = mt { ty: new_ty, mutbl: fl.mt.mutbl };
-                field { ident: fl.ident, mt: new_mt }
-            };
-            ty_rec(new_fields)
         }
         ty_tup(ts) => {
             let new_ts = vec::map(ts, |tt| fldop(*tt));
@@ -1478,9 +1463,7 @@ pub fn type_is_bool(ty: t) -> bool { get(ty).sty == ty_bool }
 
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
-      ty_rec(_) | ty_struct(*) | ty_tup(_) | ty_enum(*) |
-      ty_closure(_) |
-      ty_trait(*) |
+      ty_struct(*) | ty_tup(_) | ty_enum(*) | ty_closure(_) | ty_trait(*) |
       ty_evec(_, vstore_fixed(_)) | ty_estr(vstore_fixed(_)) |
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_))
       => true,
@@ -1513,7 +1496,6 @@ pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
 
 pub fn get_element_type(ty: t, i: uint) -> t {
     match /*bad*/copy get(ty).sty {
-      ty_rec(flds) => return flds[i].mt.ty,
       ty_tup(ts) => return ts[i],
       _ => fail!(~"get_element_type called on invalid type")
     }
@@ -1639,9 +1621,8 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             encountered_box = true;
             true
           }
-          ty_nil | ty_bot | ty_bool |
-          ty_int(_) | ty_uint(_) | ty_float(_) |
-          ty_rec(_) | ty_tup(_) | ty_ptr(_) => {
+          ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
+          ty_tup(_) | ty_ptr(_) => {
             true
           }
           ty_enum(did, ref substs) => {
@@ -1962,12 +1943,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_NONE
             }
 
-            ty_rec(ref flds) => {
-                flds.foldl(
-                    TC_NONE,
-                    |tc, f| tc + tc_mt(cx, f.mt, cache))
-            }
-
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
                 let flds_tc = flds.foldl(
@@ -2151,10 +2126,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             n
           }
 
-          ty_rec(flds) => {
-            flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
-          }
-
           ty_struct(did, ref substs) => {
             let flds = struct_fields(cx, did, substs);
             flds.foldl(0, |s, f| *s + type_size(cx, f.mt.ty))
@@ -2253,12 +2224,6 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             false           // unsafe ptrs can always be NULL
           }
 
-          ty_rec(fields) => {
-            do vec::any(fields) |field| {
-                type_requires(cx, seen, r_ty, field.mt.ty)
-            }
-          }
-
           ty_trait(_, _, _) => {
             false
           }
@@ -2323,14 +2288,6 @@ pub fn type_structurally_contains(cx: ctxt,
             for variant.args.each |aty| {
                 let sty = subst(cx, substs, *aty);
                 if type_structurally_contains(cx, sty, test) { return true; }
-            }
-        }
-        return false;
-      }
-      ty_rec(fields) => {
-        for fields.each |field| {
-            if type_structurally_contains(cx, field.mt.ty, test) {
-                return true;
             }
         }
         return false;
@@ -2421,11 +2378,6 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
             // Perform any type parameter substitutions.
             let tup_ty = subst(cx, substs, tup_ty);
             if !type_is_pod(cx, tup_ty) { result = false; }
-        }
-      }
-      ty_rec(flds) => {
-        for flds.each |f| {
-            if !type_is_pod(cx, f.mt.ty) { result = false; }
         }
       }
       ty_tup(elts) => {
@@ -2674,9 +2626,6 @@ impl to_bytes::IterBytes for sty {
 
           ty_tup(ref ts) =>
           to_bytes::iter_bytes_2(&10u8, ts, lsb0, f),
-
-          ty_rec(ref fs) =>
-          to_bytes::iter_bytes_2(&11u8, fs, lsb0, f),
 
           ty_bare_fn(ref ft) =>
           to_bytes::iter_bytes_2(&12u8, ft, lsb0, f),
@@ -3220,23 +3169,6 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
-pub fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
-    match vec::find(get_fields(rec_ty), |f| f.ident == id) {
-      Some(f) => f,
-      // Do we only call this when we know the field is legit?
-      None => fail!(fmt!("get_field: ty doesn't have a field %s",
-                         *tcx.sess.str_of(id)))
-    }
-}
-
-pub fn get_fields(rec_ty:t) -> ~[field] {
-    match /*bad*/copy get(rec_ty).sty {
-      ty_rec(fields) => fields,
-      // Can we check at the caller?
-      _ => fail!(~"get_fields: not a record type")
-    }
-}
-
 pub fn method_idx(id: ast::ident, meths: &[method]) -> Option<uint> {
     let mut i = 0u;
     for meths.each |m| { if m.ident == id { return Some(i); } i += 1u; }
@@ -3376,7 +3308,6 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_unboxed_vec(_) => ~"unboxed vector",
       ty_ptr(_) => ~"*-ptr",
       ty_rptr(_, _) => ~"&-ptr",
-      ty_rec(_) => ~"record",
       ty_bare_fn(_) => ~"extern fn",
       ty_closure(_) => ~"fn",
       ty_trait(id, _, _) => fmt!("trait %s", item_path_str(cx, id)),
@@ -4141,7 +4072,7 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
           ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
-          ty_rec(_) | ty_tup(_) | ty_enum(_, _) => tycat_struct,
+          ty_tup(_) | ty_enum(_, _) => tycat_struct,
           ty_bot => tycat_bot,
           _ => tycat_other
         }

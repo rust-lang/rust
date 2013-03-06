@@ -605,14 +605,6 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_ty(t, ref generics) => {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
         check_bounds_are_used(ccx, t.span, &generics.ty_params, tpt_ty);
-        // If this is a record ty, check for duplicate fields
-        match t.node {
-            ast::ty_rec(ref fields) => {
-              check_no_duplicate_fields(ccx.tcx, (*fields).map(|f|
-                                              (f.node.ident, f.span)));
-            }
-            _ => ()
-        }
       }
       ast::item_foreign_mod(m) => {
         if syntax::attr::foreign_abi(it.attrs) ==
@@ -1691,22 +1683,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let n_tys = tys.len();
 
         match structure_of(fcx, expr.span, base_t) {
-            ty::ty_rec(fields) => {
-                match ty::field_idx(field, fields) {
-                    Some(ix) => {
-                        if n_tys > 0 {
-                            tcx.sess.span_err(
-                                expr.span,
-                                ~"can't provide type parameters \
-                                  to a field access");
-                        }
-                        fcx.write_ty(expr.id, fields[ix].mt.ty);
-                        fcx.write_autoderef_adjustment(base.id, derefs);
-                        return bot;
-                    }
-                    _ => ()
-                }
-            }
             ty::ty_struct(base_id, ref substs) => {
                 // This is just for fields -- the same code handles
                 // methods in both classes and traits
@@ -2488,71 +2464,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_rec(ref fields, base) => {
-        for base.each |b| { check_expr_with_opt_hint(fcx, *b, expected); }
-        let expected = option::or(expected,
-                                  base.map(|b| fcx.expr_ty(*b)));
-        let flds = unpack_expected(fcx, expected, |sty|
-            match *sty {
-                ty::ty_rec(ref flds) => Some(copy *flds),
-                _ => None
-            }
-        );
-        let fields_t = fields.map(|f| {
-            let hint_mt =
-                flds.chain_ref(
-                    |flds| vec::find(*flds, |tf| tf.ident == f.node.ident));
-            let hint = hint_mt.map(|tf| tf.mt.ty);
-            bot |= check_expr_with_opt_hint(fcx, f.node.expr, hint);
-            let expr_t = fcx.expr_ty(f.node.expr);
-            let expr_mt = ty::mt {ty: expr_t, mutbl: f.node.mutbl};
-            // for the most precise error message,
-            // should be f.node.expr.span, not f.span
-            respan(f.node.expr.span, field {ident: f.node.ident, mt: expr_mt})
-        });
-        match base {
-          None => {
-            fn get_node(f: &spanned<field>) -> field { f.node }
-            let typ = ty::mk_rec(tcx, vec::map(fields_t, get_node));
-            fcx.write_ty(id, typ);
-            /* Check for duplicate fields */
-            /* Only do this check if there's no base expr -- the reason is
-               that we're extending a record we know has no dup fields, and
-               it would be ill-typed anyway if we duplicated one of its
-               fields */
-            check_no_duplicate_fields(tcx, (*fields).map(|f|
-                                                    (f.node.ident, f.span)));
-          }
-          Some(bexpr) => {
-            let bexpr_t = fcx.expr_ty(bexpr);
-            let base_fields =  match structure_of(fcx, expr.span, bexpr_t) {
-              ty::ty_rec(flds) => flds,
-              _ => {
-                  fcx.type_error_message(expr.span, |_actual| {
-                      ~"record update has non-record base"
-                  }, bexpr_t, None);
-                fcx.write_ty(id, ty::mk_err(tcx));
-                return true;
-              }
-            };
-            fcx.write_ty(id, bexpr_t);
-            for fields_t.each |f| {
-                let mut found = false;
-                for base_fields.each |bf| {
-                    if f.node.ident == bf.ident {
-                        demand::suptype(fcx, f.span, bf.mt.ty, f.node.mt.ty);
-                        found = true;
-                    }
-                }
-                if !found {
-                    tcx.sess.span_err(f.span,
-                                        ~"unknown field in record update: " +
-                                        *tcx.sess.str_of(f.node.ident));
-                    fcx.write_ty(id, ty::mk_err(tcx));
-                    return true;
-                }
-            }
-          }
-        }
+        fail!()
       }
       ast::expr_struct(path, ref fields, base_expr) => {
         // Resolve the path.

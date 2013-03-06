@@ -729,12 +729,6 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
         visit_mt(mt, cx, visitor);
       }
 
-      ast::ty_rec(ref fields) => {
-        for (*fields).each |field| {
-            visit_mt(field.node.mt, cx, visitor);
-        }
-      }
-
       ast::ty_path(path, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {

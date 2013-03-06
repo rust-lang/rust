@@ -1098,10 +1098,6 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                          node_id_opt: Option<ast::node_id>,
                          op: fn(bool, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
-        ty::ty_rec(ref fields) => {
-            op(false, *fields)
-        }
-
         ty::ty_struct(did, ref substs) => {
             let has_dtor = ty::ty_dtor(tcx, did).is_present();
             op(has_dtor, struct_mutable_fields(tcx, did, substs))
