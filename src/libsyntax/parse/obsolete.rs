@@ -50,6 +50,7 @@ pub enum ObsoleteSyntax {
     ObsoleteMutVector,
     ObsoleteTraitImplVisibility,
     ObsoleteRecordType,
+    ObsoleteRecordPattern,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -148,6 +149,10 @@ pub impl Parser {
             ),
             ObsoleteRecordType => (
                 "structural record type",
+                "use a structure instead"
+            ),
+            ObsoleteRecordPattern => (
+                "structural record pattern",
                 "use a structure instead"
             ),
         };

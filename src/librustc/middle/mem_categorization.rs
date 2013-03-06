@@ -942,7 +942,6 @@ pub impl mem_categorization_ctxt {
               // nullary variant or identifier: ignore
           }
 
-          ast::pat_rec(ref field_pats, _) |
           ast::pat_struct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for field_pats.each |fp| {
