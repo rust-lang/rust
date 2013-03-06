@@ -792,12 +792,14 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
         match arg.pat.node {
             ast::pat_ident(_, path, _) => {
                 // XXX: This is wrong; it should work for multiple bindings.
-                let mdnode = create_var(tg,
-                                        context.node,
-                                        *cx.sess.str_of(path.idents.last()),
-                                        filemd.node,
-                                        loc.line as int,
-                                        tymd.node);
+                let mdnode = create_var(
+                    tg,
+                    context.node,
+                    *cx.sess.str_of(*path.idents.last()),
+                    filemd.node,
+                    loc.line as int,
+                    tymd.node
+                );
 
                 let mdval = @Metadata {
                     node: mdnode,

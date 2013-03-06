@@ -346,7 +346,7 @@ pub impl BigUint {
         }
 
         let mut shift = 0;
-        let mut n = other.data.last();
+        let mut n = *other.data.last();
         while n < (1 << BigDigit::bits - 2) {
             n <<= 1;
             shift += 1;
@@ -384,7 +384,7 @@ pub impl BigUint {
             }
 
             let an = vec::slice(a.data, a.data.len() - n, a.data.len());
-            let bn = b.data.last();
+            let bn = *b.data.last();
             let mut d = ~[];
             let mut carry = 0;
             for vec::rev_each(an) |elt| {
