@@ -1165,22 +1165,6 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
         end(s);
       }
 
-      ast::expr_rec(ref fields, wth) => {
-        word(s.s, ~"{");
-        commasep_cmnt(s, consistent, (*fields), print_field, get_span);
-        match wth {
-          Some(expr) => {
-            ibox(s, indent_unit);
-            word(s.s, ~",");
-            space(s.s);
-            word(s.s, ~"..");
-            print_expr(s, expr);
-            end(s);
-          }
-          _ => word(s.s, ~",")
-        }
-        word(s.s, ~"}");
-      }
       ast::expr_struct(path, ref fields, wth) => {
         print_path(s, path, true);
         word(s.s, ~"{");

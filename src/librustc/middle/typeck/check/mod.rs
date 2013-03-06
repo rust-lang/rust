@@ -2463,9 +2463,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let typ = ty::mk_tup(tcx, elt_ts);
         fcx.write_ty(id, typ);
       }
-      ast::expr_rec(ref fields, base) => {
-        fail!()
-      }
       ast::expr_struct(path, ref fields, base_expr) => {
         // Resolve the path.
         match tcx.def_map.find(&id) {

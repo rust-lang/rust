@@ -3066,7 +3066,6 @@ pub fn expr_kind(tcx: ctxt,
 
         ast::expr_call(*) |
         ast::expr_method_call(*) |
-        ast::expr_rec(*) |
         ast::expr_struct(*) |
         ast::expr_tup(*) |
         ast::expr_if(*) |

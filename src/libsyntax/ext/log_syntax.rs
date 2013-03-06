@@ -32,7 +32,10 @@ pub fn expand_syntax_ext(cx: ext_ctxt,
     MRExpr(@ast::expr {
         id: cx.next_id(),
         callee_id: cx.next_id(),
-        node: ast::expr_rec(~[], option::None),
+        node: ast::expr_lit(@codemap::spanned {
+            node: ast::lit_nil,
+            span: sp
+        }),
         span: sp,
     })
 }

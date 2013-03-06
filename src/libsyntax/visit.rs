@@ -479,10 +479,6 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
             (v.visit_expr)(element, e, v);
             (v.visit_expr)(count, e, v);
         }
-        expr_rec(ref flds, base) => {
-            for flds.each |f| { (v.visit_expr)(f.node.expr, e, v); }
-            visit_expr_opt(base, e, v);
-        }
         expr_struct(p, ref flds, base) => {
             visit_path(p, e, v);
             for flds.each |f| { (v.visit_expr)(f.node.expr, e, v); }

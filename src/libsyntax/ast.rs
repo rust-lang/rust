@@ -554,7 +554,6 @@ pub enum CallSugar {
 pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
-    expr_rec(~[field], Option<@expr>),
     expr_call(@expr, ~[@expr], CallSugar),
     expr_method_call(@expr, ident, ~[@Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),

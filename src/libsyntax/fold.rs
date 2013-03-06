@@ -479,12 +479,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_repeat(expr, count, mutt) => {
             expr_repeat(fld.fold_expr(expr), fld.fold_expr(count), mutt)
         }
-        expr_rec(ref fields, maybe_expr) => {
-            expr_rec(
-                fields.map(|x| fold_field(*x)),
-                maybe_expr.map(|x| fld.fold_expr(*x))
-            )
-        }
         expr_tup(ref elts) => expr_tup(elts.map(|x| fld.fold_expr(*x))),
         expr_call(f, ref args, blk) => {
             expr_call(

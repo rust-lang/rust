@@ -597,7 +597,6 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                 controlflow::trans_block(bcx, blk, dest)
             };
         }
-        ast::expr_rec(ref fields, base) |
         ast::expr_struct(_, ref fields, base) => {
             return trans_rec_or_struct(bcx, (*fields), base, expr.id, dest);
         }

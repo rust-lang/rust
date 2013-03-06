@@ -263,12 +263,9 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
 
 pub fn mark_for_expr(cx: Context, e: @expr) {
     match e.node {
-      expr_vstore(_, _) |
-      expr_vec(_, _) |
-      expr_rec(_, _) | expr_struct(*) | expr_tup(_) |
+      expr_vstore(_, _) | expr_vec(_, _) | expr_struct(*) | expr_tup(_) |
       expr_unary(box(_), _) | expr_unary(uniq(_), _) |
-      expr_binary(add, _, _) |
-      expr_copy(_) | expr_repeat(*) => {
+      expr_binary(add, _, _) | expr_copy(_) | expr_repeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
       expr_cast(base, _) => {

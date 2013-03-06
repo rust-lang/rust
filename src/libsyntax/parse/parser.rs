@@ -25,7 +25,7 @@ use ast::{expr_assert, expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
 use ast::{expr_field, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
-use ast::{expr_method_call, expr_paren, expr_path, expr_rec, expr_repeat};
+use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
 use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_fixed, expr_vstore_slice, expr_vstore_box};
@@ -1946,34 +1946,6 @@ pub impl Parser {
             (self.token_is_keyword(&~"mut", &lookahead) ||
              (is_plain_ident(&lookahead) &&
               self.look_ahead(2) == token::COLON))
-    }
-
-    fn parse_record_literal(&self) -> expr_ {
-        self.expect(&token::LBRACE);
-        let mut fields = ~[self.parse_field(token::COLON)];
-        let mut base = None;
-        while *self.token != token::RBRACE {
-            if *self.token == token::COMMA
-                && self.look_ahead(1) == token::DOTDOT {
-                self.bump();
-                self.bump();
-                base = Some(self.parse_expr()); break;
-            }
-
-            if self.try_parse_obsolete_with() {
-                break;
-            }
-
-            self.expect(&token::COMMA);
-            if *self.token == token::RBRACE {
-                // record ends by an optional trailing comma
-                break;
-            }
-            fields.push(self.parse_field(token::COLON));
-        }
-        self.expect(&token::RBRACE);
-        self.warn(~"REC");
-        return expr_rec(fields, base);
     }
 
     fn parse_match_expr(&self) -> @expr {
