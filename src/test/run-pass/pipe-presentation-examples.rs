@@ -17,6 +17,7 @@
 
 use double_buffer::client::*;
 use double_buffer::give_buffer;
+use core::comm::Selectable;
 
 macro_rules! select_if (
     {

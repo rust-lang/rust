@@ -11,12 +11,12 @@
 use core::iter::BaseIter;
 
 trait FlatMapToVec<A> {
-  fn flat_map_to_vec<B, IB:BaseIter<B>>(op: fn(&A) -> IB) -> ~[B];
+  fn flat_map_to_vec<B, IB:BaseIter<B>>(&self, op: fn(&A) -> IB) -> ~[B];
 }
 
-impl<A:Copy> FlatMapToVec<A> for BaseIter<A> {
-   fn flat_map_to_vec<B, IB:BaseIter<B>>(op: fn(&A) -> IB) -> ~[B] {
-     iter::flat_map_to_vec(&self, op)
+impl<A:Copy> FlatMapToVec<A> for ~[A] {
+   fn flat_map_to_vec<B, IB:BaseIter<B>>(&self, op: fn(&A) -> IB) -> ~[B] {
+     iter::flat_map_to_vec(self, op)
    }
 }
 

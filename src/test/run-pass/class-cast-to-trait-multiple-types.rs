@@ -79,7 +79,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 }
 
 
-fn annoy_neighbors<T:noisy>(critter: T) {
+fn annoy_neighbors(critter: @noisy) {
   for uint::range(0u, 10u) |i| { critter.speak(); }
 }
 

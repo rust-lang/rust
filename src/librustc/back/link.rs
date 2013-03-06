@@ -23,6 +23,7 @@ use middle::ty;
 use util::ppaux;
 
 use core::char;
+use core::hash::Streaming;
 use core::hash;
 use core::io::{Writer, WriterUtil};
 use core::libc::{c_int, c_uint, c_char};

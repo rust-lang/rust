@@ -29,10 +29,11 @@ use core::{dvec, io, option, vec};
 use std::ebml::reader;
 use std::ebml;
 use std::serialize;
-use std::serialize::{Encodable, EncoderHelpers, DecoderHelpers};
-use std::serialize::Decodable;
+use std::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
+use std::serialize::{Decoder, Decodable};
 use syntax::ast;
 use syntax::ast_map;
+use syntax::ast_util::inlined_item_utils;
 use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
@@ -663,16 +664,6 @@ fn encode_vtable_origin(ecx: @e::EncodeContext,
                 }
             }
           }
-          typeck::vtable_trait(def_id, tys) => {
-            do ebml_w.emit_enum_variant(~"vtable_trait", 1u, 3u) {
-                do ebml_w.emit_enum_variant_arg(0u) {
-                    ebml_w.emit_def_id(def_id)
-                }
-                do ebml_w.emit_enum_variant_arg(1u) {
-                    ebml_w.emit_tys(ecx, /*bad*/copy tys);
-                }
-            }
-          }
         }
     }
 
@@ -716,16 +707,6 @@ impl vtable_decoder_helpers for reader::Decoder {
                         },
                         do self.read_enum_variant_arg(1u) {
                             self.read_uint()
-                        }
-                    )
-                  }
-                  2 => {
-                    typeck::vtable_trait(
-                        do self.read_enum_variant_arg(0u) {
-                            self.read_def_id(xcx)
-                        },
-                        do self.read_enum_variant_arg(1u) {
-                            self.read_tys(xcx)
                         }
                     )
                   }
