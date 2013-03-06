@@ -399,15 +399,6 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
                 pats.map(|pats| pats.map(|x| fld.fold_pat(*x)))
             )
         }
-        pat_rec(ref fields, etc) => {
-            let fs = do fields.map |f| {
-                ast::field_pat {
-                    ident: /* FIXME (#2543) */ copy f.ident,
-                    pat: fld.fold_pat(f.pat),
-                }
-            };
-            pat_rec(fs, etc)
-        }
         pat_struct(pth, ref fields, etc) => {
             let pth_ = fld.fold_path(pth);
             let fs = do fields.map |f| {

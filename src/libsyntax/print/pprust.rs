@@ -1570,25 +1570,6 @@ pub fn print_pat(s: @ps, &&pat: @ast::pat, refutable: bool) {
           }
         }
       }
-      ast::pat_rec(fields, etc) => {
-        word(s.s, ~"{");
-        fn print_field(s: @ps, f: ast::field_pat, refutable: bool) {
-            cbox(s, indent_unit);
-            print_ident(s, f.ident);
-            word_space(s, ~":");
-            print_pat(s, f.pat, refutable);
-            end(s);
-        }
-        fn get_span(f: ast::field_pat) -> codemap::span { return f.pat.span; }
-        commasep_cmnt(s, consistent, fields,
-                      |s, f| print_field(s, f, refutable),
-                      get_span);
-        if etc {
-            if vec::len(fields) != 0u { word_space(s, ~","); }
-            word(s.s, ~"_");
-        }
-        word(s.s, ~"}");
-      }
       ast::pat_struct(path, fields, etc) => {
         print_path(s, path, true);
         word(s.s, ~"{");

@@ -292,7 +292,6 @@ pub enum pat_ {
     pat_ident(binding_mode, @path, Option<@pat>),
     pat_enum(@path, Option<~[@pat]>), /* "none" means a * pattern where
                                        * we don't bind the fields to names */
-    pat_rec(~[field_pat], bool),
     pat_struct(@path, ~[field_pat], bool),
     pat_tup(~[@pat]),
     pat_box(@pat),

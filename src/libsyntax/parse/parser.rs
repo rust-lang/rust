@@ -40,8 +40,8 @@ use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
 use ast::{m_imm, m_mutbl, mac_, mac_invoc_tt, matcher, match_nonterminal};
 use ast::{match_seq, match_tok, method, mode, module_ns, mt, mul, mutability};
 use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
-use ast::{pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct};
-use ast::{pat_tup, pat_uniq, pat_wild, path, private};
+use ast::{pat_ident, pat_lit, pat_range, pat_region, pat_struct, pat_tup};
+use ast::{pat_uniq, pat_wild, path, private};
 use ast::{re_self, re_anon, re_named, region, rem, required};
 use ast::{ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl};
 use ast::{stmt_expr, stmt_semi, stmt_mac, struct_def, struct_field};
@@ -75,7 +75,7 @@ use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
-use parse::obsolete::{ObsoleteRecordType};
+use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -2188,10 +2188,11 @@ pub impl Parser {
           }
           token::LBRACE => {
             self.bump();
-            let (fields, etc) = self.parse_pat_fields(refutable);
+            let (_, _) = self.parse_pat_fields(refutable);
             hi = self.span.hi;
             self.bump();
-            pat = pat_rec(fields, etc);
+            self.obsolete(*self.span, ObsoleteRecordPattern);
+            pat = pat_wild;
           }
           token::LPAREN => {
             self.bump();
