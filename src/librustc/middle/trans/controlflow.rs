@@ -108,7 +108,7 @@ pub fn trans_if(bcx: block,
 
 }
 
-pub fn join_blocks(parent_bcx: block, in_cxs: ~[block]) -> block {
+pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
     let out = sub_block(parent_bcx, ~"join");
     let mut reachable = false;
     for vec::each(in_cxs) |bcx| {
@@ -192,8 +192,7 @@ pub fn trans_log(log_ex: @ast::expr,
         bcx.fcx.path.filtered(|e|
             match *e { path_mod(_) => true, _ => false }
         ));
-    // XXX: Bad copy.
-    let modname = path_str(ccx.sess, copy modpath);
+    let modname = path_str(ccx.sess, &modpath);
 
     let global = if ccx.module_data.contains_key(&modname) {
         ccx.module_data.get(&modname)
@@ -326,11 +325,11 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
 pub fn trans_check_expr(bcx: block,
                         chk_expr: @ast::expr,
                         pred_expr: @ast::expr,
-                        s: ~str)
+                        s: &str)
                      -> block {
     let _icx = bcx.insn_ctxt("trans_check_expr");
-    let expr_str = @(s + ~" " + expr_to_str(pred_expr, bcx.ccx().sess.intr())
-        + ~" failed");
+    let expr_str = @(fmt!("%s %s failed",
+                          s, expr_to_str(pred_expr, bcx.ccx().sess.intr())));
     let Result {bcx, val} = {
         do with_scope_result(bcx, chk_expr.info(), ~"check") |bcx| {
             expr::trans_to_datum(bcx, pred_expr).to_result()

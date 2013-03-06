@@ -117,7 +117,7 @@ pub fn Ret(cx: block, V: ValueRef) {
     }
 }
 
-pub fn AggregateRet(cx: block, RetVals: ~[ValueRef]) {
+pub fn AggregateRet(cx: block, RetVals: &[ValueRef]) {
     if cx.unreachable { return; }
     check_not_terminated(cx);
     terminate(cx, "AggregateRet");
@@ -184,7 +184,7 @@ pub fn noname() -> *libc::c_char {
     }
 }
 
-pub fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
+pub fn Invoke(cx: block, Fn: ValueRef, Args: &[ValueRef],
               Then: BasicBlockRef, Catch: BasicBlockRef) {
     if cx.unreachable { return; }
     check_not_terminated(cx);
@@ -202,7 +202,7 @@ pub fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
     }
 }
 
-pub fn FastInvoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
+pub fn FastInvoke(cx: block, Fn: ValueRef, Args: &[ValueRef],
                   Then: BasicBlockRef, Catch: BasicBlockRef) {
     if cx.unreachable { return; }
     check_not_terminated(cx);
@@ -567,7 +567,7 @@ pub fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
     }
 }
 
-pub fn GEP(cx: block, Pointer: ValueRef, Indices: ~[ValueRef]) -> ValueRef {
+pub fn GEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
         count_insn(cx, "gep");
@@ -810,7 +810,7 @@ pub fn EmptyPhi(cx: block, Ty: TypeRef) -> ValueRef {
     }
 }
 
-pub fn Phi(cx: block, Ty: TypeRef, vals: ~[ValueRef], bbs: ~[BasicBlockRef])
+pub fn Phi(cx: block, Ty: TypeRef, vals: &[ValueRef], bbs: &[BasicBlockRef])
     -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
@@ -844,11 +844,10 @@ pub fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
     }
 }
 
-pub fn add_span_comment(bcx: block, sp: span, text: ~str) {
+pub fn add_span_comment(bcx: block, sp: span, text: &str) {
     let ccx = bcx.ccx();
     if !ccx.sess.no_asm_comments() {
-        let s = text + ~" (" + ccx.sess.codemap.span_to_str(sp)
-            + ~")";
+        let s = fmt!("%s (%s)", text, ccx.sess.codemap.span_to_str(sp));
         log(debug, copy s);
         add_comment(bcx, s);
     }
@@ -888,7 +887,7 @@ pub fn Call(cx: block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn FastCall(cx: block, Fn: ValueRef, Args: ~[ValueRef]) -> ValueRef {
+pub fn FastCall(cx: block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
     if cx.unreachable { return _UndefReturn(cx, Fn); }
     unsafe {
         count_insn(cx, "fastcall");
@@ -899,7 +898,7 @@ pub fn FastCall(cx: block, Fn: ValueRef, Args: ~[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn CallWithConv(cx: block, Fn: ValueRef, Args: ~[ValueRef],
+pub fn CallWithConv(cx: block, Fn: ValueRef, Args: &[ValueRef],
                     Conv: CallConv) -> ValueRef {
     if cx.unreachable { return _UndefReturn(cx, Fn); }
     unsafe {

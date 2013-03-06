@@ -197,7 +197,7 @@ pub fn get_extern_const(externs: ExternMap, llmod: ModuleRef,
 }
 
 pub fn trans_foreign_call(cx: block, externs: ExternMap,
-                          llmod: ModuleRef, name: @str, args: ~[ValueRef]) ->
+                          llmod: ModuleRef, name: @str, args: &[ValueRef]) ->
    ValueRef {
     let _icx = cx.insn_ctxt("trans_foreign_call");
     let n = args.len() as int;
@@ -242,7 +242,7 @@ pub fn bump_ptr(bcx: block, t: ty::t, base: ValueRef, sz: ValueRef) ->
 // @llblobptr is the data part of a enum value; its actual type
 // is meaningless, as it will be cast away.
 pub fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
-                variant_id: ast::def_id, ty_substs: ~[ty::t],
+                variant_id: ast::def_id, ty_substs: &[ty::t],
                 ix: uint) -> ValueRef {
     let _icx = bcx.insn_ctxt("GEP_enum");
     let ccx = bcx.ccx();
@@ -449,7 +449,7 @@ pub fn set_inline_hint(f: ValueRef) {
     }
 }
 
-pub fn set_inline_hint_if_appr(attrs: ~[ast::attribute],
+pub fn set_inline_hint_if_appr(attrs: &[ast::attribute],
                                llfn: ValueRef) {
     match attr::find_inline_attr(attrs) {
       attr::ia_hint => set_inline_hint(llfn),
@@ -489,7 +489,7 @@ pub fn note_unique_llvm_symbol(ccx: @CrateContext, +sym: ~str) {
 
 
 pub fn get_res_dtor(ccx: @CrateContext, did: ast::def_id,
-                    parent_id: ast::def_id, substs: ~[ty::t])
+                    parent_id: ast::def_id, substs: &[ty::t])
    -> ValueRef {
     let _icx = ccx.insn_ctxt("trans_res_dtor");
     if !substs.is_empty() {
@@ -516,7 +516,7 @@ pub fn get_res_dtor(ccx: @CrateContext, did: ast::def_id,
 }
 
 // Structural comparison: a rather involved form of glue.
-pub fn maybe_name_value(cx: @CrateContext, v: ValueRef, s: ~str) {
+pub fn maybe_name_value(cx: @CrateContext, v: ValueRef, s: &str) {
     if cx.sess.opts.save_temps {
         let _: () = str::as_c_str(s, |buf| {
             unsafe {
@@ -641,7 +641,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
 
     fn iter_variant(cx: block, a_tup: ValueRef,
                     variant: ty::VariantInfo,
-                    tps: ~[ty::t], tid: ast::def_id,
+                    tps: &[ty::t], tid: ast::def_id,
                     f: val_and_ty_fn) -> block {
         let _icx = cx.insn_ctxt("iter_variant");
         if variant.args.len() == 0u { return cx; }
@@ -916,7 +916,7 @@ pub fn have_cached_lpad(bcx: block) -> bool {
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: block, f: fn(&mut scope_info)) {
+pub fn in_lpad_scope_cx(bcx: block, f: fn(+si: &mut scope_info)) {
     let mut bcx = bcx;
     loop {
         {
@@ -1652,7 +1652,7 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
 // field of the fn_ctxt with
 pub fn create_llargs_for_fn_args(cx: fn_ctxt,
                                  ty_self: self_arg,
-                                 args: ~[ast::arg]) -> ~[ValueRef] {
+                                 args: &[ast::arg]) -> ~[ValueRef] {
     let _icx = cx.insn_ctxt("create_llargs_for_fn_args");
 
     match ty_self {
@@ -1865,7 +1865,7 @@ pub fn trans_fn(ccx: @CrateContext,
     debug!("trans_fn(ty_self=%?)", ty_self);
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
-    let the_path_str = path_str(ccx.sess, path);
+    let the_path_str = path_str(ccx.sess, &path);
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
                   param_substs, id, impl_id,
                   |fcx| {
@@ -1883,7 +1883,7 @@ pub fn trans_fn(ccx: @CrateContext,
 pub fn trans_enum_variant(ccx: @CrateContext,
                           enum_id: ast::node_id,
                           variant: ast::variant,
-                          args: ~[ast::variant_arg],
+                          args: &[ast::variant_arg],
                           disr: int,
                           is_degen: bool,
                           param_substs: Option<@param_substs>,
@@ -1946,7 +1946,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
 // NB: In theory this should be merged with the function above. But the AST
 // structures are completely different, so very little code would be shared.
 pub fn trans_tuple_struct(ccx: @CrateContext,
-                          fields: ~[@ast::struct_field],
+                          fields: &[@ast::struct_field],
                           ctor_id: ast::node_id,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
@@ -2847,7 +2847,7 @@ pub fn trap(bcx: block) {
     }
 }
 
-pub fn decl_gc_metadata(ccx: @CrateContext, llmod_id: ~str) {
+pub fn decl_gc_metadata(ccx: @CrateContext, llmod_id: &str) {
     if !ccx.sess.opts.gc || !*ccx.uses_gc {
         return;
     }
@@ -3014,7 +3014,7 @@ pub fn trans_crate(sess: session::Session,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
-                   maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
+                   +maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
 
     let symbol_hasher = @hash::default_state();
     let link_meta =
