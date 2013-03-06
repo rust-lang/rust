@@ -861,7 +861,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
                 // like "foo<X>".  This is because otherwise ty_to_str will
                 // print the name as merely "foo", as it has no way to
                 // reconstruct the value of X.
-                if !generics.is_empty() { t0 } else {
+                if generics.is_parameterized() { t0 } else {
                     ty::mk_with_id(tcx, t0, def_id)
                 }
             };

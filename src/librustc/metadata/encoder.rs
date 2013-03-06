@@ -228,14 +228,16 @@ fn encode_type(ecx: @EncodeContext, ebml_w: writer::Encoder, typ: ty::t) {
 
 fn encode_symbol(ecx: @EncodeContext, ebml_w: writer::Encoder, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    let sym = match ecx.item_symbols.find(&id) {
-      Some(ref x) => (/*bad*/copy *x),
-      None => {
-        ecx.diag.handler().bug(
-            fmt!("encode_symbol: id not found %d", id));
-      }
-    };
-    ebml_w.writer.write(str::to_bytes(sym));
+    match ecx.item_symbols.find(&id) {
+        Some(ref x) => {
+            debug!("encode_symbol(id=%?, str=%s)", id, *x);
+            ebml_w.writer.write(str::to_bytes(*x));
+        }
+        None => {
+            ecx.diag.handler().bug(
+                fmt!("encode_symbol: id not found %d", id));
+        }
+    }
     ebml_w.end_tag();
 }
 
@@ -264,6 +266,8 @@ fn encode_enum_variant_info(ecx: @EncodeContext, ebml_w: writer::Encoder,
                             path: &[ast_map::path_elt],
                             index: @mut ~[entry<int>],
                             generics: &ast::Generics) {
+    debug!("encode_enum_variant_info(id=%?)", id);
+
     let mut disr_val = 0;
     let mut i = 0;
     let vi = ty::enum_variants(ecx.tcx,
