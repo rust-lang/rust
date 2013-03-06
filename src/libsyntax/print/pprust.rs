@@ -567,7 +567,7 @@ pub fn print_item(s: @ps, &&item: @ast::item) {
 
       ast::item_impl(ref generics, opt_trait, ty, ref methods) => {
         head(s, visibility_qualified(item.vis, ~"impl"));
-        if !generics.is_empty() {
+        if generics.is_parameterized() {
             print_generics(s, generics);
             space(s.s);
         }
