@@ -11,10 +11,10 @@
 /*!
  * # Representation of Algebraic Data Types
  *
- * This module determines how to represent enums, structs, tuples, and
- * (deprecated) structural records based on their monomorphized types;
- * it is responsible both for choosing a representation and
- * translating basic operations on values of those types.
+ * This module determines how to represent enums, structs, and tuples
+ * based on their monomorphized types; it is responsible both for
+ * choosing a representation and translating basic operations on
+ * values of those types.
  *
  * Note that the interface treats everything as a general case of an
  * enum, so structs/tuples/etc. have one pseudo-variant with
@@ -130,11 +130,6 @@ pub fn represent_type(cx: @CrateContext, t: ty::t) -> @Repr {
     let repr = @match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
             Univariant(mk_struct(cx, *elems), NonStruct)
-        }
-        ty::ty_rec(ref fields) => {
-            // XXX: Are these in the right order?
-            Univariant(mk_struct(cx, fields.map(|f| f.mt.ty)),
-                       StructWithoutDtor)
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);

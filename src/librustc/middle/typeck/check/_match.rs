@@ -415,39 +415,10 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         check_pat_variant(pcx, pat, path, subpats, expected);
       }
       ast::pat_rec(fields, etc) => {
-        let ex_fields = match structure_of(fcx, pat.span, expected) {
-          ty::ty_rec(fields) => fields,
-          _ => {
-            tcx.sess.span_fatal
-                (pat.span,
-                fmt!("mismatched types: expected `%s` but found record",
-                     fcx.infcx().ty_to_str(expected)));
-          }
-        };
-        let f_count = vec::len(fields);
-        let ex_f_count = vec::len(ex_fields);
-        if ex_f_count < f_count || !etc && ex_f_count > f_count {
-            tcx.sess.span_fatal
-                (pat.span, fmt!("mismatched types: expected a record \
-                      with %u fields, found one with %u \
-                      fields",
-                                ex_f_count, f_count));
-        }
-
-        for fields.each |f| {
-            match vec::find(ex_fields, |a| f.ident == a.ident) {
-              Some(field) => {
-                check_pat(pcx, f.pat, field.mt.ty);
-              }
-              None => {
-                tcx.sess.span_fatal(pat.span,
-                                    fmt!("mismatched types: did not \
-                                          expect a record with a field `%s`",
-                                          *tcx.sess.str_of(f.ident)));
-              }
-            }
-        }
-        fcx.write_ty(pat.id, expected);
+        tcx.sess.span_fatal
+            (pat.span,
+            fmt!("mismatched types: expected `%s` but found record",
+                 fcx.infcx().ty_to_str(expected)));
       }
       ast::pat_struct(path, fields, etc) => {
         // Grab the class data that we care about.

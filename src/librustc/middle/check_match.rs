@@ -352,7 +352,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
                  -> Option<ctor> {
     match ty::get(left_ty).sty {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) | ty::ty_tup(_) |
-      ty::ty_rec(_) | ty::ty_struct(*) => {
+      ty::ty_struct(*) => {
         for m.each |r| {
             if !is_wild(cx, r[0]) { return None; }
         }
@@ -449,7 +449,6 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
 pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
     match /*bad*/copy ty::get(ty).sty {
       ty::ty_tup(fs) => fs.len(),
-      ty::ty_rec(fs) => fs.len(),
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match ctor { variant(id) => id,
@@ -548,19 +547,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     _ => None
                 }
             }
-            pat_rec(ref flds, _) => {
-                let ty_flds = match /*bad*/copy ty::get(left_ty).sty {
-                    ty::ty_rec(flds) => flds,
-                    _ => fail!(~"bad type for pat_rec")
-                };
-                let args = vec::map(ty_flds, |ty_fld| {
-                    match flds.find(|f| f.ident == ty_fld.ident) {
-                        Some(f) => f.pat,
-                        _ => wild()
-                    }
-                });
-                Some(vec::append(args, vec::from_slice(r.tail())))
-            }
+            pat_rec(ref flds, _) => fail!(),
             pat_struct(_, ref flds, _) => {
                 // Is this a struct or an enum variant?
                 match cx.tcx.def_map.get(&pat_id) {
