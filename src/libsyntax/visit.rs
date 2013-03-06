@@ -496,8 +496,7 @@ pub fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
             (v.visit_expr)(b, e, v);
         }
         expr_addr_of(_, x) | expr_unary(_, x) |
-        expr_loop_body(x) | expr_do_body(x) |
-        expr_assert(x) => (v.visit_expr)(x, e, v),
+        expr_loop_body(x) | expr_do_body(x) => (v.visit_expr)(x, e, v),
         expr_lit(_) => (),
         expr_cast(x, t) => {
             (v.visit_expr)(x, e, v);

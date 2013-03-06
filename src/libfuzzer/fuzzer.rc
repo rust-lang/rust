@@ -109,8 +109,7 @@ pub pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           | ast::expr_match(*) | ast::expr_while(*)  => { false }
 
           // https://github.com/mozilla/rust/issues/929
-          ast::expr_cast(*) | ast::expr_assert(*) |
-          ast::expr_binary(*) | ast::expr_assign(*) |
+          ast::expr_cast(*) | ast::expr_binary(*) | ast::expr_assign(*) |
           ast::expr_assign_op(*) => { false }
 
           ast::expr_ret(option::None) => { false }

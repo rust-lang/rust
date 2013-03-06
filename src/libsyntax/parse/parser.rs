@@ -21,7 +21,7 @@ use ast::{blk_check_mode, box, by_copy, by_ref, by_val};
 use ast::{crate, crate_cfg, decl, decl_item};
 use ast::{decl_local, default_blk, deref, div, enum_def, enum_variant_kind};
 use ast::{expl, expr, expr_, expr_addr_of, expr_match, expr_again};
-use ast::{expr_assert, expr_assign, expr_assign_op, expr_binary, expr_block};
+use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
 use ast::{expr_field, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
@@ -76,6 +76,7 @@ use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
+use parse::obsolete::{ObsoleteAssertion};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -1208,8 +1209,8 @@ pub impl Parser {
             self.expect(&token::RPAREN);
         } else if self.eat_keyword(&~"assert") {
             let e = self.parse_expr();
-            ex = expr_assert(e);
-            hi = e.span.hi;
+            ex = expr_copy(e);  // whatever
+            self.obsolete(*self.last_span, ObsoleteAssertion);
         } else if self.eat_keyword(&~"return") {
             if can_begin_expr(&*self.token) {
                 let e = self.parse_expr();

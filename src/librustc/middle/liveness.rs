@@ -617,11 +617,11 @@ fn visit_expr(expr: @expr, &&self: @mut IrMaps, vt: vt<@mut IrMaps>) {
       // otherwise, live nodes are not required:
       expr_index(*) | expr_field(*) | expr_vstore(*) | expr_vec(*) |
       expr_call(*) | expr_method_call(*) | expr_tup(*) | expr_log(*) |
-      expr_binary(*) | expr_assert(*) | expr_addr_of(*) | expr_copy(*) |
-      expr_loop_body(*) | expr_do_body(*) | expr_cast(*) | expr_unary(*) |
-      expr_break(_) | expr_again(_) | expr_lit(_) | expr_ret(*) |
-      expr_block(*) | expr_assign(*) | expr_swap(*) | expr_assign_op(*) |
-      expr_mac(*) | expr_struct(*) | expr_repeat(*) | expr_paren(*) => {
+      expr_binary(*) | expr_addr_of(*) | expr_copy(*) | expr_loop_body(*) |
+      expr_do_body(*) | expr_cast(*) | expr_unary(*) | expr_break(_) |
+      expr_again(_) | expr_lit(_) | expr_ret(*) | expr_block(*) |
+      expr_assign(*) | expr_swap(*) | expr_assign_op(*) | expr_mac(*) |
+      expr_struct(*) | expr_repeat(*) | expr_paren(*) => {
           visit::visit_expr(expr, self, vt);
       }
     }
@@ -1332,7 +1332,6 @@ pub impl Liveness {
             self.propagate_through_exprs(~[l, r], succ)
           }
 
-          expr_assert(e) |
           expr_addr_of(_, e) |
           expr_copy(e) |
           expr_loop_body(e) |
@@ -1493,8 +1492,9 @@ pub impl Liveness {
         // repeat until fixed point is reached:
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
-            fail_unless!(cond_ln == self.propagate_through_opt_expr(cond, ln));
-            assert body_ln == self.with_loop_nodes(expr.id, succ, ln,
+            fail_unless!(cond_ln == self.propagate_through_opt_expr(cond,
+                                                                    ln));
+            fail_unless!(body_ln == self.with_loop_nodes(expr.id, succ, ln,
             || {
                 self.propagate_through_block(body, cond_ln)
             }));
@@ -1611,11 +1611,11 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
       expr_call(*) | expr_method_call(*) | expr_if(*) | expr_match(*) |
       expr_while(*) | expr_loop(*) | expr_index(*) | expr_field(*) |
       expr_vstore(*) | expr_vec(*) | expr_tup(*) | expr_log(*) |
-      expr_binary(*) | expr_assert(*) | expr_copy(*) | expr_loop_body(*) |
-      expr_do_body(*) | expr_cast(*) | expr_unary(*) | expr_ret(*) |
-      expr_break(*) | expr_again(*) | expr_lit(_) | expr_block(*) |
-      expr_swap(*) | expr_mac(*) | expr_addr_of(*) | expr_struct(*) |
-      expr_repeat(*) | expr_paren(*) => {
+      expr_binary(*) | expr_copy(*) | expr_loop_body(*) | expr_do_body(*) |
+      expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
+      expr_again(*) | expr_lit(_) | expr_block(*) | expr_swap(*) |
+      expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
+      expr_paren(*) => {
         visit::visit_expr(expr, self, vt);
       }
     }

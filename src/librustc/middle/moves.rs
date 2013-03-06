@@ -571,10 +571,6 @@ pub impl VisitContext {
                 self.use_expr(b_expr, Read, visitor);
             }
 
-            expr_assert(cond_expr) => {
-                self.consume_expr(cond_expr, visitor);
-            }
-
             expr_while(cond_expr, ref blk) => {
                 self.consume_expr(cond_expr, visitor);
                 self.consume_block(blk, visitor);
