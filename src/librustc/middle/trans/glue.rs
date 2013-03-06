@@ -756,7 +756,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
 }
 
 pub fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
-                         helper: glue_helper, name: ~str)
+                         helper: glue_helper, name: &str)
                       -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue");
     if !ccx.sess.trans_stats() {
@@ -766,7 +766,7 @@ pub fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
     let start = time::get_time();
     let llval = make_generic_glue_inner(ccx, t, llfn, helper);
     let end = time::get_time();
-    log_fn_time(ccx, ~"glue " + name + ~" " + ty_to_short_str(ccx.tcx, t),
+    log_fn_time(ccx, fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t)),
                 start, end);
     return llval;
 }

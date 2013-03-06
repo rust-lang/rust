@@ -815,7 +815,7 @@ pub impl Datum {
 }
 
 pub impl DatumBlock {
-    fn unpack(&self, bcx: &mut block) -> Datum {
+    fn unpack(&self, +bcx: &mut block) -> Datum {
         *bcx = self.bcx;
         return self.datum;
     }
