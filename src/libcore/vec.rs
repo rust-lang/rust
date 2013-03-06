@@ -212,7 +212,7 @@ pub pure fn build_sized_opt<A>(size: Option<uint>,
 
 /// Returns the first element of a vector
 pub pure fn head<T>(v: &r/[T]) -> &r/T {
-    if v.len() == 0 { fail!(~"last_unsafe: empty vector") }
+    if v.len() == 0 { fail!(~"head: empty vector") }
     &v[0]
 }
 
@@ -237,18 +237,15 @@ pub pure fn initn<T>(v: &r/[T], n: uint) -> &r/[T] {
 }
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
-pub pure fn last<T:Copy>(v: &[const T]) -> T {
-    if len(v) == 0u { fail!(~"last_unsafe: empty vector") }
-    v[len(v) - 1u]
+pub pure fn last<T>(v: &r/[T]) -> &r/T {
+    if v.len() == 0 { fail!(~"last: empty vector") }
+    &v[v.len() - 1]
 }
 
-/**
- * Returns `Some(x)` where `x` is the last element of the slice `v`,
- * or `none` if the vector is empty.
- */
-pub pure fn last_opt<T:Copy>(v: &[const T]) -> Option<T> {
-    if len(v) == 0u { return None; }
-    Some(v[len(v) - 1u])
+/// Returns `Some(x)` where `x` is the last element of the slice `v`, or
+/// `None` if the vector is empty.
+pub pure fn last_opt<T>(v: &r/[T]) -> Option<&r/T> {
+    if v.len() == 0 { None } else { Some(&v[v.len() - 1]) }
 }
 
 /// Return a slice that points into another slice.
@@ -1696,16 +1693,11 @@ impl<T> Container for &[const T] {
 }
 
 pub trait CopyableVector<T> {
-    pure fn last(&self) -> T;
     pure fn slice(&self, start: uint, end: uint) -> ~[T];
 }
 
 /// Extension methods for vectors
 impl<T: Copy> CopyableVector<T> for &[const T] {
-    /// Returns the last element of a `v`, failing if the vector is empty.
-    #[inline]
-    pure fn last(&self) -> T { last(*self) }
-
     /// Returns a copy of the elements from [`start`..`end`) from `v`.
     #[inline]
     pure fn slice(&self, start: uint, end: uint) -> ~[T] {
@@ -1721,6 +1713,8 @@ pub trait ImmutableVector<T> {
     pure fn tailn(&self, n: uint) -> &self/[T];
     pure fn init(&self) -> &self/[T];
     pure fn initn(&self, n: uint) -> &self/[T];
+    pure fn last(&self) -> &self/T;
+    pure fn last_opt(&self) -> Option<&self/T>;
     pure fn foldr<U: Copy>(&self, z: U, p: fn(t: &T, u: U) -> U) -> U;
     pure fn map<U>(&self, f: fn(t: &T) -> U) -> ~[U];
     pure fn mapi<U>(&self, f: fn(uint, t: &T) -> U) -> ~[U];
@@ -1761,6 +1755,14 @@ impl<T> ImmutableVector<T> for &[T] {
     /// Returns all but the last `n' elemnts of a vector
     #[inline]
     pure fn initn(&self, n: uint) -> &self/[T] { initn(*self, n) }
+
+    /// Returns the last element of a `v`, failing if the vector is empty.
+    #[inline]
+    pure fn last(&self) -> &self/T { last(*self) }
+
+    /// Returns the last element of a `v`, failing if the vector is empty.
+    #[inline]
+    pure fn last_opt(&self) -> Option<&self/T> { last_opt(*self) }
 
     /// Reduce a vector from right to left
     #[inline]
@@ -2679,12 +2681,27 @@ mod tests {
 
     #[test]
     fn test_last() {
-        let mut n = last_opt(~[]);
-        assert (n.is_none());
-        n = last_opt(~[1, 2, 3]);
-        assert (n == Some(3));
-        n = last_opt(~[1, 2, 3, 4, 5]);
-        assert (n == Some(5));
+        let mut a = ~[11];
+        assert a.last() == &11;
+        a = ~[11, 12];
+        assert a.last() == &12;
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_last_empty() {
+        let a: ~[int] = ~[];
+        a.last();
+    }
+
+    #[test]
+    fn test_last_opt() {
+        let mut a = ~[];
+        assert a.last_opt() == None;
+        a = ~[11];
+        assert a.last_opt().unwrap() == &11;
+        a = ~[11, 12];
+        assert a.last_opt().unwrap() == &12;
     }
 
     #[test]

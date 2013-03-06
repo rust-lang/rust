@@ -229,7 +229,7 @@ fn last_meta_item_by_name(items: &[@ast::meta_item], name: &str)
     -> Option<@ast::meta_item> {
 
     let items = attr::find_meta_items_by_name(items, name);
-    vec::last_opt(items)
+    items.last_opt().map(|item| **item)
 }
 
 pub fn last_meta_item_value_str_by_name(items: &[@ast::meta_item], name: &str)

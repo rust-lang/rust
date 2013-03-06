@@ -81,7 +81,9 @@ fn warn_if_multiple_versions(e: @mut Env,
 
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(
-            /*bad*/copy *crate_cache.last().metas);
+            *crate_cache[crate_cache.len() - 1].metas
+        );
+
         let (matches, non_matches) =
             partition(crate_cache.map_to_vec(|&entry| {
                 let othername = loader::crate_name_from_metas(
