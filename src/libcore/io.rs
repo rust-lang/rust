@@ -144,6 +144,12 @@ pub trait ReaderUtil {
     /// Read a big-endian i16 (2 bytes).
     fn read_be_i16(&self) -> i16;
 
+    /// Read a big-endian IEEE754 double-precision floating-point (8 bytes).
+    fn read_be_f64(&self) -> f64;
+
+    /// Read a big-endian IEEE754 single-precision floating-point (4 bytes).
+    fn read_be_f32(&self) -> f32;
+
     /// Read a little-endian u64 (8 bytes).
     fn read_le_u64(&self) -> u64;
 
@@ -161,6 +167,14 @@ pub trait ReaderUtil {
 
     /// Read a litle-endian i16 (2 bytes).
     fn read_le_i16(&self) -> i16;
+
+    /// Read a litten-endian IEEE754 double-precision floating-point
+    /// (8 bytes).
+    fn read_le_f64(&self) -> f64;
+
+    /// Read a litten-endian IEEE754 single-precision floating-point
+    /// (4 bytes).
+    fn read_le_f32(&self) -> f32;
 
     /// Read a u8 (1 byte).
     fn read_u8(&self) -> u8;
@@ -368,6 +382,18 @@ impl<T:Reader> ReaderUtil for T {
         self.read_be_int_n(2) as i16
     }
 
+    fn read_be_f64(&self) -> f64 {
+        unsafe {
+            cast::transmute::<u64, f64>(self.read_be_u64())
+        }
+    }
+
+    fn read_be_f32(&self) -> f32 {
+        unsafe {
+            cast::transmute::<u32, f32>(self.read_be_u32())
+        }
+    }
+
     fn read_le_u64(&self) -> u64 {
         self.read_le_uint_n(8) as u64
     }
@@ -390,6 +416,18 @@ impl<T:Reader> ReaderUtil for T {
 
     fn read_le_i16(&self) -> i16 {
         self.read_le_int_n(2) as i16
+    }
+
+    fn read_le_f64(&self) -> f64 {
+        unsafe {
+            cast::transmute::<u64, f64>(self.read_le_u64())
+        }
+    }
+
+    fn read_le_f32(&self) -> f32 {
+        unsafe {
+            cast::transmute::<u32, f32>(self.read_le_u32())
+        }
     }
 
     fn read_u8(&self) -> u8 {
@@ -874,6 +912,12 @@ pub trait WriterUtil {
     /// Write a big-endian i16 (2 bytes).
     fn write_be_i16(&self, n: i16);
 
+    /// Write a big-endian IEEE754 double-precision floating-point (8 bytes).
+    fn write_be_f64(&self, f: f64);
+
+    /// Write a big-endian IEEE754 single-precision floating-point (4 bytes).
+    fn write_be_f32(&self, f: f32);
+
     /// Write a little-endian u64 (8 bytes).
     fn write_le_u64(&self, n: u64);
 
@@ -891,6 +935,14 @@ pub trait WriterUtil {
 
     /// Write a little-endian i16 (2 bytes).
     fn write_le_i16(&self, n: i16);
+
+    /// Write a little-endian IEEE754 double-precision floating-point
+    /// (8 bytes).
+    fn write_le_f64(&self, f: f64);
+
+    /// Write a litten-endian IEEE754 single-precision floating-point
+    /// (4 bytes).
+    fn write_le_f32(&self, f: f32);
 
     /// Write a u8 (1 byte).
     fn write_u8(&self, n: u8);
@@ -948,6 +1000,16 @@ impl<T:Writer> WriterUtil for T {
     fn write_be_i16(&self, n: i16) {
         u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
     }
+    fn write_be_f64(&self, f:f64) {
+        unsafe {
+            self.write_be_u64(cast::transmute(f))
+        }
+    }
+    fn write_be_f32(&self, f:f32) {
+        unsafe {
+            self.write_be_u32(cast::transmute(f))
+        }
+    }
     fn write_le_u64(&self, n: u64) {
         u64_to_le_bytes(n, 8u, |v| self.write(v))
     }
@@ -966,9 +1028,20 @@ impl<T:Writer> WriterUtil for T {
     fn write_le_i16(&self, n: i16) {
         u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
     }
+    fn write_le_f64(&self, f:f64) {
+        unsafe {
+            self.write_le_u64(cast::transmute(f))
+        }
+    }
+    fn write_le_f32(&self, f:f32) {
+        unsafe {
+            self.write_le_u32(cast::transmute(f))
+        }
+    }
 
     fn write_u8(&self, n: u8) { self.write([n]) }
     fn write_i8(&self, n: i8) { self.write([n as u8]) }
+
 }
 
 #[allow(non_implicitly_copyable_typarams)]
@@ -1421,6 +1494,41 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_read_f32() {
+        let path = Path("tmp/lib-io-test-read-f32.tmp");
+        //big-endian floating-point 8.1250
+        let buf = ~[0x41, 0x02, 0x00, 0x00];
+
+        {
+            let file = io::file_writer(&path, [io::Create]).get();
+            file.write(buf);
+        }
+
+        {
+            let file = io::file_reader(&path).get();
+            let f = file.read_be_f32();
+            assert f == 8.1250;
+        }
+    }
+
+#[test]
+    fn test_read_write_f32() {
+        let path = Path("tmp/lib-io-test-read-write-f32.tmp");
+        let f:f32 = 8.1250;
+
+        {
+            let file = io::file_writer(&path, [io::Create]).get();
+            file.write_be_f32(f);
+            file.write_le_f32(f);
+        }
+
+        {
+            let file = io::file_reader(&path).get();
+            assert file.read_be_f32() == 8.1250;
+            assert file.read_le_f32() == 8.1250;
+        }
+    }
 }
 
 //
