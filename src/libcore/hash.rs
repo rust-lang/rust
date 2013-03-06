@@ -68,7 +68,7 @@ pub trait Streaming {
     fn input(&self, (&[const u8]));
     // These can be refactored some when we have default methods.
     fn result_bytes(&self) -> ~[u8];
-    fn result_str() -> ~str;
+    fn result_str(&self) -> ~str;
     fn result_u64(&self) -> u64;
     fn reset(&self);
 }
@@ -349,8 +349,7 @@ impl Streaming for &SipState {
         ]
     }
 
-    // IMPLICIT SELF WARNING: fix me!
-    fn result_str() -> ~str {
+    fn result_str(&self) -> ~str {
         let r = self.result_bytes();
         let mut s = ~"";
         for vec::each(r) |b| {
