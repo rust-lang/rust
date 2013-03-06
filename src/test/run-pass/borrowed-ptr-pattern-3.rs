@@ -16,6 +16,6 @@ fn foo(s: &r/uint) -> bool {
 }
 
 pub fn main() {
-    assert foo(&3);
-    assert !foo(&4);
+    fail_unless!(foo(&3));
+    fail_unless!(!foo(&4));
 }

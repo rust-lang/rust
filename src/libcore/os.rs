@@ -173,7 +173,7 @@ pub fn env() -> ~[(~str,~str)] {
             let mut pairs = ~[];
             for vec::each(rust_env_pairs()) |p| {
                 let vs = str::splitn_char(*p, '=', 1u);
-                assert vec::len(vs) == 2u;
+                fail_unless!(vec::len(vs) == 2u);
                 pairs.push((copy vs[0], copy vs[1]));
             }
             pairs
@@ -313,7 +313,7 @@ pub fn waitpid(pid: pid_t) -> c_int {
         use libc::funcs::posix01::wait::*;
         let mut status = 0 as c_int;
 
-        assert (waitpid(pid, &mut status, 0 as c_int) != (-1 as c_int));
+        fail_unless!((waitpid(pid, &mut status, 0 as c_int) != (-1 as c_int)));
         return status;
     }
 }
@@ -326,7 +326,7 @@ pub fn pipe() -> Pipe {
     unsafe {
         let mut fds = Pipe {in: 0 as c_int,
                         out: 0 as c_int };
-        assert (libc::pipe(&mut fds.in) == (0 as c_int));
+        fail_unless!((libc::pipe(&mut fds.in) == (0 as c_int)));
         return Pipe {in: fds.in, out: fds.out};
     }
 }
@@ -345,9 +345,9 @@ pub fn pipe() -> Pipe {
                     out: 0 as c_int };
         let res = libc::pipe(&mut fds.in, 1024 as c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
-        assert (res == 0 as c_int);
-        assert (fds.in != -1 as c_int && fds.in != 0 as c_int);
-        assert (fds.out != -1 as c_int && fds.in != 0 as c_int);
+        fail_unless!((res == 0 as c_int));
+        fail_unless!((fds.in != -1 as c_int && fds.in != 0 as c_int));
+        fail_unless!((fds.out != -1 as c_int && fds.in != 0 as c_int));
         return Pipe {in: fds.in, out: fds.out};
     }
 }
@@ -1142,13 +1142,13 @@ mod tests {
     #[test]
     pub fn test_args() {
         let a = real_args();
-        assert a.len() >= 1;
+        fail_unless!(a.len() >= 1);
     }
 
     fn make_rand_name() -> ~str {
         let rng: rand::Rng = rand::Rng();
         let n = ~"TEST" + rng.gen_str(10u);
-        assert getenv(n).is_none();
+        fail_unless!(getenv(n).is_none());
         n
     }
 
@@ -1156,7 +1156,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n, ~"VALUE");
-        assert getenv(n) == option::Some(~"VALUE");
+        fail_unless!(getenv(n) == option::Some(~"VALUE"));
     }
 
     #[test]
@@ -1166,9 +1166,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n, ~"1");
         setenv(n, ~"2");
-        assert getenv(n) == option::Some(~"2");
+        fail_unless!(getenv(n) == option::Some(~"2"));
         setenv(n, ~"");
-        assert getenv(n) == option::Some(~"");
+        fail_unless!(getenv(n) == option::Some(~""));
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -1183,25 +1183,25 @@ mod tests {
         let n = make_rand_name();
         setenv(n, s);
         log(debug, copy s);
-        assert getenv(n) == option::Some(s);
+        fail_unless!(getenv(n) == option::Some(s));
     }
 
     #[test]
     fn test_self_exe_path() {
         let path = os::self_exe_path();
-        assert path.is_some();
+        fail_unless!(path.is_some());
         let path = path.get();
         log(debug, copy path);
 
         // Hard to test this function
-        assert path.is_absolute;
+        fail_unless!(path.is_absolute);
     }
 
     #[test]
     #[ignore]
     fn test_env_getenv() {
         let e = env();
-        assert vec::len(e) > 0u;
+        fail_unless!(vec::len(e) > 0u);
         for vec::each(e) |p| {
             let (n, v) = copy *p;
             log(debug, copy n);
@@ -1209,7 +1209,7 @@ mod tests {
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
-            assert v2.is_none() || v2 == option::Some(v);
+            fail_unless!(v2.is_none() || v2 == option::Some(v));
         }
     }
 
@@ -1219,15 +1219,15 @@ mod tests {
 
         let mut e = env();
         setenv(n, ~"VALUE");
-        assert !vec::contains(e, &(copy n, ~"VALUE"));
+        fail_unless!(!vec::contains(e, &(copy n, ~"VALUE")));
 
         e = env();
-        assert vec::contains(e, &(n, ~"VALUE"));
+        fail_unless!(vec::contains(e, &(n, ~"VALUE")));
     }
 
     #[test]
     fn test() {
-        assert (!Path("test-path").is_absolute);
+        fail_unless!((!Path("test-path").is_absolute));
 
         log(debug, ~"Current working directory: " + getcwd().to_str());
 
@@ -1241,10 +1241,10 @@ mod tests {
         let oldhome = getenv(~"HOME");
 
         setenv(~"HOME", ~"/home/MountainView");
-        assert os::homedir() == Some(Path("/home/MountainView"));
+        fail_unless!(os::homedir() == Some(Path("/home/MountainView")));
 
         setenv(~"HOME", ~"");
-        assert os::homedir().is_none();
+        fail_unless!(os::homedir().is_none());
 
         for oldhome.each |s| { setenv(~"HOME", *s) }
     }
@@ -1259,19 +1259,19 @@ mod tests {
         setenv(~"HOME", ~"");
         setenv(~"USERPROFILE", ~"");
 
-        assert os::homedir().is_none();
+        fail_unless!(os::homedir().is_none());
 
         setenv(~"HOME", ~"/home/MountainView");
-        assert os::homedir() == Some(Path("/home/MountainView"));
+        fail_unless!(os::homedir() == Some(Path("/home/MountainView")));
 
         setenv(~"HOME", ~"");
 
         setenv(~"USERPROFILE", ~"/home/MountainView");
-        assert os::homedir() == Some(Path("/home/MountainView"));
+        fail_unless!(os::homedir() == Some(Path("/home/MountainView")));
 
         setenv(~"HOME", ~"/home/MountainView");
         setenv(~"USERPROFILE", ~"/home/PaloAlto");
-        assert os::homedir() == Some(Path("/home/MountainView"));
+        fail_unless!(os::homedir() == Some(Path("/home/MountainView")));
 
         option::iter(&oldhome, |s| setenv(~"HOME", *s));
         option::iter(&olduserprofile,
@@ -1280,7 +1280,7 @@ mod tests {
 
     #[test]
     fn tmpdir() {
-        assert !str::is_empty(os::tmpdir().to_str());
+        fail_unless!(!str::is_empty(os::tmpdir().to_str()));
     }
 
     // Issue #712
@@ -1293,7 +1293,7 @@ mod tests {
     fn list_dir() {
         let dirs = os::list_dir(&Path("."));
         // Just assuming that we've got some contents in the current directory
-        assert (vec::len(dirs) > 0u);
+        fail_unless!((vec::len(dirs) > 0u));
 
         for vec::each(dirs) |dir| {
             log(debug, copy *dir);
@@ -1302,21 +1302,21 @@ mod tests {
 
     #[test]
     fn path_is_dir() {
-        assert (os::path_is_dir(&Path(".")));
-        assert (!os::path_is_dir(&Path("test/stdtest/fs.rs")));
+        fail_unless!((os::path_is_dir(&Path("."))));
+        fail_unless!((!os::path_is_dir(&Path("test/stdtest/fs.rs"))));
     }
 
     #[test]
     fn path_exists() {
-        assert (os::path_exists(&Path(".")));
-        assert (!os::path_exists(&Path("test/nonexistent-bogus-path")));
+        fail_unless!((os::path_exists(&Path("."))));
+        fail_unless!((!os::path_exists(&Path("test/nonexistent-bogus-path"))));
     }
 
     #[test]
     fn copy_file_does_not_exist() {
-      assert !os::copy_file(&Path("test/nonexistent-bogus-path"),
-                            &Path("test/other-bogus-path"));
-      assert !os::path_exists(&Path("test/other-bogus-path"));
+      fail_unless!(!os::copy_file(&Path("test/nonexistent-bogus-path"),
+                            &Path("test/other-bogus-path")));
+      fail_unless!(!os::path_exists(&Path("test/other-bogus-path")));
     }
 
     #[test]
@@ -1324,7 +1324,7 @@ mod tests {
         unsafe {
           let tempdir = getcwd(); // would like to use $TMPDIR,
                                   // doesn't seem to work on Linux
-          assert (str::len(tempdir.to_str()) > 0u);
+          fail_unless!((str::len(tempdir.to_str()) > 0u));
           let in = tempdir.push("in.txt");
           let out = tempdir.push("out.txt");
 
@@ -1334,23 +1334,24 @@ mod tests {
                     libc::fopen(fromp, modebuf)
                 }
           };
-          assert (ostream as uint != 0u);
+          fail_unless!((ostream as uint != 0u));
           let s = ~"hello";
           let mut buf = str::to_bytes(s) + ~[0 as u8];
           do vec::as_mut_buf(buf) |b, _len| {
-              assert (libc::fwrite(b as *c_void, 1u as size_t,
+              fail_unless!((libc::fwrite(b as *c_void, 1u as size_t,
                                    (str::len(s) + 1u) as size_t, ostream)
-                      == buf.len() as size_t)};
-          assert (libc::fclose(ostream) == (0u as c_int));
+                      == buf.len() as size_t))
+          }
+          fail_unless!((libc::fclose(ostream) == (0u as c_int)));
           let rs = os::copy_file(&in, &out);
           if (!os::path_exists(&in)) {
             fail!(fmt!("%s doesn't exist", in.to_str()));
           }
-          assert(rs);
+          fail_unless!((rs));
           let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);
-          assert (rslt == 0);
-          assert (remove_file(&in));
-          assert (remove_file(&out));
+          fail_unless!((rslt == 0));
+          fail_unless!((remove_file(&in)));
+          fail_unless!((remove_file(&out)));
         }
     }
 }

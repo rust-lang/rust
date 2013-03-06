@@ -48,7 +48,7 @@ pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
             bcx = expr::trans_into(bcx, e, dest);
         }
         None => {
-            assert dest == expr::Ignore || bcx.unreachable;
+            fail_unless!(dest == expr::Ignore || bcx.unreachable);
         }
     }
     return bcx;

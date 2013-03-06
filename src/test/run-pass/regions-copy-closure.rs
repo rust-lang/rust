@@ -19,7 +19,7 @@ fn box_it(+x: &'r fn()) -> closure_box/&r {
 pub fn main() {
     let mut i = 3;
     let cl_box = box_it(|| i += 1);
-    assert i == 3;
+    fail_unless!(i == 3);
     (cl_box.cl)();
-    assert i == 4;
+    fail_unless!(i == 4);
 }

@@ -12,6 +12,6 @@
 struct Foo;
 
 pub fn main() {
-  assert Foo == Foo;
-  assert !(Foo != Foo);
+  fail_unless!(Foo == Foo);
+  fail_unless!(!(Foo != Foo));
 }

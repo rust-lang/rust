@@ -22,7 +22,7 @@ fn what() {
     let i = @mut false;
     let dont = {||the(i)};
     dont();
-    assert (*i);
+    fail_unless!((*i));
 }
 
 fn zombiejesus() {
@@ -61,8 +61,8 @@ fn hammertime() -> int {
 
 fn canttouchthis() -> uint {
     pure fn p() -> bool { true }
-    let _a = (assert (true)) == (assert (p()));
-    let _c = (assert (p())) == ();
+    let _a = (fail_unless!((true)) == (assert (p())));
+    let _c = (fail_unless!((p())) == ());
     let _b: bool = (log(debug, 0) == (return 0u));
 }
 

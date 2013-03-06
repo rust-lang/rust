@@ -41,5 +41,5 @@ fn test00() {
 
     option::unwrap(result).recv();
 
-    assert (sum == number_of_messages * (number_of_messages - 1) / 2);
+    fail_unless!((sum == number_of_messages * (number_of_messages - 1) / 2));
 }

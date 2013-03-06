@@ -130,9 +130,9 @@ pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
             }
             ast::def_variant(tid, vid) => {
                 // nullary variants are not callable
-                assert ty::enum_variant_with_id(bcx.tcx(),
-                                                tid,
-                                                vid).args.len() > 0u;
+                fail_unless!(ty::enum_variant_with_id(bcx.tcx(),
+                                                      tid,
+                                                      vid).args.len() > 0u);
                 fn_callee(bcx, trans_fn_ref(bcx, vid, ref_expr.id))
             }
             ast::def_struct(def_id) => {
@@ -280,7 +280,7 @@ pub fn trans_fn_ref_with_vtables(
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        assert def_id.crate == ast::local_crate;
+        fail_unless!(def_id.crate == ast::local_crate);
 
         let mut (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,
@@ -704,7 +704,7 @@ pub fn trans_arg_expr(bcx: block,
         // FIXME(#3548) use the adjustments table
         match autoref_arg {
             DoAutorefArg => {
-                assert !bcx.ccx().maps.moves_map.contains_key(&arg_expr.id);
+                fail_unless!(!bcx.ccx().maps.moves_map.contains_key(&arg_expr.id));
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
@@ -722,8 +722,8 @@ pub fn trans_arg_expr(bcx: block,
                     ast::by_val => {
                         // NB: avoid running the take glue.
 
-                        assert !bcx.ccx().maps.moves_map.contains_key(
-                            &arg_expr.id);
+                        fail_unless!(!bcx.ccx().maps.moves_map.contains_key(
+                            &arg_expr.id));
                         val = arg_datum.to_value_llval(bcx);
                     }
 

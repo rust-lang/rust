@@ -14,7 +14,7 @@ fn add(n: int) -> @fn(int) -> int {
 }
 
 pub fn main() {
-      assert add(3)(4) == 7;
+      fail_unless!(add(3)(4) == 7);
       let add3 : fn(int)->int = add(3);
-      assert add3(4) == 7;
+      fail_unless!(add3(4) == 7);
 }

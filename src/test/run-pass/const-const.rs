@@ -12,5 +12,5 @@ const a: int = 1;
 const b: int = a + 2;
 
 pub fn main() {
-    assert b == 3;
+    fail_unless!(b == 3);
 }

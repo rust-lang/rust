@@ -129,11 +129,11 @@ priv impl<T> cat<T> {
 pub fn main() {
     let mut nyan: cat<~str> = cat::new(0, 2, ~"nyan");
     for uint::range(1, 5) |_| { nyan.speak(); }
-    assert(*nyan.find(&1).unwrap() == ~"nyan");
-    assert(nyan.find(&10) == None);
+    fail_unless!((*nyan.find(&1).unwrap() == ~"nyan"));
+    fail_unless!((nyan.find(&10) == None));
     let mut spotty: cat<cat_type> = cat::new(2, 57, tuxedo);
     for uint::range(0, 6) |_| { spotty.speak(); }
-    assert(spotty.len() == 8);
-    assert(spotty.contains_key(&2));
-    assert(spotty.get(&3) == &tuxedo);
+    fail_unless!((spotty.len() == 8));
+    fail_unless!((spotty.contains_key(&2)));
+    fail_unless!((spotty.get(&3) == &tuxedo));
 }

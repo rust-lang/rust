@@ -848,14 +848,14 @@ fn test_add_wrapper() {
 fn test_future_result() {
     let mut result = None;
     do task().future_result(|+r| { result = Some(r); }).spawn { }
-    assert option::unwrap(result).recv() == Success;
+    fail_unless!(option::unwrap(result).recv() == Success);
 
     result = None;
     do task().future_result(|+r|
         { result = Some(r); }).unlinked().spawn {
         fail!();
     }
-    assert option::unwrap(result).recv() == Failure;
+    fail_unless!(option::unwrap(result).recv() == Failure);
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -901,7 +901,7 @@ fn test_spawn_sched() {
 
         do spawn_sched(SingleThreaded) {
             let child_sched_id = unsafe { rt::rust_get_sched_id() };
-            assert parent_sched_id != child_sched_id;
+            fail_unless!(parent_sched_id != child_sched_id);
 
             if (i == 0) {
                 ch.send(());
@@ -929,8 +929,8 @@ fn test_spawn_sched_childs_on_default_sched() {
         do spawn {
             let ch = ch.f.swap_unwrap();
             let child_sched_id = unsafe { rt::rust_get_sched_id() };
-            assert parent_sched_id != child_sched_id;
-            assert child_sched_id == default_id;
+            fail_unless!(parent_sched_id != child_sched_id);
+            fail_unless!(child_sched_id == default_id);
             ch.send(());
         };
     };
@@ -1022,7 +1022,7 @@ fn avoid_copying_the_body(spawnfn: &fn(v: ~fn())) {
     }
 
     let x_in_child = p.recv();
-    assert x_in_parent == x_in_child;
+    fail_unless!(x_in_parent == x_in_child);
 }
 
 #[test]
@@ -1177,7 +1177,7 @@ fn test_sched_thread_per_core() {
         unsafe {
             let cores = rt::rust_num_threads();
             let reported_threads = rt::rust_sched_threads();
-            assert(cores as uint == reported_threads as uint);
+            fail_unless!((cores as uint == reported_threads as uint));
             chan.send(());
         }
     }
@@ -1192,9 +1192,9 @@ fn test_spawn_thread_on_demand() {
     do spawn_sched(ManualThreads(2)) || {
         unsafe {
             let max_threads = rt::rust_sched_threads();
-            assert(max_threads as int == 2);
+            fail_unless!((max_threads as int == 2));
             let running_threads = rt::rust_sched_current_nonlazy_threads();
-            assert(running_threads as int == 1);
+            fail_unless!((running_threads as int == 1));
 
             let (port2, chan2) = comm::stream();
 
@@ -1203,7 +1203,7 @@ fn test_spawn_thread_on_demand() {
             }
 
             let running_threads2 = rt::rust_sched_current_nonlazy_threads();
-            assert(running_threads2 as int == 2);
+            fail_unless!((running_threads2 as int == 2));
 
             port2.recv();
             chan.send(());

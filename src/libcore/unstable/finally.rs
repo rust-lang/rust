@@ -57,11 +57,11 @@ fn test_success() {
     do (|| {
         i = 10;
     }).finally {
-        assert !failing();
-        assert i == 10;
+        fail_unless!(!failing());
+        fail_unless!(i == 10);
         i = 20;
     }
-    assert i == 20;
+    fail_unless!(i == 20);
 }
 
 #[test]
@@ -73,8 +73,8 @@ fn test_fail() {
         i = 10;
         fail!();
     }).finally {
-        assert failing();
-        assert i == 10;
+        fail_unless!(failing());
+        fail_unless!(i == 10);
     }
 }
 
@@ -82,7 +82,7 @@ fn test_fail() {
 fn test_retval() {
     let closure: &fn() -> int = || 10;
     let i = do closure.finally { };
-    assert i == 10;
+    fail_unless!(i == 10);
 }
 
 #[test]

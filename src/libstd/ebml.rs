@@ -182,22 +182,22 @@ pub mod reader {
     pub fn doc_as_str(d: Doc) -> ~str { str::from_bytes(doc_data(d)) }
 
     pub fn doc_as_u8(d: Doc) -> u8 {
-        assert d.end == d.start + 1u;
+        fail_unless!(d.end == d.start + 1u);
         (*d.data)[d.start]
     }
 
     pub fn doc_as_u16(d: Doc) -> u16 {
-        assert d.end == d.start + 2u;
+        fail_unless!(d.end == d.start + 2u);
         io::u64_from_be_bytes(*d.data, d.start, 2u) as u16
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
-        assert d.end == d.start + 4u;
+        fail_unless!(d.end == d.start + 4u);
         io::u64_from_be_bytes(*d.data, d.start, 4u) as u32
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
-        assert d.end == d.start + 8u;
+        fail_unless!(d.end == d.start + 8u);
         io::u64_from_be_bytes(*d.data, d.start, 8u)
     }
 
@@ -550,7 +550,7 @@ pub mod writer {
     priv impl Encoder {
         // used internally to emit things like the vector length and so on
         fn _emit_tagged_uint(&self, t: EbmlEncoderTag, v: uint) {
-            assert v <= 0xFFFF_FFFF_u;
+            fail_unless!(v <= 0xFFFF_FFFF_u);
             self.wr_tagged_u32(t as uint, v as u32);
         }
 
@@ -694,7 +694,7 @@ mod tests {
             let deser = reader::Decoder(ebml_doc);
             let v1 = serialize::Decodable::decode(&deser);
             debug!("v1 == %?", v1);
-            assert v == v1;
+            fail_unless!(v == v1);
         }
 
         test_v(Some(22));

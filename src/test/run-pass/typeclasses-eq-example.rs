@@ -46,13 +46,13 @@ impl Equal for ColorTree {
 }
 
 pub fn main() {
-    assert cyan.isEq(cyan);
-    assert magenta.isEq(magenta);
-    assert !cyan.isEq(yellow);
-    assert !magenta.isEq(cyan);
+    fail_unless!(cyan.isEq(cyan));
+    fail_unless!(magenta.isEq(magenta));
+    fail_unless!(!cyan.isEq(yellow));
+    fail_unless!(!magenta.isEq(cyan));
 
-    assert leaf(cyan).isEq(leaf(cyan));
-    assert !leaf(cyan).isEq(leaf(yellow));
+    fail_unless!(leaf(cyan).isEq(leaf(cyan)));
+    fail_unless!(!leaf(cyan).isEq(leaf(yellow)));
 
     assert branch(@leaf(magenta), @leaf(cyan))
         .isEq(branch(@leaf(magenta), @leaf(cyan)));

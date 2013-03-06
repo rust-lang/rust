@@ -378,43 +378,43 @@ pub mod test {
     #[test]
     pub fn bin_crate_type_attr_results_in_bin_output() {
         let crate = make_crate(true, false);
-        assert !building_library(unknown_crate, crate, false);
+        fail_unless!(!building_library(unknown_crate, crate, false));
     }
 
     #[test]
     pub fn lib_crate_type_attr_results_in_lib_output() {
         let crate = make_crate(false, true);
-        assert building_library(unknown_crate, crate, false);
+        fail_unless!(building_library(unknown_crate, crate, false));
     }
 
     #[test]
     pub fn bin_option_overrides_lib_crate_type() {
         let crate = make_crate(false, true);
-        assert !building_library(bin_crate, crate, false);
+        fail_unless!(!building_library(bin_crate, crate, false));
     }
 
     #[test]
     pub fn lib_option_overrides_bin_crate_type() {
         let crate = make_crate(true, false);
-        assert building_library(lib_crate, crate, false);
+        fail_unless!(building_library(lib_crate, crate, false));
     }
 
     #[test]
     pub fn bin_crate_type_is_default() {
         let crate = make_crate(false, false);
-        assert !building_library(unknown_crate, crate, false);
+        fail_unless!(!building_library(unknown_crate, crate, false));
     }
 
     #[test]
     pub fn test_option_overrides_lib_crate_type() {
         let crate = make_crate(false, true);
-        assert !building_library(unknown_crate, crate, true);
+        fail_unless!(!building_library(unknown_crate, crate, true));
     }
 
     #[test]
     pub fn test_option_does_not_override_requested_lib_type() {
         let crate = make_crate(false, false);
-        assert building_library(lib_crate, crate, true);
+        fail_unless!(building_library(lib_crate, crate, true));
     }
 }
 

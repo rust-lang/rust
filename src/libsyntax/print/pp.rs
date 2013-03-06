@@ -117,7 +117,7 @@ pub fn tok_str(++t: token) -> ~str {
 pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
                lim: uint) -> ~str {
     let n = vec::len(toks);
-    assert (n == vec::len(szs));
+    fail_unless!((n == vec::len(szs)));
     let mut i = left;
     let mut L = lim;
     let mut s = ~"[";
@@ -369,12 +369,12 @@ pub impl Printer {
         } else {
             self.top += 1u;
             self.top %= self.buf_len;
-            assert (self.top != self.bottom);
+            fail_unless!((self.top != self.bottom));
         }
         self.scan_stack[self.top] = x;
     }
     fn scan_pop(&mut self) -> uint {
-        assert (!self.scan_stack_empty);
+        fail_unless!((!self.scan_stack_empty));
         let x = self.scan_stack[self.top];
         if self.top == self.bottom {
             self.scan_stack_empty = true;
@@ -382,11 +382,11 @@ pub impl Printer {
         return x;
     }
     fn scan_top(&mut self) -> uint {
-        assert (!self.scan_stack_empty);
+        fail_unless!((!self.scan_stack_empty));
         return self.scan_stack[self.top];
     }
     fn scan_pop_bottom(&mut self) -> uint {
-        assert (!self.scan_stack_empty);
+        fail_unless!((!self.scan_stack_empty));
         let x = self.scan_stack[self.bottom];
         if self.top == self.bottom {
             self.scan_stack_empty = true;
@@ -396,7 +396,7 @@ pub impl Printer {
     fn advance_right(&mut self) {
         self.right += 1u;
         self.right %= self.buf_len;
-        assert (self.right != self.left);
+        fail_unless!((self.right != self.left));
     }
     fn advance_left(&mut self, ++x: token, L: int) {
         debug!("advnce_left ~[%u,%u], sizeof(%u)=%d", self.left, self.right,
@@ -405,7 +405,7 @@ pub impl Printer {
             self.print(x, L);
             match x {
               BREAK(b) => self.left_total += b.blank_space,
-              STRING(_, len) => { assert (len == L); self.left_total += len; }
+              STRING(_, len) => { fail_unless!((len == L)); self.left_total += len; }
               _ => ()
             }
             if self.left != self.right {
@@ -494,7 +494,7 @@ pub impl Printer {
           }
           END => {
             debug!("print END -> pop END");
-            assert (self.print_stack.len() != 0u);
+            fail_unless!((self.print_stack.len() != 0u));
             self.print_stack.pop();
           }
           BREAK(b) => {
@@ -528,8 +528,8 @@ pub impl Printer {
           }
           STRING(s, len) => {
             debug!("print STRING(%s)", *s);
-            assert (L == len);
-            // assert L <= space;
+            fail_unless!((L == len));
+            // fail_unless!(L <= space);
             self.space -= len;
             self.print_str(*s);
           }

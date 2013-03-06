@@ -17,12 +17,12 @@ pub fn main() {
     log(debug, x);
     log(debug, y);
 
-    assert x[0] == 'h' as u8;
-    assert x[4] == 'o' as u8;
+    fail_unless!(x[0] == 'h' as u8);
+    fail_unless!(x[4] == 'o' as u8);
 
     let z : &str = &"thing";
-    assert v == x;
-    assert x != z;
+    fail_unless!(v == x);
+    fail_unless!(x != z);
 
     let a = &"aaaa";
     let b = &"bbbb";
@@ -32,27 +32,27 @@ pub fn main() {
 
     log(debug, a);
 
-    assert a < b;
-    assert a <= b;
-    assert a != b;
-    assert b >= a;
-    assert b > a;
+    fail_unless!(a < b);
+    fail_unless!(a <= b);
+    fail_unless!(a != b);
+    fail_unless!(b >= a);
+    fail_unless!(b > a);
 
     log(debug, b);
 
-    assert a < c;
-    assert a <= c;
-    assert a != c;
-    assert c >= a;
-    assert c > a;
+    fail_unless!(a < c);
+    fail_unless!(a <= c);
+    fail_unless!(a != c);
+    fail_unless!(c >= a);
+    fail_unless!(c > a);
 
     log(debug, c);
 
-    assert c < cc;
-    assert c <= cc;
-    assert c != cc;
-    assert cc >= c;
-    assert cc > c;
+    fail_unless!(c < cc);
+    fail_unless!(c <= cc);
+    fail_unless!(c != cc);
+    fail_unless!(cc >= c);
+    fail_unless!(cc > c);
 
     log(debug, cc);
 }

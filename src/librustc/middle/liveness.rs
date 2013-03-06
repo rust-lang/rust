@@ -777,7 +777,7 @@ pub impl Liveness {
     fn live_on_entry(&self, ln: LiveNode, var: Variable)
         -> Option<LiveNodeKind> {
 
-        assert ln.is_valid();
+        fail_unless!(ln.is_valid());
         let reader = self.users[self.idx(ln, var)].reader;
         if reader.is_valid() {Some(self.ir.lnk(reader))} else {None}
     }
@@ -792,14 +792,14 @@ pub impl Liveness {
     }
 
     fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
-        assert ln.is_valid();
+        fail_unless!(ln.is_valid());
         self.users[self.idx(ln, var)].used
     }
 
     fn assigned_on_entry(&self, ln: LiveNode, var: Variable)
         -> Option<LiveNodeKind> {
 
-        assert ln.is_valid();
+        fail_unless!(ln.is_valid());
         let writer = self.users[self.idx(ln, var)].writer;
         if writer.is_valid() {Some(self.ir.lnk(writer))} else {None}
     }
@@ -1493,11 +1493,11 @@ pub impl Liveness {
         // repeat until fixed point is reached:
         while self.merge_from_succ(ln, body_ln, first_merge) {
             first_merge = false;
-            assert cond_ln == self.propagate_through_opt_expr(cond, ln);
+            fail_unless!(cond_ln == self.propagate_through_opt_expr(cond, ln));
             assert body_ln == self.with_loop_nodes(expr.id, succ, ln,
             || {
                 self.propagate_through_block(body, cond_ln)
-            });
+            }));
         }
 
         cond_ln

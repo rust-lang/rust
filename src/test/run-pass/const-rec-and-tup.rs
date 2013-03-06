@@ -20,6 +20,6 @@ const y : AnotherPair = AnotherPair{ x: (0xf0f0f0f0_f0f0f0f0,
 
 pub fn main() {
     let (p, _) = y.x;
-    assert p == 0xf0f0f0f0_f0f0f0f0;
+    fail_unless!(p == 0xf0f0f0f0_f0f0f0f0);
     io::println(fmt!("0x%x", p as uint));
 }

@@ -14,5 +14,5 @@ pub fn main() {
     let (p, c) = stream();
     c.send(~100);
     let v = p.recv();
-    assert v == ~100;
+    fail_unless!(v == ~100);
 }

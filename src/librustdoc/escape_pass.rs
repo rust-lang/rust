@@ -27,5 +27,5 @@ fn escape(s: &str) -> ~str {
 fn should_escape_backslashes() {
     let s = ~"\\n";
     let r = escape(s);
-    assert r == ~"\\\\n";
+    fail_unless!(r == ~"\\\\n");
 }

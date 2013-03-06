@@ -10,13 +10,13 @@
 
 
 
-fn incr(x: &mut int) -> bool { *x += 1; assert (false); return false; }
+fn incr(x: &mut int) -> bool { *x += 1; fail_unless!((false)); return false; }
 
 pub fn main() {
     let x = 1 == 2 || 3 == 3;
-    assert (x);
+    fail_unless!((x));
     let mut y: int = 10;
     log(debug, x || incr(&mut y));
-    assert (y == 10);
-    if true && x { assert (true); } else { assert (false); }
+    fail_unless!((y == 10));
+    if true && x { fail_unless!((true)); } else { fail_unless!((false)); }
 }

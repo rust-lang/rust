@@ -25,6 +25,6 @@ impl Bar for aux::A {
 
 pub fn main() {
     let a = &aux::A { x: 3 };
-    assert a.g() == 10;
+    fail_unless!(a.g() == 10);
 }
 

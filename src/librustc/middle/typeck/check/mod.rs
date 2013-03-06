@@ -1806,7 +1806,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         if check_completeness {
             // Make sure the programmer specified all the fields.
-            assert fields_found <= field_types.len();
+            fail_unless!(fields_found <= field_types.len());
             if fields_found < field_types.len() {
                 let mut missing_fields = ~[];
                 for field_types.each |class_field| {
@@ -3175,8 +3175,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
           let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
-          assert tcx.intrinsic_defs.contains_key(&tydesc_name);
-          assert ccx.tcx.intrinsic_defs.contains_key(&ty_visitor_name);
+          fail_unless!(tcx.intrinsic_defs.contains_key(&tydesc_name));
+          fail_unless!(ccx.tcx.intrinsic_defs.contains_key(&ty_visitor_name));
           let (_, tydesc_ty) = tcx.intrinsic_defs.get(&tydesc_name);
           let (_, visitor_trait) = tcx.intrinsic_defs.get(&ty_visitor_name);
           let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {ty: tydesc_ty,

@@ -10,8 +10,8 @@
 
 pub fn main() {
     let f: fn((int,int)) = |(x, y)| {
-        assert x == 1;
-        assert y == 2;
+        fail_unless!(x == 1);
+        fail_unless!(y == 2);
     };
     f((1, 2));
 }

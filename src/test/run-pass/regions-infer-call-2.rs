@@ -19,5 +19,5 @@ fn has_one(x: &a/int) -> int {
 }
 
 pub fn main() {
-    assert has_one(&2) == 22;
+    fail_unless!(has_one(&2) == 22);
 }

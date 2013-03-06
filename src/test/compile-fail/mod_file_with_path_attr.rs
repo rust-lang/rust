@@ -12,5 +12,5 @@
 mod m; //~ ERROR not_a_real_file.rs
 
 fn main() {
-    assert m::foo() == 10;
+    fail_unless!(m::foo() == 10);
 }

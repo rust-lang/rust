@@ -12,7 +12,7 @@
 // succeed at runtime
 
 fn enum_chars(start: u8, end: u8) -> ~[char] {
-    assert start < end;
+    fail_unless!(start < end);
     let mut i = start;
     let mut r = ~[];
     while i <= end { r.push(i as char); i += 1u as u8; }
@@ -20,7 +20,7 @@ fn enum_chars(start: u8, end: u8) -> ~[char] {
 }
 
 fn enum_uints(start: uint, end: uint) -> ~[uint] {
-    assert start < end;
+    fail_unless!(start < end);
     let mut i = start;
     let mut r = ~[];
     while i <= end { r.push(i); i += 1u; }
@@ -34,6 +34,6 @@ pub fn main() {
 
     let ps = vec::zip(chars, ints);
 
-    assert (ps.head() == &('a', 1u));
-    assert (ps.last() == &(j as char, 10u));
+    fail_unless!((ps.head() == &('a', 1u)));
+    fail_unless!((ps.last() == &(j as char, 10u)));
 }
