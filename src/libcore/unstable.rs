@@ -228,7 +228,7 @@ fn LittleLock() -> LittleLock {
 
 pub impl LittleLock {
     #[inline(always)]
-    unsafe fn lock<T>(f: fn() -> T) -> T {
+    unsafe fn lock<T>(&self, f: fn() -> T) -> T {
         struct Unlock {
             l: rust_little_lock,
             drop {
@@ -280,7 +280,7 @@ pub impl<T:Owned> Exclusive<T> {
     // accessing the provided condition variable) are prohibited while inside
     // the exclusive. Supporting that is a work in progress.
     #[inline(always)]
-    unsafe fn with<U>(f: fn(x: &mut T) -> U) -> U {
+    unsafe fn with<U>(&self, f: fn(x: &mut T) -> U) -> U {
         unsafe {
             let rec = get_shared_mutable_state(&self.x);
             do (*rec).lock.lock {
@@ -297,7 +297,7 @@ pub impl<T:Owned> Exclusive<T> {
     }
 
     #[inline(always)]
-    unsafe fn with_imm<U>(f: fn(x: &T) -> U) -> U {
+    unsafe fn with_imm<U>(&self, f: fn(x: &T) -> U) -> U {
         do self.with |x| {
             f(cast::transmute_immut(x))
         }

@@ -253,7 +253,7 @@ pub fn error(msg: ~str) {
 }
 
 pub fn hash(data: ~str) -> ~str {
-    let hasher = hash::default_state();
+    let hasher = &hash::default_state();
 
     hasher.write_str(data);
     hasher.result_str()
