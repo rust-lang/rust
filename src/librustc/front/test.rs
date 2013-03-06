@@ -178,12 +178,14 @@ fn is_test_fn(i: @ast::item) -> bool {
 
     fn has_test_signature(i: @ast::item) -> bool {
         match &i.node {
-          &ast::item_fn(ref decl, _, ref tps, _) => {
+          &ast::item_fn(ref decl, _, ref generics, _) => {
             let no_output = match decl.output.node {
                 ast::ty_nil => true,
                 _ => false
             };
-            decl.inputs.is_empty() && no_output && tps.is_empty()
+            decl.inputs.is_empty()
+                && no_output
+                && !generics.is_parameterized()
           }
           _ => false
         }
