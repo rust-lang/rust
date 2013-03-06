@@ -143,9 +143,9 @@ fn find_library_crate_aux(
 
 pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
-    match vec::last_opt(name_items) {
+    match name_items.last_opt() {
         Some(i) => {
-            match attr::get_meta_item_value_str(i) {
+            match attr::get_meta_item_value_str(*i) {
                 Some(n) => n,
                 // FIXME (#2406): Probably want a warning here since the user
                 // is using the wrong type of meta item.

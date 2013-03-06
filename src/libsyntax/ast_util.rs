@@ -31,7 +31,7 @@ pub pure fn path_name_i(idents: &[ident], intr: @token::ident_interner)
 }
 
 
-pub pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
+pub pure fn path_to_ident(p: @path) -> ident { copy *p.idents.last() }
 
 pub pure fn local_def(id: node_id) -> def_id {
     ast::def_id { crate: local_crate, node: id }

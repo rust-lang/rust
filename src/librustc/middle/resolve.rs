@@ -1438,7 +1438,7 @@ pub impl Resolver {
                                 type_value_ns => AnyNS
                             };
 
-                            let source_ident = full_path.idents.last();
+                            let source_ident = *full_path.idents.last();
                             let subclass = @SingleImport(binding,
                                                          source_ident,
                                                          ns);
@@ -4087,7 +4087,7 @@ pub impl Resolver {
 
                 // First, check to see whether the name is a primitive type.
                 if path.idents.len() == 1 {
-                    let name = path.idents.last();
+                    let name = *path.idents.last();
 
                     match self.primitive_type_table
                             .primitive_types
@@ -4110,7 +4110,7 @@ pub impl Resolver {
                                 debug!("(resolving type) resolved `%s` to \
                                         type %?",
                                        *self.session.str_of(
-                                            path.idents.last()),
+                                            *path.idents.last()),
                                        def);
                                 result_def = Some(def);
                             }
@@ -4296,7 +4296,7 @@ pub impl Resolver {
                                 path.span,
                                 fmt!("not an enum variant: %s",
                                      *self.session.str_of(
-                                         path.idents.last())));
+                                         *path.idents.last())));
                         }
                         None => {
                             self.session.span_err(path.span,
@@ -4418,7 +4418,7 @@ pub impl Resolver {
                                                      namespace);
         }
 
-        return self.resolve_identifier(path.idents.last(),
+        return self.resolve_identifier(*path.idents.last(),
                                        namespace,
                                        check_ribs,
                                        path.span);
@@ -4552,7 +4552,7 @@ pub impl Resolver {
             }
         }
 
-        let name = path.idents.last();
+        let name = *path.idents.last();
         match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace,
@@ -4601,7 +4601,7 @@ pub impl Resolver {
             }
         }
 
-        let name = path.idents.last();
+        let name = *path.idents.last();
         match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace,

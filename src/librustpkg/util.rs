@@ -57,7 +57,7 @@ pub fn parse_name(id: ~str) -> result::Result<~str, ~str> {
         }
     }
 
-    result::Ok(parts.last())
+    result::Ok(copy *parts.last())
 }
 
 struct ListenerFn {
@@ -516,9 +516,11 @@ pub fn get_pkg(id: ~str,
         return result::Err(~"package not found");
     }
 
-    result::Ok(sort::merge_sort(possibs, |v1, v2| {
+    let possibs = sort::merge_sort(possibs, |v1, v2| {
         v1.vers <= v2.vers
-    }).last())
+    });
+
+    result::Ok(copy *possibs.last())
 }
 
 pub fn add_pkg(pkg: &Package) -> bool {
