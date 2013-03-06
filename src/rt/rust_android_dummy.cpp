@@ -4,6 +4,7 @@
 
 #include "rust_android_dummy.h"
 #include <math.h>
+#include <errno.h>
 
 #ifdef __ANDROID__
 
@@ -13,6 +14,9 @@ char **backtrace_symbols(void *const *array, int size) { return 0; }
 
 void backtrace_symbols_fd (void *const *array, int size, int fd) {}
 
+extern "C" volatile int* __errno_location() {
+    return &errno;
+}
 
 extern "C" float log2f(float f)
 {
