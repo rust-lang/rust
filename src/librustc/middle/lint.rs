@@ -498,7 +498,12 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
 // not traverse into subitems, since that is handled by the outer
 // lint visitor.
 fn item_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
-    visit::mk_vt(@visit::Visitor {visit_item: |_i, _e, _v| { },.. **v})
+    visit::mk_vt(@visit::Visitor {visit_item: |_i, _e, _v| { },
+        .. **(ty_stopping_visitor(v))})
+}
+
+fn ty_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
+    visit::mk_vt(@visit::Visitor {visit_ty: |_t, _e, _v| { },.. **v})
 }
 
 fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
