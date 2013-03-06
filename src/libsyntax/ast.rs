@@ -386,7 +386,6 @@ pub enum vstore {
 #[auto_decode]
 #[deriving_eq]
 pub enum expr_vstore {
-    // FIXME (#3469): Change uint to @expr (actually only constant exprs)
     expr_vstore_fixed(Option<uint>),   // [1,2,3,4]
     expr_vstore_uniq,                  // ~[1,2,3,4]
     expr_vstore_box,                   // @[1,2,3,4]
