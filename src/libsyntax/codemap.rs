@@ -217,7 +217,6 @@ pub struct FileLines {
 pub enum FileSubstr {
     pub FssNone,
     pub FssInternal(span),
-    pub FssExternal({filename: ~str, line: uint, col: CharPos})
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
@@ -348,12 +347,6 @@ pub impl CodeMap {
             FssInternal(sp) =>
             self.lookup_char_pos_adj(
                 sp.lo + (pos - loc.file.start_pos)),
-            FssExternal(ref eloc) =>
-            LocWithOpt {
-                filename: /* FIXME (#2543) */ copy (*eloc).filename,
-                line: (*eloc).line + loc.line - 1u,
-                col: if loc.line == 1 {eloc.col + loc.col} else {loc.col},
-                file: None}
         }
     }
 
@@ -368,7 +361,6 @@ pub impl CodeMap {
                     expn_info: sp.expn_info
                 })
             }
-            FssExternal(_) => sp
         }
     }
 

@@ -26,9 +26,9 @@ use core::prelude::*;
 /// The base price of a muffin on a non-holiday
 const price_of_a_muffin: float = 70f;
 
-type WaitPerson = {
+struct WaitPerson {
     hair_color: ~str
-};
+}
 
 /// The type of things that produce omnomnom
 enum OmNomNomy {

@@ -36,13 +36,6 @@ use syntax::{ast, visit};
 
 pub type parent = Option<ast::node_id>;
 
-/* Records the parameter ID of a region name. */
-pub type binding = {
-    node_id: ast::node_id,
-    name: ~str,
-    br: ty::bound_region
-};
-
 /**
 Encodes the bounding lifetime for a given AST node:
 
