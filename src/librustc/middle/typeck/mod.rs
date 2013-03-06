@@ -150,12 +150,7 @@ pub enum vtable_origin {
       The first uint is the param number (identifying T in the example),
       and the second is the bound number (identifying baz)
      */
-    vtable_param(uint, uint),
-    /*
-      Dynamic vtable, comes from something known to have a trait
-      type. def_id refers to the trait item, tys are the substs
-     */
-    vtable_trait(ast::def_id, ~[ty::t]),
+    vtable_param(uint, uint)
 }
 
 pub impl vtable_origin {
@@ -170,12 +165,6 @@ pub impl vtable_origin {
 
             vtable_param(x, y) => {
                 fmt!("vtable_param(%?, %?)", x, y)
-            }
-
-            vtable_trait(def_id, ref tys) => {
-                fmt!("vtable_trait(%?:%s, %?)",
-                     def_id, ty::item_path_str(tcx, def_id),
-                     tys.map(|t| ppaux::ty_to_str(tcx, *t)))
             }
         }
     }

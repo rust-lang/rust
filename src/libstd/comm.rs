@@ -25,6 +25,27 @@ pub struct DuplexStream<T, U> {
     priv port: Port<U>,
 }
 
+// Allow these methods to be used without import:
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub impl<T:Owned,U:Owned> DuplexStream<T, U> {
+    fn send(x: T) {
+        self.chan.send(x)
+    }
+    fn try_send(x: T) -> bool {
+        self.chan.try_send(x)
+    }
+    fn recv() -> U {
+        self.port.recv()
+    }
+    fn try_recv() -> Option<U> {
+        self.port.try_recv()
+    }
+    pure fn peek() -> bool {
+        self.port.peek()
+    }
+}
+
 impl<T:Owned,U:Owned> GenericChan<T> for DuplexStream<T, U> {
     fn send(&self, x: T) {
         self.chan.send(x)

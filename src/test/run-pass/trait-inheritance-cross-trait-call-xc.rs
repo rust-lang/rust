@@ -13,7 +13,9 @@
 
 extern mod aux(name = "trait_inheritance_cross_trait_call_xc_aux");
 
-trait Bar : aux::Foo {
+use aux::Foo;
+
+trait Bar : Foo {
     fn g() -> int;
 }
 

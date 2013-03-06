@@ -35,6 +35,7 @@ use std::net::url;
 use std::{json, semver, getopts};
 use syntax::codemap::spanned;
 use syntax::{ast, attr, codemap, diagnostic, parse, visit};
+use core::container::Map;
 
 mod usage;
 mod util;

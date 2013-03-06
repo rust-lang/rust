@@ -16,8 +16,16 @@ fn make_gc1(gc: get_ctxt/&a) -> get_ctxt/&b  {
     return gc; //~ ERROR mismatched types: expected `@get_ctxt/&b` but found `@get_ctxt/&a`
 }
 
-fn make_gc2(gc: get_ctxt/&a) -> get_ctxt/&b  {
-    return @gc as get_ctxt; //~ ERROR cannot infer an appropriate lifetime
+struct Foo {
+    r: &'self uint
+}
+
+impl get_ctxt/&self for Foo/&self {
+    fn get_ctxt() -> &self/uint { self.r }
+}
+
+fn make_gc2(foo: Foo/&a) -> get_ctxt/&b  {
+    return @foo as get_ctxt; //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {
