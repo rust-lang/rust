@@ -2309,10 +2309,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         check_expr(fcx, e);
         fcx.write_nil(id);
       }
-      ast::expr_assert(e) => {
-        bot = check_expr_has_type(fcx, e, ty::mk_bool(tcx));
-        fcx.write_nil(id);
-      }
       ast::expr_copy(a) => {
         bot = check_expr_with_opt_hint(fcx, a, expected);
         fcx.write_ty(id, fcx.expr_ty(a));

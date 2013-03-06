@@ -1427,10 +1427,6 @@ pub fn print_expr(s: @ps, &&expr: @ast::expr) {
           }
         }
       }
-      ast::expr_assert(expr) => {
-        word_nbsp(s, ~"assert");
-        print_expr(s, expr);
-      }
       ast::expr_mac(ref m) => print_mac(s, (*m)),
       ast::expr_paren(e) => {
           popen(s);

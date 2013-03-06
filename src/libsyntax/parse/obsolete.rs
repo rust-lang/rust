@@ -51,6 +51,7 @@ pub enum ObsoleteSyntax {
     ObsoleteTraitImplVisibility,
     ObsoleteRecordType,
     ObsoleteRecordPattern,
+    ObsoleteAssertion,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -154,6 +155,10 @@ pub impl Parser {
             ObsoleteRecordPattern => (
                 "structural record pattern",
                 "use a structure instead"
+            ),
+            ObsoleteAssertion => (
+                "assertion",
+                "use `fail_unless!()` instead"
             ),
         };
 

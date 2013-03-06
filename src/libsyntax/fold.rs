@@ -561,7 +561,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 fld.fold_expr(e)
             )
         }
-        expr_assert(e) => expr_assert(fld.fold_expr(e)),
         expr_mac(ref mac) => expr_mac(fold_mac((*mac))),
         expr_struct(path, ref fields, maybe_expr) => {
             expr_struct(
