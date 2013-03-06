@@ -16,7 +16,7 @@ trait Stuff {
     fn printme();
 }
 
-impl Stuff for &Foo {
+impl Stuff for &self/Foo {
     fn printme() {
         io::println(fmt!("%d", self.x));
     }

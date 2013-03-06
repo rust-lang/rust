@@ -11,22 +11,22 @@
 // Here: foo is parameterized because it contains a method that
 // refers to self.
 
-trait foo {
-    fn self_int() -> &self/int;
+trait foo<'self> {
+    fn self_int() -> &'self int;
 
     fn any_int() -> &int;
 }
 
-struct with_foo {
-    f: foo
+struct with_foo<'self> {
+    f: foo<'self>
 }
 
 trait set_foo_foo {
-    fn set_foo(&mut self, f: foo);
+    fn set_foo(&mut self, f: @foo);
 }
 
-impl set_foo_foo for with_foo {
-    fn set_foo(&mut self, f: foo) {
+impl<'self> set_foo_foo for with_foo<'self> {
+    fn set_foo(&mut self, f: @foo) {
         self.f = f; //~ ERROR mismatched types: expected `@foo/&self` but found `@foo/&`
     }
 }

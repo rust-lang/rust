@@ -10,10 +10,10 @@
 
 enum ast {
     num(uint),
-    add(&ast, &ast)
+    add(&'self ast<'self>, &'self ast<'self>)
 }
 
-fn mk_add_ok(x: &a/ast, y: &a/ast, z: &ast) -> ast/&a {
+fn mk_add_ok(x: &'a ast<'a>, y: &'a ast<'a>, z: &ast) -> ast<'a> {
     add(x, y)
 }
 

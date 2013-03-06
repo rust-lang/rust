@@ -95,7 +95,8 @@ use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
-use middle::typeck::rscope::{anon_rscope, binding_rscope, bound_self_region};
+use middle::typeck::rscope::{binding_rscope, bound_self_region};
+use middle::typeck::rscope::{RegionError};
 use middle::typeck::rscope::{in_binding_rscope, region_scope, type_rscope};
 use middle::typeck::rscope;
 use middle::typeck::{isr_alist, lookup_def_ccx, method_map_entry};
@@ -649,9 +650,11 @@ impl AstConv for FnCtxt {
 
 pub impl FnCtxt {
     fn infcx(&self) -> @mut infer::InferCtxt { self.inh.infcx }
-    fn search_in_scope_regions(&self,
-                               br: ty::bound_region)
-                            -> Result<ty::Region, ~str> {
+    fn search_in_scope_regions(
+        &self,
+        span: span,
+        br: ty::bound_region) -> Result<ty::Region, RegionError>
+    {
         let in_scope_regions = self.in_scope_regions;
         match in_scope_regions.find(br) {
             Some(r) => result::Ok(r),
@@ -660,8 +663,11 @@ pub impl FnCtxt {
                 if br == blk_br {
                     result::Ok(self.block_region())
                 } else {
-                    result::Err(fmt!("named region `%s` not in scope here",
-                                     bound_region_to_str(self.tcx(), br)))
+                    result::Err(RegionError {
+                        msg: fmt!("named region `%s` not in scope here",
+                                  bound_region_to_str(self.tcx(), br)),
+                        replacement: self.infcx().next_region_var_nb(span)
+                    })
                 }
             }
         }
@@ -669,23 +675,23 @@ pub impl FnCtxt {
 }
 
 impl region_scope for FnCtxt {
-    fn anon_region(&self, span: span) -> Result<ty::Region, ~str> {
+    fn anon_region(&self, span: span) -> Result<ty::Region, RegionError> {
         result::Ok(self.infcx().next_region_var_nb(span))
     }
-    fn self_region(&self, _span: span) -> Result<ty::Region, ~str> {
-        self.search_in_scope_regions(ty::br_self)
+    fn self_region(&self, span: span) -> Result<ty::Region, RegionError> {
+        self.search_in_scope_regions(span, ty::br_self)
     }
     fn named_region(&self,
-                    _span: span,
-                    id: ast::ident) -> Result<ty::Region, ~str> {
-        self.search_in_scope_regions(ty::br_named(id))
+                    span: span,
+                    id: ast::ident) -> Result<ty::Region, RegionError> {
+        self.search_in_scope_regions(span, ty::br_named(id))
     }
 }
 
 pub impl FnCtxt {
-    fn tag(@mut self) -> ~str { fmt!("%x", ptr::addr_of(&(*self)) as uint) }
+    fn tag(&self) -> ~str { fmt!("%x", ptr::addr_of(&(*self)) as uint) }
 
-    fn local_ty(@mut self, span: span, nid: ast::node_id) -> ty::t {
+    fn local_ty(&self, span: span, nid: ast::node_id) -> ty::t {
         match self.inh.locals.find(&nid) {
             Some(t) => t,
             None => {
@@ -696,7 +702,7 @@ pub impl FnCtxt {
         }
     }
 
-    fn expr_to_str(@mut self, expr: @ast::expr) -> ~str {
+    fn expr_to_str(&self, expr: @ast::expr) -> ~str {
         fmt!("expr(%?:%s)", expr.id,
              pprust::expr_to_str(expr, self.tcx().sess.intr()))
     }
@@ -706,13 +712,13 @@ pub impl FnCtxt {
     }
 
     #[inline(always)]
-    fn write_ty(@mut self, node_id: ast::node_id, ty: ty::t) {
+    fn write_ty(&self, node_id: ast::node_id, ty: ty::t) {
         debug!("write_ty(%d, %s) in fcx %s",
                node_id, ppaux::ty_to_str(self.tcx(), ty), self.tag());
         self.inh.node_types.insert(node_id, ty);
     }
 
-    fn write_substs(@mut self, node_id: ast::node_id, +substs: ty::substs) {
+    fn write_substs(&self, node_id: ast::node_id, +substs: ty::substs) {
         if !ty::substs_is_noop(&substs) {
             debug!("write_substs(%d, %s) in fcx %s",
                    node_id,
@@ -722,7 +728,7 @@ pub impl FnCtxt {
         }
     }
 
-    fn write_ty_substs(@mut self,
+    fn write_ty_substs(&self,
                        node_id: ast::node_id,
                        ty: ty::t,
                        +substs: ty::substs) {
@@ -731,7 +737,7 @@ pub impl FnCtxt {
         self.write_substs(node_id, substs);
     }
 
-    fn write_autoderef_adjustment(@mut self,
+    fn write_autoderef_adjustment(&self,
                                   node_id: ast::node_id,
                                   derefs: uint) {
         if derefs == 0 { return; }
@@ -743,33 +749,33 @@ pub impl FnCtxt {
         );
     }
 
-    fn write_adjustment(@mut self,
+    fn write_adjustment(&self,
                         node_id: ast::node_id,
                         adj: @ty::AutoAdjustment) {
         debug!("write_adjustment(node_id=%?, adj=%?)", node_id, adj);
         self.inh.adjustments.insert(node_id, adj);
     }
 
-    fn write_nil(@mut self, node_id: ast::node_id) {
+    fn write_nil(&self, node_id: ast::node_id) {
         self.write_ty(node_id, ty::mk_nil(self.tcx()));
     }
-    fn write_bot(@mut self, node_id: ast::node_id) {
+    fn write_bot(&self, node_id: ast::node_id) {
         self.write_ty(node_id, ty::mk_bot(self.tcx()));
     }
 
-    fn to_ty(@mut self, ast_t: @ast::Ty) -> ty::t {
+    fn to_ty(&self, ast_t: @ast::Ty) -> ty::t {
         ast_ty_to_ty(self, self, ast_t)
     }
 
-    fn expr_to_str(@mut self, expr: @ast::expr) -> ~str {
+    fn expr_to_str(&self, expr: @ast::expr) -> ~str {
         expr_repr(self.tcx(), expr)
     }
 
-    fn pat_to_str(@mut self, pat: @ast::pat) -> ~str {
+    fn pat_to_str(&self, pat: @ast::pat) -> ~str {
         pat_repr(self.tcx(), pat)
     }
 
-    fn expr_ty(@mut self, ex: @ast::expr) -> ty::t {
+    fn expr_ty(&self, ex: @ast::expr) -> ty::t {
         match self.inh.node_types.find(&ex.id) {
             Some(t) => t,
             None => {
@@ -779,7 +785,7 @@ pub impl FnCtxt {
             }
         }
     }
-    fn node_ty(@mut self, id: ast::node_id) -> ty::t {
+    fn node_ty(&self, id: ast::node_id) -> ty::t {
         match self.inh.node_types.find(&id) {
             Some(t) => t,
             None => {
@@ -792,7 +798,7 @@ pub impl FnCtxt {
             }
         }
     }
-    fn node_ty_substs(@mut self, id: ast::node_id) -> ty::substs {
+    fn node_ty_substs(&self, id: ast::node_id) -> ty::substs {
         match self.inh.node_type_substs.find(&id) {
             Some(ref ts) => (/*bad*/copy *ts),
             None => {
@@ -805,12 +811,12 @@ pub impl FnCtxt {
             }
         }
     }
-    fn opt_node_ty_substs(@mut self, id: ast::node_id) -> Option<ty::substs> {
+    fn opt_node_ty_substs(&self, id: ast::node_id) -> Option<ty::substs> {
         self.inh.node_type_substs.find(&id)
     }
 
 
-    fn mk_subty(@mut self,
+    fn mk_subty(&self,
                 a_is_expected: bool,
                 span: span,
                 sub: ty::t,
@@ -819,14 +825,14 @@ pub impl FnCtxt {
         infer::mk_subty(self.infcx(), a_is_expected, span, sub, sup)
     }
 
-    fn can_mk_subty(@mut self,
+    fn can_mk_subty(&self,
                     sub: ty::t,
                     sup: ty::t)
                  -> Result<(), ty::type_err> {
         infer::can_mk_subty(self.infcx(), sub, sup)
     }
 
-    fn mk_assignty(@mut self, expr: @ast::expr, sub: ty::t, sup: ty::t)
+    fn mk_assignty(&self, expr: @ast::expr, sub: ty::t, sup: ty::t)
                 -> Result<(), ty::type_err> {
         match infer::mk_coercety(self.infcx(), false, expr.span, sub, sup) {
             Ok(None) => result::Ok(()),
@@ -838,14 +844,14 @@ pub impl FnCtxt {
         }
     }
 
-    fn can_mk_assignty(@mut self,
+    fn can_mk_assignty(&self,
                        sub: ty::t,
                        sup: ty::t)
                     -> Result<(), ty::type_err> {
         infer::can_mk_coercety(self.infcx(), sub, sup)
     }
 
-    fn mk_eqty(@mut self,
+    fn mk_eqty(&self,
                a_is_expected: bool,
                span: span,
                sub: ty::t,
@@ -854,7 +860,7 @@ pub impl FnCtxt {
         infer::mk_eqty(self.infcx(), a_is_expected, span, sub, sup)
     }
 
-    fn mk_subr(@mut self,
+    fn mk_subr(&self,
                a_is_expected: bool,
                span: span,
                sub: ty::Region,
@@ -863,7 +869,7 @@ pub impl FnCtxt {
         infer::mk_subr(self.infcx(), a_is_expected, span, sub, sup)
     }
 
-    fn require_unsafe(@mut self, sp: span, op: ~str) {
+    fn require_unsafe(&self, sp: span, op: ~str) {
         match self.purity {
           ast::unsafe_fn => {/*ok*/}
           _ => {
@@ -873,7 +879,8 @@ pub impl FnCtxt {
           }
         }
     }
-    fn with_region_lb<R>(@mut self, lb: ast::node_id, f: fn() -> R) -> R {
+
+    fn with_region_lb<R>(@mut self, lb: ast::node_id, f: &fn() -> R) -> R {
         let old_region_lb = self.region_lb;
         self.region_lb = lb;
         let v = f();
@@ -881,7 +888,7 @@ pub impl FnCtxt {
         v
     }
 
-    fn region_var_if_parameterized(@mut self,
+    fn region_var_if_parameterized(&self,
                                    rp: Option<ty::region_variance>,
                                    span: span,
                                    lower_bound: ty::Region)
@@ -890,7 +897,7 @@ pub impl FnCtxt {
             |_rp| self.infcx().next_region_var_with_lb(span, lower_bound))
     }
 
-    fn type_error_message(@mut self,
+    fn type_error_message(&self,
                           sp: span,
                           mk_msg: &fn(~str) -> ~str,
                           actual_ty: ty::t,
@@ -898,7 +905,7 @@ pub impl FnCtxt {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
     }
 
-    fn report_mismatched_return_types(@mut self,
+    fn report_mismatched_return_types(&self,
                                       sp: span,
                                       e: ty::t,
                                       a: ty::t,
@@ -919,12 +926,12 @@ pub impl FnCtxt {
         }
     }
 
-    fn report_mismatched_types(@mut self,
+    fn report_mismatched_types(&self,
                                sp: span,
                                e: ty::t,
                                a: ty::t,
                                err: &ty::type_err) {
-            self.infcx().report_mismatched_types(sp, e, a, err)
+        self.infcx().report_mismatched_types(sp, e, a, err)
     }
 }
 

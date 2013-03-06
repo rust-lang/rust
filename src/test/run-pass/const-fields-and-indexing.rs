@@ -10,7 +10,7 @@
 
 const x : [int * 4] = [1,2,3,4];
 const p : int = x[2];
-const y : &[int] = &[1,2,3,4];
+const y : &'static [int] = &[1,2,3,4];
 const q : int = y[2];
 
 struct S {a: int, b: int}

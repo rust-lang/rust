@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct boxedFn { theFn: ~fn() -> uint }
+struct boxedFn { theFn: &'self fn() -> uint }
 
 fn createClosure (closedUint: uint) -> boxedFn {
-    let result: @fn() -> uint = || closedUint;
-    boxedFn { theFn: result } //~ ERROR mismatched types
+    let theFn: @fn() -> uint = || closedUint;
+    boxedFn {theFn: theFn} //~ ERROR illegal borrow
 }
 
 fn main () {

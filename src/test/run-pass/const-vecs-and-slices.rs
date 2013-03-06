@@ -9,7 +9,7 @@
 // except according to those terms.
 
 const x : [int * 4] = [1,2,3,4];
-const y : &[int] = &[1,2,3,4];
+const y : &'static [int] = &[1,2,3,4];
 
 pub fn main() {
     io::println(fmt!("%?", x[1]));

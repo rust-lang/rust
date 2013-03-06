@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct thing<Q> {
-    x: &Q
+    x: &'self Q
 }
 
 fn thing<Q>(x: &Q) -> thing<Q> {

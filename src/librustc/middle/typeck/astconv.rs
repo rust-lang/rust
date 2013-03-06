@@ -57,15 +57,15 @@ use core::prelude::*;
 use middle::ty::{arg, field, substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
-use middle::typeck::rscope::{in_anon_rscope, in_binding_rscope};
-use middle::typeck::rscope::{region_scope, type_rscope};
+use middle::typeck::rscope::{in_binding_rscope};
+use middle::typeck::rscope::{region_scope, type_rscope, RegionError};
 use middle::typeck::{CrateCtxt, write_substs_to_tcx, write_ty_to_tcx};
 
 use core::result;
 use core::vec;
 use syntax::ast;
 use syntax::codemap::span;
-use syntax::print::pprust::path_to_str;
+use syntax::print::pprust::{region_to_str, path_to_str};
 use util::common::indenter;
 
 pub trait AstConv {
@@ -76,17 +76,31 @@ pub trait AstConv {
     fn ty_infer(&self, span: span) -> ty::t;
 }
 
-pub fn get_region_reporting_err(tcx: ty::ctxt,
-                                span: span,
-                                res: Result<ty::Region, ~str>)
-                             -> ty::Region {
-
+pub fn get_region_reporting_err(
+    tcx: ty::ctxt,
+    span: span,
+    a_r: Option<@ast::region>,
+    res: Result<ty::Region, RegionError>) -> ty::Region
+{
     match res {
-      result::Ok(r) => r,
-      result::Err(ref e) => {
-        tcx.sess.span_err(span, (/*bad*/copy *e));
-        ty::re_static
-      }
+        result::Ok(r) => r,
+        result::Err(ref e) => {
+            let descr = match a_r {
+                None => ~"anonymous lifetime",
+                Some(a) if a.node == ast::re_anon => {
+                    ~"anonymous lifetime"
+                }
+                Some(a) => {
+                    fmt!("lifetime %s",
+                         region_to_str(a, tcx.sess.intr()))
+                }
+            };
+            tcx.sess.span_err(
+                span,
+                fmt!("Illegal %s: %s",
+                     descr, e.msg));
+            e.replacement
+        }
     }
 }
 
@@ -103,7 +117,7 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + Durable>(
         ast::re_named(id) => rscope.named_region(span, id)
     };
 
-    get_region_reporting_err(self.tcx(), span, res)
+    get_region_reporting_err(self.tcx(), span, Some(a_r), res)
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
@@ -139,7 +153,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
       }
       (Some(_), None) => {
         let res = rscope.anon_region(path.span);
-        let r = get_region_reporting_err(self.tcx(), path.span, res);
+        let r = get_region_reporting_err(self.tcx(), path.span, None, res);
         Some(r)
       }
       (Some(_), Some(r)) => {
@@ -315,8 +329,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
       }
       ast::ty_rptr(region, mt) => {
         let r = ast_region_to_region(self, rscope, ast_ty.span, region);
-        let anon_rscope = in_anon_rscope(rscope, r);
-        mk_pointer(self, &anon_rscope, mt, ty::vstore_slice(r),
+        mk_pointer(self, rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(fields) => {
@@ -522,7 +535,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
                 ast::BorrowedSigil => {
                     // &fn() defaults to an anonymous region:
                     let r_result = rscope.anon_region(span);
-                    get_region_reporting_err(self.tcx(), span, r_result)
+                    get_region_reporting_err(self.tcx(), span, None, r_result)
                 }
             }
         }

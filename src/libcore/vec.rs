@@ -1549,7 +1549,7 @@ pure fn eq<T:Eq>(a: &[T], b: &[T]) -> bool {
 }
 
 #[cfg(notest)]
-impl<T:Eq> Eq for &[T] {
+impl<T:Eq> Eq for &self/[T] {
     #[inline(always)]
     pure fn eq(&self, other: & &self/[T]) -> bool { eq((*self), (*other)) }
     #[inline(always)]
@@ -1574,7 +1574,7 @@ impl<T:Eq> Eq for @[T] {
 }
 
 #[cfg(notest)]
-impl<T:Eq> Equiv<~[T]> for &[T] {
+impl<T:Eq> Equiv<~[T]> for &'self [T] {
     #[inline(always)]
     pure fn equiv(&self, other: &~[T]) -> bool { eq(*self, *other) }
 }
@@ -1596,7 +1596,7 @@ pure fn cmp<T: TotalOrd>(a: &[T], b: &[T]) -> Ordering {
 }
 
 #[cfg(notest)]
-impl<T: TotalOrd> TotalOrd for &[T] {
+impl<T: TotalOrd> TotalOrd for &'self [T] {
     #[inline(always)]
     pure fn cmp(&self, other: & &self/[T]) -> Ordering { cmp(*self, *other) }
 }
@@ -1633,7 +1633,7 @@ pure fn ge<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
 pure fn gt<T:Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
 #[cfg(notest)]
-impl<T:Ord> Ord for &[T] {
+impl<T:Ord> Ord for &self/[T] {
     #[inline(always)]
     pure fn lt(&self, other: & &self/[T]) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -1674,7 +1674,7 @@ pub mod traits {
     use ops::Add;
     use vec::append;
 
-    impl<T:Copy> Add<&[const T],~[T]> for ~[T] {
+    impl<T:Copy> Add<&self/[const T],~[T]> for ~[T] {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/[const T]) -> ~[T] {
             append(copy *self, (*rhs))
@@ -1682,7 +1682,7 @@ pub mod traits {
     }
 }
 
-impl<T> Container for &[const T] {
+impl<T> Container for &self/[const T] {
     /// Returns true if a vector contains no elements
     #[inline]
     pure fn is_empty(&self) -> bool { is_empty(*self) }
@@ -1697,7 +1697,7 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T: Copy> CopyableVector<T> for &[const T] {
+impl<T: Copy> CopyableVector<T> for &'self [const T] {
     /// Returns a copy of the elements from [`start`..`end`) from `v`.
     #[inline]
     pure fn slice(&self, start: uint, end: uint) -> ~[T] {
@@ -1725,7 +1725,7 @@ pub trait ImmutableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T> ImmutableVector<T> for &[T] {
+impl<T> ImmutableVector<T> for &self/[T] {
     /// Return a slice that points into another slice.
     #[inline]
     pure fn view(&self, start: uint, end: uint) -> &self/[T] {
@@ -1828,7 +1828,7 @@ pub trait ImmutableEqVector<T:Eq> {
     pure fn rposition_elem(&self, t: &T) -> Option<uint>;
 }
 
-impl<T:Eq> ImmutableEqVector<T> for &[T] {
+impl<T:Eq> ImmutableEqVector<T> for &self/[T] {
     /**
      * Find the first index matching some predicate
      *
@@ -1873,7 +1873,7 @@ pub trait ImmutableCopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<T:Copy> ImmutableCopyableVector<T> for &[T] {
+impl<T:Copy> ImmutableCopyableVector<T> for &self/[T] {
     /**
      * Construct a new vector from the elements of a vector for which some
      * predicate holds.
@@ -2266,7 +2266,7 @@ pub mod bytes {
 // This cannot be used with iter-trait.rs because of the region pointer
 // required in the slice.
 
-impl<A> iter::BaseIter<A> for &[A] {
+impl<A> iter::BaseIter<A> for &self/[A] {
     pub pure fn each(&self, blk: fn(v: &A) -> bool) {
         // FIXME(#2263)---should be able to call each(self, blk)
         for each(*self) |e| {
@@ -2304,7 +2304,7 @@ impl<A> iter::BaseIter<A> for @[A] {
     pure fn size_hint(&self) -> Option<uint> { Some(len(*self)) }
 }
 
-impl<A> iter::ExtendedIter<A> for &[A] {
+impl<A> iter::ExtendedIter<A> for &self/[A] {
     pub pure fn eachi(&self, blk: fn(uint, v: &A) -> bool) {
         iter::eachi(self, blk)
     }
@@ -2381,7 +2381,7 @@ impl<A> iter::ExtendedIter<A> for @[A] {
     }
 }
 
-impl<A:Eq> iter::EqIter<A> for &[A] {
+impl<A:Eq> iter::EqIter<A> for &self/[A] {
     pub pure fn contains(&self, x: &A) -> bool { iter::contains(self, x) }
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
@@ -2398,7 +2398,7 @@ impl<A:Eq> iter::EqIter<A> for @[A] {
     pub pure fn count(&self, x: &A) -> uint { iter::count(self, x) }
 }
 
-impl<A:Copy> iter::CopyableIter<A> for &[A] {
+impl<A:Copy> iter::CopyableIter<A> for &self/[A] {
     pure fn filter_to_vec(&self, pred: fn(&A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -2430,7 +2430,7 @@ impl<A:Copy> iter::CopyableIter<A> for @[A] {
     }
 }
 
-impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for &[A] {
+impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for &self/[A] {
     pure fn min(&self) -> A { iter::min(self) }
     pure fn max(&self) -> A { iter::max(self) }
 }
@@ -2447,7 +2447,7 @@ impl<A:Copy + Ord> iter::CopyableOrderedIter<A> for @[A] {
     pure fn max(&self) -> A { iter::max(self) }
 }
 
-impl<A:Copy> iter::CopyableNonstrictIter<A> for &[A] {
+impl<A:Copy> iter::CopyableNonstrictIter<A> for &self/[A] {
     pure fn each_val(&const self, f: fn(A) -> bool) {
         let mut i = 0;
         while i < self.len() {

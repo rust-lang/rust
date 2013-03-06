@@ -550,8 +550,8 @@ pub fn trans_call_inner(
 
 
 pub enum CallArgs {
-    ArgExprs(&[@ast::expr]),
-    ArgVals(&[ValueRef])
+    ArgExprs(&self/[@ast::expr]),
+    ArgVals(&self/[ValueRef])
 }
 
 pub struct Args {

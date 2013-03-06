@@ -35,8 +35,8 @@ use core::u64;
 use core::vec;
 
 // The @ps is stored here to prevent recursive type.
-pub enum ann_node/& {
-    node_block(@ps, &ast::blk),
+pub enum ann_node<'self> {
+    node_block(@ps, &'self ast::blk),
     node_item(@ps, @ast::item),
     node_expr(@ps, @ast::expr),
     node_pat(@ps, @ast::pat),
@@ -145,6 +145,10 @@ pub fn pat_to_str(pat: @ast::pat, intr: @ident_interner) -> ~str {
 
 pub fn expr_to_str(e: @ast::expr, intr: @ident_interner) -> ~str {
     to_str(e, print_expr, intr)
+}
+
+pub fn region_to_str(e: @ast::region, intr: @ident_interner) -> ~str {
+    to_str(e, |s, e| print_region(s, ~"&", e, ~""), intr)
 }
 
 pub fn tt_to_str(tt: ast::token_tree, intr: @ident_interner) -> ~str {
@@ -1813,6 +1817,7 @@ pub fn print_generics(s: @ps, &&generics: &ast::Generics) {
                 let lifetime = generics.lifetimes.get(idx);
                 print_lifetime(s, lifetime);
             } else {
+                let idx = idx - generics.lifetimes.len();
                 let param = generics.ty_params.get(idx);
                 print_ident(s, param.ident);
                 print_bounds(s, param.bounds);

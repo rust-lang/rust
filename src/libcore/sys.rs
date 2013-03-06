@@ -19,7 +19,7 @@ use libc::{c_void, c_char, size_t};
 use repr;
 use str;
 
-pub type FreeGlue = fn(*TypeDesc, *c_void);
+pub type FreeGlue = &self/fn(*TypeDesc, *c_void);
 
 // Corresponds to runtime type_desc type
 pub enum TypeDesc = {

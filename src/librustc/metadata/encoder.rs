@@ -1276,11 +1276,12 @@ fn encode_hash(ebml_w: writer::Encoder, hash: &str) {
 }
 
 // NB: Increment this as you change the metadata encoding version.
-pub const metadata_encoding_version : &[u8] = &[0x72, //'r' as u8,
-                                                0x75, //'u' as u8,
-                                                0x73, //'s' as u8,
-                                                0x74, //'t' as u8,
-                                                0, 0, 0, 1 ];
+pub const metadata_encoding_version : &static/[u8] =
+    &[0x72, //'r' as u8,
+      0x75, //'u' as u8,
+      0x73, //'s' as u8,
+      0x74, //'t' as u8,
+      0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     let wr = @io::BytesWriter();

@@ -36,23 +36,23 @@ impl ValidUsage {
 }
 
 enum Action {
-    Exec(&str),
-    Call(&fn(args: &[~str]) -> ValidUsage)
+    Exec(&self/str),
+    Call(&self/fn(args: &[~str]) -> ValidUsage)
 }
 
 enum UsageSource {
-    UsgExec(&str),
-    UsgStr(&str)
+    UsgExec(&self/str),
+    UsgStr(&self/str)
 }
 
 struct Command {
-    cmd: &str,
-    action: Action,
-    usage_line: &str,
-    usage_full: UsageSource
+    cmd: &self/str,
+    action: Action/&self,
+    usage_line: &self/str,
+    usage_full: UsageSource/&self
 }
 
-const commands: &[Command] = &[
+const commands: &static/[Command/&static] = &[
     Command{
         cmd: "build",
         action: Exec("rustc"),

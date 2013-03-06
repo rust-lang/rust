@@ -268,7 +268,9 @@ pub mod linear {
         }
     }
 
-    impl<K:Hash + IterBytes + Eq,V> BaseIter<(&K, &V)> for LinearMap<K, V> {
+    impl<K:Hash + IterBytes + Eq,V>
+        BaseIter<(&self/K, &self/V)> for LinearMap<K, V>
+    {
         /// Visit all key-value pairs
         pure fn each(&self, blk: fn(&(&self/K, &self/V)) -> bool) {
             for uint::range(0, self.buckets.len()) |i| {

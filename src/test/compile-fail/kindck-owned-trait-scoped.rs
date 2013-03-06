@@ -12,11 +12,11 @@
 // be parameterized by a region due to the &self/int constraint.
 
 trait foo {
-    fn foo(i: &self/int) -> int;
+    fn foo(i: &'self int) -> int;
 }
 
-impl<T:Copy> foo for T {
-    fn foo(i: &self/int) -> int {*i}
+impl<T:Copy> foo<'self> for T {
+    fn foo(i: &'self int) -> int {*i}
 }
 
 fn to_foo<T:Copy>(t: T) {

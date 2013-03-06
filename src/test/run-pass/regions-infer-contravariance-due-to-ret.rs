@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct boxed_int {
-    f: &int,
+    f: &'self int,
 }
 
 fn max(bi: &r/boxed_int, f: &r/int) -> int {
