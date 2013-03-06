@@ -759,7 +759,7 @@ pub fn Decoder(json: Json) -> Decoder {
 priv impl Decoder {
     fn peek(&self) -> &self/Json {
         if self.stack.len() == 0 { self.stack.push(&self.json); }
-        vec::last(self.stack)
+        self.stack[self.stack.len() - 1]
     }
 
     fn pop(&self) -> &self/Json {

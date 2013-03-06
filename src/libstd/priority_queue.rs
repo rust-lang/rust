@@ -197,7 +197,7 @@ mod tests {
         let mut sorted = merge_sort(data, le);
         let mut heap = from_vec(data);
         while !heap.is_empty() {
-            assert *heap.top() == sorted.last();
+            assert heap.top() == sorted.last();
             assert heap.pop() == sorted.pop();
         }
     }
