@@ -22,11 +22,11 @@ pub mod intrinsic {
         }
     }
 
-    pub enum TyDesc = {
+    pub struct TyDesc {
         size: uint,
         align: uint
         // Remaining fields not listed
-    };
+    }
 
     pub trait TyVisitor {
         fn visit_bot(&self) -> bool;

@@ -775,7 +775,6 @@ type constness_cache = HashMap<ast::def_id, const_eval::constness>;
 pub type node_type_table = @mut SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
-    type val = {cnum: int, pos: uint, len: uint};
     return oldmap::HashMap();
 }
 

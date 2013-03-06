@@ -75,6 +75,7 @@ use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
+use parse::obsolete::{ObsoleteRecordType};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -651,6 +652,7 @@ pub impl Parser {
             if elems.len() == 0 {
                 self.unexpected_last(&token::RBRACE);
             }
+            self.obsolete(*self.last_span, ObsoleteRecordType);
             ty_rec(elems)
         } else if *self.token == token::LBRACKET {
             self.expect(&token::LBRACKET);
