@@ -299,16 +299,6 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
         let v = parse_vstore(st);
         return ty::mk_estr(st.tcx, v);
       }
-      'R' => {
-        assert (next(st) == '[');
-        let mut fields: ~[ty::field] = ~[];
-        while peek(st) != ']' {
-            let name = st.tcx.sess.ident_of(parse_str(st, '='));
-            fields.push(ty::field { ident: name, mt: parse_mt(st, conv) });
-        }
-        st.pos = st.pos + 1u;
-        return ty::mk_rec(st.tcx, fields);
-      }
       'T' => {
         assert (next(st) == '[');
         let mut params = ~[];

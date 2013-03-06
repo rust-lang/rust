@@ -200,20 +200,6 @@ pub impl Reflector {
               self.visit(~"rptr", extra)
           }
 
-          ty::ty_rec(fields) => {
-              let extra = ~[self.c_uint(vec::len(fields))]
-                  + self.c_size_and_align(t);
-              do self.bracketed(~"rec", extra) |this| {
-                for fields.eachi |i, field| {
-                    let extra = ~[this.c_uint(i),
-                                  this.c_slice(
-                                      bcx.ccx().sess.str_of(field.ident))]
-                        + this.c_mt(field.mt);
-                    this.visit(~"rec_field", extra);
-                }
-            }
-          }
-
           ty::ty_tup(tys) => {
               let extra = ~[self.c_uint(vec::len(tys))]
                   + self.c_size_and_align(t);

@@ -232,11 +232,6 @@ pub fn visit_ty<E>(t: @Ty, e: E, v: vt<E>) {
         ty_vec(mt) | ty_ptr(mt) | ty_rptr(_, mt) => {
             (v.visit_ty)(mt.ty, e, v);
         },
-        ty_rec(ref flds) => {
-            for flds.each |f| {
-                (v.visit_ty)(f.node.mt.ty, e, v);
-            }
-        },
         ty_tup(ref ts) => {
             for ts.each |tt| {
                 (v.visit_ty)(*tt, e, v);

@@ -22,9 +22,8 @@ use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_trait, ty_int};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
-use middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
-use middle::ty::{ty_type, ty_uniq, ty_uint, ty_infer};
-use middle::ty::{ty_unboxed_vec};
+use middle::ty::{ty_ptr, ty_rptr, ty_self, ty_tup, ty_type, ty_uniq};
+use middle::ty::{ty_uint, ty_unboxed_vec, ty_infer};
 use metadata::encoder;
 use syntax::codemap::span;
 use syntax::print::pprust;
@@ -414,10 +413,6 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_unboxed_vec(tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
       ty_type => ~"type",
-      ty_rec(elems) => {
-        let strs = elems.map(|fld| field_to_str(cx, *fld));
-        ~"{" + str::connect(strs, ~",") + ~"}"
-      }
       ty_tup(elems) => {
         let strs = elems.map(|elem| ty_to_str(cx, *elem));
         ~"(" + str::connect(strs, ~",") + ~")"

@@ -639,7 +639,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
 
     let mut cx = cx;
     match /*bad*/copy ty::get(t).sty {
-      ty::ty_rec(*) | ty::ty_struct(*) => {
+      ty::ty_struct(*) => {
           let repr = adt::represent_type(cx.ccx(), t);
           do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
               for vec::eachi(field_tys) |i, field_ty| {
