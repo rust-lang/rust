@@ -20,9 +20,11 @@ use core::os;
 // because the the indirection through another dynamic linker
 // stub. Kind of shocking. Might be able to make it faster still with
 // an llvm intrinsic.
-#[nolink]
-extern mod libc {
-    pub fn sqrt(n: float) -> float;
+mod libc {
+    #[nolink]
+    pub extern {
+        pub fn sqrt(n: float) -> float;
+    }
 }
 
 fn main() {

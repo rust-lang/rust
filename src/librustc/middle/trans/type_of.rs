@@ -147,10 +147,6 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
             T_struct(elems.map(|&t| sizing_type_of(cx, t)))
         }
 
-        ty::ty_rec(ref fields) => {
-            T_struct(fields.map(|f| sizing_type_of(cx, f.mt.ty)))
-        }
-
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx, def_id);
             let lltype = T_struct(fields.map(|field| {
@@ -255,18 +251,6 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
       ty::ty_evec(mt, ty::vstore_fixed(n)) => {
         T_array(type_of(cx, mt.ty), n)
-      }
-
-      ty::ty_rec(fields) => {
-        let mut tys: ~[TypeRef] = ~[];
-        for vec::each(fields) |f| {
-            let mt_ty = f.mt.ty;
-            tys.push(type_of(cx, mt_ty));
-        }
-
-        // n.b.: introduce an extra layer of indirection to match
-        // structs
-        T_struct(~[T_struct(tys)])
       }
 
       ty::ty_bare_fn(_) => T_ptr(type_of_fn_from_ty(cx, t)),

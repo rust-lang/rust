@@ -292,7 +292,6 @@ pub enum pat_ {
     pat_ident(binding_mode, @path, Option<@pat>),
     pat_enum(@path, Option<~[@pat]>), /* "none" means a * pattern where
                                        * we don't bind the fields to names */
-    pat_rec(~[field_pat], bool),
     pat_struct(@path, ~[field_pat], bool),
     pat_tup(~[@pat]),
     pat_box(@pat),
@@ -554,7 +553,6 @@ pub enum CallSugar {
 pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
-    expr_rec(~[field], Option<@expr>),
     expr_call(@expr, ~[@expr], CallSugar),
     expr_method_call(@expr, ident, ~[@Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
@@ -925,7 +923,6 @@ pub enum ty_ {
     ty_fixed_length_vec(mt, uint),
     ty_ptr(mt),
     ty_rptr(@region, mt),
-    ty_rec(~[ty_field]),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
     ty_tup(~[@Ty]),

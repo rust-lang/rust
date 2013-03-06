@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    fn forget<T>(-x: T);
-    fn reinterpret_cast<T, U>(&&e: T) -> U;
+pub mod rusti {
+    #[abi = "rust-intrinsic"]
+    #[link_name = "rusti"]
+    pub extern {
+        fn forget<T>(-x: T);
+        fn reinterpret_cast<T, U>(&&e: T) -> U;
+    }
 }
 
 /// Casts the value at `src` to U. The two types must have the same length.

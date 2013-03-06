@@ -323,13 +323,6 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
         let flds = vec::map(fields, |t| ast_ty_to_ty(self, rscope, *t));
         ty::mk_tup(tcx, flds)
       }
-      ast::ty_rec(ref fields) => {
-        let flds = do (*fields).map |f| {
-            let tm = ast_mt_to_mt(self, rscope, f.node.mt);
-            field {ident: f.node.ident, mt: tm}
-        };
-        ty::mk_rec(tcx, flds)
-      }
       ast::ty_bare_fn(ref bf) => {
           ty::mk_bare_fn(tcx, ty_of_bare_fn(self, rscope, bf.purity,
                                             bf.abi, &bf.decl))

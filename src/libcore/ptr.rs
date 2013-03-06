@@ -20,25 +20,32 @@ use sys;
 #[cfg(test)] use str;
 #[cfg(notest)] use cmp::{Eq, Ord};
 
-#[nolink]
-#[abi = "cdecl"]
-extern mod libc_ {
-    #[rust_stack]
-    unsafe fn memmove(dest: *mut c_void,
-                      src: *const c_void,
-                      n: libc::size_t)
-                   -> *c_void;
+pub mod libc_ {
+    use libc::c_void;
+    use libc;
 
-    #[rust_stack]
-    unsafe fn memset(dest: *mut c_void,
-                     c: libc::c_int,
-                     len: libc::size_t)
-                  -> *c_void;
+    #[nolink]
+    #[abi = "cdecl"]
+    pub extern {
+        #[rust_stack]
+        unsafe fn memmove(dest: *mut c_void,
+                          src: *const c_void,
+                          n: libc::size_t)
+                       -> *c_void;
+
+        #[rust_stack]
+        unsafe fn memset(dest: *mut c_void,
+                         c: libc::c_int,
+                         len: libc::size_t)
+                      -> *c_void;
+    }
 }
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    fn addr_of<T>(&&val: T) -> *T;
+pub mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        fn addr_of<T>(&&val: T) -> *T;
+    }
 }
 
 /// Get an unsafe pointer to a value

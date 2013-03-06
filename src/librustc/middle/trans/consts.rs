@@ -358,10 +358,6 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           ast::expr_tup(es) => {
             C_struct(es.map(|e| const_expr(cx, *e)))
           }
-          ast::expr_rec(ref fs, None) => {
-              C_struct([C_struct(
-                  (*fs).map(|f| const_expr(cx, f.node.expr)))])
-          }
           ast::expr_struct(_, ref fs, _) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let cs = do expr::with_field_tys(cx.tcx,

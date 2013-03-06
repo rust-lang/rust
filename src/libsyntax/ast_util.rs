@@ -520,7 +520,7 @@ pub fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
-        pat_rec(ref fields, _) | pat_struct(_, ref fields, _) => {
+        pat_struct(_, ref fields, _) => {
             for fields.each |f| {
                 walk_pat(f.pat, it)
             }

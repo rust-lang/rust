@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod rustrt {
-    pub fn rust_dbg_call(cb: *u8,
-                         data: libc::uintptr_t) -> libc::uintptr_t;
+mod rustrt {
+    pub extern {
+        pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
+                          -> libc::uintptr_t;
+    }
 }
 
 extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {

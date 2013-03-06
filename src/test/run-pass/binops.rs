@@ -79,11 +79,13 @@ fn test_ptr() {
     }
 }
 
-#[abi = "cdecl"]
-#[nolink]
-extern mod test {
-    pub fn rust_get_sched_id() -> libc::intptr_t;
-    pub fn get_task_id() -> libc::intptr_t;
+mod test {
+    #[abi = "cdecl"]
+    #[nolink]
+    pub extern {
+        pub fn rust_get_sched_id() -> libc::intptr_t;
+        pub fn get_task_id() -> libc::intptr_t;
+    }
 }
 
 #[deriving_eq]

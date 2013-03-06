@@ -36,13 +36,6 @@ use syntax::{ast, visit};
 
 pub type parent = Option<ast::node_id>;
 
-/* Records the parameter ID of a region name. */
-pub type binding = {
-    node_id: ast::node_id,
-    name: ~str,
-    br: ty::bound_region
-};
-
 /**
 Encodes the bounding lifetime for a given AST node:
 
@@ -734,12 +727,6 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
       ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
       ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
         visit_mt(mt, cx, visitor);
-      }
-
-      ast::ty_rec(ref fields) => {
-        for (*fields).each |field| {
-            visit_mt(field.node.mt, cx, visitor);
-        }
       }
 
       ast::ty_path(path, _) => {

@@ -19,16 +19,18 @@ const b: bool = false;
 
 const b: bool = true;
 
-#[cfg(bogus)]
-#[abi = "cdecl"]
-extern mod rustrt {
-    // This symbol doesn't exist and would be a link error if this
-    // module was translated
-    pub fn bogus();
+mod rustrt {
+    #[cfg(bogus)]
+    #[abi = "cdecl"]
+    pub extern {
+        // This symbol doesn't exist and would be a link error if this
+        // module was translated
+        pub fn bogus();
+    }
+    
+    #[abi = "cdecl"]
+    pub extern {}
 }
-
-#[abi = "cdecl"]
-extern mod rustrt {}
 
 #[cfg(bogus)]
 type t = int;
@@ -106,11 +108,13 @@ fn test_in_fn_ctxt() {
 }
 
 mod test_foreign_items {
-    #[abi = "cdecl"]
-    pub extern mod rustrt {
-        #[cfg(bogus)]
-        pub fn rust_getcwd() -> ~str;
-        pub fn rust_getcwd() -> ~str;
+    pub mod rustrt {
+        #[abi = "cdecl"]
+        pub extern {
+            #[cfg(bogus)]
+            pub fn rust_getcwd() -> ~str;
+            pub fn rust_getcwd() -> ~str;
+        }
     }
 }
 
@@ -118,9 +122,11 @@ mod test_use_statements {
     #[cfg(bogus)]
     use flippity_foo;
 
-    pub extern mod rustrt {
-        #[cfg(bogus)]
-        use flippity_foo;
+    pub mod rustrt {
+        pub extern {
+            #[cfg(bogus)]
+            use flippity_foo;
+        }
     }
 }
 

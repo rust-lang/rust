@@ -10,10 +10,12 @@
 
 // xfail-fast Does not work with main in a submodule
 
-#[abi = "rust-intrinsic"]
-extern mod rusti {
-    pub fn pref_align_of<T>() -> uint;
-    pub fn min_align_of<T>() -> uint;
+mod rusti {
+    #[abi = "rust-intrinsic"]
+    pub extern {
+        pub fn pref_align_of<T>() -> uint;
+        pub fn min_align_of<T>() -> uint;
+    }
 }
 
 #[cfg(target_os = "linux")]

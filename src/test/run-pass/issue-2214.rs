@@ -26,16 +26,19 @@ fn lgamma(n: c_double, value: &mut int) -> c_double {
     }
 }
 
-#[link_name = "m"]
-#[abi = "cdecl"]
-extern mod m {
-    #[cfg(unix)]
-    #[link_name="lgamma_r"] pub fn lgamma(n: c_double, sign: &mut c_int)
-      -> c_double;
-    #[cfg(windows)]
-    #[link_name="__lgamma_r"] pub fn lgamma(n: c_double,
-                                            sign: &mut c_int) -> c_double;
+mod m {
+    use core::libc::{c_double, c_int};
 
+    #[link_name = "m"]
+    #[abi = "cdecl"]
+    pub extern {
+        #[cfg(unix)]
+        #[link_name="lgamma_r"]
+        pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
+        #[cfg(windows)]
+        #[link_name="__lgamma_r"]
+        pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
+    }
 }
 
 pub fn main() {

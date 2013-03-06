@@ -449,8 +449,7 @@ pub impl mem_categorization_ctxt {
           ast::expr_binary(*) | ast::expr_while(*) |
           ast::expr_block(*) | ast::expr_loop(*) | ast::expr_match(*) |
           ast::expr_lit(*) | ast::expr_break(*) | ast::expr_mac(*) |
-          ast::expr_again(*) | ast::expr_rec(*) | ast::expr_struct(*) |
-          ast::expr_repeat(*) => {
+          ast::expr_again(*) | ast::expr_struct(*) | ast::expr_repeat(*) => {
             return self.cat_rvalue(expr, expr_ty);
           }
         }
@@ -943,7 +942,6 @@ pub impl mem_categorization_ctxt {
               // nullary variant or identifier: ignore
           }
 
-          ast::pat_rec(ref field_pats, _) |
           ast::pat_struct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for field_pats.each |fp| {
@@ -1114,15 +1112,8 @@ pub fn field_mutbl(tcx: ty::ctxt,
                    f_name: ast::ident,
                    node_id: ast::node_id)
                 -> Option<ast::mutability> {
-    // Need to refactor so that records/class fields can be treated uniformly.
+    // Need to refactor so that struct/enum fields can be treated uniformly.
     match /*bad*/copy ty::get(base_ty).sty {
-      ty::ty_rec(fields) => {
-        for fields.each |f| {
-            if f.ident == f_name {
-                return Some(f.mt.mutbl);
-            }
-        }
-      }
       ty::ty_struct(did, _) => {
         for ty::lookup_struct_fields(tcx, did).each |fld| {
             if fld.ident == f_name {

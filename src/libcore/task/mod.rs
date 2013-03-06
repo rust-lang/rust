@@ -938,15 +938,17 @@ fn test_spawn_sched_childs_on_default_sched() {
     po.recv();
 }
 
-#[nolink]
 #[cfg(test)]
-extern mod testrt {
-    unsafe fn rust_dbg_lock_create() -> *libc::c_void;
-    unsafe fn rust_dbg_lock_destroy(lock: *libc::c_void);
-    unsafe fn rust_dbg_lock_lock(lock: *libc::c_void);
-    unsafe fn rust_dbg_lock_unlock(lock: *libc::c_void);
-    unsafe fn rust_dbg_lock_wait(lock: *libc::c_void);
-    unsafe fn rust_dbg_lock_signal(lock: *libc::c_void);
+pub mod testrt {
+    #[nolink]
+    pub extern {
+        unsafe fn rust_dbg_lock_create() -> *libc::c_void;
+        unsafe fn rust_dbg_lock_destroy(lock: *libc::c_void);
+        unsafe fn rust_dbg_lock_lock(lock: *libc::c_void);
+        unsafe fn rust_dbg_lock_unlock(lock: *libc::c_void);
+        unsafe fn rust_dbg_lock_wait(lock: *libc::c_void);
+        unsafe fn rust_dbg_lock_signal(lock: *libc::c_void);
+    }
 }
 
 #[test]

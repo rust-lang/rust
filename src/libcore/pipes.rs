@@ -288,22 +288,28 @@ pub fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
 
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
-type rust_task = libc::c_void;
+pub type rust_task = libc::c_void;
 
 #[doc(hidden)]
-extern mod rustrt {
-    #[rust_stack]
-    unsafe fn rust_get_task() -> *rust_task;
-    #[rust_stack]
-    unsafe fn rust_task_ref(task: *rust_task);
-    unsafe fn rust_task_deref(task: *rust_task);
+pub mod rustrt {
+    use libc;
+    use super::rust_task;
 
-    #[rust_stack]
-    unsafe fn task_clear_event_reject(task: *rust_task);
+    pub extern {
+        #[rust_stack]
+        unsafe fn rust_get_task() -> *rust_task;
+        #[rust_stack]
+        unsafe fn rust_task_ref(task: *rust_task);
+        unsafe fn rust_task_deref(task: *rust_task);
 
-    unsafe fn task_wait_event(this: *rust_task, killed: &mut *libc::c_void)
-                        -> bool;
-    unsafe fn task_signal_event(target: *rust_task, event: *libc::c_void);
+        #[rust_stack]
+        unsafe fn task_clear_event_reject(task: *rust_task);
+
+        unsafe fn task_wait_event(this: *rust_task,
+                                  killed: &mut *libc::c_void)
+                               -> bool;
+        unsafe fn task_signal_event(target: *rust_task, event: *libc::c_void);
+    }
 }
 
 #[doc(hidden)]

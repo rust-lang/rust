@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Quad { a: u64, b: u64, c: u64, d: u64 }
-struct Floats { a: f64, b: u8, c: f64 }
+pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
+pub struct Floats { a: f64, b: u8, c: f64 }
 
-#[nolink]
-extern mod rustrt {
-    pub fn debug_abi_1(++q: Quad) -> Quad;
-    pub fn debug_abi_2(++f: Floats) -> Floats;
+mod rustrt {
+    use super::{Floats, Quad};
+
+    #[nolink]
+    pub extern {
+        pub fn debug_abi_1(++q: Quad) -> Quad;
+        pub fn debug_abi_2(++f: Floats) -> Floats;
+    }
 }
 
 fn test1() {

@@ -701,7 +701,6 @@ pub mod guarantor {
             ast::expr_cast(*) |
             ast::expr_call(*) |
             ast::expr_method_call(*) |
-            ast::expr_rec(*) |
             ast::expr_struct(*) |
             ast::expr_tup(*) |
             ast::expr_if(*) |
@@ -875,7 +874,6 @@ pub mod guarantor {
                 }
             }
             ast::pat_enum(*) => {}
-            ast::pat_rec(ref fpats, _) |
             ast::pat_struct(_, ref fpats, _) => {
                 for fpats.each |fpat| {
                     link_ref_bindings_in_pat(rcx, fpat.pat, guarantor);

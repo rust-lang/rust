@@ -94,6 +94,12 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
                             (intrinsic_item.ident, (def_id, ty));
                       }
 
+                      ast::item_struct(*) => {
+                        let ty = ty::mk_struct(ccx.tcx, def_id, substs);
+                        ccx.tcx.intrinsic_defs.insert
+                            (intrinsic_item.ident, (def_id, ty));
+                      }
+
                       _ => {}
                     }
                 }

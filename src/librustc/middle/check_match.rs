@@ -319,8 +319,7 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
           _ => Some(single)
         }
       }
-      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) |
-      pat_region(*) => {
+      pat_box(_) | pat_uniq(_) | pat_tup(_) | pat_region(*) => {
         Some(single)
       }
       pat_vec(elems, tail) => {
@@ -352,7 +351,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
                  -> Option<ctor> {
     match ty::get(left_ty).sty {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) | ty::ty_tup(_) |
-      ty::ty_rec(_) | ty::ty_struct(*) => {
+      ty::ty_struct(*) => {
         for m.each |r| {
             if !is_wild(cx, r[0]) { return None; }
         }
@@ -449,7 +448,6 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
 pub fn ctor_arity(cx: @MatchCheckCtxt, ctor: ctor, ty: ty::t) -> uint {
     match /*bad*/copy ty::get(ty).sty {
       ty::ty_tup(fs) => fs.len(),
-      ty::ty_rec(fs) => fs.len(),
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match ctor { variant(id) => id,
@@ -533,19 +531,6 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     }
                     _ => None
                 }
-            }
-            pat_rec(ref flds, _) => {
-                let ty_flds = match /*bad*/copy ty::get(left_ty).sty {
-                    ty::ty_rec(flds) => flds,
-                    _ => fail!(~"bad type for pat_rec")
-                };
-                let args = vec::map(ty_flds, |ty_fld| {
-                    match flds.find(|f| f.ident == ty_fld.ident) {
-                        Some(f) => f.pat,
-                        _ => wild()
-                    }
-                });
-                Some(vec::append(args, vec::tail(r)))
             }
             pat_struct(_, ref flds, _) => {
                 // Is this a struct or an enum variant?
@@ -707,9 +692,6 @@ pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
         false
       }
       pat_lit(_) | pat_range(_, _) => { true }
-      pat_rec(fields, _) => {
-        fields.any(|f| is_refutable(cx, f.pat))
-      }
       pat_struct(_, fields, _) => {
         fields.any(|f| is_refutable(cx, f.pat))
       }

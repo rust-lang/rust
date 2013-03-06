@@ -10,11 +10,13 @@
 
 extern mod std;
 
-#[abi = "cdecl"]
-#[nolink]
-extern mod libc {
-    pub fn atol(x: *u8) -> int;
-    pub fn atoll(x: *u8) -> i64;
+mod libc {
+    #[abi = "cdecl"]
+    #[nolink]
+    pub extern {
+        pub fn atol(x: *u8) -> int;
+        pub fn atoll(x: *u8) -> i64;
+    }
 }
 
 fn atol(s: ~str) -> int {

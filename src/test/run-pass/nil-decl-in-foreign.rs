@@ -9,8 +9,11 @@
 // except according to those terms.
 
 // Issue #901
-#[nolink]
-extern mod libc {
-    pub fn printf(x: ());
+mod libc {
+    #[nolink]
+    pub extern {
+        pub fn printf(x: ());
+    }
 }
+
 pub fn main() { }

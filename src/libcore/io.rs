@@ -32,11 +32,16 @@ use vec;
 #[allow(non_camel_case_types)] // not sure what to do about this
 pub type fd_t = c_int;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    unsafe fn rust_get_stdin() -> *libc::FILE;
-    unsafe fn rust_get_stdout() -> *libc::FILE;
-    unsafe fn rust_get_stderr() -> *libc::FILE;
+pub mod rustrt {
+    use libc;
+
+    #[abi = "cdecl"]
+    #[link_name = "rustrt"]
+    pub extern {
+        unsafe fn rust_get_stdin() -> *libc::FILE;
+        unsafe fn rust_get_stdout() -> *libc::FILE;
+        unsafe fn rust_get_stderr() -> *libc::FILE;
+    }
 }
 
 // Reading
