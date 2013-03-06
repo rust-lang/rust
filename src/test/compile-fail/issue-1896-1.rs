@@ -11,7 +11,8 @@
 struct boxedFn { theFn: &'self fn() -> uint }
 
 fn createClosure (closedUint: uint) -> boxedFn {
-    boxedFn {theFn: @fn () -> uint { closedUint }} //~ ERROR illegal borrow
+    let theFn: @fn() -> uint = || closedUint;
+    boxedFn {theFn: theFn} //~ ERROR illegal borrow
 }
 
 fn main () {
