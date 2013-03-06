@@ -94,7 +94,7 @@ impl<K: Ord + TotalOrd, V> Ord for TreeMap<K, V> {
     }
 }
 
-impl<K: TotalOrd, V> BaseIter<(&K, &V)> for TreeMap<K, V> {
+impl<'self, K: TotalOrd, V> BaseIter<(&'self K, &'self V)> for TreeMap<K, V> {
     /// Visit all key-value pairs in order
     pure fn each(&self, f: fn(&(&self/K, &self/V)) -> bool) {
         each(&self.root, f)
@@ -102,7 +102,10 @@ impl<K: TotalOrd, V> BaseIter<(&K, &V)> for TreeMap<K, V> {
     pure fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
-impl<K: TotalOrd, V> ReverseIter<(&K, &V)> for TreeMap<K, V> {
+impl<'self, K: TotalOrd, V>
+    ReverseIter<(&'self K, &'self V)>
+    for TreeMap<K, V>
+{
     /// Visit all key-value pairs in reverse order
     pure fn each_reverse(&self, f: fn(&(&self/K, &self/V)) -> bool) {
         each_reverse(&self.root, f);
@@ -195,8 +198,8 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
 
 /// Lazy forward iterator over a map
 pub struct TreeMapIterator<K, V> {
-    priv stack: ~[&~TreeNode<K, V>],
-    priv node: &Option<~TreeNode<K, V>>
+    priv stack: ~[&self/~TreeNode<K, V>],
+    priv node: &self/Option<~TreeNode<K, V>>
 }
 
 /// Advance the iterator to the next node (in order) and return a
@@ -494,7 +497,7 @@ pub impl <T: TotalOrd> TreeSet<T> {
 
 /// Lazy forward iterator over a set
 pub struct TreeSetIterator<T> {
-    priv iter: TreeMapIterator<T, ()>
+    priv iter: TreeMapIterator/&self<T, ()>
 }
 
 /// Advance the iterator to the next node (in order). If this iterator is

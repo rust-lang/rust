@@ -10,7 +10,7 @@
 
 enum yes0<'lt> {
     // This will eventually be legal (and in fact the only way):
-    X3(&'lt uint) //~ ERROR named regions other than `self` are not allowed as part of a type declaration
+    X3(&'lt uint) //~ ERROR Illegal lifetime &lt: only 'self is allowed allowed as part of a type declaration
 }
 
 enum yes1 {
@@ -18,7 +18,7 @@ enum yes1 {
 }
 
 enum yes2 {
-    X5(&'foo uint) //~ ERROR named regions other than `self` are not allowed as part of a type declaration
+    X5(&'foo uint) //~ ERROR Illegal lifetime &foo: only 'self is allowed allowed as part of a type declaration
 }
 
 fn main() {}

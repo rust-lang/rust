@@ -9,10 +9,10 @@
 // except according to those terms.
 
 struct closure_box {
-    cl: &fn(),
+    cl: &'self fn(),
 }
 
-fn box_it(+x: &r/fn()) -> closure_box/&r {
+fn box_it(+x: &'r fn()) -> closure_box<'r> {
     closure_box {cl: x}
 }
 

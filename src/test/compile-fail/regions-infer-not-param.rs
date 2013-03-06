@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct direct {
-    f: &int
+struct direct<'self> {
+    f: &'self int
 }
 
 struct indirect1 {
@@ -21,7 +21,7 @@ struct indirect2 {
 }
 
 struct indirect3 {
-    g: @fn(direct/&self)
+    g: @fn(direct<'self>)
 }
 
 fn take_direct(p: direct) -> direct { p } //~ ERROR mismatched types

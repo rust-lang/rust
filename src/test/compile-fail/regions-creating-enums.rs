@@ -12,7 +12,7 @@
 
 enum ast {
     num(uint),
-    add(&ast, &ast)
+    add(&'self ast<'self>, &'self ast<'self>)
 }
 
 fn build() {

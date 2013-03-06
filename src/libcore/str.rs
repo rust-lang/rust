@@ -787,7 +787,7 @@ pure fn cmp(a: &str, b: &str) -> Ordering {
 }
 
 #[cfg(notest)]
-impl TotalOrd for &str {
+impl TotalOrd for &'self str {
     pure fn cmp(&self, other: & &self/str) -> Ordering { cmp(*self, *other) }
 }
 
@@ -833,7 +833,7 @@ pure fn gt(a: &str, b: &str) -> bool {
 }
 
 #[cfg(notest)]
-impl Eq for &str {
+impl Eq for &self/str {
     #[inline(always)]
     pure fn eq(&self, other: & &self/str) -> bool {
         eq_slice((*self), (*other))
@@ -875,7 +875,7 @@ impl Ord for ~str {
 }
 
 #[cfg(notest)]
-impl Ord for &str {
+impl Ord for &self/str {
     #[inline(always)]
     pure fn lt(&self, other: & &self/str) -> bool { lt((*self), (*other)) }
     #[inline(always)]
@@ -899,7 +899,7 @@ impl Ord for @str {
 }
 
 #[cfg(notest)]
-impl Equiv<~str> for &str {
+impl Equiv<~str> for &'self str {
     #[inline(always)]
     pure fn equiv(&self, other: &~str) -> bool { eq_slice(*self, *other) }
 }
@@ -2226,7 +2226,7 @@ pub mod traits {
     use ops::Add;
     use str::append;
 
-    impl Add<&str,~str> for ~str {
+    impl Add<&self/str,~str> for ~str {
         #[inline(always)]
         pure fn add(&self, rhs: & &self/str) -> ~str {
             append(copy *self, (*rhs))
@@ -2270,7 +2270,7 @@ pub trait StrSlice {
 }
 
 /// Extension methods for strings
-impl StrSlice for &str {
+impl StrSlice for &self/str {
     /**
      * Return true if a predicate matches all characters or if the string
      * contains no characters

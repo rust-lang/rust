@@ -298,7 +298,7 @@ impl io::Writer for SipState {
     }
 }
 
-impl Streaming for &SipState {
+impl Streaming for SipState {
 
     #[inline(always)]
     fn input(&self, buf: &[const u8]) {

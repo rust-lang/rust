@@ -10,16 +10,16 @@
 
 // This test should behave exactly like issue-2735-2
 struct defer {
-    b: &mut bool,
+    b: &'self mut bool,
 }
 
-impl Drop for defer {
+impl Drop for defer/&self {
     fn finalize(&self) {
         *(self.b) = true;
     }
 }
 
-fn defer(b: &r/mut bool) -> defer/&r {
+fn defer(b: &'r mut bool) -> defer/&r {
     defer {
         b: b
     }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum X = Either<(uint,uint),extern fn()>;
-pub impl &X {
+pub impl &'self X {
     fn with(blk: fn(x: &Either<(uint,uint),extern fn()>)) {
         blk(&**self)
     }

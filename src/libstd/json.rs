@@ -749,14 +749,14 @@ pub fn from_str(s: &str) -> Result<Json, Error> {
 
 pub struct Decoder {
     priv json: Json,
-    priv mut stack: ~[&Json],
+    priv mut stack: ~[&self/Json],
 }
 
 pub fn Decoder(json: Json) -> Decoder {
     Decoder { json: json, stack: ~[] }
 }
 
-priv impl Decoder {
+priv impl Decoder/&self {
     fn peek(&self) -> &self/Json {
         if self.stack.len() == 0 { self.stack.push(&self.json); }
         self.stack[self.stack.len() - 1]
@@ -768,7 +768,7 @@ priv impl Decoder {
     }
 }
 
-impl serialize::Decoder for Decoder {
+impl serialize::Decoder for Decoder/&self {
     fn read_nil(&self) -> () {
         debug!("read_nil");
         match *self.pop() {

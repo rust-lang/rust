@@ -28,14 +28,14 @@ use opt_vec::OptVec;
 // hold functions that take visitors. A vt enum is used to break the cycle.
 pub enum vt<E> { mk_vt(visitor<E>), }
 
-pub enum fn_kind {
-    fk_item_fn(ident, &Generics, purity),   // fn foo()
-    fk_method(ident, &Generics, &method),   // fn foo(&self)
+pub enum fn_kind<'self> {
+    fk_item_fn(ident, &'self Generics, purity),   // fn foo()
+    fk_method(ident, &'self Generics, &'self method),   // fn foo(&self)
     fk_anon(ast::Sigil),                    // fn@(x, y) { ... }
     fk_fn_block,                            // |x, y| ...
     fk_dtor( // class destructor
-        &Generics,
-        &[attribute],
+        &'self Generics,
+        &'self [attribute],
         node_id /* self id */,
         def_id /* parent class id */
     )

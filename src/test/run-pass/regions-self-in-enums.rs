@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum int_wrapper {
-    int_wrapper_ctor(&int)
+    int_wrapper_ctor(&'self int)
 }
 
 pub fn main() {

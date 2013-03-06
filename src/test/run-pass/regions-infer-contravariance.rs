@@ -9,10 +9,10 @@
 // except according to those terms.
 
 struct boxed_int {
-    f: &int,
+    f: &'self int,
 }
 
-fn get(bi: &r/boxed_int) -> &r/int {
+fn get(bi: &'r boxed_int<'r>) -> &'r int {
     bi.f
 }
 

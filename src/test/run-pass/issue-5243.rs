@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that merely have lifetime parameters is not
+// Check that merely having lifetime parameters is not
 // enough for trans to consider this as non-monomorphic,
 // which led to various assertions and failures in turn.
 
@@ -16,7 +16,7 @@ struct S<'self> {
     v: &'self int
 }
 
-fn f<'lt>(_s: &S<'lt>) {}
+fn f<'lt>(_s: &'lt S<'lt>) {}
 
 fn main() {
     f(& S { v: &42 });

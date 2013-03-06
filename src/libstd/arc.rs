@@ -25,12 +25,17 @@ use core::ptr;
 use core::task;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
-pub struct Condvar { is_mutex: bool, failed: &mut bool, cond: &sync::Condvar }
+pub struct Condvar {
+    is_mutex: bool,
+    failed: &self/mut bool,
+    cond: &self/sync::Condvar/&self
+}
 
-pub impl &Condvar {
+pub impl Condvar/&self {
     /// Atomically exit the associated ARC and block until a signal is sent.
     #[inline(always)]
-    fn wait() { self.wait_on(0) }
+    fn wait(&self) { self.wait_on(0) }
+
     /**
      * Atomically exit the associated ARC and block on a specified condvar
      * until a signal is sent on that same condvar (as sync::cond.wait_on).
@@ -38,33 +43,37 @@ pub impl &Condvar {
      * wait() is equivalent to wait_on(0).
      */
     #[inline(always)]
-    fn wait_on(condvar_id: uint) {
+    fn wait_on(&self, condvar_id: uint) {
         assert !*self.failed;
         self.cond.wait_on(condvar_id);
         // This is why we need to wrap sync::condvar.
         check_poison(self.is_mutex, *self.failed);
     }
+
     /// Wake up a blocked task. Returns false if there was no blocked task.
     #[inline(always)]
-    fn signal() -> bool { self.signal_on(0) }
+    fn signal(&self) -> bool { self.signal_on(0) }
+
     /**
      * Wake up a blocked task on a specified condvar (as
      * sync::cond.signal_on). Returns false if there was no blocked task.
      */
     #[inline(always)]
-    fn signal_on(condvar_id: uint) -> bool {
+    fn signal_on(&self, condvar_id: uint) -> bool {
         assert !*self.failed;
         self.cond.signal_on(condvar_id)
     }
+
     /// Wake up all blocked tasks. Returns the number of tasks woken.
     #[inline(always)]
-    fn broadcast() -> uint { self.broadcast_on(0) }
+    fn broadcast(&self) -> uint { self.broadcast_on(0) }
+
     /**
      * Wake up all blocked tasks on a specified condvar (as
      * sync::cond.broadcast_on). Returns Returns the number of tasks woken.
      */
     #[inline(always)]
-    fn broadcast_on(condvar_id: uint) -> uint {
+    fn broadcast_on(&self, condvar_id: uint) -> uint {
         assert !*self.failed;
         self.cond.broadcast_on(condvar_id)
     }
@@ -141,7 +150,7 @@ impl<T:Owned> Clone for MutexARC<T> {
     }
 }
 
-pub impl<T:Owned> &MutexARC<T> {
+pub impl<T:Owned> MutexARC<T> {
 
     /**
      * Access the underlying mutable data with mutual exclusion from other
@@ -167,7 +176,7 @@ pub impl<T:Owned> &MutexARC<T> {
      * blocked on the mutex) will also fail immediately.
      */
     #[inline(always)]
-    unsafe fn access<U>(blk: fn(x: &mut T) -> U) -> U {
+    unsafe fn access<U>(&self, blk: fn(x: &mut T) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             // Borrowck would complain about this if the function were
@@ -179,9 +188,13 @@ pub impl<T:Owned> &MutexARC<T> {
             }
         }
     }
+
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline(always)]
-    unsafe fn access_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
+    unsafe fn access_cond<U>(
+        &self,
+        blk: &fn(x: &x/mut T, c: &c/Condvar) -> U) -> U
+    {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (&(*state).lock).lock_cond |cond| {
@@ -276,7 +289,7 @@ pub impl<T:Const + Owned> RWARC<T> {
 
 }
 
-pub impl<T:Const + Owned> &RWARC<T> {
+pub impl<T:Const + Owned> RWARC<T> {
     /**
      * Access the underlying data mutably. Locks the rwlock in write mode;
      * other readers and writers will block.
@@ -288,7 +301,7 @@ pub impl<T:Const + Owned> &RWARC<T> {
      * poison the ARC, so subsequent readers and writers will both also fail.
      */
     #[inline(always)]
-    fn write<U>(blk: fn(x: &mut T) -> U) -> U {
+    fn write<U>(&self, blk: fn(x: &mut T) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write {
@@ -300,7 +313,7 @@ pub impl<T:Const + Owned> &RWARC<T> {
     }
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline(always)]
-    fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
+    fn write_cond<U>(&self, blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         unsafe {
             let state = get_shared_mutable_state(&self.x);
             do (*borrow_rwlock(state)).write_cond |cond| {
@@ -389,13 +402,13 @@ fn borrow_rwlock<T:Const + Owned>(state: *const RWARCInner<T>) -> *RWlock {
 
 /// The "write permission" token used for RWARC.write_downgrade().
 pub enum RWWriteMode<T> =
-    (&mut T, sync::RWlockWriteMode, PoisonOnFail);
+    (&self/mut T, sync::RWlockWriteMode/&self, PoisonOnFail);
 /// The "read permission" token used for RWARC.write_downgrade().
-pub enum RWReadMode<T> = (&T, sync::RWlockReadMode);
+pub enum RWReadMode<T> = (&self/T, sync::RWlockReadMode/&self);
 
-pub impl<T:Const + Owned> &RWWriteMode<T> {
+pub impl<T:Const + Owned> RWWriteMode/&self<T> {
     /// Access the pre-downgrade RWARC in write mode.
-    fn write<U>(blk: fn(x: &mut T) -> U) -> U {
+    fn write<U>(&self, blk: fn(x: &mut T) -> U) -> U {
         match *self {
             RWWriteMode((ref data, ref token, _)) => {
                 do token.write {
@@ -405,7 +418,7 @@ pub impl<T:Const + Owned> &RWWriteMode<T> {
         }
     }
     /// Access the pre-downgrade RWARC in write mode with a condvar.
-    fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
+    fn write_cond<U>(&self, blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         match *self {
             RWWriteMode((ref data, ref token, ref poison)) => {
                 do token.write_cond |cond| {
@@ -423,9 +436,9 @@ pub impl<T:Const + Owned> &RWWriteMode<T> {
     }
 }
 
-pub impl<T:Const + Owned> &RWReadMode<T> {
+pub impl<T:Const + Owned> RWReadMode/&self<T> {
     /// Access the post-downgrade rwlock in read mode.
-    fn read<U>(blk: fn(x: &T) -> U) -> U {
+    fn read<U>(&self, blk: fn(x: &T) -> U) -> U {
         match *self {
             RWReadMode((data, ref token)) => {
                 do token.read { blk(data) }

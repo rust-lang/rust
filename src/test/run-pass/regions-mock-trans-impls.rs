@@ -17,19 +17,19 @@ use core::cast;
 use std::arena::Arena;
 
 struct Bcx {
-    fcx: &Fcx
+    fcx: &'self Fcx<'self>
 }
 
 struct Fcx {
-    arena: &Arena,
-    ccx: &Ccx
+    arena: &'self Arena,
+    ccx: &'self Ccx
 }
 
 struct Ccx {
     x: int
 }
 
-fn h(bcx : &r/Bcx) -> &r/Bcx {
+fn h(bcx : &'r Bcx<'r>) -> &'r Bcx<'r> {
     return bcx.fcx.arena.alloc(|| Bcx { fcx: bcx.fcx });
 }
 

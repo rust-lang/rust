@@ -10,17 +10,17 @@
 
 #[legacy_mode]
 struct Foo {
-    s: &str,
+    s: &'self str,
     u: ~()
 }
 
-pub impl Foo {
+pub impl Foo<'self> {
     fn get_s(&self) -> &self/str {
         self.s
     }
 }
 
-fn bar(s: &str, f: fn(Option<Foo>)) {
+fn bar(s: &str, f: &fn(Option<Foo>)) {
     f(Some(Foo {s: s, u: ~()}));
 }
 
