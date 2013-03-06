@@ -893,16 +893,9 @@ pub impl Parser {
         codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
-    fn parse_path_without_tps(&self) -> @path {
-        self.parse_path_without_tps_(|p| p.parse_ident(),
-                                     |p| p.parse_ident())
-    }
-
-    fn parse_path_without_tps_(
-        &self,
-        parse_ident: fn(&Parser) -> ident,
-        parse_last_ident: fn(&Parser) -> ident
-    ) -> @path {
+    // parse a path that doesn't have type parameters attached
+    fn parse_path_without_tps(&self)
+        -> @ast::path {
         maybe_whole!(self, nt_path);
         let lo = self.span.lo;
         let global = self.eat(&token::MOD_SEP);
@@ -913,10 +906,10 @@ pub impl Parser {
                 && self.look_ahead(1u) == token::MOD_SEP;
 
             if is_not_last {
-                ids.push(parse_ident(self));
+                ids.push(self.parse_ident());
                 self.expect(&token::MOD_SEP);
             } else {
-                ids.push(parse_last_ident(self));
+                ids.push(self.parse_ident());
                 break;
             }
         }
@@ -927,12 +920,7 @@ pub impl Parser {
                      types: ~[] }
     }
 
-    fn parse_value_path(&self) -> @path {
-        self.parse_path_without_tps_(|p| p.parse_ident(),
-                                     |p| p.parse_value_ident())
-    }
-
-    fn parse_path_with_tps(&self, colons: bool) -> @path {
+    fn parse_path_with_tps(&self, colons: bool) -> @ast::path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
         maybe_whole!(self, nt_path);
@@ -2282,7 +2270,7 @@ pub impl Parser {
                 }
 
                 if is_plain_ident(&*self.token) && cannot_be_enum_or_struct {
-                    let name = self.parse_value_path();
+                    let name = self.parse_path_without_tps();
                     let sub;
                     if self.eat(&token::AT) {
                         sub = Some(self.parse_pat(refutable));
@@ -2355,7 +2343,7 @@ pub impl Parser {
                 *self.last_span,
                 ~"expected identifier, found path");
         }
-        let name = self.parse_value_path();
+        let name = self.parse_path_without_tps();
         let sub = if self.eat(&token::AT) {
             Some(self.parse_pat(refutable))
         } else { None };
@@ -2453,7 +2441,7 @@ pub impl Parser {
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
-            let pth = self.parse_value_path();
+            let pth = self.parse_path_without_tps();
             self.bump();
 
             let id = if *self.token == token::LPAREN {
