@@ -304,7 +304,7 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
                 Some(ast_map::node_item(it,_)) => {
                     match it.node {
                         ast::item_fn(_, _, ref ps, _)
-                        if !ps.is_empty() => {
+                        if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 main_span,
                                 ~"main function is not allowed \
