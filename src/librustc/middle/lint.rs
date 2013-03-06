@@ -73,7 +73,6 @@ pub enum lint {
     deprecated_mode,
     deprecated_pattern,
     non_camel_case_types,
-    structural_records,
     type_limits,
     default_methods,
     deprecated_self,
@@ -215,13 +214,6 @@ pub fn get_lint_dict() -> LintDict {
             lint: heap_memory,
             desc: "use of any (~ type or @ type) heap memory",
             default: allow
-         }),
-
-        (@~"structural_records",
-         @LintSpec {
-            lint: structural_records,
-            desc: "use of any structural records",
-            default: deny
          }),
 
         (@~"legacy modes",
@@ -486,7 +478,6 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_path_statement(cx, i);
     check_item_non_camel_case_types(cx, i);
     check_item_heap(cx, i);
-    check_item_structural_records(cx, i);
     check_item_deprecated_modes(cx, i);
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
@@ -727,24 +718,6 @@ fn check_item_deprecated_mutable_fields(cx: ty::ctxt, item: @ast::item) {
         }
         _ => {}
     }
-}
-
-fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
-    let visit = item_stopping_visitor(
-        visit::mk_simple_visitor(@visit::SimpleVisitor {
-            visit_expr: |e: @ast::expr| {
-                match e.node {
-                    ast::expr_rec(*) =>
-                        cx.sess.span_lint(
-                            structural_records, e.id, it.id,
-                            e.span,
-                            ~"structural records are deprecated"),
-                    _ => ()
-                }
-            },
-            .. *visit::default_simple_visitor()
-        }));
-    visit::visit_item(it, (), visit);
 }
 
 fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {

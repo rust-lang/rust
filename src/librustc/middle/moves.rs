@@ -469,7 +469,6 @@ pub impl VisitContext {
                 self.use_fn_args(expr.callee_id, *args, visitor);
             }
 
-            expr_rec(ref fields, opt_with) |
             expr_struct(_, ref fields, opt_with) => {
                 for fields.each |field| {
                     self.consume_expr(field.node.expr, visitor);

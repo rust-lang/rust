@@ -368,12 +368,6 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               let repr = adt::represent_type(cx, ety);
               adt::trans_const(cx, repr, 0, es.map(|e| const_expr(cx, *e)))
           }
-          ast::expr_rec(ref fs, None) => {
-              let ety = ty::expr_ty(cx.tcx, e);
-              let repr = adt::represent_type(cx, ety);
-              adt::trans_const(cx, repr, 0,
-                               fs.map(|f| const_expr(cx, f.node.expr)))
-          }
           ast::expr_struct(_, ref fs, None) => {
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);

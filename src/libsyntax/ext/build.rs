@@ -162,13 +162,6 @@ pub fn mk_field(sp: span, f: &Field) -> ast::field {
 pub fn mk_fields(sp: span, fields: ~[Field]) -> ~[ast::field] {
     fields.map(|f| mk_field(sp, f))
 }
-pub fn mk_rec_e(cx: ext_ctxt,
-                sp: span,
-                +fields: ~[Field])
-             -> @ast::expr {
-    mk_expr(cx, sp, ast::expr_rec(mk_fields(sp, fields),
-                                  option::None::<@ast::expr>))
-}
 pub fn mk_struct_e(cx: ext_ctxt,
                    sp: span,
                    +ctor_path: ~[ast::ident],
