@@ -57,13 +57,12 @@ use syntax::codemap::span;
 use syntax::parse::token::ident_interner;
 use syntax::{ast, ast_map};
 
-pub type namegen = @fn(~str) -> ident;
+pub type namegen = @fn(+s: ~str) -> ident;
 pub fn new_namegen(intr: @ident_interner) -> namegen {
-    let f: @fn(~str) -> ident = |prefix| {
-        // XXX: Bad copies.
+    let f: @fn(+s: ~str) -> ident = |prefix| {
         intr.gensym(@fmt!("%s_%u",
                           prefix,
-                          intr.gensym(@copy prefix).repr))
+                          intr.gensym(@prefix).repr))
     };
     f
 }
@@ -325,10 +324,10 @@ pub struct fn_ctxt_ {
 
 pub type fn_ctxt = @mut fn_ctxt_;
 
-pub fn warn_not_to_commit(ccx: @CrateContext, msg: ~str) {
+pub fn warn_not_to_commit(ccx: @CrateContext, msg: &str) {
     if !*ccx.do_not_commit_warning_issued {
         *ccx.do_not_commit_warning_issued = true;
-        ccx.sess.warn(msg + ~" -- do not commit like this!");
+        ccx.sess.warn(msg.to_str() + ~" -- do not commit like this!");
     }
 }
 
@@ -358,7 +357,7 @@ pub struct cleanup_path {
     dest: BasicBlockRef
 }
 
-pub fn scope_clean_changed(scope_info: &mut scope_info) {
+pub fn scope_clean_changed(+scope_info: &mut scope_info) {
     if scope_info.cleanup_paths.len() > 0u { scope_info.cleanup_paths = ~[]; }
     scope_info.landing_pad = None;
 }
@@ -625,7 +624,7 @@ pub fn rslt(bcx: block, val: ValueRef) -> Result {
 }
 
 pub impl Result {
-    fn unpack(&self, bcx: &mut block) -> ValueRef {
+    fn unpack(&self, +bcx: &mut block) -> ValueRef {
         *bcx = self.bcx;
         return self.val;
     }
@@ -645,7 +644,7 @@ pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
 }
 
-pub fn in_scope_cx(cx: block, f: &fn(&mut scope_info)) {
+pub fn in_scope_cx(cx: block, f: &fn(+si: &mut scope_info)) {
     let mut cur = cx;
     loop {
         {
@@ -811,7 +810,7 @@ pub fn T_size_t(targ_cfg: @session::config) -> TypeRef {
     return T_int(targ_cfg);
 }
 
-pub fn T_fn(inputs: ~[TypeRef], output: TypeRef) -> TypeRef {
+pub fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
     unsafe {
         return llvm::LLVMFunctionType(output, to_ptr(inputs),
                                    inputs.len() as c_uint,
@@ -835,7 +834,7 @@ pub fn T_root(t: TypeRef, addrspace: addrspace) -> TypeRef {
     }
 }
 
-pub fn T_struct(elts: ~[TypeRef]) -> TypeRef {
+pub fn T_struct(elts: &[TypeRef]) -> TypeRef {
     unsafe {
         return llvm::LLVMStructType(to_ptr(elts),
                                     elts.len() as c_uint,
@@ -843,14 +842,14 @@ pub fn T_struct(elts: ~[TypeRef]) -> TypeRef {
     }
 }
 
-pub fn T_named_struct(name: ~str) -> TypeRef {
+pub fn T_named_struct(name: &str) -> TypeRef {
     unsafe {
         let c = llvm::LLVMGetGlobalContext();
         return str::as_c_str(name, |buf| llvm::LLVMStructCreateNamed(c, buf));
     }
 }
 
-pub fn set_struct_body(t: TypeRef, elts: ~[TypeRef]) {
+pub fn set_struct_body(t: TypeRef, elts: &[TypeRef]) {
     unsafe {
         llvm::LLVMStructSetBody(t,
                                 to_ptr(elts),
@@ -1094,7 +1093,7 @@ pub fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
     }
 }
 
-pub fn C_floating(s: ~str, t: TypeRef) -> ValueRef {
+pub fn C_floating(s: &str, t: TypeRef) -> ValueRef {
     unsafe {
         return str::as_c_str(s, |buf| llvm::LLVMConstRealOfString(t, buf));
     }
@@ -1169,7 +1168,7 @@ pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
 }
 
 // Returns a Plain Old LLVM String:
-pub fn C_postr(s: ~str) -> ValueRef {
+pub fn C_postr(s: &str) -> ValueRef {
     unsafe {
         return do str::as_c_str(s) |buf| {
             llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
@@ -1212,14 +1211,14 @@ pub fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn C_array(ty: TypeRef, elts: ~[ValueRef]) -> ValueRef {
+pub fn C_array(ty: TypeRef, elts: &[ValueRef]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts),
                                  elts.len() as c_uint);
     }
 }
 
-pub fn C_bytes(bytes: ~[u8]) -> ValueRef {
+pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstString(
             cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
@@ -1227,7 +1226,7 @@ pub fn C_bytes(bytes: ~[u8]) -> ValueRef {
     }
 }
 
-pub fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef {
+pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstString(
             cast::reinterpret_cast(&vec::raw::to_ptr(bytes)),
@@ -1311,9 +1310,9 @@ pub fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
     return build::And(cx, bumped, build::Not(cx, mask));
 }
 
-pub fn path_str(sess: session::Session, p: path) -> ~str {
+pub fn path_str(sess: session::Session, p: &path) -> ~str {
     let mut r = ~"", first = true;
-    for vec::each(p) |e| {
+    for vec::each(*p) |e| {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }

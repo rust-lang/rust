@@ -360,7 +360,7 @@ pub enum named_ty { a_struct, an_enum }
 pub fn llvm_type_name(cx: @CrateContext,
                       what: named_ty,
                       did: ast::def_id,
-                      tps: ~[ty::t]) -> ~str {
+                      tps: &[ty::t]) -> ~str {
     let name = match what {
         a_struct => { "~struct" }
         an_enum => { "~enum" }
