@@ -874,7 +874,6 @@ pub mod guarantor {
                 }
             }
             ast::pat_enum(*) => {}
-            ast::pat_rec(ref fpats, _) |
             ast::pat_struct(_, ref fpats, _) => {
                 for fpats.each |fpat| {
                     link_ref_bindings_in_pat(rcx, fpat.pat, guarantor);

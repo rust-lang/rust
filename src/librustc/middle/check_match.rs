@@ -319,8 +319,7 @@ pub fn pat_ctor_id(cx: @MatchCheckCtxt, p: @pat) -> Option<ctor> {
           _ => Some(single)
         }
       }
-      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) |
-      pat_region(*) => {
+      pat_box(_) | pat_uniq(_) | pat_tup(_) | pat_region(*) => {
         Some(single)
       }
       pat_vec(elems, tail) => {
@@ -547,7 +546,6 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     _ => None
                 }
             }
-            pat_rec(ref flds, _) => fail!(),
             pat_struct(_, ref flds, _) => {
                 // Is this a struct or an enum variant?
                 match cx.tcx.def_map.get(&pat_id) {
@@ -709,9 +707,6 @@ pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
         false
       }
       pat_lit(_) | pat_range(_, _) => { true }
-      pat_rec(fields, _) => {
-        fields.any(|f| is_refutable(cx, f.pat))
-      }
       pat_struct(_, fields, _) => {
         fields.any(|f| is_refutable(cx, f.pat))
       }

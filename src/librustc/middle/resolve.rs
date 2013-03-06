@@ -47,7 +47,7 @@ use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
 use syntax::ast::{local, local_crate, lt, method, mode, module_ns, mul};
 use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
-use syntax::ast::{path, pat_box, pat_lit, pat_range, pat_rec, pat_struct};
+use syntax::ast::{path, pat_box, pat_lit, pat_range, pat_struct};
 use syntax::ast::{pat_tup, pat_uniq, pat_wild, prim_ty, private, provided};
 use syntax::ast::{public, required, rem, self_ty_, shl, shr, stmt_decl};
 use syntax::ast::{struct_dtor, struct_field, struct_variant_kind, sty_by_ref};

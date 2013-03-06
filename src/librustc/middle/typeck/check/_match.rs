@@ -414,12 +414,6 @@ pub fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       ast::pat_enum(path, subpats) => {
         check_pat_variant(pcx, pat, path, subpats, expected);
       }
-      ast::pat_rec(fields, etc) => {
-        tcx.sess.span_fatal
-            (pat.span,
-            fmt!("mismatched types: expected `%s` but found record",
-                 fcx.infcx().ty_to_str(expected)));
-      }
       ast::pat_struct(path, fields, etc) => {
         // Grab the class data that we care about.
         let structure = structure_of(fcx, pat.span, expected);

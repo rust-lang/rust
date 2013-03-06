@@ -263,11 +263,6 @@ pub fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
                 for children.each |child| { (v.visit_pat)(*child, e, v); }
             }
         }
-        pat_rec(ref fields, _) => {
-            for fields.each |f| {
-                (v.visit_pat)(f.pat, e, v)
-            }
-        },
         pat_struct(path, ref fields, _) => {
             visit_path(path, e, v);
             for fields.each |f| {

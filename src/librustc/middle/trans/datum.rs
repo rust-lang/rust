@@ -679,7 +679,7 @@ pub impl Datum {
                 }
 
                 let repr = adt::represent_type(ccx, self.ty);
-                assert adt::is_newtypeish(repr);
+                fail_unless!(adt::is_newtypeish(repr));
                 let ty = ty::subst(ccx.tcx, substs, variants[0].args[0]);
                 return match self.mode {
                     ByRef => {
@@ -719,7 +719,7 @@ pub impl Datum {
                 }
 
                 let repr = adt::represent_type(ccx, self.ty);
-                assert adt::is_newtypeish(repr);
+                fail_unless!(adt::is_newtypeish(repr));
                 let ty = fields[0].mt.ty;
                 return match self.mode {
                     ByRef => {
