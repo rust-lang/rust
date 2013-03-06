@@ -104,64 +104,98 @@ pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
     (Port_(Port_ { endp: Some(s) }), Chan_(Chan_{ endp: Some(c) }))
 }
 
+// Add an inherent method so that imports of GenericChan are not
+// required.
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub impl<T: Owned> Chan<T> {
+    fn send(&self, x: T) { chan_send(self, x) }
+    fn try_send(&self, x: T) -> bool { chan_try_send(self, x) }
+}
+
 impl<T: Owned> GenericChan<T> for Chan<T> {
-    fn send(&self, x: T) {
-        let mut endp = None;
-        endp <-> self.endp;
-        self.endp = Some(
-            streamp::client::data(unwrap(endp), x))
-    }
+    fn send(&self, x: T) { chan_send(self, x) }
+}
+
+#[inline(always)]
+fn chan_send<T:Owned>(self: &Chan<T>, x: T) {
+    let mut endp = None;
+    endp <-> self.endp;
+    self.endp = Some(
+        streamp::client::data(unwrap(endp), x))
 }
 
 impl<T: Owned> GenericSmartChan<T> for Chan<T> {
-
     fn try_send(&self, x: T) -> bool {
-        let mut endp = None;
-        endp <-> self.endp;
-        match streamp::client::try_data(unwrap(endp), x) {
-            Some(next) => {
-                self.endp = Some(next);
-                true
-            }
-            None => false
-        }
+        chan_try_send(self, x)
     }
 }
 
-impl<T: Owned> GenericPort<T> for Port<T> {
-    fn recv(&self) -> T {
-        let mut endp = None;
-        endp <-> self.endp;
-        let streamp::data(x, endp) = recv(unwrap(endp));
-        self.endp = Some(endp);
-        x
+#[inline(always)]
+fn chan_try_send<T:Owned>(self: &Chan<T>, x: T) -> bool {
+    let mut endp = None;
+    endp <-> self.endp;
+    match streamp::client::try_data(unwrap(endp), x) {
+        Some(next) => {
+            self.endp = Some(next);
+            true
+        }
+        None => false
     }
+}
 
-    fn try_recv(&self) -> Option<T> {
-        let mut endp = None;
-        endp <-> self.endp;
-        match try_recv(unwrap(endp)) {
-          Some(streamp::data(x, endp)) => {
+// Use an inherent impl so that imports are not required:
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub impl<T: Owned> Port<T> {
+    fn recv(&self) -> T { port_recv(self) }
+    fn try_recv(&self) -> Option<T> { port_try_recv(self) }
+    pure fn peek(&self) -> bool { port_peek(self) }
+}
+
+impl<T: Owned> GenericPort<T> for Port<T> {
+    // These two calls will prefer the inherent versions above:
+    fn recv(&self) -> T { port_recv(self) }
+    fn try_recv(&self) -> Option<T> { port_try_recv(self) }
+}
+
+#[inline(always)]
+fn port_recv<T:Owned>(self: &Port<T>) -> T {
+    let mut endp = None;
+    endp <-> self.endp;
+    let streamp::data(x, endp) = recv(unwrap(endp));
+    self.endp = Some(endp);
+    x
+}
+
+#[inline(always)]
+fn port_try_recv<T:Owned>(self: &Port<T>) -> Option<T> {
+    let mut endp = None;
+    endp <-> self.endp;
+    match try_recv(unwrap(endp)) {
+        Some(streamp::data(x, endp)) => {
             self.endp = Some(endp);
             Some(x)
-          }
-          None => None
         }
+        None => None
     }
 }
 
 impl<T: Owned> Peekable<T> for Port<T> {
-    pure fn peek(&self) -> bool {
-        unsafe {
-            let mut endp = None;
-            endp <-> self.endp;
-            let peek = match &endp {
-              &Some(ref endp) => peek(endp),
-              &None => fail!(~"peeking empty stream")
-            };
-            self.endp <-> endp;
-            peek
-        }
+    pure fn peek(&self) -> bool { port_peek(self) }
+}
+
+#[inline(always)]
+pure fn port_peek<T:Owned>(self: &Port<T>) -> bool {
+    unsafe {
+        let mut endp = None;
+        endp <-> self.endp;
+        let peek = match &endp {
+            &Some(ref endp) => peek(endp),
+            &None => fail!(~"peeking empty stream")
+        };
+        self.endp <-> endp;
+        peek
     }
 }
 
@@ -187,8 +221,16 @@ pub fn PortSet<T: Owned>() -> PortSet<T>{
     }
 }
 
-pub impl<T: Owned> PortSet<T> {
+// Use an inherent impl so that imports are not required:
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub impl<T:Owned> PortSet<T> {
+    fn recv(&self) -> T { port_set_recv(self) }
+    fn try_recv(&self) -> Option<T> { port_set_try_recv(self) }
+    pure fn peek(&self) -> bool { port_set_peek(self) }
+}
 
+pub impl<T: Owned> PortSet<T> {
     fn add(&self, port: Port<T>) {
         self.ports.push(port)
     }
@@ -200,69 +242,89 @@ pub impl<T: Owned> PortSet<T> {
     }
 }
 
-impl<T: Owned> GenericPort<T> for PortSet<T> {
+impl<T:Owned> GenericPort<T> for PortSet<T> {
+    fn try_recv(&self) -> Option<T> { port_set_try_recv(self) }
+    fn recv(&self) -> T { port_set_recv(self) }
+}
 
-    fn try_recv(&self) -> Option<T> {
-        let mut result = None;
-        // we have to swap the ports array so we aren't borrowing
-        // aliasable mutable memory.
-        let mut ports = ~[];
-        ports <-> self.ports;
-        while result.is_none() && ports.len() > 0 {
-            let i = wait_many(ports);
-            match ports[i].try_recv() {
-                Some(m) => {
-                  result = Some(m);
-                }
-                None => {
-                    // Remove this port.
-                    let _ = ports.swap_remove(i);
-                }
+#[inline(always)]
+fn port_set_recv<T:Owned>(self: &PortSet<T>) -> T {
+    port_set_try_recv(self).expect("port_set: endpoints closed")
+}
+
+#[inline(always)]
+fn port_set_try_recv<T:Owned>(self: &PortSet<T>) -> Option<T> {
+    let mut result = None;
+    // we have to swap the ports array so we aren't borrowing
+    // aliasable mutable memory.
+    let mut ports = ~[];
+    ports <-> self.ports;
+    while result.is_none() && ports.len() > 0 {
+        let i = wait_many(ports);
+        match ports[i].try_recv() {
+            Some(m) => {
+                result = Some(m);
+            }
+            None => {
+                // Remove this port.
+                let _ = ports.swap_remove(i);
             }
         }
-        ports <-> self.ports;
-        result
     }
-
-    fn recv(&self) -> T {
-        self.try_recv().expect("port_set: endpoints closed")
-    }
-
+    ports <-> self.ports;
+    result
 }
 
 impl<T: Owned> Peekable<T> for PortSet<T> {
-    pure fn peek(&self) -> bool {
-        // It'd be nice to use self.port.each, but that version isn't
-        // pure.
-        for vec::each(self.ports) |p| {
-            if p.peek() { return true }
-        }
-        false
-    }
+    pure fn peek(&self) -> bool { port_set_peek(self) }
 }
+
+#[inline(always)]
+pure fn port_set_peek<T:Owned>(self: &PortSet<T>) -> bool {
+    // It'd be nice to use self.port.each, but that version isn't
+    // pure.
+    for vec::each(self.ports) |p| {
+        if p.peek() { return true }
+    }
+    false
+}
+
 
 /// A channel that can be shared between many senders.
 pub type SharedChan<T> = unstable::Exclusive<Chan<T>>;
 
+#[cfg(stage1)]
+#[cfg(stage2)]
+pub impl<T: Owned> SharedChan<T> {
+    fn send(&self, x: T) { shared_chan_send(self, x) }
+    fn try_send(&self, x: T) -> bool { shared_chan_try_send(self, x) }
+}
+
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
-    fn send(&self, x: T) {
-        let mut xx = Some(x);
-        do self.with_imm |chan| {
-            let mut x = None;
-            x <-> xx;
-            chan.send(option::unwrap(x))
-        }
+    fn send(&self, x: T) { shared_chan_send(self, x) }
+}
+
+#[inline(always)]
+fn shared_chan_send<T:Owned>(self: &SharedChan<T>, x: T) {
+    let mut xx = Some(x);
+    do self.with_imm |chan| {
+        let mut x = None;
+        x <-> xx;
+        chan.send(option::unwrap(x))
     }
 }
 
 impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
-    fn try_send(&self, x: T) -> bool {
-        let mut xx = Some(x);
-        do self.with_imm |chan| {
-            let mut x = None;
-            x <-> xx;
-            chan.try_send(option::unwrap(x))
-        }
+    fn try_send(&self, x: T) -> bool { shared_chan_try_send(self, x) }
+}
+
+#[inline(always)]
+fn shared_chan_try_send<T:Owned>(self: &SharedChan<T>, x: T) -> bool {
+    let mut xx = Some(x);
+    do self.with_imm |chan| {
+        let mut x = None;
+        x <-> xx;
+        chan.try_send(option::unwrap(x))
     }
 }
 

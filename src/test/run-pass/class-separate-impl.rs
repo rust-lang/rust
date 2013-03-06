@@ -56,7 +56,7 @@ impl ToStr for cat {
   pure fn to_str(&self) -> ~str { copy self.name }
 }
 
-fn print_out<T:ToStr>(thing: T, expected: ~str) {
+fn print_out(thing: @ToStr, expected: ~str) {
   let actual = thing.to_str();
   debug!("%s", actual);
   assert(actual == expected);

@@ -8,19 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait double {
-    fn double() -> uint;
-}
+// Test that an object type `@Foo` is not considered to implement the
+// trait `Foo`. Issue #5087.
 
-impl double for uint {
-    fn double() -> uint { self * 2u }
-}
-
-fn is_equal<D:double>(x: @D, exp: uint) {
-    assert x.double() == exp;
-}
-
-pub fn main() {
-    let x = @(@3u as @double);
-    is_equal(x, 6);
-}
+trait Foo {}
+fn take_foo<F:Foo>(f: F) {}
+fn take_object(f: @Foo) { take_foo(f); } //~ ERROR failed to find an implementation of trait
+fn main() {}

@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait add {
-    fn plus(++x: Self) -> Self;
+// See coherence_inherent_cc.rs
+
+pub trait TheTrait {
+    fn the_fn(&self);
 }
 
-impl add for int {
-    fn plus(++x: int) -> int { self + x }
-}
+pub struct TheStruct;
 
-fn do_add<A:add>(x: A, y: A) -> A { x.plus(y) }
-
-fn main() {
-    let x = @3 as @add;
-    let y = @4 as @add;
-    do_add(x, y); //~ ERROR a boxed trait with self types may not be passed as a bounded type
+impl TheTrait for TheStruct {
+    fn the_fn(&self) {}
 }
