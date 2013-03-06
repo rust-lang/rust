@@ -187,7 +187,7 @@ pub fn trans_fn_ref_with_vtables_to_callee(
         bcx: block,
         def_id: ast::def_id,
         ref_id: ast::node_id,
-        +type_params: ~[ty::t],
+        type_params: &[ty::t],
         vtables: Option<typeck::vtable_res>)
      -> Callee {
     Callee {bcx: bcx,
@@ -199,7 +199,7 @@ pub fn trans_fn_ref_with_vtables(
         bcx: block,            //
         def_id: ast::def_id,   // def id of fn
         ref_id: ast::node_id,  // node id of use of fn; may be zero if N/A
-        +type_params: ~[ty::t], // values for fn's ty params
+        type_params: &[ty::t], // values for fn's ty params
         vtables: Option<typeck::vtable_res>)
      -> FnData {
     //!
@@ -378,7 +378,7 @@ pub fn trans_lang_call(bcx: block,
 pub fn trans_lang_call_with_type_params(bcx: block,
                                         did: ast::def_id,
                                         args: &[ValueRef],
-                                        type_params: ~[ty::t],
+                                        type_params: &[ty::t],
                                         dest: expr::Dest)
     -> block {
     let fty;
@@ -394,7 +394,7 @@ pub fn trans_lang_call_with_type_params(bcx: block,
         |bcx| {
             let callee =
                 trans_fn_ref_with_vtables_to_callee(bcx, did, 0,
-                                                    copy type_params,
+                                                    type_params,
                                                     None);
 
             let new_llval;
@@ -636,8 +636,8 @@ pub enum AutorefArg {
 pub fn trans_arg_expr(bcx: block,
                       formal_ty: ty::arg,
                       arg_expr: @ast::expr,
-                      temp_cleanups: &mut ~[ValueRef],
-                      ret_flag: Option<ValueRef>,
+                      +temp_cleanups: &mut ~[ValueRef],
+                      +ret_flag: Option<ValueRef>,
                       +autoref_arg: AutorefArg) -> Result {
     let _icx = bcx.insn_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();

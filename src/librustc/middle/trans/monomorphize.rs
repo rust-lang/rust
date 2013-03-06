@@ -42,7 +42,7 @@ use syntax::parse::token::special_idents;
 
 pub fn monomorphic_fn(ccx: @CrateContext,
                       fn_id: ast::def_id,
-                      real_substs: ~[ty::t],
+                      real_substs: &[ty::t],
                       vtables: Option<typeck::vtable_res>,
                       impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>) ->
@@ -150,7 +150,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let pt = vec::append(/*bad*/copy *pt,
-                         ~[path_name((ccx.names)(*ccx.sess.str_of(name)))]);
+                         ~[path_name((ccx.names)(
+                             copy *ccx.sess.str_of(name)))]);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
 
     let mk_lldecl = || {
@@ -322,10 +323,10 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
     }
 }
 
-pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: ~[ty::t],
+pub fn make_mono_id(ccx: @CrateContext, item: ast::def_id, substs: &[ty::t],
                     vtables: Option<typeck::vtable_res>,
                     impl_did_opt: Option<ast::def_id>,
-                    param_uses: Option<~[type_use::type_uses]>) -> mono_id {
+                    +param_uses: Option<~[type_use::type_uses]>) -> mono_id {
     let precise_param_ids = match vtables {
       Some(vts) => {
         let bounds = ty::lookup_item_type(ccx.tcx, item).bounds;
