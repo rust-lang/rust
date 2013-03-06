@@ -108,7 +108,7 @@ priv impl<A> DVec<A> {
 pub impl<A> DVec<A> {
     // FIXME (#3758): This should not need to be public.
     #[inline(always)]
-    fn check_out<B>(f: &fn(v: ~[A]) -> B) -> B {
+    fn check_out<B>(&self, f: &fn(v: ~[A]) -> B) -> B {
         unsafe {
             let mut data = cast::reinterpret_cast(&null::<()>());
             data <-> self.data;
