@@ -2079,7 +2079,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         _ => fail!(~"trans_item"),
     };
     match /*bad*/copy item.node {
-      ast::item_fn(ref decl, purity, ref tps, ref body) => {
+      ast::item_fn(ref decl, purity, ref generics, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
@@ -2087,7 +2087,7 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
                                          /*bad*/copy *path,
                                          ~[path_name(item.ident)]),
                                       decl, body, llfndecl, item.id);
-        } else if tps.is_empty() {
+        } else if !generics.is_type_parameterized() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
                      vec::append(/*bad*/copy *path, ~[path_name(item.ident)]),
@@ -2111,8 +2111,8 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
       ast::item_mod(ref m) => {
         trans_mod(ccx, m);
       }
-      ast::item_enum(ref enum_definition, ref tps) => {
-        if tps.is_empty() {
+      ast::item_enum(ref enum_definition, ref generics) => {
+        if !generics.is_type_parameterized() {
             let degen = (*enum_definition).variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
@@ -2128,8 +2128,8 @@ pub fn trans_item(ccx: @CrateContext, item: ast::item) {
         };
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
-      ast::item_struct(struct_def, tps) => {
-        if tps.is_empty() {
+      ast::item_struct(struct_def, generics) => {
+        if !generics.is_type_parameterized() {
             trans_struct_def(ccx, struct_def, path, item.id);
         }
       }
