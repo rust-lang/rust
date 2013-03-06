@@ -2207,7 +2207,7 @@ pub fn register_fn_fuller(ccx: @CrateContext,
            ast_map::path_to_str(path, ccx.sess.parse_sess.interner));
 
     let ps = if attr::attrs_contains_name(attrs, "no_mangle") {
-        path_elt_to_str(path.last(), ccx.sess.parse_sess.interner)
+        path_elt_to_str(*path.last(), ccx.sess.parse_sess.interner)
     } else {
         mangle_exported_name(ccx, /*bad*/copy path, node_type)
     };

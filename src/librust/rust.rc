@@ -130,7 +130,7 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
                     UsgExec(commandline) => {
                         let words = str::words(commandline);
                         let (prog, args) = (words.head(), words.tail());
-                        run::run_program(prog, args);
+                        run::run_program(*prog, args);
                     }
                 }
                 Valid
@@ -186,7 +186,10 @@ fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
         Exec(commandline) => {
             let words = str::words(commandline);
             let (prog, prog_args) = (words.head(), words.tail());
-            let exitstatus = run::run_program(prog, prog_args + args);
+            let exitstatus = run::run_program(
+                *prog,
+                vec::append(vec::from_slice(prog_args), args)
+            );
             os::set_exit_status(exitstatus);
             Valid
         }
@@ -221,11 +224,12 @@ fn usage() {
 }
 
 pub fn main() {
-    let args = os::args().tail();
+    let os_args = os::args();
+    let args = os_args.tail();
 
     if !args.is_empty() {
         for commands.each |command| {
-            if command.cmd == args.head() {
+            if command.cmd == *args.head() {
                 let result = do_command(command, args.tail());
                 if result.is_valid() { return; }
             }

@@ -174,7 +174,7 @@ pub impl Database {
         let k = json_encode(&(fn_name, declared_inputs));
         match self.db_cache.find(&k) {
             None => None,
-            Some(&v) => Some(json_decode(copy v))
+            Some(v) => Some(json_decode(*v))
         }
     }
 

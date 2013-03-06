@@ -10,7 +10,6 @@
 
 // In this case, the code should compile and should
 // succeed at runtime
-use core::vec::{head, last, same_length, zip};
 
 fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert start < end;
@@ -33,8 +32,8 @@ pub fn main() {
     let chars = enum_chars(a, j);
     let ints = enum_uints(k, l);
 
-    let ps = zip(chars, ints);
+    let ps = vec::zip(chars, ints);
 
-    assert (head(ps) == ('a', 1u));
-    assert (last(ps) == (j as char, 10u));
+    assert (ps.head() == &('a', 1u));
+    assert (ps.last() == &(j as char, 10u));
 }

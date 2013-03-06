@@ -65,7 +65,7 @@ struct cache_entry {
     metas: @~[@ast::meta_item]
 }
 
-fn dump_crates(+crate_cache: @mut ~[cache_entry]) {
+fn dump_crates(crate_cache: @mut ~[cache_entry]) {
     debug!("resolved crates:");
     for crate_cache.each |entry| {
         debug!("cnum: %?", entry.cnum);
@@ -81,7 +81,9 @@ fn warn_if_multiple_versions(e: @mut Env,
 
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(
-            /*bad*/copy *crate_cache.last().metas);
+            *crate_cache[crate_cache.len() - 1].metas
+        );
+
         let (matches, non_matches) =
             partition(crate_cache.map_to_vec(|&entry| {
                 let othername = loader::crate_name_from_metas(
