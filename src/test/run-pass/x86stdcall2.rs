@@ -30,9 +30,9 @@ mod kernel32 {
 pub fn main() {
     let heap = unsafe { kernel32::GetProcessHeap() };
     let mem = unsafe { kernel32::HeapAlloc(heap, 0u32, 100u32) };
-    assert mem != 0u;
+    fail_unless!(mem != 0u);
     let res = unsafe { kernel32::HeapFree(heap, 0u32, mem) };
-    assert res != 0u8;
+    fail_unless!(res != 0u8);
 }
 
 #[cfg(target_os = "macos")]

@@ -13,5 +13,5 @@
 mod mod_file_aux;
 
 fn main() {
-    assert mod_file_aux::bar() == 10; //~ ERROR unresolved name
+    fail_unless!(mod_file_aux::bar() == 10); //~ ERROR unresolved name
 }

@@ -20,6 +20,6 @@ fn f<A:Copy + &static>(a: A, b: u16) -> @fn() -> (A, u16) {
 pub fn main() {
     let (a, b) = f(22_u64, 44u16)();
     debug!("a=%? b=%?", a, b);
-    assert a == 22u64;
-    assert b == 44u16;
+    fail_unless!(a == 22u64);
+    fail_unless!(b == 44u16);
 }

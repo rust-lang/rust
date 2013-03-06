@@ -286,7 +286,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         debug!("add_env(closure_ty=%s)", ty_to_str(tcx, closure_ty));
         let scratch = scratch_datum(bcx, closure_ty, false);
         let llfn = GEPi(bcx, scratch.val, [0u, abi::fn_field_code]);
-        assert datum.appropriate_mode() == ByValue;
+        fail_unless!(datum.appropriate_mode() == ByValue);
         Store(bcx, datum.to_appropriate_llval(bcx), llfn);
         let llenv = GEPi(bcx, scratch.val, [0u, abi::fn_field_box]);
         Store(bcx, base::null_env_ptr(bcx), llenv);
@@ -465,7 +465,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         }
         ast::expr_binary(op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
-            assert !bcx.ccx().maps.method_map.contains_key(&expr.id);
+            fail_unless!(!bcx.ccx().maps.method_map.contains_key(&expr.id));
 
             return trans_binary(bcx, expr, op, lhs, rhs);
         }
@@ -1318,10 +1318,10 @@ fn trans_unary_datum(bcx: block,
     let _icx = bcx.insn_ctxt("trans_unary_datum");
 
     // if deref, would be LvalueExpr
-    assert op != ast::deref;
+    fail_unless!(op != ast::deref);
 
     // if overloaded, would be RvalueDpsExpr
-    assert !bcx.ccx().maps.method_map.contains_key(&un_expr.id);
+    fail_unless!(!bcx.ccx().maps.method_map.contains_key(&un_expr.id));
 
     let un_ty = expr_ty(bcx, un_expr);
     let sub_ty = expr_ty(bcx, sub_expr);

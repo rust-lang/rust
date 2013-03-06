@@ -21,7 +21,7 @@ mod rusti {
 pub fn main() {
     unsafe {
         do rusti::frame_address |addr| {
-            assert addr.is_not_null();
+            fail_unless!(addr.is_not_null());
         }
     }
 }

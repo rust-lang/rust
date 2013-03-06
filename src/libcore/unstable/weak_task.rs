@@ -40,7 +40,7 @@ pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     let shutdown_port = Cell(shutdown_port);
     let task = get_task_id();
     // Expect the weak task service to be alive
-    assert service.try_send(RegisterWeakTask(task, shutdown_chan));
+    fail_unless!(service.try_send(RegisterWeakTask(task, shutdown_chan)));
     unsafe { rust_dec_kernel_live_count(); }
     do (|| {
         f(shutdown_port.take())
@@ -102,7 +102,7 @@ fn run_weak_task_service(port: Port<ServiceMsg>) {
             RegisterWeakTask(task, shutdown_chan) => {
                 let previously_unregistered =
                     shutdown_map.insert(task, shutdown_chan);
-                assert previously_unregistered;
+                fail_unless!(previously_unregistered);
             }
             UnregisterWeakTask(task) => {
                 match shutdown_map.pop(&task) {

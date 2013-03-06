@@ -54,7 +54,7 @@ pub fn deflate_bytes(bytes: &[const u8]) -> ~[u8] {
                                                    len as size_t,
                                                    ptr::addr_of(&outsz),
                                                    lz_norm);
-            assert res as int != 0;
+            fail_unless!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
                                             outsz as uint);
             libc::free(res);
@@ -72,7 +72,7 @@ pub fn inflate_bytes(bytes: &[const u8]) -> ~[u8] {
                                                      len as size_t,
                                                      ptr::addr_of(&outsz),
                                                      0);
-            assert res as int != 0;
+            fail_unless!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
                                             outsz as uint);
             libc::free(res);
@@ -101,6 +101,6 @@ fn test_flate_round_trip() {
         debug!("%u bytes deflated to %u (%.1f%% size)",
                in.len(), cmp.len(),
                100.0 * ((cmp.len() as float) / (in.len() as float)));
-        assert(in == out);
+        fail_unless!((in == out));
     }
 }

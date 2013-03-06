@@ -29,8 +29,8 @@ pub fn main() {
         }
     }
 
-    assert path.exists();
-    assert path.get_size() == Some(1000);
+    fail_unless!(path.exists());
+    fail_unless!(path.get_size() == Some(1000));
 
     os::remove_dir(&dir);
 }

@@ -12,5 +12,5 @@ fn foo(speaker: &const SpeechMaker) -> uint {
 
 pub fn main() {
     let mut lincoln = SpeechMaker {speeches: 22};
-    assert foo(&const lincoln) == 55;
+    fail_unless!(foo(&const lincoln) == 55);
 }

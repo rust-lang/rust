@@ -16,7 +16,7 @@ fn x_coord(p: &r/point) -> &r/int {
 
 fn foo(p: @point) -> &int {
     let xc = x_coord(p); //~ ERROR illegal borrow
-    assert *xc == 3;
+    fail_unless!(*xc == 3);
     return xc;
 }
 

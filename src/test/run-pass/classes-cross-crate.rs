@@ -16,7 +16,7 @@ use cci_class_4::kitties::*;
 pub fn main() {
     let mut nyan = cat(0u, 2, ~"nyan");
     nyan.eat();
-    assert(!nyan.eat());
+    fail_unless!((!nyan.eat()));
     for uint::range(1u, 10u) |_i| { nyan.speak(); };
-    assert(nyan.eat());
+    fail_unless!((nyan.eat()));
 }

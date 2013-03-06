@@ -1229,45 +1229,45 @@ mod tests {
 
     #[test]
     fn test_write_null() {
-        assert to_str(&Null) == ~"null";
+        fail_unless!(to_str(&Null) == ~"null");
     }
 
     #[test]
     fn test_write_number() {
-        assert to_str(&Number(3f)) == ~"3";
-        assert to_str(&Number(3.1f)) == ~"3.1";
-        assert to_str(&Number(-1.5f)) == ~"-1.5";
-        assert to_str(&Number(0.5f)) == ~"0.5";
+        fail_unless!(to_str(&Number(3f)) == ~"3");
+        fail_unless!(to_str(&Number(3.1f)) == ~"3.1");
+        fail_unless!(to_str(&Number(-1.5f)) == ~"-1.5");
+        fail_unless!(to_str(&Number(0.5f)) == ~"0.5");
     }
 
     #[test]
     fn test_write_str() {
-        assert to_str(&String(~"")) == ~"\"\"";
-        assert to_str(&String(~"foo")) == ~"\"foo\"";
+        fail_unless!(to_str(&String(~"")) == ~"\"\"");
+        fail_unless!(to_str(&String(~"foo")) == ~"\"foo\"");
     }
 
     #[test]
     fn test_write_bool() {
-        assert to_str(&Boolean(true)) == ~"true";
-        assert to_str(&Boolean(false)) == ~"false";
+        fail_unless!(to_str(&Boolean(true)) == ~"true");
+        fail_unless!(to_str(&Boolean(false)) == ~"false");
     }
 
     #[test]
     fn test_write_list() {
-        assert to_str(&List(~[])) == ~"[]";
-        assert to_str(&List(~[Boolean(true)])) == ~"[true]";
-        assert to_str(&List(~[
+        fail_unless!(to_str(&List(~[])) == ~"[]");
+        fail_unless!(to_str(&List(~[Boolean(true)])) == ~"[true]");
+        fail_unless!(to_str(&List(~[
             Boolean(false),
             Null,
             List(~[String(~"foo\nbar"), Number(3.5f)])
-        ])) == ~"[false,null,[\"foo\\nbar\",3.5]]";
+        ])) == ~"[false,null,[\"foo\\nbar\",3.5]]");
     }
 
     #[test]
     fn test_write_object() {
-        assert to_str(&mk_object(~[])) == ~"{}";
-        assert to_str(&mk_object(~[(~"a", Boolean(true))]))
-            == ~"{\"a\":true}";
+        fail_unless!(to_str(&mk_object(~[])) == ~"{}");
+        fail_unless!(to_str(&mk_object(~[(~"a", Boolean(true))]))
+            == ~"{\"a\":true}");
         let a = mk_object(~[
             (~"a", Boolean(true)),
             (~"b", List(~[
@@ -1278,7 +1278,7 @@ mod tests {
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
         let b = result::unwrap(from_str(to_str(&a)));
-        assert a == b;
+        fail_unless!(a == b);
     }
 
     // two fns copied from libsyntax/util/testing.rs.
@@ -1347,165 +1347,195 @@ mod tests {
 
     #[test]
     fn test_trailing_characters() {
-        assert from_str(~"nulla") ==
-            Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"});
-        assert from_str(~"truea") ==
-            Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"});
-        assert from_str(~"falsea") ==
-            Err(Error {line: 1u, col: 6u, msg: @~"trailing characters"});
-        assert from_str(~"1a") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"trailing characters"});
-        assert from_str(~"[]a") ==
-            Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"});
-        assert from_str(~"{}a") ==
-            Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"});
+        fail_unless!(from_str(~"nulla") ==
+            Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"}));
+        fail_unless!(from_str(~"truea") ==
+            Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"}));
+        fail_unless!(from_str(~"falsea") ==
+            Err(Error {line: 1u, col: 6u, msg: @~"trailing characters"}));
+        fail_unless!(from_str(~"1a") ==
+            Err(Error {line: 1u, col: 2u, msg: @~"trailing characters"}));
+        fail_unless!(from_str(~"[]a") ==
+            Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"}));
+        fail_unless!(from_str(~"{}a") ==
+            Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"}));
     }
 
     #[test]
     fn test_read_identifiers() {
-        assert from_str(~"n") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"});
-        assert from_str(~"nul") ==
-            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"});
+        fail_unless!(from_str(~"n") ==
+            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
+        fail_unless!(from_str(~"nul") ==
+            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
 
-        assert from_str(~"t") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"});
-        assert from_str(~"truz") ==
-            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"});
+        fail_unless!(from_str(~"t") ==
+            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
+        fail_unless!(from_str(~"truz") ==
+            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
 
-        assert from_str(~"f") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"});
-        assert from_str(~"faz") ==
-            Err(Error {line: 1u, col: 3u, msg: @~"invalid syntax"});
+        fail_unless!(from_str(~"f") ==
+            Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
+        fail_unless!(from_str(~"faz") ==
+            Err(Error {line: 1u, col: 3u, msg: @~"invalid syntax"}));
 
-        assert from_str(~"null") == Ok(Null);
-        assert from_str(~"true") == Ok(Boolean(true));
-        assert from_str(~"false") == Ok(Boolean(false));
-        assert from_str(~" null ") == Ok(Null);
-        assert from_str(~" true ") == Ok(Boolean(true));
-        assert from_str(~" false ") == Ok(Boolean(false));
+        fail_unless!(from_str(~"null") == Ok(Null));
+        fail_unless!(from_str(~"true") == Ok(Boolean(true)));
+        fail_unless!(from_str(~"false") == Ok(Boolean(false)));
+        fail_unless!(from_str(~" null ") == Ok(Null));
+        fail_unless!(from_str(~" true ") == Ok(Boolean(true)));
+        fail_unless!(from_str(~" false ") == Ok(Boolean(false)));
     }
 
     #[test]
     fn test_read_number() {
-        assert from_str(~"+") ==
-            Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"});
-        assert from_str(~".") ==
-            Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"});
+        fail_unless!(from_str(~"+") ==
+            Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
+        fail_unless!(from_str(~".") ==
+            Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
 
-        assert from_str(~"-") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid number"});
-        assert from_str(~"00") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"invalid number"});
-        assert from_str(~"1.") ==
-            Err(Error {line: 1u, col: 3u, msg: @~"invalid number"});
-        assert from_str(~"1e") ==
-            Err(Error {line: 1u, col: 3u, msg: @~"invalid number"});
-        assert from_str(~"1e+") ==
-            Err(Error {line: 1u, col: 4u, msg: @~"invalid number"});
+        fail_unless!(from_str(~"-") ==
+            Err(Error {line: 1u, col: 2u, msg: @~"invalid number"}));
+        fail_unless!(from_str(~"00") ==
+            Err(Error {line: 1u, col: 2u, msg: @~"invalid number"}));
+        fail_unless!(from_str(~"1.") ==
+            Err(Error {line: 1u, col: 3u, msg: @~"invalid number"}));
+        fail_unless!(from_str(~"1e") ==
+            Err(Error {line: 1u, col: 3u, msg: @~"invalid number"}));
+        fail_unless!(from_str(~"1e+") ==
+            Err(Error {line: 1u, col: 4u, msg: @~"invalid number"}));
 
-        assert from_str(~"3") == Ok(Number(3f));
-        assert from_str(~"3.1") == Ok(Number(3.1f));
-        assert from_str(~"-1.2") == Ok(Number(-1.2f));
-        assert from_str(~"0.4") == Ok(Number(0.4f));
-        assert from_str(~"0.4e5") == Ok(Number(0.4e5f));
-        assert from_str(~"0.4e+15") == Ok(Number(0.4e15f));
-        assert from_str(~"0.4e-01") == Ok(Number(0.4e-01f));
-        assert from_str(~" 3 ") == Ok(Number(3f));
+        fail_unless!(from_str(~"3") == Ok(Number(3f)));
+        fail_unless!(from_str(~"3.1") == Ok(Number(3.1f)));
+        fail_unless!(from_str(~"-1.2") == Ok(Number(-1.2f)));
+        fail_unless!(from_str(~"0.4") == Ok(Number(0.4f)));
+        fail_unless!(from_str(~"0.4e5") == Ok(Number(0.4e5f)));
+        fail_unless!(from_str(~"0.4e+15") == Ok(Number(0.4e15f)));
+        fail_unless!(from_str(~"0.4e-01") == Ok(Number(0.4e-01f)));
+        fail_unless!(from_str(~" 3 ") == Ok(Number(3f)));
     }
 
     #[test]
     fn test_read_str() {
-        assert from_str(~"\"") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing string"});
-        assert from_str(~"\"lol") ==
-            Err(Error {line: 1u, col: 5u, msg: @~"EOF while parsing string"});
+        fail_unless!(from_str(~"\"") ==
+            Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing string"
+        }));
+        fail_unless!(from_str(~"\"lol") ==
+            Err(Error {line: 1u, col: 5u, msg: @~"EOF while parsing string"
+        }));
 
-        assert from_str(~"\"\"") == Ok(String(~""));
-        assert from_str(~"\"foo\"") == Ok(String(~"foo"));
-        assert from_str(~"\"\\\"\"") == Ok(String(~"\""));
-        assert from_str(~"\"\\b\"") == Ok(String(~"\x08"));
-        assert from_str(~"\"\\n\"") == Ok(String(~"\n"));
-        assert from_str(~"\"\\r\"") == Ok(String(~"\r"));
-        assert from_str(~"\"\\t\"") == Ok(String(~"\t"));
-        assert from_str(~" \"foo\" ") == Ok(String(~"foo"));
+        fail_unless!(from_str(~"\"\"") == Ok(String(~"")));
+        fail_unless!(from_str(~"\"foo\"") == Ok(String(~"foo")));
+        fail_unless!(from_str(~"\"\\\"\"") == Ok(String(~"\"")));
+        fail_unless!(from_str(~"\"\\b\"") == Ok(String(~"\x08")));
+        fail_unless!(from_str(~"\"\\n\"") == Ok(String(~"\n")));
+        fail_unless!(from_str(~"\"\\r\"") == Ok(String(~"\r")));
+        fail_unless!(from_str(~"\"\\t\"") == Ok(String(~"\t")));
+        fail_unless!(from_str(~" \"foo\" ") == Ok(String(~"foo")));
     }
 
     #[test]
     fn test_unicode_hex_escapes_in_str() {
-        assert from_str(~"\"\\u12ab\"") == Ok(String(~"\u12ab"));
-        assert from_str(~"\"\\uAB12\"") == Ok(String(~"\uAB12"));
+        fail_unless!(from_str(~"\"\\u12ab\"") == Ok(String(~"\u12ab")));
+        fail_unless!(from_str(~"\"\\uAB12\"") == Ok(String(~"\uAB12")));
     }
 
     #[test]
     fn test_read_list() {
-        assert from_str(~"[") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing value"});
-        assert from_str(~"[1") ==
-            Err(Error {line: 1u, col: 3u, msg: @~"EOF while parsing list"});
-        assert from_str(~"[1,") ==
-            Err(Error {line: 1u, col: 4u, msg: @~"EOF while parsing value"});
-        assert from_str(~"[1,]") ==
-            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"});
-        assert from_str(~"[6 7]") ==
-            Err(Error {line: 1u, col: 4u, msg: @~"expected `,` or `]`"});
+        fail_unless!(from_str(~"[") ==
+            Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing value"}));
+        fail_unless!(from_str(~"[1") ==
+            Err(Error {line: 1u, col: 3u, msg: @~"EOF while parsing list"}));
+        fail_unless!(from_str(~"[1,") ==
+            Err(Error {line: 1u, col: 4u, msg: @~"EOF while parsing value"}));
+        fail_unless!(from_str(~"[1,]") ==
+            Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
+        fail_unless!(from_str(~"[6 7]") ==
+            Err(Error {line: 1u, col: 4u, msg: @~"expected `,` or `]`"}));
 
-        assert from_str(~"[]") == Ok(List(~[]));
-        assert from_str(~"[ ]") == Ok(List(~[]));
-        assert from_str(~"[true]") == Ok(List(~[Boolean(true)]));
-        assert from_str(~"[ false ]") == Ok(List(~[Boolean(false)]));
-        assert from_str(~"[null]") == Ok(List(~[Null]));
-        assert from_str(~"[3, 1]") == Ok(List(~[Number(3f), Number(1f)]));
-        assert from_str(~"\n[3, 2]\n") == Ok(List(~[Number(3f), Number(2f)]));
-        assert from_str(~"[2, [4, 1]]") ==
-               Ok(List(~[Number(2f), List(~[Number(4f), Number(1f)])]));
+        fail_unless!(from_str(~"[]") == Ok(List(~[])));
+        fail_unless!(from_str(~"[ ]") == Ok(List(~[])));
+        fail_unless!(from_str(~"[true]") == Ok(List(~[Boolean(true)])));
+        fail_unless!(from_str(~"[ false ]") == Ok(List(~[Boolean(false)])));
+        fail_unless!(from_str(~"[null]") == Ok(List(~[Null])));
+        fail_unless!(from_str(~"[3, 1]") ==
+                     Ok(List(~[Number(3f), Number(1f)])));
+        fail_unless!(from_str(~"\n[3, 2]\n") ==
+                     Ok(List(~[Number(3f), Number(2f)])));
+        fail_unless!(from_str(~"[2, [4, 1]]") ==
+               Ok(List(~[Number(2f), List(~[Number(4f), Number(1f)])])));
     }
 
     #[test]
     fn test_read_object() {
-        assert from_str(~"{") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing object"});
-        assert from_str(~"{ ") ==
-            Err(Error {line: 1u, col: 3u, msg: @~"EOF while parsing object"});
-        assert from_str(~"{1") ==
-            Err(Error {line: 1u, col: 2u, msg: @~"key must be a string"});
-        assert from_str(~"{ \"a\"") ==
-            Err(Error {line: 1u, col: 6u, msg: @~"EOF while parsing object"});
-        assert from_str(~"{\"a\"") ==
-            Err(Error {line: 1u, col: 5u, msg: @~"EOF while parsing object"});
-        assert from_str(~"{\"a\" ") ==
-            Err(Error {line: 1u, col: 6u, msg: @~"EOF while parsing object"});
+        fail_unless!(from_str(~"{") ==
+            Err(Error {
+                line: 1u,
+                col: 2u,
+                msg: @~"EOF while parsing object"}));
+        fail_unless!(from_str(~"{ ") ==
+            Err(Error {
+                line: 1u,
+                col: 3u,
+                msg: @~"EOF while parsing object"}));
+        fail_unless!(from_str(~"{1") ==
+            Err(Error {
+                line: 1u,
+                col: 2u,
+                msg: @~"key must be a string"}));
+        fail_unless!(from_str(~"{ \"a\"") ==
+            Err(Error {
+                line: 1u,
+                col: 6u,
+                msg: @~"EOF while parsing object"}));
+        fail_unless!(from_str(~"{\"a\"") ==
+            Err(Error {
+                line: 1u,
+                col: 5u,
+                msg: @~"EOF while parsing object"}));
+        fail_unless!(from_str(~"{\"a\" ") ==
+            Err(Error {
+                line: 1u,
+                col: 6u,
+                msg: @~"EOF while parsing object"}));
 
-        assert from_str(~"{\"a\" 1") ==
-            Err(Error {line: 1u, col: 6u, msg: @~"expected `:`"});
-        assert from_str(~"{\"a\":") ==
-            Err(Error {line: 1u, col: 6u, msg: @~"EOF while parsing value"});
-        assert from_str(~"{\"a\":1") ==
-            Err(Error {line: 1u, col: 7u, msg: @~"EOF while parsing object"});
-        assert from_str(~"{\"a\":1 1") ==
-            Err(Error {line: 1u, col: 8u, msg: @~"expected `,` or `}`"});
-        assert from_str(~"{\"a\":1,") ==
-            Err(Error {line: 1u, col: 8u, msg: @~"EOF while parsing object"});
+        fail_unless!(from_str(~"{\"a\" 1") ==
+            Err(Error {line: 1u, col: 6u, msg: @~"expected `:`"}));
+        fail_unless!(from_str(~"{\"a\":") ==
+            Err(Error {line: 1u, col: 6u, msg: @~"EOF while parsing value"}));
+        fail_unless!(from_str(~"{\"a\":1") ==
+            Err(Error {
+                line: 1u,
+                col: 7u,
+                msg: @~"EOF while parsing object"}));
+        fail_unless!(from_str(~"{\"a\":1 1") ==
+            Err(Error {line: 1u, col: 8u, msg: @~"expected `,` or `}`"}));
+        fail_unless!(from_str(~"{\"a\":1,") ==
+            Err(Error {
+                line: 1u,
+                col: 8u,
+                msg: @~"EOF while parsing object"}));
 
-        assert result::unwrap(from_str(~"{}")) == mk_object(~[]);
-        assert result::unwrap(from_str(~"{\"a\": 3}")) ==
-                  mk_object(~[(~"a", Number(3.0f))]);
+        fail_unless!(result::unwrap(from_str(~"{}")) == mk_object(~[]));
+        fail_unless!(result::unwrap(from_str(~"{\"a\": 3}")) ==
+                  mk_object(~[(~"a", Number(3.0f))]));
 
-        assert result::unwrap(from_str(~"{ \"a\": null, \"b\" : true }")) ==
+        fail_unless!(result::unwrap(from_str(
+                ~"{ \"a\": null, \"b\" : true }")) ==
                   mk_object(~[
                       (~"a", Null),
-                      (~"b", Boolean(true))]);
-        assert result::unwrap(
+                      (~"b", Boolean(true))]));
+        fail_unless!(result::unwrap(
                       from_str(~"\n{ \"a\": null, \"b\" : true }\n")) ==
                   mk_object(~[
                       (~"a", Null),
-                      (~"b", Boolean(true))]);
-        assert result::unwrap(from_str(~"{\"a\" : 1.0 ,\"b\": [ true ]}")) ==
+                      (~"b", Boolean(true))]));
+        fail_unless!(result::unwrap(from_str(
+                ~"{\"a\" : 1.0 ,\"b\": [ true ]}")) ==
                   mk_object(~[
                       (~"a", Number(1.0)),
                       (~"b", List(~[Boolean(true)]))
-                  ]);
-        assert result::unwrap(from_str(
+                  ]));
+        fail_unless!(result::unwrap(from_str(
                       ~"{" +
                           ~"\"a\": 1.0, " +
                           ~"\"b\": [" +
@@ -1523,12 +1553,15 @@ mod tests {
                               (~"c", mk_object(~[(~"d", Null)]))
                           ])
                       ]))
-                  ]);
+                  ]));
     }
 
     #[test]
     fn test_multiline_errors() {
-        assert from_str(~"{\n  \"foo\":\n \"bar\"") ==
-            Err(Error {line: 3u, col: 8u, msg: @~"EOF while parsing object"});
+        fail_unless!(from_str(~"{\n  \"foo\":\n \"bar\"") ==
+            Err(Error {
+                line: 3u,
+                col: 8u,
+                msg: @~"EOF while parsing object"}));
     }
 }

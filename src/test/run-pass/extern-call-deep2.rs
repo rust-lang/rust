@@ -36,6 +36,6 @@ pub fn main() {
     do task::spawn {
         let result = count(1000u);
         debug!("result = %?", result);
-        assert result == 1000u;
+        fail_unless!(result == 1000u);
     };
 }

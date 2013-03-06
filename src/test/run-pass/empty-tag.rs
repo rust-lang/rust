@@ -18,7 +18,7 @@ impl cmp::Eq for chan {
 }
 
 fn wrapper3(i: chan) {
-    assert i == chan_t;
+    fail_unless!(i == chan_t);
 }
 
 pub fn main() {

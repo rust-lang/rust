@@ -701,7 +701,7 @@ pub impl RegionVarBindings {
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
-                assert self.var_spans.len() == *vid + 1;
+                fail_unless!(self.var_spans.len() == *vid + 1);
                 self.var_spans.pop();
               }
               AddConstraint(ref constraint) => {
@@ -758,7 +758,7 @@ pub impl RegionVarBindings {
 
     fn add_constraint(&mut self, +constraint: Constraint, span: span) {
         // cannot add constraints once regions are resolved
-        assert self.values.is_empty();
+        fail_unless!(self.values.is_empty());
 
         debug!("RegionVarBindings: add_constraint(%?)", constraint);
 
@@ -774,7 +774,7 @@ pub impl RegionVarBindings {
                       sub: Region,
                       sup: Region) -> cres<()> {
         // cannot add constraints once regions are resolved
-        assert self.values.is_empty();
+        fail_unless!(self.values.is_empty());
 
         debug!("RegionVarBindings: make_subregion(%?, %?)", sub, sup);
         match (sub, sup) {
@@ -816,7 +816,7 @@ pub impl RegionVarBindings {
                    b: Region)
                 -> cres<Region> {
         // cannot add constraints once regions are resolved
-        assert self.values.is_empty();
+        fail_unless!(self.values.is_empty());
 
         debug!("RegionVarBindings: lub_regions(%?, %?)", a, b);
         match (a, b) {
@@ -842,7 +842,7 @@ pub impl RegionVarBindings {
                    b: Region)
                 -> cres<Region> {
         // cannot add constraints once regions are resolved
-        assert self.values.is_empty();
+        fail_unless!(self.values.is_empty());
 
         debug!("RegionVarBindings: glb_regions(%?, %?)", a, b);
         match (a, b) {
@@ -1376,7 +1376,7 @@ pub impl RegionVarBindings {
 
         return match a_node.value {
             NoValue => {
-                assert a_node.classification == Contracting;
+                fail_unless!(a_node.classification == Contracting);
                 a_node.value = Value(b_region);
                 true // changed
             }
@@ -1634,7 +1634,7 @@ pub impl RegionVarBindings {
                   }
 
                   ConstrainRegSubVar(region, _) => {
-                    assert dir == Incoming;
+                    fail_unless!(dir == Incoming);
                     result.push(SpannedRegion {
                         region: region,
                         span: edge.span
@@ -1642,7 +1642,7 @@ pub impl RegionVarBindings {
                   }
 
                   ConstrainVarSubReg(_, region) => {
-                    assert dir == Outgoing;
+                    fail_unless!(dir == Outgoing);
                     result.push(SpannedRegion {
                         region: region,
                         span: edge.span

@@ -19,5 +19,5 @@ fn has_mut_vec(+v: ~[int]) -> int {
 }
 
 pub fn main() {
-    assert has_mut_vec(~[1, 2, 3]) == 6;
+    fail_unless!(has_mut_vec(~[1, 2, 3]) == 6);
 }

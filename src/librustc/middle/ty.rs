@@ -1981,7 +1981,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // If this assertion failures, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
-                assert p.def_id.crate == ast::local_crate;
+                fail_unless!(p.def_id.crate == ast::local_crate);
 
                 param_bounds_to_contents(
                     cx, cx.ty_param_bounds.get(&p.def_id.node))
@@ -3519,7 +3519,7 @@ pub fn trait_supertraits(cx: ctxt,
 
     // Not in the cache. It had better be in the metadata, which means it
     // shouldn't be local.
-    assert !is_local(id);
+    fail_unless!(!is_local(id));
 
     // Get the supertraits out of the metadata and create the
     // InstantiatedTraitRef for each.
@@ -3551,7 +3551,7 @@ pub fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
         // If the lookup in trait_method_cache fails, assume that the trait
         // method we're trying to look up is in a different crate, and look
         // for it there.
-        assert id.crate != ast::local_crate;
+        fail_unless!(id.crate != ast::local_crate);
         let result = csearch::get_trait_methods(cx, id);
 
         // Store the trait method in the local trait_method_cache so that
@@ -3872,7 +3872,7 @@ pub fn lookup_item_type(cx: ctxt,
         return tpt;
       }
       None => {
-        assert did.crate != ast::local_crate;
+        fail_unless!(did.crate != ast::local_crate);
         let tyt = csearch::get_type(cx, did);
         cx.tcache.insert(did, tyt);
         return tyt;

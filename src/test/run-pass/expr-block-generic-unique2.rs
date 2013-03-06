@@ -16,7 +16,7 @@ type compare<T> = @fn(T, T) -> bool;
 
 fn test_generic<T:Copy>(expected: T, eq: compare<T>) {
     let actual: T = { expected };
-    assert (eq(expected, actual));
+    fail_unless!((eq(expected, actual)));
 }
 
 fn test_vec() {

@@ -16,5 +16,5 @@
 mod m;
 
 pub fn main() {
-    assert m::foo() == 10;
+    fail_unless!(m::foo() == 10);
 }

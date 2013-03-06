@@ -377,7 +377,7 @@ mod test {
     #[test]
     fn test_ip_ipv4_parse_and_format_ip() {
         let localhost_str = ~"127.0.0.1";
-        assert (format_addr(&v4::parse_addr(localhost_str))
+        fail_unless!(format_addr(&v4::parse_addr(localhost_str))
                 == localhost_str)
     }
     #[test]
@@ -386,14 +386,14 @@ mod test {
         let format_result = format_addr(&v6::parse_addr(localhost_str));
         log(debug, fmt!("results: expected: '%s' actual: '%s'",
             localhost_str, format_result));
-        assert format_result == localhost_str;
+        fail_unless!(format_result == localhost_str);
     }
     #[test]
     fn test_ip_ipv4_bad_parse() {
         match v4::try_parse_addr(~"b4df00d") {
           result::Err(ref err_info) => {
             log(debug, fmt!("got error as expected %?", err_info));
-            assert true;
+            fail_unless!(true);
           }
           result::Ok(ref addr) => {
             fail!(fmt!("Expected failure, but got addr %?", addr));
@@ -406,7 +406,7 @@ mod test {
         match v6::try_parse_addr(~"::,~2234k;") {
           result::Err(ref err_info) => {
             log(debug, fmt!("got error as expected %?", err_info));
-            assert true;
+            fail_unless!(true);
           }
           result::Ok(ref addr) => {
             fail!(fmt!("Expected failure, but got addr %?", addr));
@@ -437,7 +437,7 @@ mod test {
         }
         // at least one result.. this is going to vary from system
         // to system, based on stuff like the contents of /etc/hosts
-        assert !results.is_empty();
+        fail_unless!(!results.is_empty());
     }
     #[test]
     #[ignore(reason = "valgrind says it's leaky")]
@@ -445,6 +445,6 @@ mod test {
         let localhost_name = ~"sjkl234m,./sdf";
         let iotask = &uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
-        assert result::is_err(&ga_result);
+        fail_unless!(result::is_err(&ga_result));
     }
 }

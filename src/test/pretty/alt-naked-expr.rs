@@ -13,5 +13,5 @@
 fn main() {
     let x = Some(3);
     let y = match x { Some(_) => ~"some(_)", None => ~"none" };
-    assert y == ~"some(_)";
+    fail_unless!(y == ~"some(_)");
 }

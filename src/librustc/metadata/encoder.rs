@@ -1064,7 +1064,7 @@ fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
         ebml_w.start_tag(tag_index_buckets_bucket);
         for vec::each(**bucket) |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
-            assert elt.pos < 0xffff_ffff;
+            fail_unless!(elt.pos < 0xffff_ffff);
             writer.write_be_u32(elt.pos as u32);
             write_fn(writer, elt.val);
             ebml_w.end_tag();
@@ -1074,7 +1074,7 @@ fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
     ebml_w.end_tag();
     ebml_w.start_tag(tag_index_table);
     for bucket_locs.each |pos| {
-        assert *pos < 0xffff_ffff;
+        fail_unless!(*pos < 0xffff_ffff);
         writer.write_be_u32(*pos as u32);
     }
     ebml_w.end_tag();
@@ -1084,7 +1084,7 @@ fn encode_index<T>(ebml_w: writer::Encoder, buckets: ~[@~[entry<T>]],
 fn write_str(writer: io::Writer, &&s: ~str) { writer.write_str(s); }
 
 fn write_int(writer: io::Writer, &&n: int) {
-    assert n < 0x7fff_ffff;
+    fail_unless!(n < 0x7fff_ffff);
     writer.write_be_u32(n as u32);
 }
 
@@ -1145,8 +1145,8 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
     fn synthesize_link_attr(ecx: @EncodeContext, +items: ~[@meta_item]) ->
        attribute {
 
-        assert !ecx.link_meta.name.is_empty();
-        assert !ecx.link_meta.vers.is_empty();
+        fail_unless!(!ecx.link_meta.name.is_empty());
+        fail_unless!(!ecx.link_meta.vers.is_empty());
 
         let name_item =
             attr::mk_name_value_item_str(@~"name",
@@ -1212,7 +1212,7 @@ fn encode_crate_deps(ecx: @EncodeContext,
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
         for deps.each |n| {
-            assert (n.cnum == expected_cnum);
+            fail_unless!((n.cnum == expected_cnum));
             expected_cnum += 1;
         }
 

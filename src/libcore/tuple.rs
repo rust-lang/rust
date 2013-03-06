@@ -202,15 +202,15 @@ impl<A:Ord,B:Ord,C:Ord> Ord for (A, B, C) {
 #[test]
 fn test_tuple_ref() {
     let x = (~"foo", ~"bar");
-    assert x.first_ref() == &~"foo";
-    assert x.second_ref() == &~"bar";
+    fail_unless!(x.first_ref() == &~"foo");
+    fail_unless!(x.second_ref() == &~"bar");
 }
 
 #[test]
 #[allow(non_implicitly_copyable_typarams)]
 fn test_tuple() {
-    assert (948, 4039.48).first() == 948;
-    assert (34.5, ~"foo").second() == ~"foo";
-    assert ('a', 2).swap() == (2, 'a');
+    fail_unless!((948, 4039.48).first() == 948);
+    fail_unless!((34.5, ~"foo").second() == ~"foo");
+    fail_unless!(('a', 2).swap() == (2, 'a'));
 }
 

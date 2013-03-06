@@ -30,6 +30,6 @@ pub fn main() {
         c.send(());
     };  
     error!("parent tries");
-    assert !p.recv().try_send(());
+    fail_unless!(!p.recv().try_send(()));
     error!("all done!");
 }

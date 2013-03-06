@@ -35,7 +35,7 @@ pub fn main() {
     let a = &A { x: 3 };
     let afoo = a as &Foo;
     let abar = a as &Bar;
-    assert afoo.f() == 10;
-    assert abar.g() == 20;
+    fail_unless!(afoo.f() == 10);
+    fail_unless!(abar.g() == 20);
 }
 

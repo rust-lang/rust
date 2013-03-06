@@ -22,7 +22,7 @@ fn tester()
     let loader: rsrc_loader = |_path| {result::Ok(~"more blah")};
 
     let path = path::from_str("blah");
-    assert loader(&path).is_ok();
+    fail_unless!(loader(&path).is_ok());
 }
 
 pub fn main() {}

@@ -22,5 +22,5 @@ pub fn main() {
         });
     });
     log(error, sum);
-    assert (sum == 225);
+    fail_unless!((sum == 225));
 }

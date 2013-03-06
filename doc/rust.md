@@ -205,7 +205,7 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 The keywords are the following strings:
 
 ~~~~~~~~ {.keyword}
-as assert
+as
 break
 const copy
 do drop
@@ -2000,7 +2000,7 @@ let v = ~[1,2,3];
 
 mutate(copy v);   // Pass a copy
 
-assert v[0] == 1; // Original was not modified
+fail_unless!(v[0] == 1); // Original was not modified
 ~~~~
 
 ### Unary move expressions
@@ -2450,17 +2450,6 @@ In the future, logging will move into a library, and will no longer be a core ex
 It is therefore recommended to use the macro forms of logging (`error!`, `debug!`, etc.) to minimize disruption in code that uses logging.
 
 
-### Assert expressions
-
-~~~~~~~~{.ebnf .gram}
-assert_expr : "assert" expr ;
-~~~~~~~~
-
-> **Note:** In future versions of Rust, `assert` will be changed from a full expression to a macro.
-
-An `assert` expression causes the program to fail if its `expr` argument evaluates to `false`.
-The failure carries string representation of the false expression.
-
 # Type system
 
 ## Types
@@ -2560,7 +2549,7 @@ An example of a tuple type and its use:
 type Pair<'self> = (int,&'self str);
 let p: Pair<'static> = (10,"hello");
 let (a, b) = p;
-assert b != "world";
+fail_unless!(b != "world");
 ~~~~
 
 
@@ -2581,7 +2570,7 @@ An example of a vector type and its use:
 ~~~~
 let v: &[int] = &[7, 5, 3];
 let i: int = v[2];
-assert (i == 3);
+fail_unless!(i == 3);
 ~~~~
 
 All accessible elements of a vector are always initialized, and access to a vector is always bounds-checked.
@@ -2986,7 +2975,7 @@ example of an _implicit dereference_ operation performed on box values:
 ~~~~~~~~
 struct Foo { y: int }
 let x = @Foo{y: 10};
-assert x.y == 10;
+fail_unless!(x.y == 10);
 ~~~~~~~~
 
 Other operations act on box values as single-word-sized address values. For

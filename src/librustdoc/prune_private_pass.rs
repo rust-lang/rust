@@ -69,7 +69,7 @@ fn is_visible(srv: astsrv::Srv, doc: doc::ItemDoc) -> bool {
 #[test]
 fn should_prune_items_without_pub_modifier() {
     let doc = test::mk_doc(~"mod a { }");
-    assert vec::is_empty(doc.cratemod().mods());
+    fail_unless!(vec::is_empty(doc.cratemod().mods()));
 }
 
 #[cfg(test)]

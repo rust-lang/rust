@@ -712,8 +712,8 @@ pub mod guarantor {
             ast::expr_copy(*) |
             ast::expr_repeat(*) |
             ast::expr_vec(*) => {
-                assert !ty::expr_is_lval(
-                    rcx.fcx.tcx(), rcx.fcx.ccx.method_map, expr);
+                fail_unless!(!ty::expr_is_lval(
+                    rcx.fcx.tcx(), rcx.fcx.ccx.method_map, expr));
                 None
             }
         }

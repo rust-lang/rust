@@ -18,7 +18,7 @@ fn foo(src: uint) {
       Some(src_id) => {
         for uint::range(0u, 10u) |i| {
             let yyy = src_id;
-            assert (yyy == 0u);
+            fail_unless!((yyy == 0u));
         }
       }
       _ => { }

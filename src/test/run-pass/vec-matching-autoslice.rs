@@ -3,7 +3,7 @@ pub fn main() {
     match x {
         [2, .._] => ::core::util::unreachable(),
         [1, ..tail] => {
-            assert tail == [2, 3];
+            fail_unless!(tail == [2, 3]);
         }
         [_] => ::core::util::unreachable(),
         [] => ::core::util::unreachable()
@@ -13,9 +13,9 @@ pub fn main() {
     match y {
         ([_, _, _], 0.5) => ::core::util::unreachable(),
         ([(1, a), (b, false), ..tail], _) => {
-            assert a == true;
-            assert b == 2;
-            assert tail.is_empty();
+            fail_unless!(a == true);
+            fail_unless!(b == 2);
+            fail_unless!(tail.is_empty());
         }
         ([..tail], _) => ::core::util::unreachable()
     }
