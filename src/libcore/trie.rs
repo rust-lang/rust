@@ -272,8 +272,8 @@ impl<T> TrieNode<T> {
 // if this was done via a trait, the key could be generic
 #[inline(always)]
 pure fn chunk(n: uint, idx: uint) -> uint {
-    let real_idx = uint::bytes - 1 - idx;
-    (n >> (SHIFT * real_idx)) & MASK
+    let sh = uint::bits - (SHIFT * (idx + 1));
+    (n >> sh) & MASK
 }
 
 fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
