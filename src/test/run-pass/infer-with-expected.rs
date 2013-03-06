@@ -16,7 +16,7 @@
 fn eat_tup(_r: ~@(int, @fn(Pair) -> int)) {}
 fn eat_rec(_r: @~Rec) {}
 
-struct Rec { a: int, b: fn(Pair) -> int }
+struct Rec { a: int, b: &'self fn(Pair) -> int }
 struct Pair { x: int, y: int }
 
 pub fn main() {

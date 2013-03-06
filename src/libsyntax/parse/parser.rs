@@ -599,6 +599,12 @@ pub impl Parser {
         }
     }
 
+    fn region_from_lifetime(&self, l: &ast::Lifetime) -> @region {
+        // eventually `ast::region` should go away in favor of
+        // `ast::Lifetime`.  For now we convert between them.
+        self.region_from_name(Some(l.ident))
+    }
+
     fn parse_ty(&self, colons_before_params: bool) -> @Ty {
         maybe_whole!(self, nt_ty);
 
@@ -944,7 +950,7 @@ pub impl Parser {
 
         // Parse the region parameter, if any, which will
         // be written "foo/&x"
-        let rp = {
+        let rp_slash = {
             // Hack: avoid parsing vstores like /@ and /~.  This is painful
             // because the notation for region bounds and the notation for
             // vstores is... um... the same.  I guess that's my fault.  This
@@ -961,8 +967,22 @@ pub impl Parser {
         };
 
         // Parse any lifetime or type parameters which may appear:
-        let tps = self.parse_generic_values();
+        let (lifetimes, tps) = self.parse_generic_values();
         let hi = self.span.lo;
+
+        let rp = match (&rp_slash, &lifetimes) {
+            (&Some(_), _) => rp_slash,
+            (&None, v) => {
+                if v.len() == 0 {
+                    None
+                } else if v.len() == 1 {
+                    Some(self.region_from_lifetime(v.get(0)))
+                } else {
+                    self.fatal(fmt!("Expected at most one \
+                                     lifetime name (for now)"));
+                }
+            }
+        };
 
         @ast::path { span: mk_sp(lo, hi),
                      rp: rp,
@@ -1316,11 +1336,11 @@ pub impl Parser {
                   token::IDENT(i, _) => {
                     hi = self.span.hi;
                     self.bump();
-                    let tys = if self.eat(&token::MOD_SEP) {
+                    let (_, tys) = if self.eat(&token::MOD_SEP) {
                         self.expect(&token::LT);
                         self.parse_generic_values_after_lt()
                     } else {
-                        ~[]
+                        (opt_vec::Empty, ~[])
                     };
 
                     // expr.f() method call
@@ -2776,20 +2796,24 @@ pub impl Parser {
         }
     }
 
-    fn parse_generic_values(&self) -> ~[@Ty] {
+    fn parse_generic_values(
+        &self) -> (OptVec<ast::Lifetime>, ~[@Ty])
+    {
         if !self.eat(&token::LT) {
-            ~[]
+            (opt_vec::Empty, ~[])
         } else {
             self.parse_generic_values_after_lt()
         }
     }
 
-    fn parse_generic_values_after_lt(&self) -> ~[@Ty] {
-        let _lifetimes = self.parse_lifetimes();
+    fn parse_generic_values_after_lt(
+        &self) -> (OptVec<ast::Lifetime>, ~[@Ty])
+    {
+        let lifetimes = self.parse_lifetimes();
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
             |p| p.parse_ty(false));
-        opt_vec::take_vec(result)
+        (lifetimes, opt_vec::take_vec(result))
     }
 
     fn parse_fn_decl(&self, parse_arg_fn: fn(&Parser) -> arg_or_capture_item)

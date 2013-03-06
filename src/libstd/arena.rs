@@ -160,9 +160,9 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
     (reinterpret_cast(&(p & !1)), p & 1 == 1)
 }
 
-pub impl &Arena {
+pub impl Arena {
     // Functions for the POD part of the arena
-    fn alloc_pod_grow(n_bytes: uint, align: uint) -> *u8 {
+    fn alloc_pod_grow(&self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.pod_head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
@@ -174,7 +174,7 @@ pub impl &Arena {
     }
 
     #[inline(always)]
-    fn alloc_pod_inner(n_bytes: uint, align: uint) -> *u8 {
+    fn alloc_pod_inner(&self, n_bytes: uint, align: uint) -> *u8 {
         let head = &mut self.pod_head;
 
         let start = round_up_to(head.fill, align);
@@ -193,7 +193,7 @@ pub impl &Arena {
     }
 
     #[inline(always)]
-    fn alloc_pod<T>(op: fn() -> T) -> &self/T {
+    fn alloc_pod<T>(&self, op: fn() -> T) -> &self/T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
@@ -204,7 +204,7 @@ pub impl &Arena {
     }
 
     // Functions for the non-POD part of the arena
-    fn alloc_nonpod_grow(n_bytes: uint, align: uint) -> (*u8, *u8) {
+    fn alloc_nonpod_grow(&self, n_bytes: uint, align: uint) -> (*u8, *u8) {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
@@ -216,7 +216,7 @@ pub impl &Arena {
     }
 
     #[inline(always)]
-    fn alloc_nonpod_inner(n_bytes: uint, align: uint) -> (*u8, *u8) {
+    fn alloc_nonpod_inner(&self, n_bytes: uint, align: uint) -> (*u8, *u8) {
         let head = &mut self.head;
 
         let tydesc_start = head.fill;
@@ -238,7 +238,7 @@ pub impl &Arena {
     }
 
     #[inline(always)]
-    fn alloc_nonpod<T>(op: fn() -> T) -> &self/T {
+    fn alloc_nonpod<T>(&self, op: fn() -> T) -> &self/T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let (ty_ptr, ptr) =
@@ -260,7 +260,7 @@ pub impl &Arena {
 
     // The external interface
     #[inline(always)]
-    fn alloc<T>(op: fn() -> T) -> &self/T {
+    fn alloc<T>(&self, op: fn() -> T) -> &self/T {
         unsafe {
             if !rusti::needs_drop::<T>() {
                 self.alloc_pod(op)

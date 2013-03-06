@@ -143,7 +143,7 @@ pub struct LookupContext {
     self_expr: @ast::expr,
     callee_id: node_id,
     m_name: ast::ident,
-    supplied_tps: &[ty::t],
+    supplied_tps: &self/[ty::t],
     impl_dups: HashMap<def_id, ()>,
     inherent_candidates: DVec<Candidate>,
     extension_candidates: DVec<Candidate>,
@@ -176,7 +176,7 @@ pub enum TransformTypeFlag {
     TransformTypeForObject,
 }
 
-pub impl LookupContext {
+pub impl LookupContext/&self {
     fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
         debug!("do_lookup(self_ty=%s, expr=%s, self_expr=%s)",
                self.ty_to_str(self_ty),

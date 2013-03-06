@@ -11,17 +11,17 @@
 // Check that we correctly infer that b and c must be region
 // parameterized because they reference a which requires a region.
 
-type a = &int;
-type b = @a;
-type c = {f: @b};
+type a<'self> = &'self int;
+type b<'self> = @a<'self>;
+type c<'self> = {f: @b<'self>};
 
-trait set_f {
-    fn set_f_ok(b: @b/&self);
+trait set_f<'self> {
+    fn set_f_ok(b: @b<'self>);
     fn set_f_bad(b: @b);
 }
 
-impl set_f for c {
-    fn set_f_ok(b: @b/&self) {
+impl<'self> set_f<'self> for c<'self> {
+    fn set_f_ok(b: @b<'self>) {
         self.f = b;
     }
 

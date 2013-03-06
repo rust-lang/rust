@@ -46,18 +46,16 @@ pub impl Junction {
     }
 }
 
-type ExpandDerivingStructDefFn = &fn(ext_ctxt,
-                                     span,
-                                     x: &struct_def,
-                                     ident,
-                                     y: &Generics)
-                                  -> @item;
-type ExpandDerivingEnumDefFn = &fn(ext_ctxt,
-                                   span,
-                                   x: &enum_def,
-                                   ident,
-                                   y: &Generics)
-                                -> @item;
+type ExpandDerivingStructDefFn = &self/fn(ext_ctxt,
+                                          span,
+                                          x: &struct_def,
+                                          ident,
+                                          y: &Generics) -> @item;
+type ExpandDerivingEnumDefFn = &self/fn(ext_ctxt,
+                                        span,
+                                        x: &enum_def,
+                                        ident,
+                                        y: &Generics) -> @item;
 
 pub fn expand_deriving_eq(cx: ext_ctxt,
                           span: span,

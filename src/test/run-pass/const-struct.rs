@@ -22,7 +22,7 @@ impl cmp::Eq for foo {
 
 const x : foo = foo { a:1, b:2, c: 3 };
 const y : foo = foo { b:2, c:3, a: 1 };
-const z : &foo = &foo { a: 10, b: 22, c: 12 };
+const z : &'static foo = &foo { a: 10, b: 22, c: 12 };
 
 pub fn main() {
     assert x.b == 2;

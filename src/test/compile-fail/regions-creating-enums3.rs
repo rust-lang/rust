@@ -10,10 +10,10 @@
 
 enum ast {
     num(uint),
-    add(&ast, &ast)
+    add(&'self ast<'self>, &'self ast<'self>)
 }
 
-fn mk_add_bad1(x: &a/ast, y: &b/ast) -> ast/&a {
+fn mk_add_bad1(x: &'a ast<'a>, y: &'b ast<'b>) -> ast<'a> {
     add(x, y) //~ ERROR cannot infer an appropriate lifetime
 }
 

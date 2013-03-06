@@ -10,7 +10,6 @@
 
 //! Container traits
 
-use cmp::Equiv;
 use option::Option;
 
 pub trait Container {

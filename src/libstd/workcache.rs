@@ -168,7 +168,8 @@ struct Database {
 }
 
 pub impl Database {
-    fn prepare(&mut self, fn_name: &str,
+    fn prepare(&mut self,
+               fn_name: &str,
                declared_inputs: &WorkMap) -> Option<(WorkMap, WorkMap, ~str)>
     {
         let k = json_encode(&(fn_name, declared_inputs));
@@ -233,7 +234,9 @@ fn json_encode<T:Encodable<json::Encoder>>(t: &T) -> ~str {
     }
 }
 
-fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
+fn json_decode<T:Decodable<json::Decoder/&static>>( // FIXME(#5121)
+    s: &str) -> T
+{
     do io::with_str_reader(s) |rdr| {
         let j = result::unwrap(json::from_reader(rdr));
         Decodable::decode(&json::Decoder(j))
@@ -261,7 +264,9 @@ pub impl Context {
         Context{db: db, logger: lg, cfg: cfg, freshness: LinearMap::new()}
     }
 
-    fn prep<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
+    fn prep<T:Owned +
+              Encodable<json::Encoder> +
+              Decodable<json::Decoder/&static>>( // FIXME(#5121)
                   @self,
                   fn_name:&str,
                   blk: fn(@Mut<Prep>)->Work<T>) -> Work<T> {
@@ -277,7 +282,9 @@ trait TPrep {
     fn declare_input(&self, kind:&str, name:&str, val:&str);
     fn is_fresh(&self, cat:&str, kind:&str, name:&str, val:&str) -> bool;
     fn all_fresh(&self, cat:&str, map:&WorkMap) -> bool;
-    fn exec<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
+    fn exec<T:Owned +
+              Encodable<json::Encoder> +
+              Decodable<json::Decoder/&static>>( // FIXME(#5121)
         &self, blk: ~fn(&Exec) -> T) -> Work<T>;
 }
 
@@ -316,7 +323,9 @@ impl TPrep for @Mut<Prep> {
         return true;
     }
 
-    fn exec<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
+    fn exec<T:Owned +
+              Encodable<json::Encoder> +
+              Decodable<json::Decoder/&static>>( // FIXME(#5121)
             &self, blk: ~fn(&Exec) -> T) -> Work<T> {
         let mut bo = Some(blk);
 
@@ -355,14 +364,18 @@ impl TPrep for @Mut<Prep> {
     }
 }
 
-pub impl<T:Owned+Encodable<json::Encoder>+Decodable<json::Decoder>> Work<T> {
+pub impl<T:Owned +
+         Encodable<json::Encoder> +
+         Decodable<json::Decoder/&static>> Work<T> { // FIXME(#5121)
     static fn new(p: @Mut<Prep>, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }
 }
 
 // FIXME (#3724): movable self. This should be in impl Work.
-fn unwrap<T:Owned + Encodable<json::Encoder> + Decodable<json::Decoder>>(
+fn unwrap<T:Owned +
+            Encodable<json::Encoder> +
+            Decodable<json::Decoder/&static>>( // FIXME(#5121)
         w: Work<T>) -> T {
     let mut ww = w;
     let mut s = None;

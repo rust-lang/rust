@@ -312,7 +312,7 @@ fn LanguageItemCollector(crate: @crate,
 }
 
 struct LanguageItemCollector {
-    items: &mut LanguageItems,
+    items: &self/mut LanguageItems,
 
     crate: @crate,
     session: Session,
@@ -320,7 +320,7 @@ struct LanguageItemCollector {
     item_refs: HashMap<@~str, uint>,
 }
 
-pub impl LanguageItemCollector {
+pub impl LanguageItemCollector/&self {
     fn match_and_collect_meta_item(&self, item_def_id: def_id,
                                    meta_item: @meta_item) {
         match meta_item.node {

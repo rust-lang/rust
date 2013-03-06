@@ -9,16 +9,16 @@
 // except according to those terms.
 
 struct defer {
-    x: &[&str],
+    x: &'self [&'self str],
 }
 
-impl Drop for defer {
+impl Drop for defer<'self> {
     fn finalize(&self) {
         error!("%?", self.x);
     }
 }
 
-fn defer(x: &r/[&r/str]) -> defer/&r {
+fn defer(x: &'r [&'r str]) -> defer<'r> {
     defer {
         x: x
     }

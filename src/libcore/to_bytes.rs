@@ -19,7 +19,7 @@ use io::Writer;
 use option::{None, Option, Some};
 use str;
 
-pub type Cb = &fn(buf: &[const u8]) -> bool;
+pub type Cb = &self/fn(buf: &[const u8]) -> bool;
 
 /**
  * A trait to implement in order to make a type hashable;
@@ -197,7 +197,7 @@ impl IterBytes for int {
     }
 }
 
-impl<A:IterBytes> IterBytes for &[A] {
+impl<A:IterBytes> IterBytes for &self/[A] {
     #[inline(always)]
     pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
         for (*self).each |elt| {
@@ -352,7 +352,7 @@ pub pure fn iter_bytes_7<A: IterBytes,
     g.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 
-impl IterBytes for &str {
+impl IterBytes for &self/str {
     #[inline(always)]
     pure fn iter_bytes(&self, _lsb0: bool, f: Cb) {
         do str::byte_slice(*self) |bytes| {
@@ -389,7 +389,7 @@ impl<A:IterBytes> IterBytes for Option<A> {
     }
 }
 
-impl<A:IterBytes> IterBytes for &A {
+impl<A:IterBytes> IterBytes for &self/A {
     #[inline(always)]
     pure fn iter_bytes(&self, lsb0: bool, f: Cb) {
         (**self).iter_bytes(lsb0, f);

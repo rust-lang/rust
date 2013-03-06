@@ -9,10 +9,10 @@
 // except according to those terms.
 
 enum roption {
-    a, b(&uint)
+    a, b(&'self uint)
 }
 
-fn mk(cond: bool, ptr: &r/uint) -> roption/&r {
+fn mk(cond: bool, ptr: &'r uint) -> roption<'r> {
     if cond {a} else {b(ptr)}
 }
 

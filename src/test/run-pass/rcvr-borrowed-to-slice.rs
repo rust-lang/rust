@@ -13,7 +13,7 @@ trait sum {
 }
 
 // Note: impl on a slice
-impl sum for &[int] {
+impl sum for &'self [int] {
     fn sum() -> int {
         let mut sum = 0;
         for vec::each(self) |e| { sum += *e; }

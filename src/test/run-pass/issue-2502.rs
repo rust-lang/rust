@@ -9,10 +9,10 @@
 // except according to those terms.
 
 struct font {
-    fontbuf: &self/~[u8],
+    fontbuf: &'self ~[u8],
 }
 
-pub impl font {
+pub impl font/&self {
     fn buf() -> &self/~[u8] {
         self.fontbuf
     }

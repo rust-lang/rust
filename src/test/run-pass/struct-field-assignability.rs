@@ -1,5 +1,5 @@
 struct Foo {
-    x: &int
+    x: &'self int
 }
 
 pub fn main() {

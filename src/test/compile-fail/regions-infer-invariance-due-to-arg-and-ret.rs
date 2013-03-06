@@ -13,18 +13,18 @@
 // You cannot convert between regions.
 
 struct invariant {
-    f: fn(x: &self/int) -> &self/int
+    f: &'self fn(x: &'self int) -> &'self int
 }
 
-fn to_same_lifetime(bi: invariant/&r) {
-    let bj: invariant/&r = bi;
+fn to_same_lifetime(bi: invariant<'r>) {
+    let bj: invariant<'r> = bi;
 }
 
-fn to_shorter_lifetime(bi: invariant/&r) {
-    let bj: invariant/&blk = bi; //~ ERROR mismatched types
+fn to_shorter_lifetime(bi: invariant<'r>) {
+    let bj: invariant<'blk> = bi; //~ ERROR mismatched types
 }
 
-fn to_longer_lifetime(bi: invariant/&r) -> invariant/&static {
+fn to_longer_lifetime(bi: invariant<'r>) -> invariant/&static {
     bi //~ ERROR mismatched types
 }
 

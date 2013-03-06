@@ -16,7 +16,7 @@ trait iterable<A> {
     fn iterate(blk: fn(x: &A) -> bool);
 }
 
-impl<A> iterable<A> for &[A] {
+impl<A> iterable<A> for &self/[A] {
     fn iterate(f: fn(x: &A) -> bool) {
         for vec::each(self) |e| {
             if !f(e) { break; }

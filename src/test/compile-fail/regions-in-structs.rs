@@ -8,28 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct yes0 {
-  x: &uint,
+struct yes0<'self> {
+  x: &uint, //~ ERROR Illegal anonymous lifetime: anonymous lifetimes are not permitted here
 }
 
-impl Drop for yes0 {
-    fn finalize(&self) {}
+struct yes1<'self> {
+  x: &'self uint,
 }
 
-struct yes1 {
-  x: &self/uint,
-}
-
-impl Drop for yes1 {
-    fn finalize(&self) {}
-}
-
-struct yes2 {
-  x: &foo/uint, //~ ERROR named regions other than `self` are not allowed as part of a type declaration
-}
-
-impl Drop for yes2 {
-    fn finalize(&self) {}
+struct yes2<'self> {
+  x: &'foo uint, //~ ERROR Illegal lifetime &foo: only 'self is allowed allowed as part of a type declaration
 }
 
 fn main() {}

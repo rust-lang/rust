@@ -11,26 +11,26 @@
 enum arena = ();
 
 struct Bcx {
-    fcx: &Fcx
+    fcx: &'self Fcx<'self>
 }
 
 struct Fcx {
-    arena: &arena,
-    ccx: &Ccx
+    arena: &'self arena,
+    ccx: &'self Ccx
 }
 
 struct Ccx {
     x: int
 }
 
-fn alloc(_bcx : &arena) -> &Bcx {   
+fn alloc(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
         return cast::reinterpret_cast(
             &libc::malloc(sys::size_of::<Bcx/&blk>() as libc::size_t));
     }
 }
 
-fn h(bcx : &Bcx) -> &Bcx {
+fn h(bcx : &'a Bcx<'a>) -> &'a Bcx<'a> {
     return alloc(bcx.fcx.arena);
 }
 

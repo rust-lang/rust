@@ -22,8 +22,8 @@ use cast::transmute;
  * NB: These must match the representation in the C++ runtime.
  */
 
-type DropGlue = fn(**TypeDesc, *c_void);
-type FreeGlue = fn(**TypeDesc, *c_void);
+type DropGlue = &self/fn(**TypeDesc, *c_void);
+type FreeGlue = &self/fn(**TypeDesc, *c_void);
 
 type TaskID = uintptr_t;
 

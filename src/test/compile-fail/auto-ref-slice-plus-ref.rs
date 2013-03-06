@@ -23,6 +23,6 @@ trait MyIter {
     pure fn test_mut(&mut self);
 }
 
-impl MyIter for &[int] {
+impl MyIter for &'self [int] {
     pure fn test_mut(&mut self) { }
 }

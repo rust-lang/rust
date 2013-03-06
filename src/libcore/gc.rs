@@ -115,7 +115,7 @@ unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
     return None;
 }
 
-type Visitor = fn(root: **Word, tydesc: *Word) -> bool;
+type Visitor = &self/fn(root: **Word, tydesc: *Word) -> bool;
 
 // Walks the list of roots for the given safe point, and calls visitor
 // on each root.
