@@ -171,7 +171,7 @@ ifeq ($(CFG_PANDOC),)
 else
 
 # The rustdoc executable
-RUSTDOC = $(HBIN2_H_$(CFG_HOST_TRIPLE))/rustdoc$(X)
+RUSTDOC = $(HBIN2_H_$(CFG_BUILD_TRIPLE))/rustdoc$(X_$(CFG_BUILD_TRIPLE))
 
 # The library documenting macro
 # $(1) - The output directory

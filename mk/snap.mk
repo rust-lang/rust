@@ -22,12 +22,12 @@ endif
 
 endef
 
-$(foreach host,$(CFG_TARGET_TRIPLES),						\
+$(foreach host,$(CFG_HOST_TRIPLES),						\
  $(eval $(foreach stage,1 2 3,								\
   $(eval $(call DEF_SNAP_FOR_STAGE_H,$(stage),$(host))))))
 
-snap-stage1: snap-stage1-H-$(CFG_HOST_TRIPLE)
+snap-stage1: snap-stage1-H-$(CFG_BUILD_TRIPLE)
 
-snap-stage2: snap-stage2-H-$(CFG_HOST_TRIPLE)
+snap-stage2: snap-stage2-H-$(CFG_BUILD_TRIPLE)
 
-snap-stage3: snap-stage3-H-$(CFG_HOST_TRIPLE)
+snap-stage3: snap-stage3-H-$(CFG_BUILD_TRIPLE)
