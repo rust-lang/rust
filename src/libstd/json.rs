@@ -27,7 +27,6 @@ use core::prelude::*;
 use core::hashmap::linear::LinearMap;
 use core::str;
 use core::to_str;
-use core::vec;
 
 /// Represents a json value
 pub enum Json {
