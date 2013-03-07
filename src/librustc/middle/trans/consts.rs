@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use back::abi;
 use lib::llvm::{llvm, ValueRef, TypeRef, Bool, True, False};
 use metadata::csearch;
 use middle::const_eval;
@@ -117,22 +118,6 @@ pub fn const_deref(cx: @CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn const_autoderef(cx: @CrateContext, ty: ty::t, v: ValueRef)
-    -> (ty::t, ValueRef) {
-    let mut t1 = ty;
-    let mut v1 = v;
-    loop {
-        // Only rptrs can be autoderef'ed in a const context.
-        match ty::get(t1).sty {
-            ty::ty_rptr(_, mt) => {
-                t1 = mt.ty;
-                v1 = const_deref(cx, v1);
-            }
-            _ => return (t1,v1)
-        }
-    }
-}
-
 pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
     let mut def_id = def_id;
     if !ast_util::is_local(def_id) ||
@@ -153,15 +138,59 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
 }
 
 pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
-    let ety = ty::expr_ty_adjusted(cx.tcx, e);
-    let llty = type_of::sizing_type_of(cx, ety);
-    let llconst = const_expr_unchecked(cx, e);
+    let mut llconst = const_expr_unadjusted(cx, e);
+    let ety = ty::expr_ty(cx.tcx, e);
+    match cx.tcx.adjustments.find(&e.id) {
+        None => { }
+        Some(@ty::AutoAddEnv(ty::re_static, ast::BorrowedSigil)) => {
+            llconst = C_struct(~[llconst, C_null(T_opaque_box_ptr(cx))])
+        }
+        Some(@ty::AutoAddEnv(ref r, ref s)) => {
+            cx.sess.span_bug(e.span, fmt!("unexpected const function: \
+                                           region %? sigil %?", *r, *s))
+        }
+        Some(@ty::AutoDerefRef(ref adj)) => {
+            for adj.autoderefs.times {
+                llconst = const_deref(cx, llconst)
+            }
+
+            match adj.autoref {
+                None => { }
+                Some(ref autoref) => {
+                    fail_unless!(autoref.region == ty::re_static);
+                    fail_unless!(autoref.mutbl != ast::m_mutbl);
+                    match autoref.kind {
+                        ty::AutoPtr => {
+                            llconst = const_addr_of(cx, llconst);
+                        }
+                        ty::AutoBorrowVec => {
+                            let base = const_addr_of(cx, llconst);
+                            let size = machine::llsize_of(cx,
+                                                          val_ty(llconst));
+                            fail_unless!(abi::slice_elt_base == 0);
+                            fail_unless!(abi::slice_elt_len == 1);
+                            llconst = C_struct(~[base, size]);
+                        }
+                        _ => {
+                            cx.sess.span_bug(e.span,
+                                             fmt!("unimplemented const \
+                                                   autoref %?", autoref))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx, e);
+    let llty = type_of::sizing_type_of(cx, ety_adjusted);
     let csize = machine::llsize_of_alloc(cx, val_ty(llconst));
     let tsize = machine::llsize_of_alloc(cx, llty);
     if csize != tsize {
         unsafe {
+            // XXX these values could use some context
             llvm::LLVMDumpValue(llconst);
-            llvm::LLVMDumpValue(C_null(llty));
+            llvm::LLVMDumpValue(C_undef(llty));
         }
         cx.sess.bug(fmt!("const %s of type %s has size %u instead of %u",
                          expr_repr(cx.tcx, e), ty_to_str(cx.tcx, ety),
@@ -170,7 +199,7 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
     llconst
 }
 
-fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
+fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
     unsafe {
         let _icx = cx.insn_ctxt("const_expr");
         return match /*bad*/copy e.node {
@@ -254,10 +283,9 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             }
           }
           ast::expr_field(base, field, _) => {
-              let bt = ty::expr_ty(cx.tcx, base);
+              let bt = ty::expr_ty_adjusted(cx.tcx, base);
               let brepr = adt::represent_type(cx, bt);
               let bv = const_expr(cx, base);
-              let (bt, bv) = const_autoderef(cx, bt, bv);
               do expr::with_field_tys(cx.tcx, bt, None) |discr, field_tys| {
                   let ix = ty::field_idx_strict(cx.tcx, field, field_tys);
                   adt::const_get_field(cx, brepr, bv, discr, ix)
@@ -265,9 +293,8 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
           }
 
           ast::expr_index(base, index) => {
-              let bt = ty::expr_ty(cx.tcx, base);
+              let bt = ty::expr_ty_adjusted(cx.tcx, base);
               let bv = const_expr(cx, base);
-              let (bt, bv) = const_autoderef(cx, bt, bv);
               let iv = match const_eval::eval_const_expr(cx.tcx, index) {
                   const_eval::const_int(i) => i as u64,
                   const_eval::const_uint(u) => u,
@@ -425,26 +452,12 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             fail_unless!(pth.types.len() == 0);
             match cx.tcx.def_map.find(&e.id) {
                 Some(ast::def_fn(def_id, _purity)) => {
-                    let f = if !ast_util::is_local(def_id) {
+                    if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx, def_id).ty;
                         base::trans_external_path(cx, def_id, ty)
                     } else {
                         fail_unless!(ast_util::is_local(def_id));
                         base::get_item_val(cx, def_id.node)
-                    };
-                    let ety = ty::expr_ty_adjusted(cx.tcx, e);
-                    match ty::get(ety).sty {
-                        ty::ty_bare_fn(*) | ty::ty_ptr(*) => {
-                            llvm::LLVMConstPointerCast(f, T_ptr(T_i8()))
-                        }
-                        ty::ty_closure(*) => {
-                            C_struct(~[f, C_null(T_opaque_box_ptr(cx))])
-                        }
-                        _ => {
-                            cx.sess.span_bug(e.span, fmt!(
-                                "unexpected const fn type: %s",
-                                ty_to_str(cx.tcx, ety)))
-                        }
                     }
                 }
                 Some(ast::def_const(def_id)) => {
