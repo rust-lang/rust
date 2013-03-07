@@ -19,6 +19,7 @@ use back::link::*;
 use driver::session;
 use lib;
 use lib::llvm::{llvm, ValueRef, TypeRef, True};
+use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::callee;
 use middle::trans::closure;
@@ -447,10 +448,10 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         match ty::ty_dtor(bcx.tcx(), did) {
             ty::NoDtor => bcx,
             ty::LegacyDtor(ref dt_id) => {
-                trans_struct_drop(bcx, v, *dt_id, did, substs, false)
+                trans_struct_drop(bcx, t, v, *dt_id, did, substs, false)
             }
             ty::TraitDtor(ref dt_id) => {
-                trans_struct_drop(bcx, v, *dt_id, did, substs, true)
+                trans_struct_drop(bcx, t, v, *dt_id, did, substs, true)
             }
         }
       }
@@ -460,13 +461,15 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
 }
 
 pub fn trans_struct_drop(bcx: block,
+                         t: ty::t,
                          v0: ValueRef,
                          dtor_did: ast::def_id,
                          class_did: ast::def_id,
                          substs: &ty::substs,
                          take_ref: bool)
                       -> block {
-    let drop_flag = GEPi(bcx, v0, struct_dtor());
+    let repr = adt::represent_type(bcx.ccx(), t);
+    let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
         let mut bcx = cx;
 
@@ -504,7 +507,7 @@ pub fn trans_struct_drop(bcx: block,
             ty::struct_mutable_fields(bcx.tcx(), class_did,
                                               substs);
         for vec::eachi(field_tys) |i, fld| {
-            let llfld_a = GEPi(bcx, v0, struct_field(i));
+            let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
             bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
         }
 
@@ -534,10 +537,10 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
         let tcx = bcx.tcx();
         match ty::ty_dtor(tcx, did) {
           ty::TraitDtor(dtor) => {
-            trans_struct_drop(bcx, v0, dtor, did, substs, true)
+            trans_struct_drop(bcx, t, v0, dtor, did, substs, true)
           }
           ty::LegacyDtor(dtor) => {
-            trans_struct_drop(bcx, v0, dtor, did, substs, false)
+            trans_struct_drop(bcx, t, v0, dtor, did, substs, false)
           }
           ty::NoDtor => {
             // No dtor? Just the default case

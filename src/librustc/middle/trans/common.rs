@@ -26,6 +26,7 @@ use lib;
 use metadata::common::LinkMeta;
 use middle::astencode;
 use middle::resolve;
+use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::callee;
@@ -44,7 +45,8 @@ use util::ppaux::{expr_repr, ty_to_str};
 
 use core::cast;
 use core::hash;
-use core::libc::c_uint;
+use core::hashmap::linear::LinearMap;
+use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::ptr;
 use core::str;
 use core::to_bytes;
@@ -203,6 +205,7 @@ pub struct CrateContext {
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, TypeRef>,
      llsizingtypes: HashMap<ty::t, TypeRef>,
+     adt_reprs: @mut LinearMap<ty::t, @adt::Repr>,
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
@@ -1016,22 +1019,6 @@ pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
 pub fn T_taskptr(cx: @CrateContext) -> TypeRef { return T_ptr(cx.task_type); }
 
 
-// This type must never be used directly; it must always be cast away.
-pub fn T_typaram(tn: @TypeNames) -> TypeRef {
-    let s = @"typaram";
-    match name_has_type(tn, s) {
-      Some(t) => return t,
-      _ => ()
-    }
-    let t = T_i8();
-    associate_type(tn, s, t);
-    return t;
-}
-
-pub fn T_typaram_ptr(tn: @TypeNames) -> TypeRef {
-    return T_ptr(T_typaram(tn));
-}
-
 pub fn T_opaque_cbox_ptr(cx: @CrateContext) -> TypeRef {
     // closures look like boxes (even when they are ~fn or &fn)
     // see trans_closure.rs
@@ -1040,21 +1027,6 @@ pub fn T_opaque_cbox_ptr(cx: @CrateContext) -> TypeRef {
 
 pub fn T_enum_discrim(cx: @CrateContext) -> TypeRef {
     return cx.int_type;
-}
-
-pub fn T_opaque_enum(cx: @CrateContext) -> TypeRef {
-    let s = @"opaque_enum";
-    match name_has_type(cx.tn, s) {
-      Some(t) => return t,
-      _ => ()
-    }
-    let t = T_struct(~[T_enum_discrim(cx), T_i8()]);
-    associate_type(cx.tn, s, t);
-    return t;
-}
-
-pub fn T_opaque_enum_ptr(cx: @CrateContext) -> TypeRef {
-    return T_ptr(T_opaque_enum(cx));
 }
 
 pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
@@ -1084,6 +1056,12 @@ pub fn T_opaque_chan_ptr() -> TypeRef { return T_ptr(T_i8()); }
 pub fn C_null(t: TypeRef) -> ValueRef {
     unsafe {
         return llvm::LLVMConstNull(t);
+    }
+}
+
+pub fn C_undef(t: TypeRef) -> ValueRef {
+    unsafe {
+        return llvm::LLVMGetUndef(t);
     }
 }
 
@@ -1251,6 +1229,38 @@ pub fn C_shape(ccx: @CrateContext, +bytes: ~[u8]) -> ValueRef {
 pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
     unsafe {
         llvm::LLVMGetParam(fndecl, param as c_uint)
+    }
+}
+
+pub fn const_get_elt(cx: @CrateContext, v: ValueRef, us: &[c_uint])
+                  -> ValueRef {
+    unsafe {
+        let r = do vec::as_imm_buf(us) |p, len| {
+            llvm::LLVMConstExtractValue(v, p, len as c_uint)
+        };
+
+        debug!("const_get_elt(v=%s, us=%?, r=%s)",
+               val_str(cx.tn, v), us, val_str(cx.tn, r));
+
+        return r;
+    }
+}
+
+pub fn const_to_int(v: ValueRef) -> c_longlong {
+    unsafe {
+        llvm::LLVMConstIntGetSExtValue(v)
+    }
+}
+
+pub fn const_to_uint(v: ValueRef) -> c_ulonglong {
+    unsafe {
+        llvm::LLVMConstIntGetZExtValue(v)
+    }
+}
+
+pub fn is_undef(val: ValueRef) -> bool {
+    unsafe {
+        llvm::LLVMIsUndef(val) != False
     }
 }
 
@@ -1428,18 +1438,6 @@ pub fn dummy_substs(+tps: ~[ty::t]) -> ty::substs {
         self_ty: None,
         tps: tps
     }
-}
-
-pub fn struct_field(index: uint) -> [uint * 3] {
-    //! The GEPi sequence to access a field of a record/struct.
-
-    [0, 0, index]
-}
-
-pub fn struct_dtor() -> [uint * 2] {
-    //! The GEPi sequence to access the dtor of a struct.
-
-    [0, 1]
 }
 
 // Casts a Rust bool value to an i1.
