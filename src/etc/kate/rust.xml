@@ -69,6 +69,7 @@
 		<item> Shl </item>
 		<item> Shr </item>
 		<item> Index </item>
+		<item> Not </item>
 	</list>
 	<list name="types">
 		<item> bool </item>
