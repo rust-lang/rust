@@ -138,7 +138,9 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     pure fn each_key(&self, f: &fn(&K) -> bool) { self.each(|&(k, _)| f(k)) }
 
     /// Visit all values in order
-    pure fn each_value(&self, f: &fn(&V) -> bool) { self.each(|&(_, v)| f(v)) }
+    pure fn each_value(&self, f: &fn(&V) -> bool) {
+        self.each(|&(_, v)| f(v))
+    }
 
     /// Return the value corresponding to the key in the map
     pure fn find(&self, key: &K) -> Option<&self/V> {
