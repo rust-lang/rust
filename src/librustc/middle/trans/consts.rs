@@ -94,6 +94,17 @@ pub fn const_vec(cx: @CrateContext, e: @ast::expr, es: &[@ast::expr])
     }
 }
 
+fn const_addr_of(cx: @CrateContext, cv: ValueRef) -> ValueRef {
+    unsafe {
+        let gv = do str::as_c_str("const") |name| {
+            llvm::LLVMAddGlobal(cx.llmod, val_ty(cv), name)
+        };
+        llvm::LLVMSetInitializer(gv, cv);
+        llvm::LLVMSetGlobalConstant(gv, True);
+        gv
+    }
+}
+
 pub fn const_deref(cx: @CrateContext, v: ValueRef) -> ValueRef {
     unsafe {
         let v = match cx.const_globals.find(&(v as int)) {
@@ -355,13 +366,7 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             }
           }
           ast::expr_addr_of(ast::m_imm, sub) => {
-            let cv = const_expr(cx, sub);
-            let gv = do str::as_c_str("const") |name| {
-                llvm::LLVMAddGlobal(cx.llmod, val_ty(cv), name)
-            };
-            llvm::LLVMSetInitializer(gv, cv);
-            llvm::LLVMSetGlobalConstant(gv, True);
-            gv
+              const_addr_of(cx, const_expr(cx, sub))
           }
           ast::expr_tup(es) => {
               let ety = ty::expr_ty(cx.tcx, e);
