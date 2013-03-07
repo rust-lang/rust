@@ -32,7 +32,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{expr_repr, region_to_str};
 
-use core::dvec;
 use core::hashmap::linear::LinearSet;
 use core::vec;
 use std::oldmap::HashMap;
@@ -575,9 +574,8 @@ pub impl GatherLoanCtxt {
                 req_loans.push_all(loans);
             }
             None => {
-                let dvec = @dvec::from_vec(loans);
                 let req_loan_map = self.req_maps.req_loan_map;
-                req_loan_map.insert(scope_id, dvec);
+                req_loan_map.insert(scope_id, @mut loans);
             }
         }
     }

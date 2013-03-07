@@ -22,7 +22,6 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::dvec;
 use core::flate;
 use core::hash::{Hash, HashUtil};
 use core::int;
@@ -857,7 +856,7 @@ fn encode_info_for_item(ecx: @EncodeContext, ebml_w: writer::Encoder,
         }
       }
       item_trait(ref generics, ref traits, ref ms) => {
-        let provided_methods = dvec::DVec();
+        let mut provided_methods = ~[];
 
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
@@ -1366,13 +1365,11 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
 
     if (parms.tcx.sess.meta_stats()) {
 
-        do wr.bytes.borrow |v| {
-            do v.each |e| {
-                if *e == 0 {
-                    ecx.stats.zero_bytes += 1;
-                }
-                true
+        do wr.bytes.each |e| {
+            if *e == 0 {
+                ecx.stats.zero_bytes += 1;
             }
+            true
         }
 
         io::println("metadata stats:");
@@ -1401,7 +1398,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
 
     (do str::as_bytes(&~"rust\x00\x00\x00\x01") |bytes| {
         vec::slice(*bytes, 0, 8).to_vec()
-    }) + flate::deflate_bytes(wr.bytes.check_out(|buf| buf))
+    }) + flate::deflate_bytes(wr.bytes)
 }
 
 // Get the encoded string for a type

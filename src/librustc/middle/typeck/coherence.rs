@@ -55,7 +55,6 @@ use syntax::visit::{Visitor, SimpleVisitor};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
-use core::dvec::DVec;
 use core::result::Ok;
 use core::hashmap::linear::LinearSet;
 use core::uint;
@@ -151,11 +150,11 @@ pub fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
 pub struct CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_methods: HashMap<def_id,@DVec<@Impl>>,
+    inherent_methods: HashMap<def_id,@mut ~[@Impl]>,
 
     // Contains implementations of methods associated with a trait. For these,
     // the associated trait must be imported at the call site.
-    extension_methods: HashMap<def_id,@DVec<@Impl>>,
+    extension_methods: HashMap<def_id,@mut ~[@Impl]>,
 
 }
 
@@ -372,9 +371,8 @@ pub impl CoherenceChecker {
                             for method `%s`",
                             *self.crate_context.tcx.sess.str_of(
                                 provided_method_info.method_info.ident));
-                    let method_infos = @DVec();
-                    method_infos.push(provided_method_info);
-                    pmm.insert(local_def(impl_id), method_infos);
+                    pmm.insert(local_def(impl_id),
+                               @mut ~[provided_method_info]);
                 }
             }
         }
@@ -386,7 +384,7 @@ pub impl CoherenceChecker {
         match self.crate_context.coherence_info.inherent_methods
                   .find(&base_def_id) {
             None => {
-                implementation_list = @DVec();
+                implementation_list = @mut ~[];
                 self.crate_context.coherence_info.inherent_methods
                     .insert(base_def_id, implementation_list);
             }
@@ -403,7 +401,7 @@ pub impl CoherenceChecker {
         match self.crate_context.coherence_info.extension_methods
                   .find(&trait_id) {
             None => {
-                implementation_list = @DVec();
+                implementation_list = @mut ~[];
                 self.crate_context.coherence_info.extension_methods
                     .insert(trait_id, implementation_list);
             }
@@ -741,13 +739,13 @@ pub impl CoherenceChecker {
     // Converts an implementation in the AST to an Impl structure.
     fn create_impl_from_item(&self, item: @item) -> @Impl {
         fn add_provided_methods(all_methods: &mut ~[@MethodInfo],
-                                all_provided_methods: ~[@ProvidedMethodInfo],
-                                sess: driver::session::Session) {
+                            all_provided_methods: &mut ~[@ProvidedMethodInfo],
+                            sess: driver::session::Session) {
             for all_provided_methods.each |provided_method| {
                 debug!(
                     "(creating impl) adding provided method `%s` to impl",
                     *sess.str_of(provided_method.method_info.ident));
-                vec::push(&mut *all_methods, provided_method.method_info);
+                vec::push(all_methods, provided_method.method_info);
             }
         }
 
@@ -790,7 +788,7 @@ pub impl CoherenceChecker {
                             // Add all provided methods.
                             add_provided_methods(
                                 &mut methods,
-                                all_provided.get(),
+                                all_provided,
                                 self.crate_context.tcx.sess);
                         }
                     }
@@ -943,9 +941,7 @@ pub impl CoherenceChecker {
                     trait_method_def_id: trait_method_info.def_id
                 };
 
-            let method_infos = @DVec();
-            method_infos.push(provided_method_info);
-            pmm.insert(trait_def_id, method_infos);
+            pmm.insert(trait_def_id, @mut ~[provided_method_info]);
         }
     }
 

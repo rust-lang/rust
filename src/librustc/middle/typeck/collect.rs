@@ -46,7 +46,6 @@ use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::common::{indenter, pluralize};
 use util::ppaux;
 
-use core::dvec;
 use core::vec;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
@@ -321,7 +320,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     if tcx.supertraits.contains_key(&local_def(id)) { return; }
 
-    let instantiated = dvec::DVec();
+    let mut instantiated = ~[];
     for trait_refs.each |trait_ref| {
         let (did, tpt) = instantiate_trait_ref(ccx, *trait_ref, rp);
         if instantiated.any(|other_trait: &InstantiatedTraitRef|
@@ -334,8 +333,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
         }
         instantiated.push(InstantiatedTraitRef { def_id: did, tpt: tpt });
     }
-    tcx.supertraits.insert(local_def(id),
-                               @dvec::unwrap(instantiated));
+    tcx.supertraits.insert(local_def(id), @instantiated);
 }
 
 /**

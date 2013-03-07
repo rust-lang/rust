@@ -95,7 +95,6 @@ use middle::typeck::{method_self, method_static, method_trait, method_super};
 use util::common::indenter;
 use util::ppaux::expr_repr;
 
-use core::dvec::DVec;
 use core::result;
 use core::uint;
 use core::vec;
@@ -127,8 +126,8 @@ pub fn lookup(
         m_name: m_name,
         supplied_tps: supplied_tps,
         impl_dups: HashMap(),
-        inherent_candidates: DVec(),
-        extension_candidates: DVec(),
+        inherent_candidates: @mut ~[],
+        extension_candidates: @mut ~[],
         deref_args: deref_args,
     };
     let mme = lcx.do_lookup(self_ty);
@@ -145,8 +144,8 @@ pub struct LookupContext {
     m_name: ast::ident,
     supplied_tps: &self/[ty::t],
     impl_dups: HashMap<def_id, ()>,
-    inherent_candidates: DVec<Candidate>,
-    extension_candidates: DVec<Candidate>,
+    inherent_candidates: @mut ~[Candidate],
+    extension_candidates: @mut ~[Candidate],
     deref_args: check::DerefArgs,
 }
 
@@ -188,7 +187,7 @@ pub impl LookupContext/&self {
         self.push_inherent_candidates(self_ty);
         self.push_extension_candidates(self_ty);
 
-        let enum_dids = DVec();
+        let mut enum_dids = ~[];
         let mut self_ty = self_ty;
         let mut autoderefs = 0;
         loop {
@@ -224,7 +223,7 @@ pub impl LookupContext/&self {
                 }
             }
 
-            match self.deref(self_ty, &enum_dids) {
+            match self.deref(self_ty, &mut enum_dids) {
                 None => { break; }
                 Some(ty) => {
                     self_ty = ty;
@@ -236,7 +235,7 @@ pub impl LookupContext/&self {
         self.search_for_autosliced_method(self_ty, autoderefs)
     }
 
-    fn deref(ty: ty::t, enum_dids: &DVec<ast::def_id>) -> Option<ty::t> {
+    fn deref(ty: ty::t, enum_dids: &mut ~[ast::def_id]) -> Option<ty::t> {
         match ty::get(ty).sty {
             ty_enum(did, _) => {
                 // Watch out for newtype'd enums like "enum t = @T".
@@ -272,7 +271,7 @@ pub impl LookupContext/&self {
          * example, if the receiver is @@C where `C` is a struct type,
          * we'll want to find the inherent impls for `C`. */
 
-        let enum_dids = DVec();
+        let mut enum_dids = ~[];
         let mut self_ty = self_ty;
         loop {
             match get(self_ty).sty {
@@ -307,7 +306,7 @@ pub impl LookupContext/&self {
             // n.b.: Generally speaking, we only loop if we hit the
             // fallthrough case in the match above.  The exception
             // would be newtype enums.
-            self_ty = match self.deref(self_ty, &enum_dids) {
+            self_ty = match self.deref(self_ty, &mut enum_dids) {
                 None => { return; }
                 Some(ty) => { ty }
             }
@@ -330,7 +329,7 @@ pub impl LookupContext/&self {
                 for opt_impl_infos.each |impl_infos| {
                     for impl_infos.each |impl_info| {
                         self.push_candidates_from_impl(
-                            &self.extension_candidates, *impl_info);
+                            self.extension_candidates, *impl_info);
                     }
                 }
 
@@ -338,7 +337,7 @@ pub impl LookupContext/&self {
                 match self.tcx().provided_methods.find(trait_did) {
                     Some(methods) => {
                         self.push_candidates_from_provided_methods(
-                            &self.extension_candidates, self_ty, *trait_did,
+                            self.extension_candidates, self_ty, *trait_did,
                             methods);
                     }
                     None => {}
@@ -606,12 +605,12 @@ pub impl LookupContext/&self {
         for opt_impl_infos.each |impl_infos| {
             for impl_infos.each |impl_info| {
                 self.push_candidates_from_impl(
-                    &self.inherent_candidates, *impl_info);
+                    self.inherent_candidates, *impl_info);
             }
         }
     }
 
-    fn push_candidates_from_impl(&self, candidates: &DVec<Candidate>,
+    fn push_candidates_from_impl(&self, candidates: &mut ~[Candidate],
                                  impl_info: &resolve::Impl) {
         if !self.impl_dups.insert(impl_info.did, ()) {
             return; // already visited
@@ -657,10 +656,10 @@ pub impl LookupContext/&self {
 
     fn push_candidates_from_provided_methods(
             &self,
-            candidates: &DVec<Candidate>,
+            candidates: &mut ~[Candidate],
             self_ty: ty::t,
             trait_def_id: def_id,
-            methods: @DVec<@ProvidedMethodInfo>) {
+            methods: &mut ~[@ProvidedMethodInfo]) {
         debug!("(pushing candidates from provided methods) considering trait \
                 id %d:%d",
                trait_def_id.crate,
@@ -970,7 +969,7 @@ pub impl LookupContext/&self {
         // existing code.
 
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, &self.inherent_candidates) {
+        match self.consider_candidates(self_ty, self.inherent_candidates) {
             None => {}
             Some(mme) => {
                 return Some(mme);
@@ -978,7 +977,7 @@ pub impl LookupContext/&self {
         }
 
         debug!("searching extension candidates");
-        match self.consider_candidates(self_ty, &self.extension_candidates) {
+        match self.consider_candidates(self_ty, self.extension_candidates) {
             None => {
                 return None;
             }
@@ -990,7 +989,7 @@ pub impl LookupContext/&self {
 
     fn consider_candidates(&self,
                            self_ty: ty::t,
-                           candidates: &DVec<Candidate>)
+                           candidates: &mut ~[Candidate])
         -> Option<method_map_entry>
     {
         let relevant_candidates =

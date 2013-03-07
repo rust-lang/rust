@@ -21,7 +21,6 @@ use middle::typeck::{method_map, method_origin, method_param, method_self};
 use middle::typeck::{method_super};
 use middle::typeck::{method_static, method_trait};
 
-use core::dvec::DVec;
 use core::util::ignore;
 use syntax::ast::{def_variant, expr_field, expr_method_call, expr_struct};
 use syntax::ast::{expr_unary, ident, item_struct, item_enum, item_impl};
@@ -38,7 +37,7 @@ use syntax::visit;
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: &method_map,
                    crate: @ast::crate) {
-    let privileged_items = @DVec();
+    let privileged_items = @mut ~[];
 
     // Adds structs that are privileged to this scope.
     let add_privileged_items: @fn(&[@ast::item]) -> uint = |items| {

@@ -112,7 +112,6 @@ use middle::moves;
 use util::ppaux::ty_to_str;
 
 use core::cmp;
-use core::dvec::DVec;
 use core::io::WriterUtil;
 use core::io;
 use core::ptr;
@@ -136,7 +135,7 @@ use syntax::{visit, ast_util};
 //
 // Very subtle (#2633): borrowck will remove entries from this table
 // if it detects an outstanding loan (that is, the addr is taken).
-pub type last_use_map = HashMap<node_id, @DVec<node_id>>;
+pub type last_use_map = HashMap<node_id, @mut ~[node_id]>;
 
 enum Variable = uint;
 enum LiveNode = uint;
@@ -419,13 +418,13 @@ pub impl IrMaps {
             let v = match self.last_use_map.find(&expr_id) {
               Some(v) => v,
               None => {
-                let v = @DVec();
+                let v = @mut ~[];
                 self.last_use_map.insert(expr_id, v);
                 v
               }
             };
 
-            (*v).push(id);
+            v.push(id);
           }
           Arg(_, _, by_ref) |
           Arg(_, _, by_val) | ImplicitRet => {
@@ -667,7 +666,7 @@ struct Liveness {
     users: @mut ~[Users],
     // The list of node IDs for the nested loop scopes
     // we're in.
-    loop_scope: DVec<node_id>,
+    loop_scope: @mut ~[node_id],
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
     // it probably doesn't now)
@@ -683,7 +682,7 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         successors: @mut vec::from_elem(ir.num_live_nodes, invalid_node()),
         users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                    invalid_users()),
-        loop_scope: DVec(),
+        loop_scope: @mut ~[],
         break_ln: HashMap(),
         cont_ln: HashMap()
     }
@@ -856,9 +855,14 @@ pub impl Liveness {
                     self.tcx.sess.span_bug(sp, ~"break outside loop");
                 }
                 else {
-                    self.loop_scope.last()
+                    // FIXME(#5275): this shouldn't have to be a method...
+                    self.last_loop_scope()
                 }
         }
+    }
+
+    fn last_loop_scope(&self) -> node_id {
+        *self.loop_scope.last()
     }
 
     fn ln_str(&self, ln: LiveNode) -> ~str {
