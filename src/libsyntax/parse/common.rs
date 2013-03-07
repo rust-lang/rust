@@ -119,10 +119,6 @@ pub impl Parser {
                                                 id: self.get_id() })
     }
 
-    fn parse_value_ident(&self) -> ast::ident {
-        return self.parse_ident();
-    }
-
     // consume token 'tok' if it exists. Returns true if the given
     // token was present, false otherwise.
     fn eat(&self, tok: &token::Token) -> bool {

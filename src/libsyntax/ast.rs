@@ -105,6 +105,10 @@ pub struct Lifetime {
     ident: ident
 }
 
+// a "Path" is essentially Rust's notion of a name;
+// for instance: core::cmp::Eq  .  It's represented
+// as a sequence of identifiers, along with a bunch
+// of supporting information.
 #[auto_encode]
 #[auto_decode]
 #[deriving_eq]

@@ -457,7 +457,7 @@ pub impl Parser {
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
             // could change.
-            let ident = p.parse_method_name();
+            let ident = p.parse_ident();
 
             let generics = p.parse_generics();
 
@@ -899,16 +899,9 @@ pub impl Parser {
         codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
-    fn parse_path_without_tps(&self) -> @path {
-        self.parse_path_without_tps_(|p| p.parse_ident(),
-                                     |p| p.parse_ident())
-    }
-
-    fn parse_path_without_tps_(
-        &self,
-        parse_ident: fn(&Parser) -> ident,
-        parse_last_ident: fn(&Parser) -> ident
-    ) -> @path {
+    // parse a path that doesn't have type parameters attached
+    fn parse_path_without_tps(&self)
+        -> @ast::path {
         maybe_whole!(self, nt_path);
         let lo = self.span.lo;
         let global = self.eat(&token::MOD_SEP);
@@ -919,10 +912,10 @@ pub impl Parser {
                 && self.look_ahead(1u) == token::MOD_SEP;
 
             if is_not_last {
-                ids.push(parse_ident(self));
+                ids.push(self.parse_ident());
                 self.expect(&token::MOD_SEP);
             } else {
-                ids.push(parse_last_ident(self));
+                ids.push(self.parse_ident());
                 break;
             }
         }
@@ -933,12 +926,7 @@ pub impl Parser {
                      types: ~[] }
     }
 
-    fn parse_value_path(&self) -> @path {
-        self.parse_path_without_tps_(|p| p.parse_ident(),
-                                     |p| p.parse_value_ident())
-    }
-
-    fn parse_path_with_tps(&self, colons: bool) -> @path {
+    fn parse_path_with_tps(&self, colons: bool) -> @ast::path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
         maybe_whole!(self, nt_path);
@@ -2134,11 +2122,7 @@ pub impl Parser {
             }
 
             let lo1 = self.last_span.lo;
-            let fieldname = if self.look_ahead(1u) == token::COLON {
-                self.parse_ident()
-            } else {
-                self.parse_value_ident()
-            };
+            let fieldname = self.parse_ident();
             let hi1 = self.last_span.lo;
             let fieldpath = ast_util::ident_to_path(mk_sp(lo1, hi1),
                                                     fieldname);
@@ -2302,7 +2286,7 @@ pub impl Parser {
                 }
 
                 if is_plain_ident(&*self.token) && cannot_be_enum_or_struct {
-                    let name = self.parse_value_path();
+                    let name = self.parse_path_without_tps();
                     let sub;
                     if self.eat(&token::AT) {
                         sub = Some(self.parse_pat(refutable));
@@ -2375,7 +2359,7 @@ pub impl Parser {
                 *self.last_span,
                 ~"expected identifier, found path");
         }
-        let name = self.parse_value_path();
+        let name = self.parse_path_without_tps();
         let sub = if self.eat(&token::AT) {
             Some(self.parse_pat(refutable))
         } else { None };
@@ -2473,7 +2457,7 @@ pub impl Parser {
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
-            let pth = self.parse_value_path();
+            let pth = self.parse_path_without_tps();
             self.bump();
 
             let id = if *self.token == token::LPAREN {
@@ -2982,7 +2966,7 @@ pub impl Parser {
     }
 
     fn parse_fn_header(&self) -> (ident, ast::Generics) {
-        let id = self.parse_value_ident();
+        let id = self.parse_ident();
         let generics = self.parse_generics();
         (id, generics)
     }
@@ -3005,10 +2989,6 @@ pub impl Parser {
         (ident, item_fn(decl, purity, generics, body), Some(inner_attrs))
     }
 
-    fn parse_method_name(&self) -> ident {
-        self.parse_value_ident()
-    }
-
     fn parse_method(&self) -> @method {
         let attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
@@ -3018,7 +2998,7 @@ pub impl Parser {
 
         let visa = self.parse_visibility();
         let pur = self.parse_fn_purity();
-        let ident = self.parse_method_name();
+        let ident = self.parse_ident();
         let generics = self.parse_generics();
         let (self_ty, decl) = do self.parse_fn_decl_with_self() |p| {
             p.parse_arg()
@@ -3142,7 +3122,7 @@ pub impl Parser {
     }
 
     fn parse_item_struct(&self) -> item_info {
-        let class_name = self.parse_value_ident();
+        let class_name = self.parse_ident();
         self.parse_region_param();
         let generics = self.parse_generics();
         if self.eat(&token::COLON) {
@@ -3370,7 +3350,7 @@ pub impl Parser {
     }
 
     fn parse_item_const(&self) -> item_info {
-        let id = self.parse_value_ident();
+        let id = self.parse_ident();
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         self.expect(&token::EQ);
@@ -3768,7 +3748,7 @@ pub impl Parser {
                 kind = enum_variant_kind(nested_enum_def);
                 needs_comma = false;
             } else {
-                ident = self.parse_value_ident();
+                ident = self.parse_ident();
                 if self.eat(&token::LBRACE) {
                     // Parse a struct variant.
                     all_nullary = false;
