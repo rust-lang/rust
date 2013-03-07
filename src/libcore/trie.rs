@@ -81,7 +81,10 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
     /// Visit all values in order
     #[inline(always)]
-    pure fn each_value(&self, f: &fn(&T) -> bool) { self.each(|&(_, v)| f(v)) }
+    pure fn each_value(&self,
+                       f: &fn(&T) -> bool) {
+        self.each(|&(_, v)| f(v))
+    }
 
     /// Return the value corresponding to the key in the map
     #[inline(hint)]
