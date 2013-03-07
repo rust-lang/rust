@@ -67,7 +67,10 @@ pub pure fn is_nonnegative(x: T) -> bool { x >= 0 as T }
  * Iterate over the range [`start`,`start`+`step`..`stop`)
  *
  */
-pub pure fn range_step(start: T, stop: T, step: T_SIGNED, it: &fn(T) -> bool) {
+pub pure fn range_step(start: T,
+                       stop: T,
+                       step: T_SIGNED,
+                       it: &fn(T) -> bool) {
     let mut i = start;
     if step == 0 {
         fail!(~"range_step called with step == 0");

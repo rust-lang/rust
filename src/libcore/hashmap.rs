@@ -599,7 +599,9 @@ pub mod linear {
         }
 
         /// Visit the values representing the intersection
-        pure fn intersection(&self, other: &LinearSet<T>, f: &fn(&T) -> bool) {
+        pure fn intersection(&self,
+                             other: &LinearSet<T>,
+                             f: &fn(&T) -> bool) {
             for self.each |v| {
                 if other.contains(v) {
                     if !f(v) { return }

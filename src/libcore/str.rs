@@ -491,7 +491,10 @@ pub pure fn split(s: &str, sepfn: &fn(char) -> bool) -> ~[~str] {
  * Splits a string into substrings using a character function, cutting at
  * most `count` times.
  */
-pub pure fn splitn(s: &str, sepfn: &fn(char) -> bool, count: uint) -> ~[~str] {
+pub pure fn splitn(s: &str,
+                   sepfn: &fn(char) -> bool,
+                   count: uint)
+                -> ~[~str] {
     split_inner(s, sepfn, count, true)
 }
 
@@ -1246,8 +1249,11 @@ pub pure fn find_from(s: &str, start: uint, f: &fn(char)
  * or equal to `len(s)`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`.
  */
-pub pure fn find_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool)
-    -> Option<uint> {
+pub pure fn find_between(s: &str,
+                         start: uint,
+                         end: uint,
+                         f: &fn(char) -> bool)
+                      -> Option<uint> {
     fail_unless!(start <= end);
     fail_unless!(end <= len(s));
     fail_unless!(is_char_boundary(s, start));

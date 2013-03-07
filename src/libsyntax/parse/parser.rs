@@ -76,7 +76,7 @@ use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
 use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
-use parse::obsolete::{ObsoleteAssertion};
+use parse::obsolete::{ObsoleteAssertion, ObsoleteBareFnType};
 use parse::prec::{as_prec, token_to_binop};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents};
@@ -681,7 +681,9 @@ pub impl Parser {
         } else if self.eat_keyword(&~"extern") {
             self.parse_ty_bare_fn()
         } else if self.token_is_closure_keyword(&copy *self.token) {
-            self.parse_ty_closure(None, None)
+            let result = self.parse_ty_closure(None, None);
+            self.obsolete(*self.last_span, ObsoleteBareFnType);
+            result
         } else if *self.token == token::MOD_SEP
             || is_ident_or_path(&*self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
@@ -2820,7 +2822,7 @@ pub impl Parser {
     fn parse_fn_decl_with_self(
         &self,
         parse_arg_fn:
-        fn(&Parser) -> arg_or_capture_item
+        &fn(&Parser) -> arg_or_capture_item
     ) -> (self_ty, fn_decl) {
         fn maybe_parse_self_ty(
             cnstr: &fn(+v: mutability) -> ast::self_ty_,
