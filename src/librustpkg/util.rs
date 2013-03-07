@@ -597,11 +597,23 @@ pub fn remove_pkg(pkg: &Package) -> bool {
     true
 }
 
-pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
-               flags: ~[~str], cfgs: ~[~str], opt: bool, test: bool) -> bool {
-    let lib_dir = dir.push(~"lib");
-    let bin_dir = dir.push(~"bin");
-    let test_dir = dir.push(~"test");
+pub fn compile_input(sysroot: Option<Path>,
+                     in_file: &Path,
+                     out_dir: &Path,
+                     flags: ~[~str],
+                     cfgs: ~[~str],
+                     opt: bool,
+                     test: bool) -> bool {
+
+    assert in_file.components.len() > 1;
+    let input = driver::file_input(copy *in_file);
+    let short_name = in_file.pop().filename().get();
+    let out_file = out_dir.push(os::dll_filename(short_name));
+
+    debug!("compiling %s into %s",
+           in_file.to_str(),
+           out_file.to_str());
+
     let binary = os::args()[0];
     let matches = getopts(flags, driver::optgroups()).get();
     let options = @session::options {
@@ -630,15 +642,12 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
 
     let mut name = None;
     let mut vers = None;
-    let mut uuid = None;
     let mut crate_type = None;
 
     fn load_link_attr(mis: ~[@ast::meta_item]) -> (Option<~str>,
-                                                   Option<~str>,
                                                    Option<~str>) {
         let mut name = None;
         let mut vers = None;
-        let mut uuid = None;
 
         for mis.each |a| {
             match a.node {
@@ -647,7 +656,6 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
                     match *v {
                         ~"name" => name = Some(*s),
                         ~"vers" => vers = Some(*s),
-                        ~"uuid" => uuid = Some(*s),
                         _ => { }
                     }
                 }
@@ -655,7 +663,7 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
             }
         }
 
-        (name, vers, uuid)
+        (name, vers)
     }
 
     for crate.node.attrs.each |a| {
@@ -670,11 +678,10 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
             ast::meta_list(v, mis) => {
                 match *v {
                     ~"link" => {
-                        let (n, v, u) = load_link_attr(mis);
+                        let (n, v) = load_link_attr(mis);
 
                         name = n;
                         vers = v;
-                        uuid = u;
                     }
                     _ => {}
                 }
@@ -682,16 +689,6 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
             _ => {}
         }
     }
-
-    if name.is_none() || vers.is_none() || uuid.is_none() {
-        error(~"link attr without (name, vers, uuid) values");
-
-        return false;
-    }
-
-    let name = name.get();
-    let vers = vers.get();
-    let uuid = uuid.get();
 
     let is_bin = match crate_type {
         Some(crate_type) => {
@@ -712,29 +709,14 @@ pub fn compile_input(sysroot: Option<Path>, input: driver::input, dir: &Path,
         }
     };
 
-    if test {
-        need_dir(&test_dir);
-
-        outputs = driver::build_output_filenames(input, &Some(test_dir),
-                                                 &None, sess)
-    }
-    else if is_bin {
-        need_dir(&bin_dir);
-
-        let path = bin_dir.push(fmt!("%s-%s-%s%s", name,
-                                                   hash(name + uuid + vers),
-                                                   vers, exe_suffix()));
-        outputs = driver::build_output_filenames(input, &None, &Some(path),
-                                                 sess);
-    } else {
-        need_dir(&lib_dir);
-
-        outputs = driver::build_output_filenames(input, &Some(lib_dir),
-                                                 &None, sess)
-    }
+    outputs = driver::build_output_filenames(input,
+                                             &Some(copy *out_dir),
+                                             &Some(out_file),
+                                             sess);
 
     driver::compile_rest(sess, cfg, driver::cu_everything,
-                         Some(outputs), Some(crate));
+                         Some(outputs),
+                         Some(crate));
 
     true
 }
@@ -753,15 +735,7 @@ pub fn exe_suffix() -> ~str { ~"" }
 pub fn compile_crate(sysroot: Option<Path>, crate: &Path, dir: &Path,
                      flags: ~[~str], cfgs: ~[~str], opt: bool,
                      test: bool) -> bool {
-    compile_input(sysroot, driver::file_input(*crate), dir, flags, cfgs,
-                  opt, test)
-}
-
-pub fn compile_str(sysroot: Option<Path>, code: ~str, dir: &Path,
-                   flags: ~[~str], cfgs: ~[~str], opt: bool,
-                   test: bool) -> bool {
-    compile_input(sysroot, driver::str_input(code), dir, flags, cfgs,
-                  opt, test)
+    compile_input(sysroot, crate, dir, flags, cfgs, opt, test)
 }
 
 #[cfg(windows)]
