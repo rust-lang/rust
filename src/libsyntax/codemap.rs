@@ -24,7 +24,6 @@ source code snippets, etc.
 use core::prelude::*;
 
 use core::cmp;
-use core::dvec::DVec;
 use core::str;
 use core::to_bytes;
 use core::uint;
@@ -242,7 +241,7 @@ pub struct FileMap {
     /// Locations of lines beginnings in the source code
     lines: @mut ~[BytePos],
     /// Locations of multi-byte characters in the source code
-    multibyte_chars: DVec<MultiByteChar>
+    multibyte_chars: @mut ~[MultiByteChar],
 }
 
 pub impl FileMap {
@@ -282,13 +281,13 @@ pub impl FileMap {
 }
 
 pub struct CodeMap {
-    files: DVec<@FileMap>
+    files: @mut ~[@FileMap]
 }
 
 pub impl CodeMap {
     static pub fn new() -> CodeMap {
         CodeMap {
-            files: DVec()
+            files: @mut ~[],
         }
     }
 
@@ -315,7 +314,7 @@ pub impl CodeMap {
             name: filename, substr: substr, src: src,
             start_pos: BytePos(start_pos),
             lines: @mut ~[],
-            multibyte_chars: DVec()
+            multibyte_chars: @mut ~[],
         };
 
         self.files.push(filemap);
