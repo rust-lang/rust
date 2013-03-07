@@ -767,11 +767,18 @@ pub fn link_binary(sess: Session,
     // instead of hard-coded gcc.
     // For win32, there is no cc command,
     // so we add a condition to make it use gcc.
-    let cc_prog: ~str =
-        if sess.targ_cfg.os == session::os_android {
-            ~"arm-linux-androideabi-g++"
-        } else if sess.targ_cfg.os == session::os_win32 { ~"gcc" }
-        else { ~"cc" };
+    let cc_prog: ~str = if sess.targ_cfg.os == session::os_android {
+        match &sess.opts.android_cross_path {
+            &Some(copy path) => {
+                fmt!("%s/bin/arm-linux-androideabi-gcc", path)
+            }
+            &None => {
+                sess.fatal(~"need Android NDK path for linking \
+                             (--android-cross-path)")
+            }
+        }
+    } else if sess.targ_cfg.os == session::os_win32 { ~"gcc" }
+    else { ~"cc" };
     // The invocations of cc share some flags across platforms
 
     let mut cc_args =
@@ -866,9 +873,7 @@ pub fn link_binary(sess: Session,
     }
 
     // Stack growth requires statically linking a __morestack function
-    if sess.targ_cfg.os != session::os_android {
     cc_args.push(~"-lmorestack");
-    }
 
     // Always want the runtime linked in
     cc_args.push(~"-lrustrt");

@@ -516,11 +516,11 @@ pub fn host_triple() -> ~str {
     // FIXME (#2400): Instead of grabbing the host triple we really should
     // be grabbing (at compile time) the target triple that this rustc is
     // built with and calling that (at runtime) the host triple.
-    let ht = env!("CFG_HOST_TRIPLE");
+    let ht = env!("CFG_BUILD_TRIPLE");
     return if ht != ~"" {
             ht
         } else {
-            fail!(~"rustc built without CFG_HOST_TRIPLE")
+            fail!(~"rustc built without CFG_BUILD_TRIPLE")
         };
 }
 
@@ -641,6 +641,8 @@ pub fn build_session_options(+binary: ~str,
         .map(|s| Path(*s));
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"));
     let test = opt_present(matches, ~"test");
+    let android_cross_path = getopts::opt_maybe_str(
+        matches, ~"android-cross-path");
     let sopts = @session::options {
         crate_type: crate_type,
         is_static: static,
@@ -660,7 +662,8 @@ pub fn build_session_options(+binary: ~str,
         test: test,
         parse_only: parse_only,
         no_trans: no_trans,
-        debugging_opts: debugging_opts
+        debugging_opts: debugging_opts,
+        android_cross_path: android_cross_path
     };
     return sopts;
 }
@@ -764,6 +767,8 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           to compile for (see
          http://sources.redhat.com/autobook/autobook/autobook_17.html
                           for detail)", ~"TRIPLE"),
+  optopt(~"", ~"android-cross-path",
+         ~"The path to the Android NDK", "PATH"),
   optmulti(~"W", ~"warn",
                         ~"Set lint warnings", ~"OPT"),
   optmulti(~"A", ~"allow",

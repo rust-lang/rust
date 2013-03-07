@@ -301,7 +301,7 @@ then
 fi
 
 
-DEFAULT_HOST_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
+DEFAULT_BUILD_TRIPLE="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_BUILD_DIR="$(pwd)/"
@@ -346,8 +346,11 @@ opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
-valopt host-triple "${DEFAULT_HOST_TRIPLE}" "LLVM host triple"
-valopt target-triples "${CFG_HOST_TRIPLE}" "LLVM target triples"
+valopt build-triple "${DEFAULT_BUILD_TRIPLE}" "LLVM build triple"
+valopt host-triples "${CFG_BUILD_TRIPLE}" "LLVM host triples"
+valopt target-triples "${CFG_HOST_TRIPLES}" "LLVM target triples"
+valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
+valopt mingw32-cross-path "" "MinGW32 cross compiler path"
 
 # Validate Options
 step_msg "validating $CFG_SELF args"
@@ -531,11 +534,41 @@ fi
 # a little post-processing of various config values
 
 CFG_PREFIX=${CFG_PREFIX%/}
+CFG_HOST_TRIPLES="$(echo $CFG_HOST_TRIPLES | tr ',' ' ')"
 CFG_TARGET_TRIPLES="$(echo $CFG_TARGET_TRIPLES | tr ',' ' ')"
-case $CFG_TARGET_TRIPLES in
-    (*$CFG_HOST_TRIPLE*) ;;
-    (*) err "Host triple is not among the target triples." ;;
-esac
+
+# copy host-triples to target-triples so that hosts are a subset of targets
+V_TEMP=""
+for i in $CFG_HOST_TRIPLES $CFG_TARGET_TRIPLES;
+do
+   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
+done
+CFG_TARGET_TRIPLES=$V_TEMP
+
+# check target-specific tool-chains
+for i in $CFG_TARGET_TRIPLES
+do
+    case $i in
+        arm-unknown-android)
+
+            if [ ! -f $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-gcc ]
+            then
+                err "NDK $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-gcc not found"
+            fi
+            if [ ! -f $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-g++ ]
+            then
+                err "NDK $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-g++ not found"
+            fi
+            if [ ! -f $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-ar ]
+            then
+                err "NDK $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-ar not found"
+            fi
+            ;;
+
+        *)
+            ;;
+    esac
+done
 
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
@@ -562,13 +595,13 @@ do
 done
 
 make_dir llvm
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_HOST_TRIPLES
 do
     make_dir llvm/$t
 done
 
 make_dir rustllvm
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_HOST_TRIPLES
 do
     make_dir rustllvm/$t
 done
@@ -577,9 +610,10 @@ make_dir rt
 for t in $CFG_TARGET_TRIPLES
 do
   make_dir rt/$t
-  for i in                                    \
-    isaac linenoise sync test libuv libuv/src \
-    arch/i386 arch/x86_64 arch/arm arch/mips
+  for i in                                          \
+    isaac linenoise sync test \
+    arch/i386 arch/x86_64 arch/arm arch/mips  \
+    libuv libuv/src/ares libuv/src/eio libuv/src/ev
   do
     make_dir rt/$t/$i
   done
@@ -587,13 +621,14 @@ done
 
 # On windows we just store the libraries in the bin directory because
 # there's no rpath
+# FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
 CFG_LIBDIR=lib
 if [ "$CFG_OSTYPE" = "pc-mingw32" ]
 then
     CFG_LIBDIR=bin
 fi
 
-for h in $CFG_TARGET_TRIPLES
+for h in $CFG_HOST_TRIPLES
 do
     for t in $CFG_TARGET_TRIPLES
     do
@@ -669,7 +704,7 @@ fi
 # Configure llvm, only if necessary
 step_msg "looking at LLVM"
 CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_HOST_TRIPLES
 do
     do_reconfigure=1
 
@@ -819,10 +854,14 @@ putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
 putvar CFG_CONFIGURE_ARGS
 putvar CFG_PREFIX
+putvar CFG_BUILD_TRIPLE
+putvar CFG_HOST_TRIPLES
 putvar CFG_TARGET_TRIPLES
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_DISABLE_MANAGE_SUBMODULES
+putvar CFG_ANDROID_CROSS_PATH
+putvar CFG_MINGW32_CROSS_PATH
 
 if [ ! -z "$CFG_ENABLE_PAX_FLAGS" ]
 then
@@ -854,7 +893,7 @@ fi
 putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_SRC_DIR
 
-for t in $CFG_TARGET_TRIPLES
+for t in $CFG_HOST_TRIPLES
 do
     CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
     CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)

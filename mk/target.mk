@@ -22,20 +22,50 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM): \
-		rustllvm/$(2)/$$(CFG_RUSTLLVM)
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME_$(2)): \
+		rt/$(2)/$(CFG_RUNTIME_$(2))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC):		\
-		$$(COMPILER_CRATE) $$(COMPILER_INPUTS)		\
-                $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX)
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2)): \
+		$$(CORELIB_CRATE) $$(CORELIB_INPUTS) \
+		$$(TSREQ$(1)_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
 
-$$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X):			\
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)): \
+		$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
+	        $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2)) \
+		$$(TSREQ$(1)_T_$(2)_H_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)): \
+                $$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS) \
+		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
+		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
+		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) -o $$@ $$< && touch $$@
+
+# Only build the compiler for host triples
+ifneq ($$(findstring $(2),$$(CFG_HOST_TRIPLES)),)
+
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(3)): \
+		rustllvm/$(2)/$(CFG_RUSTLLVM_$(3))
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
+		$$(COMPILER_CRATE) $$(COMPILER_INPUTS)		\
+                $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)) \
+                $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+
+$$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X_$(3)):			\
 		$$(DRIVER_CRATE) 							\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC)
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) --cfg rustc -o $$@ $$<
 ifdef CFG_ENABLE_PAX_FLAGS
@@ -43,37 +73,12 @@ ifdef CFG_ENABLE_PAX_FLAGS
 	@"$(CFG_PAXCTL)" -cm "$$@"
 endif
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX): \
-                $$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS) \
-		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM)	\
-		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
-		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) -o $$@ $$< && touch $$@
-
-$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUNTIME): \
-		rt/$(2)/$$(CFG_RUNTIME)
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB): \
-		$$(CORELIB_CRATE) $$(CORELIB_INPUTS) \
-		$$(TSREQ$(1)_T_$(2)_H_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
-
-$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB): \
-		$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-	        $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_CORELIB) \
-		$$(TSREQ$(1)_T_$(2)_H_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
+endif
 
 endef
 
 # In principle, each host can build each target:
-$(foreach source,$(CFG_TARGET_TRIPLES),				\
+$(foreach source,$(CFG_HOST_TRIPLES),				\
  $(foreach target,$(CFG_TARGET_TRIPLES),			\
   $(eval $(call TARGET_STAGE_N,0,$(target),$(source)))		\
   $(eval $(call TARGET_STAGE_N,1,$(target),$(source)))		\
