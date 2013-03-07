@@ -281,7 +281,13 @@ impl Ctx {
 
         match cmd {
             ~"build" => {
-                self.build(&os::getcwd(), true, false, false);
+                if args.len() < 1 {
+                    return usage::build();
+                }
+                let pkgid = PkgId::new(args[0]);
+                let mut src = PkgSrc::new(&Path("."), &pkgid);
+                src.find_crates();
+                src.build(&Path("."));
             }
             ~"clean" => {
                 self.clean();
@@ -927,7 +933,7 @@ pub fn main() {
 
 /// A crate is a unit of Rust code to be compiled into a binary or library
 pub struct Crate {
-    file: ~str,
+    file: Path,
     flags: ~[~str],
     cfgs: ~[~str]
 }
@@ -959,41 +965,41 @@ pub fn run(listeners: ~[Listener]) {
 }
 
 pub impl Crate {
-    pub fn flag(&self, flag: ~str) -> Crate {
+
+    static fn new(p: &Path) -> Crate {
+        Crate {
+            file: copy *p,
+            flags: ~[],
+            cfgs: ~[]
+        }
+    }
+
+    fn flag(&self, flag: ~str) -> Crate {
         Crate {
             flags: vec::append(copy self.flags, ~[flag]),
             .. copy *self
         }
     }
 
-    pub fn flags(&self, flags: ~[~str]) -> Crate {
+    fn flags(&self, flags: ~[~str]) -> Crate {
         Crate {
             flags: vec::append(copy self.flags, flags),
             .. copy *self
         }
     }
 
-    pub fn cfg(&self, cfg: ~str) -> Crate {
+    fn cfg(&self, cfg: ~str) -> Crate {
         Crate {
             cfgs: vec::append(copy self.cfgs, ~[cfg]),
             .. copy *self
         }
     }
 
-    pub fn cfgs(&self, cfgs: ~[~str]) -> Crate {
+    fn cfgs(&self, cfgs: ~[~str]) -> Crate {
         Crate {
             cfgs: vec::append(copy self.cfgs, cfgs),
             .. copy *self
         }
-    }
-}
-
-/// Create a crate target from a source file
-pub fn Crate(file: ~str) -> Crate {
-    Crate {
-        file: file,
-        flags: ~[],
-        cfgs: ~[]
     }
 }
 
@@ -1026,7 +1032,7 @@ pub fn build(crates: ~[Crate]) -> bool {
     let test = args[3] == ~"true";
 
     for crates.each |&crate| {
-        let path = &dir.push_rel(&Path(crate.file)).normalize();
+        let path = &dir.push_rel(&crate.file).normalize();
 
         util::note(fmt!("compiling %s", path.to_str()));
 
@@ -1042,4 +1048,156 @@ pub fn build(crates: ~[Crate]) -> bool {
     }
 
     success
+}
+
+
+// Path-fragment identifier of a package such as 
+// 'github.com/graydon/test'; must be a relative
+// path with >=1 component.
+struct PkgId {
+    path: Path
+}
+
+condition! {
+    bad_pkg_id: (::core::path::Path, ~str) -> ::PkgId;
+}
+
+impl PkgId {
+    static fn new(s: &str) -> PkgId {
+        use bad_pkg_id::cond;
+
+        let p = Path(s);
+        if p.is_absolute {
+            return cond.raise((p, ~"absolute pkgid"));
+        }
+        if p.components.len() < 1 {
+            return cond.raise((p, ~"0-length pkgid"));
+        }
+        PkgId {
+            path: p
+        }
+    }
+}
+
+
+// An enumeration of the unpacked source of a package workspace.
+// This contains a list of files found in the source workspace.
+pub struct PkgSrc {
+    root: Path,
+    id: PkgId,
+    libs: ~[Crate],
+    mains: ~[Crate],
+    tests: ~[Crate],
+    benchs: ~[Crate],
+}
+
+condition! {
+    bad_path: (::core::path::Path, ~str) -> ::core::path::Path;
+}
+
+condition! {
+    build_err: (~str) -> ();
+}
+
+impl PkgSrc {
+
+
+    static fn new(fs_root: &Path, id: &PkgId) -> PkgSrc {
+        PkgSrc {
+            root: copy *fs_root,
+            id: copy *id,
+            libs: ~[],
+            mains: ~[],
+            tests: ~[],
+            benchs: ~[]
+        }
+    }
+
+
+    fn check_dir(&self) -> Path {
+        use bad_path::cond;
+
+        let dir = self.root.push_rel(&self.id.path).normalize();
+
+        if ! os::path_exists(&dir) {
+            return cond.raise((dir, ~"missing package dir"));
+        }
+              
+        if ! os::path_is_dir(&dir) {
+            return cond.raise((dir, ~"missing package dir"));
+        }
+
+        dir
+    }
+
+
+    fn has_pkg_file(&self) -> bool {
+        let dir = self.check_dir();
+        dir.push("pkg.rs").exists()
+    }
+
+
+    static fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
+        assert p.components.len() > prefix;
+        let mut sub = Path("");
+        for vec::slice(p.components, prefix,
+                       p.components.len()).each |c| {
+            sub = sub.push(*c);
+        }
+        debug!("found crate %s", sub.to_str());
+        cs.push(Crate::new(&sub));
+    }
+
+    fn find_crates(&mut self) {
+        use PkgSrc::push_crate;
+        assert ! self.has_pkg_file();
+        let dir = self.check_dir();
+        let prefix = dir.components.len();
+        for os::walk_dir(&dir) |pth| {
+            match pth.filename() {
+                Some(~"lib.rs") => push_crate(&mut self.libs,
+                                              prefix, pth),
+                Some(~"main.rs") => push_crate(&mut self.mains,
+                                               prefix, pth),
+                Some(~"test.rs") => push_crate(&mut self.tests,
+                                               prefix, pth),
+                Some(~"bench.rs") => push_crate(&mut self.benchs,
+                                                prefix, pth),
+                _ => ()
+            }
+        }
+        debug!("found %u libs, %u mains, %u tests, %u benchs",
+               self.libs.len(),
+               self.mains.len(),
+               self.tests.len(),
+               self.benchs.len())
+    }
+
+
+    static fn build_crates(dst_dir: &Path,
+                           src_dir: &Path,
+                           crates: &[Crate],
+                           test: bool) {
+
+        for crates.each |&crate| {
+            let path = &src_dir.push_rel(&crate.file).normalize();
+            util::note(fmt!("compiling %s", path.to_str()));
+            if ! util::compile_crate(None, path,
+                                     dst_dir,
+                                     crate.flags,
+                                     crate.cfgs,
+                                     false, test) {
+                build_err::cond.raise(fmt!("build failure on %s",
+                                           path.to_str()));
+            }
+        }
+    }
+
+    fn build(&self, dst_dir: &Path) {
+        let dir = self.check_dir();
+        PkgSrc::build_crates(dst_dir, &dir, self.libs, false);
+        PkgSrc::build_crates(dst_dir, &dir, self.mains, false);
+        PkgSrc::build_crates(dst_dir, &dir, self.tests, true);
+        PkgSrc::build_crates(dst_dir, &dir, self.benchs, true);
+    }
 }
