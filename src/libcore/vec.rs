@@ -2695,6 +2695,7 @@ mod tests {
 
     #[test]
     #[should_fail]
+    #[ignore(cfg(windows))]
     fn test_last_empty() {
         let a: ~[int] = ~[];
         a.last();
