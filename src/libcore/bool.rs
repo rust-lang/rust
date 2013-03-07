@@ -12,6 +12,8 @@
 //! Boolean logic
 
 use option::{None, Option, Some};
+use from_str::FromStr;
+
 #[cfg(notest)] use cmp;
 
 /// Negation / inverse
@@ -46,13 +48,15 @@ pub pure fn is_true(v: bool) -> bool { v }
 pub pure fn is_false(v: bool) -> bool { !v }
 
 /// Parse logic value from `s`
-pub pure fn from_str(s: &str) -> Option<bool> {
-    if s == "true" {
-        Some(true)
-    } else if s == "false" {
-        Some(false)
-    } else {
-        None
+impl FromStr for bool {
+    static pure fn from_str(s: &str) -> Option<bool> {
+        if s == "true" {
+            Some(true)
+        } else if s == "false" {
+            Some(false)
+        } else {
+            None
+        }
     }
 }
 
@@ -79,8 +83,10 @@ impl cmp::Eq for bool {
 
 #[test]
 pub fn test_bool_from_str() {
+    use from_str::FromStr;
+
     do all_values |v| {
-        assert Some(v) == from_str(to_str(v))
+        assert Some(v) == FromStr::from_str(to_str(v))
     }
 }
 
