@@ -13,12 +13,11 @@
 // type, and vice versa.
 
 use core::prelude::*;
-use core::dvec::DVec;
 use core::hashmap::linear::LinearMap;
 
 pub struct Interner<T> {
     priv map: @mut LinearMap<T, uint>,
-    priv vect: DVec<T>,
+    priv vect: @mut ~[T],
 }
 
 // when traits can extend traits, we should extend index<uint,T> to get []
@@ -26,7 +25,7 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     static fn new() -> Interner<T> {
         Interner {
             map: @mut LinearMap::new(),
-            vect: DVec(),
+            vect: @mut ~[],
         }
     }
 
@@ -58,7 +57,7 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     // this isn't "pure" in the traditional sense, because it can go from
     // failing to returning a value as items are interned. But for typestate,
     // where we first check a pred and then rely on it, ceasing to fail is ok.
-    pure fn get(&self, idx: uint) -> T { self.vect.get_elt(idx) }
+    pure fn get(&self, idx: uint) -> T { self.vect[idx] }
 
     fn len(&self) -> uint { self.vect.len() }
 }
