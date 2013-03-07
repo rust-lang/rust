@@ -452,12 +452,13 @@ pub mod flatteners {
 
     pub fn serialize_value<D: Encoder + FromWriter,
                            T: Encodable<D>>(val: &T) -> ~[u8] {
-        let bytes_writer = @BytesWriter();
-        let writer = bytes_writer as @Writer;
+        let mut bytes_writer = BytesWriter();
+        let writer = @bytes_writer as @Writer;
         let ser = FromWriter::from_writer(writer);
         val.encode(&ser);
-        let bytes = bytes_writer.bytes.check_out(|bytes| bytes);
-        return bytes;
+        let mut ret = ~[];
+        ret <-> bytes_writer.bytes;
+        return ret;
     }
 
     pub trait FromReader {
