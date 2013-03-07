@@ -345,6 +345,9 @@ fn const_expr_unchecked(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               (expr::cast_pointer, expr::cast_pointer) => {
                 llvm::LLVMConstPointerCast(v, llty)
               }
+              (expr::cast_integral, expr::cast_pointer) => {
+                llvm::LLVMConstIntToPtr(v, llty)
+              }
               _ => {
                 cx.sess.impossible_case(e.span,
                                         ~"bad combination of types for cast")
