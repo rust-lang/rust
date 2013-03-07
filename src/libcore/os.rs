@@ -1409,9 +1409,8 @@ mod tests {
         setenv(~"USERPROFILE", ~"/home/PaloAlto");
         fail_unless!(os::homedir() == Some(Path("/home/MountainView")));
 
-        option::iter(&oldhome, |s| setenv(~"HOME", *s));
-        option::iter(&olduserprofile,
-                               |s| setenv(~"USERPROFILE", *s));
+        oldhome.each(|s| {setenv(~"HOME", *s);true});
+        olduserprofile.each(|s| {setenv(~"USERPROFILE", *s);true});
     }
 
     #[test]
